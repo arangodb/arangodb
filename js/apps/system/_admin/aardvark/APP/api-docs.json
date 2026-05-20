@@ -1,7 +1,7 @@
 {
  "externalDocs": {
-  "description": "Arango Documentation",
-  "url": "https://docs.arango.ai"
+  "description": "ArangoDB Documentation",
+  "url": "https://docs.arango.ai/arangodb/"
  },
  "info": {
   "contact": {
@@ -12,9 +12,9 @@
    "name": "Apache 2.0",
    "url": "https://github.com/arangodb/arangodb/blob/3.11/LICENSE"
   },
-  "summary": "The RESTful HTTP API of the ArangoDB Core Database System",
+  "summary": "The HTTP API of the ArangoDB graph database system",
   "title": "ArangoDB Core API",
-  "version": "3.11.14-4"
+  "version": "3.11.14-4 (API v0)"
  },
  "openapi": "3.1.0",
  "paths": {
@@ -1577,7 +1577,8 @@
   },
   "/_admin/database/target-version": {
    "get": {
-    "description": "\u003e **WARNING:**\nThis endpoint is deprecated and should no longer be used. It will be removed from version 3.12.0 onward.\nUse `GET /_api/version` instead.\n\n\nReturns the database version that this server requires.\nThe version is returned in the `version` attribute of the result.\n",
+    "deprecated": true,
+    "description": "\u003e **WARNING:**\nThis endpoint is deprecated and should no longer be used.\nIt is removed in ArangoDB v4.0. Use `GET /_api/version` instead.\n\n\nReturns the database version that this server requires.\nThe version is returned in the `version` attribute of the result.\n",
     "operationId": "getDatabaseVersion",
     "responses": {
      "200": {
@@ -3474,7 +3475,7 @@
             "type": "string"
            },
            "writeConcern": {
-            "description": "Default write concern for new collections created in this database.\nIt determines how many copies of each shard are required to be\nin sync on the different DB-Servers. If there are less than these many copies\nin the cluster, a shard refuses to write. Writes to shards with enough\nup-to-date copies succeed at the same time, however. The value of\n`writeConcern` cannot be greater than `replicationFactor`.\n\nIf `distributeShardsLike` is set, the default `writeConcern`\nis that of the prototype collection.\nFor SatelliteCollections, the `writeConcern` is automatically controlled to\nequal the number of DB-Servers and has a value of `0`.\nOtherwise, the default value is controlled by the `--cluster.write-concern`\nstartup option, which defaults to `1`. _(cluster only)_\n",
+            "description": "Default write concern for new collections created in this database.\nIt determines how many copies of each shard are required to be\nin sync on the different DB-Servers. If there are less than these many copies\nin the cluster, a shard refuses to write. Writes to shards with enough\nup-to-date copies succeed at the same time, however. The value of\n`writeConcern` cannot be greater than `replicationFactor`.\n\nFor SatelliteCollections, the `writeConcern` is automatically controlled to\nequal the number of DB-Servers and has a value of `0`.\nOtherwise, the default value is controlled by the `--cluster.write-concern`\nstartup option, which defaults to `1`. _(cluster only)_\n",
             "type": "number"
            }
           },
@@ -3874,11 +3875,10 @@
            "type": "string"
           },
           "status": {
-           "description": "The `status` key allows you to confirm the state of the installed license on a\nglance.\n\n- `good`: The license is valid for more than 2 weeks.\n- `expiring`: The license is valid for less than 2 weeks.\n- `expired`: The license has expired. In this situation, no new\n  Enterprise Edition features can be utilized.\n- `read-only`: The license is expired over 2 weeks. The instance is now\n  restricted to read-only mode.\n",
+           "description": "The `status` key allows you to confirm the state of the installed license on a\nglance.\n\n- `good`: The license is still valid for more than a week.\n- `expiring`: The license is valid for less than a week.\n- `read-only`: The license has expired. The instance is now\n  restricted to read-only mode.\n",
            "enum": [
             "good",
             "expiring",
-            "expired",
             "read-only"
            ],
            "example": "good",
@@ -4461,7 +4461,7 @@
   },
   "/_db/{database-name}/_admin/statistics": {
    "get": {
-    "description": "\u003e **WARNING:**\nThis endpoint should no longer be used. It is deprecated from version 3.8.0 on.\nUse `/_admin/metrics/v2` instead, which provides the data exposed by this API\nand a lot more.\n\n\nReturns the statistics information. The returned object contains the\nstatistics figures grouped together according to the description returned by\n`/_admin/statistics-description`. For instance, to access a figure `userTime`\nfrom the group `system`, you first select the sub-object describing the\ngroup stored in `system` and in that sub-object the value for `userTime` is\nstored in the attribute of the same name.\n\nIn case of a distribution, the returned object contains the total count in\n`count` and the distribution list in `counts`. The sum (or total) of the\nindividual values is returned in `sum`.\n\nThe transaction statistics show the local started, committed and aborted\ntransactions as well as intermediate commits done for the server queried. The\nintermediate commit count will only take non zero values for the RocksDB\nstorage engine. Coordinators do almost no local transactions themselves in\ntheir local databases, therefor cluster transactions (transactions started on a\nCoordinator that require DB-Servers to finish before the transactions is\ncommitted cluster wide) are just added to their local statistics. This means\nthat the statistics you would see for a single server is roughly what you can\nexpect in a cluster setup using a single Coordinator querying this Coordinator.\nJust with the difference that cluster transactions have no notion of\nintermediate commits and will not increase the value.\n",
+    "description": "\u003e **WARNING:**\nThis endpoint should no longer be used. It is deprecated from version 3.8.0 on.\nUse `/_admin/metrics/v2` instead, which provides the data exposed by this API\nand a lot more.\n\n\nReturns the statistics information. The returned object contains the\nstatistics figures grouped together according to the description returned by\n`/_admin/statistics-description`. For instance, to access a figure `userTime`\nfrom the group `system`, you first select the sub-object describing the\ngroup stored in `system` and in that sub-object the value for `userTime` is\nstored in the attribute of the same name.\n\nIn case of a distribution, the returned object contains the total count in\n`count` and the distribution list in `counts`. The sum (or total) of the\nindividual values is returned in `sum`.\n\nThe transaction statistics show the local started, committed and aborted\ntransactions as well as intermediate commits done for the server queried. The\nintermediate commit count will only take non zero values for the RocksDB\nstorage engine. Coordinators do almost no local transactions themselves in\ntheir local databases, therefore cluster transactions (transactions started on a\nCoordinator that require DB-Servers to finish before the transactions is\ncommitted cluster wide) are just added to their local statistics. This means\nthat the statistics you would see for a single server is roughly what you can\nexpect in a cluster setup using a single Coordinator querying this Coordinator.\nJust with the difference that cluster transactions have no notion of\nintermediate commits and will not increase the value.\n",
     "operationId": "getStatistics",
     "parameters": [
      {
@@ -6282,7 +6282,7 @@
          },
          "distributeShardsLike": {
           "default": "",
-          "description": "The name of another collection. If this property is set in a cluster, the\ncollection copies the `replicationFactor`, `numberOfShards`, `shardingStrategy`, and `writeConcern`\nproperties from the specified collection (referred to as the _prototype collection_)\nand distributes the shards of this collection in the same way as the shards of\nthe other collection. In an Enterprise Edition cluster, this data co-location is\nutilized to optimize queries.\n\nYou need to use the same number of `shardKeys` as the prototype collection, but\nyou can use different attributes.\n\n\u003e **INFO:**\nUsing this parameter has consequences for the prototype\ncollection. It can no longer be dropped, before the sharding-imitating\ncollections are dropped. Equally, backups and restores of imitating\ncollections alone generate warnings (which can be overridden)\nabout a missing sharding prototype.\n",
+          "description": "The name of another collection. If this property is set in a cluster, the\ncollection follows the `replicationFactor`, `numberOfShards`, `shardingStrategy`, and `writeConcern`\nproperties of the specified collection (referred to as the\n_prototype collection_ or sometimes _initial collection_)\nand distributes the shards of this collection in the same way as the shards of\nthe other collection. In an Enterprise Edition cluster, this data co-location is\nutilized to optimize queries.\n\nYou need to use the same number of `shardKeys` as the prototype collection, but\nyou can use different attributes.\n\n\u003e **INFO:**\nUsing this parameter has consequences for the prototype\ncollection. It can no longer be dropped, before the sharding-imitating\ncollections are dropped. Equally, backups and restores of imitating\ncollections alone generate warnings (which can be overridden)\nabout a missing sharding prototype.\n",
           "type": "string"
          },
          "isDisjoint": {
@@ -6330,11 +6330,11 @@
          },
          "numberOfShards": {
           "default": 1,
-          "description": "In a cluster, this value determines the\nnumber of shards to create for the collection.\n",
+          "description": "In a cluster, this value determines the\nnumber of shards to create for the collection.\n\nDefault:\nIf `distributeShardsLike` is set, the `numberOfShards`\nis that of the indicated prototype collection.\n",
           "type": "integer"
          },
          "replicationFactor": {
-          "description": "In a cluster, this attribute determines how many copies\nof each shard are kept on different DB-Servers. The value 1 means that only one\ncopy (no synchronous replication) is kept. A value of k means that k-1 replicas\nare kept. For SatelliteCollections, it needs to be the string `\"satellite\"`,\nwhich matches the replication factor to the number of DB-Servers\n(Enterprise Edition only).\n\nAny two copies reside on different DB-Servers. Replication between them is\nsynchronous, that is, every write operation to the \"leader\" copy will be replicated\nto all \"follower\" replicas, before the write operation is reported successful.\n\nIf a server fails, this is detected automatically and one of the servers holding\ncopies take over, usually without an error being reported.\n\nDefault: The `replicationFactor` defined by the database.\n",
+          "description": "In a cluster, this attribute determines how many copies\nof each shard are kept on different DB-Servers. The value 1 means that only one\ncopy (no synchronous replication) is kept. A value of k means that k-1 replicas\nare kept. For SatelliteCollections, it needs to be the string `\"satellite\"`,\nwhich matches the replication factor to the number of DB-Servers\n(Enterprise Edition only).\n\nAny two copies reside on different DB-Servers. Replication between them is\nsynchronous, that is, every write operation to the \"leader\" copy will be replicated\nto all \"follower\" replicas, before the write operation is reported successful.\n\nIf a server fails, this is detected automatically and one of the servers holding\ncopies take over, usually without an error being reported.\n\nDefault:\nIf `distributeShardsLike` is set, the `replicationFactor`\nis that of the indicated prototype collection. Otherwise,\nthe default `replicationFactor` is defined by the database.\n",
           "type": "integer"
          },
          "schema": {
@@ -6373,7 +6373,7 @@
           "type": "string"
          },
          "shardingStrategy": {
-          "description": "This attribute specifies the name of the sharding strategy to use for\nthe collection. There are different sharding strategies\nto select from when creating a new collection. The selected `shardingStrategy`\nvalue remains fixed for the collection and cannot be changed afterwards.\nThis is important to make the collection keep its sharding settings and\nalways find documents already distributed to shards using the same\ninitial sharding algorithm.\n\nThe available sharding strategies are:\n- `community-compat`: default sharding used by ArangoDB\n  Community Edition before version 3.4\n- `enterprise-compat`: default sharding used by ArangoDB\n  Enterprise Edition before version 3.4\n- `enterprise-smart-edge-compat`: default sharding used by smart edge\n  collections in ArangoDB Enterprise Edition before version 3.4\n- `hash`: default sharding used for new collections starting from version 3.4\n  (excluding smart edge collections)\n- `enterprise-hash-smart-edge`: default sharding used for new\n  smart edge collections starting from version 3.4\n- `enterprise-hex-smart-vertex`: sharding used for vertex collections of\n  EnterpriseGraphs\n\nIf no sharding strategy is specified, the default is `hash` for\nall normal collections, `enterprise-hash-smart-edge` for all smart edge\ncollections, and `enterprise-hex-smart-vertex` for EnterpriseGraph\nvertex collections (the latter two require the *Enterprise Edition* of ArangoDB).\nManually overriding the sharding strategy does not yet provide a\nbenefit, but it may later in case other sharding strategies are added.\n",
+          "description": "This attribute specifies the name of the sharding strategy to use for\nthe collection. There are different sharding strategies\nto select from when creating a new collection. The selected `shardingStrategy`\nvalue remains fixed for the collection and cannot be changed afterwards.\nThis is important to make the collection keep its sharding settings and\nalways find documents already distributed to shards using the same\ninitial sharding algorithm.\n\nThe available sharding strategies are:\n- `community-compat`: default sharding used by ArangoDB\n  Community Edition before version 3.4\n- `enterprise-compat`: default sharding used by ArangoDB\n  Enterprise Edition before version 3.4\n- `enterprise-smart-edge-compat`: default sharding used by smart edge\n  collections in ArangoDB Enterprise Edition before version 3.4\n- `hash`: default sharding used for new collections starting from version 3.4\n  (excluding smart edge collections)\n- `enterprise-hash-smart-edge`: default sharding used for new\n  smart edge collections starting from version 3.4\n- `enterprise-hex-smart-vertex`: sharding used for vertex collections of\n  EnterpriseGraphs\n\nDefault:\nIf `distributeShardsLike` is set, the `shardingStrategy`\nis that of the indicated prototype collection. Otherwise,\nif no sharding strategy is specified, the default is `hash` for\nall normal collections, `enterprise-hash-smart-edge` for all smart edge\ncollections, and `enterprise-hex-smart-vertex` for EnterpriseGraph\nvertex collections (the latter two require the *Enterprise Edition* of ArangoDB).\nManually overriding the sharding strategy does not yet provide a\nbenefit, but it may later in case other sharding strategies are added.\n",
           "type": "string"
          },
          "smartGraphAttribute": {
@@ -6395,7 +6395,7 @@
           "type": "boolean"
          },
          "writeConcern": {
-          "description": "Determines how many copies of each shard are required to be\nin sync on the different DB-Servers. If there are less than these many copies\nin the cluster, a shard refuses to write. Writes to shards with enough\nup-to-date copies succeed at the same time, however. The value of\n`writeConcern` cannot be greater than `replicationFactor`.\n\nDefault: If `distributeShardsLike` is set, the default `writeConcern`\nis that of the prototype collection.\nFor SatelliteCollections, the `writeConcern` is automatically controlled to\nequal the number of DB-Servers and has a value of `0`.\nOtherwise, the default value is controlled by the current database's\ndefault `writeConcern`, which uses the `--cluster.write-concern`\nstartup option as default, which defaults to `1`. _(cluster only)_\n",
+          "description": "Determines how many copies of each shard are required to be\nin sync on the different DB-Servers. If there are less than these many copies\nin the cluster, a shard refuses to write. Writes to shards with enough\nup-to-date copies succeed at the same time, however. The value of\n`writeConcern` cannot be greater than `replicationFactor`.\n\nDefault:\nIf `distributeShardsLike` is set, the `writeConcern`\nis that of the indicated prototype collection.\n\nFor SatelliteCollections, the `writeConcern` is automatically controlled to\nequal the number of DB-Servers and has a value of `0`.\nOtherwise, the default value is controlled by the current database's\ndefault `writeConcern`, which uses the `--cluster.write-concern`\nstartup option as default, which defaults to `1`. _(cluster only)_\n",
           "type": "integer"
          }
         },
@@ -6548,7 +6548,7 @@
            "type": "integer"
           },
           "replicationFactor": {
-           "description": "Contains how many copies of each shard are kept on different DB-Servers.\nIt is an integer number in the range of 1-10 or the string `\"satellite\"`\nfor SatelliteCollections (Enterprise Edition only). _(cluster only)_\n",
+           "description": "Contains how many copies of each shard are kept on different DB-Servers.\nIt is an integer number in the range of 1-10 or the string `\"satellite\"`\nfor SatelliteCollections (Enterprise Edition only). _(cluster only)_\n\nIf `distributeShardsLike` is set, the actual replication factor\nis that of the indicated prototype collection. Query the\nprototype collection to get the current `replicationFactor`\nfor this collection. The reported `replicationFactor` of\nthis collection is the value as of the time at which the\ncollection was created, but it may have been changed\nfor the prototype collection in the meantime.\n",
            "type": "integer"
           },
           "schema": {
@@ -6574,10 +6574,8 @@
              "type": "object"
             },
             "type": {
+             "const": "json",
              "description": "The schema validation type. Only JSON Schema is supported.\n",
-             "enum": [
-              "json"
-             ],
              "type": "string"
             }
            },
@@ -6643,7 +6641,7 @@
            "type": "boolean"
           },
           "writeConcern": {
-           "description": "Determines how many copies of each shard are required to be\nin-sync on the different DB-Servers. If there are less than these many copies\nin the cluster, a shard refuses to write. Writes to shards with enough\nup-to-date copies succeed at the same time, however. The value of\n`writeConcern` cannot be greater than `replicationFactor`.\n\nIf `distributeShardsLike` is set, the `writeConcern`\nis that of the prototype collection.\nFor SatelliteCollections, the `writeConcern` is automatically controlled to\nequal the number of DB-Servers and has a value of `0`.\nOtherwise, the default value is controlled by the current database's\ndefault `writeConcern`, which uses the `--cluster.write-concern`\nstartup option as default, which defaults to `1`. _(cluster only)_\n",
+           "description": "Determines how many copies of each shard are required to be\nin-sync on the different DB-Servers. If there are less than these many copies\nin the cluster, a shard refuses to write. Writes to shards with enough\nup-to-date copies succeed at the same time, however. The value of\n`writeConcern` cannot be greater than `replicationFactor`.\n\nIf `distributeShardsLike` is set, the actual write concern\nis that of the indicated prototype collection. Query the\nprototype collection to get the current `writeConcern`\nfor this collection. The reported `writeConcern` of\nthis collection is the value as of the time at which the\ncollection was created, but it may have been changed\nfor the prototype collection in the meantime.\n\nFor SatelliteCollections, the `writeConcern` is automatically controlled to\nequal the number of DB-Servers and has a value of `0`.\nOtherwise, the default value is controlled by the current database's\ndefault `writeConcern`, which uses the `--cluster.write-concern`\nstartup option as default, which defaults to `1`. _(cluster only)_\n",
            "type": "integer"
           }
          },
@@ -7422,7 +7420,7 @@
            "type": "integer"
           },
           "replicationFactor": {
-           "description": "Contains how many copies of each shard are kept on different DB-Servers.\nIt is an integer number in the range of 1-10 or the string `\"satellite\"`\nfor SatelliteCollections (Enterprise Edition only). _(cluster only)_\n",
+           "description": "Contains how many copies of each shard are kept on different DB-Servers.\nIt is an integer number in the range of 1-10 or the string `\"satellite\"`\nfor SatelliteCollections (Enterprise Edition only). _(cluster only)_\n\nIf `distributeShardsLike` is set, the actual replication factor\nis that of the indicated prototype collection. Query the\nprototype collection to get the current `replicationFactor`\nfor this collection. The reported `replicationFactor` of\nthis collection is the value as of the time at which the\ncollection was created, but it may have been changed\nfor the prototype collection in the meantime.\n",
            "type": "integer"
           },
           "schema": {
@@ -7448,10 +7446,8 @@
              "type": "object"
             },
             "type": {
+             "const": "json",
              "description": "The schema validation type. Only JSON Schema is supported.\n",
-             "enum": [
-              "json"
-             ],
              "type": "string"
             }
            },
@@ -7517,7 +7513,7 @@
            "type": "boolean"
           },
           "writeConcern": {
-           "description": "Determines how many copies of each shard are required to be\nin-sync on the different DB-Servers. If there are less than these many copies\nin the cluster, a shard refuses to write. Writes to shards with enough\nup-to-date copies succeed at the same time, however. The value of\n`writeConcern` cannot be greater than `replicationFactor`.\n\nIf `distributeShardsLike` is set, the `writeConcern`\nis that of the prototype collection.\nFor SatelliteCollections, the `writeConcern` is automatically controlled to\nequal the number of DB-Servers and has a value of `0`.\nOtherwise, the default value is controlled by the current database's\ndefault `writeConcern`, which uses the `--cluster.write-concern`\nstartup option as default, which defaults to `1`. _(cluster only)_\n",
+           "description": "Determines how many copies of each shard are required to be\nin-sync on the different DB-Servers. If there are less than these many copies\nin the cluster, a shard refuses to write. Writes to shards with enough\nup-to-date copies succeed at the same time, however. The value of\n`writeConcern` cannot be greater than `replicationFactor`.\n\nIf `distributeShardsLike` is set, the actual write concern\nis that of the indicated prototype collection. Query the\nprototype collection to get the current `writeConcern`\nfor this collection. The reported `writeConcern` of\nthis collection is the value as of the time at which the\ncollection was created, but it may have been changed\nfor the prototype collection in the meantime.\n\nFor SatelliteCollections, the `writeConcern` is automatically controlled to\nequal the number of DB-Servers and has a value of `0`.\nOtherwise, the default value is controlled by the current database's\ndefault `writeConcern`, which uses the `--cluster.write-concern`\nstartup option as default, which defaults to `1`. _(cluster only)_\n",
            "type": "integer"
           }
          },
@@ -7823,7 +7819,7 @@
            "type": "integer"
           },
           "replicationFactor": {
-           "description": "Contains how many copies of each shard are kept on different DB-Servers.\nIt is an integer number in the range of 1-10 or the string `\"satellite\"`\nfor SatelliteCollections (Enterprise Edition only). _(cluster only)_\n",
+           "description": "Contains how many copies of each shard are kept on different DB-Servers.\nIt is an integer number in the range of 1-10 or the string `\"satellite\"`\nfor SatelliteCollections (Enterprise Edition only). _(cluster only)_\n\nIf `distributeShardsLike` is set, the actual replication factor\nis that of the indicated prototype collection. Query the\nprototype collection to get the current `replicationFactor`\nfor this collection. The reported `replicationFactor` of\nthis collection is the value as of the time at which the\ncollection was created, but it may have been changed\nfor the prototype collection in the meantime.\n",
            "type": "integer"
           },
           "schema": {
@@ -7849,10 +7845,8 @@
              "type": "object"
             },
             "type": {
+             "const": "json",
              "description": "The schema validation type. Only JSON Schema is supported.\n",
-             "enum": [
-              "json"
-             ],
              "type": "string"
             }
            },
@@ -7918,7 +7912,7 @@
            "type": "boolean"
           },
           "writeConcern": {
-           "description": "Determines how many copies of each shard are required to be\nin-sync on the different DB-Servers. If there are less than these many copies\nin the cluster, a shard refuses to write. Writes to shards with enough\nup-to-date copies succeed at the same time, however. The value of\n`writeConcern` cannot be greater than `replicationFactor`.\n\nIf `distributeShardsLike` is set, the `writeConcern`\nis that of the prototype collection.\nFor SatelliteCollections, the `writeConcern` is automatically controlled to\nequal the number of DB-Servers and has a value of `0`.\nOtherwise, the default value is controlled by the current database's\ndefault `writeConcern`, which uses the `--cluster.write-concern`\nstartup option as default, which defaults to `1`. _(cluster only)_\n",
+           "description": "Determines how many copies of each shard are required to be\nin-sync on the different DB-Servers. If there are less than these many copies\nin the cluster, a shard refuses to write. Writes to shards with enough\nup-to-date copies succeed at the same time, however. The value of\n`writeConcern` cannot be greater than `replicationFactor`.\n\nIf `distributeShardsLike` is set, the actual write concern\nis that of the indicated prototype collection. Query the\nprototype collection to get the current `writeConcern`\nfor this collection. The reported `writeConcern` of\nthis collection is the value as of the time at which the\ncollection was created, but it may have been changed\nfor the prototype collection in the meantime.\n\nFor SatelliteCollections, the `writeConcern` is automatically controlled to\nequal the number of DB-Servers and has a value of `0`.\nOtherwise, the default value is controlled by the current database's\ndefault `writeConcern`, which uses the `--cluster.write-concern`\nstartup option as default, which defaults to `1`. _(cluster only)_\n",
            "type": "integer"
           }
          },
@@ -8498,7 +8492,7 @@
            "type": "integer"
           },
           "replicationFactor": {
-           "description": "Contains how many copies of each shard are kept on different DB-Servers.\nIt is an integer number in the range of 1-10 or the string `\"satellite\"`\nfor SatelliteCollections (Enterprise Edition only). _(cluster only)_\n",
+           "description": "Contains how many copies of each shard are kept on different DB-Servers.\nIt is an integer number in the range of 1-10 or the string `\"satellite\"`\nfor SatelliteCollections (Enterprise Edition only). _(cluster only)_\n\nIf `distributeShardsLike` is set, the actual replication factor\nis that of the indicated prototype collection. Query the\nprototype collection to get the current `replicationFactor`\nfor this collection. The reported `replicationFactor` of\nthis collection is the value as of the time at which the\ncollection was created, but it may have been changed\nfor the prototype collection in the meantime.\n",
            "type": "integer"
           },
           "schema": {
@@ -8524,10 +8518,8 @@
              "type": "object"
             },
             "type": {
+             "const": "json",
              "description": "The schema validation type. Only JSON Schema is supported.\n",
-             "enum": [
-              "json"
-             ],
              "type": "string"
             }
            },
@@ -8593,7 +8585,7 @@
            "type": "boolean"
           },
           "writeConcern": {
-           "description": "Determines how many copies of each shard are required to be\nin-sync on the different DB-Servers. If there are less than these many copies\nin the cluster, a shard refuses to write. Writes to shards with enough\nup-to-date copies succeed at the same time, however. The value of\n`writeConcern` cannot be greater than `replicationFactor`.\n\nIf `distributeShardsLike` is set, the `writeConcern`\nis that of the prototype collection.\nFor SatelliteCollections, the `writeConcern` is automatically controlled to\nequal the number of DB-Servers and has a value of `0`.\nOtherwise, the default value is controlled by the current database's\ndefault `writeConcern`, which uses the `--cluster.write-concern`\nstartup option as default, which defaults to `1`. _(cluster only)_\n",
+           "description": "Determines how many copies of each shard are required to be\nin-sync on the different DB-Servers. If there are less than these many copies\nin the cluster, a shard refuses to write. Writes to shards with enough\nup-to-date copies succeed at the same time, however. The value of\n`writeConcern` cannot be greater than `replicationFactor`.\n\nIf `distributeShardsLike` is set, the actual write concern\nis that of the indicated prototype collection. Query the\nprototype collection to get the current `writeConcern`\nfor this collection. The reported `writeConcern` of\nthis collection is the value as of the time at which the\ncollection was created, but it may have been changed\nfor the prototype collection in the meantime.\n\nFor SatelliteCollections, the `writeConcern` is automatically controlled to\nequal the number of DB-Servers and has a value of `0`.\nOtherwise, the default value is controlled by the current database's\ndefault `writeConcern`, which uses the `--cluster.write-concern`\nstartup option as default, which defaults to `1`. _(cluster only)_\n",
            "type": "integer"
           }
          },
@@ -8786,7 +8778,7 @@
           "type": "array"
          },
          "replicationFactor": {
-          "description": "In a cluster, this attribute determines how many copies\nof each shard are kept on different DB-Servers. The value 1 means that only one\ncopy (no synchronous replication) is kept. A value of k means that k-1 replicas\nare kept. For SatelliteCollections, it needs to be the string `\"satellite\"`,\nwhich matches the replication factor to the number of DB-Servers\n(Enterprise Edition only).\n\nAny two copies reside on different DB-Servers. Replication between them is\nsynchronous, that is, every write operation to the \"leader\" copy will be replicated\nto all \"follower\" replicas, before the write operation is reported successful.\n\nIf a server fails, this is detected automatically and one of the servers holding\ncopies take over, usually without an error being reported.\n",
+          "description": "In a cluster, this attribute determines how many copies\nof each shard are kept on different DB-Servers. The value 1 means that only one\ncopy (no synchronous replication) is kept. A value of k means that k-1 replicas\nare kept. For SatelliteCollections, it needs to be the string `\"satellite\"`,\nwhich matches the replication factor to the number of DB-Servers\n(Enterprise Edition only).\n\nAny two copies reside on different DB-Servers. Replication between them is\nsynchronous, that is, every write operation to the \"leader\" copy will be replicated\nto all \"follower\" replicas, before the write operation is reported successful.\n\nIf a server fails, this is detected automatically and one of the servers holding\ncopies take over, usually without an error being reported.\n\nIf `distributeShardsLike` is set, the `replicationFactor`\nis that of the indicated prototype collection. You can only\nchange the `replicationFactor` of the prototype collection\nto change the `replicationFactor` for this collection (and for\nall other collections that follow this prototype collection).\n",
           "type": "integer"
          },
          "schema": {
@@ -8822,7 +8814,7 @@
           "type": "boolean"
          },
          "writeConcern": {
-          "description": "Determines how many copies of each shard are required to be\nin sync on the different DB-Servers. If there are less than these many copies\nin the cluster, a shard refuses to write. Writes to shards with enough\nup-to-date copies succeed at the same time, however. The value of\n`writeConcern` cannot be greater than `replicationFactor`.\n\nIf `distributeShardsLike` is set, the `writeConcern`\nis that of the prototype collection.\nFor SatelliteCollections, the `writeConcern` is automatically controlled to\nequal the number of DB-Servers and has a value of `0`.\nOtherwise, the default value is controlled by the current database's\ndefault `writeConcern`, which uses the `--cluster.write-concern`\nstartup option as default, which defaults to `1`. _(cluster only)_\n",
+          "description": "Determines how many copies of each shard are required to be\nin sync on the different DB-Servers. If there are less than these many copies\nin the cluster, a shard refuses to write. Writes to shards with enough\nup-to-date copies succeed at the same time, however. The value of\n`writeConcern` cannot be greater than `replicationFactor`.\n\nIf `distributeShardsLike` is set, the `writeConcern`\nis that of the indicated prototype collection. You can only\nchange the `writeConcern` of the prototype collection\nto change the `writeConcern` for this collection (and for\nall other collections that follow this prototype collection).\n\nFor SatelliteCollections, the `writeConcern` is automatically controlled to\nequal the number of DB-Servers and has a value of `0`.\nOtherwise, the default value is controlled by the current database's\ndefault `writeConcern`, which uses the `--cluster.write-concern`\nstartup option as default, which defaults to `1`. _(cluster only)_\n",
           "type": "integer"
          }
         },
@@ -8972,7 +8964,7 @@
            "type": "integer"
           },
           "replicationFactor": {
-           "description": "Contains how many copies of each shard are kept on different DB-Servers.\nIt is an integer number in the range of 1-10 or the string `\"satellite\"`\nfor SatelliteCollections (Enterprise Edition only). _(cluster only)_\n",
+           "description": "Contains how many copies of each shard are kept on different DB-Servers.\nIt is an integer number in the range of 1-10 or the string `\"satellite\"`\nfor SatelliteCollections (Enterprise Edition only). _(cluster only)_\n\nIf `distributeShardsLike` is set, the actual replication factor\nis that of the indicated prototype collection. Query the\nprototype collection to get the current `replicationFactor`\nfor this collection. The reported `replicationFactor` of\nthis collection is the value as of the time at which the\ncollection was created, but it may have been changed\nfor the prototype collection in the meantime.\n",
            "type": "integer"
           },
           "schema": {
@@ -8998,10 +8990,8 @@
              "type": "object"
             },
             "type": {
+             "const": "json",
              "description": "The schema validation type. Only JSON Schema is supported.\n",
-             "enum": [
-              "json"
-             ],
              "type": "string"
             }
            },
@@ -9067,7 +9057,7 @@
            "type": "boolean"
           },
           "writeConcern": {
-           "description": "Determines how many copies of each shard are required to be\nin-sync on the different DB-Servers. If there are less than these many copies\nin the cluster, a shard refuses to write. Writes to shards with enough\nup-to-date copies succeed at the same time, however. The value of\n`writeConcern` cannot be greater than `replicationFactor`.\n\nIf `distributeShardsLike` is set, the `writeConcern`\nis that of the prototype collection.\nFor SatelliteCollections, the `writeConcern` is automatically controlled to\nequal the number of DB-Servers and has a value of `0`.\nOtherwise, the default value is controlled by the current database's\ndefault `writeConcern`, which uses the `--cluster.write-concern`\nstartup option as default, which defaults to `1`. _(cluster only)_\n",
+           "description": "Determines how many copies of each shard are required to be\nin-sync on the different DB-Servers. If there are less than these many copies\nin the cluster, a shard refuses to write. Writes to shards with enough\nup-to-date copies succeed at the same time, however. The value of\n`writeConcern` cannot be greater than `replicationFactor`.\n\nIf `distributeShardsLike` is set, the actual write concern\nis that of the indicated prototype collection. Query the\nprototype collection to get the current `writeConcern`\nfor this collection. The reported `writeConcern` of\nthis collection is the value as of the time at which the\ncollection was created, but it may have been changed\nfor the prototype collection in the meantime.\n\nFor SatelliteCollections, the `writeConcern` is automatically controlled to\nequal the number of DB-Servers and has a value of `0`.\nOtherwise, the default value is controlled by the current database's\ndefault `writeConcern`, which uses the `--cluster.write-concern`\nstartup option as default, which defaults to `1`. _(cluster only)_\n",
            "type": "integer"
           }
          },
@@ -9499,7 +9489,7 @@
            "type": "integer"
           },
           "replicationFactor": {
-           "description": "Contains how many copies of each shard are kept on different DB-Servers.\nIt is an integer number in the range of 1-10 or the string `\"satellite\"`\nfor SatelliteCollections (Enterprise Edition only). _(cluster only)_\n",
+           "description": "Contains how many copies of each shard are kept on different DB-Servers.\nIt is an integer number in the range of 1-10 or the string `\"satellite\"`\nfor SatelliteCollections (Enterprise Edition only). _(cluster only)_\n\nIf `distributeShardsLike` is set, the actual replication factor\nis that of the indicated prototype collection. Query the\nprototype collection to get the current `replicationFactor`\nfor this collection. The reported `replicationFactor` of\nthis collection is the value as of the time at which the\ncollection was created, but it may have been changed\nfor the prototype collection in the meantime.\n",
            "type": "integer"
           },
           "schema": {
@@ -9525,10 +9515,8 @@
              "type": "object"
             },
             "type": {
+             "const": "json",
              "description": "The schema validation type. Only JSON Schema is supported.\n",
-             "enum": [
-              "json"
-             ],
              "type": "string"
             }
            },
@@ -9595,7 +9583,7 @@
            "type": "boolean"
           },
           "writeConcern": {
-           "description": "Determines how many copies of each shard are required to be\nin-sync on the different DB-Servers. If there are less than these many copies\nin the cluster, a shard refuses to write. Writes to shards with enough\nup-to-date copies succeed at the same time, however. The value of\n`writeConcern` cannot be greater than `replicationFactor`.\n\nIf `distributeShardsLike` is set, the default `writeConcern`\nis that of the prototype collection.\nFor SatelliteCollections, the `writeConcern` is automatically controlled to\nequal the number of DB-Servers and has a value of `0`.\nOtherwise, the default value is controlled by the current database's\ndefault `writeConcern`, which uses the `--cluster.write-concern`\nstartup option as default, which defaults to `1`. _(cluster only)_\n",
+           "description": "Determines how many copies of each shard are required to be\nin-sync on the different DB-Servers. If there are less than these many copies\nin the cluster, a shard refuses to write. Writes to shards with enough\nup-to-date copies succeed at the same time, however. The value of\n`writeConcern` cannot be greater than `replicationFactor`.\n\nIf `distributeShardsLike` is set, the actual write concern\nis that of the indicated prototype collection. Query the\nprototype collection to get the current `writeConcern`\nfor this collection. The reported `writeConcern` of\nthis collection is the value as of the time at which the\ncollection was created, but it may have been changed\nfor the prototype collection in the meantime.\n\nFor SatelliteCollections, the `writeConcern` is automatically controlled to\nequal the number of DB-Servers and has a value of `0`.\nOtherwise, the default value is controlled by the current database's\ndefault `writeConcern`, which uses the `--cluster.write-concern`\nstartup option as default, which defaults to `1`. _(cluster only)_\n",
            "type": "integer"
           }
          },
@@ -10049,7 +10037,7 @@
            "type": "integer"
           },
           "replicationFactor": {
-           "description": "Contains how many copies of each shard are kept on different DB-Servers.\nIt is an integer number in the range of 1-10 or the string `\"satellite\"`\nfor SatelliteCollections (Enterprise Edition only). _(cluster only)_\n",
+           "description": "Contains how many copies of each shard are kept on different DB-Servers.\nIt is an integer number in the range of 1-10 or the string `\"satellite\"`\nfor SatelliteCollections (Enterprise Edition only). _(cluster only)_\n\nIf `distributeShardsLike` is set, the actual replication factor\nis that of the indicated prototype collection. Query the\nprototype collection to get the current `replicationFactor`\nfor this collection. The reported `replicationFactor` of\nthis collection is the value as of the time at which the\ncollection was created, but it may have been changed\nfor the prototype collection in the meantime.\n",
            "type": "integer"
           },
           "revision": {
@@ -10079,10 +10067,8 @@
              "type": "object"
             },
             "type": {
+             "const": "json",
              "description": "The schema validation type. Only JSON Schema is supported.\n",
-             "enum": [
-              "json"
-             ],
              "type": "string"
             }
            },
@@ -10148,7 +10134,7 @@
            "type": "boolean"
           },
           "writeConcern": {
-           "description": "Determines how many copies of each shard are required to be\nin-sync on the different DB-Servers. If there are less than these many copies\nin the cluster, a shard refuses to write. Writes to shards with enough\nup-to-date copies succeed at the same time, however. The value of\n`writeConcern` cannot be greater than `replicationFactor`.\n\nIf `distributeShardsLike` is set, the `writeConcern`\nis that of the prototype collection.\nFor SatelliteCollections, the `writeConcern` is automatically controlled to\nequal the number of DB-Servers and has a value of `0`.\nOtherwise, the default value is controlled by the current database's\ndefault `writeConcern`, which uses the `--cluster.write-concern`\nstartup option as default, which defaults to `1`. _(cluster only)_\n",
+           "description": "Determines how many copies of each shard are required to be\nin-sync on the different DB-Servers. If there are less than these many copies\nin the cluster, a shard refuses to write. Writes to shards with enough\nup-to-date copies succeed at the same time, however. The value of\n`writeConcern` cannot be greater than `replicationFactor`.\n\nIf `distributeShardsLike` is set, the actual write concern\nis that of the indicated prototype collection. Query the\nprototype collection to get the current `writeConcern`\nfor this collection. The reported `writeConcern` of\nthis collection is the value as of the time at which the\ncollection was created, but it may have been changed\nfor the prototype collection in the meantime.\n\nFor SatelliteCollections, the `writeConcern` is automatically controlled to\nequal the number of DB-Servers and has a value of `0`.\nOtherwise, the default value is controlled by the current database's\ndefault `writeConcern`, which uses the `--cluster.write-concern`\nstartup option as default, which defaults to `1`. _(cluster only)_\n",
            "type": "integer"
           }
          },
@@ -10431,7 +10417,7 @@
            "type": "integer"
           },
           "replicationFactor": {
-           "description": "Contains how many copies of each shard are kept on different DB-Servers.\nIt is an integer number in the range of 1-10 or the string `\"satellite\"`\nfor SatelliteCollections (Enterprise Edition only). _(cluster only)_\n",
+           "description": "Contains how many copies of each shard are kept on different DB-Servers.\nIt is an integer number in the range of 1-10 or the string `\"satellite\"`\nfor SatelliteCollections (Enterprise Edition only). _(cluster only)_\n\nIf `distributeShardsLike` is set, the actual replication factor\nis that of the indicated prototype collection. Query the\nprototype collection to get the current `replicationFactor`\nfor this collection. The reported `replicationFactor` of\nthis collection is the value as of the time at which the\ncollection was created, but it may have been changed\nfor the prototype collection in the meantime.\n",
            "type": "integer"
           },
           "schema": {
@@ -10457,10 +10443,8 @@
              "type": "object"
             },
             "type": {
+             "const": "json",
              "description": "The schema validation type. Only JSON Schema is supported.\n",
-             "enum": [
-              "json"
-             ],
              "type": "string"
             }
            },
@@ -10529,7 +10513,7 @@
            "type": "boolean"
           },
           "writeConcern": {
-           "description": "Determines how many copies of each shard are required to be\nin-sync on the different DB-Servers. If there are less than these many copies\nin the cluster, a shard refuses to write. Writes to shards with enough\nup-to-date copies succeed at the same time, however. The value of\n`writeConcern` cannot be greater than `replicationFactor`.\n\nIf `distributeShardsLike` is set, the `writeConcern`\nis that of the prototype collection.\nFor SatelliteCollections, the `writeConcern` is automatically controlled to\nequal the number of DB-Servers and has a value of `0`.\nOtherwise, the default value is controlled by the current database's\ndefault `writeConcern`, which uses the `--cluster.write-concern`\nstartup option as default, which defaults to `1`. _(cluster only)_\n",
+           "description": "Determines how many copies of each shard are required to be\nin-sync on the different DB-Servers. If there are less than these many copies\nin the cluster, a shard refuses to write. Writes to shards with enough\nup-to-date copies succeed at the same time, however. The value of\n`writeConcern` cannot be greater than `replicationFactor`.\n\nIf `distributeShardsLike` is set, the actual write concern\nis that of the indicated prototype collection. Query the\nprototype collection to get the current `writeConcern`\nfor this collection. The reported `writeConcern` of\nthis collection is the value as of the time at which the\ncollection was created, but it may have been changed\nfor the prototype collection in the meantime.\n\nFor SatelliteCollections, the `writeConcern` is automatically controlled to\nequal the number of DB-Servers and has a value of `0`.\nOtherwise, the default value is controlled by the current database's\ndefault `writeConcern`, which uses the `--cluster.write-concern`\nstartup option as default, which defaults to `1`. _(cluster only)_\n",
            "type": "integer"
           }
          },
@@ -11092,7 +11076,7 @@
           "type": "boolean"
          },
          "memoryLimit": {
-          "description": "The maximum amount of memory (in bytes) that the query is allowed to\nuse. If set, then the query fails with error \"resource limit exceeded\" in\ncase it allocates too much memory. A value of `0` indicates that there is\nno memory limit, but the `--query.global-memory-limit` startup option\nmay still limit it.\n\nDefault: You can configure a default per-query memory limit with the\n`--query.memory-limit` startup option. You can only increase\nthis default memory limit if `--query.memory-limit-override`\nis enabled.\n",
+          "description": "The maximum amount of memory (in bytes) that the query is allowed to\nuse. If set, then the query fails with error \"resource limit exceeded\" in\ncase it allocates too much memory. A value of `0` indicates that there is\nno memory limit, but the [`--query.global-memory-limit` startup option](https://docs.arango.ai/arangodb/3.11/components/arangodb-server/options/#--queryglobal-memory-limit)\nmay still limit it.\n\nDefault: You can configure a default per-query memory limit with the\n[`--query.memory-limit` startup option](https://docs.arango.ai/arangodb/3.11/components/arangodb-server/options/#--querymemory-limit). You can only increase\nthis default memory limit if `--query.memory-limit-override`\nis enabled.\n",
           "type": "integer"
          },
          "options": {
@@ -11109,11 +11093,11 @@
             "type": "boolean"
            },
            "cache": {
-            "description": "Whether the [AQL query results cache](https://docs.arango.ai/arangodb/3.11/aql/execution-and-performance/caching-query-results/)\nshall be used for adding as well as for retrieving results.\n\nIf the query cache mode is set to `demand` and you set the `cache` query option\nto `true` for a query, then its query result is cached if it's eligible for\ncaching. If the query cache mode is set to `on`, query results are automatically\ncached if they are eligible for caching unless you set the `cache` option to `false`.\n\nIf you set the `cache` option to `false`, then any query cache lookup is skipped\nfor the query. If you set it to `true`, the query cache is checked for a cached result\n**if** the query cache mode is either set to `on` or `demand`.\n\nDefault: Controlled by the `--query.cache-mode` startup option.\n",
+            "description": "Whether the [AQL query results cache](https://docs.arango.ai/arangodb/3.11/aql/execution-and-performance/caching-query-results/)\nshall be used for adding as well as for retrieving results.\n\nIf the query cache mode is set to `demand` and you set the `cache` query option\nto `true` for a query, then its query result is cached if it's eligible for\ncaching. If the query cache mode is set to `on`, query results are automatically\ncached if they are eligible for caching unless you set the `cache` option to `false`.\n\nIf you set the `cache` option to `false`, then any query cache lookup is skipped\nfor the query. If you set it to `true`, the query cache is checked for a cached result\n**if** the query cache mode is either set to `on` or `demand`.\n\nDefault: Controlled by the [`--query.cache-mode` startup option](https://docs.arango.ai/arangodb/3.11/components/arangodb-server/options/#--querycache-mode).\n",
             "type": "boolean"
            },
            "failOnWarning": {
-            "description": "If set to `true`, the query throws an exception and aborts instead of producing\na warning. You should use this option during development to catch potential issues\nearly. When the attribute is set to `false`, warnings are not propagated to\nexceptions and are returned with the query result.\n\nDefault: Controlled by the `--query.fail-on-warning` startup option,\nso you don't need to set it on a per-query basis.\n",
+            "description": "If set to `true`, the query throws an exception and aborts instead of producing\na warning. You should use this option during development to catch potential issues\nearly. When the attribute is set to `false`, warnings are not propagated to\nexceptions and are returned with the query result.\n\nDefault: Controlled by the [`--query.fail-on-warning` startup option](https://docs.arango.ai/arangodb/3.11/components/arangodb-server/options/#--queryfail-on-warning),\nso you don't need to set it on a per-query basis.\n",
             "type": "boolean"
            },
            "fillBlockCache": {
@@ -11127,31 +11111,31 @@
             "type": "boolean"
            },
            "intermediateCommitCount": {
-            "description": "The maximum number of operations after which an intermediate commit is performed\nautomatically.\n\nDefault: Controlled by the `--rocksdb.intermediate-commit-count` startup option.\n",
+            "description": "The maximum number of operations after which an intermediate commit is performed\nautomatically.\n\nDefault: Controlled by the [`--rocksdb.intermediate-commit-count` startup option](https://docs.arango.ai/arangodb/3.11/components/arangodb-server/options/#--rocksdbintermediate-commit-count).\n",
             "type": "integer"
            },
            "intermediateCommitSize": {
-            "description": "The maximum total size of operations after which an intermediate commit is performed\nautomatically.\n\nDefault: Controlled by `--rocksdb.intermediate-commit-size` startup option.\n",
+            "description": "The maximum total size of operations after which an intermediate commit is performed\nautomatically.\n\nDefault: Controlled by [`--rocksdb.intermediate-commit-size` startup option](https://docs.arango.ai/arangodb/3.11/components/arangodb-server/options/#--rocksdbintermediate-commit-size).\n",
             "type": "integer"
            },
            "maxDNFConditionMembers": {
-            "description": "A threshold for the maximum number of `OR` sub-nodes in the internal\nrepresentation of an AQL `FILTER` condition.\n\nYon can use this option to limit the computation time and memory usage when\nconverting complex AQL `FILTER` conditions into the internal DNF\n(disjunctive normal form) format. `FILTER` conditions with a lot of logical\nbranches (`AND`, `OR`, `NOT`) can take a large amount of processing time and\nmemory. This query option limits the computation time and memory usage for\nsuch conditions.\n\nOnce the threshold value is reached during the DNF conversion of a `FILTER`\ncondition, the conversion is aborted, and the query continues with a simplified\ninternal representation of the condition, which **cannot be used for index lookups**.\n\nDefault: Controlled by the `--query.max-dnf-condition-members` startup option\nto set the threshold globally instead of per query.\n",
+            "description": "A threshold for the maximum number of `OR` sub-nodes in the internal\nrepresentation of an AQL `FILTER` condition.\n\nYon can use this option to limit the computation time and memory usage when\nconverting complex AQL `FILTER` conditions into the internal DNF\n(disjunctive normal form) format. `FILTER` conditions with a lot of logical\nbranches (`AND`, `OR`, `NOT`) can take a large amount of processing time and\nmemory. This query option limits the computation time and memory usage for\nsuch conditions.\n\nOnce the threshold value is reached during the DNF conversion of a `FILTER`\ncondition, the conversion is aborted, and the query continues with a simplified\ninternal representation of the condition, which **cannot be used for index lookups**.\n\nDefault: Controlled by the [`--query.max-dnf-condition-members` startup option](https://docs.arango.ai/arangodb/3.11/components/arangodb-server/options/#--querymax-dnf-condition-members)\nto set the threshold globally instead of per query.\n",
             "type": "integer"
            },
            "maxNodesPerCallstack": {
-            "description": "The number of execution nodes in the query plan after that stack splitting is\nperformed to avoid a potential stack overflow.\n\nThis option is only useful for testing and debugging and normally does not need\nany adjustment.\n\nDefault: Controlled by the `--query.max-nodes-per-callstack` startup option.\n",
+            "description": "The number of execution nodes in the query plan after that stack splitting is\nperformed to avoid a potential stack overflow.\n\nThis option is only useful for testing and debugging and normally does not need\nany adjustment.\n\nDefault: Controlled by the [`--query.max-nodes-per-callstack` startup option](https://docs.arango.ai/arangodb/3.11/components/arangodb-server/options/#--querymax-nodes-per-callstack).\n",
             "type": "integer"
            },
            "maxNumberOfPlans": {
-            "description": "Limits the maximum number of plans that are created by the AQL query optimizer.\n\nDefault: Controlled by the `--query.optimizer-max-plans` startup option.\n",
+            "description": "Limits the maximum number of plans that are created by the AQL query optimizer.\n\nDefault: Controlled by the [`--query.optimizer-max-plans` startup option](https://docs.arango.ai/arangodb/3.11/components/arangodb-server/options/#--queryoptimizer-max-plans).\n",
             "type": "integer"
            },
            "maxRuntime": {
-            "description": "The query has to be executed within the given runtime or it is killed.\nThe value is specified in seconds. A value of `0.0` means no timeout.\n\nDefault: Controlled by the `--query.max-runtime` startup option.\n",
+            "description": "The query has to be executed within the given runtime or it is killed.\nThe value is specified in seconds. A value of `0.0` means no timeout.\n\nDefault: Controlled by the [`--query.max-runtime` startup option](https://docs.arango.ai/arangodb/3.11/components/arangodb-server/options/#--querymax-runtime).\n",
             "type": "number"
            },
            "maxTransactionSize": {
-            "description": "The transaction size limit in bytes.\n\nDefault: Controlled by the `--rocksdb.max-transaction-size` startup option.\n",
+            "description": "The transaction size limit in bytes.\n\nDefault: Controlled by the [`--rocksdb.max-transaction-size` startup option](https://docs.arango.ai/arangodb/3.11/components/arangodb-server/options/#--rocksdbmax-transaction-size).\n",
             "type": "integer"
            },
            "maxWarningCount": {
@@ -11188,11 +11172,11 @@
             "type": "boolean"
            },
            "spillOverThresholdMemoryUsage": {
-            "description": "This option allows queries to store intermediate and final results temporarily\non disk if the amount of memory used (in bytes) exceeds the specified value.\nThis is used for decreasing the memory usage during the query execution.\n\nThis option only has an effect on queries that use the `SORT` operation but\nwithout a `LIMIT`, and if you enable the spillover feature by setting a path\nfor the directory to store the temporary data in with the\n`--temp.intermediate-results-path` startup option.\n\nDefault: 128 MiB, respectively the value of the\n`--temp.intermediate-results-spillover-threshold-memory-usage`\nstartup option.\n\n\u003e **INFO:**\nSpilling data from RAM onto disk is an experimental feature and is turned off\nby default. The query results are still built up entirely in RAM on Coordinators\nand single servers for non-streaming queries. To avoid the buildup of\nthe entire query result in RAM, use a streaming query (see the `stream` option).\n",
+            "description": "This option allows queries to store intermediate and final results temporarily\non disk if the amount of memory used (in bytes) exceeds the specified value.\nThis is used for decreasing the memory usage during the query execution.\n\nThis option only has an effect on queries that use the `SORT` operation but\nwithout a `LIMIT`, and if you enable the spillover feature by setting a path\nfor the directory to store the temporary data in with the\n[`--temp.intermediate-results-path` startup option](https://docs.arango.ai/arangodb/3.11/components/arangodb-server/options/#--tempintermediate-results-path).\n\nDefault: 128 MiB, respectively the value of the\n[`--temp.intermediate-results-spillover-threshold-memory-usage` startup option](https://docs.arango.ai/arangodb/3.11/components/arangodb-server/options/#--tempintermediate-results-spillover-threshold-memory-usage).\n\n\u003e **INFO:**\nSpilling data from RAM onto disk is an experimental feature and is turned off\nby default. The query results are still built up entirely in RAM on Coordinators\nand single servers for non-streaming queries. To avoid the buildup of\nthe entire query result in RAM, use a streaming query (see the `stream` option).\n",
             "type": "integer"
            },
            "spillOverThresholdNumRows": {
-            "description": "This option allows queries to store intermediate and final results temporarily\non disk if the number of rows produced by the query exceeds the specified value.\nThis is used for decreasing the memory usage during the query execution. In a\nquery that iterates over a collection that contains documents, each row is a\ndocument, and in a query that iterates over temporary values\n(i.e. `FOR i IN 1..100`), each row is one of such temporary values.\n\nThis option only has an effect on queries that use the `SORT` operation but\nwithout a `LIMIT`, and if you enable the spillover feature by setting a path\nfor the directory to store the temporary data in with the\n`--temp.intermediate-results-path` startup option.\n\nDefault: 5 million rows, respectively the value of the\n`--temp.intermediate-results-spillover-threshold-num-rows`\nstartup option.\n\n\u003e **INFO:**\nSpilling data from RAM onto disk is an experimental feature and is turned off\nby default. The query results are still built up entirely in RAM on Coordinators\nand single servers for non-streaming queries. To avoid the buildup of\nthe entire query result in RAM, use a streaming query (see the `stream` option).\n",
+            "description": "This option allows queries to store intermediate and final results temporarily\non disk if the number of rows produced by the query exceeds the specified value.\nThis is used for decreasing the memory usage during the query execution. In a\nquery that iterates over a collection that contains documents, each row is a\ndocument, and in a query that iterates over temporary values\n(i.e. `FOR i IN 1..100`), each row is one of such temporary values.\n\nThis option only has an effect on queries that use the `SORT` operation but\nwithout a `LIMIT`, and if you enable the spillover feature by setting a path\nfor the directory to store the temporary data in with the\n[`--temp.intermediate-results-path` startup option](https://docs.arango.ai/arangodb/3.11/components/arangodb-server/options/#--tempintermediate-results-path).\n\nDefault: 5 million rows, respectively the value of the\n[`--temp.intermediate-results-spillover-threshold-num-rows` startup option](https://docs.arango.ai/arangodb/3.11/components/arangodb-server/options/#--tempintermediate-results-spillover-threshold-num-rows).\n\n\u003e **INFO:**\nSpilling data from RAM onto disk is an experimental feature and is turned off\nby default. The query results are still built up entirely in RAM on Coordinators\nand single servers for non-streaming queries. To avoid the buildup of\nthe entire query result in RAM, use a streaming query (see the `stream` option).\n",
             "type": "integer"
            },
            "stream": {
@@ -11208,8 +11192,8 @@
           "type": "string"
          },
          "ttl": {
-          "description": "The time-to-live for the cursor (in seconds). If the result set is small enough\n(less than or equal to `batchSize`) then results are returned right away.\nOtherwise they are stored in memory and will be accessible via the cursor with\nrespect to the `ttl`. The cursor will be removed on the server automatically\nafter the specified amount of time. This is useful to ensure garbage collection\nof cursors that are not fully fetched by clients.\n\nThe time-to-live is renewed upon every access to the cursor.\n\nDefault: Controlled by the `--query.registry-ttl` startup option.\nIf not set, the defaults are 30 seconds for single servers and 600 seconds for\nCoordinators of a cluster deployment.\n",
-          "type": "integer"
+          "description": "The time-to-live for the cursor (in seconds). If the result set is small enough\n(less than or equal to `batchSize`) then results are returned right away.\nOtherwise they are stored in memory and will be accessible via the cursor with\nrespect to the `ttl`. The cursor will be removed on the server automatically\nafter the specified amount of time. This is useful to ensure garbage collection\nof cursors that are not fully fetched by clients.\n\nThe time-to-live is renewed upon every access to the cursor.\n\nDefault: Controlled by the [`--query.registry-ttl` startup option](https://docs.arango.ai/arangodb/3.11/components/arangodb-server/options/#--queryregistry-ttl).\nIf not set, the defaults are 30 seconds for single servers and 600 seconds for\nCoordinators of a cluster deployment.\n",
+          "type": "number"
          }
         },
         "required": [
@@ -14149,7 +14133,7 @@
             "type": "boolean"
            },
            "failOnWarning": {
-            "description": "If set to `true`, the query throws an exception and aborts instead of producing\na warning. You should use this option during development to catch potential issues\nearly. When the attribute is set to `false`, warnings are not propagated to\nexceptions and are returned with the query result.\n\nDefault: Controlled by the `--query.fail-on-warning` startup option,\nso you don't need to set it on a per-query basis.\n",
+            "description": "If set to `true`, the query throws an exception and aborts instead of producing\na warning. You should use this option during development to catch potential issues\nearly. When the attribute is set to `false`, warnings are not propagated to\nexceptions and are returned with the query result.\n\nDefault: Controlled by the [`--query.fail-on-warning` startup option](https://docs.arango.ai/arangodb/3.11/components/arangodb-server/options/#--queryfail-on-warning),\nso you don't need to set it on a per-query basis.\n",
             "type": "boolean"
            },
            "fullCount": {
@@ -14158,11 +14142,11 @@
             "type": "boolean"
            },
            "maxNodesPerCallstack": {
-            "description": "The number of execution nodes in the query plan after that stack splitting is\nperformed to avoid a potential stack overflow.\n\nThis option is only useful for testing and debugging and normally does not need\nany adjustment.\n\nDefault: Controlled by the `--query.max-nodes-per-callstack` startup option.\n",
+            "description": "The number of execution nodes in the query plan after that stack splitting is\nperformed to avoid a potential stack overflow.\n\nThis option is only useful for testing and debugging and normally does not need\nany adjustment.\n\nDefault: Controlled by the [`--query.max-nodes-per-callstack` startup option](https://docs.arango.ai/arangodb/3.11/components/arangodb-server/options/#--querymax-nodes-per-callstack).\n",
             "type": "integer"
            },
            "maxNumberOfPlans": {
-            "description": "The maximum number of plans that the optimizer is allowed to\ngenerate. Setting this attribute to a low value allows to put a\ncap on the amount of work the optimizer does.\n\nDefault: Controlled by the `--query.optimizer-max-plans` startup option.\n",
+            "description": "The maximum number of plans that the optimizer is allowed to\ngenerate. Setting this attribute to a low value allows you to put a\ncap on the amount of work the optimizer does.\n\nDefault: Controlled by the [`--query.optimizer-max-plans` startup option](https://docs.arango.ai/arangodb/3.11/components/arangodb-server/options/#--queryoptimizer-max-plans).\n",
             "type": "integer"
            },
            "maxWarningCount": {
@@ -15278,7 +15262,7 @@
                 "type": "boolean"
                },
                "isSmart": {
-                "description": "Whether the graph is a SmartGraph (Enterprise Edition only).\n",
+                "description": "Whether the graph is a SmartGraph (`smartGraphAttribute` is set)\nor EnterpriseGraph (`isSmart` is `true` but `smartGraphAttribute` is not set).\n",
                 "type": "boolean"
                },
                "name": {
@@ -15414,7 +15398,7 @@
          },
          "isSmart": {
           "default": false,
-          "description": "Define if the created graph should be smart (Enterprise Edition only).\n",
+          "description": "Define if the created graph should be smart (Enterprise Edition only).\n- Setting `options.smartGraphAttribute` creates a SmartGraph (`isSmart` is automatically `true`).\n- Setting `isSmart` to `true` but no `options.smartGraphAttribute` creates an EnterpriseGraph.\n",
           "type": "boolean"
          },
          "name": {
@@ -15441,7 +15425,7 @@
             "type": "array"
            },
            "smartGraphAttribute": {
-            "description": "Only in the Enterprise Edition and required if `isSmart` is `true`.\nThe attribute name that is used to smartly shard the vertices of a graph.\nEvery vertex in this SmartGraph has to have this attribute.\nCannot be modified later.\n",
+            "description": "Setting this option creates a SmartGraph (Enterprise Edition only).\n\nThe attribute name that is used to smartly shard the vertices of a graph.\nEvery vertex in this SmartGraph has to have this attribute.\nCannot be modified later.\n",
             "type": "string"
            },
            "writeConcern": {
@@ -15535,7 +15519,7 @@
              "type": "boolean"
             },
             "isSmart": {
-             "description": "Whether the graph is a SmartGraph (Enterprise Edition only).\n",
+             "description": "Whether the graph is a SmartGraph (`smartGraphAttribute` is set)\nor EnterpriseGraph (`isSmart` is `true` but `smartGraphAttribute` is not set).\n",
              "type": "boolean"
             },
             "name": {
@@ -15659,7 +15643,7 @@
              "type": "boolean"
             },
             "isSmart": {
-             "description": "Whether the graph is a SmartGraph (Enterprise Edition only).\n",
+             "description": "Whether the graph is a SmartGraph (`smartGraphAttribute` is set)\nor EnterpriseGraph (`isSmart` is `true` but `smartGraphAttribute` is not set).\n",
              "type": "boolean"
             },
             "name": {
@@ -16069,7 +16053,7 @@
              "type": "boolean"
             },
             "isSmart": {
-             "description": "Whether the graph is a SmartGraph (Enterprise Edition only).\n",
+             "description": "Whether the graph is a SmartGraph (`smartGraphAttribute` is set)\nor EnterpriseGraph (`isSmart` is `true` but `smartGraphAttribute` is not set).\n",
              "type": "boolean"
             },
             "name": {
@@ -16410,7 +16394,7 @@
              "type": "boolean"
             },
             "isSmart": {
-             "description": "Whether the graph is a SmartGraph (Enterprise Edition only).\n",
+             "description": "Whether the graph is a SmartGraph (`smartGraphAttribute` is set)\nor EnterpriseGraph (`isSmart` is `true` but `smartGraphAttribute` is not set).\n",
              "type": "boolean"
             },
             "name": {
@@ -16534,7 +16518,7 @@
              "type": "boolean"
             },
             "isSmart": {
-             "description": "Whether the graph is a SmartGraph (Enterprise Edition only).\n",
+             "description": "Whether the graph is a SmartGraph (`smartGraphAttribute` is set)\nor EnterpriseGraph (`isSmart` is `true` but `smartGraphAttribute` is not set).\n",
              "type": "boolean"
             },
             "name": {
@@ -16827,7 +16811,7 @@
              "type": "boolean"
             },
             "isSmart": {
-             "description": "Whether the graph is a SmartGraph (Enterprise Edition only).\n",
+             "description": "Whether the graph is a SmartGraph (`smartGraphAttribute` is set)\nor EnterpriseGraph (`isSmart` is `true` but `smartGraphAttribute` is not set).\n",
              "type": "boolean"
             },
             "name": {
@@ -16951,7 +16935,7 @@
              "type": "boolean"
             },
             "isSmart": {
-             "description": "Whether the graph is a SmartGraph (Enterprise Edition only).\n",
+             "description": "Whether the graph is a SmartGraph (`smartGraphAttribute` is set)\nor EnterpriseGraph (`isSmart` is `true` but `smartGraphAttribute` is not set).\n",
              "type": "boolean"
             },
             "name": {
@@ -17675,7 +17659,7 @@
              "type": "boolean"
             },
             "isSmart": {
-             "description": "Whether the graph is a SmartGraph (Enterprise Edition only).\n",
+             "description": "Whether the graph is a SmartGraph (`smartGraphAttribute` is set)\nor EnterpriseGraph (`isSmart` is `true` but `smartGraphAttribute` is not set).\n",
              "type": "boolean"
             },
             "name": {
@@ -17799,7 +17783,7 @@
              "type": "boolean"
             },
             "isSmart": {
-             "description": "Whether the graph is a SmartGraph (Enterprise Edition only).\n",
+             "description": "Whether the graph is a SmartGraph (`smartGraphAttribute` is set)\nor EnterpriseGraph (`isSmart` is `true` but `smartGraphAttribute` is not set).\n",
              "type": "boolean"
             },
             "name": {
@@ -19910,7 +19894,7 @@
              "type": "boolean"
             },
             "isSmart": {
-             "description": "Whether the graph is a SmartGraph (Enterprise Edition only).\n",
+             "description": "Whether the graph is a SmartGraph (`smartGraphAttribute` is set)\nor EnterpriseGraph (`isSmart` is `true` but `smartGraphAttribute` is not set).\n",
              "type": "boolean"
             },
             "name": {
@@ -20034,7 +20018,7 @@
              "type": "boolean"
             },
             "isSmart": {
-             "description": "Whether the graph is a SmartGraph (Enterprise Edition only).\n",
+             "description": "Whether the graph is a SmartGraph (`smartGraphAttribute` is set)\nor EnterpriseGraph (`isSmart` is `true` but `smartGraphAttribute` is not set).\n",
              "type": "boolean"
             },
             "name": {
@@ -20318,7 +20302,7 @@
              "type": "boolean"
             },
             "isSmart": {
-             "description": "Whether the graph is a SmartGraph (Enterprise Edition only).\n",
+             "description": "Whether the graph is a SmartGraph (`smartGraphAttribute` is set)\nor EnterpriseGraph (`isSmart` is `true` but `smartGraphAttribute` is not set).\n",
              "type": "boolean"
             },
             "name": {
@@ -20442,7 +20426,7 @@
              "type": "boolean"
             },
             "isSmart": {
-             "description": "Whether the graph is a SmartGraph (Enterprise Edition only).\n",
+             "description": "Whether the graph is a SmartGraph (`smartGraphAttribute` is set)\nor EnterpriseGraph (`isSmart` is `true` but `smartGraphAttribute` is not set).\n",
              "type": "boolean"
             },
             "name": {
@@ -24355,7 +24339,7 @@
           "description": "The properties of a cache entry.\n",
           "properties": {
            "bindVars": {
-            "description": "The bind parameters. This attribute is omitted if the\n`--query.tracking-with-bindvars` startup option is set\nto `false`.\n",
+            "description": "The bind parameters. This attribute is omitted if the\n[`--query.tracking-with-bindvars` startup option](https://docs.arango.ai/arangodb/3.11/components/arangodb-server/options/#--querytracking-with-bindvars) is set\nto `false`.\n",
             "type": "object"
            },
            "dataSources": {
@@ -24366,7 +24350,7 @@
             "type": "array"
            },
            "hash": {
-            "description": "The hash value calculated from the the query string,\ncertain query options, and the bind variables.\n",
+            "description": "The hash value calculated from the query string,\ncertain query options, and the bind variables.\n",
             "type": "string"
            },
            "hits": {
@@ -24508,23 +24492,23 @@
         "description": "The result cache configuration settings to change.\n",
         "properties": {
          "includeSystem": {
-          "description": "Whether to store results of queries that involve\nsystem collections in the cache.\n\nDefault: Controlled by the `--query.cache-include-system-collections`\nstartup option\n",
+          "description": "Whether to store results of queries that involve\nsystem collections in the cache.\n\nDefault: Controlled by the [`--query.cache-include-system-collections` startup option](https://docs.arango.ai/arangodb/3.11/components/arangodb-server/options/#--querycache-include-system-collections).\n",
           "type": "boolean"
          },
          "maxEntrySize": {
-          "description": "The maximum individual size of query results that are stored\nper database-specific cache (in bytes).\n\nDefault: Controlled by the `--query.cache-entry-max-size` startup option.\n",
+          "description": "The maximum individual size of query results that are stored\nper database-specific cache (in bytes).\n\nDefault: Controlled by the [`--query.cache-entry-max-size` startup option](https://docs.arango.ai/arangodb/3.11/components/arangodb-server/options/#--querycache-entry-max-size).\n",
           "type": "integer"
          },
          "maxResults": {
-          "description": "The maximum number of query results that are stored per\ndatabase-specific cache.\n\nDefault: Controlled by the  `--query.cache-entries` startup option.\n",
+          "description": "The maximum number of query results that are stored per\ndatabase-specific cache.\n\nDefault: Controlled by the [`--query.cache-entries` startup option](https://docs.arango.ai/arangodb/3.11/components/arangodb-server/options/#--querycache-entries).\n",
           "type": "integer"
          },
          "maxResultsSize": {
-          "description": "The maximum cumulated size of query results that are stored\nper database-specific cache (in bytes).\n\nDefault: Controlled by the `--query.cache-entries-max-size` startup option.\n",
+          "description": "The maximum cumulated size of query results that are stored\nper database-specific cache (in bytes).\n\nDefault: Controlled by the [`--query.cache-entries-max-size` startup option](https://docs.arango.ai/arangodb/3.11/components/arangodb-server/options/#--querycache-entries-max-size).\n",
           "type": "integer"
          },
          "mode": {
-          "description": "The mode the AQL query cache shall operate in.\n\nDefault: Controlled by the `--query.cache-mode` startup option.\n",
+          "description": "The mode the AQL query cache shall operate in.\n\nDefault: Controlled by the [`--query.cache-mode` startup option](https://docs.arango.ai/arangodb/3.11/components/arangodb-server/options/#--querycache-mode).\n",
           "enum": [
            "off",
            "on",
@@ -24588,7 +24572,7 @@
   },
   "/_db/{database-name}/_api/query/current": {
    "get": {
-    "description": "Returns an array containing the AQL queries currently running in the selected\ndatabase. Each query is a JSON object with the following attributes:\n\n- `id`: the query's id\n\n- `database`: the name of the database the query runs in\n\n- `user`: the name of the user that started the query\n\n- `query`: the query string (potentially truncated)\n\n- `bindVars`: the bind parameter values used by the query\n\n- `started`: the date and time when the query was started\n\n- `runTime`: the query's run time up to the point the list of queries was\n  queried\n\n- `peakMemoryUsage`: the query's peak memory usage in bytes (in increments of 32KB)\n\n- `state`: the query's current execution state (as a string). One of:\n  - `\"initializing\"`\n  - `\"parsing\"`\n  - `\"optimizing ast\"`\n  - `\"loading collections\"`\n  - `\"instantiating plan\"`\n  - `\"optimizing plan\"`\n  - `\"instantiating executors\"`\n  - `\"executing\"`\n  - `\"finalizing\"`\n  - `\"finished\"`\n  - `\"killed\"`\n  - `\"invalid\"`\n\n- `stream`: whether or not the query uses a streaming cursor\n",
+    "description": "Returns a list of the AQL queries that currently run in the specified\ndatabase.\n\nQuery tracking needs to be enabled by the\n[`--query.tracking` startup option](https://docs.arango.ai/arangodb/3.11/components/arangodb-server/options/#--querytracking)\nor at runtime with the `enabled` query tracking property of the\n`PUT /_db/{database-name}/_api/query/properties` endpoint.\nIf query tracking is disabled for the current database,\nan **empty list** is returned.\n",
     "operationId": "listAqlQueries",
     "parameters": [
      {
@@ -24614,13 +24598,158 @@
     ],
     "responses": {
      "200": {
-      "description": "Is returned when the list of queries can be retrieved successfully.\n"
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "properties": {
+           "bindVars": {
+            "description": "The bind parameter values used by the query.\n\nWhether the actual bind variables or an empty object is\nreturned is controlled by the\n[`--query.tracking-with-bindvars` startup option](https://docs.arango.ai/arangodb/3.11/components/arangodb-server/options/#--querytracking-with-bindvars)\nor the `trackBindVars` query tracking property that you can\nchange via the `PUT /_db/{database-name}/_api/query/properties`\nendpoint at runtime.\n",
+            "type": "object"
+           },
+           "database": {
+            "description": "The name of the database the query runs in.\n",
+            "type": "string"
+           },
+           "id": {
+            "description": "The query identifier.\n",
+            "type": "string"
+           },
+           "peakMemoryUsage": {
+            "description": "The query's peak memory usage in bytes (in increments of 32KB),\nup to the point the query list was requested.\n",
+            "type": "integer"
+           },
+           "query": {
+            "description": "The query string (potentially truncated).\n\nThe cutoff is controlled by the\n[`--query.max-artifact-log-length` startup option](https://docs.arango.ai/arangodb/3.11/components/arangodb-server/options/#--querymax-artifact-log-length)\nor the `maxQueryStringLength` query tracking property\nthat you can change via the\n`PUT /_db/{database-name}/_api/query/properties` endpoint\nat runtime.\n\nWhether the actual query string is tracked or only a\nvalue of `\"\u003chidden\u003e\"` is returned depends on the\n[`--query.tracking-with-querystring` startup option](https://docs.arango.ai/arangodb/3.11/components/arangodb-server/options/#--querytracking-with-querystring).\n",
+            "type": "string"
+           },
+           "runTime": {
+            "description": "The query duration up to the point the query list was\nrequested (in seconds).\n",
+            "type": "number"
+           },
+           "started": {
+            "description": "The date and time when the query was started (in ISO 8601 format).\n",
+            "format": "date-time",
+            "type": "string"
+           },
+           "state": {
+            "description": "The query's current execution state.\n",
+            "enum": [
+             "initializing",
+             "parsing",
+             "optimizing ast",
+             "loading collections",
+             "instantiating plan",
+             "optimizing plan",
+             "instantiating executors",
+             "executing",
+             "finalizing",
+             "finished",
+             "killed",
+             "invalid"
+            ],
+            "type": "string"
+           },
+           "stream": {
+            "description": "Whether the query uses a streaming cursor.\n",
+            "type": "boolean"
+           },
+           "user": {
+            "description": "The name of the user that started the query.\n",
+            "type": "string"
+           }
+          },
+          "required": [
+           "id",
+           "database",
+           "user",
+           "query",
+           "bindVars",
+           "started",
+           "runTime",
+           "peakMemoryUsage",
+           "state",
+           "stream"
+          ],
+          "type": "object"
+         },
+         "type": "array"
+        }
+       }
+      },
+      "description": "The list of currently running AQL queries for the specified database.\nEmpty if query tracking is disabled.\n"
      },
      "400": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 400,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "The ArangoDB error number for the error that occurred.\n",
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
       "description": "The request is malformed.\n"
      },
      "403": {
-      "description": "In case the `all` parameter is used but the request was made in a\ndifferent database than `_system`, or by a non-privileged user.\n"
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 403,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "The ArangoDB error number for the error that occurred.\n",
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "Returned when the `all` parameter is used but the request was made\nin a database other than `_system`, or by a user without superuser\nprivileges.\n"
      }
     },
     "summary": "List the running AQL queries",
@@ -24631,7 +24760,7 @@
   },
   "/_db/{database-name}/_api/query/properties": {
    "get": {
-    "description": "Returns the current query tracking configuration. The configuration is a\nJSON object with the following properties:\n\n- `enabled`: if set to `true`, then queries will be tracked. If set to\n  `false`, neither queries nor slow queries will be tracked.\n\n- `trackSlowQueries`: if set to `true`, then slow queries will be tracked\n  in the list of slow queries if their runtime exceeds the value set in\n  `slowQueryThreshold`. In order for slow queries to be tracked, the `enabled`\n  property must also be set to `true`.\n\n- `trackBindVars`: if set to `true`, then bind variables used in queries will\n  be tracked.\n\n- `maxSlowQueries`: the maximum number of slow queries to keep in the list\n  of slow queries. If the list of slow queries is full, the oldest entry in\n  it will be discarded when additional slow queries occur.\n\n- `slowQueryThreshold`: the threshold value for treating a query as slow. A\n  query with a runtime greater or equal to this threshold value will be\n  put into the list of slow queries when slow query tracking is enabled.\n  The value for `slowQueryThreshold` is specified in seconds.\n\n- `maxQueryStringLength`: the maximum query string length to keep in the\n  list of queries. Query strings can have arbitrary lengths, and this property\n  can be used to save memory in case very long query strings are used. The\n  value is specified in bytes.\n",
+    "description": "Returns the current query tracking properties of the specified database.\n",
     "operationId": "getAqlQueryTrackingProperties",
     "parameters": [
      {
@@ -24647,9 +24776,100 @@
     ],
     "responses": {
      "200": {
-      "description": "Is returned if properties were retrieved successfully.\n"
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 200,
+           "type": "integer"
+          },
+          "enabled": {
+           "description": "Whether query tracking is enabled for the specified\ndatabase. If set to `false`, neither the currently\nrunning queries nor slow queries are tracked.\n",
+           "type": "boolean"
+          },
+          "error": {
+           "description": "A flag indicating that no error occurred.\n",
+           "example": false,
+           "type": "boolean"
+          },
+          "maxQueryStringLength": {
+           "description": "Maximum query string length kept in the list of queries\n(in bytes).\n\nQuery strings can have arbitrary lengths, and you can use\nthis property to save memory in case very long query strings\nare used.\n",
+           "type": "integer"
+          },
+          "maxSlowQueries": {
+           "description": "The maximum number of slow queries kept in the list.\nIf the list of slow queries is full, the oldest entry\nis discarded when additional slow queries occur.\n",
+           "type": "integer"
+          },
+          "slowQueryThreshold": {
+           "description": "Threshold in seconds for treating a regular query as slow\n(the `stream` option is `false` for the query).\n",
+           "type": "number"
+          },
+          "slowStreamingQueryThreshold": {
+           "description": "Threshold in seconds for treating a streaming query as slow\n(the `stream` option is `true` for the query).\n",
+           "type": "number"
+          },
+          "trackBindVars": {
+           "description": "Whether bind variables used in queries are tracked.\n",
+           "type": "boolean"
+          },
+          "trackSlowQueries": {
+           "description": "Whether slow queries are tracked. The `enabled` property\nmust be set to `true` as well in order to track slow queries.\n\nQueries are added to the list of slow queries after\nfinishing and if their runtime exceeded the value set in\n`slowQueryThreshold`.\n",
+           "type": "boolean"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "enabled",
+          "trackSlowQueries",
+          "trackBindVars",
+          "maxSlowQueries",
+          "slowQueryThreshold",
+          "slowStreamingQueryThreshold",
+          "maxQueryStringLength"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "The query tracking properties were retrieved successfully.\n"
      },
      "400": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 400,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "The ArangoDB error number for the error that occurred.\n",
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
       "description": "The request is malformed.\n"
      }
     },
@@ -24659,7 +24879,7 @@
     ]
    },
    "put": {
-    "description": "The properties need to be passed in the attribute `properties` in the body\nof the HTTP request. `properties` needs to be a JSON object.\n\nAfter the properties have been changed, the current set of properties will\nbe returned in the HTTP response.\n",
+    "description": "Modify one or more query tracking properties at runtime for the\nspecified database.\n",
     "operationId": "updateAqlQueryTrackingProperties",
     "parameters": [
      {
@@ -24679,12 +24899,12 @@
        "schema": {
         "properties": {
          "enabled": {
-          "description": "If set to `true`, then queries are tracked. If set to\n`false`, neither regular queries nor slow queries are tracked.\n\nDefault: Controlled by the `--query.tracking` startup option.\n",
+          "description": "Whether to track queries for the specified database.\nIf set to `false`, neither the currently\nrunning queries nor slow queries are tracked.\n\nDefault: Controlled by the [`--query.tracking` startup option](https://docs.arango.ai/arangodb/3.11/components/arangodb-server/options/#--querytracking).\n",
           "type": "boolean"
          },
          "maxQueryStringLength": {
           "default": 4096,
-          "description": "The maximum query string length to keep in the list of queries.\nQuery strings can have arbitrary lengths, and this property\ncan be used to save memory in case very long query strings are used. The\nvalue is specified in bytes.\n\nYou can disable the tracking of query strings with the\n`--query.tracking-with-querystring` startup option.\n",
+          "description": "The maximum query string length to keep in the list of queries.\n\nQuery strings can have arbitrary lengths, and you can use\nthis property to save memory in case very long query strings\nare used.\n\nYou can disable the tracking of query strings by default\nwith the [`--query.tracking-with-querystring` startup option](https://docs.arango.ai/arangodb/3.11/components/arangodb-server/options/#--querytracking-with-querystring).\n",
           "type": "integer"
          },
          "maxSlowQueries": {
@@ -24693,19 +24913,19 @@
           "type": "integer"
          },
          "slowQueryThreshold": {
-          "description": "The threshold value for treating a query as slow (in seconds).\nA query with a runtime greater or equal to this threshold value is\nput into the list of slow queries if slow query tracking is enabled.\n\nDefault: Controlled by the `--query.slow-threshold` startup option.\n",
-          "type": "integer"
+          "description": "Threshold in seconds for treating a regular query as slow\n(the `stream` option is `false` for the query).\n\nDefault: Controlled by the [`--query.slow-threshold` startup option](https://docs.arango.ai/arangodb/3.11/components/arangodb-server/options/#--queryslow-threshold).\n",
+          "type": "number"
          },
          "slowStreamingQueryThreshold": {
-          "description": "The threshold value for treating a streaming query as slow (in seconds).\nA query with `\"stream\"` set to `true` and a runtime greater or equal to this\nthreshold value is put into the list of slow queries if slow query tracking\nis enabled.\n\nDefault: Controlled by the `--query.slow-streaming-threshold` startup option.\n",
-          "type": "integer"
+          "description": "Threshold in seconds for treating a streaming query as slow\n(the `stream` option is `true` for the query).\n\nDefault: Controlled by the [`--query.slow-streaming-threshold` startup option](https://docs.arango.ai/arangodb/3.11/components/arangodb-server/options/#--queryslow-streaming-threshold).\n",
+          "type": "number"
          },
          "trackBindVars": {
-          "description": "If set to `true`, then the bind variables used in queries are tracked\nalong with queries.\n\nDefault: Controlled by the `--query.tracking-with-bindvars` startup option.\n",
+          "description": "Whether to track bind variables used in queries.\n\nDefault: Controlled by the [`--query.tracking-with-bindvars` startup option](https://docs.arango.ai/arangodb/3.11/components/arangodb-server/options/#--querytracking-with-bindvars).\n",
           "type": "boolean"
          },
          "trackSlowQueries": {
-          "description": "If set to `true`, then slow queries are tracked\nin the list of slow queries if their runtime exceeds the value set in\n`slowQueryThreshold`. In order for slow queries to be tracked, the `enabled`\nproperty must also be set to `true`.\n\nDefault: Controlled by the `--query.tracking-slow-queries` startup option.\n",
+          "description": "Whether to track slow queries. The `enabled` property\nmust be set to `true` as well in order to track slow queries.\n\nQueries are added to the list of slow queries after\nfinishing and if their runtime exceeded the value set in\n`slowQueryThreshold`.\n\nDefault: Controlled by the [`--query.tracking-slow-queries` startup option](https://docs.arango.ai/arangodb/3.11/components/arangodb-server/options/#--querytracking-slow-queries).\n",
           "type": "boolean"
          }
         },
@@ -24716,9 +24936,100 @@
     },
     "responses": {
      "200": {
-      "description": "Is returned if the properties were changed successfully.\n"
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 200,
+           "type": "integer"
+          },
+          "enabled": {
+           "description": "Whether query tracking is enabled for the specified\ndatabase. If set to `false`, neither the currently\nrunning queries nor slow queries are tracked.\n",
+           "type": "boolean"
+          },
+          "error": {
+           "description": "A flag indicating that no error occurred.\n",
+           "example": false,
+           "type": "boolean"
+          },
+          "maxQueryStringLength": {
+           "description": "Maximum query string length kept in the list of queries\n(in bytes).\n\nQuery strings can have arbitrary lengths, and you can use\nthis property to save memory in case very long query strings\nare used.\n",
+           "type": "integer"
+          },
+          "maxSlowQueries": {
+           "description": "The maximum number of slow queries kept in the list.\nIf the list of slow queries is full, the oldest entry\nis discarded when additional slow queries occur.\n",
+           "type": "integer"
+          },
+          "slowQueryThreshold": {
+           "description": "Threshold in seconds for treating a regular query as slow\n(the `stream` option is `false` for the query).\n",
+           "type": "number"
+          },
+          "slowStreamingQueryThreshold": {
+           "description": "Threshold in seconds for treating a streaming query as slow\n(the `stream` option is `true` for the query).\n",
+           "type": "number"
+          },
+          "trackBindVars": {
+           "description": "Whether bind variables used in queries are tracked.\n",
+           "type": "boolean"
+          },
+          "trackSlowQueries": {
+           "description": "Whether slow queries are tracked. The `enabled` property\nmust be set to `true` as well in order to track slow queries.\n\nQueries are added to the list of slow queries after\nfinishing and if their runtime exceeded the value set in\n`slowQueryThreshold`.\n",
+           "type": "boolean"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "enabled",
+          "trackSlowQueries",
+          "trackBindVars",
+          "maxSlowQueries",
+          "slowQueryThreshold",
+          "slowStreamingQueryThreshold",
+          "maxQueryStringLength"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "The properties were changed successfully. The response body contains\nthe current set of query tracking properties.\n"
      },
      "400": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 400,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "The ArangoDB error number for the error that occurred.\n",
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
       "description": "The request is malformed.\n"
      }
     },
@@ -24830,7 +25141,7 @@
       }
      },
      {
-      "description": "If set to `true`, will clear the slow query history in all databases, not just\nthe selected one.\nUsing the parameter is only allowed in the `_system` database and with superuser\nprivileges.\n",
+      "description": "If set to `true`, clears the slow query history in all databases, not just\nthe specified one.\nUsing the parameter is only allowed in the `_system` database and with superuser\nprivileges.\n",
       "in": "query",
       "name": "all",
       "required": false,
@@ -24842,9 +25153,65 @@
     ],
     "responses": {
      "200": {
-      "description": "The list of queries has been cleared successfully.\n"
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 200,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that no error occurred.\n",
+           "example": false,
+           "type": "boolean"
+          }
+         },
+         "required": [
+          "error",
+          "code"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "The list of slow queries was cleared successfully.\n"
      },
      "400": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 400,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "The ArangoDB error number for the error that occurred.\n",
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
       "description": "The request is malformed.\n"
      }
     },
@@ -24854,7 +25221,7 @@
     ]
    },
    "get": {
-    "description": "Returns an array containing the last AQL queries that are finished and\nhave exceeded the slow query threshold in the selected database.\nThe maximum amount of queries in the list can be controlled by setting\nthe query tracking property `maxSlowQueries`. The threshold for treating\na query as *slow* can be adjusted by setting the query tracking property\n`slowQueryThreshold`.\n\nEach query is a JSON object with the following attributes:\n\n- `id`: the query's id\n\n- `database`: the name of the database the query runs in\n\n- `user`: the name of the user that started the query\n\n- `query`: the query string (potentially truncated)\n\n- `bindVars`: the bind parameter values used by the query\n\n- `started`: the date and time when the query was started\n\n- `runTime`: the query's total run time\n\n- `peakMemoryUsage`: the query's peak memory usage in bytes (in increments of 32KB)\n\n- `state`: the query's current execution state (will always be \"finished\"\n  for the list of slow queries)\n\n- `stream`: whether or not the query uses a streaming cursor\n",
+    "description": "Returns a list of the recently finished AQL queries that exceeded the\nslow query threshold in the specified database.\n\nSlow query tracking needs to be enabled by the\n[`--query.tracking-slow-queries` startup option](https://docs.arango.ai/arangodb/3.11/components/arangodb-server/options/#--querytracking-slow-queries)\nor at runtime with the `trackSlowQueries` query tracking property of the\n`PUT /_db/{database-name}/_api/query/properties` endpoint.\nIf slow query tracking is disabled for the current database,\nan **empty list** is returned.\n\nThe maximum amount of queries in the list can be controlled by setting\nthe `maxSlowQueries` query tracking property via the\n`PUT /_db/{database-name}/_api/query/properties` endpoint at runtime.\n\nThe threshold for treating a query as *slow* can be adjusted separate\nfor queries with the `stream` option on or off by setting the\n[`--query.slow-threshold`](https://docs.arango.ai/arangodb/3.11/components/arangodb-server/options/#--queryslow-threshold)\nand [`--query.slow-streaming-threshold`](https://docs.arango.ai/arangodb/3.11/components/arangodb-server/options/#--queryslow-streaming-threshold)\nstartup options or at runtime with the `slowQueryThreshold` and\n`slowStreamingQueryThreshold` query tracking properties of the\n`PUT /_db/{database-name}/_api/query/properties` endpoint.\n",
     "operationId": "listSlowAqlQueries",
     "parameters": [
      {
@@ -24868,7 +25235,7 @@
       }
      },
      {
-      "description": "If set to `true`, will return the slow queries from all databases, not just\nthe selected one.\nUsing the parameter is only allowed in the `_system` database and with superuser\nprivileges.\n",
+      "description": "If set to `true`, returns the slow queries from all databases, not just\nthe specified one.\nUsing the parameter is only allowed in the `_system` database and with superuser\nprivileges.\n",
       "in": "query",
       "name": "all",
       "required": false,
@@ -24880,13 +25247,154 @@
     ],
     "responses": {
      "200": {
-      "description": "Is returned when the list of queries can be retrieved successfully.\n"
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "properties": {
+           "bindVars": {
+            "description": "The bind parameter values used by the query.\n\nWhether the actual bind variables or an empty object is\nreturned is controlled by the\n[`--query.tracking-with-bindvars` startup option](https://docs.arango.ai/arangodb/3.11/components/arangodb-server/options/#--querytracking-with-bindvars)\nor the `trackBindVars` query tracking property that you can\nchange via the `PUT /_db/{database-name}/_api/query/properties`\nendpoint at runtime.\n",
+            "type": "object"
+           },
+           "database": {
+            "description": "The name of the database the query ran in.\n",
+            "type": "string"
+           },
+           "exitCode": {
+            "description": "An error code (`errorNum`) that indicates why the query\nfailed, or `0` on success. See the\n[error codes](https://docs.arango.ai/arangodb/3.11/develop/error-codes/) documentation.\n",
+            "type": "integer"
+           },
+           "id": {
+            "description": "The internal identifier of the query.\n",
+            "type": "string"
+           },
+           "peakMemoryUsage": {
+            "description": "The query's peak memory usage in bytes (in increments of 32KB).\n",
+            "type": "integer"
+           },
+           "query": {
+            "description": "The query string (potentially truncated).\n\nThe cutoff is controlled by the\n[`--query.max-artifact-log-length` startup option](https://docs.arango.ai/arangodb/3.11/components/arangodb-server/options/#--querymax-artifact-log-length)\nor the `maxQueryStringLength` query tracking property\nthat you can change via the\n`PUT /_db/{database-name}/_api/query/properties` endpoint\nat runtime.\n\nWhether the actual query string is tracked or only a\nvalue of `\"\u003chidden\u003e\"` is returned depends on the\n[`--query.tracking-with-querystring` startup option](https://docs.arango.ai/arangodb/3.11/components/arangodb-server/options/#--querytracking-with-querystring).\n",
+            "type": "string"
+           },
+           "runTime": {
+            "description": "The total query duration (in seconds).\n",
+            "type": "number"
+           },
+           "started": {
+            "description": "The date and time when the query was started (ISO 8601).\n",
+            "format": "date-time",
+            "type": "string"
+           },
+           "state": {
+            "description": "The query's last execution state.\n",
+            "enum": [
+             "finished",
+             "killed",
+             "invalid"
+            ],
+            "type": "string"
+           },
+           "stream": {
+            "description": "Whether the query used a streaming cursor (`stream` query option).\n",
+            "type": "boolean"
+           },
+           "user": {
+            "description": "The name of the user who started the query.\n",
+            "type": "string"
+           }
+          },
+          "required": [
+           "id",
+           "database",
+           "user",
+           "query",
+           "bindVars",
+           "started",
+           "runTime",
+           "peakMemoryUsage",
+           "state",
+           "stream",
+           "exitCode"
+          ],
+          "type": "object"
+         },
+         "type": "array"
+        }
+       }
+      },
+      "description": "The list of recently finished AQL queries that exceeded the slow\nquery threshold. Empty if query tracking or slow query tracking is\ndisabled.\n"
      },
      "400": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 400,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "The ArangoDB error number for the error that occurred.\n",
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
       "description": "The request is malformed.\n"
      },
      "403": {
-      "description": "In case the `all` parameter is used but the request was made in a\ndifferent database than `_system`, or by a non-privileged user.\n"
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 403,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "The ArangoDB error number for the error that occurred.\n",
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "Returned when the `all` parameter is used but the request was made\nin a database other than `_system`, or by a user without superuser\nprivileges.\n"
      }
     },
     "summary": "List the slow AQL queries",
@@ -24897,7 +25405,7 @@
   },
   "/_db/{database-name}/_api/query/{query-id}": {
    "delete": {
-    "description": "Kills a running query in the currently selected database. The query will be\nterminated at the next cancelation point.\n",
+    "description": "Kills a running query in the currently selected database. The query will be\nterminated at the next cancellation point.\n",
     "operationId": "deleteAqlQuery",
     "parameters": [
      {
@@ -25318,7 +25826,7 @@
         "properties": {
          "ttl": {
           "description": "The time-to-live for the new batch (in seconds).\n",
-          "type": "integer"
+          "type": "number"
          }
         },
         "required": [
@@ -25417,8 +25925,8 @@
        "schema": {
         "properties": {
          "ttl": {
-          "description": "the time-to-live for the new batch (in seconds)\n",
-          "type": "integer"
+          "description": "The time-to-live for the new batch (in seconds)\n",
+          "type": "number"
          }
         },
         "required": [
@@ -26819,7 +27327,7 @@
   },
   "/_db/{database-name}/_api/transaction": {
    "get": {
-    "description": "The result is an object with the `transactions` attribute, which contains\nan array of transactions.\nIn a cluster, the array contains the transactions from all Coordinators.\n\nEach array entry contains an object with the following attributes:\n\n- `id`: the transaction's id\n- `state`: the transaction's status\n",
+    "description": "List the currently running Stream Transactions.\nIn a cluster, the list contains the transactions from all Coordinators.\n",
     "operationId": "listStreamTransactions",
     "parameters": [
      {
@@ -26835,7 +27343,41 @@
     ],
     "responses": {
      "200": {
-      "description": "If the list of transactions can be retrieved successfully, *HTTP 200* will be returned.\n"
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "transactions": {
+           "description": "An array of currently running transactions. In a cluster, this\ncontains the transactions from all Coordinators.\n",
+           "items": {
+            "properties": {
+             "id": {
+              "description": "The identifier of the transaction.\n",
+              "type": "string"
+             },
+             "state": {
+              "const": "running",
+              "description": "The status of the transaction. Always `running`\nif it's in the list of running transactions.\n",
+              "type": "string"
+             }
+            },
+            "required": [
+             "id",
+             "state"
+            ],
+            "type": "object"
+           },
+           "type": "array"
+          }
+         },
+         "required": [
+          "transactions"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "The list of transactions can be retrieved successfully.\n"
      }
     },
     "summary": "List the running Stream Transactions",
@@ -26931,7 +27473,7 @@
   },
   "/_db/{database-name}/_api/transaction/begin": {
    "post": {
-    "description": "Begin a Stream Transaction that allows clients to call selected APIs over a\nshort period of time, referencing the transaction ID, and have the server\nexecute the operations transactionally.\n\nCommitting or aborting a running transaction must be done by the client.\nIt is bad practice to not commit or abort a transaction once you are done\nusing it. It forces the server to keep resources and collection locks\nuntil the entire transaction times out.\n\nThe transaction description must be passed in the body of the POST request.\nIf the transaction can be started on the server, *HTTP 201* is returned.\n\nFor successfully started transactions, the returned JSON object has the\nfollowing properties:\n\n- `error`: boolean flag to indicate if an error occurred (`false`\n  in this case)\n\n- `code`: the HTTP status code\n\n- `result`: result containing\n    - `id`: the identifier of the transaction\n    - `status`: containing the string 'running'\n\nIf the transaction specification is either missing or malformed, the server\nresponds with *HTTP 400* or *HTTP 404*.\n\nThe body of the response then contains a JSON object with additional error\ndetails. The object has the following attributes:\n\n- `error`: boolean flag to indicate that an error occurred (`true` in this case)\n\n- `code`: the HTTP status code\n\n- `errorNum`: the server error number\n\n- `errorMessage`: a descriptive error message\n",
+    "description": "Begin a Stream Transaction that allows clients to call selected APIs over a\nshort period of time, referencing the transaction ID, and have the server\nexecute the operations transactionally.\n\nCommitting or aborting a running transaction must be done by the client.\nIt is bad practice to not commit or abort a transaction once you are done\nusing it. It forces the server to keep resources and collection locks\nuntil the entire transaction times out.\n\nThe transaction description must be passed in the body of the POST request.\n",
     "operationId": "beginStreamTransaction",
     "parameters": [
      {
@@ -26984,6 +27526,10 @@
           "description": "The timeout in seconds for waiting on collection locks.\nThis option is only meaningful when using exclusive locks.\nSet `lockTimeout` to `0` to make ArangoDB not time out\nwaiting for a lock.\n",
           "type": "integer"
          },
+         "maxTransactionSize": {
+          "description": "Transaction size limit in bytes.\n\nDefault: Controlled by the [`--transaction.streaming-max-transaction-size` startup option](https://docs.arango.ai/arangodb/3.11/components/arangodb-server/options/#--transactionstreaming-max-transaction-size).\n",
+          "type": "integer"
+         },
          "waitForSync": {
           "description": "An optional boolean flag that, if set, forces the\ntransaction to write all data to disk before returning.\n",
           "type": "boolean"
@@ -26999,13 +27545,122 @@
     },
     "responses": {
      "201": {
-      "description": "If the transaction is running on the server,\n*HTTP 201* will be returned.\n"
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 201,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that no error occurred.\n",
+           "example": false,
+           "type": "boolean"
+          },
+          "result": {
+           "description": "An object describing the started transaction.\n",
+           "properties": {
+            "id": {
+             "description": "The identifier of the transaction.\n",
+             "type": "string"
+            },
+            "status": {
+             "const": "running",
+             "description": "The status of the transaction. Always `running` for a\nsuccessfully started transaction.\n",
+             "type": "string"
+            }
+           },
+           "required": [
+            "id",
+            "status"
+           ],
+           "type": "object"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "result"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "The transaction has been started on the server.\n"
      },
      "400": {
-      "description": "If the transaction specification is either missing or malformed, the server\nwill respond with *HTTP 400*.\n"
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 400,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "The ArangoDB error number for the error that occurred.\n",
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "The transaction specification is either missing or malformed.\n"
      },
      "404": {
-      "description": "If the transaction specification contains an unknown collection, the server\nwill respond with *HTTP 404*.\n"
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 404,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "The ArangoDB error number for the error that occurred.\n",
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "The transaction specification contains an unknown collection.\n"
      }
     },
     "summary": "Begin a Stream Transaction",
@@ -27016,7 +27671,7 @@
   },
   "/_db/{database-name}/_api/transaction/{transaction-id}": {
    "delete": {
-    "description": "Abort a running server-side transaction. Aborting is an idempotent operation.\nIt is not an error to abort a transaction more than once.\n\nIf the transaction can be aborted, *HTTP 200* is returned.\nThe returned JSON object has the following properties:\n\n- `error`: boolean flag to indicate if an error occurred (`false`\n  in this case)\n\n- `code`: the HTTP status code\n\n- `result`: result containing\n    - `id`: the identifier of the transaction\n    - `status`: containing the string 'aborted'\n\nIf the transaction cannot be found, aborting is not allowed or the\ntransaction was already committed, the server\nresponds with *HTTP 400*, *HTTP 404* or *HTTP 409*.\n\nThe body of the response then contains a JSON object with additional error\ndetails. The object has the following attributes:\n\n- `error`: boolean flag to indicate that an error occurred (`true` in this case)\n\n- `code`: the HTTP status code\n\n- `errorNum`: the server error number\n\n- `errorMessage`: a descriptive error message\n",
+    "description": "Abort a running server-side transaction. Aborting is an idempotent operation.\nIt is not an error to abort a transaction more than once.\n\nThe server remembers a transaction's final state for a limited time after\nit ends. As a result, the response can vary depending on when you call\nthis endpoint:\n\n- While the transaction is still tracked: aborting an already-aborted\n  transaction returns `200` (idempotent), and aborting an already-committed\n  transaction returns `400`.\n- The first abort against an unknown identifier returns `404` and records\n  it as aborted. Subsequent aborts for the same identifier return `200`\n  until the record is garbage-collected, after which the identifier is\n  again unknown and the next abort once more returns `404`.\n",
     "operationId": "abortStreamTransaction",
     "parameters": [
      {
@@ -27041,16 +27696,122 @@
     ],
     "responses": {
      "200": {
-      "description": "If the transaction was aborted,\n*HTTP 200* will be returned.\n"
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 200,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that no error occurred.\n",
+           "example": false,
+           "type": "boolean"
+          },
+          "result": {
+           "description": "An object describing the aborted transaction.\n",
+           "properties": {
+            "id": {
+             "description": "The identifier of the transaction.\n",
+             "type": "string"
+            },
+            "status": {
+             "const": "aborted",
+             "description": "The status of the transaction. Always `aborted` for a\nsuccessfully aborted transaction.\n",
+             "type": "string"
+            }
+           },
+           "required": [
+            "id",
+            "status"
+           ],
+           "type": "object"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "result"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "The transaction has been aborted.\n"
      },
      "400": {
-      "description": "If the transaction cannot be aborted, the server\nwill respond with *HTTP 400*.\n"
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 400,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "The ArangoDB error number for the error that occurred.\n",
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "The transaction identifier is malformed, or the transaction is in\na state that does not allow aborting (for example, it was\nalready committed).\n"
      },
      "404": {
-      "description": "If the transaction was not found, the server\nwill respond with *HTTP 404*.\n"
-     },
-     "409": {
-      "description": "If the transaction was already committed, the server\nwill respond with *HTTP 409*.\n"
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 404,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "The ArangoDB error number for the error that occurred.\n",
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "No transaction is known under the specified identifier.\n"
      }
     },
     "summary": "Abort a Stream Transaction",
@@ -27059,7 +27820,7 @@
     ]
    },
    "get": {
-    "description": "The result is an object describing the status of the transaction.\nIt has at least the following attributes:\n\n- `id`: the identifier of the transaction\n\n- `status`: the status of the transaction. One of \"running\", \"committed\" or \"aborted\".\n",
+    "description": "Retrieve the status of a Stream Transaction by its identifier.\n\nAfter a transaction is committed or aborted, the server remembers its\nfinal state for a limited time. During this window, querying the\ntransaction returns its final status (`committed` or `aborted`). Once\nthe server garbage-collects this record, the same identifier becomes\nunknown and the endpoint returns `404`.\n",
     "operationId": "getStreamTransaction",
     "parameters": [
      {
@@ -27084,13 +27845,126 @@
     ],
     "responses": {
      "200": {
-      "description": "If the transaction is fully executed and committed on the server,\n*HTTP 200* will be returned.\n"
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 200,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that no error occurred.\n",
+           "example": false,
+           "type": "boolean"
+          },
+          "result": {
+           "description": "An object describing the status of the transaction.\n",
+           "properties": {
+            "id": {
+             "description": "The identifier of the transaction.\n",
+             "type": "string"
+            },
+            "status": {
+             "description": "The status of the transaction.\n",
+             "enum": [
+              "running",
+              "committed",
+              "aborted"
+             ],
+             "type": "string"
+            }
+           },
+           "required": [
+            "id",
+            "status"
+           ],
+           "type": "object"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "result"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "The transaction is found and its status returned.\n"
      },
      "400": {
-      "description": "If the transaction identifier specified is either missing or malformed, the server\nwill respond with *HTTP 400*.\n"
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 400,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "The ArangoDB error number for the error that occurred.\n",
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "The transaction identifier is either missing or malformed.\n"
      },
      "404": {
-      "description": "If the transaction was not found with the specified identifier, the server\nwill respond with *HTTP 404*.\n"
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 404,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "The ArangoDB error number for the error that occurred.\n",
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "No transaction was found with the specified identifier.\n"
      }
     },
     "summary": "Get the status of a Stream Transaction",
@@ -27099,7 +27973,7 @@
     ]
    },
    "put": {
-    "description": "Commit a running server-side transaction. Committing is an idempotent operation.\nIt is not an error to commit a transaction more than once.\n\nIf the transaction can be committed, *HTTP 200* is returned.\nThe returned JSON object has the following properties:\n\n- `error`: boolean flag to indicate if an error occurred (`false`\n  in this case)\n\n- `code`: the HTTP status code\n\n- `result`: result containing\n    - `id`: the identifier of the transaction\n    - `status`: containing the string 'committed'\n\nIf the transaction cannot be found, committing is not allowed or the\ntransaction was aborted, the server\nresponds with *HTTP 400*, *HTTP 404* or *HTTP 409*.\n\nThe body of the response then contains a JSON object with additional error\ndetails. The object has the following attributes:\n\n- `error`: boolean flag to indicate that an error occurred (`true` in this case)\n\n- `code`: the HTTP status code\n\n- `errorNum`: the server error number\n\n- `errorMessage`: a descriptive error message\n",
+    "description": "Commit a running server-side transaction. Committing is an idempotent operation.\nIt is not an error to commit a transaction more than once.\n\nThe server remembers a transaction's final state for a limited time after\nit ends. As a result, the response can vary depending on when you call\nthis endpoint:\n\n- While the transaction is still tracked: committing an already-committed\n  transaction returns `200` (idempotent), and committing an already-aborted\n  transaction returns `400`.\n- Once the server has garbage-collected the transaction's record, the\n  identifier is no longer known and the endpoint returns `404`.\n",
     "operationId": "commitStreamTransaction",
     "parameters": [
      {
@@ -27124,16 +27998,122 @@
     ],
     "responses": {
      "200": {
-      "description": "If the transaction was committed,\n*HTTP 200* will be returned.\n"
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 200,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that no error occurred.\n",
+           "example": false,
+           "type": "boolean"
+          },
+          "result": {
+           "description": "An object describing the committed transaction.\n",
+           "properties": {
+            "id": {
+             "description": "The identifier of the transaction.\n",
+             "type": "string"
+            },
+            "status": {
+             "const": "committed",
+             "description": "The status of the transaction. Always `committed` for a\nsuccessfully committed transaction.\n",
+             "type": "string"
+            }
+           },
+           "required": [
+            "id",
+            "status"
+           ],
+           "type": "object"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "result"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "The transaction has been committed.\n"
      },
      "400": {
-      "description": "If the transaction cannot be committed, the server\nwill respond with *HTTP 400*.\n"
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 400,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "The ArangoDB error number for the error that occurred.\n",
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "The transaction identifier is malformed, or the transaction is in\na state that does not allow committing (for example, it was\nalready aborted).\n"
      },
      "404": {
-      "description": "If the transaction was not found, the server\nwill respond with *HTTP 404*.\n"
-     },
-     "409": {
-      "description": "If the transaction was already aborted, the server\nwill respond with *HTTP 409*.\n"
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 404,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "The ArangoDB error number for the error that occurred.\n",
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "No transaction is known under the specified identifier.\n"
      }
     },
     "summary": "Commit a Stream Transaction",
