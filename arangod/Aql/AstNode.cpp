@@ -35,11 +35,13 @@
 #include "Basics/Utf8Helper.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/fasthash.h"
+#include "Containers/FlatHashMap.h"
 #include "Containers/FlatHashSet.h"
 #include "Transaction/Methods.h"
 #include "VocBase/vocbase.h"
 
 #include <array>
+#include <vector>
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #include <iostream>
 #endif
@@ -1072,7 +1074,6 @@ void AstNode::toVelocyPackValue(VPackBuilder& builder) const {
   if (type == NODE_TYPE_OBJECT) {
     builder.openObject();
 
-    containers::FlatHashSet<std::string_view> keys;
     size_t const n = numMembers();
 
     // only check for duplicate keys if we have more than a single attribute
@@ -1082,15 +1083,38 @@ void AstNode::toVelocyPackValue(VPackBuilder& builder) const {
       checkUniqueness = hasFlag(VALUE_CHECKUNIQUENESS);
     }
 
+    if (checkUniqueness) {
+      containers::FlatHashMap<std::string_view, size_t> keys;
+      std::vector<AstNode const*> elements;
+      keys.reserve(n);
+      elements.reserve(n);
+
+      for (size_t i = 0; i < n; ++i) {
+        auto member = getMemberUnchecked(i);
+        if (member != nullptr) {
+          auto [it, inserted] =
+              keys.emplace(member->getStringView(), elements.size());
+          if (inserted) {
+            elements.emplace_back(member);
+          } else {
+            elements[it->second] = member;
+          }
+        }
+      }
+
+      for (AstNode const* member : elements) {
+        builder.add(VPackValue(member->getStringView()));
+        member->getMember(0)->toVelocyPackValue(builder);
+      }
+
+      builder.close();
+      return;
+    }
+
     for (size_t i = 0; i < n; ++i) {
       auto member = getMemberUnchecked(i);
       if (member != nullptr) {
         std::string_view key(member->getStringView());
-
-        if (checkUniqueness && !keys.emplace(key).second) {
-          // duplicate key, skip it
-          continue;
-        }
 
         builder.add(VPackValue(key));
         member->getMember(0)->toVelocyPackValue(builder);

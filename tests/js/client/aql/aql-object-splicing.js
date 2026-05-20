@@ -101,6 +101,31 @@ function objectSplicingSuite () {
       let query = `LET x = { name: "Pavani",  age: 35, city: "Hyderabad"  } LET y = { city: "Chennai"} LET z = {name: "Rahul",  age: 21, city: "Delhi" } RETURN {...x, ...y, ...z}`;
       let res = db._query(query).toArray();
       assertEqual([ { "name" : "Rahul", "age" : 21, "city" : "Delhi" } ], res);  
+    },
+    testDuplicatePropertyWithOverriddenWithInObject: function () {
+      let query = `FOR i IN 1..3 RETURN {[CONCAT("x",i)]: 0, x2: 1}`;
+      let res = db._query(query).toArray();
+      assertEqual([ { "x1" : 0, "x2" : 1 }, { "x2" : 1 }, { "x3" : 0, "x2" : 1 }], res);  
+    },
+    testCalculatedKeyCollidingWithStaticKey: function () {
+      let query = `LET a = "x" RETURN {   [a]: 1,   x: 2 }`;
+      let res = db._query(query).toArray();
+      assertEqual([ { "x" : 2 }], res);  
+    },
+    testStaticKeyCollidingWithCalculatedKeyLater: function () {
+      let query = `LET a = "x" RETURN {   x: 1,   [a]: 2 }`;
+      let res = db._query(query).toArray();
+      assertEqual([ { "x" : 2 }], res);
+    },
+    testTwoCalculatedKeysResolvingToSameValue: function () {
+      let query = `RETURN { [CONCAT("x", 1)]: 1, ["x1"]: 2}`;
+      let res = db._query(query).toArray();
+      assertEqual([ { "x1" : 2 }], res);
+    },
+    testNestedObjectLiterals: function () {
+      let query = `RETURN { outer: {    x: 1,    x: 2  } }`;
+      let res = db._query(query).toArray();
+      assertEqual([ { "outer" : { "x" : 2 } }], res);
     }
   };
 }

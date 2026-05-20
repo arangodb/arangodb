@@ -753,7 +753,6 @@ AqlValue Expression::executeSimpleExpressionObject(ExpressionContext& ctx,
   keyToIndex.reserve(static_cast<size_t>(n) * 2);
 
   bool const hasSplice = astNodeObjectLiteralHasObjectSplice(node);
-  bool const mustCheckUniqueness = (!hasSplice && node->mustCheckUniqueness());
 
   auto stringBuffer = ThreadLocalStringLeaser::lease();
   arangodb::velocypack::StringSink adapter(stringBuffer.get());
@@ -772,16 +771,7 @@ AqlValue Expression::executeSimpleExpressionObject(ExpressionContext& ctx,
       return;
     }
 
-    // duplicate handling
-    if (mustCheckUniqueness) {
-      // first key wins
-      if (valueMustDestroy) {
-        value.destroy();
-      }
-      return;
-    }
-
-    // overwrite semantics (splice semantics)
+    // overwrite semantics
     ObjectEntry& existing = entries[it->second];
 
     if (existing.mustDestroy) {
