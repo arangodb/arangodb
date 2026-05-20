@@ -169,6 +169,21 @@ function ahuacatlFailureSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test UNION_DISTINCT_STABLE for memleaks
+////////////////////////////////////////////////////////////////////////////////
+
+    testAqlFunctionUnionDistinctStable : function () {
+      var where = [ "AqlFunctions::OutOfMemory1", "AqlFunctions::OutOfMemory2"];
+
+      where.forEach(function(w) {
+        IM.debugClearFailAt();
+
+        IM.debugSetFailAt(w);
+        assertFailingQuery("RETURN NOOPT(UNION_DISTINCT_STABLE([ 1, 2, 3, 4 ], [ 5, 6, 7, 8 ], [ 9, 10, 11 ]))");
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test INTERSECTION for memleaks
 ////////////////////////////////////////////////////////////////////////////////
 

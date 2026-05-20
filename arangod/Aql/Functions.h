@@ -361,6 +361,8 @@ AqlValue Union(arangodb::aql::ExpressionContext*, AstNode const&,
                VPackFunctionParametersView);
 AqlValue UnionDistinct(arangodb::aql::ExpressionContext*, AstNode const&,
                        VPackFunctionParametersView);
+AqlValue UnionDistinctStable(arangodb::aql::ExpressionContext*, AstNode const&,
+                             VPackFunctionParametersView);
 AqlValue Intersection(arangodb::aql::ExpressionContext*, AstNode const&,
                       VPackFunctionParametersView);
 AqlValue Outersection(arangodb::aql::ExpressionContext*, AstNode const&,

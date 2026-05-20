@@ -1593,6 +1593,100 @@ function ahuacatlFunctionsTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test union_distinct_stable function
+////////////////////////////////////////////////////////////////////////////////
+
+    testUnionDistinctStable1 : function () {
+      var expected = [ 1, 3, 2 ];
+      var actual = getQueryResults("RETURN UNION_DISTINCT_STABLE([ 1, 3, 2 ], [ 1, 2, 3 ])");
+      assertEqual(expected, actual[0]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test union_distinct_stable function
+////////////////////////////////////////////////////////////////////////////////
+
+    testUnionDistinctStable2 : function () {
+      var expected = [ 3, 2, 1 ];
+      var actual = getQueryResults("RETURN UNION_DISTINCT_STABLE([ 3, 2, 1 ], [ 1, 3, 2 ])");
+      assertEqual(expected, actual[0]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test union_distinct_stable function
+////////////////////////////////////////////////////////////////////////////////
+
+    testUnionDistinctStable3 : function () {
+      var expected = [ "Fred", "John", "Amy" ];
+      var actual = getQueryResults("FOR u IN UNION_DISTINCT_STABLE([ \"Fred\", \"John\" ], [ \"John\", \"Amy\"]) RETURN u");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test union_distinct_stable function
+////////////////////////////////////////////////////////////////////////////////
+
+    testUnionDistinctStable4 : function () {
+      var expected = [ 1, 2, 3, 4, 5, 6 ];
+      var actual = getQueryResults("RETURN UNION_DISTINCT_STABLE([ 1, 2, 3 ], [ 3, 2, 1 ], [ 4 ], [ 5, 6, 1 ])");
+      assertEqual(expected, actual[0]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test union_distinct_stable function
+////////////////////////////////////////////////////////////////////////////////
+
+    testUnionDistinctStable5 : function () {
+      var expected = [ [ ] ];
+      var actual = getQueryResults("RETURN UNION_DISTINCT_STABLE([ ], [ ], [ ])");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test union_distinct_stable function
+////////////////////////////////////////////////////////////////////////////////
+
+    testUnionDistinctStable6 : function () {
+      var expected = [ false, true ];
+      var actual = getQueryResults("RETURN UNION_DISTINCT_STABLE([ ], [ false ], [ ], [ true ])");
+      assertEqual(expected, actual[0]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test union_distinct_stable function
+////////////////////////////////////////////////////////////////////////////////
+
+    testUnionDistinctStable7 : function () {
+      var expected = [ 's','a','f'];
+      var actual = getQueryResults("RETURN UNION_DISTINCT_STABLE([ 's', 'a' ], [ 's', 'f' ])");
+      assertEqual(expected, actual[0]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test union_distinct_stable function
+////////////////////////////////////////////////////////////////////////////////
+
+    testUnionDistinctStableInvalid : function () {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN UNION_DISTINCT_STABLE()");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN UNION_DISTINCT_STABLE([ ])");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UNION_DISTINCT_STABLE([ ], null)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UNION_DISTINCT_STABLE([ ], true)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UNION_DISTINCT_STABLE([ ], 3)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UNION_DISTINCT_STABLE([ ], \"yes\")");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UNION_DISTINCT_STABLE([ ], { })");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UNION_DISTINCT_STABLE([ ], [ ], null)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UNION_DISTINCT_STABLE([ ], [ ], true)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UNION_DISTINCT_STABLE([ ], [ ], 3)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UNION_DISTINCT_STABLE([ ], [ ], \"yes\")");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UNION_DISTINCT_STABLE([ ], [ ], { })");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UNION_DISTINCT_STABLE(null, [ ])");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UNION_DISTINCT_STABLE(true, [ ])");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UNION_DISTINCT_STABLE(3, [ ])");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UNION_DISTINCT_STABLE(\"yes\", [ ])");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UNION_DISTINCT_STABLE({ }, [ ])");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test range function
 ////////////////////////////////////////////////////////////////////////////////
     
