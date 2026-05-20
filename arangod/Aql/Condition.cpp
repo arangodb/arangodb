@@ -199,7 +199,9 @@ bool areNodesEqual(AstNode const* lhs, AstNode const* rhs) {
   bool const compareUtf8 = (lhs->type != NODE_TYPE_OPERATOR_BINARY_EQ &&
                             lhs->type != NODE_TYPE_OPERATOR_BINARY_NE &&
                             lhs->type != NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ &&
-                            lhs->type != NODE_TYPE_OPERATOR_BINARY_ARRAY_NE);
+                            lhs->type != NODE_TYPE_OPERATOR_BINARY_ARRAY_NE &&
+                            lhs->type != NODE_TYPE_OPERATOR_NARY_AND &&
+                            lhs->type != NODE_TYPE_OPERATOR_NARY_OR);
   return compareAstNodes<false>(lhs, rhs, compareUtf8) == 0;
 }
 
@@ -812,7 +814,7 @@ void Condition::optimize(ExecutionPlan* plan, bool multivalued) {
         // x IN [a] → x == a (constant arrays only)
         auto rhs = deduplicated->getMemberUnchecked(1);
         if (rhs->type == NODE_TYPE_ARRAY && rhs->isConstant() &&
-            rhs->numMembers() == 1) {
+            rhs->numMembers() == 1 && !multivalued) {
           auto lhs = deduplicated->getMemberUnchecked(0);
           auto optimized = _ast->createNodeBinaryOperator(
               NODE_TYPE_OPERATOR_BINARY_EQ, lhs, rhs->getMemberUnchecked(0));

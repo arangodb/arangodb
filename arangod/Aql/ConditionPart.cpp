@@ -246,7 +246,7 @@ bool ConditionPart::isCoveredBy(ConditionPart const& other,
             auto w = other.valueNode->getMemberUnchecked(j);
 
             CompareResult res =
-                ResultsTable[compareAstNodes(v, w, true) + 1][0][0];
+                ResultsTable[compareAstNodes(v, w, false) + 1][0][0];
 
             if (res != CompareResult::OTHER_CONTAINED_IN_SELF &&
                 res != CompareResult::CONVERT_EQUAL &&
