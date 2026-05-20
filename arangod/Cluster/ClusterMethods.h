@@ -153,12 +153,6 @@ futures::Future<OperationResult> truncateCollectionOnCoordinator(
     transaction::Methods& trx, std::string const& collname,
     OperationOptions const& options, transaction::MethodsApi api);
 
-/// @brief retrain a vector index on all shard leaders of a collection
-Result retrainVectorIndexOnAllDBServers(ClusterFeature&,
-                                        std::string const& dbname,
-                                        std::string const& collname,
-                                        std::string const& indexName);
-
 class ClusterMethods {
  public:
   // wrapper Class for static functions.
