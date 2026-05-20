@@ -134,7 +134,7 @@ defmodule Toast.Deployment.ShutdownPipeline do
       servers ->
         ids = Enum.map(servers, fn {id, _} -> id end)
         Logger.debug("#{state.id}: stopping #{role}s")
-        stop_server_group(ids, state, State.remaining_ms(deadline))
+        stop_server_group(ids, state, Toast.Utils.remaining_ms(deadline))
     end
   end
 

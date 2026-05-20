@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -30,7 +30,6 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Random/RandomGenerator.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Helpers.h"
@@ -889,10 +888,7 @@ void RestDocumentHandler::handleFillIndexCachesValue(
   RefillIndexCaches ric = RefillIndexCaches::kDefault;
 
   if (!options.isSynchronousReplicationFrom.empty() &&
-      !_vocbase.server()
-           .getFeature<EngineSelectorFeature>()
-           .engine()
-           .autoRefillIndexCachesOnFollowers()) {
+      !_vocbase.engine().autoRefillIndexCachesOnFollowers()) {
     // do not refill caches on followers if this is intentionally turned off
     ric = RefillIndexCaches::kDontRefill;
   } else {

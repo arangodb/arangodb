@@ -32,7 +32,6 @@
 #include "Replication/GlobalInitialSyncer.h"
 #include "Replication/GlobalTailingSyncer.h"
 #include "RestServer/SystemDatabaseFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 
 #include <velocypack/Builder.h>
@@ -41,10 +40,9 @@ using namespace arangodb;
 
 /// @brief server-global replication applier for all databases
 GlobalReplicationApplier::GlobalReplicationApplier(
-    ReplicationApplierConfiguration const& configuration)
-    : ReplicationApplier(configuration, "global database"),
-      _engine(
-          configuration._server.getFeature<EngineSelectorFeature>().engine()) {}
+    application_features::ApplicationServer& server, StorageEngine& engine)
+    : ReplicationApplier(loadConfiguration(server, engine), "global database"),
+      _engine(engine) {}
 
 GlobalReplicationApplier::~GlobalReplicationApplier() {
   try {
@@ -85,8 +83,7 @@ void GlobalReplicationApplier::storeConfiguration(bool doSync) {
 
 /// @brief load a persisted configuration for the applier
 ReplicationApplierConfiguration GlobalReplicationApplier::loadConfiguration(
-    application_features::ApplicationServer& server) {
-  StorageEngine& engine = server.getFeature<EngineSelectorFeature>().engine();
+    application_features::ApplicationServer& server, StorageEngine& engine) {
   auto res = TRI_ERROR_INTERNAL;
   VPackBuilder builder = engine.getReplicationApplierConfiguration(res);
 
