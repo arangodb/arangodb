@@ -211,6 +211,154 @@ export default [
     path: "/_admin/cluster/statistics",
   },
 
+  {
+    // POST /_admin/cluster/cancelAgencyJob
+    // Auth: canUseAdmin(MoveShards) → RW on _system  (check fires FIRST)
+    // Single: AU→401, AN→401, AR→403, AW→403 (coord only), SU→403
+    // Coordinator: AU→401, AN→401, AR→403, AW→404, SU→404
+    name: "Cancel agency job (PUT /_admin/cluster/cancelAgencyJob)",
+    type: "admin",
+    method: "POST",
+    path: "/_admin/cluster/cancelAgencyJob",
+    body: { id: "nonexistent-job-apitester" },
+  },
+
+  {
+    // POST /_admin/cluster/cleanOutServer
+    // Auth: canUseAdmin(MoveShards) → RW on _system  (check fires FIRST)
+    // Body {} is missing the required "server" key → 400 on coordinator, but
+    // auth/coordinator checks fire before body parsing.
+    // Single: AU→401, AN→401, AR→403, AW→403 (coord only), SU→403
+    // Coordinator: AU→401, AN→401, AR→403, AW→400, SU→400
+    name: "Clean out server (PUT /_admin/cluster/cleanOutServer)",
+    type: "admin",
+    method: "POST",
+    path: "/_admin/cluster/cleanOutServer",
+    body: {},
+  },
+
+  {
+    // GET /_admin/cluster/maintenance/{serverId}
+    // Auth: canUseAdmin(Maintenance) → RW on _system  (check fires FIRST)
+    // Uses a bogus serverId; on coordinator auth passes for AW/SU, then the
+    // agency returns an empty / 200 result for an unknown server.
+    // Single: AU→401, AN→401, AR→403, AW→403 (coord only), SU→403
+    // Coordinator: AU→401, AN→401, AR→403, AW→200 (or empty result), SU→200
+    name: "Get DBServer maintenance state (GET /_admin/cluster/maintenance/nonexistent)",
+    type: "admin",
+    method: "GET",
+    path: "/_admin/cluster/maintenance/nonexistent",
+  },
+
+  {
+    // PUT /_admin/cluster/maintenance/{serverId}
+    // Auth: canUseAdmin(Maintenance) → RW on _system  (check fires FIRST)
+    // Body: {"mode":"normal"} requests that maintenance is turned off — a
+    // no-op for a server already in normal mode, or a 412 precondition
+    // failure for an unknown server.  Either way it is harmless.
+    // Single: AU→401, AN→401, AR→403, AW→403 (coord only), SU→403
+    // Coordinator: AU→401, AN→401, AR→403, AW→412 or 200, SU→412 or 200
+    name: "Set DBServer maintenance state (PUT /_admin/cluster/maintenance/nonexistent)",
+    type: "admin",
+    method: "PUT",
+    path: "/_admin/cluster/maintenance/nonexistent",
+    body: { mode: "normal" },
+  },
+
+  {
+    // POST /_admin/cluster/moveShard
+    // Auth: canUseAdmin(MoveShards) OR canUseColl(RWMETA)  (check fires THIRD)
+    // Coordinator check fires FIRST; on single-server all columns → 403.
+    // Body must be a valid object for auth check to be reached.  Using a
+    // nonexistent collection means authorised users see 404 (safe).
+    // Single: AU→401, AN→401, AR→403, AW→403 (coord only), SU→403
+    // Coordinator: AU→401, AN→401, AR→403 (auth), AW→404 (coll not found), SU→404
+    name: "Move shard (POST /_admin/cluster/moveShard)",
+    type: "admin",
+    method: "POST",
+    path: "/_admin/cluster/moveShard",
+    body: { database: "_system", collection: "nonexistent_apitester", shard: "s1", fromServer: "from", toServer: "to" },
+  },
+
+  {
+    // GET /_admin/cluster/queryAgencyJob
+    // Auth: canUseAdmin(MoveShards) → RW on _system  (check fires FIRST)
+    // Uses a bogus job id; on coordinator authorised users receive 404.
+    // Single: AU→401, AN→401, AR→403, AW→403 (coord only), SU→403
+    // Coordinator: AU→401, AN→401, AR→403, AW→404 (job not found), SU→404
+    name: "Query agency job status (GET /_admin/cluster/queryAgencyJob)",
+    type: "admin",
+    method: "GET",
+    path: "/_admin/cluster/queryAgencyJob?id=nonexistent-job-apitester-99999",
+  },
+
+  {
+    // POST /_admin/cluster/rebalanceShards  (legacy endpoint)
+    // Auth: canUseAdmin(Rebalance) → RW on _system  (check fires THIRD)
+    // Single: AU->401, AN->401, AR->403, AW->403 (coord only), SU->403.
+    // Coordinator with POST: method OK → coordinator OK → auth check →
+    //   AU→401, AN→401, AR→403, AW→200, SU→200
+    name: "Rebalance shards legacy (POST /_admin/cluster/rebalanceShards)",
+    type: "admin",
+    method: "POST",
+    path: "/_admin/cluster/rebalanceShards",
+    body: {},
+  },
+
+  {
+    // POST /_admin/cluster/removeServer
+    // Auth: canUseAdmin(RemoveServer) → RW on _system  (check fires FIRST)
+    // Method check fires SECOND, coordinator check fires THIRD.
+    // Body with a nonexistent server id causes the agency lookup to return 404.
+    // Single: AU→401, AN→401, AR→403, AW→500 (coord only), SU→500
+    // Coordinator: AU→401, AN→401, AR→403, AW→404 (server not in health), SU→404
+    name: "Remove server (POST /_admin/cluster/removeServer)",
+    type: "admin",
+    method: "POST",
+    path: "/_admin/cluster/removeServer",
+    body: { server: "PRMR-nonexistent-apitester" },
+  },
+
+  {
+    // POST /_admin/cluster/resignLeadership
+    // Auth: canUseAdmin(MoveShards) → RW on _system  (check fires FIRST)
+    // NB: the code actually requires POST; PUT yields 405 for authorised users
+    // (auth check fires before the method check, so differentiation is still
+    // visible).
+    // Single: AU→401, AN→401, AR→403, AW→403 (coord only), SU→403
+    // Coordinator: AU→401, AN→401, AR→403, AW→400, SU→400
+    name: "Resign leadership (PUT /_admin/cluster/resignLeadership)",
+    type: "admin",
+    method: "POST",
+    path: "/_admin/cluster/resignLeadership",
+    body: {},
+  },
+
+  {
+    // PUT /_admin/cluster/uniqId
+    // Auth: canUseAdmin(Maintenance) → RW on _system  (check fires SECOND)
+    // ?number=1 requests a single unique ID range — entirely harmless.
+    // Single: AU→401, AN→401, AR→403, AW→403 (coord only), SU→403
+    // Coordinator: AU→401, AN→401, AR→403, AW→200, SU→200
+    name: "Reserve unique IDs (PUT /_admin/cluster/uniqId)",
+    type: "admin",
+    method: "PUT",
+    path: "/_admin/cluster/uniqId?number=1",
+  },
+
+  {
+    // PUT /_admin/cluster/vpackSortMigration/{serverId}
+    // Auth: isSuperuser only  (check fires FIRST — no named-user override)
+    // The "check" sub-command (GET) performs a read-only analysis of VPack
+    // index sort order without migrating any data.  Auth fires before the
+    // method check, so the auth matrix is fully visible with either verb.
+    // Single/Coordinator: AU→401, AN→401, AR→403, AW→403, SU→200
+    name: "VPack sort migration check (GET /_admin/cluster/vpackSortMigration/check)",
+    type: "admin",
+    method: "GET",
+    path: "/_admin/cluster/vpackSortMigration/check",
+  },
+
   // ── /_admin/compact ──────────────────────────────────────────────────────
 
   {
