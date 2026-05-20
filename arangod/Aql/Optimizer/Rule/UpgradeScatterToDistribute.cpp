@@ -274,6 +274,10 @@ void upgradeScatterToDistributeRule(Optimizer* opt,
       current = current->getFirstParent();
     }
   }
+  if (wasModified) {
+    plan->clearVarUsageComputed();
+    plan->findVarUsage();
+  }
   opt->addPlan(std::move(plan), rule, wasModified);
 }
 }  // namespace arangodb::aql
