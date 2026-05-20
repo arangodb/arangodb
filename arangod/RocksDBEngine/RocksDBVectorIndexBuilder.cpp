@@ -768,12 +768,9 @@ Result VectorIndexBuilder::persistVectorIndexMetadata(
   // after a downgrade. V2 metadata is parked in a separate slot; an old
   // binary looking at the V1 slot won't find it and will treat the index as
   // unusable
-  auto const slot = (metadata.formatVersion == VectorIndexFormatVersion::kV2)
-                        ? ::arangodb::VectorIndexMetadataSlot::kV2
-                        : ::arangodb::VectorIndexMetadataSlot::kV1;
-
   RocksDBKey key;
-  key.constructVectorIndexTrainedData(_index.objectId(), slot);
+  key.constructVectorIndexTrainedData(
+      _index.objectId(), vectorIndexMetadataSlot(metadata.formatVersion));
   auto value = RocksDBValue::VectorIndexValue(builder.slice());
 
   auto* vectorCF = RocksDBColumnFamilyManager::get(

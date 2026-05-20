@@ -181,17 +181,19 @@ vector::VectorIndexMetadata RocksDBVectorIndex::loadVectorIndexMetadata(
   // Try the V2 slot first, then fall back to the V1 slot. The slots are
   // distinct so an old binary that only knows the V1 slot will simply miss
   // V2 metadata after a downgrade and treat the index as unusable
-  auto readSlot = [&](VectorIndexMetadataSlot slot, std::string& raw) -> bool {
+  auto readSlot = [&](vector::VectorIndexFormatVersion version,
+                      std::string& raw) -> bool {
     RocksDBKey key;
-    key.constructVectorIndexTrainedData(objectId(), slot);
+    key.constructVectorIndexTrainedData(
+        objectId(), vector::vectorIndexMetadataSlot(version));
     rocksdb::ReadOptions ro;
     return _engine.db()->GetRootDB()->Get(ro, _cf, key.string(), &raw).ok();
   };
 
   vector::VectorIndexMetadata result;
   std::string raw;
-  if (readSlot(VectorIndexMetadataSlot::kV2, raw) ||
-      readSlot(VectorIndexMetadataSlot::kV1, raw)) {
+  if (readSlot(vector::VectorIndexFormatVersion::kV2, raw) ||
+      readSlot(vector::VectorIndexFormatVersion::kV1, raw)) {
     auto slice =
         velocypack::Slice(reinterpret_cast<uint8_t const*>(raw.data()));
     velocypack::deserialize(slice, result);
