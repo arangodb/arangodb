@@ -164,18 +164,13 @@ void RocksDBKey::constructVectorIndexValue(uint64_t indexId,
 }
 
 void RocksDBKey::constructVectorIndexTrainedData(uint64_t indexId,
-                                                 VectorIndexMetadataSlot slot) {
-  // Slot values are picked from the top of the uint64 range so they stay
-  // within the (indexId, indexId+1) bounds used by removeLargeRange on drop
-  // and never collide with a real IVF list number.
+                                                 uint64_t slot) {
   _type = RocksDBEntryType::VectorVPackIndexValue;
   size_t constexpr keyLength = sizeof(uint64_t) + sizeof(uint64_t);
   _buffer->clear();
   _buffer->reserve(keyLength);
   uint64ToPersistent(*_buffer, indexId);
-  uint64ToPersistent(
-      *_buffer,
-      static_cast<std::underlying_type_t<VectorIndexMetadataSlot>>(slot));
+  uint64ToPersistent(*_buffer, slot);
   TRI_ASSERT(_buffer->size() == keyLength);
 }
 
