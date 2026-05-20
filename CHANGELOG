@@ -1,6 +1,10 @@
 3.12.10-devel (XXXX-XX-XX)
 --------------------------
 
+* COR-387: Synchronous vector index creation no longer throws when training
+  fails. The index is created with `trainingState: "unusable"` and the
+  training error returned in `errorMessage`.
+
 * Upgraded included rclone to v1.73.5 with go1.25.10 and non-vulnerable
   dependencies.
 
@@ -35,8 +39,8 @@
 * COR-467: Extended `compareAstNodes` to compare AST nodes that are not directly
   VPack-serializable (references, attribute accesses, function calls, operators).
   `a == b` and `b == a` (and `!=`) compare as equal, as do NARY conditions and
-  IN/NOT IN arrays regardless of operand order. Bind parameters and quantifiers
-  are also handled.
+  IN/NOT IN literal arrays regardless of operand order. Bind parameters and
+  quantifiers are also handled.
 
 * COR-466: Added constant folding empty array comparisons in `FILTER` nodes,
   allowing filter optimizations:
