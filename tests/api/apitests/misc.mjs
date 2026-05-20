@@ -194,6 +194,41 @@ export default [
     path: "/_db/d/_api/query/rules",
   },
 
+  {
+    // POST /_api/query
+    // Validates (parses) an AQL query without executing it.
+    // Auth: AUTHEN — any authenticated user.
+    // Expected: AU→401/403, others→200 (with parsed query info)
+    name: "Validate AQL query (POST /_api/query)",
+    type: "all",
+    method: "POST",
+    path: "/_db/d/_api/query",
+    body: { query: "FOR d IN c RETURN d" },
+  },
+
+  {
+    // DELETE /_api/query/{id}
+    // Kills a running query by ID.
+    // Auth: AUTHEN; killing another user's query requires _system + SUPER.
+    // A nonexistent ID → 404 after auth check — safe and requires no setup.
+    // Expected: AU→401/403, others→404 (no such query running)
+    name: "Kill query by nonexistent id (DELETE /_api/query/nonexistent)",
+    type: "all",
+    method: "DELETE",
+    path: "/_db/d/_api/query/nonexistent-query-apitester-99999",
+  },
+
+  {
+    // DELETE /_api/query/slow
+    // Clears the slow query log for the current database.
+    // Auth: AUTHEN; clearing all DBs requires _system + SUPER.
+    // Expected: AU→401/403, others→200
+    name: "Clear slow query log (DELETE /_api/query/slow)",
+    type: "all",
+    method: "DELETE",
+    path: "/_db/d/_api/query/slow",
+  },
+
   // ── /_api/query-cache/* ──────────────────────────────────────────────────
 
   {
