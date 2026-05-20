@@ -380,6 +380,16 @@ async function doSetup(endpoint, rootPassword) {
     throw new Error(`Failed to create collection 'c': ${collResp.status} - ${JSON.stringify(collResp.body)}`);
   }
 
+  // ── Insert 100 documents into collection 'c' ─────────────────────────────
+  process.stdout.write("Inserting 100 documents into collection 'c'...");
+  const docs = Array.from({ length: 100 }, (_, i) => ({ Hallo: i + 1 }));
+  const docsResp = await api('POST', '/_db/d/_api/document/c', docs);
+  if (docsResp.status >= 200 && docsResp.status < 300) {
+    console.log(' OK');
+  } else {
+    throw new Error(`Failed to insert documents into 'c': ${docsResp.status} - ${JSON.stringify(docsResp.body)}`);
+  }
+
   // ── Create 64 permission-matrix users ────────────────────────────────────
   console.log('Creating 64 users...');
   for (const db of LEVELS) {
