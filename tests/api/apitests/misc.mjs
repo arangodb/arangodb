@@ -16,6 +16,46 @@
 
 export default [
 
+  // ── /_api/document-state ─────────────────────────────────────────────────
+  // Handler: RestDocumentStateHandler
+  // Only registered when replication2 is enabled and running in cluster mode;
+  // on a single server or coordinator without replication2 the route returns 404.
+  // Auth: GET → AdminReadReplicatedLog; POST/DELETE → AdminWriteReplicatedLog.
+  // A bogus numeric state-id (99999) causes a logical error (404/400) after
+  // auth passes — safe and requires no setup/teardown.
+
+  {
+    // GET /_api/document-state/<state-id>/shards
+    // Lists shards associated with the replicated-state machine.
+    // Expected: AU→401/403, AN/AR/AW→403, SU→200 or 4xx (state not found)
+    name: "Document-state get shards (GET /_api/document-state/99999/shards)",
+    type: "admin",
+    method: "GET",
+    path: "/_db/d/_api/document-state/99999/shards",
+  },
+
+  {
+    // POST /_api/document-state/<state-id>/snapshot/start
+    // Starts a document-state snapshot.  Body {} is accepted; logical error
+    // fires after auth if the state-id does not exist.
+    // Expected: AU→401/403, AN/AR/AW→403, SU→200 or 4xx (state not found)
+    name: "Document-state start snapshot (POST /_api/document-state/99999/snapshot/start)",
+    type: "admin",
+    method: "POST",
+    path: "/_db/d/_api/document-state/99999/snapshot/start",
+    body: {},
+  },
+
+  {
+    // DELETE /_api/document-state/<state-id>/snapshot/finish/<snapshot-id>
+    // Finishes (closes) a document-state snapshot.
+    // Expected: AU→401/403, AN/AR/AW→403, SU→200 or 4xx (state not found)
+    name: "Document-state finish snapshot (DELETE /_api/document-state/99999/snapshot/finish/99999)",
+    type: "admin",
+    method: "DELETE",
+    path: "/_db/d/_api/document-state/99999/snapshot/finish/99999",
+  },
+
   // ── /_api/endpoint ──────────────────────────────────────────────────────
 
   {
