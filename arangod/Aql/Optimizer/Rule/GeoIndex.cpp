@@ -281,8 +281,9 @@ static bool isValidGeoArg(AstNode const* lhs, AstNode const* rhs) {
     return static_cast<Variable const*>(lhs->getData())->id ==
            static_cast<Variable const*>(rhs->getData())->id;
   }
-  // explicitly check attribute accesses by variable + path before falling back
-  // to compareAstNodes, which handles them structurally but less readably
+  // explicitly check attribute accesses by variable + path:
+  // isAttributeAccessForVariable resolves the full variable-and-path pair,
+  // which is what geo index matching requires
   std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>> res1,
       res2;
   bool acc1 = lhs->isAttributeAccessForVariable(res1, true);
