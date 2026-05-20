@@ -185,7 +185,6 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
   auto& databasePath = _server.addFeature<DatabasePathFeature>();
   auto& dumpLimits = _server.addFeature<DumpLimitsFeature>();
   _server.addFeature<HttpEndpointProvider, EndpointFeature>();
-  _server.addFeature<EngineSelectorFeature>();
   _server.addFeature<EnvironmentFeature>();
   _server.addFeature<FileSystemFeature>();
   auto& flush = _server.addFeature<FlushFeature>(metrics);
