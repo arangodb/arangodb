@@ -412,4 +412,135 @@ export default [
     path: "/openapi.json",
   },
 
+  // ── /_api/tasks ──────────────────────────────────────────────────────────
+  // Handler: RestTasksHandler (V8 required; tasks are being phased out)
+  // Auth for GET: AUTHEN — any authenticated user; superuser sees all tasks,
+  //               others see only their own.
+  // Auth for POST/DELETE: canUseDb(Write) — DB RW.
+
+  {
+    // GET /_api/tasks
+    // Lists tasks visible to the calling user.
+    // Expected: AU→401/403, others→200 (filtered list)
+    name: "List tasks (GET /_api/tasks)",
+    type: ["admin", "database"],
+    method: "GET",
+    path: "/_db/d/_api/tasks",
+  },
+
+  {
+    // GET /_api/tasks/{id}
+    // Returns a specific task; nonexistent id → 404 after auth check.
+    // Expected: AU→401/403, others→404
+    name: "Get task by nonexistent id (GET /_api/tasks/nonexistent)",
+    type: ["admin", "database"],
+    method: "GET",
+    path: "/_db/d/_api/tasks/nonexistent-task-apitester-99999",
+  },
+
+  {
+    // POST /_api/tasks
+    // Creates a one-shot JavaScript task (V8 required).
+    // teardown: if the task was created (status 200), discard it.
+    // Expected: AU→401/403, AN/AR→403, AW/SU→200
+    name: "Create task (POST /_api/tasks)",
+    type: ["admin", "database"],
+    method: "POST",
+    path: "/_db/d/_api/tasks",
+    body: { name: "apitester-task", command: "1+1;", offset: 0 },
+    teardown: async (ctx) => {
+      if (ctx.response && ctx.response.status === 200 &&
+          ctx.response.body && ctx.response.body.id) {
+        await ctx.request('DELETE',
+          `/_db/d/_api/tasks/${ctx.response.body.id}`);
+      }
+    },
+  },
+
+  {
+    // DELETE /_api/tasks/{id}
+    // Drops a task by id.
+    // setup:    superuser creates a one-shot task and stores its id.
+    // teardown: superuser cleans up if the test user lacked permission.
+    // Expected: AU→401/403, AN/AR→403, AW/SU→200
+    name: "Delete task (DELETE /_api/tasks/<id>)",
+    type: ["admin", "database"],
+    method: "DELETE",
+    path: "/_db/d/_api/tasks/${ctx.data.id}",
+    setup: async (ctx) => {
+      const resp = await ctx.request('POST', '/_db/d/_api/tasks',
+        { name: "apitester-task", command: "1+1;", offset: 0 });
+      if (!resp.body || !resp.body.id) {
+        throw new Error(`setup: failed to create task: ${resp.status} ${JSON.stringify(resp.body)}`);
+      }
+      return { id: resp.body.id };
+    },
+    teardown: async (ctx) => {
+      if (!ctx.response || ctx.response.status !== 200) {
+        await ctx.request('DELETE', `/_db/d/_api/tasks/${ctx.data.id}`);
+      }
+    },
+  },
+
+  // ── /_api/token ──────────────────────────────────────────────────────────
+  // Handler: RestAccessTokenHandler
+  // Auth: canReadUser(user) for GET; canWriteUser(user) for POST/DELETE.
+  // In classic mode: isSuperuser || user==self || RW on _system.
+  // Tests use "root" as the target user (always exists).
+
+  {
+    // GET /_api/token/root
+    // Lists named access tokens belonging to the "root" user.
+    // Expected: AU→401/403, AN/AR→403 (no _system RW), AW/SU→200
+    name: "List access tokens for root (GET /_api/token/root)",
+    type: ["admin", "database"],
+    method: "GET",
+    path: "/_db/_system/_api/token/root",
+  },
+
+  {
+    // POST /_api/token/root
+    // Creates a named access token for the "root" user.
+    // teardown: if the token was created (status 200), discard it.
+    // Expected: AU→401/403, AN/AR→403, AW/SU→200
+    name: "Create access token for root (POST /_api/token/root)",
+    type: ["admin", "database"],
+    method: "POST",
+    path: "/_db/_system/_api/token/root",
+    body: { name: "apitester-token" },
+    teardown: async (ctx) => {
+      if (ctx.response && ctx.response.status === 200 &&
+          ctx.response.body && ctx.response.body.id) {
+        await ctx.request('DELETE',
+          `/_db/_system/_api/token/root/${ctx.response.body.id}`);
+      }
+    },
+  },
+
+  {
+    // DELETE /_api/token/root/{id}
+    // Revokes a named access token belonging to "root".
+    // setup:    superuser creates a token and stores its id.
+    // teardown: superuser cleans up if the test user lacked permission.
+    // Expected: AU→401/403, AN/AR→403, AW/SU→200
+    name: "Delete access token for root (DELETE /_api/token/root/<id>)",
+    type: ["admin", "database"],
+    method: "DELETE",
+    path: "/_db/_system/_api/token/root/${ctx.data.tokenId}",
+    setup: async (ctx) => {
+      const resp = await ctx.request('POST', '/_db/_system/_api/token/root',
+        { name: "apitester-token" });
+      if (!resp.body || !resp.body.id) {
+        throw new Error(`setup: failed to create token: ${resp.status} ${JSON.stringify(resp.body)}`);
+      }
+      return { tokenId: resp.body.id };
+    },
+    teardown: async (ctx) => {
+      if (!ctx.response || ctx.response.status !== 200) {
+        await ctx.request('DELETE',
+          `/_db/_system/_api/token/root/${ctx.data.tokenId}`);
+      }
+    },
+  },
+
 ];
