@@ -18,7 +18,9 @@
  *   export default [ { name, type, method, path, body?, headers?,
  *                       setup?, teardown? }, ... ];
  *
- *   type:     "collection" | "database" | "admin"
+ *   type:     "collection" | "database" | "admin" | "all"
+ *             or an array of those, e.g. ["collection", "database"]
+ *             "all" is a shorthand for ["collection", "database", "admin"]
  *   setup:    async (ctx) => { ... }   – runs before the test, superuser auth
  *   teardown: async (ctx) => { ... }   – runs after  the test, superuser auth
  *
@@ -156,7 +158,9 @@ For the 'test' subcommand each *.mjs file in <directory> must have a default
 export that is an array of test objects with the following fields:
 
   name      string   – human-readable test name
-  type      string   – "collection", "database", or "admin"
+  type      string | string[]  – one or more of "collection", "database", "admin", "all"
+              ("all" runs the test as all three types; a plain string is
+              equivalent to a single-element array)
   method    string   – HTTP method (GET, POST, PUT, DELETE, PATCH, HEAD)
   path      string   – URL path (e.g. "/_db/d/_api/collection/c")
   body      object?  – optional JSON request body
@@ -856,13 +860,27 @@ async function main() {
       if (!test.method) { console.error(`Error in "${file}": test "${test.name}" is missing "method".`); process.exit(1); }
       if (!test.path)   { console.error(`Error in "${file}": test "${test.name}" is missing "path".`);   process.exit(1); }
 
-      switch (test.type) {
-        case 'collection': collectionTests.push(test); break;
-        case 'database':   databaseTests.push(test);   break;
-        case 'admin':      adminTests.push(test);      break;
-        default:
-          console.error(`Error in "${file}": test "${test.name}" has unknown type "${test.type}". Expected "collection", "database", or "admin".`);
-          process.exit(1);
+      // Normalise type to an array so a plain string is treated the same as
+      // a single-element array (e.g. type: "collection" === ["collection"]).
+      const types = Array.isArray(test.type) ? test.type : [test.type];
+      if (types.length === 0) {
+        console.error(`Error in "${file}": test "${test.name}" has an empty "type" array.`);
+        process.exit(1);
+      }
+      for (const t of types) {
+        switch (t) {
+          case 'collection': collectionTests.push(test); break;
+          case 'database':   databaseTests.push(test);   break;
+          case 'admin':      adminTests.push(test);      break;
+          case 'all':
+            collectionTests.push(test);
+            databaseTests.push(test);
+            adminTests.push(test);
+            break;
+          default:
+            console.error(`Error in "${file}": test "${test.name}" has unknown type "${t}". Expected "collection", "database", "admin", or "all".`);
+            process.exit(1);
+        }
       }
     }
   }
