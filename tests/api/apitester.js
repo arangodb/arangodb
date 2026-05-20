@@ -40,6 +40,16 @@
  * If the returned object has a truthy 'skipTest' property the test request and
  * teardown are both skipped for that matrix cell; the output table shows SKIP.
  *
+ * ctx.response is set by the runner to the result of the test request before
+ * teardown is called.  It has the shape { status, body, headers } and lets
+ * teardown inspect what the test user's request actually returned, e.g. to
+ * extract a resource id for cleanup:
+ *
+ *   teardown: async (ctx) => {
+ *     if (ctx.response.status === 201)
+ *       await ctx.request('DELETE', `/_db/d/_api/cursor/${ctx.response.body.id}`);
+ *   }
+ *
  * String interpolation in path, body, and headers:
  *   Any string value in path, body (recursively), or headers that contains
  *   the substring '${' is evaluated as a JavaScript template literal with
@@ -606,10 +616,12 @@ async function runCollectionTest(endpoint, superuserToken, test) {
           ...resolvedHeaders,
         });
 
+        ctx.response = resp;
         if (teardown) {
           await runPhase(teardown, ctx, 'teardown', name);
         }
         ctx.data = undefined;
+        ctx.response = undefined;
 
         row += codeCell(resp.status);
       }
@@ -659,10 +671,12 @@ async function runDatabaseTest(endpoint, superuserToken, test) {
       ...resolvedHeaders,
     });
 
+    ctx.response = resp;
     if (teardown) {
       await runPhase(teardown, ctx, 'teardown', name);
     }
     ctx.data = undefined;
+    ctx.response = undefined;
 
     row += codeCell(resp.status);
   }
@@ -716,10 +730,12 @@ async function runAdminTest(endpoint, superuserToken, test) {
       ...resolvedHeaders,
     });
 
+    ctx.response = resp;
     if (teardown) {
       await runPhase(teardown, ctx, 'teardown', name);
     }
     ctx.data = undefined;
+    ctx.response = undefined;
 
     row += adminCodeCell(resp.status);
   }
@@ -741,10 +757,12 @@ async function runAdminTest(endpoint, superuserToken, test) {
       ...resolvedHeaders,
     });
 
+    ctx.response = suResp;
     if (teardown) {
       await runPhase(teardown, ctx, 'teardown', name);
     }
     ctx.data = undefined;
+    ctx.response = undefined;
 
     row += adminCodeCell(suResp.status) + '|';
   }
