@@ -786,12 +786,14 @@ void localizeSmartEdgeCollectionAccess(
     // plan.unlinkNode(node);
     auto names = virtualCollection->realNames();
 
-    auto isFromAccess = node->getAnnotatedNumber<int>("smart-edge-smart-join/is-from-access");
+    auto isFromAccess =
+        node->getAnnotatedNumber<int>("smart-edge-smart-join/is-from-access");
     if (not isFromAccess.has_value()) {
       continue;
     }
 
-    auto selectedCollections = std::array<std::string_view, 2>{names[0], *isFromAccess ? names[1] : names[2]};
+    auto selectedCollections = std::array<std::string_view, 2>{
+        names[0], *isFromAccess ? names[1] : names[2]};
 
     for (size_t idx = 0; idx < selectedCollections.size(); ++idx) {
       auto collection = query.collections().get(selectedCollections[idx]);
@@ -813,7 +815,7 @@ void localizeSmartEdgeCollectionAccess(
         gatherNode->addDependency(clonedCollectionAccess);
       }
       ExecutionNode::castTo<CollectionAccessingNode*>(clonedCollectionAccess)
-            ->collection(collection);
+          ->collection(collection);
 
       consumer->isResponsibleForInitializeCursor(idx == 0);
       scatterNode->addClient(*consumer);
