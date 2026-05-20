@@ -658,7 +658,9 @@ class Ast {
                                             AstNode*);
 
   /// @brief optimizes the binary arithmetic operators +, -, *, / and %
-  AstNode* optimizeBinaryOperatorArithmetic(AstNode*);
+  AstNode* optimizeBinaryOperatorArithmetic(transaction::Methods&,
+                                            AqlFunctionsInternalCache&,
+                                            AstNode*);
 
   /// @brief optimizes the ternary operator
   AstNode* optimizeTernaryOperator(AstNode*);
