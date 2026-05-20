@@ -895,7 +895,7 @@ class CompareAstNodesTest : public ::testing::Test {
     return _ast->createNodeValueString(s.data(), s.size());
   }
 
-  AstNode* binaryOp(AstNodeType t, AstNode* lhs, AstNode* rhs) {
+  AstNode* createBinaryOp(AstNodeType t, AstNode* lhs, AstNode* rhs) {
     return _ast->createNodeBinaryOperator(t, lhs, rhs);
   }
 
@@ -908,20 +908,21 @@ class CompareAstNodesTest : public ::testing::Test {
   }
 
   // Build `lhs IN [elems...]`
-  AstNode* inOp(AstNode* lhs, std::initializer_list<AstNode*> elems) {
+  AstNode* createInOp(AstNode* lhs, std::initializer_list<AstNode*> elems) {
     AstNode* arr = _ast->createNodeArray(elems.size());
     for (auto* e : elems) {
       arr->addMember(e);
     }
-    return binaryOp(NODE_TYPE_OPERATOR_BINARY_IN, lhs, arr);
+    return createBinaryOp(NODE_TYPE_OPERATOR_BINARY_IN, lhs, arr);
   }
 
-  AstNode* ninOp(AstNode* lhs, std::initializer_list<AstNode*> elems) {
+  AstNode* createNcreateInOp(AstNode* lhs,
+                             std::initializer_list<AstNode*> elems) {
     AstNode* arr = _ast->createNodeArray(elems.size());
     for (auto* e : elems) {
       arr->addMember(e);
     }
-    return binaryOp(NODE_TYPE_OPERATOR_BINARY_NIN, lhs, arr);
+    return createBinaryOp(NODE_TYPE_OPERATOR_BINARY_NIN, lhs, arr);
   }
 
   AstNode* fcall(std::string_view funcName,
@@ -1056,62 +1057,66 @@ TEST_F(CompareAstNodesTest, nestedAttributeAccessDifferentLeaf) {
 TEST_F(CompareAstNodesTest, equalityCommutative) {
   auto* a = makeVar("a");
   auto* b = makeVar("b");
-  auto* ab = binaryOp(NODE_TYPE_OPERATOR_BINARY_EQ, createRefNode(a),
-                      createRefNode(b));
-  auto* ba = binaryOp(NODE_TYPE_OPERATOR_BINARY_EQ, createRefNode(b),
-                      createRefNode(a));
+  auto* ab = createBinaryOp(NODE_TYPE_OPERATOR_BINARY_EQ, createRefNode(a),
+                            createRefNode(b));
+  auto* ba = createBinaryOp(NODE_TYPE_OPERATOR_BINARY_EQ, createRefNode(b),
+                            createRefNode(a));
   EXPECT_EQ(0, compare(ab, ba));
 }
 
 TEST_F(CompareAstNodesTest, inequalityCommutative) {
   auto* a = makeVar("a");
   auto* b = makeVar("b");
-  auto* ab = binaryOp(NODE_TYPE_OPERATOR_BINARY_NE, createRefNode(a),
-                      createRefNode(b));
-  auto* ba = binaryOp(NODE_TYPE_OPERATOR_BINARY_NE, createRefNode(b),
-                      createRefNode(a));
+  auto* ab = createBinaryOp(NODE_TYPE_OPERATOR_BINARY_NE, createRefNode(a),
+                            createRefNode(b));
+  auto* ba = createBinaryOp(NODE_TYPE_OPERATOR_BINARY_NE, createRefNode(b),
+                            createRefNode(a));
   EXPECT_EQ(0, compare(ab, ba));
 }
 
 TEST_F(CompareAstNodesTest, lessThanNotCommutative) {
   auto* a = makeVar("a");
   auto* b = makeVar("b");
-  auto* ab = binaryOp(NODE_TYPE_OPERATOR_BINARY_LT, createRefNode(a),
-                      createRefNode(b));
-  auto* ba = binaryOp(NODE_TYPE_OPERATOR_BINARY_LT, createRefNode(b),
-                      createRefNode(a));
+  auto* ab = createBinaryOp(NODE_TYPE_OPERATOR_BINARY_LT, createRefNode(a),
+                            createRefNode(b));
+  auto* ba = createBinaryOp(NODE_TYPE_OPERATOR_BINARY_LT, createRefNode(b),
+                            createRefNode(a));
   EXPECT_NE(0, compare(ab, ba));
 }
 
 TEST_F(CompareAstNodesTest, additionCommutative) {
-  auto* plus12 = binaryOp(NODE_TYPE_OPERATOR_BINARY_PLUS, intVal(1), intVal(2));
-  auto* plus21 = binaryOp(NODE_TYPE_OPERATOR_BINARY_PLUS, intVal(2), intVal(1));
+  auto* plus12 =
+      createBinaryOp(NODE_TYPE_OPERATOR_BINARY_PLUS, intVal(1), intVal(2));
+  auto* plus21 =
+      createBinaryOp(NODE_TYPE_OPERATOR_BINARY_PLUS, intVal(2), intVal(1));
   EXPECT_EQ(0, compare(plus12, plus21));
 }
 
 TEST_F(CompareAstNodesTest, binaryAndCommutative) {
   auto* a = makeVar("a");
   auto* b = makeVar("b");
-  auto* ab = binaryOp(NODE_TYPE_OPERATOR_BINARY_AND, createRefNode(a),
-                      createRefNode(b));
-  auto* ba = binaryOp(NODE_TYPE_OPERATOR_BINARY_AND, createRefNode(b),
-                      createRefNode(a));
+  auto* ab = createBinaryOp(NODE_TYPE_OPERATOR_BINARY_AND, createRefNode(a),
+                            createRefNode(b));
+  auto* ba = createBinaryOp(NODE_TYPE_OPERATOR_BINARY_AND, createRefNode(b),
+                            createRefNode(a));
   EXPECT_EQ(0, compare(ab, ba));
 }
 
 TEST_F(CompareAstNodesTest, binaryOrCommutative) {
   auto* a = makeVar("a");
   auto* b = makeVar("b");
-  auto* ab = binaryOp(NODE_TYPE_OPERATOR_BINARY_OR, createRefNode(a),
-                      createRefNode(b));
-  auto* ba = binaryOp(NODE_TYPE_OPERATOR_BINARY_OR, createRefNode(b),
-                      createRefNode(a));
+  auto* ab = createBinaryOp(NODE_TYPE_OPERATOR_BINARY_OR, createRefNode(a),
+                            createRefNode(b));
+  auto* ba = createBinaryOp(NODE_TYPE_OPERATOR_BINARY_OR, createRefNode(b),
+                            createRefNode(a));
   EXPECT_EQ(0, compare(ab, ba));
 }
 
 TEST_F(CompareAstNodesTest, multiplicationCommutative) {
-  auto* m12 = binaryOp(NODE_TYPE_OPERATOR_BINARY_TIMES, intVal(1), intVal(2));
-  auto* m21 = binaryOp(NODE_TYPE_OPERATOR_BINARY_TIMES, intVal(2), intVal(1));
+  auto* m12 =
+      createBinaryOp(NODE_TYPE_OPERATOR_BINARY_TIMES, intVal(1), intVal(2));
+  auto* m21 =
+      createBinaryOp(NODE_TYPE_OPERATOR_BINARY_TIMES, intVal(2), intVal(1));
   EXPECT_EQ(0, compare(m12, m21));
 }
 
@@ -1119,10 +1124,10 @@ TEST_F(CompareAstNodesTest, equalityDifferentRhsNotEqual) {
   auto* a = makeVar("a");
   auto* b = makeVar("b");
   auto* c = makeVar("c");
-  EXPECT_NE(0, compare(binaryOp(NODE_TYPE_OPERATOR_BINARY_EQ, createRefNode(a),
-                                createRefNode(b)),
-                       binaryOp(NODE_TYPE_OPERATOR_BINARY_EQ, createRefNode(a),
-                                createRefNode(c))));
+  EXPECT_NE(0, compare(createBinaryOp(NODE_TYPE_OPERATOR_BINARY_EQ,
+                                      createRefNode(a), createRefNode(b)),
+                       createBinaryOp(NODE_TYPE_OPERATOR_BINARY_EQ,
+                                      createRefNode(a), createRefNode(c))));
 }
 
 // --- FCALL nodes
@@ -1238,37 +1243,37 @@ TEST_F(CompareAstNodesTest, naryOrDifferentCountsNotEqual) {
 
 TEST_F(CompareAstNodesTest, inArrayElementOrderIndependent) {
   auto* x = makeVar("x");
-  auto* in12 = inOp(createRefNode(x), {intVal(1), intVal(2)});
-  auto* in21 = inOp(createRefNode(x), {intVal(2), intVal(1)});
+  auto* in12 = createInOp(createRefNode(x), {intVal(1), intVal(2)});
+  auto* in21 = createInOp(createRefNode(x), {intVal(2), intVal(1)});
   EXPECT_EQ(0, compare(in12, in21));
 }
 
 TEST_F(CompareAstNodesTest, ninArrayElementOrderIndependent) {
   auto* x = makeVar("x");
-  auto* nin12 = ninOp(createRefNode(x), {intVal(1), intVal(2)});
-  auto* nin21 = ninOp(createRefNode(x), {intVal(2), intVal(1)});
+  auto* nin12 = ncreateInOp(createRefNode(x), {intVal(1), intVal(2)});
+  auto* nin21 = ncreateInOp(createRefNode(x), {intVal(2), intVal(1)});
   EXPECT_EQ(0, compare(nin12, nin21));
 }
 
 TEST_F(CompareAstNodesTest, inDifferentOperandsNotEqual) {
   auto* x = makeVar("x");
   auto* y = makeVar("y");
-  auto* inX = inOp(createRefNode(x), {intVal(1)});
-  auto* inY = inOp(createRefNode(y), {intVal(1)});
+  auto* inX = createInOp(createRefNode(x), {intVal(1)});
+  auto* inY = createInOp(createRefNode(y), {intVal(1)});
   EXPECT_NE(0, compare(inX, inY));
 }
 
 TEST_F(CompareAstNodesTest, inDifferentArraySizeNotEqual) {
   auto* x = makeVar("x");
-  auto* in1 = inOp(createRefNode(x), {intVal(1)});
-  auto* in12 = inOp(createRefNode(x), {intVal(1), intVal(2)});
+  auto* in1 = createInOp(createRefNode(x), {intVal(1)});
+  auto* in12 = createInOp(createRefNode(x), {intVal(1), intVal(2)});
   EXPECT_NE(0, compare(in1, in12));
 }
 
 TEST_F(CompareAstNodesTest, inAndNinNotEqual) {
   auto* x = makeVar("x");
-  EXPECT_NE(0, compare(inOp(createRefNode(x), {intVal(1)}),
-                       ninOp(createRefNode(x), {intVal(1)})));
+  EXPECT_NE(0, compare(createInOp(createRefNode(x), {intVal(1)}),
+                       ncreateInOp(createRefNode(x), {intVal(1)})));
 }
 
 // --- bind parameters
@@ -1350,8 +1355,10 @@ TEST_F(CompareAstNodesTest, inNonConstantElementsOrderIndependent) {
   auto* a = makeVar("a");
   auto* b = makeVar("b");
   ASSERT_LT(a->id, b->id);
-  auto* inAB = inOp(createRefNode(x), {createRefNode(a), createRefNode(b)});
-  auto* inBA = inOp(createRefNode(x), {createRefNode(b), createRefNode(a)});
+  auto* inAB =
+      createInOp(createRefNode(x), {createRefNode(a), createRefNode(b)});
+  auto* inBA =
+      createInOp(createRefNode(x), {createRefNode(b), createRefNode(a)});
   EXPECT_EQ(0, compare(inAB, inBA));
 }
 
@@ -1359,8 +1366,10 @@ TEST_F(CompareAstNodesTest, ninNonConstantElementsOrderIndependent) {
   auto* x = makeVar("x");
   auto* a = makeVar("a");
   auto* b = makeVar("b");
-  auto* ninAB = ninOp(createRefNode(x), {createRefNode(a), createRefNode(b)});
-  auto* ninBA = ninOp(createRefNode(x), {createRefNode(b), createRefNode(a)});
+  auto* ninAB =
+      ncreateInOp(createRefNode(x), {createRefNode(a), createRefNode(b)});
+  auto* ninBA =
+      ncreateInOp(createRefNode(x), {createRefNode(b), createRefNode(a)});
   EXPECT_EQ(0, compare(ninAB, ninBA));
 }
 
@@ -1371,9 +1380,20 @@ TEST_F(CompareAstNodesTest,
        inMixedStringAndStructuralElementsOrderIndependent) {
   auto* x = makeVar("x");
   auto* p = _ast->createNodeParameter("p");
-  auto* in1 = inOp(createRefNode(x), {strVal("abc"), p});
-  auto* in2 = inOp(createRefNode(x), {p, strVal("abc")});
+  auto* in1 = createInOp(createRefNode(x), {strVal("abc"), p});
+  auto* in2 = createInOp(createRefNode(x), {p, strVal("abc")});
   EXPECT_EQ(0, compare(in1, in2));
+}
+
+TEST_F(CompareAstNodesTest, inLiteralArrayVsBindParameterNotEqual) {
+  // When one side is a literal array and the other is a bind parameter, they
+  // have different RHS node types and must not compare as equal.
+  auto* x = makeVar("x");
+  auto* p = _ast->createNodeParameter("arr");
+  auto* inLiteral = createInOp(createRefNode(x), {intVal(1), intVal(2)});
+  auto* inBind =
+      createBinaryOp(NODE_TYPE_OPERATOR_BINARY_IN, createRefNode(x), p);
+  EXPECT_NE(0, compare(inLiteral, inBind));
 }
 
 // --- SUBQUERY nodes

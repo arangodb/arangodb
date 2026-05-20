@@ -422,8 +422,8 @@ int compareFcall(AstNode const* lhs, AstNode const* rhs, bool compareUtf8) {
 }
 
 /// @brief compare commutative binary operators with operand order normalization
-// Normalize operand order so `a == b` and `b == a` compare as equal.
-// BINARY_AND/OR are pre-normalization; normalized conditions use NARY.
+/// Normalize operand order so `a == b` and `b == a` compare as equal.
+/// BINARY_AND/OR are pre-normalization; normalized conditions use NARY.
 int compareCommutativeBinary(AstNode const* lhs, AstNode const* rhs,
                              bool compareUtf8) {
   TRI_ASSERT(lhs->numMembers() == 2);
@@ -615,6 +615,8 @@ int compareAstNodes(AstNode const* lhs, AstNode const* rhs, bool compareUtf8) {
   }
 
   if (lType == VPackValueType::Custom) {
+    // Structural nodes are matched by node type and children, not by evaluated
+    // value, so resolveAttributeAccess is not forwarded into this path.
     return compareAstNodesComplexVPack(lhs, rhs, compareUtf8);
   }
   return compareAstNodesDirectVPack<resolveAttributeAccess>(lhs, rhs,
