@@ -946,7 +946,8 @@ class CompareAstNodesTest : public ::testing::Test {
     return _ast->createNode(b.slice());
   }
 
-  // <true> would crash resolving attribute accesses with a variable base.
+  // compareAstNodes<true> would crash: resolveAttributeAccess=true calls
+  // Ast::resolveConstAttributeAccess, which asserts on non-constant base nodes.
   int compare(AstNode const* lhs, AstNode const* rhs, bool utf8 = false) {
     return compareAstNodes<false>(lhs, rhs, utf8);
   }

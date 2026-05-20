@@ -352,7 +352,7 @@ int compareAstNodesDirectVPack(AstNode const* lhs, AstNode const* rhs,
   }
 }
 
-/// @brief compare subquery nodes by pointer identity
+/// @brief compare subquery nodes by pointer address
 int compareSubquery(AstNode const* lhs, AstNode const* rhs) noexcept {
   return (lhs == rhs) ? 0 : (lhs < rhs ? -1 : 1);
 }
@@ -477,7 +477,7 @@ int compareNary(AstNode const* lhs, AstNode const* rhs, bool compareUtf8) {
   return 0;
 }
 
-/// @brief compare IN/NIN nodes with rhs array element order independence
+/// @brief compare IN/NIN nodes with order-independent array element comparison
 int compareInNin(AstNode const* lhs, AstNode const* rhs, bool compareUtf8) {
   TRI_ASSERT(lhs->numMembers() == 2);
   TRI_ASSERT(rhs->numMembers() == 2);
