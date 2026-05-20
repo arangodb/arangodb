@@ -1168,6 +1168,14 @@ TEST_F(CompareAstNodesTest, fcallUserDifferentNamesNotEqual) {
   EXPECT_NE(0, compare(fcallUser("my::func1"), fcallUser("my::func2")));
 }
 
+TEST_F(CompareAstNodesTest, fcallNonDeterministicNeverEqual) {
+  // Two different RAND() nodes must not compare as equal — each call produces
+  // a different value at runtime.
+  auto* r1 = fcall("RAND", {});
+  auto* r2 = fcall("RAND", {});
+  EXPECT_NE(0, compare(r1, r2));
+}
+
 // --- NARY operators
 // -----------------------------------------------------------
 
