@@ -1,7 +1,7 @@
 export default [
   {
     name: "Read a document (GET)",
-    type: "collection",
+    type: "all",
     setup: async (ctx) => {
       const r = await ctx.request('POST', '/_db/d/_api/document/c', { value: 1 });
       return { key: r.body._key };
@@ -15,7 +15,7 @@ export default [
 
   {
     name: "Check document existence (HEAD)",
-    type: "collection",
+    type: "all",
     // Insert the document so there is always something to check.
     setup: async (ctx) => {
       await ctx.request('DELETE', '/_db/d/_api/document/c/testdoc');
@@ -30,7 +30,7 @@ export default [
 
   {
     name: "Insert a document with pre-specified key (POST)",
-    type: "collection",
+    type: "all",
     // Ensure the document does not exist before each attempt.
     setup: async (ctx) => {
       await ctx.request('DELETE', '/_db/d/_api/document/c/testdoc');
@@ -46,7 +46,7 @@ export default [
 
   {
     name: "Replace a document (PUT) with key",
-    type: "collection",
+    type: "all",
     // Insert the document so there is always something to replace.
     setup: async (ctx) => {
       await ctx.request('DELETE', '/_db/d/_api/document/c/testdoc');
@@ -62,7 +62,7 @@ export default [
 
   {
     name: "Replace a document (PUT) without key",
-    type: "collection",
+    type: "all",
     // Insert the document so there is always something to replace.
     setup: async (ctx) => {
       await ctx.request('DELETE', '/_db/d/_api/document/c/testdoc');
@@ -78,7 +78,7 @@ export default [
 
   {
     name: "Update a document (PATCH) with key",
-    type: "collection",
+    type: "all",
     // Insert the document so there is always something to patch.
     setup: async (ctx) => {
       await ctx.request('DELETE', '/_db/d/_api/document/c/testdoc');
@@ -94,7 +94,7 @@ export default [
 
   {
     name: "Update a document (PATCH) without key",
-    type: "collection",
+    type: "all",
     // Insert the document so there is always something to patch.
     setup: async (ctx) => {
       await ctx.request('DELETE', '/_db/d/_api/document/c/testdoc');
@@ -110,7 +110,7 @@ export default [
 
   {
     name: "Delete a document (DELETE) with key",
-    type: "collection",
+    type: "all",
     // Insert the document so there is always something to delete.
     setup: async (ctx) => {
       await ctx.request('DELETE', '/_db/d/_api/document/c/testdoc');
@@ -126,7 +126,7 @@ export default [
 
   {
     name: "Delete a document (DELETE) without key",
-    type: "collection",
+    type: "all",
     // Insert the document so there is always something to delete.
     setup: async (ctx) => {
       await ctx.request('DELETE', '/_db/d/_api/document/c/testdoc');
