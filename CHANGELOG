@@ -5,7 +5,9 @@
   to skip the document materialization step. Adds optimizer rule
   `materialize-for-enumerate-near`.
 
-* Updated node module fast-uri to 3.1.2.
+* COR-387: Synchronous vector index creation no longer throws when training
+  fails. The index is created with `trainingState: "unusable"` and the
+  training error returned in `errorMessage`.
 
 * Upgraded included rclone to v1.73.5 with go1.25.10 and non-vulnerable
   dependencies.

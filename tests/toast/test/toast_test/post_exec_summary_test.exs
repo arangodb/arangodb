@@ -420,6 +420,49 @@ defmodule ToastTest.Formatting.PostExecSummaryTest do
     assert output =~ "Log: /tmp/arangodb/agent1.log"
   end
 
+  test "prints crash footer with invalidated test count" do
+    result = %SuiteResult{
+      suite: "smoke",
+      started_at: ~U[2026-03-09 10:00:00Z],
+      finished_at: ~U[2026-03-09 10:05:00Z],
+      times_us: %{async: 0, load: 0, run: 300_000_000},
+      modules: %{
+        SomeModule => %{
+          started_at: ~U[2026-03-09 10:00:00Z],
+          finished_at: ~U[2026-03-09 10:05:00Z],
+          setup_finished_at: nil,
+          teardown_started_at: nil,
+          tests: [
+            %{name: :test_one, outcome: :failed, duration_us: 0, tags: %{}},
+            %{name: :test_two, outcome: :invalidated, duration_us: 0, tags: %{}},
+            %{name: :test_three, outcome: :invalidated, duration_us: 0, tags: %{}}
+          ]
+        }
+      },
+      issues: [crash_issue_with_coredump()],
+      coredumps: [coredump_report()],
+      events: %{},
+      warnings: []
+    }
+
+    output = capture_io(fn -> PostExecSummary.print(result) end)
+
+    assert output =~ "CRASHES (1)"
+    assert output =~ "2 subsequent tests invalidated by crash"
+  end
+
+  test "does not print crash footer when no tests are invalidated" do
+    output =
+      capture_io(fn ->
+        PostExecSummary.print(
+          suite_result([crash_issue_with_coredump()], coredumps: [coredump_report()])
+        )
+      end)
+
+    assert output =~ "CRASHES (1)"
+    refute output =~ "invalidated"
+  end
+
   test "prints warnings section when warnings are present" do
     warnings = ["Coredump discovery may not work: handler unknown"]
 

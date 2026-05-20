@@ -219,7 +219,7 @@ defmodule ToastTest.SuiteResultTest do
         assert length(tests) == 2
 
         passed = Enum.find(tests, &(&1["outcome"] == "passed"))
-        assert passed["module"] == "Elixir.FakeModule"
+        assert passed["module"] == "FakeModule"
         assert passed["name"] == "test passes"
         assert passed["duration_us"] == 58_000_000
       end)
