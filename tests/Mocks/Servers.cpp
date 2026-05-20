@@ -179,7 +179,7 @@ static void SetupDatabaseFeaturePhase(MockServer& server) {
   server.addFeature<ViewTypesFeature>(false);  // true ??
   server.addFeature<MaintenanceFeature>(false,
                                         nullptr);  // do not start the thread
-  server.addFeature<VectorIndexFeature>(true, databaseFeature);
+  server.addFeature<VectorIndexFeature>(false, databaseFeature);
 
 #if USE_ENTERPRISE
   // required for AuthenticationFeature with USE_ENTERPRISE
