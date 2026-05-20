@@ -786,7 +786,8 @@ bool ExecutionNode::flatWalk(WalkerWorkerBase<ExecutionNode>& worker,
   return doWalk(worker, false, FlattenType::INLINE_ALL);
 }
 
-bool ExecutionNode::flatWalk(WalkerWorkerBase<ExecutionNode>& worker, FlattenType ft) {
+bool ExecutionNode::flatWalk(WalkerWorkerBase<ExecutionNode>& worker,
+                             FlattenType ft) {
   return doWalk(worker, false, ft);
 }
 
@@ -845,7 +846,8 @@ bool ExecutionNode::doWalk(WalkerWorkerBase<ExecutionNode>& worker,
           if (flattenType == FlattenType::INLINE_ALL || n->getType() == MUTEX ||
               (flattenType == FlattenType::INLINE_ASYNC_AND_SCATTER &&
                n->getType() == SCATTER)) {
-            ADB_PROD_ASSERT(!parallelStarter.empty()) << n->id() << " " << n->getTypeString();
+            ADB_PROD_ASSERT(!parallelStarter.empty())
+                << n->id() << " " << n->getTypeString();
             // If we are not INLINE_ALL, only flatten the MUTEX, which is the
             // counterpart of ASYNC
             auto& starter = parallelStarter.back();
@@ -908,10 +910,9 @@ bool ExecutionNode::doWalk(WalkerWorkerBase<ExecutionNode>& worker,
               TRI_ASSERT(flattenType == FlattenType::INLINE_ASYNC ||
                          flattenType == FlattenType::INLINE_ASYNC_AND_SCATTER);
               auto peek = n->getFirstDependency();
-              if (peek->getType() == ASYNC || flattenType == FlattenType::INLINE_ASYNC_AND_SCATTER) {
-                // Only Async nodes shall be flattened
-                // So yes we found the combination we want to falten here
-
+              if (peek->getType() == ASYNC ||
+                  flattenType == FlattenType::INLINE_ASYNC_AND_SCATTER) {
+                // So yes we found the combination we want to flatten here
                 // Remember where we started the flattening process
                 parallelStarter.emplace_back(n);
                 // Add the next dependency to continue
