@@ -90,8 +90,7 @@ function MaxNumberOfConditionsSuite () {
     testComplexConditionNoThresholdExceedsMemory : function () {
       // Unique values per branch prevent dedup from shrinking the DNF expansion.
       // 10 branches × 3 conditions each → 3^10 = 59,049 AND-branches after
-      // negation and DNF expansion; enough to exceed 64 MB even after
-      // always-true condition stripping.
+      // negation and DNF expansion; enough to exceed 64 MB.
       let parts = [];
       for (let i = 0; i < 10; ++i) {
         parts.push(`(doc.value1 == ${i} && doc.foo == 'bar${i}' && doc.what NOT IN ['test${i}a', 'test${i}b', 'test${i}c'])`);

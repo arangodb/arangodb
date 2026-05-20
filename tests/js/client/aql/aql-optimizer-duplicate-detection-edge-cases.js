@@ -163,12 +163,13 @@ function DuplicateConditionOptimizationSuite() {
     // Non-deterministic conditions are skipped by deduplication.
     testNonDeterministicNotDeduplicated: function () {
       // RAND() >= 0 is non-deterministic; dedup must not fire so both calls
-      // remain in the plan. Verify no crash and correct result count.
+      // remain in the plan.
       const q = `FOR doc IN ${cn} FILTER RAND() >= 0 AND RAND() >= 0 RETURN doc.value`;
       assertEqual(10, query(q).length);
-      const plan = db._createStatement(q).explain().plan;
-      const filterNodes = plan.nodes.filter(n => n.type === 'FilterNode');
-      assertTrue(filterNodes.length > 0, 'FilterNode should remain for non-deterministic conditions');
+      const planStr = JSON.stringify(db._createStatement(q).explain().plan);
+      // both RAND() calls must survive
+      const randCount = (planStr.match(/"rand"/gi) || []).length;
+      assertTrue(randCount >= 2, 'both RAND() calls must remain in the plan after dedup is skipped');
     },
 
     // Duplicate with both sides non-constant (two attribute accesses).

@@ -1052,19 +1052,6 @@ TEST_F(CompareAstNodesTest, nestedAttributeAccessDifferentLeaf) {
                        attr(attr(createRefNode(x), "a"), "c")));
 }
 
-TEST_F(CompareAstNodesTest, nestedAttributeAccessEqual) {
-  auto* x = makeVar("x");
-  auto* lhs = attr(attr(createRefNode(x), "a"), "b");
-  auto* rhs = attr(attr(createRefNode(x), "a"), "b");
-  EXPECT_EQ(0, compare(lhs, rhs));
-}
-
-TEST_F(CompareAstNodesTest, nestedAttributeAccessDifferentLeaf) {
-  auto* x = makeVar("x");
-  EXPECT_NE(0, compare(attr(attr(createRefNode(x), "a"), "b"),
-                       attr(attr(createRefNode(x), "a"), "c")));
-}
-
 // --- commutative binary operators (EQ / NE)
 // -----------------------------------
 
