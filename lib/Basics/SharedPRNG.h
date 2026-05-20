@@ -17,31 +17,16 @@
 /// limitations under the License.
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Daniel H. Larkin
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
-#include "Basics/SharedPRNG.h"
+#include <cstdint>
 
-namespace arangodb {
+namespace arangodb::basics {
 
-class SharedPRNGFeature final
-    : public application_features::ApplicationFeature {
- public:
-  static constexpr std::string_view name() noexcept { return "SharedPRNG"; }
-
-  explicit SharedPRNGFeature(application_features::ApplicationServer& server);
-
-  uint64_t rand() noexcept;
-
-  basics::SharedPRNG& getPRNG() noexcept { return _prng; }
-
- private:
-  basics::SharedPRNG _prng;
+struct SharedPRNG final {
+  static std::uint64_t rand() noexcept;
 };
 
-}  // namespace arangodb
+}  // namespace arangodb::basics
