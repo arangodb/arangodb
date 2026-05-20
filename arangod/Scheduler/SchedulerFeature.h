@@ -24,6 +24,7 @@
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "Basics/SharedPRNG.h"
 #include "Scheduler/SchedulerFeatureOptions.h"
 
 #include <memory>
@@ -42,7 +43,8 @@ class SchedulerFeature final : public application_features::ApplicationFeature {
   static Scheduler* SCHEDULER;
 
   SchedulerFeature(application_features::ApplicationServer& server,
-                   metrics::MetricsFeature& metrics);
+                   metrics::MetricsFeature& metrics,
+                   basics::SharedPRNG& sharedPRNG);
   ~SchedulerFeature();
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -67,6 +69,7 @@ class SchedulerFeature final : public application_features::ApplicationFeature {
   SchedulerFeatureOptions _options;
 
   std::unique_ptr<Scheduler> _scheduler;
+  basics::SharedPRNG& _sharedPRNG;
   metrics::MetricsFeature& _metricsFeature;
 
   struct AsioHandler;

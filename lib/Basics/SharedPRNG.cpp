@@ -17,32 +17,53 @@
 /// limitations under the License.
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#include "SharedPRNG.h"
 
-#include "Basics/ErrorCode.h"
-#include "Cache/Manager.h"
+#include "Basics/splitmix64.h"
+#include "Basics/xoroshiro128plus.h"
 
-namespace arangodb {
-namespace cache {
+#include <mutex>
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Dedicated class to rebalance Manager.
-////////////////////////////////////////////////////////////////////////////////
-class Rebalancer {
+namespace arangodb::basics {
+
+namespace {
+
+/// @brief helper class for thread-safe creation of PRNG seed value
+class PRNGSeeder {
  public:
-  // Initialize state with no open transactions.
-  explicit Rebalancer(Manager* manager);
+  PRNGSeeder() : _seeder(0xdeadbeefdeadbeefULL) {}
 
-  // Rebalance the manager.
-  ErrorCode rebalance();
+  uint64_t next() noexcept {
+    std::lock_guard<std::mutex> guard(_mutex);
+    return _seeder.next();
+  }
 
  private:
-  Manager* _manager;
+  std::mutex _mutex;
+  splitmix64 _seeder;
 };
 
-};  // end namespace cache
-};  // end namespace arangodb
+/// @brief global PRNG seeder, to seed thread-local PRNG objects
+PRNGSeeder globalSeeder;
+
+struct SeededPRNG {
+  SeededPRNG() noexcept {
+    uint64_t seed1 = globalSeeder.next();
+    uint64_t seed2 = globalSeeder.next();
+    prng.seed(seed1, seed2);
+  }
+
+  inline uint64_t next() noexcept { return prng.next(); }
+
+  xoroshiro128plus prng;
+};
+
+static thread_local SeededPRNG threadLocalPRNG;
+
+}  // namespace
+
+std::uint64_t SharedPRNG::rand() noexcept { return threadLocalPRNG.next(); }
+
+}  // namespace arangodb::basics
