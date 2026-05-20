@@ -276,4 +276,19 @@ export default [
     path: "/_admin/database/target-version",
   },
 
+  // ── /_admin/shutdown ─────────────────────────────────────────────────────
+
+  {
+    // GET /_admin/shutdown
+    // Auth: AUTHEN — no authorization check exists in the GET branch at all;
+    // the handler simply returns soft-shutdown progress data.
+    // Coordinator check fires FIRST (before any auth check); on a
+    // single-server all columns receive 405 METHOD_NOT_ALLOWED.
+    // On coordinator: AU→200, AN→200, AR→200, AW→200, superuser→200
+    name: "Soft shutdown progress (GET /_admin/shutdown)",
+    type: "admin",
+    method: "GET",
+    path: "/_admin/shutdown",
+  },
+
 ];
