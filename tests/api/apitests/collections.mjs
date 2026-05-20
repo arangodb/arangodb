@@ -200,6 +200,14 @@ export default [
     method: "PUT",
     path: "/_db/d/_api/collection/c/truncate",
     body: {},
+    teardown: async (ctx) => {
+      // Re-insert the 100 setup documents if the truncate succeeded (count == 0).
+      const countResp = await ctx.request('GET', '/_db/d/_api/collection/c/count');
+      if (countResp.body && countResp.body.count === 0) {
+        const docs = Array.from({ length: 100 }, (_, i) => ({ Hallo: i + 1 }));
+        await ctx.request('POST', '/_db/d/_api/document/c', docs);
+      }
+    },
   },
 
   // ── POST /_db/d/_api/collection ──────────────────────────────────────────
