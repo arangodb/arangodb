@@ -3598,7 +3598,7 @@ AstNode* Ast::optimizeBinaryOperatorRelational(
         (node->type == NODE_TYPE_OPERATOR_BINARY_IN ||
          node->type == NODE_TYPE_OPERATOR_BINARY_NIN)) {
       // only sort constant arrays; non-constant ones can't be sorted at compile
-      // time if the IN list contains a considerable amount of items, we will
+      // time. if the IN list contains a considerable amount of items, we will
       // sort it, so we can find elements quicker later using a binary search
       // note that sorting will also set a flag for the node
 

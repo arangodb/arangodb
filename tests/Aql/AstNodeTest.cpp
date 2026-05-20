@@ -946,8 +946,8 @@ class CompareAstNodesTest : public ::testing::Test {
     return _ast->createNode(b.slice());
   }
 
-  // compareAstNodes<true> would crash: resolveAttributeAccess=true calls
-  // Ast::resolveConstAttributeAccess, which asserts on non-constant base nodes.
+  // <true> only works for compile-time constants, and test nodes use loop
+  // variables.
   int compare(AstNode const* lhs, AstNode const* rhs, bool utf8 = false) {
     return compareAstNodes<false>(lhs, rhs, utf8);
   }
@@ -1174,11 +1174,13 @@ TEST_F(CompareAstNodesTest, fcallUserDifferentNamesNotEqual) {
 }
 
 TEST_F(CompareAstNodesTest, fcallNonDeterministicNeverEqual) {
-  // Two different RAND() nodes must not compare as equal — each call produces
-  // a different value at runtime.
+  // Two different RAND() nodes must not compare as equal. Also verify
+  // anti-symmetry: compare(a,b) and compare(b,a) must have opposite signs.
   auto* r1 = fcall("RAND", {});
   auto* r2 = fcall("RAND", {});
-  EXPECT_NE(0, compare(r1, r2));
+  int const cmp = compare(r1, r2);
+  EXPECT_NE(0, cmp);
+  EXPECT_EQ(-cmp, compare(r2, r1));
 }
 
 // --- NARY operators
@@ -1376,8 +1378,7 @@ TEST_F(CompareAstNodesTest, ninNonConstantElementsOrderIndependent) {
 // test string and custom types, as both have rank 3 in valueTypeOrder, and we
 // need to make sure they're distinguished to produce the correct comparison
 // result.
-TEST_F(CompareAstNodesTest,
-       inMixedStringAndStructuralElementsOrderIndependent) {
+TEST_F(CompareAstNodesTest, inStringElementsSortBeforeStructural) {
   auto* x = makeVar("x");
   auto* p = _ast->createNodeParameter("p");
   auto* in1 = createInOp(createRefNode(x), {strVal("abc"), p});
