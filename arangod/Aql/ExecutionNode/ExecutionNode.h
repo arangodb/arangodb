@@ -352,8 +352,12 @@ class ExecutionNode {
 
   bool walkSubqueriesFirst(WalkerWorkerBase<ExecutionNode>& worker);
 
-
-  enum FlattenType { NONE, INLINE_ASYNC, INLINE_ALL, INLINE_ASYNC_AND_SCATTER };
+  enum class FlattenType {
+    NONE,
+    INLINE_ASYNC,
+    INLINE_ALL,
+    INLINE_ASYNC_AND_SCATTER
+  };
 
   bool flatWalk(WalkerWorkerBase<ExecutionNode>& worker, bool onlyFlattenAsync);
   bool flatWalk(WalkerWorkerBase<ExecutionNode>& worker, FlattenType);
@@ -636,7 +640,6 @@ class ExecutionNode {
  public:
   /// @brief used as "type traits" for ExecutionNodes and derived classes
   static constexpr bool IsExecutionNode = true;
-
 
  private:
   bool doWalk(WalkerWorkerBase<ExecutionNode>& worker, bool subQueryFirst,
