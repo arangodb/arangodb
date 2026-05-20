@@ -102,7 +102,7 @@ function objectSplicingSuite () {
       let res = db._query(query).toArray();
       assertEqual([ { "name" : "Rahul", "age" : 21, "city" : "Delhi" } ], res);  
     },
-    testDuplicatePropertyWithOverriddenWithInObject: function () {
+    testLastKeyWinWithDuplicateDynamicKey: function () {
       let query = `FOR i IN 1..3 RETURN {[CONCAT("x",i)]: 0, x2: 1}`;
       let res = db._query(query).toArray();
       assertEqual([ { "x1" : 0, "x2" : 1 }, { "x2" : 1 }, { "x3" : 0, "x2" : 1 }], res);  
