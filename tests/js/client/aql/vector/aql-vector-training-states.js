@@ -38,6 +38,7 @@ const {
   generateDocs,
   waitForVectorIndexState,
   VectorIndexTrainingState,
+  assertEnsureIndexResultUnusable,
 } = require("@arangodb/testutils/vector-index-common");
 const {deriveTestSuite} = require("@arangodb/test-helper-common");
 
@@ -406,28 +407,19 @@ function SparseScalingVectorIndexTestSuite() {
       collection.insert(vectorDocs);
       collection.insert(nonVectorDocs);
 
-      try {
-        createSparseScalingIndex(collection);
-        fail();
-      } catch (e) {
-        assertEqual(errors.ERROR_QUERY_VECTOR_INDEX_NOT_READY.code, e.errorNum,
-          "Expected NOT_READY when vector-bearing docs (" + vectorDocsBelowThreshold +
-          ") are below threshold (" + scalingMinNLists +
-          "), even though total docs (" + (200 + vectorDocsBelowThreshold) +
-          ") exceed threshold"
-        );
-      }
+      const result = createSparseScalingIndex(collection);
+      assertEnsureIndexResultUnusable(result,
+        `${vectorDocsBelowThreshold} vector-bearing docs below threshold ` +
+        `${scalingMinNLists} despite ${200 + vectorDocsBelowThreshold} total docs`);
+
+      assertIndexUnusable(collection, "vec_l2");
     },
 
     testSparseScalingOnEmptyCollectionRemainsUnusable: function() {
-      try {
-        createSparseScalingIndex(collection);
-        fail();
-      } catch (e) {
-        assertEqual(errors.ERROR_QUERY_VECTOR_INDEX_NOT_READY.code, e.errorNum,
-          "Expected NOT_READY when collection is empty"
-        );
-      }
+      const result = createSparseScalingIndex(collection);
+      assertEnsureIndexResultUnusable(result, "empty collection");
+
+      assertIndexUnusable(collection, "vec_l2");
     },
   };
 }
