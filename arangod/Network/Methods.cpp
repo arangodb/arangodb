@@ -23,6 +23,8 @@
 
 #include "Methods.h"
 
+#include "Activities/GenericActivity.h"
+#include "Activities/RegistryGlobalVariable.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Agency/AgencyFeature.h"
 #include "Basics/Exceptions.h"
@@ -239,11 +241,14 @@ struct Pack {
   RequestLane continuationLane;
   bool skipScheduler;
   bool handleContentEncoding;
+  activities::GenericActivity::HandleType activity;
   Pack(DestinationId&& dest, RequestLane lane, bool skip, bool handle)
       : dest(std::move(dest)),
         continuationLane(lane),
         skipScheduler(skip),
-        handleContentEncoding(handle) {}
+        handleContentEncoding(handle),
+        activity(activities::make<activities::GenericActivity>(
+            "InternalRequestActivity", activities::GenericActivityData{})) {}
 };
 
 void actuallySendRequest(std::shared_ptr<Pack>&& p, ConnectionPool* pool,
