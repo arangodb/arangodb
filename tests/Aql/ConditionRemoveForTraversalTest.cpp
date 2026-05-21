@@ -539,6 +539,9 @@ TEST_F(ConditionRemoveForTraversalTest,
 
 // -----------------------------------------------------------------------------
 // Pass 6: Quantifier mismatch on path conditions
+// Regression tests for COR-546: getIntValue() (no-arg) always returned 0 for
+// quantifier nodes, making ALL/NONE/ANY indistinguishable and causing the guard
+// to never fire for mismatched quantifiers.
 // -----------------------------------------------------------------------------
 
 TEST_F(ConditionRemoveForTraversalTest,
