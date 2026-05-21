@@ -71,7 +71,7 @@ async function getDeployInfo(ctx) {
   }
 
   // Cluster: ask the coordinator for the authoritative inventory of database d.
-  const invResp = await ctx.request('GET', '/_db/d/_admin/replication/clusterInventory');
+  const invResp = await ctx.request('GET', '/_db/d/_api/replication/clusterInventory');
   if (invResp.status !== 200) {
     throw new Error(
       `getDeployInfo: clusterInventory failed: ${invResp.status} ${JSON.stringify(invResp.body)}`
@@ -86,7 +86,7 @@ async function getDeployInfo(ctx) {
     throw new Error('getDeployInfo: collection c not found in clusterInventory response');
   }
 
-  const shardMap = cEntry.shards || {};
+  const shardMap = cEntry.parameters.shards || {};
   const shardEntries = Object.entries(shardMap);
   if (shardEntries.length === 0) {
     throw new Error('getDeployInfo: no shards found for collection c');
