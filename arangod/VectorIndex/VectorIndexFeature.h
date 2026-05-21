@@ -63,14 +63,6 @@ class VectorIndexFeature final
   // Coordinator), returns an immediate success.
   futures::Future<Result> waitForIndexReady(IndexId indexId);
 
-  // Enqueue a retrain job for an existing, ready vector index on this
-  // DBServer / single-server. The build manager constructs a shadow index
-  // with a fresh IndexId/objectId, drives it through the standard
-  // train+ingest pipeline, and atomically drops the old index once the
-  // shadow reaches the ready state. Returns immediately; progress can be
-  // observed by polling the index state.
-  Result requestRetrain(std::shared_ptr<Index> const& oldIndex);
-
  private:
   bool shouldRunBuildManager() const;
 
