@@ -27,7 +27,6 @@
 #include <rocksdb/slice.h>
 #include <velocypack/Builder.h>
 #include <velocypack/SharedSlice.h>
-#include <velocypack/Slice.h>
 #include "Inspection/Blob.h"
 
 #include <string_view>
