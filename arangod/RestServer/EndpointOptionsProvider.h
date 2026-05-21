@@ -22,18 +22,17 @@
 
 #pragma once
 
-#include <cstdint>
-#include <string>
-#include <vector>
+#include "ApplicationFeatures/OptionsProvider.h"
+#include "RestServer/EndpointFeatureOptions.h"
 
-namespace arangodb {
+namespace arangodb::endpoint {
 
-struct EndpointFeatureOptions {
-  std::vector<std::string> endpoints;
-  bool reuseAddress = true;
-  uint64_t backlogSize = 64;
+struct EndpointOptionsProvider : OptionsProvider<EndpointFeatureOptions> {
+  void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
+                      EndpointFeatureOptions& options) override;
 
-  EndpointFeatureOptions();
+  void validateOptions(std::shared_ptr<options::ProgramOptions> opts,
+                       EndpointFeatureOptions& options) override;
 };
 
-}  // namespace arangodb
+}  // namespace arangodb::endpoint

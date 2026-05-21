@@ -35,6 +35,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Manager.h"
+#include "Transaction/ManagerOptionsProvider.h"
 
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
@@ -80,44 +81,8 @@ ManagerFeature::~ManagerFeature() {
 }
 
 void ManagerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("transaction", "transactions");
-
-  options->addOption(
-      "--transaction.streaming-lock-timeout",
-      "The lock timeout (in seconds) "
-      "in case of parallel access to the same Stream Transaction.",
-      new DoubleParameter(&_options.streamingLockTimeout),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
-
-  options
-      ->addOption(
-          "--transaction.streaming-idle-timeout",
-          "The idle timeout (in seconds) for Stream Transactions.",
-          new DoubleParameter(
-              &_options.streamingIdleTimeout, /*base*/ 1.0,
-              /*minValue*/ 0.0,
-              /*maxValue*/ ManagerFeatureOptions::maxStreamingIdleTimeout),
-          arangodb::options::makeFlags(
-              arangodb::options::Flags::DefaultNoComponents,
-              arangodb::options::Flags::OnCoordinator,
-              arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(30800)
-      .setLongDescription(R"(Stream Transactions automatically expire after
-this period when no further operations are posted into them. Posting an
-operation into a non-expired Stream Transaction resets the transaction's
-timeout to the configured idle timeout.)");
-
-  options
-      ->addOption(
-          "--transaction.streaming-max-transaction-size",
-          "The maximum transaction size (in bytes) for Stream Transactions.",
-          new SizeTParameter(&_options.streamingMaxTransactionSize),
-          arangodb::options::makeFlags(
-              arangodb::options::Flags::Uncommon,
-              arangodb::options::Flags::DefaultNoComponents,
-              arangodb::options::Flags::OnDBServer,
-              arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(31200);
+  ManagerOptionsProvider provider;
+  provider.declareOptions(options, _options);
 }
 
 void ManagerFeature::prepare() {

@@ -20,20 +20,13 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#include "BumpFileDescriptorsFeatureOptions.h"
 
-#include <cstdint>
-#include <string>
-#include <vector>
+#include "Basics/FileDescriptors.h"
 
 namespace arangodb {
 
-struct EndpointFeatureOptions {
-  std::vector<std::string> endpoints;
-  bool reuseAddress = true;
-  uint64_t backlogSize = 64;
-
-  EndpointFeatureOptions();
-};
+BumpFileDescriptorsFeatureOptions::BumpFileDescriptorsFeatureOptions()
+    : descriptorsMinimum(FileDescriptors::recommendedMinimum()) {}
 
 }  // namespace arangodb

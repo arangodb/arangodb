@@ -22,18 +22,18 @@
 
 #pragma once
 
-#include <cstdint>
-#include <string>
-#include <vector>
+#include "ApplicationFeatures/OptionsProvider.h"
+#include "Cluster/ReplicationTimeoutFeatureOptions.h"
 
-namespace arangodb {
+namespace arangodb::replication_timeout {
 
-struct EndpointFeatureOptions {
-  std::vector<std::string> endpoints;
-  bool reuseAddress = true;
-  uint64_t backlogSize = 64;
+struct ReplicationTimeoutOptionsProvider
+    : OptionsProvider<ReplicationTimeoutFeatureOptions> {
+  void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
+                      ReplicationTimeoutFeatureOptions& options) override;
 
-  EndpointFeatureOptions();
+  void validateOptions(std::shared_ptr<options::ProgramOptions> opts,
+                       ReplicationTimeoutFeatureOptions& options) override;
 };
 
-}  // namespace arangodb
+}  // namespace arangodb::replication_timeout

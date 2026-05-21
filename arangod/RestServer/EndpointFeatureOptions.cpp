@@ -20,20 +20,16 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#include "EndpointFeatureOptions.h"
 
-#include <cstdint>
-#include <string>
-#include <vector>
+#include <sys/socket.h>
 
 namespace arangodb {
 
-struct EndpointFeatureOptions {
-  std::vector<std::string> endpoints;
-  bool reuseAddress = true;
-  uint64_t backlogSize = 64;
-
-  EndpointFeatureOptions();
-};
+EndpointFeatureOptions::EndpointFeatureOptions() {
+  if (backlogSize > SOMAXCONN) {
+    backlogSize = SOMAXCONN / 2;
+  }
+}
 
 }  // namespace arangodb

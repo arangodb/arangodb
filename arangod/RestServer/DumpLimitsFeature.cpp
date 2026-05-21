@@ -22,14 +22,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "DumpLimitsFeature.h"
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Basics/PhysicalMemory.h"
-#include "Basics/application-exit.h"
-#include "Logger/LogMacros.h"
-#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
+#include "RestServer/DumpLimitsOptionsProvider.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -59,86 +57,14 @@ DumpLimitsFeature::DumpLimitsFeature(ApplicationServer& server)
 
 void DumpLimitsFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
-  options->addSection("dump", "Dump limits");
-
-  options
-      ->addOption(
-          "--dump.max-memory-usage",
-          "Maximum memory usage (in bytes) to be used by all ongoing dumps.",
-          new UInt64Parameter(&_options.memoryUsage, 1,
-                              /*minimum*/ 16 * 1024 * 1024),
-          arangodb::options::makeFlags(
-              arangodb::options::Flags::Dynamic,
-              arangodb::options::Flags::DefaultNoComponents,
-              arangodb::options::Flags::OnDBServer,
-              arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(31200)
-      .setLongDescription(
-          R"(The approximate per-server maximum allowed memory usage value
-for all ongoing dump actions combined.)");
-
-  options
-      ->addOption(
-          "--dump.max-docs-per-batch",
-          "Maximum number of documents per batch that can be used in a dump.",
-          new UInt64Parameter(&_options.docsPerBatchUpperBound, 1,
-                              /*minimum*/ _options.docsPerBatchLowerBound),
-          arangodb::options::makeFlags(
-              arangodb::options::Flags::Uncommon,
-              arangodb::options::Flags::DefaultNoComponents,
-              arangodb::options::Flags::OnDBServer,
-              arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(31200)
-      .setLongDescription(
-          R"(Each batch in a dump can grow to at most this size.)");
-
-  options
-      ->addOption(
-          "--dump.max-batch-size",
-          "Maximum batch size value (in bytes) that can be used in a dump.",
-          new UInt64Parameter(&_options.batchSizeUpperBound, 1,
-                              /*minimum*/ _options.batchSizeLowerBound),
-          arangodb::options::makeFlags(
-              arangodb::options::Flags::Uncommon,
-              arangodb::options::Flags::DefaultNoComponents,
-              arangodb::options::Flags::OnDBServer,
-              arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(31200)
-      .setLongDescription(
-          R"(Each batch in a dump can grow to at most this size.)");
-
-  options
-      ->addOption(
-          "--dump.max-parallelism",
-          "Maximum parallelism that can be used in a dump.",
-          new UInt64Parameter(&_options.parallelismUpperBound, 1,
-                              /*minimum*/ _options.parallelismLowerBound),
-          arangodb::options::makeFlags(
-              arangodb::options::Flags::Uncommon,
-              arangodb::options::Flags::DefaultNoComponents,
-              arangodb::options::Flags::OnDBServer,
-              arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(31200)
-      .setLongDescription(R"(Each dump action on a server can use at most
-this many parallel threads. Note that end users can still start multiple
-dump actions that run in parallel.)");
+  dump_limits::DumpLimitsOptionsProvider provider;
+  provider.declareOptions(options, _options);
 }
 
 void DumpLimitsFeature::validateOptions(
     std::shared_ptr<options::ProgramOptions> options) {
-  if (_options.batchSizeLowerBound > _options.batchSizeUpperBound) {
-    LOG_TOPIC("79c1b", FATAL, arangodb::Logger::CONFIG)
-        << "invalid value for --dump.max-batch-size. Please use a value "
-        << "of at least " << _options.batchSizeLowerBound;
-    FATAL_ERROR_EXIT();
-  }
-
-  if (_options.parallelismLowerBound > _options.parallelismUpperBound) {
-    LOG_TOPIC("f433c", FATAL, arangodb::Logger::CONFIG)
-        << "invalid value for --dump.max-parallelism. Please use a value "
-        << "of at least " << _options.parallelismLowerBound;
-    FATAL_ERROR_EXIT();
-  }
+  dump_limits::DumpLimitsOptionsProvider provider;
+  provider.validateOptions(options, _options);
 }
 
 }  // namespace arangodb

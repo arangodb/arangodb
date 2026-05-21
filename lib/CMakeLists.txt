@@ -197,6 +197,8 @@ add_library(arango_basic_features STATIC
         ApplicationFeatures/ShellColorsFeature.cpp
         ApplicationFeatures/ApplicationFeaturePhase.cpp
         ApplicationFeatures/BumpFileDescriptorsFeature.cpp
+        ApplicationFeatures/BumpFileDescriptorsFeatureOptions.cpp
+        ApplicationFeatures/BumpFileDescriptorsOptionsProvider.cpp
         ApplicationFeatures/CommunicationFeaturePhase.cpp
         ApplicationFeatures/ConfigFeature.cpp
         ApplicationFeatures/FileSystemFeature.cpp

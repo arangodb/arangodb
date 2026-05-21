@@ -22,18 +22,17 @@
 
 #pragma once
 
-#include <cstdint>
-#include <string>
-#include <vector>
+#include "ApplicationFeatures/OptionsProvider.h"
+#include "RestServer/DumpLimitsFeatureOptions.h"
 
-namespace arangodb {
+namespace arangodb::dump_limits {
 
-struct EndpointFeatureOptions {
-  std::vector<std::string> endpoints;
-  bool reuseAddress = true;
-  uint64_t backlogSize = 64;
+struct DumpLimitsOptionsProvider : OptionsProvider<DumpLimitsFeatureOptions> {
+  void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
+                      DumpLimitsFeatureOptions& options) override;
 
-  EndpointFeatureOptions();
+  void validateOptions(std::shared_ptr<options::ProgramOptions> opts,
+                       DumpLimitsFeatureOptions& options) override;
 };
 
-}  // namespace arangodb
+}  // namespace arangodb::dump_limits

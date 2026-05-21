@@ -38,6 +38,7 @@ add_library(arangoserver STATIC
   Cluster/MaintenanceWorker.cpp
   Cluster/RebootTracker.cpp
   Cluster/ReplicationTimeoutFeature.cpp
+  Cluster/ReplicationTimeoutOptionsProvider.cpp
   Cluster/ResignShardLeadership.cpp
   Cluster/RestAgencyCallbacksHandler.cpp
   Cluster/RestClusterHandler.cpp
@@ -136,7 +137,10 @@ add_library(arangoserver STATIC
   RestServer/DatabaseFeature.cpp
   RestServer/DatabasePathFeature.cpp
   RestServer/DumpLimitsFeature.cpp
+  RestServer/DumpLimitsOptionsProvider.cpp
   RestServer/EndpointFeature.cpp
+  RestServer/EndpointFeatureOptions.cpp
+  RestServer/EndpointOptionsProvider.cpp
   RestServer/EnvironmentFeature.cpp
   RestServer/FileDescriptorsFeature.cpp
   RestServer/FileDescriptorsOptionsProvider.cpp
@@ -145,6 +149,7 @@ add_library(arangoserver STATIC
   RestServer/FortuneOptionsProvider.cpp
   RestServer/IOHeartbeatThread.cpp
   RestServer/InitDatabaseFeature.cpp
+  RestServer/InitDatabaseOptionsProvider.cpp
   RestServer/LanguageCheckFeature.cpp
   RestServer/LockfileFeature.cpp
   RestServer/LogBufferFeature.cpp
@@ -194,6 +199,7 @@ add_library(arangoserver STATIC
   Transaction/ManagedContext.cpp
   Transaction/Manager.cpp
   Transaction/ManagerFeature.cpp
+  Transaction/ManagerOptionsProvider.cpp
   Transaction/Methods.cpp
   Transaction/Options.cpp
   Transaction/ReplicatedContext.cpp

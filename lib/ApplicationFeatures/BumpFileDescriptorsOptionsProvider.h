@@ -22,18 +22,29 @@
 
 #pragma once
 
-#include <cstdint>
+#include "ApplicationFeatures/OptionsProvider.h"
+#include "BumpFileDescriptorsFeatureOptions.h"
+
 #include <string>
-#include <vector>
+
+namespace arangodb::options {
+class ProgramOptions;
+}
 
 namespace arangodb {
 
-struct EndpointFeatureOptions {
-  std::vector<std::string> endpoints;
-  bool reuseAddress = true;
-  uint64_t backlogSize = 64;
+struct BumpFileDescriptorsOptionsProvider
+    : OptionsProvider<BumpFileDescriptorsFeatureOptions> {
+  explicit BumpFileDescriptorsOptionsProvider(std::string optionName);
 
-  EndpointFeatureOptions();
+  void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
+                      BumpFileDescriptorsFeatureOptions& options) override;
+
+  void validateOptions(std::shared_ptr<options::ProgramOptions> opts,
+                       BumpFileDescriptorsFeatureOptions& options) override;
+
+ private:
+  std::string _optionName;
 };
 
 }  // namespace arangodb
