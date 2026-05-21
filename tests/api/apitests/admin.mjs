@@ -439,4 +439,16 @@ export default [
     path: "/_admin/shutdown",
   },
 
+  {
+    // DELETE /_admin/shutdown
+    // ATTENTION: We only do the cases which we know to fail, otherwise
+    // we would shoot down the very server we are testing!
+    // Auth: SUPER or ADMIN, should not work with the users we try!
+    // Expected outcome is 401 everywhere.
+    name: "Do shutdown (DELETE /_admin/shutdown)",
+    type: ["collection", "database"],
+    method: "DELETE",
+    path: "/_admin/shutdown",
+  },
+
 ];

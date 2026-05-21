@@ -97,6 +97,48 @@ export default [
     },
   },
 
+  // ── POST /_db/d/_api/cursor/<id>/<batch-id> (show / advance batch) ──────────
+  // Calls showLatestBatch():
+  //   • batch-id == nextBatchId (currentBatchId + 1)  → advance cursor, return
+  //     next batch (same effect as POST /_api/cursor/<id>)
+  //   • batch-id == currentBatchId                    → resend last batch
+  //     (idempotency for client retries)
+  //   • any other id                                  → 404
+  //
+  // The cursor creation response includes a 'nextBatchId' string field when
+  // hasMore is true.  We pass that value as the second suffix so the call
+  // advances the cursor (the most representative use-case).
+  //
+  // Auth: same as other cursor operations → AUTHEN + COLL ACCESS via trx
+  //       (in practice: COLL RO).
+  //
+  // setup:    superuser creates a fresh cursor (batchSize 10) and stores both
+  //           its id and the nextBatchId returned in the response body.
+  // teardown: superuser discards the cursor; errors are ignored because a
+  //           successful test user will have already advanced it (and teardown
+  //           must still handle the still-open cursor).
+  {
+    name: "Advance cursor by explicit batch-id (POST /_db/d/_api/cursor/<id>/<batch-id>)",
+    type: "all",
+    method: "POST",
+    path: "/_db/d/_api/cursor/${ctx.data.id}/${ctx.data.nextBatchId}",
+    setup: async (ctx) => {
+      const resp = await ctx.request('POST', '/_db/d/_api/cursor',
+        { query: 'FOR d IN c RETURN d', batchSize: 10 });
+      if (!resp.body || !resp.body.id) {
+        throw new Error(`Failed to create cursor: ${resp.status} - ${JSON.stringify(resp.body)}`);
+      }
+      if (!resp.body.nextBatchId) {
+        throw new Error(`Cursor has no nextBatchId (hasMore=${resp.body.hasMore}): ${JSON.stringify(resp.body)}`);
+      }
+      return { id: resp.body.id, nextBatchId: resp.body.nextBatchId };
+    },
+    teardown: async (ctx) => {
+      // Ignore errors – the cursor may have been advanced or still be open.
+      await ctx.request('DELETE', `/_db/d/_api/cursor/${ctx.data.id}`);
+    },
+  },
+
   // ── DELETE /_db/d/_api/cursor/<id> (discard cursor) ──────────────────────
   // Discards an open cursor before it is fully consumed.
   // setup:    superuser creates a fresh cursor (batchSize 10) and stores
