@@ -26,34 +26,28 @@
 
 #include <cstdint>
 #include <string>
-#include <thread>
 #include <vector>
 
 #include "Basics/VelocyPackHelper.h"
+#include "Cache/Cache.h"
+#include "Cache/CachedValue.h"
 #include "Cache/CacheOptionsProvider.h"
 #include "Cache/Common.h"
 #include "Cache/Manager.h"
 #include "Cache/Transaction.h"
-#include "Cache/TransactionalCache.h"
 #include "Cache/VPackKeyHasher.h"
-#include "Random/RandomGenerator.h"
-#include "RestServer/SharedPRNGFeature.h"
-
-#include "Mocks/Servers.h"
 
 using namespace arangodb;
 using namespace arangodb::cache;
-using namespace arangodb::tests::mocks;
 
 TEST(CacheTransactionalCacheVPackKeyHasherTest,
      verify_that_insertion_works_as_expected) {
   std::uint64_t cacheLimit = 128 * 1024;
   auto postFn = [](std::function<void()>) -> bool { return false; };
-  MockMetricsServer server;
-  SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
+  basics::SharedPRNG prng;
   CacheOptions co;
   co.cacheSize = 4 * cacheLimit;
-  Manager manager(sharedPRNG, postFn, co);
+  Manager manager(prng, postFn, co);
   auto cache = manager.createCache<VPackKeyHasher>(CacheType::Transactional,
                                                    false, cacheLimit);
 
@@ -101,11 +95,10 @@ TEST(CacheTransactionalCacheVPackKeyHasherTest,
      verify_similar_values_work_as_expected) {
   std::uint64_t cacheLimit = 128 * 1024;
   auto postFn = [](std::function<void()>) -> bool { return false; };
-  MockMetricsServer server;
-  SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
+  basics::SharedPRNG prng;
   CacheOptions co;
   co.cacheSize = 4 * cacheLimit;
-  Manager manager(sharedPRNG, postFn, co);
+  Manager manager(prng, postFn, co);
   auto cache = manager.createCache<VPackKeyHasher>(CacheType::Transactional,
                                                    false, cacheLimit);
 
@@ -246,11 +239,10 @@ TEST(CacheTransactionalCacheVPackKeyHasherTest,
      verify_removal_works_as_expected) {
   std::uint64_t cacheLimit = 128 * 1024;
   auto postFn = [](std::function<void()>) -> bool { return false; };
-  MockMetricsServer server;
-  SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
+  basics::SharedPRNG prng;
   CacheOptions co;
   co.cacheSize = 4 * cacheLimit;
-  Manager manager(sharedPRNG, postFn, co);
+  Manager manager(prng, postFn, co);
   auto cache = manager.createCache<VPackKeyHasher>(CacheType::Transactional,
                                                    false, cacheLimit);
 
@@ -432,11 +424,10 @@ TEST(CacheTransactionalCacheVPackKeyHasherTest,
      verify_banishing_works_as_expected) {
   std::uint64_t cacheLimit = 128 * 1024;
   auto postFn = [](std::function<void()>) -> bool { return false; };
-  MockMetricsServer server;
-  SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
+  basics::SharedPRNG prng;
   CacheOptions co;
   co.cacheSize = 4 * cacheLimit;
-  Manager manager(sharedPRNG, postFn, co);
+  Manager manager(prng, postFn, co);
   auto cache = manager.createCache<VPackKeyHasher>(CacheType::Transactional,
                                                    false, cacheLimit);
 
