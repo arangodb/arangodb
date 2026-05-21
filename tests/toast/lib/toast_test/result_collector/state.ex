@@ -72,7 +72,8 @@ defmodule ToastTest.ResultCollector.State do
 
   def apply_event(state, {:test_started, %ExUnit.Test{} = test, now}) do
     key = {test.module, test.name}
-    test_start_times = Map.put(state.test_start_times, key, now)
+    started_at = test.tags[:started_at] || now
+    test_start_times = Map.put(state.test_start_times, key, started_at)
 
     # First test for this module sets setup_finished_at
     mod = test.module
@@ -92,7 +93,10 @@ defmodule ToastTest.ResultCollector.State do
   def apply_event(state, {:test_finished, %ExUnit.Test{} = test, now}) do
     key = {test.module, test.name}
     started_at = state.test_start_times[key]
-    finished_at = if started_at, do: DateTime.add(started_at, test.time, :microsecond)
+
+    finished_at =
+      test.tags[:finished_at] ||
+        if(started_at, do: DateTime.add(started_at, test.time, :microsecond))
 
     result = %{
       name: test.name,

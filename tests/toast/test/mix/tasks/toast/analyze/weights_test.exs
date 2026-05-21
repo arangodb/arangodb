@@ -81,7 +81,7 @@ defmodule Mix.Tasks.Toast.Analyze.WeightsTest do
         })
 
       result = Weights.suggest_weights([result])
-      heavy = Enum.find(result, &(&1.module == "Elixir.Smoke.HeavyTest"))
+      heavy = Enum.find(result, &(&1.module == "Smoke.HeavyTest"))
 
       assert heavy.suggested_weight == 10
       assert heavy.current_weight == 1
@@ -122,7 +122,7 @@ defmodule Mix.Tasks.Toast.Analyze.WeightsTest do
       # Slow: max(1, round(5000/3000)) = 2 -> differs from current 1
       assert length(result) == 1
       slow = hd(result)
-      assert slow.module == "Elixir.Resilience.SlowTest"
+      assert slow.module == "Resilience.SlowTest"
       assert slow.suggested_weight == 2
       assert slow.current_weight == 1
     end
@@ -148,7 +148,7 @@ defmodule Mix.Tasks.Toast.Analyze.WeightsTest do
         })
 
       result = Weights.suggest_weights([result])
-      big = Enum.find(result, &(&1.module == "Elixir.Smoke.BigTest"))
+      big = Enum.find(result, &(&1.module == "Smoke.BigTest"))
 
       assert big.duration_us == 10_000
     end
@@ -164,7 +164,7 @@ defmodule Mix.Tasks.Toast.Analyze.WeightsTest do
         })
 
       result = Weights.suggest_weights([result])
-      slow = Enum.find(result, &(&1.module == "Elixir.Smoke.SlowTest"))
+      slow = Enum.find(result, &(&1.module == "Smoke.SlowTest"))
 
       assert slow.current_weight == 1
       assert slow.suggested_weight == 10
