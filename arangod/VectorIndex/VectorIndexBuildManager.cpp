@@ -163,36 +163,6 @@ void VectorIndexBuildManager::fulfillBuildWaiters(IndexId indexId,
   resolveOnScheduler(_scheduler, std::move(promises), result);
 }
 
-void VectorIndexBuildManager::clearActiveRetrain(IndexId oldIndexId) {
-  std::lock_guard lock(_mutex);
-  _activeRetrains.erase(oldIndexId.id());
-}
-
-Result VectorIndexBuildManager::requestRetrain(
-    std::shared_ptr<Index> const& oldIndex) {
-  TRI_ASSERT(oldIndex != nullptr);
-  if (oldIndex->type() != Index::TRI_IDX_TYPE_VECTOR_INDEX) {
-    return {TRI_ERROR_BAD_PARAMETER, "retrain target is not a vector index"};
-  }
-
-  auto const* vecIdx = dynamic_cast<RocksDBVectorIndex*>(oldIndex.get());
-  if (vecIdx == nullptr ||
-      vecIdx->trainingState() != VectorIndexTrainingState::kReady) {
-    return {TRI_ERROR_QUERY_VECTOR_INDEX_NOT_READY,
-            "cannot retrain a vector index whose initial training has not "
-            "completed"};
-  }
-  {
-    std::lock_guard lock(_mutex);
-    if (!_activeRetrains.insert(vecIdx->id().id()).second) {
-      return {TRI_ERROR_ARANGO_CONFLICT,
-              "a retrain is already in flight for this vector index"};
-    }
-    _pendingRetrains.push_back(vecIdx->id());
-  }
-  return {};
-}
-
 void VectorIndexBuildManager::fulfillAllWaitersOnShutdown(
     Result const& result) {
   BuildWaiterMap buildWaiters;
@@ -200,8 +170,6 @@ void VectorIndexBuildManager::fulfillAllWaitersOnShutdown(
     std::lock_guard lock(_mutex);
     buildWaiters = std::move(_buildWaiters);
     _buildWaiters.clear();
-    _activeRetrains.clear();
-    _pendingRetrains.clear();
   }
   std::vector<futures::Promise<Result>> promises;
   for (auto& bucket : std::views::values(buildWaiters)) {
@@ -251,7 +219,7 @@ void VectorIndexBuildManager::run(std::stop_token stopToken) {
            !stopToken.stop_requested()) {
       {
         std::lock_guard lock(_mutex);
-        if (!_buildWaiters.empty() || !_pendingRetrains.empty()) {
+        if (!_buildWaiters.empty()) {
           break;
         }
       }
@@ -270,15 +238,6 @@ void VectorIndexBuildManager::run(std::stop_token stopToken) {
 void VectorIndexBuildManager::scanAndProcess(std::stop_token const& stopToken,
                                              FailedBuildsMap& failedBuilds) {
   ScanState state;
-  // Snapshot queued retrains by old IndexId so we can match them in-line
-  // while iterating each collection's indexes — no second pass needed.
-  {
-    std::lock_guard lock(_mutex);
-    for (auto const id : _pendingRetrains) {
-      state.pendingRetrains.insert(id.id());
-    }
-    _pendingRetrains.clear();
-  }
 
   _dbFeature.enumerateDatabases([&](TRI_vocbase_t& vocbase) {
     if (stopToken.stop_requested()) {
@@ -289,8 +248,8 @@ void VectorIndexBuildManager::scanAndProcess(std::stop_token const& stopToken,
         if (idx->type() != Index::TRI_IDX_TYPE_VECTOR_INDEX) {
           continue;
         }
-        auto result = processVectorIndex(state.pendingRetrains, failedBuilds,
-                                         vocbase, *coll, idx, stopToken);
+        auto result =
+            processVectorIndex(failedBuilds, vocbase, *coll, idx, stopToken);
         state.seenIndexIds.insert(result.indexId.id());
         if (result.unusableObjectId.has_value()) {
           state.seenObjectIds.insert(*result.unusableObjectId);
@@ -346,46 +305,22 @@ void VectorIndexBuildManager::scanAndProcess(std::stop_token const& stopToken,
                                               "index was dropped"});
     }
   }
-
-  // Any retrain whose target index didn't turn up during the scan: either
-  // shutdown bailed us out (requeue for the shutdown guard to fulfill) or
-  // the collection/database/index was dropped (fulfill with error).
-  if (!state.pendingRetrains.empty()) {
-    if (!scanCompletedFully) {
-      std::lock_guard lock(_mutex);
-      for (auto const id : state.pendingRetrains) {
-        _pendingRetrains.push_back(IndexId{id});
-      }
-    } else {
-      for (auto const id : state.pendingRetrains) {
-        clearActiveRetrain(IndexId{id});
-      }
-    }
-  }
 }
 
 VectorIndexBuildManager::IndexScanResult
-VectorIndexBuildManager::processVectorIndex(
-    std::unordered_set<IndexId::BaseType>& pendingRetrains,
-    FailedBuildsMap& failedBuilds, TRI_vocbase_t& vocbase,
-    LogicalCollection& coll, std::shared_ptr<Index> const& idx,
-    std::stop_token const& stopToken) {
+VectorIndexBuildManager::processVectorIndex(FailedBuildsMap& failedBuilds,
+                                            TRI_vocbase_t& vocbase,
+                                            LogicalCollection& coll,
+                                            std::shared_ptr<Index> const& idx,
+                                            std::stop_token const& stopToken) {
   auto& vecIdx = static_cast<RocksDBVectorIndex&>(*idx);
   IndexScanResult result;
   result.indexId = vecIdx.id();
 
   switch (vecIdx.trainingState()) {
-    case VectorIndexTrainingState::kReady: {
+    case VectorIndexTrainingState::kReady:
       fulfillBuildWaiters(vecIdx.id(), Result{});
-      // If a retrain was queued for this index, handle it here — we
-      // already have vocbase, coll, and idx resolved.
-      if (auto rit = pendingRetrains.find(vecIdx.id().id());
-          rit != pendingRetrains.end() && !stopToken.stop_requested()) {
-        runRetrain(coll, idx, stopToken);
-        pendingRetrains.erase(rit);
-      }
       return result;
-    }
     case VectorIndexTrainingState::kTraining:
     case VectorIndexTrainingState::kIngesting:
       // Build in progress — keep waiters pending until it finishes.
@@ -484,93 +419,6 @@ void VectorIndexBuildManager::clearIndexError(
   auto const& shard = coll.name();
   auto const indexId = std::to_string(vecIdx.id().id());
   _maintenance.clearIndexError(database, collection, shard, indexId);
-}
-
-void VectorIndexBuildManager::runRetrain(LogicalCollection& coll,
-                                         std::shared_ptr<Index> const& oldIdx,
-                                         std::stop_token const& stopToken) {
-  TRI_ASSERT(oldIdx != nullptr);
-  TRI_ASSERT(oldIdx->type() == Index::TRI_IDX_TYPE_VECTOR_INDEX);
-
-  auto const oldIndexId = oldIdx->id();
-  // Admit new retrain requests for this index on exit.
-  auto finishGuard =
-      scopeGuard([&]() noexcept { clearActiveRetrain(oldIndexId); });
-
-  auto& oldVec = static_cast<RocksDBVectorIndex&>(*oldIdx);
-  auto* rcoll = static_cast<RocksDBCollection*>(coll.getPhysical());
-  TRI_ASSERT(rcoll != nullptr);
-
-  if (rcoll->meta().numberDocuments() < oldVec.trainingThreshold()) {
-    LOG_TOPIC("e176b", WARN, Logger::ENGINES)
-        << "[shard=" << coll.name() << ", oldIndex=" << oldIndexId.id()
-        << "] Skipping vector index retrain: collection has fewer documents "
-           "than the training threshold ("
-        << oldVec.trainingThreshold() << ").";
-    return;
-  }
-
-  std::shared_ptr<RocksDBVectorIndex> shadow;
-  try {
-    shadow = oldVec.makeRetrainShadow();
-  } catch (std::exception const& ex) {
-    LOG_TOPIC("e177b", ERR, Logger::ENGINES)
-        << "[shard=" << coll.name() << ", oldIndex=" << oldIndexId.id()
-        << "] Failed to construct retrain shadow vector index: " << ex.what();
-    return;
-  }
-  TRI_ASSERT(shadow != nullptr);
-  TRI_ASSERT(shadow->id() != oldIndexId);
-
-  auto shadowRocks = std::static_pointer_cast<RocksDBIndex>(shadow);
-  auto& shadowVec = *shadow;
-
-  // Insert the shadow into the collection's in-memory index set. No
-  // Definitions CF write happens here — the shadow is only persisted at
-  // the atomic swap step below, when dropIndex(oldIndexId) rewrites the
-  // collection marker with the shadow included.
-  rcoll->addShadowIndex(shadow);
-
-  LOG_TOPIC("e172b", INFO, Logger::ENGINES)
-      << "[shard=" << coll.name() << ", oldIndex=" << oldIndexId.id()
-      << ", shadow=" << shadow->id().id() << "] Starting vector index retrain.";
-
-  _trainingOngoingCount.fetch_add(1);
-  VectorIndexBuilder builder(shadowVec, _resourceMonitor);
-  auto buildRes = builder.build(shadowRocks, _trainingDuration,
-                                _ingestionDuration, stopToken);
-  _trainingOngoingCount.fetch_sub(1);
-
-  if (buildRes.fail()) {
-    LOG_TOPIC("e173b", ERR, Logger::ENGINES)
-        << "[shard=" << coll.name() << ", oldIndex=" << oldIndexId.id()
-        << ", shadow=" << shadow->id().id()
-        << "] Vector index retrain build failed: " << buildRes.errorMessage();
-    rcoll->abortShadowIndex(shadow);
-    return;
-  }
-
-  // Shadow is kReady and in _indexes. Drop the old atomically via the
-  // existing drop-index path: this removes old from _indexes, writes a
-  // single Definitions CF marker containing the shadow (since shadow is
-  // currently in _indexes when the marker is serialized), writes an
-  // IndexDrop WAL log value, and range-deletes all entries under the
-  // old objectId.
-  auto dropRes = coll.getPhysical()->dropIndex(oldIndexId);
-  if (dropRes.fail()) {
-    LOG_TOPIC("e174b", ERR, Logger::ENGINES)
-        << "[shard=" << coll.name() << ", oldIndex=" << oldIndexId.id()
-        << "] Failed to drop old vector index after successful retrain "
-           "build: "
-        << dropRes.errorMessage()
-        << ". Shadow will remain alongside the old index until the next "
-           "retrain or server restart.";
-    return;
-  }
-
-  LOG_TOPIC("e175b", INFO, Logger::ENGINES)
-      << "[shard=" << coll.name() << ", oldIndex=" << oldIndexId.id()
-      << ", shadow=" << shadow->id().id() << "] Vector index retrain complete.";
 }
 
 }  // namespace arangodb::vector

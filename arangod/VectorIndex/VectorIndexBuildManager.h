@@ -76,14 +76,6 @@ class VectorIndexBuildManager {
   // when the index reaches the ready state or the build fails.
   futures::Future<Result> waitForIndexReady(IndexId indexId);
 
-  // Enqueue a retrain job for an existing, ready vector index. Returns
-  // immediately with an error only when the request cannot be accepted
-  // (e.g. because another retrain is already in flight for the same
-  // index, or the index is not in the ready state). Successful acceptance
-  // is reported via the returned OK Result; the retrain itself runs
-  // asynchronously on the build thread.
-  Result requestRetrain(std::shared_ptr<Index> const& oldIndex);
-
  private:
   static constexpr auto kRetryBackoff = std::chrono::minutes(10);
 
@@ -100,7 +92,6 @@ class VectorIndexBuildManager {
   // Scratch state populated during a single scan pass and consumed by
   // the post-scan cleanup in scanAndProcess.
   struct ScanState {
-    std::unordered_set<IndexId::BaseType> pendingRetrains;
     std::unordered_set<std::uint64_t> seenObjectIds;
     std::unordered_set<IndexId::BaseType> seenIndexIds;
     std::unordered_set<IndexId::BaseType> skippedWaiters;
@@ -132,27 +123,19 @@ class VectorIndexBuildManager {
   void scanAndProcess(std::stop_token const& stopToken,
                       FailedBuildsMap& failedBuilds);
 
-  // Per-index work inside the scan: resolves build waiters, runs queued
-  // retrains against kReady indexes, and kicks off deferred builds for
-  // kUnusable indexes that have reached the training threshold.
-  IndexScanResult processVectorIndex(
-      std::unordered_set<IndexId::BaseType>& pendingRetrains,
-      FailedBuildsMap& failedBuilds, TRI_vocbase_t& vocbase,
-      LogicalCollection& coll, std::shared_ptr<Index> const& idx,
-      std::stop_token const& stopToken);
-
-  void runRetrain(LogicalCollection& coll, std::shared_ptr<Index> const& oldIdx,
-                  std::stop_token const& stopToken);
+  // Per-index work inside the scan: resolves build waiters and kicks off
+  // deferred builds for kUnusable indexes that have reached the training
+  // threshold.
+  IndexScanResult processVectorIndex(FailedBuildsMap& failedBuilds,
+                                     TRI_vocbase_t& vocbase,
+                                     LogicalCollection& coll,
+                                     std::shared_ptr<Index> const& idx,
+                                     std::stop_token const& stopToken);
 
   // Resolve all pending build waiters registered for `indexId`.
   void fulfillBuildWaiters(IndexId indexId, Result const& result);
 
-  // Remove `oldIndexId` from _activeRetrains so a new retrain request
-  // for this index can be admitted.
-  void clearActiveRetrain(IndexId oldIndexId);
-
-  // Drain all build waiters on shutdown and clear retrain-job
-  // bookkeeping.
+  // Drain all build waiters on shutdown.
   void fulfillAllWaitersOnShutdown(Result const& result);
 
   void reportIndexError(TRI_vocbase_t const& vocbase,
@@ -175,14 +158,9 @@ class VectorIndexBuildManager {
   metrics::Histogram<metrics::LogScale<double>>& _trainingDuration;
   metrics::Histogram<metrics::LogScale<double>>& _ingestionDuration;
 
-  // Single mutex guarding all waiter and retrain-queue state below.
+  // Mutex guarding the build-waiter map below.
   std::mutex _mutex;
   BuildWaiterMap _buildWaiters;
-  std::vector<IndexId> _pendingRetrains;
-  // Old-index ids that are currently either queued or actively being
-  // retrained. Used to short-circuit duplicate requestRetrain() calls
-  // without having to walk the queue.
-  std::unordered_set<IndexId::BaseType> _activeRetrains;
 };
 
 }  // namespace arangodb::vector
