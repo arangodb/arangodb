@@ -376,6 +376,13 @@ VectorIndexBuildManager::processVectorIndex(FailedBuildsMap& failedBuilds,
   }();
 
   if (res.fail()) {
+    // Surface the failure on the in-memory index so GET /_api/index and the
+    // per-shard state endpoint return the actual error (not the stale or
+    // default string). Reset the training state idempotently in case the
+    // builder threw before reaching its own resetTrainingState() — otherwise
+    // the index stays stuck in kTraining and the next scan skips it.
+    vecIdx.setTrainingError(std::string{res.errorMessage()});
+    vecIdx.resetTrainingState();
     fulfillBuildWaiters(vecIdx.id(), res);
     LOG_TOPIC("e164b", ERR, Logger::ENGINES)
         << "[index=" << vecIdx.id().id()

@@ -1114,6 +1114,9 @@ async<void> RestIndexHandler::replaceIndex() {
     auto& feature = server().getFeature<VectorIndexFeature>();
     if (auto res = co_await feature.waitForIndexReady(shadow->id());
         res.fail()) {
+      // Build failed: drop the never-persisted shadow so it doesn't dangle
+      // in the collection's in-memory index set under kUnusable.
+      rcoll->abortShadowIndex(shadow);
       generateError(res);
       co_return;
     }

@@ -609,9 +609,9 @@ futures::Future<arangodb::Result> Indexes::ensureIndex(
 
   VPackSlice indexDef = normalized.slice();
 
-  // This is a index-hotswao operation which currently works only with vector
+  // This is an index-hotswap operation which currently works only with vector
   // indexes. The "replaces" marker is used to identify the old index that is
-  // being replaced
+  // being replaced.
   if (indexDef.hasKey("replaces")) {
     if (ServerState::instance()->isCoordinator()) {
       ensureIndexResult = TRI_ERROR_BAD_PARAMETER;
