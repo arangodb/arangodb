@@ -3926,7 +3926,9 @@ AstNode* Ast::optimizeAttributeAccess(
     std::string_view search = node->getStringView();
 
     ast::ObjectNode object(what);
-    for (auto member : object.getElements()) {
+    auto members = object.getElements();
+    for (auto it = members.rbegin(); it != members.rend(); ++it) {
+      auto member = *it;
       if (member->type == NODE_TYPE_OBJECT_ELEMENT &&
           member->getStringView() == search) {
         // found matching member

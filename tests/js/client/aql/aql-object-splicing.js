@@ -126,6 +126,16 @@ function objectSplicingSuite () {
       let query = `RETURN { outer: {    x: 1,    x: 2  } }`;
       let res = db._query(query).toArray();
       assertEqual([ { "outer" : { "x" : 2 } }], res);
+    },
+    testObjectWithDuplicateKey: function () {
+      let query = `LET x = { foo: 1, bar: 2, foo: 3} RETURN x.foo`;
+      let res = db._query(query).toArray();
+      assertEqual([ 3 ], res);
+    },
+    testInnerObjectWithDuplicateKey: function () {
+      let query = `LET xx= { outer: {  x: 1,  x: 2  }} RETURN xx.outer.x`;
+      let res = db._query(query).toArray();
+      assertEqual([ 2 ], res);
     }
   };
 }
