@@ -30,7 +30,6 @@
 #include "Agency/AsyncAgencyComm.h"
 #include "Agency/ReplaceIndex.h"
 #include "Agency/TransactionBuilder.h"
-#include "Basics/TimeString.h"
 #include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
@@ -1160,17 +1159,9 @@ async<void> RestIndexHandler::replaceIndex() {
   auto jobToDoPath =
       arangodb::cluster::paths::root()->arango()->target()->toDo()->job(jobId);
 
-  consensus::ReplaceIndexPayload payload{
-      .database = _vocbase.name(),
-      .collection = std::to_string(coll->planId().id()),
-      .oldIndexId = oldIndexIdStr,
-      .newIndexId = newIndexId,
-      .jobId = jobId,
-      .creator = ServerState::instance()->getId(),
-      .timeCreated = timepointToString(std::chrono::system_clock::now()),
-      .newDefinition = {},
-  };
-  payload.newDefinition.add(finalDef.slice());
+  auto payload = consensus::ReplaceIndexPayload::make(
+      _vocbase.name(), std::to_string(coll->planId().id()), oldIndexIdStr,
+      newIndexId, jobId, ServerState::instance()->getId(), finalDef.slice());
 
   VPackBuilder payloadBuilder;
   velocypack::serialize(payloadBuilder, payload);

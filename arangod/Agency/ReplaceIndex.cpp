@@ -41,23 +41,28 @@ namespace {
 // Marker on the shadow index entry in Plan; carries the old index id.
 constexpr std::string_view kReplacesField = "replaces";
 
+struct NoOp {
+  void operator()(Builder&) const noexcept {}
+};
+
 // Submit a write transaction that updates `indexesKey` with
 // `newIndexesArray`, bumps Plan/Version, and requires the original indexes
 // array to be unchanged. Optional extra ops/preconds let the caller piggy-
 // back additional mutations (e.g. moving the job ToDo→Pending) atop the
 // same atomic txn.
-write_ret_t submitPlanIndexesUpdate(
-    AgentInterface* agent, std::string const& indexesKey, Slice plannedOriginal,
-    Slice newIndexesArray, std::function<void(Builder&)> const& extraOps = {},
-    std::function<void(Builder&)> const& extraPreconds = {}) {
+template<class ExtraOps = NoOp, class ExtraPreconds = NoOp>
+write_ret_t submitPlanIndexesUpdate(AgentInterface* agent,
+                                    std::string const& indexesKey,
+                                    Slice plannedOriginal,
+                                    Slice newIndexesArray,
+                                    ExtraOps extraOps = {},
+                                    ExtraPreconds extraPreconds = {}) {
   Builder trx;
   {
     VPackArrayBuilder transactions(&trx);
     {
       VPackObjectBuilder ops(&trx);
-      if (extraOps) {
-        extraOps(trx);
-      }
+      extraOps(trx);
       trx.add(VPackValue(indexesKey));
       trx.add(newIndexesArray);
       Job::addIncreasePlanVersion(trx);
@@ -65,9 +70,7 @@ write_ret_t submitPlanIndexesUpdate(
     {
       VPackObjectBuilder pre(&trx);
       Job::addPreconditionUnchanged(trx, indexesKey, plannedOriginal);
-      if (extraPreconds) {
-        extraPreconds(trx);
-      }
+      extraPreconds(trx);
     }
   }
   return singleWriteTransaction(agent, trx, false);
@@ -113,6 +116,24 @@ ShardOutcome classifyShard(Slice indexesSlice, std::string_view indexId) {
 
 }  // namespace
 
+ReplaceIndexPayload ReplaceIndexPayload::make(
+    std::string database, std::string collection, std::string oldIndexId,
+    std::string newIndexId, std::string jobId, std::string creator,
+    Slice newDefinitionSlice) {
+  ReplaceIndexPayload payload{
+      .database = std::move(database),
+      .collection = std::move(collection),
+      .oldIndexId = std::move(oldIndexId),
+      .newIndexId = std::move(newIndexId),
+      .jobId = std::move(jobId),
+      .creator = std::move(creator),
+      .timeCreated = timepointToString(std::chrono::system_clock::now()),
+      .newDefinition = {},
+  };
+  payload.newDefinition.add(newDefinitionSlice);
+  return payload;
+}
+
 ReplaceIndex::ReplaceIndex(Node const& snapshot, AgentInterface* agent,
                            std::string const& jobId, std::string const& creator,
                            std::string const& database,
@@ -147,7 +168,7 @@ ReplaceIndex::ReplaceIndex(Node const& snapshot, AgentInterface* agent,
     auto const err = "Failed to load ReplaceIndex job " + _jobId +
                      " from agency snapshot: " + res.error() +
                      " (path: " + res.path() + ")";
-    LOG_TOPIC("12fa1", ERR, Logger::SUPERVISION) << err;
+    LOG_TOPIC("12fab", ERR, Logger::SUPERVISION) << err;
     finish("", "", false, err);
     _status = FAILED;
     return;
@@ -185,17 +206,9 @@ bool ReplaceIndex::create(std::shared_ptr<Builder> envelope) {
     _jb->openObject();
   }
 
-  ReplaceIndexPayload payload{
-      .database = _database,
-      .collection = _collection,
-      .oldIndexId = _oldIndexId,
-      .newIndexId = _newIndexId,
-      .jobId = _jobId,
-      .creator = _creator,
-      .timeCreated = timepointToString(std::chrono::system_clock::now()),
-      .newDefinition = {},
-  };
-  payload.newDefinition.add(_newDefinition->slice());
+  auto payload = ReplaceIndexPayload::make(_database, _collection, _oldIndexId,
+                                           _newIndexId, _jobId, _creator,
+                                           _newDefinition->slice());
 
   _jb->add(VPackValue(toDoPrefix + _jobId));
   velocypack::serialize(*_jb, payload);

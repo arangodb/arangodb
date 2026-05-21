@@ -417,22 +417,21 @@ static Result EnsureShadowLocal(arangodb::LogicalCollection& collection,
     return {TRI_ERROR_BAD_PARAMETER,
             "replaces marker must be a string-encoded index id"};
   }
-  auto oldIdParsed = StringUtils::try_uint64(replacesSlice.copyString());
+  auto oldIdParsed = IndexId::fromString(replacesSlice.stringView());
   if (oldIdParsed.fail()) {
-    return {TRI_ERROR_BAD_PARAMETER,
-            "replaces marker is not a numeric index id"};
+    return oldIdParsed.result();
   }
-  auto oldIndexId = IndexId{oldIdParsed.get()};
+  auto oldIndexId = oldIdParsed.get();
 
   auto newIdSlice = definition.get(StaticStrings::IndexId);
   if (!newIdSlice.isString()) {
     return {TRI_ERROR_BAD_PARAMETER, "new index id missing"};
   }
-  auto newIdParsed = StringUtils::try_uint64(newIdSlice.copyString());
+  auto newIdParsed = IndexId::fromString(newIdSlice.stringView());
   if (newIdParsed.fail()) {
-    return {TRI_ERROR_BAD_PARAMETER, "new index id is not numeric"};
+    return newIdParsed.result();
   }
-  auto newIndexId = IndexId{newIdParsed.get()};
+  auto newIndexId = newIdParsed.get();
 
   auto oldIdx = collection.lookupIndex(oldIndexId);
   if (oldIdx == nullptr) {

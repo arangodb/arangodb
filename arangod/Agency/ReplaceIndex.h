@@ -42,6 +42,15 @@ struct ReplaceIndexPayload {
   std::string timeCreated;
   velocypack::Builder newDefinition;
 
+  // Stamps `timeCreated` with the current wall clock and copies
+  // `newDefinitionSlice` into the payload's builder. Use this from any
+  // writer site to avoid duplicating the clock+slice-copy dance.
+  static ReplaceIndexPayload make(std::string database, std::string collection,
+                                  std::string oldIndexId,
+                                  std::string newIndexId, std::string jobId,
+                                  std::string creator,
+                                  velocypack::Slice newDefinitionSlice);
+
   template<class Inspector>
   friend auto inspect(Inspector& f, ReplaceIndexPayload& p) {
     return f.object(p).fields(
