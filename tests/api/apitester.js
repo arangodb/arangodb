@@ -7,10 +7,14 @@
  *   node apitester.js [--endpoint <url>] [--root-password <pw>] [--jwt-secret <file>] teardown
  *   node apitester.js [--endpoint <url>] --jwt-secret <file> test <directory>
  *
- * The 'setup' subcommand creates database 'd', collection 'c', 64 test users
- * (covering all permission combinations) and 4 admin test users (AU/AN/AR/AW).
+ * The 'setup' subcommand creates database 'd'; document collection 'c' with
+ * 100 documents keyed k1–k100; edge collection 'e' with 100 circular edges
+ * (c/k1→c/k2, …, c/k100→c/k1); named graph 'g' (edge def e: c→c); all 64
+ * permission-matrix users (each given the same grant on 'e' as on 'c'); and
+ * 4 admin test users (AU/AN/AR/AW).
  *
- * The 'teardown' subcommand drops database 'd' and deletes all test users.
+ * The 'teardown' subcommand drops database 'd' (which removes 'c', 'e', and
+ * 'g') and deletes all test users.
  *
  * The 'test' subcommand loads all *.mjs files from <directory> (sorted
  * alphabetically), each of which must export a default array of test entries:
@@ -150,9 +154,12 @@ Usage:
   node apitester.js [options] --jwt-secret <file> test <path> [<path> ...]
 
 Subcommands:
-  setup       Create database 'd', collection 'c', 64 permission-matrix users,
-              and 4 admin users (AU/AN/AR/AW).
-  teardown    Drop database 'd' and delete all test users.
+  setup       Create database 'd', document collection 'c' (100 docs, keys
+              k1–k100), edge collection 'e' (100 circular edges), named graph
+              'g' (e: c→c), 64 permission-matrix users (same grant on 'e' as
+              on 'c'), and 4 admin users (AU/AN/AR/AW).
+  teardown    Drop database 'd' (removes 'c', 'e', 'g') and delete all test
+              users.
   test        Run API authorization tests.  Each <path> may be a directory
               (all *.mjs files inside are used, sorted) or an individual *.mjs
               file.  Multiple paths are accepted and processed in order.
@@ -362,7 +369,10 @@ const ADMIN_SEP_SUPER = '|------------|------------|------------|------------|--
 // ─── Setup / Teardown ────────────────────────────────────────────────────────
 
 /**
- * Create database 'd', collection 'c' in it, 64 permission-matrix users,
+ * Create database 'd'; document collection 'c' (100 docs, keys k1–k100);
+ * edge collection 'e' (100 circular edges c/k1→c/k2, …, c/k100→c/k1);
+ * named graph 'g' (edge definition e: c→c);
+ * 64 permission-matrix users (same 'e' grant as 'c' grant);
  * and 4 admin test users (AU/AN/AR/AW).
  */
 async function doSetup(endpoint, rootPassword) {
@@ -390,14 +400,51 @@ async function doSetup(endpoint, rootPassword) {
     throw new Error(`Failed to create collection 'c': ${collResp.status} - ${JSON.stringify(collResp.body)}`);
   }
 
-  // ── Insert 100 documents into collection 'c' ─────────────────────────────
-  process.stdout.write("Inserting 100 documents into collection 'c'...");
-  const docs = Array.from({ length: 100 }, (_, i) => ({ Hallo: i + 1 }));
+  // ── Insert 100 documents into collection 'c' (keys k1–k100) ────────────
+  process.stdout.write("Inserting 100 documents into collection 'c' (keys k1–k100)...");
+  const docs = Array.from({ length: 100 }, (_, i) => ({ _key: `k${i + 1}`, value: i + 1 }));
   const docsResp = await api('POST', '/_db/d/_api/document/c', docs);
   if (docsResp.status >= 200 && docsResp.status < 300) {
     console.log(' OK');
   } else {
     throw new Error(`Failed to insert documents into 'c': ${docsResp.status} - ${JSON.stringify(docsResp.body)}`);
+  }
+
+  // ── Create edge collection 'e' ───────────────────────────────────────────
+  process.stdout.write("Creating edge collection 'e' in database 'd'...");
+  const edgeCollResp = await api('POST', '/_db/d/_api/collection',
+    { name: 'e', type: 3 });
+  if (edgeCollResp.status >= 200 && edgeCollResp.status < 300) {
+    console.log(' OK');
+  } else {
+    throw new Error(`Failed to create edge collection 'e': ${edgeCollResp.status} - ${JSON.stringify(edgeCollResp.body)}`);
+  }
+
+  // ── Insert 100 circular edges into 'e' (c/k1→c/k2, …, c/k100→c/k1) ────
+  process.stdout.write("Inserting 100 circular edges into 'e'...");
+  const edges = Array.from({ length: 100 }, (_, i) => ({
+    _from: `c/k${i + 1}`,
+    _to:   `c/k${(i % 100) + 2 <= 100 ? (i % 100) + 2 : 1}`,
+  }));
+  const edgesResp = await api('POST', '/_db/d/_api/document/e', edges);
+  if (edgesResp.status >= 200 && edgesResp.status < 300) {
+    console.log(' OK');
+  } else {
+    throw new Error(`Failed to insert edges into 'e': ${edgesResp.status} - ${JSON.stringify(edgesResp.body)}`);
+  }
+
+  // ── Create named graph 'g' ───────────────────────────────────────────────
+  process.stdout.write("Creating named graph 'g' (e: c→c)...");
+  const graphResp = await api('POST', '/_db/d/_api/gharial', {
+    name: 'g',
+    edgeDefinitions: [
+      { collection: 'e', from: ['c'], to: ['c'] },
+    ],
+  });
+  if (graphResp.status >= 200 && graphResp.status < 300) {
+    console.log(' OK');
+  } else {
+    throw new Error(`Failed to create graph 'g': ${graphResp.status} - ${JSON.stringify(graphResp.body)}`);
   }
 
   // ── Create 64 permission-matrix users ────────────────────────────────────
@@ -438,6 +485,12 @@ async function doSetup(endpoint, rootPassword) {
           if (r2.status < 200 || r2.status >= 300) {
             throw new Error(`Failed to set collection permission for '${username}': ${r2.status} - ${JSON.stringify(r2.body)}`);
           }
+          // Grant the same permission on edge collection 'e' as on 'c'.
+          process.stdout.write(`, e=${collGrant}`);
+          const r3 = await api('PUT', `/_db/_system/_api/user/${username}/database/d/e`, { grant: collGrant });
+          if (r3.status < 200 || r3.status >= 300) {
+            throw new Error(`Failed to set edge-collection permission for '${username}': ${r3.status} - ${JSON.stringify(r3.body)}`);
+          }
         }
 
         console.log();
@@ -469,13 +522,19 @@ async function doSetup(endpoint, rootPassword) {
     console.log();
   }
 
-  console.log('Setup complete. 64 collection/DB-level users + 4 admin users created.');
-  console.log("Each user's password equals their username.");
+  console.log('Setup complete.');
+  console.log('  database d   – with document collection c (k1–k100),');
+  console.log('                   edge collection e (100 circular edges),');
+  console.log('                   named graph g (e: c→c)');
+  console.log('  64 collection/DB-level users + 4 admin users (AU/AN/AR/AW)');
+  console.log('  Each user has the same grant on e as on c.');
+  console.log("  Each user's password equals their username.");
 }
 
 /**
- * Drop database 'd' and delete all 64 permission-matrix users plus the
- * 4 admin test users (AU/AN/AR/AW).
+ * Drop database 'd' (which removes collections c and e and graph g) and
+ * delete all 64 permission-matrix users plus the 4 admin test users
+ * (AU/AN/AR/AW).
  */
 async function doTeardown(endpoint, rootPassword) {
   const authHeader = `Basic ${Buffer.from(`root:${rootPassword}`).toString('base64')}`;
