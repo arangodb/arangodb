@@ -39,6 +39,8 @@
 #include "Containers/SmallVector.h"
 
 #include "Logger/LogMacros.h"
+#include "Basics/StaticStrings.h"
+#include "Transaction/Helpers.h"
 
 #define LOG_RULE LOG_DEVEL_IF(false) << "UpgradeScatterToDistribute: "
 
@@ -87,6 +89,13 @@ arangodb::aql::Variable const* getOutVariable(
     }
   }
   return nullptr;
+}
+arangodb::aql::AstNode* createParseKeyCall(arangodb::aql::Ast* ast,
+                                           arangodb::aql::AstNode const* input) {
+  using namespace arangodb::aql;
+  AstNode* args = ast->createNodeArray();
+  args->addMember(ast->clone(input));
+  return ast->createNodeFunctionCall("PARSE_KEY", args, true);
 }
 
 bool checkIfAllShardKeysAreUsed(arangodb::aql::AstNode const* root,
@@ -167,11 +176,24 @@ bool checkIfAllShardKeysAreUsed(arangodb::aql::AstNode const* root,
       LOG_RULE << "var is neither on the left nor on the right side, skip";
       continue;
     }
-    std::string const attrField = shardKeyNode->getString();
-    bool const isShardKey = std::find(shardKeys.begin(), shardKeys.end(),
-                                      attrField) != shardKeys.end();
+
+    std::string attrField = shardKeyNode->getString();
+    if (attrField == arangodb::StaticStrings::IdString) {
+        attrField = arangodb::StaticStrings::KeyString;
+        Ast* ast = node->plan()->getAst();
+        expression = createParseKeyCall(ast, expression);
+    }
+
+    bool isShardKey = std::find(shardKeys.begin(), shardKeys.end(),
+                                attrField) != shardKeys.end();
+
     if (isShardKey > 0 && expression != nullptr) {
-      distDep.shardKeyAccessMap[shardKeyNode->getStringView()] = expression;
+      if (shardKeyNode->getString() == arangodb::StaticStrings::IdString) {
+        distDep.shardKeyAccessMap[arangodb::StaticStrings::KeyString] = expression;
+      }
+      else{
+        distDep.shardKeyAccessMap[shardKeyNode->getStringView()] = expression;
+      }
     }
   }
   // Found shard-keys in all or-branches

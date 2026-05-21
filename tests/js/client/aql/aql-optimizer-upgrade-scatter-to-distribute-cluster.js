@@ -31,6 +31,7 @@ function optimizerUpgradeScatterToDistributeSuite() {
   let col_dsl; // distribute shards like the main collection
   let col_msk; // sharded, but unrelated collection with multiple shard keys
   let col_msk_dsl; // distribute shards like the collection with multiple shard keys
+  let col_id;
 
   return {
     setUpAll: function () {
@@ -38,6 +39,7 @@ function optimizerUpgradeScatterToDistributeSuite() {
       db._drop("UnitTestsCollection_col_msk");
       db._drop("UnitTestsCollection_col_dsl");
       db._drop("UnitTestsCollection_col");
+      db._drop("UnitTestsCollection_col_id");
 
       col = db._create("UnitTestsCollection_col", { numberOfShards: 10});
       col_dsl = db._create("UnitTestsCollection_col_dsl", { numberOfShards: 10, distributeShardsLike: "UnitTestsCollection_col" });
@@ -45,8 +47,13 @@ function optimizerUpgradeScatterToDistributeSuite() {
       col_msk = db._create("UnitTestsCollection_col_msk", { numberOfShards: 3, shardKeys: ["shardKey", "shardKey2"] });
       col_msk_dsl = db._create("UnitTestsCollection_col_msk_dsl", { numberOfShards: 3, shardKeys: ["shardKey", "shardKey2"], distributeShardsLike: "UnitTestsCollection_col_msk" });
 
+      col_id = db._create("UnitTestsCollection_col_id", { numberOfShards: 10});
+      col_id_key = db._create("UnitTestsCollection_col_id_key", { numberOfShards: 3, shardKeys: ["_key"]});
+
       let docs = [];
       let docs_no_key = [];
+      let docs_id = [];
+      let docs_id_key = [];
       for (let i = 0; i < 1000; ++i) {
         docs.push({
           _key: "key-" + i,
@@ -65,11 +72,23 @@ function optimizerUpgradeScatterToDistributeSuite() {
           foreign_shardKey2: "shardKey2-" + i,
           value: i
         });
+        docs_id.push({
+          _key: "key-" + i,
+          foreign_id: col_id.name()+ "/key-" + i,
+          value: i
+        });
+        docs_id_key.push({
+          _key: "key-" + i,
+          foreign_id: col_id_key.name()+ "/key-" + i,
+          value: i
+        });  
       }
       col.insert(docs);
       col_dsl.insert(docs);
       col_msk.insert(docs_no_key);
       col_msk_dsl.insert(docs_no_key);
+      col_id.insert(docs_id);
+      col_id_key.insert(docs_id_key);
     },
 
     tearDownAll: function () {
@@ -85,6 +104,8 @@ function optimizerUpgradeScatterToDistributeSuite() {
             FOR doc2 IN ${col.name()}
              FILTER doc2._key == doc1.foreign_key
              RETURN [doc1, doc2]`;
+      db._explain(query);
+      print(JSON.stringify("shardKeys: " + db._collection(col_id.name()).properties().shardKeys, null, 2));
       let plan = db._createStatement({query: query}).explain().plan;
       assertTrue(plan.rules.includes("upgrade-scatter-to-distribute"));
       let result = db._query(query).toArray();
@@ -155,6 +176,63 @@ function optimizerUpgradeScatterToDistributeSuite() {
       let plan = db._createStatement({query: query}).explain().plan;
       assertFalse(plan.rules.includes("upgrade-scatter-to-distribute"));
     },
+
+    test_DefaultShardKey_Upgrade_id_1: function() {
+      let query =
+          `FOR doc1 IN ${col_id.name()}
+            FOR doc2 IN ${col_id.name()}
+             FILTER doc2._id == doc1.foreign_id
+             RETURN [doc1, doc2]`;
+      db._explain(query);
+      print(JSON.stringify("shardKeys: " + db._collection(col_id.name()).properties().shardKeys, null, 2));
+      let plan = db._createStatement({query: query}).explain().plan;
+      assertTrue(plan.rules.includes("upgrade-scatter-to-distribute"));
+      let result = db._query(query).toArray();
+      assertEqual(result.length, col_id.count());
+    },
+
+   test_DefaultShardKey_Upgrade_id_2: function() {
+      let query =
+          `FOR doc1 IN ${col_id.name()}
+            FOR doc2 IN ${col_id.name()}
+             FILTER doc2._key == doc1._id
+             RETURN [doc1, doc2]`;
+      db._explain(query);
+      print(JSON.stringify("shardKeys: " + db._collection(col_id.name()).properties().shardKeys, null, 2));
+      let plan = db._createStatement({query: query}).explain().plan;
+      assertTrue(plan.rules.includes("upgrade-scatter-to-distribute"));
+      let result = db._query(query).toArray();
+      assertNotEqual(result.length, col_id.count());
+    },
+
+    test_DefaultShardKey_Upgrade_id_3: function() {
+      let query =
+          `FOR doc1 IN ${col_id.name()}
+            FOR doc2 IN ${col_id.name()}
+             FILTER doc2.x == doc1.y
+             RETURN [doc1, doc2]`;
+      db._explain(query);
+      print(JSON.stringify("shardKeys: " + db._collection(col_id.name()).properties().shardKeys, null, 2));
+      let plan = db._createStatement({query: query}).explain().plan;
+      assertTrue(plan.rules.includes("upgrade-scatter-to-distribute"));
+      let result = db._query(query).toArray();
+      assertNotEqual(result.length, col_id.count());
+    },
+
+    test_DefaultShardKey_Upgrade_id_4: function() {
+      let query =
+          `FOR doc1 IN ${col_id_key.name()}
+            FOR doc2 IN ${col_id.name()}
+             FILTER doc2._key == doc1._key
+             RETURN [doc1, doc2]`;
+      db._explain(query);
+      print(JSON.stringify("shardKeys: " + db._collection(col_id_key.name()).properties().shardKeys, null, 2));
+      print(JSON.stringify("shardKeys: " + db._collection(col_id.name()).properties().shardKeys, null, 2));
+      let plan = db._createStatement({query: query}).explain().plan;
+      assertTrue(plan.rules.includes("upgrade-scatter-to-distribute"));
+      let result = db._query(query).toArray();
+      assertEqual(result.length, col_id_key.count());
+    }
   };
 }
 
