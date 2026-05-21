@@ -1,5 +1,6 @@
 add_library(arangoserver STATIC
   Actions/ActionFeature.cpp
+  Actions/ActionOptionsProvider.cpp
   Actions/RestActionHandler.cpp
   Actions/actions.cpp
   Auth/Common.cpp
@@ -147,6 +148,7 @@ add_library(arangoserver STATIC
   RestServer/LanguageCheckFeature.cpp
   RestServer/LockfileFeature.cpp
   RestServer/LogBufferFeature.cpp
+  RestServer/LogBufferOptionsProvider.cpp
   RestServer/MaxMapCountFeature.cpp
   RestServer/NonceFeature.cpp
   RestServer/ApiRecordingFeature.cpp
@@ -210,7 +212,9 @@ if(USE_V8)
     RestServer/ConsoleFeature.cpp
     RestServer/ConsoleThread.cpp
     RestServer/FrontendFeature.cpp
-    RestServer/ScriptFeature.cpp)
+    RestServer/FrontendOptionsProvider.cpp
+    RestServer/ScriptFeature.cpp
+    RestServer/ScriptOptionsProvider.cpp)
 endif()
 
 if(USE_MAINTAINER_MODE)
