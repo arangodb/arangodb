@@ -134,8 +134,10 @@ add_library(arangoserver STATIC
   RestServer/CrashHandlerOptionsProvider.cpp
   RestServer/CpuUsageFeature.cpp
   RestServer/DaemonFeature.cpp
+  RestServer/DaemonOptionsProvider.cpp
   RestServer/DatabaseFeature.cpp
   RestServer/DatabasePathFeature.cpp
+  RestServer/DatabasePathOptionsProvider.cpp
   RestServer/DumpLimitsFeature.cpp
   RestServer/DumpLimitsOptionsProvider.cpp
   RestServer/EndpointFeature.cpp
@@ -158,6 +160,7 @@ add_library(arangoserver STATIC
   RestServer/NonceFeature.cpp
   RestServer/ApiRecordingFeature.cpp
   RestServer/PrivilegeFeature.cpp
+  RestServer/PrivilegeOptionsProvider.cpp
   RestServer/QueryRegistryFeature.cpp
   RestServer/QueryRegistryFeatureOptions.cpp
   RestServer/ServerFeature.cpp
@@ -165,6 +168,7 @@ add_library(arangoserver STATIC
   RestServer/SharedPRNGFeature.cpp
   RestServer/SoftShutdownFeature.cpp
   RestServer/SupervisorFeature.cpp
+  RestServer/SupervisorOptionsProvider.cpp
   RestServer/SystemDatabaseFeature.cpp
   RestServer/TemporaryStorageFeature.cpp
   RestServer/TimeZoneFeature.cpp
