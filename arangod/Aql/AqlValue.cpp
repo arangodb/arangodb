@@ -74,7 +74,7 @@ uint64_t AqlValue::hash(uint64_t seed) const {
 
     return value;
   }
-  if (ADB_UNLIKELY(t == VPACK_INLINE_DOUBLE)) {
+  if (t == VPACK_INLINE_DOUBLE) {
     double v = asDouble();
     if (v == -0.0) {
       v = 0.0;
