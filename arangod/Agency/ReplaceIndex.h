@@ -24,7 +24,35 @@
 #include "Job.h"
 #include "Supervision.h"
 
+#include <velocypack/Builder.h>
+
 namespace arangodb::consensus {
+
+// Agency payload of a ReplaceIndex job. Persisted under Target/{ToDo,Pending,
+// Finished,Failed}/{jobId}; same shape written by the REST handler and read
+// back by the revival constructor.
+struct ReplaceIndexPayload {
+  std::string type{"replaceIndex"};
+  std::string database;
+  std::string collection;
+  std::string oldIndexId;
+  std::string newIndexId;
+  std::string jobId;
+  std::string creator;
+  std::string timeCreated;
+  velocypack::Builder newDefinition;
+
+  template<class Inspector>
+  friend auto inspect(Inspector& f, ReplaceIndexPayload& p) {
+    return f.object(p).fields(
+        f.field("type", p.type).fallback("replaceIndex"),
+        f.field("database", p.database), f.field("collection", p.collection),
+        f.field("oldIndexId", p.oldIndexId),
+        f.field("newIndexId", p.newIndexId), f.field("jobId", p.jobId),
+        f.field("creator", p.creator), f.field("timeCreated", p.timeCreated),
+        f.field("newDefinition", p.newDefinition));
+  }
+};
 
 // Performs a hot-swap of an index (only vector index for now) by adding a
 // sibling "shadow" entry to Plan/Collections/{db}/{coll}/indexes that carries
@@ -51,15 +79,6 @@ struct ReplaceIndex : public Job {
   void run(bool&) override final;
   bool start(bool&) override final;
   Result abort(std::string const& reason) override final;
-
-  // Add the ReplaceIndex job fields into an already-open object in `builder`.
-  // The REST handler and `create()` both call this so writer and reader stay
-  // in sync on the schema.
-  static void appendJobPayload(
-      velocypack::Builder& builder, std::string const& jobId,
-      std::string const& creator, std::string const& database,
-      std::string const& collection, std::string const& oldIndexId,
-      std::string const& newIndexId, velocypack::Slice newDefinition);
 
   std::string _database;
   std::string _collection;

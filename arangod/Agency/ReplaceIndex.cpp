@@ -25,6 +25,7 @@
 #include "Agency/Node.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/TimeString.h"
+#include "Inspection/VPack.h"
 #include "Logger/LogMacros.h"
 #include "VocBase/voc-types.h"
 
@@ -36,19 +37,6 @@ using namespace arangodb::velocypack;
 namespace arangodb::consensus {
 
 namespace {
-
-// Agency field names for the ReplaceIndex job payload. Shared between
-// `buildJobPayload` (writer) and the revival constructor (reader).
-constexpr std::string_view kFieldType = "type";
-constexpr std::string_view kFieldDatabase = "database";
-constexpr std::string_view kFieldCollection = "collection";
-constexpr std::string_view kFieldOldIndexId = "oldIndexId";
-constexpr std::string_view kFieldNewIndexId = "newIndexId";
-constexpr std::string_view kFieldJobId = "jobId";
-constexpr std::string_view kFieldCreator = "creator";
-constexpr std::string_view kFieldTimeCreated = "timeCreated";
-constexpr std::string_view kFieldNewDefinition = "newDefinition";
-constexpr std::string_view kJobType = "replaceIndex";
 
 // Marker on the shadow index entry in Plan; carries the old index id.
 constexpr std::string_view kReplacesField = "replaces";
@@ -125,26 +113,6 @@ ShardOutcome classifyShard(Slice indexesSlice, std::string_view indexId) {
 
 }  // namespace
 
-void ReplaceIndex::appendJobPayload(Builder& builder, std::string const& jobId,
-                                    std::string const& creator,
-                                    std::string const& database,
-                                    std::string const& collection,
-                                    std::string const& oldIndexId,
-                                    std::string const& newIndexId,
-                                    Slice newDefinition) {
-  builder.add(kFieldType, VPackValue(kJobType));
-  builder.add(kFieldDatabase, VPackValue(database));
-  builder.add(kFieldCollection, VPackValue(collection));
-  builder.add(kFieldOldIndexId, VPackValue(oldIndexId));
-  builder.add(kFieldNewIndexId, VPackValue(newIndexId));
-  builder.add(kFieldJobId, VPackValue(jobId));
-  builder.add(kFieldCreator, VPackValue(creator));
-  builder.add(kFieldTimeCreated,
-              VPackValue(timepointToString(std::chrono::system_clock::now())));
-  builder.add(VPackValue(kFieldNewDefinition));
-  builder.add(newDefinition);
-}
-
 ReplaceIndex::ReplaceIndex(Node const& snapshot, AgentInterface* agent,
                            std::string const& jobId, std::string const& creator,
                            std::string const& database,
@@ -162,30 +130,35 @@ ReplaceIndex::ReplaceIndex(Node const& snapshot, AgentInterface* agent,
 ReplaceIndex::ReplaceIndex(Node const& snapshot, AgentInterface* agent,
                            JOB_STATUS status, std::string const& jobId)
     : Job(status, snapshot, agent, jobId) {
-  std::string const path = pos[status] + _jobId + "/";
-  auto db = _snapshot.hasAsString(path + std::string{kFieldDatabase});
-  auto coll = _snapshot.hasAsString(path + std::string{kFieldCollection});
-  auto oldId = _snapshot.hasAsString(path + std::string{kFieldOldIndexId});
-  auto newId = _snapshot.hasAsString(path + std::string{kFieldNewIndexId});
-  auto creator = _snapshot.hasAsString(path + std::string{kFieldCreator});
-  auto time = _snapshot.hasAsString(path + std::string{kFieldTimeCreated});
-  auto defNode = _snapshot.get(path + std::string{kFieldNewDefinition});
-
-  if (db && coll && oldId && newId && creator && time && defNode != nullptr) {
-    _database = db.value();
-    _collection = coll.value();
-    _oldIndexId = oldId.value();
-    _newIndexId = newId.value();
-    _creator = creator.value();
-    _timeCreated = time.value();
-    _newDefinition = std::make_shared<Builder>(defNode->toBuilder());
-  } else {
+  auto node = _snapshot.get(pos[status] + _jobId);
+  if (node == nullptr) {
     auto const err =
-        "Failed to load ReplaceIndex job " + _jobId + " from agency snapshot";
+        "ReplaceIndex job " + _jobId + " not found in agency snapshot";
     LOG_TOPIC("12fa1", ERR, Logger::SUPERVISION) << err;
     finish("", "", false, err);
     _status = FAILED;
+    return;
   }
+
+  ReplaceIndexPayload payload;
+  auto jobBuilder = node->toBuilder();
+  auto res = velocypack::deserializeWithStatus(jobBuilder.slice(), payload, {});
+  if (!res.ok()) {
+    auto const err = "Failed to load ReplaceIndex job " + _jobId +
+                     " from agency snapshot: " + res.error() +
+                     " (path: " + res.path() + ")";
+    LOG_TOPIC("12fa1", ERR, Logger::SUPERVISION) << err;
+    finish("", "", false, err);
+    _status = FAILED;
+    return;
+  }
+  _database = std::move(payload.database);
+  _collection = std::move(payload.collection);
+  _oldIndexId = std::move(payload.oldIndexId);
+  _newIndexId = std::move(payload.newIndexId);
+  _creator = std::move(payload.creator);
+  _timeCreated = std::move(payload.timeCreated);
+  _newDefinition = std::make_shared<Builder>(std::move(payload.newDefinition));
 }
 
 ReplaceIndex::~ReplaceIndex() = default;
@@ -212,12 +185,20 @@ bool ReplaceIndex::create(std::shared_ptr<Builder> envelope) {
     _jb->openObject();
   }
 
+  ReplaceIndexPayload payload{
+      .database = _database,
+      .collection = _collection,
+      .oldIndexId = _oldIndexId,
+      .newIndexId = _newIndexId,
+      .jobId = _jobId,
+      .creator = _creator,
+      .timeCreated = timepointToString(std::chrono::system_clock::now()),
+      .newDefinition = {},
+  };
+  payload.newDefinition.add(_newDefinition->slice());
+
   _jb->add(VPackValue(toDoPrefix + _jobId));
-  {
-    VPackObjectBuilder guard(_jb.get());
-    appendJobPayload(*_jb, _jobId, _creator, _database, _collection,
-                     _oldIndexId, _newIndexId, _newDefinition->slice());
-  }
+  velocypack::serialize(*_jb, payload);
 
   _status = TODO;
 
