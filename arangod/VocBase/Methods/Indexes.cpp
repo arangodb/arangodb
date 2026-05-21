@@ -44,6 +44,8 @@
 #include "Indexes/IndexFactory.h"
 #include "IResearch/IResearchCommon.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RocksDBEngine/RocksDBCollection.h"
+#include "RocksDBEngine/RocksDBVectorIndex.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
@@ -401,6 +403,98 @@ futures::Future<arangodb::Result> Indexes::getAll(
 /// @brief ensures an index, locally
 ////////////////////////////////////////////////////////////////////////////////
 
+// Register the replacement vector index for `definition` (carrying a
+// `replaces` marker) as an in-memory-only sibling on the local shard. The
+// vector-index build manager picks it up via its normal kUnusable scan and
+// trains it through the standard pipeline — that scan is the single point
+// where vector-index trainings are serialized, so this routing must NOT
+// build inline. On follower replicas this is a silent no-op; followers
+// reconstruct from the leader's WAL after the atomic swap commits.
+static Result EnsureShadowLocal(arangodb::LogicalCollection& collection,
+                                VPackSlice definition, VPackBuilder& output) {
+  auto replacesSlice = definition.get("replaces");
+  if (!replacesSlice.isString()) {
+    return {TRI_ERROR_BAD_PARAMETER,
+            "replaces marker must be a string-encoded index id"};
+  }
+  auto oldIdParsed = StringUtils::try_uint64(replacesSlice.copyString());
+  if (oldIdParsed.fail()) {
+    return {TRI_ERROR_BAD_PARAMETER,
+            "replaces marker is not a numeric index id"};
+  }
+  auto oldIndexId = IndexId{oldIdParsed.get()};
+
+  auto newIdSlice = definition.get(StaticStrings::IndexId);
+  if (!newIdSlice.isString()) {
+    return {TRI_ERROR_BAD_PARAMETER, "new index id missing"};
+  }
+  auto newIdParsed = StringUtils::try_uint64(newIdSlice.copyString());
+  if (newIdParsed.fail()) {
+    return {TRI_ERROR_BAD_PARAMETER, "new index id is not numeric"};
+  }
+  auto newIndexId = IndexId{newIdParsed.get()};
+
+  auto oldIdx = collection.lookupIndex(oldIndexId);
+  if (oldIdx == nullptr) {
+    return {TRI_ERROR_ARANGO_INDEX_NOT_FOUND,
+            "replaces target index not found on this shard"};
+  }
+  if (oldIdx->type() != Index::TRI_IDX_TYPE_VECTOR_INDEX) {
+    return {TRI_ERROR_BAD_PARAMETER, "replaces target is not a vector index"};
+  }
+
+  // If the replacement is already present locally (e.g. the maintenance
+  // action ran on a previous tick), this is a no-op convergence step.
+  if (collection.lookupIndex(newIndexId) != nullptr) {
+    return {};
+  }
+
+  // Leader-only: only the shard leader trains. Followers reconstruct from
+  // the leader's WAL after the atomic swap.
+  if (ServerState::instance()->isDBServer()) {
+    auto& ci = collection.vocbase()
+                   .server()
+                   .getFeature<ClusterFeature>()
+                   .clusterInfo();
+    auto shardIdRes = ShardID::shardIdFromString(collection.name());
+    if (shardIdRes.ok()) {
+      auto responsible = ci.getResponsibleServer(shardIdRes.get());
+      auto const& me = ServerState::instance()->getId();
+      if (responsible != nullptr && !responsible->empty() &&
+          std::string_view{(*responsible)[0]} != std::string_view{me}) {
+        return {};
+      }
+    }
+  }
+
+  std::shared_ptr<RocksDBVectorIndex> shadow;
+  try {
+    shadow = std::make_shared<RocksDBVectorIndex>(newIndexId, collection,
+                                                  definition);
+  } catch (std::exception const& ex) {
+    return {
+        TRI_ERROR_BAD_PARAMETER,
+        absl::StrCat("failed to construct shadow vector index: ", ex.what())};
+  }
+
+  auto* rcoll = static_cast<RocksDBCollection*>(collection.getPhysical());
+  rcoll->addShadowIndex(shadow);
+
+  // Report the shadow id back to the caller (mirroring EnsureIndexLocal's
+  // output shape so the maintenance action's logging works the same way).
+  VPackBuilder tmp;
+  shadow->toVelocyPack(tmp, Index::makeFlags(Index::Serialize::Estimates));
+  std::string iid = StringUtils::itoa(shadow->id().id());
+  VPackBuilder b;
+  b.openObject();
+  b.add("isNewlyCreated", VPackValue(true));
+  b.add(StaticStrings::IndexId,
+        VPackValue(collection.name() + TRI_INDEX_HANDLE_SEPARATOR_CHR + iid));
+  b.close();
+  output = velocypack::Collection::merge(tmp.slice(), b.slice(), false);
+  return {};
+}
+
 static futures::Future<Result> EnsureIndexLocal(
     arangodb::LogicalCollection& collection, VPackSlice definition, bool create,
     VPackBuilder& output, std::shared_ptr<Indexes::ProgressTracker> progress,
@@ -515,6 +609,21 @@ futures::Future<arangodb::Result> Indexes::ensureIndex(
   }
 
   VPackSlice indexDef = normalized.slice();
+
+  // This is a index-hotswao operation which currently works only with vector
+  // indexes. The "replaces" marker is used to identify the old index that is
+  // being replaced
+  if (indexDef.hasKey("replaces")) {
+    if (ServerState::instance()->isCoordinator()) {
+      ensureIndexResult = TRI_ERROR_BAD_PARAMETER;
+      co_return Result{TRI_ERROR_BAD_PARAMETER,
+                       "replaces marker is for DBServer maintenance only"};
+    }
+    auto res = EnsureShadowLocal(collection, indexDef, output);
+    ensureIndexResult = res.errorNumber();
+    co_return res;
+  }
+
   // for single server or for cluster when the instance is coordinator,
   // indexes cannot be created covering fields that have preceding or trailing
   // ":", because the case of preceding or trailing ":" is treated as a special

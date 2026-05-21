@@ -1157,22 +1157,30 @@ async<void> RestIndexHandler::replaceIndex() {
   }
 
   std::string const jobId = std::to_string(clusterInfo.uniqid());
-  std::string const collectionPlanId = std::to_string(coll->planId().id());
-  std::string const creator = ServerState::instance()->getId();
   auto jobToDoPath =
       arangodb::cluster::paths::root()->arango()->target()->toDo()->job(jobId);
+
+  consensus::ReplaceIndexPayload payload{
+      .database = _vocbase.name(),
+      .collection = std::to_string(coll->planId().id()),
+      .oldIndexId = oldIndexIdStr,
+      .newIndexId = newIndexId,
+      .jobId = jobId,
+      .creator = ServerState::instance()->getId(),
+      .timeCreated = timepointToString(std::chrono::system_clock::now()),
+      .newDefinition = {},
+  };
+  payload.newDefinition.add(finalDef.slice());
+
+  VPackBuilder payloadBuilder;
+  velocypack::serialize(payloadBuilder, payload);
 
   VPackBuffer<uint8_t> trxBuf;
   {
     VPackBuilder builder(trxBuf);
     arangodb::agency::envelope::into_builder(builder)
         .write()
-        .emplace(jobToDoPath->str(),
-                 [&](VPackBuilder& b) {
-                   consensus::ReplaceIndex::appendJobPayload(
-                       b, jobId, creator, _vocbase.name(), collectionPlanId,
-                       oldIndexIdStr, newIndexId, finalDef.slice());
-                 })
+        .key(jobToDoPath->str(), payloadBuilder.slice())
         .end()
         .done();
   }
