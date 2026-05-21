@@ -163,7 +163,11 @@ ReplaceIndex::ReplaceIndex(Node const& snapshot, AgentInterface* agent,
 
   ReplaceIndexPayload payload;
   auto jobBuilder = node->toBuilder();
-  auto res = velocypack::deserializeWithStatus(jobBuilder.slice(), payload, {});
+  // The supervision framework annotates the job entry with extra bookkeeping
+  // fields (e.g. `timeStarted` when moving ToDo→Pending), so we must allow
+  // unknown fields here.
+  auto res = velocypack::deserializeWithStatus(jobBuilder.slice(), payload,
+                                               {.ignoreUnknownFields = true});
   if (!res.ok()) {
     auto const err = "Failed to load ReplaceIndex job " + _jobId +
                      " from agency snapshot: " + res.error() +
