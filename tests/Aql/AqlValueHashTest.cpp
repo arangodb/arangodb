@@ -47,7 +47,7 @@ TEST_F(AqlValueHashTest, AqlValueHash_InlineValues) {
   EXPECT_TRUE(equal(v1, v2));
 
   // Different values should have different hashes (likely, not guaranteed)
-  EXPECT_TRUE(equal(v1, v2));
+  EXPECT_NE(hasher(v1), hasher(v3));
   EXPECT_FALSE(equal(v1, v3));
 }
 
@@ -172,6 +172,7 @@ TEST_F(AqlValueHashTest, AqlValueHash_SupervisedVsManaged_ContentEqual) {
       << "Supervised and managed slices with same content are equal";
 
   supervised.destroy();
+  managed.destroy();
 }
 
 TEST_F(AqlValueHashTest, AqlValueHash_UsageInToVelocyPack_Deduplication) {

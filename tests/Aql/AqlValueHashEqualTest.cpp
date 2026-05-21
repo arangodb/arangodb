@@ -261,30 +261,13 @@ TEST_F(AqlValueHashEqualTest, inline_double_different_values) {
 }
 
 TEST_F(AqlValueHashEqualTest, inline_double_zero_variants) {
-  // +0.0 and -0.0: IEEE 754 distinguishes them, but in C++ they compare equal
-  // However, when stored as different bit patterns, they may hash differently
-  // The current implementation uses VelocyPackHelper::equal() which uses
-  // comp<double>() In C++, 0.0 == -0.0 is true, but the hash might differ based
-  // on bit representation
+  // -0.0 and +0.0 must be equal and hash identically: the hash normalizes
+  // -0.0 to 0.0 before hashing, and equal_to does the same before comparing.
   AqlValue val1(makeAQLValue(0.0));
   AqlValue val2(makeAQLValue(-0.0));
 
-  // In C++, 0.0 == -0.0 evaluates to true, so they should be equal
-  // However, the hash might differ if based on bit patterns
-  // For now, we expect them to be equal (C++ behavior), but hash might differ
-  // This is acceptable as hash collisions are allowed for equal values in some
-  // contexts
-  bool areEqual = equal(val1, val2);
-  if (areEqual) {
-    // If equal, they should have same hash (hash/equality contract)
-    EXPECT_EQ(hasher(val1), hasher(val2))
-        << "+0.0 and -0.0 are equal, so should have same hash";
-  } else {
-    // If not equal, that's also acceptable (IEEE 754 distinguishes them)
-    // Just document this behavior
-    EXPECT_FALSE(areEqual)
-        << "+0.0 and -0.0 are treated as different (IEEE 754 behavior)";
-  }
+  EXPECT_TRUE(equal(val1, val2));
+  EXPECT_EQ(hasher(val1), hasher(val2));
 }
 
 // ============================================================================

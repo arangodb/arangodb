@@ -83,7 +83,17 @@ uint64_t AqlValue::hash(uint64_t seed) const {
   }
   // we must use the slow hash function here, because a value may have
   // different representations in case it's an array/object/number
-  return slice(t).normalizedHash(seed);
+  auto s = slice(t);
+  // normalize -0.0 to 0.0 so hash is consistent with equal_to, which uses
+  // VelocyPackHelper::equal and treats -0.0 == 0.0
+  if (s.isDouble()) {
+    double v = s.getDouble();
+    if (v == -0.0) {
+      v = 0.0;
+    }
+    return VELOCYPACK_HASH(&v, sizeof(v), seed);
+  }
+  return s.normalizedHash(seed);
 }
 
 bool AqlValue::isNone() const noexcept {

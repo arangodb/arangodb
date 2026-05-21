@@ -508,11 +508,10 @@ SharedAqlItemBlockPtr AqlItemBlock::cloneDataAndMoveShadow() {
           AqlValue a = stealAndEraseValue(row, col);
           if (a.requiresDestruction()) {
             AqlValueGuard guard{a, true};
-            /*
-             * NOTE: Shadow rows are always clones of data,
-             * no referencing is possible, therefore we do not need to
-             * do the cache step here.
-             */
+            // Shadow rows are not deduplicated: the old cache had a latent
+            // double-free when two columns shared the same pointer (the second
+            // steal() would free memory still held by res). Just transfer
+            // ownership directly.
             res->setValue(row, col, a);
             // Transfer ownership to res - guard won't destroy it
             guard.steal();
