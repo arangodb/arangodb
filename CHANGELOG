@@ -1,6 +1,18 @@
 3.12.10-devel (XXXX-XX-XX)
 --------------------------
 
+* COR-269: Added a retraining mechanism for vector indexes via
+  `POST /_api/index/replace`. An optional patch may be supplied to change
+  the index definition; an empty patch retrains against the same
+  definition. The existing index keeps serving queries until the new one
+  is built, at which point the two are swapped atomically. The `dimension`
+  field cannot change; `metric`, `fields`, `nLists` and the factory string
+  may.
+
+* COR-387: Synchronous vector index creation no longer throws when training
+  fails. The index is created with `trainingState: "unusable"` and the
+  training error returned in `errorMessage`.
+
 * Upgraded included rclone to v1.73.5 with go1.25.10 and non-vulnerable
   dependencies.
 
