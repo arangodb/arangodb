@@ -119,15 +119,14 @@ RocksDBValue RocksDBValue::VectorIndexValueV1(
 }
 
 RocksDBValue RocksDBValue::VectorIndexValueV2(
-    RocksDBVectorIndexEntryValue const& entryValue) {
+    uint8_t const* encodedValue, size_t encodedSize,
+    velocypack::SharedSlice const& storedValues) {
   RocksDBValue value(RocksDBEntryType::VectorVPackIndexValue);
-  auto storedSlice = entryValue.storedValues.slice();
-  size_t encodedSize = entryValue.encodedValue.size();
-  size_t storedSize = static_cast<size_t>(storedSlice.byteSize());
+  auto storedSlice = storedValues.slice();
+  size_t const storedSize = static_cast<size_t>(storedSlice.byteSize());
   value._buffer.reserve(encodedSize + storedSize);
-  value._buffer.append(
-      reinterpret_cast<char const*>(entryValue.encodedValue.data()),
-      encodedSize);
+  value._buffer.append(reinterpret_cast<char const*>(encodedValue),
+                       encodedSize);
   value._buffer.append(reinterpret_cast<char const*>(storedSlice.start()),
                        storedSize);
   return value;

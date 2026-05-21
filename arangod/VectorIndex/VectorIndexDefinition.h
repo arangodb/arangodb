@@ -27,7 +27,6 @@
 #include <cmath>
 #include <cstdint>
 #include <format>
-#include <limits>
 #include <optional>
 #include <string>
 #include <variant>
@@ -77,9 +76,9 @@ struct TrainedData {
 ///   kV2: Raw concat [encodedValue: codeSize bytes][storedValues: VPack].
 ///        Reader splits at codeSize; avoids the outer VPack deserialize step.
 ///
-/// Each version uses its own sentinel slot in the VectorIndex CF (see
-/// vectorIndexMetadataSlot), so a downgrade misses the V2 metadata and
-/// triggers retraining instead of crashing.
+/// Each version uses its own sentinel slot in the VectorIndex CF, so a
+/// downgrade misses the V2 metadata and triggers retraining instead of
+/// crashing.
 enum class VectorIndexFormatVersion : std::uint8_t {
   kV1 = 1,
   kV2 = 2,
@@ -93,21 +92,6 @@ inline auto inspect(Inspector& f, VectorIndexFormatVersion& x) {
 
 static constexpr VectorIndexFormatVersion kCurrentVectorIndexFormatVersion =
     VectorIndexFormatVersion::kV2;
-
-/// @brief Sentinel key slot for the per-index metadata record. Picked from
-/// the top of the uint64 range to stay within (indexId, indexId+1) bounds
-/// used by removeLargeRange on drop and never collide with an IVF list
-/// number.
-constexpr std::uint64_t vectorIndexMetadataSlot(
-    VectorIndexFormatVersion version) noexcept {
-  switch (version) {
-    case VectorIndexFormatVersion::kV1:
-      return std::numeric_limits<std::uint64_t>::max();
-    case VectorIndexFormatVersion::kV2:
-      return std::numeric_limits<std::uint64_t>::max() - 1;
-  }
-  ADB_UNREACHABLE;
-}
 
 /// @brief Per-index metadata sentinel record stored in the VectorIndex CF.
 /// Wraps TrainedData and adds the on-disk formatVersion. The kV1 default

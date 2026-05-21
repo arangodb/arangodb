@@ -28,6 +28,7 @@
 
 #include <s2/s2point.h>
 
+#include <velocypack/SharedSlice.h>
 #include <velocypack/Slice.h>
 
 #include "RocksDBEngine/RocksDBTypes.h"
@@ -72,8 +73,11 @@ class RocksDBValue {
       RocksDBVectorIndexEntryValue const& entryValue);
   /// @brief Build a v2 value for a vector-index entry with stored values:
   /// raw concat [encodedValue codeSize bytes][storedValues VPack slice].
+  /// Writes straight into the underlying buffer to avoid copying the encoded
+  /// vector through an intermediate std::vector.
   static RocksDBValue VectorIndexValueV2(
-      RocksDBVectorIndexEntryValue const& entryValue);
+      uint8_t const* encodedValue, size_t encodedSize,
+      velocypack::SharedSlice const& storedValues);
   static RocksDBValue View(VPackSlice data);
   static RocksDBValue ReplicationApplierConfig(VPackSlice data);
   static RocksDBValue KeyGeneratorValue(VPackSlice data);

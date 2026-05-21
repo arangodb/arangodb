@@ -163,7 +163,7 @@ class RocksDBVectorIndex final : public RocksDBIndex {
   std::shared_ptr<faiss::IndexIVF> _faissIndex;
   vector::TrainedData _trainedData;
   vector::VectorIndexFormatVersion _formatVersion{
-      vector::VectorIndexFormatVersion::kV1};
+      vector::kCurrentVectorIndexFormatVersion};
   StoredValues const _storedValues;
 
   std::size_t _trainingThreshold{0};

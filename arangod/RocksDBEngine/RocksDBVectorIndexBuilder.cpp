@@ -661,10 +661,8 @@ Result ingestVectors(RocksDBVectorIndex& index, rocksdb::DB* rootDB,
     } else if (formatVersion == VectorIndexFormatVersion::kV2) {
       return [](EncodedVectors& item, size_t k, size_t codeSize) {
         auto* ptr = item.codes.get() + k * codeSize;
-        RocksDBVectorIndexEntryValue v;
-        v.encodedValue = std::vector<uint8_t>(ptr, ptr + codeSize);
-        v.storedValues = std::move(item.storedValues[k]);
-        return RocksDBValue::VectorIndexValueV2(v);
+        return RocksDBValue::VectorIndexValueV2(ptr, codeSize,
+                                                item.storedValues[k]);
       };
     } else {
       return [](EncodedVectors& item, size_t k, size_t codeSize) {
@@ -769,8 +767,8 @@ Result VectorIndexBuilder::persistVectorIndexMetadata(
   // binary looking at the V1 slot won't find it and will treat the index as
   // unusable
   RocksDBKey key;
-  key.constructVectorIndexTrainedData(
-      _index.objectId(), vectorIndexMetadataSlot(metadata.formatVersion));
+  key.constructVectorIndexTrainedData(_index.objectId(),
+                                      metadata.formatVersion);
   auto value = RocksDBValue::VectorIndexValue(builder.slice());
 
   auto* vectorCF = RocksDBColumnFamilyManager::get(

@@ -184,8 +184,7 @@ vector::VectorIndexMetadata RocksDBVectorIndex::loadVectorIndexMetadata(
   auto readSlot = [&](vector::VectorIndexFormatVersion version,
                       std::string& raw) -> bool {
     RocksDBKey key;
-    key.constructVectorIndexTrainedData(
-        objectId(), vector::vectorIndexMetadataSlot(version));
+    key.constructVectorIndexTrainedData(objectId(), version);
     rocksdb::ReadOptions ro;
     return _engine.db()->GetRootDB()->Get(ro, _cf, key.string(), &raw).ok();
   };
@@ -465,18 +464,20 @@ Result RocksDBVectorIndex::insert(transaction::Methods& trx,
 
   auto value = std::invoke([&]() {
     if (hasStoredValues()) {
-      RocksDBVectorIndexEntryValue rocksdbEntryValue;
-      rocksdbEntryValue.encodedValue = std::vector<uint8_t>(
-          flat_codes.get(), flat_codes.get() + _faissIndex->code_size);
-
       auto const extractedAttributeValues =
           transaction::extractAttributeValues(trx, _storedValues, doc, true)
               ->get();
-      rocksdbEntryValue.storedValues = extractedAttributeValues->sharedSlice();
+      auto storedValues = extractedAttributeValues->sharedSlice();
 
-      return _formatVersion == vector::VectorIndexFormatVersion::kV2
-                 ? RocksDBValue::VectorIndexValueV2(rocksdbEntryValue)
-                 : RocksDBValue::VectorIndexValueV1(rocksdbEntryValue);
+      if (_formatVersion == vector::VectorIndexFormatVersion::kV2) {
+        return RocksDBValue::VectorIndexValueV2(
+            flat_codes.get(), _faissIndex->code_size, storedValues);
+      }
+      RocksDBVectorIndexEntryValue rocksdbEntryValue;
+      rocksdbEntryValue.encodedValue = std::vector<uint8_t>(
+          flat_codes.get(), flat_codes.get() + _faissIndex->code_size);
+      rocksdbEntryValue.storedValues = std::move(storedValues);
+      return RocksDBValue::VectorIndexValueV1(rocksdbEntryValue);
     } else {
       // Store raw encoded values directly for better performance and
       // backwards compatibility
