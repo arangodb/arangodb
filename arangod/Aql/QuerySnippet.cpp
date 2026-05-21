@@ -268,7 +268,6 @@ bool CloneWorker::before(ExecutionNode* node) {
         // use the WalkerWorker!
         return true;
       }
-
     }
   } else if (node == _internalGather || node == _internalScatter) {
     // Never clone these nodes. We should never run into this case.
