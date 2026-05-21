@@ -77,8 +77,7 @@ std::unique_ptr<Expression> tryRemoveFilterNode(
 
   auto filterExpression = calculationNode->expression()->clone(plan->getAst());
 
-  // TODO this will be resolved in the ticket COR-461 Allow vector search to
-  // filter on distance
+  // TODO(jbajic COR-461) Allow vector search to filter on distance
   VarSet filterVars;
   filterExpression->variables(filterVars);
   if (filterVars.contains(distanceOutVariable)) {
@@ -100,7 +99,7 @@ std::unique_ptr<Expression> tryRemoveFilterNode(
   return filterExpression;
 }
 
-// TODO(jbajic): fix this, it does not handle nested values in filtering
+// TODO(jbajic COR-511): fix this, it does not handle nested values in filtering
 bool areAllAttributesCovered(
     std::unique_ptr<ExecutionPlan> const& plan,
     std::unique_ptr<Expression> const& filterExpression,
@@ -218,8 +217,8 @@ void pushFilterIntoEnumerateNear(Optimizer* opt,
     }
 
     // Try finding better index with coveredFields covering filtering
-    // TODO(jbajic) we should optiomize the we find best index covering both
-    // projection and filtering
+    // TODO(jbajic COR-541) we should optiomize the we find best index covering
+    // both projection and filtering
     if (auto bestIndex = findBestVectorIndex(plan, filterExpression,
                                              enumerateNearVectorNode);
         bestIndex != nullptr) {

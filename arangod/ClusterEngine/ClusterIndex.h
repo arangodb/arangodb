@@ -132,7 +132,7 @@ class ClusterIndex : public Index {
 
   std::unique_ptr<vector::UserVectorIndexDefinition> _vectorIndexDefinition;
 
-  // Only used in RocksDB edge index.
+  // Only used in RocksDB edge index and vector index.
   std::vector<std::vector<basics::AttributeName>> _coveredFields;
   // Only used in TRI_IDX_TYPE_MDI_PREFIXED_INDEX
   std::vector<std::vector<basics::AttributeName>> _prefixFields;
