@@ -50,13 +50,14 @@ defmodule ToastTest.SuiteResult.JSON do
       "failed" => Map.get(counts, :failed, 0),
       "skipped" => Map.get(counts, :skipped, 0),
       "excluded" => Map.get(counts, :excluded, 0),
-      "invalid" => Map.get(counts, :invalid, 0)
+      "invalid" => Map.get(counts, :invalid, 0),
+      "invalidated" => Map.get(counts, :invalidated, 0)
     }
   end
 
   defp encode_test(test) do
     %{
-      "module" => Atom.to_string(test.module),
+      "module" => ToastTest.Formatting.display_module_name(test.module),
       "name" => Atom.to_string(test.name),
       "outcome" => Atom.to_string(test.outcome),
       "duration_us" => test.duration_us

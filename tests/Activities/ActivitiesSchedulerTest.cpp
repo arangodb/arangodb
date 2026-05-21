@@ -21,6 +21,7 @@
 
 #include "Activities/GenericActivity.h"
 #include "Activities/RegistryGlobalVariable.h"
+#include "Basics/SharedPRNG.h"
 #include "GeneralServer/RequestLane.h"
 #include "Mocks/Servers.h"
 #include "Scheduler/SupervisedScheduler.h"
@@ -45,7 +46,7 @@ struct ActivitiesSchedulerTest : ::testing::Test {
                 nullptr))),
         metrics(std::make_shared<arangodb::SchedulerMetrics>(*metricsFeature)),
         scheduler(mockApplicationServer.server(), 4, 4, 16, 16, 16, 16, 16,
-                  0.33, metrics) {}
+                  0.33, metrics, sharedPRNG) {}
   void SetUp() override {
     activityData["TestCase"] =
         ::testing::UnitTest::GetInstance()->current_test_info()->name();
@@ -59,6 +60,7 @@ struct ActivitiesSchedulerTest : ::testing::Test {
   arangodb::tests::mocks::MockRestServer mockApplicationServer;
   std::shared_ptr<arangodb::metrics::MetricsFeature> metricsFeature;
   std::shared_ptr<arangodb::SchedulerMetrics> metrics;
+  basics::SharedPRNG sharedPRNG;
   SupervisedScheduler scheduler;
   activities::GenericActivityData activityData;
 };

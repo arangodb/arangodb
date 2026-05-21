@@ -24,23 +24,22 @@
 
 #pragma once
 
-#include <array>
 #include <condition_variable>
-#include <functional>
 #include <list>
 #include <mutex>
 
 #include <boost/lockfree/queue.hpp>
 
-#include "Metrics/Fwd.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerMetrics.h"
 
 namespace arangodb {
 class NetworkFeature;
-class SharedPRNGFeature;
 class SupervisedSchedulerWorkerThread;
 class SupervisedSchedulerManagerThread;
+namespace basics {
+struct SharedPRNG;
+}
 
 class SupervisedScheduler final : public Scheduler {
  public:
@@ -50,7 +49,8 @@ class SupervisedScheduler final : public Scheduler {
                       uint64_t fifo2Size, uint64_t fifo3Size,
                       uint64_t ongoingLowPriorityLimit,
                       double unavailabilityQueueFillGrade,
-                      std::shared_ptr<SchedulerMetrics> metrics);
+                      std::shared_ptr<SchedulerMetrics> metrics,
+                      basics::SharedPRNG& sharedPRNG);
   ~SupervisedScheduler() final;
 
   bool start() override;
@@ -165,7 +165,7 @@ class SupervisedScheduler final : public Scheduler {
 
  private:
   NetworkFeature& _nf;
-  SharedPRNGFeature& _sharedPRNG;
+  basics::SharedPRNG& _sharedPRNG;
 
   std::atomic<uint64_t> _numWorkers;
   std::atomic<bool> _stopping;

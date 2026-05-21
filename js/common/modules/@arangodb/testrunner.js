@@ -160,6 +160,10 @@ function runCommandLineTests () {
   if (!instanceinfo) {
     throw new Error('env.INSTANCEINFO was not set by caller!');
   }
+  if (!global.hasOwnProperty('instanceManager')) {
+    const im = require('@arangodb/testutils/instance-manager');
+    global.instanceManager = im.instanceManager.fromDeploymentInfo(instanceinfo);
+  }
   var result,
     unitTests = internal.unitTests(),
     isSpecRegEx = /.+-spec.*\.js/,

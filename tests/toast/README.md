@@ -207,6 +207,65 @@ defmodule Resilience.Suite do
 end
 ```
 
+### JavaScript Test Suites
+
+Toast can run legacy JavaScript tests (jsunity/arangosh-based) through the same
+framework. Each JS file in the configured directories becomes a test module that
+participates in Toast's full pipeline -- filtering, bucketing, result collection,
+diagnostics, JUnit XML, and JSON export.
+
+#### Defining a JS Suite
+
+```elixir
+defmodule ShellClientAql.Suite do
+  use ToastTest.JavascriptSuite,
+    paths: ["tests/js/client/aql", "tests/js/common/aql"],
+    mode: :auto,
+    server_args: %{"log.level" => "debug"},
+    js_extra_args: %{"agency.supervision-ok-threshold" => "15"}
+end
+```
+
+`use ToastTest.JavascriptSuite` accepts all `ToastTest.Suite` options plus:
+
+| Option | Default | Description |
+|---|---|---|
+| `paths` | *(required)* | List of directories containing JS test files, relative to the repository root |
+| `js_extra_args` | `%{}` | Extra arangosh arguments passed to the JS test runner |
+| `weights` | `%{}` | Map of `%{"filename.js" => weight}` for bucketing; unspecified files get weight 1 |
+
+#### How It Works
+
+- Each `.js` file in the configured paths becomes a separate test module
+- JS files are run via arangosh using `@arangodb/testrunner.runCommandLineTests()`
+- Individual test results from jsunity are mapped back to ExUnit-compatible results
+- All Toast features work: filtering by suite/file, test bucketing, diagnostics
+
+#### Running JS Suites
+
+JS suites are run the same way as Elixir suites:
+
+```bash
+mix toast shell_client_aql
+mix toast shell_client_aql/aql-projections.js
+```
+
+#### Filename-Based Tags
+
+Tags are automatically derived from JS filename suffixes. Segments separated by
+hyphens are matched against a known set of conventions -- for example,
+`aql-join-cluster.js` contains the segment `cluster` and gets the tag
+`cluster_only: true`.
+
+Common segment-to-tag mappings: `cluster` -> `:cluster_only`, `noncluster` ->
+`:single_only`, `fp` -> `:failure_points`, `nightly` -> `:nightly`.
+
+#### Module Naming
+
+In analyze output, JUnit XML, and JSON results, JS test modules are identified
+by their file path (e.g., `tests/js/client/aql/aql-projections.js`) rather than
+a generated Elixir module name.
+
 ### Suite Callbacks
 
 Suites can implement optional callbacks for lifecycle hooks:

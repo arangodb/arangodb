@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -276,7 +276,7 @@ struct IResearchExpressionFilterTest
     features.emplace_back(
         server.addFeature<arangodb::QueryRegistryFeature>(metrics),
         false);  // must be first
-    system = std::make_unique<TRI_vocbase_t>(systemDBInfo(server));
+    system = std::make_unique<TRI_vocbase_t>(systemDBInfo(server), engine);
     features.emplace_back(
         server.addFeature<arangodb::SystemDatabaseFeature>(system.get()),
         false);  // required for IResearchAnalyzerFeature
@@ -419,7 +419,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
   }
 
   // setup ArangoDB database
-  TRI_vocbase_t vocbase(testDBInfo(server));
+  TRI_vocbase_t vocbase(testDBInfo(server), engine);
 
   // create view
   {

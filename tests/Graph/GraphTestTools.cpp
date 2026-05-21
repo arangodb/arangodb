@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -80,7 +80,7 @@ GraphTestSetup::GraphTestSetup() : server(nullptr, nullptr), engine(server) {
           server.getFeature<arangodb::metrics::MetricsFeature>()),
       false);  // must be first
   system = std::make_unique<TRI_vocbase_t>(
-      systemDBInfo(server),
+      systemDBInfo(server), engine,
       server.getFeature<DatabaseFeature>().versionTracker(), true);
   features.emplace_back(
       server.addFeature<arangodb::SystemDatabaseFeature>(system.get()),
