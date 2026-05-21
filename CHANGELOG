@@ -37,6 +37,12 @@
  - ajv to 8.18.0
  - @xmldom/xmldom@0.8.13
 
+* COR-467: Extended `compareAstNodes` to compare AST nodes that are not directly
+  VPack-serializable (references, attribute accesses, function calls, operators).
+  `a == b` and `b == a` (and `!=`) compare as equal, as do NARY conditions and
+  IN/NOT IN literal arrays regardless of operand order. Bind parameters and
+  quantifiers are also handled.
+
 * COR-466: Added constant folding empty array comparisons in `FILTER` nodes,
   allowing filter optimizations:
   `x IN []`, `[] ANY <op> x` are false.
