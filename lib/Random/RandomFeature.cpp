@@ -23,10 +23,9 @@
 
 #include "RandomFeature.h"
 
-#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
 #include "Random/RandomGenerator.h"
+#include "Random/RandomOptionsProvider.h"
 
 using namespace arangodb::application_features;
 using namespace arangodb::options;
@@ -40,27 +39,8 @@ RandomFeature::RandomFeature(application_features::ApplicationServer& server,
 }
 
 void RandomFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("random", "random generator");
-
-  std::unordered_set<uint32_t> generators = {1, 2, 3, 4};
-
-  options
-      ->addOption(
-          "--random.generator",
-          "The random number generator to use (1 = MERSENNE, 2 = RANDOM, "
-          "3 = URANDOM, 4 = COMBINED). The options 2, 3, and 4 are deprecated "
-          "and will be removed in a future version.",
-          new DiscreteValuesParameter<UInt32Parameter>(
-              &_options.randomGenerator, generators),
-          arangodb::options::makeDefaultFlags(
-              arangodb::options::Flags::Uncommon))
-      .setLongDescription(R"(- `1`: a pseudo-random number generator using an
-implication of the Mersenne Twister MT19937 algorithm
-- `2`: use a blocking random (or pseudo-random) number generator
-- `3`: use the non-blocking random (or pseudo-random) number generator supplied
-  by the operating system
-- `4`: a combination of the blocking random number generator and the Mersenne
-  Twister)");
+  RandomOptionsProvider provider;
+  provider.declareOptions(options, _options);
 }
 
 void RandomFeature::prepare() {

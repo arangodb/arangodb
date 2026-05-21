@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -18,33 +18,23 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ApplicationFeatures/TempFeature.h"
-#include "ApplicationFeatures/TempOptionsProvider.h"
-#include "Basics/files.h"
-#include "ProgramOptions/ProgramOptions.h"
+#pragma once
 
-using namespace arangodb::options;
+#include "ApplicationFeatures/OptionsProvider.h"
+#include "ProcessEnvironmentFeatureOptions.h"
+
+namespace arangodb::options {
+class ProgramOptions;
+}
 
 namespace arangodb {
 
-void TempFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  TempOptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
-
-void TempFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
-  TempOptionsProvider provider;
-  provider.validateOptions(options, _options);
-}
-
-void TempFeature::prepare() {
-  TRI_SetApplicationName(_appname);
-  if (!_options.path.empty()) {
-    TRI_SetTempPath(_options.path);
-  }
-}
+struct ProcessEnvironmentOptionsProvider
+    : OptionsProvider<ProcessEnvironmentFeatureOptions> {
+  void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
+                      ProcessEnvironmentFeatureOptions& options) override;
+};
 
 }  // namespace arangodb

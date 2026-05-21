@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -18,33 +18,33 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ApplicationFeatures/TempFeature.h"
-#include "ApplicationFeatures/TempOptionsProvider.h"
-#include "Basics/files.h"
-#include "ProgramOptions/ProgramOptions.h"
+#include "VersionOptionsProvider.h"
 
-using namespace arangodb::options;
+#include "ProgramOptions/Parameters.h"
+#include "ProgramOptions/ProgramOptions.h"
 
 namespace arangodb {
 
-void TempFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  TempOptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
+using namespace arangodb::options;
 
-void TempFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
-  TempOptionsProvider provider;
-  provider.validateOptions(options, _options);
-}
+void VersionOptionsProvider::declareOptions(
+    std::shared_ptr<ProgramOptions> options, VersionFeatureOptions& opts) {
+  options->addOption(
+      "--version",
+      "Print the version and other related information, then exit.",
+      new BooleanParameter(&opts.printVersion),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Command));
 
-void TempFeature::prepare() {
-  TRI_SetApplicationName(_appname);
-  if (!_options.path.empty()) {
-    TRI_SetTempPath(_options.path);
-  }
+  options
+      ->addOption("--version-json",
+                  "Print the version and other related information in JSON "
+                  "format, then exit.",
+                  new BooleanParameter(&opts.printVersionJson),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::Command))
+      .setIntroducedIn(30900);
 }
 
 }  // namespace arangodb
