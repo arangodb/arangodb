@@ -27,59 +27,30 @@
 #include "Activities/Activity.h"
 #include "Activities/Registry.h"
 #include "Activities/RegistryGlobalVariable.h"
+#include "Futures/Promise.h"
 #include "Inspection/JsonPrintInspector.h"
 #include "Logger/LogMacros.h"
-#include <gtest/gtest.h>
+#include "Futures/Utilities.h"
 
+#include <gtest/gtest.h>
 #include <coroutine>
 #include <thread>
 #include <unordered_map>
+#include <thread>
 
 using namespace arangodb;
 using namespace arangodb::activities;
 
 struct ActivityRegistryTest : ::testing::Test {
   ActivityRegistryTest() : scope(nullptr) {}
-  void TearDown() override {
-    registry.garbageCollect();
-    //    EXPECT_EQ(get_all_activities().size(), 0);
-  }
+  void TearDown() override { registry.garbageCollect(); }
 
   Registry::ScopedCurrentlyExecutingActivity scope;
 };
 
 const auto ActivityRoot = ActivityHandle{nullptr};
 
-TEST_F(ActivityRegistryTest, current_activity_is_nullptr) {
-  EXPECT_EQ(Registry::currentlyExecutingActivity(), ActivityRoot);
-}
-
-TEST_F(ActivityRegistryTest, creates_registered_activity) {
-  EXPECT_EQ(Registry::currentlyExecutingActivity(), ActivityRoot);
-
-  auto a = activities::make<GenericActivity>(
-      "GenericActivity", activities::GenericActivityData{{"test", "bla"}});
-
-  auto fa = registry.findActivityById(a->id());
-
-  ASSERT_TRUE(fa.has_value());
-  EXPECT_EQ(a->id(), fa.value()->id());
-}
-
-TEST_F(ActivityRegistryTest, sets_current_activity) {
-  EXPECT_EQ(Registry::currentlyExecutingActivity(), ActivityRoot);
-  auto a = activities::make<GenericActivity>(
-      "GenericActivity", activities::GenericActivityData{{"test", "bla"}});
-
-  auto scope = Registry::ScopedCurrentlyExecutingActivity(a);
-  auto current = Registry::currentlyExecutingActivity();
-
-  ASSERT_EQ(a->id(), current->id());
-  ASSERT_EQ(dynamic_cast<Activity*>(a.get()), current.get());
-}
-
-TEST_F(ActivityRegistryTest,
-       a_base_activity_creates_a_root_activity_with_additional_information) {
+TEST_F(ActivityRegistryTest, has_no_parent_as_default) {
   auto activity = activities::make<GenericActivity>(
       "GenericActivity",
       GenericActivityData{{"id", "1234"}, {"some_other_key", "value"}});
@@ -90,7 +61,46 @@ TEST_F(ActivityRegistryTest,
             (GenericActivityData{{"id", "1234"}, {"some_other_key", "value"}}));
 }
 
-TEST_F(ActivityRegistryTest, creates_a_child_activity) {
+TEST_F(ActivityRegistryTest, registers_in_activity_registry) {
+  auto a = activities::make<GenericActivity>("GenericActivity",
+                                             GenericActivityData{});
+
+  auto fa = registry.findActivityById(a->id());
+
+  ASSERT_TRUE(fa.has_value());
+  EXPECT_EQ(a->id(), fa.value()->id());
+}
+
+TEST_F(ActivityRegistryTest,
+       currently_executing_activity_is_empty_per_default) {
+  EXPECT_EQ(Registry::currentlyExecutingActivity(), ActivityRoot);
+}
+
+TEST_F(ActivityRegistryTest, scope_sets_currently_executing_activity) {
+  EXPECT_EQ(Registry::currentlyExecutingActivity(), ActivityRoot);
+  auto a = activities::make<GenericActivity>("GenericActivity",
+                                             activities::GenericActivityData{});
+
+  auto scope = Registry::ScopedCurrentlyExecutingActivity(a);
+  auto current = Registry::currentlyExecutingActivity();
+
+  ASSERT_EQ(a->id(), current->id());
+  ASSERT_EQ(dynamic_cast<Activity*>(a.get()), current.get());
+}
+
+TEST_F(ActivityRegistryTest,
+       scope_guard_does_not_capture_activity_over_threads) {
+  EXPECT_EQ(Registry::currentlyExecutingActivity(), nullptr);
+
+  auto activity = activities::make<GenericActivity>("GenericActivity",
+                                                    GenericActivityData{});
+  auto scopeGuard = Registry::ScopedCurrentlyExecutingActivity(activity);
+  std::jthread(
+      []() { EXPECT_EQ(Registry::currentlyExecutingActivity(), nullptr); });
+}
+
+TEST_F(ActivityRegistryTest,
+       activity_created_in_parent_scope_knows_its_parent_automatically) {
   auto parent_activity = activities::make<GenericActivity>(
       "GenericActivity", GenericActivityData{});
 
@@ -102,9 +112,10 @@ TEST_F(ActivityRegistryTest, creates_a_child_activity) {
   ASSERT_EQ(child_activity->parentId().value(), parent_activity->id());
 }
 
-TEST_F(ActivityRegistryTest, creates_a_child_activity_hierarchy) {
+TEST_F(ActivityRegistryTest, activity_has_parent_of_most_recent_scope_guard) {
   ActivityHandle first_child_activity, second_child_activity,
-      child_of_first_child_activity;
+      child_of_first_child_activity;  // need to live long enough to do
+                                      // assertions
 
   auto parent_activity = activities::make<GenericActivity>(
       "GenericActivity", GenericActivityData{});
@@ -135,19 +146,8 @@ TEST_F(ActivityRegistryTest, creates_a_child_activity_hierarchy) {
             first_child_activity->id());
 }
 
-TEST_F(ActivityRegistryTest, scope_guard_sets_resets_activity) {
-  EXPECT_EQ(Registry::currentlyExecutingActivity(), nullptr);
-
-  auto activity = activities::make<GenericActivity>("GenericActivity",
-                                                    GenericActivityData{});
-  {
-    auto scopeGuard = Registry::ScopedCurrentlyExecutingActivity(activity);
-    EXPECT_EQ(Registry::currentlyExecutingActivity(), activity);
-  }
-  EXPECT_EQ(Registry::currentlyExecutingActivity(), nullptr);
-}
-
-TEST_F(ActivityRegistryTest, nested_scopes_set_reset_activity) {
+TEST_F(ActivityRegistryTest,
+       scope_guard_resets_activity_when_going_out_of_scope) {
   auto a = activities::make<GenericActivity>("GenericActivity",
                                              GenericActivityData{});
   auto b = activities::make<GenericActivity>("GenericActivity",
@@ -168,7 +168,8 @@ TEST_F(ActivityRegistryTest, nested_scopes_set_reset_activity) {
   EXPECT_EQ(Registry::currentlyExecutingActivity(), nullptr);
 }
 
-TEST_F(ActivityRegistryTest, with_current_activity) {
+TEST_F(ActivityRegistryTest,
+       can_capture_currently_executing_activity_for_later_use) {
   auto outer =
       activities::make<GenericActivity>("outer", GenericActivityData{});
   auto outerGuard = Registry::ScopedCurrentlyExecutingActivity(outer);
@@ -186,4 +187,43 @@ TEST_F(ActivityRegistryTest, with_current_activity) {
 
     testee();
   }
+}
+
+TEST_F(ActivityRegistryTest,
+       captured_executing_activity_connects_activities_over_threads) {
+  auto activity =
+      activities::make<GenericActivity>("activity", GenericActivityData{});
+  auto guard = Registry::ScopedCurrentlyExecutingActivity(activity);
+
+  std::jthread(withCurrentlyExecutingActivity(
+      [current = Registry::currentlyExecutingActivity(), activity]() {
+        EXPECT_EQ(Registry::currentlyExecutingActivity(), current);
+        EXPECT_EQ(current, activity);
+      }));
+}
+
+TEST_F(ActivityRegistryTest,
+       captured_executing_activity_connects_activities_future_continuation) {
+  EXPECT_EQ(Registry::currentlyExecutingActivity(), nullptr);
+
+  auto activity = activities::make<GenericActivity>("GenericActivity",
+                                                    GenericActivityData{});
+  auto scopeGuard = Registry::ScopedCurrentlyExecutingActivity(activity);
+  futures::Promise<int> p;
+  auto f = p.getFuture().thenValue(
+      withCurrentlyExecutingActivity([&activity](auto v) {
+        EXPECT_EQ(Registry::currentlyExecutingActivity(), activity);
+        return 8;
+      }));
+
+  auto anotherActivity =
+      activities::make<GenericActivity>("inner", GenericActivityData{});
+  auto anotherGuard =
+      Registry::ScopedCurrentlyExecutingActivity(anotherActivity);
+  EXPECT_EQ(Registry::currentlyExecutingActivity(), anotherActivity);
+
+  p.setValue(42);  // executes thenValue clause
+  EXPECT_EQ(f.waitAndGet(), 8);
+
+  EXPECT_EQ(Registry::currentlyExecutingActivity(), anotherActivity);
 }
