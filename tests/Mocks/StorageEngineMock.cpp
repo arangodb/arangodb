@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -23,6 +23,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "StorageEngineMock.h"
+
+#include <typeindex>
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AstNode.h"
@@ -70,7 +72,8 @@
 namespace {
 
 struct IndexFactoryMock : arangodb::IndexFactory {
-  IndexFactoryMock(arangodb::ArangodServer& server, bool injectClusterIndexes)
+  IndexFactoryMock(arangodb::application_features::ApplicationServer& server,
+                   bool injectClusterIndexes)
       : IndexFactory(server) {
     if (injectClusterIndexes) {
       arangodb::ClusterIndexFactory::linkIndexFactories(
@@ -197,9 +200,11 @@ std::function<void()> StorageEngineMock::recoveryTickCallback = []() -> void {};
 
 /*static*/ std::string StorageEngineMock::versionFilenameResult;
 
-StorageEngineMock::StorageEngineMock(arangodb::ArangodServer& server,
-                                     bool injectClusterIndexes)
-    : StorageEngine(server, "Mock", "", std::numeric_limits<size_t>::max(),
+StorageEngineMock::StorageEngineMock(
+    arangodb::application_features::ApplicationServer& server,
+    bool injectClusterIndexes)
+    : StorageEngine(server, "Mock", "Mock",
+                    std::type_index(typeid(StorageEngineMock)),
                     std::unique_ptr<arangodb::IndexFactory>(
                         new IndexFactoryMock(server, injectClusterIndexes))),
       vocbaseCount(1),
@@ -447,8 +452,8 @@ std::unique_ptr<TRI_vocbase_t> StorageEngineMock::openDatabase(
   auto new_info = info;
   new_info.setId(++vocbaseCount);
 
-  return std::make_unique<TRI_vocbase_t>(std::move(new_info), _versionTracker,
-                                         true);
+  return std::make_unique<TRI_vocbase_t>(std::move(new_info), *this,
+                                         _versionTracker, true);
 }
 
 TRI_voc_tick_t StorageEngineMock::releasedTick() const {

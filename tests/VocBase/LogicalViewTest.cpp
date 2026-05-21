@@ -46,6 +46,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Metrics/ClusterMetricsFeature.h"
 #include "Statistics/StatisticsFeature.h"
+#include "RestServer/arangod.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 
@@ -143,7 +144,7 @@ class LogicalViewTest
         false);
     features.emplace_back(
         server.addFeature<arangodb::QueryRegistryFeature>(
-            server.template getFeature<arangodb::metrics::MetricsFeature>()),
+            server.getFeature<arangodb::metrics::MetricsFeature>()),
         false);  // required for TRI_vocbase_t
     features.emplace_back(server.addFeature<arangodb::ViewTypesFeature>(),
                           false);  // required for LogicalView::create(...)
@@ -185,14 +186,14 @@ TEST_F(LogicalViewTest, test_auth) {
 
   // no ExecContext
   {
-    TRI_vocbase_t vocbase(testDBInfo(server));
+    TRI_vocbase_t vocbase(testDBInfo(server), engine);
     auto logicalView = vocbase.createView(viewJson->slice(), false);
     EXPECT_TRUE(logicalView->canUse(arangodb::auth::Level::RW));
   }
 
   // no read access
   {
-    TRI_vocbase_t vocbase(testDBInfo(server));
+    TRI_vocbase_t vocbase(testDBInfo(server), engine);
     auto logicalView = vocbase.createView(viewJson->slice(), false);
     struct ExecContext : public arangodb::ExecContext {
       ExecContext()
@@ -208,7 +209,7 @@ TEST_F(LogicalViewTest, test_auth) {
 
   // no write access
   {
-    TRI_vocbase_t vocbase(testDBInfo(server));
+    TRI_vocbase_t vocbase(testDBInfo(server), engine);
     auto logicalView = vocbase.createView(viewJson->slice(), false);
     struct ExecContext : public arangodb::ExecContext {
       ExecContext()
@@ -226,7 +227,7 @@ TEST_F(LogicalViewTest, test_auth) {
   // write access (view access is db access as per
   // https://github.com/arangodb/backlog/issues/459)
   {
-    TRI_vocbase_t vocbase(testDBInfo(server));
+    TRI_vocbase_t vocbase(testDBInfo(server), engine);
     auto logicalView = vocbase.createView(viewJson->slice(), false);
     struct ExecContext : public arangodb::ExecContext {
       ExecContext()

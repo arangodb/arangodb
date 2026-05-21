@@ -28,10 +28,14 @@
 #include <string>
 
 namespace arangodb {
+namespace metrics {
+class ClusterMetricsFeature;
+}
 
 class RestMetricsHandler : public arangodb::RestBaseHandler {
  public:
-  RestMetricsHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
+  RestMetricsHandler(application_features::ApplicationServer&, GeneralRequest*,
+                     GeneralResponse*);
 
   char const* name() const final { return "RestMetricsHandler"; }
   /// @brief must be on fast lane so that metrics can always be retrieved,
@@ -41,6 +45,8 @@ class RestMetricsHandler : public arangodb::RestBaseHandler {
 
  private:
   auto makeRedirection(std::string const& serverId, bool last) -> async<void>;
+
+  metrics::ClusterMetricsFeature& _clusterMetricsFeature;
 };
 
 }  // namespace arangodb

@@ -33,8 +33,6 @@
 #include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
 #include "Basics/VelocyPackHelper.h"
 
-#include <fmt/ranges.h>
-
 #include <velocypack/Iterator.h>
 
 #include <type_traits>
@@ -102,27 +100,7 @@ LogCurrentLocalState::LogCurrentLocalState(LogTerm term,
 auto agency::operator<<(std::ostream& ostream,
                         LogCurrentSupervisionElection const& el)
     -> std::ostream& {
-  using namespace fmt::literals;
-  ostream << fmt::format(
-      "Election {{ "
-      "term: {term}, "
-      "bestTermIndex: {bestTerm}:{bestIndex}, "
-      "participantsRequired: {participantsRequired}, "
-      "participantsVoting: {participantsVoting}, "
-      "electibleLeaderSet: {electibleLeaderSet}, "
-      "allParticipantsAttending: {allParticipantsAttending}, "
-      "detail: {detail} "
-      "}}",
-      "term"_a = el.term.value, "bestTerm"_a = el.bestTermIndex.term.value,
-      "bestIndex"_a = el.bestTermIndex.index.value,
-      "participantsRequired"_a = el.participantsRequired,
-      "participantsVoting"_a = el.participantsVoting,
-      "electibleLeaderSet"_a = el.electibleLeaderSet,
-      // cppcheck-suppress assignBoolToPointer
-      "allParticipantsAttending"_a = el.allParticipantsAttending,
-      "detail"_a = el.detail);
-
-  return ostream;
+  return ostream << "Election " << inspection::json(el);
 }
 
 auto agency::to_string(LogCurrentSupervisionElection::ErrorCode ec) noexcept

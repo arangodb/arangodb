@@ -23,6 +23,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <gtest/gtest.h>
+#include <format>
+#include <iostream>
 #include <unordered_set>
 
 #include "Actor/DistributedActorPID.h"
@@ -52,12 +54,12 @@ struct MockExternalDispatcher : IExternalDispatcher {
       auto error =
           actor::message::ActorError<ActorPID>{actor::message::NetworkError{
               .message =
-                  fmt::format("Cannot find server {}", receiver.server)}};
+                  std::format("Cannot find server {}", receiver.server)}};
       auto payload = inspection::serializeWithErrorT(error);
       if (payload.ok()) {
         runtimes[sender.server]->dispatch(receiver, sender, payload.get());
       } else {
-        fmt::print("Error serializing ActorNotFound");
+        std::cerr << "Error serializing ActorNotFound";
         std::abort();
       }
     }
@@ -187,7 +189,7 @@ TYPED_TEST(
   ASSERT_EQ(
       sending_actor_state,
       (TrivialActor::State(
-          fmt::format("sent unknown message to {}", receiving_actor), 2)));
+          std::format("sent unknown message to {}", receiving_actor), 2)));
   for (auto& [_, runtime] : runtimes) {
     runtime->softShutdown();
   }
@@ -232,7 +234,7 @@ TYPED_TEST(
       runtimes[sending_server]->template getActorStateByID<TrivialActor>(
           sending_actor),
       (TrivialActor::State(
-          fmt::format("receiving actor {} not found", unknown_actor), 2)));
+          std::format("receiving actor {} not found", unknown_actor), 2)));
   for (auto& [_, runtime] : runtimes) {
     runtime->softShutdown();
   }
@@ -271,7 +273,7 @@ TYPED_TEST(
       runtimes[sending_server]->template getActorStateByID<TrivialActor>(
           sending_actor),
       (TrivialActor::State(
-          fmt::format("network error: Cannot find server {}", unknown_server),
+          std::format("network error: Cannot find server {}", unknown_server),
           2)));
   for (auto& [_, runtime] : runtimes) {
     runtime->softShutdown();

@@ -29,7 +29,7 @@ let env = require('process').env;
 if (getOptions === true) {
   env['PATHTT'] = 'denylist';
   return {
-    'javascript.environment-variables-denylist': 'PATH',
+    'javascript.environment-variables-denylist': 'PATH^(TT)',
     'javascript.environment-variables-allowlist': '^MIAU-DERFUCHS$|PATHTT|^INSTANCEINFO$'
   };
 }

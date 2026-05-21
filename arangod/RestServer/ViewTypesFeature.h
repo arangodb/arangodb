@@ -23,8 +23,8 @@
 
 #pragma once
 
+#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Containers/FlatHashMap.h"
-#include "RestServer/arangod.h"
 #include "VocBase/LogicalView.h"
 
 namespace arangodb {
@@ -46,11 +46,11 @@ struct ViewFactory {
                              bool isUserRequest) const = 0;
 };
 
-class ViewTypesFeature final : public ArangodFeature {
+class ViewTypesFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "ViewTypes"; }
 
-  explicit ViewTypesFeature(Server& server);
+  explicit ViewTypesFeature(application_features::ApplicationServer& server);
 
   // Return 'factory' for 'type' was added successfully
   Result emplace(std::string_view type, ViewFactory const& factory);

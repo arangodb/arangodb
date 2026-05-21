@@ -21,7 +21,9 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "arangosh.h"
+#include <filesystem>
+#include <signal.h>
+#include <unistd.h>
 
 #include "V8ShellFeature.h"
 
@@ -50,7 +52,6 @@
 #include "Rest/Version.h"
 #include "Shell/ClientFeature.h"
 #include "Shell/ShellConsoleFeature.h"
-#include "Shell/V8ClientConnection.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "V8/JSLoader.h"
 #include "V8/V8LineEditor.h"
@@ -75,17 +76,69 @@ using namespace arangodb::options;
 using namespace arangodb::rest;
 
 namespace {
+v8::Isolate* global_isolate = nullptr;
 // this variable's value can be changed by the exit or quit commands.
 // if it's set, the main REPL loop will be aborted
 bool exitRepl = false;
 
 std::string const DEFAULT_CLIENT_MODULE = "client.js";
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+void alarmHandler(int /*sig*/) { _exit(142); }  // 128 + 14 (SIGALRM)
+
+// V8 interrupt callback — fires at the next V8 safe point (within
+// microseconds when JS is executing). Captures the JS stack trace,
+// A 30s SIGALRM is the safety net in case termination stalls.
+void v8InterruptCallback(v8::Isolate* isolate, void* /*data*/) {
+  v8::Local<v8::StackTrace> stacktrace =
+      v8::StackTrace::CurrentStackTrace(isolate, 10, v8::StackTrace::kDetailed);
+  int frameCount = stacktrace->GetFrameCount();
+  if (frameCount > 0) {
+    for (int i = 0; i < frameCount; i++) {
+      auto frame = stacktrace->GetFrame(isolate, i);
+      TRI_Utf8ValueNFC file(isolate, frame->GetScriptName());
+      TRI_Utf8ValueNFC fn(isolate, frame->GetFunctionName());
+      LOG_TOPIC("cac44", ERR, arangodb::Logger::V8)
+          << *file << " - " << *fn << "():" << frame->GetLineNumber();
+    }
+  } else {
+    LOG_TOPIC("cac45", ERR, arangodb::Logger::V8)
+        << "no js stacktrace could be acquired";
+  }
+  arangodb::Logger::flush();
+
+  // Also expire the execution deadline so cooperative checks see it.
+  triggerV8DeadlineNow(true, ExternalId());
+
+  // Safety net: force-kill after 30s if termination stalls.
+  // We set this here (not in the signal handler) because sigprocmask
+  // changes made inside a signal handler are reverted on return.
+  {
+    struct sigaction act = {};
+    act.sa_handler = alarmHandler;
+    sigaction(SIGALRM, &act, nullptr);
+    sigset_t unblock;
+    sigemptyset(&unblock);
+    sigaddset(&unblock, SIGALRM);
+    pthread_sigmask(SIG_UNBLOCK, &unblock, nullptr);
+  }
+  alarm(30);
+}
+
+// Signal handler — only calls async-signal-safe functions plus
+// RequestInterrupt (documented as signal-safe by V8).
+void signalHandler(int /*signal*/) {
+  global_isolate->RequestInterrupt(v8InterruptCallback, nullptr);
+}
+#endif  // ARANGODB_ENABLE_MAINTAINER_MODE
+
 }  // namespace
 
 namespace arangodb {
 
-V8ShellFeature::V8ShellFeature(Server& server, std::string const& name)
-    : ArangoshFeature(server, *this),
+V8ShellFeature::V8ShellFeature(application_features::ApplicationServer& server,
+                               std::string const& name)
+    : ApplicationFeature(server, *this),
       _startupDirectory("js"),
       _clientModule(DEFAULT_CLIENT_MODULE),
       _currentModuleDirectory(true),
@@ -177,8 +230,10 @@ void V8ShellFeature::start() {
   LOG_TOPIC("9c2f7", DEBUG, Logger::V8)
       << "using JavaScript startup files at '" << _startupDirectory << "'";
 
-  _isolate = platform.createIsolate();
-
+  ::global_isolate = _isolate = platform.createIsolate();
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  signal(SIGBUS, signalHandler);
+#endif
   v8::Locker locker{_isolate};
 
   v8::Isolate::Scope isolate_scope(_isolate);
@@ -221,6 +276,7 @@ void V8ShellFeature::start() {
 void V8ShellFeature::unprepare() {
   {
     v8::Locker locker{_isolate};
+    global_isolate = nullptr;
 
     v8::Isolate::Scope isolate_scope(_isolate);
     v8::HandleScope handle_scope(_isolate);
@@ -289,8 +345,7 @@ void V8ShellFeature::copyInstallationFiles() {
       << _copyDirectory << "'";
 
   _nodeModulesDirectory = _startupDirectory;
-
-  if (FileUtils::exists(_copyDirectory)) {
+  if (std::filesystem::exists(_copyDirectory)) {
     auto res = TRI_ERROR_NO_ERROR;
     res = TRI_RemoveDirectory(_copyDirectory.c_str());
     if (res != TRI_ERROR_NO_ERROR) {
@@ -301,12 +356,12 @@ void V8ShellFeature::copyInstallationFiles() {
     }
   }
 
-  if (auto res = TRI_ERROR_NO_ERROR;
-      !FileUtils::createDirectory(_copyDirectory, &res)) {
+  if (auto ec = std::error_code{};
+      !std::filesystem::create_directory(_copyDirectory, ec)) {
     auto err = TRI_last_error();
     LOG_TOPIC("6d915", FATAL, Logger::V8)
         << "Error creating JS installation path '" << _copyDirectory
-        << "': " << err;
+        << "': " << ec.message();
     FATAL_ERROR_EXIT();
   }
 
@@ -338,8 +393,8 @@ void V8ShellFeature::copyInstallationFiles() {
       return true;
     }
 
-    std::string normalized = filename;
-    FileUtils::normalizePath(normalized);
+    std::string const normalized =
+        std::filesystem::path(filename).make_preferred().string();
     if (filterPath(normalized, nodeModulesPath) ||
         filterPath(normalized, nodeModulesPathVersioned) ||
         filterPath(normalized, jsAppsPath) ||
@@ -363,7 +418,7 @@ void V8ShellFeature::copyInstallationFiles() {
   _startupDirectory = _copyDirectory;
 }
 
-bool V8ShellFeature::printHello(V8ClientConnection* v8connection) {
+bool V8ShellFeature::printHello() {
   ShellConsoleFeature& console = server().getFeature<ShellConsoleFeature>();
   bool promptError = false;
 
@@ -410,17 +465,17 @@ bool V8ShellFeature::printHello(V8ClientConnection* v8connection) {
     ClientFeature& client =
         server().getFeature<HttpEndpointProvider, ClientFeature>();
 
-    if (v8connection != nullptr) {
-      if (v8connection->isConnected() &&
-          v8connection->lastHttpReturnCode() == (int)rest::ResponseCode::OK) {
+    if (_connection != nullptr) {
+      if (_connection->isConnected() &&
+          _connection->lastHttpReturnCode() == (int)rest::ResponseCode::OK) {
         std::string msg = ClientFeature::buildConnectedMessage(
-            v8connection->endpointSpecification(), v8connection->version(),
-            v8connection->role(), v8connection->mode(),
-            v8connection->databaseName(), v8connection->username());
+            _connection->endpointSpecification(), _connection->version(),
+            _connection->role(), _connection->mode(),
+            _connection->databaseName(), _connection->username());
         console.printLine(msg);
 
-        if (v8connection->role() == "PRIMARY" ||
-            v8connection->role() == "DBSERVER") {
+        if (_connection->role() == "PRIMARY" ||
+            _connection->role() == "DBSERVER") {
           std::string msg(
               "WARNING: You connected to a DBServer node, but operations in a "
               "cluster should be carried out via a Coordinator");
@@ -433,15 +488,15 @@ bool V8ShellFeature::printHello(V8ClientConnection* v8connection) {
       } else if (client.endpoint() != "none") {
         std::ostringstream is;
         is << "Could not connect to endpoint '" << client.endpoint()
-           << "', database: '" << v8connection->databaseName()
-           << "', username: '" << v8connection->username() << "'";
+           << "', database: '" << _connection->databaseName()
+           << "', username: '" << _connection->username() << "'";
 
         console.printErrorLine(is.str());
 
-        if (!v8connection->lastErrorMessage().empty()) {
+        if (!_connection->lastErrorMessage().empty()) {
           std::ostringstream is2;
 
-          is2 << "Error message: '" << v8connection->lastErrorMessage() << "'";
+          is2 << "Error message: '" << _connection->lastErrorMessage() << "'";
 
           console.printErrorLine(is2.str());
         }
@@ -457,20 +512,19 @@ bool V8ShellFeature::printHello(V8ClientConnection* v8connection) {
 }
 
 // the result is wrapped in a JavaScript variable SYS_ARANGO
-std::shared_ptr<V8ClientConnection> V8ShellFeature::setup(
-    v8::Local<v8::Context>& context, bool createConnection,
-    std::vector<std::string> const& positionals, bool* promptError) {
-  std::shared_ptr<V8ClientConnection> v8connection;
-
+void V8ShellFeature::setup(v8::Local<v8::Context>& context,
+                           bool createConnection,
+                           std::vector<std::string> const& positionals,
+                           bool* promptError) {
   bool haveClient = false;
   if (createConnection) {
     if (server().hasFeature<HttpEndpointProvider>()) {
       haveClient = true;
       ClientFeature& client =
           server().getFeature<HttpEndpointProvider, ClientFeature>();
-      v8connection = std::make_shared<V8ClientConnection>(server(), client);
+      _connection = std::make_shared<V8ClientConnection>(server(), client);
       if (client.isEnabled()) {
-        v8connection->connect();
+        _connection->connect();
       }
     }
   }
@@ -478,17 +532,15 @@ std::shared_ptr<V8ClientConnection> V8ShellFeature::setup(
   initMode(ShellFeature::RunMode::INTERACTIVE, positionals);
 
   if (createConnection && haveClient) {
-    v8connection->initServer(_isolate, context);
+    _connection->initServer(_isolate, context);
   }
 
-  bool pe = printHello(v8connection.get());
+  bool pe = printHello();
   loadModules(ShellFeature::RunMode::INTERACTIVE);
 
   if (promptError != nullptr) {
     *promptError = pe;
   }
-
-  return v8connection;
 }
 
 ErrorCode V8ShellFeature::runShell(
@@ -507,14 +559,14 @@ ErrorCode V8ShellFeature::runShell(
   v8::Context::Scope context_scope{context};
 
   bool promptError;
-  auto v8connection = setup(context, true, positionals, &promptError);
+  setup(context, true, positionals, &promptError);
 
   V8LineEditor v8LineEditor(
       _isolate, context, console.useHistory() ? "." + _name + ".history" : "");
 
-  if (v8connection != nullptr) {
+  if (_connection != nullptr) {
     v8LineEditor.setSignalFunction(
-        [v8connection]() { v8connection->setInterrupted(true); });
+        [this]() { this->_connection->setInterrupted(true); });
   }
 
   v8LineEditor.open(console.autoComplete());
@@ -604,8 +656,8 @@ ErrorCode V8ShellFeature::runShell(
       promptError = true;
     }
 
-    if (v8connection != nullptr && v8connection->isConnected()) {
-      v8connection->setInterrupted(false);
+    if (_connection != nullptr && _connection->isConnected()) {
+      _connection->setInterrupted(false);
     }
 
     console.stopPager();
@@ -650,14 +702,16 @@ bool V8ShellFeature::runScript(std::vector<std::string> const& files,
 
   v8::Context::Scope context_scope{context};
 
-  auto v8connection = setup(context, execute, positionals);
+  setup(context, execute, positionals);
 
   bool ok = true;
 
   for (auto const& file : files) {
-    if (!FileUtils::exists(file)) {
+    std::error_code ec;
+    if (!std::filesystem::exists(file, ec)) {
       LOG_TOPIC("4beec", ERR, arangodb::Logger::FIXME)
-          << "error: JavaScript file not found: '" << file << "'";
+          << "error: JavaScript file not found: '" << file << "'"
+          << ec.message();
       ok = false;
       continue;
     }
@@ -683,7 +737,10 @@ bool V8ShellFeature::runScript(std::vector<std::string> const& files,
           current->Get(context, TRI_V8_ASCII_STRING(_isolate, "__dirname"))
               .FromMaybe(v8::Handle<v8::Value>());
 
-      auto dirname = FileUtils::dirname(TRI_ObjectToString(isolate, filename));
+      std::string const dirname =
+          std::filesystem::path(TRI_ObjectToString(isolate, filename))
+              .parent_path()
+              .string();
 
       current
           ->Set(context, TRI_V8_ASCII_STRING(_isolate, "__dirname"),
@@ -738,7 +795,7 @@ bool V8ShellFeature::runString(std::vector<std::string> const& strings,
 
   v8::Context::Scope context_scope{context};
 
-  auto v8connection = setup(context, true, positionals);
+  setup(context, true, positionals);
 
   bool ok = true;
   for (auto const& script : strings) {
@@ -783,7 +840,7 @@ bool V8ShellFeature::runUnitTests(std::vector<std::string> const& files,
 
   v8::Context::Scope context_scope{context};
 
-  auto v8connection = setup(context, true, positionals);
+  setup(context, true, positionals);
   bool ok = true;
 
   // set-up unit tests array
@@ -792,9 +849,11 @@ bool V8ShellFeature::runUnitTests(std::vector<std::string> const& files,
   uint32_t i = 0;
 
   for (auto const& file : files) {
-    if (!FileUtils::exists(file)) {
+    std::error_code ec;
+    if (!std::filesystem::exists(file, ec)) {
       LOG_TOPIC("51bdb", ERR, arangodb::Logger::FIXME)
-          << "error: JavaScript file not found: '" << file << "'";
+          << "error: JavaScript file not found: '" << file << "'"
+          << ec.message();
       ok = false;
       continue;
     }
@@ -994,7 +1053,7 @@ static void JS_Exit(v8::FunctionCallbackInfo<v8::Value> const& args) {
     code = TRI_ObjectToInt64(isolate, args[0]);
   }
 
-  TRI_GET_SERVER_GLOBALS(ArangoshServer);
+  TRI_GET_SERVER_GLOBALS(application_features::ApplicationServer);
   ShellFeature& shell = v8g->server().getFeature<ShellFeature>();
 
   shell.setExitCode(static_cast<int>(code));
@@ -1067,11 +1126,11 @@ void V8ShellFeature::initGlobals() {
   LOG_TOPIC("5095d", DEBUG, Logger::V8)
       << "checking for existence of version-specific startup-directory '"
       << versionedPath << "'";
-  if (basics::FileUtils::isDirectory(versionedPath)) {
+  if (std::filesystem::is_directory(versionedPath)) {
     // version-specific js path exists!
     _startupDirectory = versionedPath;
   }
-  v8security.addToInternalAllowList(_startupDirectory, FSAccessType::READ);
+  v8security.addToInternalReadAllowList(_startupDirectory);
 
   for (auto& it : _moduleDirectories) {
     versionedPath = basics::FileUtils::buildFilename(it, versionAppendix);
@@ -1079,11 +1138,11 @@ void V8ShellFeature::initGlobals() {
     LOG_TOPIC("2abe3", DEBUG, Logger::V8)
         << "checking for existence of version-specific module-directory '"
         << versionedPath << "'";
-    if (basics::FileUtils::isDirectory(versionedPath)) {
+    if (std::filesystem::is_directory(versionedPath)) {
       // version-specific js path exists!
       it = versionedPath;
     }
-    v8security.addToInternalAllowList(it, FSAccessType::READ);  // expand
+    v8security.addToInternalReadAllowList(it);
   }
 
   LOG_TOPIC("930d9", DEBUG, Logger::V8)
@@ -1112,9 +1171,9 @@ void V8ShellFeature::initGlobals() {
   }
 
   if (_currentModuleDirectory) {
-    modules += sep + FileUtils::currentDirectory().result();
-    v8security.addToInternalAllowList(FileUtils::currentDirectory().result(),
-                                      FSAccessType::READ);
+    auto const cwd = std::filesystem::current_path();
+    modules += sep + cwd.string();
+    v8security.addToInternalReadAllowList(cwd);
   }
 
   v8security.dumpAccessLists();

@@ -25,36 +25,29 @@
 #include "gtest/gtest.h"
 
 #include <cstdint>
-#include <string>
-#include <thread>
-#include <vector>
 
 #include "Cache/BinaryKeyHasher.h"
+#include "Cache/Cache.h"
 #include "Cache/CacheOptionsProvider.h"
 #include "Cache/Common.h"
 #include "Cache/Manager.h"
 #include "Cache/Transaction.h"
-#include "Cache/TransactionalCache.h"
 #include "Random/RandomGenerator.h"
-#include "RestServer/SharedPRNGFeature.h"
 
-#include "Mocks/Servers.h"
 #include "MockScheduler.h"
 
 using namespace arangodb;
 using namespace arangodb::cache;
-using namespace arangodb::tests::mocks;
 
 // long-running
 
 TEST(CacheTransactionalCacheTest, test_basic_cache_construction) {
   auto postFn = [](std::function<void()>) -> bool { return false; };
-  MockMetricsServer server;
-  SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
+  basics::SharedPRNG prng;
 
   CacheOptions co;
   co.cacheSize = 1024 * 1024;
-  Manager manager(sharedPRNG, postFn, co);
+  Manager manager(prng, postFn, co);
   auto cache1 = manager.createCache<BinaryKeyHasher>(CacheType::Transactional,
                                                      false, 256 * 1024);
   auto cache2 = manager.createCache<BinaryKeyHasher>(CacheType::Transactional,
@@ -72,11 +65,10 @@ TEST(CacheTransactionalCacheTest, test_basic_cache_construction) {
 TEST(CacheTransactionalCacheTest, verify_that_insertion_works_as_expected) {
   std::uint64_t cacheLimit = 128 * 1024;
   auto postFn = [](std::function<void()>) -> bool { return false; };
-  MockMetricsServer server;
-  SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
+  basics::SharedPRNG prng;
   CacheOptions co;
   co.cacheSize = 4 * cacheLimit;
-  Manager manager(sharedPRNG, postFn, co);
+  Manager manager(prng, postFn, co);
   auto cache = manager.createCache<BinaryKeyHasher>(CacheType::Transactional,
                                                     false, cacheLimit);
 
@@ -128,11 +120,10 @@ TEST(CacheTransactionalCacheTest, verify_that_insertion_works_as_expected) {
 TEST(CacheTransactionalCacheTest, verify_removal_works_as_expected) {
   std::uint64_t cacheLimit = 128 * 1024;
   auto postFn = [](std::function<void()>) -> bool { return false; };
-  MockMetricsServer server;
-  SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
+  basics::SharedPRNG prng;
   CacheOptions co;
   co.cacheSize = 4 * cacheLimit;
-  Manager manager(sharedPRNG, postFn, co);
+  Manager manager(prng, postFn, co);
   auto cache = manager.createCache<BinaryKeyHasher>(CacheType::Transactional,
                                                     false, cacheLimit);
 
@@ -194,11 +185,10 @@ TEST(CacheTransactionalCacheTest, verify_removal_works_as_expected) {
 TEST(CacheTransactionalCacheTest, verify_banishing_works_as_expected) {
   std::uint64_t cacheLimit = 128 * 1024;
   auto postFn = [](std::function<void()>) -> bool { return false; };
-  MockMetricsServer server;
-  SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
+  basics::SharedPRNG prng;
   CacheOptions co;
   co.cacheSize = 4 * cacheLimit;
-  Manager manager(sharedPRNG, postFn, co);
+  Manager manager(prng, postFn, co);
   auto cache = manager.createCache<BinaryKeyHasher>(CacheType::Transactional,
                                                     false, cacheLimit);
 
@@ -270,11 +260,10 @@ TEST(CacheTransactionalCacheTest,
     scheduler.post(fn);
     return true;
   };
-  MockMetricsServer server;
-  SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
+  basics::SharedPRNG prng;
   CacheOptions co;
   co.cacheSize = 1024 * 1024 * 1024;
-  Manager manager(sharedPRNG, postFn, co);
+  Manager manager(prng, postFn, co);
   auto cache = manager.createCache<BinaryKeyHasher>(CacheType::Transactional);
   std::uint64_t minimumUsage = cache->usageLimit() * 2;
 
@@ -301,11 +290,10 @@ TEST(CacheTransactionalCacheTest, test_behavior_under_mixed_load_LongRunning) {
     scheduler.post(fn);
     return true;
   };
-  MockMetricsServer server;
-  SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
+  basics::SharedPRNG prng;
   CacheOptions co;
   co.cacheSize = 1024 * 1024 * 1024;
-  Manager manager(sharedPRNG, postFn, co);
+  Manager manager(prng, postFn, co);
   std::size_t threadCount = 4;
   std::shared_ptr<Cache> cache =
       manager.createCache<BinaryKeyHasher>(CacheType::Transactional);

@@ -73,7 +73,7 @@
 #include "utils/string.hpp"
 #include <filesystem>
 
-#include "../3rdParty/iresearch/tests/tests_config.hpp"
+#include "iresearch/tests/tests_config.hpp"
 
 #ifdef USE_V8
 #include <libplatform/libplatform.h>
@@ -470,36 +470,47 @@ std::string const AnalyzerCollectionName("_analyzers");
 std::string testResourceDir;
 
 static void findIResearchTestResources() {
-  std::string toBeFound = basics::FileUtils::buildFilename(
-      "3rdParty", "iresearch", "tests", "resources");
-
   // peek into environment variable first
   char const* dir = getenv("IRESEARCH_TEST_RESOURCE_DIR");
   if (dir != nullptr) {
     // environment variable set, so use it
     testResourceDir = std::string(dir);
-  } else {
-    // environment variable not set, so try to auto-detect the location
-    testResourceDir = ".";
-    do {
-      if (basics::FileUtils::isDirectory(
-              basics::FileUtils::buildFilename(testResourceDir, toBeFound))) {
-        testResourceDir =
-            basics::FileUtils::buildFilename(testResourceDir, toBeFound);
-        return;
-      }
-      testResourceDir = basics::FileUtils::buildFilename(testResourceDir, "..");
-      if (!basics::FileUtils::isDirectory(testResourceDir)) {
-        testResourceDir = IResearch_test_resource_dir;
-        break;
-      }
-    } while (true);
+    return;
   }
 
-  if (!basics::FileUtils::isDirectory(testResourceDir)) {
+  std::filesystem::path const toBeFound =
+      std::filesystem::path("iresearch") / "tests" / "resources";
+
+  std::error_code ec;
+  std::filesystem::path probe = std::filesystem::current_path(ec);
+  if (ec) {
+    testResourceDir = IResearch_test_resource_dir;
+  } else {
+    constexpr int kMaxWalk = 128;
+    for (int i = 0; i < kMaxWalk; ++i) {
+      std::filesystem::path const candidate = probe / toBeFound;
+      if (std::filesystem::is_directory(candidate)) {
+        testResourceDir = std::filesystem::weakly_canonical(candidate).string();
+        return;
+      }
+      if (!probe.has_parent_path()) {
+        break;
+      }
+      std::filesystem::path const parent = probe.parent_path();
+      if (parent == probe) {
+        break;
+      }
+      probe = parent;
+    }
+    testResourceDir = IResearch_test_resource_dir;
+  }
+
+  std::error_code dirEc;
+  if (!std::filesystem::is_directory(testResourceDir, dirEc)) {
     LOG_TOPIC("45f9d", ERR, Logger::FIXME)
         << "unable to find directory for IResearch test resources. use "
-           "environment variable IRESEARCH_TEST_RESOURCE_DIR to set it";
+           "environment variable IRESEARCH_TEST_RESOURCE_DIR to set it"
+        << dirEc.message();
   }
 }
 
@@ -640,7 +651,8 @@ std::shared_ptr<arangodb::aql::Query> prepareQuery(
   return query;
 }
 
-uint64_t getCurrentPlanVersion(arangodb::ArangodServer& server) {
+uint64_t getCurrentPlanVersion(
+    arangodb::application_features::ApplicationServer& server) {
   auto const result = arangodb::AgencyComm(server).getValues("Plan");
   auto const planVersionSlice = result.slice()[0].get<std::string>(
       {arangodb::AgencyCommHelper::path(), "Plan", "Version"});
@@ -1247,8 +1259,8 @@ VPackBuilder getInvertedIndexPropertiesSlice(
   return vpack;
 }
 
-CreateDatabaseInfo createInfo(ArangodServer& server, std::string const& name,
-                              uint64_t id) {
+CreateDatabaseInfo createInfo(application_features::ApplicationServer& server,
+                              std::string const& name, uint64_t id) {
   CreateDatabaseInfo info(server, ExecContext::current());
   auto rv = info.load(name, id);
   if (rv.fail()) {
@@ -1257,17 +1269,18 @@ CreateDatabaseInfo createInfo(ArangodServer& server, std::string const& name,
   return info;
 }
 
-CreateDatabaseInfo systemDBInfo(ArangodServer& server, std::string const& name,
-                                uint64_t id) {
+CreateDatabaseInfo systemDBInfo(application_features::ApplicationServer& server,
+                                std::string const& name, uint64_t id) {
   return createInfo(server, name, id);
 }
 
-CreateDatabaseInfo testDBInfo(ArangodServer& server, std::string const& name,
-                              uint64_t id) {
+CreateDatabaseInfo testDBInfo(application_features::ApplicationServer& server,
+                              std::string const& name, uint64_t id) {
   return createInfo(server, name, id);
 }
 
-CreateDatabaseInfo unknownDBInfo(ArangodServer& server, std::string const& name,
-                                 uint64_t id) {
+CreateDatabaseInfo unknownDBInfo(
+    application_features::ApplicationServer& server, std::string const& name,
+    uint64_t id) {
   return createInfo(server, name, id);
 }

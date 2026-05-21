@@ -23,9 +23,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <chrono>
-#include <thread>
-#include <string>
+#include <iostream>
 #include <memory>
+#include <string>
+#include <thread>
 #include <variant>
 
 #include "Actor/HandlerBase.h"
@@ -127,7 +128,7 @@ struct PingHandler : HandlerBase<Runtime, PingState> {
   }
 
   auto operator()(auto&& rest) -> std::unique_ptr<PingState> {
-    fmt::print(stderr, "PingActor: handles rest\n");
+    std::cerr << "PingActor: handles rest\n";
     return std::move(this->state);
   }
 };
@@ -170,7 +171,7 @@ struct PongHandler : HandlerBase<Runtime, PongState> {
   }
 
   auto operator()(auto&& rest) -> std::unique_ptr<PongState> {
-    fmt::print(stderr, "PongActor: handles rest\n");
+    std::cerr << "PongActor: handles rest\n";
     return std::move(this->state);
   }
 };
@@ -188,15 +189,15 @@ struct Actor {
 }  // namespace arangodb::actor::test
 
 template<>
-struct fmt::formatter<arangodb::actor::test::ping_actor::PingState>
+struct std::formatter<arangodb::actor::test::ping_actor::PingState>
     : arangodb::inspection::inspection_formatter {};
 template<typename PID>
-struct fmt::formatter<
+struct std::formatter<
     arangodb::actor::test::ping_actor::message::PingMessage<PID>>
     : arangodb::inspection::inspection_formatter {};
 template<>
-struct fmt::formatter<arangodb::actor::test::pong_actor::PongState>
+struct std::formatter<arangodb::actor::test::pong_actor::PongState>
     : arangodb::inspection::inspection_formatter {};
 template<>
-struct fmt::formatter<arangodb::actor::test::pong_actor::message::PongMessage>
+struct std::formatter<arangodb::actor::test::pong_actor::message::PongMessage>
     : arangodb::inspection::inspection_formatter {};

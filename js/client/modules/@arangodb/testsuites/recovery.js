@@ -42,6 +42,7 @@ const inst = require('@arangodb/testutils/instance');
 const tmpDirMmgr = require('@arangodb/testutils/tmpDirManager').tmpDirManager;
 const _ = require('lodash');
 const { isEnterprise, versionHas } = require("@arangodb/test-helper");
+const SetGlobalExecutionDeadlineTo = require('internal').SetGlobalExecutionDeadlineTo;
 
 const toArgv = internal.toArgv;
 const ArangoError = require('@arangodb').ArangoError;
@@ -55,7 +56,7 @@ const termSignal = 15;
 // At the moment only view-tests supported by cluster recovery tests:
 const testPaths = {
   'recovery': [tu.pathForTesting('client/recovery')],
-  'recovery_cluster': [tu.pathForTesting('client/recovery/search')]
+  'recovery_cluster': [tu.pathForTesting('client/recovery/cluster/crash'), tu.pathForTesting('client/recovery/cluster/search')],
 };
 
 // These tests should NOT be killed after the setup phase.
@@ -309,6 +310,7 @@ function _recovery (options, recoveryTests) {
         continue;
       }
       ////////////////////////////////////////////////////////////////////////
+      SetGlobalExecutionDeadlineTo(params.options.oneTestTimeout / 4);
       print(BLUE + "running recovery of test " + count + " - " + test + RESET);
       params.options.disableMonitor = localOptions.disableMonitor;
       params.setup = false;

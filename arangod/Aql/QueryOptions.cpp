@@ -35,17 +35,24 @@
 
 using namespace arangodb::aql;
 
-size_t QueryOptions::defaultMemoryLimit = 0U;
-size_t QueryOptions::defaultMaxNumberOfPlans = 128U;
-size_t QueryOptions::defaultMaxNodesPerCallstack = 250U;
-size_t QueryOptions::defaultSpillOverThresholdNumRows = 5000000ULL;
+size_t QueryOptions::defaultMemoryLimit =
+    QueryOptions::defaultInitialMemoryLimit;
+size_t QueryOptions::defaultMaxNumberOfPlans =
+    QueryOptions::defaultInitialMaxNumberOfPlans;
+size_t QueryOptions::defaultMaxNodesPerCallstack =
+    QueryOptions::defaultInitialMaxNodesPerCallstack;
+size_t QueryOptions::defaultSpillOverThresholdNumRows =
+    QueryOptions::defaultInitialSpillOverThresholdNumRows;
 size_t QueryOptions::defaultSpillOverThresholdMemoryUsage =
-    134217728ULL;                                                // 128 MB
-size_t QueryOptions::defaultMaxDNFConditionMembers = 786432ULL;  // 768K
-double QueryOptions::defaultMaxRuntime = 0.0;
+    QueryOptions::defaultInitialSpillOverThresholdMemoryUsage;
+size_t QueryOptions::defaultMaxDNFConditionMembers =
+    QueryOptions::defaultInitialMaxDNFConditionMembers;
+double QueryOptions::defaultMaxRuntime = QueryOptions::defaultInitialMaxRuntime;
 double QueryOptions::defaultTtl;
-bool QueryOptions::defaultFailOnWarning = false;
-bool QueryOptions::allowMemoryLimitOverride = true;
+bool QueryOptions::defaultFailOnWarning =
+    QueryOptions::defaultInitialFailOnWarning;
+bool QueryOptions::allowMemoryLimitOverride =
+    QueryOptions::defaultInitialAllowMemoryLimitOverride;
 
 QueryOptions::QueryOptions()
     : memoryLimit(0),

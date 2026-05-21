@@ -28,11 +28,11 @@
 #include "Aql/Variable.h"
 #include "Basics/system-compiler.h"
 
-using namespace arangodb::aql;
+namespace arangodb::aql {
 
 DocumentExpressionContext::DocumentExpressionContext(
-    arangodb::transaction::Methods& trx, QueryContext& query,
-    aql::AqlFunctionsInternalCache& cache,
+    transaction::Methods& trx, QueryContext& query,
+    AqlFunctionsInternalCache& cache,
     std::vector<std::pair<VariableId, RegisterId>> const& filterVarsToRegister,
     InputAqlItemRow const& inputRow, Variable const* outputVariable) noexcept
     : DocumentProducingExpressionContext(trx, query, cache,
@@ -42,8 +42,8 @@ DocumentExpressionContext::DocumentExpressionContext(
 }
 
 SimpleDocumentExpressionContext::SimpleDocumentExpressionContext(
-    arangodb::transaction::Methods& trx, QueryContext& query,
-    aql::AqlFunctionsInternalCache& cache,
+    transaction::Methods& trx, QueryContext& query,
+    AqlFunctionsInternalCache& cache,
     std::vector<std::pair<VariableId, RegisterId>> const& filterVarsToRegister,
     InputAqlItemRow const& inputRow, Variable const* outputVariable) noexcept
     : DocumentExpressionContext(trx, query, cache, filterVarsToRegister,
@@ -65,8 +65,8 @@ AqlValue SimpleDocumentExpressionContext::getVariableValue(
 }
 
 GenericDocumentExpressionContext::GenericDocumentExpressionContext(
-    arangodb::transaction::Methods& trx, QueryContext& query,
-    aql::AqlFunctionsInternalCache& cache,
+    transaction::Methods& trx, QueryContext& query,
+    AqlFunctionsInternalCache& cache,
     std::vector<std::pair<VariableId, RegisterId>> const& filterVarsToRegister,
     InputAqlItemRow const& inputRow, Variable const* outputVariable) noexcept
     : DocumentExpressionContext(trx, query, cache, filterVarsToRegister,
@@ -107,3 +107,5 @@ AqlValue GenericDocumentExpressionContext::getVariableValue(
         return AqlValue(AqlValueHintNull{});
       });
 }
+
+}  // namespace arangodb::aql

@@ -24,6 +24,7 @@
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "Logger/LoggerFeature.h"
 
 namespace arangodb {
 
@@ -36,11 +37,10 @@ class GreetingsFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Greetings"; }
 
-  template<typename Server>
-  explicit GreetingsFeature(Server& server)
+  explicit GreetingsFeature(application_features::ApplicationServer& server)
       : ApplicationFeature{server, *this} {
     setOptional(false);
-    startsAfter<LoggerFeature, Server>();
+    startsAfter<LoggerFeature>();
   }
 
  public:

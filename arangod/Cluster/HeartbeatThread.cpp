@@ -208,12 +208,12 @@ DECLARE_COUNTER(arangodb_heartbeat_failures_total,
 DECLARE_HISTOGRAM(arangodb_heartbeat_send_time_msec, HeartbeatScale,
                   "Time required to send heartbeat [ms]");
 
-HeartbeatThread::HeartbeatThread(Server& server,
-                                 AgencyCallbackRegistry* agencyCallbackRegistry,
-                                 std::chrono::microseconds interval,
-                                 uint64_t maxFailsBeforeWarning,
-                                 double noHeartbeatDelayBeforeShutdown)
-    : arangodb::ServerThread<Server>(server, "Heartbeat"),
+HeartbeatThread::HeartbeatThread(
+    application_features::ApplicationServer& server,
+    AgencyCallbackRegistry* agencyCallbackRegistry,
+    std::chrono::microseconds interval, uint64_t maxFailsBeforeWarning,
+    double noHeartbeatDelayBeforeShutdown)
+    : arangodb::ServerThread(server, "Heartbeat"),
       _agencyCallbackRegistry(agencyCallbackRegistry),
       _statusLock(std::make_shared<std::mutex>()),
       _agency(server),
@@ -1112,11 +1112,9 @@ bool HeartbeatThread::sendServerState() {
     TRI_ASSERT(_maxFailsBeforeWarning > 0);
     if (++_numFails % _maxFailsBeforeWarning == 0) {
       _heartbeat_failure_counter.count();
-      std::string const endpoints =
-          AsyncAgencyCommManager::INSTANCE->endpointsString();
-
       LOG_TOPIC("3e2f5", WARN, Logger::HEARTBEAT)
-          << "heartbeat could not be sent to agency endpoints (" << endpoints
+          << "heartbeat could not be sent to agents ("
+          << inspection::json(AsyncAgencyCommManager::INSTANCE->agents())
           << "): http code: " << result.httpCode()
           << ", body: " << result.body();
       _numFails = 0;
@@ -1191,11 +1189,11 @@ void HeartbeatThread::sendServerStateAsync() {
             TRI_ASSERT(self->_maxFailsBeforeWarning > 0);
             if (++self->_numFails % self->_maxFailsBeforeWarning == 0) {
               self->_heartbeat_failure_counter.count();
-              std::string const endpoints =
-                  AsyncAgencyCommManager::INSTANCE->endpointsString();
               LOG_TOPIC("4e2f5", WARN, Logger::HEARTBEAT)
-                  << "heartbeat could not be sent to agency endpoints ("
-                  << endpoints << "): error code: " << result.errorMessage();
+                  << "heartbeat could not be sent to agents ("
+                  << inspection::json(
+                         AsyncAgencyCommManager::INSTANCE->agents())
+                  << "): error code: " << result.errorMessage();
               self->_numFails = 0;
             }
           } else {
@@ -1219,19 +1217,21 @@ void HeartbeatThread::updateAgentPool(VPackSlice const& agentPool) {
       agentPool.hasKey("size") && agentPool.get("size").getUInt() > 0 &&
       agentPool.get("id").isString()) {
     try {
-      std::vector<std::string> values;
+      std::vector<Agent> values;
       // we have to make sure that the leader is on the front
       auto leaderId = agentPool.get("id").stringView();
       auto pool = agentPool.get("pool");
       values.reserve(pool.length());
-      values.emplace_back(pool.get(leaderId).copyString());
+      values.emplace_back(
+          Agent{ServerID{leaderId}, pool.get(leaderId).copyString()});
       // now add all non leaders
       for (auto pair : VPackObjectIterator(pool)) {
         if (!pair.key.isEqualString(leaderId)) {
-          values.emplace_back(pair.value.copyString());
+          values.emplace_back(
+              Agent{pair.key.copyString(), pair.value.copyString()});
         }
       }
-      AsyncAgencyCommManager::INSTANCE->updateEndpoints(values);
+      AsyncAgencyCommManager::INSTANCE->updateAgents(values);
     } catch (basics::Exception const& e) {
       LOG_TOPIC("1cec6", WARN, Logger::HEARTBEAT)
           << "Error updating agency pool: " << e.message();

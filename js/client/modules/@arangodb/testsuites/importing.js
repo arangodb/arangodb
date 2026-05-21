@@ -482,6 +482,9 @@ class importRunner extends trs.runInArangoshRunner {
           // if status === false, we make true out of it
           // if status === true, we make false out of it
           result[impTodo.id].status = !result[impTodo.id].status;
+          if (result[impTodo.id].status) {
+            result[impTodo.id].message = "";
+          }
         }
 
         if (result[impTodo.id].status !== true && !this.options.force) {

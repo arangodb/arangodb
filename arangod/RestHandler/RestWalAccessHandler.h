@@ -28,10 +28,13 @@
 
 namespace arangodb {
 
+class DatabaseFeature;
+
 /// Storage engine agnostic handler for using the WalAccess interface
 class RestWalAccessHandler : public arangodb::RestVocbaseBaseHandler {
  public:
-  RestWalAccessHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
+  RestWalAccessHandler(application_features::ApplicationServer&,
+                       GeneralRequest*, GeneralResponse*);
 
  public:
   char const* name() const override final { return "RestWalAccessHandler"; }
@@ -47,5 +50,7 @@ class RestWalAccessHandler : public arangodb::RestVocbaseBaseHandler {
 
   /// @brief deprecated. remove in future version
   void handleCommandDetermineOpenTransactions(WalAccess const* wal);
+
+  DatabaseFeature& _databaseFeature;
 };
 }  // namespace arangodb

@@ -9,14 +9,12 @@ add_library(arango_replication2 STATIC
         ${PROJECT_SOURCE_DIR}/arangod/RestHandler/RestLogInternalHandler.cpp
         ${PROJECT_SOURCE_DIR}/arangod/RestHandler/RestDocumentStateHandler.cpp)
 
-
 target_link_libraries(arango_replication2
         arango_basic_utils
         arango_network # NetworkWorkAttachedFollower
         arangoserver # RestHandler, arango_rocksdb
         arango_futures
         arango_actor
-        fmt
         immer)
 
 target_include_directories(arango_replication2 PRIVATE
@@ -24,11 +22,11 @@ target_include_directories(arango_replication2 PRIVATE
         "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
 
 add_library(arango_replication2_pure STATIC
-  MetricsHelper.cpp
-  IScheduler.h)
+        MetricsHelper.cpp
+        IScheduler.h)
 
 target_link_libraries(arango_replication2_pure PUBLIC arango_lightweight
-        velocypack immer fmt arango_metrics_base arango_futures)
+        velocypack immer arango_metrics_base arango_futures)
 
 target_include_directories(arango_replication2_pure PUBLIC
         "${PROJECT_SOURCE_DIR}/arangod"

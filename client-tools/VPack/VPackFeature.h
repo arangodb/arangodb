@@ -23,18 +23,17 @@
 
 #pragma once
 
-#include "VPack/arangovpack.h"
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 #include "Basics/VelocyPackHelper.h"
 
 namespace arangodb {
 
-class VPackFeature final : public ArangoVPackFeature {
+class VPackFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "VPack"; }
 
-  VPackFeature(Server& server, int* result);
+  VPackFeature(application_features::ApplicationServer& server, int* result);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
   void start() override;

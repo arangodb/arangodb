@@ -30,6 +30,7 @@
 #include "Endpoint/ConnectionInfo.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
+#include "RestServer/arangod.h"
 
 #include <velocypack/Buffer.h>
 #include <velocypack/Builder.h>
@@ -38,8 +39,8 @@
 // give access to some protected routines for more thorough unit tests
 class TestHandler : public arangodb::MaintenanceRestHandler {
  public:
-  TestHandler(arangodb::ArangodServer& server, arangodb::GeneralRequest* req,
-              arangodb::GeneralResponse* res)
+  TestHandler(arangodb::application_features::ApplicationServer& server,
+              arangodb::GeneralRequest* req, arangodb::GeneralResponse* res)
       : arangodb::MaintenanceRestHandler(server, req, res){};
 
   bool test_parsePutBody(VPackSlice const& parameters) {

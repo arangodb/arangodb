@@ -23,18 +23,20 @@
 
 #pragma once
 
-#include "Backup/arangobackup.h"
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 #include "Utils/ClientManager.h"
 
 namespace arangodb {
 
-class BackupFeature : public ArangoBackupFeature {
+class ClientFeature;
+
+class BackupFeature : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Backup"; }
 
-  BackupFeature(Server& server, int& exitCode);
+  BackupFeature(application_features::ApplicationServer& server,
+                ClientFeature& client, int& exitCode);
 
   // for documentation of virtual methods, see `ApplicationFeature`
   virtual void collectOptions(
@@ -73,6 +75,7 @@ class BackupFeature : public ArangoBackupFeature {
   };
 
  private:
+  ClientFeature& _client;
   ClientManager _clientManager;
   int& _exitCode;
   Options _options;

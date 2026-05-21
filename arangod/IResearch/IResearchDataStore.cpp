@@ -645,7 +645,8 @@ void ConsolidationTask::operator()() {
 }
 
 IResearchDataStore::IResearchDataStore(
-    ArangodServer& server, [[maybe_unused]] LogicalCollection& collection)
+    application_features::ApplicationServer& server,
+    [[maybe_unused]] LogicalCollection& collection)
     : _asyncFeature(&server.getFeature<IResearchFeature>()),
       // mark as data store not initialized
       _asyncSelf(std::make_shared<AsyncLinkHandle>(nullptr)),
@@ -1784,7 +1785,7 @@ void IResearchDataStore::truncateCommit(TruncateGuard&& guard,
   };
 
   TRI_IF_FAILURE("ArangoSearchTruncateFailure") {
-    CrashHandler::setHardKill();
+    crash_handler::CrashHandler::setHardKill();
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 

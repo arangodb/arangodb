@@ -30,7 +30,8 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 ClusterRestReplicationHandler::ClusterRestReplicationHandler(
-    ArangodServer& server, GeneralRequest* request, GeneralResponse* response)
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestReplicationHandler(server, request, response) {}
 
 futures::Future<futures::Unit>

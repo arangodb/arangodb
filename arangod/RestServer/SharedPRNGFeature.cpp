@@ -24,59 +24,14 @@
 
 #include "SharedPRNGFeature.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/splitmix64.h"
-#include "Basics/xoroshiro128plus.h"
-
-#include <mutex>
-
-using namespace arangodb::basics;
-
-namespace {
-
-/// @brief helper class for thread-safe creation of PRNG seed value
-class PRNGSeeder {
- public:
-  PRNGSeeder() : _seeder(0xdeadbeefdeadbeefULL) {}
-
-  uint64_t next() noexcept {
-    std::lock_guard<std::mutex> guard(_mutex);
-    return _seeder.next();
-  }
-
- private:
-  std::mutex _mutex;
-  splitmix64 _seeder;
-};
-
-/// @brief global PRNG seeder, to seed thread-local PRNG objects
-PRNGSeeder globalSeeder;
-
-struct SeededPRNG {
-  SeededPRNG() noexcept {
-    uint64_t seed1 = globalSeeder.next();
-    uint64_t seed2 = globalSeeder.next();
-    prng.seed(seed1, seed2);
-  }
-
-  inline uint64_t next() noexcept { return prng.next(); }
-
-  arangodb::basics::xoroshiro128plus prng;
-};
-
-static thread_local SeededPRNG threadLocalPRNG;
-
-}  // namespace
-
 namespace arangodb {
 
-SharedPRNGFeature::SharedPRNGFeature(Server& server)
-    : ArangodFeature{server, *this} {
+SharedPRNGFeature::SharedPRNGFeature(
+    application_features::ApplicationServer& server)
+    : ApplicationFeature{server, *this} {
   setOptional(true);
 }
 
-void SharedPRNGFeature::prepare() {}
-
-uint64_t SharedPRNGFeature::rand() noexcept { return ::threadLocalPRNG.next(); }
+uint64_t SharedPRNGFeature::rand() noexcept { return _prng.rand(); }
 
 }  // namespace arangodb

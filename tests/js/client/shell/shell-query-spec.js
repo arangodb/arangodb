@@ -6,7 +6,6 @@ const internal = require('internal');
 const expect = require('chai').expect;
 let IM = global.instanceManager;
 
-const isServer = typeof arango === 'undefined';
 const query = 'FOR x IN 1..5 LET y = SLEEP(@value) RETURN x';
 const {
   launchPlainSnippetInBG,
@@ -25,9 +24,9 @@ function sendQuery (count, async) {
     if (async === false) {
       internal.db._query(query, { value: 1 });
     } else {
-      clients.push({client: launchPlainSnippetInBG(
+      clients.push(launchPlainSnippetInBG(
         `try { require('internal').db._query("${query}", {value: 1}, {profile: true}).toArray();} catch {}`,
-        'query_' + i)});
+        'query_' + i));
     }
   }
   if (async === true) {
@@ -91,7 +90,7 @@ describe('AQL query analyzer', function () {
 
   describe('with active tracking', function () {
     beforeEach(function () {
-      if (isServer && IM.debugCanUseFailAt()) {
+      if (IM.debugCanUseFailAt()) {
         IM.debugClearFailAt();
       }
       testee.properties({
@@ -102,7 +101,7 @@ describe('AQL query analyzer', function () {
     });
 
     afterEach(function () {
-      if (isServer && IM.debugCanUseFailAt()) {
+      if (IM.debugCanUseFailAt()) {
         IM.debugClearFailAt();
       }
       // now kill all queries we are looking for that may still be
@@ -128,7 +127,7 @@ describe('AQL query analyzer', function () {
       joinBGShells(IM.options, clients, waitFor, "");
     });
 
-    if (isServer && IM.debugCanUseFailAt()) {
+    if (IM.debugCanUseFailAt()) {
       it('should not crash when inserting a query into the current list fails', function () {
         IM.debugSetFailAt('QueryList::insert');
 
@@ -325,7 +324,7 @@ describe('AQL query analyzer', function () {
       expect(testee.slow().filter(filterQueries).length).to.equal(max);
     });
 
-    if (isServer && IM.debugCanUseFailAt()) {
+    if (IM.debugCanUseFailAt()) {
       it('should not crash when trying to move a query into the slow list', function () {
         IM.debugSetFailAt('QueryList::remove');
 

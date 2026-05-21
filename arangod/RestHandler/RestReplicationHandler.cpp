@@ -61,7 +61,7 @@
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/ServerIdFeature.h"
-#include "RestServer/VectorIndexFeature.h"
+#include "VectorIndex/VectorIndexFeature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "Sharding/ShardingInfo.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -386,10 +386,14 @@ static Result restoreDataParser(std::string_view currentLine,
   return {};
 }
 
-RestReplicationHandler::RestReplicationHandler(ArangodServer& server,
-                                               GeneralRequest* request,
-                                               GeneralResponse* response)
-    : RestVocbaseBaseHandler(server, request, response) {}
+RestReplicationHandler::RestReplicationHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
+    : RestVocbaseBaseHandler(server, request, response),
+      _clusterFeature(server.getFeature<ClusterFeature>()),
+      _engineSelectorFeature(server.getFeature<EngineSelectorFeature>()),
+      _replicationFeature(server.getFeature<ReplicationFeature>()),
+      _databaseFeature(server.getFeature<DatabaseFeature>()) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an error if called on a coordinator server
@@ -411,6 +415,7 @@ std::string const RestReplicationHandler::LoggerState = "logger-state";
 std::string const RestReplicationHandler::LoggerTickRanges =
     "logger-tick-ranges";
 std::string const RestReplicationHandler::LoggerFirstTick = "logger-first-tick";
+std::string const RestReplicationHandler::LoggerLast = "logger-last";
 std::string const RestReplicationHandler::LoggerFollow = "logger-follow";
 std::string const RestReplicationHandler::Batch = "batch";
 std::string const RestReplicationHandler::Inventory = "inventory";
@@ -478,6 +483,14 @@ auto RestReplicationHandler::executeAsync() -> futures::Future<futures::Unit> {
         co_return;
       }
       handleCommandLoggerFirstTick();
+    } else if (command == LoggerLast) {
+      if (type != rest::RequestType::GET) {
+        goto BAD_CALL;
+      }
+      if (isCoordinatorError()) {
+        co_return;
+      }
+      handleCommandLoggerLast();
     } else if (command == LoggerFollow) {
       if (type != rest::RequestType::GET && type != rest::RequestType::PUT) {
         goto BAD_CALL;
@@ -486,7 +499,7 @@ auto RestReplicationHandler::executeAsync() -> futures::Future<futures::Unit> {
         co_return;
       }
       // track the number of parallel invocations of the tailing API
-      auto& rf = _vocbase.server().getFeature<ReplicationFeature>();
+      auto& rf = _replicationFeature;
       // this may throw when too many threads are going into tailing
       rf.trackTailingStart();
 
@@ -808,7 +821,7 @@ Result RestReplicationHandler::testPermissions() {
         if (ServerState::instance()->isCoordinator()) {
           // We have a shard id, need to translate.
           // This API is explicitly called with Shards not with Collections.
-          ClusterInfo& ci = server().getFeature<ClusterFeature>().clusterInfo();
+          ClusterInfo& ci = _clusterFeature.clusterInfo();
           auto maybeShardID = ShardID::shardIdFromString(collectionName);
           if (maybeShardID.fail()) {
             // Compatibility with old API, which would return
@@ -838,8 +851,7 @@ Result RestReplicationHandler::testPermissions() {
             std::string collectionName = parameters.get("name").copyString();
             if (!collectionName.empty()) {
               std::string dbName = _request->databaseName();
-              DatabaseFeature& databaseFeature =
-                  _vocbase.server().getFeature<DatabaseFeature>();
+              DatabaseFeature& databaseFeature = _databaseFeature;
               auto vocbase = databaseFeature.useDatabase(dbName);
               if (vocbase == nullptr) {
                 return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
@@ -985,20 +997,19 @@ void RestReplicationHandler::handleUnforwardedTrampolineCoordinator() {
 }
 
 void RestReplicationHandler::handleCommandClusterInventory() {
-  auto& replicationFeature = _vocbase.server().getFeature<ReplicationFeature>();
+  auto& replicationFeature = _replicationFeature;
   replicationFeature.trackInventoryRequest();
 
   std::string const& dbName = _request->databaseName();
   bool includeSystem = _request->parsedValue("includeSystem", true);
 
-  ClusterInfo& ci = server().getFeature<ClusterFeature>().clusterInfo();
+  ClusterInfo& ci = _clusterFeature.clusterInfo();
   std::vector<std::shared_ptr<LogicalCollection>> cols =
       ci.getCollections(dbName);
   VPackBuilder resultBuilder;
   resultBuilder.openObject();
 
-  DatabaseFeature& databaseFeature =
-      _vocbase.server().getFeature<DatabaseFeature>();
+  DatabaseFeature& databaseFeature = _databaseFeature;
   auto vocbase = databaseFeature.useDatabase(dbName);
   if (!vocbase) {
     generateError(ResponseCode::NOT_FOUND, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
@@ -1891,7 +1902,7 @@ Result RestReplicationHandler::processRestoreIndexes(
 
       if (type.isEqualString(StaticStrings::IndexNameVector) &&
           !server().getFeature<VectorIndexFeature>().isVectorIndexEnabled()) {
-        LOG_TOPIC("e2125", ERR, Logger::RESTORE) << fmt::format(
+        LOG_TOPIC("e2125", ERR, Logger::RESTORE) << std::format(
             "Discarding the vector index: `{}` since the feature is not "
             "enabled.",
             name);
@@ -1979,7 +1990,7 @@ Result RestReplicationHandler::processRestoreIndexesCoordinator(
   auto& dbName = _vocbase.name();
 
   // in a cluster, we only look up by name:
-  ClusterInfo& ci = server().getFeature<ClusterFeature>().clusterInfo();
+  ClusterInfo& ci = _clusterFeature.clusterInfo();
   std::shared_ptr<LogicalCollection> col = ci.getCollectionNT(dbName, name);
   if (col == nullptr) {
     return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
@@ -1988,7 +1999,7 @@ Result RestReplicationHandler::processRestoreIndexesCoordinator(
 
   TRI_ASSERT(col != nullptr);
 
-  auto& cluster = _vocbase.server().getFeature<ClusterFeature>();
+  auto& cluster = _clusterFeature;
 
   // may be used for rebuilding index infos
   VPackBuilder rebuilder;
@@ -2048,7 +2059,7 @@ Result RestReplicationHandler::processRestoreIndexesCoordinator(
         !server().getFeature<VectorIndexFeature>().isVectorIndexEnabled()) {
       auto const indexName = arangodb::basics::VelocyPackHelper::getStringValue(
           parameters, "name", "");
-      LOG_TOPIC("43c16", ERR, Logger::RESTORE) << fmt::format(
+      LOG_TOPIC("43c16", ERR, Logger::RESTORE) << std::format(
           "Discarding the vector index: `{}` since the feature is not enabled.",
           indexName);
       continue;
@@ -2332,8 +2343,7 @@ void RestReplicationHandler::handleCommandApplierGetStateAll() {
         "global inventory can only be fetched from within _system database");
     return;
   }
-  DatabaseFeature& databaseFeature =
-      _vocbase.server().getFeature<DatabaseFeature>();
+  DatabaseFeature& databaseFeature = _databaseFeature;
 
   VPackBuilder builder;
   builder.openObject();
@@ -2924,8 +2934,7 @@ RestReplicationHandler::handleCommandHoldReadLockCollection() {
     // used by a follower as an upper bound until which to tail the WAL _at
     // most_.
     TRI_ASSERT(server().hasFeature<EngineSelectorFeature>());
-    StorageEngine& engine =
-        server().getFeature<EngineSelectorFeature>().engine();
+    StorageEngine& engine = _engineSelectorFeature.engine();
     b.add("lastLogTick", VPackValue(engine.currentTick()));
   }
 
@@ -3006,7 +3015,7 @@ void RestReplicationHandler::handleCommandGetIdForReadLockCollection() {
 
 void RestReplicationHandler::handleCommandLoggerState() {
   TRI_ASSERT(server().hasFeature<EngineSelectorFeature>());
-  StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
+  StorageEngine& engine = _engineSelectorFeature.engine();
 
   VPackBuilder builder;
   auto res = engine.createLoggerState(&_vocbase, builder);
@@ -3030,8 +3039,7 @@ void RestReplicationHandler::handleCommandLoggerState() {
 //////////////////////////////////////////////////////////////////////////////
 void RestReplicationHandler::handleCommandLoggerFirstTick() {
   TRI_voc_tick_t tick = UINT64_MAX;
-  Result res =
-      server().getFeature<EngineSelectorFeature>().engine().firstTick(tick);
+  Result res = _engineSelectorFeature.engine().firstTick(tick);
 
   VPackBuilder b;
   b.add(VPackValue(VPackValueType::Object));
@@ -3046,6 +3054,22 @@ void RestReplicationHandler::handleCommandLoggerFirstTick() {
 }
 
 //////////////////////////////////////////////////////////////////////////////
+/// @brief return the first tick available in a logfile
+/// @route GET logger-last
+/// @caller js/client/modules/@arangodb/replication.js
+/// @response VPackObject with minTick of LogfileManager->lastLogger()
+//////////////////////////////////////////////////////////////////////////////
+void RestReplicationHandler::handleCommandLoggerLast() {
+  VPackBuilder builder;
+  auto tickStart = _request->parsedValue("tickStart", uint64_t(0));
+  auto tickEnd = _request->parsedValue("tickEnd", uint64_t(0xbadbadbadbadULL));
+
+  Result res = server().getFeature<EngineSelectorFeature>().engine().lastLogger(
+      _vocbase, tickStart, tickEnd, builder);
+  generateResult(rest::ResponseCode::OK, builder.slice());
+}
+
+//////////////////////////////////////////////////////////////////////////////
 /// @brief return the available logfile range
 /// @route GET logger-tick-ranges
 /// @caller js/client/modules/@arangodb/replication.js
@@ -3057,7 +3081,7 @@ void RestReplicationHandler::handleCommandLoggerFirstTick() {
 
 void RestReplicationHandler::handleCommandLoggerTickRanges() {
   TRI_ASSERT(server().hasFeature<EngineSelectorFeature>());
-  StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
+  StorageEngine& engine = _engineSelectorFeature.engine();
   VPackBuilder b;
   Result res = engine.createTickRanges(b);
   if (res.ok()) {
@@ -3179,7 +3203,7 @@ RestReplicationHandler::handleCommandRebuildRevisionTree() {
   if (ServerState::instance()->isCoordinator() ||
       ServerState::instance()->isDBServer() ||
       ServerState::instance()->isAgent()) {
-    ++server().getFeature<ClusterFeature>().syncTreeRebuildCounter();
+    ++_clusterFeature.syncTreeRebuildCounter();
   }
 
   Result res = co_await ctx.collection->getPhysical()->rebuildRevisionTree();
@@ -3235,7 +3259,7 @@ void RestReplicationHandler::handleCommandRevisionTreePendingUpdates() {
 ///           * ranges, VPackArray of VPackArray of revisions
 ///           * resume, optional, if response is chunked; revision resume
 ///                     point to specify on subsequent requests
-//////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////// ///////////////////////////////
 
 void RestReplicationHandler::handleCommandRevisionRanges() {
   RevisionOperationContext ctx;
@@ -3528,8 +3552,7 @@ ReplicationApplier* RestReplicationHandler::getApplier(bool& global) {
   }
 
   if (global) {
-    auto& replicationFeature =
-        _vocbase.server().getFeature<ReplicationFeature>();
+    auto& replicationFeature = _replicationFeature;
     return replicationFeature.globalReplicationApplier();
   } else {
     return _vocbase.replicationApplier();
@@ -3619,7 +3642,7 @@ futures::Future<Result> RestReplicationHandler::createBlockingTransaction(
         }
       };
 
-      ClusterInfo& ci = server().getFeature<ClusterFeature>().clusterInfo();
+      ClusterInfo& ci = _clusterFeature.clusterInfo();
       auto rGuard =
           std::make_unique<RebootCookie>(ci.rebootTracker().callMeOnChange(
               {serverId, rebootId}, std::move(f), std::move(comment)));

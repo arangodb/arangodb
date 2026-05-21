@@ -73,7 +73,7 @@ set(ARANGODB_VERSION_MINOR "12")
 
 # when building the nightly ARANGODB_VERSION_PATCH will be set
 if(NOT DEFINED ARANGODB_VERSION_PATCH)
-  set(ARANGODB_VERSION_PATCH "8")
+  set(ARANGODB_VERSION_PATCH "10")
   set(ARANGODB_VERSION_RELEASE_TYPE "devel")
   set(ARANGODB_VERSION_RELEASE_NUMBER "")
 else()
@@ -470,6 +470,13 @@ endif()
 # argument is passed
 find_program(MAKE make gmake)
 
+include(ProcessorCount)
+ProcessorCount(NPROC)
+if(NPROC EQUAL 0)
+  set(NPROC 1)
+endif()
+set(MAKE_JOBS "-j${NPROC}" CACHE STRING "Parallel job flag for external project make invocations")
+
 find_program(
   CHMOD_EXECUTABLE chmod
   PATHS "/bin/" "/usr/bin/"
@@ -508,7 +515,7 @@ set(BASE_LIBS                         "$ENV{LIBS}"     CACHE STRING "base librar
 include(CheckCompilerVersion)
 
 CheckCompilerVersion(
-  16.0 # Clang
+  19.0 # Clang
 )
 
 if(CMAKE_COMPILER_IS_CLANG)
@@ -592,13 +599,21 @@ if(USE_MAINTAINER_MODE)
     add_definitions("-D_FORTIFY_SOURCE=3")
   endif()
 
-  find_package(FLEX)
-  find_package(BISON)
   # these are required for generateREADME.sh
   find_program(FGREP_EXECUTABLE fgrep)
   find_program(SED_EXECUTABLE sed)
   find_program(AWK_EXECUTABLE awk)
 endif()
+
+# flex and bison are required to generate the AQL lexer/parser from
+# arangod/Aql/Parser/tokens.ll and arangod/Aql/Parser/grammar.y.
+# Bison >= 3.0 (Jul 2013) is required at least for the `error=<category>`
+# --warnings syntax we pass was added in 3.0.
+# Flex >= 2.6.0 (Sep 2015) is the oldest we have actually tested; 2.6.4
+# (May 2017) is still the latest release. Older 2.5.x may also work but
+# is not exercised.
+find_package(FLEX 2.6 REQUIRED)
+find_package(BISON 3.0 REQUIRED)
 
 option(USE_GOOGLE_TESTS "Compile C++ unit tests" ON)
 if(USE_GOOGLE_TESTS)
@@ -1114,6 +1129,7 @@ set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${FAISS_EXE_LINKER_FLAGS}"
 set(FAISS_ENABLE_GPU OFF CACHE BOOL "Disable GPU optimizations")
 set(FAISS_ENABLE_PYTHON OFF CACHE BOOL "Disable Python bindings")
 set(FAISS_ENABLE_RAFT OFF CACHE BOOL "Disable RAFT")
+set(BUILD_TESTING OFF CACHE BOOL "Disable FAISS tests" FORCE)
 
 add_subdirectory(3rdParty/faiss EXCLUDE_FROM_ALL)
 

@@ -33,7 +33,6 @@
 #include <vector>
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "Restore/arangorestore.h"
 
 #include "Utils/ClientManager.h"
 #include "Utils/ClientTaskQueue.h"
@@ -42,17 +41,20 @@
 
 namespace arangodb {
 
+class ClientFeature;
+
 namespace basics {
 class StringBuffer;
 }
 
 class ManagedDirectory;
 
-class RestoreFeature final : public ArangoRestoreFeature {
+class RestoreFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Restore"; }
 
-  RestoreFeature(Server& server, int& exitCode);
+  RestoreFeature(application_features::ApplicationServer& server,
+                 ClientFeature& client, int& exitCode);
 
   // for documentation of virtual methods, see `ApplicationFeature`
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
@@ -272,6 +274,7 @@ class RestoreFeature final : public ArangoRestoreFeature {
   std::vector<DatabaseInfo> determineDatabaseList(
       std::string const& databaseName);
 
+  ClientFeature& _client;
   ClientManager _clientManager;
   ClientTaskQueue<RestoreJob> _clientTaskQueue;
   std::unique_ptr<ManagedDirectory> _directory;

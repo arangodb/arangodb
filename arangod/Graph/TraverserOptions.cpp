@@ -76,7 +76,7 @@ TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query,
       mode = Order::BFS;
     } else if (tmp == StaticStrings::GraphQueryOrderWeighted) {
       mode = Order::WEIGHTED;
-    } else if (tmp == StaticStrings::GraphQueryOrderBFS) {
+    } else if (tmp == StaticStrings::GraphQueryOrderDFS) {
       mode = Order::DFS;
     }
   } else {

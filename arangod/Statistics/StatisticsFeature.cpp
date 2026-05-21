@@ -23,6 +23,7 @@
 
 #include "StatisticsFeature.h"
 
+#include "Statistics/StatisticsOptionsProvider.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
 #include "Aql/QueryString.h"
@@ -37,7 +38,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
-#include "FeaturePhases/ServerFeaturePhase.h"
+#include "FeaturePhases/AqlFeaturePhase.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -50,7 +51,6 @@
 #include "Metrics/MetricsFeature.h"
 #include "Network/NetworkFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
 #include "RestServer/CpuUsageFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
@@ -572,10 +572,10 @@ RequestFigures UserRequestFigures;
 // --SECTION--                                                  StatisticsThread
 // -----------------------------------------------------------------------------
 
-class StatisticsThread final : public ServerThread<ArangodServer> {
+class StatisticsThread final : public ServerThread {
  public:
   explicit StatisticsThread(Server& server)
-      : ServerThread<ArangodServer>(server, "Statistics") {}
+      : ServerThread(server, "Statistics") {}
   ~StatisticsThread() { shutdown(); }
 
  public:
@@ -625,19 +625,15 @@ class StatisticsThread final : public ServerThread<ArangodServer> {
 // --SECTION--                                                 StatisticsFeature
 // -----------------------------------------------------------------------------
 
-StatisticsFeature::StatisticsFeature(Server& server)
-    : ArangodFeature{server, *this},
-      _statistics(true),
-      _statisticsHistory(true),
-      _statisticsHistoryTouched(false),
-      _statisticsAllDatabases(true),
+StatisticsFeature::StatisticsFeature(
+    application_features::ApplicationServer& server,
+    metrics::MetricsFeature& metrics)
+    : application_features::ApplicationFeature{server, *this},
       _descriptions(server),
       _requestStatisticsMemoryUsage{
-          server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_request_statistics_memory_usage{})},
+          metrics.add(arangodb_request_statistics_memory_usage{})},
       _connectionStatisticsMemoryUsage{
-          server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_connection_statistics_memory_usage{})} {
+          metrics.add(arangodb_connection_statistics_memory_usage{})} {
   setOptional(true);
   startsAfter<AqlFeaturePhase>();
   startsAfter<NetworkFeature>();
@@ -693,54 +689,13 @@ StatisticsFeature::StatisticsFeature(Server& server)
 
 void StatisticsFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
-  options->addOldOption("server.disable-statistics", "server.statistics");
-
-  options
-      ->addOption("--server.statistics",
-                  "Whether to enable statistics gathering and statistics APIs.",
-                  new BooleanParameter(&_statistics))
-      .setLongDescription(R"(If you set this option to `false`, then ArangoDB's
-statistics gathering is turned off. Statistics gathering causes regular
-background CPU activity, memory usage, and writes to the storage engine, so
-using this option to turn statistics off might relieve heavily-loaded instances
-a bit.
-
-A side effect of setting this option to `false` is that no statistics are
-shown in the dashboard of ArangoDB's web interface, and that the REST API for
-server statistics at `/_admin/statistics` returns HTTP 404.)");
-
-  options
-      ->addOption("--server.statistics-history",
-                  "Whether to store statistics in the database.",
-                  new BooleanParameter(&_statisticsHistory),
-                  arangodb::options::makeDefaultFlags(
-                      arangodb::options::Flags::Dynamic))
-      .setLongDescription(R"(If you set this option to `false`, then ArangoDB's
-statistics gathering is turned off. Statistics gathering causes regular
-background CPU activity, memory usage, and writes to the storage engine, so
-using this option to turn statistics off might relieve heavily-loaded instances
-a bit.
-
-If set to `false`, no statistics are shown in the dashboard of ArangoDB's
-web interface, but the current statistics are available and can be queried
-using the REST API for server statistics at `/_admin/statistics`.
-This is less intrusive than setting the `--server.statistics` option to
-`false`.)");
-
-  options
-      ->addOption(
-          "--server.statistics-all-databases",
-          "Provide cluster statistics in the web interface for all databases.",
-          new BooleanParameter(&_statisticsAllDatabases),
-          arangodb::options::makeFlags(
-              arangodb::options::Flags::DefaultNoComponents,
-              arangodb::options::Flags::OnCoordinator))
-      .setIntroducedIn(30800);
+  statistics::StatisticsOptionsProvider provider;
+  provider.declareOptions(options, _options);
 }
 
 void StatisticsFeature::validateOptions(
     std::shared_ptr<ProgramOptions> options) {
-  if (_statistics) {
+  if (_options.statistics) {
     // initialize counters for all HTTP request types
     ConnectionStatistics::initialize();
     RequestStatistics::initialize();
@@ -786,16 +741,16 @@ void StatisticsFeature::start() {
   // force history disable on Agents
   if (arangodb::ServerState::instance()->isAgent() &&
       !_statisticsHistoryTouched) {
-    _statisticsHistory = false;
+    _options.statisticsHistory = false;
   }
 
   if (ServerState::instance()->isDBServer()) {
     // the StatisticsWorker runs queries against the _statistics
     // collections, so it does not work on DB servers
-    _statisticsHistory = false;
+    _options.statisticsHistory = false;
   }
 
-  if (_statisticsHistory) {
+  if (_options.statisticsHistory) {
     _statisticsWorker = std::make_unique<StatisticsWorker>(*vocbase);
 
     if (!_statisticsWorker->start()) {
@@ -1155,7 +1110,7 @@ Result StatisticsFeature::getClusterSystemStatistics(
     return {TRI_ERROR_DISABLED, "statistics are disabled"};
   }
 
-  if (!vocbase.isSystem() && !_statisticsAllDatabases) {
+  if (!vocbase.isSystem() && !_options.statisticsAllDatabases) {
     return {TRI_ERROR_FORBIDDEN,
             "statistics only available for system database"};
   }

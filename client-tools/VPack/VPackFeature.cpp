@@ -115,8 +115,9 @@ struct CustomTypeHandler : public VPackCustomTypeHandler {
 
 }  // namespace
 
-VPackFeature::VPackFeature(Server& server, int* result)
-    : ArangoVPackFeature{server, *this},
+VPackFeature::VPackFeature(application_features::ApplicationServer& server,
+                           int* result)
+    : ApplicationFeature{server, *this},
       _result(result),
       _inputType("vpack"),
       _outputType("json-pretty"),

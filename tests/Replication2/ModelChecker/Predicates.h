@@ -23,7 +23,7 @@
 #pragma once
 #include "ModelChecker.h"
 #include <gtest/gtest.h>
-#include <fmt/core.h>
+#include <format>
 #include <boost/container_hash/hash.hpp>
 
 namespace arangodb::test::model_checker {
@@ -255,7 +255,7 @@ struct Str {
 template<Str File, std::size_t Line>
 struct FileLineType {
   static auto annotate(std::string_view message) -> std::string {
-    return fmt::format("{}:{}: {}", File.buffer, Line, message);
+    return std::format("{}:{}: {}", File.buffer, Line, message);
   }
 };
 }  // namespace detail

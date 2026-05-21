@@ -143,10 +143,11 @@ class RebootTrackerTest
             128, 0.0,
             std::make_shared<SchedulerMetrics>(
                 mockApplicationServer.server()
-                    .template getFeature<
-                        arangodb::metrics::MetricsFeature>()))) {}
+                    .getFeature<arangodb::metrics::MetricsFeature>()),
+            sharedPRNG)) {}
 
   MockRestServer mockApplicationServer;
+  basics::SharedPRNG sharedPRNG;
   std::unique_ptr<SupervisedScheduler> scheduler;
 
   // ApplicationServer needs to be prepared in order for the scheduler to start

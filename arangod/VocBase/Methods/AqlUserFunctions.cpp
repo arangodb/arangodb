@@ -80,7 +80,7 @@ bool isValidFunctionNameFilter(std::string const& testName) {
   return std::regex_match(testName, funcFilterRegEx);
 }
 
-void reloadAqlUserFunctions(ArangodServer& server) {
+void reloadAqlUserFunctions(application_features::ApplicationServer& server) {
   if (server.hasFeature<V8DealerFeature>() &&
       server.isEnabled<V8DealerFeature>() &&
       server.getFeature<V8DealerFeature>().isEnabled()) {

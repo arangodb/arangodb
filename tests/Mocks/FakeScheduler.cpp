@@ -97,7 +97,8 @@ bool FakeScheduler::isStopping() {
   return false;
 }
 
-FakeScheduler::FakeScheduler(ArangodServer& server) : Scheduler(server) {}
+FakeScheduler::FakeScheduler(application_features::ApplicationServer& server)
+    : Scheduler(server) {}
 
 FakeScheduler::~FakeScheduler() { ADB_PROD_ASSERT(queueEmpty()); }
 

@@ -1,5 +1,312 @@
-devel
------
+3.12.10-devel (XXXX-XX-XX)
+--------------------------
+
+* COR-387: Synchronous vector index creation no longer throws when training
+  fails. The index is created with `trainingState: "unusable"` and the
+  training error returned in `errorMessage`.
+
+* Upgraded included rclone to v1.73.5 with go1.25.10 and non-vulnerable
+  dependencies.
+
+* Updated node module fast-uri to 3.1.2.
+
+* Updated ArangoDB Starter to v0.19.22.
+
+* COR-519: Vector index `factory` strings may now be combined with the scaling
+  `nLists` specification (previously rejected). A factory string can contain a
+  `{}` placeholder that is substituted per shard with the resolved nLists at
+  training time, e.g. `"IVF{}_HNSW32,SQ8"`. Fixed factory strings remain
+  supported and must agree with the resolved nLists, otherwise training fails.
+
+* COR-529: Track vector index training memory against the global resource
+  monitor and fail with `TRI_ERROR_RESOURCE_LIMIT` instead of OOM-killing
+  the process. New optional index parameter `numberOfDocsPerCentroid`
+  (default 100) caps the training reservoir size.
+
+* Updated node modules:
+ - lodash to 4.18.0
+ - minimatch to 3.1.4
+ - js-yaml to 3.14.2
+ - qs to 6.14.2
+ - brace-expansion to 1.1.13
+ - ajv to 8.18.0
+ - @xmldom/xmldom@0.8.13
+
+* COR-466: Added constant folding empty array comparisons in `FILTER` nodes,
+  allowing filter optimizations:
+  `x IN []`, `[] ANY <op> x` are false.
+  `x NOT IN []`, `[] ALL <op> x` and `[] NONE <op> x` are true, where
+  `<op>` is `==`, `!=`, `<`, `<=`, `>`, `>=`, `IN` or `NOT IN`.
+
+* Upgraded FAISS to v1.14.1.
+
+* COR-439: Make --server.storage-engine option obsolete
+  The MMF engine has been removed in 3.7 already, so there is only the rocksdb
+  engine anymore, making this option pointless.
+
+* COR-452: Vector search filters may now reference variables from outside the
+  FOR loop (subquery results, LET bindings, bind parameters).
+
+* COR-444: Vector index training now draws a uniformly random training set via
+  reservoir sampling (Algorithm L) over a full iteration of the collection,
+  instead of keeping the first `nLists * 256` documents.
+
+* COR-411: Introduced optimizer rule `replace-any-eq-with-in` that maps filter
+  nodes of the form FILTER [exp1] ANY == exp2 into FILTER exp2 IN [exp1] to make
+  them visible to downstream optimizer rules, including use-indexes,
+  optimize-traversals, and sort-in-values.
+
+* COR-435: Fix a TOCTOU race in the Agency leader's sendAppendEntriesRPC that
+  could crash a follower agent. The leader read log entries and the compaction
+  snapshot in two non-atomic operations; compaction could advance the snapshot
+  between those reads, causing an inconsistent payload to be sent. The fix loads
+  the snapshot and the matching log entries under a single lock so that no
+  compaction can interleave between the two reads.
+
+* COR-415: Fix vector index catch-up phase to use the proper
+  `fillIndexBackground` path via `RocksDBBuilderIndex`. This ensures that WAL
+  entries written during training are correctly ingested, preventing missed
+  documents after index creation.
+
+* Upgraded OpenSSL to 3.5.6.
+
+* The vector index API now exposes a `resolvedNLists` field that shows the
+  actual nLists value used by the trained index. When using a fixed `nLists`
+  value, `resolvedNLists` will match it. When using the scalable nLists
+  specification, `resolvedNLists` shows the value that was computed from the
+  document count at training time. The value is available per shard in the
+  `shards` detail returned by `collection.getIndexes(true, true)`. On
+  single-server the collection name is used as the shard key.
+
+* COR-231: Vector index `nLists` now supports a tiered scaling specification
+  alongside fixed integer values. The scaling spec uses
+  `{ "multiplier": M, "minNLists": N, "tiers": [...] }` to compute nLists based
+  on document count per shard at training time: tiers provide fixed values for
+  large collections, while smaller collections use
+  `max(minNLists, multiplier * sqrt(docCount))`.
+  Factory string are not supported in scaling mode.
+
+
+3.12.9 (2026-04-03)
+-------------------
+
+* Bump lodash from 4.17.21 to 4.18.1.
+
+* Bump @xmldom/xmldom from 0.8.10 to 0.8.12.
+
+* Fix vector index creation response containing a stale errorMessage after
+  training succeeds when the index was created with `inBackground: false`.
+
+* Updated ArangoDB Starter to v0.19.19.
+
+* Create coredumps with correct CPU context.
+  For signals like SIGSEGV, SIGILL etc. return from the signal handler instead
+  of calling std::abort. This ensures that the coredump is created with the CPU
+  context from the time the signal was raised instead of the CPU context from
+  the std::abort call.
+
+* Updated timezone database as of 31.03.2026.
+
+* COR-374: Fix assertion failure during vector index creation in cluster when a
+  transient shard error is followed by success, due to stale error message not
+  being cleared.
+
+* Fix vector index creation in cluster producing duplicate indexes when
+  `storedValues` differs between definitions (e.g., one with and one without
+  `storedValues`). The comparison now correctly ignores `storedValues`.
+
+* Fix vector index creation in cluster when inBackground is false reports the
+  error that there is insufficient data in collection.
+
+* Vector index creation with `inBackground: false` now blocks until training
+  completes and returns the current `trainingState` in the response.
+
+* Lowered the vector index training threshold from
+  `nLists * max_points_per_centroid` to `nLists`, allowing vector indexes to be
+  trained with fewer documents in the collection.
+
+* COR-255: Fixed vector index not being properly trained on follower shards when
+  replicationFactor is increased. Followers now automatically train and populate
+  vector indexes from local documents after initial sync.
+  Vector index training now happens in the background; index creation returns
+  immediately and queries return error 1555
+  (`ERROR_QUERY_VECTOR_INDEX_NOT_READY`) until training completes.
+  The REST index API (`GET /_api/index`) now includes per-shard training state
+  for vector indexes in cluster deployments.
+  Added four new vector index metrics: `arangodb_vector_index_unusable`,
+  `arangodb_vector_index_training_ongoing`,
+  `arangodb_vector_index_training_duration`, and
+  `arangodb_vector_index_ingestion_duration`.
+
+* Make defaults for JavaScript security options stricter: Use a default deny
+  policy for the following options:
+    - `--javascript.endpoints-allowlist`
+    - `--javascript.environment-variables-allowlist`
+    - `--javascript.files-allowlist`
+    - `--javascript.startup-options-allowlist`
+  This changes nothing if you **have set these options**. But if you have not,
+  then the default is now "deny".
+
+* Fix an issue when removing documents while using sparse vector index.
+
+* Rebuilt included rclone v1.65.2 with go1.25.8 and non-vulnerable dependencies.
+
+* Fixed a bug in arangosh that made it quit when entering `global`.
+
+* COR-324, github issue #21782: Added information to query extra output about
+  parallelism achieved in SEARCH queries.
+
+* COR-328: Fixed incomplete results in vector search queries when LIMIT exceeded
+  the internal batch size.
+
+* COR-123: The push-filter-into-enumerate-near optimizer rule now considers all
+  compatible vector indexes on a collection to find if one whose storedValues
+  cover the filter expression.
+
+* COR-267, github issue #21944: Fixed a bug in the handling of post filters with
+  array expansion operators and inverted indexes.
+
+* COR-286: Fixed a crash when executing AQL queries with `usePlanCache: true` on
+  cluster-one-shard databases containing graph traversals. When a cached plan
+  was restored, the `_appliedRules` metadata (including `cluster-one-shard`)
+  was not deserialized, causing the coordinator to incorrectly attempt
+  distributed execution on a plan optimized for a single DB server.
+  Additionally, graph nodes lost their `LocalGraphNode` type during cache
+  round-trip.
+
+* Fixed a bug in arangodump that prevented the `--local-network-threads` startup
+  option from accepting the specified value and potentially overwriting the
+  `--dbserver-worker-threads` setting.
+
+* COR-271: If a query uses an OR condition that affects multiple indexes the
+  covering index optimisation is now applied.
+
+* COR-168: Fixed the projections and filterProjections that were being cleared
+  up when an IndexNode had multiple indexes because of an OR operand in a query.
+
+* COR-298: Merge satellite joins to snippets that start with a Distribute node.
+  This is reduced inter-node communcation for some AQL queries.
+
+* Fixed a bug in ArangoSearch that allowed configuring primarySort on empty
+  fields in views and inverted indexes.
+
+
+3.12.8 (2026-03-05)
+-------------------
+
+* COR-77: Pick correct replica during smart graph traversal when reading from
+  followers.
+
+* Updated minimatch to 10.2.3.
+
+* Fix potential shutdown blockage in UserManager which could block an upgrade.
+
+* Fix parsing of API version (first /_arango/vX, then /_db/<dbname>).
+
+* Accept `null` as valid value for the `roles` attribute in JWT tokens.
+
+* Serve OpenAPI spec on /_arango/vX/openapi.json .
+
+* Fixed BTS-2309: Treat empty object as null with respect to schema.
+
+* Add new API GET /_admin/options-public for new platform UI.
+
+* Fix ES-2824: SEARCH query produces wrong results.
+
+* Rebuilt included rclone v1.65.2 with go1.24.13 and non-vulnerable
+  dependencies.
+
+* Add support to access the JWT token and the list of roles in the ExecContext.
+
+* Add switch `--server.external-rbac-service` to enable role-based access control.
+  For now, it does not do the actual authorization change.
+
+* Updated ArangoDB Starter to v0.19.17.
+
+* Added activities API which shows currently on-going high-level processes in the
+  database and their possible dependencies on each other. Until now only a couple
+  of activities are implemented, e.g. a rest handler is called, an aql query is
+  executed, a collection or an index is created or a dump is on-going.
+
+* BTS-2316: List broken hotbackups and report, why they are broken.
+
+* Fixes BTS-2309: Treat empty object in schema definition as null.
+
+* FE-972: fix sparse option not being sent in vector index creation payload.
+
+* COR-8: Added new coordinator-level metrics for shard replication state:
+  `arangodb_metadata_total_number_of_shards`,
+  `arangodb_metadata_number_follower_shards`,
+  `arangodb_metadata_number_out_of_sync_shards`,
+  `arangodb_metadata_number_not_replicated_shards`, and
+  `arangodb_metadata_shard_followers_out_of_sync_number`.
+
+* Add flag `supportsRBAC` to collections. This is in preparation for RBAC support.
+  Collections which have `supportsRBAC` set to `false` will not be subject to RBAC
+  policies and will always follow the old permission model.
+
+* Fixes BTS-2296: Introduces a backoff and max retry count for the initial loading of the _user collection.
+  Will now try for ~2min before FATAL_ERROR_EXIT.
+
+* Added functionality for the ES256 signature scheme for JWT tokens.
+  Moved JWT handling code from fuerte to core libs and removed code
+  duplication.
+
+* Fixed BTS-2160: Introduced the proper log message when read-only state is reached
+  because of disk-usage and not because of an expired license.
+
+* OASIS-26699: Fixed a bug in arangosearch that returned incorrect
+  results when condition optimization is turned off.
+
+* Upgraded OpenSSL to 3.5.5.
+
+* FE-954: make view validation on UI less strict.
+
+* COR-139: Fixed `arangodb_vocbase_shards_read_only_by_write_concern` metric not being
+  decremented when dropping a collection.
+
+* FE-937: fix distribution tab getting stuck on loading.
+
+* Fixed BTS-2279: Fixed an assertion failure when using `versionAttribute`
+  option on collections with computed values.
+
+* COR-22: Improved crash dumps with additional diagnostic data. Added
+ `ApiRecordingFeature` as a data source to include recent API calls
+ and AQL queries in crash dumps, as well as the async registry for
+ currently existing async operations. New REST API endpoints for crash dump
+ management:
+  - `GET /_admin/crashes`: List all crash dumps
+  - `GET /_admin/crashes/{id}`: Get contents of a specific crash dump
+  - `DELETE /_admin/crashes/{id}`: Delete a specific crash dump
+
+* Fix runaway io_uring file descriptors.
+
+* Fixed changing writeConcern on a collection
+  could cause subsequent writes to fail due to a stale internal write flag.
+
+* Fixed BTS-2298: Supervision cleanup job now correctly removes shadow collections
+  when deleting broken smart edge collections after a coordinator dies.
+
+* Fixed BTS-2288, ES-2763, COR-51: When an executor with side effects was nested in
+  least three levels of subqueries it could happen that the executor ended up in a
+  state it could not handle and the query would throw an error.
+  The effect seen by the customer was a hanging database because a lock was held.
+
+* Fixed MDS-1307, BTS-2283, BTS-2265: Fix arangosearch constrained sort optimization
+  - corrected the sorting order of records when using SORT LIMIT expressions
+  - enabled sorting using attribute sub objects of a primarySort field
+
+* Improve the output of fields `dbStats` for every column family
+  when calling `db._engineStats()` or calling the API `_api/engine/stats`.
+
+* COR-53: Fixed handling of forced vector index hints in AQL, so it is
+  handled properly by changing the order of optimization rules.
+
+* COR-8: Improved the accuracy of shard metrics on DBservers by updating only
+  metrics for databases with changes, rather than recalculating all metrics.
+  Added new metrics `arangodb_shards_follower_number` to track the number of
+  follower shards on each DBserver and `arangodb_shard_followers_out_of_sync_number`
+  to track follower shards that are out of sync with their leader.
 
 * FE-929, BTS-2289: bump qs from 6.11.2 to 6.14.1 for node_modules and core UI.
 

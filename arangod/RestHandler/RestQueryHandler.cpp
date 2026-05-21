@@ -45,8 +45,8 @@
 #include "Transaction/StandaloneContext.h"
 #include "VocBase/Methods/Queries.h"
 #include "VocBase/vocbase.h"
+#include "Ssl/jwt.h"
 
-#include <fuerte/jwt.h>
 #include <velocypack/Iterator.h>
 
 using namespace arangodb;
@@ -54,9 +54,9 @@ using namespace arangodb::aql;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestQueryHandler::RestQueryHandler(ArangodServer& server,
-                                   GeneralRequest* request,
-                                   GeneralResponse* response)
+RestQueryHandler::RestQueryHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
 RestStatus RestQueryHandler::execute() {
@@ -141,7 +141,7 @@ void RestQueryHandler::dumpQueryRegistry() {
         if (!username.empty()) {
           headers.try_emplace(
               StaticStrings::Authorization,
-              "bearer " + fuerte::jwt::generateUserToken(
+              "bearer " + arangodb::rest::SslInterface::jwt::generateUserToken(
                               auth->tokenCache().jwtSecret(), username));
         } else {
           headers.try_emplace(StaticStrings::Authorization,

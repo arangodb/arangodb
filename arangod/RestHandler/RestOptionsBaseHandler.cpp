@@ -26,16 +26,15 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
 #include "GeneralServer/GeneralServerFeature.h"
-#include "RestServer/arangod.h"
 #include "Utils/ExecContext.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestOptionsBaseHandler::RestOptionsBaseHandler(ArangodServer& server,
-                                               GeneralRequest* request,
-                                               GeneralResponse* response)
+RestOptionsBaseHandler::RestOptionsBaseHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
 bool RestOptionsBaseHandler::checkAuthentication() {

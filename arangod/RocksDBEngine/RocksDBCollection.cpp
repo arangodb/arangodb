@@ -29,18 +29,16 @@
 #include "Basics/RecursiveLocker.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/StringUtils.h"
 #include "Basics/ThreadLocalLeaser.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Basics/WriteLocker.h"
 #include "Basics/debugging.h"
-#include "Basics/hashes.h"
 #include "Cache/BinaryKeyHasher.h"
 #include "Cache/CacheManagerFeature.h"
 #include "Cache/Common.h"
 #include "Cache/Manager.h"
 #include "Cache/TransactionalCache.h"
 #include "Cluster/ClusterMethods.h"
+#include "Cluster/FollowerInfo.h"
 #include "Replication2/Version.h"
 #include "IResearch/IResearchRocksDBInvertedIndex.h"
 #include "Indexes/Index.h"
@@ -52,10 +50,10 @@
 #include "Metrics/Histogram.h"
 #include "Metrics/LogScale.h"
 #include "Metrics/MetricsFeature.h"
+#include "RocksDBEngine/RocksDBMethodsMemoryTracker.h"
 #include "RocksDBEngine/RocksDBBuilderIndex.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
-#include "RocksDBEngine/RocksDBComparator.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBIndexingDisabler.h"
 #include "RocksDBEngine/RocksDBIterators.h"
@@ -69,7 +67,6 @@
 #include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Hints.h"
@@ -352,6 +349,12 @@ RocksDBCollection::~RocksDBCollection() {
 void RocksDBCollection::deferDropCollection(
     std::function<bool(LogicalCollection&)> const& cb) {
   RocksDBMetaCollection::deferDropCollection(cb);
+  // Clear the write concern metric for this collection. This is needed because
+  // the collection object may live in _deadCollections for a long time.
+  auto const& followers = _logicalCollection.followers();
+  if (followers) {
+    followers->clearWriteConcernMetric();
+  }
   freeMemory();
 }
 
@@ -378,6 +381,8 @@ void RocksDBCollection::freeMemory() noexcept {
       // unloading drops any potential caches
       idx->unload();
 
+      // Abort any in-progress vector index build via the coordinator
+      // TODO (jbajic) Lets trigger the abort via the coordinator
       if (idx->type() == Index::TRI_IDX_TYPE_PRIMARY_INDEX) {
         // we keep the primary index object around, because it can
         // be referred to by the collection object with a pointer.
@@ -445,6 +450,13 @@ void RocksDBCollection::duringAddIndex(std::shared_ptr<Index> idx) {
     TRI_ASSERT(idx->id().isPrimary());
     _primaryIndex = static_cast<RocksDBPrimaryIndex*>(idx.get());
   }
+}
+
+void RocksDBCollection::swapIndex(std::shared_ptr<Index> const& oldIdx,
+                                  std::shared_ptr<Index> const& newIdx) {
+  RECURSIVE_WRITE_LOCKER(_indexesLock, _indexesLockWriteOwner);
+  removeIndex(_indexes, oldIdx->id());
+  _indexes.emplace(newIdx);
 }
 
 futures::Future<std::shared_ptr<Index>> RocksDBCollection::createIndex(
@@ -587,27 +599,32 @@ futures::Future<std::shared_ptr<Index>> RocksDBCollection::createIndex(
     // release inventory lock while we are filling the index
     inventoryLocker.unlock();
 
-    // prepare index for insertion, e.g. vector index needs to be trained
-    buildIdx->beforeCreate();
-
-    // Step 4. fill index
-    bool const inBackground = basics::VelocyPackHelper::getBooleanValue(
-        info, StaticStrings::IndexInBackground, false);
-
-    if (inBackground) {
-      // allow concurrent inserts into index
-      {
-        RECURSIVE_WRITE_LOCKER(_indexesLock, _indexesLockWriteOwner);
-        _indexes.emplace(buildIdx);
-      }
-
-      RocksDBFilePurgePreventer walKeeper(&engine);
-      res = co_await buildIdx->fillIndexBackground(locker, std::move(progress));
-    } else {
-      res = buildIdx->fillIndexForeground(std::move(progress));
-    }
+    res = buildIdx->beforeCreate();
     if (res.fail()) {
       co_return res;
+    }
+
+    // Step 4. fill index
+    // Vector index creation is handled by the VectorIndexBuildManager,
+    // so we skip the filling here.
+    bool const inBackground = basics::VelocyPackHelper::getBooleanValue(
+        info, StaticStrings::IndexInBackground, false);
+    if (buildIdx->type() != Index::TRI_IDX_TYPE_VECTOR_INDEX) {
+      if (inBackground) {
+        {
+          RECURSIVE_WRITE_LOCKER(_indexesLock, _indexesLockWriteOwner);
+          _indexes.emplace(buildIdx);
+        }
+
+        RocksDBFilePurgePreventer walKeeper(&engine);
+        res =
+            co_await buildIdx->fillIndexBackground(locker, std::move(progress));
+      } else {
+        res = buildIdx->fillIndexForeground(std::move(progress));
+      }
+      if (res.fail()) {
+        co_return res;
+      }
     }
 
     ADB_PROD_ASSERT(locker.isLocked())

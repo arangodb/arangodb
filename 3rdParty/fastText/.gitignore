@@ -1,0 +1,12 @@
+.*.swp
+*.o
+*.bin
+*.vec
+*.bc
+.DS_Store
+data
+fasttext
+result
+website/node_modules/
+package-lock.json
+node_modules/

@@ -31,11 +31,13 @@
 #include "GeneralServer/GeneralServerFeature.h"
 #include "VocBase/vocbase.h"
 
-using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestActionHandler::RestActionHandler(ArangodServer& server,
+namespace arangodb {
+using application_features::ApplicationServer;
+
+RestActionHandler::RestActionHandler(ApplicationServer& server,
                                      GeneralRequest* request,
                                      GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response),
@@ -109,3 +111,5 @@ void RestActionHandler::executeAction() {
     }
   }
 }
+
+}  // namespace arangodb

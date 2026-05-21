@@ -30,7 +30,7 @@
 #include <rocksdb/options.h>
 #include <rocksdb/table.h>
 
-#include "RestServer/arangod.h"
+#include "ApplicationFeatures/ApplicationFeature.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBOptionsProvider.h"
 
@@ -45,12 +45,14 @@ class ProgramOptions;
 // that are never activated at the same time take options set
 // in this feature
 
-class RocksDBOptionFeature final : public ArangodFeature,
-                                   public RocksDBOptionsProvider {
+class RocksDBOptionFeature final
+    : public application_features::ApplicationFeature,
+      public RocksDBOptionsProvider {
  public:
   static constexpr std::string_view name() noexcept { return "RocksDBOption"; }
 
-  explicit RocksDBOptionFeature(Server& server);
+  explicit RocksDBOptionFeature(application_features::ApplicationServer& server,
+                                AgencyFeature const* agencyFeature);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -80,6 +82,7 @@ class RocksDBOptionFeature final : public ArangodFeature,
   rocksdb::BlockBasedTableOptions doGetTableOptions() const override;
 
  private:
+  AgencyFeature const* _agencyFeature{nullptr};
   uint64_t _transactionLockStripes;
   int64_t _transactionLockTimeout;
   std::string _walDirectory;

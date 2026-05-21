@@ -87,8 +87,8 @@ class SingleServerProviderTest : public ::testing::Test {
       -> arangodb::graph::SingleServerProvider<SingleServerProviderStep> {
     // Setup code for each provider type
     s = std::make_unique<GraphTestSetup>();
-    singleServer =
-        std::make_unique<MockGraphDatabase>(s->server, "testVocbase");
+    singleServer = std::make_unique<MockGraphDatabase>(s->server, s->engine,
+                                                       "testVocbase");
     singleServer->addGraph(graph);
 
     // We now have collections "v" and "e"
@@ -120,7 +120,7 @@ class SingleServerProviderTest : public ::testing::Test {
             std::move(usedIndexes),
             std::unordered_map<uint64_t, std::vector<IndexAccessor>>{}),
         *_expressionContext.get(), {}, _emptyShardMap, _vertexProjections,
-        _edgeProjections, /*produceVertices*/ true, /*useCache*/ true);
+        _edgeProjections, /*produceVertices*/ true, /*useCache*/ true, *query);
     return {*query.get(), std::move(opts), _resourceMonitor};
   }
 

@@ -93,7 +93,7 @@ class ExecutionPlan {
 
   /// @brief create an execution plan from VelocyPack
   static std::unique_ptr<ExecutionPlan> instantiateFromVelocyPack(
-      Ast* ast, velocypack::Slice slice, bool simpleSnippetFormat);
+      Ast* ast, velocypack::Slice slice);
 
   /// @brief whether or not the exclusive flag is set in the write options
   static bool hasExclusiveAccessOption(AstNode const* node);
@@ -312,10 +312,8 @@ class ExecutionPlan {
   ExecutionNode* fromNode(AstNode const*);
 
   /// @brief create an execution plan from VPack.
-  /// if simpleSnippetFormat is true, then the slice is expected to be an
-  /// array of nodes. if simpleSnippetFormat is false, then the slice is
-  /// expected to be an object with a "nodes" array.
-  ExecutionNode* fromSlice(velocypack::Slice slice, bool simpleSnippetFormat);
+  /// @brief create a plan from a VPack array of execution nodes
+  ExecutionNode* fromSlice(velocypack::Slice nodes);
 
   /// @brief whether or not the plan contains at least one node of this type
   bool contains(ExecutionNode::NodeType) const;

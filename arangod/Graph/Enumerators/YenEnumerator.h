@@ -160,7 +160,7 @@ template<class ProviderType, class EnumeratorType, bool IsWeighted>
 class YenEnumerator {
   enum Direction { FORWARD, BACKWARD };
 
-  using Edge = ProviderType::Step::EdgeType;
+  using Edge = typename ProviderType::Step::EdgeType;
 
   using VertexSet =
       arangodb::containers::HashSet<VertexRef, std::hash<VertexRef>,

@@ -35,7 +35,8 @@ class ProgramOptions;
 namespace application_features {
 class ApplicationServer;
 
-class ApplicationFeaturePhase : public ApplicationFeature {
+class ApplicationFeaturePhase
+    : public application_features::ApplicationFeature {
   friend class ApplicationServer;
 
  public:
@@ -60,11 +61,10 @@ class ApplicationFeaturePhase : public ApplicationFeature {
  protected:
   template<typename Server, typename Impl>
   ApplicationFeaturePhase(Server& server, const Impl&)
-      : ApplicationFeaturePhase{server, Server::template id<Impl>(),
-                                Impl::name()} {}
+      : ApplicationFeaturePhase{server, typeid(Impl), Impl::name()} {}
 
-  ApplicationFeaturePhase(ApplicationServer& server, size_t registration,
-                          std::string_view name);
+  ApplicationFeaturePhase(ApplicationServer& server,
+                          std::type_index registration, std::string_view name);
 };
 
 }  // namespace application_features

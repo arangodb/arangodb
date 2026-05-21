@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -26,11 +26,8 @@
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/Collection.h"
-#include "Aql/ExecutionNode/CalculationNode.h"
 #include "Aql/ExecutionNode/EnumerateCollectionNode.h"
 #include "Aql/ExecutionPlan.h"
-#include "Aql/Expression.h"
-#include "Aql/Functions.h"
 #include "Aql/OptimizerUtils.h"
 #include "Aql/Quantifier.h"
 #include "Aql/Query.h"
@@ -45,32 +42,13 @@
 #include "Containers/FlatHashSet.h"
 #include "Containers/SmallVector.h"
 #include "Indexes/Index.h"
-#include "Logger/LogMacros.h"
 #include "Transaction/CountCache.h"
 #include "Transaction/Methods.h"
 
 #include <velocypack/Builder.h>
 
-using namespace arangodb;
-using namespace arangodb::aql;
-
+namespace arangodb::aql {
 namespace {
-enum ConditionPartCompareResult {
-  IMPOSSIBLE = 0,
-  SELF_CONTAINED_IN_OTHER = 1,
-  OTHER_CONTAINED_IN_SELF = 2,
-  DISJOINT = 3,
-  CONVERT_EQUAL = 4,
-  UNKNOWN = 5
-};
-using CompareResult = ConditionPartCompareResult;
-
-/// @brief clears the attribute access data
-void clearAttributeAccess(
-    std::pair<Variable const*, std::vector<basics::AttributeName>>& parts) {
-  parts.first = nullptr;
-  parts.second.clear();
-}
 
 // sort comparisons so that > and >= come before < and <=, and that
 // != and > come before ==
@@ -205,409 +183,12 @@ struct PermutationState {
   size_t const n;
 };
 
-//------------------------------------------------------------------------
-// Rules for single-valued variables
-//------------------------------------------------------------------------
-//        |         | a == y | a != y | a <  y | a <= y | a >= y | a > y
-// -------|------------------|--------|--------|--------|--------|--------
-// x  < y |         |   IMP  |   OIS  |   OIS  |  OIS   |   IMP  |  IMP
-// x == y |  a == x |   OIS  |   IMP  |   IMP  |  OIS   |   OIS  |  IMP
-// x  > y |         |   IMP  |   OIS  |   IMP  |  IMP   |   OIS  |  OIS
-// -------|------------------|--------|--------|--------|--------|--------
-// x  < y |         |   SIO  |   DIJ  |   DIJ  |  DIJ   |   SIO  |  SIO
-// x == y |  a != x |   IMP  |   OIS  |   SIO  |  DIJ   |   DIJ  |  SIO
-// x  > y |         |   SIO  |   DIJ  |   SIO  |  SIO   |   DIJ  |  DIJ
-// -------|------------------|--------|--------|--------|--------|--------
-// x  < y |         |   IMP  |   OIS  |   OIS  |  OIS   |   IMP  |  IMP
-// x == y |  a <  x |   IMP  |   OIS  |   OIS  |  OIS   |   IMP  |  IMP
-// x  > y |         |   SIO  |   DIJ  |   SIO  |  SIO   |   DIJ  |  DIJ
-// -------|------------------|--------|--------|--------|--------|--------
-// x  < y |         |   IMP  |   OIS  |   OIS  |  OIS   |   IMP  |  IMP
-// x == y |  a <= x |   SIO  |   DIJ  |   SIO  |  OIS   |   CEQ  |  IMP
-// x  > y |         |   SIO  |   DIJ  |   SIO  |  SIO   |   DIJ  |  DIJ
-// -------|------------------|--------|--------|--------|--------|--------
-// x  < y |         |   SIO  |   DIJ  |   DIJ  |  DIJ   |   SIO  |  SIO
-// x == y |  a >= x |   SIO  |   DIJ  |   IMP  |  CEQ   |   OIS  |  SIO
-// x  > y |         |   IMP  |   OIS  |   IMP  |  IMP   |   OIS  |  OIS
-// -------|------------------|--------|--------|--------|--------|--------
-// x  < y |         |   SIO  |   DIJ  |   DIJ  |   DIJ  |   SIO  |  SIO
-// x == y |  a >  x |   IMP  |   OIS  |   IMP  |   IMP  |   OIS  |  OIS
-// x  > y |         |   IMP  |   OIS  |   IMP  |   IMP  |   OIS  |  OIS
-//------------------------------------------------------------------------
-// the 7th column is here as fallback if the operation is not in the table
-// above.
-// IMP -> IMPOSSIBLE -> empty result -> the complete AND set of conditions can
-// be dropped.
-// CEQ -> CONVERT_EQUAL -> both conditions can be combined to a equals x.
-// DIJ -> DISJOINT -> neither condition is a consequence of the other -> both
-// have to stay in place.
-// SIO -> SELF_CONTAINED_IN_OTHER -> the left condition is a consequence of the
-// right condition
-// OIS -> OTHER_CONTAINED_IN_SELF -> the right condition is a consequence of the
-// left condition
-// If a condition (A) is a consequence of another (B), the solution set of A is
-// larger than that of B
-//  -> A can be dropped.
-
-CompareResult const ResultsTable[3][7][7] = {
-    {// X < Y
-     {IMPOSSIBLE, OTHER_CONTAINED_IN_SELF, OTHER_CONTAINED_IN_SELF,
-      OTHER_CONTAINED_IN_SELF, IMPOSSIBLE, IMPOSSIBLE, DISJOINT},
-     {SELF_CONTAINED_IN_OTHER, DISJOINT, DISJOINT, DISJOINT,
-      SELF_CONTAINED_IN_OTHER, SELF_CONTAINED_IN_OTHER, DISJOINT},
-     {IMPOSSIBLE, OTHER_CONTAINED_IN_SELF, OTHER_CONTAINED_IN_SELF,
-      OTHER_CONTAINED_IN_SELF, IMPOSSIBLE, IMPOSSIBLE, DISJOINT},
-     {IMPOSSIBLE, OTHER_CONTAINED_IN_SELF, OTHER_CONTAINED_IN_SELF,
-      OTHER_CONTAINED_IN_SELF, IMPOSSIBLE, IMPOSSIBLE, DISJOINT},
-     {SELF_CONTAINED_IN_OTHER, DISJOINT, DISJOINT, DISJOINT,
-      SELF_CONTAINED_IN_OTHER, SELF_CONTAINED_IN_OTHER, DISJOINT},
-     {SELF_CONTAINED_IN_OTHER, DISJOINT, DISJOINT, DISJOINT,
-      SELF_CONTAINED_IN_OTHER, SELF_CONTAINED_IN_OTHER, DISJOINT},
-     {DISJOINT, DISJOINT, DISJOINT, DISJOINT, DISJOINT, DISJOINT, DISJOINT}},
-    {// X == Y
-     {OTHER_CONTAINED_IN_SELF, IMPOSSIBLE, IMPOSSIBLE, OTHER_CONTAINED_IN_SELF,
-      OTHER_CONTAINED_IN_SELF, IMPOSSIBLE, DISJOINT},
-     {IMPOSSIBLE, OTHER_CONTAINED_IN_SELF, SELF_CONTAINED_IN_OTHER, DISJOINT,
-      DISJOINT, SELF_CONTAINED_IN_OTHER, DISJOINT},
-     {IMPOSSIBLE, OTHER_CONTAINED_IN_SELF, OTHER_CONTAINED_IN_SELF,
-      OTHER_CONTAINED_IN_SELF, IMPOSSIBLE, IMPOSSIBLE, DISJOINT},
-     {SELF_CONTAINED_IN_OTHER, DISJOINT, SELF_CONTAINED_IN_OTHER,
-      OTHER_CONTAINED_IN_SELF, CONVERT_EQUAL, IMPOSSIBLE, DISJOINT},
-     {SELF_CONTAINED_IN_OTHER, DISJOINT, IMPOSSIBLE, CONVERT_EQUAL,
-      OTHER_CONTAINED_IN_SELF, SELF_CONTAINED_IN_OTHER, DISJOINT},
-     {IMPOSSIBLE, OTHER_CONTAINED_IN_SELF, IMPOSSIBLE, IMPOSSIBLE,
-      OTHER_CONTAINED_IN_SELF, OTHER_CONTAINED_IN_SELF, DISJOINT},
-     {DISJOINT, DISJOINT, DISJOINT, DISJOINT, DISJOINT, DISJOINT, DISJOINT}},
-    {// X > Y
-     {IMPOSSIBLE, OTHER_CONTAINED_IN_SELF, IMPOSSIBLE, IMPOSSIBLE,
-      OTHER_CONTAINED_IN_SELF, OTHER_CONTAINED_IN_SELF, DISJOINT},
-     {SELF_CONTAINED_IN_OTHER, DISJOINT, SELF_CONTAINED_IN_OTHER,
-      SELF_CONTAINED_IN_OTHER, DISJOINT, DISJOINT, DISJOINT},
-     {SELF_CONTAINED_IN_OTHER, DISJOINT, SELF_CONTAINED_IN_OTHER,
-      SELF_CONTAINED_IN_OTHER, DISJOINT, DISJOINT, DISJOINT},
-     {SELF_CONTAINED_IN_OTHER, DISJOINT, SELF_CONTAINED_IN_OTHER,
-      SELF_CONTAINED_IN_OTHER, DISJOINT, DISJOINT, DISJOINT},
-     {IMPOSSIBLE, OTHER_CONTAINED_IN_SELF, IMPOSSIBLE, IMPOSSIBLE,
-      OTHER_CONTAINED_IN_SELF, OTHER_CONTAINED_IN_SELF, DISJOINT},
-     {IMPOSSIBLE, OTHER_CONTAINED_IN_SELF, IMPOSSIBLE, IMPOSSIBLE,
-      OTHER_CONTAINED_IN_SELF, OTHER_CONTAINED_IN_SELF, DISJOINT},
-     {DISJOINT, DISJOINT, DISJOINT, DISJOINT, DISJOINT, DISJOINT, DISJOINT}}};
-
-//------------------------------------------------------------------------
-// Rules for multi-valued variables
-//------------------------------------------------------------------------
-//        |         | a == y | a != y | a <  y | a <= y | a >= y | a > y
-// -------|------------------|--------|--------|--------|--------|--------
-// x  < y |         |   DIJ  |   DIJ  |   OIS  |  OIS   |   DIJ  |  DIJ
-// x == y |  a == x |   OIS  |   IMP  |   DIJ  |  OIS   |   OIS  |  DIJ
-// x  > y |         |   DIJ  |   DIJ  |   DIJ  |  DIJ   |   OIS  |  OIS
-// -------|------------------|--------|--------|--------|--------|--------
-// x  < y |         |   DIJ  |   DIJ  |   DIJ  |  DIJ   |   DIJ  |  DIJ
-// x == y |  a != x |   IMP  |   OIS  |   DIJ  |  DIJ   |   DIJ  |  DIJ
-// x  > y |         |   DIJ  |   DIJ  |   DIJ  |  DIJ   |   DIJ  |  DIJ
-// -------|------------------|--------|--------|--------|--------|--------
-// x  < y |         |   DIJ  |   DIJ  |   OIS  |  OIS   |   DIJ  |  DIJ
-// x == y |  a <  x |   DIJ  |   DIJ  |   OIS  |  OIS   |   DIJ  |  DIJ
-// x  > y |         |   SIO  |   DIJ  |   SIO  |  SIO   |   DIJ  |  DIJ
-// -------|------------------|--------|--------|--------|--------|--------
-// x  < y |         |   DIJ  |   DIJ  |   OIS  |  OIS   |   DIJ  |  DIJ
-// x == y |  a <= x |   SIO  |   DIJ  |   SIO  |  OIS   |   DIJ  |  DIJ
-// x  > y |         |   SIO  |   DIJ  |   SIO  |  SIO   |   DIJ  |  DIJ
-// -------|------------------|--------|--------|--------|--------|--------
-// x  < y |         |   SIO  |   DIJ  |   DIJ  |  DIJ   |   SIO  |  SIO
-// x == y |  a >= x |   SIO  |   DIJ  |   DIJ  |  DIJ   |   OIS  |  SIO
-// x  > y |         |   DIJ  |   DIJ  |   DIJ  |  DIJ   |   OIS  |  OIS
-// -------|------------------|--------|--------|--------|--------|--------
-// x  < y |         |   SIO  |   DIJ  |   DIJ  |  DIJ   |   SIO  |  SIO
-// x == y |  a >  x |   DIJ  |   DIJ  |   DIJ  |  DIJ   |   OIS  |  OIS
-// x  > y |         |   DIJ  |   DIJ  |   DIJ  |  DIJ   |   OIS  |  OIS
-//------------------------------------------------------------------------
-// the 7th column is here as fallback if the operation is not in the table
-// above.
-// IMP -> IMPOSSIBLE -> empty result -> the complete AND set of conditions can
-// be dropped.
-// CEQ -> CONVERT_EQUAL -> both conditions can be combined to a equals x.
-// DIJ -> DISJOINT -> neither condition is a consequence of the other -> both
-// have to stay in place.
-// SIO -> SELF_CONTAINED_IN_OTHER -> the left condition is a consequence of the
-// right condition
-// OIS -> OTHER_CONTAINED_IN_SELF -> the right condition is a consequence of the
-// left condition
-// If a condition (A) is a consequence of another (B), the solution set of A is
-// larger than that of B
-//  -> A can be dropped.
-
-CompareResult const ResultsTableMultiValued[3][7][7] = {
-    {// X < Y
-     {DISJOINT, DISJOINT, OTHER_CONTAINED_IN_SELF, OTHER_CONTAINED_IN_SELF,
-      DISJOINT, DISJOINT, DISJOINT},
-     {DISJOINT, DISJOINT, DISJOINT, DISJOINT, DISJOINT, DISJOINT, DISJOINT},
-     {DISJOINT, DISJOINT, OTHER_CONTAINED_IN_SELF, OTHER_CONTAINED_IN_SELF,
-      DISJOINT, DISJOINT, DISJOINT},
-     {DISJOINT, DISJOINT, OTHER_CONTAINED_IN_SELF, OTHER_CONTAINED_IN_SELF,
-      DISJOINT, DISJOINT, DISJOINT},
-     {SELF_CONTAINED_IN_OTHER, DISJOINT, DISJOINT, DISJOINT,
-      SELF_CONTAINED_IN_OTHER, SELF_CONTAINED_IN_OTHER, DISJOINT},
-     {SELF_CONTAINED_IN_OTHER, DISJOINT, DISJOINT, DISJOINT,
-      SELF_CONTAINED_IN_OTHER, SELF_CONTAINED_IN_OTHER, DISJOINT},
-     {DISJOINT, DISJOINT, DISJOINT, DISJOINT, DISJOINT, DISJOINT, DISJOINT}},
-    {// X == Y
-     {OTHER_CONTAINED_IN_SELF, IMPOSSIBLE, DISJOINT, OTHER_CONTAINED_IN_SELF,
-      OTHER_CONTAINED_IN_SELF, DISJOINT, DISJOINT},
-     {IMPOSSIBLE, OTHER_CONTAINED_IN_SELF, DISJOINT, DISJOINT, DISJOINT,
-      DISJOINT, DISJOINT},
-     {DISJOINT, DISJOINT, OTHER_CONTAINED_IN_SELF, OTHER_CONTAINED_IN_SELF,
-      DISJOINT, DISJOINT, DISJOINT},
-     {SELF_CONTAINED_IN_OTHER, DISJOINT, SELF_CONTAINED_IN_OTHER,
-      OTHER_CONTAINED_IN_SELF, DISJOINT, DISJOINT, DISJOINT},
-     {SELF_CONTAINED_IN_OTHER, DISJOINT, DISJOINT, DISJOINT,
-      OTHER_CONTAINED_IN_SELF, SELF_CONTAINED_IN_OTHER, DISJOINT},
-     {DISJOINT, DISJOINT, DISJOINT, DISJOINT, OTHER_CONTAINED_IN_SELF,
-      OTHER_CONTAINED_IN_SELF, DISJOINT},
-     {DISJOINT, DISJOINT, DISJOINT, DISJOINT, DISJOINT, DISJOINT, DISJOINT}},
-    {// X > Y
-     {DISJOINT, DISJOINT, DISJOINT, DISJOINT, OTHER_CONTAINED_IN_SELF,
-      OTHER_CONTAINED_IN_SELF, DISJOINT},
-     {DISJOINT, DISJOINT, DISJOINT, DISJOINT, DISJOINT, DISJOINT, DISJOINT},
-     {SELF_CONTAINED_IN_OTHER, DISJOINT, SELF_CONTAINED_IN_OTHER,
-      SELF_CONTAINED_IN_OTHER, DISJOINT, DISJOINT, DISJOINT},
-     {SELF_CONTAINED_IN_OTHER, DISJOINT, SELF_CONTAINED_IN_OTHER,
-      SELF_CONTAINED_IN_OTHER, DISJOINT, DISJOINT, DISJOINT},
-     {DISJOINT, DISJOINT, DISJOINT, DISJOINT, OTHER_CONTAINED_IN_SELF,
-      OTHER_CONTAINED_IN_SELF, DISJOINT},
-     {DISJOINT, DISJOINT, DISJOINT, DISJOINT, OTHER_CONTAINED_IN_SELF,
-      OTHER_CONTAINED_IN_SELF, DISJOINT},
-     {DISJOINT, DISJOINT, DISJOINT, DISJOINT, DISJOINT, DISJOINT, DISJOINT}}};
 }  // namespace
 
-ConditionPart::ConditionPart(Variable const* variable,
-                             std::string const& attributeName,
-                             AstNode const* operatorNode,
-                             AttributeSideType side, void* data)
-    : variable(variable),
-      attributeName(attributeName),
-      operatorType(operatorNode->type),
-      isExpanded(false),
-      operatorNode(operatorNode),
-      valueNode(nullptr),
-      data(data) {
-  if (side == ATTRIBUTE_LEFT) {
-    valueNode = operatorNode->getMember(1);
-  } else {
-    valueNode = operatorNode->getMember(0);
-    if (Ast::isReversibleOperator(operatorType)) {
-      operatorType = Ast::reverseOperator(operatorType);
-    }
-  }
-
-  isExpanded = (attributeName.find("[*]") != std::string::npos);
-}
-
-ConditionPart::ConditionPart(
-    Variable const* variable,
-    std::vector<basics::AttributeName> const& attributeNames,
-    AstNode const* operatorNode, AttributeSideType side, void* data)
-    : ConditionPart(variable, "", operatorNode, side, data) {
-  TRI_AttributeNamesToString(attributeNames, attributeName, false);
-  isExpanded = (attributeName.find("[*]") != std::string::npos);
-}
-
-ConditionPart::~ConditionPart() = default;
-
-/// @brief true if the condition is completely covered by the other condition
-bool ConditionPart::isCoveredBy(ConditionPart const& other,
-                                bool isReversed) const {
-  if (variable != other.variable || attributeName != other.attributeName) {
-    return false;
-  }
-
-  if (!isExpanded && !other.isExpanded &&
-      other.operatorType == NODE_TYPE_OPERATOR_BINARY_IN &&
-      other.valueNode->isConstant() && isReversed) {
-    if (compareAstNodes(other.valueNode, valueNode, false) == 0) {
-      return true;
-    }
-  }
-
-  TRI_ASSERT(valueNode != nullptr);
-  TRI_ASSERT(other.valueNode != nullptr);
-
-  if (!valueNode->isConstant() || !other.valueNode->isConstant()) {
-    return false;
-  }
-
-  // special cases for IN...
-  if (!isExpanded && !other.isExpanded &&
-      other.operatorType == NODE_TYPE_OPERATOR_BINARY_IN &&
-      other.valueNode->isConstant() && other.valueNode->isArray()) {
-    if (operatorType == NODE_TYPE_OPERATOR_BINARY_IN &&
-        valueNode->isConstant() && valueNode->isArray()) {
-      // compare IN with an IN
-      // this has quadratic complexity
-      size_t const n1 = valueNode->numMembers();
-      size_t const n2 = other.valueNode->numMembers();
-
-      // maximum number of comparisons that we will accept
-      // otherwise the optimization will be aborted
-      static constexpr size_t maxComparisons = 2048;
-
-      if (n1 * n2 < maxComparisons) {
-        for (size_t i = 0; i < n1; ++i) {
-          auto v = valueNode->getMemberUnchecked(i);
-          for (size_t j = 0; j < n2; ++j) {
-            auto w = other.valueNode->getMemberUnchecked(j);
-
-            ::CompareResult res =
-                ResultsTable[compareAstNodes(v, w, true) + 1][0][0];
-
-            if (res != ::CompareResult::OTHER_CONTAINED_IN_SELF &&
-                res != ::CompareResult::CONVERT_EQUAL &&
-                res != ::CompareResult::IMPOSSIBLE) {
-              return false;
-            }
-          }
-        }
-      } else {
-        containers::FlatHashSet<AstNode const*, AstNodeValueHash,
-                                AstNodeValueEqual>
-            values(512, AstNodeValueHash(), AstNodeValueEqual());
-
-        for (size_t i = 0; i < n2; ++i) {
-          values.emplace(other.valueNode->getMemberUnchecked(i));
-        }
-
-        for (size_t i = 0; i < n1; ++i) {
-          auto node = valueNode->getMemberUnchecked(i);
-          if (!values.contains(node)) {
-            return false;
-          }
-        }
-      }
-
-      return true;
-    }
-
-    return false;
-  }
-
-  if (isExpanded && other.isExpanded &&
-      operatorType == NODE_TYPE_OPERATOR_BINARY_IN &&
-      other.operatorType == NODE_TYPE_OPERATOR_BINARY_IN &&
-      other.valueNode->isConstant()) {
-    return compareAstNodes(other.valueNode, valueNode, false) == 0;
-  }
-
-  bool a = operatorNode->isArrayComparisonOperator();
-  bool b = other.operatorNode->isArrayComparisonOperator();
-  if (a || b) {
-    if (a != b) {
-      return false;
-    }
-    TRI_ASSERT(operatorNode->numMembers() == 3 &&
-               other.operatorNode->numMembers() == 3);
-
-    AstNode* q1 = operatorNode->getMemberUnchecked(2);
-    TRI_ASSERT(q1->type == NODE_TYPE_QUANTIFIER);
-    AstNode* q2 = other.operatorNode->getMemberUnchecked(2);
-    TRI_ASSERT(q2->type == NODE_TYPE_QUANTIFIER);
-    // do only cover ALL and NONE when both sides have same quantifier
-    if (q1->getIntValue() != q2->getIntValue() || Quantifier::isAny(q1)) {
-      return false;
-    }
-
-    if (isExpanded && other.isExpanded &&
-        operatorType == NODE_TYPE_OPERATOR_BINARY_ARRAY_IN &&
-        other.operatorType == NODE_TYPE_OPERATOR_BINARY_ARRAY_IN &&
-        other.valueNode->isConstant()) {
-      return compareAstNodes(other.valueNode, valueNode, false) == 0;
-    }
-  }
-
-  // Results are -1, 0, 1, move to 0, 1, 2 for the lookup:
-  ::CompareResult res =
-      ResultsTable[compareAstNodes(other.valueNode, valueNode, true) + 1]
-                  [other.whichCompareOperation()][whichCompareOperation()];
-
-  if (res == ::CompareResult::OTHER_CONTAINED_IN_SELF ||
-      res == ::CompareResult::CONVERT_EQUAL ||
-      res == ::CompareResult::IMPOSSIBLE) {
-    return true;
-  }
-
-  return false;
-}
-
-int ConditionPart::whichCompareOperation() const noexcept {
-  switch (operatorType) {
-    case NODE_TYPE_OPERATOR_BINARY_EQ:
-    case NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ:
-      return 0;
-    case NODE_TYPE_OPERATOR_BINARY_NE:
-    case NODE_TYPE_OPERATOR_BINARY_ARRAY_NE:
-      return 1;
-    case NODE_TYPE_OPERATOR_BINARY_LT:
-    case NODE_TYPE_OPERATOR_BINARY_ARRAY_LT:
-      return 2;
-    case NODE_TYPE_OPERATOR_BINARY_LE:
-    case NODE_TYPE_OPERATOR_BINARY_ARRAY_LE:
-      return 3;
-    case NODE_TYPE_OPERATOR_BINARY_GE:
-    case NODE_TYPE_OPERATOR_BINARY_ARRAY_GE:
-      return 4;
-    case NODE_TYPE_OPERATOR_BINARY_GT:
-    case NODE_TYPE_OPERATOR_BINARY_ARRAY_GT:
-      return 5;
-    default:
-      return 6;  // not a compare operator.
-  }
-}
-
-AstNode const* ConditionPart::lowerBound() const {
-  if (operatorType == NODE_TYPE_OPERATOR_BINARY_GT ||
-      operatorType == NODE_TYPE_OPERATOR_BINARY_GE ||
-      operatorType == NODE_TYPE_OPERATOR_BINARY_EQ) {
-    return valueNode;
-  }
-
-  if (operatorType == NODE_TYPE_OPERATOR_BINARY_IN && valueNode->isConstant() &&
-      valueNode->isArray() && valueNode->numMembers() > 0) {
-    // return first item from IN array.
-    // this requires IN arrays to be sorted, which they should be when
-    // we get here
-    return valueNode->getMember(0);
-  }
-
-  return nullptr;
-}
-
-bool ConditionPart::isLowerInclusive() const noexcept {
-  return (operatorType == NODE_TYPE_OPERATOR_BINARY_GE ||
-          operatorType == NODE_TYPE_OPERATOR_BINARY_EQ ||
-          operatorType == NODE_TYPE_OPERATOR_BINARY_IN);
-}
-
-AstNode const* ConditionPart::upperBound() const {
-  if (operatorType == NODE_TYPE_OPERATOR_BINARY_LT ||
-      operatorType == NODE_TYPE_OPERATOR_BINARY_LE ||
-      operatorType == NODE_TYPE_OPERATOR_BINARY_EQ) {
-    return valueNode;
-  }
-
-  if (operatorType == NODE_TYPE_OPERATOR_BINARY_IN && valueNode->isConstant() &&
-      valueNode->isArray() && valueNode->numMembers() > 0) {
-    // return last item from IN array.
-    // this requires IN arrays to be sorted, which they should be when
-    // we get here
-    return valueNode->getMember(valueNode->numMembers() - 1);
-  }
-
-  return nullptr;
-}
-
-bool ConditionPart::isUpperInclusive() const noexcept {
-  return (operatorType == NODE_TYPE_OPERATOR_BINARY_LE ||
-          operatorType == NODE_TYPE_OPERATOR_BINARY_EQ ||
-          operatorType == NODE_TYPE_OPERATOR_BINARY_IN);
+void clearAttributeAccess(
+    std::pair<Variable const*, std::vector<basics::AttributeName>>& parts) {
+  parts.first = nullptr;
+  parts.second.clear();
 }
 
 /// @brief create the condition
@@ -769,7 +350,7 @@ std::vector<std::vector<basics::AttributeName>> Condition::getConstAttributes(
     auto member = node->getMember(i);
 
     if (member->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
-      ::clearAttributeAccess(parts);
+      clearAttributeAccess(parts);
 
       auto lhs = member->getMember(0);
       auto rhs = member->getMember(1);
@@ -823,7 +404,7 @@ Condition::getNonNullAttributes(Variable const* reference) const {
     if (member->type == NODE_TYPE_OPERATOR_BINARY_NE ||
         member->type == NODE_TYPE_OPERATOR_BINARY_GT ||
         member->type == NODE_TYPE_OPERATOR_BINARY_LT) {
-      ::clearAttributeAccess(parts);
+      clearAttributeAccess(parts);
 
       AstNode const* lhs = member->getMember(0);
       AstNode const* rhs = member->getMember(1);
@@ -949,293 +530,6 @@ AstNode* Condition::createSimpleCondition(AstNode* node) const {
   orNode->addMember(andNode);
 
   return orNode;
-}
-
-bool areInRangeCallsIdentical(auto const* arrayNode, auto const* otherArrayNode,
-                              bool isFromTraverser) {
-  for (size_t i = 0; i < arrayNode->numMembers(); ++i) {
-    auto const* functionCallNodeElement = arrayNode->getMemberUnchecked(i);
-    auto const* functionCallNodeOtherElement =
-        otherArrayNode->getMemberUnchecked(i);
-
-    if (functionCallNodeElement->type != functionCallNodeOtherElement->type) {
-      return false;
-    }
-
-    switch (functionCallNodeElement->type) {
-      case NODE_TYPE_ATTRIBUTE_ACCESS: {
-        std::pair<Variable const*, std::vector<basics::AttributeName>>
-            attributeAccessForVariableResult;
-        std::pair<Variable const*, std::vector<basics::AttributeName>>
-            attributeAccessForVariableOtherResult;
-
-        if (!functionCallNodeElement->isAttributeAccessForVariable(
-                attributeAccessForVariableResult, isFromTraverser) ||
-            !functionCallNodeOtherElement->isAttributeAccessForVariable(
-                attributeAccessForVariableOtherResult, isFromTraverser) ||
-            attributeAccessForVariableResult.first !=
-                attributeAccessForVariableOtherResult.first ||
-            !basics::AttributeName::isIdentical(
-                attributeAccessForVariableResult.second,
-                attributeAccessForVariableOtherResult.second, false)) {
-          return false;
-        }
-        break;
-      }
-      case NODE_TYPE_VALUE: {
-        if (aql::compareAstNodes(functionCallNodeElement,
-                                 functionCallNodeOtherElement, true) != 0) {
-          return false;
-        }
-        break;
-      }
-      default: {
-        // We are being extremely pessimistic, meaning if we encounter
-        // anything else we will not remove the expression
-        return false;
-      }
-    }
-  }
-
-  return true;
-}
-
-bool canInRangeBeRemoved(auto const* inRangeNode, auto const* otherAndNode,
-                         bool isFromTraverser, Variable const* variable,
-                         Index const* index) {
-  for (std::size_t i{0}; i < otherAndNode->numMembers(); ++i) {
-    auto const* operand = otherAndNode->getMemberUnchecked(i);
-    if (operand->type != NODE_TYPE_FCALL ||
-        aql::functions::getFunctionName(*operand) != "IN_RANGE") {
-      continue;
-    }
-
-    // since we know that this is IN_RANGE node, it must contain 5 members
-    auto const* operandArrayNode = operand->getMember(0);
-    TRI_ASSERT(operandArrayNode->numMembers() == 5);
-
-    auto const* firstElemInRangeFunction = operandArrayNode->getMember(0);
-
-    bool isFieldCoveredByIndex{false};
-    std::pair<Variable const*, std::vector<basics::AttributeName>> result;
-    for (auto const& elem : index->fields()) {
-      if (firstElemInRangeFunction->type != NODE_TYPE_ATTRIBUTE_ACCESS ||
-          !firstElemInRangeFunction->isAttributeAccessForVariable(
-              result, isFromTraverser) ||
-          result.first != variable ||
-          !basics::AttributeName::isIdentical(result.second, elem, false)) {
-        ::clearAttributeAccess(result);
-        isFieldCoveredByIndex = true;
-        break;
-      }
-      ::clearAttributeAccess(result);
-    }
-
-    if (!isFieldCoveredByIndex) {
-      return false;
-    }
-
-    auto const* inRangeArrayNode = inRangeNode->getMember(0);
-    if (areInRangeCallsIdentical(inRangeArrayNode, operandArrayNode,
-                                 isFromTraverser)) {
-      return true;
-    }
-  }
-
-  return false;
-}
-
-void Condition::collectOverlappingMembers(
-    ExecutionPlan const* plan, Variable const* variable, AstNode const* andNode,
-    AstNode const* otherAndNode, containers::HashSet<size_t>& toRemove,
-    Index const* index, /* may be nullptr */
-    bool isPathCondition) {
-  bool const isFromTraverser{index == nullptr};
-  bool const isSparse = (index != nullptr && index->sparse());
-
-  std::pair<Variable const*, std::vector<basics::AttributeName>> result;
-
-  size_t const n = andNode->numMembers();
-
-  for (size_t i = 0; i < n; ++i) {
-    auto operand = andNode->getMemberUnchecked(i);
-    bool allowOps = operand->isComparisonOperator();
-
-    // We can enter here only if we have index node, therefore we know that we
-    // are not dealing with the Traversal Node
-    if (isSparse && allowOps && !isFromTraverser &&
-        (operand->type == NODE_TYPE_OPERATOR_BINARY_NE ||
-         operand->type == NODE_TYPE_OPERATOR_BINARY_GT)) {
-      // look   for != null   and   > null
-      // these can be removed if we are working with a sparse index!
-      auto lhs = operand->getMember(0);
-      auto rhs = operand->getMember(1);
-
-      lhs = const_cast<AstNode*>(plan->resolveVariableAlias(lhs));
-      rhs = const_cast<AstNode*>(plan->resolveVariableAlias(rhs));
-
-      ::clearAttributeAccess(result);
-
-      if (rhs->isNullValue() &&
-          lhs->isAttributeAccessForVariable(result, isFromTraverser) &&
-          result.first == variable) {
-        auto const mayRemoveIndexNonNullAttribute = [&] {
-          if (auto ty = index->type();
-              ty == Index::TRI_IDX_TYPE_MDI_INDEX ||
-              ty == Index::TRI_IDX_TYPE_MDI_PREFIXED_INDEX) {
-            // For an MDI all fields are equal, and we are allowed to drop
-            // conditions for non-null on every attribute in the sparse case.
-            return true;
-          }
-
-          // otherwise only remove the condition if the index is exactly on the
-          // same attribute as the condition
-
-          return index->fields().size() == 1 &&
-                 basics::AttributeName::isIdentical(result.second,
-                                                    index->fields()[0], false);
-        }();
-
-        if (mayRemoveIndexNonNullAttribute) {
-          toRemove.emplace(i);
-          // removed, no need to go on below...
-          continue;
-        }
-      }
-    }
-
-    if (isFromTraverser) {
-      if (isPathCondition) {
-        allowOps = allowOps || operand->isArrayComparisonOperator();
-      }
-    } else {
-      allowOps = allowOps && operand->type != NODE_TYPE_OPERATOR_BINARY_NE &&
-                 operand->type != NODE_TYPE_OPERATOR_BINARY_NIN;
-    }
-
-    if (allowOps) {
-      auto lhs = operand->getMember(0);
-      auto rhs = operand->getMember(1);
-
-      lhs = const_cast<AstNode*>(plan->resolveVariableAlias(lhs));
-      rhs = const_cast<AstNode*>(plan->resolveVariableAlias(rhs));
-
-      if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
-          (isFromTraverser && lhs->type == NODE_TYPE_EXPANSION)) {
-        ::clearAttributeAccess(result);
-
-        if (lhs->isAttributeAccessForVariable(result, isFromTraverser) &&
-            result.first == variable) {
-          ConditionPart current(variable, result.second, operand,
-                                ATTRIBUTE_LEFT, nullptr);
-
-          if (canRemove(plan, current, otherAndNode, isFromTraverser)) {
-            toRemove.emplace(i);
-          }
-        }
-      }
-
-      if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
-          rhs->type == NODE_TYPE_EXPANSION) {
-        ::clearAttributeAccess(result);
-
-        if (rhs->isAttributeAccessForVariable(result, isFromTraverser) &&
-            result.first == variable) {
-          ConditionPart current(variable, result.second, operand,
-                                ATTRIBUTE_RIGHT, nullptr);
-
-          if (canRemove(plan, current, otherAndNode, isFromTraverser)) {
-            toRemove.emplace(i);
-          }
-        }
-      }
-    }
-
-    if (operand->type == NODE_TYPE_FCALL &&
-        functions::getFunctionName(*operand) == "IN_RANGE") {
-      if (canInRangeBeRemoved(operand, otherAndNode, isFromTraverser, variable,
-                              index)) {
-        toRemove.emplace(i);
-      }
-    }
-  }
-}
-
-/// @brief removes condition parts from another
-AstNode* Condition::removeIndexCondition(ExecutionPlan const* plan,
-                                         Variable const* variable,
-                                         AstNode const* condition,
-                                         Index const* index) {
-  TRI_ASSERT(index != nullptr);
-
-  return removeCondition(plan, variable, condition, index, false);
-}
-
-/// @brief remove filter conditions already covered by the traversal
-AstNode* Condition::removeTraversalCondition(ExecutionPlan const* plan,
-                                             Variable const* variable,
-                                             AstNode* other,
-                                             bool isPathCondition) {
-  return removeCondition(plan, variable, other, nullptr,
-                         /*isFromTraverser*/ isPathCondition);
-}
-
-AstNode* Condition::removeCondition(ExecutionPlan const* plan,
-                                    Variable const* variable,
-                                    AstNode const* condition,
-                                    Index const* index, bool isPathCondition) {
-  // If the isPathCondition is true the condition is on Traverse node
-  // and index cannot be used
-  TRI_ASSERT(!isPathCondition || index == nullptr);
-
-  if (_root == nullptr || condition == nullptr) {
-    return _root;
-  }
-
-  TRI_ASSERT(_root != nullptr);
-  TRI_ASSERT(_root->type == NODE_TYPE_OPERATOR_NARY_OR);
-
-  TRI_ASSERT(condition != nullptr);
-  TRI_ASSERT(condition->type == NODE_TYPE_OPERATOR_NARY_OR);
-
-  if (condition->numMembers() != 1 && _root->numMembers() != 1) {
-    return _root;
-  }
-
-  auto andNode = _root->getMemberUnchecked(0);
-  TRI_ASSERT(andNode->type == NODE_TYPE_OPERATOR_NARY_AND);
-  size_t const n = andNode->numMembers();
-
-  auto conditionAndNode = condition->getMemberUnchecked(0);
-  TRI_ASSERT(conditionAndNode->type == NODE_TYPE_OPERATOR_NARY_AND);
-
-  containers::HashSet<size_t> toRemove;
-  collectOverlappingMembers(plan, variable, andNode, conditionAndNode, toRemove,
-                            index, isPathCondition);
-
-  if (toRemove.empty()) {
-    return _root;
-  }
-
-  // build a new AST condition
-  AstNode* newNode = nullptr;
-
-  for (size_t i = 0; i < n; ++i) {
-    if (toRemove.find(i) == toRemove.end()) {
-      auto what = andNode->getMemberUnchecked(i);
-
-      if (newNode == nullptr) {
-        // the only node so far
-        newNode = what;
-      } else {
-        // AND-combine with existing node
-        newNode = _ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_AND,
-                                                 newNode, what);
-      }
-    }
-  }
-
-  return newNode;
 }
 
 /// @brief remove (now) invalid variables from the condition
@@ -1494,8 +788,8 @@ void Condition::optimize(ExecutionPlan* plan, bool multivalued) {
     // and do not have to discard sub-conditions anymore
     andNode->sortMembers([](AstNode const* lhs, AstNode const* rhs) noexcept {
       // try to re-order comparison operators
-      int l = ::operationWeight(lhs);
-      int r = ::operationWeight(rhs);
+      int l = operationWeight(lhs);
+      int r = operationWeight(rhs);
       if (l != r) {
         return l < r;
       }
@@ -1645,15 +939,15 @@ void Condition::optimize(ExecutionPlan* plan, bool multivalued) {
                 // enumerate over IN list
                 for (size_t k = 0; k < values->numMembers(); ++k) {
                   auto value = values->getMemberUnchecked(k);
-                  ::CompareResult res =
+                  CompareResult res =
                       ResultsTable[compareAstNodes(value, other.valueNode,
                                                    true) +
                                    1][0 /*NODE_TYPE_OPERATOR_BINARY_EQ*/]
                                   [other.whichCompareOperation()];
 
                   bool const keep =
-                      (res == ::CompareResult::OTHER_CONTAINED_IN_SELF ||
-                       res == ::CompareResult::CONVERT_EQUAL);
+                      (res == CompareResult::OTHER_CONTAINED_IN_SELF ||
+                       res == CompareResult::CONVERT_EQUAL);
 
                   if (keep) {
                     inNode->addMember(value);
@@ -1678,14 +972,14 @@ void Condition::optimize(ExecutionPlan* plan, bool multivalued) {
             // end of IN-merging
 
             // Results are -1, 0, 1, move to 0, 1, 2 for the lookup:
-            ::CompareResult res =
+            CompareResult res =
                 resultsTable[compareAstNodes(current.valueNode, other.valueNode,
                                              true) +
                              1][current.whichCompareOperation()]
                             [other.whichCompareOperation()];
 
             switch (res) {
-              case ::CompareResult::IMPOSSIBLE: {
+              case CompareResult::IMPOSSIBLE: {
                 // impossible condition
                 // j = positions.size();
                 // we remove this one, so fast forward the loops to their end:
@@ -1693,20 +987,20 @@ void Condition::optimize(ExecutionPlan* plan, bool multivalued) {
                 retry = true;
                 goto fastForwardToNextOrItem;
               }
-              case ::CompareResult::SELF_CONTAINED_IN_OTHER: {
+              case CompareResult::SELF_CONTAINED_IN_OTHER: {
                 TRI_ASSERT(!positions.empty());
                 andNode->removeMemberUncheckedUnordered(positions.at(l).first);
                 goto restartThisOrItem;
               }
-              case ::CompareResult::OTHER_CONTAINED_IN_SELF: {
+              case CompareResult::OTHER_CONTAINED_IN_SELF: {
                 TRI_ASSERT(j < positions.size());
                 andNode->removeMemberUncheckedUnordered(positions.at(j).first);
                 goto restartThisOrItem;
               }
-              case ::CompareResult::CONVERT_EQUAL: {  // both ok, now transform
-                                                      // to
-                                                      // a
-                                                      // == x (== y)
+              case CompareResult::CONVERT_EQUAL: {  // both ok, now transform
+                                                    // to
+                                                    // a
+                                                    // == x (== y)
                 TRI_ASSERT(!positions.empty());
                 TRI_ASSERT(j < positions.size());
                 TRI_ASSERT(positions.at(j).first >
@@ -1731,10 +1025,10 @@ void Condition::optimize(ExecutionPlan* plan, bool multivalued) {
                 andNode->changeMember(positions.at(l).first, newNode);
                 goto restartThisOrItem;
               }
-              case ::CompareResult::DISJOINT: {
+              case CompareResult::DISJOINT: {
                 break;
               }
-              case ::CompareResult::UNKNOWN: {
+              case CompareResult::UNKNOWN: {
                 break;
               }
             }
@@ -1806,113 +1100,6 @@ void Condition::validateAst(AstNode const* node, int level) {
   }
 }
 #endif
-
-/// @brief checks if the current condition is covered by the other
-bool Condition::canRemove(ExecutionPlan const* plan, ConditionPart const& me,
-                          aql::AstNode const* andNode, bool isFromTraverser) {
-  TRI_ASSERT(andNode != nullptr);
-  TRI_ASSERT(andNode->type == NODE_TYPE_OPERATOR_NARY_AND);
-
-  std::pair<Variable const*, std::vector<basics::AttributeName>> result;
-
-  size_t const n = andNode->numMembers();
-
-  auto normalize = [&plan](AstNode const* node) -> std::string {
-    if (node->type == NODE_TYPE_REFERENCE) {
-      auto setter =
-          plan->getVarSetBy(static_cast<Variable const*>(node->getData())->id);
-      if (setter != nullptr &&
-          setter->getType() == ExecutionNode::CALCULATION) {
-        auto cn = ExecutionNode::castTo<CalculationNode const*>(setter);
-        // use expression node instead
-        node = cn->expression()->node();
-      }
-    }
-    // return string representation
-    return node->toString();
-  };
-
-  std::string temp;
-
-  try {
-    for (size_t i = 0; i < n; ++i) {
-      auto operand = andNode->getMemberUnchecked(i);
-
-      if (operand->isComparisonOperator() ||
-          (isFromTraverser && operand->isArrayComparisonOperator())) {
-        auto lhs = operand->getMember(0);
-        auto rhs = operand->getMember(1);
-
-        if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
-            (isFromTraverser && lhs->type == NODE_TYPE_EXPANSION)) {
-          ::clearAttributeAccess(result);
-
-          if (lhs->isAttributeAccessForVariable(result, isFromTraverser) &&
-              result.first == me.variable) {
-            temp.clear();
-            TRI_AttributeNamesToString(result.second, temp);
-            if (temp == me.attributeName) {
-              if (rhs->isConstant()) {
-                ConditionPart indexCondition(result.first, result.second,
-                                             operand, ATTRIBUTE_LEFT, nullptr);
-
-                if (me.isCoveredBy(indexCondition, false)) {
-                  return true;
-                }
-              }
-              // non-constant condition
-              else if (me.operatorType == operand->type &&
-                       normalize(me.valueNode) == normalize(rhs)) {
-                return true;
-              }
-            }
-          }
-        }
-
-        if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
-            rhs->type == NODE_TYPE_EXPANSION) {
-          ::clearAttributeAccess(result);
-
-          if (rhs->isAttributeAccessForVariable(result, isFromTraverser) &&
-              result.first == me.variable) {
-            temp.clear();
-            TRI_AttributeNamesToString(result.second, temp);
-            if (temp == me.attributeName) {
-              if (lhs->isConstant()) {
-                ConditionPart indexCondition(result.first, result.second,
-                                             operand, ATTRIBUTE_RIGHT, nullptr);
-
-                if (me.isCoveredBy(indexCondition, true)) {
-                  return true;
-                }
-              }
-              // non-constant condition
-              else {
-                auto opType = operand->type;
-                if (aql::Ast::isReversibleOperator(opType)) {
-                  opType = aql::Ast::reverseOperator(opType);
-                }
-                if (me.operatorType == opType &&
-                    normalize(me.valueNode) == normalize(lhs)) {
-                  return true;
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  } catch (std::exception const& ex) {
-    // simply ignore any errors (except trace-logging) and return false.
-    // this is not an error, but just means we cannot compare the two
-    // conditions for equality because there is no implemented way for
-    // comparing some of their components.
-    LOG_TOPIC("9f37b", TRACE, Logger::QUERIES)
-        << "caught exception in Condition::canRemove(): " << ex.what();
-  }
-
-  return false;
-}
 
 /// @brief deduplicate IN condition values (and sort them).
 /// will return either the unmodified original node or a copy.
@@ -2074,7 +1261,7 @@ AstNode* Condition::transformNodePreorder(
   }
 
   // normalize any comparisons
-  return ::normalizeCompare(_ast, node);
+  return normalizeCompare(_ast, node);
 }
 
 /// @brief converts from negation normal to disjunctive normal form
@@ -2127,7 +1314,7 @@ AstNode* Condition::transformNodePostorder(
       //  a   c      b   c
       //
 
-      ::arangodb::containers::SmallVector<::PermutationState, 4> clauses;
+      containers::SmallVector<PermutationState, 4> clauses;
       clauses.reserve(n);
 
       size_t orMembers = 1;
@@ -2311,3 +1498,5 @@ bool Condition::isEmpty() const noexcept {
 }
 
 bool Condition::isSorted() const noexcept { return _isSorted; }
+
+}  // namespace arangodb::aql

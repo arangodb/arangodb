@@ -35,7 +35,8 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestTtlHandler::RestTtlHandler(ArangodServer& server, GeneralRequest* request,
+RestTtlHandler::RestTtlHandler(application_features::ApplicationServer& server,
+                               GeneralRequest* request,
                                GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 

@@ -21,8 +21,6 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "arangoexport.h"
-
 #include "Basics/signals.h"
 #include "Basics/directories.h"
 
@@ -69,42 +67,31 @@ int main(int argc, char* argv[]) {
             "For more information use:", BIN_DIRECTORY));
 
     int ret = EXIT_SUCCESS;
-    ArangoExportServer server(options, BIN_DIRECTORY);
+    application_features::ApplicationServer server(options, BIN_DIRECTORY);
 
-    server.addFeatures(Visitor{
-        []<typename T>(auto& server, TypeTag<T>) {
-          return std::make_unique<T>(server);
-        },
-        [](ArangoExportServer& server, TypeTag<GreetingsFeaturePhase>) {
-          return std::make_unique<GreetingsFeaturePhase>(server,
-                                                         std::true_type{});
-        },
+    // Add features in order
+    server.addFeature<BasicFeaturePhaseClient>();
+    server.addFeature<CommunicationFeaturePhase>();
+    server.addFeature<GreetingsFeaturePhase>(std::true_type{});
+    server.addFeature<VersionFeature>();
+    server.addFeature<HttpEndpointProvider, ClientFeature>(false);
+    server.addFeature<ConfigFeature>(context.binaryName());
+    server.addFeature<FileSystemFeature>();
+    server.addFeature<LoggerFeature>(false);
+    server.addFeature<OptionsCheckFeature>();
+    server.addFeature<RandomFeature>();
+    server.addFeature<ShellColorsFeature>();
+    server.addFeature<ShutdownFeature>(
+        std::array{std::type_index(typeid(ExportFeature))});
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-        [&context](ArangoExportServer& server,
-                   TypeTag<ProcessEnvironmentFeature>) {
-          return std::make_unique<ProcessEnvironmentFeature>(
-              server, context.binaryName());
-        },
+    server.addFeature<ProcessEnvironmentFeature>(context.binaryName());
 #endif
-        [&context](ArangoExportServer& server, TypeTag<ConfigFeature>) {
-          return std::make_unique<ConfigFeature>(server, context.binaryName());
-        },
-        [](ArangoExportServer& server, TypeTag<LoggerFeature>) {
-          return std::make_unique<LoggerFeature>(server, false);
-        },
-        [](ArangoExportServer& server, TypeTag<HttpEndpointProvider>) {
-          return std::make_unique<ClientFeature>(server, false);
-        },
-        [&ret](ArangoExportServer& server, TypeTag<ExportFeature>) {
-          return std::make_unique<ExportFeature>(server, &ret);
-        },
-        [](ArangoExportServer& server, TypeTag<ShutdownFeature>) {
-          return std::make_unique<ShutdownFeature>(
-              server, std::array{ArangoExportServer::id<ExportFeature>()});
-        },
-        [&context](ArangoExportServer& server, TypeTag<TempFeature>) {
-          return std::make_unique<TempFeature>(server, context.binaryName());
-        }});
+    server.addFeature<SslFeature>();
+    server.addFeature<TempFeature>(context.binaryName());
+#ifdef USE_ENTERPRISE
+    server.addFeature<EncryptionFeature>();
+#endif
+    server.addFeature<ExportFeature>(&ret);
 
     try {
       server.run(argc, argv);

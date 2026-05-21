@@ -32,20 +32,17 @@
 #include "SupervisedScheduler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/StaticStrings.h"
-#include "Basics/StringUtils.h"
+#include "Basics/SharedPRNG.h"
 #include "Basics/Thread.h"
 #include "Basics/cpu-relax.h"
-#include "GeneralServer/Acceptor.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Metrics/Counter.h"
+#include "Metrics/Gauge.h"
+#include "Metrics/Histogram.h"
+#include "Metrics/LogScale.h"
 #include "Network/NetworkFeature.h"
-#include "Metrics/CounterBuilder.h"
-#include "Metrics/GaugeBuilder.h"
-#include "Metrics/MetricsFeature.h"
-#include "RestServer/SharedPRNGFeature.h"
 #include "Scheduler/Scheduler.h"
-#include "Statistics/RequestStatistics.h"
 #include "Cluster/ServerState.h"
 
 using namespace arangodb;
@@ -120,9 +117,9 @@ namespace arangodb {
 
 class SupervisedSchedulerThread : public Thread {
  public:
-  explicit SupervisedSchedulerThread(ArangodServer& server,
-                                     SupervisedScheduler& scheduler,
-                                     std::string const& name = "Scheduler")
+  explicit SupervisedSchedulerThread(
+      application_features::ApplicationServer& server,
+      SupervisedScheduler& scheduler, std::string const& name = "Scheduler")
       : Thread(server, name), _scheduler(scheduler) {}
 
   // shutdown is called by derived implementation!
@@ -135,8 +132,9 @@ class SupervisedSchedulerThread : public Thread {
 class SupervisedSchedulerManagerThread final
     : public SupervisedSchedulerThread {
  public:
-  explicit SupervisedSchedulerManagerThread(ArangodServer& server,
-                                            SupervisedScheduler& scheduler)
+  explicit SupervisedSchedulerManagerThread(
+      application_features::ApplicationServer& server,
+      SupervisedScheduler& scheduler)
       : SupervisedSchedulerThread(server, scheduler, "SchedMan") {}
   ~SupervisedSchedulerManagerThread() { shutdown(); }
   void run() override { _scheduler.runSupervisor(); }
@@ -144,8 +142,9 @@ class SupervisedSchedulerManagerThread final
 
 class SupervisedSchedulerWorkerThread final : public SupervisedSchedulerThread {
  public:
-  explicit SupervisedSchedulerWorkerThread(ArangodServer& server,
-                                           SupervisedScheduler& scheduler)
+  explicit SupervisedSchedulerWorkerThread(
+      application_features::ApplicationServer& server,
+      SupervisedScheduler& scheduler)
       : SupervisedSchedulerThread(server, scheduler, "SchedWorker") {}
   ~SupervisedSchedulerWorkerThread() { shutdown(); }
   void run() override { _scheduler.runWorker(); }
@@ -154,14 +153,14 @@ class SupervisedSchedulerWorkerThread final : public SupervisedSchedulerThread {
 }  // namespace arangodb
 
 SupervisedScheduler::SupervisedScheduler(
-    ArangodServer& server, uint64_t minThreads, uint64_t maxThreads,
-    uint64_t maxQueueSize, uint64_t fifo1Size, uint64_t fifo2Size,
-    uint64_t fifo3Size, uint64_t ongoingLowPriorityLimit,
+    application_features::ApplicationServer& server, uint64_t minThreads,
+    uint64_t maxThreads, uint64_t maxQueueSize, uint64_t fifo1Size,
+    uint64_t fifo2Size, uint64_t fifo3Size, uint64_t ongoingLowPriorityLimit,
     double unavailabilityQueueFillGrade,
-    std::shared_ptr<SchedulerMetrics> metrics)
+    std::shared_ptr<SchedulerMetrics> metrics, basics::SharedPRNG& sharedPRNG)
     : Scheduler(server),
       _nf(server.getFeature<NetworkFeature>()),
-      _sharedPRNG(server.getFeature<SharedPRNGFeature>()),
+      _sharedPRNG(sharedPRNG),
       _numWorkers(0),
       _stopping(false),
       _acceptingNewJobs(true),

@@ -28,6 +28,7 @@
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
 #include "Aql/Collections.h"
+#include "Aql/ExecutionNode/CollectionAccessingNode.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNodeId.h"
 #include "Aql/ExecutionPlan.h"
@@ -646,6 +647,11 @@ void GraphNode::doToVelocyPack(velocypack::Builder& nodes,
   nodes.add("graph", _graphInfo.slice());
   nodes.add("isLocalGraphNode", VPackValue(isLocalGraphNode()));
   nodes.add("isUsedAsSatellite", VPackValue(isUsedAsSatellite()));
+  if (isLocalGraphNode()) {
+    if (auto const* can = dynamic_cast<CollectionAccessingNode const*>(this)) {
+      nodes.add("protoCollection", VPackValue(can->collection()->name()));
+    }
+  }
 
   // Graph Definition
   if (_graphObj != nullptr) {

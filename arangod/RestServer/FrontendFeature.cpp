@@ -24,10 +24,9 @@
 #include "FrontendFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "FeaturePhases/ServerFeaturePhase.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
-#include "RestServer/DatabaseFeature.h"
 #include "V8Server/V8DealerFeature.h"
 
 using namespace arangodb::application_features;
@@ -35,8 +34,8 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-FrontendFeature::FrontendFeature(Server& server)
-    : ArangodFeature{server, *this}, _versionCheck(true) {
+FrontendFeature::FrontendFeature(ApplicationServer& server)
+    : ApplicationFeature{server, *this} {
   setOptional(true);
   startsAfter<ServerFeaturePhase>();
 }
@@ -49,7 +48,7 @@ void FrontendFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addOption("--web-interface.version-check",
                      "Alert the user if new versions are available.",
-                     new BooleanParameter(&_versionCheck),
+                     new BooleanParameter(&_options.versionCheck),
                      arangodb::options::makeFlags(
                          arangodb::options::Flags::DefaultNoComponents,
                          arangodb::options::Flags::OnCoordinator,
@@ -59,7 +58,7 @@ void FrontendFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
 void FrontendFeature::prepare() {
   V8DealerFeature& dealer = server().getFeature<V8DealerFeature>();
-  dealer.defineBoolean("FE_VERSION_CHECK", _versionCheck);
+  dealer.defineBoolean("FE_VERSION_CHECK", _options.versionCheck);
 }
 
 }  // namespace arangodb

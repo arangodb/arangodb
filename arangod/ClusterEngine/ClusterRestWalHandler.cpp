@@ -25,10 +25,8 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/StringUtils.h"
-#include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
-#include "Cluster/ClusterMethods.h"
+#include "Cluster/ClusterAdminOperations.h"
 #include "Cluster/ServerState.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -41,9 +39,9 @@
 using namespace arangodb;
 using namespace arangodb::rest;
 
-ClusterRestWalHandler::ClusterRestWalHandler(ArangodServer& server,
-                                             GeneralRequest* request,
-                                             GeneralResponse* response)
+ClusterRestWalHandler::ClusterRestWalHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
 RestStatus ClusterRestWalHandler::execute() {

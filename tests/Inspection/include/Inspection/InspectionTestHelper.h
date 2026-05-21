@@ -33,9 +33,6 @@
 #include <unordered_map>
 #include <unordered_set>
 
-#include <fmt/core.h>
-#include <fmt/ostream.h>
-
 #include "Inspection/Access.h"
 #include "Inspection/Format.h"
 #include "Inspection/Transformers.h"
@@ -402,7 +399,7 @@ auto inspect(Inspector& f, NonDefaultConstructibleIntLike& x) {
 }  // namespace
 
 template<>
-struct fmt::formatter<Dummy> : arangodb::inspection::inspection_formatter {};
+struct std::formatter<Dummy> : arangodb::inspection::inspection_formatter {};
 
 namespace arangodb::inspection {
 template<>
@@ -639,7 +636,7 @@ auto inspect(Inspector& f, MyTransformedStringEnum& x) {
 }  // namespace
 
 template<>
-struct fmt::formatter<MyStringEnum>
+struct std::formatter<MyStringEnum>
     : arangodb::inspection::inspection_formatter {};
 
 namespace {

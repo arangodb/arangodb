@@ -30,6 +30,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Metrics/MetricsFeature.h"
+#include "RestServer/arangod.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "Sharding/ShardingFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -101,7 +102,7 @@ class LogicalDataSourceTest : public ::testing::Test {
         false);
     features.emplace_back(
         server.addFeature<arangodb::QueryRegistryFeature>(
-            server.template getFeature<arangodb::metrics::MetricsFeature>()),
+            server.getFeature<arangodb::metrics::MetricsFeature>()),
         false);  // required for TRI_vocbase_t
     features.emplace_back(server.addFeature<arangodb::ShardingFeature>(),
                           false);
@@ -141,7 +142,7 @@ class LogicalDataSourceTest : public ::testing::Test {
 TEST_F(LogicalDataSourceTest, test_category) {
   // LogicalCollection
   {
-    TRI_vocbase_t vocbase(testDBInfo(server));
+    TRI_vocbase_t vocbase(testDBInfo(server), engine);
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testCollection\" }");
     arangodb::LogicalCollection instance(vocbase, json->slice(), true);
@@ -152,7 +153,7 @@ TEST_F(LogicalDataSourceTest, test_category) {
 
   // LogicalView
   {
-    TRI_vocbase_t vocbase(testDBInfo(server));
+    TRI_vocbase_t vocbase(testDBInfo(server), engine);
     auto json =
         arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\" }");
     LogicalViewImpl instance(vocbase, json->slice());
@@ -165,7 +166,7 @@ TEST_F(LogicalDataSourceTest, test_category) {
 TEST_F(LogicalDataSourceTest, test_construct) {
   // LogicalCollection
   {
-    TRI_vocbase_t vocbase(testDBInfo(server));
+    TRI_vocbase_t vocbase(testDBInfo(server), engine);
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"id\": 1, \"planId\": 2, \"globallyUniqueId\": \"abc\", \"name\": "
         "\"testCollection\" }");
@@ -178,7 +179,7 @@ TEST_F(LogicalDataSourceTest, test_construct) {
 
   // LogicalView
   {
-    TRI_vocbase_t vocbase(testDBInfo(server));
+    TRI_vocbase_t vocbase(testDBInfo(server), engine);
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"id\": 1, \"planId\": 2, \"globallyUniqueId\": \"abc\", \"name\": "
         "\"testView\" }");
@@ -193,7 +194,7 @@ TEST_F(LogicalDataSourceTest, test_construct) {
 TEST_F(LogicalDataSourceTest, test_defaults) {
   // LogicalCollection
   {
-    TRI_vocbase_t vocbase(testDBInfo(server));
+    TRI_vocbase_t vocbase(testDBInfo(server), engine);
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testCollection\" }");
     arangodb::LogicalCollection instance(vocbase, json->slice(), true);
@@ -205,7 +206,7 @@ TEST_F(LogicalDataSourceTest, test_defaults) {
 
   // LogicalView
   {
-    TRI_vocbase_t vocbase(testDBInfo(server));
+    TRI_vocbase_t vocbase(testDBInfo(server), engine);
     auto json =
         arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\" }");
     LogicalViewImpl instance(vocbase, json->slice());

@@ -25,7 +25,7 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "GeneralServer/OperationMode.h"
-#include "RestServer/arangod.h"
+#include "RestServer/ServerFeatureOptions.h"
 
 namespace arangodb {
 
@@ -36,13 +36,13 @@ class AsyncJobManager;
 
 }  // namespace rest
 
-class ServerFeature final : public ArangodFeature {
+class ServerFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Server"; }
 
   static std::string operationModeString(OperationMode mode);
 
-  ServerFeature(Server& server, int* result);
+  ServerFeature(application_features::ApplicationServer& server, int* result);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -57,7 +57,7 @@ class ServerFeature final : public ArangodFeature {
     return operationModeString(operationMode());
   }
 
-  std::vector<std::string> const& scripts() const { return _scripts; }
+  std::vector<std::string> const& scripts() const { return _options.scripts; }
 
   bool isConsoleMode() const {
     return (_operationMode == OperationMode::MODE_CONSOLE);
@@ -66,11 +66,8 @@ class ServerFeature final : public ArangodFeature {
  private:
   void waitForHeartbeat();
 
-  bool _console = false;
-  bool _restServer = true;
-  bool _validateUtf8Strings = true;
+  ServerFeatureOptions _options;
   bool _isStopping = false;
-  std::vector<std::string> _scripts;
   int* _result;
   OperationMode _operationMode;
 };

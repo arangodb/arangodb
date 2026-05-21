@@ -23,10 +23,11 @@
 #pragma once
 
 #include <chrono>
+#include <iostream>
+#include <memory>
+#include <string>
 #include <string_view>
 #include <thread>
-#include <string>
-#include <memory>
 #include <variant>
 
 #include "Inspection/InspectorBase.h"
@@ -93,7 +94,7 @@ struct SpawnHandler : HandlerBase<Runtime, SpawnState> {
   }
 
   auto operator()(auto&& rest) -> std::unique_ptr<SpawnState> {
-    fmt::print(stderr, "Spawn actor: handles rest\n");
+    std::cerr << "Spawn actor: handles rest\n";
     return std::move(this->state);
   }
 };
@@ -108,8 +109,8 @@ struct SpawnActor {
 }  // namespace arangodb::actor::test
 
 template<>
-struct fmt::formatter<arangodb::actor::test::SpawnState>
+struct std::formatter<arangodb::actor::test::SpawnState>
     : arangodb::inspection::inspection_formatter {};
 template<>
-struct fmt::formatter<arangodb::actor::test::message::SpawnMessage>
+struct std::formatter<arangodb::actor::test::message::SpawnMessage>
     : arangodb::inspection::inspection_formatter {};

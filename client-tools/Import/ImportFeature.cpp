@@ -25,7 +25,6 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/GreetingsFeature.h"
-#include "Basics/FileUtils.h"
 #include "Basics/NumberOfCores.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"
@@ -46,6 +45,7 @@
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Encryption/EncryptionFeature.h"
 #endif
+#include <filesystem>
 #include <iostream>
 #include <regex>
 
@@ -55,8 +55,9 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-ImportFeature::ImportFeature(Server& server, int* result)
-    : ArangoImportFeature{server, *this},
+ImportFeature::ImportFeature(application_features::ApplicationServer& server,
+                             int* result)
+    : ApplicationFeature{server, *this},
       _useBackslash(false),
       _convert(true),
       _autoChunkSize(false),
@@ -161,10 +162,10 @@ void ImportFeature::collectOptions(
           new UInt64Parameter(&_maxErrors))
       .setIntroducedIn(31200)
       .setLongDescription(R"(The maximum number of errors after which the
-import is stopped. 
+import is stopped.
 
 Note that this is not an exact limit for the number of errors.
-arangoimport will send data to the server in batches, and likely also in parallel. 
+arangoimport will send data to the server in batches, and likely also in parallel.
 The server will process these in-flight batches regardless of the maximum number
 of errors configured here. arangoimport will however stop processing more input
 data once the server reported at least this many errors back.)");
@@ -370,11 +371,12 @@ void ImportFeature::start() {
     FATAL_ERROR_EXIT();
   }
 
-  if (_filename != "-" && !FileUtils::isRegularFile(_filename)) {
-    if (!FileUtils::exists(_filename)) {
+  std::error_code fsEc;
+  if (_filename != "-" && !std::filesystem::is_regular_file(_filename, fsEc)) {
+    if (!std::filesystem::exists(_filename, fsEc)) {
       LOG_TOPIC("6f83e", FATAL, arangodb::Logger::FIXME)
           << "Cannot open file '" << _filename << "'. File not found.";
-    } else if (FileUtils::isDirectory(_filename)) {
+    } else if (std::filesystem::is_directory(_filename, fsEc)) {
       LOG_TOPIC("70dac", FATAL, arangodb::Logger::FIXME)
           << "Specified file '" << _filename
           << "' is a directory. Please use a regular file.";
@@ -396,8 +398,8 @@ void ImportFeature::start() {
           extension == "tsv") {
         _typeImport = extension;
         LOG_TOPIC("4271d", INFO, arangodb::Logger::FIXME)
-            << "Aauto-detected file type '" << _typeImport
-            << "' from filename '" << _filename << "'";
+            << "Auto-detected file type '" << _typeImport << "' from filename '"
+            << _filename << "'";
       }
     }
   }
@@ -513,11 +515,10 @@ void ImportFeature::start() {
   _httpClient->disconnect();  // we do not reuse this anymore
 
   EncryptionFeature* encryption{};
-  if constexpr (Server::contains<EncryptionFeature>()) {
-    if (server().hasFeature<EncryptionFeature>()) {
-      encryption = &server().getFeature<EncryptionFeature>();
-    }
-  }
+#ifdef USE_ENTERPRISE
+  TRI_ASSERT(server().hasFeature<EncryptionFeature>());
+  encryption = &server().getFeature<EncryptionFeature>();
+#endif
 
   SimpleHttpClientParams params = _httpClient->params();
   params.setCompressRequestThreshold(

@@ -23,26 +23,24 @@
 
 #pragma once
 
+#include "ApplicationFeatures/ApplicationFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "RestServer/arangod.h"
 
 namespace arangodb {
 
 class StorageEngine;
 
-class EngineSelectorFeature final : public ArangodFeature {
+class EngineSelectorFeature final
+    : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "EngineSelector"; }
 
-  explicit EngineSelectorFeature(Server& server);
-
+  explicit EngineSelectorFeature(
+      application_features::ApplicationServer& server);
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
   void start() override final;
   void unprepare() override final;
-
-  // return the names of all available storage engines
-  static std::unordered_set<std::string> availableEngineNames();
 
   // whether the engine has been selected yet
   bool selected() const { return _selected.load(); }
@@ -68,10 +66,8 @@ class EngineSelectorFeature final : public ArangodFeature {
 
  private:
   StorageEngine* _engine;
-  std::string _engineName;
   std::string _engineFilePath;
   std::atomic<bool> _selected;
-  bool _allowDeprecatedDeployments;
 };
 
 }  // namespace arangodb

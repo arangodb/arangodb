@@ -46,9 +46,9 @@
 #include "Basics/Identifier.h"  // this include only need to make clang see << operator for Identifier
 #include "Cluster/ClusterTypes.h"
 #include "Containers/FlatHashMap.h"
+#include "ApplicationFeatures/ApplicationFeature.h"
 #include "IResearch/IResearchAnalyzerValueTypeAttribute.h"
 #include "IResearch/IResearchCommon.h"
-#include "RestServer/arangod.h"
 #include "Scheduler/Scheduler.h"
 #include "Transaction/OperationOrigin.h"
 
@@ -58,9 +58,21 @@ namespace arangodb {
 namespace application_features {
 class ApplicationServer;
 }
-}  // namespace arangodb
+class ClusterFeature;
+class DatabaseFeature;
+class EngineSelectorFeature;
+class NetworkFeature;
+class SchedulerFeature;
+class SystemDatabaseFeature;
 
-namespace arangodb {
+namespace aql {
+class AqlFunctionFeature;
+}
+
+namespace network {
+class ConnectionPool;
+}
+
 namespace iresearch {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -266,7 +278,8 @@ class AnalyzerPool : private irs::util::noncopyable {
 ///              invalidates all AnalyzerPool instances previously provided
 ///              by the deallocated feature instance
 ////////////////////////////////////////////////////////////////////////////////
-class IResearchAnalyzerFeature final : public ArangodFeature {
+class IResearchAnalyzerFeature final
+    : public application_features::ApplicationFeature {
  public:
   /// first == vocbase name, second == analyzer name
   /// EMPTY == system vocbase
@@ -277,7 +290,21 @@ class IResearchAnalyzerFeature final : public ArangodFeature {
     return "ArangoSearchAnalyzer";
   }
 
-  explicit IResearchAnalyzerFeature(Server& server);
+  struct Dependencies {
+    DatabaseFeature& databaseFeature;
+    EngineSelectorFeature& engineSelector;
+    SystemDatabaseFeature& systemDatabase;
+    NetworkFeature* networkFeature;
+    ClusterFeature* clusterFeature;
+    SchedulerFeature* schedulerFeature;
+    aql::AqlFunctionFeature* aqlFunctionFeature;
+
+    static Dependencies fromServer(
+        application_features::ApplicationServer& server);
+  };
+
+  explicit IResearchAnalyzerFeature(
+      application_features::ApplicationServer& server, Dependencies deps);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief check permissions
@@ -583,7 +610,13 @@ class IResearchAnalyzerFeature final : public ArangodFeature {
   std::function<void(bool)> _gcfunc;
   std::mutex _workItemMutex;
   Scheduler::WorkHandle _workItem;
+  ClusterFeature* _clusterFeature;
+  EngineSelectorFeature& _engineSelector;
+  SystemDatabaseFeature& _systemDatabase;
   DatabaseFeature& _databaseFeature;
+  NetworkFeature* _networkFeature;
+  SchedulerFeature* _schedulerFeature;
+  aql::AqlFunctionFeature* _aqlFunctionFeature;
 };
 
 }  // namespace iresearch

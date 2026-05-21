@@ -27,14 +27,21 @@
 
 namespace arangodb {
 
+class ClusterFeature;
+class LogBufferFeature;
+
+namespace network {
+class ConnectionPool;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief admin log request handler
 ////////////////////////////////////////////////////////////////////////////////
 
 class RestAdminLogHandler : public RestBaseHandler {
  public:
-  explicit RestAdminLogHandler(ArangodServer&, GeneralRequest*,
-                               GeneralResponse*);
+  explicit RestAdminLogHandler(application_features::ApplicationServer&,
+                               GeneralRequest*, GeneralResponse*);
 
  public:
   char const* name() const override final { return "RestAdminLogHandler"; }
@@ -59,5 +66,9 @@ class RestAdminLogHandler : public RestBaseHandler {
   auto handleLogLevel() -> async<void>;
   auto handleLogWrite() -> async<void>;
   void handleLogStructuredParams();
+
+  LogBufferFeature& _logBufferFeature;
+  ClusterFeature& _clusterFeature;
+  network::ConnectionPool* _connectionPool;
 };
 }  // namespace arangodb

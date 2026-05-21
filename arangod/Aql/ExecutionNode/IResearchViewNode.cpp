@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -31,11 +31,14 @@
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode/CalculationNode.h"
+#include "Aql/ExecutionNode/SubqueryNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Executor/IResearchViewExecutor.h"
 #include "Aql/Executor/IResearchViewHeapSortExecutor.h"
 #include "Aql/Executor/IResearchViewMergeExecutor.h"
 #include "Aql/Executor/NoResultsExecutor.h"
+#include "Aql/OptimizerUtils.h"
+#include "Aql/Optimizer/Utils/IResearchViewSortHelpers.h"
 #include "Aql/Query.h"
 #include "Aql/RegisterInfos.h"
 #include "Aql/RegisterPlan.h"
@@ -712,40 +715,6 @@ IResearchOptimizeTopK const& optimizeTopK(
 
 #endif
 
-IResearchSortBase const& primarySort(
-    std::shared_ptr<SearchMeta const> const& meta,
-    std::shared_ptr<LogicalView const> const& view) {
-  if (meta) {
-    TRI_ASSERT(!view || view->type() == ViewType::kSearchAlias);
-    return meta->primarySort;
-  }
-  TRI_ASSERT(view);
-  TRI_ASSERT(view->type() == ViewType::kArangoSearch);
-  if (ServerState::instance()->isCoordinator()) {
-    auto const& viewImpl = basics::downCast<IResearchViewCoordinator>(*view);
-    return viewImpl.primarySort();
-  }
-  auto const& viewImpl = basics::downCast<IResearchView>(*view);
-  return viewImpl.primarySort();
-}
-
-IResearchViewStoredValues const& storedValues(
-    std::shared_ptr<SearchMeta const> const& meta,
-    std::shared_ptr<LogicalView const> const& view) {
-  if (meta) {
-    TRI_ASSERT(!view || view->type() == ViewType::kSearchAlias);
-    return meta->storedValues;
-  }
-  TRI_ASSERT(view);
-  TRI_ASSERT(view->type() == ViewType::kArangoSearch);
-  if (ServerState::instance()->isCoordinator()) {
-    auto const& viewImpl = basics::downCast<IResearchViewCoordinator>(*view);
-    return viewImpl.storedValues();
-  }
-  auto const& viewImpl = basics::downCast<IResearchView>(*view);
-  return viewImpl.storedValues();
-}
-
 char const* kNodeViewNameParam = "view";
 char const* kNodeViewIdParam = "viewId";
 char const* kNodeOutVariableParam = "outVariable";
@@ -1067,6 +1036,70 @@ constexpr size_t getExecutorIndex(bool sorted, bool ordered, bool heapsort,
   return index;
 }
 
+//
+// Note: one would be tempted to think this is the same as `getLoop`
+// on ExecutionNode, but it is not!  getLoop returns nullptr when it
+// hits the Singleton of a subquery which hasDependencies below would
+// interpret as a variable not having an enclosing loop (being
+// "immutable"; note this interpretation is also over-eager)
+//
+auto findEnclosingLoop(aql::ExecutionPlan const* plan,
+                       aql::ExecutionNode const* node)
+    -> aql::ExecutionNode const* {
+  using EN = arangodb::aql::ExecutionNode;
+
+  containers::FlatHashMap<aql::ExecutionNode const*, aql::ExecutionNode const*>
+      subqueries{};
+  {
+    containers::SmallVector<aql::ExecutionNode*, 8> subs;
+    plan->findNodesOfType(subs, aql::ExecutionNode::SUBQUERY, true);
+
+    // we build a map of the top-most nodes of each subquery to the outer
+    // subquery node
+    for (auto& it : subs) {
+      auto sub = aql::ExecutionNode::castTo<aql::SubqueryNode const*>(it)
+                     ->getSubquery();
+      while (sub->hasDependency()) {
+        sub = sub->getFirstDependency();
+      }
+      subqueries.emplace(sub, it);
+    }
+  }
+
+  while (node != nullptr) {
+    switch (node->getType()) {
+      case EN::SINGLETON: {
+        if (node->isInSubquery()) {
+          auto it = subqueries.find(node);
+          TRI_ASSERT(it != std::end(subqueries));
+          auto [_, sq] = *it;
+          node = sq->getFirstDependency();
+        } else {
+          TRI_ASSERT(node->id().id() == 1);
+          return nullptr;
+        }
+      } break;
+      case EN::ENUMERATE_COLLECTION:
+      case EN::INDEX:
+      case EN::TRAVERSAL:
+      case EN::ENUMERATE_LIST:
+      case EN::SHORTEST_PATH:
+      case EN::ENUMERATE_PATHS:
+      case EN::ENUMERATE_IRESEARCH_VIEW:
+      case EN::ENUMERATE_NEAR_VECTORS: {
+        return node;
+      } break;
+      default: {
+        if (!node->hasDependency()) {
+          return nullptr;
+        }
+        node = node->getFirstDependency();
+      } break;
+    }
+  }
+  return nullptr;
+}
+
 }  // namespace
 
 bool isFilterConditionEmpty(aql::AstNode const* filterCondition) noexcept {
@@ -1134,7 +1167,8 @@ bool hasDependencies(aql::ExecutionPlan const& plan, aql::AstNode const& node,
         }
         break;
       default:
-        if ((!setter->isDeterministic() || setter->getLoop() != nullptr) &&
+        if ((!setter->isDeterministic() ||
+             findEnclosingLoop(&plan, setter) != nullptr) &&
             callback(var)) {
           return true;
         }
@@ -1320,7 +1354,7 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan,
   // parse sort buckets and set them and sort
   auto const sortBucketsSlice = base.get(kNodePrimarySortBucketsParam);
   if (!sortBucketsSlice.isNone()) {
-    auto const& sort = primarySort(_meta, _view);
+    auto const& sort = iresearch::getPrimarySort(_meta, _view);
     if (!sortBucketsSlice.isNumber<size_t>()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_BAD_PARAMETER,
@@ -1600,8 +1634,8 @@ void IResearchViewNode::doToVelocyPack(VPackBuilder& nodes,
 
   // stored values
   {
-    auto const& values = storedValues(_meta, _view);
-    auto const& sort = primarySort(_meta, _view);
+    auto const& values = iresearch::getStoredValues(_meta, _view);
+    auto const& sort = iresearch::getPrimarySort(_meta, _view);
     VPackArrayBuilder arrayScope(&nodes, kNodeViewValuesVars);
     std::string fieldName;
     for (auto const& columnFieldsVars : _outNonMaterializedViewVars) {
@@ -2095,7 +2129,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
 #endif
         scorers(),
         sort(),
-        storedValues(_meta, _view),
+        iresearch::getStoredValues(_meta, _view),
         *plan(),
         outVariable(),
         filterCondition(),

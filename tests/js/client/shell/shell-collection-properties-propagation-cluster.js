@@ -313,6 +313,79 @@ function CollectionPropertiesPropagationSuite() {
   };
 }
 
+// BTS-2279: Test suite for writeConcern validation and _canWrite flag behavior
+function WriteConcernValidationSuite() {
+  const dbName = "UnitTestsWriteConcernDb";
+  const cn = "col";
+
+  return {
+    setUp : function () {
+      db._createDatabase(dbName);
+      db._useDatabase(dbName);
+    },
+
+    tearDown : function () {
+      global.instanceManager.debugClearFailAt();
+      db._useDatabase("_system");
+      db._dropDatabase(dbName);
+    },
+
+    // BTS-2279: Changing writeConcern should properly invalidate the
+    // _canWrite flag in FollowerInfo, allowing writes to continue.
+    testWritesAfterChangingWriteConcern : function () {
+      const coll = db._create(cn, {replicationFactor: 2, writeConcern: 1, numberOfShards: 3}, {waitForSyncReplication: true});
+
+      coll.insert({_key: "test1"});
+
+      coll.properties({writeConcern: 2});
+
+      coll.insert({_key: "test2"});
+
+      assertEqual(2, coll.count());
+      assertTrue(coll.document("test1") !== null);
+      assertTrue(coll.document("test2") !== null);
+    },
+
+    // BTS-2279: When followers are down and writeConcern cannot be satisfied,
+    // inserts should fail because the shard becomes read-only.
+    testWritesFailWhenWriteConcernNotSatisfied : function () {
+      const coll = db._create(cn, {replicationFactor: 2, writeConcern: 2, numberOfShards: 1}, {waitForSyncReplication: true});
+
+      coll.insert({_key: "test1"});
+      assertEqual(1, coll.count());
+
+      const [_, [__, follower]] = Object.entries(coll.shards(true))[0];
+
+      try {
+        // Use fail points to block inserts on the follower and prevent re-sync
+        // This is more reliable than suspending the server (which triggers supervision)
+        global.instanceManager.debugSetFailAt("LogicalCollection::insert", '', follower);
+        global.instanceManager.debugSetFailAt("SynchronizeShard::disable", '', follower);
+
+        // First insert after fail points: drops the follower but succeeds
+        coll.insert({_key: "test2"});
+
+        // Second insert should fail because writeConcern: 2 cannot be satisfied
+        // with only the leader (follower was dropped from in-sync list).
+        // The shard becomes read-only when there are fewer in-sync replicas than writeConcern.
+        try {
+          coll.insert({_key: "test3"});
+          fail("Expected insert to fail because shard is read-only");
+        } catch(e) {
+          // Expected: ERROR_ARANGO_READ_ONLY (1004) - "collection is read-only"
+          // This happens when the shard has fewer in-sync replicas than writeConcern
+          assertEqual(internal.errors.ERROR_ARANGO_READ_ONLY.code, e.errorNum,
+            "Expected ERROR_ARANGO_READ_ONLY but got: " + JSON.stringify(e));
+        }
+      } finally {
+        // Always clear fail points, even if the test fails
+        global.instanceManager.debugClearFailAt();
+      }
+    },
+  };
+}
+
 jsunity.run(CollectionPropertiesPropagationSuite);
+jsunity.run(WriteConcernValidationSuite);
 
 return jsunity.done();

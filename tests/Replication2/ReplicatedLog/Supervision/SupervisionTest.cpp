@@ -24,9 +24,8 @@
 
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
+#include <format>
 #include <variant>
-
-#include <fmt/core.h>
 
 #include "Replication2/Helper/AgencyLogBuilder.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
@@ -579,7 +578,7 @@ TEST_F(LogSupervisionTest, test_remove_participant_action) {
   // We expect a UpdateParticipantsFlagsAction to unset the allowedInQuorum
   // flag for d
   ASSERT_TRUE(std::holds_alternative<UpdateParticipantFlagsAction>(r))
-      << fmt::format("{}", r);
+      << std::format("{}", r);
 
   auto action = std::get<UpdateParticipantFlagsAction>(r);
   ASSERT_EQ(action._participant, "D");
@@ -650,7 +649,7 @@ TEST_F(LogSupervisionTest, test_remove_participant_action_missing_snapshot) {
   checkReplicatedLog(ctx, log, health);
 
   // no action is expected.
-  EXPECT_FALSE(ctx.hasAction()) << fmt::format("{}", ctx.getAction());
+  EXPECT_FALSE(ctx.hasAction()) << std::format("{}", ctx.getAction());
 }
 
 TEST_F(LogSupervisionTest, test_remove_participant_action_wait_for_committed) {
@@ -723,7 +722,7 @@ TEST_F(LogSupervisionTest, test_remove_participant_action_wait_for_committed) {
   auto const& a = ctx.getAction();
 
   EXPECT_TRUE(std::holds_alternative<NoActionPossibleAction>(a))
-      << fmt::format("{}", a);
+      << std::format("{}", a);
 
   auto const& r = ctx.getReport();
 
@@ -805,7 +804,7 @@ TEST_F(LogSupervisionTest, test_remove_participant_undo_exclude_from_quorum) {
   auto const& a = ctx.getAction();
 
   ASSERT_TRUE(std::holds_alternative<UpdateParticipantFlagsAction>(a))
-      << fmt::format("{}", a);
+      << std::format("{}", a);
 
   auto action = std::get<UpdateParticipantFlagsAction>(a);
   ASSERT_EQ(action._participant, "D");
@@ -881,7 +880,7 @@ TEST_F(LogSupervisionTest, test_remove_participant_action_committed) {
 
   // We expect an RemoveParticipantFromPlanAction to finally remove D
   ASSERT_TRUE(std::holds_alternative<RemoveParticipantFromPlanAction>(r))
-      << fmt::format("{}", r);
+      << std::format("{}", r);
 
   auto action = std::get<RemoveParticipantFromPlanAction>(r);
   ASSERT_EQ(action._participant, "D");
@@ -971,7 +970,7 @@ TEST_F(LogSupervisionTest, test_write_empty_term) {
   // Since the leader is `A` and the rebootId in health is higher than the one
   // in plan, we need to write an empty term
   ASSERT_TRUE(std::holds_alternative<WriteEmptyTermAction>(r))
-      << fmt::format("{}", r);
+      << std::format("{}", r);
 
   auto writeEmptyTermAction = std::get<WriteEmptyTermAction>(r);
 
@@ -1254,7 +1253,7 @@ TEST_F(LogSupervisionTest, test_leader_election_sets_write_concern) {
 
     auto const& r = ctx.getAction();
     EXPECT_TRUE(std::holds_alternative<LeaderElectionAction>(r))
-        << fmt::format("{}", r);
+        << std::format("{}", r);
 
     auto const& elec = std::get<LeaderElectionAction>(r);
     EXPECT_EQ(elec._assumedWriteConcern, 2U);
@@ -1308,6 +1307,6 @@ TEST_F(LogSupervisionTest, test_wait_for_config_committed_action) {
 
     auto const& r = ctx.getAction();
     ASSERT_TRUE(std::holds_alternative<NoActionPossibleAction>(r))
-        << fmt::format("{}", r);
+        << std::format("{}", r);
   }
 }

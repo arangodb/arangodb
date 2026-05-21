@@ -36,7 +36,7 @@
 #include "Containers/SmallVector.h"
 #include "Indexes/Index.h"
 #include "RocksDBEngine/RocksDBRecoveryHelper.h"
-#include "RestServer/arangod.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Identifiers/IndexId.h"
 #include "IResearch/IResearchDataStore.h"
@@ -58,7 +58,8 @@ class IResearchRocksDBLink;
 class IResearchRocksDBRecoveryHelper final : public RocksDBRecoveryHelper {
  public:
   explicit IResearchRocksDBRecoveryHelper(
-      ArangodServer& server, std::span<std::string const> skipRecoveryItems);
+      application_features::ApplicationServer& server,
+      std::span<std::string const> skipRecoveryItems);
 
   void prepare() final;
   void unprepare() noexcept final {
@@ -111,7 +112,7 @@ class IResearchRocksDBRecoveryHelper final : public RocksDBRecoveryHelper {
   template<bool Force>
   void clear() noexcept;
 
-  ArangodServer* _server{};
+  application_features::ApplicationServer* _server{};
   RocksDBEngine* _engine{};
   DatabaseFeature* _dbFeature{};
   uint32_t _documentCF{};

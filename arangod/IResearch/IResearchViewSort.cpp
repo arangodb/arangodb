@@ -112,6 +112,11 @@ bool IResearchSortBase::fromVelocyPack(velocypack::Slice slice,
       return false;
     }
 
+    if (field.empty()) {
+      error = absl::StrCat("[", size(), "].", kFieldName);
+      return false;
+    }
+
     emplace_back(std::move(field), direction);
   }
 

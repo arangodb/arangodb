@@ -34,9 +34,11 @@ const rp = require('@arangodb/testutils/result-processing');
 const pm = require('@arangodb/testutils/portmanager');
 const yaml = require('js-yaml');
 const internal = require('internal');
+const {versionHas} = require("@arangodb/test-helper");
 const crashUtils = require('@arangodb/testutils/crash-utils');
 const {sanHandler} = require('@arangodb/testutils/san-file-handler');
 const ArangoError = require('@arangodb').ArangoError;
+const AsciiTable = require('ascii-table');
 
 /* Functions: */
 const {
@@ -106,7 +108,7 @@ class instance {
   #pid = null;
 
   // / protocol must be one of ["tcp", "ssl", "unix"]
-  constructor(options, myInstanceRole, addArgs, authHeaders, protocol, rootDir, restKeyFile, agencyMgr, tmpDir, mem) {
+  constructor(options, myInstanceRole, addArgs, authHeaders, authHeadersJWT, protocol, rootDir, restKeyFile, agencyMgr, tmpDir, mem) {
     this.id = null;
     this.shortName = null;
     this.pm = pm.getPortManager(options);
@@ -133,6 +135,7 @@ class instance {
       }
     }
     this.authHeaders = authHeaders;
+    this.authHeadersJWT = authHeadersJWT;
     this.restKeyFile = restKeyFile;
     this.agencyMgr = agencyMgr;
 
@@ -200,6 +203,7 @@ class instance {
       rootDir: this.rootDir,
       protocol: this.protocol,
       authHeaders: this.authHeaders,
+      authHeadersJWT: this.authHeadersJWT,
       restKeyFile: this.restKeyFile,
       agencyConfig: this.agencyMgr.getStructure(),
       upAndRunning: this.upAndRunning,
@@ -229,6 +233,7 @@ class instance {
     this.rootDir = struct['rootDir'];
     this.protocol = struct['protocol'];
     this.authHeaders = struct['authHeaders'];
+    this.authHeadersJWT = struct['authHeadersJWT'];
     this.restKeyFile = struct['restKeyFile'];
     this.upAndRunning = struct['upAndRunning'];
     this.suspended = struct['suspended'];
@@ -280,7 +285,7 @@ class instance {
     }
     return true;
   }
-  
+
   _disconnect() {
     if (this.connectionHandle !== undefined) {
       arango.disconnectHandle(this.connectionHandle);
@@ -291,6 +296,37 @@ class instance {
   resetAuthHeaders(authHeaders, JWT) {
     this.authHeaders = authHeaders;
     this.JWT = JWT;
+  }
+
+  dumpConnectionTable(force) {
+    if (this.options.extremeVerbosity || force === true) {
+      let currentHandle = arango.getConnectionHandle();
+      const tableColumnHeaders = [
+        "selected", "connected", "handle", "endpoint", "localport", "username", "password", "JWT"
+      ];
+      let resultTable = new AsciiTable("");
+      resultTable.setHeading(tableColumnHeaders);
+      let table = arango.getConnectionHandleTable();
+      try {
+        Object.keys(table).forEach(handle => {
+          let active = table[handle]['active'] || handle === currentHandle;
+          let connected = table[handle]['connected'];
+          resultTable.addRow([
+            (active)? "*": "",
+            (connected)? "*": "",
+            handle,
+            table[handle]['endpoint'],
+            table[handle]['localPort'],
+            table[handle]['username'],
+            table[handle]['password'],
+            table[handle]['jwToken']
+          ]);
+        });
+      } catch (ex) {
+        print(ex);
+      }
+      print(CYAN + resultTable.toString() + RESET);
+    }
   }
 
   // //////////////////////////////////////////////////////////////////////////////
@@ -340,9 +376,13 @@ class instance {
       // the argparser barely ignores them and breaks others...
       default_args['javascript.app-path'] = this.appDir;
       default_args['javascript.copy-installation'] = false;
+      default_args['javascript.files-allowlist'] = ".*";
+      default_args['javascript.environment-variables-allowlist'] = ".*";
+      default_args['javascript.endpoints-allowlist'] = ".*";
+      default_args['javascript.startup-options-allowlist'] = ".*";
     }
     this.args = _.defaults(this.args, default_args);
-    if (this.options.extremeVerbosity) {
+    if (this.options.extremeVerbosity && versionHas('maintainer-mode') ) {
       this.args['dump-env'] = true;
     }
 
@@ -371,6 +411,7 @@ class instance {
         !this.args.hasOwnProperty('server.jwt-secret') &&
         !this.args.hasOwnProperty('server.jwt-secret-folder')) {
       this.args['server.jwt-secret-keyfile'] = this.restKeyFile;
+      this.JWT = fs.read(this.restKeyFile);
     }
     else if (this.options.hasOwnProperty('jwtFiles')) {
       this.jwtFiles = this.options['jwtFiles'];
@@ -483,10 +524,14 @@ class instance {
     }
     if (this.args.hasOwnProperty('server.jwt-secret')) {
       this.JWT = this.args['server.jwt-secret'];
+    } else if (this.args.hasOwnProperty('server.jwt-secret-folder')) {
+      let files = fs.list(this.args['server.jwt-secret-folder']);
+      files = files.sort();
+      this.JWT = fs.read(fs.join(this.args['server.jwt-secret-folder'], files[0]));
     }
     this.sanHandler.detectLogfiles(this.rootDir, this.topLevelTmpDir);
   }
-  
+
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief make this instance an issue of the past.
   // //////////////////////////////////////////////////////////////////////////////
@@ -518,6 +563,10 @@ class instance {
   _executeArangod (moreArgs, instanceJson) {
     if (moreArgs && moreArgs.hasOwnProperty('server.jwt-secret')) {
       this.JWT = moreArgs['server.jwt-secret'];
+    } else if (moreArgs && moreArgs.hasOwnProperty('server.jwt-secret-folder')) {
+      let files = fs.list(moreArgs['server.jwt-secret-folder']);
+      files = files.sort();
+      this.JWT = fs.read(fs.join(moreArgs['server.jwt-secret-folder'], files[0]));
     }
 
     let cmd = pu.ARANGOD_BIN;
@@ -612,16 +661,20 @@ class instance {
     this.moreArgs = moreArgs;
     if (moreArgs && moreArgs.hasOwnProperty('server.jwt-secret')) {
       this.JWT = moreArgs['server.jwt-secret'];
+    } else if (moreArgs && moreArgs.hasOwnProperty('server.jwt-secret-folder')) {
+      let files = fs.list(moreArgs['server.jwt-secret-folder']);
+      files = files.sort();
+      this.JWT = fs.read(fs.join(moreArgs['server.jwt-secret-folder'], files[0]));
     }
     const startTime = time();
     this.exitStatus = null;
     this.pid = null;
     this.upAndRunning = false;
     this._disconnect();
-    
+
     print(CYAN + Date()  + " relaunching: " + this.name + ', url: ' + this.url + RESET);
     this.launchInstance(moreArgs, instanceJson);
-    this.pingUntilReady(this.authHeaders, time() + seconds(60));
+    this.pingUntilReady(this.authHeadersJWT, time() + seconds(60));
     print(CYAN + Date() + ' ' + this.name + ', url: ' + this.url + ', running again with PID ' + this.pid + RESET);
   }
 
@@ -744,6 +797,12 @@ class instance {
     httpOptions.method = 'POST';
     httpOptions.returnBodyOnError = true;
     while (true) {
+      this.exitStatus = this.status(false);
+      if (this.exitStatus.status === 'RUNNING') {
+        this.exitStatus = null;
+      } else {
+        throw new Error('server exited during startup! bailing out!');
+      }
       wait(1, false);
       try {
         if (true) {//if (this.options.useReconnect && this.isFrontend()) {
@@ -756,6 +815,7 @@ class instance {
                                  true,
                                  this.JWT)) {
               this.connectionHandle = arango.getConnectionHandle();
+              this.dumpConnectionTable();
             }
           } else {
             print(`${Date()} ${this.name} reconnecting ${this.url}`);
@@ -765,6 +825,7 @@ class instance {
                                  this.options.password,
                                  true)) {
               this.connectionHandle = arango.getConnectionHandle();
+              this.dumpConnectionTable();
             }
           }
           return;
@@ -797,25 +858,37 @@ class instance {
 
   connect() {
     if (this.connectionHandle !== undefined) {
-      if (this.connectionHandle === arango.getConnectionHandle()) {
-        return true;
+      if (this.connectionHandle === arango.getConnectionHandle()){
+        if (this.endpoint === arango.getEndpoint()) {
+          return true;
+        } else {
+          print(`${RED}my endpoint: ${this.endpoint} is not equal to ${arango.getEndpoint()} - correcting.${RESET}`);
+          this.dumpConnectionTable(true);
+          this.connectionHandle = undefined;
+        }
       }
-      try {
-        return arango.connectHandle(this.connectionHandle);
-      } catch (ex) {
-        print(`${this.name}: Connection ${this.connectionHandle} not found, continuing with regular connection: ${ex}\n${ex.stack}`);
-        this.connectionHandle = undefined;
+      if (this.connectionHandle !== undefined) {
+        try {
+          this.dumpConnectionTable();
+          return arango.connectHandle(this.connectionHandle);
+        } catch (ex) {
+          print(`${this.name}: Connection ${this.connectionHandle} not found, continuing with regular connection: ${ex}\n${ex.stack}`);
+          this.dumpConnectionTable(true);
+          this.connectionHandle = undefined;
+        }
       }
     }
     if (this.JWT) {
       print(`${Date()} ${this.name}: re/connecting with JWT ${this.url}`);
       const ret = arango.reconnect(this.endpoint, '_system', 'root', '', true, this.JWT);
       this.connectionHandle = arango.getConnectionHandle();
+      this.dumpConnectionTable();
       return ret;
     } else {
       print(`${Date()} ${this.name} re/connecting ${this.url}`);
       const ret = arango.reconnect(this.endpoint, '_system', 'root', '', true);
       this.connectionHandle = arango.getConnectionHandle();
+      this.dumpConnectionTable();
       return ret;
     }
   }
@@ -891,8 +964,10 @@ class instance {
     this.serverCrashedLocal = true;
     if (this.pid === null) {
       this.pid = pid;
-      print(`${RED}${Date()} ${this.name}: instance already gone? ${JSON.stringify(this.exitStatus)}${RESET}`);
-      this.analyzeServerCrash(`instance ${this.name} during force terminate server already dead? ${JSON.stringify(this.exitStatus)}`);
+      const killCause = (this.exitStatus.status === "ABORTED" && this.exitStatus.hasOwnProperty('signal') && this.exitStatus.signal === 9) ?
+            " - maybe OOM killed by the kernel? ": "";
+      print(`${RED}${Date()} ${this.name}: instance already gone${killCause}? ${JSON.stringify(this.exitStatus)}${RESET}`);
+      this.analyzeServerCrash(`instance ${this.name} during force terminate server already dead${killCause}? ${JSON.stringify(this.exitStatus)}`);
       this.pid = null;
     } else {
       print(`${RED}${Date()} attempting to generate crashdump of: ${this.name} ${JSON.stringify(this.exitStatus)}${RESET}`);
@@ -1090,7 +1165,6 @@ class instance {
         this.serverCrashedLocal = true;
         counters.shutdownSuccess = false;
       }
-      crashUtils.stopProcdump(this.options, this);
     } else {
       if (!this.isAgent()) {
         counters.nonAgenciesCount--;
@@ -1098,7 +1172,6 @@ class instance {
       if (!this.options.noStartStopLogs) {
         print(Date() + ' Server "' + this.name + '" shutdown: Success: pid', this.pid);
       }
-      crashUtils.stopProcdump(this.options, this);
       return false;
     }
   }
@@ -1156,6 +1229,10 @@ class instance {
   // / @brief scans the log files for assert lines
   // //////////////////////////////////////////////////////////////////////////////
   readImportantLogLines () {
+    if (!fs.exists(fs.join(this.logFile))) {
+      print(`${RED}${Date()} unable to find ${this.logFile} of ${this.name}!${RESET}`);
+      return [];
+    }
     let fnLines = [];
     const buf = fs.readBuffer(fs.join(this.logFile));
     let lineStart = 0;
@@ -1279,7 +1356,7 @@ class instance {
           processStats[x[0]] = parseInt(x[1]);
         }
       }
-      /* 
+      /*
        * sockets: used 1272
        * TCP: inuse 27 orphan 0 tw 117 alloc 382 mem 25
        * UDP: inuse 19 mem 17
@@ -1392,6 +1469,55 @@ class instance {
     }
     return `  [${this.name}] up with pid ${this.pid} - ${this.dataDir}`;
   }
+
+  toThisInstance(callback) {
+    let handle = arango.getConnectionHandle();
+    this.connect();
+    let reconnected = false;
+    let ret;
+    try {
+      ret = callback();
+    } finally {
+      reconnected = arango.connectHandle(handle);
+    }
+    if (!reconnected) {
+      throw new Error(`failed to restore connection to ${handle}`);
+    }
+    return ret;
+  }
+
+  getRawMetric(tags) {
+    return this.toThisInstance(() => {
+      return arango.GET_RAW('/_admin/metrics' + tags, { 'accept-encoding': 'identity' });
+    });
+  }
+
+  getAllMetric(tags) {
+    let res = this.getRawMetric(tags);
+    if (res.code !== 200) {
+      throw "error fetching metric";
+    }
+    return res.body;
+  }
+
+  getMetricName(text, name) {
+    let re = new RegExp("^" + name);
+    let matches = text.split('\n').filter((line) => !line.match(/^#/)).filter((line) => line.match(re));
+    if (!matches.length) {
+      throw "Metric " + name + " not found";
+    }
+    let res = 0; // Sum up values from all matches
+    for(let i = 0; i < matches.length; i+= 1) {
+      res += Number(matches[i].replace(/^.*?(\{.*?\})?\s*([0-9.]+)$/, "$2"));
+    }
+    return res;
+  }
+
+  getMetric(name) {
+    let text = this.getAllMetric('');
+    return this.getMetricName(text, name);
+  }
+  
   debugGetFailurePoints() {
     this.connect();
     let haveFailAt = arango.GET("/_admin/debug/failat") === true;
@@ -1498,10 +1624,18 @@ class instance {
       }
       return false;
     }
-    return reply.parsedBody === true;   
+    return reply.parsedBody === true;
   }
 
-  checkDebugTerminated(waitForExit) {
+  removeCoredump() {
+    if (crashUtils.locateCoreDump(this.options, this) && fs.exists(this.options.coreDirectory)) {
+      print(`${Date()} ${this.name}: deleting coredump for PID ${this.pid} ${this.options.coreDirectory}`);
+      fs.remove(this.options.coreDirectory);
+    } else {
+      print(`${Date()} ${this.name}: no coredump for PID ${this.pid} found`);
+    }
+  }
+  checkDebugTerminated(waitForExit, signal_to_expect) {
     let res = statusExternal(this.pid, waitForExit);
     if (res.status === 'NOT-FOUND') {
       print(`${Date()} ${this.name}: PID ${this.pid} missing on our list, retry?`);
@@ -1512,43 +1646,59 @@ class instance {
     if (!running) {
       // the test may have abortet by itself already, using SIG_ARBRT or SIG_KILL.
       this.exitStatus = res;
-      this.pid = null;
-      if (res.hasOwnProperty('signal') &&
-          (res.signal !== 6)&&(res.signal !== 9)) {
-        throw new Error(`unexpected exit signal of ${this.name} - ${JSON.stringify(res)}`);
+      if (res.hasOwnProperty('signal')) {
+        if (signal_to_expect !== undefined) {
+          if (res.signal !== signal_to_expect) {
+            this.pid = null;
+            throw new Error(`unexpected exit signal of ${this.name} - ${JSON.stringify(res)} !== ${signal_to_expect}`);
+          }
+          if (signal_to_expect === 11) {
+            this.removeCoredump();
+          }
+          this.pid = null;
+          return true;
+        } else if ((res.signal !== 6) && (res.signal !== 9)) {
+          this.pid = null;
+          throw new Error(`unexpected exit signal of ${this.name} - ${JSON.stringify(res)}`);
+        }
       }
+      this.pid = null;
       return true;
     }
     return false;
   }
-  debugTerminate() {
+  debugTerminate(msg, signal_to_expect) {
     if (this.pid === null) {
       return;
     }
-    if (!this.checkDebugTerminated(false)){
+    if (!this.checkDebugTerminated(false, signal_to_expect)){
       let reply;
       try {
         this.connect();
-        reply = arango.PUT_RAW('/_admin/debug/crash', '');
+        const body = {
+          message: msg
+        };
+        arango.timeout(this.options.httpTimeout / 4);
+        reply = arango.PUT_RAW('/_admin/debug/crash', body);
       } catch(ex) {
         if (ex instanceof ArangoError && (
           (ex.errorNum === internal.errors.ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT.code) ||
             (ex.errorNum === internal.errors.ERROR_BAD_PARAMETER.code))) {
-          print(`Terminated instance ${this.name} - ${ex}`);
-          return this.checkDebugTerminated(true);
+          print(`Terminated instance ${this.name} - ${ex.message} ${signal_to_expect}`);
+          return this.checkDebugTerminated(true, signal_to_expect);
         }
-        throw new Error(`Failed to crash ${this.name}: ${ex}`);
+        throw new Error(`Failed to crash ${this.name}: ${ex.message}`);
       }
       if (reply.code !== 200) {
         if (reply === undefined) {
           reply = { parsedBody: "thrown during connect"};
         }
-        throw new Error(`Failed to crash ${this.name}: ${reply.parsedBody}`);
+        throw new Error(`Failed to crash ${this.name}: ${JSON.stringify(reply)}`);
       }
     }
     let count = 0;
     while (count < 10) {
-      if (this.checkDebugTerminated(false)) {
+      if (this.checkDebugTerminated(false, signal_to_expect)) {
         return;
       }
       count += 1;

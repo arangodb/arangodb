@@ -33,6 +33,7 @@ const pathForTesting = require('internal').pathForTesting;
 const platform = require('internal').platform;
 const setDidSplitBuckets = require('@arangodb/testutils/testrunner').setDidSplitBuckets;
 const isEnterprise = require("@arangodb/test-helper").isEnterprise;
+const {versionHas} = require("@arangodb/test-helper");
 
 /* Constants: */
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
@@ -200,6 +201,11 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
     return false;
   }
 
+  if ((testname.indexOf('-noarm') !== -1) && versionHas("arm")) {
+    whichFilter.filter = 'skip on AArch64 targets';
+    return false;
+  }
+
   if ((testname.indexOf('-noinstr') !== -1) && (options.isInstrumented)) {
     whichFilter.filter = 'skip when built with an instrumented build';
     return false;
@@ -327,6 +333,7 @@ function scanTestPaths (paths, options, fun) {
     allTestCases = allTestCases.concat(doOnePathInner(p));
   });
 
+  allTestCases.sort();
   let allFiltered = [];
   let filteredTestCases = _.filter(allTestCases,
                                    function (p) {
@@ -386,7 +393,6 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation) {
     ' Testcase filtering:',
     '   - `skipMemoryIntense`: tests using lots of resources will be skipped.',
     '   - `skipNightly`: omit the nightly tests',
-    '   - `skipRanges`: if set to true the ranges tests are skipped',
     '   - `skipTimeCritical`: if set to true, time critical tests will be skipped.',
     '   - `skipNondeterministic`: if set, nondeterministic tests are skipped.',
     '   - `skipGrey`: if set, grey tests are skipped.',

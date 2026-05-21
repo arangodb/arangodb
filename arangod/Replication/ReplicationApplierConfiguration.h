@@ -26,17 +26,15 @@
 #include <set>
 #include <string>
 
-#include "RestServer/arangod.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 
 namespace arangodb {
-namespace application_features {
-class ApplicationServer;
-}
 namespace velocypack {
 class Builder;
 class Slice;
 }  // namespace velocypack
 
+class ReplicationFeature;
 class StorageEngine;
 
 /// @brief struct containing a replication apply configuration
@@ -44,7 +42,7 @@ class ReplicationApplierConfiguration {
  public:
   enum class RestrictType { None, Include, Exclude };
 
-  ArangodServer& _server;
+  application_features::ApplicationServer& _server;
   ReplicationFeature* _replicationFeature;
 
   std::string _endpoint;
@@ -80,7 +78,8 @@ class ReplicationApplierConfiguration {
   std::string _clientInfoString;
 
  public:
-  explicit ReplicationApplierConfiguration(ArangodServer&);
+  explicit ReplicationApplierConfiguration(
+      application_features::ApplicationServer&);
   ~ReplicationApplierConfiguration() = default;
 
   ReplicationApplierConfiguration(ReplicationApplierConfiguration const&) =
@@ -110,8 +109,8 @@ class ReplicationApplierConfiguration {
 
   /// @brief create a configuration object from velocypack
   static ReplicationApplierConfiguration fromVelocyPack(
-      ArangodServer&, arangodb::velocypack::Slice slice,
-      std::string const& databaseName);
+      application_features::ApplicationServer&,
+      arangodb::velocypack::Slice slice, std::string const& databaseName);
 
   /// @brief create a configuration object from velocypack, merging it with an
   /// existing one

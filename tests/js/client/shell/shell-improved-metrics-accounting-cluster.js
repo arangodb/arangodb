@@ -29,55 +29,16 @@ const internal = require("internal");
 const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
 const base = require("fs").join(internal.pathForTesting('client'), 
     'shell', 'shell-improved-metrics-accounting.inc');
-const arangosearch_base = require("fs").join(internal.pathForTesting('client'),
-    'shell', 'api', 'arangosearch-memory-metrics.inc');
 
 const ImprovedMemoryAccounting = require("internal").load(base);
-const ImprovedMemoryAccountingArangoSearch = require("internal").load(arangosearch_base);
-
-let IM = global.instanceManager;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
-if (IM.debugCanUseFailAt()) {
-  const base_fail_at = require("fs").join(internal.pathForTesting('client'),
-    'shell', 'shell-improved-metrics-accounting-fail-at.inc');
-    const ImprovedMemoryAccountingFailAt = internal.load(base_fail_at);
-
-    jsunity.run(function ImprovedMemoryAccountingFailAtTestSuite_repl() {
-        let suite = {};
-        deriveTestSuite(
-            ImprovedMemoryAccountingFailAt("ImprovedMemoryAccountingFailAtTestSuite_Repl", null, {
-            replicationFactor:3,
-            writeConcern:1,
-            numberOfShards : 3}, false),
-            suite,
-            "_Repl"
-        );
-        return suite;
-    });
-}
-
 jsunity.run(function ImprovedMemoryAccountingTestSuite_repl() {
     let suite = {};
     deriveTestSuite(
       ImprovedMemoryAccounting("ImprovedMemoryAccountingTestSuite_Repl", null, {
-        replicationFactor:3,
-        writeConcern:1,
-        numberOfShards : 3}, false),
-        suite,
-        "_Repl"
-    );
-    return suite;
-});
-
-jsunity.run(function ImprovedMemoryAccountingArangoSearchTestSuite_repl() {
-    let suite = {
-    };
-
-    deriveTestSuite(
-      ImprovedMemoryAccountingArangoSearch("ImprovedMemoryAccountingArangoSearch_Repl", null, {
         replicationFactor:3,
         writeConcern:1,
         numberOfShards : 3}, false),

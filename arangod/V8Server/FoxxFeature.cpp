@@ -29,6 +29,7 @@
 
 #include "Agency/AgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "FeaturePhases/ServerFeaturePhase.h"
 #include "GeneralServer/ServerSecurityFeature.h"
 #include "Logger/LogMacros.h"
 #include "ProgramOptions/Parameters.h"
@@ -39,14 +40,10 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-FoxxFeature::FoxxFeature(Server& server)
-    : ArangodFeature{server, *this},
+FoxxFeature::FoxxFeature(application_features::ApplicationServer& server)
+    : ApplicationFeature{server, *this},
       _queueVersion(0),
-      _localQueueInserts(0),
-      _queuesPollInterval(1.0),
-      _queuesEnabled(true),
-      _startupWaitForSelfHeal(false),
-      _foxxEnabled(true) {
+      _localQueueInserts(0) {
   setOptional(true);
   startsAfter<application_features::ServerFeaturePhase>();
 }
@@ -60,7 +57,7 @@ void FoxxFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options
       ->addOption("--foxx.queues", "Enable or disable Foxx queues.",
-                  new BooleanParameter(&_queuesEnabled),
+                  new BooleanParameter(&_options.queuesEnabled),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnCoordinator,
@@ -74,7 +71,7 @@ being processed, which may reduce CPU load a bit.)");
   options
       ->addOption("--foxx.queues-poll-interval",
                   "The poll interval for the Foxx queue manager (in seconds)",
-                  new DoubleParameter(&_queuesPollInterval),
+                  new DoubleParameter(&_options.queuesPollInterval),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnCoordinator,
@@ -91,7 +88,7 @@ queues thread wake up less.)");
       ->addOption("--foxx.force-update-on-startup",
                   "Ensure that all Foxx services are synchronized before "
                   "completing the startup sequence.",
-                  new BooleanParameter(&_startupWaitForSelfHeal),
+                  new BooleanParameter(&_options.startupWaitForSelfHeal),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnCoordinator,
@@ -122,13 +119,13 @@ In previous versions, this option had a default value of `true`.)");
 
   options
       ->addOption("--foxx.enable", "Enable Foxx.",
-                  new BooleanParameter(&_foxxEnabled),
+                  new BooleanParameter(&_options.foxxEnabled),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnCoordinator,
                       arangodb::options::Flags::OnSingle))
       .setIntroducedIn(31005)
-      .setLongDescription(R"(If set to `false`, access to any custom Foxx 
+      .setLongDescription(R"(If set to `false`, access to any custom Foxx
 services in the deployment will be forbidden. Access to ArangoDB's built-in
 web interface will still be possible though.
 
@@ -139,13 +136,13 @@ setting the startup option `--foxx.api false`.)");
 
 void FoxxFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   // use a minimum for the interval
-  if (_queuesPollInterval < 0.1) {
-    _queuesPollInterval = 0.1;
+  if (_options.queuesPollInterval < 0.1) {
+    _options.queuesPollInterval = 0.1;
   }
 }
 
 void FoxxFeature::prepare() {
-  if (!_foxxEnabled) {
+  if (!_options.foxxEnabled) {
     auto& ssf = server().getFeature<ServerSecurityFeature>();
     if (!ssf.isFoxxApiDisabled()) {
       ssf.disableFoxxApi();
@@ -158,17 +155,17 @@ void FoxxFeature::prepare() {
 }
 
 double FoxxFeature::pollInterval() const noexcept {
-  if (!_queuesEnabled) {
+  if (!_options.queuesEnabled) {
     return -1.0;
   }
-  return _queuesPollInterval;
+  return _options.queuesPollInterval;
 }
 
 bool FoxxFeature::startupWaitForSelfHeal() const noexcept {
-  return _startupWaitForSelfHeal;
+  return _options.startupWaitForSelfHeal;
 }
 
-bool FoxxFeature::foxxEnabled() const noexcept { return _foxxEnabled; }
+bool FoxxFeature::foxxEnabled() const noexcept { return _options.foxxEnabled; }
 
 uint64_t FoxxFeature::queueVersion() const noexcept {
   std::shared_lock lock(_queueLock);

@@ -23,25 +23,31 @@
 
 #pragma once
 
+#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Metrics/Fwd.h"
+#include "Transaction/ManagerFeatureOptions.h"
 #include "Scheduler/Scheduler.h"
-#include "RestServer/arangod.h"
 
 #include <cstdint>
 #include <functional>
 #include <memory>
 #include <mutex>
 
+namespace arangodb::metrics {
+class MetricsFeature;
+}  // namespace arangodb::metrics
+
 namespace arangodb::transaction {
 class Manager;
 
-class ManagerFeature final : public ArangodFeature {
+class ManagerFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept {
     return "TransactionManager";
   }
 
-  explicit ManagerFeature(Server& server);
+  ManagerFeature(application_features::ApplicationServer& server,
+                 metrics::MetricsFeature& metrics);
   ~ManagerFeature();
 
   void collectOptions(
@@ -64,12 +70,9 @@ class ManagerFeature final : public ArangodFeature {
  private:
   void queueGarbageCollection();
 
-  static constexpr size_t defaultStreamingMaxTransactionSize =
-      512 * 1024 * 1024;  // 512 MiB
-  static constexpr double defaultStreamingIdleTimeout = 60.0;
-  static constexpr double maxStreamingIdleTimeout = 120.0;
-
   static std::unique_ptr<transaction::Manager> MANAGER;
+
+  ManagerFeatureOptions _options;
 
   std::mutex _workItemMutex;
   Scheduler::WorkHandle _workItem;
@@ -77,15 +80,6 @@ class ManagerFeature final : public ArangodFeature {
   // garbage collection function, scheduled regularly in the
   // scheduler
   std::function<void(bool)> _gcfunc;
-
-  // max size (in bytes) of streaming transactions
-  size_t _streamingMaxTransactionSize;
-
-  // lock time in seconds
-  double _streamingLockTimeout;
-
-  /// @brief idle timeout for streaming transactions, in seconds
-  double _streamingIdleTimeout;
 
   /// @brief number of expired transactions that were aborted by
   /// transaction garbage collection

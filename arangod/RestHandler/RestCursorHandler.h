@@ -53,8 +53,8 @@ class Cursor;
 /// @brief cursor request handler
 class RestCursorHandler : public RestVocbaseBaseHandler {
  public:
-  RestCursorHandler(ArangodServer&, GeneralRequest*, GeneralResponse*,
-                    arangodb::aql::QueryRegistry*);
+  RestCursorHandler(application_features::ApplicationServer&, GeneralRequest*,
+                    GeneralResponse*, arangodb::aql::QueryRegistry*);
 
   ~RestCursorHandler();
 

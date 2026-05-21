@@ -28,14 +28,16 @@
 
 namespace arangodb {
 
+class ApiRecordingFeature;
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief admin log request handler
 ////////////////////////////////////////////////////////////////////////////////
 
 class RestAdminServerHandler : public RestBaseHandler {
  public:
-  explicit RestAdminServerHandler(ArangodServer&, GeneralRequest*,
-                                  GeneralResponse*);
+  explicit RestAdminServerHandler(application_features::ApplicationServer&,
+                                  GeneralRequest*, GeneralResponse*);
 
  public:
   char const* name() const override final { return "RestAdminServerHandler"; }
@@ -55,5 +57,7 @@ class RestAdminServerHandler : public RestBaseHandler {
   void handleEncryptionKeyRotation();
   void handleApiCalls();
   void handleAqlRecordedQueries();
+
+  ApiRecordingFeature& _apiRecordingFeature;
 };
 }  // namespace arangodb

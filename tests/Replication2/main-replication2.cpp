@@ -32,9 +32,9 @@
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
 #include "VocBase/Identifiers/ServerId.h"
-#include "RestServer/arangod.h"
 #include "Rest/Version.h"
 #include "Basics/VelocyPackHelper.h"
+#include "RestServer/arangod.h"
 
 char const* ARGV0 = "";
 

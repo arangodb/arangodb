@@ -37,6 +37,7 @@
 #include "Basics/Result.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Metrics/MetricsFeature.h"
+#include "RestServer/arangod.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -87,8 +88,8 @@ class PhysicalCollectionTest
             nullptr),
         LazyApplicationFeatureReference<ClusterFeature>(nullptr)));
     features.emplace_back(server.addFeature<QueryRegistryFeature>(
-        server.template getFeature<
-            metrics::MetricsFeature>()));  // required for TRI_vocbase_t
+        server.getFeature<metrics::MetricsFeature>()));  // required for
+                                                         // TRI_vocbase_t
 
     for (auto& f : features) {
       f.get().prepare();
@@ -109,7 +110,7 @@ class PhysicalCollectionTest
 // -----------------------------------------------------------------------------
 
 TEST_F(PhysicalCollectionTest, test_new_object_for_insert) {
-  TRI_vocbase_t vocbase(testDBInfo(server));
+  TRI_vocbase_t vocbase(testDBInfo(server), engine);
 
   auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"test\" }");
   auto collection = vocbase.createCollection(json->slice());
@@ -243,7 +244,7 @@ class MockIndex : public Index {
 };
 
 TEST_F(PhysicalCollectionTest, test_index_ordeing) {
-  TRI_vocbase_t vocbase(testDBInfo(server));
+  TRI_vocbase_t vocbase(testDBInfo(server), engine);
   auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"test\" }");
   auto collection = vocbase.createCollection(json->slice());
   std::vector<std::vector<arangodb::basics::AttributeName>> dummyFields;

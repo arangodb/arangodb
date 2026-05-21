@@ -24,19 +24,24 @@
 
 #pragma once
 
-#include "RestServer/arangod.h"
+#include "ApplicationFeatures/ApplicationFeature.h"
+#include "Basics/SharedPRNG.h"
 
 namespace arangodb {
 
-class SharedPRNGFeature final : public ArangodFeature {
+class SharedPRNGFeature final
+    : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "SharedPRNG"; }
 
-  explicit SharedPRNGFeature(Server& server);
-
-  void prepare() override final;
+  explicit SharedPRNGFeature(application_features::ApplicationServer& server);
 
   uint64_t rand() noexcept;
+
+  basics::SharedPRNG& getPRNG() noexcept { return _prng; }
+
+ private:
+  basics::SharedPRNG _prng;
 };
 
 }  // namespace arangodb

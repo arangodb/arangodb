@@ -29,7 +29,11 @@
 #include "Basics/memory.h"
 #include "Random/UniformCharacter.h"
 
+#include "Logger/LogMacros.h"
+
 #include <cstring>
+#include <openssl/bn.h>
+#include <openssl/ecdsa.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
@@ -309,6 +313,345 @@ int rsaPrivSign(std::string const& pem, std::string const& msg,
   }
 
   return rsaPrivSign(ctx, pKey, msg, sign, error);
+}
+
+namespace {
+
+// Helper function to load EC key from PEM (accepts both public and private
+// keys)
+bool loadECKeyForVerification(std::string_view publicKeyPem, EVP_PKEY*& pKey) {
+  BIO* keybio = BIO_new_mem_buf(publicKeyPem.data(),
+                                static_cast<int>(publicKeyPem.size()));
+  if (keybio == nullptr) {
+    return false;
+  }
+  auto cleanupBio = scopeGuard([&]() noexcept { BIO_free_all(keybio); });
+
+  // Try to read as a public key first
+  pKey = PEM_read_bio_PUBKEY(keybio, nullptr, nullptr, nullptr);
+  if (pKey == nullptr) {
+    // If that fails, try to read as a private key (which also contains the
+    // public key)
+    BIO_reset(keybio);
+    pKey = PEM_read_bio_PrivateKey(keybio, nullptr, nullptr, nullptr);
+    if (pKey == nullptr) {
+      return false;
+    }
+  }
+
+  // Verify that this is an EC key
+  if (EVP_PKEY_base_id(pKey) != EVP_PKEY_EC) {
+    EVP_PKEY_free(pKey);
+    pKey = nullptr;
+    return false;
+  }
+
+  return true;
+}
+
+// Helper function to convert JWT raw R||S signature to DER format
+bool convertRawToDERSignature(std::string_view rawSignature,
+                              std::string& derSignature) {
+  // JWT ES256 signatures are in raw R||S format (IEEE P1363), but OpenSSL
+  // expects DER-encoded ECDSA-Sig-Value. For P-256, R and S are 32 bytes each.
+  if (rawSignature.size() != 64) {
+    return false;
+  }
+
+  unsigned char const* sigBytes =
+      reinterpret_cast<unsigned char const*>(rawSignature.data());
+
+  // Create ECDSA_SIG structure
+  ECDSA_SIG* ecdsaSig = ECDSA_SIG_new();
+  if (ecdsaSig == nullptr) {
+    LOG_TOPIC("8f3a1", DEBUG, Logger::AUTHENTICATION)
+        << "Failed to create ECDSA_SIG structure for ES256 signature "
+           "verification";
+    return false;
+  }
+  auto cleanupSig = scopeGuard([&]() noexcept { ECDSA_SIG_free(ecdsaSig); });
+
+  // Set R and S from the raw signature
+  BIGNUM* r = BN_bin2bn(sigBytes, 32, nullptr);
+  BIGNUM* s = BN_bin2bn(sigBytes + 32, 32, nullptr);
+  if (r == nullptr || s == nullptr) {
+    LOG_TOPIC("8f3a2", DEBUG, Logger::AUTHENTICATION)
+        << "Failed to convert R and S components to BIGNUM for ES256 "
+           "signature";
+    if (r != nullptr) BN_free(r);
+    if (s != nullptr) BN_free(s);
+    return false;
+  }
+
+  // ECDSA_SIG_set0 takes ownership of r and s
+  if (ECDSA_SIG_set0(ecdsaSig, r, s) != 1) {
+    LOG_TOPIC("8f3a3", DEBUG, Logger::AUTHENTICATION)
+        << "Failed to set R and S in ECDSA_SIG structure";
+    BN_free(r);
+    BN_free(s);
+    return false;
+  }
+
+  // Convert to DER format
+  int derLen = i2d_ECDSA_SIG(ecdsaSig, nullptr);
+  if (derLen <= 0) {
+    LOG_TOPIC("8f3a4", DEBUG, Logger::AUTHENTICATION)
+        << "Failed to get DER signature length for ES256";
+    return false;
+  }
+
+  derSignature.resize(derLen);
+  unsigned char* derPtr = reinterpret_cast<unsigned char*>(derSignature.data());
+  if (i2d_ECDSA_SIG(ecdsaSig, &derPtr) != derLen) {
+    LOG_TOPIC("8f3a5", DEBUG, Logger::AUTHENTICATION)
+        << "Failed to encode ES256 signature to DER format";
+    return false;
+  }
+
+  return true;
+}
+
+// Helper function to perform the actual signature verification
+bool performES256Verification(EVP_PKEY* pKey, std::string_view message,
+                              std::string_view signature) {
+  EVP_MD_CTX* mdctx = EVP_MD_CTX_new();
+  if (mdctx == nullptr) {
+    return false;
+  }
+  auto cleanupCtx = scopeGuard([&]() noexcept { EVP_MD_CTX_free(mdctx); });
+
+  if (EVP_DigestVerifyInit(mdctx, nullptr, EVP_sha256(), nullptr, pKey) != 1) {
+    return false;
+  }
+
+  if (EVP_DigestVerifyUpdate(mdctx, message.data(), message.size()) != 1) {
+    return false;
+  }
+
+  int result = EVP_DigestVerifyFinal(
+      mdctx, reinterpret_cast<unsigned char const*>(signature.data()),
+      signature.size());
+
+  if (result == -1) {
+    LOG_TOPIC("8f3a6", TRACE, Logger::AUTHENTICATION)
+        << "Error verifying ES256 signature: "
+        << ERR_error_string(ERR_get_error(), nullptr);
+  }
+  return result == 1;
+}
+
+}  // namespace
+
+bool verifyES256Signature(std::string_view publicKeyPem,
+                          std::string_view message,
+                          std::string_view signature) {
+  EVP_PKEY* pKey = nullptr;
+  if (!loadECKeyForVerification(publicKeyPem, pKey)) {
+    return false;
+  }
+  auto cleanupKey = scopeGuard([&]() noexcept { EVP_PKEY_free(pKey); });
+
+  std::string derSignature;
+  if (signature.size() == 64) {
+    if (!convertRawToDERSignature(signature, derSignature)) {
+      return false;
+    }
+    signature = std::string_view(derSignature);
+  }
+
+  return performES256Verification(pKey, message, signature);
+}
+
+namespace {
+
+// Helper function to load EC private key from PEM format
+int loadECPrivateKey(std::string_view privateKeyPem, EVP_PKEY*& pKey,
+                     std::string& error) {
+  BIO* keybio = BIO_new_mem_buf(privateKeyPem.data(),
+                                static_cast<int>(privateKeyPem.size()));
+  if (keybio == nullptr) {
+    error.append("Failed to initialize keybio.");
+    return 1;
+  }
+  auto cleanupBio = scopeGuard([&]() noexcept { BIO_free_all(keybio); });
+
+  pKey = PEM_read_bio_PrivateKey(keybio, nullptr, nullptr, nullptr);
+  if (pKey == nullptr) {
+    error.append("Failed to read private key from PEM: ")
+        .append(ERR_error_string(ERR_get_error(), nullptr));
+    return 1;
+  }
+
+  // Verify that this is an EC key
+  if (EVP_PKEY_base_id(pKey) != EVP_PKEY_EC) {
+    EVP_PKEY_free(pKey);
+    pKey = nullptr;
+    error.append("Key is not an EC key");
+    return 1;
+  }
+
+  return 0;
+}
+
+// Helper function to create DER signature from message using EVP API
+int createDERSignature(EVP_PKEY* pKey, std::string_view message,
+                       std::string& derSignature, std::string& error) {
+  EVP_MD_CTX* mdctx = EVP_MD_CTX_new();
+  if (mdctx == nullptr) {
+    error.append("EVP_MD_CTX_new failed: ")
+        .append(ERR_error_string(ERR_get_error(), nullptr));
+    return 1;
+  }
+  auto cleanupCtx = scopeGuard([&]() noexcept { EVP_MD_CTX_free(mdctx); });
+
+  if (EVP_DigestSignInit(mdctx, nullptr, EVP_sha256(), nullptr, pKey) != 1) {
+    error.append("EVP_DigestSignInit failed: ")
+        .append(ERR_error_string(ERR_get_error(), nullptr));
+    return 1;
+  }
+
+  if (EVP_DigestSignUpdate(mdctx, message.data(), message.size()) != 1) {
+    error.append("EVP_DigestSignUpdate failed: ")
+        .append(ERR_error_string(ERR_get_error(), nullptr));
+    return 1;
+  }
+
+  size_t derSignatureLen = 0;
+  if (EVP_DigestSignFinal(mdctx, nullptr, &derSignatureLen) != 1) {
+    error.append("EVP_DigestSignFinal (length) failed: ")
+        .append(ERR_error_string(ERR_get_error(), nullptr));
+    return 1;
+  }
+
+  derSignature.resize(derSignatureLen);
+  if (EVP_DigestSignFinal(mdctx,
+                          reinterpret_cast<unsigned char*>(derSignature.data()),
+                          &derSignatureLen) != 1) {
+    error.append("EVP_DigestSignFinal failed: ")
+        .append(ERR_error_string(ERR_get_error(), nullptr));
+    return 1;
+  }
+  derSignature.resize(derSignatureLen);
+
+  return 0;
+}
+
+// Helper function to convert DER signature to raw R||S format for JWT
+int convertDERToRawSignature(std::string_view derSignature,
+                             std::string& rawSignature, std::string& error) {
+  unsigned char const* derPtr =
+      reinterpret_cast<unsigned char const*>(derSignature.data());
+  ECDSA_SIG* ecdsaSig = d2i_ECDSA_SIG(nullptr, &derPtr, derSignature.size());
+  if (ecdsaSig == nullptr) {
+    error.append("Failed to parse DER signature: ")
+        .append(ERR_error_string(ERR_get_error(), nullptr));
+    return 1;
+  }
+  auto cleanupSig = scopeGuard([&]() noexcept { ECDSA_SIG_free(ecdsaSig); });
+
+  BIGNUM const* r = nullptr;
+  BIGNUM const* s = nullptr;
+  ECDSA_SIG_get0(ecdsaSig, &r, &s);
+  if (r == nullptr || s == nullptr) {
+    error.append("Failed to get R and S from signature");
+    return 1;
+  }
+
+  // For P-256, R and S should be 32 bytes each
+  rawSignature.resize(64);
+  unsigned char* sigBytes =
+      reinterpret_cast<unsigned char*>(rawSignature.data());
+
+  // Pad R to 32 bytes
+  int rLen = BN_num_bytes(r);
+  if (rLen > 32) {
+    error.append("R component too large");
+    return 1;
+  }
+  std::memset(sigBytes, 0, 32);
+  BN_bn2bin(r, sigBytes + (32 - rLen));
+
+  // Pad S to 32 bytes
+  int sLen = BN_num_bytes(s);
+  if (sLen > 32) {
+    error.append("S component too large");
+    return 1;
+  }
+  std::memset(sigBytes + 32, 0, 32);
+  BN_bn2bin(s, sigBytes + 32 + (32 - sLen));
+
+  return 0;
+}
+
+}  // namespace
+
+int signES256(std::string_view privateKeyPem, std::string_view message,
+              std::string& signature, std::string& error) {
+  EVP_PKEY* pKey = nullptr;
+  if (int result = loadECPrivateKey(privateKeyPem, pKey, error); result != 0) {
+    return result;
+  }
+  auto cleanupKey = scopeGuard([&]() noexcept { EVP_PKEY_free(pKey); });
+
+  std::string derSignature;
+  if (int result = createDERSignature(pKey, message, derSignature, error);
+      result != 0) {
+    return result;
+  }
+
+  return convertDERToRawSignature(derSignature, signature, error);
+}
+
+int extractPublicKeyFromPrivateKey(std::string_view privateKeyPem,
+                                   std::string& publicKeyPem,
+                                   std::string& error) {
+  BIO* keybio = BIO_new_mem_buf(privateKeyPem.data(),
+                                static_cast<int>(privateKeyPem.size()));
+  if (keybio == nullptr) {
+    error.append("Failed to initialize keybio.");
+    return 1;
+  }
+  auto cleanupBio = scopeGuard([&]() noexcept { BIO_free_all(keybio); });
+
+  EVP_PKEY* pKey = PEM_read_bio_PrivateKey(keybio, nullptr, nullptr, nullptr);
+  if (pKey == nullptr) {
+    error.append("Failed to read private key from PEM: ")
+        .append(ERR_error_string(ERR_get_error(), nullptr));
+    return 1;
+  }
+  auto cleanupKey = scopeGuard([&]() noexcept { EVP_PKEY_free(pKey); });
+
+  // Verify that this is an EC key
+  if (EVP_PKEY_base_id(pKey) != EVP_PKEY_EC) {
+    error.append("Key is not an EC key");
+    return 1;
+  }
+
+  // Extract the public key and write it to a string
+  BIO* pubKeyBio = BIO_new(BIO_s_mem());
+  if (pubKeyBio == nullptr) {
+    error.append("Failed to create BIO for public key");
+    return 1;
+  }
+  auto cleanupPubKeyBio =
+      scopeGuard([&]() noexcept { BIO_free_all(pubKeyBio); });
+
+  if (PEM_write_bio_PUBKEY(pubKeyBio, pKey) != 1) {
+    error.append("Failed to write public key to BIO: ")
+        .append(ERR_error_string(ERR_get_error(), nullptr));
+    return 1;
+  }
+
+  // Read the public key PEM from the BIO
+  char* pubKeyData = nullptr;
+  long pubKeyLen = BIO_get_mem_data(pubKeyBio, &pubKeyData);
+  if (pubKeyLen <= 0 || pubKeyData == nullptr) {
+    error.append("Failed to get public key data from BIO");
+    return 1;
+  }
+
+  publicKeyPem.assign(pubKeyData, pubKeyLen);
+  return 0;
 }
 
 }  // namespace arangodb::rest::SslInterface

@@ -23,6 +23,7 @@
 
 #include "RestCursorHandler.h"
 
+#include "Activities/GuardedActivity.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
@@ -53,8 +54,8 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 RestCursorHandler::RestCursorHandler(
-    ArangodServer& server, GeneralRequest* request, GeneralResponse* response,
-    arangodb::aql::QueryRegistry* queryRegistry)
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response, arangodb::aql::QueryRegistry* queryRegistry)
     : RestVocbaseBaseHandler(server, request, response),
       _queryKilled(false),
       _queryRegistry(queryRegistry),
@@ -192,10 +193,12 @@ async<void> RestCursorHandler::registerQueryOrCursor(
   // simon: access mode can always be write on the coordinator
   AccessMode::Type mode = AccessMode::Type::WRITE;
 
-  auto query = aql::Query::create(
-      co_await createTransactionContext(mode, operationOrigin),
-      aql::QueryString(querySlice.stringView()), std::move(bindVarsBuilder),
-      aql::QueryOptions(opts));
+  auto ctx = co_await createTransactionContext(mode, operationOrigin);
+  auto guard =
+      activities::Registry::ScopedCurrentlyExecutingActivity(ctx->activity());
+  auto query =
+      aql::Query::create(ctx, aql::QueryString(querySlice.stringView()),
+                         std::move(bindVarsBuilder), aql::QueryOptions(opts));
 
   if (stream) {
     TRI_ASSERT(!ServerState::instance()->isDBServer());
@@ -290,20 +293,21 @@ async<void> RestCursorHandler::registerQueryOrCursorJson(
   // simon: access mode can always be write on the coordinator
   AccessMode::Type mode = AccessMode::Type::WRITE;
 
-  auto query = aql::Query::create(
-      co_await createTransactionContext(mode, operationOrigin),
-      aql::QueryString{},
-      /*bindParameters*/ nullptr, aql::QueryOptions(opts));
+  auto ctx = co_await createTransactionContext(mode, operationOrigin);
+  auto guard =
+      activities::Registry::ScopedCurrentlyExecutingActivity(ctx->activity());
+  auto query =
+      aql::Query::create(ctx, aql::QueryString{},
+                         /*bindParameters*/ nullptr, aql::QueryOptions(opts));
 
   VPackSlice collections = queryBuilder.slice().get("collections");
   VPackSlice variables = queryBuilder.slice().get("variables");
 
-  auto const snippets = queryBuilder.slice().get("nodes");
-  auto const querySlice = velocypack::Slice::emptyObjectSlice();
   auto const viewsSlice = velocypack::Slice::noneSlice();
   query->prepareFromVelocyPackWithoutInstantiate(
-      querySlice, collections, viewsSlice, variables, snippets);
-  co_await query->instantiatePlan(snippets);
+      velocypack::Slice::emptyObjectSlice(), collections, viewsSlice,
+      variables);
+  co_await query->instantiatePlan(queryBuilder.slice());
 
   if (stream) {
     if (count) {

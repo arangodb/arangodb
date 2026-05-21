@@ -29,8 +29,6 @@
 #include <string_view>
 
 #include "Basics/threads-posix.h"
-#include "Basics/threads.h"
-#include "Basics/DownCast.h"
 
 namespace arangodb {
 namespace application_features {
@@ -203,10 +201,9 @@ class Thread {
   std::atomic<ThreadState> _state;
 };
 
-template<typename ServerT>
 class ServerThread : public Thread {
  public:
-  using Server = ServerT;
+  using Server = application_features::ApplicationServer;
 
   ServerThread(Server& server, std::string const& name,
                bool deleteOnExit = false,

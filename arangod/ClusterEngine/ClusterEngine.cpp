@@ -29,7 +29,7 @@
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ClusterFeature.h"
-#include "Cluster/ClusterMethods.h"
+#include "Cluster/ClusterAdminOperations.h"
 #include "ClusterEngine/ClusterCollection.h"
 #include "ClusterEngine/ClusterIndexFactory.h"
 #include "ClusterEngine/ClusterRestHandlers.h"
@@ -61,9 +61,10 @@ bool ClusterEngine::Mocking = false;
 #endif
 
 // create the storage engine
-ClusterEngine::ClusterEngine(Server& server)
-    : StorageEngine(server, EngineName, name(), Server::id<ClusterEngine>(),
+ClusterEngine::ClusterEngine(application_features::ApplicationServer& server)
+    : StorageEngine(server, EngineName, name(), typeid(ClusterEngine),
                     std::make_unique<ClusterIndexFactory>(server, *this)),
+      _clusterFeature(server.getFeature<ClusterFeature>()),
       _actualEngine(nullptr) {
   setOptional(true);
 }
@@ -145,8 +146,7 @@ std::unique_ptr<PhysicalCollection> ClusterEngine::createPhysicalCollection(
 }
 
 void ClusterEngine::getStatistics(velocypack::Builder& builder) const {
-  Result res = getEngineStatsFromDBServers(
-      server().getFeature<ClusterFeature>(), builder);
+  Result res = getEngineStatsFromDBServers(_clusterFeature, builder);
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }
@@ -257,8 +257,8 @@ Result ClusterEngine::changeView(LogicalView const&, velocypack::Slice) {
 
 Result ClusterEngine::compactAll(bool changeLevel,
                                  bool compactBottomMostLevel) {
-  auto& feature = server().getFeature<ClusterFeature>();
-  return compactOnAllDBServers(feature, changeLevel, compactBottomMostLevel);
+  return compactOnAllDBServers(_clusterFeature, changeLevel,
+                               compactBottomMostLevel);
 }
 
 /// @brief Add engine-specific optimizer rules

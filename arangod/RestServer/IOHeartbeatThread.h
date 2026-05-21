@@ -26,7 +26,7 @@
 #include "Basics/Thread.h"
 #include "Metrics/Fwd.h"
 #include "Metrics/LogScale.h"
-#include "RestServer/arangod.h"
+#include "RestServer/DatabasePathFeature.h"
 
 #include <chrono>
 #include <condition_variable>
@@ -35,12 +35,14 @@
 
 namespace arangodb {
 
-class IOHeartbeatThread final : public ServerThread<ArangodServer> {
+class DatabasePathFeature;
+
+class IOHeartbeatThread final : public Thread {
  public:
   IOHeartbeatThread(IOHeartbeatThread const&) = delete;
   IOHeartbeatThread& operator=(IOHeartbeatThread const&) = delete;
 
-  explicit IOHeartbeatThread(Server&, metrics::MetricsFeature& metricsFeature,
+  explicit IOHeartbeatThread(metrics::MetricsFeature& metricsFeature,
                              DatabasePathFeature& databasePathFeature);
   ~IOHeartbeatThread();
 

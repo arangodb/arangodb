@@ -32,7 +32,8 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 RocksDBRestCollectionHandler::RocksDBRestCollectionHandler(
-    ArangodServer& server, GeneralRequest* request, GeneralResponse* response)
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestCollectionHandler(server, request, response) {}
 
 futures::Future<Result> RocksDBRestCollectionHandler::handleExtraCommandPut(

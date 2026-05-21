@@ -23,6 +23,8 @@
 
 #include "ExportFeature.h"
 
+#include <filesystem>
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/GreetingsFeature.h"
 #include "Basics/FileUtils.h"
@@ -67,8 +69,9 @@ constexpr double ttlValue = 1200.;
 
 namespace arangodb {
 
-ExportFeature::ExportFeature(Server& server, int* result)
-    : ArangoExportFeature{server, *this},
+ExportFeature::ExportFeature(application_features::ApplicationServer& server,
+                             int* result)
+    : ApplicationFeature{server, *this},
       _xgmmlLabelAttribute("label"),
       _typeExport("jsonl"),
       _customQueryMaxRuntime(0.0),
@@ -88,8 +91,8 @@ ExportFeature::ExportFeature(Server& server, int* result)
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseClient>();
 
-  _outputDirectory = FileUtils::buildFilename(
-      FileUtils::currentDirectory().result(), "export");
+  auto const cwd = std::filesystem::current_path();
+  _outputDirectory = FileUtils::buildFilename(cwd.string(), "export");
 }
 
 ExportFeature::~ExportFeature() = default;
@@ -271,11 +274,10 @@ void ExportFeature::validateOptions(
 void ExportFeature::prepare() {
   logLGPLNotice();
   EncryptionFeature* encryption{};
-  if constexpr (Server::contains<EncryptionFeature>()) {
-    if (server().hasFeature<EncryptionFeature>()) {
-      encryption = &server().getFeature<EncryptionFeature>();
-    }
-  }
+#ifdef USE_ENTERPRISE
+  TRI_ASSERT(server().hasFeature<EncryptionFeature>());
+  encryption = &server().getFeature<EncryptionFeature>();
+#endif
 
   _directory = std::make_unique<ManagedDirectory>(encryption, _outputDirectory,
                                                   !_overwrite, true, _useGzip);
@@ -741,8 +743,8 @@ void ExportFeature::graphExport(SimpleHttpClient* httpClient) {
   writeToFile(*fd, xmlHeader);
   writeToFile(*fd, _graphName);
 
-  xmlHeader = R"(" 
-xmlns="http://www.cs.rpi.edu/XGMML" 
+  xmlHeader = R"("
+xmlns="http://www.cs.rpi.edu/XGMML"
 directed="1">
 )";
   writeToFile(*fd, xmlHeader);

@@ -25,14 +25,9 @@
 
 #include "Agency/Agent.h"
 #include "Agency/Node.h"
-#include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/ReadLocker.h"
-#include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Basics/WriteLocker.h"
 #include "Basics/debugging.h"
 #include "Logger/LogMacros.h"
-#include "RestServer/arangod.h"
 
 #include <velocypack/Buffer.h>
 #include <velocypack/Compare.h>
@@ -40,15 +35,24 @@
 #include <velocypack/Slice.h>
 
 #include <ctime>
-#include <iomanip>
 #include <string_view>
 
-using namespace arangodb::consensus;
 using namespace arangodb::basics;
 using namespace arangodb::velocypack;
 
+namespace arangodb::consensus {
 /// Ctor with name
 Store::Store(std::string const& name) : _node(Node::create()) {}
+
+Store::Store(Store const& other) {
+  std::lock_guard otherLock{other._storeLock};
+  _node = other._node;
+}
+
+Store::Store(Store&& other) {
+  std::lock_guard otherLock{other._storeLock};
+  _node = std::move(other._node);
+}
 
 /// Copy assignment operator
 Store& Store::operator=(Store const& rhs) {
@@ -761,3 +765,5 @@ void Store::registerPrefixTrigger(std::string const& prefix,
 std::vector<std::string> Store::split(std::string_view str) {
   return Node::split(str);
 }
+
+}  // namespace arangodb::consensus

@@ -23,8 +23,8 @@
 
 #include "IOHeartbeatThread.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/ErrorCode.h"
+#include <filesystem>
+
 #include "Basics/FileUtils.h"
 #include "Logger/LogMacros.h"
 #include "Metrics/CounterBuilder.h"
@@ -49,10 +49,9 @@ DECLARE_COUNTER(arangodb_ioheartbeat_delays_total,
 /// The purpose of this thread is to try to perform a simple IO write
 /// operation on the database volume regularly. We need visibility in
 /// production if IO is slow or not possible at all.
-IOHeartbeatThread::IOHeartbeatThread(Server& server,
-                                     metrics::MetricsFeature& metricsFeature,
+IOHeartbeatThread::IOHeartbeatThread(metrics::MetricsFeature& metricsFeature,
                                      DatabasePathFeature& databasePathFeature)
-    : ServerThread<ArangodServer>(server, "IOHeartbeat"),
+    : Thread("IOHeartbeat"),
       _databasePathFeature(databasePathFeature),
       _exeTimeHistogram(metricsFeature.add(arangodb_ioheartbeat_duration{})),
       _failures(metricsFeature.add(arangodb_ioheartbeat_failures_total{})),
@@ -68,7 +67,8 @@ void IOHeartbeatThread::run() {
   LOG_TOPIC("66665", DEBUG, Logger::ENGINES) << "IOHeartbeatThread: running...";
   // File might be left if previous run has crashed.
   // That will trigger an error in spit.
-  std::ignore = basics::FileUtils::remove(testFilePath);
+  // std::error_code removeStartupEc;
+  std::filesystem::remove(testFilePath);
   while (true) {
     try {  // protect thread against any exceptions
       if (isStopping()) {
@@ -140,11 +140,13 @@ void IOHeartbeatThread::run() {
 
         // And remove it again:
         start = std::chrono::steady_clock::now();
-        ErrorCode err = basics::FileUtils::remove(testFilePath);
-        if (err != TRI_ERROR_NO_ERROR) {
+        std::error_code removeEc;
+        std::filesystem::remove(testFilePath, removeEc);
+        if (removeEc) {
           ++_failures;
           LOG_TOPIC("66670", INFO, Logger::ENGINES)
-              << "IOHeartbeat: error when removing test file: " << err;
+              << "IOHeartbeat: error when removing test file: "
+              << removeEc.message();
           trouble = true;
         }
         finish = std::chrono::steady_clock::now();

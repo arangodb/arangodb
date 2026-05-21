@@ -28,8 +28,6 @@
 #include "Basics/ResultError.h"
 #include "Basics/ResultError.tpp"
 
-#include <fmt/core.h>
-
 namespace arangodb {
 
 template<typename... Args>

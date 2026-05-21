@@ -24,7 +24,6 @@
 
 #pragma once
 
-#include "Dump/arangodump.h"
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/BoundedChannel.h"
 #include "Basics/Result.h"
@@ -39,15 +38,19 @@
 #include <vector>
 
 namespace arangodb {
+
+class ClientFeature;
+
 namespace httpclient {
 class SimpleHttpClient;
 }
 
-class DumpFeature final : public ArangoDumpFeature {
+class DumpFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Dump"; }
 
-  DumpFeature(Server& server, int& exitCode);
+  DumpFeature(application_features::ApplicationServer& server,
+              ClientFeature& client, int& exitCode);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
   void validateOptions(
@@ -215,6 +218,7 @@ class DumpFeature final : public ArangoDumpFeature {
   ClientTaskQueue<DumpJob>& taskQueue();
 
  private:
+  ClientFeature& _client;
   ClientManager _clientManager;
   ClientTaskQueue<DumpJob> _clientTaskQueue;
   std::unique_ptr<ManagedDirectory> _directory;

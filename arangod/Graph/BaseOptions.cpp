@@ -27,6 +27,7 @@
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
 #include "Aql/Condition.h"
+#include "Aql/ConditionCoverage.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Aql/InputAqlItemRow.h"
@@ -464,9 +465,9 @@ BaseOptions::LookupInfo BaseOptions::createLookupInfo(
     }
   }
 
-  ::arangodb::containers::HashSet<size_t> toRemove;
-  aql::Condition::collectOverlappingMembers(
-      plan, _tmpVar, condition, info.indexCondition, toRemove, nullptr, false);
+  auto toRemove = aql::collectOverlappingMembersForTraversal(
+      plan, _tmpVar, condition, info.indexCondition, /*isPathCondition*/ false);
+
   size_t n = condition->numMembers();
   if (n == toRemove.size()) {
     // FastPath, all covered.

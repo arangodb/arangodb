@@ -24,24 +24,102 @@
 #include "Metrics/ClusterMetricsFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/debugging.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
-#include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
-#include "Containers/FlatHashSet.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
 #include "Logger/LoggerFeature.h"
+#include "Metrics/ClusterMetricsOptionsProvider.h"
 #include "Metrics/Metric.h"
 #include "Metrics/MetricsFeature.h"
+#include "Metrics/Types.h"
+#include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 
 #include <velocypack/Iterator.h>
 
+#include <absl/strings/str_cat.h>
+
 namespace arangodb::metrics {
+namespace {
+
+futures::Future<RawDBServers> metricsOnLeader(NetworkFeature& network,
+                                              ClusterFeature& cluster) {
+  LOG_TOPIC("badf0", TRACE, Logger::CLUSTER) << "Start collect metrics";
+  auto* pool = network.pool();
+  auto serverIds = cluster.clusterInfo().getCurrentDBServers();
+
+  std::vector<futures::Future<network::Response>> futures;
+  futures.reserve(serverIds.size());
+  for (auto const& id : serverIds) {
+    network::Headers headers;
+    headers.emplace(StaticStrings::Accept,
+                    StaticStrings::MimeTypeJsonNoEncoding);
+    futures.push_back(network::sendRequest(
+        pool, "server:" + id, fuerte::RestVerb::Get, "/_admin/metrics", {},
+        network::RequestOptions{}.param("type", kDBJson), std::move(headers)));
+  }
+  return futures::collectAll(futures).then(
+      [](futures::Try<std::vector<futures::Try<network::Response>>>&&
+             responses) {
+        TRI_ASSERT(responses.hasValue());  // collectAll always return value
+        RawDBServers metrics;
+        metrics.reserve(responses->size());
+        for (auto& response : *responses) {
+          if (!response.hasValue() || !response->hasResponse() ||
+              response->fail()) {
+            continue;  // Shit happens, just ignore it
+          }
+          auto payload = response->response().stealPayload();
+          if (!payload) {
+            TRI_ASSERT(false);
+            continue;
+          }
+          velocypack::Slice slice{payload->data()};
+          if (!slice.isArray()) {
+            continue;  // some like 503
+          }
+          if (auto const size = slice.length(); size % 3 != 0) {
+            TRI_ASSERT(false);
+            continue;
+          }
+          metrics.push_back(std::move(payload));
+        }
+        return metrics;
+      });
+}
+
+futures::Future<LeaderResponse> metricsFromLeader(
+    NetworkFeature& network, ClusterFeature& cluster, std::string_view leader,
+    std::string serverId, uint64_t rebootId, uint64_t version) {
+  LOG_TOPIC("badf1", TRACE, Logger::CLUSTER) << "Start receive metrics";
+  auto* pool = network.pool();
+  network::Headers headers;
+  headers.emplace(StaticStrings::Accept, StaticStrings::MimeTypeJsonNoEncoding);
+  auto options = network::RequestOptions{}
+                     .param("type", kCDJson)
+                     // cppcheck-suppress accessMoved
+                     .param("MetricsServerId", std::move(serverId))
+                     .param("MetricsRebootId", std::to_string(rebootId))
+                     .param("MetricsVersion", std::to_string(version));
+  auto future = network::sendRequest(
+      pool, absl::StrCat("server:", leader), fuerte::RestVerb::Get,
+      "/_admin/metrics", {}, std::move(options), std::move(headers));
+  return std::move(future).then([](futures::Try<network::Response>&& response) {
+    if (!response.hasValue() || !response->hasResponse() || response->fail()) {
+      return LeaderResponse{};
+    }
+    return response->response().stealPayload();
+  });
+}
+
+}  // namespace
 
 static std::shared_ptr<ClusterMetricsFeature::Data> createEmptyData() {
   auto data = std::make_shared<ClusterMetricsFeature::Data>();
@@ -57,8 +135,9 @@ static std::shared_ptr<ClusterMetricsFeature::Data> createEmptyData() {
   return data;
 }
 
-ClusterMetricsFeature::ClusterMetricsFeature(Server& server)
-    : ArangodFeature{server, *this}, _data{createEmptyData()} {
+ClusterMetricsFeature::ClusterMetricsFeature(
+    application_features::ApplicationServer& server)
+    : ApplicationFeature{server, *this}, _data{createEmptyData()} {
   setOptional();
   startsAfter<ClusterFeature>();
   startsAfter<NetworkFeature>();
@@ -67,17 +146,15 @@ ClusterMetricsFeature::ClusterMetricsFeature(Server& server)
 
 void ClusterMetricsFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
-  options
-      ->addOption("--server.cluster-metrics-timeout",
-                  "Cluster metrics polling timeout (in seconds).",
-                  new options::UInt32Parameter(&_timeout),
-                  arangodb::options::makeDefaultFlags(
-                      arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(3'10'00);
+  ClusterMetricsOptionsProvider provider;
+  provider.declareOptions(options, _options);
 }
 
 void ClusterMetricsFeature::validateOptions(
-    std::shared_ptr<options::ProgramOptions> /*options*/) {
+    std::shared_ptr<options::ProgramOptions> options) {
+  ClusterMetricsOptionsProvider provider;
+  provider.validateOptions(options, _options);
+
   if (!ServerState::instance()->isCoordinator()) {
     _count.store(kStop);
   }
@@ -89,7 +166,7 @@ void ClusterMetricsFeature::start() {
   }
   auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
   ci.initMetricsState();
-  if (_timeout != 0) {
+  if (_options.timeout != 0) {
     rescheduleTimer(0);
   }
 }
@@ -140,7 +217,7 @@ std::optional<std::string> ClusterMetricsFeature::update(
 }
 
 void ClusterMetricsFeature::rescheduleTimer(uint32_t timeoutMs) noexcept {
-  TRI_ASSERT(_timeout > 0);
+  TRI_ASSERT(_options.timeout > 0);
   if (server().isStopping()) {
     return;
   }
@@ -152,7 +229,7 @@ void ClusterMetricsFeature::rescheduleTimer(uint32_t timeoutMs) noexcept {
           return;
         }
         update(CollectMode::TriggerGlobal);
-        rescheduleTimer(_timeout * 1000);
+        rescheduleTimer(_options.timeout * 1000);
       });
   std::atomic_store_explicit(&_timer, std::move(h), std::memory_order_relaxed);
 }
@@ -179,7 +256,7 @@ void ClusterMetricsFeature::rescheduleUpdate(uint32_t timeoutMs) noexcept {
         try {
           update();
         } catch (...) {
-          repeatUpdate(std::max(_timeout, 1U) * 1000);
+          repeatUpdate(std::max(_options.timeout, 1U) * 1000);
         }
       });
   std::atomic_store_explicit(&_update, std::move(h), std::memory_order_relaxed);
@@ -202,7 +279,7 @@ void ClusterMetricsFeature::update() {
           if (wasStop()) {
             return;
           }
-          uint32_t timeoutMs = std::max(_timeout, 1U) * 1000;
+          uint32_t timeoutMs = std::max(_options.timeout, 1U) * 1000;
           try {
             if (writeData(version, std::move(raw))) {
               timeoutMs = 0;  // success

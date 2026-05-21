@@ -149,6 +149,11 @@ class FollowerInfo {
   /// @brief clear follower list, no changes in agency necesary
   void clear();
 
+  /// @brief Clear the write concern metric. This is called when the collection
+  /// is dropped to ensure the metric is decremented before the collection
+  /// object is destroyed.
+  void clearWriteConcernMetric();
+
   /// @brief check whether the given server is a follower
   bool contains(ServerID const& s) const;
 
@@ -168,6 +173,11 @@ class FollowerInfo {
   bool getLeaderTouched() const;
 
   WriteState allowedToWrite();
+
+  /// @brief Invalidate the _canWrite flag. This should be called when
+  ///        writeConcern or replicationFactor is updated externally,
+  ///        to ensure the write condition is re-evaluated.
+  void invalidateCanWrite();
 
   /// @brief Inject the information about followers into the builder.
   ///        Builder needs to be an open object and is not allowed to contain

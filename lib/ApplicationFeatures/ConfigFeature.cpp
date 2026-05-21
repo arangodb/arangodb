@@ -23,6 +23,8 @@
 
 #include "ApplicationFeatures/ConfigFeature.h"
 
+#include <filesystem>
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/VersionFeature.h"
 #include "Basics/ArangoGlobalContext.h"
@@ -56,25 +58,25 @@ namespace arangodb {
 void ConfigFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--configuration,-c",
                      "The configuration file or \"none\".",
-                     new StringParameter(&_file));
+                     new StringParameter(&_options.file));
 
   // add --config as an alias for --configuration. both point to the same
   // variable!
   options->addOption(
       "--config", "The configuration file or \"none\".",
-      new StringParameter(&_file),
+      new StringParameter(&_options.file),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options->addOption(
       "--define,-D",
       "Define a value for a `@key@` entry in the configuration file using the "
       "syntax `\"key=value\"`.",
-      new VectorParameter<StringParameter>(&_defines),
+      new VectorParameter<StringParameter>(&_options.defines),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options->addOption(
       "--check-configuration", "Check the configuration and exit.",
-      new BooleanParameter(&_checkConfiguration),
+      new BooleanParameter(&_options.checkConfiguration),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon,
                                           arangodb::options::Flags::Command));
 
@@ -82,19 +84,19 @@ void ConfigFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "--honor-nsswitch",
       "Allow hostname lookup configuration via /etc/nsswitch.conf if on "
       "Linux/glibc.",
-      new BooleanParameter(&_honorNsswitch),
+      new BooleanParameter(&_options.honorNsswitch),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 }
 
 void ConfigFeature::loadOptions(std::shared_ptr<ProgramOptions> options,
                                 char const* binaryPath) {
-  for (auto const& def : _defines) {
+  for (auto const& def : _options.defines) {
     arangodb::options::DefineEnvironment(def);
   }
 
-  loadConfigFile(options, _progname, binaryPath);
+  loadConfigFile(options, _options.progname, binaryPath);
 
-  if (_checkConfiguration) {
+  if (_options.checkConfiguration) {
     exit(EXIT_SUCCESS);
   }
 }
@@ -102,7 +104,7 @@ void ConfigFeature::loadOptions(std::shared_ptr<ProgramOptions> options,
 void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
                                    std::string const& progname,
                                    char const* binaryPath) {
-  if (StringUtils::tolower(_file) == "none") {
+  if (StringUtils::tolower(_options.file) == "none") {
     LOG_TOPIC("6cb22", DEBUG, Logger::CONFIG) << "using no config file at all";
     return;
   }
@@ -114,18 +116,29 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
   }
 
   // always prefer an explicitly given config file
-  if (!_file.empty()) {
-    if (!FileUtils::exists(_file)) {
-      LOG_TOPIC("f21f9", FATAL, Logger::CONFIG)
-          << "cannot read config file '" << _file << "'";
-      FATAL_ERROR_EXIT_CODE(TRI_EXIT_CONFIG_NOT_FOUND);
+  if (!_options.file.empty()) {
+    std::error_code existsEc;
+    if (!std::filesystem::exists(_options.file, existsEc)) {
+      if (existsEc) {
+        // An actual error occurred (permissions, I/O, invalid path, etc.
+        LOG_TOPIC("f21fa", FATAL, Logger::CONFIG)
+            << "error checking config file '" << _options.file
+            << "': " << existsEc.message();
+        FATAL_ERROR_EXIT_CODE(TRI_EXIT_CONFIG_NOT_FOUND);
+      } else {
+        // File simply does not exist
+        LOG_TOPIC("f21f9", FATAL, Logger::CONFIG)
+            << "cannot read config file '" << _options.file << "'";
+        FATAL_ERROR_EXIT_CODE(TRI_EXIT_CONFIG_NOT_FOUND);
+      }
     }
 
-    auto local = _file + ".local";
+    auto local = _options.file + ".local";
 
     IniFileParser parser(options.get());
 
-    if (FileUtils::exists(local) && FileUtils::isRegularFile(local)) {
+    std::error_code pathEc;
+    if (std::filesystem::is_regular_file(local, pathEc)) {
       LOG_TOPIC("9b20a", DEBUG, Logger::CONFIG)
           << "loading override '" << local << "'";
 
@@ -135,9 +148,9 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
     }
 
     LOG_TOPIC("637c7", DEBUG, Logger::CONFIG)
-        << "using user supplied config file '" << _file << "'";
+        << "using user supplied config file '" << _options.file << "'";
 
-    if (!parser.parse(_file, true)) {
+    if (!parser.parse(_options.file, true)) {
       FATAL_ERROR_EXIT_CODE(options->processingResult().exitCodeOrFailure());
     }
 
@@ -166,7 +179,7 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
   std::vector<std::string> locations;
   locations.reserve(4);
 
-  std::string current = FileUtils::currentDirectory().result();
+  auto const current = std::filesystem::current_path().string();
   // ./etc/relative/ is always first choice, if it exists
   locations.emplace_back(FileUtils::buildFilename(current, "etc", "relative"));
 
@@ -196,22 +209,42 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
     LOG_TOPIC("393e7", TRACE, Logger::CONFIG)
         << "checking config file '" << name << "'";
 
-    if (FileUtils::exists(name)) {
+    std::error_code existsEc;
+    if (std::filesystem::exists(name, existsEc)) {
       LOG_TOPIC("e6bd8", DEBUG, Logger::CONFIG)
           << "found config file '" << name << "'";
       filename = name;
       break;
+    } else if (existsEc) {
+      // An error occurred while checking the file
+      LOG_TOPIC("e6bd9", ERR, Logger::CONFIG)
+          << "error checking config file '" << name
+          << "': " << existsEc.message();
+    } else {
+      // File simply does not exist
+      LOG_TOPIC("e6bda", DEBUG, Logger::CONFIG)
+          << "config file '" << name << "' does not exist";
     }
 
     if (checkArangoImp) {
       name = FileUtils::buildFilename(location, "arangoimp.conf");
       LOG_TOPIC("b629e", TRACE, Logger::CONFIG)
           << "checking config file '" << name << "'";
-      if (FileUtils::exists(name)) {
+      std::error_code existsEc;
+      if (std::filesystem::exists(name, existsEc)) {
         LOG_TOPIC("fc54e", DEBUG, Logger::CONFIG)
             << "found config file '" << name << "'";
         filename = name;
         break;
+      } else if (existsEc) {
+        // An error occurred while checking the file
+        LOG_TOPIC("fc54f", ERR, Logger::CONFIG)
+            << "error checking config file '" << name
+            << "': " << existsEc.message();
+      } else {
+        // File simply does not exist
+        LOG_TOPIC("fc550", DEBUG, Logger::CONFIG)
+            << "config file '" << name << "' does not exist";
       }
     }
   }
@@ -226,7 +259,8 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
   LOG_TOPIC("f6420", TRACE, Logger::CONFIG)
       << "checking override '" << local << "'";
 
-  if (FileUtils::exists(local) && FileUtils::isRegularFile(local)) {
+  std::error_code pathEc;
+  if (std::filesystem::is_regular_file(local, pathEc)) {
     LOG_TOPIC("3d2d0", DEBUG, Logger::CONFIG)
         << "loading override '" << local << "'";
 
@@ -285,7 +319,7 @@ void ConfigFeature::prepare() {
   // configuration. There is an opt-out for this in form of the configuration
   // option --honor-nsswitch. Use this only if you are running on a system
   // without glibc installed, or with glibc version 2.39.0.
-  if (!_honorNsswitch) {
+  if (!_options.honorNsswitch) {
     __nss_configure_lookup("hosts", "files dns");
     __nss_configure_lookup("passwd", "files");
     __nss_configure_lookup("group", "files");

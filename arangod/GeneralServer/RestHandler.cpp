@@ -23,6 +23,7 @@
 
 #include "RestHandler.h"
 
+#include "Activities/GenericActivity.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Auth/TokenCache.h"
 #include "Basics/dtrace-wrapper.h"
@@ -33,6 +34,7 @@
 #include "Futures/Utilities.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServerFeature.h"
+#include "GeneralServer/RestHandlerActivity.h"
 #include "Logger/LogMacros.h"
 #include "Logger/LogStructuredParamsAllowList.h"
 #include "Network/Methods.h"
@@ -45,19 +47,21 @@
 #include "Utils/ExecContext.h"
 #include "VocBase/Identifiers/TransactionId.h"
 #include "VocBase/ticks.h"
+#include "Activities/RegistryGlobalVariable.h"
 
 #include <Agency/RestAgencyHandler.h>
 #include <Async/async.h>
 #include <absl/strings/str_cat.h>
-#include <fuerte/jwt.h>
+#include "Ssl/jwt.h"
 #include <velocypack/Exception.h>
+#include <unordered_map>
 
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestHandler::RestHandler(ArangodServer& server, GeneralRequest* request,
-                         GeneralResponse* response)
+RestHandler::RestHandler(application_features::ApplicationServer& server,
+                         GeneralRequest* request, GeneralResponse* response)
     : _request(request),
       _response(response),
       _server(server),
@@ -207,6 +211,17 @@ void RestHandler::trackTaskEnd() noexcept {
   }
 }
 
+void RestHandler::startActivity() {
+  _activity = activities::make<arangodb::rest::RestHandlerActivity>(
+      RestHandlerActivityData{
+          .handler = name(),           //
+          .url = _request->fullUrl(),  //
+          .method = std::string{GeneralRequest::translateMethod(
+              _request->requestType())},  //
+          .headers = request()->headers(),
+          .connectionInfo = request()->connectionInfo()});
+}
+
 RequestStatistics::Item&& RestHandler::stealRequestStatistics() {
   return std::move(_statistics);
 }
@@ -279,7 +294,7 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
       if (!username.empty()) {
         headers.emplace(
             StaticStrings::Authorization,
-            "bearer " + fuerte::jwt::generateUserToken(
+            "bearer " + arangodb::rest::SslInterface::jwt::generateUserToken(
                             auth->tokenCache().jwtSecret(), username));
       }
     }
@@ -309,7 +324,8 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
   nf.trackForwardedRequest();
 
   // Should the coordinator be gone by now, we'll respond with 404.
-  // There is no point forwarding requests. This affects transactions, cursors,
+  // There is no point forwarding requests. This affects transactions,
+  // cursors,
   // ...
   if (server()
           .getFeature<ClusterFeature>()
@@ -347,8 +363,8 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
     auto const& resultHeaders = response.response().messageHeader().meta();
     for (auto const& it : resultHeaders) {
       if (it.first == "http/1.1") {
-        // never forward this header, as the HTTP response code was already set
-        // via "resetResponse" above
+        // never forward this header, as the HTTP response code was already
+        // set via "resetResponse" above
         continue;
       }
       _response->setHeader(it.first, it.second);
@@ -700,9 +716,9 @@ void RestHandler::runHandler(
   _sendResponseCallback = std::move(responseCallback);
 
   runHandlerStateMachine().
-      // Swallow all exceptions. It would be desirable to guarantee no unhandled
-      // exceptions reach this point; so let's at least die in maintainer mode
-      // for now.
+      // Swallow all exceptions. It would be desirable to guarantee no
+      // unhandled exceptions reach this point; so let's at least die in
+      // maintainer mode for now.
       thenFinal([self = shared_from_this()](auto&& tryResult) noexcept {
         try {
           std::move(tryResult).throwIfFailed();

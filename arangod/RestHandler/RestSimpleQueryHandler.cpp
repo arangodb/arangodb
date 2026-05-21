@@ -38,8 +38,8 @@ using namespace arangodb;
 using namespace arangodb::rest;
 
 RestSimpleQueryHandler::RestSimpleQueryHandler(
-    ArangodServer& server, GeneralRequest* request, GeneralResponse* response,
-    arangodb::aql::QueryRegistry* queryRegistry)
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response, arangodb::aql::QueryRegistry* queryRegistry)
     : RestCursorHandler(server, request, response, queryRegistry) {}
 
 auto RestSimpleQueryHandler::executeAsync() -> futures::Future<futures::Unit> {

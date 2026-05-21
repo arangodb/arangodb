@@ -28,7 +28,10 @@
 // just for debugging: #include <iostream>
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/ConfigFeature.h"
+#include "ApplicationFeatures/FileSystemFeature.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
+#include "Logger/LoggerFeature.h"
 #include "Basics/Result.h"
 #include "Basics/ScopeGuard.h"
 #include "Cluster/Action.h"

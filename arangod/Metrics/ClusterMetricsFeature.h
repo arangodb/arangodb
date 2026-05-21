@@ -23,27 +23,19 @@
 
 #pragma once
 
-#include <chrono>
 #include <memory>
 #include <shared_mutex>
 #include <string>
 #include <variant>
-#include <vector>
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "Basics/DownCast.h"
 #include "Containers/FlatHashMap.h"
-#include "Metrics/Batch.h"
-#include "Metrics/Builder.h"
+#include "Metrics/ClusterMetricsOptions.h"
 #include "Metrics/CollectMode.h"
-#include "Metrics/IBatch.h"
-#include "Metrics/Metric.h"
 #include "Metrics/MetricKey.h"
 #include "Metrics/Parse.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "RestServer/arangod.h"
 #include "Scheduler/Scheduler.h"
-#include "Statistics/ServerStatistics.h"
 
 namespace arangodb::metrics {
 
@@ -54,7 +46,8 @@ namespace arangodb::metrics {
 ///
 /// See IResearchLinkCoordinator as an example
 ////////////////////////////////////////////////////////////////////////////////
-class ClusterMetricsFeature final : public ArangodFeature {
+class ClusterMetricsFeature final
+    : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "ClusterMetrics"; }
 
@@ -90,7 +83,8 @@ class ClusterMetricsFeature final : public ArangodFeature {
     LeaderResponse packed;
     Metrics metrics;
   };
-  explicit ClusterMetricsFeature(Server& server);
+  explicit ClusterMetricsFeature(
+      application_features::ApplicationServer& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions> options) final;
   void validateOptions(std::shared_ptr<options::ProgramOptions> options) final;
@@ -171,11 +165,8 @@ class ClusterMetricsFeature final : public ArangodFeature {
   std::shared_ptr<Data> _data;
   Scheduler::WorkHandle _update;
   Scheduler::WorkHandle _timer;
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  uint32_t _timeout = 10;
-#else
-  uint32_t _timeout = 0;
-#endif
+
+  ClusterMetricsOptions _options;
 
   static constexpr uint32_t kStop = 1;
   static constexpr uint32_t kUpdate = 2;

@@ -88,7 +88,7 @@ arangodb::aql::QueryResult executeQuery(
 }
 
 TEST_F(IndexNodeTest, objectQuery) {
-  TRI_vocbase_t vocbase(createInfo(server.server()));
+  TRI_vocbase_t vocbase(createInfo(server.server()), server.engine());
   // create a collection
   auto collectionJson = arangodb::velocypack::Parser::fromJson(
       "{\"name\": \"testCollection\", \"id\": 42}");
@@ -169,7 +169,7 @@ TEST_F(IndexNodeTest, objectQuery) {
 }
 
 TEST_F(IndexNodeTest, expansionQuery) {
-  TRI_vocbase_t vocbase(createInfo(server.server()));
+  TRI_vocbase_t vocbase(createInfo(server.server()), server.engine());
   // create a collection
   auto collectionJson = arangodb::velocypack::Parser::fromJson(
       "{\"name\": \"testCollection\", \"id\": 42}");
@@ -224,7 +224,7 @@ TEST_F(IndexNodeTest, expansionQuery) {
 }
 
 TEST_F(IndexNodeTest, expansionIndexAndNotExpansionDocumentQuery) {
-  TRI_vocbase_t vocbase(createInfo(server.server()));
+  TRI_vocbase_t vocbase(createInfo(server.server()), server.engine());
   // create a collection
   auto collectionJson = arangodb::velocypack::Parser::fromJson(
       "{\"name\": \"testCollection\", \"id\": 42}");
@@ -268,7 +268,7 @@ TEST_F(IndexNodeTest, expansionIndexAndNotExpansionDocumentQuery) {
 }
 
 TEST_F(IndexNodeTest, lastExpansionQuery) {
-  TRI_vocbase_t vocbase(createInfo(server.server()));
+  TRI_vocbase_t vocbase(createInfo(server.server()), server.engine());
   // create a collection
   auto collectionJson = arangodb::velocypack::Parser::fromJson(
       "{\"name\": \"testCollection\", \"id\": 42}");
@@ -329,7 +329,7 @@ TEST_F(IndexNodeTest, lastExpansionQuery) {
 }
 
 TEST_F(IndexNodeTest, constructIndexNode) {
-  TRI_vocbase_t vocbase(createInfo(server.server()));
+  TRI_vocbase_t vocbase(createInfo(server.server()), server.engine());
   // create a collection
   auto collectionJson = arangodb::velocypack::Parser::fromJson(
       "{\"name\": \"testCollection\", \"id\": 42}");
@@ -590,7 +590,7 @@ TEST_F(IndexNodeTest, constructIndexNode) {
 }
 
 TEST_F(IndexNodeTest, invalidLateMaterializedJSON) {
-  TRI_vocbase_t vocbase(createInfo(server.server()));
+  TRI_vocbase_t vocbase(createInfo(server.server()), server.engine());
   // create a collection
   auto collectionJson = arangodb::velocypack::Parser::fromJson(
       "{\"name\": \"testCollection\", \"id\": 42}");

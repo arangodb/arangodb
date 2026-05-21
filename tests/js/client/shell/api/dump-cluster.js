@@ -28,6 +28,7 @@
 
 const internal = require('internal');
 const jsunity = require("jsunity");
+const dump = require('@arangodb/arango-dump');
 
 const database = "DumpTestDatabase";
 const collectionNameA = "A";
@@ -63,23 +64,6 @@ function getShardsByServer(col) {
   return servers;
 }
 
-function apiCreateContext(server, options) {
-  return arango.POST_RAW(`/_api/dump/start?dbserver=${server}`, options);
-}
-
-function apiDropContext(server, ctx) {
-  return arango.DELETE_RAW(`/_api/dump/${ctx}?dbserver=${server}`, {});
-}
-
-function apiNext(server, ctx, batchId, lastBatch) {
-  let url = `/_api/dump/next/${ctx}?dbserver=${server}&batchId=${batchId}`;
-  if (lastBatch) {
-    url += `&lastBatch=${lastBatch}`;
-  }
-  return arango.POST_RAW(url, {});
-}
-
-
 function DumpAPI() {
 
   let collection;
@@ -88,7 +72,7 @@ function DumpAPI() {
   let contexts = [];
   
   function createContext(server, options) {
-    const response = apiCreateContext(server, options);
+    const response = dump.start(options, server);
     assertEqual(response.code, 201, JSON.stringify(response));
     assertNotUndefined(response.headers["x-arango-dump-id"]);
     const id = response.headers["x-arango-dump-id"];
@@ -98,7 +82,7 @@ function DumpAPI() {
       id,
       read: function* () {
         for (let batchId = 0; ; batchId++) {
-          const response = apiNext(server, id, batchId, batchId > 0 ? batchId - 1 : undefined);
+          const response = dump.next(id, batchId, batchId > 0 ? batchId-1: undefined, server);
           if (response.code === 204) {
             break;
           }
@@ -120,7 +104,7 @@ function DumpAPI() {
       },
       drop: function () {
         contexts = contexts.filter(ctx => ctx.server !== server || ctx.id !== id);
-        apiDropContext(server, id);
+        dump.delete(id, server);
       },
     };
   }
@@ -137,7 +121,7 @@ function DumpAPI() {
 
     tearDown: function() {
       for (const ctx of contexts) {
-        apiDropContext(ctx.server, ctx.id);
+        dump.delete(ctx.id, ctx.server);
       }
     },
 
@@ -149,15 +133,15 @@ function DumpAPI() {
     testCreateFinishContext: function () {
       const servers = getShardsByServer(collection);
       for (const [server, shards] of Object.entries(servers)) {
-        let response = apiCreateContext(server, {batchSize: 1024, parallelism: 5, prefetchCount: 5, shards});
+        let response = dump.start({batchSize: 1024, parallelism: 5, prefetchCount: 5, shards}, server);
 
         assertEqual(response.code, 201);
         assertNotUndefined(response.headers["x-arango-dump-id"]);
         const contextId = response.headers["x-arango-dump-id"];
 
-        response = apiDropContext(server, contextId);
+        response = dump.delete(contextId, server);
         assertEqual(response.code, 200);
-        response = apiDropContext(server, contextId);
+        response = dump.delete(contextId, server);
         assertEqual(response.code, 404);
       }
     },
@@ -185,10 +169,10 @@ function DumpAPI() {
       const server = Object.keys(servers)[0];
       const ctx = createContext(server, {shards: servers[server]});
 
-      let response1 = apiNext(server, ctx.id, 0);
+      let response1 = dump.next(ctx.id, 0, undefined, server);
       assertEqual(response1.code, 200);
 
-      let response2 = apiNext(server, ctx.id, 0);
+      let response2 = dump.next(ctx.id, 0, undefined, server);
       assertEqual(response2.code, 200);
       // it should be the same batch
       assertEqual(response1.body, response2.body);
@@ -199,7 +183,7 @@ function DumpAPI() {
       const servers = getShardsByServer(collection);
       const server = Object.keys(servers)[0];
 
-      let response1 = apiNext(server, "DOES-NOT-EXIST", 0);
+      let response1 = dump.next("DOES-NOT-EXIST", 0, undefined, server);
       assertEqual(response1.code, 404);
     },
 
@@ -301,7 +285,7 @@ function DumpAPI() {
       const server = Object.keys(servers)[0];
       const ctx = createContext(server, {shards: servers[server], ttl: 1});
       internal.sleep(10);
-      let response = apiNext(server, ctx.id, 0);
+      let response = dump.next(ctx.id, 0, undefined, server);
       assertEqual(response.code, 404);
     },
   };

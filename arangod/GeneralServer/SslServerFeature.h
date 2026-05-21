@@ -30,21 +30,21 @@
 #include <velocypack/Options.h>
 #include <velocypack/Slice.h>
 
-#include "Basics/asio_ns.h"
-#include "RestServer/arangod.h"
+#include "ApplicationFeatures/ApplicationFeature.h"
+#include "GeneralServer/SslServerOptions.h"
 
 namespace arangodb {
 namespace options {
 class ProgramOptions;
 }
 
-class SslServerFeature : public ArangodFeature {
+class SslServerFeature : public application_features::ApplicationFeature {
  public:
   typedef std::shared_ptr<std::vector<asio_ns::ssl::context>> SslContextList;
 
   static constexpr std::string_view name() noexcept { return "SslServer"; }
 
-  explicit SslServerFeature(Server& server);
+  explicit SslServerFeature(application_features::ApplicationServer& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
@@ -68,21 +68,15 @@ class SslServerFeature : public ArangodFeature {
         : serverName(std::move(name)), keyfileName(std::move(keyfileName)) {}
   };
 
-  std::string _cafile;
+  SslServerOptions _options;
+
   std::string _cafileContent;  // the actual cert file
-  std::string _keyfile;        // name of default keyfile
   // For SNI, we have two maps, one mapping to the filename for a certain
   // server, another, to keep the actual keyfile in memory.
   std::vector<SNIEntry>
       _sniEntries;  // the first entry is the default server keyfile
   std::unordered_map<std::string, size_t>
       _sniServerIndex;  // map server names to indices in _sniEntries
-  std::string _cipherList;
-  uint64_t _sslProtocol;
-  uint64_t _sslOptions;
-  std::string _ecdhCurve;
-  bool _sessionCache;
-  bool _preferHttp11InAlpn;
 
  private:
   asio_ns::ssl::context createSslContextInternal(std::string keyfileName,

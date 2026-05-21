@@ -37,8 +37,8 @@
 #include "Aql/SortCondition.h"
 #include "Basics/tryEmplaceHelper.h"
 
-using namespace arangodb::aql;
-using EN = arangodb::aql::ExecutionNode;
+namespace arangodb::aql {
+using EN = ExecutionNode;
 
 bool ConditionFinder::before(ExecutionNode* en) {
   switch (en->getType()) {
@@ -56,6 +56,7 @@ bool ConditionFinder::before(ExecutionNode* en) {
     case EN::ENUMERATE_PATHS:
     case EN::SHORTEST_PATH:
     case EN::ENUMERATE_IRESEARCH_VIEW:
+    case EN::MATERIALIZE:
     case EN::WINDOW: {
       // in these cases we simply ignore the intermediate nodes, note
       // that we have taken care of nodes that could throw exceptions
@@ -76,6 +77,8 @@ bool ConditionFinder::before(ExecutionNode* en) {
     }
 
     case EN::SINGLETON:
+    case EN::ENUMERATE_NEAR_VECTORS:  // This node means we have already handled
+                                      // vector index
     case EN::NORESULTS: {
       // in all these cases we better abort
       return true;
@@ -193,7 +196,7 @@ bool ConditionFinder::before(ExecutionNode* en) {
 
     default: {
       // should not reach this point
-      TRI_ASSERT(false);
+      TRI_ASSERT(false) << "Failed on node of type: " << en->getTypeString();
     }
   }
 
@@ -298,3 +301,5 @@ ConditionFinder::ConditionFinder(
       _variableDefinitions(),
       _changes(changes),
       _producesEmptyResult(false) {}
+
+}  // namespace arangodb::aql

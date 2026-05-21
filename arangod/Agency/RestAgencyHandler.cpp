@@ -38,8 +38,6 @@
 
 #include <thread>
 
-using namespace arangodb;
-
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 using namespace arangodb::consensus;
@@ -48,10 +46,11 @@ using namespace arangodb::velocypack;
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Rest agency handler
 ////////////////////////////////////////////////////////////////////////////////
+namespace arangodb {
 
-RestAgencyHandler::RestAgencyHandler(ArangodServer& server,
-                                     GeneralRequest* request,
-                                     GeneralResponse* response, Agent* agent)
+RestAgencyHandler::RestAgencyHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response, Agent* agent)
     : RestVocbaseBaseHandler(server, request, response), _agent(agent) {}
 
 void RestAgencyHandler::reportErrorEmptyRequest() {
@@ -803,3 +802,5 @@ auto RestAgencyHandler::executeAsync() -> futures::Future<futures::Unit> {
   }
   co_return;
 }
+
+}  // namespace arangodb

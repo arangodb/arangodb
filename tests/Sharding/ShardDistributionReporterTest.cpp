@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -51,6 +51,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Metrics/ClusterMetricsFeature.h"
 #include "Statistics/StatisticsFeature.h"
+#include "RestServer/arangod.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 
@@ -221,14 +222,14 @@ class ShardDistributionReporterTest
         false);
     features.emplace_back(
         server.addFeature<arangodb::QueryRegistryFeature>(
-            server.template getFeature<arangodb::metrics::MetricsFeature>()),
+            server.getFeature<arangodb::metrics::MetricsFeature>()),
         false);  // required for TRI_vocbase_t instantiation
 
     for (auto& f : features) {
       f.first.prepare();
     }
 
-    vocbase = std::make_unique<TRI_vocbase_t>(testDBInfo(server));
+    vocbase = std::make_unique<TRI_vocbase_t>(testDBInfo(server), engine);
     col = std::make_unique<arangodb::LogicalCollection>(*vocbase, json->slice(),
                                                         true);
 

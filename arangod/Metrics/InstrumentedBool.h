@@ -68,6 +68,15 @@ struct InstrumentedBool {
     }
   }
 
+  /// @brief Clear the metric by decrementing the current counter and
+  /// nullifying the pointers. After this call, the destructor will not
+  /// modify any metrics.
+  void clear() {
+    addToGauge(_value ? _metrics.true_counter : _metrics.false_counter, -1);
+    _metrics.true_counter = nullptr;
+    _metrics.false_counter = nullptr;
+  }
+
  private:
   static void addToGauge(Gauge<uint64_t>* gauge, int64_t v) {
     if (gauge) {

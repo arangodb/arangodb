@@ -62,7 +62,8 @@ struct RestImportResult {
 
 class RestImportHandler : public RestVocbaseBaseHandler {
  public:
-  explicit RestImportHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
+  explicit RestImportHandler(application_features::ApplicationServer&,
+                             GeneralRequest*, GeneralResponse*);
 
  public:
   auto executeAsync() -> futures::Future<futures::Unit> override;

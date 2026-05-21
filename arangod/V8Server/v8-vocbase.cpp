@@ -35,8 +35,6 @@
 #include <velocypack/Slice.h>
 
 #include <v8.h>
-#include <iostream>
-#include <thread>
 
 #include "Agency/State.h"
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -44,18 +42,15 @@
 #include "Aql/ExpressionContext.h"
 #include "Aql/Query.h"
 #include "Aql/QueryCache.h"
-#include "Aql/QueryExecutionState.h"
 #include "Aql/QueryList.h"
 #include "Aql/QueryPlanCache.h"
 #include "Aql/QueryResultV8.h"
 #include "Aql/QueryString.h"
-#include "Async/async.h"
 #include "Basics/HybridLogicalClock.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/application-exit.h"
-#include "Basics/conversions.h"
-#include "Basics/tri-strings.h"
+#include "Basics/system-functions.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
@@ -78,7 +73,6 @@
 #include "Transaction/V8Context.h"
 #include "Utils/Events.h"
 #include "Utils/ExecContext.h"
-#include "V8/JSLoader.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-helper.h"
 #include "V8/v8-utils.h"
@@ -787,13 +781,12 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
   VPackSlice variables = queryBuilder.slice().get("variables");
 
   TRI_ASSERT(!ServerState::instance()->isDBServer());
-  auto const snippets = queryBuilder.slice().get("nodes");
-  auto const querySlice = velocypack::Slice::emptyObjectSlice();
   auto const viewsSlice = velocypack::Slice::noneSlice();
   query->prepareFromVelocyPackWithoutInstantiate(
-      querySlice, collections, viewsSlice, variables, snippets);
+      velocypack::Slice::emptyObjectSlice(), collections, viewsSlice,
+      variables);
   [&]() -> futures::Future<futures::Unit> {
-    co_return co_await query->instantiatePlan(snippets);
+    co_return co_await query->instantiatePlan(queryBuilder.slice());
   }()
                .waitAndGet();
 
@@ -1598,7 +1591,8 @@ static void JS_VersionServer(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   TRI_GET_SERVER_GLOBALS(ArangodServer);
   VPackBuilder builder;
-  arangodb::RestVersionHandler::getVersion(v8g->server(), true, true, builder);
+  arangodb::RestVersionHandler::getVersion(v8g->server(), true, true, builder,
+                                           api_version::defaultApiVersion);
 
   TRI_V8_RETURN(TRI_VPackToV8(isolate, builder.slice()));
   TRI_V8_TRY_CATCH_END
@@ -1797,9 +1791,9 @@ static void JS_CreateDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   std::string const dbName = TRI_ObjectToString(isolate, args[0]);
-  Result res =
-      methods::Databases::create(vocbase.server(), ExecContext::current(),
-                                 dbName, users.slice(), options.slice());
+  Result res = methods::Databases::create(vocbase.server(), vocbase.engine(),
+                                          ExecContext::current(), dbName,
+                                          users.slice(), options.slice());
 
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);

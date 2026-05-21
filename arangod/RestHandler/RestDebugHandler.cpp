@@ -25,13 +25,15 @@
 
 #include "Basics/DebugRaceController.h"
 
+#include <velocypack/Slice.h>
+
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestDebugHandler::RestDebugHandler(ArangodServer& server,
-                                   GeneralRequest* request,
-                                   GeneralResponse* response)
+RestDebugHandler::RestDebugHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
 RestStatus RestDebugHandler::execute() {
@@ -115,7 +117,19 @@ RestStatus RestDebugHandler::execute() {
   } else if (suffixes[0] == "crash") {
     if (type == rest::RequestType::PUT) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      TRI_TerminateDebugging("crashing server by REST call");
+      auto const message =
+          std::invoke([payload = _request->payload()]() -> std::string {
+            if (payload.isObject()) {
+              auto const messageSlice = payload.get("message");
+              if (messageSlice.isString()) {
+                return messageSlice.copyString();
+              }
+            }
+
+            return "crashing server by REST call";
+          });
+
+      TRI_TerminateDebugging(message);
       return RestStatus::DONE;
 #else
       generateNotImplemented(

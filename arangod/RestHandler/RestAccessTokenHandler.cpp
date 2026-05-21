@@ -32,17 +32,17 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "Utils/Events.h"
+#include "Ssl/jwt.h"
 
-#include <fuerte/jwt.h>
 #include <velocypack/Builder.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestAccessTokenHandler::RestAccessTokenHandler(ArangodServer& server,
-                                               GeneralRequest* request,
-                                               GeneralResponse* response)
+RestAccessTokenHandler::RestAccessTokenHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
 RestStatus RestAccessTokenHandler::execute() {

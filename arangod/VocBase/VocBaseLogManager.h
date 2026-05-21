@@ -27,7 +27,7 @@
 #include "Cluster/ClusterTypes.h"
 #include "Replication2/LoggerContext.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
-#include "RestServer/arangod.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 
 struct TRI_vocbase_t;
 
@@ -55,6 +55,7 @@ struct QuickLogStatus;
 struct ReplicatedLog;
 }  // namespace replicated_log
 namespace replicated_state {
+struct ReplicatedStateAppFeature;
 struct ReplicatedStateBase;
 struct StateStatus;
 }  // namespace replicated_state
@@ -101,7 +102,7 @@ struct VocBaseLogManager {
       -> ResultT<
           std::shared_ptr<replication2::replicated_state::ReplicatedStateBase>>;
 
-  ArangodServer& _server;
+  application_features::ApplicationServer& _server;
   TRI_vocbase_t& _vocbase;
   LoggerContext const _logContext;
 
@@ -122,8 +123,8 @@ struct VocBaseLogManager {
     auto buildReplicatedStateWithMethods(
         replication2::LogId id, std::string_view type, VPackSlice parameters,
         replication2::replicated_state::ReplicatedStateAppFeature& feature,
-        LoggerContext const& logContext, ArangodServer& server,
-        TRI_vocbase_t& vocbase,
+        LoggerContext const& logContext,
+        application_features::ApplicationServer& server, TRI_vocbase_t& vocbase,
         std::unique_ptr<arangodb::replication2::storage::IStorageEngineMethods>
             storage)
         -> ResultT<std::shared_ptr<
@@ -132,8 +133,8 @@ struct VocBaseLogManager {
     auto buildReplicatedState(
         replication2::LogId id, std::string_view type, VPackSlice parameters,
         replication2::replicated_state::ReplicatedStateAppFeature& feature,
-        LoggerContext const& logContext, ArangodServer& server,
-        TRI_vocbase_t& vocbase)
+        LoggerContext const& logContext,
+        application_features::ApplicationServer& server, TRI_vocbase_t& vocbase)
         -> ResultT<std::shared_ptr<
             replication2::replicated_state::ReplicatedStateBase>>;
 

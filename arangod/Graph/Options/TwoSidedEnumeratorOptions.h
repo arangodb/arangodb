@@ -25,17 +25,23 @@
 #pragma once
 
 #include "Graph/PathType.h"
+#include "Graph/Options/QueryContextObserver.h"
 
 #include <numeric>
 #include <cstddef>
 
 namespace arangodb {
+
+namespace aql {
+class QueryContext;
+}
+
 namespace graph {
 
 struct TwoSidedEnumeratorOptions {
  public:
   TwoSidedEnumeratorOptions(size_t minDepth, size_t maxDepth,
-                            PathType::Type pathType);
+                            PathType::Type pathType, aql::QueryContext& query);
 
   ~TwoSidedEnumeratorOptions();
 
@@ -46,6 +52,7 @@ struct TwoSidedEnumeratorOptions {
   [[nodiscard]] PathType::Type getPathType() const;
   [[nodiscard]] bool getStopAtFirstDepth() const;
   [[nodiscard]] bool onlyProduceOnePath() const;
+  [[nodiscard]] bool isKilled() const noexcept { return _observer.isKilled(); }
 
   void setStopAtFirstDepth(bool stopAtFirstDepth);
   void setOnlyProduceOnePath(bool onlyProduceOnePath);
@@ -57,6 +64,7 @@ struct TwoSidedEnumeratorOptions {
   bool _stopAtFirstDepth{false};
   bool _onlyProduceOnePath{false};
   PathType::Type _pathType;
+  QueryContextObserver _observer;
 };
 }  // namespace graph
 }  // namespace arangodb

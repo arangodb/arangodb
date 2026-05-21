@@ -42,6 +42,8 @@
 #include "Replication2/ReplicatedState/StateCommon.h"
 #include "Futures/Utilities.h"
 
+#include <format>
+
 // TODO Remove this conditional as soon as we've upgraded MSVC.
 #ifdef DISABLE_I_HAS_SCHEDULER
 #pragma message(                                                   \
@@ -397,7 +399,7 @@ struct WholeLog {
 
   auto createParticipant(LogArguments fakeArguments) -> ParticipantWithFakes* {
     auto const id = _nextParticipantId++;
-    auto serverId = agency::ServerInstanceReference{fmt::format("dbs{:02}", id),
+    auto serverId = agency::ServerInstanceReference{std::format("dbs{:02}", id),
                                                     RebootId{1}};
     if (fakeArguments.persistedMetadata.has_value()) {
       fakeArguments.persistedMetadata->stateId = logId;
@@ -411,7 +413,7 @@ struct WholeLog {
 
   auto createFakeFollower() -> ParticipantFakeFollower* {
     auto const id = _nextParticipantId++;
-    auto serverId = agency::ServerInstanceReference{fmt::format("dbs{:02}", id),
+    auto serverId = agency::ServerInstanceReference{std::format("dbs{:02}", id),
                                                     RebootId{1}};
     auto it = logs.try_emplace(logs.end(), serverId.serverId,
                                LogContainer::createWithFakeFollower(serverId));
@@ -527,7 +529,7 @@ struct ReplicatedLogTest : ::testing::Test {
   constexpr static char gtestStr[] = "gtest";
   LoggerContext const loggerContext =
       LoggerContext(Logger::REPLICATION2)
-          .with<gtestStr>(fmt::format("{}.{}", testInfo->test_suite_name(),
+          .with<gtestStr>(std::format("{}.{}", testInfo->test_suite_name(),
                                       testInfo->test_case_name()));
 
   WholeLog wholeLog = WholeLog(loggerContext, LogId{1});
@@ -610,7 +612,7 @@ MATCHER_P2(IsTermIndexPair, term, index, "") {
 
 // Matches a map entry pair (LogIndex, LogEntry) against a PartialLogEntry.
 MATCHER(MatchesMapLogEntry,
-        fmt::format("{} log entries", negation ? "doesn't match" : "matches")) {
+        std::format("{} log entries", negation ? "doesn't match" : "matches")) {
   auto const& logIndex = std::get<0>(arg).first;
   auto const& logEntry = std::get<0>(arg).second;
   auto const& partialLogEntry = std::get<1>(arg);

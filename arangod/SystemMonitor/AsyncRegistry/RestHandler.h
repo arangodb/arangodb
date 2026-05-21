@@ -29,7 +29,8 @@ namespace arangodb::async_registry {
 
 class RestHandler : public arangodb::RestVocbaseBaseHandler {
  public:
-  RestHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
+  RestHandler(application_features::ApplicationServer&, GeneralRequest*,
+              GeneralResponse*);
 
  public:
   char const* name() const override final { return "AsyncRegistryRestHandler"; }

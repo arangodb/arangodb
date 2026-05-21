@@ -14,6 +14,10 @@ target_link_libraries(${BIN_ARANGODUMP}
   clienttools_utils
 )
 
+if (USE_JEMALLOC)
+  target_link_libraries(${BIN_ARANGODUMP} jemalloc)
+endif ()
+
 install(
   TARGETS ${BIN_ARANGODUMP}
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
@@ -24,9 +28,5 @@ add_dependencies(${BIN_ARANGODUMP} zlibstatic)
 
 # use ICU 64 for the client tools
 add_dependencies(${BIN_ARANGODUMP} iculegacy_build)
-
-if (USE_JEMALLOC)
-  add_dependencies(${BIN_ARANGODUMP} jemalloc_build)
-endif ()
 
 add_dependencies(${BIN_ARANGODUMP} man)

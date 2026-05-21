@@ -26,7 +26,7 @@
 
 #include "gtest/gtest.h"
 
-#include "../3rdParty/iresearch/tests/tests_config.hpp"
+#include "iresearch/tests/tests_config.hpp"
 #include "analysis/analyzers.hpp"
 #include "analysis/token_attributes.hpp"
 #include "index/norm.hpp"
@@ -138,7 +138,7 @@ class QueryTest : public IResearchQueryTest {
     return it.size() == expectedCount && errorCount == 0;
   }
 
-  TRI_vocbase_t _vocbase{testDBInfo(server.server())};
+  TRI_vocbase_t _vocbase{testDBInfo(server.server()), server.engine()};
   std::vector<velocypack::Builder> _insertedDocs;
 
  private:

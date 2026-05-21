@@ -39,7 +39,6 @@
 #include "Network/Utils.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "RestServer/arangod.h"
 #include "VocBase/ticks.h"
 
 #include <fuerte/connection.h>
@@ -173,6 +172,7 @@ auto prepareRequest(ConnectionPool* pool, RestVerb type, std::string path,
 
   req->header.database = options.database;
   req->header.setMeta(std::move(headers));
+  req->header.apiVersion = options.apiVersion;
 
   if (!options.contentType.empty()) {
     req->header.contentType(options.contentType);

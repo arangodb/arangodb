@@ -26,7 +26,6 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Metrics/Fwd.h"
-#include "RestServer/arangod.h"
 #include "VocBase/voc-types.h"
 
 #include <cstdint>
@@ -39,11 +38,14 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
+namespace metrics {
+class MetricsFeature;
+}  // namespace metrics
 class FlushThread;
 
 //////////////////////////////////////////////////////////////////////////////
 /// @struct FlushSubscription
-/// @brief subscription is intenteded to notify FlushFeature
+/// @brief subscription is intended to notify FlushFeature
 ///        on the WAL tick which can be safely released
 //////////////////////////////////////////////////////////////////////////////
 struct FlushSubscription {
@@ -52,11 +54,12 @@ struct FlushSubscription {
   virtual std::string const& name() const = 0;
 };
 
-class FlushFeature final : public ArangodFeature {
+class FlushFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Flush"; }
 
-  explicit FlushFeature(Server& server);
+  FlushFeature(application_features::ApplicationServer& server,
+               metrics::MetricsFeature& metrics);
 
   ~FlushFeature();
 

@@ -23,8 +23,7 @@
 
 #include "ServerIdFeature.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/FileUtils.h"
+#include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/files.h"
@@ -32,10 +31,11 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
-#include "ProgramOptions/ProgramOptions.h"
 #include "Random/RandomGenerator.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
+#include "RestServer/InitDatabaseFeature.h"
+#include "RestServer/SystemDatabaseFeature.h"
 
 using namespace arangodb::options;
 
@@ -43,8 +43,9 @@ namespace arangodb {
 
 ServerId ServerIdFeature::SERVERID{0};
 
-ServerIdFeature::ServerIdFeature(Server& server)
-    : ArangodFeature{server, *this} {
+ServerIdFeature::ServerIdFeature(
+    application_features::ApplicationServer& server)
+    : ApplicationFeature{server, *this} {
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseServer>();
 

@@ -709,6 +709,16 @@ TEST_F(VPackSaveInspectorTest, store_embedded_temporary_fields) {
   EXPECT_EQ("foobar", slice["b"].copyString());
 }
 
+TEST_F(VPackSaveInspectorTest, store_std_filesystem_path) {
+  auto val = std::filesystem::path("/foo/bar");
+  auto result = inspector.apply(val);
+  ASSERT_TRUE(result.ok());
+
+  velocypack::Slice slice = builder.slice();
+  ASSERT_TRUE(slice.isString());
+  ASSERT_EQ(slice.copyString(), "/foo/bar");
+}
+
 TEST(VPackSaveInspectorContext, serialize_with_context) {
   struct Context {
     int defaultInt;

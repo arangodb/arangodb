@@ -22,18 +22,18 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Cluster/ClusterUpgradeFeature.h"
-
+#include "Cluster/ServerState.h"
 #include "Agency/AgencyComm.h"
-#include "Agency/AgencyFeature.h"
+#include "ApplicationFeatures/ApplicationFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/ScopeGuard.h"
 #include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
+#include "FeaturePhases/FinalFeaturePhase.h"
 #include "Logger/LogMacros.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/UpgradeFeature.h"
+#include "Cluster/ClusterUpgradeOptionsProvider.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/Methods/Upgrade.h"
 #include "VocBase/Methods/Version.h"
@@ -46,30 +46,18 @@ static std::string const upgradeVersionKey = "ClusterUpgradeVersion";
 static std::string const upgradeExecutedByKey = "ClusterUpgradeExecutedBy";
 }  // namespace
 
-ClusterUpgradeFeature::ClusterUpgradeFeature(Server& server,
-                                             DatabaseFeature& databaseFeature)
-    : ArangodFeature{server, *this},
-      _upgradeMode("auto"),
+ClusterUpgradeFeature::ClusterUpgradeFeature(
+    application_features::ApplicationServer& server,
+    DatabaseFeature& databaseFeature)
+    : application_features::ApplicationFeature{server, *this},
       _databaseFeature(databaseFeature) {
   startsAfter<application_features::FinalFeaturePhase>();
 }
 
 void ClusterUpgradeFeature::collectOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  options->addOption(
-      "--cluster.upgrade",
-      "Perform a cluster upgrade if necessary (auto = perform an upgrade "
-      "and shut down only if `--database.auto-upgrade true` is set, "
-      "disable = ignore `--database.auto-upgrade` and never perform an "
-      "upgrade, force = ignore `--database.auto-upgrade` and always "
-      "perform an upgrade and shut down, online = always perform an "
-      "upgrade but don't shut down).",
-      new DiscreteValuesParameter<StringParameter>(
-          &_upgradeMode, std::unordered_set<std::string>{"auto", "disable",
-                                                         "force", "online"}),
-      arangodb::options::makeFlags(
-          arangodb::options::Flags::DefaultNoComponents,
-          arangodb::options::Flags::OnCoordinator));
+    std::shared_ptr<options::ProgramOptions> options) {
+  arangodb::upgrade::ClusterUpgradeOptionsProvider provider;
+  provider.declareOptions(options, _options);
 }
 
 void ClusterUpgradeFeature::validateOptions(
@@ -78,15 +66,15 @@ void ClusterUpgradeFeature::validateOptions(
     return;
   }
 
-  if (_upgradeMode == "force") {
+  if (_options.upgradeMode == "force") {
     // always perform an upgrade, regardless of the value of
     // `--database.auto-upgrade`. after the upgrade, shut down the server
     _databaseFeature.enableUpgrade();
-  } else if (_upgradeMode == "disable") {
+  } else if (_options.upgradeMode == "disable") {
     // never perform an upgrade, regardless of the value of
     // `--database.auto-upgrade`. don't shut down the server
     _databaseFeature.disableUpgrade();
-  } else if (_upgradeMode == "online") {
+  } else if (_options.upgradeMode == "online") {
     // perform an upgrade, but stay online and don't shut down the server.
     // disabling the upgrade functionality in the database feature is required
     // for this.
@@ -101,15 +89,15 @@ void ClusterUpgradeFeature::start() {
 
   // this feature is doing something meaning only in a coordinator, and only
   // if the server was started with the option `--database.auto-upgrade true`.
-  if (_upgradeMode == "disable" ||
+  if (_options.upgradeMode == "disable" ||
       (!_databaseFeature.upgrade() &&
-       (_upgradeMode != "online" && _upgradeMode != "force"))) {
+       (_options.upgradeMode != "online" && _options.upgradeMode != "force"))) {
     return;
   }
 
   tryClusterUpgrade();
 
-  if (_upgradeMode != "online") {
+  if (_options.upgradeMode != "online") {
     LOG_TOPIC("d6047", INFO, arangodb::Logger::STARTUP)
         << "server will now shut down due to upgrade.";
     server().beginShutdown();

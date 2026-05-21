@@ -32,8 +32,9 @@
 using namespace arangodb;
 using namespace arangodb::rest;
 
-RestTimeHandler::RestTimeHandler(ArangodServer& server, GeneralRequest* request,
-                                 GeneralResponse* response)
+RestTimeHandler::RestTimeHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
 RestStatus RestTimeHandler::execute() {

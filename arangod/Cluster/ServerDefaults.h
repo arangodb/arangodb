@@ -24,7 +24,7 @@
 #pragma once
 
 #include <cstdint>
-#include "RestServer/arangod.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 
 struct TRI_vocbase_t;
 
@@ -42,7 +42,7 @@ struct ServerDefaults {
   // values have to be taken from the Server.
   ServerDefaults() = default;
 #endif
-  explicit ServerDefaults(ArangodServer& server);
+  explicit ServerDefaults(application_features::ApplicationServer& server);
 
   explicit ServerDefaults(TRI_vocbase_t const& vocbase);
 };

@@ -47,8 +47,8 @@ namespace StringUtils = arangodb::basics::StringUtils;
 /// @brief common replication applier
 struct ApplierThread : public Thread {
  public:
-  ApplierThread(ArangodServer& server, ReplicationApplier* applier,
-                std::shared_ptr<Syncer> syncer)
+  ApplierThread(application_features::ApplicationServer& server,
+                ReplicationApplier* applier, std::shared_ptr<Syncer> syncer)
       : Thread(server, "ReplicationApplier"),
         _applier(applier),
         _syncer(std::move(syncer)) {
@@ -105,7 +105,8 @@ struct ApplierThread : public Thread {
 
 /// @brief sync thread class
 struct FullApplierThread final : public ApplierThread {
-  FullApplierThread(ArangodServer& server, ReplicationApplier* applier,
+  FullApplierThread(application_features::ApplicationServer& server,
+                    ReplicationApplier* applier,
                     std::shared_ptr<InitialSyncer>&& syncer)
       : ApplierThread(server, applier, std::move(syncer)) {}
 
@@ -140,7 +141,8 @@ struct FullApplierThread final : public ApplierThread {
 
 /// @brief applier thread class. run only the tailing code
 struct TailingApplierThread final : public ApplierThread {
-  TailingApplierThread(ArangodServer& server, ReplicationApplier* applier,
+  TailingApplierThread(application_features::ApplicationServer& server,
+                       ReplicationApplier* applier,
                        std::shared_ptr<TailingSyncer>&& syncer)
       : ApplierThread(server, applier, std::move(syncer)) {}
 

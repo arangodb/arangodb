@@ -25,6 +25,9 @@ target_link_libraries(${BIN_ARANGOIMPORT}
   arangoimport_utils
   clienttools_utils
 )
+if (USE_JEMALLOC)
+  target_link_libraries(${BIN_ARANGOIMPORT} jemalloc)
+endif ()
 
 install(
   TARGETS ${BIN_ARANGOIMPORT}
@@ -36,10 +39,6 @@ add_dependencies(${BIN_ARANGOIMPORT} zlibstatic)
 
 # use ICU 64 for the client tools
 add_dependencies(${BIN_ARANGOIMPORT} iculegacy_build)
-
-if (USE_JEMALLOC)
-  add_dependencies(${BIN_ARANGOIMPORT} jemalloc_build)
-endif ()
 
 add_dependencies(${BIN_ARANGOIMPORT} man)
 

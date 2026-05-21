@@ -1,7 +1,7 @@
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://github.com/user-attachments/assets/b3605085-087a-4cac-a563-c82ceefc0a81" width="800" height="167">
-  <source media="(prefers-color-scheme: light)" srcset="https://github.com/user-attachments/assets/0b187230-f508-4745-833d-2f51812af0aa" width="800" height="167">
-  <img alt="A stylized avocado half and the company name" src="https://github.com/user-attachments/assets/e8ce5249-0527-41d0-aae4-a141bc85206e" width="800" height="167">
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/arangodb/arangodb/refs/heads/devel/.github/arango-color-rev.svg" width="800" height="167">
+  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/arangodb/arangodb/refs/heads/devel/.github/arango-color-rgb.svg" width="800" height="167">
+  <img alt="A stylized avocado half and the company name" src="https://raw.githubusercontent.com/arangodb/arangodb/refs/heads/devel/.github/arango-logo-horz.png" width="800" height="167">
 </picture>
 
 ArangoDB

@@ -32,12 +32,12 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
-#include "Indexes/VectorIndexDefinition.h"
+#include "VectorIndex/VectorIndexDefinition.h"
 #include "IResearch/IResearchCommon.h"
 #include "Inspection/VPack.h"
 #include "RestServer/BootstrapFeature.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/VectorIndexFeature.h"
+#include "VectorIndex/VectorIndexFeature.h"
 #include "Utilities/NameValidator.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -59,7 +59,8 @@ namespace {
 using namespace arangodb;
 
 struct InvalidIndexFactory : public IndexTypeFactory {
-  InvalidIndexFactory(ArangodServer& server) : IndexTypeFactory(server) {}
+  InvalidIndexFactory(application_features::ApplicationServer& server)
+      : IndexTypeFactory(server) {}
 
   bool equal(velocypack::Slice, velocypack::Slice,
              std::string const&) const override {
@@ -117,7 +118,9 @@ std::string_view extractName(velocypack::Slice slice) noexcept {
 
 }  // namespace helpers
 
-IndexTypeFactory::IndexTypeFactory(ArangodServer& server) : _server(server) {}
+IndexTypeFactory::IndexTypeFactory(
+    application_features::ApplicationServer& server)
+    : _server(server) {}
 
 bool IndexTypeFactory::equal(Index::IndexType type, velocypack::Slice lhs,
                              velocypack::Slice rhs,
@@ -187,8 +190,8 @@ bool IndexTypeFactory::equal(Index::IndexType type, velocypack::Slice lhs,
     }
   } else if (Index::IndexType::TRI_IDX_TYPE_VECTOR_INDEX == type) {
     // check if the parameters are the same
-    UserVectorIndexDefinition leftDefinition;
-    UserVectorIndexDefinition rightDefinition;
+    vector::UserVectorIndexDefinition leftDefinition;
+    vector::UserVectorIndexDefinition rightDefinition;
     velocypack::deserialize(lhs.get("params"), leftDefinition);
     velocypack::deserialize(rhs.get("params"), rightDefinition);
 
@@ -240,7 +243,7 @@ bool IndexTypeFactory::equal(Index::IndexType type, velocypack::Slice lhs,
   return true;
 }
 
-IndexFactory::IndexFactory(ArangodServer& server)
+IndexFactory::IndexFactory(application_features::ApplicationServer& server)
     : _server(server),
       _factories(),
       _invalid(std::make_unique<InvalidIndexFactory>(server)) {}
@@ -919,7 +922,7 @@ Result IndexFactory::enhanceJsonIndexVector(
                          /*allowExpansion*/ false, /*allowSubAttributes*/ true,
                          /*allowIdAttribute*/ false);
 
-  UserVectorIndexDefinition vectorIndexDefinition;
+  vector::UserVectorIndexDefinition vectorIndexDefinition;
   if (res.ok()) {
     auto const paramsSlice = definition.get("params");
     if (auto const res = velocypack::deserializeWithStatus(

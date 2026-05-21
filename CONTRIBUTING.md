@@ -265,6 +265,8 @@ You can start the build container as follows in a Bash-like terminal:
     cd arangodb
     docker run -it -v $(pwd):/root/project -p 3000:3000 arangodb/ubuntubuildarangodb-devel:3
 
+SELinux enabled distribitons need `:z` added to the to the volume path: `-v $(pwd):/root/project:z`
+
 In PowerShell, use `${pwd}` instead of `$(pwd)`.
 
 The port mapping is for accessing the web interface in case you want to run a
@@ -314,7 +316,7 @@ For building the ArangoDB Starter (`arangodb` executable), see the
 
 ### Building Locally
 
-Recommended for Debian-based Linux. First, install dependencies:
+Debian-based Linux is recommended. Dependencies:
 - `clang-19`
 - `libomp-19-dev`
 - `liblapack-dev`
@@ -322,6 +324,13 @@ Recommended for Debian-based Linux. First, install dependencies:
 - `cmake` (at least 3.21)
 - `libssl-dev`
 - `libstdc++-14-dev`
+- `bison`
+- `flex`
+
+Dependencies for a Fedora-based distribution:
+```
+dnf install clang-19 libomp-devel lapack-devel openblas-devel cmake openssl-devel libstdc++-devel bison flex
+```
 
 After installing, follow the general build steps above.
 
@@ -869,6 +878,11 @@ Run specific gtest tests:
     ./scripts/unittest gtest --testCase "IResearchDocumentTest.*:*ReturnExecutor*"
     # equivalent to:
     ./build/bin/arangodbtests --gtest_filter="IResearchDocumentTest.*:*ReturnExecutor*"
+
+Run an upgrade from another source with compiled binaries:
+
+    ./scripts/unittest rta_makedata --cluster true --oldSource ../othersource
+    ./scripts/unittest dump_multiple_two --oldSource  ../othersource
 
 Controlling the place where the test-data is stored:
 

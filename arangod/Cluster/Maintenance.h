@@ -128,7 +128,7 @@ arangodb::Result diffPlanLocal(
     uint64_t planIndex,
     containers::FlatHashMap<std::string,
                             std::shared_ptr<VPackBuilder const>> const& current,
-    uint64_t currentIndex, containers::FlatHashSet<std::string> dirty,
+    uint64_t currentIndex, containers::FlatHashSet<std::string> const& dirty,
     containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
         local,
     std::string const& serverId, MaintenanceFeature::errors_t& errors,
@@ -242,24 +242,6 @@ arangodb::Result phaseTwo(
     ReplicatedLogStatusMapByDatabase const& localLogs,
     ShardIdToLogIdMapByDatabase const& localShardsToLogs);
 
-/**
- * @brief          Report local changes to current
- *
- * @param plan     Snapshot of agency's planned state
- * @param current  Snapshot of agency's current state
- * @param local    Snapshot of local state
- * @param serverId This server's UUID
- * @param report   Report on what we did
- *
- * @return         Result
- */
-struct ShardStatistics {
-  uint64_t numShards;
-  uint64_t numLeaderShards;
-  uint64_t numOutOfSyncShards;
-  uint64_t numNotReplicated;
-};
-
 arangodb::Result reportInCurrent(
     MaintenanceFeature& feature,
     containers::FlatHashMap<std::string,
@@ -270,8 +252,7 @@ arangodb::Result reportInCurrent(
     containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
         local,
     MaintenanceFeature::errors_t const& allErrors, std::string const& serverId,
-    VPackBuilder& report, ShardStatistics& shardStats,
-    ReplicatedLogStatusMapByDatabase const& localLogs,
+    VPackBuilder& report, ReplicatedLogStatusMapByDatabase const& localLogs,
     ShardIdToLogIdMapByDatabase const& localShardIdToLogId);
 
 /**

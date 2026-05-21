@@ -23,16 +23,18 @@
 
 #pragma once
 
-#include "RestServer/arangod.h"
+#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Aql/AsyncPrefetchSlotsManager.h"
 #include "Aql/QueryRegistry.h"
 #include "Metrics/Fwd.h"
+#include "RestServer/QueryRegistryFeatureOptions.h"
 
 #include <atomic>
 
 namespace arangodb {
 
-class QueryRegistryFeature final : public ArangodFeature {
+class QueryRegistryFeature final
+    : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "QueryRegistry"; }
 
@@ -40,7 +42,8 @@ class QueryRegistryFeature final : public ArangodFeature {
     return QUERY_REGISTRY.load(std::memory_order_acquire);
   }
 
-  QueryRegistryFeature(Server& server, metrics::MetricsFeature& metrics);
+  QueryRegistryFeature(application_features::ApplicationServer& server,
+                       metrics::MetricsFeature& metrics);
   ~QueryRegistryFeature();
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -59,56 +62,64 @@ class QueryRegistryFeature final : public ArangodFeature {
   // tracks a slow query, using execution time
   void trackSlowQuery(double time);
 
-  bool trackingEnabled() const noexcept { return _trackingEnabled; }
-  bool trackSlowQueries() const noexcept { return _trackSlowQueries; }
-  bool trackQueryString() const noexcept { return _trackQueryString; }
-  bool trackBindVars() const noexcept { return _trackBindVars; }
-  bool trackDataSources() const noexcept { return _trackDataSources; }
-  double slowQueryThreshold() const noexcept { return _slowQueryThreshold; }
+  bool trackingEnabled() const noexcept { return _options.trackingEnabled; }
+  bool trackSlowQueries() const noexcept { return _options.trackSlowQueries; }
+  bool trackQueryString() const noexcept { return _options.trackQueryString; }
+  bool trackBindVars() const noexcept { return _options.trackBindVars; }
+  bool trackDataSources() const noexcept { return _options.trackDataSources; }
+  double slowQueryThreshold() const noexcept {
+    return _options.slowQueryThreshold;
+  }
   double slowStreamingQueryThreshold() const noexcept {
-    return _slowStreamingQueryThreshold;
+    return _options.slowStreamingQueryThreshold;
   }
-  size_t maxQueryStringLength() const noexcept { return _maxQueryStringLength; }
+  size_t maxQueryStringLength() const noexcept {
+    return _options.maxQueryStringLength;
+  }
   uint64_t peakMemoryUsageThreshold() const noexcept {
-    return _peakMemoryUsageThreshold;
+    return _options.peakMemoryUsageThreshold;
   }
-  bool failOnWarning() const noexcept { return _failOnWarning; }
-  bool requireWith() const noexcept { return _requireWith; }
+  bool failOnWarning() const noexcept { return _options.failOnWarning; }
+  bool requireWith() const noexcept { return _options.requireWith; }
 #ifdef USE_ENTERPRISE
-  bool smartJoins() const noexcept { return _smartJoins; }
-  bool parallelizeTraversals() const noexcept { return _parallelizeTraversals; }
+  bool smartJoins() const noexcept { return _options.smartJoins; }
+  bool parallelizeTraversals() const noexcept {
+    return _options.parallelizeTraversals;
+  }
 #endif
   size_t maxCollectionsPerQuery() const noexcept {
-    return _maxCollectionsPerQuery;
+    return _options.maxCollectionsPerQuery;
   }
   bool allowCollectionsInExpressions() const noexcept {
-    return _allowCollectionsInExpressions;
+    return _options.allowCollectionsInExpressions;
   }
-  bool logFailedQueries() const noexcept { return _logFailedQueries; }
+  bool logFailedQueries() const noexcept { return _options.logFailedQueries; }
   size_t leaseAsyncPrefetchSlots(size_t value) noexcept;
   void returnAsyncPrefetchSlots(size_t value) noexcept;
   uint64_t queryGlobalMemoryLimit() const noexcept {
-    return _queryGlobalMemoryLimit;
+    return _options.queryGlobalMemoryLimit;
   }
-  uint64_t queryMemoryLimit() const noexcept { return _queryMemoryLimit; }
-  double queryMaxRuntime() const noexcept { return _queryMaxRuntime; }
-  uint64_t maxQueryPlans() const noexcept { return _maxQueryPlans; }
+  uint64_t queryMemoryLimit() const noexcept {
+    return _options.queryMemoryLimit;
+  }
+  double queryMaxRuntime() const noexcept { return _options.queryMaxRuntime; }
+  uint64_t maxQueryPlans() const noexcept { return _options.maxQueryPlans; }
   aql::QueryRegistry* queryRegistry() const noexcept {
     return _queryRegistry.get();
   }
-  uint64_t maxParallelism() const noexcept { return _maxParallelism; }
+  uint64_t maxParallelism() const noexcept { return _options.maxParallelism; }
 
   uint64_t queryPlanCacheMaxEntries() const noexcept {
-    return _queryPlanCacheMaxEntries;
+    return _options.queryPlanCacheMaxEntries;
   }
   uint64_t queryPlanCacheMaxMemoryUsage() const noexcept {
-    return _queryPlanCacheMaxMemoryUsage;
+    return _options.queryPlanCacheMaxMemoryUsage;
   }
   uint64_t queryPlanCacheMaxIndividualEntrySize() const noexcept {
-    return _queryPlanCacheMaxIndividualEntrySize;
+    return _options.queryPlanCacheMaxIndividualEntrySize;
   }
   double queryPlanCacheInvalidationTime() const noexcept {
-    return _queryPlanCacheInvalidationTime;
+    return _options.queryPlanCacheInvalidationTime;
   }
   metrics::Counter* queryPlanCacheHitsMetric() const {
     return &_queryPlanCacheHitsMetric;
@@ -128,50 +139,7 @@ class QueryRegistryFeature final : public ArangodFeature {
   aql::AsyncPrefetchSlotsManager& asyncPrefetchSlotsManager() noexcept;
 
  private:
-  bool _trackingEnabled;
-  bool _trackSlowQueries;
-  bool _trackQueryString;
-  bool _trackBindVars;
-  bool _trackDataSources;
-  bool _failOnWarning;
-  bool _requireWith;
-  bool _queryCacheIncludeSystem;
-  bool _queryMemoryLimitOverride;
-#ifdef USE_ENTERPRISE
-  bool _smartJoins;
-  bool _parallelizeTraversals;
-#endif
-  bool _allowCollectionsInExpressions;
-  bool _logFailedQueries;
-  size_t _maxAsyncPrefetchSlotsTotal;
-  size_t _maxAsyncPrefetchSlotsPerQuery;
-  size_t _maxQueryStringLength;
-  size_t _maxCollectionsPerQuery;
-  uint64_t _peakMemoryUsageThreshold;
-  uint64_t _queryGlobalMemoryLimit;
-  uint64_t _queryMemoryLimit;
-  size_t _maxDNFConditionMembers;
-  double _queryMaxRuntime;
-  uint64_t _maxQueryPlans;
-  uint64_t _maxNodesPerCallstack;
-
-  // query plan cache - maximum number of entries
-  uint64_t _queryPlanCacheMaxEntries;
-  // query plan cache - maximum memory usage
-  uint64_t _queryPlanCacheMaxMemoryUsage;
-  // query plan cache - maximum individual entry size
-  uint64_t _queryPlanCacheMaxIndividualEntrySize;
-  // query plan cache - invalidation time in seconds
-  double _queryPlanCacheInvalidationTime;
-
-  uint64_t _queryCacheMaxResultsCount;
-  uint64_t _queryCacheMaxResultsSize;
-  uint64_t _queryCacheMaxEntrySize;
-  uint64_t _maxParallelism;
-  double _slowQueryThreshold;
-  double _slowStreamingQueryThreshold;
-  double _queryRegistryTTL;
-  std::string _queryCacheMode;
+  QueryRegistryFeatureOptions _options;
 
   static std::atomic<aql::QueryRegistry*> QUERY_REGISTRY;
 

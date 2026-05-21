@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -23,6 +23,8 @@
 
 #include "Collections.h"
 
+#include "Activities/RegistryGlobalVariable.h"
+#include "Activities/GenericActivity.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
 #include "Aql/QueryPlanCache.h"
@@ -50,7 +52,6 @@
 #include "Scheduler/SchedulerFeature.h"
 #include "Sharding/ShardingFeature.h"
 #include "Sharding/ShardingInfo.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Helpers.h"
@@ -71,6 +72,8 @@
 #include "VocBase/vocbase.h"
 
 #include <absl/strings/str_cat.h>
+#include <absl/strings/str_join.h>
+
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
@@ -587,6 +590,15 @@ Collections::create(         // create collection
     bool enforceReplicationFactor,                  // replication factor flag
     bool isNewDatabase, bool allowEnterpriseCollectionsOnSingleServer,
     bool isRestore) {
+  auto collectionNames = absl::StrJoin(
+      collections, ",",
+      [](std::string* out, CreateCollectionBody c) { out->append(c.name); });
+
+  auto createCollectionsActivity =
+      activities::make<activities::GenericActivity>(
+          "CreateCollections", activities::GenericActivityData{
+                                   {"collectionNames", collectionNames}});
+
   // Let's first check if we are allowed to create the collections
   ExecContext const& exec = options.context();
   if (!exec.canUseDatabase(vocbase.name(), auth::Level::RW)) {
@@ -853,18 +865,7 @@ void Collections::applySystemCollectionProperties(
   // This implements some stunt to figure out if we are in a mock environment.
   // If that is the case we may not have all System collections.
   // So we better not enforce distributeShardsLike.
-  bool isMock = false;
-  if (vocbase.server().hasFeature<EngineSelectorFeature>()) {
-    StorageEngine& engine =
-        vocbase.server().template getFeature<EngineSelectorFeature>().engine();
-
-    isMock = (engine.typeName() == "Mock");
-  } else {
-    // We do not even have a full server, can only be a mock.
-    isMock = true;
-  }
-
-  if (isMock) {
+  if (vocbase.engine().typeName() == "Mock") {
     designatedLeaderName = col.name;
   }
 #endif

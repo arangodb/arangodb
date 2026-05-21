@@ -23,6 +23,8 @@
 
 #include "RestDumpHandler.h"
 
+#include "Activities/GenericActivity.h"
+#include "Activities/RegistryGlobalVariable.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ClusterFeature.h"
@@ -46,8 +48,9 @@
 using namespace arangodb;
 using namespace arangodb::rest;
 
-RestDumpHandler::RestDumpHandler(ArangodServer& server, GeneralRequest* request,
-                                 GeneralResponse* response)
+RestDumpHandler::RestDumpHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response),
       _clusterInfo(server.getFeature<ClusterFeature>().clusterInfo()) {
   if (ServerState::instance()->isDBServer() ||
@@ -199,8 +202,26 @@ void RestDumpHandler::handleCommandDumpNext() {
   // while we are using it.
   context->extendLifetime();
 
+  auto guard = activities::Registry::ScopedCurrentlyExecutingActivity(
+      context->activity());
+  auto fetch = activities::make<activities::GenericActivity>(
+      "RocksDBDumpNext", activities::GenericActivityData{{"id", id}});
+
   auto batch = context->next(*batchId, lastBatch);
   auto counts = context->getBlockCounts();
+
+  TRI_IF_FAILURE("RestDumpHandler::fetch-delay") {
+    // busy loop when we are the first fetch
+    // exist busy loop with second fetch
+    static std::atomic<bool> firstFetch{false};
+    if (!firstFetch.load()) {
+      firstFetch.store(true);
+      while (firstFetch.load()) {
+      }
+    } else {
+      firstFetch.store(false);
+    }
+  }
 
   if (batch == nullptr) {
     // all batches have been received

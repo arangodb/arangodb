@@ -23,8 +23,10 @@
 
 #include "FileDescriptorsFeature.h"
 
+#include "RestServer/FileDescriptorsOptionsProvider.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/BumpFileDescriptorsFeature.h"
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Basics/FileDescriptors.h"
 #include "Basics/FileUtils.h"
 #include "Logger/LogMacros.h"
@@ -32,9 +34,7 @@
 #include "Logger/LoggerStream.h"
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/MetricsFeature.h"
-#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
 #include "RestServer/EnvironmentFeature.h"
 
 #ifdef TRI_HAVE_SYS_RESOURCE_H
@@ -46,6 +46,7 @@
 #include <cstring>
 #include <sstream>
 #include <string>
+#include <filesystem>
 
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
@@ -61,13 +62,11 @@ DECLARE_GAUGE(
 
 namespace arangodb {
 
-FileDescriptorsFeature::FileDescriptorsFeature(Server& server)
-    : ArangodFeature{server, *this},
-      _countDescriptorsInterval(60 * 1000),
-      _fileDescriptorsCurrent(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_file_descriptors_current{})),
-      _fileDescriptorsLimit(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_file_descriptors_limit{})) {
+FileDescriptorsFeature::FileDescriptorsFeature(ApplicationServer& server,
+                                               metrics::MetricsFeature& metrics)
+    : ApplicationFeature{server, *this},
+      _fileDescriptorsCurrent(metrics.add(arangodb_file_descriptors_current{})),
+      _fileDescriptorsLimit(metrics.add(arangodb_file_descriptors_limit{})) {
   setOptional(false);
   startsAfter<BumpFileDescriptorsFeature>();
   startsAfter<GreetingsFeaturePhase>();
@@ -76,27 +75,14 @@ FileDescriptorsFeature::FileDescriptorsFeature(Server& server)
 
 void FileDescriptorsFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
-  options
-      ->addOption(
-          "--server.count-descriptors-interval",
-          "Controls the interval (in milliseconds) in which the number of open "
-          "file descriptors for the process is determined "
-          "(0 = disable counting).",
-          new UInt64Parameter(&_countDescriptorsInterval),
-          arangodb::options::makeFlags())
-      .setIntroducedIn(31100);
+  arangodb::file_descriptors::FileDescriptorsOptionsProvider provider;
+  provider.declareOptions(options, _options);
 }
 
 void FileDescriptorsFeature::validateOptions(
-    std::shared_ptr<ProgramOptions> /*options*/) {
-  constexpr uint64_t lowerBound = 10000;
-  if (_countDescriptorsInterval > 0 && _countDescriptorsInterval < lowerBound) {
-    LOG_TOPIC("c3011", WARN, Logger::SYSCALL)
-        << "too low value for `--server.count-descriptors-interval`. Should be "
-           "at least "
-        << lowerBound;
-    _countDescriptorsInterval = lowerBound;
-  }
+    std::shared_ptr<ProgramOptions> options) {
+  arangodb::file_descriptors::FileDescriptorsOptionsProvider provider;
+  provider.validateOptions(options, _options);
 }
 
 void FileDescriptorsFeature::prepare() {
@@ -117,7 +103,19 @@ uint64_t FileDescriptorsFeature::limit() const noexcept {
 
 void FileDescriptorsFeature::countOpenFiles() {
   try {
-    size_t numFiles = FileUtils::countFiles("/proc/self/fd");
+    std::filesystem::path fdPath{"/proc/self/fd"};
+    size_t numFiles = 0;
+
+    if (std::filesystem::exists(fdPath)) {
+      for (auto const& entry : std::filesystem::directory_iterator(fdPath)) {
+        // The intent is simply to increment numFiles for each entry in
+        // fdPath, not to inspect the entries themselves. Hence Ignore
+        // entry
+        (void)entry;  // explicitly ignore
+        ++numFiles;
+      }
+    }
+
     _fileDescriptorsCurrent.store(numFiles, std::memory_order_relaxed);
   } catch (std::exception const& ex) {
     LOG_TOPIC("bee41", DEBUG, Logger::SYSCALL)
@@ -130,7 +128,7 @@ void FileDescriptorsFeature::countOpenFiles() {
 }
 
 void FileDescriptorsFeature::countOpenFilesIfNeeded() {
-  if (_countDescriptorsInterval == 0) {
+  if (_options.countDescriptorsInterval == 0) {
     return;
   }
 
@@ -141,7 +139,7 @@ void FileDescriptorsFeature::countOpenFilesIfNeeded() {
   if (guard.owns_lock() &&
       (_lastCountStamp.time_since_epoch().count() == 0 ||
        now - _lastCountStamp >
-           std::chrono::milliseconds(_countDescriptorsInterval))) {
+           std::chrono::milliseconds(_options.countDescriptorsInterval))) {
     countOpenFiles();
     _lastCountStamp = now;
   }

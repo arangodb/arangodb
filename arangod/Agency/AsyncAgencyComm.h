@@ -28,6 +28,7 @@
 #include "Agency/PathComponent.h"
 #include "Basics/ResultT.h"
 #include "Basics/debugging.h"
+#include "Cluster/ClusterTypes.h"
 #include "Futures/Future.h"
 #include "Network/Methods.h"
 #include "Network/Utils.h"
@@ -134,40 +135,50 @@ struct AgencyReadResult : public AsyncAgencyCommResult {
 
 class AsyncAgencyComm;
 
+struct Agent {
+  ServerID serverId;
+  std::string endpoint;
+
+  bool operator==(Agent const&) const = default;
+};
+template<typename Inspector>
+auto inspect(Inspector& f, Agent& x) {
+  return f.object(x).fields(f.field("serverId", x.serverId),
+                            f.field("endpoint", x.endpoint));
+}
+
 class AsyncAgencyCommManager final {
  public:
   static std::unique_ptr<AsyncAgencyCommManager> INSTANCE;
 
-  static void initialize(ArangodServer& server) {
+  static void initialize(application_features::ApplicationServer& server) {
     INSTANCE = std::make_unique<AsyncAgencyCommManager>(server);
   }
 
   static bool isEnabled() { return INSTANCE != nullptr; }
   static AsyncAgencyCommManager& getInstance();
 
-  explicit AsyncAgencyCommManager(ArangodServer&);
+  explicit AsyncAgencyCommManager(application_features::ApplicationServer&);
 
-  void addEndpoint(std::string const& endpoint);
-  void updateEndpoints(std::vector<std::string> const& endpoints);
+  void addAgent(ServerID const& serverId, std::string const& endpoint);
+  void updateAgents(std::vector<Agent> const& agents);
 
-  std::deque<std::string> endpoints() const {
+  std::deque<Agent> agents() const {
     std::unique_lock<std::mutex> guard(_lock);
-    return _endpoints;
+    return _agents;
   }
 
-  std::string endpointsString() const;
   auto getSkipScheduler() const -> bool { return _skipScheduler; };
   void setSkipScheduler(bool v) { _skipScheduler = v; };
 
-  std::string getCurrentEndpoint();
-  void reportError(std::string const& endpoint);
-  void reportRedirect(std::string const& endpoint,
-                      std::string const& redirectTo);
+  Agent getCurrentAgent();
+  void reportError(Agent const& endpoint);
+  void reportRedirect(Agent const& agent, std::string const& redirectTo);
 
   network::ConnectionPool* pool() const { return _pool; }
   void pool(network::ConnectionPool* pool) { _pool = pool; }
 
-  ArangodServer& server();
+  application_features::ApplicationServer& server();
 
   uint64_t nextRequestId() {
     return _nextRequestId.fetch_add(1, std::memory_order_relaxed);
@@ -179,9 +190,9 @@ class AsyncAgencyCommManager final {
  private:
   std::atomic<bool> _isStopping = false;
   std::atomic<bool> _skipScheduler = true;
-  ArangodServer& _server;
+  application_features::ApplicationServer& _server;
   mutable std::mutex _lock;
-  std::deque<std::string> _endpoints;
+  std::deque<Agent> _agents;
   network::ConnectionPool* _pool = nullptr;
 
   std::atomic<uint64_t> _nextRequestId = 0;

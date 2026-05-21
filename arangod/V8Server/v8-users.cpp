@@ -27,21 +27,17 @@
 
 #include "v8-users.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "Auth/UserManager.h"
-#include "Basics/VelocyPackHelper.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "RestServer/DatabaseFeature.h"
+#include "Utils/CollectionNameResolver.h"
 #include "Utils/ExecContext.h"
 
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
-#include "V8Server/v8-externals.h"
 #include "V8Server/v8-vocbase.h"
-#include "V8Server/v8-vocbaseprivate.h"
-#include "V8Server/v8-vocindex.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 

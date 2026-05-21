@@ -46,7 +46,6 @@
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Sharding/ShardingInfo.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Helpers.h"
@@ -65,11 +64,10 @@
 #endif
 
 #include <absl/strings/str_cat.h>
-#include <fmt/core.h>
-#include <fmt/ostream.h>
-
 #include <velocypack/Collection.h>
 #include <velocypack/Utf8Helper.h>
+
+#include <format>
 
 using namespace arangodb;
 using Helper = basics::VelocyPackHelper;
@@ -160,6 +158,8 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
           info, StaticStrings::UsesRevisionsAsDocumentIds, false)),
       _waitForSync(Helper::getBooleanValue(
           info, StaticStrings::WaitForSyncString, false)),
+      _supportsRBAC(
+          Helper::getBooleanValue(info, StaticStrings::SupportsRBAC, true)),
       _syncByRevision(determineSyncByRevision()),
       _countCache(defaultCountCacheTtl(system())),
       _physical(vocbase.engine().createPhysicalCollection(*this, info)) {
@@ -334,11 +334,16 @@ UserInputCollectionProperties LogicalCollection::getCollectionProperties()
   props.shardingStrategy = shardingInfo()->shardingStrategyName();
   props.waitForSync = waitForSync();
   props.cacheEnabled = cacheEnabled();
+  props.supportsRBAC = supportsRBAC();
   return props;
 }
 
 bool LogicalCollection::cacheEnabled() const noexcept {
   return _physical->cacheEnabled();
+}
+
+bool LogicalCollection::supportsRBAC() const noexcept {
+  return _supportsRBAC.load();
 }
 
 bool LogicalCollection::waitForSync() const noexcept {
@@ -632,6 +637,13 @@ Result LogicalCollection::drop() {
 
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   setDeleted();
+
+  // Reset followers to decrement write concern metric. Otherwise the metric
+  // would only be decremented when the collection object is destroyed, which
+  // can be much later (when the database is dropped/shutdown).
+  // For collections in _system database this does not even happen.
+  _followers.reset();
+
   _physical->drop();
 
   return {};
@@ -752,6 +764,7 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
             VPackValue(static_cast<uint32_t>(_version)));
   // Collection Flags
   build.add(StaticStrings::WaitForSyncString, VPackValue(_waitForSync));
+  build.add(StaticStrings::SupportsRBAC, VPackValue(_supportsRBAC));
   if (!forPersistence) {
     // with 'forPersistence' added by LogicalDataSource::toVelocyPack
     // FIXME TODO is this needed in !forPersistence???
@@ -781,10 +794,14 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
                                   Index::Serialize::Maintenance);
   }
 
-  auto filter = [indexFlags, forPersistence, showInProgress](
-                    Index const* idx, decltype(Index::makeFlags())& flags) {
+  auto const filter = [indexFlags, forPersistence, forMaintance,
+                       showInProgress](Index const* idx,
+                                       decltype(Index::makeFlags())& flags) {
     if ((forPersistence || !idx->isHidden()) &&
-        (showInProgress || !idx->inProgress())) {
+        (showInProgress || !idx->inProgress() ||
+         // We do this since we need trainingState of the vector index in agency
+         // so we can report it to the end user
+         (forMaintance && idx->type() == Index::TRI_IDX_TYPE_VECTOR_INDEX))) {
       flags = indexFlags;
       return true;
     }
@@ -938,12 +955,6 @@ Result LogicalCollection::properties(velocypack::Slice slice) {
         "failed to find feature 'Database' while updating collection");
   }
 
-  if (!vocbase().server().hasFeature<EngineSelectorFeature>() ||
-      !vocbase().server().getFeature<EngineSelectorFeature>().selected()) {
-    return Result(TRI_ERROR_INTERNAL,
-                  "failed to find a storage engine while updating collection");
-  }
-
   std::lock_guard guard{_infoLock};  // prevent simultaneous updates
 
   auto res = updateSchema(slice.get(StaticStrings::Schema));
@@ -1047,6 +1058,14 @@ Result LogicalCollection::properties(velocypack::Slice slice) {
       }
 
       writeConcern = writeConcernSlice.getNumber<size_t>();
+
+      // Invalidate the _canWrite flag in FollowerInfo since writeConcern
+      // has changed. This ensures the write condition
+      // will be re-evaluated on the next write attempt.
+      if (_followers != nullptr) {
+        _followers->invalidateCanWrite();
+      }
+
       if (ServerState::instance()->isCoordinator() &&
           writeConcern > replicationFactor) {
         return Result(TRI_ERROR_BAD_PARAMETER,
@@ -1085,6 +1104,8 @@ Result LogicalCollection::properties(velocypack::Slice slice) {
   TRI_ASSERT(!isSatellite() || replicationFactor == 0);
   _waitForSync = Helper::getBooleanValue(
       slice, StaticStrings::WaitForSyncString, _waitForSync);
+  _supportsRBAC = Helper::getBooleanValue(slice, StaticStrings::SupportsRBAC,
+                                          _supportsRBAC);
   _sharding->setWriteConcernAndReplicationFactor(writeConcern,
                                                  replicationFactor);
 
@@ -1393,11 +1414,11 @@ auto LogicalCollection::getDocumentStateLeader() -> std::shared_ptr<
   auto stateMachine = getDocumentState();
 
   static constexpr auto throwUnavailable = []<typename... Args>(
-      basics::SourceLocation location, fmt::format_string<Args...> formatString,
+      basics::SourceLocation location, std::format_string<Args...> formatString,
       Args && ... args) {
     throw basics::Exception(
         TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_AVAILABLE,
-        fmt::vformat(formatString, fmt::make_format_args(args...)), location);
+        std::format(formatString, std::forward<Args>(args)...), location);
   };
 
   auto leader = stateMachine->getLeader();

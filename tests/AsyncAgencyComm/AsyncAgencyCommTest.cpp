@@ -48,27 +48,11 @@
 #include "Scheduler/SchedulerFeature.h"
 
 #include "Agency/AsyncAgencyComm.h"
+#include "VelocypackUtils/VelocyPackStringLiteral.h"
 
 using namespace arangodb;
 using namespace std::chrono_literals;
-
-using VPackBufferPtr = std::shared_ptr<velocypack::Buffer<uint8_t>>;
-
-VPackBuffer<uint8_t> vpackFromJsonString(char const* c) {
-  VPackOptions options;
-  options.checkAttributeUniqueness = true;
-  VPackParser parser(&options);
-  parser.parse(c);
-
-  std::shared_ptr<VPackBuilder> builder = parser.steal();
-  std::shared_ptr<VPackBuffer<uint8_t>> buffer = builder->steal();
-  VPackBuffer<uint8_t> b = std::move(*buffer);
-  return b;
-}
-
-VPackBuffer<uint8_t> operator"" _vpack(const char* json, size_t) {
-  return vpackFromJsonString(json);
-}
+using namespace arangodb::velocypack;
 
 bool operator==(VPackSlice a, VPackSlice b) {
   return arangodb::velocypack::NormalizedCompare::equals(a, b);
@@ -91,6 +75,10 @@ struct AsyncAgencyCommPoolMock final : public network::ConnectionPool {
 
       response = std::make_unique<fuerte::Response>(std::move(header));
       response->setPayload(std::move(body), 0);
+    }
+
+    void returnResponse(fuerte::StatusCode statusCode, VPackString const& s) {
+      returnResponse(statusCode, toBuffer(s));
     }
 
     void returnError(fuerte::Error err) {
@@ -177,6 +165,13 @@ struct AsyncAgencyCommPoolMock final : public network::ConnectionPool {
     return _requests.back();
   }
 
+  RequestPrototype& expectRequest(std::string const& endpoint,
+                                  fuerte::RestVerb method,
+                                  std::string const& url,
+                                  VPackString const& body) {
+    return expectRequest(endpoint, method, url, toBuffer(body));
+  }
+
   std::deque<RequestPrototype> _requests;
 };
 
@@ -186,7 +181,8 @@ struct AsyncAgencyCommTest
                                             arangodb::LogLevel::FATAL> {
   AsyncAgencyCommTest() : server("CRDN_0001", false) {
     server.addFeature<SchedulerFeature>(
-        true, server.template getFeature<arangodb::metrics::MetricsFeature>());
+        true, server.getFeature<arangodb::metrics::MetricsFeature>(),
+        sharedPRNG);
     server.startFeatures();
   }
 
@@ -203,11 +199,12 @@ struct AsyncAgencyCommTest
   }
 
  protected:
+  basics::SharedPRNG sharedPRNG;
   tests::mocks::MockCoordinator server;
 };
 
-static void compareEndpoints(std::deque<std::string> const& first,
-                             std::deque<std::string> const& second) {
+static void compareAgents(std::deque<Agent> const& first,
+                          std::deque<Agent> const& second) {
   ASSERT_EQ(first, second);
 }
 
@@ -219,21 +216,21 @@ TEST_F(AsyncAgencyCommTest, send_with_failover) {
 
   AsyncAgencyCommManager manager(server.server());
   manager.pool(&pool);
-  manager.updateEndpoints({
-      "http+tcp://10.0.0.1:8529",
-      "http+tcp://10.0.0.2:8529",
-      "http+tcp://10.0.0.3:8529",
+  manager.updateAgents({
+      {"agent-1", "http+tcp://10.0.0.1:8529"},
+      {"agent-2", "http+tcp://10.0.0.2:8529"},
+      {"agent-3", "http+tcp://10.0.0.3:8529"},
   });
 
   auto result = AsyncAgencyComm(manager)
-                    .sendReadTransaction(10s, R"=([["a"]])="_vpack)
+                    .sendReadTransaction(10s, toBuffer(R"=([["a"]])="_vpack))
                     .waitAndGet();
   ASSERT_EQ(result.error, fuerte::Error::NoError);
   ASSERT_EQ(result.slice().at(0).get("a").getNumber<int>(), 12);
 
-  compareEndpoints(manager.endpoints(),
-                   {"http+tcp://10.0.0.1:8529", "http+tcp://10.0.0.2:8529",
-                    "http+tcp://10.0.0.3:8529"});
+  compareAgents(manager.agents(), {{"agent-1", "http+tcp://10.0.0.1:8529"},
+                                   {"agent-2", "http+tcp://10.0.0.2:8529"},
+                                   {"agent-3", "http+tcp://10.0.0.3:8529"}});
 }
 
 TEST_F(AsyncAgencyCommTest, send_with_failover_failover) {
@@ -247,21 +244,21 @@ TEST_F(AsyncAgencyCommTest, send_with_failover_failover) {
 
   AsyncAgencyCommManager manager(server.server());
   manager.pool(&pool);
-  manager.updateEndpoints({
-      "http+tcp://10.0.0.1:8529",
-      "http+tcp://10.0.0.2:8529",
-      "http+tcp://10.0.0.3:8529",
+  manager.updateAgents({
+      {"agent-1", "http+tcp://10.0.0.1:8529"},
+      {"agent-2", "http+tcp://10.0.0.2:8529"},
+      {"agent-3", "http+tcp://10.0.0.3:8529"},
   });
 
   auto result = AsyncAgencyComm(manager)
-                    .sendReadTransaction(10s, R"=([["a"]])="_vpack)
+                    .sendReadTransaction(10s, toBuffer(R"=([["a"]])="_vpack))
                     .waitAndGet();
   ASSERT_EQ(result.error, fuerte::Error::NoError);
   ASSERT_EQ(result.slice().at(0).get("a").getNumber<int>(), 12);
 
-  compareEndpoints(manager.endpoints(),
-                   {"http+tcp://10.0.0.2:8529", "http+tcp://10.0.0.3:8529",
-                    "http+tcp://10.0.0.1:8529"});
+  compareAgents(manager.agents(), {{"agent-2", "http+tcp://10.0.0.2:8529"},
+                                   {"agent-3", "http+tcp://10.0.0.3:8529"},
+                                   {"agent-1", "http+tcp://10.0.0.1:8529"}});
 }
 
 TEST_F(AsyncAgencyCommTest, send_with_failover_timeout_redirect) {
@@ -278,21 +275,21 @@ TEST_F(AsyncAgencyCommTest, send_with_failover_timeout_redirect) {
 
   AsyncAgencyCommManager manager(server.server());
   manager.pool(&pool);
-  manager.updateEndpoints({
-      "http+tcp://10.0.0.1:8529",
-      "http+tcp://10.0.0.2:8529",
-      "http+tcp://10.0.0.3:8529",
+  manager.updateAgents({
+      {"agent-1", "http+tcp://10.0.0.1:8529"},
+      {"agent-2", "http+tcp://10.0.0.2:8529"},
+      {"agent-3", "http+tcp://10.0.0.3:8529"},
   });
 
   auto result = AsyncAgencyComm(manager)
-                    .sendReadTransaction(10s, R"=([["a"]])="_vpack)
+                    .sendReadTransaction(10s, toBuffer(R"=([["a"]])="_vpack))
                     .waitAndGet();
   ASSERT_EQ(result.error, fuerte::Error::NoError);
   ASSERT_EQ(result.slice().at(0).get("a").getNumber<int>(), 12);
 
-  compareEndpoints(manager.endpoints(),
-                   {"http+tcp://10.0.0.3:8529", "http+tcp://10.0.0.1:8529",
-                    "http+tcp://10.0.0.2:8529"});
+  compareAgents(manager.agents(), {{"agent-3", "http+tcp://10.0.0.3:8529"},
+                                   {"agent-1", "http+tcp://10.0.0.1:8529"},
+                                   {"agent-2", "http+tcp://10.0.0.2:8529"}});
 }
 
 TEST_F(AsyncAgencyCommTest, send_with_failover_redirect) {
@@ -306,21 +303,21 @@ TEST_F(AsyncAgencyCommTest, send_with_failover_redirect) {
 
   AsyncAgencyCommManager manager(server.server());
   manager.pool(&pool);
-  manager.updateEndpoints({
-      "http+tcp://10.0.0.1:8529",
-      "http+tcp://10.0.0.2:8529",
-      "http+tcp://10.0.0.3:8529",
+  manager.updateAgents({
+      {"agent-1", "http+tcp://10.0.0.1:8529"},
+      {"agent-2", "http+tcp://10.0.0.2:8529"},
+      {"agent-3", "http+tcp://10.0.0.3:8529"},
   });
 
   auto result = AsyncAgencyComm(manager)
-                    .sendReadTransaction(10s, R"=([["a"]])="_vpack)
+                    .sendReadTransaction(10s, toBuffer(R"=([["a"]])="_vpack))
                     .waitAndGet();
   ASSERT_EQ(result.error, fuerte::Error::NoError);
   ASSERT_EQ(result.slice().at(0).get("a").getNumber<int>(), 12);
 
-  compareEndpoints(manager.endpoints(),
-                   {"http+tcp://10.0.0.3:8529", "http+tcp://10.0.0.2:8529",
-                    "http+tcp://10.0.0.1:8529"});
+  compareAgents(manager.agents(), {{"agent-3", "http+tcp://10.0.0.3:8529"},
+                                   {"agent-2", "http+tcp://10.0.0.2:8529"},
+                                   {"agent-1", "http+tcp://10.0.0.1:8529"}});
 }
 
 TEST_F(AsyncAgencyCommTest, send_with_failover_redirect_new_endpoint) {
@@ -334,21 +331,22 @@ TEST_F(AsyncAgencyCommTest, send_with_failover_redirect_new_endpoint) {
 
   AsyncAgencyCommManager manager(server.server());
   manager.pool(&pool);
-  manager.updateEndpoints({
-      "http+tcp://10.0.0.1:8529",
-      "http+tcp://10.0.0.2:8529",
-      "http+tcp://10.0.0.3:8529",
+  manager.updateAgents({
+      {"agent-1", "http+tcp://10.0.0.1:8529"},
+      {"agent-2", "http+tcp://10.0.0.2:8529"},
+      {"agent-3", "http+tcp://10.0.0.3:8529"},
   });
 
   auto result = AsyncAgencyComm(manager)
-                    .sendReadTransaction(10s, R"=([["a"]])="_vpack)
+                    .sendReadTransaction(10s, toBuffer(R"=([["a"]])="_vpack))
                     .waitAndGet();
   ASSERT_EQ(result.error, fuerte::Error::NoError);
   ASSERT_EQ(result.slice().at(0).get("a").getNumber<int>(), 12);
 
-  compareEndpoints(manager.endpoints(),
-                   {"http+tcp://10.0.0.4:8529", "http+tcp://10.0.0.2:8529",
-                    "http+tcp://10.0.0.3:8529", "http+tcp://10.0.0.1:8529"});
+  compareAgents(manager.agents(), {{"agent-1", "http+tcp://10.0.0.4:8529"},
+                                   {"agent-2", "http+tcp://10.0.0.2:8529"},
+                                   {"agent-3", "http+tcp://10.0.0.3:8529"},
+                                   {"agent-1", "http+tcp://10.0.0.1:8529"}});
 }
 
 TEST_F(AsyncAgencyCommTest, send_with_failover_not_found) {
@@ -359,21 +357,21 @@ TEST_F(AsyncAgencyCommTest, send_with_failover_not_found) {
 
   AsyncAgencyCommManager manager(server.server());
   manager.pool(&pool);
-  manager.updateEndpoints({
-      "http+tcp://10.0.0.1:8529",
-      "http+tcp://10.0.0.2:8529",
-      "http+tcp://10.0.0.3:8529",
+  manager.updateAgents({
+      {"agent-1", "http+tcp://10.0.0.1:8529"},
+      {"agent-2", "http+tcp://10.0.0.2:8529"},
+      {"agent-3", "http+tcp://10.0.0.3:8529"},
   });
 
   auto result = AsyncAgencyComm(manager)
-                    .sendReadTransaction(10s, R"=([["a"]])="_vpack)
+                    .sendReadTransaction(10s, toBuffer(R"=([["a"]])="_vpack))
                     .waitAndGet();
   ASSERT_EQ(result.error, fuerte::Error::NoError);
   ASSERT_EQ(result.statusCode(), fuerte::StatusNotFound);
 
-  compareEndpoints(manager.endpoints(),
-                   {"http+tcp://10.0.0.1:8529", "http+tcp://10.0.0.2:8529",
-                    "http+tcp://10.0.0.3:8529"});
+  compareAgents(manager.agents(), {{"agent-1", "http+tcp://10.0.0.1:8529"},
+                                   {"agent-2", "http+tcp://10.0.0.2:8529"},
+                                   {"agent-3", "http+tcp://10.0.0.3:8529"}});
 }
 
 TEST_F(AsyncAgencyCommTest, send_with_failover_prec_failed) {
@@ -385,21 +383,21 @@ TEST_F(AsyncAgencyCommTest, send_with_failover_prec_failed) {
 
   AsyncAgencyCommManager manager(server.server());
   manager.pool(&pool);
-  manager.updateEndpoints({
-      "http+tcp://10.0.0.1:8529",
-      "http+tcp://10.0.0.2:8529",
-      "http+tcp://10.0.0.3:8529",
+  manager.updateAgents({
+      {"agent-1", "http+tcp://10.0.0.1:8529"},
+      {"agent-2", "http+tcp://10.0.0.2:8529"},
+      {"agent-3", "http+tcp://10.0.0.3:8529"},
   });
 
   auto result = AsyncAgencyComm(manager)
-                    .sendReadTransaction(10s, R"=([["a"]])="_vpack)
+                    .sendReadTransaction(10s, toBuffer(R"=([["a"]])="_vpack))
                     .waitAndGet();
   ASSERT_EQ(result.error, fuerte::Error::NoError);
   ASSERT_EQ(result.statusCode(), fuerte::StatusPreconditionFailed);
 
-  compareEndpoints(manager.endpoints(),
-                   {"http+tcp://10.0.0.1:8529", "http+tcp://10.0.0.2:8529",
-                    "http+tcp://10.0.0.3:8529"});
+  compareAgents(manager.agents(), {{"agent-1", "http+tcp://10.0.0.1:8529"},
+                                   {"agent-2", "http+tcp://10.0.0.2:8529"},
+                                   {"agent-3", "http+tcp://10.0.0.3:8529"}});
 }
 
 TEST_F(AsyncAgencyCommTest, send_with_failover_inquire_timeout_not_found) {
@@ -419,23 +417,23 @@ TEST_F(AsyncAgencyCommTest, send_with_failover_inquire_timeout_not_found) {
 
   AsyncAgencyCommManager manager(server.server());
   manager.pool(&pool);
-  manager.updateEndpoints({
-      "http+tcp://10.0.0.1:8529",
-      "http+tcp://10.0.0.2:8529",
-      "http+tcp://10.0.0.3:8529",
+  manager.updateAgents({
+      {"agent-1", "http+tcp://10.0.0.1:8529"},
+      {"agent-2", "http+tcp://10.0.0.2:8529"},
+      {"agent-3", "http+tcp://10.0.0.3:8529"},
   });
 
-  auto result =
-      AsyncAgencyComm(manager)
-          .sendWriteTransaction(10s, R"=([[{"a":12}, {}, "cid-1"]])="_vpack)
-          .waitAndGet();
+  auto result = AsyncAgencyComm(manager)
+                    .sendWriteTransaction(
+                        10s, toBuffer(R"=([[{"a":12}, {}, "cid-1"]])="_vpack))
+                    .waitAndGet();
   ASSERT_EQ(result.error, fuerte::Error::NoError);
   ASSERT_EQ(result.statusCode(), fuerte::StatusOK);
   ASSERT_EQ(result.slice().get("results").at(0).getNumber<int>(), 15);
 
-  compareEndpoints(manager.endpoints(),
-                   {"http+tcp://10.0.0.2:8529", "http+tcp://10.0.0.3:8529",
-                    "http+tcp://10.0.0.1:8529"});
+  compareAgents(manager.agents(), {{"agent-2", "http+tcp://10.0.0.2:8529"},
+                                   {"agent-3", "http+tcp://10.0.0.3:8529"},
+                                   {"agent-1", "http+tcp://10.0.0.1:8529"}});
 }
 
 TEST_F(AsyncAgencyCommTest,
@@ -459,23 +457,23 @@ TEST_F(AsyncAgencyCommTest,
 
   AsyncAgencyCommManager manager(server.server());
   manager.pool(&pool);
-  manager.updateEndpoints({
-      "http+tcp://10.0.0.1:8529",
-      "http+tcp://10.0.0.2:8529",
-      "http+tcp://10.0.0.3:8529",
+  manager.updateAgents({
+      {"agent-1", "http+tcp://10.0.0.1:8529"},
+      {"agent-2", "http+tcp://10.0.0.2:8529"},
+      {"agent-3", "http+tcp://10.0.0.3:8529"},
   });
 
-  auto result =
-      AsyncAgencyComm(manager)
-          .sendWriteTransaction(10s, R"=([[{"a":12}, {}, "cid-1"]])="_vpack)
-          .waitAndGet();
+  auto result = AsyncAgencyComm(manager)
+                    .sendWriteTransaction(
+                        10s, toBuffer(R"=([[{"a":12}, {}, "cid-1"]])="_vpack))
+                    .waitAndGet();
   ASSERT_EQ(result.error, fuerte::Error::NoError);
   ASSERT_EQ(result.statusCode(), fuerte::StatusOK);
   ASSERT_EQ(result.slice().get("results").at(0).getNumber<int>(), 15);
 
-  compareEndpoints(manager.endpoints(),
-                   {"http+tcp://10.0.0.3:8529", "http+tcp://10.0.0.1:8529",
-                    "http+tcp://10.0.0.2:8529"});
+  compareAgents(manager.agents(), {{"agent-3", "http+tcp://10.0.0.3:8529"},
+                                   {"agent-1", "http+tcp://10.0.0.1:8529"},
+                                   {"agent-2", "http+tcp://10.0.0.2:8529"}});
 }
 
 TEST_F(AsyncAgencyCommTest, send_with_failover_inquire_timeout_found) {
@@ -492,23 +490,23 @@ TEST_F(AsyncAgencyCommTest, send_with_failover_inquire_timeout_found) {
 
   AsyncAgencyCommManager manager(server.server());
   manager.pool(&pool);
-  manager.updateEndpoints({
-      "http+tcp://10.0.0.1:8529",
-      "http+tcp://10.0.0.2:8529",
-      "http+tcp://10.0.0.3:8529",
+  manager.updateAgents({
+      {"agent-1", "http+tcp://10.0.0.1:8529"},
+      {"agent-2", "http+tcp://10.0.0.2:8529"},
+      {"agent-3", "http+tcp://10.0.0.3:8529"},
   });
 
-  auto result =
-      AsyncAgencyComm(manager)
-          .sendWriteTransaction(10s, R"=([[{"a":12}, {}, "cid-1"]])="_vpack)
-          .waitAndGet();
+  auto result = AsyncAgencyComm(manager)
+                    .sendWriteTransaction(
+                        10s, toBuffer(R"=([[{"a":12}, {}, "cid-1"]])="_vpack))
+                    .waitAndGet();
   ASSERT_EQ(result.error, fuerte::Error::NoError);
   ASSERT_EQ(result.statusCode(), fuerte::StatusOK);
   ASSERT_EQ(result.slice().get("results").at(0).getNumber<int>(), 32);
 
-  compareEndpoints(manager.endpoints(),
-                   {"http+tcp://10.0.0.2:8529", "http+tcp://10.0.0.3:8529",
-                    "http+tcp://10.0.0.1:8529"});
+  compareAgents(manager.agents(), {{"agent-2", "http+tcp://10.0.0.2:8529"},
+                                   {"agent-3", "http+tcp://10.0.0.3:8529"},
+                                   {"agent-1", "http+tcp://10.0.0.1:8529"}});
 }
 
 TEST_F(AsyncAgencyCommTest,
@@ -532,23 +530,23 @@ TEST_F(AsyncAgencyCommTest,
 
   AsyncAgencyCommManager manager(server.server());
   manager.pool(&pool);
-  manager.updateEndpoints({
-      "http+tcp://10.0.0.1:8529",
-      "http+tcp://10.0.0.2:8529",
-      "http+tcp://10.0.0.3:8529",
+  manager.updateAgents({
+      {"agent-1", "http+tcp://10.0.0.1:8529"},
+      {"agent-2", "http+tcp://10.0.0.2:8529"},
+      {"agent-3", "http+tcp://10.0.0.3:8529"},
   });
 
-  auto result =
-      AsyncAgencyComm(manager)
-          .sendWriteTransaction(10s, R"=([[{"a":12}, {}, "cid-1"]])="_vpack)
-          .waitAndGet();
+  auto result = AsyncAgencyComm(manager)
+                    .sendWriteTransaction(
+                        10s, toBuffer(R"=([[{"a":12}, {}, "cid-1"]])="_vpack))
+                    .waitAndGet();
   ASSERT_EQ(result.error, fuerte::Error::NoError);
   ASSERT_EQ(result.statusCode(), fuerte::StatusOK);
   ASSERT_EQ(result.slice().get("results").at(0).getNumber<int>(), 15);
 
-  compareEndpoints(manager.endpoints(),
-                   {"http+tcp://10.0.0.3:8529", "http+tcp://10.0.0.1:8529",
-                    "http+tcp://10.0.0.2:8529"});
+  compareAgents(manager.agents(), {{"agent-3", "http+tcp://10.0.0.3:8529"},
+                                   {"agent-1", "http+tcp://10.0.0.1:8529"},
+                                   {"agent-2", "http+tcp://10.0.0.2:8529"}});
 }
 
 TEST_F(AsyncAgencyCommTest, send_with_failover_inquire_service_unavailable) {
@@ -572,23 +570,23 @@ TEST_F(AsyncAgencyCommTest, send_with_failover_inquire_service_unavailable) {
 
   AsyncAgencyCommManager manager(server.server());
   manager.pool(&pool);
-  manager.updateEndpoints({
-      "http+tcp://10.0.0.1:8529",
-      "http+tcp://10.0.0.2:8529",
-      "http+tcp://10.0.0.3:8529",
+  manager.updateAgents({
+      {"agent-1", "http+tcp://10.0.0.1:8529"},
+      {"agent-2", "http+tcp://10.0.0.2:8529"},
+      {"agent-3", "http+tcp://10.0.0.3:8529"},
   });
 
-  auto result =
-      AsyncAgencyComm(manager)
-          .sendWriteTransaction(10s, R"=([[{"a":12}, {}, "cid-1"]])="_vpack)
-          .waitAndGet();
+  auto result = AsyncAgencyComm(manager)
+                    .sendWriteTransaction(
+                        10s, toBuffer(R"=([[{"a":12}, {}, "cid-1"]])="_vpack))
+                    .waitAndGet();
   ASSERT_EQ(result.error, fuerte::Error::NoError);
   ASSERT_EQ(result.statusCode(), fuerte::StatusOK);
   ASSERT_EQ(result.slice().get("results").at(0).getNumber<int>(), 15);
 
-  compareEndpoints(manager.endpoints(),
-                   {"http+tcp://10.0.0.3:8529", "http+tcp://10.0.0.1:8529",
-                    "http+tcp://10.0.0.2:8529"});
+  compareAgents(manager.agents(), {{"agent-3", "http+tcp://10.0.0.3:8529"},
+                                   {"agent-1", "http+tcp://10.0.0.1:8529"},
+                                   {"agent-2", "http+tcp://10.0.0.2:8529"}});
 }
 
 TEST_F(AsyncAgencyCommTest, send_with_failover_read_only_timeout_not_found) {
@@ -606,21 +604,21 @@ TEST_F(AsyncAgencyCommTest, send_with_failover_read_only_timeout_not_found) {
 
   AsyncAgencyCommManager manager(server.server());
   manager.pool(&pool);
-  manager.updateEndpoints({
-      "http+tcp://10.0.0.1:8529",
-      "http+tcp://10.0.0.2:8529",
-      "http+tcp://10.0.0.3:8529",
+  manager.updateAgents({
+      {"agent-1", "http+tcp://10.0.0.1:8529"},
+      {"agent-2", "http+tcp://10.0.0.2:8529"},
+      {"agent-3", "http+tcp://10.0.0.3:8529"},
   });
 
   auto result = AsyncAgencyComm(manager)
-                    .sendReadTransaction(10s, R"=([["a"]])="_vpack)
+                    .sendReadTransaction(10s, toBuffer(R"=([["a"]])="_vpack))
                     .waitAndGet();
   ASSERT_EQ(result.error, fuerte::Error::NoError);
   ASSERT_EQ(result.statusCode(), fuerte::StatusNotFound);
 
-  compareEndpoints(manager.endpoints(),
-                   {"http+tcp://10.0.0.3:8529", "http+tcp://10.0.0.1:8529",
-                    "http+tcp://10.0.0.2:8529"});
+  compareAgents(manager.agents(), {{"agent-3", "http+tcp://10.0.0.3:8529"},
+                                   {"agent-1", "http+tcp://10.0.0.1:8529"},
+                                   {"agent-2", "http+tcp://10.0.0.2:8529"}});
 }
 
 TEST_F(AsyncAgencyCommTest, send_with_failover_write_no_cids_timeout) {
@@ -631,20 +629,21 @@ TEST_F(AsyncAgencyCommTest, send_with_failover_write_no_cids_timeout) {
 
   AsyncAgencyCommManager manager(server.server());
   manager.pool(&pool);
-  manager.updateEndpoints({
-      "http+tcp://10.0.0.1:8529",
-      "http+tcp://10.0.0.2:8529",
-      "http+tcp://10.0.0.3:8529",
+  manager.updateAgents({
+      {"agent-1", "http+tcp://10.0.0.1:8529"},
+      {"agent-2", "http+tcp://10.0.0.2:8529"},
+      {"agent-3", "http+tcp://10.0.0.3:8529"},
   });
 
-  auto result = AsyncAgencyComm(manager)
-                    .sendWriteTransaction(10s, R"=([[{"a":12}, {}]])="_vpack)
-                    .waitAndGet();
+  auto result =
+      AsyncAgencyComm(manager)
+          .sendWriteTransaction(10s, toBuffer(R"=([[{"a":12}, {}]])="_vpack))
+          .waitAndGet();
   ASSERT_EQ(result.error, fuerte::Error::RequestTimeout);
 
-  compareEndpoints(manager.endpoints(),
-                   {"http+tcp://10.0.0.2:8529", "http+tcp://10.0.0.3:8529",
-                    "http+tcp://10.0.0.1:8529"});
+  compareAgents(manager.agents(), {{"agent-2", "http+tcp://10.0.0.2:8529"},
+                                   {"agent-3", "http+tcp://10.0.0.3:8529"},
+                                   {"agent-1", "http+tcp://10.0.0.1:8529"}});
 }
 
 TEST_F(AsyncAgencyCommTest, get_values) {
@@ -655,10 +654,10 @@ TEST_F(AsyncAgencyCommTest, get_values) {
 
   AsyncAgencyCommManager manager(server.server());
   manager.pool(&pool);
-  manager.updateEndpoints({
-      "http+tcp://10.0.0.1:8529",
-      "http+tcp://10.0.0.2:8529",
-      "http+tcp://10.0.0.3:8529",
+  manager.updateAgents({
+      {"agent-1", "http+tcp://10.0.0.1:8529"},
+      {"agent-2", "http+tcp://10.0.0.2:8529"},
+      {"agent-3", "http+tcp://10.0.0.3:8529"},
   });
 
   auto result =
@@ -669,7 +668,7 @@ TEST_F(AsyncAgencyCommTest, get_values) {
   ASSERT_EQ(result.statusCode(), fuerte::StatusOK);
   ASSERT_EQ(result.value().getNumber<int>(), 12);
 
-  compareEndpoints(manager.endpoints(),
-                   {"http+tcp://10.0.0.1:8529", "http+tcp://10.0.0.2:8529",
-                    "http+tcp://10.0.0.3:8529"});
+  compareAgents(manager.agents(), {{"agent-1", "http+tcp://10.0.0.1:8529"},
+                                   {"agent-2", "http+tcp://10.0.0.2:8529"},
+                                   {"agent-3", "http+tcp://10.0.0.3:8529"}});
 }

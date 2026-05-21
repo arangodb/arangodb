@@ -23,22 +23,28 @@
 
 #pragma once
 
-#include "RestServer/arangod.h"
+#include "ApplicationFeatures/ApplicationFeature.h"
+#include "Basics/SharedPRNG.h"
+#include "Scheduler/SchedulerFeatureOptions.h"
 
-#include <functional>
 #include <memory>
 
 namespace arangodb {
 
 class Scheduler;
+namespace metrics {
+class MetricsFeature;
+}
 
-class SchedulerFeature final : public ArangodFeature {
+class SchedulerFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Scheduler"; }
 
   static Scheduler* SCHEDULER;
 
-  SchedulerFeature(Server& server, metrics::MetricsFeature& metrics);
+  SchedulerFeature(application_features::ApplicationServer& server,
+                   metrics::MetricsFeature& metrics,
+                   basics::SharedPRNG& sharedPRNG);
   ~SchedulerFeature();
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -60,17 +66,10 @@ class SchedulerFeature final : public ArangodFeature {
   void signalStuffInit();
   void signalStuffDeinit();
 
-  uint64_t _nrMinimalThreads = 4;
-  uint64_t _nrMaximalThreads = 0;
-  uint64_t _queueSize = 4096;
-  uint64_t _fifo1Size = 4096;
-  uint64_t _fifo2Size = 4096;
-  uint64_t _fifo3Size = 4096;
-  double _ongoingLowPriorityMultiplier = 4.0;
-  double _unavailabilityQueueFillGrade = 0.75;
-  std::string _schedulerType = "supervised";
+  SchedulerFeatureOptions _options;
 
   std::unique_ptr<Scheduler> _scheduler;
+  basics::SharedPRNG& _sharedPRNG;
   metrics::MetricsFeature& _metricsFeature;
 
   struct AsioHandler;

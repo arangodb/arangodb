@@ -23,10 +23,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <gtest/gtest.h>
+#include <format>
 #include <memory>
 #include <type_traits>
 #include <unordered_set>
-#include "fmt/format.h"
 #include "velocypack/SharedSlice.h"
 #include "VelocypackUtils/VelocyPackStringLiteral.h"
 
@@ -145,14 +145,14 @@ TYPED_TEST(RuntimeTest, formats_runtime_and_actor_state) {
   }();
 
   ASSERT_EQ(
-      fmt::format(
+      std::format(
           "{}", arangodb::inspection::json(
                     *runtime, arangodb::inspection::JsonPrintFormat::kMinimal)),
       expected);
 
   auto actor =
       runtime->template getActorStateByID<pong_actor::Actor>(actorID).value();
-  ASSERT_EQ(fmt::format("{}", actor), R"({"called":1})");
+  ASSERT_EQ(std::format("{}", actor), R"({"called":1})");
   runtime->softShutdown();
 }
 
@@ -260,7 +260,7 @@ TYPED_TEST(
   this->scheduler->stop();
   ASSERT_EQ(
       runtime->template getActorStateByID<TrivialActor>(actor),
-      (TrivialState(fmt::format("sent unknown message to {}", actor), 2)));
+      (TrivialState(std::format("sent unknown message to {}", actor), 2)));
   runtime->softShutdown();
 }
 
@@ -279,7 +279,7 @@ TYPED_TEST(
   this->scheduler->stop();
   ASSERT_EQ(
       runtime->template getActorStateByID<TrivialActor>(actor),
-      (TrivialState(fmt::format("receiving actor {} not found", unknown_actor),
+      (TrivialState(std::format("receiving actor {} not found", unknown_actor),
                     2)));
   runtime->softShutdown();
 }

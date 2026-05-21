@@ -37,6 +37,7 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/FlushFeature.h"
 #include "Metrics/MetricsFeature.h"
+#include "RestServer/arangod.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBFormat.h"
@@ -72,22 +73,21 @@ class FlushFeatureTest
       features;
 
   FlushFeatureTest() : server(nullptr, nullptr), engine(server) {
-    features.emplace_back(
-        server.addFeature<arangodb::metrics::MetricsFeature>(
-            arangodb::LazyApplicationFeatureReference<
-                arangodb::QueryRegistryFeature>(server),
-            arangodb::LazyApplicationFeatureReference<
-                arangodb::StatisticsFeature>(nullptr),
-            arangodb::LazyApplicationFeatureReference<
-                arangodb::EngineSelectorFeature>(server),
-            arangodb::LazyApplicationFeatureReference<
-                arangodb::metrics::ClusterMetricsFeature>(nullptr),
-            arangodb::LazyApplicationFeatureReference<arangodb::ClusterFeature>(
-                nullptr)),
-        false);
+    auto& metrics = server.addFeature<arangodb::metrics::MetricsFeature>(
+        arangodb::LazyApplicationFeatureReference<
+            arangodb::QueryRegistryFeature>(server),
+        arangodb::LazyApplicationFeatureReference<arangodb::StatisticsFeature>(
+            nullptr),
+        arangodb::LazyApplicationFeatureReference<
+            arangodb::EngineSelectorFeature>(server),
+        arangodb::LazyApplicationFeatureReference<
+            arangodb::metrics::ClusterMetricsFeature>(nullptr),
+        arangodb::LazyApplicationFeatureReference<arangodb::ClusterFeature>(
+            nullptr));
+    features.emplace_back(metrics, false);
     features.emplace_back(server.addFeature<arangodb::AuthenticationFeature>(),
                           false);  // required for ClusterFeature::prepare()
-    features.emplace_back(server.addFeature<arangodb::ClusterFeature>(),
+    features.emplace_back(server.addFeature<arangodb::ClusterFeature>(metrics),
                           false);  // required for V8DealerFeature::prepare()
     features.emplace_back(
         server.addFeature<arangodb::DatabaseFeature>(),
@@ -97,12 +97,12 @@ class FlushFeatureTest
     selector.setEngineTesting(&engine);
     features.emplace_back(
         server.addFeature<arangodb::QueryRegistryFeature>(
-            server.template getFeature<arangodb::metrics::MetricsFeature>()),
+            server.getFeature<arangodb::metrics::MetricsFeature>()),
         false);  // required for TRI_vocbase_t
 #ifdef USE_V8
     features.emplace_back(
         server.addFeature<arangodb::V8DealerFeature>(
-            server.template getFeature<arangodb::metrics::MetricsFeature>()),
+            server.getFeature<arangodb::metrics::MetricsFeature>()),
         false);  // required for DatabaseFeature::createDatabase(...)
 #endif
 
@@ -153,7 +153,8 @@ TEST_F(FlushFeatureTest, test_subscription_retention) {
   ASSERT_TRUE(dbFeature.createDatabase(testDBInfo(server), vocbase).ok());
   ASSERT_NE(nullptr, vocbase);
 
-  arangodb::FlushFeature feature(server);
+  auto& metrics = server.getFeature<arangodb::metrics::MetricsFeature>();
+  arangodb::FlushFeature feature(server, metrics);
   feature.prepare();
 
   {

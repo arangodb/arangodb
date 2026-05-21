@@ -22,6 +22,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ArangoGlobalContext.h"
+
+#include <filesystem>
+
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
@@ -111,11 +114,11 @@ void ArangoGlobalContext::normalizePath(std::string& path,
                                         char const* whichPath, bool fatal) {
   StringUtils::rTrimInPlace(path, TRI_DIR_SEPARATOR_STR);
 
-  arangodb::basics::FileUtils::normalizePath(path);
-  if (!arangodb::basics::FileUtils::exists(path)) {
+  path = std::filesystem::path(path).make_preferred().string();
+  if (!std::filesystem::exists(path)) {
     std::string directory =
         arangodb::basics::FileUtils::buildFilename(_runRoot, path);
-    if (!arangodb::basics::FileUtils::exists(directory)) {
+    if (!std::filesystem::exists(directory)) {
       if (!fatal) {
         return;
       }
@@ -125,11 +128,11 @@ void ArangoGlobalContext::normalizePath(std::string& path,
           << directory << "'";
       FATAL_ERROR_EXIT();
     }
-    arangodb::basics::FileUtils::normalizePath(directory);
+    directory = std::filesystem::path(directory).make_preferred().string();
     path = directory;
   } else {
-    if (!TRI_PathIsAbsolute(path)) {
-      arangodb::basics::FileUtils::makePathAbsolute(path);
+    if (!std::filesystem::path(path).is_absolute()) {
+      path = basics::FileUtils::absolutePath(path).string();
     }
   }
 }

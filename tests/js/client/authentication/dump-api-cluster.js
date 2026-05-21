@@ -28,6 +28,7 @@ const jsunity = require("jsunity");
 const arango = require("@arangodb").arango;
 const db = require("internal").db;
 const users = require("@arangodb/users");
+const dump = require('@arangodb/arango-dump');
 
 function AuthSuite() {
   'use strict';
@@ -96,32 +97,34 @@ function AuthSuite() {
 
       // user2 should not be able to create a dump context
       arango.reconnect(arango.getEndpoint(), 'UnitTestsDatabase', user2, 'foobar');
-      let result = arango.POST_RAW(`/_api/dump/start?dbserver=${server}`, {shards: [shard]});
+      let result = dump.start({shards: [shard]}, server);
       assertEqual(result.code, 403);
 
+      // user1 can create a dump
       arango.reconnect(arango.getEndpoint(), 'UnitTestsDatabase', user1, 'foobar');
-      result = arango.POST_RAW(`/_api/dump/start?dbserver=${server}`, {shards: [shard]});
+      result = dump.start({shards: [shard]}, server);
       assertEqual(result.code, 201);
       let token = result.headers["x-arango-dump-id"];
       assertNotUndefined(token);
 
       // user2 should not be able to read from the collection using the handle
       arango.reconnect(arango.getEndpoint(), 'UnitTestsDatabase', user2, 'foobar');
-      result = arango.POST_RAW(`/_api/dump/next/${token}?dbserver=${server}&batchId=1`, {});
+      result = dump.next(token, 1, undefined, server);
       assertEqual(result.code, 403);
 
+      // user1 can read the dump
       arango.reconnect(arango.getEndpoint(), 'UnitTestsDatabase', user1, 'foobar');
-      result = arango.POST_RAW(`/_api/dump/next/${token}?dbserver=${server}&batchId=1`, {});
+      result = dump.next(token, 1, undefined, server);
       assertEqual(result.code, 204); // collection is empty
 
-
-      // user 2 should not be able to delete the dump context
+      // user2 should not be able to delete the dump context
       arango.reconnect(arango.getEndpoint(), 'UnitTestsDatabase', user2, 'foobar');
-      result = arango.DELETE_RAW(`/_api/dump/${token}?dbserver=${server}`, {});
+      result = dump.delete(token, server);
       assertEqual(result.code, 403);
 
+      // user1 can delete the dump
       arango.reconnect(arango.getEndpoint(), 'UnitTestsDatabase', user1, 'foobar');
-      result = arango.DELETE_RAW(`/_api/dump/${token}?dbserver=${server}`, {});
+      result = dump.delete(token, server);
       assertEqual(result.code, 200);
     },
   };

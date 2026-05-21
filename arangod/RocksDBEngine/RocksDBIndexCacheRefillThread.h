@@ -26,7 +26,6 @@
 #include "Basics/ConditionVariable.h"
 #include "Basics/Thread.h"
 #include "Metrics/Fwd.h"
-#include "RestServer/arangod.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/voc-types.h"
@@ -42,10 +41,11 @@ namespace arangodb {
 class DatabaseFeature;
 class LogicalCollection;
 
-class RocksDBIndexCacheRefillThread final : public ServerThread<ArangodServer> {
+class RocksDBIndexCacheRefillThread final : public Thread {
  public:
-  explicit RocksDBIndexCacheRefillThread(ArangodServer& server,
-                                         size_t maxCapacity);
+  explicit RocksDBIndexCacheRefillThread(
+      DatabaseFeature& databaseFeature, metrics::MetricsFeature& metricsFeature,
+      size_t maxCapacity);
 
   ~RocksDBIndexCacheRefillThread();
 

@@ -48,6 +48,9 @@ target_link_libraries(${BIN_ARANGOSH}
   ${ICU_STATIC_LIBS}
   ${V8_LIBS}
   )
+if (USE_JEMALLOC)
+  target_link_libraries(${BIN_ARANGOSH} jemalloc)
+endif ()
 
 install(FILES ${ICU_DT}
   DESTINATION "${INSTALL_ICU_DT_DEST}"
@@ -66,10 +69,6 @@ add_dependencies(${BIN_ARANGOSH} iculegacy_build)
 
 if (NOT USE_PRECOMPILED_V8)
   add_dependencies(${BIN_ARANGOSH} v8_build)
-endif ()
-
-if (USE_JEMALLOC)
-  add_dependencies(${BIN_ARANGOSH} jemalloc_build)
 endif ()
 
 add_dependencies(${BIN_ARANGOSH} man)

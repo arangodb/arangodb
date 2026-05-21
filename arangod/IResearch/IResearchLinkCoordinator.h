@@ -117,7 +117,7 @@ class IResearchLinkCoordinator final : public Index, public IResearchLink {
     friend class IResearchLinkCoordinator;
 
    public:
-    explicit IndexFactory(ArangodServer& server);
+    explicit IndexFactory(application_features::ApplicationServer& server);
 
     [[nodiscard]] bool equal(velocypack::Slice lhs, velocypack::Slice rhs,
                              std::string const& dbname) const final;
@@ -131,7 +131,8 @@ class IResearchLinkCoordinator final : public Index, public IResearchLink {
                      TRI_vocbase_t const& vocbase) const final;
   };
 
-  static std::shared_ptr<IndexFactory> createFactory(ArangodServer&);
+  static std::shared_ptr<IndexFactory> createFactory(
+      application_features::ApplicationServer&);
 };
 
 }  // namespace iresearch

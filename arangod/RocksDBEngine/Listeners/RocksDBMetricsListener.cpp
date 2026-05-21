@@ -23,7 +23,6 @@
 
 #include "RocksDBMetricsListener.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/debugging.h"
 #include "Logger/LogMacros.h"
 #include "Metrics/CounterBuilder.h"
@@ -38,11 +37,10 @@ DECLARE_COUNTER(arangodb_rocksdb_write_stops_total,
 namespace arangodb {
 
 /// @brief Setup the object, clearing variables, but do no real work
-RocksDBMetricsListener::RocksDBMetricsListener(ArangodServer& server)
-    : _writeStalls(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_rocksdb_write_stalls_total{})),
-      _writeStops(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_rocksdb_write_stops_total{})) {}
+RocksDBMetricsListener::RocksDBMetricsListener(
+    metrics::MetricsFeature& metricsFeature)
+    : _writeStalls(metricsFeature.add(arangodb_rocksdb_write_stalls_total{})),
+      _writeStops(metricsFeature.add(arangodb_rocksdb_write_stops_total{})) {}
 
 void RocksDBMetricsListener::OnFlushBegin(rocksdb::DB*,
                                           rocksdb::FlushJobInfo const& info) {

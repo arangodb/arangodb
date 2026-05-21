@@ -1,0 +1,500 @@
+/*jshint globalstrict:false, strict:false, maxlen: 500 */
+/*global fail, assertEqual, assertTrue */
+
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+/// @author Jure Bajic
+// //////////////////////////////////////////////////////////////////////////////
+
+const internal = require("internal");
+const jsunity = require("jsunity");
+const errors = internal.errors;
+const db = require("internal").db;
+const {
+    randomNumberGeneratorFloat,
+    generateSeed
+} = require("@arangodb/testutils/seededRandom");
+const {
+    assertEnsureIndexResultUnusable,
+} = require("@arangodb/testutils/vector-index-common");
+
+const isCluster = internal.isCluster();
+const dbName = "vectorScalingDB";
+const collName = "coll";
+const idxName = "vector_scaling_test";
+const dimension = 128;
+const insertedDocsCount = 100;
+const numberOfShards = 3;
+
+function resolveNListsForScaling(docCount, multiplier, minNLists) {
+    return Math.max(minNLists, Math.trunc(multiplier * Math.sqrt(docCount)));
+}
+
+function assertScaledResolvedNLists(collection, nLists) {
+    const idx = collection.getIndexes(true, true).find(i => i.name === idxName);
+    assertTrue(idx !== undefined);
+    assertTrue(idx.hasOwnProperty("shards"), "shards object should be present");
+
+    const shardNames = Object.keys(idx.shards);
+    if (isCluster) {
+        assertEqual(numberOfShards, shardNames.length, "shards should not be empty");
+        const shardsCount = collection.count(true);
+        for (const shardName of shardNames) {
+            const vectorIndexShard = idx.shards[shardName];
+            const expectedResolvedNLists = resolveNListsForScaling(shardsCount[shardName], nLists.multiplier, nLists.minNLists);
+            assertEqual(expectedResolvedNLists, vectorIndexShard.resolvedNLists,
+                `On ${shardName} the resolvedNLists ${vectorIndexShard.resolvedNLists} do not match expected ${expectedResolvedNLists}`);
+        }
+    } else {
+        assertEqual(1, shardNames.length, "expected single shard on single-server");
+        const expectedResolvedNLists = resolveNListsForScaling(collection.count(), nLists.multiplier, nLists.minNLists);
+        const shard = idx.shards[shardNames[0]];
+        assertEqual(expectedResolvedNLists, shard.resolvedNLists,
+            `resolvedNLists ${shard.resolvedNLists} does not match expected ${expectedResolvedNLists}`);
+    }
+}
+
+function assertResolvedNLists(nLists, collection) {
+    const idx = collection.getIndexes(true, true).find(i => i.name === idxName);
+    assertTrue(idx !== undefined);
+    assertTrue(idx.hasOwnProperty("shards"), "shards object should be present");
+    const shardNames = Object.keys(idx.shards);
+    for (const shardName of shardNames) {
+        const shard = idx.shards[shardName];
+        assertEqual(nLists, shard.resolvedNLists,
+            `On ${shardName} the resolvedNLists ${shard.resolvedNLists} does not match expected ${nLists}`);
+    }
+}
+
+function assertVectorIndexUsable(queryPoint, limit = 5, nProbe) {
+    const query = `FOR d IN ${collName}
+        SORT APPROX_NEAR_L2(d.vector, @qp, {nProbe: ${nProbe}})
+        LIMIT @limit
+        RETURN d`;
+    const result = db._query(query, { qp: queryPoint, limit }).toArray();
+    assertEqual(limit, result.length);
+}
+
+function VectorIndexScalingTestSuite() {
+    let collection;
+    let randomPoint;
+    const seed = generateSeed();
+
+    return {
+        setUpAll: function() {
+            db._useDatabase("_system");
+            db._createDatabase(dbName);
+            db._useDatabase(dbName);
+
+            collection = db._create(collName, { numberOfShards: numberOfShards });
+
+            let docs = [];
+            let gen = randomNumberGeneratorFloat(seed);
+            for (let i = 0; i < insertedDocsCount; ++i) {
+                const vector = Array.from({ length: dimension }, () => gen());
+                if (i === Math.floor(insertedDocsCount / 2)) {
+                    randomPoint = vector;
+                }
+                docs.push({ vector });
+            }
+            collection.insert(docs);
+        },
+
+        tearDownAll: function() {
+            db._useDatabase("_system");
+            db._dropDatabase(dbName);
+        },
+
+        tearDown: function() {
+            try {
+                collection.dropIndex(idxName);
+            } catch(e) {}
+        },
+
+        testDefaultNListsScalingSpec: function() {
+            collection.ensureIndex({
+                name: idxName,
+                type: "vector",
+                fields: ["vector"],
+                inBackground: false,
+                params: { metric: "l2", dimension },
+            });
+            const idx = collection.getIndexes().find(i => i.name === idxName);
+            assertTrue(idx !== undefined);
+            // When nLists is omitted, the default scaling should be used
+            assertEqual("autoSqrt", idx.params.nLists.strategy, "default strategy should be autoSqrt");
+            assertEqual(4, idx.params.nLists.multiplier, "default multiplier should be 4");
+            assertEqual(2, idx.params.nLists.minNLists, "default minNLists should be 2");
+            assertEqual(3, idx.params.nLists.tiers.length, "default should have 3 tiers");
+
+            assertEqual(1000000, idx.params.nLists.tiers[0].threshold);
+            assertEqual(16384, idx.params.nLists.tiers[0].fixedValue);
+            assertEqual(10000000, idx.params.nLists.tiers[1].threshold);
+            assertEqual(65536, idx.params.nLists.tiers[1].fixedValue);
+            assertEqual(300000000, idx.params.nLists.tiers[2].threshold);
+            assertEqual(131072, idx.params.nLists.tiers[2].fixedValue);
+
+            assertScaledResolvedNLists(collection, idx.params.nLists);
+        },
+
+        testZeroMultiplierFails: function() {
+            try {
+                collection.ensureIndex({
+                    name: idxName,
+                    type: "vector",
+                    fields: ["vector"],
+                    inBackground: false,
+                    params: {
+                        metric: "l2", dimension,
+                        nLists: { multiplier: 0 },
+                    },
+                });
+                fail();
+            } catch (e) {
+                assertEqual(errors.ERROR_BAD_PARAMETER.code, e.errorNum);
+            }
+        },
+
+        testMinNListsValue: function() {
+            collection.ensureIndex({
+                name: idxName,
+                type: "vector",
+                fields: ["vector"],
+                inBackground: false,
+                params: {
+                    metric: "l2", dimension,
+                    nLists: {
+                        strategy: "autoSqrt",
+                        multiplier: 1,
+                        minNLists: 15,
+                        tiers: [],
+                    },
+                },
+            });
+            const idx = collection.getIndexes().find(i => i.name === idxName);
+            assertTrue(idx !== undefined);
+            assertEqual(15, idx.params.nLists.minNLists);
+
+            assertVectorIndexUsable(randomPoint, 5, 15);
+            assertResolvedNLists(15, collection);
+        },
+
+        testInvalidMinNListsFails: function() {
+            try {
+                collection.ensureIndex({
+                    name: idxName,
+                    type: "vector",
+                    fields: ["vector"],
+                    inBackground: false,
+                    params: {
+                        metric: "l2", dimension,
+                        nLists: { multiplier: 4, minNLists: 0, tiers: [] },
+                    },
+                });
+                fail();
+            } catch (e) {
+                assertEqual(errors.ERROR_BAD_PARAMETER.code, e.errorNum);
+            }
+        },
+
+        testFactoryTemplateWithDefaultScaling: function() {
+            collection.ensureIndex({
+                name: idxName,
+                type: "vector",
+                fields: ["vector"],
+                inBackground: false,
+                params: {
+                    metric: "l2",
+                    dimension,
+                    factory: "IVF{}_HNSW2,SQ8",
+                },
+            });
+            const idx = collection.getIndexes().find(i => i.name === idxName);
+
+            assertTrue(idx !== undefined);
+            assertEqual("IVF{}_HNSW2,SQ8", idx.params.factory);
+            assertEqual("autoSqrt", idx.params.nLists.strategy);
+            assertScaledResolvedNLists(collection, idx.params.nLists);
+        },
+
+        testFactoryTemplateWithForcedMinNLists: function() {
+            collection.ensureIndex({
+                name: idxName,
+                type: "vector",
+                fields: ["vector"],
+                inBackground: false,
+                params: {
+                    metric: "l2", dimension,
+                    factory: "IVF{}_HNSW8,PQ16x4",
+                    nLists: {
+                        strategy: "autoSqrt",
+                        multiplier: 1,
+                        minNLists: 15,
+                        tiers: [],
+                    },
+                },
+            });
+            const idx = collection.getIndexes().find(i => i.name === idxName);
+
+            assertTrue(idx !== undefined);
+            assertEqual("IVF{}_HNSW8,PQ16x4", idx.params.factory);
+            assertEqual(15, idx.params.nLists.minNLists);
+            assertResolvedNLists(15, collection);
+            assertVectorIndexUsable(randomPoint, 5, 15);
+        },
+
+        testFixedFactoryWithMatchingScaling: function() {
+            collection.ensureIndex({
+                name: idxName,
+                type: "vector",
+                fields: ["vector"],
+                inBackground: false,
+                params: {
+                    metric: "l2", dimension,
+                    factory: "IVF15,Flat",
+                    nLists: {
+                        strategy: "autoSqrt",
+                        multiplier: 1,
+                        minNLists: 15,
+                        tiers: [],
+                    },
+                },
+            });
+            const idx = collection.getIndexes().find(i => i.name === idxName);
+            assertTrue(idx !== undefined);
+            assertEqual("IVF15,Flat", idx.params.factory);
+            assertResolvedNLists(15, collection);
+            assertVectorIndexUsable(randomPoint, 5, 15);
+        },
+
+        testFixedFactoryWithMismatchedScalingFails: function() {
+            // The factory string fixes nLists at 20 while the scaling spec
+            // demands at least 15 — the mismatch is only detected by FAISS
+            // during training, so the index is created but ends up in the
+            // 'unusable' state with the training error surfaced in the
+            // response.
+            const result = collection.ensureIndex({
+                name: idxName,
+                type: "vector",
+                fields: ["vector"],
+                inBackground: false,
+                params: {
+                    metric: "l2", dimension,
+                    factory: "IVF20,Flat",
+                    nLists: {
+                        strategy: "autoSqrt",
+                        multiplier: 1,
+                        minNLists: 15,
+                        tiers: [],
+                    },
+                },
+            });
+            assertEnsureIndexResultUnusable(result,
+                "factory IVF20 vs scaling minNLists=15 mismatch");
+        },
+    };
+}
+
+function VectorIndexScalingTiersTestSuite() {
+    // Uses numberOfShards: 1 so that all documents land in a single shard,
+    // making tier threshold comparisons deterministic.
+    let collection;
+    let randomPoint;
+    const seed = generateSeed();
+
+    return {
+        setUpAll: function() {
+            db._useDatabase("_system");
+            db._createDatabase(dbName);
+            db._useDatabase(dbName);
+
+            collection = db._create(collName, { numberOfShards: 1 });
+
+            let docs = [];
+            let gen = randomNumberGeneratorFloat(seed);
+            for (let i = 0; i < insertedDocsCount; ++i) {
+                const vector = Array.from({ length: dimension }, () => gen());
+                if (i === Math.floor(insertedDocsCount / 2)) {
+                    randomPoint = vector;
+                }
+                docs.push({ vector });
+            }
+            collection.insert(docs);
+        },
+
+        tearDownAll: function() {
+            db._useDatabase("_system");
+            db._dropDatabase(dbName);
+        },
+
+        tearDown: function() {
+            try {
+                collection.dropIndex(idxName);
+            } catch(e) {}
+        },
+
+        testFirstTierTriggered: function() {
+            // 100 docs: only threshold 50 <= 100, so first tier wins
+            collection.ensureIndex({
+                name: idxName,
+                type: "vector",
+                fields: ["vector"],
+                inBackground: false,
+                params: {
+                    metric: "l2", dimension,
+                    nLists: {
+                        strategy: "autoSqrt",
+                        multiplier: 4,
+                        minNLists: 2,
+                        tiers: [
+                            { threshold: 50, fixedValue: 2 },
+                            { threshold: 200, fixedValue: 4 },
+                            { threshold: 300, fixedValue: 6 },
+                        ],
+                    },
+                },
+            });
+            assertResolvedNLists(2, collection);
+            assertVectorIndexUsable(randomPoint, 5, 2);
+        },
+
+        testSecondTierTriggered: function() {
+            // 100 docs: thresholds 10 and 80 <= 100, so second tier wins
+            collection.ensureIndex({
+                name: idxName,
+                type: "vector",
+                fields: ["vector"],
+                inBackground: false,
+                params: {
+                    metric: "l2", dimension,
+                    nLists: {
+                        strategy: "autoSqrt",
+                        multiplier: 4,
+                        minNLists: 2,
+                        tiers: [
+                            { threshold: 10, fixedValue: 1 },
+                            { threshold: 80, fixedValue: 2 },
+                            { threshold: 300, fixedValue: 6 },
+                        ],
+                    },
+                },
+            });
+            assertResolvedNLists(2, collection);
+            assertVectorIndexUsable(randomPoint, 5, 2);
+        },
+
+        testThirdTierTriggered: function() {
+            // 100 docs: all thresholds <= 100, so third tier wins
+            collection.ensureIndex({
+                name: idxName,
+                type: "vector",
+                fields: ["vector"],
+                inBackground: false,
+                params: {
+                    metric: "l2", dimension,
+                    nLists: {
+                        strategy: "autoSqrt",
+                        multiplier: 4,
+                        minNLists: 2,
+                        tiers: [
+                            { threshold: 2, fixedValue: 2 },
+                            { threshold: 5, fixedValue: 4 },
+                            { threshold: 20, fixedValue: 6 },
+                        ],
+                    },
+                },
+            });
+            assertResolvedNLists(6, collection);
+            assertVectorIndexUsable(randomPoint, 5, 2);
+        },
+
+        testFactoryTemplateWithTierHit: function() {
+            collection.ensureIndex({
+                name: idxName,
+                type: "vector",
+                fields: ["vector"],
+                inBackground: false,
+                params: {
+                    metric: "l2", dimension,
+                    factory: "IVF{}_HNSW3,SQ4",
+                    nLists: {
+                        strategy: "autoSqrt",
+                        multiplier: 4,
+                        minNLists: 2,
+                        tiers: [
+                            { threshold: 2, fixedValue: 2 },
+                            { threshold: 5, fixedValue: 4 },
+                            { threshold: 20, fixedValue: 6 },
+                        ],
+                    },
+                },
+            });
+            const idx = collection.getIndexes().find(i => i.name === idxName);
+            assertTrue(idx !== undefined);
+            assertEqual("IVF{}_HNSW3,SQ4", idx.params.factory);
+            assertResolvedNLists(6, collection);
+            assertVectorIndexUsable(randomPoint, 5, 2);
+        },
+    };
+}
+
+function VectorIndexScalingEmptyCollectionTestSuite() {
+    let collection;
+
+    return {
+        setUpAll: function() {
+            db._useDatabase("_system");
+            db._createDatabase(dbName);
+            db._useDatabase(dbName);
+            collection = db._create(collName, { numberOfShards: numberOfShards });
+        },
+
+        tearDownAll: function() {
+            db._useDatabase("_system");
+            db._dropDatabase(dbName);
+        },
+
+        testScaledNListsOnEmptyCollectionRejected: function() {
+            const result = collection.ensureIndex({
+                name: idxName,
+                type: "vector",
+                fields: ["vector"],
+                inBackground: false,
+                params: {
+                    metric: "l2", dimension,
+                    nLists: {
+                        strategy: "autoSqrt",
+                        multiplier: 4,
+                        minNLists: 2,
+                        tiers: [],
+                    },
+                },
+            });
+            assertEnsureIndexResultUnusable(result, "empty collection");
+        },
+    };
+}
+
+jsunity.run(VectorIndexScalingTestSuite);
+jsunity.run(VectorIndexScalingTiersTestSuite);
+jsunity.run(VectorIndexScalingEmptyCollectionTestSuite);
+
+return jsunity.done();

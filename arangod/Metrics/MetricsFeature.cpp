@@ -22,24 +22,24 @@
 ////////////////////////////////////////////////////////////////////////////////
 #include "Metrics/MetricsFeature.h"
 
+#include <frozen/string.h>
 #include <frozen/unordered_set.h>
 #include <velocypack/Builder.h>
 
 #include <chrono>
+#include <unordered_set>
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Agency/Node.h"
-#include "Basics/application-exit.h"
 #include "Basics/debugging.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
-#include "Containers/FlatHashSet.h"
 #include "Logger/LoggerFeature.h"
 #include "Metrics/ClusterMetricsFeature.h"
 #include "Metrics/Metric.h"
+#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "Statistics/StatisticsFeature.h"
@@ -47,9 +47,8 @@
 
 namespace arangodb::metrics {
 
-template<typename Server>
 MetricsFeature::MetricsFeature(
-    Server& server,
+    application_features::ApplicationServer& server,
     LazyApplicationFeatureReference<QueryRegistryFeature>
         lazyQueryRegistryFeatureRef,
     LazyApplicationFeatureReference<StatisticsFeature> lazyStatisticsFeatureRef,
@@ -63,23 +62,11 @@ MetricsFeature::MetricsFeature(
       _lazyStatisticsFeatureRef(std::move(lazyStatisticsFeatureRef)),
       _lazyEngineSelectorFeatureRef(std::move(lazyEngineSelectorFeatureRef)),
       _lazyClusterMetricsFeatureRef(std::move(lazyClusterMetricsFeatureRef)),
-      _lazyClusterFeatureRef(std::move(lazyClusterFeatureRef)),
-      _export{true},
-      _exportReadWriteMetrics{false},
-      _ensureWhitespace{true},
-      _usageTrackingModeString{"disabled"},
-      _usageTrackingMode{UsageTrackingMode::kDisabled} {
+      _lazyClusterFeatureRef(std::move(lazyClusterFeatureRef)) {
   setOptional(false);
-  startsAfter<LoggerFeature, Server>();
-  startsBefore<application_features::GreetingsFeaturePhase, Server>();
+  startsAfter<LoggerFeature>();
+  startsBefore<application_features::GreetingsFeaturePhase>();
 }
-
-template MetricsFeature::MetricsFeature(
-    ArangodServer&, LazyApplicationFeatureReference<QueryRegistryFeature>,
-    LazyApplicationFeatureReference<StatisticsFeature>,
-    LazyApplicationFeatureReference<EngineSelectorFeature>,
-    LazyApplicationFeatureReference<ClusterMetricsFeature>,
-    LazyApplicationFeatureReference<ClusterFeature>);
 
 void MetricsFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
@@ -88,15 +75,16 @@ void MetricsFeature::collectOptions(
 
   options->addOption(
       "--server.export-metrics-api", "Whether to enable the metrics API.",
-      new options::BooleanParameter(&_export),
+      new options::BooleanParameter(&_options.exportAPI),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options
-      ->addOption("--server.export-read-write-metrics",
-                  "Whether to enable metrics for document reads and writes.",
-                  new options::BooleanParameter(&_exportReadWriteMetrics),
-                  arangodb::options::makeDefaultFlags(
-                      arangodb::options::Flags::Uncommon))
+      ->addOption(
+          "--server.export-read-write-metrics",
+          "Whether to enable metrics for document reads and writes.",
+          new options::BooleanParameter(&_options.exportReadWriteMetrics),
+          arangodb::options::makeDefaultFlags(
+              arangodb::options::Flags::Uncommon))
       .setLongDescription(R"(Enabling this option exposes the following
 additional metrics via the `GET /_admin/metrics/v2` endpoint:
 
@@ -118,7 +106,7 @@ additional metrics via the `GET /_admin/metrics/v2` endpoint:
           "Set to `true` to ensure whitespace between the exported metric "
           "value and the preceding token (metric name or labels) in the "
           "metrics output.",
-          new options::BooleanParameter(&_ensureWhitespace),
+          new options::BooleanParameter(&_options.ensureWhitespace),
           arangodb::options::makeDefaultFlags(
               arangodb::options::Flags::Uncommon))
       .setIntroducedIn(31006)
@@ -133,7 +121,7 @@ although Prometheus itself doesn't need it.)");
           "--server.export-shard-usage-metrics",
           "Whether or not to export shard usage metrics.",
           new options::DiscreteValuesParameter<options::StringParameter>(
-              &_usageTrackingModeString, modes),
+              &_options.usageTrackingModeString, modes),
           arangodb::options::makeFlags(
               arangodb::options::Flags::DefaultNoComponents,
               arangodb::options::Flags::OnDBServer))
@@ -150,7 +138,7 @@ detailed shard usage metrics.
 - Set this option to `enabled-per-shard-per-user` to make DB-Servers collect
   usage metrics per shard and per user whenever a shard is accessed.
 
-Note that enabling shard usage metrics can produce a lot of metrics if there 
+Note that enabling shard usage metrics can produce a lot of metrics if there
 are many shards and/or users in the system.)");
 }
 
@@ -216,29 +204,30 @@ bool MetricsFeature::remove(Metric const& m) {
   return _registry.erase(key) != 0;
 }
 
-bool MetricsFeature::exportAPI() const noexcept { return _export; }
+bool MetricsFeature::exportAPI() const noexcept { return _options.exportAPI; }
 
 bool MetricsFeature::ensureWhitespace() const noexcept {
-  return _ensureWhitespace;
+  return _options.ensureWhitespace;
 }
 
 MetricsFeature::UsageTrackingMode MetricsFeature::usageTrackingMode()
     const noexcept {
-  return _usageTrackingMode;
+  return _options.usageTrackingMode;
 }
 
-void MetricsFeature::validateOptions(std::shared_ptr<options::ProgramOptions>) {
-  if (_exportReadWriteMetrics) {
-    serverStatistics().setupDocumentMetrics();
+void MetricsFeature::validateOptions(
+    std::shared_ptr<options::ProgramOptions> options) {
+  // translate usage tracking mode string to enum value
+  if (_options.usageTrackingModeString == "enabled-per-shard") {
+    _options.usageTrackingMode = UsageTrackingMode::kEnabledPerShard;
+  } else if (_options.usageTrackingModeString == "enabled-per-shard-per-user") {
+    _options.usageTrackingMode = UsageTrackingMode::kEnabledPerShardPerUser;
+  } else {
+    _options.usageTrackingMode = UsageTrackingMode::kDisabled;
   }
 
-  // translate usage tracking mode string to enum value
-  if (_usageTrackingModeString == "enabled-per-shard") {
-    _usageTrackingMode = UsageTrackingMode::kEnabledPerShard;
-  } else if (_usageTrackingModeString == "enabled-per-shard-per-user") {
-    _usageTrackingMode = UsageTrackingMode::kEnabledPerShardPerUser;
-  } else {
-    _usageTrackingMode = UsageTrackingMode::kDisabled;
+  if (_options.exportReadWriteMetrics) {
+    serverStatistics().setupDocumentMetrics();
   }
 }
 
@@ -277,12 +266,12 @@ void MetricsFeature::toPrometheus(std::string& result,
         last = curr;
         Metric::addInfo(result, curr, i.second->help(), i.second->type());
       }
-      i.second->toPrometheus(result, _globals, _ensureWhitespace);
+      i.second->toPrometheus(result, _globals, _options.ensureWhitespace);
     }
     for (auto const& [_, batch] : _batch) {
       TRI_ASSERT(batch);
       // TODO(MBkkt) merge vector::reserve's between IBatch::toPrometheus
-      batch->toPrometheus(result, _globals, _ensureWhitespace);
+      batch->toPrometheus(result, _globals, _options.ensureWhitespace);
     }
   }
 
@@ -291,22 +280,23 @@ void MetricsFeature::toPrometheus(std::string& result,
     auto time = std::chrono::duration<double, std::milli>(
         std::chrono::system_clock::now().time_since_epoch());
     _statisticsFeature->toPrometheus(result, time.count(), _globals,
-                                     _ensureWhitespace);
+                                     _options.ensureWhitespace);
 
     // Storage engine only provides standard metrics
     auto& es = _engineSelectorFeature->engine();
     if (es.typeName() == RocksDBEngine::kEngineName) {
-      es.toPrometheus(result, _globals, _ensureWhitespace);
+      es.toPrometheus(result, _globals, _options.ensureWhitespace);
     }
 
     // ClusterMetricsFeature only provides standard metrics
     if (hasGlobals && _clusterMetricsFeature->isEnabled() &&
         mode != CollectMode::Local) {
-      _clusterMetricsFeature->toPrometheus(result, _globals, _ensureWhitespace);
+      _clusterMetricsFeature->toPrometheus(result, _globals,
+                                           _options.ensureWhitespace);
     }
 
     // agency node metrics only provide standard metrics
-    consensus::Node::toPrometheus(result, _globals, _ensureWhitespace);
+    consensus::Node::toPrometheus(result, _globals, _options.ensureWhitespace);
   }
 }
 

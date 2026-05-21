@@ -57,6 +57,7 @@
 #include "Utils/ManagedDirectory.h"
 
 #include <chrono>
+#include <filesystem>
 #include <thread>
 #include <unordered_map>
 
@@ -769,21 +770,29 @@ Result DumpFeature::DumpShardJob::run(
   return res;
 }
 
-DumpFeature::DumpFeature(Server& server, int& exitCode)
-    : ArangoDumpFeature{server, *this},
-      _clientManager{server.getFeature<HttpEndpointProvider, ClientFeature>(),
-                     Logger::DUMP},
+DumpFeature::DumpFeature(application_features::ApplicationServer& server,
+                         ClientFeature& client, int& exitCode)
+    : ApplicationFeature{server, *this},
+      _client(client),
+      _clientManager{client, Logger::DUMP},
       _clientTaskQueue{server, ::processJob},
       _exitCode{exitCode} {
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseClient>();
-  if constexpr (Server::contains<BumpFileDescriptorsFeature>()) {
-    startsAfter<BumpFileDescriptorsFeature>();
-  }
+#ifdef TRI_HAVE_GETRLIMIT
+  startsAfter<BumpFileDescriptorsFeature>();
+#endif
 
   using arangodb::basics::FileUtils::buildFilename;
-  using arangodb::basics::FileUtils::currentDirectory;
-  _options.outputPath = buildFilename(currentDirectory().result(), "dump");
+  std::error_code ec;
+  std::filesystem::path const cwd = std::filesystem::current_path(ec);
+  if (ec) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_set_errno(TRI_ERROR_SYS_ERROR),
+        basics::StringUtils::concatT("cannot get current working directory: ",
+                                     ec.message()));
+  }
+  _options.outputPath = buildFilename(cwd.string(), "dump");
   _options.threadCount =
       std::max(uint32_t(_options.threadCount),
                static_cast<uint32_t>(NumberOfCores::getValue()));
@@ -913,7 +922,7 @@ void DumpFeature::collectOptions(
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Uncommon))
       .setLongDescription(R"(This option enables a highly parallel variant
-of the dump protocol on the server side. It is only supported with ArangoDB 
+of the dump protocol on the server side. It is only supported with ArangoDB
 servers running version 3.12 or higher.
 If the dump should be restored into versions of ArangoDB older than 3.12, this
 option should be turned off.)")
@@ -964,7 +973,8 @@ single collection/shard from multiple files.)")
       ->addOption("--local-network-threads",
                   "Number of local network threads, i.e. how many requests "
                   "are sent in parallel.",
-                  new UInt64Parameter(&_options.dbserverWorkerThreads),
+                  new UInt64Parameter(&_options.localNetworkThreads, /*base*/ 1,
+                                      /*minValue*/ 1),
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Uncommon))
       .setIntroducedIn(31008)
@@ -1106,11 +1116,10 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
         << "Dumping database '" << dbName << "' (" << dbId << ")";
 
     EncryptionFeature* encryption{};
-    if constexpr (Server::contains<EncryptionFeature>()) {
-      if (server().hasFeature<EncryptionFeature>()) {
-        encryption = &server().getFeature<EncryptionFeature>();
-      }
-    }
+#ifdef USE_ENTERPRISE
+    TRI_ASSERT(server().hasFeature<EncryptionFeature>());
+    encryption = &server().getFeature<EncryptionFeature>();
+#endif
 
     _directory = std::make_unique<ManagedDirectory>(
         encryption,
@@ -1450,11 +1459,10 @@ void DumpFeature::start() {
   double const start = TRI_microtime();
 
   EncryptionFeature* encryption{};
-  if constexpr (Server::contains<EncryptionFeature>()) {
-    if (server().hasFeature<EncryptionFeature>()) {
-      encryption = &server().getFeature<EncryptionFeature>();
-    }
-  }
+#ifdef USE_ENTERPRISE
+  TRI_ASSERT(server().hasFeature<EncryptionFeature>());
+  encryption = &server().getFeature<EncryptionFeature>();
+#endif
 
   // set up the output directory, not much else
   _directory = std::make_unique<ManagedDirectory>(
@@ -1481,8 +1489,6 @@ void DumpFeature::start() {
     FATAL_ERROR_EXIT();
   }
 
-  // get database name to operate on
-  auto& client = server().getFeature<HttpEndpointProvider, ClientFeature>();
   // get a client to use in main thread
   auto httpClient =
       _clientManager.getConnectedClient(_options.force, true, true, 0);
@@ -1511,8 +1517,8 @@ void DumpFeature::start() {
 
   if (_options.progress) {
     LOG_TOPIC("f3a1f", INFO, Logger::DUMP)
-        << "Connected to ArangoDB '" << client.endpoint() << "', database: '"
-        << client.databaseName() << "', username: '" << client.username()
+        << "Connected to ArangoDB '" << _client.endpoint() << "', database: '"
+        << _client.databaseName() << "', username: '" << _client.username()
         << "'";
 
     LOG_TOPIC("5e989", INFO, Logger::DUMP)
@@ -1529,13 +1535,13 @@ void DumpFeature::start() {
     std::tie(res, databases) = ::getDatabases(*httpClient);
   } else {
     // use just the single database that was specified
-    databases.push_back(client.databaseName());
+    databases.push_back(_client.databaseName());
   }
 
   if (res.ok()) {
     for (auto const& db : databases) {
       if (_options.allDatabases) {
-        client.setDatabaseName(db);
+        _client.setDatabaseName(db);
         httpClient =
             _clientManager.getConnectedClient(_options.force, false, true, 0);
       }
@@ -1586,8 +1592,10 @@ void DumpFeature::start() {
       for (auto const& it : list) {
         auto f = absl::StrCat(
             basics::FileUtils::buildFilename(_options.outputPath, it));
-        if (basics::FileUtils::isRegularFile(f)) {
-          totalSize += basics::FileUtils::size(f);
+        if (std::filesystem::is_regular_file(f)) {
+          auto fileSize = std::filesystem::file_size(std::filesystem::path(f));
+
+          totalSize += fileSize;
         }
       }
     } catch (...) {
