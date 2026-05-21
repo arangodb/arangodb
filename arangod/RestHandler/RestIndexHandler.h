@@ -54,7 +54,7 @@ class RestIndexHandler : public arangodb::RestVocbaseBaseHandler {
   [[nodiscard]] futures::Future<futures::Unit> getSelectivityEstimates();
   async<void> createIndex();
   async<void> dropIndex();
-  async<void> retrainIndex();
+  async<void> replaceIndex();
   void syncCaches();
 
   // Wait for a vector index to become ready. On DBServer/SingleServer

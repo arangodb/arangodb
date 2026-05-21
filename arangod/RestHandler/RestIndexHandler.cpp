@@ -26,6 +26,11 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Async/async.h"
 #include "Basics/StaticStrings.h"
+#include "Agency/AgencyPaths.h"
+#include "Agency/AsyncAgencyComm.h"
+#include "Agency/ReplaceIndex.h"
+#include "Agency/TransactionBuilder.h"
+#include "Basics/TimeString.h"
 #include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
@@ -34,6 +39,7 @@
 #include "Cluster/Utils/VectorIndexShardStates.h"
 #include "Cluster/ServerState.h"
 #include "RocksDBEngine/RocksDBBuilderIndex.h"
+#include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBVectorIndex.h"
 #include "Logger/LogMacros.h"
 #include "Network/Methods.h"
@@ -216,8 +222,8 @@ futures::Future<futures::Unit> RestIndexHandler::executeAsync() {
       co_return syncCaches();
     }
     if (_request->suffixes().size() == 1 &&
-        _request->suffixes()[0] == "retrain") {
-      co_await retrainIndex();
+        _request->suffixes()[0] == "replace") {
+      co_await replaceIndex();
       co_return;
     }
     co_await createIndex();
@@ -966,7 +972,21 @@ async<void> RestIndexHandler::dropIndex() {
   }
 }
 
-async<void> RestIndexHandler::retrainIndex() {
+namespace {
+
+constexpr std::string_view kVectorParamsField = "params";
+
+}  // namespace
+
+async<void> RestIndexHandler::replaceIndex() {
+  if (!ServerState::instance()->isCoordinator() &&
+      !ServerState::instance()->isSingleServer()) {
+    generateError(
+        rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+        "/_api/index/replace must be called on coordinator or single server");
+    co_return;
+  }
+
   bool parseSuccess = false;
   VPackSlice body = this->parseVPackBody(parseSuccess);
   if (!parseSuccess) {
@@ -1001,49 +1021,179 @@ async<void> RestIndexHandler::retrainIndex() {
     co_return;
   }
 
-  if (ServerState::instance()->isCoordinator()) {
-    auto& feature = server().getFeature<ClusterFeature>();
-    auto res = retrainVectorIndexOnAllDBServers(feature, _vocbase.name(), cName,
-                                                indexName);
-    if (res.fail()) {
-      generateError(res);
-      co_return;
+  auto oldIdx = coll->lookupIndex(indexName);
+  if (oldIdx == nullptr) {
+    IndexId::BaseType numericId = 0;
+    if (absl::SimpleAtoi(indexName, &numericId)) {
+      oldIdx = coll->lookupIndex(IndexId{numericId});
     }
-  } else {
-    // Try name first, then fall back to a numeric id. Mirrors the
-    // name-or-id lookup used in IResearch/Search.cpp.
-    auto idx = coll->lookupIndex(indexName);
-    if (idx == nullptr) {
-      IndexId::BaseType numericId = 0;
-      if (absl::SimpleAtoi(indexName, &numericId)) {
-        idx = coll->lookupIndex(IndexId{numericId});
+  }
+  if (oldIdx == nullptr) {
+    generateError(Result{TRI_ERROR_ARANGO_INDEX_NOT_FOUND});
+    co_return;
+  }
+  if (oldIdx->type() != Index::TRI_IDX_TYPE_VECTOR_INDEX) {
+    generateError(Result{TRI_ERROR_BAD_PARAMETER,
+                         "replace target is not a vector index"});
+    co_return;
+  }
+
+  // Build the patch slice from the request body — everything except the
+  // identifier ("index") is a patch field.
+  VPackBuilder patchBuilder;
+  {
+    VPackObjectBuilder ob(&patchBuilder);
+    if (body.isObject()) {
+      for (auto pair : VPackObjectIterator(body)) {
+        if (pair.key.stringView() == "index") {
+          continue;
+        }
+        patchBuilder.add(pair.key.stringView(), pair.value);
       }
-    }
-    if (idx == nullptr) {
-      generateError(Result{TRI_ERROR_ARANGO_INDEX_NOT_FOUND});
-      co_return;
-    }
-    if (idx->type() != Index::TRI_IDX_TYPE_VECTOR_INDEX) {
-      generateError(Result{TRI_ERROR_BAD_PARAMETER,
-                           "retrain target is not a vector index"});
-      co_return;
-    }
-    auto& feature = server().getFeature<VectorIndexFeature>();
-    auto retrainRes = feature.requestRetrain(idx);
-    if (retrainRes.fail()) {
-      generateError(retrainRes);
-      co_return;
     }
   }
 
-  VPackBuilder b;
-  {
-    VPackObjectBuilder guard(&b);
-    guard->add(StaticStrings::Error, VPackValue(false));
-    guard->add(StaticStrings::Code,
-               VPackValue(static_cast<int>(ResponseCode::OK)));
+  // Snapshot the existing definition. Use Internals so we capture every
+  // persistent field; the merge will overlay the patch.
+  VPackBuilder existing;
+  oldIdx->toVelocyPack(existing, Index::makeFlags(Index::Serialize::Internals));
+
+  // Deep-merge: patch values override base, nested objects (e.g. `params`)
+  // are recursively merged rather than replaced wholesale.
+  auto merged = VPackCollection::merge(existing.slice(), patchBuilder.slice(),
+                                       /*mergeValues=*/true,
+                                       /*nullMeansRemove=*/false);
+
+  // Hard constraint: dimension must match the existing index.
+  auto oldDim = existing.slice().get(
+      std::vector<std::string>{std::string{kVectorParamsField}, "dimension"});
+  auto newDim = merged.slice().get(
+      std::vector<std::string>{std::string{kVectorParamsField}, "dimension"});
+  if (oldDim.isNumber() && newDim.isNumber() &&
+      oldDim.getNumber<int64_t>() != newDim.getNumber<int64_t>()) {
+    generateError(Result{
+        TRI_ERROR_BAD_PARAMETER,
+        "dimension cannot be changed by /_api/index/replace; create a new "
+        "index with a different dimension instead"});
+    co_return;
   }
-  generateResult(rest::ResponseCode::OK, b.slice());
+
+  if (ServerState::instance()->isSingleServer()) {
+    std::string const oldIdStr = std::to_string(oldIdx->id().id());
+    VPackBuilder shadowDef;
+    {
+      VPackObjectBuilder ob(&shadowDef);
+      for (auto pair : VPackObjectIterator(merged.slice())) {
+        auto key = pair.key.stringView();
+        if (key == StaticStrings::IndexId || key == StaticStrings::ObjectId ||
+            key == "replaces") {
+          continue;
+        }
+        shadowDef.add(key, pair.value);
+      }
+      shadowDef.add("replaces", VPackValue(oldIdStr));
+    }
+
+    std::shared_ptr<RocksDBVectorIndex> shadow;
+    try {
+      shadow = std::make_shared<RocksDBVectorIndex>(Index::generateId(), *coll,
+                                                    shadowDef.slice());
+    } catch (std::exception const& ex) {
+      generateError(Result{TRI_ERROR_BAD_PARAMETER,
+                           absl::StrCat("failed to construct shadow vector "
+                                        "index: ",
+                                        ex.what())});
+      co_return;
+    }
+
+    // Register the shadow as kUnusable; the build manager's normal scan is
+    // the single point where vector-index trainings are serialized, so we
+    // must not train inline here.
+    auto* rcoll = static_cast<RocksDBCollection*>(coll->getPhysical());
+    rcoll->addShadowIndex(shadow);
+
+    auto& feature = server().getFeature<VectorIndexFeature>();
+    if (auto res = co_await feature.waitForIndexReady(shadow->id());
+        res.fail()) {
+      generateError(res);
+      co_return;
+    }
+    if (auto res = coll->getPhysical()->dropIndex(oldIdx->id()); res.fail()) {
+      generateError(res);
+      co_return;
+    }
+
+    VPackBuilder out;
+    {
+      VPackObjectBuilder ob(&out);
+      out.add(StaticStrings::Error, VPackValue(false));
+      out.add(StaticStrings::Code,
+              VPackValue(static_cast<int>(ResponseCode::OK)));
+      out.add("indexId", VPackValue(std::to_string(shadow->id().id())));
+    }
+    generateResult(rest::ResponseCode::OK, out.slice());
+    co_return;
+  }
+
+  auto& clusterInfo = _clusterFeature.clusterInfo();
+  std::string const newIndexId = std::to_string(clusterInfo.uniqid());
+  std::string const newObjectId = std::to_string(clusterInfo.uniqid());
+  std::string const oldIndexIdStr = std::to_string(oldIdx->id().id());
+
+  VPackBuilder finalDef;
+  {
+    VPackObjectBuilder ob(&finalDef);
+    for (auto pair : VPackObjectIterator(merged.slice())) {
+      auto key = pair.key.stringView();
+      if (key == StaticStrings::IndexId || key == StaticStrings::ObjectId ||
+          key == "replaces") {
+        continue;
+      }
+      finalDef.add(key, pair.value);
+    }
+    finalDef.add(StaticStrings::IndexId, VPackValue(newIndexId));
+    finalDef.add(StaticStrings::ObjectId, VPackValue(newObjectId));
+    finalDef.add("replaces", VPackValue(oldIndexIdStr));
+  }
+
+  std::string const jobId = std::to_string(clusterInfo.uniqid());
+  std::string const collectionPlanId = std::to_string(coll->planId().id());
+  std::string const creator = ServerState::instance()->getId();
+  auto jobToDoPath =
+      arangodb::cluster::paths::root()->arango()->target()->toDo()->job(jobId);
+
+  VPackBuffer<uint8_t> trxBuf;
+  {
+    VPackBuilder builder(trxBuf);
+    arangodb::agency::envelope::into_builder(builder)
+        .write()
+        .emplace(jobToDoPath->str(),
+                 [&](VPackBuilder& b) {
+                   consensus::ReplaceIndex::appendJobPayload(
+                       b, jobId, creator, _vocbase.name(), collectionPlanId,
+                       oldIndexIdStr, newIndexId, finalDef.slice());
+                 })
+        .end()
+        .done();
+  }
+
+  auto result = co_await AsyncAgencyComm().sendWriteTransaction(
+      std::chrono::seconds{20}, std::move(trxBuf));
+  if (!result.ok() || result.statusCode() != fuerte::StatusOK) {
+    generateError(result.asResult());
+    co_return;
+  }
+
+  VPackBuilder out;
+  {
+    VPackObjectBuilder ob(&out);
+    out.add(StaticStrings::Error, VPackValue(false));
+    out.add(StaticStrings::Code,
+            VPackValue(static_cast<int>(ResponseCode::ACCEPTED)));
+    out.add("jobId", VPackValue(jobId));
+    out.add("indexId", VPackValue(newIndexId));
+  }
+  generateResult(rest::ResponseCode::ACCEPTED, out.slice());
 }
 
 void RestIndexHandler::syncCaches() {
