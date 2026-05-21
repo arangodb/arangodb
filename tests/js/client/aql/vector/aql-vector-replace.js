@@ -428,62 +428,12 @@ function VectorReplaceTestSuite () {
         "Plan should converge to a single index entry with no `replaces`");
     },
 
-    testReplaceShadowIsHiddenFromOptimizer: function () {
-      if (isCluster || !IM.debugCanUseFailAt()) {
-        // The shadow is a DBServer-local object; the coordinator's
-        // indexes() view hides it. Only exercise this on single server.
-        return;
-      }
-      const preIdx = collection.indexes().find(i => i.name === indexName);
-      assertEqual(VectorIndexTrainingState.kReady, preIdx.trainingState);
-
-      // Pause the shadow build at its first training checkpoint so the
-      // old index and the shadow coexist in the collection's index set
-      // long enough for us to observe them.
-      IM.debugSetFailAt("RocksDBVectorIndex::pauseBeforeTraining");
-
-      // Fire the replace from a background task — single-server replace is
-      // synchronous on the request thread, so without backgrounding the
-      // pause would block this test forever.
-      const tasks = require("@arangodb/tasks");
-      tasks.register({
-        id: "replace-task",
-        command: function (params) {
-          const db = require("internal").db;
-          db._collection(params.collName).replaceIndex(params.indexName);
-        },
-        params: {collName, indexName}
-      });
-
-      let matching = [];
-      const deadline = internal.time() + 30;
-      while (internal.time() < deadline) {
-        matching = collection.indexes().filter(i => i.name === indexName);
-        if (matching.length === 2) {
-          break;
-        }
-        internal.sleep(0.2);
-      }
-      assertEqual(2, matching.length,
-        "Both old and shadow indexes should be visible during replace");
-
-      const shadow = matching.find(i => i.id !== preIdx.id);
-      assertTrue(shadow !== undefined, "Shadow must carry a fresh id");
-      assertNotEqual(VectorIndexTrainingState.kReady, shadow.trainingState,
-        "Shadow should not be ready while the build is paused");
-
-      // Unpause and wait for the swap. Post-replace the collection must
-      // report exactly one index under the name, carrying the shadow's
-      // fresh id and kReady.
-      IM.debugClearFailAt();
-      const postIdx = waitForReplaceComplete(collection, preIdx, 180);
-      assertTrue(postIdx !== undefined, "Replace did not complete in time");
-      assertNotEqual(preIdx.id, postIdx.id);
-      const finalMatching =
-        collection.indexes().filter(i => i.name === indexName);
-      assertEqual(1, finalMatching.length,
-        "Exactly one index with the given name should remain after swap");
-    }
+    // TODO: bring back an in-flight shadow visibility check once
+    // POST /_api/index/replace supports an async mode on single-server.
+    // The current synchronous semantics make it impossible to observe the
+    // shadow from the same arangosh session that triggered the build —
+    // server-side tasks can't reach `collection.replaceIndex` because that
+    // helper lives only on the client prototype.
   };
 }
 

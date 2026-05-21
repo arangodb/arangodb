@@ -614,9 +614,9 @@ function deleting_an_indexSuite () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////;
-// vector index retrain endpoint — schema-level checks only;
+// vector index replace endpoint — schema-level checks only;
 ////////////////////////////////////////////////////////////////////////////////;
-function retrain_endpointSuite () {
+function replace_endpointSuite () {
   let cn = "UnitTestsCollectionIndexes";
   return {
     setUp: function() {
@@ -627,34 +627,34 @@ function retrain_endpointSuite () {
       db._drop(cn);
     },
 
-    test_retrain_missing_collection_parameter_returns_not_found: function() {
-      let doc = arango.POST_RAW(api + "/retrain", {index: "anything"});
+    test_replace_missing_collection_parameter_returns_not_found: function() {
+      let doc = arango.POST_RAW(api + "/replace", {index: "anything"});
       assertEqual(doc.code, internal.errors.ERROR_HTTP_NOT_FOUND.code);
       assertTrue(doc.parsedBody['error']);
       assertEqual(doc.parsedBody['errorNum'],
                   internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
     },
 
-    test_retrain_missing_index_field_returns_bad_parameter: function() {
-      let doc = arango.POST_RAW(api + "/retrain?collection=" + cn, {});
+    test_replace_missing_index_field_returns_bad_parameter: function() {
+      let doc = arango.POST_RAW(api + "/replace?collection=" + cn, {});
       assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
       assertTrue(doc.parsedBody['error']);
       assertEqual(doc.parsedBody['errorNum'],
                   internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
     },
 
-    test_retrain_unknown_index_returns_index_not_found: function() {
-      let doc = arango.POST_RAW(api + "/retrain?collection=" + cn,
+    test_replace_unknown_index_returns_index_not_found: function() {
+      let doc = arango.POST_RAW(api + "/replace?collection=" + cn,
                                 {index: "does-not-exist"});
       assertTrue(doc.parsedBody['error']);
       assertEqual(doc.parsedBody['errorNum'],
                   internal.errors.ERROR_ARANGO_INDEX_NOT_FOUND.code);
     },
 
-    test_retrain_non_vector_index_returns_bad_parameter: function() {
+    test_replace_non_vector_index_returns_bad_parameter: function() {
       db._collection(cn).ensureIndex(
         {type: "persistent", fields: ["foo"], name: "persIdx"});
-      let doc = arango.POST_RAW(api + "/retrain?collection=" + cn,
+      let doc = arango.POST_RAW(api + "/replace?collection=" + cn,
                                 {index: "persIdx"});
       assertTrue(doc.parsedBody['error']);
       assertEqual(doc.parsedBody['errorNum'],
@@ -671,5 +671,5 @@ jsunity.run(creating_unique_skiplistsSuite);
 jsunity.run(reading_all_indexesSuite);
 jsunity.run(reading_an_indexSuite);
 jsunity.run(deleting_an_indexSuite);
-jsunity.run(retrain_endpointSuite);
+jsunity.run(replace_endpointSuite);
 return jsunity.done();
