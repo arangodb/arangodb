@@ -388,14 +388,15 @@ TEST_F(AqlValueHashAlgorithmCorrectnessTest,
 
   auto sourceBlock = itemBlockManager.requestBlock(1, 2);
 
-  // Create same number 42 in different storage types
-  AqlValue v1 = makeAQLValue(int64_t{42});  // VPACK_INLINE_INT64
+  // Create same number 42 via two different construction paths.
+  // Both normalize to VPACK_INLINE_INT64 (initFromSlice normalizes small
+  // integers), so the deduplication test below relies on content equality,
+  // not storage-type diversity.
+  AqlValue v1 = makeAQLValue(int64_t{42});
 
   VPackBuilder builder;
   builder.add(VPackValue(42));
   AqlValue v2(builder.slice());
-
-  EXPECT_NE(v1.type(), v2.type());
 
   sourceBlock->setValue(0, 0, v1);
   sourceBlock->setValue(0, 1, v2);
