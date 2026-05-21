@@ -98,6 +98,12 @@ function optimizerRuleTestSuite () {
         let result = db._createStatement({query: query, bindVars:  {}, options:  paramEnabled}).explain();
         assertEqual([], result.plan.rules, query);
       });
+
+     let querynew =
+        "LET data = { a: 1, b: 2, c: 3, d: { x: 'x', y: 'y', [NOEVAL('foo')] : 4 } } RETURN data.d.y";
+
+     let result = db._createStatement({query: querynew, bindVars: {}, options: paramEnabled}).explain();
+     assertEqual([], result.plan.rules, querynew);
     },
 
     testResults : function () {
@@ -136,7 +142,6 @@ function optimizerRuleTestSuite () {
         [ "LET data = { a: 1, b: 2, c: 3, d: { x: 'x', y: 'y', foo: NOEVAL(4) } } RETURN data.z", null ],
         [ "LET data = { a: 1, b: 2, c: 3, d: { x: 'x', y: 'y', [NOEVAL('foo')] : 4 } } RETURN data.z", null ],
         [ "LET data = { a: 1, b: 2, c: 3, d: { x: 'x', y: 'y', [NOEVAL('foo')] : 4 } } RETURN data.b", 2 ],
-        [ "LET data = { a: 1, b: 2, c: 3, d: { x: 'x', y: 'y', [NOEVAL('foo')] : 4 } } RETURN data.d.y", 'y' ],
       ];
 
       queries.forEach(function(query) {
