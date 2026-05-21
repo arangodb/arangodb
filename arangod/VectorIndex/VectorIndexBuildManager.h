@@ -54,9 +54,10 @@ class Scheduler;
 
 namespace arangodb::vector {
 
-/// Single background thread that periodically scans for untrained vector
-/// indexes and builds them, and for queued retrains and executes them.
-/// One thread, one pass: scan drains both queues.
+/// Single background thread that periodically scans for vector indexes
+/// in the kUnusable state and trains them one at a time. Index
+/// replacements register a shadow index in the same kUnusable state, so
+/// the same scan picks them up alongside fresh builds.
 class VectorIndexBuildManager {
  public:
   static constexpr auto kScanInterval = std::chrono::seconds(5);

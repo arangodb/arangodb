@@ -356,11 +356,24 @@ VectorIndexBuildManager::processVectorIndex(FailedBuildsMap& failedBuilds,
       << " documents). Starting deferred training.";
 
   _trainingOngoingCount.fetch_add(1);
+  auto const decrementOnExit =
+      scopeGuard([this]() noexcept { _trainingOngoingCount.fetch_sub(1); });
   auto indexPtr = std::static_pointer_cast<RocksDBIndex>(idx);
   VectorIndexBuilder builder(vecIdx, _resourceMonitor);
-  auto const res = builder.build(std::move(indexPtr), _trainingDuration,
-                                 _ingestionDuration, stopToken);
-  _trainingOngoingCount.fetch_sub(1);
+
+  // build() can throw via VectorIndexTrainer::train (ResourceUsageScope
+  // memory-limit overflow, faiss exceptions, factory-string mismatches).
+  // Translate to Result so the cleanup below runs uniformly.
+  auto const res = [&]() -> Result {
+    try {
+      return builder.build(std::move(indexPtr), _trainingDuration,
+                           _ingestionDuration, stopToken);
+    } catch (basics::Exception const& e) {
+      return {e.code(), e.message()};
+    } catch (std::exception const& e) {
+      return {TRI_ERROR_INTERNAL, e.what()};
+    }
+  }();
 
   if (res.fail()) {
     fulfillBuildWaiters(vecIdx.id(), res);
