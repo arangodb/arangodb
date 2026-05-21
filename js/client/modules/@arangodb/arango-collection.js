@@ -502,20 +502,23 @@ ArangoCollection.prototype.compact = function () {
 };
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief retrains a vector index on this collection. Kicks off an
-// / asynchronous rebuild on the server; the existing index keeps serving
-// / reads and writes until the new one is ready.
+// / @brief replaces a vector index on this collection. Optionally accepts a
+// / `patch` object whose fields are deep-merged onto the existing index
+// / definition (a missing or empty patch is equivalent to a same-definition
+// / rebuild — what used to be "retrain"). The existing index keeps serving
+// / reads and writes until the rebuild completes and atomically swaps in.
 // //////////////////////////////////////////////////////////////////////////////
 
-ArangoCollection.prototype.retrain = function (indexName) {
+ArangoCollection.prototype.replaceIndex = function (indexName, patch) {
   if (typeof indexName !== 'string' || indexName.length === 0) {
     throw new ArangoError({
       errorNum: internal.errors.ERROR_BAD_PARAMETER.code,
-      errorMessage: "retrain() requires a vector index name or id"
+      errorMessage: "replaceIndex() requires a vector index name or id"
     });
   }
-  let url = '/_api/index/retrain?collection=' + encodeURIComponent(this.name());
-  let requestResult = this._database._connection.POST(url, {index: indexName});
+  let body = Object.assign({}, patch || {}, {index: indexName});
+  let url = '/_api/index/replace?collection=' + encodeURIComponent(this.name());
+  let requestResult = this._database._connection.POST(url, body);
   arangosh.checkRequestResult(requestResult);
   return requestResult;
 };

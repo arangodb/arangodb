@@ -42,8 +42,8 @@ const {
 } = require("@arangodb/testutils/vector-index-common");
 
 const isCluster = internal.isCluster();
-const dbName = "vectorRetrainDb";
-const collName = "vectorRetrainColl";
+const dbName = "vectorReplaceDb";
+const collName = "vectorReplaceColl";
 
 const dimension = 64;
 const nLists = 10;
@@ -68,21 +68,21 @@ function createIndex (collection) {
 }
 
 // Poll until the named index is back to kReady with a different id from
-// preIdx. Returns the post-retrain index, or undefined on timeout.
+// preIdx. Returns the post-replace index, or undefined on timeout.
 //
-// Single-server: retrain swaps the real index for its shadow, producing
+// Single-server: replace swaps the real index for its shadow, producing
 // a fresh DBServer-local IndexId visible via collection.indexes(). The
 // id-change check is a strong completion signal.
 //
-// Cluster: the coordinator's Plan-level IndexId is agency-bound and
-// does NOT change across a retrain.
-function waitForRetrainComplete (collection, preIdx, timeoutSeconds) {
+// Cluster: the coordinator's Plan-level IndexId is the SHADOW's new id
+// after the supervision job commits, so the id changes here too.
+function waitForReplaceComplete (collection, preIdx, timeoutSeconds) {
   const deadline = internal.time() + timeoutSeconds;
   while (internal.time() < deadline) {
     const idx = collection.indexes().find(i => i.name === preIdx.name);
     if (idx !== undefined &&
         idx.trainingState === VectorIndexTrainingState.kReady &&
-        (isCluster || idx.id !== preIdx.id)) {
+        idx.id !== preIdx.id) {
       return idx;
     }
     internal.sleep(0.5);
@@ -90,7 +90,7 @@ function waitForRetrainComplete (collection, preIdx, timeoutSeconds) {
   return undefined;
 }
 
-function VectorRetrainTestSuite () {
+function VectorReplaceTestSuite () {
   let collection;
   const seed = generateSeed();
 
@@ -113,7 +113,7 @@ function VectorRetrainTestSuite () {
       assertTrue(
         waitForAllVectorIndexesState(
           collection, VectorIndexTrainingState.kReady, 120),
-        "Index did not reach ready state before retrain test");
+        "Index did not reach ready state before replace test");
     },
 
     tearDown: function () {
@@ -132,19 +132,17 @@ function VectorRetrainTestSuite () {
       } catch (e) {}
     },
 
-    testRetrainRebuildsIndexAndKeepsDataSearchable: function () {
+    testReplaceWithEmptyBodyRebuildsIndexAndKeepsDataSearchable: function () {
       const preIdx = collection.indexes().find(i => i.name === indexName);
       assertEqual(VectorIndexTrainingState.kReady, preIdx.trainingState);
 
-      collection.retrain(indexName);
+      collection.replaceIndex(indexName);
 
-      const postIdx = waitForRetrainComplete(collection, preIdx, 180);
+      const postIdx = waitForReplaceComplete(collection, preIdx, 180);
       assertTrue(postIdx !== undefined,
-        "Retrain did not finish within timeout");
-      if (!isCluster) {
-        assertNotEqual(preIdx.id, postIdx.id,
-          "Retrain should produce a new IndexId on single server");
-      }
+        "Replace did not finish within timeout");
+      assertNotEqual(preIdx.id, postIdx.id,
+        "Replace should produce a new IndexId");
 
       const qp = collection.any().vector;
       const results = db._query(aql`FOR d IN ${collection}
@@ -153,34 +151,73 @@ function VectorRetrainTestSuite () {
       assertEqual(5, results.length);
     },
 
-    testRetrainOnNonExistingIndexFails: function () {
+    testReplaceOnNonExistingIndexFails: function () {
       try {
-        collection.retrain("does-not-exist");
+        collection.replaceIndex("does-not-exist");
         fail();
       } catch (e) {
         assertEqual(errors.ERROR_ARANGO_INDEX_NOT_FOUND.code, e.errorNum);
       }
     },
 
-    testRetrainOnNonVectorIndexFails: function () {
+    testReplaceOnNonVectorIndexFails: function () {
       collection.ensureIndex({
         type: "persistent",
         fields: ["foo"],
         name: "persIdx"
       });
       try {
-        collection.retrain("persIdx");
+        collection.replaceIndex("persIdx");
         fail();
       } catch (e) {
         assertEqual(errors.ERROR_BAD_PARAMETER.code, e.errorNum);
       }
     },
 
-    testRetrainSurvivesConcurrentInserts: function () {
+    testReplaceWithPatchChangesParams: function () {
+      const preIdx = collection.indexes().find(i => i.name === indexName);
+      const newNLists = nLists * 2;
+
+      collection.replaceIndex(indexName, {params: {nLists: newNLists}});
+
+      const postIdx = waitForReplaceComplete(collection, preIdx, 180);
+      assertTrue(postIdx !== undefined,
+        "Replace with patch did not finish within timeout");
+      // Other params untouched, metric/dimension preserved
+      assertEqual(preIdx.params.metric, postIdx.params.metric);
+      assertEqual(preIdx.params.dimension, postIdx.params.dimension);
+      assertEqual(newNLists, postIdx.params.nLists,
+        "Patched nLists must be reflected on the new index");
+    },
+
+    testReplaceWithDimensionMismatchFails: function () {
+      const preIdx = collection.indexes().find(i => i.name === indexName);
+      try {
+        collection.replaceIndex(indexName,
+          {params: {dimension: preIdx.params.dimension + 1}});
+        fail();
+      } catch (e) {
+        assertEqual(errors.ERROR_BAD_PARAMETER.code, e.errorNum);
+      }
+    },
+
+    testReplaceWithMatchingDimensionPasses: function () {
+      const preIdx = collection.indexes().find(i => i.name === indexName);
+      // Explicitly echoing the existing dimension must not be rejected.
+      collection.replaceIndex(indexName,
+        {params: {dimension: preIdx.params.dimension}});
+
+      const postIdx = waitForReplaceComplete(collection, preIdx, 180);
+      assertTrue(postIdx !== undefined,
+        "Replace echoing dimension did not finish within timeout");
+      assertEqual(preIdx.params.dimension, postIdx.params.dimension);
+    },
+
+    testReplaceSurvivesConcurrentInserts: function () {
       const gen = randomNumberGeneratorFloat(seed + 1);
       const extra = generateDocs(gen, 200, dimension);
 
-      collection.retrain(indexName);
+      collection.replaceIndex(indexName);
 
       // Inject inserts while the shadow is being built. The old index
       // keeps serving writes; the shadow captures them via the standard
@@ -190,7 +227,7 @@ function VectorRetrainTestSuite () {
       assertTrue(
         waitForAllVectorIndexesState(
           collection, VectorIndexTrainingState.kReady, 180),
-        "Index did not return to ready after concurrent-insert retrain");
+        "Index did not return to ready after concurrent-insert replace");
 
       const count = db._query(aql`FOR d IN ${collection}
         FILTER HAS(d, 'vector')
@@ -198,69 +235,42 @@ function VectorRetrainTestSuite () {
       assertEqual(aboveThresholdCount + extra.length, count);
     },
 
-    testRetrainRejectsConcurrentRetrain: function () {
-      if (!IM.debugCanUseFailAt()) {
-        return;
-      }
-      // Hold the shadow build at pauseBeforeTraining so _activeRetrains
-      // stays populated long enough for us to fire a second retrain.
-      IM.debugSetFailAt("RocksDBVectorIndex::pauseBeforeTraining");
-      collection.retrain(indexName);
-
-      try {
-        collection.retrain(indexName);
-        fail();
-      } catch (e) {
-        assertEqual(errors.ERROR_ARANGO_CONFLICT.code, e.errorNum);
-      }
-
-      // Release the paused build so the index returns to kReady before
-      // tearDown runs.
-      IM.debugClearFailAt();
-      assertTrue(
-        waitForAllVectorIndexesState(
-          collection, VectorIndexTrainingState.kReady, 180),
-        "Index did not return to ready after paused retrain");
-    },
-
-    testRetrainByNumericIdViaJsClient: function () {
+    testReplaceByNumericIdViaJsClient: function () {
       const preIdx = collection.indexes().find(i => i.name === indexName);
-      // idx.id is in "<coll>/<numericId>" form; retrain() accepts either.
+      // idx.id is in "<coll>/<numericId>" form; replace() accepts either.
       const numericId = preIdx.id.split('/')[1];
 
-      collection.retrain(numericId);
+      collection.replaceIndex(numericId);
 
-      const postIdx = waitForRetrainComplete(collection, preIdx, 180);
+      const postIdx = waitForReplaceComplete(collection, preIdx, 180);
       assertTrue(postIdx !== undefined,
-        "Retrain-by-id did not finish within timeout");
-      if (!isCluster) {
-        assertNotEqual(preIdx.id, postIdx.id,
-          "Retrain-by-id should produce a new IndexId on single server");
-      }
+        "Replace-by-id did not finish within timeout");
+      assertNotEqual(preIdx.id, postIdx.id,
+        "Replace-by-id should produce a new IndexId");
     },
 
-    testRetrainViaRestApiByJsonNumberId: function () {
+    testReplaceViaRestApiByJsonNumberId: function () {
       const preIdx = collection.indexes().find(i => i.name === indexName);
       const numericId = parseInt(preIdx.id.split('/')[1], 10);
-      const url = '/_api/index/retrain?collection=' +
+      const url = '/_api/index/replace?collection=' +
                   encodeURIComponent(collName);
       const res = arango.POST(url, {index: numericId});
       assertFalse(res.error, JSON.stringify(res));
-      assertEqual(200, res.code);
+      // Cluster returns ACCEPTED + jobId; single-server returns OK.
+      assertTrue(res.code === 200 || res.code === 202,
+        "expected 200 or 202, got " + res.code);
 
-      const postIdx = waitForRetrainComplete(collection, preIdx, 180);
+      const postIdx = waitForReplaceComplete(collection, preIdx, 180);
       assertTrue(postIdx !== undefined,
-        "REST retrain-by-JSON-number did not finish within timeout");
-      if (!isCluster) {
-        assertNotEqual(preIdx.id, postIdx.id,
-          "REST retrain-by-JSON-number should produce a new IndexId");
-      }
+        "REST replace-by-JSON-number did not finish within timeout");
+      assertNotEqual(preIdx.id, postIdx.id,
+        "REST replace-by-JSON-number should produce a new IndexId");
     },
 
-    testRetrainPreservesStoredValuesDefinition: function () {
-      // Build a vector index that carries storedValues, then retrain. The
-      // shadow constructed by makeRetrainShadow() has to round-trip the
-      // full user-facing definition: fields, params, and storedValues.
+    testReplacePreservesStoredValuesDefinition: function () {
+      // Build a vector index that carries storedValues, then replace with an
+      // empty patch. The full user-facing definition (fields, params,
+      // storedValues) must round-trip through the shadow build and swap.
       const storedIdxName = "vec_with_stored";
       const storedFields = ["name", "category", "value"];
 
@@ -293,30 +303,28 @@ function VectorRetrainTestSuite () {
         "Stored-values vector index did not reach ready state");
 
       const preIdx = collection.indexes().find(i => i.name === storedIdxName);
-      assertTrue(preIdx !== undefined, "Pre-retrain stored-values index missing");
+      assertTrue(preIdx !== undefined, "Pre-replace stored-values index missing");
       assertEqual(storedFields, preIdx.storedValues,
-        "Pre-retrain index must carry the requested storedValues");
+        "Pre-replace index must carry the requested storedValues");
       assertTrue(preIdx.sparse,
-        "Pre-retrain index must carry the requested sparse flag");
+        "Pre-replace index must carry the requested sparse flag");
 
-      collection.retrain(storedIdxName);
+      collection.replaceIndex(storedIdxName);
 
-      const postIdx = waitForRetrainComplete(collection, preIdx, 180);
+      const postIdx = waitForReplaceComplete(collection, preIdx, 180);
       assertTrue(postIdx !== undefined,
-        "Stored-values retrain did not finish within timeout");
-      if (!isCluster) {
-        assertNotEqual(preIdx.id, postIdx.id,
-          "Retrain should produce a new IndexId on single server");
-      }
+        "Stored-values replace did not finish within timeout");
+      assertNotEqual(preIdx.id, postIdx.id,
+        "Replace should produce a new IndexId");
 
       // The user-visible definition must round-trip the rebuild.
       assertEqual(storedFields, postIdx.storedValues,
-        "Retrain must preserve storedValues across the swap");
+        "Replace must preserve storedValues across the swap");
       assertEqual(preIdx.fields, postIdx.fields,
-        "Retrain must preserve indexed fields");
+        "Replace must preserve indexed fields");
       assertEqual(preIdx.type, postIdx.type);
       assertEqual(preIdx.sparse, postIdx.sparse,
-        "Retrain must preserve the sparse flag");
+        "Replace must preserve the sparse flag");
       assertEqual(preIdx.params.metric, postIdx.params.metric);
       assertEqual(preIdx.params.dimension, postIdx.params.dimension);
       assertEqual(preIdx.params.nLists, postIdx.params.nLists);
@@ -332,13 +340,95 @@ function VectorRetrainTestSuite () {
         .toArray();
       assertEqual(5, projected.length);
       for (const row of projected) {
-        assertTrue(row.name !== undefined, "name must be projectable post-retrain");
-        assertTrue(row.category !== undefined, "category must be projectable post-retrain");
-        assertTrue(row.value !== undefined, "value must be projectable post-retrain");
+        assertTrue(row.name !== undefined, "name must be projectable post-replace");
+        assertTrue(row.category !== undefined, "category must be projectable post-replace");
+        assertTrue(row.value !== undefined, "value must be projectable post-replace");
       }
     },
 
-    testRetrainShadowIsVisibleInIndexes: function () {
+    testClusterReplaceWritesAgencyJobAndSiblingEntry: function () {
+      if (!isCluster) {
+        return;
+      }
+      const AM = IM.agencyMgr;
+      const preIdx = collection.indexes().find(i => i.name === indexName);
+      assertEqual(VectorIndexTrainingState.kReady, preIdx.trainingState);
+
+      // Look up the collection's plan id by walking Plan/Collections/{db}.
+      const planTree = AM.getFromPlan('Plan/Collections/' + dbName);
+      const collectionsMap = planTree.arango.Plan.Collections[dbName];
+      let collectionPlanId;
+      for (const [planId, def] of Object.entries(collectionsMap)) {
+        if (def.name === collName) {
+          collectionPlanId = planId;
+          break;
+        }
+      }
+      assertTrue(collectionPlanId !== undefined,
+        "could not find collection planId via Plan agency tree");
+
+      // Fire the replace. Cluster path returns ACCEPTED + jobId immediately;
+      // the heavy work runs via the ReplaceIndex supervision job.
+      const numericId = preIdx.id.split('/')[1];
+      const url = '/_api/index/replace?collection=' +
+                  encodeURIComponent(collName);
+      const res = arango.POST(url, {index: numericId});
+      assertFalse(res.error, JSON.stringify(res));
+      assertEqual(202, res.code, "cluster /replace should return 202 ACCEPTED");
+      assertTrue(typeof res.jobId === 'string' && res.jobId.length > 0,
+        "cluster /replace must return a jobId");
+
+      // Helper to read the current indexes array from Plan via the agency.
+      const readPlanIndexes = () => {
+        const tree = AM.getFromPlan(
+          'Plan/Collections/' + dbName + '/' + collectionPlanId);
+        const collEntry =
+          tree.arango.Plan.Collections[dbName][collectionPlanId];
+        return Array.isArray(collEntry.indexes) ? collEntry.indexes : [];
+      };
+
+      // While the job is in flight, Plan must contain a sibling index entry
+      // with a `replaces` marker pointing at the original index.
+      let sibling;
+      const planDeadline = internal.time() + 30;
+      while (internal.time() < planDeadline) {
+        sibling = readPlanIndexes().find(
+          i => typeof i.replaces === 'string' && i.replaces === numericId);
+        if (sibling !== undefined) {
+          break;
+        }
+        internal.sleep(0.2);
+      }
+      assertTrue(sibling !== undefined,
+        "sibling index entry with `replaces` marker should appear in Plan");
+
+      // Wait for the swap to commit.
+      const postIdx = waitForReplaceComplete(collection, preIdx, 180);
+      assertTrue(postIdx !== undefined,
+        "supervision-driven replace did not finish within timeout");
+
+      // After commit: old entry removed, new entry has no `replaces`
+      // marker, indexes() reflects the new id.
+      const finalDeadline = internal.time() + 30;
+      let finalEntry;
+      while (internal.time() < finalDeadline) {
+        const planIndexes = readPlanIndexes();
+        const stillReplacing = planIndexes.find(
+          i => typeof i.replaces === 'string');
+        if (stillReplacing === undefined) {
+          finalEntry = planIndexes.find(
+            i => i.id === postIdx.id.split('/')[1]);
+          if (finalEntry !== undefined) {
+            break;
+          }
+        }
+        internal.sleep(0.2);
+      }
+      assertTrue(finalEntry !== undefined,
+        "Plan should converge to a single index entry with no `replaces`");
+    },
+
+    testReplaceShadowIsHiddenFromOptimizer: function () {
       if (isCluster || !IM.debugCanUseFailAt()) {
         // The shadow is a DBServer-local object; the coordinator's
         // indexes() view hides it. Only exercise this on single server.
@@ -351,7 +441,19 @@ function VectorRetrainTestSuite () {
       // old index and the shadow coexist in the collection's index set
       // long enough for us to observe them.
       IM.debugSetFailAt("RocksDBVectorIndex::pauseBeforeTraining");
-      collection.retrain(indexName);
+
+      // Fire the replace from a background task — single-server replace is
+      // synchronous on the request thread, so without backgrounding the
+      // pause would block this test forever.
+      const tasks = require("@arangodb/tasks");
+      tasks.register({
+        id: "replace-task",
+        command: function (params) {
+          const db = require("internal").db;
+          db._collection(params.collName).replaceIndex(params.indexName);
+        },
+        params: {collName, indexName}
+      });
 
       let matching = [];
       const deadline = internal.time() + 30;
@@ -363,19 +465,19 @@ function VectorRetrainTestSuite () {
         internal.sleep(0.2);
       }
       assertEqual(2, matching.length,
-        "Both old and shadow indexes should be visible during retrain");
+        "Both old and shadow indexes should be visible during replace");
 
       const shadow = matching.find(i => i.id !== preIdx.id);
       assertTrue(shadow !== undefined, "Shadow must carry a fresh id");
       assertNotEqual(VectorIndexTrainingState.kReady, shadow.trainingState,
         "Shadow should not be ready while the build is paused");
 
-      // Unpause and wait for the swap. Post-retrain the collection must
+      // Unpause and wait for the swap. Post-replace the collection must
       // report exactly one index under the name, carrying the shadow's
       // fresh id and kReady.
       IM.debugClearFailAt();
-      const postIdx = waitForRetrainComplete(collection, preIdx, 180);
-      assertTrue(postIdx !== undefined, "Retrain did not complete in time");
+      const postIdx = waitForReplaceComplete(collection, preIdx, 180);
+      assertTrue(postIdx !== undefined, "Replace did not complete in time");
       assertNotEqual(preIdx.id, postIdx.id);
       const finalMatching =
         collection.indexes().filter(i => i.name === indexName);
@@ -469,7 +571,7 @@ function VectorTruncateCommitTestSuite () {
   };
 }
 
-jsunity.run(VectorRetrainTestSuite);
+jsunity.run(VectorReplaceTestSuite);
 if (!isCluster) {
   jsunity.run(VectorTruncateCommitTestSuite);
 }
