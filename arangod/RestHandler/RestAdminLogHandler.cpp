@@ -57,7 +57,10 @@ using namespace basics;
 RestAdminLogHandler::RestAdminLogHandler(
     application_features::ApplicationServer& server, GeneralRequest* request,
     GeneralResponse* response)
-    : RestBaseHandler(server, request, response) {}
+    : RestBaseHandler(server, request, response),
+      _logBufferFeature(server.getFeature<LogBufferFeature>()),
+      _clusterFeature(server.getFeature<ClusterFeature>()),
+      _connectionPool(server.getFeature<NetworkFeature>().pool()) {}
 
 arangodb::Result RestAdminLogHandler::verifyPermitted(RequestType const type) {
   auto& loggerFeature = server().getFeature<arangodb::LoggerFeature>();
@@ -168,7 +171,7 @@ auto RestAdminLogHandler::executeAsync() -> futures::Future<futures::Unit> {
 }
 
 void RestAdminLogHandler::clearLogs() {
-  server().getFeature<LogBufferFeature>().clear();
+  _logBufferFeature.clear();
   generateOk(rest::ResponseCode::OK, VPackSlice::emptyObjectSlice());
 }
 
@@ -180,7 +183,7 @@ auto RestAdminLogHandler::reportLogs(bool newFormat) -> async<void> {
   if (ServerState::instance()->isCoordinator() && foundServerIdParameter) {
     if (serverId != ServerState::instance()->getId()) {
       // not ourselves! - need to pass through the request
-      auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+      auto& ci = _clusterFeature.clusterInfo();
 
       bool found = false;
       for (auto const& srv : ci.getServers()) {
@@ -198,9 +201,7 @@ auto RestAdminLogHandler::reportLogs(bool newFormat) -> async<void> {
         co_return;
       }
 
-      NetworkFeature const& nf = server().getFeature<NetworkFeature>();
-      network::ConnectionPool* pool = nf.pool();
-      if (pool == nullptr) {
+      if (_connectionPool == nullptr) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
       }
 
@@ -210,7 +211,7 @@ auto RestAdminLogHandler::reportLogs(bool newFormat) -> async<void> {
       options.parameters = _request->parameters();
 
       auto r = co_await network::sendRequestRetry(
-          pool, "server:" + serverId, fuerte::RestVerb::Get,
+          _connectionPool, "server:" + serverId, fuerte::RestVerb::Get,
           _request->requestPath(), VPackBuffer<uint8_t>{}, options);
 
       if (r.fail()) {
@@ -296,8 +297,7 @@ auto RestAdminLogHandler::reportLogs(bool newFormat) -> async<void> {
   std::string const& searchString = _request->value("search");
   // generate result
   std::vector<LogBuffer> entries =
-      server().getFeature<LogBufferFeature>().entries(ul, start, useUpto,
-                                                      searchString);
+      _logBufferFeature.entries(ul, start, useUpto, searchString);
 
   // check the sort direction
   std::string const& sortdir = StringUtils::tolower(_request->value("sort"));
@@ -459,7 +459,7 @@ auto RestAdminLogHandler::handleLogLevel() -> async<void> {
   if (ServerState::instance()->isCoordinator() && foundServerIdParameter) {
     if (serverId != ServerState::instance()->getId()) {
       // not ourselves! - need to pass through the request
-      auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+      auto& ci = _clusterFeature.clusterInfo();
 
       bool found = false;
       for (auto const& srv : ci.getServers()) {
@@ -477,9 +477,7 @@ auto RestAdminLogHandler::handleLogLevel() -> async<void> {
         co_return;
       }
 
-      NetworkFeature const& nf = server().getFeature<NetworkFeature>();
-      network::ConnectionPool* pool = nf.pool();
-      if (pool == nullptr) {
+      if (_connectionPool == nullptr) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
       }
 
@@ -512,8 +510,8 @@ auto RestAdminLogHandler::handleLogLevel() -> async<void> {
       }
 
       auto r = co_await network::sendRequestRetry(
-          pool, "server:" + serverId, requestType, _request->requestPath(),
-          std::move(*body), options);
+          _connectionPool, "server:" + serverId, requestType,
+          _request->requestPath(), std::move(*body), options);
       if (r.fail()) {
         generateError(r.combinedResult());
       } else {

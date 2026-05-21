@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -59,20 +59,19 @@ GraphTestSetup::GraphTestSetup() : server(nullptr, nullptr), engine(server) {
       arangodb::RandomGenerator::RandomType::MERSENNE);
 
   // setup required application features
-  features.emplace_back(
-      server.addFeature<arangodb::metrics::MetricsFeature>(
-          LazyApplicationFeatureReference<QueryRegistryFeature>(server),
-          LazyApplicationFeatureReference<StatisticsFeature>(nullptr),
-          LazyApplicationFeatureReference<EngineSelectorFeature>(server),
-          LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(
-              nullptr),
-          LazyApplicationFeatureReference<ClusterFeature>(nullptr)),
-      false);
+  auto& metrics = server.addFeature<arangodb::metrics::MetricsFeature>(
+      LazyApplicationFeatureReference<QueryRegistryFeature>(server),
+      LazyApplicationFeatureReference<StatisticsFeature>(nullptr),
+      LazyApplicationFeatureReference<EngineSelectorFeature>(server),
+      LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(nullptr),
+      LazyApplicationFeatureReference<ClusterFeature>(nullptr));
+  features.emplace_back(metrics, false);
   features.emplace_back(server.addFeature<arangodb::DatabasePathFeature>(),
                         false);
   features.emplace_back(
-      server.addFeature<arangodb::transaction::ManagerFeature>(), false);
-  features.emplace_back(server.addFeature<arangodb::DatabaseFeature>(), false);
+      server.addFeature<arangodb::transaction::ManagerFeature>(metrics), false);
+  auto& databaseFeature = server.addFeature<arangodb::DatabaseFeature>();
+  features.emplace_back(databaseFeature, false);
   features.emplace_back(server.addFeature<arangodb::EngineSelectorFeature>(),
                         false);
   server.getFeature<EngineSelectorFeature>().setEngineTesting(&engine);
@@ -81,7 +80,7 @@ GraphTestSetup::GraphTestSetup() : server(nullptr, nullptr), engine(server) {
           server.getFeature<arangodb::metrics::MetricsFeature>()),
       false);  // must be first
   system = std::make_unique<TRI_vocbase_t>(
-      systemDBInfo(server),
+      systemDBInfo(server), engine,
       server.getFeature<DatabaseFeature>().versionTracker(), true);
   features.emplace_back(
       server.addFeature<arangodb::SystemDatabaseFeature>(system.get()),
@@ -91,10 +90,10 @@ GraphTestSetup::GraphTestSetup() : server(nullptr, nullptr), engine(server) {
       server.addFeature<arangodb::aql::OptimizerRulesFeature>(), true);
   features.emplace_back(server.addFeature<arangodb::aql::AqlFunctionFeature>(),
                         true);  // required for IResearchAnalyzerFeature
-  features.emplace_back(server.addFeature<arangodb::MaintenanceFeature>(),
-                        false);
-  features.emplace_back(server.addFeature<arangodb::VectorIndexFeature>(),
-                        true);
+  features.emplace_back(
+      server.addFeature<arangodb::MaintenanceFeature>(nullptr), false);
+  features.emplace_back(
+      server.addFeature<arangodb::VectorIndexFeature>(databaseFeature), true);
 
   for (auto& f : features) {
     f.first.prepare();

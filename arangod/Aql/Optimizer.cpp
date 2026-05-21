@@ -46,7 +46,7 @@
 
 #include <absl/strings/str_cat.h>
 
-using namespace arangodb::aql;
+namespace arangodb::aql {
 
 Optimizer::Optimizer(ResourceMonitor& resourceMonitor, size_t maxNumberOfPlans)
     : _plans(resourceMonitor),
@@ -193,12 +193,12 @@ class PlanChecker
     }
 
     if (!ok) {
-      LOG_TOPIC("d45f8", ERR, arangodb::Logger::AQL) << "Inconsistent plan:";
+      LOG_TOPIC("d45f8", ERR, Logger::AQL) << "Inconsistent plan:";
       _plan.show();
-      LOG_TOPIC("c14a2", ERR, arangodb::Logger::AQL)
+      LOG_TOPIC("c14a2", ERR, Logger::AQL)
           << "encountered the following error(s):";
       for (auto const& err : errors) {
-        LOG_TOPIC("17a18", ERR, arangodb::Logger::AQL) << err.str();
+        LOG_TOPIC("17a18", ERR, Logger::AQL) << err.str();
       }
     }
     TRI_ASSERT(ok);
@@ -488,7 +488,7 @@ void activateCallstackSplit(ExecutionPlan& plan) {
 enum class DistributeType { DOCUMENT, TRAVERSAL, PATH };
 
 void insertDistributeInputCalculation(ExecutionPlan& plan) {
-  arangodb::containers::SmallVector<ExecutionNode*, 8> nodes;
+  containers::SmallVector<ExecutionNode*, 8> nodes;
   plan.findNodesOfType(nodes, ExecutionNode::DISTRIBUTE, true);
 
   for (auto const& n : nodes) {
@@ -930,3 +930,5 @@ void Optimizer::Stats::toVelocyPackForCachedPlan(velocypack::Builder& b) {
   // will not show all plan details
   b.add("rules", velocypack::Slice::emptyObjectSlice());
 }
+
+}  // namespace arangodb::aql

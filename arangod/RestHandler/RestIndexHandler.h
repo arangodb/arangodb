@@ -29,12 +29,14 @@
 #include <thread>
 
 #include "Basics/Result.h"
+#include "Basics/ResultT.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
 #include "VocBase/Identifiers/IndexId.h"
 
 #include <velocypack/Builder.h>
 
 namespace arangodb {
+class ClusterFeature;
 class LogicalCollection;
 template<typename>
 struct async;
@@ -55,11 +57,11 @@ class RestIndexHandler : public arangodb::RestVocbaseBaseHandler {
   async<void> dropIndex();
   void syncCaches();
 
-  // Wait for a vector index to become ready. On DBServer/SingleServer
-  // delegates to VectorIndexBuildManager. On Coordinator, polls shard
-  // training states from CollectionInfoCurrent until all report "ready"
-  // or a timeout is reached.
-  [[nodiscard]] futures::Future<Result> waitForVectorIndexReady(
+  // Wait for a vector index to reach a definitive training outcome. On
+  // DBServer/SingleServer delegates to VectorIndexBuildManager. On
+  // Coordinator, polls shard training states from CollectionInfoCurrent
+  // until all report "ready" or "unusable", or a timeout is reached.
+  [[nodiscard]] futures::Future<ResultT<std::string>> waitForVectorIndexReady(
       std::shared_ptr<LogicalCollection> const& coll, IndexId indexId);
 
   // If the created index is a synchronous vector index, wait for training
@@ -69,5 +71,7 @@ class RestIndexHandler : public arangodb::RestVocbaseBaseHandler {
       velocypack::Builder& response);
 
   std::shared_ptr<LogicalCollection> collection(std::string const& cName);
+
+  ClusterFeature& _clusterFeature;
 };
 }  // namespace arangodb

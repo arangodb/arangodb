@@ -58,7 +58,20 @@ namespace arangodb {
 namespace application_features {
 class ApplicationServer;
 }
+class ClusterFeature;
 class DatabaseFeature;
+class EngineSelectorFeature;
+class NetworkFeature;
+class SchedulerFeature;
+class SystemDatabaseFeature;
+
+namespace aql {
+class AqlFunctionFeature;
+}
+
+namespace network {
+class ConnectionPool;
+}
 
 namespace iresearch {
 
@@ -277,8 +290,21 @@ class IResearchAnalyzerFeature final
     return "ArangoSearchAnalyzer";
   }
 
+  struct Dependencies {
+    DatabaseFeature& databaseFeature;
+    EngineSelectorFeature& engineSelector;
+    SystemDatabaseFeature& systemDatabase;
+    NetworkFeature* networkFeature;
+    ClusterFeature* clusterFeature;
+    SchedulerFeature* schedulerFeature;
+    aql::AqlFunctionFeature* aqlFunctionFeature;
+
+    static Dependencies fromServer(
+        application_features::ApplicationServer& server);
+  };
+
   explicit IResearchAnalyzerFeature(
-      application_features::ApplicationServer& server);
+      application_features::ApplicationServer& server, Dependencies deps);
 
   // TODO We need to review the following canUse functions, and possibly replace
   //      calls to them with calls to ExecContext (we might need to add a
@@ -588,7 +614,13 @@ class IResearchAnalyzerFeature final
   std::function<void(bool)> _gcfunc;
   std::mutex _workItemMutex;
   Scheduler::WorkHandle _workItem;
+  ClusterFeature* _clusterFeature;
+  EngineSelectorFeature& _engineSelector;
+  SystemDatabaseFeature& _systemDatabase;
   DatabaseFeature& _databaseFeature;
+  NetworkFeature* _networkFeature;
+  SchedulerFeature* _schedulerFeature;
+  aql::AqlFunctionFeature* _aqlFunctionFeature;
 };
 
 }  // namespace iresearch

@@ -26,18 +26,217 @@
 
 #include "Aql/Ast.h"
 #include "Aql/Condition.h"
+#include "Aql/ConditionCoverage.h"
 #include "Aql/ExecutionNode/CalculationNode.h"
 #include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/ExecutionNode/FilterNode.h"
 #include "Aql/ExecutionNode/IndexNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
+#include "Aql/Functions.h"
 #include "Aql/Optimizer.h"
 #include "Aql/Variable.h"
 #include "Containers/SmallVector.h"
+#include "Indexes/Index.h"
 
 namespace arangodb::aql {
 using EN = ExecutionNode;
+
+namespace {
+
+bool areInRangeCallsIdentical(AstNode const* arrayNode,
+                              AstNode const* otherArrayNode) {
+  for (size_t i = 0; i < arrayNode->numMembers(); ++i) {
+    auto const* functionCallNodeElement = arrayNode->getMemberUnchecked(i);
+    auto const* functionCallNodeOtherElement =
+        otherArrayNode->getMemberUnchecked(i);
+
+    if (functionCallNodeElement->type != functionCallNodeOtherElement->type) {
+      return false;
+    }
+
+    switch (functionCallNodeElement->type) {
+      case NODE_TYPE_ATTRIBUTE_ACCESS: {
+        std::pair<Variable const*, std::vector<basics::AttributeName>>
+            attributeAccessForVariableResult;
+        std::pair<Variable const*, std::vector<basics::AttributeName>>
+            attributeAccessForVariableOtherResult;
+
+        if (!functionCallNodeElement->isAttributeAccessForVariable(
+                attributeAccessForVariableResult, /*allowExpansion*/ false) ||
+            !functionCallNodeOtherElement->isAttributeAccessForVariable(
+                attributeAccessForVariableOtherResult,
+                /*allowExpansion*/ false) ||
+            attributeAccessForVariableResult.first !=
+                attributeAccessForVariableOtherResult.first ||
+            !basics::AttributeName::isIdentical(
+                attributeAccessForVariableResult.second,
+                attributeAccessForVariableOtherResult.second, false)) {
+          return false;
+        }
+        break;
+      }
+      case NODE_TYPE_VALUE: {
+        if (aql::compareAstNodes(functionCallNodeElement,
+                                 functionCallNodeOtherElement, true) != 0) {
+          return false;
+        }
+        break;
+      }
+      default: {
+        // We are being extremely pessimistic, meaning if we encounter
+        // anything else we will not remove the expression
+        return false;
+      }
+    }
+  }
+
+  return true;
+}
+
+bool canInRangeBeRemoved(AstNode const* inRangeNode,
+                         AstNode const* otherAndNode, Variable const* variable,
+                         Index const* index) {
+  TRI_ASSERT(index != nullptr);
+  for (std::size_t i{0}; i < otherAndNode->numMembers(); ++i) {
+    auto const* operand = otherAndNode->getMemberUnchecked(i);
+    if (operand->type != NODE_TYPE_FCALL ||
+        functions::getFunctionName(*operand) != "IN_RANGE") {
+      continue;
+    }
+
+    // since we know that this is IN_RANGE node, it must contain 5 members
+    auto const* operandArrayNode = operand->getMember(0);
+    TRI_ASSERT(operandArrayNode->numMembers() == 5);
+    auto const* firstElemInRangeFunction = operandArrayNode->getMember(0);
+
+    bool isFieldCoveredByIndex{false};
+    std::pair<Variable const*, std::vector<basics::AttributeName>> result;
+    if (firstElemInRangeFunction->type != NODE_TYPE_ATTRIBUTE_ACCESS ||
+        !firstElemInRangeFunction->isAttributeAccessForVariable(result,
+                                                                false) ||
+        result.first != variable) {
+      clearAttributeAccess(result);
+      return false;  // attribute does not even belong to `variable`; cannot be
+                     // covered
+    }
+
+    for (auto const& elem : index->fields()) {
+      if (basics::AttributeName::isIdentical(result.second, elem, false)) {
+        isFieldCoveredByIndex = true;
+        break;
+      }
+    }
+    clearAttributeAccess(result);
+    if (!isFieldCoveredByIndex) {
+      return false;
+    }
+
+    auto const* inRangeArrayNode = inRangeNode->getMember(0);
+    if (areInRangeCallsIdentical(inRangeArrayNode, operandArrayNode)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+containers::HashSet<size_t> collectOverlappingMembersForIndex(
+    ExecutionPlan const* plan, Variable const* variable, AstNode const* andNode,
+    AstNode const* otherAndNode, Index const* index) {
+  TRI_ASSERT(index != nullptr);
+
+  containers::HashSet<size_t> toRemove;
+  bool const isSparse = index->sparse();
+  constexpr bool allowIndexedAccessInArray = true;
+
+  std::pair<Variable const*, std::vector<basics::AttributeName>> result;
+
+  for (size_t i = 0; i < andNode->numMembers(); ++i) {
+    auto operand = andNode->getMemberUnchecked(i);
+
+    if (isSparse && operand->isComparisonOperator() &&
+        (operand->type == NODE_TYPE_OPERATOR_BINARY_NE ||
+         operand->type == NODE_TYPE_OPERATOR_BINARY_GT)) {
+      // look for `!= null` and `> null`
+      // these can be removed if we are working with a sparse index!
+      auto lhs = const_cast<AstNode*>(
+          plan->resolveVariableAlias(operand->getMemberUnchecked(0)));
+      auto rhs = const_cast<AstNode*>(
+          plan->resolveVariableAlias(operand->getMemberUnchecked(1)));
+
+      clearAttributeAccess(result);
+
+      if (rhs->isNullValue() &&
+          lhs->isAttributeAccessForVariable(result,
+                                            allowIndexedAccessInArray) &&
+          result.first == variable) {
+        auto const mayRemove = [&] {
+          if (auto ty = index->type();
+              ty == Index::TRI_IDX_TYPE_MDI_INDEX ||
+              ty == Index::TRI_IDX_TYPE_MDI_PREFIXED_INDEX) {
+            // For an MDI all fields are equal, and we are allowed to drop
+            // conditions for non-null on every attribute in the sparse case.
+            return true;
+          }
+          // otherwise only remove the condition if the index is exactly on the
+          // same attribute as the condition
+
+          return index->fields().size() == 1 &&
+                 basics::AttributeName::isIdentical(result.second,
+                                                    index->fields()[0], false);
+        }();
+
+        if (mayRemove) {
+          toRemove.emplace(i);
+          continue;
+        }
+      }
+    }
+
+    if (operand->type == NODE_TYPE_FCALL &&
+        functions::getFunctionName(*operand) == "IN_RANGE") {
+      if (canInRangeBeRemoved(operand, otherAndNode, variable, index)) {
+        toRemove.emplace(i);
+      }
+      continue;
+    }
+
+    if (!operand->isComparisonOperator() ||
+        operand->type == NODE_TYPE_OPERATOR_BINARY_NE ||
+        operand->type == NODE_TYPE_OPERATOR_BINARY_NIN) {
+      continue;
+    }
+
+    if (isConditionCoveredBy(plan, variable, operand, otherAndNode)) {
+      toRemove.emplace(i);
+    }
+  }
+
+  return toRemove;
+}
+}  // namespace
+
+AstNode* removeIndexCondition(Condition& cond, ExecutionPlan const* plan,
+                              Variable const* variable, AstNode const* other,
+                              Index const* index) {
+  TRI_ASSERT(index != nullptr);
+  AstNode* root = cond.root();
+  if (root == nullptr || other == nullptr) {
+    return root;
+  }
+  AstNode const* andNode = nullptr;
+  AstNode const* conditionAndNode = nullptr;
+  if (!extractSingleAndNodes(root, other, andNode, conditionAndNode)) {
+    return root;
+  }
+  auto toRemove = collectOverlappingMembersForIndex(plan, variable, andNode,
+                                                    conditionAndNode, index);
+  if (toRemove.empty()) {
+    return root;
+  }
+  return rebuildConditionWithoutMembers(plan->getAst(), andNode, toRemove);
+}
 
 void removeFiltersCoveredByIndexRule(Optimizer* opt,
                                      std::unique_ptr<ExecutionPlan> plan,
@@ -87,9 +286,9 @@ void removeFiltersCoveredByIndexRule(Optimizer* opt,
               if (n != 1) {
                 break;
               }
-              newNode = condition.removeIndexCondition(
-                  plan.get(), indexNode->outVariable(), indexCondition->root(),
-                  indexesUsed[0].get());
+              newNode = removeIndexCondition(
+                  condition, plan.get(), indexNode->outVariable(),
+                  indexCondition->root(), indexesUsed[0].get());
             }
             if (newNode == nullptr) {
               toUnlink.emplace(node);

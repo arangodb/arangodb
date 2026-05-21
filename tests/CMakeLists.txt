@@ -108,6 +108,8 @@ set(ARANGODB_TESTS_SOURCES
   Aql/AstResourcesTest.cpp
   Aql/AttributeNamePathTest.cpp
   Aql/BlockCollector.cpp
+  Aql/ConditionRemoveForIndexTest.cpp
+  Aql/ConditionRemoveForTraversalTest.cpp
   Aql/DependencyProxyMock.cpp
   Aql/EngineInfoContainerCoordinatorTest.cpp
   Aql/ExecutionBlockImplTest.cpp
@@ -270,6 +272,7 @@ set(ARANGODB_TESTS_SOURCES
   Utils/ExecContextTest.cpp
   Utils/NameValidatorTest.cpp
   Utils/QuickGen.cpp
+  VectorIndex/VectorIndexTrainingSamplerTest.cpp
   VocBase/ComputedValuesTest.cpp
   VocBase/KeyGeneratorTest.cpp
   VocBase/LogicalDataSourceTest.cpp

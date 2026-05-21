@@ -44,7 +44,16 @@ add_executable(${BIN_ARANGOD}
   RestServer/arangod.cpp
   ${ProductVersionFiles}
 )
-  
+
+# Override __sanitizer_report_error_summary to write per-report timestamps to a
+# sidecar file. Must be a direct source of the executable, not part of
+# arangoserver (static library) — the linker only pulls .a members that resolve
+# undefined symbols, and the sanitizer runtime already provides a weak
+# definition, so the override would be silently dropped.
+if (BASE_CXX_FLAGS MATCHES "-fsanitize")
+  target_sources(${BIN_ARANGOD} PRIVATE RestServer/SanitizerReportHook.cpp)
+endif()
+
 target_link_libraries(${BIN_ARANGOD}
   arangoserver
   arango_iresearch)

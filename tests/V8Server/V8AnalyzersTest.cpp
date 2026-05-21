@@ -241,7 +241,7 @@ TEST_F(V8AnalyzerTest, test_instance_accessors) {
   auto* userManager = authFeature.userManager();
 
   arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
-  TRI_vocbase_t vocbase(systemDBInfo(server.server()));
+  TRI_vocbase_t vocbase(systemDBInfo(server.server()), server.engine());
   v8::Isolate::CreateParams isolateParams;
   auto arrayBufferAllocator = std::unique_ptr<v8::ArrayBuffer::Allocator>(
       v8::ArrayBuffer::Allocator::NewDefaultAllocator());
@@ -551,7 +551,7 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
   auto& authFeature = server.getFeature<arangodb::AuthenticationFeature>();
   auto* userManager = authFeature.userManager();
 
-  TRI_vocbase_t vocbase(systemDBInfo(server.server()));
+  TRI_vocbase_t vocbase(systemDBInfo(server.server()), server.engine());
   v8::Isolate::CreateParams isolateParams;
   auto arrayBufferAllocator = std::unique_ptr<v8::ArrayBuffer::Allocator>(
       v8::ArrayBuffer::Allocator::NewDefaultAllocator());
@@ -1039,7 +1039,7 @@ TEST_F(V8AnalyzerTest, test_manager_get) {
   auto& authFeature = server.getFeature<arangodb::AuthenticationFeature>();
   auto* userManager = authFeature.userManager();
 
-  TRI_vocbase_t vocbase(systemDBInfo(server.server()));
+  TRI_vocbase_t vocbase(systemDBInfo(server.server()), server.engine());
   v8::Isolate::CreateParams isolateParams;
   auto arrayBufferAllocator = std::unique_ptr<v8::ArrayBuffer::Allocator>(
       v8::ArrayBuffer::Allocator::NewDefaultAllocator());
@@ -1475,8 +1475,8 @@ TEST_F(V8AnalyzerTest, test_manager_list) {
   auto& authFeature = server.getFeature<arangodb::AuthenticationFeature>();
   auto* userManager = authFeature.userManager();
 
-  TRI_vocbase_t systemDBVocbase(systemDBInfo(server.server()));
-  TRI_vocbase_t testDBVocbase(testDBInfo(server.server()));
+  TRI_vocbase_t systemDBVocbase(systemDBInfo(server.server()), server.engine());
+  TRI_vocbase_t testDBVocbase(testDBInfo(server.server()), server.engine());
   v8::Isolate::CreateParams isolateParams;
   auto arrayBufferAllocator = std::unique_ptr<v8::ArrayBuffer::Allocator>(
       v8::ArrayBuffer::Allocator::NewDefaultAllocator());
@@ -1875,8 +1875,8 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
   auto& authFeature = server.getFeature<arangodb::AuthenticationFeature>();
   auto* userManager = authFeature.userManager();
 
-  TRI_vocbase_t systemDBVocbase(systemDBInfo(server.server()));
-  TRI_vocbase_t testDBVocbase(testDBInfo(server.server()));
+  TRI_vocbase_t systemDBVocbase(systemDBInfo(server.server()), server.engine());
+  TRI_vocbase_t testDBVocbase(testDBInfo(server.server()), server.engine());
   v8::Isolate::CreateParams isolateParams;
   auto arrayBufferAllocator = std::unique_ptr<v8::ArrayBuffer::Allocator>(
       v8::ArrayBuffer::Allocator::NewDefaultAllocator());

@@ -27,7 +27,7 @@
 
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
-#include "Aql/Parser.h"
+#include "Aql/Parser/Parser.h"
 #include "Aql/QueryContext.h"
 #include "Aql/QueryString.h"
 #include "Aql/StandaloneCalculation.h"

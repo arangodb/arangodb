@@ -25,8 +25,7 @@
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Auth/Rbac/Actions.h"
 #include "GeneralServer/ServerSecurityFeature.h"
-#include "ProgramOptions/Parameters.h"
-#include "ProgramOptions/ProgramOptions.h"
+#include "GeneralServer/ServerSecurityOptionsProvider.h"
 #include "Utils/ExecContext.h"
 
 using namespace arangodb;
@@ -42,38 +41,8 @@ ServerSecurityFeature::ServerSecurityFeature(
 
 void ServerSecurityFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
-  options->addOption(
-      "--server.harden",
-      "Lock down REST APIs that reveal version information or server "
-      "internals for non-admin users.",
-      new BooleanParameter(&_options.hardenedRestApi));
-
-  options->addOption("--foxx.api",
-                     "Whether to enable the Foxx management REST APIs.",
-                     new BooleanParameter(&_options.enableFoxxApi),
-                     arangodb::options::makeFlags(
-                         arangodb::options::Flags::DefaultNoComponents,
-                         arangodb::options::Flags::OnCoordinator,
-                         arangodb::options::Flags::OnSingle));
-
-  options->addOption("--foxx.store",
-                     "Whether to enable the Foxx store in the web interface.",
-                     new BooleanParameter(&_options.enableFoxxStore),
-                     arangodb::options::makeFlags(
-                         arangodb::options::Flags::DefaultNoComponents,
-                         arangodb::options::Flags::OnCoordinator,
-                         arangodb::options::Flags::OnSingle));
-
-  options
-      ->addOption(
-          "--foxx.allow-install-from-remote",
-          "Allow installing Foxx apps from remote URLs other than GitHub.",
-          new BooleanParameter(&_options.foxxAllowInstallFromRemote),
-          arangodb::options::makeFlags(
-              arangodb::options::Flags::DefaultNoComponents,
-              arangodb::options::Flags::OnCoordinator,
-              arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(30805);
+  arangodb::security::ServerSecurityOptionsProvider provider;
+  provider.declareOptions(options, _options);
 }
 
 void ServerSecurityFeature::disableFoxxApi() noexcept {

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -44,7 +44,6 @@
 #include "RestServer/SystemDatabaseFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "Sharding/ShardingInfo.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "Utils/Events.h"
 #include "Utils/ExecContext.h"
 #include "Utilities/NameValidator.h"
@@ -273,7 +272,8 @@ Result Databases::createCoordinator(CreateDatabaseInfo const& info) {
   // This vocbase is needed for the call to methods::Upgrade::createDB, but
   // is just a placeholder
   CreateDatabaseInfo tempInfo = info;
-  TRI_vocbase_t vocbase(std::move(tempInfo), databaseFeature.versionTracker(),
+  TRI_vocbase_t vocbase(std::move(tempInfo), databaseFeature.engine(),
+                        databaseFeature.versionTracker(),
                         databaseFeature.extendedNames());
 
   // Now create *all* system collections for the database,
@@ -356,8 +356,9 @@ Result Databases::createOther(CreateDatabaseInfo const& info) {
 }
 
 Result Databases::create(application_features::ApplicationServer& server,
-                         ExecContext const& exec, std::string const& dbName,
-                         velocypack::Slice users, velocypack::Slice options) {
+                         StorageEngine& engine, ExecContext const& exec,
+                         std::string const& dbName, velocypack::Slice users,
+                         velocypack::Slice options) {
   Result res = basics::catchToResult([&]() {
     if (auto r = exec.canCreateDatabase(std::string(dbName)); r.fail()) {
       events::CreateDatabase(dbName, r, exec);
@@ -413,9 +414,8 @@ Result Databases::create(application_features::ApplicationServer& server,
         return Result(TRI_ERROR_NOT_IMPLEMENTED, message);
       }
 
-      auto& selector = server.getFeature<EngineSelectorFeature>();
-      auto& engine = selector.engine<RocksDBEngine>();
-      if (engine.syncThread() == nullptr) {
+      if (auto* rocksdb = dynamic_cast<RocksDBEngine*>(&engine);
+          rocksdb && rocksdb->syncThread() == nullptr) {
         return Result(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE,
                       "Automatic syncing must be enabled for replication "
                       "version 2. Please make sure the --rocksdb.sync-interval "

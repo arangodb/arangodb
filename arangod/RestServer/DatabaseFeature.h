@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -179,6 +179,11 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
   std::string translateCollectionName(std::string_view dbName,
                                       std::string_view collectionName);
 
+  StorageEngine& engine() const noexcept {
+    TRI_ASSERT(_engine != nullptr);
+    return *_engine;
+  }
+
   bool ignoreDatafileErrors() const noexcept {
     return _options.ignoreDatafileErrors;
   }
@@ -217,8 +222,7 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
   void decrementCollectionCount(size_t count = 1);
 
  private:
-  static void initCalculationVocbase(
-      application_features::ApplicationServer& server);
+  void initCalculationVocbase();
 
   void stopAppliers();
 

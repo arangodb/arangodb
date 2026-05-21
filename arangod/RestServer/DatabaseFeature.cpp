@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -413,12 +413,10 @@ void DatabaseFeature::validateOptions(
   }
 }
 
-void DatabaseFeature::initCalculationVocbase(
-    application_features::ApplicationServer& server) {
-  auto& df = server.getFeature<DatabaseFeature>();
+void DatabaseFeature::initCalculationVocbase() {
   calculationVocbase = std::make_unique<TRI_vocbase_t>(
-      createExpressionVocbaseInfo(server), df.versionTracker(),
-      df.extendedNames(), /*isInternal*/ true);
+      createExpressionVocbaseInfo(server()), engine(), versionTracker(),
+      extendedNames(), /*isInternal*/ true);
 }
 
 void DatabaseFeature::start() {
@@ -637,7 +635,7 @@ void DatabaseFeature::prepare() {
   }
 
   // need this to make calculation analyzer available in database links
-  initCalculationVocbase(server());
+  initCalculationVocbase();
 
   // Initialize metadata metrics on single server
   if (ServerState::instance()->isSingleServer()) {

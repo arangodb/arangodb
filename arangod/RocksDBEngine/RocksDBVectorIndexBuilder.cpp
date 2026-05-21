@@ -37,6 +37,7 @@
 #include <cstdint>
 #include <format>
 #include <functional>
+#include <limits>
 #include <string>
 #include <thread>
 
@@ -47,6 +48,7 @@
 #include "Basics/voc-errors.h"
 #include "Indexes/Index.h"
 #include "Logger/LogMacros.h"
+#include "Random/RandomGenerator.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -57,6 +59,7 @@
 #include "RocksDBEngine/RocksDBValue.h"
 #include "RocksDBEngine/RocksDBVectorIndexList.h"
 #include "Transaction/Helpers.h"
+#include "VectorIndex/VectorIndexTrainingSampler.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <rocksdb/db.h>
@@ -75,9 +78,17 @@
 
 namespace arangodb::vector {
 
-// Minimum vectors to collect unconditionally before applying the adaptive cap
-// in the sparse+scaling path.
-constexpr std::size_t kSparseScalingBootstrapVectors{1000};
+// Shallow field-presence probe; ingestion already rejects malformed vectors.
+bool hasVectorField(
+    velocypack::Slice doc,
+    std::vector<std::vector<basics::AttributeName>> const& fields) {
+  TRI_ASSERT(fields.size() >= 1);
+  try {
+    return !rocksutils::accessDocumentPath(doc, fields[0]).isNone();
+  } catch (velocypack::Exception const&) {
+    return false;
+  }
+}
 
 Result readDocumentVectorData(
     velocypack::Slice doc,
@@ -164,16 +175,24 @@ BoundedDocumentIterator::BoundedDocumentIterator(RocksDBKeyBounds bounds,
 }
 
 VectorIndexTrainer::VectorIndexTrainer(RocksDBVectorIndex const& index,
+                                       ResourceMonitor& resourceMonitor,
                                        rocksdb::DB* db, RocksDBKeyBounds bounds)
-    : _index(index), _docIt(std::move(bounds), db) {}
+    : _index(index),
+      _resourceMonitor(resourceMonitor),
+      _docIt(std::move(bounds), db) {}
 
 std::shared_ptr<faiss::IndexIVF> VectorIndexTrainer::createFaissIndex(
     std::size_t resolvedNLists) const {
   auto const& def = _index.getDefinition();
   if (def.factory) {
-    auto const factoryString = def.factory->c_str();
+    auto const factoryString = std::invoke([&]() -> std::string {
+      if (isFactoryAStringScaling(*def.factory)) {
+        return resolveFactoryString(*def.factory, resolvedNLists);
+      }
+      return *def.factory;
+    });
     std::shared_ptr<faiss::Index> index(faiss::index_factory(
-        def.dimension, factoryString, metricToFaissMetric(def.metric)));
+        def.dimension, factoryString.c_str(), metricToFaissMetric(def.metric)));
 
     auto ivfIndex = std::dynamic_pointer_cast<faiss::IndexIVF>(index);
     if (ivfIndex == nullptr) {
@@ -181,6 +200,7 @@ std::shared_ptr<faiss::IndexIVF> VectorIndexTrainer::createFaissIndex(
           TRI_ERROR_BAD_PARAMETER,
           "Index definition not supported. Expected IVF index.");
     }
+
     if (resolvedNLists != ivfIndex->nlist) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_BAD_PARAMETER,
@@ -218,43 +238,83 @@ VectorIndexTrainer::collectTrainingDataset(rocksdb::Iterator& it,
                                            std::uint64_t numDocsHint,
                                            std::stop_token stopToken) const {
   auto const& def = _index.getDefinition();
-  std::vector<float> trainingData;
-  std::vector<float> input;
-  input.reserve(def.dimension);
-  std::optional<std::size_t> maxVectors;
+  bool const sparseScaling = _index.sparse() && isNListsScaling(def.nLists);
+
+  // Empty collection: resolveNLists would reject this in scaling mode, but the
+  // situation is "no vectors to train on", not a parameter error.
+  if (numDocsHint == 0) {
+    return Result{TRI_ERROR_QUERY_VECTOR_INDEX_NOT_READY,
+                  "For the vector index to be created documents "
+                  "must be present in the respective collection for the "
+                  "training process."};
+  }
+
+  // Size the reservoir from numDocsHint. For sparse+scaling this is an upper
+  // bound on the valid vector count; the post-iteration resize below shrinks
+  // it to the true value once the valid-vector count is known.
+  auto estimatedResolvedNLists = resolveNLists(numDocsHint);
+  if (estimatedResolvedNLists.fail()) {
+    return std::move(estimatedResolvedNLists).result();
+  }
+  std::size_t const reservoirCapacity = std::invoke([&] {
+    auto const capacity =
+        estimatedResolvedNLists.get() * def.numberOfDocsPerCentroid;
+    if (_index.sparse()) {
+      return capacity;
+    }
+
+    return std::min(capacity, numDocsHint);
+  });
+
+  auto const seed = RandomDevice::seed64();
+
+  // Guard against uint64_t overflow when computing the reservoir size.
+  // Wrap here would under-account memScope and let training allocate unbounded.
+  TRI_ASSERT(def.dimension > 0);
+  TRI_ASSERT(def.dimension <=
+             std::numeric_limits<std::uint64_t>::max() / sizeof(float));
+  TRI_ASSERT(reservoirCapacity <= std::numeric_limits<std::uint64_t>::max() /
+                                      (def.dimension * sizeof(float)));
+  std::uint64_t const expectedReservoirBytes =
+      static_cast<std::uint64_t>(reservoirCapacity) * def.dimension *
+      sizeof(float);
+  ResourceUsageScope memScope(_resourceMonitor, expectedReservoirBytes);
 
   LOG_TOPIC("b161b", INFO, Logger::ENGINES) << std::format(
-      "[shard={}, index={}] Collecting training data "
-      "dimension {} for training for {} index with the numDocsHint: {}.",
+      "[shard={}, index={}] Collecting training data dimension {} for {} "
+      "index with numDocsHint: {}, reservoir capacity: {} (~{} MiB), sampler "
+      "seed: {}.",
       _index.collection().name(), _index.id().id(), def.dimension,
-      _index.sparse() ? "sparse" : "non-sparse", numDocsHint);
+      _index.sparse() ? "sparse" : "non-sparse", numDocsHint, reservoirCapacity,
+      expectedReservoirBytes / (1024 * 1024), seed);
 
-  // We need to do a full iteration to properly resolve the number of nLists
-  bool const shouldDoFullIteration =
-      _index.sparse() && isNListsScaling(def.nLists);
-  if (!shouldDoFullIteration) {
-    auto resolved = resolveNLists(numDocsHint);
-    if (resolved.fail()) {
-      return std::move(resolved).result();
-    }
-    maxVectors = resolved.get() * kMaxTrainingSizePerNLists;
-  }
-  // only one of these can be true
-  TRI_ASSERT(shouldDoFullIteration ^ maxVectors.has_value());
+  VectorIndexTrainingSampler sampler{def.dimension, reservoirCapacity, seed};
+  std::vector<float> inputBuffer;
+  inputBuffer.reserve(def.dimension);
 
-  std::size_t trainingDatasetCounter{0};
-  std::size_t iterationCounter{0};
-  while (it.Valid() &&
-         (shouldDoFullIteration ||
-          (maxVectors.has_value() && trainingDatasetCounter < *maxVectors))) {
-    if (iterationCounter % 1000 == 0 && stopToken.stop_requested()) {
+  while (it.Valid()) {
+    if (stopToken.stop_requested()) {
       return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
                     "vector training aborted"};
     }
     TRI_ASSERT(it.key().compare(upper) < 0);
     auto doc = VPackSlice(reinterpret_cast<uint8_t const*>(it.value().data()));
-    if (auto const res =
-            readDocumentVectorData(doc, _index.fields(), def.dimension, input);
+
+    if (!sampler.wantsItem()) {
+      // Sparse mode: rows without the vector field must not count toward
+      // itemsSeen, preserving the Algorithm L invariant over valid vectors.
+      if (_index.sparse() && !hasVectorField(doc, _index.fields())) {
+        it.Next();
+        continue;
+      }
+      sampler.skip();
+      it.Next();
+      continue;
+    }
+
+    inputBuffer.clear();
+    if (auto const res = readDocumentVectorData(doc, _index.fields(),
+                                                def.dimension, inputBuffer);
         res.fail()) {
       if (res.is(TRI_ERROR_BAD_PARAMETER) && _index.sparse()) {
         it.Next();
@@ -267,48 +327,37 @@ VectorIndexTrainer::collectTrainingDataset(rocksdb::Iterator& it,
               "embeddings are in a wrong format and index is not sparse: {}",
               res.errorMessage())};
     }
-
-    if (!shouldDoFullIteration) {
-      trainingData.insert(trainingData.end(), input.begin(), input.end());
-      ++trainingDatasetCounter;
-    } else {
-      // We collect only in case when we are below minimum 1000 docs or when we
-      // have do not have enough docs for the currently projected nLists value
-      bool shouldCollect =
-          trainingDatasetCounter < kSparseScalingBootstrapVectors;
-      if (!shouldCollect) {
-        auto resolved = resolveNLists(trainingDatasetCounter);
-        if (resolved.fail()) {
-          return std::move(resolved).result();
-        }
-        shouldCollect =
-            trainingDatasetCounter < resolved.get() * kMaxTrainingSizePerNLists;
-      }
-      if (shouldCollect) {
-        trainingData.insert(trainingData.end(), input.begin(), input.end());
-        ++trainingDatasetCounter;
-      }
-    }
-    input.clear();
-
+    sampler.consume(inputBuffer);
     it.Next();
-    ++iterationCounter;
   }
 
+  std::size_t const validSeen = sampler.itemsSeen();
+
+  if (sparseScaling && validSeen > 0) {
+    if (auto res = shrinkReservoirForSparseScaling(validSeen, reservoirCapacity,
+                                                   expectedReservoirBytes,
+                                                   memScope, sampler);
+        res.fail()) {
+      return res;
+    }
+  }
+
+  auto trainingData = std::move(sampler).release();
+  std::size_t const finalCount = trainingData.size() / def.dimension;
   if (def.metric == SimilarityMetric::kCosine) {
-    faiss::fvec_renorm_L2(def.dimension, trainingDatasetCounter,
-                          trainingData.data());
+    faiss::fvec_renorm_L2(def.dimension, finalCount, trainingData.data());
   }
 
   if (trainingData.empty()) {
-    // This should never happen
-    return Result{TRI_ERROR_NOT_IMPLEMENTED,
+    // Reachable in sparse mode when no document carries the vector field.
+    return Result{TRI_ERROR_QUERY_VECTOR_INDEX_NOT_READY,
                   "For the vector index to be created documents "
                   "must be present in the respective collection for the "
                   "training process."};
   }
 
-  return ResultT<TrainingDataset>({std::move(trainingData), iterationCounter});
+  return ResultT<TrainingDataset>(
+      {std::move(trainingData), validSeen, std::move(memScope)});
 }
 
 ResultT<std::size_t> VectorIndexTrainer::resolveNLists(
@@ -320,6 +369,23 @@ ResultT<std::size_t> VectorIndexTrainer::resolveNLists(
                   "numDocsHint is 0"};
   }
   return resolveNListsParameter(nLists, numDocsHint);
+}
+
+// We resize after the full iteration because numDocsHint over-counts by the
+// number of docs without the vector field. A uniform subsample of a uniform
+// sample stays uniform, so this preserves the Algorithm L guarantee.
+Result VectorIndexTrainer::shrinkReservoirForSparseScaling(
+    std::size_t validSeen, std::size_t reservoirCapacity,
+    std::uint64_t expectedReservoirBytes, ResourceUsageScope& memScope,
+    VectorIndexTrainingSampler& sampler) const {
+  auto resolvedNLists = resolveNLists(validSeen);
+  if (resolvedNLists.fail()) {
+    return std::move(resolvedNLists).result();
+  }
+  auto const& def = _index.getDefinition();
+  auto const newCapacity = resolvedNLists.get() * def.numberOfDocsPerCentroid;
+  sampler.resize(newCapacity);
+  return {};
 }
 
 ResultT<std::shared_ptr<faiss::IndexIVF>> VectorIndexTrainer::train(
@@ -340,7 +406,7 @@ ResultT<std::shared_ptr<faiss::IndexIVF>> VectorIndexTrainer::train(
     return numDocsHint;
   });
   if (numberOfVectors == 0) {
-    return Result{TRI_ERROR_NOT_IMPLEMENTED,
+    return Result{TRI_ERROR_QUERY_VECTOR_INDEX_NOT_READY,
                   std::format("Vector index requires at least {} "
                               "vectors for training, "
                               "but none were found.",
@@ -358,7 +424,7 @@ ResultT<std::shared_ptr<faiss::IndexIVF>> VectorIndexTrainer::train(
 
   if (numOfTrainingVectors < _index.trainingThreshold()) {
     return Result{
-        TRI_ERROR_NOT_IMPLEMENTED,
+        TRI_ERROR_QUERY_VECTOR_INDEX_NOT_READY,
         std::format("Vector index requires at least {} "
                     "vectors for training, "
                     "but only {} were found.",
@@ -668,8 +734,10 @@ Result ingestVectors(RocksDBVectorIndex& index, rocksdb::DB* rootDB,
   return firstError;
 }
 
-VectorIndexBuilder::VectorIndexBuilder(RocksDBVectorIndex& index)
+VectorIndexBuilder::VectorIndexBuilder(RocksDBVectorIndex& index,
+                                       ResourceMonitor& resourceMonitor)
     : _index(index),
+      _resourceMonitor(resourceMonitor),
       _engine(index.collection().vocbase().engine<RocksDBEngine>()),
       _rootDB(_engine.db()->GetRootDB()),
       _rcoll(static_cast<RocksDBCollection*>(index.collection().getPhysical())),
@@ -720,7 +788,7 @@ Result VectorIndexBuilder::build(
 
   // TRAINING PHASE
   auto const numDocsHint = _rcoll->meta().numberDocuments();
-  VectorIndexTrainer trainer(_index, _rootDB, _bounds);
+  VectorIndexTrainer trainer(_index, _resourceMonitor, _rootDB, _bounds);
 
   auto const trainStart = std::chrono::steady_clock::now();
   if (shouldAbort()) {

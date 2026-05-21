@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -229,7 +229,7 @@ class ShardDistributionReporterTest
       f.first.prepare();
     }
 
-    vocbase = std::make_unique<TRI_vocbase_t>(testDBInfo(server));
+    vocbase = std::make_unique<TRI_vocbase_t>(testDBInfo(server), engine);
     col = std::make_unique<arangodb::LogicalCollection>(*vocbase, json->slice(),
                                                         true);
 

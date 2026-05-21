@@ -58,7 +58,7 @@ std::string_view RestOpenApiHandler::getOpenApiSpec(uint32_t apiVersion) const {
     case 1:
       return std::string_view(reinterpret_cast<char const*>(kOpenApiV1),
                               sizeof(kOpenApiV1));
-    case ApiVersion::experimentalApiVersion:
+    case api_version::experimentalApiVersion:
       return std::string_view(reinterpret_cast<char const*>(kOpenApiV2),
                               sizeof(kOpenApiV2));
     default:

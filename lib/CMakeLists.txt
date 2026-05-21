@@ -87,6 +87,7 @@ add_library(arango_basic_utils STATIC
         Basics/NumberUtils.cpp
         Basics/ReadWriteSpinLock.cpp
         Basics/ResourceUsage.cpp
+        Basics/SharedPRNG.cpp
         Basics/StringBufferAdvanced.cpp
         Basics/SupervisedBuffer.h
         Basics/Utf8Helper.cpp

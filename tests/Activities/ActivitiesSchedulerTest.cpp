@@ -21,6 +21,7 @@
 
 #include "Activities/GenericActivity.h"
 #include "Activities/RegistryGlobalVariable.h"
+#include "Basics/SharedPRNG.h"
 #include "GeneralServer/RequestLane.h"
 #include "Mocks/Servers.h"
 #include "Scheduler/SupervisedScheduler.h"
@@ -45,7 +46,7 @@ struct ActivitiesSchedulerTest : ::testing::Test {
                 nullptr))),
         metrics(std::make_shared<arangodb::SchedulerMetrics>(*metricsFeature)),
         scheduler(mockApplicationServer.server(), 4, 4, 16, 16, 16, 16, 16,
-                  0.33, metrics) {}
+                  0.33, metrics, sharedPRNG) {}
   void SetUp() override {
     activityData["TestCase"] =
         ::testing::UnitTest::GetInstance()->current_test_info()->name();
@@ -59,6 +60,7 @@ struct ActivitiesSchedulerTest : ::testing::Test {
   arangodb::tests::mocks::MockRestServer mockApplicationServer;
   std::shared_ptr<arangodb::metrics::MetricsFeature> metricsFeature;
   std::shared_ptr<arangodb::SchedulerMetrics> metrics;
+  basics::SharedPRNG sharedPRNG;
   SupervisedScheduler scheduler;
   activities::GenericActivityData activityData;
 };
@@ -131,17 +133,18 @@ TEST_F(ActivitiesSchedulerTest, with_set_current_activity_works) {
 
   auto new_activity = arangodb::activities::make<activities::GenericActivity>(
       "TestActivity", this->activityData);
-  auto id_to_expect = new_activity;
-  // No guard is intentional
-
-  scheduler.queue(
-      arangodb::RequestLane::CLIENT_FAST,
-      arangodb::activities::withSetCurrentlyExecutingActivity(
-          id_to_expect, [&id_to_expect]() {
-            EXPECT_EQ(
-                arangodb::activities::Registry::currentlyExecutingActivity(),
-                id_to_expect);
-          }));
+  {
+    auto new_guard =
+        arangodb::activities::Registry::ScopedCurrentlyExecutingActivity(
+            new_activity);
+    scheduler.queue(
+        arangodb::RequestLane::CLIENT_FAST,
+        arangodb::activities::withCurrentlyExecutingActivity([&new_activity]() {
+          EXPECT_EQ(
+              arangodb::activities::Registry::currentlyExecutingActivity(),
+              new_activity);
+        }));
+  }
 
   // TODO: Is there a way to know whether the queued thing ran?
   scheduler.shutdown();

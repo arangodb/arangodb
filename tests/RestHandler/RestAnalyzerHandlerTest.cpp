@@ -872,7 +872,7 @@ TEST_F(RestAnalyzerHandlerTest,
   grantOnDb(arangodb::StaticStrings::SystemDatabase, arangodb::auth::Level::RO);
 
   // TODO
-  TRI_vocbase_t vocbase(unknownDBInfo(server.server()));
+  TRI_vocbase_t vocbase(unknownDBInfo(server.server()), server.engine());
   auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
   auto& request = *requestPtr;
   auto responcePtr = std::make_unique<GeneralResponseMock>();
@@ -909,7 +909,7 @@ TEST_F(RestAnalyzerHandlerTest,
             arangodb::auth::Level::NONE);
 
   // TODO
-  TRI_vocbase_t vocbase(unknownDBInfo(server.server()));
+  TRI_vocbase_t vocbase(unknownDBInfo(server.server()), server.engine());
   auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
   auto& request = *requestPtr;
   auto responcePtr = std::make_unique<GeneralResponseMock>();

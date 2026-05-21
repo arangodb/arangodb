@@ -51,7 +51,8 @@ using namespace arangodb::rest;
 RestAdminServerHandler::RestAdminServerHandler(
     application_features::ApplicationServer& server, GeneralRequest* request,
     GeneralResponse* response)
-    : RestBaseHandler(server, request, response) {}
+    : RestBaseHandler(server, request, response),
+      _apiRecordingFeature(server.getFeature<ApiRecordingFeature>()) {}
 
 // Mounted at /_admin/server (prefix)
 RestStatus RestAdminServerHandler::execute() {
@@ -306,17 +307,15 @@ void RestAdminServerHandler::handleApiCalls() {
     return;
   }
 
-  auto& apiRecordingFeature = server().getFeature<ApiRecordingFeature>();
-
   // Check if recording API is enabled
-  if (!apiRecordingFeature.isAPIEnabled()) {
+  if (!_apiRecordingFeature.isAPIEnabled()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                   "The recording API has been disabled");
     return;
   }
 
   // Check permission level
-  if (apiRecordingFeature.onlySuperUser()) {
+  if (_apiRecordingFeature.onlySuperUser()) {
     if (!ExecContext::current().isSuperuser()) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                     "You need super user rights for recording API operations");
@@ -340,7 +339,7 @@ void RestAdminServerHandler::handleApiCalls() {
       VPackArrayBuilder guard2(&builder);
 
       // Use doForApiCallRecords to iterate through records
-      apiRecordingFeature.doForApiCallRecords(
+      _apiRecordingFeature.doForApiCallRecords(
           [&builder](ApiCallRecord const& record) {
             arangodb::velocypack::serialize(builder, record);
           });
@@ -363,17 +362,15 @@ void RestAdminServerHandler::handleAqlRecordedQueries() {
     return;
   }
 
-  auto& apiRecordingFeature = server().getFeature<ApiRecordingFeature>();
-
   // Check if recording API is enabled
-  if (!apiRecordingFeature.isAPIEnabled()) {
+  if (!_apiRecordingFeature.isAPIEnabled()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                   "recording API is disabled");
     return;
   }
 
   // Check permission level
-  if (apiRecordingFeature.onlySuperUser()) {
+  if (_apiRecordingFeature.onlySuperUser()) {
     if (!ExecContext::current().isSuperuser()) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                     "you need super user rights for recording API operations");
@@ -397,7 +394,7 @@ void RestAdminServerHandler::handleAqlRecordedQueries() {
       VPackArrayBuilder guard2(&builder);
 
       // Use doForAqlQueryRecords to iterate through records
-      apiRecordingFeature.doForAqlQueryRecords(
+      _apiRecordingFeature.doForAqlQueryRecords(
           [&builder](AqlQueryRecord const& record) {
             arangodb::velocypack::serialize(builder, record);
           });

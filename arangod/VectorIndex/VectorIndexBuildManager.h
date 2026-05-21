@@ -31,6 +31,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "Basics/ResourceUsage.h"
 #include "Basics/Result.h"
 #include "Futures/Future.h"
 #include "Futures/Promise.h"
@@ -105,6 +106,8 @@ class VectorIndexBuildManager {
   MaintenanceFeature& _maintenance;
   Scheduler& _scheduler;
   std::jthread _thread;
+
+  ResourceMonitor _resourceMonitor;
 
   metrics::Gauge<uint64_t>& _untrainedCount;
   metrics::Gauge<uint64_t>& _trainingOngoingCount;
