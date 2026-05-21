@@ -1354,7 +1354,6 @@ TEST_F(CompareAstNodesTest, quantifierAtLeastDifferentNonConstantThreshold) {
   EXPECT_NE(0, compare(alA, alB));
 }
 
-
 // --- compareUtf8 flag propagation
 // -------------------------------------------------
 
