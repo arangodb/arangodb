@@ -152,6 +152,9 @@ class ExecutionEngine {
   static void parallelizeTraversals(
       aql::Query& query, ExecutionPlan& plan,
       std::map<aql::ExecutionNodeId, aql::ExecutionNodeId>& aliases);
+  static void localizeSmartEdgeCollectionAccess(
+      aql::Query& query, ExecutionPlan& plan,
+      std::map<aql::ExecutionNodeId, aql::ExecutionNodeId>& aliases);
 #endif
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
