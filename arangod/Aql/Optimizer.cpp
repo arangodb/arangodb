@@ -641,6 +641,12 @@ void insertDistributeInputCalculation(ExecutionPlan& plan) {
         };
         break;
       }
+      case ExecutionNode::ENUMERATE_COLLECTION:
+      case ExecutionNode::INDEX: {
+        // This should come from upgradeScatterToDistributeRule which already
+        // inserted a calculation
+        continue;
+      }
       default: {
         TRI_ASSERT(false);
         THROW_ARANGO_EXCEPTION_MESSAGE(

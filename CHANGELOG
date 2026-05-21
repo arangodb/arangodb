@@ -1,6 +1,8 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* COR-299: Upgrade ScatterNode to DistributeNode if shardkey is known
+
 * COR-540: When spreading arrays, register a warning when input is neither an array nor null.
 
 * COR-531: With this fix, APPEND() now correctly removes duplicate values when the unique parameter 
