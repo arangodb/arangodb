@@ -27,7 +27,7 @@
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 
-namespace arangodb::replication_timeout {
+namespace arangodb {
 
 using namespace arangodb::options;
 
@@ -115,4 +115,4 @@ void ReplicationTimeoutOptionsProvider::validateOptions(
   }
 }
 
-}  // namespace arangodb::replication_timeout
+}  // namespace arangodb

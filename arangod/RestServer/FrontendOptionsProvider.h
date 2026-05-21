@@ -29,11 +29,11 @@ namespace arangodb::options {
 class ProgramOptions;
 }
 
-namespace arangodb::frontend {
+namespace arangodb {
 
 struct FrontendOptionsProvider : OptionsProvider<FrontendFeatureOptions> {
   void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
                       FrontendFeatureOptions& options) override;
 };
 
-}  // namespace arangodb::frontend
+}  // namespace arangodb

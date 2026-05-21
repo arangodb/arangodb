@@ -41,7 +41,7 @@ FrontendFeature::FrontendFeature(ApplicationServer& server)
 }
 
 void FrontendFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  arangodb::frontend::FrontendOptionsProvider provider;
+  FrontendOptionsProvider provider;
   provider.declareOptions(options, _options);
 }
 

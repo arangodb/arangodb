@@ -48,12 +48,12 @@ EndpointFeature::EndpointFeature(ApplicationServer& server)
 }
 
 void EndpointFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  endpoint::EndpointOptionsProvider provider;
+  EndpointOptionsProvider provider;
   provider.declareOptions(options, _options);
 }
 
 void EndpointFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
-  endpoint::EndpointOptionsProvider provider;
+  EndpointOptionsProvider provider;
   provider.validateOptions(options, _options);
 }
 

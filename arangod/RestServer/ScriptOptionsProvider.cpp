@@ -25,7 +25,7 @@
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 
-namespace arangodb::script {
+namespace arangodb {
 
 using namespace arangodb::options;
 
@@ -36,4 +36,4 @@ void ScriptOptionsProvider::declareOptions(
       new VectorParameter<StringParameter>(&opts.scriptParameters));
 }
 
-}  // namespace arangodb::script
+}  // namespace arangodb

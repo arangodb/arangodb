@@ -25,7 +25,7 @@
 #include "ApplicationFeatures/OptionsProvider.h"
 #include "Cluster/ReplicationTimeoutFeatureOptions.h"
 
-namespace arangodb::replication_timeout {
+namespace arangodb {
 
 struct ReplicationTimeoutOptionsProvider
     : OptionsProvider<ReplicationTimeoutFeatureOptions> {
@@ -36,4 +36,4 @@ struct ReplicationTimeoutOptionsProvider
                        ReplicationTimeoutFeatureOptions& options) override;
 };
 
-}  // namespace arangodb::replication_timeout
+}  // namespace arangodb

@@ -28,7 +28,7 @@
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 
-namespace arangodb::dump_limits {
+namespace arangodb {
 
 using namespace arangodb::options;
 
@@ -104,4 +104,4 @@ void DumpLimitsOptionsProvider::validateOptions(
   }
 }
 
-}  // namespace arangodb::dump_limits
+}  // namespace arangodb

@@ -41,7 +41,7 @@ ActionFeature::ActionFeature(ApplicationServer& server)
 }
 
 void ActionFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  actions::ActionOptionsProvider provider;
+  ActionOptionsProvider provider;
   provider.declareOptions(options, _options);
 }
 

@@ -29,11 +29,11 @@ namespace arangodb::options {
 class ProgramOptions;
 }
 
-namespace arangodb::log_buffer {
+namespace arangodb {
 
 struct LogBufferOptionsProvider : OptionsProvider<LogBufferFeatureOptions> {
   void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
                       LogBufferFeatureOptions& options) override;
 };
 
-}  // namespace arangodb::log_buffer
+}  // namespace arangodb

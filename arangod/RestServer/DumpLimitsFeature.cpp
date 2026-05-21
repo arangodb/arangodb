@@ -57,13 +57,13 @@ DumpLimitsFeature::DumpLimitsFeature(ApplicationServer& server)
 
 void DumpLimitsFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
-  dump_limits::DumpLimitsOptionsProvider provider;
+  DumpLimitsOptionsProvider provider;
   provider.declareOptions(options, _options);
 }
 
 void DumpLimitsFeature::validateOptions(
     std::shared_ptr<options::ProgramOptions> options) {
-  dump_limits::DumpLimitsOptionsProvider provider;
+  DumpLimitsOptionsProvider provider;
   provider.validateOptions(options, _options);
 }
 

@@ -60,7 +60,7 @@ InitDatabaseFeature::InitDatabaseFeature(
 
 void InitDatabaseFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
-  arangodb::init_database::InitDatabaseOptionsProvider provider;
+  InitDatabaseOptionsProvider provider;
   provider.declareOptions(options, _options);
 }
 

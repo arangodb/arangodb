@@ -55,7 +55,7 @@ ScriptFeature::ScriptFeature(ApplicationServer& server, int* result)
 }
 
 void ScriptFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  arangodb::script::ScriptOptionsProvider provider;
+  ScriptOptionsProvider provider;
   provider.declareOptions(options, _options);
 }
 

@@ -29,7 +29,7 @@
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 
-namespace arangodb::endpoint {
+namespace arangodb {
 
 using namespace arangodb::options;
 
@@ -151,4 +151,4 @@ void EndpointOptionsProvider::validateOptions(
   }
 }
 
-}  // namespace arangodb::endpoint
+}  // namespace arangodb

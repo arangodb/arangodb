@@ -25,7 +25,7 @@
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 
-namespace arangodb::actions {
+namespace arangodb {
 
 using namespace arangodb::options;
 
@@ -39,4 +39,4 @@ void ActionOptionsProvider::declareOptions(
       makeDefaultFlags(Flags::Uncommon));
 }
 
-}  // namespace arangodb::actions
+}  // namespace arangodb

@@ -25,7 +25,7 @@
 #include "ApplicationFeatures/OptionsProvider.h"
 #include "RestServer/EndpointFeatureOptions.h"
 
-namespace arangodb::endpoint {
+namespace arangodb {
 
 struct EndpointOptionsProvider : OptionsProvider<EndpointFeatureOptions> {
   void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
@@ -35,4 +35,4 @@ struct EndpointOptionsProvider : OptionsProvider<EndpointFeatureOptions> {
                        EndpointFeatureOptions& options) override;
 };
 
-}  // namespace arangodb::endpoint
+}  // namespace arangodb

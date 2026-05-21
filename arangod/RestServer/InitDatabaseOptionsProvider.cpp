@@ -25,7 +25,7 @@
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 
-namespace arangodb::init_database {
+namespace arangodb {
 
 using namespace arangodb::options;
 
@@ -46,4 +46,4 @@ void InitDatabaseOptionsProvider::declareOptions(
       new StringParameter(&opts.password), makeDefaultFlags(Flags::Uncommon));
 }
 
-}  // namespace arangodb::init_database
+}  // namespace arangodb

@@ -29,11 +29,11 @@ namespace arangodb::options {
 class ProgramOptions;
 }
 
-namespace arangodb::script {
+namespace arangodb {
 
 struct ScriptOptionsProvider : OptionsProvider<ScriptFeatureOptions> {
   void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
                       ScriptFeatureOptions& options) override;
 };
 
-}  // namespace arangodb::script
+}  // namespace arangodb

@@ -204,7 +204,7 @@ LogBufferFeature::LogBufferFeature(
 
 void LogBufferFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
-  arangodb::log_buffer::LogBufferOptionsProvider provider;
+  LogBufferOptionsProvider provider;
   provider.declareOptions(options, _options);
 }
 

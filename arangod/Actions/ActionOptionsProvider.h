@@ -29,11 +29,11 @@ namespace arangodb::options {
 class ProgramOptions;
 }
 
-namespace arangodb::actions {
+namespace arangodb {
 
 struct ActionOptionsProvider : OptionsProvider<ActionFeatureOptions> {
   void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
                       ActionFeatureOptions& options) override;
 };
 
-}  // namespace arangodb::actions
+}  // namespace arangodb

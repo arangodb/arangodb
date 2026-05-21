@@ -25,7 +25,7 @@
 #include "ApplicationFeatures/OptionsProvider.h"
 #include "RestServer/DumpLimitsFeatureOptions.h"
 
-namespace arangodb::dump_limits {
+namespace arangodb {
 
 struct DumpLimitsOptionsProvider : OptionsProvider<DumpLimitsFeatureOptions> {
   void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
@@ -35,4 +35,4 @@ struct DumpLimitsOptionsProvider : OptionsProvider<DumpLimitsFeatureOptions> {
                        DumpLimitsFeatureOptions& options) override;
 };
 
-}  // namespace arangodb::dump_limits
+}  // namespace arangodb

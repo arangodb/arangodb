@@ -51,13 +51,13 @@ ReplicationTimeoutFeature::ReplicationTimeoutFeature(
 
 void ReplicationTimeoutFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
-  replication_timeout::ReplicationTimeoutOptionsProvider provider;
+  ReplicationTimeoutOptionsProvider provider;
   provider.declareOptions(options, _options);
 }
 
 void ReplicationTimeoutFeature::validateOptions(
     std::shared_ptr<ProgramOptions> options) {
-  replication_timeout::ReplicationTimeoutOptionsProvider provider;
+  ReplicationTimeoutOptionsProvider provider;
   provider.validateOptions(options, _options);
 }
 

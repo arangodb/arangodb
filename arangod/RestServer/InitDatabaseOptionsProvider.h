@@ -25,7 +25,7 @@
 #include "ApplicationFeatures/OptionsProvider.h"
 #include "RestServer/InitDatabaseFeatureOptions.h"
 
-namespace arangodb::init_database {
+namespace arangodb {
 
 struct InitDatabaseOptionsProvider
     : OptionsProvider<InitDatabaseFeatureOptions> {
@@ -33,4 +33,4 @@ struct InitDatabaseOptionsProvider
                       InitDatabaseFeatureOptions& options) override;
 };
 
-}  // namespace arangodb::init_database
+}  // namespace arangodb

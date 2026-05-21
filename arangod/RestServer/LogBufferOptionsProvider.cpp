@@ -25,7 +25,7 @@
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 
-namespace arangodb::log_buffer {
+namespace arangodb {
 
 using namespace arangodb::options;
 
@@ -70,4 +70,4 @@ to the latest 2048 messages, and these slots are shared between informational,
 warning, and error messages by default.)");
 }
 
-}  // namespace arangodb::log_buffer
+}  // namespace arangodb

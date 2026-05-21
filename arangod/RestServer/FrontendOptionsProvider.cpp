@@ -25,7 +25,7 @@
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 
-namespace arangodb::frontend {
+namespace arangodb {
 
 using namespace arangodb::options;
 
@@ -46,4 +46,4 @@ void FrontendOptionsProvider::declareOptions(
                          arangodb::options::Flags::Uncommon));
 }
 
-}  // namespace arangodb::frontend
+}  // namespace arangodb
