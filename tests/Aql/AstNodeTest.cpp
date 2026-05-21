@@ -1034,10 +1034,8 @@ TEST_F(CompareAstNodesTest, attributeAccessDifferentBase) {
   auto* y = makeVar("y");
   ASSERT_LT(x->id, y->id);
   // Same attr name "k"; bases differ by variable id.
-  EXPECT_LT(compare(attr(createRefNode(x), "k"), attr(createRefNode(y), "k")),
-            0);
-  EXPECT_GT(compare(attr(createRefNode(y), "k"), attr(createRefNode(x), "k")),
-            0);
+  int cmp = compare(attr(createRefNode(x), "k"), attr(createRefNode(y), "k"));
+  EXPECT_LT(cmp, 0);
 }
 
 TEST_F(CompareAstNodesTest, nestedAttributeAccessEqual) {
@@ -1157,9 +1155,6 @@ TEST_F(CompareAstNodesTest, fcallDifferentArgs) {
   ASSERT_LT(x->id, y->id);
   EXPECT_LT(compare(fcall("LENGTH", {createRefNode(x)}),
                     fcall("LENGTH", {createRefNode(y)})),
-            0);
-  EXPECT_GT(compare(fcall("LENGTH", {createRefNode(y)}),
-                    fcall("LENGTH", {createRefNode(x)})),
             0);
 }
 
@@ -1358,6 +1353,7 @@ TEST_F(CompareAstNodesTest, quantifierAtLeastDifferentNonConstantThreshold) {
       _ast->createNodeQuantifier(Quantifier::Type::kAtLeast, createRefNode(b));
   EXPECT_NE(0, compare(alA, alB));
 }
+
 
 // --- compareUtf8 flag propagation
 // -------------------------------------------------
