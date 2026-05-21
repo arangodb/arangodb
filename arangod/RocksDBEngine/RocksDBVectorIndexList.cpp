@@ -46,6 +46,20 @@ velocypack::SharedSlice toOwnedSharedSlice(velocypack::Slice slice) {
   buf.append(slice.start(), slice.byteSize());
   return velocypack::SharedSlice{std::move(buf)};
 }
+
+// Single switch on VectorIndexFormatVersion so the compiler flags an
+// unhandled version when a new on-disk format is added.
+template<template<typename> typename Iter, typename... Args>
+faiss::InvertedListsIterator* makeWithStoredValuesByVersion(
+    VectorIndexFormatVersion version, Args&&... args) {
+  switch (version) {
+    case VectorIndexFormatVersion::kV1:
+      return new Iter<WithStoredValuesV1Strategy>(std::forward<Args>(args)...);
+    case VectorIndexFormatVersion::kV2:
+      return new Iter<WithStoredValuesV2Strategy>(std::forward<Args>(args)...);
+  }
+  ADB_UNREACHABLE;
+}
 }  // namespace
 
 /// RocksDBInvertedListsIteratorBase
@@ -422,8 +436,7 @@ faiss::InvertedListsIterator* RocksDBInvertedLists::get_iterator(
   auto* iteratorContext = static_cast<RocksDBFaissIteratorContext*>(context);
   TRI_ASSERT(iteratorContext != nullptr);
 
-  bool const isV2 = _index->formatVersion() == VectorIndexFormatVersion::kV2;
-
+  auto const version = _index->formatVersion();
   return std::visit(
       overload{
           [&](IteratorFilterContext& filterContext)
@@ -432,31 +445,16 @@ faiss::InvertedListsIterator* RocksDBInvertedLists::get_iterator(
             // the projections are coverable -- in that case the FAISS layer
             // never needs to touch the underlying documents.
             if (filterContext.useStoredValuesIterator) {
-              if (isV2) {
-                return new RocksDBInvertedListsFilteringStoredValuesIterator<
-                    WithStoredValuesV2Strategy>(_index, _collection,
-                                                filterContext, listNumber,
-                                                this->code_size);
-              }
-              return new RocksDBInvertedListsFilteringStoredValuesIterator<
-                  WithStoredValuesV1Strategy>(_index, _collection,
-                                              filterContext, listNumber,
-                                              this->code_size);
+              return makeWithStoredValuesByVersion<
+                  RocksDBInvertedListsFilteringStoredValuesIterator>(
+                  version, _index, _collection, filterContext, listNumber,
+                  this->code_size);
             }
-
-            // Choose the filtering iterator based on whether the index has
-            // stored values, and on the on-disk format version when it does.
             if (_index->hasStoredValues()) {
-              if (isV2) {
-                return new RocksDBInvertedListsFilteringIterator<
-                    WithStoredValuesV2Strategy>(_index, _collection,
-                                                filterContext, listNumber,
-                                                this->code_size);
-              }
-              return new RocksDBInvertedListsFilteringIterator<
-                  WithStoredValuesV1Strategy>(_index, _collection,
-                                              filterContext, listNumber,
-                                              this->code_size);
+              return makeWithStoredValuesByVersion<
+                  RocksDBInvertedListsFilteringIterator>(
+                  version, _index, _collection, filterContext, listNumber,
+                  this->code_size);
             }
             return new RocksDBInvertedListsFilteringIterator<
                 NoStoredValuesStrategy>(_index, _collection, filterContext,
@@ -465,14 +463,10 @@ faiss::InvertedListsIterator* RocksDBInvertedLists::get_iterator(
           [&](IteratorContext const& simpleCtx)
               -> faiss::InvertedListsIterator* {
             if (_index->hasStoredValues()) {
-              if (isV2) {
-                return new RocksDBInvertedListsIterator<
-                    WithStoredValuesV2Strategy>(_index, _collection, simpleCtx,
-                                                listNumber, this->code_size);
-              }
-              return new RocksDBInvertedListsIterator<
-                  WithStoredValuesV1Strategy>(_index, _collection, simpleCtx,
-                                              listNumber, this->code_size);
+              return makeWithStoredValuesByVersion<
+                  RocksDBInvertedListsIterator>(version, _index, _collection,
+                                                simpleCtx, listNumber,
+                                                this->code_size);
             }
             return new RocksDBInvertedListsIterator<NoStoredValuesStrategy>(
                 _index, _collection, simpleCtx, listNumber, this->code_size);
