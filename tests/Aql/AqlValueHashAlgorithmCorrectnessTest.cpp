@@ -59,11 +59,13 @@ TEST_F(AqlValueHashAlgorithmCorrectnessTest,
   // map to the same position in the raw array.
   auto block = itemBlockManager.requestBlock(3, 1);
 
-  std::string content = "shared_content";
+  // Strings must be > 15 chars so VPack encoding exceeds 16 bytes and the
+  // values use VPACK_MANAGED_SLICE (pointer-based), making data() valid.
+  std::string content = "shared_content_X";  // 16 chars → 17 VPack bytes
   arangodb::velocypack::Builder b1, b2, b3;
   b1.add(arangodb::velocypack::Value(content));
   b2.add(arangodb::velocypack::Value(content));
-  b3.add(arangodb::velocypack::Value("different_content"));
+  b3.add(arangodb::velocypack::Value("different_content_X"));
 
   AqlValue v1(b1.slice(), static_cast<arangodb::velocypack::ValueLength>(
                               b1.slice().byteSize()));
@@ -323,9 +325,11 @@ TEST_F(AqlValueHashAlgorithmCorrectnessTest,
   constexpr RegisterId::value_t numCols = 10;
   auto sourceBlock = itemBlockManager.requestBlock(1, numCols);
 
-  std::string s1 = "shared";
-  std::string s2 = "unique_1";
-  std::string s3 = "unique_2";
+  // Strings must be >= 15 chars to exceed the VPACK_INLINE threshold and use
+  // VPACK_MANAGED_SLICE, so they go through the clone cache.
+  std::string s1 = "shared_value___";  // 15 chars
+  std::string s2 = "unique_value_1_";  // 15 chars
+  std::string s3 = "unique_value_2_";  // 15 chars
 
   // Pattern: s1 s2 s1 s3 s1 s1 s1 s2 s1 s3
   std::array<std::string*, 10> pattern = {&s1, &s2, &s1, &s3, &s1,
@@ -366,7 +370,8 @@ TEST_F(AqlValueHashAlgorithmCorrectnessTest,
 
   AqlValue inlineInt = makeAQLValue(42);
   AqlValue inlineInt2 = makeAQLValue(42);
-  AqlValue managed(std::string("managed_string"));
+  AqlValue managed(
+      std::string("managed_string_X"));  // 16 chars → VPACK_MANAGED_SLICE
 
   sourceBlock->setValue(0, 0, inlineInt);
   sourceBlock->setValue(0, 1, inlineInt2);
