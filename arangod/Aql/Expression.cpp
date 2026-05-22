@@ -40,6 +40,7 @@
 #include "Aql/TypedAstNodes.h"
 #include "Assertions/ProdAssert.h"
 #include "Basics/ThreadLocalLeaser.h"
+#include "Logger/LogMacros.h"
 #include "Aql/Variable.h"
 #include "Aql/AqlValueMaterializer.h"
 #include "Basics/Exceptions.h"
@@ -1715,6 +1716,20 @@ AqlValue Expression::executeSimpleExpressionIterator(ExpressionContext& ctx,
   return executeSimpleExpression(ctx, node->getMember(1), mustDestroy, true);
 }
 
+AqlValue Expression::executeSimpleExpressionBinaryPlusStringConcat(
+    ExpressionContext& ctx, AqlValue const& lhs, AqlValue const& rhs) {
+  auto const& vopts = ctx.trx().vpackOptions();
+  auto buffer = ThreadLocalStringLeaser::lease();
+  velocypack::StringSink adapter(buffer.get());
+  if (!lhs.isNull(true)) {
+    functions::appendAsString(vopts, adapter, lhs);
+  }
+  if (!rhs.isNull(true)) {
+    functions::appendAsString(vopts, adapter, rhs);
+  }
+  return AqlValue(std::string_view{buffer->data(), buffer->length()});
+}
+
 // execute an expression of type ExpressionType::kSimple with BINARY_* (+, -, *
 // , /, %)
 AqlValue Expression::executeSimpleExpressionArithmetic(ExpressionContext& ctx,
@@ -1729,6 +1744,12 @@ AqlValue Expression::executeSimpleExpressionArithmetic(ExpressionContext& ctx,
   AqlValueGuard guardRhs(rhs, mustDestroy);
 
   mustDestroy = false;
+
+  if (node->type == NODE_TYPE_OPERATOR_BINARY_PLUS &&
+      (lhs.isString() || rhs.isString())) {
+    return Expression::executeSimpleExpressionBinaryPlusStringConcat(ctx, lhs,
+                                                                     rhs);
+  }
 
   bool failed = false;
   double l = lhs.toDouble(failed);

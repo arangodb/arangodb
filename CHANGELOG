@@ -1,6 +1,8 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* COR-299: Upgrade ScatterNode to DistributeNode if shardkey is known
+
 * COR-540: When spreading arrays, register a warning when input is neither an array nor null.
 
 * COR-531: With this fix, APPEND() now correctly removes duplicate values when the unique parameter 
@@ -35,6 +37,20 @@
 
 * COR-295: Removed `StatisticsFeature`. The `--server.statistics-all-databases` and
   `--server.statistics-history` startup options are now obsolete and ignored.
+
+* COR-527: Changed AQL behavior for the binary `+` operator when a string is
+  involved. Previously both operands were always coerced to numbers
+  (`TO_NUMBER`-style conversion), so strings such as `"0"` participated as
+  numeric values and non-numeric strings became `0`. For example, `1 + "0"`
+  evaluated to `1` and `0 + "3a"` to `0`. That behavior was surprising and
+  easy to misuse. **New behavior:** if **either** operand is a string, `+`
+  performs string concatenation without numeric coercion of the string
+  operand; the non-string operand is converted to its string representation
+  (same conversion rules as elsewhere in AQL for building strings). Examples:
+  `1 + "0"` is `"10"`, `0 + "3a"` is `"03a"`. When **neither** operand is a
+  string, behavior is unchanged: `+` still applies the existing numeric coercion
+  for `null`, booleans, arrays, objects, and numbers. Constant `+` expressions
+  are constant-folded at optimization time using the same rules as at runtime.
 
 * Upgraded OpenSSL to 3.5.6.
 
