@@ -274,8 +274,9 @@ void VectorIndexBuildManager::scanAndBuild(std::stop_token const& stopToken,
         LOG_TOPIC("e171b", INFO, Logger::ENGINES)
             << "[shard=" << vecIdx.collection().name()
             << ", index=" << vecIdx.id().id()
-            << "] Training threshold reached (" << vecIdx.trainingThreshold()
-            << " documents). Starting deferred training.";
+            << "] Training threshold reached ( documents present: " << numDocs
+            << ", threshold: " << vecIdx.trainingThreshold()
+            << "). Starting deferred training.";
 
         _trainingOngoingCount.fetch_add(1);
         TRI_ASSERT(_resourceMonitor.current() == 0);
