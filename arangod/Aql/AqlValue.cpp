@@ -41,6 +41,7 @@
 #include <velocypack/Slice.h>
 
 #include <bit>
+#include <cmath>
 #include <type_traits>
 
 #ifndef velocypack_malloc
@@ -76,7 +77,7 @@ uint64_t AqlValue::hash(uint64_t seed) const {
   }
   if (t == VPACK_INLINE_DOUBLE) {
     double v = asDouble();
-    if (v == -0.0) {
+    if (std::signbit(v) && v == 0.0) {
       v = 0.0;
     }
     return VELOCYPACK_HASH(&v, sizeof(v), seed);
@@ -88,7 +89,7 @@ uint64_t AqlValue::hash(uint64_t seed) const {
   // VelocyPackHelper::equal and treats -0.0 == 0.0
   if (s.isDouble()) {
     double v = s.getDouble();
-    if (v == -0.0) {
+    if (std::signbit(v) && v == 0.0) {
       v = 0.0;
     }
     return VELOCYPACK_HASH(&v, sizeof(v), seed);
@@ -1393,7 +1394,7 @@ void const* AqlValue::data() const noexcept {
 namespace std {
 using arangodb::aql::AqlValue;
 
-size_t hash<AqlValue>::operator()(AqlValue const& x) const noexcept {
+size_t hash<AqlValue>::operator()(AqlValue const& x) const {
   auto hash64 = x.hash(
       AqlValue::kDefaultSeed);  // make a normalized hash, for the semantics of
                                 // the value regardless of the storage type
@@ -1401,7 +1402,7 @@ size_t hash<AqlValue>::operator()(AqlValue const& x) const noexcept {
 }
 
 bool equal_to<AqlValue>::operator()(AqlValue const& a,
-                                    AqlValue const& b) const noexcept {
+                                    AqlValue const& b) const {
   using T = AqlValue::AqlValueType;
   auto ta = a.type();
   auto tb = b.type();
@@ -1431,10 +1432,10 @@ bool equal_to<AqlValue>::operator()(AqlValue const& a,
       case T::VPACK_INLINE_DOUBLE: {
         double da = a.asDouble();
         double db = b.asDouble();
-        if (da == -0.0) {
+        if (std::signbit(da) && da == 0.0) {
           da = 0.0;
         }
-        if (db == -0.0) {
+        if (std::signbit(db) && db == 0.0) {
           db = 0.0;
         }
         return da == db;
@@ -1449,9 +1450,7 @@ bool equal_to<AqlValue>::operator()(AqlValue const& a,
       }
 
       default:
-        // Should not happen
-        TRI_ASSERT(false);
-        return false;
+        ADB_UNREACHABLE;
     }
   }
 

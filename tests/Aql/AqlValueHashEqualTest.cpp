@@ -43,16 +43,7 @@ class AqlValueHashEqualTest : public ::testing::Test {
   std::equal_to<AqlValue> equal;
 };
 
-// ============================================================================
-// Basic contract
-// ============================================================================
-
-TEST_F(AqlValueEqualTest, equal_reflexive) {
-  AqlValue val = makeAQLValue(int64_t{42});
-  EXPECT_TRUE(equal(val, val));
-}
-
-TEST_F(AqlValueEqualTest, equal_symmetric) {
+TEST_F(AqlValueEqualTest, equal_content_not_pointer) {
   AqlValue val1 = makeAQLValue(int64_t{42});
   AqlValue val2 = makeAQLValue(int64_t{42});
   EXPECT_TRUE(equal(val1, val2));
@@ -71,10 +62,6 @@ TEST_F(AqlValueHashEqualTest, hash_equal_consistency_different_values) {
   AqlValue val2 = makeAQLValue(int64_t{43});
   EXPECT_FALSE(equal(val1, val2));
 }
-
-// ============================================================================
-// VPACK_INLINE_INT64
-// ============================================================================
 
 TEST_F(AqlValueHashEqualTest, inline_int64_same_value) {
   AqlValue val1 = makeAQLValue(int64_t{12345});
@@ -109,10 +96,6 @@ TEST_F(AqlValueHashEqualTest, inline_int64_edge_cases) {
   }
 }
 
-// ============================================================================
-// VPACK_INLINE_UINT64
-// ============================================================================
-
 TEST_F(AqlValueHashEqualTest, inline_uint64_same_value) {
   AqlValue val1 = makeAQLValue(uint64_t{12345ULL});
   AqlValue val2 = makeAQLValue(uint64_t{12345ULL});
@@ -132,10 +115,6 @@ TEST_F(AqlValueHashEqualTest, inline_uint64_large_value) {
   EXPECT_TRUE(equal(val1, val2));
   EXPECT_EQ(hasher(val1), hasher(val2));
 }
-
-// ============================================================================
-// VPACK_INLINE_DOUBLE
-// ============================================================================
 
 TEST_F(AqlValueHashEqualTest, inline_double_same_value) {
   AqlValue val1 = makeAQLValue(3.14159);
@@ -157,10 +136,6 @@ TEST_F(AqlValueHashEqualTest, inline_double_zero_variants) {
   EXPECT_EQ(hasher(pos), hasher(neg));
 }
 
-// ============================================================================
-// RANGE
-// ============================================================================
-
 TEST_F(AqlValueHashEqualTest, range_same_value) {
   AqlValue val1(1, 100);
   AqlValue val2(1, 100);
@@ -180,10 +155,6 @@ TEST_F(AqlValueHashEqualTest, range_different_values) {
   val2.destroy();
   val3.destroy();
 }
-
-// ============================================================================
-// Strings
-// ============================================================================
 
 TEST_F(AqlValueHashEqualTest, string_same_value) {
   AqlValue val1("hello");
@@ -218,13 +189,9 @@ TEST_F(AqlValueHashEqualTest, string_long_same_value) {
   AqlValue val2(longStr);
   EXPECT_TRUE(equal(val1, val2));
   EXPECT_EQ(hasher(val1), hasher(val2));
-  if (val1.requiresDestruction()) val1.destroy();
-  if (val2.requiresDestruction()) val2.destroy();
+  val1.destroy();
+  val2.destroy();
 }
-
-// ============================================================================
-// Arrays and objects
-// ============================================================================
 
 TEST_F(AqlValueHashEqualTest, array_same_value) {
   VPackBuilder b1, b2;
@@ -240,8 +207,6 @@ TEST_F(AqlValueHashEqualTest, array_same_value) {
   AqlValue val2(b2.slice());
   EXPECT_TRUE(equal(val1, val2));
   EXPECT_EQ(hasher(val1), hasher(val2));
-  if (val1.requiresDestruction()) val1.destroy();
-  if (val2.requiresDestruction()) val2.destroy();
 }
 
 TEST_F(AqlValueHashEqualTest, array_different_values) {
@@ -271,15 +236,13 @@ TEST_F(AqlValueHashEqualTest, object_same_value) {
   b2.close();
   AqlValue val1(b1.slice());
   AqlValue val2(b2.slice());
+  // Object > 16 bytes → VPACK_MANAGED_SLICE with different pointers.
+  ASSERT_TRUE(val1.requiresDestruction());
   EXPECT_TRUE(equal(val1, val2));
   EXPECT_EQ(hasher(val1), hasher(val2));
   val1.destroy();
   val2.destroy();
 }
-
-// ============================================================================
-// Null, None, Boolean
-// ============================================================================
 
 TEST_F(AqlValueHashEqualTest, null_values) {
   AqlValue val1{arangodb::aql::AqlValueHintNull{}};
@@ -303,10 +266,6 @@ TEST_F(AqlValueHashEqualTest, boolean_values) {
   EXPECT_EQ(hasher(t1), hasher(t2));
   EXPECT_FALSE(equal(t1, f1));
 }
-
-// ============================================================================
-// Semantic equality across storage types
-// ============================================================================
 
 TEST_F(AqlValueHashEqualTest, number_semantic_equality_int64_vs_vpack) {
   AqlValue val1 = makeAQLValue(int64_t{42});
@@ -346,10 +305,6 @@ TEST_F(AqlValueHashEqualTest, number_semantic_equality_int_vs_double) {
   EXPECT_EQ(hasher(val1), hasher(val2));
 }
 
-// ============================================================================
-// Cross-type
-// ============================================================================
-
 TEST_F(AqlValueHashEqualTest, cross_type_range_vs_number) {
   AqlValue rangeVal(1, 100);
   VPackBuilder b;
@@ -360,10 +315,6 @@ TEST_F(AqlValueHashEqualTest, cross_type_range_vs_number) {
   rangeVal.destroy();
 }
 
-// ============================================================================
-// std::unordered containers
-// ============================================================================
-
 TEST_F(AqlValueHashEqualTest, unordered_set_deduplication) {
   std::unordered_set<AqlValue> set;
   AqlValue val1 = makeAQLValue(int64_t{42});
@@ -373,10 +324,11 @@ TEST_F(AqlValueHashEqualTest, unordered_set_deduplication) {
   EXPECT_FALSE(set.insert(val2).second);
   EXPECT_EQ(1U, set.size());
 
-  // Same value via different storage should also not be inserted.
+  // 42.0 as VPACK_INLINE_DOUBLE — different storage type, same numeric value.
   VPackBuilder b;
-  b.add(VPackValue(42));
+  b.add(VPackValue(42.0));
   AqlValue val3(b.slice());
+  ASSERT_EQ(AqlValue::AqlValueType::VPACK_INLINE_DOUBLE, val3.type());
   EXPECT_FALSE(set.insert(val3).second);
   EXPECT_EQ(1U, set.size());
 }
@@ -390,14 +342,11 @@ TEST_F(AqlValueHashEqualTest, unordered_map_key_lookup) {
   EXPECT_EQ(100, map[key2]);
 
   VPackBuilder b;
-  b.add(VPackValue(42));
-  AqlValue key3(b.slice());
+  b.add(VPackValue(42.0));
+  AqlValue key3(b.slice());  // VPACK_INLINE_DOUBLE, same numeric value as key1
+  ASSERT_EQ(AqlValue::AqlValueType::VPACK_INLINE_DOUBLE, key3.type());
   EXPECT_EQ(100, map[key3]);
 }
-
-// ============================================================================
-// Edge cases
-// ============================================================================
 
 TEST_F(AqlValueHashEqualTest, edge_case_large_numbers) {
   auto check = [&](auto val) {

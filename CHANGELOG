@@ -1,6 +1,10 @@
 3.12.10-devel (XXXX-XX-XX)
 --------------------------
 
+* [COR-538]: Fixed AqlValue hash and equality comparing pointer identity
+  instead of value content, causing equal values to be serialized multiple
+  times instead of reusing their position in the AqlItemBlock raw array.
+
 * COR-387: Synchronous vector index creation no longer throws when training
   fails. The index is created with `trainingState: "unusable"` and the
   training error returned in `errorMessage`.

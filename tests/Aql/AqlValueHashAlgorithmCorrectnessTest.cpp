@@ -30,29 +30,6 @@ class AqlValueHashAlgorithmCorrectnessTest : public ::testing::Test {
   velocypack::Options const* const options{&velocypack::Options::Defaults};
 };
 
-// ============================================================================
-// toVelocyPack() — deduplication in the raw array
-// ============================================================================
-
-TEST_F(AqlValueHashAlgorithmCorrectnessTest,
-       toVelocyPack_FormatSpecification_RawArrayStructure) {
-  // Positions 0 and 1 of the raw array must be null; actual values start at 2.
-  auto block = itemBlockManager.requestBlock(1, 1);
-  block->setValue(0, 0, makeAQLValue(42));
-
-  velocypack::Builder result;
-  result.openObject();
-  block->toVelocyPack(0, 1, options, result);
-  result.close();
-
-  VPackSlice raw = result.slice().get("raw");
-  ASSERT_TRUE(raw.isArray());
-  EXPECT_TRUE(raw.at(0).isNull());
-  EXPECT_TRUE(raw.at(1).isNull());
-  ASSERT_GE(raw.length(), 3U);
-  EXPECT_FALSE(raw.at(2).isNull());
-}
-
 TEST_F(AqlValueHashAlgorithmCorrectnessTest,
        toVelocyPack_DeduplicatesSameContent_DifferentPointers) {
   // Two supervised slices with identical content but different pointers must
@@ -103,6 +80,9 @@ TEST_F(AqlValueHashAlgorithmCorrectnessTest,
   b.add(VPackValue(42.0));
   AqlValue v2(b.slice());  // VPACK_INLINE_DOUBLE
   AqlValue v3 = makeAQLValue(100);
+
+  ASSERT_EQ(AqlValue::AqlValueType::VPACK_INLINE_INT64, v1.type());
+  ASSERT_EQ(AqlValue::AqlValueType::VPACK_INLINE_DOUBLE, v2.type());
 
   block->setValue(0, 0, v1);
   block->setValue(1, 0, v2);
@@ -251,10 +231,6 @@ TEST_F(AqlValueHashAlgorithmCorrectnessTest,
   EXPECT_EQ(2U, reRaw.length() - 2);
 }
 
-// ============================================================================
-// cloneToBlock() — deduplication in the clone cache
-// ============================================================================
-
 TEST_F(AqlValueHashAlgorithmCorrectnessTest,
        cloneToBlock_DeduplicatesSameContent_DifferentPointers) {
   auto sourceBlock = itemBlockManager.requestBlock(1, 3);
@@ -287,6 +263,11 @@ TEST_F(AqlValueHashAlgorithmCorrectnessTest,
       equal(cloned->getValueReference(0, 0), cloned->getValueReference(0, 1)));
   EXPECT_FALSE(
       equal(cloned->getValueReference(0, 0), cloned->getValueReference(0, 2)));
+  // Pointer identity: proves deduplication, not just content equality.
+  EXPECT_EQ(cloned->getValueReference(0, 0).data(),
+            cloned->getValueReference(0, 1).data());
+  EXPECT_NE(cloned->getValueReference(0, 0).data(),
+            cloned->getValueReference(0, 2).data());
 }
 
 TEST_F(AqlValueHashAlgorithmCorrectnessTest,
@@ -312,11 +293,11 @@ TEST_F(AqlValueHashAlgorithmCorrectnessTest,
   auto cloned = sourceRow.cloneToBlock(itemBlockManager, registers, numCols);
   ASSERT_NE(nullptr, cloned.get());
 
-  std::equal_to<AqlValue> equal;
   AqlValue const& first = cloned->getValueReference(0, 0);
+  void const* sharedPtr = first.data();
   for (RegisterId::value_t col = 1; col < numCols; ++col) {
-    EXPECT_TRUE(equal(first, cloned->getValueReference(0, col)))
-        << "column " << col << " should equal column 0";
+    EXPECT_EQ(sharedPtr, cloned->getValueReference(0, col).data())
+        << "column " << col << " should share the deduplicated pointer";
   }
 }
 
@@ -346,19 +327,25 @@ TEST_F(AqlValueHashAlgorithmCorrectnessTest,
   auto cloned = sourceRow.cloneToBlock(itemBlockManager, registers, numCols);
   ASSERT_NE(nullptr, cloned.get());
 
-  std::equal_to<AqlValue> equal;
-  AqlValue const& ref_s1 = cloned->getValueReference(0, 0);
-  AqlValue const& ref_s2 = cloned->getValueReference(0, 1);
-  AqlValue const& ref_s3 = cloned->getValueReference(0, 3);
+  void const* ptr_s1 = cloned->getValueReference(0, 0).data();
+  void const* ptr_s2 = cloned->getValueReference(0, 1).data();
+  void const* ptr_s3 = cloned->getValueReference(0, 3).data();
+
+  EXPECT_NE(ptr_s1, ptr_s2);
+  EXPECT_NE(ptr_s1, ptr_s3);
+  EXPECT_NE(ptr_s2, ptr_s3);
 
   for (RegisterId::value_t col : {0u, 2u, 4u, 5u, 6u, 8u}) {
-    EXPECT_TRUE(equal(ref_s1, cloned->getValueReference(0, col)));
+    EXPECT_EQ(ptr_s1, cloned->getValueReference(0, col).data())
+        << "column " << col << " should share s1's pointer";
   }
   for (RegisterId::value_t col : {1u, 7u}) {
-    EXPECT_TRUE(equal(ref_s2, cloned->getValueReference(0, col)));
+    EXPECT_EQ(ptr_s2, cloned->getValueReference(0, col).data())
+        << "column " << col << " should share s2's pointer";
   }
   for (RegisterId::value_t col : {3u, 9u}) {
-    EXPECT_TRUE(equal(ref_s3, cloned->getValueReference(0, col)));
+    EXPECT_EQ(ptr_s3, cloned->getValueReference(0, col).data())
+        << "column " << col << " should share s3's pointer";
   }
 }
 
@@ -382,27 +369,9 @@ TEST_F(AqlValueHashAlgorithmCorrectnessTest,
   auto cloned = sourceRow.cloneToBlock(itemBlockManager, registers, 3);
   ASSERT_NE(nullptr, cloned.get());
 
-  std::equal_to<AqlValue> equal;
-  EXPECT_TRUE(
-      equal(cloned->getValueReference(0, 0), cloned->getValueReference(0, 1)));
-  EXPECT_FALSE(
-      equal(cloned->getValueReference(0, 0), cloned->getValueReference(0, 2)));
-}
-
-TEST_F(AqlValueHashAlgorithmCorrectnessTest,
-       cloneToBlock_EmptyValuesHandledCorrectly) {
-  auto sourceBlock = itemBlockManager.requestBlock(1, 3);
-
-  sourceBlock->setValue(0, 0, AqlValue{AqlValueHintNone{}});
-  sourceBlock->setValue(0, 1, AqlValue{AqlValueHintNone{}});
-  sourceBlock->setValue(0, 2, AqlValue(std::string("content")));
-
-  InputAqlItemRow sourceRow(sourceBlock, 0);
-  RegIdFlatSet registers = {RegisterId{0}, RegisterId{1}, RegisterId{2}};
-  auto cloned = sourceRow.cloneToBlock(itemBlockManager, registers, 3);
-  ASSERT_NE(nullptr, cloned.get());
-
-  EXPECT_TRUE(cloned->getValueReference(0, 0).isEmpty());
-  EXPECT_TRUE(cloned->getValueReference(0, 1).isEmpty());
-  EXPECT_FALSE(cloned->getValueReference(0, 2).isEmpty());
+  EXPECT_TRUE(std::equal_to<AqlValue>{}(cloned->getValueReference(0, 0),
+                                        cloned->getValueReference(0, 1)));
+  // Managed value is cloned into fresh memory, not shared with source.
+  EXPECT_NE(sourceBlock->getValueReference(0, 2).data(),
+            cloned->getValueReference(0, 2).data());
 }

@@ -53,7 +53,8 @@ TEST_F(AqlValueHashTest, AqlValueHash_EdgeCase_LargeSupervisedSlices) {
 }
 
 TEST_F(AqlValueHashTest, AqlValueHash_ASAN_PotentialUseAfterFree) {
-  // Hashing and lookup must remain valid after stealAndEraseValue().
+  // After stealing, look up via a fresh allocation with the same content.
+  // Old pointer-based code would miss; content-based must find it.
   auto block = itemBlockManager.requestBlock(2, 1);
 
   std::string content = "test content for ASAN test";
@@ -65,17 +66,23 @@ TEST_F(AqlValueHashTest, AqlValueHash_ASAN_PotentialUseAfterFree) {
   block->setValue(0, 0, v);
 
   containers::FlatHashMap<AqlValue, size_t> table;
-  AqlValue const& blockValue = block->getValueReference(0, 0);
-  table[blockValue] = 100;
+  table[block->getValueReference(0, 0)] = 100;
 
   AqlValue stolen = block->stealAndEraseValue(0, 0);
   EXPECT_TRUE(block->getValueReference(0, 0).isEmpty());
 
-  auto it = table.find(stolen);
+  // Different pointer, same content — lookup must be content-based to succeed.
+  arangodb::velocypack::Builder b2;
+  b2.add(arangodb::velocypack::Value(content));
+  AqlValue fresh(b2.slice(), static_cast<arangodb::velocypack::ValueLength>(
+                                 b2.slice().byteSize()));
+
+  auto it = table.find(fresh);
   ASSERT_NE(table.end(), it);
   EXPECT_EQ(100, it->second);
 
   stolen.destroy();
+  fresh.destroy();
   block.reset(nullptr);
   EXPECT_EQ(monitor.current(), 0U);
 }

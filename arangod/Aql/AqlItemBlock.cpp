@@ -60,7 +60,7 @@ inline void copyValueOver(arangodb::containers::HashSet<void const*>& cache,
         b.destroy();
         throw;
       }
-      cache.emplace(b.data());
+      cache.emplace(b.data());  // so later cells sharing the same pointer reuse
     } else {
       res->setValue(rowNumber, col, AqlValue(a, (*it)));
     }
@@ -507,12 +507,12 @@ SharedAqlItemBlockPtr AqlItemBlock::cloneDataAndMoveShadow() {
           AqlValue a = stealAndEraseValue(row, col);
           if (a.requiresDestruction()) {
             AqlValueGuard guard{a, true};
-            // Shadow rows are not deduplicated: the old cache had a latent
-            // double-free when two columns shared the same pointer (the second
-            // steal() would free memory still held by res). Just transfer
-            // ownership directly.
+            // Shadow rows are not deduplicated across columns. The old
+            // cache-based path had a latent double-free when two columns shared
+            // the same managed pointer: the second steal() freed memory still
+            // held by res. Transfer ownership directly; res->setValue()
+            // maintains _valueCount.
             res->setValue(row, col, a);
-            // Transfer ownership to res - guard won't destroy it
             guard.steal();
           } else {
             res->setValue(row, col, a);
