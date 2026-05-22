@@ -1,6 +1,10 @@
 3.12.10-devel (XXXX-XX-XX)
 --------------------------
 
+* COR-320: Vector search now supports projections, allowing covered queries
+  to skip the document materialization step. Adds optimizer rule
+  `materialize-for-enumerate-near`.
+
 * [COR-546]: Fixed bug in the `remove-filter-covered-by-traversal`
   optimizer rule where filters on path arrays with different quantifiers
   (e.g. `ALL` vs `NONE`) were incorrectly treated as equivalent and one

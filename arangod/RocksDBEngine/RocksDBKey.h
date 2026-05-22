@@ -48,6 +48,10 @@ class LogId;
 struct LogIndex;
 };  // namespace replication2
 
+namespace vector {
+enum class VectorIndexFormatVersion : std::uint8_t;
+}  // namespace vector
+
 class RocksDBKey {
  public:
   RocksDBKey()
@@ -201,7 +205,11 @@ class RocksDBKey {
   void constructVectorIndexValue(uint64_t indexId, std::size_t listNumber,
                                  LocalDocumentId documentId);
 
-  void constructVectorIndexTrainedData(uint64_t indexId);
+  /// @brief Build the sentinel key under which the per-index vector metadata
+  /// record is stored in the VectorIndex CF. The format version selects which
+  /// sentinel slot is used.
+  void constructVectorIndexTrainedData(
+      uint64_t indexId, vector::VectorIndexFormatVersion version);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Create a fully-specified key for revision tree for a collection

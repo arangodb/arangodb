@@ -54,6 +54,7 @@
 #include "Aql/Optimizer/Rule/ScatterViewInCluster.h"
 #include "Aql/Optimizer/Rule/ParallelizeGather.h"
 #include "Aql/Optimizer/Rule/PropagateConstantAttributes.h"
+#include "Aql/Optimizer/Rule/MaterializeForEnumerateNear.h"
 #include "Aql/Optimizer/Rule/PushDownLateMaterialization.h"
 #include "Aql/Optimizer/Rule/PushFilterIntoEnumerateNear.h"
 #include "Aql/Optimizer/Rule/PushLimitIntoIndex.h"
@@ -924,6 +925,15 @@ vector embeddings with vector similarity AQL functions.)");
                R"(Push Filter into EnumerateNearVector node. Can also optimize
 filtering by using `storedValues`. This rule is only enabled by the
 `use-vector-index` rule.)");
+
+  registerRule("materialize-for-enumerate-near", materializeForEnumerateNear,
+               OptimizerRule::materializeForEnumerateNearRule,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
+               R"(Choose how each EnumerateNearVectorNode emits its document.
+If the vector index storedValues cover the downstream projections, or if a
+pushed-down filter already loaded the document, the vector node produces the
+output directly. Otherwise a MaterializeRocksDBNode is inserted after the
+vector node to translate the doc-id into the full document.)");
 
   registerRule(
       "immutable-search-condition", iresearch::immutableSearchCondition,
