@@ -276,6 +276,8 @@ void upgradeScatterToDistributeRule(Optimizer* opt,
           replaceScatterWithDistribute(*plan, scatterNode, coll, current->id(),
                                        distDep);
         }
+        plan->clearVarUsageComputed();
+        plan->findVarUsage();
         wasModified = true;
 
         // Only the first Index / Enumeration Parent-Node is relevant for
@@ -286,10 +288,12 @@ void upgradeScatterToDistributeRule(Optimizer* opt,
     current = current->getFirstParent();
   }
 
+  /*
   if (wasModified) {
     plan->clearVarUsageComputed();
     plan->findVarUsage();
   }
+  */
 
   opt->addPlan(std::move(plan), rule, true);
 }
