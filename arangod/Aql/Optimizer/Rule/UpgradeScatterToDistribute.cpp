@@ -178,6 +178,40 @@ bool checkIfAllShardKeysAreUsed(arangodb::aql::AstNode const* root,
   return distDep.shardKeyAccessMap.size() == shardKeys.size();
 }
 
+std::unique_ptr<arangodb::aql::Condition> getCondition(
+    arangodb::aql::ExecutionPlan* plan, arangodb::aql::ExecutionNode* current) {
+  using namespace arangodb::aql;
+  auto condition = std::make_unique<Condition>(plan->getAst());
+
+  switch (current->getType()) {
+    case ExecutionNode::INDEX: {
+      auto const indexNode =
+          ExecutionNode::castTo<arangodb::aql::IndexNode const*>(current);
+      auto const cond = indexNode->condition();
+      if (cond != nullptr && cond->root() != nullptr) {
+        condition->andCombine(cond->root());
+      }
+      auto const filter = indexNode->filter();
+      if (filter != nullptr && filter->node() != nullptr) {
+        condition->andCombine(filter->node());
+      }
+      return condition;
+    } break;
+    case ExecutionNode::ENUMERATE_COLLECTION: {
+      auto const enumNode =
+          ExecutionNode::castTo<EnumerateCollectionNode const*>(current);
+      auto const filter = enumNode->filter();
+      if (filter != nullptr && filter->node() != nullptr) {
+        condition->andCombine(filter->node());
+      }
+      return condition;
+    } break;
+    default: {
+      return nullptr;
+    } break;
+  }
+}
+
 void replaceScatterWithDistribute(arangodb::aql::ExecutionPlan& plan,
                                   arangodb::aql::ExecutionNode* scatter,
                                   arangodb::aql::Collection const* coll,
@@ -208,35 +242,6 @@ void replaceScatterWithDistribute(arangodb::aql::ExecutionPlan& plan,
   plan.insertBefore(distribution, calc);
 }
 
-std::unique_ptr<arangodb::aql::Condition> getCondition(
-    arangodb::aql::ExecutionPlan* plan, arangodb::aql::ExecutionNode* current) {
-  auto condition = std::make_unique<arangodb::aql::Condition>(plan->getAst());
-  if (current->getType() == arangodb::aql::ExecutionNode::INDEX) {
-    auto const indexNode =
-        arangodb::aql::ExecutionNode::castTo<arangodb::aql::IndexNode const*>(
-            current);
-    auto const cond = indexNode->condition();
-    if (cond != nullptr && cond->root() != nullptr) {
-      condition->andCombine(cond->root());
-    }
-    auto const filter = indexNode->filter();
-    if (filter != nullptr && filter->node() != nullptr) {
-      condition->andCombine(filter->node());
-    }
-    return condition;
-  } else if (current->getType() ==
-             arangodb::aql::ExecutionNode::ENUMERATE_COLLECTION) {
-    auto const enumNode = arangodb::aql::ExecutionNode::castTo<
-        arangodb::aql::EnumerateCollectionNode const*>(current);
-    auto const filter = enumNode->filter();
-    if (filter != nullptr && filter->node() != nullptr) {
-      condition->andCombine(filter->node());
-    }
-    return condition;
-  }
-  return nullptr;
-}
-
 namespace arangodb::aql {
 void upgradeScatterToDistributeRule(Optimizer* opt,
                                     std::unique_ptr<ExecutionPlan> plan,
@@ -262,31 +267,30 @@ void upgradeScatterToDistributeRule(Optimizer* opt,
       auto condition = getCondition(plan.get(), current);
 
       if (condition != nullptr) {
-        if (condition->root() != nullptr) {
-          condition->normalize(plan.get());
+        condition->normalize(plan.get());
 
-          DistributeNodeDependency distDep;
-          if (checkIfAllShardKeysAreUsed(condition->root(), current, distDep)) {
-            auto const scatterNode = ExecutionNode::castTo<ScatterNode*>(node);
-            Collection const* coll{getCollection(current)};
-            replaceScatterWithDistribute(*plan, scatterNode, coll,
-                                         current->id(), distDep);
-            wasModified = true;
-          }
-
-          // Only the first Index / Enumeration Parent-Node is relevant for us,
-          // we can skip the rest
+        DistributeNodeDependency distDep;
+        if (checkIfAllShardKeysAreUsed(condition->root(), current, distDep)) {
+          auto const scatterNode = ExecutionNode::castTo<ScatterNode*>(node);
+          Collection const* coll{getCollection(current)};
+          replaceScatterWithDistribute(*plan, scatterNode, coll, current->id(),
+                                       distDep);
         }
+        wasModified = true;
 
+        // Only the first Index / Enumeration Parent-Node is relevant for
+        // us, we can skip the rest
         break;
       }
-      current = current->getFirstParent();
     }
+    current = current->getFirstParent();
   }
+
   if (wasModified) {
     plan->clearVarUsageComputed();
     plan->findVarUsage();
   }
-  opt->addPlan(std::move(plan), rule, wasModified);
+
+  opt->addPlan(std::move(plan), rule, true);
 }
 }  // namespace arangodb::aql
