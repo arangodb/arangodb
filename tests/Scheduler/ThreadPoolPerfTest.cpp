@@ -47,7 +47,7 @@ struct SupervisedSchedulerPool {
             mockApplicationServer.server(),
             LazyApplicationFeatureReference<QueryRegistryFeature>(nullptr),
             LazyApplicationFeatureReference<StatisticsFeature>(nullptr),
-            LazyApplicationFeatureReference<EngineSelectorFeature>(nullptr),
+            LazyApplicationFeatureReference<DatabaseFeature>(nullptr),
             LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(
                 nullptr),
             LazyApplicationFeatureReference<ClusterFeature>(nullptr))),

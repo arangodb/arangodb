@@ -32,7 +32,7 @@
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/MetricsFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "StorageEngine/EngineSelectorFeature.h"
+#include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/StorageEngineFeature.h"
 
@@ -84,7 +84,7 @@ void FlushFeature::registerFlushSubscription(
 }
 
 std::tuple<size_t, size_t, TRI_voc_tick_t> FlushFeature::releaseUnusedTicks() {
-  auto& engine = server().getFeature<EngineSelectorFeature>().engine();
+  auto& engine = server().getFeature<DatabaseFeature>().engine();
   auto const initialTick = engine.currentTick();
 
   size_t stale = 0;
