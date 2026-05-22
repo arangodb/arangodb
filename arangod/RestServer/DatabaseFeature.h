@@ -221,11 +221,6 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
   /// @brief decrement collection count metric on single server
   void decrementCollectionCount(size_t count = 1);
 
-  StorageEngine& engine() const noexcept {
-    TRI_ASSERT(_engine != nullptr);
-    return *_engine;
-  }
-
  private:
   void initCalculationVocbase();
 
