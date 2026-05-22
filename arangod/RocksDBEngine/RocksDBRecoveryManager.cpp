@@ -188,8 +188,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
         _lastRemovedDocRid(0),
         _batchStartSequence(0),
         _currentSequence(currentSequence),
-        _engine(_server.getFeature<EngineSelectorFeature>()
-                    .engine<RocksDBEngine>()) {}
+        _engine(_server.getFeature<RocksDBEngine>()) {}
 
   void startNewBatch(rocksdb::SequenceNumber startSequence) {
     TRI_ASSERT(_currentSequence <= startSequence);

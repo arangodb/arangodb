@@ -24,6 +24,8 @@
 #include "ManagerFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Cluster/ServerState.h"
+#include "ClusterEngine/ClusterEngine.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -32,7 +34,7 @@
 #include "Metrics/CounterBuilder.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "RestServer/DatabaseFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
+#include "RocksDBEngine/RocksDBEngine.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Manager.h"
 
@@ -54,7 +56,6 @@ ManagerFeature::ManagerFeature(application_features::ApplicationServer& server,
           metrics.add(arangodb_transactions_expired_total{})) {
   setOptional(false);
   startsAfter<BasicFeaturePhaseServer>();
-  startsAfter<EngineSelectorFeature>();
   startsAfter<metrics::MetricsFeature>();
   startsAfter<SchedulerFeature>();
   startsBefore<DatabaseFeature>();
@@ -122,11 +123,19 @@ timeout to the configured idle timeout.)");
 
 void ManagerFeature::prepare() {
   TRI_ASSERT(MANAGER.get() == nullptr);
-  TRI_ASSERT(server().getFeature<EngineSelectorFeature>().selected());
-  MANAGER = server()
-                .getFeature<EngineSelectorFeature>()
-                .engine()
-                .createTransactionManager(*this);
+  StorageEngine* engine = nullptr;
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  if (!server().hasFeature<RocksDBEngine>() &&
+      !server().hasFeature<ClusterEngine>()) {
+    engine = &server().getFeature<DatabaseFeature>().engine();
+  } else
+#endif
+      if (ServerState::instance()->isCoordinator()) {
+    engine = &server().getFeature<ClusterEngine>();
+  } else {
+    engine = &server().getFeature<RocksDBEngine>();
+  }
+  MANAGER = engine->createTransactionManager(*this);
 }
 
 void ManagerFeature::start() {
