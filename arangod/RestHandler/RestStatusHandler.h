@@ -27,6 +27,7 @@
 
 namespace arangodb {
 class ServerSecurityFeature;
+class StorageEngine;
 
 class RestStatusHandler : public arangodb::RestBaseHandler {
  public:
@@ -42,5 +43,7 @@ class RestStatusHandler : public arangodb::RestBaseHandler {
   RestStatus executeStandard(ServerSecurityFeature&);
   RestStatus executeOverview();
   RestStatus executeMemoryProfile();
+
+  StorageEngine& _engine;
 };
 }  // namespace arangodb

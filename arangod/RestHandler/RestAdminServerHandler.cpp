@@ -36,11 +36,11 @@
 #include "Logger/LogMacros.h"
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/ApiRecordingFeature.h"
+#include "RestServer/DatabaseFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "Utils/ExecContext.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
+#include "Utils/ExecContext.h"
 #include "VocBase/VocbaseInfo.h"
 
 using namespace arangodb;
@@ -50,7 +50,8 @@ using namespace arangodb::rest;
 RestAdminServerHandler::RestAdminServerHandler(
     application_features::ApplicationServer& server, GeneralRequest* request,
     GeneralResponse* response)
-    : RestBaseHandler(server, request, response) {}
+    : RestBaseHandler(server, request, response),
+      _engine(server.getFeature<DatabaseFeature>().engine()) {}
 
 RestStatus RestAdminServerHandler::execute() {
   std::vector<std::string> const& suffixes = _request->suffixes();
@@ -161,9 +162,7 @@ void RestAdminServerHandler::handleAvailability() {
       }
       if (available) {
         // also ask storage engine for its health
-        StorageEngine& engine =
-            server().getFeature<EngineSelectorFeature>().engine();
-        available = engine.healthCheck().res.ok();
+        available = _engine.healthCheck().res.ok();
       }
       break;
     }
