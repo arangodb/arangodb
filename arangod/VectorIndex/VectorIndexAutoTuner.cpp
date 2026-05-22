@@ -132,11 +132,13 @@ ResultT<std::int64_t> autoTuneNProbe(faiss::IndexIVF& index,
   });
 
   // Ground truth: exhaustive IVF (nprobe = nlist).
+  // TODO(jbajic) there might be a bettter way to find ground truth
   std::vector<faiss::idx_t> gtI(static_cast<std::size_t>(numberOfQueries) * R);
   std::vector<float> gtD(static_cast<std::size_t>(numberOfQueries) * R);
   faiss::SearchParametersIVF params;
   params.inverted_list_context = invertedListContext;
   params.nprobe = index.nlist;
+  auto const gtStart = std::chrono::steady_clock::now();
   try {
     index.search(numberOfQueries, querySet.data(), R, gtD.data(), gtI.data(),
                  &params);
@@ -146,6 +148,12 @@ ResultT<std::int64_t> autoTuneNProbe(faiss::IndexIVF& index,
         std::format("autotune ground-truth search failed: {}", e.what())};
     return outcome;
   }
+  LOG_TOPIC("e16b1", INFO, Logger::ENGINES)
+      << "Autotune ground truth (nprobe=" << index.nlist << ") done in "
+      << std::chrono::duration<double>(std::chrono::steady_clock::now() -
+                                       gtStart)
+             .count()
+      << "s.";
 
   auto const candidates = nProbeCandidates(index.nlist);
   if (candidates.empty()) {
@@ -175,6 +183,10 @@ ResultT<std::int64_t> autoTuneNProbe(faiss::IndexIVF& index,
                                .count();
     auto const recall = computeRecallAtR(I, gtI, numberOfQueries, R);
     trials.push_back(Trial{nprobe, recall, trialSecs});
+    LOG_TOPIC("e16b2", INFO, Logger::ENGINES)
+        << "Autotune trial " << trials.size() << "/" << candidates.size()
+        << ": nprobe=" << nprobe << " perf=" << recall << " t=" << trialSecs
+        << "s.";
   }
 
   Trial const* chosen = nullptr;

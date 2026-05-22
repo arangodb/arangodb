@@ -813,14 +813,17 @@ void VectorIndexBuilder::runAutoTune(std::span<float const> autoTuneSample) {
         << "Skipping autotune: " << trxRes.errorMessage();
     return;
   }
-  RocksDBFaissSearchContext faissCtx{static_cast<transaction::Methods*>(&trx)};
-  auto tuned =
-      autoTuneNProbe(*_index.faissIndex(), autoTuneSample, &faissCtx);
+  RocksDBFaissIteratorContext faissCtx{
+      IteratorContext{.trx = static_cast<transaction::Methods*>(&trx)}};
+  auto tuned = autoTuneNProbe(*_index.faissIndex(), autoTuneSample, &faissCtx);
   if (tuned.fail()) {
     return;  // autoTuneNProbe already logged
   }
   auto const& td = _index.applyTunedNProbe(tuned.get());
-  if (auto persistRes = persistTrainedData(td); persistRes.fail()) {
+  VectorIndexMetadata metadata{.trainedData = td,
+                               .formatVersion = _index.formatVersion()};
+  if (auto persistRes = persistVectorIndexMetadata(metadata);
+      persistRes.fail()) {
     LOG_VECTOR_BUILD("e16ac", WARN, Logger::ENGINES)
         << "Failed to persist tuned nprobe: " << persistRes.errorMessage();
   }
