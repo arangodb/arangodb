@@ -83,7 +83,7 @@ void ArangodServer::addFeatures(
   auto& metrics = addFeature<metrics::MetricsFeature>(
       LazyApplicationFeatureReference<QueryRegistryFeature>(*this),
       LazyApplicationFeatureReference<StatisticsFeature>(*this),
-      LazyApplicationFeatureReference<EngineSelectorFeature>(*this),
+      LazyApplicationFeatureReference<DatabaseFeature>(*this),
       LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(*this),
       LazyApplicationFeatureReference<ClusterFeature>(*this));
   addFeature<metrics::ClusterMetricsFeature>();
@@ -121,9 +121,9 @@ void ArangodServer::addFeatures(
   auto& dumpLimits = addFeature<DumpLimitsFeature>();
   addFeature<HttpEndpointProvider, EndpointFeature>();
   auto& systemDatabaseFeature = addFeature<SystemDatabaseFeature>();
-  auto& engineSelectorFeature = addFeature<EngineSelectorFeature>();
-  addFeature<BootstrapFeature>(clusterFeature, engineSelectorFeature, database,
-                               &systemDatabaseFeature, &clusterUpgradeFeature
+  addFeature<EngineSelectorFeature>();
+  addFeature<BootstrapFeature>(clusterFeature, database, &systemDatabaseFeature,
+                               &clusterUpgradeFeature
 #ifdef USE_V8
                                ,
                                &v8DealerFeature
@@ -217,7 +217,6 @@ void ArangodServer::addFeatures(
   addFeature<iresearch::IResearchAnalyzerFeature>(
       iresearch::IResearchAnalyzerFeature::Dependencies{
           .databaseFeature = database,
-          .engineSelector = engineSelectorFeature,
           .systemDatabase = systemDatabaseFeature,
           .networkFeature = &networkFeature,
           .clusterFeature = &clusterFeature,

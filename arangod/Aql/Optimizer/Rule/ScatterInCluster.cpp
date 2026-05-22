@@ -82,6 +82,29 @@ auto extractVocbaseFromNode(ExecutionNode* at) -> TRI_vocbase_t* {
       TRI_ERROR_INTERNAL, "Cannot determine vocbase for execution node.");
 }
 
+// Build a sorted GatherNode that merges per-shard streams of an
+// EnumerateNearVectorNode by distance. Shared by the bare
+// ENUMERATE_NEAR_VECTORS case and the MATERIALIZE-of-vector case below.
+GatherNode* makeVectorGatherNode(ExecutionPlan& plan,
+                                 EnumerateNearVectorNode const* vectorNode) {
+  auto const* collection = vectorNode->collection();
+  TRI_ASSERT(collection != nullptr);
+  auto numberOfShards = collection->numberOfShards();
+
+  SortElementVector elements;
+  elements.push_back(SortElement::createWithPath(
+      vectorNode->distanceOutVariable(), vectorNode->isAscending(), {}));
+
+  auto sortMode = GatherNode::evaluateSortMode(numberOfShards);
+  auto parallelism = GatherNode::evaluateParallelism(*collection);
+  auto* gatherNode =
+      plan.createNode<GatherNode>(&plan, plan.nextId(), sortMode, parallelism);
+  if (numberOfShards != 1) {
+    gatherNode->elements(elements);
+  }
+  return gatherNode;
+}
+
 // Sets up a Gather node for scatterInClusterRule.
 //
 // Each of EnumerateCollectionNode, IndexNode, IResearchViewNode, and
@@ -151,6 +174,10 @@ auto insertGatherNode(
       }
       return gatherNode;
     }
+    case ExecutionNode::ENUMERATE_NEAR_VECTORS: {
+      return makeVectorGatherNode(
+          plan, ExecutionNode::castTo<EnumerateNearVectorNode const*>(node));
+    }
     case ExecutionNode::MATERIALIZE: {
       auto const* materializeNode =
           ExecutionNode::castTo<materialize::MaterializeNode const*>(node);
@@ -160,29 +187,9 @@ auto insertGatherNode(
       if (maybeEnumerateNearVectorNode != nullptr &&
           maybeEnumerateNearVectorNode->getType() ==
               ExecutionNode::ENUMERATE_NEAR_VECTORS) {
-        auto const* enumerateNearVectorNode =
-            ExecutionNode::castTo<EnumerateNearVectorNode const*>(
-                maybeEnumerateNearVectorNode);
-        auto elements = SortElementVector{};
-        auto const* collection = enumerateNearVectorNode->collection();
-        TRI_ASSERT(collection != nullptr);
-        auto numberOfShards = collection->numberOfShards();
-
-        Variable const* sortVariable =
-            enumerateNearVectorNode->distanceOutVariable();
-        elements.push_back(SortElement::createWithPath(
-            sortVariable, enumerateNearVectorNode->isAscending(), {}));
-
-        auto sortMode = GatherNode::evaluateSortMode(numberOfShards);
-        auto parallelism = GatherNode::evaluateParallelism(*collection);
-
-        gatherNode = plan.createNode<GatherNode>(&plan, plan.nextId(), sortMode,
-                                                 parallelism);
-
-        if (!elements.empty() && numberOfShards != 1) {
-          gatherNode->elements(elements);
-        }
-        return gatherNode;
+        return makeVectorGatherNode(
+            plan, ExecutionNode::castTo<EnumerateNearVectorNode const*>(
+                      maybeEnumerateNearVectorNode));
       }
       gatherNode = plan.createNode<GatherNode>(&plan, plan.nextId(),
                                                GatherNode::SortMode::Default);
