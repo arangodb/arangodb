@@ -87,6 +87,14 @@ class VectorIndexTrainer {
   };
 
  public:
+  struct TrainingResult {
+    std::shared_ptr<faiss::IndexIVF> index;
+    // A small contiguous (nq * dimension, row-major) slice of training
+    // vectors retained for post-ingestion nprobe autotuning. Capped well
+    // below the full reservoir to avoid carrying megabytes past training.
+    std::vector<float> autoTuneSample;
+  };
+
   VectorIndexTrainer(RocksDBVectorIndex const& index,
                      ResourceMonitor& resourceMonitor, rocksdb::DB* db,
                      RocksDBKeyBounds bounds);
@@ -102,9 +110,9 @@ class VectorIndexTrainer {
   ///  2. Create the FAISS index
   ///  3. Load training vectors from the iterator
   ///  4. Train the FAISS index
-  ///  5. Serialize the trained index data
-  ResultT<std::shared_ptr<faiss::IndexIVF>> train(
-      std::size_t numDocsHint, std::stop_token stopToken = {});
+  ///  5. Retain a small sample of training vectors for autotune
+  ResultT<TrainingResult> train(std::size_t numDocsHint,
+                                std::stop_token stopToken = {});
 
  private:
   ResultT<TrainingDataset> collectTrainingDataset(

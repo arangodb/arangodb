@@ -30,6 +30,7 @@
 #include "RocksDBEngine/RocksDBBuilderIndex.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBVectorIndex.h"
+#include "VectorIndex/VectorIndexAutoTuner.h"
 
 #include <atomic>
 #include <chrono>
@@ -77,6 +78,12 @@
 #include "faiss/utils/distances.h"
 
 namespace arangodb::vector {
+
+// Mirrors LOG_VECTOR_INDEX from RocksDBVectorIndex.cpp; used in member
+// functions of VectorIndexBuilder where `_index` is in scope.
+#define LOG_VECTOR_BUILD(lid, level, topic)                                 \
+  LOG_TOPIC((lid), level, topic) << "[shard=" << _index.collection().name() \
+                                 << ", index=" << _index.id().id() << "] "
 
 // Shallow field-presence probe; ingestion already rejects malformed vectors.
 bool hasVectorField(
@@ -388,7 +395,7 @@ Result VectorIndexTrainer::shrinkReservoirForSparseScaling(
   return {};
 }
 
-ResultT<std::shared_ptr<faiss::IndexIVF>> VectorIndexTrainer::train(
+ResultT<VectorIndexTrainer::TrainingResult> VectorIndexTrainer::train(
     std::size_t numDocsHint, std::stop_token stopToken) {
   auto res =
       collectTrainingDataset(*_docIt.it, _docIt.upper, numDocsHint, stopToken);
@@ -441,7 +448,17 @@ ResultT<std::shared_ptr<faiss::IndexIVF>> VectorIndexTrainer::train(
       << std::format("[shard={}, index={}] Finished training.",
                      _index.collection().name(), _index.id().id());
 
-  return faissIndex;
+  // Copy out a small autotune sample. The reservoir is already a uniform
+  // random sample (Algorithm L), so a prefix is uniform too. Capped to keep
+  // calibration cost bounded; the full reservoir is freed when this returns.
+  static constexpr std::size_t kAutoTuneSampleCap = 1024;
+  auto const sampleCount =
+      std::min<std::size_t>(kAutoTuneSampleCap, numOfTrainingVectors);
+  std::vector<float> autoTuneSample(
+      trainingData.data.begin(),
+      trainingData.data.begin() + sampleCount * def.dimension);
+
+  return TrainingResult{std::move(faissIndex), std::move(autoTuneSample)};
 }
 
 Result ingestVectors(RocksDBVectorIndex& index, rocksdb::DB* rootDB,
@@ -795,14 +812,15 @@ Result VectorIndexBuilder::build(
     _index.resetTrainingState();
     return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
   }
-  auto faissIndexResult = trainer.train(numDocsHint, stopToken);
+  auto trainingResult = trainer.train(numDocsHint, stopToken);
   auto const trainEnd = std::chrono::steady_clock::now();
-  if (faissIndexResult.fail()) {
+  if (trainingResult.fail()) {
     _index.resetTrainingState();
-    return std::move(faissIndexResult).result();
+    return std::move(trainingResult).result();
   }
 
-  auto faissIndex = std::move(faissIndexResult).get();
+  auto faissIndex = std::move(trainingResult.get().index);
+  auto autoTuneSample = std::move(trainingResult.get().autoTuneSample);
   trainingDuration.count(
       std::chrono::duration<double>(trainEnd - trainStart).count());
 
@@ -811,9 +829,7 @@ Result VectorIndexBuilder::build(
     return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
   }
 
-  LOG_TOPIC("e163b", INFO, Logger::ENGINES)
-      << "[shard=" << _index.collection().name()
-      << ", index=" << _index.id().id() << "] "
+  LOG_VECTOR_BUILD("e163b", INFO, Logger::ENGINES)
       << "Training complete. Ingesting vectors.";
 
   auto trainedData = serializeIndex(*faissIndex);
@@ -866,9 +882,7 @@ Result VectorIndexBuilder::build(
   auto const ingestEnd = std::chrono::steady_clock::now();
 
   if (res.fail()) {
-    LOG_TOPIC("e166b", ERR, Logger::ENGINES)
-        << "[shard=" << _index.collection().name()
-        << ", index=" << _index.id().id() << "] "
+    LOG_VECTOR_BUILD("e166b", ERR, Logger::ENGINES)
         << "Vector index fill + WAL catch-up failed: " << res.errorMessage();
     _index.resetTrainingState();
     return res;
@@ -880,12 +894,32 @@ Result VectorIndexBuilder::build(
   // fillIndexBackground returns with the exclusive lock still held.
   // Swap the real index back and transition to kReady before releasing.
   swapGuard.fire();
+
+  // Autotune nprobe against the fully-ingested index, while the build lock
+  // still blocks writes and the state is still kIngesting (so queries cannot
+  // observe the index). Tuning failure is non-fatal: the index stays usable
+  // and falls back to UserVectorIndexDefinition::defaultNProbe. autoTuneNProbe
+  // emits its own start/success/failure logs.
+  // TODO(jbajic) maybe not while we hold the lock!!!
+  if (!autoTuneSample.empty()) {
+    auto const logPrefix = std::format(
+        "[shard={}, index={}] ", _index.collection().name(), _index.id().id());
+    auto tuned =
+        autoTuneNProbe(*_index.faissIndex(), autoTuneSample, kdefaultAutoTuneR,
+                       kdefaultAutoTuneTargetRecall, logPrefix);
+    if (tuned.ok()) {
+      auto const& td = _index.applyTunedNProbe(tuned.get());
+      if (auto persistRes = persistTrainedData(td); persistRes.fail()) {
+        LOG_VECTOR_BUILD("e16ac", WARN, Logger::ENGINES)
+            << "Failed to persist tuned nprobe: " << persistRes.errorMessage();
+      }
+    }
+  }
+
   _index.setTrainingState(VectorIndexTrainingState::kIngesting,
                           VectorIndexTrainingState::kReady);
 
-  LOG_TOPIC("e169c", INFO, Logger::ENGINES)
-      << "[shard=" << _index.collection().name()
-      << ", index=" << _index.id().id() << "] "
+  LOG_VECTOR_BUILD("e169c", INFO, Logger::ENGINES)
       << "Vector index build completed (fill + WAL catch-up).";
 
   return res;
