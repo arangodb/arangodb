@@ -27,7 +27,6 @@
 #include <cstddef>
 #include <format>
 #include <string>
-#include <unordered_set>
 #include <vector>
 
 #include "Basics/ScopeGuard.h"
@@ -35,6 +34,7 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 
+#include <faiss/AutoTune.h>
 #include <faiss/IndexIVF.h>
 #include <faiss/impl/FaissException.h>
 
@@ -60,27 +60,6 @@ std::vector<std::int64_t> nProbeCandidates(std::size_t nlist) {
     out.push_back(v);
   }
   return out;
-}
-
-double computeRecallAtR(std::span<faiss::idx_t const> returnedI,
-                        std::span<faiss::idx_t const> truthI,
-                        faiss::idx_t numberOfQueries, std::int64_t R) {
-  std::size_t hits = 0;
-  std::unordered_set<faiss::idx_t> truth;
-  truth.reserve(R);
-  for (faiss::idx_t q = 0; q < numberOfQueries; ++q) {
-    truth.clear();
-    auto const queryTruth = truthI.subspan(q * R, R);
-    truth.insert(queryTruth.begin(), queryTruth.end());
-    auto const queryReturned = returnedI.subspan(q * R, R);
-    for (auto const id : queryReturned) {
-      if (truth.contains(id)) {
-        ++hits;
-      }
-    }
-  }
-  return static_cast<double>(hits) /
-         (static_cast<double>(numberOfQueries) * static_cast<double>(R));
 }
 
 std::string formatTrials(std::vector<Trial> const& trials,
@@ -155,6 +134,9 @@ ResultT<std::int64_t> autoTuneNProbe(faiss::IndexIVF& index,
              .count()
       << "s.";
 
+  faiss::IntersectionCriterion crit(numberOfQueries, R);
+  crit.set_groundtruth(static_cast<int>(R), gtD.data(), gtI.data());
+
   auto const candidates = nProbeCandidates(index.nlist);
   if (candidates.empty()) {
     outcome = Result{TRI_ERROR_INTERNAL,
@@ -181,7 +163,7 @@ ResultT<std::int64_t> autoTuneNProbe(faiss::IndexIVF& index,
     auto const trialSecs = std::chrono::duration<double>(
                                std::chrono::steady_clock::now() - trialStart)
                                .count();
-    auto const recall = computeRecallAtR(I, gtI, numberOfQueries, R);
+    auto const recall = crit.evaluate(D.data(), I.data());
     trials.push_back(Trial{nprobe, recall, trialSecs});
     LOG_TOPIC("e16b2", INFO, Logger::ENGINES)
         << "Autotune trial " << trials.size() << "/" << candidates.size()
