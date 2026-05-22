@@ -78,10 +78,14 @@ inline auto inspect(Inspector& f, SimilarityMetric& x) {
 
 struct TrainedData {
   std::vector<std::uint8_t> codeData;
+  // TODO(jbajic) check for downgrades
+  // When set, takes precedence over defaultNProbe at search time.
+  std::optional<std::int64_t> tunedNProbe;
 
   template<class Inspector>
   friend inline auto inspect(Inspector& f, TrainedData& x) {
-    return f.object(x).fields(f.field("codeData", x.codeData));
+    return f.object(x).fields(f.field("codeData", x.codeData),
+                              f.field("tunedNProbe", x.tunedNProbe));
   }
 };
 
