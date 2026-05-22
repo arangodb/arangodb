@@ -733,25 +733,40 @@ differs from the current weight are shown.
 
 ## Interactive Mode
 
-`ToastTest.Interactive` lets you run individual test modules against a
-manually-started deployment, useful for debugging.
+`ToastTest.Interactive` lets you run individual test modules or complete suites
+against a manually-started deployment, useful for debugging. A single `run/2`
+function infers the target type automatically -- pass a file, directory, test
+module, or suite module.
 
 ```elixir
 # In an IEx session:
 {:ok, deployment} = Toast.Deployment.start_single_server("/path/to/work-dir")
 
-# Run a test file
+# Run a single test file
 ToastTest.Interactive.run("suites/smoke/test_version.exs", deployment: deployment)
 
-# Run a specific test by name
-ToastTest.Interactive.run(Smoke.VersionTest,
-  deployment: deployment,
-  test: "returns arango server info"
-)
+# Run a single test module
+ToastTest.Interactive.run(Smoke.VersionTest, deployment: deployment)
+
+# Run a complete suite by directory
+ToastTest.Interactive.run("suites/smoke/", deployment: deployment)
+
+# Run a complete suite by module
+ToastTest.Interactive.run(Smoke.Suite, deployment: deployment)
+
+# Filter by test name (works for both single modules and suites)
+ToastTest.Interactive.run(Smoke.Suite, deployment: deployment, test: "version")
 
 # When done
 Toast.Deployment.stop(deployment)
 ```
+
+All files in the suite directory are always compiled, so cross-module
+dependencies work regardless of which entry point you use. When a suite module
+is passed, `setup_deployment/1` and `teardown_deployment/1` callbacks are called
+automatically. Compared to `mix toast`, interactive mode does not run
+between-tests health checks, enforce timeouts, collect diagnostics, or produce
+result files.
 
 ## Generating Suites
 

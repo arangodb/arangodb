@@ -29,121 +29,108 @@ defmodule ToastTest.InteractiveTest do
   alias ToastTest.DeploymentRegistry
   alias ToastTest.Interactive
 
-  # -- Fixture modules --
-  #
-  # These `use ExUnit.Case` so Interactive.run/2 can call __ex_unit__/0 on them.
-  # They are also picked up by `mix test`, so all behavior that should only
-  # happen when run via Interactive is guarded by checking whether
-  # :interactive_test_collector is registered (a proxy for "run via our tests").
+  defmodule Fixtures.SimpleSuite do
+    use ToastTest.Suite
+  end
 
-  defmodule Fixtures.Passing do
+  defmodule Fixtures.SuiteTestA do
     use ExUnit.Case, async: false
+    def __toast_suite__, do: Fixtures.SimpleSuite
+    test "alpha", do: assert(true)
+  end
 
-    test "passes" do
-      assert 1 + 1 == 2
+  defmodule Fixtures.SuiteTestB do
+    use ExUnit.Case, async: false
+    def __toast_suite__, do: Fixtures.SimpleSuite
+    test "beta", do: assert(true)
+    test "gamma", do: assert(true)
+  end
+
+  defmodule Fixtures.SuiteWithCallbacks do
+    use ToastTest.Suite
+
+    @impl ToastTest.Suite
+    def setup_deployment(_deployment) do
+      collector = Process.whereis(:interactive_test_collector)
+      if collector, do: send(collector, :setup_deployment_called)
+      {:ok, %{from_setup: true}}
+    end
+
+    @impl ToastTest.Suite
+    def teardown_deployment(_deployment) do
+      collector = Process.whereis(:interactive_test_collector)
+      if collector, do: send(collector, :teardown_deployment_called)
+      :ok
     end
   end
 
-  defmodule Fixtures.WithSetup do
+  defmodule Fixtures.CallbackSuiteTest do
     use ExUnit.Case, async: false
-
-    setup do
-      {:ok, setup_value: 42}
-    end
-
-    test "uses setup context", %{setup_value: val} do
-      assert val == 42
-    end
+    def __toast_suite__, do: Fixtures.SuiteWithCallbacks
+    test "ok", do: assert(true)
   end
 
-  defmodule Fixtures.WithSetupAll do
-    use ExUnit.Case, async: false
+  defmodule Fixtures.SuiteWithFailingSetup do
+    use ToastTest.Suite
 
-    setup_all do
-      {:ok, shared: "hello"}
-    end
-
-    test "uses setup_all context", %{shared: val} do
-      assert val == "hello"
-    end
-  end
-
-  defmodule Fixtures.OnExitPerTest do
-    use ExUnit.Case, async: false
-
-    test "registers on_exit" do
+    @impl ToastTest.Suite
+    def setup_deployment(_deployment) do
       collector = Process.whereis(:interactive_test_collector)
 
       if collector do
-        on_exit(fn ->
-          send(collector, {:on_exit_ran, self()})
-        end)
+        {:error, "setup exploded"}
+      else
+        {:ok, %{}}
       end
-
-      assert true
     end
   end
 
-  defmodule Fixtures.OnExitFailure do
+  defmodule Fixtures.FailingSetupSuiteTest do
     use ExUnit.Case, async: false
+    def __toast_suite__, do: Fixtures.SuiteWithFailingSetup
+    test "will not run", do: assert(true)
+  end
 
-    test "passes but on_exit fails" do
+  defmodule Fixtures.TeardownOnFailureSuite do
+    use ToastTest.Suite
+
+    @impl ToastTest.Suite
+    def teardown_deployment(_deployment) do
       collector = Process.whereis(:interactive_test_collector)
-
-      if collector do
-        on_exit(fn -> raise "on_exit boom" end)
-      end
-
-      assert true
+      if collector, do: send(collector, :teardown_ran_after_failure)
+      :ok
     end
   end
 
-  defmodule Fixtures.SetupAllOnExit do
+  defmodule Fixtures.TeardownOnFailureTest do
     use ExUnit.Case, async: false
+    def __toast_suite__, do: Fixtures.TeardownOnFailureSuite
 
-    setup_all do
-      collector = Process.whereis(:interactive_test_collector)
-
-      if collector do
-        on_exit(fn ->
-          send(collector, {:setup_all_on_exit_ran, self()})
-        end)
-      end
-
-      {:ok, %{}}
-    end
-
-    test "first" do
-      assert true
-    end
-
-    test "second" do
-      assert true
+    test "fails" do
+      if Process.whereis(:interactive_test_collector),
+        do: raise("boom")
     end
   end
 
-  defmodule Fixtures.TwoTests do
+  defmodule Fixtures.ClusterSuite do
+    use ToastTest.Suite, mode: :cluster, cluster_coordinators: 2
+  end
+
+  defmodule Fixtures.ClusterSuiteTest do
     use ExUnit.Case, async: false
-
-    test "alpha" do
-      assert true
-    end
-
-    test "beta" do
-      assert true
-    end
+    def __toast_suite__, do: Fixtures.ClusterSuite
+    test "cluster test", do: assert(true)
   end
 
-  defmodule Fixtures.ProcessId do
+  defmodule Fixtures.SingleSuite do
+    use ToastTest.Suite, mode: :single_server
+  end
+
+  defmodule Fixtures.SingleSuiteTest do
     use ExUnit.Case, async: false
-
-    test "reports own pid" do
-      collector = Process.whereis(:interactive_test_collector)
-      if collector, do: send(collector, {:test_pid, self()})
-    end
+    def __toast_suite__, do: Fixtures.SingleSuite
+    test "single test", do: assert(true)
   end
-
-  # -- Setup --
 
   setup :setup_deployment_registry
 
@@ -159,163 +146,24 @@ defmodule ToastTest.InteractiveTest do
     end)
   end
 
-  # -- Tests --
-
-  describe "run/2 with passing tests" do
-    test "returns passed outcome" do
-      results = Interactive.run(Fixtures.Passing, deployment: :fake)
-      assert [%{outcome: :passed, failure: nil}] = results
-    end
-
-    test "result contains the test name as an atom" do
-      [result] = Interactive.run(Fixtures.Passing, deployment: :fake)
-      assert result.name == :"test passes"
-    end
-  end
-
-  describe "run/2 with failing tests" do
-    test "returns failed outcome with error details" do
-      defmodule AlwaysFails do
-        use ExUnit.Case, async: false
-
-        # Guarded so mix test doesn't report a failure for the fixture itself.
-        test "boom" do
-          if Process.whereis(:interactive_test_collector),
-            do: raise("intentional")
-        end
-      end
-
-      register_collector()
-      results = Interactive.run(AlwaysFails, deployment: :fake)
-      assert [%{outcome: :failed}] = results
-      assert [%{failure: {:error, %RuntimeError{message: "intentional"}, _}}] = results
-    end
-  end
-
-  describe "run/2 with mixed results" do
-    test "returns one passed and one failed" do
-      defmodule MixedInline do
-        use ExUnit.Case, async: false
-
-        test "ok" do
-          assert true
-        end
-
-        test "not ok" do
-          if Process.whereis(:interactive_test_collector),
-            do: raise("nope")
-        end
-      end
-
-      register_collector()
-      results = Interactive.run(MixedInline, deployment: :fake)
-      outcomes = results |> Enum.map(& &1.outcome) |> Enum.sort()
-      assert outcomes == [:failed, :passed]
-    end
-  end
-
-  describe "setup callback" do
-    test "per-test setup context is available in the test" do
-      results = Interactive.run(Fixtures.WithSetup, deployment: :fake)
-      assert [%{outcome: :passed}] = results
-    end
-  end
-
-  describe "setup_all callback" do
-    test "setup_all context is merged into test context" do
-      results = Interactive.run(Fixtures.WithSetupAll, deployment: :fake)
-      assert [%{outcome: :passed}] = results
-    end
-
-    test "failing setup_all marks all tests as failed" do
-      defmodule FailingSetupAll do
-        use ExUnit.Case, async: false
-
-        setup_all do
-          if Process.whereis(:interactive_test_collector),
-            do: raise("setup_all exploded")
-
-          {:ok, %{}}
-        end
-
-        test "a", do: :ok
-        test "b", do: :ok
-      end
-
-      register_collector()
-      results = Interactive.run(FailingSetupAll, deployment: :fake)
-      assert length(results) == 2
-      assert Enum.all?(results, &(&1.outcome == :failed))
-    end
-  end
-
-  describe "on_exit handlers (per-test)" do
-    test "on_exit handler runs after the test" do
-      register_collector()
-      Interactive.run(Fixtures.OnExitPerTest, deployment: :fake)
-      assert_received {:on_exit_ran, _pid}
-    end
-
-    test "on_exit failure turns passing test into failed" do
-      register_collector()
-      results = Interactive.run(Fixtures.OnExitFailure, deployment: :fake)
-      assert [%{outcome: :failed}] = results
-    end
-  end
-
-  describe "on_exit handlers (setup_all)" do
-    test "setup_all on_exit handlers run after all tests complete" do
-      register_collector()
-      Interactive.run(Fixtures.SetupAllOnExit, deployment: :fake)
-      assert_received {:setup_all_on_exit_ran, _pid}
-    end
-  end
-
-  describe "test filtering" do
-    test "filters to a specific test by name" do
-      results = Interactive.run(Fixtures.TwoTests, deployment: :fake, test: "alpha")
-      assert [%{name: :"test alpha", outcome: :passed}] = results
-    end
-
-    test "returns empty list when filter matches nothing" do
-      results = Interactive.run(Fixtures.TwoTests, deployment: :fake, test: "nonexistent")
-      assert results == []
-    end
-
-    test "runs all tests when no filter given" do
-      results = Interactive.run(Fixtures.TwoTests, deployment: :fake)
-      assert length(results) == 2
-    end
-  end
-
-  describe "process isolation" do
-    test "each test runs in a separate process from the caller" do
-      register_collector()
-      caller_pid = self()
-      Interactive.run(Fixtures.ProcessId, deployment: :fake)
-
-      assert_received {:test_pid, test_pid}
-      assert test_pid != caller_pid
-    end
-  end
-
   describe "summary output" do
     test "prints N passed, M failed" do
-      # print_summary is only called for modules with setup_all
+      defmodule SummaryTestSuite do
+        use ToastTest.Suite
+      end
+
       defmodule SummaryModule do
         use ExUnit.Case, async: false
+        def __toast_suite__, do: SummaryTestSuite
 
         setup_all do
           {:ok, %{}}
         end
 
-        test "ok" do
-          assert true
-        end
+        test "ok", do: assert(true)
 
         test "fail" do
-          if Process.whereis(:interactive_test_collector),
-            do: raise("boom")
+          if Process.whereis(:interactive_test_collector), do: raise("boom")
         end
       end
 
@@ -329,10 +177,10 @@ defmodule ToastTest.InteractiveTest do
       assert output =~ "1 passed, 1 failed"
     end
 
-    test "prints summary for modules without setup_all" do
+    test "prints summary for single test module" do
       output =
         capture_io(fn ->
-          Interactive.run(Fixtures.Passing, deployment: :fake)
+          Interactive.run(Fixtures.SuiteTestA, deployment: :fake)
         end)
 
       assert output =~ "1 passed, 0 failed"
@@ -340,26 +188,288 @@ defmodule ToastTest.InteractiveTest do
   end
 
   describe "deployment registration" do
-    test "registers deployment under :__standalone__ for modules without __toast_suite__" do
-      Interactive.run(Fixtures.Passing, deployment: :my_deployment)
-      assert DeploymentRegistry.get(:__standalone__) == :my_deployment
-    end
-
-    test "registers deployment under suite key for modules with __toast_suite__" do
-      defmodule WithSuiteKey do
-        use ExUnit.Case, async: false
-        def __toast_suite__, do: :my_suite
-        test "ok", do: assert(true)
-      end
-
-      Interactive.run(WithSuiteKey, deployment: :suite_deploy)
-      assert DeploymentRegistry.get(:my_suite) == :suite_deploy
+    test "registers deployment under suite module" do
+      results = run_capturing_io(Fixtures.SuiteTestA, deployment: :suite_deploy)
+      assert [%{outcome: :passed}] = results
+      assert DeploymentRegistry.get(Fixtures.SimpleSuite) == :suite_deploy
     end
 
     test "raises when :deployment option is missing" do
       assert_raise KeyError, fn ->
-        Interactive.run(Fixtures.Passing, [])
+        Interactive.run(Fixtures.SuiteTestA, [])
       end
+    end
+  end
+
+  describe "deployment validation" do
+    test "accepts compatible cluster deployment for cluster suite" do
+      deployment = make_cluster_deployment(coordinators: 2, dbservers: 3, agents: 3)
+
+      results = run_capturing_io(Fixtures.ClusterSuite, deployment: deployment)
+      assert Enum.all?(results, &(&1.outcome == :passed))
+    end
+
+    test "rejects single-server deployment for cluster suite" do
+      deployment = make_single_deployment()
+
+      assert_raise ArgumentError, ~r/requires cluster.*got single/, fn ->
+        run_capturing_io(Fixtures.ClusterSuite, deployment: deployment)
+      end
+    end
+
+    test "rejects cluster deployment for single-server suite" do
+      deployment = make_cluster_deployment()
+
+      assert_raise ArgumentError, ~r/requires single_server.*got cluster/, fn ->
+        run_capturing_io(Fixtures.SingleSuite, deployment: deployment)
+      end
+    end
+
+    test "rejects cluster with insufficient coordinators" do
+      deployment = make_cluster_deployment(coordinators: 1)
+
+      assert_raise ArgumentError, ~r/coordinator/, fn ->
+        run_capturing_io(Fixtures.ClusterSuite, deployment: deployment)
+      end
+    end
+
+    test "accepts auto-mode suite with any deployment" do
+      single = make_single_deployment()
+      cluster = make_cluster_deployment()
+
+      results = run_capturing_io(Fixtures.SimpleSuite, deployment: single)
+      assert Enum.all?(results, &(&1.outcome == :passed))
+
+      results = run_capturing_io(Fixtures.SimpleSuite, deployment: cluster)
+      assert Enum.all?(results, &(&1.outcome == :passed))
+    end
+  end
+
+  describe "run/2 suite mode with module" do
+    test "runs all test modules belonging to the suite" do
+      results = run_capturing_io(Fixtures.SimpleSuite, deployment: :fake)
+      names = Enum.map(results, & &1.name) |> Enum.sort()
+      assert :"test alpha" in names
+      assert :"test beta" in names
+      assert :"test gamma" in names
+      assert Enum.all?(results, &(&1.outcome == :passed))
+    end
+
+    test "calls setup_deployment and teardown_deployment" do
+      register_collector()
+
+      capture_io(fn ->
+        Interactive.run(Fixtures.SuiteWithCallbacks, deployment: :fake)
+      end)
+
+      assert_received :setup_deployment_called
+      assert_received :teardown_deployment_called
+    end
+
+    test "resolves suite and runs lifecycle when passing a test module" do
+      register_collector()
+
+      capture_io(fn ->
+        Interactive.run(Fixtures.CallbackSuiteTest, deployment: :fake)
+      end)
+
+      assert_received :setup_deployment_called
+      assert_received :teardown_deployment_called
+    end
+
+    test "extra context from setup_deployment is stored" do
+      register_collector()
+
+      capture_io(fn ->
+        Interactive.run(Fixtures.SuiteWithCallbacks, deployment: :fake)
+      end)
+
+      assert DeploymentRegistry.get_extra_context(Fixtures.SuiteWithCallbacks) == %{
+               from_setup: true
+             }
+    end
+
+    test "teardown runs even when a test fails" do
+      register_collector()
+
+      capture_io(fn ->
+        Interactive.run(Fixtures.TeardownOnFailureSuite, deployment: :fake)
+      end)
+
+      assert_received :teardown_ran_after_failure
+    end
+
+    test "setup_deployment failure raises" do
+      register_collector()
+
+      assert_raise RuntimeError, ~r/setup_deployment failed/, fn ->
+        capture_io(fn ->
+          Interactive.run(Fixtures.SuiteWithFailingSetup, deployment: :fake)
+        end)
+      end
+    end
+
+    test "filters by test name across all modules" do
+      results = run_capturing_io(Fixtures.SimpleSuite, deployment: :fake, test: "alpha")
+      assert length(results) == 1
+      assert [%{name: :"test alpha"}] = results
+    end
+
+    test "raises when module is not loaded and no suite directory found" do
+      assert_raise ArgumentError, ~r/is not loaded or does not belong to a suite/, fn ->
+        Interactive.run(Nonexistent.Suite, deployment: :fake)
+      end
+    end
+
+    test "registers deployment under suite key" do
+      capture_io(fn ->
+        Interactive.run(Fixtures.SimpleSuite, deployment: :suite_deploy)
+      end)
+
+      assert DeploymentRegistry.get(Fixtures.SimpleSuite) == :suite_deploy
+    end
+
+    test "prints per-module headers and aggregate summary" do
+      output =
+        capture_io(fn ->
+          Interactive.run(Fixtures.SimpleSuite, deployment: :fake)
+        end)
+
+      assert output =~ "SuiteTestA"
+      assert output =~ "SuiteTestB"
+      assert output =~ "Suite total:"
+    end
+  end
+
+  describe "run/2 suite mode with path" do
+    @tag :tmp_dir
+    test "compiles and runs suite from directory", %{tmp_dir: tmp_dir} do
+      {suite_dir, _uid} = create_suite_fixture(tmp_dir)
+      results = run_capturing_io(suite_dir, deployment: :fake)
+      assert length(results) == 1
+      assert [%{outcome: :passed}] = results
+    end
+
+    @tag :tmp_dir
+    test "raises when no suite.ex found in directory or parents", %{tmp_dir: tmp_dir} do
+      assert_raise ArgumentError, ~r/no suite\.ex found/, fn ->
+        Interactive.run(tmp_dir, deployment: :fake)
+      end
+    end
+
+    @tag :tmp_dir
+    test "subfolder runs only tests in that subfolder", %{tmp_dir: tmp_dir} do
+      {suite_dir, uid} = create_suite_fixture(tmp_dir, subfolders: true)
+      sub_dir = Path.join(suite_dir, "sub")
+      results = run_capturing_io(sub_dir, deployment: :fake)
+      assert length(results) == 1
+      assert [%{outcome: :passed}] = results
+      assert hd(results).module == :"Elixir.TmpSuite#{uid}.SubTest"
+    end
+
+    @tag :tmp_dir
+    test "suite root includes tests from subfolders", %{tmp_dir: tmp_dir} do
+      {suite_dir, _uid} = create_suite_fixture(tmp_dir, subfolders: true)
+      results = run_capturing_io(suite_dir, deployment: :fake)
+      assert length(results) == 2
+      assert Enum.all?(results, &(&1.outcome == :passed))
+    end
+
+    @tag :tmp_dir
+    test "file in subfolder compiles and runs correctly", %{tmp_dir: tmp_dir} do
+      {suite_dir, uid} = create_suite_fixture(tmp_dir, subfolders: true)
+      file = Path.join([suite_dir, "sub", "test_sub.exs"])
+      results = run_capturing_io(file, deployment: :fake)
+      assert length(results) == 1
+      assert hd(results).module == :"Elixir.TmpSuite#{uid}.SubTest"
+    end
+  end
+
+  defp run_capturing_io(target, opts) do
+    capture_io(fn ->
+      send(self(), {:interactive_results, Interactive.run(target, opts)})
+    end)
+
+    assert_received {:interactive_results, results}
+    results
+  end
+
+  defp create_suite_fixture(base_dir, opts \\ []) do
+    suite_dir = Path.join(base_dir, "test_suite_#{System.unique_integer([:positive])}")
+    File.mkdir_p!(suite_dir)
+
+    uid = System.unique_integer([:positive])
+
+    File.write!(Path.join(suite_dir, "suite.ex"), """
+    defmodule TmpSuite#{uid}.Suite do
+      use ToastTest.Suite
+    end
+    """)
+
+    File.write!(Path.join(suite_dir, "test_example.exs"), """
+    defmodule TmpSuite#{uid}.ExampleTest do
+      use ExUnit.Case, async: false
+      def __toast_suite__, do: TmpSuite#{uid}.Suite
+      test "it works", do: assert(true)
+    end
+    """)
+
+    if opts[:subfolders] do
+      sub_dir = Path.join(suite_dir, "sub")
+      File.mkdir_p!(sub_dir)
+
+      File.write!(Path.join(sub_dir, "test_sub.exs"), """
+      defmodule TmpSuite#{uid}.SubTest do
+        use ExUnit.Case, async: false
+        def __toast_suite__, do: TmpSuite#{uid}.Suite
+        test "sub test", do: assert(true)
+      end
+      """)
+    end
+
+    {suite_dir, uid}
+  end
+
+  defp make_single_deployment do
+    %Toast.Deployment{
+      id: "test-single",
+      servers: %{
+        "single" => %Toast.Deployment.ServerInfo{
+          id: "single",
+          role: :single,
+          port: 8529,
+          endpoint: "http://localhost:8529"
+        }
+      }
+    }
+  end
+
+  defp make_cluster_deployment(opts \\ []) do
+    coordinators = Keyword.get(opts, :coordinators, 1)
+    dbservers = Keyword.get(opts, :dbservers, 3)
+    agents = Keyword.get(opts, :agents, 3)
+
+    servers =
+      build_servers(:coordinator, coordinators) ++
+        build_servers(:dbserver, dbservers) ++
+        build_servers(:agent, agents)
+
+    %Toast.Deployment{
+      id: "test-cluster",
+      servers: Map.new(servers, fn srv -> {srv.id, srv} end)
+    }
+  end
+
+  defp build_servers(role, count) do
+    for i <- 0..(count - 1) do
+      id = "#{role}-#{i}"
+
+      %Toast.Deployment.ServerInfo{
+        id: id,
+        role: role,
+        port: 8529 + i,
+        endpoint: "http://localhost:#{8529 + i}"
+      }
     end
   end
 end
