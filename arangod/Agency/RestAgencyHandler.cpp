@@ -30,6 +30,7 @@
 #include "Metrics/Histogram.h"
 #include "Metrics/LogScale.h"
 #include "Rest/Version.h"
+#include "StorageEngine/StorageEngine.h"
 #include "Transaction/StandaloneContext.h"
 
 #include <Async/async.h>
