@@ -25,11 +25,16 @@
 
 #include "Aql/AqlItemBlockInputRange.h"
 #include "Aql/ExecutionState.h"
+#include "Aql/Variable.h"
 #include "Assertions/Assert.h"
 #include "Basics/Exceptions.h"
+#include "Indexes/IndexIterator.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBVectorIndex.h"
+#include "StorageEngine/PhysicalCollection.h"
+#include "VocBase/Identifiers/LocalDocumentId.h"
+#include "VocBase/LogicalCollection.h"
 #include "Aql/ExecutionBlockImpl.tpp"
 
 #include <cmath>
@@ -54,6 +59,41 @@ EnumerateNearVectorsExecutor::EnumerateNearVectorsExecutor(Fetcher& /*unused*/,
     : _infos(infos),
       _trx(_infos.queryContext.newTrxContext()),
       _collection(_infos.collection) {}
+
+void EnumerateNearVectorsExecutor::writeProjectionsFromDocument(
+    velocypack::Slice docSlice, OutputAqlItemRow& output) {
+  if (_infos.projections.empty() || _infos.projectionVarsToRegs.empty()) {
+    return;
+  }
+  _infos.projections.produceFromDocument(
+      _projectionsBuilder, docSlice, &_trx,
+      [&](Variable const* variable, velocypack::Slice slice) {
+        if (slice.isNone()) {
+          slice = VPackSlice::nullSlice();
+        }
+        auto it = _infos.projectionVarsToRegs.find(variable->id);
+        TRI_ASSERT(it != _infos.projectionVarsToRegs.end());
+        output.moveValueInto(it->second, _inputRow, slice);
+      });
+}
+
+void EnumerateNearVectorsExecutor::writeProjectionsFromStoredValues(
+    velocypack::Slice storedValuesSlice, OutputAqlItemRow& output) {
+  if (_infos.projections.empty() || _infos.projectionVarsToRegs.empty()) {
+    return;
+  }
+  IndexIterator::SliceCoveringData covering{storedValuesSlice};
+  _infos.projections.produceFromIndex(
+      _projectionsBuilder, covering, &_trx,
+      [&](Variable const* variable, velocypack::Slice slice) {
+        if (slice.isNone()) {
+          slice = VPackSlice::nullSlice();
+        }
+        auto it = _infos.projectionVarsToRegs.find(variable->id);
+        TRI_ASSERT(it != _infos.projectionVarsToRegs.end());
+        output.moveValueInto(it->second, _inputRow, slice);
+      });
+}
 
 void EnumerateNearVectorsExecutor::fillInput(
     AqlItemBlockInputRange& inputRange) {
@@ -100,25 +140,26 @@ void EnumerateNearVectorsExecutor::searchResults() {
   auto* vectorIndex = dynamic_cast<RocksDBVectorIndex*>(_infos.index.get());
   TRI_ASSERT(vectorIndex != nullptr);
 
-  RocksDBMethods* mthds =
-      RocksDBTransactionState::toMethods(&_trx, _collection->id());
-
-  std::tie(_labels, _distances) = vectorIndex->readBatch(
-      _inputRowConverted, _infos.searchParameters, mthds, &_trx,
-      _collection->getCollection(), _infos.getNumberOfResults(),
-      _infos.filterExpression, &_inputRow, _infos.queryContext,
-      _infos.getVarsToRegister(), _infos.documentVariable,
-      _infos.isCoveredByStoredValues);
+  vector::VectorSearchContext ctx{
+      .inputs = &_inputRowConverted,
+      .inputRow = &_inputRow,
+      .trx = &_trx,
+      .queryContext = &_infos.queryContext,
+  };
+  auto result = vectorIndex->readBatch(_infos.searchConfig, ctx);
+  _labels = std::move(result.labels);
+  _distances = std::move(result.distances);
+  _documents = std::move(result.capturedDocuments);
   _currentProcessedResultCount = 0;
+
   TRI_ASSERT(hasResults());
 
   auto validCount = std::count_if(_labels.begin(), _labels.end(),
                                   [](auto const& l) { return l != -1; });
-  LOG_TOPIC("f1a2b", INFO, Logger::ENGINES) << std::format(
+  LOG_TOPIC("f1a2b", DEBUG, Logger::ENGINES) << std::format(
       "EnumerateNearVectors::searchResults: requested={}, returned={}, "
       "validLabels={}, collectionCount={}",
-      _infos.getNumberOfResults(), _labels.size(), validCount,
-      _collectionCount);
+      _infos.searchConfig.topK, _labels.size(), validCount, _collectionCount);
 
   LOG_INTERNAL << "Results: " << _labels << " and distances: " << _distances;
 }
@@ -134,9 +175,40 @@ void EnumerateNearVectorsExecutor::fillOutput(OutputAqlItemRow& output) {
       _labels.resize(_currentProcessedResultCount);
       break;
     }
-    output.moveValueInto(
-        docOutId, _inputRow,
-        AqlValueHintUInt(_labels[_currentProcessedResultCount]));
+
+    switch (_infos.projectionMode) {
+      case vector::ProjectionMode::kPassThroughId: {
+        TRI_ASSERT(docOutId != RegisterId::maxRegisterId);
+        output.moveValueInto(
+            docOutId, _inputRow,
+            AqlValueHintUInt(_labels[_currentProcessedResultCount]));
+        break;
+      }
+      case vector::ProjectionMode::kDocument: {
+        LocalDocumentId const id{static_cast<LocalDocumentId::BaseType>(
+            _labels[_currentProcessedResultCount])};
+        auto it = _documents.find(id);
+        TRI_ASSERT(it != _documents.end());
+        velocypack::Slice docSlice = it->second.slice();
+        if (docOutId != RegisterId::maxRegisterId) {
+          output.moveValueInto(docOutId, _inputRow, docSlice);
+        }
+        writeProjectionsFromDocument(docSlice, output);
+        break;
+      }
+      case vector::ProjectionMode::kCovered: {
+        // No doc register for kCovered (createBlock leaves docOutId unset);
+        // projections come positionally out of the storedValues array.
+        TRI_ASSERT(docOutId == RegisterId::maxRegisterId);
+        LocalDocumentId const id{static_cast<LocalDocumentId::BaseType>(
+            _labels[_currentProcessedResultCount])};
+        auto it = _documents.find(id);
+        TRI_ASSERT(it != _documents.end());
+        writeProjectionsFromStoredValues(it->second.slice(), output);
+        break;
+      }
+    }
+
     output.moveValueInto(
         distOutId, _inputRow,
         AqlValueHintDouble(_distances[_currentProcessedResultCount]));
@@ -233,7 +305,7 @@ EnumerateNearVectorsExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
         "remainingRows={}, currentProcessed={}, nr={}, state={}, "
         "hasResults={}, call={}, colCount={}",
         skipped, remainingRows, _currentProcessedResultCount,
-        _infos.getNumberOfResults(), state(), hasResults(), to_string(call),
+        _infos.searchConfig.topK, state(), hasResults(), to_string(call),
         _collectionCount);
 
     auto upstreamCall = AqlCall{};
