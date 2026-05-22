@@ -51,7 +51,6 @@
 #include "Cluster/ClusterFeature.h"
 #include "Metrics/ClusterMetricsFeature.h"
 #include "Statistics/StatisticsFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 
 using namespace arangodb;
 
@@ -77,13 +76,15 @@ class PhysicalCollectionTest
     features.emplace_back(
         server.addFeature<
             arangodb::AuthenticationFeature>());  // required for VocbaseContext
-    features.emplace_back(server.addFeature<DatabaseFeature>());
+    auto& dbFeature = server.addFeature<DatabaseFeature>();
+    features.emplace_back(dbFeature);
     auto& selector = server.addFeature<EngineSelectorFeature>();
     features.emplace_back(selector);
     selector.setEngineTesting(&engine);
+    dbFeature.setEngineTesting(&engine);
     features.emplace_back(server.addFeature<metrics::MetricsFeature>(
         LazyApplicationFeatureReference<QueryRegistryFeature>(server),
-        LazyApplicationFeatureReference<StatisticsFeature>(nullptr), selector,
+        LazyApplicationFeatureReference<StatisticsFeature>(nullptr), dbFeature,
         LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(
             nullptr),
         LazyApplicationFeatureReference<ClusterFeature>(nullptr)));
@@ -98,6 +99,7 @@ class PhysicalCollectionTest
 
   ~PhysicalCollectionTest() {
     server.getFeature<EngineSelectorFeature>().setEngineTesting(nullptr);
+    server.getFeature<DatabaseFeature>().setEngineTesting(nullptr);
 
     for (auto& f : features) {
       f.get().unprepare();
