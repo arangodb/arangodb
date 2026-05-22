@@ -1065,17 +1065,21 @@ Result ensureIndexCoordinatorInner(
                 continue;  // this is not our index
               }
 
-              // check for errors
               if (hasError(v)) {
-                auto msg = extractErrorMessage(shard.key.stringView(), v);
-                auto errNum =
-                    arangodb::basics::VelocyPackHelper::getNumericValue<
-                        ErrorCode, ErrorCode::ValueType>(
-                        v, StaticStrings::ErrorNum,
-                        TRI_ERROR_ARANGO_INDEX_CREATION_FAILED);
-                dbServerResult->assign(
-                    Result(errNum, "Error during index creation: " + msg));
-                return true;
+                auto const indexType = Index::type(
+                    arangodb::basics::VelocyPackHelper::getStringView(
+                        v, StaticStrings::IndexType, ""));
+                if (indexType != Index::TRI_IDX_TYPE_VECTOR_INDEX) {
+                  auto msg = extractErrorMessage(shard.key.stringView(), v);
+                  auto errNum =
+                      arangodb::basics::VelocyPackHelper::getNumericValue<
+                          ErrorCode, ErrorCode::ValueType>(
+                          v, StaticStrings::ErrorNum,
+                          TRI_ERROR_ARANGO_INDEX_CREATION_FAILED);
+                  dbServerResult->assign(
+                      Result(errNum, "Error during index creation: " + msg));
+                  return true;
+                }
               }
 
               found++;  // found our index

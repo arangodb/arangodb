@@ -100,7 +100,6 @@
 #include "RestServer/FlushFeature.h"
 #include "RestServer/InitDatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
-#include "RestServer/SharedPRNGFeature.h"
 #include "RestServer/SoftShutdownFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/TemporaryStorageFeature.h"
@@ -163,7 +162,6 @@ static void SetupGreetingsPhase(MockServer& server) {
       LazyApplicationFeatureReference<DatabaseFeature>(nullptr),
       LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(nullptr),
       LazyApplicationFeatureReference<ClusterFeature>(nullptr));
-  server.addFeature<SharedPRNGFeature>(false);
   server.addFeature<SoftShutdownFeature>(false);
   // We do not need any further features from this phase
 }
