@@ -127,6 +127,15 @@ class RocksDBVectorIndex final : public RocksDBIndex {
   void applyTrainingResult(std::shared_ptr<faiss::IndexIVF> faissIndex,
                            vector::TrainedData trainedData);
 
+  // Stores the autotune-chosen nprobe on the in-memory trained-data record
+  // and returns a reference to the updated record so the caller can persist
+  // it. Safe to call only while the index is not yet visible to queries
+  // (state still kIngesting).
+  vector::TrainedData const& applyTunedNProbe(std::int64_t nprobe) noexcept {
+    _trainedData.tunedNProbe = nprobe;
+    return _trainedData;
+  }
+
   bool hasStoredValues() const noexcept;
 
   StoredValues const& storedValues() const override;

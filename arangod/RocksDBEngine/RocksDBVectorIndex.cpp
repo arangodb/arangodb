@@ -254,8 +254,10 @@ RocksDBVectorIndex::readBatch(
       });
 
   faiss::SearchParametersIVF searchParametersIvf;
-  searchParametersIvf.nprobe =
-      searchParameters.nProbe.value_or(_definition.defaultNProbe);
+  // Precedence: per-query searchParams > autotune-selected nprobe > user-set
+  // defaultNProbe.
+  searchParametersIvf.nprobe = searchParameters.nProbe.value_or(
+      _trainedData.tunedNProbe.value_or(_definition.defaultNProbe));
   searchParametersIvf.inverted_list_context = &faissSearchContext;
   _faissIndex->search(1, inputs.data(), topK, distances.data(), labels.data(),
                       &searchParametersIvf);
