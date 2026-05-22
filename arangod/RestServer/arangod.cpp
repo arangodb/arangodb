@@ -83,7 +83,7 @@ void ArangodServer::addFeatures(
   auto& metrics = addFeature<metrics::MetricsFeature>(
       LazyApplicationFeatureReference<QueryRegistryFeature>(*this),
       LazyApplicationFeatureReference<StatisticsFeature>(*this),
-      LazyApplicationFeatureReference<EngineSelectorFeature>(*this),
+      LazyApplicationFeatureReference<DatabaseFeature>(*this),
       LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(*this),
       LazyApplicationFeatureReference<ClusterFeature>(*this));
   addFeature<metrics::ClusterMetricsFeature>();
@@ -217,7 +217,6 @@ void ArangodServer::addFeatures(
   addFeature<iresearch::IResearchAnalyzerFeature>(
       iresearch::IResearchAnalyzerFeature::Dependencies{
           .databaseFeature = database,
-          .engineSelector = engineSelectorFeature,
           .systemDatabase = systemDatabaseFeature,
           .networkFeature = &networkFeature,
           .clusterFeature = &clusterFeature,
