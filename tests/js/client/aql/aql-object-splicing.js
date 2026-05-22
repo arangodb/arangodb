@@ -136,6 +136,11 @@ function objectSplicingSuite () {
       let query = `LET xx= { outer: {  x: 1,  x: 2  }} RETURN xx.outer.x`;
       let res = db._query(query).toArray();
       assertEqual([ 2 ], res);
+    },
+    testSpreadMergeWithComputedPropertyNameusingPlusOperator: function () {
+      let query = `LET a = "prefix" LET x = {name: "Chrome", prefixname: "Google" } LET y = { [a + "name"]: "GoogleChrome"} RETURN [{...x, ...y}]`;
+      let res = db._query(query).toArray();
+      assertEqual([[{ "name" : "Chrome", "prefixname" : "GoogleChrome" }]], res);
     }
   };
 }
