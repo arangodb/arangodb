@@ -147,19 +147,20 @@ VPackBuilder enrichVectorIndexes(VPackSlice indexes,
       result.add(StaticStrings::IndexTrainingState, VPackValue(aggregateState));
 
       if (aggregateState == StaticStrings::IndexTrainingStateUnusable) {
-        std::string_view shardError;
+        // Agency `Current` is updated asynchronously by the DBServer's
+        // build manager, so for a fresh index the shard `error` can still
+        // be empty while the state is already published as `unusable`.
+        // Fall back to the same placeholder used by the in-memory single-
+        // server path so the response shape is consistent.
+        std::string_view shardError =
+            StaticStrings::VectorIndexDefaultTrainingError;
         for (auto const& [_, shardState] : states) {
           if (!shardState.error.empty()) {
             shardError = shardState.error;
             break;
           }
         }
-        if (shardError.empty()) {
-          result.add(StaticStrings::ErrorMessage,
-                     VPackValue("not enough training data for vector index"));
-        } else {
-          result.add(StaticStrings::ErrorMessage, VPackValue(shardError));
-        }
+        result.add(StaticStrings::ErrorMessage, VPackValue(shardError));
       }
 
       if (withShardDetails) {
@@ -188,7 +189,8 @@ VPackBuilder enrichVectorIndexes(VPackSlice indexes,
 RestIndexHandler::RestIndexHandler(
     application_features::ApplicationServer& server, GeneralRequest* request,
     GeneralResponse* response)
-    : RestVocbaseBaseHandler(server, request, response) {}
+    : RestVocbaseBaseHandler(server, request, response),
+      _clusterFeature(server.getFeature<ClusterFeature>()) {}
 
 futures::Future<futures::Unit> RestIndexHandler::executeAsync() {
   // extract the request type
@@ -226,10 +228,8 @@ std::shared_ptr<LogicalCollection> RestIndexHandler::collection(
     std::string const& cName) {
   if (!cName.empty()) {
     if (ServerState::instance()->isCoordinator()) {
-      return server()
-          .getFeature<ClusterFeature>()
-          .clusterInfo()
-          .getCollectionNT(_vocbase.name(), cName);
+      return _clusterFeature.clusterInfo().getCollectionNT(_vocbase.name(),
+                                                           cName);
     }
     return _vocbase.lookupCollection(cName);
   }
@@ -328,7 +328,7 @@ async<void> RestIndexHandler::getIndexes() {
                 VectorIndexShardState state;
                 state.trainingState = std::string(trainingStateToString(ts));
                 if (ts == VectorIndexTrainingState::kUnusable) {
-                  state.error = "not enough training data for vector index";
+                  state.error = vecIdx->trainingError();
                 }
                 state.resolvedNLists = vecIdx->resolvedNLists().value_or(0);
                 states.emplace(std::string(coll->name()), std::move(state));
@@ -353,7 +353,7 @@ async<void> RestIndexHandler::getIndexes() {
       // even the in-progress indexes
       std::string ap = absl::StrCat("Plan/Collections/", _vocbase.name(), "/",
                                     coll->planId().id(), "/indexes");
-      auto& ac = _vocbase.server().getFeature<ClusterFeature>().agencyCache();
+      auto& ac = _clusterFeature.agencyCache();
       // we need to wait for the latest commit index here, because otherwise
       // we may not see all indexes that were declared ready by the
       // supervision.
@@ -364,10 +364,7 @@ async<void> RestIndexHandler::getIndexes() {
       // Let's wait until the ClusterInfo has processed at least this
       // Raft index. This means that if an index is no longer `isBuilding`
       // in the agency Plan, then ClusterInfo should know it.
-      co_await _vocbase.server()
-          .getFeature<ClusterFeature>()
-          .clusterInfo()
-          .waitForPlan(idx);
+      co_await _clusterFeature.clusterInfo().waitForPlan(idx);
 
       // now fetch list of ready indexes
       VPackBuilder indexes;
@@ -549,20 +546,18 @@ async<void> RestIndexHandler::getIndexes() {
                     VPackValue(aggregateState));
 
             if (aggregateState == StaticStrings::IndexTrainingStateUnusable) {
-              std::string_view shardError;
+              // See the enrichVectorIndexes branch above: agency `Current`
+              // lags ensureIndex, so fall back to the placeholder when no
+              // shard has a real error yet.
+              std::string_view shardError =
+                  "not enough training data for vector index";
               for (auto const& [_, shardState] : states) {
                 if (!shardState.error.empty()) {
                   shardError = shardState.error;
                   break;
                 }
               }
-              if (shardError.empty()) {
-                tmp.add(StaticStrings::ErrorMessage,
-                        VPackValue("not enough training data for "
-                                   "vector index"));
-              } else {
-                tmp.add(StaticStrings::ErrorMessage, VPackValue(shardError));
-              }
+              tmp.add(StaticStrings::ErrorMessage, VPackValue(shardError));
             }
 
             tmp.add(VPackValue("shards"));
@@ -718,7 +713,7 @@ futures::Future<futures::Unit> RestIndexHandler::getSelectivityEstimates() {
   generateResult(rest::ResponseCode::OK, std::move(buffer));
 }
 
-futures::Future<Result> RestIndexHandler::waitForVectorIndexReady(
+futures::Future<ResultT<std::string>> RestIndexHandler::waitForVectorIndexReady(
     std::shared_ptr<LogicalCollection> const& coll, IndexId indexId) {
   // Polling interval when waiting for vector index readiness on Coordinator.
   static constexpr auto kCoordinatorPollInterval = std::chrono::seconds(3);
@@ -729,10 +724,34 @@ futures::Future<Result> RestIndexHandler::waitForVectorIndexReady(
   if (ServerState::instance()->isDBServer() ||
       ServerState::instance()->isSingleServer()) {
     auto& vectorIndexFeature = server().getFeature<VectorIndexFeature>();
-    co_return co_await vectorIndexFeature.waitForIndexReady(indexId);
+    auto res = co_await vectorIndexFeature.waitForIndexReady(indexId);
+    if (res.ok()) {
+      co_return std::string{};
+    }
+    // The build manager surfaces training failures as a failed Result. To
+    // distinguish a permanent training failure (kUnusable) from a transient
+    // condition (shutdown, index dropped, ...) inspect the local index
+    // state directly.
+    auto idx = coll->lookupIndex(indexId);
+    if (idx != nullptr) {
+      TRI_ASSERT(idx->type() == Index::TRI_IDX_TYPE_VECTOR_INDEX);
+      auto* vecIdx = static_cast<RocksDBVectorIndex*>(idx.get());
+      if (vecIdx->trainingState() == VectorIndexTrainingState::kUnusable) {
+        auto msg = vecIdx->trainingError();
+        // Empty message would collide with the "ready" sentinel, so
+        // fall back to the same placeholder enrichVectorIndexes uses.
+        if (msg.empty()) {
+          msg = std::string{StaticStrings::VectorIndexDefaultTrainingError};
+        }
+        co_return msg;
+      }
+    }
+    co_return ResultT<std::string>::error(std::move(res));
   }
 
-  // Coordinator: poll shard training states until all report "ready".
+  // Coordinator: poll shard training states until the aggregate reaches a
+  // terminal value — "ready", or "unusable" with an explicit shard error.
+  // The intermediate states "training" and "ingesting" keep polling.
   TRI_ASSERT(ServerState::instance()->isCoordinator());
 
   auto bareIndexId = std::to_string(indexId.id());
@@ -744,7 +763,7 @@ futures::Future<Result> RestIndexHandler::waitForVectorIndexReady(
 
   while (true) {
     if (server().isStopping()) {
-      co_return Result(TRI_ERROR_SHUTTING_DOWN);
+      co_return ResultT<std::string>::error(TRI_ERROR_SHUTTING_DOWN);
     }
 
     std::shared_ptr<CollectionInfoCurrent> collCurrent =
@@ -758,18 +777,18 @@ futures::Future<Result> RestIndexHandler::waitForVectorIndexReady(
         auto const aggregateState = aggregateTrainingState(states);
 
         if (aggregateState == StaticStrings::IndexTrainingStateReady) {
-          co_return Result();
+          co_return std::string{};
         }
 
         // "unusable" with an explicit shard error is a permanent failure.
+        // Without an error message it's the initial state (training hasn't
+        // started yet) — keep polling.
         if (aggregateState == StaticStrings::IndexTrainingStateUnusable) {
           for (auto const& [shardId, shardState] : states) {
             if (!shardState.error.empty()) {
-              co_return Result(
-                  TRI_ERROR_QUERY_VECTOR_INDEX_NOT_READY,
-                  absl::StrCat("vector index training failed on shard ",
-                               static_cast<std::string>(shardId), ": ",
-                               shardState.error));
+              co_return absl::StrCat("vector index training failed on shard ",
+                                     static_cast<std::string>(shardId), ": ",
+                                     shardState.error);
             }
           }
         }
@@ -777,8 +796,9 @@ futures::Future<Result> RestIndexHandler::waitForVectorIndexReady(
     }
 
     if (std::chrono::steady_clock::now() >= deadline) {
-      co_return Result(TRI_ERROR_LOCK_TIMEOUT,
-                       "timed out waiting for vector index to become ready");
+      co_return ResultT<std::string>::error(
+          TRI_ERROR_LOCK_TIMEOUT,
+          "timed out waiting for vector index to become ready");
     }
 
     co_await SchedulerFeature::SCHEDULER->delay("wait-vec-idx-ready",
@@ -811,19 +831,25 @@ futures::Future<Result> RestIndexHandler::awaitAndRefreshVectorIndex(
     co_return indexId.result();
   }
 
-  auto res = co_await waitForVectorIndexReady(coll, indexId.get());
-  if (res.fail()) {
-    co_return res;
+  auto outcome = co_await waitForVectorIndexReady(coll, indexId.get());
+  if (outcome.fail()) {
+    // Transient error (shutdown, timeout, index disappeared) — propagate
+    // as HTTP error.
+    co_return outcome.result();
   }
 
-  // Update the trainingState field to reflect that the index is now ready
-  // and clear any errorMessage that was set while the index was still building.
+  // Definitive state: empty string means kReady, non-empty means kUnusable
+  // with that training error. Either way the index exists, so the response
+  // stays a 201 with the trainingState reflecting the outcome.
+  auto const& errorMessage = outcome.get();
   VPackBuilder patch;
   {
     VPackObjectBuilder guard(&patch);
     patch.add(StaticStrings::IndexTrainingState,
-              VPackValue(StaticStrings::IndexTrainingStateReady));
-    patch.add(StaticStrings::ErrorMessage, VPackValue(""));
+              VPackValue(errorMessage.empty()
+                             ? StaticStrings::IndexTrainingStateReady
+                             : StaticStrings::IndexTrainingStateUnusable));
+    patch.add(StaticStrings::ErrorMessage, VPackValue(errorMessage));
   }
   response = VPackCollection::merge(response.slice(), patch.slice(), false);
 

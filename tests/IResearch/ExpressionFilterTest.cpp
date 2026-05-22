@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -251,34 +251,32 @@ struct IResearchExpressionFilterTest
                           true);
     features.emplace_back(server.addFeature<arangodb::DatabasePathFeature>(),
                           false);
-    features.emplace_back(server.addFeature<arangodb::DatabaseFeature>(),
-                          false);
-    features.emplace_back(server.addFeature<arangodb::MaintenanceFeature>(),
-                          false);
+    auto& databaseFeature = server.addFeature<arangodb::DatabaseFeature>();
+    features.emplace_back(databaseFeature, false);
+    features.emplace_back(
+        server.addFeature<arangodb::MaintenanceFeature>(nullptr), false);
 
     auto& selector = server.addFeature<arangodb::EngineSelectorFeature>();
     features.emplace_back(selector, false);
-    server.getFeature<arangodb::EngineSelectorFeature>().setEngineTesting(
-        &engine);
+    selector.setEngineTesting(&engine);
+    auto& metrics = server.addFeature<arangodb::metrics::MetricsFeature>(
+        arangodb::LazyApplicationFeatureReference<
+            arangodb::QueryRegistryFeature>(server),
+        arangodb::LazyApplicationFeatureReference<arangodb::StatisticsFeature>(
+            nullptr),
+        selector,
+        arangodb::LazyApplicationFeatureReference<
+            arangodb::metrics::ClusterMetricsFeature>(nullptr),
+        arangodb::LazyApplicationFeatureReference<arangodb::ClusterFeature>(
+            nullptr));
+    features.emplace_back(metrics, false);
     features.emplace_back(
-        server.addFeature<arangodb::metrics::MetricsFeature>(
-            arangodb::LazyApplicationFeatureReference<
-                arangodb::QueryRegistryFeature>(server),
-            arangodb::LazyApplicationFeatureReference<
-                arangodb::StatisticsFeature>(nullptr),
-            selector,
-            arangodb::LazyApplicationFeatureReference<
-                arangodb::metrics::ClusterMetricsFeature>(nullptr),
-            arangodb::LazyApplicationFeatureReference<arangodb::ClusterFeature>(
-                nullptr)),
+        server.addFeature<arangodb::VectorIndexFeature>(databaseFeature),
         false);
-    features.emplace_back(server.addFeature<arangodb::VectorIndexFeature>(),
-                          false);
     features.emplace_back(
-        server.addFeature<arangodb::QueryRegistryFeature>(
-            server.getFeature<arangodb::metrics::MetricsFeature>()),
+        server.addFeature<arangodb::QueryRegistryFeature>(metrics),
         false);  // must be first
-    system = std::make_unique<TRI_vocbase_t>(systemDBInfo(server));
+    system = std::make_unique<TRI_vocbase_t>(systemDBInfo(server), engine);
     features.emplace_back(
         server.addFeature<arangodb::SystemDatabaseFeature>(system.get()),
         false);  // required for IResearchAnalyzerFeature
@@ -291,13 +289,16 @@ struct IResearchExpressionFilterTest
         server.addFeature<arangodb::aql::AqlFunctionFeature>(),
         true);  // required for IResearchAnalyzerFeature
     features.emplace_back(
-        server.addFeature<arangodb::iresearch::IResearchAnalyzerFeature>(),
+        server.addFeature<arangodb::iresearch::IResearchAnalyzerFeature>(
+            arangodb::iresearch::IResearchAnalyzerFeature::Dependencies::
+                fromServer(server)),
         true);
 
     auto& feature =
         features
             .emplace_back(
-                server.addFeature<arangodb::iresearch::IResearchFeature>(),
+                server.addFeature<arangodb::iresearch::IResearchFeature>(
+                    metrics),
                 true)
             .first;
     feature.collectOptions(server.options());
@@ -418,7 +419,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
   }
 
   // setup ArangoDB database
-  TRI_vocbase_t vocbase(testDBInfo(server));
+  TRI_vocbase_t vocbase(testDBInfo(server), engine);
 
   // create view
   {

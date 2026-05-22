@@ -134,7 +134,7 @@ void appendPath(Request const& req, std::string& target) {
   // Prepend /_arango/vX or /_arango/experimental if an API version was set
   if (req.header.apiVersion.has_value()) {
     target.append("/_arango/");
-    target.append(req.header.apiVersion.value());
+    target.append(to_string(req.header.apiVersion.value()));
   }
 
   // construct request path ("/_db/<name>/" prefix)

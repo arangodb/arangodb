@@ -172,8 +172,7 @@ GeneralServerFeature::GeneralServerFeature(
     application_features::ApplicationServer& server,
     metrics::MetricsFeature& metrics)
     : ApplicationFeature{server, *this},
-      _currentRequestsSize(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_requests_memory_usage{})),
+      _currentRequestsSize(metrics.add(arangodb_requests_memory_usage{})),
       _requestBodySizeHttp1(metrics.add(arangodb_request_body_size_http1{})),
       _requestBodySizeHttp2(metrics.add(arangodb_request_body_size_http2{})),
       _http1Connections(metrics.add(arangodb_http1_connections_total{})),
@@ -419,7 +418,7 @@ void GeneralServerFeature::prepare() {
   // this initial factory only knows a few selected RestHandlers.
   // we will later create another RestHandlerFactory that knows
   // all routes.
-  auto hf = std::make_shared<RestHandlerFactory>(ApiVersion::maxApiVersion());
+  auto hf = std::make_shared<RestHandlerFactory>(api_version::maxApiVersion());
   defineInitialHandlers(*hf);
   // make handler-factory read-only
   hf->seal();
@@ -448,7 +447,7 @@ void GeneralServerFeature::start() {
   // create the full RestHandlerFactory that knows all the routes.
   // this will replace the previous, stripped-down RestHandlerFactory
   // instance.
-  auto hf = std::make_shared<RestHandlerFactory>(ApiVersion::maxApiVersion());
+  auto hf = std::make_shared<RestHandlerFactory>(api_version::maxApiVersion());
 
   defineInitialHandlers(*hf);
   defineRemainingHandlers(*hf);
@@ -858,7 +857,7 @@ void GeneralServerFeature::defineRemainingHandlers(
   f.addPrefixHandler(
       "/_admin/activities",
       RestHandlerCreator<arangodb::activities::RestHandler>::createNoData,
-      {ApiVersion::experimentalApiVersion});
+      {api_version::experimentalApiVersion});
 
   f.addPrefixHandler(
       "/_admin/cluster",

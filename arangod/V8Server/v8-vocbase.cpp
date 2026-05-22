@@ -1592,7 +1592,7 @@ static void JS_VersionServer(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_GET_SERVER_GLOBALS(ArangodServer);
   VPackBuilder builder;
   arangodb::RestVersionHandler::getVersion(v8g->server(), true, true, builder,
-                                           ApiVersion::defaultApiVersion);
+                                           api_version::defaultApiVersion);
 
   TRI_V8_RETURN(TRI_VPackToV8(isolate, builder.slice()));
   TRI_V8_TRY_CATCH_END
@@ -1791,9 +1791,9 @@ static void JS_CreateDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   std::string const dbName = TRI_ObjectToString(isolate, args[0]);
-  Result res =
-      methods::Databases::create(vocbase.server(), ExecContext::current(),
-                                 dbName, users.slice(), options.slice());
+  Result res = methods::Databases::create(vocbase.server(), vocbase.engine(),
+                                          ExecContext::current(), dbName,
+                                          users.slice(), options.slice());
 
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -24,6 +24,7 @@
 #pragma once
 
 #include "Aql/AstNode.h"
+#include "Aql/ConditionPart.h"
 #include "Aql/types.h"
 #include "Basics/AttributeNameParser.h"
 #include "Containers/HashSet.h"
@@ -35,10 +36,7 @@
 #include <unordered_map>
 #include <vector>
 
-namespace arangodb {
-class Index;
-
-namespace aql {
+namespace arangodb::aql {
 
 class Ast;
 class EnumerateCollectionNode;
@@ -46,8 +44,6 @@ class ExecutionPlan;
 class SortCondition;
 struct Variable;
 
-// note to maintainers:
-//
 enum class ConditionOptimization {
   kNone,  // only generic optimizations are made (e.g. AND to n-ry AND, sorting
           // and deduplicating IN nodes )
@@ -58,45 +54,9 @@ enum class ConditionOptimization {
 
 };
 
-/// @brief side on which an attribute occurs in a condition
-enum AttributeSideType { ATTRIBUTE_LEFT, ATTRIBUTE_RIGHT };
-
-struct ConditionPart {
-  ConditionPart() = delete;
-
-  ConditionPart(Variable const*, std::string const&, AstNode const*,
-                AttributeSideType, void*);
-
-  ConditionPart(Variable const*, std::vector<basics::AttributeName> const&,
-                AstNode const*, AttributeSideType, void*);
-
-  ~ConditionPart();
-
-  int whichCompareOperation() const noexcept;
-
-  /// @brief returns the lower bound
-  AstNode const* lowerBound() const;
-
-  /// @brief returns if the lower bound is inclusive
-  bool isLowerInclusive() const noexcept;
-
-  /// @brief returns the upper bound
-  AstNode const* upperBound() const;
-
-  /// @brief returns if the upper bound is inclusive
-  bool isUpperInclusive() const noexcept;
-
-  /// @brief true if the condition is completely covered by the other condition
-  bool isCoveredBy(ConditionPart const& other, bool isReversed) const;
-
-  Variable const* variable;
-  std::string attributeName;
-  AstNodeType operatorType;
-  bool isExpanded;
-  AstNode const* operatorNode;
-  AstNode const* valueNode;
-  void* data;
-};
+/// @brief clears the attribute access data
+void clearAttributeAccess(
+    std::pair<Variable const*, std::vector<basics::AttributeName>>& parts);
 
 class Condition {
  public:
@@ -109,19 +69,6 @@ class Condition {
 
   /// @brief destroy the condition
   ~Condition();
-
-  /// @brief: note: index may be a nullptr
-  /// There are different rules for processing certain types of nodes
-  /// when we're dealing with traversals. Previously, a null index ptr
-  /// was used to imply a traversal. Now we've made it explicit with the
-  /// the introduction of the isFromTraverser arg.
-  static void collectOverlappingMembers(
-      ExecutionPlan const* plan, Variable const* variable,
-      AstNode const* andNode, AstNode const* otherAndNode,
-      containers::HashSet<size_t>& toRemove, Index const* index,
-      bool isFromTraverser,  //  indicates whether the function is called from
-                             //  traversals
-      bool isPathCondition);
 
   /// @brief return the condition root
   AstNode* root() const noexcept;
@@ -169,15 +116,6 @@ class Condition {
   /// don't want to remove eventually unneccessary filters.
   void normalize();
 
-  /// @brief removes condition parts from another
-  AstNode* removeIndexCondition(ExecutionPlan const* plan,
-                                Variable const* variable,
-                                AstNode const* condition, Index const* index);
-
-  /// @brief removes condition parts from another
-  AstNode* removeTraversalCondition(ExecutionPlan const*, Variable const*,
-                                    AstNode*, bool isPathCondition);
-
   /// @brief remove (now) invalid variables from the condition
   bool removeInvalidVariables(VarSet const&, bool& noRemoves);
 
@@ -210,12 +148,6 @@ class Condition {
   AstNode* transformCondition(AstNode* root,
                               ConditionOptimization conditionOptimization);
 
-  /// @brief internal worker function for removeIndexCondition and
-  /// removeTraversalCondition
-  AstNode* removeCondition(ExecutionPlan const* plan, Variable const* variable,
-                           AstNode const* condition, Index const* index,
-                           bool isFromTraverser);
-
   /// @brief optimize the condition expression tree
   void optimize(ExecutionPlan*, bool multivalued);
 
@@ -247,10 +179,6 @@ class Condition {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   void validateAst(AstNode const* node, int level);
 #endif
-
-  /// @brief checks if the current condition covers the other
-  static bool canRemove(ExecutionPlan const*, ConditionPart const&,
-                        AstNode const*, bool allowArrayExpansion);
 
   /// @brief deduplicate IN condition values (and sort them).
   /// will return either the unmodified original node or a copy.
@@ -291,5 +219,4 @@ class Condition {
   /// @brief whether or not the condition will return a sorted result
   bool _isSorted;
 };
-}  // namespace aql
-}  // namespace arangodb
+}  // namespace arangodb::aql

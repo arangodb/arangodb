@@ -5,6 +5,7 @@ add_executable(fuertetest
   ConnectionTimeoutsTest.cpp
 #    test_10000_writes.cpp
   main.cpp
+  RequestHeaderParsingTest.cpp
 )
 
 target_link_libraries(fuertetest

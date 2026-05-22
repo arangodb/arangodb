@@ -29,6 +29,8 @@
 namespace arangodb {
 class StorageEngine;
 
+class ApiRecordingFeature;
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief admin log request handler
 ////////////////////////////////////////////////////////////////////////////////
@@ -58,5 +60,6 @@ class RestAdminServerHandler : public RestBaseHandler {
   void handleAqlRecordedQueries();
 
   StorageEngine& _engine;
+  ApiRecordingFeature& _apiRecordingFeature;
 };
 }  // namespace arangodb

@@ -3594,11 +3594,12 @@ AstNode* Ast::optimizeBinaryOperatorRelational(
 
   if (!lhsIsConst) {
     if (rhs->numMembers() >= AstNode::kSortNumberThreshold &&
-        rhs->type == NODE_TYPE_ARRAY &&
+        rhs->type == NODE_TYPE_ARRAY && rhs->isConstant() &&
         (node->type == NODE_TYPE_OPERATOR_BINARY_IN ||
          node->type == NODE_TYPE_OPERATOR_BINARY_NIN)) {
-      // if the IN list contains a considerable amount of items, we will sort
-      // it, so we can find elements quicker later using a binary search
+      // only sort constant arrays; non-constant ones can't be sorted at compile
+      // time. if the IN list contains a considerable amount of items, we will
+      // sort it, so we can find elements quicker later using a binary search
       // note that sorting will also set a flag for the node
 
       // first copy the original node before sorting, as the node may be used

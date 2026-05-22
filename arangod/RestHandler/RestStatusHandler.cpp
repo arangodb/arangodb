@@ -196,8 +196,8 @@ RestStatus RestStatusHandler::executeStandard(ServerSecurityFeature& security) {
           result.add("agencyComm", VPackValue(VPackValueType::Object));
           result.add("endpoints", VPackValue(VPackValueType::Array));
 
-          for (auto const& ep : manager->endpoints()) {
-            result.add(VPackValue(ep));
+          for (auto const& a : manager->agents()) {
+            result.add(VPackValue(a.endpoint));
           }
 
           result.close();
