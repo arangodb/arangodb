@@ -88,8 +88,8 @@ void ArangodServer::addFeatures(
   addFeature<CacheOptionsFeature>();
   auto& cacheOptions = getFeature<CacheOptionsFeature>();
   auto& sharedPRNGFeature = addFeature<SharedPRNGFeature>();
-  auto& cacheManager =
-      addFeature<CacheManagerFeature>(cacheOptions, sharedPRNGFeature);
+  auto& cacheManager = addFeature<CacheManagerFeature>(
+      cacheOptions, sharedPRNGFeature.getPRNG());
   addFeature<CheckVersionFeature>(ret, kNonServerFeatures);
   auto& clusterFeature = addFeature<ClusterFeature>(metrics);
   addFeature<CrashHandlerFeature>(dumpManager);
@@ -130,7 +130,8 @@ void ArangodServer::addFeatures(
   addFeature<ReplicatedLogFeature>();
   addFeature<ReplicationMetricsFeature>(metrics);
   addFeature<ReplicationTimeoutFeature>();
-  auto& scheduler = addFeature<SchedulerFeature>(metrics);
+  auto& scheduler =
+      addFeature<SchedulerFeature>(metrics, sharedPRNGFeature.getPRNG());
   auto& vectorIndex = addFeature<VectorIndexFeature>(database);
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   addFeature<ProcessEnvironmentFeature>(std::string{binaryName});

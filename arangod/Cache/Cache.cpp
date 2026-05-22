@@ -26,21 +26,16 @@
 #include "Basics/ScopeGuard.h"
 #include "Basics/SpinLocker.h"
 #include "Basics/SpinUnlocker.h"
-#include "Basics/voc-errors.h"
 #include "Cache/CachedValue.h"
 #include "Cache/Common.h"
 #include "Cache/Manager.h"
 #include "Cache/Metadata.h"
-#include "Cache/PlainCache.h"
 #include "Cache/Table.h"
-#include "Cache/TransactionalCache.h"
-#include "RestServer/SharedPRNGFeature.h"
 
 #include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <cstdint>
-#include <limits>
 #include <thread>
 
 namespace arangodb::cache {

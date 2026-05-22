@@ -23,6 +23,7 @@
 /// @author Copyright 2017-2018, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Basics/SharedPRNG.h"
 #include "gtest/gtest.h"
 
 #include "ApplicationFeatures/ConfigFeature.h"
@@ -54,6 +55,7 @@
 #include "RestServer/DumpLimitsFeature.h"
 #include "RestServer/FlushFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
+#include "RestServer/SharedPRNGFeature.h"
 #include "VectorIndex/VectorIndexFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBIndexCacheRefillFeature.h"
@@ -514,6 +516,7 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
  protected:
   int _dummy;
   std::shared_ptr<options::ProgramOptions> po;
+  basics::SharedPRNG sharedPRNG;
   ArangodServer as;
   containers::FlatHashSet<DatabaseID> makeDirty;
   MaintenanceFeature::errors_t errors;
@@ -548,7 +551,8 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
     auto& dbpath = as.addFeature<DatabasePathFeature>();
     auto& flush = as.addFeature<FlushFeature>(metrics);
     auto& dumpLimits = as.addFeature<DumpLimitsFeature>();
-    auto& schedulerFeature = as.addFeature<SchedulerFeature>(metrics);
+    auto& schedulerFeature =
+        as.addFeature<SchedulerFeature>(metrics, sharedPRNG);
 
     auto& rocksDbRecoveryManager = as.addFeature<RocksDBRecoveryManager>();
     auto& databaseFeature = as.addFeature<DatabaseFeature>();
@@ -558,8 +562,8 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
                                                       metrics);
     auto& cacheOptions = as.addFeature<CacheOptionsFeature>();
     auto& sharedPrngFeature = as.addFeature<SharedPRNGFeature>();
-    auto& cacheManagerFeature =
-        as.addFeature<CacheManagerFeature>(cacheOptions, sharedPrngFeature);
+    auto& cacheManagerFeature = as.addFeature<CacheManagerFeature>(
+        cacheOptions, sharedPrngFeature.getPRNG());
     auto* replicatedLogFeature = replication2::EnableReplication2
                                      ? &as.addFeature<ReplicatedLogFeature>()
                                      : nullptr;

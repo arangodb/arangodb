@@ -85,9 +85,10 @@ struct SchedulerFeature::AsioHandler {
 
 SchedulerFeature::SchedulerFeature(
     application_features::ApplicationServer& server,
-    metrics::MetricsFeature& metrics)
+    metrics::MetricsFeature& metrics, basics::SharedPRNG& sharedPRNG)
     : ApplicationFeature{server, *this},
       _scheduler(nullptr),
+      _sharedPRNG(sharedPRNG),
       _metricsFeature(metrics),
       _asioHandler(std::make_unique<AsioHandler>()) {
   setOptional(false);
@@ -330,7 +331,7 @@ void SchedulerFeature::prepare() {
           server(), _options.nrMinimalThreads, _options.nrMaximalThreads,
           _options.queueSize, _options.fifo1Size, _options.fifo2Size,
           _options.fifo3Size, ongoingLowPriorityLimit,
-          _options.unavailabilityQueueFillGrade, metrics);
+          _options.unavailabilityQueueFillGrade, metrics, _sharedPRNG);
     } else {
       TRI_ASSERT(_options.schedulerType == "threadpools");
       return std::make_unique<ThreadPoolScheduler>(
