@@ -1170,9 +1170,13 @@ async<void> RestIndexHandler::replaceIndex() {
 
   auto& clusterInfo = _clusterFeature.clusterInfo();
   std::string const newIndexId = std::to_string(clusterInfo.uniqid());
-  std::string const newObjectId = std::to_string(clusterInfo.uniqid());
   std::string const oldIndexIdStr = std::to_string(oldIdx->id().id());
 
+  // `objectId` is intentionally NOT pre-allocated by the coordinator: it is a
+  // DBServer-local RocksDB key prefix and must come from `TRI_NewTickServer`
+  // on the leader (cluster-info uniqids live in a different namespace and
+  // can collide with existing DBServer ticks). `RocksDBIndex::ensureObjectId`
+  // assigns one when the shadow is constructed.
   VPackBuilder finalDef;
   {
     VPackObjectBuilder ob(&finalDef);
@@ -1185,7 +1189,6 @@ async<void> RestIndexHandler::replaceIndex() {
       finalDef.add(key, pair.value);
     }
     finalDef.add(StaticStrings::IndexId, VPackValue(newIndexId));
-    finalDef.add(StaticStrings::ObjectId, VPackValue(newObjectId));
     finalDef.add("replaces", VPackValue(oldIndexIdStr));
   }
 

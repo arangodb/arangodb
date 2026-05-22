@@ -597,6 +597,22 @@ futures::Future<arangodb::Result> Indexes::ensureIndex(
     }
   }
 
+  // Agency-driven vector-index hotswap: the `replaces` marker identifies the
+  // shadow entry sourced from Plan. Skip enhanceIndexDefinition (the
+  // coordinator already normalized the definition and we must not trip on
+  // the duplicate-name check against the old index that the shadow will
+  // replace).
+  if (input.hasKey("replaces")) {
+    if (ServerState::instance()->isCoordinator()) {
+      ensureIndexResult = TRI_ERROR_BAD_PARAMETER;
+      co_return Result{TRI_ERROR_BAD_PARAMETER,
+                       "replaces marker is for DBServer maintenance only"};
+    }
+    auto res = EnsureShadowLocal(collection, input, output);
+    ensureIndexResult = res.errorNumber();
+    co_return res;
+  }
+
   VPackBuilder normalized;
   StorageEngine& engine = collection.vocbase().engine();
   auto res = engine.indexFactory().enhanceIndexDefinition(
@@ -608,20 +624,6 @@ futures::Future<arangodb::Result> Indexes::ensureIndex(
   }
 
   VPackSlice indexDef = normalized.slice();
-
-  // This is an index-hotswap operation which currently works only with vector
-  // indexes. The "replaces" marker is used to identify the old index that is
-  // being replaced.
-  if (indexDef.hasKey("replaces")) {
-    if (ServerState::instance()->isCoordinator()) {
-      ensureIndexResult = TRI_ERROR_BAD_PARAMETER;
-      co_return Result{TRI_ERROR_BAD_PARAMETER,
-                       "replaces marker is for DBServer maintenance only"};
-    }
-    auto res = EnsureShadowLocal(collection, indexDef, output);
-    ensureIndexResult = res.errorNumber();
-    co_return res;
-  }
 
   // for single server or for cluster when the instance is coordinator,
   // indexes cannot be created covering fields that have preceding or trailing
