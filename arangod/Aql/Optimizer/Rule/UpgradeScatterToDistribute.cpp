@@ -282,8 +282,8 @@ void upgradeScatterToDistributeRule(Optimizer* opt,
         // us, we can skip the rest
         break;
       }
+      current = current->getFirstParent();
     }
-    current = current->getFirstParent();
   }
 
   if (wasModified) {
