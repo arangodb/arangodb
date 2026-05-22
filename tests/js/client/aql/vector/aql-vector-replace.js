@@ -346,6 +346,118 @@ function VectorReplaceTestSuite () {
       }
     },
 
+    testReplaceWithPatchChangesMetric: function () {
+      const preIdx = collection.indexes().find(i => i.name === indexName);
+      assertEqual("l2", preIdx.params.metric,
+        "test setup should have started with L2 metric");
+
+      collection.replaceIndex(indexName, {params: {metric: "cosine"}});
+
+      const postIdx = waitForReplaceComplete(collection, preIdx, 180);
+      assertTrue(postIdx !== undefined,
+        "Metric-change replace did not finish within timeout");
+      assertEqual("cosine", postIdx.params.metric,
+        "Patched metric must be reflected on the new index");
+      assertEqual(preIdx.params.dimension, postIdx.params.dimension,
+        "Dimension must remain unchanged across a metric-only patch");
+      // Sanity: the rebuilt index resolves an nLists value (auto or fixed).
+      assertTrue(postIdx.params.nLists >= 1);
+    },
+
+    testReplaceAbortsCleanlyOnSingleServerBuildError: function () {
+      if (isCluster || !IM.debugCanUseFailAt()) {
+        return;
+      }
+      const preIdx = collection.indexes().find(i => i.name === indexName);
+      const vectorCountBefore =
+        collection.indexes().filter(i => i.type === "vector").length;
+      assertEqual(1, vectorCountBefore);
+
+      // Force the shadow build to fail. The single-server REST handler
+      // should propagate the error AND call abortShadowIndex so the
+      // never-persisted shadow does not dangle in the collection's index
+      // set under kUnusable.
+      IM.debugSetFailAt("RocksDBVectorIndex::buildWrongDimension");
+      try {
+        collection.replaceIndex(indexName);
+        fail("Replace should have failed due to injected build error");
+      } catch (e) {
+        // expected
+      }
+      IM.debugClearFailAt();
+
+      const vectorAfter = collection.indexes().filter(i => i.type === "vector");
+      assertEqual(1, vectorAfter.length,
+        "Failed single-server replace must not leave an orphaned shadow");
+
+      const postIdx = vectorAfter[0];
+      assertEqual(preIdx.id, postIdx.id,
+        "Old index must remain in place after an aborted replace");
+      assertEqual(VectorIndexTrainingState.kReady, postIdx.trainingState,
+        "Old index must remain kReady");
+
+      // And it must still serve queries.
+      const qp = collection.any().vector;
+      const results = db._query(aql`FOR d IN ${collection}
+        SORT APPROX_NEAR_L2(d.vector, ${qp}, {nProbe: ${nLists}})
+        LIMIT 5 RETURN d._key`).toArray();
+      assertEqual(5, results.length);
+    },
+
+    testClusterReplaceAbortsOnTransientBuildError: function () {
+      if (!isCluster || !IM.debugCanUseFailAt()) {
+        return;
+      }
+      const AM = IM.agencyMgr;
+      const preIdx = collection.indexes().find(i => i.name === indexName);
+
+      // Inject the failure cluster-wide. Every DBServer's shadow build will
+      // report a transient error; supervision should abort the job and the
+      // sibling shadow entry should disappear from Plan, leaving the old
+      // index intact and serving queries.
+      IM.debugSetFailAt("RocksDBVectorIndex::buildWrongDimension");
+
+      const numericId = preIdx.id.split('/')[1];
+      const url = '/_api/index/replace?collection=' +
+                  encodeURIComponent(collName);
+      const res = arango.POST(url, {index: numericId});
+      assertFalse(res.error, JSON.stringify(res));
+      assertTrue(typeof res.jobId === 'string' && res.jobId.length > 0,
+        "cluster /replace must return a jobId");
+
+      // Wait for the supervision job to land in Target/Failed.
+      const deadline = internal.time() + 120;
+      let aborted = false;
+      while (internal.time() < deadline) {
+        const tree = AM.getFromPlan('Target/Failed/' + res.jobId);
+        const failedMap = tree && tree.arango && tree.arango.Target &&
+                          tree.arango.Target.Failed;
+        if (failedMap && failedMap[res.jobId] !== undefined) {
+          aborted = true;
+          break;
+        }
+        internal.sleep(0.5);
+      }
+      assertTrue(aborted,
+        "Cluster ReplaceIndex job should have moved to Target/Failed under " +
+        "a transient build error");
+
+      IM.debugClearFailAt();
+
+      // Old index id unchanged on the coordinator's view.
+      const postIdx = collection.indexes().find(i => i.name === indexName);
+      assertEqual(preIdx.id, postIdx.id,
+        "Aborted replace must leave the old index id in place");
+      assertEqual(VectorIndexTrainingState.kReady, postIdx.trainingState);
+
+      // And queries against the old index still work.
+      const qp = collection.any().vector;
+      const results = db._query(aql`FOR d IN ${collection}
+        SORT APPROX_NEAR_L2(d.vector, ${qp}, {nProbe: ${nLists}})
+        LIMIT 5 RETURN d._key`).toArray();
+      assertEqual(5, results.length);
+    },
+
     testClusterReplaceWritesAgencyJobAndSiblingEntry: function () {
       if (!isCluster) {
         return;
