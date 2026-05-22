@@ -49,7 +49,6 @@
 #include "RestServer/FileDescriptorsFeature.h"
 #include "RestServer/ServerIdFeature.h"
 #include "Statistics/ServerStatistics.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
@@ -223,7 +222,13 @@ void SupportInfoBuilder::buildInfoMessage(VPackBuilder& result,
   // used for all types of responses
   VPackBuilder hostInfo;
 
-  buildHostInfo(hostInfo, server, isTelemetricsReq);
+  auto& environment = server.getFeature<EnvironmentFeature>();
+  auto& metrics = server.getFeature<metrics::MetricsFeature>();
+  auto& fileDescriptors = server.getFeature<FileDescriptorsFeature>();
+  auto& cpuUsage = server.getFeature<CpuUsageFeature>();
+  auto& databaseFeature = server.getFeature<DatabaseFeature>();
+  buildHostInfo(hostInfo, environment, metrics, fileDescriptors, cpuUsage,
+                databaseFeature, isTelemetricsReq);
 
   std::string timeString;
   LogTimeFormats::writeTime(timeString,
@@ -434,7 +439,11 @@ void SupportInfoBuilder::buildInfoMessage(VPackBuilder& result,
 }
 
 void SupportInfoBuilder::buildHostInfo(VPackBuilder& result,
-                                       ApplicationServer& server,
+                                       EnvironmentFeature const& environment,
+                                       metrics::MetricsFeature& metrics,
+                                       FileDescriptorsFeature& fileDescriptors,
+                                       CpuUsageFeature& cpuUsage,
+                                       DatabaseFeature& databaseFeature,
                                        bool isTelemetricsReq) {
   result.openObject();
 
@@ -495,8 +504,7 @@ void SupportInfoBuilder::buildHostInfo(VPackBuilder& result,
     result.add("license", VPackValue("community"));
 #endif
   }
-  EnvironmentFeature const& ef = server.getFeature<EnvironmentFeature>();
-  result.add("os", VPackValue(ef.operatingSystem()));
+  result.add("os", VPackValue(environment.operatingSystem()));
   result.add("platform", VPackValue(Version::getPlatform()));
 
   result.add(keys["physMem"], VPackValue(VPackValueType::Object));
@@ -510,20 +518,17 @@ void SupportInfoBuilder::buildHostInfo(VPackBuilder& result,
   result.close();  // number of cores
 
   result.add(keys["processStats"], VPackValue(VPackValueType::Object));
-  ServerStatistics const& serverInfo =
-      server.getFeature<metrics::MetricsFeature>().serverStatistics();
+  ServerStatistics const& serverInfo = metrics.serverStatistics();
   result.add(keys["processUptime"], VPackValue(serverInfo.uptime()));
 
-  FileDescriptorsFeature& fd = server.getFeature<FileDescriptorsFeature>();
   ProcessInfo info = TRI_ProcessInfoSelf();
   result.add(keys["nThreads"], VPackValue(info._numberThreads));
   result.add(keys["virtualSize"], VPackValue(info._virtualSize));
   result.add(keys["residentSetSize"], VPackValue(info._residentSize));
-  result.add("fileDescrtors", VPackValue(fd.current()));
-  result.add("fileDescrtorsLimit", VPackValue(fd.limit()));
+  result.add("fileDescrtors", VPackValue(fileDescriptors.current()));
+  result.add("fileDescrtorsLimit", VPackValue(fileDescriptors.limit()));
   result.close();  // processStats
 
-  CpuUsageFeature& cpuUsage = server.getFeature<CpuUsageFeature>();
   if (cpuUsage.isEnabled() && !isTelemetricsReq) {
     auto snapshot = cpuUsage.snapshot();
     result.add("cpuStats", VPackValue(VPackValueType::Object));
@@ -537,7 +542,7 @@ void SupportInfoBuilder::buildHostInfo(VPackBuilder& result,
   if (!ServerState::instance()->isCoordinator()) {
     result.add(keys["engineStats"], VPackValue(VPackValueType::Object));
     VPackBuilder stats;
-    StorageEngine& engine = server.getFeature<EngineSelectorFeature>().engine();
+    StorageEngine& engine = databaseFeature.engine();
     engine.getStatistics(stats);
     auto names = {
         // edge cache

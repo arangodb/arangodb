@@ -5,6 +5,15 @@
   instead of value content, causing equal values to be serialized multiple
   times instead of reusing their position in the AqlItemBlock raw array.
 
+* COR-320: Vector search now supports projections, allowing covered queries
+  to skip the document materialization step. Adds optimizer rule
+  `materialize-for-enumerate-near`.
+
+* [COR-546]: Fixed bug in the `remove-filter-covered-by-traversal`
+  optimizer rule where filters on path arrays with different quantifiers
+  (e.g. `ALL` vs `NONE`) were incorrectly treated as equivalent and one
+  of the filters could be dropped, producing wrong query results.
+
 * COR-387: Synchronous vector index creation no longer throws when training
   fails. The index is created with `trainingState: "unusable"` and the
   training error returned in `errorMessage`.

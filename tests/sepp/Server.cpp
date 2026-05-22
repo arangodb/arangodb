@@ -154,7 +154,7 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
   auto& metrics = _server.addFeature<metrics::MetricsFeature>(
       LazyApplicationFeatureReference<QueryRegistryFeature>(_server),
       LazyApplicationFeatureReference<StatisticsFeature>(_server),
-      LazyApplicationFeatureReference<EngineSelectorFeature>(_server),
+      LazyApplicationFeatureReference<DatabaseFeature>(_server),
       LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(_server),
       LazyApplicationFeatureReference<ClusterFeature>(_server));
   _server.addFeature<metrics::ClusterMetricsFeature>();

@@ -543,9 +543,10 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
     as.addFeature<application_features::GreetingsFeaturePhase>(
         std::false_type{});
     auto& selector = as.addFeature<EngineSelectorFeature>();
+    auto& dbFeature = as.addFeature<DatabaseFeature>();
     auto& metrics = as.addFeature<metrics::MetricsFeature>(
         LazyApplicationFeatureReference<QueryRegistryFeature>(nullptr),
-        LazyApplicationFeatureReference<StatisticsFeature>(nullptr), selector,
+        LazyApplicationFeatureReference<StatisticsFeature>(nullptr), dbFeature,
         LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(
             nullptr),
         LazyApplicationFeatureReference<ClusterFeature>(nullptr));
@@ -558,10 +559,9 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
         as.addFeature<SchedulerFeature>(metrics, sharedPRNG);
 
     auto& rocksDbRecoveryManager = as.addFeature<RocksDBRecoveryManager>();
-    auto& databaseFeature = as.addFeature<DatabaseFeature>();
-    auto& vectorIndex = as.addFeature<VectorIndexFeature>(databaseFeature);
+    auto& vectorIndex = as.addFeature<VectorIndexFeature>(dbFeature);
     auto& rocksDbIndexCacheRefillFeature =
-        as.addFeature<RocksDBIndexCacheRefillFeature>(databaseFeature, nullptr,
+        as.addFeature<RocksDBIndexCacheRefillFeature>(dbFeature, nullptr,
                                                       metrics);
     auto& cacheOptions = as.addFeature<CacheOptionsFeature>();
     auto& sharedPrngFeature = as.addFeature<SharedPRNGFeature>();
@@ -575,13 +575,15 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
     engine = std::make_unique<RocksDBEngine>(
         as, roOptions, metrics, dbpath, vectorIndex, flush, dumpLimits,
         schedulerFeature, replicatedLogFeature, rocksDbRecoveryManager,
-        databaseFeature, rocksDbIndexCacheRefillFeature, cacheManagerFeature,
+        dbFeature, rocksDbIndexCacheRefillFeature, cacheManagerFeature,
         agencyFeature);
     selector.setEngineTesting(engine.get());
+    dbFeature.setEngineTesting(engine.get());
   }
 
   ~MaintenanceTestActionPhaseOne() {
     as.getFeature<arangodb::EngineSelectorFeature>().setEngineTesting(nullptr);
+    as.getFeature<arangodb::DatabaseFeature>().setEngineTesting(nullptr);
   }
 
   auto dbName() const -> std::string {
