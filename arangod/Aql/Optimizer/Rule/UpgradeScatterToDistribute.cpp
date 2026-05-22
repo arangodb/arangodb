@@ -261,20 +261,22 @@ void upgradeScatterToDistributeRule(Optimizer* opt,
     while (current != nullptr) {
       auto condition = getCondition(plan.get(), current);
 
-      if (condition != nullptr && (condition->root() != nullptr)) {
-        condition->normalize(plan.get());
+      if (condition != nullptr) {
+        if (condition->root() != nullptr) {
+          condition->normalize(plan.get());
 
-        DistributeNodeDependency distDep;
-        if (checkIfAllShardKeysAreUsed(condition->root(), current, distDep)) {
-          auto const scatterNode = ExecutionNode::castTo<ScatterNode*>(node);
-          Collection const* coll{getCollection(current)};
-          replaceScatterWithDistribute(*plan, scatterNode, coll, current->id(),
-                                       distDep);
-          wasModified = true;
+          DistributeNodeDependency distDep;
+          if (checkIfAllShardKeysAreUsed(condition->root(), current, distDep)) {
+            auto const scatterNode = ExecutionNode::castTo<ScatterNode*>(node);
+            Collection const* coll{getCollection(current)};
+            replaceScatterWithDistribute(*plan, scatterNode, coll,
+                                         current->id(), distDep);
+            wasModified = true;
+          }
+
+          // Only the first Index / Enumeration Parent-Node is relevant for us,
+          // we can skip the rest
         }
-
-        // Only the first Index / Enumeration Parent-Node is relevant for us, we
-        // can skip the rest
 
         break;
       }
