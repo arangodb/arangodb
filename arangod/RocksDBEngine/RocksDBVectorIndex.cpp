@@ -254,8 +254,6 @@ RocksDBVectorIndex::readBatch(
       });
 
   faiss::SearchParametersIVF searchParametersIvf;
-  // Precedence: per-query searchParams > autotune-selected nprobe > user-set
-  // defaultNProbe.
   searchParametersIvf.nprobe = searchParameters.nProbe.value_or(
       _trainedData.tunedNProbe.value_or(_definition.defaultNProbe));
   searchParametersIvf.inverted_list_context = &faissSearchContext;

@@ -34,6 +34,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <span>
 #include <stop_token>
 #include <vector>
 
@@ -89,9 +90,7 @@ class VectorIndexTrainer {
  public:
   struct TrainingResult {
     std::shared_ptr<faiss::IndexIVF> index;
-    // A small contiguous (nq * dimension, row-major) slice of training
-    // vectors retained for post-ingestion nprobe autotuning. Capped well
-    // below the full reservoir to avoid carrying megabytes past training.
+    // Row-major (nq * dimension) slice retained for post-ingestion autotune.
     std::vector<float> autoTuneSample;
   };
 
@@ -152,6 +151,8 @@ class VectorIndexBuilder {
 
  private:
   Result persistTrainedData(TrainedData const& trainedData);
+
+  void runAutoTune(std::span<float const> autoTuneSample);
 
   RocksDBVectorIndex& _index;
   ResourceMonitor& _resourceMonitor;

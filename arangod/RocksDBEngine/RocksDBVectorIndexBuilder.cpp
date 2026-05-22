@@ -60,6 +60,9 @@
 #include "RocksDBEngine/RocksDBValue.h"
 #include "RocksDBEngine/RocksDBVectorIndexList.h"
 #include "Transaction/Helpers.h"
+#include "Transaction/OperationOrigin.h"
+#include "Transaction/StandaloneContext.h"
+#include "Utils/SingleCollectionTransaction.h"
 #include "VectorIndex/VectorIndexTrainingSampler.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -79,8 +82,6 @@
 
 namespace arangodb::vector {
 
-// Mirrors LOG_VECTOR_INDEX from RocksDBVectorIndex.cpp; used in member
-// functions of VectorIndexBuilder where `_index` is in scope.
 #define LOG_VECTOR_BUILD(lid, level, topic)                                 \
   LOG_TOPIC((lid), level, topic) << "[shard=" << _index.collection().name() \
                                  << ", index=" << _index.id().id() << "] "
@@ -448,9 +449,7 @@ ResultT<VectorIndexTrainer::TrainingResult> VectorIndexTrainer::train(
       << std::format("[shard={}, index={}] Finished training.",
                      _index.collection().name(), _index.id().id());
 
-  // Copy out a small autotune sample. The reservoir is already a uniform
-  // random sample (Algorithm L), so a prefix is uniform too. Capped to keep
-  // calibration cost bounded; the full reservoir is freed when this returns.
+  // Reservoir is uniform (Algorithm L), so a prefix is too.
   static constexpr std::size_t kAutoTuneSampleCap = 1024;
   auto const sampleCount =
       std::min<std::size_t>(kAutoTuneSampleCap, numOfTrainingVectors);
@@ -780,6 +779,33 @@ Result VectorIndexBuilder::persistTrainedData(TrainedData const& trainedData) {
   return {};
 }
 
+void VectorIndexBuilder::runAutoTune(std::span<float const> autoTuneSample) {
+  if (autoTuneSample.empty()) {
+    return;
+  }
+  SingleCollectionTransaction trx(
+      transaction::StandaloneContext::create(
+          _index.collection().vocbase(),
+          transaction::OperationOriginInternal{"vector index autotune"}),
+      _index.collection(), AccessMode::Type::READ);
+  if (auto trxRes = trx.begin(); trxRes.fail()) {
+    LOG_VECTOR_BUILD("e16b0", WARN, Logger::ENGINES)
+        << "Skipping autotune: " << trxRes.errorMessage();
+    return;
+  }
+  RocksDBFaissSearchContext faissCtx{static_cast<transaction::Methods*>(&trx)};
+  auto tuned =
+      autoTuneNProbe(*_index.faissIndex(), autoTuneSample, &faissCtx);
+  if (tuned.fail()) {
+    return;  // autoTuneNProbe already logged
+  }
+  auto const& td = _index.applyTunedNProbe(tuned.get());
+  if (auto persistRes = persistTrainedData(td); persistRes.fail()) {
+    LOG_VECTOR_BUILD("e16ac", WARN, Logger::ENGINES)
+        << "Failed to persist tuned nprobe: " << persistRes.errorMessage();
+  }
+}
+
 Result VectorIndexBuilder::build(
     std::shared_ptr<RocksDBIndex> indexPtr,
     metrics::Histogram<metrics::LogScale<double>>& trainingDuration,
@@ -895,26 +921,8 @@ Result VectorIndexBuilder::build(
   // Swap the real index back and transition to kReady before releasing.
   swapGuard.fire();
 
-  // Autotune nprobe against the fully-ingested index, while the build lock
-  // still blocks writes and the state is still kIngesting (so queries cannot
-  // observe the index). Tuning failure is non-fatal: the index stays usable
-  // and falls back to UserVectorIndexDefinition::defaultNProbe. autoTuneNProbe
-  // emits its own start/success/failure logs.
   // TODO(jbajic) maybe not while we hold the lock!!!
-  if (!autoTuneSample.empty()) {
-    auto const logPrefix = std::format(
-        "[shard={}, index={}] ", _index.collection().name(), _index.id().id());
-    auto tuned =
-        autoTuneNProbe(*_index.faissIndex(), autoTuneSample, kdefaultAutoTuneR,
-                       kdefaultAutoTuneTargetRecall, logPrefix);
-    if (tuned.ok()) {
-      auto const& td = _index.applyTunedNProbe(tuned.get());
-      if (auto persistRes = persistTrainedData(td); persistRes.fail()) {
-        LOG_VECTOR_BUILD("e16ac", WARN, Logger::ENGINES)
-            << "Failed to persist tuned nprobe: " << persistRes.errorMessage();
-      }
-    }
-  }
+  runAutoTune(autoTuneSample);
 
   _index.setTrainingState(VectorIndexTrainingState::kIngesting,
                           VectorIndexTrainingState::kReady);
