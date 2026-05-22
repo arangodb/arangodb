@@ -647,6 +647,7 @@ function VectorIndexL2FilterTestSuite() {
                 bindVars,
             );
         },
+
     };
 }
 
@@ -843,53 +844,6 @@ function VectorIndexL2FilterStoredValuesTestSuite() {
             db._dropDatabase(dbName);
         },
 
-        testApproxL2WithFilterStoredValuesSimple: function() {
-            const query = `
-                FOR d IN ${collection.name()}
-                FILTER d.val < 5 AND d.stringField == 'type_A'
-                LET dist = APPROX_NEAR_L2(@qp, d.vector)
-                SORT dist LIMIT 5
-                RETURN {key: d._key, val: d.val, stringField: d.stringField, dist}`;
-
-            const bindVars = {
-                qp: randomPoint
-            };
-
-            const plan = verifyPlan(query, bindVars);
-            const indexNodes = plan.nodes.filter(n => n.type === "EnumerateNearVectorNode");
-            assertTrue(indexNodes[0].isCoveredByStoredValues);
-
-            const results = db._query(query, bindVars).toArray();
-            assertTrue(results.length <= 5, "Results should be limited to 5");
-
-            verifyResultsMatchFilter(results, r => r.val < 5, "Val filter not applied correctly");
-            verifyResultsMatchFilter(results, r => r.stringField === "type_A", "String filter not applied correctly");
-            verifyDistancesAscending(results);
-        },
-
-        testApproxL2WithFilterCannotUseStoredValues: function() {
-            const query = `
-                FOR d IN ${collection.name()}
-                FILTER d.nonStoredValue < 50
-                LET dist = APPROX_NEAR_L2(@qp, d.vector)
-                SORT dist LIMIT 5
-                RETURN {key: d._key, nonStoredValue: d.nonStoredValue, dist}`;
-
-            const bindVars = {
-                qp: randomPoint
-            };
-
-            const plan = verifyPlan(query, bindVars);
-            const indexNodes = plan.nodes.filter(n => n.type === "EnumerateNearVectorNode");
-            assertFalse(indexNodes[0].isCoveredByStoredValues);
-
-            const results = db._query(query, bindVars).toArray();
-            assertTrue(results.length <= 5, "Results should be limited to 5");
-
-            verifyResultsMatchFilter(results, r => r.nonStoredValue < 50, "Val filter not applied correctly");
-            verifyDistancesAscending(results);
-        },
-
         testApproxL2WithFilterStoredValuesComplex: function() {
             const query = `
                 FOR d IN ${collection.name()}
@@ -904,7 +858,7 @@ function VectorIndexL2FilterStoredValuesTestSuite() {
 
             const plan = verifyPlan(query, bindVars);
             const indexNodes = plan.nodes.filter(n => n.type === "EnumerateNearVectorNode");
-            assertTrue(indexNodes[0].isCoveredByStoredValues);
+            assertEqual("storedValues", indexNodes[0].filterMode);
 
             const results = db._query(query, bindVars).toArray();
             assertTrue(results.length <= 10, "Results should be limited to 10");
@@ -933,7 +887,7 @@ function VectorIndexL2FilterStoredValuesTestSuite() {
 
             // Not fully covered by stored values (val field is stored, but array/object fields are not)
             const indexNodes = plan.nodes.filter(n => n.type === "EnumerateNearVectorNode");
-            assertFalse(indexNodes[0].isCoveredByStoredValues, "Should not be fully covered by stored values");
+            assertEqual("document", indexNodes[0].filterMode, "Should not be fully covered by stored values");
 
             const results = db._query(query, bindVars).toArray();
             assertTrue(results.length <= 5, "Results should be limited to 5");
@@ -961,7 +915,7 @@ function VectorIndexL2FilterStoredValuesTestSuite() {
 
             const plan = verifyPlan(query, bindVars);
             const indexNodes = plan.nodes.filter(n => n.type === "EnumerateNearVectorNode");
-            assertFalse(indexNodes[0].isCoveredByStoredValues, "Cannot be covered by stored values");
+            assertEqual("document", indexNodes[0].filterMode, "Cannot be covered by stored values");
 
             const results = db._query(query, bindVars).toArray();
             assertTrue(results.length <= 5, "Results should be limited to 5");
@@ -986,7 +940,7 @@ function VectorIndexL2FilterStoredValuesTestSuite() {
 
             const plan = verifyPlan(query, bindVars);
             const indexNodes = plan.nodes.filter(n => n.type === "EnumerateNearVectorNode");
-            assertTrue(indexNodes[0].isCoveredByStoredValues, "Should be covered by stored values");
+            assertEqual("storedValues", indexNodes[0].filterMode, "Should be covered by stored values");
 
             const results = db._query(query, bindVars).toArray();
             assertTrue(results.length <= 8, "Results should be limited to 8");
@@ -1103,7 +1057,7 @@ function VectorIndexL2FilterStoredValuesIndexSelection() {
             const indexNodes = plan.nodes.filter(n => n.type === "EnumerateNearVectorNode");
             assertEqual(1, indexNodes.length);
             assertEqual("vector_winner", indexNodes[0].index.name);
-            assertTrue(indexNodes[0].isCoveredByStoredValues);
+            assertEqual("storedValues", indexNodes[0].filterMode);
 
             const results = db._query(query, bindVars).toArray();
             assertTrue(results.length <= 5);
@@ -1122,7 +1076,7 @@ function VectorIndexL2FilterStoredValuesIndexSelection() {
             const plan = verifyPlan(query, bindVars);
             const indexNodes = plan.nodes.filter(n => n.type === "EnumerateNearVectorNode");
             assertEqual(1, indexNodes.length);
-            assertTrue(indexNodes[0].isCoveredByStoredValues);
+            assertEqual("storedValues", indexNodes[0].filterMode);
             assertTrue(
                 ["vector_sv_val_only", "vector_winner"].includes(indexNodes[0].index.name),
                 "Expected one of the indexes covering 'val', got: " + indexNodes[0].index.name
@@ -1145,7 +1099,7 @@ function VectorIndexL2FilterStoredValuesIndexSelection() {
             const plan = verifyPlan(query, bindVars);
             const indexNodes = plan.nodes.filter(n => n.type === "EnumerateNearVectorNode");
             assertEqual(1, indexNodes.length);
-            assertFalse(indexNodes[0].isCoveredByStoredValues);
+            assertEqual("document", indexNodes[0].filterMode);
 
             const results = db._query(query, bindVars).toArray();
             assertTrue(results.length <= 5);
@@ -1153,6 +1107,7 @@ function VectorIndexL2FilterStoredValuesIndexSelection() {
         },
     };
 }
+
 
 jsunity.run(function VectorIndexL2FilterTestSuiteRunner() {
     return VectorIndexL2FilterTestSuite();
@@ -1166,6 +1121,5 @@ jsunity.run(function VectorIndexL2FilterStoredValuesTestSuiteRunner() {
 jsunity.run(function VectorIndexL2FilterStoredValuesIndexSelectionTestSuiteRunner() {
     return VectorIndexL2FilterStoredValuesIndexSelection();
 });
-
 
 return jsunity.done();

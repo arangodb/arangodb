@@ -38,11 +38,11 @@
 #include "Basics/application-exit.h"
 #include "Cache/CacheManagerFeature.h"
 #include "Cluster/ServerState.h"
+#include "ClusterEngine/ClusterEngine.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchFeature.h"
-#include "RestServer/InitDatabaseFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -57,8 +57,9 @@
 #include "RestServer/FileDescriptorsFeature.h"
 #include "RestServer/IOHeartbeatThread.h"
 #include "RestServer/QueryRegistryFeature.h"
+#include "RestServer/InitDatabaseFeature.h"
+#include "RocksDBEngine/RocksDBEngine.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/StorageEngineFeature.h"
 #include "Transaction/OperationOrigin.h"
@@ -278,7 +279,8 @@ DatabaseFeature::DatabaseFeature(
 
   startsAfter<AuthenticationFeature>();
   startsAfter<CacheManagerFeature>();
-  startsAfter<EngineSelectorFeature>();
+  startsAfter<ClusterEngine>();
+  startsAfter<RocksDBEngine>();
   startsAfter<InitDatabaseFeature>();
   startsAfter<StorageEngineFeature>();
   startsAfter<metrics::MetricsFeature>();
@@ -629,7 +631,25 @@ void DatabaseFeature::unprepare() {
 }
 
 void DatabaseFeature::prepare() {
-  _engine = &server().getFeature<EngineSelectorFeature>().engine();
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  if (_engine == nullptr) {
+    // engine not injected by test code, inject it now
+#endif
+    if (ServerState::instance()->isCoordinator()) {
+      auto& ce = server().getFeature<ClusterEngine>();
+      auto& rocksdb = server().getFeature<RocksDBEngine>();
+      rocksdb.disable();
+      ce.setActualEngine(&rocksdb);
+      _engine = &ce;
+    } else {
+      auto& rocksdb = server().getFeature<RocksDBEngine>();
+      rocksdb.enable();
+      _engine = &rocksdb;
+    }
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  }
+#endif
+
   if (server().hasFeature<ReplicationFeature>()) {
     _replicationFeature = &server().getFeature<ReplicationFeature>();
   }

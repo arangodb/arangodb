@@ -48,7 +48,6 @@
 #include "Indexes/SortedIndexAttributeMatcher.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "RestServer/FlushFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Hints.h"
 #include "Transaction/Manager.h"
@@ -77,9 +76,7 @@ struct IndexFactoryMock : arangodb::IndexFactory {
       : IndexFactory(server) {
     if (injectClusterIndexes) {
       arangodb::ClusterIndexFactory::linkIndexFactories(
-          server, *this,
-          server.getFeature<arangodb::EngineSelectorFeature>()
-              .engine<arangodb::ClusterEngine>());
+          server, *this, server.getFeature<arangodb::ClusterEngine>());
     }
   }
 

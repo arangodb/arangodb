@@ -32,11 +32,12 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "IResearch/IResearchViewMeta.h"
 #include "IResearch/VelocyPackHelper.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "velocypack/Iterator.h"
 #include "velocypack/Parser.h"
 #include "Basics/VelocyPackHelper.h"
 #include "RestServer/arangod.h"
+#include "RestServer/DatabaseFeature.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 
 class IResearchViewMetaTest : public ::testing::Test {
  protected:
@@ -46,11 +47,14 @@ class IResearchViewMetaTest : public ::testing::Test {
   IResearchViewMetaTest() : server(nullptr, nullptr), engine(server) {
     auto& selector = server.addFeature<arangodb::EngineSelectorFeature>();
     selector.setEngineTesting(&engine);
+    auto& dbFeature = server.addFeature<arangodb::DatabaseFeature>();
+    dbFeature.setEngineTesting(&engine);
   }
 
   ~IResearchViewMetaTest() {
     server.getFeature<arangodb::EngineSelectorFeature>().setEngineTesting(
         nullptr);
+    server.getFeature<arangodb::DatabaseFeature>().setEngineTesting(nullptr);
   }
 };
 

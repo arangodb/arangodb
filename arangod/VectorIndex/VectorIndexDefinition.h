@@ -46,22 +46,6 @@ static constexpr std::uint64_t kdefaultNProbe{1};
 // own max_points_per_centroid (256) to keep training memory in check.
 static constexpr std::uint64_t kdefaultNumberOfDocsPerCentroid{100};
 
-struct SearchParameters {
-  std::optional<std::int64_t> nProbe;
-
-  template<class Inspector>
-  friend inline auto inspect(Inspector& f, SearchParameters& x) {
-    return f.object(x).fields(
-        f.field("nProbe", x.nProbe)
-            .invariant([](auto value) -> inspection::Status {
-              if (value.has_value() && *value < 1) {
-                return {"nProbe must be 1 or greater!"};
-              }
-              return inspection::Status::Success{};
-            }));
-  }
-};
-
 /// @brief Similarity metrics for vector index.
 enum class SimilarityMetric : std::uint8_t {
   kL2,
@@ -86,6 +70,45 @@ struct TrainedData {
   friend inline auto inspect(Inspector& f, TrainedData& x) {
     return f.object(x).fields(f.field("codeData", x.codeData),
                               f.field("tunedNProbe", x.tunedNProbe));
+  }
+};
+
+/// @brief On-disk format version for vector index list entries.
+///
+/// Entry value layout per version:
+///   kV1: VPack object wrapping {encodedValue, storedValues}. Pre-3.12.10.
+///   kV2: Raw concat [encodedValue: codeSize bytes][storedValues: VPack].
+///        Reader splits at codeSize; avoids the outer VPack deserialize step.
+///
+/// Each version uses its own sentinel slot in the VectorIndex CF, so a
+/// downgrade misses the V2 metadata and triggers retraining instead of
+/// crashing.
+enum class VectorIndexFormatVersion : std::uint8_t {
+  kV1 = 1,
+  kV2 = 2,
+};
+
+template<class Inspector>
+inline auto inspect(Inspector& f, VectorIndexFormatVersion& x) {
+  return f.enumeration(x).values(VectorIndexFormatVersion::kV1, "1",
+                                 VectorIndexFormatVersion::kV2, "2");
+}
+
+static constexpr VectorIndexFormatVersion kCurrentVectorIndexFormatVersion =
+    VectorIndexFormatVersion::kV2;
+
+/// @brief Per-index metadata sentinel record stored in the VectorIndex CF.
+/// Wraps TrainedData and adds the on-disk formatVersion. The kV1 default
+/// covers legacy records that pre-date the formatVersion field.
+struct VectorIndexMetadata {
+  TrainedData trainedData;
+  VectorIndexFormatVersion formatVersion = VectorIndexFormatVersion::kV1;
+
+  template<class Inspector>
+  friend inline auto inspect(Inspector& f, VectorIndexMetadata& x) {
+    return f.object(x).fields(f.field("codeData", x.trainedData.codeData),
+                              f.field("formatVersion", x.formatVersion)
+                                  .fallback(VectorIndexFormatVersion::kV1));
   }
 };
 

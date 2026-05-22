@@ -31,16 +31,10 @@
 #include "Basics/StaticStrings.h"
 #include "RocksDBIndex.h"
 #include "VectorIndex/VectorIndexDefinition.h"
+#include "VectorIndex/VectorReadBatch.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBVectorIndexBuilder.h"
-#include "Transaction/Methods.h"
 #include "VocBase/Identifiers/IndexId.h"
-#include "VocBase/Identifiers/LocalDocumentId.h"
-#include "Aql/Expression.h"
-#include "Aql/InputAqlItemRow.h"
-#include "Aql/QueryContext.h"
-#include "Aql/RegisterId.h"
-#include "Aql/Variable.h"
 
 #include <faiss/IndexIVF.h>
 #include <rocksdb/iterator.h>
@@ -52,8 +46,6 @@ class DB;
 }  // namespace rocksdb
 
 namespace arangodb {
-
-using VectorIndexLabelId = faiss::idx_t;
 
 enum class VectorIndexTrainingState : std::uint8_t {
   kUnusable,
@@ -89,16 +81,8 @@ class RocksDBVectorIndex final : public RocksDBIndex {
     return _definition;
   }
 
-  std::pair<std::vector<VectorIndexLabelId>, std::vector<float>> readBatch(
-      std::vector<float>& inputs,
-      vector::SearchParameters const& searchParameters,
-      RocksDBMethods* rocksDBMethods, transaction::Methods* trx,
-      std::shared_ptr<LogicalCollection> collection, std::size_t topK,
-      aql::Expression* filterExpression, aql::InputAqlItemRow const* inputRow,
-      aql::QueryContext& queryContext,
-      std::vector<std::pair<aql::VariableId, aql::RegisterId>> const&
-          filterVarsToRegs,
-      aql::Variable const* documentVariable, bool isCovered);
+  vector::SearchResult readBatch(vector::VectorSearchConfig const& config,
+                                 vector::VectorSearchContext const& ctx);
 
   vector::UserVectorIndexDefinition const& getVectorIndexDefinition() override;
 
@@ -137,6 +121,15 @@ class RocksDBVectorIndex final : public RocksDBIndex {
 
   StoredValues const& storedValues() const override;
 
+  /// @brief On-disk format version for this index's list entries. Internal
+  /// detail; never surfaced through toVelocyPack or the REST API.
+  vector::VectorIndexFormatVersion formatVersion() const noexcept {
+    return _formatVersion;
+  }
+
+  std::vector<std::vector<basics::AttributeName>> const& coveredFields()
+      const override;
+
   Result prepareIndex(std::unique_ptr<rocksdb::Iterator> it,
                       rocksdb::Slice upper, RocksDBMethods* methods) override;
 
@@ -169,11 +162,14 @@ class RocksDBVectorIndex final : public RocksDBIndex {
                 OperationOptions const& /*options*/) override;
 
  private:
-  vector::TrainedData loadTrainedData(velocypack::Slice info) const;
+  vector::VectorIndexMetadata loadVectorIndexMetadata(
+      velocypack::Slice info) const;
 
   vector::UserVectorIndexDefinition _definition;
   std::shared_ptr<faiss::IndexIVF> _faissIndex;
   vector::TrainedData _trainedData;
+  vector::VectorIndexFormatVersion _formatVersion{
+      vector::kCurrentVectorIndexFormatVersion};
   StoredValues const _storedValues;
 
   std::size_t _trainingThreshold{0};
