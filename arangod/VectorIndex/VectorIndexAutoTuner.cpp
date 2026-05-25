@@ -25,8 +25,10 @@
 
 #include <chrono>
 #include <cstddef>
+#include <exception>
 #include <format>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 #include "Basics/ScopeGuard.h"
@@ -42,36 +44,78 @@ namespace arangodb::vector {
 
 namespace {
 
-struct Trial {
-  std::int64_t nprobe;
-  double recall;
-  double seconds;
-};
-
-// Mirrors faiss/AutoTune.cpp:358-367: powers of two strictly less than
-// nlist, capped at 13 entries (so max 4096).
-std::vector<std::int64_t> nProbeCandidates(std::size_t nlist) {
-  std::vector<std::int64_t> out;
-  for (int i = 0; i < 13; ++i) {
-    auto const v = std::int64_t{1} << i;
-    if (static_cast<std::size_t>(v) >= nlist) {
-      break;
-    }
-    out.push_back(v);
+// FAISS formats single-parameter keys as "nprobe=32" (see
+// ParameterSpace::combination_name in faiss/AutoTune.cpp).
+ResultT<std::int64_t> parseNProbeKey(std::string const& key) {
+  auto const eq = key.find('=');
+  if (eq == std::string::npos) {
+    return Result{TRI_ERROR_INTERNAL,
+                  std::format("unexpected autotune key '{}'", key)};
   }
-  return out;
+  try {
+    return std::stoll(key.substr(eq + 1));
+  } catch (std::exception const&) {
+    return Result{TRI_ERROR_INTERNAL,
+                  std::format("could not parse autotune key '{}'", key)};
+  }
 }
 
-std::string formatTrials(std::vector<Trial> const& trials,
-                         Trial const* chosen) {
+struct GroundTruth {
+  std::vector<faiss::idx_t> ids;
+  std::vector<float> distances;
+};
+
+// TODO(jbajic) there might be a better way to find ground truth.
+ResultT<GroundTruth> computeGroundTruth(faiss::IndexIVF& index,
+                                        std::span<float const> querySet,
+                                        faiss::idx_t numberOfQueries,
+                                        std::int64_t R,
+                                        void* invertedListContext) {
+  GroundTruth gt;
+  gt.ids.resize(static_cast<std::size_t>(numberOfQueries) * R);
+  gt.distances.resize(static_cast<std::size_t>(numberOfQueries) * R);
+  faiss::SearchParametersIVF params;
+  params.inverted_list_context = invertedListContext;
+  params.nprobe = index.nlist;
+  auto const start = std::chrono::steady_clock::now();
+  try {
+    index.search(numberOfQueries, querySet.data(), R, gt.distances.data(),
+                 gt.ids.data(), &params);
+  } catch (faiss::FaissException const& e) {
+    return Result{
+        TRI_ERROR_INTERNAL,
+        std::format("autotune ground-truth search failed: {}", e.what())};
+  }
+  LOG_TOPIC("e16b1", INFO, Logger::ENGINES)
+      << "Autotune ground truth (nprobe=" << index.nlist << ") done in "
+      << std::chrono::duration<double>(std::chrono::steady_clock::now() - start)
+             .count()
+      << "s.";
+  return gt;
+}
+
+// Single-line summary of every trial in `ops.all_pts`. Pareto-optimal points
+// get `*`, the chosen one gets ` <-chosen`. LOG_TOPIC escapes newlines so we
+// join with `; `.
+std::string formatOperatingPoints(faiss::OperatingPoints const& ops,
+                                  faiss::OperatingPoint const* chosen) {
+  std::unordered_set<std::int64_t> paretoCnos;
+  paretoCnos.reserve(ops.optimal_pts.size());
+  for (auto const& op : ops.optimal_pts) {
+    paretoCnos.insert(op.cno);
+  }
   std::string out;
-  for (auto const& t : trials) {
+  for (auto const& op : ops.all_pts) {
+    if (op.key.empty()) {
+      continue;
+    }
     if (!out.empty()) {
       out += "; ";
     }
-    out += std::format("nprobe={} perf={:.3f} t={:.3f}s{}", t.nprobe, t.recall,
-                       t.seconds,
-                       (chosen != nullptr && &t == chosen) ? " <-chosen" : "");
+    bool const isPareto = paretoCnos.contains(op.cno);
+    bool const isChosen = (chosen != nullptr && op.cno == chosen->cno);
+    out += std::format("{} perf={:.3f} t={:.3f}s{}{}", op.key, op.perf, op.t,
+                       isPareto ? " *" : "", isChosen ? " <-chosen" : "");
   }
   return out;
 }
@@ -110,89 +154,77 @@ ResultT<std::int64_t> autoTuneNProbe(faiss::IndexIVF& index,
         << "s: " << outcome.errorMessage();
   });
 
-  // Ground truth: exhaustive IVF (nprobe = nlist).
-  // TODO(jbajic) there might be a bettter way to find ground truth
-  std::vector<faiss::idx_t> gtI(static_cast<std::size_t>(numberOfQueries) * R);
-  std::vector<float> gtD(static_cast<std::size_t>(numberOfQueries) * R);
-  faiss::SearchParametersIVF params;
-  params.inverted_list_context = invertedListContext;
-  params.nprobe = index.nlist;
-  auto const gtStart = std::chrono::steady_clock::now();
-  try {
-    index.search(numberOfQueries, querySet.data(), R, gtD.data(), gtI.data(),
-                 &params);
-  } catch (faiss::FaissException const& e) {
-    outcome = Result{
-        TRI_ERROR_INTERNAL,
-        std::format("autotune ground-truth search failed: {}", e.what())};
+  auto gt = computeGroundTruth(index, querySet, numberOfQueries, R,
+                               invertedListContext);
+  if (gt.fail()) {
+    outcome = std::move(gt).result();
     return outcome;
   }
-  LOG_TOPIC("e16b1", INFO, Logger::ENGINES)
-      << "Autotune ground truth (nprobe=" << index.nlist << ") done in "
-      << std::chrono::duration<double>(std::chrono::steady_clock::now() -
-                                       gtStart)
-             .count()
-      << "s.";
 
+  // TODO ParameterSpace::explore calls index.search() without
+  // SearchParametersIVF, so `invertedListContext` is NOT threaded through
+  // to per-trial searches. Trials run with no context.
   faiss::IntersectionCriterion crit(numberOfQueries, R);
-  crit.set_groundtruth(static_cast<int>(R), gtD.data(), gtI.data());
+  crit.set_groundtruth(static_cast<int>(R), gt.get().distances.data(),
+                       gt.get().ids.data());
 
-  auto const candidates = nProbeCandidates(index.nlist);
-  if (candidates.empty()) {
+  faiss::ParameterSpace ps;
+  ps.initialize(&index);
+  ps.n_experiments = 0;
+  ps.batchsize = static_cast<std::size_t>(numberOfQueries);
+  ps.verbose = 1;  // per-trial progress to stdout
+
+  faiss::OperatingPoints ops;
+  try {
+    ps.explore(&index, static_cast<std::size_t>(numberOfQueries),
+               querySet.data(), crit, &ops);
+  } catch (faiss::FaissException const& e) {
     outcome = Result{TRI_ERROR_INTERNAL,
-                     "autotune produced no candidates (nlist too small)"};
+                     std::format("autotune explore failed: {}", e.what())};
     return outcome;
   }
 
-  std::vector<Trial> trials;
-  trials.reserve(candidates.size());
-  std::vector<faiss::idx_t> I(static_cast<std::size_t>(numberOfQueries) * R);
-  std::vector<float> D(static_cast<std::size_t>(numberOfQueries) * R);
-  for (auto const nprobe : candidates) {
-    params.nprobe = nprobe;
-    auto const trialStart = std::chrono::steady_clock::now();
-    try {
-      index.search(numberOfQueries, querySet.data(), R, D.data(), I.data(),
-                   &params);
-    } catch (faiss::FaissException const& e) {
-      outcome = Result{
-          TRI_ERROR_INTERNAL,
-          std::format("autotune trial nprobe={} failed: {}", nprobe, e.what())};
-      return outcome;
-    }
-    auto const trialSecs = std::chrono::duration<double>(
-                               std::chrono::steady_clock::now() - trialStart)
-                               .count();
-    auto const recall = crit.evaluate(D.data(), I.data());
-    trials.push_back(Trial{nprobe, recall, trialSecs});
-    LOG_TOPIC("e16b2", INFO, Logger::ENGINES)
-        << "Autotune trial " << trials.size() << "/" << candidates.size()
-        << ": nprobe=" << nprobe << " perf=" << recall << " t=" << trialSecs
-        << "s.";
+  if (ops.optimal_pts.empty()) {
+    outcome =
+        Result{TRI_ERROR_INTERNAL, "autotune produced no operating points"};
+    return outcome;
   }
 
-  Trial const* chosen = nullptr;
-  Trial const* fallback = nullptr;
-  for (auto const& t : trials) {
-    if (fallback == nullptr || t.recall > fallback->recall) {
-      fallback = &t;
+  faiss::OperatingPoint const* chosen = nullptr;
+  faiss::OperatingPoint const* fallback = nullptr;
+  for (auto const& op : ops.optimal_pts) {
+    if (op.key.empty()) {
+      continue;
     }
-    if (chosen == nullptr && t.recall >= targetRecall) {
-      chosen = &t;
+    if (fallback == nullptr || op.perf > fallback->perf) {
+      fallback = &op;
+    }
+    if (chosen == nullptr && op.perf >= targetRecall) {
+      chosen = &op;
     }
   }
   if (chosen == nullptr) {
     chosen = fallback;
   }
-  TRI_ASSERT(chosen != nullptr);
+  if (chosen == nullptr) {
+    outcome = Result{TRI_ERROR_INTERNAL,
+                     "autotune found no non-empty operating points"};
+    return outcome;
+  }
+
+  auto chosenNProbe = parseNProbeKey(chosen->key);
+  if (chosenNProbe.fail()) {
+    outcome = std::move(chosenNProbe).result();
+    return outcome;
+  }
 
   failLog.cancel();
-  index.nprobe = chosen->nprobe;
+  index.nprobe = chosenNProbe.get();
   LOG_TOPIC("e16ad", INFO, Logger::ENGINES)
-      << "Autotune chose nprobe=" << chosen->nprobe << " (target recall@" << R
-      << "≥" << targetRecall << ", took " << elapsedSecs()
-      << "s). Operating points: " << formatTrials(trials, chosen);
-  return chosen->nprobe;
+      << "Autotune chose nprobe=" << chosenNProbe.get() << " (target recall@"
+      << R << "≥" << targetRecall << ", took " << elapsedSecs()
+      << "s). Operating points: " << formatOperatingPoints(ops, chosen);
+  return chosenNProbe.get();
 }
 
 }  // namespace arangodb::vector
