@@ -2,6 +2,7 @@
 
 #include "activity_declaration.h"
 
+#include "bindings.h"
 #include "clang/ASTMatchers/ASTMatchFinder.h"
 #include <unordered_set>
 
@@ -21,14 +22,17 @@ namespace conversion {
 class ActivityCallback
     : public clang::ast_matchers::MatchFinder::MatchCallback {
  public:
-  explicit ActivityCallback(std::vector<ActivityDeclaration>& out)
-      : _out_activities(out) {}
+  explicit ActivityCallback(std::vector<ActivityDeclaration>& out,
+                            Bindings bindings)
+      : _out_activities(out), _bindings{std::move(bindings)} {}
 
   auto run(clang::ast_matchers::MatchFinder::MatchResult const& result)
       -> void override;
 
- private:
   std::vector<ActivityDeclaration>& _out_activities;
+  Bindings _bindings;
+
+ private:
   std::unordered_set<std::string> _seen_activities;
 };
 

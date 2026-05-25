@@ -15,8 +15,8 @@ namespace {
  * diagnostics, so a mismatch can be copy-pasted into source.
  */
 std::ostream& operator<<(std::ostream& os, Member const& member) {
-  return os << "Member{.name=\"" << member.name << "\", .type=\""
-            << member.type << "\"}";
+  return os << "Member{.name=\"" << member.name << "\", .type=\"" << member.type
+            << "\"}";
 }
 std::ostream& operator<<(std::ostream& os, Struct const& strct) {
   os << "Struct{.name=\"" << strct.name << "\", .fields={";
@@ -76,7 +76,7 @@ TestCase const tests[] = {
      [](std::string const& root) -> bool {
        return assert_includes(
            find_all_activities(root +
-                             "/arangod/StorageEngine/TransactionState.cpp"),
+                               "/arangod/StorageEngine/TransactionState.cpp"),
            ActivityDeclaration{
                .owner_file = root + "/arangod/StorageEngine/TransactionState.h",
                .owner_line = 521,
@@ -130,7 +130,8 @@ TestCase const tests[] = {
      }},
     {"find_collection_creation_activity", [](std::string const& root) -> bool {
        return assert_includes(
-           find_all_activities(root + "/arangod/VocBase/Methods/Collections.cpp"),
+           find_all_activities(root +
+                               "/arangod/VocBase/Methods/Collections.cpp"),
            ActivityDeclaration{
                .owner_file = root + "/arangod/VocBase/Methods/Collections.cpp",
                .owner_line = 598,
