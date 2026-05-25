@@ -747,7 +747,15 @@ futures::Future<ResultT<std::string>> RestIndexHandler::waitForVectorIndexReady(
     auto idx = coll->lookupIndex(indexId);
     if (idx != nullptr) {
       TRI_ASSERT(idx->type() == Index::TRI_IDX_TYPE_VECTOR_INDEX);
-      auto* vecIdx = static_cast<RocksDBVectorIndex*>(idx.get());
+      // The looked-up index may still be wrapped in a RocksDBBuilderIndex
+      // during the fill+catchup phase; type() forwards to the wrapped index
+      // so a plain static_cast would point at the wrong subobject.
+      Index const* raw = idx.get();
+      if (auto const* builder = dynamic_cast<RocksDBBuilderIndex const*>(raw)) {
+        raw = &builder->wrapped();
+      }
+      auto const* vecIdx = dynamic_cast<RocksDBVectorIndex const*>(raw);
+      TRI_ASSERT(vecIdx != nullptr);
       if (vecIdx->trainingState() == VectorIndexTrainingState::kUnusable) {
         auto msg = vecIdx->trainingError();
         // Empty message would collide with the "ready" sentinel, so
