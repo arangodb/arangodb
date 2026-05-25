@@ -7,7 +7,7 @@
 #include <unordered_set>
 #include <vector>
 
-constexpr char const* GUARDED_TEMPLATE = "GuardedActivity";  // TODO
+constexpr char const* GUARDED_TEMPLATE = "GuardedActivity";
 
 using namespace clang;
 
@@ -211,8 +211,9 @@ struct TypeDefinition {
 
 auto conversion::ActivityCallback::run(
     clang::ast_matchers::MatchFinder::MatchResult const& result) -> void {
-  auto const* decl = result.Nodes.getNodeAs<DeclaratorDecl>("decl");
-  auto const* rd = result.Nodes.getNodeAs<CXXRecordDecl>("activity_class");
+  auto const* decl =
+      result.Nodes.getNodeAs<DeclaratorDecl>(_bindings.declaration);
+  auto const* rd = result.Nodes.getNodeAs<CXXRecordDecl>(_bindings.record);
   if (decl == nullptr || rd == nullptr) {
     return;
   }

@@ -1,4 +1,5 @@
 #include "find_activity_subclasses.h"
+#include <clang/ASTMatchers/ASTMatchFinder.h>
 
 #include "sources.h"
 #include "matcher.h"
@@ -30,8 +31,14 @@ auto find_all_activities(std::string const& path)
   }
 
   auto out = std::vector<ActivityDeclaration>{};
-  auto callback = conversion::ActivityCallback(out);
-  auto finder = matcher::match(callback);
+  auto callback = conversion::ActivityCallback(
+      out, Bindings{.record = "activity_class", .declaration = "decl"});
+
+  auto finder = clang::ast_matchers::MatchFinder{};
+  finder.addMatcher(matcher::activity_as_field("activity_class").bind("decl"),
+                    &callback);
+  finder.addMatcher(
+      matcher::activity_as_variable("activity_class").bind("decl"), &callback);
 
   auto tool = clang::tooling::ClangTool(*sources.db, sources.files);
   tool.run(clang::tooling::newFrontendActionFactory(&finder).get());

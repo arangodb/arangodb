@@ -4,7 +4,10 @@
 
 namespace matcher {
 
-auto match(clang::ast_matchers::MatchFinder::MatchCallback& callback)
-    -> clang ::ast_matchers::MatchFinder;
+auto activity_as_field(std::string_view activity_binding)
+    -> clang::ast_matchers::internal::BindableMatcher<clang::Decl>;
 
-}
+auto activity_as_variable(std::string_view activity_binding)
+    -> clang::ast_matchers::internal::BindableMatcher<clang::Decl>;
+
+}  // namespace matcher
