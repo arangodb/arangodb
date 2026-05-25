@@ -227,16 +227,16 @@ TEST_F(AqlValueHashEqualTest, array_different_values) {
 TEST_F(AqlValueHashEqualTest, object_same_value) {
   VPackBuilder b1, b2;
   b1.openObject();
-  b1.add("k", VPackValue("v"));
-  b1.add("n", VPackValue(42));
+  b1.add("key1", VPackValue("value1"));
+  b1.add("key2", VPackValue(42));
   b1.close();
   b2.openObject();
-  b2.add("k", VPackValue("v"));
-  b2.add("n", VPackValue(42));
+  b2.add("key1", VPackValue("value1"));
+  b2.add("key2", VPackValue(42));
   b2.close();
   AqlValue val1(b1.slice());
   AqlValue val2(b2.slice());
-  // Object > 16 bytes → VPACK_MANAGED_SLICE with different pointers.
+  // Longer keys/values push this past 16 bytes → VPACK_MANAGED_SLICE.
   ASSERT_TRUE(val1.requiresDestruction());
   EXPECT_TRUE(equal(val1, val2));
   EXPECT_EQ(hasher(val1), hasher(val2));
