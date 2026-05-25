@@ -60,27 +60,23 @@ ResultT<std::int64_t> parseNProbeKey(std::string const& key) {
   }
 }
 
-struct GroundTruth {
-  std::vector<faiss::idx_t> ids;
-  std::vector<float> distances;
-};
-
 // TODO(jbajic) there might be a better way to find ground truth.
-ResultT<GroundTruth> computeGroundTruth(faiss::IndexIVF& index,
-                                        std::span<float const> querySet,
-                                        faiss::idx_t numberOfQueries,
-                                        std::int64_t R,
-                                        void* invertedListContext) {
-  GroundTruth gt;
-  gt.ids.resize(static_cast<std::size_t>(numberOfQueries) * R);
-  gt.distances.resize(static_cast<std::size_t>(numberOfQueries) * R);
+// FAISS's search API requires a distances buffer, but the criteria we use
+// (IntersectionCriterion, OneRecallAtRCriterion) never read it — so we
+// scratch it locally and return only the IDs.
+ResultT<std::vector<faiss::idx_t>> computeGroundTruth(
+    faiss::IndexIVF& index, std::span<float const> querySet,
+    faiss::idx_t numberOfQueries, std::int64_t R, void* invertedListContext) {
+  auto const total = static_cast<std::size_t>(numberOfQueries) * R;
+  std::vector<faiss::idx_t> ids(total);
+  std::vector<float> distancesScratch(total);
   faiss::SearchParametersIVF params;
   params.inverted_list_context = invertedListContext;
   params.nprobe = index.nlist;
   auto const start = std::chrono::steady_clock::now();
   try {
-    index.search(numberOfQueries, querySet.data(), R, gt.distances.data(),
-                 gt.ids.data(), &params);
+    index.search(numberOfQueries, querySet.data(), R, distancesScratch.data(),
+                 ids.data(), &params);
   } catch (faiss::FaissException const& e) {
     return Result{
         TRI_ERROR_INTERNAL,
@@ -91,7 +87,66 @@ ResultT<GroundTruth> computeGroundTruth(faiss::IndexIVF& index,
       << std::chrono::duration<double>(std::chrono::steady_clock::now() - start)
              .count()
       << "s.";
-  return gt;
+  return ids;
+}
+
+// Set up a FAISS ParameterSpace for an nprobe sweep on `index` (powers of
+// two up to nlist) and run a full sweep against `crit`. Returns the
+// operating points or a `Result` error if explore throws or yields no
+// Pareto points to choose from.
+ResultT<faiss::OperatingPoints> exploreParameterSpace(
+    faiss::IndexIVF& index, std::span<float const> querySet,
+    faiss::idx_t numberOfQueries, void* invertedListContext,
+    faiss::IntersectionCriterion const& crit) {
+  faiss::SearchParametersIVF trialParams;
+  trialParams.inverted_list_context = invertedListContext;
+  faiss::ParameterSpace ps;
+#if ARANGODB_ENABLE_MAINTAINER_MODE
+  ps.verbose = true;
+#else
+  ps.verbose = false;
+#endif
+  ps.initialize(&index);
+  ps.n_experiments = 0;  // do full trials TODO(jbajic): maybe add a cap and/or
+                         // randomize if we have too many?
+  ps.batchsize = static_cast<std::size_t>(numberOfQueries);
+
+  faiss::OperatingPoints ops;
+  try {
+    ps.explore(&index, static_cast<std::size_t>(numberOfQueries),
+               querySet.data(), crit, &ops, &trialParams);
+  } catch (faiss::FaissException const& e) {
+    return Result{TRI_ERROR_INTERNAL,
+                  std::format("autotune explore failed: {}", e.what())};
+  }
+
+  if (ops.optimal_pts.empty()) {
+    return Result{TRI_ERROR_INTERNAL, "autotune produced no operating points"};
+  }
+
+  return ops;
+}
+
+// Returns the smallest-perf Pareto point whose recall meets `targetRecall`
+// (within kAutoTuneRecallEpsilon), or the highest-perf Pareto point if
+// none qualify. Empty-keyed entries (FAISS's default dummy at perf=0) are
+// skipped. Returns nullptr only if `ops` has no non-empty Pareto points.
+faiss::OperatingPoint const* pickParetoOperatingPoint(
+    faiss::OperatingPoints const& ops, double targetRecall) {
+  faiss::OperatingPoint const* chosen = nullptr;
+  faiss::OperatingPoint const* fallback = nullptr;
+  for (auto const& op : ops.optimal_pts) {
+    if (op.key.empty()) {
+      continue;
+    }
+    if (fallback == nullptr || op.perf > fallback->perf) {
+      fallback = &op;
+    }
+    if (chosen == nullptr && op.perf >= targetRecall - kAutoTuneRecallEpsilon) {
+      chosen = &op;
+    }
+  }
+  return chosen != nullptr ? chosen : fallback;
 }
 
 // Single-line summary of every trial in `ops.all_pts`. Pareto-optimal points
@@ -161,51 +216,18 @@ ResultT<std::int64_t> autoTuneNProbe(faiss::IndexIVF& index,
     return outcome;
   }
 
-  // TODO ParameterSpace::explore calls index.search() without
-  // SearchParametersIVF, so `invertedListContext` is NOT threaded through
-  // to per-trial searches. Trials run with no context.
   faiss::IntersectionCriterion crit(numberOfQueries, R);
-  crit.set_groundtruth(static_cast<int>(R), gt.get().distances.data(),
-                       gt.get().ids.data());
+  crit.set_groundtruth(static_cast<int>(R), nullptr, gt.get().data());
 
-  faiss::ParameterSpace ps;
-  ps.initialize(&index);
-  ps.n_experiments = 0;
-  ps.batchsize = static_cast<std::size_t>(numberOfQueries);
-  ps.verbose = 1;  // per-trial progress to stdout
-
-  faiss::OperatingPoints ops;
-  try {
-    ps.explore(&index, static_cast<std::size_t>(numberOfQueries),
-               querySet.data(), crit, &ops);
-  } catch (faiss::FaissException const& e) {
-    outcome = Result{TRI_ERROR_INTERNAL,
-                     std::format("autotune explore failed: {}", e.what())};
+  auto opsRes = exploreParameterSpace(index, querySet, numberOfQueries,
+                                      invertedListContext, crit);
+  if (opsRes.fail()) {
+    outcome = std::move(opsRes).result();
     return outcome;
   }
+  auto const& ops = opsRes.get();
 
-  if (ops.optimal_pts.empty()) {
-    outcome =
-        Result{TRI_ERROR_INTERNAL, "autotune produced no operating points"};
-    return outcome;
-  }
-
-  faiss::OperatingPoint const* chosen = nullptr;
-  faiss::OperatingPoint const* fallback = nullptr;
-  for (auto const& op : ops.optimal_pts) {
-    if (op.key.empty()) {
-      continue;
-    }
-    if (fallback == nullptr || op.perf > fallback->perf) {
-      fallback = &op;
-    }
-    if (chosen == nullptr && op.perf >= targetRecall) {
-      chosen = &op;
-    }
-  }
-  if (chosen == nullptr) {
-    chosen = fallback;
-  }
+  auto const* chosen = pickParetoOperatingPoint(ops, targetRecall);
   if (chosen == nullptr) {
     outcome = Result{TRI_ERROR_INTERNAL,
                      "autotune found no non-empty operating points"};

@@ -34,19 +34,18 @@ class IndexIVF;
 
 namespace arangodb::vector {
 
-inline constexpr std::int64_t kdefaultAutoTuneR{100};
+inline constexpr std::int64_t kdefaultAutoTuneR{10};
 inline constexpr double kdefaultAutoTuneTargetRecall{0.9};
+inline constexpr double kAutoTuneRecallEpsilon{5e-4};
 
-// Sweep nprobe over powers of two (matching FAISS's ParameterSpace default
-// range), pick the smallest value whose recall@R meets `targetRecall`, or
-// fall back to the highest-recall trial. `invertedListContext` is forwarded
-// to every search call via SearchParametersIVF::inverted_list_context;
-// required when the InvertedLists impl needs caller state (e.g. our
-// RocksDBInvertedLists wants a RocksDBFaissSearchContext).
+// Sweep nprobe over powers of two via FAISS's ParameterSpace::explore, pick
+// the smallest value whose recall@R meets `targetRecall`, or fall back to
+// the highest-recall trial. `invertedListContext` is forwarded to every
+// search call (incl. per-trial searches inside explore) via
+// SearchParametersIVF::inverted_list_context.
 ResultT<std::int64_t> autoTuneNProbe(
     faiss::IndexIVF& index, std::span<float const> querySet,
-    void* invertedListContext = nullptr,
-    std::int64_t R = kdefaultAutoTuneR,
+    void* invertedListContext = nullptr, std::int64_t R = kdefaultAutoTuneR,
     double targetRecall = kdefaultAutoTuneTargetRecall);
 
 }  // namespace arangodb::vector
