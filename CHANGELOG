@@ -1,5 +1,6 @@
 3.12.10-devel (XXXX-XX-XX)
 --------------------------
+* Upgraded FAISS to v1.14.2.
 
 * COR-320: Vector search now supports projections, allowing covered queries
   to skip the document materialization step. Adds optimizer rule
