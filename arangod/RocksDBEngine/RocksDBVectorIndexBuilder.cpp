@@ -813,9 +813,12 @@ void VectorIndexBuilder::runAutoTune(std::span<float const> autoTuneSample) {
         << "Skipping autotune: " << trxRes.errorMessage();
     return;
   }
+
   RocksDBFaissIteratorContext faissCtx{
       IteratorContext{.trx = static_cast<transaction::Methods*>(&trx)}};
-  auto tuned = autoTuneNProbe(*_index.faissIndex(), autoTuneSample, &faissCtx);
+  auto const tuned =
+      autoTuneNProbe(*_index.faissIndex(), autoTuneSample, &faissCtx,
+                     kdefaultAutoTuneR, kdefaultAutoTuneTargetRecall);
   if (tuned.fail()) {
     return;  // autoTuneNProbe already logged
   }
@@ -946,7 +949,6 @@ Result VectorIndexBuilder::build(
   // Swap the real index back and transition to kReady before releasing.
   swapGuard.fire();
 
-  // TODO(jbajic) maybe not while we hold the lock!!!
   runAutoTune(autoTuneSample);
 
   _index.setTrainingState(VectorIndexTrainingState::kIngesting,
