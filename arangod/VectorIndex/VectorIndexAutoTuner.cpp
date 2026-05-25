@@ -60,10 +60,7 @@ ResultT<std::int64_t> parseNProbeKey(std::string const& key) {
   }
 }
 
-// TODO(jbajic) there might be a better way to find ground truth.
-// FAISS's search API requires a distances buffer, but the criteria we use
-// (IntersectionCriterion, OneRecallAtRCriterion) never read it — so we
-// scratch it locally and return only the IDs.
+// Use nLists as nProbe to get ground truth. Distance is unused
 ResultT<std::vector<faiss::idx_t>> computeGroundTruth(
     faiss::IndexIVF& index, std::span<float const> querySet,
     faiss::idx_t numberOfQueries, std::int64_t R, void* invertedListContext) {
@@ -127,9 +124,11 @@ ResultT<faiss::OperatingPoints> exploreParameterSpace(
   return ops;
 }
 
-// Returns the smallest-perf Pareto point whose recall meets `targetRecall`
-// (within kAutoTuneRecallEpsilon), or the highest-perf Pareto point if
-// none qualify. Empty-keyed entries (FAISS's default dummy at perf=0) are
+// On the Pareto front, OperatingPoint::perf is recall and points are
+// ordered by ascending recall (which also means ascending cost). Pick the
+// cheapest point that still meets `targetRecall` (within
+// kAutoTuneRecallEpsilon); if none qualify, fall back to the highest-recall
+// point we saw. Empty-keyed entries (FAISS's default dummy at perf=0) are
 // skipped. Returns nullptr only if `ops` has no non-empty Pareto points.
 faiss::OperatingPoint const* pickParetoOperatingPoint(
     faiss::OperatingPoints const& ops, double targetRecall) {
@@ -241,7 +240,6 @@ ResultT<std::int64_t> autoTuneNProbe(faiss::IndexIVF& index,
   }
 
   failLog.cancel();
-  index.nprobe = chosenNProbe.get();
   LOG_TOPIC("e16ad", INFO, Logger::ENGINES)
       << "Autotune chose nprobe=" << chosenNProbe.get() << " (target recall@"
       << R << "≥" << targetRecall << ", took " << elapsedSecs()

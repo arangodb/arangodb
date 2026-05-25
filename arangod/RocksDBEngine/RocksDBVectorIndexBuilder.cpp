@@ -818,7 +818,7 @@ void VectorIndexBuilder::runAutoTune(std::span<float const> autoTuneSample) {
       IteratorContext{.trx = static_cast<transaction::Methods*>(&trx)}};
   auto const tuned =
       autoTuneNProbe(*_index.faissIndex(), autoTuneSample, &faissCtx,
-                     kdefaultAutoTuneR, kdefaultAutoTuneTargetRecall);
+                     kDefaultAutoTuneR, kDefaultAutoTuneTargetRecall);
   if (tuned.fail()) {
     return;  // autoTuneNProbe already logged
   }
