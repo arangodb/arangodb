@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertNotEqual, assertTrue, assertFalse, assertNull, assertMatch, fail */
+/*global assertEqual, assertNotEqual, assertTrue, assertFalse, assertNull, assertMatch, fail, print */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
