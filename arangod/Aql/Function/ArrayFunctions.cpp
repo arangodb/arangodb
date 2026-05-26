@@ -1049,14 +1049,12 @@ AqlValue functions::UnionDistinctStable(
     VPackSlice slice = aqlValueMaterializer.slice(value);
     for (VPackSlice v : VPackArrayIterator(slice)) {
       v = v.resolveExternal();
-      if (values.find(v) == values.end()) {
+      if (values.emplace(v).second) {
         TRI_IF_FAILURE("AqlFunctions::OutOfMemory1") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
 
-        if (values.emplace(v).second) {
-          builder->add(v);
-        }
+        builder->add(v);
       }
     }
   }
