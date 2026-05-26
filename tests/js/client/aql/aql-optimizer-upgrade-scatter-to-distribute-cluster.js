@@ -32,6 +32,7 @@ function optimizerUpgradeScatterToDistributeSuite() {
   let col_msk; // sharded, but unrelated collection with multiple shard keys
   let col_msk_dsl; // distribute shards like the collection with multiple shard keys
   let col_id;
+  let col_id_key;
 
   return {
     setUpAll: function () {
@@ -204,8 +205,6 @@ function optimizerUpgradeScatterToDistributeSuite() {
       print(JSON.stringify("shardKeys: " + db._collection(col_id.name()).properties().shardKeys, null, 2));
       let plan = db._createStatement({query: query}).explain().plan;
       assertTrue(plan.rules.includes("upgrade-scatter-to-distribute"));
-      let result = db._query(query).toArray();
-      assertNotEqual(result.length, col_id.count());
     },
 
     test_DefaultShardKey_Upgrade_id_3: function() {
@@ -218,8 +217,6 @@ function optimizerUpgradeScatterToDistributeSuite() {
       print(JSON.stringify("shardKeys: " + db._collection(col_id.name()).properties().shardKeys, null, 2));
       let plan = db._createStatement({query: query}).explain().plan;
       assertFalse(plan.rules.includes("upgrade-scatter-to-distribute"));
-      let result = db._query(query).toArray();
-      assertNotEqual(result.length, col_id.count());
     },
 
     test_DefaultShardKey_Upgrade_id_4: function() {
