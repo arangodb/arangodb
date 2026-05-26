@@ -91,7 +91,7 @@ class RocksDBVectorIndex final : public RocksDBIndex {
   bool isLinearScanEnabled() const noexcept override;
 
   Result readDocumentVectorData(velocypack::Slice doc,
-                                std::vector<float>& vector) const;
+                                vector::Vector& vector) const;
 
   std::shared_ptr<faiss::IndexIVF> const& faissIndex() const noexcept {
     return _faissIndex;
@@ -158,11 +158,11 @@ class RocksDBVectorIndex final : public RocksDBIndex {
                 OperationOptions const& /*options*/) override;
 
  private:
-  float computeDistance(const Vector& vec1, const Vector& vec2, bool isDescending);
-  bool getNormalizedVectorFromDocument(const velocypack::Slice& docSlice, Vector& vec);
+  float computeDistance(const vector::Vector& vec1, const vector::Vector& vec2, bool isDescending);
+  bool getNormalizedVectorFromDocument(const velocypack::Slice& docSlice, vector::Vector& vec);
 
-  std::pair<Labels, Distances>
-  bruteForceSearch(Vector& searchVector, std::size_t topK,
+  std::pair<vector::Labels, vector::Distances>
+  bruteForceSearch(vector::Vector& searchVector, std::size_t topK,
                    transaction::Methods* trx);
 
   vector::VectorIndexMetadata loadVectorIndexMetadata(

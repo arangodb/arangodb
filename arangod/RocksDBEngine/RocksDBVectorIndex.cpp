@@ -57,6 +57,7 @@
 #include <rocksdb/db.h>
 #include "RocksDBEngine/RocksDBMetaCollection.h"
 #include "VectorIndex/VectorIndexDefinition.h"
+#include "VectorIndex/VectorReadBatch.h"
 
 #include "faiss/MetricType.h"
 #include "faiss/utils/distances.h"
@@ -277,7 +278,7 @@ void RocksDBVectorIndex::toVelocyPack(
 
 bool RocksDBVectorIndex::getNormalizedVectorFromDocument(
   const velocypack::Slice& docSlice,
-  Vector& vec) {
+  vector::Vector& vec) {
   if (readDocumentVectorData(docSlice, vec).fail()) {
     return false;
   }
@@ -288,93 +289,270 @@ bool RocksDBVectorIndex::getNormalizedVectorFromDocument(
   return true;
 }
 
-float RocksDBVectorIndex::computeDistance(const Vector& vec1, const Vector& vec2, bool isDescending) {
-  TRI_ASSERT(vec1.size() == vec2.size()) << "Vector dimensions don't match, " <<
-    "[" << vec1 << "] != [" << vec2 << "]";
-    // vec1.size() << " != " << vec2.size();
+// float RocksDBVectorIndex::computeDistance(const vector::Vector& vec1, const vector::Vector& vec2, bool isDescending) {
+//   TRI_ASSERT(vec1.size() == vec2.size()) << "Vector dimensions don't match, " <<
+//     "[" << vec1.size() << "] != [" << vec2.size() << "]";
 
-  auto dim = vec1.size();
+//   auto dim = vec1.size();
 
-  auto compareFunc = (isDescending ? &faiss::fvec_inner_product : &faiss::fvec_L2sqr);
-  auto distance = std::invoke(compareFunc, vec1.data(), vec2.data(), dim);
+//   vector::Distance distance;
+//   if (isDescending) {
+//     distance = faiss::fvec_inner_product(vec1.data(), vec2.data(), dim);
+//   } else {
+//     distance = faiss::fvec_L2sqr(vec1.data(), vec2.data(), dim);
+//   }
 
-  return distance;
-}
+//   return distance;
+// }
 
-std::pair<Labels, Distances>
-RocksDBVectorIndex::bruteForceSearch(Vector& searchVector,
+template <typename Direction>
+class BruteForceSearch {
+public:
+  BruteForceSearch(std::size_t topK_) :
+    topK(topK_) {
+  }
+
+  std::pair<vector::Labels, vector::Distances> search(
+    vector::Vector& searchVector,
+    vector::SimilarityMetric metric,
+    transaction::Methods* trx,
+    arangodb::PhysicalCollection* physicalCollection,
+    auto normalizeDocument
+  ) {
+    vector::Vector vec;
+    vec.reserve(searchVector.size());
+
+    labels.resize(topK, -1);
+    distances.resize(topK);
+
+    heapify();
+
+    auto iter = physicalCollection->getAllIterator(trx, ReadOwnWrites::no);
+    iter->allDocuments([&](LocalDocumentId docId, aql::DocumentData&&,
+                        velocypack::Slice docSlice) -> bool {
+      vec.clear();
+      auto ret = normalizeDocument(docSlice, vec);
+      if (!ret)
+        return true;
+
+      auto dist = computeDistance(vec, searchVector);
+      auto id = static_cast<vector::VectorIndexLabelId>(docId.id());
+
+      heapReplaceTop(dist, id);
+      return true;
+    });
+
+    heapReorder();
+
+    // L2: fvec_L2sqr returns squared distances, take sqrt
+    if (metric == vector::SimilarityMetric::kL2) {
+      std::ranges::transform(distances, distances.begin(),
+                            [](float d) { return std::sqrt(d); });
+    }
+
+    return {std::move(labels), std::move(distances)};
+  }
+
+  float computeDistance(const vector::Vector& vec1, const vector::Vector& vec2) {
+    return static_cast<Direction *>(this)->computeDistance(vec1, vec2);
+  }
+
+  float getFillValue() {
+    return static_cast<Direction *>(this)->getFillValue();
+  }
+
+  void heapify() {
+    static_cast<Direction *>(this)->heapify();
+  }
+
+  void heapReplaceTop(vector::Distance currDistance, vector::VectorIndexLabelId id) {
+    static_cast<Direction *>(this)->heapReplaceTop(currDistance, id);
+  }
+
+  void heapReorder() {
+    static_cast<Direction *>(this)->heapReorder();
+  }
+
+protected:
+  vector::Labels labels;
+  vector::Distances distances;
+  std::size_t topK;
+};
+
+class BruteForceSearchAscending : public BruteForceSearch<BruteForceSearchAscending> {
+public:
+  BruteForceSearchAscending(std::size_t topK) :
+    BruteForceSearch<BruteForceSearchAscending>(topK) {}
+
+  float computeDistance(const vector::Vector& vec1, const vector::Vector& vec2) {
+    TRI_ASSERT(vec1.size() == vec2.size()) << "Vector dimensions don't match, " <<
+      "[" << vec1.size() << "] != [" << vec2.size() << "]";
+
+    auto dim = vec1.size();
+    auto distance = faiss::fvec_L2sqr(vec1.data(), vec2.data(), dim);
+
+    return distance;
+  }
+
+  float getFillValue() {
+    return std::numeric_limits<float>::max();
+  }
+
+  void heapify() {
+    // Initialize heap: max-heap for L2 (keep smallest distances),
+    std::fill(distances.begin(), distances.end(), getFillValue());
+    faiss::maxheap_heapify(topK, distances.data(), labels.data());
+  }
+
+  void heapReplaceTop(vector::Distance currDistance, vector::VectorIndexLabelId id) {
+    if (currDistance < distances[0]) {
+      faiss::maxheap_replace_top(topK, distances.data(), labels.data(), currDistance,
+                                  id);
+    }
+  }
+
+  void heapReorder() {
+    // Reorder heap so results are sorted
+    faiss::maxheap_reorder(topK, distances.data(), labels.data());
+  }
+};
+
+class BruteForceSearchDescending : public BruteForceSearch<BruteForceSearchDescending> {
+public:
+  BruteForceSearchDescending(std::size_t topK) :
+    BruteForceSearch<BruteForceSearchDescending>(topK) {}
+
+  float computeDistance(const vector::Vector& vec1, const vector::Vector& vec2) {
+    TRI_ASSERT(vec1.size() == vec2.size()) << "Vector dimensions don't match, " <<
+      "[" << vec1.size() << "] != [" << vec2.size() << "]";
+
+    auto dim = vec1.size();
+    auto distance = faiss::fvec_inner_product(vec1.data(), vec2.data(), dim);
+
+    return distance;
+  }
+
+  float getFillValue() {
+    return -std::numeric_limits<float>::max();
+  }
+
+  void heapify() {
+    // min-heap for IP/cosine (keep largest inner products)
+    std::fill(distances.begin(), distances.end(), getFillValue());
+    faiss::minheap_heapify(topK, distances.data(), labels.data());
+  }
+
+  void heapReplaceTop(vector::Distance currDistance, vector::VectorIndexLabelId id) {
+    if (currDistance > distances[0]) {
+      faiss::minheap_replace_top(topK, distances.data(), labels.data(), currDistance,
+                                  id);
+    }
+  }
+
+  void heapReorder() {
+    // Reorder heap so results are sorted
+    faiss::minheap_reorder(topK, distances.data(), labels.data());
+  }
+};
+
+std::pair<vector::Labels, vector::Distances>
+RocksDBVectorIndex::bruteForceSearch(vector::Vector& searchVector,
                                      std::size_t topK,
                                      transaction::Methods* trx) {
   auto const dim = _definition.dimension;
+  TRI_ASSERT(dim == searchVector.size());
 
   bool const isDescending =
       _definition.metric == vector::SimilarityMetric::kCosine ||
       _definition.metric == vector::SimilarityMetric::kInnerProduct;
 
-  Labels labels(topK, -1);
-  Distances distances(topK);
+  auto normalizeDocument = [&](velocypack::Slice docSlice, vector::Vector& vec) -> bool {
+    return getNormalizedVectorFromDocument(docSlice, vec);
+  };
 
-  float fillValue;
   if (isDescending) {
-    fillValue = -std::numeric_limits<float>::max();
+    BruteForceSearchDescending bfs(topK);
+    return bfs.search(searchVector, _definition.metric, trx, _collection.getPhysical(), normalizeDocument);
   } else {
-    fillValue = std::numeric_limits<float>::max();
+    BruteForceSearchAscending bfs(topK);
+    return bfs.search(searchVector, _definition.metric, trx, _collection.getPhysical(), normalizeDocument);
   }
-
-  // Initialize heap: max-heap for L2 (keep smallest distances),
-  // min-heap for IP/cosine (keep largest inner products)
-  std::fill(distances.begin(), distances.end(), fillValue);
-  if (isDescending) {
-    faiss::minheap_heapify(topK, distances.data(), labels.data());
-  } else {
-    faiss::maxheap_heapify(topK, distances.data(), labels.data());
-  }
-
-  auto iter = _collection.getPhysical()->getAllIterator(trx, ReadOwnWrites::no);
-
-  Vector vec;
-  vec.reserve(dim);
-
-  //  Iterate over all documents in the shard and build the heap.
-  iter->allDocuments([&](LocalDocumentId docId, aql::DocumentData&&,
-                         velocypack::Slice docSlice) -> bool {
-    vec.clear();
-    auto ret = getNormalizedVectorFromDocument(docSlice, vec);
-    if (!ret)
-      return true;
-
-    auto dist = computeDistance(vec, searchVector, isDescending);
-    auto id = static_cast<VectorIndexLabelId>(docId.id());
-
-    if (isDescending) {
-      if (dist > distances[0]) {
-        faiss::minheap_replace_top(topK, distances.data(), labels.data(), dist,
-                                   id);
-      }
-    } else {
-      if (dist < distances[0]) {
-        faiss::maxheap_replace_top(topK, distances.data(), labels.data(), dist,
-                                   id);
-      }
-    }
-    return true;
-  });
-
-  // Reorder heap so results are sorted
-  if (isDescending) {
-    faiss::minheap_reorder(topK, distances.data(), labels.data());
-  } else {
-    faiss::maxheap_reorder(topK, distances.data(), labels.data());
-  }
-
-  // L2: fvec_L2sqr returns squared distances, take sqrt
-  if (_definition.metric == vector::SimilarityMetric::kL2) {
-    std::ranges::transform(distances, distances.begin(),
-                           [](float d) { return std::sqrt(d); });
-  }
-
-  return {std::move(labels), std::move(distances)};
 }
+
+// std::pair<vector::Labels, vector::Distances>
+// RocksDBVectorIndex::bruteForceSearch(vector::Vector& searchVector,
+//                                      std::size_t topK,
+//                                      transaction::Methods* trx) {
+//   auto const dim = _definition.dimension;
+
+//   bool const isDescending =
+//       _definition.metric == vector::SimilarityMetric::kCosine ||
+//       _definition.metric == vector::SimilarityMetric::kInnerProduct;
+
+//   vector::Labels labels(topK, -1);
+//   vector::Distances distances(topK);
+
+//   float fillValue;
+//   if (isDescending) {
+//     fillValue = -std::numeric_limits<float>::max();
+//   } else {
+//     fillValue = std::numeric_limits<float>::max();
+//   }
+
+//   // Initialize heap: max-heap for L2 (keep smallest distances),
+//   // min-heap for IP/cosine (keep largest inner products)
+//   std::fill(distances.begin(), distances.end(), fillValue);
+//   if (isDescending) {
+//     faiss::minheap_heapify(topK, distances.data(), labels.data());
+//   } else {
+//     faiss::maxheap_heapify(topK, distances.data(), labels.data());
+//   }
+
+//   auto iter = _collection.getPhysical()->getAllIterator(trx, ReadOwnWrites::no);
+
+//   vector::Vector vec;
+//   vec.reserve(dim);
+
+//   //  Iterate over all documents in the shard and build the heap.
+//   iter->allDocuments([&](LocalDocumentId docId, aql::DocumentData&&,
+//                          velocypack::Slice docSlice) -> bool {
+//     vec.clear();
+//     auto ret = getNormalizedVectorFromDocument(docSlice, vec);
+//     if (!ret)
+//       return true;
+
+//     auto dist = computeDistance(vec, searchVector, isDescending);
+//     auto id = static_cast<vector::VectorIndexLabelId>(docId.id());
+
+//     if (isDescending) {
+//       if (dist > distances[0]) {
+//         faiss::minheap_replace_top(topK, distances.data(), labels.data(), dist,
+//                                    id);
+//       }
+//     } else {
+//       if (dist < distances[0]) {
+//         faiss::maxheap_replace_top(topK, distances.data(), labels.data(), dist,
+//                                    id);
+//       }
+//     }
+//     return true;
+//   });
+
+//   // Reorder heap so results are sorted
+//   if (isDescending) {
+//     faiss::minheap_reorder(topK, distances.data(), labels.data());
+//   } else {
+//     faiss::maxheap_reorder(topK, distances.data(), labels.data());
+//   }
+
+//   // L2: fvec_L2sqr returns squared distances, take sqrt
+//   if (_definition.metric == vector::SimilarityMetric::kL2) {
+//     std::ranges::transform(distances, distances.begin(),
+//                            [](float d) { return std::sqrt(d); });
+//   }
+
+//   return {std::move(labels), std::move(distances)};
+// }
 
 vector::SearchResult RocksDBVectorIndex::readBatch(
     vector::VectorSearchConfig const& config,
@@ -385,23 +563,35 @@ vector::SearchResult RocksDBVectorIndex::readBatch(
   ADB_PROD_ASSERT(_faissIndex->parallel_mode == 0)
       << "FAISS parallel_mode must be 0; got " << _faissIndex->parallel_mode;
 
-  auto& inputs = *ctx.inputs;
-  TRI_ASSERT(inputs.size() == _definition.dimension)
+  auto& searchVector = *ctx.inputs;
+  TRI_ASSERT(searchVector.size() == _definition.dimension)
       << "Number of components does not match vector dimension, topK: "
       << config.topK << ", dimension: " << _definition.dimension
-      << ", inputs size: " << inputs.size();
+      << ", searchVector size: " << searchVector.size();
 
   if (_definition.metric == vector::SimilarityMetric::kCosine) {
-    faiss::fvec_renorm_L2(_definition.dimension, 1, inputs.data());
+    faiss::fvec_renorm_L2(_definition.dimension, 1, searchVector.data());
   }
 
+  vector::SearchResult result;
   if (auto const state = _trainingState.load();
       state != VectorIndexTrainingState::kReady) {
 
     if (isLinearScanEnabled()) {
       // Not enough training data: fall back to linear scan on this shard so
       // cluster vector search stays usable.
-      return bruteForceSearch(searchVector, topK, trx);
+
+      LOG_TOPIC("e167c", WARN, Logger::ENGINES)
+          << "KKDBG: Calling bruteForceSearch";
+
+      return result;
+      auto [labels, distances] = bruteForceSearch(searchVector, config.topK, ctx.trx);
+      LOG_TOPIC("e167c", WARN, Logger::ENGINES)
+          << "KKDBG: Calling bruteForceSearch: DONE";
+
+      result.distances = std::move(distances);
+      result.labels = std::move(labels);
+      return result;
     }
 
     // This should never happen — the optimizer should not use
@@ -414,7 +604,6 @@ vector::SearchResult RocksDBVectorIndex::readBatch(
   TRI_ASSERT(_faissIndex != nullptr);
 
   // Trained: normal FAISS IVF search
-  vector::SearchResult result;
   result.distances.resize(config.topK);
   result.labels.resize(config.topK);
 
@@ -429,7 +618,7 @@ vector::SearchResult RocksDBVectorIndex::readBatch(
   searchParametersIvf.nprobe =
       config.searchParameters.nProbe.value_or(_definition.defaultNProbe);
   searchParametersIvf.inverted_list_context = &faissSearchContext;
-  _faissIndex->search(1, inputs.data(), config.topK, result.distances.data(),
+  _faissIndex->search(1, searchVector.data(), config.topK, result.distances.data(),
                       result.labels.data(), &searchParametersIvf);
 
   // faiss returns squared distances for L2, square them so they are returned in
@@ -452,7 +641,7 @@ bool RocksDBVectorIndex::isVectorIndexReady() const noexcept {
 }
 
 Result RocksDBVectorIndex::readDocumentVectorData(
-    velocypack::Slice const doc, std::vector<float>& output) const {
+    velocypack::Slice const doc, vector::Vector& output) const {
   return vector::readDocumentVectorData(doc, _fields, _definition.dimension,
                                         output);
 }
