@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertNotEqual, assertTrue, assertFalse, assertNull, assertMatch, fail */
+/*global assertEqual, assertNotEqual, assertTrue, assertFalse, assertNull, assertMatch, fail, print */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -31,6 +31,8 @@ const jsunity = require("jsunity");
 const helper = require("@arangodb/aql-helper");
 const errors = internal.errors;
 const isCluster = require("internal").isCluster();
+const { versionHas } = require("@arangodb/test-helper");
+const isInstr = versionHas('asan') || versionHas('tsan') || versionHas('coverage');
 
 const collectionName = "UnitTestAqlModify";
 let col;
@@ -1176,6 +1178,10 @@ function aqlUpsertOptionsSuite() {
     },
 
     testUpsertSkipAndHardLimitInSubquery: function () {
+      if (isInstr) {
+        print("Skipping because of instrumented");
+        return;
+      }
       const countBefore = col.count();
       let q = `
         FOR fv0 IN 1..3
@@ -1197,7 +1203,6 @@ function aqlUpsertOptionsSuite() {
       assertEqual(0, res.toArray().length);
       assertEqual(countBefore, col.count(), `Only updates no inserts`);
     }
-
     /* We cannot yet solve this. If you need to ensure _rev value checks put them in the UPDATE {} clause
     testUpsertSingleWithInvalidRevInMatch : function () {
       const invalid = genInvalidValue();
