@@ -299,15 +299,22 @@ defmodule Toast.Deployment.Factory do
 
   defp maybe_add_log_output(args, _config), do: args
 
-  defp maybe_add_auth_args(args, %{authentication: true}, deployment_dir) do
+  defp maybe_add_auth_args(args, %{authentication: true} = config, deployment_dir) do
     # Keyfile content drives algorithm selection in arangod:
     # PEM → ES256, plain text → HS256. No extra server flag is needed.
     args
     |> Map.put("server.authentication", "true")
     |> Map.put("server.jwt-secret-keyfile", Toast.JWT.KeyGen.keyfile_path(deployment_dir))
+    |> maybe_add_root_password(config)
   end
 
   defp maybe_add_auth_args(args, _config, _deployment_dir), do: args
+
+  defp maybe_add_root_password(args, %{root_password: nil}), do: args
+
+  defp maybe_add_root_password(args, %{root_password: password}) do
+    Map.put(args, "database.password", password)
+  end
 
   defp maybe_add_ssl_args(args, %{ssl: true}) do
     Map.put(args, "ssl.keyfile", "etc/testing/server.pem")

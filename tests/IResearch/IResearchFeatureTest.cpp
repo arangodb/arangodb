@@ -71,7 +71,6 @@
 #include "RestServer/UpgradeFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "Sharding/ShardingFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Indexes.h"
@@ -94,10 +93,12 @@ class IResearchFeatureTest
                                             arangodb::LogLevel::FATAL> {
  protected:
   arangodb::tests::mocks::MockV8Server server;
+  StorageEngineMock& _engine;
   arangodb::metrics::MetricsFeature& _metrics;
 
   IResearchFeatureTest()
       : server(false),
+        _engine(server.engine()),
         _metrics(server.getFeature<arangodb::metrics::MetricsFeature>()) {
     arangodb::tests::init();
 
@@ -1863,7 +1864,7 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1_no_directory) {
   ASSERT_TRUE((arangodb::basics::VelocyPackHelper::velocyPackToFile(
       StorageEngineMock::versionFilenameResult, versionJson->slice(), false)));
 
-  TRI_vocbase_t vocbase(testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()), _engine);
   auto logicalCollection = vocbase.createCollection(collectionJson->slice());
   ASSERT_NE(logicalCollection, nullptr);
   auto logicalView0 = vocbase.createView(viewJson->slice(), false);
@@ -1972,7 +1973,7 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1_with_directory) {
   ASSERT_TRUE((arangodb::basics::VelocyPackHelper::velocyPackToFile(
       StorageEngineMock::versionFilenameResult, versionJson->slice(), false)));
 
-  TRI_vocbase_t vocbase(testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()), _engine);
   auto logicalCollection = vocbase.createCollection(collectionJson->slice());
   ASSERT_FALSE(!logicalCollection);
   auto logicalView0 = vocbase.createView(viewJson->slice(), false);
@@ -2324,10 +2325,12 @@ class IResearchFeatureTestCoordinator
                                             arangodb::LogLevel::FATAL> {
  protected:
   arangodb::tests::mocks::MockCoordinator server;
+  StorageEngineMock& _engine;
 
  private:
  protected:
-  IResearchFeatureTestCoordinator() : server("CRDN_0001", false) {
+  IResearchFeatureTestCoordinator()
+      : server("CRDN_0001", false), _engine(server.engine()) {
     arangodb::tests::init();
 
     arangodb::ServerState::instance()->setRebootId(
@@ -2453,10 +2456,9 @@ TEST_F(IResearchFeatureTestCoordinator, test_upgrade0_1) {
   server.getFeature<arangodb::DatabaseFeature>()
       .enableUpgrade();  // skip IResearchView validation
 
-  auto& engine = server.getFeature<arangodb::EngineSelectorFeature>().engine();
   auto& factory = server.getFeature<arangodb::iresearch::IResearchFeature>()
                       .factory<arangodb::ClusterEngine>();
-  const_cast<arangodb::IndexFactory&>(engine.indexFactory())
+  const_cast<arangodb::IndexFactory&>(_engine.indexFactory())
       .emplace(
           std::string{arangodb::iresearch::StaticStrings::ViewArangoSearchType},
           factory);
@@ -2591,10 +2593,12 @@ class IResearchFeatureTestDBServer
                                             arangodb::LogLevel::FATAL> {
  protected:
   arangodb::tests::mocks::MockDBServer server;
+  StorageEngineMock& _engine;
 
  private:
  protected:
-  IResearchFeatureTestDBServer() : server("PRMR_0001", false) {
+  IResearchFeatureTestDBServer()
+      : server("PRMR_0001", false), _engine(server.engine()) {
     arangodb::tests::init();
 
     arangodb::ServerState::instance()->setRebootId(
@@ -2689,7 +2693,7 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade0_1_no_directory) {
       .agencyCache()
       .applyTestTransaction(bogus.slice());
 
-  TRI_vocbase_t vocbase(testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()), _engine);
   auto logicalCollection = vocbase.createCollection(collectionJson->slice());
   ASSERT_FALSE(!logicalCollection);
   auto logicalView = vocbase.createView(viewJson->slice(), false);
@@ -2768,9 +2772,7 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade0_1_with_directory) {
   ASSERT_TRUE((arangodb::basics::VelocyPackHelper::velocyPackToFile(
       StorageEngineMock::versionFilenameResult, versionJson->slice(), false)));
 
-  auto& engine = *static_cast<StorageEngineMock*>(
-      &server.getFeature<arangodb::EngineSelectorFeature>().engine());
-  engine.views.clear();
+  _engine.views.clear();
 
   VPackBuilder bogus;
   {
@@ -2788,7 +2790,7 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade0_1_with_directory) {
       .agencyCache()
       .applyTestTransaction(bogus.slice());
 
-  TRI_vocbase_t vocbase(testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()), _engine);
   auto logicalCollection = vocbase.createCollection(collectionJson->slice());
   ASSERT_FALSE(!logicalCollection);
   auto logicalView = vocbase.createView(viewJson->slice(), false);
@@ -2873,9 +2875,7 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade1_link_collectionName) {
   ASSERT_TRUE(irs::file_utils::mkdir(
       std::filesystem::path(dbPathFeature.directory()).c_str(), true));
 
-  auto& engine = *static_cast<StorageEngineMock*>(
-      &server.getFeature<arangodb::EngineSelectorFeature>().engine());
-  engine.views.clear();
+  _engine.views.clear();
 
   TRI_vocbase_t* vocbase;
   createTestDatabase(vocbase);

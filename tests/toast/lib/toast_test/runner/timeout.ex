@@ -81,6 +81,15 @@ defmodule ToastTest.Runner.Timeout do
     min(suite_end, global_deadline)
   end
 
+  @doc "Milliseconds remaining until the nearest deadline (suite or global)."
+  @spec remaining_ms(Settings.t()) :: pos_integer() | :infinity
+  def remaining_ms(%Settings{suite_deadline: sd, global_deadline: gd}) do
+    case min(sd || :infinity, gd || :infinity) do
+      :infinity -> :infinity
+      deadline -> max(Toast.Utils.remaining_ms(deadline), 1)
+    end
+  end
+
   def check_suite_deadline!(%{timeout_settings: %{suite_deadline: nil}}), do: :ok
 
   def check_suite_deadline!(%{timeout_settings: %{suite_deadline: deadline}}) do
@@ -106,7 +115,7 @@ defmodule ToastTest.Runner.Timeout do
   defp clamp_to_deadline(timeout, nil, _source), do: timeout
 
   defp clamp_to_deadline(timeout, deadline, source) do
-    remaining = max(deadline - System.monotonic_time(:millisecond), 1)
+    remaining = max(Toast.Utils.remaining_ms(deadline), 1)
     current = effective_ms(timeout)
 
     if remaining < current,

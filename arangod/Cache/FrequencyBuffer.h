@@ -30,9 +30,9 @@
 #include <utility>
 #include <vector>
 
-#include "Basics/debugging.h"
+#include "Assertions/Assert.h"
+#include "Basics/SharedPRNG.h"
 #include "Containers/FlatHashMap.h"
-#include "RestServer/SharedPRNGFeature.h"
 
 namespace arangodb::cache {
 
@@ -51,7 +51,7 @@ class FrequencyBuffer {
   static_assert(sizeof(std::atomic<T>) == sizeof(T));
 
   /// @brief Initialize with the given capacity.
-  explicit FrequencyBuffer(SharedPRNGFeature& sharedPRNG, std::size_t capacity)
+  explicit FrequencyBuffer(basics::SharedPRNG& sharedPRNG, std::size_t capacity)
       : _sharedPRNG(sharedPRNG),
         _capacity(powerOf2(capacity)),
         _mask(_capacity - 1),
@@ -138,7 +138,7 @@ class FrequencyBuffer {
     return (static_cast<std::size_t>(1) << bitPos);
   }
 
-  SharedPRNGFeature& _sharedPRNG;
+  basics::SharedPRNG& _sharedPRNG;
   std::size_t const _capacity;
   std::size_t const _mask;
   std::vector<std::atomic<T>> _buffer;

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -39,6 +39,7 @@
 #include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Statistics/StatisticsFeature.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/ManagerFeature.h"
 #include "GraphTestTools.h"
@@ -62,7 +63,7 @@ GraphTestSetup::GraphTestSetup() : server(nullptr, nullptr), engine(server) {
   auto& metrics = server.addFeature<arangodb::metrics::MetricsFeature>(
       LazyApplicationFeatureReference<QueryRegistryFeature>(server),
       LazyApplicationFeatureReference<StatisticsFeature>(nullptr),
-      LazyApplicationFeatureReference<EngineSelectorFeature>(server),
+      LazyApplicationFeatureReference<DatabaseFeature>(server),
       LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(nullptr),
       LazyApplicationFeatureReference<ClusterFeature>(nullptr));
   features.emplace_back(metrics, false);
@@ -75,12 +76,13 @@ GraphTestSetup::GraphTestSetup() : server(nullptr, nullptr), engine(server) {
   features.emplace_back(server.addFeature<arangodb::EngineSelectorFeature>(),
                         false);
   server.getFeature<EngineSelectorFeature>().setEngineTesting(&engine);
+  databaseFeature.setEngineTesting(&engine);
   features.emplace_back(
       server.addFeature<arangodb::QueryRegistryFeature>(
           server.getFeature<arangodb::metrics::MetricsFeature>()),
       false);  // must be first
   system = std::make_unique<TRI_vocbase_t>(
-      systemDBInfo(server),
+      systemDBInfo(server), engine,
       server.getFeature<DatabaseFeature>().versionTracker(), true);
   features.emplace_back(
       server.addFeature<arangodb::SystemDatabaseFeature>(system.get()),
@@ -114,6 +116,7 @@ GraphTestSetup::~GraphTestSetup() {
   system.reset();                       // destroy before reseting the 'ENGINE'
   arangodb::AqlFeature(server).stop();  // unset singleton instance
   server.getFeature<EngineSelectorFeature>().setEngineTesting(nullptr);
+  server.getFeature<DatabaseFeature>().setEngineTesting(nullptr);
 
   // destroy application features
   for (auto& f : features) {

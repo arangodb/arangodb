@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -46,7 +46,6 @@
 #include "RestServer/SystemDatabaseFeature.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Hints.h"
 #include "Utils/CollectionGuard.h"
@@ -351,10 +350,12 @@ Result TailingSyncer::processDBMarker(TRI_replication_operation_e type,
       }
     }
 
+    auto& server = _state.applier._server;
+    auto& engine = server.getFeature<DatabaseFeature>().engine();
     VPackSlice users = VPackSlice::emptyArraySlice();
-    Result res = methods::Databases::create(_state.applier._server,
-                                            ExecContext::current(), name, users,
-                                            VPackSlice::emptyObjectSlice());
+    Result res =
+        methods::Databases::create(server, engine, ExecContext::current(), name,
+                                   users, VPackSlice::emptyObjectSlice());
 
     return res;
   } else if (type == REPLICATION_DATABASE_DROP) {

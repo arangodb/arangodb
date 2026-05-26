@@ -45,7 +45,7 @@ defmodule Toast.Deployment.CommandBuilder do
     endpoint_scheme = Map.get(spec, :endpoint_scheme, "tcp")
 
     (base_args(role, port, server_paths, repo_root, endpoint_scheme) ++ role_args(role))
-    |> Enum.flat_map(&flatten_pair/1)
+    |> Toast.Utils.flatten_opts()
     |> Kernel.++(flatten_custom_args(args))
   end
 
@@ -94,8 +94,6 @@ defmodule Toast.Deployment.CommandBuilder do
       {"--log.process", "true"}
     ]
   end
-
-  defp flatten_pair({key, value}), do: [key, value]
 
   defp expand_arg({_key, nil}), do: []
 

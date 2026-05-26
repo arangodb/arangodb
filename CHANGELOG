@@ -1,5 +1,19 @@
 3.12.10-devel (XXXX-XX-XX)
 --------------------------
+* Upgraded FAISS to v1.14.2.
+
+* COR-320: Vector search now supports projections, allowing covered queries
+  to skip the document materialization step. Adds optimizer rule
+  `materialize-for-enumerate-near`.
+
+* [COR-546]: Fixed bug in the `remove-filter-covered-by-traversal`
+  optimizer rule where filters on path arrays with different quantifiers
+  (e.g. `ALL` vs `NONE`) were incorrectly treated as equivalent and one
+  of the filters could be dropped, producing wrong query results.
+
+* COR-387: Synchronous vector index creation no longer throws when training
+  fails. The index is created with `trainingState: "unusable"` and the
+  training error returned in `errorMessage`.
 
 * Upgraded included rclone to v1.73.5 with go1.25.10 and non-vulnerable
   dependencies.
@@ -27,6 +41,12 @@
  - brace-expansion to 1.1.13
  - ajv to 8.18.0
  - @xmldom/xmldom@0.8.13
+
+* COR-467: Extended `compareAstNodes` to compare AST nodes that are not directly
+  VPack-serializable (references, attribute accesses, function calls, operators).
+  `a == b` and `b == a` (and `!=`) compare as equal, as do NARY conditions and
+  IN/NOT IN literal arrays regardless of operand order. Bind parameters and
+  quantifiers are also handled.
 
 * COR-466: Added constant folding empty array comparisons in `FILTER` nodes,
   allowing filter optimizations:

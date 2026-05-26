@@ -35,7 +35,7 @@ defmodule ToastTest.SuiteResult.JUnitXML do
     tests = SuiteResult.flat_tests(result)
     test_count = length(tests)
     failures = Enum.count(tests, &(&1.outcome == :failed))
-    skipped = Enum.count(tests, &(&1.outcome in [:skipped, :excluded]))
+    skipped = Enum.count(tests, &(&1.outcome in [:skipped, :excluded, :invalidated]))
     time = format_duration(result.times_us.run)
 
     failure_index = build_failure_index(result.issues)
@@ -90,14 +90,15 @@ defmodule ToastTest.SuiteResult.JUnitXML do
     |> Enum.group_by(& &1.scope)
   end
 
-  defp render_testsuite({module, %{tests: tests}}, suite, failure_index, issue_index) do
-    name = Atom.to_string(module)
+  defp render_testsuite({module, module_data}, suite, failure_index, issue_index) do
+    %{tests: tests} = module_data
+    display_name = ToastTest.Formatting.display_module_name(module)
     failures = Enum.count(tests, &(&1.outcome == :failed))
-    skipped = Enum.count(tests, &(&1.outcome in [:skipped, :excluded]))
+    skipped = Enum.count(tests, &(&1.outcome in [:skipped, :excluded, :invalidated]))
     time = tests |> Enum.map(& &1.duration_us) |> Enum.sum() |> format_duration()
 
     module_issues = Map.get(issue_index, {:module, module}, [])
-    classname = "#{suite}::#{module}"
+    classname = "#{suite}::#{display_name}"
     synthetic = synthetic_testcases_for(module_issues, classname)
     synthetic_count = length(synthetic)
 
@@ -108,14 +109,20 @@ defmodule ToastTest.SuiteResult.JUnitXML do
         count_infra_errors(tests, module, issue_index) +
         synthetic_count
 
+    escaped_classname = xml_escape(classname)
+
     cases =
-      Enum.map_join(tests, "\n", &render_testcase(&1, module, suite, failure_index, issue_index))
+      Enum.map_join(
+        tests,
+        "\n",
+        &render_testcase(&1, module, escaped_classname, failure_index, issue_index)
+      )
 
     synthetic_xml = Enum.map_join(synthetic, "\n", & &1)
 
     xml =
       [
-        ~s(  <testsuite name="#{xml_escape(name)}" tests="#{total}" failures="#{failures}" errors="#{errors}" skipped="#{skipped}" time="#{time}">),
+        ~s(  <testsuite name="#{xml_escape(display_name)}" tests="#{total}" failures="#{failures}" errors="#{errors}" skipped="#{skipped}" time="#{time}">),
         cases,
         synthetic_xml,
         ~s(  </testsuite>)
@@ -126,9 +133,8 @@ defmodule ToastTest.SuiteResult.JUnitXML do
     {xml, synthetic_count}
   end
 
-  defp render_testcase(test, module, suite, failure_index, issue_index) do
+  defp render_testcase(test, module, classname, failure_index, issue_index) do
     name = xml_escape(Atom.to_string(test.name))
-    cn = xml_escape("#{suite}::#{module}")
     time = format_duration(test.duration_us)
     test_issues = Map.get(issue_index, {:test, module, test.name}, [])
     infra_errors = render_infra_errors(test.outcome, test_issues)
@@ -144,11 +150,14 @@ defmodule ToastTest.SuiteResult.JUnitXML do
         :invalid ->
           ["      <error/>"]
 
+        :invalidated ->
+          [~s(      <skipped message="invalidated by prior server crash"/>) | infra_errors]
+
         outcome when outcome in [:skipped, :excluded] ->
           ["      <skipped/>" | infra_errors]
       end
 
-    render_testcase_element(name, cn, time, children)
+    render_testcase_element(name, classname, time, children)
   end
 
   # Tests that are already :invalid have their own <error/>.

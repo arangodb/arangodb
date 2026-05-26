@@ -39,7 +39,6 @@ class ClusterFeature;
 class ClusterInfo;
 class CollectionNameResolver;
 class DatabaseFeature;
-class EngineSelectorFeature;
 class LogicalCollection;
 class ReplicationApplier;
 class ReplicationFeature;
@@ -435,7 +434,6 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   ClusterFeature& _clusterFeature;
-  EngineSelectorFeature& _engineSelectorFeature;
   ReplicationFeature& _replicationFeature;
   DatabaseFeature& _databaseFeature;
 

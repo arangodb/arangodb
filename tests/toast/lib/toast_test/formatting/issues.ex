@@ -126,10 +126,13 @@ defmodule ToastTest.Formatting.Issues do
   end
 
   def format_scope(:suite), do: nil
-  def format_scope({:module, mod}), do: inspect(mod)
+
+  def format_scope({:module, mod}) do
+    ToastTest.Formatting.display_module_name(mod)
+  end
 
   def format_scope({:test, mod, name}) do
-    "#{inspect(mod)} > \"#{ToastTest.Formatting.display_test_name(name)}\""
+    "#{ToastTest.Formatting.display_module_name(mod)} > \"#{ToastTest.Formatting.display_test_name(name)}\""
   end
 
   def attach_test_location(%{scope: {:test, mod, name}} = issue, modules) do

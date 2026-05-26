@@ -27,6 +27,7 @@
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "RocksDBEngine/RocksDBFormat.h"
 #include "RocksDBEngine/RocksDBTypes.h"
+#include "VectorIndex/VectorIndexDefinition.h"
 #include "Zkd/ZkdHelper.h"
 
 #include <cstdint>
@@ -35,6 +36,24 @@
 
 using namespace arangodb;
 using namespace arangodb::rocksutils;
+
+namespace {
+
+/// @brief Sentinel key slot for the per-index metadata record. Picked from
+/// the top of the uint64 range to stay within (indexId, indexId+1) bounds
+/// used by removeLargeRange on drop and never collide with an IVF list
+/// number.
+constexpr std::uint64_t vectorIndexMetadataSlot(
+    vector::VectorIndexFormatVersion version) noexcept {
+  switch (version) {
+    case vector::VectorIndexFormatVersion::kV1:
+      return std::numeric_limits<std::uint64_t>::max();
+    case vector::VectorIndexFormatVersion::kV2:
+      return std::numeric_limits<std::uint64_t>::max() - 1;
+  }
+}
+
+}  // namespace
 
 const char RocksDBKey::_stringSeparator = '\0';
 
@@ -164,16 +183,14 @@ void RocksDBKey::constructVectorIndexValue(uint64_t indexId,
   TRI_ASSERT(_buffer->size() == keyLength);
 }
 
-void RocksDBKey::constructVectorIndexTrainedData(uint64_t indexId) {
-  // Use indexId + UINT64_MAX as a sentinel key. This must be strictly within
-  // the key bounds (indexId, indexId+1) used by removeLargeRange on drop.
-  // UINT64_MAX will never be a real IVF list number.
+void RocksDBKey::constructVectorIndexTrainedData(
+    uint64_t indexId, vector::VectorIndexFormatVersion version) {
   _type = RocksDBEntryType::VectorVPackIndexValue;
   size_t constexpr keyLength = sizeof(uint64_t) + sizeof(uint64_t);
   _buffer->clear();
   _buffer->reserve(keyLength);
   uint64ToPersistent(*_buffer, indexId);
-  uint64ToPersistent(*_buffer, std::numeric_limits<uint64_t>::max());
+  uint64ToPersistent(*_buffer, vectorIndexMetadataSlot(version));
   TRI_ASSERT(_buffer->size() == keyLength);
 }
 

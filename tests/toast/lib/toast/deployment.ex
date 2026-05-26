@@ -83,11 +83,24 @@ defmodule Toast.Deployment do
             role: Toast.Deployment.ServerInstance.role(),
             port: non_neg_integer(),
             endpoint: String.t(),
-            arango_id: String.t() | nil
+            arango_id: String.t() | nil,
+            server_dir: Path.t() | nil
           }
 
     @enforce_keys [:id, :role, :port, :endpoint]
-    defstruct [:id, :role, :port, :endpoint, :arango_id]
+    defstruct [:id, :role, :port, :endpoint, :arango_id, :server_dir]
+
+    defimpl Inspect do
+      import Inspect.Algebra
+
+      def inspect(server, _opts) do
+        parts =
+          [server.id, server.endpoint, server.arango_id]
+          |> Toast.Utils.compact()
+
+        concat(["#Toast.Deployment.ServerInfo<", fold_doc(parts, &glue/2), ">"])
+      end
+    end
   end
 
   @type mode :: :single_server | :cluster
@@ -138,6 +151,17 @@ defmodule Toast.Deployment do
     end
   end
 
+  @config_keys Map.keys(%Config{}) -- [:__struct__]
+  @cluster_opts_keys Map.keys(%Toast.Deployment.ClusterOpts{}) -- [:__struct__]
+
+  defp split_config_opts(opts) do
+    Keyword.split(opts, @config_keys)
+  end
+
+  defp split_cluster_opts(opts) do
+    Keyword.split(opts, @cluster_opts_keys)
+  end
+
   @doc "Start a single-server deployment with defaults from app env."
   @spec start_single_server(Path.t(), keyword()) :: {:ok, t()} | {:error, term()}
   def start_single_server(deployment_dir, opts \\ [])
@@ -147,7 +171,8 @@ defmodule Toast.Deployment do
   end
 
   def start_single_server(deployment_dir, opts) when is_binary(deployment_dir) do
-    start(Config.new(), deployment_dir, opts)
+    {config_opts, opts} = split_config_opts(opts)
+    start(Config.new(config_opts), deployment_dir, opts)
   end
 
   @doc "Start a single-server deployment with explicit config."
@@ -166,7 +191,9 @@ defmodule Toast.Deployment do
   end
 
   def start_cluster(deployment_dir, opts) when is_binary(deployment_dir) do
-    start(Config.new(cluster: true), deployment_dir, opts)
+    {cluster_opts, opts} = split_cluster_opts(opts)
+    {config_opts, opts} = split_config_opts(opts)
+    start(Config.new([cluster: cluster_opts] ++ config_opts), deployment_dir, opts)
   end
 
   @doc "Start a cluster deployment with explicit config."
@@ -631,7 +658,8 @@ defmodule Toast.Deployment do
       role: s.role,
       port: s.port || 0,
       endpoint: s.endpoint || "",
-      arango_id: s.arango_id
+      arango_id: s.arango_id,
+      server_dir: s.server_dir
     }
   end
 
@@ -668,5 +696,43 @@ defmodule Toast.Deployment do
       String.starts_with?(mod_str, "Elixir.Toast.Deployment")
     end)
     |> Enum.take(10)
+  end
+
+  defimpl Inspect do
+    import Inspect.Algebra
+
+    def inspect(deployment, opts) do
+      header =
+        fold_doc(
+          [deployment.id, concat("protocol: ", to_doc(deployment.protocol, opts))],
+          &glue/2
+        )
+
+      Map.values(deployment.servers)
+      |> Enum.sort_by(& &1.id)
+      |> case do
+        [] ->
+          concat(["#Toast.Deployment<", header, ">"])
+
+        servers ->
+          id_width = servers |> Enum.map(&String.length(&1.id)) |> Enum.max()
+
+          server_lines =
+            Enum.map(servers, fn srv ->
+              id_col = String.pad_trailing(srv.id, id_width)
+              line = "  #{id_col}  #{srv.endpoint}"
+              if srv.arango_id, do: line <> "  " <> srv.arango_id, else: line
+            end)
+
+          concat([
+            "#Toast.Deployment<",
+            header,
+            line(),
+            Enum.join(server_lines, "\n"),
+            line(),
+            ">"
+          ])
+      end
+    end
   end
 end
