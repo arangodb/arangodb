@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -58,6 +58,7 @@
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
+#include "RocksDBEngine/RocksDBEngine.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Sharding/ShardDistributionReporter.h"
 #include "StorageEngine/VPackSortMigration.h"
@@ -3030,14 +3031,23 @@ async<void> RestAdminClusterHandler::handleVPackSortMigration(
   VPackBuilder result;
   Result res;
   if (!ServerState::instance()->isCoordinator()) {
-    if (request()->requestType() == rest::RequestType::GET) {
-      if (subCommand == VPackSortMigrationCheck) {
-        res = ::analyzeVPackIndexSorting(_vocbase, result);
-      } else {
-        res = ::statusVPackIndexSorting(_vocbase, result);
+    auto* rocksDBEngine = dynamic_cast<RocksDBEngine*>(&_vocbase.engine());
+    if (rocksDBEngine == nullptr) {
+      res = Result(TRI_ERROR_NOT_IMPLEMENTED,
+                   "VPack sorting migration is unnecessary for storage engines "
+                   "other than RocksDB");
+    } else {
+      if (request()->requestType() == rest::RequestType::GET) {
+        if (subCommand == VPackSortMigrationCheck) {
+          res = ::analyzeVPackIndexSorting(
+              *rocksDBEngine, _vocbase.server().getFeature<DatabaseFeature>(),
+              result);
+        } else {
+          res = ::statusVPackIndexSorting(*rocksDBEngine, result);
+        }
+      } else {  // PUT
+        res = ::migrateVPackIndexSorting(*rocksDBEngine, result);
       }
-    } else {  // PUT
-      res = ::migrateVPackIndexSorting(_vocbase, result);
     }
   } else {
     // Coordinators from here:

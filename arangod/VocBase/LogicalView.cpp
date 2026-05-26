@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -33,7 +33,6 @@
 #include "Logger/Logger.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/ViewTypesFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Utils/Events.h"
 #include "Utils/ExecContext.h"
@@ -366,15 +365,8 @@ Result drop(LogicalView const& view) noexcept {
 
 Result properties(LogicalView const& view, bool safe) noexcept {
   auto& vocbase = view.vocbase();
-  auto& server = vocbase.server();
-  if (!server.hasFeature<EngineSelectorFeature>()) {
-    return {
-        TRI_ERROR_INTERNAL,
-        "failed to find storage engine while updating definition of view '" +
-            view.name() + "' in database '" + vocbase.name() + "'"};
-  }
+  auto& engine = vocbase.engine();
   return safeCall([&]() -> Result {
-    auto& engine = vocbase.engine();
     if (engine.inRecovery()) {
       return {};
     }

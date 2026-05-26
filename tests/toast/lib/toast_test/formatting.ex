@@ -72,6 +72,11 @@ defmodule ToastTest.Formatting do
   @spec display_test_name(atom() | String.t()) :: String.t()
   def display_test_name(name), do: name |> to_string() |> String.replace_prefix("test ", "")
 
+  @spec display_module_name(atom()) :: String.t()
+  def display_module_name(mod) do
+    mod |> Atom.to_string() |> String.replace_prefix("Elixir.", "")
+  end
+
   @spec format_duration_us(non_neg_integer()) :: String.t()
   def format_duration_us(us) when us >= 60_000_000 do
     minutes = div(us, 60_000_000)

@@ -39,12 +39,12 @@ defmodule Mix.Tasks.Toast.Analyze.Weights do
   def suggest_weights(results) do
     module_stats =
       for result <- results,
-          {module, %{tests: tests}} <- result.modules do
-        duration_us = tests |> Enum.map(& &1.duration_us) |> Enum.sum()
+          {module, module_data} <- result.modules do
+        duration_us = module_data.tests |> Enum.map(& &1.duration_us) |> Enum.sum()
         current_weight = get_weight(module)
 
         %{
-          module: Atom.to_string(module),
+          module: ToastTest.Formatting.display_module_name(module),
           suite: result.suite,
           duration_us: duration_us,
           current_weight: current_weight
@@ -91,7 +91,7 @@ defmodule Mix.Tasks.Toast.Analyze.Weights do
   defp print_suggestions(suggestions, color) do
     mod_width =
       suggestions
-      |> Enum.map(&String.length(short_module(&1.module)))
+      |> Enum.map(&String.length(&1.module))
       |> Enum.max(fn -> 6 end)
       |> max(6)
 
@@ -114,7 +114,7 @@ defmodule Mix.Tasks.Toast.Analyze.Weights do
     Enum.each(suggestions, fn s ->
       row =
         " " <>
-          String.pad_trailing(short_module(s.module), mod_width) <>
+          String.pad_trailing(s.module, mod_width) <>
           "  " <>
           String.pad_trailing(s.suite, suite_width) <>
           "  " <>
@@ -133,7 +133,4 @@ defmodule Mix.Tasks.Toast.Analyze.Weights do
         " in the test module."
     )
   end
-
-  defp short_module("Elixir." <> rest), do: rest
-  defp short_module(mod), do: mod
 end

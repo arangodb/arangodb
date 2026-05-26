@@ -55,24 +55,23 @@ defmodule Mix.Tasks.Toast.Analyze.Issues do
         Enum.map(suite_indexed, fn {issue, idx} ->
           %{
             idx: to_string(idx),
-            type: Atom.to_string(issue.type),
-            scope: Data.format_scope(issue),
-            server: Data.format_server(issue)
+            type: Data.format_type(issue),
+            scope: Data.format_scope(issue)
           }
         end)
 
       widths = column_widths(rows)
-      header = format_row(%{idx: "#", type: "Type", scope: "Scope", server: "Server"}, widths)
+      header = format_row(%{idx: "#", type: "Type", scope: "Scope"}, widths)
       Mix.shell().info(colorize(header, :cyan, color))
       Enum.each(rows, &Mix.shell().info(format_row(&1, widths)))
     end)
   end
 
   defp column_widths(rows) do
-    headers = %{idx: "#", type: "Type", scope: "Scope", server: "Server"}
+    headers = %{idx: "#", type: "Type", scope: "Scope"}
     all = [headers | rows]
 
-    for key <- [:idx, :type, :scope, :server], into: %{} do
+    for key <- [:idx, :type, :scope], into: %{} do
       width = all |> Enum.map(&String.length(Map.get(&1, key))) |> Enum.max()
       {key, width}
     end
@@ -84,9 +83,7 @@ defmodule Mix.Tasks.Toast.Analyze.Issues do
       "  ",
       String.pad_trailing(row.type, widths.type),
       "  ",
-      String.pad_trailing(row.scope, widths.scope),
-      "  ",
-      row.server
+      row.scope
     ]
     |> IO.iodata_to_binary()
   end

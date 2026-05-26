@@ -59,7 +59,9 @@ defmodule Mix.Tasks.Toast.Analyze.Info do
     Mix.shell().info(
       "  Modules: #{map_size(result.modules)}  Tests: #{test_counts.total} " <>
         "(#{test_counts.passed} passed, #{test_counts.failed} failed, " <>
-        "#{test_counts.skipped} skipped)"
+        "#{test_counts.skipped} skipped" <>
+        if(test_counts.invalidated > 0, do: ", #{test_counts.invalidated} invalidated", else: "") <>
+        ")"
     )
 
     # Issues
@@ -177,7 +179,7 @@ defmodule Mix.Tasks.Toast.Analyze.Info do
   end
 
   defp count_tests(modules) do
-    zero = %{total: 0, passed: 0, failed: 0, skipped: 0}
+    zero = %{total: 0, passed: 0, failed: 0, skipped: 0, invalidated: 0}
 
     Enum.reduce(modules, zero, fn {_mod, data}, acc ->
       Enum.reduce(data.tests, acc, &tally_test/2)
@@ -190,6 +192,7 @@ defmodule Mix.Tasks.Toast.Analyze.Info do
     case test.outcome do
       :passed -> %{acc | passed: acc.passed + 1}
       :failed -> %{acc | failed: acc.failed + 1}
+      :invalidated -> %{acc | invalidated: acc.invalidated + 1}
       outcome when outcome in [:skipped, :excluded] -> %{acc | skipped: acc.skipped + 1}
       _ -> acc
     end

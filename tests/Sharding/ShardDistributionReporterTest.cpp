@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -53,7 +53,6 @@
 #include "Statistics/StatisticsFeature.h"
 #include "RestServer/arangod.h"
 #include "RestServer/QueryRegistryFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::cluster;
@@ -202,19 +201,20 @@ class ShardDistributionReporterTest
     aliases[dbserver2] = dbserver2short;
     aliases[dbserver3] = dbserver3short;
 
+    auto& dbFeature = server.addFeature<DatabaseFeature>();
     features.emplace_back(
-        server.addFeature<arangodb::DatabaseFeature>(),
-        false);  // required for TRI_vocbase_t::dropCollection(...)
+        dbFeature, false);  // required for TRI_vocbase_t::dropCollection(...)
     auto& selector = server.addFeature<arangodb::EngineSelectorFeature>();
     features.emplace_back(selector, false);
     selector.setEngineTesting(&engine);
+    dbFeature.setEngineTesting(&engine);
     features.emplace_back(
         server.addFeature<arangodb::metrics::MetricsFeature>(
             arangodb::LazyApplicationFeatureReference<
                 arangodb::QueryRegistryFeature>(server),
             arangodb::LazyApplicationFeatureReference<
                 arangodb::StatisticsFeature>(nullptr),
-            selector,
+            dbFeature,
             arangodb::LazyApplicationFeatureReference<
                 arangodb::metrics::ClusterMetricsFeature>(nullptr),
             arangodb::LazyApplicationFeatureReference<arangodb::ClusterFeature>(
@@ -229,7 +229,7 @@ class ShardDistributionReporterTest
       f.first.prepare();
     }
 
-    vocbase = std::make_unique<TRI_vocbase_t>(testDBInfo(server));
+    vocbase = std::make_unique<TRI_vocbase_t>(testDBInfo(server), engine);
     col = std::make_unique<arangodb::LogicalCollection>(*vocbase, json->slice(),
                                                         true);
 

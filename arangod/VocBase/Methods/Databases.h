@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -40,6 +40,7 @@ class ApplicationServer;
 class DatabaseFeature;
 class ClusterFeature;
 struct OperationOptions;
+class StorageEngine;
 namespace methods {
 
 struct Databases {
@@ -51,8 +52,9 @@ struct Databases {
                                        std::string const& user = "");
   static Result info(TRI_vocbase_t* vocbase, velocypack::Builder& result);
   static Result create(application_features::ApplicationServer& server,
-                       ExecContext const& context, std::string const& dbName,
-                       velocypack::Slice users, velocypack::Slice options);
+                       StorageEngine& engine, ExecContext const& context,
+                       std::string const& dbName, velocypack::Slice users,
+                       velocypack::Slice options);
   static Result drop(ExecContext const& context, TRI_vocbase_t* systemVocbase,
                      std::string const& dbName);
 

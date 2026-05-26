@@ -23,7 +23,7 @@
 
 #include "CacheManagerFeature.h"
 
-#include "RestServer/SharedPRNGFeature.h"
+#include "Basics/SharedPRNG.h"
 #include "Basics/application-exit.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Cache/CacheManagerFeatureThreads.h"
@@ -46,10 +46,10 @@ namespace arangodb {
 
 CacheManagerFeature::CacheManagerFeature(ApplicationServer& server,
                                          CacheOptionsProvider const& provider,
-                                         SharedPRNGFeature& sharedPRNGFeature)
+                                         SharedPRNG& sharedPRNG)
     : application_features::ApplicationFeature{server, *this},
       _provider(provider),
-      _sharedPRNGFeature(sharedPRNGFeature) {
+      _sharedPRNG(sharedPRNG) {
   setOptional(true);
   startsAfter<BasicFeaturePhaseServer>();
   startsAfter<CacheOptionsFeature>();
@@ -93,8 +93,8 @@ void CacheManagerFeature::start() {
       << ", max spare allocation: " << _options.maxSpareAllocation
       << ", enable windowed stats: " << _options.enableWindowedStats;
 
-  _manager = std::make_unique<Manager>(_sharedPRNGFeature, std::move(postFn),
-                                       _options);
+  _manager =
+      std::make_unique<Manager>(_sharedPRNG, std::move(postFn), _options);
 
   _rebalancer = std::make_unique<CacheRebalancerThread>(
       server(), _manager.get(), _options.rebalancingInterval);

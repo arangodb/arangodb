@@ -64,6 +64,9 @@ defmodule ToastTest.Formatting.RunSummary do
         :failed ->
           %{acc | total: acc.total + 1, failed: acc.failed + 1}
 
+        :invalidated ->
+          %{acc | total: acc.total + 1, invalidated: acc.invalidated + 1}
+
         _ ->
           %{acc | total: acc.total + 1, skipped: acc.skipped + 1}
       end
@@ -71,27 +74,30 @@ defmodule ToastTest.Formatting.RunSummary do
   end
 
   defp module_counts(test_counts) do
-    outcomes = Enum.count([:passed, :failed, :skipped], &(test_counts[&1] > 0))
+    outcomes = Enum.count([:passed, :failed, :skipped, :invalidated], &(test_counts[&1] > 0))
 
     cond do
       outcomes > 1 ->
-        %{total: 1, passed: 0, mixed: 1, failed: 0, skipped: 0}
+        %{total: 1, passed: 0, mixed: 1, failed: 0, skipped: 0, invalidated: 0}
 
       test_counts.failed > 0 ->
-        %{total: 1, passed: 0, mixed: 0, failed: 1, skipped: 0}
+        %{total: 1, passed: 0, mixed: 0, failed: 1, skipped: 0, invalidated: 0}
+
+      test_counts.invalidated > 0 ->
+        %{total: 1, passed: 0, mixed: 0, failed: 0, skipped: 0, invalidated: 1}
 
       test_counts.passed > 0 ->
-        %{total: 1, passed: 1, mixed: 0, failed: 0, skipped: 0}
+        %{total: 1, passed: 1, mixed: 0, failed: 0, skipped: 0, invalidated: 0}
 
       true ->
-        %{total: 1, passed: 0, mixed: 0, failed: 0, skipped: 1}
+        %{total: 1, passed: 0, mixed: 0, failed: 0, skipped: 1, invalidated: 0}
     end
   end
 
-  defp zero_counts, do: %{total: 0, passed: 0, failed: 0, skipped: 0}
+  defp zero_counts, do: %{total: 0, passed: 0, failed: 0, skipped: 0, invalidated: 0}
 
   defp zero_module_counts,
-    do: %{total: 0, passed: 0, mixed: 0, failed: 0, skipped: 0}
+    do: %{total: 0, passed: 0, mixed: 0, failed: 0, skipped: 0, invalidated: 0}
 
   defp merge(a, b), do: Map.merge(a, b, fn _k, v1, v2 -> v1 + v2 end)
 
@@ -103,7 +109,8 @@ defmodule ToastTest.Formatting.RunSummary do
     passed: :green,
     mixed: :yellow,
     failed: :red,
-    skipped: :yellow
+    skipped: :yellow,
+    invalidated: :yellow
   ]
 
   defp format_line(label, counts, colors) do

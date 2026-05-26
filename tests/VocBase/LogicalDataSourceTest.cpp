@@ -28,9 +28,9 @@
 #include "../Mocks/StorageEngineMock.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "RestServer/DatabaseFeature.h"
 #include "Metrics/MetricsFeature.h"
 #include "RestServer/arangod.h"
+#include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "Sharding/ShardingFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -85,8 +85,9 @@ class LogicalDataSourceTest : public ::testing::Test {
     auto& selector = server.addFeature<arangodb::EngineSelectorFeature>();
     features.emplace_back(selector, false);
     selector.setEngineTesting(&engine);
-    features.emplace_back(server.addFeature<arangodb::DatabaseFeature>(),
-                          false);
+    auto& dbFeature = server.addFeature<arangodb::DatabaseFeature>();
+    features.emplace_back(dbFeature, false);
+    dbFeature.setEngineTesting(&engine);
     features.emplace_back(
         server.addFeature<arangodb::metrics::MetricsFeature>(
             arangodb::LazyApplicationFeatureReference<
@@ -94,7 +95,7 @@ class LogicalDataSourceTest : public ::testing::Test {
             arangodb::LazyApplicationFeatureReference<
                 arangodb::StatisticsFeature>(nullptr),
             arangodb::LazyApplicationFeatureReference<
-                arangodb::EngineSelectorFeature>(nullptr),
+                arangodb::DatabaseFeature>(nullptr),
             arangodb::LazyApplicationFeatureReference<
                 arangodb::metrics::ClusterMetricsFeature>(nullptr),
             arangodb::LazyApplicationFeatureReference<arangodb::ClusterFeature>(
@@ -121,6 +122,7 @@ class LogicalDataSourceTest : public ::testing::Test {
   ~LogicalDataSourceTest() {
     server.getFeature<arangodb::EngineSelectorFeature>().setEngineTesting(
         nullptr);
+    server.getFeature<arangodb::DatabaseFeature>().setEngineTesting(nullptr);
 
     // destroy application features
     for (auto& f : features) {
@@ -142,7 +144,7 @@ class LogicalDataSourceTest : public ::testing::Test {
 TEST_F(LogicalDataSourceTest, test_category) {
   // LogicalCollection
   {
-    TRI_vocbase_t vocbase(testDBInfo(server));
+    TRI_vocbase_t vocbase(testDBInfo(server), engine);
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testCollection\" }");
     arangodb::LogicalCollection instance(vocbase, json->slice(), true);
@@ -153,7 +155,7 @@ TEST_F(LogicalDataSourceTest, test_category) {
 
   // LogicalView
   {
-    TRI_vocbase_t vocbase(testDBInfo(server));
+    TRI_vocbase_t vocbase(testDBInfo(server), engine);
     auto json =
         arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\" }");
     LogicalViewImpl instance(vocbase, json->slice());
@@ -166,7 +168,7 @@ TEST_F(LogicalDataSourceTest, test_category) {
 TEST_F(LogicalDataSourceTest, test_construct) {
   // LogicalCollection
   {
-    TRI_vocbase_t vocbase(testDBInfo(server));
+    TRI_vocbase_t vocbase(testDBInfo(server), engine);
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"id\": 1, \"planId\": 2, \"globallyUniqueId\": \"abc\", \"name\": "
         "\"testCollection\" }");
@@ -179,7 +181,7 @@ TEST_F(LogicalDataSourceTest, test_construct) {
 
   // LogicalView
   {
-    TRI_vocbase_t vocbase(testDBInfo(server));
+    TRI_vocbase_t vocbase(testDBInfo(server), engine);
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"id\": 1, \"planId\": 2, \"globallyUniqueId\": \"abc\", \"name\": "
         "\"testView\" }");
@@ -194,7 +196,7 @@ TEST_F(LogicalDataSourceTest, test_construct) {
 TEST_F(LogicalDataSourceTest, test_defaults) {
   // LogicalCollection
   {
-    TRI_vocbase_t vocbase(testDBInfo(server));
+    TRI_vocbase_t vocbase(testDBInfo(server), engine);
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testCollection\" }");
     arangodb::LogicalCollection instance(vocbase, json->slice(), true);
@@ -206,7 +208,7 @@ TEST_F(LogicalDataSourceTest, test_defaults) {
 
   // LogicalView
   {
-    TRI_vocbase_t vocbase(testDBInfo(server));
+    TRI_vocbase_t vocbase(testDBInfo(server), engine);
     auto json =
         arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\" }");
     LogicalViewImpl instance(vocbase, json->slice());

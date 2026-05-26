@@ -17,6 +17,7 @@ target_sources(arango_aql PRIVATE
   JoinIndexNodes.cpp
   LateDocumentMaterialization.cpp
   LateDocumentMaterializationArangoSearch.cpp
+  MaterializeForEnumerateNear.cpp
   MaterializeIntoSeparateVariable.cpp
   MoveCalculationsDown.cpp
   MoveCalculationsUp.cpp

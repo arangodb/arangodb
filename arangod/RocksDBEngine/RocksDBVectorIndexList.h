@@ -26,6 +26,7 @@
 #include "Aql/AqlFunctionsInternalCache.h"
 #include "Aql/Expression.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Containers/NodeHashMap.h"
 #include "VectorIndex/VectorIndexDefinition.h"
 #include "RocksDBIndex.h"
 #include "RocksDBValue.h"
@@ -34,6 +35,7 @@
 #include <faiss/IndexIVFFlat.h>
 #include <faiss/MetricType.h>
 #include <faiss/invlists/InvertedLists.h>
+#include <velocypack/Buffer.h>
 #include <velocypack/SharedSlice.h>
 #include <velocypack/Slice.h>
 #include <velocypack/SliceContainer.h>
@@ -56,6 +58,89 @@ inline faiss::MetricType metricToFaissMetric(
       return faiss::METRIC_INNER_PRODUCT;
   }
 }
+
+// =====================================================================
+// Iterator selection table
+// =====================================================================
+//
+// The vector index search path picks one of three iterators based
+// on (a) whether a filter is pushed down, (b) whether the index storedValues
+// cover the filter expression (scF), and (c) whether they cover the
+// projection list (scP). Iterators:
+//
+//   IVT   = RocksDBInvertedListsIterator                (no filter)
+//   IVFT  = RocksDBInvertedListsFilteringIterator       (filter; loads doc)
+//   IVFST = RocksDBInvertedListsFilteringStoredValuesIterator
+//                                                       (filter; uses
+//                                                        storedValues only)
+//
+//   "+ on_heap" = capture per-survivor data via on_heap_changed so the
+//                 executor can serve projections without re-reading RocksDB.
+//                 The captured shape depends on the row.
+//
+// Proj | Filter | scF | scP | Iterator         | Capture
+// ---- | ------ | --- | --- | ---------------- | --------------------
+//   F  |   F    |  -  |  -  | IVT              | none
+//   T  |   F    |  -  |  F  | IVT              | none -- batch-fetch
+//                                                docs post-search
+//   T  |   F    |  -  |  T  | IVT + on_heap    | storedValues array
+//   F  |   T    |  F  |  -  | IVFT             | none
+//   F  |   T    |  T  |  -  | IVFST            | none
+//   T  |   T    |  F  |  F  | IVFT + on_heap   | full document
+//   T  |   T    |  T  |  F  | IVFST            | none -- downstream
+//                                                MaterializeNode handles
+//                                                projections (scP=F means
+//                                                we don't have the data
+//                                                here anyway)
+//   T  |   T    |  F  |  T  | IVFT + on_heap   | storedValues array
+//                                                (filter loaded the doc but
+//                                                projections cover, so we
+//                                                only stash the array)
+//   T  |   T    |  T  |  T  | IVFST + on_heap  | storedValues array
+//
+// Threading note: this code assumes single-threaded execution within one
+// search call. FAISS's default parallel_mode (0) parallelises over query
+// vectors, and we always pass n=1, so all iterators for one search run on
+// the same thread. capturedDocuments is therefore unsynchronised. If
+// parallel_mode is ever changed to 1 or 2, or n>1 with a shared sink, this
+// needs revisiting.
+// =====================================================================
+
+// Common per-search context shared by every iterator path.
+//
+// `capturedDocuments` is an optional output sink: when non-null, the iterator
+// stashes a SharedSlice per surviving entry so the executor can serve
+// projections without re-reading RocksDB. Shape depends on which iterator
+// runs -- see the selection table above.
+struct IteratorContext {
+  transaction::Methods* trx;
+  containers::NodeHashMap<LocalDocumentId, velocypack::SharedSlice>*
+      capturedDocuments{nullptr};
+};
+
+// What the filtering iterator should put into capturedDocuments. Only
+// meaningful when capturedDocuments is non-null. IVFT supports both
+// shapes; IVFST only supports kStoredValues.
+enum class CaptureShape : std::uint8_t {
+  kStoredValues,  // raw storedValues array from the index entry
+  kFullDocument,  // full document Object loaded for filter eval (IVFT only)
+};
+
+// Adds the filter-evaluation state used by the filtering iterator paths.
+struct IteratorFilterContext : IteratorContext {
+  aql::Expression* filterExpression;
+  std::optional<aql::InputAqlItemRow> inputRow;
+  aql::QueryContext* queryContext;
+  std::vector<std::pair<aql::VariableId, aql::RegisterId>> const*
+      filterVarsToRegs;
+  // True iff the filter is expressible against storedValues, so the iterator
+  // can evaluate it without materializing the full document. Independent of
+  // the projection mode — what gets captured for projections is governed by
+  // captureShape below.
+  bool useStoredValuesIterator;
+  aql::Variable const* documentVariable;
+  CaptureShape captureShape{CaptureShape::kStoredValues};
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Concept defining requirements for a vector index stored values
@@ -82,6 +167,15 @@ concept VectorIndexStoredValuesStrategy = requires {
   {T::extractVectorIndexValue(value, codeSize)};
 };
 
+/// @brief Non-owning view into a vector-index entry. Backed by the rocksdb
+/// iterator's value() bytes; valid only until the iterator advances.
+/// Encoded bytes are always exactly the index's codeSize. `storedValues`
+/// is a none-slice when the layout has no stored values.
+struct RocksDBVectorIndexEntryView {
+  uint8_t const* encoded{nullptr};
+  velocypack::Slice storedValues;
+};
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Strategy for vector indexes WITHOUT stored values
 ///
@@ -90,6 +184,8 @@ concept VectorIndexStoredValuesStrategy = requires {
 ////////////////////////////////////////////////////////////////////////////////
 struct NoStoredValuesStrategy {
   static constexpr bool hasStoredValues = false;
+  // Raw encoded bytes — consumable in place, no parsing.
+  static constexpr bool kSupportsView = true;
 
   static std::pair<LocalDocumentId, std::vector<uint8_t>>
   extractVectorIndexEntry(rocksdb::Slice const& key,
@@ -108,30 +204,69 @@ struct NoStoredValuesStrategy {
         reinterpret_cast<uint8_t const*>(value.data()) + codeSize);
     return encodedValue;
   }
+
+  static RocksDBVectorIndexEntryView extractView(rocksdb::Slice const& value,
+                                                 size_t /*codeSize*/) {
+    return {.encoded = reinterpret_cast<uint8_t const*>(value.data()),
+            .storedValues = {}};
+  }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Strategy for vector indexes WITH stored values
+/// @brief Strategy for vector indexes WITH stored values, v1 layout
 ///
-/// When stored values are present, the RocksDB value contains a serialized
-/// RocksDBVectorIndexEntryValue with both encoded vector data and stored
-/// values.
+/// V1 stores the entry as a VPack-serialized RocksDBVectorIndexEntryValue
+/// (self-describing). codeSize is unused because the format carries its own
+/// boundaries.
 ////////////////////////////////////////////////////////////////////////////////
-struct WithStoredValuesStrategy {
+struct WithStoredValuesV1Strategy {
   static constexpr bool hasStoredValues = true;
+  // V1 must allocate to deserialize VPack; no zero-copy view path.
+  static constexpr bool kSupportsView = false;
 
   static std::pair<LocalDocumentId, RocksDBVectorIndexEntryValue>
   extractVectorIndexEntry(rocksdb::Slice const& key,
                           rocksdb::Slice const& value, size_t /*codeSize*/) {
     auto const docId = RocksDBKey::indexDocumentId(key);
-    auto entry = RocksDBValue::vectorIndexEntryValue(value);
-    return {docId, std::move(entry)};
+    return {docId, RocksDBValue::vectorIndexEntryValueV1(value)};
+  }
+
+  static RocksDBVectorIndexEntryValue extractVectorIndexValue(
+      rocksdb::Slice const& value, size_t /*codeSize*/) {
+    return RocksDBValue::vectorIndexEntryValueV1(value);
+  }
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Strategy for vector indexes WITH stored values, v2 layout
+///
+/// V2 stores the entry as raw concat: [encodedValue codeSize bytes]
+/// [storedValues VPack slice]. codeSize is required to locate the boundary.
+////////////////////////////////////////////////////////////////////////////////
+struct WithStoredValuesV2Strategy {
+  static constexpr bool hasStoredValues = true;
+  // V2's raw layout lets the search-path iterator parse without allocating.
+  static constexpr bool kSupportsView = true;
+
+  static std::pair<LocalDocumentId, RocksDBVectorIndexEntryValue>
+  extractVectorIndexEntry(rocksdb::Slice const& key,
+                          rocksdb::Slice const& value, size_t codeSize) {
+    auto const docId = RocksDBKey::indexDocumentId(key);
+    return {docId, RocksDBValue::vectorIndexEntryValueV2(value, codeSize)};
   }
 
   static RocksDBVectorIndexEntryValue extractVectorIndexValue(
       rocksdb::Slice const& value, size_t codeSize) {
-    auto entry = RocksDBValue::vectorIndexEntryValue(value);
-    return entry;
+    return RocksDBValue::vectorIndexEntryValueV2(value, codeSize);
+  }
+
+  // Returns a non-owning view into the rocksdb iterator's value buffer.
+  // Lifetime is bounded by the rocksdb iterator's current position.
+  static RocksDBVectorIndexEntryView extractView(rocksdb::Slice const& value,
+                                                 size_t codeSize) {
+    auto const* data = reinterpret_cast<uint8_t const*>(value.data());
+    return {.encoded = data,
+            .storedValues = velocypack::Slice(data + codeSize)};
   }
 };
 
@@ -150,7 +285,13 @@ struct RocksDBInvertedListsIteratorBase : faiss::InvertedListsIterator {
 
   [[nodiscard]] virtual bool is_available() const override;
 
+  void on_heap_changed(faiss::idx_t new_id, faiss::idx_t evicted_id) final;
+
  protected:
+  // Insert hook for the topK heap; default takes ownership of
+  // _currentCaptureData. V2 overrides to promote a non-owning view.
+  virtual void captureSurvivor(LocalDocumentId id);
+
   RocksDBKey _rocksdbKey;
   arangodb::RocksDBVectorIndex* _index{nullptr};
   LogicalCollection* _collection{nullptr};
@@ -158,6 +299,13 @@ struct RocksDBInvertedListsIteratorBase : faiss::InvertedListsIterator {
   std::size_t _codeSize;
 
   std::unique_ptr<rocksdb::Iterator> _it;
+
+  // When capture is wanted, derived classes wire _sink in their ctor and
+  // refresh _currentCaptureData from get_id_and_codes; on_heap_changed
+  // pushes it into the sink when the entry survives the topK heap.
+  containers::NodeHashMap<LocalDocumentId, velocypack::SharedSlice>* _sink{
+      nullptr};
+  velocypack::SharedSlice _currentCaptureData;
 };
 
 // Simple iterator without filtering
@@ -166,42 +314,32 @@ template<VectorIndexStoredValuesStrategy Strategy>
 struct RocksDBInvertedListsIterator final : RocksDBInvertedListsIteratorBase {
   RocksDBInvertedListsIterator(RocksDBVectorIndex* index,
                                LogicalCollection* collection,
-                               transaction::Methods* trx,
+                               IteratorContext const& ctx,
                                std::size_t listNumber, std::size_t codeSize);
 
   void next() override;
 
   std::pair<faiss::idx_t, uint8_t const*> get_id_and_codes() override;
 
+  void captureSurvivor(LocalDocumentId id) override;
+
  private:
-  // Storage varies based on strategy
-  std::conditional_t<Strategy::hasStoredValues, RocksDBVectorIndexEntryValue,
-                     std::vector<uint8_t>>
+  std::conditional_t<
+      Strategy::kSupportsView, RocksDBVectorIndexEntryView,
+      std::conditional_t<Strategy::hasStoredValues,
+                         RocksDBVectorIndexEntryValue, std::vector<uint8_t>>>
       _currentEntry;
 };
 
-struct SearchParametersContext {
-  transaction::Methods* trx;
-  aql::Expression* filterExpression;
-  std::optional<aql::InputAqlItemRow> inputRow;
-  aql::QueryContext* queryContext;
-  std::vector<std::pair<aql::VariableId, aql::RegisterId>> const*
-      filterVarsToRegs;
-  bool isCoveredByStoredValues;
-  aql::Variable const* documentVariable;
-};
-
-// This is used to pass a different search context via RocksDBInvertedList it
-// the iterators
-using RocksDBFaissSearchContext =
-    std::variant<SearchParametersContext, transaction::Methods*>;
+using RocksDBFaissIteratorContext =
+    std::variant<IteratorFilterContext, IteratorContext>;
 
 /// Base iterator for filtering iterators
 struct RocksDBInvertedListsFilteringIteratorBase
     : public RocksDBInvertedListsIteratorBase {
   RocksDBInvertedListsFilteringIteratorBase(
       RocksDBVectorIndex* index, LogicalCollection* collection,
-      SearchParametersContext& searchParametersContext, std::size_t listNumber,
+      IteratorFilterContext& filterContext, std::size_t listNumber,
       std::size_t codeSize);
 
   [[nodiscard]] bool is_available() const override;
@@ -215,18 +353,22 @@ struct RocksDBInvertedListsFilteringIteratorBase
  protected:
   void skipOverFilteredDocuments();
 
-  // batch size to reduce random RocksDB accesses. Chosen arbitrarily.
+  // Batch size to reduce random RocksDB accesses.
   constexpr static auto kBatchSize{1000};
 
-  SearchParametersContext& _searchParametersContext;
+  // captureData is empty when no sink is wired; otherwise it is moved into
+  // the sink by on_heap_changed if the entry survives the topK heap.
+  struct FilteredEntry {
+    LocalDocumentId id;
+    std::vector<uint8_t> codes;
+    velocypack::SharedSlice captureData;
+  };
+
+  IteratorFilterContext& _filterContext;
   aql::AqlFunctionsInternalCache _aqlFunctionsInternalCache;
 
-  std::vector<std::pair<LocalDocumentId, std::vector<uint8_t>>> _filteredIds;
-
-  // Current element from the _filteredIds, which is the current state of this
-  // iterator
-  std::vector<std::pair<LocalDocumentId, std::vector<uint8_t>>>::iterator
-      _filteredIdsIt{_filteredIds.end()};
+  std::vector<FilteredEntry> _filteredIds;
+  std::vector<FilteredEntry>::iterator _filteredIdsIt{_filteredIds.end()};
 };
 
 // Materializes document for every record
@@ -234,10 +376,11 @@ struct RocksDBInvertedListsFilteringIteratorBase
 template<VectorIndexStoredValuesStrategy Strategy>
 struct RocksDBInvertedListsFilteringIterator final
     : public RocksDBInvertedListsFilteringIteratorBase {
-  RocksDBInvertedListsFilteringIterator(
-      RocksDBVectorIndex* index, LogicalCollection* collection,
-      SearchParametersContext& searchParametersContext, std::size_t listNumber,
-      std::size_t codeSize);
+  RocksDBInvertedListsFilteringIterator(RocksDBVectorIndex* index,
+                                        LogicalCollection* collection,
+                                        IteratorFilterContext& filterContext,
+                                        std::size_t listNumber,
+                                        std::size_t codeSize);
 
   [[nodiscard]] bool searchFilteredIds() override;
 };
@@ -246,11 +389,13 @@ struct RocksDBInvertedListsFilteringIterator final
 // except it does not needs to materialize documents, since it contains
 // values that will be used during expression evaluation.
 // It can be used iff storedValues fully cover the filterExpression
-struct RocksDBInvertedListsFilteringStoredValuesIterator final
+template<VectorIndexStoredValuesStrategy Strategy>
+requires(Strategy::hasStoredValues) struct
+    RocksDBInvertedListsFilteringStoredValuesIterator final
     : public RocksDBInvertedListsFilteringIteratorBase {
   RocksDBInvertedListsFilteringStoredValuesIterator(
       RocksDBVectorIndex* index, LogicalCollection* collection,
-      SearchParametersContext& searchParametersContext, std::size_t listNumber,
+      IteratorFilterContext& filterContext, std::size_t listNumber,
       std::size_t codeSize);
 
   [[nodiscard]] bool searchFilteredIds() override;

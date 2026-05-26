@@ -107,7 +107,7 @@ ClusterIndex::ClusterIndex(IndexId id, LogicalCollection& collection,
     } else if (_indexType == TRI_IDX_TYPE_VECTOR_INDEX) {
       velocypack::deserialize(info.get("params"), _vectorIndexDefinition);
       TRI_ASSERT(_vectorIndexDefinition != nullptr);
-      _storedValues =
+      _coveredFields =
           Index::parseFields(info.get(StaticStrings::IndexStoredValues),
                              /*allowEmpty*/ true, /*allowExpansion*/ false);
     }
@@ -559,8 +559,6 @@ ClusterIndex::getVectorIndexDefinition() {
   }
   return *_vectorIndexDefinition;
 }
-
-StoredValues const& ClusterIndex::storedValues() const { return _storedValues; }
 
 bool ClusterIndex::supportsDistinctScan(
     IndexDistinctScanOptions const& scanOptions) const noexcept {
