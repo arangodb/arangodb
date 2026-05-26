@@ -30,10 +30,12 @@
 #include "Aql/ExecutionNode/CalculationNode.h"
 #include "Aql/ExecutionNode/DistributeNode.h"
 #include "Aql/ExecutionNode/EnumerateCollectionNode.h"
+#include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/ExecutionNode/IndexNode.h"
 #include "Aql/Expression.h"
 #include "Aql/Optimizer.h"
 #include "Aql/OptimizerRule.h"
+#include "Indexes/Index.h"
 
 #include "Cluster/ServerState.h"
 #include "Containers/SmallVector.h"
@@ -215,6 +217,16 @@ std::unique_ptr<arangodb::aql::Condition> getCondition(
     auto const indexNode =
         arangodb::aql::ExecutionNode::castTo<arangodb::aql::IndexNode const*>(
             current);
+
+    auto indexes = indexNode->getIndexes();
+    for (auto&& i : indexes) {
+      if (i->type() ==
+          arangodb::Index::IndexType::TRI_IDX_TYPE_INVERTED_INDEX) {
+        LOG_RULE << "Inverted Indexes are unsupported for this rule";
+        return nullptr;
+      }
+    }
+
     auto const cond = indexNode->condition();
     if (cond != nullptr && cond->root() != nullptr) {
       condition->andCombine(cond->root());
@@ -259,20 +271,22 @@ void upgradeScatterToDistributeRule(Optimizer* opt,
   for (auto const node : nodes) {
     ExecutionNode* current = node->getFirstParent();
     while (current != nullptr) {
-      auto condition = getCondition(plan.get(), current);
+      if (current->getType() == ExecutionNode::INDEX ||
+          current->getType() == ExecutionNode::ENUMERATE_COLLECTION) {
+        auto condition = getCondition(plan.get(), current);
 
-      if (condition != nullptr) {
-        condition->normalize(plan.get());
+        if (condition != nullptr) {
+          condition->normalize(plan.get());
 
-        DistributeNodeDependency distDep;
-        if (checkIfAllShardKeysAreUsed(condition->root(), current, distDep)) {
-          auto const scatterNode = ExecutionNode::castTo<ScatterNode*>(node);
-          Collection const* coll{getCollection(current)};
-          replaceScatterWithDistribute(*plan, scatterNode, coll, current->id(),
-                                       distDep);
-          wasModified = true;
+          DistributeNodeDependency distDep;
+          if (checkIfAllShardKeysAreUsed(condition->root(), current, distDep)) {
+            auto const scatterNode = ExecutionNode::castTo<ScatterNode*>(node);
+            Collection const* coll{getCollection(current)};
+            replaceScatterWithDistribute(*plan, scatterNode, coll,
+                                         current->id(), distDep);
+            wasModified = true;
+          }
         }
-
         // Only the first Index / Enumeration Parent-Node is relevant for us, we
         // can skip the rest
         break;
