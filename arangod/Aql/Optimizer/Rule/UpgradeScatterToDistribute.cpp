@@ -90,8 +90,8 @@ arangodb::aql::Variable const* getOutVariable(
   }
   return nullptr;
 }
-arangodb::aql::AstNode* createParseKeyCall(arangodb::aql::Ast* ast,
-                                           arangodb::aql::AstNode const* input) {
+arangodb::aql::AstNode* createParseKeyCall(
+    arangodb::aql::Ast* ast, arangodb::aql::AstNode const* input) {
   using namespace arangodb::aql;
   AstNode* args = ast->createNodeArray();
   args->addMember(ast->clone(input));
@@ -179,9 +179,9 @@ bool checkIfAllShardKeysAreUsed(arangodb::aql::AstNode const* root,
 
     std::string attrField = shardKeyNode->getString();
     if (attrField == arangodb::StaticStrings::IdString) {
-        attrField = arangodb::StaticStrings::KeyString;
-        Ast* ast = node->plan()->getAst();
-        expression = createParseKeyCall(ast, expression);
+      attrField = arangodb::StaticStrings::KeyString;
+      Ast* ast = node->plan()->getAst();
+      expression = createParseKeyCall(ast, expression);
     }
 
     bool isShardKey = std::find(shardKeys.begin(), shardKeys.end(),
@@ -189,9 +189,9 @@ bool checkIfAllShardKeysAreUsed(arangodb::aql::AstNode const* root,
 
     if (isShardKey > 0 && expression != nullptr) {
       if (shardKeyNode->getString() == arangodb::StaticStrings::IdString) {
-        distDep.shardKeyAccessMap[arangodb::StaticStrings::KeyString] = expression;
-      }
-      else{
+        distDep.shardKeyAccessMap[arangodb::StaticStrings::KeyString] =
+            expression;
+      } else {
         distDep.shardKeyAccessMap[shardKeyNode->getStringView()] = expression;
       }
     }
