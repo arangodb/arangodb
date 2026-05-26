@@ -1351,7 +1351,8 @@ TEST_F(CompareAstNodesTest, quantifierAtLeastDifferentNonConstantThreshold) {
       _ast->createNodeQuantifier(Quantifier::Type::kAtLeast, createRefNode(a));
   auto* alB =
       _ast->createNodeQuantifier(Quantifier::Type::kAtLeast, createRefNode(b));
-  EXPECT_NE(0, compare(alA, alB));
+  EXPECT_LT(compare(alA, alB), 0);
+  EXPECT_GT(compare(alB, alA), 0);
 }
 
 // --- compareUtf8 flag propagation

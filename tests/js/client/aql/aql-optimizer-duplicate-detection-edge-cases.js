@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertTrue, assertFalse */
+/*global assertEqual, assertNotEqual, assertTrue, assertFalse */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -84,6 +84,9 @@ function DuplicateConditionOptimizationSuite() {
       assertTrue(planStr.includes('"compare =="'), 'should use == after rewrite');
     },
 
+    // TODO: x IN [a] must not rewrite to == for multivalued ArangoSearch fields.
+    // Requires view setup; covered in the ArangoSearch-specific test suite.
+
     // IN with a non-constant array must NOT be rewritten to ==, even if it has
     // one element at runtime. isConstant() guards the rewrite.
     testInNonConstantArrayNotRewritten: function () {
@@ -95,25 +98,31 @@ function DuplicateConditionOptimizationSuite() {
 
     // IN [] is always false; no rewrite to ==, branch is dropped as false.
     testInEmptyArrayProducesNoResults: function () {
-      const res = query(`FOR doc IN ${cn} FILTER doc.value IN [] RETURN doc.value`);
-      assertEqual([], res);
+      const q = `FOR doc IN ${cn} FILTER doc.value IN [] RETURN doc.value`;
+      assertEqual([], query(q));
+      const nodeTypes = db._createStatement(q).explain().plan.nodes.map(n => n.type);
+      assertNotEqual(-1, nodeTypes.indexOf('NoResultsNode'), 'IN [] must produce NoResultsNode');
     },
 
     // --- false AND branch removal -------------------------------------------
 
     // doc.value IN [] is always false, so the whole AND branch is dropped.
     testFalseAndBranchDropped: function () {
-      const res = query(`
+      const q = `
         FOR doc IN ${cn}
           FILTER (doc.value > 8 AND doc.value IN []) OR doc.value == 0
-          RETURN doc.value`);
-      assertEqual([0], res);
+          RETURN doc.value`;
+      assertEqual([0], query(q));
+      const planStr = JSON.stringify(db._createStatement(q).explain().plan);
+      assertFalse(planStr.includes('"compare in"'), 'false AND branch must be removed from plan');
     },
 
     // All OR branches are false → no results.
     testAllBranchesFalse: function () {
-      const res = query(`FOR doc IN ${cn} FILTER doc.value IN [] OR doc.value IN [] RETURN doc.value`);
-      assertEqual([], res);
+      const q = `FOR doc IN ${cn} FILTER doc.value IN [] OR doc.value IN [] RETURN doc.value`;
+      assertEqual([], query(q));
+      const nodeTypes = db._createStatement(q).explain().plan.nodes.map(n => n.type);
+      assertNotEqual(-1, nodeTypes.indexOf('NoResultsNode'), 'all-false OR must produce NoResultsNode');
     },
 
     // --- true condition removal ---------------------------------------------
@@ -121,11 +130,13 @@ function DuplicateConditionOptimizationSuite() {
     // doc.value NOT IN [] is always true and is stripped from the AND,
     // leaving only doc.value > 7.
     testTrueConditionStripped: function () {
-      const res = sorted(query(`
+      const q = `
         FOR doc IN ${cn}
           FILTER doc.value > 7 AND doc.value NOT IN []
-          RETURN doc.value`));
-      assertEqual([8, 9], res);
+          RETURN doc.value`;
+      assertEqual([8, 9], sorted(query(q)));
+      const planStr = JSON.stringify(db._createStatement(q).explain().plan);
+      assertFalse(planStr.includes('"compare not in"'), 'always-true NOT IN [] must be removed from plan');
     },
 
     // When all conditions are true, at least one is kept (not dropped entirely).
@@ -246,6 +257,33 @@ function DuplicateConditionOptimizationSuite() {
              AND doc.tags[* RETURN CURRENT] ANY == 1
           RETURN doc.value`);
       assertEqual([], res);  // no docs have a tags array with value 1
+    },
+
+    // --- compareUtf8 fix: == and != use byte comparison, not ICU ---------------
+
+    // == uses byte comparison: NFC "café" (U+00E9) and NFD "café" (e+U+0301) are
+    // byte-distinct and must not deduplicate.
+    testEqualConditionsNfcNfdNotDeduplicated: function () {
+      // NFC "café": U+00E9 encodes as 2 UTF-8 bytes (\xc3\xa9).
+      // NFD "cafe\u0301": e + combining acute encodes as 3 bytes (e \xcc\x81).
+      // areNodesEqual uses byte comparison (compareUtf8=false) for ==, so these
+      // two string literals are byte-distinct and must NOT be deduplicated.
+      // Proof: insert a doc with the NFC name. If dedup wrongly fires, the filter
+      // collapses to NFC-only and returns 1 result. Correct: both conditions
+      // must hold; NFD fails against the stored NFC bytes -> 0 results.
+      const testCn = cn + '_nfctest';
+      db._drop(testCn);
+      const c = db._create(testCn);
+      try {
+        c.insert({ name: "café" });  // NFC U+00E9
+        // NFD version: same visual but different bytes (e + U+0301)
+        const res = db._query(
+          `FOR doc IN ${testCn} FILTER doc.name == "café" AND doc.name == "café" RETURN doc`
+        ).toArray();
+        assertEqual([], res, 'NFC and NFD must not deduplicate');
+      } finally {
+        db._drop(testCn);
+      }
     },
 
     // --- empty / corner cases -----------------------------------------------
