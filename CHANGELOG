@@ -1,10 +1,10 @@
 3.12.10-devel (XXXX-XX-XX)
 --------------------------
-* Upgraded FAISS to v1.14.2.
-
 * COR-471: Improved filter optimization, rewriting `x IN [a]` to `x == a`,
   removing always-false/true branches, and deduplicating identical conditions.
   Fixed `==`/`!=` incorrectly using ICU comparison instead of byte comparison.
+
+* Upgraded FAISS to v1.14.2.
 
 * COR-320: Vector search now supports projections, allowing covered queries
   to skip the document materialization step. Adds optimizer rule
