@@ -46,9 +46,11 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 
+#include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 
 #include <format>
+#include <ranges>
 #include <unordered_set>
 
 DECLARE_GAUGE(arangodb_vector_index_unusable, uint64_t,
@@ -79,6 +81,38 @@ DECLARE_HISTOGRAM(arangodb_vector_index_ingestion_duration,
 #endif
 
 namespace arangodb::vector {
+
+namespace {
+
+// Post setValue onto the scheduler so continuations don't run on the
+// build manager thread (which could cause deadlocks).
+void resolveOnScheduler(Scheduler& scheduler,
+                        std::vector<futures::Promise<Result>>&& promises,
+                        Result const& result) {
+  for (auto& p : promises) {
+    scheduler.queue(RequestLane::CONTINUATION,
+                    [promise = std::move(p), result]() mutable {
+                      promise.setValue(result);
+                    });
+  }
+}
+
+// Move out and erase all promises registered under `id` in `map`. Caller
+// holds the owning mutex.
+std::vector<futures::Promise<Result>> extractWaiters(
+    std::unordered_map<IndexId::BaseType,
+                       std::vector<futures::Promise<Result>>>& map,
+    IndexId id) {
+  auto it = map.find(id.id());
+  if (it == map.end()) {
+    return {};
+  }
+  auto out = std::move(it->second);
+  map.erase(it);
+  return out;
+}
+
+}  // namespace
 
 VectorIndexBuildManager::VectorIndexBuildManager(
     DatabaseFeature& dbFeature, MaintenanceFeature& maintenance,
@@ -113,50 +147,35 @@ futures::Future<Result> VectorIndexBuildManager::waitForIndexReady(
   futures::Promise<Result> promise;
   auto future = promise.getFuture();
   {
-    std::lock_guard lock(_waitersMutex);
-    _waiters[indexId.id()].push_back(std::move(promise));
+    std::lock_guard lock(_mutex);
+    _buildWaiters[indexId.id()].push_back(std::move(promise));
   }
   return future;
 }
 
-void VectorIndexBuildManager::fulfillWaiters(IndexId indexId,
-                                             Result const& result) {
-  std::vector<futures::Promise<Result>> waiters;
+void VectorIndexBuildManager::fulfillBuildWaiters(IndexId indexId,
+                                                  Result const& result) {
+  std::vector<futures::Promise<Result>> promises;
   {
-    std::lock_guard lock(_waitersMutex);
-    auto it = _waiters.find(indexId.id());
-    if (it == _waiters.end()) {
-      return;
-    }
-    waiters = std::move(it->second);
-    _waiters.erase(it);
+    std::lock_guard lock(_mutex);
+    promises = extractWaiters(_buildWaiters, indexId);
   }
-  // Post setValue onto the scheduler so continuations don't run on the
-  // build manager thread (which could cause deadlocks).
-  for (auto& p : waiters) {
-    _scheduler.queue(RequestLane::CONTINUATION,
-                     [promise = std::move(p), result]() mutable {
-                       promise.setValue(result);
-                     });
-  }
+  resolveOnScheduler(_scheduler, std::move(promises), result);
 }
 
-void VectorIndexBuildManager::fulfillAllWaiters(Result const& result) {
-  std::unordered_map<IndexId::BaseType, std::vector<futures::Promise<Result>>>
-      waiters;
+void VectorIndexBuildManager::fulfillAllWaitersOnShutdown(
+    Result const& result) {
+  BuildWaiterMap buildWaiters;
   {
-    std::lock_guard lock(_waitersMutex);
-    waiters = std::move(_waiters);
-    _waiters.clear();
+    std::lock_guard lock(_mutex);
+    buildWaiters = std::move(_buildWaiters);
+    _buildWaiters.clear();
   }
-  for (auto& [_, promises] : waiters) {
-    for (auto& p : promises) {
-      _scheduler.queue(RequestLane::CONTINUATION,
-                       [promise = std::move(p), result]() mutable {
-                         promise.setValue(result);
-                       });
-    }
+  std::vector<futures::Promise<Result>> promises;
+  for (auto& bucket : std::views::values(buildWaiters)) {
+    std::ranges::move(bucket, std::back_inserter(promises));
   }
+  resolveOnScheduler(_scheduler, std::move(promises), result);
 }
 
 bool VectorIndexBuildManager::shouldSkipRetry(
@@ -183,17 +202,24 @@ void VectorIndexBuildManager::run(std::stop_token stopToken) {
 
   FailedBuildsMap failedBuilds;
 
-  auto fulfillOnExit = scopeGuard([this]() noexcept {
-    fulfillAllWaiters(Result{TRI_ERROR_SHUTTING_DOWN});
+  auto const fulfillOnExit = scopeGuard([this]() noexcept {
+    fulfillAllWaitersOnShutdown(Result{TRI_ERROR_SHUTTING_DOWN});
   });
 
+  // TODO(vector-retrain): revisit whether we need a startup sweep of
+  // orphan VectorIndex CF ranges. A crash between persisting shadow
+  // ingestion entries and committing the swap would leave per-objectId
+  // residue that is never referenced again. The current retrain flow
+  // should not produce this state, but confirm once the on-disk layout
+  // and crash-recovery story are finalized.
   while (!stopToken.stop_requested()) {
+    // lets wait 5 seconds before each scan
     auto const deadline = std::chrono::steady_clock::now() + kScanInterval;
     while (std::chrono::steady_clock::now() < deadline &&
            !stopToken.stop_requested()) {
       {
-        std::lock_guard lock(_waitersMutex);
-        if (!_waiters.empty()) {
+        std::lock_guard lock(_mutex);
+        if (!_buildWaiters.empty()) {
           break;
         }
       }
@@ -201,7 +227,7 @@ void VectorIndexBuildManager::run(std::stop_token stopToken) {
     }
 
     try {
-      scanAndBuild(stopToken, failedBuilds);
+      scanAndProcess(stopToken, failedBuilds);
     } catch (std::exception const& ex) {
       LOG_TOPIC("e170b", WARN, Logger::ENGINES)
           << "VectorIndexBuildManager scan error: " << ex.what();
@@ -209,146 +235,56 @@ void VectorIndexBuildManager::run(std::stop_token stopToken) {
   }
 }
 
-void VectorIndexBuildManager::scanAndBuild(std::stop_token const& stopToken,
-                                           FailedBuildsMap& failedBuilds) {
-  // Collect objectIds seen this scan to prune stale entries from
-  // failedBuilds (e.g. indexes that were dropped since the last scan).
-  std::unordered_set<std::uint64_t> seenObjectIds;
-  // All vector IndexIds seen during the scan (regardless of state).
-  std::unordered_set<IndexId::BaseType> seenIndexIds;
-  // Track IndexIds of unusable indexes that have pending waiters but
-  // could not be built in this scan (below threshold or in backoff).
-  std::unordered_set<IndexId::BaseType> skippedWaiters;
-  uint64_t unusableIndexesCount = 0;
-  bool scanCompletedFully = false;
+void VectorIndexBuildManager::scanAndProcess(std::stop_token const& stopToken,
+                                             FailedBuildsMap& failedBuilds) {
+  ScanState state;
 
   _dbFeature.enumerateDatabases([&](TRI_vocbase_t& vocbase) {
     if (stopToken.stop_requested()) {
       return;
     }
-
-    auto const collections = vocbase.collections(false);
-    for (auto const& coll : collections) {
-      auto const indexes = coll->getPhysical()->getReadyIndexes();
-      for (auto const& idx : indexes) {
+    for (auto const& coll : vocbase.collections(false)) {
+      for (auto const& idx : coll->getPhysical()->getReadyIndexes()) {
         if (idx->type() != Index::TRI_IDX_TYPE_VECTOR_INDEX) {
           continue;
         }
-        auto& vecIdx = static_cast<RocksDBVectorIndex&>(*idx);
-        seenIndexIds.insert(vecIdx.id().id());
-        if (vecIdx.trainingState() == VectorIndexTrainingState::kReady) {
-          fulfillWaiters(vecIdx.id(), Result{});
-          continue;
+        auto result =
+            processVectorIndex(failedBuilds, vocbase, *coll, idx, stopToken);
+        state.seenIndexIds.insert(result.indexId.id());
+        if (result.unusableObjectId.has_value()) {
+          state.seenObjectIds.insert(*result.unusableObjectId);
+          ++state.unusableIndexesCount;
         }
-        if (vecIdx.trainingState() != VectorIndexTrainingState::kUnusable) {
-          // kTraining or kIngesting — build in progress, keep waiters
-          // pending until it finishes.
-          continue;
+        if (result.skippedWaiter) {
+          state.skippedWaiters.insert(result.indexId.id());
         }
-
-        ++unusableIndexesCount;
-        seenObjectIds.insert(vecIdx.objectId());
-
-        auto const* rcoll =
-            static_cast<RocksDBCollection*>(coll->getPhysical());
-        auto const numDocs = rcoll->meta().numberDocuments();
-        if (numDocs < vecIdx.trainingThreshold()) {
-          skippedWaiters.insert(vecIdx.id().id());
-          auto belowThresholdMsg = std::format(
-              "not enough training data for vector "
-              "index, need at least {} documents "
-              "but only {} present",
-              vecIdx.trainingThreshold(), numDocs);
-          vecIdx.setTrainingError(belowThresholdMsg);
-          reportIndexError(vocbase, *coll, vecIdx,
-                           Result{TRI_ERROR_QUERY_VECTOR_INDEX_NOT_READY,
-                                  std::move(belowThresholdMsg)});
-          continue;
+        if (result.buildCompleted) {
+          // Publish the decremented untrained count so observers see
+          // progress mid-scan. The final post-scan store overwrites
+          // this with the total unusable count for the pass.
+          _untrainedCount.store(state.unusableIndexesCount > 0
+                                    ? state.unusableIndexesCount - 1
+                                    : 0,
+                                std::memory_order_relaxed);
         }
-
-        if (shouldSkipRetry(failedBuilds, vecIdx.objectId(), numDocs)) {
-          skippedWaiters.insert(vecIdx.id().id());
-          continue;
-        }
-
-        LOG_TOPIC("e171b", INFO, Logger::ENGINES)
-            << "[shard=" << vecIdx.collection().name()
-            << ", index=" << vecIdx.id().id()
-            << "] Training threshold reached (" << vecIdx.trainingThreshold()
-            << " documents). Starting deferred training.";
-
-        _trainingOngoingCount.fetch_add(1);
-        TRI_ASSERT(_resourceMonitor.current() == 0);
-        auto indexPtr = std::static_pointer_cast<RocksDBIndex>(idx);
-        VectorIndexBuilder builder(vecIdx, _resourceMonitor);
-
-        // ResourceUsageScope throws on overflow; catch so cleanup below
-        // runs uniformly for both Result-failed and thrown failures.
-        auto const res = std::invoke([&]() -> Result {
-          try {
-            return builder.build(std::move(indexPtr), _trainingDuration,
-                                 _ingestionDuration, stopToken);
-          } catch (basics::Exception const& e) {
-            return Result{e.code(), e.message()};
-          } catch (std::exception const& e) {
-            return Result{TRI_ERROR_INTERNAL, e.what()};
-          }
-        });
-        _trainingOngoingCount.fetch_sub(1);
-
-        if (res.fail()) {
-          // Set the error before flipping state to kUnusable so a concurrent
-          // REST reader never observes kUnusable with an empty error.
-          vecIdx.setTrainingError(std::string{res.errorMessage()});
-          vecIdx.resetTrainingState();
-          fulfillWaiters(vecIdx.id(), res);
-          if (res.is(TRI_ERROR_RESOURCE_LIMIT)) {
-            LOG_TOPIC("e165b", ERR, Logger::ENGINES)
-                << "[index=" << vecIdx.id().id()
-                << "] Vector build aborted: training reservoir exceeded the "
-                   "configured memory limit. Lower numberOfDocsPerCentroid in "
-                   "the index definition or raise the global memory limit. "
-                   "Details: "
-                << res.errorMessage();
-          } else {
-            LOG_TOPIC("e164b", ERR, Logger::ENGINES)
-                << "[index=" << vecIdx.id().id()
-                << "] Vector build failed: " << res.errorMessage();
-          }
-          failedBuilds[vecIdx.objectId()] = {std::chrono::steady_clock::now(),
-                                             numDocs};
-
-          reportIndexError(vocbase, *coll, vecIdx, res);
-          continue;
-        }
-
-        fulfillWaiters(vecIdx.id(), Result{});
-
-        clearIndexError(vocbase, *coll, vecIdx);
-        failedBuilds.erase(vecIdx.objectId());
-
-        // Update the untrained count after each successful build.
-        _untrainedCount.store(
-            unusableIndexesCount > 0 ? unusableIndexesCount - 1 : 0,
-            std::memory_order_relaxed);
       }
     }
   });
 
-  scanCompletedFully = !stopToken.stop_requested();
-  _untrainedCount.store(unusableIndexesCount, std::memory_order_relaxed);
+  bool const scanCompletedFully = !stopToken.stop_requested();
+  _untrainedCount.store(state.unusableIndexesCount, std::memory_order_relaxed);
 
   // Prune failed build entries for indexes that no longer exist.
   std::erase_if(failedBuilds, [&](auto const& entry) {
-    return !seenObjectIds.contains(entry.first);
+    return !state.seenObjectIds.contains(entry.first);
   });
 
   // Fulfill waiters for indexes that were scanned but could not be built
   // (below threshold or in retry backoff) so the REST handler doesn't hang.
-  for (auto indexId : skippedWaiters) {
-    fulfillWaiters(IndexId{indexId},
-                   Result{TRI_ERROR_QUERY_VECTOR_INDEX_NOT_READY,
-                          "vector index not ready"});
+  for (auto const indexId : state.skippedWaiters) {
+    fulfillBuildWaiters(IndexId{indexId},
+                        Result{TRI_ERROR_QUERY_VECTOR_INDEX_NOT_READY,
+                               "vector index not ready"});
   }
 
   // Fulfill waiters for indexes that no longer exist (dropped while a
@@ -357,18 +293,111 @@ void VectorIndexBuildManager::scanAndBuild(std::stop_token const& stopToken,
   if (scanCompletedFully) {
     std::vector<IndexId::BaseType> orphaned;
     {
-      std::lock_guard lock(_waitersMutex);
-      for (auto const& [id, _] : _waiters) {
-        if (!seenIndexIds.contains(id)) {
+      std::lock_guard lock(_mutex);
+      for (auto const& [id, bucket] : _buildWaiters) {
+        if (!state.seenIndexIds.contains(id)) {
           orphaned.push_back(id);
         }
       }
     }
-    for (auto id : orphaned) {
-      fulfillWaiters(IndexId{id}, Result{TRI_ERROR_ARANGO_INDEX_NOT_FOUND,
-                                         "index was dropped"});
+    for (auto const id : orphaned) {
+      fulfillBuildWaiters(IndexId{id}, Result{TRI_ERROR_ARANGO_INDEX_NOT_FOUND,
+                                              "index was dropped"});
     }
   }
+}
+
+VectorIndexBuildManager::IndexScanResult
+VectorIndexBuildManager::processVectorIndex(FailedBuildsMap& failedBuilds,
+                                            TRI_vocbase_t& vocbase,
+                                            LogicalCollection& coll,
+                                            std::shared_ptr<Index> const& idx,
+                                            std::stop_token const& stopToken) {
+  auto& vecIdx = static_cast<RocksDBVectorIndex&>(*idx);
+  IndexScanResult result;
+  result.indexId = vecIdx.id();
+
+  switch (vecIdx.trainingState()) {
+    case VectorIndexTrainingState::kReady:
+      fulfillBuildWaiters(vecIdx.id(), Result{});
+      return result;
+    case VectorIndexTrainingState::kTraining:
+    case VectorIndexTrainingState::kIngesting:
+      // Build in progress — keep waiters pending until it finishes.
+      return result;
+    case VectorIndexTrainingState::kUnusable:
+      break;
+  }
+
+  result.unusableObjectId = vecIdx.objectId();
+
+  auto const* rcoll = static_cast<RocksDBCollection*>(coll.getPhysical());
+  auto const numDocs = rcoll->meta().numberDocuments();
+  if (numDocs < vecIdx.trainingThreshold()) {
+    result.skippedWaiter = true;
+    reportIndexError(vocbase, coll, vecIdx,
+                     Result{TRI_ERROR_QUERY_VECTOR_INDEX_NOT_READY,
+                            std::format("not enough training data for vector "
+                                        "index, need at least {} documents "
+                                        "but only {} present",
+                                        vecIdx.trainingThreshold(), numDocs)});
+    return result;
+  }
+
+  if (shouldSkipRetry(failedBuilds, vecIdx.objectId(), numDocs)) {
+    result.skippedWaiter = true;
+    return result;
+  }
+
+  LOG_TOPIC("e171b", INFO, Logger::ENGINES)
+      << "[shard=" << vecIdx.collection().name()
+      << ", index=" << vecIdx.id().id() << "] Training threshold reached ("
+      << vecIdx.trainingThreshold()
+      << " documents). Starting deferred training.";
+
+  _trainingOngoingCount.fetch_add(1);
+  auto const decrementOnExit =
+      scopeGuard([this]() noexcept { _trainingOngoingCount.fetch_sub(1); });
+  auto indexPtr = std::static_pointer_cast<RocksDBIndex>(idx);
+  VectorIndexBuilder builder(vecIdx, _resourceMonitor);
+
+  // build() can throw via VectorIndexTrainer::train (ResourceUsageScope
+  // memory-limit overflow, faiss exceptions, factory-string mismatches).
+  // Translate to Result so the cleanup below runs uniformly.
+  auto const res = [&]() -> Result {
+    try {
+      return builder.build(std::move(indexPtr), _trainingDuration,
+                           _ingestionDuration, stopToken);
+    } catch (basics::Exception const& e) {
+      return {e.code(), e.message()};
+    } catch (std::exception const& e) {
+      return {TRI_ERROR_INTERNAL, e.what()};
+    }
+  }();
+
+  if (res.fail()) {
+    // Surface the failure on the in-memory index so GET /_api/index and the
+    // per-shard state endpoint return the actual error (not the stale or
+    // default string). Reset the training state idempotently in case the
+    // builder threw before reaching its own resetTrainingState() — otherwise
+    // the index stays stuck in kTraining and the next scan skips it.
+    vecIdx.setTrainingError(std::string{res.errorMessage()});
+    vecIdx.resetTrainingState();
+    fulfillBuildWaiters(vecIdx.id(), res);
+    LOG_TOPIC("e164b", ERR, Logger::ENGINES)
+        << "[index=" << vecIdx.id().id()
+        << "] Vector build failed: " << res.errorMessage();
+    failedBuilds[vecIdx.objectId()] = {std::chrono::steady_clock::now(),
+                                       numDocs};
+    reportIndexError(vocbase, coll, vecIdx, res);
+    return result;
+  }
+
+  fulfillBuildWaiters(vecIdx.id(), Result{});
+  clearIndexError(vocbase, coll, vecIdx);
+  failedBuilds.erase(vecIdx.objectId());
+  result.buildCompleted = true;
+  return result;
 }
 
 void VectorIndexBuildManager::reportIndexError(TRI_vocbase_t const& vocbase,

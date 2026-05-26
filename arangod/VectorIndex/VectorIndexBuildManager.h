@@ -26,9 +26,11 @@
 #include <chrono>
 #include <cstdint>
 #include <mutex>
+#include <optional>
 #include <stop_token>
 #include <thread>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include "Basics/ResourceUsage.h"
@@ -42,16 +44,20 @@ struct TRI_vocbase_t;
 
 namespace arangodb {
 class DatabaseFeature;
+class Index;
 class LogicalCollection;
 class MaintenanceFeature;
+class RocksDBCollection;
 class RocksDBVectorIndex;
 class Scheduler;
 }  // namespace arangodb
 
 namespace arangodb::vector {
 
-/// Single background thread that periodically scans for untrained vector
-/// indexes and builds them one at a time. The same thread scans and builds.
+/// Single background thread that periodically scans for vector indexes
+/// in the kUnusable state and trains them one at a time. Index
+/// replacements register a shadow index in the same kUnusable state, so
+/// the same scan picks them up alongside fresh builds.
 class VectorIndexBuildManager {
  public:
   static constexpr auto kScanInterval = std::chrono::seconds(5);
@@ -80,6 +86,34 @@ class VectorIndexBuildManager {
   };
 
   using FailedBuildsMap = std::unordered_map<std::uint64_t, FailedBuildInfo>;
+  using BuildWaiterMap =
+      std::unordered_map<IndexId::BaseType,
+                         std::vector<futures::Promise<Result>>>;
+
+  // Scratch state populated during a single scan pass and consumed by
+  // the post-scan cleanup in scanAndProcess.
+  struct ScanState {
+    std::unordered_set<std::uint64_t> seenObjectIds;
+    std::unordered_set<IndexId::BaseType> seenIndexIds;
+    std::unordered_set<IndexId::BaseType> skippedWaiters;
+    std::uint64_t unusableIndexesCount = 0;
+  };
+
+  // Per-index contribution returned by processVectorIndex. The scan
+  // loop merges these into ScanState without the helper needing to see
+  // accumulated state from other indexes.
+  struct IndexScanResult {
+    IndexId indexId;
+    // Set when the index was in kUnusable state during this scan pass;
+    // value is its objectId.
+    std::optional<std::uint64_t> unusableObjectId;
+    // True when the index was unusable but no build was started this
+    // pass (below threshold or in retry backoff).
+    bool skippedWaiter = false;
+    // True when an unusable index transitioned to kReady during this
+    // pass — the caller publishes the decremented metric.
+    bool buildCompleted = false;
+  };
 
   static bool shouldSkipRetry(FailedBuildsMap const& failedBuilds,
                               std::uint64_t objectId,
@@ -87,12 +121,23 @@ class VectorIndexBuildManager {
 
   void run(std::stop_token stopToken);
 
-  void scanAndBuild(std::stop_token const& stopToken,
-                    FailedBuildsMap& failedBuilds);
+  void scanAndProcess(std::stop_token const& stopToken,
+                      FailedBuildsMap& failedBuilds);
 
-  void fulfillWaiters(IndexId indexId, Result const& result);
+  // Per-index work inside the scan: resolves build waiters and kicks off
+  // deferred builds for kUnusable indexes that have reached the training
+  // threshold.
+  IndexScanResult processVectorIndex(FailedBuildsMap& failedBuilds,
+                                     TRI_vocbase_t& vocbase,
+                                     LogicalCollection& coll,
+                                     std::shared_ptr<Index> const& idx,
+                                     std::stop_token const& stopToken);
 
-  void fulfillAllWaiters(Result const& result);
+  // Resolve all pending build waiters registered for `indexId`.
+  void fulfillBuildWaiters(IndexId indexId, Result const& result);
+
+  // Drain all build waiters on shutdown.
+  void fulfillAllWaitersOnShutdown(Result const& result);
 
   void reportIndexError(TRI_vocbase_t const& vocbase,
                         LogicalCollection const& coll,
@@ -114,9 +159,9 @@ class VectorIndexBuildManager {
   metrics::Histogram<metrics::LogScale<double>>& _trainingDuration;
   metrics::Histogram<metrics::LogScale<double>>& _ingestionDuration;
 
-  std::mutex _waitersMutex;
-  std::unordered_map<IndexId::BaseType, std::vector<futures::Promise<Result>>>
-      _waiters;
+  // Mutex guarding the build-waiter map below.
+  std::mutex _mutex;
+  BuildWaiterMap _buildWaiters;
 };
 
 }  // namespace arangodb::vector

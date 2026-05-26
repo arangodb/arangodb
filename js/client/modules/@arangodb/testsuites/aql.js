@@ -118,7 +118,7 @@ function shellApiClient (options) {
   // increase timeouts after which servers count as BAD/FAILED.
   // we want this to ensure that in an overload situation we do not
   // get random failedLeader / failedFollower jobs during our tests.
-  let moreOptions = { "agency.supervision-ok-threshold" : "15", "agency.supervision-grace-period" : "30" };
+  let moreOptions = { "agency.supervision-ok-threshold" : "15", "agency.supervision-grace-period" : "30", "vector-index": true };
   let rc = new trs.runLocalInArangoshRunner(opts, name, moreOptions).run(testCases);
   options.cleanup = options.cleanup && opts.cleanup;
   return rc;

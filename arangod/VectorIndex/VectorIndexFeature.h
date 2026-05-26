@@ -32,8 +32,11 @@
 #include "VectorIndex/VectorIndexFeatureOptions.h"
 #include "VocBase/Identifiers/IndexId.h"
 
+#include <memory>
+
 namespace arangodb {
 
+class Index;
 class DatabaseFeature;
 
 class VectorIndexFeature final

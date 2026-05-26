@@ -459,6 +459,39 @@ void RocksDBCollection::swapIndex(std::shared_ptr<Index> const& oldIdx,
   _indexes.emplace(newIdx);
 }
 
+void RocksDBCollection::addShadowIndex(std::shared_ptr<Index> const& shadow) {
+  TRI_ASSERT(shadow != nullptr);
+  TRI_ASSERT(shadow->type() == Index::TRI_IDX_TYPE_VECTOR_INDEX);
+  RECURSIVE_WRITE_LOCKER(_indexesLock, _indexesLockWriteOwner);
+  // The shadow is expected to carry a fresh IndexId; assert this so that
+  // callers do not accidentally register a duplicate with an existing
+  // index's id.
+  TRI_ASSERT(std::ranges::find(_indexes, shadow->id(), &Index::id) ==
+             _indexes.end());
+  _indexes.emplace(shadow);
+}
+
+void RocksDBCollection::abortShadowIndex(std::shared_ptr<Index> const& shadow) {
+  TRI_ASSERT(shadow != nullptr);
+  {
+    RECURSIVE_WRITE_LOCKER(_indexesLock, _indexesLockWriteOwner);
+    removeIndex(_indexes, shadow->id());
+  }
+  // Best-effort: range-delete any partial entries written under the
+  // shadow's objectId. The shadow was never persisted to the Definitions
+  // CF, so there is no marker to rewrite — this is purely disk-space
+  // reclamation.
+  auto rocksIdx = std::dynamic_pointer_cast<RocksDBIndex>(shadow);
+  if (rocksIdx != nullptr) {
+    auto res = rocksIdx->drop();
+    if (res.fail()) {
+      LOG_TOPIC("e16fa", WARN, Logger::ENGINES)
+          << "failed to clean up aborted shadow vector index "
+          << shadow->id().id() << ": " << res.errorMessage();
+    }
+  }
+}
+
 futures::Future<std::shared_ptr<Index>> RocksDBCollection::createIndex(
     VPackSlice info, bool restore, bool& created,
     std::shared_ptr<std::function<arangodb::Result(double)>> progress,

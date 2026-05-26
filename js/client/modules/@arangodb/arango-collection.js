@@ -502,6 +502,28 @@ ArangoCollection.prototype.compact = function () {
 };
 
 // //////////////////////////////////////////////////////////////////////////////
+// / @brief replaces a vector index on this collection. Optionally accepts a
+// / `patch` object whose fields are deep-merged onto the existing index
+// / definition (a missing or empty patch is equivalent to a same-definition
+// / rebuild — what used to be "retrain"). The existing index keeps serving
+// / reads and writes until the rebuild completes and atomically swaps in.
+// //////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.replaceIndex = function (indexName, patch) {
+  if (typeof indexName !== 'string' || indexName.length === 0) {
+    throw new ArangoError({
+      errorNum: internal.errors.ERROR_BAD_PARAMETER.code,
+      errorMessage: "replaceIndex() requires a vector index name or id"
+    });
+  }
+  let body = Object.assign({}, patch || {}, {index: indexName});
+  let url = '/_api/index/replace?collection=' + encodeURIComponent(this.name());
+  let requestResult = this._database._connection.POST(url, body);
+  arangosh.checkRequestResult(requestResult);
+  return requestResult;
+};
+
+// //////////////////////////////////////////////////////////////////////////////
 // / @brief loads a collection
 // //////////////////////////////////////////////////////////////////////////////
 

@@ -22,6 +22,7 @@ add_library(arango_agency STATIC
   PathComponent.cpp
   ReconfigureReplicatedLog.cpp
   RemoveFollower.cpp
+  ReplaceIndex.cpp
   ResignLeadership.cpp
   RestAgencyHandler.cpp
   RestAgencyPrivHandler.cpp

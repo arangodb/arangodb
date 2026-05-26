@@ -48,6 +48,7 @@
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "Transaction/Helpers.h"
 #include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
 #include <velocypack/SharedSlice.h>
 #include <velocypack/Slice.h>
 #include <velocypack/Value.h>

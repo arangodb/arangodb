@@ -32,6 +32,7 @@
 #include "Agency/Node.h"
 #include "Agency/ReconfigureReplicatedLog.h"
 #include "Agency/RemoveFollower.h"
+#include "Agency/ReplaceIndex.h"
 #include "Agency/ResignLeadership.h"
 #include "Logger/LogMacros.h"
 
@@ -68,6 +69,8 @@ JobContext::JobContext(JOB_STATUS status, std::string const& id,
   } else if (type == "reconfigureReplicatedLog") {
     _job =
         std::make_unique<ReconfigureReplicatedLog>(snapshot, agent, status, id);
+  } else if (type == "replaceIndex") {
+    _job = std::make_unique<ReplaceIndex>(snapshot, agent, status, id);
   } else {
     LOG_TOPIC("bb53f", ERR, Logger::AGENCY)
         << "Failed to run supervision job " << type << " with id " << id;
