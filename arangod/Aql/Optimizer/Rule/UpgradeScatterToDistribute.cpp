@@ -261,7 +261,7 @@ void upgradeScatterToDistributeRule(Optimizer* opt,
     while (current != nullptr) {
       auto condition = getCondition(plan.get(), current);
 
-      if (condition != nullptr && (condition->root() != nullptr)) {
+      if (condition != nullptr) {
         condition->normalize(plan.get());
 
         DistributeNodeDependency distDep;
@@ -275,7 +275,6 @@ void upgradeScatterToDistributeRule(Optimizer* opt,
 
         // Only the first Index / Enumeration Parent-Node is relevant for us, we
         // can skip the rest
-
         break;
       }
       current = current->getFirstParent();
