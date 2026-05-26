@@ -27,9 +27,8 @@
 #include "RestHandler/RestBaseHandler.h"
 
 namespace arangodb {
-class StorageEngine;
-
 class ApiRecordingFeature;
+class StorageEngine;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief admin log request handler
