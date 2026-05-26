@@ -1,5 +1,6 @@
 3.12.10-devel (XXXX-XX-XX)
 --------------------------
+* Upgraded FAISS to v1.14.2.
 
 * COR-471: Improved filter optimization, rewriting `x IN [a]` to `x == a`,
   removing always-false/true branches, and deduplicating identical conditions.
