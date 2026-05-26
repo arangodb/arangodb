@@ -25,8 +25,8 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "FeaturePhases/ServerFeaturePhase.h"
-#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
+#include "RestServer/FrontendOptionsProvider.h"
 #include "V8Server/V8DealerFeature.h"
 
 using namespace arangodb::application_features;
@@ -41,19 +41,8 @@ FrontendFeature::FrontendFeature(ApplicationServer& server)
 }
 
 void FrontendFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("web-interface", "browser-based frontend");
-
-  options->addOldOption("frontend.version-check",
-                        "web-interface.version-check");
-
-  options->addOption("--web-interface.version-check",
-                     "Alert the user if new versions are available.",
-                     new BooleanParameter(&_options.versionCheck),
-                     arangodb::options::makeFlags(
-                         arangodb::options::Flags::DefaultNoComponents,
-                         arangodb::options::Flags::OnCoordinator,
-                         arangodb::options::Flags::OnSingle,
-                         arangodb::options::Flags::Uncommon));
+  FrontendOptionsProvider provider;
+  provider.declareOptions(options, _options);
 }
 
 void FrontendFeature::prepare() {

@@ -24,9 +24,8 @@
 #include "FileSystemFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/FileSystemOptionsProvider.h"
 #include "Basics/files.h"
-#include "ProgramOptions/Option.h"
-#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 
 using namespace arangodb::options;
@@ -35,21 +34,8 @@ namespace arangodb {
 
 void FileSystemFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
-  options
-      ->addOption("--use-splice-syscall",
-                  "Use the splice() syscall for file copying (may not be "
-                  "supported on all filesystems).",
-                  new BooleanParameter(&_options.useSplice),
-                  options::makeFlags())
-      .setIntroducedIn(30904)
-      .setLongDescription(R"(While the syscall is generally available since
-Linux 2.6.x, it is also required that the underlying filesystem supports the
-splice operation. This is not true for some encrypted filesystems
-(e.g. ecryptfs), on which `splice()` calls can fail.
-
-You can set the `--use-splice-syscall` startup option to `false` to use a less
-efficient, but more portable file copying method instead, which should work on
-all filesystems.)");
+  FileSystemOptionsProvider provider;
+  provider.declareOptions(options, _options);
 }
 
 void FileSystemFeature::prepare() { TRI_SetCanUseSplice(_options.useSplice); }
