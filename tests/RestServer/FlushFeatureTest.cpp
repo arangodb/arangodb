@@ -34,10 +34,10 @@
 #include "Cluster/ClusterFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/Logger.h"
-#include "RestServer/DatabaseFeature.h"
 #include "RestServer/FlushFeature.h"
 #include "Metrics/MetricsFeature.h"
 #include "RestServer/arangod.h"
+#include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBFormat.h"
@@ -48,7 +48,6 @@
 #include "Metrics/ClusterMetricsFeature.h"
 #include "Statistics/StatisticsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #ifdef USE_V8
 #include "V8Server/V8DealerFeature.h"
 #endif
@@ -78,8 +77,8 @@ class FlushFeatureTest
             arangodb::QueryRegistryFeature>(server),
         arangodb::LazyApplicationFeatureReference<arangodb::StatisticsFeature>(
             nullptr),
-        arangodb::LazyApplicationFeatureReference<
-            arangodb::EngineSelectorFeature>(server),
+        arangodb::LazyApplicationFeatureReference<arangodb::DatabaseFeature>(
+            server),
         arangodb::LazyApplicationFeatureReference<
             arangodb::metrics::ClusterMetricsFeature>(nullptr),
         arangodb::LazyApplicationFeatureReference<arangodb::ClusterFeature>(
@@ -89,12 +88,12 @@ class FlushFeatureTest
                           false);  // required for ClusterFeature::prepare()
     features.emplace_back(server.addFeature<arangodb::ClusterFeature>(metrics),
                           false);  // required for V8DealerFeature::prepare()
-    features.emplace_back(
-        server.addFeature<arangodb::DatabaseFeature>(),
-        false);  // required for MMFilesWalRecoverState constructor
+    auto& dbFeature = server.addFeature<arangodb::DatabaseFeature>();
+    features.emplace_back(dbFeature, false);
     auto& selector = server.addFeature<arangodb::EngineSelectorFeature>();
     features.emplace_back(selector, false);
     selector.setEngineTesting(&engine);
+    dbFeature.setEngineTesting(&engine);
     features.emplace_back(
         server.addFeature<arangodb::QueryRegistryFeature>(
             server.getFeature<arangodb::metrics::MetricsFeature>()),
@@ -120,6 +119,7 @@ class FlushFeatureTest
   ~FlushFeatureTest() {
     server.getFeature<arangodb::EngineSelectorFeature>().setEngineTesting(
         nullptr);
+    server.getFeature<arangodb::DatabaseFeature>().setEngineTesting(nullptr);
 
     // destroy application features
     for (auto& f : features) {
