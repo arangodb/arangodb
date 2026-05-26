@@ -40,6 +40,7 @@ function optimizerUpgradeScatterToDistributeSuite() {
       db._drop("UnitTestsCollection_col_dsl");
       db._drop("UnitTestsCollection_col");
       db._drop("UnitTestsCollection_col_id");
+      db._drop("UnitTestsCollection_col_id_key");
 
       col = db._create("UnitTestsCollection_col", { numberOfShards: 10});
       col_dsl = db._create("UnitTestsCollection_col_dsl", { numberOfShards: 10, distributeShardsLike: "UnitTestsCollection_col" });
@@ -96,6 +97,8 @@ function optimizerUpgradeScatterToDistributeSuite() {
       db._drop("UnitTestsCollection_col_msk");
       db._drop("UnitTestsCollection_col_dsl");
       db._drop("UnitTestsCollection_col");
+      db._drop("UnitTestsCollection_col_id");
+      db._drop("UnitTestsCollection_col_id_key");
     },
 
     test_DefaultShardKey_Upgrade: function() {
@@ -214,7 +217,7 @@ function optimizerUpgradeScatterToDistributeSuite() {
       db._explain(query);
       print(JSON.stringify("shardKeys: " + db._collection(col_id.name()).properties().shardKeys, null, 2));
       let plan = db._createStatement({query: query}).explain().plan;
-      assertTrue(plan.rules.includes("upgrade-scatter-to-distribute"));
+      assertFalse(plan.rules.includes("upgrade-scatter-to-distribute"));
       let result = db._query(query).toArray();
       assertNotEqual(result.length, col_id.count());
     },
@@ -230,8 +233,160 @@ function optimizerUpgradeScatterToDistributeSuite() {
       print(JSON.stringify("shardKeys: " + db._collection(col_id.name()).properties().shardKeys, null, 2));
       let plan = db._createStatement({query: query}).explain().plan;
       assertTrue(plan.rules.includes("upgrade-scatter-to-distribute"));
-      let result = db._query(query).toArray();
-      assertEqual(result.length, col_id_key.count());
+    },
+
+    test_DefaultShardKey_Upgrade_id_5: function() {
+      let query =
+          `FOR doc1 IN ${col_id_key.name()}
+            FOR doc2 IN ${col_id.name()}
+             FILTER doc2._id == doc1._id
+             RETURN [doc1, doc2]`;
+      db._explain(query);
+      print(JSON.stringify("shardKeys: " + db._collection(col_id_key.name()).properties().shardKeys, null, 2));
+      print(JSON.stringify("shardKeys: " + db._collection(col_id.name()).properties().shardKeys, null, 2));
+      let plan = db._createStatement({query: query}).explain().plan;
+      assertTrue(plan.rules.includes("upgrade-scatter-to-distribute"));
+    },
+
+    test_DefaultShardKey_Upgrade_id_6: function() {
+      let query =
+          `FOR doc1 IN ${col_id_key.name()}
+            FOR doc2 IN ${col_id.name()}
+             FILTER doc2._id == doc1._key
+             RETURN [doc1, doc2]`;
+      db._explain(query);
+      print(JSON.stringify("shardKeys: " + db._collection(col_id_key.name()).properties().shardKeys, null, 2));
+      print(JSON.stringify("shardKeys: " + db._collection(col_id.name()).properties().shardKeys, null, 2));
+      let plan = db._createStatement({query: query}).explain().plan;
+      assertTrue(plan.rules.includes("upgrade-scatter-to-distribute"));
+    },
+
+    test_DefaultShardKey_Upgrade_id_7: function() {
+      let query =
+          `FOR doc1 IN ${col_id_key.name()}
+            FOR doc2 IN ${col_id.name()}
+             FILTER doc2.x == doc1.y
+             RETURN [doc1, doc2]`;
+      db._explain(query);
+      print(JSON.stringify("shardKeys: " + db._collection(col_id_key.name()).properties().shardKeys, null, 2));
+      print(JSON.stringify("shardKeys: " + db._collection(col_id.name()).properties().shardKeys, null, 2));
+      let plan = db._createStatement({query: query}).explain().plan;
+      assertFalse(plan.rules.includes("upgrade-scatter-to-distribute"));
+    },
+
+    test_DefaultShardKey_Upgrade_id_8: function() {
+      let query =
+          `FOR doc1 IN ${col_id_key.name()}
+            FOR doc2 IN ${col_id.name()}
+             FILTER doc2.x == doc1._id
+             RETURN [doc1, doc2]`;
+      db._explain(query);
+      print(JSON.stringify("shardKeys: " + db._collection(col_id_key.name()).properties().shardKeys, null, 2));
+      print(JSON.stringify("shardKeys: " + db._collection(col_id.name()).properties().shardKeys, null, 2));
+      let plan = db._createStatement({query: query}).explain().plan;
+      assertTrue(plan.rules.includes("upgrade-scatter-to-distribute"));
+    },
+
+    test_DefaultShardKey_Upgrade_id_9: function() {
+      let query =
+          `FOR doc1 IN ${col_id_key.name()}
+            FOR doc2 IN ${col_id.name()}
+             FILTER doc2.x == doc1._id
+             RETURN [doc1, doc2]`;
+      db._explain(query);
+      print(JSON.stringify("shardKeys: " + db._collection(col_id_key.name()).properties().shardKeys, null, 2));
+      print(JSON.stringify("shardKeys: " + db._collection(col_id.name()).properties().shardKeys, null, 2));
+      let plan = db._createStatement({query: query}).explain().plan;
+      assertTrue(plan.rules.includes("upgrade-scatter-to-distribute"));
+    },
+
+    test_DefaultShardKey_Upgrade_id_10: function() {
+      let query =
+          `FOR doc1 IN ${col_msk.name()}
+            FOR doc2 IN ${col_msk_dsl.name()}
+             FILTER doc2._key == doc1._key
+             RETURN [doc1, doc2]`;
+      db._explain(query);
+      print(JSON.stringify("shardKeys: " + db._collection(col_msk.name()).properties().shardKeys, null, 2));
+      print(JSON.stringify("shardKeys: " + db._collection(col_msk_dsl.name()).properties().shardKeys, null, 2));
+      let plan = db._createStatement({query: query}).explain().plan;
+      assertFalse(plan.rules.includes("upgrade-scatter-to-distribute"));
+    },
+
+    test_DefaultShardKey_Upgrade_id_11: function() {
+      let query =
+          `FOR doc1 IN ${col_msk.name()}
+            FOR doc2 IN ${col_msk_dsl.name()}
+             FILTER doc2._key == doc1._id
+             RETURN [doc1, doc2]`;
+      db._explain(query);
+      print(JSON.stringify("shardKeys: " + db._collection(col_msk.name()).properties().shardKeys, null, 2));
+      print(JSON.stringify("shardKeys: " + db._collection(col_msk_dsl.name()).properties().shardKeys, null, 2));
+      let plan = db._createStatement({query: query}).explain().plan;
+      assertFalse(plan.rules.includes("upgrade-scatter-to-distribute"));
+    },
+
+    test_DefaultShardKey_Upgrade_id_12: function() {
+      let query =
+          `FOR doc1 IN ${col_msk.name()}
+            FOR doc2 IN ${col_id.name()}
+             FILTER doc2._key == doc1._key
+             RETURN [doc1, doc2]`;
+      db._explain(query);
+      print(JSON.stringify("shardKeys: " + db._collection(col_msk.name()).properties().shardKeys, null, 2));
+      print(JSON.stringify("shardKeys: " + db._collection(col_id.name()).properties().shardKeys, null, 2));
+      let plan = db._createStatement({query: query}).explain().plan;
+      assertTrue(plan.rules.includes("upgrade-scatter-to-distribute"));
+    },
+
+    test_DefaultShardKey_Upgrade_id_13: function() {
+      let query =
+          `FOR doc1 IN ${col_msk.name()}
+            FOR doc2 IN ${col_msk.name()}
+             FILTER doc2._id == doc1._key
+             RETURN [doc1, doc2]`;
+      db._explain(query);
+      print(JSON.stringify("shardKeys: " + db._collection(col_msk.name()).properties().shardKeys, null, 2));
+      let plan = db._createStatement({query: query}).explain().plan;
+      assertFalse(plan.rules.includes("upgrade-scatter-to-distribute"));
+    },
+
+    test_DefaultShardKey_Upgrade_id_14: function() {
+      let query =
+          `FOR doc1 IN ${col_msk.name()}
+            FOR doc2 IN ${col_msk.name()}
+             FILTER doc2._id == doc1._id
+             RETURN [doc1, doc2]`;
+      db._explain(query);
+      print(JSON.stringify("shardKeys: " + db._collection(col_msk.name()).properties().shardKeys, null, 2));
+      let plan = db._createStatement({query: query}).explain().plan;
+      assertFalse(plan.rules.includes("upgrade-scatter-to-distribute"));
+    },
+
+    test_DefaultShardKey_Upgrade_id_15: function() {
+      let query =
+          `FOR doc1 IN ${col_msk.name()}
+            FOR doc2 IN ${col_id.name()}
+             FILTER doc2._id == doc1._key
+             RETURN [doc1, doc2]`;
+      db._explain(query);
+      print(JSON.stringify("shardKeys: " + db._collection(col_msk.name()).properties().shardKeys, null, 2));
+      print(JSON.stringify("shardKeys: " + db._collection(col_id.name()).properties().shardKeys, null, 2));
+      let plan = db._createStatement({query: query}).explain().plan;
+      assertTrue(plan.rules.includes("upgrade-scatter-to-distribute"));
+    },
+
+    test_DefaultShardKey_Upgrade_id_16: function() {
+      let query =
+          `FOR doc1 IN ${col_msk.name()}
+            FOR doc2 IN ${col_id.name()}
+             FILTER doc2._key == doc1.shardKey
+             RETURN [doc1, doc2]`;
+      db._explain(query);
+      print(JSON.stringify("shardKeys: " + db._collection(col_msk.name()).properties().shardKeys, null, 2));
+      print(JSON.stringify("shardKeys: " + db._collection(col_id.name()).properties().shardKeys, null, 2));
+      let plan = db._createStatement({query: query}).explain().plan;
+      assertTrue(plan.rules.includes("upgrade-scatter-to-distribute"));
     }
   };
 }
