@@ -36,7 +36,7 @@ TEST_F(AqlValueHashAlgorithmCorrectnessTest,
   // map to the same position in the raw array.
   auto block = itemBlockManager.requestBlock(3, 1);
 
-  // Strings must be > 15 chars so VPack encoding exceeds 16 bytes and the
+  // Strings must be >= 15 chars so VPack encoding exceeds 16 bytes and the
   // values use VPACK_MANAGED_SLICE (pointer-based), making data() valid.
   std::string content = "shared_content_X";  // 16 chars → 17 VPack bytes
   arangodb::velocypack::Builder b1, b2, b3;
@@ -65,7 +65,7 @@ TEST_F(AqlValueHashAlgorithmCorrectnessTest,
   VPackSlice raw = result.slice().get("raw");
   ASSERT_TRUE(raw.isArray());
   // v1 and v2 are equal → deduplicated → only 2 unique values (content +
-  // different_content)
+  // different_content); raw array has 2 header entries before the value entries
   EXPECT_EQ(2U, raw.length() - 2);
 }
 
@@ -95,6 +95,7 @@ TEST_F(AqlValueHashAlgorithmCorrectnessTest,
 
   VPackSlice raw = result.slice().get("raw");
   ASSERT_TRUE(raw.isArray());
+  // raw has 2 header entries before the value entries
   EXPECT_EQ(2U, raw.length() - 2);
 }
 
@@ -123,7 +124,7 @@ TEST_F(AqlValueHashAlgorithmCorrectnessTest,
   result.close();
 
   VPackSlice raw = result.slice().get("raw");
-  // Only 3 unique values: 777, 111, 222
+  // Only 3 unique values: 777, 111, 222; raw has 2 header entries before values
   EXPECT_EQ(3U, raw.length() - 2);
 }
 
@@ -148,6 +149,7 @@ TEST_F(AqlValueHashAlgorithmCorrectnessTest,
   result.close();
 
   VPackSlice raw = result.slice().get("raw");
+  // raw has 2 header entries before the value entries
   EXPECT_EQ(1U, raw.length() - 2);
 }
 
@@ -178,7 +180,8 @@ TEST_F(AqlValueHashAlgorithmCorrectnessTest,
   result.close();
 
   VPackSlice raw = result.slice().get("raw");
-  // +0.0 and -0.0 deduplicate → only 2 unique values (zero + 1.0)
+  // +0.0 and -0.0 deduplicate → only 2 unique values (zero + 1.0);
+  // raw has 2 header entries before the value entries
   EXPECT_EQ(2U, raw.length() - 2);
 }
 
@@ -207,7 +210,8 @@ TEST_F(AqlValueHashAlgorithmCorrectnessTest,
 
   VPackSlice raw = serialized.slice().get("raw");
   ASSERT_TRUE(raw.isArray());
-  EXPECT_EQ(2U, raw.length() - 2);  // shared + different
+  // raw has 2 header entries before the value entries; shared + different
+  EXPECT_EQ(2U, raw.length() - 2);
 
   auto deserialized = itemBlockManager.requestBlock(4, 2);
   deserialized->initFromSlice(serialized.slice());

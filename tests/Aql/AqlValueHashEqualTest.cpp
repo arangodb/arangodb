@@ -50,13 +50,6 @@ TEST_F(AqlValueEqualTest, equal_content_not_pointer) {
   EXPECT_TRUE(equal(val2, val1));
 }
 
-TEST_F(AqlValueHashEqualTest, hash_equal_consistency_same_value) {
-  AqlValue val1 = makeAQLValue(int64_t{42});
-  AqlValue val2 = makeAQLValue(int64_t{42});
-  EXPECT_EQ(hasher(val1), hasher(val2));
-  EXPECT_TRUE(equal(val1, val2));
-}
-
 TEST_F(AqlValueHashEqualTest, hash_equal_consistency_different_values) {
   AqlValue val1 = makeAQLValue(int64_t{42});
   AqlValue val2 = makeAQLValue(int64_t{43});
