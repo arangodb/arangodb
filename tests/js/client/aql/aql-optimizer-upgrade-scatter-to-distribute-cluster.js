@@ -109,7 +109,6 @@ function optimizerUpgradeScatterToDistributeSuite() {
              FILTER doc2._key == doc1.foreign_key
              RETURN [doc1, doc2]`;
       db._explain(query);
-      print(JSON.stringify("shardKeys: " + db._collection(col_id.name()).properties().shardKeys, null, 2));
       let plan = db._createStatement({query: query}).explain().plan;
       assertTrue(plan.rules.includes("upgrade-scatter-to-distribute"));
       let result = db._query(query).toArray();
@@ -188,7 +187,6 @@ function optimizerUpgradeScatterToDistributeSuite() {
              FILTER doc2._id == doc1.foreign_id
              RETURN [doc1, doc2]`;
       db._explain(query);
-      print(JSON.stringify("shardKeys: " + db._collection(col_id.name()).properties().shardKeys, null, 2));
       let plan = db._createStatement({query: query}).explain().plan;
       assertTrue(plan.rules.includes("upgrade-scatter-to-distribute"));
       let result = db._query(query).toArray();
@@ -202,7 +200,6 @@ function optimizerUpgradeScatterToDistributeSuite() {
              FILTER doc2._key == doc1._id
              RETURN [doc1, doc2]`;
       db._explain(query);
-      print(JSON.stringify("shardKeys: " + db._collection(col_id.name()).properties().shardKeys, null, 2));
       let plan = db._createStatement({query: query}).explain().plan;
       assertTrue(plan.rules.includes("upgrade-scatter-to-distribute"));
     },
@@ -214,7 +211,6 @@ function optimizerUpgradeScatterToDistributeSuite() {
              FILTER doc2.x == doc1.y
              RETURN [doc1, doc2]`;
       db._explain(query);
-      print(JSON.stringify("shardKeys: " + db._collection(col_id.name()).properties().shardKeys, null, 2));
       let plan = db._createStatement({query: query}).explain().plan;
       assertFalse(plan.rules.includes("upgrade-scatter-to-distribute"));
     },
@@ -226,8 +222,6 @@ function optimizerUpgradeScatterToDistributeSuite() {
              FILTER doc2._key == doc1._key
              RETURN [doc1, doc2]`;
       db._explain(query);
-      print(JSON.stringify("shardKeys: " + db._collection(col_id_key.name()).properties().shardKeys, null, 2));
-      print(JSON.stringify("shardKeys: " + db._collection(col_id.name()).properties().shardKeys, null, 2));
       let plan = db._createStatement({query: query}).explain().plan;
       assertTrue(plan.rules.includes("upgrade-scatter-to-distribute"));
     },
@@ -239,8 +233,6 @@ function optimizerUpgradeScatterToDistributeSuite() {
              FILTER doc2._id == doc1._id
              RETURN [doc1, doc2]`;
       db._explain(query);
-      print(JSON.stringify("shardKeys: " + db._collection(col_id_key.name()).properties().shardKeys, null, 2));
-      print(JSON.stringify("shardKeys: " + db._collection(col_id.name()).properties().shardKeys, null, 2));
       let plan = db._createStatement({query: query}).explain().plan;
       assertTrue(plan.rules.includes("upgrade-scatter-to-distribute"));
     },
@@ -252,8 +244,6 @@ function optimizerUpgradeScatterToDistributeSuite() {
              FILTER doc2._id == doc1._key
              RETURN [doc1, doc2]`;
       db._explain(query);
-      print(JSON.stringify("shardKeys: " + db._collection(col_id_key.name()).properties().shardKeys, null, 2));
-      print(JSON.stringify("shardKeys: " + db._collection(col_id.name()).properties().shardKeys, null, 2));
       let plan = db._createStatement({query: query}).explain().plan;
       assertTrue(plan.rules.includes("upgrade-scatter-to-distribute"));
     },
@@ -265,8 +255,6 @@ function optimizerUpgradeScatterToDistributeSuite() {
              FILTER doc2.x == doc1.y
              RETURN [doc1, doc2]`;
       db._explain(query);
-      print(JSON.stringify("shardKeys: " + db._collection(col_id_key.name()).properties().shardKeys, null, 2));
-      print(JSON.stringify("shardKeys: " + db._collection(col_id.name()).properties().shardKeys, null, 2));
       let plan = db._createStatement({query: query}).explain().plan;
       assertFalse(plan.rules.includes("upgrade-scatter-to-distribute"));
     },
@@ -278,8 +266,6 @@ function optimizerUpgradeScatterToDistributeSuite() {
              FILTER doc2.x == doc1._id
              RETURN [doc1, doc2]`;
       db._explain(query);
-      print(JSON.stringify("shardKeys: " + db._collection(col_id_key.name()).properties().shardKeys, null, 2));
-      print(JSON.stringify("shardKeys: " + db._collection(col_id.name()).properties().shardKeys, null, 2));
       let plan = db._createStatement({query: query}).explain().plan;
       assertTrue(plan.rules.includes("upgrade-scatter-to-distribute"));
     },
@@ -291,8 +277,6 @@ function optimizerUpgradeScatterToDistributeSuite() {
              FILTER doc2.x == doc1._id
              RETURN [doc1, doc2]`;
       db._explain(query);
-      print(JSON.stringify("shardKeys: " + db._collection(col_id_key.name()).properties().shardKeys, null, 2));
-      print(JSON.stringify("shardKeys: " + db._collection(col_id.name()).properties().shardKeys, null, 2));
       let plan = db._createStatement({query: query}).explain().plan;
       assertTrue(plan.rules.includes("upgrade-scatter-to-distribute"));
     },
@@ -304,8 +288,6 @@ function optimizerUpgradeScatterToDistributeSuite() {
              FILTER doc2._key == doc1._key
              RETURN [doc1, doc2]`;
       db._explain(query);
-      print(JSON.stringify("shardKeys: " + db._collection(col_msk.name()).properties().shardKeys, null, 2));
-      print(JSON.stringify("shardKeys: " + db._collection(col_msk_dsl.name()).properties().shardKeys, null, 2));
       let plan = db._createStatement({query: query}).explain().plan;
       assertFalse(plan.rules.includes("upgrade-scatter-to-distribute"));
     },
@@ -317,8 +299,6 @@ function optimizerUpgradeScatterToDistributeSuite() {
              FILTER doc2._key == doc1._id
              RETURN [doc1, doc2]`;
       db._explain(query);
-      print(JSON.stringify("shardKeys: " + db._collection(col_msk.name()).properties().shardKeys, null, 2));
-      print(JSON.stringify("shardKeys: " + db._collection(col_msk_dsl.name()).properties().shardKeys, null, 2));
       let plan = db._createStatement({query: query}).explain().plan;
       assertFalse(plan.rules.includes("upgrade-scatter-to-distribute"));
     },
@@ -330,8 +310,6 @@ function optimizerUpgradeScatterToDistributeSuite() {
              FILTER doc2._key == doc1._key
              RETURN [doc1, doc2]`;
       db._explain(query);
-      print(JSON.stringify("shardKeys: " + db._collection(col_msk.name()).properties().shardKeys, null, 2));
-      print(JSON.stringify("shardKeys: " + db._collection(col_id.name()).properties().shardKeys, null, 2));
       let plan = db._createStatement({query: query}).explain().plan;
       assertTrue(plan.rules.includes("upgrade-scatter-to-distribute"));
     },
@@ -343,7 +321,6 @@ function optimizerUpgradeScatterToDistributeSuite() {
              FILTER doc2._id == doc1._key
              RETURN [doc1, doc2]`;
       db._explain(query);
-      print(JSON.stringify("shardKeys: " + db._collection(col_msk.name()).properties().shardKeys, null, 2));
       let plan = db._createStatement({query: query}).explain().plan;
       assertFalse(plan.rules.includes("upgrade-scatter-to-distribute"));
     },
@@ -355,7 +332,6 @@ function optimizerUpgradeScatterToDistributeSuite() {
              FILTER doc2._id == doc1._id
              RETURN [doc1, doc2]`;
       db._explain(query);
-      print(JSON.stringify("shardKeys: " + db._collection(col_msk.name()).properties().shardKeys, null, 2));
       let plan = db._createStatement({query: query}).explain().plan;
       assertFalse(plan.rules.includes("upgrade-scatter-to-distribute"));
     },
@@ -367,8 +343,6 @@ function optimizerUpgradeScatterToDistributeSuite() {
              FILTER doc2._id == doc1._key
              RETURN [doc1, doc2]`;
       db._explain(query);
-      print(JSON.stringify("shardKeys: " + db._collection(col_msk.name()).properties().shardKeys, null, 2));
-      print(JSON.stringify("shardKeys: " + db._collection(col_id.name()).properties().shardKeys, null, 2));
       let plan = db._createStatement({query: query}).explain().plan;
       assertTrue(plan.rules.includes("upgrade-scatter-to-distribute"));
     },
@@ -380,8 +354,6 @@ function optimizerUpgradeScatterToDistributeSuite() {
              FILTER doc2._key == doc1.shardKey
              RETURN [doc1, doc2]`;
       db._explain(query);
-      print(JSON.stringify("shardKeys: " + db._collection(col_msk.name()).properties().shardKeys, null, 2));
-      print(JSON.stringify("shardKeys: " + db._collection(col_id.name()).properties().shardKeys, null, 2));
       let plan = db._createStatement({query: query}).explain().plan;
       assertTrue(plan.rules.includes("upgrade-scatter-to-distribute"));
     }
