@@ -55,6 +55,8 @@
 #include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/LogicalCollection.h"
 #include <rocksdb/db.h>
+#include "RocksDBEngine/RocksDBMetaCollection.h"
+#include "VectorIndex/VectorIndexDefinition.h"
 
 #include "faiss/MetricType.h"
 #include "faiss/utils/distances.h"
@@ -247,16 +249,131 @@ void RocksDBVectorIndex::toVelocyPack(
     builder.close();
   }
 
+  auto const isEmptyShard = [&]() noexcept -> bool {
+    // On DBServers (and single server) this is a RocksDB collection.
+    // For empty shards, vector search should be allowed and return no results.
+    auto* physical = collection().getPhysical();
+    auto* meta = dynamic_cast<RocksDBMetaCollection*>(physical);
+    return meta != nullptr && meta->meta().numberDocuments() == 0;
+  };
+
   auto const trainingState = _trainingState.load();
+  auto const reportedState =
+      (trainingState == VectorIndexTrainingState::kUnusable && isEmptyShard())
+          ? VectorIndexTrainingState::kReady
+          : trainingState;
+
   builder.add(StaticStrings::IndexTrainingState,
-              VPackValue(trainingStateToString(trainingState)));
-  if (trainingState == VectorIndexTrainingState::kUnusable) {
-    builder.add(StaticStrings::ErrorMessage, VPackValue(trainingError()));
+              VPackValue(trainingStateToString(reportedState)));
+  if (reportedState == VectorIndexTrainingState::kUnusable) {
+    builder.add(StaticStrings::ErrorMessage,
+                VPackValue("not enough training data for vector index"));
   }
 
   if (auto const nLists = resolvedNLists(); nLists.has_value()) {
     builder.add(StaticStrings::IndexResolvedNLists, VPackValue(*nLists));
   }
+}
+
+bool RocksDBVectorIndex::getNormalizedVectorFromDocument(
+  const velocypack::Slice& docSlice,
+  Vector& vec) {
+  if (readDocumentVectorData(docSlice, vec).fail()) {
+    return false;
+  }
+  auto dim = vec.size();
+  if (_definition.metric == vector::SimilarityMetric::kCosine) {
+    faiss::fvec_renorm_L2(dim, 1, vec.data());
+  }
+  return true;
+}
+
+float RocksDBVectorIndex::computeDistance(const Vector& vec1, const Vector& vec2, bool isDescending) {
+  TRI_ASSERT(vec1.size() == vec2.size()) << "Vector dimensions don't match, " <<
+    "[" << vec1 << "] != [" << vec2 << "]";
+    // vec1.size() << " != " << vec2.size();
+
+  auto dim = vec1.size();
+
+  auto compareFunc = (isDescending ? &faiss::fvec_inner_product : &faiss::fvec_L2sqr);
+  auto distance = std::invoke(compareFunc, vec1.data(), vec2.data(), dim);
+
+  return distance;
+}
+
+std::pair<Labels, Distances>
+RocksDBVectorIndex::bruteForceSearch(Vector& searchVector,
+                                     std::size_t topK,
+                                     transaction::Methods* trx) {
+  auto const dim = _definition.dimension;
+
+  bool const isDescending =
+      _definition.metric == vector::SimilarityMetric::kCosine ||
+      _definition.metric == vector::SimilarityMetric::kInnerProduct;
+
+  Labels labels(topK, -1);
+  Distances distances(topK);
+
+  float fillValue;
+  if (isDescending) {
+    fillValue = -std::numeric_limits<float>::max();
+  } else {
+    fillValue = std::numeric_limits<float>::max();
+  }
+
+  // Initialize heap: max-heap for L2 (keep smallest distances),
+  // min-heap for IP/cosine (keep largest inner products)
+  std::fill(distances.begin(), distances.end(), fillValue);
+  if (isDescending) {
+    faiss::minheap_heapify(topK, distances.data(), labels.data());
+  } else {
+    faiss::maxheap_heapify(topK, distances.data(), labels.data());
+  }
+
+  auto iter = _collection.getPhysical()->getAllIterator(trx, ReadOwnWrites::no);
+
+  Vector vec;
+  vec.reserve(dim);
+
+  //  Iterate over all documents in the shard and build the heap.
+  iter->allDocuments([&](LocalDocumentId docId, aql::DocumentData&&,
+                         velocypack::Slice docSlice) -> bool {
+    vec.clear();
+    auto ret = getNormalizedVectorFromDocument(docSlice, vec);
+    if (!ret)
+      return true;
+
+    auto dist = computeDistance(vec, searchVector, isDescending);
+    auto id = static_cast<VectorIndexLabelId>(docId.id());
+
+    if (isDescending) {
+      if (dist > distances[0]) {
+        faiss::minheap_replace_top(topK, distances.data(), labels.data(), dist,
+                                   id);
+      }
+    } else {
+      if (dist < distances[0]) {
+        faiss::maxheap_replace_top(topK, distances.data(), labels.data(), dist,
+                                   id);
+      }
+    }
+    return true;
+  });
+
+  // Reorder heap so results are sorted
+  if (isDescending) {
+    faiss::minheap_reorder(topK, distances.data(), labels.data());
+  } else {
+    faiss::maxheap_reorder(topK, distances.data(), labels.data());
+  }
+
+  // L2: fvec_L2sqr returns squared distances, take sqrt
+  if (_definition.metric == vector::SimilarityMetric::kL2) {
+    std::ranges::transform(distances, distances.begin(),
+                           [](float d) { return std::sqrt(d); });
+  }
+
+  return {std::move(labels), std::move(distances)};
 }
 
 vector::SearchResult RocksDBVectorIndex::readBatch(
@@ -280,6 +397,13 @@ vector::SearchResult RocksDBVectorIndex::readBatch(
 
   if (auto const state = _trainingState.load();
       state != VectorIndexTrainingState::kReady) {
+
+    if (isLinearScanEnabled()) {
+      // Not enough training data: fall back to linear scan on this shard so
+      // cluster vector search stays usable.
+      return bruteForceSearch(searchVector, topK, trx);
+    }
+
     // This should never happen — the optimizer should not use
     // EnumerateNearVectorNode when the vector index is not ready.
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -316,6 +440,10 @@ vector::SearchResult RocksDBVectorIndex::readBatch(
   }
 
   return result;
+}
+
+bool RocksDBVectorIndex::isLinearScanEnabled() const noexcept {
+  return true;
 }
 
 bool RocksDBVectorIndex::isVectorIndexReady() const noexcept {

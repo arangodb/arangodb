@@ -510,6 +510,14 @@ Index::StreamSupportResult ClusterIndex::supportsStreamInterface(
   return Index::StreamSupportResult::makeUnsupported();
 }
 
+bool ClusterIndex::isLinearScanEnabled() const noexcept {
+  //  Linear scanning is enabled only for vector indexes.
+  if (ADB_LIKELY(_indexType == TRI_IDX_TYPE_VECTOR_INDEX))
+    return true;
+
+  return false;
+}
+
 bool ClusterIndex::isVectorIndexReady() const noexcept {
   if (_indexType != TRI_IDX_TYPE_VECTOR_INDEX) {
     return false;

@@ -406,6 +406,42 @@ function generateDocs(gen, count, dimension) {
     return docs;
 }
 
+/**
+ * Pre-computes a pool of keys grouped by shard using SHARD_ID() in a single
+ * AQL query, similar to the approach in shell-cluster-dbserver-shard-metrics.
+ *
+ * @param {function} collection - collection object
+ * @param {number} keysNeeded - No. of keys needed
+ * @returns {JSON} {shardNames: [...], keysPerShard: {shardName: [key, ...], ...}}.
+ */
+function buildKeyPool(collection, keysNeeded) {
+    const shardNames = Object.keys(collection.shards(true));
+    const keysPerShard = {};
+    for (const s of shardNames) {
+        keysPerShard[s] = [];
+    }
+
+    const batchSize = 1000;
+    let keyIndex = 0;
+    while (Object.values(keysPerShard).some(keys => keys.length < keysNeeded)) {
+        const results = db._query(`
+            FOR i IN @from..@to
+              LET key = CONCAT('k', i)
+              RETURN {key, shard: SHARD_ID(@coll, {_key: key})}
+        `, {from: keyIndex, to: keyIndex + batchSize - 1, coll: collection.name()}).toArray();
+
+        for (const {key, shard} of results) {
+            if (keysPerShard[shard] && keysPerShard[shard].length < keysNeeded) {
+                keysPerShard[shard].push(key);
+            }
+        }
+        keyIndex += batchSize;
+    }
+
+    return {shardNames, keysPerShard};
+}
+
+exports.buildKeyPool = buildKeyPool;
 exports.generateDocs = generateDocs;
 exports.createVectorGenerator = createVectorGenerator;
 exports.DistanceFunctions = DistanceFunctions;
