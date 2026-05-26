@@ -23,7 +23,6 @@
 
 #include "Methods.h"
 
-#include "Activities/GenericActivity.h"
 #include "Activities/RegistryGlobalVariable.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Agency/AgencyFeature.h"
@@ -38,7 +37,9 @@
 #include "Logger/LogMacros.h"
 #include "Network/ConnectionPool.h"
 #include "Network/NetworkFeature.h"
+#include "Network/RequestActivity.h"
 #include "Network/Utils.h"
+#include "Network/types.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "VocBase/ticks.h"
@@ -241,14 +242,20 @@ struct Pack {
   RequestLane continuationLane;
   bool skipScheduler;
   bool handleContentEncoding;
-  activities::GenericActivity::HandleType activity;
-  Pack(DestinationId&& dest, RequestLane lane, bool skip, bool handle)
-      : dest(std::move(dest)),
-        continuationLane(lane),
-        skipScheduler(skip),
-        handleContentEncoding(handle),
-        activity(activities::make<activities::GenericActivity>(
-            "InternalRequestActivity", activities::GenericActivityData{})) {}
+  RequestActivity::HandleType activity;
+  Pack(DestinationId&& destination, RestVerb method, std::string path,
+       bool hasPayload, RequestOptions const& options, Headers header)
+      : dest(std::move(destination)),
+        continuationLane(options.continuationLane),
+        skipScheduler(options.skipScheduler),
+        handleContentEncoding(options.handleContentEncoding),
+        activity(activities::make<RequestActivity>(
+            RequestActivityData{.destination = dest,
+                                .method = method,
+                                .path = std::move(path),
+                                .hasPayload = hasPayload,
+                                .options = options,
+                                .header = std::move(header)})) {}
 };
 
 void actuallySendRequest(std::shared_ptr<Pack>&& p, ConnectionPool* pool,
@@ -315,11 +322,12 @@ FutureRes sendRequest(ConnectionPool* pool, DestinationId dest, RestVerb type,
   LOG_TOPIC("2713a", DEBUG, Logger::COMMUNICATION)
       << "request to '" << dest << "' '" << fuerte::to_string(type) << " "
       << path << "'";
+  auto hasPayload = !payload.empty();
 
   // FIXME build future.reset(..)
   try {
-    auto req = prepareRequest(pool, type, std::move(path), std::move(payload),
-                              options, std::move(headers));
+    auto req =
+        prepareRequest(pool, type, path, std::move(payload), options, headers);
     req->timeout(
         std::chrono::duration_cast<std::chrono::milliseconds>(options.timeout));
 
@@ -363,9 +371,8 @@ FutureRes sendRequest(ConnectionPool* pool, DestinationId dest, RestVerb type,
     // fits in SSO of std::function
     static_assert(sizeof(std::shared_ptr<Pack>) <= 2 * sizeof(void*), "");
 
-    auto p = std::make_shared<Pack>(std::move(dest), options.continuationLane,
-                                    options.skipScheduler,
-                                    options.handleContentEncoding);
+    auto p = std::make_shared<Pack>(std::move(dest), type, std::move(path),
+                                    hasPayload, options, std::move(headers));
     FutureRes f = p->promise.getFuture();
     actuallySendRequest(std::move(p), pool, options, spec.endpoint,
                         std::move(req));
