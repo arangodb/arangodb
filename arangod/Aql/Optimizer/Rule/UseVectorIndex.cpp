@@ -345,7 +345,7 @@ void useVectorIndexRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
         continue;
       }
 
-      if (!index->isVectorIndexReady()) {
+      if (!index->isVectorIndexReady() && !index->isLinearScanEnabled()) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
             TRI_ERROR_QUERY_VECTOR_INDEX_NOT_READY,
             std::format(

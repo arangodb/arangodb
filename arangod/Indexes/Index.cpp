@@ -1023,6 +1023,8 @@ bool Index::canWarmup() const noexcept { return false; }
 
 bool Index::isVectorIndexReady() const noexcept { return false; }
 
+bool Index::isLinearScanEnabled() const noexcept { return false; }
+
 vector::UserVectorIndexDefinition const& Index::getVectorIndexDefinition() {
   TRI_ASSERT(false);
   THROW_ARANGO_EXCEPTION_MESSAGE(
