@@ -1178,7 +1178,7 @@ function aqlUpsertOptionsSuite() {
     },
 
     testUpsertSkipAndHardLimitInSubquery: function () {
-      if (!isInstr) {
+      if (isInstr) {
         print("Skipping because of instrumented");
         return;
       }
