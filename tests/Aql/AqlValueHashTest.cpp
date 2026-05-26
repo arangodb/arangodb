@@ -63,6 +63,9 @@ TEST_F(AqlValueHashTest, AqlValueHash_ASAN_PotentialUseAfterFree) {
   AqlValue v(b.slice(), static_cast<arangodb::velocypack::ValueLength>(
                             b.slice().byteSize()));
 
+  // After setValue the block owns the allocation via _valueCount ref-counting.
+  // Do NOT call v.destroy() here — the block will free it; calling destroy()
+  // on the original copy would be a double-free of the same raw pointer.
   block->setValue(0, 0, v);
 
   containers::FlatHashMap<AqlValue, size_t> table;
