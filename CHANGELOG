@@ -1,6 +1,10 @@
 3.12.10-devel (XXXX-XX-XX)
 --------------------------
 
+* COR-471: Improved filter optimization, rewriting `x IN [a]` to `x == a`,
+  removing always-false/true branches, and deduplicating identical conditions.
+  Fixed `==`/`!=` incorrectly using ICU comparison instead of byte comparison.
+
 * COR-387: Synchronous vector index creation no longer throws when training
   fails. The index is created with `trainingState: "unusable"` and the
   training error returned in `errorMessage`.
@@ -31,10 +35,6 @@
  - brace-expansion to 1.1.13
  - ajv to 8.18.0
  - @xmldom/xmldom@0.8.13
-
-* COR-471: Introduced to the query pipeline optimizer: constant single-element
-  IN comparisons to equality (x IN [a] → x == a), removal of false AND branches,
-  removal of always-true conditions, and elimination of duplicate AND/OR conditions.
 
 * COR-467: Extended `compareAstNodes` to compare AST nodes that are not directly
   VPack-serializable (references, attribute accesses, function calls, operators).

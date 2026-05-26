@@ -163,22 +163,6 @@ AstNode* normalizeCompare(Ast* ast, AstNode* node) {
   return node;
 }
 
-bool containsSubquery(AstNode const* node) noexcept {
-  if (node == nullptr) {
-    return false;
-  }
-  if (node->type == NODE_TYPE_SUBQUERY) {
-    return true;
-  }
-  size_t const n = node->numMembers();
-  for (size_t i = 0; i < n; ++i) {
-    if (containsSubquery(node->getMemberUnchecked(i))) {
-      return true;
-    }
-  }
-  return false;
-}
-
 // Returns true if two AST nodes are structurally equal.
 // Subquery nodes are excluded because structural identity doesn't imply result
 // identity. Non-deterministic functions are excluded by callers via
@@ -187,7 +171,8 @@ bool areNodesEqual(AstNode const* lhs, AstNode const* rhs) {
   if (lhs == nullptr || rhs == nullptr) {
     return lhs == rhs;
   }
-  if (containsSubquery(lhs) || containsSubquery(rhs)) {
+  if (lhs->containsNodeType(NODE_TYPE_SUBQUERY) ||
+      rhs->containsNodeType(NODE_TYPE_SUBQUERY)) {
     return false;
   }
   // ==/!= and their array variants compare strings by byte, while ordering
@@ -736,16 +721,15 @@ void Condition::deduplicateJunctionNode(AstNode* unlockedNode) {
               ++j;
               continue;
             }
+            bool const useUtf8Comparison =
+                current.operatorType != NODE_TYPE_OPERATOR_BINARY_EQ &&
+                current.operatorType != NODE_TYPE_OPERATOR_BINARY_NE &&
+                current.operatorType != NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ &&
+                current.operatorType != NODE_TYPE_OPERATOR_BINARY_ARRAY_NE;
             if (current.whichCompareOperation() ==
                     other.whichCompareOperation() &&
-                compareAstNodes(
-                    current.valueNode, other.valueNode,
-                    current.operatorType != NODE_TYPE_OPERATOR_BINARY_EQ &&
-                        current.operatorType != NODE_TYPE_OPERATOR_BINARY_NE &&
-                        current.operatorType !=
-                            NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ &&
-                        current.operatorType !=
-                            NODE_TYPE_OPERATOR_BINARY_ARRAY_NE) ==
+                compareAstNodes(current.valueNode, other.valueNode,
+                                useUtf8Comparison) ==
                     0) {  // duplicate comparison detected - remove it
               TRI_ASSERT(!positions.empty());
               TRI_ASSERT(j < positions.size());
