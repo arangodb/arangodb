@@ -313,16 +313,13 @@ bool ConditionPart::isCoveredBy(ConditionPart const& other,
   }
 
   // Results are -1, 0, 1, move to 0, 1, 2 for the lookup:
-  // ==/!= compare strings by byte, while ordering operators like >= use
-  // Unicode-aware comparison, so two literals that are semantically the same
-  // but have different byte encodings of the same character (e.g. NFC vs NFD)
-  // are considered different. We mirror that here, otherwise one condition
-  // could be mistakenly dropped.
-  bool const rangeUtf8 =
+  // == / != use byte comparison; mirror that so NFC/NFD aren't collapsed
+  bool const useUtf8Comparison =
       other.whichCompareOperation() > 1 && whichCompareOperation() > 1;
   CompareResult res =
-      ResultsTable[compareAstNodes(other.valueNode, valueNode, rangeUtf8) + 1]
-                  [other.whichCompareOperation()][whichCompareOperation()];
+      ResultsTable[compareAstNodes(other.valueNode, valueNode,
+                                   useUtf8Comparison) +
+                   1][other.whichCompareOperation()][whichCompareOperation()];
 
   if (res == CompareResult::OTHER_CONTAINED_IN_SELF ||
       res == CompareResult::CONVERT_EQUAL || res == CompareResult::IMPOSSIBLE) {

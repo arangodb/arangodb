@@ -44,9 +44,16 @@ function DuplicateConditionOptimizationSuite() {
       let c = db._create(cn);
       let docs = [];
       for (let i = 0; i < 10; i++) {
-        docs.push({ value: i, name: "test" + i });
+        docs.push({
+          value: i,
+          name: "test" + i
+        });
       }
       c.insert(docs);
+      c.ensureIndex({
+        type: "persistent",
+        fields: ["value"]
+      });
     },
 
     tearDownAll: function () {
@@ -59,29 +66,38 @@ function DuplicateConditionOptimizationSuite() {
     testInSingleElementRewrittenToEqual: function () {
       const q = `FOR doc IN ${cn} FILTER doc.value IN [5] RETURN doc.value`;
       assertEqual([5], query(q));
-      const planStr = JSON.stringify(db._createStatement(q).explain().plan);
+      const plan = db._createStatement(q).explain().plan;
+      const planStr = JSON.stringify(plan);
       assertFalse(planStr.includes('"compare in"'), 'IN should be rewritten away');
       assertTrue(planStr.includes('"compare =="'), 'should use == after rewrite');
+      assertTrue(plan.rules.includes('use-indexes'), 'use-indexes must have fired');
     },
 
     // [a, a] deduplicates to [a], then x IN [a] → x == a.
     testInDuplicateElementsDeduplicateThenRewrite: function () {
-      const res = query(`FOR doc IN ${cn} FILTER doc.value IN [5, 5] RETURN doc.value`);
-      assertEqual([5], res);
+      const q = `FOR doc IN ${cn} FILTER doc.value IN [5, 5] RETURN doc.value`;
+      assertEqual([5], query(q));
+      const plan = db._createStatement(q).explain().plan;
+      assertTrue(plan.rules.includes('use-indexes'), 'use-indexes must have fired');
+      assertEqual(0, plan.nodes.filter(n => n.type === 'FilterNode').length, 'condition should be absorbed into index scan');
     },
 
     // Two-element IN must NOT be rewritten.
     testInTwoElementsNotRewritten: function () {
-      const res = sorted(query(`FOR doc IN ${cn} FILTER doc.value IN [5, 6] RETURN doc.value`));
-      assertEqual([5, 6], res);
+      const q = `FOR doc IN ${cn} FILTER doc.value IN [5, 6] RETURN doc.value`;
+      assertEqual([5, 6], sorted(query(q)));
+      const planStr = JSON.stringify(db._createStatement(q).explain().plan);
+      assertTrue(planStr.includes('"compare in"'), 'two-element IN must not be rewritten');
     },
 
     testSingleElementInRewrittenForLetBoundVar: function () {
       const q = `LET v = NOOPT(5) FOR doc IN ${cn} FILTER doc.value IN [v] RETURN doc.value`;
       assertEqual([5], query(q));
-      const planStr = JSON.stringify(db._createStatement(q).explain().plan);
+      const plan = db._createStatement(q).explain().plan;
+      const planStr = JSON.stringify(plan);
       assertFalse(planStr.includes('"compare in"'), 'single-element IN should be rewritten');
       assertTrue(planStr.includes('"compare =="'), 'should use == after rewrite');
+      assertTrue(plan.rules.includes('use-indexes'), 'use-indexes must have fired');
     },
 
     // TODO: x IN [a] must not rewrite to == for multivalued ArangoSearch fields.
@@ -94,6 +110,7 @@ function DuplicateConditionOptimizationSuite() {
       assertEqual([5], query(q));
       const planStr = JSON.stringify(db._createStatement(q).explain().plan);
       assertTrue(planStr.includes('"compare in"'), 'non-constant array IN must not be rewritten');
+      assertFalse(planStr.includes('"compare =="'), 'non-constant array IN must not be rewritten to ==');
     },
 
     // IN [] is always false; no rewrite to ==, branch is dropped as false.
@@ -113,8 +130,10 @@ function DuplicateConditionOptimizationSuite() {
           FILTER (doc.value > 8 AND doc.value IN []) OR doc.value == 0
           RETURN doc.value`;
       assertEqual([0], query(q));
-      const planStr = JSON.stringify(db._createStatement(q).explain().plan);
+      const plan = db._createStatement(q).explain().plan;
+      const planStr = JSON.stringify(plan);
       assertFalse(planStr.includes('"compare in"'), 'false AND branch must be removed from plan');
+      assertTrue(plan.rules.includes('use-indexes'), 'use-indexes must have fired');
     },
 
     // All OR branches are false → no results.
@@ -127,58 +146,59 @@ function DuplicateConditionOptimizationSuite() {
 
     // --- true condition removal ---------------------------------------------
 
-    // doc.value NOT IN [] is always true and is stripped from the AND,
-    // leaving only doc.value > 7.
     testTrueConditionStripped: function () {
       const q = `
         FOR doc IN ${cn}
           FILTER doc.value > 7 AND doc.value NOT IN []
           RETURN doc.value`;
       assertEqual([8, 9], sorted(query(q)));
-      const planStr = JSON.stringify(db._createStatement(q).explain().plan);
+      const plan = db._createStatement(q).explain().plan;
+      const planStr = JSON.stringify(plan);
       assertFalse(planStr.includes('"compare not in"'), 'always-true NOT IN [] must be removed from plan');
+      assertTrue(plan.rules.includes('use-indexes'), 'use-indexes must have fired');
     },
 
     // When all conditions are true, at least one is kept (not dropped entirely).
     testAllTrueConditionsKeepOne: function () {
-      const res = query(`FOR doc IN ${cn} FILTER doc.value NOT IN [] AND doc.value NOT IN [] RETURN doc.value`);
-      assertEqual(10, res.length);
+      const q = `FOR doc IN ${cn} FILTER doc.value NOT IN [] AND doc.value NOT IN [] RETURN doc.value`;
+      assertEqual(10, query(q).length);
+      const planStr = JSON.stringify(db._createStatement(q).explain().plan);
+      assertFalse(planStr.includes('"compare not in"'), 'always-true NOT IN [] conditions must be stripped from plan');
     },
 
     // --- duplicate AND condition removal ------------------------------------
 
     // Exact duplicate is removed; result is unchanged.
     testDuplicateAndConditionRemoved: function () {
-      const res = sorted(query(`
-        FOR doc IN ${cn}
-          FILTER doc.value > 7 AND doc.value > 7
-          RETURN doc.value`));
-      assertEqual([8, 9], res);
+      const q = `FOR doc IN ${cn} FILTER doc.value > 7 AND doc.value > 7 RETURN doc.value`;
+      assertEqual([8, 9], sorted(query(q)));
+      const plan = db._createStatement(q).explain().plan;
+      assertTrue(plan.rules.includes('use-indexes'), 'use-indexes must have fired');
+      assertEqual(0, plan.nodes.filter(n => n.type === 'FilterNode').length, 'condition should be absorbed into index scan');
     },
 
     // Multiple copies all collapse to one.
     testManyDuplicatesAndConditionRemoved: function () {
-      const res = sorted(query(`
-        FOR doc IN ${cn}
-          FILTER doc.value > 7 AND doc.value > 7 AND doc.value > 7
-          RETURN doc.value`));
-      assertEqual([8, 9], res);
+      const q = `FOR doc IN ${cn} FILTER doc.value > 7 AND doc.value > 7 AND doc.value > 7 RETURN doc.value`;
+      assertEqual([8, 9], sorted(query(q)));
+      const plan = db._createStatement(q).explain().plan;
+      assertTrue(plan.rules.includes('use-indexes'), 'use-indexes must have fired');
+      assertEqual(0, plan.nodes.filter(n => n.type === 'FilterNode').length, 'condition should be absorbed into index scan');
     },
 
     // doc.value == 5 and 5 == doc.value are treated as the same condition.
     testCommutativeEqualityDuplicate: function () {
-      const res = query(`FOR doc IN ${cn} FILTER doc.value == 5 AND 5 == doc.value RETURN doc.value`);
-      assertEqual([5], res);
+      const q = `FOR doc IN ${cn} FILTER doc.value == 5 AND 5 == doc.value RETURN doc.value`;
+      assertEqual([5], query(q));
+      const plan = db._createStatement(q).explain().plan;
+      assertTrue(plan.rules.includes('use-indexes'), 'use-indexes must have fired');
+      assertEqual(0, plan.nodes.filter(n => n.type === 'FilterNode').length, 'condition should be absorbed into index scan');
     },
 
-    // Non-deterministic conditions are skipped by deduplication.
     testNonDeterministicNotDeduplicated: function () {
-      // RAND() >= 0 is non-deterministic; dedup must not fire so both calls
-      // remain in the plan.
       const q = `FOR doc IN ${cn} FILTER RAND() >= 0 AND RAND() >= 0 RETURN doc.value`;
       assertEqual(10, query(q).length);
       const planStr = JSON.stringify(db._createStatement(q).explain().plan);
-      // both RAND() calls must survive
       const randCount = (planStr.match(/"rand"/gi) || []).length;
       assertTrue(randCount >= 2, 'both RAND() calls must remain in the plan after dedup is skipped');
     },
@@ -196,44 +216,42 @@ function DuplicateConditionOptimizationSuite() {
     // --- duplicate OR branch removal ----------------------------------------
 
     testDuplicateOrBranchRemoved: function () {
-      const res = sorted(query(`
-        FOR doc IN ${cn}
-          FILTER doc.value > 7 OR doc.value > 7
-          RETURN doc.value`));
-      assertEqual([8, 9], res);
+      const q = `FOR doc IN ${cn} FILTER doc.value > 7 OR doc.value > 7 RETURN doc.value`;
+      assertEqual([8, 9], sorted(query(q)));
+      const plan = db._createStatement(q).explain().plan;
+      assertTrue(plan.rules.includes('use-indexes'), 'use-indexes must have fired');
+      assertEqual(0, plan.nodes.filter(n => n.type === 'FilterNode').length, 'condition should be absorbed into index scan');
     },
 
     // Mixed: one duplicate OR branch removed, distinct branch kept.
     testOrWithOneDuplicateAndOneDistinct: function () {
-      const res = sorted(query(`
-        FOR doc IN ${cn}
-          FILTER doc.value > 7 OR doc.value == 0 OR doc.value > 7
-          RETURN doc.value`));
-      assertEqual([0, 8, 9], res);
+      const q = `FOR doc IN ${cn} FILTER doc.value > 7 OR doc.value == 0 OR doc.value > 7 RETURN doc.value`;
+      assertEqual([0, 8, 9], sorted(query(q)));
+      const plan = db._createStatement(q).explain().plan;
+      assertTrue(plan.rules.includes('use-indexes'), 'use-indexes must have fired');
     },
 
-    // Non-deterministic OR branch must not be deduplicated; the deterministic
-    // duplicate on either side of it must still be removed correctly.
+    // RAND() is non-deterministic, dedup skips it.
     testDuplicateOrWithNonDeterministicMiddle: function () {
-      const res = sorted(query(`
-        FOR doc IN ${cn}
-          FILTER doc.value > 7 OR RAND() >= 0 OR doc.value > 7
-          RETURN doc.value`));
-      // RAND() >= 0 always true → all docs match regardless.
-      assertEqual(10, res.length);
+      const q = `FOR doc IN ${cn} FILTER doc.value > 7 OR RAND() >= 0 OR doc.value > 7 RETURN doc.value`;
+      assertEqual(10, sorted(query(q)).length);
+      const planStr = JSON.stringify(db._createStatement(q).explain().plan);
+      const randCount = (planStr.match(/"rand"/gi) || []).length;
+      assertTrue(randCount >= 1, 'RAND() branch must survive dedup');
     },
 
     // --- subquery guard ------------------------------------------------------
 
-    // sub is a LET-bound variable; LENGTH(sub) contains a REFERENCE node, not
-    // a SUBQUERY node, so deduplication fires normally and gives the right result.
+    // LET-bound ref produces a REFERENCE node, not SUBQUERY, so dedup fires normally.
     testLetBoundSubqueryRefIsDeduplicated: function () {
-      const res = query(`
+      const q = `
         FOR doc IN ${cn}
           LET sub = (FOR x IN ${cn} FILTER x.value > 5 RETURN x)
           FILTER LENGTH(sub) > 0 AND LENGTH(sub) > 0
-          RETURN doc.value`);
-      assertEqual(10, res.length);
+          RETURN doc.value`;
+      assertEqual(10, query(q).length);
+      const filterNodes = db._createStatement(q).explain().plan.nodes.filter(n => n.type === 'FilterNode');
+      assertEqual(1, filterNodes.length, 'dedup must reduce two identical conditions to one FilterNode');
     },
 
     // Inline subqueries produce NODE_TYPE_SUBQUERY nodes in the AST.
@@ -251,31 +269,40 @@ function DuplicateConditionOptimizationSuite() {
 
     testDuplicateArrayEqConditionRemoved: function () {
       // ARRAY_EQ (ANY ==) duplicate should be deduplicated just like plain ==
-      const res = query(`
-        FOR doc IN ${cn}
-          FILTER doc.tags[* RETURN CURRENT] ANY == 1
-             AND doc.tags[* RETURN CURRENT] ANY == 1
-          RETURN doc.value`);
-      assertEqual([], res);  // no docs have a tags array with value 1
+      const tagCn = cn + '_tags';
+      db._drop(tagCn);
+      const c = db._create(tagCn);
+      try {
+        c.insert({
+          value: 1,
+          tags: [1, 2, 3]
+        });
+        c.insert({
+          value: 2,
+          tags: [4, 5]
+        });
+        const res = db._query(`
+          FOR doc IN ${tagCn}
+            FILTER doc.tags[* RETURN CURRENT] ANY == 1
+               AND doc.tags[* RETURN CURRENT] ANY == 1
+            RETURN doc.value`).toArray();
+        assertEqual(1, res.length, 'dedup must not drop the valid match');
+        assertEqual(1, res[0]);
+      } finally {
+        db._drop(tagCn);
+      }
     },
 
     // --- compareUtf8 fix: == and != use byte comparison, not ICU ---------------
 
-    // == uses byte comparison: NFC "café" (U+00E9) and NFD "café" (e+U+0301) are
-    // byte-distinct and must not deduplicate.
+    // == compares bytes; NFC U+00E9 and NFD e+U+0301 are byte-distinct, dedup must not fire
     testEqualConditionsNfcNfdNotDeduplicated: function () {
-      // NFC "café": U+00E9 encodes as 2 UTF-8 bytes (\xc3\xa9).
-      // NFD "cafe\u0301": e + combining acute encodes as 3 bytes (e \xcc\x81).
-      // areNodesEqual uses byte comparison (compareUtf8=false) for ==, so these
-      // two string literals are byte-distinct and must NOT be deduplicated.
-      // Proof: insert a doc with the NFC name. If dedup wrongly fires, the filter
-      // collapses to NFC-only and returns 1 result. Correct: both conditions
-      // must hold; NFD fails against the stored NFC bytes -> 0 results.
+      // if dedup fires, the AND collapses to NFC-only and returns 1 result instead of 0
       const testCn = cn + '_nfctest';
       db._drop(testCn);
       const c = db._create(testCn);
       try {
-        c.insert({ name: "café" });  // NFC U+00E9
+        c.insert({ name: "café" }); // NFC U+00E9
         // NFD version: same visual but different bytes (e + U+0301)
         const res = db._query(
           `FOR doc IN ${testCn} FILTER doc.name == "café" AND doc.name == "café" RETURN doc`
@@ -299,7 +326,7 @@ function DuplicateConditionOptimizationSuite() {
     testAllDocumentsMatchAfterDedup: function () {
       const res = query(`FOR doc IN ${cn} FILTER doc.value >= 0 AND doc.value >= 0 RETURN doc.value`);
       assertEqual(10, res.length);
-    },
+    }
   };
 }
 

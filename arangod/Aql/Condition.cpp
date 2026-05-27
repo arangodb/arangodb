@@ -163,10 +163,7 @@ AstNode* normalizeCompare(Ast* ast, AstNode* node) {
   return node;
 }
 
-// Returns true if two AST nodes are structurally equal.
-// Subquery nodes are excluded because structural identity doesn't imply result
-// identity. Non-deterministic functions are excluded by callers via
-// isDeterministic() before this function is called.
+// Structural equality; always false for nodes containing subqueries.
 bool areNodesEqual(AstNode const* lhs, AstNode const* rhs) {
   if (lhs == nullptr || rhs == nullptr) {
     return lhs == rhs;
@@ -175,12 +172,7 @@ bool areNodesEqual(AstNode const* lhs, AstNode const* rhs) {
       rhs->containsNodeType(NODE_TYPE_SUBQUERY)) {
     return false;
   }
-  // ==/!= and their array variants compare strings by byte, while ordering
-  // operators like >= use Unicode-aware comparison, so two literals that are
-  // semantically the same but have different byte encodings of the same
-  // character (e.g. NFC vs NFD) are considered different. We mirror that here,
-  // otherwise they could be mistaken for the same condition and one of them
-  // would be dropped.
+  // == / != use byte comparison; mirror that so NFC/NFD aren't collapsed
   bool const compareUtf8 = (lhs->type != NODE_TYPE_OPERATOR_BINARY_EQ &&
                             lhs->type != NODE_TYPE_OPERATOR_BINARY_NE &&
                             lhs->type != NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ &&
@@ -1068,13 +1060,14 @@ void Condition::optimize(ExecutionPlan* plan, bool multivalued) {
             // end of IN-merging
 
             // Results are -1, 0, 1, move to 0, 1, 2 for the lookup:
-            // Use ICU only when both operators use it at runtime (ordering
-            // ops); if either is ==/!= (byte comparison at runtime), use false.
-            bool const rangeUtf8 = current.whichCompareOperation() > 1 &&
-                                   other.whichCompareOperation() > 1;
+            // use Unicode comparison only when both operators are ordering ops
+            // (> 1)
+            bool const useUtf8Comparison =
+                current.whichCompareOperation() > 1 &&
+                other.whichCompareOperation() > 1;
             CompareResult res =
                 resultsTable[compareAstNodes(current.valueNode, other.valueNode,
-                                             rangeUtf8) +
+                                             useUtf8Comparison) +
                              1][current.whichCompareOperation()]
                             [other.whichCompareOperation()];
 
