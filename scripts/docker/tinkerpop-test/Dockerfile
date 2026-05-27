@@ -10,12 +10,13 @@ RUN apt-get update --fix-missing && \
     rm -rf /var/cache/apt/archives /var/lib/apt/lists
 
 RUN cd /tmp/ && \
-    wget https://dlcdn.apache.org/maven/maven-3/3.9.14/binaries/apache-maven-3.9.14-bin.tar.gz && \
-    tar xf apache-maven-3.9.14-bin.tar.gz -C /opt && \
-    echo 'export M3_HOME=/opt/apache-maven-3.9.14\nexport MAVEN_HOME=/opt/apache-maven-3.9.14\nexport PATH=${M3_HOME}/bin:${PATH}\n' > /etc/profile.d/maven.sh && \
+    VER="3.9.16" \
+    wget https://dlcdn.apache.org/maven/maven-3/${VER}/binaries/apache-maven-${VER}-bin.tar.gz && \
+    tar xf apache-maven-${VER}-bin.tar.gz -C /opt && \
+    echo 'export M3_HOME=/opt/apache-maven-${VER}\nexport MAVEN_HOME=/opt/apache-maven-${VER}\nexport PATH=${M3_HOME}/bin:${PATH}\n' > /etc/profile.d/maven.sh && \
     chmod +x /etc/profile.d/maven.sh && \
-    ln -s /opt/apache-maven-3.9.14/bin/mvn /usr/bin/ && \
-    rm -f apache-maven-3.9.14-bin.tar.gz
+    ln -s /opt/apache-maven-${VER}/bin/mvn /usr/bin/ && \
+    rm -f apache-maven-${VER}-bin.tar.gz
 
 RUN git clone -n --depth=1 --filter=tree:0 https://github.com/arangodb/arangodb-tinkerpop-provider && \
   cd arangodb-tinkerpop-provider && \
