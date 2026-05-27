@@ -28,10 +28,7 @@
 #include <iostream>
 #include <thread>
 
-#include "RestServer/InitDatabaseFeatureOptions.h"
-
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/FileUtils.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Basics/application-exit.h"
 #include "Basics/exitcodes.h"
@@ -42,10 +39,10 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerFeature.h"
 #include "Logger/LoggerStream.h"
-#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/EnvironmentFeature.h"
+#include "RestServer/InitDatabaseOptionsProvider.h"
 
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
@@ -63,23 +60,8 @@ InitDatabaseFeature::InitDatabaseFeature(
 
 void InitDatabaseFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
-  options->addOption(
-      "--database.init-database", "Initialize an empty database.",
-      new BooleanParameter(&_options.initDatabase),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon,
-                                          arangodb::options::Flags::Command));
-
-  options->addOption(
-      "--database.restore-admin",
-      "Reset the admin users and set a new password.",
-      new BooleanParameter(&_options.restoreAdmin),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon,
-                                          arangodb::options::Flags::Command));
-
-  options->addOption(
-      "--database.password", "The initial password of the root user.",
-      new StringParameter(&_options.password),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
+  InitDatabaseOptionsProvider provider;
+  provider.declareOptions(options, _options);
 }
 
 void InitDatabaseFeature::validateOptions(
