@@ -27,7 +27,6 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "RestServer/DatabaseFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "Utils/VersionTracker.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
@@ -59,9 +58,6 @@ struct MockVocbase : TRI_vocbase_t {
                       createDatabaseInfo(server, name, id), storageEngine,
                       versionTracker, true),
         storageEngine(server) {
-    server.addFeature<arangodb::EngineSelectorFeature>();
-    server.getFeature<arangodb::EngineSelectorFeature>().setEngineTesting(
-        &storageEngine);
     server.getFeature<arangodb::DatabaseFeature>().setEngineTesting(
         &storageEngine);
   }
