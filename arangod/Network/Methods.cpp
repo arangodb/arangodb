@@ -405,7 +405,15 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState>,
         _endTime(
             _startTime +
             std::chrono::duration_cast<std::chrono::steady_clock::duration>(
-                options.timeout)) {
+                options.timeout)),
+        _activity(activities::make<RequestActivity>(
+            RequestActivityData{.destination = _destination,
+                                .method = type,
+                                .path = path,
+                                .hasPayload = !payload.empty(),
+                                .options = options,
+                                .header = headers,
+                                .retryCount = {0}})) {
     _tmp_req = prepareRequest(pool, type, std::move(path), std::move(payload),
                               _options, std::move(headers));
 
@@ -650,6 +658,8 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState>,
     NetworkFeature& nf = server.getFeature<NetworkFeature>();
     nf.retryRequest(shared_from_this(), _options.continuationLane,
                     tryAgainAfter);
+    _activity->updateData(
+        [](auto&& data) { data.retryCount = data.retryCount.value() + 1; });
   }
 
  public:
@@ -674,6 +684,8 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState>,
   std::chrono::steady_clock::time_point const _endTime;
   network::EndpointSpec _spec;
   fuerte::Error _tmp_err;
+
+  RequestActivity::HandleType _activity;
 };
 
 /// @brief send a request to a given destination, retry until timeout is

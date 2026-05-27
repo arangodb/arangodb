@@ -30,6 +30,10 @@
 #include <fuerte/connection.h>
 #include <velocypack/Iterator.h>
 
+#include <chrono>
+#include <mutex>
+#include <thread>
+
 #include "Mocks/Servers.h"
 
 #include "Activities/Registry.h"
@@ -45,15 +49,6 @@
 
 using namespace arangodb;
 
-// namespace arangodb::network {
-// bool operator==(RequestActivityData const& a, RequestActivityData const& b) {
-//   return a.destination == b.destination && a.method == b.method &&
-//          a.path == b.path &&
-//          (a.payload.size() == b.payload.size() &&
-//           std::memcmp(a.payload.data(), b.payload.data(), a.payload.size()));
-// }
-// }  // namespace arangodb::network
-
 namespace {
 
 /**
@@ -66,31 +61,76 @@ struct DeferredConnection final : fuerte::Connection {
   DeferredConnection()
       : fuerte::Connection(fuerte::detail::ConnectionConfiguration{}) {}
 
-  // is called internally when network::sendRequest is called
+  // Is called internally when network::sendRequest is called.
   // cb is executed after we got a response or error back and finally sets the
-  // promise value of network::sendRequest
+  // promise value of the return value of network::sendRequest.
+  // Note: with sendRequestRetry this is also called from the NetworkFeature
+  // retry thread, hence the lock.
   void sendRequest(std::unique_ptr<fuerte::Request> req,
                    fuerte::RequestCallback cb) override {
+    std::lock_guard guard(_mutex);
     _pendingReq = std::move(req);
     _pendingCb = std::move(cb);
   }
 
-  void respondNow(fuerte::Error err) {
-    ASSERT_TRUE(static_cast<bool>(_pendingCb))
-        << "respondNow() called without a pending request";
-    auto cb = std::move(_pendingCb);
-    cb(err, std::move(_pendingReq), nullptr);
+  // A NoError result must carry a response: the retry path dereferences it.
+  void respondNow(fuerte::Error err,
+                  std::unique_ptr<fuerte::Response> response = nullptr) {
+    fuerte::RequestCallback cb;
+    std::unique_ptr<fuerte::Request> req;
+    {
+      std::lock_guard guard(_mutex);
+      ASSERT_TRUE(static_cast<bool>(_pendingCb))
+          << "respondNow() called without a pending request";
+      cb = std::move(_pendingCb);
+      req = std::move(_pendingReq);
+    }
+    cb(err, std::move(req), std::move(response));
   }
 
-  std::size_t requestsLeft() const override { return _pendingCb ? 1 : 0; }
+  auto hasPendingRequest() const -> bool {
+    std::lock_guard guard(_mutex);
+    return static_cast<bool>(_pendingCb);
+  }
+
+  std::size_t requestsLeft() const override {
+    return hasPendingRequest() ? 1 : 0;
+  }
   State state() const override { return fuerte::Connection::State::Connected; }
   void cancel() override {}
   std::string localEndpoint() override { return "not implemented"; }
 
  private:
+  mutable std::mutex _mutex;
   std::unique_ptr<fuerte::Request> _pendingReq;
   fuerte::RequestCallback _pendingCb;
 };
+
+/**
+ * Spin until the connection holds a freshly captured callback.
+ *
+ * Retries are re-issued from the NetworkFeature retry thread, so the test
+ * thread has to wait for the next attempt to arrive. Returns false on timeout.
+ */
+auto waitForPendingRequest(DeferredConnection& conn) -> bool {
+  auto const deadline =
+      std::chrono::steady_clock::now() + std::chrono::seconds(5);
+  while (std::chrono::steady_clock::now() < deadline) {
+    if (conn.hasPendingRequest()) {
+      return true;
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(5));
+  }
+  return false;
+}
+
+auto makeResponse(fuerte::StatusCode code)
+    -> std::unique_ptr<fuerte::Response> {
+  fuerte::ResponseHeader header;
+  header.responseCode = code;
+  header.contentType(fuerte::ContentType::VPack);
+  return std::make_unique<fuerte::Response>(std::move(header));
+}
 
 struct DeferredPool final : network::ConnectionPool {
   explicit DeferredPool(network::ConnectionPool::Config const& cfg)
@@ -132,6 +172,7 @@ struct RequestFilter {
   std::optional<bool> hasPayload;
   std::optional<network::RequestOptions> options;
   std::optional<network::Headers> header;
+  std::optional<std::optional<size_t>> retryCount;
 };
 struct Ok {
   bool operator==(Ok const&) const = default;
@@ -162,11 +203,12 @@ auto registryContainsRequestActivity(RequestFilter&& filter = RequestFilter{})
             a.hasPayload == filter.hasPayload.value())  //
         &&
         (!filter.options.has_value() || a.options == filter.options.value())  //
-        && (!filter.header.has_value() || a.header == filter.header.value())) {
+        && (!filter.header.has_value() || a.header == filter.header.value())  //
+        && (!filter.retryCount.has_value() ||
+            a.retryCount == filter.retryCount.value())) {
       return {Ok{}};
     }
   }
-  // LOG_DEVEL << inspection::json(activities);
   return {Err{activities}};
 }
 }  // namespace
@@ -243,7 +285,85 @@ TEST_F(InternalRequestActivityTest,
   ASSERT_TRUE(future.isReady());
 
   activities::registry.garbageCollect();
-  EXPECT_EQ(registryContainsRequestActivity(), Res{Err{}});
+  EXPECT_EQ(registryContainsRequestActivity(), Res{Err{}});  // TODO filter!
+
+  ASSERT_EQ(std::move(future).waitAndGet().error, fuerte::Error::NoError);
+}
+
+TEST_F(InternalRequestActivityTest,
+       activity_is_present_while_retry_request_is_in_flight) {
+  auto opts = network::RequestOptions{.skipScheduler = true};
+
+  VPackBuilder payload;
+  {
+    VPackObjectBuilder b(&payload);
+    payload.add("abc", VPackValue(423));
+  }
+  auto future = network::sendRequestRetry(
+      pool.get(), "tcp://example.org:80", fuerte::RestVerb::Post, "/_api/123",
+      *payload.steal(), opts, {{"header1", "abc"}});
+
+  auto const filter = RequestFilter{
+      .destination = "tcp://example.org:80",
+      .method = fuerte::RestVerb::Post,
+      .path = "/_api/123",
+      .hasPayload = true,
+      .options = opts,
+      .header = std::map<std::string, std::string>{{"header1", "abc"}}};
+
+  // First attempt is in flight.
+  ASSERT_TRUE(waitForPendingRequest(*pool->conn));
+  ASSERT_FALSE(future.isReady());
+  EXPECT_EQ(
+      registryContainsRequestActivity(RequestFilter{
+          .destination = "tcp://example.org:80",
+          .method = fuerte::RestVerb::Post,
+          .path = "/_api/123",
+          .hasPayload = true,
+          .options = opts,
+          .header = std::map<std::string, std::string>{{"header1", "abc"}},
+          .retryCount = 0}),
+      Res{Ok{}});
+
+  // Fail it with a retryable error. The production code schedules a retry on
+  // the NetworkFeature retry thread (~200ms later); the request is not done.
+  pool->conn->respondNow(fuerte::Error::CouldNotConnect);
+  ASSERT_FALSE(future.isReady());
+  EXPECT_EQ(
+      registryContainsRequestActivity(RequestFilter{
+          .destination = "tcp://example.org:80",
+          .method = fuerte::RestVerb::Post,
+          .path = "/_api/123",
+          .hasPayload = true,
+          .options = opts,
+          .header = std::map<std::string, std::string>{{"header1", "abc"}},
+          .retryCount = 1}),
+      Res{Ok{}});
+
+  // Wait for the retry thread to re-issue the request; the activity must
+  // survive across the retry. A NoError result must carry a 2xx response for
+  // the retry loop to finish.
+  ASSERT_TRUE(waitForPendingRequest(*pool->conn));
+  ASSERT_FALSE(future.isReady());
+  EXPECT_EQ(
+      registryContainsRequestActivity(RequestFilter{
+          .destination = "tcp://example.org:80",
+          .method = fuerte::RestVerb::Post,
+          .path = "/_api/123",
+          .hasPayload = true,
+          .options = opts,
+          .header = std::map<std::string, std::string>{{"header1", "abc"}},
+          .retryCount = 1}),
+      Res{Ok{}});
+
+  // Respond with no error: stops retry loop
+  pool->conn->respondNow(fuerte::Error::NoError,
+                         makeResponse(fuerte::StatusAccepted));
+  ASSERT_TRUE(future.isReady());
+
+  activities::registry.garbageCollect();
+  EXPECT_EQ(registryContainsRequestActivity(),
+            Res{Err{}});  // TODO probably test filter also here
 
   ASSERT_EQ(std::move(future).waitAndGet().error, fuerte::Error::NoError);
 }

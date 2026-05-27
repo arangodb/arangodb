@@ -36,6 +36,7 @@ struct RequestActivityData {
   bool hasPayload;
   network::RequestOptions options;
   network::Headers header;
+  std::optional<size_t> retryCount;
 
   bool operator==(RequestActivityData const&) const = default;
 };
@@ -44,7 +45,8 @@ auto inspect(Inspector& f, RequestActivityData& x) {
   return f.object(x).fields(
       f.field("destination", x.destination), f.field("method", x.method),
       f.field("path", x.path), f.field("hasPayload", x.hasPayload),
-      f.field("options", x.options), f.field("header", x.header));
+      f.field("options", x.options), f.field("header", x.header),
+      f.field("retryCount", x.retryCount));
 }
 
 struct RequestActivity
