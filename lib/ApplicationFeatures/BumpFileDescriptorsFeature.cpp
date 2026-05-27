@@ -24,11 +24,11 @@
 #include "BumpFileDescriptorsFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/BumpFileDescriptorsOptionsProvider.h"
 #include "Basics/FileDescriptors.h"
 #include "Basics/application-exit.h"
 #include "Basics/exitcodes.h"
 #include "Logger/LogMacros.h"
-#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 
 #ifdef TRI_HAVE_SYS_RESOURCE_H
@@ -49,31 +49,14 @@ namespace arangodb {
 
 void BumpFileDescriptorsFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
-  // we do this initialization here so we don't need to include
-  // FileDescriptors.h in the header file.
-  _options.descriptorsMinimum = FileDescriptors::recommendedMinimum();
-
-  options
-      ->addOption(
-          _optionName,
-          "The minimum number of file descriptors needed to start (0 = no "
-          "minimum)",
-          new UInt64Parameter(&_options.descriptorsMinimum),
-          arangodb::options::makeFlags())
-      .setIntroducedIn(31200);
+  BumpFileDescriptorsOptionsProvider provider(_optionName);
+  provider.declareOptions(options, _options);
 }
 
 void BumpFileDescriptorsFeature::validateOptions(
-    std::shared_ptr<ProgramOptions> /*options*/) {
-  if (_options.descriptorsMinimum > 0 &&
-      (_options.descriptorsMinimum < FileDescriptors::requiredMinimum ||
-       _options.descriptorsMinimum > FileDescriptors::maximumValue)) {
-    LOG_TOPIC("7e15c", FATAL, Logger::STARTUP)
-        << "invalid value for " << _optionName << ". must be between "
-        << FileDescriptors::requiredMinimum << " and "
-        << FileDescriptors::maximumValue;
-    FATAL_ERROR_EXIT();
-  }
+    std::shared_ptr<ProgramOptions> options) {
+  BumpFileDescriptorsOptionsProvider provider(_optionName);
+  provider.validateOptions(options, _options);
 }
 
 void BumpFileDescriptorsFeature::prepare() {
