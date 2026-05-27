@@ -1,5 +1,6 @@
 ===build fresh docker images for the CI===
 - edit the docker container definitions in this folder
+- make sure https://dlcdn.apache.org/maven/maven-3 still has the `VER` found in the java docker files
 - run the circle-ci flow, dial `rebuild-test-docker-images` to `true`.
 - open the `build-test-docker-images` job
 - open the `x64-test-docker-image` sub-job
