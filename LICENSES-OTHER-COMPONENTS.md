@@ -68,10 +68,10 @@ _Enterprise Edition only_
 ### faiss
 
 * Name: faiss
-* Version: 1.14.1
-* Date: 2026-04-28
+* Version: 1.14.2
+* Date: 2026-05-22
 * Project Home:https://github.com/facebookresearch/faiss/
-* License: https://github.com/facebookresearch/faiss/blob/main/LICENSE 
+* License: https://github.com/facebookresearch/faiss/blob/main/LICENSE
 * License Name: MIT License
 * License Id: MIT
 
@@ -99,7 +99,7 @@ _Enterprise Edition only_
 
 * Name: fastvalidate-utf8
 * Version: (none)
-* Date: 2017-02-28 13:11:35Z 
+* Date: 2017-02-28 13:11:35Z
 * Project Home: https://github.com/lemire/fastvalidate-utf-8
 * License: https://raw.githubusercontent.com/lemire/fastvalidate-utf-8/master/LICENSE-APACHE
 * License Name: Apache License 2.0
@@ -320,7 +320,7 @@ _Enterprise Edition only_
 * Version: 1.12.1
 * Date: 2022-06-30 10:14:00Z
 * Project Home: https://github.com/google/googletest
-* License: https://raw.githubusercontent.com/google/googletest/release-1.12.1/LICENSE 
+* License: https://raw.githubusercontent.com/google/googletest/release-1.12.1/LICENSE
 * License Name: BSD 3-clause "New" or "Revised" License
 * License Id: BSD-3-Clause
 
@@ -482,7 +482,7 @@ _Enterprise Edition only_
 
 ## Libraries used by iresearch
 
-The ArangoDB software makes uses of the 
+The ArangoDB software makes uses of the
 [iresearch library](https://github.com/iresearch-toolkit/iresearch),
 which is mainly developed by ArangoDB, too.
 The iresearch library itself makes use of several other components with
@@ -513,7 +513,7 @@ can be found [here](https://github.com/arangodb/arangodb/blob/devel/lib/iresearc
 ### Fortran
 
 * Name: gfortran
-* Version: 11.4.0 
+* Version: 11.4.0
 * Date: 2023-05-29
 * Project Home: https://gcc.gnu.org/wiki/GFortran
 * License: https://moinmo.in/GPL
@@ -695,7 +695,7 @@ License Id: -
 #### D3
 
 * Name: D3.js
-* Version: 2016 
+* Version: 2016
 * Project Home: http://d3js.org
 * GitHub: https://github.com/mbostock/d3
 * License: https://raw.githubusercontent.com/mbostock/d3/master/LICENSE
@@ -937,1560 +937,937 @@ License Id: -
 
 ### Bundled NPM modules
 
-#### @babel/code-frame
+#### @hapi/hoek
 
-Name: @babel/code-frame
-Version: 7.0.0
-Project Home: https://github.com/babel/babel/tree/master/packages/babel-code-frame
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/@babel/code-frame/LICENSE
-License Name: MIT License
-License Id: MIT
+* Name: @hapi/hoek
+* Version: 8.5.1
+* Project Home: <https://github.com/hapijs/hoek>
+* License: <https://raw.githubusercontent.com/hapijs/hoek/master/LICENSE.md>
+* License Name: BSD-style 3-Clause License
+* License Id: BSD-3-Clause
 
-#### @babel/highlight
+#### @sinonjs/commons
 
-Name: @babel/highlight
-Version: 7.0.0
-Project Home: https://github.com/babel/babel/tree/master/packages/babel-highlight
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/@babel/highlight/LICENSE
-License Name: MIT License
-License Id: MIT
+* Name: @sinonjs/commons
+* Version: 3.0.1
+* Project Home: <https://github.com/sinonjs/commons#readme>
+* License: <https://raw.githubusercontent.com/sinonjs/commons/main/LICENSE>
+* License Name: BSD-style 3-Clause License
+* License Id: BSD-3-Clause
+
+#### @sinonjs/fake-timers
+
+* Name: @sinonjs/fake-timers
+* Version: 15.1.0
+* Project Home: <https://github.com/sinonjs/fake-timers>
+* License: <https://raw.githubusercontent.com/sinonjs/fake-timers/main/LICENSE>
+* License Name: BSD-style 3-Clause License
+* License Id: BSD-3-Clause
+
+#### @sinonjs/samsam
+
+* Name: @sinonjs/samsam
+* Version: 8.0.3
+* Project Home: <http://sinonjs.github.io/samsam/>
+* License: <https://raw.githubusercontent.com/sinonjs/samsam/main/LICENSE>
+* License Name: BSD-style 3-Clause License
+* License Id: BSD-3-Clause
+
+#### @xmldom/xmldom
+
+* Name: @xmldom/xmldom
+* Version: 0.8.13
+* Project Home: <https://github.com/xmldom/xmldom>
+* License: <https://raw.githubusercontent.com/xmldom/xmldom/master/LICENSE>
+* License Name: MIT License
+* License Id: MIT
 
 #### accepts
 
-Name: accepts
-Version: 1.3.5
-Project Home: https://github.com/jshttp/accepts
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/accepts/LICENSE
-License Name: MIT License
-License Id: MIT
-
-#### acorn-jsx
-
-Name: acorn-jsx
-Version: 5.0.1
-Project Home: https://github.com/RReverser/acorn-jsx
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/acorn-jsx/LICENSE
-License Name: MIT License
-License Id: MIT
-
-#### acorn
-
-Name: acorn
-Version: 6.1.1
-Project Home: https://github.com/acornjs/acorn
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/acorn/LICENSE
-License Name: MIT License
-License Id: MIT
+* Name: accepts
+* Version: 1.3.8
+* Project Home: <https://github.com/jshttp/accepts>
+* License: <https://raw.githubusercontent.com/jshttp/accepts/refs/heads/master/LICENSE>
+* License Name: MIT License
+* License Id: MIT
 
 #### ajv
 
-Name: ajv
-Version: 8.2.0
-Project Home: https://github.com/epoberezkin/ajv
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/ajv/LICENSE
-License Name: MIT License
-License Id: MIT
-
-#### ajv
-
-Name: ajv
-Version: 6.10.0
-Project Home: https://github.com/epoberezkin/ajv
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/ajv/LICENSE
-License Name: MIT License
-License Id: MIT
-
-#### ansi-escapes
-
-Name: ansi-escapes
-Version: 3.2.0
-Project Home: sindresorhus.com
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/ansi-escapes/license
-License Name: MIT License
-License Id: MIT
-
-#### ansi-html-community
-
-Name: ansi-html-community
-Version: 0.0.8
-Project Home: https://github.com/mahdyar/ansi-html-community
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/ansi-html-community/LICENSE
-License Name: Apache License 2.0
-License Id: Apache-2.0
-
-#### ansi-regex
-
-Name: ansi-regex
-Version: 3.0.0
-Project Home: sindresorhus.com
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/ansi-regex/license
-License Name: MIT License
-License Id: MIT
-
-#### ansi-regex
-
-Name: ansi-regex
-Version: 4.1.0
-Project Home: sindresorhus.com
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/inquirer/node_modules/ansi-regex/license
-License Name: MIT License
-License Id: MIT
-
-#### ansi-styles
-
-Name: ansi-styles
-Version: 3.2.1
-Project Home: sindresorhus.com
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/ansi-styles/license
-License Name: MIT License
-License Id: MIT
+* Name: ajv
+* Version: 8.18.0
+* Project Home: <https://ajv.js.org>
+* License: <https://raw.githubusercontent.com/ajv-validator/ajv/refs/heads/master/LICENSE>
+* License Name: MIT License
+* License Id: MIT
 
 #### ansi_up
 
-Name: ansi_up
-Version: 4.0.3
-Project Home: https://github.com/drudru/ansi_up
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/ansi_up/Readme.md
-License Name: MIT License
-License Id: MIT
+* Name: ansi_up
+* Version: 5.2.1
+* Project Home: <https://github.com/drudru/ansi_up>
+* License: <https://raw.githubusercontent.com/drudru/ansi_up/main/LICENSE>
+* License Name: MIT License
+* License Id: MIT
+
+#### ansi-html-community
+
+* Name: ansi-html-community
+* Version: 0.0.8
+* Project Home: <https://github.com/mahdyar/ansi-html-community>
+* License: <https://raw.githubusercontent.com/mahdyar/ansi-html-community/master/LICENSE>
+* License Name: Apache 2 License
+* License Id: Apache-2.0
+
+#### ansi-regex
+
+* Name: ansi-regex
+* Version: 2.1.1
+* Project Home: <https://github.com/chalk/ansi-regex>
+* License: <https://raw.githubusercontent.com/chalk/ansi-regex/refs/heads/main/license>
+* License Name: MIT License
+* License Id: MIT
+
+#### ansi-styles
+
+* Name: ansi-styles
+* Version: 2.2.1
+* Project Home: <https://github.com/chalk/ansi-styles>
+* License: <https://raw.githubusercontent.com/chalk/ansi-styles/refs/heads/main/license>
+* License Name: MIT License
+* License Id: MIT
 
 #### aqb
 
-Name: aqb
-Version: 2.1.0
-Project Home: https://github.com/arangodb/aqbjs
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/aqb/LICENSE
-License Name: Apache License 2.0
-License Id: Apache-2.0
+* Name: aqb
+* Version: 2.1.0
+* Project Home: <https://github.com/arangodb/aqbjs>
+* License: <https://raw.githubusercontent.com/arangodb/aqbjs/master/LICENSE>
+* License Name: Apache 2 License
+* License Id: APACHE-2.0
 
 #### argparse
 
-Name: argparse
-Version: 1.0.10
-Project Home: https://github.com/nodeca/argparse
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/js-yaml/node_modules/argparse/LICENSE
-License Name: MIT License
-License Id: MIT
+* Name: argparse
+* Version: 1.0.10
+* Project Home: <https://github.com/nodeca/argparse>
+* License: <https://raw.githubusercontent.com/nodeca/argparse/refs/heads/master/LICENSE>
+* License Name: MIT License
+* License Id: MIT
 
 #### assertion-error
 
-Name: assertion-error
-Version: 1.0.2
-Project Home: http://qualiancy.com
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/chai/node_modules/assertion-error/README.md
-License Name: MIT License
-License Id: MIT
-
-#### astral-regex
-
-Name: astral-regex
-Version: 1.0.0
-Project Home: github.com/kevva
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/astral-regex/license
-License Name: MIT License
-License Id: MIT
+* Name: assertion-error
+* Version: 1.1.0
+* Project Home: <https://github.com/chaijs/assertion-error>
+* License: <https://raw.githubusercontent.com/chaijs/assertion-error/main/LICENSE>
+* License Name: MIT License
+* License Id: MIT
 
 #### babel-code-frame
 
-Name: babel-code-frame
-Version: 6.26.0
-Project Home: https://github.com/babel/babel/tree/master/packages/babel-code-frame
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/babel-code-frame/README.md
-License Name: MIT License
-License Id: MIT
+* Name: babel-code-frame
+* Version: 6.26.0
+* Project Home: <https://babeljs.io/>
+* License: <https://raw.githubusercontent.com/babel/babel/main/LICENSE>
+* License Name: MIT License
+* License Id: MIT
 
 #### balanced-match
 
-Name: balanced-match
-Version: 1.0.0
-Project Home: http://juliangruber.com
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/minimatch/node_modules/balanced-match/LICENSE.md
-License Name: MIT License
-License Id: MIT
+* Name: balanced-match
+* Version: 4.0.3
+* Project Home: <https://github.com/juliangruber/balanced-match>
+* License: <https://raw.githubusercontent.com/juliangruber/balanced-match/master/LICENSE.md>
+* License Name: MIT License
+* License Id: MIT
 
 #### brace-expansion
 
-Name: brace-expansion
-Version: 1.1.8
-Project Home: http://juliangruber.com
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/minimatch/node_modules/brace-expansion/README.md
-License Name: MIT License
-License Id: MIT
+* Name: brace-expansion
+* Version: 5.0.5
+* Project Home: <https://github.com/juliangruber/brace-expansion>
+* License: <https://raw.githubusercontent.com/juliangruber/brace-expansion/main/LICENSE>
+* License Name: MIT License
+* License Id: MIT
 
-#### callsites
+#### call-bind-apply-helpers
 
-Name: callsites
-Version: 3.1.0
-Project Home: sindresorhus.com
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/callsites/license
-License Name: MIT License
-License Id: MIT
+* Name: call-bind-apply-helpers
+* Version: 1.0.2
+* Project Home: <https://github.com/ljharb/call-bind-apply-helpers#readme>
+* License: <https://raw.githubusercontent.com/ljharb/call-bind-apply-helpers/main/LICENSE>
+* License Name: MIT License
+* License Id: MIT
+
+#### call-bound
+
+* Name: call-bound
+* Version: 1.0.4
+* Project Home: <https://github.com/ljharb/call-bound#readme>
+* License: <https://raw.githubusercontent.com/ljharb/call-bound/main/LICENSE>
+* License Name: MIT License
+* License Id: MIT
 
 #### chai
 
-Name: chai
-Version: 3.5.0
-Project Home: https://github.com/chaijs/chai
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/chai/README.md
-License Name: MIT License
-License Id: MIT
+* Name: chai
+* Version: 3.5.0
+* Project Home: <http://chaijs.com>
+* License: <https://raw.githubusercontent.com/chaijs/chai/main/LICENSE>
+* License Name: MIT License
+* License Id: MIT
 
 #### chalk
 
-Name: chalk
-Version: 2.4.2
-Project Home: https://github.com/chalk/chalk
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/chalk/license
-License Name: MIT License
-License Id: MIT
-
-#### chardet
-
-Name: chardet
-Version: 0.7.0
-Project Home: https://github.com/runk/node-chardet
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/chardet/LICENSE
-License Name: MIT License
-License Id: MIT
-
-#### cli-cursor
-
-Name: cli-cursor
-Version: 2.1.0
-Project Home: sindresorhus.com
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/cli-cursor/license
-License Name: MIT License
-License Id: MIT
-
-#### cli-width
-
-Name: cli-width
-Version: 2.2.0
-Project Home: https://github.com/knownasilya/cli-width
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/cli-width/LICENSE
-License Name: ISC License
-License Id: ISC
-
-#### color-convert
-
-Name: color-convert
-Version: 1.9.3
-Project Home: https://github.com/Qix-/color-convert
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/color-convert/LICENSE
-License Name: MIT License
-License Id: MIT
-
-#### color-name
-
-Name: color-name
-Version: 1.1.3
-Project Home: https://github.com/dfcreative/color-name
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/color-name/LICENSE
-License Name: MIT License
-License Id: MIT
-
-#### concat-map
-
-Name: concat-map
-Version: 0.0.1
-Project Home: http://substack.net
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/minimatch/node_modules/concat-map/LICENSE
-License Name: MIT License
-License Id: MIT
+* Name: chalk
+* Version: 1.1.3
+* Project Home: <https://github.com/chalk/chalk>
+* License: <https://raw.githubusercontent.com/chalk/chalk/refs/heads/main/license>
+* License Name: MIT License
+* License Id: MIT
 
 #### content-disposition
 
-Name: content-disposition
-Version: 0.5.3
-Project Home: https://github.com/jshttp/content-disposition
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/content-disposition/LICENSE
-License Name: MIT License
-License Id: MIT
+* Name: content-disposition
+* Version: 0.5.4
+* Project Home: <https://github.com/jshttp/content-disposition>
+* License: <https://raw.githubusercontent.com/jshttp/content-disposition/refs/heads/master/LICENSE>
+* License Name: MIT License
+* License Id: MIT
 
 #### content-type
 
-Name: content-type
-Version: 1.0.4
-Project Home: https://github.com/jshttp/content-type
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/content-type/LICENSE
-License Name: MIT License
-License Id: MIT
-
-#### cross-spawn
-
-Name: cross-spawn
-Version: 6.0.5
-Project Home: https://github.com/moxystudio/node-cross-spawn
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/cross-spawn/LICENSE
-License Name: MIT License
-License Id: MIT
-
-#### debug
-
-Name: debug
-Version: 4.1.1
-Project Home: https://github.com/visionmedia/debug
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/debug/LICENSE
-License Name: MIT License
-License Id: MIT
+* Name: content-type
+* Version: 1.0.5
+* Project Home: <https://raw.githubusercontent.com/jshttp/content-disposition/refs/heads/master/LICENSE>
+* License: <https://raw.githubusercontent.com/jshttp/content-type/refs/heads/master/LICENSE>
+* License Name: MIT License
+* License Id: MIT
 
 #### dedent
 
-Name: dedent
-Version: 0.7.0
-Project Home: http://desmondbrand.com
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/dedent/LICENSE
-License Name: MIT License
-License Id: MIT
+* Name: dedent
+* Version: 0.7.0
+* Project Home: <https://github.com/dmnd/dedent>
+* License: <https://raw.githubusercontent.com/dmnd/dedent/main/LICENSE.md>
+* License Name: MIT License
+* License Id: MIT
 
 #### deep-eql
 
-Name: deep-eql
-Version: 0.1.3
-Project Home: https://github.com/chaijs/deep-eql
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/chai/node_modules/deep-eql/README.md
-License Name: MIT License
-License Id: MIT
-
-#### deep-is
-
-Name: deep-is
-Version: 0.1.3
-Project Home: http://thlorenz.com
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/deep-is/LICENSE
-License Name: MIT License
-License Id: MIT
+* Name: deep-eql
+* Version: 0.1.3
+* License: <https://raw.githubusercontent.com/chaijs/deep-eql/main/LICENSE>
+* License Name: MIT License
+* License Id: MIT
 
 #### depd
 
-Name: depd
-Version: 1.1.2
-Project Home: https://github.com/dougwilson/nodejs-depd
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/http-errors/node_modules/depd/LICENSE
-License Name: MIT License
-License Id: MIT
+* Name: depd
+* Version: 1.1.2
+* Project Home: <https://github.com/dougwilson/nodejs-depd>
+* License: <https://raw.githubusercontent.com/dougwilson/nodejs-depd/refs/heads/master/LICENSE>
+* License Name: MIT License
+* License Id: MIT
 
-#### doctrine
+#### diff
 
-Name: doctrine
-Version: 3.0.0
-Project Home: https://github.com/eslint/doctrine
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/doctrine/LICENSE
-License Name: Apache License 2.0
-License Id: Apache-2.0
+* Name: diff
+* Version: 8.0.3
+* Project Home: <https://github.com/kpdecker/jsdiff>
+* License: <https://raw.githubusercontent.com/kpdecker/jsdiff/master/LICENSE>
+* License Name: BSD-style 3-Clause License
+* License Id: BSD-3-Clause
 
-#### emoji-regex
+#### dunder-proto
 
-Name: emoji-regex
-Version: 7.0.3
-Project Home: https://mathiasbynens.be/
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/emoji-regex/LICENSE-MIT.txt
-License Name: MIT License
-License Id: MIT
+* Name: dunder-proto
+* Version: 1.0.1
+* Project Home: <https://github.com/es-shims/dunder-proto#readme>
+* License: <https://raw.githubusercontent.com/es-shims/dunder-proto/main/LICENSE>
+* License Name: MIT License
+* License Id: MIT
 
 #### error-stack-parser
 
-Name: error-stack-parser
-Version: 2.0.2
-Project Home: https://github.com/stacktracejs/error-stack-parser
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/error-stack-parser/LICENSE
-License Name: MIT License
-License Id: MIT
+* Name: error-stack-parser
+* Version: 2.1.4
+* Project Home: <https://www.stacktracejs.com>
+* License: <https://raw.githubusercontent.com/stacktracejs/error-stack-parser/master/LICENSE>
+* License Name: MIT License
+* License Id: MIT
 
-#### eslint-scope
+#### es-define-property
 
-Name: eslint-scope
-Version: 4.0.3
-Project Home: https://github.com/eslint/eslint-scope
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/eslint-scope/LICENSE
-License Name: BSD 2-clause "Simplified" License
-License Id: BSD-2-Clause
+* Name: es-define-property
+* Version: 1.0.1
+* Project Home: <https://github.com/ljharb/es-define-property#readme>
+* License: <https://raw.githubusercontent.com/ljharb/es-define-property/main/LICENSE>
+* License Name: MIT License
+* License Id: MIT
 
-#### eslint-utils
+#### es-errors
 
-Name: eslint-utils
-Version: 1.3.1
-Project Home: https://github.com/mysticatea/eslint-utils
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/eslint-utils/LICENSE
-License Name: MIT License
-License Id: MIT
+* Name: es-errors
+* Version: 1.3.0
+* Project Home: <https://github.com/ljharb/es-errors#readme>
+* License: <https://raw.githubusercontent.com/ljharb/es-errors/main/LICENSE>
+* License Name: MIT License
+* License Id: MIT
 
-#### eslint-visitor-keys
+#### es-object-atoms
 
-Name: eslint-visitor-keys
-Version: 1.0.0
-Project Home: https://github.com/mysticatea
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/eslint-visitor-keys/LICENSE
-License Name: Apache License 2.0
-License Id: Apache-2.0
+* Name: es-object-atoms
+* Version: 1.1.1
+* Project Home: <https://github.com/ljharb/es-object-atoms#readme>
+* License: <https://raw.githubusercontent.com/ljharb/es-object-atoms/main/LICENSE>
+* License Name: MIT License
+* License Id: MIT
 
-#### eslint
+#### escape-string-regexp
 
-Name: eslint
-Version: 5.16.0
-Project Home: https://github.com/eslint/eslint
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/LICENSE
-License Name: MIT License
-License Id: MIT
-
-#### espree
-
-Name: espree
-Version: 5.0.1
-Project Home: https://github.com/eslint/espree
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/espree/LICENSE
-License Name: BSD 2-clause "Simplified" License
-License Id: BSD-2-Clause
+* Name: escape-string-regexp
+* Version: 1.0.5
+* Project Home: <https://github.com/sindresorhus/escape-string-regexp>
+* License: <https://raw.githubusercontent.com/sindresorhus/escape-string-regexp/refs/heads/main/license>
+* License Name: MIT License
+* License Id: MIT
 
 #### esprima
 
-Name: esprima
-Version: 4.0.1
-Project Home: https://github.com/jquery/esprima
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/js-yaml/node_modules/esprima/LICENSE.BSD
-License Name: BSD 2-clause "Simplified" License
-License Id: BSD-2-Clause
-
-#### esquery
-
-Name: esquery
-Version: 1.0.1
-Project Home: https://github.com/jrfeenst/esquery
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/esquery/license.txt
-License Name: BSD 3-clause "New" or "Revised" License
-License Id: BSD-3-Clause
-
-#### esrecurse
-
-Name: esrecurse
-Version: 4.2.1
-Project Home: https://github.com/estools/esrecurse
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/esrecurse/README.md
-License Name: BSD 2-clause "Simplified" License
-License Id: BSD-2-Clause
-
-#### estraverse
-
-Name: estraverse
-Version: 4.2.0
-Project Home: https://github.com/estools/estraverse
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/estraverse/LICENSE.BSD
-License Name: BSD 2-clause "Simplified" License
-License Id: BSD-2-Clause
+* Name: esprima
+* Version: 4.0.1
+* Project Home: <http://esprima.org>
+* License: <https://raw.githubusercontent.com/jquery/esprima/refs/heads/main/LICENSE.BSD>
+* License Name: BSD-style 2-Clause License
+* License Id: BSD-2-Clause
 
 #### esutils
 
-Name: esutils
-Version: 2.0.2
-Project Home: https://github.com/estools/esutils
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/babel-code-frame/node_modules/esutils/LICENSE.BSD
-License Name: BSD License
-License Id: BSD
+* Name: esutils
+* Version: 2.0.3
+* Project Home: <https://github.com/estools/esutils>
+* License: <https://raw.githubusercontent.com/estools/esutils/refs/heads/master/LICENSE.BSD>
+* License Name: BSD-style 2-Clause License
+* License Id: BSD-2-Clause
 
 #### extendible
 
-Name: extendible
-Version: 0.1.1
-Project Home: https://github.com/bigpipe/extendible
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/extendible/README.md
-License Name: MIT License
-License Id: MIT
-
-#### external-editor
-
-Name: external-editor
-Version: 3.0.3
-Project Home: https://mrkmg.com
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/external-editor/LICENSE
-License Name: MIT License
-License Id: MIT
+* Name: extendible
+* Version: 0.1.1
+* Project Home: <https://github.com/bigpipe/extendible>
+* License: <https://github.com/bigpipe/extendible#license>
+* License Name: MIT License
+* License Id: MIT
 
 #### fast-deep-equal
 
-Name: fast-deep-equal
-Version: 3.1.3
-Project Home: https://github.com/epoberezkin/fast-deep-equal
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/ajv/node_modules/fast-deep-equal/LICENSE
-License Name: MIT License
-License Id: MIT
+* Name: fast-deep-equal
+* Version: 3.1.3
+* Project Home: <https://github.com/epoberezkin/fast-deep-equal#readme>
+* License: <https://raw.githubusercontent.com/epoberezkin/fast-deep-equal/master/LICENSE>
+* License Name: MIT License
+* License Id: MIT
 
-#### fast-deep-equal
+#### fast-uri
 
-Name: fast-deep-equal
-Version: 2.0.1
-Project Home: https://github.com/epoberezkin/fast-deep-equal
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/fast-deep-equal/LICENSE
-License Name: MIT License
-License Id: MIT
+* Name: fast-uri
+* Version: 3.1.0
+* Project Home: <https://github.com/fastify/fast-uri>
+* License: <https://raw.githubusercontent.com/fastify/fast-uri/main/LICENSE>
+* License Name: BSD-style 3-Clause License
+* License Id: BSD-3-Clause
 
-#### fast-json-stable-stringify
+#### function-bind
 
-Name: fast-json-stable-stringify
-Version: 2.0.0
-Project Home: http://substack.net
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/fast-json-stable-stringify/LICENSE
-License Name: MIT License
-License Id: MIT
+* Name: function-bind
+* Version: 1.1.2
+* Project Home: <https://github.com/Raynos/function-bind>
+* License: <https://raw.githubusercontent.com/Raynos/function-bind/master/LICENSE>
+* License Name: MIT License
+* License Id: MIT
 
-#### fast-levenshtein
+#### get-intrinsic
 
-Name: fast-levenshtein
-Version: 2.0.6
-Project Home: http://www.hiddentao.com/
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/fast-levenshtein/LICENSE.md
-License Name: MIT License
-License Id: MIT
+* Name: get-intrinsic
+* Version: 1.3.0
+* Project Home: <https://github.com/ljharb/get-intrinsic#readme>
+* License: <https://raw.githubusercontent.com/ljharb/get-intrinsic/main/LICENSE>
+* License Name: MIT License
+* License Id: MIT
 
-#### figures
+#### get-proto
 
-Name: figures
-Version: 2.0.0
-Project Home: sindresorhus.com
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/figures/license
-License Name: MIT License
-License Id: MIT
+* Name: get-proto
+* Version: 1.0.1
+* Project Home: <https://github.com/ljharb/get-proto#readme>
+* License: <https://raw.githubusercontent.com/ljharb/get-proto/main/LICENSE>
+* License Name: MIT License
+* License Id: MIT
 
-#### file-entry-cache
+#### gopd
 
-Name: file-entry-cache
-Version: 5.0.1
-Project Home: http://royriojas.com
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/file-entry-cache/LICENSE
-License Name: MIT License
-License Id: MIT
-
-#### flat-cache
-
-Name: flat-cache
-Version: 2.0.1
-Project Home: http://royriojas.com
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/flat-cache/LICENSE
-License Name: MIT License
-License Id: MIT
-
-#### flatted
-
-Name: flatted
-Version: 2.0.0
-Project Home: https://github.com/WebReflection/flatted
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/flatted/LICENSE
-License Name: ISC License
-License Id: ISC
-
-#### formatio
-
-Name: formatio
-Version: 1.1.1
-Project Home: https://github.com/busterjs/formatio
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/sinon/node_modules/formatio/LICENSE
-License Name: BSD License
-License Id: BSD
-
-#### fs.realpath
-
-Name: fs.realpath
-Version: 1.0.0
-Project Home: http://blog.izs.me/
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/fs.realpath/LICENSE
-License Name: ISC License
-License Id: ISC
-
-#### functional-red-black-tree
-
-Name: functional-red-black-tree
-Version: 1.0.1
-Project Home: https://github.com/mikolalysenko/functional-red-black-tree
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/functional-red-black-tree/LICENSE
-License Name: MIT License
-License Id: MIT
-
-#### glob
-
-Name: glob
-Version: 7.1.3
-Project Home: http://blog.izs.me/
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/glob/LICENSE
-License Name: ISC License
-License Id: ISC
-
-#### globals
-
-Name: globals
-Version: 11.11.0
-Project Home: sindresorhus.com
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/globals/license
-License Name: MIT License
-License Id: MIT
-
-#### graphql-sync
-
-Name: graphql-sync
-Version: 0.6.2-sync
-Project Home: https://github.com/arangodb/graphql-sync
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/graphql-sync/LICENSE
-License Name: BSD 3-clause "New" or "Revised" License
-License Id: BSD-3-Clause
+* Name: gopd
+* Version: 1.2.0
+* Project Home: <https://github.com/ljharb/gopd#readme>
+* License: <https://raw.githubusercontent.com/ljharb/gopd/main/LICENSE>
+* License Name: MIT License
+* License Id: MIT
 
 #### graphql
 
-Name: graphql
-Version: 0.6.2
-Project Home: https://github.com/graphql/graphql-js
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/graphql-sync/node_modules/graphql/LICENSE
-License Name: BSD 3-clause "New" or "Revised" License
-License Id: BSD-3-Clause
+* Name: graphql
+* Version: 0.6.2
+* Project Home: <https://github.com/graphql/graphql-js>
+* License: <https://raw.githubusercontent.com/graphql/graphql-js/main/LICENSE>
+* License Name: BSD-style 3-Clause License
+* License Id: BSD-3-Clause
+
+#### graphql-sync
+
+* Name: graphql-sync
+* Version: 0.6.2-sync
+* Project Home: <https://www.npmjs.com/package/graphql-sync>
+* License: <https://www.npmjs.com/package/graphql-sync#license>
+* License Name: BSD-style 3-Clause License
+* License Id: BSD-3-Clause
+
+#### has-ansi
+
+* Name: has-ansi
+* Version: 2.0.0
+* Project Home: <https://github.com/chalk/has-ansi>
+* License: <https://raw.githubusercontent.com/chalk/has-ansi/refs/heads/main/license>
+* License Name: MIT License
+* License Id: MIT
 
 #### has-flag
 
-Name: has-flag
-Version: 3.0.0
-Project Home: sindresorhus.com
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/has-flag/license
-License Name: MIT License
-License Id: MIT
+* Name: has-flag
+* Version: 4.0.0
+* Project Home: <https://github.com/chalk/has-ansi>
+* License: <https://raw.githubusercontent.com/chalk/has-ansi/refs/heads/main/license>
+* License Name: MIT License
+* License Id: MIT
+
+#### has-symbols
+
+* Name: has-symbols
+* Version: 1.1.0
+* Project Home: <https://github.com/ljharb/has-symbols#readme>
+* License: <https://raw.githubusercontent.com/inspect-js/has-symbols/main/LICENSE>
+* License Name: MIT License
+* License Id: MIT
+
+#### hasown
+
+* Name: hasown
+* Version: 2.0.2
+* Project Home: <https://github.com/inspect-js/hasOwn#readme>
+* License: <https://raw.githubusercontent.com/inspect-js/hasOwn/main/LICENSE>
+* License Name: MIT License
+* License Id: MIT
 
 #### highlight.js
 
-Name: highlight.js
-Version: 10.7.3
-Project Home: https://github.com/highlightjs/highlight.js
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/highlight.js/LICENSE
-License Name: BSD 3-clause "New" or "Revised" License
-License Id: BSD-3-Clause
-
-#### hoek
-
-Name: hoek
-Version: 6.1.3
-Project Home: https://github.com/hapijs/hoek
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/joi/node_modules/hoek/LICENSE
-License Name: BSD 3-clause "New" or "Revised" License
-License Id: BSD-3-Clause
+* Name: highlight.js
+* Version: 10.7.3
+* Project Home: <https://highlightjs.org/>
+* License: <https://raw.githubusercontent.com/highlightjs/highlight.js/main/LICENSE>
+* License Name: BSD-style 3-Clause License
+* License Id: BSD-3-Clause
 
 #### http-errors
 
-Name: http-errors
-Version: 1.7.2
-Project Home: http://jongleberry.com
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/http-errors/LICENSE
-License Name: MIT License
-License Id: MIT
+* Name: http-errors
+* Version: 1.8.0
+* Project Home: <https://github.com/jshttp/http-errors>
+* License: <https://raw.githubusercontent.com/jshttp/http-errors/refs/heads/master/LICENSE>
+* License Name: MIT License
+* License Id: MIT
 
 #### i
 
-Name: i
-Version: 0.3.6
-Project Home: pksunkara.github.com
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/i/LICENSE
-License Name: MIT License
-License Id: MIT
+* Name: i
+* Version: 0.3.7
+* Project Home: <http://pksunkara.github.com/inflect>
+* License: <https://raw.githubusercontent.com/pksunkara/inflect/master/LICENSE>
+* License Name: MIT License
+* License Id: MIT
 
 #### iconv-lite
 
-Name: iconv-lite
-Version: 0.6.3
-Project Home: https://github.com/ashtuchkin/iconv-lite
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/iconv-lite/LICENSE
-License Name: MIT License
-License Id: MIT
-
-#### ignore
-
-Name: ignore
-Version: 4.0.6
-Project Home: https://github.com/kaelzhang/node-ignore
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/ignore/LICENSE-MIT
-License Name: MIT License
-License Id: MIT
-
-#### import-fresh
-
-Name: import-fresh
-Version: 3.0.0
-Project Home: sindresorhus.com
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/import-fresh/license
-License Name: MIT License
-License Id: MIT
-
-#### imurmurhash
-
-Name: imurmurhash
-Version: 0.1.4
-Project Home: https://github.com/homebrewing
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/imurmurhash/README.md
-License Name: MIT License
-License Id: MIT
-
-#### inflight
-
-Name: inflight
-Version: 1.0.6
-Project Home: http://blog.izs.me/
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/inflight/LICENSE
-License Name: ISC License
-License Id: ISC
+* Name: iconv-lite
+* Version: 0.6.3
+* Project Home: <https://github.com/ashtuchkin/iconv-lite>
+* License: <https://raw.githubusercontent.com/ashtuchkin/iconv-lite/master/LICENSE>
+* License Name: MIT License
+* License Id: MIT
 
 #### inherits
 
-Name: inherits
-Version: 2.0.1
-Project Home: https://github.com/isaacs/inherits
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/sinon/node_modules/inherits/LICENSE
-License Name: ISC License
-License Id: ISC
-
-#### inherits
-
-Name: inherits
-Version: 2.0.3
-Project Home: https://github.com/isaacs/inherits
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/inherits/LICENSE
-License Name: ISC License
-License Id: ISC
-
-#### inquirer
-
-Name: inquirer
-Version: 6.3.1
-Project Home: https://github.com/SBoudrias/Inquirer.js
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/inquirer/LICENSE
-License Name: MIT License
-License Id: MIT
-
-#### is-fullwidth-code-point
-
-Name: is-fullwidth-code-point
-Version: 2.0.0
-Project Home: sindresorhus.com
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/is-fullwidth-code-point/license
-License Name: MIT License
-License Id: MIT
-
-#### is-promise
-
-Name: is-promise
-Version: 2.1.0
-Project Home: https://github.com/then/is-promise
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/is-promise/LICENSE
-License Name: MIT License
-License Id: MIT
+* Name: inherits
+* Version: 2.0.4
+* Project Home: <https://github.com/isaacs/inherits>
+* License: <https://raw.githubusercontent.com/isaacs/inherits/main/LICENSE.md>
+* License Name: ISC
+* License Id: ISC
 
 #### is-wsl
 
 * Name: is-wsl
-* Version: 2.2.0
-* Project Home: https://github.com/sindresorhus/is-wsl
-* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/node-netstat/node_modules/is-wsl/LICENSE
+* Version: 1.1.0
+* Project Home: <https://github.com/sindresorhus/is-wsl>
+* License: <https://raw.githubusercontent.com/sindresorhus/is-wsl/refs/heads/main/license>
 * License Name: MIT License
 * License Id: MIT
 
 #### isemail
 
-Name: isemail
-Version: 3.2.0
-Project Home: https://github.com/hapijs/isemail
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/joi/node_modules/isemail/LICENSE
-License Name: BSD 3-clause "New" or "Revised" License
-License Id: BSD-3-Clause
-
-#### isexe
-
-Name: isexe
-Version: 2.0.0
-Project Home: http://blog.izs.me/
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/isexe/LICENSE
-License Name: ISC License
-License Id: ISC
+* Name: isemail
+* Version: 3.2.0
+* Project Home: <https://github.com/hapijs/isemail>
+* License: <https://raw.githubusercontent.com/hapijs/isemail/master/LICENSE>
+* License Name: BSD-style 3-Clause License
+* License Id: BSD-3-Clause
 
 #### iterall
 
-Name: iterall
-Version: 1.0.2
-Project Home: http://leebyron.com/
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/graphql-sync/node_modules/iterall/LICENSE
-License Name: MIT License
-License Id: MIT
-
-#### joi-to-json-schema
-
-Name: joi-to-json-schema
-Version: 4.0.1
-Project Home: https://github.com/lightsofapollo/joi-to-json-schema
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/joi-to-json-schema/README.md
-License Name: Apache License 2.0
-License Id: Apache-2.0
+* Name: iterall
+* Version: 1.0.2
+* Project Home: <https://github.com/leebyron/iterall#readme>
+* License: <https://raw.githubusercontent.com/leebyron/iterall/master/LICENSE>
+* License Name: MIT License
+* License Id: MIT
 
 #### joi
 
-Name: joi
-Version: 14.3.1
-Project Home: https://github.com/hapijs/joi
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/joi/LICENSE
-License Name: BSD 3-clause "New" or "Revised" License
-License Id: BSD-3-Clause
+* Name: joi
+* Version: 14.3.1
+* Project Home: <https://github.com/hapijs/joi>
+* License: <https://raw.githubusercontent.com/hapijs/joi/master/LICENSE.md>
+* License Name: BSD-style 3-Clause License
+* License Id: BSD-3-Clause
+
+#### joi-to-json-schema
+
+* Name: joi-to-json-schema
+* Version: 4.0.1
+* Project Home: <https://github.com/lightsofapollo/joi-to-json-schema>
+* License: <https://github.com/lightsofapollo/joi-to-json-schema#license>
+* License Name: Apache 2 License
+* License Id: Apache2
 
 #### js-tokens
 
-Name: js-tokens
-Version: 3.0.2
-Project Home: https://github.com/lydell/js-tokens
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/babel-code-frame/node_modules/js-tokens/LICENSE
-License Name: MIT License
-License Id: MIT
-
-#### js-tokens
-
-Name: js-tokens
-Version: 4.0.0
-Project Home: https://github.com/lydell/js-tokens
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/js-tokens/LICENSE
-License Name: MIT License
-License Id: MIT
+* Name: js-tokens
+* Version: 3.0.2
+* Project Home: <https://github.com/lydell/js-tokens>
+* License: <https://raw.githubusercontent.com/lydell/js-tokens/refs/heads/main/LICENSE>
+* License Name: MIT License
+* License Id: MIT
 
 #### js-yaml
 
-Name: js-yaml
-Version: 3.13.1
-Project Home: https://github.com/nodeca/js-yaml
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/js-yaml/LICENSE
-License Name: MIT License
-License Id: MIT
+* Name: js-yaml
+* Version: 3.14.2
+* Project Home: <https://github.com/nodeca/js-yaml>
+* License: <https://raw.githubusercontent.com/nodeca/js-yaml/refs/heads/master/LICENSE>
+* License Name: MIT License
+* License Id: MIT
 
 #### json-schema-traverse
 
-Name: json-schema-traverse
-Version: 1.0.0
-Project Home: https://github.com/epoberezkin/json-schema-traverse
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/ajv/node_modules/json-schema-traverse/LICENSE
-License Name: MIT License
-License Id: MIT
-
-#### json-schema-traverse
-
-Name: json-schema-traverse
-Version: 0.4.1
-Project Home: https://github.com/epoberezkin/json-schema-traverse
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/json-schema-traverse/LICENSE
-License Name: MIT License
-License Id: MIT
-
-#### json-stable-stringify-without-jsonify
-
-Name: json-stable-stringify-without-jsonify
-Version: 1.0.1
-Project Home: http://substack.net
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/json-stable-stringify-without-jsonify/LICENSE
-License Name: MIT License
-License Id: MIT
-
-#### levn
-
-Name: levn
-Version: 0.3.0
-Project Home: https://github.com/gkz/levn
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/levn/LICENSE
-License Name: MIT License
-License Id: MIT
+* Name: json-schema-traverse
+* Version: 1.0.0
+* Project Home: <https://github.com/epoberezkin/json-schema-traverse#readme>
+* License: <https://raw.githubusercontent.com/epoberezkin/json-schema-traverse/master/LICENSE>
+* License Name: MIT License
+* License Id: MIT
 
 #### lodash
 
-Name: lodash
-Version: 4.17.13
-Project Home: https://github.com/lodash/lodash
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/lodash/LICENSE
-License Name: MIT License
-License Id: MIT
+* Name: lodash
+* Version: 4.18.1
+* Project Home: <https://lodash.com/>
+* License: <https://raw.githubusercontent.com/lodash/lodash/refs/heads/main/LICENSE>
+* License Name: MIT License
+* License Id: MIT
 
-#### lolex
+#### lru-cache
 
-Name: lolex
-Version: 1.3.2
-Project Home: https://github.com/sinonjs/lolex
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/sinon/node_modules/lolex/LICENSE
-License Name: BSD 3-clause "New" or "Revised" License
-License Id: BSD-3-Clause
+* Name: lru-cache
+* Version: 6.0.0
+* Project Home: <https://github.com/isaacs/node-lru-cache>
+* License: <https://raw.githubusercontent.com/isaacs/node-lru-cache/main/LICENSE.md>
+* License Name: ISC
+* License Id: ISC
+
+#### math-intrinsics
+
+* Name: math-intrinsics
+* Version: 1.1.0
+* Project Home: <https://github.com/es-shims/math-intrinsics#readme>
+* License: <https://raw.githubusercontent.com/es-shims/math-intrinsics/main/LICENSE>
+* License Name: MIT License
+* License Id: MIT
 
 #### media-typer
 
 * Name: media-typer
 * Version: 0.3.0
-* Project Home: https://github.com/jshttp/media-typer
-* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/type-is/node_modules/media-typer/LICENSE
+* Project Home: <https://github.com/jshttp/media-typer>
+* License: <https://raw.githubusercontent.com/jshttp/media-typer/refs/heads/master/LICENSE>
 * License Name: MIT License
 * License Id: MIT
 
 #### mime-db
 
-Name: mime-db
-Version: 1.38.0
-Project Home: https://github.com/jshttp/mime-db
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/mime-types/node_modules/mime-db/LICENSE
-License Name: MIT License
-License Id: MIT
+* Name: mime-db
+* Version: 1.52.0
+* Project Home: <https://github.com/jshttp/mime-db>
+* License: <https://raw.githubusercontent.com/jshttp/mime-db/refs/heads/master/LICENSE>
+* License Name: MIT License
+* License Id: MIT
 
 #### mime-types
 
-Name: mime-types
-Version: 2.1.31
-Project Home: https://github.com/jshttp/mime-types
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/mime-types/LICENSE
-License Name: MIT License
-License Id: MIT
-
-#### mimic-fn
-
-Name: mimic-fn
-Version: 1.2.0
-Project Home: sindresorhus.com
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/mimic-fn/license
-License Name: MIT License
-License Id: MIT
+* Name: mime-types
+* Version: 2.1.35
+* Project Home: <https://raw.githubusercontent.com/jshttp/mime-db/refs/heads/master/LICENSE>
+* License: <https://raw.githubusercontent.com/jshttp/mime-types/refs/heads/master/LICENSE>
+* License Name: MIT License
+* License Id: MIT
 
 #### minimatch
 
-Name: minimatch
-Version: 3.0.4
-Project Home: http://blog.izs.me
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/minimatch/LICENSE
-License Name: ISC License
-License Id: ISC
-
-#### minimist
-
-Name: minimist
-Version: 0.0.8
-Project Home: http://substack.net
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/minimist/LICENSE
-License Name: MIT License
-License Id: MIT
-
-#### mkdirp
-
-Name: mkdirp
-Version: 0.5.1
-Project Home: http://substack.net
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/mkdirp/LICENSE
-License Name: MIT License
-License Id: MIT
+* Name: minimatch
+* Version: 10.2.3
+* Project Home: <https://github.com/isaacs/minimatch>
+* License: <https://raw.githubusercontent.com/isaacs/minimatch/main/LICENSE.md>
+* License Name: BlueOak-1.0.0
+* License Id: BlueOak-1.0.0
 
 #### ms
 
-Name: ms
-Version: 2.1.3
-Project Home: https://github.com/zeit/ms
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/ms/license.md
-License Name: MIT License
-License Id: MIT
-
-#### mute-stream
-
-Name: mute-stream
-Version: 0.0.7
-Project Home: http://blog.izs.me/
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/mute-stream/LICENSE
-License Name: ISC License
-License Id: ISC
-
-#### natural-compare
-
-Name: natural-compare
-Version: 1.4.0
-Project Home: https://github.com/litejs/natural-compare-lite
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/natural-compare/README.md
-License Name: MIT License
-License Id: MIT
+* Name: ms
+* Version: 2.1.3
+* Project Home: <https://github.com/vercel/ms>
+* License: <https://raw.githubusercontent.com/vercel/ms/refs/heads/main/LICENSE>
+* License Name: MIT License
+* License Id: MIT
 
 #### negotiator
 
-Name: negotiator
-Version: 0.6.1
-Project Home: https://github.com/jshttp/negotiator
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/accepts/node_modules/negotiator/LICENSE
-License Name: MIT License
-License Id: MIT
+* Name: negotiator
+* Version: 0.6.3
+* Project Home: <https://github.com/jshttp/negotiator>
+* License: <https://raw.githubusercontent.com/jshttp/negotiator/refs/heads/master/LICENSE>
+* License Name: MIT License
+* License Id: MIT
 
 #### netmask
 
-Name: netmask
-Version: 1.0.6
-Project Home: https://github.com/rs/node-netmask
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/netmask/README.md
-License Name: MIT License
-License Id: MIT
-
-#### nice-try
-
-Name: nice-try
-Version: 1.0.5
-Project Home: https://github.com/electerious/nice-try
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/nice-try/LICENSE
-License Name: MIT License
-License Id: MIT
-
+* Name: netmask
+* Version: 2.0.2
+* Project Home: <https://github.com/rs/node-netmask>
+* License: <https://raw.githubusercontent.com/rs/node-netmask/master/LICENSE.md>
+* License Name: MIT License
+* License Id: MIT
 
 #### node-netstat
 
-Name: node-netstat
-Version: 1.8.0 + adjustments for ArangoDB
-Project Home: https://github.com/danielkrainas/node-netstat#readme
-License: http://unlicense.org/UNLICENSE
-License Name: Unlicense / Public Domain
-License Id: -
+* Name: node-netstat
+* Version: 1.8.0
+* Project Home: <https://github.com/danielkrainas/node-netstat>
+* License: <https://raw.githubusercontent.com/danielkrainas/node-netstat/refs/heads/master/UNLICENSE>
+* License Name: Unlicense
+* License Id: Unlicense
 
-#### once
+#### object-inspect
 
-Name: once
-Version: 1.4.0
-Project Home: http://blog.izs.me/
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/once/LICENSE
-License Name: ISC License
-License Id: ISC
+* Name: object-inspect
+* Version: 1.13.4
+* Project Home: <https://github.com/inspect-js/object-inspect>
+* License: <https://raw.githubusercontent.com/inspect-js/object-inspect/main/LICENSE>
+* License Name: MIT License
+* License Id: MIT
 
-#### onetime
+#### parse-prometheus-text-format
 
-Name: onetime
-Version: 2.0.1
-Project Home: sindresorhus.com
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/onetime/license
-License Name: MIT License
-License Id: MIT
-
-#### optionator
-
-Name: optionator
-Version: 0.8.2
-Project Home: https://github.com/gkz/optionator
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/optionator/LICENSE
-License Name: MIT License
-License Id: MIT
-
-#### os-tmpdir
-
-Name: os-tmpdir
-Version: 1.0.2
-Project Home: sindresorhus.com
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/os-tmpdir/license
-License Name: MIT License
-License Id: MIT
-
-#### parent-module
-
-Name: parent-module
-Version: 1.0.1
-Project Home: sindresorhus.com
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/parent-module/license
-License Name: MIT License
-License Id: MIT
-
-#### path-is-absolute
-
-Name: path-is-absolute
-Version: 1.0.1
-Project Home: sindresorhus.com
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/path-is-absolute/license
-License Name: MIT License
-License Id: MIT
-
-#### path-is-inside
-
-Name: path-is-inside
-Version: 1.0.2
-Project Home: https://domenic.me
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/path-is-inside/LICENSE.txt
-License Name: MIT License
-License Id: MIT
-
-#### path-key
-
-Name: path-key
-Version: 2.0.1
-Project Home: sindresorhus.com
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/path-key/license
-License Name: MIT License
-License Id: MIT
-
-#### prelude-ls
-
-Name: prelude-ls
-Version: 1.1.2
-Project Home: https://github.com/gkz/prelude-ls
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/prelude-ls/LICENSE
-License Name: MIT License
-License Id: MIT
-
-#### progress
-
-Name: progress
-Version: 2.0.3
-Project Home: https://github.com/visionmedia/node-progress
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/progress/LICENSE
-License Name: MIT License
-License Id: MIT
+* Name: parse-prometheus-text-format
+* Version: 1.1.1
+* Project Home: <https://github.com/yunyu/parse-prometheus-text-format>
+* License: <https://raw.githubusercontent.com/yunyu/parse-prometheus-text-format/master/LICENSE>
+* License Name: Apache 2 License
+* License Id: Apache-2.0
 
 #### punycode
 
-Name: punycode
-Version: 2.1.1
-Project Home: https://mathiasbynens.be/
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/ajv/node_modules/punycode/LICENSE-MIT.txt
-License Name: MIT License
-License Id: MIT
-
-#### punycode
-
-Name: punycode
-Version: 2.1.1
-Project Home: https://mathiasbynens.be/
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/punycode/LICENSE-MIT.txt
-License Name: MIT License
-License Id: MIT
+* Name: punycode
+* Version: 2.3.0
+* Project Home: <https://mths.be/punycode>
+* License: <https://raw.githubusercontent.com/mathiasbynens/punycode.js/refs/heads/main/LICENSE-MIT.txt>
+* License Name: MIT License
+* License Id: MIT
 
 #### qs
 
-Name: qs
-Version: 6.7.0
-Project Home: https://github.com/ljharb/qs
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/qs/LICENSE
-License Name: BSD 3-clause "New" or "Revised" License
-License Id: BSD-3-Clause
+* Name: qs
+* Version: 6.14.2
+* Project Home: <https://github.com/ljharb/qs>
+* License: <https://raw.githubusercontent.com/ljharb/qs/main/LICENSE.md>
+* License Name: BSD-style 3-Clause License
+* License Id: BSD-3-Clause
 
 #### range-parser
 
-Name: range-parser
-Version: 1.2.0
-Project Home: http://tjholowaychuk.com
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/range-parser/LICENSE
-License Name: MIT License
-License Id: MIT
-
-#### regexpp
-
-Name: regexpp
-Version: 2.0.1
-Project Home: https://github.com/mysticatea
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/regexpp/LICENSE
-License Name: MIT License
-License Id: MIT
+* Name: range-parser
+* Version: 1.2.1
+* Project Home: <https://github.com/jshttp/range-parser>
+* License: <https://raw.githubusercontent.com/jshttp/range-parser/refs/heads/master/LICENSE>
+* License Name: MIT License
+* License Id: MIT
 
 #### require-from-string
 
-Name: require-from-string
-Version: 2.0.2
-Project Home: https://github.com/floatdrop/require-from-string#readme
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/ajv/node_modules/require-from-string/license
-License Name: MIT License
-License Id: MIT
-
-#### resolve-from
-
-Name: resolve-from
-Version: 4.0.0
-Project Home: sindresorhus.com
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/resolve-from/license
-License Name: MIT License
-License Id: MIT
-
-#### restore-cursor
-
-Name: restore-cursor
-Version: 2.0.0
-Project Home: sindresorhus.com
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/restore-cursor/license
-License Name: MIT License
-License Id: MIT
-
-#### rimraf
-
-Name: rimraf
-Version: 2.6.3
-Project Home: http://blog.izs.me/
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/rimraf/LICENSE
-License Name: ISC License
-License Id: ISC
-
-#### run-async
-
-Name: run-async
-Version: 2.3.0
-Project Home: https://github.com/SBoudrias/run-async
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/run-async/LICENSE
-License Name: MIT License
-License Id: MIT
-
-#### rxjs
-
-Name: rxjs
-Version: 6.4.0
-Project Home: https://github.com/reactivex/rxjs
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/rxjs/LICENSE.txt
-License Name: Apache License 2.0
-License Id: Apache-2.0
+* Name: require-from-string
+* Version: 2.0.2
+* Project Home: <https://github.com/floatdrop/require-from-string>
+* License: <https://raw.githubusercontent.com/floatdrop/require-from-string/refs/heads/master/license>
+* License Name: MIT License
+* License Id: MIT
 
 #### safe-buffer
 
-Name: safe-buffer
-Version: 5.1.2
-Project Home: http://feross.org
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/content-disposition/node_modules/safe-buffer/LICENSE
-License Name: MIT License
-License Id: MIT
+* Name: safe-buffer
+* Version: 5.2.1
+* Project Home: <https://github.com/feross/safe-buffer>
+* License: <https://raw.githubusercontent.com/feross/safe-buffer/master/LICENSE>
+* License Name: MIT License
+* License Id: MIT
 
 #### safer-buffer
 
-Name: safer-buffer
-Version: 2.1.2
-Project Home: https://github.com/ChALkeR
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/safer-buffer/LICENSE
-License Name: MIT License
-License Id: MIT
-
-#### samsam
-
-Name: samsam
-Version: 1.1.2
-Project Home: https://github.com/busterjs/samsam
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/sinon/node_modules/samsam/LICENSE
-License Name: BSD License
-License Id: BSD
+* Name: safer-buffer
+* Version: 2.1.2
+* Project Home: <https://github.com/ChALkeR/safer-buffer>
+* License: <https://raw.githubusercontent.com/ChALkeR/safer-buffer/master/LICENSE>
+* License Name: MIT License
+* License Id: MIT
 
 #### semver
 
-Name: semver
-Version: 5.7.0
-Project Home: https://github.com/npm/node-semver
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/semver/LICENSE
-License Name: ISC License
-License Id: ISC
-
-#### semver
-
-Name: semver
-Version: 6.0.0
-Project Home: https://github.com/npm/node-semver
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/semver/LICENSE
-License Name: ISC License
-License Id: ISC
+* Name: semver
+* Version: 7.5.4
+* Project Home: <https://github.com/npm/node-semver>
+* License: <https://raw.githubusercontent.com/npm/node-semver/main/LICENSE>
+* License Name: ISC
+* License Id: ISC
 
 #### setprototypeof
 
-Name: setprototypeof
-Version: 1.1.1
-Project Home: https://github.com/wesleytodd/setprototypeof
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/http-errors/node_modules/setprototypeof/LICENSE
-License Name: ISC License
-License Id: ISC
+* Name: setprototypeof
+* Version: 1.2.0
+* Project Home: <https://github.com/wesleytodd/setprototypeof>
+* License: <https://raw.githubusercontent.com/wesleytodd/setprototypeof/master/LICENSE>
+* License Name: ISC
+* License Id: ISC
 
-#### shebang-command
+#### shallow-equal
 
-Name: shebang-command
-Version: 1.2.0
-Project Home: github.com/kevva
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/shebang-command/license
-License Name: MIT License
-License Id: MIT
+* Name: shallow-equal
+* Version: 1.2.1
+* Project Home: <https://github.com/moroshko/shallow-equal>
+* License: <https://raw.githubusercontent.com/moroshko/shallow-equal/master/LICENSE>
+* License Name: MIT License
+* License Id: MIT
 
-#### shebang-regex
+#### side-channel
 
-Name: shebang-regex
-Version: 1.0.0
-Project Home: sindresorhus.com
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/shebang-regex/license
-License Name: MIT License
-License Id: MIT
+* Name: side-channel
+* Version: 1.1.0
+* Project Home: <https://github.com/ljharb/side-channel#readme>
+* License: <https://raw.githubusercontent.com/ljharb/side-channel/main/LICENSE>
+* License Name: MIT License
+* License Id: MIT
 
-#### signal-exit
+#### side-channel-list
 
-Name: signal-exit
-Version: 3.0.2
-Project Home: https://github.com/tapjs/signal-exit
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/signal-exit/LICENSE.txt
-License Name: ISC License
-License Id: ISC
+* Name: side-channel-list
+* Version: 1.0.0
+* Project Home: <https://github.com/ljharb/side-channel-list#readme>
+* License: <https://raw.githubusercontent.com/ljharb/side-channel-list/main/LICENSE>
+* License Name: MIT License
+* License Id: MIT
+
+#### side-channel-map
+
+* Name: side-channel-map
+* Version: 1.0.1
+* Project Home: <https://github.com/ljharb/side-channel-map#readme>
+* License: <https://raw.githubusercontent.com/ljharb/side-channel-map/main/LICENSE>
+* License Name: MIT License
+* License Id: MIT
+
+#### side-channel-weakmap
+
+* Name: side-channel-weakmap
+* Version: 1.0.2
+* Project Home: <https://github.com/ljharb/side-channel-weakmap#readme>
+* License: <https://raw.githubusercontent.com/ljharb/side-channel-weakmap/main/LICENSE>
+* License Name: MIT License
+* License Id: MIT
 
 #### sinon
 
-Name: sinon
-Version: 1.17.7
-Project Home: https://github.com/cjohansen/Sinon.JS
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/sinon/LICENSE
-License Name: BSD 3-clause "New" or "Revised" License
-License Id: BSD-3-Clause
-
-#### slice-ansi
-
-Name: slice-ansi
-Version: 2.1.0
-Project Home: https://github.com/chalk/slice-ansi
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/slice-ansi/license
-License Name: MIT License
-License Id: MIT
+* Name: sinon
+* Version: 21.0.1
+* Project Home: <https://sinonjs.org/>
+* License: <https://raw.githubusercontent.com/sinonjs/sinon/main/LICENSE>
+* License Name: BSD-style 3-Clause License
+* License Id: BSD-3-Clause
 
 #### sprintf-js
 
-Name: sprintf-js
-Version: 1.0.3
-Project Home: http://alexei.ro/
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/js-yaml/node_modules/sprintf-js/LICENSE
-License Name: BSD 3-clause "New" or "Revised" License
-License Id: BSD-3-Clause
+* Name: sprintf-js
+* Version: 1.0.3
+* Project Home: <https://github.com/alexei/sprintf.js>
+* License: <https://raw.githubusercontent.com/alexei/sprintf.js/master/LICENSE>
+* License Name: BSD-style 3-Clause License
+* License Id: BSD-3-Clause
 
 #### stackframe
 
-Name: stackframe
-Version: 1.0.4
-Project Home: https://github.com/stacktracejs/stackframe
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/error-stack-parser/node_modules/stackframe/LICENSE
-License Name: MIT License
-License Id: MIT
+* Name: stackframe
+* Version: 1.3.4
+* Project Home: <https://www.stacktracejs.com>
+* License: <https://raw.githubusercontent.com/stacktracejs/stackframe/master/LICENSE>
+* License Name: MIT License
+* License Id: MIT
 
 #### statuses
 
-Name: statuses
-Version: 1.5.0
-Project Home: https://github.com/jshttp/statuses
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/statuses/LICENSE
-License Name: MIT License
-License Id: MIT
-
-#### string-width
-
-Name: string-width
-Version: 2.1.1
-Project Home: sindresorhus.com
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/string-width/license
-License Name: MIT License
-License Id: MIT
-
-#### string-width
-
-Name: string-width
-Version: 3.1.0
-Project Home: sindresorhus.com
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/table/node_modules/string-width/license
-License Name: MIT License
-License Id: MIT
+* Name: statuses
+* Version: 1.5.0
+* Project Home: <https://github.com/jshttp/statuses>
+* License: <https://raw.githubusercontent.com/jshttp/statuses/refs/heads/master/LICENSE>
+* License Name: MIT License
+* License Id: MIT
 
 #### strip-ansi
 
-Name: strip-ansi
-Version: 4.0.0
-Project Home: sindresorhus.com
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/strip-ansi/license
-License Name: MIT License
-License Id: MIT
-
-#### strip-ansi
-
-Name: strip-ansi
-Version: 5.2.0
-Project Home: sindresorhus.com
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/inquirer/node_modules/strip-ansi/license
-License Name: MIT License
-License Id: MIT
-
-#### strip-json-comments
-
-Name: strip-json-comments
-Version: 2.0.1
-Project Home: sindresorhus.com
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/strip-json-comments/license
-License Name: MIT License
-License Id: MIT
+* Name: strip-ansi
+* Version: 3.0.1
+* Project Home: <https://github.com/chalk/strip-ansi>
+* License: <https://raw.githubusercontent.com/chalk/strip-ansi/refs/heads/main/license>
+* License Name: MIT License
+* License Id: MIT
 
 #### supports-color
 
-Name: supports-color
-Version: 5.5.0
-Project Home: sindresorhus.com
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/supports-color/license
-License Name: MIT License
-License Id: MIT
+* Name: supports-color
+* Version: 2.0.0
+* Project Home: <https://github.com/chalk/supports-color>
+* License: <https://raw.githubusercontent.com/chalk/supports-color/refs/heads/main/license>
+* License Name: MIT License
+* License Id: MIT
 
-#### table
+#### supports-color
 
-Name: table
-Version: 5.2.3
-Project Home: http://gajus.com
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/table/LICENSE
-License Name: BSD 3-clause "New" or "Revised" License
-License Id: BSD-3-Clause
-
-#### text-table
-
-Name: text-table
-Version: 0.2.0
-Project Home: http://substack.net
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/text-table/LICENSE
-License Name: MIT License
-License Id: MIT
-
-#### through
-
-Name: through
-Version: 2.3.8
-Project Home: dominictarr.com
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/through/LICENSE.APACHE2
-License Name: MIT License
-License Id: MIT
+* Name: supports-color
+* Version: 7.2.0
+* Project Home: <https://github.com/chalk/supports-color>
+* License: <https://raw.githubusercontent.com/chalk/supports-color/refs/heads/main/license>
+* License Name: MIT License
+* License Id: MIT
 
 #### timezone
 
-Name: timezone
-Version: 1.0.22
-Project Home: https://github.com/bigeasy/timezone
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/timezone/README.md
-License Name: MIT License
-License Id: MIT
-
-#### tmp
-
-Name: tmp
-Version: 0.0.33
-Project Home: http://raszi.hu/
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/tmp/LICENSE
-License Name: MIT License
-License Id: MIT
+* Name: timezone
+* Version: 1.0.23
+* Project Home: <http://bigeasy.github.io/timezone>
+* License: <https://raw.githubusercontent.com/bigeasy/timezone/refs/heads/master/LICENSE>
+* License Name: MIT License
+* License Id: MIT
 
 #### toidentifier
 
-Name: toidentifier
-Version: 1.0.0
-Project Home: https://github.com/component/toidentifier
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/http-errors/node_modules/toidentifier/LICENSE
-License Name: MIT License
-License Id: MIT
+* Name: toidentifier
+* Version: 1.0.0
+* Project Home: <https://github.com/component/toidentifier>
+* License: <https://raw.githubusercontent.com/component/toidentifier/refs/heads/master/LICENSE>
+* License Name: MIT License
+* License Id: MIT
 
 #### topo
 
-Name: topo
-Version: 3.0.3
-Project Home: https://github.com/hapijs/topo
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/joi/node_modules/topo/LICENSE
-License Name: BSD 3-clause "New" or "Revised" License
-License Id: BSD-3-Clause
-
-#### tslib
-
-Name: tslib
-Version: 1.9.3
-Project Home: https://github.com/Microsoft/tslib
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/tslib/LICENSE.txt
-License Name: Apache License 2.0
-License Id: Apache-2.0
-
-#### type-check
-
-Name: type-check
-Version: 0.3.2
-Project Home: https://github.com/gkz/type-check
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/type-check/LICENSE
-License Name: MIT License
-License Id: MIT
+* Name: topo
+* Version: 3.0.3
+* Project Home: <https://github.com/hapijs/topo>
+* License: <https://raw.githubusercontent.com/hapijs/topo/master/LICENSE.md>
+* License Name: BSD-style 3-Clause License
+* License Id: BSD-3-Clause
 
 #### type-detect
 
-Name: type-detect
-Version: 0.1.1
-Project Home: http://alogicalparadox.com
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/chai/node_modules/deep-eql/node_modules/type-detect/README.md
-License Name: MIT License
-License Id: MIT
+* Name: type-detect
+* Version: 4.1.0
+* Project Home: <https://github.com/chaijs/type-detect>
+* License: <https://raw.githubusercontent.com/chaijs/type-detect/master/LICENSE>
+* License Name: MIT License
+* License Id: MIT
 
 #### type-detect
 
-Name: type-detect
-Version: 1.0.0
-Project Home: http://alogicalparadox.com
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/chai/node_modules/type-detect/README.md
-License Name: MIT License
-License Id: MIT
+* Name: type-detect
+* Version: 0.1.1
+* Project Home: <https://github.com/chaijs/type-detect>
+* License: <https://raw.githubusercontent.com/chaijs/type-detect/master/LICENSE>
+* License Name: MIT License
+* License Id: MIT
+
+#### type-detect
+
+* Name: type-detect
+* Version: 1.0.0
+* Project Home: <https://github.com/chaijs/type-detect>
+* License: <https://raw.githubusercontent.com/chaijs/type-detect/master/LICENSE>
+* License Name: MIT License
+* License Id: MIT
+
+#### type-detect
+
+* Name: type-detect
+* Version: 4.0.8
+* Project Home: <https://github.com/chaijs/type-detect>
+* License: <https://raw.githubusercontent.com/chaijs/type-detect/master/LICENSE>
+* License Name: MIT License
+* License Id: MIT
 
 #### type-is
 
-Name: type-is
-Version: 1.6.16
-Project Home: https://github.com/jshttp/type-is
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/type-is/LICENSE
-License Name: MIT License
-License Id: MIT
-
-#### uri-js
-
-Name: uri-js
-Version: 4.2.2
-Project Home: https://github.com/garycourt/uri-js
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/uri-js/README.md
-License Name: BSD 2-clause "Simplified" License
-License Id: BSD-2-Clause
-
-#### uri-js
-
-Name: uri-js
-Version: 4.2.2
-Project Home: https://github.com/garycourt/uri-js
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/ajv/node_modules/uri-js/README.md
-License Name: BSD 2-clause "Simplified" License
-License Id: BSD-2-Clause
-
-#### util
-
-Name: util
-Version: 0.10.3
-Project Home: http://www.joyent.com
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/sinon/node_modules/util/LICENSE
-License Name: MIT License
-License Id: MIT
+* Name: type-is
+* Version: 1.6.18
+* Project Home: <https://github.com/jshttp/type-is>
+* License: <https://raw.githubusercontent.com/jshttp/type-is/refs/heads/master/LICENSE>
+* License Name: MIT License
+* License Id: MIT
 
 #### vary
 
-Name: vary
-Version: 1.1.2
-Project Home: https://github.com/jshttp/vary
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/vary/LICENSE
-License Name: MIT License
-License Id: MIT
+* Name: vary
+* Version: 1.1.2
+* Project Home: <https://github.com/jshttp/vary>
+* License: <https://raw.githubusercontent.com/jshttp/vary/refs/heads/master/LICENSE>
+* License Name: MIT License
+* License Id: MIT
 
-#### which
+#### yallist
 
-Name: which
-Version: 1.3.1
-Project Home: http://blog.izs.me
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/which/LICENSE
-License Name: ISC License
-License Id: ISC
-
-#### wordwrap
-
-Name: wordwrap
-Version: 1.0.0
-Project Home: http://substack.net
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/wordwrap/LICENSE
-License Name: MIT License
-License Id: MIT
-
-#### wrappy
-
-Name: wrappy
-Version: 1.0.2
-Project Home: http://blog.izs.me/
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/wrappy/LICENSE
-License Name: ISC License
-License Id: ISC
-
-#### write
-
-Name: write
-Version: 1.0.3
-Project Home: https://github.com/jonschlinkert
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/write/LICENSE
-License Name: MIT License
-License Id: MIT
-
-#### @xmldom/xmldom
-
-Name: @xmldom/xmldom
-Version: 0.8.0
-Project Home: https://github.com/xmldom/xmldom
-License: httpsx://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/xmldom/LICENSE
-License Name: MIT (dual license)
-License Id: MIT
+* Name: yallist
+* Version: 4.0.0
+* Project Home: <https://github.com/isaacs/yallist>
+* License: <https://raw.githubusercontent.com/isaacs/yallist/main/LICENSE.md>
+* License Name: ISC
+* License Id: ISC

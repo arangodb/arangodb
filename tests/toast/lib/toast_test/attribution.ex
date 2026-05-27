@@ -34,6 +34,30 @@ defmodule ToastTest.Attribution do
 
   require Logger
 
+  @doc """
+  Resolve effective crash timestamps from server log files.
+
+  For each crash event, reads the server's log to find the crash log
+  timestamp (written by the crash handler before the coredump). Falls back
+  to `crash_info.timestamp` (process termination detection time) when no
+  crash log is found (e.g., SIGKILL).
+
+  Returns updated crash events with corrected timestamps.
+  """
+  @spec resolve_crash_timestamps([ToastTest.CrashEvent.t()], ToastTest.ArtifactCollector.t()) ::
+          [ToastTest.CrashEvent.t()]
+  def resolve_crash_timestamps(crash_events, artifacts) do
+    Enum.map(crash_events, fn event ->
+      server_artifacts = Map.get(artifacts, event.server_id)
+      {crash_entries, _log_file} = extract_crash_log(server_artifacts)
+
+      case crash_log_timestamp(crash_entries) do
+        nil -> event
+        log_ts -> put_in(event.crash_info.timestamp, log_ts)
+      end
+    end)
+  end
+
   @spec run(
           ToastTest.ResultCollector.test_data(),
           ToastTest.ArtifactCollector.t(),
@@ -86,8 +110,13 @@ defmodule ToastTest.Attribution do
 
     {issues, coredump_reports} =
       Enum.reduce(crash_events, {[], []}, fn event, {issues_acc, dumps_acc} ->
-        {scope, confidence, phase} = TimeWindows.attribute(event.crash_info.timestamp, windows)
         server_artifacts = Map.get(artifacts, event.server_id)
+        {crash_entries, log_file} = extract_crash_log(server_artifacts)
+
+        effective_timestamp =
+          crash_log_timestamp(crash_entries) || event.crash_info.timestamp
+
+        {scope, confidence, phase} = TimeWindows.attribute(effective_timestamp, windows)
 
         {coredump_paths, new_dumps} =
           analyze_coredumps(
@@ -100,7 +129,8 @@ defmodule ToastTest.Attribution do
           %{server: event.server_id, crash_info: event.crash_info}
           |> maybe_put(:phase, phase)
           |> maybe_put_coredump_paths(coredump_paths)
-          |> enrich_logs(server_artifacts, event.crash_info.timestamp)
+          |> maybe_put(:log_file, log_file)
+          |> maybe_put(:crash_lines, format_crash_entries(crash_entries))
 
         issue = %{type: :crash, scope: scope, confidence: confidence, detail: detail}
         {[issue | issues_acc], new_dumps ++ dumps_acc}
@@ -172,26 +202,22 @@ defmodule ToastTest.Attribution do
   defp maybe_put_coredump_paths(detail, []), do: detail
   defp maybe_put_coredump_paths(detail, paths), do: Map.put(detail, :coredump_paths, paths)
 
-  # --- Log enrichment ---
+  # --- Crash log helpers ---
 
-  defp enrich_logs(detail, nil, _timestamp), do: detail
+  defp extract_crash_log(nil), do: {[], nil}
+  defp extract_crash_log(%{server: %{log_file: nil}}), do: {[], nil}
 
-  defp enrich_logs(detail, %{server: %{log_file: nil}}, _timestamp), do: detail
-
-  defp enrich_logs(detail, %{server: %{log_file: log_file}}, _timestamp) do
-    detail = Map.put(detail, :log_file, log_file)
-
-    # Extract only the last contiguous {crash} block — earlier crashes in the
-    # same log (e.g. from resilience tests) are expected and irrelevant.
-    case Enrichment.Logs.extract_crash_lines(log_file) do
-      [] -> detail
-      entries -> Map.put(detail, :crash_lines, format_crash_entries(entries))
-    end
+  defp extract_crash_log(%{server: %{log_file: log_file}}) do
+    {Enrichment.Logs.extract_crash_lines(log_file), log_file}
   end
 
+  defp crash_log_timestamp([%{time: time} | _]), do: time
+  defp crash_log_timestamp(_), do: nil
+
+  defp format_crash_entries([]), do: nil
+
   defp format_crash_entries(entries) do
-    entries
-    |> Enum.map_join("\n", fn entry ->
+    Enum.map_join(entries, "\n", fn entry ->
       level = entry[:level] |> to_string() |> String.upcase()
       topic = if entry[:topic], do: " {#{entry.topic}}", else: ""
       "[#{level}]#{topic} #{entry.message}"

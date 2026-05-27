@@ -524,13 +524,13 @@ class IResearchAnalyzerFeatureTest
 // -----------------------------------------------------------------------------
 
 TEST_F(IResearchAnalyzerFeatureTest, test_auth_no_auth) {
-  TRI_vocbase_t vocbase(testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
   EXPECT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::canUse(
       vocbase, arangodb::auth::Level::RW));
 }
 TEST_F(IResearchAnalyzerFeatureTest, test_auth_no_vocbase_read) {
   // no vocbase read access
-  TRI_vocbase_t vocbase(testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
   userSetAccessLevel(arangodb::auth::Level::NONE, arangodb::auth::Level::NONE);
   auto ctxt = getLoggedInContext();
   arangodb::ExecContextScope execContextScope(ctxt);
@@ -541,7 +541,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_auth_no_vocbase_read) {
 // no collection read access (vocbase read access, no user)
 TEST_F(IResearchAnalyzerFeatureTest,
        test_auth_vocbase_none_collection_read_no_user) {
-  TRI_vocbase_t vocbase(testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
   userSetAccessLevel(arangodb::auth::Level::NONE, arangodb::auth::Level::RO);
   auto ctxt = getLoggedInContext();
   arangodb::ExecContextScope execContextScope(ctxt);
@@ -551,7 +551,7 @@ TEST_F(IResearchAnalyzerFeatureTest,
 
 // no collection read access (vocbase read access)
 TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_ro_collection_none) {
-  TRI_vocbase_t vocbase(testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
   userSetAccessLevel(arangodb::auth::Level::RO, arangodb::auth::Level::NONE);
   auto ctxt = getLoggedInContext();
   arangodb::ExecContextScope execContextScope(ctxt);
@@ -565,7 +565,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_ro_collection_none) {
 }
 
 TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_ro_collection_ro) {
-  TRI_vocbase_t vocbase(testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
   userSetAccessLevel(arangodb::auth::Level::RO, arangodb::auth::Level::RO);
   auto ctxt = getLoggedInContext();
   arangodb::ExecContextScope execContextScope(ctxt);
@@ -576,7 +576,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_ro_collection_ro) {
 }
 
 TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_ro_collection_rw) {
-  TRI_vocbase_t vocbase(testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
   userSetAccessLevel(arangodb::auth::Level::RO, arangodb::auth::Level::RW);
   auto ctxt = getLoggedInContext();
   arangodb::ExecContextScope execContextScope(ctxt);
@@ -587,7 +587,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_ro_collection_rw) {
 }
 
 TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_rw_collection_ro) {
-  TRI_vocbase_t vocbase(testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
   userSetAccessLevel(arangodb::auth::Level::RW, arangodb::auth::Level::RO);
   auto ctxt = getLoggedInContext();
   arangodb::ExecContextScope execContextScope(ctxt);
@@ -600,7 +600,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_rw_collection_ro) {
 }
 
 TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_rw_collection_rw) {
-  TRI_vocbase_t vocbase(testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
   userSetAccessLevel(arangodb::auth::Level::RW, arangodb::auth::Level::RW);
   auto ctxt = getLoggedInContext();
   arangodb::ExecContextScope execContextScope(ctxt);
@@ -1567,9 +1567,7 @@ TEST_F(IResearchAnalyzerFeatureCoordinatorTest, test_ensure_index_add_factory) {
     };
     static const IndexTypeFactory indexTypeFactory(server.server());
     auto& indexFactory = const_cast<arangodb::IndexFactory&>(
-        server.getFeature<arangodb::EngineSelectorFeature>()
-            .engine()
-            .indexFactory());
+        server.getFeature<arangodb::DatabaseFeature>().engine().indexFactory());
     indexFactory.emplace("testType", indexTypeFactory);
   }
 
@@ -1704,8 +1702,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_identity_registered) {
 // -----------------------------------------------------------------------------
 
 TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
-  TRI_vocbase_t active(testDBInfo(server.server(), "active", 2));
-  TRI_vocbase_t system(systemDBInfo(server.server()));
+  TRI_vocbase_t active(testDBInfo(server.server(), "active", 2),
+                       server.engine());
+  TRI_vocbase_t system(systemDBInfo(server.server()), server.engine());
 
   // normalize 'identity' (with prefix)
   {
@@ -2681,8 +2680,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
             arangodb::QueryRegistryFeature>(nullptr),
         arangodb::LazyApplicationFeatureReference<arangodb::StatisticsFeature>(
             nullptr),
-        arangodb::LazyApplicationFeatureReference<
-            arangodb::EngineSelectorFeature>(newServer),
+        arangodb::LazyApplicationFeatureReference<arangodb::DatabaseFeature>(
+            newServer),
         arangodb::LazyApplicationFeatureReference<
             arangodb::metrics::ClusterMetricsFeature>(nullptr),
         arangodb::LazyApplicationFeatureReference<arangodb::ClusterFeature>(
@@ -2698,6 +2697,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
     auto& selector = newServer.addFeature<arangodb::EngineSelectorFeature>();
     StorageEngineMock engine(newServer);
     selector.setEngineTesting(&engine);
+    dbFeature.setEngineTesting(&engine);
     newServer.addFeature<arangodb::ShardingFeature>();
     auto& sysDatabase = newServer.addFeature<arangodb::SystemDatabaseFeature>();
 #ifdef USE_V8
@@ -2784,8 +2784,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
             arangodb::QueryRegistryFeature>(nullptr),
         arangodb::LazyApplicationFeatureReference<arangodb::StatisticsFeature>(
             nullptr),
-        arangodb::LazyApplicationFeatureReference<
-            arangodb::EngineSelectorFeature>(newServer),
+        arangodb::LazyApplicationFeatureReference<arangodb::DatabaseFeature>(
+            newServer),
         arangodb::LazyApplicationFeatureReference<
             arangodb::metrics::ClusterMetricsFeature>(nullptr),
         arangodb::LazyApplicationFeatureReference<arangodb::ClusterFeature>(
@@ -2801,6 +2801,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
     auto& selector = newServer.addFeature<arangodb::EngineSelectorFeature>();
     StorageEngineMock engine(newServer);
     selector.setEngineTesting(&engine);
+    dbFeature.setEngineTesting(&engine);
     newServer.addFeature<arangodb::QueryRegistryFeature>(metrics);
     newServer.addFeature<arangodb::ShardingFeature>();
     auto& sysDatabase = newServer.addFeature<arangodb::SystemDatabaseFeature>();
@@ -3311,14 +3312,15 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
   StorageEngineMock engine(newServer);
   selector.setEngineTesting(&engine);
   auto& dbfeature = newServer.addFeature<arangodb::DatabaseFeature>();
+  dbfeature.setEngineTesting(&engine);
   auto& functions = newServer.addFeature<arangodb::aql::AqlFunctionFeature>();
   auto& metrics = newServer.addFeature<arangodb::metrics::MetricsFeature>(
       arangodb::LazyApplicationFeatureReference<arangodb::QueryRegistryFeature>(
           newServer),
       arangodb::LazyApplicationFeatureReference<arangodb::StatisticsFeature>(
           nullptr),
-      arangodb::LazyApplicationFeatureReference<
-          arangodb::EngineSelectorFeature>(nullptr),
+      arangodb::LazyApplicationFeatureReference<arangodb::DatabaseFeature>(
+          newServer),
       arangodb::LazyApplicationFeatureReference<
           arangodb::metrics::ClusterMetricsFeature>(nullptr),
       arangodb::LazyApplicationFeatureReference<arangodb::ClusterFeature>(
@@ -4396,12 +4398,13 @@ TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
   auto& selector = newServer.addFeature<arangodb::EngineSelectorFeature>();
   StorageEngineMock engine(newServer);
   selector.setEngineTesting(&engine);
+  dbFeature.setEngineTesting(&engine);
   auto& metrics = newServer.addFeature<arangodb::metrics::MetricsFeature>(
       arangodb::LazyApplicationFeatureReference<arangodb::QueryRegistryFeature>(
           newServer),
       arangodb::LazyApplicationFeatureReference<arangodb::StatisticsFeature>(
           nullptr),
-      selector,
+      dbFeature,
       arangodb::LazyApplicationFeatureReference<
           arangodb::metrics::ClusterMetricsFeature>(nullptr),
       arangodb::LazyApplicationFeatureReference<arangodb::ClusterFeature>(
@@ -4415,7 +4418,6 @@ TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
   newServer.addFeature<arangodb::AqlFeature>();
   arangodb::iresearch::IResearchAnalyzerFeature feature(
       newServer, {.databaseFeature = dbFeature,
-                  .engineSelector = selector,
                   .systemDatabase = sysDatabase,
                   .networkFeature = nullptr,
                   .clusterFeature = nullptr,
@@ -4746,13 +4748,14 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_toVelocyPack) {
   auto& selector = newServer.addFeature<arangodb::EngineSelectorFeature>();
   StorageEngineMock engine(newServer);
   selector.setEngineTesting(&engine);
+  dbFeature.setEngineTesting(&engine);
   auto& metrics = newServer.addFeature<arangodb::metrics::MetricsFeature>(
       arangodb::LazyApplicationFeatureReference<arangodb::QueryRegistryFeature>(
           newServer),
       arangodb::LazyApplicationFeatureReference<arangodb::StatisticsFeature>(
           nullptr),
-      arangodb::LazyApplicationFeatureReference<
-          arangodb::EngineSelectorFeature>(nullptr),
+      arangodb::LazyApplicationFeatureReference<arangodb::DatabaseFeature>(
+          newServer),
       arangodb::LazyApplicationFeatureReference<
           arangodb::metrics::ClusterMetricsFeature>(nullptr),
       arangodb::LazyApplicationFeatureReference<arangodb::ClusterFeature>(
@@ -4766,7 +4769,6 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_toVelocyPack) {
   newServer.addFeature<arangodb::AqlFeature>();
   arangodb::iresearch::IResearchAnalyzerFeature feature(
       newServer, {.databaseFeature = dbFeature,
-                  .engineSelector = selector,
                   .systemDatabase = sysDatabase,
                   .networkFeature = nullptr,
                   .clusterFeature = nullptr,
@@ -4901,13 +4903,14 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_vpack_create) {
   auto& selector = newServer.addFeature<arangodb::EngineSelectorFeature>();
   StorageEngineMock engine(newServer);
   selector.setEngineTesting(&engine);
+  dbFeature.setEngineTesting(&engine);
   auto& metrics = newServer.addFeature<arangodb::metrics::MetricsFeature>(
       arangodb::LazyApplicationFeatureReference<arangodb::QueryRegistryFeature>(
           newServer),
       arangodb::LazyApplicationFeatureReference<arangodb::StatisticsFeature>(
           nullptr),
-      arangodb::LazyApplicationFeatureReference<
-          arangodb::EngineSelectorFeature>(nullptr),
+      arangodb::LazyApplicationFeatureReference<arangodb::DatabaseFeature>(
+          newServer),
       arangodb::LazyApplicationFeatureReference<
           arangodb::metrics::ClusterMetricsFeature>(nullptr),
       arangodb::LazyApplicationFeatureReference<arangodb::ClusterFeature>(
@@ -4921,7 +4924,6 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_vpack_create) {
   newServer.addFeature<arangodb::AqlFeature>();
   arangodb::iresearch::IResearchAnalyzerFeature feature(
       newServer, {.databaseFeature = dbFeature,
-                  .engineSelector = selector,
                   .systemDatabase = sysDatabase,
                   .networkFeature = nullptr,
                   .clusterFeature = nullptr,

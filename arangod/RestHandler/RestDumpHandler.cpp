@@ -35,7 +35,6 @@
 #include "Inspection/VPack.h"
 #include "RocksDBEngine/RocksDBDumpManager.h"
 #include "RocksDBEngine/RocksDBEngine.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "Utils/ExecContext.h"
 
 #include <absl/strings/str_cat.h>
@@ -55,9 +54,7 @@ RestDumpHandler::RestDumpHandler(
       _clusterInfo(server.getFeature<ClusterFeature>().clusterInfo()) {
   if (ServerState::instance()->isDBServer() ||
       ServerState::instance()->isSingleServer()) {
-    _dumpManager = server.getFeature<EngineSelectorFeature>()
-                       .engine<RocksDBEngine>()
-                       .dumpManager();
+    _dumpManager = _vocbase.engine<RocksDBEngine>().dumpManager();
   }
 }
 
@@ -200,12 +197,12 @@ void RestDumpHandler::handleCommandDumpNext() {
   auto context = _dumpManager->find(id, database, user);
   // immediately prolong lifetime of context, so it doesn't get invalidated
   // while we are using it.
-
-  auto fetch = activities::makeWithParent<activities::GenericActivity>(
-      context->activity(), "RocksDBDumpNext",
-      std::unordered_map<std::string, std::string>{{"id", id}});
-
   context->extendLifetime();
+
+  auto guard = activities::Registry::ScopedCurrentlyExecutingActivity(
+      context->activity());
+  auto fetch = activities::make<activities::GenericActivity>(
+      "RocksDBDumpNext", activities::GenericActivityData{{"id", id}});
 
   auto batch = context->next(*batchId, lastBatch);
   auto counts = context->getBlockCounts();

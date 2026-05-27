@@ -24,6 +24,7 @@
 #pragma once
 
 #include "Basics/AttributeNameParser.h"
+#include "Basics/ResourceUsage.h"
 #include "Basics/Result.h"
 #include "Basics/ResultT.h"
 #include "VectorIndex/VectorIndexDefinition.h"
@@ -34,7 +35,6 @@
 #include <cstdint>
 #include <memory>
 #include <stop_token>
-#include <string_view>
 #include <vector>
 
 #include <faiss/IndexIVF.h>
@@ -56,9 +56,7 @@ class RocksDBEngine;
 
 namespace arangodb::vector {
 
-// Taken from:
-// ClusteringParameters.max_points_per_centroid
-static constexpr std::size_t kMaxTrainingSizePerNLists{256};
+class VectorIndexTrainingSampler;
 
 TrainedData serializeIndex(faiss::IndexIVF const& index);
 
@@ -84,10 +82,13 @@ class VectorIndexTrainer {
     // field. Used to resolve nLists for sparse indexes where numDocsHint
     // (total doc count) overestimates the actual vector-bearing doc count.
     std::size_t totalValidVectorCount;
+    // Holds the reservoir bytes against the monitor for `data`'s lifetime.
+    ResourceUsageScope memScope;
   };
 
  public:
-  VectorIndexTrainer(RocksDBVectorIndex const& index, rocksdb::DB* db,
+  VectorIndexTrainer(RocksDBVectorIndex const& index,
+                     ResourceMonitor& resourceMonitor, rocksdb::DB* db,
                      RocksDBKeyBounds bounds);
 
   static std::shared_ptr<faiss::IndexIVF> restoreFromTrainedData(
@@ -114,7 +115,16 @@ class VectorIndexTrainer {
   /// scaling mode.
   ResultT<std::size_t> resolveNLists(std::uint64_t numDocsHint) const;
 
+  /// Sparse+scaling post-iteration step: recompute reservoir capacity from
+  /// the actual valid-vector count, shrink the sampler, and release the
+  /// freed bytes from the resource monitor.
+  Result shrinkReservoirForSparseScaling(
+      std::size_t validSeen, std::size_t reservoirCapacity,
+      std::uint64_t expectedReservoirBytes, ResourceUsageScope& memScope,
+      VectorIndexTrainingSampler& sampler) const;
+
   RocksDBVectorIndex const& _index;
+  ResourceMonitor& _resourceMonitor;
   BoundedDocumentIterator _docIt;
 };
 
@@ -124,7 +134,8 @@ Result ingestVectors(RocksDBVectorIndex& index, rocksdb::DB* rootDB,
 
 class VectorIndexBuilder {
  public:
-  explicit VectorIndexBuilder(RocksDBVectorIndex& index);
+  VectorIndexBuilder(RocksDBVectorIndex& index,
+                     ResourceMonitor& resourceMonitor);
 
   Result build(std::shared_ptr<RocksDBIndex> indexPtr,
                metrics::Histogram<metrics::LogScale<double>>& trainingDuration,
@@ -132,9 +143,10 @@ class VectorIndexBuilder {
                std::stop_token stopToken = {});
 
  private:
-  Result persistTrainedData(TrainedData const& trainedData);
+  Result persistVectorIndexMetadata(VectorIndexMetadata const& metadata);
 
   RocksDBVectorIndex& _index;
+  ResourceMonitor& _resourceMonitor;
   RocksDBEngine& _engine;
   rocksdb::DB* _rootDB;
   RocksDBCollection* _rcoll;

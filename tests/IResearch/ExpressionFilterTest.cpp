@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -259,23 +259,25 @@ struct IResearchExpressionFilterTest
     auto& selector = server.addFeature<arangodb::EngineSelectorFeature>();
     features.emplace_back(selector, false);
     selector.setEngineTesting(&engine);
+    databaseFeature.setEngineTesting(&engine);
     auto& metrics = server.addFeature<arangodb::metrics::MetricsFeature>(
         arangodb::LazyApplicationFeatureReference<
             arangodb::QueryRegistryFeature>(server),
         arangodb::LazyApplicationFeatureReference<arangodb::StatisticsFeature>(
             nullptr),
-        selector,
+        databaseFeature,
         arangodb::LazyApplicationFeatureReference<
             arangodb::metrics::ClusterMetricsFeature>(nullptr),
         arangodb::LazyApplicationFeatureReference<arangodb::ClusterFeature>(
             nullptr));
     features.emplace_back(metrics, false);
-    features.emplace_back(server.addFeature<arangodb::VectorIndexFeature>(),
-                          false);
+    features.emplace_back(
+        server.addFeature<arangodb::VectorIndexFeature>(databaseFeature),
+        false);
     features.emplace_back(
         server.addFeature<arangodb::QueryRegistryFeature>(metrics),
         false);  // must be first
-    system = std::make_unique<TRI_vocbase_t>(systemDBInfo(server));
+    system = std::make_unique<TRI_vocbase_t>(systemDBInfo(server), engine);
     features.emplace_back(
         server.addFeature<arangodb::SystemDatabaseFeature>(system.get()),
         false);  // required for IResearchAnalyzerFeature
@@ -338,6 +340,7 @@ struct IResearchExpressionFilterTest
     arangodb::AqlFeature(server).stop();  // unset singleton instance
     server.getFeature<arangodb::EngineSelectorFeature>().setEngineTesting(
         nullptr);
+    server.getFeature<arangodb::DatabaseFeature>().setEngineTesting(nullptr);
 
     // destroy application features
     for (auto& f : features) {
@@ -418,7 +421,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
   }
 
   // setup ArangoDB database
-  TRI_vocbase_t vocbase(testDBInfo(server));
+  TRI_vocbase_t vocbase(testDBInfo(server), engine);
 
   // create view
   {

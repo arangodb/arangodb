@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -28,7 +28,7 @@
 #include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/ExecutionNodeId.h"
 #include "Aql/ExecutionNode/CollectionAccessingNode.h"
-#include "VectorIndex/VectorIndexDefinition.h"
+#include "VectorIndex/VectorSearchStrategy.h"
 #include "Transaction/Methods.h"
 
 #include <memory>
@@ -42,19 +42,20 @@ class Expression;
 
 /// @brief class EnumerateNearVectorNode
 class EnumerateNearVectorNode : public ExecutionNode,
+                                public DocumentProducingNode,
                                 public CollectionAccessingNode {
  public:
-  EnumerateNearVectorNode(ExecutionPlan* plan, ExecutionNodeId id,
-                          Variable const* inVariable,
-                          Variable const* oldDocumentVariable,
-                          Variable const* documentOutVariable,
-                          Variable const* distanceOutVariable,
-                          std::size_t limit, bool ascending, std::size_t offset,
-                          vector::SearchParameters searchParameters,
-                          aql::Collection const* collection,
-                          transaction::Methods::IndexHandle indexHandle,
-                          std::unique_ptr<Expression> filterExpression,
-                          bool isCoveredByStoredValues);
+  EnumerateNearVectorNode(
+      ExecutionPlan* plan, ExecutionNodeId id, Variable const* inVariable,
+      Variable const* outVariable, Variable const* distanceOutVariable,
+      std::size_t limit, bool ascending, std::size_t offset,
+      vector::SearchParameters searchParameters,
+      aql::Collection const* collection,
+      transaction::Methods::IndexHandle indexHandle,
+      std::unique_ptr<Expression> filterExpression = nullptr,
+      vector::FilterMode filterMode = vector::FilterMode::kNone,
+      vector::ProjectionMode projectionMode =
+          vector::ProjectionMode::kPassThroughId);
 
   EnumerateNearVectorNode(ExecutionPlan*, arangodb::velocypack::Slice base);
 
@@ -73,8 +74,6 @@ class EnumerateNearVectorNode : public ExecutionNode,
   std::vector<const Variable*> getVariablesSetHere() const override;
 
   Variable const* inVariable() const { return _inVariable; }
-  Variable const* oldDocumentVariable() const { return _oldDocumentVariable; }
-  Variable const* documentOutVariable() const { return _documentOutVariable; }
   Variable const* distanceOutVariable() const { return _distanceOutVariable; }
 
   transaction::Methods::IndexHandle const& index() const { return _index; }
@@ -83,9 +82,19 @@ class EnumerateNearVectorNode : public ExecutionNode,
 
   bool isAscending() const noexcept;
 
-  void setFilterExpression(Expression* filterExpression);
+  vector::FilterMode filterMode() const noexcept { return _filterMode; }
 
-  void setIsCoveredByStoredValues(bool isCoveredByStoredValues) noexcept;
+  void setFilterMode(vector::FilterMode mode) noexcept { _filterMode = mode; }
+
+  vector::ProjectionMode projectionMode() const noexcept {
+    return _projectionMode;
+  }
+
+  void setProjectionMode(vector::ProjectionMode mode) noexcept {
+    _projectionMode = mode;
+  }
+
+  bool isProduceResult() const override;
 
  protected:
   CostEstimate estimateCost() const override;
@@ -101,11 +110,7 @@ class EnumerateNearVectorNode : public ExecutionNode,
   /// @brief input variable to read the query point from
   Variable const* _inVariable;
 
-  /// @brief old document variable, only used for book keeping
-  Variable const* _oldDocumentVariable;
-
-  /// @brief document id and distance out variables
-  Variable const* _documentOutVariable;
+  /// @brief distance output variable
   Variable const* _distanceOutVariable;
 
   /// @brief contains the limit, this node only produces the top k results
@@ -124,14 +129,11 @@ class EnumerateNearVectorNode : public ExecutionNode,
   /// guaranteed to always be a vector index
   transaction::Methods::IndexHandle _index;
 
-  /// @brief filter expression if filter was pushed down into this node
-  std::unique_ptr<Expression> _filterExpression;
+  /// @brief how to handle filterEpxression
+  vector::FilterMode _filterMode{vector::FilterMode::kNone};
 
-  /// @brief indicates if the filter expression is fully covered by stored
-  /// values
-  bool _isCoveredByStoredValues;
-
-  /// @brief filterVarToRegs is set in optimization rule
-  std::vector<std::pair<VariableId, RegisterId>> _filterVarToRegs;
+  /// @brief how to handle projections
+  vector::ProjectionMode _projectionMode{
+      vector::ProjectionMode::kPassThroughId};
 };
 }  // namespace arangodb::aql

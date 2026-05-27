@@ -100,7 +100,6 @@
 #include "RestServer/FlushFeature.h"
 #include "RestServer/InitDatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
-#include "RestServer/SharedPRNGFeature.h"
 #include "RestServer/SoftShutdownFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/TemporaryStorageFeature.h"
@@ -160,10 +159,9 @@ static void SetupGreetingsPhase(MockServer& server) {
   server.addFeature<metrics::MetricsFeature>(
       false, LazyApplicationFeatureReference<QueryRegistryFeature>(nullptr),
       LazyApplicationFeatureReference<StatisticsFeature>(nullptr),
-      LazyApplicationFeatureReference<EngineSelectorFeature>(nullptr),
+      LazyApplicationFeatureReference<DatabaseFeature>(nullptr),
       LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(nullptr),
       LazyApplicationFeatureReference<ClusterFeature>(nullptr));
-  server.addFeature<SharedPRNGFeature>(false);
   server.addFeature<SoftShutdownFeature>(false);
   // We do not need any further features from this phase
 }
@@ -182,7 +180,7 @@ static void SetupDatabaseFeaturePhase(MockServer& server) {
       false);  // true ??
   server.addFeature<AuthenticationFeature>(true);
   server.addFeature<transaction::ManagerFeature>(false, metrics);
-  server.addFeature<DatabaseFeature>(false);
+  auto& databaseFeature = server.addFeature<DatabaseFeature>(false);
   server.addFeature<EngineSelectorFeature>(false);
   server.addFeature<StorageEngineFeature>(false);
   server.addFeature<SystemDatabaseFeature>(true);
@@ -191,7 +189,7 @@ static void SetupDatabaseFeaturePhase(MockServer& server) {
   server.addFeature<ViewTypesFeature>(false);  // true ??
   server.addFeature<MaintenanceFeature>(false,
                                         nullptr);  // do not start the thread
-  server.addFeature<VectorIndexFeature>(true);
+  server.addFeature<VectorIndexFeature>(true, databaseFeature);
 
 #if USE_ENTERPRISE
   // required for AuthenticationFeature with USE_ENTERPRISE
@@ -309,7 +307,12 @@ void MockServer::startFeatures() {
   _server.setupDependencies(false);
   auto orderedFeatures = _server.getOrderedFeatures();
 
-  _server.getFeature<EngineSelectorFeature>().setEngineTesting(_engine.get());
+  if (_server.hasFeature<EngineSelectorFeature>()) {
+    _server.getFeature<EngineSelectorFeature>().setEngineTesting(_engine.get());
+  }
+  if (_server.hasFeature<DatabaseFeature>()) {
+    _server.getFeature<DatabaseFeature>().setEngineTesting(_engine.get());
+  }
 
   if (_server.hasFeature<SchedulerFeature>()) {
     auto& sched = _server.getFeature<SchedulerFeature>();

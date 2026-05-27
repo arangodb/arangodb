@@ -133,11 +133,20 @@ function activityRegistrySuite() {
           internal.wait(1);
           maxWait--;
         }
-        assertArrayLengthLargerThan(activities.filter(dumpContextFetchFilter()), 0);
+        const dumpContextFetchActivities = activities.filter(dumpContextFetchFilter());
+        assertArrayLengthLargerThan(dumpContextFetchActivities, 0);
         assertArrayLengthLargerThan(activities, 3);
         assertArrayLengthLargerThan(activities.filter(activityRestHandlerFilter()), 0);
         assertArrayLengthLargerThan(activities.filter(dumpRestHandlerFilter()), 0);
-        assertArrayLengthLargerThan(activities.filter(dumpContextFilter()), 0);
+        const dumpContextActivities = activities.filter(dumpContextFilter());
+        assertArrayLengthLargerThan(dumpContextActivities, 0);
+
+        // check that one of the dump context activities is the parent activity
+        // of one of the dump fetch activities
+        const dumpContextActivityIds = dumpContextActivities.map((a) => a.id);
+        const dumpContextFetchActivityParents = dumpContextFetchActivities.map((a) => a.parent);
+        assertArrayLengthLargerThan(dumpContextActivityIds
+          .filter((id) => dumpContextFetchActivityParents.includes(id)), 0);
 
         // stop first dump-fetch Rest call with a second call
         const cursorId2 = fetchDumpAsynchronously(dumpId, server);

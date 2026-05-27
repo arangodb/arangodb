@@ -88,8 +88,9 @@ struct MockGraphDatabase {
   TRI_vocbase_t vocbase;
   VersionTracker versionTracker;
 
-  MockGraphDatabase(ArangodServer& server, std::string name)
-      : vocbase(createInfo(server, name, 1), versionTracker, true) {}
+  MockGraphDatabase(ArangodServer& server, StorageEngine& engine,
+                    std::string name)
+      : vocbase(createInfo(server, name, 1), engine, versionTracker, true) {}
 
   ~MockGraphDatabase() {}
 

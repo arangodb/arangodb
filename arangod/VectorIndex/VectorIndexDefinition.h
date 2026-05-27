@@ -26,11 +26,13 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include <format>
 #include <optional>
 #include <string>
 #include <variant>
 #include <vector>
 
+#include "Assertions/Assert.h"
 #include "Basics/overload.h"
 #include "Inspection/Status.h"
 #include "Inspection/Types.h"
@@ -40,22 +42,9 @@ namespace arangodb::vector {
 // Number of training iterations, in faiss it is 25 by default
 static constexpr std::uint64_t kdefaultTrainingIterations{25};
 static constexpr std::uint64_t kdefaultNProbe{1};
-
-struct SearchParameters {
-  std::optional<std::int64_t> nProbe;
-
-  template<class Inspector>
-  friend inline auto inspect(Inspector& f, SearchParameters& x) {
-    return f.object(x).fields(
-        f.field("nProbe", x.nProbe)
-            .invariant([](auto value) -> inspection::Status {
-              if (value.has_value() && *value < 1) {
-                return {"nProbe must be 1 or greater!"};
-              }
-              return inspection::Status::Success{};
-            }));
-  }
-};
+// Matches autofaiss's points_per_cluster default; lower than FAISS's
+// own max_points_per_centroid (256) to keep training memory in check.
+static constexpr std::uint64_t kdefaultNumberOfDocsPerCentroid{100};
 
 /// @brief Similarity metrics for vector index.
 enum class SimilarityMetric : std::uint8_t {
@@ -77,6 +66,45 @@ struct TrainedData {
   template<class Inspector>
   friend inline auto inspect(Inspector& f, TrainedData& x) {
     return f.object(x).fields(f.field("codeData", x.codeData));
+  }
+};
+
+/// @brief On-disk format version for vector index list entries.
+///
+/// Entry value layout per version:
+///   kV1: VPack object wrapping {encodedValue, storedValues}. Pre-3.12.10.
+///   kV2: Raw concat [encodedValue: codeSize bytes][storedValues: VPack].
+///        Reader splits at codeSize; avoids the outer VPack deserialize step.
+///
+/// Each version uses its own sentinel slot in the VectorIndex CF, so a
+/// downgrade misses the V2 metadata and triggers retraining instead of
+/// crashing.
+enum class VectorIndexFormatVersion : std::uint8_t {
+  kV1 = 1,
+  kV2 = 2,
+};
+
+template<class Inspector>
+inline auto inspect(Inspector& f, VectorIndexFormatVersion& x) {
+  return f.enumeration(x).values(VectorIndexFormatVersion::kV1, "1",
+                                 VectorIndexFormatVersion::kV2, "2");
+}
+
+static constexpr VectorIndexFormatVersion kCurrentVectorIndexFormatVersion =
+    VectorIndexFormatVersion::kV2;
+
+/// @brief Per-index metadata sentinel record stored in the VectorIndex CF.
+/// Wraps TrainedData and adds the on-disk formatVersion. The kV1 default
+/// covers legacy records that pre-date the formatVersion field.
+struct VectorIndexMetadata {
+  TrainedData trainedData;
+  VectorIndexFormatVersion formatVersion = VectorIndexFormatVersion::kV1;
+
+  template<class Inspector>
+  friend inline auto inspect(Inspector& f, VectorIndexMetadata& x) {
+    return f.object(x).fields(f.field("codeData", x.trainedData.codeData),
+                              f.field("formatVersion", x.formatVersion)
+                                  .fallback(VectorIndexFormatVersion::kV1));
   }
 };
 
@@ -217,6 +245,23 @@ inline std::size_t resolveNListsParameter(NListsParameter const& p,
       p);
 }
 
+/// @brief Check if an NListsParameter is in scaling mode.
+inline bool isFactoryAStringScaling(std::string_view factoryString) {
+  return factoryString.find("{}") != std::string_view::npos;
+}
+
+/// @brief Resolve an factory string to a concrete value.
+/// In fixed mode, returne the string
+/// In scaling mode, the factory string can be defined as temaplte
+/// e.g. "IVF{}_HNSW32,SQ8" and the {} will be replaced by the resolved
+/// nLists value
+inline std::string resolveFactoryString(std::string factoryString,
+                                        std::size_t nlists) {
+  TRI_ASSERT(factoryString.find("{}") != std::string_view::npos);
+  return factoryString.replace(factoryString.find("{}"), 2,
+                               std::to_string(nlists));
+}
+
 struct UserVectorIndexDefinition {
   std::uint64_t dimension;
   SimilarityMetric metric;
@@ -224,6 +269,11 @@ struct UserVectorIndexDefinition {
   std::uint64_t trainingIterations;
 
   std::int64_t defaultNProbe;
+
+  // Reservoir size = nLists * numberOfDocsPerCentroid * dimension *
+  // sizeof(float). Lower this to reduce training memory at the cost of
+  // training-set quality.
+  std::uint64_t numberOfDocsPerCentroid;
 
   // FAISS factory string.
   std::optional<std::string> factory;
@@ -263,6 +313,14 @@ struct UserVectorIndexDefinition {
             .invariant([](auto value) -> inspection::Status {
               if (value < 1) {
                 return {"defaultNProbe must be 1 or greater!"};
+              }
+              return inspection::Status::Success{};
+            }),
+        f.field("numberOfDocsPerCentroid", x.numberOfDocsPerCentroid)
+            .fallback(kdefaultNumberOfDocsPerCentroid)
+            .invariant([](auto value) -> inspection::Status {
+              if (value < 1) {
+                return {"numberOfDocsPerCentroid must be 1 or greater!"};
               }
               return inspection::Status::Success{};
             }));

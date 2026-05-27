@@ -51,7 +51,6 @@
 #include "Cluster/ClusterFeature.h"
 #include "Metrics/ClusterMetricsFeature.h"
 #include "Statistics/StatisticsFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 
 using namespace arangodb;
 
@@ -77,13 +76,15 @@ class PhysicalCollectionTest
     features.emplace_back(
         server.addFeature<
             arangodb::AuthenticationFeature>());  // required for VocbaseContext
-    features.emplace_back(server.addFeature<DatabaseFeature>());
+    auto& dbFeature = server.addFeature<DatabaseFeature>();
+    features.emplace_back(dbFeature);
     auto& selector = server.addFeature<EngineSelectorFeature>();
     features.emplace_back(selector);
     selector.setEngineTesting(&engine);
+    dbFeature.setEngineTesting(&engine);
     features.emplace_back(server.addFeature<metrics::MetricsFeature>(
         LazyApplicationFeatureReference<QueryRegistryFeature>(server),
-        LazyApplicationFeatureReference<StatisticsFeature>(nullptr), selector,
+        LazyApplicationFeatureReference<StatisticsFeature>(nullptr), dbFeature,
         LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(
             nullptr),
         LazyApplicationFeatureReference<ClusterFeature>(nullptr)));
@@ -98,6 +99,7 @@ class PhysicalCollectionTest
 
   ~PhysicalCollectionTest() {
     server.getFeature<EngineSelectorFeature>().setEngineTesting(nullptr);
+    server.getFeature<DatabaseFeature>().setEngineTesting(nullptr);
 
     for (auto& f : features) {
       f.get().unprepare();
@@ -110,7 +112,7 @@ class PhysicalCollectionTest
 // -----------------------------------------------------------------------------
 
 TEST_F(PhysicalCollectionTest, test_new_object_for_insert) {
-  TRI_vocbase_t vocbase(testDBInfo(server));
+  TRI_vocbase_t vocbase(testDBInfo(server), engine);
 
   auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"test\" }");
   auto collection = vocbase.createCollection(json->slice());
@@ -244,7 +246,7 @@ class MockIndex : public Index {
 };
 
 TEST_F(PhysicalCollectionTest, test_index_ordeing) {
-  TRI_vocbase_t vocbase(testDBInfo(server));
+  TRI_vocbase_t vocbase(testDBInfo(server), engine);
   auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"test\" }");
   auto collection = vocbase.createCollection(json->slice());
   std::vector<std::vector<arangodb::basics::AttributeName>> dummyFields;

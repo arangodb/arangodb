@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -51,6 +51,8 @@ class IOHeartbeatThread;
 class LogicalCollection;
 class ReplicationFeature;
 class StorageEngine;
+class ClusterEngine;
+class RocksDBEngine;
 class V8DealerFeature;
 
 namespace metrics {
@@ -118,6 +120,7 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
 
   // used by unit tests
 #ifdef ARANGODB_USE_GOOGLE_TESTS
+  void setEngineTesting(StorageEngine* engine) noexcept { _engine = engine; }
   ErrorCode loadDatabases(velocypack::Slice databases) {
     return iterateDatabases(databases);
   }
@@ -178,6 +181,11 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
       std::function<void(TRI_vocbase_t& vocbase)> const& func);
   std::string translateCollectionName(std::string_view dbName,
                                       std::string_view collectionName);
+
+  StorageEngine& engine() const noexcept {
+    TRI_ASSERT(_engine != nullptr);
+    return *_engine;
+  }
 
   bool ignoreDatafileErrors() const noexcept {
     return _options.ignoreDatafileErrors;

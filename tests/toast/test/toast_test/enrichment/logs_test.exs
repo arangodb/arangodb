@@ -163,12 +163,6 @@ defmodule ToastTest.Enrichment.LogsTest do
             id: "a7903",
             topic: "crash",
             message: "Hello crash handler"
-          ),
-          log_json("2026-03-11T15:22:19Z",
-            level: "INFO",
-            id: "a7904",
-            topic: "general",
-            message: "shutting down"
           )
         ])
 
@@ -178,7 +172,24 @@ defmodule ToastTest.Enrichment.LogsTest do
       assert Enum.any?(result, &(&1.message == "caught signal 11"))
       assert Enum.any?(result, &(&1.message == "Hello crash handler"))
       refute Enum.any?(result, &(&1.message =~ "starting up"))
-      refute Enum.any?(result, &(&1.message =~ "shutting down"))
+    end
+
+    test "returns empty when non-crash entries follow the crash block", %{tmp_dir: dir} do
+      path =
+        write_log(dir, [
+          log_json("2026-03-11T15:22:18Z",
+            level: "FATAL",
+            topic: "crash",
+            message: "caught signal 11"
+          ),
+          log_json("2026-03-11T15:22:19Z",
+            level: "INFO",
+            topic: "general",
+            message: "shutting down"
+          )
+        ])
+
+      assert Logs.extract_crash_lines(path) == []
     end
 
     test "returns only the last crash block when multiple exist", %{tmp_dir: dir} do
@@ -310,6 +321,48 @@ defmodule ToastTest.Enrichment.LogsTest do
       assert length(result) == 2
       assert Enum.any?(result, &(&1.message == "caught signal 11"))
       assert Enum.any?(result, &(&1.message == "Hello crash handler"))
+    end
+  end
+
+  describe "extract_crash_timestamp/1" do
+    test "returns timestamp of first crash entry", %{tmp_dir: dir} do
+      path =
+        write_log(dir, [
+          log_json("2026-03-11T15:22:17Z",
+            level: "INFO",
+            topic: "general",
+            message: "normal operation"
+          ),
+          log_json("2026-03-11T15:22:18Z",
+            level: "FATAL",
+            topic: "crash",
+            message: "caught signal 11"
+          ),
+          log_json("2026-03-11T15:22:19Z",
+            level: "INFO",
+            topic: "crash",
+            message: "backtrace frame 1"
+          )
+        ])
+
+      assert Logs.extract_crash_timestamp(path) == ts_us("2026-03-11T15:22:18Z")
+    end
+
+    test "returns nil when no crash entries at end of log", %{tmp_dir: dir} do
+      path =
+        write_log(dir, [
+          log_json("2026-03-11T15:22:17Z",
+            level: "INFO",
+            topic: "general",
+            message: "normal operation"
+          )
+        ])
+
+      assert Logs.extract_crash_timestamp(path) == nil
+    end
+
+    test "returns nil for nonexistent file" do
+      assert Logs.extract_crash_timestamp("/nonexistent/file.log") == nil
     end
   end
 
