@@ -30,10 +30,12 @@
 #include "Aql/ExecutionNode/CalculationNode.h"
 #include "Aql/ExecutionNode/DistributeNode.h"
 #include "Aql/ExecutionNode/EnumerateCollectionNode.h"
+#include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/ExecutionNode/IndexNode.h"
 #include "Aql/Expression.h"
 #include "Aql/Optimizer.h"
 #include "Aql/OptimizerRule.h"
+#include "Indexes/Index.h"
 
 #include "Cluster/ServerState.h"
 #include "Containers/SmallVector.h"
@@ -44,15 +46,14 @@
 
 #define LOG_RULE LOG_DEVEL_IF(false) << "UpgradeScatterToDistribute: "
 
+namespace arangodb::aql {
+
+namespace {
 struct DistributeNodeDependency {
-  std::unordered_map<std::string_view, arangodb::aql::AstNode const*>
-      shardKeyAccessMap;
+  std::unordered_map<std::string_view, AstNode const*> shardKeyAccessMap;
 };
 
-arangodb::aql::Collection const* getCollection(
-    arangodb::aql::ExecutionNode const* node) {
-  using namespace arangodb::aql;
-
+Collection const* getCollection(ExecutionNode const* node) {
   switch (node->getType()) {
     case ExecutionNode::NodeType::ENUMERATE_COLLECTION:
       return ExecutionNode::castTo<EnumerateCollectionNode const*>(node)
@@ -65,9 +66,7 @@ arangodb::aql::Collection const* getCollection(
   return nullptr;
 }
 
-arangodb::aql::Variable const* getVariableFromAttributeAccess(
-    arangodb::aql::AstNode const* node) {
-  using namespace arangodb::aql;
+Variable const* getVariableFromAttributeAccess(AstNode const* node) {
   if (node->numMembers() > 0) {
     node = node->getMember(0);
   }
@@ -77,9 +76,7 @@ arangodb::aql::Variable const* getVariableFromAttributeAccess(
   return static_cast<Variable const*>(node->getData());
 }
 
-arangodb::aql::Variable const* getOutVariable(
-    arangodb::aql::ExecutionNode const* node) {
-  using namespace arangodb::aql;
+Variable const* getOutVariable(ExecutionNode const* node) {
   const auto nodeType = node->getType();
   if (nodeType == ExecutionNode::NodeType::INDEX ||
       nodeType == ExecutionNode::NodeType::ENUMERATE_COLLECTION) {
@@ -98,10 +95,8 @@ arangodb::aql::AstNode* createParseKeyCall(
   return ast->createNodeFunctionCall("PARSE_KEY", args, true);
 }
 
-bool checkIfAllShardKeysAreUsed(arangodb::aql::AstNode const* root,
-                                arangodb::aql::ExecutionNode const* node,
+bool checkIfAllShardKeysAreUsed(AstNode const* root, ExecutionNode const* node,
                                 DistributeNodeDependency& distDep) {
-  using namespace arangodb::aql;
   if (root == nullptr) {
     return false;
   }
@@ -134,7 +129,7 @@ bool checkIfAllShardKeysAreUsed(arangodb::aql::AstNode const* root,
   if (andNode == nullptr) {
     return false;
   }
-  TRI_ASSERT(andNode->type == arangodb::aql::NODE_TYPE_OPERATOR_NARY_AND);
+  TRI_ASSERT(andNode->type == NODE_TYPE_OPERATOR_NARY_AND);
   size_t const numConds = andNode->numMembers();
   LOG_RULE << "found " << numConds << " conditions. iterating";
   for (size_t j = 0; j < numConds; ++j) {
@@ -200,13 +195,10 @@ bool checkIfAllShardKeysAreUsed(arangodb::aql::AstNode const* root,
   return distDep.shardKeyAccessMap.size() == shardKeys.size();
 }
 
-void replaceScatterWithDistribute(arangodb::aql::ExecutionPlan& plan,
-                                  arangodb::aql::ExecutionNode* scatter,
-                                  arangodb::aql::Collection const* coll,
-                                  arangodb::aql::ExecutionNodeId targetNodeId,
+void replaceScatterWithDistribute(ExecutionPlan& plan, ExecutionNode* scatter,
+                                  Collection const* coll,
+                                  ExecutionNodeId targetNodeId,
                                   DistributeNodeDependency const& distDep) {
-  using namespace arangodb::aql;
-
   Ast* ast = plan.getAst();
   Variable* shardInputVar = ast->variables()->createTemporaryVariable();
   AstNode* obj = ast->createNodeObject();
@@ -230,13 +222,21 @@ void replaceScatterWithDistribute(arangodb::aql::ExecutionPlan& plan,
   plan.insertBefore(distribution, calc);
 }
 
-std::unique_ptr<arangodb::aql::Condition> getCondition(
-    arangodb::aql::ExecutionPlan* plan, arangodb::aql::ExecutionNode* current) {
-  auto condition = std::make_unique<arangodb::aql::Condition>(plan->getAst());
-  if (current->getType() == arangodb::aql::ExecutionNode::INDEX) {
-    auto const indexNode =
-        arangodb::aql::ExecutionNode::castTo<arangodb::aql::IndexNode const*>(
-            current);
+std::unique_ptr<Condition> getCondition(ExecutionPlan* plan,
+                                        ExecutionNode* current) {
+  auto condition = std::make_unique<Condition>(plan->getAst());
+  if (current->getType() == ExecutionNode::INDEX) {
+    auto const indexNode = ExecutionNode::castTo<IndexNode const*>(current);
+
+    auto indexes = indexNode->getIndexes();
+    for (auto&& i : indexes) {
+      if (i->type() ==
+          arangodb::Index::IndexType::TRI_IDX_TYPE_INVERTED_INDEX) {
+        LOG_RULE << "Inverted Indexes are unsupported for this rule";
+        return nullptr;
+      }
+    }
+
     auto const cond = indexNode->condition();
     if (cond != nullptr && cond->root() != nullptr) {
       condition->andCombine(cond->root());
@@ -246,10 +246,9 @@ std::unique_ptr<arangodb::aql::Condition> getCondition(
       condition->andCombine(filter->node());
     }
     return condition;
-  } else if (current->getType() ==
-             arangodb::aql::ExecutionNode::ENUMERATE_COLLECTION) {
-    auto const enumNode = arangodb::aql::ExecutionNode::castTo<
-        arangodb::aql::EnumerateCollectionNode const*>(current);
+  } else if (current->getType() == ExecutionNode::ENUMERATE_COLLECTION) {
+    auto const enumNode =
+        ExecutionNode::castTo<EnumerateCollectionNode const*>(current);
     auto const filter = enumNode->filter();
     if (filter != nullptr && filter->node() != nullptr) {
       condition->andCombine(filter->node());
@@ -259,7 +258,8 @@ std::unique_ptr<arangodb::aql::Condition> getCondition(
   return nullptr;
 }
 
-namespace arangodb::aql {
+}  // namespace
+
 void upgradeScatterToDistributeRule(Optimizer* opt,
                                     std::unique_ptr<ExecutionPlan> plan,
                                     OptimizerRule const& rule) {
@@ -281,23 +281,24 @@ void upgradeScatterToDistributeRule(Optimizer* opt,
   for (auto const node : nodes) {
     ExecutionNode* current = node->getFirstParent();
     while (current != nullptr) {
-      auto condition = getCondition(plan.get(), current);
+      if (current->getType() == ExecutionNode::INDEX ||
+          current->getType() == ExecutionNode::ENUMERATE_COLLECTION) {
+        auto condition = getCondition(plan.get(), current);
 
-      if (condition != nullptr && (condition->root() != nullptr)) {
-        condition->normalize(plan.get());
+        if (condition != nullptr) {
+          condition->normalize(plan.get());
 
-        DistributeNodeDependency distDep;
-        if (checkIfAllShardKeysAreUsed(condition->root(), current, distDep)) {
-          auto const scatterNode = ExecutionNode::castTo<ScatterNode*>(node);
-          Collection const* coll{getCollection(current)};
-          replaceScatterWithDistribute(*plan, scatterNode, coll, current->id(),
-                                       distDep);
-          wasModified = true;
+          DistributeNodeDependency distDep;
+          if (checkIfAllShardKeysAreUsed(condition->root(), current, distDep)) {
+            auto const scatterNode = ExecutionNode::castTo<ScatterNode*>(node);
+            Collection const* coll{getCollection(current)};
+            replaceScatterWithDistribute(*plan, scatterNode, coll,
+                                         current->id(), distDep);
+            wasModified = true;
+          }
         }
-
         // Only the first Index / Enumeration Parent-Node is relevant for us, we
         // can skip the rest
-
         break;
       }
       current = current->getFirstParent();
