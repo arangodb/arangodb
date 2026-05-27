@@ -264,6 +264,11 @@ void insertScatterGatherSnippet(
   auto* scatterNode = plan.createNode<ScatterNode>(
       &plan, plan.nextId(), ScatterNode::ScatterType::SHARD);
 
+  auto collAccNode = dynamic_cast<CollectionAccessingNode*>(at);
+  if (collAccNode != nullptr) {
+    scatterNode->setNumberOfShards(collAccNode->collection()->numberOfShards());
+  }
+
   TRI_ASSERT(at->getDependencies().empty());
   TRI_ASSERT(!nodeDependencies.empty());
   scatterNode->addDependency(nodeDependencies[0]);

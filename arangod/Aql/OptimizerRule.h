@@ -334,6 +334,11 @@ struct OptimizerRule {
     // only a SingletonNode and possibly some CalculationNodes as dependencies
     removeUnnecessaryRemoteScatterRule,
 
+    // keeps track of the used shardKeys of an out variable
+    // and if all shardKeys are used it tries to upgrade the corresponding
+    // ScatterNode to a DistribeNode.
+    upgradeScatterToDistributeRule,
+
     // recognize that a RemoveNode can be moved to the shards
     undistributeRemoveAfterEnumCollRule,
 
@@ -441,6 +446,7 @@ struct OptimizerRule {
   static_assert(smartJoinsRule < moveFiltersIntoEnumerateRule);
 #endif
 
+  static_assert(moveFiltersIntoEnumerateRule < upgradeScatterToDistributeRule);
   static_assert(scatterInClusterRule < parallelizeGatherRule);
 
   static_assert(moveCalculationsUpRule < applySortLimitRule,

@@ -2771,7 +2771,8 @@ void Ast::validateAndOptimize(transaction::Methods& trx,
         node->type == NODE_TYPE_OPERATOR_BINARY_TIMES ||
         node->type == NODE_TYPE_OPERATOR_BINARY_DIV ||
         node->type == NODE_TYPE_OPERATOR_BINARY_MOD) {
-      return this->optimizeBinaryOperatorArithmetic(node);
+      return this->optimizeBinaryOperatorArithmetic(
+          ctx->trx, ctx->aqlFunctionsInternalCache, node);
     }
 
     // ternary operator
@@ -3725,7 +3726,9 @@ AstNode* Ast::optimizeBinaryOperatorRelational(
 }
 
 /// @brief optimizes the binary arithmetic operators +, -, *, / and %
-AstNode* Ast::optimizeBinaryOperatorArithmetic(AstNode* node) {
+AstNode* Ast::optimizeBinaryOperatorArithmetic(
+    transaction::Methods& trx,
+    AqlFunctionsInternalCache& aqlFunctionsInternalCache, AstNode* node) {
   ast::ArithmeticOperatorNode binOp(node);
   AstNode const* lhs = binOp.getLeft();
   AstNode const* rhs = binOp.getRight();
@@ -3737,28 +3740,16 @@ AstNode* Ast::optimizeBinaryOperatorArithmetic(AstNode* node) {
   if (lhs->isConstant() && rhs->isConstant()) {
     // now calculate the expression result
     if (node->type == NODE_TYPE_OPERATOR_BINARY_PLUS) {
-      // arithmetic +
-      AstNode const* left = lhs->castToNumber(this);
-      AstNode const* right = rhs->castToNumber(this);
-
-      bool useDoublePrecision =
-          (left->isDoubleValue() || right->isDoubleValue());
-
-      if (!useDoublePrecision) {
-        auto l = left->getIntValue();
-        auto r = right->getIntValue();
-        // check if the result would overflow
-        useDoublePrecision = isUnsafeAddition<int64_t>(l, r);
-
-        if (!useDoublePrecision) {
-          // can calculate using integers
-          return createArithmeticResultNode(l + r);
-        }
-      }
-
-      // must use double precision
-      return createArithmeticResultNode(left->getDoubleValue() +
-                                        right->getDoubleValue());
+      // Use the same evaluation path as runtime (Expression::execute) so
+      // constant folding matches executeSimpleExpressionArithmetic (+).
+      Expression exp(this, node);
+      FixedVarExpressionContext context(trx, _query, aqlFunctionsInternalCache);
+      bool mustDestroy;
+      AqlValue a = exp.execute(&context, mustDestroy);
+      AqlValueGuard guard(a, mustDestroy);
+      AqlValueMaterializer materializer(
+          trx.transactionContextPtr()->getVPackOptions());
+      return nodeFromVPack(materializer.slice(a), true);
     } else if (node->type == NODE_TYPE_OPERATOR_BINARY_MINUS) {
       AstNode const* left = lhs->castToNumber(this);
       AstNode const* right = rhs->castToNumber(this);

@@ -3072,14 +3072,16 @@ function ahuacatlOperatorsTestSuite () {
     ////////////////////////////////////////////////////////////////////////////////
 
     testArithmeticPlusUndefined: function() {
+      // COR-527: + is string concatenation when either operand is a string;
+      // otherwise the prior numeric-coercion semantics apply.
       assertEqual(1, ARITHMETIC_PLUS(1, null));
       assertEqual(1, ARITHMETIC_PLUS(1, false));
       assertEqual(2, ARITHMETIC_PLUS(1, true));
       assertEqual('1', ARITHMETIC_PLUS(1, ''));
-      assertEqual(1, ARITHMETIC_PLUS(1, ' '));
-      assertEqual(1, ARITHMETIC_PLUS(1, '0'));
-      assertEqual(2, ARITHMETIC_PLUS(1, '1'));
-      assertEqual(1, ARITHMETIC_PLUS(1, 'a'));
+      assertEqual('1 ', ARITHMETIC_PLUS(1, ' '));
+      assertEqual('10', ARITHMETIC_PLUS(1, '0'));
+      assertEqual('11', ARITHMETIC_PLUS(1, '1'));
+      assertEqual('1a', ARITHMETIC_PLUS(1, 'a'));
       assertEqual(1, ARITHMETIC_PLUS(1, [ ]));
       assertEqual(1, ARITHMETIC_PLUS(1, [ 0 ]));
       assertEqual(1, ARITHMETIC_PLUS(1, { }));
@@ -3087,19 +3089,20 @@ function ahuacatlOperatorsTestSuite () {
       assertEqual(1, ARITHMETIC_PLUS(null, 1));
       assertEqual(1, ARITHMETIC_PLUS(false, 1));
       assertEqual(2, ARITHMETIC_PLUS(true, 1));
-      assertEqual(1, ARITHMETIC_PLUS('', 1));
-      assertEqual(1, ARITHMETIC_PLUS(' ', 1));
-      assertEqual(1, ARITHMETIC_PLUS('0', 1));
-      assertEqual(2, ARITHMETIC_PLUS('1', 1));
-      assertEqual(1, ARITHMETIC_PLUS('a', 1));
+      assertEqual('1', ARITHMETIC_PLUS('', 1));
+      assertEqual(' 1', ARITHMETIC_PLUS(' ', 1));
+      assertEqual('01', ARITHMETIC_PLUS('0', 1));
+      assertEqual('11', ARITHMETIC_PLUS('1', 1));
+      assertEqual('a1', ARITHMETIC_PLUS('a', 1));
       assertEqual(1, ARITHMETIC_PLUS([ ], 1));
       assertEqual(1, ARITHMETIC_PLUS([ 0 ], 1));
       assertEqual(4, ARITHMETIC_PLUS([ 3 ], 1));
       assertEqual(1, ARITHMETIC_PLUS({ }, 1));
       assertEqual(1, ARITHMETIC_PLUS({ 'a' : 0 }, 1));
-      assertEqual(0, ARITHMETIC_PLUS('0', '0'));
-      assertEqual(8, ARITHMETIC_PLUS('4', '4'));
-      assertEqual(0, ARITHMETIC_PLUS('4', '-4'));
+      assertEqual('00', ARITHMETIC_PLUS('0', '0'));
+      assertEqual('44', ARITHMETIC_PLUS('4', '4'));
+      assertEqual('4-4', ARITHMETIC_PLUS('4', '-4'));
+      // Infinity is serialized as null in JSON, so both operands are null/numeric.
       assertEqual(0, ARITHMETIC_PLUS(1.3e308 * 10, 1.3e308 * 10));
     },
 
@@ -3472,7 +3475,9 @@ function ahuacatlOperatorsTestSuite () {
     },
     
     testNumberConversion: function() {
-      assertEqual([ [ true, 0, 0 ] ], db._query('LET str = "3a" RETURN [ 0 + str == TO_NUMBER(str), 0 + str, TO_NUMBER(str) ]').toArray());
+      // COR-527: 0 + "3a" is now string concatenation -> "03a" (not numeric 0),
+      // and "03a" == 0 is false because they have different types.
+      assertEqual([ [ false, "03a", 0 ] ], db._query('LET str = "3a" RETURN [ 0 + str == TO_NUMBER(str), 0 + str, TO_NUMBER(str) ]').toArray());
     }
 
   };

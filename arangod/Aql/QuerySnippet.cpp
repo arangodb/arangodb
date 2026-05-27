@@ -514,9 +514,34 @@ void QuerySnippet::serializeIntoBuilder(
       nodeAliases.try_emplace(internalScatter->id(), reservedId);
 
       if (_globalScatter->getType() == ExecutionNode::DISTRIBUTE) {
-        DistributeNode const* dist =
-            ExecutionNode::castTo<DistributeNode const*>(_globalScatter);
+        DistributeNode* dist =
+            ExecutionNode::castTo<DistributeNode*>(_globalScatter);
         TRI_ASSERT(dist != nullptr);
+
+        // This dance with registers is needed when we use the
+        // DistributeNode for read access. The
+        // upgrade-scatter-to-distribute rule replaces a ScatterNode
+        // by a DistributeNode and this will free up the register holding
+        // the distribute key. In the case of multiple shards this information
+        // is needed on the DBServer to use the correct shard, so the register's
+        // lifetime needs to be extended.
+        auto const var = dist->getVariable();
+        if (!dist->getVarsUsedLater().contains(var)) {
+          auto reg = dist->getRegisterPlan()->variableToRegisterId(var);
+          auto globalRegsToClear = dist->getRegsToClear();
+          auto globalRegsToKeepStack = dist->getRegsToKeepStack();
+          for (auto& regSet : globalRegsToKeepStack) {
+            regSet.insert(reg);
+          }
+          globalRegsToClear.erase(reg);
+          dist->setRegsToClear(globalRegsToClear);
+          dist->setRegsToKeep(globalRegsToKeepStack);
+
+          auto internalRegsToClear = internalScatter->getRegsToClear();
+          internalRegsToClear.insert(reg);
+          internalScatter->setRegsToClear(internalRegsToClear);
+        }
+
         auto distCollection = dist->collection();
         TRI_ASSERT(distCollection != nullptr);
 

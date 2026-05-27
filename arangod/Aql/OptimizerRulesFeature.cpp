@@ -84,6 +84,7 @@
 #include "Aql/Optimizer/Rule/SubstituteClusterMultipleDocumentOperations.h"
 #include "Aql/Optimizer/Rule/SubstituteClusterSingleDocumentOperations.h"
 #include "Aql/Optimizer/Rule/UndistributeRemoveAfterEnumColl.h"
+#include "Aql/Optimizer/Rule/UpgradeScatterToDistribute.h"
 #include "Aql/Optimizer/Rule/UseIndexForCollect.h"
 #include "Aql/Optimizer/Rule/UseIndexForSort.h"
 #include "Aql/Optimizer/Rule/UseIndexes.h"
@@ -672,6 +673,14 @@ setup via their shard keys.)");
                OptimizerRule::makeFlags(OptimizerRule::Flags::ClusterOnly),
                R"(Appears if nodes of the types `ScatterNode`, `GatherNode`,
 and `RemoteNode` are inserted into a distributed query plan.)");
+
+  // distribute operations in cluster
+  registerRule(
+      "upgrade-scatter-to-distribute", upgradeScatterToDistributeRule,
+      OptimizerRule::upgradeScatterToDistributeRule,
+      OptimizerRule::makeFlags(OptimizerRule::Flags::ClusterOnly,
+                               OptimizerRule::Flags::CanBeDisabled),
+      R"(Replace ScatterNodes by DistributeNodes together with a calculation of the distribute key if the key is known.)");
 
 #ifdef USE_ENTERPRISE
   registerRule("distribute-offset-info-to-cluster",
