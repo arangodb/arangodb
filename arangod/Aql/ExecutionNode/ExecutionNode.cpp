@@ -1623,6 +1623,22 @@ void ExecutionNode::setAnnotatedString(std::string name,
   setAnnotation(std::move(name), VPackValue(value));
 }
 
+void ExecutionNode::setAnnotatedFlag(std::string name, bool value) {
+  setAnnotation(std::move(name), VPackValue(value));
+}
+
+std::optional<bool> ExecutionNode::getAnnotatedFlag(
+    std::string_view name) const noexcept {
+  auto s = getAnnotation(name);
+  if (s.isNone() || s.isNull()) {
+    return std::nullopt;
+  }
+  ADB_PROD_ASSERT(s.isBool())
+      << "annotation `" << name << "` expected to be a flag, found "
+      << s.typeName();
+  return s.getBoolean();
+}
+
 void ExecutionNode::setId(ExecutionNodeId id) { _id = id; }
 
 void ExecutionNode::setRegsToClear(RegIdSet toClear) {

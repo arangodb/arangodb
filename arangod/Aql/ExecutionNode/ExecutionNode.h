@@ -530,6 +530,9 @@ class ExecutionNode {
     return s.getNumericValue<T>();
   }
 
+  auto getAnnotatedFlag(std::string_view name) const noexcept
+      -> std::optional<bool>;
+
   /// @brief sets an annotation with the given name and value. An existing
   /// annotation with the same name is overwritten.
   void setAnnotation(std::string name, VPackString value);
@@ -546,6 +549,10 @@ class ExecutionNode {
   /// @brief sets an annotation with the given name and string value.
   /// An existing annotation with the same name is overwritten.
   void setAnnotatedString(std::string name, std::string_view value);
+
+  /// @brief sets an annotation with the given name and boolean value.
+  /// An existing annotation with the same name is overwritten.
+  void setAnnotatedFlag(std::string name, bool value);
 
  protected:
   /// @brief serialize this ExecutionNode to VelocyPack.
