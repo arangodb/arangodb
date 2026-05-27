@@ -507,11 +507,7 @@ SharedAqlItemBlockPtr AqlItemBlock::cloneDataAndMoveShadow() {
           AqlValue a = stealAndEraseValue(row, col);
           if (a.requiresDestruction()) {
             AqlValueGuard guard{a, true};
-            // Shadow rows are not deduplicated across columns. The old
-            // cache-based path had a latent double-free when two columns shared
-            // the same managed pointer: the second steal() freed memory still
-            // held by res. Transfer ownership directly; res->setValue()
-            // maintains _valueCount.
+            // direct transfer; avoids double-free when two cols share a pointer
             res->setValue(row, col, a);
             guard.steal();
           } else {

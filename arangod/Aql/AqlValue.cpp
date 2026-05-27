@@ -85,8 +85,7 @@ uint64_t AqlValue::hash(uint64_t seed) const {
   // we must use the slow hash function here, because a value may have
   // different representations in case it's an array/object/number
   auto s = slice(t);
-  // normalize -0.0 to 0.0 so hash is consistent with equal_to, which uses
-  // VelocyPackHelper::equal and treats -0.0 == 0.0
+  // -0.0 and +0.0 must hash identically (equal_to treats them as equal)
   if (s.isDouble()) {
     double v = s.getDouble();
     if (std::signbit(v) && v == 0.0) {
@@ -1395,10 +1394,7 @@ namespace std {
 using arangodb::aql::AqlValue;
 
 size_t hash<AqlValue>::operator()(AqlValue const& x) const {
-  auto hash64 = x.hash(
-      AqlValue::kDefaultSeed);  // make a normalized hash, for the semantics of
-                                // the value regardless of the storage type
-  return static_cast<size_t>(hash64);
+  return static_cast<size_t>(x.hash(AqlValue::kDefaultSeed));
 }
 
 bool equal_to<AqlValue>::operator()(AqlValue const& a,

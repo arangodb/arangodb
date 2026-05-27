@@ -53,9 +53,7 @@ TEST_F(AqlValueHashAlgorithmCorrectnessTest,
 
   EXPECT_NE(v1.data(), v2.data()) << "test requires different pointers";
 
-  // After setValue the block owns each allocation via _valueCount ref-counting.
-  // Do NOT call v*.destroy() — the block frees them; a second destroy() would
-  // be a double-free of the same raw pointer.
+  // block->setValue takes ownership; don't call v*.destroy() after this
   block->setValue(0, 0, v1);
   block->setValue(1, 0, v2);
   block->setValue(2, 0, v3);
