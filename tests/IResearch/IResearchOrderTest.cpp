@@ -47,14 +47,14 @@
 #include "IResearch/IResearchFilterContext.h"
 #include "IResearch/IResearchOrderFactory.h"
 #include "RestServer/arangod.h"
+#include "Cluster/MaintenanceFeature.h"
 #include "RestServer/AqlFeature.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/VectorIndexFeature.h"
+#include "VectorIndex/VectorIndexFeature.h"
 #include "Metrics/ClusterMetricsFeature.h"
 #include "Metrics/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ViewTypesFeature.h"
-#include "Statistics/StatisticsFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
@@ -293,8 +293,6 @@ class IResearchOrderTest
         server.addFeature<arangodb::metrics::MetricsFeature>(
             arangodb::LazyApplicationFeatureReference<
                 arangodb::QueryRegistryFeature>(server),
-            arangodb::LazyApplicationFeatureReference<
-                arangodb::StatisticsFeature>(nullptr),
             selector,
             arangodb::LazyApplicationFeatureReference<
                 arangodb::metrics::ClusterMetricsFeature>(nullptr),
@@ -310,6 +308,10 @@ class IResearchOrderTest
                           false);  // required for IResearchFeature
     features.emplace_back(
         server.addFeature<arangodb::aql::AqlFunctionFeature>(), true);
+    features.emplace_back(server.addFeature<arangodb::MaintenanceFeature>(),
+                          false);
+    features.emplace_back(server.addFeature<arangodb::DatabaseFeature>(),
+                          false);  // required for calculationVocbase
     features.emplace_back(server.addFeature<arangodb::VectorIndexFeature>(),
                           false);
     {
@@ -322,8 +324,6 @@ class IResearchOrderTest
       feature.validateOptions(server.options());
       feature.collectOptions(server.options());
     }
-    features.emplace_back(server.addFeature<arangodb::DatabaseFeature>(),
-                          false);  // required for calculationVocbase
 
     for (auto& f : features) {
       f.first.prepare();

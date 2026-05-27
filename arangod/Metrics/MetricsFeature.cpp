@@ -32,17 +32,31 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Agency/Node.h"
+#include "Basics/application-exit.h"
 #include "Basics/debugging.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
 #include "Logger/LoggerFeature.h"
 #include "Metrics/ClusterMetricsFeature.h"
 #include "Metrics/Metric.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
+#include "Basics/CGroupDetection.h"
+#include "Basics/NumberOfCores.h"
+#include "Basics/PhysicalMemory.h"
+#include "Basics/process-utils.h"
+#include "Basics/system-functions.h"
+#include "GeneralServer/RequestStatisticsMetrics.h"
+#include "Metrics/Builder.h"
+#include "Metrics/CounterBuilder.h"
+#include "Metrics/FixScale.h"
+#include "Metrics/GaugeBuilder.h"
+#include "Metrics/HistogramBuilder.h"
+#include "RestServer/CpuUsageFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
-#include "Statistics/StatisticsFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 
 namespace arangodb::metrics {
@@ -51,7 +65,6 @@ MetricsFeature::MetricsFeature(
     application_features::ApplicationServer& server,
     LazyApplicationFeatureReference<QueryRegistryFeature>
         lazyQueryRegistryFeatureRef,
-    LazyApplicationFeatureReference<StatisticsFeature> lazyStatisticsFeatureRef,
     LazyApplicationFeatureReference<EngineSelectorFeature>
         lazyEngineSelectorFeatureRef,
     LazyApplicationFeatureReference<ClusterMetricsFeature>
@@ -59,7 +72,6 @@ MetricsFeature::MetricsFeature(
     LazyApplicationFeatureReference<ClusterFeature> lazyClusterFeatureRef)
     : ApplicationFeature{server, *this},
       _lazyQueryRegistryFeatureRef(std::move(lazyQueryRegistryFeatureRef)),
-      _lazyStatisticsFeatureRef(std::move(lazyStatisticsFeatureRef)),
       _lazyEngineSelectorFeatureRef(std::move(lazyEngineSelectorFeatureRef)),
       _lazyClusterMetricsFeatureRef(std::move(lazyClusterMetricsFeatureRef)),
       _lazyClusterFeatureRef(std::move(lazyClusterFeatureRef)),
@@ -71,7 +83,7 @@ MetricsFeature::MetricsFeature(
 
 void MetricsFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
-  _startTime = StatisticsFeature::time();
+  _startTime = TRI_microtime();
 
   options->addOption(
       "--server.export-metrics-api", "Whether to enable the metrics API.",
@@ -231,6 +243,335 @@ void MetricsFeature::validateOptions(
   }
 }
 
+namespace {
+
+DECLARE_COUNTER(arangodb_process_statistics_minor_page_faults_total,
+                "The number of minor faults the process has made which have "
+                "not required loading a memory page from disk");
+DECLARE_COUNTER(arangodb_process_statistics_major_page_faults_total,
+                "This figure contains the number of major faults the process "
+                "has made which have required loading a memory page from disk");
+DECLARE_GAUGE(arangodb_process_statistics_user_time, double,
+              "Amount of time that this process has been scheduled in user "
+              "mode, measured in seconds");
+DECLARE_GAUGE(arangodb_process_statistics_system_time, double,
+              "Amount of time that this process has been scheduled in kernel "
+              "mode, measured in seconds");
+DECLARE_GAUGE(arangodb_process_statistics_number_of_threads, double,
+              "Number of threads in the arangod process");
+DECLARE_GAUGE(arangodb_process_statistics_resident_set_size, double,
+              "The total size of the number of pages the process has in real "
+              "memory. This is just the pages which count toward text, data, "
+              "or stack space. This does not include pages which have not been "
+              "demand-loaded in, or which are swapped out. The resident set "
+              "size is reported in bytes");
+DECLARE_GAUGE(arangodb_process_statistics_resident_set_size_percent, double,
+              "The relative size of the number of pages the process has in "
+              "real memory compared to system memory. This is just the pages "
+              "which count toward text, data, or stack space. This does not "
+              "include pages which have not been demand-loaded in, or which "
+              "are swapped out. The value is a ratio between 0.00 and 1.00");
+DECLARE_GAUGE(arangodb_process_statistics_virtual_memory_size, double,
+              "This figure contains The size of the virtual memory the process "
+              "is using");
+DECLARE_COUNTER(arangodb_server_statistics_server_uptime_total,
+                "Number of seconds elapsed since server start");
+DECLARE_GAUGE(arangodb_server_statistics_physical_memory, double,
+              "Physical memory in bytes");
+DECLARE_GAUGE(arangodb_server_statistics_effective_physical_memory, double,
+              "Effective physical memory in bytes");
+DECLARE_GAUGE(arangodb_server_statistics_cpu_cores, double,
+              "Number of CPU cores visible to the arangod process");
+DECLARE_GAUGE(arangodb_server_statistics_effective_cpu_cores, double,
+              "Number of effective CPU cores set for the arangod process");
+DECLARE_GAUGE(arangodb_server_statistics_cpu_cgroup_version, uint64_t,
+              "CGroup version detected (0=none, 1=v1, 2=v2)");
+DECLARE_GAUGE(arangodb_server_statistics_user_percent, double,
+              "Percentage of time that the system CPUs have spent in user "
+              "mode");
+DECLARE_GAUGE(arangodb_server_statistics_system_percent, double,
+              "Percentage of time that the system CPUs have spent in kernel "
+              "mode");
+DECLARE_GAUGE(arangodb_server_statistics_idle_percent, double,
+              "Percentage of time that the system CPUs have been idle");
+DECLARE_GAUGE(arangodb_server_statistics_iowait_percent, double,
+              "Percentage of time that the system CPUs have been waiting for "
+              "I/O");
+
+auto const statStrings =
+    std::map<std::string_view, std::vector<std::string_view>>{
+        {"bytesReceived",
+         {"arangodb_client_connection_statistics_bytes_received", "histogram",
+          "Bytes received for requests"}},
+        {"bytesSent",
+         {"arangodb_client_connection_statistics_bytes_sent", "histogram",
+          "Bytes sent for responses"}},
+        {"bytesReceivedUser",
+         {"arangodb_client_user_connection_statistics_bytes_received",
+          "histogram", "Bytes received for requests, only user traffic"}},
+        {"bytesSentUser",
+         {"arangodb_client_user_connection_statistics_bytes_sent", "histogram",
+          "Bytes sent for responses, only user traffic"}},
+        {"minorPageFaults",
+         {"arangodb_process_statistics_minor_page_faults_total", "counter",
+          "The number of minor faults the process has made which have not "
+          "required loading a memory page from disk"}},
+        {"majorPageFaults",
+         {"arangodb_process_statistics_major_page_faults_total", "counter",
+          "This figure contains the number of major faults the process has "
+          "made which have required loading a memory page from disk"}},
+        {"userTime",
+         {"arangodb_process_statistics_user_time", "gauge",
+          "Amount of time that this process has been scheduled in user mode, "
+          "measured in seconds"}},
+        {"systemTime",
+         {"arangodb_process_statistics_system_time", "gauge",
+          "Amount of time that this process has been scheduled in kernel mode, "
+          "measured in seconds"}},
+        {"numberOfThreads",
+         {"arangodb_process_statistics_number_of_threads", "gauge",
+          "Number of threads in the arangod process"}},
+        {"residentSize",
+         {"arangodb_process_statistics_resident_set_size", "gauge",
+          "The total size of the number of pages the process has in real "
+          "memory. This is just the pages which count toward text, data, or "
+          "stack space. This does not include pages which have not been "
+          "demand-loaded in, or which are swapped out. The resident set size "
+          "is reported in bytes"}},
+        {"residentSizePercent",
+         {"arangodb_process_statistics_resident_set_size_percent", "gauge",
+          "The relative size of the number of pages the process has in real "
+          "memory compared to system memory. This is just the pages which "
+          "count toward text, data, or stack space. This does not include "
+          "pages which have not been demand-loaded in, or which are swapped "
+          "out. The value is a ratio between 0.00 and 1.00"}},
+        {"virtualSize",
+         {"arangodb_process_statistics_virtual_memory_size", "gauge",
+          "This figure contains The size of the virtual memory the process is "
+          "using"}},
+        {"totalTime",
+         {"arangodb_client_connection_statistics_total_time", "histogram",
+          "Total time needed to answer a request"}},
+        {"totalTimeCount",
+         {"arangodb_client_connection_statistics_total_time_count", "gauge",
+          "Total time needed to answer a request"}},
+        {"totalTimeSum",
+         {"arangodb_client_connection_statistics_total_time_sum", "gauge",
+          "Total time needed to answer a request"}},
+        {"requestTime",
+         {"arangodb_client_connection_statistics_request_time", "histogram",
+          "Request time needed to answer a request"}},
+        {"requestTimeCount",
+         {"arangodb_client_connection_statistics_request_time_count", "gauge",
+          "Request time needed to answer a request"}},
+        {"requestTimeSum",
+         {"arangodb_client_connection_statistics_request_time_sum", "gauge",
+          "Request time needed to answer a request"}},
+        {"queueTime",
+         {"arangodb_client_connection_statistics_queue_time", "histogram",
+          "Request time needed to answer a request"}},
+        {"queueTimeCount",
+         {"arangodb_client_connection_statistics_queue_time_count", "gauge",
+          "Request time needed to answer a request"}},
+        {"queueTimeSum",
+         {"arangodb_client_connection_statistics_queue_time_sum", "gauge",
+          "Request time needed to answer a request"}},
+        {"ioTime",
+         {"arangodb_client_connection_statistics_io_time", "histogram",
+          "Request time needed to answer a request"}},
+        {"ioTimeCount",
+         {"arangodb_client_connection_statistics_io_time_count", "gauge",
+          "Queue time needed to answer a request"}},
+        {"ioTimeSum",
+         {"arangodb_client_connection_statistics_io_time_sum", "gauge",
+          "IO time needed to answer a request"}},
+        {"httpReqsTotal",
+         {"arangodb_http_request_statistics_total_requests_total", "counter",
+          "Total number of HTTP requests"}},
+        {"httpReqsSuperuser",
+         {"arangodb_http_request_statistics_superuser_requests_total",
+          "counter",
+          "Total number of HTTP requests executed by superuser/JWT"}},
+        {"httpReqsUser",
+         {"arangodb_http_request_statistics_user_requests_total", "counter",
+          "Total number of HTTP requests executed by clients"}},
+        {"httpReqsAsync",
+         {"arangodb_http_request_statistics_async_requests_total", "counter",
+          "Number of asynchronously executed HTTP requests"}},
+        {"httpReqsDelete",
+         {"arangodb_http_request_statistics_http_delete_requests_total",
+          "counter", "Number of HTTP DELETE requests"}},
+        {"httpReqsGet",
+         {"arangodb_http_request_statistics_http_get_requests_total", "counter",
+          "Number of HTTP GET requests"}},
+        {"httpReqsHead",
+         {"arangodb_http_request_statistics_http_head_requests_total",
+          "counter", "Number of HTTP HEAD requests"}},
+        {"httpReqsOptions",
+         {"arangodb_http_request_statistics_http_options_requests_total",
+          "counter", "Number of HTTP OPTIONS requests"}},
+        {"httpReqsPatch",
+         {"arangodb_http_request_statistics_http_patch_requests_total",
+          "counter", "Number of HTTP PATCH requests"}},
+        {"httpReqsPost",
+         {"arangodb_http_request_statistics_http_post_requests_total",
+          "counter", "Number of HTTP POST requests"}},
+        {"httpReqsPut",
+         {"arangodb_http_request_statistics_http_put_requests_total", "counter",
+          "Number of HTTP PUT requests"}},
+        {"httpReqsOther",
+         {"arangodb_http_request_statistics_other_http_requests_total",
+          "counter", "Number of other HTTP requests"}},
+        {"uptime",
+         {"arangodb_server_statistics_server_uptime_total", "counter",
+          "Number of seconds elapsed since server start"}},
+        {"physicalSize",
+         {"arangodb_server_statistics_physical_memory", "gauge",
+          "Physical memory in bytes"}},
+        {"effectivePhysicalSize",
+         {"arangodb_server_statistics_effective_physical_memory", "gauge",
+          "Effective physical memory in bytes"}},
+        {"cores",
+         {"arangodb_server_statistics_cpu_cores", "gauge",
+          "Number of CPU cores visible to the arangod process"}},
+        {"cgroupVersion",
+         {"arangodb_server_statistics_cpu_cgroup_version", "gauge",
+          "CGroup version detected (0=none, 1=v1, 2=v2)"}},
+        {"userPercent",
+         {"arangodb_server_statistics_user_percent", "gauge",
+          "Percentage of time that the system CPUs have spent in user mode"}},
+        {"systemPercent",
+         {"arangodb_server_statistics_system_percent", "gauge",
+          "Percentage of time that the system CPUs have spent in kernel "
+          "mode"}},
+        {"idlePercent",
+         {"arangodb_server_statistics_idle_percent", "gauge",
+          "Percentage of time that the system CPUs have been idle"}},
+        {"iowaitPercent",
+         {"arangodb_server_statistics_iowait_percent", "gauge",
+          "Percentage of time that the system CPUs have been waiting for "
+          "I/O"}},
+        {"effectiveCores",
+         {"arangodb_server_statistics_effective_cpu_cores", "gauge",
+          "Number of effective CPU cores set for the arangod process"}},
+    };
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+using StatBuilder =
+    std::unordered_map<std::string_view,
+                       std::unique_ptr<arangodb::metrics::Builder const> const>;
+auto makeStatBuilder(
+    std::initializer_list<
+        std::pair<std::string_view, arangodb::metrics::Builder const* const>>
+        initList) -> StatBuilder {
+  auto unomap = StatBuilder{};
+  unomap.reserve(initList.size());
+  for (auto const& it : initList) {
+    unomap.emplace(it.first, it.second);
+  }
+  return unomap;
+}
+auto const statBuilder = makeStatBuilder({
+    {"bytesReceived",
+     new arangodb_client_connection_statistics_bytes_received()},
+    {"bytesSent", new arangodb_client_connection_statistics_bytes_sent()},
+    {"bytesReceivedUser",
+     new arangodb_client_user_connection_statistics_bytes_received()},
+    {"bytesSentUser",
+     new arangodb_client_user_connection_statistics_bytes_sent()},
+    {"minorPageFaults",
+     new arangodb_process_statistics_minor_page_faults_total()},
+    {"majorPageFaults",
+     new arangodb_process_statistics_major_page_faults_total()},
+    {"userTime", new arangodb_process_statistics_user_time()},
+    {"systemTime", new arangodb_process_statistics_system_time()},
+    {"numberOfThreads", new arangodb_process_statistics_number_of_threads()},
+    {"residentSize", new arangodb_process_statistics_resident_set_size()},
+    {"residentSizePercent",
+     new arangodb_process_statistics_resident_set_size_percent()},
+    {"virtualSize", new arangodb_process_statistics_virtual_memory_size()},
+    {"totalTime", new arangodb_client_connection_statistics_total_time()},
+    {"totalTimeCount", nullptr},
+    {"totalTimeSum", nullptr},
+    {"requestTime", new arangodb_client_connection_statistics_request_time()},
+    {"requestTimeCount", nullptr},
+    {"requestTimeSum", nullptr},
+    {"queueTime", new arangodb_client_connection_statistics_queue_time()},
+    {"queueTimeCount", nullptr},
+    {"queueTimeSum", nullptr},
+    {"ioTime", new arangodb_client_connection_statistics_io_time()},
+    {"ioTimeCount", nullptr},
+    {"ioTimeSum", nullptr},
+    {"httpReqsTotal",
+     new arangodb_http_request_statistics_total_requests_total()},
+    {"httpReqsSuperuser",
+     new arangodb_http_request_statistics_superuser_requests_total()},
+    {"httpReqsUser",
+     new arangodb_http_request_statistics_user_requests_total()},
+    {"httpReqsAsync",
+     new arangodb_http_request_statistics_async_requests_total()},
+    {"httpReqsDelete",
+     new arangodb_http_request_statistics_http_delete_requests_total()},
+    {"httpReqsGet",
+     new arangodb_http_request_statistics_http_get_requests_total()},
+    {"httpReqsHead",
+     new arangodb_http_request_statistics_http_head_requests_total()},
+    {"httpReqsOptions",
+     new arangodb_http_request_statistics_http_options_requests_total()},
+    {"httpReqsPatch",
+     new arangodb_http_request_statistics_http_patch_requests_total()},
+    {"httpReqsPost",
+     new arangodb_http_request_statistics_http_post_requests_total()},
+    {"httpReqsPut",
+     new arangodb_http_request_statistics_http_put_requests_total()},
+    {"httpReqsOther",
+     new arangodb_http_request_statistics_other_http_requests_total()},
+    {"uptime", new arangodb_server_statistics_server_uptime_total()},
+    {"physicalSize", new arangodb_server_statistics_physical_memory()},
+    {"effectivePhysicalSize",
+     new arangodb_server_statistics_effective_physical_memory()},
+    {"cores", new arangodb_server_statistics_cpu_cores()},
+    {"effectiveCores", new arangodb_server_statistics_effective_cpu_cores()},
+    {"cgroupVersion", new arangodb_server_statistics_cpu_cgroup_version()},
+    {"userPercent", new arangodb_server_statistics_user_percent()},
+    {"systemPercent", new arangodb_server_statistics_system_percent()},
+    {"idlePercent", new arangodb_server_statistics_idle_percent()},
+    {"iowaitPercent", new arangodb_server_statistics_iowait_percent()},
+});
+#endif
+
+void appendMetric(std::string& result, std::string const& val,
+                  std::string const& label, std::string_view globals,
+                  bool ensureWhitespace) {
+  auto const& stat = statStrings.at(label);
+  auto const name = stat[0];
+  auto const type = stat[1];
+  auto const help = stat[2];
+  arangodb::metrics::Metric::addInfo(result, name, help, type);
+  arangodb::metrics::Metric::addMark(result, name, globals, "");
+  absl::StrAppend(&result, ensureWhitespace ? " " : "", val, "\n");
+}
+
+void appendMetricWithMachineId(std::string& result, std::string const& val,
+                               std::string const& label,
+                               std::string_view machineId,
+                               std::string_view globals,
+                               bool ensureWhitespace) {
+  auto const& stat = statStrings.at(label);
+  auto const name = stat[0];
+  auto const type = stat[1];
+  auto const help = stat[2];
+  arangodb::metrics::Metric::addInfo(result, name, help, type);
+  std::string labels = absl::StrCat("machine_id=\"", machineId, "\"");
+  if (!globals.empty()) {
+    labels = absl::StrCat(labels, ",", globals);
+  }
+  absl::StrAppend(&result, name, "{", labels, "}",
+                  (ensureWhitespace ? " " : ""), val, "\n");
+}
+
+}  // namespace
+
 void MetricsFeature::toPrometheus(std::string& result,
                                   MetricsParts metricsParts,
                                   CollectMode mode) const {
@@ -276,11 +617,117 @@ void MetricsFeature::toPrometheus(std::string& result,
   }
 
   if (metricsParts.includeStandardMetrics()) {
-    // StatisticsFeature only provides standard metrics
-    auto time = std::chrono::duration<double, std::milli>(
-        std::chrono::system_clock::now().time_since_epoch());
-    _statisticsFeature->toPrometheus(result, time.count(), _globals,
-                                     _options.ensureWhitespace);
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    bool foundError = false;
+    for (auto const& it : statBuilder) {
+      if (auto const& statIt = statStrings.find(it.first);
+          statIt != statStrings.end()) {
+        if (it.second != nullptr) {
+          auto const& builder = *it.second;
+          auto const& stat = statIt->second;
+          auto const name = stat[0];
+          auto const type = stat[1];
+          if (builder.name() != name) {
+            foundError = true;
+            LOG_DEVEL << "Statistic '" << it.first
+                      << "' has mismatching names: '" << builder.name()
+                      << "' in statBuilder but '" << name << "' in statStrings";
+          }
+          if (builder.type() != type) {
+            foundError = true;
+            LOG_DEVEL << "Statistic '" << it.first
+                      << "' has mismatching types (for API v2): '"
+                      << builder.type() << "' in statBuilder but '" << type
+                      << "' in statStrings";
+          }
+        }
+      } else {
+        foundError = true;
+        LOG_DEVEL << "Statistic '" << it.first
+                  << "' defined in statBuilder, but not in statStrings";
+      }
+    }
+    for (auto const& it : statStrings) {
+      if (statBuilder.find(it.first) == statBuilder.end()) {
+        foundError = true;
+        LOG_DEVEL << "Statistic '" << it.first
+                  << "' defined in statStrings, but not in statBuilder";
+      }
+    }
+    if (foundError) {
+      FATAL_ERROR_EXIT();
+    }
+#endif
+
+    ProcessInfo info = TRI_ProcessInfoSelf();
+    uint64_t rss = static_cast<uint64_t>(info._residentSize);
+    double rssp = 0;
+    if (PhysicalMemory::getValue() != 0) {
+      rssp = static_cast<double>(rss) /
+             static_cast<double>(PhysicalMemory::getValue());
+    }
+
+    appendMetric(result, std::to_string(info._minorPageFaults),
+                 "minorPageFaults", _globals, _options.ensureWhitespace);
+    appendMetric(result, std::to_string(info._majorPageFaults),
+                 "majorPageFaults", _globals, _options.ensureWhitespace);
+    if (info._scClkTck != 0) {
+      appendMetric(result,
+                   std::to_string(static_cast<double>(info._userTime) /
+                                  static_cast<double>(info._scClkTck)),
+                   "userTime", _globals, _options.ensureWhitespace);
+      appendMetric(result,
+                   std::to_string(static_cast<double>(info._systemTime) /
+                                  static_cast<double>(info._scClkTck)),
+                   "systemTime", _globals, _options.ensureWhitespace);
+    }
+    appendMetric(result, std::to_string(info._numberThreads), "numberOfThreads",
+                 _globals, _options.ensureWhitespace);
+    appendMetric(result, std::to_string(rss), "residentSize", _globals,
+                 _options.ensureWhitespace);
+    appendMetric(result, std::to_string(rssp), "residentSizePercent", _globals,
+                 _options.ensureWhitespace);
+    appendMetric(result, std::to_string(info._virtualSize), "virtualSize",
+                 _globals, _options.ensureWhitespace);
+    appendMetric(result, std::to_string(PhysicalMemory::getValue()),
+                 "physicalSize", _globals, _options.ensureWhitespace);
+    appendMetric(result, std::to_string(uptime()), "uptime", _globals,
+                 _options.ensureWhitespace);
+    appendMetric(result, std::to_string(NumberOfCores::getValue()), "cores",
+                 _globals, _options.ensureWhitespace);
+
+    {
+      auto instance = ServerState::instance();
+      std::string machineId;
+      if (instance) {
+        machineId = instance->getHost();
+      }
+      appendMetricWithMachineId(
+          result, std::to_string(NumberOfCores::getEffectiveValue()),
+          "effectiveCores", machineId, _globals, _options.ensureWhitespace);
+      appendMetricWithMachineId(
+          result, std::to_string(PhysicalMemory::getEffectiveValue()),
+          "effectivePhysicalSize", machineId, _globals,
+          _options.ensureWhitespace);
+    }
+    appendMetric(
+        result,
+        std::to_string(static_cast<std::underlying_type_t<cgroup::Version>>(
+            cgroup::getVersion())),
+        "cgroupVersion", _globals, _options.ensureWhitespace);
+
+    CpuUsageFeature& cpuUsage = server().getFeature<CpuUsageFeature>();
+    if (cpuUsage.isEnabled()) {
+      auto snapshot = cpuUsage.snapshot();
+      appendMetric(result, std::to_string(snapshot.userPercent()),
+                   "userPercent", _globals, _options.ensureWhitespace);
+      appendMetric(result, std::to_string(snapshot.systemPercent()),
+                   "systemPercent", _globals, _options.ensureWhitespace);
+      appendMetric(result, std::to_string(snapshot.idlePercent()),
+                   "idlePercent", _globals, _options.ensureWhitespace);
+      appendMetric(result, std::to_string(snapshot.iowaitPercent()),
+                   "iowaitPercent", _globals, _options.ensureWhitespace);
+    }
 
     // Storage engine only provides standard metrics
     auto& es = _engineSelectorFeature->engine();
@@ -344,7 +791,7 @@ TransactionStatistics& MetricsFeature::transactionStatistics() noexcept {
 }
 
 double MetricsFeature::uptime() const noexcept {
-  return StatisticsFeature::time() - _startTime;
+  return TRI_microtime() - _startTime;
 }
 
 std::shared_lock<std::shared_mutex> MetricsFeature::initGlobalLabels() const {
@@ -405,7 +852,6 @@ void MetricsFeature::batchRemove(std::string_view name,
 
 void MetricsFeature::prepare() {
   _queryRegistryFeature = std::move(_lazyQueryRegistryFeatureRef).get();
-  _statisticsFeature = std::move(_lazyStatisticsFeatureRef).get();
   _engineSelectorFeature = std::move(_lazyEngineSelectorFeatureRef).get();
   _clusterMetricsFeature = std::move(_lazyClusterMetricsFeatureRef).get();
   _clusterFeature = std::move(_lazyClusterFeatureRef).get();

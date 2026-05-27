@@ -60,7 +60,7 @@ function loadAgencyConfig() {
 
 
 /**
- * @brief Sort shard keys according to their numbers omitting startign 's'
+ * @brief Sort shard keys according to their numbers omitting starting 's'
  *
  * @param keys      Keys
  */
@@ -648,7 +648,7 @@ function getServerData(arango) {
       arango.reconnect(current, '_system');
     }
   }
-  INFO('... dignostics collected.');
+  INFO('... diagnostics collected.');
   return report;
 }
 

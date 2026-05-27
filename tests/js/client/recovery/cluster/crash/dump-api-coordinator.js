@@ -47,7 +47,7 @@ if (runSetup === true) {
   }
   
   // Produce a crash on the coordinator (default target of debugTerminate)
-  IM.debugTerminate('CRASH-HANDLER-TEST-SEGFAULT');
+  IM.debugTerminate('CRASH-HANDLER-TEST-SEGFAULT', 11);
   
   return 0;
 }

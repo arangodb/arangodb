@@ -26,7 +26,7 @@
 "use strict";
 
 const jsunity = require("jsunity");
-const {db, errors} = require("@arangodb");
+const {aql, db, errors} = require("@arangodb");
 
 function aqlMatchStatementTestSuite() {
 

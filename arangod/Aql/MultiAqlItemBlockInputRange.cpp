@@ -31,8 +31,7 @@
 
 #include "Logger/LogMacros.h"
 
-using namespace arangodb;
-using namespace arangodb::aql;
+namespace arangodb::aql {
 
 namespace {
 static auto RowHasNonEmptyValue(ShadowAqlItemRow const& row) -> bool {
@@ -97,7 +96,7 @@ auto MultiAqlItemBlockInputRange::rangeForDependency(size_t dependency)
 }
 
 auto MultiAqlItemBlockInputRange::peekDataRow(size_t dependency) const
-    -> std::pair<ExecutorState, arangodb::aql::InputAqlItemRow> {
+    -> std::pair<ExecutorState, InputAqlItemRow> {
   TRI_ASSERT(dependency < _inputs.size());
   return _inputs.at(dependency).peekDataRow();
 }
@@ -115,7 +114,7 @@ auto MultiAqlItemBlockInputRange::skippedInFlight(
 }
 
 auto MultiAqlItemBlockInputRange::nextDataRow(size_t dependency)
-    -> std::pair<ExecutorState, arangodb::aql::InputAqlItemRow> {
+    -> std::pair<ExecutorState, InputAqlItemRow> {
   TRI_ASSERT(dependency < _inputs.size());
   return _inputs.at(dependency).nextDataRow();
 }
@@ -128,8 +127,7 @@ auto MultiAqlItemBlockInputRange::hasShadowRow() const noexcept -> bool {
 }
 
 // * It doesn't matter which shadow row we peek, they should all be the same
-auto MultiAqlItemBlockInputRange::peekShadowRow() const
-    -> arangodb::aql::ShadowAqlItemRow {
+auto MultiAqlItemBlockInputRange::peekShadowRow() const -> ShadowAqlItemRow {
   if (!hasShadowRow()) {
     return ShadowAqlItemRow{CreateInvalidShadowRowHint{}};
   }
@@ -154,7 +152,7 @@ auto MultiAqlItemBlockInputRange::peekShadowRow() const
 }
 
 auto MultiAqlItemBlockInputRange::nextShadowRow()
-    -> std::pair<ExecutorState, arangodb::aql::ShadowAqlItemRow> {
+    -> std::pair<ExecutorState, ShadowAqlItemRow> {
   TRI_ASSERT(!hasDataRow());
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -176,7 +174,7 @@ auto MultiAqlItemBlockInputRange::nextShadowRow()
   }
 #endif
 
-  bool foundData = ::RowHasNonEmptyValue(shadowRow);
+  bool foundData = RowHasNonEmptyValue(shadowRow);
   size_t const n = _inputs.size();
   for (size_t i = 1; i < n; ++i) {
     auto [otherState, otherRow] = _inputs[i].nextShadowRow();
@@ -201,7 +199,7 @@ auto MultiAqlItemBlockInputRange::nextShadowRow()
     // We can only have all rows initialized or none.
     TRI_ASSERT(shadowRow.isInitialized() == otherRow.isInitialized());
     if (!foundData) {
-      if (::RowHasNonEmptyValue(otherRow)) {
+      if (RowHasNonEmptyValue(otherRow)) {
         // We found the one that contains data.
         // Take it
         shadowRow = std::move(otherRow);
@@ -210,7 +208,7 @@ auto MultiAqlItemBlockInputRange::nextShadowRow()
     } else {
       // we already have the filled one.
       // Just assert the others are empty for correctness
-      TRI_ASSERT(!::RowHasNonEmptyValue(otherRow));
+      TRI_ASSERT(!RowHasNonEmptyValue(otherRow));
     }
   }
 
@@ -333,3 +331,5 @@ auto MultiAqlItemBlockInputRange::reset() -> void {
   }
   return MainQueryState::DONE;
 }
+
+}  // namespace arangodb::aql

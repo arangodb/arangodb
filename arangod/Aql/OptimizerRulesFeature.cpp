@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -23,12 +23,84 @@
 
 #include "OptimizerRulesFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Aql/Optimizer/Rule/EnumeratePathsFilter/EnumeratePathsFilter.h"
-#include "Aql/Optimizer/Rule/OptimizerRulesGraph.h"
-#include "Aql/Optimizer/Rule/OptimizerRulesIResearchView.h"
-#include "Aql/Optimizer/Rule/OptimizerRulesIndexNode.h"
-#include "Aql/OptimizerRules.h"
+#include "Aql/Optimizer/Rule/AsyncPrefetch.h"
+#include "Aql/Optimizer/Rule/BatchMaterializeDocuments.h"
+#include "Aql/Optimizer/Rule/CollectInCluster.h"
+#include "Aql/Optimizer/Rule/DecayUnnecessarySortedGather.h"
+#include "Aql/Optimizer/Rule/DistributeFilterCalcToCluster.h"
+#include "Aql/Optimizer/Rule/DistributeInCluster.h"
+#include "Aql/Optimizer/Rule/DistributeSortToCluster.h"
+#include "Aql/Optimizer/Rule/EnumeratePathsFilter.h"
+#include "Aql/Optimizer/Rule/FuseFilters.h"
+#include "Aql/Optimizer/Rule/GeoIndex.h"
+#include "Aql/Optimizer/Rule/InlineSubqueries.h"
+#include "Aql/Optimizer/Rule/InterchangeAdjacentEnumerations.h"
+#include "Aql/Optimizer/Rule/JoinIndexNodes.h"
+#include "Aql/Optimizer/Rule/LateDocumentMaterialization.h"
+#include "Aql/Optimizer/Rule/MaterializeIntoSeparateVariable.h"
+#include "Aql/Optimizer/Rule/MoveCalculationsDown.h"
+#include "Aql/Optimizer/Rule/MoveCalculationsUp.h"
+#include "Aql/Optimizer/Rule/MoveFiltersIntoEnumerate.h"
+#include "Aql/Optimizer/Rule/MoveFiltersUp.h"
+#include "Aql/Optimizer/Rule/OptimizeCount.h"
+#include "Aql/Optimizer/Rule/OptimizePaths.h"
+#include "Aql/Optimizer/Rule/OptimizeProjections.h"
+#include "Aql/Optimizer/Rule/OptimizeSubqueries.h"
+#include "Aql/Optimizer/Rule/OptimizeTraversals.h"
+#include "Aql/Optimizer/Rule/HandleConstrainedSortInView.h"
+#include "Aql/Optimizer/Rule/HandleViews.h"
+#include "Aql/Optimizer/Rule/ImmutableSearchCondition.h"
+#include "Aql/Optimizer/Rule/LateDocumentMaterializationArangoSearch.h"
+#include "Aql/Optimizer/Rule/ScatterViewInCluster.h"
+#include "Aql/Optimizer/Rule/ParallelizeGather.h"
+#include "Aql/Optimizer/Rule/PropagateConstantAttributes.h"
+#include "Aql/Optimizer/Rule/PushDownLateMaterialization.h"
+#include "Aql/Optimizer/Rule/PushFilterIntoEnumerateNear.h"
+#include "Aql/Optimizer/Rule/PushLimitIntoIndex.h"
+#include "Aql/Optimizer/Rule/RemoveCollectVariables.h"
+#include "Aql/Optimizer/Rule/RemoveDataModificationOutVariables.h"
+#include "Aql/Optimizer/Rule/RemoveFiltersCoveredByIndex.h"
+#include "Aql/Optimizer/Rule/RemoveFiltersCoveredByTraversal.h"
+#include "Aql/Optimizer/Rule/RemoveRedundantCalculations.h"
+#include "Aql/Optimizer/Rule/RemoveRedundantOr.h"
+#include "Aql/Optimizer/Rule/RemoveRedundantSorts.h"
+#include "Aql/Optimizer/Rule/RemoveTraversalPathVariable.h"
+#include "Aql/Optimizer/Rule/RemoveUnnecessaryCalculations.h"
+#include "Aql/Optimizer/Rule/RemoveUnnecessaryFilters.h"
+#include "Aql/Optimizer/Rule/RemoveUnnecessaryRemoteScatter.h"
+#include "Aql/Optimizer/Rule/ReplaceAnyEqWithIn.h"
+#include "Aql/Optimizer/Rule/ReplaceEntriesWithObjectIteration.h"
+#include "Aql/Optimizer/Rule/ReplaceEqualAttributeAccess.h"
+#include "Aql/Optimizer/Rule/ReplaceLastAccessOnGraphPath.h"
+#include "Aql/Optimizer/Rule/ReplaceLikeWithRange.h"
+#include "Aql/Optimizer/Rule/ReplaceOrWithIn.h"
+#include "Aql/Optimizer/Rule/RestrictToSingleShard.h"
+#include "Aql/Optimizer/Rule/ScatterInCluster.h"
+#include "Aql/Optimizer/Rule/SimplifyConditions.h"
+#include "Aql/Optimizer/Rule/SortInValues.h"
+#include "Aql/Optimizer/Rule/SortLimit.h"
+#include "Aql/Optimizer/Rule/SpecializeCollect.h"
+#include "Aql/Optimizer/Rule/SpliceSubqueries.h"
+#include "Aql/Optimizer/Rule/SubstituteClusterMultipleDocumentOperations.h"
+#include "Aql/Optimizer/Rule/SubstituteClusterSingleDocumentOperations.h"
+#include "Aql/Optimizer/Rule/UndistributeRemoveAfterEnumColl.h"
+#include "Aql/Optimizer/Rule/UpgradeScatterToDistribute.h"
+#include "Aql/Optimizer/Rule/UseIndexForCollect.h"
+#include "Aql/Optimizer/Rule/UseIndexForSort.h"
+#include "Aql/Optimizer/Rule/UseIndexes.h"
+#include "Aql/Optimizer/Rule/UseVectorIndex.h"
 #include "Aql/OptimizerRulesOptionsProvider.h"
+#ifdef USE_ENTERPRISE
+#include "Enterprise/Aql/Optimizer/Rule/ClusterLiftConstantsForDisjointGraphNodes.h"
+#include "Enterprise/Aql/Optimizer/Rule/ClusterOneShard.h"
+#include "Enterprise/Aql/Optimizer/Rule/RemoveDistributeNodes.h"
+#include "Enterprise/Aql/Optimizer/Rule/RemoveSatelliteJoins.h"
+#include "Enterprise/Aql/Optimizer/Rule/ScatterSatelliteGraph.h"
+#include "Enterprise/Aql/Optimizer/Rule/SmartJoins.h"
+#include "Enterprise/Aql/Optimizer/Rule/SubqueryToDBServer.h"
+#include "Enterprise/Aql/Optimizer/Rule/DistributeOffsetInfoToCluster.h"
+#include "Enterprise/Aql/Optimizer/Rule/LateMaterializationOffsetInfo.h"
+#endif
 #include "Basics/Exceptions.h"
 #include "Cluster/ServerState.h"
 #include "FeaturePhases/ClusterFeaturePhase.h"
@@ -41,8 +113,7 @@
 
 using namespace arangodb::application_features;
 
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
 
 // @brief list of all rules, sorted by rule level
 std::vector<OptimizerRule> OptimizerRulesFeature::_rules;
@@ -313,6 +384,14 @@ are not used in data modification queries.)");
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
                R"(Combine multiple `OR` equality conditions on the same
 variable or attribute with an `IN` condition.)");
+
+  // try to replace ANY == array comparisons with IN
+  registerRule(
+      "replace-any-eq-with-in", replaceAnyEqWithInRule,
+      OptimizerRule::replaceAnyEqWithInRule,
+      OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
+      R"(Replace `ANY ==` array comparison expressions with equivalent `IN`
+expressions to enable further optimizations and index usage.)");
 
   // try to remove redundant OR conditions
   registerRule("remove-redundant-or", removeRedundantOrRule,
@@ -594,6 +673,14 @@ setup via their shard keys.)");
                OptimizerRule::makeFlags(OptimizerRule::Flags::ClusterOnly),
                R"(Appears if nodes of the types `ScatterNode`, `GatherNode`,
 and `RemoteNode` are inserted into a distributed query plan.)");
+
+  // distribute operations in cluster
+  registerRule(
+      "upgrade-scatter-to-distribute", upgradeScatterToDistributeRule,
+      OptimizerRule::upgradeScatterToDistributeRule,
+      OptimizerRule::makeFlags(OptimizerRule::Flags::ClusterOnly,
+                               OptimizerRule::Flags::CanBeDisabled),
+      R"(Replace ScatterNodes by DistributeNodes together with a calculation of the distribute key if the key is known.)");
 
 #ifdef USE_ENTERPRISE
   registerRule("distribute-offset-info-to-cluster",
@@ -1013,5 +1100,4 @@ void OptimizerRulesFeature::enableOrDisableRules() {
   }
 }
 
-}  // namespace aql
-}  // namespace arangodb
+}  // namespace arangodb::aql

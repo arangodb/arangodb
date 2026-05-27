@@ -28,8 +28,7 @@
 
 #include <velocypack/Builder.h>
 
-using namespace arangodb;
-using namespace arangodb::aql;
+namespace arangodb::aql {
 
 FixedVarExpressionContext::FixedVarExpressionContext(
     transaction::Methods& trx, QueryContext& context,
@@ -93,3 +92,5 @@ AqlValue NoVarExpressionContext::getVariableValue(Variable const* /*variable*/,
                                                   bool& /*mustDestroy*/) const {
   return AqlValue(AqlValueHintNull());
 }
+
+}  // namespace arangodb::aql

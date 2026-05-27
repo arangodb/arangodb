@@ -17,6 +17,7 @@ add_library(arangoserver STATIC
   Cluster/ClusterTrxMethods.cpp
   Cluster/ClusterTypes.cpp
   Cluster/ClusterUpgradeFeature.cpp
+  Cluster/ClusterUpgradeOptionsProvider.cpp
   Cluster/CollectionInfoCurrent.cpp
   Cluster/CreateCollection.cpp
   Cluster/CreateDatabase.cpp
@@ -66,6 +67,7 @@ add_library(arangoserver STATIC
   GeneralServer/RestHandler.cpp
   GeneralServer/RestHandlerFactory.cpp
   GeneralServer/ServerSecurityFeature.cpp
+  GeneralServer/ServerSecurityOptionsProvider.cpp
   GeneralServer/SslServerFeature.cpp
   RestHandler/RestAccessTokenHandler.cpp
   RestHandler/RestAdminClusterHandler.cpp
@@ -114,8 +116,11 @@ add_library(arangoserver STATIC
   RestHandler/RestWalAccessHandler.cpp
   RestServer/AqlFeature.cpp
   RestServer/BootstrapFeature.cpp
+  RestServer/BootstrapOptionsProvider.cpp
   RestServer/CheckVersionFeature.cpp
+  RestServer/CheckVersionOptionsProvider.cpp
   RestServer/CrashHandlerFeature.cpp
+  RestServer/CrashHandlerOptionsProvider.cpp
   RestServer/CpuUsageFeature.cpp
   RestServer/DaemonFeature.cpp
   RestServer/DatabaseFeature.cpp
@@ -124,8 +129,10 @@ add_library(arangoserver STATIC
   RestServer/EndpointFeature.cpp
   RestServer/EnvironmentFeature.cpp
   RestServer/FileDescriptorsFeature.cpp
+  RestServer/FileDescriptorsOptionsProvider.cpp
   RestServer/FlushFeature.cpp
   RestServer/FortuneFeature.cpp
+  RestServer/FortuneOptionsProvider.cpp
   RestServer/IOHeartbeatThread.cpp
   RestServer/InitDatabaseFeature.cpp
   RestServer/LanguageCheckFeature.cpp
@@ -147,7 +154,9 @@ add_library(arangoserver STATIC
   RestServer/TimeZoneFeature.cpp
   RestServer/TtlFeature.cpp
   RestServer/UpgradeFeature.cpp
-  RestServer/VectorIndexFeature.cpp
+  VectorIndex/VectorIndexFeature.cpp
+  VectorIndex/VectorIndexBuildManager.cpp
+  VectorIndex/VectorIndexTrainingSampler.cpp
   RestServer/ViewTypesFeature.cpp
   RestServer/VocbaseContext.cpp
   Sharding/ShardDistributionReporter.cpp
@@ -155,9 +164,7 @@ add_library(arangoserver STATIC
   Sharding/ShardingInfo.cpp
   Sharding/ShardingStrategy.cpp
   Sharding/ShardingStrategyDefault.cpp
-  Statistics/Descriptions.cpp
   Statistics/TransactionStatistics.cpp
-  Statistics/StatisticsFeature.cpp
   Transaction/BatchOptions.cpp
   Transaction/ClusterUtils.cpp
   Transaction/Context.cpp

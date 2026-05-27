@@ -275,6 +275,10 @@ class Expression {
                                                   AstNode const*,
                                                   bool& mustDestroy);
 
+  /// @brief binary + as string concatenation (AQL stringification rules)
+  static AqlValue executeSimpleExpressionBinaryPlusStringConcat(
+      ExpressionContext& ctx, AqlValue const& lhs, AqlValue const& rhs);
+
   // execute an expression of type SIMPLE with BINARY_* (+, -, * , /, %)
   static AqlValue executeSimpleExpressionArithmetic(ExpressionContext& ctx,
                                                     AstNode const*,

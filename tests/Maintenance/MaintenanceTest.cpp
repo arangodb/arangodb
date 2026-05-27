@@ -54,13 +54,12 @@
 #include "RestServer/DumpLimitsFeature.h"
 #include "RestServer/FlushFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
-#include "RestServer/VectorIndexFeature.h"
+#include "VectorIndex/VectorIndexFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBIndexCacheRefillFeature.h"
 #include "RocksDBEngine/RocksDBOptionFeature.h"
 #include "RocksDBEngine/RocksDBRecoveryManager.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "Statistics/StatisticsFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -540,20 +539,20 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
     auto& selector = as.addFeature<EngineSelectorFeature>();
     auto& metrics = as.addFeature<metrics::MetricsFeature>(
         LazyApplicationFeatureReference<QueryRegistryFeature>(nullptr),
-        LazyApplicationFeatureReference<StatisticsFeature>(nullptr), selector,
+        selector,
         LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(
             nullptr),
         LazyApplicationFeatureReference<ClusterFeature>(nullptr));
 
     as.addFeature<MaintenanceFeature>();
     auto& dbpath = as.addFeature<DatabasePathFeature>();
-    auto& vectorIndex = as.addFeature<VectorIndexFeature>();
     auto& flush = as.addFeature<FlushFeature>();
     auto& dumpLimits = as.addFeature<DumpLimitsFeature>();
     auto& schedulerFeature = as.addFeature<SchedulerFeature>(metrics);
 
     auto& rocksDbRecoveryManager = as.addFeature<RocksDBRecoveryManager>();
     auto& databaseFeature = as.addFeature<DatabaseFeature>();
+    auto& vectorIndex = as.addFeature<VectorIndexFeature>();
     auto& rocksDbIndexCacheRefillFeature =
         as.addFeature<RocksDBIndexCacheRefillFeature>(databaseFeature, nullptr,
                                                       metrics);

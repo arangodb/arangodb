@@ -34,12 +34,12 @@
 
 #include <memory>
 
-using namespace arangodb::aql;
+namespace arangodb::aql {
 
 namespace {
 struct VPackSliceComparator {
   auto operator()(VPackSlice left, VPackSlice right) const {
-    return arangodb::basics::VelocyPackHelper::compare(left, right, true) <=> 0;
+    return basics::VelocyPackHelper::compare(left, right, true) <=> 0;
   }
 };
 }  // namespace
@@ -65,3 +65,5 @@ auto IndexJoinStrategyFactory::createStrategy(
                                            VPackSliceComparator>>(
       std::move(desc));
 }
+
+}  // namespace arangodb::aql

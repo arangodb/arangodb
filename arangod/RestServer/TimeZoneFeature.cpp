@@ -24,6 +24,8 @@
 #include <stdlib.h>
 #include <stdexcept>
 
+#include <filesystem>
+
 #include "TimeZoneFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -61,9 +63,8 @@ void TimeZoneFeature::prepareTimeZoneData(
         FileUtils::buildFilename(binaryExecutionPath, "tzdata");
 
     if (FileUtils::isDirectory(test_exe)) {
-      FileUtils::makePathAbsolute(test_exe);
-      FileUtils::normalizePath(test_exe);
-      tz_path = test_exe;
+      test_exe = basics::FileUtils::absolutePath(test_exe).string();
+      tz_path = std::filesystem::path(test_exe).make_preferred().string();
     } else {
       std::string argv0 =
           FileUtils::buildFilename(binaryExecutionPath, binaryName);
@@ -71,9 +72,8 @@ void TimeZoneFeature::prepareTimeZoneData(
           TRI_LocateInstallDirectory(argv0.c_str(), binaryPath.c_str());
       path =
           FileUtils::buildFilename(path, ICU_DESTINATION_DIRECTORY, "tzdata");
-      FileUtils::makePathAbsolute(path);
-      FileUtils::normalizePath(path);
-      tz_path = path;
+      path = basics::FileUtils::absolutePath(path).string();
+      tz_path = std::filesystem::path(path).make_preferred().string();
     }
   }
 

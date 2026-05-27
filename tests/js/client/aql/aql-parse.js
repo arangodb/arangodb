@@ -435,6 +435,57 @@ function ahuacatlParseTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test INNER_JOIN keyword misuse as variable
+////////////////////////////////////////////////////////////////////////////////
+
+    testInnerJoinKeyword: function () {
+      // INNER_JOIN is a reserved keyword, so using it as a variable name must fail
+      ["INNER_JOIN", "inner_join", "Inner_join"].forEach((name) => {
+        assertParseError(errors.ERROR_QUERY_PARSE.code,
+          "LET " + name + " = 1 RETURN " + name);
+       });
+    },
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test LEFT_JOIN keyword misuse as variable
+////////////////////////////////////////////////////////////////////////////////
+
+    testLeftJoinKeyword: function () {
+      // LEFT_JOIN is a reserved keyword, so using it as a variable name must fail
+      ["LEFT_JOIN", "left_join", "Left_join"].forEach((name) => {
+        assertParseError(errors.ERROR_QUERY_PARSE.code,
+          "LET " + name + " = 1 RETURN " + name);
+       });
+    },
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test RIGHT_JOIN keyword misuse as variable
+////////////////////////////////////////////////////////////////////////////////
+
+    testRightJoinKeyword: function () {
+      // RIGHT_JOIN is a reserved keyword, so using it as a variable name must fail
+      ["RIGHT_JOIN", "right_join", "Right_join"].forEach((name) => {
+        assertParseError(errors.ERROR_QUERY_PARSE.code,
+          "LET " + name + " = 1 RETURN " + name);
+       });
+    },
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test OUTER_JOIN keyword misuse as variable
+////////////////////////////////////////////////////////////////////////////////
+
+    testOuterJoinKeyword: function () {
+      // OUTER_JOIN is a reserved keyword, so using it as a variable name must fail
+      ["OUTER_JOIN", "outer_join", "Outer_join"].forEach((name) => {
+        assertParseError(errors.ERROR_QUERY_PARSE.code,
+          "LET " + name + " = 1 RETURN " + name);
+       });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test MATCH keyword misuse as variable
 ////////////////////////////////////////////////////////////////////////////////
 

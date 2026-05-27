@@ -23,6 +23,8 @@
 
 #include "ExportFeature.h"
 
+#include <filesystem>
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/GreetingsFeature.h"
 #include "Basics/FileUtils.h"
@@ -89,8 +91,8 @@ ExportFeature::ExportFeature(application_features::ApplicationServer& server,
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseClient>();
 
-  _outputDirectory = FileUtils::buildFilename(
-      FileUtils::currentDirectory().result(), "export");
+  auto const cwd = std::filesystem::current_path();
+  _outputDirectory = FileUtils::buildFilename(cwd.string(), "export");
 }
 
 ExportFeature::~ExportFeature() = default;

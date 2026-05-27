@@ -35,6 +35,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <iosfwd>
+#include <memory>
 #include <string_view>
 #include <vector>
 
@@ -48,7 +49,9 @@ struct AqlIndexDistinctScanIterator;
 struct IndexStreamOptions;
 struct IndexDistinctScanOptions;
 
+namespace vector {
 struct UserVectorIndexDefinition;
+}  // namespace vector
 
 using StoredValues = std::vector<std::vector<basics::AttributeName>>;
 
@@ -447,7 +450,13 @@ class Index {
   virtual std::unique_ptr<AqlIndexDistinctScanIterator> distinctScanFor(
       transaction::Methods* trx, IndexDistinctScanOptions const&);
 
-  virtual UserVectorIndexDefinition const& getVectorIndexDefinition();
+  virtual vector::UserVectorIndexDefinition const& getVectorIndexDefinition();
+
+  /// @brief Returns true if the vector index is trained and ready for queries.
+  /// Default returns false. Overridden only by vector index implementations.
+  // TODO(jbajic): This is a bit unfortunate, but we currently have no better
+  // way to
+  virtual bool isVectorIndexReady() const noexcept;
 
   virtual StoredValues const& storedValues() const;
 

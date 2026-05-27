@@ -133,7 +133,7 @@ if [ "$LOG_LEVEL" == "" ];  then
 fi
 
 if [ "$TRANSPORT" == "ssl" ]; then
-  SSLKEYFILE="--ssl.keyfile etc/testing/server.pem"
+  SSLKEYFILE="--tls.keyfile etc/testing/server.pem"
   CURL="curl --insecure -ks https://"
 else
   SSLKEYFILE=""
@@ -239,7 +239,6 @@ for aid in "${aaid[@]}"; do
     --server.descriptors-minimum 0 \
     --server.authentication false \
     --server.endpoint $TRANSPORT://[::]:$port \
-    --server.statistics false \
     $SSLKEYFILE \
     | tee agency/$PORT.stdout 2>&1 &
   PIDS+=$!

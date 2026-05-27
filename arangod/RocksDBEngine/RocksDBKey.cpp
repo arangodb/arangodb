@@ -31,6 +31,7 @@
 
 #include <cstdint>
 #include <iostream>
+#include <limits>
 
 using namespace arangodb;
 using namespace arangodb::rocksutils;
@@ -160,6 +161,19 @@ void RocksDBKey::constructVectorIndexValue(uint64_t indexId,
 
   uint64ToPersistent(*_buffer, indexId);
   uint64ToPersistent(*_buffer, listNumber);
+  TRI_ASSERT(_buffer->size() == keyLength);
+}
+
+void RocksDBKey::constructVectorIndexTrainedData(uint64_t indexId) {
+  // Use indexId + UINT64_MAX as a sentinel key. This must be strictly within
+  // the key bounds (indexId, indexId+1) used by removeLargeRange on drop.
+  // UINT64_MAX will never be a real IVF list number.
+  _type = RocksDBEntryType::VectorVPackIndexValue;
+  size_t constexpr keyLength = sizeof(uint64_t) + sizeof(uint64_t);
+  _buffer->clear();
+  _buffer->reserve(keyLength);
+  uint64ToPersistent(*_buffer, indexId);
+  uint64ToPersistent(*_buffer, std::numeric_limits<uint64_t>::max());
   TRI_ASSERT(_buffer->size() == keyLength);
 }
 

@@ -24,8 +24,8 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "GeneralServer/ServerSecurityFeature.h"
+#include "GeneralServer/ServerSecurityOptionsProvider.h"
 #include "ProgramOptions/Parameters.h"
-#include "ProgramOptions/ProgramOptions.h"
 #include "Utils/ExecContext.h"
 
 using namespace arangodb;

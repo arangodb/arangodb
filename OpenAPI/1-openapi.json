@@ -12260,7 +12260,7 @@
   },
   "/_arango/v1/_db/{database-name}/_api/database/current": {
    "get": {
-    "description": "Retrieves the properties of the current database\n\nThe response is a JSON object with the following attributes:\n\n- `name`: the name of the current database\n- `id`: the id of the current database\n- `path`: the filesystem path of the current database\n- `isSystem`: whether or not the current database is the `_system` database\n- `sharding`: the default sharding method for collections created in this database\n- `replicationFactor`: the default replication factor for collections in this database\n- `writeConcern`: the default write concern for collections in this database\n",
+    "description": "Retrieves the properties of the current database\n\nThe response is a JSON object with the following attributes:\n\n- `name`: the name of the current database\n- `id`: the id of the current database\n- `isSystem`: whether or not the current database is the `_system` database\n- `sharding`: the default sharding method for collections created in this database\n- `replicationFactor`: the default replication factor for collections in this database\n- `writeConcern`: the default write concern for collections in this database\n",
     "operationId": "getCurrentDatabase",
     "parameters": [
      {

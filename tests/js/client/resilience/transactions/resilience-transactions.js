@@ -35,7 +35,7 @@ const suspendExternal = require("internal").suspendExternal;
 const continueExternal = require("internal").continueExternal;
 const {
   getDBServers,
-  getEndpointById
+  getEndpointById,
 } = require("@arangodb/test-helper");
 const CI = require('@arangodb/cluster-info');
 
@@ -204,12 +204,16 @@ function ClusterTransactionSuite() {
         const tx = db._createTransaction({
           collections: { write: [cn] }
         });
+        console.log("Transaction start");
         tx.query('FOR i IN ' + cn + ' REMOVE i._key IN ' + cn);
+        console.log("Transaction query done");
         require('internal').sleep(25.0); // hold transaction open across the follower failure
+        console.log("slept");
         tx.commit();
+        console.log("committed");
+        return 0;
       };
       let bgJob = ct.run.launchPlainSnippetInBG(`(${String(func)})("${cn}");`, 0);
-
       wait(2.0); // let the BG process open the transaction and enter the sleep
       failFollower();
       wait(15.0); // follower is down for 15s while the transaction is open
@@ -218,13 +222,18 @@ function ClusterTransactionSuite() {
       // wait for the BG snippet to finish naturally (remaining sleep + commit)
       let deadline = require('internal').time() + 60;
       while (require('internal').time() < deadline) {
-        if (require('internal').statusExternal(bgJob.pid).status !== 'RUNNING') {
+        bgJob.status = require('internal').statusExternal(bgJob.pid);
+        if (bgJob.status.status !== 'RUNNING') {
           break;
         }
         wait(1.0);
       }
-      ct.run.joinForceBGShells(IM.options, [bgJob]);
-      assertTrue(!bgJob.failed, 'background transaction failed');
+      let status = { success: true };
+      if (!ct.run.isClientDone(bgJob, status)) {
+        ct.run.joinForceBGShells(IM.options, [bgJob]);
+      }
+      assertTrue(status.success, bgJob);
+      assertTrue(!bgJob.failed, `background transaction failed ${JSON.stringify(bgJob)}`);
 
       // transaction should have been successful
       assertTrue(waitForSynchronousReplication("_system"));

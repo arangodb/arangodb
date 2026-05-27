@@ -69,7 +69,7 @@ GeneralRequest::GeneralRequest(ConnectionInfo const& connectionInfo,
       _tokenExpiry(0.0),
       _memoryUsage(0),
       _authenticationMethod(rest::AuthenticationMethod::NONE),
-      _requestedApiVersion(ApiVersion::defaultApiVersion),
+      _requestedApiVersion(api_version::defaultApiVersion),
       _type(RequestType::ILLEGAL),
       _contentType(ContentType::UNSET),
       _contentTypeResponse(ContentType::UNSET),
@@ -441,7 +441,7 @@ void GeneralRequest::detectAndStripApiVersion(char const*& start,
   if (remainder.starts_with(experimentalSuffix)) {
     size_t suffixEnd = experimentalSuffix.size();
     if (suffixEnd == remainder.size() || remainder[suffixEnd] == '/') {
-      _requestedApiVersion = ApiVersion::experimentalApiVersion;
+      _requestedApiVersion = api_version::experimentalApiVersion;
       isExperimental = true;
       start = p + suffixEnd;  // advance past "/_arango/experimental"
       return;
@@ -488,7 +488,7 @@ void GeneralRequest::detectAndStripApiVersion(char const*& start,
     // _requestedApiVersion or strip the prefix. This will cause the handler
     // lookup to fail and return a 404 Not Found
     if (version < std::numeric_limits<uint32_t>::max() &&
-        (ApiVersion::isApiVersionSupported(version) || isExperimental)) {
+        (api_version::isApiVersionSupported(version) || isExperimental)) {
       _requestedApiVersion = static_cast<uint32_t>(version);
       start = p + 1 + numEnd;  // advance past "/_arango/vX"
     }

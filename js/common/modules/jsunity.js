@@ -264,7 +264,7 @@ function Run (testsuite) {
 
       tests.push(test);
     } else if (key !== 'tearDown' && key !== 'setUp' && key !== 'tearDownAll' && key !== 'setUpAll' && key !== 'internal') {
-      console.error('unknown function: %s', key);
+      throw new Error(`function name ${key} not allowed here.`);
     }
   }
   if (tests.length === 0) {

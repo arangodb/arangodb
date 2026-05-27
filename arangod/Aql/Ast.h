@@ -462,7 +462,8 @@ class Ast {
   AstNode* createPatternLabelAnd(AstNode const* left, AstNode const* right);
   AstNode* createPatternEdge(AstNode const* outVariable, AstNode const* label,
                              AstNode const* properties,
-                             AstNode const* filterExpression, bool isInbound,
+                             AstNode const* filterExpression,
+                             AstNode const* rangeExpression, bool isInbound,
                              bool isOutbound);
   AstNode* createPatternNodePattern(AstNode const* outVariable,
                                     AstNode const* labels,
@@ -657,7 +658,9 @@ class Ast {
                                             AstNode*);
 
   /// @brief optimizes the binary arithmetic operators +, -, *, / and %
-  AstNode* optimizeBinaryOperatorArithmetic(AstNode*);
+  AstNode* optimizeBinaryOperatorArithmetic(transaction::Methods&,
+                                            AqlFunctionsInternalCache&,
+                                            AstNode*);
 
   /// @brief optimizes the ternary operator
   AstNode* optimizeTernaryOperator(AstNode*);

@@ -191,6 +191,9 @@ struct OptimizerRule {
     // replace simple OR conditions with IN
     replaceOrWithInRule,
 
+    // replace ANY == array comparisons with IN
+    replaceAnyEqWithInRule,
+
     // remove redundant OR conditions
     removeRedundantOrRule,
 
@@ -331,6 +334,11 @@ struct OptimizerRule {
     // only a SingletonNode and possibly some CalculationNodes as dependencies
     removeUnnecessaryRemoteScatterRule,
 
+    // keeps track of the used shardKeys of an out variable
+    // and if all shardKeys are used it tries to upgrade the corresponding
+    // ScatterNode to a DistribeNode.
+    upgradeScatterToDistributeRule,
+
     // recognize that a RemoveNode can be moved to the shards
     undistributeRemoveAfterEnumCollRule,
 
@@ -438,6 +446,7 @@ struct OptimizerRule {
   static_assert(smartJoinsRule < moveFiltersIntoEnumerateRule);
 #endif
 
+  static_assert(moveFiltersIntoEnumerateRule < upgradeScatterToDistributeRule);
   static_assert(scatterInClusterRule < parallelizeGatherRule);
 
   static_assert(moveCalculationsUpRule < applySortLimitRule,
@@ -453,6 +462,15 @@ struct OptimizerRule {
       "views so it should have a try before late materialization. "
       "Also constrained sort rule now does not expects any late "
       "materialization variables replacement");
+
+  static_assert(replaceAnyEqWithInRule < useIndexesRule,
+                "replaceAnyEqWithInRule must run before useIndexesRule so the "
+                "rewritten IN expressions are visible to index selection");
+
+  static_assert(
+      replaceAnyEqWithInRule < optimizeTraversalsRule,
+      "replaceAnyEqWithInRule must run before optimizeTraversalsRule "
+      "so rewritten IN edge conditions can be pushed into TraversalNode");
 
   static_assert(useVectorIndexForSort < useIndexesRule,
                 "useVectorIndexForSort must happen before useIndexesRule rule, "

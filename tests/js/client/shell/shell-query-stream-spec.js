@@ -7,7 +7,6 @@ const expect = require('chai').expect;
 let { instanceRole } = require('@arangodb/testutils/instance');
 let IM = global.instanceManager;
 
-const isServer = typeof arango === 'undefined';
 const query = 'FOR x IN 1..5 LET y = SLEEP(x == 1 ? @value : 1) RETURN x';
 
 function filterQueries (q) {
@@ -93,7 +92,7 @@ describe('AQL query analyzer', function () {
 
   describe('with active tracking', function () {
     beforeEach(function () {
-      if (isServer && IM.debugCanUseFailAt()) {
+      if (IM.debugCanUseFailAt()) {
         IM.debugClearFailAt();
       }
       testee.properties({
@@ -105,7 +104,7 @@ describe('AQL query analyzer', function () {
     });
 
     afterEach(function () {
-      if (isServer && IM.debugCanUseFailAt()) {
+      if (IM.debugCanUseFailAt()) {
         IM.debugClearFailAt();
       }
       for (let cc of cursors) {
@@ -132,7 +131,7 @@ describe('AQL query analyzer', function () {
       }
     });
 
-    if (isServer && IM.debugCanUseFailAt()) {
+    if (IM.debugCanUseFailAt()) {
       it('should not crash when inserting a query into the current list fails', function () {
         IM.debugSetFailAt('QueryList::insert');
 
@@ -255,7 +254,7 @@ describe('AQL query analyzer', function () {
       expect(testee.slow().filter(filterQueries).length).to.equal(max);
     });
 
-    if (isServer && IM.debugCanUseFailAt()) {
+    if (IM.debugCanUseFailAt()) {
       it('should not crash when trying to move a query into the slow list', function () {
         IM.debugSetFailAt('QueryList::remove');
 

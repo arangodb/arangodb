@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual */
+/*global assertEqual, assertTrue */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -32,37 +32,44 @@ const errors = internal.errors;
 function splicingSuite () {
   return {
     testArraySplicing : function() {
-      let query = `LET a = [1,2,3] RETURN [a...]`;
+      let query = `LET a = [1,2,3] RETURN [...a]`;
       let res = db._query(query).toArray();
       assertEqual([[1,2,3]], res);
     },
     testArraySplicingMulti : function() {
-      let query = `LET a = [1,2,3] LET b = [4,5,6] RETURN [0,a...,b...,6]`;
+      let query = `LET a = [1,2,3] LET b = [4,5,6] RETURN [0,...a,...b,6]`;
       let res = db._query(query).toArray();
       assertEqual([[0,1,2,3,4,5,6,6]], res);
     },
     testArraySplicingEmpty : function() {
-      let query = `LET a = [] RETURN [a...]`;
+      let query = `LET a = [] RETURN [...a]`;
       let res = db._query(query).toArray();
       assertEqual([[]], res);
     },
     testArraySplicingNotArray : function() {
-      let query = `LET a = 5 RETURN [a...]`;
-      let res = db._query(query).toArray();
-      assertEqual([[5]], res);
+      let query = `LET a = 5 RETURN [...a]`;
+      let data = db._query(query).data;
+      assertEqual([[]], data.result);
+      assertEqual(1, data.extra.warnings.length);
+      assertEqual(errors.ERROR_QUERY_ARRAY_EXPECTED.code,
+        data.extra.warnings[0].code);
+      assertTrue(data.extra.warnings[0].message.includes('array splice'));
     },
     testArraySplicingNull : function() {
-      let query = `LET a = null RETURN [a...]`;
+      let query = `LET a = null RETURN [...a]`;
       let res = db._query(query).toArray();
       assertEqual([[null]], res);
     },
     testArraySplicingObject : function() {
-      let query = `LET a = {} RETURN [a...]`;
-      let res = db._query(query).toArray();
-      assertEqual([[{}]], res);
+      let query = `LET a = {} RETURN [...a]`;
+      let data = db._query(query).data;
+      assertEqual([[]], data.result);
+      assertEqual(1, data.extra.warnings.length);
+      assertEqual(errors.ERROR_QUERY_ARRAY_EXPECTED.code,
+        data.extra.warnings[0].code);
     },
     testArraySplicingNested : function() {
-      let query = `LET a = [[1,2,3],[4]] RETURN [[a...]...]`;
+      let query = `LET a = [[1,2,3],[4]] RETURN [...[...a]]`;
       let res = db._query(query).toArray();
       assertEqual([[[1,2,3],[4]]], res);
     },

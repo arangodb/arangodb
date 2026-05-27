@@ -31,10 +31,16 @@ const aql = arangodb.aql;
 const db = internal.db;
 const {
     randomNumberGeneratorFloat,
+    generateSeed,
 } = require("@arangodb/testutils/seededRandom");
+const {
+    insertDocsAndAssertIndex,
+} = require("@arangodb/testutils/vector-index-common");
+const isCluster = require("internal").isCluster();
 
 const dbName = "vectorDB";
 const collName = "vectorColl";
+const numberOfShards = 3;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -44,16 +50,19 @@ function VectorIndexFullCountTestSuite() {
     let collection;
     let randomPoint;
     const dimension = 500;
-    const numberOfDocs = 100;
-    const seed = 12132390894;
+    const numberOfDocsFactor = isCluster ? numberOfShards : 1;
+    const numberOfDocs = 1500 * numberOfDocsFactor;
+    const seed = generateSeed();
+    const nLists = 10;
 
     return {
         setUpAll: function() {
+            db._useDatabase("_system");
             db._createDatabase(dbName);
             db._useDatabase(dbName);
 
             collection = db._create(collName, {
-                numberOfShards: 1
+                numberOfShards
             });
 
             let docs = [];
@@ -69,18 +78,20 @@ function VectorIndexFullCountTestSuite() {
                     vector,
                 });
             }
-            collection.insert(docs);
-
-            collection.ensureIndex({
-                name: "vector_l2",
-                type: "vector",
-                fields: ["vector"],
-                inBackground: false,
-                params: {
-                    metric: "l2",
-                    dimension: dimension,
-                    nLists: 10,
-                    trainingIterations: 10,
+            insertDocsAndAssertIndex({
+                collection, docs, seed,
+                indexName: "vector_l2",
+                indexDef: {
+                    type: "vector",
+                    fields: ["vector"],
+                    inBackground: false,
+                    params: {
+                        metric: "l2",
+                        dimension: dimension,
+                        nLists: nLists,
+                        trainingIterations: 10,
+                        defaultNProbe: nLists,
+                    },
                 },
             });
         },
@@ -218,21 +229,23 @@ function VectorIndexFullCountTestSuite() {
 /// The test suite with vector index not having enough
 // documents in single nList will not return true full count in collection but how much
 // it actually produced.
-// Check more details in EnumerateNearVectorExucutor file
+// Check more details in EnumerateNearVectorExecutor file
 function VectorIndexFullCountWithNotEnoughNListsTestSuite() {
     let collection;
     let randomPoint;
     const dimension = 500;
-    const numberOfDocs = 10;
-    const seed = 12132390894;
+    const numberOfDocsFactor = isCluster ? numberOfShards : 1;
+    const numberOfDocs = 1500 * numberOfDocsFactor;
+    const seed = generateSeed();
 
     return {
         setUpAll: function() {
+            db._useDatabase("_system");
             db._createDatabase(dbName);
             db._useDatabase(dbName);
 
             collection = db._create(collName, {
-                numberOfShards: 1
+                numberOfShards
             });
 
             let docs = [];
@@ -248,18 +261,20 @@ function VectorIndexFullCountWithNotEnoughNListsTestSuite() {
                     vector
                 });
             }
-            collection.insert(docs);
 
-            collection.ensureIndex({
-                name: "vector_l2",
-                type: "vector",
-                fields: ["vector"],
-                inBackground: false,
-                params: {
-                    metric: "l2",
-                    dimension: dimension,
-                    nLists: 10,
-                    trainingIterations: 10,
+            insertDocsAndAssertIndex({
+                collection, docs, seed,
+                indexName: "vector_l2",
+                indexDef: {
+                    type: "vector",
+                    fields: ["vector"],
+                    inBackground: false,
+                    params: {
+                        metric: "l2",
+                        dimension: dimension,
+                        nLists: 10,
+                        trainingIterations: 10,
+                    },
                 },
             });
         },
@@ -291,10 +306,11 @@ function VectorIndexFullCountWithNotEnoughNListsTestSuite() {
 
             const queryResults = db._query(query, {}, options);
             const results = queryResults.toArray();
-            assertEqual(results.length, 4);
+            assertEqual(results.length, 10);
 
             const stats = queryResults.getExtra().stats;
-            assertEqual(stats.fullCount, 4);
+            // 4 outer iterations (0..3) * numberOfDocs inner docs
+            assertEqual(stats.fullCount, numberOfDocs * 4);
         },
     };
 }
@@ -303,16 +319,18 @@ function VectorIndexFullCountCollectionWithSmallAmountOfDocs() {
     let collection;
     let randomPoint;
     const dimension = 500;
-    const numberOfDocs = 3;
-    const seed = 12132390894;
+    const numberOfDocsFactor = isCluster ? numberOfShards : 1;
+    const numberOfDocs = 1500 * numberOfDocsFactor;
+    const seed = generateSeed();
 
     return {
         setUpAll: function() {
+            db._useDatabase("_system");
             db._createDatabase(dbName);
             db._useDatabase(dbName);
 
             collection = db._create(collName, {
-                numberOfShards: 1
+                numberOfShards
             });
 
             let docs = [];
@@ -328,18 +346,20 @@ function VectorIndexFullCountCollectionWithSmallAmountOfDocs() {
                     vector
                 });
             }
-            collection.insert(docs);
 
-            collection.ensureIndex({
-                name: "vector_l2",
-                type: "vector",
-                fields: ["vector"],
-                inBackground: false,
-                params: {
-                    metric: "l2",
-                    dimension: dimension,
-                    nLists: 1,
-                    trainingIterations: 10,
+            insertDocsAndAssertIndex({
+                collection, docs, seed,
+                indexName: "vector_l2",
+                indexDef: {
+                    type: "vector",
+                    fields: ["vector"],
+                    inBackground: false,
+                    params: {
+                        metric: "l2",
+                        dimension: dimension,
+                        nLists: 1,
+                        trainingIterations: 10,
+                    },
                 },
             });
         },
@@ -357,9 +377,7 @@ function VectorIndexFullCountCollectionWithSmallAmountOfDocs() {
                 LIMIT 10
                 RETURN {k: d._key}
             `;
-            // i=0    i=1    i=2    i=3    i=4
-            // 1,2,3, 1,2,3, 1,2,3, 1|,2,3 1,2,3
-            //                       ^ LIMIT 10
+            // 5 outer iterations (0..4) * numberOfDocs inner docs
             const options = {
                 fullCount: true,
             };
@@ -377,7 +395,7 @@ function VectorIndexFullCountCollectionWithSmallAmountOfDocs() {
             assertEqual(results.length, 10);
 
             const stats = queryResults.getExtra().stats;
-            assertEqual(stats.fullCount, 15);
+            assertEqual(stats.fullCount, numberOfDocs * 5);
         },
     };
 }
@@ -387,9 +405,9 @@ function VectorIndexLargeLimitTestSuite() {
     let collection;
     let randomPoint;
     const largeLimitDimension = 128;
-    const largeLimitNumberOfDocs = 4500;
+    const largeLimitNumberOfDocs = 5000;
     const nLists = 32;
-    const seed = 98765432;
+    const seed = generateSeed();
 
     return {
         setUpAll: function() {
@@ -397,37 +415,39 @@ function VectorIndexLargeLimitTestSuite() {
             db._useDatabase(dbName);
 
             collection = db._create(collName, {
-                numberOfShards: 3
+                numberOfShards
             });
 
             let gen = randomNumberGeneratorFloat(seed);
-            const batchSize = 1000;
-            for (let batch = 0; batch < largeLimitNumberOfDocs; batch += batchSize) {
-                let docs = [];
-                const end = Math.min(batch + batchSize, largeLimitNumberOfDocs);
-                for (let i = batch; i < end; ++i) {
-                    const vector = Array.from({
-                        length: largeLimitDimension
-                    }, () => gen());
-                    if (i === 0) {
-                        randomPoint = vector;
-                    }
-                    docs.push({
-                        vector
-                    });
+            let docs = [];
+            for (let i = 0; i < largeLimitNumberOfDocs; ++i) {
+                const vector = Array.from({
+                    length: largeLimitDimension
+                }, () => gen());
+                if (i === 0) {
+                    randomPoint = vector;
                 }
-                collection.insert(docs);
+                docs.push({
+                    vector
+                });
             }
 
-            collection.ensureIndex({
-                name: "vector_l2",
-                type: "vector",
-                fields: ["vector"],
-                inBackground: false,
-                params: {
-                    metric: "l2",
-                    dimension: largeLimitDimension,
-                    nLists: nLists,
+            insertDocsAndAssertIndex({
+                collection,
+                docs,
+                seed,
+                batchSize: 1000,
+                readyTimeoutSec: 120,
+                indexName: "vector_l2",
+                indexDef: {
+                    type: "vector",
+                    fields: ["vector"],
+                    inBackground: false,
+                    params: {
+                        metric: "l2",
+                        dimension: largeLimitDimension,
+                        nLists: nLists,
+                    },
                 },
             });
         },
@@ -438,7 +458,11 @@ function VectorIndexLargeLimitTestSuite() {
         },
 
         testFetchLargeNumberOfDocsWithMaxNProbe: function() {
-            const limits = [1500, 3000, 4000];
+            const limits = [1500, 3000, 4000, largeLimitNumberOfDocs];
+
+            const actualCollectionCount = collection.count();
+            assertEqual(actualCollectionCount, largeLimitNumberOfDocs,
+                `Collection count mismatch: actual=${actualCollectionCount} vs expected=${largeLimitNumberOfDocs}`);
 
             for (const limit of limits) {
                 const query = aql`
@@ -449,17 +473,26 @@ function VectorIndexLargeLimitTestSuite() {
 
                 const queryResults = db._query(query, {count: true}, {fullCount: true});
                 const results = queryResults.toArray();
-                assertEqual(limit, results.length,
-                    "Expected " + limit + " results");
 
                 const uniqueResults = new Set(results);
-                assertEqual(limit, uniqueResults.size,
-                    "All " + limit + " returned documents should be unique");
-
-                assertEqual(queryResults.count(), limit);
-
                 const stats = queryResults.getExtra().stats;
-                assertEqual(stats.fullCount, largeLimitNumberOfDocs);
+
+                const diag = `limit=${limit}, results.length=${results.length}, ` +
+                    `unique=${uniqueResults.size}, count=${queryResults.count()}, ` +
+                    `fullCount=${stats.fullCount}, expectedFullCount=${largeLimitNumberOfDocs}, ` +
+                    `collectionCount=${actualCollectionCount}, nLists=${nLists}`;
+
+                assertEqual(limit, results.length,
+                    `Expected ${limit} results. ${diag}`);
+
+                assertEqual(limit, uniqueResults.size,
+                    `All ${limit} returned documents should be unique. ${diag}`);
+
+                assertEqual(queryResults.count(), limit,
+                    `Count mismatch. ${diag}`);
+
+                assertEqual(stats.fullCount, largeLimitNumberOfDocs,
+                    `FullCount mismatch. ${diag}`);
             }
         },
     };

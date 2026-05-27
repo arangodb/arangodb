@@ -20,10 +20,12 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <fuerte/ApiVersion.h>
 #include <fuerte/helper.h>
 #include <fuerte/message.h>
 #include <velocypack/Validator.h>
 
+#include <ranges>
 #include <sstream>
 
 #include "debugging.h"
@@ -44,9 +46,7 @@ inline int hex2int(char ch, int errorCode) {
 }
 }  // namespace
 
-namespace arangodb {
-namespace fuerte {
-inline namespace v1 {
+namespace arangodb::fuerte { inline namespace v1 {
 
 ///////////////////////////////////////////////
 // class MessageHeader
@@ -87,6 +87,33 @@ void RequestHeader::acceptType(std::string const& type) {
   addMeta(fu_accept_key, type);
 }
 
+namespace {
+using VersionString = std::string_view;
+using PathRest = std::string_view;
+
+/// split paths /_arango/version/some/other/rest
+/// into version and some/other/rest
+auto extractVersionFromPath(std::string_view path)
+    -> std::optional<std::pair<VersionString, PathRest>> {
+  constexpr std::string_view kPrefix = "/_arango/";
+  if (!path.starts_with(kPrefix)) {
+    return std::nullopt;
+  }
+  auto const tail = path.substr(kPrefix.size());
+  auto const slash = tail.find('/');
+  if (slash == std::string_view::npos) {
+    if (tail.empty()) {
+      return std::nullopt;
+    }
+    return {{tail, PathRest{"/"}}};
+  }
+  if (slash == 0) {
+    return std::nullopt;
+  }
+  return {{tail.substr(0, slash), tail.substr(slash)}};
+}
+}  // namespace
+
 /// @brief analyze path and split into components
 /// strips /_arango/vX (or /_arango/experimental) prefix, then /_db/<name>
 /// prefix; sets apiVersion, database, path, and fills parameters
@@ -97,58 +124,16 @@ void RequestHeader::parseArangoPath(std::string_view p) {
   // Detect and strip /_arango/vX or /_arango/experimental prefix.
   // This must come before /_db/<name>.
   {
-    constexpr std::string_view arangoPrefix = "/_arango/";
-    constexpr std::string_view experimentalSuffix = "experimental";
-    if (this->path.size() >= arangoPrefix.size() &&
-        std::string_view(this->path).substr(0, arangoPrefix.size()) ==
-            arangoPrefix) {
-      std::string_view remainder =
-          std::string_view(this->path).substr(arangoPrefix.size());
-      bool recognized = false;
-      if (remainder.starts_with(experimentalSuffix)) {
-        size_t suffixEnd = experimentalSuffix.size();
-        if (suffixEnd == remainder.size() || remainder[suffixEnd] == '/') {
-          this->apiVersion = experimentalSuffix;
-          this->path = suffixEnd < remainder.size()
-                           ? std::string(remainder.substr(suffixEnd))
-                           : "/";
-          recognized = true;
-        }
-      } else if (!remainder.empty() && remainder[0] == 'v') {
-        std::string_view afterV = remainder.substr(1);
-        size_t numEnd = 0;
-        while (numEnd < afterV.size() &&
-               (afterV[numEnd] >= '0' && afterV[numEnd] <= '9')) {
-          ++numEnd;
-        }
-        if (numEnd > 0 && (numEnd == afterV.size() || afterV[numEnd] == '/')) {
-          // parse version number (reject leading zeros except bare "0")
-          if (!(afterV[0] == '0' && numEnd > 1)) {
-            uint32_t version = 0;
-            bool overflow = false;
-            for (size_t i = 0; i < numEnd; ++i) {
-              uint32_t d = afterV[i] - '0';
-              if (version > (UINT32_MAX - d) / 10) {
-                overflow = true;
-                break;
-              }
-              version = version * 10 + d;
-            }
-            if (!overflow) {
-              this->apiVersion = "v" + std::to_string(version);
-              this->path = numEnd < afterV.size()
-                               ? std::string(afterV.substr(numEnd))
-                               : "/";
-              recognized = true;
-            }
-          }
-        }
-      }
-      if (!recognized) {
-        // /_arango/ present but not a valid prefix — leave path unchanged,
-        // apiVersion stays nullopt
+    auto maybe_splitPath = extractVersionFromPath(this->path);
+    if (maybe_splitPath != std::nullopt) {
+      auto& [versionString, pathRest] = *maybe_splitPath;
+      if (auto maybe_v = fuerte::api_version::from(versionString);
+          maybe_v != std::nullopt) {
+        this->apiVersion = *maybe_v;
+        this->path = pathRest;
       }
     }
+    // in any other case: leave path unchanged, apiVersion stays nullopt
   }
 
   // extract database prefix /_db/<name>/
@@ -353,6 +338,4 @@ std::shared_ptr<velocypack::Buffer<uint8_t>> Response::stealPayload() {
   _payloadOffset = 0;
   return buffer;
 }
-}  // namespace v1
-}  // namespace fuerte
-}  // namespace arangodb
+}}  // namespace arangodb::fuerte::v1

@@ -122,17 +122,23 @@ Result extractIndexHandle(velocypack::Slice arg, bool extendedNames,
     std::size_t split = handle.find('/');
     TRI_ASSERT(split != std::string::npos);
     collectionName = std::string(handle.data(), split);
-    iid = IndexId{StringUtils::uint64(handle.data() + split + 1,
-                                      handle.size() - split - 1)};
+    auto parsed = IndexId::fromString(handle);
+    if (parsed.fail()) {
+      return parsed.result();
+    }
+    iid = parsed.get();
     return {};
   }
 
-  if (!handle.empty() &&
-      !Index::validateId(std::string_view(handle.data(), handle.size()))) {
+  if (!handle.empty() && !Index::validateId(handle)) {
     return {TRI_ERROR_ARANGO_INDEX_HANDLE_BAD};
   }
 
-  iid = IndexId{StringUtils::uint64(handle.data(), handle.size())};
+  auto parsed = IndexId::fromString(handle);
+  if (parsed.fail()) {
+    return parsed.result();
+  }
+  iid = parsed.get();
   return {};
 }
 
