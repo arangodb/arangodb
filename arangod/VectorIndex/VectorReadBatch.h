@@ -52,7 +52,11 @@ namespace vector {
 
 // FAISS uses int64_t labels; the static_assert in RocksDBVectorIndex.cpp
 // guards this assumption against future faiss changes.
+using Vector = std::vector<float>;
 using VectorIndexLabelId = std::int64_t;
+using Labels = std::vector<VectorIndexLabelId>;
+using Distance = float;
+using Distances = std::vector<Distance>;
 
 // Static per-search configuration. Built once by EnumerateNearVectorNode in
 // createBlock and reused for every readBatch call within an executor.
