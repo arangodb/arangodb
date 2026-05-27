@@ -64,7 +64,7 @@ struct Activity : std::enable_shared_from_this<Activity> {
  private:
   ActivityId _id;
   ActivityHandle _parent;
-  ActivityType _type;
+  const ActivityType _type;
   ActivityCreated _created;
   Guarded<ThreadList> _threads;
 };
