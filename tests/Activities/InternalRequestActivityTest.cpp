@@ -147,6 +147,9 @@ struct DeferredPool final : network::ConnectionPool {
 
 auto requestActivitiesInRegistry()
     -> std::vector<network::RequestActivityData> {
+  // make sure that all dangling activities are gone
+  activities::registry.garbageCollect();
+
   auto snap = activities::registry.snapshot();
   if (!snap.ok()) {
     return std::vector<network::RequestActivityData>{};
@@ -165,52 +168,6 @@ auto requestActivitiesInRegistry()
   return requestActivities;
 }
 
-struct RequestFilter {
-  std::optional<network::DestinationId> destination;
-  std::optional<fuerte::RestVerb> method;
-  std::optional<std::string> path;
-  std::optional<bool> hasPayload;
-  std::optional<network::RequestOptions> options;
-  std::optional<network::Headers> header;
-  std::optional<std::optional<size_t>> retryCount;
-};
-struct Ok {
-  bool operator==(Ok const&) const = default;
-};
-template<typename Inspector>
-auto inspect(Inspector& f, Ok& x) {
-  return f.object(x).fields();
-}
-using Err = std::vector<network::RequestActivityData>;
-struct Res : std::variant<Ok, Err> {
-  bool operator==(Res const&) const = default;
-};
-template<typename Inspector>
-auto inspect(Inspector& f, Res& x) {
-  return f.variant(x).unqualified().alternatives(
-      inspection::type<Ok>("Ok"), inspection::type<Err>("Error"));
-}
-void PrintTo(const Res& res, std::ostream* os) { *os << inspection::json(res); }
-auto registryContainsRequestActivity(RequestFilter&& filter = RequestFilter{})
-    -> Res {
-  auto activities = requestActivitiesInRegistry();
-  for (auto const& a : activities) {
-    if ((!filter.destination.has_value() ||
-         a.destination == filter.destination.value())                         //
-        && (!filter.method.has_value() || a.method == filter.method.value())  //
-        && (!filter.path.has_value() || a.path == filter.path.value())        //
-        && (!filter.hasPayload.has_value() ||
-            a.hasPayload == filter.hasPayload.value())  //
-        &&
-        (!filter.options.has_value() || a.options == filter.options.value())  //
-        && (!filter.header.has_value() || a.header == filter.header.value())  //
-        && (!filter.retryCount.has_value() ||
-            a.retryCount == filter.retryCount.value())) {
-      return {Ok{}};
-    }
-  }
-  return {Err{activities}};
-}
 }  // namespace
 
 struct InternalRequestActivityTest : ::testing::Test {
@@ -248,46 +205,38 @@ TEST_F(InternalRequestActivityTest,
     VPackObjectBuilder b(&payload);
     payload.add("abc", VPackValue(423));
   }
-  auto future = network::sendRequest(
+  auto response = network::sendRequest(
       pool.get(), "tcp://example.org:80", fuerte::RestVerb::Post, "/_api/123",
       *payload.steal(), opts, {{"header1", "abc"}});
 
-  ASSERT_FALSE(future.isReady());
-  EXPECT_EQ(
-      registryContainsRequestActivity(RequestFilter{
-          .destination = "tcp://example.org:80",
-          .method = fuerte::RestVerb::Post,
-          .path = "/_api/123",
-          .hasPayload = true,
-          .options = opts,
-          .header = std::map<std::string, std::string>{{"header1", "abc"}}}),
-      Res{Ok{}});
-  ASSERT_FALSE(future.isReady());
+  ASSERT_FALSE(response.isReady());
+  ASSERT_EQ(
+      requestActivitiesInRegistry(),
+      (std::vector<network::RequestActivityData>{
+          {.destination = "tcp://example.org:80",
+           .method = fuerte::RestVerb::Post,
+           .path = "/_api/123",
+           .hasPayload = true,
+           .options = opts,
+           .header = std::map<std::string, std::string>{{"header1", "abc"}}}}));
+  ASSERT_FALSE(response.isReady());
 }
 
 TEST_F(InternalRequestActivityTest,
        activity_is_gone_after_request_is_resolved) {
   auto opts = network::RequestOptions{.skipScheduler = true};
 
-  auto future = network::sendRequest(pool.get(), "tcp://example.org:80",
-                                     fuerte::RestVerb::Get, "/", {}, opts);
-
-  ASSERT_EQ(registryContainsRequestActivity(
-                RequestFilter{.destination = "tcp://example.org:80",
-                              .method = fuerte::RestVerb::Get,
-                              .path = "/",
-                              .hasPayload = false,
-                              .options = opts,
-                              .header = {}}),
-            Res{Ok{}});
+  auto response = network::sendRequest(pool.get(), "tcp://example.org:80",
+                                       fuerte::RestVerb::Get, "/", {}, opts);
+  ASSERT_FALSE(response.isReady());
 
   pool->conn->respondNow(fuerte::Error::NoError);
-  ASSERT_TRUE(future.isReady());
+  ASSERT_TRUE(response.isReady());
 
-  activities::registry.garbageCollect();
-  EXPECT_EQ(registryContainsRequestActivity(), Res{Err{}});  // TODO filter!
+  ASSERT_EQ(requestActivitiesInRegistry(),
+            (std::vector<network::RequestActivityData>{}));
 
-  ASSERT_EQ(std::move(future).waitAndGet().error, fuerte::Error::NoError);
+  ASSERT_EQ(std::move(response).waitAndGet().error, fuerte::Error::NoError);
 }
 
 TEST_F(InternalRequestActivityTest,
@@ -299,71 +248,125 @@ TEST_F(InternalRequestActivityTest,
     VPackObjectBuilder b(&payload);
     payload.add("abc", VPackValue(423));
   }
-  auto future = network::sendRequestRetry(
+  auto response = network::sendRequestRetry(
       pool.get(), "tcp://example.org:80", fuerte::RestVerb::Post, "/_api/123",
       *payload.steal(), opts, {{"header1", "abc"}});
 
-  auto const filter = RequestFilter{
-      .destination = "tcp://example.org:80",
-      .method = fuerte::RestVerb::Post,
-      .path = "/_api/123",
-      .hasPayload = true,
-      .options = opts,
-      .header = std::map<std::string, std::string>{{"header1", "abc"}}};
+  ASSERT_FALSE(response.isReady());
+  ASSERT_EQ(
+      requestActivitiesInRegistry(),
+      (std::vector<network::RequestActivityData>{
+          {.destination = "tcp://example.org:80",
+           .method = fuerte::RestVerb::Post,
+           .path = "/_api/123",
+           .hasPayload = true,
+           .options = opts,
+           .header = std::map<std::string, std::string>{{"header1", "abc"}},
+           .retryCount = 0}}));
+  ASSERT_FALSE(response.isReady());
+}
 
-  // First attempt is in flight.
-  ASSERT_TRUE(waitForPendingRequest(*pool->conn));
-  ASSERT_FALSE(future.isReady());
-  EXPECT_EQ(
-      registryContainsRequestActivity(RequestFilter{
-          .destination = "tcp://example.org:80",
-          .method = fuerte::RestVerb::Post,
-          .path = "/_api/123",
-          .hasPayload = true,
-          .options = opts,
-          .header = std::map<std::string, std::string>{{"header1", "abc"}},
-          .retryCount = 0}),
-      Res{Ok{}});
+TEST_F(
+    InternalRequestActivityTest,
+    activity_is_present_while_retry_request_continually_fails_with_retryable_error) {
+  auto opts = network::RequestOptions{.skipScheduler = true};
+
+  auto response = network::sendRequestRetry(
+      pool.get(), "tcp://example.org:80", fuerte::RestVerb::Get, "/", {}, opts);
+  ASSERT_FALSE(response.isReady());
 
   // Fail it with a retryable error. The production code schedules a retry on
   // the NetworkFeature retry thread (~200ms later); the request is not done.
   pool->conn->respondNow(fuerte::Error::CouldNotConnect);
-  ASSERT_FALSE(future.isReady());
-  EXPECT_EQ(
-      registryContainsRequestActivity(RequestFilter{
-          .destination = "tcp://example.org:80",
-          .method = fuerte::RestVerb::Post,
-          .path = "/_api/123",
-          .hasPayload = true,
-          .options = opts,
-          .header = std::map<std::string, std::string>{{"header1", "abc"}},
-          .retryCount = 1}),
-      Res{Ok{}});
+  ASSERT_FALSE(response.isReady());
+  ASSERT_EQ(requestActivitiesInRegistry(),
+            (std::vector<network::RequestActivityData>{
+                {.destination = "tcp://example.org:80",
+                 .method = fuerte::RestVerb::Get,
+                 .path = "/",
+                 .hasPayload = false,
+                 .options = opts,
+                 .header = {},
+                 .retryCount = 1}}));
 
-  // Wait for the retry thread to re-issue the request; the activity must
-  // survive across the retry. A NoError result must carry a 2xx response for
-  // the retry loop to finish.
+  // Wait for the retry thread to re-issue the request
   ASSERT_TRUE(waitForPendingRequest(*pool->conn));
-  ASSERT_FALSE(future.isReady());
-  EXPECT_EQ(
-      registryContainsRequestActivity(RequestFilter{
-          .destination = "tcp://example.org:80",
-          .method = fuerte::RestVerb::Post,
-          .path = "/_api/123",
-          .hasPayload = true,
-          .options = opts,
-          .header = std::map<std::string, std::string>{{"header1", "abc"}},
-          .retryCount = 1}),
-      Res{Ok{}});
+
+  // Fail once more
+  pool->conn->respondNow(fuerte::Error::CouldNotConnect);
+  ASSERT_FALSE(response.isReady());
+  ASSERT_EQ(requestActivitiesInRegistry(),
+            (std::vector<network::RequestActivityData>{
+                {.destination = "tcp://example.org:80",
+                 .method = fuerte::RestVerb::Get,
+                 .path = "/",
+                 .hasPayload = false,
+                 .options = opts,
+                 .header = {},
+                 .retryCount = 2}}));
+
+  // Wait for the retry thread to re-issue the request
+  ASSERT_TRUE(waitForPendingRequest(*pool->conn));
+}
+
+TEST_F(InternalRequestActivityTest,
+       activity_is_gone_after_retry_request_is_resolved) {
+  auto opts = network::RequestOptions{.skipScheduler = true};
+
+  auto response = network::sendRequestRetry(
+      pool.get(), "tcp://example.org:80", fuerte::RestVerb::Get, "/", {}, opts);
+  ASSERT_FALSE(response.isReady());
 
   // Respond with no error: stops retry loop
   pool->conn->respondNow(fuerte::Error::NoError,
                          makeResponse(fuerte::StatusAccepted));
-  ASSERT_TRUE(future.isReady());
+  ASSERT_TRUE(response.isReady());
 
-  activities::registry.garbageCollect();
-  EXPECT_EQ(registryContainsRequestActivity(),
-            Res{Err{}});  // TODO probably test filter also here
+  ASSERT_EQ(requestActivitiesInRegistry(),
+            (std::vector<network::RequestActivityData>{}));
 
-  ASSERT_EQ(std::move(future).waitAndGet().error, fuerte::Error::NoError);
+  ASSERT_EQ(std::move(response).waitAndGet().error, fuerte::Error::NoError);
+}
+
+TEST_F(InternalRequestActivityTest,
+       activity_is_gone_after_retry_request_is_retried_and_then_resolved) {
+  auto opts = network::RequestOptions{.skipScheduler = true};
+
+  auto response = network::sendRequestRetry(
+      pool.get(), "tcp://example.org:80", fuerte::RestVerb::Get, "/", {}, opts);
+  ASSERT_FALSE(response.isReady());
+
+  // Start one retry
+  pool->conn->respondNow(fuerte::Error::CouldNotConnect);
+  // Wait for the retry thread to re-issue the request
+  ASSERT_TRUE(waitForPendingRequest(*pool->conn));
+  ASSERT_FALSE(response.isReady());
+
+  // Respond with no error: stops retry loop
+  pool->conn->respondNow(fuerte::Error::NoError,
+                         makeResponse(fuerte::StatusAccepted));
+  ASSERT_TRUE(response.isReady());
+
+  ASSERT_EQ(requestActivitiesInRegistry(),
+            (std::vector<network::RequestActivityData>{}));
+
+  ASSERT_EQ(std::move(response).waitAndGet().error, fuerte::Error::NoError);
+}
+
+TEST_F(InternalRequestActivityTest,
+       activity_is_gone_after_retry_request_finishes_early_with_error) {
+  auto opts = network::RequestOptions{.skipScheduler = true};
+
+  auto response = network::sendRequestRetry(
+      pool.get(), "tcp://example.org:80", fuerte::RestVerb::Get, "/", {}, opts);
+  ASSERT_FALSE(response.isReady());
+
+  pool->conn->respondNow(fuerte::Error::ConnectionClosed);
+  ASSERT_TRUE(response.isReady());
+
+  ASSERT_EQ(requestActivitiesInRegistry(),
+            (std::vector<network::RequestActivityData>{}));
+
+  ASSERT_EQ(std::move(response).waitAndGet().error,
+            fuerte::Error::ConnectionClosed);
 }
