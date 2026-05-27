@@ -1661,6 +1661,16 @@ function ahuacatlFunctionsTestSuite () {
       var actual = getQueryResults("RETURN UNION_DISTINCT_STABLE([ 's', 'a' ], [ 's', 'f' ])");
       assertEqual(expected, actual[0]);
     },
+   
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test union_distinct_stable function
+////////////////////////////////////////////////////////////////////////////////
+
+    testUnionDistinctStable8 : function () {
+      var expected = [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ];
+      var actual = getQueryResults("LET x = 1..10 RETURN UNION_DISTINCT_STABLE(x, [2, 3, 4])");
+      assertEqual(expected, actual[0]);
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test union_distinct_stable function

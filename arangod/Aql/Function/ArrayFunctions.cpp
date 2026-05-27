@@ -1035,7 +1035,8 @@ AqlValue functions::UnionDistinctStable(
 
   auto builder = ThreadLocalBuilderLeaser::lease();
   builder->openArray();
-  AqlValueMaterializer aqlValueMaterializer = AqlValueMaterializer(vopts);
+  std::vector<AqlValueMaterializer> materializers;
+  materializers.reserve(n);
   for (size_t i = 0; i < n; ++i) {
     AqlValue const& value =
         aql::functions::extractFunctionParameterValue(parameters, i);
@@ -1046,7 +1047,8 @@ AqlValue functions::UnionDistinctStable(
       return AqlValue(AqlValueHintNull());
     }
 
-    VPackSlice slice = aqlValueMaterializer.slice(value);
+    materializers.emplace_back(vopts);
+    VPackSlice slice = materializers.back().slice(value);
     for (VPackSlice v : VPackArrayIterator(slice)) {
       v = v.resolveExternal();
       if (values.emplace(v).second) {
