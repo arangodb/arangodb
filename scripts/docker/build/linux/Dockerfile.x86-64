@@ -86,7 +86,7 @@ RUN cmake -G Ninja -DLLVM_ENABLE_PROJECTS="clang;openmp" -DCMAKE_C_COMPILER=clan
 
 FROM prepare AS nodejs
 # yarn for UI build:
-ARG NODE_VERSION="20.14.0"
+ARG NODE_VERSION="22.22.3"
 RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash && \
   export NVM_DIR="$HOME/.nvm" &&\
   [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh" \
