@@ -243,12 +243,12 @@ Result RocksDBFulltextIndex::insert(transaction::Methods& trx,
 
   // size_t const count = words.size();
   for (std::string const& word : words) {
-    RocksDBKeyLeaser key(&trx);
-    key->constructFulltextIndexValue(objectId(), std::string_view(word),
-                                     documentId);
-    TRI_ASSERT(key->containsLocalDocumentId(documentId));
+    RocksDBKey key(ThreadLocalStringLeaser::lease());
+    key.constructFulltextIndexValue(objectId(), std::string_view(word),
+                                    documentId);
+    TRI_ASSERT(key.containsLocalDocumentId(documentId));
 
-    rocksdb::Status s = mthd->PutUntracked(_cf, key.ref(), value.string());
+    rocksdb::Status s = mthd->PutUntracked(_cf, key, value.string());
 
     if (!s.ok()) {
       res.reset(rocksutils::convertStatus(s, rocksutils::index));
@@ -275,12 +275,12 @@ Result RocksDBFulltextIndex::remove(transaction::Methods& trx,
   // now we are going to construct the value to insert into rocksdb
   // unique indexes have a different key structure
   for (std::string const& word : words) {
-    RocksDBKeyLeaser key(&trx);
+    RocksDBKey key(ThreadLocalStringLeaser::lease());
 
-    key->constructFulltextIndexValue(objectId(), std::string_view(word),
-                                     documentId);
+    key.constructFulltextIndexValue(objectId(), std::string_view(word),
+                                    documentId);
 
-    rocksdb::Status s = mthd->Delete(_cf, key.ref());
+    rocksdb::Status s = mthd->Delete(_cf, key);
 
     if (!s.ok()) {
       res.reset(rocksutils::convertStatus(s, rocksutils::index));
