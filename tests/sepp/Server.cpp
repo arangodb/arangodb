@@ -154,7 +154,7 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
   auto& metrics = _server.addFeature<metrics::MetricsFeature>(
       LazyApplicationFeatureReference<QueryRegistryFeature>(_server),
       LazyApplicationFeatureReference<StatisticsFeature>(_server),
-      LazyApplicationFeatureReference<EngineSelectorFeature>(_server),
+      LazyApplicationFeatureReference<DatabaseFeature>(_server),
       LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(_server),
       LazyApplicationFeatureReference<ClusterFeature>(_server));
   _server.addFeature<metrics::ClusterMetricsFeature>();
@@ -185,7 +185,6 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
   auto& databasePath = _server.addFeature<DatabasePathFeature>();
   auto& dumpLimits = _server.addFeature<DumpLimitsFeature>();
   _server.addFeature<HttpEndpointProvider, EndpointFeature>();
-  _server.addFeature<EngineSelectorFeature>();
   _server.addFeature<EnvironmentFeature>();
   _server.addFeature<FileSystemFeature>();
   auto& flush = _server.addFeature<FlushFeature>(metrics);

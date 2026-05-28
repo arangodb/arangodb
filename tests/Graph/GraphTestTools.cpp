@@ -37,7 +37,6 @@
 #include "RestServer/DatabasePathFeature.h"
 #include "VectorIndex/VectorIndexFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "Statistics/StatisticsFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/ManagerFeature.h"
@@ -62,7 +61,7 @@ GraphTestSetup::GraphTestSetup() : server(nullptr, nullptr), engine(server) {
   auto& metrics = server.addFeature<arangodb::metrics::MetricsFeature>(
       LazyApplicationFeatureReference<QueryRegistryFeature>(server),
       LazyApplicationFeatureReference<StatisticsFeature>(nullptr),
-      LazyApplicationFeatureReference<EngineSelectorFeature>(server),
+      LazyApplicationFeatureReference<DatabaseFeature>(server),
       LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(nullptr),
       LazyApplicationFeatureReference<ClusterFeature>(nullptr));
   features.emplace_back(metrics, false);
@@ -72,9 +71,7 @@ GraphTestSetup::GraphTestSetup() : server(nullptr, nullptr), engine(server) {
       server.addFeature<arangodb::transaction::ManagerFeature>(metrics), false);
   auto& databaseFeature = server.addFeature<arangodb::DatabaseFeature>();
   features.emplace_back(databaseFeature, false);
-  features.emplace_back(server.addFeature<arangodb::EngineSelectorFeature>(),
-                        false);
-  server.getFeature<EngineSelectorFeature>().setEngineTesting(&engine);
+  databaseFeature.setEngineTesting(&engine);
   features.emplace_back(
       server.addFeature<arangodb::QueryRegistryFeature>(
           server.getFeature<arangodb::metrics::MetricsFeature>()),
@@ -113,7 +110,7 @@ GraphTestSetup::GraphTestSetup() : server(nullptr, nullptr), engine(server) {
 GraphTestSetup::~GraphTestSetup() {
   system.reset();                       // destroy before reseting the 'ENGINE'
   arangodb::AqlFeature(server).stop();  // unset singleton instance
-  server.getFeature<EngineSelectorFeature>().setEngineTesting(nullptr);
+  server.getFeature<DatabaseFeature>().setEngineTesting(nullptr);
 
   // destroy application features
   for (auto& f : features) {

@@ -34,7 +34,7 @@
 #include "Logger/LogMacros.h"
 #include "Sharding/ShardingFeature.h"
 #include "Sharding/ShardingStrategyDefault.h"
-#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/StorageEngine.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
@@ -179,16 +179,15 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info,
 
   auto& server = _collection->vocbase().server();
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-  auto const& engineSelection =
-      server.getFeature<arangodb::EngineSelectorFeature>();
   if (!ServerState::instance()->isRunningInCluster() &&
-      engineSelection.engineName() == "Mock") {
+      _collection->vocbase().engine().typeName() == "Mock") {
     // shortcut, so we do not need to set up the whole application
     // server for testing
     _shardingStrategy = std::make_unique<ShardingStrategyNone>();
     return;
   }
 #endif
+
   _shardingStrategy =
       server.getFeature<ShardingFeature>().fromVelocyPack(info, this);
   TRI_ASSERT(_shardingStrategy != nullptr);

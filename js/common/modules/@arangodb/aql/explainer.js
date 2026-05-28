@@ -1439,19 +1439,42 @@ function processQuery(query, explain, planIndex) {
         }
 
         let filter = '';
-        if (node.hasOwnProperty("filterExpression") && JSON.stringify(node.filterExpression) !== "") {
-          filter = keyword(' FILTER ') + buildExpression(node.filterExpression) + '   ' + annotation('/* early pruning */');
-          if (node.hasOwnProperty("isCoveredByStoredValues") && node.isCoveredByStoredValues) {
-            filter += annotation(" /* covered by storedValues */");
+        if (node.filter) {
+          filter = '   ' + keyword('FILTER') + ' ' + buildExpression(node.filter) + '   ' + annotation('/* early pruning */');
+        }
+        if (node.projections) {
+          // produce LET nodes for each projection output register
+          let parts = [];
+          node.projections.forEach((p) => {
+            if (p.hasOwnProperty('variable')) {
+              parts.push(variableName(p.variable) + ' = ' + variableName(node.outVariable) + '.' + p.path.map((p) => attribute(p)).join('.'));
+            }
+          });
+          if (parts.length) {
+            filter = '   ' + keyword('LET') + ' ' + parts.join(', ') + filter;
           }
         }
+
+        let projectionAnnotation = '';
+        if (node.projectionMode === "covering") {
+          projectionAnnotation = ', projections via storedValues';
+        } else if (node.projectionMode === "document") {
+          projectionAnnotation = ', projections via document';
+        }
+        let filterAnnotation = '';
+        if (node.filterMode === "storedValues") {
+          filterAnnotation = ', filter via storedValues';
+        } else if (node.filterMode === "document") {
+          filterAnnotation = ', filter via document';
+        }
+        const enumAnnotation = annotation('/* vector index' + filterAnnotation + projectionAnnotation + projections(node, 'filterProjections', 'filter projections') + projections(node, 'projections', 'projections') + ' */');
 
         // Register the index used for near vector search
         if (node.hasOwnProperty('index')) {
           iterateIndexes(node.index, 0, node, types, variableName(node.inVariable));
         }
 
-        return keyword('FOR') + ' ' + variableName(node.oldDocumentVariable) + keyword(' OF ') + collection(node.collection) + keyword(' IN TOP ') + node.limit + keyword(' NEAR ') + variableName(node.inVariable) + keyword(' DISTANCE INTO ') + variableName(node.distanceOutVariable) + searchParameters + filter;
+        return keyword('FOR') + ' ' + variableName(node.outVariable) + keyword(' OF ') + collection(node.collection) + keyword(' IN TOP ') + node.limit + keyword(' NEAR ') + variableName(node.inVariable) + keyword(' DISTANCE INTO ') + variableName(node.distanceOutVariable) + searchParameters + '   ' + enumAnnotation + filter;
       }
       case 'EnumerateViewNode':
         var condition = '';
