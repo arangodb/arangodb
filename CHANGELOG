@@ -1,5 +1,7 @@
 3.12.10-devel (XXXX-XX-XX)
 --------------------------
+* COR-75: Removed RocksDBKeyLeaser, making RocksDBKey own its leased string buffer directly.
+
 * Fix shipped cmake file to make the build work on cmake >= 4.
 
 * Upgraded FAISS to v1.14.2.
