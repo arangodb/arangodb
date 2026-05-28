@@ -7,8 +7,11 @@ logs, sanitizer errors, core dumps), and produces CI-friendly reports (JSON, JUn
 
 ## Installation
 
-- Install elixir, at least version 1.19.
-- Install the package manager with `mix local.hex`
+- Install elixir (>= 1.19) and erlang (>= 17)
+  A version manager like asdf or mise let's you pick a specific version (and actually manage
+  multiple concurrently installed versions) so you do not depend on the versions available
+  in your OS distribution's package management.
+- Install hex (package manager) and rebar (Erlang build system) with `mix local.hex` and `mix local.rebar`
 - Pull all dependent packages via `mix deps.get`
 
 ## Quick Start
@@ -747,6 +750,9 @@ differs from the current weight are shown.
 manually-started deployment, useful for debugging.
 
 Start an interactive interactive session with `TOAST_BUILD_DIR=path/to/build-dir iex -S mix`.
+Alternatively one can use a [Local Config File](#local-config-file) with a predefined build directory
+to avoid having to set the environment variable.
+
 Inside the session:
 ```elixir
 {:ok, deployment} = Toast.Deployment.start_cluster("/path/to/work-dir")
@@ -763,8 +769,6 @@ ToastTest.Interactive.run(Smoke.VersionTest,
 # When done
 Toast.Deployment.stop(deployment)
 ```
-
-There are also different ways to define the build directory, see e.g. [Local Config File](#local-config-file).
 
 Be aware that when you are in an interactive session, files that end with .exs are automatically recompiled 
 when changed but not .ex files. Execute `recompile` in the interactive shell to recompile these as well.
