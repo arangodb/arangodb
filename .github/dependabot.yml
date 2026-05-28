@@ -1,33 +1,10 @@
 # Dependabot configuration for arangodb/arangodb.
 # Target: .github/dependabot.yml on the `devel` branch.
-# Docs: https://docs.github.com/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
+# Docker tracking removed — production images are built in arangodb/oskar, not here.
 
 version: 2
 
 updates:
-  # ----- Production deploy image (ships to customers) -----
-  - package-ecosystem: "docker"
-    directory: "/scripts/docker/deploy"
-    target-branch: "devel"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "06:00"
-      timezone: "Europe/Berlin"
-    open-pull-requests-limit: 5
-    labels:
-      - "dependencies"
-      - "docker"
-      - "security"
-    commit-message:
-      prefix: "build"
-      include: "scope"
-    groups:
-      deploy-image-minor-patch:
-        update-types:
-          - "minor"
-          - "patch"
-
   # ----- Server-side JS extensions -----
   - package-ecosystem: "npm"
     directory: "/js/node"
