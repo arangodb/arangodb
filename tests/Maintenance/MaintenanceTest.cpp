@@ -63,7 +63,6 @@
 #include "RocksDBEngine/RocksDBRecoveryManager.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Statistics/StatisticsFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Iterator.h>
@@ -542,7 +541,6 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
     auto& roOptions = as.addFeature<RocksDBOptionFeature>(&agencyFeature);
     as.addFeature<application_features::GreetingsFeaturePhase>(
         std::false_type{});
-    auto& selector = as.addFeature<EngineSelectorFeature>();
     auto& dbFeature = as.addFeature<DatabaseFeature>();
     auto& metrics = as.addFeature<metrics::MetricsFeature>(
         LazyApplicationFeatureReference<QueryRegistryFeature>(nullptr),
@@ -577,12 +575,10 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
         schedulerFeature, replicatedLogFeature, rocksDbRecoveryManager,
         dbFeature, rocksDbIndexCacheRefillFeature, cacheManagerFeature,
         agencyFeature);
-    selector.setEngineTesting(engine.get());
     dbFeature.setEngineTesting(engine.get());
   }
 
   ~MaintenanceTestActionPhaseOne() {
-    as.getFeature<arangodb::EngineSelectorFeature>().setEngineTesting(nullptr);
     as.getFeature<arangodb::DatabaseFeature>().setEngineTesting(nullptr);
   }
 

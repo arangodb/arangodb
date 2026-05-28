@@ -26,6 +26,7 @@
 #include "RestHandler/RestBaseHandler.h"
 
 namespace arangodb {
+class StorageEngine;
 
 class RestCompactHandler : public arangodb::RestBaseHandler {
  public:
@@ -36,5 +37,8 @@ class RestCompactHandler : public arangodb::RestBaseHandler {
   RestStatus execute() override;
   char const* name() const override { return "RestCompactHandler"; }
   RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
+
+ private:
+  StorageEngine& _engine;
 };
 }  // namespace arangodb

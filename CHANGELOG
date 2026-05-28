@@ -1,5 +1,7 @@
 3.12.10-devel (XXXX-XX-XX)
 --------------------------
+* Fix shipped cmake file to make the build work on cmake >= 4.
+
 * Upgraded FAISS to v1.14.2.
 
 * COR-320: Vector search now supports projections, allowing covered queries
