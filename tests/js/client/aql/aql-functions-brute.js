@@ -82,6 +82,7 @@ function ahuacatlFunctionsBruteTestSuite () {
     "RANGE",
     "UNION",
     "UNION_DISTINCT",
+    "UNION_DISTINCT_STABLE",
     "MINUS",
     "INTERSECTION",
     "FLATTEN",

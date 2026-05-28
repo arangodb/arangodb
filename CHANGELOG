@@ -14,6 +14,9 @@
 * Upgraded included rclone to v1.73.5 with go1.25.9 and non-vulnerable
   dependencies.
 
+* COR-542: New AQL function UNION_DISTINCT_STABLE – merges arrays without duplicates
+  while preserving order, helping maintain predictable array ordering in queries
+
 * COR-528: Reserve keywords "INNER_JOIN", "LEFT_JOIN", "RIGHT_JOIN", and "OUTER_JOIN"
   are introduced for JOIN operations.
   
