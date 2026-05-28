@@ -28,6 +28,7 @@
 #include "Aql/AstNode.h"
 #include "Aql/Function.h"
 #include "Aql/SortCondition.h"
+#include "Basics/ThreadLocalLeaser.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "GeoIndex/Covering.h"

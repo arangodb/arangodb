@@ -26,6 +26,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
+#include "Basics/ThreadLocalLeaser.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/VelocyPackHelper.h"

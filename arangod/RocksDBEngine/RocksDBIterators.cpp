@@ -24,6 +24,7 @@
 #include "RocksDBIterators.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
+#include "Basics/ThreadLocalLeaser.h"
 #include "Random/RandomGenerator.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
