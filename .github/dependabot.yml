@@ -1,0 +1,96 @@
+# Dependabot configuration for arangodb/arangodb.
+# Target: .github/dependabot.yml on the `devel` branch.
+# Docs: https://docs.github.com/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
+
+version: 2
+
+updates:
+  # ----- Production deploy image (ships to customers) -----
+  - package-ecosystem: "docker"
+    directory: "/scripts/docker/deploy"
+    target-branch: "devel"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Europe/Berlin"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "docker"
+      - "security"
+    commit-message:
+      prefix: "build"
+      include: "scope"
+    groups:
+      deploy-image-minor-patch:
+        update-types:
+          - "minor"
+          - "patch"
+
+  # ----- Server-side JS extensions -----
+  - package-ecosystem: "npm"
+    directory: "/js/node"
+    target-branch: "devel"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Europe/Berlin"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "javascript"
+    commit-message:
+      prefix: "deps"
+      prefix-development: "deps-dev"
+      include: "scope"
+    versioning-strategy: "increase"
+    groups:
+      js-node-production-minor-patch:
+        dependency-type: "production"
+        update-types:
+          - "minor"
+          - "patch"
+      js-node-development-minor-patch:
+        dependency-type: "development"
+        update-types:
+          - "minor"
+          - "patch"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
+  # ----- Aardvark admin web UI -----
+  - package-ecosystem: "npm"
+    directory: "/js/apps/system/_admin/aardvark/APP/react"
+    target-branch: "devel"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Europe/Berlin"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "javascript"
+      - "aardvark"
+    commit-message:
+      prefix: "deps"
+      prefix-development: "deps-dev"
+      include: "scope"
+    versioning-strategy: "increase"
+    groups:
+      aardvark-production-minor-patch:
+        dependency-type: "production"
+        update-types:
+          - "minor"
+          - "patch"
+      aardvark-development-minor-patch:
+        dependency-type: "development"
+        update-types:
+          - "minor"
+          - "patch"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
