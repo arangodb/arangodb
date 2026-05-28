@@ -49,7 +49,6 @@
 #include "IResearch/VelocyPackHelper.h"
 #include "RestServer/AqlFeature.h"
 #include "RestServer/DatabaseFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "Utils/ExecContext.h"
 #include "V8/V8SecurityFeature.h"
 #include "V8/v8-conv.h"

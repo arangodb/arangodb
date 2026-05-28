@@ -32,7 +32,6 @@
 #include "Basics/WriteLocker.h"
 #include "Futures/Utilities.h"
 #include "Logger/LogMacros.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/IndexesSnapshot.h"
