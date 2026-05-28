@@ -39,7 +39,6 @@
 
 namespace arangodb::vector {
 
-namespace {
 // Copy a non-owning slice's bytes into a fresh owning SharedSlice.
 velocypack::SharedSlice toOwnedSharedSlice(velocypack::Slice slice) {
   velocypack::Buffer<uint8_t> buf;
@@ -60,7 +59,6 @@ faiss::InvertedListsIterator* makeWithStoredValuesByVersion(
   }
   ADB_UNREACHABLE;
 }
-}  // namespace
 
 /// RocksDBInvertedListsIteratorBase
 RocksDBInvertedListsIteratorBase::RocksDBInvertedListsIteratorBase(

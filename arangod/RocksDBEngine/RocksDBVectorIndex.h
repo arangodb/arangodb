@@ -161,9 +161,11 @@ class RocksDBVectorIndex final : public RocksDBIndex {
   float computeDistance(const vector::Vector& vec1, const vector::Vector& vec2, bool isDescending);
   bool getNormalizedVectorFromDocument(const velocypack::Slice& docSlice, vector::Vector& vec);
 
-  std::pair<vector::Labels, vector::Distances>
-  bruteForceSearch(vector::Vector& searchVector, std::size_t topK,
-                   transaction::Methods* trx);
+  std::pair<vector::Labels, vector::Distances> bruteForceSearch(
+      vector::Vector& searchVector, std::size_t topK, transaction::Methods* trx,
+      vector::ProjectionMode projectionMode,
+      containers::NodeHashMap<LocalDocumentId, velocypack::SharedSlice>*
+          captureSink);
 
   vector::VectorIndexMetadata loadVectorIndexMetadata(
       velocypack::Slice info) const;

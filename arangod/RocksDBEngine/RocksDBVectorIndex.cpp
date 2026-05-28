@@ -307,7 +307,11 @@ float RocksDBVectorIndex::computeDistance(const vector::Vector& vec1, const vect
 std::pair<vector::Labels, vector::Distances>
 RocksDBVectorIndex::bruteForceSearch(vector::Vector& searchVector,
                                      std::size_t topK,
-                                     transaction::Methods* trx) {
+                                     transaction::Methods* trx,
+                                     vector::ProjectionMode projectionMode,
+                                     containers::NodeHashMap<LocalDocumentId,
+                                                             velocypack::SharedSlice>*
+                                         captureSink) {
   auto const dim = _definition.dimension;
 
   bool const isDescending =
@@ -322,6 +326,29 @@ RocksDBVectorIndex::bruteForceSearch(vector::Vector& searchVector,
 
   vector::Vector vec;
   vec.reserve(dim);
+
+  auto captureDocument = [&](LocalDocumentId docId,
+                             velocypack::Slice docSlice) {
+    if (captureSink == nullptr) {
+      return;
+    }
+    if (projectionMode == vector::ProjectionMode::kDocument) {
+      captureSink->insert_or_assign(docId, vector::toOwnedSharedSlice(docSlice));
+    } else if (projectionMode == vector::ProjectionMode::kCovered &&
+               hasStoredValues()) {
+      auto extracted =
+          transaction::extractAttributeValues(*trx, _storedValues, docSlice,
+                                              true)
+              ->get();
+      captureSink->insert_or_assign(docId, extracted->sharedSlice());
+    }
+  };
+
+  auto eraseCaptured = [&](vector::VectorIndexLabelId id) {
+    if (captureSink != nullptr && id >= 0) {
+      captureSink->erase(LocalDocumentId{static_cast<std::uint64_t>(id)});
+    }
+  };
 
   //  Iterate over all documents in the shard and build the heap.
   iter->allDocuments([&](LocalDocumentId docId, aql::DocumentData&&,
@@ -342,22 +369,27 @@ RocksDBVectorIndex::bruteForceSearch(vector::Vector& searchVector,
       } else {
         faiss::maxheap_push(n + 1, distances.data(), labels.data(), dist, id);
       }
+      captureDocument(docId, docSlice);
+      ++n;
     }
     else
     {
       if (isDescending) {
         if (dist > distances[0]) {
+          eraseCaptured(labels[0]);
           faiss::minheap_replace_top(topK, distances.data(), labels.data(), dist,
                                     id);
+          captureDocument(docId, docSlice);
         }
       } else {
         if (dist < distances[0]) {
+          eraseCaptured(labels[0]);
           faiss::maxheap_replace_top(topK, distances.data(), labels.data(), dist,
                                     id);
+          captureDocument(docId, docSlice);
         }
       }
     }
-    ++n;
 
     return true;
   });
@@ -398,13 +430,21 @@ vector::SearchResult RocksDBVectorIndex::readBatch(
   }
 
   vector::SearchResult result;
+  bool const captureNeeded =
+      config.strategy.projection == ProjectionMode::kCovered ||
+      (config.strategy.projection == ProjectionMode::kDocument &&
+        config.strategy.filter == FilterMode::kDocument);
+  auto* captureSink = captureNeeded ? &result.capturedDocuments : nullptr;
+
   if (auto const state = _trainingState.load();
       state != VectorIndexTrainingState::kReady) {
 
     if (isLinearScanEnabled()) {
       // Not enough training data: fall back to linear scan on this shard so
       // cluster vector search stays usable.
-      auto [labels, distances] = bruteForceSearch(inputs, config.topK, ctx.trx);
+
+      auto [labels, distances] = bruteForceSearch(
+          inputs, config.topK, ctx.trx, config.strategy.projection, captureSink);
       result.labels = std::move(labels);
       result.distances = std::move(distances);
       return result;
@@ -423,11 +463,6 @@ vector::SearchResult RocksDBVectorIndex::readBatch(
   result.distances.resize(config.topK);
   result.labels.resize(config.topK);
 
-  bool const captureNeeded =
-      config.strategy.projection == ProjectionMode::kCovered ||
-      (config.strategy.projection == ProjectionMode::kDocument &&
-       config.strategy.filter == FilterMode::kDocument);
-  auto* captureSink = captureNeeded ? &result.capturedDocuments : nullptr;
   auto faissSearchContext = makeFaissIteratorContext(config, ctx, captureSink);
 
   faiss::SearchParametersIVF searchParametersIvf;
