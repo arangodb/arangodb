@@ -123,6 +123,8 @@ class ClusterIndex : public Index {
 
   bool isVectorIndexReady() const noexcept override;
 
+  bool isLinearScanEnabled() const noexcept override;
+
  protected:
   ClusterEngineType _engineType;
   Index::IndexType _indexType;
