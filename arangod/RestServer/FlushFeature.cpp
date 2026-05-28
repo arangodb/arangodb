@@ -45,12 +45,11 @@ DECLARE_GAUGE(arangodb_flush_subscriptions, uint64_t,
 
 namespace arangodb {
 
-FlushFeature::FlushFeature(ApplicationServer& server)
+FlushFeature::FlushFeature(ApplicationServer& server,
+                           metrics::MetricsFeature& metrics)
     : ApplicationFeature{server, *this},
       _stopped(false),
-      _metricsFlushSubscriptions(
-          server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_flush_subscriptions{})) {
+      _metricsFlushSubscriptions(metrics.add(arangodb_flush_subscriptions{})) {
   setOptional(true);
   startsAfter<BasicFeaturePhaseServer>();
   startsAfter<StorageEngineFeature>();
