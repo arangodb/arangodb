@@ -1,5 +1,7 @@
 3.12.10-devel (XXXX-XX-XX)
 --------------------------
+* COR-573: Fix missing erase after std::ranges::remove.
+
 * Fix shipped cmake file to make the build work on cmake >= 4.
 
 * Upgraded FAISS to v1.14.2.
