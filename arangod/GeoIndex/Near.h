@@ -125,8 +125,10 @@ class NearUtils {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     if (!_allIntervalsCovered) {
       TRI_ASSERT(!isAscending() || isFilterIntersects() ||
+                 isFilterIsContained() ||
                  _buffer.top().distAngle <= _innerAngle);
-      TRI_ASSERT(!isDescending() || _buffer.top().distAngle >= _outerAngle);
+      TRI_ASSERT(!isDescending() || isFilterIntersects() ||
+                 isFilterIsContained() || _buffer.top().distAngle >= _outerAngle);
     }
 #endif
     return _buffer.top();
@@ -183,7 +185,10 @@ class NearUtils {
     return _params.filterType == geo::FilterType::INTERSECTS;
   }
 
- private:
+  bool isFilterIsContained() const noexcept {
+    return _params.filterType == geo::FilterType::IS_CONTAINED;
+  }
+
   geo::QueryParams const _params;
 
   /// target from which distances are measured

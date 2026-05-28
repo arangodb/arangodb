@@ -811,6 +811,23 @@ function optimizerRuleTestSuite() {
       hasNoFilterNode(result, query);
     },
 
+    testContainsPolygonIndexedFieldFirst: function () {
+      var query = {
+        string: `
+          FOR x IN @@cc
+            FILTER GEO_CONTAINS(x.geometry, @pt)
+            RETURN x._key`,
+        bindVars: {
+          "@cc": locations.name(),
+          "pt": { type: "Point", coordinates: [20, 25] }
+        }
+      };
+
+      var result = db._createStatement({query: query.string, bindVars: query.bindVars}).explain();
+      hasIndexNode(result, query);
+      hasNoFilterNode(result, query);
+    },
+
     ////////////////////////////////////////////////////////////////////////////
     /// @brief test simple rectangle contains
     ////////////////////////////////////////////////////////////////////////////

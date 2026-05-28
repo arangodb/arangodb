@@ -373,12 +373,24 @@ static bool checkGeoFilterFunction(ExecutionPlan* plan, AstNode const* funcNode,
     return false;
   }
 
-  AstNode* arg = fargs->getMemberUnchecked(1);
-  if (geoFuncArgCheck(plan, arg, /*legacy*/ true, info)) {
+  AstNode* arg0 = fargs->getMemberUnchecked(0);
+  AstNode* arg1 = fargs->getMemberUnchecked(1);
+  if (geoFuncArgCheck(plan, arg1, /*legacy*/ true, info)) {
     TRI_ASSERT(contains || intersect);
     info.filterMode =
         contains ? geo::FilterType::CONTAINS : geo::FilterType::INTERSECTS;
-    info.filterExpr = fargs->getMemberUnchecked(0);
+    info.filterExpr = arg0;
+    TRI_ASSERT(info.index);
+    return true;
+  }
+  if (geoFuncArgCheck(plan, arg0, /*legacy*/ true, info)) {
+    TRI_ASSERT(contains || intersect);
+    if (contains) {
+      info.filterMode = geo::FilterType::IS_CONTAINED;
+    } else {
+      info.filterMode = geo::FilterType::INTERSECTS;
+    }
+    info.filterExpr = arg1;
     TRI_ASSERT(info.index);
     return true;
   }
@@ -611,16 +623,25 @@ static std::unique_ptr<Condition> buildGeoCondition(ExecutionPlan* plan,
     TRI_ASSERT(info.filterExpr);
     TRI_ASSERT(info.locationVar || (info.longitudeVar && info.latitudeVar));
 
-    AstNode* args = ast->createNodeArray(2);
-    args->addMember(info.filterExpr);
-    addLocationArg(args);
-    if (info.filterMode == geo::FilterType::CONTAINS) {
-      cond->andCombine(ast->createNodeFunctionCall("GEO_CONTAINS", args, true));
-    } else if (info.filterMode == geo::FilterType::INTERSECTS) {
+    if (info.filterMode == geo::FilterType::IS_CONTAINED) {
+      AstNode* swapped = ast->createNodeArray(2);
+      addLocationArg(swapped);
+      swapped->addMember(info.filterExpr);
       cond->andCombine(
-          ast->createNodeFunctionCall("GEO_INTERSECTS", args, true));
+          ast->createNodeFunctionCall("GEO_CONTAINS", swapped, true));
     } else {
-      TRI_ASSERT(false);
+      AstNode* args = ast->createNodeArray(2);
+      args->addMember(info.filterExpr);
+      addLocationArg(args);
+      if (info.filterMode == geo::FilterType::CONTAINS) {
+        cond->andCombine(
+            ast->createNodeFunctionCall("GEO_CONTAINS", args, true));
+      } else if (info.filterMode == geo::FilterType::INTERSECTS) {
+        cond->andCombine(
+            ast->createNodeFunctionCall("GEO_INTERSECTS", args, true));
+      } else {
+        TRI_ASSERT(false);
+      }
     }
   }
 

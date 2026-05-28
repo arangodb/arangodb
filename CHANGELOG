@@ -4,6 +4,13 @@
 
 * COR-299: Upgrade ScatterNode to DistributeNode if shardkey is known
 
+* COR-539: The geo index optimizer and iterators now support
+  `GEO_CONTAINS` with the indexed field as the first argument
+  (e.g. `FILTER GEO_CONTAINS(doc.geometry, @shape)`), in addition to the
+  existing `GEO_CONTAINS(@shape, doc.geometry)` form. Previously such
+  queries did not use the geo index and were executed as a full collection
+  scan.
+
 * COR-540: When spreading arrays, register a warning when input is neither an array nor null.
 
 * COR-531: With this fix, APPEND() now correctly removes duplicate values when the unique parameter 
