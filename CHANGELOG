@@ -3,6 +3,8 @@
 * COR-458: Supports dynamic object composition similar to JavaScript object spreading, 
   enabling efficient object merging and extension with minimal effort, and now follows 
   a last-key-wins strategy instead of the previous first-key-wins behavior.
+  
+* COR-522: Use Distribute on repeated smart edge join.
 
 * COR-299: Upgrade ScatterNode to DistributeNode if shardkey is known
 
