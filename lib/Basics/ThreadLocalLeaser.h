@@ -48,6 +48,11 @@ struct ThreadLocalLeaser {
     auto operator*() noexcept -> T& { return *get(); }
     auto operator*() const noexcept -> T const& { return *get(); }
 
+    auto release() -> std::unique_ptr<T> {
+      return std::exchange(_object, nullptr);
+    }
+    auto acquire(std::unique_ptr<T>&& m) -> void { _object = std::move(m); }
+
    private:
     Lease(std::unique_ptr<T>&& leasee) : _object(std::move(leasee)) {
       TRI_ASSERT(_object != nullptr);
