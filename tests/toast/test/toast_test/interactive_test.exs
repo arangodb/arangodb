@@ -132,6 +132,19 @@ defmodule ToastTest.InteractiveTest do
     test "single test", do: assert(true)
   end
 
+  defmodule Fixtures.MixedModeTest do
+    use ExUnit.Case, async: false
+    def __toast_suite__, do: Fixtures.SimpleSuite
+
+    @tag :cluster_only
+    test "cluster only", do: assert(true)
+
+    @tag :single_only
+    test "single only", do: assert(true)
+
+    test "always runs", do: assert(true)
+  end
+
   setup :setup_deployment_registry
 
   defp register_collector do
@@ -242,6 +255,26 @@ defmodule ToastTest.InteractiveTest do
 
       results = run_capturing_io(Fixtures.SimpleSuite, deployment: cluster)
       assert Enum.all?(results, &(&1.outcome == :passed))
+    end
+  end
+
+  describe "deployment mode tag filtering" do
+    test "excludes cluster_only tests on single-server deployment" do
+      deployment = make_single_deployment()
+      results = run_capturing_io(Fixtures.MixedModeTest, deployment: deployment)
+      names = Enum.map(results, & &1.name)
+      assert :"test always runs" in names
+      assert :"test single only" in names
+      refute :"test cluster only" in names
+    end
+
+    test "excludes single_only tests on cluster deployment" do
+      deployment = make_cluster_deployment()
+      results = run_capturing_io(Fixtures.MixedModeTest, deployment: deployment)
+      names = Enum.map(results, & &1.name)
+      assert :"test always runs" in names
+      assert :"test cluster only" in names
+      refute :"test single only" in names
     end
   end
 

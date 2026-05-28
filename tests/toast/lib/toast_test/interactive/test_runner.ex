@@ -27,16 +27,29 @@ defmodule ToastTest.Interactive.TestRunner do
 
   @on_exit_timeout 30_000
 
-  @spec run_module_tests(module(), String.t() | nil) :: [map()]
-  def run_module_tests(module, test_name) do
+  @spec run_module_tests(module(), String.t() | nil, [atom()]) :: [map()]
+  def run_module_tests(module, test_name, exclude_tags \\ []) do
     test_module_meta = module.__ex_unit__()
-    tests = filter_tests(test_module_meta.tests, test_name)
+
+    tests =
+      test_module_meta.tests
+      |> exclude_by_tags(exclude_tags)
+      |> filter_by_name(test_name)
+
     run_with_lifecycle(test_module_meta, tests)
   end
 
-  defp filter_tests(tests, nil), do: tests
+  defp exclude_by_tags(tests, []), do: tests
 
-  defp filter_tests(tests, pattern) do
+  defp exclude_by_tags(tests, tags) do
+    Enum.reject(tests, fn test ->
+      Enum.any?(tags, &Map.get(test.tags, &1, false))
+    end)
+  end
+
+  defp filter_by_name(tests, nil), do: tests
+
+  defp filter_by_name(tests, pattern) do
     pattern = String.downcase(pattern)
 
     Enum.filter(tests, fn test ->

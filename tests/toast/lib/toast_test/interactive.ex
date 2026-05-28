@@ -67,6 +67,7 @@ defmodule ToastTest.Interactive do
   defp do_run(suite_module, test_modules, opts) do
     deployment = Keyword.fetch!(opts, :deployment)
     test_name = Keyword.get(opts, :test)
+    exclude_tags = mode_exclusions(deployment)
 
     validate_deployment!(suite_module, deployment)
     ToastTest.DeploymentRegistry.put(suite_module, deployment)
@@ -76,7 +77,7 @@ defmodule ToastTest.Interactive do
       try do
         Enum.flat_map(test_modules, fn module ->
           if length(test_modules) > 1, do: IO.puts("\n── #{inspect(module)} ──")
-          results = TestRunner.run_module_tests(module, test_name)
+          results = TestRunner.run_module_tests(module, test_name, exclude_tags)
           print_summary(results)
           results
         end)
@@ -87,6 +88,14 @@ defmodule ToastTest.Interactive do
     if length(test_modules) > 1, do: print_summary(results, "Suite total")
     results
   end
+
+  defp mode_exclusions(%Toast.Deployment{} = deployment) do
+    if Toast.Deployment.cluster?(deployment),
+      do: [:single_only],
+      else: [:cluster_only]
+  end
+
+  defp mode_exclusions(_), do: []
 
   defp run_setup(suite_module, deployment) do
     extra_context =
