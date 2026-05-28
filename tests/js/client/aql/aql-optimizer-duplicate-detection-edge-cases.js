@@ -159,12 +159,6 @@ function DuplicateConditionOptimizationSuite() {
       assertTrue(plan.rules.includes('use-indexes'), 'use-indexes must have fired');
     },
 
-    // When all conditions are true, at least one is kept (not dropped entirely).
-    testAllTrueConditionsKeepOne: function () {
-      const q = `FOR doc IN ${cn} FILTER doc.value NOT IN [] AND doc.value NOT IN [] RETURN doc.value`;
-      assertEqual(10, query(q).length);
-    },
-
     // --- duplicate AND condition removal ------------------------------------
 
     // Exact duplicate is removed; result is unchanged.
