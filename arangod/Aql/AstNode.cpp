@@ -1084,33 +1084,26 @@ void AstNode::toVelocyPackValue(VPackBuilder& builder) const {
     }
 
     if (checkUniqueness) {
-      containers::FlatHashMap<std::string_view, size_t> keys;
-      std::vector<AstNode const*> elements;
+      containers::FlatHashMap<std::string_view, AstNode const*> keys;
       keys.reserve(n);
-      elements.reserve(n);
 
       for (size_t i = 0; i < n; ++i) {
         auto member = getMemberUnchecked(i);
         if (member != nullptr) {
-          auto [it, inserted] =
-              keys.emplace(member->getStringView(), elements.size());
-          if (inserted) {
-            elements.emplace_back(member);
-          } else {
-            elements[it->second] = member;
-          }
+          keys[member->getStringView()] = member;
         }
       }
 
-      for (AstNode const* member : elements) {
-        builder.add(VPackValue(member->getStringView()));
+      for (auto const& it : keys) {
+        AstNode const* member = it.second;
+
+        builder.add(VPackValue(it.first));
         member->getMember(0)->toVelocyPackValue(builder);
       }
 
       builder.close();
       return;
     }
-
     for (size_t i = 0; i < n; ++i) {
       auto member = getMemberUnchecked(i);
       if (member != nullptr) {

@@ -2524,8 +2524,7 @@ object_element:
       parser->pushObjectElement($2, $5);
     }
   | T_ELLIPSIS expression {
-      auto x = parser->ast()->createNodeObjectSplice($2);
-      parser->pushObjectSplice(x);
+      parser->pushObjectSplice($2);
     }
   ;
 

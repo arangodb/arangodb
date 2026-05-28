@@ -5921,10 +5921,9 @@ yyreduce:
   case 281: /* object_element: "..." expression  */
 #line 2526 "grammar.y"
                           {
-      auto x = parser->ast()->createNodeObjectSplice((yyvsp[0].node));
-      parser->pushObjectSplice(x);
+      parser->pushObjectSplice((yyvsp[0].node));
     }
-#line 5927 "grammar.cpp"
+#line 5926 "grammar.cpp"
     break;
 
   case 282: /* array_filter_operator: "?"  */

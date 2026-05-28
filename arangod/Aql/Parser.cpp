@@ -232,10 +232,8 @@ void Parser::pushObjectSplice(AstNode* node) {
   auto object = static_cast<AstNode*>(peekStack());
   TRI_ASSERT(object != nullptr);
   TRI_ASSERT(object->type == NODE_TYPE_OBJECT);
-  object->addMember(node);
-  if (object->hasFlag(AstNodeFlagType::VALUE_CONSTANT) && !node->isConstant()) {
-    object->removeFlag(AstNodeFlagType::VALUE_CONSTANT);
-  }
+  auto splice = _ast.createNodeObjectSplice(node);
+  object->addMember(splice);
 }
 
 void Parser::pushPatternNode(AstNode* element) {
