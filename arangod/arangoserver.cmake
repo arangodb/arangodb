@@ -1,5 +1,6 @@
 add_library(arangoserver STATIC
   Actions/ActionFeature.cpp
+  Actions/ActionOptionsProvider.cpp
   Actions/RestActionHandler.cpp
   Actions/actions.cpp
   Auth/Common.cpp
@@ -37,6 +38,7 @@ add_library(arangoserver STATIC
   Cluster/MaintenanceWorker.cpp
   Cluster/RebootTracker.cpp
   Cluster/ReplicationTimeoutFeature.cpp
+  Cluster/ReplicationTimeoutOptionsProvider.cpp
   Cluster/ResignShardLeadership.cpp
   Cluster/RestAgencyCallbacksHandler.cpp
   Cluster/RestClusterHandler.cpp
@@ -132,10 +134,15 @@ add_library(arangoserver STATIC
   RestServer/CrashHandlerOptionsProvider.cpp
   RestServer/CpuUsageFeature.cpp
   RestServer/DaemonFeature.cpp
+  RestServer/DaemonOptionsProvider.cpp
   RestServer/DatabaseFeature.cpp
   RestServer/DatabasePathFeature.cpp
+  RestServer/DatabasePathOptionsProvider.cpp
   RestServer/DumpLimitsFeature.cpp
+  RestServer/DumpLimitsOptionsProvider.cpp
   RestServer/EndpointFeature.cpp
+  RestServer/EndpointFeatureOptions.cpp
+  RestServer/EndpointOptionsProvider.cpp
   RestServer/EnvironmentFeature.cpp
   RestServer/FileDescriptorsFeature.cpp
   RestServer/FileDescriptorsOptionsProvider.cpp
@@ -144,13 +151,16 @@ add_library(arangoserver STATIC
   RestServer/FortuneOptionsProvider.cpp
   RestServer/IOHeartbeatThread.cpp
   RestServer/InitDatabaseFeature.cpp
+  RestServer/InitDatabaseOptionsProvider.cpp
   RestServer/LanguageCheckFeature.cpp
   RestServer/LockfileFeature.cpp
   RestServer/LogBufferFeature.cpp
+  RestServer/LogBufferOptionsProvider.cpp
   RestServer/MaxMapCountFeature.cpp
   RestServer/NonceFeature.cpp
   RestServer/ApiRecordingFeature.cpp
   RestServer/PrivilegeFeature.cpp
+  RestServer/PrivilegeOptionsProvider.cpp
   RestServer/QueryRegistryFeature.cpp
   RestServer/QueryRegistryFeatureOptions.cpp
   RestServer/ServerFeature.cpp
@@ -158,6 +168,7 @@ add_library(arangoserver STATIC
   RestServer/SharedPRNGFeature.cpp
   RestServer/SoftShutdownFeature.cpp
   RestServer/SupervisorFeature.cpp
+  RestServer/SupervisorOptionsProvider.cpp
   RestServer/SystemDatabaseFeature.cpp
   RestServer/TemporaryStorageFeature.cpp
   RestServer/TimeZoneFeature.cpp
@@ -193,6 +204,7 @@ add_library(arangoserver STATIC
   Transaction/ManagedContext.cpp
   Transaction/Manager.cpp
   Transaction/ManagerFeature.cpp
+  Transaction/ManagerOptionsProvider.cpp
   Transaction/Methods.cpp
   Transaction/Options.cpp
   Transaction/ReplicatedContext.cpp
@@ -211,7 +223,9 @@ if(USE_V8)
     RestServer/ConsoleFeature.cpp
     RestServer/ConsoleThread.cpp
     RestServer/FrontendFeature.cpp
-    RestServer/ScriptFeature.cpp)
+    RestServer/FrontendOptionsProvider.cpp
+    RestServer/ScriptFeature.cpp
+    RestServer/ScriptOptionsProvider.cpp)
 endif()
 
 if(USE_MAINTAINER_MODE)
