@@ -33,7 +33,6 @@
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "RocksDBEngine/RocksDBValue.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 
 namespace arangodb {
 

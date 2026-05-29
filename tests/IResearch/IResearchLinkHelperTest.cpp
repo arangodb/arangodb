@@ -40,7 +40,6 @@
 #include "Mocks/Servers.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/ViewTypesFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "Utils/ExecContext.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"

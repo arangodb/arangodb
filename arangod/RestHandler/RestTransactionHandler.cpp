@@ -32,7 +32,6 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Helpers.h"
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #include "Transaction/History.h"

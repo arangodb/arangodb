@@ -44,7 +44,6 @@
 #include "RocksDBEngine/RocksDBLogValue.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
 #include "Statistics/ServerStatistics.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/TransactionCollection.h"
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #include "Transaction/History.h"
