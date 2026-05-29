@@ -5,6 +5,15 @@ integration testing framework for ArangoDB. It manages ArangoDB server deploymen
 (single-server and cluster), runs tests against them, collects diagnostics (crash
 logs, sanitizer errors, core dumps), and produces CI-friendly reports (JSON, JUnit XML).
 
+## Installation
+
+- Install elixir (>= 1.19) and erlang (>= 17)
+  A version manager like asdf or mise let's you pick a specific version (and actually manage
+  multiple concurrently installed versions) so you do not depend on the versions available
+  in your OS distribution's package management.
+- Install hex (package manager) and rebar (Erlang build system) with `mix local.hex` and `mix local.rebar`
+- Pull all dependent packages via `mix deps.get`
+
 ## Quick Start
 
 ```bash
@@ -69,6 +78,10 @@ After restarting your shell (or `source ~/.bashrc`), you get:
 - **`toast run [options] [suites...]`** — runs tests (equivalent to `mix toast`)
 - **`toast analyze [subcommand] [options]`** — analyzes results (equivalent to `mix toast.analyze`)
 - **Tab completion** for suites, test files within suites, options, and analyze subcommands
+
+Be aware that when you give the build directory to the toast script, you still have to give it 
+relative to the toast directory, e.g. `toast run --build ../../build` although you run the script 
+from somewhere else in the directory.
 
 ## Running Tests
 
@@ -736,9 +749,13 @@ differs from the current weight are shown.
 `ToastTest.Interactive` lets you run individual test modules against a
 manually-started deployment, useful for debugging.
 
+Start an interactive interactive session with `TOAST_BUILD_DIR=path/to/build-dir iex -S mix`.
+Alternatively one can use a [Local Config File](#local-config-file) with a predefined build directory
+to avoid having to set the environment variable.
+
+Inside the session:
 ```elixir
-# In an IEx session:
-{:ok, deployment} = Toast.Deployment.start_single_server("/path/to/work-dir")
+{:ok, deployment} = Toast.Deployment.start_cluster("/path/to/work-dir")
 
 # Run a test file
 ToastTest.Interactive.run("suites/smoke/test_version.exs", deployment: deployment)
@@ -752,6 +769,9 @@ ToastTest.Interactive.run(Smoke.VersionTest,
 # When done
 Toast.Deployment.stop(deployment)
 ```
+
+Be aware that when you are in an interactive session, files that end with .exs are automatically recompiled 
+when changed but not .ex files. Execute `recompile` in the interactive shell to recompile these as well.
 
 ## Generating Suites
 
@@ -815,6 +835,7 @@ for CI pipelines or shell aliases:
 | `TOAST_COREDUMP_TIMEOUT` | -- | Timeout for coredump analysis in ms |
 | `TOAST_COREDUMP_DIR` | -- | Directory to search for core dumps |
 
+<a id="local-config-file"></a>
 ### Local Config File
 
 For development convenience, you can create a `.toast.local.exs` file in the
