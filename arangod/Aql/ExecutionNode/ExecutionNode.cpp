@@ -780,14 +780,6 @@ bool ExecutionNode::walkSubqueriesFirst(
 }
 
 bool ExecutionNode::flatWalk(WalkerWorkerBase<ExecutionNode>& worker,
-                             bool onlyFlattenAsync) {
-  /*  if (onlyFlattenAsync) {
-    return doWalk(worker, false, FlattenType::INLINE_ASYNC);
-    }*/
-  return doWalk(worker, false, FlattenType::INLINE_ALL);
-}
-
-bool ExecutionNode::flatWalk(WalkerWorkerBase<ExecutionNode>& worker,
                              FlattenType ft) {
   return doWalk(worker, false, ft);
 }

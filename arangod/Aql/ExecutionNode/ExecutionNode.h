@@ -359,7 +359,6 @@ class ExecutionNode {
     INLINE_ASYNC_AND_SCATTER
   };
 
-  bool flatWalk(WalkerWorkerBase<ExecutionNode>& worker, bool onlyFlattenAsync);
   bool flatWalk(WalkerWorkerBase<ExecutionNode>& worker, FlattenType);
 
   /// serialize parents of each node (used in the explainer)
