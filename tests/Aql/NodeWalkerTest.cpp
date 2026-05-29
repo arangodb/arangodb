@@ -22,6 +22,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/Executor/AqlExecutorTestCase.h"
 #include "gtest/gtest.h"
 
@@ -222,7 +223,7 @@ TEST_F(NodeWalkerTest, simple_query_walker_flatten_cluster_all) {
 
   TestWalker walker{};
 
-  returnNode->flatWalk(walker, false);
+  returnNode->flatWalk(walker, ExecutionNode::FlattenType::INLINE_ALL);
 
   ExpectedVisits tester;
 
@@ -268,7 +269,7 @@ TEST_F(NodeWalkerTest, simple_query_walker_flatten_async_all) {
 
   TestWalker walker{};
 
-  returnNode->flatWalk(walker, false);
+  returnNode->flatWalk(walker, ExecutionNode::FlattenType::INLINE_ALL);
 
   ExpectedVisits tester;
 
@@ -312,7 +313,7 @@ TEST_F(NodeWalkerTest, simple_query_walker_flatten_cluster_async) {
 
   TestWalker walker{};
 
-  returnNode->flatWalk(walker, true);
+  returnNode->flatWalk(walker, ExecutionNode::FlattenType::INLINE_ASYNC);
 
   ExpectedVisits tester;
   tester.addExpectedBefore({returnNode, gather, innerRemote1, enumerate1,
@@ -365,7 +366,7 @@ TEST_F(NodeWalkerTest, simple_query_walker_flatten_async_async) {
 
   TestWalker walker{};
 
-  returnNode->flatWalk(walker, true);
+  returnNode->flatWalk(walker, ExecutionNode::FlattenType::INLINE_ALL);
 
   ExpectedVisits tester;
 
@@ -428,7 +429,7 @@ TEST_F(NodeWalkerTest, simple_query_walker_nested_flatten_all) {
                   localGather_2, localMutex_2);
   TestWalker walker{};
 
-  queryStart.front()->flatWalk(walker, false);
+  queryStart.front()->flatWalk(walker, ExecutionNode::FlattenType::INLINE_ALL);
 
   ExpectedVisits tester;
   // We will first visit all branches in before, and stack them
