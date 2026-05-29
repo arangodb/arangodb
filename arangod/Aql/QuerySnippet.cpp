@@ -155,7 +155,7 @@ CloneWorker::CloneWorker(ExecutionNode* root, GatherNode* internalGather,
       _nodeAliases{nodeAliases} {}
 
 void CloneWorker::process() {
-  _root->flatWalk(*this, ExecutionNode::FlattenType::INLINE_ASYNC_AND_SCATTER);
+  _root->flatWalk(*this, ExecutionNode::FlattenType::INLINE_ALL);
 
   // Home-brew early cancel: We collect the processed nodes on a stack
   // and process them in reverse order in processAfter

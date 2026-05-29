@@ -636,7 +636,8 @@ void ExecutionNode::allToVelocyPack(velocypack::Builder& builder,
   } nodeSerializer{builder, flags};
 
   VPackArrayBuilder guard(&builder);
-  const_cast<ExecutionNode*>(this)->flatWalk(nodeSerializer, true);
+  const_cast<ExecutionNode*>(this)->flatWalk(nodeSerializer,
+                                             FlattenType::INLINE_ASYNC);
 }
 
 /// @brief execution Node clone utility to be called by derived classes
@@ -780,9 +781,9 @@ bool ExecutionNode::walkSubqueriesFirst(
 
 bool ExecutionNode::flatWalk(WalkerWorkerBase<ExecutionNode>& worker,
                              bool onlyFlattenAsync) {
-  if (onlyFlattenAsync) {
+  /*  if (onlyFlattenAsync) {
     return doWalk(worker, false, FlattenType::INLINE_ASYNC);
-  }
+    }*/
   return doWalk(worker, false, FlattenType::INLINE_ALL);
 }
 
@@ -791,6 +792,16 @@ bool ExecutionNode::flatWalk(WalkerWorkerBase<ExecutionNode>& worker,
   return doWalk(worker, false, ft);
 }
 
+/*
+ FlattenType::NONE : enumerate all paths, depth first through the execution DAG
+                     starting from this execution node in dependency direction
+                     (towards SINGLETON).
+ FlattenType::INLINE_ASYNC:
+ FlattenType::INLINE_ASYNC_AND_SCATTER:
+ FlattenType::INLINE_ALL: enumerates dependencies of this execution node in a
+                          topoligical order.
+
+ */
 bool ExecutionNode::doWalk(WalkerWorkerBase<ExecutionNode>& worker,
                            bool subQueryFirst, FlattenType flattenType) {
   enum class State { Pending, Processed, InSubQuery };
