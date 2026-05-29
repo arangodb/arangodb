@@ -208,6 +208,12 @@ arangosh without connecting to a server.)");
 
   std::unordered_set<uint64_t> const sslProtocols = availableSslProtocols();
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // make the future version known to the old binaries
+  options->addSection("tls", "TLS communication");
+  options->addOldOption("--tls.protocol", "--ssl.protocol");
+#endif
+
   options->addSection("ssl", "SSL communication");
   options->addOption("--ssl.protocol", availableSslProtocolsDescription(),
                      new DiscreteValuesParameter<UInt64Parameter>(
