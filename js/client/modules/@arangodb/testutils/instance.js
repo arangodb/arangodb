@@ -380,6 +380,7 @@ class instance {
       default_args['javascript.environment-variables-allowlist'] = ".*";
       default_args['javascript.endpoints-allowlist'] = ".*";
       default_args['javascript.startup-options-allowlist'] = ".*";
+      default_args['javascript.startup-directory'] = fs.join(pu.TOP_DIR, "js");
     }
     this.args = _.defaults(this.args, default_args);
     if (this.options.extremeVerbosity && versionHas('maintainer-mode') ) {
