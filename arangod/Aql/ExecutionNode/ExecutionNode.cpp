@@ -845,25 +845,26 @@ bool ExecutionNode::doWalk(WalkerWorkerBase<ExecutionNode>& worker,
           // than one parent, so all others indicated an issue on plan
           TRI_ASSERT(n->getType() == SCATTER || n->getType() == MUTEX ||
                      n->getType() == DISTRIBUTE);
-          if (flattenType == FlattenType::INLINE_ALL || n->getType() == MUTEX)
+          if (flattenType == FlattenType::INLINE_ALL || n->getType() == MUTEX) {
             ADB_PROD_ASSERT(!parallelStarter.empty())
                 << n->id() << " " << n->getTypeString();
-          // If we are not INLINE_ALL, only flatten the MUTEX, which is the
-          // counterpart of ASYNC
-          auto& starter = parallelStarter.back();
-          if (starter.isComplete()) {
-            // All parallel steps complete drop the corresponding parallel
-            // starter
-            parallelStarter.pop_back();
-          } else {
-            // Discard this state, we will visit it in the next time around
-            // on the parallel branch
-            nodes.pop_back();
-            // Jump back, and continue visiting the next parallel branch.
-            nodes.emplace_back(starter.visitNext(), State::Pending);
-            // Just pretend we have not seen this
-            // and continue with the next one to visit
-            continue;
+            // If we are not INLINE_ALL, only flatten the MUTEX, which is the
+            // counterpart of ASYNC
+            auto& starter = parallelStarter.back();
+            if (starter.isComplete()) {
+              // All parallel steps complete drop the corresponding parallel
+              // starter
+              parallelStarter.pop_back();
+            } else {
+              // Discard this state, we will visit it in the next time around
+              // on the parallel branch
+              nodes.pop_back();
+              // Jump back, and continue visiting the next parallel branch.
+              nodes.emplace_back(starter.visitNext(), State::Pending);
+              // Just pretend we have not seen this
+              // and continue with the next one to visit
+              continue;
+            }
           }
         }
 
