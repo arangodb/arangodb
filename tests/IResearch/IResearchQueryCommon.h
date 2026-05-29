@@ -138,7 +138,7 @@ class QueryTest : public IResearchQueryTest {
     return it.size() == expectedCount && errorCount == 0;
   }
 
-  TRI_vocbase_t _vocbase{testDBInfo(server.server())};
+  TRI_vocbase_t _vocbase{testDBInfo(server.server()), server.engine()};
   std::vector<velocypack::Builder> _insertedDocs;
 
  private:

@@ -33,7 +33,8 @@ struct TRI_vocbase_t;
 namespace arangodb {
 namespace application_features {
 class ApplicationServer;
-}
+class CommunicationFeaturePhase;
+}  // namespace application_features
 
 class GeneralResponse;
 class GlobalReplicationApplier;
@@ -43,8 +44,10 @@ class ReplicationFeature final
  public:
   static constexpr std::string_view name() noexcept { return "Replication"; }
 
-  explicit ReplicationFeature(application_features::ApplicationServer& server,
-                              metrics::MetricsFeature& metrics);
+  ReplicationFeature(
+      application_features::ApplicationServer& server,
+      application_features::CommunicationFeaturePhase& commFeature,
+      metrics::MetricsFeature& metrics);
   ~ReplicationFeature();
 
   void collectOptions(

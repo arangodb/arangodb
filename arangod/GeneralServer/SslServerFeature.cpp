@@ -264,8 +264,7 @@ void SslServerFeature::verifySslOptions() {
   LOG_TOPIC("47161", DEBUG, arangodb::Logger::SSL)
       << "using TLS protocol version '"
       << protocolName(SslProtocol(_options.sslProtocol)) << "'";
-
-  if (!FileUtils::exists(_options.keyfile)) {
+  if (!std::filesystem::exists(_options.keyfile)) {
     LOG_TOPIC("51cf0", FATAL, arangodb::Logger::SSL)
         << "unable to find TLS keyfile '" << _options.keyfile << "'";
     FATAL_ERROR_EXIT();

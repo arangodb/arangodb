@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -67,7 +67,6 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/ClusterUtils.h"
@@ -1354,17 +1353,18 @@ Result TRI_vocbase_t::dropView(DataSourceId cid, bool allowDropSystem) {
   return {};
 }
 
-TRI_vocbase_t::TRI_vocbase_t(arangodb::CreateDatabaseInfo&& info)
+TRI_vocbase_t::TRI_vocbase_t(arangodb::CreateDatabaseInfo&& info,
+                             arangodb::StorageEngine& engine)
     : TRI_vocbase_t(
-          std::move(info),
+          std::move(info), engine,
           info.server().getFeature<DatabaseFeature>().versionTracker(),
           info.server().getFeature<DatabaseFeature>().extendedNames()) {}
 
-TRI_vocbase_t::TRI_vocbase_t(CreateDatabaseInfo&& info,
+TRI_vocbase_t::TRI_vocbase_t(CreateDatabaseInfo&& info, StorageEngine& engine,
                              VersionTracker& versionTracker, bool extendedNames,
                              bool isInternal)
     : _server(info.server()),
-      _engine(_server.getFeature<arangodb::EngineSelectorFeature>().engine()),
+      _engine(engine),
       _versionTracker(versionTracker),
       _extendedNames(extendedNames),
       _info(std::move(info)) {

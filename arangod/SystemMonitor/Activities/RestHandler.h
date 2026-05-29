@@ -26,7 +26,19 @@
 #include "SystemMonitor/Activities/Feature.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
+namespace arangodb {
+class ClusterFeature;
+class NetworkFeature;
+}  // namespace arangodb
 namespace arangodb::activities {
+
+struct Output {
+  velocypack::SharedSlice activities;
+};
+template<typename Inspector>
+auto inspect(Inspector& f, Output& x) {
+  return f.object(x).fields(f.field("activities", x.activities));
+}
 
 /**
    Activities REST handler
@@ -55,6 +67,8 @@ class RestHandler : public arangodb::RestVocbaseBaseHandler {
   futures::Future<futures::Unit> executeAsync() override;
 
   Feature& _feature;
+  ClusterFeature& _clusterFeature;
+  NetworkFeature& _networkFeature;
 };
 
 }  // namespace arangodb::activities

@@ -67,7 +67,7 @@ class TransactionManagerTest : public ::testing::Test {
   TransactionId tid;
 
   TransactionManagerTest()
-      : vocbase(testDBInfo(setup.server.server())),
+      : vocbase(testDBInfo(setup.server.server()), setup.server.engine()),
         mgr(transaction::ManagerFeature::manager()),
         tid(TransactionId::createLeader()) {}
 

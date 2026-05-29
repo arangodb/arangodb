@@ -41,6 +41,9 @@
 namespace arangodb {
 class DatabasePathFeature;
 struct IndexTypeFactory;
+namespace metrics {
+class MetricsFeature;
+}  // namespace metrics
 
 namespace aql {
 
@@ -106,7 +109,8 @@ class IResearchFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "ArangoSearch"; }
 
-  explicit IResearchFeature(application_features::ApplicationServer& server);
+  explicit IResearchFeature(application_features::ApplicationServer& server,
+                            metrics::MetricsFeature& metrics);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) final;
   void prepare() final;
