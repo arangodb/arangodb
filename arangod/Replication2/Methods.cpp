@@ -1010,17 +1010,18 @@ struct ReplicatedLogMethodsCoordinator final
       }
       return network::sendRequest(pool, "server:" + participant,
                                   fuerte::RestVerb::Post, path, buffer, opts)
-          .thenValue(
-              [participant](network::Response&& resp) noexcept -> ResultPair {
-                auto result = resp.deserialize<CompactionResultMap>();
-                if (result.fail()) {
-                  return {participant,
-                          CompactionResponse::fromResult(result.result())};
-                }
-                TRI_ASSERT(result->contains(participant));
-                TRI_ASSERT(result->size() == 1);
-                return {participant, result->at(participant)};
-              });
+          .thenValue([participant](
+                         network::Response&& resp) noexcept -> ResultPair {
+            if (resp.fail()) {
+              return {participant,
+                      CompactionResponse::fromResult(resp.combinedResult())};
+            }
+            auto res = velocypack::deserialize<CompactionResultMap>(
+                resp.slice().get("result"));
+            TRI_ASSERT(res.contains(participant));
+            TRI_ASSERT(res.size() == 1);
+            return {participant, res.at(participant)};
+          });
     };
 
     std::vector<futures::Future<ResultPair>> futs;

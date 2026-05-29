@@ -83,7 +83,8 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Maintenance"; }
 
-  explicit MaintenanceFeature(application_features::ApplicationServer& server);
+  explicit MaintenanceFeature(application_features::ApplicationServer& server,
+                              ClusterFeature* clusterFeature);
 
   virtual ~MaintenanceFeature();
 

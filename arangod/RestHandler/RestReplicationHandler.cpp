@@ -452,7 +452,11 @@ static Result restoreDataParser(std::string_view currentLine,
 RestReplicationHandler::RestReplicationHandler(
     application_features::ApplicationServer& server, GeneralRequest* request,
     GeneralResponse* response)
-    : RestVocbaseBaseHandler(server, request, response) {}
+    : RestVocbaseBaseHandler(server, request, response),
+      _clusterFeature(server.getFeature<ClusterFeature>()),
+      _engineSelectorFeature(server.getFeature<EngineSelectorFeature>()),
+      _replicationFeature(server.getFeature<ReplicationFeature>()),
+      _databaseFeature(server.getFeature<DatabaseFeature>()) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an error if called on a coordinator server
@@ -845,7 +849,7 @@ Result RestReplicationHandler::testPermissions() {
         if (ServerState::instance()->isCoordinator()) {
           // We have a shard id, need to translate.
           // This API is explicitly called with Shards not with Collections.
-          ClusterInfo& ci = server().getFeature<ClusterFeature>().clusterInfo();
+          ClusterInfo& ci = _clusterFeature.clusterInfo();
           auto maybeShardID = ShardID::shardIdFromString(collectionName);
           if (maybeShardID.fail()) {
             // Compatibility with old API, which would return
@@ -875,8 +879,7 @@ Result RestReplicationHandler::testPermissions() {
             std::string collectionName = parameters.get("name").copyString();
             if (!collectionName.empty()) {
               std::string dbName = _request->databaseName();
-              DatabaseFeature& databaseFeature =
-                  _vocbase.server().getFeature<DatabaseFeature>();
+              DatabaseFeature& databaseFeature = _databaseFeature;
               auto vocbase = databaseFeature.useDatabase(dbName);
               if (vocbase == nullptr) {
                 return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
@@ -1022,20 +1025,19 @@ void RestReplicationHandler::handleUnforwardedTrampolineCoordinator() {
 }
 
 void RestReplicationHandler::handleCommandClusterInventory() {
-  auto& replicationFeature = _vocbase.server().getFeature<ReplicationFeature>();
+  auto& replicationFeature = _replicationFeature;
   replicationFeature.trackInventoryRequest();
 
   std::string const& dbName = _request->databaseName();
   bool includeSystem = _request->parsedValue("includeSystem", true);
 
-  ClusterInfo& ci = server().getFeature<ClusterFeature>().clusterInfo();
+  ClusterInfo& ci = _clusterFeature.clusterInfo();
   std::vector<std::shared_ptr<LogicalCollection>> cols =
       ci.getCollections(dbName);
   VPackBuilder resultBuilder;
   resultBuilder.openObject();
 
-  DatabaseFeature& databaseFeature =
-      _vocbase.server().getFeature<DatabaseFeature>();
+  DatabaseFeature& databaseFeature = _databaseFeature;
   auto vocbase = databaseFeature.useDatabase(dbName);
   if (!vocbase) {
     generateError(ResponseCode::NOT_FOUND, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
@@ -2003,7 +2005,7 @@ Result RestReplicationHandler::processRestoreIndexesCoordinator(
   auto& dbName = _vocbase.name();
 
   // in a cluster, we only look up by name:
-  ClusterInfo& ci = server().getFeature<ClusterFeature>().clusterInfo();
+  ClusterInfo& ci = _clusterFeature.clusterInfo();
   std::shared_ptr<LogicalCollection> col = ci.getCollectionNT(dbName, name);
   if (col == nullptr) {
     return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
@@ -2012,7 +2014,7 @@ Result RestReplicationHandler::processRestoreIndexesCoordinator(
 
   TRI_ASSERT(col != nullptr);
 
-  auto& cluster = _vocbase.server().getFeature<ClusterFeature>();
+  auto& cluster = _clusterFeature;
 
   // may be used for rebuilding index infos
   VPackBuilder rebuilder;
@@ -2323,8 +2325,7 @@ void RestReplicationHandler::handleCommandApplierGetStateAll() {
         "global inventory can only be fetched from within _system database");
     return;
   }
-  DatabaseFeature& databaseFeature =
-      _vocbase.server().getFeature<DatabaseFeature>();
+  DatabaseFeature& databaseFeature = _databaseFeature;
 
   VPackBuilder builder;
   builder.openObject();
@@ -2915,8 +2916,7 @@ RestReplicationHandler::handleCommandHoldReadLockCollection() {
     // used by a follower as an upper bound until which to tail the WAL _at
     // most_.
     TRI_ASSERT(server().hasFeature<EngineSelectorFeature>());
-    StorageEngine& engine =
-        server().getFeature<EngineSelectorFeature>().engine();
+    StorageEngine& engine = _engineSelectorFeature.engine();
     b.add("lastLogTick", VPackValue(engine.currentTick()));
   }
 
@@ -2997,7 +2997,7 @@ void RestReplicationHandler::handleCommandGetIdForReadLockCollection() {
 
 void RestReplicationHandler::handleCommandLoggerState() {
   TRI_ASSERT(server().hasFeature<EngineSelectorFeature>());
-  StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
+  StorageEngine& engine = _engineSelectorFeature.engine();
 
   VPackBuilder builder;
   auto res = engine.createLoggerState(&_vocbase, builder);
@@ -3137,7 +3137,7 @@ RestReplicationHandler::handleCommandRebuildRevisionTree() {
   if (ServerState::instance()->isCoordinator() ||
       ServerState::instance()->isDBServer() ||
       ServerState::instance()->isAgent()) {
-    ++server().getFeature<ClusterFeature>().syncTreeRebuildCounter();
+    ++_clusterFeature.syncTreeRebuildCounter();
   }
 
   Result res = co_await ctx.collection->getPhysical()->rebuildRevisionTree();
@@ -3486,8 +3486,7 @@ ReplicationApplier* RestReplicationHandler::getApplier(bool& global) {
   }
 
   if (global) {
-    auto& replicationFeature =
-        _vocbase.server().getFeature<ReplicationFeature>();
+    auto& replicationFeature = _replicationFeature;
     return replicationFeature.globalReplicationApplier();
   } else {
     return _vocbase.replicationApplier();
@@ -3577,7 +3576,7 @@ futures::Future<Result> RestReplicationHandler::createBlockingTransaction(
         }
       };
 
-      ClusterInfo& ci = server().getFeature<ClusterFeature>().clusterInfo();
+      ClusterInfo& ci = _clusterFeature.clusterInfo();
       auto rGuard =
           std::make_unique<RebootCookie>(ci.rebootTracker().callMeOnChange(
               {serverId, rebootId}, std::move(f), std::move(comment)));
