@@ -3489,8 +3489,8 @@ struct Shower final
       case ExecutionNode::ENUMERATE_NEAR_VECTORS: {
         auto* enumNode =
             ExecutionNode::castTo<EnumerateNearVectorNode const*>(&node);
-        absl::StrAppend(&result, " $", enumNode->documentOutVariable()->id,
-                        " NEAR $", enumNode->inVariable()->id);
+        absl::StrAppend(&result, " $", enumNode->outVariable()->id, " NEAR $",
+                        enumNode->inVariable()->id);
       } break;
       case ExecutionNode::INDEX: {
         auto* indexNode = ExecutionNode::castTo<IndexNode const*>(&node);

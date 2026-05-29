@@ -45,7 +45,6 @@ class AgencyCallbackRegistry {
  public:
   AgencyCallbackRegistry(application_features::ApplicationServer& server,
                          ClusterFeature& clusterFeature,
-                         EngineSelectorFeature& engineSelectorFeature,
                          DatabaseFeature& databaseFeature,
                          metrics::MetricsFeature& metrics,
                          std::string const& callbackBasePath);

@@ -70,7 +70,7 @@ void ArangodServer::addFeatures(
   // metrics::MetricsFeature must go first
   auto& metrics = addFeature<metrics::MetricsFeature>(
       LazyApplicationFeatureReference<QueryRegistryFeature>(*this),
-      LazyApplicationFeatureReference<EngineSelectorFeature>(*this),
+      LazyApplicationFeatureReference<DatabaseFeature>(*this),
       LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(*this),
       LazyApplicationFeatureReference<ClusterFeature>(*this));
   addFeature<metrics::ClusterMetricsFeature>();
@@ -88,8 +88,8 @@ void ArangodServer::addFeatures(
   addFeature<CacheOptionsFeature>();
   auto& cacheOptions = getFeature<CacheOptionsFeature>();
   auto& sharedPRNGFeature = addFeature<SharedPRNGFeature>();
-  auto& cacheManager =
-      addFeature<CacheManagerFeature>(cacheOptions, sharedPRNGFeature);
+  auto& cacheManager = addFeature<CacheManagerFeature>(
+      cacheOptions, sharedPRNGFeature.getPRNG());
   addFeature<CheckVersionFeature>(ret, kNonServerFeatures);
   auto& clusterFeature = addFeature<ClusterFeature>(metrics);
   addFeature<CrashHandlerFeature>(dumpManager);
@@ -101,9 +101,9 @@ void ArangodServer::addFeatures(
   auto& dumpLimits = addFeature<DumpLimitsFeature>();
   addFeature<HttpEndpointProvider, EndpointFeature>();
   auto& systemDatabaseFeature = addFeature<SystemDatabaseFeature>();
-  auto& engineSelectorFeature = addFeature<EngineSelectorFeature>();
-  addFeature<BootstrapFeature>(clusterFeature, engineSelectorFeature, database,
-                               &systemDatabaseFeature, &clusterUpgradeFeature);
+  addFeature<EngineSelectorFeature>();
+  addFeature<BootstrapFeature>(clusterFeature, database, &systemDatabaseFeature,
+                               &clusterUpgradeFeature);
   addFeature<EnvironmentFeature>();
   addFeature<FileSystemFeature>();
   auto& flush = addFeature<FlushFeature>(metrics);
@@ -130,7 +130,8 @@ void ArangodServer::addFeatures(
   addFeature<ReplicatedLogFeature>();
   addFeature<ReplicationMetricsFeature>(metrics);
   addFeature<ReplicationTimeoutFeature>();
-  auto& scheduler = addFeature<SchedulerFeature>(metrics);
+  auto& scheduler =
+      addFeature<SchedulerFeature>(metrics, sharedPRNGFeature.getPRNG());
   auto& vectorIndex = addFeature<VectorIndexFeature>(database);
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   addFeature<ProcessEnvironmentFeature>(std::string{binaryName});
@@ -178,7 +179,6 @@ void ArangodServer::addFeatures(
   addFeature<iresearch::IResearchAnalyzerFeature>(
       iresearch::IResearchAnalyzerFeature::Dependencies{
           .databaseFeature = database,
-          .engineSelector = engineSelectorFeature,
           .systemDatabase = systemDatabaseFeature,
           .networkFeature = &networkFeature,
           .clusterFeature = &clusterFeature,

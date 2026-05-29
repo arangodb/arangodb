@@ -43,7 +43,7 @@
 
 namespace arangodb {
 class QueryRegistryFeature;
-class EngineSelectorFeature;
+class DatabaseFeature;
 class ClusterFeature;
 }  // namespace arangodb
 namespace arangodb::metrics {
@@ -61,8 +61,7 @@ class MetricsFeature final : public application_features::ApplicationFeature {
       application_features::ApplicationServer& server,
       LazyApplicationFeatureReference<QueryRegistryFeature>
           lazyQueryRegistryFeatureRef,
-      LazyApplicationFeatureReference<EngineSelectorFeature>
-          lazyEngineSelectorFeatureRef,
+      LazyApplicationFeatureReference<DatabaseFeature> lazyDatabaseFeatureRef,
       LazyApplicationFeatureReference<ClusterMetricsFeature>
           lazyClusterMetricsFeatureRef,
       LazyApplicationFeatureReference<ClusterFeature> lazyClusterFeatureRef);
@@ -142,14 +141,13 @@ class MetricsFeature final : public application_features::ApplicationFeature {
 
   LazyApplicationFeatureReference<QueryRegistryFeature>
       _lazyQueryRegistryFeatureRef;
-  LazyApplicationFeatureReference<EngineSelectorFeature>
-      _lazyEngineSelectorFeatureRef;
+  LazyApplicationFeatureReference<DatabaseFeature> _lazyDatabaseFeatureRef;
   LazyApplicationFeatureReference<ClusterMetricsFeature>
       _lazyClusterMetricsFeatureRef;
   LazyApplicationFeatureReference<ClusterFeature> _lazyClusterFeatureRef;
 
   QueryRegistryFeature* _queryRegistryFeature = nullptr;
-  EngineSelectorFeature* _engineSelectorFeature = nullptr;
+  DatabaseFeature* _databaseFeature = nullptr;
   ClusterMetricsFeature* _clusterMetricsFeature = nullptr;
   ClusterFeature* _clusterFeature = nullptr;
 

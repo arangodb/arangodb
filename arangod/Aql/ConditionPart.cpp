@@ -246,7 +246,7 @@ bool ConditionPart::isCoveredBy(ConditionPart const& other,
             auto w = other.valueNode->getMemberUnchecked(j);
 
             CompareResult res =
-                ResultsTable[compareAstNodes(v, w, true) + 1][0][0];
+                ResultsTable[compareAstNodes(v, w, false) + 1][0][0];
 
             if (res != CompareResult::OTHER_CONTAINED_IN_SELF &&
                 res != CompareResult::CONVERT_EQUAL &&
@@ -299,7 +299,8 @@ bool ConditionPart::isCoveredBy(ConditionPart const& other,
     AstNode* q2 = other.operatorNode->getMemberUnchecked(2);
     TRI_ASSERT(q2->type == NODE_TYPE_QUANTIFIER);
     // do only cover ALL and NONE when both sides have same quantifier
-    if (q1->getIntValue() != q2->getIntValue() || Quantifier::isAny(q1)) {
+    if (q1->getIntValue(true) != q2->getIntValue(true) ||
+        Quantifier::isAny(q1)) {
       return false;
     }
 
@@ -312,9 +313,13 @@ bool ConditionPart::isCoveredBy(ConditionPart const& other,
   }
 
   // Results are -1, 0, 1, move to 0, 1, 2 for the lookup:
+  // == / != use byte comparison; mirror that so NFC/NFD aren't collapsed
+  bool const useUtf8Comparison =
+      other.whichCompareOperation() > 1 && whichCompareOperation() > 1;
   CompareResult res =
-      ResultsTable[compareAstNodes(other.valueNode, valueNode, true) + 1]
-                  [other.whichCompareOperation()][whichCompareOperation()];
+      ResultsTable[compareAstNodes(other.valueNode, valueNode,
+                                   useUtf8Comparison) +
+                   1][other.whichCompareOperation()][whichCompareOperation()];
 
   if (res == CompareResult::OTHER_CONTAINED_IN_SELF ||
       res == CompareResult::CONVERT_EQUAL || res == CompareResult::IMPOSSIBLE) {

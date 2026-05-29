@@ -34,7 +34,6 @@
 #include "Cluster/ServerDefaults.h"
 #include "Cluster/ServerState.h"
 #include "Futures/Utilities.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionState.h"

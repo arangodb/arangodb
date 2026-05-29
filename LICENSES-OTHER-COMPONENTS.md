@@ -67,10 +67,10 @@ _Enterprise Edition only_
 ### faiss
 
 * Name: faiss
-* Version: 1.14.1
-* Date: 2026-04-28
+* Version: 1.14.2
+* Date: 2026-05-22
 * Project Home:https://github.com/facebookresearch/faiss/
-* License: https://github.com/facebookresearch/faiss/blob/main/LICENSE 
+* License: https://github.com/facebookresearch/faiss/blob/main/LICENSE
 * License Name: MIT License
 * License Id: MIT
 
@@ -98,7 +98,7 @@ _Enterprise Edition only_
 
 * Name: fastvalidate-utf8
 * Version: (none)
-* Date: 2017-02-28 13:11:35Z 
+* Date: 2017-02-28 13:11:35Z
 * Project Home: https://github.com/lemire/fastvalidate-utf-8
 * License: https://raw.githubusercontent.com/lemire/fastvalidate-utf-8/master/LICENSE-APACHE
 * License Name: Apache License 2.0
@@ -319,7 +319,7 @@ _Enterprise Edition only_
 * Version: 1.12.1
 * Date: 2022-06-30 10:14:00Z
 * Project Home: https://github.com/google/googletest
-* License: https://raw.githubusercontent.com/google/googletest/release-1.12.1/LICENSE 
+* License: https://raw.githubusercontent.com/google/googletest/release-1.12.1/LICENSE
 * License Name: BSD 3-clause "New" or "Revised" License
 * License Id: BSD-3-Clause
 
@@ -481,7 +481,7 @@ _Enterprise Edition only_
 
 ## Libraries used by iresearch
 
-The ArangoDB software makes uses of the 
+The ArangoDB software makes uses of the
 [iresearch library](https://github.com/iresearch-toolkit/iresearch),
 which is mainly developed by ArangoDB, too.
 The iresearch library itself makes use of several other components with
@@ -512,7 +512,7 @@ can be found [here](https://github.com/arangodb/arangodb/blob/devel/lib/iresearc
 ### Fortran
 
 * Name: gfortran
-* Version: 11.4.0 
+* Version: 11.4.0
 * Date: 2023-05-29
 * Project Home: https://gcc.gnu.org/wiki/GFortran
 * License: https://moinmo.in/GPL

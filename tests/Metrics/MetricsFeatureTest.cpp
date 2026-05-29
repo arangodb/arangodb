@@ -29,6 +29,7 @@
 #include "Metrics/MetricsFeature.h"
 #include "MetricsFeatureTest.h"
 #include "RestServer/arangod.h"
+#include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 
 using namespace arangodb;
@@ -39,7 +40,7 @@ std::shared_ptr<arangodb::options::ProgramOptions> opts =
 ArangodServer server = ArangodServer(opts, nullptr);
 metrics::MetricsFeature feature = metrics::MetricsFeature(
     server, LazyApplicationFeatureReference<QueryRegistryFeature>(server),
-    LazyApplicationFeatureReference<EngineSelectorFeature>(nullptr),
+    LazyApplicationFeatureReference<DatabaseFeature>(nullptr),
     LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(nullptr),
     LazyApplicationFeatureReference<ClusterFeature>(nullptr));
 

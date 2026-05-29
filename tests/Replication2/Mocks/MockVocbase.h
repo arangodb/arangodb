@@ -26,12 +26,12 @@
 #include <gmock/gmock.h>
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/DatabaseFeature.h"
 #include "Utils/VersionTracker.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/VocbaseInfo.h"
 #include "Mocks/StorageEngineMock.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 
 namespace arangodb::replication2::tests {
 
@@ -58,8 +58,7 @@ struct MockVocbase : TRI_vocbase_t {
                       createDatabaseInfo(server, name, id), storageEngine,
                       versionTracker, true),
         storageEngine(server) {
-    server.addFeature<arangodb::EngineSelectorFeature>();
-    server.getFeature<arangodb::EngineSelectorFeature>().setEngineTesting(
+    server.getFeature<arangodb::DatabaseFeature>().setEngineTesting(
         &storageEngine);
   }
 

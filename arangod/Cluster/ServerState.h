@@ -289,7 +289,7 @@ class ServerState {
   bool checkCoordinatorState(StateEnum);
 
   /// @brief check equality of engines with other registered servers
-  bool checkEngineEquality(AgencyComm&);
+  bool checkEngineEquality(AgencyComm&, std::string_view engineName);
 
   /// @brief check equality of naming conventions settings with other registered
   /// servers
@@ -305,7 +305,8 @@ class ServerState {
   bool registerAtAgencyPhase1(AgencyComm&, RoleEnum const&);
 
   /// @brief write the Current/ServersRegistered entry
-  bool registerAtAgencyPhase2(AgencyComm&, bool hadPersistedId);
+  bool registerAtAgencyPhase2(AgencyComm&, bool hadPersistedId,
+                              std::string_view engineName);
 
   /// @brief whether or not "value" is a server UUID
   bool isUuid(std::string const& value) const;
