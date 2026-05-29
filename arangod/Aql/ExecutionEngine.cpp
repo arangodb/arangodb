@@ -790,7 +790,9 @@ async<void> ExecutionEngine::instantiateFromPlan(Query& query,
     // distributed query
     DistributedQueryInstanciator inst(query, plan.getNodesById(),
                                       pushToSingleServer);
-    plan.root()->flatWalk(inst, true);
+    //    LOG_DEVEL << "PLAN:";
+    // plan.show();
+    plan.root()->flatWalk(inst, ExecutionNode::FlattenType::INLINE_ALL);
 
     Result res = co_await inst.buildEngines();
     if (res.fail()) {
