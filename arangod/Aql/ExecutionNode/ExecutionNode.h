@@ -352,12 +352,7 @@ class ExecutionNode {
 
   bool walkSubqueriesFirst(WalkerWorkerBase<ExecutionNode>& worker);
 
-  enum class FlattenType {
-    NONE,
-    INLINE_ASYNC,
-    INLINE_ALL,
-    INLINE_ASYNC_AND_SCATTER
-  };
+  enum class FlattenType { NONE, INLINE_ASYNC, INLINE_ALL };
 
   bool flatWalk(WalkerWorkerBase<ExecutionNode>& worker, FlattenType);
 

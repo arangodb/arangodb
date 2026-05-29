@@ -789,7 +789,6 @@ bool ExecutionNode::flatWalk(WalkerWorkerBase<ExecutionNode>& worker,
                      starting from this execution node in dependency direction
                      (towards SINGLETON).
  FlattenType::INLINE_ASYNC:
- FlattenType::INLINE_ASYNC_AND_SCATTER:
  FlattenType::INLINE_ALL: enumerates dependencies of this execution node in a
                           topoligical order.
 
@@ -846,30 +845,28 @@ bool ExecutionNode::doWalk(WalkerWorkerBase<ExecutionNode>& worker,
           // than one parent, so all others indicated an issue on plan
           TRI_ASSERT(n->getType() == SCATTER || n->getType() == MUTEX ||
                      n->getType() == DISTRIBUTE);
-          if (flattenType == FlattenType::INLINE_ALL || n->getType() == MUTEX ||
-              (flattenType == FlattenType::INLINE_ASYNC_AND_SCATTER &&
-               n->getType() == SCATTER)) {
+          if (flattenType == FlattenType::INLINE_ALL || n->getType() == MUTEX)
             ADB_PROD_ASSERT(!parallelStarter.empty())
                 << n->id() << " " << n->getTypeString();
-            // If we are not INLINE_ALL, only flatten the MUTEX, which is the
-            // counterpart of ASYNC
-            auto& starter = parallelStarter.back();
-            if (starter.isComplete()) {
-              // All parallel steps complete drop the corresponding parallel
-              // starter
-              parallelStarter.pop_back();
-            } else {
-              // Discard this state, we will visit it in the next time around
-              // on the parallel branch
-              nodes.pop_back();
-              // Jump back, and continue visiting the next parallel branch.
-              nodes.emplace_back(starter.visitNext(), State::Pending);
-              // Just pretend we have not seen this
-              // and continue with the next one to visit
-              continue;
-            }
+          // If we are not INLINE_ALL, only flatten the MUTEX, which is the
+          // counterpart of ASYNC
+          auto& starter = parallelStarter.back();
+          if (starter.isComplete()) {
+            // All parallel steps complete drop the corresponding parallel
+            // starter
+            parallelStarter.pop_back();
+          } else {
+            // Discard this state, we will visit it in the next time around
+            // on the parallel branch
+            nodes.pop_back();
+            // Jump back, and continue visiting the next parallel branch.
+            nodes.emplace_back(starter.visitNext(), State::Pending);
+            // Just pretend we have not seen this
+            // and continue with the next one to visit
+            continue;
           }
         }
+
         if (worker.done(n)) {
           nodes.pop_back();
           break;
@@ -910,11 +907,9 @@ bool ExecutionNode::doWalk(WalkerWorkerBase<ExecutionNode>& worker,
               // Add the next dependency to continue
               nodes.emplace_back(n->getFirstDependency(), State::Pending);
             } else {
-              TRI_ASSERT(flattenType == FlattenType::INLINE_ASYNC ||
-                         flattenType == FlattenType::INLINE_ASYNC_AND_SCATTER);
+              TRI_ASSERT(flattenType == FlattenType::INLINE_ASYNC);
               auto peek = n->getFirstDependency();
-              if (peek->getType() == ASYNC ||
-                  flattenType == FlattenType::INLINE_ASYNC_AND_SCATTER) {
+              if (peek->getType() == ASYNC) {
                 // So yes we found the combination we want to flatten here
                 // Remember where we started the flattening process
                 parallelStarter.emplace_back(n);
