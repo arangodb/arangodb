@@ -1,5 +1,5 @@
 %define api.pure
-%name-prefix "Aql"
+%define api.prefix {Aql}
 %locations
 %defines
 %parse-param { arangodb::aql::Parser* parser }
@@ -61,10 +61,10 @@ using namespace arangodb::aql;
 #define scanner parser->scanner()
 
 /// @brief forward for lexer function defined in Aql/tokens.ll
-int Aqllex(YYSTYPE*, YYLTYPE*, void*);
+int Aqllex(AQLSTYPE*, AQLLTYPE*, void*);
 
 /// @brief register parse error (this will also abort the currently running query)
-void Aqlerror(YYLTYPE* locp,
+void Aqlerror(AQLLTYPE* locp,
               arangodb::aql::Parser* parser,
               char const* message) {
   parser->registerParseError(TRI_ERROR_QUERY_PARSE, message, locp->first_line, locp->first_column);
@@ -189,7 +189,7 @@ AstNode* buildShortestPathInfo(Parser* parser,
                                AstNode* endNode,
                                AstNode* graph,
                                AstNode* options,
-                               YYLTYPE const& yyloc) {
+                               AQLLTYPE const& yyloc) {
   if (!caseInsensitiveEqual(seperator, "TO")) {
     parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'TO'", seperator, yyloc.first_line, yyloc.first_column);
   }
@@ -210,7 +210,7 @@ void validateForOutVariables(Parser* parser,
                              size_t minVariables, size_t maxVariables,
                              bool allowDestructuring,
                              std::string_view nodeType,
-                             YYLTYPE const& yyloc) {
+                             AQLLTYPE const& yyloc) {
   TRI_ASSERT(variableNamesNode != nullptr);
   TRI_ASSERT(variableNamesNode->type == NODE_TYPE_ARRAY ||
              variableNamesNode->type == NODE_TYPE_DESTRUCTURING);
