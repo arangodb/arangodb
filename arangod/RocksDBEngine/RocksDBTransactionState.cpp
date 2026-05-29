@@ -27,7 +27,6 @@
 #include "Aql/QueryCache.h"
 #include "Basics/Exceptions.h"
 #include "Basics/Result.h"
-#include "Basics/ThreadLocalLeaser.h"
 #include "Basics/system-compiler.h"
 #include "Basics/system-functions.h"
 #include "Cache/CacheManagerFeature.h"
@@ -47,7 +46,6 @@
 #include "Statistics/ServerStatistics.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/TransactionCollection.h"
-#include "Transaction/Context.h"
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #include "Transaction/History.h"
 #endif
@@ -379,20 +377,3 @@ RocksDBTransactionStateGuard::~RocksDBTransactionStateGuard() {
   _state->unuse();
 }
 #endif
-
-/// @brief constructor, leases a builder
-RocksDBKeyLeaser::RocksDBKeyLeaser(transaction::Methods* trx)
-    : _ctx(trx->transactionContextPtr()),
-      _key(ThreadLocalStringLeaser::lease().release().release()) {
-  TRI_ASSERT(_ctx != nullptr);
-  TRI_ASSERT(_key.buffer() != nullptr);
-}
-
-/// @brief destructor
-RocksDBKeyLeaser::~RocksDBKeyLeaser() {
-  if (!_key.usesInlineBuffer()) {
-    // TODO: this is very ugly.
-    ThreadLocalStringLeaser::acquire(
-        std::unique_ptr<std::string>(_key.buffer()));
-  }
-}

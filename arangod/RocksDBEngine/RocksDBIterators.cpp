@@ -24,6 +24,7 @@
 #include "RocksDBIterators.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
+#include "Basics/ThreadLocalLeaser.h"
 #include "Random/RandomGenerator.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -334,10 +335,10 @@ class RocksDBAnyIndexIterator final : public IndexIterator {
     // the number of scan steps to some reasonable amount.
     uint64_t steps = RandomGenerator::interval(_total - 1) % 500;
 
-    RocksDBKeyLeaser key(_trx);
-    key->constructDocument(
+    RocksDBKey key(ThreadLocalStringLeaser::lease());
+    key.constructDocument(
         _objectId, LocalDocumentId(RandomGenerator::interval(UINT64_MAX)));
-    _iterator->Seek(key->string());
+    _iterator->Seek(key.string());
 
     if (checkIter()) {
       while (steps-- > 0) {
