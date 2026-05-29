@@ -128,7 +128,8 @@ class NearUtils {
                  isFilterIsContained() ||
                  _buffer.top().distAngle <= _innerAngle);
       TRI_ASSERT(!isDescending() || isFilterIntersects() ||
-                 isFilterIsContained() || _buffer.top().distAngle >= _outerAngle);
+                 isFilterIsContained() ||
+                 _buffer.top().distAngle >= _outerAngle);
     }
 #endif
     return _buffer.top();
