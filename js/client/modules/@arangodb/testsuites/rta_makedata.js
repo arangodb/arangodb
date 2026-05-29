@@ -43,6 +43,8 @@ const ct = require('@arangodb/testutils/client-tools');
 const tu = require('@arangodb/testutils/test-utils');
 const im = require('@arangodb/testutils/instance-manager');
 const inst = require('@arangodb/testutils/instance');
+const replication = require("@arangodb/replication");
+const compareTicks = replication.compareTicks;
 const SetGlobalExecutionDeadlineTo = require('internal').SetGlobalExecutionDeadlineTo;
 const testRunnerBase = require('@arangodb/testutils/testrunner').testRunner;
 const yaml = require('js-yaml');
@@ -51,7 +53,7 @@ const time = require('internal').time;
 const isEnterprise = require("@arangodb/test-helper").isEnterprise;
 
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
-// const CYAN = require('internal').COLORS.COLOR_CYAN;
+const CYAN = require('internal').COLORS.COLOR_CYAN;
 const GREEN = require('internal').COLORS.COLOR_GREEN;
 const RED = require('internal').COLORS.COLOR_RED;
 const RESET = require('internal').COLORS.COLOR_RESET;
@@ -77,6 +79,10 @@ function makeDataWrapper (options) {
   class rtaMakedataRunner extends testRunnerBase {
     constructor(options, testname, ...optionalArgs) {
       super(options, testname, ...optionalArgs);
+      if (!this.options.cluster) {
+        this.options.singles = 2;
+        this.addArgs = {};
+      }
       this.info = "runRtaInArangosh";
       if (isEnterprise()) {
         this.serverOptions["arangosearch.columns-cache-limit"] = "5000";
@@ -85,6 +91,110 @@ function makeDataWrapper (options) {
     }
     filter(te, filtered) {
       return true;
+    }
+
+    waitForReplState() {
+      print(`${CYAN}${Date()} waiting for follower to catch up!${RESET}`);
+      let state = {};
+      var printed = false;
+      state.lastLogTick = replication.logger.state().state.lastUncommittedLogTick;
+
+      this.instanceManager.arangods[1].toThisInstance(() => {
+        while (true) {
+          let followerState = replication.globalApplier.state();
+
+          if (followerState.state.lastError.errorNum > 0) {
+            print("follower has errored:", JSON.stringify(followerState.state.lastError));
+            throw new Error(JSON.stringify(followerState.state.lastError));
+          }
+
+          if (!followerState.state.running) {
+            break;
+          }
+
+          if (compareTicks(followerState.state.lastAppliedContinuousTick, state.lastLogTick) >= 0 ||
+              compareTicks(followerState.state.lastProcessedContinuousTick, state.lastLogTick) >= 0) { // ||
+            print("follower has caught up. state.lastLogTick:", state.lastLogTick, "followerState.lastAppliedContinuousTick:", followerState.state.lastAppliedContinuousTick, "followerState.lastProcessedContinuousTick:", followerState.state.lastProcessedContinuousTick);
+            break;
+          }
+
+          if (!printed) {
+            print("waiting for follower to catch up");
+            printed = true;
+          }
+          internal.wait(0.5, false);
+        }
+      });
+    }    
+    preStart() {
+      if (!this.options.cluster) {
+        // our tests lean on accessing the `_users` collection, hence no auth for secondary
+        this.instanceManager.arangods[1].args['server.authentication'] = false;
+      }
+      return {
+        message: '',
+        state: true,
+      };
+    }
+    postStart() {
+      if (!this.options.cluster) {
+        let message;
+        print("starting replication follower: ");
+        let state = true;
+        this.addArgs['flatCommands'] = [this.instanceManager.arangods[1].endpoint];
+        [0, 1].forEach(which => {
+          this.instanceManager.endpoint = this.instanceManager.arangods[which].endpoint;
+          this.instanceManager.arangods[which].toThisInstance(() => {
+            try {
+              var users = require("@arangodb/users");
+              users.save("replicator-user", "replicator-password", true);
+              users.grantDatabase("replicator-user", "_system");
+              users.grantCollection("replicator-user", "_system", "*", "rw");
+              users.reload();
+            } catch(ex) {
+              state = false;
+              message += `failed to connect ${this.instanceManager.arangods[which].name}: ex.message\n`;
+              print(RED + message + RESET);
+            }
+          });
+        });
+        let syncResult;
+        this.instanceManager.arangods[1].toThisInstance(() => {
+          syncResult = replication.sync({
+            endpoint: this.instanceManager.arangods[0].endpoint,
+            username: "root",
+            password: "",
+            verbose: true,
+            includeSystem: false,
+            keepBarrier: true,
+          });
+          if (!syncResult.hasOwnProperty('lastLogTick')) {
+            throw new Error(`sync result doesn't have a lostLogTick: ${JSON.stringify(syncResult)}`);
+          }
+          // use lastLogTick as of now
+          state = { lastLogTick: replication.logger.state().state.lastLogTick};
+
+          let applierConfiguration = {
+            endpoint: this.instanceManager.arangods[0].endpoint,
+            username: "root",
+            password: "", 
+            requireFromPresent: true 
+          };
+
+          replication.applier.properties(applierConfiguration);
+          replication.applier.start(syncResult.lastLogTick, syncResult.barrierId);
+        });
+        this.waitForReplState();
+        return {
+          message: message,
+          state: state,
+        };
+      } else {
+        return {
+          message: '',
+          state: true,
+        };
+      }
     }
     
     checkSutCleannessBefore(te) {
@@ -99,9 +209,26 @@ function makeDataWrapper (options) {
       }
       return false;
     }
+
+    createDump() {
+      this.dumpConfig = ct.createBaseConfig('dump', this.options, this.instanceManager);
+      this.dumpConfig.setOutputDirectory('dump');
+      this.dumpConfig.setIncludeSystem(true);
+      this.dumpConfig.setAllDatabases();
+      return ct.run.arangoDumpRestoreWithConfig(this.dumpConfig, this.options, this.instanceManager.rootDir, this.options.coreCheck);
+
+    }
+    restoreDump() {
+      this.restoreConfig = ct.createBaseConfig('restore', this.options, this.instanceManager);
+      this.restoreConfig.setInputDirectory('dump', false);
+      this.restoreConfig.setIncludeSystem(true);
+      this.restoreConfig.setAllDatabases();
+      return ct.run.arangoDumpRestoreWithConfig(this.restoreConfig, this.options, this.instanceManager.rootDir, this.options.coreCheck);
+    }
+
     runOneTest(file) {
       this.options.rtaNegFilter = "";
-      if (this.options.skipServerJS) {
+      if ((this.options.skipServerJS) || (localOptions.oldSource !== undefined)) {
         // TODO: QA-703
         this.options.rtaNegFilter = "070,071,801,550,900,960";
       }
@@ -199,6 +326,34 @@ function makeDataWrapper (options) {
               this.instanceManager.removeServerFromAgency(stoppedDbServerInstance.id);
             }
           }
+        } else {
+          this.waitForReplState();
+          if (count === 2) {
+            this.createDump();
+            this.restoreDump();
+            this.waitForReplState();
+          } else if (count === 3) {
+            try {
+              if (this.options.oldSource !== undefined) {
+                print("switching binary set");
+                pu.switchBinarySet(1);
+              }
+              this.instanceManager.upgradeCycleInstance();
+              this.restoreDump();
+              this.waitForReplState();
+            } catch(e) {
+              res.status = false;
+              res.failed += 1;
+              res[whichRTA] = {
+                'forceTerminate': true,
+                'message': `upgradeCycle failed by: ${e.message}\n${e.stack}`,
+                'failed': 1,
+                'status': false,
+                'duration': 0.0
+              };
+              return;
+            }
+          }
         }
         let logFile = fs.join(fs.getTempPath(), `rta_out_${count}.log`);
         require('internal').env.INSTANCEINFO = JSON.stringify(this.instanceManager.getStructure());
@@ -224,6 +379,10 @@ function makeDataWrapper (options) {
     }
   }
   let localOptions = Object.assign({}, options, tu.testServerAuthInfo);
+
+  if (localOptions.oldSource !== undefined) {
+    localOptions.skipServerJS = false;
+  }
   if (localOptions.cluster && localOptions.dbServers < 3) {
     localOptions.dbServers = 3;
   }
