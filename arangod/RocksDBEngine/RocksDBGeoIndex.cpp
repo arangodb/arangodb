@@ -28,6 +28,7 @@
 #include "Aql/AstNode.h"
 #include "Aql/Function.h"
 #include "Aql/SortCondition.h"
+#include "Basics/ThreadLocalLeaser.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "GeoIndex/Covering.h"
@@ -38,7 +39,6 @@
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -405,12 +405,12 @@ class RDBNearIterator final : public IndexIterator {
   void estimateDensity() {
     S2CellId cell = S2CellId(_near.origin());
 
-    RocksDBKeyLeaser key(_trx);
-    key->constructGeoIndexValue(_index->objectId(), cell.id(),
-                                LocalDocumentId(1));
-    _iter->Seek(key->string());
+    RocksDBKey key(ThreadLocalStringLeaser::lease());
+    key.constructGeoIndexValue(_index->objectId(), cell.id(),
+                               LocalDocumentId(1));
+    _iter->Seek(key.string());
     if (!_iter->Valid()) {
-      _iter->SeekForPrev(key->string());
+      _iter->SeekForPrev(key.string());
     }
     if (_iter->Valid()) {
       _near.estimateDensity(RocksDBValue::centroid(_iter->value()));
@@ -833,18 +833,18 @@ Result RocksDBGeoIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
   TRI_ASSERT(S2::IsUnitLength(centroid));
 
   RocksDBValue val = RocksDBValue::S2Value(centroid);
-  RocksDBKeyLeaser key(&trx);
+  RocksDBKey key(ThreadLocalStringLeaser::lease());
 
   TRI_ASSERT(!_unique);
 
   for (S2CellId cell : cells) {
-    key->constructGeoIndexValue(objectId(), cell.id(), documentId);
-    TRI_ASSERT(key->containsLocalDocumentId(documentId));
+    key.constructGeoIndexValue(objectId(), cell.id(), documentId);
+    TRI_ASSERT(key.containsLocalDocumentId(documentId));
 
     rocksdb::Status s =
         mthd->PutUntracked(RocksDBColumnFamilyManager::get(
                                RocksDBColumnFamilyManager::Family::GeoIndex),
-                           key.ref(), val.string());
+                           key, val.string());
 
     if (!s.ok()) {
       res.reset(rocksutils::convertStatus(s, rocksutils::index));
@@ -877,16 +877,16 @@ Result RocksDBGeoIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd,
 
   TRI_ASSERT(!cells.empty());
 
-  RocksDBKeyLeaser key(&trx);
+  RocksDBKey key(ThreadLocalStringLeaser::lease());
 
   // FIXME: can we rely on the region coverer to return
   // the same cells everytime for the same parameters ?
   for (S2CellId cell : cells) {
-    key->constructGeoIndexValue(objectId(), cell.id(), documentId);
+    key.constructGeoIndexValue(objectId(), cell.id(), documentId);
     rocksdb::Status s =
         mthd->Delete(RocksDBColumnFamilyManager::get(
                          RocksDBColumnFamilyManager::Family::GeoIndex),
-                     key.ref());
+                     key);
     if (!s.ok()) {
       res.reset(rocksutils::convertStatus(s, rocksutils::index));
       addErrorMsg(res);

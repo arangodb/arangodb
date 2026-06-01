@@ -320,13 +320,13 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
         _cache(std::static_pointer_cast<VPackIndexCacheType>(std::move(cache))),
         _maxCacheValueSize(_cache == nullptr ? 0 : _cache->maxCacheValueSize()),
         _indexIteratorOptions(opts),
-        _key(trx),
+        _key(ThreadLocalStringLeaser::lease()),
         _done(false) {
     TRI_ASSERT(index->unique());
     TRI_ASSERT(index->columnFamily() ==
                RocksDBColumnFamilyManager::get(
                    RocksDBColumnFamilyManager::Family::VPackIndex));
-    _key->constructUniqueVPackIndexValue(index->objectId(), indexValues);
+    _key.constructUniqueVPackIndexValue(index->objectId(), indexValues);
 
     // if the cache is enabled, it must use the VPackKeyHasher!
     TRI_ASSERT(_cache == nullptr || _cache->hasherName() == "VPackKeyHasher");
@@ -375,7 +375,7 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
   bool rearmImpl(velocypack::Slice slice,
                  IndexIteratorOptions const& /*opts*/) override {
     TRI_ASSERT(slice.length() > 0);
-    _key->constructUniqueVPackIndexValue(_index->objectId(), slice);
+    _key.constructUniqueVPackIndexValue(_index->objectId(), slice);
     return true;
   }
 
@@ -411,11 +411,11 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
         [&cb, this](rocksdb::PinnableSlice& ps) {
           if (_index->hasStoredValues()) {
             auto data = SliceCoveringDataWithStoredValues(
-                RocksDBKey::indexedVPack(_key.ref()),
+                RocksDBKey::indexedVPack(_key),
                 RocksDBValue::uniqueIndexStoredValues(ps));
             cb(LocalDocumentId(RocksDBValue::documentId(ps)), data);
           } else {
-            auto data = SliceCoveringData(RocksDBKey::indexedVPack(_key.ref()));
+            auto data = SliceCoveringData(RocksDBKey::indexedVPack(_key));
             cb(LocalDocumentId(RocksDBValue::documentId(ps)), data);
           }
         },
@@ -467,7 +467,7 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
     rocksdb::PinnableSlice ps;
     RocksDBMethods* mthds =
         RocksDBTransactionState::toMethods(_trx, _collection->id());
-    rocksdb::Status s = mthds->Get(_index->columnFamily(), _key->string(), &ps,
+    rocksdb::Status s = mthds->Get(_index->columnFamily(), _key.string(), &ps,
                                    canReadOwnWrites());
 
     if (s.ok()) {
@@ -480,7 +480,7 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
         // LocalDocumentId
         builder->add(VPackValue(RocksDBValue::documentId(ps).id()));
         // index values
-        builder->add(RocksDBKey::indexedVPack(_key->string()));
+        builder->add(RocksDBKey::indexedVPack(_key.string()));
         if (_index->hasStoredValues()) {
           // "storedValues"
           builder->add(RocksDBValue::uniqueIndexStoredValues(ps));
@@ -522,7 +522,7 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
 
   rocksdb::Slice lookupValueForCache() const noexcept {
     // use bounds start value
-    return ::lookupValueFromSlice(_key->string());
+    return ::lookupValueFromSlice(_key.string());
   }
 
   ResourceMonitor& _resourceMonitor;
@@ -531,7 +531,7 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
   std::shared_ptr<VPackIndexCacheType> _cache;
   size_t const _maxCacheValueSize;
   IndexIteratorOptions const _indexIteratorOptions;
-  RocksDBKeyLeaser _key;
+  RocksDBKey _key;
   bool _done;
 };
 

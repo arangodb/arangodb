@@ -39,7 +39,6 @@
 #include "IResearch/VelocyPackHelper.h"
 #include "Logger/LogMacros.h"
 #include "RestServer/DatabaseFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "StorageEngine/TransactionState.h"

@@ -53,7 +53,6 @@
 #include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "RocksDBEngine/RocksDBVPackIndex.h"
 #include "RocksDBEngine/RocksDBValue.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngineFeature.h"
 #include "Transaction/Helpers.h"
 #include "VocBase/KeyGenerator.h"
@@ -638,8 +637,8 @@ Result RocksDBRecoveryManager::parseRocksWAL() {
   Result shutdownRv;
 
   Result res = basics::catchToResult([&, &server = server()]() -> Result {
-    RocksDBEngine& engine =
-        server.getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
+    RocksDBEngine& engine = static_cast<RocksDBEngine&>(
+        server.getFeature<DatabaseFeature>().engine());
 
     auto db = engine.db();
 

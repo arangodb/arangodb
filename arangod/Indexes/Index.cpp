@@ -32,7 +32,6 @@
 #include "Basics/datetime.h"
 #include "Containers/HashSet.h"
 #include "IResearch/IResearchCommon.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Utilities/NameValidator.h"
 #include "VocBase/LogicalCollection.h"

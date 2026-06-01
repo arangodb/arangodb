@@ -246,7 +246,7 @@ bool ConditionPart::isCoveredBy(ConditionPart const& other,
             auto w = other.valueNode->getMemberUnchecked(j);
 
             CompareResult res =
-                ResultsTable[compareAstNodes(v, w, true) + 1][0][0];
+                ResultsTable[compareAstNodes(v, w, false) + 1][0][0];
 
             if (res != CompareResult::OTHER_CONTAINED_IN_SELF &&
                 res != CompareResult::CONVERT_EQUAL &&
@@ -313,9 +313,13 @@ bool ConditionPart::isCoveredBy(ConditionPart const& other,
   }
 
   // Results are -1, 0, 1, move to 0, 1, 2 for the lookup:
+  // == / != use byte comparison; mirror that so NFC/NFD aren't collapsed
+  bool const useUtf8Comparison =
+      other.whichCompareOperation() > 1 && whichCompareOperation() > 1;
   CompareResult res =
-      ResultsTable[compareAstNodes(other.valueNode, valueNode, true) + 1]
-                  [other.whichCompareOperation()][whichCompareOperation()];
+      ResultsTable[compareAstNodes(other.valueNode, valueNode,
+                                   useUtf8Comparison) +
+                   1][other.whichCompareOperation()][whichCompareOperation()];
 
   if (res == CompareResult::OTHER_CONTAINED_IN_SELF ||
       res == CompareResult::CONVERT_EQUAL || res == CompareResult::IMPOSSIBLE) {

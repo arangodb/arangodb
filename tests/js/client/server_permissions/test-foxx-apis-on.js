@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, runSetup, assertTrue, assertFalse, assertEqual, assertNotEqual, arango */
+/* global getOptions, runSetup */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -24,6 +24,11 @@
 /// @author Wilfried Goesgens
 /// @author Copyright 2019, ArangoDB Inc, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
+const jsunity = require("jsunity");
+const {assertEqual, assertTrue, assertFalse, assertNotEqual} = jsunity.jsUnity.assertions;
+const arango = require('@arangodb').arango;
+const errors = require('@arangodb').errors;
+let IM = global.instanceManager;
 
 if (getOptions === true) {
   return {
@@ -34,29 +39,25 @@ if (getOptions === true) {
 
 if (runSetup === true) {
   let users = require("@arangodb/users");
-  
+
   users.save("test_rw", "testi");
   users.grantDatabase("test_rw", "_system", "rw");
-  
+
   users.save("test_ro", "testi");
   users.grantDatabase("test_ro", "_system", "ro");
   return true;
 }
 
-var jsunity = require('jsunity');
-
 function testSuite() {
-  let endpoint = arango.getEndpoint();
   let db = require("@arangodb").db;
-  const errors = require('@arangodb').errors;
 
   return {
     setUp: function() {},
     tearDown: function() {},
-    
+
     testCanAccessAdminFoxxApi : function() {
       ["test_rw", "test_ro"].forEach(function(user) {
-        arango.reconnect(endpoint, db._name(), user, "testi");
+        arango.reconnect(IM.endpoint, db._name(), user, "testi");
 
         let routes = [
           "setup", "teardown", "install", "uninstall",
@@ -74,10 +75,10 @@ function testSuite() {
         });
       });
     },
-    
+
     testCanAccessPutApiFoxxApi : function() {
       ["test_rw", "test_ro"].forEach(function(user) {
-        arango.reconnect(endpoint, db._name(), user, "testi");
+        arango.reconnect(IM.endpoint, db._name(), user, "testi");
 
         let routes = [
           "store", "git", "url", "generate", "zip", "raw" 
@@ -91,10 +92,10 @@ function testSuite() {
         });
       });
     },
-    
+
     testCanAccessPostApiFoxxApiRo : function() {
       ["test_rw", "test_ro"].forEach(function(user) {
-        arango.reconnect(endpoint, db._name(), user, "testi");
+        arango.reconnect(IM.endpoint, db._name(), user, "testi");
 
         let routes = [
           "tests"
@@ -108,10 +109,10 @@ function testSuite() {
         });
       });
     },
-    
+
     testCanAccessGetApiFoxxApi : function() {
       ["test_rw", "test_ro"].forEach(function(user) {
-        arango.reconnect(endpoint, db._name(), user, "testi");
+        arango.reconnect(IM.endpoint, db._name(), user, "testi");
 
         let routes = [
           "", "thumbnail", "config", "deps", "fishbowl"

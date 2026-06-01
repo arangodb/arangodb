@@ -33,9 +33,6 @@ const ERRORS = arangodb.errors;
 const _ = require("lodash");
 const isEnterprise = require("internal").isEnterprise();
 const wait = require("internal").wait;
-const suspendExternal = require("internal").suspendExternal;
-const continueExternal = require("internal").continueExternal;
-const download = require('internal').download;
 const {
   getDBServers,
   getEndpointById,
@@ -128,7 +125,7 @@ function SynchronousReplicationWithViewSuite () {
     var pos = _.findIndex(arangods,
                           x => x.url === endpoint);
     assertTrue(pos >= 0);
-    assertTrue(suspendExternal(arangods[pos].pid));
+    assertTrue(arangods[pos].suspend());
     console.info("Have failed follower", follower);
     failedState.follower = follower;
   }
@@ -145,7 +142,7 @@ function SynchronousReplicationWithViewSuite () {
     var pos = _.findIndex(arangods,
                           x => x.url === endpoint);
     assertTrue(pos >= 0);
-    assertTrue(continueExternal(arangods[pos].pid));
+    assertTrue(arangods[pos].resume());
     console.info("Have healed follower", follower);
     if (failedState.follower === follower) failedState.follower = null;
   }
@@ -162,7 +159,7 @@ function SynchronousReplicationWithViewSuite () {
     var pos = _.findIndex(arangods,
                           x => x.url === endpoint);
     assertTrue(pos >= 0);
-    assertTrue(suspendExternal(arangods[pos].pid));
+    assertTrue(arangods[pos].suspend());
     console.info("Have failed leader", leader);
     failedState.leader = leader;
     return leader;
@@ -180,7 +177,7 @@ function SynchronousReplicationWithViewSuite () {
     var pos = _.findIndex(arangods,
                           x => x.url === endpoint);
     assertTrue(pos >= 0);
-    assertTrue(continueExternal(arangods[pos].pid));
+    assertTrue(arangods[pos].resume());
     console.info("Have healed leader", leader);
     if (failedState.leader === leader) failedState.leader = null;
   }

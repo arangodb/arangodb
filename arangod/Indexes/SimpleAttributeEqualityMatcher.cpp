@@ -26,7 +26,6 @@
 #include "Aql/AstNode.h"
 #include "Aql/Variable.h"
 #include "Indexes/Index.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "VocBase/vocbase.h"
 

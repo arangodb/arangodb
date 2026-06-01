@@ -42,6 +42,14 @@ class Parser;
 #include "Aql/Parser/Parser.h"
 #include "Aql/QueryContext.h"
 
+#ifndef YYSTYPE
+#define YYSTYPE AQLSTYPE
+#endif
+
+#ifndef YYLTYPE
+#define YYLTYPE AQLLTYPE
+#endif
+
 #define YY_EXTRA_TYPE arangodb::aql::Parser*
 
 #define YY_USER_ACTION                                                   \

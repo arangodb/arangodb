@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global fail, assertUndefined, assertEqual, assertNotEqual, assertTrue, assertFalse, assertNull*/
+/*global fail */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -25,8 +25,10 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
+const {assertEqual} = jsunity.jsUnity.assertions;
 const arangodb = require("@arangodb");
 const {getRawMetric} = require("@arangodb/test-helper");
+let IM = global.instanceManager;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -43,38 +45,37 @@ function CoordinatorMetricsTestSuite() {
     /// @brief CoordinatorMetricsTestSuite tests
     ////////////////////////////////////////////////////////////////////////////////
     testMetricsParameterValidation: function () {
-      let primary = arangodb.arango.getEndpoint();
       {
-        let res = getRawMetric(primary, '?mode=invalid');
+        let res = getRawMetric(IM.endpoint, '?mode=invalid');
         assertEqual(res.code, 400);
       }
       {
-        let res = getRawMetric(primary, '?type=invalid');
+        let res = getRawMetric(IM.endpoint, '?type=invalid');
         assertEqual(res.code, 400);
       }
       {
-        let res = getRawMetric(primary, '?type=invalid&mode=invalid');
+        let res = getRawMetric(IM.endpoint, '?type=invalid&mode=invalid');
         assertEqual(res.code, 400);
       }
       {
-        let res = getRawMetric(primary, '?serverId=invalid');
+        let res = getRawMetric(IM.endpoint, '?serverId=invalid');
         // Should be 404, see TODO in arangod/RestHandler/RestMetricsHandler.cpp
         assertEqual(res.code, 200);
       }
       {
-        let res = getRawMetric(primary, '?serverId=invalid&mode=invalid');
+        let res = getRawMetric(IM.endpoint, '?serverId=invalid&mode=invalid');
         assertEqual(res.code, 400);
       }
       {
-        let res = getRawMetric(primary, '?serverId=invalid&type=invalid');
+        let res = getRawMetric(IM.endpoint, '?serverId=invalid&type=invalid');
         assertEqual(res.code, 400);
       }
       {
-        let res = getRawMetric(primary, '?serverId=invalid&type=invalid&mode=invalid');
+        let res = getRawMetric(IM.endpoint, '?serverId=invalid&type=invalid&mode=invalid');
         assertEqual(res.code, 400);
       }
       {
-        let res = getRawMetric(primary, '?mode=local');
+        let res = getRawMetric(IM.endpoint, '?mode=local');
         assertEqual(res.code, 400);
       }
       let type = ['?e0=e0', '?type=invalid', '?type=db_json', '?type=cd_json', '?type=last'];
@@ -86,7 +87,7 @@ function CoordinatorMetricsTestSuite() {
       for (let k = 0; k < params.length; k++) {
         let param = params[k][0] + params[k][1] + params[k][2];
         // require('internal').print(param);
-        let res = getRawMetric(primary, param);
+        let res = getRawMetric(IM.endpoint, param);
         // require('internal').print(res.errorCode);
       }
     },

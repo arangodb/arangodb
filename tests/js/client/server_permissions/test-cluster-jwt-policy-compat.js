@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, runSetup, assertEqual, arango */
+/* global getOptions, runSetup */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -24,9 +24,11 @@
 /// @author Jan Steemann
 /// @author Copyright 2020, ArangoDB Inc, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
-
+const jsunity = require("jsunity");
+const {assertEqual, assertTrue, assertFalse, assertNotEqual} = jsunity.jsUnity.assertions;
 const crypto = require('@arangodb/crypto');
 const request = require('@arangodb/request');
+let IM = global.instanceManager;
 
 const jwtSecret = 'abc123';
 
@@ -42,23 +44,14 @@ if (getOptions === true) {
 
 if (runSetup === true) {
   let users = require("@arangodb/users");
-  
+
   users.save("test_rw", "testi");
   users.grantDatabase("test_rw", "_system", "rw");
-  
+
   return true;
 }
 
-const jsunity = require('jsunity');
-
 function testSuite() {
-  let endpoint = arango.getEndpoint();
-  let db = require("@arangodb").db;
-
-  let baseUrl = function () {
-    return endpoint.replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:');
-  };
-
   const jwt = crypto.jwtEncode(jwtSecret, {
     "server_id": "ABCD",
     "iss": "arangodb", "exp": Math.floor(Date.now() / 1000) + 3600
@@ -67,31 +60,31 @@ function testSuite() {
   return {
     testCanAccessClusterApiReadHealth : function() {
       let res = request.get({
-        url: baseUrl() + "/_admin/cluster/health",
+        url: IM.url + "/_admin/cluster/health",
         auth: { username: "test_rw", password: "testi" },
       });
       assertEqual(200, res.status);
     },
-    
+
     testCanAccessClusterApiReadNumberOfServers : function() {
       let res = request.get({
-        url: baseUrl() + "/_admin/cluster/numberOfServers",
+        url: IM.url + "/_admin/cluster/numberOfServers",
         auth: { username: "test_rw", password: "testi" },
       });
       assertEqual(200, res.status);
     },
-    
+
     testCanAccessClusterApiReadMaintenance : function() {
       let res = request.get({
-        url: baseUrl() + "/_admin/cluster/maintenance",
+        url: IM.url + "/_admin/cluster/maintenance",
         auth: { username: "test_rw", password: "testi" },
       });
       assertEqual(200, res.status);
     },
-    
+
     testCanAccessClusterApiWriteMoveShard : function() {
       let res = request.post({
-        url: baseUrl() + "/_admin/cluster/moveShard", 
+        url: IM.url + "/_admin/cluster/moveShard", 
         auth: { username: "test_rw", password: "testi" },
         body: {},
       });
@@ -100,34 +93,34 @@ function testSuite() {
       // (which would have returned HTTP 403)
       assertEqual(400, res.status);
     },
-    
+
     testCanAccessClusterApiReadHealthJwt : function() {
       let res = request.get({
-        url: baseUrl() + "/_admin/cluster/health",
+        url: IM.url + "/_admin/cluster/health",
         auth: { bearer: jwt },
       });
       assertEqual(200, res.status);
     },
-    
+
     testCanAccessClusterApiReadNumberOfServersJwt : function() {
       let res = request.get({
-        url: baseUrl() + "/_admin/cluster/numberOfServers",
+        url: IM.url + "/_admin/cluster/numberOfServers",
         auth: { bearer: jwt },
       });
       assertEqual(200, res.status);
     },
-    
+
     testCanAccessClusterApiReadMaintenanceJwt : function() {
       let res = request.get({
-        url: baseUrl() + "/_admin/cluster/maintenance",
+        url: IM.url + "/_admin/cluster/maintenance",
         auth: { bearer: jwt },
       });
       assertEqual(200, res.status);
     },
-    
+
     testCanAccessClusterApiWriteMoveShardJwt : function() {
       let res = request.post({
-        url: baseUrl() + "/_admin/cluster/moveShard", 
+        url: IM.url + "/_admin/cluster/moveShard", 
         auth: { bearer: jwt },
         body: {},
       });
@@ -136,7 +129,7 @@ function testSuite() {
       // (which would have returned HTTP 403)
       assertEqual(400, res.status);
     },
-    
+
   };
 }
 jsunity.run(testSuite);

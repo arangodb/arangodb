@@ -633,10 +633,8 @@ function VPackIndexRearmingSuite (unique) {
     },
     
     testVPackLookupBySingleAttributeWithOredConditions1 : function () {
-      // OR-ed conditions, using the same index for the same ranges.
-      // however, that that the 2 ranges are equivalent is not detected
-      // at query compile time, because the range expressions are too
-      // complex to be merged.
+      // OR-ed conditions using the same index and identical ranges.
+      // The duplicate branch is now removed at compile time, leaving one index.
       const q = `FOR i IN 0..${n - 2} FOR doc IN ${cn} FILTER (doc.value1 >= ${pad} && doc.value1 < ${pad2}) || (doc.value1 >= ${pad} && doc.value1 < ${pad2}) RETURN doc`;
 
       const opts = { optimizer: { rules: ["-interchange-adjacent-enumerations"] } };
@@ -644,15 +642,13 @@ function VPackIndexRearmingSuite (unique) {
       let nodes = db._createStatement({query: q, bindVars: null, options: opts}).explain().plan.nodes;
       let indexNodes = nodes.filter((node) => node.type === 'IndexNode');
       assertEqual(1, indexNodes.length);
-      assertEqual(2, indexNodes[0].indexes.length);
+      assertEqual(1, indexNodes[0].indexes.length);
       assertEqual("UnitTestsIndex", indexNodes[0].indexes[0].name);
-      assertEqual("UnitTestsIndex", indexNodes[0].indexes[1].name);
 
       let qr = db._query(q, null, opts);
       let stats = qr.getExtra().stats;
-      // 2 indexes here, and thus 2 cursors. the cursors *are* rearmed
-      assertEqual(2, stats.cursorsCreated);
-      assertEqual((n - 2) * 2, stats.cursorsRearmed);
+      assertEqual(1, stats.cursorsCreated);
+      assertEqual(n - 2, stats.cursorsRearmed);
       let results = qr.toArray();
       assertEqual(n - 1, results.length);
 

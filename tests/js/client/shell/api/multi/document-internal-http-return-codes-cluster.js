@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 200 */
-/* global assertEqual, assertTrue, arango */
+/* global */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -25,19 +25,21 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require('jsunity');
-
+const {assertTrue, assertEqual} = jsunity.jsUnity.assertions;
 const reconnectRetry = require('@arangodb/replication-common').reconnectRetry;
-const primaryEndpoint = arango.getEndpoint();
 const db = require('@arangodb').db;
+const arango = require('@arangodb').arango;
 let { getEndpointById } = require('@arangodb/test-helper');
+let IM = global.instanceManager;
 
 function leaderTestSuite () {
   'use strict';
   const cn = "UnitTestsCollection";
   let shardName;
-  
+
   return {
     setUpAll: function () {
+      IM.rememberConnection();
       db._drop(cn);
       // We create only one shard so we have exactly 1 leader and 1 follower.
       const c = db._create(cn, { numberOfShards: 1, replicationFactor: 2 });
@@ -60,7 +62,7 @@ function leaderTestSuite () {
 
     tearDownAll: function () {
       // Reconnect back to original server
-      reconnectRetry(primaryEndpoint, "_system", "root", "");
+      IM.reconnectMe();
       db._drop(cn);
     },
 
@@ -110,6 +112,7 @@ function followerTestSuite () {
   
   return {
     setUpAll: function () {
+      IM.rememberConnection();
       db._drop(cn);
       // We create only one shard so we have exactly 1 leader and 1 follower.
       const c = db._create(cn, { numberOfShards: 1, replicationFactor: 2 });
@@ -133,7 +136,7 @@ function followerTestSuite () {
 
     tearDownAll: function () {
       // Reconnect back to original server
-      reconnectRetry(primaryEndpoint, "_system", "root", "");
+      IM.reconnectMe();
       db._drop(cn);
     },
 

@@ -48,7 +48,6 @@
 #include "Logger/Logger.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/ViewTypesFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "Utils/ExecContext.h"
 #include "V8/V8SecurityFeature.h"
 #include "V8/v8-utils.h"
