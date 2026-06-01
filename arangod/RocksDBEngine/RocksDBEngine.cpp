@@ -466,6 +466,9 @@ void RocksDBEngine::flushOpenFilesIfRequired() {
 // add the storage engine's specific options to the global list of options
 void RocksDBEngine::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
+  options->addObsoleteOption("--server.storage-engine",
+                             "The storage engine type", true);
+
   options->addSection("rocksdb", "RocksDB engine");
 
   /// @brief minimum required percentage of free disk space for considering
@@ -986,6 +989,23 @@ void RocksDBEngine::start() {
   // it is already decided that rocksdb is used
   TRI_ASSERT(isEnabled());
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
+
+  auto path = _databasePathFeature.directory();
+  auto engineFilePath = basics::FileUtils::buildFilename(path, "ENGINE");
+
+  // Starter still expects ENGINE file to be present
+  if (!std::filesystem::is_regular_file(engineFilePath)) {
+    try {
+      basics::FileUtils::spit(engineFilePath, std::string{kEngineName}, true);
+    } catch (std::exception const& ex) {
+      LOG_TOPIC("4ff0f", FATAL, Logger::STARTUP)
+          << "unable to write 'ENGINE' file '" << engineFilePath
+          << "': " << ex.what()
+          << ". please make sure the file/directory is writable for the "
+             "arangod process and user";
+      FATAL_ERROR_EXIT();
+    }
+  }
 
   if (ServerState::instance()->isAgent() &&
       !server().options()->processingResult().touched(
