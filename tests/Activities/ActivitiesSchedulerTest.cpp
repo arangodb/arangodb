@@ -31,6 +31,10 @@
 using namespace arangodb;
 
 struct ActivitiesSchedulerTest : ::testing::Test {
+  static void SetUpTestSuite() {
+    arangodb::activities::registry.garbageCollectAll();
+  }
+
   ActivitiesSchedulerTest()
       : metricsFeature(std::make_shared<arangodb::metrics::MetricsFeature>(
             mockApplicationServer.server(),
@@ -46,8 +50,7 @@ struct ActivitiesSchedulerTest : ::testing::Test {
                 nullptr))),
         metrics(std::make_shared<arangodb::SchedulerMetrics>(*metricsFeature)),
         scheduler(mockApplicationServer.server(), 4, 4, 16, 16, 16, 16, 16,
-                  0.33, metrics, sharedPRNG) {}
-  void SetUp() override {
+                  0.33, metrics, sharedPRNG) {
     activityData["TestCase"] =
         ::testing::UnitTest::GetInstance()->current_test_info()->name();
     arangodb::activities::Registry::setCurrentlyExecutingActivity(
@@ -55,7 +58,10 @@ struct ActivitiesSchedulerTest : ::testing::Test {
     scheduler.start();
   }
 
-  void TearDown() override { arangodb::activities::registry.garbageCollect(); }
+  ~ActivitiesSchedulerTest() {
+    arangodb::activities::registry.garbageCollectAll();
+    EXPECT_EQ(arangodb::activities::registry.size(), 0);
+  }
 
   arangodb::tests::mocks::MockRestServer mockApplicationServer;
   std::shared_ptr<arangodb::metrics::MetricsFeature> metricsFeature;

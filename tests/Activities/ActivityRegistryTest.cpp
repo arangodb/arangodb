@@ -43,9 +43,6 @@
 using namespace arangodb;
 using namespace arangodb::activities;
 
-struct ActivityRegistryTest : ::testing::Test {
-  ActivityRegistryTest() : scope(nullptr) {}
-  void TearDown() override { registry.garbageCollect(); }
 namespace {
 auto isInRegistry(velocypack::SharedSlice snap, ActivityId idToCheck) -> bool {
   for (auto entry : velocypack::ArrayIterator(snap.slice())) {
@@ -60,7 +57,13 @@ auto isInRegistry(velocypack::SharedSlice snap, ActivityId idToCheck) -> bool {
 }
 }  // namespace
 
-  Registry::ScopedCurrentlyExecutingActivity scope;
+struct ActivityRegistryTest : ::testing::Test {
+  static void SetUpTestSuite() { registry.garbageCollectAll(); }
+  ActivityRegistryTest() {}
+  ~ActivityRegistryTest() {
+    registry.garbageCollectAll();
+    EXPECT_EQ(registry.size(), 0);
+  }
 };
 
 const auto ActivityRoot = ActivityHandle{nullptr};
@@ -273,4 +276,27 @@ TEST_F(ActivityRegistryTest,
   EXPECT_EQ(f.waitAndGet(), 8);
 
   EXPECT_EQ(Registry::currentlyExecutingActivity(), anotherActivity);
+}
+
+TEST_F(ActivityRegistryTest, gc_requires_several_cycles_to_cleanup_parents) {
+  {
+    auto parent_activity =
+        activities::make<GenericActivity>("parent", GenericActivityData{});
+
+    {
+      auto scope = Registry::ScopedCurrentlyExecutingActivity(parent_activity);
+      auto child_activity =
+          activities::make<GenericActivity>("child", GenericActivityData{});
+
+      ASSERT_NE(child_activity->parent(), nullptr);
+      ASSERT_EQ(child_activity->parentId().value(), parent_activity->id());
+    }
+  }
+  ASSERT_EQ(registry.size(), 2);  // both parent and child are still in registry
+  registry.garbageCollect();      // deletes child_activity ands its ref to
+                                  // parent_activity - only after that there is
+                                  // no more reference to parent_activity
+  ASSERT_EQ(registry.size(), 1);
+  registry.garbageCollect();  // deletes parent_activity
+  ASSERT_EQ(registry.size(), 0);
 }

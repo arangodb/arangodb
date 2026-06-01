@@ -58,6 +58,17 @@ auto Registry::garbageCollect() -> void {
   });
 }
 
+auto Registry::garbageCollectAll() -> void {
+  _registry.doUnderLock([this](auto&& reg) {
+    size_t deletedCount = 1;
+    while (deletedCount > 0) {
+      deletedCount =
+          std::erase_if(reg, [](auto&& a) { return a.use_count() == 1; });
+      store_registered_nodes(reg.size());
+    }
+  });
+}
+
 auto Registry::snapshot()
     -> errors::ErrorT<inspection::Status, velocypack::SharedSlice> {
   return _registry.doUnderLock([](auto&& reg) {

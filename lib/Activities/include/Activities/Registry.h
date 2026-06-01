@@ -50,6 +50,15 @@ struct Registry {
   auto setMetrics(std::shared_ptr<IRegistryMetrics> metrics) -> void;
   auto garbageCollect() -> void;
 
+  /**
+     Delete all dangling activities, including dangling parents after deleting
+     child.
+
+     Is  currently only used in tests. Goes over registry several times until no
+     more activites can be deleted any more. Will be worked on in COR-582.
+   */
+  auto garbageCollectAll() -> void;
+
   static auto currentlyExecutingActivity() noexcept -> ActivityHandle {
     return _currentlyExecutingActivity;
   }

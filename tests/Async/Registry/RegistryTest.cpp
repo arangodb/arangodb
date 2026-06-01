@@ -66,6 +66,7 @@ struct MyPromise : public AddToAsyncRegistry {
 }  // namespace
 
 struct AsyncRegistryTest : ::testing::Test {
+  static void SetUpTestSuite() { get_thread_registry().garbage_collect(); }
   void TearDown() override {
     // execute garbage collection on current thread
     get_thread_registry().garbage_collect();
