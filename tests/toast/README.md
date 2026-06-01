@@ -771,8 +771,8 @@ ToastTest.Interactive.run("suites/smoke/", deployment: deployment)
 # Run a complete suite by module
 ToastTest.Interactive.run(Smoke.Suite, deployment: deployment)
 
-# Filter by test name (works for both single modules and suites)
-ToastTest.Interactive.run(Smoke.Suite, deployment: deployment, test: "version")
+# Filter by test name substring (works for both single modules and suites)
+ToastTest.Interactive.run(Smoke.Suite, deployment: deployment, test: "arango")
 
 # When done
 Toast.Deployment.stop(deployment)
