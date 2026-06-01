@@ -138,9 +138,6 @@ databases, other databases need to be removed first.")")
   opts->addObsoleteOption(
       "--database.revision-cache-target-size",
       "total target size (in bytes) for the document revisions cache", true);
-
-  opts->addObsoleteOption("--server.storage-engine", "The storage engine type",
-                          true);
 }
 
 }  // namespace arangodb
