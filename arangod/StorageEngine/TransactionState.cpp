@@ -41,7 +41,6 @@
 #include "Metrics/Counter.h"
 #include "Metrics/CounterBuilder.h"
 #include "Statistics/ServerStatistics.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "Transaction/Context.h"

@@ -42,7 +42,6 @@
 #include "Metrics/Metric.h"
 #include "Metrics/MetricKey.h"
 #include "RocksDBEngine/RocksDBIndex.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <absl/strings/str_cat.h>

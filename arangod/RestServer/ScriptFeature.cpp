@@ -33,8 +33,8 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
-#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
+#include "RestServer/ScriptOptionsProvider.h"
 #include "RestServer/ServerFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "V8/JavaScriptSecurityContext.h"
@@ -55,9 +55,8 @@ ScriptFeature::ScriptFeature(ApplicationServer& server, int* result)
 }
 
 void ScriptFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addOption(
-      "--javascript.script-parameter", "Script parameter.",
-      new VectorParameter<StringParameter>(&_options.scriptParameters));
+  ScriptOptionsProvider provider;
+  provider.declareOptions(options, _options);
 }
 
 void ScriptFeature::start() {

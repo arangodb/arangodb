@@ -50,7 +50,6 @@
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "RocksDBEngine/RocksDBTypes.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
@@ -821,9 +820,9 @@ Result RocksDBEdgeIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
   TRI_ASSERT(fromTo.isString());
   std::string_view fromToRef = fromTo.stringView();
 
-  RocksDBKeyLeaser key(&trx);
-  key->constructEdgeIndexValue(objectId(), fromToRef, documentId);
-  TRI_ASSERT(key->containsLocalDocumentId(documentId));
+  RocksDBKey key(ThreadLocalStringLeaser::lease());
+  key.constructEdgeIndexValue(objectId(), fromToRef, documentId);
+  TRI_ASSERT(key.containsLocalDocumentId(documentId));
 
   VPackSlice toFrom = _isFromIndex
                           ? transaction::helpers::extractToFromDocument(doc)
@@ -832,7 +831,7 @@ Result RocksDBEdgeIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
   RocksDBValue value = RocksDBValue::EdgeIndexValue(toFrom.stringView());
 
   Result res;
-  rocksdb::Status s = mthd->PutUntracked(_cf, key.ref(), value.string());
+  rocksdb::Status s = mthd->PutUntracked(_cf, key, value.string());
 
   if (s.ok()) {
     std::hash<std::string_view> hasher;
@@ -859,8 +858,8 @@ Result RocksDBEdgeIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd,
   std::string_view fromToRef = fromTo.stringView();
   TRI_ASSERT(fromTo.isString());
 
-  RocksDBKeyLeaser key(&trx);
-  key->constructEdgeIndexValue(objectId(), fromToRef, documentId);
+  RocksDBKey key(ThreadLocalStringLeaser::lease());
+  key.constructEdgeIndexValue(objectId(), fromToRef, documentId);
 
   VPackSlice toFrom = _isFromIndex
                           ? transaction::helpers::extractToFromDocument(doc)
@@ -869,7 +868,7 @@ Result RocksDBEdgeIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd,
   RocksDBValue value = RocksDBValue::EdgeIndexValue(toFrom.stringView());
 
   Result res;
-  rocksdb::Status s = mthd->Delete(_cf, key.ref());
+  rocksdb::Status s = mthd->Delete(_cf, key);
 
   if (s.ok()) {
     std::hash<std::string_view> hasher;

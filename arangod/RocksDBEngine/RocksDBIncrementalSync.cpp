@@ -38,7 +38,6 @@
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/IndexesSnapshot.h"
@@ -153,9 +152,9 @@ Result removeKeysOutsideRange(
   TRI_ASSERT(index->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
   auto primaryIndex = static_cast<RocksDBPrimaryIndex*>(index.get());
 
-  RocksDBKeyLeaser key(&trx);
-  key->constructPrimaryIndexValue(primaryIndex->objectId(), highRef);
-  iterator.seek(key->string());
+  RocksDBKey key(ThreadLocalStringLeaser::lease());
+  key.constructPrimaryIndexValue(primaryIndex->objectId(), highRef);
+  iterator.seek(key.string());
 
   iterator.next(
       [&](rocksdb::Slice const& rocksKey, rocksdb::Slice const& rocksValue) {

@@ -27,8 +27,8 @@
 #include "RestHandler/RestBaseHandler.h"
 
 namespace arangodb {
-
 class ApiRecordingFeature;
+class StorageEngine;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief admin log request handler
@@ -58,6 +58,7 @@ class RestAdminServerHandler : public RestBaseHandler {
   void handleApiCalls();
   void handleAqlRecordedQueries();
 
+  StorageEngine& _engine;
   ApiRecordingFeature& _apiRecordingFeature;
 };
 }  // namespace arangodb
