@@ -135,8 +135,7 @@ void rewriteIndexType(VPackSlice idxDef, VPackBuilder& builder,
 /// Returns the (possibly rewritten) slice. If a transformation occurred, the
 /// returned slice points into @p rebuilder.
 VPackSlice transformDeprecatedIndexType(VPackSlice idxDef,
-                                        VPackBuilder& rebuilder,
-                                        std::string_view collectionName) {
+                                        VPackBuilder& rebuilder) {
   VPackSlice type = idxDef.get(StaticStrings::IndexType);
   if (!type.isString()) {
     return idxDef;
@@ -149,16 +148,6 @@ VPackSlice transformDeprecatedIndexType(VPackSlice idxDef,
 
   if (type.isEqualString("hash") || type.isEqualString("skiplist")) {
     rewriteIndexType(idxDef, rebuilder, "persistent");
-    return rebuilder.slice();
-  }
-
-  if (type.isEqualString("fulltext")) {
-    LOG_TOPIC("43c19", INFO, Logger::REPLICATION)
-        << "Transforming deprecated fulltext index into inverted index "
-           "for collection '"
-        << collectionName << "'";
-    rewriteIndexType(idxDef, rebuilder, "inverted",
-                     {"minLength", "sparse", "unique", "deduplicate"});
     return rebuilder.slice();
   }
 
@@ -1913,7 +1902,16 @@ Result RestReplicationHandler::processRestoreIndexes(
         continue;
       }
 
-      idxDef = transformDeprecatedIndexType(idxDef, rebuilder, name);
+      if (type.isEqualString("fulltext")) {
+        LOG_TOPIC("43c19", WARN, Logger::RESTORE) << std::format(
+            "Skipping deprecated fulltext index for collection '{}'. Fulltext "
+            "indexes are no longer supported since ArangoDB 4.0; use "
+            "ArangoSearch (inverted index) instead.",
+            name);
+        continue;
+      }
+
+      idxDef = transformDeprecatedIndexType(idxDef, rebuilder);
 
       if (type.isEqualString(StaticStrings::IndexNameVector) &&
           !server().getFeature<VectorIndexFeature>().isVectorIndexEnabled()) {
@@ -2035,7 +2033,16 @@ Result RestReplicationHandler::processRestoreIndexesCoordinator(
       continue;
     }
 
-    idxDef = transformDeprecatedIndexType(idxDef, rebuilder, name);
+    if (type.isEqualString("fulltext")) {
+      LOG_TOPIC("43c1a", WARN, Logger::RESTORE) << std::format(
+          "Skipping deprecated fulltext index for collection '{}'. Fulltext "
+          "indexes are no longer supported since ArangoDB 4.0; use "
+          "ArangoSearch (inverted index) instead.",
+          name);
+      continue;
+    }
+
+    idxDef = transformDeprecatedIndexType(idxDef, rebuilder);
 
     if (type.isEqualString(StaticStrings::IndexNameVector) &&
         !server().getFeature<VectorIndexFeature>().isVectorIndexEnabled()) {
