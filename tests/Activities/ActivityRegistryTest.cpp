@@ -33,6 +33,8 @@
 #include "Futures/Utilities.h"
 
 #include <gtest/gtest.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/SharedSlice.h>
 #include <coroutine>
 #include <thread>
 #include <unordered_map>
@@ -44,11 +46,46 @@ using namespace arangodb::activities;
 struct ActivityRegistryTest : ::testing::Test {
   ActivityRegistryTest() : scope(nullptr) {}
   void TearDown() override { registry.garbageCollect(); }
+namespace {
+auto isInRegistry(velocypack::SharedSlice snap, ActivityId idToCheck) -> bool {
+  for (auto entry : velocypack::ArrayIterator(snap.slice())) {
+    auto id = entry.get("id");
+    if (id.isInteger()) {
+      if (id.getUInt() == idToCheck) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+}  // namespace
 
   Registry::ScopedCurrentlyExecutingActivity scope;
 };
 
 const auto ActivityRoot = ActivityHandle{nullptr};
+
+TEST_F(ActivityRegistryTest, registers_in_activity_registry) {
+  auto a = activities::make<GenericActivity>("GenericActivity",
+                                             GenericActivityData{});
+
+  auto snapshot = registry.snapshot();
+  EXPECT_TRUE(snapshot.ok());
+  EXPECT_TRUE(isInRegistry(snapshot.get(), a->id()));
+}
+
+TEST_F(ActivityRegistryTest,
+       snapshot_includes_all_currently_existing_activities) {
+  auto a = activities::make<GenericActivity>("one", GenericActivityData{});
+  auto b = activities::make<GenericActivity>("two", GenericActivityData{});
+  auto c = activities::make<GenericActivity>("three", GenericActivityData{});
+
+  auto snapshot = registry.snapshot();
+  EXPECT_TRUE(snapshot.ok());
+  EXPECT_TRUE(isInRegistry(snapshot.get(), a->id()));
+  EXPECT_TRUE(isInRegistry(snapshot.get(), b->id()));
+  EXPECT_TRUE(isInRegistry(snapshot.get(), c->id()));
+}
 
 TEST_F(ActivityRegistryTest, snapshot_does_not_include_dangling_activities) {
   {
@@ -79,16 +116,6 @@ TEST_F(ActivityRegistryTest, has_no_parent_as_default) {
   EXPECT_EQ(activity->parent(), nullptr);
   EXPECT_EQ(activity->copyData(),
             (GenericActivityData{{"id", "1234"}, {"some_other_key", "value"}}));
-}
-
-TEST_F(ActivityRegistryTest, registers_in_activity_registry) {
-  auto a = activities::make<GenericActivity>("GenericActivity",
-                                             GenericActivityData{});
-
-  auto fa = registry.findActivityById(a->id());
-
-  ASSERT_TRUE(fa.has_value());
-  EXPECT_EQ(a->id(), fa.value()->id());
 }
 
 TEST_F(ActivityRegistryTest,
