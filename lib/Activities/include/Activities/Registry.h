@@ -83,6 +83,7 @@ struct Registry {
       -> errors::ErrorT<inspection::Status, velocypack::SharedSlice>;
 
   auto findActivityById(ActivityId id) const -> std::optional<ActivityHandle>;
+  auto size() -> size_t;
 
  private:
   auto increment_total_nodes() -> void;

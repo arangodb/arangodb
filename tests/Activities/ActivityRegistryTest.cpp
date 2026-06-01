@@ -50,6 +50,26 @@ struct ActivityRegistryTest : ::testing::Test {
 
 const auto ActivityRoot = ActivityHandle{nullptr};
 
+TEST_F(ActivityRegistryTest, snapshot_does_not_include_dangling_activities) {
+  {
+    auto activity = activities::make<GenericActivity>("my generic activity",
+                                                      GenericActivityData{});
+  }
+
+  // snapshot does not include activity
+  auto snapshot = registry.snapshot();
+  EXPECT_TRUE(snapshot.ok());
+  EXPECT_EQ(velocypack::ArrayIterator(snapshot.get().slice()).size(), 0);
+
+  // registry still includes activity
+  EXPECT_EQ(registry.size(), 1);
+  // but it is deleted after gc
+  registry.garbageCollect();
+  EXPECT_EQ(registry.size(), 0);
+}
+
+// all following tests are about parent-child-relationships
+
 TEST_F(ActivityRegistryTest, has_no_parent_as_default) {
   auto activity = activities::make<GenericActivity>(
       "GenericActivity",

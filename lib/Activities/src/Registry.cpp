@@ -65,6 +65,9 @@ auto Registry::snapshot()
     {
       auto array = VPackArrayBuilder(&builder);
       for (auto&& a : reg) {
+        if (a.use_count() == 1) {
+          continue;
+        }
         auto res = a->snapshot(builder);
         if (!res.ok()) {
           return errors::ErrorT<inspection::Status,
@@ -89,6 +92,9 @@ auto Registry::findActivityById(ActivityId id) const
           return *it;
         }
       });
+auto Registry::size() -> size_t {
+  return _registry.doUnderLock([](auto&& reg) { return reg.size(); });
+}
 }
 
 Registry::ScopedCurrentlyExecutingActivity::ScopedCurrentlyExecutingActivity(
