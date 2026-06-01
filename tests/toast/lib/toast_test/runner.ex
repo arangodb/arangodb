@@ -333,6 +333,45 @@ defmodule ToastTest.Runner do
   defp run_suite(%SuiteEntry{} = entry, test_config, ex_unit_opts, global_deadline) do
     suite_config = entry.module.deployment_config()
     validate_suite_config!(entry.module, suite_config)
+
+    suite_mode = Keyword.get(suite_config, :mode, :auto)
+
+    if suite_mode_excluded?(suite_mode, test_config.deployment_mode) do
+      Logger.info(
+        "Skipping suite #{inspect(entry.module)} " <>
+          "(requires #{suite_mode}, running in #{test_config.deployment_mode})"
+      )
+
+      return_excluded_suite(entry, test_config, ex_unit_opts)
+    else
+      run_suite_with_mode(entry, suite_config, test_config, ex_unit_opts, global_deadline)
+    end
+  end
+
+  defp suite_mode_excluded?(:auto, _global_mode), do: false
+  defp suite_mode_excluded?(:manual, _global_mode), do: false
+  defp suite_mode_excluded?(suite_mode, global_mode), do: suite_mode != global_mode
+
+  defp return_excluded_suite(%SuiteEntry{} = entry, test_config, ex_unit_opts) do
+    {stats, test_data} =
+      mark_all_with_state(
+        entry.test_modules,
+        fn _test -> {:excluded, "suite mode mismatch"} end,
+        ex_unit_opts,
+        entry.module,
+        test_config.deployment_mode
+      )
+
+    finalize_suite(nil, stats, test_data, test_config)
+  end
+
+  defp run_suite_with_mode(
+         %SuiteEntry{} = entry,
+         suite_config,
+         test_config,
+         ex_unit_opts,
+         global_deadline
+       ) do
     suite_timeout = Keyword.get(suite_config, :timeout, 3_600_000)
     timeout_factor = test_config.timeout_factor
     suite_deadline = __MODULE__.Timeout.compute_suite_deadline(suite_timeout, global_deadline)
