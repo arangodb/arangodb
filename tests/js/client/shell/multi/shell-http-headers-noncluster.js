@@ -1,5 +1,5 @@
 /* jshint globalstrict:true, strict:true, maxlen: 5000 */
-/* global assertTrue, assertFalse, assertEqual, arango */
+/* global */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -29,6 +29,8 @@
 
 const jsunity = require("jsunity");
 const _ = require("lodash");
+const {assertEqual, assertTrue, assertFalse, assertNotEqual, assertUndefined, assertNotUndefined} = jsunity.jsUnity.assertions;
+const arango = require('@arangodb').arango;
 
 function headersSingleSuite () {
   'use strict';

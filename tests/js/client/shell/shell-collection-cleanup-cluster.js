@@ -32,8 +32,6 @@ let { getServersByType, isEnterprise } = require('@arangodb/test-helper');
 
 const wait = require("internal").wait;
 
-const primaryEndpoint = arango.getEndpoint();
-
 function collectionCleanupSuite() {
   'use strict';
 

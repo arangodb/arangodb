@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global arango, assertEqual */
+/* global */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -27,21 +27,19 @@
 'use strict';
 
 const jsunity = require("jsunity");
+const {assertEqual, assertTrue, assertFalse, assertNotEqual} = jsunity.jsUnity.assertions;
 const request = require('@arangodb/request').request;
+let IM = global.instanceManager;
 
 function headerWithChunkedEncodingSuite() {
   'use strict';
-
-  var baseUrl = function() {
-    return arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:');
-  };
 
   // all requests with chunked encoding must not contain a content-length, so it cannot be added to the header
   return {
 
     testHeaderWithoutChunkedEncoding: function() {
       let result = request.post({
-        url: baseUrl() + "/_api/cursor",
+        url: IM.url + "/_api/cursor",
         headers: {
           'accept': 'application/json'
         },
@@ -56,7 +54,7 @@ function headerWithChunkedEncodingSuite() {
 
     testHeaderChunkedEncodingSimple: function() {
       let result = request.post({
-        url: baseUrl() + "/_api/cursor",
+        url: IM.url + "/_api/cursor",
         headers: {
           'accept': 'application/json', 'Transfer-Encoding': 'chunked', 'Content-Type': 'text/plain'
         },
@@ -71,7 +69,7 @@ function headerWithChunkedEncodingSuite() {
 
     testHeaderChunkedEncodingMultiple: function() {
       let result = request.post({
-        url: baseUrl() + "/_api/cursor",
+        url: IM.url + "/_api/cursor",
         headers: {'accept': 'application/json', 'Transfer-Encoding': 'gzip, chunked'},
         body: JSON.stringify({
           "query": "FOR p IN banana  RETURN p",
@@ -82,7 +80,7 @@ function headerWithChunkedEncodingSuite() {
       assertEqual(501, result.status);
 
       result = request.post({
-        url: baseUrl() + "/_api/collection",
+        url: IM.url + "/_api/collection",
         headers: {
           'accept': 'application/json',
           'Transfer-Encoding': 'gzip, deflate, chunked',
@@ -97,7 +95,7 @@ function headerWithChunkedEncodingSuite() {
 
     testHeaderChunkedEncodingEmptyBody: function() {
       let result = request.post({
-        url: baseUrl() + "/_api/cursor",
+        url: IM.url + "/_api/cursor",
         headers: {'accept': 'application/json', 'Transfer-Encoding': 'gzip, chunked'},
         body: {}, addContentLength: false
       });
