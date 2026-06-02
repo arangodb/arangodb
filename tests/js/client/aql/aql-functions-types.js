@@ -1110,7 +1110,7 @@ function ahuacatlTypesFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testToList10 : function () {
-      var expected = [ [ -63, [ 1, 2 ], { "a" : "b" }, null ] ]
+      var expected = [ [ -63, [ 1, 2 ], { "a" : "b" }, null ] ];
       var actual = getQueryResults("RETURN TO_LIST({ \"a\" : null, \"b\" : -63, \"c\" : [ 1, 2 ], \"d\": { \"a\" : \"b\" } })").map(arr =>  arr.slice().sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b))));
       assertEqual(expected, actual);
     },
