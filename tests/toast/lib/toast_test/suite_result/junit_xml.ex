@@ -196,6 +196,10 @@ defmodule ToastTest.SuiteResult.JUnitXML do
 
   defp issue_type_label(%{type: :sanitizer_report}), do: "sanitizer report"
   defp issue_type_label(%{type: :timeout}), do: "timeout"
+
+  defp issue_type_label(%{type: :infrastructure, detail: %{subtype: subtype}}),
+    do: "infrastructure: #{subtype}"
+
   defp issue_type_label(%{type: type}), do: Atom.to_string(type)
 
   # Counts tests with infrastructure issues that wouldn't otherwise show as errors.

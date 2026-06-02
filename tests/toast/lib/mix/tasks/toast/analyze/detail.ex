@@ -31,7 +31,7 @@ defmodule Mix.Tasks.Toast.Analyze.Detail do
   alias ToastTest.Formatting.Logs, as: LogFormatting
   alias ToastTest.LogAnalysis
 
-  @issue_spec_keywords ~w(all crashes test_failures sanitizer timeouts)
+  @issue_spec_keywords ~w(all crashes test_failures sanitizer timeouts infrastructure)
 
   def issue_spec?(arg) do
     arg in @issue_spec_keywords or Regex.match?(~r/^\d+(-\d+)?$/, arg)
@@ -94,6 +94,7 @@ defmodule Mix.Tasks.Toast.Analyze.Detail do
   defp parse_keyword("test_failures"), do: {:type, :test_failure}
   defp parse_keyword("sanitizer"), do: {:type, :sanitizer_report}
   defp parse_keyword("timeouts"), do: {:type, :timeout}
+  defp parse_keyword("infrastructure"), do: {:type, :infrastructure}
 
   defp select_issues(indexed, :all), do: indexed
 
@@ -166,6 +167,7 @@ defmodule Mix.Tasks.Toast.Analyze.Detail do
   defp type_color(:crash), do: :red
   defp type_color(:sanitizer_report), do: :yellow
   defp type_color(:timeout), do: :red
+  defp type_color(:infrastructure), do: :red
 
   # --- Test failure detail ---
 
@@ -219,6 +221,165 @@ defmodule Mix.Tasks.Toast.Analyze.Detail do
       Mix.shell().info("")
       Enum.each(detail.servers, &print_timeout_server(&1, color))
     end
+  end
+
+  # --- Infrastructure detail ---
+
+  defp print_issue_body(%{type: :infrastructure, detail: detail} = issue, color, _bt_opts) do
+    subtype = detail.subtype |> Atom.to_string() |> String.replace("_", " ")
+    Mix.shell().info("  #{colorize(String.upcase(subtype), :red, color)}")
+
+    if detail[:timestamp] do
+      Mix.shell().info("  Time:   #{Data.fmt_dt(detail.timestamp)}")
+    end
+
+    Mix.shell().info(
+      "  Total:  #{colorize("#{detail.total} system sockets", :red, color)} (threshold: #{detail.threshold})"
+    )
+
+    Mix.shell().info("")
+    Mix.shell().info(colorize("  Per-server breakdown (by process ownership):", :bright, color))
+
+    sorted = Enum.sort_by(detail.by_server, fn {_, v} -> -v.sockets.total end)
+
+    server_total =
+      Enum.reduce(sorted, 0, fn {server_id, server}, acc ->
+        Mix.shell().info("    #{colorize(server_id, :cyan, color)}  #{server.sockets.total}")
+
+        print_direction("← in ", server.sockets.in, color)
+        print_direction("→ out", server.sockets.out, color)
+
+        acc + server.sockets.total
+      end)
+
+    rest = detail.total - server_total
+
+    if rest > 0 do
+      Mix.shell().info("    #{colorize("(other)", :faint, color)}  #{rest}")
+    end
+
+    print_netstat_trajectory(issue, color)
+  end
+
+  defp print_direction(_label, stats, _color) when stats == %{}, do: :ok
+
+  defp print_direction(label, stats, color) do
+    formatted =
+      stats
+      |> Enum.sort_by(fn {_, n} -> -n end)
+      |> Enum.map_join(", ", fn {state, n} -> "#{n} #{state}" end)
+
+    Mix.shell().info("      #{colorize(label, :faint, color)}  #{formatted}")
+  end
+
+  @trajectory_limit 10
+
+  defp print_netstat_trajectory(%{detail: %{timestamp: issue_ts}} = issue, color)
+       when is_integer(issue_ts) do
+    events = issue[:events] || []
+
+    snapshots =
+      events
+      |> Enum.filter(&(&1.event == :netstat_snapshot))
+      |> Enum.sort_by(& &1.timestamp)
+
+    if snapshots != [] do
+      entries = annotate_snapshots(snapshots, issue_ts, issue[:modules] || %{})
+
+      print_top_contributors(entries, color)
+      print_recent_trajectory(entries, length(snapshots), color)
+    end
+  end
+
+  defp print_netstat_trajectory(_detail, _color), do: :ok
+
+  @baseline_labels %{
+    pre_deployment: "(pre-deployment)",
+    deployment_ready: "(deployment ready)"
+  }
+
+  defp annotate_snapshots(snapshots, issue_ts, modules) do
+    timeline = build_test_timeline(modules)
+
+    {entries, _} =
+      Enum.reduce(snapshots, {[], {0, timeline}}, fn snap, {acc, {prev, remaining}} ->
+        delta = snap.total - prev
+        marker = if snap.timestamp == issue_ts, do: :threshold, else: nil
+
+        {label, remaining} =
+          case Map.get(@baseline_labels, snap[:label]) do
+            nil -> advance_timeline(snap.timestamp, remaining)
+            baseline_label -> {baseline_label, remaining}
+          end
+
+        entry = %{
+          total: snap.total,
+          delta: delta,
+          test: label,
+          marker: marker,
+          baseline: snap[:label] != nil
+        }
+
+        {[entry | acc], {snap.total, remaining}}
+      end)
+
+    Enum.reverse(entries)
+  end
+
+  defp print_top_contributors(entries, color) do
+    top =
+      entries
+      |> Enum.filter(&(&1.delta > 0 and not &1.baseline))
+      |> Enum.sort_by(& &1.delta, :desc)
+      |> Enum.take(@trajectory_limit)
+
+    if top != [] do
+      Mix.shell().info("")
+      Mix.shell().info(colorize("  Top contributors (by socket increase):", :bright, color))
+      Enum.each(top, &print_trajectory_entry(&1, color))
+    end
+  end
+
+  defp print_recent_trajectory(entries, total_count, color) do
+    {baselines, test_entries} = Enum.split_while(entries, & &1.baseline)
+    recent = Enum.take(test_entries, -@trajectory_limit)
+    skipped = total_count - length(baselines) - length(recent)
+
+    Mix.shell().info("")
+    Mix.shell().info(colorize("  Recent socket count trajectory:", :bright, color))
+
+    Enum.each(baselines, &print_trajectory_entry(&1, color))
+
+    if skipped > 0 do
+      Mix.shell().info(colorize("    ... #{skipped} earlier entries omitted", :faint, color))
+    end
+
+    Enum.each(recent, &print_trajectory_entry(&1, color))
+  end
+
+  defp print_trajectory_entry(entry, color) do
+    delta_str = if entry.delta >= 0, do: "+#{entry.delta}", else: "#{entry.delta}"
+    marker = if entry.marker == :threshold, do: " ← THRESHOLD", else: ""
+
+    Mix.shell().info(
+      "    #{colorize(String.pad_leading("#{entry.total}", 6), :bright, color)}  #{colorize(String.pad_leading(delta_str, 7), :faint, color)}  #{entry.test || "?"}#{colorize(marker, :red, color)}"
+    )
+  end
+
+  defp build_test_timeline(modules) do
+    for {mod, %{tests: tests}} <- modules,
+        %{finished_at: %DateTime{} = finished_at} = test <- tests do
+      {DateTime.to_unix(finished_at, :microsecond), "#{inspect(mod)}.#{test.name}"}
+    end
+    |> Enum.sort_by(&elem(&1, 0))
+  end
+
+  defp advance_timeline(snapshot_ts, timeline) do
+    {passed, remaining} =
+      Enum.split_while(timeline, fn {finished_us, _} -> finished_us <= snapshot_ts end)
+
+    test_name = if passed == [], do: nil, else: passed |> List.last() |> elem(1)
+    {test_name, remaining}
   end
 
   defp print_timeout_server(server, color) do

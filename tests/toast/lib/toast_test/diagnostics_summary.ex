@@ -34,6 +34,10 @@ defmodule ToastTest.DiagnosticsSummary do
   @spec has_sanitizer_errors?([map()]) :: boolean()
   def has_sanitizer_errors?(suites), do: has_issue_type?(suites, :sanitizer_report)
 
+  @doc "Check whether any suite has infrastructure issues (e.g., port exhaustion)."
+  @spec has_infrastructure?([map()]) :: boolean()
+  def has_infrastructure?(suites), do: has_issue_type?(suites, :infrastructure)
+
   defp has_issue_type?(suites, type) do
     Enum.any?(suites, fn
       %{suite_result: %ToastTest.SuiteResult{issues: issues}} ->

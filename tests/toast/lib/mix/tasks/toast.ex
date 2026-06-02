@@ -203,7 +203,9 @@ defmodule Mix.Tasks.Toast do
     run_results = %{
       test_failures: result.stats.failures,
       server_crashed: DiagnosticsSummary.has_server_crash?(result.suites),
-      infrastructure_failure: DiagnosticsSummary.has_timeout?(result.suites),
+      infrastructure_failure:
+        DiagnosticsSummary.has_timeout?(result.suites) or
+          DiagnosticsSummary.has_infrastructure?(result.suites),
       sanitizer_errors: DiagnosticsSummary.has_sanitizer_errors?(result.suites)
     }
 

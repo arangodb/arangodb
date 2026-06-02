@@ -27,7 +27,7 @@ defmodule ToastTest.Formatting.PostExecSummary do
   alias ToastTest.Formatting.{Color, Issues, Utils}
   alias ToastTest.SuiteResult
 
-  @issue_types_by_severity [:test_failure, :sanitizer_report, :crash, :timeout]
+  @issue_types_by_severity [:test_failure, :sanitizer_report, :crash, :timeout, :infrastructure]
 
   @spec print(SuiteResult.t()) :: :ok
   def print(%SuiteResult{issues: issues, warnings: warnings} = result) do
@@ -105,6 +105,9 @@ defmodule ToastTest.Formatting.PostExecSummary do
   defp section_header(:sanitizer_report, count),
     do: {"SANITIZER REPORTS (#{count})", Color.sanitizer()}
 
+  defp section_header(:infrastructure, count),
+    do: {"INFRASTRUCTURE ISSUES (#{count})", Color.crash()}
+
   defp print_issue(:test_failure, issue, counter, _colors) do
     %{detail: %{test: %ExUnit.Test{state: {:failed, failures}} = test}} = issue
 
@@ -144,6 +147,33 @@ defmodule ToastTest.Formatting.PostExecSummary do
       server_count = length(servers)
       IO.puts("    Aborted #{server_count} #{Toast.Utils.pluralize(server_count, "server")}:")
       Enum.each(servers, &print_server_detail(&1, colors))
+    end
+
+    counter + 1
+  end
+
+  defp print_issue(:infrastructure, issue, counter, colors) do
+    %{detail: %{subtype: subtype, total: total, threshold: threshold, by_server: by_server}} =
+      issue
+
+    label = subtype |> Atom.to_string() |> String.replace("_", " ")
+
+    IO.puts(
+      "\n  #{colorize("[#{label}] #{total} system sockets (threshold: #{threshold})", :red, colors)}"
+    )
+
+    server_total =
+      by_server
+      |> Enum.sort_by(fn {_, v} -> -v.sockets.total end)
+      |> Enum.reduce(0, fn {server_id, server}, acc ->
+        IO.puts("    #{colorize(server_id, :cyan, colors)}  #{server.sockets.total}")
+        acc + server.sockets.total
+      end)
+
+    rest = total - server_total
+
+    if rest > 0 do
+      IO.puts("    #{colorize("(other)", :faint, colors)}  #{rest}")
     end
 
     counter + 1

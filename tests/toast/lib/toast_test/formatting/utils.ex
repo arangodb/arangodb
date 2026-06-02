@@ -27,7 +27,7 @@ defmodule ToastTest.Formatting.Utils do
       IO.ANSI.color_background(color),
       IO.ANSI.bright(),
       "\n  ",
-      label,
+      String.replace(label, "\n", "\e[K\n"),
       :reset,
       "\n"
     ])

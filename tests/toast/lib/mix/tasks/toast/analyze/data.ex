@@ -28,7 +28,8 @@ defmodule Mix.Tasks.Toast.Analyze.Data do
     "crash" => :crash,
     "test_failure" => :test_failure,
     "sanitizer_report" => :sanitizer_report,
-    "timeout" => :timeout
+    "timeout" => :timeout,
+    "infrastructure" => :infrastructure
   }
 
   def load_results(result_dir) do
@@ -61,6 +62,7 @@ defmodule Mix.Tasks.Toast.Analyze.Data do
         |> Map.put(:servers, all_servers)
         |> Map.put(:deployments, deployments)
         |> Map.put(:events, events)
+        |> Map.put(:modules, result.modules)
       end)
       |> Enum.map(&Issues.attach_test_location(&1, result.modules))
       |> then(&Issues.resolve_coredumps(&1, coredump_index))
@@ -90,6 +92,10 @@ defmodule Mix.Tasks.Toast.Analyze.Data do
       %{test_location: loc} when is_binary(loc) -> "#{base} (#{loc})"
       _ -> base
     end
+  end
+
+  def format_type(%{type: :infrastructure, detail: %{subtype: subtype}}) do
+    "infrastructure (#{subtype})"
   end
 
   def format_type(issue) do
@@ -150,18 +156,10 @@ defmodule Mix.Tasks.Toast.Analyze.Data do
   end
 
   defp attach_time_bounds(
-         %{type: :sanitizer_report, detail: %{timestamp: ts}} = issue,
+         %{type: type, detail: %{timestamp: ts}} = issue,
          _modules
        )
-       when is_integer(ts) do
-    Map.put(issue, :time_bounds, {ts, ts})
-  end
-
-  defp attach_time_bounds(
-         %{type: :timeout, detail: %{timestamp: ts}} = issue,
-         _modules
-       )
-       when is_integer(ts) do
+       when type in [:sanitizer_report, :timeout, :infrastructure] and is_integer(ts) do
     Map.put(issue, :time_bounds, {ts, ts})
   end
 
