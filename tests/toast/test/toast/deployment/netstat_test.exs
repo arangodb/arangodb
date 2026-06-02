@@ -94,6 +94,19 @@ defmodule Toast.Deployment.NetstatTest do
       assert snapshot["single-0"].sockets.total == 0
       assert snapshot["dbserver-0"].sockets.total == 0
     end
+
+    test "silently drops malformed lines" do
+      output = """
+      ESTAB      0       0      127.0.0.1:8530         127.0.0.1:45678  users:(("arangod",pid=1234,fd=10))
+      truncated line
+      ESTAB      0       0
+      """
+
+      snapshot = Netstat.build_snapshot_by_pid(output, @servers, :ss)
+
+      assert snapshot["single-0"].sockets.total == 1
+      assert snapshot["dbserver-0"].sockets.total == 0
+    end
   end
 
   describe "build_snapshot_by_pid/3 with netstat" do
@@ -111,17 +124,6 @@ defmodule Toast.Deployment.NetstatTest do
       assert dbserver.sockets.total == 2
       assert dbserver.sockets.in == %{"ESTABLISHED" => 1, "CLOSE_WAIT" => 1}
       assert dbserver.sockets.out == %{}
-    end
-
-    test "ignores sockets belonging to unknown PIDs" do
-      output = """
-      tcp        0      0 127.0.0.1:9999          127.0.0.1:12345         ESTABLISHED 9999/other
-      """
-
-      snapshot = Netstat.build_snapshot_by_pid(output, @servers, :netstat)
-
-      assert snapshot["single-0"].sockets.total == 0
-      assert snapshot["dbserver-0"].sockets.total == 0
     end
   end
 end

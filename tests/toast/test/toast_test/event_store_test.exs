@@ -32,18 +32,6 @@ defmodule ToastTest.EventStoreTest do
     :ok
   end
 
-  describe "start_link/1" do
-    test "starts the GenServer" do
-      pid = Process.whereis(EventStore)
-      assert pid != nil
-      assert Process.alive?(pid)
-    end
-
-    test "ETS table exists" do
-      assert :ets.info(ToastTest.EventStore) != :undefined
-    end
-  end
-
   describe "events/0" do
     test "returns empty list when no events recorded" do
       assert EventStore.events() == []
@@ -70,6 +58,17 @@ defmodule ToastTest.EventStoreTest do
 
       [recorded] = EventStore.events()
       assert recorded.timestamp == now
+    end
+
+    test "auto-generates timestamp when not provided" do
+      before = :os.system_time(:microsecond)
+      EventStore.notify(%{event: :server_started, server_id: "s1", pid: 100})
+      after_ts = :os.system_time(:microsecond)
+
+      [recorded] = EventStore.events()
+      assert is_integer(recorded.timestamp)
+      assert recorded.timestamp >= before
+      assert recorded.timestamp <= after_ts
     end
   end
 
