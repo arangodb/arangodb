@@ -153,13 +153,22 @@ defmodule ToastTest.Formatting.PostExecSummary do
   end
 
   defp print_issue(:infrastructure, issue, counter, colors) do
-    %{detail: %{subtype: subtype, total: total, threshold: threshold, by_server: by_server}} =
+    %{
+      detail:
+        %{subtype: subtype, total: total, threshold: threshold, by_server: by_server} = detail
+    } =
       issue
 
     label = subtype |> Atom.to_string() |> String.replace("_", " ")
+    kind = if detail[:kind] == :deployment, do: "deployment", else: "system"
+
+    delta_info =
+      if detail[:kind] == :deployment,
+        do: " (#{detail.deployment_delta} since deployment)",
+        else: ""
 
     IO.puts(
-      "\n  #{colorize("[#{label}] #{total} system sockets (threshold: #{threshold})", :red, colors)}"
+      "\n  #{colorize("[#{label}] #{total} #{kind} sockets#{delta_info} (threshold: #{threshold})", :red, colors)}"
     )
 
     server_total =

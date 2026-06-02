@@ -26,7 +26,8 @@ defmodule Toast.Deployment.Netstat do
 
   require Logger
 
-  @threshold 15_000
+  @system_threshold 15_000
+  @per_server_budget 500
 
   @type direction_stats :: %{String.t() => non_neg_integer()}
 
@@ -44,13 +45,19 @@ defmodule Toast.Deployment.Netstat do
   @type exhaustion_detail :: %{
           total: non_neg_integer(),
           threshold: non_neg_integer(),
+          kind: :system | :deployment,
+          baseline: non_neg_integer(),
+          deployment_delta: non_neg_integer(),
           by_server: snapshot()
         }
 
   @type tool :: :ss | :netstat
 
-  @spec threshold() :: non_neg_integer()
-  def threshold, do: @threshold
+  @spec system_threshold() :: non_neg_integer()
+  def system_threshold, do: @system_threshold
+
+  @spec per_server_budget() :: non_neg_integer()
+  def per_server_budget, do: @per_server_budget
 
   @doc """
   Detect which socket tool is available. Returns `:ss`, `:netstat`, or `nil`.
@@ -65,21 +72,50 @@ defmodule Toast.Deployment.Netstat do
   end
 
   @doc """
-  Check system socket count against the port exhaustion threshold.
+  Check system socket count against port exhaustion thresholds.
 
-  Returns `{:ok, total}` when below threshold, or
-  `{:port_exhaustion, detail}` with a per-server breakdown when at or above.
-  The per-server breakdown requires an additional call with PID resolution
-  (~40ms) that is only made when the threshold is reached.
+  Checks two thresholds:
+  - System threshold (#{@system_threshold}): total sockets on the system
+  - Deployment threshold (#{@per_server_budget} per server): sockets added
+    since baseline, scaled by server count to catch leaks early
+
+  Returns `{:ok, total}` when below both thresholds, or
+  `{:port_exhaustion, detail}` with a per-server breakdown when either is
+  reached. The per-server breakdown requires an additional call with PID
+  resolution (~40ms) that is only made when a threshold is reached.
   """
-  @spec check(Deployment.t(), tool()) ::
+  @spec check(Deployment.t(), tool(), non_neg_integer()) ::
           {:ok, non_neg_integer()} | {:port_exhaustion, exhaustion_detail()}
-  def check(%Deployment{} = deployment, tool) do
+  def check(%Deployment{} = deployment, tool, baseline) do
     total = count_sockets(tool)
+    deployment_delta = total - baseline
+    server_count = map_size(deployment.servers)
+    deployment_threshold = server_count * @per_server_budget
 
-    if total >= @threshold do
+    {exceeded, threshold} =
+      cond do
+        total >= @system_threshold ->
+          {:system, @system_threshold}
+
+        deployment_threshold > 0 and deployment_delta >= deployment_threshold ->
+          {:deployment, deployment_threshold}
+
+        true ->
+          {nil, nil}
+      end
+
+    if exceeded do
       by_server = detailed_snapshot(deployment, tool)
-      {:port_exhaustion, %{total: total, threshold: @threshold, by_server: by_server}}
+
+      {:port_exhaustion,
+       %{
+         total: total,
+         threshold: threshold,
+         kind: exceeded,
+         baseline: baseline,
+         deployment_delta: deployment_delta,
+         by_server: by_server
+       }}
     else
       {:ok, total}
     end

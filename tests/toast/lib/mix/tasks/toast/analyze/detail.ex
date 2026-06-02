@@ -233,9 +233,17 @@ defmodule Mix.Tasks.Toast.Analyze.Detail do
       Mix.shell().info("  Time:   #{Data.fmt_dt(detail.timestamp)}")
     end
 
+    kind = if detail[:kind] == :deployment, do: "deployment", else: "system"
+
     Mix.shell().info(
-      "  Total:  #{colorize("#{detail.total} system sockets", :red, color)} (threshold: #{detail.threshold})"
+      "  Total:  #{colorize("#{detail.total} #{kind} sockets", :red, color)} (threshold: #{detail.threshold})"
     )
+
+    if detail[:kind] == :deployment do
+      Mix.shell().info(
+        "  Delta:  #{detail.deployment_delta} sockets since deployment (baseline: #{detail.baseline})"
+      )
+    end
 
     Mix.shell().info("")
     Mix.shell().info(colorize("  Per-server breakdown (by process ownership):", :bright, color))
