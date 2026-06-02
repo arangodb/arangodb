@@ -86,6 +86,10 @@ namespace arangodb::vector {
   LOG_TOPIC((lid), level, topic) << "[shard=" << _index.collection().name() \
                                  << ", index=" << _index.id().id() << "] "
 
+// Number of query vectors drawn for nprobe autotune. Sampled fresh from the
+// ingested data so recall is not estimated on the training vectors.
+inline constexpr std::size_t kAutoTuneSampleCap = 1024;
+
 // Shallow field-presence probe; ingestion already rejects malformed vectors.
 bool hasVectorField(
     velocypack::Slice doc,
@@ -297,13 +301,51 @@ VectorIndexTrainer::collectTrainingDataset(rocksdb::Iterator& it,
       expectedReservoirBytes / (1024 * 1024), seed);
 
   VectorIndexTrainingSampler sampler{def.dimension, reservoirCapacity, seed};
+  if (auto res = sampleVectors(it, upper, sampler, stopToken); res.fail()) {
+    return res;
+  }
+
+  std::size_t const validSeen = sampler.itemsSeen();
+
+  if (sparseScaling && validSeen > 0) {
+    if (auto res = shrinkReservoirForSparseScaling(validSeen, reservoirCapacity,
+                                                   expectedReservoirBytes,
+                                                   memScope, sampler);
+        res.fail()) {
+      return res;
+    }
+  }
+
+  auto trainingData = std::move(sampler).release();
+  std::size_t const finalCount = trainingData.size() / def.dimension;
+  if (def.metric == SimilarityMetric::kCosine) {
+    faiss::fvec_renorm_L2(def.dimension, finalCount, trainingData.data());
+  }
+
+  if (trainingData.empty()) {
+    // Reachable in sparse mode when no document carries the vector field.
+    return Result{TRI_ERROR_QUERY_VECTOR_INDEX_NOT_READY,
+                  "For the vector index to be created documents "
+                  "must be present in the respective collection for the "
+                  "training process."};
+  }
+
+  return ResultT<TrainingDataset>(
+      {std::move(trainingData), validSeen, std::move(memScope)});
+}
+
+Result VectorIndexTrainer::sampleVectors(rocksdb::Iterator& it,
+                                         rocksdb::Slice upper,
+                                         VectorIndexTrainingSampler& sampler,
+                                         std::stop_token stopToken) const {
+  auto const& def = _index.getDefinition();
   std::vector<float> inputBuffer;
   inputBuffer.reserve(def.dimension);
 
   while (it.Valid()) {
     if (stopToken.stop_requested()) {
       return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                    "vector training aborted"};
+                    "vector index sampling aborted"};
     }
     TRI_ASSERT(it.key().compare(upper) < 0);
     auto doc = VPackSlice(reinterpret_cast<uint8_t const*>(it.value().data()));
@@ -339,33 +381,27 @@ VectorIndexTrainer::collectTrainingDataset(rocksdb::Iterator& it,
     it.Next();
   }
 
-  std::size_t const validSeen = sampler.itemsSeen();
+  return {};
+}
 
-  if (sparseScaling && validSeen > 0) {
-    if (auto res = shrinkReservoirForSparseScaling(validSeen, reservoirCapacity,
-                                                   expectedReservoirBytes,
-                                                   memScope, sampler);
-        res.fail()) {
-      return res;
-    }
+ResultT<std::vector<float>> VectorIndexTrainer::collectAutoTuneSample(
+    rocksdb::Iterator& it, rocksdb::Slice upper, std::size_t capacity,
+    std::stop_token stopToken) const {
+  auto const& def = _index.getDefinition();
+  VectorIndexTrainingSampler sampler{def.dimension, capacity,
+                                     RandomDevice::seed64()};
+  if (auto res = sampleVectors(it, upper, sampler, stopToken); res.fail()) {
+    return res;
   }
 
-  auto trainingData = std::move(sampler).release();
-  std::size_t const finalCount = trainingData.size() / def.dimension;
+  auto sample = std::move(sampler).release();
+  std::size_t const sampleCount = sample.size() / def.dimension;
+  // Match how stored vectors are normalized so recall is measured on the same
+  // geometry the index uses.
   if (def.metric == SimilarityMetric::kCosine) {
-    faiss::fvec_renorm_L2(def.dimension, finalCount, trainingData.data());
+    faiss::fvec_renorm_L2(def.dimension, sampleCount, sample.data());
   }
-
-  if (trainingData.empty()) {
-    // Reachable in sparse mode when no document carries the vector field.
-    return Result{TRI_ERROR_QUERY_VECTOR_INDEX_NOT_READY,
-                  "For the vector index to be created documents "
-                  "must be present in the respective collection for the "
-                  "training process."};
-  }
-
-  return ResultT<TrainingDataset>(
-      {std::move(trainingData), validSeen, std::move(memScope)});
+  return sample;
 }
 
 ResultT<std::size_t> VectorIndexTrainer::resolveNLists(
@@ -449,15 +485,7 @@ ResultT<VectorIndexTrainer::TrainingResult> VectorIndexTrainer::train(
       << std::format("[shard={}, index={}] Finished training.",
                      _index.collection().name(), _index.id().id());
 
-  // Reservoir is uniform (Algorithm L), so a prefix is too.
-  static constexpr std::size_t kAutoTuneSampleCap = 1024;
-  auto const sampleCount =
-      std::min<std::size_t>(kAutoTuneSampleCap, numOfTrainingVectors);
-  std::vector<float> autoTuneSample(
-      trainingData.data.begin(),
-      trainingData.data.begin() + sampleCount * def.dimension);
-
-  return TrainingResult{std::move(faissIndex), std::move(autoTuneSample)};
+  return TrainingResult{std::move(faissIndex)};
 }
 
 Result ingestVectors(RocksDBVectorIndex& index, rocksdb::DB* rootDB,
@@ -872,7 +900,6 @@ Result VectorIndexBuilder::build(
   }
 
   auto faissIndex = std::move(trainingResult.get().index);
-  auto autoTuneSample = std::move(trainingResult.get().autoTuneSample);
   trainingDuration.count(
       std::chrono::duration<double>(trainEnd - trainStart).count());
 
@@ -949,7 +976,22 @@ Result VectorIndexBuilder::build(
   // Swap the real index back and transition to kReady before releasing.
   swapGuard.fire();
 
-  runAutoTune(autoTuneSample);
+  // Autotune nprobe on a fresh, independent sample drawn from the ingested
+  // data. Reusing the training vectors would estimate recall on the very
+  // vectors that defined the centroids, biasing it optimistically.
+  auto const& def = _index.getDefinition();
+  ResourceUsageScope sampleScope(
+      _resourceMonitor, static_cast<std::uint64_t>(kAutoTuneSampleCap) *
+                            def.dimension * sizeof(float));
+  BoundedDocumentIterator autoTuneIt{_bounds, _rootDB};
+  if (auto sample = trainer.collectAutoTuneSample(
+          *autoTuneIt.it, autoTuneIt.upper, kAutoTuneSampleCap, stopToken);
+      sample.fail()) {
+    LOG_VECTOR_BUILD("e16b2", WARN, Logger::ENGINES)
+        << "Skipping autotune: " << sample.errorMessage();
+  } else {
+    runAutoTune(sample.get());
+  }
 
   _index.setTrainingState(VectorIndexTrainingState::kIngesting,
                           VectorIndexTrainingState::kReady);

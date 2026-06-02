@@ -90,8 +90,6 @@ class VectorIndexTrainer {
  public:
   struct TrainingResult {
     std::shared_ptr<faiss::IndexIVF> index;
-    // Row-major (nq * dimension) slice retained for post-ingestion autotune.
-    std::vector<float> autoTuneSample;
   };
 
   VectorIndexTrainer(RocksDBVectorIndex const& index,
@@ -109,14 +107,28 @@ class VectorIndexTrainer {
   ///  2. Create the FAISS index
   ///  3. Load training vectors from the iterator
   ///  4. Train the FAISS index
-  ///  5. Retain a small sample of training vectors for autotune
   ResultT<TrainingResult> train(std::size_t numDocsHint,
                                 std::stop_token stopToken = {});
+
+  /// Draw an independent uniform sample of up to `capacity` vectors for
+  /// autotune. Sampled fresh from the collection (not the training vectors),
+  /// so recall is estimated on queries that did not define the centroids. The
+  /// sample is L2-normalized for cosine indexes, matching stored vectors.
+  ResultT<std::vector<float>> collectAutoTuneSample(
+      rocksdb::Iterator& it, rocksdb::Slice upper, std::size_t capacity,
+      std::stop_token stopToken = {}) const;
 
  private:
   ResultT<TrainingDataset> collectTrainingDataset(
       rocksdb::Iterator& it, rocksdb::Slice upper, std::size_t numDocsHint,
       std::stop_token stopToken) const;
+
+  /// Drive `sampler` over the iterator: read each document's vector, skipping
+  /// vector-less rows for sparse indexes. Shared by training and autotune
+  /// sampling.
+  Result sampleVectors(rocksdb::Iterator& it, rocksdb::Slice upper,
+                       VectorIndexTrainingSampler& sampler,
+                       std::stop_token stopToken) const;
 
   /// Resolve the nLists value from the definition, using numDocsHint for
   /// scaling mode.
