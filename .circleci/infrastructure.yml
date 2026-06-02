@@ -1,0 +1,693 @@
+version: 2.1
+# Infrastructure pipeline: rebuild test and/or Ubuntu build Docker images.
+#
+# Parameter (set when triggering the pipeline):
+#   rebuild-images = test | build | all   which image set to rebuild (default: all)
+#
+# Updated image tags are always committed back to the triggering branch.
+#
+# Supersedes build_test_image.yml (kept for reference).
+
+orbs:
+  aws-cli: circleci/aws-cli@4.1.1
+  aws-ecr: circleci/aws-ecr@9.0.1
+
+parameters:
+  rebuild-images:
+    type: enum
+    enum: ["test", "build", "all"]
+    default: "all"
+    description: "Image set to rebuild: 'test' (test runner + driver images), 'build' (Ubuntu compiler image), or 'all' (both)."
+
+commands:
+  checkout-arangodb:
+    parameters:
+      destination:
+        type: string
+    steps:
+      - run:
+          name: Checkout ArangoDB
+          command: |
+            ssh-keyscan github.com >> ~/.ssh/known_hosts
+            mkdir -p << parameters.destination >>
+            cd << parameters.destination >>
+            git init
+            git remote add origin git@github.com:arangodb/arangodb.git
+            git fetch --depth 1 origin << pipeline.git.revision >>
+            git checkout << pipeline.git.revision >>
+
+  checkout-rta:
+    parameters:
+      destination:
+        type: string
+    steps:
+      - run:
+          name: Checkout RTA
+          command: |
+            ssh-keyscan github.com >> ~/.ssh/known_hosts
+            git clone git@github.com:arangodb/release-test-automation.git << parameters.destination >>
+
+  # Commits the currently-staged changes and pushes them back to the branch.
+  # The read-only checkout deploy key (added via add_ssh_keys) is already loaded
+  # into the ssh-agent, so the push must use a separate write-enabled deploy key
+  # from the `coredb-automated-push` context, provided as the base64-encoded
+  # private key in $GIT_WRITE_DEPLOY_KEY. IdentitiesOnly=yes alone is NOT enough:
+  # GitHub can still accept the read-only agent key first and then refuse the
+  # push ("marked as read only"). So the push also detaches the agent entirely
+  # (IdentityAgent=none) and ignores ~/.ssh/config (-F /dev/null), leaving the
+  # explicit -i write key as the only identity offered.
+  # Caller must `git add` the files first; a no-op (nothing staged) exits 0.
+  commit-and-push:
+    parameters:
+      message:
+        type: string
+    steps:
+      - run:
+          name: Commit and push via write deploy key
+          command: |
+            set -eu
+            cd /home/circleci/project
+            # Attribute the commit to whoever triggered the pipeline. CIRCLE_USERNAME
+            # is the triggering user's VCS login; the noreply email links the commit
+            # back to their GitHub account. Falls back to CircleCI for non-user
+            # (API/scheduled) triggers where CIRCLE_USERNAME is unset.
+            AUTHOR="${CIRCLE_USERNAME:-CircleCI}"
+            git config user.name "$AUTHOR"
+            git config user.email "${AUTHOR}@users.noreply.github.com"
+            if git diff --cached --quiet; then
+              echo "No changes to commit"
+              exit 0
+            fi
+            git commit -m "<< parameters.message >>"
+            install -m 700 -d ~/.ssh
+            printf '%s' "$GIT_WRITE_DEPLOY_KEY" | base64 -d > ~/.ssh/id_write_deploy
+            chmod 600 ~/.ssh/id_write_deploy
+            ssh-keyscan github.com >> ~/.ssh/known_hosts 2>/dev/null
+            git -c core.sshCommand="ssh -F /dev/null -o IdentitiesOnly=yes -o IdentityAgent=none -i ~/.ssh/id_write_deploy" \
+              push git@github.com:arangodb/arangodb.git HEAD:"$CIRCLE_BRANCH"
+
+  # Arm push-tracking for the rest of the job: source scripts/ci/push-tracking.sh
+  # from every subsequent step (via $BASH_ENV) so record_push/record_manifest and
+  # the cancellation trap are available. Call this once, after checkout and after
+  # the skip guard, before any image is pushed.
+  setup-push-tracking:
+    steps:
+      - run:
+          name: Arm push tracking and cancel cleanup
+          command: |
+            echo 'source /home/circleci/project/scripts/ci/push-tracking.sh' >> "$BASH_ENV"
+
+  # Delete only the images this run pushed, if the job fails. Skipped images are
+  # never recorded, and a skipped job halts as success, so this can never delete
+  # a reused pre-existing image. (Cancellation is handled by the trap instead.)
+  cleanup-pushed-on-failure:
+    steps:
+      - run:
+          name: Delete images this run pushed (on failure)
+          when: on_fail
+          command: |
+            source /home/circleci/project/scripts/ci/push-tracking.sh 2>/dev/null || true
+            if type delete_pushed_images >/dev/null 2>&1; then
+              echo "Job failed — removing only the images this run pushed:"
+              delete_pushed_images
+            else
+              echo "Nothing pushed by this job; nothing to clean up."
+            fi
+
+
+jobs:
+  # Fail fast if the initiator cannot push back to the repo. This runs first and
+  # gates every other job, so an unauthorized trigger stops here with a clear
+  # message instead of failing near the end at the commit step. It relies on the
+  # `coredb-automated-push` context: an initiator without access to that context
+  # gets no write key, and the check below reports it.
+  verify-push-access:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - run:
+          name: Verify push access to arangodb/arangodb
+          command: |
+            set -u
+            if [ -z "${GIT_WRITE_DEPLOY_KEY:-}" ]; then
+              echo "ERROR: You are not authorized to run this pipeline."
+              echo "It commits updated image tags back to arangodb/arangodb and requires the"
+              echo "'coredb-automated-push' context (a write deploy key). That context was not"
+              echo "available to this job, so the write key is missing."
+              echo "Ask a maintainer with access to the 'coredb-automated-push' context to trigger it."
+              exit 1
+            fi
+            install -m 700 -d ~/.ssh
+            printf '%s' "$GIT_WRITE_DEPLOY_KEY" | base64 -d > ~/.ssh/id_write_deploy
+            chmod 600 ~/.ssh/id_write_deploy
+            ssh-keyscan github.com >> ~/.ssh/known_hosts 2>/dev/null
+            SSH="ssh -F /dev/null -o IdentitiesOnly=yes -o IdentityAgent=none -i ~/.ssh/id_write_deploy"
+            # 1) The key authenticates and can read the repo.
+            if ! GIT_SSH_COMMAND="$SSH" \
+                 git ls-remote git@github.com:arangodb/arangodb.git >/dev/null 2>&1; then
+              echo "ERROR: The write deploy key failed to authenticate against arangodb/arangodb."
+              echo "It may be revoked, expired, or misconfigured in the 'coredb-automated-push' context."
+              exit 1
+            fi
+            # 2) The key actually has WRITE access. ls-remote is a read and passes
+            # even for a read-only key, so probe with a dry-run push from a
+            # throwaway repo. --dry-run never creates the ref, but it still opens
+            # git-receive-pack, which GitHub refuses up front for a read-only key
+            # ("marked as read only"). This catches a read-only key here at the
+            # fast gate instead of after a full multi-arch image rebuild.
+            rm -rf /tmp/push-probe
+            git init -q /tmp/push-probe
+            git -C /tmp/push-probe -c user.name=probe -c user.email=probe@local \
+              commit -q --allow-empty -m probe
+            if GIT_SSH_COMMAND="$SSH" git -C /tmp/push-probe push --dry-run \
+                 git@github.com:arangodb/arangodb.git \
+                 HEAD:refs/heads/__push_access_probe__ 2>/tmp/push-probe.err; then
+              echo "Push (write) access verified."
+            else
+              if grep -qi "read only" /tmp/push-probe.err; then
+                echo "ERROR: The write deploy key authenticates but is READ-ONLY on arangodb/arangodb."
+                echo "Enable 'Allow write access' on that deploy key (delete and re-add it with the"
+                echo "checkbox ticked), or replace the key in the 'coredb-automated-push' context with"
+                echo "a write-enabled one."
+              else
+                echo "ERROR: Write-access probe push failed:"
+                cat /tmp/push-probe.err
+              fi
+              exit 1
+            fi
+      # Seed the shared workspace so the manifest job's attach_workspace always
+      # succeeds, even when every arch job skips (and thus persists nothing).
+      - run:
+          name: Seed workspace
+          command: mkdir -p /tmp/workspace && touch /tmp/workspace/.keep
+      - persist_to_workspace:
+          root: /tmp/workspace
+          paths:
+            - .keep
+
+  cancel-redundant-pipelines:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - run:
+          name: Cancel redundant pipelines
+          command: |
+            if [[ "$CIRCLE_BRANCH" =~ ^[0-9]+\.[0-9]+(\.[0-9]+)?$ ]] || [ "$CIRCLE_BRANCH" == "devel" ]; then
+              echo "Branch is a release branch or devel, not cancelling any pipelines"
+              exit 0
+            fi
+            CURRENT_PIPELINE_NUM=$(curl -s --header "Circle-Token: $CIRCLECI_TOKEN" \
+              "https://circleci.com/api/v2/workflow/${CIRCLE_WORKFLOW_ID}" | jq -r '.pipeline_number')
+            echo "Current pipeline: #${CURRENT_PIPELINE_NUM}"
+            # Cancel older API-triggered pipelines on this branch (infrastructure + nightly),
+            # leaving commit-triggered testing pipelines untouched.
+            PIPE_IDS=$(curl -s --header "Circle-Token: $CIRCLECI_TOKEN" \
+              "https://circleci.com/api/v2/project/gh/arangodb/arangodb/pipeline?branch=$CIRCLE_BRANCH" | \
+              jq -r --argjson N "$CURRENT_PIPELINE_NUM" \
+              '.items[]|select(.state == "created")|select(.number < $N)|select(.trigger.type == "api")|.id')
+            if [ -z "$PIPE_IDS" ]; then echo "Nothing to cancel"; exit 0; fi
+            for PIPE_ID in $PIPE_IDS; do
+              curl -s --header "Circle-Token: $CIRCLECI_TOKEN" \
+                "https://circleci.com/api/v2/pipeline/${PIPE_ID}/workflow" | \
+                jq -r '.items[]|select(.status == "on_hold" or .status == "running")|.id' >> WF_to_cancel.txt
+            done
+            if [ -s WF_to_cancel.txt ]; then
+              echo "Cancelling the following workflow(s):"
+              cat WF_to_cancel.txt
+              while read WF_ID; do
+                curl -s --header "Circle-Token: $CIRCLECI_TOKEN" --request POST \
+                  "https://circleci.com/api/v2/workflow/$WF_ID/cancel"
+              done < WF_to_cancel.txt
+            else
+              echo "Nothing to cancel"
+            fi
+
+  # ── Test Docker images ──────────────────────────────────────────────────────
+  # Builds the images used for running ArangoDB tests and driver tests.
+  # Sources: scripts/docker/{test,go-test,js-test,...} + release-test-automation repo.
+  build-test-docker-image:
+    docker:
+      - image: cimg/base:current
+    parameters:
+      arch:
+        type: string
+        default: ""
+      image:
+        type: string
+        default: public.ecr.aws/b0b8h2r4/test-ubuntu
+      resource-class:
+        type: string
+    resource_class: << parameters.resource-class >>
+    steps:
+      - setup_remote_docker:
+          docker_layer_caching: true
+      - aws-cli/setup:
+          role_arn: "arn:aws:iam::242063586340:role/CircleCI-Container-Handler"
+      - aws-ecr/ecr_login:
+          public_registry: true
+      - add_ssh_keys:
+          fingerprints:
+            - "f9:49:75:1a:ad:44:89:10:4b:3c:70:70:ba:d3:c3:ce"
+      - checkout-arangodb:
+          destination: /home/circleci/project
+      - checkout-rta:
+          destination: /home/circleci/project-rta
+      - run:
+          name: Skip if test images already built for this commit
+          command: |
+            set -eu
+            IMG="<< parameters.image >>"
+            REPO="${IMG#public.ecr.aws/b0b8h2r4/}"
+            SHORT_SHA="$(git -C /home/circleci/project rev-parse --short HEAD)"
+            TAGS="$(aws ecr-public describe-images --region us-east-1 \
+                      --repository-name "${REPO}" \
+                      --query 'imageDetails[].imageTags[]' --output text 2>/dev/null \
+                    | tr '[:space:]' '\n' || true)"
+            # A tag ending in the bare short SHA (no arch suffix) is the multi-arch
+            # manifest — its presence means a prior run for this commit completed.
+            if printf '%s\n' "${TAGS}" | grep -qE -- "-${SHORT_SHA}$"; then
+              echo "Test images for commit ${SHORT_SHA} already exist — skipping build and push."
+              circleci-agent step halt
+            fi
+            echo "No test image manifest for commit ${SHORT_SHA}; building."
+      - setup-push-tracking
+      - run:
+          name: Build base test Docker image
+          command: |
+            set -x
+            cd /home/circleci/project/scripts/docker/test
+            image=<< parameters.image >>
+            cp ../../../VERSIONS .
+            cp ../../../ARANGO-VERSION .
+            cd ..
+            /bin/sh build-image.sh $image << parameters.arch >> test
+            /bin/sh determine-tag.sh $image << parameters.arch >> | tee << parameters.arch >>-tag.txt
+            docker tag $image:latest-<< parameters.arch >> $image:$(cat << parameters.arch >>-tag.txt)-<< parameters.arch >>
+            docker tag $image:latest-<< parameters.arch >> $image:latest
+            record_push $image:$(cat << parameters.arch >>-tag.txt)-<< parameters.arch >>
+      - run:
+          name: Build RTA Docker image
+          command: |
+            set -x
+            TAG="$(cat /home/circleci/project/scripts/docker/<< parameters.arch >>-tag.txt)"
+            cd /home/circleci/project-rta
+            ./jenkins/build_and_push_circle-ci-containers.sh "<< parameters.image >>" "${TAG}"
+      - run:
+          name: Build go-test Docker image
+          command: |
+            set -x
+            cd /home/circleci/project/scripts/docker
+            image=<< parameters.image >>-go
+            /bin/sh build-image.sh $image << parameters.arch >> go-test
+            /bin/sh determine-tag.sh $image << parameters.arch >> | tee << parameters.arch >>-tag-go.txt
+            docker tag $image:latest-<< parameters.arch >> $image:$(cat << parameters.arch >>-tag-go.txt)-<< parameters.arch >>
+            record_push $image:$(cat << parameters.arch >>-tag-go.txt)-<< parameters.arch >>
+      - run:
+          name: Build js-test Docker image
+          command: |
+            set -x
+            cd /home/circleci/project/scripts/docker
+            image=<< parameters.image >>-js
+            /bin/sh build-image.sh $image << parameters.arch >> js-test
+            /bin/sh determine-tag.sh $image << parameters.arch >> | tee << parameters.arch >>-tag-js.txt
+            docker tag $image:latest-<< parameters.arch >> $image:$(cat << parameters.arch >>-tag-js.txt)-<< parameters.arch >>
+            record_push $image:$(cat << parameters.arch >>-tag-js.txt)-<< parameters.arch >>
+      - run:
+          name: Build python-test Docker image
+          command: |
+            set -x
+            cd /home/circleci/project/scripts/docker
+            image=<< parameters.image >>-python
+            /bin/sh build-image.sh $image << parameters.arch >> python-test
+            /bin/sh determine-tag.sh $image << parameters.arch >> | tee << parameters.arch >>-tag-python.txt
+            docker tag $image:latest-<< parameters.arch >> $image:$(cat << parameters.arch >>-tag-python.txt)-<< parameters.arch >>
+            record_push $image:$(cat << parameters.arch >>-tag-python.txt)-<< parameters.arch >>
+      - run:
+          name: Build java-test Docker image
+          command: |
+            set -x
+            cd /home/circleci/project/scripts/docker
+            image=<< parameters.image >>-java
+            /bin/sh build-image.sh $image << parameters.arch >> java-test
+            /bin/sh determine-tag.sh $image << parameters.arch >> | tee << parameters.arch >>-tag-java.txt
+            docker tag $image:latest-<< parameters.arch >> $image:$(cat << parameters.arch >>-tag-java.txt)-<< parameters.arch >>
+            record_push $image:$(cat << parameters.arch >>-tag-java.txt)-<< parameters.arch >>
+      - run:
+          name: Build spark-test Docker image
+          command: |
+            set -x
+            cd /home/circleci/project/scripts/docker
+            image=<< parameters.image >>-spark
+            /bin/sh build-image.sh $image << parameters.arch >> spark-test
+            /bin/sh determine-tag.sh $image << parameters.arch >> | tee << parameters.arch >>-tag-spark.txt
+            docker tag $image:latest-<< parameters.arch >> $image:$(cat << parameters.arch >>-tag-spark.txt)-<< parameters.arch >>
+            record_push $image:$(cat << parameters.arch >>-tag-spark.txt)-<< parameters.arch >>
+      - run:
+          name: Build tinkerpop-test Docker image
+          command: |
+            set -x
+            cd /home/circleci/project/scripts/docker
+            image=<< parameters.image >>-tinkerpop
+            /bin/sh build-image.sh $image << parameters.arch >> tinkerpop-test
+            /bin/sh determine-tag.sh $image << parameters.arch >> | tee << parameters.arch >>-tag-tinkerpop.txt
+            docker tag $image:latest-<< parameters.arch >> $image:$(cat << parameters.arch >>-tag-tinkerpop.txt)-<< parameters.arch >>
+            record_push $image:$(cat << parameters.arch >>-tag-tinkerpop.txt)-<< parameters.arch >>
+      - run:
+          name: Build spring-test Docker image
+          command: |
+            set -x
+            cd /home/circleci/project/scripts/docker
+            image=<< parameters.image >>-spring
+            /bin/sh build-image.sh $image << parameters.arch >> spring-test
+            /bin/sh determine-tag.sh $image << parameters.arch >> | tee << parameters.arch >>-tag-spring.txt
+            docker tag $image:latest-<< parameters.arch >> $image:$(cat << parameters.arch >>-tag-spring.txt)-<< parameters.arch >>
+            record_push $image:$(cat << parameters.arch >>-tag-spring.txt)-<< parameters.arch >>
+      - persist_to_workspace:
+          root: .
+          paths:
+            - scripts/docker/*-tag*.txt
+      - persist_to_workspace:
+          root: /tmp/workspace
+          paths:
+            - pushed
+      - cleanup-pushed-on-failure
+
+  build-test-docker-manifest:
+    docker:
+      - image: cimg/base:current
+    parameters:
+      image:
+        type: string
+        default: public.ecr.aws/b0b8h2r4/test-ubuntu
+    steps:
+      - add_ssh_keys:
+          fingerprints:
+            - "f9:49:75:1a:ad:44:89:10:4b:3c:70:70:ba:d3:c3:ce"
+      - checkout-arangodb:
+          destination: /home/circleci/project
+      - checkout-rta:
+          destination: /home/circleci/project-rta
+      - attach_workspace:
+          at: .
+      - attach_workspace:
+          at: /tmp/workspace
+      - setup_remote_docker:
+          docker_layer_caching: true
+      - aws-cli/setup:
+          role_arn: "arn:aws:iam::242063586340:role/CircleCI-Container-Handler"
+      - aws-ecr/ecr_login:
+          public_registry: true
+      - run:
+          name: Skip if manifest already exists for this commit
+          command: |
+            set -eu
+            IMG="<< parameters.image >>"
+            REPO="${IMG#public.ecr.aws/b0b8h2r4/}"
+            SHORT_SHA="$(git -C /home/circleci/project rev-parse --short HEAD)"
+            TAGS="$(aws ecr-public describe-images --region us-east-1 \
+                      --repository-name "${REPO}" \
+                      --query 'imageDetails[].imageTags[]' --output text 2>/dev/null \
+                    | tr '[:space:]' '\n' || true)"
+            if printf '%s\n' "${TAGS}" | grep -qE -- "-${SHORT_SHA}$"; then
+              echo "Manifest for commit ${SHORT_SHA} already exists — skipping manifest and commit."
+              circleci-agent step halt
+            fi
+            echo "No manifest for commit ${SHORT_SHA}; building."
+      - setup-push-tracking
+      - run:
+          name: Build test container manifest
+          command: |
+            cd scripts/docker/
+            record_manifest << parameters.image >> $(cat amd64-tag.txt)
+      - run:
+          name: Build RTA container manifest
+          command: |
+            TAG="$(cat /home/circleci/project/scripts/docker/amd64-tag.txt)"
+            cd /home/circleci/project-rta
+            ./jenkins/build_and_push_circle-ci-manifests.sh << parameters.image >> $TAG
+      - run:
+          name: Build go-test container manifest
+          command: |
+            cd scripts/docker/
+            record_manifest << parameters.image >>-go $(cat amd64-tag-go.txt)
+      - run:
+          name: Build js-test container manifest
+          command: |
+            cd scripts/docker/
+            record_manifest << parameters.image >>-js $(cat amd64-tag-js.txt)
+      - run:
+          name: Build python-test container manifest
+          command: |
+            cd scripts/docker/
+            record_manifest << parameters.image >>-python $(cat amd64-tag-python.txt)
+      - run:
+          name: Build java-test container manifest
+          command: |
+            cd scripts/docker
+            record_manifest << parameters.image >>-java $(cat amd64-tag-java.txt)
+      - run:
+          name: Build spark-test container manifest
+          command: |
+            cd scripts/docker
+            record_manifest << parameters.image >>-spark $(cat amd64-tag-spark.txt)
+      - run:
+          name: Build tinkerpop-test container manifest
+          command: |
+            cd scripts/docker
+            record_manifest << parameters.image >>-tinkerpop $(cat amd64-tag-tinkerpop.txt)
+      - run:
+          name: Build spring-test container manifest
+          command: |
+            cd scripts/docker
+            record_manifest << parameters.image >>-spring $(cat amd64-tag-spring.txt)
+      - run:
+          name: Stage test-docker-image tag update
+          command: |
+            TAG="$(cat /home/circleci/project/scripts/docker/amd64-tag.txt)"
+            TEST_IMAGE="public.ecr.aws/b0b8h2r4/test-ubuntu"
+            sed -i "s|${TEST_IMAGE}:[^ \"]*|${TEST_IMAGE}:${TAG}|g" \
+              /home/circleci/project/.circleci/config.yml \
+              /home/circleci/project/.circleci/base_config.yml
+            cd /home/circleci/project
+            git add scripts/docker/amd64-tag.txt \
+                    .circleci/config.yml \
+                    .circleci/base_config.yml
+      - commit-and-push:
+          message: "chore: update test docker image tag [skip ci]"
+      - cleanup-pushed-on-failure
+
+  # ── Ubuntu build images ─────────────────────────────────────────────────────
+  # Rebuilds the compiler image used by compile jobs.
+  # Sources: scripts/docker/build/linux/Dockerfile.{x86-64,arm64}
+  # Image:   public.ecr.aws/b0b8h2r4/arangodb/ubuntubuildarangodb-<MAJOR><MINOR>
+  #          e.g. ubuntubuildarangodb-312 for ArangoDB 3.12.x
+  # Tag:     <ubuntu-version>-<git-short-sha>  (via determine-tag.sh)
+  build-ubuntu-build-image:
+    docker:
+      - image: cimg/base:current
+    parameters:
+      arch:
+        type: string   # amd64 | arm64
+      resource-class:
+        type: string
+    resource_class: << parameters.resource-class >>
+    steps:
+      - setup_remote_docker:
+          docker_layer_caching: true
+      - aws-cli/setup:
+          role_arn: "arn:aws:iam::242063586340:role/CircleCI-Container-Handler"
+      - aws-ecr/ecr_login:
+          public_registry: true
+      - add_ssh_keys:
+          fingerprints:
+            - "f9:49:75:1a:ad:44:89:10:4b:3c:70:70:ba:d3:c3:ce"
+      - checkout-arangodb:
+          destination: /home/circleci/project
+      - run:
+          name: Skip if image already built for this commit
+          command: |
+            set -eu
+            source /home/circleci/project/scripts/oskar.bash
+            find_arangodb_version /home/circleci/project/CMakeLists.txt
+            REPO="arangodb/ubuntubuildarangodb-${ARANGODB_VERSION_MAJOR}${ARANGODB_VERSION_MINOR}"
+            SHORT_SHA="$(git -C /home/circleci/project rev-parse --short HEAD)"
+            if [ "<< parameters.arch >>" = "amd64" ]; then ARCH_SUFFIX="amd64"; else ARCH_SUFFIX="arm64v8"; fi
+            TAGS="$(aws ecr-public describe-images --region us-east-1 \
+                      --repository-name "${REPO}" \
+                      --query 'imageDetails[].imageTags[]' --output text 2>/dev/null \
+                    | tr '[:space:]' '\n' || true)"
+            if printf '%s\n' "${TAGS}" | grep -qE -- "-${SHORT_SHA}-${ARCH_SUFFIX}$"; then
+              echo "Image ${REPO}:*-${SHORT_SHA}-${ARCH_SUFFIX} already exists — skipping build and push."
+              circleci-agent step halt
+            fi
+            echo "No ${ARCH_SUFFIX} image for commit ${SHORT_SHA}; building."
+      - setup-push-tracking
+      - run:
+          name: Build Ubuntu build Docker image
+          command: |
+            set -x
+            source /home/circleci/project/scripts/oskar.bash
+            find_arangodb_version /home/circleci/project/CMakeLists.txt
+            IMAGE="public.ecr.aws/b0b8h2r4/arangodb/ubuntubuildarangodb-${ARANGODB_VERSION_MAJOR}${ARANGODB_VERSION_MINOR}"
+            if [ "<< parameters.arch >>" = "amd64" ]; then TARGET="build-amd64"; else TARGET="build-arm64"; fi
+            make -C /home/circleci/project/scripts/docker/build/linux \
+              "${TARGET}" IMAGE="${IMAGE}"
+      - run:
+          name: Tag and push
+          command: |
+            set -x
+            source /home/circleci/project/scripts/oskar.bash
+            find_arangodb_version /home/circleci/project/CMakeLists.txt
+            MM="${ARANGODB_VERSION_MAJOR}${ARANGODB_VERSION_MINOR}"
+            IMAGE="public.ecr.aws/b0b8h2r4/arangodb/ubuntubuildarangodb-${MM}"
+            REPO="arangodb/ubuntubuildarangodb-${MM}"
+            if [ "<< parameters.arch >>" = "amd64" ]; then TARGET="push-amd64"; ARCH_SUFFIX="amd64"; else TARGET="push-arm64"; ARCH_SUFFIX="arm64v8"; fi
+            TAG="$(cd /home/circleci/project/scripts/docker/build/linux && ./determine-tag.sh "${IMAGE}" "${ARCH_SUFFIX}")"
+            # Record exactly what we are about to push so cleanup only ever deletes
+            # images THIS run created — never a pre-existing/skipped one.
+            echo "${REPO} ${TAG}-${ARCH_SUFFIX}" >> "$(_pushed_file)"
+            make -C /home/circleci/project/scripts/docker/build/linux \
+              "${TARGET}" IMAGE="${IMAGE}" ALLOW_ECR_PUSH=1
+      - persist_to_workspace:
+          root: /tmp/workspace
+          paths:
+            - pushed
+      - cleanup-pushed-on-failure
+
+  build-ubuntu-build-image-manifest:
+    docker:
+      - image: cimg/base:current
+    steps:
+      - add_ssh_keys:
+          fingerprints:
+            - "f9:49:75:1a:ad:44:89:10:4b:3c:70:70:ba:d3:c3:ce"
+      - checkout-arangodb:
+          destination: /home/circleci/project
+      - setup_remote_docker:
+          docker_layer_caching: true
+      - aws-cli/setup:
+          role_arn: "arn:aws:iam::242063586340:role/CircleCI-Container-Handler"
+      - aws-ecr/ecr_login:
+          public_registry: true
+      - attach_workspace:
+          at: /tmp/workspace
+      - run:
+          name: Resolve tag (skip if manifest already exists)
+          command: |
+            set -eu
+            source /home/circleci/project/scripts/oskar.bash
+            find_arangodb_version /home/circleci/project/CMakeLists.txt
+            MM="${ARANGODB_VERSION_MAJOR}${ARANGODB_VERSION_MINOR}"
+            IMAGE="public.ecr.aws/b0b8h2r4/arangodb/ubuntubuildarangodb-${MM}"
+            REPO="arangodb/ubuntubuildarangodb-${MM}"
+            SHORT_SHA="$(git -C /home/circleci/project rev-parse --short HEAD)"
+            TAGS="$(aws ecr-public describe-images --region us-east-1 \
+                      --repository-name "${REPO}" \
+                      --query 'imageDetails[].imageTags[]' --output text 2>/dev/null \
+                    | tr '[:space:]' '\n' || true)"
+            # A tag ending in the bare short SHA (no arch suffix) is the multi-arch manifest.
+            if printf '%s\n' "${TAGS}" | grep -qE -- "-${SHORT_SHA}$"; then
+              echo "Multi-arch manifest for commit ${SHORT_SHA} already exists — skipping manifest and commit."
+              circleci-agent step halt
+            fi
+            # Otherwise derive the tag from the amd64 image already pushed for this commit.
+            TAG="$(printf '%s\n' "${TAGS}" | grep -E -- "-${SHORT_SHA}-amd64$" | head -1 | sed 's/-amd64$//')"
+            test -n "${TAG}" || { echo "ERROR: no amd64 build image found for commit ${SHORT_SHA}"; exit 1; }
+            echo "export IMAGE='${IMAGE}'" >> "$BASH_ENV"
+            echo "export REPO='${REPO}'" >> "$BASH_ENV"
+            echo "export TAG='${TAG}'" >> "$BASH_ENV"
+            echo "Resolved IMAGE=${IMAGE} TAG=${TAG}"
+      - setup-push-tracking
+      - run:
+          name: Create multi-arch build image manifest
+          command: |
+            set -x
+            # Record the manifest tag before pushing so cleanup removes only what this
+            # run created. Arch push-records were attached from the workspace, so on
+            # failure this job also cleans the arch images it depends on.
+            echo "${REPO} ${TAG}" >> "$(_pushed_file)"
+            make -C /home/circleci/project/scripts/docker/build/linux \
+              manifest IMAGE="${IMAGE}" TAG="${TAG}" ALLOW_ECR_PUSH=1
+      - run:
+          name: Stage Ubuntu build-image tag update
+          command: |
+            echo "${IMAGE}:${TAG}" > /home/circleci/project/scripts/docker/build/linux/amd64-build-tag.txt
+            sed -i "s|public\.ecr\.aws/b0b8h2r4/arangodb/ubuntubuildarangodb-[^\"]*|${IMAGE}:${TAG}|g" \
+              /home/circleci/project/.circleci/config.yml \
+              /home/circleci/project/.circleci/base_config.yml \
+              /home/circleci/project/.circleci/nightly_packages.yml
+            cd /home/circleci/project
+            git add scripts/docker/build/linux/amd64-build-tag.txt \
+                    .circleci/config.yml \
+                    .circleci/base_config.yml \
+                    .circleci/nightly_packages.yml
+      - commit-and-push:
+          message: "chore: update Ubuntu build image tag [skip ci]"
+      - cleanup-pushed-on-failure
+
+workflows:
+  # Rebuild test runner and driver Docker images (rebuild-images = test | all)
+  build-test-docker-images:
+    when:
+      or:
+        - equal: [ "test", << pipeline.parameters.rebuild-images >> ]
+        - equal: [ "all", << pipeline.parameters.rebuild-images >> ]
+    jobs:
+      - verify-push-access:
+          context: [ coredb-automated-push ]
+
+      - cancel-redundant-pipelines:
+          context: [ circleci-token ]
+
+      - build-test-docker-image:
+          resource-class: arm.large
+          name: aarch64-test-docker-image
+          arch: arm64
+          requires: [cancel-redundant-pipelines, verify-push-access]
+
+      - build-test-docker-image:
+          resource-class: large
+          name: x64-test-docker-image
+          arch: amd64
+          requires: [cancel-redundant-pipelines, verify-push-access]
+
+      - build-test-docker-manifest:
+          name: build-test-docker-image-manifest
+          context: [ coredb-automated-push ]
+          requires:
+            - aarch64-test-docker-image
+            - x64-test-docker-image
+
+  # Rebuild the Ubuntu compiler image used by compile-linux jobs (rebuild-images = build | all)
+  build-ubuntu-build-images:
+    when:
+      or:
+        - equal: [ "build", << pipeline.parameters.rebuild-images >> ]
+        - equal: [ "all", << pipeline.parameters.rebuild-images >> ]
+    jobs:
+      - verify-push-access:
+          context: [ coredb-automated-push ]
+
+      - cancel-redundant-pipelines:
+          context: [ circleci-token ]
+
+      - build-ubuntu-build-image:
+          resource-class: arm.2xlarge
+          name: aarch64-build-image
+          arch: arm64
+          requires: [cancel-redundant-pipelines, verify-push-access]
+
+      - build-ubuntu-build-image:
+          resource-class: 2xlarge+
+          name: x64-build-image
+          arch: amd64
+          requires: [cancel-redundant-pipelines, verify-push-access]
+
+      - build-ubuntu-build-image-manifest:
+          name: build-ubuntu-build-image-manifest
+          context: [ coredb-automated-push ]
+          requires:
+            - aarch64-build-image
+            - x64-build-image

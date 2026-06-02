@@ -1,15 +1,14 @@
 ===build fresh docker images for the CI===
 - edit the docker container definitions in this folder
 - make sure https://dlcdn.apache.org/maven/maven-3 still has the `VER` found in the java docker files
-- run the circle-ci flow, dial `rebuild-test-docker-images` to `true`.
-- open the `build-test-docker-images` job
-- open the `x64-test-docker-image` sub-job
-- open the `Build Docker Image` sub-job
-- locate the new tag:
-  ```
-  + docker tag public.ecr.aws/b0b8h2r4/test-ubuntu:latest-amd64 public.ecr.aws/b0b8h2r4/test-ubuntu:24.04-12ffcf7bf-amd64
-  ```
-  Here the tag is `12ffcf7bf`, which now needs to be set as default in:
-- edit .circleci/config.yml - `test-docker-image` swap the tag in the `default`
-- edit .circleci/base_config.yml - `test-docker-image` swap the tag in the `default`
-push the changes to the PR, merge the PR - done. 
+- run the infrastructure pipeline with the `rebuild-images` parameter set to
+  `test` (test runner + driver images), `build` (Ubuntu compiler image), or
+  `all` (both).
+- the pipeline builds and pushes the images, then automatically commits the
+  updated image tags back to the triggering branch (the `default` values in
+  `.circleci/config.yml`, `.circleci/base_config.yml`, and — for the build
+  image — `.circleci/nightly_packages.yml`). No manual tag editing is needed.
+- images already built for the current commit are skipped, so re-running the
+  pipeline on the same commit is a no-op.
+
+push the PR, merge it - done.

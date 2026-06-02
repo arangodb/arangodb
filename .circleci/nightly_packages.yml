@@ -1,0 +1,663 @@
+version: 2.1
+# Nightly images and packages pipeline.
+#
+# Triggered via: pipeline-type=nightly-packages
+#
+# Produces for the enterprise edition, on x86_64 and arm64:
+#   - Static release binaries (via compile-static jobs)
+#   - DEB packages (.deb)
+#   - RPM packages (.rpm)
+#   - TAR.GZ archives
+#   - Docker images (Alpine-based, pushed to Docker Hub)
+#   - Multi-arch Docker manifests
+#
+# Build flow (mirrors oskar helper.linux.fish):
+#   compile-static   ←→ buildEnterprisePackage
+#                        (sanOff + maintainerOff + releaseMode + buildStaticArangoDB
+#                         + downloadStarter/Syncer/Rclone)
+#   build-deb        ←→ buildDebianPackage (via arangodb/ubuntupackagearangodb-$ARCH:2)
+#   build-rpm        ←→ buildRPMPackage    (via arangodb/centospackagearangodb-$ARCH:4)
+#   build-tar        ←→ buildTarGzPackage
+#   build-nightly-docker-image  ←→ buildDockerAny  (RELEASE_TYPE=nightly, DOCKER_DISTRO=alpine)
+#   create-nightly-docker-manifest ←→ makeDockerMultiarch
+#
+# Docker tag scheme (scripts/oskar.bash: set_nightly_version → find_arangodb_version):
+#   per-arch:  arangodb/enterprise-preview:<VERSION>-<ARCH>             e.g. 3.12.10-nightly.20260602-amd64
+#              arangodb/enterprise-preview:<MAJOR_MINOR>-nightly-<ARCH>  e.g. 3.12-nightly-amd64
+#   manifests: arangodb/enterprise-preview:<VERSION>                    e.g. 3.12.10-nightly.20260602
+#              arangodb/enterprise-preview:<MAJOR_MINOR>-nightly         e.g. 3.12-nightly
+#
+# NOTE ON PLACEHOLDER STEPS:
+#   Several jobs contain placeholder commands marked with "TODO: implement".
+#   These correspond to complex oskar fish-shell functions that interact with
+#   dedicated packaging containers. The placeholder comments document the
+#   equivalent oskar call for each step.
+
+orbs:
+  aws-cli: circleci/aws-cli@4.1.1
+  aws-ecr: circleci/aws-ecr@9.0.1
+
+parameters:
+  enterprise-branch:
+    type: string
+    default: ""
+    description: "Enterprise repo branch to use. Defaults to the same branch as arangodb, falling back to devel."
+  build-docker-image:
+    type: string
+    default: "public.ecr.aws/b0b8h2r4/arangodb/ubuntubuildarangodb-devel:22"
+  automated-commit:
+    type: boolean
+    default: false
+
+commands:
+  checkout-arangodb:
+    parameters:
+      destination:
+        type: string
+    steps:
+      - run:
+          name: Checkout ArangoDB
+          command: |
+            mkdir -p << parameters.destination >>
+            cd << parameters.destination >>
+            git init
+            git remote add origin https://github.com/arangodb/arangodb.git
+            git fetch --depth 1 origin << pipeline.git.revision >>
+            git checkout << pipeline.git.revision >>
+
+  checkout-enterprise:
+    parameters:
+      destination:
+        type: string
+    steps:
+      - add_ssh_keys:
+          fingerprints:
+            - "f9:49:75:1a:ad:44:89:10:4b:3c:70:70:ba:d3:c3:ce"
+      - run:
+          name: Checkout Enterprise
+          environment:
+            GIT_SSH_COMMAND: "ssh -o StrictHostKeyChecking=no"
+          command: |
+            ENTERPRISE_BRANCH="<< pipeline.parameters.enterprise-branch >>"
+            if [ -z "$ENTERPRISE_BRANCH" ]; then
+              set +e
+              git ls-remote --exit-code --heads git@github.com:arangodb/enterprise.git "$CIRCLE_BRANCH"
+              if [ "$?" == "0" ]; then
+                ENTERPRISE_BRANCH="$CIRCLE_BRANCH"
+              else
+                ENTERPRISE_BRANCH="devel"
+              fi
+              set -e
+            fi
+            ENTERPRISE_COMMIT=$(git ls-remote --heads git@github.com:arangodb/enterprise.git "$ENTERPRISE_BRANCH" | cut -f1)
+            echo "Using enterprise branch ${ENTERPRISE_BRANCH} (${ENTERPRISE_COMMIT})"
+            mkdir -p << parameters.destination >>
+            cd << parameters.destination >>
+            git clone git@github.com:arangodb/enterprise.git .
+            git reset --hard "$ENTERPRISE_COMMIT"
+
+  upload-build-artifact:
+    # Uploads install.tar.gz (stripped binaries + starter/syncer/rclone) to S3.
+    # Keyed by workflow ID + edition + arch so downstream jobs can fetch it.
+    parameters:
+      arch:
+        type: string
+      edition:
+        type: string
+    steps:
+      - run:
+          name: Upload install.tar.gz to S3
+          command: |
+            if [ -z "${AWS_S3_WORKSPACE_BUCKET:-}" ]; then
+              echo "AWS_S3_WORKSPACE_BUCKET not set"
+              exit 1
+            fi
+            aws configure set profile.anon.s3.multipart_threshold 5GB
+            aws s3 cp --no-sign-request --profile anon \
+              install.tar.gz \
+              "s3://${AWS_S3_WORKSPACE_BUCKET}/nightly/${CIRCLE_WORKFLOW_ID}/<< parameters.edition >>-<< parameters.arch >>/install.tar.gz"
+
+  download-build-artifact:
+    parameters:
+      arch:
+        type: string
+      edition:
+        type: string
+    steps:
+      - run:
+          name: Download install.tar.gz from S3
+          command: |
+            if [ -z "${AWS_S3_WORKSPACE_BUCKET:-}" ]; then
+              echo "AWS_S3_WORKSPACE_BUCKET not set"
+              exit 1
+            fi
+            aws configure set profile.anon.s3.multipart_threshold 5GB
+            aws s3 cp --no-sign-request --profile anon \
+              "s3://${AWS_S3_WORKSPACE_BUCKET}/nightly/${CIRCLE_WORKFLOW_ID}/<< parameters.edition >>-<< parameters.arch >>/install.tar.gz" \
+              install.tar.gz
+
+jobs:
+  cancel-redundant-pipelines:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - run:
+          name: Cancel redundant pipelines
+          command: |
+            if [[ "$CIRCLE_BRANCH" =~ ^[0-9]+\.[0-9]+(\.[0-9]+)?$ ]] || [ "$CIRCLE_BRANCH" == "devel" ]; then
+              echo "Branch is a release branch or devel, not cancelling any pipelines"
+              exit 0
+            fi
+            CURRENT_PIPELINE_NUM=$(curl -s --header "Circle-Token: $CIRCLECI_TOKEN" \
+              "https://circleci.com/api/v2/workflow/${CIRCLE_WORKFLOW_ID}" | jq -r '.pipeline_number')
+            echo "Current pipeline: #${CURRENT_PIPELINE_NUM}"
+            # Cancel older API-triggered pipelines on this branch (infrastructure + nightly),
+            # leaving commit-triggered testing pipelines untouched.
+            PIPE_IDS=$(curl -s --header "Circle-Token: $CIRCLECI_TOKEN" \
+              "https://circleci.com/api/v2/project/gh/arangodb/arangodb/pipeline?branch=$CIRCLE_BRANCH" | \
+              jq -r --argjson N "$CURRENT_PIPELINE_NUM" \
+              '.items[]|select(.state == "created")|select(.number < $N)|select(.trigger.type == "api")|.id')
+            if [ -z "$PIPE_IDS" ]; then echo "Nothing to cancel"; exit 0; fi
+            for PIPE_ID in $PIPE_IDS; do
+              curl -s --header "Circle-Token: $CIRCLECI_TOKEN" \
+                "https://circleci.com/api/v2/pipeline/${PIPE_ID}/workflow" | \
+                jq -r '.items[]|select(.status == "on_hold" or .status == "running")|.id' >> WF_to_cancel.txt
+            done
+            if [ -s WF_to_cancel.txt ]; then
+              echo "Cancelling the following workflow(s):"
+              cat WF_to_cancel.txt
+              while read WF_ID; do
+                curl -s --header "Circle-Token: $CIRCLECI_TOKEN" --request POST \
+                  "https://circleci.com/api/v2/workflow/$WF_ID/cancel"
+              done < WF_to_cancel.txt
+            else
+              echo "Nothing to cancel"
+            fi
+
+  # ── Static compilation ──────────────────────────────────────────────────────
+  compile-static:
+    # Builds stripped static release binaries for packaging and Docker images.
+    #
+    # Oskar equivalent:
+    #   sanOff && maintainerOff && releaseMode && enterprise
+    #   buildStaticArangoDB
+    #   downloadStarter && downloadSyncer && downloadRclone
+    #
+    # Key CMake flags vs the PR build (base_config.yml compile-linux):
+    #   -DSTATIC_EXECUTABLES=On
+    #   -DUSE_JEMALLOC=On
+    #   -DUSE_ENTERPRISE=<On|Off>
+    #   -DUSE_MAINTAINER_MODE=Off  → also disables CATCH/GOOGLE tests
+    #   -DUSE_MINIMAL_DEBUGINFO=On
+    #   -DCMAKE_BUILD_TYPE=Release  (not RelWithDebInfo)
+    parameters:
+      arch:
+        type: string        # amd64 | arm64
+      resource-class:
+        type: string
+      edition:
+        type: string        # enterprise
+    docker:
+      - image: << pipeline.parameters.build-docker-image >>
+    resource_class: << parameters.resource-class >>
+    environment:
+      CC: clang
+      CXX: clang++
+    steps:
+      - checkout-arangodb:
+          destination: /root/project
+      - when:
+          condition:
+            equal: [enterprise, << parameters.edition >>]
+          steps:
+            - checkout-enterprise:
+                destination: /root/project/enterprise
+      - run:
+          name: Set nightly version in CMakeLists.txt
+          working_directory: /root/project
+          command: |
+            source scripts/oskar.bash
+            set_nightly_version CMakeLists.txt
+      - run:
+          name: CMake configure (static release)
+          working_directory: /root/project
+          command: |
+            # TODO: implement – adapt from the compile-linux job in base_config.yml,
+            # switching to a static release preset.  Key differences:
+            #
+            #   cmake -S . -B build \
+            #     -DCMAKE_BUILD_TYPE=Release \
+            #     -DSTATIC_EXECUTABLES=On \
+            #     -DUSE_ENTERPRISE=<On|Off> \
+            #     -DUSE_MAINTAINER_MODE=Off \
+            #     -DUSE_CATCH_TESTS=Off \
+            #     -DUSE_GOOGLE_TESTS=Off \
+            #     -DUSE_JEMALLOC=On \
+            #     -DUSE_MINIMAL_DEBUGINFO=On \
+            #     -DUSE_V8=On \
+            #     -DUSE_FRONTEND=On \
+            #     -DCMAKE_INSTALL_PREFIX=/ \
+            #     -DOPENSSL_ROOT_DIR=/opt \
+            #     -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=lld -fopenmp=libgomp" \
+            #     -DCMAKE_C_COMPILER_LAUNCHER=sccache \
+            #     -DCMAKE_CXX_COMPILER_LAUNCHER=sccache
+            echo "NOT IMPLEMENTED – placeholder for static CMake configure"
+            exit 1
+      - run:
+          name: Build
+          working_directory: /root/project
+          command: |
+            # TODO: cmake --build build --parallel $(nproc) --target arangodb
+            echo "NOT IMPLEMENTED – placeholder for static build"
+            exit 1
+      - run:
+          name: Install, strip, and create install.tar.gz
+          working_directory: /root/project
+          command: |
+            # TODO: implement
+            #   DESTDIR=$(pwd)/install cmake --build build --target install
+            #   strip ./install/usr/bin/arango*
+            #   strip ./install/usr/sbin/arangod
+            # Corresponds to oskar's installTargets + TT_strip functions.
+            echo "NOT IMPLEMENTED – placeholder for install + strip"
+            exit 1
+      - run:
+          name: Download starter binary
+          working_directory: /root/project
+          command: |
+            # Read version from VERSIONS file and download from GitHub releases.
+            # Corresponds to oskar downloadStarter function.
+            # STARTER_REV=$(grep -Po 'STARTER_REV "\Kv[0-9.a-z-]+' VERSIONS)
+            # curl -fsSL "https://github.com/arangodb-starter/..." -o install/usr/bin/arangodb
+            # chmod +x install/usr/bin/arangodb
+            # TODO: implement
+            echo "NOT IMPLEMENTED – placeholder for starter download"
+            exit 1
+      - when:
+          condition:
+            equal: [enterprise, << parameters.edition >>]
+          steps:
+            - run:
+                name: Download syncer and rclone binaries (enterprise only)
+                working_directory: /root/project
+                command: |
+                  # Corresponds to oskar downloadSyncer + downloadRclone functions.
+                  # SYNCER_REV=$(grep -Po 'SYNCER_REV "\Kv[0-9.a-z-]+' VERSIONS || echo "")
+                  # RCLONE_VERSION=$(grep -Po 'RCLONE_VERSION "\K[0-9.]+' VERSIONS)
+                  # Download arangosync → install/usr/bin/arangosync
+                  # Download rclone    → install/usr/bin/rclone-arangodb
+                  # TODO: implement
+                  echo "NOT IMPLEMENTED – placeholder for syncer/rclone download"
+                  exit 1
+      - run:
+          name: Create install.tar.gz
+          working_directory: /root/project
+          command: |
+            tar -czf install.tar.gz -C install ./
+      - upload-build-artifact:
+          arch: << parameters.arch >>
+          edition: << parameters.edition >>
+
+  # ── DEB packages ─────────────────────────────────────────────────────────────
+  build-deb-package:
+    # Builds Debian/Ubuntu .deb packages.
+    #
+    # Oskar equivalent: buildDebianPackage function in helper.linux.fish
+    #   → runs scripts/buildDebianPackage.fish inside:
+    #     arangodb/ubuntupackagearangodb-<arch>:2
+    #
+    # Steps inside the packaging container:
+    #   1. Copy debian/ template from oskar/debian/<pkg>/{enterprise,common}/
+    #   2. Expand install.tar.gz into the work directory
+    #   3. debian/rules binary   (uses dpkg-buildpackage)
+    # Output: arangodb3[e]-<version>-<revision>_<arch>.deb
+    docker:
+      - image: cimg/base:current
+    parameters:
+      arch:
+        type: string
+      resource-class:
+        type: string
+      edition:
+        type: string
+    resource_class: << parameters.resource-class >>
+    steps:
+      - setup_remote_docker:
+          docker_layer_caching: true
+      - aws-cli/setup:
+          role_arn: "arn:aws:iam::242063586340:role/CircleCI-Container-Handler"
+      - download-build-artifact:
+          arch: << parameters.arch >>
+          edition: << parameters.edition >>
+      - checkout-arangodb:
+          destination: /home/circleci/project
+      - run:
+          name: Build DEB package
+          command: |
+            # TODO: implement using Docker with the packaging container.
+            # PACKAGING_IMAGE="arangodb/ubuntupackagearangodb-<< parameters.arch >>:2"
+            # docker run --rm \
+            #   -v $(pwd)/install.tar.gz:/work/install.tar.gz \
+            #   -v /home/circleci/project:/project:ro \
+            #   "$PACKAGING_IMAGE" \
+            #   /scripts/buildDebianPackage.fish
+            echo "NOT IMPLEMENTED – placeholder for DEB packaging"
+            exit 1
+      - store_artifacts:
+          path: /home/circleci/packages/deb
+          destination: packages/deb/<< parameters.edition >>/<< parameters.arch >>
+
+  # ── RPM packages ─────────────────────────────────────────────────────────────
+  build-rpm-package:
+    # Builds RHEL/CentOS .rpm packages.
+    #
+    # Oskar equivalent: buildRPMPackage function in helper.linux.fish
+    #   → transformSpec (arangodb3[e].spec.in → arangodb3.spec)
+    #   → runs scripts/buildRPMPackage.fish inside:
+    #     arangodb/centospackagearangodb-<arch>:4
+    #
+    # Steps inside the packaging container:
+    #   1. Copy arangodb3.spec (transformed from spec template)
+    #      and support files (initd, service, logrotate)
+    #   2. rpmbuild -bb /root/SPECS/arangodb3.spec
+    # Output: arangodb3[e]-<version>-<revision>.<arch>.rpm
+    docker:
+      - image: cimg/base:current
+    parameters:
+      arch:
+        type: string
+      resource-class:
+        type: string
+      edition:
+        type: string
+    resource_class: << parameters.resource-class >>
+    steps:
+      - setup_remote_docker:
+          docker_layer_caching: true
+      - aws-cli/setup:
+          role_arn: "arn:aws:iam::242063586340:role/CircleCI-Container-Handler"
+      - download-build-artifact:
+          arch: << parameters.arch >>
+          edition: << parameters.edition >>
+      - checkout-arangodb:
+          destination: /home/circleci/project
+      - run:
+          name: Build RPM package
+          command: |
+            # TODO: implement using Docker with the packaging container.
+            # PACKAGING_IMAGE="arangodb/centospackagearangodb-<< parameters.arch >>:4"
+            # docker run --rm \
+            #   -v $(pwd)/install.tar.gz:/work/install.tar.gz \
+            #   -v /home/circleci/project:/project:ro \
+            #   "$PACKAGING_IMAGE" \
+            #   /scripts/buildRPMPackage.fish
+            echo "NOT IMPLEMENTED – placeholder for RPM packaging"
+            exit 1
+      - store_artifacts:
+          path: /home/circleci/packages/rpm
+          destination: packages/rpm/<< parameters.edition >>/<< parameters.arch >>
+
+  # ── TAR.GZ packages ──────────────────────────────────────────────────────────
+  build-tar-package:
+    # Repackages the install directory as a named release archive.
+    # Oskar equivalent: buildTarGzPackage → buildTarGzPackageHelper "linux"
+    # Output: arangodb3[e]-<version>-1_<arch>.tar.gz
+    docker:
+      - image: cimg/base:current
+    parameters:
+      arch:
+        type: string
+      resource-class:
+        type: string
+      edition:
+        type: string
+    resource_class: << parameters.resource-class >>
+    steps:
+      - aws-cli/setup:
+          role_arn: "arn:aws:iam::242063586340:role/CircleCI-Container-Handler"
+      - checkout-arangodb:
+          destination: /home/circleci/project
+      - download-build-artifact:
+          arch: << parameters.arch >>
+          edition: << parameters.edition >>
+      - run:
+          name: Create TAR.GZ package
+          command: |
+            mkdir -p packages/tar
+            ARANGO_VERSION="$(cat /home/circleci/project/ARANGO-VERSION)"
+            EDITION_SUFFIX=""
+            if [ "<< parameters.edition >>" = "enterprise" ]; then
+              EDITION_SUFFIX="e"
+            fi
+            PKG_NAME="arangodb3${EDITION_SUFFIX}-${ARANGO_VERSION}-1_<< parameters.arch >>.tar.gz"
+            # TODO: add proper top-level directory inside the tarball
+            # (oskar's buildTarGzPackageHelper wraps files under arangodb3-$VERSION/)
+            tar -xzf install.tar.gz
+            tar -czf "packages/tar/${PKG_NAME}" usr/ etc/ var/ 2>/dev/null || tar -czf "packages/tar/${PKG_NAME}" usr/
+      - store_artifacts:
+          path: packages/tar
+          destination: packages/tar/<< parameters.edition >>/<< parameters.arch >>
+
+  # ── Nightly version preparation ───────────────────────────────────────────────
+  prepare-nightly:
+    # Applies set_nightly_version to CMakeLists.txt (modifying RELEASE_TYPE →
+    # "nightly" and RELEASE_NUMBER → YYYYMMDD), then uses find_arangodb_version
+    # to read back the canonical version components and stores them in workspace
+    # so all downstream jobs use the same tag without re-reading CMakeLists.txt.
+    docker:
+      - image: cimg/base:current
+    steps:
+      - checkout-arangodb:
+          destination: /home/circleci/project
+      - run:
+          name: Derive nightly version (set_nightly_version → find_arangodb_version)
+          command: |
+            cd /home/circleci/project
+            source scripts/oskar.bash
+            set_nightly_version CMakeLists.txt
+            echo "${ARANGODB_VERSION}"            > /tmp/nightly-version.txt
+            echo "${ARANGODB_VERSION_MAJOR_MINOR}" > /tmp/nightly-major-minor.txt
+      - persist_to_workspace:
+          root: /tmp
+          paths:
+            - nightly-version.txt
+            - nightly-major-minor.txt
+
+  # ── Docker images ─────────────────────────────────────────────────────────────
+  build-nightly-docker-image:
+    # Builds and pushes an Alpine-based nightly Docker image to Docker Hub.
+    #
+    # Oskar equivalent: buildDockerAny with RELEASE_TYPE=nightly, DOCKER_DISTRO=alpine
+    #   → buildStaticArangoDB (reuses compiled artifacts from compile-static job)
+    #   → buildDockerImage    (containers/arangodbDevelalpine.docker/)
+    #   → pushDockerImage
+    #
+    # Output tags (per-arch, pushed individually):
+    #   arangodb/enterprise-preview:<VERSION>-<TAG_ARCH>              e.g. 3.12.10-nightly.20260602-amd64
+    #   arangodb/enterprise-preview:<MAJOR_MINOR>-nightly-<TAG_ARCH>  e.g. 3.12-nightly-amd64
+    #
+    # where TAG_ARCH is "amd64" for x86_64 and "arm64v8" for ARM.
+    docker:
+      - image: cimg/base:current
+    parameters:
+      arch:
+        type: string        # amd64 | arm64
+      resource-class:
+        type: string
+    resource_class: << parameters.resource-class >>
+    steps:
+      - attach_workspace:
+          at: /tmp
+      - setup_remote_docker:
+          docker_layer_caching: true
+      - checkout-arangodb:
+          destination: /home/circleci/project
+      - download-build-artifact:
+          arch: << parameters.arch >>
+          edition: enterprise
+      - run:
+          name: Prepare install directory for Docker build
+          command: |
+            mkdir -p /home/circleci/project/scripts/docker/deploy/install
+            tar -xzf install.tar.gz -C /home/circleci/project/scripts/docker/deploy/install
+      - run:
+          name: Build and push Alpine Docker image
+          command: |
+            set -x
+            VERSION="$(cat /tmp/nightly-version.txt)"
+            MAJOR_MINOR="$(cat /tmp/nightly-major-minor.txt)"
+            IMAGE="arangodb/enterprise-preview"
+
+            if [ "<< parameters.arch >>" = "arm64" ]; then
+              TAG_ARCH="arm64v8"
+            else
+              TAG_ARCH="<< parameters.arch >>"
+            fi
+
+            VERSION_TAG="${IMAGE}:${VERSION}-${TAG_ARCH}"
+            ROLLING_TAG="${IMAGE}:${MAJOR_MINOR}-nightly-${TAG_ARCH}"
+
+            cd /home/circleci/project/scripts/docker/deploy
+            docker build \
+              --platform "linux/<< parameters.arch >>" \
+              --build-arg arch=<< parameters.arch >> \
+              --no-cache \
+              --pull \
+              -t "${VERSION_TAG}" \
+              -t "${ROLLING_TAG}" \
+              --file deploy-alpine.dockerfile .
+
+            docker push "${VERSION_TAG}"
+            docker push "${ROLLING_TAG}"
+
+  # ── Multi-arch Docker manifest ────────────────────────────────────────────────
+  create-nightly-docker-manifest:
+    # Creates and pushes two multi-arch manifests (amd64 + arm64v8).
+    # Corresponds to oskar's makeDockerMultiarch function.
+    #
+    # Input tags (from build-nightly-docker-image):
+    #   arangodb/enterprise-preview:<VERSION>-amd64
+    #   arangodb/enterprise-preview:<VERSION>-arm64v8
+    # Output manifests:
+    #   arangodb/enterprise-preview:<VERSION>              e.g. 3.12.10-nightly.20260602
+    #   arangodb/enterprise-preview:<MAJOR_MINOR>-nightly  e.g. 3.12-nightly
+    docker:
+      - image: cimg/base:current
+    steps:
+      - attach_workspace:
+          at: /tmp
+      - setup_remote_docker:
+          docker_layer_caching: true
+      - run:
+          name: Create and push multi-arch manifests
+          command: |
+            set -x
+            VERSION="$(cat /tmp/nightly-version.txt)"
+            MAJOR_MINOR="$(cat /tmp/nightly-major-minor.txt)"
+            IMAGE="arangodb/enterprise-preview"
+
+            # Versioned manifest: e.g. 3.12.10-nightly.20260602
+            docker manifest rm "${IMAGE}:${VERSION}" 2>/dev/null || true
+            docker manifest create "${IMAGE}:${VERSION}" \
+              --amend "${IMAGE}:${VERSION}-amd64" \
+              --amend "${IMAGE}:${VERSION}-arm64v8"
+            docker manifest push --purge "${IMAGE}:${VERSION}"
+
+            # Rolling manifest: e.g. 3.12-nightly
+            docker manifest rm "${IMAGE}:${MAJOR_MINOR}-nightly" 2>/dev/null || true
+            docker manifest create "${IMAGE}:${MAJOR_MINOR}-nightly" \
+              --amend "${IMAGE}:${MAJOR_MINOR}-nightly-amd64" \
+              --amend "${IMAGE}:${MAJOR_MINOR}-nightly-arm64v8"
+            docker manifest push --purge "${IMAGE}:${MAJOR_MINOR}-nightly"
+
+workflows:
+  nightly-packages:
+    jobs:
+      - cancel-redundant-pipelines:
+          context: [ circleci-token ]
+
+      - prepare-nightly:
+          name: prepare-nightly
+          requires: [cancel-redundant-pipelines]
+
+      # ── x86_64 enterprise ───────────────────────────────────────────────────
+      - compile-static:
+          name: compile-enterprise-amd64
+          arch: amd64
+          edition: enterprise
+          resource-class: arangodb/large-amd64
+          requires: [cancel-redundant-pipelines]
+
+      - build-deb-package:
+          name: deb-enterprise-amd64
+          arch: amd64
+          edition: enterprise
+          resource-class: arangodb/large-amd64
+          requires: [compile-enterprise-amd64]
+
+      - build-rpm-package:
+          name: rpm-enterprise-amd64
+          arch: amd64
+          edition: enterprise
+          resource-class: arangodb/large-amd64
+          requires: [compile-enterprise-amd64]
+
+      - build-tar-package:
+          name: tar-enterprise-amd64
+          arch: amd64
+          edition: enterprise
+          resource-class: arangodb/large-amd64
+          requires: [compile-enterprise-amd64]
+
+      - build-nightly-docker-image:
+          name: docker-enterprise-amd64
+          arch: amd64
+          resource-class: arangodb/large-amd64
+          requires:
+            - compile-enterprise-amd64
+            - prepare-nightly
+
+      # ── ARM64 enterprise ─────────────────────────────────────────────────────
+      - compile-static:
+          name: compile-enterprise-arm64
+          arch: arm64
+          edition: enterprise
+          resource-class: arangodb/large-arm64
+          requires: [cancel-redundant-pipelines]
+
+      - build-deb-package:
+          name: deb-enterprise-arm64
+          arch: arm64
+          edition: enterprise
+          resource-class: arangodb/large-arm64
+          requires: [compile-enterprise-arm64]
+
+      - build-rpm-package:
+          name: rpm-enterprise-arm64
+          arch: arm64
+          edition: enterprise
+          resource-class: arangodb/large-arm64
+          requires: [compile-enterprise-arm64]
+
+      - build-tar-package:
+          name: tar-enterprise-arm64
+          arch: arm64
+          edition: enterprise
+          resource-class: arangodb/large-arm64
+          requires: [compile-enterprise-arm64]
+
+      - build-nightly-docker-image:
+          name: docker-enterprise-arm64
+          arch: arm64
+          resource-class: arangodb/large-arm64
+          requires:
+            - compile-enterprise-arm64
+            - prepare-nightly
+
+      # ── Multi-arch manifests ─────────────────────────────────────────────────
+      - create-nightly-docker-manifest:
+          name: manifest-enterprise
+          requires:
+            - docker-enterprise-amd64
+            - docker-enterprise-arm64

@@ -62,10 +62,6 @@ parameters:
     type: string
     default: ""
     description: "Additional arguments to pass to arangosh during tests (see arangosh --help)"
-  rebuild-test-docker-images:
-    type: boolean
-    default: false
-    description: "Used to create new test docker images after changes to the test docker image build process."
   test-docker-image:
     type: string
     default: public.ecr.aws/b0b8h2r4/test-ubuntu:24.04-d6a8996c8
@@ -89,6 +85,7 @@ parameters:
     default: true
     description: Whether to use minimal debug info.
       This is enabled by default to reduce the size of artifacts, but can optionally be disabled for debugging test failures
+
 
 # our defined job, and its steps
 jobs:
@@ -182,7 +179,6 @@ jobs:
             echo "create-docker-images: << pipeline.parameters.create-docker-images >>"
             echo "extra_args: << pipeline.parameters.extra_args >>"
             echo "arangosh_args: << pipeline.parameters.arangosh_args >>"
-            echo "rebuild-test-docker-images: << pipeline.parameters.rebuild-test-docker-images >>"
             echo "test-docker-images: << pipeline.parameters.test-docker-image >>"
             echo "build-docker-image: << pipeline.parameters.build-docker-image >>"
             echo "replication-two: << pipeline.parameters.replication-two >>"
@@ -221,7 +217,7 @@ jobs:
             fi
             ENTERPRISE_COMMIT=`git ls-remote --heads git@github.com:arangodb/enterprise.git $ENTERPRISE_BRANCH | cut -f1`
             echo "Using enterprise branch $ENTERPRISE_BRANCH (sha $ENTERPRISE_COMMIT)"
-            echo "{\"enterprise-commit\": \"$ENTERPRISE_COMMIT\"}" > parameters.json
+            printf '{"enterprise-commit":"%s"}\n' "$ENTERPRISE_COMMIT" > parameters.json
             cat parameters.json
 
       - run:
@@ -236,27 +232,23 @@ jobs:
       - run:
           name: Generate config
           command: |
-            if [ "<< pipeline.parameters.rebuild-test-docker-images >>" == "true" ]; then
-              cp .circleci/build_test_image.yml continuation_config.yml
-            else
-              set -x
-              python3 ".circleci/generate_config.py" \
-                <<# pipeline.parameters.without-instrumentation >> --no-sanitizer <</ pipeline.parameters.without-instrumentation >> \
-                <<# pipeline.parameters.with-tsan >> --tsan <</ pipeline.parameters.with-tsan >> \
-                <<# pipeline.parameters.with-alubsan >> --alubsan <</ pipeline.parameters.with-alubsan >> \
-                --arangosh-args "A<< pipeline.parameters.arangosh_args >>" \
-                --extra-args "A<< pipeline.parameters.extra_args >>" \
-                --test-image "<< pipeline.parameters.test-docker-image >>" \
-                <<# pipeline.parameters.arangod-without-v8 >> --arangod-without-v8  <</ pipeline.parameters.arangod-without-v8 >>\
-                <<# pipeline.parameters.full >> --full <</ pipeline.parameters.full >> \
-                <<# pipeline.parameters.create-docker-images >> --create-docker-images <</ pipeline.parameters.create-docker-images >> \
-                <<# pipeline.parameters.replication-two >> -rt <</ pipeline.parameters.replication-two >> \
-                --driver-branch-overrides "<<parameters.config-definitions-branches>>" \
-                --test-suite "<<pipeline.parameters.filter-testsuite>>" \
-                -o continuation_config.yml \
-                ./.circleci/base_config.yml \
-                << parameters.definitions >>
-            fi
+            set -x
+            python3 ".circleci/generate_config.py" \
+              <<# pipeline.parameters.without-instrumentation >> --no-sanitizer <</ pipeline.parameters.without-instrumentation >> \
+              <<# pipeline.parameters.with-tsan >> --tsan <</ pipeline.parameters.with-tsan >> \
+              <<# pipeline.parameters.with-alubsan >> --alubsan <</ pipeline.parameters.with-alubsan >> \
+              --arangosh-args "A<< pipeline.parameters.arangosh_args >>" \
+              --extra-args "A<< pipeline.parameters.extra_args >>" \
+              --test-image "<< pipeline.parameters.test-docker-image >>" \
+              <<# pipeline.parameters.arangod-without-v8 >> --arangod-without-v8  <</ pipeline.parameters.arangod-without-v8 >>\
+              <<# pipeline.parameters.full >> --full <</ pipeline.parameters.full >> \
+              <<# pipeline.parameters.create-docker-images >> --create-docker-images <</ pipeline.parameters.create-docker-images >> \
+              <<# pipeline.parameters.replication-two >> -rt <</ pipeline.parameters.replication-two >> \
+              --driver-branch-overrides "<<parameters.config-definitions-branches>>" \
+              --test-suite "<<pipeline.parameters.filter-testsuite>>" \
+              -o continuation_config.yml \
+              ./.circleci/base_config.yml \
+              << parameters.definitions >>
 
       - continuation/continue:
           configuration_path: continuation_config.yml
