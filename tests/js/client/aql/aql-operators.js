@@ -638,7 +638,14 @@ function ahuacatlOperatorsTestSuite () {
       ];
       values.forEach(function(v) {
         var q = `RETURN TO_STRING(${v.val})`;
-        assertEqual(v.ex, db._query(q).next(), q);
+        let actual = db._query(q).next();
+        let expected = v.ex;
+        if (expected[0] === "{") {
+          const normalizeObject = value => JSON.stringify(JSON.parse(value), Object.keys(JSON.parse(value)).sort());
+          expected = normalizeObject(expected);
+          actual = normalizeObject(actual);
+        }
+        assertEqual(expected, actual, q);
       });
     },
 

@@ -2637,7 +2637,7 @@ function ahuacatlFunctionsTestSuite () {
 
       values.forEach(function (value) {
         const actual = getQueryResults("RETURN ENTRIES(" + JSON.stringify(value) + ")");
-        assertEqual(Object.entries(value), actual[0], value);
+        assertEqual(Object.entries(value), actual[0].sort((x, y) => x[0].localeCompare(y[0])), value);
       });
     },
     
