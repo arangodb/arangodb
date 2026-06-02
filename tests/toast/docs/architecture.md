@@ -144,6 +144,7 @@ Design decisions:
 | `Toast.Deployment.DefaultEventListener` | No-op implementation of EventListener. |
 | `Toast.Deployment.CrashBarrier` | Between-tests barrier that checks `/proc/<pid>/status` to detect in-flight crashes before the next test starts. |
 | `Toast.Deployment.HealthBarrier` | Between-tests barrier that waits for each server's HealthMonitor to report healthy before the next test starts. Catches "alive but unresponsive" cases (deadlocks, resource exhaustion). |
+| `Toast.Deployment.Netstat` | Between-tests port exhaustion check. Counts system TCP sockets via `ss`/`netstat` (~2ms fast path); gathers per-server PID-based breakdown (~40ms) only on threshold breach. Two thresholds: system-wide (15k) and per-deployment (500/server above baseline). |
 | `Toast.Deployment.Supervisor` | DynamicSupervisor for Controller processes. |
 
 ### Process Management (`Toast.Process.*`)
@@ -172,7 +173,7 @@ Design decisions:
 | `ToastTest.Runner.TestExecution` | Core test execution loop (setup_all, per-test spawn, result handling). |
 | `ToastTest.Runner.TestProcess` | Spawn and manage individual test processes with timeout handling. |
 | `ToastTest.Runner.TestFilter` | Filter test modules by line number, test name, and ExUnit tags. |
-| `ToastTest.Runner.BetweenTests` | Between-test checks with three phases: (1) `CrashBarrier.await_settled/2` checks `/proc/<pid>/status` for in-flight crashes, (2) `HealthBarrier.await_healthy/2` waits for health monitors to report healthy, (3) suite's custom `between_tests/2` callback (or default `BetweenTests.check/2`). Also enforces suite deadline. |
+| `ToastTest.Runner.BetweenTests` | Between-test checks with four phases: (1) `CrashBarrier.await_settled/2` checks for in-flight crashes, (2) `HealthBarrier.await_healthy/2` waits for health monitors, (3) `Netstat.check/3` checks port exhaustion, (4) suite's custom `between_tests/2` callback (or default `BetweenTests.check/2`). |
 | `ToastTest.Runner.PostExecution` | Post-suite diagnostics collection (agency dump, artifact collection, attribution). |
 | `ToastTest.Runner.ResultBuilder` | Build SuiteResult from test data, diagnostics, and enrichment. |
 | `ToastTest.Runner.FailureFormatter` | Format test failures for display. |

@@ -630,8 +630,32 @@ directory specified by `--result-dir`):
 | 0 | All tests passed |
 | 1 | Test failures |
 | 2 | Sanitizer errors detected |
-| 3 | Infrastructure failure (deployment failed to start, etc.) |
+| 3 | Infrastructure failure (deployment failed to start, port exhaustion, etc.) |
 | 4 | Server crash |
+
+### Port Exhaustion Detection
+
+Between tests, Toast monitors the system's TCP socket count to detect port
+exhaustion before it causes cascading test failures. Two thresholds are
+checked:
+
+- **System threshold** (15,000): total TCP sockets on the system. Catches
+  catastrophic exhaustion regardless of source.
+- **Deployment threshold** (500 per server): sockets added since the
+  deployment started, scaled by server count. Catches connection leaks
+  within the deployment earlier than the system threshold would.
+
+When either threshold is reached, the suite aborts with an infrastructure
+issue. The post-execution summary shows a per-server breakdown (inbound vs
+outbound sockets by TCP state), and `mix toast.analyze detail infrastructure`
+includes a trajectory showing which tests contributed the most sockets.
+
+The check uses `ss` (preferred) or `netstat` (fallback) for the routine count.
+The detailed per-server breakdown (requiring more expensive PID resolution) is
+only gathered once when a threshold is actually breached.
+
+If neither `ss` nor `netstat` is available, the check is disabled with a
+warning.
 
 ### CI Mode
 
@@ -672,9 +696,10 @@ mix toast.analyze detail 3
 # Show detail for a range of issues
 mix toast.analyze detail 2-4
 
-# Show only crash or sanitizer issues
+# Show only specific issue types
 mix toast.analyze detail crashes
 mix toast.analyze detail sanitizer
+mix toast.analyze detail infrastructure
 
 # Overview of diagnostics file contents
 mix toast.analyze info
