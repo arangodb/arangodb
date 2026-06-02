@@ -59,9 +59,11 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 #include <cstdint>
+#include <span>
 
 using namespace arangodb;
 using namespace arangodb::aql;
+using namespace std;
 
 namespace {
 
@@ -2616,6 +2618,33 @@ void Ast::validateAndOptimize(transaction::Methods& trx,
     } else if (node->type == NODE_TYPE_FCALL) {
       auto func = static_cast<Function*>(node->getData());
       TRI_ASSERT(func != nullptr);
+
+      if (func->name == "KEEP" || func->name == "UNSET") {
+        AstNode* args = node->getMemberUnchecked(0);
+        TRI_ASSERT(args != nullptr && args->type == NODE_TYPE_ARRAY);
+        if (args->numMembers() > 0) {
+          AstNode const* valueArg = args->getMemberUnchecked(0);
+          AstNode const* def = valueArg;
+          while (def != nullptr && (def->type == NODE_TYPE_REFERENCE)) {
+            auto const* var = static_cast<Variable const*>(def->getData());
+            TRI_ASSERT(var != nullptr);
+            if(var != nullptr){
+              auto it = ctx->variableDefinitions.find(var);
+              if (it == ctx->variableDefinitions.end()) {
+                //LOG_DEVEL << "  no definition in variableDefinitions yet";
+                break;
+              }
+              def = it->second;
+              //LOG_DEVEL << "  resolved to type=" << def->getTypeString()
+              //          << " node=" << AstNode::toString(def);
+            }
+          }
+          if (def != nullptr && def->isNullValue()) {
+          //LOG_DEVEL << "KEEP first arg resolves to null -> skip subtree";
+          return false;  // your preVisitor early exit
+          }
+        }
+      }
 
       if (func->hasFlag(Function::Flags::NoEval)) {
         // NOOPT will turn all function optimizations off

@@ -467,6 +467,26 @@ RETURN upsertDoc
       assertEqual(3, c.count());
     },
 
+    testConstantFalseConditionSkipsTrueBranchDuringOptimization : function () {
+      // KEEP(null, ...) on the dead true branch must not run at plan time.
+      const query = "LET val = null RETURN val != null ? KEEP(val, 'foo') : null";
+      let cursor = db._query(query, {}, false, true);
+      assertEqual([ null ], cursor.toArray());
+      assertEqual(0, cursor.getWarnings().length);
+    },
+
+    testConstantTrueConditionSkipsFalseBranchDuringOptimization : function () {
+      const query = "RETURN true ? 1 : FAIL('must not run at plan time')";
+      assertEqual([ 1 ], getQueryResults(query));
+    },
+
+    testConstantTrueConditionKeepOnLiveBranch : function () {
+      const query = "LET val = { a: 1, b: 2 } RETURN val == null ? null : KEEP(val, 'a')";
+      let cursor = db._query(query, {}, false, true);
+      assertEqual([ { a: 1 } ], cursor.toArray());
+      assertEqual(0, cursor.getWarnings().length);
+    },
+
     testMustNotExecuteUnreachableConditions : function () {
       const query = `
 RETURN NOOPT(true) ? NOOPT(ASSERT(true, 'ass 1')) : NOOPT(ASSERT(false, 'ass 2'))
