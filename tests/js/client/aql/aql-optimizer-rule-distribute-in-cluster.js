@@ -717,43 +717,41 @@ function optimizerRuleTestSuite () {
     
     testInsertsDistributeInputCalculationForModification : function () {
       var queries = [ 
-        ["FOR k IN  ['1','2','3'] REMOVE k IN  " + cn1, "REMOVE"],
-        ["FOR k IN  ['1','2','3'] UPDATE k WITH { } IN  " + cn1, "UPDATE"],
-        ["FOR k IN  ['1','2','3'] REPLACE k WITH { } IN  " + cn1, "REPLACE"],
+        ["FOR k IN  ['1','2','3'] REMOVE k IN  " + cn1, "RemoveNode"],
+        ["FOR k IN  ['1','2','3'] UPDATE k WITH { } IN  " + cn1, "UpdateNode"],
+        ["FOR k IN  ['1','2','3'] REPLACE k WITH { } IN  " + cn1, "ReplaceNode"],
       ];
 
       const explainer = require("@arangodb/aql/explainer");
-      queries.forEach(function(query, i) {
-        const output = explainer.explain(query[0], {...thisRuleEnabled, colors: false}, false);
-        const variable = output.match(/LET #([0-9]) = MAKE_DISTRIBUTE_INPUT\(k, { "allowKeyConversionToObject" : true, "ignoreErrors" : false, "canUseCustomKey" : true }\)/);
-        assertTrue(variable);
-        assertTrue(output.includes(`DISTRIBUTE #${variable[1]}`));
-        assertTrue(output.includes(`${query[1]} #${variable[1]}`));
+      queries.forEach(function([query, op], i) {
+
+        const plan = db._createStatement({query: query, options: thisRuleEnabled}).explain().plan;
+        const varAttribute = op === "RemoveNode" ? "inVariable" : "inKeyVariable";
+        const [distributeNode, modificationNode] = plan.nodes.filter(node => ["DistributeNode", op].includes(node.type));
+        assertEqual(distributeNode.type, "DistributeNode");
+        assertEqual(modificationNode.type, op);
+        assertEqual(distributeNode.variable.id, modificationNode[varAttribute].id);
       });
     },
     
     testInsertsDistributeInputCalculationForInsert : function () {
       const query = "FOR k IN  ['1','2','3'] INSERT k IN  " + cn1;
-      const explainer = require("@arangodb/aql/explainer");
-      const output = explainer.explain(query, {...thisRuleEnabled, colors: false}, false);
-      const variable = output.match(/LET #([0-9]) = MAKE_DISTRIBUTE_INPUT_WITH_KEY_CREATION/);
-      assertTrue(variable);
-      assertTrue(output.includes(`MAKE_DISTRIBUTE_INPUT_WITH_KEY_CREATION(k, null, { "allowSpecifiedKeys" : false, "ignoreErrors" : false, "projectOnlyId" : false, "collection" : "${cn1}" })`));
-      assertTrue(output.includes(`DISTRIBUTE #${variable[1]}`));
-      assertTrue(output.includes(`INSERT #${variable[1]}`));
+
+      const plan = db._createStatement({query: query, options: thisRuleEnabled}).explain().plan;
+      const [distributeNode, modificationNode] = plan.nodes.filter(node => ["DistributeNode", "InsertNode"].includes(node.type));
+      assertEqual(distributeNode.type, "DistributeNode");
+      assertEqual(modificationNode.type, "InsertNode");
+      assertEqual(distributeNode.variable.id, modificationNode.inVariable.id);
     },
     
     testInsertsDistributeInputCalculationForUpsert : function () {
       const query = "FOR k IN  ['1','2','3'] UPSERT {_key: k} INSERT { miau: 42 } UPDATE { } IN  " + cn1;
-      const explainer = require("@arangodb/aql/explainer");
-      const output = explainer.explain(query, {...thisRuleEnabled, colors: false}, false);
-      const distributeVar = output.match(/LET #([0-9]+) = MAKE_DISTRIBUTE_INPUT_WITH_KEY_CREATION/);
-      const inputVar = output.match(/LET #([0-9]+) = \{ \"miau\" : 42 \}/);
-      assertTrue(distributeVar);
-      assertTrue(inputVar);
-      assertTrue(output.includes(`MAKE_DISTRIBUTE_INPUT_WITH_KEY_CREATION($OLD, #${inputVar[1]}, { "allowSpecifiedKeys" : true, "ignoreErrors" : false, "projectOnlyId" : false, "collection" : "${cn1}" })`));
-      assertTrue(output.includes(`DISTRIBUTE #${distributeVar[1]}`));
-      assertTrue(output.includes(`UPSERT $OLD INSERT #${distributeVar[1]} UPDATE`));
+
+      const plan = db._createStatement({query: query, options: thisRuleEnabled}).explain().plan;
+      const [distributeNode, modificationNode] = plan.nodes.filter(node => ["DistributeNode", "UpsertNode"].includes(node.type));
+      assertEqual(distributeNode.type, "DistributeNode");
+      assertEqual(modificationNode.type, "UpsertNode");
+      assertEqual(distributeNode.variable.id, modificationNode.insertVariable.id);
     },
   };
 }
