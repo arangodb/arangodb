@@ -28,12 +28,11 @@
 
 'use strict';
 
-const expect = require('chai').expect;
+const jsunity = require("jsunity");
+const {assertEqual, assertTrue, assertFalse, assertNotEqual, assertNotUndefined} = jsunity.jsUnity.assertions;
 const users = require('@arangodb/users');
 const helper = require('@arangodb/testutils/user-helper');
 const tasks = require('@arangodb/tasks');
-const pu = require('@arangodb/testutils/process-utils');
-const download = require('internal').download;
 const graphModule = require('@arangodb/general-graph');
 const namePrefix = helper.namePrefix;
 const dbName = helper.dbName;
@@ -52,6 +51,7 @@ const colLevel = helper.colLevel;
 const arango = require('internal').arango;
 let connectionHandle = arango.getConnectionHandle();
 const db = require('internal').db;
+
 for (let l of rightLevels) {
   systemLevel[l] = new Set();
   dbLevel[l] = new Set();
@@ -66,7 +66,7 @@ const wait = (keySpaceId, key) => {
 };
 
 const createKeySpace = (keySpaceId) => {
-  return executeJS(`return global.KEYSPACE_CREATE('${keySpaceId}', 128, true);`).body === 'true';
+  return executeJS(`return global.KEYSPACE_CREATE('${keySpaceId}', 128, true);`).parsedBody === true;
 };
 
 const setKeySpace = (keySpaceId, name) => {
@@ -78,20 +78,11 @@ const dropKeySpace = (keySpaceId) => {
 };
 
 const getKey = (keySpaceId, key) => {
-  return executeJS(`return global.KEY_GET('${keySpaceId}', '${key}');`).body === 'true';
+  return executeJS(`return global.KEY_GET('${keySpaceId}', '${key}');`).parsedBody === true;
 };
 
 const executeJS = (code) => {
-  let httpOptions = pu.makeAuthorizationHeaders({
-    username: 'root',
-    password: ''
-  }, {});
-  httpOptions.method = 'POST';
-  httpOptions.timeout = 1800;
-  httpOptions.returnBodyOnError = true;
-  return download(arango.getEndpoint().replace('tcp', 'http') + `/_db/${dbName}/_admin/execute?returnAsJSON=true`,
-    code,
-    httpOptions);
+  return arango.POST_RAW('/_admin/execute', code);
 };
 
 helper.switchUser('root', '_system');
@@ -101,15 +92,15 @@ helper.generateAllUsers();
 describe('User Rights Management', () => {
   it('should check if all users are created', () => {
     helper.switchUser('root', '_system');
-    expect(userSet.size).to.be.greaterThan(0); 
-    expect(userSet.size).to.equal(helper.userCount);
+    assertTrue(userSet.size > 0); 
+    assertEqual(userSet.size, helper.userCount);
     for (let name of userSet) {
-      expect(users.document(name), `Could not find user: ${name}`).to.not.be.undefined;
+      assertNotUndefined(users.document(name), `Could not find user: ${name}`);
     }
   });
 
   it('should test rights for', () => {
-    expect(userSet.size).to.be.greaterThan(0); 
+    assertTrue(userSet.size > 0);
     for (let name of userSet) {
       let canUse = false;
       try {
@@ -123,7 +114,7 @@ describe('User Rights Management', () => {
         describe(`user ${name}`, () => {
           before(() => {
             helper.switchUser(name, dbName);
-            expect(createKeySpace(keySpaceId)).to.equal(true, 'keySpace creation failed!');
+            assertTrue(createKeySpace(keySpaceId), 'keySpace creation failed!');
           });
 
           after(() => {
@@ -199,7 +190,7 @@ describe('User Rights Management', () => {
               });
 
               it('graph', () => {
-                expect(!rootTestGraph()).to.equal(false, 'Precondition failed, the graph still not exists');
+                assertTrue(rootTestGraph(), 'Precondition failed, the graph still not exists');
                 setKeySpace(keySpaceId, name);
                 const taskId = 'task_create_graph_' + name;
                 const task = {
@@ -217,18 +208,18 @@ describe('User Rights Management', () => {
                   tasks.register(task);
                   wait(keySpaceId, name);
                   if (colLevel['rw'].has(name)) {
-                    expect(!rootTestGraph()).to.equal(true, 'Graph drop reported success, but graph was found afterwards.');
-                    expect(!rootTestCollection(testEdgeColName)).to.equal(true, 'Graph drop reported success, but edge collection was found afterwards.');
-                    expect(!rootTestCollection(testVertexColName)).to.equal(true, 'Graph drop reported success, but vertex collection was found afterwards.');
+                    assertFalse(rootTestGraph(), 'Graph drop reported success, but graph was found afterwards.');
+                    assertFalse(rootTestCollection(testEdgeColName), 'Graph drop reported success, but edge collection was found afterwards.');
+                    assertFalse(rootTestCollection(testVertexColName), 'Graph drop reported success, but vertex collection was found afterwards.');
                   } else {
-                    expect(!rootTestGraph()).to.equal(false, `${name} was able to drop a graph with insufficent rights`);
+                    assertTrue(rootTestGraph(), `${name} was able to drop a graph with insufficent rights`);
                   }
                 } else {
                   try {
                     tasks.register(task);
-                    expect(false).to.equal(true, `${name} managed to register a task with insufficient rights`);
+                    assertFalse(true, `${name} managed to register a task with insufficient rights`);
                   } catch (e) {
-                    expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code);
+                    assertEqual(e.errorNum, errors.ERROR_FORBIDDEN.code);
                   }
                 }
               });
@@ -248,9 +239,9 @@ describe('User Rights Management', () => {
               });
 
               it('graph with specified collection access', () => {
-                expect(rootTestGraph()).to.equal(true, 'Precondition failed, the graph still not exists');
-                expect(rootTestCollection(testEdgeColName)).to.equal(true, 'Precondition failed, the edge collection still not exists');
-                expect(rootTestCollection(testVertexColName)).to.equal(true, 'Precondition failed, the vertex collection still not exists');
+                assertTrue(rootTestGraph(), 'Precondition failed, the graph still not exists');
+                assertTrue(rootTestCollection(testEdgeColName), 'Precondition failed, the edge collection still not exists');
+                assertTrue(rootTestCollection(testVertexColName), 'Precondition failed, the vertex collection still not exists');
                 setKeySpace(keySpaceId, name + '_specified_collection_access');
                 const taskId = 'task_create_graph_specified_collection_access' + name;
                 const task = {
@@ -268,18 +259,18 @@ describe('User Rights Management', () => {
                   tasks.register(task);
                   wait(keySpaceId, `${name}_specified_collection_access`);
                   if (colLevel['rw'].has(name)) {
-                    expect(!rootTestGraph()).to.equal(true, 'Graph drop reported success, but graph was found afterwards.');
-                    expect(!rootTestCollection(testEdgeColName)).to.equal(true, 'Graph drop reported success, but edge collection was found afterwards.');
-                    expect(!rootTestCollection(testVertexColName)).to.equal(true, 'Graph drop reported success, but vertex collection was found afterwards.');
+                    assertFalse(rootTestGraph(), 'Graph drop reported success, but graph was found afterwards.');
+                    assertFalse(rootTestCollection(testEdgeColName), 'Graph drop reported success, but edge collection was found afterwards.');
+                    assertFalse(rootTestCollection(testVertexColName), 'Graph drop reported success, but vertex collection was found afterwards.');
                   } else {
-                    expect(!rootTestGraph()).to.equal(false, `${name} was able to drop a graph with insufficent rights`);
+                    assertTrue(rootTestGraph(), `${name} was able to drop a graph with insufficent rights`);
                   }
                 } else {
                   try {
                     tasks.register(task);
-                    expect(false).to.equal(true, `${name} managed to register a task with insufficient rights`);
+                    assertFalse(true, `${name} managed to register a task with insufficient rights`);
                   } catch (e) {
-                    expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code);
+                    assertEqual(e.errorNum, errors.ERROR_FORBIDDEN.code);
                   }
                 }
               });

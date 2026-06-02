@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertTrue, assertEqual */
+/*global */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -26,19 +26,17 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
+const {assertEqual, assertTrue, assertFalse, assertNotEqual} = jsunity.jsUnity.assertions;
 const arango = require("@arangodb").arango;
 const db = require("internal").db;
 const users = require("@arangodb/users");
+let IM = global.instanceManager;
 
 function AuthSuite() {
   'use strict';
-  let baseUrl = function () {
-    return arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:');
-  };
-
   const user1 = 'hackers@arango.ai';
   const user2 = 'noone@arango.ai';
-      
+
   let checkStatistics = function() {
     let result = arango.GET('/_admin/aardvark/statistics/coordshort');
     assertTrue(result.enabled);
@@ -47,7 +45,7 @@ function AuthSuite() {
   return {
 
     setUpAll: function () {
-      arango.reconnect(arango.getEndpoint(), '_system', "root", "");
+      IM.rememberConnection();
 
       try {
         users.remove(user1);
@@ -74,7 +72,7 @@ function AuthSuite() {
     },
 
     tearDownAll: function () {
-      arango.reconnect(arango.getEndpoint(), '_system', "root", "");
+      IM.reconnectMe();
       try {
         users.remove(user1);
       } catch (err) {
@@ -89,27 +87,27 @@ function AuthSuite() {
       } catch (err) {
       }
     },
-    
+
     testStatisticsSystemDBRoot: function () {
-      arango.reconnect(arango.getEndpoint(), '_system', 'root', '');
+      IM.reconnectMe();
       checkStatistics();
     },
-    
+
     testStatisticsOtherDBRoot: function () {
-      arango.reconnect(arango.getEndpoint(), 'UnitTestsDatabase', 'root', '');
+      arango.reconnect(IM.endpoint, 'UnitTestsDatabase', 'root', '');
       checkStatistics();
     },
-    
+
     testStatisticsOtherDBRW: function () {
-      arango.reconnect(arango.getEndpoint(), 'UnitTestsDatabase', user1, "foobar");
+      arango.reconnect(IM.endpoint, 'UnitTestsDatabase', user1, "foobar");
       checkStatistics();
     },
-    
+
     testStatisticsOtherDBRO: function () {
-      arango.reconnect(arango.getEndpoint(), 'UnitTestsDatabase', user2, "foobar");
+      arango.reconnect(IM.endpoint, 'UnitTestsDatabase', user2, "foobar");
       checkStatistics();
     },
-    
+
   };
 }
 

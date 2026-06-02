@@ -27,12 +27,11 @@
 
 'use strict';
 
-const expect = require('chai').expect;
+const jsunity = require("jsunity");
+const {assertEqual, assertTrue, assertFalse, assertNotEqual, assertNotUndefined} = jsunity.jsUnity.assertions;
 const users = require('@arangodb/users');
 const helper = require('@arangodb/testutils/user-helper');
 const tasks = require('@arangodb/tasks');
-const pu = require('@arangodb/testutils/process-utils');
-const download = require('internal').download;
 const errors = require('@arangodb').errors;
 const db = require('@arangodb').db;
 const namePrefix = helper.namePrefix;
@@ -40,7 +39,6 @@ const dbName = helper.dbName;
 const rightLevels = helper.rightLevels;
 const testView1Name = `${namePrefix}View1New`;
 const testView2Name = `${namePrefix}View2New`;
-const testViewType = "arangosearch";
 const testCol1Name = `${namePrefix}Col1New`;
 const testCol2Name = `${namePrefix}Col2New`;
 const indexName = `${namePrefix}Inverted`;
@@ -54,7 +52,7 @@ const colLevel = helper.colLevel;
 
 const arango = require('internal').arango;
 let connectionHandle = arango.getConnectionHandle();
-const tmp = require('internal');
+
 for (let l of rightLevels) {
   systemLevel[l] = new Set();
   dbLevel[l] = new Set();
@@ -71,7 +69,7 @@ const wait = (keySpaceId, key) => {
 };
 
 const createKeySpace = (keySpaceId) => {
-  return executeJS(`return global.KEYSPACE_CREATE('${keySpaceId}', 128, true);`).body === 'true';
+  return executeJS(`return global.KEYSPACE_CREATE('${keySpaceId}', 128, true);`).parsedBody === true;
 };
 
 const dropKeySpace = (keySpaceId) => {
@@ -79,12 +77,12 @@ const dropKeySpace = (keySpaceId) => {
 };
 
 const getKey = (keySpaceId, key) => {
-  return executeJS(`return global.KEY_GET('${keySpaceId}', '${key}');`).body === 'true';
+  return executeJS(`return global.KEY_GET('${keySpaceId}', '${key}');`).parsedBody === true;
 };
 
 const getNumericKey = (keySpaceId, key, defaultValue = 0) => {
   try {
-    return parseInt(executeJS(`return global.KEY_GET('${keySpaceId}', '${key}');`).body);
+    return parseInt(executeJS(`return global.KEY_GET('${keySpaceId}', '${key}');`).parsedBody);
   } catch(e) {
     return defaultValue;
   }
@@ -95,16 +93,7 @@ const setKey = (keySpaceId, name) => {
 };
 
 const executeJS = (code) => {
-  let httpOptions = pu.makeAuthorizationHeaders({
-    username: 'root',
-    password: ''
-  }, {});
-  httpOptions.method = 'POST';
-  httpOptions.timeout = 1800;
-  httpOptions.returnBodyOnError = true;
-  return download(arango.getEndpoint().replace('tcp', 'http') + `/_db/${dbName}/_admin/execute?returnAsJSON=true`,
-    code,
-    httpOptions);
+  return arango.POST_RAW('/_admin/execute', code);
 };
 
 helper.switchUser('root', '_system');
@@ -114,15 +103,15 @@ helper.generateAllUsers();
 describe('User Rights Management', () => {
   it('should check if all users are created', () => {
     helper.switchUser('root', '_system');
-    expect(userSet.size).to.be.greaterThan(0); 
-    expect(userSet.size).to.equal(helper.userCount);
+    assertTrue(userSet.size > 0); 
+    assertEqual(userSet.size, helper.userCount);
     for (let name of userSet) {
-      expect(users.document(name), `Could not find user: ${name}`).to.not.be.undefined;
+      assertNotUndefined(users.document(name), `Could not find user: ${name}`);
     }
   });
 
   it('should test rights for', () => {
-    expect(userSet.size).to.be.greaterThan(0);
+    assertTrue(userSet.size > 0);
     for (let testViewType of ["arangosearch", "search-alias"]) {
       describe(`view type ${testViewType}`, () => {
         for (let name of userSet) {
@@ -138,7 +127,7 @@ describe('User Rights Management', () => {
             describe(`user ${name}`, () => {
               before(() => {
                 helper.switchUser(name, dbName);
-                expect(createKeySpace(keySpaceId)).to.equal(true, 'keySpace creation failed!');
+                assertTrue(createKeySpace(keySpaceId), 'keySpace creation failed!');
               });
 
               after(() => {
@@ -264,8 +253,8 @@ describe('User Rights Management', () => {
                 };
 
                 const checkError = (e) => {
-                  expect(e.code).to.equal(403, "Expected to get forbidden REST error code, but got another one");
-                  expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code, "Expected to get forbidden error number, but got another one");
+                  assertEqual(e.code, 403, "Expected to get forbidden REST error code, but got another one");
+                  assertEqual(e.errorNum, errors.ERROR_FORBIDDEN.code, "Expected to get forbidden error number, but got another one");
                 };
 
                 describe('read a view', () => {
@@ -276,7 +265,7 @@ describe('User Rights Management', () => {
                   const key = `${testViewType}_${name}`;
 
                   it('by AQL with link to single collection', () => {
-                    expect(rootTestView(testView1Name)).to.equal(true, 'Precondition failed, the view doesn\'t exist');
+                    assertTrue(rootTestView(testView1Name), 'Precondition failed, the view doesn\'t exist');
                     setKey(keySpaceId, key);
                     const taskId = 'task_read_view_single_collection_' + key;
                     const task = {
@@ -300,13 +289,13 @@ describe('User Rights Management', () => {
                       if (colLevel['rw'].has(name) || colLevel['ro'].has(name)) {
                         tasks.register(task);
                         wait(keySpaceId, key);
-                        expect(getKey(keySpaceId, `${key}_status`)).to.equal(true, `${name} could not read the view with sufficient rights`);
+                        assertTrue(getKey(keySpaceId, `${key}_status`), `${name} could not read the view with sufficient rights`);
                         //FIXME: issue #429 (https://github.com/arangodb/backlog/issues/429)
-                        //expect(getNumericKey(keySpaceId, `${name}_length`)).to.equal(testNumDocs, 'View read failed');
+                        //assertEqual(getNumericKey(keySpaceId, `${name}_length`), testNumDocs, 'View read failed');
                       } else {
                         tasks.register(task);
                         wait(keySpaceId, key);
-                        expect(getKey(keySpaceId, `${key}_status`)).to.not.equal(true, `${name} managed to read the view with insufficient rights`);
+                        assertFalse(getKey(keySpaceId, `${key}_status`), `${name} managed to read the view with insufficient rights`);
                       }
                     } else {
                       try {
@@ -316,15 +305,15 @@ describe('User Rights Management', () => {
                         checkError(e);
                         return;
                       } finally {
-                        expect(getKey(keySpaceId, `${key}_status`)).to.equal(false, `${name} could read the view with insufficient rights`);
+                        assertFalse(getKey(keySpaceId, `${key}_status`), `${name} could read the view with insufficient rights`);
                       }
-                      expect(false).to.equal(true, `${key} managed to register a task with insufficient rights`);
+                      assertFalse(true, `${key} managed to register a task with insufficient rights`);
                     }
                   });
 
                   if (testViewType === 'arangosearch') {
                     it('by AQL with links to multiple collections with same access level', () => {
-                      expect(rootTestView(testView2Name)).to.equal(true, 'Precondition failed, the view doesn\'t exist');
+                      assertTrue(rootTestView(testView2Name), 'Precondition failed, the view doesn\'t exist');
                       setKey(keySpaceId, key);
                       const taskId = 'task_read_view_multi_collections_same_access_' + key;
                       const task = {
@@ -348,13 +337,13 @@ describe('User Rights Management', () => {
                         if (colLevel['rw'].has(name) || colLevel['ro'].has(name)) {
                           tasks.register(task);
                           wait(keySpaceId, key);
-                          expect(getKey(keySpaceId, `${key}_status`)).to.equal(true, `${name} could not read the view with sufficient rights`);
+                          assertTrue(getKey(keySpaceId, `${key}_status`), `${name} could not read the view with sufficient rights`);
                           //FIXME: issue #429 (https://github.com/arangodb/backlog/issues/429)
-                          //expect(getNumericKey(keySpaceId, `${name}_length`)).to.equal(testNumDocs*2, 'View read failed');
+                          //assertEqual(getNumericKey(keySpaceId, `${name}_length`), testNumDocs*2, 'View read failed');
                         } else {
                           tasks.register(task);
                           wait(keySpaceId, key);
-                          expect(getKey(keySpaceId, `${key}_status`)).to.equal(false, `${name} managed to read the view with insufficient rights`);
+                          assertFalse(getKey(keySpaceId, `${key}_status`), `${name} managed to read the view with insufficient rights`);
                         }
                       } else {
                         try {
@@ -364,9 +353,9 @@ describe('User Rights Management', () => {
                           checkError(e);
                           return;
                         } finally {
-                          expect(getKey(keySpaceId, `${key}_status`)).to.equal(false, `${name} managed to read the view with insufficient rights`);
+                          assertFalse(getKey(keySpaceId, `${key}_status`), `${name} managed to read the view with insufficient rights`);
                         }
-                        expect(false).to.equal(true, `${key} managed to register a task with insufficient rights`);
+                        assertFalse(true, `${key} managed to register a task with insufficient rights`);
                       }
                     });
 
@@ -375,7 +364,7 @@ describe('User Rights Management', () => {
                       describe(descName, () => {
                         before(() => {
                           rootGrantCollection(testCol2Name, name, 'none');
-                          expect(rootTestView(testView2Name)).to.equal(true, 'Precondition failed, the view doesn\'t exist');
+                          assertTrue(rootTestView(testView2Name), 'Precondition failed, the view doesn\'t exist');
                         });
 
                         it('by AQL query (data)', () => {
@@ -400,7 +389,7 @@ describe('User Rights Management', () => {
                           if (dbLevel['rw'].has(name)) {
                             tasks.register(task);
                             wait(keySpaceId, key);
-                            expect(getKey(keySpaceId, `${key}_status`)).to.equal(false, `${name} managed to perform a query on view with insufficient rights`);
+                            assertFalse(getKey(keySpaceId, `${key}_status`), `${name} managed to perform a query on view with insufficient rights`);
                           } else {
                             try {
                               tasks.register(task);
@@ -409,9 +398,9 @@ describe('User Rights Management', () => {
                               checkError(e);
                               return;
                             } finally {
-                              expect(getKey(keySpaceId, `${key}_status`)).to.equal(false, `${name} managed to read the view with insufficient rights`);
+                              assertFalse(getKey(keySpaceId, `${key}_status`), `${name} managed to read the view with insufficient rights`);
                             }
-                            expect(false).to.equal(true, `${name} managed to register a task with insufficient rights`);
+                            assertFalse(true, `${name} managed to register a task with insufficient rights`);
                           }
                         });
                         it('by its properties', () => {
@@ -435,7 +424,7 @@ describe('User Rights Management', () => {
                           if (dbLevel['rw'].has(name)) {
                             tasks.register(task);
                             wait(keySpaceId, key);
-                            expect(getKey(keySpaceId, `${key}_status`)).to.not.equal(true, `${name} managed to get a view properties with insufficient rights`);
+                            assertFalse(getKey(keySpaceId, `${key}_status`), `${name} managed to get a view properties with insufficient rights`);
                           } else {
                             try {
                               tasks.register(task);
@@ -444,9 +433,9 @@ describe('User Rights Management', () => {
                               checkError(e);
                               return;
                             } finally {
-                              expect(getKey(keySpaceId, `${key}_status`)).to.equal(false, `${name} managed to get the view properties with insufficient rights`);
+                              assertFalse(getKey(keySpaceId, `${key}_status`), `${name} managed to get the view properties with insufficient rights`);
                             }
-                            expect(false).to.equal(true, `${key} managed to register a task with insufficient rights`);
+                            assertFalse(true, `${key} managed to register a task with insufficient rights`);
                           }
                         });
                       });
