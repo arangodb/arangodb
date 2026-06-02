@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, assertEqual, assertTrue, arango, runSetup */
+/* global getOptions, runSetup */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -24,9 +24,12 @@
 /// @author Jan Steemann
 /// @author Copyright 2019, ArangoDB Inc, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
-
+const jsunity = require("jsunity");
+const {assertEqual, assertTrue, assertFalse, assertNotEqual} = jsunity.jsUnity.assertions;
 const crypto = require('@arangodb/crypto');
 const request = require('@arangodb/request');
+const users = require("@arangodb/users");
+let IM = global.instanceManager;
 
 const jwtSecret = 'abc123';
 
@@ -51,15 +54,7 @@ if (runSetup === true) {
   return true;
 }
 
-const jsunity = require('jsunity');
-
 function testSuite() {
-  let endpoint = arango.getEndpoint();
-
-  let baseUrl = function () {
-    return endpoint.replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:');
-  };
-
   const jwt = crypto.jwtEncode(jwtSecret, {
     "server_id": "ABCD",
     "iss": "arangodb", "exp": Math.floor(Date.now() / 1000) + 3600
@@ -68,7 +63,7 @@ function testSuite() {
   return {
     testApiGetRw : function() {
       let res = request.get({
-        url: baseUrl() + "/_admin/support-info",
+        url: IM.url + "/_admin/support-info",
         auth: {
           username: "test_rw",
           password: "testi"
@@ -77,10 +72,10 @@ function testSuite() {
       assertEqual(200, res.status);
       assertTrue(res.json.hasOwnProperty("deployment"));
     },
-    
+
     testApiGetRo : function() {
       let res = request.get({
-        url: baseUrl() + "/_admin/support-info",
+        url: IM.url + "/_admin/support-info",
         auth: {
           username: "test_ro",
           password: "testi"
@@ -91,7 +86,7 @@ function testSuite() {
 
     testApiGetJwt : function() {
       let res = request.get({
-        url: baseUrl() + "/_admin/support-info",
+        url: IM.url + "/_admin/support-info",
         auth: {
           bearer: jwt,
         }

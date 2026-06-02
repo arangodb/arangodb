@@ -30,7 +30,6 @@ const fs = require('fs');
 const internal = require('internal');
 
 const wait = require("internal").wait;
-const continueExternal = require("internal").continueExternal;
 const {
   getDBServers
 } = require("@arangodb/test-helper");

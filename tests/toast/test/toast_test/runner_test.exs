@@ -154,6 +154,110 @@ defmodule ToastTest.RunnerTest do
     # verifying the structure returned by run_suites.
   end
 
+  describe "suite mode exclusion" do
+    test "cluster-only suite is excluded when running in single_server mode" do
+      defmodule ClusterOnlySuite do
+        use ToastTest.Suite, mode: :cluster
+      end
+
+      defmodule ClusterOnlyTest do
+        use ExUnit.Case, async: false
+        test "a cluster test" do
+          :ok
+        end
+      end
+
+      config = ToastTest.Config.new(deployment_mode: :single_server)
+
+      result =
+        Runner.run_suites(
+          [{ClusterOnlySuite, [ClusterOnlyTest], [], "cluster_only"}],
+          config,
+          []
+        )
+
+      assert result.stats.excluded > 0
+      assert result.stats.failures == 0
+    end
+
+    test "single_server-only suite is excluded when running in cluster mode" do
+      defmodule SingleOnlySuite do
+        use ToastTest.Suite, mode: :single_server
+      end
+
+      defmodule SingleOnlyTest do
+        use ExUnit.Case, async: false
+        test "a single server test" do
+          :ok
+        end
+      end
+
+      config = ToastTest.Config.new(deployment_mode: :cluster)
+
+      result =
+        Runner.run_suites(
+          [{SingleOnlySuite, [SingleOnlyTest], [], "single_only"}],
+          config,
+          []
+        )
+
+      assert result.stats.excluded > 0
+      assert result.stats.failures == 0
+    end
+
+    test "manual suite runs regardless of deployment mode" do
+      defmodule ManualSuite do
+        use ToastTest.Suite, mode: :manual
+      end
+
+      defmodule ManualTest do
+        use ExUnit.Case, async: false
+        test "a manual test" do
+          :ok
+        end
+      end
+
+      config = ToastTest.Config.new(deployment_mode: :single_server)
+
+      result =
+        Runner.run_suites(
+          [{ManualSuite, [ManualTest], [], "manual"}],
+          config,
+          []
+        )
+
+      assert result.stats.excluded == 0
+      assert result.stats.total > 0
+    end
+
+    test "auto suite runs regardless of deployment mode" do
+      defmodule AutoSuite do
+        use ToastTest.Suite
+      end
+
+      defmodule AutoTest do
+        use ExUnit.Case, async: false
+        test "an auto test" do
+          :ok
+        end
+      end
+
+      # auto mode needs a deployment, which will fail without a real server,
+      # but the suite should not be excluded — it should attempt to run
+      config = ToastTest.Config.new(deployment_mode: :cluster)
+
+      result =
+        Runner.run_suites(
+          [{AutoSuite, [AutoTest], [], "auto"}],
+          config,
+          []
+        )
+
+      # Should not be excluded (will fail at deployment, but that's expected)
+      assert result.stats.excluded == 0
+    end
+  end
+
   describe "suite abort isolation" do
     # The runner clears abort state between suites via cleanup_between_suites.
     # This tests the mechanism that ensures one suite's abort does not leak.

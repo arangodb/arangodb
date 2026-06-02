@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 200 */
-/* global getOptions, fail, arango, assertEqual, assertFalse, assertTrue, assertMatch */
+/* global getOptions, fail */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -26,10 +26,11 @@
 
 'use strict';
 const jsunity = require('jsunity');
+const {assertEqual, assertTrue, assertFalse, assertNotEqual, assertMatch} = jsunity.jsUnity.assertions;
 const arangodb = require('@arangodb');
+const arango = arangodb.arango;
 const db = arangodb.db;
 const crypto = require('@arangodb/crypto');
-const request = require("@arangodb/request");
 
 const jwtSecret = 'haxxmann';
 
@@ -50,10 +51,6 @@ const start = (new Date()).toISOString();
 function RegistrySuite() { 
   const cn = "UnitTests";
   
-  const baseUrl = function () {
-    return arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:');
-  };
-
   return {
     setUpAll: function () {
       let c = db._create(cn, {numberOfShards: 1, replicationFactor: 1});
@@ -76,13 +73,10 @@ function RegistrySuite() {
       let query = db._createStatement({ query: qs, options: { stream: true, optimizer: { rules: ["-async-prefetch"] } } }).execute();
 
       try {
-        let result = request.get({
-          url: baseUrl() + "/_api/query/registry",
-          auth: {
-            bearer: jwt,
-          }
-        }).json.queries;
-         
+        let result = arango.GET(
+          "/_api/query/registry",
+          {auth: { bearer: jwt }}).queries;
+
         assertTrue(Array.isArray(result));
 
         let q = result.filter((q) => q.queryString === qs);

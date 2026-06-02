@@ -34,8 +34,6 @@
   const ERRORS = arangodb.errors;
   const _ = require("lodash");
   const wait = require("internal").wait;
-  const suspendExternal = require("internal").suspendExternal;
-  const continueExternal = require("internal").continueExternal;
   const CI = require('@arangodb/cluster-info');
   const {
     getEndpointById,

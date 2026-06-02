@@ -28,31 +28,32 @@
 'use strict';
 
 const jsunity = require("jsunity");
+const {assertEqual, assertTrue, assertFalse, assertNotEqual} = jsunity.jsUnity.assertions;
+const arango = require('@arangodb').arango;
 const _ = require("lodash");
 const { getDBServers, getAgents } = require('@arangodb/test-helper');
+let IM = global.instanceManager;
 
 function headersClusterSuite () {
   'use strict';
 
-  const originalEndpoint = arango.getEndpoint();
-  
   return {
     setUpAll: function() {
-      arango.reconnect(originalEndpoint, "_system", arango.connectedUser(), "");
+      arango.reconnect(IM.endpoint, "_system", arango.connectedUser(), "");
     },
 
     tearDownAll: function() {
-      arango.reconnect(originalEndpoint, "_system", arango.connectedUser(), "");
+      arango.reconnect(IM.endpoint, "_system", arango.connectedUser(), "");
     },
 
     setUp: function() {
-      arango.reconnect(originalEndpoint, "_system", arango.connectedUser(), "");
+      arango.reconnect(IM.endpoint, "_system", arango.connectedUser(), "");
     },
 
     tearDown: function() {
-      arango.reconnect(originalEndpoint, "_system", arango.connectedUser(), "");
+      arango.reconnect(IM.endpoint, "_system", arango.connectedUser(), "");
     },
-    
+
     // test executing request on the coordinator
     testCoordinator: function() {
       let result = arango.GET_RAW("/_api/version");

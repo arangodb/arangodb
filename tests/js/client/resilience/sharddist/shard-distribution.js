@@ -25,26 +25,22 @@
 'use strict';
 
 const jsunity = require("jsunity");
+const {assertEqual, assertTrue, assertFalse, assertNotEqual} = jsunity.jsUnity.assertions;
+const arango = require("@arangodb").arango;
+const db = require("@arangodb").db;
 const { deriveTestSuite} = require('@arangodb/test-helper-common');
 const CI = require('@arangodb/cluster-info');
 const {
-  getCoordinatorEndpoints, 
   getDBServerEndpoints, 
   getDBServers
 } = require('@arangodb/test-helper');
 const expect = require('chai').expect;
 const assert = require('chai').assert;
-const internal = require('internal');
 const colName = "UnitTestDistributionTest";
 const _ = require("lodash");
 const wait = require("internal").wait;
 const waitFor = require("@arangodb/testutils/replicated-logs-helper").waitFor;
-const request = require('@arangodb/request');
-const endpointToURL = require("internal").endpointToURL;
-const coordinatorName = "Coordinator0001";
 const dbname = "shardDistDB";
-
-let coordinator = getCoordinatorEndpoints()[0];
 
 let dbServerCount = getDBServerEndpoints().length;
 
@@ -62,12 +58,14 @@ function ShardDistributionTest({replVersion}) {
       if (++count >= 300) {
         throw "Did not find " + dbServerCount + " dbServers within 5 mins.";
       }
-      let health = JSON.parse(request.get(coordinator + '/_admin/cluster/health').body);
+      let res = arango.GET('/_admin/cluster/health');
+      assertTrue(res.Health);
+      let health = res.Health;
       let serverCount = 0;
-      let serverIds = Object.keys(health.Health);
+      let serverIds = Object.keys(health);
       for (let i = 0; i < serverIds.length; ++i) {
         if (serverIds[i].slice(0, 4) === "PRMR" &&
-            health.Health[serverIds[i]].Status === "GOOD") {
+            health[serverIds[i]].Status === "GOOD") {
           serverCount += 1;
         }
       }
@@ -76,17 +74,18 @@ function ShardDistributionTest({replVersion}) {
       }
       require("internal").wait(1);
     }
-    internal.db._create(colName, {replicationFactor: dbServerCount, numberOfShards: nrShards});
-    var d = request.get(coordinator + '/_db/' + dbname + '/_admin/cluster/shardDistribution');
-    distribution = JSON.parse(d.body).results[colName];
-    assert.isObject(distribution, 'The distribution for each collection has to be an object');
+    db._create(colName, {replicationFactor: dbServerCount, numberOfShards: nrShards});
+    let res = arango.GET('/_admin/cluster/shardDistribution');
+    assertTrue(res.results);
+    assertTrue(res.results[colName]);
+    distribution = res.results[colName];
   }
 
   const followCollection = 'UnitTestDistributionFollower';
   const numberOfShards = 12;
 
   const cleanUp = function () {
-    internal.db._drop(followCollection);
+    db._drop(followCollection);
   };
 
   const shardNumber = function (shard) {
@@ -103,8 +102,9 @@ function ShardDistributionTest({replVersion}) {
   };
 
   const compareDistributions = function () {
-    let all = request.get(coordinator + '/_db/' + dbname + '/_admin/cluster/shardDistribution');
-    let dist = JSON.parse(all.body).results;
+    let res = arango.GET('/_admin/cluster/shardDistribution');
+    assertTrue(res.results);
+    let dist = res.results;
 
     const origPlan = dist[colName].Plan;
     const folPlan = dist[followCollection].Plan;
@@ -119,8 +119,9 @@ function ShardDistributionTest({replVersion}) {
       // For replication2, shards are reported to Current as they are created.
       // We have to wait until all shards are created before we can compare the distributions.
       waitFor(() => {
-        all = request.get(coordinator + '/_db/' + dbname + '/_admin/cluster/shardDistribution');
-        dist = JSON.parse(all.body).results;
+        res = arango.GET('/_admin/cluster/shardDistribution');
+        assertTrue(res.results);
+        let dist = res.results;
 
         origCur = dist[colName].Current;
         folCur = dist[followCollection].Current;
@@ -155,15 +156,9 @@ function ShardDistributionTest({replVersion}) {
   ////////////////////////////////////////////////////////////////////////////////
 
   const cleanOutServer = function (id) {
-    const url = getCoordinatorEndpoints()[0];
-
     var body = {"server": id};
     try {
-      return request({
-        method: "POST",
-        url: url + "/_admin/cluster/cleanOutServer",
-        body: JSON.stringify(body)
-      });
+      return arango.POST("/_admin/cluster/cleanOutServer", body).error;
     } catch (err) {
       console.error(
           "Exception for POST /_admin/cluster/cleanOutServer:", err.stack);
@@ -172,16 +167,12 @@ function ShardDistributionTest({replVersion}) {
   };
 
   const getCleanedOutServers = function () {
-    const url = getCoordinatorEndpoints()[0];
-
     try {
-      const envelope =
-          {method: "GET", url: url + "/_admin/cluster/numberOfServers"};
-      let res = request(envelope);
-      if (res.statusCode !== 200) {
+      let res = arango.GET('/_admin/cluster/numberOfServers');
+      if (res.code !== 200) {
         return {cleanedServers: []};
       }
-      var body = res.body;
+      var body = res;
       if (typeof body === "string") {
         body = JSON.parse(body);
       }
@@ -193,7 +184,7 @@ function ShardDistributionTest({replVersion}) {
       return body;
     } catch (err) {
       console.error(
-          "Exception for POST /_admin/cluster/cleanOutServer:", err.stack);
+          "Exception for GET /_admin/cluster/numberOfServers:", err.stack);
       return {cleanedServers: []};
     }
   };
@@ -248,27 +239,28 @@ function ShardDistributionTest({replVersion}) {
 
   return {
     setUpAll: function () {
-      internal.db._createDatabase(dbname, {replicationVersion: replVersion});
-      internal.db._useDatabase(dbname);
-      internal.db._drop(colName);
+      db._createDatabase(dbname, {replicationVersion: replVersion});
+      db._useDatabase(dbname);
+      db._drop(colName);
       if (replVersion !== "2") {
         waitForClusterHealth();
       }
     },
     tearDownAll: function () {
-      internal.db._useDatabase("_system");
-      internal.db._dropDatabase(dbname);
+      db._useDatabase("_system");
+      db._dropDatabase(dbname);
     },
     tearDown: function () {
       cleanUp();
-      internal.db._drop(colName);
+      db._drop(colName);
     },
 
     testProperlyDistributeShards: function () {
-      internal.db._drop(colName);
-      internal.db._create(colName, {replicationFactor: 2, numberOfShards: 16});
-      var d = request.get(coordinator + '/_db/' + dbname + '/_admin/cluster/shardDistribution');
-      let distribution = JSON.parse(d.body).results;
+      db._drop(colName);
+      db._create(colName, {replicationFactor: 2, numberOfShards: 16});
+      let res = arango.GET('/_admin/cluster/shardDistribution');
+      assertTrue(res.results);
+      let distribution = res.results;
 
       let leaders = Object.keys(distribution[colName].Current).reduce((current, shardKey) => {
         let shard = distribution[colName].Current[shardKey];
@@ -353,30 +345,30 @@ function ShardDistributionTest({replVersion}) {
       _.forEach(distribution.Plan, function (info, shard) {
         leaders.add(info.leader);
       });
-      expect(leaders.size).to.equal(Math.min(dbServerCount, nrShards));
+      assertEqual(leaders.size, Math.min(dbServerCount, nrShards));
     },
 
     testDistributeShardsLikeDistribution: function () {
       cleanUp();
-      internal.db._create(colName, {replicationFactor, numberOfShards});
-      internal.db._create(followCollection, {
+      db._create(colName, {replicationFactor, numberOfShards});
+      db._create(followCollection, {
         replicationFactor,
         numberOfShards,
         distributeShardsLike: colName
       });
-      expect(waitForSynchronousReplication(followCollection)).to.equal(true);
+      assertTrue(waitForSynchronousReplication(followCollection));
       compareDistributions();
     },
 
     testDistributeShardsLikeOnIdenticalServers: function () {
-      internal.db._create(colName, {replicationFactor, numberOfShards});
-      expect(waitForSynchronousReplication(colName)).to.equal(true);
-      internal.db._create(followCollection, {
+      db._create(colName, {replicationFactor, numberOfShards});
+      assertTrue(waitForSynchronousReplication(colName));
+      db._create(followCollection, {
         replicationFactor,
         numberOfShards,
         distributeShardsLike: colName
       });
-      expect(waitForSynchronousReplication(followCollection)).to.equal(true);
+      assertTrue(waitForSynchronousReplication(followCollection));
       compareDistributions();
     },
 
@@ -384,16 +376,16 @@ function ShardDistributionTest({replVersion}) {
       if (replVersion === "2") {
         return;
       }
-      internal.db._create(colName, {replicationFactor, numberOfShards});
-      expect(waitForSynchronousReplication(colName)).to.equal(true);
+      db._create(colName, {replicationFactor, numberOfShards});
+      assertTrue(waitForSynchronousReplication(colName));
       let server = getDBServers()[1].id;
       // Clean out the server that is scheduled second.
-      expect(cleanOutServer(server)).to.not.equal(false);
-      expect(waitForCleanout(server)).to.equal(true);
-      expect(waitForSynchronousReplication(colName)).to.equal(true);
+      assertFalse(cleanOutServer(server));
+      assertTrue(waitForCleanout(server));
+      assertTrue(waitForSynchronousReplication(colName));
       // Now we have moved around some shards.
-      internal.db._create(followCollection, {replicationFactor, numberOfShards, distributeShardsLike: colName});
-      expect(waitForSynchronousReplication(followCollection)).to.equal(true);
+      db._create(followCollection, {replicationFactor, numberOfShards, distributeShardsLike: colName});
+      assertTrue(waitForSynchronousReplication(followCollection));
       compareDistributions();
     }
   };

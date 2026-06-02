@@ -7,7 +7,7 @@ const fs = require('fs');
 const internal = require('internal');
 const arango = require('@arangodb').arango;
 const basePath = fs.makeAbsolute(fs.join(internal.pathForTesting('common'), 'test-data', 'apps', 'headers'));
-const origin = arango.getEndpoint().replace(/\+vpp/, '').replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:').replace(/^h2:/, 'http:');
+const origin = global.instanceManager.endpoint;
 
 const irrelevantHeaders = ['http/1.1', 'connection', 'content-type', 'content-length', 'keep-alive', 'server', 'allow',
   'x-arango-queue-time-seconds', 'content-security-policy', 'cache-control', 'pragma', 'expires', 'strict-transport-security'];

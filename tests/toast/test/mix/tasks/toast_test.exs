@@ -499,5 +499,76 @@ defmodule Mix.Tasks.ToastTest do
 
       refute Keyword.has_key?(opts, :test_name_pattern)
     end
+
+    test "line filter matches exact test line" do
+      mod =
+        define_test_module(:LineExact, "test_foo.exs", [{:"test exact", 10}, {:"test other", 20}])
+
+      opts = Helpers.build_suite_opts([mod], [{"test_foo.exs", 10}], nil)
+
+      assert MapSet.member?(opts[:only_test_ids], {mod, :"test exact"})
+      refute MapSet.member?(opts[:only_test_ids], {mod, :"test other"})
+    end
+
+    test "line filter matches any line within a test body" do
+      mod =
+        define_test_module(:LineBody, "test_foo.exs", [{:"test first", 10}, {:"test second", 25}])
+
+      opts = Helpers.build_suite_opts([mod], [{"test_foo.exs", 18}], nil)
+
+      assert MapSet.member?(opts[:only_test_ids], {mod, :"test first"})
+      refute MapSet.member?(opts[:only_test_ids], {mod, :"test second"})
+    end
+
+    test "line filter after last test matches last test" do
+      mod =
+        define_test_module(:LineLast, "test_foo.exs", [{:"test first", 10}, {:"test last", 25}])
+
+      opts = Helpers.build_suite_opts([mod], [{"test_foo.exs", 100}], nil)
+
+      assert MapSet.member?(opts[:only_test_ids], {mod, :"test last"})
+      refute MapSet.member?(opts[:only_test_ids], {mod, :"test first"})
+    end
+
+    test "line filter before first test matches nothing" do
+      mod = define_test_module(:LineBefore, "test_foo.exs", [{:"test first", 10}])
+      opts = Helpers.build_suite_opts([mod], [{"test_foo.exs", 5}], nil)
+
+      assert opts[:only_test_ids] == MapSet.new()
+    end
+
+    test "line filter only matches the correct file" do
+      mod =
+        define_test_module(:LineFile, "test_foo.exs", [{:"test foo", 10}, {:"test bar", 20}])
+
+      opts = Helpers.build_suite_opts([mod], [{"test_other.exs", 15}], nil)
+
+      assert opts[:only_test_ids] == MapSet.new()
+    end
+  end
+
+  defp define_test_module(suffix, file, tests) do
+    mod_name = Module.concat([Mix.Tasks.ToastTest.Fake, suffix])
+
+    test_structs =
+      Enum.map(tests, fn {name, line} ->
+        %ExUnit.Test{
+          name: name,
+          module: mod_name,
+          tags: %{file: file, line: line}
+        }
+      end)
+
+    Module.create(
+      mod_name,
+      quote do
+        def __ex_unit__ do
+          %{tests: unquote(Macro.escape(test_structs))}
+        end
+      end,
+      Macro.Env.location(__ENV__)
+    )
+
+    mod_name
   end
 end

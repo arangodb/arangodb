@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, assertEqual, arango */
+/* global getOptions */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -31,19 +31,25 @@ if (getOptions === true) {
   };
 }
 let jsunity = require('jsunity');
+const {assertEqual, assertTrue, assertFalse, assertNotEqual} = jsunity.jsUnity.assertions;
+const arango = require("@arangodb").arango;
 let db = require('internal').db;
-const originalEndpoint = arango.getEndpoint();
+let IM = global.instanceManager;
 
 function testSuite() {
   let connectWith = function(protocol) {
-    let endpoint = arango.getEndpoint().replace(/^[a-zA-Z0-9\+]+:/, protocol + ':');
+    let endpoint = IM.endpoint.replace(/^[a-zA-Z0-9\+]+:/, protocol + ':');
     arango.reconnect(endpoint, db._name(), arango.connectedUser(), "");
   };
 
   return {
+    setUp: function() {
+      IM.rememberConnection();
+    },
+
     tearDown: function() {
       // restore original connection type
-      arango.reconnect(originalEndpoint, db._name(), arango.connectedUser(), "");
+      IM.reconnectMe();
     },
 
     testKeepAliveTimeoutHttp1 : function() {
@@ -53,7 +59,7 @@ function testSuite() {
       let result = db._query("FOR i IN 1..10 RETURN SLEEP(1)").toArray();
       assertEqual(10, result.length);
     },
-    
+
     testKeepAliveTimeoutHttp2 : function() {
       connectWith("h2");
       // the query should succeed despite it running longer than the configured 

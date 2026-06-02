@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, assertEqual, assertNotEqual, assertTrue, arango */
+/* global getOptions */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -25,6 +25,15 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const jwtSecret = 'abc123';
+const jsunity = require('jsunity');
+const {assertEqual, assertTrue, assertFalse, assertNotEqual} = jsunity.jsUnity.assertions;
+const { getDBServers } = require("@arangodb/test-helper");
+const users = require("@arangodb/users");
+const crypto = require('@arangodb/crypto');
+const request = require("@arangodb/request");
+const arango = require("@arangodb").arango;
+const db = require('@arangodb').db;
+let IM = global.instanceManager;
 
 if (getOptions === true) {
   return {
@@ -34,13 +43,6 @@ if (getOptions === true) {
   };
 }
 
-const jsunity = require('jsunity');
-const db = require('@arangodb').db;
-const { getDBServers } = require("@arangodb/test-helper");
-const request = require("@arangodb/request");
-const users = require("@arangodb/users");
-const crypto = require('@arangodb/crypto');
-  
 const jwt = crypto.jwtEncode(jwtSecret, {
   "server_id": "ABCD",
   "iss": "arangodb", "exp": Math.floor(Date.now() / 1000) + 3600
@@ -75,9 +77,8 @@ function testSuite() {
     }
   };
 
-  let connectWith = function(protocol, user, password) {
-    let endpoint = arango.getEndpoint().replace(/^[a-zA-Z0-9\+]+:/, protocol + ':');
-    arango.reconnect(endpoint, db._name(), user, password);
+  let connectWith = function(user, password) {
+    arango.reconnect(IM.endpoint, db._name(), user, password);
   };
 
   let getRawMetrics = function() {
@@ -147,14 +148,16 @@ function testSuite() {
 
   return {
     setUp: function() {
-      connectWith("tcp", "root", "");
+      IM.rememberConnection();
+      connectWith("root", "");
       usersAdded = [];
     },
 
     tearDown: function() {
-      connectWith("tcp", "root", "");
+      connectWith("root", "");
       dropAddedUsers();
       usersAdded = [];
+      IM.reconnectMe();
     },
     
     testDoesNotPoluteNormalMetricsAPI : function () {
@@ -188,7 +191,7 @@ function testSuite() {
       const cn = getUniqueCollectionName();
   
       addUser("foo", db._name(), "rw");
-      connectWith("tcp", "foo", "");
+      connectWith("foo", "");
 
       assertEqual("foo", arango.connectedUser());
 
@@ -200,7 +203,7 @@ function testSuite() {
         let parsed = getParsedMetrics(db._name(), cn, "foo");
         assertEqual({}, parsed);
       } finally {
-        connectWith("tcp", "root", "");
+        connectWith("root", "");
         db._drop(cn);
       }
     },
@@ -209,7 +212,7 @@ function testSuite() {
       const cn = getUniqueCollectionName();
       
       addUser("bar", db._name(), "rw");
-      connectWith("tcp", "bar", "");
+      connectWith("bar", "");
 
       assertEqual("bar", arango.connectedUser());
 
@@ -236,7 +239,7 @@ function testSuite() {
         parsed = getParsedMetrics(db._name(), cn, "foo");
         assertEqual({}, parsed);
       } finally {
-        connectWith("tcp", "root", "");
+        connectWith("root", "");
         db._drop(cn);
       }
     },
@@ -246,7 +249,7 @@ function testSuite() {
       
       addUser("foo", db._name(), "ro");
       addUser("bar", db._name(), "rw");
-      connectWith("tcp", "bar", "");
+      connectWith("bar", "");
 
       assertEqual("bar", arango.connectedUser());
 
@@ -271,14 +274,14 @@ function testSuite() {
         let parsed = getParsedMetrics(db._name(), cn, ["foo", "bar"]);
         assertEqual({ "bar": { "writes": { [shards[0]] : 1 }, "reads": { [shards[0]] : 1 } } }, parsed);
         
-        connectWith("tcp", "foo", "");
+        connectWith("foo", "");
         assertEqual("foo", arango.connectedUser());
         c.document(docs);
 
         parsed = getParsedMetrics(db._name(), cn, ["foo", "bar"]);
         assertEqual({ "foo": { "reads": { [shards[0]] : 1 } }, "bar": { "writes": { [shards[0]] : 1 }, "reads": { [shards[0]] : 1 } } }, parsed);
       } finally {
-        connectWith("tcp", "root", "");
+        connectWith("root", "");
         db._drop(cn);
       }
     },
@@ -288,7 +291,7 @@ function testSuite() {
       
       addUser("foo", db._name(), "rw");
       addUser("bar", db._name(), "rw");
-      connectWith("tcp", "bar", "");
+      connectWith("bar", "");
 
       assertEqual("bar", arango.connectedUser());
 
@@ -304,7 +307,7 @@ function testSuite() {
         let parsed = getParsedMetrics(db._name(), cn, ["foo", "bar"]);
         assertEqual({ "bar": { "writes": { [shards[0]] : 10 } } }, parsed);
         
-        connectWith("tcp", "foo", "");
+        connectWith("foo", "");
         assertEqual("foo", arango.connectedUser());
         
         for (let i = 0; i < 20; ++i) {
@@ -314,7 +317,7 @@ function testSuite() {
         parsed = getParsedMetrics(db._name(), cn, ["foo", "bar"]);
         assertEqual({ "bar": { "writes": { [shards[0]] : 10 } }, "foo": { "writes": { [shards[0]] : 20 } } }, parsed);
       } finally {
-        connectWith("tcp", "root", "");
+        connectWith("root", "");
         db._drop(cn);
       }
     },
@@ -324,7 +327,7 @@ function testSuite() {
       
       addUser("foo", db._name(), "rw");
       addUser("bar", db._name(), "rw");
-      connectWith("tcp", "bar", "");
+      connectWith("bar", "");
 
       assertEqual("bar", arango.connectedUser());
 
@@ -342,7 +345,7 @@ function testSuite() {
         let parsed = getParsedMetrics(db._name(), cn, ["foo", "bar"]);
         assertEqual({ "bar": { "writes": { [shards[0]] : 1 } } }, parsed);
         
-        connectWith("tcp", "foo", "");
+        connectWith("foo", "");
         assertEqual("foo", arango.connectedUser());
         
         c.insert(docs);
@@ -351,7 +354,7 @@ function testSuite() {
         parsed = getParsedMetrics(db._name(), cn, ["foo", "bar"]);
         assertEqual({ "bar": { "writes": { [shards[0]] : 1 } }, "foo": { "writes": { [shards[0]] : 2 } } }, parsed);
       } finally {
-        connectWith("tcp", "root", "");
+        connectWith("root", "");
         db._drop(cn);
       }
     },
@@ -361,7 +364,7 @@ function testSuite() {
       
       addUser("foo", db._name(), "rw");
       addUser("bar", db._name(), "rw");
-      connectWith("tcp", "bar", "");
+      connectWith("bar", "");
 
       assertEqual("bar", arango.connectedUser());
 
@@ -381,7 +384,7 @@ function testSuite() {
           c.remove("test" + i);
         }
         
-        connectWith("tcp", "foo", "");
+        connectWith("foo", "");
         assertEqual("foo", arango.connectedUser());
         for (let i = 5; i < 20; ++i) {
           c.remove("test" + i);
@@ -390,7 +393,7 @@ function testSuite() {
         let parsed = getParsedMetrics(db._name(), cn, ["foo", "bar"]);
         assertEqual({ "bar": { "writes": { [shards[0]] : 6 } }, "foo": { "writes": { [shards[0]] : 15 } } }, parsed);
       } finally {
-        connectWith("tcp", "root", "");
+        connectWith("root", "");
         db._drop(cn);
       }
     },
@@ -400,7 +403,7 @@ function testSuite() {
       
       addUser("foo", db._name(), "rw");
       addUser("bar", db._name(), "rw");
-      connectWith("tcp", "bar", "");
+      connectWith("bar", "");
 
       assertEqual("bar", arango.connectedUser());
 
@@ -422,7 +425,7 @@ function testSuite() {
         }
         c.remove(docs);
         
-        connectWith("tcp", "foo", "");
+        connectWith("foo", "");
         assertEqual("foo", arango.connectedUser());
         docs = [];
         for (let i = 5; i < 20; ++i) {
@@ -433,7 +436,7 @@ function testSuite() {
         let parsed = getParsedMetrics(db._name(), cn, ["foo", "bar"]);
         assertEqual({ "bar": { "writes": { [shards[0]] : 2 } }, "foo" : { "writes": { [shards[0]] : 1 } } }, parsed);
       } finally {
-        connectWith("tcp", "root", "");
+        connectWith("root", "");
         db._drop(cn);
       }
     },
@@ -443,7 +446,7 @@ function testSuite() {
       
       addUser("foo", db._name(), "rw");
       addUser("bar", db._name(), "rw");
-      connectWith("tcp", "bar", "");
+      connectWith("bar", "");
 
       assertEqual("bar", arango.connectedUser());
 
@@ -463,7 +466,7 @@ function testSuite() {
           c.update("test" + i, { value: i + 1 });
         }
         
-        connectWith("tcp", "foo", "");
+        connectWith("foo", "");
         assertEqual("foo", arango.connectedUser());
         for (let i = 10; i < 20; ++i) {
           c.update("test" + i, { value: i + 1 });
@@ -472,7 +475,7 @@ function testSuite() {
         let parsed = getParsedMetrics(db._name(), cn, ["foo", "bar"]);
         assertEqual({ "bar": { "writes": { [shards[0]] : 11 } }, "foo": { "writes" : { [shards[0]] : 10 } } }, parsed);
       } finally {
-        connectWith("tcp", "root", "");
+        connectWith("root", "");
         db._drop(cn);
       }
     },
@@ -482,7 +485,7 @@ function testSuite() {
       
       addUser("foo", db._name(), "rw");
       addUser("bar", db._name(), "rw");
-      connectWith("tcp", "bar", "");
+      connectWith("bar", "");
 
       assertEqual("bar", arango.connectedUser());
 
@@ -504,7 +507,7 @@ function testSuite() {
         }
         c.update(docs, docs);
         
-        connectWith("tcp", "foo", "");
+        connectWith("foo", "");
         assertEqual("foo", arango.connectedUser());
         
         docs = [];
@@ -516,7 +519,7 @@ function testSuite() {
         let parsed = getParsedMetrics(db._name(), cn, ["foo", "bar"]);
         assertEqual({ "bar": { "writes": { [shards[0]] : 2 } }, "foo": { "writes": { [shards[0]] : 1 } } }, parsed);
       } finally {
-        connectWith("tcp", "root", "");
+        connectWith("root", "");
         db._drop(cn);
       }
     },
@@ -526,7 +529,7 @@ function testSuite() {
       
       addUser("foo", db._name(), "rw");
       addUser("bar", db._name(), "rw");
-      connectWith("tcp", "bar", "");
+      connectWith("bar", "");
 
       assertEqual("bar", arango.connectedUser());
 
@@ -546,7 +549,7 @@ function testSuite() {
           c.replace("test" + i, { value: i + 1 });
         }
         
-        connectWith("tcp", "foo", "");
+        connectWith("foo", "");
         assertEqual("foo", arango.connectedUser());
         for (let i = 10; i < 20; ++i) {
           c.replace("test" + i, { value: i + 1 });
@@ -555,7 +558,7 @@ function testSuite() {
         let parsed = getParsedMetrics(db._name(), cn, ["foo", "bar"]);
         assertEqual({ "bar": { "writes": { [shards[0]] : 11 } }, "foo" : { "writes" : { [shards[0]] : 10 } } }, parsed);
       } finally {
-        connectWith("tcp", "root", "");
+        connectWith("root", "");
         db._drop(cn);
       }
     },
@@ -565,7 +568,7 @@ function testSuite() {
       
       addUser("foo", db._name(), "rw");
       addUser("bar", db._name(), "rw");
-      connectWith("tcp", "bar", "");
+      connectWith("bar", "");
 
       assertEqual("bar", arango.connectedUser());
 
@@ -587,7 +590,7 @@ function testSuite() {
         }
         c.replace(docs, docs);
         
-        connectWith("tcp", "foo", "");
+        connectWith("foo", "");
         assertEqual("foo", arango.connectedUser());
         
         docs = [];
@@ -599,7 +602,7 @@ function testSuite() {
         let parsed = getParsedMetrics(db._name(), cn, ["foo", "bar"]);
         assertEqual({ "bar": { "writes": { [shards[0]] : 2 } }, "foo": { "writes": { [shards[0]] : 1 } } }, parsed);
       } finally {
-        connectWith("tcp", "root", "");
+        connectWith("root", "");
         db._drop(cn);
       }
     },
@@ -609,7 +612,7 @@ function testSuite() {
       
       addUser("foo", db._name(), "rw");
       addUser("bar", db._name(), "rw");
-      connectWith("tcp", "bar", "");
+      connectWith("bar", "");
 
       assertEqual("bar", arango.connectedUser());
 
@@ -624,7 +627,7 @@ function testSuite() {
         
         let counts1 = c.count(true);
 
-        connectWith("tcp", "foo", "");
+        connectWith("foo", "");
         assertEqual("foo", arango.connectedUser());
         
         for (let i = 0; i < 30; ++i) {
@@ -639,7 +642,7 @@ function testSuite() {
         let parsed = getParsedMetrics(db._name(), cn, ["foo", "bar"]);
         assertEqual({ "bar": { "writes": counts1 }, "foo": { writes: counts2 } }, parsed);
       } finally {
-        connectWith("tcp", "root", "");
+        connectWith("root", "");
         db._drop(cn);
       }
     },
@@ -649,7 +652,7 @@ function testSuite() {
       
       addUser("foo", db._name(), "rw");
       addUser("bar", db._name(), "rw");
-      connectWith("tcp", "bar", "");
+      connectWith("bar", "");
 
       assertEqual("bar", arango.connectedUser());
 
@@ -660,7 +663,7 @@ function testSuite() {
 
         db._query(`FOR doc IN ${cn} RETURN doc`);
         
-        connectWith("tcp", "foo", "");
+        connectWith("foo", "");
         assertEqual("foo", arango.connectedUser());
         
         for (let i = 0; i < 5; ++i) {
@@ -670,7 +673,7 @@ function testSuite() {
         let parsed = getParsedMetrics(db._name(), cn, ["foo", "bar"]);
         assertEqual({ "bar": { "reads": { [shards[0]] : 1 } }, "foo": { "reads": { [shards[0]] : 5 } } }, parsed);
       } finally {
-        connectWith("tcp", "root", "");
+        connectWith("root", "");
         db._drop(cn);
       }
     },
@@ -680,7 +683,7 @@ function testSuite() {
       
       addUser("foo", db._name(), "rw");
       addUser("bar", db._name(), "rw");
-      connectWith("tcp", "bar", "");
+      connectWith("bar", "");
 
       assertEqual("bar", arango.connectedUser());
 
@@ -691,7 +694,7 @@ function testSuite() {
 
         db._query(`FOR doc IN ${cn} RETURN doc`);
         
-        connectWith("tcp", "foo", "");
+        connectWith("foo", "");
         assertEqual("foo", arango.connectedUser());
         
         for (let i = 0; i < 6; ++i) {
@@ -704,7 +707,7 @@ function testSuite() {
         shards.forEach((s) => { expected1[s] = 1; expected2[s] = 6; });
         assertEqual({ "bar": { "reads": expected1 }, "foo": { "reads": expected2 } }, parsed);
       } finally {
-        connectWith("tcp", "root", "");
+        connectWith("root", "");
         db._drop(cn);
       }
     },
@@ -714,7 +717,7 @@ function testSuite() {
       
       addUser("foo", db._name(), "rw");
       addUser("bar", db._name(), "rw");
-      connectWith("tcp", "bar", "");
+      connectWith("bar", "");
 
       assertEqual("bar", arango.connectedUser());
 
@@ -725,7 +728,7 @@ function testSuite() {
 
         db._query(`FOR i IN 1..1000 INSERT {} INTO ${cn}`);
         
-        connectWith("tcp", "foo", "");
+        connectWith("foo", "");
         assertEqual("foo", arango.connectedUser());
         
         for (let i = 0; i < 3; ++i) {
@@ -735,7 +738,7 @@ function testSuite() {
         let parsed = getParsedMetrics(db._name(), cn, ["foo", "bar"]);
         assertEqual({ "bar": { "writes": { [shards[0]] : 1 } }, "foo": { "writes": { [shards[0]] : 3 } } }, parsed);
       } finally {
-        connectWith("tcp", "root", "");
+        connectWith("root", "");
         db._drop(cn);
       }
     },
@@ -745,7 +748,7 @@ function testSuite() {
       
       addUser("foo", db._name(), "rw");
       addUser("bar", db._name(), "rw");
-      connectWith("tcp", "bar", "");
+      connectWith("bar", "");
 
       assertEqual("bar", arango.connectedUser());
 
@@ -756,7 +759,7 @@ function testSuite() {
 
         db._query(`FOR i IN 1..1000 INSERT {} INTO ${cn}`);
         
-        connectWith("tcp", "foo", "");
+        connectWith("foo", "");
         assertEqual("foo", arango.connectedUser());
         
         for (let i = 0; i < 3; ++i) {
@@ -769,7 +772,7 @@ function testSuite() {
         shards.forEach((s) => { expected1[s] = 1; expected2[s] = 3; });
         assertEqual({ "bar": { "writes": expected1 }, "foo": { "writes": expected2 } }, parsed);
       } finally {
-        connectWith("tcp", "root", "");
+        connectWith("root", "");
         db._drop(cn);
       }
     },
@@ -779,7 +782,7 @@ function testSuite() {
       
       addUser("foo", db._name(), "rw");
       addUser("bar", db._name(), "rw");
-      connectWith("tcp", "bar", "");
+      connectWith("bar", "");
 
       assertEqual("bar", arango.connectedUser());
 
@@ -788,7 +791,7 @@ function testSuite() {
       try {
         db._query(`FOR doc1 IN ${c1.name()} FOR doc2 IN ${c2.name()} RETURN doc1`);
         
-        connectWith("tcp", "foo", "");
+        connectWith("foo", "");
         assertEqual("foo", arango.connectedUser());
         
         for (let i = 0; i < 10; ++i) {
@@ -804,7 +807,7 @@ function testSuite() {
 
         assertEqual({ "bar": { "reads": expected1 }, "foo": { "reads": expected2 } }, parsed);
       } finally {
-        connectWith("tcp", "root", "");
+        connectWith("root", "");
         db._drop(c2.name());
         db._drop(c1.name());
       }
@@ -815,7 +818,7 @@ function testSuite() {
       
       addUser("foo", db._name(), "rw");
       addUser("bar", db._name(), "rw");
-      connectWith("tcp", "bar", "");
+      connectWith("bar", "");
 
       assertEqual("bar", arango.connectedUser());
 
@@ -824,7 +827,7 @@ function testSuite() {
       try {
         db._query(`FOR doc IN ${c1.name()} INSERT {} INTO ${c2.name()}`);
         
-        connectWith("tcp", "foo", "");
+        connectWith("foo", "");
         assertEqual("foo", arango.connectedUser());
         
         for (let i = 0; i < 3; ++i) {
@@ -842,7 +845,7 @@ function testSuite() {
 
         assertEqual({ "bar": expected1, "foo": expected2 }, parsed);
       } finally {
-        connectWith("tcp", "root", "");
+        connectWith("root", "");
         db._drop(c2.name());
         db._drop(c1.name());
       }
@@ -853,7 +856,7 @@ function testSuite() {
       
       addUser("foo", db._name(), "rw");
       addUser("bar", db._name(), "rw");
-      connectWith("tcp", "bar", "");
+      connectWith("bar", "");
 
       assertEqual("bar", arango.connectedUser());
 
@@ -862,7 +865,7 @@ function testSuite() {
       try {
         db._query(`FOR i IN 1..1000 INSERT {} INTO ${c1.name()} OPTIONS {exclusive: true} INSERT {} INTO ${c2.name()} OPTIONS {exclusive: true}`);
         
-        connectWith("tcp", "foo", "");
+        connectWith("foo", "");
         assertEqual("foo", arango.connectedUser());
         
         for (let i = 0; i < 2; ++i) {
@@ -880,7 +883,7 @@ function testSuite() {
 
         assertEqual({ "bar": expected1, "foo": expected2 }, parsed);
       } finally {
-        connectWith("tcp", "root", "");
+        connectWith("root", "");
         db._drop(c2.name());
         db._drop(c1.name());
       }
@@ -891,7 +894,7 @@ function testSuite() {
       
       addUser("foo", db._name(), "rw");
       addUser("bar", db._name(), "rw");
-      connectWith("tcp", "bar", "");
+      connectWith("bar", "");
 
       assertEqual("bar", arango.connectedUser());
 
@@ -904,7 +907,7 @@ function testSuite() {
           c.insert({ value: i });
         }
         
-        connectWith("tcp", "foo", "");
+        connectWith("foo", "");
         assertEqual("foo", arango.connectedUser());
         
         for (let i = 0; i < 23; ++i) {
@@ -915,7 +918,7 @@ function testSuite() {
         let parsed = getParsedMetrics(db._name(), cn, ["foo", "bar"]);
         assertEqual({ "bar": { "writes": { [shards[0]] : 10 } }, "foo": { "writes": { [shards[0]] : 23 } } }, parsed);
       } finally {
-        connectWith("tcp", "root", "");
+        connectWith("root", "");
         db._drop(cn);
       }
     },
@@ -925,7 +928,7 @@ function testSuite() {
       
       addUser("foo", db._name(), "rw");
       addUser("bar", db._name(), "rw");
-      connectWith("tcp", "bar", "");
+      connectWith("bar", "");
 
       assertEqual("bar", arango.connectedUser());
 
@@ -934,7 +937,7 @@ function testSuite() {
       try {
         db._query(`FOR i IN 1..1000 INSERT {} INTO ${c1.name()} OPTIONS {exclusive: true} INSERT {} INTO ${c2.name()} OPTIONS {exclusive: true}`);
         
-        connectWith("tcp", "foo", "");
+        connectWith("foo", "");
         assertEqual("foo", arango.connectedUser());
         
         for (let i = 0; i < 2; ++i) {
@@ -953,7 +956,7 @@ function testSuite() {
 
         assertEqual({ "bar": expected1, "foo": expected2 }, parsed);
       } finally {
-        connectWith("tcp", "root", "");
+        connectWith("root", "");
         db._drop(c2.name());
         db._drop(c1.name());
       }
@@ -978,12 +981,12 @@ function testSuite() {
           let shards = c.shards();
           assertEqual(1, shards.length);
 
-          connectWith("tcp", "bar", "");
+          connectWith("bar", "");
           for (let i = 0; i < 10; ++i) {
             c.insert({ _key: "test" + i, value: i });
           }
           
-          connectWith("tcp", "foo", "");
+          connectWith("foo", "");
           
           for (let i = 0; i < 100; ++i) {
             c.document("test" + (i % 10));
@@ -993,7 +996,7 @@ function testSuite() {
           assertEqual({ "bar": { "writes": { [shards[0]] : 10 } }, "foo" : { "reads": { [shards[0]] : 100 } } }, parsed);
         });
       } finally {
-        connectWith("tcp", "root", "");
+        connectWith("root", "");
         db._useDatabase("_system");
         databases.forEach((name) => {
           try {
@@ -1009,7 +1012,7 @@ function testSuite() {
 
       addUser("foo", db._name(), "rw");
       addUser("bar", db._name(), "rw");
-      connectWith("tcp", "bar", "");
+      connectWith("bar", "");
 
       assertEqual("bar", arango.connectedUser());
 
@@ -1020,7 +1023,7 @@ function testSuite() {
 
         c.truncate();
         
-        connectWith("tcp", "foo", "");
+        connectWith("foo", "");
         assertEqual("foo", arango.connectedUser());
 
         for (let i = 0; i < 3; ++i) {
@@ -1030,7 +1033,7 @@ function testSuite() {
         let parsed = getParsedMetrics(db._name(), cn, ["foo", "bar"]);
         assertEqual({ "bar": { "writes": { [shards[0]] : 1 } }, "foo": { "writes": { [shards[0]] : 3 } } }, parsed);
       } finally {
-        connectWith("tcp", "root", "");
+        connectWith("root", "");
         db._drop(cn);
       }
     },
@@ -1040,7 +1043,7 @@ function testSuite() {
       
       addUser("foo", db._name(), "rw");
       addUser("bar", db._name(), "rw");
-      connectWith("tcp", "bar", "");
+      connectWith("bar", "");
 
       let c = db._create(cn);
       try {
@@ -1055,7 +1058,7 @@ function testSuite() {
           c.document("test" + i);
         }
         
-        connectWith("tcp", "foo", "");
+        connectWith("foo", "");
         assertEqual("foo", arango.connectedUser());
         
         for (let i = 1000; i < 1002; ++i) {
@@ -1066,12 +1069,12 @@ function testSuite() {
           c.update("test" + i, { value: i + 1 });
         }
         
-        connectWith("tcp", "bar", "");
+        connectWith("bar", "");
         assertEqual("bar", arango.connectedUser());
         
         db._query(`FOR doc IN ${cn} INSERT {} INTO ${cn}`);
         
-        connectWith("tcp", "foo", "");
+        connectWith("foo", "");
         assertEqual("foo", arango.connectedUser());
         
         db._query(`FOR doc IN ${cn} RETURN doc`);
@@ -1081,7 +1084,7 @@ function testSuite() {
         let parsed = getParsedMetrics(db._name(), cn, ["foo", "bar"]);
         assertEqual({ "bar": { "writes": { [shards[0]] : 11 }, "reads": { [shards[0]] : 5 } }, "foo": { "writes": { [shards[0]] : 5 }, "reads": { [shards[0]] : 3 } } }, parsed);
       } finally {
-        connectWith("tcp", "root", "");
+        connectWith("root", "");
         db._drop(cn);
       }
     },
@@ -1092,7 +1095,7 @@ function testSuite() {
       addUser("foo", db._name(), "rw");
       addUser("bar", db._name(), "rw");
       addUser("baz", db._name(), "ro");
-      connectWith("tcp", "bar", "");
+      connectWith("bar", "");
 
       let c = db._create(cn, {shardKeys: ["qux"], numberOfShards: 3});
       try {
@@ -1109,7 +1112,7 @@ function testSuite() {
         });
         assertEqual(expected, parsed);
         
-        connectWith("tcp", "foo", "");
+        connectWith("foo", "");
         assertEqual("foo", arango.connectedUser());
         
         keys.forEach((k, i) => {
@@ -1123,7 +1126,7 @@ function testSuite() {
         });
         assertEqual(expected, parsed);
         
-        connectWith("tcp", "baz", "");
+        connectWith("baz", "");
         assertEqual("baz", arango.connectedUser());
         
         keys.forEach((k, i) => {
@@ -1137,7 +1140,7 @@ function testSuite() {
         });
         assertEqual({ "baz": expected }, parsed);
       } finally {
-        connectWith("tcp", "root", "");
+        connectWith("root", "");
         db._drop(cn);
       }
     },
@@ -1155,7 +1158,7 @@ function testSuite() {
       
       addUser("foo", db._name(), "rw");
       addUser("bar", db._name(), "rw");
-      connectWith("tcp", "bar", "");
+      connectWith("bar", "");
 
       let cleanup = function () {
         try {
@@ -1196,7 +1199,7 @@ function testSuite() {
         });
         assertEqual(expected, parsed);
         
-        connectWith("tcp", "foo", "");
+        connectWith("foo", "");
         assertEqual("foo", arango.connectedUser());
 
         keys.forEach((key) => {
@@ -1213,7 +1216,7 @@ function testSuite() {
         });
         assertEqual(21, sum);
       } finally {
-        connectWith("tcp", "root", "");
+        connectWith("root", "");
         cleanup();
       }
     },
@@ -1231,7 +1234,7 @@ function testSuite() {
       
       addUser("foo", db._name(), "rw");
       addUser("bar", db._name(), "rw");
-      connectWith("tcp", "bar", "");
+      connectWith("bar", "");
 
       let cleanup = function () {
         try {
@@ -1272,7 +1275,7 @@ function testSuite() {
 
         assertEqual(expected, parsed);
         
-        connectWith("tcp", "foo", "");
+        connectWith("foo", "");
         assertEqual("foo", arango.connectedUser());
 
         db._query(`FOR doc IN ${en} FILTER doc._key IN @keys RETURN doc`, { keys });
@@ -1287,7 +1290,7 @@ function testSuite() {
         });
         assertEqual(db["_from_" + en].shards().length + db["_to_" + en].shards().length, sum);
       } finally {
-        connectWith("tcp", "root", "");
+        connectWith("root", "");
         cleanup();
       }
     },
