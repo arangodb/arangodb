@@ -409,7 +409,7 @@ defmodule ToastTest.Runner do
           Logger.warning("Neither ss nor netstat found — port exhaustion check disabled")
         end
 
-        record_netstat_baseline(netstat_tool, :pre_deployment)
+        baseline = record_netstat_baseline(netstat_tool, :pre_deployment)
 
         id = Toast.Deployment.generate_id(mode)
         deployment_dir = Path.join([test_config.base_dir, entry.name, id])
@@ -419,7 +419,7 @@ defmodule ToastTest.Runner do
                event_listener: ToastTest.ManagedDeploymentListener
              ) do
           {:ok, deployment} ->
-            baseline = record_netstat_baseline(netstat_tool, :deployment_ready)
+            record_netstat_baseline(netstat_tool, :deployment_ready)
 
             run_suite_with_deployment(
               deployment,
@@ -604,11 +604,10 @@ defmodule ToastTest.Runner do
 
         delta_info =
           if detail.kind == :deployment,
-            do: " (#{detail.deployment_delta} since deployment)",
-            else: ""
+            do: "(#{detail.deployment_delta} since deployment; threshold: #{detail.threshold}))",
+            else: "(threshold: #{detail.threshold})"
 
-        {:error,
-         "#{kind_label} port exhaustion: #{detail.total} system sockets#{delta_info} (threshold: #{detail.threshold})"}
+        {:error, "#{kind_label} port exhaustion: #{detail.total} system sockets #{delta_info}"}
     end
   end
 

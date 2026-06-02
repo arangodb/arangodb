@@ -33,6 +33,7 @@ defmodule Toast.Deployment.Netstat do
 
   @type server_snapshot :: %{
           pid: non_neg_integer(),
+          port: non_neg_integer(),
           sockets: %{
             total: non_neg_integer(),
             in: direction_stats(),
@@ -163,7 +164,7 @@ defmodule Toast.Deployment.Netstat do
       {:error, reason} ->
         Logger.warning("Netstat: failed to gather detailed snapshot: #{inspect(reason)}")
         empty = %{total: 0, in: %{}, out: %{}}
-        Map.new(servers, &{&1.id, %{pid: &1.pid, sockets: empty}})
+        Map.new(servers, &{&1.id, %{pid: &1.pid, port: &1.port, sockets: empty}})
     end
   end
 
@@ -231,6 +232,7 @@ defmodule Toast.Deployment.Netstat do
       {server.id,
        %{
          pid: server.pid,
+         port: server.port,
          sockets: %{
            total: length(sockets),
            in: Enum.frequencies_by(inbound, & &1.state),

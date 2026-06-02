@@ -252,8 +252,9 @@ defmodule Mix.Tasks.Toast.Analyze.Detail do
 
     server_total =
       Enum.reduce(sorted, 0, fn {server_id, server}, acc ->
-        Mix.shell().info("    #{colorize(server_id, :cyan, color)}  #{server.sockets.total}")
+        Mix.shell().info("    #{colorize(server_id, :cyan, color)} (port #{server.port})")
 
+        Mix.shell().info("      total  #{server.sockets.total}")
         print_direction("← in ", server.sockets.in, color)
         print_direction("→ out", server.sockets.out, color)
 

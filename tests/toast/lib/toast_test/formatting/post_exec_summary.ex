@@ -164,12 +164,10 @@ defmodule ToastTest.Formatting.PostExecSummary do
 
     delta_info =
       if detail[:kind] == :deployment,
-        do: " (#{detail.deployment_delta} since deployment)",
-        else: ""
+        do: "(#{detail.deployment_delta} since deployment; threshold: #{threshold}))",
+        else: "(threshold: #{threshold})"
 
-    IO.puts(
-      "\n  #{colorize("[#{label}] #{total} #{kind} sockets#{delta_info} (threshold: #{threshold})", :red, colors)}"
-    )
+    IO.puts("\n  #{colorize("[#{label}] #{total} #{kind} sockets #{delta_info}", :red, colors)}")
 
     server_total =
       by_server
