@@ -25,17 +25,21 @@
 
 #include <chrono>
 #include <cstdint>
+#include <memory>
 #include <mutex>
 #include <stop_token>
 #include <thread>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include "Basics/ResourceUsage.h"
 #include "Basics/Result.h"
+#include "Basics/ResultT.h"
 #include "Futures/Future.h"
 #include "Futures/Promise.h"
 #include "Metrics/Fwd.h"
+#include "VectorIndex/AutoTuner.h"
 #include "VocBase/Identifiers/IndexId.h"
 
 struct TRI_vocbase_t;
@@ -54,6 +58,9 @@ namespace arangodb::vector {
 /// indexes and builds them one at a time. The same thread scans and builds.
 class VectorIndexBuildManager {
  public:
+  // {oldNProbe, newNProbe} on success.
+  using AutoTuneResult = ResultT<std::pair<std::int64_t, std::int64_t>>;
+
   static constexpr auto kScanInterval = std::chrono::seconds(5);
   static constexpr auto kSleepGranularity = std::chrono::seconds(1);
 
@@ -71,8 +78,22 @@ class VectorIndexBuildManager {
   // when the index reaches the ready state or the build fails.
   futures::Future<Result> waitForIndexReady(IndexId indexId);
 
+  // Queue an on-demand autotune for an already-built index. The request runs
+  // on this manager's single build thread, so it never overlaps a build (or
+  // another autotune). The future resolves with {oldNProbe, newNProbe}.
+  futures::Future<AutoTuneResult> requestAutoTune(
+      std::shared_ptr<LogicalCollection> collection, IndexId indexId,
+      AutotuneParams params);
+
  private:
   static constexpr auto kRetryBackoff = std::chrono::minutes(10);
+
+  struct AutoTuneRequest {
+    std::shared_ptr<LogicalCollection> collection;
+    IndexId indexId;
+    AutotuneParams params;
+    futures::Promise<AutoTuneResult> promise;
+  };
 
   struct FailedBuildInfo {
     std::chrono::steady_clock::time_point failedAt;
@@ -93,6 +114,16 @@ class VectorIndexBuildManager {
   void fulfillWaiters(IndexId indexId, Result const& result);
 
   void fulfillAllWaiters(Result const& result);
+
+  // Drain and run all queued autotune requests on this thread (so they never
+  // overlap a build). Each request's promise is fulfilled with its outcome.
+  void processAutoTuneRequests(std::stop_token const& stopToken);
+
+  AutoTuneResult runAutoTuneRequest(AutoTuneRequest const& request,
+                                    std::stop_token const& stopToken);
+
+  void fulfillAutoTune(futures::Promise<AutoTuneResult> promise,
+                       AutoTuneResult result);
 
   void reportIndexError(TRI_vocbase_t const& vocbase,
                         LogicalCollection const& coll,
@@ -117,6 +148,9 @@ class VectorIndexBuildManager {
   std::mutex _waitersMutex;
   std::unordered_map<IndexId::BaseType, std::vector<futures::Promise<Result>>>
       _waiters;
+
+  std::mutex _autoTuneMutex;
+  std::vector<AutoTuneRequest> _autoTuneQueue;
 };
 
 }  // namespace arangodb::vector

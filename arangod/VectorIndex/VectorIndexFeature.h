@@ -35,6 +35,7 @@
 namespace arangodb {
 
 class DatabaseFeature;
+class LogicalCollection;
 
 class VectorIndexFeature final
     : public application_features::ApplicationFeature {
@@ -59,6 +60,13 @@ class VectorIndexFeature final
   // (or fails) the build. If the build manager is not initialized (e.g. on
   // Coordinator), returns an immediate success.
   futures::Future<Result> waitForIndexReady(IndexId indexId);
+
+  // Queue an on-demand autotune for an already-built index on this server's
+  // build manager (DBServer / SingleServer only — the manager serializes it
+  // against builds). Resolves with {oldNProbe, newNProbe}.
+  futures::Future<vector::VectorIndexBuildManager::AutoTuneResult>
+  autoTuneIndex(std::shared_ptr<LogicalCollection> collection, IndexId indexId,
+                vector::AutotuneParams params);
 
  private:
   bool shouldRunBuildManager() const;

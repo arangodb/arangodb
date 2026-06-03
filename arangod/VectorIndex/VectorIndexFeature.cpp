@@ -23,6 +23,7 @@
 
 #include "VectorIndex/VectorIndexOptionsProvider.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/voc-errors.h"
 #include "Futures/Utilities.h"
 #include "Cluster/MaintenanceFeature.h"
 #include "Cluster/ServerState.h"
@@ -101,6 +102,21 @@ futures::Future<Result> VectorIndexFeature::waitForIndexReady(IndexId indexId) {
     return futures::makeFuture(Result{});
   }
   return _buildManager->waitForIndexReady(indexId);
+}
+
+futures::Future<vector::VectorIndexBuildManager::AutoTuneResult>
+VectorIndexFeature::autoTuneIndex(std::shared_ptr<LogicalCollection> collection,
+                                  IndexId indexId,
+                                  vector::AutotuneParams params) {
+  if (!_buildManager.has_value()) {
+    // No build manager here (e.g. Coordinator) — the autotune must be routed
+    // to the shards instead.
+    return futures::makeFuture(vector::VectorIndexBuildManager::AutoTuneResult{
+        Result{TRI_ERROR_NOT_IMPLEMENTED,
+               "vector index autotune runs on DBServer/single server only"}});
+  }
+  return _buildManager->requestAutoTune(std::move(collection), indexId,
+                                        std::move(params));
 }
 
 }  // namespace arangodb
