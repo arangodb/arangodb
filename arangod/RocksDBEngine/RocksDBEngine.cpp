@@ -295,8 +295,8 @@ RocksDBEngine::RocksDBEngine(
       _isAgencyNode(isAgencyNode),
       _optionsProvider(optionsProvider),
       _metrics(metrics),
-      _basePath(std::move(basePath)),
       _db(nullptr),
+      _basePath(std::move(basePath)),
       _walAccess(std::make_unique<RocksDBWalAccess>(*this)),
       _maxTransactionSize(transaction::Options::defaultMaxTransactionSize),
       _intermediateCommitSize(
