@@ -96,9 +96,10 @@ function makeDataWrapper (options) {
     waitForReplState() {
       print(`${CYAN}${Date()} waiting for follower to catch up!${RESET}`);
       let state = {};
+      let count = 0;
       var printed = false;
       state.lastLogTick = replication.logger.state().state.lastUncommittedLogTick;
-
+      print(state);
       this.instanceManager.arangods[1].toThisInstance(() => {
         while (true) {
           let followerState = replication.globalApplier.state();
@@ -118,13 +119,17 @@ function makeDataWrapper (options) {
             break;
           }
 
-          if (!printed) {
+          if (count === 0) {
             print("waiting for follower to catch up");
             printed = true;
+          } else if (count % 10 === 0) {
+            print(followerState);
           }
           internal.wait(0.5, false);
+          count += 1;
         }
       });
+      print(`${CYAN}${Date()} wait done!${RESET}`);
     }    
     preStart() {
       if (!this.options.cluster) {
@@ -142,47 +147,64 @@ function makeDataWrapper (options) {
         print("starting replication follower: ");
         let state = true;
         this.addArgs['flatCommands'] = [this.instanceManager.arangods[1].endpoint];
+        //[0, 1].forEach(which => {
+        //  this.instanceManager.endpoint = this.instanceManager.arangods[which].endpoint;
+        //  this.instanceManager.arangods[which].toThisInstance(() => {
+        //    try {
+        //      var users = require("@arangodb/users");
+        //      users.save("replicator-user", "replicator-password", true);
+        //      users.grantDatabase("replicator-user", "_system");
+        //      users.grantCollection("replicator-user", "_system", "*", "rw");
+        //      users.reload();
+        //    } catch(ex) {
+        //      state = false;
+        //      message += `failed to connect ${this.instanceManager.arangods[which].name}: ex.message\n`;
+        //      print(RED + message + RESET);
+        //    }
+        //  });
+        //});
         [0, 1].forEach(which => {
-          this.instanceManager.endpoint = this.instanceManager.arangods[which].endpoint;
           this.instanceManager.arangods[which].toThisInstance(() => {
-            try {
-              var users = require("@arangodb/users");
-              users.save("replicator-user", "replicator-password", true);
-              users.grantDatabase("replicator-user", "_system");
-              users.grantCollection("replicator-user", "_system", "*", "rw");
-              users.reload();
-            } catch(ex) {
-              state = false;
-              message += `failed to connect ${this.instanceManager.arangods[which].name}: ex.message\n`;
-              print(RED + message + RESET);
-            }
-          });
+            this.instanceManager.setPassvoid();
+          })
         });
+
         let syncResult;
+        print(this.instanceManager.arangods[0].endpoint)
+        print(this.instanceManager.arangods[1].endpoint)
+        db._useDatabase("_system");
+        db._create("test");
+        db.test.save({});
         this.instanceManager.arangods[1].toThisInstance(() => {
-          syncResult = replication.sync({
+          print(arango.getEndpoint());
+          let params = {
             endpoint: this.instanceManager.arangods[0].endpoint,
             username: "root",
-            password: "",
+            password: this.options.password,
             verbose: true,
-            includeSystem: false,
-            keepBarrier: true,
-          });
-          if (!syncResult.hasOwnProperty('lastLogTick')) {
-            throw new Error(`sync result doesn't have a lostLogTick: ${JSON.stringify(syncResult)}`);
-          }
-          // use lastLogTick as of now
-          state = { lastLogTick: replication.logger.state().state.lastLogTick};
-
-          let applierConfiguration = {
-            endpoint: this.instanceManager.arangods[0].endpoint,
-            username: "root",
-            password: "", 
-            requireFromPresent: true 
+            includeSystem: true,
+            incremental: true,
+            autoResync: true,
+            //keepBarrier: true,
           };
+          print(params);
+          syncResult = replication.setupReplicationGlobal(params);
+          print(syncResult);
+          //if (!syncResult.hasOwnProperty('lastLogTick')) {
+          //  throw new Error(`sync result doesn't have a lostLogTick: ${JSON.stringify(syncResult)}`);
+          //}
+          // use lastLogTick as of now
+          // state = { lastLogTick: replication.logger.state().state.lastLogTick};
 
-          replication.applier.properties(applierConfiguration);
-          replication.applier.start(syncResult.lastLogTick, syncResult.barrierId);
+          //let applierConfiguration = {
+          //  endpoint: this.instanceManager.arangods[0].endpoint,
+          //  username: "root",
+          //  password: "", 
+          //  requireFromPresent: true 
+          //};
+
+          // replication.applier.properties(applierConfiguration);
+          replication.applier.start(syncResult.lastLogTick);//, syncResult.barrierId);
         });
         this.waitForReplState();
         return {
@@ -377,8 +399,16 @@ function makeDataWrapper (options) {
     }
   }
   let localOptions = Object.assign({}, options, tu.testServerAuthInfo);
-  if (localOptions.cluster && localOptions.dbServers < 3) {
-    localOptions.dbServers = 3;
+  if (localOptions.oldSource !== undefined) {
+    localOptions.skipServerJS = false;
+  }
+  if (localOptions.cluster) {
+    if (localOptions.dbServers < 3) {
+      localOptions.dbServers = 3;
+    }
+    localOptions.password = "cluster";
+  } else {
+    localOptions.password = "leaderfollower";
   }
   localOptions.extraArgs['vector-index'] = true;
 
