@@ -21,7 +21,7 @@
 /// @author Jure Bajic
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "VectorIndex/VectorIndexAutoTuner.h"
+#include "VectorIndex/AutoTuner.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -116,7 +116,7 @@ double recallAtR(faiss::IndexIVFFlat& index, std::vector<float> const& xq,
 
 // Sanity: a baseline of nprobe=1 on a clustered dataset has low recall,
 // proving the dataset is non-trivial and tuning has something to do.
-TEST(VectorIndexAutoTunerTest, baselineNProbeOneHasLowRecall) {
+TEST(AutoTunerTest, baselineNProbeOneHasLowRecall) {
   constexpr std::size_t d = 16;
   constexpr std::size_t nClusters = 32;
   constexpr std::size_t pointsPerCluster = 200;
@@ -143,7 +143,7 @@ TEST(VectorIndexAutoTunerTest, baselineNProbeOneHasLowRecall) {
   EXPECT_LT(recall, 0.85);
 }
 
-TEST(VectorIndexAutoTunerTest, picksNProbeAboveOneAndMeetsTargetRecall) {
+TEST(AutoTunerTest, picksNProbeAboveOneAndMeetsTargetRecall) {
   constexpr std::size_t d = 16;
   constexpr std::size_t nClusters = 32;
   constexpr std::size_t pointsPerCluster = 200;
@@ -176,7 +176,7 @@ TEST(VectorIndexAutoTunerTest, picksNProbeAboveOneAndMeetsTargetRecall) {
   EXPECT_GE(recallAtR(*ivf, xq, gtI, R), target);
 }
 
-TEST(VectorIndexAutoTunerTest, misalignedQuerySetTrapsAssertion) {
+TEST(AutoTunerTest, misalignedQuerySetTrapsAssertion) {
   constexpr std::size_t d = 16;
   auto ds = makeClusterDataset(d, /*nClusters=*/8, /*pointsPerCluster=*/64,
                                /*seed=*/7);
