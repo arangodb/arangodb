@@ -59,11 +59,9 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 #include <cstdint>
-#include <span>
 
 using namespace arangodb;
 using namespace arangodb::aql;
-using namespace std;
 
 namespace {
 
@@ -2619,33 +2617,6 @@ void Ast::validateAndOptimize(transaction::Methods& trx,
       auto func = static_cast<Function*>(node->getData());
       TRI_ASSERT(func != nullptr);
 
-      if (func->name == "KEEP" || func->name == "UNSET") {
-        AstNode* args = node->getMemberUnchecked(0);
-        TRI_ASSERT(args != nullptr && args->type == NODE_TYPE_ARRAY);
-        if (args->numMembers() > 0) {
-          AstNode const* valueArg = args->getMemberUnchecked(0);
-          AstNode const* def = valueArg;
-          while (def != nullptr && (def->type == NODE_TYPE_REFERENCE)) {
-            auto const* var = static_cast<Variable const*>(def->getData());
-            TRI_ASSERT(var != nullptr);
-            if(var != nullptr){
-              auto it = ctx->variableDefinitions.find(var);
-              if (it == ctx->variableDefinitions.end()) {
-                //LOG_DEVEL << "  no definition in variableDefinitions yet";
-                break;
-              }
-              def = it->second;
-              //LOG_DEVEL << "  resolved to type=" << def->getTypeString()
-              //          << " node=" << AstNode::toString(def);
-            }
-          }
-          if (def != nullptr && def->isNullValue()) {
-          //LOG_DEVEL << "KEEP first arg resolves to null -> skip subtree";
-          return false;  // your preVisitor early exit
-          }
-        }
-      }
-
       if (func->hasFlag(Function::Flags::NoEval)) {
         // NOOPT will turn all function optimizations off
         ++ctx->stopOptimizationRequests;
@@ -4302,6 +4273,76 @@ AstNode const* Ast::resolveConstAttributeAccess(AstNode const* node) {
   return createNodeValueNull();
 }
 
+namespace {
+
+/// @brief traverse and update a single child member of a parent node
+void traverseAndModifyMember(
+    AstNode* parent, size_t index,
+    std::function<bool(AstNode const*)> const& preVisitor,
+    std::function<AstNode*(AstNode*)> const& visitor,
+    std::function<void(AstNode const*)> const& postVisitor) {
+  auto member = parent->getMemberUnchecked(index);
+  if (member == nullptr) {
+    return;
+  }
+
+  AstNode* result =
+      Ast::traverseAndModify(member, preVisitor, visitor, postVisitor);
+
+  if (result != member) {
+    TEMPORARILY_UNLOCK_NODE(parent);
+    TRI_ASSERT(parent != nullptr);
+    parent->changeMember(index, result);
+  }
+}
+
+/// @brief traverse ternary children with short-circuit semantics when the
+/// condition is a compile-time constant (matches runtime evaluation and
+/// optimizeTernaryOperator).
+void traverseAndModifyTernary(
+    AstNode* node, std::function<bool(AstNode const*)> const& preVisitor,
+    std::function<AstNode*(AstNode*)> const& visitor,
+    std::function<void(AstNode const*)> const& postVisitor) {
+  TRI_ASSERT(node->type == NODE_TYPE_OPERATOR_TERNARY);
+
+  ast::TernaryOperatorNode ternary(node);
+
+  // Always process the condition first.
+  traverseAndModifyMember(node, 0, preVisitor, visitor, postVisitor);
+
+  AstNode const* condition = ternary.getCondition();
+  bool const hasConstantCondition =
+      condition != nullptr && condition->isConstant();
+
+  if (!hasConstantCondition) {
+    size_t const n = node->numMembers();
+    for (size_t i = 1; i < n; ++i) {
+      traverseAndModifyMember(node, i, preVisitor, visitor, postVisitor);
+    }
+    return;
+  }
+
+  // Constant condition: only traverse the live branch (if any).
+  if (condition->isTrue()) {
+    if (ternary.hasTrueExpr()) {
+      // cond ? truePart : falsePart  ->  truePart only
+      traverseAndModifyMember(node, 1, preVisitor, visitor, postVisitor);
+    }
+    // Shortcut ternary (cond ? : falsePart): true part is the condition,
+    // which was already processed above.
+  } else {
+    if (ternary.hasTrueExpr()) {
+      // cond ? truePart : falsePart  ->  falsePart only (skip truePart)
+      traverseAndModifyMember(node, 2, preVisitor, visitor, postVisitor);
+    } else {
+      // Shortcut ternary: false part is member 1
+      traverseAndModifyMember(node, 1, preVisitor, visitor, postVisitor);
+    }
+  }
+}
+
+}  // namespace
+
 /// @brief traverse the AST, using pre- and post-order visitors
 AstNode* Ast::traverseAndModify(
     AstNode* node, std::function<bool(AstNode const*)> const& preVisitor,
@@ -4313,6 +4354,13 @@ AstNode* Ast::traverseAndModify(
 
   if (!preVisitor(node)) {
     return node;
+  }
+
+  if (node->type == NODE_TYPE_OPERATOR_TERNARY) {
+    traverseAndModifyTernary(node, preVisitor, visitor, postVisitor);
+    auto result = visitor(node);
+    postVisitor(node);
+    return result;
   }
 
   size_t const n = node->numMembers();

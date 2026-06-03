@@ -28,7 +28,13 @@
 const jsunity = require("jsunity");
 const helper = require("@arangodb/aql-helper");
 const getQueryResults = helper.getQueryResults;
+const assertQueryWarningAndNull = helper.assertQueryWarningAndNull;
+const errors = require("@arangodb").errors;
 const db = require("@arangodb").db;
+
+function getQueryWarnings (query, bindVars) {
+  return db._query(query, bindVars || {}).getExtra().warnings || [];
+}
   
 const cn = "UnittestsTernary";
 
@@ -470,9 +476,17 @@ RETURN upsertDoc
     testConstantFalseConditionSkipsTrueBranchDuringOptimization : function () {
       // KEEP(null, ...) on the dead true branch must not run at plan time.
       const query = "LET val = null RETURN val != null ? KEEP(val, 'foo') : null";
-      let cursor = db._query(query, {}, false, true);
+      let cursor = db._query(query);
       assertEqual([ null ], cursor.toArray());
-      assertEqual(0, cursor.getWarnings().length);
+      assertEqual(0, getQueryWarnings(query).length);
+    },
+
+    testConstantTrueConditionExecutesLiveBranchDuringOptimization : function () {
+      // val == null is true when val is null: live branch is KEEP(val, 'foo').
+      const query = "LET val = null RETURN val == null ? KEEP(val, 'foo') : null";
+      assertQueryWarningAndNull(
+        errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code,
+        query);
     },
 
     testConstantTrueConditionSkipsFalseBranchDuringOptimization : function () {
@@ -482,9 +496,21 @@ RETURN upsertDoc
 
     testConstantTrueConditionKeepOnLiveBranch : function () {
       const query = "LET val = { a: 1, b: 2 } RETURN val == null ? null : KEEP(val, 'a')";
-      let cursor = db._query(query, {}, false, true);
+      let cursor = db._query(query);
       assertEqual([ { a: 1 } ], cursor.toArray());
-      assertEqual(0, cursor.getWarnings().length);
+      assertEqual(0, getQueryWarnings(query).length);
+    },
+
+    testStringConditionWithWarning : function () {
+      const query = "LET val = 'randomvalue' RETURN val != null ? KEEP(val, 'foo') : null";
+      assertQueryWarningAndNull(
+        errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code,
+        query);
+    },
+
+    testStringConditionWithoutWarning : function () {
+      const query = "LET val = 'randomvalue' RETURN val == null ? KEEP(val, 'foo') : null";
+      assertEqual(0, getQueryWarnings(query).length);
     },
 
     testMustNotExecuteUnreachableConditions : function () {

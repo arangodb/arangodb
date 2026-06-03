@@ -1,5 +1,7 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
+* bug-fix/COR-572: "keep" and "unset" are evaluated eagerly - triggering warnings in the ternary op during validate and optimize.
+
 * COR-522: Use Distribute on repeated smart edge join.
 
 * COR-299: Upgrade ScatterNode to DistributeNode if shardkey is known
