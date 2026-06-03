@@ -44,22 +44,28 @@ defmodule Mix.Tasks.Toast.Analyze.Detail do
     spec = parse_issue_spec(rest)
     selected = select_issues(indexed, spec)
 
+    logs_enabled = logs_enabled?(opts)
+    traffic_enabled = traffic_enabled?(opts)
+
     log_opts = %{
-      enabled: logs_enabled?(opts),
+      enabled: logs_enabled,
       server_filter: IssueStreams.parse_server_filter(opts[:log_servers]),
       window_spec: IssueStreams.parse_window_spec(opts[:log_window]),
-      event_detail: parse_event_detail(opts[:log_events]),
       level_filter: LogAnalysis.parse_level_filter(opts[:log_min_level]),
       excluded_ids: LogAnalysis.parse_exclude(opts[:log_exclude])
     }
 
     traffic_opts = %{
-      enabled: traffic_enabled?(opts),
+      enabled: traffic_enabled,
       server_filter: IssueStreams.parse_server_filter(opts[:traffic_servers]),
       window_spec: IssueStreams.parse_window_spec(opts[:traffic_window]),
       method_filter: TrafficAnalysis.parse_method_filter(opts[:traffic_methods]),
       endpoint_filter: TrafficAnalysis.parse_endpoint_filter(opts[:traffic_endpoints]),
       status_filter: TrafficAnalysis.parse_status_filter(opts[:traffic_status])
+    }
+
+    event_opts = %{
+      detail: parse_event_detail(opts[:events], logs_enabled or traffic_enabled)
     }
 
     bt_opts = %{
@@ -69,11 +75,13 @@ defmodule Mix.Tasks.Toast.Analyze.Detail do
       disassembly: Keyword.get(opts, :disassembly, false)
     }
 
+    display = %{log: log_opts, traffic: traffic_opts, event: event_opts, backtrace: bt_opts}
+
     if selected == [] do
       Mix.shell().info(colorize("No matching issues.", :yellow, color))
     else
       Enum.each(selected, fn {issue, idx} ->
-        print_issue_detail(issue, idx, color, log_opts, traffic_opts, bt_opts)
+        print_issue_detail(issue, idx, color, display)
       end)
     end
   end
@@ -130,12 +138,14 @@ defmodule Mix.Tasks.Toast.Analyze.Detail do
 
   @valid_event_details %{"none" => :none, "basic" => :basic, "full" => :full}
 
-  defp parse_event_detail(nil), do: :basic
+  def parse_event_detail(nil, any_stream_enabled) do
+    if any_stream_enabled, do: :basic, else: :none
+  end
 
-  defp parse_event_detail(level) do
+  def parse_event_detail(level, _any_stream_enabled) do
     Map.get(@valid_event_details, level) ||
       Mix.raise(
-        "Unknown --log-events level: #{level}. Valid: #{@valid_event_details |> Map.keys() |> Enum.join(", ")}"
+        "Unknown --events level: #{level}. Valid: #{@valid_event_details |> Map.keys() |> Enum.join(", ")}"
       )
   end
 
@@ -153,27 +163,17 @@ defmodule Mix.Tasks.Toast.Analyze.Detail do
 
   # --- Issue detail rendering ---
 
-  defp print_issue_detail(issue, idx, color, log_opts, traffic_opts, bt_opts) do
+  defp print_issue_detail(issue, idx, color, display) do
     bar = String.duplicate("─", 80)
     Mix.shell().info("\n#{colorize(bar, :faint, color)}")
     print_issue_header(issue, idx, color)
-    Body.print(issue, color, bt_opts)
-    print_issue_appendices(issue, log_opts, traffic_opts, color)
+    Body.print(issue, color, display.backtrace)
+    print_issue_appendices(issue, display, color)
   end
 
-  defp print_issue_appendices(issue, log_opts, traffic_opts, color) do
-    cond do
-      log_opts.enabled and traffic_opts.enabled ->
-        Streams.print_logs_and_traffic(issue, log_opts, traffic_opts, color)
-
-      log_opts.enabled ->
-        Streams.print_logs(issue, log_opts, color)
-
-      traffic_opts.enabled ->
-        Streams.print_traffic(issue, traffic_opts, color)
-
-      true ->
-        :ok
+  defp print_issue_appendices(issue, display, color) do
+    if display.log.enabled or display.traffic.enabled or display.event.detail != :none do
+      Streams.print(issue, display, color)
     end
   end
 

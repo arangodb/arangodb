@@ -28,9 +28,9 @@ defmodule Mix.Tasks.Toast.Analyze.Detail.ServerInfo do
   alias ToastTest.Formatting.Logs, as: LogFormatting
   alias ToastTest.Analyze.IssueStreams
 
-  def print_context(issue, win_start, win_end, log_opts, servers, color) do
+  def print_context(issue, {win_start, win_end}, server_filter, servers, color) do
     {tb_start, tb_end} = issue.time_bounds
-    matching = IssueStreams.matching_servers(servers, log_opts.server_filter)
+    matching = IssueStreams.matching_servers(servers, server_filter)
     deployments = issue[:deployments] || %{}
 
     Mix.shell().info(
@@ -43,7 +43,7 @@ defmodule Mix.Tasks.Toast.Analyze.Detail.ServerInfo do
 
     Mix.shell().info(
       colorize(
-        "  Log window:    #{Data.fmt_dt(win_start)} .. #{Data.fmt_dt(win_end)}",
+        "  Display window: #{Data.fmt_dt(win_start)} .. #{Data.fmt_dt(win_end)}",
         :faint,
         color
       )

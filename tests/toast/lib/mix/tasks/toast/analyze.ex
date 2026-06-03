@@ -60,8 +60,11 @@ defmodule Mix.Tasks.Toast.Analyze do
       --log-min-level <spec>          Filter log entries by level (default: show all)
                                       Examples: --log-min-level info
                                                 --log-min-level info,crash=debug
-      --log-exclude <ids>              Exclude log entries by ID (comma-separated)
-      --log-events <level>            Event detail in log output: none, basic (default), full
+      --log-exclude <ids>             Exclude log entries by ID (comma-separated)
+
+  ## Event options (detail only)
+
+      --events <level>                Event detail: none, basic, full (default: basic when logs/traffic enabled)
 
   ## Traffic options (detail only)
 
@@ -102,7 +105,7 @@ defmodule Mix.Tasks.Toast.Analyze do
     logs: :boolean,
     log_servers: :string,
     log_window: :string,
-    log_events: :string,
+    events: :string,
     log_exclude: :string,
     log_min_level: :string,
     traffic: :boolean,

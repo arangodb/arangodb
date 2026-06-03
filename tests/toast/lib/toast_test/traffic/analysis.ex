@@ -32,7 +32,7 @@ defmodule ToastTest.Traffic.Analysis do
   def parse_endpoint_filter(nil), do: nil
   def parse_endpoint_filter(spec) when is_binary(spec), do: parse_csv(spec)
 
-  defp parse_csv(spec), do: spec |> String.split(",") |> Enum.map(&String.trim/1)
+  defp parse_csv(spec), do: spec |> String.split(",", trim: true) |> Enum.map(&String.trim/1)
 
   @doc "Parse a status filter spec into a {min, max} range, or nil."
   def parse_status_filter(nil), do: nil
@@ -71,6 +71,9 @@ defmodule ToastTest.Traffic.Analysis do
 
       entry.status != nil ->
         format_response(entry)
+
+      true ->
+        "? (no method or status)"
     end
   end
 
