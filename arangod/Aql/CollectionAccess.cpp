@@ -51,7 +51,8 @@ CollectionAccess::CollectionAccess(aql::Collections const* const collections,
   auto colName = slice.get("collection").copyString();
   _collection = collections->get(colName);
 
-  TRI_ASSERT(_collection != nullptr);
+  TRI_ASSERT(_collection != nullptr)
+      << "collection '" << colName << "' not found";
 
   if (_collection == nullptr) {
     std::string msg("collection '");
