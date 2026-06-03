@@ -278,8 +278,12 @@ void ReplicationApplier::doStart(
   TRI_ASSERT(!_state.isTailing() && !_state.isShuttingDown());
 
   if (_configuration._endpoint.empty()) {
+    VPackBuilder b;
+    std::string msg = "no endpoint configured: ";
+    _configuration.toVelocyPack(b, false, false);
+    msg += b.slice().toJson();
     Result r(TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION,
-             "no endpoint configured");
+             msg);
     setErrorNoLock(r);
     THROW_ARANGO_EXCEPTION(r);
   }
