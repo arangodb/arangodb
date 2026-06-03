@@ -3549,7 +3549,7 @@ struct Shower final
 /// @brief show an overview over the plan
 void ExecutionPlan::show() const {
   Shower shower;
-  _root->flatWalk(shower, false);
+  _root->flatWalk(shower, ExecutionNode::FlattenType::INLINE_ALL);
 }
 
 #endif
