@@ -21,7 +21,7 @@
 /// @author Jure Bajic
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "VectorIndex/VectorIndexAutoTuner.h"
+#include "VectorIndex/AutoTuner.h"
 
 #include <chrono>
 #include <cstddef>
