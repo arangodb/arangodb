@@ -23,10 +23,12 @@
 
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 #include <span>
 
 #include "Basics/ResultT.h"
+#include "Inspection/Status.h"
 
 namespace faiss {
 class IndexIVF;
@@ -37,6 +39,42 @@ namespace arangodb::vector {
 inline constexpr std::int64_t kDefaultAutoTuneR{10};
 inline constexpr double kDefaultAutoTuneTargetRecall{0.9};
 inline constexpr double kAutoTuneRecallEpsilon{5e-4};
+inline constexpr std::size_t kAutoTuneSampleCap{1024};
+
+struct AutotuneParams {
+  std::int64_t R{kDefaultAutoTuneR};
+  double targetRecall{kDefaultAutoTuneTargetRecall};
+  std::size_t sampleSize{kAutoTuneSampleCap};
+
+  template<class Inspector>
+  friend inline auto inspect(Inspector& f, AutotuneParams& x) {
+    return f.object(x).fields(
+        f.field("topK", x.R)
+            .fallback(kDefaultAutoTuneR)
+            .invariant([](auto value) -> inspection::Status {
+              if (value < 1) {
+                return {"'topK' must be a positive integer"};
+              }
+              return inspection::Status::Success{};
+            }),
+        f.field("targetRecall", x.targetRecall)
+            .fallback(kDefaultAutoTuneTargetRecall)
+            .invariant([](auto value) -> inspection::Status {
+              if (value <= 0.0 || value > 1.0) {
+                return {"'targetRecall' must be a number in (0, 1]"};
+              }
+              return inspection::Status::Success{};
+            }),
+        f.field("sampleSize", x.sampleSize)
+            .fallback(kAutoTuneSampleCap)
+            .invariant([](auto value) -> inspection::Status {
+              if (value < 1) {
+                return {"'sampleSize' must be a positive integer"};
+              }
+              return inspection::Status::Success{};
+            }));
+  }
+};
 
 // Sweep nprobe over powers of two via FAISS's ParameterSpace::explore, pick
 // the smallest value whose recall@R meets `targetRecall`, or fall back to
