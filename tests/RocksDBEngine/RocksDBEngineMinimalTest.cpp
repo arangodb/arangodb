@@ -104,8 +104,7 @@ TEST(RocksDBEngineMinimal, CanConstruct) {
   auto& scheduler = server.addFeature<SchedulerFeature>(metrics, prng);
 
   TestCacheOptionsProvider cacheProvider;
-  auto& cache =
-      server.addFeature<CacheManagerFeature>(cacheProvider, prng);
+  auto& cache = server.addFeature<CacheManagerFeature>(cacheProvider, prng);
 
   auto& indexRefill = server.addFeature<RocksDBIndexCacheRefillFeature>(
       dbFeature, nullptr /* ClusterFeature* */, metrics);
@@ -113,9 +112,9 @@ TEST(RocksDBEngineMinimal, CanConstruct) {
   TestRocksDBOptionsProvider optionsProvider;
 
   auto& engine = server.addFeature<RocksDBEngine>(
-      optionsProvider, metrics, dbPath, vectorIdx, flush, dumpLimits,
-      scheduler, nullptr /* ReplicatedLogFeature* */,
-      recovery, dbFeature, indexRefill, cache, agency);
+      optionsProvider, metrics, dbPath, vectorIdx, flush, dumpLimits, scheduler,
+      nullptr /* ReplicatedLogFeature* */, recovery, dbFeature, indexRefill,
+      cache, agency);
 
   EXPECT_EQ(engine.kEngineName, "rocksdb");
 }
