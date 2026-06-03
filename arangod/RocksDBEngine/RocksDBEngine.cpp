@@ -26,7 +26,6 @@
 
 #include <filesystem>
 
-#include "Agency/AgencyFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/LanguageFeature.h"
 #include "Basics/Exceptions.h"
@@ -70,11 +69,9 @@
 #include "Rest/Version.h"
 #include "RestHandler/RestHandlerCreator.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/DatabasePathFeature.h"
+#include "RestServer/DumpLimitsFeatureOptions.h"
 #include "RestServer/FlushFeature.h"
-#include "RestServer/DumpLimitsFeature.h"
 #include "RestServer/LanguageCheckFeature.h"
-#include "VectorIndex/VectorIndexFeature.h"
 #include "RestServer/ServerIdFeature.h"
 #include "Replication2/Storage/LogStorageMethods.h"
 #include "Replication2/Storage/RocksDB/AsyncLogWriteBatcher.h"
@@ -123,7 +120,7 @@
 #include "RocksDBEngine/RocksDBValue.h"
 #include "RocksDBEngine/RocksDBWalAccess.h"
 #include "RocksDBEngine/SimpleRocksDBTransactionState.h"
-#include "Scheduler/SchedulerFeature.h"
+#include "Scheduler/SchedulerFeature.h"  // for SchedulerFeature::SCHEDULER
 #include "Transaction/Context.h"
 #include "Transaction/Manager.h"
 #include "Transaction/Options.h"
@@ -278,31 +275,27 @@ RocksDBFilePurgeEnabler::RocksDBFilePurgeEnabler(
 RocksDBEngine::RocksDBEngine(
     application_features::ApplicationServer& server,
     RocksDBOptionsProvider& optionsProvider, metrics::MetricsFeature& metrics,
-    DatabasePathFeature const& databasePathFeature,
-    VectorIndexFeature const& vectorIndexFeature, FlushFeature& flushFeature,
-    DumpLimitsFeature const& dumpLimitsFeature,
-    SchedulerFeature& schedulerFeature,
+    std::string basePath, bool vectorIndexEnabled, FlushFeature& flushFeature,
+    DumpLimitsFeatureOptions dumpLimits,
     ReplicatedLogFeature* replicatedLogFeature,
     RocksDBRecoveryManager const& rocksDbRecoveryManager,
     DatabaseFeature& databaseFeature,
     RocksDBIndexCacheRefillFeature& rocksDbIndexCacheRefillFeature,
-    CacheManagerFeature& cacheManagerFeature,
-    AgencyFeature const& agencyFeature)
+    CacheManagerFeature& cacheManagerFeature, bool isAgencyNode)
     : StorageEngine(server, kEngineName, name(), typeid(RocksDBEngine),
                     std::make_unique<RocksDBIndexFactory>(server)),
-      _databasePathFeature(databasePathFeature),
-      _vectorIndexFeature(vectorIndexFeature),
+      _vectorIndexEnabled(vectorIndexEnabled),
       _flushFeature(flushFeature),
-      _dumpLimitsFeature(dumpLimitsFeature),
-      _schedulerFeature(schedulerFeature),
+      _dumpLimits(std::move(dumpLimits)),
       _replicatedLogFeature(replicatedLogFeature),
       _rocksDbRecoveryManager(rocksDbRecoveryManager),
       _databaseFeature(databaseFeature),
       _rocksDbIndexCacheRefillFeature(rocksDbIndexCacheRefillFeature),
       _cacheManagerFeature(cacheManagerFeature),
-      _agencyFeature(agencyFeature),
+      _isAgencyNode(isAgencyNode),
       _optionsProvider(optionsProvider),
       _metrics(metrics),
+      _basePath(std::move(basePath)),
       _db(nullptr),
       _walAccess(std::make_unique<RocksDBWalAccess>(*this)),
       _maxTransactionSize(transaction::Options::defaultMaxTransactionSize),
@@ -373,7 +366,6 @@ RocksDBEngine::RocksDBEngine(
       _sortingMethod(
           arangodb::basics::VelocyPackHelper::SortingMethod::Correct) {
   startsAfter<BasicFeaturePhaseServer>();
-  startsAfter<VectorIndexFeature>();
   // inherits order from StorageEngine but requires "RocksDBOption" that is
   // used to configure this engine
   startsAfter<RocksDBOptionFeature>();
@@ -900,9 +892,6 @@ void RocksDBEngine::validateOptions(
 // preparation phase for storage engine. can be used for internal setup.
 // the storage engine must not start any threads here or write any files
 void RocksDBEngine::prepare() {
-  // get base path from DatabaseServerFeature
-  _basePath = _databasePathFeature.directory();
-
   TRI_ASSERT(!_basePath.empty());
 
 #ifdef USE_ENTERPRISE
@@ -945,9 +934,7 @@ void RocksDBEngine::verifySstFiles(rocksdb::Options const& options) const {
   exit(exitCode);
 }
 
-bool RocksDBEngine::isVectorIndexEnabled() const {
-  return _vectorIndexFeature.isVectorIndexEnabled();
-}
+bool RocksDBEngine::isVectorIndexEnabled() const { return _vectorIndexEnabled; }
 
 namespace {
 
@@ -990,8 +977,7 @@ void RocksDBEngine::start() {
   TRI_ASSERT(isEnabled());
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 
-  auto path = _databasePathFeature.directory();
-  auto engineFilePath = basics::FileUtils::buildFilename(path, "ENGINE");
+  auto engineFilePath = basics::FileUtils::buildFilename(_basePath, "ENGINE");
 
   // Starter still expects ENGINE file to be present
   if (!std::filesystem::is_regular_file(engineFilePath)) {
@@ -1020,7 +1006,7 @@ void RocksDBEngine::start() {
       << ", supported compression types: " << getCompressionSupport();
 
   // set the database sub-directory for RocksDB
-  _path = _databasePathFeature.subdirectoryName("engine-rocksdb");
+  _path = basics::FileUtils::buildFilename(_basePath, "engine-rocksdb");
 
   [[maybe_unused]] bool createdEngineDir = false;
   if (!std::filesystem::is_directory(_path)) {
@@ -1326,15 +1312,14 @@ void RocksDBEngine::start() {
   TRI_ASSERT(_db != nullptr);
   _settingsManager = std::make_unique<RocksDBSettingsManager>(*this);
   _replicationManager = std::make_unique<RocksDBReplicationManager>(*this);
-  _dumpManager = std::make_unique<RocksDBDumpManager>(
-      *this, _metrics, _dumpLimitsFeature.limits());
+  _dumpManager =
+      std::make_unique<RocksDBDumpManager>(*this, _metrics, _dumpLimits);
   _walManager = std::make_shared<replication2::storage::wal::WalManager>(
-      _databasePathFeature.subdirectoryName("replicated-logs"));
+      basics::FileUtils::buildFilename(_basePath, "replicated-logs"));
 
   struct SchedulerExecutor
       : replication2::storage::rocksdb::AsyncLogWriteBatcher::IAsyncExecutor {
-    explicit SchedulerExecutor([[maybe_unused]] SchedulerFeature& /* require the SchedulerFeature to exist */)
-        : _scheduler(arangodb::SchedulerFeature::SCHEDULER) {}
+    SchedulerExecutor() : _scheduler(arangodb::SchedulerFeature::SCHEDULER) {}
 
     void operator()(fu2::unique_function<void() noexcept> func) override {
       _scheduler->queue(RequestLane::CLUSTER_INTERNAL, std::move(func));
@@ -1354,8 +1339,7 @@ void RocksDBEngine::start() {
         std::make_shared<replication2::storage::rocksdb::AsyncLogWriteBatcher>(
             RocksDBColumnFamilyManager::get(
                 RocksDBColumnFamilyManager::Family::ReplicatedLogs),
-            _db->GetRootDB(),
-            std::make_shared<SchedulerExecutor>(_schedulerFeature),
+            _db->GetRootDB(), std::make_shared<SchedulerExecutor>(),
             _replicatedLogFeature->options(), _logMetrics);
     _logPersistor = logPersistor;
 
@@ -4283,7 +4267,8 @@ void RocksDBEngine::addCacheMetrics(uint64_t initial, uint64_t effective,
 using SortingMethod = arangodb::basics::VelocyPackHelper::SortingMethod;
 
 Result RocksDBEngine::writeSortingFile(SortingMethod sortingMethod) {
-  std::string path = _databasePathFeature.subdirectoryName(kSortingMethodFile);
+  std::string path =
+      basics::FileUtils::buildFilename(_basePath, kSortingMethodFile);
   std::string value =
       sortingMethod == SortingMethod::Legacy ? "LEGACY" : "CORRECT";
   try {
@@ -4300,7 +4285,8 @@ Result RocksDBEngine::writeSortingFile(SortingMethod sortingMethod) {
 
 SortingMethod RocksDBEngine::readSortingFile() {
   SortingMethod sortingMethod = SortingMethod::Legacy;
-  std::string path = _databasePathFeature.subdirectoryName(kSortingMethodFile);
+  std::string path =
+      basics::FileUtils::buildFilename(_basePath, kSortingMethodFile);
   std::string value;
   try {
     basics::FileUtils::slurp(path, value);
@@ -4320,8 +4306,8 @@ SortingMethod RocksDBEngine::readSortingFile() {
     // to legacy mode, except for agents. Since agents have never used
     // VPackIndexes before we fixed the sorting order, we might as well
     // directly consider them to be migrated to the CORRECT sorting order:
-    sortingMethod = _agencyFeature.activated() ? SortingMethod::Correct
-                                               : SortingMethod::Legacy;
+    sortingMethod =
+        _isAgencyNode ? SortingMethod::Correct : SortingMethod::Legacy;
     LOG_TOPIC("8ff0e", WARN, Logger::STARTUP)
         << "unable to read 'SORTING' file '" << path << "': " << ex.what()
         << ". This is expected directly after an upgrade and will then be "

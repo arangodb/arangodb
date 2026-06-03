@@ -39,7 +39,7 @@ class ClusterMetricsFeature;
 }  // namespace arangodb
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
-#include "RestServer/DumpLimitsFeature.h"
+#include "RestServer/DumpLimitsFeatureOptions.h"
 #include "RestServer/FlushFeature.h"
 #include "RestServer/arangod.h"
 
@@ -112,9 +112,10 @@ TEST(RocksDBEngineMinimal, CanConstruct) {
   TestRocksDBOptionsProvider optionsProvider;
 
   auto& engine = server.addFeature<RocksDBEngine>(
-      optionsProvider, metrics, dbPath, vectorIdx, flush, dumpLimits, scheduler,
+      optionsProvider, metrics, std::string{"/tmp/rocksdb-test"},
+      false /* vectorIndexEnabled */, flush, DumpLimitsFeatureOptions{},
       nullptr /* ReplicatedLogFeature* */, recovery, dbFeature, indexRefill,
-      cache, agency);
+      cache, false /* isAgencyNode */);
 
   EXPECT_EQ(engine.kEngineName, "rocksdb");
 }

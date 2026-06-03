@@ -38,6 +38,7 @@
 #include "Basics/ReadWriteLock.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cache/CacheManagerFeature.h"
+#include "RestServer/DumpLimitsFeatureOptions.h"
 #include "Containers/FlatHashSet.h"
 #include "Metrics/Fwd.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
@@ -74,10 +75,7 @@ struct WalManager;
 }
 }  // namespace replication2::storage
 
-class AgencyFeature;
 class CacheManagerFeature;
-class DatabasePathFeature;
-class DumpLimitsFeature;
 class FlushFeature;
 class PhysicalCollection;
 class ReplicatedLogFeature;
@@ -94,10 +92,8 @@ class RocksDBSettingsManager;
 class RocksDBSyncThread;
 class RocksDBThrottle;  // breaks tons if RocksDBThrottle.h included here
 class RocksDBWalAccess;
-class SchedulerFeature;
 class TransactionCollection;
 class TransactionState;
-class VectorIndexFeature;
 
 namespace rest {
 class RestHandlerFactory;
@@ -172,18 +168,14 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   // create the storage engine
   RocksDBEngine(application_features::ApplicationServer& server,
                 RocksDBOptionsProvider& optionsProvider,
-                metrics::MetricsFeature& metrics,
-                DatabasePathFeature const& databasePathFeature,
-                VectorIndexFeature const& vectorIndexFeature,
-                FlushFeature& flushFeature,
-                DumpLimitsFeature const& dumpLimitsFeature,
-                SchedulerFeature& schedulerFeature,
+                metrics::MetricsFeature& metrics, std::string basePath,
+                bool vectorIndexEnabled, FlushFeature& flushFeature,
+                DumpLimitsFeatureOptions dumpLimits,
                 ReplicatedLogFeature* replicatedLogFeature,
                 RocksDBRecoveryManager const& rocksDbRecoveryManager,
                 DatabaseFeature& databaseFeature,
                 RocksDBIndexCacheRefillFeature& rocksDbIndexCacheRefillFeature,
-                CacheManagerFeature& cacheManagerFeature,
-                AgencyFeature const& agencyFeature);
+                CacheManagerFeature& cacheManagerFeature, bool isAgencyNode);
   ~RocksDBEngine();
 
   // Temporary, for easier refactoring:
@@ -620,17 +612,15 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   }
 
  private:
-  DatabasePathFeature const& _databasePathFeature;
-  VectorIndexFeature const& _vectorIndexFeature;
+  bool const _vectorIndexEnabled;
   FlushFeature& _flushFeature;
-  DumpLimitsFeature const& _dumpLimitsFeature;
-  SchedulerFeature& _schedulerFeature;
+  DumpLimitsFeatureOptions const _dumpLimits;
   ReplicatedLogFeature* _replicatedLogFeature;
   RocksDBRecoveryManager const& _rocksDbRecoveryManager;
   DatabaseFeature& _databaseFeature;
   RocksDBIndexCacheRefillFeature& _rocksDbIndexCacheRefillFeature;
   CacheManagerFeature& _cacheManagerFeature;
-  AgencyFeature const& _agencyFeature;
+  bool const _isAgencyNode;
   RocksDBOptionsProvider& _optionsProvider;
 
   metrics::MetricsFeature& _metrics;
