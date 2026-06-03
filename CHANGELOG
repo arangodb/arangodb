@@ -1,5 +1,9 @@
 3.12.10-devel (XXXX-XX-XX)
 --------------------------
+* COR-584/OASIS-27899: Fixed an edge case in range_column_iterator::seek where
+executing a seek on an uninitialized iterator would return incorrect results if
+the target is greater than the max value of that iterator.
+
 * COR-573: Fix missing erase after std::ranges::remove.
 
 * COR-75: Removed RocksDBKeyLeaser, making RocksDBKey own its leased string buffer directly.
