@@ -25,7 +25,7 @@ defmodule ToastTest.Formatting.Logs do
 
   Handles server tags, color assignment, and rendering of merged
   log streams into human-readable output. Data transformation
-  (filtering, merging, windowing) lives in `ToastTest.LogAnalysis`.
+  (filtering, merging, windowing) lives in `ToastTest.Analyze.Logs`.
   """
 
   @role_abbrevs %{

@@ -63,6 +63,15 @@ defmodule Mix.Tasks.Toast.Analyze do
       --log-exclude <ids>              Exclude log entries by ID (comma-separated)
       --log-events <level>            Event detail in log output: none, basic (default), full
 
+  ## Traffic options (detail only)
+
+      --traffic                       Enable HTTP traffic display
+      --traffic-servers <spec>        Server filter (same syntax as --log-servers)
+      --traffic-window <before>,<after>  Signed milliseconds relative to issue time bounds
+      --traffic-methods <methods>     Filter by HTTP method (comma-separated, e.g. POST,PUT)
+      --traffic-endpoints <specs>     Filter by endpoint substring (comma-separated)
+      --traffic-status <range>        Filter by status code (e.g. 500 or 400-499)
+
   ## Backtrace options (detail only)
 
       --coredumps / --no-coredumps    Include coredump backtraces (default: on)
@@ -96,6 +105,12 @@ defmodule Mix.Tasks.Toast.Analyze do
     log_events: :string,
     log_exclude: :string,
     log_min_level: :string,
+    traffic: :boolean,
+    traffic_servers: :string,
+    traffic_window: :string,
+    traffic_methods: :string,
+    traffic_endpoints: :string,
+    traffic_status: :string,
     coredumps: :boolean,
     threads: :string,
     backtrace_frames: :integer,
