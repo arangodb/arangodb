@@ -33,11 +33,23 @@ class Result;
 
 namespace velocypack {
 class Builder;
-}
+class Slice;
+}  // namespace velocypack
 
 /// @brief flush Wal on all DBservers
 Result flushWalOnAllDBServers(ClusterFeature&, bool waitForSync,
                               bool flushColumnFamilies);
+
+/// @brief autotune a vector index on all shards (every replica). Never
+/// fails-fast: each shard's outcome — success {oldNProbe,newNProbe} or an
+/// error — is appended to `result` as an array element. The returned Result
+/// fails only on setup problems (collection not found, shutting down).
+Result autoTuneVectorIndexOnAllDBServers(ClusterFeature&,
+                                         std::string const& dbname,
+                                         std::string const& collname,
+                                         std::string const& indexId,
+                                         velocypack::Slice params,
+                                         velocypack::Builder& result);
 
 /// @brief recalculate collection count on all DBServers
 Result recalculateCountsOnAllDBServers(ClusterFeature&, std::string_view dbname,
