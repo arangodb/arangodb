@@ -1,8 +1,9 @@
 3.12.9.3 (2026-06-04)
--------------------
+---------------------
+
 * COR-584/OASIS-27899: Fixed an edge case in range_column_iterator::seek where
-executing a seek on an uninitialized iterator would return incorrect results if
-the target is greater than the max value of that iterator.
+  executing a seek on an uninitialized iterator would return incorrect results
+  if the target is greater than the max value of that iterator.
 
 
 3.12.9.2 (2026-05-15)
