@@ -97,26 +97,6 @@ inline auto inspect(Inspector& f, VectorIndexFormatVersion& x) {
 static constexpr VectorIndexFormatVersion kCurrentVectorIndexFormatVersion =
     VectorIndexFormatVersion::kV2;
 
-/// @brief Per-index metadata sentinel record stored in the VectorIndex CF.
-/// Wraps TrainedData and adds the on-disk formatVersion. The kV1 default
-/// covers legacy records that pre-date the formatVersion field.
-struct VectorIndexMetadata {
-  TrainedData trainedData;
-  VectorIndexFormatVersion formatVersion = VectorIndexFormatVersion::kV1;
-
-  // Wire shape must stay in sync with the save-side view in
-  // RocksDBVectorIndexBuilder.cpp (which serializes the same fields from
-  // references to avoid copying codeData). tunedNProbe is optional: records
-  // written before autotune existed simply lack it and load as nullopt.
-  template<class Inspector>
-  friend inline auto inspect(Inspector& f, VectorIndexMetadata& x) {
-    return f.object(x).fields(f.field("codeData", x.trainedData.codeData),
-                              f.field("tunedNProbe", x.trainedData.tunedNProbe),
-                              f.field("formatVersion", x.formatVersion)
-                                  .fallback(VectorIndexFormatVersion::kV1));
-  }
-};
-
 /// @brief Strategy for computing nLists from document count.
 enum class NListsStrategy : std::uint8_t {
   kAutoSqrt,
