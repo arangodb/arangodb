@@ -77,6 +77,29 @@ static_assert(std::is_same_v<faiss::idx_t, std::int64_t>,
   LOG_TOPIC((lid), level, topic)            \
       << "[shard=" << _collection.name() << ", index=" << _iid.id() << "] "
 
+namespace {
+// On-disk metadata record for a vector index. Templated on how codeData is held
+// so the view alias can serialize straight from live state without copying the
+// (potentially large) blob.
+template<class Bytes>
+struct StoredMetadata {
+  Bytes codeData;
+  std::optional<std::int64_t> tunedNProbe;
+  vector::VectorIndexFormatVersion formatVersion =
+      vector::VectorIndexFormatVersion::kV1;
+
+  template<class Inspector>
+  friend auto inspect(Inspector& f, StoredMetadata& x) {
+    return f.object(x).fields(
+        f.field("codeData", x.codeData), f.field("tunedNProbe", x.tunedNProbe),
+        f.field("formatVersion", x.formatVersion)
+            .fallback(vector::VectorIndexFormatVersion::kV1));
+  }
+};
+using OwnedMetadata = StoredMetadata<std::vector<std::uint8_t>>;
+using MetadataView = StoredMetadata<std::vector<std::uint8_t> const&>;
+}  // namespace
+
 std::string_view trainingStateToString(
     VectorIndexTrainingState const state) noexcept {
   switch (state) {
@@ -150,9 +173,9 @@ RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
   TRI_ASSERT(type() == Index::TRI_IDX_TYPE_VECTOR_INDEX);
   velocypack::deserialize(info.get("params"), _definition);
 
-  auto metadata = loadVectorIndexMetadata(info);
-  _trainedData = std::move(metadata.trainedData);
-  _formatVersion = metadata.formatVersion;
+  loadStoredMetadata(info);
+  _liveNProbe.store(_trainedData.tunedNProbe.value_or(0),
+                    std::memory_order_relaxed);
 
   if (!_trainedData.codeData.empty()) {
     _faissIndex =
@@ -176,8 +199,7 @@ RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
 
 RocksDBVectorIndex::~RocksDBVectorIndex() = default;
 
-vector::VectorIndexMetadata RocksDBVectorIndex::loadVectorIndexMetadata(
-    velocypack::Slice info) const {
+void RocksDBVectorIndex::loadStoredMetadata(velocypack::Slice info) {
   // Try the V2 slot first, then fall back to the V1 slot. The slots are
   // distinct so an old binary that only knows the V1 slot will simply miss
   // V2 metadata after a downgrade and treat the index as unusable
@@ -189,7 +211,7 @@ vector::VectorIndexMetadata RocksDBVectorIndex::loadVectorIndexMetadata(
     return _engine.db()->GetRootDB()->Get(ro, _cf, key.string(), &raw).ok();
   };
 
-  vector::VectorIndexMetadata result;
+  OwnedMetadata result;
   std::string raw;
   if (readSlot(vector::VectorIndexFormatVersion::kV2, raw) ||
       readSlot(vector::VectorIndexFormatVersion::kV1, raw)) {
@@ -198,16 +220,46 @@ vector::VectorIndexMetadata RocksDBVectorIndex::loadVectorIndexMetadata(
     velocypack::deserialize(slice, result);
   } else if (auto data = info.get("trainedData"); !data.isNone()) {
     // Backwards compatibility: load from definitions CF for pre-migration
-    // indexes. Such records contain only TrainedData fields, so formatVersion
-    // stays at the default kV1.
-    velocypack::deserialize(data, result.trainedData);
+    // indexes. Such records contain only TrainedData fields (codeData +
+    // tunedNProbe), so formatVersion stays at the default kV1.
+    velocypack::deserialize(data, result);
   } else {
     // Brand-new index: stamp it with the current on-disk format. Has no
     // effect for indexes without storedValues since their entry layout is
     // already format-agnostic.
     result.formatVersion = vector::kCurrentVectorIndexFormatVersion;
   }
-  return result;
+
+  _trainedData.codeData = std::move(result.codeData);
+  _trainedData.tunedNProbe = result.tunedNProbe;
+  _formatVersion = result.formatVersion;
+}
+
+Result RocksDBVectorIndex::persistMetadata() const {
+  // View alias: codeData is borrowed from live state, not copied.
+  MetadataView view{_trainedData.codeData, _trainedData.tunedNProbe,
+                    _formatVersion};
+  velocypack::Builder builder;
+  velocypack::serialize(builder, view);
+
+  // V1 metadata stays at the legacy slot so older binaries can still read it
+  // after a downgrade. V2 metadata is parked in a separate slot; an old binary
+  // looking at the V1 slot won't find it and treats the index as unusable.
+  RocksDBKey key;
+  key.constructVectorIndexTrainedData(objectId(), _formatVersion);
+  auto value = RocksDBValue::VectorIndexValue(builder.slice());
+
+  auto* vectorCF = RocksDBColumnFamilyManager::get(
+      RocksDBColumnFamilyManager::Family::VectorIndex);
+  rocksdb::WriteOptions wo;
+  auto status = _engine.db()->GetRootDB()->Put(wo, vectorCF, key.string(),
+                                               value.string());
+  if (!status.ok()) {
+    return Result{TRI_ERROR_INTERNAL,
+                  std::string{"Failed to persist vector index metadata: "} +
+                      status.ToString()};
+  }
+  return {};
 }
 
 /// @brief Test if this index matches the definition
@@ -302,8 +354,8 @@ vector::SearchResult RocksDBVectorIndex::readBatch(
   auto faissSearchContext = makeFaissIteratorContext(config, ctx, captureSink);
 
   faiss::SearchParametersIVF searchParametersIvf;
-  searchParametersIvf.nprobe = config.searchParameters.nProbe.value_or(
-      _trainedData.tunedNProbe.value_or(_definition.defaultNProbe));
+  searchParametersIvf.nprobe =
+      config.searchParameters.nProbe.value_or(effectiveNProbe());
   searchParametersIvf.inverted_list_context = &faissSearchContext;
   _faissIndex->search(1, inputs.data(), config.topK, result.distances.data(),
                       result.labels.data(), &searchParametersIvf);
@@ -334,6 +386,8 @@ void RocksDBVectorIndex::applyTrainingResult(
     vector::TrainedData trainedData) {
   _faissIndex = std::move(faissIndex);
   _trainedData = std::move(trainedData);
+  _liveNProbe.store(_trainedData.tunedNProbe.value_or(0),
+                    std::memory_order_release);
 
   _faissIndex->replace_invlists(
       new vector::RocksDBInvertedLists(this, &collection(), _faissIndex->nlist,
@@ -403,6 +457,7 @@ void RocksDBVectorIndex::truncateCommit(TruncateGuard&& guard,
   setTrainingError(std::string{StaticStrings::VectorIndexDefaultTrainingError});
   _faissIndex.reset();
   _trainedData = {};
+  _liveNProbe.store(0, std::memory_order_release);
   RocksDBIndex::truncateCommit(std::move(guard), tick, trx);
 }
 

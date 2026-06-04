@@ -23,8 +23,10 @@
 #pragma once
 
 #include <atomic>
+#include <cstdint>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <string>
 #include <type_traits>
 
@@ -111,11 +113,23 @@ class RocksDBVectorIndex final : public RocksDBIndex {
   void applyTrainingResult(std::shared_ptr<faiss::IndexIVF> faissIndex,
                            vector::TrainedData trainedData);
 
-  // Safe only while state is still kIngesting (no concurrent search reads).
-  vector::TrainedData const& applyTunedNProbe(std::int64_t nprobe) noexcept {
-    _trainedData.tunedNProbe = nprobe;
-    return _trainedData;
+  // Tuned nprobe if set, else the configured default. Read atomically so
+  // autotune can update it while searches run concurrently.
+  std::int64_t effectiveNProbe() const noexcept {
+    auto const tuned = _liveNProbe.load(std::memory_order_acquire);
+    return tuned != 0 ? tuned : _definition.defaultNProbe;
   }
+
+  // Update the tuned nprobe: the persistence source and the atomic searches
+  // read. Persist via persistMetadata() afterwards.
+  void applyTunedNProbe(std::int64_t nprobe) noexcept {
+    _trainedData.tunedNProbe = nprobe;
+    _liveNProbe.store(nprobe, std::memory_order_release);
+  }
+
+  // Serialize the current trained data and format version into the index's
+  // metadata slot in the VectorIndex column family.
+  Result persistMetadata() const;
 
   bool hasStoredValues() const noexcept;
 
@@ -162,8 +176,8 @@ class RocksDBVectorIndex final : public RocksDBIndex {
                 OperationOptions const& /*options*/) override;
 
  private:
-  vector::VectorIndexMetadata loadVectorIndexMetadata(
-      velocypack::Slice info) const;
+  // Read the stored metadata record into _trainedData and _formatVersion.
+  void loadStoredMetadata(velocypack::Slice info);
 
   vector::UserVectorIndexDefinition _definition;
   std::shared_ptr<faiss::IndexIVF> _faissIndex;
@@ -175,6 +189,10 @@ class RocksDBVectorIndex final : public RocksDBIndex {
   std::size_t _trainingThreshold{0};
   std::atomic<VectorIndexTrainingState> _trainingState{
       VectorIndexTrainingState::kUnusable};
+
+  // Live nprobe consumed by search (0 = unset → fall back to defaultNProbe).
+  // Atomic because on-demand autotune writes it while searches read it.
+  std::atomic<std::int64_t> _liveNProbe{0};
 
   mutable std::mutex _trainingErrorMutex;
   // Placeholder used while the build manager hasn't yet diagnosed why the
