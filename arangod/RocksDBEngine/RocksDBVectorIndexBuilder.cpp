@@ -30,7 +30,7 @@
 #include "RocksDBEngine/RocksDBBuilderIndex.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBVectorIndex.h"
-#include "VectorIndex/VectorIndexAutoTuner.h"
+#include "VectorIndex/AutoTuner.h"
 
 #include <atomic>
 #include <chrono>
@@ -39,6 +39,7 @@
 #include <format>
 #include <functional>
 #include <limits>
+#include <optional>
 #include <string>
 #include <thread>
 
@@ -86,9 +87,14 @@ namespace arangodb::vector {
   LOG_TOPIC((lid), level, topic) << "[shard=" << _index.collection().name() \
                                  << ", index=" << _index.id().id() << "] "
 
-// Number of query vectors drawn for nprobe autotune. Sampled fresh from the
-// ingested data so recall is not estimated on the training vectors.
-inline constexpr std::size_t kAutoTuneSampleCap = 1024;
+// Internal helpers shared by the training and autotune sampling paths.
+static Result sampleVectors(RocksDBVectorIndex const& index,
+                            rocksdb::Iterator& it, rocksdb::Slice upper,
+                            VectorIndexTrainingSampler& sampler,
+                            std::stop_token stopToken);
+static ResultT<std::vector<float>> collectAutoTuneSample(
+    RocksDBVectorIndex const& index, rocksdb::Iterator& it,
+    rocksdb::Slice upper, std::size_t capacity, std::stop_token stopToken);
 
 // Shallow field-presence probe; ingestion already rejects malformed vectors.
 bool hasVectorField(
@@ -301,7 +307,8 @@ VectorIndexTrainer::collectTrainingDataset(rocksdb::Iterator& it,
       expectedReservoirBytes / (1024 * 1024), seed);
 
   VectorIndexTrainingSampler sampler{def.dimension, reservoirCapacity, seed};
-  if (auto res = sampleVectors(it, upper, sampler, stopToken); res.fail()) {
+  if (auto res = sampleVectors(_index, it, upper, sampler, stopToken);
+      res.fail()) {
     return res;
   }
 
@@ -334,11 +341,11 @@ VectorIndexTrainer::collectTrainingDataset(rocksdb::Iterator& it,
       {std::move(trainingData), validSeen, std::move(memScope)});
 }
 
-Result VectorIndexTrainer::sampleVectors(rocksdb::Iterator& it,
-                                         rocksdb::Slice upper,
-                                         VectorIndexTrainingSampler& sampler,
-                                         std::stop_token stopToken) const {
-  auto const& def = _index.getDefinition();
+static Result sampleVectors(RocksDBVectorIndex const& index,
+                            rocksdb::Iterator& it, rocksdb::Slice upper,
+                            VectorIndexTrainingSampler& sampler,
+                            std::stop_token stopToken) {
+  auto const& def = index.getDefinition();
   std::vector<float> inputBuffer;
   inputBuffer.reserve(def.dimension);
 
@@ -353,7 +360,7 @@ Result VectorIndexTrainer::sampleVectors(rocksdb::Iterator& it,
     if (!sampler.wantsItem()) {
       // Sparse mode: rows without the vector field must not count toward
       // itemsSeen, preserving the Algorithm L invariant over valid vectors.
-      if (_index.sparse() && !hasVectorField(doc, _index.fields())) {
+      if (index.sparse() && !hasVectorField(doc, index.fields())) {
         it.Next();
         continue;
       }
@@ -363,10 +370,10 @@ Result VectorIndexTrainer::sampleVectors(rocksdb::Iterator& it,
     }
 
     inputBuffer.clear();
-    if (auto const res = readDocumentVectorData(doc, _index.fields(),
+    if (auto const res = readDocumentVectorData(doc, index.fields(),
                                                 def.dimension, inputBuffer);
         res.fail()) {
-      if (res.is(TRI_ERROR_BAD_PARAMETER) && _index.sparse()) {
+      if (res.is(TRI_ERROR_BAD_PARAMETER) && index.sparse()) {
         it.Next();
         continue;
       }
@@ -384,13 +391,14 @@ Result VectorIndexTrainer::sampleVectors(rocksdb::Iterator& it,
   return {};
 }
 
-ResultT<std::vector<float>> VectorIndexTrainer::collectAutoTuneSample(
-    rocksdb::Iterator& it, rocksdb::Slice upper, std::size_t capacity,
-    std::stop_token stopToken) const {
-  auto const& def = _index.getDefinition();
+static ResultT<std::vector<float>> collectAutoTuneSample(
+    RocksDBVectorIndex const& index, rocksdb::Iterator& it,
+    rocksdb::Slice upper, std::size_t capacity, std::stop_token stopToken) {
+  auto const& def = index.getDefinition();
   VectorIndexTrainingSampler sampler{def.dimension, capacity,
                                      RandomDevice::seed64()};
-  if (auto res = sampleVectors(it, upper, sampler, stopToken); res.fail()) {
+  if (auto res = sampleVectors(index, it, upper, sampler, stopToken);
+      res.fail()) {
     return res;
   }
 
@@ -801,63 +809,61 @@ VectorIndexBuilder::VectorIndexBuilder(RocksDBVectorIndex& index,
       _rcoll(static_cast<RocksDBCollection*>(index.collection().getPhysical())),
       _bounds(_rcoll->bounds()) {}
 
-Result VectorIndexBuilder::persistVectorIndexMetadata(
-    VectorIndexMetadata const& metadata) {
-  velocypack::Builder builder;
-  velocypack::serialize(builder, metadata);
-
-  // V1 metadata stays at the legacy slot so older binaries can still read it
-  // after a downgrade. V2 metadata is parked in a separate slot; an old
-  // binary looking at the V1 slot won't find it and will treat the index as
-  // unusable
-  RocksDBKey key;
-  key.constructVectorIndexTrainedData(_index.objectId(),
-                                      metadata.formatVersion);
-  auto value = RocksDBValue::VectorIndexValue(builder.slice());
-
-  auto* vectorCF = RocksDBColumnFamilyManager::get(
-      RocksDBColumnFamilyManager::Family::VectorIndex);
-  rocksdb::WriteOptions wo;
-  auto status = _rootDB->Put(wo, vectorCF, key.string(), value.string());
-  if (!status.ok()) {
-    return Result{TRI_ERROR_INTERNAL,
-                  std::string{"Failed to persist vector index metadata: "} +
-                      status.ToString()};
+ResultT<std::pair<std::int64_t, std::int64_t>> autoTuneVectorIndex(
+    RocksDBVectorIndex& index, ResourceMonitor& resourceMonitor,
+    AutotuneParams const& params, std::stop_token stopToken) {
+  if (index.faissIndex() == nullptr) {
+    return Result{TRI_ERROR_QUERY_VECTOR_INDEX_NOT_READY,
+                  "vector index has no trained data to autotune"};
   }
-  return {};
-}
+  std::int64_t const oldNProbe = index.effectiveNProbe();
 
-void VectorIndexBuilder::runAutoTune(std::span<float const> autoTuneSample) {
-  if (autoTuneSample.empty()) {
-    return;
+  auto const& def = index.getDefinition();
+  auto* rootDB =
+      index.collection().vocbase().engine<RocksDBEngine>().db()->GetRootDB();
+  auto* rcoll =
+      static_cast<RocksDBCollection*>(index.collection().getPhysical());
+
+  // Fresh sample from the indexed data: reusing training vectors would bias
+  // recall optimistically (they defined the centroids).
+  ResourceUsageScope sampleScope(resourceMonitor,
+                                 static_cast<std::uint64_t>(params.sampleSize) *
+                                     def.dimension * sizeof(float));
+  BoundedDocumentIterator docIt{rcoll->bounds(), rootDB};
+  auto sample = collectAutoTuneSample(index, *docIt.it, docIt.upper,
+                                      params.sampleSize, stopToken);
+  if (sample.fail()) {
+    return std::move(sample).result();
   }
+  if (sample.get().empty()) {
+    // No vectors to tune against; keep the current value.
+    return std::pair{oldNProbe, oldNProbe};
+  }
+
   SingleCollectionTransaction trx(
       transaction::StandaloneContext::create(
-          _index.collection().vocbase(),
+          index.collection().vocbase(),
           transaction::OperationOriginInternal{"vector index autotune"}),
-      _index.collection(), AccessMode::Type::READ);
+      index.collection(), AccessMode::Type::READ);
   if (auto trxRes = trx.begin(); trxRes.fail()) {
-    LOG_VECTOR_BUILD("e16b0", WARN, Logger::ENGINES)
-        << "Skipping autotune: " << trxRes.errorMessage();
-    return;
+    return trxRes;
   }
 
   RocksDBFaissIteratorContext faissCtx{
       IteratorContext{.trx = static_cast<transaction::Methods*>(&trx)}};
-  auto const tuned =
-      autoTuneNProbe(*_index.faissIndex(), autoTuneSample, &faissCtx,
-                     kDefaultAutoTuneR, kDefaultAutoTuneTargetRecall);
+  auto tuned = autoTuneNProbe(*index.faissIndex(), sample.get(), &faissCtx,
+                              params.R, params.targetRecall);
   if (tuned.fail()) {
-    return;  // autoTuneNProbe already logged
+    return std::move(tuned).result();
   }
-  auto const& td = _index.applyTunedNProbe(tuned.get());
-  VectorIndexMetadata metadata{.trainedData = td,
-                               .formatVersion = _index.formatVersion()};
-  if (auto persistRes = persistVectorIndexMetadata(metadata);
-      persistRes.fail()) {
-    LOG_VECTOR_BUILD("e16ac", WARN, Logger::ENGINES)
-        << "Failed to persist tuned nprobe: " << persistRes.errorMessage();
+
+  // Apply then persist. nprobe is a soft tuning hint, so a failed persist that
+  // leaves the new value live until the next restart is harmless.
+  index.applyTunedNProbe(tuned.get());
+  if (auto res = index.persistMetadata(); res.fail()) {
+    return res;
   }
+  return std::pair{oldNProbe, tuned.get()};
 }
 
 Result VectorIndexBuilder::build(
@@ -912,15 +918,12 @@ Result VectorIndexBuilder::build(
       << "Training complete. Ingesting vectors.";
 
   auto trainedData = serializeIndex(*faissIndex);
+  _index.applyTrainingResult(std::move(faissIndex), std::move(trainedData));
 
-  VectorIndexMetadata metadata{.trainedData = trainedData,
-                               .formatVersion = _index.formatVersion()};
-  if (auto res = persistVectorIndexMetadata(metadata); res.fail()) {
+  if (auto res = _index.persistMetadata(); res.fail()) {
     _index.resetTrainingState();
     return res;
   }
-
-  _index.applyTrainingResult(std::move(faissIndex), std::move(trainedData));
   _index.setTrainingState(VectorIndexTrainingState::kTraining,
                           VectorIndexTrainingState::kIngesting);
 
@@ -976,21 +979,13 @@ Result VectorIndexBuilder::build(
   // Swap the real index back and transition to kReady before releasing.
   swapGuard.fire();
 
-  // Autotune nprobe on a fresh, independent sample drawn from the ingested
-  // data. Reusing the training vectors would estimate recall on the very
-  // vectors that defined the centroids, biasing it optimistically.
-  auto const& def = _index.getDefinition();
-  ResourceUsageScope sampleScope(
-      _resourceMonitor, static_cast<std::uint64_t>(kAutoTuneSampleCap) *
-                            def.dimension * sizeof(float));
-  BoundedDocumentIterator autoTuneIt{_bounds, _rootDB};
-  if (auto sample = trainer.collectAutoTuneSample(
-          *autoTuneIt.it, autoTuneIt.upper, kAutoTuneSampleCap, stopToken);
-      sample.fail()) {
+  // Build owns the lifecycle here, so this runs inline (no manager
+  // serialization, unlike the on-demand path).
+  if (auto res = autoTuneVectorIndex(_index, _resourceMonitor, AutotuneParams{},
+                                     stopToken);
+      res.fail()) {
     LOG_VECTOR_BUILD("e16b2", WARN, Logger::ENGINES)
-        << "Skipping autotune: " << sample.errorMessage();
-  } else {
-    runAutoTune(sample.get());
+        << "Skipping autotune: " << res.errorMessage();
   }
 
   _index.setTrainingState(VectorIndexTrainingState::kIngesting,

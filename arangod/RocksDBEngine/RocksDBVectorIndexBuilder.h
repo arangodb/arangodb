@@ -27,6 +27,7 @@
 #include "Basics/ResourceUsage.h"
 #include "Basics/Result.h"
 #include "Basics/ResultT.h"
+#include "VectorIndex/AutoTuner.h"
 #include "VectorIndex/VectorIndexDefinition.h"
 #include "Metrics/Fwd.h"
 #include "RocksDBEngine/RocksDBCollection.h"
@@ -34,8 +35,8 @@
 
 #include <cstdint>
 #include <memory>
-#include <span>
 #include <stop_token>
+#include <utility>
 #include <vector>
 
 #include <faiss/IndexIVF.h>
@@ -110,25 +111,10 @@ class VectorIndexTrainer {
   ResultT<TrainingResult> train(std::size_t numDocsHint,
                                 std::stop_token stopToken = {});
 
-  /// Draw an independent uniform sample of up to `capacity` vectors for
-  /// autotune. Sampled fresh from the collection (not the training vectors),
-  /// so recall is estimated on queries that did not define the centroids. The
-  /// sample is L2-normalized for cosine indexes, matching stored vectors.
-  ResultT<std::vector<float>> collectAutoTuneSample(
-      rocksdb::Iterator& it, rocksdb::Slice upper, std::size_t capacity,
-      std::stop_token stopToken = {}) const;
-
  private:
   ResultT<TrainingDataset> collectTrainingDataset(
       rocksdb::Iterator& it, rocksdb::Slice upper, std::size_t numDocsHint,
       std::stop_token stopToken) const;
-
-  /// Drive `sampler` over the iterator: read each document's vector, skipping
-  /// vector-less rows for sparse indexes. Shared by training and autotune
-  /// sampling.
-  Result sampleVectors(rocksdb::Iterator& it, rocksdb::Slice upper,
-                       VectorIndexTrainingSampler& sampler,
-                       std::stop_token stopToken) const;
 
   /// Resolve the nLists value from the definition, using numDocsHint for
   /// scaling mode.
@@ -151,6 +137,10 @@ Result ingestVectors(RocksDBVectorIndex& index, rocksdb::DB* rootDB,
                      std::unique_ptr<rocksdb::Iterator> documentIterator,
                      std::stop_token stopToken = {});
 
+ResultT<std::pair<std::int64_t, std::int64_t>> autoTuneVectorIndex(
+    RocksDBVectorIndex& index, ResourceMonitor& resourceMonitor,
+    AutotuneParams const& params, std::stop_token stopToken = {});
+
 class VectorIndexBuilder {
  public:
   VectorIndexBuilder(RocksDBVectorIndex& index,
@@ -162,10 +152,6 @@ class VectorIndexBuilder {
                std::stop_token stopToken = {});
 
  private:
-  Result persistVectorIndexMetadata(VectorIndexMetadata const& metadata);
-
-  void runAutoTune(std::span<float const> autoTuneSample);
-
   RocksDBVectorIndex& _index;
   ResourceMonitor& _resourceMonitor;
   RocksDBEngine& _engine;
