@@ -395,6 +395,15 @@ void RocksDBVectorIndex::applyTrainingResult(
       true /* faiss owns the inverted list */);
 }
 
+std::shared_ptr<faiss::IndexIVF> RocksDBVectorIndex::cloneFaissIndex() {
+  auto clone = vector::VectorIndexTrainer::restoreFromTrainedData(_trainedData);
+  clone->replace_invlists(
+      new vector::RocksDBInvertedLists(this, &collection(), clone->nlist,
+                                       clone->code_size),
+      true /* faiss owns the inverted list */);
+  return clone;
+}
+
 bool RocksDBVectorIndex::setTrainingState(
     VectorIndexTrainingState expected,
     VectorIndexTrainingState desired) noexcept {

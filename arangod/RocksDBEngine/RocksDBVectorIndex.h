@@ -113,6 +113,8 @@ class RocksDBVectorIndex final : public RocksDBIndex {
   void applyTrainingResult(std::shared_ptr<faiss::IndexIVF> faissIndex,
                            vector::TrainedData trainedData);
 
+  std::shared_ptr<faiss::IndexIVF> cloneFaissIndex();
+
   // Tuned nprobe if set, else the configured default. Read atomically so
   // autotune can update it while searches run concurrently.
   std::int64_t effectiveNProbe() const noexcept {
