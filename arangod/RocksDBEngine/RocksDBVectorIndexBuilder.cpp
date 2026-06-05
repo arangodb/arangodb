@@ -851,8 +851,7 @@ ResultT<std::pair<std::int64_t, std::int64_t>> autoTuneVectorIndex(
 
   RocksDBFaissIteratorContext faissCtx{
       IteratorContext{.trx = static_cast<transaction::Methods*>(&trx)}};
-  // Tune a standalone copy: the sweep rewrites the index's nprobe member, which
-  // must not touch the live index serving concurrent searches.
+  // The sweep mutates nprobe, so tune a copy, not the live index.
   auto tuningIndex = index.cloneFaissIndex();
   auto tuned = autoTuneNProbe(*tuningIndex, sample.get(), &faissCtx, params.R,
                               params.targetRecall);

@@ -1064,23 +1064,40 @@ async<void> RestIndexHandler::autotuneVectorIndex() {
       generateError(res);
       co_return;
     }
+    // Fail the request if any shard failed, reporting the first shard error as
+    // the cause; the body still carries the full per-shard breakdown.
     bool allShardsTuned = true;
+    ::ErrorCode firstError = TRI_ERROR_NO_ERROR;
+    std::string firstErrorMsg;
     for (auto const e : VPackArrayIterator(shardResults.slice())) {
       if (e.get(StaticStrings::Error).isTrue()) {
         allShardsTuned = false;
+        firstError =
+            ::ErrorCode{e.get(StaticStrings::ErrorNum).getNumber<int>()};
+        firstErrorMsg = e.get(StaticStrings::ErrorMessage).copyString();
         break;
       }
     }
+
+    auto const code = allShardsTuned
+                          ? rest::ResponseCode::OK
+                          : GeneralResponse::responseCode(firstError);
     VPackBuilder out;
     {
       VPackObjectBuilder guard(&out);
-      out.add(StaticStrings::Error, VPackValue(false));
-      out.add(StaticStrings::Code,
-              VPackValue(static_cast<int>(rest::ResponseCode::OK)));
+      out.add(StaticStrings::Error, VPackValue(!allShardsTuned));
+      out.add(StaticStrings::Code, VPackValue(static_cast<int>(code)));
+      if (!allShardsTuned) {
+        out.add(StaticStrings::ErrorNum, VPackValue(firstError));
+        out.add(StaticStrings::ErrorMessage,
+                VPackValue(absl::StrCat(
+                    "vector index autotune failed on one or more shards: ",
+                    firstErrorMsg)));
+      }
       out.add("allShardsTuned", VPackValue(allShardsTuned));
       out.add("result", shardResults.slice());
     }
-    generateResult(rest::ResponseCode::OK, out.slice());
+    generateResult(code, out.slice());
     co_return;
   }
 
