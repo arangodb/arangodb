@@ -1,6 +1,7 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
-* bug-fix/COR-572: "keep" and "unset" are evaluated eagerly - triggering warnings in the ternary op during validate and optimize.
+* COR-572: BugFix - Resolved unintended warnings raised by eager evaluation in the ternary operator 
+  during  traversal and optimization.
 
 * COR-522: Use Distribute on repeated smart edge join.
 
