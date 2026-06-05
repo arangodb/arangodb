@@ -1,0 +1,180 @@
+/*jshint globalstrict:false, strict:false, maxlen: 500 */
+/*global assertEqual, assertTrue, assertNotEqual */
+
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+/// @author Jure Bajic
+// //////////////////////////////////////////////////////////////////////////////
+
+const internal = require("internal");
+const jsunity = require("jsunity");
+const arangodb = require("@arangodb");
+const db = internal.db;
+const ERRORS = arangodb.errors;
+const {
+    randomNumberGeneratorFloat,
+    generateSeed,
+} = require("@arangodb/testutils/seededRandom");
+const {
+    insertDocsAndAssertIndex,
+} = require("@arangodb/testutils/vector-index-common");
+const isCluster = internal.isCluster();
+const dbName = "vectorAutotuneDB";
+const collName = "vectorAutotuneColl";
+const numberOfShards = 3;
+
+// Returns the bare numeric id of the collection's single vector index.
+function vectorIndexId(collection) {
+    const idx = collection.indexes().filter((i) => i.type === "vector")[0];
+    assertNotEqual(undefined, idx, "expected a vector index on the collection");
+    // idx.id is "<collection>/<numeric-id>"
+    return idx.id.split("/")[1];
+}
+
+// Assert a successful autotune response on either topology and return the
+// effective newNProbe (single-server) or the per-shard result array (cluster).
+function assertTunedOk(parsedBody) {
+    assertEqual(false, parsedBody.error);
+    if (isCluster) {
+        assertTrue(Array.isArray(parsedBody.result));
+        assertTrue(parsedBody.result.length >= numberOfShards,
+            "expected at least one result entry per shard");
+        assertEqual("boolean", typeof parsedBody.allShardsTuned);
+        for (const entry of parsedBody.result) {
+            assertTrue(entry.hasOwnProperty("shard"));
+            assertTrue(entry.hasOwnProperty("server"));
+            if (!entry.error) {
+                assertTrue(Number.isInteger(entry.newNProbe));
+                assertTrue(entry.newNProbe >= 1);
+            }
+        }
+    } else {
+        assertTrue(Number.isInteger(parsedBody.newNProbe));
+        assertTrue(parsedBody.newNProbe >= 1);
+        assertTrue(Number.isInteger(parsedBody.oldNProbe));
+    }
+}
+
+function VectorIndexAutotuneTestSuite() {
+    let collection;
+    let randomPoint;
+    const dimension = 64;
+    const seed = generateSeed();
+    const numberOfDocsFactor = isCluster ? numberOfShards : 1;
+    const nLists = 50;
+    const numberOfDocs = numberOfDocsFactor * nLists * 50;
+
+    return {
+        setUpAll: function() {
+            db._useDatabase("_system");
+            db._createDatabase(dbName);
+            db._useDatabase(dbName);
+
+            collection = db._create(collName, {
+                numberOfShards
+            });
+
+            let docs = [];
+            let gen = randomNumberGeneratorFloat(seed);
+            for (let i = 0; i < numberOfDocs; ++i) {
+                const vector = Array.from({
+                    length: dimension
+                }, () => gen());
+                if (i === 0) {
+                    randomPoint = vector;
+                }
+                docs.push({
+                    vector
+                });
+            }
+            insertDocsAndAssertIndex({
+                collection, docs, seed,
+                indexName: "vector_l2",
+                indexDef: {
+                    type: "vector",
+                    fields: ["vector"],
+                    inBackground: false,
+                    params: {
+                        metric: "l2",
+                        dimension: dimension,
+                        nLists: nLists,
+                    },
+                },
+            });
+        },
+
+        tearDownAll: function() {
+            db._useDatabase("_system");
+            db._dropDatabase(dbName);
+        },
+
+        // Re-tuning an already-built index returns a valid nprobe.
+        testAutotuneDefaultParams: function() {
+            const id = vectorIndexId(collection);
+            const res = arango.POST_RAW(
+                `/_api/index/${collName}/${id}/autotune`, {});
+            assertEqual(200, res.code);
+            assertTunedOk(res.parsedBody);
+        },
+
+        // Explicit per-request parameters are accepted.
+        testAutotuneWithParams: function() {
+            const id = vectorIndexId(collection);
+            const res = arango.POST_RAW(
+                `/_api/index/${collName}/${id}/autotune`,
+                {topK: 5, targetRecall: 0.95, sampleSize: 256});
+            assertEqual(200, res.code);
+            assertTunedOk(res.parsedBody);
+        },
+
+        // Search keeps working after a re-tune.
+        testSearchWorksAfterAutotune: function() {
+            const id = vectorIndexId(collection);
+            arango.POST_RAW(`/_api/index/${collName}/${id}/autotune`, {});
+
+            const query = "FOR d IN " + collName +
+                " SORT APPROX_NEAR_L2(d.vector, @qp) LIMIT 5 RETURN d._key";
+            const results = db._query(query, {qp: randomPoint}).toArray();
+            assertEqual(5, results.length);
+        },
+
+        // targetRecall outside (0, 1] is rejected with a 400.
+        testAutotuneRejectsInvalidTargetRecall: function() {
+            const id = vectorIndexId(collection);
+            const res = arango.POST_RAW(
+                `/_api/index/${collName}/${id}/autotune`, {targetRecall: 2});
+            assertEqual(400, res.code);
+            assertEqual(true, res.parsedBody.error);
+        },
+
+        // Autotuning a non-existent index id returns not-found.
+        testAutotuneUnknownIndex: function() {
+            const res = arango.POST_RAW(
+                `/_api/index/${collName}/999999999/autotune`, {});
+            assertNotEqual(200, res.code);
+            assertEqual(true, res.parsedBody.error);
+        },
+    };
+}
+
+jsunity.run(VectorIndexAutotuneTestSuite);
+
+return jsunity.done();
