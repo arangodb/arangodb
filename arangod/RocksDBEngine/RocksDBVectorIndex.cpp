@@ -291,7 +291,6 @@ bool RocksDBVectorIndex::getNormalizedVectorFromDocument(
 float RocksDBVectorIndex::computeDistance(const vector::Vector& vec1, const vector::Vector& vec2, bool isDescending) {
   TRI_ASSERT(vec1.size() == vec2.size()) << "Vector dimensions don't match, " <<
     "[" << vec1 << "] != [" << vec2 << "]";
-    // vec1.size() << " != " << vec2.size();
 
   auto dim = vec1.size();
 
@@ -324,8 +323,8 @@ RocksDBVectorIndex::bruteForceSearch(vector::Vector& searchVector,
 
   auto iter = _collection.getPhysical()->getAllIterator(trx, ReadOwnWrites::no);
 
-  vector::Vector vec;
-  vec.reserve(dim);
+  vector::Vector currentDocVector;
+  currentDocVector.reserve(dim);
 
   auto captureDocument = [&](LocalDocumentId docId,
                              velocypack::Slice docSlice) {
@@ -354,12 +353,12 @@ RocksDBVectorIndex::bruteForceSearch(vector::Vector& searchVector,
   iter->allDocuments([&](LocalDocumentId docId, aql::DocumentData&&,
                          velocypack::Slice docSlice) -> bool {
 
-    vec.clear();
-    auto ret = getNormalizedVectorFromDocument(docSlice, vec);
+    currentDocVector.clear();
+    auto ret = getNormalizedVectorFromDocument(docSlice, currentDocVector);
     if (!ret)
       return true;
 
-    auto dist = computeDistance(vec, searchVector, isDescending);
+    auto dist = computeDistance(currentDocVector, searchVector, isDescending);
     auto id = static_cast<vector::VectorIndexLabelId>(docId.id());
 
     if (n < topK)
@@ -394,6 +393,10 @@ RocksDBVectorIndex::bruteForceSearch(vector::Vector& searchVector,
     return true;
   });
 
+  // Truncate labels and distances to min(topK, total_no_of_documents)
+  labels.resize(n);
+  distances.resize(n);
+
   // Reorder heap so results are sorted
   if (isDescending) {
     faiss::minheap_reorder(topK, distances.data(), labels.data());
@@ -416,8 +419,6 @@ vector::SearchResult RocksDBVectorIndex::readBatch(
   TRI_ASSERT(ctx.inputs != nullptr);
   TRI_ASSERT(ctx.trx != nullptr);
   // The on_heap_changed are not thread safe unless this is true
-  // ADB_PROD_ASSERT(_faissIndex->parallel_mode == 0)
-  //     << "FAISS parallel_mode must be 0; got " << _faissIndex->parallel_mode;
 
   auto& inputs = *ctx.inputs;
   TRI_ASSERT(inputs.size() == _definition.dimension)

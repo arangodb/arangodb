@@ -204,40 +204,46 @@ function VectorIndexUnusableShardLinearScanSuite() {
                 });
             }
 
-            const lim = 5;
-            const nProbeExhaustive = nListsSmall;
-            const bindBase = {qp: SEARCH_VECTOR_2D, lim: lim, nProbe: nProbeExhaustive};
+            //  Test for topK in the range of [0..no_of_docs + 5] to verify
+            //  that we get the correct sort ordering every time.
+            //  Also check that bruteForceSearch() correctly handles the case
+            //  where we have fewer vectors than topK.
+            for (let lim = 0; lim < SEARCH_VECTOR_2D.length + 5; ++lim) {
 
-            for (const row of vectorSearchCases) {
-                const hintSmall = "vec_" + row.label + "_n" + nListsSmall;
-                const hintLarge = "vec_" + row.label + "_n" + nListsLarge;
+                const nProbeExhaustive = nListsSmall;
+                const bindBase = {qp: SEARCH_VECTOR_2D, lim: lim, nProbe: nProbeExhaustive};
 
-                assertTrue(
-                    waitForVectorIndexState(
-                        c, hintSmall, VectorIndexTrainingState.kReady, 120),
-                    "nLists=" + nListsSmall + " index " + hintSmall + " should become ready");
+                for (const row of vectorSearchCases) {
+                    const hintSmall = "vec_" + row.label + "_n" + nListsSmall;
+                    const hintLarge = "vec_" + row.label + "_n" + nListsLarge;
 
-                assertTrue(
-                    waitForVectorIndexState(
-                        c, hintLarge, VectorIndexTrainingState.kUnusable, 120),
-                    "nLists=" + nListsLarge + " index " + hintLarge +
-                    " should become unusable (not enough training vectors)");
+                    assertTrue(
+                        waitForVectorIndexState(
+                            c, hintSmall, VectorIndexTrainingState.kReady, 120),
+                        "nLists=" + nListsSmall + " index " + hintSmall + " should become ready");
 
-                const q = "FOR d IN " + collNameCompare +
-                    " OPTIONS { indexHint: \"" + hintSmall + "\" } " +
-                    "SORT " + row.sortExpr +
-                    " LIMIT @lim RETURN d._key";
-                const keysSmall = db._query(q, bindBase).toArray();
+                    assertTrue(
+                        waitForVectorIndexState(
+                            c, hintLarge, VectorIndexTrainingState.kUnusable, 120),
+                        "nLists=" + nListsLarge + " index " + hintLarge +
+                        " should become unusable (not enough training vectors)");
 
-                const qLarge = "FOR d IN " + collNameCompare +
-                    " OPTIONS { indexHint: \"" + hintLarge + "\" } " +
-                    "SORT " + row.sortExpr +
-                    " LIMIT @lim RETURN d._key";
-                const keysLarge = db._query(qLarge, bindBase).toArray();
+                    const q = "FOR d IN " + collNameCompare +
+                        " OPTIONS { indexHint: \"" + hintSmall + "\" } " +
+                        "SORT " + row.sortExpr +
+                        " LIMIT @lim RETURN d._key";
+                    const keysSmall = db._query(q, bindBase).toArray();
 
-                assertEqual(
-                    keysSmall, keysLarge,
-                    row.label + ": trained IVF (exhaustive nProbe) vs linear scan top-k _key order");
+                    const qLarge = "FOR d IN " + collNameCompare +
+                        " OPTIONS { indexHint: \"" + hintLarge + "\" } " +
+                        "SORT " + row.sortExpr +
+                        " LIMIT @lim RETURN d._key";
+                    const keysLarge = db._query(qLarge, bindBase).toArray();
+
+                    assertEqual(
+                        keysSmall, keysLarge,
+                        row.label + ": " + lim + ": trained IVF (exhaustive nProbe) vs linear scan top-k _key order");
+                }
             }
 
             db._drop(collNameCompare);
