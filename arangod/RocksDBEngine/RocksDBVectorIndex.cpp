@@ -32,6 +32,9 @@
 #include <cstring>
 
 #include "Aql/AstNode.h"
+#include "Aql/AqlFunctionsInternalCache.h"
+#include "Aql/AqlValue.h"
+#include "Aql/DocumentExpressionContext.h"
 #include "Basics/StaticStrings.h"
 #include "Aql/Function.h"
 #include "Assertions/Assert.h"
@@ -276,8 +279,7 @@ void RocksDBVectorIndex::toVelocyPack(
 }
 
 bool RocksDBVectorIndex::getNormalizedVectorFromDocument(
-  const velocypack::Slice& docSlice,
-  vector::Vector& vec) {
+    const velocypack::Slice& docSlice, vector::Vector& vec) {
   if (readDocumentVectorData(docSlice, vec).fail()) {
     return false;
   }
@@ -288,9 +290,12 @@ bool RocksDBVectorIndex::getNormalizedVectorFromDocument(
   return true;
 }
 
-float RocksDBVectorIndex::computeDistance(const vector::Vector& vec1, const vector::Vector& vec2, bool isDescending) {
-  TRI_ASSERT(vec1.size() == vec2.size()) << "Vector dimensions don't match, " <<
-    "[" << vec1 << "] != [" << vec2 << "]";
+float RocksDBVectorIndex::computeDistance(const vector::Vector& vec1,
+                                          const vector::Vector& vec2,
+                                          bool isDescending) {
+  TRI_ASSERT(vec1.size() == vec2.size())
+      << "Vector dimensions don't match, "
+      << "[" << vec1 << "] != [" << vec2 << "]";
 
   auto dim = vec1.size();
 
@@ -303,15 +308,62 @@ float RocksDBVectorIndex::computeDistance(const vector::Vector& vec1, const vect
   return distance;
 }
 
+bool RocksDBVectorIndex::filterDocuments(
+    vector::VectorSearchConfig const& config,
+    vector::VectorSearchContext const& ctx, velocypack::Slice docSlice) {
+  TRI_ASSERT(ctx.queryContext != nullptr);
+  TRI_ASSERT(config.filterExpression != nullptr);
+  TRI_ASSERT(config.documentVariable != nullptr);
+  TRI_ASSERT(ctx.inputRow != nullptr);
+
+  auto* trx = ctx.trx;
+  aql::AqlFunctionsInternalCache functionsCache;
+
+  aql::GenericDocumentExpressionContext exprCtx(
+      *trx, *ctx.queryContext, functionsCache, config.filterVarsToRegs,
+      *ctx.inputRow, config.documentVariable);
+  exprCtx.setCurrentDocument(docSlice);
+  bool mustDestroy = false;
+  aql::AqlValue result =
+      config.filterExpression->execute(&exprCtx, mustDestroy);
+  aql::AqlValueGuard guard(result, mustDestroy);
+  return result.toBoolean();
+}
+
+void RocksDBVectorIndex::captureDocument(
+    vector::VectorSearchConfig const& config,
+    vector::VectorSearchContext const& ctx,
+    containers::NodeHashMap<LocalDocumentId, velocypack::SharedSlice>*
+        captureSink,
+    LocalDocumentId docId, velocypack::Slice docSlice) {
+  if (captureSink == nullptr) {
+    return;
+  }
+
+  auto* trx = ctx.trx;
+  auto const& projectionMode = config.strategy.projection;
+
+  if (projectionMode == vector::ProjectionMode::kDocument) {
+    captureSink->insert_or_assign(docId, vector::toOwnedSharedSlice(docSlice));
+  } else if (projectionMode == vector::ProjectionMode::kCovered &&
+             hasStoredValues()) {
+    auto extracted =
+        transaction::extractAttributeValues(*trx, _storedValues, docSlice, true)
+            ->get();
+    captureSink->insert_or_assign(docId, extracted->sharedSlice());
+  }
+}
+
 std::pair<vector::Labels, vector::Distances>
-RocksDBVectorIndex::bruteForceSearch(vector::Vector& searchVector,
-                                     std::size_t topK,
-                                     transaction::Methods* trx,
-                                     vector::ProjectionMode projectionMode,
-                                     containers::NodeHashMap<LocalDocumentId,
-                                                             velocypack::SharedSlice>*
-                                         captureSink) {
+RocksDBVectorIndex::bruteForceSearch(
+    vector::Vector& searchVector, vector::VectorSearchConfig const& config,
+    vector::VectorSearchContext const& ctx,
+    containers::NodeHashMap<LocalDocumentId, velocypack::SharedSlice>*
+        captureSink) {
   auto const dim = _definition.dimension;
+  auto const topK = config.topK;
+  auto* trx = ctx.trx;
+  // auto const& projectionMode = config.strategy.projection;
 
   bool const isDescending =
       _definition.metric == vector::SimilarityMetric::kCosine ||
@@ -326,22 +378,8 @@ RocksDBVectorIndex::bruteForceSearch(vector::Vector& searchVector,
   vector::Vector currentDocVector;
   currentDocVector.reserve(dim);
 
-  auto captureDocument = [&](LocalDocumentId docId,
-                             velocypack::Slice docSlice) {
-    if (captureSink == nullptr) {
-      return;
-    }
-    if (projectionMode == vector::ProjectionMode::kDocument) {
-      captureSink->insert_or_assign(docId, vector::toOwnedSharedSlice(docSlice));
-    } else if (projectionMode == vector::ProjectionMode::kCovered &&
-               hasStoredValues()) {
-      auto extracted =
-          transaction::extractAttributeValues(*trx, _storedValues, docSlice,
-                                              true)
-              ->get();
-      captureSink->insert_or_assign(docId, extracted->sharedSlice());
-    }
-  };
+  bool const hasFilter = config.strategy.filter != FilterMode::kNone;
+  aql::AqlFunctionsInternalCache functionsCache;
 
   auto eraseCaptured = [&](vector::VectorIndexLabelId id) {
     if (captureSink != nullptr && id >= 0) {
@@ -352,40 +390,39 @@ RocksDBVectorIndex::bruteForceSearch(vector::Vector& searchVector,
   //  Iterate over all documents in the shard and build the heap.
   iter->allDocuments([&](LocalDocumentId docId, aql::DocumentData&&,
                          velocypack::Slice docSlice) -> bool {
-
     currentDocVector.clear();
     auto ret = getNormalizedVectorFromDocument(docSlice, currentDocVector);
-    if (!ret)
+    if (!ret) return true;
+
+    if (hasFilter && !filterDocuments(config, ctx, docSlice)) {
       return true;
+    }
 
     auto dist = computeDistance(currentDocVector, searchVector, isDescending);
     auto id = static_cast<vector::VectorIndexLabelId>(docId.id());
 
-    if (n < topK)
-    {
+    if (n < topK) {
       if (isDescending) {
         faiss::minheap_push(n + 1, distances.data(), labels.data(), dist, id);
       } else {
         faiss::maxheap_push(n + 1, distances.data(), labels.data(), dist, id);
       }
-      captureDocument(docId, docSlice);
+      captureDocument(config, ctx, captureSink, docId, docSlice);
       ++n;
-    }
-    else
-    {
+    } else {
       if (isDescending) {
         if (dist > distances[0]) {
           eraseCaptured(labels[0]);
-          faiss::minheap_replace_top(topK, distances.data(), labels.data(), dist,
-                                    id);
-          captureDocument(docId, docSlice);
+          faiss::minheap_replace_top(topK, distances.data(), labels.data(),
+                                     dist, id);
+          captureDocument(config, ctx, captureSink, docId, docSlice);
         }
       } else {
         if (dist < distances[0]) {
           eraseCaptured(labels[0]);
-          faiss::maxheap_replace_top(topK, distances.data(), labels.data(), dist,
-                                    id);
-          captureDocument(docId, docSlice);
+          faiss::maxheap_replace_top(topK, distances.data(), labels.data(),
+                                     dist, id);
+          captureDocument(config, ctx, captureSink, docId, docSlice);
         }
       }
     }
@@ -434,18 +471,17 @@ vector::SearchResult RocksDBVectorIndex::readBatch(
   bool const captureNeeded =
       config.strategy.projection == ProjectionMode::kCovered ||
       (config.strategy.projection == ProjectionMode::kDocument &&
-        config.strategy.filter == FilterMode::kDocument);
+       config.strategy.filter == FilterMode::kDocument);
   auto* captureSink = captureNeeded ? &result.capturedDocuments : nullptr;
 
   if (auto const state = _trainingState.load();
       state != VectorIndexTrainingState::kReady) {
-
     if (isLinearScanEnabled()) {
       // Not enough training data: fall back to linear scan on this shard so
       // cluster vector search stays usable.
 
-      auto [labels, distances] = bruteForceSearch(
-          inputs, config.topK, ctx.trx, config.strategy.projection, captureSink);
+      auto [labels, distances] =
+          bruteForceSearch(inputs, config, ctx, captureSink);
       result.labels = std::move(labels);
       result.distances = std::move(distances);
       return result;
@@ -483,9 +519,7 @@ vector::SearchResult RocksDBVectorIndex::readBatch(
   return result;
 }
 
-bool RocksDBVectorIndex::isLinearScanEnabled() const noexcept {
-  return true;
-}
+bool RocksDBVectorIndex::isLinearScanEnabled() const noexcept { return true; }
 
 bool RocksDBVectorIndex::isVectorIndexReady() const noexcept {
   return _trainingState.load(std::memory_order_acquire) ==

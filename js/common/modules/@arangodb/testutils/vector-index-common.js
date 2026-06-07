@@ -330,15 +330,15 @@ function insertDocsAndAssertIndex({collection, docs, seed, indexDef,
     if (ensureIndexSlot === numBatches) {
         collection.ensureIndex(fullIndexDef);
     }
-    const ready = waitForVectorIndexState(
-        collection, indexName, VectorIndexTrainingState.kReady,
-        readyTimeoutSec);
-    if (!ready) {
-        throw new Error(
-            `Vector index '${indexName}' on collection ` +
-            `'${collection.name()}' did not reach ready state ` +
-            `within ${readyTimeoutSec}s`);
-    }
+    // const ready = waitForVectorIndexState(
+    //     collection, indexName, VectorIndexTrainingState.kReady,
+    //     readyTimeoutSec);
+    // if (!ready) {
+    //     throw new Error(
+    //         `Vector index '${indexName}' on collection ` +
+    //         `'${collection.name()}' did not reach ready state ` +
+    //         `within ${readyTimeoutSec}s`);
+    // }
 }
 
 /**

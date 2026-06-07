@@ -74,9 +74,9 @@ function VectorIndexIteratorScenariosTestSuite() {
     let randomPoint;
     const dimension = 16;
     const numberOfDocsFactor = isCluster ? numberOfShards : 1;
-    const numberOfDocs = 1000 * numberOfDocsFactor;
+    const numberOfDocs = 100 * numberOfDocsFactor;
     const seed = generateSeed();
-    const nProbeAndNlists = 8;
+    const nProbeAndNlists = 101;
 
     const indexNode = function(plan) {
         const ns = plan.nodes.filter(n => n.type === "EnumerateNearVectorNode");

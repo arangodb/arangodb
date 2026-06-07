@@ -158,12 +158,27 @@ class RocksDBVectorIndex final : public RocksDBIndex {
                 OperationOptions const& /*options*/) override;
 
  private:
-  float computeDistance(const vector::Vector& vec1, const vector::Vector& vec2, bool isDescending);
-  bool getNormalizedVectorFromDocument(const velocypack::Slice& docSlice, vector::Vector& vec);
+  //  Helper functions for bruteForceSearch
+  void captureDocument(
+      vector::VectorSearchConfig const& config,
+      vector::VectorSearchContext const& ctx,
+      containers::NodeHashMap<LocalDocumentId, velocypack::SharedSlice>*
+          captureSink,
+      LocalDocumentId docId, velocypack::Slice docSlice);
+
+  bool filterDocuments(vector::VectorSearchConfig const& config,
+                       vector::VectorSearchContext const& ctx,
+                       velocypack::Slice docSlice);
+
+  float computeDistance(const vector::Vector& vec1, const vector::Vector& vec2,
+                        bool isDescending);
+
+  bool getNormalizedVectorFromDocument(const velocypack::Slice& docSlice,
+                                       vector::Vector& vec);
 
   std::pair<vector::Labels, vector::Distances> bruteForceSearch(
-      vector::Vector& searchVector, std::size_t topK, transaction::Methods* trx,
-      vector::ProjectionMode projectionMode,
+      vector::Vector& searchVector, vector::VectorSearchConfig const& config,
+      vector::VectorSearchContext const& ctx,
       containers::NodeHashMap<LocalDocumentId, velocypack::SharedSlice>*
           captureSink);
 

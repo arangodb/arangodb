@@ -249,6 +249,76 @@ function VectorIndexUnusableShardLinearScanSuite() {
             db._drop(collNameCompare);
         },
 
+        //  Pushed-down filters must be applied during linear scan fallback.
+        testLinearScanAppliesPushedFilter: function () {
+            if (isCluster)
+                return;
+
+            const collName = "vecLinearScanFilter";
+            const nListsSmall = 10;
+            const nListsLarge = 20;
+            const c = db._create(collName, {numberOfShards: 1});
+
+            const docs = [
+                {_key: "near_ok", vector: [1.0, 0.0], extra: 10},
+                {_key: "near_bad", vector: [0.95, 0.05], extra: 200},
+                {_key: "far_ok", vector: [0.0, 1.0], extra: 50},
+                {_key: "far_bad", vector: [-1.0, 0.0], extra: 150},
+            ];
+            c.insert(docs);
+
+            const indexParams = {
+                type: "vector",
+                fields: ["vector"],
+                inBackground: true,
+                params: {
+                    metric: "l2",
+                    dimension: 2,
+                    defaultNProbe: 1,
+                    trainingIterations: 25,
+                },
+            };
+
+            c.ensureIndex(Object.assign({name: "vec_ready", params: Object.assign({}, indexParams.params, {nLists: nListsSmall})}, indexParams));
+            c.ensureIndex(Object.assign({name: "vec_linear", params: Object.assign({}, indexParams.params, {nLists: nListsLarge})}, indexParams));
+
+            assertTrue(
+                waitForVectorIndexState(c, "vec_ready", VectorIndexTrainingState.kReady, 120));
+            assertTrue(
+                waitForVectorIndexState(c, "vec_linear", VectorIndexTrainingState.kUnusable, 120));
+
+            const bind = {qp: [1.2, 0.2], lim: 10};
+            const query = function (hint) {
+                return "FOR d IN " + collName +
+                    " OPTIONS { indexHint: \"" + hint + "\" } " +
+                    "FILTER d.extra < 100 " +
+                    "LET dist = APPROX_NEAR_L2(@qp, d.vector) " +
+                    "SORT dist LIMIT @lim RETURN d";
+            };
+
+            const readyResults = db._query(query("vec_ready"), bind).toArray();
+            const linearResults = db._query(query("vec_linear"), bind).toArray();
+
+            assertEqual(2, readyResults.length,
+                "trained index should return only docs matching the filter");
+            assertEqual(2, linearResults.length,
+                "linear scan should return only docs matching the filter");
+
+            for (const row of readyResults) {
+                assertTrue(row.extra < 100, "trained result must match filter");
+            }
+            for (const row of linearResults) {
+                assertTrue(row.extra < 100, "linear scan result must match filter");
+            }
+
+            const readyKeys = readyResults.map(r => r._key).sort();
+            const linearKeys = linearResults.map(r => r._key).sort();
+            assertEqual(readyKeys, linearKeys,
+                "linear scan and trained IVF should agree on filtered top-k");
+
+            db._drop(collName);
+        },
+
     };
 }
 
