@@ -407,9 +407,9 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan,
     case TRAVERSAL:
     case SHORTEST_PATH:
     case ENUMERATE_PATHS: {
-      if (basics::VelocyPackHelper::getBooleanValue(
-              slice, StaticStrings::IsLocalGraphNode, false) &&
-          slice.hasKey(StaticStrings::ProtoCollection)) {
+      if (slice.hasKey(StaticStrings::ProtoCollection) &&
+          basics::VelocyPackHelper::getBooleanValue(
+              slice, StaticStrings::IsLocalGraphNode, false)) {
         return createLocalGraphNode(plan, slice);
       }
       if (nodeType == TRAVERSAL) {
