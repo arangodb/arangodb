@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -18,26 +18,20 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#include "MaxMapCountOptionsProvider.h"
 
-#include "ApplicationFeatures/ApplicationFeature.h"
-#include "RestServer/NonceOptionsProvider.h"
+#include "ProgramOptions/ProgramOptions.h"
 
 namespace arangodb {
 
-class NonceFeature : public application_features::ApplicationFeature {
- public:
-  static constexpr std::string_view name() noexcept { return "Nonce"; }
-
-  explicit NonceFeature(application_features::ApplicationServer& server);
-
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-
- private:
-  NonceFeatureOptions _options;
-};
+void MaxMapCountOptionsProvider::declareOptions(
+    std::shared_ptr<options::ProgramOptions> options,
+    MaxMapCountFeatureOptions& /*opts*/) {
+  options->addObsoleteOption(
+      "--server.check-max-memory-mappings",
+      "check the maximum number of memory mappings at startup", true);
+}
 
 }  // namespace arangodb
