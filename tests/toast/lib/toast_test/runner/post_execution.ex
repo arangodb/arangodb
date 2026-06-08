@@ -115,6 +115,9 @@ defmodule ToastTest.Runner.PostExecution do
     all_log_files = ResultBuilder.collect_log_files(snapshot.servers)
     server_logs = ToastTest.Attribution.ServerLogs.collect(issues, all_log_files, windows)
 
+    infra_issues = build_infrastructure_issues(snapshot.infrastructure_issues, windows)
+    issues = infra_issues ++ issues
+
     Logger.debug("Building results (#{length(issues)} issues found)")
     active_sanitizers = test_config.active_sanitizers
 
@@ -138,6 +141,22 @@ defmodule ToastTest.Runner.PostExecution do
 
     SuiteResult.write_all(suite_result, test_config.result_dir)
     suite_result
+  end
+
+  defp build_infrastructure_issues([], _windows), do: []
+
+  defp build_infrastructure_issues(infra_events, windows) do
+    Enum.map(infra_events, fn event ->
+      {scope, confidence, phase} =
+        ToastTest.Attribution.TimeWindows.attribute(event.timestamp, windows)
+
+      detail =
+        event.detail
+        |> Map.merge(%{subtype: event.subtype, timestamp: event.timestamp})
+        |> Toast.Utils.maybe_put(:phase, phase)
+
+      %{type: :infrastructure, scope: scope, confidence: confidence, detail: detail}
+    end)
   end
 
   defp build_coredump_analyzer_opts(test_config) do

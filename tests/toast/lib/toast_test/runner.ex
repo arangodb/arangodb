@@ -403,6 +403,14 @@ defmodule ToastTest.Runner do
         Logger.info("Running suite #{inspect(entry.module)} (mode=#{mode})")
         Logger.debug("Deployment config: #{inspect(deploy_config)}")
 
+        netstat_tool = Toast.Deployment.Netstat.detect_tool()
+
+        if netstat_tool == nil do
+          Logger.warning("Neither ss nor netstat found — port exhaustion check disabled")
+        end
+
+        baseline = record_netstat_baseline(netstat_tool, :pre_deployment)
+
         id = Toast.Deployment.generate_id(mode)
         deployment_dir = Path.join([test_config.base_dir, entry.name, id])
 
@@ -411,7 +419,15 @@ defmodule ToastTest.Runner do
                event_listener: ToastTest.ManagedDeploymentListener
              ) do
           {:ok, deployment} ->
-            run_suite_with_deployment(deployment, suite_run, entry, ex_unit_opts)
+            record_netstat_baseline(netstat_tool, :deployment_ready)
+
+            run_suite_with_deployment(
+              deployment,
+              suite_run,
+              entry,
+              ex_unit_opts,
+              {netstat_tool, baseline}
+            )
 
           {:error, reason} ->
             handle_deployment_failure(suite_run, entry, reason, ex_unit_opts)
@@ -419,7 +435,13 @@ defmodule ToastTest.Runner do
     end
   end
 
-  defp run_suite_with_deployment(deployment, suite_run, %SuiteEntry{} = entry, ex_unit_opts) do
+  defp run_suite_with_deployment(
+         deployment,
+         suite_run,
+         %SuiteEntry{} = entry,
+         ex_unit_opts,
+         netstat_config
+       ) do
     suite_module = suite_run.suite_module
     test_config = suite_run.test_config
     ToastTest.DeploymentRegistry.put(suite_module, deployment)
@@ -440,7 +462,14 @@ defmodule ToastTest.Runner do
           ToastTest.DeploymentRegistry.put_extra_context(suite_module, extra_context)
 
           result =
-            run_suite_tests(deployment, suite_run, entry.test_modules, ex_unit_opts, entry.opts)
+            run_suite_tests(
+              deployment,
+              suite_run,
+              entry.test_modules,
+              ex_unit_opts,
+              entry.opts,
+              netstat_config
+            )
 
           run_suite_teardown(suite_module, deployment)
           result
@@ -465,7 +494,7 @@ defmodule ToastTest.Runner do
     Logger.info("Running suite #{inspect(suite_run.suite_module)} (mode=manual)")
 
     {stats, test_data} =
-      run_suite_tests(nil, suite_run, entry.test_modules, ex_unit_opts, entry.opts)
+      run_suite_tests(nil, suite_run, entry.test_modules, ex_unit_opts, entry.opts, nil)
 
     finalize_suite(nil, stats, test_data, suite_run.test_config)
   end
@@ -498,13 +527,19 @@ defmodule ToastTest.Runner do
     %{stats: stats, suite_result: suite_result}
   end
 
-  defp build_between_tests_fn(%ToastTest.SuiteRun{between_tests: false}, _deployment, _pipeline),
-    do: fn _prev -> :ok end
+  defp build_between_tests_fn(
+         %ToastTest.SuiteRun{between_tests: false},
+         _deployment,
+         _pipeline,
+         _netstat_config
+       ),
+       do: fn _prev -> :ok end
 
   defp build_between_tests_fn(
          %ToastTest.SuiteRun{} = suite_run,
          deployment,
-         %Pipeline{} = pipeline
+         %Pipeline{} = pipeline,
+         netstat_config
        ) do
     check_fn =
       if function_exported?(suite_run.suite_module, :between_tests, 2) do
@@ -527,7 +562,8 @@ defmodule ToastTest.Runner do
                :ok <-
                  Toast.Deployment.HealthBarrier.await_healthy(deployment,
                    timeout: barrier_timeout
-                 ) do
+                 ),
+               :ok <- check_netstat(deployment, netstat_config) do
             check_fn.(prev_test)
           end
 
@@ -536,6 +572,42 @@ defmodule ToastTest.Runner do
         ToastTest.ResultCollector.notify_between_tests_finished(collector, prev_test)
 
         result
+    end
+  end
+
+  defp record_netstat_baseline(nil, _label), do: 0
+
+  defp record_netstat_baseline(tool, label) do
+    total = Toast.Deployment.Netstat.count_sockets(tool)
+    ToastTest.EventStore.notify(%{event: :netstat_snapshot, total: total, label: label})
+    total
+  end
+
+  defp check_netstat(_deployment, nil), do: :ok
+
+  defp check_netstat(deployment, {tool, baseline}) do
+    case Toast.Deployment.Netstat.check(deployment, tool, baseline) do
+      {:ok, total} ->
+        ToastTest.EventStore.notify(%{event: :netstat_snapshot, total: total})
+        :ok
+
+      {:port_exhaustion, detail} ->
+        ToastTest.EventStore.notify(%{event: :netstat_snapshot, total: detail.total})
+
+        ToastTest.EventStore.notify(%{
+          event: :infrastructure_issue,
+          subtype: :port_exhaustion,
+          detail: detail
+        })
+
+        kind_label = if detail.kind == :deployment, do: "Deployment", else: "System"
+
+        delta_info =
+          if detail.kind == :deployment,
+            do: "(#{detail.deployment_delta} since deployment; threshold: #{detail.threshold}))",
+            else: "(threshold: #{detail.threshold})"
+
+        {:error, "#{kind_label} port exhaustion: #{detail.total} system sockets #{delta_info}"}
     end
   end
 
@@ -569,12 +641,19 @@ defmodule ToastTest.Runner do
 
   ## Suite test orchestration
 
-  defp run_suite_tests(deployment, suite_run, test_modules, ex_unit_opts, suite_opts) do
+  defp run_suite_tests(
+         deployment,
+         suite_run,
+         test_modules,
+         ex_unit_opts,
+         suite_opts,
+         netstat_config
+       ) do
     opts = normalize_opts(Keyword.merge(ExUnit.configuration(), ex_unit_opts))
     suite_name = derive_suite_name(suite_run.suite_module, suite_run.deployment_mode)
     pipeline = start_event_pipeline(opts, suite_name)
 
-    between_tests_fn = build_between_tests_fn(suite_run, deployment, pipeline)
+    between_tests_fn = build_between_tests_fn(suite_run, deployment, pipeline, netstat_config)
 
     config =
       build_run_context(
