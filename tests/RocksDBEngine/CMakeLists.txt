@@ -2,7 +2,6 @@ add_executable(arango_rocksdb_minimal_test
   RocksDBEngineMinimalTest.cpp)
 
 target_link_libraries(arango_rocksdb_minimal_test
-  arango_rocksdb
   arangoserver
   gtest
   gtest_main)
