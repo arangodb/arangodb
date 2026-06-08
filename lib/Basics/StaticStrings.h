@@ -176,6 +176,7 @@ class StaticStrings {
   static std::string const Filter;
   static std::string const MaxProjections;
   static std::string const ProducesResult;
+  static std::string const ProtoCollection;
   static std::string const ReadOwnWrites;
   static std::string const UseCache;
   static std::string const Parallelism;

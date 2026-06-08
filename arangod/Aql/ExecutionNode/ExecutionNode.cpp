@@ -409,7 +409,7 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan,
     case ENUMERATE_PATHS: {
       if (basics::VelocyPackHelper::getBooleanValue(
               slice, StaticStrings::IsLocalGraphNode, false) &&
-          slice.hasKey("protoCollection")) {
+          slice.hasKey(StaticStrings::ProtoCollection)) {
         return createLocalGraphNode(plan, slice);
       }
       if (nodeType == TRAVERSAL) {

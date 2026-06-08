@@ -171,6 +171,7 @@ std::string const StaticStrings::IndexHintOptionForce("forceIndexHint");
 std::string const StaticStrings::Filter("filter");
 std::string const StaticStrings::MaxProjections("maxProjections");
 std::string const StaticStrings::ProducesResult("producesResult");
+std::string const StaticStrings::ProtoCollection("protoCollection");
 std::string const StaticStrings::ReadOwnWrites("readOwnWrites");
 std::string const StaticStrings::UseCache("useCache");
 std::string const StaticStrings::Parallelism("parallelism");

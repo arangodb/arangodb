@@ -649,7 +649,8 @@ void GraphNode::doToVelocyPack(velocypack::Builder& nodes,
   nodes.add("isUsedAsSatellite", VPackValue(isUsedAsSatellite()));
   if (isLocalGraphNode()) {
     if (auto const* can = dynamic_cast<CollectionAccessingNode const*>(this)) {
-      nodes.add("protoCollection", VPackValue(can->collection()->name()));
+      nodes.add(StaticStrings::ProtoCollection,
+                VPackValue(can->collection()->name()));
     }
   }
 
