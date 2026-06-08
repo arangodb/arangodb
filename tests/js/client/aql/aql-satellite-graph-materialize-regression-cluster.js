@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertTrue, print, fail, arango */
+/*global assertEqual, assertNotEqual, assertTrue, print, fail, arango */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
@@ -39,7 +39,7 @@ function aqlSatelliteMaterializeRegressionTestSuite() {
     let servers = shards[Object.keys(shards)[0]];
 
     return servers;
-  }
+  };
 
   const getLeader = function(coll) {
     return getResponsibleServers(coll)[0];
@@ -61,7 +61,7 @@ function aqlSatelliteMaterializeRegressionTestSuite() {
       // The bug we test for is triggered by 2 satellite collections
       // having different leaders, so if the leaders are the same,
       // try to moveShard one of the collections' leaders around
-      if(getLeader(c1) == getLeader(c2)) {
+      if(getLeader(c1) === getLeader(c2)) {
         // Schedule MoveShard operation
         internal.print("moving shards: ");
         let servers = getResponsibleServers(c1);
