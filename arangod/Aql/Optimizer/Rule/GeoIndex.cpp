@@ -380,12 +380,12 @@ static bool checkGeoFilterFunction(ExecutionPlan* plan, AstNode const* funcNode,
   AstNode* filterExpr = nullptr;
 
   if (geoFuncArgCheck(plan, arg1, /*legacy*/ true, info)) {
-    filterMode = contains ? geo::FilterType::CONTAINS
-                          : geo::FilterType::INTERSECTS;
+    filterMode =
+        contains ? geo::FilterType::CONTAINS : geo::FilterType::INTERSECTS;
     filterExpr = arg0;
   } else if (geoFuncArgCheck(plan, arg0, /*legacy*/ true, info)) {
-    filterMode = contains ? geo::FilterType::IS_CONTAINED
-                          : geo::FilterType::INTERSECTS;
+    filterMode =
+        contains ? geo::FilterType::IS_CONTAINED : geo::FilterType::INTERSECTS;
     filterExpr = arg1;
   } else {
     return false;
