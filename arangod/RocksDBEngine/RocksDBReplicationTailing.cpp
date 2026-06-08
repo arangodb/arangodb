@@ -32,7 +32,6 @@
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "Utils/CollectionGuard.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"

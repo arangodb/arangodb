@@ -27,33 +27,15 @@ defmodule Mix.Tasks.Toast.Analyze.DataTest do
   # --- format_type/1 ---
 
   describe "format_type/1" do
-    test "crash issue includes server in parentheses" do
-      issue = %{type: :crash, detail: %{server: "dbserver1"}}
-      assert Data.format_type(issue) == "crash (dbserver1)"
+    test "returns bare type string" do
+      assert Data.format_type(%{type: :crash, detail: %{server: "dbserver1"}}) == "crash"
+      assert Data.format_type(%{type: :test_failure, detail: %{}}) == "test_failure"
+      assert Data.format_type(%{type: :timeout, detail: %{}}) == "timeout"
     end
 
-    test "sanitizer_report issue includes server in parentheses" do
-      issue = %{type: :sanitizer_report, detail: %{server: "coordinator1"}}
-      assert Data.format_type(issue) == "sanitizer_report (coordinator1)"
-    end
-
-    test "timeout issue includes comma-separated server_ids in parentheses" do
-      issue = %{
-        type: :timeout,
-        detail: %{servers: [%{server_id: "coordinator1"}, %{server_id: "dbserver1"}]}
-      }
-
-      assert Data.format_type(issue) == "timeout (coordinator1, dbserver1)"
-    end
-
-    test "test_failure returns bare type without parentheses" do
-      issue = %{type: :test_failure, detail: %{test: %{}}}
-      assert Data.format_type(issue) == "test_failure"
-    end
-
-    test "timeout with empty servers list returns bare type" do
-      issue = %{type: :timeout, detail: %{servers: []}}
-      assert Data.format_type(issue) == "timeout"
+    test "infrastructure includes subtype" do
+      issue = %{type: :infrastructure, detail: %{subtype: :port_exhaustion}}
+      assert Data.format_type(issue) == "infrastructure (port_exhaustion)"
     end
   end
 

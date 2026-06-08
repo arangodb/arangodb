@@ -6,7 +6,6 @@ target_include_directories(arango_health PRIVATE
   "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
 
 add_library(arango_storage_engine STATIC
-  EngineSelectorFeature.cpp
   HotBackup.cpp
   PhysicalCollection.cpp
   TransactionCollection.cpp

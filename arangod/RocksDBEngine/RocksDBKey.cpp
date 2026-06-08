@@ -57,10 +57,11 @@ constexpr std::uint64_t vectorIndexMetadataSlot(
 
 const char RocksDBKey::_stringSeparator = '\0';
 
-RocksDBKey::RocksDBKey(std::string* leased)
+RocksDBKey::RocksDBKey(ThreadLocalStringLeaser::Lease lease)
     : _type(RocksDBEntryType::Document),  // placeholder
       _local(),
-      _buffer(leased != nullptr ? leased : &_local) {}
+      _lease(std::move(lease)),
+      _buffer(_lease->get()) {}
 
 RocksDBKey::RocksDBKey(rocksdb::Slice slice)
     : _type(static_cast<RocksDBEntryType>(slice.data()[0])),
@@ -70,6 +71,7 @@ RocksDBKey::RocksDBKey(rocksdb::Slice slice)
 RocksDBKey::RocksDBKey(RocksDBKey&& other) noexcept
     : _type(other._type), _local(), _buffer(&_local) {
   _local.assign(std::move(*(other._buffer)));
+  other._lease.reset();
   other._buffer = &(other._local);
 }
 

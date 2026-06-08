@@ -1,5 +1,20 @@
 3.12.10-devel (XXXX-XX-XX)
 --------------------------
+
+* Updated ArangoDB Starter to v0.19.23.
+
+* COR-584/OASIS-27899: Fixed an edge case in range_column_iterator::seek where
+  executing a seek on an uninitialized iterator would return incorrect results
+  if the target is greater than the max value of that iterator.
+
+* COR-573: Fix missing erase after std::ranges::remove.
+
+* COR-75: Removed RocksDBKeyLeaser, making RocksDBKey own its leased string buffer directly.
+
+* COR-471: Improved filter optimization, rewriting `x IN [a]` to `x == a`,
+  removing always-false/true branches, and deduplicating identical conditions.
+  Fixed `==`/`!=` incorrectly using ICU comparison instead of byte comparison.
+
 * Fix shipped cmake file to make the build work on cmake >= 4.
 
 * Upgraded FAISS to v1.14.2.
@@ -21,8 +36,6 @@
   dependencies.
 
 * Updated node module fast-uri to 3.1.2.
-
-* Updated ArangoDB Starter to v0.19.22.
 
 * COR-519: Vector index `factory` strings may now be combined with the scaling
   `nLists` specification (previously rejected). A factory string can contain a

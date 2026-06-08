@@ -1525,12 +1525,12 @@ Result RocksDBCollection::insertDocument(transaction::Methods* trx,
 
   TRI_ASSERT(res.ok());
 
-  RocksDBKeyLeaser key(trx);
-  key->constructDocument(objectId(), documentId);
-  TRI_ASSERT(key->containsLocalDocumentId(documentId));
+  RocksDBKey key(ThreadLocalStringLeaser::lease());
+  key.constructDocument(objectId(), documentId);
+  TRI_ASSERT(key.containsLocalDocumentId(documentId));
 
   // banish new document to avoid caching without committing first
-  invalidateCacheEntry(key.ref());
+  invalidateCacheEntry(key);
 
   // disable indexing in this transaction if we are allowed to
   IndexingDisabler disabler(mthds, state->isSingleOperation());
@@ -1557,7 +1557,7 @@ Result RocksDBCollection::insertDocument(transaction::Methods* trx,
     rocksdb::Status s =
         mthds->GetForUpdate(RocksDBColumnFamilyManager::get(
                                 RocksDBColumnFamilyManager::Family::Documents),
-                            key->string(), &ps);
+                            key.string(), &ps);
     if (s.ok()) {
       // the LocalDocumentId should not have existed before...
       res.reset(TRI_ERROR_ARANGO_CONFLICT,
@@ -1575,10 +1575,10 @@ Result RocksDBCollection::insertDocument(transaction::Methods* trx,
 #endif
   size_t const byteSize = static_cast<size_t>(doc.byteSize());
 
-  rocksdb::Status s = mthds->PutUntracked(
-      RocksDBColumnFamilyManager::get(
-          RocksDBColumnFamilyManager::Family::Documents),
-      key.ref(), rocksdb::Slice(doc.startAs<char>(), byteSize));
+  rocksdb::Status s =
+      mthds->PutUntracked(RocksDBColumnFamilyManager::get(
+                              RocksDBColumnFamilyManager::Family::Documents),
+                          key, rocksdb::Slice(doc.startAs<char>(), byteSize));
 
   if (!s.ok()) {
     res.reset(rocksutils::convertStatus(s, rocksutils::document));
@@ -1670,11 +1670,11 @@ Result RocksDBCollection::removeDocument(transaction::Methods* trx,
   TRI_ASSERT(objectId() != 0);
   Result res;
 
-  RocksDBKeyLeaser key(trx);
-  key->constructDocument(objectId(), documentId);
-  TRI_ASSERT(key->containsLocalDocumentId(documentId));
+  RocksDBKey key(ThreadLocalStringLeaser::lease());
+  key.constructDocument(objectId(), documentId);
+  TRI_ASSERT(key.containsLocalDocumentId(documentId));
 
-  invalidateCacheEntry(key.ref());
+  invalidateCacheEntry(key);
 
   RocksDBMethods* mthds =
       RocksDBTransactionState::toMethods(trx, _logicalCollection.id());
@@ -1701,7 +1701,7 @@ Result RocksDBCollection::removeDocument(transaction::Methods* trx,
   rocksdb::Status s =
       mthds->SingleDelete(RocksDBColumnFamilyManager::get(
                               RocksDBColumnFamilyManager::Family::Documents),
-                          key.ref());
+                          key);
   if (!s.ok()) {
     res.reset(rocksutils::convertStatus(s, rocksutils::document));
     res.withError([&doc](result::Error& err) {
@@ -1719,7 +1719,7 @@ Result RocksDBCollection::removeDocument(transaction::Methods* trx,
   trx->state()->trackShardUsage(
       *trx->resolver(), _logicalCollection.vocbase().name(),
       _logicalCollection.name(), trx->username(), AccessMode::Type::WRITE,
-      "document remove", key->size());
+      "document remove", key.size());
 
   auto const& indexes = indexesSnapshot.getIndexes();
 
@@ -1843,10 +1843,10 @@ Result RocksDBCollection::modifyDocument(
   // disable indexing in this transaction if we are allowed to
   IndexingDisabler disabler(mthds, trx->isSingleOperationTransaction());
 
-  RocksDBKeyLeaser key(trx);
-  key->constructDocument(objectId(), oldDocumentId);
-  TRI_ASSERT(key->containsLocalDocumentId(oldDocumentId));
-  invalidateCacheEntry(key.ref());
+  RocksDBKey key(ThreadLocalStringLeaser::lease());
+  key.constructDocument(objectId(), oldDocumentId);
+  TRI_ASSERT(key.containsLocalDocumentId(oldDocumentId));
+  invalidateCacheEntry(key);
 
   TRI_IF_FAILURE("RocksDBCollection::modifyFail1") {
     if (_logicalCollection.replicationVersion() == replication::Version::ONE ||
@@ -1867,7 +1867,7 @@ Result RocksDBCollection::modifyDocument(
   rocksdb::Status s =
       mthds->SingleDelete(RocksDBColumnFamilyManager::get(
                               RocksDBColumnFamilyManager::Family::Documents),
-                          key.ref());
+                          key);
   if (!s.ok()) {
     res.reset(rocksutils::convertStatus(s, rocksutils::document));
     res.withError([&newDoc](result::Error& err) {
@@ -1898,8 +1898,8 @@ Result RocksDBCollection::modifyDocument(
     return res.reset(TRI_ERROR_DEBUG);
   }
 
-  key->constructDocument(objectId(), newDocumentId);
-  TRI_ASSERT(key->containsLocalDocumentId(newDocumentId));
+  key.constructDocument(objectId(), newDocumentId);
+  TRI_ASSERT(key.containsLocalDocumentId(newDocumentId));
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (options.isRestore && ServerState::instance()->isDBServer()) {
@@ -1907,7 +1907,7 @@ Result RocksDBCollection::modifyDocument(
     rocksdb::Status s =
         mthds->GetForUpdate(RocksDBColumnFamilyManager::get(
                                 RocksDBColumnFamilyManager::Family::Documents),
-                            key->string(), &ps);
+                            key.string(), &ps);
     if (s.ok()) {
       // the LocalDocumentId should not have existed before...
       res.reset(TRI_ERROR_ARANGO_CONFLICT,
@@ -1933,14 +1933,14 @@ Result RocksDBCollection::modifyDocument(
 
   s = mthds->PutUntracked(RocksDBColumnFamilyManager::get(
                               RocksDBColumnFamilyManager::Family::Documents),
-                          key.ref(),
+                          key,
                           rocksdb::Slice(newDoc.startAs<char>(), byteSize));
   if (!s.ok()) {
     return res.reset(rocksutils::convertStatus(s, rocksutils::document));
   }
 
   // banish new document to avoid caching without committing first
-  invalidateCacheEntry(key.ref());
+  invalidateCacheEntry(key);
 
   trx->state()->trackShardUsage(
       *trx->resolver(), _logicalCollection.vocbase().name(),
@@ -2013,14 +2013,14 @@ Result RocksDBCollection::lookupDocumentVPack(
   TRI_ASSERT(trx->state()->isRunning());
   TRI_ASSERT(objectId() != 0);
 
-  RocksDBKeyLeaser key(trx);
-  key->constructDocument(objectId(), token);
+  RocksDBKey key(ThreadLocalStringLeaser::lease());
+  key.constructDocument(objectId(), token);
 
   std::shared_ptr<cache::Cache> cache;
   if (options.readCache && (cache = useCache())) {
     // check cache first for fast path
-    auto f = cache->find(key->string().data(),
-                         static_cast<uint32_t>(key->string().size()));
+    auto f = cache->find(key.string().data(),
+                         static_cast<uint32_t>(key.string().size()));
     if (f.found()) {
       cb(token, nullptr,
          VPackSlice(reinterpret_cast<uint8_t const*>(f.value()->value())));
@@ -2045,8 +2045,8 @@ Result RocksDBCollection::lookupDocumentVPack(
           ? mthd->SingleGet(
                 static_cast<RocksDBEngine::RocksDBSnapshot const*>(snapshot)
                     ->getSnapshot(),
-                *family, key->string(), ps)
-          : mthd->Get(family, key->string(), &ps,
+                *family, key.string(), ps)
+          : mthd->Get(family, key.string(), &ps,
                       static_cast<ReadOwnWrites>(options.readOwnWrites));
 
   if (!s.ok()) {
@@ -2065,8 +2065,8 @@ Result RocksDBCollection::lookupDocumentVPack(
       ps.size() <= _maxCacheValueSize) {
     // write entry back to cache
     cache::Cache::SimpleInserter<DocumentCacheType>{
-        static_cast<DocumentCacheType&>(*cache), key->string().data(),
-        static_cast<uint32_t>(key->string().size()), ps.data(),
+        static_cast<DocumentCacheType&>(*cache), key.string().data(),
+        static_cast<uint32_t>(key.string().size()), ps.data(),
         static_cast<uint64_t>(ps.size())};
   }
   cache.reset();

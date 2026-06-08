@@ -1563,7 +1563,6 @@ function TestUser1Suite() {
   const user = 'user1';
 
   const protocol = 'tcp';
-  let endpoint = arango.getEndpoint().replace(/^[a-zA-Z0-9\+]+:/, protocol + ':');
   let oldUser = arango.connectedUser();
 
   let suite = {
@@ -1576,14 +1575,14 @@ function TestUser1Suite() {
 
       users.grantDatabase(user, name, 'rw');
     
-      arango.reconnect(endpoint, db._name(), user, '');
+      arango.reconnect(IM.endpoint, db._name(), user, '');
       // set this failure point so that metrics updates are pushed immediately
       IM.debugSetFailAt("alwaysPublishShardMetrics");
     },
 
     tearDownAll: function () {
       IM.debugRemoveFailAt("alwaysPublishShardMetrics");
-      arango.reconnect(endpoint, '_system', oldUser, '');
+      arango.reconnect(IM.endpoint, '_system', oldUser, '');
 
       db._useDatabase("_system");
       db._dropDatabase(name);
@@ -1602,7 +1601,6 @@ function TestUser2Suite() {
   const user = 'user2';
 
   const protocol = 'tcp';
-  let endpoint = arango.getEndpoint().replace(/^[a-zA-Z0-9\+]+:/, protocol + ':');
   let oldUser = arango.connectedUser();
 
   let suite = {
@@ -1615,14 +1613,14 @@ function TestUser2Suite() {
 
       users.grantDatabase(user, name, 'rw');
     
-      arango.reconnect(endpoint, db._name(), user, '');
+      arango.reconnect(IM.endpoint, db._name(), user, '');
       // set this failure point so that metrics updates are pushed immediately
       IM.debugSetFailAt("alwaysPublishShardMetrics");
     },
 
     tearDownAll: function () {
       IM.debugRemoveFailAt("alwaysPublishShardMetrics");
-      arango.reconnect(endpoint, '_system', oldUser, '');
+      arango.reconnect(IM.endpoint, '_system', oldUser, '');
 
       db._useDatabase("_system");
       db._dropDatabase(name);
