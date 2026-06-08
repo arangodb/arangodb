@@ -86,7 +86,7 @@ defmodule ToastTest.Analyze.IssueStreams do
 
   @display_padding %{
     crash: {-5_000, 0},
-    timeout: {-5_000, 0},
+    infrastructure: {-5_000, 0},
     test_failure: {-100, 100},
     sanitizer_report: {-100, 100}
   }

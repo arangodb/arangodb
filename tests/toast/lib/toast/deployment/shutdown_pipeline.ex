@@ -96,7 +96,7 @@ defmodule Toast.Deployment.ShutdownPipeline do
       state.event_listener.on_event(%{
         event: :timeout_kill,
         deployment_id: state.id,
-        source: :startup_timeout,
+        source: :startup,
         reason: "Startup timeout — deployment did not become ready in time",
         servers: killed_servers,
         timestamp: Toast.get_timestamp()
@@ -195,7 +195,7 @@ defmodule Toast.Deployment.ShutdownPipeline do
     listener.on_event(%{
       event: :timeout_kill,
       deployment_id: id,
-      source: :shutdown_timeout,
+      source: :shutdown,
       reason: "Shutdown timeout — server(s) did not respond to SIGTERM",
       servers: escalated,
       timestamp: Toast.get_timestamp()

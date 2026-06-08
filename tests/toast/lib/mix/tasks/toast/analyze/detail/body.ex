@@ -29,6 +29,8 @@ defmodule Mix.Tasks.Toast.Analyze.Detail.Body do
   alias ToastTest.Formatting.Issues
   alias Toast.Diagnostics.Coredump.ThreadFilter
 
+  def print(issue, color, bt_opts \\ %{})
+
   def print(
         %{type: :test_failure, detail: %{test: %ExUnit.Test{state: {:failed, failures}} = test}},
         _color,
@@ -57,11 +59,15 @@ defmodule Mix.Tasks.Toast.Analyze.Detail.Body do
 
   def print(%{type: :crash, detail: detail}, color, bt_opts) do
     print_crash_info(detail, color)
-    if bt_opts.coredumps, do: print_crash_backtrace(detail, color, bt_opts)
+    print_crash_backtrace(detail, color, bt_opts)
     print_crash_extra(detail, color, bt_opts)
   end
 
-  def print(%{type: :timeout, detail: detail}, color, _bt_opts) do
+  def print(
+        %{type: :infrastructure, detail: %{subtype: :timeout} = detail},
+        color,
+        _bt_opts
+      ) do
     label = Issues.timeout_source_label(detail.source)
     Mix.shell().info("  #{colorize("[#{label}] #{detail.reason}", :red, color)}")
 
@@ -75,9 +81,12 @@ defmodule Mix.Tasks.Toast.Analyze.Detail.Body do
     end
   end
 
-  def print(%{type: :infrastructure, detail: detail} = issue, color, _bt_opts) do
-    subtype = detail.subtype |> Atom.to_string() |> String.replace("_", " ")
-    Mix.shell().info("  #{colorize(String.upcase(subtype), :red, color)}")
+  def print(
+        %{type: :infrastructure, detail: %{subtype: :port_exhaustion} = detail} = issue,
+        color,
+        _bt_opts
+      ) do
+    Mix.shell().info("  #{colorize("PORT EXHAUSTION", :red, color)}")
 
     if detail[:timestamp] do
       Mix.shell().info("  Time:   #{Data.fmt_dt(detail.timestamp)}")
@@ -271,6 +280,8 @@ defmodule Mix.Tasks.Toast.Analyze.Detail.Body do
 
   defp print_crash_info(_detail, _color), do: :ok
 
+  defp print_crash_backtrace(_detail, _color, %{coredumps: false}), do: :ok
+
   defp print_crash_backtrace(
          %{coredumps: [coredump | _]} = detail,
          color,
@@ -314,11 +325,9 @@ defmodule Mix.Tasks.Toast.Analyze.Detail.Body do
     Mix.shell().info("  #{colorize("No crash details available.", :faint, color)}")
   end
 
-  defp print_crash_extra(%{coredumps: [coredump | _]}, color, bt_opts) do
-    if bt_opts.disassembly do
-      print_optional_section(Issues.format_registers(coredump), "Registers", color)
-      print_optional_section(Issues.format_disassembly(coredump), "Disassembly", color)
-    end
+  defp print_crash_extra(%{coredumps: [coredump | _]}, color, %{disassembly: true}) do
+    print_optional_section(Issues.format_registers(coredump), "Registers", color)
+    print_optional_section(Issues.format_disassembly(coredump), "Disassembly", color)
   end
 
   defp print_crash_extra(_detail, _color, _bt_opts), do: :ok

@@ -157,10 +157,20 @@ defmodule ToastTest.Attribution.ServerLogsTest do
     end
   end
 
-  describe "compute_windows/2 — timeout" do
+  describe "compute_windows/2 — infrastructure timeout" do
     test "pads timeout timestamp by [-10s, 0s]" do
       ts = us("10:05:00")
-      issue = %{type: :timeout, detail: %{timestamp: ts}}
+
+      issue = %{
+        type: :infrastructure,
+        detail: %{
+          subtype: :timeout,
+          source: :startup,
+          reason: "timeout",
+          servers: [],
+          timestamp: ts
+        }
+      }
 
       [{start, finish}] = ServerLogs.compute_windows([issue], windows())
 
@@ -169,13 +179,16 @@ defmodule ToastTest.Attribution.ServerLogsTest do
     end
 
     test "produces no window when detail lacks timestamp" do
-      issue = %{type: :timeout, detail: %{}}
+      issue = %{type: :infrastructure, detail: %{subtype: :timeout, source: :startup}}
 
       assert ServerLogs.compute_windows([issue], windows()) == []
     end
 
     test "produces no window when timestamp is nil" do
-      issue = %{type: :timeout, detail: %{timestamp: nil}}
+      issue = %{
+        type: :infrastructure,
+        detail: %{subtype: :timeout, source: :startup, timestamp: nil}
+      }
 
       assert ServerLogs.compute_windows([issue], windows()) == []
     end
@@ -196,7 +209,16 @@ defmodule ToastTest.Attribution.ServerLogsTest do
 
       issues = [
         %{type: :crash, detail: %{crash_info: %{timestamp: crash_ts}}},
-        %{type: :timeout, detail: %{timestamp: timeout_ts}},
+        %{
+          type: :infrastructure,
+          detail: %{
+            subtype: :timeout,
+            source: :startup,
+            reason: "timeout",
+            servers: [],
+            timestamp: timeout_ts
+          }
+        },
         %{type: :crash, detail: %{}}
       ]
 
@@ -368,7 +390,19 @@ defmodule ToastTest.Attribution.ServerLogsTest do
       log_path = write_log(dir, "agent.log", lines)
       log_files = make_log_files([{"agent1", log_path}])
 
-      issues = [%{type: :timeout, detail: %{timestamp: us("10:05:00")}}]
+      issues = [
+        %{
+          type: :infrastructure,
+          detail: %{
+            subtype: :timeout,
+            source: :startup,
+            reason: "timeout",
+            servers: [],
+            timestamp: us("10:05:00")
+          }
+        }
+      ]
+
       result = ServerLogs.collect(issues, log_files, windows())
 
       assert result["agent1"] == []
@@ -414,7 +448,16 @@ defmodule ToastTest.Attribution.ServerLogsTest do
       crash_ts = us("10:05:00")
 
       issues = [
-        %{type: :timeout, detail: %{timestamp: us("10:03:00")}},
+        %{
+          type: :infrastructure,
+          detail: %{
+            subtype: :timeout,
+            source: :startup,
+            reason: "timeout",
+            servers: [],
+            timestamp: us("10:03:00")
+          }
+        },
         %{type: :crash, detail: %{crash_info: %{timestamp: crash_ts}}}
       ]
 

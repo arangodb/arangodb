@@ -27,7 +27,7 @@ defmodule ToastTest.Formatting.PostExecSummary do
   alias ToastTest.Formatting.{Color, Issues, Utils}
   alias ToastTest.SuiteResult
 
-  @issue_types_by_severity [:test_failure, :sanitizer_report, :crash, :timeout, :infrastructure]
+  @issue_types_by_severity [:test_failure, :sanitizer_report, :crash, :infrastructure]
 
   @spec print(SuiteResult.t()) :: :ok
   def print(%SuiteResult{issues: issues, warnings: warnings} = result) do
@@ -100,7 +100,6 @@ defmodule ToastTest.Formatting.PostExecSummary do
 
   defp section_header(:test_failure, count), do: {"TEST FAILURES (#{count})", Color.failure()}
   defp section_header(:crash, count), do: {"CRASHES (#{count})", Color.crash()}
-  defp section_header(:timeout, count), do: {"TIMEOUTS (#{count})", Color.timeout()}
 
   defp section_header(:sanitizer_report, count),
     do: {"SANITIZER REPORTS (#{count})", Color.sanitizer()}
@@ -138,8 +137,12 @@ defmodule ToastTest.Formatting.PostExecSummary do
     counter + 1
   end
 
-  defp print_issue(:timeout, issue, counter, colors) do
-    %{detail: %{source: source, reason: reason, servers: servers}} = issue
+  defp print_issue(
+         :infrastructure,
+         %{detail: %{subtype: :timeout, source: source, reason: reason, servers: servers}},
+         counter,
+         colors
+       ) do
     label = Issues.timeout_source_label(source)
     IO.puts("\n  #{colorize("[#{label}] #{reason}", :red, colors)}")
 
@@ -152,25 +155,24 @@ defmodule ToastTest.Formatting.PostExecSummary do
     counter + 1
   end
 
-  defp print_issue(:infrastructure, issue, counter, colors) do
-    %{
-      detail:
-        %{subtype: subtype, total: total, threshold: threshold, by_server: by_server} = detail
-    } =
-      issue
-
-    label = subtype |> Atom.to_string() |> String.replace("_", " ")
+  defp print_issue(
+         :infrastructure,
+         %{detail: %{subtype: :port_exhaustion, total: total} = detail},
+         counter,
+         colors
+       ) do
+    label = "port exhaustion"
     kind = if detail[:kind] == :deployment, do: "deployment", else: "system"
 
     delta_info =
       if detail[:kind] == :deployment,
-        do: "(#{detail.deployment_delta} since deployment; threshold: #{threshold}))",
-        else: "(threshold: #{threshold})"
+        do: "(#{detail.deployment_delta} since deployment; threshold: #{detail.threshold}))",
+        else: "(threshold: #{detail.threshold})"
 
     IO.puts("\n  #{colorize("[#{label}] #{total} #{kind} sockets #{delta_info}", :red, colors)}")
 
     server_total =
-      by_server
+      detail.by_server
       |> Enum.sort_by(fn {_, v} -> -v.sockets.total end)
       |> Enum.reduce(0, fn {server_id, server}, acc ->
         IO.puts("    #{colorize(server_id, :cyan, colors)}  #{server.sockets.total}")

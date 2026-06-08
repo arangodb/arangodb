@@ -237,10 +237,11 @@ defmodule ToastTest.Attribution do
         end)
 
       %{
-        type: :timeout,
+        type: :infrastructure,
         scope: :suite,
         confidence: :high,
         detail: %{
+          subtype: :timeout,
           source: kill.source,
           reason: kill.reason,
           timestamp: kill.timestamp,

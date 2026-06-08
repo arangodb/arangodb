@@ -163,7 +163,7 @@ defmodule ToastTest.EventStoreTest do
     test "records and retrieves timeout kill events" do
       EventStore.notify(%{
         event: :timeout_kill,
-        source: :suite_timeout,
+        source: :suite,
         reason: "Suite timeout exceeded",
         servers: [%{server_id: "s1", os_pid: 1001}],
         timestamp: ts()
@@ -171,13 +171,13 @@ defmodule ToastTest.EventStoreTest do
 
       kills = EventStore.timeout_kills()
       assert length(kills) == 1
-      assert hd(kills).source == :suite_timeout
+      assert hd(kills).source == :suite
     end
 
     test "returns multiple timeout kills in chronological order" do
       base = to_us(~U[2026-03-09 10:00:00Z])
 
-      for {source, i} <- Enum.with_index([:suite_timeout, :global_timeout]) do
+      for {source, i} <- Enum.with_index([:suite, :global]) do
         EventStore.notify(%{
           event: :timeout_kill,
           source: source,
@@ -188,7 +188,7 @@ defmodule ToastTest.EventStoreTest do
       end
 
       kills = EventStore.timeout_kills()
-      assert Enum.map(kills, & &1.source) == [:suite_timeout, :global_timeout]
+      assert Enum.map(kills, & &1.source) == [:suite, :global]
     end
 
     test "ignores non-timeout events" do
@@ -444,7 +444,7 @@ defmodule ToastTest.EventStoreTest do
 
       EventStore.notify(%{
         event: :timeout_kill,
-        source: :suite_timeout,
+        source: :suite,
         reason: "Suite timeout exceeded",
         servers: [%{server_id: "s1", os_pid: 1001}],
         timestamp: t4

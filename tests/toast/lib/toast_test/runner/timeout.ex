@@ -94,7 +94,7 @@ defmodule ToastTest.Runner.Timeout do
 
   def check_suite_deadline!(%{timeout_settings: %{suite_deadline: deadline}}) do
     if System.monotonic_time(:millisecond) >= deadline do
-      abort_with_timeout(:test_timeout, "Suite timeout exceeded")
+      abort_with_timeout(:suite, "Suite timeout exceeded")
     end
   end
 
@@ -102,7 +102,7 @@ defmodule ToastTest.Runner.Timeout do
 
   def check_global_deadline!(deadline) do
     if System.monotonic_time(:millisecond) >= deadline do
-      abort_with_timeout(:global_timeout, "Global execution timeout exceeded")
+      abort_with_timeout(:global, "Global execution timeout exceeded")
     end
   end
 
