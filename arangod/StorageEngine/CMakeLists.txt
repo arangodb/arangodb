@@ -1,6 +1,6 @@
 add_library(arango_health STATIC
   HealthData.cpp)
-target_link_libraries(arango_health arango_basic_errors velocypack)
+target_link_libraries(arango_health arango_basic_errors arango_basic_utils velocypack)
 target_include_directories(arango_health PRIVATE
   "${PROJECT_SOURCE_DIR}/arangod"
   "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
@@ -30,7 +30,6 @@ add_library(arango_storage_engine_common STATIC
   WalAccess.cpp)
 target_link_libraries(arango_storage_engine_common
   arango::validation
-  arango_replication2
   immer)
 target_include_directories(arango_storage_engine_common PRIVATE
   "${PROJECT_SOURCE_DIR}/arangod"

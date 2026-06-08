@@ -12,7 +12,6 @@ target_link_libraries(arango_indexes
   arango_geo
   boost_boost
   arango::validation
-  arango_replication2
   immer
   date_interface)
   
