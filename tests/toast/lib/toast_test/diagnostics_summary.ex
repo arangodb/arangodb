@@ -61,7 +61,8 @@ defmodule ToastTest.DiagnosticsSummary do
           name: inspect(suite[:suite_module]),
           log_files: extract_log_files(sr.deployments),
           sanitizer_files: extract_sanitizer_files(sr.issues),
-          core_dumps: extract_core_dumps(sr.issues)
+          core_dumps: extract_core_dumps(sr.issues),
+          pcap_files: List.wrap(sr.pcap_path)
         }
 
       suite ->
@@ -69,7 +70,8 @@ defmodule ToastTest.DiagnosticsSummary do
           name: inspect(suite[:suite_module]),
           log_files: [],
           sanitizer_files: [],
-          core_dumps: []
+          core_dumps: [],
+          pcap_files: []
         }
     end)
   end

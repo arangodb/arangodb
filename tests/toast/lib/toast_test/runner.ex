@@ -362,7 +362,7 @@ defmodule ToastTest.Runner do
         test_config.deployment_mode
       )
 
-    finalize_suite(nil, stats, test_data, test_config)
+    finalize_suite(nil, stats, test_data, test_config, nil)
   end
 
   defp run_suite_with_mode(
@@ -447,6 +447,8 @@ defmodule ToastTest.Runner do
     ToastTest.DeploymentRegistry.put(suite_module, deployment)
     Logger.debug("Suite #{inspect(suite_module)}: deployment ready")
 
+    capture_pid = maybe_start_traffic_capture(test_config, entry.name)
+
     if test_config.attach_debugger do
       if test_config.ci do
         Logger.warning("--attach-debugger ignored in CI mode")
@@ -487,7 +489,7 @@ defmodule ToastTest.Runner do
           )
       end
 
-    finalize_suite(deployment, stats, test_data, test_config)
+    finalize_suite(deployment, stats, test_data, test_config, capture_pid)
   end
 
   defp run_suite_manual(suite_run, %SuiteEntry{} = entry, ex_unit_opts) do
@@ -496,7 +498,7 @@ defmodule ToastTest.Runner do
     {stats, test_data} =
       run_suite_tests(nil, suite_run, entry.test_modules, ex_unit_opts, entry.opts, nil)
 
-    finalize_suite(nil, stats, test_data, suite_run.test_config)
+    finalize_suite(nil, stats, test_data, suite_run.test_config, nil)
   end
 
   defp handle_deployment_failure(suite_run, %SuiteEntry{} = entry, reason, ex_unit_opts) do
@@ -518,13 +520,43 @@ defmodule ToastTest.Runner do
         mode
       )
 
-    finalize_suite(nil, stats, test_data, test_config)
+    finalize_suite(nil, stats, test_data, test_config, nil)
   end
 
-  defp finalize_suite(deployment, stats, test_data, test_config) do
-    suite_result = __MODULE__.PostExecution.run(deployment, test_data, test_config)
+  defp finalize_suite(deployment, stats, test_data, test_config, capture_pid) do
+    pcap_path = stop_traffic_capture(capture_pid)
+    suite_result = __MODULE__.PostExecution.run(deployment, test_data, test_config, pcap_path)
     ToastTest.StateCleanup.reset()
     %{stats: stats, suite_result: suite_result}
+  end
+
+  defp maybe_start_traffic_capture(%{capture_traffic: true} = test_config, suite_name) do
+    pcap_dir = Path.join(test_config.base_dir, "traffic")
+    pcap_path = Path.join(pcap_dir, "#{suite_name}.pcap")
+
+    case ToastTest.Traffic.Capture.start(pcap_path: pcap_path) do
+      {:ok, pid} ->
+        pid
+
+      {:error, reason} ->
+        Logger.warning("Traffic capture failed to start: #{inspect(reason)}")
+        nil
+    end
+  end
+
+  defp maybe_start_traffic_capture(_test_config, _suite_name), do: nil
+
+  defp stop_traffic_capture(nil), do: nil
+
+  defp stop_traffic_capture(pid) do
+    case ToastTest.Traffic.Capture.stop(pid) do
+      {:ok, pcap_path} ->
+        pcap_path
+
+      {:error, reason} ->
+        Logger.warning("Traffic capture stop failed: #{inspect(reason)}")
+        nil
+    end
   end
 
   defp build_between_tests_fn(

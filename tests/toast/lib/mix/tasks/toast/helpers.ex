@@ -131,7 +131,8 @@ defmodule Mix.Tasks.Toast.Helpers do
       cluster_coordinators: :cluster_coordinators,
       replication_factor: :cluster_replication_factor,
       ci: :ci,
-      force_all_tiers: :force_all_tiers
+      force_all_tiers: :force_all_tiers,
+      capture_traffic: :capture_traffic
     ]
 
     config_list =

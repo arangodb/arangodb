@@ -37,9 +37,12 @@ defmodule ToastTest.Runner.PostExecution do
   For deployed suites, additionally stops the deployment, collects artifacts
   (coredumps, server logs), and performs full post-mortem analysis.
   """
-  @spec run(Toast.Deployment.t() | nil, map(), ToastTest.Config.t()) :: SuiteResult.t()
+  @spec run(Toast.Deployment.t() | nil, map(), ToastTest.Config.t(), Path.t() | nil) ::
+          SuiteResult.t()
+  def run(deployment, test_data, test_config, pcap_path \\ nil)
+
   # Manual mode — no deployment was started, so only process event store data.
-  def run(nil, test_data, _test_config) do
+  def run(nil, test_data, _test_config, _pcap_path) do
     snapshot = EventStore.snapshot()
 
     crash_events = Enum.map(snapshot.unexpected_crashes, &ResultBuilder.to_crash_event/1)
@@ -53,7 +56,7 @@ defmodule ToastTest.Runner.PostExecution do
     SuiteResult.build(test_data, issues, events: snapshot.events)
   end
 
-  def run(deployment, test_data, %ToastTest.Config{} = test_config) do
+  def run(deployment, test_data, %ToastTest.Config{} = test_config, pcap_path) do
     maybe_dump_agency(deployment, test_data, test_config)
 
     Logger.debug("Post-execution: stopping deployment")
@@ -61,7 +64,7 @@ defmodule ToastTest.Runner.PostExecution do
     if error, do: Logger.warning("Deployment stop error: #{inspect(error)}")
 
     try do
-      build_suite_result(servers, test_data, test_config)
+      build_suite_result(servers, test_data, test_config, pcap_path)
     rescue
       e ->
         Logger.warning(
@@ -82,7 +85,7 @@ defmodule ToastTest.Runner.PostExecution do
     end
   end
 
-  defp build_suite_result(servers, test_data, test_config) do
+  defp build_suite_result(servers, test_data, test_config, pcap_path) do
     Utils.print_header("SUITE FINISHED", IO.ANSI.enabled?(), Color.info())
 
     Logger.info("Running post-execution analysis...")
@@ -131,12 +134,16 @@ defmodule ToastTest.Runner.PostExecution do
 
     deployments = ResultBuilder.build_deployments(snapshot, server_logs)
 
+    traffic = extract_traffic(pcap_path)
+
     suite_result =
       SuiteResult.build(test_data, issues,
         warnings: warnings,
         deployments: deployments,
         coredumps: coredump_reports,
-        events: snapshot.events
+        events: snapshot.events,
+        traffic: traffic,
+        pcap_path: pcap_path
       )
 
     SuiteResult.write_all(suite_result, test_config.result_dir)
@@ -198,6 +205,28 @@ defmodule ToastTest.Runner.PostExecution do
 
       {:error, reason} ->
         Logger.warning("Failed to write agency dump: #{inspect(reason)}")
+    end
+  end
+
+  defp extract_traffic(nil), do: []
+
+  defp extract_traffic(pcap_path) do
+    case ToastTest.Traffic.Extraction.extract(pcap_path) do
+      {:ok, entries} ->
+        entries
+
+      {:error, :tshark_not_found} ->
+        Logger.warning(
+          "tshark not found — skipping traffic extraction. " <>
+            "Install Wireshark/tshark to enable HTTP traffic analysis. " <>
+            "Raw pcap file: #{pcap_path}"
+        )
+
+        []
+
+      {:error, reason} ->
+        Logger.warning("Traffic extraction failed: #{inspect(reason)}")
+        []
     end
   end
 end

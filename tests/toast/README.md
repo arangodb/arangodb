@@ -157,6 +157,7 @@ mix toast --include edge_case
 | `--test-buckets TOTAL/INDEX` | Run only bucket INDEX of TOTAL (0-indexed). See [Test Bucketing](#test-bucketing). |
 | `--ci` | Enable CI mode (packages results for upload) |
 | `--force-all-tiers` | Package all tiers regardless of outcome (CI only) |
+| `--capture-traffic` | Capture network traffic with tcpdump for post-mortem analysis |
 | `--no-agency-dump` | Skip agency state dump on error |
 
 ### Filtering Options
@@ -719,7 +720,88 @@ mix toast.analyze detail all --logs --log-servers dbserver-0 --log-window -20000
 
 # Control coredump backtrace output
 mix toast.analyze detail all --threads all --backtrace-frames 30
+
+# Show captured HTTP traffic around issues
+mix toast.analyze detail all --traffic
+
+# Show traffic interleaved with server logs
+mix toast.analyze detail all --traffic --logs
+
+# Filter traffic by server
+mix toast.analyze detail all --traffic --traffic-servers dbserver-0
+
+# Filter traffic by HTTP method
+mix toast.analyze detail all --traffic --traffic-methods POST,PUT
+
+# Filter traffic by endpoint
+mix toast.analyze detail all --traffic --traffic-endpoints /_api/document
+
+# Filter traffic by status code range
+mix toast.analyze detail all --traffic --traffic-status 400-599
+
+# Custom time window for traffic
+mix toast.analyze detail all --traffic --traffic-window -30000,5000
 ```
+
+## Network Traffic Capture
+
+Toast can capture network traffic during test runs using tcpdump and make it
+available for post-mortem analysis. Traffic is captured on the loopback
+interface for the duration of each suite's deployment.
+
+### Prerequisites
+
+- `tcpdump` must be installed and in PATH
+- `tcpdump` needs the `CAP_NET_RAW` capability: `sudo setcap cap_net_raw+ep $(which tcpdump)`
+- `tshark` (from Wireshark) must be installed for post-processing captured traffic
+
+### Capturing Traffic
+
+```bash
+mix toast --build-dir /path/to/build --capture-traffic
+```
+
+When enabled, Toast starts a tcpdump process that captures all traffic on the
+loopback interface for the duration of each suite. The raw pcap file is written
+to `{base_dir}/traffic/{suite_name}.pcap`. After the suite completes, tshark
+extracts HTTP request/response data and stores it in the diagnostics file for
+offline analysis.
+
+### Analyzing Captured Traffic
+
+Use `--traffic` with the `detail` subcommand to view HTTP traffic around issues:
+
+```bash
+# Show traffic for all issues
+mix toast.analyze detail all --traffic
+
+# Interleave traffic with server logs
+mix toast.analyze detail all --traffic --logs
+```
+
+Traffic entries show HTTP requests and responses with decoded bodies (including
+VelocyPack). Entries are filtered by the issue's time window, just like server
+logs.
+
+#### Traffic Filter Options
+
+| Option | Description |
+|---|---|
+| `--traffic` | Enable traffic display |
+| `--traffic-servers <spec>` | Filter by server (same syntax as `--log-servers`) |
+| `--traffic-window <before>,<after>` | Override time window (milliseconds, same as `--log-window`) |
+| `--traffic-methods <methods>` | Filter by HTTP method (comma-separated, e.g., `POST,PUT`) |
+| `--traffic-endpoints <specs>` | Filter by URI substring (comma-separated) |
+| `--traffic-status <range>` | Filter by status code or range (e.g., `500` or `400-599`) |
+| `--traffic-body-limit <n>` | Max bytes of body to display (default: 200, `0` or `unlimited` for no limit) |
+| `--traffic-raw-body` | Show raw bytes instead of decoding VelocyPack bodies |
+| `--traffic-all-headers` | Show all HTTP headers (default: only interesting ones) |
+
+### CI Packaging
+
+In CI mode, raw pcap files are packaged in Tier 3 artifacts (compressed).
+The extracted HTTP traffic data is included in the diagnostics ETF file
+(Tier 1), so `--traffic` works in analyze even without the raw pcap.
 
 ## Test Bucketing
 
@@ -875,6 +957,7 @@ for CI pipelines or shell aliases:
 | `TOAST_DEBUGGER` | -- | Core dump debugger: `gdb`, `lldb`, `auto`, `none` |
 | `TOAST_DUMP_AGENCY` | `--no-agency-dump` | Dump agency state on error (cluster mode) |
 | `TOAST_COREDUMP_TIMEOUT` | -- | Timeout for coredump analysis in ms |
+| `TOAST_CAPTURE_TRAFFIC` | `--capture-traffic` | Enable network traffic capture |
 | `TOAST_COREDUMP_DIR` | -- | Directory to search for core dumps |
 
 <a id="local-config-file"></a>
