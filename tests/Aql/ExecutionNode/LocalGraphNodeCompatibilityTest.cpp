@@ -35,7 +35,6 @@
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
 
-using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::tests::mocks;
 
