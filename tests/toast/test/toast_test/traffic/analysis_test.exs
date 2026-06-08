@@ -24,6 +24,13 @@ defmodule ToastTest.Traffic.AnalysisTest do
 
   alias ToastTest.Traffic.Analysis
 
+  defp format_entry(entry, opts \\ %{}) do
+    case Analysis.format_entry_parts(entry, opts) do
+      {summary, nil} -> summary
+      {summary, detail} -> summary <> "\n" <> detail
+    end
+  end
+
   # --- Test data helpers ---
 
   @server_ports %{8529 => "CRDN-abc", 8530 => "PRMR-xyz"}
@@ -68,59 +75,6 @@ defmodule ToastTest.Traffic.AnalysisTest do
       },
       overrides
     )
-  end
-
-  # --- parse_method_filter/1 ---
-
-  describe "parse_method_filter/1" do
-    test "nil returns nil (no filter)" do
-      assert Analysis.parse_method_filter(nil) == nil
-    end
-
-    test "single method" do
-      assert Analysis.parse_method_filter("GET") == ["GET"]
-    end
-
-    test "multiple comma-separated methods" do
-      assert Analysis.parse_method_filter("GET,POST") == ["GET", "POST"]
-    end
-
-    test "preserves case as given" do
-      assert Analysis.parse_method_filter("get,Post") == ["get", "Post"]
-    end
-  end
-
-  # --- parse_endpoint_filter/1 ---
-
-  describe "parse_endpoint_filter/1" do
-    test "nil returns nil (no filter)" do
-      assert Analysis.parse_endpoint_filter(nil) == nil
-    end
-
-    test "single endpoint" do
-      assert Analysis.parse_endpoint_filter("/_api/document") == ["/_api/document"]
-    end
-
-    test "multiple comma-separated endpoints" do
-      result = Analysis.parse_endpoint_filter("/_api/document,/_api/cursor")
-      assert result == ["/_api/document", "/_api/cursor"]
-    end
-  end
-
-  # --- parse_status_filter/1 ---
-
-  describe "parse_status_filter/1" do
-    test "nil returns nil (no filter)" do
-      assert Analysis.parse_status_filter(nil) == nil
-    end
-
-    test "single status becomes min == max range" do
-      assert Analysis.parse_status_filter("200") == {200, 200}
-    end
-
-    test "range with dash" do
-      assert Analysis.parse_status_filter("400-599") == {400, 599}
-    end
   end
 
   # --- annotate_server/2 ---
@@ -230,14 +184,14 @@ defmodule ToastTest.Traffic.AnalysisTest do
   describe "format_entry/1" do
     test "formats a request with method and URI" do
       entry = request(%{method: "GET", uri: "/_api/version"})
-      result = Analysis.format_entry(entry)
+      result = format_entry(entry)
       assert result =~ ~r/→.*GET \/\_api\/version/u
     end
 
     test "formats a response with status, content type, and body size" do
       body = ~s({"server":"arango"})
       entry = response(%{status: 200, content_type: "application/json", body: body})
-      result = Analysis.format_entry(entry)
+      result = format_entry(entry)
       assert result =~ ~r/←.*200/u
       assert result =~ "application/json"
       assert result =~ "#{byte_size(body)} bytes"
@@ -245,21 +199,33 @@ defmodule ToastTest.Traffic.AnalysisTest do
 
     test "formats a response with nil body without size" do
       entry = response(%{body: nil})
-      result = Analysis.format_entry(entry)
+      result = format_entry(entry)
       assert result =~ ~r/←.*200/u
       refute result =~ "bytes"
     end
 
     test "notes VPack for velocypack content type" do
       entry = response(%{content_type: "application/x-velocypack", body: <<0x01, 0x02>>})
-      result = Analysis.format_entry(entry)
-      assert result =~ "VPack" or result =~ "velocypack"
+      result = format_entry(entry)
+      assert result =~ "VPack"
     end
 
-    test "formats a POST request" do
-      entry = request(%{method: "POST", uri: "/_api/document/col"})
-      result = Analysis.format_entry(entry)
-      assert result =~ ~r/→.*POST \/\_api\/document\/col/u
+    test "formats response_time in microseconds range" do
+      entry = response(%{response_time: 0.000698})
+      result = format_entry(entry)
+      assert result =~ "[698µs]"
+    end
+
+    test "formats response_time in milliseconds range" do
+      entry = response(%{response_time: 0.0234})
+      result = format_entry(entry)
+      assert result =~ "[23.4ms]"
+    end
+
+    test "formats entry with neither method nor status" do
+      entry = request(%{method: nil, uri: nil, status: nil})
+      result = format_entry(entry)
+      assert result =~ "? (no method or status)"
     end
   end
 
@@ -268,7 +234,7 @@ defmodule ToastTest.Traffic.AnalysisTest do
   describe "format_entry/2 body display" do
     test "shows printable text body indented below summary" do
       entry = request(%{body: ~s({"key":"value"}), content_type: "application/json"})
-      result = Analysis.format_entry(entry, %{limit: 200, raw: false})
+      result = format_entry(entry, %{limit: 200, raw: false})
       [summary, body_line] = String.split(result, "\n", parts: 2)
       assert summary =~ "→"
       assert body_line =~ ~s({"key":"value"})
@@ -277,40 +243,40 @@ defmodule ToastTest.Traffic.AnalysisTest do
 
     test "truncates body to limit and appends ellipsis" do
       entry = request(%{body: String.duplicate("a", 300), content_type: "text/plain"})
-      result = Analysis.format_entry(entry, %{limit: 50, raw: false})
+      result = format_entry(entry, %{limit: 50, raw: false})
       assert result =~ " …"
     end
 
     test "unlimited limit shows full body" do
       body = String.duplicate("b", 5000)
       entry = request(%{body: body, content_type: "text/plain"})
-      result = Analysis.format_entry(entry, %{limit: :unlimited, raw: false})
+      result = format_entry(entry, %{limit: :unlimited, raw: false})
       refute result =~ " …"
       assert result =~ body
     end
 
     test "nil body produces no body line" do
       entry = request(%{body: nil})
-      result = Analysis.format_entry(entry, %{limit: 200, raw: false})
+      result = format_entry(entry, %{limit: 200, raw: false})
       refute result =~ "\n"
     end
 
     test "empty body produces no body line" do
       entry = request(%{body: <<>>})
-      result = Analysis.format_entry(entry, %{limit: 200, raw: false})
+      result = format_entry(entry, %{limit: 200, raw: false})
       refute result =~ "\n"
     end
 
     test "non-printable body shown as hex" do
       entry = request(%{body: <<0xFF, 0xAB, 0x00>>, content_type: "application/octet-stream"})
-      result = Analysis.format_entry(entry, %{limit: 200, raw: false})
+      result = format_entry(entry, %{limit: 200, raw: false})
       assert result =~ "ffab00"
     end
 
     test "VPack body is decoded and inspected" do
       vpack_body = VelocyPack.encode!(%{"hello" => "world"})
       entry = response(%{body: vpack_body, content_type: "application/x-velocypack"})
-      result = Analysis.format_entry(entry, %{limit: 2000, raw: false})
+      result = format_entry(entry, %{limit: 2000, raw: false})
       assert result =~ "hello"
       assert result =~ "world"
     end
@@ -318,14 +284,14 @@ defmodule ToastTest.Traffic.AnalysisTest do
     test "raw option shows VPack as hex instead of decoded" do
       vpack_body = VelocyPack.encode!(%{"hello" => "world"})
       entry = response(%{body: vpack_body, content_type: "application/x-velocypack"})
-      result = Analysis.format_entry(entry, %{limit: 2000, raw: true})
+      result = format_entry(entry, %{limit: 2000, raw: true})
       refute result =~ "hello"
       assert result =~ Base.encode16(vpack_body, case: :lower)
     end
 
     test "invalid VPack falls back to hex" do
       entry = response(%{body: <<0xFF, 0x01>>, content_type: "application/x-velocypack"})
-      result = Analysis.format_entry(entry, %{limit: 200, raw: false})
+      result = format_entry(entry, %{limit: 200, raw: false})
       assert result =~ "ff01"
     end
   end
@@ -336,7 +302,8 @@ defmodule ToastTest.Traffic.AnalysisTest do
     test "includes entries within the window" do
       entries = [request(%{timestamp: 500}), request(%{timestamp: 1000})]
       result = Analysis.extract(entries, @server_ports, {400, 1100}, [])
-      assert length(result) == 2
+      timestamps = Enum.map(result, & &1.timestamp)
+      assert timestamps == [500, 1000]
     end
 
     test "excludes entries outside the window" do
@@ -354,7 +321,8 @@ defmodule ToastTest.Traffic.AnalysisTest do
     test "includes entries exactly at window boundaries" do
       entries = [request(%{timestamp: 400}), request(%{timestamp: 1000})]
       result = Analysis.extract(entries, @server_ports, {400, 1000}, [])
-      assert length(result) == 2
+      timestamps = Enum.map(result, & &1.timestamp)
+      assert timestamps == [400, 1000]
     end
 
     test "returns empty list when no entries fall in window" do
@@ -445,7 +413,8 @@ defmodule ToastTest.Traffic.AnalysisTest do
       ]
 
       result = Analysis.extract(entries, @server_ports, {0, 10_000}, [])
-      assert length(result) == 2
+      methods = Enum.map(result, & &1.method)
+      assert methods == ["GET", "POST"]
     end
   end
 

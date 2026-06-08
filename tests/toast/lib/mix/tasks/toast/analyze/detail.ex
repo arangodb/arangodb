@@ -29,8 +29,6 @@ defmodule Mix.Tasks.Toast.Analyze.Detail do
   alias Mix.Tasks.Toast.Analyze.Detail.Streams
   alias ToastTest.Analyze.IssueStreams
   alias ToastTest.Analyze.Logs, as: LogAnalysis
-  alias ToastTest.Traffic.Analysis, as: TrafficAnalysis
-
   @issue_spec_keywords ~w(all crashes test_failures sanitizer timeouts infrastructure)
 
   def issue_spec?(arg) do
@@ -40,7 +38,7 @@ defmodule Mix.Tasks.Toast.Analyze.Detail do
   def run(result_dir, opts, rest, color) do
     results = Data.load_results(result_dir)
     issues = Data.collect_issues(results, opts)
-    indexed = Data.indexed_issues(issues)
+    indexed = Enum.with_index(issues, 1)
     spec = parse_issue_spec(rest)
     selected = select_issues(indexed, spec)
 
@@ -59,9 +57,9 @@ defmodule Mix.Tasks.Toast.Analyze.Detail do
       enabled: traffic_enabled,
       server_filter: IssueStreams.parse_server_filter(opts[:traffic_servers]),
       window_spec: IssueStreams.parse_window_spec(opts[:traffic_window]),
-      method_filter: TrafficAnalysis.parse_method_filter(opts[:traffic_methods]),
-      endpoint_filter: TrafficAnalysis.parse_endpoint_filter(opts[:traffic_endpoints]),
-      status_filter: TrafficAnalysis.parse_status_filter(opts[:traffic_status]),
+      method_filter: parse_list_filter(opts[:traffic_methods]),
+      endpoint_filter: parse_list_filter(opts[:traffic_endpoints]),
+      status_filter: parse_status_filter(opts[:traffic_status]),
       body_limit: parse_body_limit(opts[:traffic_body_limit]),
       raw_body: Keyword.get(opts, :traffic_raw_body, false),
       all_headers: Keyword.get(opts, :traffic_all_headers, false)
@@ -137,6 +135,20 @@ defmodule Mix.Tasks.Toast.Analyze.Detail do
       Mix.raise(
         "Unknown --threads value: #{value}. Valid: #{@valid_threads |> Map.keys() |> Enum.join(", ")}"
       )
+  end
+
+  defp parse_list_filter(nil), do: nil
+
+  defp parse_list_filter(spec),
+    do: spec |> String.split(",", trim: true) |> Enum.map(&String.trim/1)
+
+  defp parse_status_filter(nil), do: nil
+
+  defp parse_status_filter(spec) do
+    case String.split(spec, "-") do
+      [single] -> {String.to_integer(single), String.to_integer(single)}
+      [min, max] -> {String.to_integer(min), String.to_integer(max)}
+    end
   end
 
   defp parse_body_limit(nil), do: 200

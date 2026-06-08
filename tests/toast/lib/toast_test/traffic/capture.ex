@@ -63,12 +63,6 @@ defmodule ToastTest.Traffic.Capture do
     :exit, _ -> {:error, :capture_dead}
   end
 
-  @doc "Return the pcap file path."
-  @spec pcap_path(pid()) :: Path.t()
-  def pcap_path(pid) do
-    GenServer.call(pid, :pcap_path)
-  end
-
   def start_link(opts) do
     GenServer.start_link(__MODULE__, opts)
   end
@@ -105,10 +99,6 @@ defmodule ToastTest.Traffic.Capture do
     :exec.kill(state.os_pid, 15)
     Process.send_after(self(), :stop_timeout, @stop_timeout)
     {:noreply, %{state | stop_from: from}}
-  end
-
-  def handle_call(:pcap_path, _from, state) do
-    {:reply, state.pcap_path, state}
   end
 
   @impl true

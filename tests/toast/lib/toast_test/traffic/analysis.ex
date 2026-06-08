@@ -33,26 +33,6 @@ defmodule ToastTest.Traffic.Analysis do
           optional(atom()) => term()
         }
 
-  @doc "Parse a comma-separated method filter spec into a list, or nil."
-  def parse_method_filter(nil), do: nil
-  def parse_method_filter(spec) when is_binary(spec), do: parse_csv(spec)
-
-  @doc "Parse a comma-separated endpoint filter spec into a list, or nil."
-  def parse_endpoint_filter(nil), do: nil
-  def parse_endpoint_filter(spec) when is_binary(spec), do: parse_csv(spec)
-
-  defp parse_csv(spec), do: spec |> String.split(",", trim: true) |> Enum.map(&String.trim/1)
-
-  @doc "Parse a status filter spec into a {min, max} range, or nil."
-  def parse_status_filter(nil), do: nil
-
-  def parse_status_filter(spec) when is_binary(spec) do
-    case String.split(spec, "-") do
-      [single] -> {String.to_integer(single), String.to_integer(single)}
-      [min, max] -> {String.to_integer(min), String.to_integer(max)}
-    end
-  end
-
   @doc "Annotate an entry with {server_id, direction}."
   def annotate_server(%{src: {_, src_port}, dst: {_, dst_port}}, server_ports) do
     cond do
@@ -143,14 +123,6 @@ defmodule ToastTest.Traffic.Analysis do
       end
 
     {summary, detail}
-  end
-
-  @doc "Format an entry as a single string (summary + detail joined by newline)."
-  def format_entry(entry, format_opts \\ %{}) do
-    case format_entry_parts(entry, format_opts) do
-      {summary, nil} -> summary
-      {summary, detail} -> summary <> "\n" <> detail
-    end
   end
 
   defp format_summary(entry) do

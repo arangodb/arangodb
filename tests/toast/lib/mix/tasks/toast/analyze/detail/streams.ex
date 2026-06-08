@@ -229,16 +229,12 @@ defmodule Mix.Tasks.Toast.Analyze.Detail.Streams do
   # --- Helpers ---
 
   defp stream_label(logs?, traffic?, events?) do
-    labels =
-      [{logs?, "Logs"}, {traffic?, "Traffic"}, {events?, "Events"}]
-      |> Enum.filter(&elem(&1, 0))
-      |> Enum.map(&elem(&1, 1))
-
-    case labels do
+    [{logs?, "Server logs"}, {traffic?, "Traffic"}, {events?, "Events"}]
+    |> Enum.filter(&elem(&1, 0))
+    |> Enum.map(&elem(&1, 1))
+    |> case do
       [] -> "Streams"
-      ["Logs"] -> "Server logs"
-      ["Logs", "Events"] -> "Server logs + Events"
-      _ -> Enum.join(labels, " + ")
+      labels -> Enum.join(labels, " + ")
     end
   end
 

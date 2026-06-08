@@ -234,13 +234,6 @@ defmodule ToastTest.Traffic.ExtractionTest do
       assert entry.timestamp == 1_717_300_000_001_000
     end
 
-    test "converts round-second timestamp to microseconds" do
-      input = request_line(%{timestamp: "1717300000000"})
-      [entry] = Extraction.parse_tshark_output(input)
-
-      assert entry.timestamp == 1_717_300_000_000_000
-    end
-
     test "parses POST request with body" do
       body = ~s({"name":"test"})
       body_hex = Base.encode16(body, case: :lower)
@@ -282,16 +275,11 @@ defmodule ToastTest.Traffic.ExtractionTest do
       assert entry.body == <<0x01, 0x02, 0x03, 0x04, 0x05, 0xFF>>
     end
 
-    test "parses ports as integers in src/dst tuples" do
-      input = request_line(%{src_port: "12345", dst_port: "8529"})
+    test "pads odd-length hex body before decoding" do
+      input = response_line(%{body_hex: "4f4b0", content_type: "application/octet-stream"})
       [entry] = Extraction.parse_tshark_output(input)
 
-      assert {_, src_port} = entry.src
-      assert {_, dst_port} = entry.dst
-      assert is_integer(src_port)
-      assert is_integer(dst_port)
-      assert src_port == 12345
-      assert dst_port == 8529
+      assert entry.body == <<0x4F, 0x4B, 0x00>>
     end
   end
 

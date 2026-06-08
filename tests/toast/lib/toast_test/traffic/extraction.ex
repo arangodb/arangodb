@@ -27,9 +27,6 @@ defmodule ToastTest.Traffic.Extraction do
 
   require Logger
 
-  # Cap stored body size to prevent ETF bloat on high-traffic suites.
-  @max_body_bytes 8_192
-
   @type traffic_entry :: %{
           timestamp: integer(),
           src: {String.t(), integer()},
@@ -232,15 +229,8 @@ defmodule ToastTest.Traffic.Extraction do
     padded = if rem(byte_size(plain), 2) == 1, do: plain <> "0", else: plain
 
     case Base.decode16(padded, case: :mixed) do
-      {:ok, binary} ->
-        if byte_size(binary) > @max_body_bytes do
-          binary_part(binary, 0, @max_body_bytes)
-        else
-          binary
-        end
-
-      :error ->
-        nil
+      {:ok, binary} -> binary
+      :error -> nil
     end
   end
 end
