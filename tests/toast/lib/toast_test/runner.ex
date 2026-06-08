@@ -447,7 +447,7 @@ defmodule ToastTest.Runner do
     ToastTest.DeploymentRegistry.put(suite_module, deployment)
     Logger.debug("Suite #{inspect(suite_module)}: deployment ready")
 
-    capture_pid = maybe_start_traffic_capture(test_config, deployment)
+    capture_pid = maybe_start_traffic_capture(test_config, entry.name)
 
     if test_config.attach_debugger do
       if test_config.ci do
@@ -530,9 +530,9 @@ defmodule ToastTest.Runner do
     %{stats: stats, suite_result: suite_result}
   end
 
-  defp maybe_start_traffic_capture(%{capture_traffic: true} = test_config, deployment) do
+  defp maybe_start_traffic_capture(%{capture_traffic: true} = test_config, suite_name) do
     pcap_dir = Path.join(test_config.base_dir, "traffic")
-    pcap_path = Path.join(pcap_dir, "#{deployment.id}.pcap")
+    pcap_path = Path.join(pcap_dir, "#{suite_name}.pcap")
 
     case ToastTest.Traffic.Capture.start(pcap_path: pcap_path) do
       {:ok, pid} ->
@@ -544,7 +544,7 @@ defmodule ToastTest.Runner do
     end
   end
 
-  defp maybe_start_traffic_capture(_test_config, _deployment), do: nil
+  defp maybe_start_traffic_capture(_test_config, _suite_name), do: nil
 
   defp stop_traffic_capture(nil), do: nil
 
