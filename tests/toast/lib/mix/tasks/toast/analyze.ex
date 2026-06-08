@@ -74,6 +74,9 @@ defmodule Mix.Tasks.Toast.Analyze do
       --traffic-methods <methods>     Filter by HTTP method (comma-separated, e.g. POST,PUT)
       --traffic-endpoints <specs>     Filter by endpoint substring (comma-separated)
       --traffic-status <range>        Filter by status code (e.g. 500 or 400-499)
+      --traffic-body-limit <N>        Max bytes of body to display (default: 200, "unlimited" or 0 for no limit)
+      --traffic-raw-body              Show raw bytes instead of decoding VPack bodies
+      --traffic-all-headers           Show all HTTP headers (default: only interesting ones)
 
   ## Backtrace options (detail only)
 
@@ -114,6 +117,9 @@ defmodule Mix.Tasks.Toast.Analyze do
     traffic_methods: :string,
     traffic_endpoints: :string,
     traffic_status: :string,
+    traffic_body_limit: :string,
+    traffic_raw_body: :boolean,
+    traffic_all_headers: :boolean,
     coredumps: :boolean,
     threads: :string,
     backtrace_frames: :integer,

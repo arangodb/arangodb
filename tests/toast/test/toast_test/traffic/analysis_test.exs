@@ -38,7 +38,12 @@ defmodule ToastTest.Traffic.AnalysisTest do
         uri: "/_api/version",
         status: nil,
         content_type: "application/json",
-        body: nil
+        body: nil,
+        headers: [],
+        stream_id: nil,
+        request_number: nil,
+        response_number: nil,
+        response_time: nil
       },
       overrides
     )
@@ -54,7 +59,12 @@ defmodule ToastTest.Traffic.AnalysisTest do
         uri: nil,
         status: 200,
         content_type: "application/json",
-        body: ~s({"server":"arango"})
+        body: ~s({"server":"arango"}),
+        headers: [],
+        stream_id: nil,
+        request_number: nil,
+        response_number: nil,
+        response_time: nil
       },
       overrides
     )
@@ -113,25 +123,6 @@ defmodule ToastTest.Traffic.AnalysisTest do
     end
   end
 
-  # --- resolve_server/2 ---
-
-  describe "resolve_server/2" do
-    test "matches src port" do
-      entry = response(%{src: {"10.0.0.2", 8529}})
-      assert Analysis.resolve_server(entry, @server_ports) == "CRDN-abc"
-    end
-
-    test "matches dst port" do
-      entry = request(%{dst: {"10.0.0.2", 8530}})
-      assert Analysis.resolve_server(entry, @server_ports) == "PRMR-xyz"
-    end
-
-    test "returns nil when neither port matches" do
-      entry = request(%{src: {"10.0.0.1", 9999}, dst: {"10.0.0.2", 9998}})
-      assert Analysis.resolve_server(entry, @server_ports) == nil
-    end
-  end
-
   # --- annotate_server/2 ---
 
   describe "annotate_server/2" do
@@ -148,6 +139,89 @@ defmodule ToastTest.Traffic.AnalysisTest do
     test "neither port matches: nil server and :unknown direction" do
       entry = request(%{src: {"10.0.0.1", 9999}, dst: {"10.0.0.2", 9998}})
       assert Analysis.annotate_server(entry, @server_ports) == {nil, :unknown}
+    end
+  end
+
+  # --- assign_pair_colors/1 ---
+
+  describe "assign_pair_colors/1" do
+    test "assigns matching pair_id to request and response on same stream" do
+      entries = [
+        request(%{stream_id: 1, request_number: 1}),
+        response(%{stream_id: 1, response_number: 1})
+      ]
+
+      [req, resp] = Analysis.assign_pair_colors(entries)
+      assert req.pair_id == 1
+      assert resp.pair_id == 1
+      assert req.pair_color == resp.pair_color
+    end
+
+    test "different request numbers get different pair_ids" do
+      entries = [
+        request(%{stream_id: 1, request_number: 1}),
+        request(%{stream_id: 1, request_number: 2}),
+        response(%{stream_id: 1, response_number: 1}),
+        response(%{stream_id: 1, response_number: 2})
+      ]
+
+      colored = Analysis.assign_pair_colors(entries)
+      ids = Enum.map(colored, & &1.pair_id)
+      assert Enum.at(ids, 0) != Enum.at(ids, 1)
+      assert Enum.at(ids, 0) == Enum.at(ids, 2)
+      assert Enum.at(ids, 1) == Enum.at(ids, 3)
+    end
+
+    test "same request number on different streams get different pair_ids" do
+      entries = [
+        request(%{stream_id: 1, request_number: 1}),
+        request(%{stream_id: 2, request_number: 1})
+      ]
+
+      [a, b] = Analysis.assign_pair_colors(entries)
+      assert a.pair_id != b.pair_id
+    end
+
+    test "entries without stream_id get nil pair" do
+      entries = [request(%{stream_id: nil, request_number: 1})]
+      [entry] = Analysis.assign_pair_colors(entries)
+      assert entry.pair_id == nil
+      assert entry.pair_color == nil
+    end
+
+    test "colors cycle through palette" do
+      entries = Enum.map(1..10, &request(%{stream_id: 1, request_number: &1}))
+      colored = Analysis.assign_pair_colors(entries)
+      colors = Enum.map(colored, & &1.pair_color)
+      assert Enum.at(colors, 0) == Enum.at(colors, 7)
+    end
+  end
+
+  # --- filter_headers/2 ---
+
+  describe "filter_headers/2" do
+    test "all_headers=true returns all headers" do
+      headers = ["host: localhost", "content-type: application/json", "x-custom: foo"]
+      assert Analysis.filter_headers(headers, true) == headers
+    end
+
+    test "filters to interesting headers by default" do
+      headers = [
+        "content-type: application/json",
+        "host: localhost",
+        "x-arango-queue-time: 0.001",
+        "strict-transport-security: max-age=31536000"
+      ]
+
+      result = Analysis.filter_headers(headers, false)
+      assert "content-type: application/json" in result
+      assert "x-arango-queue-time: 0.001" in result
+      refute "host: localhost" in result
+      refute "strict-transport-security: max-age=31536000" in result
+    end
+
+    test "empty headers returns empty" do
+      assert Analysis.filter_headers([], false) == []
     end
   end
 
@@ -186,6 +260,73 @@ defmodule ToastTest.Traffic.AnalysisTest do
       entry = request(%{method: "POST", uri: "/_api/document/col"})
       result = Analysis.format_entry(entry)
       assert result =~ ~r/→.*POST \/\_api\/document\/col/u
+    end
+  end
+
+  # --- format_entry/2: body display ---
+
+  describe "format_entry/2 body display" do
+    test "shows printable text body indented below summary" do
+      entry = request(%{body: ~s({"key":"value"}), content_type: "application/json"})
+      result = Analysis.format_entry(entry, %{limit: 200, raw: false})
+      [summary, body_line] = String.split(result, "\n", parts: 2)
+      assert summary =~ "→"
+      assert body_line =~ ~s({"key":"value"})
+      assert String.starts_with?(body_line, "        ")
+    end
+
+    test "truncates body to limit and appends ellipsis" do
+      entry = request(%{body: String.duplicate("a", 300), content_type: "text/plain"})
+      result = Analysis.format_entry(entry, %{limit: 50, raw: false})
+      assert result =~ " …"
+    end
+
+    test "unlimited limit shows full body" do
+      body = String.duplicate("b", 5000)
+      entry = request(%{body: body, content_type: "text/plain"})
+      result = Analysis.format_entry(entry, %{limit: :unlimited, raw: false})
+      refute result =~ " …"
+      assert result =~ body
+    end
+
+    test "nil body produces no body line" do
+      entry = request(%{body: nil})
+      result = Analysis.format_entry(entry, %{limit: 200, raw: false})
+      refute result =~ "\n"
+    end
+
+    test "empty body produces no body line" do
+      entry = request(%{body: <<>>})
+      result = Analysis.format_entry(entry, %{limit: 200, raw: false})
+      refute result =~ "\n"
+    end
+
+    test "non-printable body shown as hex" do
+      entry = request(%{body: <<0xFF, 0xAB, 0x00>>, content_type: "application/octet-stream"})
+      result = Analysis.format_entry(entry, %{limit: 200, raw: false})
+      assert result =~ "ffab00"
+    end
+
+    test "VPack body is decoded and inspected" do
+      vpack_body = VelocyPack.encode!(%{"hello" => "world"})
+      entry = response(%{body: vpack_body, content_type: "application/x-velocypack"})
+      result = Analysis.format_entry(entry, %{limit: 2000, raw: false})
+      assert result =~ "hello"
+      assert result =~ "world"
+    end
+
+    test "raw option shows VPack as hex instead of decoded" do
+      vpack_body = VelocyPack.encode!(%{"hello" => "world"})
+      entry = response(%{body: vpack_body, content_type: "application/x-velocypack"})
+      result = Analysis.format_entry(entry, %{limit: 2000, raw: true})
+      refute result =~ "hello"
+      assert result =~ Base.encode16(vpack_body, case: :lower)
+    end
+
+    test "invalid VPack falls back to hex" do
+      entry = response(%{body: <<0xFF, 0x01>>, content_type: "application/x-velocypack"})
+      result = Analysis.format_entry(entry, %{limit: 200, raw: false})
+      assert result =~ "ff01"
     end
   end
 

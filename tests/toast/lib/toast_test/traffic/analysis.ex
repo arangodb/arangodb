@@ -24,6 +24,15 @@ defmodule ToastTest.Traffic.Analysis do
   Filtering, formatting, and server resolution for captured HTTP traffic entries.
   """
 
+  @default_body_limit 200
+  @detail_indent "        "
+
+  @type display_entry :: %{
+          :pair_id => non_neg_integer() | nil,
+          :pair_color => non_neg_integer() | nil,
+          optional(atom()) => term()
+        }
+
   @doc "Parse a comma-separated method filter spec into a list, or nil."
   def parse_method_filter(nil), do: nil
   def parse_method_filter(spec) when is_binary(spec), do: parse_csv(spec)
@@ -44,11 +53,6 @@ defmodule ToastTest.Traffic.Analysis do
     end
   end
 
-  @doc "Resolve which server an entry belongs to by checking src then dst port."
-  def resolve_server(%{src: {_, src_port}, dst: {_, dst_port}}, server_ports) do
-    Map.get(server_ports, src_port) || Map.get(server_ports, dst_port)
-  end
-
   @doc "Annotate an entry with {server_id, direction}."
   def annotate_server(%{src: {_, src_port}, dst: {_, dst_port}}, server_ports) do
     cond do
@@ -63,43 +67,217 @@ defmodule ToastTest.Traffic.Analysis do
     end
   end
 
-  @doc "Format an entry for display."
-  def format_entry(entry) do
+  # --- Pair color assignment ---
+
+  # Muted 256-color palette for traffic pair IDs — chosen to be distinct from
+  # the log server palettes (blue/teal for coordinators, warm for dbservers).
+  @pair_colors [139, 68, 176, 136, 63, 170, 97]
+
+  @doc """
+  Assign a pair color index to each traffic entry based on {stream_id, request/response_number}.
+  Returns entries with an added `:pair_id` and `:pair_color` field.
+  """
+  @spec assign_pair_colors([ToastTest.Traffic.Extraction.traffic_entry()]) :: [display_entry()]
+  def assign_pair_colors(entries) do
+    {colored, _state} =
+      Enum.map_reduce(entries, %{next_id: 1, keys: %{}}, fn entry, state ->
+        case pair_key(entry) do
+          nil ->
+            {Map.merge(entry, %{pair_id: nil, pair_color: nil}), state}
+
+          key ->
+            case state.keys[key] do
+              nil ->
+                id = state.next_id
+                color = Enum.at(@pair_colors, rem(id - 1, length(@pair_colors)))
+                entry = Map.merge(entry, %{pair_id: id, pair_color: color})
+                {entry, %{state | next_id: id + 1, keys: Map.put(state.keys, key, {id, color})}}
+
+              {id, color} ->
+                {Map.merge(entry, %{pair_id: id, pair_color: color}), state}
+            end
+        end
+      end)
+
+    colored
+  end
+
+  defp pair_key(%{stream_id: sid, request_number: n}) when sid != nil and n != nil,
+    do: {sid, n}
+
+  defp pair_key(%{stream_id: sid, response_number: n}) when sid != nil and n != nil,
+    do: {sid, n}
+
+  defp pair_key(_), do: nil
+
+  # --- Interesting headers ---
+
+  @interesting_headers ~w(content-type content-length authorization x-arango)
+
+  @doc "Filter headers to only the interesting ones, or return all if `all_headers` is true."
+  def filter_headers(headers, true), do: headers
+
+  def filter_headers(headers, _all) do
+    Enum.filter(headers, fn header ->
+      lower = String.downcase(header)
+      Enum.any?(@interesting_headers, &String.starts_with?(lower, &1))
+    end)
+  end
+
+  # --- Entry formatting ---
+
+  @doc """
+  Return `{summary, detail | nil}` for an entry.
+  `summary` is the one-line request/response description.
+  `detail` is the formatted headers + body (or nil if neither is present).
+  """
+  def format_entry_parts(entry, format_opts \\ %{}) do
+    summary = format_summary(entry)
+    headers = format_headers(entry, format_opts)
+    body = format_body(entry, format_opts)
+
+    detail =
+      case [headers, body] |> Enum.reject(&is_nil/1) do
+        [] -> nil
+        parts -> Enum.join(parts, "\n")
+      end
+
+    {summary, detail}
+  end
+
+  @doc "Format an entry as a single string (summary + detail joined by newline)."
+  def format_entry(entry, format_opts \\ %{}) do
+    case format_entry_parts(entry, format_opts) do
+      {summary, nil} -> summary
+      {summary, detail} -> summary <> "\n" <> detail
+    end
+  end
+
+  defp format_summary(entry) do
+    pair_tag = if entry[:pair_id], do: "[#{entry[:pair_id]}] ", else: ""
+
     cond do
       entry.method != nil ->
-        "→ #{entry.method} #{entry.uri}"
+        "#{pair_tag}→ #{entry.method} #{entry.uri}"
 
       entry.status != nil ->
-        format_response(entry)
+        "#{pair_tag}#{format_response(entry)}"
 
       true ->
-        "? (no method or status)"
+        "#{pair_tag}? (no method or status)"
     end
   end
 
   defp format_response(entry) do
-    parts = ["← #{entry.status}"]
-
     ct = format_content_type(entry.content_type)
+    rt = format_response_time(entry[:response_time])
 
     detail_parts =
       [ct, format_body_size(entry.body)]
       |> Enum.reject(&is_nil/1)
 
-    case detail_parts do
-      [] -> Enum.join(parts)
-      _ -> Enum.join(parts) <> " (#{Enum.join(detail_parts, ", ")})"
-    end
+    status_line =
+      case detail_parts do
+        [] -> "← #{entry.status}"
+        _ -> "← #{entry.status} (#{Enum.join(detail_parts, ", ")})"
+      end
+
+    if rt, do: status_line <> " #{rt}", else: status_line
   end
+
+  defp format_response_time(nil), do: nil
+
+  defp format_response_time(seconds) when seconds < 0.001,
+    do: "[#{round(seconds * 1_000_000)}µs]"
+
+  defp format_response_time(seconds) when seconds < 1.0,
+    do: "[#{Float.round(seconds * 1000, 1)}ms]"
+
+  defp format_response_time(seconds),
+    do: "[#{Float.round(seconds, 2)}s]"
 
   defp format_content_type(nil), do: nil
-
-  defp format_content_type(ct) do
-    if String.contains?(ct, "velocypack"), do: "VPack", else: ct
-  end
+  defp format_content_type(ct), do: if(vpack?(ct), do: "VPack", else: ct)
 
   defp format_body_size(nil), do: nil
   defp format_body_size(body), do: "#{byte_size(body)} bytes"
+
+  defp format_headers(%{headers: headers}, opts) when is_list(headers) and headers != [] do
+    all = Map.get(opts, :all_headers, false)
+    filtered = filter_headers(headers, all)
+
+    case filtered do
+      [] -> nil
+      _ -> Enum.map_join(filtered, "\n", &(@detail_indent <> &1))
+    end
+  end
+
+  defp format_headers(_, _), do: nil
+
+  # --- Body formatting ---
+
+  defp format_body(%{body: nil}, _opts), do: nil
+  defp format_body(%{body: <<>>}, _opts), do: nil
+
+  defp format_body(%{body: body, content_type: ct}, opts) do
+    limit = Map.get(opts, :limit, @default_body_limit)
+    raw = Map.get(opts, :raw, false)
+
+    {text, truncated} =
+      if vpack?(ct) and not raw do
+        format_vpack_body(body, limit)
+      else
+        format_text_or_hex(body, limit)
+      end
+
+    suffix = if truncated, do: " …", else: ""
+    indent_body(text <> suffix)
+  end
+
+  defp vpack?(nil), do: false
+  defp vpack?(ct), do: String.contains?(ct, "velocypack")
+
+  defp format_vpack_body(body, limit) do
+    case VelocyPack.decode(body) do
+      {:ok, decoded} ->
+        text = inspect(decoded, pretty: true, width: 120)
+        truncate_string(text, limit)
+
+      {:error, _} ->
+        format_hex(body, limit)
+    end
+  end
+
+  defp format_text_or_hex(body, limit) do
+    if String.printable?(body) do
+      truncate_string(body, limit)
+    else
+      format_hex(body, limit)
+    end
+  end
+
+  defp format_hex(body, limit) do
+    {bytes, truncated} = truncate_bytes(body, limit)
+    {Base.encode16(bytes, case: :lower), truncated}
+  end
+
+  defp truncate_bytes(body, :unlimited), do: {body, false}
+
+  defp truncate_bytes(body, limit) do
+    if byte_size(body) <= limit, do: {body, false}, else: {binary_part(body, 0, limit), true}
+  end
+
+  defp truncate_string(text, :unlimited), do: {text, false}
+
+  defp truncate_string(text, limit) do
+    if String.length(text) <= limit, do: {text, false}, else: {String.slice(text, 0, limit), true}
+  end
+
+  defp indent_body(text) do
+    text
+    |> String.split("\n")
+    |> Enum.map_join("\n", &(@detail_indent <> &1))
+  end
 
   @doc "Filter traffic entries by time window and optional filters, sorted by timestamp."
   def extract(entries, server_ports, {start_us, end_us}, opts \\ []) do

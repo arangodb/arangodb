@@ -45,7 +45,13 @@ defmodule Mix.Tasks.Toast.Analyze.Detail.Streams do
       window ->
         servers = issue[:servers] || %{}
         server_ports = build_server_ports(servers)
-        server_filter = if display.log.enabled, do: display.log.server_filter, else: :all
+
+        server_filter =
+          merge_server_filters(
+            if(display.log.enabled, do: display.log.server_filter),
+            if(display.traffic.enabled, do: display.traffic.server_filter)
+          )
+
         ServerInfo.print_context(issue, window, server_filter, servers, color)
 
         streams = build_streams(issue, window, display, servers, server_ports)
@@ -54,6 +60,11 @@ defmodule Mix.Tasks.Toast.Analyze.Detail.Streams do
           event_detail: display.event.detail,
           server_ports: server_ports,
           server_roles: Map.new(servers, fn {sid, meta} -> {sid, meta[:role]} end),
+          format_opts: %{
+            limit: display.traffic.body_limit,
+            raw: display.traffic.raw_body,
+            all_headers: display.traffic.all_headers
+          },
           color: color
         }
 
@@ -68,8 +79,10 @@ defmodule Mix.Tasks.Toast.Analyze.Detail.Streams do
     traffic_entries = extract_traffic_entries(issue, window, display.traffic, server_ports)
     events = extract_events(issue, window, display.event)
 
+    colored_traffic = TrafficAnalysis.assign_pair_colors(traffic_entries)
+
     event_stream = if events != [], do: [{:event, events}], else: []
-    traffic_stream = if traffic_entries != [], do: [{:traffic, traffic_entries}], else: []
+    traffic_stream = if colored_traffic != [], do: [{:traffic, colored_traffic}], else: []
     log_entries ++ event_stream ++ traffic_stream
   end
 
@@ -151,12 +164,36 @@ defmodule Mix.Tasks.Toast.Analyze.Detail.Streams do
     end
   end
 
+  @detail_color 243
+
   defp format_traffic_line(entry, render_ctx) do
-    ts = colorize(Data.fmt_dt(entry.timestamp), :faint, render_ctx.color)
     {server_id, _direction} = TrafficAnalysis.annotate_server(entry, render_ctx.server_ports)
     sid = server_id || "unknown"
-    formatted = TrafficAnalysis.format_entry(entry)
-    "#{ts} #{colorize(sid, :cyan, render_ctx.color)} #{formatted}"
+    role = render_ctx.server_roles[sid]
+    {summary, detail} = TrafficAnalysis.format_entry_parts(entry, render_ctx.format_opts)
+
+    ts = colorize(Data.fmt_dt(entry.timestamp), :faint, render_ctx.color)
+    server_tag = LogFormatting.format_tagged_line(sid, role, "", render_ctx.color)
+
+    summary_line =
+      if render_ctx.color && entry[:pair_color] do
+        [ts, " ", server_tag, IO.ANSI.color(entry.pair_color), summary, IO.ANSI.reset()]
+      else
+        [ts, " ", server_tag, summary]
+      end
+
+    if detail do
+      detail_line =
+        if render_ctx.color do
+          [IO.ANSI.color(@detail_color), detail, IO.ANSI.reset()]
+        else
+          detail
+        end
+
+      [summary_line, "\n", detail_line]
+    else
+      summary_line
+    end
   end
 
   # --- Window resolution ---
@@ -204,6 +241,13 @@ defmodule Mix.Tasks.Toast.Analyze.Detail.Streams do
       _ -> Enum.join(labels, " + ")
     end
   end
+
+  defp merge_server_filters(nil, nil), do: :all
+  defp merge_server_filters(:all, _), do: :all
+  defp merge_server_filters(_, :all), do: :all
+  defp merge_server_filters(a, nil), do: a
+  defp merge_server_filters(nil, b), do: b
+  defp merge_server_filters(a, b), do: Enum.uniq(a ++ b)
 
   defp build_server_ports(servers) do
     for {server_id, meta} <- servers,

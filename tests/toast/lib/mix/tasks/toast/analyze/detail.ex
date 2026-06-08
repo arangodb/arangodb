@@ -61,7 +61,10 @@ defmodule Mix.Tasks.Toast.Analyze.Detail do
       window_spec: IssueStreams.parse_window_spec(opts[:traffic_window]),
       method_filter: TrafficAnalysis.parse_method_filter(opts[:traffic_methods]),
       endpoint_filter: TrafficAnalysis.parse_endpoint_filter(opts[:traffic_endpoints]),
-      status_filter: TrafficAnalysis.parse_status_filter(opts[:traffic_status])
+      status_filter: TrafficAnalysis.parse_status_filter(opts[:traffic_status]),
+      body_limit: parse_body_limit(opts[:traffic_body_limit]),
+      raw_body: Keyword.get(opts, :traffic_raw_body, false),
+      all_headers: Keyword.get(opts, :traffic_all_headers, false)
     }
 
     event_opts = %{
@@ -134,6 +137,25 @@ defmodule Mix.Tasks.Toast.Analyze.Detail do
       Mix.raise(
         "Unknown --threads value: #{value}. Valid: #{@valid_threads |> Map.keys() |> Enum.join(", ")}"
       )
+  end
+
+  defp parse_body_limit(nil), do: 200
+
+  defp parse_body_limit("unlimited"), do: :unlimited
+
+  defp parse_body_limit(val) do
+    case Integer.parse(val) do
+      {0, ""} ->
+        :unlimited
+
+      {n, ""} when n > 0 ->
+        n
+
+      _ ->
+        Mix.raise(
+          "Invalid --traffic-body-limit: #{val}. Use a positive integer or \"unlimited\"."
+        )
+    end
   end
 
   @valid_event_details %{"none" => :none, "basic" => :basic, "full" => :full}

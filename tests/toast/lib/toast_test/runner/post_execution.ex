@@ -211,12 +211,8 @@ defmodule ToastTest.Runner.PostExecution do
   defp extract_traffic(nil), do: []
 
   defp extract_traffic(pcap_path) do
-    Logger.debug("Extracting traffic from #{pcap_path}")
-
-    case ToastTest.Traffic.Extraction.run_tshark(pcap_path) do
-      {:ok, output} ->
-        entries = ToastTest.Traffic.Extraction.parse_tshark_output(output)
-        Logger.debug("Extracted #{length(entries)} HTTP traffic entries")
+    case ToastTest.Traffic.Extraction.extract(pcap_path) do
+      {:ok, entries} ->
         entries
 
       {:error, :tshark_not_found} ->

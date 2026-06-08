@@ -65,12 +65,21 @@ defmodule ToastTest.Traffic.ExtractionTest do
       |> maybe_put("http_http_response_code", params[:status])
       |> maybe_put("http_http_content_type", params[:content_type])
       |> maybe_put("http_http_file_data", params[:body_hex])
+      |> maybe_put("http_http_request_number", params[:request_number])
+      |> maybe_put("http_http_response_number", params[:response_number])
+      |> maybe_put("http_http_time", params[:response_time])
+      |> maybe_put("http_http_request_line", params[:request_headers])
+      |> maybe_put("http_http_response_line", params[:response_headers])
+
+    tcp_fields =
+      %{"tcp_tcp_srcport" => params.src_port, "tcp_tcp_dstport" => params.dst_port}
+      |> maybe_put("tcp_tcp_stream", params[:stream_id])
 
     data = %{
       "timestamp" => params.timestamp,
       "layers" => %{
         "ip" => %{"ip_ip_src" => params.src_ip, "ip_ip_dst" => params.dst_ip},
-        "tcp" => %{"tcp_tcp_srcport" => params.src_port, "tcp_tcp_dstport" => params.dst_port},
+        "tcp" => tcp_fields,
         "http" => http_fields
       }
     }
@@ -257,6 +266,22 @@ defmodule ToastTest.Traffic.ExtractionTest do
       assert length(entries) == 1
     end
 
+    test "decodes colon-separated hex body (tshark format)" do
+      colon_hex = "7b:22:73:65:72:76:65:72:22:3a:22:61:72:61:6e:67:6f:22:7d"
+      input = response_line(%{body_hex: colon_hex})
+      [entry] = Extraction.parse_tshark_output(input)
+
+      assert entry.body == ~s({"server":"arango"})
+    end
+
+    test "decodes colon-separated VPack hex body" do
+      colon_hex = "01:02:03:04:05:ff"
+      input = response_line(%{body_hex: colon_hex, content_type: "application/x-velocypack"})
+      [entry] = Extraction.parse_tshark_output(input)
+
+      assert entry.body == <<0x01, 0x02, 0x03, 0x04, 0x05, 0xFF>>
+    end
+
     test "parses ports as integers in src/dst tuples" do
       input = request_line(%{src_port: "12345", dst_port: "8529"})
       [entry] = Extraction.parse_tshark_output(input)
@@ -267,6 +292,110 @@ defmodule ToastTest.Traffic.ExtractionTest do
       assert is_integer(dst_port)
       assert src_port == 12345
       assert dst_port == 8529
+    end
+  end
+
+  describe "new fields (headers, stream_id, pairing, response_time)" do
+    test "extracts request headers" do
+      input =
+        request_line(%{
+          request_headers: ["content-type: application/json\r\n", "host: localhost\r\n"]
+        })
+
+      [entry] = Extraction.parse_tshark_output(input)
+      assert entry.headers == ["content-type: application/json", "host: localhost"]
+    end
+
+    test "extracts response headers" do
+      input =
+        response_line(%{
+          response_headers: ["Content-Type: application/json\r\n", "X-Arango-Foo: bar\r\n"]
+        })
+
+      [entry] = Extraction.parse_tshark_output(input)
+      assert entry.headers == ["Content-Type: application/json", "X-Arango-Foo: bar"]
+    end
+
+    test "headers default to empty list when absent" do
+      [entry] = Extraction.parse_tshark_output(request_line())
+      assert entry.headers == []
+    end
+
+    test "extracts stream_id and request_number" do
+      input = request_line(%{stream_id: "12", request_number: "3"})
+      [entry] = Extraction.parse_tshark_output(input)
+      assert entry.stream_id == 12
+      assert entry.request_number == 3
+      assert entry.response_number == nil
+    end
+
+    test "extracts stream_id and response_number" do
+      input =
+        response_line(%{stream_id: "12", response_number: "3", response_time: "0.000698000"})
+
+      [entry] = Extraction.parse_tshark_output(input)
+      assert entry.stream_id == 12
+      assert entry.response_number == 3
+      assert entry.request_number == nil
+    end
+
+    test "extracts response_time as float" do
+      input = response_line(%{response_time: "0.000698000"})
+      [entry] = Extraction.parse_tshark_output(input)
+      assert_in_delta entry.response_time, 0.000698, 0.0000001
+    end
+
+    test "response_time is nil when absent" do
+      [entry] = Extraction.parse_tshark_output(request_line())
+      assert entry.response_time == nil
+    end
+
+    test "stream_id is nil when absent" do
+      [entry] = Extraction.parse_tshark_output(request_line())
+      assert entry.stream_id == nil
+    end
+  end
+
+  @pcap_fixture Path.expand("../../fixtures/traffic/sample.pcap", __DIR__)
+
+  describe "extract/1 integration" do
+    @tag :integration
+    test "extracts entries with bodies from a real pcap" do
+      assert {:ok, entries} = Extraction.extract(@pcap_fixture)
+      assert length(entries) > 0
+
+      requests = Enum.filter(entries, & &1.method)
+      responses = Enum.filter(entries, & &1.status)
+      assert requests != []
+      assert responses != []
+
+      with_body = Enum.filter(entries, & &1.body)
+      assert with_body != [], "expected at least some entries to have bodies"
+
+      Enum.each(with_body, fn entry ->
+        assert is_binary(entry.body)
+        assert byte_size(entry.body) > 0
+      end)
+    end
+
+    @tag :integration
+    test "VPack bodies are decodable" do
+      assert {:ok, entries} = Extraction.extract(@pcap_fixture)
+
+      vpack_entries =
+        entries
+        |> Enum.filter(
+          &(&1.body && &1.content_type && String.contains?(&1.content_type, "velocypack"))
+        )
+
+      assert vpack_entries != [], "expected VPack entries in sample pcap"
+
+      Enum.each(vpack_entries, fn entry ->
+        assert {:ok, decoded} = VelocyPack.decode(entry.body),
+               "VPack body should decode successfully"
+
+        assert decoded != nil
+      end)
     end
   end
 end
