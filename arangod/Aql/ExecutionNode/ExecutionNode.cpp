@@ -406,7 +406,9 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan,
     case TRAVERSAL:
     case SHORTEST_PATH:
     case ENUMERATE_PATHS: {
-      if (basics::VelocyPackHelper::getBooleanValue(slice, "isLocalGraphNode",
+      LOG_DEVEL << ADB_HERE << " graph node slice is: " << slice.toJson();
+      if (slice.hasKey("protoCollection") &&
+          basics::VelocyPackHelper::getBooleanValue(slice, "isLocalGraphNode",
                                                     false)) {
         return createLocalGraphNode(plan, slice);
       }
