@@ -283,6 +283,7 @@ std::string const StaticStrings::ComputedValues("computedValues");
 std::string const StaticStrings::SupportsRBAC("supportsRBAC");
 std::string const StaticStrings::DistributeShardsLike("distributeShardsLike");
 std::string const StaticStrings::Indexes("indexes");
+std::string const StaticStrings::IsLocalGraphNode("isLocalGraphNode");
 std::string const StaticStrings::IsSmart("isSmart");
 std::string const StaticStrings::IsSmartChild("isSmartChild");
 std::string const StaticStrings::GroupId("groupId");

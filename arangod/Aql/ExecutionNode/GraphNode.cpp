@@ -645,7 +645,7 @@ void GraphNode::doToVelocyPack(velocypack::Builder& nodes,
   // TODO We need Both?!
   // Graph definition
   nodes.add("graph", _graphInfo.slice());
-  nodes.add("isLocalGraphNode", VPackValue(isLocalGraphNode()));
+  nodes.add(StaticStrings::IsLocalGraphNode, VPackValue(isLocalGraphNode()));
   nodes.add("isUsedAsSatellite", VPackValue(isUsedAsSatellite()));
   if (isLocalGraphNode()) {
     if (auto const* can = dynamic_cast<CollectionAccessingNode const*>(this)) {
