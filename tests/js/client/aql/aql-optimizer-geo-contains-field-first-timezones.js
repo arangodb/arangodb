@@ -67,6 +67,11 @@ function geoContainsFieldFirstTimezonesTestSuite() {
     coordinates: [[[77, 12], [78, 12], [78, 13], [77, 13], [77, 12]]]
   };
 
+  const indiaMultiPolygonCoords = [
+    [[[77.2, 12.5], [77.4, 12.5], [77.4, 12.7], [77.2, 12.7], [77.2, 12.5]]],
+    [[[77.6, 12.8], [77.8, 12.8], [77.8, 13.0], [77.6, 13.0], [77.6, 12.8]]]
+  ];
+
   let geocol;
 
   const hasNoFilterNode = function (plan, query) {
@@ -221,6 +226,63 @@ function geoContainsFieldFirstTimezonesTestSuite() {
         query.string);
     },
 
+    testGeoContainsFieldFirstGeoPolygonIndia: function () {
+      const query = {
+        string: `
+          FOR doc IN @@cc
+            FILTER GEO_CONTAINS(doc.geometry, GEO_POLYGON(@coords))
+            RETURN doc.tzid`,
+        bindVars: { "@cc": colName, coords: indiaRegion.coordinates }
+      };
+
+      const result = db._createStatement({
+        query: query.string,
+        bindVars: query.bindVars
+      }).execute();
+      assertEqual(
+        sortedTzids(["Asia/Kolkata"]),
+        sortedTzids(result.toArray()),
+        query.string);
+    },
+
+    testGeoContainsFieldFirstGeoMultiPointIndia: function () {
+      const query = {
+        string: `
+          FOR doc IN @@cc
+            FILTER GEO_CONTAINS(doc.geometry, GEO_MULTIPOINT([[77.5946, 12.9716], [77.2, 12.5]]))
+            RETURN doc.tzid`,
+        bindVars: { "@cc": colName }
+      };
+
+      const result = db._createStatement({
+        query: query.string,
+        bindVars: query.bindVars
+      }).execute();
+      assertEqual(
+        sortedTzids(["Asia/Kolkata"]),
+        sortedTzids(result.toArray()),
+        query.string);
+    },
+
+    testGeoContainsFieldFirstGeoMultiPolygonIndia: function () {
+      const query = {
+        string: `
+          FOR doc IN @@cc
+            FILTER GEO_CONTAINS(doc.geometry, GEO_MULTIPOLYGON(@coords))
+            RETURN doc.tzid`,
+        bindVars: { "@cc": colName, coords: indiaMultiPolygonCoords }
+      };
+
+      const result = db._createStatement({
+        query: query.string,
+        bindVars: query.bindVars
+      }).execute();
+      assertEqual(
+        sortedTzids(["Asia/Kolkata"]),
+        sortedTzids(result.toArray()),
+        query.string);
+    },
+
     testGeoContainsFieldFirstContainmentSemantics: function () {
       const query = {
         string: `
@@ -278,6 +340,41 @@ function geoContainsFieldFirstTimezonesTestSuite() {
       }).explain();
       hasIndexNode(plan, query);
       hasNoFilterNode(plan, query);
+    },
+
+    testGeoContainsFieldFirstGeoConstructorsGeoIndexBehavior: function () {
+      const queries = [
+        {
+          string: `
+            FOR doc IN @@cc
+              FILTER GEO_CONTAINS(doc.geometry, GEO_POLYGON(@coords))
+              RETURN doc`,
+          bindVars: { "@cc": colName, coords: indiaRegion.coordinates }
+        },
+        {
+          string: `
+            FOR doc IN @@cc
+              FILTER GEO_CONTAINS(doc.geometry, GEO_MULTIPOINT([[77.5946, 12.9716], [77.2, 12.5]]))
+              RETURN doc`,
+          bindVars: { "@cc": colName }
+        },
+        {
+          string: `
+            FOR doc IN @@cc
+              FILTER GEO_CONTAINS(doc.geometry, GEO_MULTIPOLYGON(@coords))
+              RETURN doc`,
+          bindVars: { "@cc": colName, coords: indiaMultiPolygonCoords }
+        }
+      ];
+
+      queries.forEach(function (query) {
+        const plan = db._createStatement({
+          query: query.string,
+          bindVars: query.bindVars
+        }).explain();
+        hasIndexNode(plan, query);
+        hasNoFilterNode(plan, query);
+      });
     }
   };
 }

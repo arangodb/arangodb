@@ -375,26 +375,26 @@ static bool checkGeoFilterFunction(ExecutionPlan* plan, AstNode const* funcNode,
 
   AstNode* arg0 = fargs->getMemberUnchecked(0);
   AstNode* arg1 = fargs->getMemberUnchecked(1);
+
+  geo::FilterType filterMode = geo::FilterType::NONE;
+  AstNode* filterExpr = nullptr;
+
   if (geoFuncArgCheck(plan, arg1, /*legacy*/ true, info)) {
-    TRI_ASSERT(contains || intersect);
-    info.filterMode =
-        contains ? geo::FilterType::CONTAINS : geo::FilterType::INTERSECTS;
-    info.filterExpr = arg0;
-    TRI_ASSERT(info.index);
-    return true;
+    filterMode = contains ? geo::FilterType::CONTAINS
+                          : geo::FilterType::INTERSECTS;
+    filterExpr = arg0;
+  } else if (geoFuncArgCheck(plan, arg0, /*legacy*/ true, info)) {
+    filterMode = contains ? geo::FilterType::IS_CONTAINED
+                          : geo::FilterType::INTERSECTS;
+    filterExpr = arg1;
+  } else {
+    return false;
   }
-  if (geoFuncArgCheck(plan, arg0, /*legacy*/ true, info)) {
-    TRI_ASSERT(contains || intersect);
-    if (contains) {
-      info.filterMode = geo::FilterType::IS_CONTAINED;
-    } else {
-      info.filterMode = geo::FilterType::INTERSECTS;
-    }
-    info.filterExpr = arg1;
-    TRI_ASSERT(info.index);
-    return true;
-  }
-  return false;
+
+  info.filterMode = filterMode;
+  info.filterExpr = filterExpr;
+  TRI_ASSERT(info.index);
+  return true;
 }
 
 // checks if a node contanis a geo index function a valid operator

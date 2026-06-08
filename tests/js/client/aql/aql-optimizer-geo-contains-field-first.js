@@ -62,12 +62,15 @@ function geoContainsFieldFirstTestSuite() {
     }
   ];
 
+  const innerPolygonCoords = [[[14, 14], [16, 14], [16, 16], [14, 16], [14, 14]]];
+  const corridorPolygonCoords = [[[45, 10.5], [47, 10.5], [47, 11.5], [45, 11.5], [45, 10.5]]];
+  const innerMultiPolygonCoords = [
+    [[[14, 14], [16, 14], [16, 16], [14, 16], [14, 14]]],
+    [[[13, 13], [14, 13], [14, 14], [13, 14], [13, 13]]]
+  ];
+
   let geocol;
 
-  const hasFilterNode = function (plan, query) {
-    assertEqual(findExecutionNodes(plan, "FilterNode").length, 1,
-      query.string + " Has FilterNode");
-  };
   const hasNoFilterNode = function (plan, query) {
     assertEqual(findExecutionNodes(plan, "FilterNode").length, 0,
       query.string + " Has no FilterNode");
@@ -202,6 +205,82 @@ function geoContainsFieldFirstTestSuite() {
       assertEqual(sortedKeys(["large_region"]), sortedKeys(result.toArray()), query.string);
     },
 
+    testGeoContainsFieldFirstGeoPolygon: function () {
+      const query = {
+        string: `
+          FOR doc IN @@cc
+            FILTER GEO_CONTAINS(doc.geometry, GEO_POLYGON(@coords))
+            RETURN doc._key`,
+        bindVars: { "@cc": colName, coords: innerPolygonCoords }
+      };
+
+      const result = db._createStatement({
+        query: query.string,
+        bindVars: query.bindVars
+      }).execute();
+      assertEqual(
+        sortedKeys(["big_square", "small_square", "large_region"]),
+        sortedKeys(result.toArray()),
+        query.string);
+    },
+
+    testGeoContainsFieldFirstGeoMultiPoint: function () {
+      const query = {
+        string: `
+          FOR doc IN @@cc
+            FILTER GEO_CONTAINS(doc.geometry, GEO_MULTIPOINT([[15, 15], [16, 16]]))
+            RETURN doc._key`,
+        bindVars: { "@cc": colName }
+      };
+
+      const result = db._createStatement({
+        query: query.string,
+        bindVars: query.bindVars
+      }).execute();
+      assertEqual(
+        sortedKeys(["big_square", "small_square", "large_region"]),
+        sortedKeys(result.toArray()),
+        query.string);
+    },
+
+    testGeoContainsFieldFirstGeoMultiPolygon: function () {
+      const query = {
+        string: `
+          FOR doc IN @@cc
+            FILTER GEO_CONTAINS(doc.geometry, GEO_MULTIPOLYGON(@coords))
+            RETURN doc._key`,
+        bindVars: { "@cc": colName, coords: innerMultiPolygonCoords }
+      };
+
+      const result = db._createStatement({
+        query: query.string,
+        bindVars: query.bindVars
+      }).execute();
+      assertEqual(
+        sortedKeys(["big_square", "small_square", "large_region"]),
+        sortedKeys(result.toArray()),
+        query.string);
+    },
+
+    testGeoContainsFieldFirstGeoPolygonInCorridor: function () {
+      const query = {
+        string: `
+          FOR doc IN @@cc
+            FILTER GEO_CONTAINS(doc.geometry, GEO_POLYGON(@coords))
+            RETURN doc._key`,
+        bindVars: { "@cc": colName, coords: corridorPolygonCoords }
+      };
+
+      const result = db._createStatement({
+        query: query.string,
+        bindVars: query.bindVars
+      }).execute();
+      assertEqual(
+        sortedKeys(["long_corridor", "large_region"]),
+        sortedKeys(result.toArray()),
+        query.string);
+    },
+
     testGeoContainsFieldFirstGeoIndexBehavior: function () {
       const query = {
         string: `
@@ -217,6 +296,41 @@ function geoContainsFieldFirstTestSuite() {
       }).explain();
       hasIndexNode(plan, query);
       hasNoFilterNode(plan, query);
+    },
+
+    testGeoContainsFieldFirstGeoConstructorsGeoIndexBehavior: function () {
+      const queries = [
+        {
+          string: `
+            FOR doc IN @@cc
+              FILTER GEO_CONTAINS(doc.geometry, GEO_POLYGON(@coords))
+              RETURN doc`,
+          bindVars: { "@cc": colName, coords: innerPolygonCoords }
+        },
+        {
+          string: `
+            FOR doc IN @@cc
+              FILTER GEO_CONTAINS(doc.geometry, GEO_MULTIPOINT([[15, 15], [16, 16]]))
+              RETURN doc`,
+          bindVars: { "@cc": colName }
+        },
+        {
+          string: `
+            FOR doc IN @@cc
+              FILTER GEO_CONTAINS(doc.geometry, GEO_MULTIPOLYGON(@coords))
+              RETURN doc`,
+          bindVars: { "@cc": colName, coords: innerMultiPolygonCoords }
+        }
+      ];
+
+      queries.forEach(function (query) {
+        const plan = db._createStatement({
+          query: query.string,
+          bindVars: query.bindVars
+        }).explain();
+        hasIndexNode(plan, query);
+        hasNoFilterNode(plan, query);
+      });
     }
   };
 }

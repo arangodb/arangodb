@@ -828,6 +828,59 @@ function optimizerRuleTestSuite() {
       hasNoFilterNode(result, query);
     },
 
+    testContainsGeoPolygonIndexedFieldFirst: function () {
+      var query = {
+        string: `
+          FOR x IN @@cc
+            FILTER GEO_CONTAINS(x.geometry, GEO_POLYGON(@coords))
+            RETURN x._key`,
+        bindVars: {
+          "@cc": locations.name(),
+          "coords": [[[19, 24], [21, 24], [21, 26], [19, 26], [19, 24]]]
+        }
+      };
+
+      var result = db._createStatement({query: query.string, bindVars: query.bindVars}).explain();
+      hasIndexNode(result, query);
+      hasNoFilterNode(result, query);
+    },
+
+    testContainsGeoMultiPointIndexedFieldFirst: function () {
+      var query = {
+        string: `
+          FOR x IN @@cc
+            FILTER GEO_CONTAINS(x.geometry, GEO_MULTIPOINT([[20, 25], [21, 26]]))
+            RETURN x._key`,
+        bindVars: {
+          "@cc": locations.name(),
+        }
+      };
+
+      var result = db._createStatement({query: query.string, bindVars: query.bindVars}).explain();
+      hasIndexNode(result, query);
+      hasNoFilterNode(result, query);
+    },
+
+    testContainsGeoMultiPolygonIndexedFieldFirst: function () {
+      var query = {
+        string: `
+          FOR x IN @@cc
+            FILTER GEO_CONTAINS(x.geometry, GEO_MULTIPOLYGON(@coords))
+            RETURN x._key`,
+        bindVars: {
+          "@cc": locations.name(),
+          "coords": [
+            [[[19, 24], [21, 24], [21, 26], [19, 26], [19, 24]]],
+            [[[20, 25], [20.5, 25], [20.5, 25.5], [20, 25.5], [20, 25]]]
+          ]
+        }
+      };
+
+      var result = db._createStatement({query: query.string, bindVars: query.bindVars}).explain();
+      hasIndexNode(result, query);
+      hasNoFilterNode(result, query);
+    },
+
     ////////////////////////////////////////////////////////////////////////////
     /// @brief test simple rectangle contains
     ////////////////////////////////////////////////////////////////////////////
