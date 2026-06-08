@@ -61,6 +61,9 @@ target_link_libraries(${BIN_ARANGOD}
 if (USE_JEMALLOC)
   target_link_libraries(${BIN_ARANGOD} jemalloc)
 endif ()
+if (USE_MEMORY_TRACKING)
+  target_sources(${BIN_ARANGOD} PRIVATE infra/MallocOverride.cpp)
+endif ()
 
 add_dependencies(${BIN_ARANGOD} zlibstatic)
 if (NOT USE_PRECOMPILED_V8)
