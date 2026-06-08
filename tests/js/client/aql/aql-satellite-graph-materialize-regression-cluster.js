@@ -34,6 +34,17 @@ function aqlSatelliteMaterializeRegressionTestSuite() {
   const cn1 = "UnitTestSatelliteCollection1";
   const cn2 = "UnitTestSatelliteCollection2";
 
+  const getResponsibleServers = function(coll) {
+    let shards = coll.shards(true);
+    let servers = shards[Object.keys(shards)[0]];
+
+    return servers;
+  }
+
+  const getLeader = function(coll) {
+    return getResponsibleServers(coll)[0];
+  };
+
   return {
     setUpAll: function() {
       db._createDatabase(database);
@@ -50,30 +61,42 @@ function aqlSatelliteMaterializeRegressionTestSuite() {
       // The bug we test for is triggered by 2 satellite collections
       // having different leaders, so if the leaders are the same,
       // try to moveShard one of the collections' leaders around
-      if(c1Servers[0] === c2Servers[0]) {
+      if(getLeader(c1) == getLeader(c2)) {
         // Schedule MoveShard operation
-        const moveShardResult = arango.POST("/_admin/cluster/moveShard", {
+        internal.print("moving shards: ");
+        let servers = getResponsibleServers(c1);
+        const moveShardParam = {
           database: database,
           collection: cn1,
-          shard: Object.keys(c1),
-          fromServer: c1Servers[0],
-          toServer: c1Servers[1]
-        });
+          shard: c1.shards()[0],
+          fromServer: servers[0],
+          toServer: servers[1]
+        };
+        internal.print(JSON.stringify(moveShardParam));
+        const moveShardResult = arango.POST(`/_admin/cluster/moveShard`,
+                                          moveShardParam);
         const moveShardId = moveShardResult.id;
+        internal.print(`move: ${JSON.stringify(moveShardResult)}`);
+        assertEqual(moveShardResult.code, 202);
 
-        let moveShardNotFinished = false;
+        let moveShardFinished = false;
         let maxWait = 30; // 30 seconds timeout
         while (maxWait > 0) {
           const jobStatus = arango.GET(`/_admin/cluster/queryAgencyJob?id=${moveShardId}`);
+          internal.print(JSON.stringify(jobStatus));
           if (jobStatus.status === "Finished") {
-            moveShardNotFinished = true;
+            moveShardFinished = true;
             break;
           }
           internal.wait(1);
+          internal.print("waiting for shards to move");
           maxWait--;
         }
+        assertTrue(moveShardFinished);
       }
 
+      assertNotEqual(getLeader(c1), getLeader(c2),
+                     `Expect different leaders for collections ${cn1} and ${cn2}`);
       db._query(`FOR i IN 1..1000
                    INSERT {_key: CONCAT("${cn1}", i), i}
                    INTO ${cn1}`);
@@ -92,7 +115,7 @@ function aqlSatelliteMaterializeRegressionTestSuite() {
       let query = `
         FOR se IN ${cn1}
           FOR sv IN ${cn2}
-            FILTER sv._id == se._id 
+            FILTER sv._id == se.i 
             RETURN [se, sv]`;
 
       // this crashes in maintainer mode prior to the patch
