@@ -32,7 +32,8 @@ const {
     generateSeed,
 } = require("@arangodb/testutils/seededRandom");
 const {
-    insertDocsAndAssertIndex,
+    insertDocsAndAssertIndexStates,
+    VectorIndexTrainingState,
 } = require("@arangodb/testutils/vector-index-common");
 const isCluster = require("internal").isCluster();
 
@@ -158,7 +159,7 @@ function VectorIndexIteratorScenariosTestSuite() {
                 });
             }
 
-            insertDocsAndAssertIndex({
+            insertDocsAndAssertIndexStates({
                 collection, docs, seed,
                 indexName: "vector_l2_scenarios",
                 indexDef: {
@@ -174,6 +175,7 @@ function VectorIndexIteratorScenariosTestSuite() {
                     },
                     storedValues: ["val", "category"],
                 },
+                allowedVectorIndexStates: [VectorIndexTrainingState.kReady, VectorIndexTrainingState.kUnusable]
             });
         },
 
