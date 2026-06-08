@@ -37,10 +37,16 @@
 
 #include "Basics/ReadWriteLock.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Cache/CacheManagerFeature.h"
 #include "Containers/FlatHashSet.h"
 #include "Metrics/Fwd.h"
 #include "Metrics/ICollector.h"
+#include "RocksDBEngine/IRocksDBCacheManagerProvider.h"
+#include "RocksDBEngine/IRocksDBDatabasePathProvider.h"
+#include "RocksDBEngine/IRocksDBDumpLimitsProvider.h"
+#include "RocksDBEngine/IRocksDBFlushProvider.h"
+#include "RocksDBEngine/IRocksDBReplicatedLogProvider.h"
+#include "RocksDBEngine/IRocksDBSortingProvider.h"
+#include "RocksDBEngine/IRocksDBVectorIndexProvider.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "StorageEngine/StorageEngine.h"
 #include "VocBase/Identifiers/DataSourceId.h"
@@ -75,13 +81,7 @@ struct WalManager;
 }
 }  // namespace replication2::storage
 
-class AgencyFeature;
-class CacheManagerFeature;
-class DatabasePathFeature;
-class DumpLimitsFeature;
-class FlushFeature;
 class PhysicalCollection;
-class ReplicatedLogFeature;
 class RocksDBBackgroundErrorListener;
 class RocksDBBackgroundThread;
 class RocksDBDumpManager;
@@ -95,10 +95,8 @@ class RocksDBSettingsManager;
 class RocksDBSyncThread;
 class RocksDBThrottle;  // breaks tons if RocksDBThrottle.h included here
 class RocksDBWalAccess;
-class SchedulerFeature;
 class TransactionCollection;
 class TransactionState;
-class VectorIndexFeature;
 
 namespace rest {
 class RestHandlerFactory;
@@ -174,17 +172,16 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   RocksDBEngine(application_features::ApplicationServer& server,
                 RocksDBOptionsProvider& optionsProvider,
                 metrics::ICollector& metrics,
-                DatabasePathFeature const& databasePathFeature,
-                VectorIndexFeature const& vectorIndexFeature,
-                FlushFeature& flushFeature,
-                DumpLimitsFeature const& dumpLimitsFeature,
-                SchedulerFeature& schedulerFeature,
-                ReplicatedLogFeature* replicatedLogFeature,
+                IRocksDBDatabasePathProvider const& databasePathProvider,
+                IRocksDBVectorIndexProvider const& vectorIndexProvider,
+                IRocksDBFlushProvider& flushProvider,
+                IRocksDBDumpLimitsProvider const& dumpLimitsProvider,
+                IRocksDBReplicatedLogProvider* replicatedLogProvider,
                 RocksDBRecoveryManager const& rocksDbRecoveryManager,
                 DatabaseFeature& databaseFeature,
                 RocksDBIndexCacheRefillFeature& rocksDbIndexCacheRefillFeature,
-                CacheManagerFeature& cacheManagerFeature,
-                AgencyFeature const& agencyFeature);
+                IRocksDBCacheManagerProvider& cacheManagerProvider,
+                IRocksDBSortingProvider const& sortingProvider);
   ~RocksDBEngine();
 
   // Temporary, for easier refactoring:
@@ -193,7 +190,7 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
 
   auto getDatabaseFeature() const -> DatabaseFeature&;
 
-  auto getFlushFeature() const -> FlushFeature&;
+  auto getFlushProvider() const -> IRocksDBFlushProvider&;
 
   // inherited from ApplicationFeature
   // ---------------------------------
@@ -619,17 +616,16 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   }
 
  private:
-  DatabasePathFeature const& _databasePathFeature;
-  VectorIndexFeature const& _vectorIndexFeature;
-  FlushFeature& _flushFeature;
-  DumpLimitsFeature const& _dumpLimitsFeature;
-  SchedulerFeature& _schedulerFeature;
-  ReplicatedLogFeature* _replicatedLogFeature;
+  IRocksDBDatabasePathProvider const& _databasePathProvider;
+  IRocksDBVectorIndexProvider const& _vectorIndexProvider;
+  IRocksDBFlushProvider& _flushProvider;
+  IRocksDBDumpLimitsProvider const& _dumpLimitsProvider;
+  IRocksDBReplicatedLogProvider* _replicatedLogProvider;
   RocksDBRecoveryManager const& _rocksDbRecoveryManager;
   DatabaseFeature& _databaseFeature;
   RocksDBIndexCacheRefillFeature& _rocksDbIndexCacheRefillFeature;
-  CacheManagerFeature& _cacheManagerFeature;
-  AgencyFeature const& _agencyFeature;
+  IRocksDBCacheManagerProvider& _cacheManagerProvider;
+  IRocksDBSortingProvider const& _sortingProvider;
   RocksDBOptionsProvider& _optionsProvider;
 
   metrics::ICollector& _metrics;
