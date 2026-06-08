@@ -1,5 +1,11 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
+
+* Upgraded included rclone to v1.73.5 with go1.25.11 and non-vulnerable
+  dependencies.
+
+* Updated ArangoDB Starter to v0.20.0-preview-11.
+
 * COR-522: Use Distribute on repeated smart edge join.
 
 * COR-299: Upgrade ScatterNode to DistributeNode if shardkey is known
@@ -15,11 +21,6 @@
 
 * COR-531: With this fix, APPEND() now correctly removes duplicate values when the unique parameter 
   is set to true, even if the appender array is null/empty or the first parameter is null.
-
-* Updated ArangoDB Starter to v0.20.0-preview-10.
-
-* Upgraded included rclone to v1.73.5 with go1.25.9 and non-vulnerable
-  dependencies.
 
 * COR-542: New AQL function UNION_DISTINCT_STABLE – merges arrays without duplicates
   while preserving order, helping maintain predictable array ordering in queries
@@ -259,8 +260,9 @@
   - `arangodb_v8_context_max`: maximum number of concurrent V8 contexts.
   - `arangodb_v8_context_min`: minimum number of concurrent V8 contexts.
 
-* arangorestore now automatically converts deprecated `fulltext` indexes to
-  `inverted` indexes when restoring dumps from older versions.
+* arangorestore now skips deprecated `fulltext` indexes when restoring dumps
+  from older versions. Fulltext indexes are no longer supported; use
+  ArangoSearch (inverted indexes) instead.
 
 * Remove leftovers of arangoimp.
 
