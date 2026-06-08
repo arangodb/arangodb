@@ -671,10 +671,7 @@ jobs:
                 root: .
                 archive: cppcheck.tar.gz
                 paths: |
-                  CMakePresets.json
-                  build/3rdParty/snowball/libstemmer/
                   build/compile_commands.json
-                  build/build_version.cc
             - persist_workspace_to_s3:
                 # not there? install.tar.gz
                 root: .

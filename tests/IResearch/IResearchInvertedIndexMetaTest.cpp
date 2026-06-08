@@ -42,12 +42,13 @@ using namespace std::literals;
 
 namespace {
 void serializationChecker(ArangodServer& server,
+                          arangodb::StorageEngine& engine,
                           std::string_view jsonAsString) {
   auto json = VPackParser::fromJson({jsonAsString.data(), jsonAsString.size()});
 
   arangodb::iresearch::IResearchInvertedIndexMeta metaLhs, metaRhs;
   std::string errorString;
-  TRI_vocbase_t vocbase(testDBInfo(server));
+  TRI_vocbase_t vocbase(testDBInfo(server), engine);
   auto res = metaLhs.init(server, json->slice(), true, errorString,
                           std::string_view(vocbase.name()));
   {
@@ -471,7 +472,7 @@ TEST_F(IResearchInvertedIndexMetaTest, testWrongDefinitions) {
 
     arangodb::iresearch::IResearchInvertedIndexMeta meta;
     std::string errorString;
-    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
     auto res = meta.init(server.server(), json->slice(), true, errorString,
                          std::string_view(vocbase.name()));
     {
@@ -624,7 +625,7 @@ TEST_F(IResearchInvertedIndexMetaTest, testCorrectDefinitions) {
 
     arangodb::iresearch::IResearchInvertedIndexMeta meta;
     std::string errorString;
-    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
     auto res = meta.init(server.server(), json->slice(), true, errorString,
                          std::string_view(vocbase.name()));
     {
@@ -632,7 +633,7 @@ TEST_F(IResearchInvertedIndexMetaTest, testCorrectDefinitions) {
       ASSERT_TRUE(res);
       ASSERT_TRUE(errorString.empty());
     }
-    serializationChecker(server.server(), jsonD);
+    serializationChecker(server.server(), server.engine(), jsonD);
   }
 }
 
@@ -663,7 +664,7 @@ TEST_F(IResearchInvertedIndexMetaTest,
 
   arangodb::iresearch::IResearchInvertedIndexMeta meta;
   std::string errorString;
-  TRI_vocbase_t vocbase(testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
   auto res = meta.init(server.server(), json->slice(), false, errorString,
                        std::string_view(vocbase.name()));
   ASSERT_FALSE(res);
@@ -696,7 +697,7 @@ TEST_F(IResearchInvertedIndexMetaTest,
 
   arangodb::iresearch::IResearchInvertedIndexMeta meta;
   std::string errorString;
-  TRI_vocbase_t vocbase(testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
   auto res = meta.init(server.server(), json->slice(), false, errorString,
                        std::string_view(vocbase.name()));
   ASSERT_FALSE(res);
@@ -739,7 +740,7 @@ TEST_F(IResearchInvertedIndexMetaTest, testIgnoreAnalyzerDefinitions) {
                                       kDefinitionWithAnalyzers.size());
 
     std::string errorString;
-    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
     auto res = metaLhs.init(server.server(), json->slice(), false, errorString,
                             std::string_view(vocbase.name()));
     {
@@ -766,7 +767,7 @@ TEST_F(IResearchInvertedIndexMetaTest, testIgnoreAnalyzerDefinitions) {
                                       kDefinitionWithoutAnalyzers.size());
 
     std::string errorString;
-    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
     auto res = metaRhs.init(server.server(), json->slice(), false, errorString,
                             std::string_view(vocbase.name()));
     {
@@ -893,7 +894,7 @@ TEST_F(IResearchInvertedIndexMetaTest, testReadDefaults) {
   {
     arangodb::iresearch::IResearchInvertedIndexMeta meta;
     std::string errorString;
-    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
     ASSERT_TRUE(meta.init(server.server(), json->slice(), false, errorString,
                           std::string_view(vocbase.name())));
     ASSERT_TRUE(errorString.empty());
@@ -942,7 +943,7 @@ TEST_F(IResearchInvertedIndexMetaTest, testDataStoreMetaFields) {
 
   arangodb::iresearch::IResearchInvertedIndexMeta meta;
   std::string errorString;
-  TRI_vocbase_t vocbase(testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
   auto res = meta.init(server.server(), json->slice(), true, errorString,
                        std::string_view(vocbase.name()));
   {
@@ -1003,7 +1004,7 @@ TEST_F(IResearchInvertedIndexMetaTest, testmatchesFieldsDefinition) {
 
   arangodb::iresearch::IResearchInvertedIndexMeta meta;
   std::string errorString;
-  TRI_vocbase_t vocbase(testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
   auto res = meta.init(server.server(), json->slice(), true, errorString,
                        std::string_view(vocbase.name()));
   {

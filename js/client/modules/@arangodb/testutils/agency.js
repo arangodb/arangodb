@@ -106,9 +106,6 @@ class agencyMgr {
       if (result === true || result === undefined) {
         return result;
       }
-      if (!(result instanceof Error)) {
-        throw Error("expected error");
-      }
       count += 1;
       if (count % 10 === 0) {
         console.log(result);

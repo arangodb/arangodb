@@ -27,6 +27,10 @@ const internal = require('internal');
 
 const ACTIVITY_REGISTRY_URL = '/_arango/experimental/_admin/activities';
 
+exports.get_snapshots_bare_all_servers = function () {
+  return arangosh.checkRequestResult(db._connection.GET(`${ACTIVITY_REGISTRY_URL}/all`)).activities_per_server;
+};
+
 exports.get_snapshot_bare = function (server) {
   if (server === undefined) {
     return arangosh.checkRequestResult(db._connection.GET(ACTIVITY_REGISTRY_URL)).activities;

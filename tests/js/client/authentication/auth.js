@@ -1202,10 +1202,277 @@ function AuthMechanismSuite() {
 }
 
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test suite for the JWT "allowed_paths" claim
+///
+/// Background:
+///   When a JWT body contains an "allowed_paths" array, an incoming request is
+///   only permitted if its request path (after the `/_db/<name>/` prefix has
+///   been stripped) appears verbatim in that array. The check happens *before*
+///   the user's regular database/collection-level permission checks (see
+///   CommTask::canAccessPath).
+///
+/// Strategy:
+///   - Create a single test user with rw access to one database (`dbAllowed`)
+///     and *no* access to another (`dbDenied`). This gives us two
+///     (user, api) pairs that share the same logical request path
+///     (`/_api/version`) but differ in whether the user is permitted to
+///     access them via the standard ACL check.
+///   - Mint JWTs for that user with three variants of the `allowed_paths`
+///     claim:
+///       * not present at all
+///       * present and containing the requested path
+///       * present and containing only an unrelated path
+///   - Cross every (api pair) x (jwt variant) combination and assert the
+///     expected status code.
+////////////////////////////////////////////////////////////////////////////////
+
+function JwtAllowedPathsSuite() {
+  'use strict';
+
+  // Hardcoded by the testsuite (see test-utils.js: testsecret).
+  const jwtSecret = 'haxxmann';
+
+  const testUser = 'allowed_paths_user@arango.ai';
+  const testPassword = 'foobar';
+  const dbAllowed = 'jwtAllowedPaths_allowed';
+  const dbDenied = 'jwtAllowedPaths_denied';
+
+  // Both URLs share the same request path (`/_api/version`) after the
+  // `/_db/<name>/` prefix is stripped, so a single `allowed_paths` entry can
+  // match (or not match) both at once. The pairs differ only in whether the
+  // user has database-level access.
+  const testApiPath = '/_api/version';
+  const allowedUrl = `/_db/${dbAllowed}${testApiPath}`;
+  const deniedUrl = `/_db/${dbDenied}${testApiPath}`;
+
+  // An unrelated path used for the "allowed_paths excludes the request path"
+  // case. Must be different from `testApiPath`.
+  const unrelatedPath = '/_api/database/current';
+
+  const baseUrl = function () {
+    return arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:');
+  };
+
+  // Build a JWT for `testUser`. If `allowedPaths` is `undefined`, the claim
+  // is omitted from the body entirely.
+  const makeJwt = function (allowedPaths) {
+    const body = {
+      "preferred_username": testUser,
+      "iss": "arangodb",
+      "exp": Math.floor(Date.now() / 1000) + 3600
+    };
+    if (allowedPaths !== undefined) {
+      body.allowed_paths = allowedPaths;
+    }
+    return crypto.jwtEncode(jwtSecret, body, 'HS256');
+  };
+
+  // Build a server_id JWT (no preferred_username). These are treated as
+  // superuser tokens. `allowedPaths` may be undefined (omit claim),
+  // or any value (written verbatim into the body for malformed-claim tests).
+  const makeServerIdJwt = function (allowedPaths) {
+    const body = {
+      "server_id": "test",
+      "iss": "arangodb",
+      "exp": Math.floor(Date.now() / 1000) + 3600
+    };
+    if (allowedPaths !== undefined) {
+      body.allowed_paths = allowedPaths;
+    }
+    return crypto.jwtEncode(jwtSecret, body, 'HS256');
+  };
+
+  const getWithJwt = function (url, jwt) {
+    return request.get({
+      url: baseUrl() + url,
+      auth: { bearer: jwt }
+    });
+  };
+
+  return {
+
+    setUpAll: function () {
+      try { users.remove(testUser); } catch (err) { /* ignore */ }
+      try { db._dropDatabase(dbAllowed); } catch (err) { /* ignore */ }
+      try { db._dropDatabase(dbDenied); } catch (err) { /* ignore */ }
+
+      db._createDatabase(dbAllowed);
+      db._createDatabase(dbDenied);
+
+      users.save(testUser, testPassword);
+      // Grant access only to `dbAllowed`. `dbDenied` is intentionally left
+      // without any grant so the user has no permission there. The user also
+      // has no grant on `_system`, so they cannot reach the global
+      // `/_api/version` either.
+      users.grantDatabase(testUser, dbAllowed, 'rw');
+      users.grantCollection(testUser, dbAllowed, '*', 'rw');
+      users.reload();
+    },
+
+    tearDownAll: function () {
+      try { users.remove(testUser); } catch (err) { /* ignore */ }
+      try { db._dropDatabase(dbAllowed); } catch (err) { /* ignore */ }
+      try { db._dropDatabase(dbDenied); } catch (err) { /* ignore */ }
+    },
+
+    // ---- Sanity checks ------------------------------------------------------
+
+    // Make sure our (user, api) pairs really do behave as described before we
+    // start adding `allowed_paths` to the picture.
+    testSanityUserHasAccessToAllowedDb: function () {
+      const jwt = makeJwt(undefined);
+      const res = getWithJwt(allowedUrl, jwt);
+      expect(res).to.be.an.instanceof(request.Response);
+      expect(res).to.have.property('statusCode', 200);
+    },
+
+    testSanityUserHasNoAccessToDeniedDb: function () {
+      const jwt = makeJwt(undefined);
+      const res = getWithJwt(deniedUrl, jwt);
+      expect(res).to.be.an.instanceof(request.Response);
+      expect(res).to.have.property('statusCode', 401);
+    },
+
+    // ---- allowed_paths absent ----------------------------------------------
+
+    // The JWT body has no `allowed_paths` claim at all -> behave like a normal
+    // JWT: allow if the user's ACLs allow, deny otherwise.
+
+    testNoAllowedPathsUserAllowed: function () {
+      const jwt = makeJwt(undefined);
+      const res = getWithJwt(allowedUrl, jwt);
+      expect(res).to.have.property('statusCode', 200);
+    },
+
+    testNoAllowedPathsUserForbidden: function () {
+      const jwt = makeJwt(undefined);
+      const res = getWithJwt(deniedUrl, jwt);
+      expect(res).to.have.property('statusCode', 401);
+    },
+
+    // ---- allowed_paths includes the requested path -------------------------
+
+    // The path passes the `allowed_paths` gate; whether the request as a
+    // whole succeeds is then decided by the user's ACLs.
+
+    testAllowedPathsIncludesPathUserAllowed: function () {
+      const jwt = makeJwt([testApiPath]);
+      const res = getWithJwt(allowedUrl, jwt);
+      expect(res).to.have.property('statusCode', 200);
+    },
+
+    testAllowedPathsIncludesPathUserForbidden: function () {
+      const jwt = makeJwt([testApiPath]);
+      const res = getWithJwt(deniedUrl, jwt);
+      expect(res).to.have.property('statusCode', 401);
+    },
+
+    // ---- allowed_paths excludes the requested path -------------------------
+
+    // The path is rejected by the `allowed_paths` gate before user ACLs are
+    // even consulted, so the result must be 401 regardless of the user's
+    // permissions on the target database.
+
+    testAllowedPathsExcludesPathUserAllowed: function () {
+      const jwt = makeJwt([unrelatedPath]);
+      const res = getWithJwt(allowedUrl, jwt);
+      expect(res).to.have.property('statusCode', 401);
+    },
+
+    testAllowedPathsExcludesPathUserForbidden: function () {
+      const jwt = makeJwt([unrelatedPath]);
+      const res = getWithJwt(deniedUrl, jwt);
+      expect(res).to.have.property('statusCode', 401);
+    },
+
+    // ---- server_id JWTs (no preferred_username) -----------------------------
+    //
+    // The primary use case: a service that authenticates with a server_id JWT
+    // (superuser, empty username) restricted via allowed_paths.
+
+    // A1: server_id + allowed_paths includes path -> access granted
+    testServerIdAllowedPathsIncludesPath: function () {
+      const jwt = makeServerIdJwt([testApiPath]);
+      const res = getWithJwt(testApiPath, jwt);
+      expect(res).to.have.property('statusCode', 200);
+    },
+
+    // A2: server_id + allowed_paths excludes path -> access denied
+    testServerIdAllowedPathsExcludesPath: function () {
+      const jwt = makeServerIdJwt([unrelatedPath]);
+      const res = getWithJwt(testApiPath, jwt);
+      expect(res).to.have.property('statusCode', 401);
+    },
+
+    // A3: server_id + no allowed_paths -> unrestricted (backward compat)
+    testServerIdNoAllowedPaths: function () {
+      const jwt = makeServerIdJwt(undefined);
+      const res = getWithJwt(testApiPath, jwt);
+      expect(res).to.have.property('statusCode', 200);
+    },
+
+    // A4: exact match - truncated path must not match
+    testServerIdAllowedPathsNoSubstringMatch: function () {
+      const jwt = makeServerIdJwt(['/_api/versio']);
+      const res = getWithJwt(testApiPath, jwt);
+      expect(res).to.have.property('statusCode', 401);
+    },
+
+    // A5: exact match - allowed parent must not match child path
+    testServerIdAllowedPathsNoPrefixMatch: function () {
+      const jwt = makeServerIdJwt(['/_admin/metrics']);
+      const res = getWithJwt('/_admin/metrics/v2', jwt);
+      expect(res).to.have.property('statusCode', 401);
+    },
+
+    // A6: "always-allowed" paths (/_admin/aardvark/*) are still blocked by
+    //     the allowed_paths gate, which runs first in canAccessPath.
+    // Comment (Tobias): I think it's debatable whether this is actually
+    //   desirable behavior. For now, I've added this test to cover the
+    //   existing behavior, so we don't change it accidentally - that
+    //   doesn't mean we mustn't change it.
+    testServerIdAllowedPathsOverridesAlwaysAllowed: function () {
+      const jwt = makeServerIdJwt([testApiPath]);
+      const res = getWithJwt('/_admin/aardvark/index.html', jwt);
+      expect(res).to.have.property('statusCode', 401);
+    },
+
+    // ---- Malformed allowed_paths claims ------------------------------------
+    //
+    // TokenCache::validateJwtBody rejects these and returns Unauthenticated,
+    // so the entire token is treated as invalid.
+
+    // A7: empty array -> rejected
+    testServerIdAllowedPathsEmptyArray: function () {
+      const jwt = makeServerIdJwt([]);
+      const res = getWithJwt(testApiPath, jwt);
+      expect(res).to.have.property('statusCode', 401);
+    },
+
+    // A8: not an array -> rejected
+    testServerIdAllowedPathsNotAnArray: function () {
+      const jwt = makeServerIdJwt(testApiPath);
+      const res = getWithJwt(testApiPath, jwt);
+      expect(res).to.have.property('statusCode', 401);
+    },
+
+    // A9: non-string element -> rejected
+    testServerIdAllowedPathsNonStringElement: function () {
+      const jwt = makeServerIdJwt([123]);
+      const res = getWithJwt(testApiPath, jwt);
+      expect(res).to.have.property('statusCode', 401);
+    },
+
+  };
+}
+
+
 // executes the test suite
 jsunity.run(AuthSuite);
 jsunity.run(UnauthorizedAccesSuite);
 jsunity.run(AuthMechanismSuite);
+jsunity.run(JwtAllowedPathsSuite);
 
 return jsunity.done();
 

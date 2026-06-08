@@ -25,9 +25,9 @@
 
 #include <fcntl.h>
 #include <cstring>
+#include <filesystem>
 
 #include "Basics/Exceptions.h"
-#include "Basics/FileUtils.h"
 #include "Basics/files.h"
 #include "Basics/operating-system.h"
 #include "Logger/Logger.h"
@@ -159,7 +159,8 @@ void LogAppenderFileFactory::reopenAll() {
     std::string backup(filename);
     backup.append(".old");
 
-    std::ignore = basics::FileUtils::remove(backup);
+    // std::error_code removeOldEc;
+    std::filesystem::remove(backup);
     TRI_RenameFile(filename.c_str(), backup.c_str());
 
     // open new log file
@@ -184,7 +185,8 @@ void LogAppenderFileFactory::reopenAll() {
 #endif
 
     if (!Logger::_keepLogRotate) {
-      std::ignore = basics::FileUtils::remove(backup);
+      // std::error_code removeEc;
+      std::filesystem::remove(backup);
     }
 
     // and also tell the appender of the file descriptor change

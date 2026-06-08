@@ -35,6 +35,7 @@
 #include <velocypack/Builder.h>
 
 namespace arangodb {
+class ClusterFeature;
 class LogicalCollection;
 template<typename>
 struct async;
@@ -69,5 +70,7 @@ class RestIndexHandler : public arangodb::RestVocbaseBaseHandler {
       velocypack::Builder& response);
 
   std::shared_ptr<LogicalCollection> collection(std::string const& cName);
+
+  ClusterFeature& _clusterFeature;
 };
 }  // namespace arangodb

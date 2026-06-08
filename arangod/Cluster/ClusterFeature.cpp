@@ -68,9 +68,10 @@ struct ClusterFeatureScale {
 DECLARE_HISTOGRAM(arangodb_agencycomm_request_time_msec, ClusterFeatureScale,
                   "Request time for Agency requests [ms]");
 
-ClusterFeature::ClusterFeature(ApplicationServer& server)
+ClusterFeature::ClusterFeature(ApplicationServer& server,
+                               metrics::MetricsFeature& metrics)
     : application_features::ApplicationFeature{server, *this},
-      _metrics{server.getFeature<metrics::MetricsFeature>()},
+      _metrics{metrics},
       _agency_comm_request_time_ms(
           _metrics.add(arangodb_agencycomm_request_time_msec{})) {
   setOptional(true);
@@ -662,7 +663,9 @@ void ClusterFeature::prepare() {
       FATAL_ERROR_EXIT();
     }
 
-    AsyncAgencyCommManager::INSTANCE->addEndpoint(unified);
+    // server id is not yet known at startup time; it will be filled in by
+    // HeartbeatThread::updateAgentPool once the agency reports its pool.
+    AsyncAgencyCommManager::INSTANCE->addAgent(/*serverId*/ {}, unified);
   }
 
   bool ok = AgencyComm(server()).ensureStructureInitialized();
@@ -671,8 +674,8 @@ void ClusterFeature::prepare() {
 
   if (!ok) {
     LOG_TOPIC("54560", FATAL, arangodb::Logger::CLUSTER)
-        << "Could not connect to any agency endpoints ("
-        << AsyncAgencyCommManager::INSTANCE->endpointsString() << ")";
+        << "Could not connect to any agents ("
+        << inspection::json(AsyncAgencyCommManager::INSTANCE->agents()) << ")";
     FATAL_ERROR_EXIT();
   }
 
@@ -684,15 +687,14 @@ void ClusterFeature::prepare() {
     FATAL_ERROR_EXIT();
   }
 
-  auto endpoints = AsyncAgencyCommManager::INSTANCE->endpoints();
-
   auto role = ServerState::instance()->getRole();
   if (role == ServerState::ROLE_UNDEFINED) {
     // no role found
     LOG_TOPIC("613f4", FATAL, arangodb::Logger::CLUSTER)
         << "unable to determine unambiguous role for server '"
         << ServerState::instance()->getId()
-        << "'. No role configured in agency (" << endpoints << ")";
+        << "'. No role configured in agency ("
+        << inspection::json(AsyncAgencyCommManager::INSTANCE->agents()) << ")";
     FATAL_ERROR_EXIT();
   }
 }
@@ -794,7 +796,7 @@ void ClusterFeature::start() {
   auto const version = comm.version();
 
   std::string const endpoints =
-      AsyncAgencyCommManager::INSTANCE->getCurrentEndpoint();
+      AsyncAgencyCommManager::INSTANCE->getCurrentAgent().endpoint;
 
   std::string myId = ServerState::instance()->getId();
 
@@ -1148,13 +1150,12 @@ AgencyCache& ClusterFeature::agencyCache() {
 void ClusterFeature::allocateMembers() {
   _agencyCallbackRegistry = std::make_unique<AgencyCallbackRegistry>(
       server(), *this, server().getFeature<EngineSelectorFeature>(),
-      server().getFeature<DatabaseFeature>(),
-      server().getFeature<metrics::MetricsFeature>(), agencyCallbacksPath());
+      server().getFeature<DatabaseFeature>(), _metrics, agencyCallbacksPath());
   _agencyCache = std::make_unique<AgencyCache>(
       server(), *_agencyCallbackRegistry, _syncerShutdownCode);
-  _clusterInfo = std::make_unique<ClusterInfo>(
-      server(), *_agencyCache, *_agencyCallbackRegistry, _syncerShutdownCode,
-      server().getFeature<metrics::MetricsFeature>());
+  _clusterInfo = std::make_unique<ClusterInfo>(server(), *_agencyCache,
+                                               *_agencyCallbackRegistry,
+                                               _syncerShutdownCode, _metrics);
 }
 
 void ClusterFeature::addDirty(

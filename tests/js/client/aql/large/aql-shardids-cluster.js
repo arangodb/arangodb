@@ -29,9 +29,9 @@ const jsunity = require("jsunity");
 const internal = require("internal");
 const db = require('internal').db;
 
-const disableSingleDocOp = {
+const disableSingleDocOpUpgradeScatter = {
   optimizer: {
-    rules: [ "-optimize-cluster-single-document-operations"]
+    rules: [ "-optimize-cluster-single-document-operations", "-upgrade-scatter-to-distribute"]
   }
 };
 const disableSingleShard = {
@@ -139,7 +139,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
   };
 
   const validatePlan = (query, nodeType, c) => {
-    const plan = db._createStatement({query: query, bindVars: {}, options: disableSingleDocOp}).explain().plan;
+    const plan = db._createStatement({query: query, bindVars: {}, options: disableSingleDocOpUpgradeScatter}).explain().plan;
     assertFalse(hasDistributeNode(plan.nodes));
     const allRestricted = allNodesOfTypeAreRestrictedToShard(plan.nodes,
                                                              nodeType, c);
@@ -222,7 +222,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
             FILTER doc._key == "${doc._key}"
             RETURN doc`;
         validatePlan(queryKey, "IndexNode", collection);
-        let res = db._query(queryKey, {}, disableSingleDocOp).toArray();
+        let res = db._query(queryKey, {}, disableSingleDocOpUpgradeScatter).toArray();
         assertEqual(1, res.length);
         assertEqual(doc._key, res[0]._key);
         assertEqual(doc._rev, res[0]._rev);
@@ -239,7 +239,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
             FILTER doc.${shardKey} == ${i}
             RETURN doc`;
         validatePlan(query, "IndexNode", collectionByKey);
-        let res = db._query(query, {}, disableSingleDocOp).toArray();
+        let res = db._query(query, {}, disableSingleDocOpUpgradeScatter).toArray();
         assertEqual(4, res.length);
         for (let doc of res) {
           assertEqual(i, doc.value);
@@ -261,7 +261,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
             RETURN [doc, joined]
         `;
 
-        let res = db._query(query, {}, disableSingleDocOp).toArray();
+        let res = db._query(query, {}, disableSingleDocOpUpgradeScatter).toArray();
         // we find 4 in first Loop, and 4 joins each
         assertEqual(16, res.length);
         for (let [doc, joined] of res) {
@@ -304,7 +304,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
             FILTER doc.${shardKey} == ${doc[shardKey]}
             RETURN doc`;
         validatePlan(queryKey, "IndexNode", collectionByKey);
-        let res = db._query(queryKey, {}, disableSingleDocOp).toArray();
+        let res = db._query(queryKey, {}, disableSingleDocOpUpgradeScatter).toArray();
         assertEqual(1, res.length);
         assertEqual(doc._key, res[0]._key);
         assertEqual(doc._rev, res[0]._rev);
@@ -328,7 +328,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
               FILTER joined.${shardKey} == ${doc[shardKey]}
             RETURN [doc, joined]`;
         validatePlan(queryKey, "IndexNode", collectionByKey);
-        let res = db._query(queryKey, {}, disableSingleDocOp).toArray();
+        let res = db._query(queryKey, {}, disableSingleDocOpUpgradeScatter).toArray();
         assertEqual(1, res.length);
         assertEqual(doc._key, res[0][0]._key);
         assertEqual(doc._rev, res[0][0]._rev);
@@ -346,7 +346,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
             FILTER doc.${shardKey} == ${i}
             RETURN doc`;
         validatePlan(query, "EnumerateCollectionNode", collectionByKey);
-        let res = db._query(query, {}, disableSingleDocOp).toArray();
+        let res = db._query(query, {}, disableSingleDocOpUpgradeScatter).toArray();
         assertEqual(4, res.length);
         for (let doc of res) {
           assertEqual(i, doc.value);
@@ -367,7 +367,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
             RETURN [doc, joined]
         `;
 
-        let res = db._query(query, {}, disableSingleDocOp).toArray();
+        let res = db._query(query, {}, disableSingleDocOpUpgradeScatter).toArray();
         // we find 4 in first Loop, and 4 joins each
         assertEqual(16, res.length);
         for (let [doc, joined] of res) {
@@ -407,7 +407,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
         `;
         validatePlan(query, "IndexNode", collectionByKey);
 
-        let res = db._query(query, {}, disableSingleDocOp).toArray();
+        let res = db._query(query, {}, disableSingleDocOpUpgradeScatter).toArray();
         assertEqual(4, res.length);
         for (let doc of res) {
           assertTrue(i === doc.value);
@@ -427,7 +427,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
         `;
         validatePlan(query, "EnumerateCollectionNode", collectionByKey);
 
-        let res = db._query(query, {}, disableSingleDocOp).toArray();
+        let res = db._query(query, {}, disableSingleDocOpUpgradeScatter).toArray();
         assertEqual(4, res.length);
         for (let doc of res) {
           assertTrue(i === doc.value);
@@ -449,7 +449,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
         `;
         validatePlan(query, "IndexNode", collectionByKey);
 
-        let res = db._query(query, {}, disableSingleDocOp).toArray();
+        let res = db._query(query, {}, disableSingleDocOpUpgradeScatter).toArray();
         assertEqual(4, res.length);
         for (let doc of res) {
           assertTrue(i === doc.value);
@@ -470,7 +470,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
         `;
         validatePlan(query, "EnumerateCollectionNode", collectionByKey);
 
-        let res = db._query(query, {}, disableSingleDocOp).toArray();
+        let res = db._query(query, {}, disableSingleDocOpUpgradeScatter).toArray();
         assertEqual(4, res.length);
         for (let doc of res) {
           assertTrue(i === doc.value);
@@ -492,7 +492,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
         // No restriction yet
         //validatePlan(query, "IndexNode", collectionByKey);
 
-        let res = db._query(query, {}, disableSingleDocOp).toArray();
+        let res = db._query(query, {}, disableSingleDocOpUpgradeScatter).toArray();
         assertEqual(8, res.length);
         for (let doc of res) {
           assertTrue(i === doc.value || i + 1 === doc.value);
@@ -512,7 +512,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
         // Multi-shard not implemented yet
         // validatePlan(query, "EnumerateCollectionNode", collectionByKey);
 
-        let res = db._query(query, {}, disableSingleDocOp).toArray();
+        let res = db._query(query, {}, disableSingleDocOpUpgradeScatter).toArray();
         assertEqual(8, res.length);
         for (let doc of res) {
           assertTrue(i === doc.value || i + 1 === doc.value);
@@ -533,7 +533,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
         `;
         validatePlan(query, "EnumerateCollectionNode", collectionByKey);
 
-        let raw = db._query(query, {}, disableSingleDocOp);
+        let raw = db._query(query, {}, disableSingleDocOpUpgradeScatter);
         let results = raw.toArray();
         assertEqual(16, results.length);
         for (let [doc1, doc2] of results) {
@@ -557,7 +557,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
         `;
         validatePlan(query, "IndexNode", collectionByKey);
 
-        let raw = db._query(query, {}, disableSingleDocOp);
+        let raw = db._query(query, {}, disableSingleDocOpUpgradeScatter);
         let results = raw.toArray();
         assertEqual(16, results.length);
         for (let [doc1, doc2] of results) {
@@ -581,7 +581,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
         // Multi-shard not implemented yet
         // validatePlan(query, "EnumerateCollectionNode", collectionByKey);
 
-        let raw = db._query(query, {}, disableSingleDocOp);
+        let raw = db._query(query, {}, disableSingleDocOpUpgradeScatter);
         let results = raw.toArray();
         assertEqual(16, results.length);
         for (let [doc1, doc2] of results) {
@@ -606,7 +606,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
         // Multi-shard not implemented yet
         // validatePlan(query, "EnumerateCollectionNode", collectionByKey);
 
-        let raw = db._query(query, {}, disableSingleDocOp);
+        let raw = db._query(query, {}, disableSingleDocOpUpgradeScatter);
         let results = raw.toArray();
         assertEqual(16, results.length);
         for (let [doc1, doc2] of results) {
@@ -630,7 +630,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
         `;
         validatePlan(query, "EnumerateCollectionNode", collectionByKey);
 
-        let raw = db._query(query, {}, disableSingleDocOp);
+        let raw = db._query(query, {}, disableSingleDocOpUpgradeScatter);
         let stats = raw.getExtra().stats;
         assertEqual(stats.writesExecuted, 16);
         let results = raw.toArray();
@@ -658,7 +658,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
         `;
         validatePlan(query, "IndexNode", collectionByKey);
 
-        let raw = db._query(query, {}, disableSingleDocOp);
+        let raw = db._query(query, {}, disableSingleDocOpUpgradeScatter);
         let stats = raw.getExtra().stats;
         assertEqual(stats.writesExecuted, 16);
         let results = raw.toArray();
@@ -682,7 +682,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
               RETURN doc1
         `;
 
-        let raw = db._query(query, {}, disableSingleDocOp);
+        let raw = db._query(query, {}, disableSingleDocOpUpgradeScatter);
         let results = raw.toArray();
         assertEqual(400, results.length);
         for (let doc of results) {
@@ -703,7 +703,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
               RETURN doc1
         `;
 
-        let raw = db._query(query, {}, disableSingleDocOp);
+        let raw = db._query(query, {}, disableSingleDocOpUpgradeScatter);
         let results = raw.toArray();
         assertEqual(400, results.length);
         for (let doc of results) {
@@ -725,7 +725,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
               RETURN [NEW, doc2]
         `;
 
-        let raw = db._query(query, {}, disableSingleDocOp);
+        let raw = db._query(query, {}, disableSingleDocOpUpgradeScatter);
         let stats = raw.getExtra().stats;
         assertEqual(stats.writesExecuted, 400);
         let results = raw.toArray();
@@ -777,7 +777,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
               RETURN [NEW, doc2]
         `;
 
-        let raw = db._query(query, {}, disableSingleDocOp);
+        let raw = db._query(query, {}, disableSingleDocOpUpgradeScatter);
         let stats = raw.getExtra().stats;
         assertEqual(stats.writesExecuted, 400);
         let results = raw.toArray();
@@ -802,7 +802,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
               RETURN [NEW, doc2]
         `;
 
-        let raw = db._query(query, {}, disableSingleDocOp);
+        let raw = db._query(query, {}, disableSingleDocOpUpgradeScatter);
         let stats = raw.getExtra().stats;
         assertEqual(stats.writesExecuted, 400);
         let results = raw.toArray();
@@ -826,7 +826,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
         `;
         validatePlan(query, "EnumerateCollectionNode", collectionByKey);
 
-        let raw = db._query(query, {}, disableSingleDocOp);
+        let raw = db._query(query, {}, disableSingleDocOpUpgradeScatter);
         let stats = raw.getExtra().stats;
         assertEqual(stats.writesExecuted, 4);
         let results = raw.toArray();
@@ -851,7 +851,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
         `;
         validatePlan(query, "IndexNode", collectionByKey);
 
-        let raw = db._query(query, {}, disableSingleDocOp);
+        let raw = db._query(query, {}, disableSingleDocOpUpgradeScatter);
         let stats = raw.getExtra().stats;
         assertEqual(stats.writesExecuted, 4);
         let results = raw.toArray();
@@ -876,7 +876,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
         `;
         validatePlan(query, "EnumerateCollectionNode", collectionByKey);
 
-        let raw = db._query(query, {}, disableSingleDocOp);
+        let raw = db._query(query, {}, disableSingleDocOpUpgradeScatter);
         let results = raw.toArray();
         assertEqual(16, results.length);
         for (let [doc1, doc2] of results) {
@@ -900,7 +900,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
         `;
         validatePlan(query, "IndexNode", collectionByKey);
 
-        let raw = db._query(query, {}, disableSingleDocOp);
+        let raw = db._query(query, {}, disableSingleDocOpUpgradeScatter);
         let results = raw.toArray();
         assertEqual(16, results.length);
         for (let [doc1, doc2] of results) {
@@ -924,7 +924,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
         `;
         validatePlan(query, "EnumerateCollectionNode", collectionByKey);
 
-        let raw = db._query(query, {}, disableSingleDocOp);
+        let raw = db._query(query, {}, disableSingleDocOpUpgradeScatter);
         let stats = raw.getExtra().stats;
         assertEqual(stats.writesExecuted, 16);
         let results = raw.toArray();
@@ -952,7 +952,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
         `;
         validatePlan(query, "IndexNode", collectionByKey);
 
-        let raw = db._query(query, {}, disableSingleDocOp);
+        let raw = db._query(query, {}, disableSingleDocOpUpgradeScatter);
         let stats = raw.getExtra().stats;
         assertEqual(stats.writesExecuted, 16);
         let results = raw.toArray();
@@ -976,7 +976,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
               RETURN [doc1, doc2]
         `;
 
-        let raw = db._query(query, {}, disableSingleDocOp);
+        let raw = db._query(query, {}, disableSingleDocOpUpgradeScatter);
         let results = raw.toArray();
         assertEqual(400, results.length);
         for (let [doc1, doc2] of results) {
@@ -997,7 +997,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
               RETURN [doc1, doc2]
         `;
 
-        let raw = db._query(query, {}, disableSingleDocOp);
+        let raw = db._query(query, {}, disableSingleDocOpUpgradeScatter);
         let results = raw.toArray();
         assertEqual(400, results.length);
         for (let [doc1, doc2] of results) {
@@ -1019,7 +1019,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
               RETURN [NEW, doc2]
         `;
 
-        let raw = db._query(query, {}, disableSingleDocOp);
+        let raw = db._query(query, {}, disableSingleDocOpUpgradeScatter);
         let stats = raw.getExtra().stats;
         assertEqual(stats.writesExecuted, 400);
         let results = raw.toArray();
@@ -1071,7 +1071,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
             RETURN [NEW, doc2]
         `;
 
-        let raw = db._query(query, {}, disableSingleDocOp);
+        let raw = db._query(query, {}, disableSingleDocOpUpgradeScatter);
         let stats = raw.getExtra().stats;
         assertEqual(stats.writesExecuted, 400);
         let results = raw.toArray();
@@ -1096,7 +1096,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
             RETURN [NEW, doc2]
         `;
 
-        let raw = db._query(query, {}, disableSingleDocOp);
+        let raw = db._query(query, {}, disableSingleDocOpUpgradeScatter);
         let stats = raw.getExtra().stats;
         assertEqual(stats.writesExecuted, 400);
         let results = raw.toArray();
@@ -1121,7 +1121,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
         `;
         validatePlan(query, "EnumerateCollectionNode", collectionByKey);
 
-        let raw = db._query(query, {}, disableSingleDocOp);
+        let raw = db._query(query, {}, disableSingleDocOpUpgradeScatter);
         let results = raw.toArray();
         assertEqual(16, results.length);
         for (let [doc1, doc2] of results) {
@@ -1145,7 +1145,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
         `;
         validatePlan(query, "IndexNode", collectionByKey);
 
-        let raw = db._query(query, {}, disableSingleDocOp);
+        let raw = db._query(query, {}, disableSingleDocOpUpgradeScatter);
         let results = raw.toArray();
         assertEqual(16, results.length);
         for (let [doc1, doc2] of results) {
@@ -1169,7 +1169,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
         `;
         validatePlan(query, "EnumerateCollectionNode", collectionByKey);
 
-        let raw = db._query(query, {}, disableSingleDocOp);
+        let raw = db._query(query, {}, disableSingleDocOpUpgradeScatter);
         let stats = raw.getExtra().stats;
         assertEqual(stats.writesExecuted, 16);
         let results = raw.toArray();
@@ -1197,7 +1197,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
         `;
         validatePlan(query, "IndexNode", collectionByKey);
 
-        let raw = db._query(query, {}, disableSingleDocOp);
+        let raw = db._query(query, {}, disableSingleDocOpUpgradeScatter);
         let stats = raw.getExtra().stats;
         assertEqual(stats.writesExecuted, 16);
         let results = raw.toArray();
@@ -1221,7 +1221,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
               RETURN [doc1, doc2]
         `;
 
-        let raw = db._query(query, {}, disableSingleDocOp);
+        let raw = db._query(query, {}, disableSingleDocOpUpgradeScatter);
         let results = raw.toArray();
         assertEqual(400, results.length);
         for (let [doc1, doc2] of results) {
@@ -1242,7 +1242,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
               RETURN [doc1, doc2]
         `;
 
-        let raw = db._query(query, {}, disableSingleDocOp);
+        let raw = db._query(query, {}, disableSingleDocOpUpgradeScatter);
         let results = raw.toArray();
         assertEqual(400, results.length);
         for (let [doc1, doc2] of results) {
@@ -1316,7 +1316,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
               RETURN [NEW, doc2]
         `;
 
-        let raw = db._query(query, {}, disableSingleDocOp);
+        let raw = db._query(query, {}, disableSingleDocOpUpgradeScatter);
         let stats = raw.getExtra().stats;
         assertEqual(stats.writesExecuted, 400);
         let results = raw.toArray();
@@ -1341,7 +1341,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
               RETURN [NEW, doc2]
         `;
 
-        let raw = db._query(query, {}, disableSingleDocOp);
+        let raw = db._query(query, {}, disableSingleDocOpUpgradeScatter);
         let stats = raw.getExtra().stats;
         assertEqual(stats.writesExecuted, 400);
         let results = raw.toArray();
@@ -1415,7 +1415,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
             RETURN [NEW, doc2]
       `;
 
-      let raw = db._query(query, {}, disableSingleDocOp);
+      let raw = db._query(query, {}, disableSingleDocOpUpgradeScatter);
       let stats = raw.getExtra().stats;
       assertEqual(stats.writesExecuted, 10000);
       let results = raw.toArray();
@@ -1439,7 +1439,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
             RETURN [NEW, doc2]
       `;
 
-      let raw = db._query(query, {}, disableSingleDocOp);
+      let raw = db._query(query, {}, disableSingleDocOpUpgradeScatter);
       let stats = raw.getExtra().stats;
       assertEqual(stats.writesExecuted, 10000);
       let results = raw.toArray();
@@ -1463,7 +1463,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
             RETURN [NEW, doc2]
       `;
 
-      let raw = db._query(query, {}, disableSingleDocOp);
+      let raw = db._query(query, {}, disableSingleDocOpUpgradeScatter);
       let stats = raw.getExtra().stats;
       assertEqual(stats.writesExecuted, 10000);
       let results = raw.toArray();
@@ -1489,7 +1489,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
             RETURN [NEW, doc2]
       `;
 
-      let raw = db._query(query, {}, disableSingleDocOp);
+      let raw = db._query(query, {}, disableSingleDocOpUpgradeScatter);
       let stats = raw.getExtra().stats;
       assertEqual(stats.writesExecuted, 10000);
       let results = raw.toArray();
@@ -1513,7 +1513,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
             RETURN [NEW, doc2]
       `;
 
-      let raw = db._query(query, {}, disableSingleDocOp);
+      let raw = db._query(query, {}, disableSingleDocOpUpgradeScatter);
       let stats = raw.getExtra().stats;
       assertEqual(stats.writesExecuted, 10000);
       let results = raw.toArray();
@@ -1537,7 +1537,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
             RETURN [NEW, doc2]
       `;
 
-      let raw = db._query(query, {}, disableSingleDocOp);
+      let raw = db._query(query, {}, disableSingleDocOpUpgradeScatter);
       let stats = raw.getExtra().stats;
       assertEqual(stats.writesExecuted, 10000);
       let results = raw.toArray();
@@ -1559,7 +1559,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
             RETURN [NEW, doc2]
       `;
 
-      let raw = db._query(query, {}, disableSingleDocOp);
+      let raw = db._query(query, {}, disableSingleDocOpUpgradeScatter);
       let stats = raw.getExtra().stats;
       assertEqual(stats.writesExecuted, 10000);
       let results = raw.toArray();
@@ -1581,7 +1581,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
             RETURN [NEW, doc2]
       `;
 
-      let raw = db._query(query, {}, disableSingleDocOp);
+      let raw = db._query(query, {}, disableSingleDocOpUpgradeScatter);
       let stats = raw.getExtra().stats;
       assertEqual(stats.writesExecuted, 10000);
       let results = raw.toArray();
@@ -1602,7 +1602,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
             RETURN NEW
         `;
 
-        let raw = db._query(query, {}, disableSingleDocOp);
+        let raw = db._query(query, {}, disableSingleDocOpUpgradeScatter);
         let stats = raw.getExtra().stats;
         assertEqual(stats.writesExecuted, 100);
         let results = raw.toArray();
@@ -1626,7 +1626,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
             RETURN NEW
         `;
 
-        let raw = db._query(query, {}, disableSingleDocOp);
+        let raw = db._query(query, {}, disableSingleDocOpUpgradeScatter);
         let stats = raw.getExtra().stats;
         assertEqual(stats.writesExecuted, 100);
         let results = raw.toArray();
@@ -1653,7 +1653,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
         validatePlan(query, "EnumerateCollectionNode", collectionByKey1);
         validatePlan(query, "EnumerateCollectionNode", collectionByKey2);
 
-        let raw = db._query(query, {}, disableSingleDocOp);
+        let raw = db._query(query, {}, disableSingleDocOpUpgradeScatter);
         let results = raw.toArray();
         assertEqual(16, results.length);
         for (let [doc1, doc2] of results) {
@@ -1680,7 +1680,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
         validatePlan(query, "IndexNode", collectionByKey1);
         validatePlan(query, "IndexNode", collectionByKey2);
 
-        let raw = db._query(query, {}, disableSingleDocOp);
+        let raw = db._query(query, {}, disableSingleDocOpUpgradeScatter);
         let results = raw.toArray();
         assertEqual(16, results.length);
         for (let [doc1, doc2] of results) {
@@ -1706,7 +1706,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
         // validatePlan(query, "EnumerateCollectionNode", collectionByKey1);
         // validatePlan(query, "EnumerateCollectionNode", collectionByKey2);
 
-        let raw = db._query(query, {}, disableSingleDocOp);
+        let raw = db._query(query, {}, disableSingleDocOpUpgradeScatter);
         let results = raw.toArray();
         assertEqual(16, results.length);
         for (let [doc1, doc2] of results) {
@@ -1734,7 +1734,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
         // validatePlan(query, "EnumerateCollectionNode", collectionByKey1);
         // validatePlan(query, "EnumerateCollectionNode", collectionByKey2);
 
-        let raw = db._query(query, {}, disableSingleDocOp);
+        let raw = db._query(query, {}, disableSingleDocOpUpgradeScatter);
         let results = raw.toArray();
         assertEqual(16, results.length);
         for (let [doc1, doc2] of results) {
@@ -1760,7 +1760,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
         validatePlan(query, "EnumerateCollectionNode", collectionByKey1);
         validatePlan(query, "EnumerateCollectionNode", collectionByKey2);
 
-        let raw = db._query(query, {}, disableSingleDocOp);
+        let raw = db._query(query, {}, disableSingleDocOpUpgradeScatter);
         let stats = raw.getExtra().stats;
         assertEqual(stats.writesExecuted, 16);
         let results = raw.toArray();
@@ -1791,7 +1791,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
         validatePlan(query, "IndexNode", collectionByKey1);
         validatePlan(query, "IndexNode", collectionByKey2);
 
-        let raw = db._query(query, {}, disableSingleDocOp);
+        let raw = db._query(query, {}, disableSingleDocOpUpgradeScatter);
         let stats = raw.getExtra().stats;
         assertEqual(stats.writesExecuted, 16);
         let results = raw.toArray();
@@ -1817,7 +1817,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
         `;
         validatePlan(query, "EnumerateCollectionNode", collectionByKey1);
 
-        let raw = db._query(query, {}, disableSingleDocOp);
+        let raw = db._query(query, {}, disableSingleDocOpUpgradeScatter);
         let results = raw.toArray();
         assertEqual(400, results.length);
         for (let doc of results) {
@@ -1841,7 +1841,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
         `;
         validatePlan(query, "IndexNode", collectionByKey1);
 
-        let raw = db._query(query, {}, disableSingleDocOp);
+        let raw = db._query(query, {}, disableSingleDocOpUpgradeScatter);
         let results = raw.toArray();
         assertEqual(400, results.length);
         for (let doc of results) {
@@ -1865,7 +1865,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
         `;
         validatePlan(query, "EnumerateCollectionNode", collectionByKey1);
 
-        let raw = db._query(query, {}, disableSingleDocOp);
+        let raw = db._query(query, {}, disableSingleDocOpUpgradeScatter);
         let stats = raw.getExtra().stats;
         assertEqual(stats.writesExecuted, 400);
         let results = raw.toArray();
@@ -1922,7 +1922,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
         `;
         validatePlan(query, "EnumerateCollectionNode", collectionByKey1);
 
-        let raw = db._query(query, {}, disableSingleDocOp);
+        let raw = db._query(query, {}, disableSingleDocOpUpgradeScatter);
         let stats = raw.getExtra().stats;
         assertEqual(stats.writesExecuted, 400);
         let results = raw.toArray();
@@ -1950,7 +1950,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
         `;
         validatePlan(query, "IndexNode", collectionByKey1);
 
-        let raw = db._query(query, {}, disableSingleDocOp);
+        let raw = db._query(query, {}, disableSingleDocOpUpgradeScatter);
         let stats = raw.getExtra().stats;
         assertEqual(stats.writesExecuted, 400);
         let results = raw.toArray();
@@ -1977,7 +1977,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
         validatePlan(query, "EnumerateCollectionNode", collectionByKey1);
         validatePlan(query, "EnumerateCollectionNode", collectionByKey2);
 
-        let raw = db._query(query, {}, disableSingleDocOp);
+        let raw = db._query(query, {}, disableSingleDocOpUpgradeScatter);
         let results = raw.toArray();
         assertEqual(16, results.length);
         for (let [doc1, doc2] of results) {
@@ -2004,7 +2004,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
         validatePlan(query, "IndexNode", collectionByKey1);
         validatePlan(query, "IndexNode", collectionByKey2);
 
-        let raw = db._query(query, {}, disableSingleDocOp);
+        let raw = db._query(query, {}, disableSingleDocOpUpgradeScatter);
         let results = raw.toArray();
         assertEqual(16, results.length);
         for (let [doc1, doc2] of results) {
@@ -2030,7 +2030,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
         validatePlan(query, "EnumerateCollectionNode", collectionByKey1);
         validatePlan(query, "EnumerateCollectionNode", collectionByKey2);
 
-        let raw = db._query(query, {}, disableSingleDocOp);
+        let raw = db._query(query, {}, disableSingleDocOpUpgradeScatter);
         let stats = raw.getExtra().stats;
         assertEqual(stats.writesExecuted, 16);
         let results = raw.toArray();
@@ -2061,7 +2061,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
         validatePlan(query, "IndexNode", collectionByKey1);
         validatePlan(query, "IndexNode", collectionByKey2);
 
-        let raw = db._query(query, {}, disableSingleDocOp);
+        let raw = db._query(query, {}, disableSingleDocOpUpgradeScatter);
         let stats = raw.getExtra().stats;
         assertEqual(stats.writesExecuted, 16);
         let results = raw.toArray();
@@ -2087,7 +2087,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
         `;
         validatePlan(query, "EnumerateCollectionNode", collectionByKey1);
 
-        let raw = db._query(query, {}, disableSingleDocOp);
+        let raw = db._query(query, {}, disableSingleDocOpUpgradeScatter);
         let results = raw.toArray();
         assertEqual(400, results.length);
         for (let [doc1, doc2] of results) {
@@ -2111,7 +2111,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
         `;
         validatePlan(query, "IndexNode", collectionByKey1);
 
-        let raw = db._query(query, {}, disableSingleDocOp);
+        let raw = db._query(query, {}, disableSingleDocOpUpgradeScatter);
         let results = raw.toArray();
         assertEqual(400, results.length);
         for (let [doc1, doc2] of results) {
@@ -2135,7 +2135,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
         `;
         validatePlan(query, "EnumerateCollectionNode", collectionByKey1);
 
-        let raw = db._query(query, {}, disableSingleDocOp);
+        let raw = db._query(query, {}, disableSingleDocOpUpgradeScatter);
         let stats = raw.getExtra().stats;
         assertEqual(stats.writesExecuted, 400);
         let results = raw.toArray();
@@ -2192,7 +2192,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
         `;
         validatePlan(query, "EnumerateCollectionNode", collectionByKey1);
 
-        let raw = db._query(query, {}, disableSingleDocOp);
+        let raw = db._query(query, {}, disableSingleDocOpUpgradeScatter);
         let stats = raw.getExtra().stats;
         assertEqual(stats.writesExecuted, 400);
         let results = raw.toArray();
@@ -2220,7 +2220,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
         `;
         validatePlan(query, "IndexNode", collectionByKey1);
 
-        let raw = db._query(query, {}, disableSingleDocOp);
+        let raw = db._query(query, {}, disableSingleDocOpUpgradeScatter);
         let stats = raw.getExtra().stats;
         assertEqual(stats.writesExecuted, 400);
         let results = raw.toArray();
@@ -2247,7 +2247,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
         validatePlan(query, "EnumerateCollectionNode", collectionByKey1);
         validatePlan(query, "EnumerateCollectionNode", collectionByKey2);
 
-        let raw = db._query(query, {}, disableSingleDocOp);
+        let raw = db._query(query, {}, disableSingleDocOpUpgradeScatter);
         let results = raw.toArray();
         assertEqual(16, results.length);
         for (let [doc1, doc2] of results) {
@@ -2274,7 +2274,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
         validatePlan(query, "IndexNode", collectionByKey1);
         validatePlan(query, "IndexNode", collectionByKey2);
 
-        let raw = db._query(query, {}, disableSingleDocOp);
+        let raw = db._query(query, {}, disableSingleDocOpUpgradeScatter);
         let results = raw.toArray();
         assertEqual(16, results.length);
         for (let [doc1, doc2] of results) {
@@ -2300,7 +2300,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
         validatePlan(query, "EnumerateCollectionNode", collectionByKey1);
         validatePlan(query, "EnumerateCollectionNode", collectionByKey2);
 
-        let raw = db._query(query, {}, disableSingleDocOp);
+        let raw = db._query(query, {}, disableSingleDocOpUpgradeScatter);
         let stats = raw.getExtra().stats;
         assertEqual(stats.writesExecuted, 16);
         let results = raw.toArray();
@@ -2331,7 +2331,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
         validatePlan(query, "IndexNode", collectionByKey1);
         validatePlan(query, "IndexNode", collectionByKey2);
 
-        let raw = db._query(query, {}, disableSingleDocOp);
+        let raw = db._query(query, {}, disableSingleDocOpUpgradeScatter);
         let stats = raw.getExtra().stats;
         assertEqual(stats.writesExecuted, 16);
         let results = raw.toArray();
@@ -2357,7 +2357,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
         `;
         validatePlan(query, "EnumerateCollectionNode", collectionByKey2);
 
-        let raw = db._query(query, {}, disableSingleDocOp);
+        let raw = db._query(query, {}, disableSingleDocOpUpgradeScatter);
         let results = raw.toArray();
         assertEqual(400, results.length);
         for (let [doc1, doc2] of results) {
@@ -2381,7 +2381,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
         `;
         validatePlan(query, "IndexNode", collectionByKey2);
 
-        let raw = db._query(query, {}, disableSingleDocOp);
+        let raw = db._query(query, {}, disableSingleDocOpUpgradeScatter);
         let results = raw.toArray();
         assertEqual(400, results.length);
         for (let [doc1, doc2] of results) {
@@ -2462,7 +2462,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
         `;
         validatePlan(query, "EnumerateCollectionNode", collectionByKey2);
 
-        let raw = db._query(query, {}, disableSingleDocOp);
+        let raw = db._query(query, {}, disableSingleDocOpUpgradeScatter);
         let stats = raw.getExtra().stats;
         assertEqual(stats.writesExecuted, 400);
         let results = raw.toArray();
@@ -2490,7 +2490,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
         `;
         validatePlan(query, "IndexNode", collectionByKey2);
 
-        let raw = db._query(query, {}, disableSingleDocOp);
+        let raw = db._query(query, {}, disableSingleDocOpUpgradeScatter);
         let stats = raw.getExtra().stats;
         assertEqual(stats.writesExecuted, 400);
         let results = raw.toArray();
@@ -2569,7 +2569,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
             RETURN [NEW, doc2]
       `;
 
-      let raw = db._query(query, {}, disableSingleDocOp);
+      let raw = db._query(query, {}, disableSingleDocOpUpgradeScatter);
       let stats = raw.getExtra().stats;
       assertEqual(stats.writesExecuted, 10000);
       let results = raw.toArray();
@@ -2595,7 +2595,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
             RETURN [NEW, doc2]
       `;
 
-      let raw = db._query(query, {}, disableSingleDocOp);
+      let raw = db._query(query, {}, disableSingleDocOpUpgradeScatter);
       let stats = raw.getExtra().stats;
       assertEqual(stats.writesExecuted, 10000);
       let results = raw.toArray();
@@ -2620,7 +2620,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
             RETURN [NEW, doc2]
       `;
 
-      let raw = db._query(query, {}, disableSingleDocOp);
+      let raw = db._query(query, {}, disableSingleDocOpUpgradeScatter);
       let stats = raw.getExtra().stats;
       assertEqual(stats.writesExecuted, 10000);
       let results = raw.toArray();
@@ -2648,7 +2648,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
             RETURN [NEW, doc2]
       `;
 
-      let raw = db._query(query, {}, disableSingleDocOp);
+      let raw = db._query(query, {}, disableSingleDocOpUpgradeScatter);
       let stats = raw.getExtra().stats;
       assertEqual(stats.writesExecuted, 10000);
       let results = raw.toArray();
@@ -2673,7 +2673,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
             RETURN [NEW, doc2]
       `;
 
-      let raw = db._query(query, {}, disableSingleDocOp);
+      let raw = db._query(query, {}, disableSingleDocOpUpgradeScatter);
       let stats = raw.getExtra().stats;
       assertEqual(stats.writesExecuted, 10000);
       let results = raw.toArray();
@@ -2699,7 +2699,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
             RETURN [NEW, doc2]
       `;
 
-      let raw = db._query(query, {}, disableSingleDocOp);
+      let raw = db._query(query, {}, disableSingleDocOpUpgradeScatter);
       let stats = raw.getExtra().stats;
       assertEqual(stats.writesExecuted, 10000);
       let results = raw.toArray();
@@ -2722,7 +2722,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
             RETURN [NEW, doc2]
       `;
 
-      let raw = db._query(query, {}, disableSingleDocOp);
+      let raw = db._query(query, {}, disableSingleDocOpUpgradeScatter);
       let stats = raw.getExtra().stats;
       assertEqual(stats.writesExecuted, 10000);
       let results = raw.toArray();
@@ -2746,7 +2746,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
             RETURN [NEW, doc2]
       `;
 
-      let raw = db._query(query, {}, disableSingleDocOp);
+      let raw = db._query(query, {}, disableSingleDocOpUpgradeScatter);
       let stats = raw.getExtra().stats;
       assertEqual(stats.writesExecuted, 10000);
       let results = raw.toArray();
@@ -2772,7 +2772,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
         `;
         validatePlan(query, "EnumerateCollectionNode", collectionByKey2);
 
-        let raw = db._query(query, {}, disableSingleDocOp);
+        let raw = db._query(query, {}, disableSingleDocOpUpgradeScatter);
         let stats = raw.getExtra().stats;
         assertEqual(stats.writesExecuted, 100);
         let results = raw.toArray();
@@ -2801,7 +2801,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
         `;
         validatePlan(query, "IndexNode", collectionByKey2);
 
-        let raw = db._query(query, {}, disableSingleDocOp);
+        let raw = db._query(query, {}, disableSingleDocOpUpgradeScatter);
         let stats = raw.getExtra().stats;
         assertEqual(stats.writesExecuted, 100);
         let results = raw.toArray();

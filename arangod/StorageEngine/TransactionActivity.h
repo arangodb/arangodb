@@ -85,7 +85,6 @@ struct TransactionActivity
       : activities::GuardedActivity<TransactionActivity,
                                     TransactionActivityData>(
             id, parent, "TransactionActivity", {}) {}
-  using Data = TransactionActivityData;
 
   auto setTransactionId(TransactionId tid) {
     _data.getLockedGuard()->tid = tid;

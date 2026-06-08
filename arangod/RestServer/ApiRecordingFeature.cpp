@@ -50,13 +50,12 @@ size_t AqlQueryRecord::memoryUsage() const noexcept {
 
 ApiRecordingFeature::ApiRecordingFeature(
     application_features::ApplicationServer& server,
-    std::shared_ptr<crash_handler::DataSourceRegistry> dataSourceRegistry)
+    std::shared_ptr<crash_handler::DataSourceRegistry> dataSourceRegistry,
+    metrics::MetricsFeature& metrics)
     : ApplicationFeature{server, *this},
       crash_handler::CrashHandlerDataSource(std::move(dataSourceRegistry)),
-      _recordApiCallTimes(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_api_recording_call_time{})),
-      _recordAqlCallTimes(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_aql_recording_call_time{})) {
+      _recordApiCallTimes(metrics.add(arangodb_api_recording_call_time{})),
+      _recordAqlCallTimes(metrics.add(arangodb_aql_recording_call_time{})) {
   setOptional(false);
   startsAfter<application_features::GreetingsFeaturePhase>();
 }

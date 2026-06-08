@@ -57,7 +57,8 @@ class ClusterFeature : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Cluster"; }
 
-  explicit ClusterFeature(application_features::ApplicationServer& server);
+  explicit ClusterFeature(application_features::ApplicationServer& server,
+                          metrics::MetricsFeature& metrics);
   ~ClusterFeature();
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;

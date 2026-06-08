@@ -24,6 +24,7 @@
 #include "InitDatabaseFeature.h"
 
 #include <chrono>
+#include <filesystem>
 #include <iostream>
 #include <thread>
 
@@ -162,24 +163,54 @@ void InitDatabaseFeature::checkEmptyDatabase() {
   bool empty = false;
   std::string message;
   int code = TRI_EXIT_CODE_RESOLVING_FAILED;
-
-  if (FileUtils::exists(path)) {
-    if (!FileUtils::isDirectory(path)) {
+  std::error_code dirEc;
+  if (std::filesystem::exists(path, dirEc)) {
+    if (!std::filesystem::is_directory(path, dirEc)) {
+      if (dirEc) {
+        message =
+            "error checking database path '" + path + "': " + dirEc.message();
+        code = TRI_EXIT_CODE_RESOLVING_FAILED;
+        goto doexit;
+      }
       message = "database path '" + path + "' is not a directory";
       code = EXIT_FAILURE;
       goto doexit;
     }
 
-    if (FileUtils::exists(serverFile)) {
-      if (FileUtils::isDirectory(serverFile)) {
+    if (std::filesystem::exists(serverFile, dirEc)) {
+      if (dirEc) {
+        message = "error checking database SERVER marker '" + serverFile +
+                  "': " + dirEc.message();
+        code = TRI_EXIT_CODE_RESOLVING_FAILED;
+        goto doexit;
+      }
+      if (std::filesystem::is_directory(serverFile, dirEc)) {
         message = "database SERVER '" + serverFile + "' is not a file";
         code = EXIT_FAILURE;
         goto doexit;
       }
+      if (dirEc) {
+        message = "error checking database SERVER marker '" + serverFile +
+                  "': " + dirEc.message();
+        code = TRI_EXIT_CODE_RESOLVING_FAILED;
+        goto doexit;
+      }
     } else {
+      if (dirEc) {
+        message = "error checking database SERVER marker '" + serverFile +
+                  "': " + dirEc.message();
+        code = TRI_EXIT_CODE_RESOLVING_FAILED;
+        goto doexit;
+      }
       empty = true;
     }
   } else {
+    if (dirEc) {
+      message =
+          "error checking database path '" + path + "': " + dirEc.message();
+      code = TRI_EXIT_CODE_RESOLVING_FAILED;
+      goto doexit;
+    }
     empty = true;
   }
 

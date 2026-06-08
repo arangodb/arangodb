@@ -2045,7 +2045,8 @@ static void ClientConnection_httpSendFile(
 
   std::string const infile = TRI_ObjectToString(isolate, args[1]);
 
-  if (!FileUtils::exists(infile)) {
+  std::error_code existsEc;
+  if (!std::filesystem::exists(infile, existsEc)) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FILE_NOT_FOUND);
   }
 
@@ -3017,7 +3018,8 @@ bool setRequestBody(fu::Request& request, v8::Isolate* isolate,
 
   if (isFile) {
     std::string const inFile = TRI_ObjectToString(isolate, body);
-    if (!FileUtils::exists(inFile)) {
+    std::error_code existsEc;
+    if (!std::filesystem::exists(inFile, existsEc)) {
       std::string err =
           absl::StrCat("file to load for body doesn't exist: ", inFile);
       TRI_V8_SET_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, err);

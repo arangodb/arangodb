@@ -29,7 +29,6 @@
 #include "Cluster/Utils/ShardID.h"
 
 #include <optional>
-#include <string>
 #include <unordered_map>
 
 struct TRI_vocbase_t;

@@ -65,7 +65,7 @@ class RestTransactionHandlerTest : public ::testing::Test {
   velocypack::Parser parser;
 
   RestTransactionHandlerTest()
-      : vocbase(testDBInfo(setup.server.server())),
+      : vocbase(testDBInfo(setup.server.server()), setup.server.engine()),
         mgr(transaction::ManagerFeature::manager()),
         requestPtr(std::make_unique<GeneralRequestMock>(vocbase)),
         request(*requestPtr),

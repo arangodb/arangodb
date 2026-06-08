@@ -62,7 +62,7 @@ void TimeZoneFeature::prepareTimeZoneData(
     std::string test_exe =
         FileUtils::buildFilename(binaryExecutionPath, "tzdata");
 
-    if (FileUtils::isDirectory(test_exe)) {
+    if (std::filesystem::is_directory(test_exe)) {
       test_exe = basics::FileUtils::absolutePath(test_exe).string();
       tz_path = std::filesystem::path(test_exe).make_preferred().string();
     } else {
@@ -77,13 +77,15 @@ void TimeZoneFeature::prepareTimeZoneData(
     }
   }
 
-  if (FileUtils::isDirectory(tz_path)) {
+  std::error_code dirEc;
+  if (std::filesystem::is_directory(tz_path, dirEc)) {
     date::set_install(tz_path);
   } else {
     LOG_TOPIC("67bdc", FATAL, arangodb::Logger::STARTUP)
         << "failed to locate timezone data " << tz_path
         << ". please set the TZ_DATA environment variable to the "
-        << "tzdata directory in case you are running an unusual setup";
+        << "tzdata directory in case you are running an unusual setup"
+        << dirEc.message();
     FATAL_ERROR_EXIT_CODE(TRI_EXIT_TZDATA_INITIALIZATION_FAILED);
   }
 

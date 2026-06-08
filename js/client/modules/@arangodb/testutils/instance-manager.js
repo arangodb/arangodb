@@ -244,6 +244,37 @@ class instanceManager {
       }
     });
   }
+  // Initializes an instanceManager from deployment info provided by an
+  // external test runner (e.g., Toast) that already manages the server
+  // lifecycle. The struct must contain:
+  //   { protocol, endpoint, url, rootDir,
+  //     arangods: [{ id, instanceRole, endpoint, url, port }] }
+  static fromDeploymentInfo(struct) {
+    let protocol = struct.protocol || 'tcp';
+    let mgr = new instanceManager(protocol, {dummy: true}, {}, '', struct.rootDir || fs.getTempPath());
+    mgr.rootDir = struct.rootDir || mgr.rootDir;
+    mgr.endpoint = struct.endpoint;
+    mgr.url = struct.url;
+    mgr.endpoints = [];
+    mgr.urls = [];
+
+    (struct.arangods || []).forEach(srv => {
+      let rootDir = srv.rootDir || '';
+      let arangod = new inst.instance(mgr.options, srv.instanceRole, {}, {}, {}, protocol, rootDir, '', mgr.agencyMgr, mgr.tmpDir);
+      arangod.id = srv.id;
+      arangod.instanceRole = srv.instanceRole;
+      arangod.endpoint = srv.endpoint;
+      arangod.url = srv.url;
+      arangod.port = srv.port;
+      arangod.name = srv.instanceRole + ' - ' + srv.port;
+      arangod.upAndRunning = true;
+      mgr.arangods.push(arangod);
+      mgr.endpoints.push(srv.endpoint);
+      mgr.urls.push(srv.url);
+    });
+
+    return mgr;
+  }
   dumpSUT(moreText) {
     const tableColumnHeaders = [
         "role", "port", "pid", "serverID", "handle", "data directory"
@@ -1359,24 +1390,66 @@ class instanceManager {
     return count < 500;
   }
 
-  stopServerWaitFailed(urlIDOrShortName) {
+  stopServer(urlIDOrShortName) {
+    if (urlIDOrShortName === undefined) {
+      return;
+    }
     this.arangods.forEach(arangod => {
       if (!arangod.matches(instanceRole.dbServer, urlIDOrShortName)) {
         return;
       }
       arangod.suspend();
     });
-    this.agencyMgr.waitFor(() => { this.agencyMgr.serverFailed(urlIDOrShortName); });
   }
-  continueServerWaitOk(urlIDOrShortName) {
+  waitForServerFailed(serverId) {
+    if (serverId === undefined) {
+      return;
+    }
+    this.agencyMgr.waitFor(() => this.agencyMgr.serverFailed(serverId) );
+  }
+  stopServerWaitFailed(serverId) {
+    this.stopServer(serverId);
+    this.waitForServerFailed(serverId);
+  }
+
+  continueServer(urlIDOrShortName) {
+    if (urlIDOrShortName === undefined) {
+      return;
+    }
     this.arangods.forEach(arangod => {
-      if (urlIDOrShortName !== undefined && !arangod.matches(instanceRole.dbServer, urlIDOrShortName)) {
+      if (!arangod.matches(instanceRole.dbServer, urlIDOrShortName)) {
         return;
       }
       arangod.resume();
     });
-    this.agencyMgr.waitFor(() => { this.agencyMgr.serverHealthy(urlIDOrShortName); });
   }
+  waitForServerOk(serverId) {
+    if (serverId === undefined) {
+      return;
+    }
+    this.agencyMgr.waitFor(() => this.agencyMgr.serverHealthy(serverId) );
+  }
+  continueServerWaitOk(serverId) {
+    this.continueServer(serverId);
+    this.waitForServerOk(serverId);
+  }
+
+  continueAllDBServersWaitOk() {
+    this.arangods.forEach(arangod => {
+      arangod.resume();
+    });
+    const allIds = this.arangods
+      .filter(arangod => arangod.isRole(instanceRole.dbServer))
+      .map(arangod => arangod.id);
+    this.agencyMgr.waitFor(() => {
+      let result = true;
+      for (const id of allIds) {
+        result = result && this.agencyMgr.serverHealthy(id);
+      }
+      return result;
+    });
+  }
+
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief checks whether any instance has failure points set
   // //////////////////////////////////////////////////////////////////////////////

@@ -36,6 +36,7 @@
 #include <date/date.h>
 #include <format>
 
+#include <filesystem>
 #include <regex>
 #include <sstream>
 
@@ -85,8 +86,9 @@ class LoggerTest : public ::testing::Test {
         path(TRI_GetTempPath()),
         logfile1(path + "logfile1"),
         logfile2(path + "logfile2") {
-    std::ignore = FileUtils::remove(logfile1);
-    std::ignore = FileUtils::remove(logfile2);
+    std::error_code removeEc;
+    std::filesystem::remove(logfile1, removeEc);
+    std::filesystem::remove(logfile2, removeEc);
     // remove any previous loggers
     LogAppenderFileFactory::closeAll();
   }
@@ -96,8 +98,9 @@ class LoggerTest : public ::testing::Test {
     LogAppenderFileFactory::setAppenders(backup);
     LogAppenderFileFactory::reopenAll();
 
-    std::ignore = FileUtils::remove(logfile1);
-    std::ignore = FileUtils::remove(logfile2);
+    std::error_code removeEc;
+    std::filesystem::remove(logfile1, removeEc);
+    std::filesystem::remove(logfile2, removeEc);
   }
 };
 

@@ -88,15 +88,6 @@ StatResultType statResultType(TRI_stat_t const& stbuf) {
   return StatResultType::Other;
 }
 
-StatResultType statResultType(std::string const& path) {
-  TRI_stat_t stbuf;
-  int res = TRI_STAT(path.c_str(), &stbuf);
-  if (res != 0) {
-    return StatResultType::Error;
-  }
-  return statResultType(stbuf);
-}
-
 void processFiles(std::string const& directory,
                   std::function<void(std::string const&)> const& cb) {
   std::filesystem::path const dir{directory};
@@ -137,48 +128,19 @@ namespace arangodb::basics::FileUtils {
 std::string buildFilename(char const* path, char const* name) {
   TRI_ASSERT(path != nullptr);
   TRI_ASSERT(name != nullptr);
-
-  std::string result(path);
-
-  if (!result.empty()) {
-    std::filesystem::path sourcepath{result};
-    result = sourcepath.lexically_normal().string();
-    if (result.length() != 1 || result[0] != TRI_DIR_SEPARATOR_CHAR) {
-      result += TRI_DIR_SEPARATOR_CHAR;
-    }
-  }
-
-  if (!result.empty() && *name == TRI_DIR_SEPARATOR_CHAR) {
-    // skip initial forward slash in name to avoid having two forward slashes in
-    // result
-    result.append(name + 1);
-  } else {
-    result.append(name);
-  }
-
-  return std::filesystem::path(result).make_preferred().string();
+  return buildFilename(std::string(path), std::string(name));
 }
 
 std::string buildFilename(std::string const& path, std::string const& name) {
-  std::string result(path);
+  namespace fs = std::filesystem;
+  fs::path result;
 
-  if (!result.empty()) {
-    std::filesystem::path sourcepath{result};
-    result = sourcepath.lexically_normal().string();
-    if (result.length() != 1 || result[0] != TRI_DIR_SEPARATOR_CHAR) {
-      result += TRI_DIR_SEPARATOR_CHAR;
-    }
-  }
-
-  if (!result.empty() && !name.empty() && name[0] == TRI_DIR_SEPARATOR_CHAR) {
-    // skip initial forward slash in name to avoid having two forward slashes in
-    // result
-    result.append(name.c_str() + 1, name.size() - 1);
+  if (!fs::path(path).empty()) {
+    result = (fs::path(path) / fs::path(name).relative_path());
   } else {
-    result.append(name);
+    result = fs::path(name);
   }
-
-  return std::filesystem::path(result).make_preferred().string();
+  return result.lexically_normal().make_preferred().string();
 }
 
 static void throwFileReadError(std::string const& filename) {
@@ -326,16 +288,6 @@ void appendToFile(std::string const& filename, std::string_view s, bool sync) {
   appendToFile(filename, s.data(), s.size(), sync);
 }
 
-ErrorCode remove(std::string const& fileName) {
-  auto const success = 0 == std::remove(fileName.c_str());
-
-  if (!success) {
-    return TRI_set_errno(TRI_ERROR_SYS_ERROR);
-  }
-
-  return TRI_ERROR_NO_ERROR;
-}
-
 /// @brief will not copy files/directories for which the filter function
 /// returns true (now wrapper for version below with TRI_copy_recursive_e
 /// filter)
@@ -358,7 +310,7 @@ bool copyRecursive(
     std::string const& source, std::string const& target,
     std::function<TRI_copy_recursive_e(std::string const&)> const& filter,
     std::string& error) {
-  if (isDirectory(source)) {
+  if (std::filesystem::is_directory(source)) {
     return copyDirectoryRecursive(source, target, filter, error);
   }
 
@@ -489,14 +441,6 @@ std::vector<std::string> listFiles(std::string const& directory) {
   });
 
   return result;
-}
-
-bool isDirectory(std::string const& path) {
-  return ::statResultType(path) == ::StatResultType::Directory;
-}
-
-bool exists(std::string const& path) {
-  return ::statResultType(path) != ::StatResultType::Error;
 }
 
 std::string stripExtension(std::string const& path,

@@ -51,7 +51,8 @@ class TransactionContextTest : public ::testing::Test {
   arangodb::tests::mocks::TransactionManagerSetup setup;
   TRI_vocbase_t vocbase;
 
-  TransactionContextTest() : vocbase(testDBInfo(setup.server.server())) {}
+  TransactionContextTest()
+      : vocbase(testDBInfo(setup.server.server()), setup.server.engine()) {}
 };
 
 TEST_F(TransactionContextTest, StandaloneSmartContext) {

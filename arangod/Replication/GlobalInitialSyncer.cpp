@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -280,8 +280,10 @@ Result GlobalInitialSyncer::updateServerInventory(
 
     if (vocbase == nullptr) {
       // database is missing. we need to create it now
+      auto& server = _state.applier._server;
+      auto& engine = server.getFeature<DatabaseFeature>().engine();
       Result r = methods::Databases::create(
-          _state.applier._server, ExecContext::current(), dbName,
+          server, engine, ExecContext::current(), dbName,
           VPackSlice::emptyArraySlice(), VPackSlice::emptyObjectSlice());
       if (r.fail()) {
         LOG_TOPIC("cf124", WARN, Logger::REPLICATION)

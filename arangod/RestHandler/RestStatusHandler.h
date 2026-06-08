@@ -26,6 +26,7 @@
 #include "RestHandler/RestBaseHandler.h"
 
 namespace arangodb {
+class EngineSelectorFeature;
 class ServerSecurityFeature;
 
 class RestStatusHandler : public arangodb::RestBaseHandler {
@@ -42,5 +43,7 @@ class RestStatusHandler : public arangodb::RestBaseHandler {
   RestStatus executeStandard(ServerSecurityFeature&);
   RestStatus executeOverview();
   RestStatus executeMemoryProfile();
+
+  EngineSelectorFeature& _engineSelector;
 };
 }  // namespace arangodb

@@ -47,10 +47,11 @@ DECLARE_COUNTER(arangodb_transactions_expired_total,
 
 std::unique_ptr<transaction::Manager> ManagerFeature::MANAGER;
 
-ManagerFeature::ManagerFeature(application_features::ApplicationServer& server)
+ManagerFeature::ManagerFeature(application_features::ApplicationServer& server,
+                               metrics::MetricsFeature& metrics)
     : application_features::ApplicationFeature{server, *this},
-      _numExpiredTransactions(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_transactions_expired_total{})) {
+      _numExpiredTransactions(
+          metrics.add(arangodb_transactions_expired_total{})) {
   setOptional(false);
   startsAfter<BasicFeaturePhaseServer>();
   startsAfter<EngineSelectorFeature>();

@@ -38,7 +38,7 @@ class GlobalReplicationApplier final : public ReplicationApplier {
 
  public:
   explicit GlobalReplicationApplier(
-      ReplicationApplierConfiguration const& configuration);
+      application_features::ApplicationServer& server, StorageEngine& engine);
 
   ~GlobalReplicationApplier();
 
@@ -56,7 +56,7 @@ class GlobalReplicationApplier final : public ReplicationApplier {
 
   /// @brief load a persisted configuration for the applier
   static ReplicationApplierConfiguration loadConfiguration(
-      application_features::ApplicationServer&);
+      application_features::ApplicationServer& server, StorageEngine& engine);
 
   std::shared_ptr<InitialSyncer> buildInitialSyncer() const override;
   std::shared_ptr<TailingSyncer> buildTailingSyncer(

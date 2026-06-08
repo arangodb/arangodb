@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.MissingRefError = exports.ValidationError = exports.CodeGen = exports.Name = exports.nil = exports.stringify = exports.str = exports._ = exports.KeywordCxt = void 0;
+exports.MissingRefError = exports.ValidationError = exports.CodeGen = exports.Name = exports.nil = exports.stringify = exports.str = exports._ = exports.KeywordCxt = exports.Ajv2020 = void 0;
 const core_1 = require("./core");
 const draft2020_1 = require("./vocabularies/draft2020");
 const discriminator_1 = require("./vocabularies/discriminator");
@@ -34,7 +34,9 @@ class Ajv2020 extends core_1.default {
             super.defaultMeta() || (this.getSchema(META_SCHEMA_ID) ? META_SCHEMA_ID : undefined));
     }
 }
+exports.Ajv2020 = Ajv2020;
 module.exports = exports = Ajv2020;
+module.exports.Ajv2020 = Ajv2020;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.default = Ajv2020;
 var validate_1 = require("./compile/validate");

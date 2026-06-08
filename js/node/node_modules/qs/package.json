@@ -2,7 +2,7 @@
     "name": "qs",
     "description": "A querystring parser that supports nesting and arrays, with a depth limit",
     "homepage": "https://github.com/ljharb/qs",
-    "version": "6.14.1",
+    "version": "6.14.2",
     "repository": {
         "type": "git",
         "url": "https://github.com/ljharb/qs.git"

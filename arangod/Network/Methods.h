@@ -103,7 +103,7 @@ struct Response {
     if (auto res = combinedResult(); res.fail()) {
       return res;
     } else {
-      return velocypack::deserialize<T>(slice().get("result"));
+      return velocypack::deserialize<T>(slice());
     }
   }
 

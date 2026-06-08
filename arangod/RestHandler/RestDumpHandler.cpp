@@ -200,12 +200,12 @@ void RestDumpHandler::handleCommandDumpNext() {
   auto context = _dumpManager->find(id, database, user);
   // immediately prolong lifetime of context, so it doesn't get invalidated
   // while we are using it.
-
-  auto fetch = activities::makeWithParent<activities::GenericActivity>(
-      context->activity(), "RocksDBDumpNext",
-      std::unordered_map<std::string, std::string>{{"id", id}});
-
   context->extendLifetime();
+
+  auto guard = activities::Registry::ScopedCurrentlyExecutingActivity(
+      context->activity());
+  auto fetch = activities::make<activities::GenericActivity>(
+      "RocksDBDumpNext", activities::GenericActivityData{{"id", id}});
 
   auto batch = context->next(*batchId, lastBatch);
   auto counts = context->getBlockCounts();

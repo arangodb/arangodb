@@ -1049,6 +1049,58 @@ AqlValue functions::UnionDistinct(ExpressionContext* expressionContext,
   return AqlValue(builder->slice(), builder->size());
 }
 
+/// @brief function UNION_DISTINCT_STABLE
+AqlValue functions::UnionDistinctStable(
+    ExpressionContext* expressionContext, AstNode const&,
+    VPackFunctionParametersView parameters) {
+  static char const* AFN = "UNION_DISTINCT_STABLE";
+
+  transaction::Methods* trx = &expressionContext->trx();
+  auto* vopts = &trx->vpackOptions();
+
+  size_t const n = parameters.size();
+  containers::FlatHashSet<VPackSlice, basics::VelocyPackHelper::VPackHash,
+                          basics::VelocyPackHelper::VPackEqual>
+      values(512, basics::VelocyPackHelper::VPackHash(),
+             basics::VelocyPackHelper::VPackEqual(vopts));
+
+  auto builder = ThreadLocalBuilderLeaser::lease();
+  builder->openArray();
+  std::vector<AqlValueMaterializer> materializers;
+  materializers.reserve(n);
+  for (size_t i = 0; i < n; ++i) {
+    AqlValue const& value =
+        aql::functions::extractFunctionParameterValue(parameters, i);
+
+    if (!value.isArray()) {
+      // not an array
+      registerInvalidArgumentWarning(expressionContext, AFN);
+      return AqlValue(AqlValueHintNull());
+    }
+
+    materializers.emplace_back(vopts);
+    VPackSlice slice = materializers.back().slice(value);
+    for (VPackSlice v : VPackArrayIterator(slice)) {
+      v = v.resolveExternal();
+      if (values.emplace(v).second) {
+        TRI_IF_FAILURE("AqlFunctions::OutOfMemory1") {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
+
+        builder->add(v);
+      }
+    }
+  }
+
+  TRI_IF_FAILURE("AqlFunctions::OutOfMemory2") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+
+  builder->close();
+
+  return AqlValue(builder->slice(), builder->size());
+}
+
 /// @brief function INTERSECTION
 AqlValue functions::Intersection(ExpressionContext* expressionContext,
                                  AstNode const&,

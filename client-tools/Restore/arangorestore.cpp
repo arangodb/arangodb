@@ -72,7 +72,7 @@ int main(int argc, char* argv[]) {
     server.addFeature<CommunicationFeaturePhase>();
     server.addFeature<GreetingsFeaturePhase>(std::true_type{});
     server.addFeature<VersionFeature>();
-    server.addFeature<HttpEndpointProvider, ClientFeature>(
+    auto& client = server.addFeature<HttpEndpointProvider, ClientFeature>(
         true, std::numeric_limits<size_t>::max());
     server.addFeature<ConfigFeature>(context.binaryName());
     server.addFeature<FileSystemFeature>();
@@ -93,7 +93,7 @@ int main(int argc, char* argv[]) {
 #ifdef USE_ENTERPRISE
     server.addFeature<EncryptionFeature>();
 #endif
-    server.addFeature<RestoreFeature>(ret);
+    server.addFeature<RestoreFeature>(client, ret);
 
     try {
       server.run(argc, argv);

@@ -40,11 +40,4 @@ template<typename T, typename... Args>
 auto make(Args&&... args) -> T::HandleType {
   return registry.makeActivity<T>(std::forward<Args>(args)...);
 }
-
-template<typename T, typename... Args>
-auto makeWithParent(ActivityHandle parent, Args&&... args) -> T::HandleType {
-  return registry.makeActivityWithParent<T>(std::move(parent),
-                                            std::forward<Args>(args)...);
-}
-
 }  // namespace arangodb::activities

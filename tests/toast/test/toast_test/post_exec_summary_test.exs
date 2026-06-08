@@ -1,0 +1,475 @@
+################################################################################
+## DISCLAIMER
+##
+## Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
+## Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+##
+## Licensed under the Business Source License 1.1 (the "License");
+## you may not use this file except in compliance with the License.
+## You may obtain a copy of the License at
+##
+##     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+##
+## Unless required by applicable law or agreed to in writing, software
+## distributed under the License is distributed on an "AS IS" BASIS,
+## WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+## See the License for the specific language governing permissions and
+## limitations under the License.
+##
+## Copyright holder is ArangoDB GmbH, Cologne, Germany
+################################################################################
+
+defmodule ToastTest.Formatting.PostExecSummaryTest do
+  use ExUnit.Case, async: true
+
+  import ExUnit.CaptureIO
+
+  alias ToastTest.SuiteResult
+  alias ToastTest.Formatting.PostExecSummary
+
+  defp suite_result(issues, opts \\ []) do
+    %SuiteResult{
+      suite: "smoke",
+      started_at: ~U[2026-03-09 10:00:00Z],
+      finished_at: ~U[2026-03-09 10:05:00Z],
+      times_us: %{async: 0, load: 0, run: 300_000_000},
+      modules: %{},
+      issues: issues,
+      coredumps: Keyword.get(opts, :coredumps, []),
+      events: %{},
+      warnings: Keyword.get(opts, :warnings, [])
+    }
+  end
+
+  defp test_failure_issue do
+    %{
+      type: :test_failure,
+      scope: {:test, SomeModule, :"test something"},
+      confidence: nil,
+      detail: %{
+        test: %ExUnit.Test{
+          name: :"test something",
+          module: SomeModule,
+          state:
+            {:failed,
+             [
+               {:error,
+                %ExUnit.AssertionError{
+                  left: 1,
+                  right: 2,
+                  message: "Assertion with == failed",
+                  expr: {:==, [], [1, 2]}
+                }, []}
+             ]},
+          tags: %{file: "test/some_test.exs", line: 10, test_type: :test},
+          time: 1234,
+          logs: ""
+        }
+      }
+    }
+  end
+
+  defp sanitizer_issue(opts \\ []) do
+    line_count = Keyword.get(opts, :lines, 5)
+    scope = Keyword.get(opts, :scope, {:test, SomeModule, :"test something"})
+
+    report =
+      Enum.map_join(1..line_count, "\n", fn i ->
+        "ERROR line #{i}: AddressSanitizer detail"
+      end)
+
+    %{
+      type: :sanitizer_report,
+      scope: scope,
+      confidence: :high,
+      detail: %{server: "agent1", report: report}
+    }
+  end
+
+  defp crash_info(opts \\ []) do
+    %Toast.Process.CrashInfo{
+      signal: Keyword.get(opts, :signal, 11),
+      exit_status: Keyword.get(opts, :exit_status, 139),
+      timestamp:
+        Keyword.get(opts, :timestamp, DateTime.to_unix(~U[2026-03-09 10:00:05Z], :microsecond)),
+      os_pid: Keyword.get(opts, :os_pid, 22_788)
+    }
+  end
+
+  defp coredump_report do
+    %{
+      core_path: "/tmp/core.1234",
+      server_id: "agent1",
+      debugger: :gdb,
+      signal: "SIGSEGV",
+      faulting_address: "0x0",
+      crash_thread: "1",
+      threads: [
+        %{
+          id: "1",
+          name: "main",
+          frames: [
+            %{function: "foo()", file: "foo.cpp", line: 1},
+            %{function: "bar()", file: "bar.cpp", line: 2}
+          ]
+        }
+      ]
+    }
+  end
+
+  defp crash_issue_with_coredump(opts \\ []) do
+    scope = Keyword.get(opts, :scope, {:test, SomeModule, :"test something"})
+
+    %{
+      type: :crash,
+      scope: scope,
+      confidence: :high,
+      detail: %{
+        server: "agent1",
+        crash_info: crash_info(),
+        coredump_paths: ["/tmp/core.1234"],
+        log_file: "/tmp/arangodb/agent1.log"
+      }
+    }
+  end
+
+  defp crash_issue_with_logs do
+    %{
+      type: :crash,
+      scope: :suite,
+      confidence: nil,
+      detail: %{
+        server: "agent1",
+        crash_info: crash_info(),
+        crash_lines: build_log_lines(),
+        log_file: "/tmp/arangodb/agent1.log"
+      }
+    }
+  end
+
+  # By the time logs reach PostExecSummary, they contain only {crash} lines
+  # (extracted by Enrichment.Logs.extract_crash_lines/1)
+  defp build_log_lines do
+    [
+      "2026-03-09T10:00:05Z [12345-30] S FATAL [a7902] {crash} caught signal 11 (SIGSEGV)",
+      "2026-03-09T10:00:05Z [12345-30] S FATAL [a7903] {crash} Hello crash handler",
+      "2026-03-09T10:00:05Z [12345-30] S INFO [ded81] {crash} available physical memory: 1073741824",
+      "2026-03-09T10:00:05Z [12345-30] S INFO [c962b] {crash} Backtrace of thread 30 [SchedWorker]",
+      "2026-03-09T10:00:05Z [12345-30] S INFO [308c3] {crash} frame  1 0x555555678abc some_func (+0x42)",
+      "2026-03-09T10:00:05Z [12345-30] S INFO [308c3] {crash} frame  2 0x555555679def other_func (+0x10)"
+    ]
+    |> Enum.join("\n")
+  end
+
+  test "prints nothing when no issues" do
+    output = capture_io(fn -> PostExecSummary.print(suite_result([])) end)
+
+    assert output == ""
+  end
+
+  test "prints test failures with ExUnit output" do
+    output = capture_io(fn -> PostExecSummary.print(suite_result([test_failure_issue()])) end)
+
+    assert output =~ "TEST FAILURES (1)"
+    assert output =~ "Assertion with == failed"
+  end
+
+  test "prints sanitizer reports with attribution and truncation" do
+    issue = sanitizer_issue(lines: 25)
+    output = capture_io(fn -> PostExecSummary.print(suite_result([issue])) end)
+
+    assert output =~ "SANITIZER REPORTS (1)"
+    assert output =~ "agent1"
+    assert output =~ ~s(SomeModule > "something")
+    assert output =~ "ERROR line 1:"
+    assert output =~ "ERROR line 15:"
+    refute output =~ "ERROR line 16:"
+    assert output =~ "... (10 more lines)"
+  end
+
+  test "prints crashes with crash info, backtrace, and log path" do
+    output =
+      capture_io(fn ->
+        PostExecSummary.print(
+          suite_result([crash_issue_with_coredump()], coredumps: [coredump_report()])
+        )
+      end)
+
+    assert output =~ "CRASHES (1)"
+    assert output =~ "agent1: PID 22788"
+    assert output =~ "signal: SIGSEGV (11)"
+    assert output =~ "exit_status: 139"
+    assert output =~ "at: 2026-03-09T10:00:05"
+    assert output =~ "#0 foo() at foo.cpp:1"
+    assert output =~ "#1 bar() at bar.cpp:2"
+    assert output =~ "Log: /tmp/arangodb/agent1.log"
+  end
+
+  test "prints crashes with log fallback when no coredumps" do
+    output = capture_io(fn -> PostExecSummary.print(suite_result([crash_issue_with_logs()])) end)
+
+    assert output =~ "CRASHES (1)"
+    assert output =~ "agent1: PID 22788"
+    assert output =~ "signal: SIGSEGV (11)"
+    assert output =~ "exit_status: 139"
+    assert output =~ "caught signal 11"
+    assert output =~ "Backtrace of thread 30"
+    assert output =~ "some_func"
+    assert output =~ "Log: /tmp/arangodb/agent1.log"
+  end
+
+  test "shows fallback message when crash has no logs" do
+    issue = %{
+      type: :crash,
+      scope: :suite,
+      confidence: nil,
+      detail: %{
+        server: "agent1",
+        crash_info: crash_info(),
+        log_file: "/tmp/arangodb/agent1.log"
+      }
+    }
+
+    output = capture_io(fn -> PostExecSummary.print(suite_result([issue])) end)
+    assert output =~ "agent1: PID 22788"
+    assert output =~ "signal: SIGSEGV (11)"
+    assert output =~ "No crash details available."
+    assert output =~ "Log: /tmp/arangodb/agent1.log"
+  end
+
+  test "prints startup timeout with aborted servers, log paths, and coredump paths" do
+    issue = %{
+      type: :timeout,
+      scope: :suite,
+      confidence: :high,
+      detail: %{
+        source: :startup_timeout,
+        reason: "Startup timeout — deployment did not become ready in time",
+        timestamp: ~U[2026-03-09 10:05:00Z],
+        servers: [
+          %{
+            server_id: "agent1",
+            os_pid: 22_788,
+            log_file: "/tmp/agent1.log",
+            coredump: "/tmp/core.22788"
+          },
+          %{
+            server_id: "dbserver1",
+            os_pid: 22_790,
+            log_file: "/tmp/dbserver1.log",
+            coredump: nil
+          },
+          %{
+            server_id: "coordinator1",
+            os_pid: 22_792,
+            log_file: "/tmp/coordinator1.log",
+            coredump: "/tmp/core.22792"
+          }
+        ]
+      }
+    }
+
+    output = capture_io(fn -> PostExecSummary.print(suite_result([issue])) end)
+
+    assert output =~ "TIMEOUTS (1)"
+    assert output =~ "[Startup Timeout]"
+    assert output =~ "Startup timeout"
+    assert output =~ "Aborted 3 servers:"
+
+    assert output =~ "agent1 (PID 22788)"
+    assert output =~ "Log: /tmp/agent1.log"
+    assert output =~ "Coredump: /tmp/core.22788"
+
+    assert output =~ "dbserver1 (PID 22790)"
+    assert output =~ "Log: /tmp/dbserver1.log"
+    refute output =~ "Coredump: /tmp/core.22790"
+
+    assert output =~ "coordinator1 (PID 22792)"
+    assert output =~ "Coredump: /tmp/core.22792"
+  end
+
+  test "prints test timeout without server list" do
+    issue = %{
+      type: :timeout,
+      scope: :suite,
+      confidence: :high,
+      detail: %{
+        source: :test_timeout,
+        reason: "Suite timeout exceeded",
+        timestamp: ~U[2026-03-09 10:05:00Z],
+        servers: []
+      }
+    }
+
+    output = capture_io(fn -> PostExecSummary.print(suite_result([issue])) end)
+
+    assert output =~ "[Test Timeout]"
+    assert output =~ "Suite timeout exceeded"
+    refute output =~ "Aborted"
+  end
+
+  test "prints shutdown timeout with escalated server" do
+    issue = %{
+      type: :timeout,
+      scope: :suite,
+      confidence: :high,
+      detail: %{
+        source: :shutdown_timeout,
+        reason: "Shutdown timeout — server(s) did not respond to SIGTERM",
+        timestamp: ~U[2026-03-09 10:05:00Z],
+        servers: [
+          %{server_id: "single", os_pid: 12_345, log_file: "/tmp/single.log", coredump: nil}
+        ]
+      }
+    }
+
+    output = capture_io(fn -> PostExecSummary.print(suite_result([issue])) end)
+
+    assert output =~ "[Shutdown Timeout]"
+    assert output =~ "Aborted 1 server:"
+    assert output =~ "single (PID 12345)"
+  end
+
+  test "orders sections by severity with timeouts last" do
+    issues = [
+      crash_issue_with_coredump(),
+      test_failure_issue(),
+      sanitizer_issue(),
+      %{
+        type: :timeout,
+        scope: :suite,
+        confidence: :high,
+        detail: %{
+          source: :test_timeout,
+          reason: "Suite timeout exceeded",
+          timestamp: ~U[2026-03-09 10:05:00Z],
+          servers: []
+        }
+      }
+    ]
+
+    output =
+      capture_io(fn ->
+        PostExecSummary.print(suite_result(issues, coredumps: [coredump_report()]))
+      end)
+
+    failure_pos = :binary.match(output, "TEST FAILURES") |> elem(0)
+    sanitizer_pos = :binary.match(output, "SANITIZER REPORTS") |> elem(0)
+    crash_pos = :binary.match(output, "CRASHES") |> elem(0)
+    timeout_pos = :binary.match(output, "TIMEOUTS") |> elem(0)
+
+    assert failure_pos < sanitizer_pos
+    assert sanitizer_pos < crash_pos
+    assert crash_pos < timeout_pos
+  end
+
+  test "formats scope attribution" do
+    suite_crash = %{crash_issue_with_coredump() | scope: :suite}
+    module_crash = %{crash_issue_with_coredump() | scope: {:module, SomeModule}}
+    test_crash = crash_issue_with_coredump(scope: {:test, SomeModule, :"test foo"})
+
+    cd = [coredump_report()]
+
+    suite_output =
+      capture_io(fn -> PostExecSummary.print(suite_result([suite_crash], coredumps: cd)) end)
+
+    module_output =
+      capture_io(fn -> PostExecSummary.print(suite_result([module_crash], coredumps: cd)) end)
+
+    test_output =
+      capture_io(fn -> PostExecSummary.print(suite_result([test_crash], coredumps: cd)) end)
+
+    assert suite_output =~ "agent1"
+    refute suite_output =~ "SomeModule"
+
+    assert module_output =~ "SomeModule"
+
+    assert test_output =~ "SomeModule"
+    assert test_output =~ ~s(> "foo")
+  end
+
+  test "prints coredump file path for crash with coredump" do
+    output =
+      capture_io(fn ->
+        PostExecSummary.print(
+          suite_result([crash_issue_with_coredump()], coredumps: [coredump_report()])
+        )
+      end)
+
+    assert output =~ "Coredump: /tmp/core.1234"
+  end
+
+  test "prefers crash log over coredump backtrace when both are present" do
+    issue = %{
+      crash_issue_with_coredump()
+      | detail: Map.put(crash_issue_with_coredump().detail, :crash_lines, build_log_lines())
+    }
+
+    output =
+      capture_io(fn ->
+        PostExecSummary.print(suite_result([issue], coredumps: [coredump_report()]))
+      end)
+
+    # Crash log output should be shown (not the coredump backtrace)
+    assert output =~ "caught signal 11"
+    assert output =~ "Backtrace of thread 30"
+    refute output =~ "#0 foo() at foo.cpp:1"
+
+    # But coredump path should still be printed for reference
+    assert output =~ "Coredump: /tmp/core.1234"
+    assert output =~ "Log: /tmp/arangodb/agent1.log"
+  end
+
+  test "prints crash footer with invalidated test count" do
+    result = %SuiteResult{
+      suite: "smoke",
+      started_at: ~U[2026-03-09 10:00:00Z],
+      finished_at: ~U[2026-03-09 10:05:00Z],
+      times_us: %{async: 0, load: 0, run: 300_000_000},
+      modules: %{
+        SomeModule => %{
+          started_at: ~U[2026-03-09 10:00:00Z],
+          finished_at: ~U[2026-03-09 10:05:00Z],
+          setup_finished_at: nil,
+          teardown_started_at: nil,
+          tests: [
+            %{name: :test_one, outcome: :failed, duration_us: 0, tags: %{}},
+            %{name: :test_two, outcome: :invalidated, duration_us: 0, tags: %{}},
+            %{name: :test_three, outcome: :invalidated, duration_us: 0, tags: %{}}
+          ]
+        }
+      },
+      issues: [crash_issue_with_coredump()],
+      coredumps: [coredump_report()],
+      events: %{},
+      warnings: []
+    }
+
+    output = capture_io(fn -> PostExecSummary.print(result) end)
+
+    assert output =~ "CRASHES (1)"
+    assert output =~ "2 subsequent tests invalidated by crash"
+  end
+
+  test "does not print crash footer when no tests are invalidated" do
+    output =
+      capture_io(fn ->
+        PostExecSummary.print(
+          suite_result([crash_issue_with_coredump()], coredumps: [coredump_report()])
+        )
+      end)
+
+    assert output =~ "CRASHES (1)"
+    refute output =~ "invalidated"
+  end
+
+  test "prints warnings section when warnings are present" do
+    warnings = ["Coredump discovery may not work: handler unknown"]
+
+    output =
+      capture_io(fn -> PostExecSummary.print(suite_result([], warnings: warnings)) end)
+
+    assert output =~ "WARNINGS"
+    assert output =~ "Coredump discovery may not work: handler unknown"
+  end
+end

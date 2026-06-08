@@ -306,6 +306,8 @@ void AqlFunctionFeature::addListFunctions() {
   add({"RANGE", ".,.|.", flags, &functions::Range});
   add({"UNION", ".,.|+", flags, &functions::Union});
   add({"UNION_DISTINCT", ".,.|+", flags, &functions::UnionDistinct});
+  add({"UNION_DISTINCT_STABLE", ".,.|+", flags,
+       &functions::UnionDistinctStable});
   add({"MINUS", ".,.|+", flags, &functions::Minus});
   add({"OUTERSECTION", ".,.|+", flags, &functions::Outersection});
   add({"INTERSECTION", ".,.|+", flags, &functions::Intersection});

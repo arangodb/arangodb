@@ -33,10 +33,13 @@
 
 namespace arangodb {
 
+class DatabaseFeature;
+
 class VectorIndexFeature final
     : public application_features::ApplicationFeature {
  public:
-  explicit VectorIndexFeature(application_features::ApplicationServer& server);
+  VectorIndexFeature(application_features::ApplicationServer& server,
+                     DatabaseFeature& databaseFeature);
 
   static constexpr std::string_view name() noexcept { return "VectorIndex"; }
 
@@ -59,6 +62,7 @@ class VectorIndexFeature final
  private:
   bool shouldRunBuildManager() const;
 
+  DatabaseFeature& _databaseFeature;
   std::optional<vector::VectorIndexBuildManager> _buildManager;
 };
 

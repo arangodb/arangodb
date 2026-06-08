@@ -73,7 +73,6 @@
 #include "RestServer/ViewTypesFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionState.h"
@@ -322,7 +321,6 @@ Result upgradeArangoSearchLinkCollectionName(
       !vocbase.server().getFeature<ClusterFeature>().isEnabled()) {
     return {};  // not applicable for other ServerState roles
   }
-  auto& selector = vocbase.server().getFeature<EngineSelectorFeature>();
   auto& clusterInfo =
       vocbase.server().getFeature<ClusterFeature>().clusterInfo();
   // persist collection names in links
@@ -376,12 +374,12 @@ Result upgradeArangoSearchLinkCollectionName(
             LOG_TOPIC("b269d", INFO, arangodb::iresearch::TOPIC)
                 << "Setting collection name '" << clusterCollectionName
                 << "' for link " << id;
-            if (selector.engineName() == RocksDBEngine::kEngineName) {
-              auto& engine = selector.engine<RocksDBEngine>();
+            if (auto* engine = dynamic_cast<RocksDBEngine*>(&vocbase.engine());
+                engine != nullptr) {
               auto builder = collection->toVelocyPackIgnore(
                   {"path"},
                   LogicalDataSource::Serialization::PersistenceWithInProgress);
-              auto res = engine.writeCreateCollectionMarker(
+              auto res = engine->writeCreateCollectionMarker(
                   vocbase.id(), collection->id(), builder.slice(),
                   RocksDBLogValue::Empty());
               if (res.fail()) {
@@ -393,13 +391,13 @@ Result upgradeArangoSearchLinkCollectionName(
               }
 #ifdef ARANGODB_USE_GOOGLE_TESTS
               // for unit tests just ignore write to storage
-            } else if (selector.engineName() != "Mock") {
+            } else if (vocbase.engine().typeName() != "Mock") {
 #else
             } else {
 #endif
               TRI_ASSERT(false);
               LOG_TOPIC("d6edc", WARN, arangodb::iresearch::TOPIC)
-                  << "Unsupported engine '" << selector.engineName()
+                  << "Unsupported engine '" << vocbase.engine().typeName()
                   << "' for link upgrade task";
             }
           }
@@ -862,17 +860,17 @@ bool isOffsetInfo(aql::Function const& func) noexcept {
 }
 
 IResearchFeature::IResearchFeature(
-    application_features::ApplicationServer& server)
+    application_features::ApplicationServer& server,
+    metrics::MetricsFeature& metrics)
     : ApplicationFeature{server, *this},
       _async(std::make_unique<IResearchAsync>()),
-      _outOfSyncLinks(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_search_num_out_of_sync_links{})),
+      _outOfSyncLinks(metrics.add(arangodb_search_num_out_of_sync_links{})),
 #ifdef USE_ENTERPRISE
-      _columnsCacheMemoryUsed(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_search_columns_cache_size{})),
+      _columnsCacheMemoryUsed(
+          metrics.add(arangodb_search_columns_cache_size{})),
 #endif
-      _searchExecutionPool(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_search_execution_threads_demand{})) {
+      _searchExecutionPool(
+          metrics.add(arangodb_search_execution_threads_demand{})) {
   setOptional(true);
   startsAfter<application_features::ClusterFeaturePhase>();
   startsAfter<IResearchAnalyzerFeature>();
