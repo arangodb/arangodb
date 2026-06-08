@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertTrue, print, fail */
+/*global assertEqual, assertTrue, print, fail, arango */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
@@ -26,6 +26,7 @@
 
 const jsunity = require("jsunity");
 const {aql, db, errors} = require("@arangodb");
+const internal = require("internal");
 
 function aqlSatelliteMaterializeRegressionTestSuite() {
   const database = "UnitTestsSatelliteMaterializeRegression";
@@ -37,8 +38,8 @@ function aqlSatelliteMaterializeRegressionTestSuite() {
     setUpAll: function() {
       db._createDatabase(database);
       db._useDatabase(database);
-      c1 = db._create(cn1, {replicationFactor: "satellite", numberOfShards: 1})
-      c2 = db._create(cn2, {replicationFactor: "satellite", numberOfShards: 1})
+      let c1 = db._create(cn1, {replicationFactor: "satellite", numberOfShards: 1});
+      let c2 = db._create(cn2, {replicationFactor: "satellite", numberOfShards: 1});
 
       let c1Shards = c1.shards(true);
       let c1Servers = c1Shards[Object.keys(c1Shards)[0]];
@@ -56,7 +57,7 @@ function aqlSatelliteMaterializeRegressionTestSuite() {
           collection: cn1,
           shard: Object.keys(c1),
           fromServer: c1Servers[0],
-          toServer: c1Server[1]
+          toServer: c1Servers[1]
         });
         const moveShardId = moveShardResult.id;
 
@@ -78,7 +79,7 @@ function aqlSatelliteMaterializeRegressionTestSuite() {
                    INTO ${cn1}`);
       db._query(`FOR i IN 1..1000
                    INSERT {_key: CONCAT("${cn2}",i), i}
-                   INTO ${cn2}`)
+                   INTO ${cn2}`);
 
       
     },
@@ -94,7 +95,6 @@ function aqlSatelliteMaterializeRegressionTestSuite() {
             FILTER sv._id == se._id 
             RETURN [se, sv]`;
 
-      require("internal").print(`${query}`);
       // this crashes in maintainer mode prior to the patch
       // introduced in PR #22776
       // if the two satellite collections created above have
