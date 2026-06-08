@@ -388,11 +388,15 @@ RocksDBVectorIndex::bruteForceSearch(
   };
 
   //  Iterate over all documents in the shard and build the heap.
+  //  TODO: Redesign and refactor the min/max implementations
+  //  https://arangodb.atlassian.net/browse/COR-615
   iter->allDocuments([&](LocalDocumentId docId, aql::DocumentData&&,
                          velocypack::Slice docSlice) -> bool {
     currentDocVector.clear();
     auto ret = getNormalizedVectorFromDocument(docSlice, currentDocVector);
-    if (!ret) return true;
+    if (!ret) {
+      return true;
+    }
 
     if (hasFilter && !filterDocuments(config, ctx, docSlice)) {
       return true;
