@@ -761,10 +761,11 @@ interface for the duration of each suite's deployment.
 mix toast --build-dir /path/to/build --capture-traffic
 ```
 
-When enabled, Toast starts a tcpdump process alongside each deployment. The
-raw pcap file is written to the deployment's work directory. After the suite
-completes, tshark extracts HTTP request/response data and stores it in the
-diagnostics file for offline analysis.
+When enabled, Toast starts a tcpdump process that captures all traffic on the
+loopback interface for the duration of each suite. The raw pcap file is written
+to `{base_dir}/traffic/{suite_name}.pcap`. After the suite completes, tshark
+extracts HTTP request/response data and stores it in the diagnostics file for
+offline analysis.
 
 ### Analyzing Captured Traffic
 
@@ -792,6 +793,9 @@ logs.
 | `--traffic-methods <methods>` | Filter by HTTP method (comma-separated, e.g., `POST,PUT`) |
 | `--traffic-endpoints <specs>` | Filter by URI substring (comma-separated) |
 | `--traffic-status <range>` | Filter by status code or range (e.g., `500` or `400-599`) |
+| `--traffic-body-limit <n>` | Max bytes of body to display (default: 200, `0` or `unlimited` for no limit) |
+| `--traffic-raw-body` | Show raw bytes instead of decoding VelocyPack bodies |
+| `--traffic-all-headers` | Show all HTTP headers (default: only interesting ones) |
 
 ### CI Packaging
 
