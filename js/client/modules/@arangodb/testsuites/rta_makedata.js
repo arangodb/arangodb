@@ -286,12 +286,24 @@ function makeDataWrapper (options) {
               };
               return;
             }
+          }
+          if (count === 2) {
+            let clientInstances = [];
             try {
               if (this.options.oldSource !== undefined) {
                 print("switching binary set");
                 pu.switchBinarySet(1);
               }
-              this.instanceManager.upgradeCycleInstance();
+              this.instanceManager.upgradeCycleInstance(false, {
+                dbserverBefore: function() {
+                  //global.instanceManager = this.instanceManager;
+                  //ct.run.spawnStressArangoshInBG(clientInstances, "print('hello world')", "dbserverStress", 0, []);
+                },
+                dbserverAfter: function() {
+                  //if (ct.run.joinForceBGShells(this.options, clientInstances)) {
+                  //}
+                }
+              });
             } catch(e) {
               res.status = false;
               res.failed += 1;

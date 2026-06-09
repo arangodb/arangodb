@@ -1072,10 +1072,14 @@ class instanceManager {
     this.launchFinalize(startTime);
   }
 
-  upgradeCycleInstance(waitForShardsInSync) {
+  upgradeCycleInstance(waitForShardsInSync, hooks) {
     /// TODO:             self._check_for_shards_in_sync()
     let haveMaintainance = false;
     this.instanceRoles.forEach(role => {
+      let hook = `${role}Before`;
+      if (hooks.hasOwnProperty(hook)) {
+        hooks[hook]();
+      }
       this.arangods.forEach(arangod => {
         if (arangod.isRole(role)) {
           print(`${Date()} upgrading ${arangod.name}`);
@@ -1104,6 +1108,10 @@ class instanceManager {
             this.agencyMgr.detectAgencyAlive(this.httpJWTAuthOptions, true);
           }
         }
+      hook = `${role}Done`;
+      if (hooks.hasOwnProperty(hook)) {
+        hooks[hook]();
+      }
       });
     });
   }
