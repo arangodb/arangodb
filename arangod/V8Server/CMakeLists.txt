@@ -1,9 +1,11 @@
 if (USE_V8)
   add_library(arango_v8server STATIC
     FoxxFeature.cpp
+    FoxxOptionsProvider.cpp
     GlobalExecutorMethods.cpp
     V8Executor.cpp
     V8DealerFeature.cpp
+    V8DealerOptionsProvider.cpp
     v8-actions.cpp
     v8-analyzers.cpp
     v8-collection-util.cpp
