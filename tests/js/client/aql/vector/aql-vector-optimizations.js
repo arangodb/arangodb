@@ -37,9 +37,20 @@ const {
 } = require("@arangodb/testutils/vector-index-common");
 const isCluster = require("internal").isCluster();
 
-const dbName = "vectorIteratorScenariosDb";
-const collName = "vectorColl";
 const numberOfShards = 3;
+
+const ITERATOR_SCENARIO_CONFIGS = [
+    {
+        name: "trainedIndex",
+        numberOfDocs: 1000,
+        nProbeAndNlists: 8,
+    },
+    {
+        name: "linearScan",
+        numberOfDocs: 100,
+        nProbeAndNlists: 101,
+    },
+];
 
 const verifyResultsMatchFilter = function(results, filterFn, message) {
     for (let i = 0; i < results.length; ++i) {
@@ -70,14 +81,18 @@ const verifyTopK = function(results, k) {
 //
 // The collection has storedValues = ["val", "category"]. `extra` is NOT in
 // storedValues, so it forces scF=F or scP=F when used.
-function VectorIndexIteratorScenariosTestSuite() {
+function VectorIndexIteratorScenariosTestSuite(config) {
     let collection;
     let randomPoint;
     const dimension = 16;
     const numberOfDocsFactor = isCluster ? numberOfShards : 1;
-    const numberOfDocs = 100 * numberOfDocsFactor;
+    const numberOfDocs = config.numberOfDocs * numberOfDocsFactor;
+    const nProbeAndNlists = config.nProbeAndNlists;
+    const dbName = "vectorIteratorScenariosDb_" + config.name;
+    const collName = "vectorColl_" + config.name;
+    const indexName = "vector_l2_scenarios_" + config.name;
+
     const seed = generateSeed();
-    const nProbeAndNlists = 101;
 
     const indexNode = function(plan) {
         const ns = plan.nodes.filter(n => n.type === "EnumerateNearVectorNode");
@@ -161,7 +176,7 @@ function VectorIndexIteratorScenariosTestSuite() {
 
             insertDocsAndAssertIndexStates({
                 collection, docs, seed,
-                indexName: "vector_l2_scenarios",
+                indexName: indexName,
                 indexDef: {
                     type: "vector",
                     fields: ["vector"],
@@ -373,6 +388,16 @@ function VectorIndexIteratorScenariosTestSuite() {
     };
 }
 
-jsunity.run(VectorIndexIteratorScenariosTestSuite);
+function makeVectorIndexIteratorScenariosTestSuite(config) {
+    return function () {
+        return VectorIndexIteratorScenariosTestSuite(config);
+    };
+}
 
-return jsunity.done();
+let result = 0;
+for (const config of ITERATOR_SCENARIO_CONFIGS) {
+    jsunity.run(makeVectorIndexIteratorScenariosTestSuite(config));
+    result = jsunity.done();
+}
+
+return result;
