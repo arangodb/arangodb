@@ -131,8 +131,10 @@ defmodule ToastTest.Runner.Timeout do
   defp resolve_source(timeout), do: {timeout, :test}
 
   defp abort_with_timeout(source, reason) do
-    Logger.warning("#{reason} — aborting suite")
-    EventStore.notify(%{event: :timeout_kill, source: source, reason: reason, servers: []})
-    Abort.abort!({:timeout, reason})
+    if is_nil(Abort.reason()) do
+      Logger.warning("#{reason} — aborting suite")
+      EventStore.notify(%{event: :timeout_kill, source: source, reason: reason, servers: []})
+      Abort.abort!({:timeout, reason})
+    end
   end
 end
