@@ -243,8 +243,7 @@ defmodule Toast.Deployment.Controller do
 
       {:error, reason, failed_state} ->
         Logger.debug("Deploy failed: #{inspect(reason)}")
-        new_state = ShutdownPipeline.handle_deploy_failure(failed_state, reason)
-        {:reply, {:error, reason}, new_state}
+        {:reply, {:error, reason}, %{failed_state | status: :failed, error: reason}}
     end
   end
 

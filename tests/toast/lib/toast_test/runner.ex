@@ -414,7 +414,7 @@ defmodule ToastTest.Runner do
         id = Toast.Deployment.generate_id(mode)
         deployment_dir = Path.join([test_config.base_dir, entry.name, id])
 
-        case Toast.Deployment.start(deploy_config, deployment_dir,
+        case Toast.Deployment.attempt_start(deploy_config, deployment_dir,
                id: id,
                event_listener: ToastTest.ManagedDeploymentListener
              ) do
@@ -429,8 +429,8 @@ defmodule ToastTest.Runner do
               {netstat_tool, baseline}
             )
 
-          {:error, reason} ->
-            handle_deployment_failure(suite_run, entry, reason, ex_unit_opts)
+          {:error, reason, deployment} ->
+            handle_deployment_failure(deployment, suite_run, entry, reason, ex_unit_opts)
         end
     end
   end
@@ -501,13 +501,34 @@ defmodule ToastTest.Runner do
     finalize_suite(nil, stats, test_data, suite_run.test_config, nil)
   end
 
-  defp handle_deployment_failure(suite_run, %SuiteEntry{} = entry, reason, ex_unit_opts) do
+  defp handle_deployment_failure(
+         deployment,
+         suite_run,
+         %SuiteEntry{} = entry,
+         reason,
+         ex_unit_opts
+       ) do
     suite_module = suite_run.suite_module
     test_config = suite_run.test_config
     mode = suite_run.deployment_mode
 
     Logger.error("Deployment failed for suite #{inspect(suite_module)}: #{inspect(reason)}")
     Abort.abort!({:deploy_failed, "Deployment failed: #{inspect(reason)}"})
+
+    if reason == :timeout do
+      servers =
+        Enum.map(deployment.servers, fn {id, server} ->
+          %{server_id: id, os_pid: nil, log_file: server.log_file}
+        end)
+
+      ToastTest.EventStore.notify(%{
+        event: :timeout_kill,
+        deployment_id: deployment.id,
+        source: :startup,
+        reason: "Startup timeout — deployment did not become ready in time",
+        servers: servers
+      })
+    end
 
     {stats, test_data} =
       mark_all_with_state(
@@ -520,7 +541,7 @@ defmodule ToastTest.Runner do
         mode
       )
 
-    finalize_suite(nil, stats, test_data, test_config, nil)
+    finalize_suite(deployment, stats, test_data, test_config, nil)
   end
 
   defp finalize_suite(deployment, stats, test_data, test_config, capture_pid) do
