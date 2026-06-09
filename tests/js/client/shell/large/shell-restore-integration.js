@@ -1336,7 +1336,7 @@ function restoreIntegrationSuite() {
     },
 
     // Test for restoring deprecated fulltext index type
-    // Fulltext indexes are deprecated and should be converted to inverted
+    // Fulltext indexes are no longer supported and should be skipped on restore
     testRestoreDeprecatedFulltextIndex: function () {
       let path = fs.getTempFile();
       fs.makeDirectory(path);
@@ -1367,14 +1367,12 @@ function restoreIntegrationSuite() {
 
       let c = db._collection(cn);
       let indexes = c.indexes();
-      // Fulltext index should be converted to inverted
-      assertEqual(2, indexes.length);
+      // Fulltext index should be skipped, leaving only the primary index
+      assertEqual(1, indexes.length);
       assertEqual("primary", indexes[0].type);
       assertEqual(["_key"], indexes[0].fields);
-      // Fulltext index converted to inverted
-      assertEqual("inverted", indexes[1].type);
-      assertEqual("textField", indexes[1].fields[0].name);
 
+      // data is still restored even though the fulltext index is dropped
       assertEqual(100, c.count());
       fs.removeDirectoryRecursive(path, true);
     },

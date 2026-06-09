@@ -98,6 +98,7 @@
 #include "Enterprise/Aql/Optimizer/Rule/RemoveSatelliteJoins.h"
 #include "Enterprise/Aql/Optimizer/Rule/ScatterSatelliteGraph.h"
 #include "Enterprise/Aql/Optimizer/Rule/SmartJoins.h"
+#include "Enterprise/Aql/Optimizer/Rule/SmartJoinSmartEdge.h"
 #include "Enterprise/Aql/Optimizer/Rule/SubqueryToDBServer.h"
 #include "Enterprise/Aql/Optimizer/Rule/DistributeOffsetInfoToCluster.h"
 #include "Enterprise/Aql/Optimizer/Rule/LateMaterializationOffsetInfo.h"
@@ -666,6 +667,14 @@ down calculations to a DB-Server.)");
                R"(Reduce inter-node joins to server-local joins.
 This rule is only employed when joining two collections with identical sharding
 setup via their shard keys.)");
+
+  registerRule("smart-join-smart-edge", smartJoinSmartEdgeRule,
+               OptimizerRule::smartJoinSmartEdgeRule,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
+                                        OptimizerRule::Flags::ClusterOnly,
+                                        OptimizerRule::Flags::EnterpriseOnly),
+               R"(Similar to smart-joins, reduce inter-node joins to
+server-local joins using knowledge about smart edge data distribution.)");
 #endif
 
   // distribute operations in cluster
