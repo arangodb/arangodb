@@ -255,7 +255,7 @@ function VectorIndexUnusableShardLinearScanSuite() {
                 return;
 
             const collName = "vecLinearScanFilter";
-            const nListsSmall = 10;
+            const nListsSmall = 1;
             const nListsLarge = 20;
             const c = db._create(collName, {numberOfShards: 1});
 
@@ -279,8 +279,12 @@ function VectorIndexUnusableShardLinearScanSuite() {
                 },
             };
 
-            c.ensureIndex(Object.assign({name: "vec_ready", params: Object.assign({}, indexParams.params, {nLists: nListsSmall})}, indexParams));
-            c.ensureIndex(Object.assign({name: "vec_linear", params: Object.assign({}, indexParams.params, {nLists: nListsLarge})}, indexParams));
+            const makeIndexDef = (name, nLists) => Object.assign({}, indexParams, {
+                name,
+                params: Object.assign({}, indexParams.params, {nLists}),
+            });
+            c.ensureIndex(makeIndexDef("vec_ready", nListsSmall));
+            c.ensureIndex(makeIndexDef("vec_linear", nListsLarge));
 
             assertTrue(
                 waitForVectorIndexState(c, "vec_ready", VectorIndexTrainingState.kReady, 120));
