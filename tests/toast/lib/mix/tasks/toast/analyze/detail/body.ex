@@ -129,6 +129,17 @@ defmodule Mix.Tasks.Toast.Analyze.Detail.Body do
     print_netstat_trajectory(issue, color)
   end
 
+  def print(%{type: :infrastructure, detail: %{subtype: subtype} = detail}, color, _bt_opts) do
+    label = subtype |> to_string() |> String.replace("_", " ") |> String.upcase()
+    Mix.shell().info("  #{colorize(label, :red, color)}")
+
+    if detail[:timestamp] do
+      Mix.shell().info("  Time:   #{Data.fmt_dt(detail.timestamp)}")
+    end
+
+    Mix.shell().info("  Detail: #{inspect(Map.drop(detail, [:subtype, :timestamp]))}")
+  end
+
   defp print_direction(_label, stats, _color) when stats == %{}, do: :ok
 
   defp print_direction(label, stats, color) do

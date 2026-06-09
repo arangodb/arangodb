@@ -431,6 +431,9 @@ defmodule ToastTest.Runner do
 
           {:error, reason, deployment} ->
             handle_deployment_failure(deployment, suite_run, entry, reason, ex_unit_opts)
+
+          {:error, reason} ->
+            handle_deployment_failure(nil, suite_run, entry, reason, ex_unit_opts)
         end
     end
   end
@@ -514,21 +517,6 @@ defmodule ToastTest.Runner do
 
     Logger.error("Deployment failed for suite #{inspect(suite_module)}: #{inspect(reason)}")
     Abort.abort!({:deploy_failed, "Deployment failed: #{inspect(reason)}"})
-
-    if reason == :timeout do
-      servers =
-        Enum.map(deployment.servers, fn {id, server} ->
-          %{server_id: id, os_pid: nil, log_file: server.log_file}
-        end)
-
-      ToastTest.EventStore.notify(%{
-        event: :timeout_kill,
-        deployment_id: deployment.id,
-        source: :startup,
-        reason: "Startup timeout — deployment did not become ready in time",
-        servers: servers
-      })
-    end
 
     {stats, test_data} =
       mark_all_with_state(

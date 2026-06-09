@@ -125,14 +125,14 @@ defmodule ToastTest.Enrichment.Logs do
   defp read_trailing_block(_device, 0), do: []
 
   defp read_trailing_block(device, file_size) do
-    scan_backwards(device, file_size, "", [])
+    scan_backwards(device, file_size, "", [], 0)
   end
 
-  defp scan_backwards(_device, 0, leftover, acc) do
-    finalize_block(leftover, acc)
+  defp scan_backwards(_device, 0, leftover, acc, count) do
+    finalize_block(leftover, acc, count)
   end
 
-  defp scan_backwards(device, pos, leftover, acc) do
+  defp scan_backwards(device, pos, leftover, acc, count) do
     read_start = max(pos - @chunk_size, 0)
     bytes_to_read = pos - read_start
 
@@ -142,39 +142,42 @@ defmodule ToastTest.Enrichment.Logs do
     data = chunk <> leftover
     [new_leftover | lines] = String.split(data, "\n")
 
-    case process_lines_reverse(Enum.reverse(lines), acc) do
-      {:done, result} -> result
-      {:continue, new_acc} -> scan_backwards(device, read_start, new_leftover, new_acc)
+    case process_lines_reverse(Enum.reverse(lines), acc, count) do
+      {:done, result} ->
+        result
+
+      {:continue, new_acc, new_count} ->
+        scan_backwards(device, read_start, new_leftover, new_acc, new_count)
     end
   end
 
-  defp process_lines_reverse([], acc), do: {:continue, acc}
+  defp process_lines_reverse([], acc, count), do: {:continue, acc, count}
 
-  defp process_lines_reverse([line | rest], []) do
-    cond do
-      line == "" ->
-        process_lines_reverse(rest, [])
-
-      true ->
-        case parse_and_check_level(line) do
-          {:ok, entry} -> process_lines_reverse(rest, [entry])
-          _ -> {:done, []}
-        end
+  defp process_lines_reverse([line | rest], [], 0) do
+    if line == "" do
+      process_lines_reverse(rest, [], 0)
+    else
+      case parse_and_check_level(line) do
+        {:ok, entry} -> process_lines_reverse(rest, [entry], 1)
+        _ -> {:done, []}
+      end
     end
   end
 
-  defp process_lines_reverse([_line | _rest], acc) when length(acc) >= @max_trailing_errors do
+  defp process_lines_reverse(_lines, acc, count) when count >= @max_trailing_errors do
     {:done, acc}
   end
 
-  defp process_lines_reverse([line | rest], acc) do
+  defp process_lines_reverse([line | rest], acc, count) do
     case parse_and_check_level(line) do
-      {:ok, entry} -> process_lines_reverse(rest, [entry | acc])
+      {:ok, entry} -> process_lines_reverse(rest, [entry | acc], count + 1)
       _ -> {:done, acc}
     end
   end
 
-  defp finalize_block(leftover, acc) do
+  defp finalize_block(_leftover, acc, count) when count >= @max_trailing_errors, do: acc
+
+  defp finalize_block(leftover, acc, _count) do
     case parse_and_check_level(leftover) do
       {:ok, entry} -> [entry | acc]
       _ -> acc

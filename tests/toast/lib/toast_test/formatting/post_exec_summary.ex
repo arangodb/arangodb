@@ -188,6 +188,12 @@ defmodule ToastTest.Formatting.PostExecSummary do
     counter + 1
   end
 
+  defp print_issue(:infrastructure, %{detail: %{subtype: subtype} = detail}, counter, colors) do
+    label = subtype |> to_string() |> String.replace("_", " ")
+    IO.puts("\n  #{colorize("[#{label}] #{inspect(detail)}", :red, colors)}")
+    counter + 1
+  end
+
   defp print_server_detail(server, colors) do
     pid_part = if server.os_pid, do: " (PID #{server.os_pid})", else: ""
     IO.puts("    #{colorize("#{server.server_id}#{pid_part}", :cyan, colors)}")
