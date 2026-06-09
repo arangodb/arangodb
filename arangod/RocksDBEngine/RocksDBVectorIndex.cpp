@@ -252,23 +252,11 @@ void RocksDBVectorIndex::toVelocyPack(
     builder.close();
   }
 
-  auto const isEmptyShard = [&]() noexcept -> bool {
-    // On DBServers (and single server) this is a RocksDB collection.
-    // For empty shards, vector search should be allowed and return no results.
-    auto* physical = collection().getPhysical();
-    auto* meta = dynamic_cast<RocksDBMetaCollection*>(physical);
-    return meta != nullptr && meta->meta().numberDocuments() == 0;
-  };
-
   auto const trainingState = _trainingState.load();
-  auto const reportedState =
-      (trainingState == VectorIndexTrainingState::kUnusable && isEmptyShard())
-          ? VectorIndexTrainingState::kReady
-          : trainingState;
 
   builder.add(StaticStrings::IndexTrainingState,
-              VPackValue(trainingStateToString(reportedState)));
-  if (reportedState == VectorIndexTrainingState::kUnusable) {
+              VPackValue(trainingStateToString(trainingState)));
+  if (trainingState == VectorIndexTrainingState::kUnusable) {
     builder.add(StaticStrings::ErrorMessage,
                 VPackValue("not enough training data for vector index"));
   }
