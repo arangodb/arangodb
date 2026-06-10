@@ -14,12 +14,13 @@ int main(int argc, char const** argv) {
   auto const results = find_all_activities(argv[1]);
 
   for (auto const& activity : results) {
-    std::cout << activity.data_type << "  (" << activity.owner_file << ":"
+    std::cout << activity.type << "  (" << activity.owner_file << ":"
               << activity.owner_line << ")  ";
-    if (activity.type_definition.empty()) {
-      std::cout << "dynamic (no statically known fields)";
-    } else {
-      std::cout << activity.type_definition.size() << " struct(s)";
+    if (activity.data_type.has_value()) {
+      std::cout << activity.data_type.value();
+    }
+    if (not activity.type_definition.empty()) {
+      std::cout << " with " << activity.type_definition.size() << " struct(s)";
     }
     std::cout << "\n";
   }

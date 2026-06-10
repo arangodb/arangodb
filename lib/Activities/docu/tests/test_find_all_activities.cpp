@@ -29,7 +29,9 @@ std::ostream& operator<<(std::ostream& os, Struct const& strct) {
 std::ostream& operator<<(std::ostream& os, ActivityDeclaration const& decl) {
   os << "ActivityDeclaration{.owner_file=\"" << decl.owner_file
      << "\", .owner_line=" << decl.owner_line << ", .type=\"" << decl.type
-     << "\", .data_type=\"" << decl.data_type << "\", .field_types={";
+     << "\", .data_type=\""
+     << (decl.data_type.has_value() ? decl.data_type.value() : "None")
+     << "\", .field_types={";
   for (size_t index = 0; index < decl.type_definition.size(); ++index) {
     if (index != 0) os << ", ";
     os << decl.type_definition[index];
