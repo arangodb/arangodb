@@ -1,7 +1,9 @@
 #pragma once
 
+#include <optional>
 #include <string>
 #include <vector>
+
 /**
  * A single public field of a record: its name and source-spelled type.
  *
@@ -56,7 +58,7 @@ struct ActivityDeclaration {
   std::string owner_file;
   unsigned owner_line = 0;
   std::string type;
-  std::string data_type;
+  std::optional<std::string> data_type;
   std::vector<Struct> type_definition;
 
   auto operator==(ActivityDeclaration const&) const -> bool = default;
