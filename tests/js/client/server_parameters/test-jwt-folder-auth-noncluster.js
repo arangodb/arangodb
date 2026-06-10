@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, assertEqual, assertNotEqual, assertTrue, assertFalse, arango */
+/* global getOptions */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -24,8 +24,13 @@
 /// @author Max Neunhoeffer
 // //////////////////////////////////////////////////////////////////////////////
 
+const jsunity = require('jsunity');
+const {assertEqual, assertTrue, assertFalse, assertNotEqual} = jsunity.jsUnity.assertions;
 const fs = require('fs');
+const request = require("@arangodb/request");
 const crypto = require('@arangodb/crypto');
+const arango = require("@arangodb").arango;
+let IM = global.instanceManager;
 
 // Dummy ES256 key pair 1 (primary)
 const privateKey1 = `-----BEGIN PRIVATE KEY-----
@@ -73,12 +78,7 @@ if (getOptions === true) {
   };
 }
 
-const jsunity = require('jsunity');
-const request = require("@arangodb/request");
-
 function testSuite() {
-  const baseUrl = arango.getEndpoint().replace(/^tcp:/, 'http:');
-
   // Helper function to create a JWT token
   let createToken = function(privateKey, payload) {
     const defaultPayload = {
@@ -94,7 +94,7 @@ function testSuite() {
   let makeRequest = function(token) {
     let options = {
       method: "GET",
-      url: baseUrl + "/_api/version"
+      url: IM.url + "/_api/version"
     };
 
     if (token !== undefined) {
@@ -200,7 +200,7 @@ function testSuite() {
       const token = createToken(privateKey1);
       const res = request({
         method: "GET",
-        url: baseUrl + "/_api/database/current",
+        url: IM.url + "/_api/database/current",
         auth: { bearer: token }
       });
       assertEqual(200, res.status, "Request to protected endpoint should succeed with valid token");
@@ -209,7 +209,7 @@ function testSuite() {
     testRequestToProtectedEndpointWithoutAuth : function () {
       const res = request({
         method: "GET",
-        url: baseUrl + "/_api/database/current"
+        url: IM.url + "/_api/database/current"
       });
       assertEqual(401, res.status, "Request to protected endpoint without token should fail");
     },

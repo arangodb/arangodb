@@ -72,7 +72,6 @@
 #include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "Sharding/ShardingFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
@@ -256,9 +255,6 @@ struct IResearchExpressionFilterTest
     features.emplace_back(
         server.addFeature<arangodb::MaintenanceFeature>(nullptr), false);
 
-    auto& selector = server.addFeature<arangodb::EngineSelectorFeature>();
-    features.emplace_back(selector, false);
-    selector.setEngineTesting(&engine);
     databaseFeature.setEngineTesting(&engine);
     auto& metrics = server.addFeature<arangodb::metrics::MetricsFeature>(
         arangodb::LazyApplicationFeatureReference<
@@ -338,8 +334,6 @@ struct IResearchExpressionFilterTest
   ~IResearchExpressionFilterTest() {
     system.reset();  // destroy before reseting the 'ENGINE'
     arangodb::AqlFeature(server).stop();  // unset singleton instance
-    server.getFeature<arangodb::EngineSelectorFeature>().setEngineTesting(
-        nullptr);
     server.getFeature<arangodb::DatabaseFeature>().setEngineTesting(nullptr);
 
     // destroy application features

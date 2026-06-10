@@ -34,7 +34,6 @@
 #include "Cluster/ServerDefaults.h"
 #include "Cluster/ServerState.h"
 #include "Futures/Utilities.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionState.h"
@@ -454,8 +453,7 @@ async<void> RestCollectionHandler::handleCommandPut() {
     bool flush = _request->parsedValue("flush", false);
 
     if (flush && !coll->deleted()) {
-      server().getFeature<EngineSelectorFeature>().engine().flushWal(false,
-                                                                     false);
+      _vocbase.engine().flushWal(false, false);
     }
 
     // apart from WAL flushing, unload is a no-op starting with 3.9

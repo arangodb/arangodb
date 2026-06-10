@@ -28,12 +28,9 @@ const jsunity = require("jsunity");
 
 const arangodb = require("@arangodb");
 const db = arangodb.db;
-const ERRORS = arangodb.errors;
 const tasks = require("@arangodb/tasks");
 const _ = require("lodash");
 const wait = require("internal").wait;
-const suspendExternal = require("internal").suspendExternal;
-const continueExternal = require("internal").continueExternal;
 const {
   getDBServers,
   getEndpointById
@@ -122,7 +119,7 @@ function ClusterTransactionSuite() {
                           x => x.url === endpoint);
   
     assertTrue(pos >= 0);
-    assertTrue(suspendExternal(arangods[pos].pid));
+    assertTrue(arangods[pos].suspend());
     console.info("Have failed follower", follower);
     return pos;
   }
@@ -139,7 +136,7 @@ function ClusterTransactionSuite() {
     var pos = _.findIndex(arangods,
                           x => x.url === endpoint);
     assertTrue(pos >= 0);
-    assertTrue(continueExternal(arangods[pos].pid));
+    assertTrue(arangods[pos].resume());
     console.info("Have healed follower", follower);
   }
 

@@ -31,7 +31,6 @@
 #include "RocksDBEngine/RocksDBSyncThread.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "Statistics/ServerStatistics.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 
 #include <absl/cleanup/cleanup.h>
 #include <absl/strings/str_cat.h>

@@ -98,9 +98,8 @@ function createUsers() {
   users.grantCollection("foobaruser", "_system", "*");
   users.grantDatabase("foobaruser", "UnitTestsDumpSrc");
   users.grantCollection("foobaruser", "UnitTestsDumpSrc", "*");
-  var endpoint = arango.getEndpoint();
 
-  arango.reconnect(endpoint, "UnitTestsDumpSrc", "foobaruser", "foobarpasswd");
+  arango.reconnect(IM.endpoint, "UnitTestsDumpSrc", "foobaruser", "foobarpasswd");
 }
 
 function createEmpty() {

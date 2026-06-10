@@ -48,8 +48,6 @@ struct ThreadLocalLeaser {
     auto operator*() noexcept -> T& { return *get(); }
     auto operator*() const noexcept -> T const& { return *get(); }
 
-    // TODO: this is used precisely in one (dubious) place
-    // Maybe we can remove that;
     auto release() -> std::unique_ptr<T> {
       return std::exchange(_object, nullptr);
     }
@@ -66,11 +64,6 @@ struct ThreadLocalLeaser {
   static auto stashSize() noexcept -> size_t { return current._stash.size(); }
   static constexpr auto maxStashedPerThread = size_t{128};
   static auto lease() -> Lease { return current.doLease(); }
-  // TODO: This is a hack to enable RocksDBKeyLeaser to return a
-  // string to the stash.
-  static auto acquire(std::unique_ptr<T>&& item) {
-    current._stash.emplace_back(std::move(item));
-  }
   static auto clear() -> void { current._stash.clear(); }
   friend struct Lease;
 

@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 200 */
-/* global fail, assertTrue, assertFalse, assertEqual, assertNotEqual, arango */
+/* global fail */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -25,11 +25,13 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require('jsunity');
+const {assertEqual, assertTrue, assertFalse, assertNotEqual} = jsunity.jsUnity.assertions;
+const arangodb = require("@arangodb");
+const arango = arangodb.arango;
+const db = arangodb.db;
 const internal = require('internal');
-const arangodb = require('@arangodb');
 const fs = require('fs');
 const pu = require('@arangodb/testutils/process-utils');
-const db = arangodb.db;
 const isCluster = require("internal").isCluster();
 const dbs = ["_system", "maçã", "😀", "ﻚﻠﺑ ﻞﻄﻴﻓ", "testName"];
 const extendedName = "Десятую Международную Конференцию по 💩🍺🌧t⛈c🌩_⚡🔥💥🌨";
@@ -75,9 +77,8 @@ function dumpIntegrationSuite() {
   assertTrue(fs.isFile(arangodump), "arangodump not found!");
 
   let addConnectionArgs = function (args) {
-    let endpoint = arango.getEndpoint().replace(/\+vpp/, '').replace(/^http:/, 'tcp:').replace(/^https:/, 'ssl:').replace(/^h2:/, 'tcp:');
     args.push('--server.endpoint');
-    args.push(endpoint);
+    args.push(global.instanceManager.endpoint);
     if (args.indexOf("--all-databases") === -1) {
       args.push('--server.database');
       args.push(arango.getDatabaseName());

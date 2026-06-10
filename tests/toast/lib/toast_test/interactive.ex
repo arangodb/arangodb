@@ -20,167 +20,153 @@
 ################################################################################
 
 defmodule ToastTest.Interactive do
-  @moduledoc "Quick interactive debugging helper that runs tests with proper ExUnit lifecycle support (setup_all, setup, on_exit)."
+  @moduledoc """
+  Interactive debugging helper for running tests or complete suites against a
+  manually-started deployment, with proper ExUnit lifecycle support
+  (setup_all, setup, on_exit).
 
-  alias ToastTest.ExUnitCompat, as: Compat
-  alias ToastTest.TestLifecycle
+  Accepts a file path, directory path, test module, or suite module — the
+  target type is inferred automatically. All files in the suite directory are
+  always compiled so that cross-module dependencies are available.
 
-  @on_exit_timeout 30_000
+  ## Examples
+
+      # Run a single test file
+      Interactive.run("suites/smoke/test_version.exs", deployment: deployment)
+
+      # Run a single test module (compiles suite directory automatically)
+      Interactive.run(Smoke.VersionTest, deployment: deployment)
+
+      # Run a complete suite by directory
+      Interactive.run("suites/smoke/", deployment: deployment)
+
+      # Run a complete suite by module
+      Interactive.run(Smoke.Suite, deployment: deployment)
+
+      # Filter by test name
+      Interactive.run(Smoke.Suite, deployment: deployment, test: "version")
+
+  ## Limitations vs `mix toast`
+
+  - No event pipeline, result collection, or CI packaging
+  - No between-tests health checks (crashes won't auto-abort the suite)
+  - No timeout enforcement
+  - No test bucketing or tag-based filtering
+  """
+
+  alias __MODULE__.Resolver
+  alias __MODULE__.TestRunner
 
   @spec run(module() | String.t(), keyword()) :: [map()]
-  def run(module_or_path, opts \\ [])
-
-  def run(path, opts) when is_binary(path) do
+  def run(target, opts \\ []) do
     ensure_ex_unit_started()
-    compile_suite_deps(path)
-    [{module, _}] = recompile_file(path)
-    run(module, opts)
+    {suite_module, test_modules} = Resolver.resolve(target)
+    do_run(suite_module, test_modules, opts)
   end
 
-  def run(module, opts) when is_atom(module) do
+  defp do_run(suite_module, test_modules, opts) do
     deployment = Keyword.fetch!(opts, :deployment)
     test_name = Keyword.get(opts, :test)
+    exclude_tags = mode_exclusions(deployment)
 
-    suite_key =
-      if function_exported?(module, :__toast_suite__, 0),
-        do: module.__toast_suite__(),
-        else: :__standalone__
+    validate_deployment!(suite_module, deployment)
+    ToastTest.DeploymentRegistry.put(suite_module, deployment)
+    run_setup(suite_module, deployment)
 
-    ToastTest.DeploymentRegistry.put(suite_key, deployment)
+    results =
+      try do
+        Enum.flat_map(test_modules, fn module ->
+          if length(test_modules) > 1, do: IO.puts("\n── #{inspect(module)} ──")
+          results = TestRunner.run_module_tests(module, test_name, exclude_tags)
+          print_summary(results)
+          results
+        end)
+      after
+        run_teardown(suite_module, deployment)
+      end
 
-    test_module = module.__ex_unit__()
-    tests = filter_tests(test_module.tests, test_name)
-    run_with_lifecycle(test_module, tests)
-  end
-
-  defp filter_tests(tests, nil), do: tests
-
-  defp filter_tests(tests, name) do
-    name_atom = String.to_atom("test #{name}")
-    Enum.filter(tests, &(&1.name == name_atom))
-  end
-
-  defp run_with_lifecycle(%{setup_all?: false, name: module}, tests) do
-    context = %{module: module, async: false}
-    results = run_tests(module, tests, context)
-    print_summary(results)
+    if length(test_modules) > 1, do: print_summary(results, "Suite total")
     results
   end
 
-  defp run_with_lifecycle(%{name: module}, tests) do
-    context = %{module: module, async: false}
+  defp mode_exclusions(%Toast.Deployment{} = deployment) do
+    if Toast.Deployment.cluster?(deployment),
+      do: [:single_only],
+      else: [:cluster_only]
+  end
 
-    {module_pid, module_ref} = TestLifecycle.spawn_setup_all(module, context)
+  defp mode_exclusions(_), do: []
 
-    {results, setup_all_error} =
-      receive do
-        {^module_pid, :setup_all, {:ok, setup_all_context}} ->
-          results = run_tests(module, tests, setup_all_context)
-          TestLifecycle.exit_setup_all(module_pid, module_ref)
-          {results, nil}
-
-        {^module_pid, :setup_all, {:error, error}} ->
-          TestLifecycle.exit_setup_all(module_pid, module_ref)
-          {mark_all_failed(tests, module, error), error}
-
-        {:DOWN, ^module_ref, :process, ^module_pid, error} ->
-          failure = {:EXIT, error, []}
-          {mark_all_failed(tests, module, failure), failure}
+  defp run_setup(suite_module, deployment) do
+    extra_context =
+      if function_exported?(suite_module, :setup_deployment, 1) do
+        case suite_module.setup_deployment(deployment) do
+          {:ok, ctx} -> ctx
+          {:error, reason} -> raise "setup_deployment failed: #{inspect(reason)}"
+        end
+      else
+        %{}
       end
 
-    on_exit_error = run_on_exit(module_pid)
-
-    if on_exit_error && is_nil(setup_all_error) do
-      IO.puts("Warning: setup_all on_exit handler failed: #{inspect(on_exit_error)}")
-    end
-
-    print_summary(results)
-    results
+    ToastTest.DeploymentRegistry.put_extra_context(suite_module, extra_context)
   end
 
-  defp run_tests(module, tests, context) do
-    Enum.map(tests, &run_single_test(module, &1, context))
-  end
-
-  defp run_single_test(module, test, setup_all_context) do
-    parent_pid = self()
-
-    {test_pid, test_ref} =
-      spawn_monitor(fn ->
-        Compat.register_on_exit(self())
-        context = setup_all_context |> Map.merge(test.tags) |> Map.put(:test_pid, self())
-
-        result =
-          try do
-            context = Compat.get_test_setup(module, context)
-            apply(module, test.name, [context])
-
-            case ToastTest.Expect.collect_failures() do
-              [] -> :passed
-              failures -> {:failed, {:error, %ExUnit.MultiError{errors: failures}, []}}
-            end
-          catch
-            kind, error ->
-              case ToastTest.Expect.collect_failures() do
-                [] ->
-                  {:failed, {kind, error, __STACKTRACE__}}
-
-                prior ->
-                  all = prior ++ [{kind, error, __STACKTRACE__}]
-                  {:failed, {:error, %ExUnit.MultiError{errors: all}, []}}
-              end
-          end
-
-        send(parent_pid, {self(), :test_finished, result})
-        exit(:shutdown)
-      end)
-
-    result =
-      receive do
-        {^test_pid, :test_finished, :passed} ->
-          Process.demonitor(test_ref, [:flush])
-          %{module: module, name: test.name, outcome: :passed, failure: nil}
-
-        {^test_pid, :test_finished, {:failed, error}} ->
-          Process.demonitor(test_ref, [:flush])
-          %{module: module, name: test.name, outcome: :failed, failure: error}
-
-        {:DOWN, ^test_ref, :process, ^test_pid, error} ->
-          %{
-            module: module,
-            name: test.name,
-            outcome: :failed,
-            failure: {:EXIT, error, []}
-          }
-      end
-
-    case run_on_exit(test_pid) do
-      nil ->
-        result
-
-      on_exit_error when result.outcome == :passed ->
-        %{result | outcome: :failed, failure: on_exit_error}
-
-      _on_exit_error ->
-        result
+  defp run_teardown(suite_module, deployment) do
+    if function_exported?(suite_module, :teardown_deployment, 1) do
+      suite_module.teardown_deployment(deployment)
     end
   end
 
-  defp run_on_exit(pid) do
-    case TestLifecycle.run_on_exit(pid, @on_exit_timeout) do
-      :ok -> nil
-      error -> error
+  defp validate_deployment!(suite_module, deployment) do
+    suite_config = suite_module.deployment_config()
+
+    case Keyword.get(suite_config, :mode, :auto) do
+      mode when mode in [:auto, :manual] ->
+        :ok
+
+      :cluster ->
+        validate_mode!(:cluster, deployment)
+        validate_topology!(suite_config, deployment)
+
+      mode ->
+        validate_mode!(mode, deployment)
     end
   end
 
-  defp mark_all_failed(tests, module, failure) do
-    Enum.map(tests, &%{module: module, name: &1.name, outcome: :failed, failure: failure})
+  defp validate_mode!(expected_mode, deployment) do
+    is_cluster = Toast.Deployment.cluster?(deployment)
+
+    actual_mode =
+      if is_cluster, do: :cluster, else: :single_server
+
+    if expected_mode != actual_mode do
+      raise ArgumentError,
+            "suite requires #{expected_mode}, got #{actual_mode}"
+    end
   end
 
-  defp print_summary(results) do
+  defp validate_topology!(suite_config, deployment) do
+    check_server_count(deployment, :coordinator, Keyword.get(suite_config, :cluster_coordinators))
+    check_server_count(deployment, :dbserver, Keyword.get(suite_config, :cluster_dbservers))
+    check_server_count(deployment, :agent, Keyword.get(suite_config, :cluster_agents))
+  end
+
+  defp check_server_count(_deployment, _role, nil), do: :ok
+
+  defp check_server_count(deployment, role, required) do
+    actual = length(Toast.Deployment.servers(deployment, role: role))
+
+    if actual < required do
+      raise ArgumentError,
+            "suite requires #{required} #{role}(s), deployment has #{actual}"
+    end
+  end
+
+  defp print_summary(results, label \\ nil) do
     passed = Enum.count(results, &(&1.outcome == :passed))
     failed = Enum.count(results, &(&1.outcome == :failed))
-    IO.puts("#{passed} passed, #{failed} failed")
+    prefix = if label, do: "\n#{label}: ", else: ""
+    IO.puts("#{prefix}#{passed} passed, #{failed} failed")
   end
 
   defp ensure_ex_unit_started do
@@ -188,30 +174,5 @@ defmodule ToastTest.Interactive do
       {:ok, started} when started != [] -> ExUnit.start(autorun: false)
       {:ok, _} -> :ok
     end
-  end
-
-  defp recompile_file(path) do
-    prev = Code.compiler_options()[:ignore_module_conflict]
-    Code.compiler_options(ignore_module_conflict: true)
-
-    try do
-      Code.compile_file(path)
-    after
-      Code.compiler_options(ignore_module_conflict: prev)
-    end
-  end
-
-  # Compile suite.ex and helper .ex files in the same directory as the test file.
-  # This mirrors what `mix toast` does via discover_and_compile_suites + compile_helpers.
-  defp compile_suite_deps(test_path) do
-    suite_dir = Path.dirname(test_path)
-
-    ex_files =
-      suite_dir
-      |> Path.join("*.ex")
-      |> Path.wildcard()
-      |> Enum.sort_by(&(&1 |> Path.basename() != "suite.ex"))
-
-    Enum.each(ex_files, &Code.require_file/1)
   end
 end

@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, assertTrue, assertEqual, arango */
+/* global getOptions */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -26,18 +26,16 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 let jsunity = require('jsunity');
+const {assertEqual, assertTrue, assertFalse, assertNotEqual} = jsunity.jsUnity.assertions;
 const _ = require('lodash');
-const pu = require('@arangodb/testutils/process-utils');
-const crypto = require('@arangodb/crypto');
 const request = require("@arangodb/request");
-const suspendExternal = require("internal").suspendExternal;
-const continueExternal = require("internal").continueExternal;
+const arango = require("@arangodb").arango;
 const time = require("internal").time;
 const path = require('path');
 const FoxxManager = require('@arangodb/foxx/manager');
 const basePath = path.resolve(require("internal").pathForTesting('common'), 'test-data', 'apps', 'perdb1');
 
-const originalEndpoint = arango.getEndpoint();
+let IM = global.instanceManager;
 const originalUser = arango.connectedUser();
 const {
   getCtrlCoordinators,
@@ -86,6 +84,7 @@ function testSuite() {
 
   return {
     setUp : function() {
+      IM.rememberConnection();
       // make sure self heal has run, otherwise we may not be able to install
       arango.POST(`/_admin/execute`, "require('@arangodb/foxx/manager').healAll(); return 1");
      
@@ -103,7 +102,7 @@ function testSuite() {
     },
 
     tearDown : function() {
-      arango.reconnect(originalEndpoint, "_system", originalUser, "");
+      IM.reconnectMe();
       // make sure self heal has run, otherwise we may not be able to uninstall
       let res = arango.POST(`/_admin/execute`, "require('@arangodb/foxx/manager').healAll(); return 1");
       assertEqual("1", res);
@@ -159,7 +158,7 @@ function testSuite() {
       }
       
       // make sure self heal has run, otherwise we may not be able to access the app
-      arango.reconnect(originalEndpoint, "_system", originalUser, "");
+      arango.reconnect(IM.endpoint, "_system", originalUser, "");
       let res = arango.POST(`/_admin/execute`, "require('@arangodb/foxx/manager').healAll(); return 1");
       assertEqual("1", res);
         
@@ -193,7 +192,7 @@ function testSuite() {
       waitForAlive(30, coordinator.url, {});
       
       // make sure self heal has run 
-      arango.reconnect(originalEndpoint, "_system", originalUser, "");
+      arango.reconnect(IM.endpoint, "_system", originalUser, "");
       let res = arango.POST(`/_admin/execute`, "require('@arangodb/foxx/manager').healAll(); return 1");
       assertEqual("1", res);
 

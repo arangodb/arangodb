@@ -57,7 +57,6 @@
 #include "RestServer/ViewTypesFeature.h"
 #include "Statistics/StatisticsFeature.h"
 #include "Statistics/StatisticsWorker.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 
@@ -290,9 +289,6 @@ class IResearchOrderTest
     arangodb::tests::init();
 
     // setup required application features
-    auto& selector = server.addFeature<arangodb::EngineSelectorFeature>();
-    selector.setEngineTesting(&engine);
-    features.emplace_back(selector, false);
     auto& dbFeature = server.addFeature<arangodb::DatabaseFeature>();
     dbFeature.setEngineTesting(&engine);
     features.emplace_back(dbFeature, false);  // required for calculationVocbase
@@ -358,8 +354,6 @@ class IResearchOrderTest
     arangodb::aql::AqlFunctionFeature(server)
         .unprepare();                     // unset singleton instance
     arangodb::AqlFeature(server).stop();  // unset singleton instance
-    server.getFeature<arangodb::EngineSelectorFeature>().setEngineTesting(
-        nullptr);
     server.getFeature<arangodb::DatabaseFeature>().setEngineTesting(nullptr);
 
     // destroy application features

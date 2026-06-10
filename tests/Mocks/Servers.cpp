@@ -110,7 +110,6 @@
 #include "Sharding/ShardingFeature.h"
 #include "Statistics/StatisticsFeature.h"
 #include "Statistics/StatisticsWorker.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngineFeature.h"
 #include "TemplateSpecializer.h"
 #include "Transaction/ManagerFeature.h"
@@ -181,7 +180,6 @@ static void SetupDatabaseFeaturePhase(MockServer& server) {
   server.addFeature<AuthenticationFeature>(true);
   server.addFeature<transaction::ManagerFeature>(false, metrics);
   auto& databaseFeature = server.addFeature<DatabaseFeature>(false);
-  server.addFeature<EngineSelectorFeature>(false);
   server.addFeature<StorageEngineFeature>(false);
   server.addFeature<SystemDatabaseFeature>(true);
   server.addFeature<InitDatabaseFeature>(true,
@@ -307,9 +305,6 @@ void MockServer::startFeatures() {
   _server.setupDependencies(false);
   auto orderedFeatures = _server.getOrderedFeatures();
 
-  if (_server.hasFeature<EngineSelectorFeature>()) {
-    _server.getFeature<EngineSelectorFeature>().setEngineTesting(_engine.get());
-  }
   if (_server.hasFeature<DatabaseFeature>()) {
     _server.getFeature<DatabaseFeature>().setEngineTesting(_engine.get());
   }
@@ -445,7 +440,6 @@ TRI_vocbase_t& MockServer::getSystemDatabase() const {
 MockMetricsServer::MockMetricsServer(bool start) : MockServer() {
   // setup required application features
   SetupGreetingsPhase(*this);
-  addFeature<EngineSelectorFeature>(false);
 
   if (start) {
     MockMetricsServer::startFeatures();
