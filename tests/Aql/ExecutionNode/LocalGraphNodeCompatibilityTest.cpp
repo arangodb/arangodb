@@ -112,7 +112,7 @@ class LocalGraphNodeCompatibilityTest : public ::testing::Test {
 // Rolling-upgrade regression: an old coordinator serializes a local graph node
 // with "isLocalGraphNode" but no "protoCollection".
 // A new DB-Server must deserialize it instead of throwing.
-// Solves COR-286
+// Solves COR-616
 TEST_F(LocalGraphNodeCompatibilityTest, GeneratedSlice_missingProtoCollection) {
   auto query = prepareTraversalQuery();
   auto* plan = query->plan();

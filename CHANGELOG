@@ -1,7 +1,7 @@
 3.12.10-devel (XXXX-XX-XX)
 --------------------------
 
-* COR-616: Fixed a DB-Server crash during rolling upgrades when deserializing a graph
+* COR-616: Fixed a DB-Server error during rolling upgrades when deserializing a graph
   traversal plan from an older coordinator that lacks the "protoCollection"
   attribute.
 
