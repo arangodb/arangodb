@@ -243,7 +243,6 @@ target_sources(arangoserver PRIVATE
   RestHandler/RestCrashHandler.cpp)
 
 target_link_libraries(arangoserver
-  arango_restart_action
   arango_agency
   arango_aql
   arango_cluster_engine

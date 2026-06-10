@@ -79,6 +79,7 @@ target_link_libraries(arango_rocksdb
   arango_geo
   arango_health
   arango_indexes
+  arango_restart_action
   arango_storage_engine_common
   arango::validation
   arango_zkd
