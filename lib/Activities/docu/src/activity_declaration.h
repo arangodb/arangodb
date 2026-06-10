@@ -37,26 +37,26 @@ struct Struct {
 /**
  * Describes one Activity subclass declaration
  *
- * Where it lives, the spelled Data type, and the shape of that Data (one level
- * of nested records).
+ * Names the owner (the record or function that declares the activity), the
+ * fully-qualified Activity subclass, and the shape of its Data: the Data record
+ * followed by the project-local records reached recursively from its fields.
  *
  * Example:
  *   ActivityDeclaration{
- *     .owner_file = "arangod/StorageEngine/TransactionState.h",
- *     .owner_line = 521,
- *     .data_type  = "arangodb::transaction::activity::TransactionActivityData",
- *     .field_types = {
- *       Struct{.name = "TransactionActivityData",
- *              .fields = {Member{.name = "user", .type = "std::string"}}}}};
+ *     .owner = "arangodb::transaction::TransactionState",
+ *     .type  = "arangodb::transaction::activity::TransactionActivity",
+ *     .data_type_definition = {
+ *       Struct{.name =
+ * "arangodb::transaction::activity::TransactionActivityData", .fields =
+ * {Member{.name = "user", .type = "std::string"}}}}};
  *
- * The Snapshot envelope (id, parent, type, created) is the same for every
- * Activity and is intentionally not modeled here. `field_types` is empty
- * when the Data is a dynamic container (e.g. std::unordered_map) or when
- * the Data type couldn't be resolved.
+ * The Activity envelope (id, parent, type, created) is the same for every
+ * Activity and is intentionally not modeled here. A Data type that is a std
+ * container alias (e.g. std::unordered_map) appears as a single fieldless
+ * Struct named after the alias.
  */
 struct ActivityDeclaration {
-  std::string owner_file;
-  unsigned owner_line = 0;
+  std::string owner;
   std::string type;
   std::vector<Struct> data_type_definition;
 

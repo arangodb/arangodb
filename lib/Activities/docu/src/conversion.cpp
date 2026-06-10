@@ -93,6 +93,21 @@ auto is_public(FieldDecl const* f) -> bool {
 }
 
 /**
+ * Fully-qualified name of the record or function that owns `decl`.
+ *
+ * For a member the owner is the enclosing class; for a local variable it is the
+ * enclosing function. Empty when that context has no name.
+ */
+auto owner_name(DeclaratorDecl const* decl) -> std::string {
+  auto const* context =
+      dyn_cast<NamedDecl>(Decl::castFromDeclContext(decl->getDeclContext()));
+  if (context == nullptr) {
+    return {};
+  }
+  return context->getQualifiedNameAsString();
+}
+
+/**
  * Resolve the Data type from `derived`'s GuardedActivity<Self, Data> base.
  *
  * Preserves typedef sugar
@@ -235,8 +250,7 @@ auto conversion::ActivityCallback::run(
   auto const data_type = get_data_type(rd);
   if (data_type.isNull()) {
     _out_activities.push_back(
-        ActivityDeclaration{.owner_file = std::move(path),
-                            .owner_line = line,
+        ActivityDeclaration{.owner = owner_name(decl),
                             .type = rd->getQualifiedNameAsString()});
     return;
   }
@@ -245,8 +259,7 @@ auto conversion::ActivityCallback::run(
   auto const data_record = data_type->getAsCXXRecordDecl();
   if (data_record == nullptr || is_std_record(data_record, sm)) {
     _out_activities.push_back(ActivityDeclaration{
-        .owner_file = std::move(path),
-        .owner_line = line,
+        .owner = owner_name(decl),
         .type = rd->getQualifiedNameAsString(),
         .data_type_definition = {Struct{
             .name = fully_qualified_type_to_string(data_type, *ASTContext)}}});
@@ -257,8 +270,7 @@ auto conversion::ActivityCallback::run(
   type_definition.add_field_recursively(data_record);
 
   _out_activities.push_back(ActivityDeclaration{
-      .owner_file = std::move(path),
-      .owner_line = line,
+      .owner = owner_name(decl),
       .type = rd->getQualifiedNameAsString(),
       .data_type_definition = std::move(type_definition.types)});
 }

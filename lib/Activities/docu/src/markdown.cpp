@@ -35,7 +35,7 @@ auto field_table(Struct const& record) -> std::string {
 
   auto table = "| " + pad(field_header, field_width) + " | " +
                pad(type_header, type_width) + " |\n";
-  table += "|" + std::string(field_width + 2, '-') + "+" +
+  table += "|" + std::string(field_width + 2, '-') + "|" +
            std::string(type_width + 2, '-') + "|\n";
   for (auto const& field : record.fields) {
     table += "| " + pad(field.name, field_width) + " | " +
@@ -50,9 +50,8 @@ auto activities_to_markdown(std::vector<ActivityDeclaration> const& activities)
     -> std::string {
   auto markdown = std::string{"# Activities\n"};
   for (auto const& activity : activities) {
-    markdown += "\n## " + activity.type + "\n";
-    markdown += "owner: " + activity.owner_file + ":" +
-                std::to_string(activity.owner_line) + "\n";
+    markdown += "\n## " + activity.owner + "\n";
+    markdown += "type: " + activity.type + "\n";
     for (auto const& record : activity.data_type_definition) {
       markdown += "\n### " + record.name + "\n";
       if (not record.fields.empty()) {
