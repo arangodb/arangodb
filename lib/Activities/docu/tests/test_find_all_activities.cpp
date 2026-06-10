@@ -29,12 +29,10 @@ std::ostream& operator<<(std::ostream& os, Struct const& strct) {
 std::ostream& operator<<(std::ostream& os, ActivityDeclaration const& decl) {
   os << "ActivityDeclaration{.owner_file=\"" << decl.owner_file
      << "\", .owner_line=" << decl.owner_line << ", .type=\"" << decl.type
-     << "\", .data_type=\""
-     << (decl.data_type.has_value() ? decl.data_type.value() : "None")
      << "\", .field_types={";
-  for (size_t index = 0; index < decl.type_definition.size(); ++index) {
+  for (size_t index = 0; index < decl.data_type_definition.size(); ++index) {
     if (index != 0) os << ", ";
-    os << decl.type_definition[index];
+    os << decl.data_type_definition[index];
   }
   return os << "}}";
 }
@@ -83,9 +81,7 @@ TestCase const tests[] = {
                .owner_file = root + "/arangod/StorageEngine/TransactionState.h",
                .owner_line = 521,
                .type = "arangodb::transaction::activity::TransactionActivity",
-               .data_type =
-                   "arangodb::transaction::activity::TransactionActivityData",
-               .type_definition =
+               .data_type_definition =
                    std::vector<Struct>{
                        Struct{
                            .name = "arangodb::transaction::activity::"
@@ -134,8 +130,7 @@ TestCase const tests[] = {
                .owner_file = root + "/arangod/Cluster/ActionBase.h",
                .owner_line = 266,
                .type = "arangodb::maintenance::activity::ActionActivity",
-               .data_type = "arangodb::maintenance::ActionDescription",
-               .type_definition = std::vector<Struct>{
+               .data_type_definition = std::vector<Struct>{
                    Struct{.name = "arangodb::maintenance::ActionDescription",
                           // TODO show all inspected fields
                           .fields = {}}}});
@@ -148,8 +143,8 @@ TestCase const tests[] = {
                .owner_file = root + "/arangod/VocBase/Methods/Collections.cpp",
                .owner_line = 597,
                .type = "arangodb::activities::GenericActivity",
-               .data_type = "arangodb::activities::GenericActivityData",
-               .type_definition = std::vector<Struct>{}});
+               .data_type_definition = std::vector<Struct>{
+                   {.name = "arangodb::activities::GenericActivityData"}}});
      }}};
 
 int main() {

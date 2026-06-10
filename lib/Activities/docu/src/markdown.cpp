@@ -53,10 +53,7 @@ auto activities_to_markdown(std::vector<ActivityDeclaration> const& activities)
     markdown += "\n## " + activity.type + "\n";
     markdown += "owner: " + activity.owner_file + ":" +
                 std::to_string(activity.owner_line) + "\n";
-    if (activity.data_type.has_value()) {
-      markdown += "data: " + activity.data_type.value() + "\n";
-    }
-    for (auto const& record : activity.type_definition) {
+    for (auto const& record : activity.data_type_definition) {
       markdown += "\n### " + record.name + "\n";
       if (not record.fields.empty()) {
         markdown += field_table(record);

@@ -31,8 +31,7 @@ int main() {
                   .owner_file = "a/b.h",
                   .owner_line = 10,
                   .type = "ns::Foo",
-                  .data_type = "ns::FooData",
-                  .type_definition =
+                  .data_type_definition =
                       {Struct{.name = "FooData",
                               .fields = {Member{.name = "id", .type = "int"},
                                          Member{.name = "label",
@@ -41,13 +40,11 @@ int main() {
               ActivityDeclaration{.owner_file = "c.cpp",
                                   .owner_line = 3,
                                   .type = "ns::Empty",
-                                  .data_type = std::nullopt,
-                                  .type_definition = {}}}),
+                                  .data_type_definition = {}}}),
           "# Activities\n"
           "\n"
           "## ns::Foo\n"
           "owner: a/b.h:10\n"
-          "data: ns::FooData\n"
           "\n"
           "### FooData\n"
           "| Field | Type        |\n"

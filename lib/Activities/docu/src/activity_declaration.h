@@ -58,8 +58,7 @@ struct ActivityDeclaration {
   std::string owner_file;
   unsigned owner_line = 0;
   std::string type;
-  std::optional<std::string> data_type;
-  std::vector<Struct> type_definition;
+  std::vector<Struct> data_type_definition;
 
   auto operator==(ActivityDeclaration const&) const -> bool = default;
 };
