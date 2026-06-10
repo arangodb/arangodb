@@ -39,7 +39,7 @@ namespace std {
 
 template<>
 struct hash<arangodb::aql::AqlValue> {
-  size_t operator()(arangodb::aql::AqlValue const& x) const noexcept;
+  size_t operator()(arangodb::aql::AqlValue const& x) const;
 };
 
 template<>

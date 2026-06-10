@@ -60,7 +60,7 @@ inline void copyValueOver(arangodb::containers::HashSet<void const*>& cache,
         b.destroy();
         throw;
       }
-      cache.emplace(b.data());
+      cache.emplace(b.data());  // so later cells sharing the same pointer reuse
     } else {
       res->setValue(rowNumber, col, AqlValue(a, (*it)));
     }
@@ -507,12 +507,9 @@ SharedAqlItemBlockPtr AqlItemBlock::cloneDataAndMoveShadow() {
           AqlValue a = stealAndEraseValue(row, col);
           if (a.requiresDestruction()) {
             AqlValueGuard guard{a, true};
-            auto [it, inserted] = cache.emplace(a.data());
-            res->setValue(row, col, AqlValue(a, (*it)));
-            if (inserted) {
-              // otherwise, destroy this; we used a cached value.
-              guard.steal();
-            }
+            // direct transfer; avoids double-free when two cols share a pointer
+            res->setValue(row, col, a);
+            guard.steal();
           } else {
             res->setValue(row, col, a);
           }
