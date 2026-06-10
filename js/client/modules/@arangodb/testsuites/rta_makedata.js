@@ -108,32 +108,39 @@ function makeDataWrapper (options) {
       print(`${CYAN}${Date()} waiting for follower to catch up!${RESET}`);
       let state = {};
       let count = 0;
+      let lastAppliedContinuousTick = 0;
       var printed = false;
       state.lastLogTick = replication.logger.state().state.lastUncommittedLogTick;
       print(state);
       this.instanceManager.arangods[1].toThisInstance(() => {
         while (true) {
           let followerState = replication.globalApplier.state();
-
           if (followerState.state.lastError.errorNum > 0) {
             print("follower has errored:", JSON.stringify(followerState.state.lastError));
             throw new Error(JSON.stringify(followerState.state.lastError));
           }
 
           if (!followerState.state.running) {
+            print("its not running?");
             break;
           }
+
+          if (followerState.state.lastAppliedContinuousTick - lastAppliedContinuousTick !== 0) {
+            // as long as the counter is still moving, keep waiting.
+            internal.sleep(1);
+            count += 1;
+            print(`Skipping: followerState.state.lastAppliedContinuousTick - lastAppliedContinuousTick !== 0)`);
+            lastAppliedContinuousTick = followerState.state.lastAppliedContinuousTick;
+            continue;
+          }
+          lastAppliedContinuousTick = followerState.state.lastAppliedContinuousTick;
 
           if (compareTicks(followerState.state.lastAppliedContinuousTick, state.lastLogTick) >= 0 ||
               compareTicks(followerState.state.lastProcessedContinuousTick, state.lastLogTick) >= 0) {
             print("follower has caught up. state.lastLogTick:", state.lastLogTick, "followerState.lastAppliedContinuousTick:", followerState.state.lastAppliedContinuousTick, "followerState.lastProcessedContinuousTick:", followerState.state.lastProcessedContinuousTick);
             break;
           }
-
-          if (count === 0) {
-            print("waiting for follower to catch up");
-            printed = true;
-          } else if (count % 10 === 0) {
+          if (count % 10 === 0) {
             print(followerState);
           }
           internal.wait(0.5, false);
@@ -286,12 +293,24 @@ function makeDataWrapper (options) {
               };
               return;
             }
+          }
+          if (count === 2) {
+            let clientInstances = [];
             try {
               if (this.options.oldSource !== undefined) {
                 print("switching binary set");
                 pu.switchBinarySet(1);
               }
-              this.instanceManager.upgradeCycleInstance();
+              this.instanceManager.upgradeCycleInstance(false, {
+                dbserverBefore: function() {
+                  //global.instanceManager = this.instanceManager;
+                  //ct.run.spawnStressArangoshInBG(clientInstances, "print('hello world')", "dbserverStress", 0, []);
+                },
+                dbserverAfter: function() {
+                  //if (ct.run.joinForceBGShells(this.options, clientInstances)) {
+                  //}
+                }
+              });
             } catch(e) {
               res.status = false;
               res.failed += 1;
@@ -339,13 +358,21 @@ function makeDataWrapper (options) {
           this.waitForReplState();
           if (count === 2) {
             this.createDump();
+            this.restoreDump();
+            this.waitForReplState();
           } else if (count === 3) {
             try {
               if (this.options.oldSource !== undefined) {
                 print("switching binary set");
                 pu.switchBinarySet(1);
               }
-              this.instanceManager.upgradeCycleInstance();
+              let me = this;
+              this.instanceManager.upgradeCycleInstance(false, {
+                singleOneDone: function() {
+                  me.waitForReplState();
+                }
+              });
+              this.waitForReplState();
               this.restoreDump();
               this.waitForReplState();
             } catch(e) {
