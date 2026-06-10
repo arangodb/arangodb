@@ -8,6 +8,10 @@
 * COR-473: Enabled linear scanning of shards that are untrained and in
   unusable state for having insufficient documents
 
+* COR-616: Fixed a DB-Server error during rolling upgrades when deserializing a graph
+  traversal plan from an older coordinator that lacks the "protoCollection"
+  attribute.
+
 * Upgraded included rclone to v1.73.5 with go1.25.11 and non-vulnerable
   dependencies.
 
