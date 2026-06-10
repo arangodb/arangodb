@@ -1398,44 +1398,20 @@ size_t hash<AqlValue>::operator()(AqlValue const& x) const {
 }
 
 bool equal_to<AqlValue>::operator()(AqlValue const& a,
-                                    AqlValue const& b) const {
+                                    AqlValue const& b) const noexcept {
   using T = AqlValue::AqlValueType;
   auto ta = a.type();
   auto tb = b.type();
 
   if (ta == tb) {
     switch (ta) {
-      case T::VPACK_INLINE:
-      case T::VPACK_SLICE_POINTER:
-      case T::VPACK_MANAGED_SLICE:
-      case T::VPACK_MANAGED_STRING: {
-        auto sa = a.slice(ta);
-        auto sb = b.slice(tb);
-        TRI_ASSERT(arangodb::velocypack::Options::Defaults.customTypeHandler !=
-                   nullptr)
-            << "VelocyPackHelper must be initialized before AqlValue "
-               "comparison";
-        // handles Custom types and normalized comparison
-        return arangodb::basics::VelocyPackHelper::equal(
-            sa, sb, false, &arangodb::velocypack::Options::Defaults, &sa, &sb);
-      }
-
       case T::VPACK_INLINE_INT64:
       case T::VPACK_INLINE_UINT64:
         return a._data.longNumberMeta.data.intLittleEndian.val ==
                b._data.longNumberMeta.data.intLittleEndian.val;
 
-      case T::VPACK_INLINE_DOUBLE: {
-        double da = a.asDouble();
-        double db = b.asDouble();
-        if (std::signbit(da) && da == 0.0) {
-          da = 0.0;
-        }
-        if (std::signbit(db) && db == 0.0) {
-          db = 0.0;
-        }
-        return da == db;
-      }
+      case T::VPACK_INLINE_DOUBLE:
+        return a.asDouble() == b.asDouble();
 
       case T::RANGE: {
         auto const* ra = a._data.rangeMeta.range;
@@ -1446,7 +1422,7 @@ bool equal_to<AqlValue>::operator()(AqlValue const& a,
       }
 
       default:
-        ADB_UNREACHABLE;
+        break;
     }
   }
 
