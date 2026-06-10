@@ -17,8 +17,7 @@ target_link_libraries(arango_storage_engine
   arango_cluster_methods
   arango_rocksdb
   arango::validation
-  arango_replication2
-  immer)
+  arango_replication2)
 target_include_directories(arango_storage_engine PRIVATE
   "${PROJECT_SOURCE_DIR}/arangod"
   "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
@@ -29,8 +28,7 @@ add_library(arango_storage_engine_common STATIC
   ReplicationIterator.cpp
   WalAccess.cpp)
 target_link_libraries(arango_storage_engine_common
-  arango::validation
-  immer)
+  arango::validation)
 target_include_directories(arango_storage_engine_common PRIVATE
   "${PROJECT_SOURCE_DIR}/arangod"
   "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")

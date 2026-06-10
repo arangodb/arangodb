@@ -12,7 +12,6 @@ target_link_libraries(arango_indexes
   arango_geo
   boost_boost
   arango::validation
-  immer
   date_interface)
   
 target_include_directories(arango_indexes

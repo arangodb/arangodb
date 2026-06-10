@@ -82,7 +82,6 @@ target_link_libraries(arango_rocksdb
   arango_storage_engine_common
   arango::validation
   arango_zkd
-  boost_boost
   rocksdb
   rocksdb_interface
   snappy
