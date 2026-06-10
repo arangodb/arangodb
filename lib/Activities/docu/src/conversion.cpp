@@ -164,6 +164,7 @@ struct TypeDefinition {
  public:
   TypeDefinition(const clang::ASTContext& ctx, const clang::SourceManager& sm)
       : ctx(ctx), sm(sm) {}
+
   auto add_field_recursively(CXXRecordDecl const* data_record) -> void {
     if (data_record == nullptr) {
       return;
@@ -241,13 +242,23 @@ auto conversion::ActivityCallback::run(
   }
 
   auto ASTContext = result.Context;
+  auto const data_record = data_type->getAsCXXRecordDecl();
+  if (data_record == nullptr || is_std_record(data_record, sm)) {
+    _out_activities.push_back(ActivityDeclaration{
+        .owner_file = std::move(path),
+        .owner_line = line,
+        .type = rd->getQualifiedNameAsString(),
+        .data_type_definition = {Struct{
+            .name = fully_qualified_type_to_string(data_type, *ASTContext)}}});
+    return;
+  }
+
   auto type_definition = TypeDefinition{*ASTContext, sm};
-  type_definition.add_field_recursively(data_type->getAsCXXRecordDecl());
+  type_definition.add_field_recursively(data_record);
 
   _out_activities.push_back(ActivityDeclaration{
       .owner_file = std::move(path),
       .owner_line = line,
       .type = rd->getQualifiedNameAsString(),
-      .data_type = fully_qualified_type_to_string(data_type, *ASTContext),
-      .type_definition = std::move(type_definition.types)});
+      .data_type_definition = std::move(type_definition.types)});
 }
