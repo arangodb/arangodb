@@ -373,6 +373,7 @@ function makeDataWrapper (options) {
             stoppedDbServerInstance.restartOneInstance({});
           }
         } else {
+          this.waitForReplState();
           // run checkdata for follower.
           if (count === 2 || count === 3) {
             let rtaNegFilter = this.options.rtaNegFilter;
