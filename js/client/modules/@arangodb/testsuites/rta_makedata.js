@@ -376,7 +376,7 @@ function makeDataWrapper (options) {
           // run checkdata for follower.
           if (count === 2 || count === 3) {
             let rtaNegFilter = this.options.rtaNegFilter;
-            this.options.rtaNegFilter = "070,071"
+            this.options.rtaNegFilter = "070,071";
             this.instanceManager.endpoint = this.instanceManager.arangods[1].endpoint;
             rc += this.runMakeData(moreargv, file, whichRTA, count, testCount, 1, res);
             res.total++;
