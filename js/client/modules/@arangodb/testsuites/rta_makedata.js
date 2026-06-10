@@ -108,20 +108,30 @@ function makeDataWrapper (options) {
       print(`${CYAN}${Date()} waiting for follower to catch up!${RESET}`);
       let state = {};
       let count = 0;
+      let lastAppliedContinuousTick = 0;
       var printed = false;
       state.lastLogTick = replication.logger.state().state.lastUncommittedLogTick;
       print(state);
       this.instanceManager.arangods[1].toThisInstance(() => {
         while (true) {
           let followerState = replication.globalApplier.state();
-
           if (followerState.state.lastError.errorNum > 0) {
             print("follower has errored:", JSON.stringify(followerState.state.lastError));
             throw new Error(JSON.stringify(followerState.state.lastError));
           }
 
           if (!followerState.state.running) {
+            print("its not running?");
             break;
+          }
+
+          if (followerState.state.lastAppliedContinuousTick - lastAppliedContinuousTick !== 0) {
+            // as long as the counter is still moving, keep waiting.
+            internal.sleep(1);
+            count += 1;
+            print(`Skipping: followerState.state.lastAppliedContinuousTick - lastAppliedContinuousTick !== 0)`);
+            lastAppliedContinuousTick = followerState.state.lastAppliedContinuousTick;
+            continue;
           }
 
           if (compareTicks(followerState.state.lastAppliedContinuousTick, state.lastLogTick) >= 0 ||
@@ -129,11 +139,7 @@ function makeDataWrapper (options) {
             print("follower has caught up. state.lastLogTick:", state.lastLogTick, "followerState.lastAppliedContinuousTick:", followerState.state.lastAppliedContinuousTick, "followerState.lastProcessedContinuousTick:", followerState.state.lastProcessedContinuousTick);
             break;
           }
-
-          if (count === 0) {
-            print("waiting for follower to catch up");
-            printed = true;
-          } else if (count % 10 === 0) {
+          if (count % 10 === 0) {
             print(followerState);
           }
           internal.wait(0.5, false);
@@ -246,8 +252,7 @@ function makeDataWrapper (options) {
       this.options.rtaNegFilter = "";
       if ((this.options.skipServerJS) || (localOptions.oldSource !== undefined)) {
         // TODO: QA-703
-        //this.options.rtaNegFilter = "070,071,801,550,900,960";
-        this.options.rtaNegFilter = "010,015,050,051,070,071,101,102,105,106,107,108,111,112,115,116,117,118,400,401,402,403,404,500,550,560,561,570,607,608,609,610,612,800,801,802,900,950,960";
+        this.options.rtaNegFilter = "070,071,801,550,900,960";
       }
       if (!this.continueTesting) {
         return {
@@ -394,6 +399,7 @@ function makeDataWrapper (options) {
             stoppedDbServerInstance.restartOneInstance({});
           }
         } else {
+          this.waitForReplState();
           // run checkdata for follower.
           if (count === 2 || count === 3) {
             this.instanceManager.endpoint = this.instanceManager.arangods[1].endpoint;
