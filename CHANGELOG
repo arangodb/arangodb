@@ -1,10 +1,10 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* Updated ArangoDB Starter to v0.20.0-preview-12.
+
 * Upgraded included rclone to v1.73.5 with go1.25.11 and non-vulnerable
   dependencies.
-
-* Updated ArangoDB Starter to v0.20.0-preview-11.
 
 * COR-522: Use Distribute on repeated smart edge join.
 
