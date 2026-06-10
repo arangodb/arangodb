@@ -184,13 +184,14 @@ struct TypeDefinition {
                  is_in_project(sm.getFileLoc(f->getLocation()), sm);
         }));
 
-    types.push_back(
-        Struct{.name = data_record->getNameAsString(),
-               .fields = to_vector(std::ranges::transform_view(
-                   std::views::all(public_members), [this](FieldDecl const* f) {
-                     return Member{.name = f->getNameAsString(),
-                                   .type = type_to_string(f->getType(), ctx)};
-                   }))});
+    types.push_back(Struct{
+        .name = data_record->getQualifiedNameAsString(),
+        .fields = to_vector(std::ranges::transform_view(
+            std::views::all(public_members), [this](FieldDecl const* f) {
+              return Member{
+                  .name = f->getNameAsString(),
+                  .type = fully_qualified_type_to_string(f->getType(), ctx)};
+            }))});
 
     for (auto const& field : public_members) {
       // add record type

@@ -88,7 +88,8 @@ TestCase const tests[] = {
                .type_definition =
                    std::vector<Struct>{
                        Struct{
-                           .name = "TransactionActivityData",
+                           .name = "arangodb::transaction::activity::"
+                                   "TransactionActivityData",
                            .fields =
                                {
                                    Member{.name = "user",
@@ -96,26 +97,33 @@ TestCase const tests[] = {
                                    Member{.name = "database",
                                           .type = "std::string"},
                                    Member{.name = "tid",
-                                          .type = "TransactionId"},
-                                   Member{.name = "status", .type = "Status"},
+                                          .type = "arangodb::TransactionId"},
+                                   Member{
+                                       .name = "status",
+                                       .type = "arangodb::transaction::Status"},
                                    Member{.name = "collections",
-                                          .type = "std::vector<"
-                                                  "TransactionCollection>"},
+                                          .type =
+                                              "std::vector<"
+                                              "arangodb::transaction::activity:"
+                                              ":TransactionCollection>"},
                                }},
-                       Struct{.name = "TransactionId", .fields = {}},
-                       Struct{.name = "TransactionCollection",
-                              .fields =
-                                  {
-                                      Member{.name = "name",
-                                             .type = "std::string"},
-                                      Member{.name = "cid",
-                                             .type = "DataSourceId"},
-                                      Member{.name = "accessType",
-                                             .type = "AccessMode::Type"},
-                                      Member{.name = "lockStatus",
-                                             .type = "LockStatus"},
-                                  }},
-                       Struct{.name = "DataSourceId", .fields = {}}},
+                       Struct{.name = "arangodb::TransactionId", .fields = {}},
+                       Struct{
+                           .name = "arangodb::transaction::activity::"
+                                   "TransactionCollection",
+                           .fields =
+                               {
+                                   Member{.name = "name",
+                                          .type = "std::string"},
+                                   Member{.name = "cid",
+                                          .type = "arangodb::DataSourceId"},
+                                   Member{.name = "accessType",
+                                          .type = "arangodb::AccessMode::Type"},
+                                   Member{.name = "lockStatus",
+                                          .type = "arangodb::transaction::"
+                                                  "activity::LockStatus"},
+                               }},
+                       Struct{.name = "arangodb::DataSourceId", .fields = {}}},
            });
      }},
     {"find_maintenance_activity",
@@ -127,10 +135,10 @@ TestCase const tests[] = {
                .owner_line = 266,
                .type = "arangodb::maintenance::activity::ActionActivity",
                .data_type = "arangodb::maintenance::ActionDescription",
-               .type_definition =
-                   std::vector<Struct>{Struct{.name = "ActionDescription",
-                                              // TODO show all inspected fields
-                                              .fields = {}}}});
+               .type_definition = std::vector<Struct>{
+                   Struct{.name = "arangodb::maintenance::ActionDescription",
+                          // TODO show all inspected fields
+                          .fields = {}}}});
      }},
     {"find_collection_creation_activity", [](std::string const& root) -> bool {
        return assert_includes(
