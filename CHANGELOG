@@ -5,6 +5,9 @@
   and fail with an internal error with the message "Did not find a DBServer to
   contact for RemoteNode" in production.
 
+* COR-473: Enabled linear scanning of shards that are untrained and in
+  unusable state for having insufficient documents
+
 * Upgraded included rclone to v1.73.5 with go1.25.11 and non-vulnerable
   dependencies.
 
