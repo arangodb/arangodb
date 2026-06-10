@@ -246,7 +246,8 @@ function makeDataWrapper (options) {
       this.options.rtaNegFilter = "";
       if ((this.options.skipServerJS) || (localOptions.oldSource !== undefined)) {
         // TODO: QA-703
-        this.options.rtaNegFilter = "070,071,801,550,900,960";
+        //this.options.rtaNegFilter = "070,071,801,550,900,960";
+        this.options.rtaNegFilter = "010,015,050,051,070,071,101,102,105,106,107,108,111,112,115,116,117,118,400,401,402,403,404,500,550,560,561,570,607,608,609,610,612,800,801,802,900,950,960";
       }
       if (!this.continueTesting) {
         return {
@@ -359,7 +360,13 @@ function makeDataWrapper (options) {
                 print("switching binary set");
                 pu.switchBinarySet(1);
               }
-              this.instanceManager.upgradeCycleInstance();
+              let me = this;
+              this.instanceManager.upgradeCycleInstance(false, {
+                singleOneDone: function() {
+                  me.waitForReplState();
+                }
+              });
+              this.waitForReplState();
               this.restoreDump();
               this.waitForReplState();
             } catch(e) {

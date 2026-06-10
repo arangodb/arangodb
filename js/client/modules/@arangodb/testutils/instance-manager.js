@@ -1108,11 +1108,15 @@ class instanceManager {
             this.agencyMgr.detectAgencyAlive(this.httpJWTAuthOptions, true);
           }
         }
+        hook = `${role}OneDone`;
+        if (hooks.hasOwnProperty(hook)) {
+          hooks[hook]();
+        }
+      });
       hook = `${role}Done`;
       if (hooks.hasOwnProperty(hook)) {
         hooks[hook]();
       }
-      });
     });
   }
   // //////////////////////////////////////////////////////////////////////////////
