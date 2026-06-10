@@ -28,8 +28,8 @@ std::ostream& operator<<(std::ostream& os, Struct const& strct) {
 }
 std::ostream& operator<<(std::ostream& os, ActivityDeclaration const& decl) {
   os << "ActivityDeclaration{.owner_file=\"" << decl.owner_file
-     << "\", .owner_line=" << decl.owner_line << ", .data_type=\""
-     << decl.data_type << "\", .field_types={";
+     << "\", .owner_line=" << decl.owner_line << ", .type=\"" << decl.type
+     << "\", .data_type=\"" << decl.data_type << "\", .field_types={";
   for (size_t index = 0; index < decl.type_definition.size(); ++index) {
     if (index != 0) os << ", ";
     os << decl.type_definition[index];
@@ -80,6 +80,7 @@ TestCase const tests[] = {
            ActivityDeclaration{
                .owner_file = root + "/arangod/StorageEngine/TransactionState.h",
                .owner_line = 521,
+               .type = "arangodb::transaction::activity::TransactionActivity",
                .data_type =
                    "arangodb::transaction::activity::TransactionActivityData",
                .type_definition =
@@ -122,6 +123,7 @@ TestCase const tests[] = {
            ActivityDeclaration{
                .owner_file = root + "/arangod/Cluster/ActionBase.h",
                .owner_line = 266,
+               .type = "arangodb::maintenance::activity::ActionActivity",
                .data_type = "arangodb::maintenance::ActionDescription",
                .type_definition =
                    std::vector<Struct>{Struct{.name = "ActionDescription",
@@ -134,7 +136,8 @@ TestCase const tests[] = {
                                "/arangod/VocBase/Methods/Collections.cpp"),
            ActivityDeclaration{
                .owner_file = root + "/arangod/VocBase/Methods/Collections.cpp",
-               .owner_line = 598,
+               .owner_line = 597,
+               .type = "arangodb::activities::GenericActivity",
                .data_type = "arangodb::activities::GenericActivityData",
                .type_definition = std::vector<Struct>{}});
      }}};
