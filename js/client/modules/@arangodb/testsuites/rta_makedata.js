@@ -133,6 +133,7 @@ function makeDataWrapper (options) {
             lastAppliedContinuousTick = followerState.state.lastAppliedContinuousTick;
             continue;
           }
+          lastAppliedContinuousTick = followerState.state.lastAppliedContinuousTick;
 
           if (compareTicks(followerState.state.lastAppliedContinuousTick, state.lastLogTick) >= 0 ||
               compareTicks(followerState.state.lastProcessedContinuousTick, state.lastLogTick) >= 0) {
