@@ -24,6 +24,7 @@
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "RestServer/MaxMapCountOptionsProvider.h"
 
 namespace arangodb {
 
@@ -40,6 +41,9 @@ class MaxMapCountFeature final
 
   static uint64_t actualMaxMappings();
   static uint64_t minimumExpectedMaxMappings();
+
+ private:
+  MaxMapCountFeatureOptions _options;
 };
 
 }  // namespace arangodb
