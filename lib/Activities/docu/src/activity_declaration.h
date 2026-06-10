@@ -55,6 +55,7 @@ struct Struct {
 struct ActivityDeclaration {
   std::string owner_file;
   unsigned owner_line = 0;
+  std::string type;
   std::string data_type;
   std::vector<Struct> type_definition;
 

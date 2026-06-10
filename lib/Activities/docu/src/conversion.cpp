@@ -230,10 +230,12 @@ auto conversion::ActivityCallback::run(
     return;
   }
 
-  auto data_type = get_data_type(rd);
+  auto const data_type = get_data_type(rd);
   if (data_type.isNull()) {
     _out_activities.push_back(
-        ActivityDeclaration{.owner_file = std::move(path), .owner_line = line});
+        ActivityDeclaration{.owner_file = std::move(path),
+                            .owner_line = line,
+                            .type = rd->getQualifiedNameAsString()});
     return;
   }
 
@@ -244,6 +246,7 @@ auto conversion::ActivityCallback::run(
   _out_activities.push_back(ActivityDeclaration{
       .owner_file = std::move(path),
       .owner_line = line,
+      .type = rd->getQualifiedNameAsString(),
       .data_type = fully_qualified_type_to_string(data_type, *ASTContext),
       .type_definition = std::move(type_definition.types)});
 }
