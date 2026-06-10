@@ -28,8 +28,7 @@ int main() {
   if (assert_equal(
           activities_to_markdown(std::vector<ActivityDeclaration>{
               ActivityDeclaration{
-                  .owner_file = "a/b.h",
-                  .owner_line = 10,
+                  .owner = "ns::Holder",
                   .type = "ns::Foo",
                   .data_type_definition =
                       {Struct{.name = "FooData",
@@ -37,14 +36,13 @@ int main() {
                                          Member{.name = "label",
                                                 .type = "std::string"}}},
                        Struct{.name = "Bar", .fields = {}}}},
-              ActivityDeclaration{.owner_file = "c.cpp",
-                                  .owner_line = 3,
+              ActivityDeclaration{.owner = "ns::run",
                                   .type = "ns::Empty",
                                   .data_type_definition = {}}}),
           "# Activities\n"
           "\n"
           "## ns::Foo\n"
-          "owner: a/b.h:10\n"
+          "owner: ns::Holder\n"
           "\n"
           "### FooData\n"
           "| Field | Type        |\n"
@@ -55,7 +53,7 @@ int main() {
           "### Bar\n"
           "\n"
           "## ns::Empty\n"
-          "owner: c.cpp:3\n")) {
+          "owner: ns::run\n")) {
     std::cout << "[ SUCCESS ] activities_to_markdown\n";
     return 0;
   }
