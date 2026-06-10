@@ -1,5 +1,12 @@
 3.12.10-devel (XXXX-XX-XX)
 --------------------------
+* COR-607: Fix a problem that causes cluster queries involving a materialize node
+  collection access that is used as a satellite to crash in maintainer mode,
+  and fail with an internal error with the message "Did not find a DBServer to
+  contact for RemoteNode" in production.
+
+* COR-473: Enabled linear scanning of shards that are untrained and in
+  unusable state for having insufficient documents
 
 * COR-616: Fixed a DB-Server error during rolling upgrades when deserializing a graph
   traversal plan from an older coordinator that lacks the "protoCollection"
