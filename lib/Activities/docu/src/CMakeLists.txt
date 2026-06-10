@@ -2,6 +2,7 @@ add_library(activity-finder STATIC
   conversion.cpp
   matcher.cpp
   sources.cpp
+  markdown.cpp
   find_activity_subclasses.cpp)
 target_include_directories(activity-finder PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_include_directories(activity-finder SYSTEM PRIVATE
