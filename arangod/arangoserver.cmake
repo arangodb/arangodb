@@ -150,6 +150,7 @@ add_library(arangoserver STATIC
   RestServer/FileDescriptorsFeature.cpp
   RestServer/FileDescriptorsOptionsProvider.cpp
   RestServer/FlushFeature.cpp
+  RestServer/FlushOptionsProvider.cpp
   RestServer/FortuneFeature.cpp
   RestServer/FortuneOptionsProvider.cpp
   RestServer/IOHeartbeatThread.cpp
@@ -160,7 +161,9 @@ add_library(arangoserver STATIC
   RestServer/LogBufferFeature.cpp
   RestServer/LogBufferOptionsProvider.cpp
   RestServer/MaxMapCountFeature.cpp
+  RestServer/MaxMapCountOptionsProvider.cpp
   RestServer/NonceFeature.cpp
+  RestServer/NonceOptionsProvider.cpp
   RestServer/ApiRecordingFeature.cpp
   RestServer/ApiRecordingOptionsProvider.cpp
   RestServer/PrivilegeFeature.cpp
