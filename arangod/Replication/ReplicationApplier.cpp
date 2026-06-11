@@ -285,8 +285,7 @@ void ReplicationApplier::doStart(
 
     std::string msg = "no endpoint configured: ";
     msg += b.slice().toJson();
-    Result r(TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION,
-             msg);
+    Result r(TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION, msg);
     setErrorNoLock(r);
     THROW_ARANGO_EXCEPTION(r);
   }
