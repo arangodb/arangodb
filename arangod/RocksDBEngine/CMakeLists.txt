@@ -74,19 +74,20 @@ if (USE_V8)
 endif()
 
 target_link_libraries(arango_rocksdb
-  arango_cache
-  arango_common_rest_handler
-  arango_geo
-  arango_indexes
-  arango_restart_action
-  arango_storage_engine_common
-  arango_zkd
-  rocksdb
-  rocksdb_interface
-  snappy
-  faiss)
-
-target_link_libraries(arango_rocksdb PRIVATE arango_health)
+  PUBLIC
+    arango_cache
+    arango_common_rest_handler
+    arango_geo
+    arango_indexes
+    arango_restart_action
+    arango_storage_engine_common
+    arango_zkd
+    rocksdb
+    rocksdb_interface
+    snappy
+    faiss
+  PRIVATE
+    arango_health)
 
 set(SNAPPY_INCLUDE_DIR "${SNAPPY_SOURCE_DIR};${SNAPPY_BUILD_DIR}" CACHE PATH "relation to snappy")
 target_include_directories(arango_rocksdb PUBLIC ${SNAPPY_INCLUDE_DIR})
@@ -95,8 +96,8 @@ if (USE_ENTERPRISE)
   # this is required for hotbackup. Views need to be flushed.
   target_include_directories(arango_rocksdb PUBLIC
     ${IRESEARCH_INCLUDE})
-  target_link_libraries(arango_rocksdb
-    arango_rclone 
+  target_link_libraries(arango_rocksdb PUBLIC
+    arango_rclone
   )
 endif()
 
