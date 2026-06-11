@@ -9,6 +9,7 @@ add_library(arango_indexes STATIC
   ${PROJECT_SOURCE_DIR}/arangod/GeoIndex/Near.cpp)
 
 target_link_libraries(arango_indexes
+  arango_replication2
   arango_geo
   boost_boost
   arango::validation
