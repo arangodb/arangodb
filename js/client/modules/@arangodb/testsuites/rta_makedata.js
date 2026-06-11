@@ -184,7 +184,6 @@ function makeDataWrapper (options) {
             includeSystem: true,
             incremental: true,
             autoResync: true,
-            //keepBarrier: true,
           };
           print(params);
           syncResult = replication.setupReplicationGlobal(params);
@@ -303,12 +302,8 @@ function makeDataWrapper (options) {
               }
               this.instanceManager.upgradeCycleInstance(false, {
                 dbserverBefore: function() {
-                  //global.instanceManager = this.instanceManager;
-                  //ct.run.spawnStressArangoshInBG(clientInstances, "print('hello world')", "dbserverStress", 0, []);
                 },
                 dbserverAfter: function() {
-                  //if (ct.run.joinForceBGShells(this.options, clientInstances)) {
-                  //}
                 }
               });
             } catch(e) {
