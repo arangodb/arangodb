@@ -1398,7 +1398,7 @@ size_t hash<AqlValue>::operator()(AqlValue const& x) const {
 }
 
 bool equal_to<AqlValue>::operator()(AqlValue const& a,
-                                    AqlValue const& b) const noexcept {
+                                    AqlValue const& b) const {
   using T = AqlValue::AqlValueType;
   auto ta = a.type();
   auto tb = b.type();
@@ -1412,14 +1412,6 @@ bool equal_to<AqlValue>::operator()(AqlValue const& a,
 
       case T::VPACK_INLINE_DOUBLE:
         return a.asDouble() == b.asDouble();
-
-      case T::RANGE: {
-        auto const* ra = a._data.rangeMeta.range;
-        auto const* rb = b._data.rangeMeta.range;
-        TRI_ASSERT(ra != nullptr);
-        TRI_ASSERT(rb != nullptr);
-        return ra->_low == rb->_low && ra->_high == rb->_high;
-      }
 
       default:
         break;
