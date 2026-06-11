@@ -143,8 +143,12 @@ function makeDataWrapper (options) {
           if (count % 10 === 0) {
             print(followerState);
           }
-          internal.wait(0.5, false);
+          internal.sleep(1);
           count += 1;
+          if (count > 120) {
+            print(`${CYAN}${Date()}giving up to wait - maybe its good anyways?${RESET}`);
+            return;
+          }            
         }
       });
       print(`${CYAN}${Date()} wait done!${RESET}`);
