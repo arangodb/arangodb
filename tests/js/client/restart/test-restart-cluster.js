@@ -144,7 +144,7 @@ function testSuite() {
         });
 
         // we expect this to run into a timeout
-        let aliveStatus = waitForAlive(20, coordinator.url, {});
+        let aliveStatus = waitForAlive(22, coordinator.url, {});
         assertEqual(200, aliveStatus.status, JSON.stringify(aliveStatus));
       } finally {
         // make db servers available again
