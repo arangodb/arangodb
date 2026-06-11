@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -18,36 +18,19 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Julia Puget
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
-#include "RestServer/DumpLimitsFeatureOptions.h"
-#include "RocksDBEngine/IRocksDBDumpLimitsProvider.h"
+#include <string>
 
 namespace arangodb {
 
-// Deprecated: Use DumpLimitsFeatureOptions instead
-using DumpLimits = DumpLimitsFeatureOptions;
-
-class DumpLimitsFeature : public application_features::ApplicationFeature,
-                          public IRocksDBDumpLimitsProvider {
- public:
-  static constexpr std::string_view name() noexcept { return "DumpLimits"; }
-
-  explicit DumpLimitsFeature(application_features::ApplicationServer& server);
-
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
-
-  DumpLimitsFeatureOptions const& limits() const noexcept override final {
-    return _options;
-  }
-
- private:
-  DumpLimitsFeatureOptions _options;
+struct IRocksDBDatabasePathProvider {
+  virtual ~IRocksDBDatabasePathProvider() = default;
+  virtual std::string const& directory() const = 0;
+  virtual std::string subdirectoryName(std::string const& subDirectory) const = 0;
 };
 
 }  // namespace arangodb
