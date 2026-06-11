@@ -184,7 +184,6 @@ function makeDataWrapper (options) {
             includeSystem: true,
             incremental: true,
             autoResync: true,
-            //keepBarrier: true,
           };
           print(params);
           syncResult = replication.setupReplicationGlobal(params);
@@ -303,12 +302,8 @@ function makeDataWrapper (options) {
               }
               this.instanceManager.upgradeCycleInstance(false, {
                 dbserverBefore: function() {
-                  //global.instanceManager = this.instanceManager;
-                  //ct.run.spawnStressArangoshInBG(clientInstances, "print('hello world')", "dbserverStress", 0, []);
                 },
                 dbserverAfter: function() {
-                  //if (ct.run.joinForceBGShells(this.options, clientInstances)) {
-                  //}
                 }
               });
             } catch(e) {
@@ -403,6 +398,7 @@ function makeDataWrapper (options) {
           this.waitForReplState();
           // run checkdata for follower.
           if (count === 2 || count === 3) {
+            // foxx doesn't work on the follower - we don't care for now.
             let rtaNegFilter = this.options.rtaNegFilter;
             this.options.rtaNegFilter = "070,071";
             this.instanceManager.endpoint = this.instanceManager.arangods[1].endpoint;
