@@ -77,7 +77,6 @@ target_link_libraries(arango_rocksdb
   PUBLIC
     arango_cache
     arango_common_rest_handler
-    arango_geo
     arango_indexes
     arango_restart_action
     arango_storage_engine_common
