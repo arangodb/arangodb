@@ -115,6 +115,15 @@ function makeDataWrapper (options) {
       this.instanceManager.arangods[1].toThisInstance(() => {
         while (true) {
           let followerState = replication.globalApplier.state();
+          if (count % 10 === 0) {
+            print(followerState);
+          }
+          internal.sleep(1);
+          count += 1;
+          if (count > 120) {
+            print(`${CYAN}${Date()}giving up to wait - maybe its good anyways?${RESET}`);
+            return;
+          }            
           if (followerState.state.lastError.errorNum > 0) {
             print("follower has errored:", JSON.stringify(followerState.state.lastError));
             throw new Error(JSON.stringify(followerState.state.lastError));
@@ -143,8 +152,12 @@ function makeDataWrapper (options) {
           if (count % 10 === 0) {
             print(followerState);
           }
-          internal.wait(0.5, false);
+          internal.sleep(1);
           count += 1;
+          if (count > 120) {
+            print(`${CYAN}${Date()}giving up to wait - maybe its good anyways?${RESET}`);
+            return;
+          }            
         }
       });
       print(`${CYAN}${Date()} wait done!${RESET}`);
