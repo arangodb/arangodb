@@ -1,6 +1,8 @@
 v3.11.14.5 (XXXX-XX-XX)
 -----------------------
 
+* Removed arangosync.
+
 * Updated ArangoDB Starter to v0.18.26.
 
 * Rebuilt included rclone v1.73.5 with go1.25.10 and non-vulnerable
