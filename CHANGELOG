@@ -1,15 +1,12 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
-<<<<<<< HEAD
-* COR-572: BugFix - Resolved unintended warnings raised by eager evaluation in the ternary operator 
-  during  traversal and optimization.
-=======
+* COR-572: BugFix - Resolved unintended warnings raised by eager evaluation in 
+  the ternary operator during traversal and optimization.
 
 * Updated ArangoDB Starter to v0.20.0-preview-12.
 
 * Upgraded included rclone to v1.73.5 with go1.25.11 and non-vulnerable
   dependencies.
->>>>>>> origin/4.0
 
 * COR-522: Use Distribute on repeated smart edge join.
 
