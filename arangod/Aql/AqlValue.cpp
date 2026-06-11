@@ -1413,16 +1413,16 @@ bool equal_to<AqlValue>::operator()(AqlValue const& a,
       case T::VPACK_INLINE_DOUBLE:
         return a.asDouble() == b.asDouble();
 
+      case T::RANGE:
+        return a.range()->_low == b.range()->_low &&
+               a.range()->_high == b.range()->_high;
+
       default:
         break;
     }
   }
 
   if (ta == T::RANGE || tb == T::RANGE) {
-    if (ta == T::RANGE && tb == T::RANGE) {
-      return a.range()->_low == b.range()->_low &&
-             a.range()->_high == b.range()->_high;
-    }
     return false;
   }
 
