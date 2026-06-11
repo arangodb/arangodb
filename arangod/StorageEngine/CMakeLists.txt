@@ -14,10 +14,8 @@ add_library(arango_storage_engine STATIC
   VPackSortMigration.cpp)
 target_link_libraries(arango_storage_engine
   arango_cluster_engine
-  arango_cluster_methods
   arango_rocksdb
   arango_health
-  arango::validation
   arango_replication2)
 target_include_directories(arango_storage_engine PRIVATE
   "${PROJECT_SOURCE_DIR}/arangod"
@@ -28,9 +26,7 @@ target_include_directories(arango_storage_engine PRIVATE
 add_library(arango_storage_engine_common STATIC
   ReplicationIterator.cpp
   WalAccess.cpp)
-target_link_libraries(arango_storage_engine_common
-  arango_replication2
-  arango::validation)
+target_link_libraries(arango_storage_engine_common velocypack)
 target_include_directories(arango_storage_engine_common PRIVATE
   "${PROJECT_SOURCE_DIR}/arangod"
   "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")

@@ -83,10 +83,10 @@ target_link_libraries(arango_rocksdb
     arango_zkd
     rocksdb
     rocksdb_interface
-    snappy
     faiss
   PRIVATE
-    arango_health)
+    arango_health
+    snappy)
 
 set(SNAPPY_INCLUDE_DIR "${SNAPPY_SOURCE_DIR};${SNAPPY_BUILD_DIR}" CACHE PATH "relation to snappy")
 target_include_directories(arango_rocksdb PUBLIC ${SNAPPY_INCLUDE_DIR})
