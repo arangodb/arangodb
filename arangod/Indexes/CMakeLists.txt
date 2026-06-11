@@ -12,6 +12,7 @@ target_link_libraries(arango_indexes
   PUBLIC
     arango_replication2
     arango_geo
+    arango::validation
   PRIVATE
     date_interface)
   
