@@ -2413,25 +2413,32 @@ ExecutionNode* ExecutionPlan::fromNodeMatch(ExecutionNode* previous,
     return std::make_tuple(calc, filter);
   };
 
-  auto const createCollectionAccess = [&](AstNode const* member) {
-    auto fullDocumentVariable = _ast->variables()->createTemporaryVariable();
-    auto collectionName = member->getMember(1)->getString();
-    auto& collections = _ast->query().collections();
-    auto collection = collections.get(collectionName);
-    if (collection == nullptr) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "no collection for EnumerateCollection");
-    }
-    IndexHint hint(_ast->query(), _ast->createNodeNop(),
-                   IndexHint::FromCollectionOperation{});
-    auto enumCollection = createNode<EnumerateCollectionNode>(
-        this, nextId(), collection, fullDocumentVariable, false,
-        std::move(hint));
-    auto [firstNode, lastNode] = createPropertiesFilter(
-        fullDocumentVariable, member->getMember(2), member->getMember(3));
-    firstNode->addDependency(enumCollection);
-    return std::make_tuple(enumCollection, lastNode, fullDocumentVariable);
-  };
+  auto const createCollectionAccess =
+      [&](AstNode const* member,
+          std::unordered_map<VariableId, Variable const*> const& subst) {
+        auto fullDocumentVariable =
+            _ast->variables()->createTemporaryVariable();
+        auto collectionName = member->getMember(1)->getString();
+        auto& collections = _ast->query().collections();
+        auto collection = collections.get(collectionName);
+        if (collection == nullptr) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+              TRI_ERROR_INTERNAL, "no collection for EnumerateCollection");
+        }
+        IndexHint hint(_ast->query(), _ast->createNodeNop(),
+                       IndexHint::FromCollectionOperation{});
+        auto enumCollection = createNode<EnumerateCollectionNode>(
+            this, nextId(), collection, fullDocumentVariable, false,
+            std::move(hint));
+
+        auto additionalFilter =
+            Ast::replaceVariables(member->getMember(3), subst);
+
+        auto [firstNode, lastNode] = createPropertiesFilter(
+            fullDocumentVariable, member->getMember(2), additionalFilter);
+        firstNode->addDependency(enumCollection);
+        return std::make_tuple(enumCollection, lastNode, fullDocumentVariable);
+      };
 
   auto const createPatternProjection =
       [&](AstNode const* member,
@@ -2696,6 +2703,8 @@ ExecutionNode* ExecutionPlan::fromNodeMatch(ExecutionNode* previous,
     std::vector<AstNode const*> pathEdges;
     std::vector<ExecutionNode*> projections;
 
+    std::unordered_map<VariableId, Variable const*> variableSubstitutions;
+
     ADB_PROD_ASSERT(matchExpr->type == NODE_TYPE_PATTERN_MATCH_EXPRESSION);
 
     for (size_t j = 0; j < matchExpr->numMembers(); ++j) {
@@ -2706,12 +2715,16 @@ ExecutionNode* ExecutionPlan::fromNodeMatch(ExecutionNode* previous,
         // FOR <outvariable> IN <collection>
         //  FILTER <outvariable>.property1 == xxx && ....
         ExecutionNode* lastNode;
-        std::tie(en, lastNode, prevVar) = createCollectionAccess(member);
+        std::tie(en, lastNode, prevVar) =
+            createCollectionAccess(member, variableSubstitutions);
         en->addDependency(previous);
         previous = en = lastNode;
 
         auto destinationVariable =
             static_cast<Variable const*>(member->getMember(0)->getData());
+
+        variableSubstitutions.emplace(destinationVariable->id, prevVar);
+
         pathVertices.push_back(_ast->createNodeReference(destinationVariable));
 
         auto projection = createPatternProjection(member, prevVar);
@@ -2720,6 +2733,10 @@ ExecutionNode* ExecutionPlan::fromNodeMatch(ExecutionNode* previous,
         pathVariable = static_cast<Variable const*>(member->getData());
       } else if (member->type == NODE_TYPE_REFERENCE) {
         prevVar = static_cast<Variable*>(member->getData());
+        if (auto it = variableSubstitutions.find(prevVar->id);
+            it != std::end(variableSubstitutions)) {
+          prevVar = it->second;
+        }
         pathVertices.push_back(_ast->createNodeReference(prevVar));
       } else if (member->type == NODE_TYPE_PATTERN_SEGMENT) {
         // generate code like
@@ -2732,7 +2749,13 @@ ExecutionNode* ExecutionPlan::fromNodeMatch(ExecutionNode* previous,
         if (edge->getMember(5)->type == NODE_TYPE_NOP) {
           ExecutionNode* lastNodeFilter;
           Variable const* edgeVar;
-          std::tie(en, lastNodeFilter, edgeVar) = createCollectionAccess(edge);
+          std::tie(en, lastNodeFilter, edgeVar) =
+              createCollectionAccess(edge, variableSubstitutions);
+
+          auto edgeDestinationVariable =
+              static_cast<Variable const*>(edge->getMember(0)->getData());
+
+          variableSubstitutions.emplace(edgeDestinationVariable->id, edgeVar);
           en->addDependency(previous);
           previous = en = lastNodeFilter;
 
@@ -2744,7 +2767,7 @@ ExecutionNode* ExecutionPlan::fromNodeMatch(ExecutionNode* previous,
             ADB_PROD_ASSERT(node->type == NODE_TYPE_PATTERN_NODE_PATTERN)
                 << member->type;
             std::tie(en, lastNodeFilter, rightVertexVar) =
-                createCollectionAccess(node);
+                createCollectionAccess(node, variableSubstitutions);
             en->addDependency(previous);
 
             auto projection = createPatternProjection(node, rightVertexVar);
@@ -2762,11 +2785,11 @@ ExecutionNode* ExecutionPlan::fromNodeMatch(ExecutionNode* previous,
 
           pathEdges.push_back(_ast->createNodeReference(edgeVar));
 
-          auto destinationVariable =
+          auto vertexDestinationVariable =
               static_cast<Variable const*>(node->getMember(0)->getData());
 
           pathVertices.push_back(
-              _ast->createNodeReference(destinationVariable));
+              _ast->createNodeReference(vertexDestinationVariable));
         } else {
           auto [firstNode, lastNode, rightVertexVar] =
               createTraversalForPattern(prevVar,  // start node
