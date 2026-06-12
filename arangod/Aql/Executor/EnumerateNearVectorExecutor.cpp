@@ -152,8 +152,6 @@ void EnumerateNearVectorsExecutor::searchResults() {
   _documents = std::move(result.capturedDocuments);
   _currentProcessedResultCount = 0;
 
-  TRI_ASSERT(hasResults());
-
   auto validCount = std::count_if(_labels.begin(), _labels.end(),
                                   [](auto const& l) { return l != -1; });
   LOG_TOPIC("f1a2b", DEBUG, Logger::ENGINES) << std::format(
