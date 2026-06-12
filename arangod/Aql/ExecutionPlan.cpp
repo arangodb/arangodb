@@ -2444,8 +2444,10 @@ ExecutionNode* ExecutionPlan::fromNodeMatch(ExecutionNode* previous,
     if (projections->type != NODE_TYPE_NOP) {
       auto* root = _ast->createNodeObject();
 
+      auto* ref = _ast->createNodeReference(fullDocumentVar);
+
       auto* attrAccess = _ast->createNodeAttributeAccess(  //
-          _ast->createNodeReference(fullDocumentVar),      //
+          ref,                                             //
           "_id");                                          //
       auto* elt = _ast->createNodeObjectElement("_id", attrAccess);
       root->addMember(elt);
@@ -2453,7 +2455,7 @@ ExecutionNode* ExecutionPlan::fromNodeMatch(ExecutionNode* previous,
       for (auto i = size_t{0}; i < projections->numMembers(); ++i) {
         auto path = projections->getMemberUnchecked(i)->getStringView();
         auto* attrAccess = _ast->createNodeAttributeAccess(  //
-            _ast->createNodeReference(fullDocumentVar),      //
+            ref,                                             //
             path);                                           //
 
         auto* elt = _ast->createNodeObjectElement(path, attrAccess);
