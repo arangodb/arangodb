@@ -2434,17 +2434,34 @@ ExecutionNode* ExecutionPlan::fromNodeMatch(ExecutionNode* previous,
   };
 
   auto const createPatternProjection =
-      [&](AstNode const* member, Variable const* var) -> ExecutionNode* {
+      [&](AstNode const* member,
+          Variable const* fullDocumentVar) -> ExecutionNode* {
+    auto variable =
+        static_cast<Variable const*>(member->getMember(0)->getData());
+
     auto projections = member->getMember(4);
+
     if (projections->type != NODE_TYPE_NOP) {
-      auto variable =
-          static_cast<Variable const*>(member->getMember(0)->getData());
-      auto* root = _ast->createNodeReference(var);
+      auto* root = _ast->createNodeObject();
+
+      for (auto i = size_t{0}; i < projections->numMembers(); ++i) {
+        auto path = projections->getMemberUnchecked(i)->getStringView();
+        auto* attrAccess = _ast->createNodeAttributeAccess(  //
+            _ast->createNodeReference(fullDocumentVar),      //
+            path);                                           //
+
+        auto* elt = _ast->createNodeObjectElement(path, attrAccess);
+        root->addMember(elt);
+      }
+      auto* calc = createNode<CalculationNode>(
+          this, nextId(), std::make_unique<Expression>(_ast, root), variable);
+      return calc;
+    } else {
+      auto* root = _ast->createNodeReference(fullDocumentVar);
       auto* calc = createNode<CalculationNode>(
           this, nextId(), std::make_unique<Expression>(_ast, root), variable);
       return calc;
     }
-    return nullptr;
   };
 
   auto const createVertexEdgeFilter = [&](Variable const* leftVertex,
@@ -2684,7 +2701,10 @@ ExecutionNode* ExecutionPlan::fromNodeMatch(ExecutionNode* previous,
         std::tie(en, lastNode, prevVar) = createCollectionAccess(member);
         en->addDependency(previous);
         previous = en = lastNode;
-        pathVertices.push_back(_ast->createNodeReference(prevVar));
+
+        auto destinationVariable =
+            static_cast<Variable const*>(member->getMember(0)->getData());
+        pathVertices.push_back(_ast->createNodeReference(destinationVariable));
 
         auto projection = createPatternProjection(member, prevVar);
         projections.push_back(projection);
@@ -2733,7 +2753,12 @@ ExecutionNode* ExecutionPlan::fromNodeMatch(ExecutionNode* previous,
           prevVar = rightVertexVar;
 
           pathEdges.push_back(_ast->createNodeReference(edgeVar));
-          pathVertices.push_back(_ast->createNodeReference(prevVar));
+
+          auto destinationVariable =
+              static_cast<Variable const*>(node->getMember(0)->getData());
+
+          pathVertices.push_back(
+              _ast->createNodeReference(destinationVariable));
         } else {
           auto [firstNode, lastNode, rightVertexVar] =
               createTraversalForPattern(prevVar,  // start node
