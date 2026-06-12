@@ -24,6 +24,7 @@
 #include "TtlFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/TtlOptionsProvider.h"
 #include "FeaturePhases/DatabaseFeaturePhase.h"
 #include "FeaturePhases/ServerFeaturePhase.h"
 #include "Aql/Query.h"
@@ -658,64 +659,18 @@ TtlFeature::TtlFeature(application_features::ApplicationServer& server)
 TtlFeature::~TtlFeature() { shutdownThread(); }
 
 void TtlFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("ttl", "TTL index options");
-
-  options
-      ->addOption(
-          "--ttl.frequency",
-          "The frequency (in milliseconds) for the TTL background thread "
-          "invocation (0 = turn the TTL background thread off entirely).",
-          new UInt64Parameter(&_properties.frequency))
-      .setLongDescription(R"(The lower this value, the more frequently the TTL
-background thread kicks in and scans all available TTL indexes for expired
-documents, and the earlier the expired documents are actually removed.)");
-
-  options
-      ->addOption("--ttl.max-total-removes",
-                  "The maximum number of documents to remove per invocation of "
-                  "the TTL thread.",
-                  new UInt64Parameter(&_properties.maxTotalRemoves, /*base*/ 1,
-                                      /*minValue*/ 1))
-      .setLongDescription(R"(In order to avoid "random" load spikes by the
-background thread suddenly kicking in and removing a lot of documents at once,
-you can cap the number of to-be-removed documents per thread invocation.
-
-The TTL background thread goes back to sleep once it has removed the configured
-number of documents in one iteration. If more candidate documents are left for
-removal, they are removed in subsequent runs of the background thread.)");
-
-  options
-      ->addOption(
-          "--ttl.max-collection-removes",
-          "The maximum number of documents to remove per collection in each "
-          "invocation of the TTL thread.",
-          new UInt64Parameter(&_properties.maxCollectionRemoves, /*base*/ 1,
-                              /*minValue*/ 1))
-      .setLongDescription(R"(You can configure this value separately from the
-total removal amount so that the per-collection time window for locking and
-potential write-write conflicts can be reduced.)");
-
-  // the following option was obsoleted in 3.8
-  options->addObsoleteOption(
-      "--ttl.only-loaded-collection",
-      "only consider already loaded collections for removal", false);
+  TtlOptionsProvider provider;
+  provider.declareOptions(options, _options);
 }
 
 void TtlFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
-  if (_properties.maxCollectionRemoves == 0) {
-    LOG_TOPIC("2ab82", FATAL, arangodb::Logger::STARTUP)
-        << "invalid value for '--ttl.max-collection-removes'.";
-    FATAL_ERROR_EXIT();
-  }
+  TtlOptionsProvider provider;
+  provider.validateOptions(options, _options);
 
   std::lock_guard locker{_propertiesMutex};
-
-  if (_properties.frequency > 0 &&
-      _properties.frequency < TtlProperties::minFrequency) {
-    LOG_TOPIC("ea696", FATAL, arangodb::Logger::STARTUP)
-        << "too low value for '--ttl.frequency'.";
-    FATAL_ERROR_EXIT();
-  }
+  _properties.frequency = _options.frequency;
+  _properties.maxTotalRemoves = _options.maxTotalRemoves;
+  _properties.maxCollectionRemoves = _options.maxCollectionRemoves;
 }
 
 void TtlFeature::start() {

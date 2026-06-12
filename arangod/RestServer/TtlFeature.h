@@ -24,6 +24,7 @@
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "RestServer/TtlFeatureOptions.h"
 
 #include <mutex>
 
@@ -106,6 +107,8 @@ class TtlFeature final : public application_features::ApplicationFeature {
   void shutdownThread() noexcept;
 
  private:
+  TtlFeatureOptions _options;
+
   /// @brief protects _properties and _active
   mutable std::mutex _propertiesMutex;
   TtlProperties _properties;
