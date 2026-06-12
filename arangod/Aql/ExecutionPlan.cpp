@@ -2444,6 +2444,12 @@ ExecutionNode* ExecutionPlan::fromNodeMatch(ExecutionNode* previous,
     if (projections->type != NODE_TYPE_NOP) {
       auto* root = _ast->createNodeObject();
 
+      auto* attrAccess = _ast->createNodeAttributeAccess(  //
+          _ast->createNodeReference(fullDocumentVar),      //
+          "_id");                                          //
+      auto* elt = _ast->createNodeObjectElement("_id", attrAccess);
+      root->addMember(elt);
+
       for (auto i = size_t{0}; i < projections->numMembers(); ++i) {
         auto path = projections->getMemberUnchecked(i)->getStringView();
         auto* attrAccess = _ast->createNodeAttributeAccess(  //

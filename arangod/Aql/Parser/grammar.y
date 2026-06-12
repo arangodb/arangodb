@@ -1137,14 +1137,13 @@ for_statement:
 %type <node> pattern_projection_list;
 pattern_projection_list:
     object_element_name[elt] {
-		  auto node = parser->ast()->createNodeValueString($elt.value, $elt.length);
-		  parser->pushArrayElement(node);
-		}
-		| pattern_projection_list T_COMMA object_element_name[elt] 
-		{
-		  auto node = parser->ast()->createNodeValueString($elt.value, $elt.length);
-		  parser->pushArrayElement(node);
-	
+        auto node = parser->ast()->createNodeValueString($elt.value, $elt.length);
+        parser->pushArrayElement(node);
+    }
+    | pattern_projection_list T_COMMA object_element_name[elt] 
+    {
+        auto node = parser->ast()->createNodeValueString($elt.value, $elt.length);
+        parser->pushArrayElement(node);
     }
 		;
 
