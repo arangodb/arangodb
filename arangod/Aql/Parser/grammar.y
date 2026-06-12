@@ -1208,10 +1208,19 @@ pattern_variable_length_relationship:
 
 %type <node> pattern_node_pattern;
 pattern_node_pattern:
-    T_OPEN pattern_out_variable pattern_label pattern_maybe_property_key_value_expression pattern_maybe_where_expression[where] pattern_maybe_projection[projection] T_CLOSE {
-        $$ = parser->ast()->createPatternNodePattern($2, $3, $4, $where, $projection);
+    T_OPEN pattern_out_variable[variable]
+		       pattern_label[label]
+					 pattern_maybe_property_key_value_expression[kv_expr]
+					 pattern_maybe_where_expression[where]
+					 pattern_maybe_projection[projection]
+           T_CLOSE {
+        $$ = parser->ast()->createPatternNodePattern($variable, $label, $kv_expr, $where, $projection);
     }
-    | T_OPEN variable_name T_CLOSE { $$ = parser->ast()->createNodeReference({$2.value, $2.length}); }
+    | 
+		T_OPEN variable_name 
+		       T_CLOSE {
+			  $$ = parser->ast()->createNodeReference({$variable_name.value, $variable_name.length});
+		}
 
 %type <node> pattern_out_variable;
 pattern_out_variable:
