@@ -2414,8 +2414,7 @@ ExecutionNode* ExecutionPlan::fromNodeMatch(ExecutionNode* previous,
   };
 
   auto const createCollectionAccess = [&](AstNode const* member) {
-    auto variable =
-        static_cast<Variable const*>(member->getMember(0)->getData());
+    auto fullDocumentVariable = _ast->variables()->createTemporaryVariable();
     auto collectionName = member->getMember(1)->getString();
     auto& collections = _ast->query().collections();
     auto collection = collections.get(collectionName);
@@ -2426,11 +2425,26 @@ ExecutionNode* ExecutionPlan::fromNodeMatch(ExecutionNode* previous,
     IndexHint hint(_ast->query(), _ast->createNodeNop(),
                    IndexHint::FromCollectionOperation{});
     auto enumCollection = createNode<EnumerateCollectionNode>(
-        this, nextId(), collection, variable, false, std::move(hint));
+        this, nextId(), collection, fullDocumentVariable, false,
+        std::move(hint));
     auto [firstNode, lastNode] = createPropertiesFilter(
-        variable, member->getMember(2), member->getMember(3));
+        fullDocumentVariable, member->getMember(2), member->getMember(3));
     firstNode->addDependency(enumCollection);
-    return std::make_tuple(enumCollection, lastNode, variable);
+    return std::make_tuple(enumCollection, lastNode, fullDocumentVariable);
+  };
+
+  auto const createPatternProjection =
+      [&](AstNode const* member, Variable const* var) -> ExecutionNode* {
+    auto projections = member->getMember(4);
+    if (projections->type != NODE_TYPE_NOP) {
+      auto variable =
+          static_cast<Variable const*>(member->getMember(0)->getData());
+      auto* root = _ast->createNodeReference(var);
+      auto* calc = createNode<CalculationNode>(
+          this, nextId(), std::make_unique<Expression>(_ast, root), variable);
+      return calc;
+    }
+    return nullptr;
   };
 
   auto const createVertexEdgeFilter = [&](Variable const* leftVertex,
@@ -2655,6 +2669,7 @@ ExecutionNode* ExecutionPlan::fromNodeMatch(ExecutionNode* previous,
     Variable const* pathVariable = nullptr;
     std::vector<AstNode const*> pathVertices;
     std::vector<AstNode const*> pathEdges;
+    std::vector<ExecutionNode*> projections;
 
     ADB_PROD_ASSERT(matchExpr->type == NODE_TYPE_PATTERN_MATCH_EXPRESSION);
 
@@ -2670,6 +2685,9 @@ ExecutionNode* ExecutionPlan::fromNodeMatch(ExecutionNode* previous,
         en->addDependency(previous);
         previous = en = lastNode;
         pathVertices.push_back(_ast->createNodeReference(prevVar));
+
+        auto projection = createPatternProjection(member, prevVar);
+        projections.push_back(projection);
       } else if (member->type == NODE_TYPE_PATTERN_PATH_VARIABLE) {
         pathVariable = static_cast<Variable const*>(member->getData());
       } else if (member->type == NODE_TYPE_REFERENCE) {
@@ -2700,6 +2718,10 @@ ExecutionNode* ExecutionPlan::fromNodeMatch(ExecutionNode* previous,
             std::tie(en, lastNodeFilter, rightVertexVar) =
                 createCollectionAccess(node);
             en->addDependency(previous);
+
+            auto projection = createPatternProjection(node, rightVertexVar);
+            projections.push_back(projection);
+
             previous = en = lastNodeFilter;
           }
 
@@ -2741,6 +2763,15 @@ ExecutionNode* ExecutionPlan::fromNodeMatch(ExecutionNode* previous,
       } else {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                        "unexpected match expression member");
+      }
+    }
+
+    // insert projections
+    for (auto&& p : projections) {
+      // TODO don't insert into projections if nullptr?
+      if (p != nullptr) {
+        p->addDependency(previous);
+        previous = en = p;
       }
     }
 
