@@ -1020,6 +1020,98 @@ function optimizerRuleTestSuite() {
       hasSortNode(result, query);
     },
 
+    testSortIsContainedIndexedFieldFirst: function () {
+      var query = {
+        string: `
+          FOR x IN @@cc
+            FILTER GEO_CONTAINS(x.geometry, @pt)
+            SORT GEO_DISTANCE(@pt, x.geometry)
+            LIMIT 5
+            RETURN x._key`,
+        bindVars: {
+          "@cc": locations.name(),
+          "pt": { type: "Point", coordinates: [20, 25] }
+        }
+      };
+
+      var result = db._createStatement({query: query.string, bindVars: query.bindVars}).explain();
+      hasIndexNode(result, query);
+      hasNoFilterNode(result, query);
+      if (!isCluster) {
+        hasNoSortNode(result, query);
+      }
+    },
+
+    testSortIntersectsWithDistance: function () {
+      var query = {
+        string: `
+          FOR x IN @@cc
+            FILTER GEO_INTERSECTS(@poly, x.geometry)
+            SORT GEO_DISTANCE([20, 25], x.geometry)
+            LIMIT 5
+            RETURN x._key`,
+        bindVars: {
+          "@cc": locations.name(),
+          "poly": rectEmea1
+        }
+      };
+
+      var result = db._createStatement({query: query.string, bindVars: query.bindVars}).explain();
+      hasIndexNode(result, query);
+      hasNoFilterNode(result, query);
+      if (!isCluster) {
+        hasNoSortNode(result, query);
+      }
+    },
+
+    testSortIsContainedIndexedFieldFirstResults: function () {
+      var query = {
+        string: `
+          FOR x IN @@cc
+            FILTER GEO_CONTAINS(x.geometry, @pt)
+            SORT GEO_DISTANCE(@pt, x.geometry)
+            RETURN GEO_DISTANCE(@pt, x.geometry)`,
+        bindVars: {
+          "@cc": locations.name(),
+          "pt": { type: "Point", coordinates: [20, 25] }
+        }
+      };
+
+      var result = db._createStatement({query: query.string, bindVars: query.bindVars}).execute();
+      var distances = result.toArray().map(function (d) {
+        return parseFloat(d.toFixed(5));
+      });
+      var prev = -1;
+      distances.forEach(function (d) {
+        assertTrue(d >= prev, d + " >= " + prev);
+        prev = d;
+      });
+    },
+
+    testSortIntersectsWithDistanceResults: function () {
+      var query = {
+        string: `
+          FOR x IN @@cc
+            FILTER GEO_INTERSECTS(@poly, x.geometry)
+            SORT GEO_DISTANCE([20, 25], x.geometry)
+            RETURN GEO_DISTANCE([20, 25], x.geometry)`,
+        bindVars: {
+          "@cc": locations.name(),
+          "poly": rectEmea1
+        }
+      };
+
+      var result = db._createStatement({query: query.string, bindVars: query.bindVars}).execute();
+      var distances = result.toArray().map(function (d) {
+        return parseFloat(d.toFixed(5));
+      });
+      var prev = -1;
+      distances.forEach(function (d) {
+        assertTrue(d >= prev, d + " >= " + prev);
+        prev = d;
+      });
+    },
+
     testContainsGeoConstructorPolygon1: function () {
       var query = {
         string: `

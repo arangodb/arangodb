@@ -27,6 +27,7 @@ const helper = require("@arangodb/aql-helper");
 
 const findExecutionNodes = helper.findExecutionNodes;
 const db = require("internal").db;
+const isCluster = require("internal").isCluster();
 
 function geoContainsFieldFirstTestSuite() {
   const colName = "UnitTestsGeoContainsFieldFirst";
@@ -74,6 +75,10 @@ function geoContainsFieldFirstTestSuite() {
   const hasNoFilterNode = function (plan, query) {
     assertEqual(findExecutionNodes(plan, "FilterNode").length, 0,
       query.string + " Has no FilterNode");
+  };
+  const hasNoSortNode = function (plan, query) {
+    assertEqual(findExecutionNodes(plan, "SortNode").length, 0,
+      query.string + " Has no SortNode");
   };
   const hasIndexNode = function (plan, query) {
     const rn = findExecutionNodes(plan, "IndexNode");
@@ -296,6 +301,52 @@ function geoContainsFieldFirstTestSuite() {
       }).explain();
       hasIndexNode(plan, query);
       hasNoFilterNode(plan, query);
+    },
+
+    testGeoContainsFieldFirstSortByDistance: function () {
+      const query = {
+        string: `
+          FOR doc IN @@cc
+            FILTER GEO_CONTAINS(doc.geometry, GEO_POINT(15, 15))
+            SORT GEO_DISTANCE(GEO_POINT(15, 15), doc.geometry)
+            RETURN GEO_DISTANCE(GEO_POINT(15, 15), doc.geometry)`,
+        bindVars: { "@cc": colName }
+      };
+
+      const result = db._createStatement({
+        query: query.string,
+        bindVars: query.bindVars
+      }).execute();
+      const distances = result.toArray().map(function (d) {
+        return parseFloat(d.toFixed(5));
+      });
+      let prev = -1;
+      distances.forEach(function (d) {
+        assertTrue(d >= prev, d + " >= " + prev);
+        prev = d;
+      });
+    },
+
+    testGeoContainsFieldFirstSortGeoIndexBehavior: function () {
+      const query = {
+        string: `
+          FOR doc IN @@cc
+            FILTER GEO_CONTAINS(doc.geometry, GEO_POINT(15, 15))
+            SORT GEO_DISTANCE(GEO_POINT(15, 15), doc.geometry)
+            LIMIT 5
+            RETURN doc`,
+        bindVars: { "@cc": colName }
+      };
+
+      const plan = db._createStatement({
+        query: query.string,
+        bindVars: query.bindVars
+      }).explain();
+      hasIndexNode(plan, query);
+      hasNoFilterNode(plan, query);
+      if (!isCluster) {
+        hasNoSortNode(plan, query);
+      }
     },
 
     testGeoContainsFieldFirstGeoConstructorsGeoIndexBehavior: function () {
