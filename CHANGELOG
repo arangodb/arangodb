@@ -1,5 +1,7 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
+* COR-572: BugFix - Resolved unintended warnings raised by eager evaluation in 
+  the ternary operator during traversal and optimization.
 
 * Updated ArangoDB Starter to v0.20.0-preview-12.
 
