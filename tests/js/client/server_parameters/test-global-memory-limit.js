@@ -32,7 +32,9 @@ if (getOptions === true) {
   };
 }
 const jsunity = require('jsunity');
+const ct = require('@arangodb/testutils/client-tools');
 const errors = require('@arangodb').errors;
+let IM = global.instanceManager;
 const cn = "UnitTestsCollection";
 const db = require('internal').db;
 const getMetric = require('@arangodb/test-helper').getMetricSingle;
@@ -45,12 +47,12 @@ function testSuite() {
     },
     
     testQueryAboveGlobalLimit: function() {
-      let tasks = require("@arangodb/tasks");
-      // start a background query that will allocate some memory and then goes to sleep
-      let id = tasks.register({ 
-        id: "background-query",
-        command: function() { require("@arangodb").db._query("LET testi = (FOR i IN 1..100000 RETURN CONCAT('testmann-der-fuxx', i)) LET s = SLEEP(9000) RETURN { s, testi }"); }
-      });
+      let shells = [];
+      ct.run.spawnStressArangoshInBG(shells,
+                                     function() { 
+                                       require("@arangodb").db._query("LET testi = (FOR i IN 1..100000 RETURN CONCAT('testmann-der-fuxx', i)) LET s = SLEEP(9000) RETURN { s, testi }");
+                                     },
+                                     'xx', 1, {});
       // wait until this query has started
       let queries = require("@arangodb/aql/queries");
       let current = [];
@@ -83,6 +85,10 @@ function testSuite() {
       
       const currentValue = getMetric("arangodb_aql_global_query_memory_limit_reached_total");
       assertTrue(currentValue > previousValue);
+      try {
+        // we know they're still running, but don't care.
+        ct.run.joinForceBGShells(IM.options, shells);
+      } catch (err) {}
     },
     
   };
