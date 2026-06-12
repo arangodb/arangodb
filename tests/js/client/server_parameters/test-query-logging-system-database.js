@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 200 */
-/* global getOptions, fail, arango, assertEqual, assertFalse, assertTrue, assertMatch, assertInstanceOf */
+/* global getOptions, fail */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -26,11 +26,14 @@
 
 'use strict';
 const jsunity = require('jsunity');
+const {assertEqual, assertTrue, assertFalse, assertNotEqual, assertInstanceOf} = jsunity.jsUnity.assertions;
 const arangodb = require('@arangodb');
 const db = arangodb.db;
+const arango = arangodb.arango;
 const request = require("@arangodb/request");
 const internal = require('internal');
 const errors = internal.errors;
+let IM = global.instanceManager;
 
 const cn = "UnitTestsQueries";
 // fetch everything at once
@@ -45,15 +48,11 @@ if (getOptions === true) {
   };
 }
 
-const baseUrl = function (dbName = '_system') {
-  return arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:') + `/_db/${dbName}`;
-};
-  
 const waitForCollection = () => {
   let tries = 0;
   while (++tries < 200) {
     let result = request.post({
-      url: baseUrl() + "/_api/cursor",
+      url: IM.url + "/_db/_system/_api/cursor",
       body: {query:"FOR doc IN _queries LIMIT 1 RETURN doc"},
       json: true,
     });
@@ -77,23 +76,23 @@ function QueryLoggerSuite() {
   const uniqid = () => {
     return `/* test query ${++qid} */`;
   };
-  
+
   const clearQueries = () => {
     let result = request.put({
-      url: baseUrl() + "/_api/collection/_queries/truncate",
+      url: IM.url + "/_db/_system/_api/collection/_queries/truncate",
       body: {},
       json: true,
     });
-    
+
     assertInstanceOf(request.Response, result);
     if (result.statusCode !== 404) {
       assertEqual(200, result.statusCode);
     }
   };
-  
+
   const getQueries = () => {
     let result = request.post({
-      url: baseUrl() + "/_api/cursor",
+      url: IM.url + "/_db/_system/_api/cursor",
       body: {query:"FOR doc IN _queries RETURN doc", batchSize, options: {batchSize}},
       json: true,
     });

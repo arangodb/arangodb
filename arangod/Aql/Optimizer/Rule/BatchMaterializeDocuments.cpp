@@ -142,6 +142,9 @@ void batchMaterializeDocumentsRule(Optimizer* opt,
     auto materialized = plan->createNode<materialize::MaterializeRocksDBNode>(
         plan.get(), plan->nextId(), indexNode->collection(), *docIdVar,
         *newOutVariable, *oldOutVariable);
+    if (indexNode->collection()->isSatellite()) {
+      materialized->useAsSatelliteOf(indexNode->id());
+    }
 
     plan->insertAfter(indexNode, materialized);
 

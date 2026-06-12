@@ -24,6 +24,8 @@
 
 #include "DatabaseFeature.h"
 
+#include "DatabaseOptionsProvider.h"
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryCache.h"
 #include "Aql/QueryList.h"
@@ -273,73 +275,8 @@ DatabaseFeature::~DatabaseFeature() = default;
 
 void DatabaseFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
-  options->addSection("database", "database options");
-
-  auto static allowedReplicationVersions = [] {
-    using namespace arangodb::replication;
-    using namespace arangodb::replication2;
-
-    auto result = std::unordered_set<std::string>{};
-    result.emplace(versionToString(Version::ONE));
-    if (EnableReplication2) {
-      result.emplace(versionToString(Version::TWO));
-    }
-    return result;
-  }();
-
-  options
-      ->addOption(
-          "--database.default-replication-version",
-          "The replication version to use unless overwritten "
-          "when creating a new database.",
-          new DiscreteValuesParameter<StringParameter>(
-              &_options.defaultReplicationVersion, allowedReplicationVersions),
-          options::makeDefaultFlags(options::Flags::Uncommon,
-                                    options::Flags::Experimental))
-      .setIntroducedIn(31200);
-
-  options->addOption(
-      "--database.wait-for-sync",
-      "The default waitForSync behavior. Can be overwritten when creating a "
-      "collection.",
-      new options::BooleanParameter(&_options.defaultWaitForSync),
-      options::makeDefaultFlags(options::Flags::Uncommon));
-
-  options->addOption(
-      "--database.ignore-datafile-errors",
-      "Load collections even if datafiles may contain errors.",
-      new options::BooleanParameter(&_options.ignoreDatafileErrors),
-      options::makeDefaultFlags(options::Flags::Uncommon));
-
-  options
-      ->addOption("--database.extended-names",
-                  "Allow most UTF-8 characters in the names of databases, "
-                  "collections, Views, and indexes. Once in use, "
-                  "this option cannot be turned off again.",
-                  new options::BooleanParameter(&_options.extendedNames),
-                  options::makeDefaultFlags(options::Flags::Uncommon,
-                                            options::Flags::Experimental))
-      .setIntroducedIn(30900);
-
-  options->addOldOption("database.extended-names-databases",
-                        "database.extended-names");
-
-  options
-      ->addOption("--database.io-heartbeat",
-                  "Perform I/O heartbeat to test the underlying volume.",
-                  new options::BooleanParameter(&_options.performIOHeartbeat),
-                  options::makeDefaultFlags(options::Flags::Uncommon))
-      .setIntroducedIn(30807)
-      .setIntroducedIn(30902);
-
-  options
-      ->addOption("--database.max-databases",
-                  "The maximum number of databases that can exist in parallel.",
-                  new options::SizeTParameter(&_options.maxDatabases))
-      .setLongDescription(R"(If the maximum number of databases is reached, no
-additional databases can be created in the deployment. In order to create additional
-databases, other databases need to be removed first.")")
-      .setIntroducedIn(31200);
+  DatabaseOptionsProvider provider;
+  provider.declareOptions(options, _options);
 }
 
 void DatabaseFeature::validateOptions(
