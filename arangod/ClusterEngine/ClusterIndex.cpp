@@ -38,7 +38,6 @@
 #include "RocksDBEngine/RocksDBMultiDimIndex.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
 #include "RocksDBEngine/RocksDBVPackIndex.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 #include "Logger/LogMacros.h"
@@ -508,6 +507,13 @@ Index::StreamSupportResult ClusterIndex::supportsStreamInterface(
       break;
   }
   return Index::StreamSupportResult::makeUnsupported();
+}
+
+bool ClusterIndex::isLinearScanEnabled() const noexcept {
+  //  Linear scanning is enabled only for vector indexes.
+  if (ADB_LIKELY(_indexType == TRI_IDX_TYPE_VECTOR_INDEX)) return true;
+
+  return false;
 }
 
 bool ClusterIndex::isVectorIndexReady() const noexcept {

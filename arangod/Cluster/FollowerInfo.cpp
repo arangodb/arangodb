@@ -38,7 +38,6 @@
 #include "Logger/LoggerStream.h"
 #include "Metrics/Counter.h"
 #include "Random/RandomGenerator.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/VocbaseMetrics.h"

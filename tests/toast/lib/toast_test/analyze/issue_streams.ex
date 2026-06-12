@@ -19,17 +19,14 @@
 ## Copyright holder is ArangoDB GmbH, Cologne, Germany
 ################################################################################
 
-defmodule ToastTest.LogAnalysis do
+defmodule ToastTest.Analyze.IssueStreams do
   @moduledoc """
-  Data transformation for server log analysis.
+  Shared operations for time-windowed, server-scoped data streams.
 
-  Handles parsing of CLI filter options, server matching, time window
-  computation, log entry extraction/filtering, and k-way merge of
-  multiple sorted log streams.
+  Provides server filtering, time window computation, event extraction,
+  and k-way merge of multiple sorted streams. Used by both log analysis
+  and traffic analysis.
   """
-
-  @levels [:trace, :debug, :info, :warning, :error, :fatal]
-  @level_index Map.new(Enum.with_index(@levels))
 
   @known_roles ~w(agent coordinator dbserver single)a
   @default_exclude_roles [:agent]
@@ -72,61 +69,6 @@ defmodule ToastTest.LogAnalysis do
         {String.to_integer(String.trim(before)), 0}
     end
   end
-
-  @doc "Parse `--log-exclude` value. `nil` -> no exclusions."
-  def parse_exclude(nil), do: nil
-
-  def parse_exclude(spec) when is_binary(spec) do
-    spec
-    |> String.split(",", trim: true)
-    |> MapSet.new(&String.trim/1)
-  end
-
-  @doc "Parse `--log-min-level` value. `nil` -> no filtering."
-  def parse_level_filter(nil), do: nil
-
-  def parse_level_filter(spec) when is_binary(spec) do
-    parts = String.split(spec, ",", trim: true)
-
-    {global, topics} =
-      Enum.reduce(parts, {nil, %{}}, fn part, {global, topics} ->
-        part = String.trim(part)
-
-        case String.split(part, "=", parts: 2) do
-          [topic_str, level_str] ->
-            level = parse_level!(level_str)
-            topic = String.to_atom(topic_str)
-            {global, Map.put(topics, topic, level)}
-
-          [level_str] ->
-            {parse_level!(level_str), topics}
-        end
-      end)
-
-    %{global: global, topics: topics}
-  end
-
-  @known_level_strings Map.new(@levels, &{Atom.to_string(&1), &1})
-
-  defp parse_level!(str) do
-    str = str |> String.trim() |> String.downcase()
-
-    @known_level_strings[str] ||
-      Mix.raise(
-        "Unknown log level: #{str}. Valid: #{Map.keys(@known_level_strings) |> Enum.join(", ")}"
-      )
-  end
-
-  @doc "Check if a log entry passes the level filter."
-  def level_passes?(%{level: entry_level} = entry, %{global: global, topics: topics}) do
-    min_level = Map.get(topics, entry[:topic], global)
-
-    min_level == nil or
-      Map.get(@level_index, entry_level, 0) >= Map.fetch!(@level_index, min_level)
-  end
-
-  # Entries without a :level key, or nil filter — always pass
-  def level_passes?(_entry, _filter), do: true
 
   # --- Server matching ---
 
@@ -177,46 +119,6 @@ defmodule ToastTest.LogAnalysis do
     |> Enum.sort()
   end
 
-  # --- Extract ---
-
-  @doc """
-  Filter stored log entries by the given display window.
-  Returns `[{server_id, [entry]}]` sorted by server ID.
-
-  `servers` is a pre-filtered map/list of `{server_id => %{logs: [{start, end, [entry]}], ...}}`.
-  `window` is `{Toast.timestamp(), Toast.timestamp()}` as returned by `display_window/2`.
-
-  Options:
-  - `level_filter` — parsed level filter from `parse_level_filter/1`
-  - `excluded_ids` — `MapSet` of log IDs to exclude, from `parse_exclude/1`
-  """
-  def extract(servers, {start_us, end_us}, opts \\ []) do
-    level_filter = opts[:level_filter]
-    excluded_ids = opts[:excluded_ids]
-
-    servers
-    |> Enum.flat_map(fn {server_id, meta} ->
-      entries =
-        filter_server_entries(meta[:logs] || [], start_us, end_us, level_filter, excluded_ids)
-
-      if entries == [], do: [], else: [{server_id, entries}]
-    end)
-    |> Enum.sort_by(&elem(&1, 0))
-  end
-
-  defp filter_server_entries(log_chunks, start_us, end_us, level_filter, excluded_ids) do
-    Enum.flat_map(log_chunks, fn {_start, _end, entries} ->
-      Enum.filter(entries, fn entry ->
-        entry.time >= start_us and entry.time <= end_us and
-          level_passes?(entry, level_filter) and
-          not id_excluded?(entry, excluded_ids)
-      end)
-    end)
-  end
-
-  defp id_excluded?(_entry, nil), do: false
-  defp id_excluded?(entry, excluded_ids), do: MapSet.member?(excluded_ids, entry[:id])
-
   # --- Extract events ---
 
   @doc "Filter events by display window (microsecond timestamps)."
@@ -229,32 +131,32 @@ defmodule ToastTest.LogAnalysis do
   # --- Merge streams ---
 
   @doc """
-  K-way merge of pre-sorted per-server log entry lists into a single
-  chronological stream. Returns `[{server_id | :event, entry | event}]`.
+  K-way merge of multiple tagged, pre-sorted streams into a single
+  chronological stream.
 
-  An optional `events` list can be provided to interleave EventStore events
-  with server log entries. Events use `:timestamp` for ordering while log
-  entries use `:time`.
+  Each stream is a `{tag, [entry]}` tuple where entries are maps with
+  either a `:time` or `:timestamp` key (microseconds). The tag is opaque
+  — it can be a server ID string, `:event`, `:traffic`, or any term.
+
+  Returns `[{tag, entry}]` in chronological order across all streams.
+  Empty streams are filtered out.
   """
-  def merge_streams(streams, events \\ [])
+  @spec merge([{tag, [entry]}]) :: [{tag, entry}]
+        when tag: term(), entry: map()
+  def merge([]), do: []
 
-  def merge_streams([], []), do: []
-
-  def merge_streams([], events) do
-    Enum.map(events, &{:event, &1})
+  def merge([{tag, entries}]) do
+    Enum.map(entries, &{tag, &1})
   end
 
-  def merge_streams([{server_id, entries}], []) do
-    Enum.map(entries, &{server_id, &1})
-  end
-
-  def merge_streams(streams, events) do
-    event_stream =
-      if events == [], do: [], else: [{:event, events}]
-
-    (streams ++ event_stream)
+  def merge(streams) do
+    streams
     |> Enum.reject(fn {_, entries} -> entries == [] end)
-    |> k_way_merge([])
+    |> case do
+      [] -> []
+      [single] -> merge([single])
+      multi -> k_way_merge(multi, [])
+    end
   end
 
   # --- Private helpers ---

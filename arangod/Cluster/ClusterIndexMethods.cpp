@@ -40,7 +40,6 @@
 #include "Cluster/Utils/CurrentWatcher.h"
 #include "Cluster/ServerState.h"
 #include "Replication2/AgencyCollectionSpecificationInspectors.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "Logger/LogMacros.h"
 #include "Indexes/Index.h"
 #include "Random/RandomGenerator.h"

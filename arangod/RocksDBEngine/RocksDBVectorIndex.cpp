@@ -32,6 +32,9 @@
 #include <cstring>
 
 #include "Aql/AstNode.h"
+#include "Aql/AqlFunctionsInternalCache.h"
+#include "Aql/AqlValue.h"
+#include "Aql/DocumentExpressionContext.h"
 #include "Basics/StaticStrings.h"
 #include "Aql/Function.h"
 #include "Assertions/Assert.h"
@@ -55,6 +58,8 @@
 #include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/LogicalCollection.h"
 #include <rocksdb/db.h>
+#include "RocksDBEngine/RocksDBMetaCollection.h"
+#include "VectorIndex/VectorIndexDefinition.h"
 
 #include "faiss/MetricType.h"
 #include "faiss/utils/distances.h"
@@ -248,15 +253,193 @@ void RocksDBVectorIndex::toVelocyPack(
   }
 
   auto const trainingState = _trainingState.load();
+
   builder.add(StaticStrings::IndexTrainingState,
               VPackValue(trainingStateToString(trainingState)));
   if (trainingState == VectorIndexTrainingState::kUnusable) {
-    builder.add(StaticStrings::ErrorMessage, VPackValue(trainingError()));
+    builder.add(StaticStrings::ErrorMessage,
+                VPackValue("not enough training data for vector index"));
   }
 
   if (auto const nLists = resolvedNLists(); nLists.has_value()) {
     builder.add(StaticStrings::IndexResolvedNLists, VPackValue(*nLists));
   }
+}
+
+bool RocksDBVectorIndex::getNormalizedVectorFromDocument(
+    const velocypack::Slice& docSlice, vector::Vector& vec) {
+  if (readDocumentVectorData(docSlice, vec).fail()) {
+    return false;
+  }
+  auto dim = vec.size();
+  if (_definition.metric == vector::SimilarityMetric::kCosine) {
+    faiss::fvec_renorm_L2(dim, 1, vec.data());
+  }
+  return true;
+}
+
+float RocksDBVectorIndex::computeDistance(const vector::Vector& vec1,
+                                          const vector::Vector& vec2,
+                                          bool isDescending) {
+  TRI_ASSERT(vec1.size() == vec2.size())
+      << "Vector dimensions don't match, "
+      << "[" << vec1 << "] != [" << vec2 << "]";
+
+  auto dim = vec1.size();
+
+  float distance;
+  if (isDescending)
+    distance = faiss::fvec_inner_product(vec1.data(), vec2.data(), dim);
+  else
+    distance = faiss::fvec_L2sqr(vec1.data(), vec2.data(), dim);
+
+  return distance;
+}
+
+bool RocksDBVectorIndex::filterDocuments(
+    vector::VectorSearchConfig const& config,
+    vector::VectorSearchContext const& ctx, velocypack::Slice docSlice) {
+  TRI_ASSERT(ctx.queryContext != nullptr);
+  TRI_ASSERT(config.filterExpression != nullptr);
+  TRI_ASSERT(config.documentVariable != nullptr);
+  TRI_ASSERT(ctx.inputRow != nullptr);
+
+  auto* trx = ctx.trx;
+  aql::AqlFunctionsInternalCache functionsCache;
+
+  aql::GenericDocumentExpressionContext exprCtx(
+      *trx, *ctx.queryContext, functionsCache, config.filterVarsToRegs,
+      *ctx.inputRow, config.documentVariable);
+  exprCtx.setCurrentDocument(docSlice);
+  bool mustDestroy = false;
+  aql::AqlValue result =
+      config.filterExpression->execute(&exprCtx, mustDestroy);
+  aql::AqlValueGuard guard(result, mustDestroy);
+  return result.toBoolean();
+}
+
+void RocksDBVectorIndex::captureDocument(
+    vector::VectorSearchConfig const& config,
+    vector::VectorSearchContext const& ctx,
+    containers::NodeHashMap<LocalDocumentId, velocypack::SharedSlice>*
+        captureSink,
+    LocalDocumentId docId, velocypack::Slice docSlice) {
+  if (captureSink == nullptr) {
+    return;
+  }
+
+  auto* trx = ctx.trx;
+  auto const& projectionMode = config.strategy.projection;
+
+  if (projectionMode == vector::ProjectionMode::kDocument) {
+    captureSink->insert_or_assign(docId, vector::toOwnedSharedSlice(docSlice));
+  } else if (projectionMode == vector::ProjectionMode::kCovered &&
+             hasStoredValues()) {
+    auto extracted =
+        transaction::extractAttributeValues(*trx, _storedValues, docSlice, true)
+            ->get();
+    captureSink->insert_or_assign(docId, extracted->sharedSlice());
+  }
+}
+
+std::pair<vector::Labels, vector::Distances>
+RocksDBVectorIndex::bruteForceSearch(
+    vector::Vector& searchVector, vector::VectorSearchConfig const& config,
+    vector::VectorSearchContext const& ctx,
+    containers::NodeHashMap<LocalDocumentId, velocypack::SharedSlice>*
+        captureSink) {
+  auto const dim = _definition.dimension;
+  auto const topK = config.topK;
+  auto* trx = ctx.trx;
+  // auto const& projectionMode = config.strategy.projection;
+
+  bool const isDescending =
+      _definition.metric == vector::SimilarityMetric::kCosine ||
+      _definition.metric == vector::SimilarityMetric::kInnerProduct;
+
+  vector::Labels labels(topK, -1);
+  vector::Distances distances(topK);
+  std::size_t n = 0;
+
+  auto iter = _collection.getPhysical()->getAllIterator(trx, ReadOwnWrites::no);
+
+  vector::Vector currentDocVector;
+  currentDocVector.reserve(dim);
+
+  bool const hasFilter = config.strategy.filter != FilterMode::kNone;
+  aql::AqlFunctionsInternalCache functionsCache;
+
+  auto eraseCaptured = [&](vector::VectorIndexLabelId id) {
+    if (captureSink != nullptr && id >= 0) {
+      captureSink->erase(LocalDocumentId{static_cast<std::uint64_t>(id)});
+    }
+  };
+
+  //  Iterate over all documents in the shard and build the heap.
+  //  TODO: Redesign and refactor the min/max implementations
+  //  https://arangodb.atlassian.net/browse/COR-615
+  iter->allDocuments([&](LocalDocumentId docId, aql::DocumentData&&,
+                         velocypack::Slice docSlice) -> bool {
+    currentDocVector.clear();
+    auto ret = getNormalizedVectorFromDocument(docSlice, currentDocVector);
+    if (!ret) {
+      return true;
+    }
+
+    if (hasFilter && !filterDocuments(config, ctx, docSlice)) {
+      return true;
+    }
+
+    auto dist = computeDistance(currentDocVector, searchVector, isDescending);
+    auto id = static_cast<vector::VectorIndexLabelId>(docId.id());
+
+    if (n < topK) {
+      if (isDescending) {
+        faiss::minheap_push(n + 1, distances.data(), labels.data(), dist, id);
+      } else {
+        faiss::maxheap_push(n + 1, distances.data(), labels.data(), dist, id);
+      }
+      captureDocument(config, ctx, captureSink, docId, docSlice);
+      ++n;
+    } else {
+      if (isDescending) {
+        if (dist > distances[0]) {
+          eraseCaptured(labels[0]);
+          faiss::minheap_replace_top(topK, distances.data(), labels.data(),
+                                     dist, id);
+          captureDocument(config, ctx, captureSink, docId, docSlice);
+        }
+      } else {
+        if (dist < distances[0]) {
+          eraseCaptured(labels[0]);
+          faiss::maxheap_replace_top(topK, distances.data(), labels.data(),
+                                     dist, id);
+          captureDocument(config, ctx, captureSink, docId, docSlice);
+        }
+      }
+    }
+
+    return true;
+  });
+
+  // Truncate labels and distances to min(topK, total_no_of_documents)
+  labels.resize(n);
+  distances.resize(n);
+
+  // Reorder heap so results are sorted
+  if (isDescending) {
+    faiss::minheap_reorder(topK, distances.data(), labels.data());
+  } else {
+    faiss::maxheap_reorder(topK, distances.data(), labels.data());
+  }
+
+  // L2: fvec_L2sqr returns squared distances, take sqrt
+  if (_definition.metric == vector::SimilarityMetric::kL2) {
+    std::ranges::transform(distances, distances.begin(),
+                           [](float d) { return std::sqrt(d); });
+  }
+
+  return {std::move(labels), std::move(distances)};
 }
 
 vector::SearchResult RocksDBVectorIndex::readBatch(
@@ -265,8 +448,6 @@ vector::SearchResult RocksDBVectorIndex::readBatch(
   TRI_ASSERT(ctx.inputs != nullptr);
   TRI_ASSERT(ctx.trx != nullptr);
   // The on_heap_changed are not thread safe unless this is true
-  ADB_PROD_ASSERT(_faissIndex->parallel_mode == 0)
-      << "FAISS parallel_mode must be 0; got " << _faissIndex->parallel_mode;
 
   auto& inputs = *ctx.inputs;
   TRI_ASSERT(inputs.size() == _definition.dimension)
@@ -278,8 +459,26 @@ vector::SearchResult RocksDBVectorIndex::readBatch(
     faiss::fvec_renorm_L2(_definition.dimension, 1, inputs.data());
   }
 
+  vector::SearchResult result;
+  bool const captureNeeded =
+      config.strategy.projection == ProjectionMode::kCovered ||
+      (config.strategy.projection == ProjectionMode::kDocument &&
+       config.strategy.filter == FilterMode::kDocument);
+  auto* captureSink = captureNeeded ? &result.capturedDocuments : nullptr;
+
   if (auto const state = _trainingState.load();
       state != VectorIndexTrainingState::kReady) {
+    if (isLinearScanEnabled()) {
+      // Not enough training data: fall back to linear scan on this shard so
+      // cluster vector search stays usable.
+
+      auto [labels, distances] =
+          bruteForceSearch(inputs, config, ctx, captureSink);
+      result.labels = std::move(labels);
+      result.distances = std::move(distances);
+      return result;
+    }
+
     // This should never happen — the optimizer should not use
     // EnumerateNearVectorNode when the vector index is not ready.
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -290,15 +489,9 @@ vector::SearchResult RocksDBVectorIndex::readBatch(
   TRI_ASSERT(_faissIndex != nullptr);
 
   // Trained: normal FAISS IVF search
-  vector::SearchResult result;
   result.distances.resize(config.topK);
   result.labels.resize(config.topK);
 
-  bool const captureNeeded =
-      config.strategy.projection == ProjectionMode::kCovered ||
-      (config.strategy.projection == ProjectionMode::kDocument &&
-       config.strategy.filter == FilterMode::kDocument);
-  auto* captureSink = captureNeeded ? &result.capturedDocuments : nullptr;
   auto faissSearchContext = makeFaissIteratorContext(config, ctx, captureSink);
 
   faiss::SearchParametersIVF searchParametersIvf;
@@ -317,6 +510,8 @@ vector::SearchResult RocksDBVectorIndex::readBatch(
 
   return result;
 }
+
+bool RocksDBVectorIndex::isLinearScanEnabled() const noexcept { return true; }
 
 bool RocksDBVectorIndex::isVectorIndexReady() const noexcept {
   return _trainingState.load(std::memory_order_acquire) ==

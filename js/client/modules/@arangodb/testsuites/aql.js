@@ -175,7 +175,7 @@ function shellClient (options) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function shellClientLarge (options) {
-  const name = 'shell_client';
+  const name = 'shell_client_large';
   let testCases = tu.scanTestPaths(testPaths[name], options);
 
   testCases = tu.splitBuckets(options, testCases);

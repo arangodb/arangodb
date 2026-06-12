@@ -133,7 +133,7 @@ TEST_F(ActivitiesSchedulerTest, multiple_queues) {
 }
 
 TEST_F(ActivitiesSchedulerTest,
-       scheduler_automatically_caputures_currently_executing_activiy) {
+       scheduler_automatically_captures_currently_executing_activity) {
   auto outer_activity = arangodb::activities::make<activities::GenericActivity>(
       "TestActivity", this->activityData);
   auto guard = arangodb::activities::Registry::ScopedCurrentlyExecutingActivity(

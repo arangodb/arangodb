@@ -1340,6 +1340,20 @@ TEST_F(CompareAstNodesTest, quantifierAtLeastNotEqualAll) {
   EXPECT_NE(0, compare(al2, all));
 }
 
+TEST_F(CompareAstNodesTest, quantifierAtLeastDifferentNonConstantThreshold) {
+  // non-constant thresholds (variable refs) fall through to
+  // compareChildrenInOrder
+  auto* a = makeVar("a");
+  auto* b = makeVar("b");
+  ASSERT_LT(a->id, b->id);
+  auto* alA =
+      _ast->createNodeQuantifier(Quantifier::Type::kAtLeast, createRefNode(a));
+  auto* alB =
+      _ast->createNodeQuantifier(Quantifier::Type::kAtLeast, createRefNode(b));
+  EXPECT_LT(compare(alA, alB), 0);
+  EXPECT_GT(compare(alB, alA), 0);
+}
+
 // --- compareUtf8 flag propagation
 // -------------------------------------------------
 
@@ -1347,6 +1361,24 @@ TEST_F(CompareAstNodesTest, stringCompareUtf8FlagPropagates) {
   EXPECT_EQ(0, compare(strVal("abc"), strVal("abc"), /*utf8=*/true));
   EXPECT_LT(compare(strVal("abc"), strVal("abd"), /*utf8=*/true), 0);
   EXPECT_GT(compare(strVal("abd"), strVal("abc"), /*utf8=*/true), 0);
+}
+
+// NFC U+00E9 (0xC3 0xA9) vs NFD e + combining accent (0x65 0xCC 0x81):
+// byte comparison → not equal; ICU comparison → equal
+TEST_F(CompareAstNodesTest, nfcAndNfdDistinctWithoutUtf8) {
+  auto* nfc = strVal("caf\xc3\xa9");
+  auto* nfd = strVal("cafe\xcc\x81");
+  EXPECT_NE(0, compare(nfc, nfd, /*utf8=*/false));
+  EXPECT_EQ(0, compare(nfc, nfd, /*utf8=*/true));
+}
+
+TEST_F(CompareAstNodesTest, naryAndWithNfcNfdStringsUsesByteCompare) {
+  auto* nfc = strVal("caf\xc3\xa9");
+  auto* nfd = strVal("cafe\xcc\x81");
+  auto* andNfc = naryOp(NODE_TYPE_OPERATOR_NARY_AND, {nfc});
+  auto* andNfd = naryOp(NODE_TYPE_OPERATOR_NARY_AND, {nfd});
+  EXPECT_NE(0, compare(andNfc, andNfd, /*utf8=*/false));
+  EXPECT_EQ(0, compare(andNfc, andNfd, /*utf8=*/true));
 }
 
 // --- IN / NIN with non-constant (structural) elements
