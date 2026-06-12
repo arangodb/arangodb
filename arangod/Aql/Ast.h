@@ -468,7 +468,8 @@ class Ast {
   AstNode* createPatternNodePattern(AstNode const* outVariable,
                                     AstNode const* labels,
                                     AstNode const* properties,
-                                    AstNode const* filterExpression);
+                                    AstNode const* filterExpression,
+                                    AstNode const* projections);
 
   AstNode* createPatternSegment(AstNode const* edge, AstNode const* node);
   AstNode* createPatternPathVariable(std::string_view variable);

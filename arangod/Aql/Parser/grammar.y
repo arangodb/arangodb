@@ -1132,6 +1132,35 @@ for_statement:
     }
   ;
 
+
+
+%type <node> pattern_projection_list;
+pattern_projection_list:
+    object_element_name[elt] {
+		  auto node = parser->ast()->createNodeValueString($elt.value, $elt.length);
+		  parser->pushArrayElement(node);
+		}
+		| pattern_projection_list T_COMMA object_element_name[elt] 
+		{
+		  auto node = parser->ast()->createNodeValueString($elt.value, $elt.length);
+		  parser->pushArrayElement(node);
+	
+    }
+		;
+
+%type <node> pattern_maybe_projection;
+pattern_maybe_projection:
+    T_RETURN {
+			auto node = parser->ast()->createNodeArray();
+      parser->pushStack(node);
+		} pattern_projection_list {
+      $$ = static_cast<AstNode*>(parser->popStack());
+    }
+  | /* empty */ { $$ = nullptr; }
+  ;
+
+
+
 %type <node> pattern_label;
 pattern_label:
     T_COLON T_STRING {
@@ -1179,8 +1208,8 @@ pattern_variable_length_relationship:
 
 %type <node> pattern_node_pattern;
 pattern_node_pattern:
-    T_OPEN pattern_out_variable pattern_label pattern_maybe_property_key_value_expression pattern_maybe_where_expression T_CLOSE {
-        $$ = parser->ast()->createPatternNodePattern($2, $3, $4, $5);
+    T_OPEN pattern_out_variable pattern_label pattern_maybe_property_key_value_expression pattern_maybe_where_expression[where] pattern_maybe_projection[projection] T_CLOSE {
+        $$ = parser->ast()->createPatternNodePattern($2, $3, $4, $where, $projection);
     }
     | T_OPEN variable_name T_CLOSE { $$ = parser->ast()->createNodeReference({$2.value, $2.length}); }
 

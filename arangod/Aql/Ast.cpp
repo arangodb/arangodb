@@ -2009,12 +2009,14 @@ AstNode* Ast::createPatternEdge(AstNode const* outVariable,
 AstNode* Ast::createPatternNodePattern(AstNode const* outVariable,
                                        AstNode const* labels,
                                        AstNode const* properties,
-                                       AstNode const* filterExpression) {
+                                       AstNode const* filterExpression,
+                                       AstNode const* projections) {
   auto node = createNode(NODE_TYPE_PATTERN_NODE_PATTERN);
   node->addMember(outVariable ? outVariable : createNodeValueNull());
   node->addMember(labels ? labels : createNodeValueNull());
   node->addMember(properties ? properties : createNodeNop());
   node->addMember(filterExpression ? filterExpression : createNodeNop());
+  node->addMember(projections ? projections : createNodeNop());
   return node;
 }
 
