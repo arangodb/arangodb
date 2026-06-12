@@ -2414,10 +2414,8 @@ ExecutionNode* ExecutionPlan::fromNodeMatch(ExecutionNode* previous,
   };
 
   auto const createCollectionAccess =
-      [&](AstNode const* member,
+      [&](AstNode const* member, Variable const* fullDocumentVariable,
           std::unordered_map<VariableId, Variable const*> const& subst) {
-        auto fullDocumentVariable =
-            _ast->variables()->createTemporaryVariable();
         auto collectionName = member->getMember(1)->getString();
         auto& collections = _ast->query().collections();
         auto collection = collections.get(collectionName);
@@ -2715,15 +2713,18 @@ ExecutionNode* ExecutionPlan::fromNodeMatch(ExecutionNode* previous,
         // FOR <outvariable> IN <collection>
         //  FILTER <outvariable>.property1 == xxx && ....
         ExecutionNode* lastNode;
-        std::tie(en, lastNode, prevVar) =
-            createCollectionAccess(member, variableSubstitutions);
-        en->addDependency(previous);
-        previous = en = lastNode;
-
+        auto fullDocumentVariable =
+            _ast->variables()->createTemporaryVariable();
         auto destinationVariable =
             static_cast<Variable const*>(member->getMember(0)->getData());
 
-        variableSubstitutions.emplace(destinationVariable->id, prevVar);
+        variableSubstitutions.emplace(destinationVariable->id,
+                                      fullDocumentVariable);
+
+        std::tie(en, lastNode, prevVar) = createCollectionAccess(
+            member, fullDocumentVariable, variableSubstitutions);
+        en->addDependency(previous);
+        previous = en = lastNode;
 
         pathVertices.push_back(_ast->createNodeReference(destinationVariable));
 
@@ -2749,25 +2750,39 @@ ExecutionNode* ExecutionPlan::fromNodeMatch(ExecutionNode* previous,
         if (edge->getMember(5)->type == NODE_TYPE_NOP) {
           ExecutionNode* lastNodeFilter;
           Variable const* edgeVar;
-          std::tie(en, lastNodeFilter, edgeVar) =
-              createCollectionAccess(edge, variableSubstitutions);
 
+          auto fullEdgeDocumentVariable =
+              _ast->variables()->createTemporaryVariable();
           auto edgeDestinationVariable =
               static_cast<Variable const*>(edge->getMember(0)->getData());
+          variableSubstitutions.emplace(edgeDestinationVariable->id,
+                                        fullEdgeDocumentVariable);
 
-          variableSubstitutions.emplace(edgeDestinationVariable->id, edgeVar);
+          std::tie(en, lastNodeFilter, edgeVar) = createCollectionAccess(
+              edge, fullEdgeDocumentVariable, variableSubstitutions);
+
           en->addDependency(previous);
           previous = en = lastNodeFilter;
 
           Variable const* rightVertexVar;
+          auto vertexDestinationVariable =
+              static_cast<Variable const*>(node->getMember(0)->getData());
 
           if (node->type == NODE_TYPE_REFERENCE) {
+            // todo: possibly replace?
             rightVertexVar = static_cast<Variable*>(node->getData());
           } else {
             ADB_PROD_ASSERT(node->type == NODE_TYPE_PATTERN_NODE_PATTERN)
                 << member->type;
+
+            auto fullVertexDocumentVariable =
+                _ast->variables()->createTemporaryVariable();
+            variableSubstitutions.emplace(fullVertexDocumentVariable->id,
+                                          vertexDestinationVariable);
+
             std::tie(en, lastNodeFilter, rightVertexVar) =
-                createCollectionAccess(node, variableSubstitutions);
+                createCollectionAccess(node, fullVertexDocumentVariable,
+                                       variableSubstitutions);
             en->addDependency(previous);
 
             auto projection = createPatternProjection(node, rightVertexVar);
@@ -2784,9 +2799,6 @@ ExecutionNode* ExecutionPlan::fromNodeMatch(ExecutionNode* previous,
           prevVar = rightVertexVar;
 
           pathEdges.push_back(_ast->createNodeReference(edgeVar));
-
-          auto vertexDestinationVariable =
-              static_cast<Variable const*>(node->getMember(0)->getData());
 
           pathVertices.push_back(
               _ast->createNodeReference(vertexDestinationVariable));
