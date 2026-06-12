@@ -110,8 +110,8 @@ TEST(RocksDBEngineMinimal, CanConstruct) {
 
   auto& engine = server.addFeature<RocksDBEngine>(
       optionsProvider, metrics, dbPath, vectorIdx, flush, dumpLimits,
-      nullptr /* IRocksDBReplicatedLogProvider* */,
-      recovery, dbFeature, indexRefill, cache, agency);
+      nullptr /* IRocksDBReplicatedLogProvider* */, recovery, dbFeature,
+      indexRefill, cache, agency);
 
   EXPECT_EQ(engine.kEngineName, "rocksdb");
 }

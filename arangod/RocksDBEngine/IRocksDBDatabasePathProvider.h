@@ -30,7 +30,8 @@ namespace arangodb {
 struct IRocksDBDatabasePathProvider {
   virtual ~IRocksDBDatabasePathProvider() = default;
   virtual std::string const& directory() const = 0;
-  virtual std::string subdirectoryName(std::string const& subDirectory) const = 0;
+  virtual std::string subdirectoryName(
+      std::string const& subDirectory) const = 0;
 };
 
 }  // namespace arangodb
