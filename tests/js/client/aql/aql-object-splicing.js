@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual */
+/*global assertEqual, assertTrue */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -25,6 +25,7 @@
 const internal = require("internal");
 const jsunity = require("jsunity");
 const db = internal.db;
+const errors = internal.errors;
 
 function objectSplicingSuite () {
   return {
@@ -45,8 +46,29 @@ function objectSplicingSuite () {
     },
     testObjectSplicingNonObjectNoOp: function () {
       let query = `LET x = 7 RETURN { ...x }`;
-      let res = db._query(query).toArray();
-      assertEqual([{}], res);
+      let data = db._query(query).data;
+      assertEqual([{}], data.result);
+      assertEqual(1, data.extra.warnings.length);
+      assertEqual(errors.ERROR_QUERY_OBJECT_EXPECTED.code,
+        data.extra.warnings[0].code);
+      assertTrue(data.extra.warnings[0].message.includes('object splice'));
+    },
+    testObjectSplicingNonObjectBoolean: function () {
+      let query = `LET x = true RETURN { ...x }`;
+      let data = db._query(query).data;
+      assertEqual([{}], data.result);
+      assertEqual(1, data.extra.warnings.length);
+      assertEqual(errors.ERROR_QUERY_OBJECT_EXPECTED.code,
+        data.extra.warnings[0].code);
+      assertTrue(data.extra.warnings[0].message.includes('object splice'));
+    },
+    testObjectSplicingNonObjectArray: function () {
+      let query = `LET x = [] RETURN { ...x }`;
+      let data = db._query(query).data;
+      assertEqual([{}], data.result);
+      assertEqual(1, data.extra.warnings.length);
+      assertEqual(errors.ERROR_QUERY_OBJECT_EXPECTED.code,
+        data.extra.warnings[0].code);
     },
     testObjectSplicingNullNoOp: function () {
       let query = `LET x = null RETURN { ...x }`;

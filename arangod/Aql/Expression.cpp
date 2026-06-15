@@ -687,8 +687,20 @@ AqlValue Expression::executeSimpleExpressionArray(ExpressionContext& ctx,
       AqlValueGuard guard(result, localMustDestroy);
 
       if (result.isArray()) {
-        for (auto e : VPackArrayIterator(result.slice())) {
-          builder->add(e);
+        if (result.isRange()) {
+          Range const* r = result.range();
+          TRI_ASSERT(r != nullptr);
+          Range::throwIfTooBigForMaterialization(r->size());
+          for (size_t i = 0; i < r->size(); ++i) {
+            builder->add(VPackValue(r->at(i)));
+          }
+        } else {
+          std::vector<AqlValueMaterializer> materializers;
+          materializers.emplace_back(vopts);
+          VPackSlice slice = materializers.back().slice(value);
+          for (auto e : VPackArrayIterator(result.slice())) {
+            builder->add(e);
+          }
         }
       } else if (result.isNull(true)) {
         result.toVelocyPack(&trx.vpackOptions(), *builder.get(), false);
@@ -803,19 +815,24 @@ AqlValue Expression::executeSimpleExpressionObject(ExpressionContext& ctx,
 
       AqlValueGuard spliceGuard(spliceValue, localMustDestroy);
 
-      if (!spliceValue.isObject()) {
-        continue;
-      }
+      if (spliceValue.isObject()) {
+        AqlValueMaterializer materializer(&vopts);
+        VPackSlice slice = materializer.slice(spliceValue);
 
-      AqlValueMaterializer materializer(&vopts);
-      VPackSlice slice = materializer.slice(spliceValue);
+        for (VPackObjectIterator it(slice, /*sequential*/ true); it.valid();
+             it.next()) {
+          // materialize attribute value into independent AqlValue
+          AqlValue copiedValue(it.value());
 
-      for (VPackObjectIterator it(slice, /*sequential*/ true); it.valid();
-           it.next()) {
-        // materialize attribute value into independent AqlValue
-        AqlValue copiedValue(it.value());
-
-        addOrUpdateEntry(it.key().copyString(), copiedValue, false);
+          addOrUpdateEntry(it.key().copyString(), copiedValue, false);
+        }
+      } else if (spliceValue.isNull(true)) {
+        // no-op
+      } else {
+        ctx.registerWarning(
+            TRI_ERROR_QUERY_OBJECT_EXPECTED,
+            absl::StrCat("in object splice: ",
+                         TRI_errno_string(TRI_ERROR_QUERY_OBJECT_EXPECTED)));
       }
 
       continue;

@@ -317,6 +317,7 @@ rest::ResponseCode GeneralResponse::responseCode(ErrorCode code) {
     case static_cast<int>(TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE):
     case static_cast<int>(TRI_ERROR_QUERY_DIVISION_BY_ZERO):
     case static_cast<int>(TRI_ERROR_QUERY_ARRAY_EXPECTED):
+    case static_cast<int>(TRI_ERROR_QUERY_OBJECT_EXPECTED):
     case static_cast<int>(TRI_ERROR_QUERY_FAIL_CALLED):
     case static_cast<int>(TRI_ERROR_QUERY_INVALID_DATE_VALUE):
     case static_cast<int>(TRI_ERROR_QUERY_MULTI_MODIFY):
