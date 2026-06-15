@@ -134,6 +134,35 @@ enum class RequestLane {
   UNDEFINED,
 };
 
+template<typename Inspector>
+auto inspect(Inspector& f, RequestLane& x) {
+  return f.enumeration(x).values(
+      RequestLane::CLIENT_FAST, "CLIENT_FAST",            //
+      RequestLane::CLIENT_AQL, "CLIENT_AQL",              //
+      RequestLane::CLIENT_V8, "CLIENT_V8",                //
+      RequestLane::CLIENT_SLOW, "CLIENT_SLOW",            //
+      RequestLane::CLIENT_UI, "CLIENT_UI",                //
+      RequestLane::AGENCY_INTERNAL, "AGENCY_INTERNAL",    //
+      RequestLane::AGENCY_CLUSTER, "AGENCY_CLUSTER",      //
+      RequestLane::CLUSTER_INTERNAL, "CLUSTER_INTERNAL",  //
+      RequestLane::CLUSTER_AQL, "CLUSTER_AQL",            //
+      RequestLane::CLUSTER_AQL_INTERNAL_COORDINATOR,
+      "CLUSTER_AQL_INTERNAL_COORDINATOR",                                     //
+      RequestLane::CLUSTER_AQL_SHUTDOWN, "CLUSTER_AQL_SHUTDOWN",              //
+      RequestLane::CLUSTER_AQL_DOCUMENT, "CLUSTER_AQL_DOCUMENT",              //
+      RequestLane::CLUSTER_V8, "CLUSTER_V8",                                  //
+      RequestLane::CLUSTER_ADMIN, "CLUSTER_ADMIN",                            //
+      RequestLane::SERVER_REPLICATION, "SERVER_REPLICATION",                  //
+      RequestLane::SERVER_REPLICATION_CATCHUP, "SERVER_REPLICATION_CATCHUP",  //
+      RequestLane::SERVER_SYNCHRONOUS_REPLICATION,
+      "SERVER_SYNCHRONOUS_REPLICATION",               //
+      RequestLane::TASK_V8, "TASK_V8",                //
+      RequestLane::INTERNAL_LOW, "INTERNAL_LOW",      //
+      RequestLane::CONTINUATION, "CONTINUATION",      //
+      RequestLane::DELAYED_FUTURE, "DELAYED_FUTURE",  //
+      RequestLane::UNDEFINED, "UNDEFINED");
+}
+
 enum class RequestPriority { MAINTENANCE = 0, HIGH = 1, MED = 2, LOW = 3 };
 
 constexpr inline RequestPriority PriorityRequestLane(RequestLane lane) {

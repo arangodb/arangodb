@@ -31,9 +31,7 @@
 #include <string>
 #include <string_view>
 
-namespace arangodb {
-namespace fuerte {
-inline namespace v1 {
+namespace arangodb { namespace fuerte { inline namespace v1 {
 class Request;
 class Response;
 
@@ -119,6 +117,17 @@ enum class RestVerb {
 std::string to_string(RestVerb type);
 RestVerb from_string(std::string_view type);
 RestVerb from_string(std::string const& type);
+template <class Inspector>
+auto inspect(Inspector& f, RestVerb& x) {
+  return f.enumeration(x).values(RestVerb::Illegal, "Illegal",  //
+                                 RestVerb::Delete, "Delete",    //
+                                 RestVerb::Get, "Get",          //
+                                 RestVerb::Post, "Post",        //
+                                 RestVerb::Put, "Put",          //
+                                 RestVerb::Head, "Head",        //
+                                 RestVerb::Patch, "Patch",      //
+                                 RestVerb::Options, "Options");
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       MessageType
@@ -215,7 +224,8 @@ struct ConnectionConfiguration {
         _authenticationType(AuthenticationType::None),
         _user(""),
         _password(""),
-        _jwtToken("") {}
+        _jwtToken("") {
+  }
 
   ConnectionFailureCallback _onFailure;
   SocketType _socketType;      // tcp, ssl or unix
@@ -241,7 +251,5 @@ struct ConnectionConfiguration {
   std::string _jwtToken;
 };
 }  // namespace detail
-}  // namespace v1
-}  // namespace fuerte
-}  // namespace arangodb
+}}}  // namespace arangodb::fuerte::v1
 #endif
