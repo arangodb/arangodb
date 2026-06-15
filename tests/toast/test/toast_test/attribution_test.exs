@@ -24,8 +24,6 @@ defmodule ToastTest.AttributionTest do
 
   import ToastTest.TimeTestHelpers, only: [to_us: 1]
 
-  alias Toast.Deployment.Factory.LaunchSpec
-  alias Toast.Deployment.ServerInstance
   alias ToastTest.CrashEvent
   alias Toast.Process.CrashInfo
   alias ToastTest.Attribution
@@ -45,6 +43,8 @@ defmodule ToastTest.AttributionTest do
   @test1_finished ~U[2026-03-09 10:01:00Z]
   @test2_started ~U[2026-03-09 10:01:05Z]
   @test2_finished ~U[2026-03-09 10:02:00Z]
+
+  @default_executable "/usr/bin/arangod"
 
   defp build_test_data(overrides \\ %{}) do
     Map.merge(
@@ -69,26 +69,42 @@ defmodule ToastTest.AttributionTest do
     )
   end
 
-  defp build_server(id, opts \\ []) do
+  # Mirrors the output of TimeWindows.build/1 (kept decoupled so these tests
+  # exercise attribution logic, not window construction). Keep in sync if the
+  # window shape changes.
+  defp build_windows do
+    %{
+      modules: %{
+        ModA => %{
+          started_at: to_us(@mod_a_started),
+          finished_at: to_us(@mod_a_finished),
+          setup_finished_at: to_us(@test1_started),
+          teardown_started_at: to_us(@test2_finished)
+        }
+      },
+      tests: %{
+        {ModA, :test_one} => %{
+          started_at: to_us(@test1_started),
+          finished_at: to_us(@test1_finished)
+        },
+        {ModA, :test_two} => %{
+          started_at: to_us(@test2_started),
+          finished_at: to_us(@test2_finished)
+        }
+      }
+    }
+  end
+
+  defp build_artifacts(id, opts \\ []) do
     server_dir = Keyword.get(opts, :server_dir, "/tmp/server_#{id}")
     log_file = Keyword.get(opts, :log_file, Path.join(server_dir, "arangod.log"))
+    coredump_paths = Keyword.get(opts, :coredump_paths, [])
+    sanitizer_files = Keyword.get(opts, :sanitizer_files, [])
 
-    %ServerInstance{
-      id: id,
-      role: :single,
-      server_dir: server_dir,
+    %{
       log_file: log_file,
-      launch_spec: %LaunchSpec{
-        id: id,
-        role: :single,
-        executable: "/usr/bin/arangod",
-        args: [],
-        env: [],
-        working_dir: server_dir,
-        server_dir: server_dir,
-        port: 8529,
-        log_file: log_file
-      }
+      coredump_paths: coredump_paths,
+      sanitizer_files: sanitizer_files
     }
   end
 
@@ -105,22 +121,22 @@ defmodule ToastTest.AttributionTest do
 
   # --- No issues ---
 
-  describe "run/4 — empty inputs" do
+  describe "run/5 — empty inputs" do
     test "no failures, no error, no artifacts returns []" do
-      assert {[], []} = Attribution.run(build_test_data(), empty_artifacts(), [])
+      assert {[], []} = Attribution.run(build_test_data(), empty_artifacts(), [], build_windows())
     end
   end
 
   # --- Test failures ---
 
-  describe "run/4 — test failures" do
+  describe "run/5 — test failures" do
     test "each failure becomes a :test_failure issue" do
       failure1 = make_exunit_test(ModA, :test_one, {:failed, [{:error, %{message: "boom"}, []}]})
       failure2 = make_exunit_test(ModA, :test_two, {:failed, [{:error, %{message: "bang"}, []}]})
 
       test_data = build_test_data(%{failures: [failure1, failure2]})
 
-      {issues, _coredumps} = Attribution.run(test_data, empty_artifacts(), [])
+      {issues, _coredumps} = Attribution.run(test_data, empty_artifacts(), [], build_windows())
 
       assert length(issues) == 2
 
@@ -136,7 +152,7 @@ defmodule ToastTest.AttributionTest do
       failure = make_exunit_test(ModA, :test_one, {:failed, [{:error, %{message: "boom"}, []}]})
       test_data = build_test_data(%{failures: [failure]})
 
-      {[issue], _coredumps} = Attribution.run(test_data, empty_artifacts(), [])
+      {[issue], _coredumps} = Attribution.run(test_data, empty_artifacts(), [], build_windows())
 
       assert issue.detail.test == failure
     end
@@ -144,17 +160,19 @@ defmodule ToastTest.AttributionTest do
 
   # --- Crashes ---
 
-  describe "run/4 — crash events" do
+  describe "run/5 — crash events" do
     test "crash with timestamp attributed to test window" do
       crash_info = %CrashInfo{
         exit_status: 139,
         signal: 11,
+        executable: @default_executable,
         timestamp: to_us(~U[2026-03-09 10:00:30Z])
       }
 
       crash_events = [%CrashEvent{server_id: "single1", crash_info: crash_info}]
 
-      {issues, _coredumps} = Attribution.run(build_test_data(), empty_artifacts(), crash_events)
+      {issues, _coredumps} =
+        Attribution.run(build_test_data(), empty_artifacts(), crash_events, build_windows())
 
       assert [issue] = issues
       assert issue.type == :crash
@@ -167,12 +185,14 @@ defmodule ToastTest.AttributionTest do
       crash_info = %CrashInfo{
         exit_status: 139,
         signal: 11,
+        executable: @default_executable,
         timestamp: to_us(~U[2026-03-09 10:08:00Z])
       }
 
       crash_events = [%CrashEvent{server_id: "single1", crash_info: crash_info}]
 
-      {issues, _coredumps} = Attribution.run(build_test_data(), empty_artifacts(), crash_events)
+      {issues, _coredumps} =
+        Attribution.run(build_test_data(), empty_artifacts(), crash_events, build_windows())
 
       assert [issue] = issues
       assert issue.scope == :suite
@@ -182,17 +202,12 @@ defmodule ToastTest.AttributionTest do
       crash_info = %CrashInfo{
         exit_status: 139,
         signal: 11,
+        executable: @default_executable,
         timestamp: to_us(~U[2026-03-09 10:00:30Z])
       }
 
-      server = build_server("single1")
-
       artifacts = %{
-        "single1" => %{
-          server: server,
-          coredump_paths: ["/tmp/core.1234"],
-          sanitizer_files: []
-        }
+        "single1" => build_artifacts("single1", coredump_paths: ["/tmp/core.1234"])
       }
 
       fake_analyzer = fn _core, _bin, _opts ->
@@ -208,13 +223,19 @@ defmodule ToastTest.AttributionTest do
          }}
       end
 
-      crash_events = [%CrashEvent{server_id: "single1", crash_info: crash_info}]
+      crash_events = [
+        %CrashEvent{
+          server_id: "single1",
+          crash_info: crash_info
+        }
+      ]
 
       {issues, coredump_reports} =
         Attribution.run(
           build_test_data(),
           artifacts,
           crash_events,
+          build_windows(),
           analyzer_opts: [analyzer: fake_analyzer]
         )
 
@@ -229,26 +250,27 @@ defmodule ToastTest.AttributionTest do
       crash_info = %CrashInfo{
         exit_status: 139,
         signal: 11,
+        executable: @default_executable,
         timestamp: to_us(~U[2026-03-09 10:00:30Z])
       }
 
-      server = build_server("single1")
-
       artifacts = %{
-        "single1" => %{
-          server: server,
-          coredump_paths: ["/tmp/core.1234"],
-          sanitizer_files: []
-        }
+        "single1" => build_artifacts("single1", coredump_paths: ["/tmp/core.1234"])
       }
 
-      crash_events = [%CrashEvent{server_id: "single1", crash_info: crash_info}]
+      crash_events = [
+        %CrashEvent{
+          server_id: "single1",
+          crash_info: crash_info
+        }
+      ]
 
       {issues, coredump_reports} =
         Attribution.run(
           build_test_data(),
           artifacts,
           crash_events,
+          build_windows(),
           analyzer_opts: [analyzer: fn _, _, _ -> {:error, :no_debugger} end]
         )
 
@@ -263,17 +285,12 @@ defmodule ToastTest.AttributionTest do
       crash_info = %CrashInfo{
         exit_status: 139,
         signal: 11,
+        executable: @default_executable,
         timestamp: to_us(~U[2026-03-09 10:00:30Z])
       }
 
-      server = build_server("single1")
-
       artifacts = %{
-        "single1" => %{
-          server: server,
-          coredump_paths: ["/tmp/core.1", "/tmp/core.2"],
-          sanitizer_files: []
-        }
+        "single1" => build_artifacts("single1", coredump_paths: ["/tmp/core.1", "/tmp/core.2"])
       }
 
       fake_analyzer = fn core_path, _bin, _opts ->
@@ -289,13 +306,19 @@ defmodule ToastTest.AttributionTest do
          }}
       end
 
-      crash_events = [%CrashEvent{server_id: "single1", crash_info: crash_info}]
+      crash_events = [
+        %CrashEvent{
+          server_id: "single1",
+          crash_info: crash_info
+        }
+      ]
 
       {issues, coredump_reports} =
         Attribution.run(
           build_test_data(),
           artifacts,
           crash_events,
+          build_windows(),
           analyzer_opts: [analyzer: fake_analyzer]
         )
 
@@ -315,17 +338,13 @@ defmodule ToastTest.AttributionTest do
       crash_info = %CrashInfo{
         exit_status: 139,
         signal: 11,
+        executable: @default_executable,
         timestamp: to_us(~U[2026-03-09 10:00:30Z])
       }
 
-      server = build_server("single1")
-
       artifacts = %{
-        "single1" => %{
-          server: server,
-          coredump_paths: ["/tmp/core.good", "/tmp/core.bad"],
-          sanitizer_files: []
-        }
+        "single1" =>
+          build_artifacts("single1", coredump_paths: ["/tmp/core.good", "/tmp/core.bad"])
       }
 
       fake_analyzer = fn core_path, _bin, _opts ->
@@ -345,13 +364,19 @@ defmodule ToastTest.AttributionTest do
         end
       end
 
-      crash_events = [%CrashEvent{server_id: "single1", crash_info: crash_info}]
+      crash_events = [
+        %CrashEvent{
+          server_id: "single1",
+          crash_info: crash_info
+        }
+      ]
 
       {issues, coredump_reports} =
         Attribution.run(
           build_test_data(),
           artifacts,
           crash_events,
+          build_windows(),
           analyzer_opts: [analyzer: fake_analyzer]
         )
 
@@ -369,23 +394,19 @@ defmodule ToastTest.AttributionTest do
     end
   end
 
-  describe "run/4 — crash coredump filtering by PID" do
+  describe "run/5 — crash coredump filtering by PID" do
     test "only coredumps matching the crash event PID are analyzed" do
       crash_info = %CrashInfo{
         exit_status: 139,
         signal: 11,
+        executable: @default_executable,
         timestamp: to_us(~U[2026-03-09 10:00:30Z]),
         os_pid: 2000
       }
 
-      server = build_server("single1")
-
       artifacts = %{
-        "single1" => %{
-          server: server,
-          coredump_paths: ["/tmp/core.1000", "/tmp/core.2000"],
-          sanitizer_files: []
-        }
+        "single1" =>
+          build_artifacts("single1", coredump_paths: ["/tmp/core.1000", "/tmp/core.2000"])
       }
 
       fake_analyzer = fn core_path, _bin, _opts ->
@@ -401,13 +422,19 @@ defmodule ToastTest.AttributionTest do
          }}
       end
 
-      crash_events = [%CrashEvent{server_id: "single1", crash_info: crash_info}]
+      crash_events = [
+        %CrashEvent{
+          server_id: "single1",
+          crash_info: crash_info
+        }
+      ]
 
       {issues, coredump_reports} =
         Attribution.run(
           build_test_data(),
           artifacts,
           crash_events,
+          build_windows(),
           analyzer_opts: [analyzer: fake_analyzer]
         )
 
@@ -422,18 +449,14 @@ defmodule ToastTest.AttributionTest do
       crash_info = %CrashInfo{
         exit_status: 139,
         signal: 11,
+        executable: @default_executable,
         timestamp: to_us(~U[2026-03-09 10:00:30Z]),
         os_pid: nil
       }
 
-      server = build_server("single1")
-
       artifacts = %{
-        "single1" => %{
-          server: server,
-          coredump_paths: ["/tmp/core.1000", "/tmp/core.2000"],
-          sanitizer_files: []
-        }
+        "single1" =>
+          build_artifacts("single1", coredump_paths: ["/tmp/core.1000", "/tmp/core.2000"])
       }
 
       fake_analyzer = fn core_path, _bin, _opts ->
@@ -449,13 +472,19 @@ defmodule ToastTest.AttributionTest do
          }}
       end
 
-      crash_events = [%CrashEvent{server_id: "single1", crash_info: crash_info}]
+      crash_events = [
+        %CrashEvent{
+          server_id: "single1",
+          crash_info: crash_info
+        }
+      ]
 
       {issues, coredump_reports} =
         Attribution.run(
           build_test_data(),
           artifacts,
           crash_events,
+          build_windows(),
           analyzer_opts: [analyzer: fake_analyzer]
         )
 
@@ -468,18 +497,13 @@ defmodule ToastTest.AttributionTest do
       crash_info = %CrashInfo{
         exit_status: 139,
         signal: 11,
+        executable: @default_executable,
         timestamp: to_us(~U[2026-03-09 10:00:30Z]),
         os_pid: 9999
       }
 
-      server = build_server("single1")
-
       artifacts = %{
-        "single1" => %{
-          server: server,
-          coredump_paths: ["/tmp/core"],
-          sanitizer_files: []
-        }
+        "single1" => build_artifacts("single1", coredump_paths: ["/tmp/core"])
       }
 
       fake_analyzer = fn core_path, _bin, _opts ->
@@ -495,13 +519,19 @@ defmodule ToastTest.AttributionTest do
          }}
       end
 
-      crash_events = [%CrashEvent{server_id: "single1", crash_info: crash_info}]
+      crash_events = [
+        %CrashEvent{
+          server_id: "single1",
+          crash_info: crash_info
+        }
+      ]
 
       {issues, coredump_reports} =
         Attribution.run(
           build_test_data(),
           artifacts,
           crash_events,
+          build_windows(),
           analyzer_opts: [analyzer: fake_analyzer]
         )
 
@@ -511,31 +541,25 @@ defmodule ToastTest.AttributionTest do
     end
   end
 
-  describe "run/4 — empty crash events" do
+  describe "run/5 — empty crash events" do
     test "empty list produces no crash issues" do
-      assert {[], []} = Attribution.run(build_test_data(), empty_artifacts(), [])
+      assert {[], []} = Attribution.run(build_test_data(), empty_artifacts(), [], build_windows())
     end
   end
 
   # --- Sanitizer reports ---
 
-  describe "run/4 — sanitizer files" do
+  describe "run/5 — sanitizer files" do
     test "each sanitizer file produces a :sanitizer_report issue" do
       dir = System.tmp_dir!()
       san_file = Path.join(dir, "alubsan.log.#{System.unique_integer([:positive])}")
       File.write!(san_file, "ERROR: AddressSanitizer: heap-buffer-overflow")
 
-      server = build_server("single1", server_dir: dir)
-
       artifacts = %{
-        "single1" => %{
-          server: server,
-          coredump_paths: [],
-          sanitizer_files: [san_file]
-        }
+        "single1" => build_artifacts("single1", server_dir: dir, sanitizer_files: [san_file])
       }
 
-      {issues, _coredumps} = Attribution.run(build_test_data(), artifacts, [])
+      {issues, _coredumps} = Attribution.run(build_test_data(), artifacts, [], build_windows())
 
       assert [issue] = issues
       assert issue.type == :sanitizer_report
@@ -550,17 +574,11 @@ defmodule ToastTest.AttributionTest do
 
       # File mtime determines attribution — we can't control mtime easily,
       # so just verify it produces an issue with a scope
-      server = build_server("single1", server_dir: dir)
-
       artifacts = %{
-        "single1" => %{
-          server: server,
-          coredump_paths: [],
-          sanitizer_files: [san_file]
-        }
+        "single1" => build_artifacts("single1", server_dir: dir, sanitizer_files: [san_file])
       }
 
-      {issues, _coredumps} = Attribution.run(build_test_data(), artifacts, [])
+      {issues, _coredumps} = Attribution.run(build_test_data(), artifacts, [], build_windows())
 
       assert [issue] = issues
       assert issue.type == :sanitizer_report
@@ -570,10 +588,12 @@ defmodule ToastTest.AttributionTest do
 
   # --- Timeouts ---
 
-  describe "run/4 — timeout kills" do
+  describe "run/5 — timeout kills" do
     test "empty timeout_kills produces no timeout issues" do
       {issues, coredumps} =
-        Attribution.run(build_test_data(), empty_artifacts(), [], timeout_kills: [])
+        Attribution.run(build_test_data(), empty_artifacts(), [], build_windows(),
+          timeout_kills: []
+        )
 
       assert issues == []
       assert coredumps == []
@@ -588,7 +608,9 @@ defmodule ToastTest.AttributionTest do
       }
 
       {issues, _coredumps} =
-        Attribution.run(build_test_data(), empty_artifacts(), [], timeout_kills: [kill])
+        Attribution.run(build_test_data(), empty_artifacts(), [], build_windows(),
+          timeout_kills: [kill]
+        )
 
       assert [issue] = issues
       assert issue.type == :infrastructure
@@ -601,14 +623,8 @@ defmodule ToastTest.AttributionTest do
     end
 
     test "timeout servers enriched with coredump path from artifacts" do
-      server = build_server("single1")
-
       artifacts = %{
-        "single1" => %{
-          server: server,
-          coredump_paths: ["/tmp/core.1001"],
-          sanitizer_files: []
-        }
+        "single1" => build_artifacts("single1", coredump_paths: ["/tmp/core.1001"])
       }
 
       kill = %{
@@ -619,7 +635,7 @@ defmodule ToastTest.AttributionTest do
       }
 
       {issues, _coredumps} =
-        Attribution.run(build_test_data(), artifacts, [], timeout_kills: [kill])
+        Attribution.run(build_test_data(), artifacts, [], build_windows(), timeout_kills: [kill])
 
       assert [issue] = issues
       [server_info] = issue.detail.servers
@@ -636,7 +652,9 @@ defmodule ToastTest.AttributionTest do
       }
 
       {issues, _coredumps} =
-        Attribution.run(build_test_data(), empty_artifacts(), [], timeout_kills: [kill])
+        Attribution.run(build_test_data(), empty_artifacts(), [], build_windows(),
+          timeout_kills: [kill]
+        )
 
       assert [issue] = issues
       [server_info] = issue.detail.servers
@@ -644,20 +662,9 @@ defmodule ToastTest.AttributionTest do
     end
 
     test "multiple killed servers in a single timeout event" do
-      server1 = build_server("agent1")
-      server2 = build_server("dbserver1")
-
       artifacts = %{
-        "agent1" => %{
-          server: server1,
-          coredump_paths: ["/tmp/core.agent1"],
-          sanitizer_files: []
-        },
-        "dbserver1" => %{
-          server: server2,
-          coredump_paths: [],
-          sanitizer_files: []
-        }
+        "agent1" => build_artifacts("agent1", coredump_paths: ["/tmp/core.agent1"]),
+        "dbserver1" => build_artifacts("dbserver1")
       }
 
       kill = %{
@@ -671,7 +678,7 @@ defmodule ToastTest.AttributionTest do
       }
 
       {issues, _coredumps} =
-        Attribution.run(build_test_data(), artifacts, [], timeout_kills: [kill])
+        Attribution.run(build_test_data(), artifacts, [], build_windows(), timeout_kills: [kill])
 
       assert [issue] = issues
       assert length(issue.detail.servers) == 2
@@ -684,7 +691,7 @@ defmodule ToastTest.AttributionTest do
 
   # --- Mixed ---
 
-  describe "run/4 — mixed issues" do
+  describe "run/5 — mixed issues" do
     test "test failures + crash + sanitizer all combined" do
       failure = make_exunit_test(ModA, :test_one, {:failed, [{:error, %{message: "boom"}, []}]})
       test_data = build_test_data(%{failures: [failure]})
@@ -692,6 +699,7 @@ defmodule ToastTest.AttributionTest do
       crash_info = %CrashInfo{
         exit_status: 139,
         signal: 11,
+        executable: @default_executable,
         timestamp: to_us(~U[2026-03-09 10:00:30Z])
       }
 
@@ -699,20 +707,14 @@ defmodule ToastTest.AttributionTest do
       san_file = Path.join(dir, "alubsan.log.#{System.unique_integer([:positive])}")
       File.write!(san_file, "ERROR: sanitizer report")
 
-      server = build_server("single1", server_dir: dir)
-
       artifacts = %{
-        "single1" => %{
-          server: server,
-          coredump_paths: [],
-          sanitizer_files: [san_file]
-        }
+        "single1" => build_artifacts("single1", server_dir: dir, sanitizer_files: [san_file])
       }
 
       crash_events = [%CrashEvent{server_id: "single1", crash_info: crash_info}]
 
       {issues, _coredumps} =
-        Attribution.run(test_data, artifacts, crash_events)
+        Attribution.run(test_data, artifacts, crash_events, build_windows())
 
       types = Enum.map(issues, & &1.type)
       assert :test_failure in types

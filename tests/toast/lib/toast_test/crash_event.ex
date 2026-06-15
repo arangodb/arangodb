@@ -20,7 +20,12 @@
 ################################################################################
 
 defmodule ToastTest.CrashEvent do
-  @moduledoc "Structured crash event emitted via on_event callback."
+  @moduledoc """
+  Structured crash event for post-execution analysis.
+
+  Process-level facts (signal, exit status, pid, executable) live in
+  `crash_info`, stamped by the `ServerProcess` that owned the dead process.
+  """
 
   @enforce_keys [:server_id, :crash_info]
   defstruct [:server_id, :crash_info, expected: false]

@@ -20,15 +20,22 @@
 ################################################################################
 
 defmodule Toast.Process.CrashInfo do
-  @moduledoc false
+  @moduledoc """
+  Facts about a process death, stamped by the `ServerProcess` that owned it.
+
+  `executable` is the binary the dead incarnation was actually spawned with —
+  recorded at crash time from the spawning process's own state, so it stays
+  correct when restarts change the binary (upgrade scenarios).
+  """
 
   @enforce_keys [:exit_status, :signal, :timestamp]
-  defstruct [:exit_status, :signal, :timestamp, :os_pid]
+  defstruct [:exit_status, :signal, :timestamp, :os_pid, :executable]
 
   @type t :: %__MODULE__{
           exit_status: non_neg_integer() | nil,
           signal: non_neg_integer() | nil,
           timestamp: Toast.timestamp(),
-          os_pid: pos_integer() | nil
+          os_pid: pos_integer() | nil,
+          executable: Path.t() | nil
         }
 end

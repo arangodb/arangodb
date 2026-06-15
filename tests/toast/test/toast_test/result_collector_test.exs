@@ -87,6 +87,17 @@ defmodule ToastTest.ResultCollectorTest do
       state = State.new(@t0)
       assert State.apply_event(state, {:something_unexpected, "data", @t1}) == state
     end
+
+    test ":between_tests_finished is no longer handled and leaves state unchanged" do
+      test = make_test()
+
+      state =
+        State.new(@t0)
+        |> State.apply_event({:test_started, test, @t1})
+        |> State.apply_event({:test_finished, test, @t2})
+
+      assert State.apply_event(state, {:between_tests_finished, test, @t3}) == state
+    end
   end
 
   # --- :module_started ---
@@ -215,71 +226,6 @@ defmodule ToastTest.ResultCollectorTest do
         |> State.apply_event({:test_finished, test, @t2})
 
       assert [%{outcome: :skipped}] = state.modules[FakeTest]
-    end
-  end
-
-  describe ":test_finished — between_tests_finished_at default" do
-    test "between_tests_finished_at is nil on a freshly-finished test" do
-      test = make_test()
-
-      state =
-        State.new(@t0)
-        |> State.apply_event({:test_started, test, @t1})
-        |> State.apply_event({:test_finished, test, @t2})
-
-      assert [%{between_tests_finished_at: nil}] = state.modules[FakeTest]
-    end
-  end
-
-  describe ":between_tests_finished event" do
-    test "sets between_tests_finished_at on the matching test record" do
-      test = make_test()
-
-      state =
-        State.new(@t0)
-        |> State.apply_event({:test_started, test, @t1})
-        |> State.apply_event({:test_finished, test, @t2})
-        |> State.apply_event({:between_tests_finished, test, @t3})
-
-      assert [%{between_tests_finished_at: @t3}] = state.modules[FakeTest]
-    end
-
-    test "updates only the matching test, not earlier tests in the module" do
-      test1 = make_test(%{name: :"test one"})
-      test2 = make_test(%{name: :"test two"})
-
-      state =
-        State.new(@t0)
-        |> State.apply_event({:test_started, test1, @t1})
-        |> State.apply_event({:test_finished, test1, @t2})
-        |> State.apply_event({:between_tests_finished, test1, @t3})
-        |> State.apply_event({:test_started, test2, @t4})
-        |> State.apply_event({:test_finished, test2, @t5})
-        |> State.apply_event({:between_tests_finished, test2, @t6})
-
-      tests = state.modules[FakeTest]
-      assert Enum.find(tests, &(&1.name == :"test one")).between_tests_finished_at == @t3
-      assert Enum.find(tests, &(&1.name == :"test two")).between_tests_finished_at == @t6
-    end
-
-    test "is a no-op for unknown modules" do
-      test = make_test()
-      state = State.new(@t0) |> State.apply_event({:between_tests_finished, test, @t1})
-
-      assert state.modules == %{}
-    end
-
-    test "is a no-op for unknown tests in a known module" do
-      test1 = make_test(%{name: :"test one"})
-      test2 = make_test(%{name: :"test two"})
-
-      state =
-        State.new(@t0)
-        |> State.apply_event({:test_started, test1, @t1})
-        |> State.apply_event({:test_finished, test1, @t2})
-        |> State.apply_event({:between_tests_finished, test2, @t3})
-
-      assert [%{between_tests_finished_at: nil}] = state.modules[FakeTest]
     end
   end
 

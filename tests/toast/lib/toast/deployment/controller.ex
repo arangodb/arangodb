@@ -441,8 +441,9 @@ defmodule Toast.Deployment.Controller do
         ServerLifecycle.stop_server(server, timeout_factor: acc.config.timeout_factor)
       end,
       state: [operational_state: :stopped, expecting_exit: true],
-      event: :server_stopped,
-      event_extra: fn server -> %{pid: server.pid, reason: nil} end
+      notify: fn server ->
+        Events.server_stopped(acc.event_listener, acc.id, server_id, server.pid)
+      end
     )
   end
 
@@ -450,8 +451,9 @@ defmodule Toast.Deployment.Controller do
     server_control(acc, server_id, :running,
       action: &ServerLifecycle.kill_server/1,
       state: [operational_state: :killed, expecting_exit: true],
-      event: :server_killed,
-      event_extra: fn server -> %{pid: server.pid} end
+      notify: fn server ->
+        Events.server_killed(acc.event_listener, acc.id, server_id, server.pid)
+      end
     )
   end
 
@@ -459,7 +461,7 @@ defmodule Toast.Deployment.Controller do
     server_control(acc, server_id, :running,
       action: &ServerLifecycle.pause_server/1,
       state: [operational_state: :paused, expecting_exit: false],
-      event: :server_paused
+      notify: fn _server -> Events.server_paused(acc.event_listener, acc.id, server_id) end
     )
   end
 
@@ -467,7 +469,7 @@ defmodule Toast.Deployment.Controller do
     server_control(acc, server_id, :paused,
       action: &ServerLifecycle.resume_server/1,
       state: [operational_state: :running, expecting_exit: false],
-      event: :server_resumed
+      notify: fn _server -> Events.server_resumed(acc.event_listener, acc.id, server_id) end
     )
   end
 
@@ -476,16 +478,7 @@ defmodule Toast.Deployment.Controller do
          :ok <- ServerLifecycle.require_state(server, required_state) do
       opts[:action].(server)
       acc = update_server(acc, server_id, opts[:state])
-
-      extra = if opts[:event_extra], do: opts[:event_extra].(server), else: %{}
-
-      Events.notify(
-        acc.event_listener,
-        acc,
-        opts[:event],
-        Map.merge(%{server_id: server_id}, extra)
-      )
-
+      opts[:notify].(server)
       {:ok, acc}
     end
   end
@@ -493,7 +486,7 @@ defmodule Toast.Deployment.Controller do
   defp do_restart_server(server_id, acc, opts) do
     with {:ok, server} <- fetch_server(acc, server_id) do
       ServerLifecycle.stop_before_restart(server, timeout_factor: acc.config.timeout_factor)
-      Events.server_stopped(acc.event_listener, server_id, server, acc.id)
+      Events.server_stopped(acc.event_listener, acc.id, server_id, server.pid)
 
       acc =
         update_server(acc, server_id, operational_state: :stopped, expecting_exit: true)
@@ -517,7 +510,7 @@ defmodule Toast.Deployment.Controller do
 
     with :ok <- ServerLifecycle.relaunch_and_wait(server, opts) do
       new_pid = ServerProcess.os_pid(server.server_pid)
-      Events.server_started(acc.event_listener, server_id, server, new_pid, acc.id)
+      Events.server_started(acc.event_listener, acc.id, server_id, server, new_pid)
 
       acc =
         update_server(acc, server_id,
@@ -653,15 +646,7 @@ defmodule Toast.Deployment.Controller do
   end
 
   defp notify_crash_event(state, server_id, crash_info, expected) do
-    state.event_listener.on_event(%{
-      event: :server_crashed,
-      deployment_id: state.id,
-      server_id: server_id,
-      pid: crash_info.os_pid,
-      crash_info: crash_info,
-      expected: expected,
-      timestamp: Toast.get_timestamp()
-    })
+    Events.server_crashed(state.event_listener, state.id, server_id, crash_info, expected)
   end
 
   defp notify_startup_timeout(state) do
@@ -670,14 +655,13 @@ defmodule Toast.Deployment.Controller do
         %{server_id: id, os_pid: s.pid, log_file: s.log_file}
       end)
 
-    state.event_listener.on_event(%{
-      event: :timeout_kill,
-      deployment_id: state.id,
-      source: :startup,
-      reason: "Startup timeout — deployment did not become ready in time",
-      servers: servers,
-      timestamp: Toast.get_timestamp()
-    })
+    Events.timeout_kill(
+      state.event_listener,
+      state.id,
+      :startup,
+      "Startup timeout — deployment did not become ready in time",
+      servers
+    )
   end
 
   # --- Expect / verify crash protocol ---

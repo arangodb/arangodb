@@ -80,6 +80,15 @@ defmodule ToastTest.Attribution.InvalidationTest do
     }
   end
 
+  defp build_windows(test_specs) do
+    tests =
+      Map.new(test_specs, fn {name, start, finish, _outcome} ->
+        {{ModA, name}, %{started_at: to_us(start), finished_at: to_us(finish)}}
+      end)
+
+    %{modules: %{}, tests: tests}
+  end
+
   defp crash_event(timestamp) do
     %CrashEvent{
       server_id: "single1",
@@ -95,37 +104,31 @@ defmodule ToastTest.Attribution.InvalidationTest do
     test_data.modules[ModA].tests |> Enum.find(&(&1.name == name))
   end
 
-  describe "apply/2 — no crash" do
+  describe "apply/3 — no crash" do
     test "returns test_data unchanged when no crash events" do
       failure = make_exunit_test(ModA, :test_one)
+      specs = [{:test_one, @t1_start, @t1_finish, :failed}]
+      test_data = build_test_data(specs, [failure])
 
-      test_data =
-        build_test_data(
-          [{:test_one, @t1_start, @t1_finish, :failed}],
-          [failure]
-        )
-
-      assert Invalidation.apply(test_data, []) == test_data
+      assert Invalidation.apply(test_data, [], build_windows(specs)) == test_data
     end
   end
 
-  describe "apply/2 — test started after crash" do
+  describe "apply/3 — test started after crash" do
     test "rewrites outcome :failed -> :invalidated" do
       failure = make_exunit_test(ModA, :test_two)
 
-      test_data =
-        build_test_data(
-          [
-            {:test_one, @t1_start, @t1_finish, :passed},
-            {:test_two, @t2_start, @t2_finish, :failed}
-          ],
-          [failure]
-        )
+      specs = [
+        {:test_one, @t1_start, @t1_finish, :passed},
+        {:test_two, @t2_start, @t2_finish, :failed}
+      ]
+
+      test_data = build_test_data(specs, [failure])
 
       # Crash happens between test_one finish and test_two start.
       crashes = [crash_event(~U[2026-03-09 10:01:02Z])]
 
-      result = Invalidation.apply(test_data, crashes)
+      result = Invalidation.apply(test_data, crashes, build_windows(specs))
 
       assert fetch_test(result, :test_one).outcome == :passed
       assert fetch_test(result, :test_two).outcome == :invalidated
@@ -135,19 +138,17 @@ defmodule ToastTest.Attribution.InvalidationTest do
       f1 = make_exunit_test(ModA, :test_one)
       f2 = make_exunit_test(ModA, :test_two)
 
-      test_data =
-        build_test_data(
-          [
-            {:test_one, @t1_start, @t1_finish, :failed},
-            {:test_two, @t2_start, @t2_finish, :failed}
-          ],
-          [f1, f2]
-        )
+      specs = [
+        {:test_one, @t1_start, @t1_finish, :failed},
+        {:test_two, @t2_start, @t2_finish, :failed}
+      ]
+
+      test_data = build_test_data(specs, [f1, f2])
 
       # Crash happens during test_one, before test_two starts.
       crashes = [crash_event(~U[2026-03-09 10:00:30Z])]
 
-      result = Invalidation.apply(test_data, crashes)
+      result = Invalidation.apply(test_data, crashes, build_windows(specs))
 
       # test_one is the "trigger" (started before crash) and stays failed.
       # test_two started after crash and is invalidated.
@@ -159,37 +160,31 @@ defmodule ToastTest.Attribution.InvalidationTest do
 
     test "trigger test (started before crash, finished after) is NOT invalidated" do
       failure = make_exunit_test(ModA, :test_one)
-
-      test_data =
-        build_test_data(
-          [{:test_one, @t1_start, @t1_finish, :failed}],
-          [failure]
-        )
+      specs = [{:test_one, @t1_start, @t1_finish, :failed}]
+      test_data = build_test_data(specs, [failure])
 
       # Crash happens while test_one is still running (between its start and finish).
       crashes = [crash_event(~U[2026-03-09 10:00:30Z])]
 
-      result = Invalidation.apply(test_data, crashes)
+      result = Invalidation.apply(test_data, crashes, build_windows(specs))
 
       assert fetch_test(result, :test_one).outcome == :failed
       assert result.failures == [failure]
     end
   end
 
-  describe "apply/2 — multiple crashes" do
+  describe "apply/3 — multiple crashes" do
     test "uses the earliest crash as the cutoff" do
       f2 = make_exunit_test(ModA, :test_two)
       f3 = make_exunit_test(ModA, :test_three)
 
-      test_data =
-        build_test_data(
-          [
-            {:test_one, @t1_start, @t1_finish, :passed},
-            {:test_two, @t2_start, @t2_finish, :failed},
-            {:test_three, @t3_start, @t3_finish, :failed}
-          ],
-          [f2, f3]
-        )
+      specs = [
+        {:test_one, @t1_start, @t1_finish, :passed},
+        {:test_two, @t2_start, @t2_finish, :failed},
+        {:test_three, @t3_start, @t3_finish, :failed}
+      ]
+
+      test_data = build_test_data(specs, [f2, f3])
 
       # Earliest crash at 10:01:02 (before test_two starts).
       # A later crash event at 10:02:30 shouldn't raise the cutoff.
@@ -198,7 +193,7 @@ defmodule ToastTest.Attribution.InvalidationTest do
         crash_event(~U[2026-03-09 10:01:02Z])
       ]
 
-      result = Invalidation.apply(test_data, crashes)
+      result = Invalidation.apply(test_data, crashes, build_windows(specs))
 
       assert fetch_test(result, :test_two).outcome == :invalidated
       assert fetch_test(result, :test_three).outcome == :invalidated
@@ -206,68 +201,51 @@ defmodule ToastTest.Attribution.InvalidationTest do
     end
   end
 
-  describe "apply/2 — edge cases" do
+  describe "apply/3 — edge cases" do
     test "non-failed outcomes are not rewritten even if after crash" do
-      test_data =
-        build_test_data(
-          [
-            {:test_one, @t1_start, @t1_finish, :passed},
-            {:test_two, @t2_start, @t2_finish, :skipped}
-          ],
-          []
-        )
+      specs = [
+        {:test_one, @t1_start, @t1_finish, :passed},
+        {:test_two, @t2_start, @t2_finish, :skipped}
+      ]
+
+      test_data = build_test_data(specs, [])
 
       crashes = [crash_event(~U[2026-03-09 10:00:30Z])]
 
-      result = Invalidation.apply(test_data, crashes)
+      result = Invalidation.apply(test_data, crashes, build_windows(specs))
 
       assert fetch_test(result, :test_one).outcome == :passed
       assert fetch_test(result, :test_two).outcome == :skipped
     end
 
-    test "failed test with missing started_at is not invalidated" do
+    test "failed test without a window entry is not invalidated" do
       failure = make_exunit_test(ModA, :test_one)
 
-      test_data = %{
-        modules: %{
-          ModA => %{
-            started_at: @t1_start,
-            finished_at: @t1_finish,
-            setup_finished_at: @t1_start,
-            teardown_started_at: @t1_finish,
-            tests: [
-              %{
-                name: :test_one,
-                outcome: :failed,
-                duration_us: 0,
-                started_at: nil,
-                finished_at: nil,
-                tags: %{}
-              }
-            ]
-          }
-        },
-        failures: [failure]
-      }
+      test_data =
+        build_test_data(
+          [{:test_one, @t1_start, @t1_finish, :failed}],
+          [failure]
+        )
 
+      # Crash happened before everything, but the test has no entry in the
+      # timeline windows — without a window we cannot place it after the
+      # crash, so it stays :failed.
       crashes = [crash_event(~U[2026-03-09 09:00:00Z])]
+      windows = %{modules: %{}, tests: %{}}
 
-      result = Invalidation.apply(test_data, crashes)
+      result = Invalidation.apply(test_data, crashes, windows)
 
       assert fetch_test(result, :test_one).outcome == :failed
       assert result.failures == [failure]
     end
 
     test "returns unchanged when no failures exist" do
-      test_data =
-        build_test_data(
-          [{:test_one, @t1_start, @t1_finish, :passed}],
-          []
-        )
+      specs = [{:test_one, @t1_start, @t1_finish, :passed}]
+      test_data = build_test_data(specs, [])
 
       crashes = [crash_event(~U[2026-03-09 10:00:30Z])]
 
-      result = Invalidation.apply(test_data, crashes)
+      result = Invalidation.apply(test_data, crashes, build_windows(specs))
 
       assert result == test_data
     end

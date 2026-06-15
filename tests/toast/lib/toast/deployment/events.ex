@@ -20,43 +20,136 @@
 ################################################################################
 
 defmodule Toast.Deployment.Events do
-  @moduledoc "Event emission for deployment lifecycle. Single source of truth for event format."
+  @moduledoc """
+  Event emission for the deployment lifecycle.
+
+  Every deployment event has exactly one constructor here; no caller builds
+  event maps by hand. The full event vocabulary (fields, producers, consumers)
+  is documented in `docs/events.md`.
+
+  Payloads are plain maps, never producer structs: events are persisted (ETF)
+  and replayed by later `mix toast.analyze` runs, so they must carry no runtime
+  state (PIDs) and not pin struct shapes across versions.
+  """
 
   require Logger
 
   alias Toast.Deployment.ServerInstance
+  alias Toast.Process.CrashInfo
 
-  @spec notify(module(), %{:id => String.t(), optional(atom()) => term()}, atom(), map()) :: :ok
-  def notify(listener, state, event, extra \\ %{}) do
-    listener.on_event(
-      Map.merge(%{event: event, deployment_id: state.id, timestamp: Toast.get_timestamp()}, extra)
-    )
+  @type listener :: module()
+  @type deployment_id :: String.t()
+
+  @typedoc "Affected-server entry carried by `:timeout_kill` events."
+  @type timeout_kill_server :: %{
+          server_id: String.t(),
+          os_pid: non_neg_integer() | nil,
+          log_file: Path.t() | nil
+        }
+
+  @spec deployment_starting(listener(), deployment_id(), atom(), list() | nil, [map()]) :: :ok
+  def deployment_starting(listener, deployment_id, mode, stacktrace, specs)
+      when is_atom(listener) and is_binary(deployment_id) and is_atom(mode) and
+             (is_list(stacktrace) or is_nil(stacktrace)) and is_list(specs) do
+    specs = Enum.map(specs, &Map.take(&1, [:id, :role, :port, :log_file, :server_dir]))
+    payload = %{mode: mode, stacktrace: stacktrace, specs: specs}
+    emit(listener, deployment_id, :deployment_starting, payload)
   end
 
-  @spec server_started(module(), String.t(), ServerInstance.t(), term(), String.t()) :: :ok
-  def server_started(listener, server_id, server, os_pid, deployment_id) do
-    Logger.info("#{server_id}: started (os_pid=#{os_pid}), endpoint=#{server.endpoint}")
-
-    listener.on_event(%{
-      event: :server_started,
-      deployment_id: deployment_id,
-      server_id: server_id,
-      pid: os_pid,
-      timestamp: Toast.get_timestamp()
+  @spec deployment_started(listener(), deployment_id(), %{String.t() => ServerInstance.t()}) ::
+          :ok
+  def deployment_started(listener, deployment_id, servers)
+      when is_atom(listener) and is_binary(deployment_id) and is_map(servers) do
+    emit(listener, deployment_id, :deployment_started, %{
+      servers:
+        Map.new(servers, fn {id, s} ->
+          {id, Map.take(s, [:role, :endpoint, :log_file, :server_dir])}
+        end)
     })
+  end
+
+  @spec deployment_stopped(listener(), deployment_id()) :: :ok
+  def deployment_stopped(listener, deployment_id)
+      when is_atom(listener) and is_binary(deployment_id) do
+    emit(listener, deployment_id, :deployment_stopped, %{})
+  end
+
+  @spec server_identified(listener(), deployment_id(), String.t(), String.t()) :: :ok
+  def server_identified(listener, deployment_id, server_id, arango_id)
+      when is_atom(listener) and is_binary(deployment_id) and is_binary(server_id) and
+             is_binary(arango_id) do
+    payload = %{server_id: server_id, arango_id: arango_id}
+    emit(listener, deployment_id, :server_identified, payload)
+  end
+
+  @spec server_started(
+          listener(),
+          deployment_id(),
+          String.t(),
+          ServerInstance.t(),
+          non_neg_integer() | nil
+        ) :: :ok
+  def server_started(listener, deployment_id, server_id, %ServerInstance{} = server, os_pid)
+      when is_atom(listener) and is_binary(deployment_id) and is_binary(server_id) and
+             (is_integer(os_pid) or is_nil(os_pid)) do
+    Logger.info("#{server_id}: started (os_pid=#{os_pid}), endpoint=#{server.endpoint}")
+    payload = %{server_id: server_id, pid: os_pid}
+    emit(listener, deployment_id, :server_started, payload)
+  end
+
+  @spec server_stopped(listener(), deployment_id(), String.t(), non_neg_integer() | nil) :: :ok
+  def server_stopped(listener, deployment_id, server_id, os_pid)
+      when is_atom(listener) and is_binary(deployment_id) and is_binary(server_id) and
+             (is_integer(os_pid) or is_nil(os_pid)) do
+    payload = %{server_id: server_id, pid: os_pid, reason: nil}
+    emit(listener, deployment_id, :server_stopped, payload)
+  end
+
+  @spec server_killed(listener(), deployment_id(), String.t(), non_neg_integer() | nil) :: :ok
+  def server_killed(listener, deployment_id, server_id, os_pid)
+      when is_atom(listener) and is_binary(deployment_id) and is_binary(server_id) and
+             (is_integer(os_pid) or is_nil(os_pid)) do
+    emit(listener, deployment_id, :server_killed, %{server_id: server_id, pid: os_pid})
+  end
+
+  @spec server_paused(listener(), deployment_id(), String.t()) :: :ok
+  def server_paused(listener, deployment_id, server_id)
+      when is_atom(listener) and is_binary(deployment_id) and is_binary(server_id) do
+    emit(listener, deployment_id, :server_paused, %{server_id: server_id})
+  end
+
+  @spec server_resumed(listener(), deployment_id(), String.t()) :: :ok
+  def server_resumed(listener, deployment_id, server_id)
+      when is_atom(listener) and is_binary(deployment_id) and is_binary(server_id) do
+    emit(listener, deployment_id, :server_resumed, %{server_id: server_id})
+  end
+
+  @spec server_crashed(listener(), deployment_id(), String.t(), CrashInfo.t(), boolean()) :: :ok
+  def server_crashed(listener, deployment_id, server_id, %CrashInfo{} = crash_info, expected)
+      when is_atom(listener) and is_binary(deployment_id) and is_binary(server_id) and
+             is_boolean(expected) do
+    emit(listener, deployment_id, :server_crashed, %{
+      server_id: server_id,
+      pid: crash_info.os_pid,
+      crash_info: crash_info,
+      expected: expected
+    })
+  end
+
+  @spec timeout_kill(listener(), deployment_id(), atom(), String.t(), [timeout_kill_server()]) ::
+          :ok
+  def timeout_kill(listener, deployment_id, source, reason, servers)
+      when is_atom(listener) and is_binary(deployment_id) and is_atom(source) and
+             is_binary(reason) and is_list(servers) do
+    payload = %{source: source, reason: reason, servers: servers}
+    emit(listener, deployment_id, :timeout_kill, payload)
+  end
+
+  defp emit(listener, deployment_id, event, payload) do
+    %{event: event, deployment_id: deployment_id, timestamp: Toast.get_timestamp()}
+    |> Map.merge(payload)
+    |> listener.on_event()
 
     :ok
-  end
-
-  @spec server_stopped(module(), String.t(), ServerInstance.t(), String.t()) :: :ok
-  def server_stopped(listener, server_id, server, deployment_id) do
-    listener.on_event(%{
-      event: :server_stopped,
-      deployment_id: deployment_id,
-      server_id: server_id,
-      pid: server.pid,
-      reason: nil,
-      timestamp: Toast.get_timestamp()
-    })
   end
 end

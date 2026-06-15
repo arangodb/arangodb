@@ -22,15 +22,13 @@
 defmodule ToastTest.ArtifactCollectorTest do
   use ExUnit.Case, async: true
 
-  alias Toast.Deployment.ServerInstance
   alias ToastTest.ArtifactCollector
 
   defp make_server(id, opts) do
-    %ServerInstance{
+    %{
       id: id,
-      role: Keyword.get(opts, :role, :single),
       server_dir: Keyword.get(opts, :server_dir),
-      pid: Keyword.get(opts, :pid)
+      log_file: Keyword.get(opts, :log_file)
     }
   end
 
@@ -56,7 +54,7 @@ defmodule ToastTest.ArtifactCollectorTest do
       result = ArtifactCollector.collect(%{"s1" => server})
 
       assert %{"s1" => artifacts} = result
-      assert artifacts.server == server
+      assert artifacts.log_file == nil
       assert artifacts.coredump_paths == []
       assert artifacts.sanitizer_files == []
     end

@@ -21,15 +21,21 @@
 
 defmodule ToastTest.Runner.Events do
   @moduledoc """
-  Broadcasts test lifecycle events to both ExUnit (for real-time formatting)
-  and the EventStore (for post-mortem analysis).
+  Event emission for the test-runner layer. Every runner-side event has
+  exactly one constructor here; no caller builds event maps by hand. The
+  full event vocabulary is documented in `docs/events.md`.
 
-  Use this module for tests/modules that were actually executed. Tests that
-  were never run (excluded, skipped, aborted) only need ExUnit notification
-  for formatter bookkeeping — use `emit_not_executed/2` for those.
+  Test lifecycle events are broadcast to both ExUnit (for real-time
+  formatting) and the EventStore (for post-mortem analysis). Use those for
+  tests/modules that were actually executed. Tests that were never run
+  (excluded, skipped, aborted) only need ExUnit notification for formatter
+  bookkeeping — use `emit_not_executed/2` for those.
 
   For after-the-fact reporting (e.g., JS tests where results are parsed after
   execution), pass explicit timestamps via the `:timestamp` option.
+
+  Diagnostics events (netstat, infrastructure issues, timeout kills) are
+  recorded in the EventStore only.
   """
 
   alias ToastTest.ExUnitCompat, as: Compat
@@ -77,11 +83,48 @@ defmodule ToastTest.Runner.Events do
     )
   end
 
+  @doc """
+  Mark the end of the between-tests barrier for the previous test.
+
+  Extends the test's attribution window: crashes whose detection lands
+  during the barrier wait still attribute to the test that provoked them.
+  """
+  @spec between_tests_finished(module(), atom()) :: :ok
+  def between_tests_finished(module, name) when is_atom(module) and is_atom(name) do
+    EventStore.notify(%{event: :between_tests_finished, module: module, name: name})
+  end
+
   @doc "Emit a test that was never executed (excluded, skipped, aborted) to ExUnit only."
   @spec emit_not_executed(manager(), ExUnit.Test.t()) :: :ok
   def emit_not_executed(manager, test) do
     Compat.test_started(manager, test)
     Compat.test_finished(manager, test)
+  end
+
+  # --- Diagnostics events (EventStore only) ---
+
+  @spec netstat_snapshot(non_neg_integer(), atom() | nil) :: :ok
+  def netstat_snapshot(total, label \\ nil)
+      when is_integer(total) and total >= 0 and is_atom(label) do
+    EventStore.notify(%{event: :netstat_snapshot, total: total, label: label})
+  end
+
+  @spec infrastructure_issue(atom(), map()) :: :ok
+  def infrastructure_issue(subtype, detail) when is_atom(subtype) and is_map(detail) do
+    EventStore.notify(%{event: :infrastructure_issue, subtype: subtype, detail: detail})
+  end
+
+  @typedoc "Affected-server entry carried by `:timeout_kill` events."
+  @type timeout_kill_server :: %{
+          server_id: String.t(),
+          os_pid: non_neg_integer() | nil,
+          log_file: Path.t() | nil
+        }
+
+  @spec timeout_kill(atom(), String.t(), [timeout_kill_server()]) :: :ok
+  def timeout_kill(source, reason, servers)
+      when is_atom(source) and is_binary(reason) and is_list(servers) do
+    EventStore.notify(%{event: :timeout_kill, source: source, reason: reason, servers: servers})
   end
 
   defp maybe_timestamp(event, opts) do

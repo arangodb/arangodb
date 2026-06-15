@@ -36,14 +36,13 @@ defmodule Toast.Deployment.DeployPipeline do
     deadline = System.monotonic_time(:millisecond) + timeout
     state = init_servers_from_specs(state, specs)
 
-    Events.notify(state.event_listener, state, :deployment_starting, %{
-      mode: derive_mode(state),
-      stacktrace: opts[:stacktrace],
-      specs:
-        Enum.map(specs, fn spec ->
-          %{id: spec.id, role: spec.role, port: spec.port, log_file: spec.log_file}
-        end)
-    })
+    Events.deployment_starting(
+      state.event_listener,
+      state.id,
+      derive_mode(state),
+      opts[:stacktrace],
+      specs
+    )
 
     with {:ok, state} <- start_all_server_processes(state, specs),
          {:ok, state} <- deploy_role_groups(state, specs, deadline),
@@ -52,12 +51,7 @@ defmodule Toast.Deployment.DeployPipeline do
       servers = Map.new(state.servers, fn {id, s} -> {id, %{s | operational_state: :running}} end)
       state = %{state | status: :ready, servers: servers}
 
-      Events.notify(state.event_listener, state, :deployment_started, %{
-        servers:
-          Map.new(state.servers, fn {id, s} ->
-            {id, %{role: s.role, endpoint: s.endpoint, log_file: s.log_file}}
-          end)
-      })
+      Events.deployment_started(state.event_listener, state.id, state.servers)
 
       Logger.info("Deployment #{state.id} ready")
       {:ok, state}
@@ -193,7 +187,7 @@ defmodule Toast.Deployment.DeployPipeline do
        ) do
     with :ok <- ServerProcess.launch(server.server_pid),
          os_pid = ServerProcess.os_pid(server.server_pid),
-         :ok <- Events.server_started(listener, server_id, server, os_pid, deployment_id),
+         :ok <- Events.server_started(listener, deployment_id, server_id, server, os_pid),
          :ok <- maybe_health_check(server, health_check?, timeout, provider) do
       {:ok, {server_id, os_pid}}
     end
@@ -286,12 +280,7 @@ defmodule Toast.Deployment.DeployPipeline do
 
         toast_id ->
           acc = update_server(acc, toast_id, arango_id: arango_id)
-
-          Events.notify(acc.event_listener, acc, :server_identified, %{
-            server_id: toast_id,
-            arango_id: arango_id
-          })
-
+          Events.server_identified(acc.event_listener, acc.id, toast_id, arango_id)
           acc
       end
     end)

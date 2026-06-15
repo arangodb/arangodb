@@ -102,7 +102,7 @@ defmodule Toast.Deployment.ShutdownPipeline do
 
     record_shutdown_escalations(state.id, state.event_listener, escalated)
 
-    Events.notify(state.event_listener, state, :deployment_stopped)
+    Events.deployment_stopped(state.event_listener, state.id)
 
     %{state | status: :stopped, servers: clear_server_pids(state.servers)}
   end
@@ -139,7 +139,7 @@ defmodule Toast.Deployment.ShutdownPipeline do
       %ServerInstance{server_pid: pid} when pid != nil ->
         result = ServerProcess.stop(pid, timeout)
         DynamicSupervisor.terminate_child(ProcessSupervisor, pid)
-        Events.server_stopped(state.event_listener, server_id, server, state.id)
+        Events.server_stopped(state.event_listener, state.id, server_id, server.pid)
 
         case result do
           :escalated ->
@@ -173,13 +173,12 @@ defmodule Toast.Deployment.ShutdownPipeline do
   defp record_shutdown_escalations(id, listener, escalated) do
     Logger.warning("#{id}: #{length(escalated)} server(s) required shutdown escalation")
 
-    listener.on_event(%{
-      event: :timeout_kill,
-      deployment_id: id,
-      source: :shutdown,
-      reason: "Shutdown timeout — server(s) did not respond to SIGTERM",
-      servers: escalated,
-      timestamp: Toast.get_timestamp()
-    })
+    Events.timeout_kill(
+      listener,
+      id,
+      :shutdown,
+      "Shutdown timeout — server(s) did not respond to SIGTERM",
+      escalated
+    )
   end
 end

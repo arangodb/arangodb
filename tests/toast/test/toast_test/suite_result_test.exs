@@ -336,7 +336,12 @@ defmodule ToastTest.SuiteResultTest do
 
     test "preserves events through roundtrip" do
       events = [
-        %{event: :server_started, server_id: "s1", pid: 1001, timestamp: test1_started_at()},
+        %{
+          event: :server_started,
+          server_id: "s1",
+          pid: 1001,
+          timestamp: test1_started_at()
+        },
         %{event: :server_stopped, server_id: "s1", pid: 1001, timestamp: test1_finished_at()}
       ]
 

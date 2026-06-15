@@ -26,13 +26,17 @@ defmodule ToastTest.ArtifactCollector do
   Pure discovery only — does not read or parse file contents.
   """
 
-  alias Toast.Deployment.ServerInstance
   alias Toast.Diagnostics.Coredump
 
   require Logger
 
+  @type server_info :: %{
+          :server_dir => Path.t(),
+          optional(:log_file) => Path.t() | nil
+        }
+
   @type server_artifacts :: %{
-          server: ServerInstance.t(),
+          log_file: Path.t() | nil,
           coredump_paths: [Path.t()],
           sanitizer_files: [Path.t()]
         }
@@ -41,14 +45,14 @@ defmodule ToastTest.ArtifactCollector do
 
   @min_sanitizer_bytes 10
 
-  @spec collect(%{String.t() => ServerInstance.t()}, map(), keyword()) :: t()
+  @spec collect(%{String.t() => server_info()}, map(), keyword()) :: t()
   def collect(servers, pid_history \\ %{}, opts \\ []) do
     result =
       servers
       |> Enum.filter(fn {_id, server} -> server.server_dir != nil end)
       |> Task.async_stream(
         fn {id, server} ->
-          {id, collect_server_artifacts(server, Map.get(pid_history, id, []), opts)}
+          {id, collect_server_artifacts(id, server, Map.get(pid_history, id, []), opts)}
         end,
         timeout: :infinity,
         ordered: false
@@ -73,26 +77,22 @@ defmodule ToastTest.ArtifactCollector do
     Enum.sum_by(Map.values(artifacts), &length(&1.sanitizer_files))
   end
 
-  defp collect_server_artifacts(server, historical_pids, opts) do
+  defp collect_server_artifacts(id, server, historical_pids, opts) do
     %{
-      server: server,
-      coredump_paths: discover_coredumps(server, historical_pids, opts),
+      log_file: server.log_file,
+      coredump_paths: discover_coredumps(id, server, historical_pids, opts),
       sanitizer_files: discover_sanitizer_files(server.server_dir)
     }
   end
 
-  defp discover_coredumps(server, historical_pids, opts) do
-    os_pids = merge_pids(server.pid, historical_pids)
-    Logger.debug("Discovering coredumps for server #{server.id} with PIDs #{inspect(os_pids)}")
+  defp discover_coredumps(id, server, historical_pids, opts) do
+    Logger.debug("Discovering coredumps for server #{id} with PIDs #{inspect(historical_pids)}")
 
     opts
     |> Keyword.take([:coredump_dir, :not_before])
-    |> Keyword.merge(server_dir: server.server_dir, os_pids: os_pids)
+    |> Keyword.merge(server_dir: server.server_dir, os_pids: historical_pids)
     |> Coredump.Discovery.discover()
   end
-
-  defp merge_pids(nil, historical), do: historical
-  defp merge_pids(current, historical), do: Enum.uniq([current | historical])
 
   defp discover_sanitizer_files(server_dir) do
     alubsan = Path.wildcard(Path.join(server_dir, "alubsan.log.*"))

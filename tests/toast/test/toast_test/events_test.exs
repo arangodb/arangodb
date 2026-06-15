@@ -80,7 +80,12 @@ defmodule ToastTest.EventsTest do
     end
 
     test "custom events appear in chronological order alongside system events" do
-      EventStore.notify(%{event: :server_started, server_id: "s1", pid: 1})
+      EventStore.notify(%{
+        event: :server_started,
+        server_id: "s1",
+        pid: 1
+      })
+
       Events.custom(:checkpoint, %{step: 1})
       EventStore.notify(%{event: :server_stopped, server_id: "s1", pid: 1})
 

@@ -62,11 +62,11 @@ defmodule ToastTest.Attribution do
           ToastTest.ResultCollector.test_data(),
           ToastTest.ArtifactCollector.t(),
           [ToastTest.CrashEvent.t()],
+          TimeWindows.windows(),
           keyword()
         ) ::
           {[ToastTest.SuiteResult.issue()], [ToastTest.SuiteResult.coredump_report()]}
-  def run(test_data, artifacts, crash_events, opts \\ []) do
-    windows = TimeWindows.build(test_data)
+  def run(test_data, artifacts, crash_events, windows, opts \\ []) when is_list(opts) do
     timeout_kills = Keyword.get(opts, :timeout_kills, [])
 
     {crash_issues, coredump_reports} =
@@ -122,6 +122,7 @@ defmodule ToastTest.Attribution do
           analyze_coredumps(
             event.server_id,
             filter_artifacts_by_pid(server_artifacts, event.crash_info.os_pid),
+            event.crash_info.executable,
             analyzer_opts
           )
 
@@ -141,16 +142,16 @@ defmodule ToastTest.Attribution do
 
   # --- Coredump analysis ---
 
-  defp analyze_coredumps(_server_id, nil, _opts), do: {[], []}
-  defp analyze_coredumps(_server_id, %{coredump_paths: []}, _opts), do: {[], []}
+  defp analyze_coredumps(_server_id, nil, _executable, _opts), do: {[], []}
+  defp analyze_coredumps(_server_id, %{coredump_paths: []}, _executable, _opts), do: {[], []}
 
-  defp analyze_coredumps(server_id, server_artifacts, analyzer_opts) do
+  defp analyze_coredumps(server_id, server_artifacts, executable, analyzer_opts) do
     paths = server_artifacts.coredump_paths
     Logger.info("Analyzing #{length(paths)} coredump(s) for server #{server_id}")
 
     reports =
       Enum.flat_map(paths, fn core_path ->
-        case Enrichment.Coredump.analyze(core_path, server_artifacts.server, analyzer_opts) do
+        case Enrichment.Coredump.analyze(core_path, executable, analyzer_opts) do
           {:ok, result} ->
             Logger.info(
               "Coredump #{Path.basename(core_path)}: #{length(result.threads)} thread(s)"
@@ -205,9 +206,9 @@ defmodule ToastTest.Attribution do
   # --- Crash log helpers ---
 
   defp extract_server_errors(nil), do: {[], nil}
-  defp extract_server_errors(%{server: %{log_file: nil}}), do: {[], nil}
+  defp extract_server_errors(%{log_file: nil}), do: {[], nil}
 
-  defp extract_server_errors(%{server: %{log_file: log_file}}) do
+  defp extract_server_errors(%{log_file: log_file}) do
     {Enrichment.Logs.extract_trailing_errors(log_file), log_file}
   end
 

@@ -25,35 +25,9 @@ defmodule ToastTest.Enrichment.CoredumpTest do
   alias Toast.Diagnostics.Coredump.Report
   alias ToastTest.Enrichment.Coredump
 
-  defp build_server(executable \\ "/usr/bin/arangod") do
-    %Toast.Deployment.ServerInstance{
-      id: "single1",
-      role: :single,
-      launch_spec: %Toast.Deployment.Factory.LaunchSpec{
-        id: "single1",
-        role: :single,
-        executable: executable,
-        args: [],
-        env: [],
-        working_dir: "/tmp",
-        server_dir: "/tmp",
-        port: 8529,
-        log_file: "/tmp/arangod.log"
-      }
-    }
-  end
+  @default_executable "/usr/bin/arangod"
 
   describe "analyze/3" do
-    test "returns error when no launch_spec" do
-      server = %Toast.Deployment.ServerInstance{
-        id: "single1",
-        role: :single,
-        launch_spec: nil
-      }
-
-      assert {:error, :no_executable} = Coredump.analyze("/tmp/core.1234", server)
-    end
-
     test "transforms successful report into thread-list shape" do
       report = %Report{
         core_path: "/tmp/core.1234",
@@ -71,10 +45,8 @@ defmodule ToastTest.Enrichment.CoredumpTest do
         ]
       }
 
-      server = build_server()
-
       result =
-        Coredump.analyze("/tmp/core.1234", server,
+        Coredump.analyze("/tmp/core.1234", @default_executable,
           analyzer: fn _core, _bin, _opts -> {:ok, report} end
         )
 
@@ -109,10 +81,8 @@ defmodule ToastTest.Enrichment.CoredumpTest do
         ]
       }
 
-      server = build_server()
-
       assert {:ok, enrichment} =
-               Coredump.analyze("/tmp/core.1234", server,
+               Coredump.analyze("/tmp/core.1234", @default_executable,
                  analyzer: fn _, _, _ -> {:ok, report} end
                )
 
@@ -138,10 +108,8 @@ defmodule ToastTest.Enrichment.CoredumpTest do
         ]
       }
 
-      server = build_server()
-
       assert {:ok, enrichment} =
-               Coredump.analyze("/tmp/core.1234", server,
+               Coredump.analyze("/tmp/core.1234", @default_executable,
                  analyzer: fn _, _, _ -> {:ok, report} end
                )
 
@@ -150,19 +118,16 @@ defmodule ToastTest.Enrichment.CoredumpTest do
     end
 
     test "propagates analyzer errors" do
-      server = build_server()
-
       assert {:error, :no_debugger} =
-               Coredump.analyze("/tmp/core.1234", server,
+               Coredump.analyze("/tmp/core.1234", @default_executable,
                  analyzer: fn _, _, _ -> {:error, :no_debugger} end
                )
     end
 
     test "passes options through to analyzer" do
-      server = build_server()
       test_pid = self()
 
-      Coredump.analyze("/tmp/core.1234", server,
+      Coredump.analyze("/tmp/core.1234", @default_executable,
         timeout: 5_000,
         analyzer: fn core, bin, opts ->
           send(test_pid, {:called, core, bin, opts})

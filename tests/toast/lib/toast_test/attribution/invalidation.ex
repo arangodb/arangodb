@@ -31,24 +31,26 @@ defmodule ToastTest.Attribution.Invalidation do
   surfaces (JUnit XML, outcomes.json, diagnostics ETF, CLI summary) can
   represent them consistently.
 
-  A test is considered invalidated when its `started_at > earliest_crash_at`.
-  The *trigger* test (started before the crash, still running when it
-  happened) is left as `:failed` — its failure is the signal, not noise.
+  A test is considered invalidated when its window started after the
+  earliest crash (both timestamps from the EventStore timeline). The
+  *trigger* test (started before the crash, still running when it happened)
+  is left as `:failed` — its failure is the signal, not noise.
   """
 
+  alias ToastTest.Attribution.TimeWindows
   alias ToastTest.CrashEvent
 
-  @spec apply(map(), [CrashEvent.t()]) :: map()
-  def apply(test_data, []), do: test_data
-  def apply(%{failures: []} = test_data, _crash_events), do: test_data
+  @spec apply(map(), [CrashEvent.t()], TimeWindows.windows()) :: map()
+  def apply(test_data, [], _windows), do: test_data
+  def apply(%{failures: []} = test_data, _crash_events, _windows), do: test_data
 
-  def apply(test_data, crash_events) do
+  def apply(test_data, crash_events, windows) do
     case earliest_crash_us(crash_events) do
       nil ->
         test_data
 
       crash_us ->
-        {modules, invalidated_keys} = rewrite_modules(test_data.modules, crash_us)
+        {modules, invalidated_keys} = rewrite_modules(test_data.modules, crash_us, windows)
         failures = prune_failures(test_data.failures, invalidated_keys)
         %{test_data | modules: modules, failures: failures}
     end
@@ -61,16 +63,16 @@ defmodule ToastTest.Attribution.Invalidation do
     |> Enum.min(fn -> nil end)
   end
 
-  defp rewrite_modules(modules, crash_us) do
+  defp rewrite_modules(modules, crash_us, windows) do
     Enum.reduce(modules, {%{}, MapSet.new()}, fn {mod, mod_result}, {acc, keys} ->
-      {tests, keys} = rewrite_tests(mod, mod_result.tests, crash_us, keys)
+      {tests, keys} = rewrite_tests(mod, mod_result.tests, crash_us, windows, keys)
       {Map.put(acc, mod, %{mod_result | tests: tests}), keys}
     end)
   end
 
-  defp rewrite_tests(mod, tests, crash_us, keys) do
+  defp rewrite_tests(mod, tests, crash_us, windows, keys) do
     Enum.map_reduce(tests, keys, fn test, keys ->
-      if invalidate?(test, crash_us) do
+      if invalidate?(mod, test, crash_us, windows) do
         {%{test | outcome: :invalidated}, MapSet.put(keys, {mod, test.name})}
       else
         {test, keys}
@@ -78,11 +80,14 @@ defmodule ToastTest.Attribution.Invalidation do
     end)
   end
 
-  defp invalidate?(%{outcome: :failed, started_at: %DateTime{} = started_at}, crash_us) do
-    DateTime.to_unix(started_at, :microsecond) > crash_us
+  defp invalidate?(mod, %{outcome: :failed, name: name}, crash_us, windows) do
+    case windows.tests[{mod, name}] do
+      %{started_at: started_us} -> started_us > crash_us
+      nil -> false
+    end
   end
 
-  defp invalidate?(_test, _crash_us), do: false
+  defp invalidate?(_mod, _test, _crash_us, _windows), do: false
 
   defp prune_failures(failures, invalidated_keys) do
     Enum.reject(failures, fn %ExUnit.Test{module: mod, name: name} ->

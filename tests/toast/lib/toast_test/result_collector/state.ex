@@ -104,7 +104,6 @@ defmodule ToastTest.ResultCollector.State do
       duration_us: test.time,
       started_at: started_at,
       finished_at: finished_at,
-      between_tests_finished_at: nil,
       tags: %{file: test.tags[:file], line: test.tags[:line]}
     }
 
@@ -123,25 +122,6 @@ defmodule ToastTest.ResultCollector.State do
 
   def apply_event(state, {:suite_finished, times_us, now}) do
     %{state | finished_at: now, times_us: times_us}
-  end
-
-  def apply_event(state, {:between_tests_finished, %ExUnit.Test{} = test, now}) do
-    case Map.fetch(state.modules, test.module) do
-      {:ok, tests} ->
-        updated =
-          Enum.map(tests, fn
-            %{name: name} = record when name == test.name ->
-              %{record | between_tests_finished_at: now}
-
-            record ->
-              record
-          end)
-
-        %{state | modules: Map.put(state.modules, test.module, updated)}
-
-      :error ->
-        state
-    end
   end
 
   def apply_event(state, _unknown), do: state

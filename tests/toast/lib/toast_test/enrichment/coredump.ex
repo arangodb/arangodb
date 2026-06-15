@@ -27,26 +27,20 @@ defmodule ToastTest.Enrichment.Coredump do
   stored in `SuiteResult.coredumps`.
   """
 
-  alias Toast.Deployment.ServerInstance
   alias Toast.Diagnostics.Coredump, as: DiagCoredump
 
   @doc """
-  Analyze a coredump for the given server instance.
+  Analyze a coredump using the given executable binary path.
 
   Options:
     - `:analyzer` — override the analysis function (for testing);
       signature `(core_path, binary_path, opts) -> {:ok, Report.t()} | {:error, term()}`
     - All other options are forwarded to the analyzer.
   """
-  def analyze(core_path, server, opts \\ []) do
-    case extract_binary_path(server) do
-      {:ok, binary_path} ->
-        {analyzer, forward_opts} = Keyword.pop(opts, :analyzer, &DiagCoredump.analyze/3)
-        run_analysis(analyzer, core_path, binary_path, forward_opts)
-
-      :error ->
-        {:error, :no_executable}
-    end
+  @spec analyze(Path.t(), Path.t(), keyword()) :: {:ok, map()} | {:error, term()}
+  def analyze(core_path, executable, opts) when is_binary(core_path) and is_binary(executable) do
+    {analyzer, forward_opts} = Keyword.pop(opts, :analyzer, &DiagCoredump.analyze/3)
+    run_analysis(analyzer, core_path, executable, forward_opts)
   end
 
   @doc "Format a thread's frames as a human-readable backtrace string."
@@ -55,9 +49,6 @@ defmodule ToastTest.Enrichment.Coredump do
     |> Enum.with_index()
     |> Enum.map_join("\n", fn {frame, idx} -> format_frame(frame, idx) end)
   end
-
-  defp extract_binary_path(%ServerInstance{launch_spec: nil}), do: :error
-  defp extract_binary_path(%ServerInstance{launch_spec: spec}), do: {:ok, spec.executable}
 
   defp run_analysis(analyzer, core_path, binary_path, opts) do
     case analyzer.(core_path, binary_path, opts) do

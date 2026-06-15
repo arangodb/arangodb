@@ -535,30 +535,29 @@ defmodule ToastTest.Runner do
   defp finalize_suite(deployment, stats, test_data, test_config, capture_pid) do
     pcap_path = stop_traffic_capture(capture_pid)
 
-    servers = stop_and_collect_servers(deployment, test_data, test_config)
+    stop_deployment(deployment, test_data, test_config)
 
     suite_result =
-      __MODULE__.PostExecution.run(servers, test_data, test_config, pcap_path)
+      __MODULE__.PostExecution.run(test_data, test_config, pcap_path)
 
     ToastTest.StateCleanup.reset()
     %{stats: stats, suite_result: suite_result}
   end
 
-  defp stop_and_collect_servers(nil, _test_data, _test_config), do: %{}
+  defp stop_deployment(nil, _test_data, _test_config), do: :ok
 
-  defp stop_and_collect_servers(deployment, test_data, test_config) do
+  defp stop_deployment(deployment, test_data, test_config) do
     maybe_dump_agency(deployment, test_data, test_config)
 
     Logger.debug("Stopping deployment")
 
-    {servers, error} =
-      case Toast.Deployment.stop(deployment) do
-        {:ok, info} -> {info.servers, info.error}
-        {:error, _reason, info} -> {info.servers, info.error}
-      end
+    case Toast.Deployment.stop(deployment) do
+      {:ok, _info} ->
+        :ok
 
-    if error, do: Logger.warning("Deployment stop error: #{inspect(error)}")
-    servers
+      {:error, _reason, %{error: error}} ->
+        Logger.warning("Deployment stop error: #{inspect(error)}")
+    end
   end
 
   defp maybe_dump_agency(deployment, test_data, test_config) do
@@ -604,7 +603,6 @@ defmodule ToastTest.Runner do
   defp build_between_tests_fn(
          %ToastTest.SuiteRun{between_tests: false},
          _deployment,
-         _pipeline,
          _netstat_config
        ),
        do: fn _prev -> :ok end
@@ -612,7 +610,6 @@ defmodule ToastTest.Runner do
   defp build_between_tests_fn(
          %ToastTest.SuiteRun{} = suite_run,
          deployment,
-         %Pipeline{} = pipeline,
          netstat_config
        ) do
     check_fn =
@@ -623,7 +620,6 @@ defmodule ToastTest.Runner do
       end
 
     barrier_timeout = suite_run.test_config.coredump_timeout
-    collector = pipeline.result_collector_pid
 
     fn
       nil ->
@@ -643,7 +639,7 @@ defmodule ToastTest.Runner do
 
         # Extend prev_test's attribution window to now, so any crash whose
         # :DOWN arrived during the barrier wait still attributes to it.
-        ToastTest.ResultCollector.notify_between_tests_finished(collector, prev_test)
+        __MODULE__.Events.between_tests_finished(prev_test.module, prev_test.name)
 
         result
     end
@@ -653,7 +649,7 @@ defmodule ToastTest.Runner do
 
   defp record_netstat_baseline(tool, label) do
     total = Toast.Deployment.Netstat.count_sockets(tool)
-    ToastTest.EventStore.notify(%{event: :netstat_snapshot, total: total, label: label})
+    __MODULE__.Events.netstat_snapshot(total, label)
     total
   end
 
@@ -662,17 +658,12 @@ defmodule ToastTest.Runner do
   defp check_netstat(deployment, {tool, baseline}) do
     case Toast.Deployment.Netstat.check(deployment, tool, baseline) do
       {:ok, total} ->
-        ToastTest.EventStore.notify(%{event: :netstat_snapshot, total: total})
+        __MODULE__.Events.netstat_snapshot(total)
         :ok
 
       {:port_exhaustion, detail} ->
-        ToastTest.EventStore.notify(%{event: :netstat_snapshot, total: detail.total})
-
-        ToastTest.EventStore.notify(%{
-          event: :infrastructure_issue,
-          subtype: :port_exhaustion,
-          detail: detail
-        })
+        __MODULE__.Events.netstat_snapshot(detail.total)
+        __MODULE__.Events.infrastructure_issue(:port_exhaustion, detail)
 
         kind_label = if detail.kind == :deployment, do: "Deployment", else: "System"
 
@@ -727,7 +718,7 @@ defmodule ToastTest.Runner do
     suite_name = derive_suite_name(suite_run.suite_module, suite_run.deployment_mode)
     pipeline = start_event_pipeline(opts, suite_name)
 
-    between_tests_fn = build_between_tests_fn(suite_run, deployment, pipeline, netstat_config)
+    between_tests_fn = build_between_tests_fn(suite_run, deployment, netstat_config)
 
     config =
       build_run_context(

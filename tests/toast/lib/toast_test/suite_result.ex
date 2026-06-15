@@ -106,7 +106,6 @@ defmodule ToastTest.SuiteResult do
           duration_us: non_neg_integer(),
           started_at: DateTime.t() | nil,
           finished_at: DateTime.t() | nil,
-          between_tests_finished_at: DateTime.t() | nil,
           tags: map()
         }
 

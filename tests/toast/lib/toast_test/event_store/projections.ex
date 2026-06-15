@@ -90,16 +90,7 @@ defmodule ToastTest.EventStore.Projections do
     # before deployment_started) can record incarnations.
     init_servers =
       Map.new(e[:specs] || [], fn spec ->
-        {spec.id,
-         %{
-           id: spec.id,
-           deployment_id: did,
-           role: spec[:role],
-           endpoint: nil,
-           log_file: spec[:log_file],
-           arango_id: nil,
-           incarnations: []
-         }}
+        {spec.id, new_server_entry(spec.id, did, spec)}
       end)
 
     %{acc | servers: Map.update(acc.servers, did, init_servers, &Map.merge(&1, init_servers))}
@@ -125,16 +116,7 @@ defmodule ToastTest.EventStore.Projections do
 
     deployment_servers =
       Map.new(e[:servers] || %{}, fn {sid, spec} ->
-        {sid,
-         %{
-           id: sid,
-           deployment_id: did,
-           role: spec[:role],
-           endpoint: spec[:endpoint],
-           log_file: spec[:log_file],
-           arango_id: nil,
-           incarnations: []
-         }}
+        {sid, new_server_entry(sid, did, spec)}
       end)
 
     # Merge new server data but preserve incarnations already recorded by
@@ -195,10 +177,8 @@ defmodule ToastTest.EventStore.Projections do
 
   defp add_incarnation(acc, %{deployment_id: did, server_id: sid, pid: pid, timestamp: ts}) do
     update_server_in(acc, did, sid, fn server ->
-      %{
-        server
-        | incarnations: [%{pid: pid, started_at: ts, stopped_at: nil} | server.incarnations]
-      }
+      incarnation = %{pid: pid, started_at: ts, stopped_at: nil}
+      %{server | incarnations: [incarnation | server.incarnations]}
     end)
   end
 
@@ -240,6 +220,19 @@ defmodule ToastTest.EventStore.Projections do
       _ ->
         acc
     end
+  end
+
+  defp new_server_entry(sid, did, spec) do
+    %{
+      id: sid,
+      deployment_id: did,
+      role: spec[:role],
+      endpoint: spec[:endpoint],
+      log_file: spec[:log_file],
+      server_dir: spec[:server_dir],
+      arango_id: nil,
+      incarnations: []
+    }
   end
 
   defp finalize(acc) do

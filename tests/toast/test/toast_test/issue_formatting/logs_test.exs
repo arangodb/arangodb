@@ -480,7 +480,13 @@ defmodule ToastTest.LogAnalysisAndFormattingLogsTest do
 
   describe "format_event/1" do
     test "server_started" do
-      event = %{event: :server_started, server_id: "dbserver1", pid: 12_345, timestamp: 0}
+      event = %{
+        event: :server_started,
+        server_id: "dbserver1",
+        pid: 12_345,
+        timestamp: 0
+      }
+
       assert LogFormatting.format_event(event) == ">>> server_started dbserver1 (pid=12345)"
     end
 
@@ -545,12 +551,19 @@ defmodule ToastTest.LogAnalysisAndFormattingLogsTest do
     end
 
     test "deployment_starting" do
-      event = %{event: :deployment_starting, deployment_id: "d1", mode: :cluster, timestamp: 0}
+      event = %{
+        event: :deployment_starting,
+        deployment_id: "d1",
+        mode: :cluster,
+        specs: [],
+        timestamp: 0
+      }
+
       assert LogFormatting.format_event(event) == ">>> deployment_starting d1 (cluster)"
     end
 
     test "deployment_started" do
-      event = %{event: :deployment_started, deployment_id: "d1", timestamp: 0}
+      event = %{event: :deployment_started, deployment_id: "d1", servers: %{}, timestamp: 0}
       assert LogFormatting.format_event(event) == ">>> deployment_started d1"
     end
 

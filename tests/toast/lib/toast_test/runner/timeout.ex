@@ -22,7 +22,7 @@
 defmodule ToastTest.Runner.Timeout do
   @moduledoc false
 
-  alias ToastTest.{Abort, EventStore}
+  alias ToastTest.Abort
 
   require Logger
 
@@ -133,7 +133,7 @@ defmodule ToastTest.Runner.Timeout do
   defp abort_with_timeout(source, reason) do
     if is_nil(Abort.reason()) do
       Logger.warning("#{reason} — aborting suite")
-      EventStore.notify(%{event: :timeout_kill, source: source, reason: reason, servers: []})
+      ToastTest.Runner.Events.timeout_kill(source, reason, [])
       Abort.abort!({:timeout, reason})
     end
   end

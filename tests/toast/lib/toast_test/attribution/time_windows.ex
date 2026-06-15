@@ -21,11 +21,14 @@
 
 defmodule ToastTest.Attribution.TimeWindows do
   @moduledoc """
-  Builds time windows from test execution data and attributes timestamps
-  to the most specific scope (test, module, or suite).
+  Builds time windows from EventStore test lifecycle events and attributes
+  timestamps to the most specific scope (test, module, or suite).
+
+  Windows and the facts being attributed (crashes, sanitizer reports) both
+  come from the EventStore timeline, so all comparisons are single-clock.
 
   Uses a two-tier confidence model for test attribution:
-  - `:high` — timestamp falls within `[test.started_at, test.finished_at]`
+  - `:high` — timestamp falls within the test window
   - `:low` — timestamp is within a tolerance window after test end
 
   All timestamps are `t:Toast.timestamp/0` (Unix microseconds).
@@ -49,7 +52,6 @@ defmodule ToastTest.Attribution.TimeWindows do
   end
 
   @type windows :: %{
-          suite: %{started_at: Toast.timestamp(), finished_at: Toast.timestamp()},
           modules: %{module() => module_window()},
           tests: %{
             {module(), atom()} => %{started_at: Toast.timestamp(), finished_at: Toast.timestamp()}
@@ -57,27 +59,83 @@ defmodule ToastTest.Attribution.TimeWindows do
         }
 
   @type module_window :: %{
-          started_at: Toast.timestamp(),
+          started_at: Toast.timestamp() | nil,
           setup_finished_at: Toast.timestamp() | nil,
           teardown_started_at: Toast.timestamp() | nil,
-          finished_at: Toast.timestamp()
+          finished_at: Toast.timestamp() | nil
         }
 
   @doc """
-  Build time windows from ResultCollector test data.
+  Build time windows from EventStore events.
 
-  Converts DateTime values from the collector into `t:Toast.timestamp/0`.
+  Folds `:module_started`/`:module_finished`, `:test_started`/`:test_finished`,
+  and `:between_tests_finished` events into per-module and per-test windows;
+  all other events are ignored.
+
+  A test window extends to its `:between_tests_finished` timestamp when
+  present, so crashes detected during the between-tests barrier still
+  attribute to the test. Tests lacking either bound (e.g. aborted mid-run)
+  produce no window. Module setup ends at the first `:test_started`;
+  teardown begins at the last `:test_finished`.
   """
-  @spec build(ToastTest.ResultCollector.test_data()) :: windows()
-  def build(test_data) do
-    %{
-      suite: %{
-        started_at: to_us(test_data.started_at),
-        finished_at: to_us(test_data.finished_at)
-      },
-      modules: build_module_windows(test_data.modules),
-      tests: build_test_windows(test_data.modules)
-    }
+  @spec build([map()]) :: windows()
+  def build(events) when is_list(events) do
+    %{modules: modules, tests: tests} =
+      Enum.reduce(events, %{modules: %{}, tests: %{}}, &collect_event/2)
+
+    %{modules: modules, tests: finalize_tests(tests)}
+  end
+
+  @empty_module_window %{
+    started_at: nil,
+    finished_at: nil,
+    setup_finished_at: nil,
+    teardown_started_at: nil
+  }
+
+  defp collect_event(%{event: :module_started, module: m, timestamp: ts}, acc) do
+    update_module(acc, m, fn
+      %{started_at: nil} = w -> %{w | started_at: ts}
+      w -> w
+    end)
+  end
+
+  defp collect_event(%{event: :module_finished, module: m, timestamp: ts}, acc) do
+    update_module(acc, m, &%{&1 | finished_at: ts})
+  end
+
+  defp collect_event(%{event: :test_started, module: m, name: n, timestamp: ts}, acc) do
+    tests =
+      Map.put(acc.tests, {m, n}, %{started_at: ts, finished_at: nil, barrier_finished_at: nil})
+
+    update_module(%{acc | tests: tests}, m, fn
+      %{setup_finished_at: nil} = w -> %{w | setup_finished_at: ts}
+      w -> w
+    end)
+  end
+
+  defp collect_event(%{event: :test_finished, module: m, name: n, timestamp: ts}, acc) do
+    tests = Map.replace_lazy(acc.tests, {m, n}, &%{&1 | finished_at: ts})
+    update_module(%{acc | tests: tests}, m, &%{&1 | teardown_started_at: ts})
+  end
+
+  defp collect_event(%{event: :between_tests_finished, module: m, name: n, timestamp: ts}, acc) do
+    %{acc | tests: Map.replace_lazy(acc.tests, {m, n}, &%{&1 | barrier_finished_at: ts})}
+  end
+
+  defp collect_event(_event, acc), do: acc
+
+  defp update_module(acc, m, fun) do
+    window = Map.get(acc.modules, m, @empty_module_window)
+    %{acc | modules: Map.put(acc.modules, m, fun.(window))}
+  end
+
+  defp finalize_tests(tests) do
+    for {key, %{started_at: s, finished_at: f} = w} <- tests,
+        s != nil and f != nil,
+        into: %{} do
+      {key, %{started_at: s, finished_at: w.barrier_finished_at || f}}
+    end
   end
 
   @type phase :: :setup | :teardown | nil
@@ -108,11 +166,8 @@ defmodule ToastTest.Attribution.TimeWindows do
 
   defp match_test(timestamp, tests, tolerance_us) do
     case find_high_match(timestamp, tests) do
-      {:ok, {mod, name}} ->
-        {{:test, mod, name}, :high, nil}
-
-      :none ->
-        find_low_match(timestamp, tests, tolerance_us)
+      {:ok, {mod, name}} -> {{:test, mod, name}, :high, nil}
+      :none -> find_low_match(timestamp, tests, tolerance_us)
     end
   end
 
@@ -155,14 +210,14 @@ defmodule ToastTest.Attribution.TimeWindows do
   end
 
   defp in_setup?(timestamp, %{started_at: started, setup_finished_at: setup_end})
-       when not is_nil(setup_end) do
+       when not is_nil(started) and not is_nil(setup_end) do
     in_window?(timestamp, started, setup_end)
   end
 
   defp in_setup?(_timestamp, _window), do: false
 
   defp in_teardown?(timestamp, %{teardown_started_at: td_start, finished_at: finished})
-       when not is_nil(td_start) do
+       when not is_nil(td_start) and not is_nil(finished) do
     in_window?(timestamp, td_start, finished)
   end
 
@@ -194,30 +249,6 @@ defmodule ToastTest.Attribution.TimeWindows do
 
   # --- Window helpers ---
 
-  defp build_module_windows(modules) do
-    Map.new(modules, fn {mod, data} ->
-      {mod,
-       %{
-         started_at: to_us(data.started_at),
-         setup_finished_at: to_us(data.setup_finished_at),
-         teardown_started_at: to_us(data.teardown_started_at),
-         finished_at: to_us(data.finished_at)
-       }}
-    end)
-  end
-
-  defp build_test_windows(modules) do
-    for {mod, data} <- modules,
-        test <- data.tests,
-        test.started_at != nil and test.finished_at != nil,
-        into: %{} do
-      effective_finish = Map.get(test, :between_tests_finished_at) || test.finished_at
-
-      {{mod, test.name},
-       %{started_at: to_us(test.started_at), finished_at: to_us(effective_finish)}}
-    end
-  end
-
   defp in_window?(timestamp, window_start, window_end) do
     timestamp >= window_start and timestamp <= window_end
   end
@@ -225,7 +256,4 @@ defmodule ToastTest.Attribution.TimeWindows do
   defp after_window_within_tolerance?(timestamp, window_end, tolerance_us) do
     timestamp > window_end and timestamp - window_end <= tolerance_us
   end
-
-  defp to_us(%DateTime{} = dt), do: DateTime.to_unix(dt, :microsecond)
-  defp to_us(nil), do: nil
 end

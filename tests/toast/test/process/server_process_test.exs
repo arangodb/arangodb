@@ -118,6 +118,14 @@ defmodule Toast.Process.ServerProcessTest do
       assert_receive {:server_crashed, ^id, crash_info}, 5_000
       assert Map.has_key?(crash_info, :signal)
     end
+
+    test "crash_info carries the executable the process was spawned with", %{id: id} do
+      pid = start_server(id, args: ["--crash-after", "1"], listener: self())
+      ServerProcess.launch(pid)
+
+      assert_receive {:server_crashed, ^id, crash_info}, 5_000
+      assert crash_info.executable == @fake_server
+    end
   end
 
   describe "stop already stopped" do

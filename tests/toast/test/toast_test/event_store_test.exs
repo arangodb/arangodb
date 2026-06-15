@@ -42,9 +42,21 @@ defmodule ToastTest.EventStoreTest do
       t2 = to_us(~U[2026-03-09 10:00:01Z])
       t3 = to_us(~U[2026-03-09 10:00:02Z])
 
-      EventStore.notify(%{event: :server_started, server_id: "s1", pid: 100, timestamp: t1})
+      EventStore.notify(%{
+        event: :server_started,
+        server_id: "s1",
+        pid: 100,
+        timestamp: t1
+      })
+
       EventStore.notify(%{event: :server_stopped, server_id: "s1", pid: 100, timestamp: t2})
-      EventStore.notify(%{event: :server_started, server_id: "s2", pid: 200, timestamp: t3})
+
+      EventStore.notify(%{
+        event: :server_started,
+        server_id: "s2",
+        pid: 200,
+        timestamp: t3
+      })
 
       events = EventStore.events()
       assert length(events) == 3
@@ -54,7 +66,13 @@ defmodule ToastTest.EventStoreTest do
 
     test "preserves timestamps" do
       now = to_us(~U[2026-03-09 10:00:00Z])
-      EventStore.notify(%{event: :server_started, server_id: "s1", pid: 100, timestamp: now})
+
+      EventStore.notify(%{
+        event: :server_started,
+        server_id: "s1",
+        pid: 100,
+        timestamp: now
+      })
 
       [recorded] = EventStore.events()
       assert recorded.timestamp == now
@@ -62,7 +80,13 @@ defmodule ToastTest.EventStoreTest do
 
     test "auto-generates timestamp when not provided" do
       before = :os.system_time(:microsecond)
-      EventStore.notify(%{event: :server_started, server_id: "s1", pid: 100})
+
+      EventStore.notify(%{
+        event: :server_started,
+        server_id: "s1",
+        pid: 100
+      })
+
       after_ts = :os.system_time(:microsecond)
 
       [recorded] = EventStore.events()
@@ -78,23 +102,56 @@ defmodule ToastTest.EventStoreTest do
     end
 
     test "collects OS PIDs from server_started events" do
-      EventStore.notify(%{event: :server_started, server_id: "s1", pid: 1001, timestamp: ts()})
-      EventStore.notify(%{event: :server_started, server_id: "s2", pid: 1002, timestamp: ts()})
+      EventStore.notify(%{
+        event: :server_started,
+        server_id: "s1",
+        pid: 1001,
+        timestamp: ts()
+      })
+
+      EventStore.notify(%{
+        event: :server_started,
+        server_id: "s2",
+        pid: 1002,
+        timestamp: ts()
+      })
 
       assert EventStore.pids_by_server() == %{"s1" => [1001], "s2" => [1002]}
     end
 
     test "collects multiple PIDs for the same server (relaunch)" do
-      EventStore.notify(%{event: :server_started, server_id: "s1", pid: 1001, timestamp: ts()})
-      EventStore.notify(%{event: :server_started, server_id: "s1", pid: 1002, timestamp: ts()})
+      EventStore.notify(%{
+        event: :server_started,
+        server_id: "s1",
+        pid: 1001,
+        timestamp: ts()
+      })
+
+      EventStore.notify(%{
+        event: :server_started,
+        server_id: "s1",
+        pid: 1002,
+        timestamp: ts()
+      })
 
       result = EventStore.pids_by_server()
       assert result["s1"] == [1001, 1002]
     end
 
     test "deduplicates repeated PIDs" do
-      EventStore.notify(%{event: :server_started, server_id: "s1", pid: 1001, timestamp: ts()})
-      EventStore.notify(%{event: :server_started, server_id: "s1", pid: 1001, timestamp: ts()})
+      EventStore.notify(%{
+        event: :server_started,
+        server_id: "s1",
+        pid: 1001,
+        timestamp: ts()
+      })
+
+      EventStore.notify(%{
+        event: :server_started,
+        server_id: "s1",
+        pid: 1001,
+        timestamp: ts()
+      })
 
       assert EventStore.pids_by_server() == %{"s1" => [1001]}
     end
@@ -192,7 +249,12 @@ defmodule ToastTest.EventStoreTest do
     end
 
     test "ignores non-timeout events" do
-      EventStore.notify(%{event: :server_started, server_id: "s1", pid: 1001, timestamp: ts()})
+      EventStore.notify(%{
+        event: :server_started,
+        server_id: "s1",
+        pid: 1001,
+        timestamp: ts()
+      })
 
       assert EventStore.timeout_kills() == []
     end
@@ -200,7 +262,13 @@ defmodule ToastTest.EventStoreTest do
 
   describe "clear/0" do
     test "removes all recorded events" do
-      EventStore.notify(%{event: :server_started, server_id: "s1", pid: 100, timestamp: ts()})
+      EventStore.notify(%{
+        event: :server_started,
+        server_id: "s1",
+        pid: 100,
+        timestamp: ts()
+      })
+
       EventStore.notify(%{event: :server_stopped, server_id: "s1", pid: 100, timestamp: ts()})
 
       assert length(EventStore.events()) == 2
@@ -211,9 +279,21 @@ defmodule ToastTest.EventStoreTest do
     end
 
     test "events can be recorded after clear" do
-      EventStore.notify(%{event: :server_started, server_id: "s1", pid: 100, timestamp: ts()})
+      EventStore.notify(%{
+        event: :server_started,
+        server_id: "s1",
+        pid: 100,
+        timestamp: ts()
+      })
+
       EventStore.clear()
-      EventStore.notify(%{event: :server_started, server_id: "s2", pid: 200, timestamp: ts()})
+
+      EventStore.notify(%{
+        event: :server_started,
+        server_id: "s2",
+        pid: 200,
+        timestamp: ts()
+      })
 
       events = EventStore.events()
       assert length(events) == 1
@@ -276,9 +356,15 @@ defmodule ToastTest.EventStoreTest do
           "s1" => %{
             role: :coordinator,
             endpoint: "http://localhost:8529",
-            log_file: "/tmp/s1.log"
+            log_file: "/tmp/s1.log",
+            server_dir: "/tmp/d1/s1"
           },
-          "s2" => %{role: :dbserver, endpoint: "http://localhost:8530", log_file: "/tmp/s2.log"}
+          "s2" => %{
+            role: :dbserver,
+            endpoint: "http://localhost:8530",
+            log_file: "/tmp/s2.log",
+            server_dir: "/tmp/d1/s2"
+          }
         }
       )
 
@@ -287,8 +373,31 @@ defmodule ToastTest.EventStoreTest do
       assert servers["s1"].role == :coordinator
       assert servers["s1"].endpoint == "http://localhost:8529"
       assert servers["s1"].log_file == "/tmp/s1.log"
+      assert servers["s1"].server_dir == "/tmp/d1/s1"
       assert servers["s1"].deployment_id == "d1"
       assert servers["s1"].incarnations == []
+    end
+
+    test "reconstructs server_dir from deployment_starting specs" do
+      EventStore.notify(%{
+        event: :deployment_starting,
+        deployment_id: "d1",
+        mode: :cluster,
+        stacktrace: nil,
+        specs: [
+          %{
+            id: "s1",
+            role: :coordinator,
+            port: 8529,
+            log_file: "/tmp/s1.log",
+            server_dir: "/tmp/d1/s1"
+          }
+        ],
+        timestamp: ts()
+      })
+
+      %{"d1" => servers} = EventStore.servers()
+      assert servers["s1"].server_dir == "/tmp/d1/s1"
     end
 
     test "tracks incarnations from server_started/stopped events" do
@@ -376,6 +485,63 @@ defmodule ToastTest.EventStoreTest do
       assert inc.stopped_at == t2
     end
 
+    test "kill closes the current incarnation" do
+      t0 = to_us(~U[2026-03-09 09:59:00Z])
+      t1 = to_us(~U[2026-03-09 10:00:00Z])
+      t2 = to_us(~U[2026-03-09 10:01:00Z])
+
+      start_deployment("d1", servers: %{"s1" => %{role: :dbserver}}, timestamp: t0)
+
+      EventStore.notify(%{
+        event: :server_started,
+        deployment_id: "d1",
+        server_id: "s1",
+        pid: 1001,
+        timestamp: t1
+      })
+
+      EventStore.notify(%{
+        event: :server_killed,
+        deployment_id: "d1",
+        server_id: "s1",
+        pid: 1001,
+        timestamp: t2
+      })
+
+      %{"d1" => %{"s1" => server}} = EventStore.servers()
+      assert [inc] = server.incarnations
+      assert inc.stopped_at == t2
+    end
+
+    test "unhealthy records a verdict on the server entry without closing the incarnation" do
+      t0 = to_us(~U[2026-03-09 09:59:00Z])
+      t1 = to_us(~U[2026-03-09 10:00:00Z])
+      t2 = to_us(~U[2026-03-09 10:01:00Z])
+
+      start_deployment("d1", servers: %{"s1" => %{role: :dbserver}}, timestamp: t0)
+
+      EventStore.notify(%{
+        event: :server_started,
+        deployment_id: "d1",
+        server_id: "s1",
+        pid: 1001,
+        timestamp: t1
+      })
+
+      EventStore.notify(%{
+        event: :server_unhealthy,
+        deployment_id: "d1",
+        server_id: "s1",
+        timestamp: t2
+      })
+
+      %{"d1" => %{"s1" => server}} = EventStore.servers()
+      assert server.unhealthy_verdicts == [%{at: t2}]
+      # The unhealthy verdict explains a *subsequent* SIGABRT crash; it does not
+      # itself close the incarnation -- the crash event does.
+      assert [%{stopped_at: nil}] = server.incarnations
+    end
+
     test "server_identified sets arango_id" do
       start_deployment("d1", servers: %{"s1" => %{role: :coordinator}})
 
@@ -412,7 +578,11 @@ defmodule ToastTest.EventStoreTest do
       start_deployment("d1",
         mode: :cluster,
         servers: %{
-          "s1" => %{role: :coordinator, endpoint: "http://localhost:8529"}
+          "s1" => %{
+            role: :coordinator,
+            endpoint: "http://localhost:8529",
+            server_dir: "/tmp/d1/s1"
+          }
         }
       )
 
@@ -630,19 +800,35 @@ defmodule ToastTest.EventStoreTest do
     servers = Keyword.get(opts, :servers, %{})
     timestamp = Keyword.get(opts, :timestamp, ts())
 
+    specs =
+      Enum.with_index(servers, fn {sid, spec}, idx ->
+        %{
+          id: sid,
+          role: spec[:role],
+          port: spec[:port] || 8529 + idx,
+          log_file: spec[:log_file] || "/tmp/#{did}/#{sid}.log",
+          server_dir: spec[:server_dir] || "/tmp/#{did}/#{sid}"
+        }
+      end)
+
+    servers_with_defaults =
+      Map.new(servers, fn {sid, spec} ->
+        {sid, Map.put_new(spec, :server_dir, "/tmp/#{did}/#{sid}")}
+      end)
+
     EventStore.notify(%{
       event: :deployment_starting,
       deployment_id: did,
       mode: mode,
       stacktrace: Keyword.get(opts, :stacktrace),
-      specs: [],
+      specs: specs,
       timestamp: timestamp
     })
 
     EventStore.notify(%{
       event: :deployment_started,
       deployment_id: did,
-      servers: servers,
+      servers: servers_with_defaults,
       timestamp: timestamp
     })
   end

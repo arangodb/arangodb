@@ -40,11 +40,6 @@ defmodule ToastTest.ResultCollector do
   @spec get_data(pid()) :: test_data()
   def get_data(pid), do: GenServer.call(pid, :get_data)
 
-  @spec notify_between_tests_finished(pid(), ExUnit.Test.t()) :: :ok
-  def notify_between_tests_finished(pid, %ExUnit.Test{} = test) do
-    GenServer.cast(pid, {:between_tests_finished, test})
-  end
-
   # --- GenServer callbacks ---
 
   @doc false

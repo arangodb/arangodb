@@ -32,17 +32,13 @@ defmodule ToastTest.Runner.PostExecution do
   Builds a `SuiteResult` after test execution completes.
 
   Analyses the EventStore data (crashes, timeout kills, infrastructure issues),
-  collects artifacts from `servers` (coredumps, sanitizer files), gathers server
-  logs, and writes results to disk.
-
-  The caller is responsible for stopping the deployment and passing the resulting
-  server map. An empty map is valid (manual mode, excluded suites, failed
-  deployments) — the analysis still runs using EventStore data.
+  collects artifacts (coredumps, sanitizer files), gathers server logs, and
+  writes results to disk. All server information is read from the EventStore.
   """
-  @spec run(map(), map(), ToastTest.Config.t(), Path.t() | nil) :: SuiteResult.t()
-  def run(servers, test_data, %ToastTest.Config{} = test_config, pcap_path \\ nil) do
+  @spec run(map(), ToastTest.Config.t(), Path.t() | nil) :: SuiteResult.t()
+  def run(test_data, %ToastTest.Config{} = test_config, pcap_path \\ nil) do
     try do
-      build_suite_result(servers, test_data, test_config, pcap_path)
+      build_suite_result(test_data, test_config, pcap_path)
     rescue
       e ->
         Logger.warning(
@@ -56,15 +52,17 @@ defmodule ToastTest.Runner.PostExecution do
     end
   end
 
-  defp build_suite_result(servers, test_data, test_config, pcap_path) do
+  defp build_suite_result(test_data, test_config, pcap_path) do
     Utils.print_header("SUITE FINISHED", IO.ANSI.enabled?(), Color.info())
 
     Logger.info("Running post-execution analysis...")
 
     snapshot = EventStore.snapshot()
+    windows = ToastTest.Attribution.TimeWindows.build(snapshot.events)
 
     Logger.debug("Collecting artifacts")
     artifact_opts = [coredump_dir: test_config.coredump_dir, not_before: test_data.started_at]
+    servers = build_servers(snapshot)
 
     artifacts =
       ToastTest.ArtifactCollector.collect(servers, snapshot.pids_by_server, artifact_opts)
@@ -76,16 +74,15 @@ defmodule ToastTest.Runner.PostExecution do
       |> Enum.map(&ResultBuilder.to_crash_event/1)
       |> ToastTest.Attribution.resolve_crash_timestamps(artifacts)
 
-    test_data = ToastTest.Attribution.Invalidation.apply(test_data, crash_events)
+    test_data = ToastTest.Attribution.Invalidation.apply(test_data, crash_events, windows)
 
     {issues, coredump_reports} =
-      ToastTest.Attribution.run(test_data, artifacts, crash_events,
+      ToastTest.Attribution.run(test_data, artifacts, crash_events, windows,
         timeout_kills: snapshot.timeout_kills,
         analyzer_opts: build_coredump_analyzer_opts(test_config)
       )
 
     Logger.debug("Collecting server logs")
-    windows = ToastTest.Attribution.TimeWindows.build(test_data)
     all_log_files = ResultBuilder.collect_log_files(snapshot.servers)
     server_logs = ToastTest.Attribution.ServerLogs.collect(issues, all_log_files, windows)
 
@@ -144,6 +141,12 @@ defmodule ToastTest.Runner.PostExecution do
       nil -> opts
       debugger -> [{:debugger, debugger} | opts]
     end
+  end
+
+  defp build_servers(snapshot) do
+    snapshot.servers
+    |> Map.values()
+    |> Enum.reduce(%{}, &Map.merge/2)
   end
 
   defp extract_traffic(nil), do: []
