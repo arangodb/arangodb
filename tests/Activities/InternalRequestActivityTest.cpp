@@ -165,12 +165,19 @@ auto requestActivitiesInRegistry()
   return requestActivities;
 }
 
+auto garbageCollectAllOnCurrentThread() -> void {
+  size_t deletedCount = 0;
+  do {
+    deletedCount = activities::get_thread_registry().garbage_collect();
+  } while (deletedCount > 0);
+}
+
 }  // namespace
 
 struct InternalRequestActivityTest : ::testing::Test {
-  static void SetUpTestSuite() { activities::registry.garbageCollectAll(); }
+  static void SetUpTestSuite() { garbageCollectAllOnCurrentThread(); }
   static void TearDownTestSuite() {
-    activities::registry.garbageCollectAll();
+    garbageCollectAllOnCurrentThread();
     EXPECT_EQ(activities::registry.size(), 0);
   }
 

@@ -52,7 +52,10 @@ struct MyNodeList {
       function(item.snapshot());
     }
   }
-  auto garbage_collect_external() -> void { isGarbageCollected = true; }
+  auto garbage_collect_external() -> size_t {
+    isGarbageCollected = true;
+    return 0;
+  }
 };
 
 using MyList = ListOfNonOwnedLists<MyNodeList>;

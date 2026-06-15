@@ -25,6 +25,7 @@
 #include "Activities/ActivityHandle.h"
 #include "Activities/ActivityCreated.h"
 #include "Activities/ActivityType.h"
+#include "Inspection/Transformers.h"
 
 #include <velocypack/Builder.h>
 #include <Inspection/Status.h>
@@ -52,8 +53,30 @@ struct Activity : std::enable_shared_from_this<Activity> {
   }
   auto type() const noexcept -> ActivityType { return _type; }
   auto created() const noexcept -> ActivityCreated { return _created; }
+  virtual auto data() const noexcept -> VPackBuilder {
+    auto builder = VPackBuilder{};
+    builder.openObject();
+    builder.close();
+    return builder;
+  }
 
-  virtual auto snapshot(velocypack::Builder& builder) -> inspection::Status = 0;
+  virtual auto snapshot(velocypack::Builder& builder) -> inspection::Status {
+    return inspection::Status{};
+  };
+  struct Snapshot {
+    ActivityId id;
+    std::optional<ActivityId> parentId;
+    ActivityType type;
+    ActivityCreated created;
+    VPackBuilder data;
+  };
+  auto snapshot() -> Snapshot {
+    return Snapshot{.id = id(),
+                    .parentId = parentId(),
+                    .type = type(),
+                    .created = created(),
+                    .data = data()};
+  }
 
  private:
   ActivityId _id;
@@ -61,5 +84,14 @@ struct Activity : std::enable_shared_from_this<Activity> {
   ActivityType _type;
   ActivityCreated _created;
 };
+template<typename Inspector>
+auto inspect(Inspector& f, Activity::Snapshot& x) {
+  return f.object(x).fields(
+      f.field("id", x.id), f.field("parent", x.parentId),
+      f.field("type", x.type),
+      f.field("created", x.created)
+          .transformWith(inspection::TimeStampTransformer{}),
+      f.field("data", x.data));
+}
 
 }  // namespace arangodb::activities

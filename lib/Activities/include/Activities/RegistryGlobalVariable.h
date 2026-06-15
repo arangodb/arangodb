@@ -37,4 +37,7 @@ template<typename T, typename... Args>
 auto make(Args&&... args) -> T::HandleType {
   return registry.makeActivity<T>(std::forward<Args>(args)...);
 }
+
+auto get_thread_registry() noexcept -> ThreadRegistry&;
+
 }  // namespace arangodb::activities
