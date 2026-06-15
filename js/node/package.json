@@ -36,11 +36,11 @@
     "vary": "^1.1.2"
   },
   "devDependencies": {
-    "@xmldom/xmldom": "^0.8.13",
+    "@xmldom/xmldom": "^0.9.10",
     "ansi_up": "^5.1.0",
-    "node-netstat": "^1.8.0",
+    "node-netstat": "^1.9.0",
     "parse-prometheus-text-format": "^1.1.1",
-    "sinon": "^21.0.1"
+    "sinon": "^21.1.2"
   },
   "overrides": {
     "joi": {
