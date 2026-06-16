@@ -671,9 +671,12 @@ AqlValue Expression::executeSimpleExpressionArray(ExpressionContext& ctx,
   }
 
   auto& trx = ctx.trx();
+  auto* vopts = &trx.vpackOptions();
 
   auto builder = ThreadLocalBuilderLeaser::lease();
   builder->openArray();
+  std::vector<AqlValueMaterializer> materializers;
+  materializers.reserve(n);
 
   for (size_t i = 0; i < n; ++i) {
     auto member = node->getMemberUnchecked(i);
@@ -695,10 +698,9 @@ AqlValue Expression::executeSimpleExpressionArray(ExpressionContext& ctx,
             builder->add(VPackValue(r->at(i)));
           }
         } else {
-          std::vector<AqlValueMaterializer> materializers;
           materializers.emplace_back(vopts);
-          VPackSlice slice = materializers.back().slice(value);
-          for (auto e : VPackArrayIterator(result.slice())) {
+          VPackSlice slice = materializers.back().slice(result);
+          for (auto e : VPackArrayIterator(slice)) {
             builder->add(e);
           }
         }
