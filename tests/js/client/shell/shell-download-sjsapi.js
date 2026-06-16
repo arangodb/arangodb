@@ -29,6 +29,7 @@ var jsunity = require("jsunity");
 var internal = require("internal");
 var arangodb = require("@arangodb");
 var fs = require("fs");
+const IM = global.instanceManager;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test attributes
@@ -40,11 +41,11 @@ function DownloadSuite () {
   var tempName;
 
   var buildUrl = function (append) {
-    return arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:').replace(/^h2:/, 'http:') + "/_admin/echo" + append;
+    return IM.url + "/_admin/echo" + append;
   };
-  
+
   var buildUrlBroken = function (append) {
-    return arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:').replace(/^h2:/, 'http:') + "/_not-there" + append;
+    return IM.url + "/_not-there" + append;
   };
 
   return {

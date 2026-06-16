@@ -9,12 +9,12 @@ add_library(arango_indexes STATIC
   ${PROJECT_SOURCE_DIR}/arangod/GeoIndex/Near.cpp)
 
 target_link_libraries(arango_indexes
-  arango_geo
-  boost_boost
-  arango::validation
-  arango_replication2
-  immer
-  date_interface)
+  PUBLIC
+    arango_replication2
+    arango_geo
+    arango::validation
+  PRIVATE
+    date_interface)
   
 target_include_directories(arango_indexes
     PUBLIC ${IRESEARCH_INCLUDE}

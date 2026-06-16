@@ -175,6 +175,12 @@ check_between_tests(config, prev_test)
   |     --> waits for each server's health monitor to report healthy
   |     --> catches deadlocks, resource exhaustion
   |
+  +-- Netstat.check(deployment, tool, baseline)
+  |     --> counts system TCP sockets via ss/netstat (~2ms)
+  |     --> aborts if system threshold (15k) or deployment
+  |         threshold (500/server above baseline) is exceeded
+  |     --> on breach: gathers per-server PID breakdown (~40ms, once)
+  |
   +-- suite_module has between_tests/2?
   |     --> call suite_module.between_tests(deployment, prev_test)
   |         return :ok or {:error, reason}
@@ -186,9 +192,9 @@ check_between_tests(config, prev_test)
         --> :failed => {:error, "Server crashed..."}
 ```
 
-If the health check returns `{:error, reason}`, the Runner calls `abort!` and
-skips all remaining tests. This prevents cascading failures from a crashed or
-degraded deployment.
+If any check returns `{:error, reason}`, the Runner calls `abort!` and
+skips all remaining tests. This prevents cascading failures from a crashed,
+degraded, or port-exhausted deployment.
 
 The `:degraded` check is important: if a test stops a server for chaos testing
 but doesn't restart it, the deployment stays degraded. The Runner catches this
@@ -475,7 +481,8 @@ Test execution
   |      Collects structured test results
   |
   +--> EventStore
-  |      Records deployment lifecycle events (server start/stop/crash)
+  |      Records deployment lifecycle events (server start/stop/crash),
+  |      netstat snapshots, and infrastructure issues
   |
   +--> After suite completes (Runner.PostExecution):
          agency dump (cluster, pre-shutdown)
@@ -519,7 +526,7 @@ artifacts unconditionally.
 | 0 | All tests passed | -- |
 | 1 | Test failures | Lowest |
 | 2 | Sanitizer errors detected | Medium |
-| 3 | Infrastructure failure (deploy failed, etc.) | High |
+| 3 | Infrastructure failure (deploy failed, port exhaustion, etc.) | High |
 | 4 | Server crash | Highest |
 
 The ordering prioritizes crashes (4) over infrastructure (3) over sanitizer (2)

@@ -29,7 +29,6 @@
 #include "Logger/LogMacros.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBEngine.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <absl/strings/str_cat.h>

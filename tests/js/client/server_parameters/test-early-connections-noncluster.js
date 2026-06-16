@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, assertEqual, assertFalse, arango */
+/* global getOptions */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -26,6 +26,12 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const jwtSecret = 'haxxmann';
+const jsunity = require('jsunity');
+const {assertEqual, assertTrue, assertFalse, assertNotEqual} = jsunity.jsUnity.assertions;
+const crypto = require('@arangodb/crypto');
+const request = require('@arangodb/request').request;
+const arango = require('@arangodb').arango;
+let IM = global.instanceManager;
 
 if (getOptions === true) {
   return {
@@ -35,9 +41,6 @@ if (getOptions === true) {
     'server.failure-point': 'startListeningEarly',
   };
 }
-const jsunity = require('jsunity');
-const request = require('@arangodb/request').request;
-const crypto = require('@arangodb/crypto');
 
 function testSuite() {
   const jwtRoot = crypto.jwtEncode(jwtSecret, {
@@ -45,20 +48,16 @@ function testSuite() {
     "iss": "arangodb",
     "exp": Math.floor(Date.now() / 1000) + 3600
   }, 'HS256');
-  
-  let baseUrl = function () {
-    return arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:');
-  };
-      
+
   return {
     tearDownAll: function() {
-      let result = request({ url: baseUrl() + "/_admin/debug/failat/startListeningEarly", method: "delete", auth: { bearer: jwtRoot } });
+      let result = request({ url: IM.url + "/_admin/debug/failat/startListeningEarly", method: "delete", auth: { bearer: jwtRoot } });
       assertEqual(200, result.status);
 
       // wait until normal REST API responds normally
       let iterations = 0;
       while (iterations++ < 180) {
-        let result = request({ url: baseUrl() + "/_api/collection", method: "get", auth: { bearer: jwtRoot } });
+        let result = request({ url: IM.url + "/_api/collection", method: "get", auth: { bearer: jwtRoot } });
         if (result.status === 200) {
           break;
         }
@@ -69,21 +68,21 @@ function testSuite() {
 
     testForbiddenWithoutJWT: function() {
       ["/_api/version", "/_admin/version", "/_admin/status", "/_api/collection", "/_admin/aardvark"].forEach((url) => {
-        let result = request({ url: baseUrl() + url, method: "get" });
+        let result = request({ url: IM.url + url, method: "get" });
         assertEqual(401, result.status);
       });
     },
     
     testOkWithJWT: function() {
       ["/_api/version", "/_admin/version", "/_admin/status"].forEach((url) => {
-        let result = request({ url: baseUrl() + url, method: "get", auth: { bearer: jwtRoot } });
+        let result = request({ url: IM.url + url, method: "get", auth: { bearer: jwtRoot } });
         assertEqual(200, result.status);
       });
     },
     
     testDisabledEndpoint: function() {
       ["/_api/collection", "/_api/transaction", "/_admin/aardvark"].forEach((url) => {
-        let result = request({ url: baseUrl() + url, method: "get", auth: { bearer: jwtRoot } });
+        let result = request({ url: IM.url + url, method: "get", auth: { bearer: jwtRoot } });
         assertEqual(503, result.status);
       });
     },

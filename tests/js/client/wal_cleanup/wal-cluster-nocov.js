@@ -1,5 +1,5 @@
 /* jshint globalstrict:true, strict:true, maxlen: 5000 */
-/* global assertTrue, assertFalse, arango */
+/* global */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -28,8 +28,12 @@
 'use strict';
 
 const jsunity = require("jsunity");
+const {assertEqual, assertTrue, assertFalse, assertNotEqual} = jsunity.jsUnity.assertions;
+const arangodb = require('@arangodb');
+const arango = arangodb.arango;
+const db = arangodb.db;
+let IM = global.instanceManager;
 
-const db = require("internal").db;
 const url = require('url');
 const _ = require("lodash");
 
@@ -41,11 +45,10 @@ const {
 } = require('@arangodb/test-helper');
 
 const cn = "UnitTestsWalCleanup";
-const originalEndpoint = arango.getEndpoint();
 
 function WalCleanupSuite () {
   'use strict';
-  
+
   let run = function(insertData, getRanges) {
     let seenInitialDeletion = false;
     let seenNewFileDeletion = false;
@@ -89,11 +92,11 @@ function WalCleanupSuite () {
 
   return {
     setUp: function() {
-      arango.reconnect(originalEndpoint, "_system", "root", "");
+      arango.reconnect(IM.endpoint, "_system", "root", "");
     },
 
     tearDown: function() {
-      arango.reconnect(originalEndpoint, "_system", "root", "");
+      arango.reconnect(IM.endpoint, "_system", "root", "");
     },
 
     testAgent: function() {

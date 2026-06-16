@@ -27,7 +27,6 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryOptions.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngineFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "Basics/Exceptions.h"
@@ -114,7 +113,6 @@ void StorageUsageTracker::decreaseUsage(std::uint64_t value) noexcept {
 TemporaryStorageFeature::TemporaryStorageFeature(
     application_features::ApplicationServer& server)
     : ApplicationFeature{server, *this}, _cleanedUpDirectory(false) {
-  startsAfter<EngineSelectorFeature>();
   startsAfter<StorageEngineFeature>();
   startsAfter<RocksDBEngine>();
 }

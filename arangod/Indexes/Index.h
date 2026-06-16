@@ -458,6 +458,8 @@ class Index {
   // way to
   virtual bool isVectorIndexReady() const noexcept;
 
+  virtual bool isLinearScanEnabled() const noexcept;
+
   virtual StoredValues const& storedValues() const;
 
   virtual bool canWarmup() const noexcept;

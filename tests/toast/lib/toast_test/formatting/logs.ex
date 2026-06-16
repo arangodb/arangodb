@@ -25,7 +25,7 @@ defmodule ToastTest.Formatting.Logs do
 
   Handles server tags, color assignment, and rendering of merged
   log streams into human-readable output. Data transformation
-  (filtering, merging, windowing) lives in `ToastTest.LogAnalysis`.
+  (filtering, merging, windowing) lives in `ToastTest.Analyze.Logs`.
   """
 
   @role_abbrevs %{
@@ -67,81 +67,23 @@ defmodule ToastTest.Formatting.Logs do
     Enum.at(palette, rem(instance_num, length(palette)))
   end
 
-  # --- Format merged output ---
-
-  @doc """
-  Format merged `[{server_id | :event, entry | event}]` into display lines.
-
-  Options:
-  - `event_detail` -- `:basic` (default) or `:full`
-  - `server_roles` -- `%{server_id => atom()}` for tag/color derivation
-  """
-  def format_merged(merged, color_enabled, event_detail \\ :basic, server_roles \\ %{})
-
-  def format_merged([], _color_enabled, _event_detail, _server_roles), do: ""
-
-  def format_merged(merged, color_enabled, event_detail, server_roles) do
-    servers = merged |> Enum.map(&elem(&1, 0)) |> Enum.uniq() |> Enum.reject(&(&1 == :event))
-    has_events = Enum.any?(merged, &match?({:event, _}, &1))
-
-    if length(servers) <= 1 and not has_events do
-      merged
-      |> Enum.map_join("\n", fn
-        {_server_id, entry} -> format_entry(entry, color_enabled)
-      end)
-    else
-      {tag_map, color_map} =
-        Enum.reduce(servers, {%{}, %{}}, fn sid, {tags, colors} ->
-          role = server_roles[sid]
-          instance_num_str = extract_instance_num(sid)
-          num = parse_instance_num(instance_num_str)
-
-          tag = server_tag(sid, role)
-
-          {Map.put(tags, sid, tag), Map.put(colors, sid, server_color(role, num))}
-        end)
-
-      max_tag_len =
-        case Map.values(tag_map) do
-          [] -> 0
-          tags -> tags |> Enum.map(&String.length/1) |> Enum.max()
-        end
-
-      merged
-      |> Enum.map_join("\n", fn
-        {:event, event} ->
-          format_event_line(event, max_tag_len, event_detail)
-
-        {server_id, entry} ->
-          format_tagged_entry(server_id, entry, tag_map, color_map, max_tag_len, color_enabled)
-      end)
-    end
-  end
-
-  defp format_event_line(event, max_tag_len, event_detail) do
-    padding = String.duplicate(" ", max_tag_len + 2)
-    ts = event.timestamp |> DateTime.from_unix!(:microsecond) |> DateTime.to_iso8601()
-    line = "#{padding} #{ts} #{format_event(event)}"
-
-    if event_detail == :full do
-      line <> "\n#{padding}   #{inspect(event, pretty: true, width: 120)}"
-    else
-      line
-    end
-  end
-
-  defp format_tagged_entry(server_id, entry, tag_map, color_map, max_tag_len, color_enabled) do
-    tag = String.pad_trailing(tag_map[server_id], max_tag_len)
-    line = format_entry_line(entry)
+  @doc "Format a line with a colorized server tag prefix."
+  def format_tagged_line(server_id, role, line, color_enabled) do
+    tag = server_tag(server_id, role)
 
     if color_enabled do
-      color_code = color_map[server_id]
-      level_extra = level_emphasis(entry)
+      color_code = server_color(role, instance_number(server_id))
 
-      [IO.ANSI.color(color_code), level_extra, "[", tag, "] ", line, IO.ANSI.reset()]
-      |> IO.iodata_to_binary()
+      [IO.ANSI.color(color_code), "[", tag, "] ", line, IO.ANSI.reset()]
     else
       "[#{tag}] #{line}"
+    end
+  end
+
+  defp instance_number(server_id) do
+    case extract_instance_num(server_id) do
+      "" -> 0
+      s -> String.to_integer(s)
     end
   end
 
@@ -250,7 +192,4 @@ defmodule ToastTest.Formatting.Logs do
       nil -> ""
     end
   end
-
-  defp parse_instance_num(""), do: 0
-  defp parse_instance_num(s), do: String.to_integer(s)
 end
