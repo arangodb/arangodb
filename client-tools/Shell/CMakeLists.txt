@@ -22,6 +22,7 @@ add_executable(${BIN_ARANGOSH}
   TelemetricsHandler.cpp
   V8ClientConnection.cpp
   V8ShellFeature.cpp
+  V8ShellOptionsProvider.cpp
   ProcessMonitoringFeature.cpp
   arangosh.cpp
   v8-deadline.cpp

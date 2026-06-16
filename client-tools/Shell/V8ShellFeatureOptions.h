@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -23,30 +23,20 @@
 #pragma once
 
 #include <cstdint>
+#include <string>
+#include <vector>
 
 namespace arangodb {
 
-struct ReplicationOptions {
-  bool replicationApplierAutoStart = true;
-
-  /// maximum number of parallel tailing operations invocations
-  uint64_t maxParallelTailingInvocations = 0;
-
-  /// quick replication keys limit
-  uint64_t quickKeysLimit = 1000000;
-
-  /// Use the revision-based replication protocol
-  bool syncByRevision = true;
-
-  /// automatically repair revision trees of shards after too many failed
-  /// shard synchronization attempts
-  bool autoRepairRevisionTrees = true;
-
-  double connectTimeout = 10.0;
-  double requestTimeout = 600.0;
-
-  bool forceConnectTimeout = false;
-  bool forceRequestTimeout = false;
+struct V8ShellFeatureOptions {
+  std::string startupDirectory = "js";
+  std::string clientModule = "client.js";
+  std::string copyDirectory;
+  std::vector<std::string> moduleDirectories;
+  bool currentModuleDirectory = true;
+  bool copyInstallation = false;
+  uint64_t gcInterval = 50;
+  uint32_t executionDeadline = 0;
 };
 
 }  // namespace arangodb

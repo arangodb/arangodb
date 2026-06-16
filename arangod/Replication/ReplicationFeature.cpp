@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ReplicationFeature.h"
+#include "Replication/ReplicationOptionsProvider.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "Cluster/ClusterFeature.h"
@@ -61,10 +62,6 @@ ReplicationFeature::ReplicationFeature(
     application_features::CommunicationFeaturePhase& comm,
     metrics::MetricsFeature& metrics)
     : application_features::ApplicationFeature{server, *this},
-      _connectTimeout(10.0),
-      _requestTimeout(600.0),
-      _forceConnectTimeout(false),
-      _forceRequestTimeout(false),
       _connectionCache{comm, httpclient::ConnectionCache::Options{5, 120}},
       _parallelTailingInvocations(0),
       _inventoryRequests(
@@ -85,85 +82,14 @@ ReplicationFeature::~ReplicationFeature() = default;
 
 void ReplicationFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
-  options->addSection("replication", "replication");
-  options->addOption(
-      "--replication.auto-start",
-      "Enable or disable the automatic start of replication appliers.",
-      new BooleanParameter(&_options.replicationApplierAutoStart),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
-
-  options->addOldOption("server.disable-replication-applier",
-                        "replication.auto-start");
-  options->addOldOption("database.replication-applier",
-                        "replication.auto-start");
-
-  options->addObsoleteOption(
-      "--replication.active-failover",
-      "Enable active-failover during asynchronous replication.", false);
-  options->addOldOption("--replication.automatic-failover",
-                        "--replication.active-failover");
-
-  options->addOption(
-      "--replication.max-parallel-tailing-invocations",
-      "The maximum number of concurrently allowed WAL tailing invocations "
-      "(0 = unlimited).",
-      new UInt64Parameter(&_options.maxParallelTailingInvocations),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
-
-  options->addOption("--replication.connect-timeout",
-                     "The default timeout value for replication connection "
-                     "attempts (in seconds).",
-                     new DoubleParameter(&_connectTimeout));
-  options->addOption("--replication.request-timeout",
-                     "The default timeout value for replication requests "
-                     "(in seconds).",
-                     new DoubleParameter(&_requestTimeout));
-
-  options->addOption(
-      "--replication.quick-keys-limit",
-      "Limit at which 'quick' calls to the replication keys API return "
-      "only the document count for the second run.",
-      new UInt64Parameter(&_options.quickKeysLimit),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
-
-  options->addOption(
-      "--replication.sync-by-revision",
-      "Whether to use the newer revision-based replication protocol.",
-      new BooleanParameter(&_options.syncByRevision));
-
-  options
-      ->addOption("--replication.auto-repair-revision-trees",
-                  "Whether to automatically repair revision trees of shards "
-                  "after too many shard synchronization failures.",
-                  new BooleanParameter(&_options.autoRepairRevisionTrees),
-                  arangodb::options::makeFlags(
-                      arangodb::options::Flags::DefaultNoComponents,
-                      arangodb::options::Flags::OnDBServer))
-      .setIntroducedIn(31006);
-
-  options->addObsoleteOption(
-      "--replication.active-failover-leader-grace-period",
-      "The amount of time (in seconds) for which the current leader will "
-      "continue to assume its leadership even if it lost connection to the "
-      "agency (0 = unlimited)",
-      true);
+  ReplicationOptionsProvider provider;
+  provider.declareOptions(options, _options);
 }
 
 void ReplicationFeature::validateOptions(
     std::shared_ptr<options::ProgramOptions> options) {
-  if (_connectTimeout < 1.0) {
-    _connectTimeout = 1.0;
-  }
-  if (options->processingResult().touched("--replication.connect-timeout")) {
-    _forceConnectTimeout = true;
-  }
-
-  if (_requestTimeout < 3.0) {
-    _requestTimeout = 3.0;
-  }
-  if (options->processingResult().touched("--replication.request-timeout")) {
-    _forceRequestTimeout = true;
-  }
+  ReplicationOptionsProvider provider;
+  provider.validateOptions(options, _options);
 }
 
 void ReplicationFeature::prepare() {
@@ -254,15 +180,15 @@ void ReplicationFeature::trackInventoryRequest() noexcept {
 }
 
 double ReplicationFeature::checkConnectTimeout(double value) const {
-  if (_forceConnectTimeout) {
-    return _connectTimeout;
+  if (_options.forceConnectTimeout) {
+    return _options.connectTimeout;
   }
   return value;
 }
 
 double ReplicationFeature::checkRequestTimeout(double value) const {
-  if (_forceRequestTimeout) {
-    return _requestTimeout;
+  if (_options.forceRequestTimeout) {
+    return _options.requestTimeout;
   }
   return value;
 }
@@ -330,9 +256,12 @@ void ReplicationFeature::stopApplier(TRI_vocbase_t* vocbase) {
 }
 
 /// @brief returns the connect timeout for replication requests
-double ReplicationFeature::connectTimeout() const { return _connectTimeout; }
+double ReplicationFeature::connectTimeout() const {
+  return _options.connectTimeout;
+}
 
-/// @brief returns the request timeout for replication requests
-double ReplicationFeature::requestTimeout() const { return _requestTimeout; }
+double ReplicationFeature::requestTimeout() const {
+  return _options.requestTimeout;
+}
 
 }  // namespace arangodb
