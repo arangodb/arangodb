@@ -207,9 +207,6 @@ class RocksDBVectorIndex final : public RocksDBIndex {
       containers::NodeHashMap<LocalDocumentId, velocypack::SharedSlice>*
           captureSink);
 
-  vector::VectorIndexMetadata loadVectorIndexMetadata(
-      velocypack::Slice info) const;
-
   vector::UserVectorIndexDefinition _definition;
   std::shared_ptr<faiss::IndexIVF> _faissIndex;
   vector::TrainedData _trainedData;
