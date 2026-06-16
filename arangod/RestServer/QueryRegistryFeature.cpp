@@ -21,8 +21,6 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <algorithm>
-
 #include "QueryRegistryFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -30,9 +28,6 @@
 #include "Aql/QueryOptions.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/GlobalResourceMonitor.h"
-#include "Basics/NumberOfCores.h"
-#include "Basics/PhysicalMemory.h"
-#include "Basics/application-exit.h"
 #include "Cluster/ServerState.h"
 #include "FeaturePhases/ClusterFeaturePhase.h"
 #include "FeaturePhases/V8FeaturePhase.h"
