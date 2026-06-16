@@ -31,7 +31,6 @@
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
 #include "Random/RandomGenerator.h"
-#include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -142,7 +141,7 @@ ResultT<bool> RocksDBSettingsManager::sync(bool force) {
     rocksdb::WriteBatch batch;
     _tmpBuilder.clear();  // recycle our builder
 
-    auto& dbfeature = _engine.getDatabaseFeature();
+    auto& dbfeature = _engine.getDatabaseProvider();
 
     bool didWork = false;
     auto mappings = _engine.collectionMappings();

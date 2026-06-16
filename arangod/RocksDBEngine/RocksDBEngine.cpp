@@ -31,7 +31,6 @@
 #include "Basics/Exceptions.h"
 #include "Basics/FeatureFlags.h"
 #include "Basics/FileUtils.h"
-#include "Basics/NumberOfCores.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/Result.h"
 #include "Basics/RocksDBLogger.h"
@@ -40,7 +39,6 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/application-exit.h"
-#include "Basics/build.h"
 #include "Basics/exitcodes.h"
 #include "Basics/files.h"
 #include "Basics/system-functions.h"
@@ -65,8 +63,6 @@
 #include "Replication/ReplicationClients.h"
 #include "Replication2/Storage/IStorageEngineMethods.h"
 #include "Rest/Version.h"
-#include "RestHandler/RestHandlerCreator.h"
-#include "RestServer/DatabaseFeature.h"
 #include "RestServer/LanguageCheckFeature.h"
 #include "RestServer/ServerIdFeature.h"
 #include "Replication2/Storage/LogStorageMethods.h"
@@ -76,8 +72,6 @@
 #include "Replication2/Storage/RocksDB/StatePersistor.h"
 #include "Replication2/Storage/RocksDB/Metrics.h"
 #include "Replication2/Storage/RocksDB/ReplicatedStateInfo.h"
-#include "Replication2/Storage/WAL/IFileManager.h"
-#include "Replication2/Storage/WAL/IFileWriter.h"
 #include "Replication2/Storage/WAL/LogPersistor.h"
 #include "Replication2/Storage/WAL/WalManager.h"
 #include "RocksDBEngine/Listeners/RocksDBBackgroundErrorListener.h"
@@ -89,7 +83,6 @@
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCFStats.h"
 
-#include "Inspection/VPack.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBComparator.h"
@@ -108,7 +101,6 @@
 #include "RocksDBEngine/RocksDBReplicationTailing.h"
 #include "RocksDBEngine/RocksDBRestHandlers.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
-#include "RocksDBEngine/RocksDBChecksumEnv.h"
 #include "RocksDBEngine/RocksDBSyncThread.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "RocksDBEngine/RocksDBUpgrade.h"
@@ -120,10 +112,8 @@
 #include "Transaction/Context.h"
 #include "Transaction/Manager.h"
 #include "Transaction/Options.h"
-#include "Transaction/StandaloneContext.h"
 #include "VocBase/LogicalView.h"
 #include "VocBase/VocbaseInfo.h"
-#include "VocBase/VocBaseLogManager.h"
 #include "VocBase/ticks.h"
 
 #include <rocksdb/convenience.h>
@@ -132,7 +122,6 @@
 #include <rocksdb/filter_policy.h>
 #include <rocksdb/iterator.h>
 #include <rocksdb/options.h>
-#include <rocksdb/slice_transform.h>
 #include <rocksdb/sst_file_reader.h>
 #include <rocksdb/statistics.h>
 #include <rocksdb/table.h>
@@ -277,7 +266,7 @@ RocksDBEngine::RocksDBEngine(
     IRocksDBDumpLimitsProvider const& dumpLimitsProvider,
     IRocksDBReplicatedLogProvider* replicatedLogProvider,
     RocksDBRecoveryManager const& rocksDbRecoveryManager,
-    DatabaseFeature& databaseFeature,
+    IRocksDBDatabaseProvider& databaseProvider,
     RocksDBIndexCacheRefillFeature& rocksDbIndexCacheRefillFeature,
     IRocksDBCacheManagerProvider& cacheManagerProvider,
     IRocksDBSortingProvider const& sortingProvider)
@@ -289,7 +278,7 @@ RocksDBEngine::RocksDBEngine(
       _dumpLimitsProvider(dumpLimitsProvider),
       _replicatedLogProvider(replicatedLogProvider),
       _rocksDbRecoveryManager(rocksDbRecoveryManager),
-      _databaseFeature(databaseFeature),
+      _databaseProvider(databaseProvider),
       _rocksDbIndexCacheRefillFeature(rocksDbIndexCacheRefillFeature),
       _cacheManagerProvider(cacheManagerProvider),
       _sortingProvider(sortingProvider),
@@ -1275,7 +1264,7 @@ void RocksDBEngine::start() {
                  ->GetID() == 0);
 
   // will crash the process if version does not match
-  arangodb::rocksdbStartupVersionCheck(*server().options(), _databaseFeature,
+  arangodb::rocksdbStartupVersionCheck(*server().options(), _databaseProvider,
                                        _db, dbExisted, _forceLittleEndianKeys);
 
   _dbExisted = dbExisted;
@@ -1952,7 +1941,7 @@ void RocksDBEngine::processTreeRebuilds() {
       if (!server().isStopping()) {
         VocbasePtr vocbase;
         try {
-          vocbase = _databaseFeature.useDatabase(candidate.first);
+          vocbase = _databaseProvider.useDatabase(candidate.first);
           if (vocbase != nullptr) {
             auto collection = vocbase->lookupCollectionByUuid(candidate.second);
             if (collection != nullptr && !collection->deleted()) {
@@ -3125,7 +3114,7 @@ void RocksDBEngine::addSystemDatabase() {
   // Also store the ReplicationVersion when creating the Database
   builder.add(StaticStrings::ReplicationVersion,
               VPackValue(replication::versionToString(
-                  _databaseFeature.defaultReplicationVersion())));
+                  _databaseProvider.defaultReplicationVersion())));
   builder.close();
 
   RocksDBLogValue log = RocksDBLogValue::DatabaseCreate(id);
@@ -4332,8 +4321,8 @@ std::string RocksDBEngine::getLanguageFile() const {
   return arangodb::basics::FileUtils::buildFilename(_basePath, kLanguageFile);
 }
 
-auto RocksDBEngine::getDatabaseFeature() const -> DatabaseFeature& {
-  return _databaseFeature;
+auto RocksDBEngine::getDatabaseProvider() const -> IRocksDBDatabaseProvider& {
+  return _databaseProvider;
 }
 auto RocksDBEngine::getFlushProvider() const -> IRocksDBFlushProvider& {
   return _flushProvider;

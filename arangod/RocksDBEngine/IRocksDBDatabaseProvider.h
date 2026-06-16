@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -18,23 +18,43 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
+/// @author Julia Puget
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "ProgramOptions/ProgramOptions.h"
+#include "Replication2/Version.h"
+#include "Utils/DatabaseGuard.h"
 
-namespace rocksdb {
-class TransactionDB;
-}
+#include <functional>
+#include <string_view>
+
+struct TRI_vocbase_t;
 
 namespace arangodb {
-struct IRocksDBDatabaseProvider;
+class LogicalCollection;
 
-void rocksdbStartupVersionCheck(options::ProgramOptions const& programOptions,
-                                IRocksDBDatabaseProvider& databaseProvider,
-                                rocksdb::TransactionDB*, bool dbExisted,
-                                bool forceLittleEndianKeys);
+namespace velocypack {
+class Builder;
+}
+
+struct IRocksDBDatabaseProvider {
+  virtual ~IRocksDBDatabaseProvider() = default;
+
+  virtual VocbasePtr useDatabase(std::string_view name) const = 0;
+  virtual VocbasePtr useDatabase(TRI_voc_tick_t id) const = 0;
+
+  virtual void enumerateDatabases(
+      std::function<void(TRI_vocbase_t& vocbase)> const& func) = 0;
+
+  virtual void inventory(
+      velocypack::Builder& result, TRI_voc_tick_t,
+      std::function<bool(LogicalCollection const*)> const& nameFilter) = 0;
+
+  virtual replication::Version defaultReplicationVersion() const noexcept = 0;
+
+  virtual bool extendedNames() const noexcept = 0;
+  virtual void extendedNames(bool value) noexcept = 0;
+};
 
 }  // namespace arangodb

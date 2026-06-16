@@ -167,7 +167,7 @@ void RocksDBBackgroundThread::run() {
       }
 
       uint64_t minTickForReplication = latestSeqNo;
-      _engine.getDatabaseFeature().enumerateDatabases(
+      _engine.getDatabaseProvider().enumerateDatabases(
           [&minTickForReplication, minTick](TRI_vocbase_t& vocbase) -> void {
             // lowestServedValue will return the lowest of the lastServedTick
             // values stored, or UINT64_MAX if no clients are registered

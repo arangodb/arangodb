@@ -28,7 +28,7 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "RestServer/DatabaseFeature.h"
+#include "RocksDBEngine/IRocksDBDatabaseProvider.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBFormat.h"
@@ -44,7 +44,7 @@ using namespace arangodb;
 
 void arangodb::rocksdbStartupVersionCheck(
     options::ProgramOptions const& programOptions,
-    DatabaseFeature& databaseFeature, rocksdb::TransactionDB* db,
+    IRocksDBDatabaseProvider& databaseProvider, rocksdb::TransactionDB* db,
     bool dbExisted, bool forceLittleEndianKeys) {
   static_assert(
       std::is_same<char, std::underlying_type<RocksDBEndianness>::type>::value,
@@ -243,8 +243,9 @@ void arangodb::rocksdbStartupVersionCheck(
   // read settings for extended names from persisted storage
 
   // --database.extended-names
-  checkSetting(
-      RocksDBSettingsType::ExtendedNamesDatabases, "database.extended-names",
-      databaseFeature.extendedNames(),
-      [&databaseFeature](bool value) { databaseFeature.extendedNames(value); });
+  checkSetting(RocksDBSettingsType::ExtendedNamesDatabases,
+               "database.extended-names", databaseProvider.extendedNames(),
+               [&databaseProvider](bool value) {
+                 databaseProvider.extendedNames(value);
+               });
 }

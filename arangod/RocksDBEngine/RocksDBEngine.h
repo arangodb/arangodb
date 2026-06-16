@@ -42,6 +42,7 @@
 #include "Metrics/ICollector.h"
 #include "RocksDBEngine/IRocksDBCacheManagerProvider.h"
 #include "RocksDBEngine/IRocksDBDatabasePathProvider.h"
+#include "RocksDBEngine/IRocksDBDatabaseProvider.h"
 #include "RocksDBEngine/IRocksDBDumpLimitsProvider.h"
 #include "RocksDBEngine/IRocksDBFlushProvider.h"
 #include "RocksDBEngine/IRocksDBReplicatedLogProvider.h"
@@ -178,7 +179,7 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
                 IRocksDBDumpLimitsProvider const& dumpLimitsProvider,
                 IRocksDBReplicatedLogProvider* replicatedLogProvider,
                 RocksDBRecoveryManager const& rocksDbRecoveryManager,
-                DatabaseFeature& databaseFeature,
+                IRocksDBDatabaseProvider& databaseProvider,
                 RocksDBIndexCacheRefillFeature& rocksDbIndexCacheRefillFeature,
                 IRocksDBCacheManagerProvider& cacheManagerProvider,
                 IRocksDBSortingProvider const& sortingProvider);
@@ -188,7 +189,7 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   template<typename Type>
   auto getFeature() const -> Type&;
 
-  auto getDatabaseFeature() const -> DatabaseFeature&;
+  auto getDatabaseProvider() const -> IRocksDBDatabaseProvider&;
 
   auto getFlushProvider() const -> IRocksDBFlushProvider&;
 
@@ -622,7 +623,7 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   IRocksDBDumpLimitsProvider const& _dumpLimitsProvider;
   IRocksDBReplicatedLogProvider* _replicatedLogProvider;
   RocksDBRecoveryManager const& _rocksDbRecoveryManager;
-  DatabaseFeature& _databaseFeature;
+  IRocksDBDatabaseProvider& _databaseProvider;
   RocksDBIndexCacheRefillFeature& _rocksDbIndexCacheRefillFeature;
   IRocksDBCacheManagerProvider& _cacheManagerProvider;
   IRocksDBSortingProvider const& _sortingProvider;
