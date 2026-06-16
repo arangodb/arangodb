@@ -140,7 +140,6 @@ add_library(arangoserver STATIC
   RestServer/FileDescriptorsFeature.cpp
   RestServer/FileDescriptorsOptionsProvider.cpp
   RestServer/FlushFeature.cpp
-  RestServer/FlushOptionsProvider.cpp
   RestServer/FortuneFeature.cpp
   RestServer/FortuneOptionsProvider.cpp
   RestServer/IOHeartbeatThread.cpp

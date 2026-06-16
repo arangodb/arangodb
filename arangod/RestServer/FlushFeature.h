@@ -26,7 +26,6 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Metrics/Fwd.h"
-#include "RestServer/FlushOptionsProvider.h"
 #include "VocBase/voc-types.h"
 
 #include <cstdint>
@@ -81,7 +80,6 @@ class FlushFeature final : public application_features::ApplicationFeature {
   void stop() override;
 
  private:
-  FlushFeatureOptions _options;
   std::mutex _flushSubscriptionsMutex;
   std::vector<std::weak_ptr<FlushSubscription>> _flushSubscriptions;
   bool _stopped;

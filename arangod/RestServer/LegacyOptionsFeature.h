@@ -24,7 +24,6 @@
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "RestServer/NonceOptionsProvider.h"
 
 namespace arangodb {
 
@@ -40,9 +39,6 @@ class LegacyOptionsFeature final
       application_features::ApplicationServer& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-
- private:
-  NonceFeatureOptions _options;
 };
 
 }  // namespace arangodb
