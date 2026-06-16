@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -18,31 +18,22 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Julia Puget
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
-#include "RestServer/NonceOptionsProvider.h"
+#include "ApplicationFeatures/OptionsProvider.h"
+#include "ApplicationFeatures/ConfigFeatureOptions.h"
+
+namespace arangodb::options {
+class ProgramOptions;
+}
 
 namespace arangodb {
 
-/// Registers obsolete options for features that were removed (e.g. V8/Foxx),
-/// so that config files from older installations don't cause startup errors
-/// during rolling upgrades.
-class LegacyOptionsFeature final
-    : public application_features::ApplicationFeature {
- public:
-  static constexpr std::string_view name() noexcept { return "LegacyOptions"; }
-
-  explicit LegacyOptionsFeature(
-      application_features::ApplicationServer& server);
-
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-
- private:
-  NonceFeatureOptions _options;
+struct ConfigOptionsProvider : OptionsProvider<ConfigFeatureOptions> {
+  void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
+                      ConfigFeatureOptions& options) override;
 };
 
 }  // namespace arangodb

@@ -58,6 +58,7 @@ inline faiss::MetricType metricToFaissMetric(
       return faiss::METRIC_INNER_PRODUCT;
   }
 }
+velocypack::SharedSlice toOwnedSharedSlice(velocypack::Slice slice);
 
 // =====================================================================
 // Iterator selection table

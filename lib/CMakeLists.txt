@@ -202,10 +202,12 @@ add_library(arango_basic_features STATIC
         ApplicationFeatures/BumpFileDescriptorsOptionsProvider.cpp
         ApplicationFeatures/CommunicationFeaturePhase.cpp
         ApplicationFeatures/ConfigFeature.cpp
+        ApplicationFeatures/ConfigOptionsProvider.cpp
         ApplicationFeatures/FileSystemFeature.cpp
         ApplicationFeatures/FileSystemOptionsProvider.cpp
         ApplicationFeatures/GreetingsFeature.cpp
         ApplicationFeatures/LanguageFeature.cpp
+        ApplicationFeatures/LanguageOptionsProvider.cpp
         ApplicationFeatures/OptionsCheckFeature.cpp
         ApplicationFeatures/ShutdownFeature.cpp
         ApplicationFeatures/TempFeature.cpp

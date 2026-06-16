@@ -24,6 +24,7 @@
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "RestServer/MaxMapCountOptionsProvider.h"
 
 namespace arangodb {
 
