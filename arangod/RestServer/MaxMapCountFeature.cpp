@@ -43,9 +43,8 @@ MaxMapCountFeature::MaxMapCountFeature(
 
 void MaxMapCountFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
-  options->addObsoleteOption(
-      "--server.check-max-memory-mappings",
-      "check the maximum number of memory mappings at startup", true);
+  MaxMapCountOptionsProvider provider;
+  provider.declareOptions(options, _options);
 }
 
 uint64_t MaxMapCountFeature::actualMaxMappings() {
