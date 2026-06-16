@@ -1,6 +1,7 @@
 add_executable(${BIN_ARANGODUMP}
   ${ProductVersionFiles_arangodump}
   DumpFeature.cpp
+  DumpOptionsProvider.cpp
   arangodump.cpp
 )
 target_include_directories(${BIN_ARANGODUMP} PRIVATE ${PROJECT_SOURCE_DIR}/client-tools)
