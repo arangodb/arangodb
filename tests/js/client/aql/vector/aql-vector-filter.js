@@ -90,6 +90,7 @@ const verifyPlan = function(query, bindVars, numberOfCalculationNodes) {
             bindVars
         }).explain().plan :
         db._createStatement(query).explain().plan;
+    db._explain(query, bindVars);
 
     verifyVectorIndexUsed(plan);
     verifyNoFilterNodes(plan);
@@ -221,9 +222,9 @@ function VectorIndexL2FilterTestSuite() {
               FOR docInner IN ${collection}
               FILTER docInner.val > 3
               SORT APPROX_NEAR_L2(docInner.vector, docOuter.vector)
-              LIMIT 5 RETURN docInner`;
+              LIMIT 5 RETURN {key: docInner._key, val: docInner.val}`;
 
-            verifyPlan(query, undefined, 0);
+            verifyPlan(query, undefined, 1);
 
             const results = db._query(query).toArray();
             assertEqual(5, results.length);
