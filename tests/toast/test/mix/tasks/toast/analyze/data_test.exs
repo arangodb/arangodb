@@ -208,14 +208,14 @@ defmodule Mix.Tasks.Toast.Analyze.DataTest do
   describe "attach_time_bounds via collect_issues/2 — crash clause" do
     test "crash with integer timestamp sets time_bounds to point interval {ts, ts}" do
       ts = 1_700_000_000_000_000
-      issue = %{type: :crash, detail: %{crash_info: %{timestamp: ts}, server: "dbserver1"}}
+      issue = %{type: :crash, detail: %{effective_at: ts, server: "dbserver1"}}
       [result] = Data.collect_issues([minimal_result([issue])], [])
       assert result.time_bounds == {ts, ts}
     end
 
     test "crash with non-integer timestamp (e.g. DateTime) falls through to nil clause" do
       ts = ~U[2026-01-01 10:00:00Z]
-      issue = %{type: :crash, detail: %{crash_info: %{timestamp: ts}, server: "dbserver1"}}
+      issue = %{type: :crash, detail: %{effective_at: ts, server: "dbserver1"}}
       [result] = Data.collect_issues([minimal_result([issue])], [])
       assert result.time_bounds == nil
     end
@@ -279,7 +279,7 @@ defmodule Mix.Tasks.Toast.Analyze.DataTest do
   describe "collect_issues/2 filter_by_type" do
     test "nil type returns all issues" do
       issues = [
-        %{type: :crash, detail: %{crash_info: %{timestamp: 1}, server: "s1"}},
+        %{type: :crash, detail: %{effective_at: 1, server: "s1"}},
         %{type: :test_failure, scope: :suite, detail: %{}}
       ]
 
@@ -289,7 +289,7 @@ defmodule Mix.Tasks.Toast.Analyze.DataTest do
 
     test "type filter keeps only matching issues" do
       issues = [
-        %{type: :crash, detail: %{crash_info: %{timestamp: 1}, server: "s1"}},
+        %{type: :crash, detail: %{effective_at: 1, server: "s1"}},
         %{type: :test_failure, scope: :suite, detail: %{}}
       ]
 

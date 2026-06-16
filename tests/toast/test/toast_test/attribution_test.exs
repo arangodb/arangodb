@@ -20,6 +20,12 @@
 ################################################################################
 
 defmodule ToastTest.AttributionTest do
+  @moduledoc """
+  `Attribution.run/5` is pure: it decides issues over already-enriched inputs
+  (enriched crash events, parsed sanitizer reports, timeout kills) — no file
+  I/O. The enrichment that turns paths into that data is exercised in
+  `ToastTest.EnrichmentTest`.
+  """
   use ExUnit.Case, async: true
 
   import ToastTest.TimeTestHelpers, only: [to_us: 1]
@@ -95,20 +101,38 @@ defmodule ToastTest.AttributionTest do
     }
   end
 
-  defp build_artifacts(id, opts \\ []) do
-    server_dir = Keyword.get(opts, :server_dir, "/tmp/server_#{id}")
-    log_file = Keyword.get(opts, :log_file, Path.join(server_dir, "arangod.log"))
-    coredump_paths = Keyword.get(opts, :coredump_paths, [])
-    sanitizer_files = Keyword.get(opts, :sanitizer_files, [])
-
-    %{
-      log_file: log_file,
-      coredump_paths: coredump_paths,
-      sanitizer_files: sanitizer_files
+  # An enriched crash event as produced by ToastTest.Enrichment: `effective_at`
+  # set, coredump reports already analyzed.
+  defp enriched_crash(server_id, effective_at, opts \\ []) do
+    %CrashEvent{
+      server_id: server_id,
+      crash_info: %CrashInfo{
+        exit_status: 139,
+        signal: 11,
+        executable: @default_executable,
+        timestamp: effective_at,
+        os_pid: Keyword.get(opts, :os_pid)
+      },
+      effective_at: effective_at,
+      coredump_reports: Keyword.get(opts, :coredump_reports, []),
+      log_file: Keyword.get(opts, :log_file),
+      crash_lines: Keyword.get(opts, :crash_lines)
     }
   end
 
-  defp empty_artifacts, do: %{}
+  defp coredump_report(core_path, server_id) do
+    %{
+      core_path: core_path,
+      server_id: server_id,
+      debugger: :gdb,
+      signal: "SIGSEGV",
+      faulting_address: nil,
+      registers: nil,
+      disassembly: nil,
+      crash_thread: "1",
+      threads: [%{id: "1", frames: [%{function: "boom", file: "x.cpp", line: 1}]}]
+    }
+  end
 
   defp make_exunit_test(module, name, state) do
     %ExUnit.Test{
@@ -122,8 +146,8 @@ defmodule ToastTest.AttributionTest do
   # --- No issues ---
 
   describe "run/5 — empty inputs" do
-    test "no failures, no error, no artifacts returns []" do
-      assert {[], []} = Attribution.run(build_test_data(), empty_artifacts(), [], build_windows())
+    test "no failures, no crashes, no reports returns []" do
+      assert {[], []} = Attribution.run(build_test_data(), [], [], build_windows())
     end
   end
 
@@ -136,7 +160,7 @@ defmodule ToastTest.AttributionTest do
 
       test_data = build_test_data(%{failures: [failure1, failure2]})
 
-      {issues, _coredumps} = Attribution.run(test_data, empty_artifacts(), [], build_windows())
+      {issues, _coredumps} = Attribution.run(test_data, [], [], build_windows())
 
       assert length(issues) == 2
 
@@ -152,7 +176,7 @@ defmodule ToastTest.AttributionTest do
       failure = make_exunit_test(ModA, :test_one, {:failed, [{:error, %{message: "boom"}, []}]})
       test_data = build_test_data(%{failures: [failure]})
 
-      {[issue], _coredumps} = Attribution.run(test_data, empty_artifacts(), [], build_windows())
+      {[issue], _coredumps} = Attribution.run(test_data, [], [], build_windows())
 
       assert issue.detail.test == failure
     end
@@ -161,428 +185,161 @@ defmodule ToastTest.AttributionTest do
   # --- Crashes ---
 
   describe "run/5 — crash events" do
-    test "crash with timestamp attributed to test window" do
-      crash_info = %CrashInfo{
-        exit_status: 139,
-        signal: 11,
-        executable: @default_executable,
-        timestamp: to_us(~U[2026-03-09 10:00:30Z])
-      }
+    test "crash attributed to a test window via effective_at" do
+      crashes = [enriched_crash("single1", to_us(~U[2026-03-09 10:00:30Z]))]
 
-      crash_events = [%CrashEvent{server_id: "single1", crash_info: crash_info}]
-
-      {issues, _coredumps} =
-        Attribution.run(build_test_data(), empty_artifacts(), crash_events, build_windows())
+      {issues, _coredumps} = Attribution.run(build_test_data(), crashes, [], build_windows())
 
       assert [issue] = issues
       assert issue.type == :crash
       assert issue.scope == {:test, ModA, :test_one}
       assert issue.confidence == :high
       assert issue.detail.server == "single1"
+      assert issue.detail.effective_at == to_us(~U[2026-03-09 10:00:30Z])
     end
 
-    test "crash without matching test window falls back to :suite" do
-      crash_info = %CrashInfo{
-        exit_status: 139,
-        signal: 11,
-        executable: @default_executable,
-        timestamp: to_us(~U[2026-03-09 10:08:00Z])
-      }
+    test "crash without a matching window falls back to :suite" do
+      crashes = [enriched_crash("single1", to_us(~U[2026-03-09 10:08:00Z]))]
 
-      crash_events = [%CrashEvent{server_id: "single1", crash_info: crash_info}]
-
-      {issues, _coredumps} =
-        Attribution.run(build_test_data(), empty_artifacts(), crash_events, build_windows())
+      {issues, _coredumps} = Attribution.run(build_test_data(), crashes, [], build_windows())
 
       assert [issue] = issues
       assert issue.scope == :suite
     end
 
-    test "crash enriched with coredump analysis" do
-      crash_info = %CrashInfo{
-        exit_status: 139,
-        signal: 11,
-        executable: @default_executable,
-        timestamp: to_us(~U[2026-03-09 10:00:30Z])
+    test "raw crash_info.timestamp is preserved as provenance, distinct from effective_at" do
+      detected = to_us(~U[2026-03-09 10:00:31Z])
+      effective = to_us(~U[2026-03-09 10:00:30Z])
+
+      crash = %{
+        enriched_crash("single1", effective)
+        | crash_info: %CrashInfo{
+            exit_status: 139,
+            signal: 11,
+            executable: @default_executable,
+            timestamp: detected
+          }
       }
 
-      artifacts = %{
-        "single1" => build_artifacts("single1", coredump_paths: ["/tmp/core.1234"])
-      }
+      {[issue], _coredumps} = Attribution.run(build_test_data(), [crash], [], build_windows())
 
-      fake_analyzer = fn _core, _bin, _opts ->
-        {:ok,
-         %Toast.Diagnostics.Coredump.Report{
-           core_path: "/tmp/core.1234",
-           binary_path: "/usr/bin/arangod",
-           debugger: :gdb,
-           signal: "SIGSEGV",
-           faulting_address: nil,
-           crash_thread: 1,
-           threads: [%{id: 1, frames: [%{function: "crash_here", file: "x.cpp", line: 1}]}]
-         }}
-      end
-
-      crash_events = [
-        %CrashEvent{
-          server_id: "single1",
-          crash_info: crash_info
-        }
-      ]
-
-      {issues, coredump_reports} =
-        Attribution.run(
-          build_test_data(),
-          artifacts,
-          crash_events,
-          build_windows(),
-          analyzer_opts: [analyzer: fake_analyzer]
-        )
-
-      assert [issue] = issues
-      assert issue.type == :crash
-      assert issue.detail.coredump_paths == ["/tmp/core.1234"]
-
-      assert [%{signal: "SIGSEGV", core_path: "/tmp/core.1234", threads: [_]}] = coredump_reports
+      assert issue.detail.effective_at == effective
+      assert issue.detail.crash_info.timestamp == detected
     end
 
-    test "crash issue produced even when coredump analysis fails" do
-      crash_info = %CrashInfo{
-        exit_status: 139,
-        signal: 11,
-        executable: @default_executable,
-        timestamp: to_us(~U[2026-03-09 10:00:30Z])
-      }
-
-      artifacts = %{
-        "single1" => build_artifacts("single1", coredump_paths: ["/tmp/core.1234"])
-      }
-
-      crash_events = [
-        %CrashEvent{
-          server_id: "single1",
-          crash_info: crash_info
-        }
+    test "enriched coredump reports become issue coredump_paths and the returned report list" do
+      crashes = [
+        enriched_crash("single1", to_us(~U[2026-03-09 10:00:30Z]),
+          coredump_reports: [coredump_report("/tmp/core.1234", "single1")]
+        )
       ]
 
       {issues, coredump_reports} =
-        Attribution.run(
-          build_test_data(),
-          artifacts,
-          crash_events,
-          build_windows(),
-          analyzer_opts: [analyzer: fn _, _, _ -> {:error, :no_debugger} end]
-        )
+        Attribution.run(build_test_data(), crashes, [], build_windows())
 
       assert [issue] = issues
+      assert issue.detail.coredump_paths == ["/tmp/core.1234"]
+      assert [%{signal: "SIGSEGV", core_path: "/tmp/core.1234"}] = coredump_reports
+    end
+
+    test "multiple coredump reports map to multiple paths" do
+      crashes = [
+        enriched_crash("single1", to_us(~U[2026-03-09 10:00:30Z]),
+          coredump_reports: [
+            coredump_report("/tmp/core.1", "single1"),
+            coredump_report("/tmp/core.2", "single1")
+          ]
+        )
+      ]
+
+      {[issue], coredump_reports} =
+        Attribution.run(build_test_data(), crashes, [], build_windows())
+
+      assert Enum.sort(issue.detail.coredump_paths) == ["/tmp/core.1", "/tmp/core.2"]
+      assert length(coredump_reports) == 2
+    end
+
+    test "a crash with no coredump reports omits coredump_paths" do
+      crashes = [enriched_crash("single1", to_us(~U[2026-03-09 10:00:30Z]))]
+
+      {[issue], coredump_reports} =
+        Attribution.run(build_test_data(), crashes, [], build_windows())
+
       assert issue.type == :crash
-      assert issue.detail.server == "single1"
       refute Map.has_key?(issue.detail, :coredump_paths)
       assert coredump_reports == []
     end
 
-    test "crash enriched with multiple coredumps" do
-      crash_info = %CrashInfo{
-        exit_status: 139,
-        signal: 11,
-        executable: @default_executable,
-        timestamp: to_us(~U[2026-03-09 10:00:30Z])
-      }
-
-      artifacts = %{
-        "single1" => build_artifacts("single1", coredump_paths: ["/tmp/core.1", "/tmp/core.2"])
-      }
-
-      fake_analyzer = fn core_path, _bin, _opts ->
-        {:ok,
-         %Toast.Diagnostics.Coredump.Report{
-           core_path: core_path,
-           binary_path: "/usr/bin/arangod",
-           debugger: :gdb,
-           signal: "SIGSEGV",
-           faulting_address: nil,
-           crash_thread: 1,
-           threads: [%{id: 1, frames: [%{function: "crash_here", file: "x.cpp", line: 1}]}]
-         }}
-      end
-
-      crash_events = [
-        %CrashEvent{
-          server_id: "single1",
-          crash_info: crash_info
-        }
+    test "crash log lines and log_file flow into the issue detail" do
+      crashes = [
+        enriched_crash("single1", to_us(~U[2026-03-09 10:00:30Z]),
+          crash_lines: "[FATAL] {crash} boom",
+          log_file: "/tmp/single1/arangod.log"
+        )
       ]
 
-      {issues, coredump_reports} =
-        Attribution.run(
-          build_test_data(),
-          artifacts,
-          crash_events,
-          build_windows(),
-          analyzer_opts: [analyzer: fake_analyzer]
-        )
+      {[issue], _coredumps} = Attribution.run(build_test_data(), crashes, [], build_windows())
 
-      assert [issue] = issues
-      assert issue.type == :crash
-      assert length(issue.detail.coredump_paths) == 2
-      assert Enum.sort(issue.detail.coredump_paths) == ["/tmp/core.1", "/tmp/core.2"]
-
-      assert length(coredump_reports) == 2
-      paths = Enum.map(coredump_reports, & &1.core_path) |> Enum.sort()
-      assert paths == ["/tmp/core.1", "/tmp/core.2"]
-      assert Enum.all?(coredump_reports, &(&1.signal == "SIGSEGV"))
-      assert Enum.all?(coredump_reports, &(length(&1.threads) == 1))
-    end
-
-    test "crash with mixed coredump analysis results" do
-      crash_info = %CrashInfo{
-        exit_status: 139,
-        signal: 11,
-        executable: @default_executable,
-        timestamp: to_us(~U[2026-03-09 10:00:30Z])
-      }
-
-      artifacts = %{
-        "single1" =>
-          build_artifacts("single1", coredump_paths: ["/tmp/core.good", "/tmp/core.bad"])
-      }
-
-      fake_analyzer = fn core_path, _bin, _opts ->
-        if core_path == "/tmp/core.good" do
-          {:ok,
-           %Toast.Diagnostics.Coredump.Report{
-             core_path: core_path,
-             binary_path: "/usr/bin/arangod",
-             debugger: :gdb,
-             signal: "SIGSEGV",
-             faulting_address: nil,
-             crash_thread: 1,
-             threads: [%{id: 1, frames: [%{function: "crash_here", file: "x.cpp", line: 1}]}]
-           }}
-        else
-          {:error, :no_debugger}
-        end
-      end
-
-      crash_events = [
-        %CrashEvent{
-          server_id: "single1",
-          crash_info: crash_info
-        }
-      ]
-
-      {issues, coredump_reports} =
-        Attribution.run(
-          build_test_data(),
-          artifacts,
-          crash_events,
-          build_windows(),
-          analyzer_opts: [analyzer: fake_analyzer]
-        )
-
-      assert [issue] = issues
-      assert issue.type == :crash
-      # Only successfully analyzed coredumps get paths in the issue
-      assert issue.detail.coredump_paths == ["/tmp/core.good"]
-
-      # Only one report (the successful one)
-      assert length(coredump_reports) == 1
-      assert [good] = coredump_reports
-      assert good.core_path == "/tmp/core.good"
-      assert good.signal == "SIGSEGV"
-      assert length(good.threads) == 1
-    end
-  end
-
-  describe "run/5 — crash coredump filtering by PID" do
-    test "only coredumps matching the crash event PID are analyzed" do
-      crash_info = %CrashInfo{
-        exit_status: 139,
-        signal: 11,
-        executable: @default_executable,
-        timestamp: to_us(~U[2026-03-09 10:00:30Z]),
-        os_pid: 2000
-      }
-
-      artifacts = %{
-        "single1" =>
-          build_artifacts("single1", coredump_paths: ["/tmp/core.1000", "/tmp/core.2000"])
-      }
-
-      fake_analyzer = fn core_path, _bin, _opts ->
-        {:ok,
-         %Toast.Diagnostics.Coredump.Report{
-           core_path: core_path,
-           binary_path: "/usr/bin/arangod",
-           debugger: :gdb,
-           signal: "SIGSEGV",
-           faulting_address: nil,
-           crash_thread: 1,
-           threads: [%{id: 1, frames: [%{function: "crash_here", file: "x.cpp", line: 1}]}]
-         }}
-      end
-
-      crash_events = [
-        %CrashEvent{
-          server_id: "single1",
-          crash_info: crash_info
-        }
-      ]
-
-      {issues, coredump_reports} =
-        Attribution.run(
-          build_test_data(),
-          artifacts,
-          crash_events,
-          build_windows(),
-          analyzer_opts: [analyzer: fake_analyzer]
-        )
-
-      # Only the coredump matching PID 2000 should be analyzed
-      assert [issue] = issues
-      assert issue.detail.coredump_paths == ["/tmp/core.2000"]
-      assert length(coredump_reports) == 1
-      assert hd(coredump_reports).core_path == "/tmp/core.2000"
-    end
-
-    test "falls back to all coredumps when PID is nil" do
-      crash_info = %CrashInfo{
-        exit_status: 139,
-        signal: 11,
-        executable: @default_executable,
-        timestamp: to_us(~U[2026-03-09 10:00:30Z]),
-        os_pid: nil
-      }
-
-      artifacts = %{
-        "single1" =>
-          build_artifacts("single1", coredump_paths: ["/tmp/core.1000", "/tmp/core.2000"])
-      }
-
-      fake_analyzer = fn core_path, _bin, _opts ->
-        {:ok,
-         %Toast.Diagnostics.Coredump.Report{
-           core_path: core_path,
-           binary_path: "/usr/bin/arangod",
-           debugger: :gdb,
-           signal: "SIGSEGV",
-           faulting_address: nil,
-           crash_thread: 1,
-           threads: [%{id: 1, frames: [%{function: "crash_here", file: "x.cpp", line: 1}]}]
-         }}
-      end
-
-      crash_events = [
-        %CrashEvent{
-          server_id: "single1",
-          crash_info: crash_info
-        }
-      ]
-
-      {issues, coredump_reports} =
-        Attribution.run(
-          build_test_data(),
-          artifacts,
-          crash_events,
-          build_windows(),
-          analyzer_opts: [analyzer: fake_analyzer]
-        )
-
-      assert [issue] = issues
-      assert length(issue.detail.coredump_paths) == 2
-      assert length(coredump_reports) == 2
-    end
-
-    test "falls back to all coredumps when no filename matches PID" do
-      crash_info = %CrashInfo{
-        exit_status: 139,
-        signal: 11,
-        executable: @default_executable,
-        timestamp: to_us(~U[2026-03-09 10:00:30Z]),
-        os_pid: 9999
-      }
-
-      artifacts = %{
-        "single1" => build_artifacts("single1", coredump_paths: ["/tmp/core"])
-      }
-
-      fake_analyzer = fn core_path, _bin, _opts ->
-        {:ok,
-         %Toast.Diagnostics.Coredump.Report{
-           core_path: core_path,
-           binary_path: "/usr/bin/arangod",
-           debugger: :gdb,
-           signal: "SIGSEGV",
-           faulting_address: nil,
-           crash_thread: 1,
-           threads: [%{id: 1, frames: [%{function: "crash_here", file: "x.cpp", line: 1}]}]
-         }}
-      end
-
-      crash_events = [
-        %CrashEvent{
-          server_id: "single1",
-          crash_info: crash_info
-        }
-      ]
-
-      {issues, coredump_reports} =
-        Attribution.run(
-          build_test_data(),
-          artifacts,
-          crash_events,
-          build_windows(),
-          analyzer_opts: [analyzer: fake_analyzer]
-        )
-
-      assert [issue] = issues
-      assert issue.detail.coredump_paths == ["/tmp/core"]
-      assert length(coredump_reports) == 1
-    end
-  end
-
-  describe "run/5 — empty crash events" do
-    test "empty list produces no crash issues" do
-      assert {[], []} = Attribution.run(build_test_data(), empty_artifacts(), [], build_windows())
+      assert issue.detail.crash_lines == "[FATAL] {crash} boom"
+      assert issue.detail.log_file == "/tmp/single1/arangod.log"
     end
   end
 
   # --- Sanitizer reports ---
 
-  describe "run/5 — sanitizer files" do
-    test "each sanitizer file produces a :sanitizer_report issue" do
-      dir = System.tmp_dir!()
-      san_file = Path.join(dir, "alubsan.log.#{System.unique_integer([:positive])}")
-      File.write!(san_file, "ERROR: AddressSanitizer: heap-buffer-overflow")
+  describe "run/5 — sanitizer reports" do
+    test "each parsed sanitizer report produces a :sanitizer_report issue" do
+      reports = [
+        %{
+          server_id: "single1",
+          file: "/tmp/single1/alubsan.log.1",
+          content: "ERROR: AddressSanitizer: heap-buffer-overflow",
+          timestamp: nil,
+          kind: "heap-buffer-overflow"
+        }
+      ]
 
-      artifacts = %{
-        "single1" => build_artifacts("single1", server_dir: dir, sanitizer_files: [san_file])
-      }
-
-      {issues, _coredumps} = Attribution.run(build_test_data(), artifacts, [], build_windows())
+      {issues, _coredumps} = Attribution.run(build_test_data(), [], reports, build_windows())
 
       assert [issue] = issues
       assert issue.type == :sanitizer_report
       assert issue.detail.server == "single1"
       assert issue.detail.report =~ "AddressSanitizer"
+      assert issue.detail.kind == "heap-buffer-overflow"
     end
 
-    test "sanitizer file attributed via time windows" do
-      dir = System.tmp_dir!()
-      san_file = Path.join(dir, "tsan.log.#{System.unique_integer([:positive])}")
-      File.write!(san_file, "WARNING: ThreadSanitizer: data race")
+    test "a report without a timestamp is scoped to :suite" do
+      reports = [
+        %{
+          server_id: "single1",
+          file: "/tmp/single1/tsan.log.1",
+          content: "WARNING: ThreadSanitizer: data race",
+          timestamp: nil,
+          kind: "data race"
+        }
+      ]
 
-      # File mtime determines attribution — we can't control mtime easily,
-      # so just verify it produces an issue with a scope
-      artifacts = %{
-        "single1" => build_artifacts("single1", server_dir: dir, sanitizer_files: [san_file])
-      }
+      {[issue], _coredumps} = Attribution.run(build_test_data(), [], reports, build_windows())
 
-      {issues, _coredumps} = Attribution.run(build_test_data(), artifacts, [], build_windows())
-
-      assert [issue] = issues
       assert issue.type == :sanitizer_report
       assert issue.scope == :suite
+      assert issue.confidence == nil
+    end
+
+    test "a timestamped report is attributed via the time windows" do
+      reports = [
+        %{
+          server_id: "single1",
+          file: "/tmp/single1/alubsan.log.1",
+          content: "ERROR: AddressSanitizer: use-after-free",
+          timestamp: to_us(~U[2026-03-09 10:00:30Z]),
+          kind: "use-after-free"
+        }
+      ]
+
+      {[issue], _coredumps} = Attribution.run(build_test_data(), [], reports, build_windows())
+
+      assert issue.scope == {:test, ModA, :test_one}
     end
   end
 
@@ -591,9 +348,7 @@ defmodule ToastTest.AttributionTest do
   describe "run/5 — timeout kills" do
     test "empty timeout_kills produces no timeout issues" do
       {issues, coredumps} =
-        Attribution.run(build_test_data(), empty_artifacts(), [], build_windows(),
-          timeout_kills: []
-        )
+        Attribution.run(build_test_data(), [], [], build_windows(), timeout_kills: [])
 
       assert issues == []
       assert coredumps == []
@@ -608,9 +363,7 @@ defmodule ToastTest.AttributionTest do
       }
 
       {issues, _coredumps} =
-        Attribution.run(build_test_data(), empty_artifacts(), [], build_windows(),
-          timeout_kills: [kill]
-        )
+        Attribution.run(build_test_data(), [], [], build_windows(), timeout_kills: [kill])
 
       assert [issue] = issues
       assert issue.type == :infrastructure
@@ -622,70 +375,30 @@ defmodule ToastTest.AttributionTest do
       assert issue.detail.timestamp == ~U[2026-03-09 10:05:00Z]
     end
 
-    test "timeout servers enriched with coredump path from artifacts" do
-      artifacts = %{
-        "single1" => build_artifacts("single1", coredump_paths: ["/tmp/core.1001"])
-      }
-
-      kill = %{
-        source: :suite,
-        reason: "Suite timeout exceeded",
-        servers: [%{server_id: "single1", os_pid: 1001, log_file: "/tmp/single1.log"}],
-        timestamp: ~U[2026-03-09 10:05:00Z]
-      }
-
-      {issues, _coredumps} =
-        Attribution.run(build_test_data(), artifacts, [], build_windows(), timeout_kills: [kill])
-
-      assert [issue] = issues
-      [server_info] = issue.detail.servers
-      assert server_info.coredump == "/tmp/core.1001"
-      assert server_info.server_id == "single1"
-    end
-
-    test "timeout server without artifacts gets nil coredump" do
-      kill = %{
-        source: :suite,
-        reason: "Suite timeout exceeded",
-        servers: [%{server_id: "single1", os_pid: 1001, log_file: "/tmp/single1.log"}],
-        timestamp: ~U[2026-03-09 10:05:00Z]
-      }
-
-      {issues, _coredumps} =
-        Attribution.run(build_test_data(), empty_artifacts(), [], build_windows(),
-          timeout_kills: [kill]
-        )
-
-      assert [issue] = issues
-      [server_info] = issue.detail.servers
-      assert server_info.coredump == nil
-    end
-
-    test "multiple killed servers in a single timeout event" do
-      artifacts = %{
-        "agent1" => build_artifacts("agent1", coredump_paths: ["/tmp/core.agent1"]),
-        "dbserver1" => build_artifacts("dbserver1")
-      }
-
+    test "the kill's already-enriched servers pass through to the issue detail" do
+      # Coredump-path resolution happens in ToastTest.Enrichment.enrich_timeout_kills/2
+      # (see EnrichmentTest); attribution just carries the enriched servers.
       kill = %{
         source: :suite,
         reason: "Suite timeout exceeded",
         servers: [
-          %{server_id: "agent1", os_pid: 2001, log_file: "/tmp/agent1.log"},
-          %{server_id: "dbserver1", os_pid: 2002, log_file: "/tmp/dbserver1.log"}
+          %{
+            server_id: "single1",
+            os_pid: 1001,
+            log_file: "/tmp/single1.log",
+            coredump: "/tmp/core.1001"
+          },
+          %{server_id: "single2", os_pid: 1002, log_file: "/tmp/single2.log", coredump: nil}
         ],
         timestamp: ~U[2026-03-09 10:05:00Z]
       }
 
-      {issues, _coredumps} =
-        Attribution.run(build_test_data(), artifacts, [], build_windows(), timeout_kills: [kill])
-
-      assert [issue] = issues
-      assert length(issue.detail.servers) == 2
+      {[issue], _coredumps} =
+        Attribution.run(build_test_data(), [], [], build_windows(), timeout_kills: [kill])
 
       by_id = Map.new(issue.detail.servers, &{&1.server_id, &1})
-      assert by_id["agent1"].coredump == "/tmp/core.agent1"
-      assert by_id["dbserver1"].coredump == nil
+      assert by_id["single1"].coredump == "/tmp/core.1001"
+      assert by_id["single2"].coredump == nil
     end
   end
 
@@ -696,25 +409,19 @@ defmodule ToastTest.AttributionTest do
       failure = make_exunit_test(ModA, :test_one, {:failed, [{:error, %{message: "boom"}, []}]})
       test_data = build_test_data(%{failures: [failure]})
 
-      crash_info = %CrashInfo{
-        exit_status: 139,
-        signal: 11,
-        executable: @default_executable,
-        timestamp: to_us(~U[2026-03-09 10:00:30Z])
-      }
+      crashes = [enriched_crash("single1", to_us(~U[2026-03-09 10:00:30Z]))]
 
-      dir = System.tmp_dir!()
-      san_file = Path.join(dir, "alubsan.log.#{System.unique_integer([:positive])}")
-      File.write!(san_file, "ERROR: sanitizer report")
+      reports = [
+        %{
+          server_id: "single1",
+          file: "/tmp/single1/alubsan.log.1",
+          content: "ERROR: sanitizer report",
+          timestamp: nil,
+          kind: nil
+        }
+      ]
 
-      artifacts = %{
-        "single1" => build_artifacts("single1", server_dir: dir, sanitizer_files: [san_file])
-      }
-
-      crash_events = [%CrashEvent{server_id: "single1", crash_info: crash_info}]
-
-      {issues, _coredumps} =
-        Attribution.run(test_data, artifacts, crash_events, build_windows())
+      {issues, _coredumps} = Attribution.run(test_data, crashes, reports, build_windows())
 
       types = Enum.map(issues, & &1.type)
       assert :test_failure in types

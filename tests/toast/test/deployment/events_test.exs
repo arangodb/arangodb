@@ -53,22 +53,10 @@ defmodule Toast.Deployment.EventsTest do
     )
   end
 
-  defp launch_spec_fields do
-    %{
-      id: "agent-1",
-      role: :agent,
-      port: 8531,
-      log_file: "/data/agent-1/arangod.log",
-      server_dir: "/data/agent-1",
-      executable: "/usr/bin/arangod",
-      args: ["--agency.activate", "true"]
-    }
-  end
+  test "deployment_starting/5 projects servers to complete static birth records" do
+    servers = %{"dbserver-1" => server_instance()}
 
-  test "deployment_starting/5 projects specs to static server metadata" do
-    Events.deployment_starting(CaptureListener, "dep-1", :cluster, [:fake_stacktrace], [
-      launch_spec_fields()
-    ])
+    Events.deployment_starting(CaptureListener, "dep-1", :cluster, [:fake_stacktrace], servers)
 
     assert emitted() == %{
              event: :deployment_starting,
@@ -77,33 +65,21 @@ defmodule Toast.Deployment.EventsTest do
              stacktrace: [:fake_stacktrace],
              specs: [
                %{
-                 id: "agent-1",
-                 role: :agent,
-                 port: 8531,
-                 log_file: "/data/agent-1/arangod.log",
-                 server_dir: "/data/agent-1"
+                 id: "dbserver-1",
+                 role: :dbserver,
+                 port: 8629,
+                 endpoint: "http://127.0.0.1:8629",
+                 log_file: "/data/dbserver-1/arangod.log",
+                 server_dir: "/data/dbserver-1"
                }
              ]
            }
   end
 
-  test "deployment_started/3 projects servers to per-server metadata" do
-    servers = %{"dbserver-1" => server_instance()}
+  test "deployment_started/2 is a pure status transition" do
+    Events.deployment_started(CaptureListener, "dep-1")
 
-    Events.deployment_started(CaptureListener, "dep-1", servers)
-
-    assert emitted() == %{
-             event: :deployment_started,
-             deployment_id: "dep-1",
-             servers: %{
-               "dbserver-1" => %{
-                 role: :dbserver,
-                 endpoint: "http://127.0.0.1:8629",
-                 log_file: "/data/dbserver-1/arangod.log",
-                 server_dir: "/data/dbserver-1"
-               }
-             }
-           }
+    assert emitted() == %{event: :deployment_started, deployment_id: "dep-1"}
   end
 
   test "deployment_stopped/2" do
@@ -172,6 +148,16 @@ defmodule Toast.Deployment.EventsTest do
 
     assert emitted() == %{
              event: :server_resumed,
+             deployment_id: "dep-1",
+             server_id: "dbserver-1"
+           }
+  end
+
+  test "server_unhealthy/3" do
+    Events.server_unhealthy(CaptureListener, "dep-1", "dbserver-1")
+
+    assert emitted() == %{
+             event: :server_unhealthy,
              deployment_id: "dep-1",
              server_id: "dbserver-1"
            }

@@ -25,14 +25,41 @@ defmodule ToastTest.CrashEvent do
 
   Process-level facts (signal, exit status, pid, executable) live in
   `crash_info`, stamped by the `ServerProcess` that owned the dead process.
+  `crash_info.timestamp` is the raw process-exit detection time and is never
+  rewritten — it is the provenance.
+
+  The remaining fields are filled by the enrichment phase
+  (`ToastTest.Enrichment.enrich_crashes/3`) from the filesystem; they are nil
+  / empty on a freshly-converted event:
+
+    * `effective_at`   — the crash time resolved from the server log (the crash
+                         handler's own timestamp), falling back to
+                         `crash_info.timestamp` when no crash log line exists
+                         (e.g. SIGKILL). This is the timestamp attribution and
+                         log-window display use.
+    * `crash_lines`    — the formatted trailing error/fatal log entries.
+    * `log_file`       — the server log path the entries came from.
+    * `coredump_reports` — analyzed coredump reports for this incarnation.
   """
 
   @enforce_keys [:server_id, :crash_info]
-  defstruct [:server_id, :crash_info, expected: false]
+  defstruct [
+    :server_id,
+    :crash_info,
+    :effective_at,
+    :crash_lines,
+    :log_file,
+    expected: false,
+    coredump_reports: []
+  ]
 
   @type t :: %__MODULE__{
           server_id: String.t(),
           crash_info: Toast.Process.CrashInfo.t(),
-          expected: boolean()
+          effective_at: Toast.timestamp() | nil,
+          crash_lines: String.t() | nil,
+          log_file: Path.t() | nil,
+          expected: boolean(),
+          coredump_reports: [map()]
         }
 end

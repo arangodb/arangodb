@@ -237,6 +237,19 @@ defmodule Toast.Deployment.ControllerStateTest do
 
   # --- server_unhealthy handler ---
 
+  defmodule CaptureListener do
+    @moduledoc false
+    @behaviour Toast.Deployment.EventListener
+
+    @impl true
+    def on_event(event) do
+      case Process.whereis(:controller_state_test_capture) do
+        nil -> :ok
+        pid -> send(pid, {:event, event})
+      end
+    end
+  end
+
   describe "Controller server_unhealthy handler" do
     test "transitions to :failed and sets error" do
       id = "ssc-unhealthy-#{System.unique_integer([:positive])}"
@@ -260,6 +273,25 @@ defmodule Toast.Deployment.ControllerStateTest do
       assert info.error == {:server_unhealthy, id}
       assert info.servers[id].operational_state == :killed
       assert info.servers[id].expecting_exit == true
+    end
+
+    test "emits a server_unhealthy event so the abort has a recorded cause" do
+      Process.register(self(), :controller_state_test_capture)
+      id = "ssc-unhealthy-evt-#{System.unique_integer([:positive])}"
+      server = %ServerInstance{id: id, role: :single, operational_state: :running}
+
+      {:ok, ctrl} =
+        Controller.start_link(
+          config: Toast.Deployment.Config.new(),
+          id: id,
+          servers: %{id => server},
+          status: :ready,
+          event_listener: CaptureListener
+        )
+
+      send(ctrl, {:server_unhealthy, id})
+
+      assert_receive {:event, %{event: :server_unhealthy, deployment_id: ^id, server_id: ^id}}
     end
   end
 

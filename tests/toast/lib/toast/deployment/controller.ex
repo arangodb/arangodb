@@ -363,6 +363,7 @@ defmodule Toast.Deployment.Controller do
 
   def handle_info({:server_unhealthy, server_id}, state) do
     Logger.error("Server #{server_id} is unresponsive, sending SIGABRT for crash backtrace")
+    Events.server_unhealthy(state.event_listener, state.id, server_id)
     server = state.servers[server_id]
     if server && server.server_pid, do: ServerProcess.send_signal(server.server_pid, :sigabrt)
     state = update_server(state, server_id, operational_state: :killed, expecting_exit: true)

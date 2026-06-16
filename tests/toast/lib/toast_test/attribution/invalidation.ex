@@ -56,9 +56,11 @@ defmodule ToastTest.Attribution.Invalidation do
     end
   end
 
+  # Prefer the enriched, log-resolved crash time; fall back to the raw
+  # detection time when the events have not been through enrichment.
   defp earliest_crash_us(crash_events) do
     crash_events
-    |> Enum.map(& &1.crash_info.timestamp)
+    |> Enum.map(&(&1.effective_at || &1.crash_info.timestamp))
     |> Enum.reject(&is_nil/1)
     |> Enum.min(fn -> nil end)
   end

@@ -350,7 +350,7 @@ defmodule ToastTest.EventStoreTest do
       assert EventStore.servers() == %{}
     end
 
-    test "reconstructs servers from deployment_started event" do
+    test "reconstructs servers from deployment_starting specs" do
       start_deployment("d1",
         servers: %{
           "s1" => %{
@@ -710,7 +710,6 @@ defmodule ToastTest.EventStoreTest do
       EventStore.notify(%{
         event: :deployment_started,
         deployment_id: "d1",
-        servers: %{},
         timestamp: ts
       })
 
@@ -802,18 +801,16 @@ defmodule ToastTest.EventStoreTest do
 
     specs =
       Enum.with_index(servers, fn {sid, spec}, idx ->
+        port = spec[:port] || 8529 + idx
+
         %{
           id: sid,
           role: spec[:role],
-          port: spec[:port] || 8529 + idx,
+          port: port,
+          endpoint: spec[:endpoint] || "http://localhost:#{port}",
           log_file: spec[:log_file] || "/tmp/#{did}/#{sid}.log",
           server_dir: spec[:server_dir] || "/tmp/#{did}/#{sid}"
         }
-      end)
-
-    servers_with_defaults =
-      Map.new(servers, fn {sid, spec} ->
-        {sid, Map.put_new(spec, :server_dir, "/tmp/#{did}/#{sid}")}
       end)
 
     EventStore.notify(%{
@@ -828,7 +825,6 @@ defmodule ToastTest.EventStoreTest do
     EventStore.notify(%{
       event: :deployment_started,
       deployment_id: did,
-      servers: servers_with_defaults,
       timestamp: timestamp
     })
   end

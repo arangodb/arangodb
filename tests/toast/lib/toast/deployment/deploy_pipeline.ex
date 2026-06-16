@@ -41,7 +41,7 @@ defmodule Toast.Deployment.DeployPipeline do
       state.id,
       derive_mode(state),
       opts[:stacktrace],
-      specs
+      state.servers
     )
 
     with {:ok, state} <- start_all_server_processes(state, specs),
@@ -51,7 +51,7 @@ defmodule Toast.Deployment.DeployPipeline do
       servers = Map.new(state.servers, fn {id, s} -> {id, %{s | operational_state: :running}} end)
       state = %{state | status: :ready, servers: servers}
 
-      Events.deployment_started(state.event_listener, state.id, state.servers)
+      Events.deployment_started(state.event_listener, state.id)
 
       Logger.info("Deployment #{state.id} ready")
       {:ok, state}

@@ -131,7 +131,7 @@ defmodule ToastTest.Attribution.ServerLogs do
 
   defp issue_window(%{type: :sanitizer_report}, _windows), do: []
 
-  defp issue_window(%{type: :crash, detail: %{crash_info: %{timestamp: ts}}}, _windows)
+  defp issue_window(%{type: :crash, detail: %{effective_at: ts}}, _windows)
        when is_integer(ts) do
     [pad(ts, ts, :crash)]
   end

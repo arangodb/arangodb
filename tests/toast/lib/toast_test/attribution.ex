@@ -21,62 +21,43 @@
 
 defmodule ToastTest.Attribution do
   @moduledoc """
-  Orchestrates issue production from test data, artifacts, and deployment errors.
+  Pure issue production from already-enriched inputs.
 
-  Combines test failures, crash analysis, and sanitizer reports into a flat
-  list of `SuiteResult.issue()` maps.
+  Given test failures, enriched crash events (`effective_at`, crash log lines,
+  coredump reports — see `ToastTest.Enrichment`), parsed sanitizer reports,
+  timeout kills, and infrastructure events, produces a flat list of
+  `SuiteResult.issue()` maps. No file I/O happens here: enrichment turns paths
+  into data, this module decides (window-matching, scoping, confidence, issue
+  assembly) over that data.
   """
 
   alias ToastTest.Attribution.TimeWindows
-  alias ToastTest.Enrichment
 
   import Toast.Utils, only: [maybe_put: 3]
 
   require Logger
 
-  @doc """
-  Resolve effective crash timestamps from server log files.
-
-  For each crash event, reads the server's log to find the crash log
-  timestamp (written by the crash handler before the coredump). Falls back
-  to `crash_info.timestamp` (process termination detection time) when no
-  crash log is found (e.g., SIGKILL).
-
-  Returns updated crash events with corrected timestamps.
-  """
-  @spec resolve_crash_timestamps([ToastTest.CrashEvent.t()], ToastTest.ArtifactCollector.t()) ::
-          [ToastTest.CrashEvent.t()]
-  def resolve_crash_timestamps(crash_events, artifacts) do
-    Enum.map(crash_events, fn event ->
-      server_artifacts = Map.get(artifacts, event.server_id)
-      {error_entries, _log_file} = extract_server_errors(server_artifacts)
-
-      case extract_crash_timestamp(error_entries) do
-        nil -> event
-        log_ts -> put_in(event.crash_info.timestamp, log_ts)
-      end
-    end)
-  end
-
   @spec run(
           ToastTest.ResultCollector.test_data(),
-          ToastTest.ArtifactCollector.t(),
           [ToastTest.CrashEvent.t()],
+          [map()],
           TimeWindows.windows(),
           keyword()
         ) ::
           {[ToastTest.SuiteResult.issue()], [ToastTest.SuiteResult.coredump_report()]}
-  def run(test_data, artifacts, crash_events, windows, opts \\ []) when is_list(opts) do
+  def run(test_data, enriched_crashes, sanitizer_reports, windows, opts \\ [])
+      when is_list(enriched_crashes) and is_list(sanitizer_reports) and is_list(opts) do
     timeout_kills = Keyword.get(opts, :timeout_kills, [])
-
-    {crash_issues, coredump_reports} =
-      crash_issues(crash_events, artifacts, windows, opts)
+    infrastructure_events = Keyword.get(opts, :infrastructure_issues, [])
 
     issues =
-      test_failure_issues(test_data.failures) ++
-        crash_issues ++
-        sanitizer_issues(artifacts, windows) ++
-        timeout_issues(timeout_kills, artifacts)
+      infrastructure_issues(infrastructure_events, windows) ++
+        test_failure_issues(test_data.failures) ++
+        crash_issues(enriched_crashes, windows) ++
+        sanitizer_issues(sanitizer_reports, windows) ++
+        timeout_issues(timeout_kills)
+
+    coredump_reports = Enum.flat_map(enriched_crashes, & &1.coredump_reports)
 
     breakdown =
       issues
@@ -105,142 +86,52 @@ defmodule ToastTest.Attribution do
 
   # --- Crashes ---
 
-  defp crash_issues(crash_events, artifacts, windows, opts) do
-    analyzer_opts = Keyword.get(opts, :analyzer_opts, [])
+  # Pure over enriched crash events: `effective_at` (the log-resolved crash time,
+  # for windowing/display), `coredump_reports`, `log_file`, and `crash_lines` are
+  # all produced by `ToastTest.Enrichment`. The raw `crash_info` (incl. its
+  # untouched detection `timestamp`) is carried through as process-fact provenance.
+  defp crash_issues(enriched_crashes, windows) do
+    Enum.map(enriched_crashes, fn event ->
+      {scope, confidence, phase} = TimeWindows.attribute(event.effective_at, windows)
+      coredump_paths = Enum.map(event.coredump_reports, & &1.core_path)
 
-    {issues, coredump_reports} =
-      Enum.reduce(crash_events, {[], []}, fn event, {issues_acc, dumps_acc} ->
-        server_artifacts = Map.get(artifacts, event.server_id)
-        {crash_entries, log_file} = extract_server_errors(server_artifacts)
+      detail =
+        %{server: event.server_id, crash_info: event.crash_info, effective_at: event.effective_at}
+        |> maybe_put(:phase, phase)
+        |> maybe_put_coredump_paths(coredump_paths)
+        |> maybe_put(:log_file, event.log_file)
+        |> maybe_put(:crash_lines, event.crash_lines)
 
-        effective_timestamp =
-          extract_crash_timestamp(crash_entries) || event.crash_info.timestamp
-
-        {scope, confidence, phase} = TimeWindows.attribute(effective_timestamp, windows)
-
-        {coredump_paths, new_dumps} =
-          analyze_coredumps(
-            event.server_id,
-            filter_artifacts_by_pid(server_artifacts, event.crash_info.os_pid),
-            event.crash_info.executable,
-            analyzer_opts
-          )
-
-        detail =
-          %{server: event.server_id, crash_info: event.crash_info}
-          |> maybe_put(:phase, phase)
-          |> maybe_put_coredump_paths(coredump_paths)
-          |> maybe_put(:log_file, log_file)
-          |> maybe_put(:crash_lines, format_crash_entries(crash_entries))
-
-        issue = %{type: :crash, scope: scope, confidence: confidence, detail: detail}
-        {[issue | issues_acc], new_dumps ++ dumps_acc}
-      end)
-
-    {Enum.reverse(issues), Enum.reverse(coredump_reports)}
-  end
-
-  # --- Coredump analysis ---
-
-  defp analyze_coredumps(_server_id, nil, _executable, _opts), do: {[], []}
-  defp analyze_coredumps(_server_id, %{coredump_paths: []}, _executable, _opts), do: {[], []}
-
-  defp analyze_coredumps(server_id, server_artifacts, executable, analyzer_opts) do
-    paths = server_artifacts.coredump_paths
-    Logger.info("Analyzing #{length(paths)} coredump(s) for server #{server_id}")
-
-    reports =
-      Enum.flat_map(paths, fn core_path ->
-        case Enrichment.Coredump.analyze(core_path, executable, analyzer_opts) do
-          {:ok, result} ->
-            Logger.info(
-              "Coredump #{Path.basename(core_path)}: #{length(result.threads)} thread(s)"
-            )
-
-            [
-              %{
-                core_path: core_path,
-                server_id: server_id,
-                debugger: result.debugger,
-                signal: result.signal,
-                faulting_address: result.faulting_address,
-                registers: result.registers,
-                disassembly: result.disassembly,
-                crash_thread: result.crash_thread,
-                threads: result.threads
-              }
-            ]
-
-          {:error, reason} ->
-            Logger.warning(
-              "Coredump #{Path.basename(core_path)}: analysis failed (#{inspect(reason)})"
-            )
-
-            []
-        end
-      end)
-
-    coredump_paths = Enum.map(reports, & &1.core_path)
-    {coredump_paths, reports}
-  end
-
-  defp filter_artifacts_by_pid(nil, _os_pid), do: nil
-  defp filter_artifacts_by_pid(artifacts, nil), do: artifacts
-
-  defp filter_artifacts_by_pid(artifacts, os_pid) do
-    pid_str = to_string(os_pid)
-
-    Enum.filter(artifacts.coredump_paths, fn path ->
-      path |> Path.basename() |> String.split(~r/[.\-_]/) |> Enum.member?(pid_str)
+      %{type: :crash, scope: scope, confidence: confidence, detail: detail}
     end)
-    |> case do
-      # Fall back to all paths if none matched (e.g., core files without PID in name)
-      [] -> artifacts
-      paths -> %{artifacts | coredump_paths: paths}
-    end
   end
 
   defp maybe_put_coredump_paths(detail, []), do: detail
   defp maybe_put_coredump_paths(detail, paths), do: Map.put(detail, :coredump_paths, paths)
 
-  # --- Crash log helpers ---
+  # --- Infrastructure issues ---
 
-  defp extract_server_errors(nil), do: {[], nil}
-  defp extract_server_errors(%{log_file: nil}), do: {[], nil}
+  # Infrastructure events observed live during the run (e.g. port exhaustion),
+  # attributed by their own timestamp.
+  defp infrastructure_issues(infrastructure_events, windows) do
+    Enum.map(infrastructure_events, fn event ->
+      {scope, confidence, phase} = TimeWindows.attribute(event.timestamp, windows)
 
-  defp extract_server_errors(%{log_file: log_file}) do
-    {Enrichment.Logs.extract_trailing_errors(log_file), log_file}
-  end
+      detail =
+        event.detail
+        |> Map.merge(%{subtype: event.subtype, timestamp: event.timestamp})
+        |> maybe_put(:phase, phase)
 
-  defp extract_crash_timestamp(entries) do
-    case Enum.find(entries, &(&1[:topic] == :crash)) do
-      %{time: time} -> time
-      nil -> nil
-    end
-  end
-
-  defp format_crash_entries([]), do: nil
-
-  defp format_crash_entries(entries) do
-    Enum.map_join(entries, "\n", fn entry ->
-      level = entry[:level] |> to_string() |> String.upcase()
-      topic = if entry[:topic], do: " {#{entry.topic}}", else: ""
-      "[#{level}]#{topic} #{entry.message}"
+      %{type: :infrastructure, scope: scope, confidence: confidence, detail: detail}
     end)
   end
 
   # --- Timeouts ---
 
-  defp timeout_issues([], _artifacts), do: []
-
-  defp timeout_issues(timeout_kills, artifacts) do
+  # Pure over timeout kills already enriched with per-server coredump paths by
+  # `ToastTest.Enrichment.enrich_timeout_kills/2`.
+  defp timeout_issues(timeout_kills) do
     Enum.map(timeout_kills, fn kill ->
-      servers =
-        Enum.map(kill.servers, fn server_info ->
-          coredump_path = find_coredump_path(artifacts, server_info.server_id)
-          Map.put(server_info, :coredump, coredump_path)
-        end)
-
       %{
         type: :infrastructure,
         scope: :suite,
@@ -250,45 +141,35 @@ defmodule ToastTest.Attribution do
           source: kill.source,
           reason: kill.reason,
           timestamp: kill.timestamp,
-          servers: servers
+          servers: kill.servers
         }
       }
     end)
   end
 
-  defp find_coredump_path(artifacts, server_id) do
-    case Map.get(artifacts, server_id) do
-      %{coredump_paths: [path | _]} -> path
-      _ -> nil
-    end
-  end
-
   # --- Sanitizer reports ---
 
-  defp sanitizer_issues(artifacts, windows) do
-    for {server_id, server_artifacts} <- artifacts,
-        san_file <- server_artifacts.sanitizer_files,
-        sidecar = Enrichment.Sanitizer.sidecar_path_for(san_file),
-        {:ok, results} <- [Enrichment.Sanitizer.read_all(san_file, sidecar)],
-        result <- results do
+  # Pure over reports already read + parsed by `ToastTest.Enrichment`.
+  defp sanitizer_issues(sanitizer_reports, windows) do
+    Enum.map(sanitizer_reports, fn report ->
       {scope, confidence, phase} =
-        if is_integer(result.timestamp) do
-          TimeWindows.attribute(result.timestamp, windows)
+        if is_integer(report.timestamp) do
+          TimeWindows.attribute(report.timestamp, windows)
         else
           {:suite, nil, nil}
         end
 
       detail =
         %{
-          server: server_id,
-          file: san_file,
-          report: result.content,
-          timestamp: result.timestamp,
-          kind: result.kind
+          server: report.server_id,
+          file: report.file,
+          report: report.content,
+          timestamp: report.timestamp,
+          kind: report.kind
         }
         |> maybe_put(:phase, phase)
 
       %{type: :sanitizer_report, scope: scope, confidence: confidence, detail: detail}
-    end
+    end)
   end
 end

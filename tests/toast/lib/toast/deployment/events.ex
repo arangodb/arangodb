@@ -47,25 +47,29 @@ defmodule Toast.Deployment.Events do
           log_file: Path.t() | nil
         }
 
-  @spec deployment_starting(listener(), deployment_id(), atom(), list() | nil, [map()]) :: :ok
-  def deployment_starting(listener, deployment_id, mode, stacktrace, specs)
+  @spec deployment_starting(
+          listener(),
+          deployment_id(),
+          atom(),
+          list() | nil,
+          %{String.t() => ServerInstance.t()}
+        ) :: :ok
+  def deployment_starting(listener, deployment_id, mode, stacktrace, servers)
       when is_atom(listener) and is_binary(deployment_id) and is_atom(mode) and
-             (is_list(stacktrace) or is_nil(stacktrace)) and is_list(specs) do
-    specs = Enum.map(specs, &Map.take(&1, [:id, :role, :port, :log_file, :server_dir]))
+             (is_list(stacktrace) or is_nil(stacktrace)) and is_map(servers) do
+    specs =
+      servers
+      |> Map.values()
+      |> Enum.map(&Map.take(&1, [:id, :role, :port, :endpoint, :log_file, :server_dir]))
+
     payload = %{mode: mode, stacktrace: stacktrace, specs: specs}
     emit(listener, deployment_id, :deployment_starting, payload)
   end
 
-  @spec deployment_started(listener(), deployment_id(), %{String.t() => ServerInstance.t()}) ::
-          :ok
-  def deployment_started(listener, deployment_id, servers)
-      when is_atom(listener) and is_binary(deployment_id) and is_map(servers) do
-    emit(listener, deployment_id, :deployment_started, %{
-      servers:
-        Map.new(servers, fn {id, s} ->
-          {id, Map.take(s, [:role, :endpoint, :log_file, :server_dir])}
-        end)
-    })
+  @spec deployment_started(listener(), deployment_id()) :: :ok
+  def deployment_started(listener, deployment_id)
+      when is_atom(listener) and is_binary(deployment_id) do
+    emit(listener, deployment_id, :deployment_started, %{})
   end
 
   @spec deployment_stopped(listener(), deployment_id()) :: :ok
@@ -122,6 +126,12 @@ defmodule Toast.Deployment.Events do
   def server_resumed(listener, deployment_id, server_id)
       when is_atom(listener) and is_binary(deployment_id) and is_binary(server_id) do
     emit(listener, deployment_id, :server_resumed, %{server_id: server_id})
+  end
+
+  @spec server_unhealthy(listener(), deployment_id(), String.t()) :: :ok
+  def server_unhealthy(listener, deployment_id, server_id)
+      when is_atom(listener) and is_binary(deployment_id) and is_binary(server_id) do
+    emit(listener, deployment_id, :server_unhealthy, %{server_id: server_id})
   end
 
   @spec server_crashed(listener(), deployment_id(), String.t(), CrashInfo.t(), boolean()) :: :ok

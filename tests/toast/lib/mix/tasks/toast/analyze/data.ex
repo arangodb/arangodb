@@ -138,7 +138,7 @@ defmodule Mix.Tasks.Toast.Analyze.Data do
   end
 
   defp attach_time_bounds(
-         %{type: :crash, detail: %{crash_info: %{timestamp: ts}}} = issue,
+         %{type: :crash, detail: %{effective_at: ts}} = issue,
          _modules
        )
        when is_integer(ts) do

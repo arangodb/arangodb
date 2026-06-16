@@ -99,6 +99,9 @@ defmodule ToastTest.Formatting.Logs do
   def format_event(%{event: :server_killed, server_id: sid}),
     do: ">>> server_killed #{sid}"
 
+  def format_event(%{event: :server_unhealthy, server_id: sid}),
+    do: ">>> server_unhealthy #{sid}"
+
   def format_event(%{event: :server_paused, server_id: sid}),
     do: ">>> server_paused #{sid}"
 

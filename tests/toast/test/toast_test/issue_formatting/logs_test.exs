@@ -563,7 +563,7 @@ defmodule ToastTest.LogAnalysisAndFormattingLogsTest do
     end
 
     test "deployment_started" do
-      event = %{event: :deployment_started, deployment_id: "d1", servers: %{}, timestamp: 0}
+      event = %{event: :deployment_started, deployment_id: "d1", timestamp: 0}
       assert LogFormatting.format_event(event) == ">>> deployment_started d1"
     end
 

@@ -69,7 +69,16 @@ defmodule ToastTest.EventStore.Projections do
   end
 
   defp process_event(%{event: :server_crashed} = e, acc), do: close_incarnation(acc, e)
-  defp process_event(%{event: :server_killed}, acc), do: acc
+  defp process_event(%{event: :server_killed} = e, acc), do: close_incarnation(acc, e)
+
+  defp process_event(
+         %{event: :server_unhealthy, deployment_id: did, server_id: sid, timestamp: ts},
+         acc
+       ) do
+    update_server_in(acc, did, sid, fn server ->
+      %{server | unhealthy_verdicts: [%{at: ts} | server.unhealthy_verdicts]}
+    end)
+  end
 
   defp process_event(%{event: :timeout_kill} = e, acc) do
     %{acc | timeout_kills: [e | acc.timeout_kills]}
@@ -96,42 +105,18 @@ defmodule ToastTest.EventStore.Projections do
     %{acc | servers: Map.update(acc.servers, did, init_servers, &Map.merge(&1, init_servers))}
   end
 
+  # Server entries are born from :deployment_starting; :deployment_started is a
+  # pure status transition. It only backfills deployment metadata for event
+  # streams that lack a preceding :deployment_starting (defensive).
   defp process_event(%{event: :deployment_started, deployment_id: did} = e, acc) do
-    acc =
-      case acc.deployments do
-        %{^did => _} ->
-          acc
+    case acc.deployments do
+      %{^did => _} ->
+        acc
 
-        _ ->
-          meta = %{
-            id: did,
-            mode: nil,
-            stacktrace: nil,
-            started_at: e[:timestamp],
-            stopped_at: nil
-          }
-
-          %{acc | deployments: Map.put(acc.deployments, did, meta)}
-      end
-
-    deployment_servers =
-      Map.new(e[:servers] || %{}, fn {sid, spec} ->
-        {sid, new_server_entry(sid, did, spec)}
-      end)
-
-    # Merge new server data but preserve incarnations already recorded by
-    # server_started events that fired before deployment_started.
-    %{
-      acc
-      | servers:
-          Map.update(acc.servers, did, deployment_servers, fn existing ->
-            Map.merge(deployment_servers, existing, fn
-              :incarnations, _new, old when old != [] -> old
-              _key, nil, old -> old
-              _key, new, _old -> new
-            end)
-          end)
-    }
+      _ ->
+        meta = %{id: did, mode: nil, stacktrace: nil, started_at: e[:timestamp], stopped_at: nil}
+        %{acc | deployments: Map.put(acc.deployments, did, meta)}
+    end
   end
 
   defp process_event(%{event: :deployment_stopped, deployment_id: did} = e, acc) do
@@ -231,7 +216,8 @@ defmodule ToastTest.EventStore.Projections do
       log_file: spec[:log_file],
       server_dir: spec[:server_dir],
       arango_id: nil,
-      incarnations: []
+      incarnations: [],
+      unhealthy_verdicts: []
     }
   end
 
@@ -252,7 +238,12 @@ defmodule ToastTest.EventStore.Projections do
     Map.new(servers, fn {did, deployment_servers} ->
       {did,
        Map.new(deployment_servers, fn {sid, server} ->
-         {sid, %{server | incarnations: Enum.reverse(server.incarnations)}}
+         {sid,
+          %{
+            server
+            | incarnations: Enum.reverse(server.incarnations),
+              unhealthy_verdicts: Enum.reverse(server.unhealthy_verdicts)
+          }}
        end)}
     end)
   end

@@ -118,12 +118,12 @@ defmodule ToastTest.Attribution.ServerLogsTest do
   end
 
   describe "compute_windows/2 — crash" do
-    test "pads crash timestamp by [-20s, 0s]" do
+    test "pads crash effective_at by [-20s, 0s]" do
       ts = us("10:05:00")
 
       issue = %{
         type: :crash,
-        detail: %{crash_info: %{timestamp: ts}}
+        detail: %{effective_at: ts}
       }
 
       [{start, finish}] = ServerLogs.compute_windows([issue], windows())
@@ -132,25 +132,16 @@ defmodule ToastTest.Attribution.ServerLogsTest do
       assert finish == us("10:05:00")
     end
 
-    test "produces no window when crash_info has nil timestamp" do
+    test "produces no window when effective_at is nil" do
       issue = %{
         type: :crash,
-        detail: %{crash_info: %{timestamp: nil}}
+        detail: %{effective_at: nil}
       }
 
       assert ServerLogs.compute_windows([issue], windows()) == []
     end
 
-    test "produces no window when crash_info is missing timestamp key" do
-      issue = %{
-        type: :crash,
-        detail: %{crash_info: %{}}
-      }
-
-      assert ServerLogs.compute_windows([issue], windows()) == []
-    end
-
-    test "produces no window when detail lacks crash_info" do
+    test "produces no window when detail lacks effective_at" do
       issue = %{type: :crash, detail: %{}}
 
       assert ServerLogs.compute_windows([issue], windows()) == []
@@ -208,7 +199,7 @@ defmodule ToastTest.Attribution.ServerLogsTest do
       timeout_ts = us("10:08:00")
 
       issues = [
-        %{type: :crash, detail: %{crash_info: %{timestamp: crash_ts}}},
+        %{type: :crash, detail: %{effective_at: crash_ts}},
         %{
           type: :infrastructure,
           detail: %{
@@ -356,7 +347,7 @@ defmodule ToastTest.Attribution.ServerLogsTest do
       log_files = make_log_files([{"agent1", log_path}])
 
       crash_ts = us("10:05:00")
-      issues = [%{type: :crash, detail: %{crash_info: %{timestamp: crash_ts}}}]
+      issues = [%{type: :crash, detail: %{effective_at: crash_ts}}]
 
       result = ServerLogs.collect(issues, log_files, windows())
 
@@ -422,7 +413,7 @@ defmodule ToastTest.Attribution.ServerLogsTest do
       log_files = make_log_files([{"agent1", log1}, {"dbserver1", log2}])
 
       crash_ts = us("10:05:00")
-      issues = [%{type: :crash, detail: %{crash_info: %{timestamp: crash_ts}}}]
+      issues = [%{type: :crash, detail: %{effective_at: crash_ts}}]
       result = ServerLogs.collect(issues, log_files, windows())
 
       assert map_size(result) == 2
@@ -458,7 +449,7 @@ defmodule ToastTest.Attribution.ServerLogsTest do
             timestamp: us("10:03:00")
           }
         },
-        %{type: :crash, detail: %{crash_info: %{timestamp: crash_ts}}}
+        %{type: :crash, detail: %{effective_at: crash_ts}}
       ]
 
       result = ServerLogs.collect(issues, log_files, windows())
