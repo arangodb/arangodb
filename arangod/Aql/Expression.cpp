@@ -694,8 +694,10 @@ AqlValue Expression::executeSimpleExpressionArray(ExpressionContext& ctx,
           Range const* r = result.range();
           TRI_ASSERT(r != nullptr);
           Range::throwIfTooBigForMaterialization(r->size());
-          for (size_t i = 0; i < r->size(); ++i) {
-            builder->add(VPackValue(r->at(i)));
+          materializers.emplace_back(vopts);
+          VPackSlice slice = materializers.back().slice(result);
+          for (auto e : VPackArrayIterator(slice)) {
+            builder->add(e);
           }
         } else {
           materializers.emplace_back(vopts);
