@@ -115,7 +115,6 @@
 #include "RestServer/UpgradeFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "SystemMonitor/AsyncRegistry/RestHandler.h"
 #include "SystemMonitor/Activities/RestHandler.h"
@@ -928,7 +927,7 @@ void GeneralServerFeature::defineRemainingHandlers(
 #endif
 
   // engine specific handlers
-  StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
+  StorageEngine& engine = server().getFeature<DatabaseFeature>().engine();
   engine.addRestHandlers(f);
 }
 

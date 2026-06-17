@@ -20,6 +20,7 @@ add_library(arango_rocksdb STATIC
   RocksDBIndex.cpp
   RocksDBIndexCacheRefillFeature.cpp
   RocksDBIndexCacheRefillFeatureOptions.cpp
+  RocksDBIndexCacheRefillOptionsProvider.cpp
   RocksDBIndexCacheRefillThread.cpp
   RocksDBIndexFactory.cpp
   RocksDBIndexingDisabler.cpp
@@ -69,20 +70,19 @@ add_library(arango_rocksdb STATIC
   SortedRowsStorageBackendRocksDB.cpp)
 
 target_link_libraries(arango_rocksdb
-  arango_cache
-  arango_common_rest_handler
-  arango_geo
-  arango_health
-  arango_indexes
-  arango_restart_action
-  arango_storage_engine_common
-  arango::validation
-  arango_zkd
-  boost_boost
-  rocksdb
-  rocksdb_interface
-  snappy
-  faiss)
+  PUBLIC
+    arango_cache
+    arango_common_rest_handler
+    arango_indexes
+    arango_restart_action
+    arango_storage_engine_common
+    arango_zkd
+    rocksdb
+    rocksdb_interface
+    faiss
+  PRIVATE
+    arango_health
+    snappy)
 
 set(SNAPPY_INCLUDE_DIR "${SNAPPY_SOURCE_DIR};${SNAPPY_BUILD_DIR}" CACHE PATH "relation to snappy")
 target_include_directories(arango_rocksdb PUBLIC ${SNAPPY_INCLUDE_DIR})
@@ -91,8 +91,8 @@ if (USE_ENTERPRISE)
   # this is required for hotbackup. Views need to be flushed.
   target_include_directories(arango_rocksdb PUBLIC
     ${IRESEARCH_INCLUDE})
-  target_link_libraries(arango_rocksdb
-    arango_rclone 
+  target_link_libraries(arango_rocksdb PUBLIC
+    arango_rclone
   )
 endif()
 

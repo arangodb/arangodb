@@ -26,7 +26,6 @@
 #include <frozen/unordered_set.h>
 #include <velocypack/Builder.h>
 
-#include <chrono>
 #include <unordered_set>
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -55,9 +54,9 @@
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/HistogramBuilder.h"
 #include "RestServer/CpuUsageFeature.h"
+#include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 
 namespace arangodb::metrics {
 
@@ -65,14 +64,13 @@ MetricsFeature::MetricsFeature(
     application_features::ApplicationServer& server,
     LazyApplicationFeatureReference<QueryRegistryFeature>
         lazyQueryRegistryFeatureRef,
-    LazyApplicationFeatureReference<EngineSelectorFeature>
-        lazyEngineSelectorFeatureRef,
+    LazyApplicationFeatureReference<DatabaseFeature> lazyDatabaseFeatureRef,
     LazyApplicationFeatureReference<ClusterMetricsFeature>
         lazyClusterMetricsFeatureRef,
     LazyApplicationFeatureReference<ClusterFeature> lazyClusterFeatureRef)
     : ApplicationFeature{server, *this},
       _lazyQueryRegistryFeatureRef(std::move(lazyQueryRegistryFeatureRef)),
-      _lazyEngineSelectorFeatureRef(std::move(lazyEngineSelectorFeatureRef)),
+      _lazyDatabaseFeatureRef(std::move(lazyDatabaseFeatureRef)),
       _lazyClusterMetricsFeatureRef(std::move(lazyClusterMetricsFeatureRef)),
       _lazyClusterFeatureRef(std::move(lazyClusterFeatureRef)),
       _transactionStatistics(std::make_unique<TransactionStatistics>(*this)) {
@@ -730,7 +728,7 @@ void MetricsFeature::toPrometheus(std::string& result,
     }
 
     // Storage engine only provides standard metrics
-    auto& es = _engineSelectorFeature->engine();
+    auto& es = _databaseFeature->engine();
     if (es.typeName() == RocksDBEngine::kEngineName) {
       es.toPrometheus(result, _globals, _options.ensureWhitespace);
     }
@@ -852,7 +850,7 @@ void MetricsFeature::batchRemove(std::string_view name,
 
 void MetricsFeature::prepare() {
   _queryRegistryFeature = std::move(_lazyQueryRegistryFeatureRef).get();
-  _engineSelectorFeature = std::move(_lazyEngineSelectorFeatureRef).get();
+  _databaseFeature = std::move(_lazyDatabaseFeatureRef).get();
   _clusterMetricsFeature = std::move(_lazyClusterMetricsFeatureRef).get();
   _clusterFeature = std::move(_lazyClusterFeatureRef).get();
 }

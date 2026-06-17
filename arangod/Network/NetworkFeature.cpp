@@ -43,7 +43,6 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/ServerFeature.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 
 #include <fuerte/connection.h>
 
@@ -332,7 +331,6 @@ NetworkFeature::NetworkFeature(application_features::ApplicationServer& server,
   startsAfter<ClusterFeature>();
   startsAfter<SchedulerFeature>();
   startsAfter<ServerFeature>();
-  startsAfter<EngineSelectorFeature>();
 }
 
 NetworkFeature::~NetworkFeature() {

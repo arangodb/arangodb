@@ -36,7 +36,6 @@
 #include "Logger/LoggerStream.h"
 #include "Replication/DatabaseInitialSyncer.h"
 #include "Replication/DatabaseTailingSyncer.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "VocBase/vocbase.h"
 

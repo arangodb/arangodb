@@ -33,7 +33,6 @@
 #include <velocypack/Slice.h>
 
 namespace arangodb {
-class RocksDBKeyLeaser;
 
 namespace transaction {
 class Methods;

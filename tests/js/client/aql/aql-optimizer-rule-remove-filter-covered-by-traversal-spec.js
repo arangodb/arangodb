@@ -207,4 +207,23 @@ describe('Single Traversal Optimizer', function () {
     });
   });
 
+  describe('should not remove a filter when quantifiers differ', () => {
+    // Regression tests for COR-546.
+    // NONE > 5 and ALL > 3 together constrain foo to (3, 5] on every edge.
+    // Both conditions must be absorbed into the TraversalNode; neither may be
+    // dropped. validateResult catches the regression (wrong results if one is
+    // silently discarded).
+    it('on p.edges[*].foo NONE > 5 AND p.edges[*].foo ALL > 3', () => {
+      let query = `WITH @@vertices
+                     FOR v, e, p IN 1..2 OUTBOUND @start @@edges
+                     FILTER p.edges[*].foo NONE > 5
+                     FILTER p.edges[*].foo ALL > 3
+                     RETURN v._key`;
+
+      let plan = db._createStatement({query: query, bindVars: bindVars, options: activateOptimizer}).explain();
+      hasNoFilterNode(plan);
+      validateResult(query, bindVars);
+    });
+  });
+
 });
