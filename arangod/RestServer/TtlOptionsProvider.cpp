@@ -35,7 +35,7 @@ namespace arangodb {
 using namespace arangodb::options;
 
 void TtlOptionsProvider::declareOptions(std::shared_ptr<ProgramOptions> options,
-                                        TtlFeatureOptions& opts) {
+                                        TtlProperties& props) {
   options->addSection("ttl", "TTL index options");
 
   options
@@ -43,7 +43,7 @@ void TtlOptionsProvider::declareOptions(std::shared_ptr<ProgramOptions> options,
           "--ttl.frequency",
           "The frequency (in milliseconds) for the TTL background thread "
           "invocation (0 = turn the TTL background thread off entirely).",
-          new UInt64Parameter(&opts.frequency))
+          new UInt64Parameter(&props.frequency))
       .setLongDescription(R"(The lower this value, the more frequently the TTL
 background thread kicks in and scans all available TTL indexes for expired
 documents, and the earlier the expired documents are actually removed.)");
@@ -52,7 +52,7 @@ documents, and the earlier the expired documents are actually removed.)");
       ->addOption("--ttl.max-total-removes",
                   "The maximum number of documents to remove per invocation of "
                   "the TTL thread.",
-                  new UInt64Parameter(&opts.maxTotalRemoves, /*base*/ 1,
+                  new UInt64Parameter(&props.maxTotalRemoves, /*base*/ 1,
                                       /*minValue*/ 1))
       .setLongDescription(R"(In order to avoid "random" load spikes by the
 background thread suddenly kicking in and removing a lot of documents at once,
@@ -67,7 +67,7 @@ removal, they are removed in subsequent runs of the background thread.)");
           "--ttl.max-collection-removes",
           "The maximum number of documents to remove per collection in each "
           "invocation of the TTL thread.",
-          new UInt64Parameter(&opts.maxCollectionRemoves, /*base*/ 1,
+          new UInt64Parameter(&props.maxCollectionRemoves, /*base*/ 1,
                               /*minValue*/ 1))
       .setLongDescription(R"(You can configure this value separately from the
 total removal amount so that the per-collection time window for locking and
@@ -80,14 +80,14 @@ potential write-write conflicts can be reduced.)");
 }
 
 void TtlOptionsProvider::validateOptions(
-    std::shared_ptr<ProgramOptions> /*options*/, TtlFeatureOptions& opts) {
-  if (opts.maxCollectionRemoves == 0) {
+    std::shared_ptr<ProgramOptions> /*options*/, TtlProperties& props) {
+  if (props.maxCollectionRemoves == 0) {
     LOG_TOPIC("2ab82", FATAL, arangodb::Logger::STARTUP)
         << "invalid value for '--ttl.max-collection-removes'.";
     FATAL_ERROR_EXIT();
   }
 
-  if (opts.frequency > 0 && opts.frequency < TtlProperties::minFrequency) {
+  if (props.frequency > 0 && props.frequency < TtlProperties::minFrequency) {
     LOG_TOPIC("ea696", FATAL, arangodb::Logger::STARTUP)
         << "too low value for '--ttl.frequency'.";
     FATAL_ERROR_EXIT();

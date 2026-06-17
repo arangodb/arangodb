@@ -23,16 +23,16 @@
 #pragma once
 
 #include "ApplicationFeatures/OptionsProvider.h"
-#include "RestServer/TtlFeatureOptions.h"
+#include "RestServer/TtlProperties.h"
 
 namespace arangodb {
 
-struct TtlOptionsProvider : OptionsProvider<TtlFeatureOptions> {
+struct TtlOptionsProvider : OptionsProvider<TtlProperties> {
   void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
-                      TtlFeatureOptions& options) override;
+                      TtlProperties& options) override;
 
   void validateOptions(std::shared_ptr<options::ProgramOptions> opts,
-                       TtlFeatureOptions& options) override;
+                       TtlProperties& options) override;
 };
 
 }  // namespace arangodb

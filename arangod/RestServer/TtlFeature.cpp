@@ -112,71 +112,6 @@ void TtlStatistics::toVelocyPack(VPackBuilder& builder) const {
   builder.close();
 }
 
-void TtlProperties::toVelocyPack(VPackBuilder& builder, bool isActive) const {
-  builder.openObject();
-  builder.add("frequency", VPackValue(frequency));
-  builder.add("maxTotalRemoves", VPackValue(maxTotalRemoves));
-  builder.add("maxCollectionRemoves", VPackValue(maxCollectionRemoves));
-  // this attribute is hard-coded to false since v3.8, and will be removed later
-  builder.add("onlyLoadedCollections", VPackValue(false));
-  builder.add("active", VPackValue(isActive));
-  builder.close();
-}
-
-Result TtlProperties::fromVelocyPack(VPackSlice const& slice) {
-  if (!slice.isObject()) {
-    return Result(TRI_ERROR_BAD_PARAMETER, "expecting object for properties");
-  }
-
-  try {
-    uint64_t frequency = this->frequency;
-    uint64_t maxTotalRemoves = this->maxTotalRemoves;
-    uint64_t maxCollectionRemoves = this->maxCollectionRemoves;
-
-    if (slice.hasKey("frequency")) {
-      if (!slice.get("frequency").isNumber()) {
-        return Result(TRI_ERROR_BAD_PARAMETER,
-                      "expecting numeric value for frequency");
-      }
-      frequency = slice.get("frequency").getNumericValue<uint64_t>();
-      TRI_IF_FAILURE("allow-low-ttl-frequency") {
-        // for faster js tests we want to allow lower frequency values
-      }
-      else {
-        if (frequency < TtlProperties::minFrequency) {
-          return Result(TRI_ERROR_BAD_PARAMETER, "too low value for frequency");
-        }
-      }
-    }
-    if (slice.hasKey("maxTotalRemoves")) {
-      if (!slice.get("maxTotalRemoves").isNumber()) {
-        return Result(TRI_ERROR_BAD_PARAMETER,
-                      "expecting numeric value for maxTotalRemoves");
-      }
-      maxTotalRemoves =
-          slice.get("maxTotalRemoves").getNumericValue<uint64_t>();
-    }
-    if (slice.hasKey("maxCollectionRemoves")) {
-      if (!slice.get("maxCollectionRemoves").isNumber()) {
-        return Result(TRI_ERROR_BAD_PARAMETER,
-                      "expecting numeric value for maxCollectionRemoves");
-      }
-      maxCollectionRemoves =
-          slice.get("maxCollectionRemoves").getNumericValue<uint64_t>();
-    }
-
-    this->frequency = frequency;
-    this->maxTotalRemoves = maxTotalRemoves;
-    this->maxCollectionRemoves = maxCollectionRemoves;
-
-    return Result();
-  } catch (arangodb::basics::Exception const& ex) {
-    return Result(ex.code(), ex.what());
-  } catch (std::exception const& ex) {
-    return Result(TRI_ERROR_INTERNAL, ex.what());
-  }
-}
-
 class TtlThread final : public ServerThread {
  public:
   explicit TtlThread(application_features::ApplicationServer& server,
@@ -660,17 +595,12 @@ TtlFeature::~TtlFeature() { shutdownThread(); }
 
 void TtlFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   TtlOptionsProvider provider;
-  provider.declareOptions(options, _options);
+  provider.declareOptions(options, _properties);
 }
 
 void TtlFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   TtlOptionsProvider provider;
-  provider.validateOptions(options, _options);
-
-  std::lock_guard locker{_propertiesMutex};
-  _properties.frequency = _options.frequency;
-  _properties.maxTotalRemoves = _options.maxTotalRemoves;
-  _properties.maxCollectionRemoves = _options.maxCollectionRemoves;
+  provider.validateOptions(options, _properties);
 }
 
 void TtlFeature::start() {
