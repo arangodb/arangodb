@@ -74,4 +74,4 @@ Result TtlProperties::fromVelocyPack(VPackSlice const& slice) {
   }
 }
 
-} // namespace arangodb
+}  // namespace arangodb

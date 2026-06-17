@@ -30,8 +30,8 @@
 
 namespace arangodb {
 namespace velocypack {
-    class Builder;
-    class Slice;
+class Builder;
+class Slice;
 }  // namespace velocypack
 
 class TtlThread;
