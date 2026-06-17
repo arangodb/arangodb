@@ -350,8 +350,36 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(
                 TRI_ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT,
                 "negative default weight not allowed");
           }
-        } else if (name == "weightAttribute" && value->isStringValue()) {
-          options->weightAttribute = value->getString();
+        } else if (name == "weightAttribute") {
+          if (value->isStringValue()) {
+            std::string attribute = value->getString();
+            if (attribute.empty()) {
+              options->weightAttribute.clear();
+            } else {
+              options->weightAttribute = {std::move(attribute)};
+            }
+          } else if (value->type == NODE_TYPE_ARRAY) {
+            std::vector<std::string> weightAttribute;
+            weightAttribute.reserve(value->numMembers());
+            bool valid = true;
+            for (size_t j = 0; j < value->numMembers(); ++j) {
+              auto member = value->getMemberUnchecked(j);
+              if (member == nullptr || !member->isStringValue()) {
+                valid = false;
+                break;
+              }
+              weightAttribute.emplace_back(member->getString());
+            }
+            if (valid) {
+              options->weightAttribute = std::move(weightAttribute);
+            } else {
+              ExecutionPlan::invalidOptionAttribute(ast->query(), "invalid",
+                                                    "TRAVERSAL", name);
+            }
+          } else {
+            ExecutionPlan::invalidOptionAttribute(ast->query(), "invalid",
+                                                  "TRAVERSAL", name);
+          }
         } else if (name == "parallelism") {
           if (ast->canApplyParallelism()) {
             // parallelism is only used when there is no usage of V8 in the

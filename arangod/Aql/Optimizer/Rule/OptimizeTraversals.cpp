@@ -108,7 +108,8 @@ bool applyGraphProjections(TraversalNode* traversal) {
       // Also the community variant needs to transport weight, as the
       // coordinator will do the searching.
       if (traversal->options()->mode ==
-          traverser::TraverserOptions::Order::WEIGHTED) {
+              traverser::TraverserOptions::Order::WEIGHTED &&
+          !traversal->options()->weightAttribute.empty()) {
         AttributeNamePath weightElement = {
             traversal->options()->weightAttribute,
             traversal->plan()->getAst()->query().resourceMonitor()};

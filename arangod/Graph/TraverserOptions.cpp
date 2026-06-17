@@ -42,6 +42,54 @@ using namespace arangodb::graph;
 using namespace arangodb::traverser;
 using VPackHelper = arangodb::basics::VelocyPackHelper;
 
+namespace {
+
+std::vector<std::string> parseWeightAttribute(VPackSlice obj) {
+  VPackSlice weightAttribute = obj.get("weightAttribute");
+  if (weightAttribute.isString()) {
+    auto value = weightAttribute.stringView();
+    if (!value.empty()) {
+      return {std::string(value)};
+    }
+  } else if (weightAttribute.isArray()) {
+    std::vector<std::string> path;
+    path.reserve(weightAttribute.length());
+    for (VPackSlice part : VPackArrayIterator(weightAttribute)) {
+      if (!part.isString()) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_BAD_PARAMETER,
+            "The options require weightAttribute to be a string or array of "
+            "strings");
+      }
+      auto value = part.stringView();
+      path.emplace_back(value.data(), value.size());
+    }
+    return path;
+  } else if (!weightAttribute.isNone()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        "The options require weightAttribute to be a string or array of "
+        "strings");
+  }
+  return {};
+}
+
+void addWeightAttribute(VPackBuilder& builder,
+                        std::vector<std::string> const& weightAttribute) {
+  if (weightAttribute.empty()) {
+    builder.add("weightAttribute", VPackValue(""));
+  } else if (weightAttribute.size() == 1) {
+    builder.add("weightAttribute", VPackValue(weightAttribute.front()));
+  } else {
+    VPackArrayBuilder guard(&builder, "weightAttribute");
+    for (auto const& part : weightAttribute) {
+      builder.add(VPackValue(part));
+    }
+  }
+}
+
+}  // namespace
+
 TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query)
     : BaseOptions(query),
       _baseVertexExpression(nullptr),
@@ -113,7 +161,7 @@ TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query,
     uniqueEdges = TraverserOptions::UniquenessLevel::PATH;
   }
 
-  weightAttribute = VPackHelper::getStringValue(obj, "weightAttribute", "");
+  weightAttribute = parseWeightAttribute(obj);
   defaultWeight = VPackHelper::getNumericValue<double>(obj, "defaultWeight", 1);
   if (defaultWeight < 0.) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT,
@@ -264,7 +312,7 @@ TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query,
                                      "The options require a uniqueEdges");
   }
 
-  weightAttribute = VPackHelper::getStringValue(info, "weightAttribute", "");
+  weightAttribute = parseWeightAttribute(info);
   defaultWeight =
       VPackHelper::getNumericValue<double>(info, "defaultWeight", 1);
   if (defaultWeight < 0.) {
@@ -474,7 +522,7 @@ void TraverserOptions::toVelocyPack(VPackBuilder& builder) const {
       break;
   }
 
-  builder.add("weightAttribute", VPackValue(weightAttribute));
+  addWeightAttribute(builder, weightAttribute);
   builder.add("defaultWeight", VPackValue(defaultWeight));
 
   if (!vertexCollections.empty()) {
@@ -575,7 +623,7 @@ void TraverserOptions::buildEngineInfo(VPackBuilder& result) const {
       break;
   }
 
-  result.add("weightAttribute", VPackValue(weightAttribute));
+  addWeightAttribute(result, weightAttribute);
   result.add("defaultWeight", VPackValue(defaultWeight));
 
   if (!_depthLookupInfo.empty()) {

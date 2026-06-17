@@ -1,5 +1,11 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
+* COR-564: Specify the WeightAttribute attribute in the contained data vector.
+  WeightAttribute like:
+   OPTIONS { order: "weighted", weightAttribute: "Data.Weight" } back compatibility
+   OPTIONS { order: "weighted", weightAttribute: ["Data.Weight"]} new implementation
+   OPTIONS { order: "weighted", weightAttribute: ["Data", "Weight"] } new implementation
+
 * COR-572: BugFix - Resolved unintended warnings raised by eager evaluation in 
   the ternary operator during traversal and optimization.
 

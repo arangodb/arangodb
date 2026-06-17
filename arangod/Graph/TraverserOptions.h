@@ -28,6 +28,7 @@
 #include "StorageEngine/TransactionState.h"
 
 #include <memory>
+#include <vector>
 
 namespace arangodb {
 
@@ -95,7 +96,7 @@ struct TraverserOptions : public graph::BaseOptions {
 
   UniquenessLevel uniqueEdges;
 
-  std::string weightAttribute;
+  std::vector<std::string> weightAttribute;
 
   double defaultWeight;
 
