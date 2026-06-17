@@ -85,14 +85,6 @@ uint64_t AqlValue::hash(uint64_t seed) const {
   // we must use the slow hash function here, because a value may have
   // different representations in case it's an array/object/number
   auto s = slice(t);
-  // -0.0 and +0.0 must hash identically (equal_to treats them as equal)
-  if (s.isDouble()) {
-    double v = s.getDouble();
-    if (std::signbit(v) && v == 0.0) {
-      v = 0.0;
-    }
-    return VELOCYPACK_HASH(&v, sizeof(v), seed);
-  }
   return s.normalizedHash(seed);
 }
 
