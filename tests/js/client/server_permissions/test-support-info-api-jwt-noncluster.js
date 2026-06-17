@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, assertEqual, assertTrue, arango */
+/* global getOptions */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -25,8 +25,12 @@
 /// @author Copyright 2019, ArangoDB Inc, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
+const jsunity = require("jsunity");
+const {assertEqual, assertTrue, assertFalse, assertNotEqual, assertUndefined, assertNotUndefined} = jsunity.jsUnity.assertions;
+const db = require('@arangodb').db;
 const crypto = require('@arangodb/crypto');
 const request = require('@arangodb/request');
+let IM = global.instanceManager;
 
 const jwtSecret = 'abc123';
 
@@ -38,16 +42,7 @@ if (getOptions === true) {
   };
 }
 
-const jsunity = require('jsunity');
-
 function testSuite() {
-  let endpoint = arango.getEndpoint();
-  let db = require("@arangodb").db;
-
-  let baseUrl = function () {
-    return endpoint.replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:');
-  };
-
   const jwt = crypto.jwtEncode(jwtSecret, {
     "server_id": "ABCD",
     "iss": "arangodb", "exp": Math.floor(Date.now() / 1000) + 3600
@@ -56,14 +51,14 @@ function testSuite() {
   return {
     testApiGetNoJwt : function() {
       let res = request.get({
-        url: baseUrl() + "/_admin/support-info",
+        url: IM.url + "/_admin/support-info",
       });
       assertEqual(401, res.status);
     },
 
     testApiGetJwt : function() {
       let res = request.get({
-        url: baseUrl() + "/_admin/support-info",
+        url: IM.url + "/_admin/support-info",
         auth: {
           bearer: jwt,
         }
@@ -71,13 +66,13 @@ function testSuite() {
       assertEqual(200, res.status);
       assertTrue(res.json.hasOwnProperty("deployment"));
     },
-    
+
     testApiGetJwtOtherDatabase : function() {
       const cn = "SupportInfoApiTest";
       db._createDatabase(cn);
       try {
         let res = request.get({
-          url: baseUrl() + "/_db/" + cn + "/_admin/support-info",
+          url: IM.url + "/_db/" + cn + "/_admin/support-info",
           auth: { bearer: jwt },
         });
         assertEqual(403, res.status);

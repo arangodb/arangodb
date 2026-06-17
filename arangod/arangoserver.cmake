@@ -12,6 +12,7 @@ add_library(arangoserver STATIC
   Cluster/AutoRebalance.cpp
   Cluster/ClusterCollectionCreationInfo.cpp
   Cluster/ClusterFeature.cpp
+  Cluster/ClusterOptionsProvider.cpp
   Cluster/ClusterHelpers.cpp
   Cluster/ClusterInfo.cpp
   Cluster/ClusterTrxMethods.cpp
@@ -34,6 +35,7 @@ add_library(arangoserver STATIC
   Cluster/MaintenanceWorker.cpp
   Cluster/RebootTracker.cpp
   Cluster/ReplicationTimeoutFeature.cpp
+  Cluster/ReplicationTimeoutOptionsProvider.cpp
   Cluster/ResignShardLeadership.cpp
   Cluster/RestAgencyCallbacksHandler.cpp
   Cluster/RestClusterHandler.cpp
@@ -55,6 +57,7 @@ add_library(arangoserver STATIC
   GeneralServer/AcceptorUnixDomain.cpp
   GeneralServer/AsyncJobManager.cpp
   GeneralServer/AuthenticationFeature.cpp
+  GeneralServer/AuthenticationOptionsProvider.cpp
   GeneralServer/CommTask.cpp
   GeneralServer/GeneralCommTask.cpp
   GeneralServer/GeneralServer.cpp
@@ -123,10 +126,16 @@ add_library(arangoserver STATIC
   RestServer/CrashHandlerOptionsProvider.cpp
   RestServer/CpuUsageFeature.cpp
   RestServer/DaemonFeature.cpp
+  RestServer/DaemonOptionsProvider.cpp
   RestServer/DatabaseFeature.cpp
+  RestServer/DatabaseOptionsProvider.cpp
   RestServer/DatabasePathFeature.cpp
+  RestServer/DatabasePathOptionsProvider.cpp
   RestServer/DumpLimitsFeature.cpp
+  RestServer/DumpLimitsOptionsProvider.cpp
   RestServer/EndpointFeature.cpp
+  RestServer/EndpointFeatureOptions.cpp
+  RestServer/EndpointOptionsProvider.cpp
   RestServer/EnvironmentFeature.cpp
   RestServer/FileDescriptorsFeature.cpp
   RestServer/FileDescriptorsOptionsProvider.cpp
@@ -135,13 +144,17 @@ add_library(arangoserver STATIC
   RestServer/FortuneOptionsProvider.cpp
   RestServer/IOHeartbeatThread.cpp
   RestServer/InitDatabaseFeature.cpp
+  RestServer/InitDatabaseOptionsProvider.cpp
   RestServer/LanguageCheckFeature.cpp
   RestServer/LegacyOptionsFeature.cpp
   RestServer/LockfileFeature.cpp
   RestServer/LogBufferFeature.cpp
+  RestServer/LogBufferOptionsProvider.cpp
   RestServer/MaxMapCountFeature.cpp
   RestServer/ApiRecordingFeature.cpp
+  RestServer/ApiRecordingOptionsProvider.cpp
   RestServer/PrivilegeFeature.cpp
+  RestServer/PrivilegeOptionsProvider.cpp
   RestServer/QueryRegistryFeature.cpp
   RestServer/QueryRegistryFeatureOptions.cpp
   RestServer/ServerFeature.cpp
@@ -149,6 +162,7 @@ add_library(arangoserver STATIC
   RestServer/SharedPRNGFeature.cpp
   RestServer/SoftShutdownFeature.cpp
   RestServer/SupervisorFeature.cpp
+  RestServer/SupervisorOptionsProvider.cpp
   RestServer/SystemDatabaseFeature.cpp
   RestServer/TemporaryStorageFeature.cpp
   RestServer/TimeZoneFeature.cpp
@@ -176,6 +190,7 @@ add_library(arangoserver STATIC
   Transaction/ManagedContext.cpp
   Transaction/Manager.cpp
   Transaction/ManagerFeature.cpp
+  Transaction/ManagerOptionsProvider.cpp
   Transaction/Methods.cpp
   Transaction/Options.cpp
   Transaction/ReplicatedContext.cpp

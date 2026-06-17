@@ -52,6 +52,7 @@ defmodule Mix.Tasks.Toast do
       --sanitizer TYPE            - Sanitizer: tsan or alubsan (auto-detected from build dir)
       --attach-debugger           - Pause after deployment for live debugger attachment (disables test timeouts)
       --http2                     - Use HTTP/2 (h2c) for client requests (default: HTTP/1.1)
+      --capture-traffic            - Capture network traffic with tcpdump (requires tcpdump with CAP_NET_RAW)
       --rr ROLES                  - Record with rr: "default", "all", or comma-separated roles
                                     (single, agent, dbserver, coordinator)
                                     "default" = single server or dbserver,coordinator in cluster
@@ -128,6 +129,7 @@ defmodule Mix.Tasks.Toast do
     no_agency_dump: :boolean,
     ci: :boolean,
     force_all_tiers: :boolean,
+    capture_traffic: :boolean,
     help: :boolean
   ]
 
@@ -203,7 +205,9 @@ defmodule Mix.Tasks.Toast do
     run_results = %{
       test_failures: result.stats.failures,
       server_crashed: DiagnosticsSummary.has_server_crash?(result.suites),
-      infrastructure_failure: DiagnosticsSummary.has_timeout?(result.suites),
+      infrastructure_failure:
+        DiagnosticsSummary.has_timeout?(result.suites) or
+          DiagnosticsSummary.has_infrastructure?(result.suites),
       sanitizer_errors: DiagnosticsSummary.has_sanitizer_errors?(result.suites)
     }
 

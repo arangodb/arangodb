@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertTrue, assertFalse, fail */
+/*global assertEqual, assertTrue, assertFalse */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -28,7 +28,6 @@ const internal = require("internal");
 const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
 const aql = arangodb.aql;
-const errors = internal.errors;
 const db = internal.db;
 const {
   randomNumberGeneratorFloat,
@@ -38,6 +37,7 @@ const {
   generateDocs,
   waitForVectorIndexState,
   VectorIndexTrainingState,
+  assertEnsureIndexResultUnusable,
 } = require("@arangodb/testutils/vector-index-common");
 const {deriveTestSuite} = require("@arangodb/test-helper-common");
 
@@ -152,12 +152,10 @@ function VectorTrainingStateTestSuite(sparse) {
 
       const gen = randomNumberGeneratorFloat(seed);
       const qp = Array.from({length: dimension}, () => gen());
-      try {
-        db._query(buildSearchQuery(collection, qp));
-        fail();
-      } catch (e) {
-        assertEqual(errors.ERROR_QUERY_VECTOR_INDEX_NOT_READY.code, e.errorNum);
-      }
+      // An unusable index is still searchable via a linear scan; with no
+      // documents present the scan simply returns no results.
+      const results = db._query(buildSearchQuery(collection, qp)).toArray();
+      assertEqual(0, results.length);
     },
 
     testBelowThresholdIndexRemainsUnusable: function () {
@@ -176,12 +174,10 @@ function VectorTrainingStateTestSuite(sparse) {
       assertIndexUnusable(collection, "vec_l2");
 
       const qp = Array.from({length: dimension}, () => gen());
-      try {
-        db._query(buildSearchQuery(collection, qp));
-        fail();
-      } catch (e) {
-        assertEqual(errors.ERROR_QUERY_VECTOR_INDEX_NOT_READY.code, e.errorNum);
-      }
+      // Unusable index falls back to a linear scan over the documents present;
+      // with belowThresholdCount (>= LIMIT) docs the scan fills the top-k.
+      const results = db._query(buildSearchQuery(collection, qp)).toArray();
+      assertEqual(5, results.length);
     },
 
     testAboveThresholdIndexBecomesReady: function () {
@@ -289,12 +285,10 @@ function SparseVectorIndexTestSuite() {
       assertIndexUnusable(collection, "vec_l2");
 
       const qp = vectorDocs[0].vector;
-      try {
-        db._query(buildSearchQuery(collection, qp));
-        fail();
-      } catch (e) {
-        assertEqual(errors.ERROR_QUERY_VECTOR_INDEX_NOT_READY.code, e.errorNum);
-      }
+      // Unusable sparse index falls back to a linear scan; only the
+      // vector-bearing docs (belowThresholdCount >= LIMIT) are candidates.
+      const results = db._query(buildSearchQuery(collection, qp)).toArray();
+      assertEqual(5, results.length);
     },
   };
 }
@@ -406,28 +400,19 @@ function SparseScalingVectorIndexTestSuite() {
       collection.insert(vectorDocs);
       collection.insert(nonVectorDocs);
 
-      try {
-        createSparseScalingIndex(collection);
-        fail();
-      } catch (e) {
-        assertEqual(errors.ERROR_QUERY_VECTOR_INDEX_NOT_READY.code, e.errorNum,
-          "Expected NOT_READY when vector-bearing docs (" + vectorDocsBelowThreshold +
-          ") are below threshold (" + scalingMinNLists +
-          "), even though total docs (" + (200 + vectorDocsBelowThreshold) +
-          ") exceed threshold"
-        );
-      }
+      const result = createSparseScalingIndex(collection);
+      assertEnsureIndexResultUnusable(result,
+        `${vectorDocsBelowThreshold} vector-bearing docs below threshold ` +
+        `${scalingMinNLists} despite ${200 + vectorDocsBelowThreshold} total docs`);
+
+      assertIndexUnusable(collection, "vec_l2");
     },
 
     testSparseScalingOnEmptyCollectionRemainsUnusable: function() {
-      try {
-        createSparseScalingIndex(collection);
-        fail();
-      } catch (e) {
-        assertEqual(errors.ERROR_QUERY_VECTOR_INDEX_NOT_READY.code, e.errorNum,
-          "Expected NOT_READY when collection is empty"
-        );
-      }
+      const result = createSparseScalingIndex(collection);
+      assertEnsureIndexResultUnusable(result, "empty collection");
+
+      assertIndexUnusable(collection, "vec_l2");
     },
   };
 }

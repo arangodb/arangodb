@@ -33,13 +33,7 @@ struct EndpointFeatureOptions {
   bool reuseAddress = true;
   uint64_t backlogSize = 64;
 
-  EndpointFeatureOptions() {
-    // if our default value is too high, we'll use half of the max value
-    // provided by the system
-    if (backlogSize > SOMAXCONN) {
-      backlogSize = SOMAXCONN / 2;
-    }
-  }
+  EndpointFeatureOptions();
 };
 
 }  // namespace arangodb

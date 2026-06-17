@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 200 */
-/* global getOptions, assertEqual, assertNotEqual, assertTrue, assertNotNull, assertNotUndefined, arango, print */
+/* global getOptions, print */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -36,6 +36,7 @@ if (getOptions === true) {
 }
 
 const jsunity = require('jsunity');
+const {assertEqual, assertTrue, assertFalse, assertNotEqual, assertNotNull, assertNotUndefined} = jsunity.jsUnity.assertions;
 const internal = require('internal');
 const toArgv = require('internal').toArgv;
 const fs = require('fs');
@@ -43,11 +44,15 @@ const pu = require('@arangodb/testutils/process-utils');
 const path = require('path');
 const basePath = path.resolve(internal.pathForTesting('common'), 'test-data', 'apps', 'redirect');
 const arangodb = require('@arangodb');
+const arango = arangodb.arango;
 const db = arangodb.db;
 const users = require('@arangodb/users');
 const analyzers = require("@arangodb/analyzers");
 const isCluster = require("internal").isCluster();
 const isEnterprise = require("internal").isEnterprise();
+let IM = global.instanceManager;
+
+
 let smartGraph = null;
 if (isEnterprise) {
   smartGraph = require("@arangodb/smart-graph");
@@ -352,7 +357,7 @@ function telemetricsShellReconnectSmartGraphTestsuite() {
     testTelemetricsShellRequestByUserNotAuthorized: function () {
       try {
         createUser();
-        arango.reconnect(arango.getEndpoint(), '_system', userName, "123");
+        arango.reconnect(IM.endpoint, '_system', userName, "123");
         arango.disableAutomaticallySendTelemetricsToEndpoint();
         arango.startTelemetrics();
         const res = getTelemetricsResult();
@@ -361,7 +366,7 @@ function telemetricsShellReconnectSmartGraphTestsuite() {
         assertEqual(res.errorNum, internal.errors.ERROR_HTTP_FORBIDDEN.code);
         assertTrue(res.errorMessage.includes("insufficient permissions"));
       } finally {
-        arango.reconnect(arango.getEndpoint(), '_system', 'root', '');
+        arango.reconnect(IM.endpoint, '_system', 'root', '');
         if (users.exists(userName)) {
           removeUser();
         }
@@ -502,10 +507,9 @@ function telemetricsShellReconnectGraphTestsuite() {
       let file = fs.getTempFile() + "-telemetrics";
       fs.write(file, `(function() { const x = 0;})();`);
       let options = internal.options();
-      let endpoint = arango.getEndpoint().replace(/\+vpp/, '').replace(/^http:/, 'tcp:').replace(/^https:/, 'ssl:').replace(/^h2:/, 'tcp:');
       const args = {
         'javascript.startup-directory': options['javascript.startup-directory'],
-        'server.endpoint': endpoint,
+        'server.endpoint': IM.endpoint,
         'server.username': arango.connectedUser(),
         'server.password': '',
         'javascript.execute': file,
@@ -665,7 +669,7 @@ function telemetricsApiReconnectSmartGraphTestsuite() {
     testTelemetricsApiRequestByUserNotAuthorized: function () {
       try {
         createUser();
-        arango.reconnect(arango.getEndpoint(), '_system', userName, "123");
+        arango.reconnect(IM.endpoint, '_system', userName, "123");
         arango.disableAutomaticallySendTelemetricsToEndpoint();
         arango.startTelemetrics();
         const res = arango.GET("/_admin/telemetrics");
@@ -674,7 +678,7 @@ function telemetricsApiReconnectSmartGraphTestsuite() {
         assertEqual(res.errorNum, internal.errors.ERROR_HTTP_FORBIDDEN.code);
         assertTrue(res.errorMessage.includes("insufficient permissions"));
       } finally {
-        arango.reconnect(arango.getEndpoint(), '_system', 'root', '');
+        arango.reconnect(IM.endpoint, '_system', 'root', '');
         if (users.exists(userName)) {
           removeUser();
         }

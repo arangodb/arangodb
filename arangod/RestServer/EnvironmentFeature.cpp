@@ -35,7 +35,6 @@
 #include "Logger/LoggerStream.h"
 #include "RestServer/LogBufferFeature.h"
 #include "RestServer/MaxMapCountFeature.h"
-#include "RestServer/SharedPRNGFeature.h"
 
 #include <array>
 #include <atomic>
@@ -96,7 +95,6 @@ EnvironmentFeature::EnvironmentFeature(
   startsAfter<LogBufferFeature>();
   startsAfter<MaxMapCountFeature>();
   startsAfter<OptionsCheckFeature>();
-  startsAfter<SharedPRNGFeature>();
 }
 
 void EnvironmentFeature::prepare() {
