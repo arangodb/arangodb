@@ -260,16 +260,15 @@ RocksDBFilePurgeEnabler::RocksDBFilePurgeEnabler(
 RocksDBEngine::RocksDBEngine(
     application_features::ApplicationServer& server,
     RocksDBOptionsProvider& optionsProvider, metrics::ICollector& metrics,
-    IRocksDBDatabasePathProvider const& databasePathProvider,
-    IRocksDBVectorIndexProvider const& vectorIndexProvider,
-    IRocksDBFlushProvider& flushProvider,
-    IRocksDBDumpLimitsProvider const& dumpLimitsProvider,
-    IRocksDBReplicatedLogProvider* replicatedLogProvider,
+    IDatabasePathProvider const& databasePathProvider,
+    IVectorIndexProvider const& vectorIndexProvider,
+    IFlushControl& flushProvider, IDumpLimitsProvider const& dumpLimitsProvider,
+    IReplicatedLogProvider* replicatedLogProvider,
     RocksDBRecoveryManager const& rocksDbRecoveryManager,
-    IRocksDBDatabaseProvider& databaseProvider,
+    IDatabaseProvider& databaseProvider,
     RocksDBIndexCacheRefillFeature& rocksDbIndexCacheRefillFeature,
-    IRocksDBCacheManagerProvider& cacheManagerProvider,
-    IRocksDBSortingProvider const& sortingProvider)
+    ICacheManagerProvider& cacheManagerProvider,
+    ISortingProvider const& sortingProvider)
     : StorageEngine(server, kEngineName, name(), typeid(RocksDBEngine),
                     std::make_unique<RocksDBIndexFactory>(server)),
       _databasePathProvider(databasePathProvider),
@@ -4321,10 +4320,10 @@ std::string RocksDBEngine::getLanguageFile() const {
   return arangodb::basics::FileUtils::buildFilename(_basePath, kLanguageFile);
 }
 
-auto RocksDBEngine::getDatabaseProvider() const -> IRocksDBDatabaseProvider& {
+auto RocksDBEngine::getDatabaseProvider() const -> IDatabaseProvider& {
   return _databaseProvider;
 }
-auto RocksDBEngine::getFlushProvider() const -> IRocksDBFlushProvider& {
+auto RocksDBEngine::getFlushProvider() const -> IFlushControl& {
   return _flushProvider;
 }
 

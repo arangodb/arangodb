@@ -23,11 +23,13 @@
 
 #pragma once
 
+#include "RestServer/DumpLimitsFeatureOptions.h"
+
 namespace arangodb {
 
-struct IRocksDBVectorIndexProvider {
-  virtual ~IRocksDBVectorIndexProvider() = default;
-  virtual bool isVectorIndexEnabled() const = 0;
+struct IDumpLimitsProvider {
+  virtual ~IDumpLimitsProvider() = default;
+  virtual DumpLimitsFeatureOptions const& limits() const noexcept = 0;
 };
 
 }  // namespace arangodb

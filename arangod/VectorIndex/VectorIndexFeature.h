@@ -28,7 +28,7 @@
 #include "Basics/Result.h"
 #include "Futures/Future.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "RocksDBEngine/IRocksDBVectorIndexProvider.h"
+#include "VectorIndex/IVectorIndexProvider.h"
 #include "VectorIndex/VectorIndexBuildManager.h"
 #include "VectorIndex/VectorIndexFeatureOptions.h"
 #include "VocBase/Identifiers/IndexId.h"
@@ -39,7 +39,7 @@ class DatabaseFeature;
 
 class VectorIndexFeature final
     : public application_features::ApplicationFeature,
-      public IRocksDBVectorIndexProvider {
+      public IVectorIndexProvider {
  public:
   VectorIndexFeature(application_features::ApplicationServer& server,
                      DatabaseFeature& databaseFeature);

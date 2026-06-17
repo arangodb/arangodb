@@ -39,15 +39,15 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Containers/FlatHashSet.h"
 #include "Metrics/Fwd.h"
+#include "Agency/ISortingProvider.h"
+#include "Cache/ICacheManagerProvider.h"
 #include "Metrics/ICollector.h"
-#include "RocksDBEngine/IRocksDBCacheManagerProvider.h"
-#include "RocksDBEngine/IRocksDBDatabasePathProvider.h"
-#include "RocksDBEngine/IRocksDBDatabaseProvider.h"
-#include "RocksDBEngine/IRocksDBDumpLimitsProvider.h"
-#include "RocksDBEngine/IRocksDBFlushProvider.h"
-#include "RocksDBEngine/IRocksDBReplicatedLogProvider.h"
-#include "RocksDBEngine/IRocksDBSortingProvider.h"
-#include "RocksDBEngine/IRocksDBVectorIndexProvider.h"
+#include "Replication2/ReplicatedLog/IReplicatedLogProvider.h"
+#include "RestServer/IDatabasePathProvider.h"
+#include "RestServer/IDatabaseProvider.h"
+#include "RestServer/IDumpLimitsProvider.h"
+#include "RestServer/IFlushControl.h"
+#include "VectorIndex/IVectorIndexProvider.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "StorageEngine/StorageEngine.h"
 #include "VocBase/Identifiers/DataSourceId.h"
@@ -173,25 +173,25 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   RocksDBEngine(application_features::ApplicationServer& server,
                 RocksDBOptionsProvider& optionsProvider,
                 metrics::ICollector& metrics,
-                IRocksDBDatabasePathProvider const& databasePathProvider,
-                IRocksDBVectorIndexProvider const& vectorIndexProvider,
-                IRocksDBFlushProvider& flushProvider,
-                IRocksDBDumpLimitsProvider const& dumpLimitsProvider,
-                IRocksDBReplicatedLogProvider* replicatedLogProvider,
+                IDatabasePathProvider const& databasePathProvider,
+                IVectorIndexProvider const& vectorIndexProvider,
+                IFlushControl& flushProvider,
+                IDumpLimitsProvider const& dumpLimitsProvider,
+                IReplicatedLogProvider* replicatedLogProvider,
                 RocksDBRecoveryManager const& rocksDbRecoveryManager,
-                IRocksDBDatabaseProvider& databaseProvider,
+                IDatabaseProvider& databaseProvider,
                 RocksDBIndexCacheRefillFeature& rocksDbIndexCacheRefillFeature,
-                IRocksDBCacheManagerProvider& cacheManagerProvider,
-                IRocksDBSortingProvider const& sortingProvider);
+                ICacheManagerProvider& cacheManagerProvider,
+                ISortingProvider const& sortingProvider);
   ~RocksDBEngine();
 
   // Temporary, for easier refactoring:
   template<typename Type>
   auto getFeature() const -> Type&;
 
-  auto getDatabaseProvider() const -> IRocksDBDatabaseProvider&;
+  auto getDatabaseProvider() const -> IDatabaseProvider&;
 
-  auto getFlushProvider() const -> IRocksDBFlushProvider&;
+  auto getFlushProvider() const -> IFlushControl&;
 
   // inherited from ApplicationFeature
   // ---------------------------------
@@ -617,16 +617,16 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   }
 
  private:
-  IRocksDBDatabasePathProvider const& _databasePathProvider;
-  IRocksDBVectorIndexProvider const& _vectorIndexProvider;
-  IRocksDBFlushProvider& _flushProvider;
-  IRocksDBDumpLimitsProvider const& _dumpLimitsProvider;
-  IRocksDBReplicatedLogProvider* _replicatedLogProvider;
+  IDatabasePathProvider const& _databasePathProvider;
+  IVectorIndexProvider const& _vectorIndexProvider;
+  IFlushControl& _flushProvider;
+  IDumpLimitsProvider const& _dumpLimitsProvider;
+  IReplicatedLogProvider* _replicatedLogProvider;
   RocksDBRecoveryManager const& _rocksDbRecoveryManager;
-  IRocksDBDatabaseProvider& _databaseProvider;
+  IDatabaseProvider& _databaseProvider;
   RocksDBIndexCacheRefillFeature& _rocksDbIndexCacheRefillFeature;
-  IRocksDBCacheManagerProvider& _cacheManagerProvider;
-  IRocksDBSortingProvider const& _sortingProvider;
+  ICacheManagerProvider& _cacheManagerProvider;
+  ISortingProvider const& _sortingProvider;
   RocksDBOptionsProvider& _optionsProvider;
 
   metrics::ICollector& _metrics;

@@ -25,13 +25,13 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "RestServer/DatabasePathFeatureOptions.h"
-#include "RocksDBEngine/IRocksDBDatabasePathProvider.h"
+#include "RestServer/IDatabasePathProvider.h"
 
 namespace arangodb {
 
 class DatabasePathFeature final
     : public application_features::ApplicationFeature,
-      public IRocksDBDatabasePathProvider {
+      public IDatabasePathProvider {
  public:
   static constexpr std::string_view name() { return "DatabasePath"; }
 

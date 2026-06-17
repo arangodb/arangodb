@@ -25,7 +25,7 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
-#include "RocksDBEngine/IRocksDBReplicatedLogProvider.h"
+#include "Replication2/ReplicatedLog/IReplicatedLogProvider.h"
 
 namespace arangodb::replication2::replicated_log {
 struct ReplicatedLogMetrics;
@@ -34,7 +34,7 @@ struct ReplicatedLogMetrics;
 namespace arangodb {
 class ReplicatedLogFeature final
     : public application_features::ApplicationFeature,
-      public IRocksDBReplicatedLogProvider {
+      public IReplicatedLogProvider {
  public:
   static constexpr std::string_view name() noexcept { return "ReplicatedLog"; }
 

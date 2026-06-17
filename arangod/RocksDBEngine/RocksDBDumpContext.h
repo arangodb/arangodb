@@ -57,7 +57,7 @@ struct CustomTypeHandler;
 }
 
 class CollectionGuard;
-struct IRocksDBDatabaseProvider;
+struct IDatabaseProvider;
 class DatabaseGuard;
 class LogicalCollection;
 class RocksDBCollection;
@@ -122,7 +122,7 @@ class RocksDBDumpContext {
   RocksDBDumpContext& operator=(RocksDBDumpContext const&) = delete;
 
   RocksDBDumpContext(RocksDBEngine& engine, RocksDBDumpManager& manager,
-                     IRocksDBDatabaseProvider& databaseProvider, std::string id,
+                     IDatabaseProvider& databaseProvider, std::string id,
                      RocksDBDumpContextOptions options, std::string user,
                      std::string database, bool useVPack);
 

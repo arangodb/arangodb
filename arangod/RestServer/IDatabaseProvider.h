@@ -28,7 +28,8 @@
 
 #include <functional>
 #include <string_view>
-
+// TODO: move it to DatabaseFeature, which inherits, remove RocksDB prefix from
+// the interfaces double check usage of the provider to simplify more
 struct TRI_vocbase_t;
 
 namespace arangodb {
@@ -38,8 +39,8 @@ namespace velocypack {
 class Builder;
 }
 
-struct IRocksDBDatabaseProvider {
-  virtual ~IRocksDBDatabaseProvider() = default;
+struct IDatabaseProvider {
+  virtual ~IDatabaseProvider() = default;
 
   virtual VocbasePtr useDatabase(std::string_view name) const = 0;
   virtual VocbasePtr useDatabase(TRI_voc_tick_t id) const = 0;
@@ -50,7 +51,7 @@ struct IRocksDBDatabaseProvider {
   virtual void inventory(
       velocypack::Builder& result, TRI_voc_tick_t,
       std::function<bool(LogicalCollection const*)> const& nameFilter) = 0;
-
+  // thie getter is weird to be here, maybe move it
   virtual replication::Version defaultReplicationVersion() const noexcept = 0;
 
   virtual bool extendedNames() const noexcept = 0;

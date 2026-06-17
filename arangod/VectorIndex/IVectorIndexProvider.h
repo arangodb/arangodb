@@ -25,9 +25,9 @@
 
 namespace arangodb {
 
-struct IRocksDBSortingProvider {
-  virtual ~IRocksDBSortingProvider() = default;
-  virtual bool isActivatedAgent() const noexcept = 0;
+struct IVectorIndexProvider {
+  virtual ~IVectorIndexProvider() = default;
+  virtual bool isVectorIndexEnabled() const = 0;
 };
 
 }  // namespace arangodb

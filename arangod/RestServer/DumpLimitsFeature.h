@@ -25,7 +25,7 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "RestServer/DumpLimitsFeatureOptions.h"
-#include "RocksDBEngine/IRocksDBDumpLimitsProvider.h"
+#include "RestServer/IDumpLimitsProvider.h"
 
 namespace arangodb {
 
@@ -33,7 +33,7 @@ namespace arangodb {
 using DumpLimits = DumpLimitsFeatureOptions;
 
 class DumpLimitsFeature : public application_features::ApplicationFeature,
-                          public IRocksDBDumpLimitsProvider {
+                          public IDumpLimitsProvider {
  public:
   static constexpr std::string_view name() noexcept { return "DumpLimits"; }
 

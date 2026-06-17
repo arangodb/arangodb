@@ -30,8 +30,8 @@
 
 namespace arangodb {
 
-struct IRocksDBFlushProvider {
-  virtual ~IRocksDBFlushProvider() = default;
+struct IFlushControl {
+  virtual ~IFlushControl() = default;
   virtual bool isEnabled() const noexcept = 0;
   virtual std::tuple<std::size_t, std::size_t, TRI_voc_tick_t>
   releaseUnusedTicks() = 0;

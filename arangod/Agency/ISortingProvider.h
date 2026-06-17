@@ -23,13 +23,11 @@
 
 #pragma once
 
-#include "RestServer/DumpLimitsFeatureOptions.h"
-
 namespace arangodb {
 
-struct IRocksDBDumpLimitsProvider {
-  virtual ~IRocksDBDumpLimitsProvider() = default;
-  virtual DumpLimitsFeatureOptions const& limits() const noexcept = 0;
+struct ISortingProvider {
+  virtual ~ISortingProvider() = default;
+  virtual bool isActivatedAgent() const noexcept = 0;
 };
 
 }  // namespace arangodb

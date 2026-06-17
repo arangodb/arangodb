@@ -28,7 +28,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/system-functions.h"
 #include "Logger/LogMacros.h"
-#include "RocksDBEngine/IRocksDBDatabaseProvider.h"
+#include "RestServer/IDatabaseProvider.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBDumpManager.h"
@@ -199,11 +199,13 @@ void RocksDBDumpContext::WorkItems::stop() {
   _cv.notify_all();
 }
 
-RocksDBDumpContext::RocksDBDumpContext(
-    RocksDBEngine& engine, RocksDBDumpManager& manager,
-    IRocksDBDatabaseProvider& databaseProvider, std::string id,
-    RocksDBDumpContextOptions options, std::string user, std::string database,
-    bool useVPack)
+RocksDBDumpContext::RocksDBDumpContext(RocksDBEngine& engine,
+                                       RocksDBDumpManager& manager,
+                                       IDatabaseProvider& databaseProvider,
+                                       std::string id,
+                                       RocksDBDumpContextOptions options,
+                                       std::string user, std::string database,
+                                       bool useVPack)
     : _engine(engine),
       _manager(manager),
       _id(std::move(id)),

@@ -29,8 +29,8 @@ class Manager;
 
 namespace arangodb {
 
-struct IRocksDBCacheManagerProvider {
-  virtual ~IRocksDBCacheManagerProvider() = default;
+struct ICacheManagerProvider {
+  virtual ~ICacheManagerProvider() = default;
   virtual cache::Manager* manager() = 0;
 };
 

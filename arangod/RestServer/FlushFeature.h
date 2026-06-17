@@ -27,7 +27,7 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Metrics/Fwd.h"
 #include "RestServer/FlushOptionsProvider.h"
-#include "RocksDBEngine/IRocksDBFlushProvider.h"
+#include "RestServer/IFlushControl.h"
 #include "VocBase/voc-types.h"
 
 #include <cstdint>
@@ -57,7 +57,7 @@ struct FlushSubscription {
 };
 
 class FlushFeature final : public application_features::ApplicationFeature,
-                           public IRocksDBFlushProvider {
+                           public IFlushControl {
  public:
   static constexpr std::string_view name() noexcept { return "Flush"; }
 

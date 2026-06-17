@@ -31,7 +31,7 @@
 #include "Replication2/Version.h"
 #include "RestServer/DatabaseFeatureOptions.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "RocksDBEngine/IRocksDBDatabaseProvider.h"
+#include "RestServer/IDatabaseProvider.h"
 #include "Utils/DatabaseGuard.h"
 #include "Utils/VersionTracker.h"
 #include "VocBase/voc-types.h"
@@ -103,7 +103,7 @@ class DatabaseManagerThread final : public ServerThread {
 };
 
 class DatabaseFeature final : public application_features::ApplicationFeature,
-                              public IRocksDBDatabaseProvider {
+                              public IDatabaseProvider {
   friend class DatabaseManagerThread;
 
  public:

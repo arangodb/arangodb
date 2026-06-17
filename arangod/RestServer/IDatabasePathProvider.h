@@ -23,19 +23,15 @@
 
 #pragma once
 
-#include <memory>
-
-namespace arangodb::replication2 {
-struct ReplicatedLogGlobalSettings;
-}
+#include <string>
 
 namespace arangodb {
 
-// Nullable pointer semantics: pass nullptr when replication2 is disabled.
-struct IRocksDBReplicatedLogProvider {
-  virtual ~IRocksDBReplicatedLogProvider() = default;
-  virtual std::shared_ptr<replication2::ReplicatedLogGlobalSettings const>
-  options() const noexcept = 0;
+struct IDatabasePathProvider {
+  virtual ~IDatabasePathProvider() = default;
+  virtual std::string const& directory() const = 0;
+  virtual std::string subdirectoryName(
+      std::string const& subDirectory) const = 0;
 };
 
 }  // namespace arangodb

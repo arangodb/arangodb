@@ -28,7 +28,7 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "RocksDBEngine/IRocksDBDatabaseProvider.h"
+#include "RestServer/IDatabaseProvider.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBFormat.h"
@@ -44,7 +44,7 @@ using namespace arangodb;
 
 void arangodb::rocksdbStartupVersionCheck(
     options::ProgramOptions const& programOptions,
-    IRocksDBDatabaseProvider& databaseProvider, rocksdb::TransactionDB* db,
+    IDatabaseProvider& databaseProvider, rocksdb::TransactionDB* db,
     bool dbExisted, bool forceLittleEndianKeys) {
   static_assert(
       std::is_same<char, std::underlying_type<RocksDBEndianness>::type>::value,
