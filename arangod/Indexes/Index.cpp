@@ -32,7 +32,6 @@
 #include "Basics/datetime.h"
 #include "Containers/HashSet.h"
 #include "IResearch/IResearchCommon.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Utilities/NameValidator.h"
 #include "VocBase/LogicalCollection.h"
@@ -1022,6 +1021,8 @@ bool Index::covers(aql::Projections& projections) const {
 bool Index::canWarmup() const noexcept { return false; }
 
 bool Index::isVectorIndexReady() const noexcept { return false; }
+
+bool Index::isLinearScanEnabled() const noexcept { return false; }
 
 vector::UserVectorIndexDefinition const& Index::getVectorIndexDefinition() {
   TRI_ASSERT(false);

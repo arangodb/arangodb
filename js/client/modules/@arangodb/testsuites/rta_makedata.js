@@ -67,7 +67,7 @@ const testPaths = {
 // / @brief TEST: shell_http
 // //////////////////////////////////////////////////////////////////////////////
 
-function makeDataWrapper (options) {
+function makeDataWrapper(options) {
   let stoppedDbServerInstance = {};
   if (options.hasOwnProperty('test') && (typeof (options.test) !== 'undefined')) {
     if (!options.hasOwnProperty('makedata_args')) {
@@ -229,7 +229,7 @@ function makeDataWrapper (options) {
     }
     restoreDump() {
       this.restoreConfig = ct.createBaseConfig('restore', this.options, this.instanceManager);
-      this.restoreConfig.setInputDirectory('dump', false);
+      this.restoreConfig.setInputDirectory('dump', true);
       this.restoreConfig.setIncludeSystem(true);
       this.restoreConfig.setAllDatabases();
       return ct.run.arangoDumpRestoreWithConfig(this.restoreConfig, this.options, this.instanceManager.rootDir, this.options.coreCheck);
@@ -269,7 +269,7 @@ function makeDataWrapper (options) {
       }
       let res = {'total':0, 'duration':0.0, 'status':true, message: '', 'failed': 0};
       let count = 0;
-      let counters = { nonAgenciesCount: 1};
+      let counters = { nonAgenciesCount: 1 };
       [
         0, // makedata
         1, // checkdata
@@ -330,10 +330,10 @@ function makeDataWrapper (options) {
               }
             });
             print('stopping dbserver ' + stoppedDbServerInstance.name +
-                  ' ID: ' + stoppedDbServerInstance.id +JSON.stringify( stoppedDbServerInstance.getStructure()));
+              ' ID: ' + stoppedDbServerInstance.id + JSON.stringify(stoppedDbServerInstance.getStructure()));
             try {
               this.instanceManager.resignLeaderShip(stoppedDbServerInstance);
-            } catch(e) {
+            } catch (e) {
               this.continueTesting = false;
               res.status = false;
               res.failed += 1;
@@ -348,7 +348,7 @@ function makeDataWrapper (options) {
             }
             stoppedDbServerInstance.shutDownOneInstance(counters, false, 10);
             stoppedDbServerInstance.waitForExit();
-            moreargv = [ '--disabledDbserverUUID', stoppedDbServerInstance.id];
+            moreargv = ['--disabledDbserverUUID', stoppedDbServerInstance.id];
             if (this.options.replicationVersion === 2 || this.options.replicationVersion === "2") {
               this.instanceManager.removeServerFromAgency(stoppedDbServerInstance.id);
             }
@@ -357,8 +357,6 @@ function makeDataWrapper (options) {
           this.waitForReplState();
           if (count === 2) {
             this.createDump();
-            this.restoreDump();
-            this.waitForReplState();
           } else if (count === 3) {
             try {
               if (this.options.oldSource !== undefined) {
@@ -374,7 +372,7 @@ function makeDataWrapper (options) {
               this.waitForReplState();
               this.restoreDump();
               this.waitForReplState();
-            } catch(e) {
+            } catch (e) {
               res.status = false;
               res.failed += 1;
               res[whichRTA] = {
@@ -388,9 +386,19 @@ function makeDataWrapper (options) {
             }
           }
         }
-
-        let rc = this.runMakeData(moreargv, file, whichRTA, count, testCount, 0, res);
-
+        let logFile = fs.join(fs.getTempPath(), `rta_out_${count}.log`);
+        require('internal').env.INSTANCEINFO = JSON.stringify(this.instanceManager.getStructure());
+        let rc = ct.run.rtaMakedata(this.options, this.instanceManager, testCount, messages[count - 1], logFile, moreargv);
+        res[whichRTA] = rc;
+        if (!rc.status) {
+          this.continueTesting = false;
+          let rx = new RegExp(/\\n/g);
+          res.message += file + ':\n' + fs.read(logFile).replace(rx, '\n');
+          res.status = false;
+          res.failed += 1;
+        } else {
+          fs.remove(logFile);
+        }
         res.total++;
         res.duration += rc.duration;
         if (this.options.cluster) {

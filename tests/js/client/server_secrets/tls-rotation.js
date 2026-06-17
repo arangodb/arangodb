@@ -33,6 +33,7 @@ const fs = require('fs');
 const print = require('internal').print;
 const crypto = require('@arangodb/crypto');
 const sha256 = require('internal').sha256;
+const IM = global.instanceManager;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -40,9 +41,6 @@ const sha256 = require('internal').sha256;
 
 function TLSRotation() {
   'use strict';
-  var baseUrl = function () {
-    return arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:');
-  };
 
   const jwtSecret1 = 'jwtsecret-1';
   const jwt1 = crypto.jwtEncode(jwtSecret1, {
@@ -61,7 +59,7 @@ function TLSRotation() {
     ////////////////////////////////////////////////////////////////////////////////
 
     setUp: function () {
-      arango.reconnect(arango.getEndpoint(), db._name(), "root", "");
+      arango.reconnect(IM.endpoint, db._name(), "root", "");
     },
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -73,7 +71,7 @@ function TLSRotation() {
 
     testCheckGETTLS: function() {
       let res = request.get({
-        url: baseUrl() + "/_admin/server/tls",
+        url: IM.url + "/_admin/server/tls",
         auth: {
           bearer: jwt1,
         }
@@ -94,7 +92,7 @@ function TLSRotation() {
 
     testChangeTLS: function () {
       let res = request.get({
-        url: baseUrl() + "/_admin/server/tls",
+        url: IM.url + "/_admin/server/tls",
         auth: {
           bearer: jwt1,
         }
@@ -119,7 +117,7 @@ function TLSRotation() {
 
       // reload TLS stuff:
       res = request.post({
-        url: baseUrl() + "/_admin/server/tls",
+        url: IM.url + "/_admin/server/tls",
         auth: {
           bearer: jwt1,
         }
@@ -135,7 +133,7 @@ function TLSRotation() {
       expect(keyfileDB.sha256).to.eq(keyfileDiskSHA);
 
       res = request.get({
-        url: baseUrl() + "/_admin/server/tls",
+        url: IM.url + "/_admin/server/tls",
         auth: {
           bearer: jwt1,
         }

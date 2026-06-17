@@ -27,7 +27,9 @@
 namespace arangodb {
 
 struct BumpFileDescriptorsFeatureOptions {
-  uint64_t descriptorsMinimum = 0;
+  uint64_t descriptorsMinimum;
+
+  BumpFileDescriptorsFeatureOptions();
 };
 
 }  // namespace arangodb

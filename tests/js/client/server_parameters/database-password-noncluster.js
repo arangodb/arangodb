@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTrue, getOptions, fail, arango*/
+/*global getOptions, fail */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -34,47 +34,50 @@ if (getOptions === true) {
 }
 
 const jsunity = require("jsunity");
+const {assertEqual, assertTrue, assertFalse, assertNotEqual} = jsunity.jsUnity.assertions;
 const arangodb = require("@arangodb");
+const arango = arangodb.arango;
 const db = arangodb.db;
-const errors = require('@arangodb').errors;
+const errors = arangodb.errors;
+let IM = global.instanceManager;
 
 function OptionsTestSuite () {
   return {
 
     testConnectInvalidPassword: function () {
       try {
-        arango.reconnect(arango.getEndpoint(), db._name(), arango.connectedUser(), "testmann");
+        arango.reconnect(IM.endpoint, db._name(), arango.connectedUser(), "testmann");
         fail();
       } catch (err) {
         assertEqual(errors.ERROR_BAD_PARAMETER.code, err.errorNum);
       }
     },
-    
+
     testConnectValidPassword: function () {
-      arango.reconnect(arango.getEndpoint(), db._name(), arango.connectedUser(), "testi1234");
+      arango.reconnect(IM.endpoint, db._name(), arango.connectedUser(), "testi1234");
       assertTrue(arango.isConnected());
     },
-    
+
     testConnectNoUserNoPassword: function () {
       arango.setJwtSecret("haxxmann");
       try {
-        arango.reconnect(arango.getEndpoint(), db._name());
+        arango.reconnect(IM.endpoint, db._name());
         assertTrue(arango.isConnected());
       } finally {
         arango.setJwtSecret("");
       }
     },
-    
+
     testConnectNoPassword: function () {
       arango.setJwtSecret("haxxmann");
       try {
-        arango.reconnect(arango.getEndpoint(), db._name(), arango.connectedUser());
+        arango.reconnect(IM.endpoint, db._name(), arango.connectedUser());
         assertTrue(arango.isConnected());
       } finally {
         arango.setJwtSecret("");
       }
     },
-  
+
   };
 }
 
