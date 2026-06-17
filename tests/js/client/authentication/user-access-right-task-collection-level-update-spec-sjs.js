@@ -28,13 +28,12 @@
 
 'use strict';
 
-const expect = require('chai').expect;
+const jsunity = require("jsunity");
+const {assertEqual, assertTrue, assertFalse, assertNotEqual, assertNotUndefined} = jsunity.jsUnity.assertions;
 const users = require('@arangodb/users');
 const helper = require('@arangodb/testutils/user-helper');
 const errors = require('@arangodb').errors;
 const tasks = require('@arangodb/tasks');
-const pu = require('@arangodb/testutils/process-utils');
-const download = require('internal').download;
 const dbName = helper.dbName;
 const colName = helper.colName;
 const rightLevels = helper.rightLevels;
@@ -48,6 +47,7 @@ const colLevel = helper.colLevel;
 const arango = require('internal').arango;
 let connectionHandle = arango.getConnectionHandle();
 const db = require('internal').db;
+
 for (let l of rightLevels) {
   systemLevel[l] = new Set();
   dbLevel[l] = new Set();
@@ -62,7 +62,7 @@ const wait = (keySpaceId, key) => {
 };
 
 const createKeySpace = (keySpaceId) => {
-  return executeJS(`return global.KEYSPACE_CREATE('${keySpaceId}', 128, true);`).body === 'true';
+  return executeJS(`return global.KEYSPACE_CREATE('${keySpaceId}', 128, true);`).parsedBody === true;
 };
 
 const setKeySpace = (keySpaceId, name) => {
@@ -74,20 +74,11 @@ const dropKeySpace = (keySpaceId) => {
 };
 
 const getKey = (keySpaceId, key) => {
-  return executeJS(`return global.KEY_GET('${keySpaceId}', '${key}');`).body === 'true';
+  return executeJS(`return global.KEY_GET('${keySpaceId}', '${key}');`).parsedBody === true;
 };
 
 const executeJS = (code) => {
-  let httpOptions = pu.makeAuthorizationHeaders({
-    username: 'root',
-    password: ''
-  }, {});
-  httpOptions.method = 'POST';
-  httpOptions.timeout = 1800;
-  httpOptions.returnBodyOnError = true;
-  return download(arango.getEndpoint().replace('tcp', 'http') + `/_db/${dbName}/_admin/execute?returnAsJSON=true`,
-    code,
-    httpOptions);
+  return arango.POST_RAW('/_admin/execute', code);
 };
 
 helper.switchUser('root', '_system');
@@ -97,15 +88,15 @@ helper.generateAllUsers();
 describe('User Rights Management', () => {
   it('should check if all users are created', () => {
     helper.switchUser('root', '_system');
-    expect(userSet.size).to.be.greaterThan(0); 
-    expect(userSet.size).to.equal(helper.userCount);
+    assertTrue(userSet.size > 0); 
+    assertEqual(userSet.size, helper.userCount);
     for (let name of userSet) {
-      expect(users.document(name), `Could not find user: ${name}`).to.not.be.undefined;
+      assertNotUndefined(users.document(name), `Could not find user: ${name}`);
     }
   });
 
   it('should test rights for', () => {
-    expect(userSet.size).to.be.greaterThan(0); 
+    assertTrue(userSet.size > 0); 
     for (let name of userSet) {
       let canUse = false;
       try {
@@ -119,7 +110,7 @@ describe('User Rights Management', () => {
         describe(`user ${name}`, () => {
           before(() => {
             helper.switchUser(name, dbName);
-            expect(createKeySpace(keySpaceId)).to.equal(true, 'keySpace creation failed!');
+            assertTrue(createKeySpace(keySpaceId), 'keySpace creation failed!');
           });
 
           after(() => {
@@ -151,7 +142,7 @@ describe('User Rights Management', () => {
               });
 
               it('by key', () => {
-                expect(rootTestCollection()).to.equal(true, 'Precondition failed, the collection does not exist');
+                assertTrue(rootTestCollection(), 'Precondition failed, the collection does not exist');
                 setKeySpace(keySpaceId, name + '_update');
                 const taskIdUpdate = 'task_collection_level_update_by_key' + name;
                 const taskUpdate = {
@@ -190,52 +181,52 @@ describe('User Rights Management', () => {
                   if ((dbLevel['rw'].has(name) || dbLevel['ro'].has(name)) &&
                     colLevel['rw'].has(name)) {
                     let col = db._collection(colName);
-                    expect(col.document('123').foo).to.not.equal('bar', 'Precondition failed, document already has the attribute set.');
+                    assertNotEqual(col.document('123').foo, 'bar', 'Precondition failed, document already has the attribute set.');
                     tasks.register(taskUpdate);
                     wait(keySpaceId, `${name}_update`);
-                    expect(getKey(keySpaceId, `${name}_update_status`)).to.equal(true, `${name} the update did not pass through...`);
-                    expect(col.document('123').foo).to.equal('bar', `${name} the update did not pass through...`);
+                    assertTrue(getKey(keySpaceId, `${name}_update_status`), `${name} the update did not pass through...`);
+                    assertEqual(col.document('123').foo, 'bar', `${name} the update did not pass through...`);
 
                     tasks.register(taskReplace);
                     wait(keySpaceId, `${name}_replace`);
-                    expect(getKey(keySpaceId, `${name}_replace_status`)).to.equal(true, `${name} the update did not pass through...`);
-                    expect(col.document('123').foo).to.equal('baz', `${name} the replace did not pass through...`);
+                    assertTrue(getKey(keySpaceId, `${name}_replace_status`), `${name} the update did not pass through...`);
+                    assertEqual(col.document('123').foo, 'baz', `${name} the replace did not pass through...`);
                   } else {
                     let hasReadAccess = ((dbLevel['rw'].has(name) || dbLevel['ro'].has(name)) &&
                       (colLevel['rw'].has(name) || colLevel['ro'].has(name)));
                     if (hasReadAccess) {
                       let col = db._collection(colName);
-                      expect(col.document('123').foo).to.not.equal('bar', 'Precondition failed, document already has the attribute set.');
+                      assertNotEqual(col.document('123').foo, 'bar', 'Precondition failed, document already has the attribute set.');
                     }
                     tasks.register(taskUpdate);
                     wait(keySpaceId, `${name}_update`);
-                    expect(getKey(keySpaceId, `${name}_update_status`)).to.not.equal(true, `${name} managed to update the document with insufficient rights`);
+                    assertFalse(getKey(keySpaceId, `${name}_update_status`), `${name} managed to update the document with insufficient rights`);
                     if (hasReadAccess) {
                       let col = db._collection(colName);
-                      expect(col.document('123').foo).to.not.equal('bar', `${name} managed to update the document with insufficient rights`);
+                      assertNotEqual(col.document('123').foo, 'bar', `${name} managed to update the document with insufficient rights`);
                     }
 
                     tasks.register(taskReplace);
                     wait(keySpaceId, `${name}_replace`);
-                    expect(getKey(keySpaceId, `${name}_replace_status`)).to.not.equal(true, `${name} managed to replace the document with insufficient rights`);
+                    assertFalse(getKey(keySpaceId, `${name}_replace_status`), `${name} managed to replace the document with insufficient rights`);
                     if (hasReadAccess) {
                       let col = db._collection(colName);
-                      expect(col.document('123').foo).to.not.equal('baz', `${name} managed to replace the document with insufficient rights`);
+                      assertNotEqual(col.document('123').foo, 'baz', `${name} managed to replace the document with insufficient rights`);
                     }
                   }
                 } else {
                   try {
                     tasks.register(taskUpdate);
                     tasks.register(taskReplace);
-                    expect(false).to.equal(true, `${name} managed to register a task with insufficient rights`);
+                    assertFalse(true, `${name} managed to register a task with insufficient rights`);
                   } catch (e) {
-                    expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code);
+                    assertEqual(e.errorNum, errors.ERROR_FORBIDDEN.code);
                   }
                 }
               });
 
               it('by aql', () => {
-                expect(rootTestCollection()).to.equal(true, 'Precondition failed, the collection does not exist');
+                assertTrue(rootTestCollection(), 'Precondition failed, the collection does not exist');
                 let q = `FOR x IN ${colName} UPDATE x WITH {foo: 'bar'} IN ${colName} RETURN NEW`;
                 let q2 = `FOR x IN ${colName} REPLACE x WITH {foo: 'baz'} IN ${colName} RETURN NEW`;
                 const taskIdUpdate = 'task_collection_level_update_by_aql' + name;
@@ -278,41 +269,41 @@ describe('User Rights Management', () => {
                     let col = db._collection(colName);
                     tasks.register(taskUpdate);
                     wait(keySpaceId, `${name}_update`);
-                    expect(getKey(keySpaceId, `${name}_update_status`)).to.equal(true, `${name} the update did not pass through...`);
-                    expect(col.document('123').foo).to.equal('bar');
+                    assertTrue(getKey(keySpaceId, `${name}_update_status`), `${name} the update did not pass through...`);
+                    assertEqual(col.document('123').foo, 'bar');
 
                     tasks.register(taskReplace);
                     wait(keySpaceId, `${name}_replace`);
-                    expect(getKey(keySpaceId, `${name}_replace_status`)).to.equal(true, `${name} the update did not pass through...`);
-                    expect(col.document('123').foo).to.equal('baz');
+                    assertTrue(getKey(keySpaceId, `${name}_replace_status`), `${name} the update did not pass through...`);
+                    assertEqual(col.document('123').foo, 'baz');
                   } else {
                     let hasReadAccess = ((dbLevel['rw'].has(name) || dbLevel['ro'].has(name)) &&
                       (colLevel['rw'].has(name) || colLevel['ro'].has(name)));
                     tasks.register(taskUpdate);
                     wait(keySpaceId, `${name}_update`);
-                    expect(getKey(keySpaceId, `${name}_update_status`)).to.not.equal(true, `${name} managed to update the document with insufficient rights`);
+                    assertFalse(getKey(keySpaceId, `${name}_update_status`), `${name} managed to update the document with insufficient rights`);
 
                     if (hasReadAccess) {
                       let col = db._collection(colName);
-                      expect(col.document('123').foo).to.not.equal('bar', `${name} managed to update the document with insufficient rights`);
+                      assertNotEqual(col.document('123').foo, 'bar', `${name} managed to update the document with insufficient rights`);
                     }
 
                     tasks.register(taskReplace);
                     wait(keySpaceId, `${name}_replace`);
-                    expect(getKey(keySpaceId, `${name}_replace_status`)).to.not.equal(true, `${name} managed to replace the document with insufficient rights`);
+                    assertFalse(getKey(keySpaceId, `${name}_replace_status`), `${name} managed to replace the document with insufficient rights`);
 
                     if (hasReadAccess) {
                       let col = db._collection(colName);
-                      expect(col.document('123').foo).to.not.equal('baz', `${name} managed to replace the document with insufficient rights`);
+                      assertNotEqual(col.document('123').foo, 'baz', `${name} managed to replace the document with insufficient rights`);
                     }
                   }
                 } else {
                   try {
                     tasks.register(taskUpdate);
                     tasks.register(taskReplace);
-                    expect(false).to.equal(true, `${name} managed to register a task with insufficient rights`);
+                    assertFalse(true, `${name} managed to register a task with insufficient rights`);
                   } catch (e) {
-                    expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code);
+                    assertEqual(e.errorNum, errors.ERROR_FORBIDDEN.code);
                   }
                 }
               });
