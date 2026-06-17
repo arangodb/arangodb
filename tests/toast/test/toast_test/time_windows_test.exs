@@ -19,10 +19,10 @@
 ## Copyright holder is ArangoDB GmbH, Cologne, Germany
 ################################################################################
 
-defmodule ToastTest.Attribution.TimeWindowsTest do
+defmodule ToastTest.TimeWindowsTest do
   use ExUnit.Case, async: true
 
-  alias ToastTest.Attribution.TimeWindows
+  alias ToastTest.TimeWindows
 
   import ToastTest.TimeTestHelpers, only: [to_us: 1]
 

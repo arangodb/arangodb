@@ -19,7 +19,7 @@
 ## Copyright holder is ArangoDB GmbH, Cologne, Germany
 ################################################################################
 
-defmodule ToastTest.Runner.ResultBuilder do
+defmodule ToastTest.PostExecution.ResultBuilder do
   @moduledoc """
   Transforms raw post-execution data into structured results.
 

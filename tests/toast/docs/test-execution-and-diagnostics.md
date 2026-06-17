@@ -131,13 +131,13 @@ For each suite:
 
   5. suite_module.teardown_deployment(deployment)  [optional]
 
-  6. Runner.PostExecution collects diagnostics:
+  6. PostExecution collects diagnostics:
      --> agency dump (cluster, pre-shutdown)
      --> Toast.Deployment.stop(deployment)
-     --> ArtifactCollector discovers coredumps, sanitizer logs
-     --> Attribution produces typed issues using TimeWindows
-     --> Enrichment modules add content (logs, sanitizer reports, coredumps)
-     --> Runner.ResultBuilder assembles SuiteResult
+     --> ArtifactCollector discovers coredumps, sanitizer logs (paths)
+     --> Enrichment modules read/parse artifacts into data (logs, sanitizer, coredumps)
+     --> Attribution produces typed issues purely, using TimeWindows
+     --> PostExecution.ResultBuilder assembles SuiteResult
 
   7. StateCleanup.reset()
      --> clear ETS tables, reset formatters for next suite
@@ -284,16 +284,16 @@ stop_and_collect(deployment)
   3. ArtifactCollector -- discover coredumps and sanitizer logs per server
   |   For each server with a recorded os_pid:
   |     Coredump.discover(server_dir, os_pid)
-  |   Glob sanitizer log files from server directories
+  |   Glob sanitizer log files from server directories (paths only, no reading)
   |
-  4. Attribution -- produce typed issues from test data + artifacts + crash events
-  |   Uses TimeWindows to attribute diagnostics to tests
-  |
-  5. Enrichment -- enrich issues with content
-  |   Enrichment.Logs: extract crash lines and time-windowed excerpts from logs
+  4. Enrichment -- read/parse the discovered artifacts into plain data (once)
+  |   Enrichment.Logs: extract crash lines and resolve effective crash time
   |   Enrichment.Sanitizer: read and classify sanitizer report files
   |   Enrichment.Coredump: run debugger analysis on discovered core files
   |   Runs within coredump_timeout budget
+  |
+  5. Attribution -- pure: produce typed issues over the enriched inputs
+  |   Uses TimeWindows to attribute diagnostics to tests; no file I/O
   |
   6. Build SuiteResult with typed issues for export
 ```
@@ -423,10 +423,11 @@ killed and the remaining budget is used for the next.
 
 ### Test Attribution
 
-After artifacts are collected, `ToastTest.Attribution` orchestrates issue
-production from test data, artifacts, and crash events. It uses
-`ToastTest.Attribution.TimeWindows` to attribute diagnostics to specific tests
-using timestamps:
+After artifacts are collected and enriched into plain data,
+`ToastTest.PostExecution.Attribution` produces typed issues *purely* — it
+performs no file I/O, deciding over the already-enriched inputs the orchestrator
+hands it. It uses `ToastTest.TimeWindows` to attribute diagnostics to specific
+tests using timestamps:
 
 ```
 Attribution produces SuiteResult issues from:
@@ -452,15 +453,17 @@ The 5-second tolerance for `:low` confidence accounts for:
 - Crashes that occur during test teardown / on_exit handlers
 - Clock granularity between Elixir monotonic time and OS timestamps
 
-`Attribution` handles both crash and sanitizer attribution internally,
-producing typed issues for the `SuiteResult`.
+`Attribution` produces both crash and sanitizer issues (along with test-failure,
+timeout, and infrastructure issues) for the `SuiteResult`, all by window-matching
+the enriched inputs — no reading or parsing happens at this stage.
 
 
 ### SuiteResult Data Shape
 
 The diagnostics pipeline produces a `ToastTest.SuiteResult` struct with typed
-issues rather than a raw diagnostics map. Issues are produced by `Attribution`
-and enriched by the `Enrichment.*` modules. The `SuiteResult` is the central
+issues rather than a raw diagnostics map. The `Enrichment.*` modules read/parse
+artifacts into data first, then `Attribution` produces the issues purely from
+that data. The `SuiteResult` is the central
 data structure consumed by both CLI output (`PostExecSummary`) and export
 (`SuiteResult.JSON`, `SuiteResult.JUnitXML`).
 
@@ -484,7 +487,7 @@ Test execution
   |      Records deployment lifecycle events (server start/stop/crash),
   |      netstat snapshots, and infrastructure issues
   |
-  +--> After suite completes (Runner.PostExecution):
+  +--> After suite completes (PostExecution):
          agency dump (cluster, pre-shutdown)
          Toast.Deployment.stop(deployment)
          ArtifactCollector -- discover coredumps, sanitizer logs per server
@@ -492,7 +495,7 @@ Test execution
          Enrichment.Logs -- extract crash lines, log excerpts
          Enrichment.Sanitizer -- read and classify sanitizer reports
          Enrichment.Coredump -- run debugger analysis on core files
-         Runner.ResultBuilder -- assemble SuiteResult
+         PostExecution.ResultBuilder -- assemble SuiteResult
          Formatting.PostExecSummary -- CLI output
          SuiteResult.JSON.render(suite_result) --> results.json
          SuiteResult.JUnitXML.render(suite_result) --> results.xml

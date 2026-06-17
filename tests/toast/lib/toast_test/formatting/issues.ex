@@ -210,7 +210,7 @@ defmodule ToastTest.Formatting.Issues do
     frames = thread[:frames] || []
     shown = Enum.take(frames, @max_backtrace_frames)
     remaining = length(frames) - length(shown)
-    backtrace = ToastTest.Enrichment.Coredump.format_backtrace(shown)
+    backtrace = ToastTest.Formatting.Backtrace.format_backtrace(shown)
     suffix = if remaining > 0, do: "\n...", else: ""
     backtrace <> suffix
   end

@@ -19,7 +19,7 @@
 ## Copyright holder is ArangoDB GmbH, Cologne, Germany
 ################################################################################
 
-defmodule ToastTest.Attribution.ServerLogs do
+defmodule ToastTest.PostExecution.Attribution.ServerLogs do
   @moduledoc """
   Computes time windows from issues and extracts per-server log excerpts.
 
@@ -27,8 +27,8 @@ defmodule ToastTest.Attribution.ServerLogs do
   overlapping windows, then extracts matching log lines for each server.
   """
 
-  alias ToastTest.Attribution.TimeWindows
-  alias ToastTest.Enrichment
+  alias ToastTest.TimeWindows
+  alias ToastTest.PostExecution.Enrichment
 
   @padding %{
     crash: {-20_000, 0},
@@ -51,7 +51,7 @@ defmodule ToastTest.Attribution.ServerLogs do
   @spec collect(
           [ToastTest.SuiteResult.issue()],
           %{String.t() => Path.t()},
-          ToastTest.Attribution.TimeWindows.windows()
+          ToastTest.TimeWindows.windows()
         ) :: %{String.t() => [{Toast.timestamp(), Toast.timestamp(), [map()]}]}
   def collect(issues, log_files, windows) do
     issues
@@ -91,7 +91,7 @@ defmodule ToastTest.Attribution.ServerLogs do
   """
   @spec compute_windows(
           [ToastTest.SuiteResult.issue()],
-          ToastTest.Attribution.TimeWindows.windows()
+          ToastTest.TimeWindows.windows()
         ) ::
           [window()]
   def compute_windows(issues, windows) do

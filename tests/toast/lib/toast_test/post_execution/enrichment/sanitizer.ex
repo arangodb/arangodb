@@ -19,7 +19,7 @@
 ## Copyright holder is ArangoDB GmbH, Cologne, Germany
 ################################################################################
 
-defmodule ToastTest.Enrichment.Sanitizer do
+defmodule ToastTest.PostExecution.Enrichment.Sanitizer do
   @moduledoc """
   Read and classify sanitizer report files.
 

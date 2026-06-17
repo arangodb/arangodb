@@ -31,7 +31,7 @@ defmodule ToastTest.Analyze.IssueStreams do
   @known_roles ~w(agent coordinator dbserver single)a
   @default_exclude_roles [:agent]
 
-  alias ToastTest.Attribution.TimeWindows
+  alias ToastTest.TimeWindows
 
   # --- Parsing ---
 

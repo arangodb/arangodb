@@ -19,10 +19,10 @@
 ## Copyright holder is ArangoDB GmbH, Cologne, Germany
 ################################################################################
 
-defmodule ToastTest.Attribution.ServerLogsTest do
+defmodule ToastTest.PostExecution.Attribution.ServerLogsTest do
   use ExUnit.Case, async: true
 
-  alias ToastTest.Attribution.ServerLogs
+  alias ToastTest.PostExecution.Attribution.ServerLogs
 
   @base_date ~D[2026-01-15]
 

@@ -19,13 +19,13 @@
 ## Copyright holder is ArangoDB GmbH, Cologne, Germany
 ################################################################################
 
-defmodule ToastTest.Enrichment do
+defmodule ToastTest.PostExecution.Enrichment do
   @moduledoc """
   The post-execution enrichment phase: turn discovered artifact *paths* into
   parsed *data*, exactly once, before the pure attribution step.
 
   This is the impure boundary between `ArtifactCollector` (discovers paths,
-  reads nothing) and `ToastTest.Attribution` (decides over data, reads
+  reads nothing) and `ToastTest.PostExecution.Attribution` (decides over data, reads
   nothing). It uses the parser submodules `Enrichment.Logs`,
   `Enrichment.Coredump`, and `Enrichment.Sanitizer`.
 
@@ -36,7 +36,7 @@ defmodule ToastTest.Enrichment do
   """
 
   alias ToastTest.CrashEvent
-  alias ToastTest.Enrichment
+  alias ToastTest.PostExecution.Enrichment
 
   require Logger
 
@@ -51,7 +51,7 @@ defmodule ToastTest.Enrichment do
 
   Returns `{enriched_events, warnings}`.
   """
-  @spec enrich_crashes([CrashEvent.t()], ToastTest.ArtifactCollector.t(), keyword()) ::
+  @spec enrich_crashes([CrashEvent.t()], ToastTest.PostExecution.ArtifactCollector.t(), keyword()) ::
           {[CrashEvent.t()], [String.t()]}
   def enrich_crashes(crash_events, artifacts, analyzer_opts \\ []) do
     degrade_each(
@@ -74,7 +74,7 @@ defmodule ToastTest.Enrichment do
 
   Returns `{reports, warnings}`.
   """
-  @spec sanitizer_reports(ToastTest.ArtifactCollector.t()) :: {[map()], [String.t()]}
+  @spec sanitizer_reports(ToastTest.PostExecution.ArtifactCollector.t()) :: {[map()], [String.t()]}
   def sanitizer_reports(artifacts) do
     files =
       for {server_id, %{sanitizer_files: sanitizer_files}} <- artifacts,
@@ -117,7 +117,7 @@ defmodule ToastTest.Enrichment do
   so attribution stays pure over enriched data rather than reaching back into
   the raw artifact inventory.
   """
-  @spec enrich_timeout_kills([map()], ToastTest.ArtifactCollector.t()) :: [map()]
+  @spec enrich_timeout_kills([map()], ToastTest.PostExecution.ArtifactCollector.t()) :: [map()]
   def enrich_timeout_kills(timeout_kills, artifacts) do
     Enum.map(timeout_kills, fn kill ->
       servers =

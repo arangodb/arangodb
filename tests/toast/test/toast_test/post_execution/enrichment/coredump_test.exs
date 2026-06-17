@@ -19,11 +19,11 @@
 ## Copyright holder is ArangoDB GmbH, Cologne, Germany
 ################################################################################
 
-defmodule ToastTest.Enrichment.CoredumpTest do
+defmodule ToastTest.PostExecution.Enrichment.CoredumpTest do
   use ExUnit.Case, async: true
 
   alias Toast.Diagnostics.Coredump.Report
-  alias ToastTest.Enrichment.Coredump
+  alias ToastTest.PostExecution.Enrichment.Coredump
 
   @default_executable "/usr/bin/arangod"
 

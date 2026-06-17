@@ -538,7 +538,7 @@ defmodule ToastTest.Runner do
     stop_deployment(deployment, test_data, test_config)
 
     suite_result =
-      __MODULE__.PostExecution.run(test_data, test_config, pcap_path)
+      ToastTest.PostExecution.run(test_data, test_config, pcap_path)
 
     ToastTest.StateCleanup.reset()
     %{stats: stats, suite_result: suite_result}

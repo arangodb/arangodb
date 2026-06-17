@@ -19,7 +19,7 @@
 ## Copyright holder is ArangoDB GmbH, Cologne, Germany
 ################################################################################
 
-defmodule ToastTest.Attribution.TimeWindows do
+defmodule ToastTest.TimeWindows do
   @moduledoc """
   Builds time windows from EventStore test lifecycle events and attributes
   timestamps to the most specific scope (test, module, or suite).

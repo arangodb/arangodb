@@ -19,7 +19,7 @@
 ## Copyright holder is ArangoDB GmbH, Cologne, Germany
 ################################################################################
 
-defmodule ToastTest.Enrichment.Logs do
+defmodule ToastTest.PostExecution.Enrichment.Logs do
   @moduledoc """
   Extract structured log entries from ArangoDB JSON log files.
 

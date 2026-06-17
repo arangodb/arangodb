@@ -19,10 +19,10 @@
 ## Copyright holder is ArangoDB GmbH, Cologne, Germany
 ################################################################################
 
-defmodule ToastTest.Enrichment.SanitizerTest do
+defmodule ToastTest.PostExecution.Enrichment.SanitizerTest do
   use ExUnit.Case, async: true
 
-  alias ToastTest.Enrichment.Sanitizer
+  alias ToastTest.PostExecution.Enrichment.Sanitizer
 
   @tmp_dir Path.join(
              System.tmp_dir!(),

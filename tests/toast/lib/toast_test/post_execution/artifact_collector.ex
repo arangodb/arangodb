@@ -19,7 +19,7 @@
 ## Copyright holder is ArangoDB GmbH, Cologne, Germany
 ################################################################################
 
-defmodule ToastTest.ArtifactCollector do
+defmodule ToastTest.PostExecution.ArtifactCollector do
   @moduledoc """
   Inventories filesystem artifacts (coredumps, sanitizer logs) for server instances.
 

@@ -29,7 +29,7 @@ defmodule ToastTest.CrashEvent do
   rewritten — it is the provenance.
 
   The remaining fields are filled by the enrichment phase
-  (`ToastTest.Enrichment.enrich_crashes/3`) from the filesystem; they are nil
+  (`ToastTest.PostExecution.Enrichment.enrich_crashes/3`) from the filesystem; they are nil
   / empty on a freshly-converted event:
 
     * `effective_at`   — the crash time resolved from the server log (the crash

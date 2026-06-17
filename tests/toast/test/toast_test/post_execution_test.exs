@@ -19,7 +19,7 @@
 ## Copyright holder is ArangoDB GmbH, Cologne, Germany
 ################################################################################
 
-defmodule ToastTest.Runner.PostExecutionTest do
+defmodule ToastTest.PostExecutionTest do
   @moduledoc """
   Per-stage degradation (F8): a diagnostics system must produce partial output.
   Event-derived issues (test failures, crashes recorded as events) must survive
@@ -31,7 +31,7 @@ defmodule ToastTest.Runner.PostExecutionTest do
 
   alias Toast.Process.CrashInfo
   alias ToastTest.{Config, EventStore}
-  alias ToastTest.Runner.PostExecution
+  alias ToastTest.PostExecution
 
   @started ~U[2026-03-09 10:00:00Z]
   @finished ~U[2026-03-09 10:05:00Z]

@@ -19,13 +19,13 @@
 ## Copyright holder is ArangoDB GmbH, Cologne, Germany
 ################################################################################
 
-defmodule ToastTest.Attribution.InvalidationTest do
+defmodule ToastTest.PostExecution.Attribution.InvalidationTest do
   use ExUnit.Case, async: true
 
   import ToastTest.TimeTestHelpers, only: [to_us: 1]
 
   alias Toast.Process.CrashInfo
-  alias ToastTest.Attribution.Invalidation
+  alias ToastTest.PostExecution.Attribution.Invalidation
   alias ToastTest.CrashEvent
 
   # Suite timeline:

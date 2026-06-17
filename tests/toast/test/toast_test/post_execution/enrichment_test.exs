@@ -19,7 +19,7 @@
 ## Copyright holder is ArangoDB GmbH, Cologne, Germany
 ################################################################################
 
-defmodule ToastTest.EnrichmentTest do
+defmodule ToastTest.PostExecution.EnrichmentTest do
   @moduledoc """
   Tests for the post-execution enrichment phase: turning discovered artifact
   paths into parsed data (crash log resolution + coredump analysis + sanitizer
@@ -31,7 +31,8 @@ defmodule ToastTest.EnrichmentTest do
 
   alias Toast.Diagnostics.Coredump.Report
   alias Toast.Process.CrashInfo
-  alias ToastTest.{CrashEvent, Enrichment}
+  alias ToastTest.CrashEvent
+  alias ToastTest.PostExecution.Enrichment
 
   @tmp_dir Path.join(
              System.tmp_dir!(),

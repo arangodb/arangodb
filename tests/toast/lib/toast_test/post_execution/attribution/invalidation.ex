@@ -19,7 +19,7 @@
 ## Copyright holder is ArangoDB GmbH, Cologne, Germany
 ################################################################################
 
-defmodule ToastTest.Attribution.Invalidation do
+defmodule ToastTest.PostExecution.Attribution.Invalidation do
   @moduledoc """
   Neutralizes test failures that occurred after an unexpected server crash.
 
@@ -37,7 +37,7 @@ defmodule ToastTest.Attribution.Invalidation do
   is left as `:failed` — its failure is the signal, not noise.
   """
 
-  alias ToastTest.Attribution.TimeWindows
+  alias ToastTest.TimeWindows
   alias ToastTest.CrashEvent
 
   @spec apply(map(), [CrashEvent.t()], TimeWindows.windows()) :: map()

@@ -19,7 +19,7 @@
 ## Copyright holder is ArangoDB GmbH, Cologne, Germany
 ################################################################################
 
-defmodule ToastTest.Enrichment.Coredump do
+defmodule ToastTest.PostExecution.Enrichment.Coredump do
   @moduledoc """
   Enrichment wrapper around `Toast.Diagnostics.Coredump.analyze/3`.
 
@@ -41,13 +41,6 @@ defmodule ToastTest.Enrichment.Coredump do
   def analyze(core_path, executable, opts) when is_binary(core_path) and is_binary(executable) do
     {analyzer, forward_opts} = Keyword.pop(opts, :analyzer, &DiagCoredump.analyze/3)
     run_analysis(analyzer, core_path, executable, forward_opts)
-  end
-
-  @doc "Format a thread's frames as a human-readable backtrace string."
-  def format_backtrace(frames) do
-    frames
-    |> Enum.with_index()
-    |> Enum.map_join("\n", fn {frame, idx} -> format_frame(frame, idx) end)
   end
 
   defp run_analysis(analyzer, core_path, binary_path, opts) do
@@ -94,16 +87,5 @@ defmodule ToastTest.Enrichment.Coredump do
       {n, ""} -> {0, n}
       _ -> {1, id}
     end
-  end
-
-  defp format_frame(frame, idx) do
-    location =
-      case {frame[:file], frame[:line]} do
-        {nil, _} -> ""
-        {file, nil} -> " at #{file}"
-        {file, line} -> " at #{file}:#{line}"
-      end
-
-    "##{idx} #{frame.function}#{location}"
   end
 end

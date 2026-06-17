@@ -19,10 +19,10 @@
 ## Copyright holder is ArangoDB GmbH, Cologne, Germany
 ################################################################################
 
-defmodule ToastTest.Enrichment.LogsTest do
+defmodule ToastTest.PostExecution.Enrichment.LogsTest do
   use ExUnit.Case, async: true
 
-  alias ToastTest.Enrichment.Logs
+  alias ToastTest.PostExecution.Enrichment.Logs
 
   @tmp_dir Path.join(System.tmp_dir!(), "toast_logs_test_#{System.unique_integer([:positive])}")
 

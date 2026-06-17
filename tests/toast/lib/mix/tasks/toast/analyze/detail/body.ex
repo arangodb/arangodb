@@ -25,8 +25,7 @@ defmodule Mix.Tasks.Toast.Analyze.Detail.Body do
   import ToastTest.Formatting, only: [colorize: 3, formatter_cb: 2]
 
   alias Mix.Tasks.Toast.Analyze.Data
-  alias ToastTest.Enrichment
-  alias ToastTest.Formatting.Issues
+  alias ToastTest.Formatting.{Backtrace, Issues}
   alias Toast.Diagnostics.Coredump.ThreadFilter
 
   def print(issue, color, bt_opts \\ %{})
@@ -360,7 +359,7 @@ defmodule Mix.Tasks.Toast.Analyze.Detail.Body do
     shown = Enum.take(frames, max_frames)
     remaining = length(frames) - length(shown)
 
-    backtrace = Enrichment.Coredump.format_backtrace(shown)
+    backtrace = Backtrace.format_backtrace(shown)
     Mix.shell().info(backtrace)
     if remaining > 0, do: Mix.shell().info("  ... (#{remaining} more frames)")
   end

@@ -19,10 +19,10 @@
 ## Copyright holder is ArangoDB GmbH, Cologne, Germany
 ################################################################################
 
-defmodule ToastTest.ArtifactCollectorTest do
+defmodule ToastTest.PostExecution.ArtifactCollectorTest do
   use ExUnit.Case, async: true
 
-  alias ToastTest.ArtifactCollector
+  alias ToastTest.PostExecution.ArtifactCollector
 
   defp make_server(id, opts) do
     %{

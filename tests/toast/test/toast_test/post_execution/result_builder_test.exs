@@ -19,10 +19,10 @@
 ## Copyright holder is ArangoDB GmbH, Cologne, Germany
 ################################################################################
 
-defmodule ToastTest.Runner.ResultBuilderTest do
+defmodule ToastTest.PostExecution.ResultBuilderTest do
   use ExUnit.Case, async: true
 
-  alias ToastTest.Runner.ResultBuilder
+  alias ToastTest.PostExecution.ResultBuilder
 
   describe "build_deployments/2" do
     test "single deployment with servers and logs" do

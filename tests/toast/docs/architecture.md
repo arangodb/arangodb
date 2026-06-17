@@ -139,8 +139,8 @@ Design decisions:
 | `Toast.Deployment.CrashExpectation` | Data struct for tracking expected crashes (timer, crash_info, waiter). |
 | `Toast.Deployment.ServerInstance` | Data struct: runtime state of one server (ports, pids, endpoints, operational state). |
 | `Toast.Deployment.ClusterOpts` | Data struct: cluster topology and per-role arguments. |
-| `Toast.Deployment.Events` | Event emission for deployment lifecycle. Single source of truth for event format. |
-| `Toast.Deployment.EventListener` | Behaviour for receiving lifecycle events (on_event, on_crash). |
+| `Toast.Deployment.Events` | Event emission for deployment lifecycle. One constructor per event type; the event vocabulary is documented in [events.md](./events.md). |
+| `Toast.Deployment.EventListener` | Behaviour for receiving lifecycle events (`on_event/1`). |
 | `Toast.Deployment.DefaultEventListener` | No-op implementation of EventListener. |
 | `Toast.Deployment.CrashBarrier` | Between-tests barrier that checks `/proc/<pid>/status` to detect in-flight crashes before the next test starts. |
 | `Toast.Deployment.HealthBarrier` | Between-tests barrier that waits for each server's HealthMonitor to report healthy before the next test starts. Catches "alive but unresponsive" cases (deadlocks, resource exhaustion). |
@@ -153,7 +153,7 @@ Design decisions:
 |--------|------|
 | `Toast.Process.ServerProcess` | GenServer wrapping erlexec for one OS process. Lifecycle + crash detection. |
 | `Toast.Process.HealthMonitor` | GenServer polling HTTP health. Notifies listener after N consecutive failures. |
-| `Toast.Process.CrashInfo` | Data struct for crash information (exit status, signal, timestamp, PID). |
+| `Toast.Process.CrashInfo` | Data struct for crash information (exit status, signal, timestamp, PID, executable) — stamped by the owning ServerProcess at crash time. |
 | `Toast.Process.ProcStatus` | Reads `/proc/<pid>/status` to check process state (running, zombie, etc.). Used by CrashBarrier. |
 | `Toast.Process.Supervisor` | DynamicSupervisor for ServerProcess and HealthMonitor children. |
 
@@ -174,8 +174,6 @@ Design decisions:
 | `ToastTest.Runner.TestProcess` | Spawn and manage individual test processes with timeout handling. |
 | `ToastTest.Runner.TestFilter` | Filter test modules by line number, test name, and ExUnit tags. |
 | `ToastTest.Runner.BetweenTests` | Between-test checks with four phases: (1) `CrashBarrier.await_settled/2` checks for in-flight crashes, (2) `HealthBarrier.await_healthy/2` waits for health monitors, (3) `Netstat.check/3` checks port exhaustion, (4) suite's custom `between_tests/2` callback (or default `BetweenTests.check/2`). |
-| `ToastTest.Runner.PostExecution` | Post-suite diagnostics collection (agency dump, artifact collection, attribution). |
-| `ToastTest.Runner.ResultBuilder` | Build SuiteResult from test data, diagnostics, and enrichment. |
 | `ToastTest.Runner.FailureFormatter` | Format test failures for display. |
 | `ToastTest.Runner.Timeout` | Timeout calculation and enforcement for suite/test deadlines. |
 | `ToastTest.Suite` | Behaviour + `__using__` macro for suite definition. Defines `deployment_config/0`. |
@@ -184,7 +182,7 @@ Design decisions:
 | `ToastTest.ExUnitCompat` | Shim over ExUnit internal APIs (EventManager, RunnerStats). |
 | `ToastTest.SuiteRun` | Data struct: per-suite execution context (module, deployment, deadline). |
 | `ToastTest.DeploymentRegistry` | ETS-based mapping of suite modules to active deployments. |
-| `ToastTest.DeploymentListener` | EventListener implementation delegating to EventStore and CrashMonitor. |
+| `ToastTest.ManagedDeploymentListener` | EventListener for suite-managed deployments: records to EventStore, triggers CrashMonitor on unexpected crashes. |
 | `ToastTest.CrashMonitor` | Default crash callback; calls `Runner.abort!`. |
 | `ToastTest.CrashEvent` | Data struct for crash event metadata (constructed and consumed by test execution layers). |
 | `ToastTest.EventStore` | ETS-backed event store for lifecycle events. Chronologically ordered. |
@@ -215,7 +213,7 @@ Design decisions:
 
 Lower-level infrastructure for sanitizer detection, core dump analysis, and
 agency state capture. Higher-level attribution and enrichment logic lives in
-`ToastTest.Attribution` and `ToastTest.Enrichment.*`.
+`ToastTest.PostExecution.Attribution` and `ToastTest.PostExecution.Enrichment.*`.
 
 | Module | Role |
 |--------|------|
@@ -227,22 +225,32 @@ agency state capture. Higher-level attribution and enrichment logic lives in
 | `Toast.Diagnostics.Coredump.Report` | Data struct: structured coredump analysis result. |
 | `Toast.Diagnostics.AgencyDump` | Capture agency config/state/plan from live agents (cluster only). |
 
-### Attribution & Enrichment (`ToastTest.Attribution.*`, `ToastTest.Enrichment.*`)
+### Post-Execution Analysis (`ToastTest.PostExecution.*`)
 
-Orchestrates issue production from test data, artifacts, and deployment errors.
-`ArtifactCollector` discovers filesystem artifacts, `Attribution` combines them
-with test results into `SuiteResult` issues, and `Enrichment.*` modules handle
-reading/parsing specific artifact types.
+The cohesive subsystem that turns a finished run (EventStore snapshot + test
+outcomes + pcap) into a `SuiteResult`: discover artifacts → enrich (filesystem
+→ data) → attribute (pure decisions) → assemble. All of it is exclusive to the
+live runner. The orchestrator drives the stages with per-stage degradation.
 
 | Module | Role |
 |--------|------|
-| `ToastTest.Attribution` | Orchestrates issue production by combining test failures, crash analysis, and sanitizer reports into SuiteResult issues. |
-| `ToastTest.Attribution.TimeWindows` | Time window calculations for attributing diagnostics to tests. |
-| `ToastTest.Attribution.ServerLogs` | Extract server log data for attribution context. |
-| `ToastTest.ArtifactCollector` | Inventories filesystem artifacts (coredumps, sanitizer logs) for server instances. Pure discovery only. |
-| `ToastTest.Enrichment.Logs` | Extract excerpts from ArangoDB log files. Supports time-windowed and crash-line extraction. |
-| `ToastTest.Enrichment.Sanitizer` | Read and classify sanitizer report files. |
-| `ToastTest.Enrichment.Coredump` | Enrichment wrapper around Toast.Diagnostics.Coredump.analyze, transforms Report to SuiteResult issue format. |
+| `ToastTest.PostExecution` | Orchestrator (`run/3`): seeds a Context from the EventStore snapshot, then enrich → attribute → assemble with per-stage degradation. |
+| `ToastTest.PostExecution.ResultBuilder` | Assemble deployment summaries, collect log file paths, build crash events, and coredump warnings. |
+| `ToastTest.PostExecution.ArtifactCollector` | Inventories filesystem artifacts (coredumps, sanitizer logs) for server instances. Pure discovery only. |
+| `ToastTest.PostExecution.Enrichment.Logs` | Extract excerpts from ArangoDB log files. Supports time-windowed and crash-line extraction. |
+| `ToastTest.PostExecution.Enrichment.Sanitizer` | Read and classify sanitizer report files. |
+| `ToastTest.PostExecution.Enrichment.Coredump` | Enrichment wrapper around `Toast.Diagnostics.Coredump.analyze`, transforms `Report` to the `SuiteResult.coredumps` shape. |
+| `ToastTest.PostExecution.Attribution` | Pure issue production over an `Attribution.Inputs` bundle: combines test failures, crashes, sanitizer reports, timeouts, and infrastructure events into `SuiteResult` issues. No I/O. |
+| `ToastTest.PostExecution.Attribution.ServerLogs` | Extract server log data for attribution context. |
+| `ToastTest.PostExecution.Attribution.Invalidation` | Invalidate post-crash test failures before attribution. |
+
+Two leaf helpers are **shared** (used by the live subsystem *and* the offline
+`mix toast.analyze` tooling), so they sit outside `PostExecution.*`:
+
+| Module | Role |
+|--------|------|
+| `ToastTest.TimeWindows` | Build/attribute/pad time windows for mapping diagnostics to tests. |
+| `ToastTest.Formatting.Backtrace` | Render a thread's coredump frames as a human-readable backtrace string. |
 
 ### Formatting (`ToastTest.Formatting.*`)
 
@@ -492,10 +500,10 @@ The Controller classifies the crash:
                         Notify event_listener.on_crash
 ```
 
-The `on_crash` callback (via `ToastTest.DeploymentListener`) triggers
-`ToastTest.CrashMonitor.handle_crash/2` which calls `Runner.abort!` to stop
-further test execution. Events are recorded in `ToastTest.EventStore` for
-post-run analysis.
+`ToastTest.ManagedDeploymentListener` matches unexpected `:server_crashed`
+events and triggers `ToastTest.CrashMonitor.handle_crash/2`, which aborts the
+run to stop further test execution. All events are recorded in
+`ToastTest.EventStore` for post-run analysis.
 
 ### Server Control Operations
 
@@ -663,21 +671,25 @@ Authentication modes:
 Toast uses an event-driven architecture for deployment lifecycle tracking:
 
 ```
-Toast.Deployment.Events      -- emits events (server_started, server_stopped, etc.)
+Toast.Deployment.Events      -- one constructor per deployment event
        |
        v
-Toast.Deployment.EventListener  -- behaviour (on_event/1, on_crash/2)
+Toast.Deployment.EventListener  -- behaviour (on_event/1)
        |
        +-- DefaultEventListener  -- no-op (used in interactive mode)
-       +-- ToastTest.DeploymentListener  -- records to EventStore + triggers CrashMonitor
+       +-- ToastTest.ManagedDeploymentListener  -- records to EventStore + triggers CrashMonitor
+       +-- ToastTest.DeploymentEventListener    -- records only (per-test deployments)
               |
               +-- ToastTest.EventStore  -- ETS-backed chronological event store
-              +-- ToastTest.CrashMonitor  -- calls Runner.abort! on unexpected crash
+              +-- ToastTest.CrashMonitor  -- aborts the run on unexpected crash
 ```
 
-Events are maps with `:event`, `:deployment_id`, `:timestamp` keys plus
-event-specific data. `EventStore.Projections` provides derived views
-(e.g., `pids_by_server/0` for mapping server IDs to OS process IDs).
+Runner-side events (test lifecycle, netstat, infrastructure issues, timeout
+kills) are emitted through `ToastTest.Runner.Events` directly into the
+EventStore. The full event vocabulary — every event type, its fields,
+producers, and consumers — is documented in [events.md](./events.md).
+`EventStore.Projections` provides derived views (e.g., `pids_by_server/0`
+for mapping server IDs to OS process IDs).
 
 
 ## CLI (Mix Tasks)

@@ -267,8 +267,8 @@ ToastTest.Runner
   |         ToastTest.Runner.TestProcess (test process spawn/management)
   |         ToastTest.Runner.TestFilter (test filtering)
   |         ToastTest.Runner.BetweenTests (health checks between tests)
-  |         ToastTest.Runner.PostExecution (post-suite diagnostics)
-  |         ToastTest.Runner.ResultBuilder (SuiteResult assembly)
+  |         ToastTest.PostExecution (post-suite diagnostics)
+  |         ToastTest.PostExecution.ResultBuilder (SuiteResult assembly)
   |         ToastTest.Runner.FailureFormatter (failure display)
   |         ToastTest.Runner.Timeout (deadline management)
   |         ToastTest.SuiteRun (data struct)
@@ -277,8 +277,8 @@ ToastTest.Runner
   |         ToastTest.DeploymentListener (EventListener impl)
   |         ToastTest.CrashMonitor (abort on crash)
   |         ToastTest.ResultCollector (ExUnit formatter)
-  |         ToastTest.ArtifactCollector (filesystem artifact discovery)
-  |         ToastTest.Attribution (issue production)
+  |         ToastTest.PostExecution.ArtifactCollector (filesystem artifact discovery)
+  |         ToastTest.PostExecution.Attribution (issue production)
   |         ToastTest.SuiteResult (build + write results)
   |         ToastTest.Formatting.PostExecSummary (CLI output)
   |         ToastTest.Formatting.RunSummary (overall run summary)
@@ -367,23 +367,30 @@ ToastTest.DeploymentListener (EventListener implementation)
   |   uses: ToastTest.EventStore (event recording)
   |         ToastTest.CrashMonitor (crash notification)
 
-ToastTest.ArtifactCollector (pure filesystem discovery)
+ToastTest.PostExecution (orchestrator: enrich -> attribute -> assemble)
+  |   uses: ToastTest.TimeWindows (build windows from the snapshot)
+  |         ToastTest.PostExecution.ArtifactCollector (artifact discovery)
+  |         ToastTest.PostExecution.Enrichment (read/parse artifacts into data)
+  |         ToastTest.PostExecution.Attribution (pure issue production)
+  |         ToastTest.PostExecution.Attribution.Invalidation (drop post-crash failures)
+  |         ToastTest.PostExecution.Attribution.ServerLogs (per-issue log excerpts)
+  |         ToastTest.PostExecution.ResultBuilder (assemble SuiteResult parts)
+
+ToastTest.PostExecution.ArtifactCollector (pure filesystem discovery)
   |   uses: Toast.Diagnostics.Coredump (discover core dumps)
   |         Toast.Deployment.ServerInstance (struct access)
 
-ToastTest.Attribution (orchestrates issue production)
-  |   uses: ToastTest.Attribution.TimeWindows (time window calculations)
-  |         ToastTest.Attribution.ServerLogs (server log data)
-  |         ToastTest.Enrichment.Coredump (coredump analysis)
-  |         ToastTest.Enrichment.Logs (log parsing)
-  |         ToastTest.Enrichment.Sanitizer (sanitizer file reading)
+ToastTest.PostExecution.Attribution (pure issue production over Attribution.Inputs)
+  |   uses: ToastTest.TimeWindows (window-attribution)
   |         ToastTest.CrashEvent (struct access)
+  |   note: no file I/O and no Enrichment dependency — it decides over
+  |         already-enriched inputs the orchestrator hands it.
 
-ToastTest.Attribution.TimeWindows (pure, no dependencies)
+ToastTest.TimeWindows (pure, no dependencies; shared with offline analyze)
 
-ToastTest.Enrichment.Logs (pure file I/O, no Toast deps)
-ToastTest.Enrichment.Sanitizer (pure file I/O, no Toast deps)
-ToastTest.Enrichment.Coredump
+ToastTest.PostExecution.Enrichment.Logs (pure file I/O, no Toast deps)
+ToastTest.PostExecution.Enrichment.Sanitizer (pure file I/O, no Toast deps)
+ToastTest.PostExecution.Enrichment.Coredump
   |   uses: Toast.Diagnostics.Coredump (debugger analysis)
 
 ToastTest.SuiteResult (central data struct)
@@ -480,18 +487,25 @@ Mix.Tasks.Toast.Analyze
   Controller.State. The Controller delegates to them and focuses on message
   routing and state management.
 
-- **Attribution replaces the old Matcher/CrashMatcher/SanitizerMatcher
-  hierarchy.** `Attribution` orchestrates issue production using
-  `TimeWindows` (pure leaf) and the `Enrichment.*` modules (pure file I/O).
-  This is a clean DAG with no circular dependencies.
+- **The PostExecution subsystem is a clean DAG.** The `PostExecution`
+  orchestrator enriches once (filesystem → data via `ArtifactCollector` +
+  `Enrichment.*`), then `Attribution` decides purely over those inputs using
+  `TimeWindows`. `Attribution` itself has no file I/O and no `Enrichment`
+  dependency — it replaced the old Matcher/CrashMatcher/SanitizerMatcher
+  hierarchy. No circular dependencies.
 
 - **Enrichment modules** (`Enrichment.Logs`, `Enrichment.Sanitizer`,
   `Enrichment.Coredump`) are pure file I/O with minimal Toast dependencies.
 
+- **`TimeWindows` and `Formatting.Backtrace` are shared leaves** — used by the
+  live `PostExecution` subsystem *and* the offline `mix toast.analyze` tooling,
+  so they sit outside `PostExecution.*`.
+
 - **ToastTest.Runner** is the most connected module because it orchestrates
   the full test lifecycle. Its complexity is managed by delegation to
   focused submodules: `TestExecution`, `TestProcess`, `BetweenTests`,
-  `PostExecution`, `ResultBuilder`, `TestFilter`, and `Timeout`.
+  `PostExecution`, `TestFilter`, and `Timeout` (the latter two under `Runner.*`;
+  `PostExecution` is now its own top-level subsystem).
 
 - **Process modules** (ServerProcess, HealthMonitor) have zero Toast
   dependencies. They communicate purely via messages (`:server_crashed`,

@@ -19,45 +19,60 @@
 ## Copyright holder is ArangoDB GmbH, Cologne, Germany
 ################################################################################
 
-defmodule ToastTest.Attribution do
+defmodule ToastTest.PostExecution.Attribution.Inputs do
   @moduledoc """
-  Pure issue production from already-enriched inputs.
+  The explicit input bundle `Attribution.run/2` decides over — every fact-list
+  it needs, named and required rather than smuggled through `opts`. Built by
+  PostExecution from the enriched Context. The temporal frame (`windows`) is
+  passed separately: it is the frame issues are attributed *within*, not a fact.
+  """
+
+  @type t :: %__MODULE__{
+          failures: [ExUnit.Test.t()],
+          crashes: [ToastTest.CrashEvent.t()],
+          sanitizer_reports: [map()],
+          timeout_kills: [map()],
+          infrastructure: [map()]
+        }
+
+  defstruct failures: [],
+            crashes: [],
+            sanitizer_reports: [],
+            timeout_kills: [],
+            infrastructure: []
+end
+
+defmodule ToastTest.PostExecution.Attribution do
+  @moduledoc """
+  Pure issue production from an already-enriched `Attribution.Inputs` bundle.
 
   Given test failures, enriched crash events (`effective_at`, crash log lines,
-  coredump reports — see `ToastTest.Enrichment`), parsed sanitizer reports,
+  coredump reports — see `ToastTest.PostExecution.Enrichment`), parsed sanitizer reports,
   timeout kills, and infrastructure events, produces a flat list of
   `SuiteResult.issue()` maps. No file I/O happens here: enrichment turns paths
   into data, this module decides (window-matching, scoping, confidence, issue
   assembly) over that data.
+
+  The coredump-report aggregate is *not* produced here — it is a plain
+  projection of the enriched crashes (`flat_map(crashes, & &1.coredump_reports)`)
+  that PostExecution extracts itself; it is not an attribution decision.
   """
 
-  alias ToastTest.Attribution.TimeWindows
+  alias ToastTest.PostExecution.Attribution.Inputs
+  alias ToastTest.TimeWindows
 
   import Toast.Utils, only: [maybe_put: 3]
 
   require Logger
 
-  @spec run(
-          ToastTest.ResultCollector.test_data(),
-          [ToastTest.CrashEvent.t()],
-          [map()],
-          TimeWindows.windows(),
-          keyword()
-        ) ::
-          {[ToastTest.SuiteResult.issue()], [ToastTest.SuiteResult.coredump_report()]}
-  def run(test_data, enriched_crashes, sanitizer_reports, windows, opts \\ [])
-      when is_list(enriched_crashes) and is_list(sanitizer_reports) and is_list(opts) do
-    timeout_kills = Keyword.get(opts, :timeout_kills, [])
-    infrastructure_events = Keyword.get(opts, :infrastructure_issues, [])
-
+  @spec run(Inputs.t(), TimeWindows.windows()) :: [ToastTest.SuiteResult.issue()]
+  def run(%Inputs{} = inputs, windows) do
     issues =
-      infrastructure_issues(infrastructure_events, windows) ++
-        test_failure_issues(test_data.failures) ++
-        crash_issues(enriched_crashes, windows) ++
-        sanitizer_issues(sanitizer_reports, windows) ++
-        timeout_issues(timeout_kills)
-
-    coredump_reports = Enum.flat_map(enriched_crashes, & &1.coredump_reports)
+      infrastructure_issues(inputs.infrastructure, windows) ++
+        test_failure_issues(inputs.failures) ++
+        crash_issues(inputs.crashes, windows) ++
+        sanitizer_issues(inputs.sanitizer_reports, windows) ++
+        timeout_issues(inputs.timeout_kills)
 
     breakdown =
       issues
@@ -68,7 +83,7 @@ defmodule ToastTest.Attribution do
       "Attribution: #{length(issues)} issue(s)#{if breakdown != "", do: " (#{breakdown})", else: ""}"
     )
 
-    {issues, coredump_reports}
+    issues
   end
 
   # --- Test failures ---
@@ -88,7 +103,7 @@ defmodule ToastTest.Attribution do
 
   # Pure over enriched crash events: `effective_at` (the log-resolved crash time,
   # for windowing/display), `coredump_reports`, `log_file`, and `crash_lines` are
-  # all produced by `ToastTest.Enrichment`. The raw `crash_info` (incl. its
+  # all produced by `ToastTest.PostExecution.Enrichment`. The raw `crash_info` (incl. its
   # untouched detection `timestamp`) is carried through as process-fact provenance.
   defp crash_issues(enriched_crashes, windows) do
     Enum.map(enriched_crashes, fn event ->
@@ -129,7 +144,7 @@ defmodule ToastTest.Attribution do
   # --- Timeouts ---
 
   # Pure over timeout kills already enriched with per-server coredump paths by
-  # `ToastTest.Enrichment.enrich_timeout_kills/2`.
+  # `ToastTest.PostExecution.Enrichment.enrich_timeout_kills/2`.
   defp timeout_issues(timeout_kills) do
     Enum.map(timeout_kills, fn kill ->
       %{
@@ -149,7 +164,7 @@ defmodule ToastTest.Attribution do
 
   # --- Sanitizer reports ---
 
-  # Pure over reports already read + parsed by `ToastTest.Enrichment`.
+  # Pure over reports already read + parsed by `ToastTest.PostExecution.Enrichment`.
   defp sanitizer_issues(sanitizer_reports, windows) do
     Enum.map(sanitizer_reports, fn report ->
       {scope, confidence, phase} =
