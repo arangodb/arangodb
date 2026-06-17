@@ -155,6 +155,42 @@ function aqlMatchStatementTestSuite() {
             }
         },
 
+        testSelectEdgesWithBindParameterEdgeType: function () {
+            const result = db._query("MATCH (v :vc) -[ e : @ec ]-> (w :vc) RETURN [v, e, w]", {ec: "ec"}, options).toArray();
+            assertEqual(result.length, 50);
+
+            for (const [v, e, w] of result) {
+                assertEqual(v._id, e._from);
+                assertEqual(w._id, e._to);
+            }
+        },
+
+        testSelectEdgesWithDataSourceBindParameterEdgeType: function () {
+            const result = db._query("MATCH (v :vc) -[ e : @@ec ]-> (w :vc) RETURN [v, e, w]", {"@ec": "ec"}, options).toArray();
+            assertEqual(result.length, 50);
+
+            for (const [v, e, w] of result) {
+                assertEqual(v._id, e._from);
+                assertEqual(w._id, e._to);
+            }
+        },
+
+        testSelectVerticesWithBindParameterLabel: function () {
+            const result = db._query("MATCH (v : @vc) RETURN v", {vc: "vc"}, options).toArray();
+            assertEqual(result.length, 100);
+            const ids = new Set(result.map(v => v._id));
+            assertEqual(ids.size, 100);
+        },
+
+        testSelectEdgesWithMissingBindParameterEdgeType: function () {
+            try {
+                db._query("MATCH (v :vc) -[ e : @ec ]-> (w :vc) RETURN [v, e, w]", {}, options).toArray();
+                fail();
+            } catch (err) {
+                assertEqual(err.errorNum, errors.ERROR_QUERY_BIND_PARAMETER_MISSING.code);
+            }
+        },
+
         testSelectEdgesWithProperties: function () {
             const result = db._query("MATCH (v :vc) -[ e :ec {j: 0}]-> (w :vc) RETURN [v, e, w]", {}, options).toArray();
             assertEqual(result.length, 5);

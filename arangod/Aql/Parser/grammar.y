@@ -1138,6 +1138,9 @@ pattern_label:
         auto const& resolver = parser->query().resolver();
         $$ = parser->ast()->createNodeDataSource(resolver, {$2.value, $2.length}, arangodb::AccessMode::Type::READ, true, false);
     }
+  | T_COLON bind_parameter_datasource_expected {
+        $$ = $2;
+    }
 
 %type <node> pattern_maybe_where_expression;
 pattern_maybe_where_expression:
