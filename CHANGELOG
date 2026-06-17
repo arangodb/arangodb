@@ -1,5 +1,8 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
+* Added AQL array `ALL`/`ANY`/`NONE` support for the `LIKE` operator, e.g.
+  `["foo", "bar"] ANY LIKE "b%"`.
+
 * COR-522: Use Distribute on repeated smart edge join.
 
 * COR-299: Upgrade ScatterNode to DistributeNode if shardkey is known
