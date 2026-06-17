@@ -1347,8 +1347,7 @@ AstNode* Ast::createNodeArrayLikeOperator(AstNode const* lhs,
   TRI_ASSERT(quantifier != nullptr);
 
   std::string const varName = variables()->nextName() + "_";
-  AstNode* iterator =
-      createNodeIterator(varName.c_str(), varName.size(), lhs);
+  AstNode* iterator = createNodeIterator(varName.c_str(), varName.size(), lhs);
   auto* variableNode = iterator->getMember(0);
   TRI_ASSERT(variableNode->type == NODE_TYPE_VARIABLE);
   auto* variable = static_cast<Variable*>(variableNode->getData());
@@ -1358,10 +1357,9 @@ AstNode* Ast::createNodeArrayLikeOperator(AstNode const* lhs,
   arguments->addMember(pattern);
 
   AstNode* likeCall = createNodeFunctionCall("LIKE", arguments, false);
-  AstNode* filter = negate
-                        ? createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_NOT,
-                                                likeCall)
-                        : likeCall;
+  AstNode* filter =
+      negate ? createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_NOT, likeCall)
+             : likeCall;
 
   AstNode* arrayFilter = createNodeArrayFilter(quantifier, filter);
 
