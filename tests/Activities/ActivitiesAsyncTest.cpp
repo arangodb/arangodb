@@ -51,20 +51,23 @@ auto promise_count_in_registry() -> uint {
 
 template<typename WaitType>
 struct ActivitiesAsyncTest : ::testing::Test {
-  void SetUp() override {
+  static void SetUpTestSuite() { activities::registry.garbageCollectAll(); }
+
+  ActivitiesAsyncTest() {
     activityData["TestCase"] =
         ::testing::UnitTest::GetInstance()->current_test_info()->name();
   }
 
-  void TearDown() override {
-    arangodb::async_registry::get_thread_registry().garbage_collect();
-    arangodb::activities::registry.garbageCollect();
+  ~ActivitiesAsyncTest() {
+    async_registry::get_thread_registry().garbage_collect();
+    activities::registry.garbageCollectAll();
+    EXPECT_EQ(activities::registry.size(), 0);
     wait.stop();
     wait2.stop();
     EXPECT_EQ(promise_count_in_registry(), 0);
     EXPECT_TRUE(std::holds_alternative<
-                arangodb::containers::SharedPtr<arangodb::basics::ThreadInfo>>(
-        *arangodb::async_registry::get_current_coroutine()));
+                containers::SharedPtr<arangodb::basics::ThreadInfo>>(
+        *async_registry::get_current_coroutine()));
   }
 
   GenericActivityData activityData;
