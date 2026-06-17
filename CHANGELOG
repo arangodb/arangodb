@@ -1,5 +1,8 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
+* COR-552: Added a new AQL string function PARTITION(input, separator) that splits 
+  a string at the first occurrence of the specified separator and returns an array of exactly three strings: the portion before the separator, the separator itself, and the portion after the separator.
+  
 * COR-572: BugFix - Resolved unintended warnings raised by eager evaluation in 
   the ternary operator during traversal and optimization.
 
