@@ -1915,6 +1915,36 @@ function ahuacatlStringFunctionsTestSuite () {
   },
 
 // //////////////////////////////////////////////////////////////////////////////
+// / @brief test partition function
+// //////////////////////////////////////////////////////////////////////////////
+
+  testPartition: function () {
+    [
+      [ [ 'foo', '-', 'bar-baz' ], 'foo-bar-baz', '-' ],
+      [ [ 'foo', '--', 'bar--baz' ], 'foo--bar--baz', '--' ],
+      [ [ '', 'foo', 'bar' ], 'foobar', 'foo' ],
+      [ [ 'foo', 'bar', '' ], 'foobar', 'bar' ],
+      [ [ 'foobar', '', '' ], 'foobar', 'baz' ],
+      [ [ '', '', 'foobar' ], 'foobar', '' ],
+      [ [ 'möt', 'ör', 'head' ], 'mötörhead', 'ör' ],
+    ].forEach(function (v) {
+      assertEqual([ v[0] ], getQueryResults(`RETURN PARTITION(${JSON.stringify(v[1])}, ${JSON.stringify(v[2])})`));
+    });
+  },
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test partition function
+// //////////////////////////////////////////////////////////////////////////////
+
+  testPartitionInvalid: function () {
+    assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, `RETURN PARTITION()`);
+    assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, `RETURN PARTITION('foo')`);
+    assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, `RETURN PARTITION('foo', 'o', 'o')`);
+    assertEqual([ [ '1', '2', '3' ] ], getQueryResults(`RETURN PARTITION(123, 2)`));
+    assertEqual([ [ '', '', '' ] ], getQueryResults(`RETURN PARTITION(null, 'x')`));
+  },
+
+// //////////////////////////////////////////////////////////////////////////////
 // / @brief test concat function
 // //////////////////////////////////////////////////////////////////////////////
 

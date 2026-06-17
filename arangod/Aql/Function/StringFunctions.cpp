@@ -1234,6 +1234,45 @@ AqlValue functions::Concat(ExpressionContext* ctx, AstNode const&,
   return AqlValue(std::string_view{buffer->data(), buffer->length()});
 }
 
+/// @brief function PARTITION
+AqlValue functions::Partition(ExpressionContext* ctx, AstNode const&,
+                              VPackFunctionParametersView parameters) {
+  auto const& vopts = ctx->trx().vpackOptions();
+
+  auto inputBuffer = ThreadLocalStringLeaser::lease();
+  auto separatorBuffer = ThreadLocalStringLeaser::lease();
+
+  velocypack::StringSink inputAdapter(inputBuffer.get());
+  appendAsString(vopts, inputAdapter,
+                 extractFunctionParameterValue(parameters, 0));
+
+  velocypack::StringSink separatorAdapter(separatorBuffer.get());
+  appendAsString(vopts, separatorAdapter,
+                 extractFunctionParameterValue(parameters, 1));
+
+  std::string_view const input{inputBuffer->data(), inputBuffer->size()};
+  std::string_view const separator{separatorBuffer->data(),
+                                   separatorBuffer->size()};
+
+  auto const pos = input.find(separator);
+
+  VPackBuilder builder;
+  builder.openArray();
+
+  if (pos == std::string_view::npos) {
+    builder.add(VPackValue(input));
+    builder.add(VPackValue(""));
+    builder.add(VPackValue(""));
+  } else {
+    builder.add(VPackValue(input.substr(0, pos)));
+    builder.add(VPackValue(separator));
+    builder.add(VPackValue(input.substr(pos + separator.size())));
+  }
+
+  builder.close();
+  return AqlValue(builder.slice(), builder.size());
+}
+
 /// @brief function LIKE
 AqlValue functions::Like(ExpressionContext* expressionContext, AstNode const&,
                          VPackFunctionParametersView parameters) {
