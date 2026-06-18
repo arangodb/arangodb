@@ -1,8 +1,8 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
-* COR-564: Specify the WeightAttribute attribute in the contained data vector.
+* COR-564: Specify the WeightAttribute in the contained data vector.
   WeightAttribute like:
-   OPTIONS { order: "weighted", weightAttribute: "Data.Weight" } back compatibility
+   OPTIONS { order: "weighted", weightAttribute: "Data.Weight" } backword compatibility
    OPTIONS { order: "weighted", weightAttribute: ["Data.Weight"]} new implementation
    OPTIONS { order: "weighted", weightAttribute: ["Data", "Weight"] } new implementation
 

@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include <vector>
 #include "Aql/AqlCall.h"
 #include "Aql/AqlItemBlockInputRange.h"
 #include "Aql/Ast.h"
@@ -37,8 +38,6 @@
 #include "Graph/Providers/BaseProviderOptions.h"
 #include "Graph/TraverserOptions.h"
 #include "Graph/Types/UniquenessLevel.h"
-
-#include <vector>
 
 namespace arangodb {
 class Result;
