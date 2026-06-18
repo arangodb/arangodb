@@ -1,6 +1,9 @@
 3.12.10-devel (XXXX-XX-XX)
 --------------------------
 
+* COR-670: Fixed a crash when a vector query with covered projections ran while
+  its vector index was still being built.
+
 * Updated ArangoDB Starter to v0.19.23.
 
 * COR-607: Fix a problem that causes cluster queries involving a materialize node
