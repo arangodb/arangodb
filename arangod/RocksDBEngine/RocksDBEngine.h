@@ -40,6 +40,7 @@
 #include "Cache/CacheManagerFeature.h"
 #include "Containers/FlatHashSet.h"
 #include "Metrics/Fwd.h"
+#include "Metrics/ICollector.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "StorageEngine/StorageEngine.h"
 #include "VocBase/Identifiers/DataSourceId.h"
@@ -172,7 +173,7 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   // create the storage engine
   RocksDBEngine(application_features::ApplicationServer& server,
                 RocksDBOptionsProvider& optionsProvider,
-                metrics::MetricsFeature& metrics,
+                metrics::ICollector& metrics,
                 DatabasePathFeature const& databasePathFeature,
                 VectorIndexFeature const& vectorIndexFeature,
                 FlushFeature& flushFeature,
@@ -191,8 +192,6 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   auto getFeature() const -> Type&;
 
   auto getDatabaseFeature() const -> DatabaseFeature&;
-
-  auto getMetricsFeature() const -> metrics::MetricsFeature&;
 
   auto getFlushFeature() const -> FlushFeature&;
 
@@ -633,7 +632,7 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   AgencyFeature const& _agencyFeature;
   RocksDBOptionsProvider& _optionsProvider;
 
-  metrics::MetricsFeature& _metrics;
+  metrics::ICollector& _metrics;
 
   /// single rocksdb database used in this storage engine
   rocksdb::TransactionDB* _db;

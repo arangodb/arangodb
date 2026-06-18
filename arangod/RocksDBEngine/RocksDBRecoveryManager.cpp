@@ -53,7 +53,6 @@
 #include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "RocksDBEngine/RocksDBVPackIndex.h"
 #include "RocksDBEngine/RocksDBValue.h"
-#include "StorageEngine/StorageEngineFeature.h"
 #include "Transaction/Helpers.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/ticks.h"
@@ -86,7 +85,6 @@ RocksDBRecoveryManager::RocksDBRecoveryManager(
   startsAfter<DatabaseFeature>();
   startsAfter<RocksDBEngine>();
   startsAfter<ServerIdFeature>();
-  startsAfter<StorageEngineFeature>();
   startsAfter<SystemDatabaseFeature>();
 
   onlyEnabledWith<RocksDBEngine>();
