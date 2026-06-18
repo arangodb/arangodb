@@ -411,7 +411,7 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   void determinePrunableWalFiles(TRI_voc_tick_t minTickToKeep);
   void pruneWalFiles();
 
-  double pruneWaitTimeInitial() const { return _pruneWaitTimeInitial; }
+  double pruneWaitTimeInitial() const { return _options.pruneWaitTimeInitial; }
 
   // management methods for synchronizing with external persistent stores
   TRI_voc_tick_t currentTick() const override;
@@ -480,10 +480,10 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
 #endif
 
   // returns whether sha files are created or not
-  bool getCreateShaFiles() const { return _createShaFiles; }
+  bool getCreateShaFiles() const { return _options.createShaFiles; }
 
   // enabled or disable sha file creation. Requires feature not be started.
-  void setCreateShaFiles(bool create) { _createShaFiles = create; }
+  void setCreateShaFiles(bool create) { _options.createShaFiles = create; }
 
   rocksdb::EncryptionProvider* encryptionProvider() const noexcept {
 #ifdef USE_ENTERPRISE
