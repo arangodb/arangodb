@@ -32,7 +32,6 @@
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/Storage/IStorageEngineMethods.h"
 #include "RestServer/DatabaseFeature.h"
-#include "StorageEngine/StorageEngineFeature.h"
 #include "VocBase/VocbaseInfo.h"
 #include "VocBase/vocbase.h"
 
@@ -56,7 +55,6 @@ StorageEngine::StorageEngine(application_features::ApplicationServer& server,
   startsAfter<application_features::BasicFeaturePhaseServer>();
 
   startsAfter<CacheManagerFeature>();
-  startsBefore<StorageEngineFeature>();
   startsAfter<transaction::ManagerFeature>();
   startsAfter<ViewTypesFeature>();
 }
