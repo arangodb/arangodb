@@ -31,6 +31,7 @@
 #include "Indexes/IndexIterator.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "RocksDBEngine/RocksDBBuilderIndex.h"
 #include "RocksDBEngine/RocksDBVectorIndex.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
@@ -137,7 +138,16 @@ void EnumerateNearVectorsExecutor::fillInput(
 }
 
 void EnumerateNearVectorsExecutor::searchResults() {
-  auto* vectorIndex = dynamic_cast<RocksDBVectorIndex*>(_infos.index.get());
+  auto const* vectorIndex =
+      dynamic_cast<RocksDBVectorIndex const*>(_infos.index.get());
+  if (vectorIndex == nullptr) {
+    auto* builderIndex = dynamic_cast<RocksDBBuilderIndex*>(_infos.index.get());
+    TRI_ASSERT(builderIndex != nullptr)
+        << "Expected index to be either RocksDBVectorIndex or "
+           "RocksDBBuilderIndex, both cannot be true";
+    vectorIndex =
+        dynamic_cast<RocksDBVectorIndex const*>(&builderIndex->wrapped());
+  }
   TRI_ASSERT(vectorIndex != nullptr);
 
   vector::VectorSearchContext ctx{
