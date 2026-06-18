@@ -54,14 +54,14 @@ DECLARE_COUNTER(
     "Number of times a dump thread was blocked because of memory restrictions");
 
 RocksDBDumpManager::RocksDBDumpManager(RocksDBEngine& engine,
-                                       metrics::ICollector& metricsFeature,
+                                       metrics::ICollector& metrics,
                                        DumpLimits const& limits)
     : _engine(engine),
       _limits(limits),
-      _dumpsOngoing(metricsFeature.add(arangodb_dump_ongoing{})),
-      _dumpsMemoryUsage(metricsFeature.add(arangodb_dump_memory_usage{})),
-      _dumpsThreadsBlocked(
-          metricsFeature.add(arangodb_dump_threads_blocked_total{})) {}
+      _dumpsOngoing(metrics.add(arangodb_dump_ongoing{})),
+      _dumpsMemoryUsage(metrics.add(arangodb_dump_memory_usage{})),
+      _dumpsThreadsBlocked(metrics.add(arangodb_dump_threads_blocked_total{})) {
+}
 
 RocksDBDumpManager::~RocksDBDumpManager() {
   garbageCollect(true);

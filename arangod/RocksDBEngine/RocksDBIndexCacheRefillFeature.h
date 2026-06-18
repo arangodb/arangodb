@@ -44,10 +44,6 @@ class DatabaseFeature;
 class LogicalCollection;
 class RocksDBIndexCacheRefillThread;
 
-namespace metrics {
-struct ICollector;
-}
-
 class RocksDBIndexCacheRefillFeature final
     : public application_features::ApplicationFeature {
  public:

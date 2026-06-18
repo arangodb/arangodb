@@ -954,31 +954,30 @@ namespace {
 struct RocksDBAsyncLogWriteBatcherMetricsImpl
     : replication2::storage::rocksdb::AsyncLogWriteBatcherMetrics {
   explicit RocksDBAsyncLogWriteBatcherMetricsImpl(
-      metrics::ICollector& metricsFeature) {
+      metrics::ICollector& metrics) {
     using namespace arangodb::replication2::storage::rocksdb;
-    numWorkerThreadsWaitForSync = &metricsFeature.add(
+    numWorkerThreadsWaitForSync = &metrics.add(
         arangodb_replication2_rocksdb_num_persistor_worker{}.withLabel("ws",
                                                                        "true"));
-    numWorkerThreadsNoWaitForSync = &metricsFeature.add(
+    numWorkerThreadsNoWaitForSync = &metrics.add(
         arangodb_replication2_rocksdb_num_persistor_worker{}.withLabel(
             "ws", "false"));
 
-    queueLength =
-        &metricsFeature.add(arangodb_replication2_rocksdb_queue_length{});
+    queueLength = &metrics.add(arangodb_replication2_rocksdb_queue_length{});
     writeBatchSize =
-        &metricsFeature.add(arangodb_replication2_rocksdb_write_batch_size{});
+        &metrics.add(arangodb_replication2_rocksdb_write_batch_size{});
     rocksdbWriteTimeInUs =
-        &metricsFeature.add(arangodb_replication2_rocksdb_write_time{});
+        &metrics.add(arangodb_replication2_rocksdb_write_time{});
     rocksdbSyncTimeInUs =
-        &metricsFeature.add(arangodb_replication2_rocksdb_sync_time{});
+        &metrics.add(arangodb_replication2_rocksdb_sync_time{});
 
-    operationLatencyInsert = &metricsFeature.add(
+    operationLatencyInsert = &metrics.add(
         arangodb_replication2_storage_operation_latency{}.withLabel("op",
                                                                     "insert"));
-    operationLatencyRemoveFront = &metricsFeature.add(
+    operationLatencyRemoveFront = &metrics.add(
         arangodb_replication2_storage_operation_latency{}.withLabel(
             "op", "remove-front"));
-    operationLatencyRemoveBack = &metricsFeature.add(
+    operationLatencyRemoveBack = &metrics.add(
         arangodb_replication2_storage_operation_latency{}.withLabel(
             "op", "remove-back"));
   }
