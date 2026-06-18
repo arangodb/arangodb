@@ -91,7 +91,7 @@ void VectorIndexFeature::stop() {
   _buildManager->stop();
 }
 
-bool VectorIndexFeature::isVectorIndexEnabled() const {
+bool VectorIndexFeature::isVectorIndexEnabled() const noexcept {
   return _options.useVectorIndex;
 }
 

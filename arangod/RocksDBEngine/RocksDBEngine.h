@@ -47,6 +47,7 @@
 #include "RestServer/IDatabaseProvider.h"
 #include "RestServer/IDumpLimitsProvider.h"
 #include "RestServer/IFlushControl.h"
+#include "RocksDBEngine/IIndexCacheRefill.h"
 #include "VectorIndex/IVectorIndexProvider.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "StorageEngine/StorageEngine.h"
@@ -86,7 +87,6 @@ class PhysicalCollection;
 class RocksDBBackgroundErrorListener;
 class RocksDBBackgroundThread;
 class RocksDBDumpManager;
-class RocksDBIndexCacheRefillFeature;
 class RocksDBKey;
 class RocksDBLogValue;
 class RocksDBRecoveryHelper;
@@ -180,7 +180,7 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
                 IReplicatedLogProvider* replicatedLogProvider,
                 RocksDBRecoveryManager const& rocksDbRecoveryManager,
                 IDatabaseProvider& databaseProvider,
-                RocksDBIndexCacheRefillFeature& rocksDbIndexCacheRefillFeature,
+                IIndexCacheRefill& rocksDbIndexCacheRefillFeature,
                 ICacheManagerProvider& cacheManagerProvider,
                 ISortingProvider const& sortingProvider);
   ~RocksDBEngine();
@@ -624,7 +624,7 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   IReplicatedLogProvider* _replicatedLogProvider;
   RocksDBRecoveryManager const& _rocksDbRecoveryManager;
   IDatabaseProvider& _databaseProvider;
-  RocksDBIndexCacheRefillFeature& _rocksDbIndexCacheRefillFeature;
+  IIndexCacheRefill& _rocksDbIndexCacheRefillFeature;
   ICacheManagerProvider& _cacheManagerProvider;
   ISortingProvider const& _sortingProvider;
   RocksDBOptionsProvider& _optionsProvider;

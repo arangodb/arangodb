@@ -23,47 +23,29 @@
 
 #include "gtest/gtest.h"
 
-#include "Agency/AgencyFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/SharedPRNG.h"
-#include "Cache/CacheManagerFeature.h"
-#include "Cache/CacheOptionsProvider.h"
-#include "Metrics/MetricsFeature.h"
+#include "Metrics/ICollector.h"
 
-// LazyApplicationFeatureReference works with incomplete types
-namespace arangodb {
-class ClusterFeature;
-namespace metrics {
-class ClusterMetricsFeature;
-}
-}  // namespace arangodb
-#include "RestServer/DatabaseFeature.h"
-#include "RestServer/DatabasePathFeature.h"
-#include "RestServer/DumpLimitsFeature.h"
-#include "RestServer/FlushFeature.h"
-#include "RestServer/arangod.h"
+// interface headers
+#include "Agency/ISortingProvider.h"
+#include "Cache/ICacheManagerProvider.h"
+#include "Replication2/ReplicatedLog/IReplicatedLogProvider.h"
+#include "RestServer/IDatabasePathProvider.h"
+#include "RestServer/IDatabaseProvider.h"
+#include "RestServer/IDumpLimitsProvider.h"
+#include "RestServer/IFlushControl.h"
+#include "RocksDBEngine/IIndexCacheRefill.h"
+#include "VectorIndex/IVectorIndexProvider.h"
 
-namespace arangodb {
-class QueryRegistryFeature;
-}  // namespace arangodb
+// concrete — both in arango_rocksdb
 #include "RocksDBEngine/RocksDBEngine.h"
-#include "RocksDBEngine/RocksDBIndexCacheRefillFeature.h"
 #include "RocksDBEngine/RocksDBOptionsProvider.h"
 #include "RocksDBEngine/RocksDBRecoveryManager.h"
-#include "VectorIndex/VectorIndexFeature.h"
-
-namespace arangodb {
-class StatisticsFeature;
-}  // namespace arangodb
 
 using namespace arangodb;
 
-// inline impl avoids pulling in any extra library for this
-struct TestCacheOptionsProvider final : CacheOptionsProvider {
-  CacheOptions getOptions() const override { return {}; }
-};
+// --- stubs ---
 
-// RocksDBOptionsProvider is abstract; this stub returns all defaults
 struct TestRocksDBOptionsProvider final : RocksDBOptionsProvider {
   rocksdb::TransactionDBOptions getTransactionDBOptions() const override {
     return {};
@@ -80,38 +62,97 @@ struct TestRocksDBOptionsProvider final : RocksDBOptionsProvider {
   }
 };
 
+struct TestDatabasePathProvider final : IDatabasePathProvider {
+  std::string const& directory() const override { return _dir; }
+  std::string subdirectoryName(std::string const& sub) const override {
+    return _dir + "/" + sub;
+  }
+  std::string _dir{"/tmp/test"};
+};
+
+struct TestVectorIndexProvider final : IVectorIndexProvider {
+  bool isVectorIndexEnabled() const noexcept override { return false; }
+};
+
+struct TestFlushControl final : IFlushControl {
+  bool isEnabled() const noexcept override { return false; }
+  std::tuple<std::size_t, std::size_t, TRI_voc_tick_t> releaseUnusedTicks()
+      override {
+    return {0, 0, 0};
+  }
+};
+
+struct TestDumpLimitsProvider final : IDumpLimitsProvider {
+  DumpLimitsFeatureOptions const& limits() const noexcept override {
+    return _limits;
+  }
+  DumpLimitsFeatureOptions _limits{};
+};
+
+struct TestDatabaseProvider final : IDatabaseProvider {
+  VocbasePtr useDatabase(std::string_view) const override { return {}; }
+  VocbasePtr useDatabase(TRI_voc_tick_t) const override { return {}; }
+  void enumerateDatabases(std::function<void(TRI_vocbase_t&)> const&) override {
+  }
+  void inventory(
+      velocypack::Builder&, TRI_voc_tick_t,
+      std::function<bool(LogicalCollection const*)> const&) override {}
+  replication::Version defaultReplicationVersion() const noexcept override {
+    return {};
+  }
+  bool extendedNames() const noexcept override { return false; }
+  void extendedNames(bool) noexcept override {}
+};
+
+struct TestCacheManagerProvider final : ICacheManagerProvider {
+  cache::Manager* manager() override { return nullptr; }
+};
+
+struct TestSortingProvider final : ISortingProvider {
+  bool isActivatedAgent() const noexcept override { return false; }
+};
+
+struct TestIndexCacheRefill final : IIndexCacheRefill {
+  void scheduleFullIndexRefill(std::string const&, std::string const&,
+                               IndexId) override {}
+  bool autoRefill() const noexcept override { return false; }
+  bool autoRefillOnFollowers() const noexcept override { return false; }
+  void waitForCatchup() override {}
+};
+
+struct TestMetricsCollector final : metrics::ICollector {
+ protected:
+  std::shared_ptr<metrics::Metric> doAdd(metrics::Builder& builder) override {
+    auto metric = builder.build();
+    _metrics.push_back(metric);
+    return metric;
+  }
+
+ private:
+  std::vector<std::shared_ptr<metrics::Metric>> _metrics;
+};
+
+// --- test ---
+
 TEST(RocksDBEngineMinimal, CanConstruct) {
-  ArangodServer server{nullptr, nullptr};
-
-  // addFeature<T>(args...) injects server as the first ctor arg automatically
-  auto& metrics = server.addFeature<metrics::MetricsFeature>(
-      LazyApplicationFeatureReference<QueryRegistryFeature>(nullptr),
-      LazyApplicationFeatureReference<StatisticsFeature>(nullptr),
-      LazyApplicationFeatureReference<DatabaseFeature>(nullptr),
-      LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(nullptr),
-      LazyApplicationFeatureReference<ClusterFeature>(nullptr));
-
-  auto& dbPath = server.addFeature<DatabasePathFeature>();
-  auto& dbFeature = server.addFeature<DatabaseFeature>();
-  auto& dumpLimits = server.addFeature<DumpLimitsFeature>();
+  TestMetricsCollector metricsCollector;
+  application_features::ApplicationServer server{nullptr, nullptr};
   auto& recovery = server.addFeature<RocksDBRecoveryManager>();
-  auto& agency = server.addFeature<AgencyFeature>();
-  auto& flush = server.addFeature<FlushFeature>(metrics);
-  auto& vectorIdx = server.addFeature<VectorIndexFeature>(dbFeature);
-
-  basics::SharedPRNG prng;
-  TestCacheOptionsProvider cacheProvider;
-  auto& cache = server.addFeature<CacheManagerFeature>(cacheProvider, prng);
-
-  auto& indexRefill = server.addFeature<RocksDBIndexCacheRefillFeature>(
-      dbFeature, nullptr /* ClusterFeature* */, metrics);
 
   TestRocksDBOptionsProvider optionsProvider;
+  TestDatabasePathProvider dbPath;
+  TestVectorIndexProvider vectorIdx;
+  TestFlushControl flush;
+  TestDumpLimitsProvider dumpLimits;
+  TestDatabaseProvider dbProvider;
+  TestCacheManagerProvider cacheManager;
+  TestSortingProvider agency;
+  TestIndexCacheRefill indexCacheRefill;
 
   auto& engine = server.addFeature<RocksDBEngine>(
-      optionsProvider, metrics, dbPath, vectorIdx, flush, dumpLimits,
-      nullptr /* IReplicatedLogProvider* */, recovery, dbFeature, indexRefill,
-      cache, agency);
+      optionsProvider, metricsCollector, dbPath, vectorIdx, flush, dumpLimits,
+      nullptr /* IReplicatedLogProvider* */, recovery, dbProvider,
+      indexCacheRefill, cacheManager, agency);
 
   EXPECT_EQ(engine.kEngineName, "rocksdb");
 }

@@ -156,7 +156,7 @@ struct WalAccessContext {
   WalAccessContext(IDatabaseProvider& databaseProvider,
                    WalAccess::Filter const& filter,
                    WalAccess::MarkerCallback const& c)
-      : _databaseFeature(databaseProvider),
+      : _databaseProvider(databaseProvider),
         _filter(filter),
         _callback(c),
         _responseSize(0) {}
@@ -179,7 +179,7 @@ struct WalAccessContext {
   LogicalCollection* loadCollection(TRI_voc_tick_t dbid, DataSourceId cid);
 
  private:
-  IDatabaseProvider& _databaseFeature;
+  IDatabaseProvider& _databaseProvider;
 
  protected:
   friend class MyWALDumper;

@@ -90,7 +90,7 @@
 #include "RocksDBEngine/RocksDBFormat.h"
 #include "RocksDBEngine/RocksDBIncrementalSync.h"
 #include "RocksDBEngine/RocksDBIndex.h"
-#include "RocksDBEngine/RocksDBIndexCacheRefillFeature.h"
+#include "RocksDBEngine/IIndexCacheRefill.h"
 #include "RocksDBEngine/RocksDBIndexFactory.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
@@ -266,7 +266,7 @@ RocksDBEngine::RocksDBEngine(
     IReplicatedLogProvider* replicatedLogProvider,
     RocksDBRecoveryManager const& rocksDbRecoveryManager,
     IDatabaseProvider& databaseProvider,
-    RocksDBIndexCacheRefillFeature& rocksDbIndexCacheRefillFeature,
+    IIndexCacheRefill& rocksDbIndexCacheRefillFeature,
     ICacheManagerProvider& cacheManagerProvider,
     ISortingProvider const& sortingProvider)
     : StorageEngine(server, kEngineName, name(), typeid(RocksDBEngine),

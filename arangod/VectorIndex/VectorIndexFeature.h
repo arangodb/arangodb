@@ -54,7 +54,7 @@ class VectorIndexFeature final
 
   void stop() override final;
 
-  bool isVectorIndexEnabled() const override final;
+  bool isVectorIndexEnabled() const noexcept override final;
 
   // Wait until the given vector index is trained. On single server or
   // DBServer, returns a future that resolves when the build manager finishes

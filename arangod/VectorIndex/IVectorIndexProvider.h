@@ -27,7 +27,7 @@ namespace arangodb {
 
 struct IVectorIndexProvider {
   virtual ~IVectorIndexProvider() = default;
-  virtual bool isVectorIndexEnabled() const = 0;
+  virtual bool isVectorIndexEnabled() const noexcept = 0;
 };
 
 }  // namespace arangodb
