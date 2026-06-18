@@ -1,5 +1,8 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
+
+* Upgraded OpenSSL to 3.5.7.
+
 * COR-572: BugFix - Resolved unintended warnings raised by eager evaluation in 
   the ternary operator during traversal and optimization.
 
@@ -58,8 +61,6 @@
   string, behavior is unchanged: `+` still applies the existing numeric coercion
   for `null`, booleans, arrays, objects, and numbers. Constant `+` expressions
   are constant-folded at optimization time using the same rules as at runtime.
-
-* Upgraded OpenSSL to 3.5.6.
 
 * COR-293: Removed ConnectionStatistics and replaced with MetricsFeature for connection tracking.
 
