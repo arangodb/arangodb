@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -18,29 +18,26 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
-/// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
-#include "FeaturePhases/BasicFeaturePhaseServer.h"
+#include "Metrics/Builder.h"
+#include "Metrics/Metric.h"
 
-namespace arangodb {
+namespace arangodb::metrics {
 
-// a stub class that other features can use to check whether a storage
-// engine (no matter what type) is ready
-class StorageEngineFeature final
-    : public application_features::ApplicationFeature {
- public:
-  static constexpr std::string_view name() noexcept { return "StorageEngine"; }
+struct ICollector {
+  virtual ~ICollector() = default;
 
-  explicit StorageEngineFeature(application_features::ApplicationServer& server)
-      : ApplicationFeature(server, typeid(StorageEngineFeature), name()) {
-    setOptional(false);
-    startsAfter<application_features::BasicFeaturePhaseServer>();
+  // tries to add metric. throws if such metric already exists
+  template<typename MetricBuilder>
+  auto add(MetricBuilder&& builder) -> typename MetricBuilder::MetricT& {
+    return static_cast<typename MetricBuilder::MetricT&>(*doAdd(builder));
   }
+
+ protected:
+  virtual std::shared_ptr<Metric> doAdd(Builder& builder) = 0;
 };
 
-}  // namespace arangodb
+}  // namespace arangodb::metrics

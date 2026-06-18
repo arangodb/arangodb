@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include "ICollector.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/LazyApplicationFeatureReference.h"
 #include "Basics/DownCast.h"
@@ -51,7 +52,8 @@ namespace arangodb::metrics {
 
 class ClusterMetricsFeature;
 
-class MetricsFeature final : public application_features::ApplicationFeature {
+class MetricsFeature final : public application_features::ApplicationFeature,
+                             public ICollector {
  public:
   // Maintain backward compatibility for existing code
   using UsageTrackingMode = metrics::UsageTrackingMode;
@@ -75,12 +77,6 @@ class MetricsFeature final : public application_features::ApplicationFeature {
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) final;
-
-  // tries to add metric. throws if such metric already exists
-  template<typename MetricBuilder>
-  auto add(MetricBuilder&& builder) -> typename MetricBuilder::MetricT& {
-    return static_cast<typename MetricBuilder::MetricT&>(*doAdd(builder));
-  }
 
   // tries to add the metric. If the metric already exists, it is returned
   // instead.
@@ -135,8 +131,10 @@ class MetricsFeature final : public application_features::ApplicationFeature {
 
   void prepare() override;
 
+ protected:
+  std::shared_ptr<Metric> doAdd(Builder& builder) override;
+
  private:
-  std::shared_ptr<Metric> doAdd(Builder& builder);
   std::shared_ptr<Metric> doAddDynamic(Builder& builder);
   std::shared_ptr<Metric> doEnsureMetric(Builder& builder);
   std::shared_lock<std::shared_mutex> initGlobalLabels() const;
