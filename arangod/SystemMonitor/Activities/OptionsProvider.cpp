@@ -29,7 +29,7 @@ namespace arangodb::activities {
 
 void OptionsProvider::declareOptions(
     std::shared_ptr<options::ProgramOptions> opts, FeatureOptions& options) {
-  opts->addSection("activites", "Options for activities");
+  opts->addSection("activities", "Options for activities");
 
   opts->addOption(
           "--activities.registry-cleanup-timeout",
