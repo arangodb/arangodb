@@ -45,7 +45,7 @@ class LogicalCollection;
 class RocksDBIndexCacheRefillThread;
 
 namespace metrics {
-class MetricsFeature;
+struct ICollector;
 }
 
 class RocksDBIndexCacheRefillFeature final
@@ -58,7 +58,7 @@ class RocksDBIndexCacheRefillFeature final
   RocksDBIndexCacheRefillFeature(
       application_features::ApplicationServer& server,
       DatabaseFeature& databaseFeature, ClusterFeature* clusterFeature,
-      metrics::MetricsFeature& metricsFeature);
+      metrics::ICollector& metricsCollector);
 
   ~RocksDBIndexCacheRefillFeature();
 
@@ -104,7 +104,7 @@ class RocksDBIndexCacheRefillFeature final
   void scheduleIndexRefillTasks();
 
   static metrics::Counter& addTotalFullIndexRefills(
-      metrics::MetricsFeature& metrics);
+      metrics::ICollector& metricsCollector);
 
   // actually fill the specified index cache
   Result warmupIndex(std::string const& database, std::string const& collection,
@@ -112,7 +112,7 @@ class RocksDBIndexCacheRefillFeature final
 
   DatabaseFeature& _databaseFeature;
   ClusterFeature* _clusterFeature{};
-  metrics::MetricsFeature& _metricsFeature;
+  metrics::ICollector& _metricsCollector;
 
   // index refill thread used for auto-refilling after insert/update/replace
   // (not used for initial filling at startup)
