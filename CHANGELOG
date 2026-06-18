@@ -1,6 +1,8 @@
 v3.11.14.5 (XXXX-XX-XX)
 -----------------------
 
+* Upgraded OpenSSL to 3.5.7.
+
 * Removed arangosync.
 
 * Updated ArangoDB Starter to v0.18.26.
