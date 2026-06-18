@@ -4,6 +4,8 @@
 * COR-670: Fixed a crash when a vector query with covered projections ran while
   its vector index was still being built.
 
+* Upgraded OpenSSL to 3.5.6.
+
 * Updated ArangoDB Starter to v0.19.23.
 
 * COR-607: Fix a problem that causes cluster queries involving a materialize node
