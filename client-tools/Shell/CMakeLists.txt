@@ -20,6 +20,7 @@ add_executable(${BIN_ARANGOSH}
   ${ProductVersionFiles_arangosh}
 
   ShellFeature.cpp
+  ShellOptionsProvider.cpp
   TelemetricsHandler.cpp
   V8ClientConnection.cpp
   V8ShellFeature.cpp

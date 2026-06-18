@@ -13,6 +13,7 @@ add_library(arango_rocksdb STATIC
   RocksDBDumpManager.cpp
   RocksDBEdgeIndex.cpp
   RocksDBEngine.cpp
+  RocksDBEngineOptionsProvider.cpp
   RocksDBFormat.cpp
   RocksDBFulltextIndex.cpp
   RocksDBGeoIndex.cpp
