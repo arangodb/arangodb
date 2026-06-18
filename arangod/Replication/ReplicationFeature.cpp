@@ -42,7 +42,6 @@
 #include "RestServer/SystemDatabaseFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBRecoveryManager.h"
-#include "StorageEngine/StorageEngineFeature.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb::application_features;
@@ -77,7 +76,6 @@ ReplicationFeature::ReplicationFeature(
   startsAfter<RocksDBEngine>();
   startsAfter<RocksDBRecoveryManager>();
   startsAfter<ServerIdFeature>();
-  startsAfter<StorageEngineFeature>();
   startsAfter<SystemDatabaseFeature>();
 }
 
