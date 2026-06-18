@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -18,29 +18,18 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
-/// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
-#include "FeaturePhases/BasicFeaturePhaseServer.h"
+#include "ApplicationFeatures/OptionsProvider.h"
+#include "SystemMonitor/AsyncRegistry/FeatureOptions.h"
 
-namespace arangodb {
+namespace arangodb::async_registry {
 
-// a stub class that other features can use to check whether a storage
-// engine (no matter what type) is ready
-class StorageEngineFeature final
-    : public application_features::ApplicationFeature {
- public:
-  static constexpr std::string_view name() noexcept { return "StorageEngine"; }
-
-  explicit StorageEngineFeature(application_features::ApplicationServer& server)
-      : ApplicationFeature(server, typeid(StorageEngineFeature), name()) {
-    setOptional(false);
-    startsAfter<application_features::BasicFeaturePhaseServer>();
-  }
+struct OptionsProvider : arangodb::OptionsProvider<FeatureOptions> {
+  void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
+                      FeatureOptions& options) override;
 };
 
-}  // namespace arangodb
+}  // namespace arangodb::async_registry

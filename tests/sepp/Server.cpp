@@ -239,7 +239,6 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
   _server.addFeature<SoftShutdownFeature>();
   _server.addFeature<SslFeature>();
   _server.addFeature<StatisticsFeature>(metrics);
-  _server.addFeature<StorageEngineFeature>();
   _server.addFeature<SystemDatabaseFeature>();
   _server.addFeature<TempFeature>(name);
   _server.addFeature<TemporaryStorageFeature>();
