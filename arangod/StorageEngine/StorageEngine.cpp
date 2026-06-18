@@ -28,6 +28,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Cache/CacheManagerFeature.h"
+#include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/Storage/IStorageEngineMethods.h"
