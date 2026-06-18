@@ -2,6 +2,7 @@ add_library(arango_scheduler STATIC
   LockfreeThreadPool.cpp
   Scheduler.cpp
   SchedulerFeature.cpp
+  SchedulerOptionsProvider.cpp
   SchedulerMetrics.cpp
   SimpleThreadPool.cpp
   SupervisedScheduler.cpp

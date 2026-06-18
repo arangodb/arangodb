@@ -35,20 +35,17 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Basics/Exceptions.h"
-#include "Basics/FileResultString.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/application-exit.h"
-#include "Basics/files.h"
 #include "Basics/operating-system.h"
 #include "Basics/process-utils.h"
 #include "Basics/system-functions.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
-#include "ProgramOptions/Option.h"
-#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
+#include "RestServer/DaemonOptionsProvider.h"
 
 #ifdef TRI_HAVE_SIGNAL_H
 #include <signal.h>
@@ -75,52 +72,13 @@ DaemonFeature::DaemonFeature(ApplicationServer& server)
 }
 
 void DaemonFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addOption(
-      "--daemon",
-      "Start the server as a daemon (background process). Requires --pid-file "
-      "to be set.",
-      new BooleanParameter(&_options.daemon),
-      arangodb::options::makeFlags(arangodb::options::Flags::Uncommon));
-
-  options->addOption(
-      "--pid-file",
-      "The name of the process ID file to use if the server runs as a daemon.",
-      new StringParameter(&_options.pidFile),
-      arangodb::options::makeFlags(arangodb::options::Flags::Uncommon));
-
-  options->addOption(
-      "--working-directory", "The working directory in daemon mode.",
-      new StringParameter(&_options.workingDirectory),
-      arangodb::options::makeFlags(arangodb::options::Flags::Uncommon));
+  DaemonOptionsProvider provider;
+  provider.declareOptions(options, _options);
 }
 
-void DaemonFeature::validateOptions(
-    std::shared_ptr<ProgramOptions> /*options*/) {
-  if (!_options.daemon) {
-    return;
-  }
-
-  if (_options.pidFile.empty()) {
-    LOG_TOPIC("9d6ba", FATAL, arangodb::Logger::FIXME)
-        << "need --pid-file in --daemon mode";
-    FATAL_ERROR_EXIT();
-  }
-
-  // make the pid filename absolute
-
-  std::string absoluteFile =
-      std::filesystem::absolute(std::filesystem::path(_options.pidFile))
-          .string();
-
-  if (!absoluteFile.empty()) {
-    _options.pidFile = absoluteFile;
-    LOG_TOPIC("79662", DEBUG, arangodb::Logger::FIXME)
-        << "using absolute pid file '" << _options.pidFile << "'";
-  } else {
-    LOG_TOPIC("24de9", FATAL, arangodb::Logger::FIXME)
-        << "cannot determine absolute path";
-    FATAL_ERROR_EXIT();
-  }
+void DaemonFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
+  DaemonOptionsProvider provider;
+  provider.validateOptions(options, _options);
 }
 
 void DaemonFeature::daemonize() {

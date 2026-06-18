@@ -26,29 +26,25 @@
 
 #include <cstdint>
 #include <memory>
-#include <string>
 #include <thread>
 #include <vector>
 
 #include "Basics/ScopeGuard.h"
 #include "Basics/voc-errors.h"
 #include "Cache/BinaryKeyHasher.h"
+#include "Cache/Cache.h"
+#include "Cache/CachedValue.h"
 #include "Cache/CacheOptionsProvider.h"
 #include "Cache/Common.h"
 #include "Cache/Manager.h"
-#include "Cache/PlainCache.h"
 #include "Cache/Rebalancer.h"
 #include "Cache/Transaction.h"
-#include "Cache/TransactionalCache.h"
 #include "Random/RandomGenerator.h"
-#include "RestServer/SharedPRNGFeature.h"
 
-#include "Mocks/Servers.h"
 #include "MockScheduler.h"
 
 using namespace arangodb;
 using namespace arangodb::cache;
-using namespace arangodb::tests::mocks;
 
 struct ThreadGuard {
   ThreadGuard(ThreadGuard&&) = default;
@@ -77,11 +73,10 @@ TEST(CacheRebalancerTest, test_rebalancing_with_plaincache_LongRunning) {
     scheduler.post(fn);
     return true;
   };
-  MockMetricsServer server;
-  SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
+  basics::SharedPRNG prng;
   CacheOptions co;
   co.cacheSize = 128 * 1024 * 1024;
-  Manager manager(sharedPRNG, postFn, co);
+  Manager manager(prng, postFn, co);
   Rebalancer rebalancer(&manager);
 
   std::size_t cacheCount = 4;
@@ -207,11 +202,10 @@ TEST(CacheRebalancerTest,
     scheduler.post(fn);
     return true;
   };
-  MockMetricsServer server;
-  SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
+  basics::SharedPRNG prng;
   CacheOptions co;
   co.cacheSize = 128 * 1024 * 1024;
-  Manager manager(sharedPRNG, postFn, co);
+  Manager manager(prng, postFn, co);
   Rebalancer rebalancer(&manager);
 
   std::size_t cacheCount = 4;
@@ -356,12 +350,11 @@ TEST(
     scheduler.post(fn);
     return true;
   };
-  MockMetricsServer server;
-  SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
+  basics::SharedPRNG prng;
   CacheOptions co;
   // small enough so that we have memory pressure!
   co.cacheSize = 8 * 1024 * 1024;
-  Manager manager(sharedPRNG, postFn, co);
+  Manager manager(prng, postFn, co);
   Rebalancer rebalancer(&manager);
 
   std::size_t cacheCount = 4;

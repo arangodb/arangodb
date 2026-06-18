@@ -9,4 +9,4 @@ if (USE_FAST_DOUBLE_MEMCMP_ENCODING)
   target_compile_definitions(arango_zkd PRIVATE USE_FAST_DOUBLE_MEMCMP_ENCODING)
 endif ()
 
-target_link_libraries(arango_zkd arango)
+target_link_libraries(arango_zkd arango_basic_utils)

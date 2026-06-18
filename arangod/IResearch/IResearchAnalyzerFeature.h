@@ -49,6 +49,7 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "IResearch/IResearchAnalyzerValueTypeAttribute.h"
 #include "IResearch/IResearchCommon.h"
+#include "RestServer/DatabaseFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Transaction/OperationOrigin.h"
 
@@ -60,9 +61,9 @@ class ApplicationServer;
 }
 class ClusterFeature;
 class DatabaseFeature;
-class EngineSelectorFeature;
 class NetworkFeature;
 class SchedulerFeature;
+class StorageEngine;
 class SystemDatabaseFeature;
 
 namespace aql {
@@ -292,7 +293,6 @@ class IResearchAnalyzerFeature final
 
   struct Dependencies {
     DatabaseFeature& databaseFeature;
-    EngineSelectorFeature& engineSelector;
     SystemDatabaseFeature& systemDatabase;
     NetworkFeature* networkFeature;
     ClusterFeature* clusterFeature;
@@ -606,12 +606,13 @@ class IResearchAnalyzerFeature final
   Result storeAnalyzer(AnalyzerPool& pool,
                        transaction::OperationOrigin operationOrigin);
 
+  StorageEngine& engine() const noexcept { return _databaseFeature.engine(); }
+
   /// @brief dangling analyzer revisions collector
   std::function<void(bool)> _gcfunc;
   std::mutex _workItemMutex;
   Scheduler::WorkHandle _workItem;
   ClusterFeature* _clusterFeature;
-  EngineSelectorFeature& _engineSelector;
   SystemDatabaseFeature& _systemDatabase;
   DatabaseFeature& _databaseFeature;
   NetworkFeature* _networkFeature;

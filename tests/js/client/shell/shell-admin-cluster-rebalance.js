@@ -31,8 +31,6 @@ const {getDBServers} = require('@arangodb/test-helper');
 const internal = require('internal');
 const database = "cluster_rebalance_db";
 
-const suspendExternal = internal.suspendExternal;
-const continueExternal = require("internal").continueExternal;
 const wait = require("internal").wait;
 
 function resignServer(server) {

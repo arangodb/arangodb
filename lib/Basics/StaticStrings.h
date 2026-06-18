@@ -169,6 +169,7 @@ class StaticStrings {
   static std::string const Filter;
   static std::string const MaxProjections;
   static std::string const ProducesResult;
+  static std::string const ProtoCollection;
   static std::string const ReadOwnWrites;
   static std::string const UseCache;
   static std::string const Parallelism;
@@ -266,6 +267,7 @@ class StaticStrings {
   static std::string const SupportsRBAC;
   static std::string const DistributeShardsLike;
   static std::string const Indexes;
+  static std::string const IsLocalGraphNode;
   static std::string const IsSmart;
   static std::string const IsSmartChild;
   static std::string const KeyOptions;

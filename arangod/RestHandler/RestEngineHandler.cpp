@@ -25,7 +25,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "GeneralServer/ServerSecurityFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
+#include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/StorageEngine.h"
 
 #include <velocypack/Builder.h>
@@ -37,7 +37,8 @@ using namespace arangodb::rest;
 RestEngineHandler::RestEngineHandler(
     application_features::ApplicationServer& server, GeneralRequest* request,
     GeneralResponse* response)
-    : RestBaseHandler(server, request, response) {}
+    : RestBaseHandler(server, request, response),
+      _engine(server.getFeature<DatabaseFeature>().engine()) {}
 
 RestStatus RestEngineHandler::execute() {
   // extract the sub-request type
@@ -82,16 +83,14 @@ void RestEngineHandler::handleGet() {
 
 void RestEngineHandler::getCapabilities() {
   VPackBuilder result;
-  StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
-  engine.getCapabilities(result);
+  _engine.getCapabilities(result);
 
   generateResult(rest::ResponseCode::OK, result.slice());
 }
 
 void RestEngineHandler::getStats() {
   VPackBuilder result;
-  StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
-  engine.getStatistics(result);
+  _engine.getStatistics(result);
 
   generateResult(rest::ResponseCode::OK, result.slice());
 }

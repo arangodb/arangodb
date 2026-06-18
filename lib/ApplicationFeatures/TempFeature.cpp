@@ -22,46 +22,22 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ApplicationFeatures/TempFeature.h"
-#include "Basics/ArangoGlobalContext.h"
-#include "CrashHandler/CrashHandler.h"
-#include "Basics/FileUtils.h"
-#include "Basics/StringUtils.h"
-#include "Basics/Thread.h"
+#include "ApplicationFeatures/TempOptionsProvider.h"
 #include "Basics/files.h"
-#include "Logger/Logger.h"
-#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
 
 using namespace arangodb::options;
 
 namespace arangodb {
 
 void TempFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("temp", "temporary files");
-
-  options
-      ->addOption("--temp.path", "The path for temporary files.",
-                  new StringParameter(&_options.path))
-      .setLongDescription(R"(ArangoDB uses the path for storing temporary
-files, for extracting data from uploaded zip files and other things.
-
-Ideally, the temporary path is set to an instance-specific subdirectory of the
-operating system's temporary directory. To avoid data loss, the temporary path
-should not overlap with any directories that contain important data, for
-example, the instance's database directory.
-
-If you set the temporary path to the same directory as the instance's database
-directory, a startup error is logged and the startup is aborted.)");
+  TempOptionsProvider provider;
+  provider.declareOptions(options, _options);
 }
 
-void TempFeature::validateOptions(std::shared_ptr<ProgramOptions> /*options*/) {
-  if (!_options.path.empty()) {
-    // replace $PID in basepath with current process id
-    _options.path = basics::StringUtils::replace(
-        _options.path, "$PID", std::to_string(Thread::currentProcessId()));
-    std::filesystem::absolute(_options.path).string();
-  }
+void TempFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
+  TempOptionsProvider provider;
+  provider.validateOptions(options, _options);
 }
 
 void TempFeature::prepare() {

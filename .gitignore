@@ -117,7 +117,7 @@ js/node/node_modules/**/.nyc_output
 npm-debug.log
 
 /log-*
-data-*
+./data-*
 databases
 cluster-init
 
@@ -127,7 +127,6 @@ arangodb-linux-amd64
 last_compiled_version.sha
 
 scripts/perfanalysis
-perf*
 callgrind*
 
 cmake-build*/

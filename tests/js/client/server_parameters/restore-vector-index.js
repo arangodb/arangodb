@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 200 */
-/* global fail, arango, getOptions */
+/* global fail, getOptions */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -36,6 +36,7 @@ const arangodb = require('@arangodb');
 const fs = require('fs');
 const pu = require('@arangodb/testutils/process-utils');
 const db = arangodb.db;
+const arango = arangodb.arango;
 const { executeExternalAndWaitWithSanitizer, dumpUtils } = require('@arangodb/test-helper');
 const { waitForAllVectorIndexesState, VectorIndexTrainingState } = require('@arangodb/testutils/vector-index-common');
 
@@ -48,9 +49,8 @@ function restoreIntegrationVectorSuite() {
   assertTrue(fs.isFile(arangorestore), "arangorestore not found!");
 
   let addConnectionArgs = function (args) {
-    const endpoint = arango.getEndpoint();
     args.push('--server.endpoint');
-    args.push(endpoint);
+    args.push(global.instanceManager.endpoint);
     if (args.indexOf("--all-databases") === -1 && args.indexOf("--server.database") === -1) {
       args.push('--server.database');
       args.push(arango.getDatabaseName());

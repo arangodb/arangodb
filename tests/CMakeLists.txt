@@ -110,6 +110,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/ExecutionNode/EnumeratePathsNodeTest.cpp
   Aql/ExecutionNode/ExecutionNodeTest.cpp
   Aql/ExecutionNode/IndexNodeTest.cpp
+  Aql/ExecutionNode/LocalGraphNodeCompatibilityTest.cpp
   Aql/ExecutionNode/MockTypedNode.cpp
   Aql/ExecutionNode/ShortestPathNodeTest.cpp
   Aql/ExecutionNode/TraversalNodeTest.cpp

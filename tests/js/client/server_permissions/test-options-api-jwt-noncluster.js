@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, assertEqual, assertTrue, assertNotMatch, arango, runSetup */
+/* global getOptions, runSetup */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -24,9 +24,12 @@
 /// @author Jan Steemann
 /// @author Copyright 2023, ArangoDB Inc, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
-
+const jsunity = require("jsunity");
+const {assertEqual, assertTrue, assertFalse, assertNotEqual, assertNotMatch} = jsunity.jsUnity.assertions;
 const crypto = require('@arangodb/crypto');
 const request = require('@arangodb/request');
+const db = require('@arangodb').db;
+let IM = global.instanceManager;
 
 const jwtSecret = 'abc123';
 
@@ -38,16 +41,7 @@ if (getOptions === true) {
   };
 }
 
-const jsunity = require('jsunity');
-
 function testSuite() {
-  let endpoint = arango.getEndpoint();
-  let db = require("@arangodb").db;
-
-  let baseUrl = function () {
-    return endpoint.replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:');
-  };
-
   const jwt = crypto.jwtEncode(jwtSecret, {
     "server_id": "ABCD",
     "iss": "arangodb", "exp": Math.floor(Date.now() / 1000) + 3600
@@ -56,14 +50,14 @@ function testSuite() {
   return {
     testApiGetOptionsNoJwt : function() {
       let res = request.get({
-        url: baseUrl() + "/_admin/options",
+        url: IM.url + "/_admin/options",
       });
       assertEqual(401, res.status);
     },
 
     testApiGetOptions : function() {
       let res = request.get({
-        url: baseUrl() + "/_admin/options",
+        url: IM.url + "/_admin/options",
         auth: {
           bearer: jwt,
         }
@@ -76,13 +70,13 @@ function testSuite() {
         assertNotMatch(/(passwd|password|secret)/, key, key);
       });
     },
-    
+
     testApiGetOptionsJwtOtherDatabase : function() {
       const cn = "OptionsApiTest";
       db._createDatabase(cn);
       try {
         let res = request.get({
-          url: baseUrl() + "/_db/" + cn + "/_admin/options",
+          url: IM.url + "/_db/" + cn + "/_admin/options",
           auth: { bearer: jwt },
         });
         assertEqual(403, res.status);
@@ -91,17 +85,17 @@ function testSuite() {
         db._dropDatabase(cn);
       }
     },
-    
+
     testApiGetOptionsDescriptionNoJwt : function() {
       let res = request.get({
-        url: baseUrl() + "/_admin/options-description",
+        url: IM.url + "/_admin/options-description",
       });
       assertEqual(401, res.status);
     },
 
     testApiGetOptionsDescription : function() {
       let res = request.get({
-        url: baseUrl() + "/_admin/options-description",
+        url: IM.url + "/_admin/options-description",
         auth: {
           bearer: jwt,
         }
@@ -109,13 +103,13 @@ function testSuite() {
       assertEqual(200, res.status);
       assertTrue(res.json.hasOwnProperty("server.options-api"));
     },
-    
+
     testApiGetOptionsDescriptionJwtOtherDatabase : function() {
       const cn = "OptionsApiTest";
       db._createDatabase(cn);
       try {
         let res = request.get({
-          url: baseUrl() + "/_db/" + cn + "/_admin/options-description",
+          url: IM.url + "/_db/" + cn + "/_admin/options-description",
           auth: { bearer: jwt },
         });
         assertEqual(403, res.status);
