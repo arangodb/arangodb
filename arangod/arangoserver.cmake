@@ -137,6 +137,7 @@ add_library(arangoserver STATIC
   RestServer/CpuUsageFeature.cpp
   RestServer/DaemonFeature.cpp
   RestServer/DaemonOptionsProvider.cpp
+  RestServer/AgencySortingProvider.cpp
   RestServer/DatabaseFeature.cpp
   RestServer/DatabaseOptionsProvider.cpp
   RestServer/DatabasePathFeature.cpp

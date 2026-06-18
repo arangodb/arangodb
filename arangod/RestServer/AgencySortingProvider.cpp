@@ -21,17 +21,17 @@
 /// @author Julia Puget
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#include "AgencySortingProvider.h"
+#include "Agency/AgencyFeature.h"
 
-#include <memory>
+using namespace arangodb;
 
-namespace arangodb::replication2 {
-struct ReplicatedLogGlobalSettings;
+AgencySortingProvider::AgencySortingProvider(
+    application_features::ApplicationServer& server,
+    AgencyFeature const& agency)
+    : application_features::ApplicationFeature{server, *this},
+      _agency(agency) {}
 
-struct IReplicatedLogProvider {
-  virtual ~IReplicatedLogProvider() = default;
-  virtual std::shared_ptr<ReplicatedLogGlobalSettings const> options()
-      const noexcept = 0;
-};
-
-}  // namespace arangodb::replication2
+bool AgencySortingProvider::useLegacySorting() const noexcept {
+  return !_agency.activated();
+}

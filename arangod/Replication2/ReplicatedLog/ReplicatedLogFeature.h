@@ -34,7 +34,7 @@ struct ReplicatedLogMetrics;
 namespace arangodb {
 class ReplicatedLogFeature final
     : public application_features::ApplicationFeature,
-      public IReplicatedLogProvider {
+      public replication2::IReplicatedLogProvider {
  public:
   static constexpr std::string_view name() noexcept { return "ReplicatedLog"; }
 

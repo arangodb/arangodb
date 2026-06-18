@@ -262,8 +262,8 @@ RocksDBEngine::RocksDBEngine(
     RocksDBOptionsProvider& optionsProvider, metrics::ICollector& metrics,
     IDatabasePathProvider const& databasePathProvider,
     IVectorIndexProvider const& vectorIndexProvider,
-    IFlushControl& flushProvider, IDumpLimitsProvider const& dumpLimitsProvider,
-    IReplicatedLogProvider* replicatedLogProvider,
+    IFlushControl& flushControl, IDumpLimitsProvider const& dumpLimitsProvider,
+    replication2::IReplicatedLogProvider* replicatedLogProvider,
     RocksDBRecoveryManager const& rocksDbRecoveryManager,
     IDatabaseProvider& databaseProvider,
     IIndexCacheRefill& rocksDbIndexCacheRefillFeature,
@@ -273,7 +273,7 @@ RocksDBEngine::RocksDBEngine(
                     std::make_unique<RocksDBIndexFactory>(server)),
       _databasePathProvider(databasePathProvider),
       _vectorIndexProvider(vectorIndexProvider),
-      _flushProvider(flushProvider),
+      _flushControl(flushControl),
       _dumpLimitsProvider(dumpLimitsProvider),
       _replicatedLogProvider(replicatedLogProvider),
       _rocksDbRecoveryManager(rocksDbRecoveryManager),
@@ -1283,7 +1283,7 @@ void RocksDBEngine::start() {
   _db->SetDBOptions({{"max_total_wal_size",
                       std::to_string(_optionsProvider.maxTotalWalSize())}});
 
-  _useReleasedTick = _flushProvider.isEnabled();
+  _useReleasedTick = _flushControl.isEnabled();
 
   // useReleasedTick should be true on DB servers and single servers
   TRI_ASSERT((arangodb::ServerState::instance()->isCoordinator() ||
@@ -2584,7 +2584,7 @@ Result RocksDBEngine::flushWal(bool waitForSync, bool flushColumnFamilies) {
 
 void RocksDBEngine::waitForEstimatorSync() {
   // release all unused ticks from flush feature
-  _flushProvider.releaseUnusedTicks();
+  _flushControl.releaseUnusedTicks();
 
   // force-flush
   _settingsManager->sync(/*force*/ true);
@@ -4296,8 +4296,9 @@ SortingMethod RocksDBEngine::readSortingFile() {
     // to legacy mode, except for agents. Since agents have never used
     // VPackIndexes before we fixed the sorting order, we might as well
     // directly consider them to be migrated to the CORRECT sorting order:
-    sortingMethod = _sortingProvider.isActivatedAgent() ? SortingMethod::Correct
-                                                        : SortingMethod::Legacy;
+    sortingMethod = _sortingProvider.useLegacySorting()
+                        ? SortingMethod::Legacy
+                        : SortingMethod::Correct;
     LOG_TOPIC("8ff0e", WARN, Logger::STARTUP)
         << "unable to read 'SORTING' file '" << path << "': " << ex.what()
         << ". This is expected directly after an upgrade and will then be "
@@ -4323,8 +4324,8 @@ std::string RocksDBEngine::getLanguageFile() const {
 auto RocksDBEngine::getDatabaseProvider() const -> IDatabaseProvider& {
   return _databaseProvider;
 }
-auto RocksDBEngine::getFlushProvider() const -> IFlushControl& {
-  return _flushProvider;
+auto RocksDBEngine::getFlushControl() const -> IFlushControl& {
+  return _flushControl;
 }
 
 }  // namespace arangodb

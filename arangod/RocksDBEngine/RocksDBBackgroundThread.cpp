@@ -63,7 +63,7 @@ void RocksDBBackgroundThread::beginShutdown() {
 }
 
 void RocksDBBackgroundThread::run() {
-  auto& flushFeature = _engine.getFlushProvider();
+  auto& flushFeature = _engine.getFlushControl();
 
   double const startTime = TRI_microtime();
   uint64_t runsUntilSyncForced = 1;

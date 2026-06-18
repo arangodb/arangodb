@@ -23,15 +23,11 @@
 
 #pragma once
 
-#include <memory>
+namespace arangodb {
 
-namespace arangodb::replication2 {
-struct ReplicatedLogGlobalSettings;
-
-struct IReplicatedLogProvider {
-  virtual ~IReplicatedLogProvider() = default;
-  virtual std::shared_ptr<ReplicatedLogGlobalSettings const> options()
-      const noexcept = 0;
+struct ISortingProvider {
+  virtual ~ISortingProvider() = default;
+  virtual bool useLegacySorting() const noexcept = 0;
 };
 
-}  // namespace arangodb::replication2
+}  // namespace arangodb

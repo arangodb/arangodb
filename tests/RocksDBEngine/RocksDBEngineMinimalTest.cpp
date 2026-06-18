@@ -27,7 +27,7 @@
 #include "Metrics/ICollector.h"
 
 // interface headers
-#include "Agency/ISortingProvider.h"
+#include "RocksDBEngine/ISortingProvider.h"
 #include "Cache/ICacheManagerProvider.h"
 #include "Replication2/ReplicatedLog/IReplicatedLogProvider.h"
 #include "RestServer/IDatabasePathProvider.h"
@@ -109,7 +109,7 @@ struct TestCacheManagerProvider final : ICacheManagerProvider {
 };
 
 struct TestSortingProvider final : ISortingProvider {
-  bool isActivatedAgent() const noexcept override { return false; }
+  bool useLegacySorting() const noexcept override { return false; }
 };
 
 struct TestIndexCacheRefill final : IIndexCacheRefill {

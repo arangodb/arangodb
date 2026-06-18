@@ -39,7 +39,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Containers/FlatHashSet.h"
 #include "Metrics/Fwd.h"
-#include "Agency/ISortingProvider.h"
+#include "RocksDBEngine/ISortingProvider.h"
 #include "Cache/ICacheManagerProvider.h"
 #include "Metrics/ICollector.h"
 #include "Replication2/ReplicatedLog/IReplicatedLogProvider.h"
@@ -175,9 +175,9 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
                 metrics::ICollector& metrics,
                 IDatabasePathProvider const& databasePathProvider,
                 IVectorIndexProvider const& vectorIndexProvider,
-                IFlushControl& flushProvider,
+                IFlushControl& flushControl,
                 IDumpLimitsProvider const& dumpLimitsProvider,
-                IReplicatedLogProvider* replicatedLogProvider,
+                replication2::IReplicatedLogProvider* replicatedLogProvider,
                 RocksDBRecoveryManager const& rocksDbRecoveryManager,
                 IDatabaseProvider& databaseProvider,
                 IIndexCacheRefill& rocksDbIndexCacheRefillFeature,
@@ -191,7 +191,7 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
 
   auto getDatabaseProvider() const -> IDatabaseProvider&;
 
-  auto getFlushProvider() const -> IFlushControl&;
+  auto getFlushControl() const -> IFlushControl&;
 
   // inherited from ApplicationFeature
   // ---------------------------------
@@ -619,9 +619,9 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
  private:
   IDatabasePathProvider const& _databasePathProvider;
   IVectorIndexProvider const& _vectorIndexProvider;
-  IFlushControl& _flushProvider;
+  IFlushControl& _flushControl;
   IDumpLimitsProvider const& _dumpLimitsProvider;
-  IReplicatedLogProvider* _replicatedLogProvider;
+  replication2::IReplicatedLogProvider* _replicatedLogProvider;
   RocksDBRecoveryManager const& _rocksDbRecoveryManager;
   IDatabaseProvider& _databaseProvider;
   IIndexCacheRefill& _rocksDbIndexCacheRefillFeature;
