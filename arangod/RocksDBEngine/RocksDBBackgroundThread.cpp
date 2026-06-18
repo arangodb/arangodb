@@ -29,8 +29,6 @@
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/ICollector.h"
 #include "Replication/ReplicationClients.h"
-#include "RestServer/DatabaseFeature.h"
-#include "RestServer/FlushFeature.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBDumpManager.h"
 #include "RocksDBEngine/RocksDBEngine.h"
