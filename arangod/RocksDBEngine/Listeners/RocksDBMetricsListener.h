@@ -30,10 +30,6 @@
 
 #include <string_view>
 
-namespace arangodb::metrics {
-struct ICollector;
-}  // namespace arangodb::metrics
-
 namespace rocksdb {
 struct CompactionJobInfo;
 class DB;

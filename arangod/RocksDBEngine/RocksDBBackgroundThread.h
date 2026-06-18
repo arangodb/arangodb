@@ -27,10 +27,6 @@
 #include "Basics/Thread.h"
 #include "Metrics/Fwd.h"
 
-namespace arangodb::metrics {
-struct ICollector;
-}  // namespace arangodb::metrics
-
 namespace arangodb {
 
 class RocksDBEngine;

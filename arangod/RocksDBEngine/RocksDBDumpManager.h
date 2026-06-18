@@ -35,10 +35,6 @@
 
 struct TRI_vocbase_t;
 
-namespace arangodb::metrics {
-struct ICollector;
-}  // namespace arangodb::metrics
-
 namespace arangodb {
 class RocksDBEngine;
 
