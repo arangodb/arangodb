@@ -1,6 +1,7 @@
 add_library(arango_shell STATIC
   ClientFeature.cpp
   ShellConsoleFeature.cpp
+  ShellConsoleOptionsProvider.cpp
 )
 
 target_link_libraries(arango_shell

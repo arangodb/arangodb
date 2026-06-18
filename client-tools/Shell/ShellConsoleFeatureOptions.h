@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -18,29 +18,24 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
-
-#include "VPackFeatureOptions.h"
+#include <string>
 
 namespace arangodb {
 
-class VPackFeature final : public application_features::ApplicationFeature {
- public:
-  static constexpr std::string_view name() noexcept { return "VPack"; }
-
-  VPackFeature(application_features::ApplicationServer& server, int* result);
-
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void start() override;
-
- private:
-  int* _result;
-  VPackFeatureOptions _options;
+struct ShellConsoleFeatureOptions {
+  bool quiet = false;
+  bool colors = true;
+  bool useHistory = true;
+  bool autoComplete = true;
+  bool prettyPrint = true;
+  std::string auditFile;
+  bool pager = false;
+  std::string pagerCommand = "less -X -R -F -L";
+  std::string prompt = "%E@%d> ";
 };
 
 }  // namespace arangodb
