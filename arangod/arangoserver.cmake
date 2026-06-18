@@ -183,6 +183,8 @@ add_library(arangoserver STATIC
   RestServer/TemporaryStorageOptionsProvider.cpp
   RestServer/TimeZoneFeature.cpp
   RestServer/TtlFeature.cpp
+  RestServer/TtlOptionsProvider.cpp
+  RestServer/TtlProperties.cpp
   RestServer/UpgradeFeature.cpp
   RestServer/UpgradeOptionsProvider.cpp
   VectorIndex/VectorIndexFeature.cpp
