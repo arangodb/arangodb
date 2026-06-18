@@ -33,10 +33,11 @@ const {
 } = require("@arangodb/testutils/seededRandom");
 const {
     insertDocsAndAssertIndexStates,
-    VectorIndexTrainingState,
+    waitForVectorIndexState,
+    VectorIndexTrainingState
 } = require("@arangodb/testutils/vector-index-common");
 const isCluster = require("internal").isCluster();
-
+const IM = global.instanceManager;
 const numberOfShards = 3;
 
 const ITERATOR_SCENARIO_CONFIGS = [
@@ -388,16 +389,123 @@ function VectorIndexIteratorScenariosTestSuite(config) {
     };
 }
 
-function makeVectorIndexIteratorScenariosTestSuite(config) {
-    return function () {
-        return VectorIndexIteratorScenariosTestSuite(config);
+// During index creation there existins RocksDBBuilderIndex which acts diffrently
+// then normal index when asked if it covers the given projections
+function VectorCoveredProjectionDuringIngestionRegressionSuite() {
+    const dbName = "vectorCoveredIngestionDB";
+    const collName = "vectorCoveredIngestionColl";
+    const indexName = "vec_l2_stored_ingestion";
+    const dimension = 16;
+    const nLists = 4;
+    // A single shard is enough: even with one shard the cluster keeps the
+    // coordinator/DB-server split, so the coordinator picks a COVERED plan and
+    // the DB server re-checks covers() against the swapped-in builder index.
+    // One shard also reaches (and holds) the ingesting state far more reliably
+    // than waiting for several parallel background builds to line up.
+    const ingestionShards = 1;
+    const numberOfDocs = 3000;
+    const topK = 10;
+
+    const seed = generateSeed();
+    let collection;
+    let queryPoint;
+
+    return {
+        setUp: function () {
+            db._useDatabase("_system");
+            try { db._dropDatabase(dbName); } catch (e) {}
+            db._createDatabase(dbName);
+            db._useDatabase(dbName);
+            collection = db._create(collName, {numberOfShards: ingestionShards});
+
+            const gen = randomNumberGeneratorFloat(seed);
+            const docs = [];
+            for (let i = 0; i < numberOfDocs; ++i) {
+                const vector = Array.from({length: dimension}, () => gen());
+                if (i === Math.floor(numberOfDocs / 2)) {
+                    queryPoint = vector;
+                }
+                docs.push({vector, val: i, category: i % 4, extra: i * 2});
+            }
+            const batchSize = 500;
+            for (let i = 0; i < docs.length; i += batchSize) {
+                collection.insert(docs.slice(i, i + batchSize));
+            }
+        },
+
+        tearDown: function () {
+            IM.debugClearFailAt();
+            db._useDatabase("_system");
+            try { db._dropDatabase(dbName); } catch (e) {}
+        },
+
+        testCoveredProjectionWhileIndexIsIngesting: function () {
+            if (!isCluster || !IM.debugCanUseFailAt()) {
+                return;
+            }
+
+            IM.debugSetFailAt("RocksDBVectorIndex::pauseBeforeIngestion");
+
+            collection.ensureIndex({
+                name: indexName,
+                type: "vector",
+                fields: ["vector"],
+                inBackground: true,
+                params: {metric: "l2", dimension, nLists},
+                storedValues: ["val", "category"],
+            });
+
+            assertTrue(
+                waitForVectorIndexState(collection, indexName,
+                    VectorIndexTrainingState.kIngesting, 120),
+                "index should reach (and hold) the ingesting state");
+
+            const query = `FOR d IN ${collName}
+                FILTER d.extra < 100000
+                LET dist = APPROX_NEAR_L2(@qp, d.vector)
+                SORT dist LIMIT @topK
+                RETURN {val: d.val, category: d.category, dist}`;
+            const bindVars = {qp: queryPoint, topK};
+
+            // Must be COVERED on the coordinator -- that is what makes the DB
+            // server re-check covers() against the swapped-in wrapper.
+            const node = db._createStatement({query, bindVars})
+                .explain().plan.nodes
+                .find(n => n.type === "EnumerateNearVectorNode");
+            assertTrue(node !== undefined, "expected an EnumerateNearVectorNode");
+            assertEqual("covering", node.projectionMode);
+            assertEqual("document", node.filterMode);
+
+            // Pre-fix this aborts the DB server in
+            // EnumerateNearVectorNode::createBlock (covers() assertion).
+            const results = db._query(query, bindVars).toArray();
+
+            assertEqual(topK, results.length, "expected top-K results");
+            for (let i = 0; i < results.length; ++i) {
+                assertTrue(results[i].val !== undefined, "covered val missing");
+                assertTrue(results[i].category !== undefined,
+                    "covered category missing");
+            }
+            for (let i = 1; i < results.length; ++i) {
+                assertTrue(results[i - 1].dist <= results[i].dist,
+                    `distances must be ascending: ${JSON.stringify(results)}`);
+            }
+
+            IM.debugClearFailAt();
+            assertTrue(
+                waitForVectorIndexState(collection, indexName,
+                    VectorIndexTrainingState.kReady, 120),
+                "index should reach ready state after clearing failure point");
+        },
     };
 }
 
-let result = 0;
 for (const config of ITERATOR_SCENARIO_CONFIGS) {
-    jsunity.run(makeVectorIndexIteratorScenariosTestSuite(config));
-    result = jsunity.done();
+    jsunity.run(function () {
+        return VectorIndexIteratorScenariosTestSuite(config);
+    });
 }
 
-return result;
+jsunity.run(VectorCoveredProjectionDuringIngestionRegressionSuite);
+
+return jsunity.done();
