@@ -397,12 +397,6 @@ function VectorCoveredProjectionDuringIngestionRegressionSuite() {
     const indexName = "vec_l2_stored_ingestion";
     const dimension = 16;
     const nLists = 4;
-    // A single shard is enough: even with one shard the cluster keeps the
-    // coordinator/DB-server split, so the coordinator picks a COVERED plan and
-    // the DB server re-checks covers() against the swapped-in builder index.
-    // One shard also reaches (and holds) the ingesting state far more reliably
-    // than waiting for several parallel background builds to line up.
-    const ingestionShards = 1;
     const numberOfDocs = 3000;
     const topK = 10;
 
@@ -416,7 +410,7 @@ function VectorCoveredProjectionDuringIngestionRegressionSuite() {
             try { db._dropDatabase(dbName); } catch (e) {}
             db._createDatabase(dbName);
             db._useDatabase(dbName);
-            collection = db._create(collName, {numberOfShards: ingestionShards});
+            collection = db._create(collName, {numberOfShards: 1});
 
             const gen = randomNumberGeneratorFloat(seed);
             const docs = [];
