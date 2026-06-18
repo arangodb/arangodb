@@ -23,6 +23,7 @@
 
 #include "DatabaseFeaturePhase.h"
 #include "Cache/CacheManagerFeature.h"
+#include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/CheckVersionFeature.h"
