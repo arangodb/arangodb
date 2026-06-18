@@ -229,6 +229,38 @@ function aqlMatchStatementVariableLengthTestSuite() {
           result.sort();
           assertEqual(result, expected);
         },
+        testMatchVariableLengthBindParameterCollections: function() {
+          const query = "MATCH (v :@vc) -[ e : @ec * 1..1 ]-> (w :@vc) RETURN [v, e, w]";
+          const expected = [
+            "(vc1/v0) -[]-> (vc1/v1)",
+            "(vc1/v1) -[]-> (vc1/v2)",
+            "(vc1/v2) -[]-> (vc1/v3)"
+          ];
+          expected.sort();
+
+          const result = db._query(query, { vc: "vc1", ec: "ec1" }, options)
+            .toArray()
+            .map((x) => pathToString(x[1]));
+          result.sort();
+          assertEqual(result, expected);
+        },
+        testMatchVariableLengthDataSourceBindParameterCollections: function() {
+          const query = "MATCH (v :@@vc) -[ e : @@ec * 1..2 ]-> (w :@@vc) RETURN [v, e, w]";
+          const expected = [
+            "(vc1/v0) -[]-> (vc1/v1)",
+            "(vc1/v0) -[]-> (vc1/v1) -[]-> (vc1/v2)",
+            "(vc1/v1) -[]-> (vc1/v2)",
+            "(vc1/v1) -[]-> (vc1/v2) -[]-> (vc1/v3)",
+            "(vc1/v2) -[]-> (vc1/v3)"
+          ];
+          expected.sort();
+
+          const result = db._query(query, { "@vc": "vc1", "@ec": "ec1" }, options)
+            .toArray()
+            .map((x) => pathToString(x[1]));
+          result.sort();
+          assertEqual(result, expected);
+        }
 
     };
 }
