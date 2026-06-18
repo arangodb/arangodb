@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -18,44 +18,26 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "Basics/ConditionVariable.h"
-#include "Basics/Thread.h"
-#include "Metrics/Fwd.h"
+#include "Metrics/Builder.h"
+#include "Metrics/Metric.h"
 
 namespace arangodb::metrics {
-struct ICollector;
-}  // namespace arangodb::metrics
 
-namespace arangodb {
+struct ICollector {
+  virtual ~ICollector() = default;
 
-class RocksDBEngine;
-
-class RocksDBBackgroundThread final : public Thread {
- public:
-  RocksDBBackgroundThread(RocksDBEngine& eng, double interval,
-                          metrics::ICollector& metrics);
-  ~RocksDBBackgroundThread();
-
-  void beginShutdown() override;
+  // tries to add metric. throws if such metric already exists
+  template<typename MetricBuilder>
+  auto add(MetricBuilder&& builder) -> typename MetricBuilder::MetricT& {
+    return static_cast<typename MetricBuilder::MetricT&>(*doAdd(builder));
+  }
 
  protected:
-  void run() override;
-
- private:
-  /// @brief engine pointer
-  RocksDBEngine& _engine;
-
-  /// @brief interval in which we will run
-  double const _interval;
-
-  /// @brief condition variable for heartbeat
-  arangodb::basics::ConditionVariable _condition;
-
-  metrics::Gauge<uint64_t>& _metricsWalReleasedTickReplication;
+  virtual std::shared_ptr<Metric> doAdd(Builder& builder) = 0;
 };
-}  // namespace arangodb
+
+}  // namespace arangodb::metrics

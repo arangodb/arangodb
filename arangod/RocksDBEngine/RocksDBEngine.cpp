@@ -61,7 +61,7 @@
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/HistogramBuilder.h"
 #include "Metrics/Metric.h"
-#include "Metrics/MetricsFeature.h"
+#include "Metrics/ICollector.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Replication/ReplicationClients.h"
@@ -277,7 +277,7 @@ RocksDBFilePurgeEnabler::RocksDBFilePurgeEnabler(
 // create the storage engine
 RocksDBEngine::RocksDBEngine(
     application_features::ApplicationServer& server,
-    RocksDBOptionsProvider& optionsProvider, metrics::MetricsFeature& metrics,
+    RocksDBOptionsProvider& optionsProvider, metrics::ICollector& metrics,
     DatabasePathFeature const& databasePathFeature,
     VectorIndexFeature const& vectorIndexFeature, FlushFeature& flushFeature,
     DumpLimitsFeature const& dumpLimitsFeature,
@@ -954,31 +954,31 @@ namespace {
 struct RocksDBAsyncLogWriteBatcherMetricsImpl
     : replication2::storage::rocksdb::AsyncLogWriteBatcherMetrics {
   explicit RocksDBAsyncLogWriteBatcherMetricsImpl(
-      metrics::MetricsFeature* metricsFeature) {
+      metrics::ICollector& metricsFeature) {
     using namespace arangodb::replication2::storage::rocksdb;
-    numWorkerThreadsWaitForSync = &metricsFeature->add(
+    numWorkerThreadsWaitForSync = &metricsFeature.add(
         arangodb_replication2_rocksdb_num_persistor_worker{}.withLabel("ws",
                                                                        "true"));
-    numWorkerThreadsNoWaitForSync = &metricsFeature->add(
+    numWorkerThreadsNoWaitForSync = &metricsFeature.add(
         arangodb_replication2_rocksdb_num_persistor_worker{}.withLabel(
             "ws", "false"));
 
     queueLength =
-        &metricsFeature->add(arangodb_replication2_rocksdb_queue_length{});
+        &metricsFeature.add(arangodb_replication2_rocksdb_queue_length{});
     writeBatchSize =
-        &metricsFeature->add(arangodb_replication2_rocksdb_write_batch_size{});
+        &metricsFeature.add(arangodb_replication2_rocksdb_write_batch_size{});
     rocksdbWriteTimeInUs =
-        &metricsFeature->add(arangodb_replication2_rocksdb_write_time{});
+        &metricsFeature.add(arangodb_replication2_rocksdb_write_time{});
     rocksdbSyncTimeInUs =
-        &metricsFeature->add(arangodb_replication2_rocksdb_sync_time{});
+        &metricsFeature.add(arangodb_replication2_rocksdb_sync_time{});
 
-    operationLatencyInsert = &metricsFeature->add(
+    operationLatencyInsert = &metricsFeature.add(
         arangodb_replication2_storage_operation_latency{}.withLabel("op",
                                                                     "insert"));
-    operationLatencyRemoveFront = &metricsFeature->add(
+    operationLatencyRemoveFront = &metricsFeature.add(
         arangodb_replication2_storage_operation_latency{}.withLabel(
             "op", "remove-front"));
-    operationLatencyRemoveBack = &metricsFeature->add(
+    operationLatencyRemoveBack = &metricsFeature.add(
         arangodb_replication2_storage_operation_latency{}.withLabel(
             "op", "remove-back"));
   }
@@ -1344,7 +1344,7 @@ void RocksDBEngine::start() {
   };
 
   _logMetrics =
-      std::make_shared<RocksDBAsyncLogWriteBatcherMetricsImpl>(&_metrics);
+      std::make_shared<RocksDBAsyncLogWriteBatcherMetricsImpl>(_metrics);
 
   // When using the custom WAL implementation, we don't need to register a
   // RocksDB sync listener.
@@ -1373,8 +1373,8 @@ void RocksDBEngine::start() {
   _settingsManager->retrieveInitialValues();
 
   double const counterSyncSeconds = 2.5;
-  _backgroundThread =
-      std::make_unique<RocksDBBackgroundThread>(*this, counterSyncSeconds);
+  _backgroundThread = std::make_unique<RocksDBBackgroundThread>(
+      *this, counterSyncSeconds, _metrics);
   if (!_backgroundThread->start()) {
     LOG_TOPIC("a5e96", FATAL, Logger::ENGINES)
         << "could not start rocksdb counter manager thread";
@@ -4346,9 +4346,6 @@ std::string RocksDBEngine::getLanguageFile() const {
 
 auto RocksDBEngine::getDatabaseFeature() const -> DatabaseFeature& {
   return _databaseFeature;
-}
-auto RocksDBEngine::getMetricsFeature() const -> metrics::MetricsFeature& {
-  return _metrics;
 }
 auto RocksDBEngine::getFlushFeature() const -> FlushFeature& {
   return _flushFeature;
