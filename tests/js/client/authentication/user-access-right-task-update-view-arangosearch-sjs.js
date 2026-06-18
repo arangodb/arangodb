@@ -1,5 +1,5 @@
 /* jshint globalstrict:true, strict:true, maxlen: 5000 */
-/* global assertEqual, assertTrue, assertFalse, assertFail */
+/* global */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -27,6 +27,7 @@
 
 'use strict';
 const jsunity = require('jsunity');
+const {assertEqual, assertTrue, assertFalse, assertNotEqual, assertFail} = jsunity.jsUnity.assertions;
 const testHelper = require('@arangodb/test-helper');
 const isEqual = testHelper.isEqual;
 const deriveTestSuite = testHelper.deriveTestSuite;
@@ -34,8 +35,6 @@ const deriveTestSuiteWithnamespace = testHelper.deriveTestSuiteWithnamespace;
 const users = require('@arangodb/users');
 const helper = require('@arangodb/testutils/user-helper');
 const tasks = require('@arangodb/tasks');
-const pu = require('@arangodb/testutils/process-utils');
-const download = require('internal').download;
 const errors = require('@arangodb').errors;
 const db = require('@arangodb').db;
 const namePrefix = helper.namePrefix;
@@ -43,7 +42,6 @@ const dbName = helper.dbName;
 const rightLevels = helper.rightLevels;
 const testViewName = `${namePrefix}ViewNew`;
 const testViewRename = `${namePrefix}ViewRename`;
-const testViewType = "arangosearch";
 const testCol1Name = `${namePrefix}Col1New`;
 const testCol2Name = `${namePrefix}Col2New`;
 const indexName = `${namePrefix}inverted`;
@@ -55,6 +53,7 @@ const colLevel = helper.colLevel;
 
 const arango = require('internal').arango;
 let connectionHandle = arango.getConnectionHandle();
+
 for (let l of rightLevels) {
   systemLevel[l] = new Set();
   dbLevel[l] = new Set();
@@ -71,7 +70,7 @@ const wait = (keySpaceId, key) => {
 };
 
 const createKeySpace = (keySpaceId) => {
-  return executeJS(`return global.KEYSPACE_CREATE('${keySpaceId}', 128, true);`).body === 'true';
+  return executeJS(`return global.KEYSPACE_CREATE('${keySpaceId}', 128, true);`).parsedBody === true;
 };
 
 const dropKeySpace = (keySpaceId) => {
@@ -79,7 +78,7 @@ const dropKeySpace = (keySpaceId) => {
 };
 
 const getKey = (keySpaceId, key) => {
-  return executeJS(`return global.KEY_GET('${keySpaceId}', '${key}');`).body === 'true';
+  return executeJS(`return global.KEY_GET('${keySpaceId}', '${key}');`).parsedBody === true;
 };
 
 const setKey = (keySpaceId, name) => {
@@ -87,15 +86,7 @@ const setKey = (keySpaceId, name) => {
 };
 
 const executeJS = (code) => {
-  let httpOptions = pu.makeAuthorizationHeaders({
-    username: 'root',
-    password: ''
-  }, {});
-  httpOptions.method = 'POST';
-  httpOptions.timeout = 1800;
-  httpOptions.returnBodyOnError = true;
-  return download(arango.getEndpoint().replace('tcp', 'http') + `/_db/${dbName}/_admin/execute?returnAsJSON=true`,
-    code, httpOptions);
+  return arango.POST_RAW('/_admin/execute', code);
 };
 
 
