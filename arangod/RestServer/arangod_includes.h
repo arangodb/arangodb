@@ -143,7 +143,6 @@
 #include "RestServer/TimeZoneFeature.h"
 #include "RestServer/TtlFeature.h"
 #include "RestServer/UpgradeFeature.h"
-#include "RestServer/AgencySortingProvider.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBIndexCacheRefillFeature.h"

@@ -27,7 +27,7 @@
 #include "Metrics/ICollector.h"
 
 // interface headers
-#include "RocksDBEngine/ISortingProvider.h"
+#include "Agency/ISortingPolicy.h"
 #include "Cache/ICacheManagerProvider.h"
 #include "Replication2/ReplicatedLog/IReplicatedLogProvider.h"
 #include "RestServer/IDatabasePathProvider.h"
@@ -108,7 +108,7 @@ struct TestCacheManagerProvider final : ICacheManagerProvider {
   cache::Manager* manager() override { return nullptr; }
 };
 
-struct TestSortingProvider final : ISortingProvider {
+struct TestSortingPolicy final : ISortingPolicy {
   bool useLegacySorting() const noexcept override { return false; }
 };
 
@@ -146,13 +146,13 @@ TEST(RocksDBEngineMinimal, CanConstruct) {
   TestDumpLimitsProvider dumpLimits;
   TestDatabaseProvider dbProvider;
   TestCacheManagerProvider cacheManager;
-  TestSortingProvider agency;
+  TestSortingPolicy sortingPolicy;
   TestIndexCacheRefill indexCacheRefill;
 
   auto& engine = server.addFeature<RocksDBEngine>(
       optionsProvider, metricsCollector, dbPath, vectorIdx, flush, dumpLimits,
       nullptr /* IReplicatedLogProvider* */, recovery, dbProvider,
-      indexCacheRefill, cacheManager, agency);
+      indexCacheRefill, cacheManager, sortingPolicy);
 
   EXPECT_EQ(engine.kEngineName, "rocksdb");
 }

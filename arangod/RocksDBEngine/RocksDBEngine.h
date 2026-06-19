@@ -39,7 +39,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Containers/FlatHashSet.h"
 #include "Metrics/Fwd.h"
-#include "RocksDBEngine/ISortingProvider.h"
+#include "Agency/ISortingPolicy.h"
 #include "Cache/ICacheManagerProvider.h"
 #include "Metrics/ICollector.h"
 #include "Replication2/ReplicatedLog/IReplicatedLogProvider.h"
@@ -182,7 +182,7 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
                 IDatabaseProvider& databaseProvider,
                 IIndexCacheRefill& rocksDbIndexCacheRefillFeature,
                 ICacheManagerProvider& cacheManagerProvider,
-                ISortingProvider const& sortingProvider);
+                ISortingPolicy const& sortingPolicy);
   ~RocksDBEngine();
 
   // Temporary, for easier refactoring:
@@ -626,7 +626,7 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   IDatabaseProvider& _databaseProvider;
   IIndexCacheRefill& _rocksDbIndexCacheRefillFeature;
   ICacheManagerProvider& _cacheManagerProvider;
-  ISortingProvider const& _sortingProvider;
+  ISortingPolicy const& _sortingPolicy;
   RocksDBOptionsProvider& _optionsProvider;
 
   metrics::ICollector& _metrics;

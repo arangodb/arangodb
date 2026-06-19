@@ -25,13 +25,15 @@
 
 #include "Agency/AgencyOptions.h"
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "Agency/ISortingPolicy.h"
 
 namespace arangodb {
 namespace consensus {
 class Agent;
 }
 
-class AgencyFeature : public application_features::ApplicationFeature {
+class AgencyFeature : public application_features::ApplicationFeature,
+                      public ISortingPolicy {
  public:
   static constexpr std::string_view name() { return "Agency"; }
 
@@ -47,6 +49,7 @@ class AgencyFeature : public application_features::ApplicationFeature {
   void unprepare() override final;
 
   bool activated() const noexcept { return _options.activated; }
+  bool useLegacySorting() const noexcept override { return !activated(); }
 
   consensus::Agent* agent() const;
 

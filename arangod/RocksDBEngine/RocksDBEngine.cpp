@@ -268,7 +268,7 @@ RocksDBEngine::RocksDBEngine(
     IDatabaseProvider& databaseProvider,
     IIndexCacheRefill& rocksDbIndexCacheRefillFeature,
     ICacheManagerProvider& cacheManagerProvider,
-    ISortingProvider const& sortingProvider)
+    ISortingPolicy const& sortingPolicy)
     : StorageEngine(server, kEngineName, name(), typeid(RocksDBEngine),
                     std::make_unique<RocksDBIndexFactory>(server)),
       _databasePathProvider(databasePathProvider),
@@ -280,7 +280,7 @@ RocksDBEngine::RocksDBEngine(
       _databaseProvider(databaseProvider),
       _rocksDbIndexCacheRefillFeature(rocksDbIndexCacheRefillFeature),
       _cacheManagerProvider(cacheManagerProvider),
-      _sortingProvider(sortingProvider),
+      _sortingPolicy(sortingPolicy),
       _optionsProvider(optionsProvider),
       _metrics(metrics),
       _db(nullptr),
@@ -4296,9 +4296,8 @@ SortingMethod RocksDBEngine::readSortingFile() {
     // to legacy mode, except for agents. Since agents have never used
     // VPackIndexes before we fixed the sorting order, we might as well
     // directly consider them to be migrated to the CORRECT sorting order:
-    sortingMethod = _sortingProvider.useLegacySorting()
-                        ? SortingMethod::Legacy
-                        : SortingMethod::Correct;
+    sortingMethod = _sortingPolicy.useLegacySorting() ? SortingMethod::Legacy
+                                                      : SortingMethod::Correct;
     LOG_TOPIC("8ff0e", WARN, Logger::STARTUP)
         << "unable to read 'SORTING' file '" << path << "': " << ex.what()
         << ". This is expected directly after an upgrade and will then be "

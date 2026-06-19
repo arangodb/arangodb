@@ -23,28 +23,11 @@
 
 #pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
-#include "RocksDBEngine/ISortingProvider.h"
-
 namespace arangodb {
-class AgencyFeature;
 
-class AgencySortingProvider final
-    : public application_features::ApplicationFeature,
-      public ISortingProvider {
- public:
-  static constexpr std::string_view name() noexcept {
-    return "AgencySortingProvider";
-  }
-
-  explicit AgencySortingProvider(
-      application_features::ApplicationServer& server,
-      AgencyFeature const& agency);
-
-  bool useLegacySorting() const noexcept override;
-
- private:
-  AgencyFeature const& _agency;
+struct ISortingPolicy {
+  virtual ~ISortingPolicy() = default;
+  virtual bool useLegacySorting() const noexcept = 0;
 };
 
 }  // namespace arangodb

@@ -193,7 +193,6 @@ void ArangodServer::addFeatures(
   addFeature<aql::QueryInfoLoggerFeature>();
   auto& rocksdbCacheRefill = addFeature<RocksDBIndexCacheRefillFeature>(
       database, &clusterFeature, metrics);
-  auto& sortingProvider = addFeature<AgencySortingProvider>(agency);
   auto& rocksdbOption = addFeature<RocksDBOptionFeature>(&agency);
   auto& rocksdbRecovery = addFeature<RocksDBRecoveryManager>();
 #ifdef TRI_HAVE_GETRLIMIT
@@ -229,8 +228,7 @@ void ArangodServer::addFeatures(
       rocksdbOption, metrics, databasePath, vectorIndex, flush, dumpLimits,
       replication2::EnableReplication2 ? &getFeature<ReplicatedLogFeature>()
                                        : nullptr,
-      rocksdbRecovery, database, rocksdbCacheRefill, cacheManager,
-      sortingProvider);
+      rocksdbRecovery, database, rocksdbCacheRefill, cacheManager, agency);
 
   addFeature<replication2::replicated_state::ReplicatedStateAppFeature>();
   addFeature<replication2::replicated_state::black_hole::
