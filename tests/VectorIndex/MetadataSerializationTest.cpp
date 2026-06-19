@@ -21,12 +21,12 @@
 /// @author Jure Bajic
 ////////////////////////////////////////////////////////////////////////////////
 
-// These tests exercise the production metadata ser/deser helpers
-// (encodeStoredMetadata / decodeStoredMetadata / assignStoredMetadata) that
-// RocksDBVectorIndex::persistMetadata and ::loadStoredMetadata delegate to, so
-// a change to how the index reads or writes metadata is caught here. The
-// LegacyRecord / FutureRecord mirrors stand in for records written by an older
-// or newer binary to pin the upgrade/downgrade behaviour.
+// These tests pin how a vector index's metadata is persisted and loaded:
+// persistMetadata serializes VectorIndexMetadata directly, loadStoredMetadata
+// reads it back through decodeMetadata (which owns the ignoreUnknownFields
+// choice). Both production paths are exercised here. The LegacyRecord /
+// FutureRecord mirrors stand in for records written by an older or newer
+// binary to pin the upgrade/downgrade behaviour.
 
 #include "VectorIndex/Metadata.h"
 
@@ -88,19 +88,22 @@ struct FutureRecord {
 };
 using OwnedFuture = FutureRecord<std::vector<std::uint8_t>>;
 
-TrainedData makeTrainedData() {
-  TrainedData d;
-  d.codeData = {1, 2, 3, 4, 5};
-  d.tunedNProbe = 12;
+VectorIndexMetadata makeMetadata() {
+  VectorIndexMetadata md;
+  md.codeData = {1, 2, 3, 4, 5};
+  md.tunedNProbe = 12;
+  md.formatVersion = VectorIndexFormatVersion::kV2;
   OperatingPointTable t10;
   t10.topK = 10;
+  t10.minRecall = 0.9;
   t10.points = {OperatingPoint{0.95, "nprobe=4", 0.2}};
   OperatingPointTable t100;
   t100.topK = 100;
+  t100.minRecall = 0.8;
   t100.points = {OperatingPoint{0.80, "nprobe=8", 0.5},
                  OperatingPoint{0.92, "nprobe=16", 1.1}};
-  d.tunedTables = {t10, t100};
-  return d;
+  md.tunedTables = {t10, t100};
+  return md;
 }
 
 template<class T>
@@ -112,64 +115,60 @@ velocypack::Builder serializeToBuilder(T const& value) {
 
 }  // namespace
 
-TEST(VectorIndexMetadataSerialization, RoundTripsThroughProductionHelpers) {
-  auto const original = makeTrainedData();
+// The persist -> load round trip: persistMetadata serializes the metadata and
+// loadStoredMetadata reads it back via decodeMetadata. Every field, including
+// the tuning tables and the format version, survives.
+TEST(VectorIndexMetadataSerialization, RoundTrip) {
+  auto const original = makeMetadata();
 
-  auto const builder =
-      encodeStoredMetadata(original, VectorIndexFormatVersion::kV2);
-  auto stored = decodeStoredMetadata(builder.slice());
+  auto const restored = decodeMetadata(serializeToBuilder(original).slice());
 
-  TrainedData restored;
-  VectorIndexFormatVersion version{VectorIndexFormatVersion::kV1};
-  assignStoredMetadata(std::move(stored), restored, version);
-
-  EXPECT_EQ(version, VectorIndexFormatVersion::kV2);
   EXPECT_EQ(restored.codeData, original.codeData);
   EXPECT_EQ(restored.tunedNProbe, original.tunedNProbe);
   EXPECT_EQ(restored.tunedTables, original.tunedTables);
+  EXPECT_EQ(restored.formatVersion, original.formatVersion);
 }
 
-// Upgrade
+// Upgrade: a record from an older binary (codeData + tunedNProbe, no
+// tunedTables) loads through the production decode. The missing tunedTables
+// falls back to empty; the known fields are preserved.
 TEST(VectorIndexMetadataSerialization, UpgradeLoadsLegacyRecord) {
   OwnedLegacy legacy;
   legacy.codeData = {9, 8, 7};
   legacy.tunedNProbe = 7;
   legacy.formatVersion = VectorIndexFormatVersion::kV2;
 
-  TrainedData restored;
-  VectorIndexFormatVersion version{VectorIndexFormatVersion::kV1};
-  ASSERT_NO_THROW({
-    auto stored = decodeStoredMetadata(serializeToBuilder(legacy).slice());
-    assignStoredMetadata(std::move(stored), restored, version);
-  });
+  VectorIndexMetadata restored;
+  ASSERT_NO_THROW(
+      { restored = decodeMetadata(serializeToBuilder(legacy).slice()); });
 
-  EXPECT_EQ(version, VectorIndexFormatVersion::kV2);
   EXPECT_EQ(restored.codeData, legacy.codeData);
   EXPECT_EQ(restored.tunedNProbe, legacy.tunedNProbe);
+  EXPECT_EQ(restored.formatVersion, VectorIndexFormatVersion::kV2);
   EXPECT_TRUE(restored.tunedTables.empty());
 }
 
-// Downgrade
+// Downgrade: a record from a newer binary carries a field the current schema
+// does not know. The production decode is lenient (ignoreUnknownFields), so it
+// drops the unknown field and still loads the known ones. This fails if the
+// ignoreUnknownFields option is ever removed from decodeMetadata.
 TEST(VectorIndexMetadataSerialization, DecodeToleratesUnknownFutureField) {
   OwnedFuture future;
   future.codeData = {4, 5, 6};
-  future.tunedTables = makeTrainedData().tunedTables;
+  future.tunedTables = makeMetadata().tunedTables;
   future.formatVersion = VectorIndexFormatVersion::kV2;
   future.addedInFutureVersion = 999;
 
-  TrainedData restored;
-  VectorIndexFormatVersion version{VectorIndexFormatVersion::kV1};
-  ASSERT_NO_THROW({
-    auto stored = decodeStoredMetadata(serializeToBuilder(future).slice());
-    assignStoredMetadata(std::move(stored), restored, version);
-  });
+  VectorIndexMetadata restored;
+  ASSERT_NO_THROW(
+      { restored = decodeMetadata(serializeToBuilder(future).slice()); });
 
-  EXPECT_EQ(version, VectorIndexFormatVersion::kV2);
   EXPECT_EQ(restored.codeData, future.codeData);
   EXPECT_EQ(restored.tunedTables, future.tunedTables);
+  EXPECT_EQ(restored.formatVersion, VectorIndexFormatVersion::kV2);
 }
 
-// Guard rail documenting why decodeStoredMetadata must be lenient: a strict
+// Guard rail documenting why decodeMetadata must be lenient: a strict
 // deserialize of that same future record (unknown field present) throws.
 TEST(VectorIndexMetadataSerialization, StrictDecodeRejectsUnknownField) {
   OwnedFuture future;
@@ -177,7 +176,7 @@ TEST(VectorIndexMetadataSerialization, StrictDecodeRejectsUnknownField) {
   future.addedInFutureVersion = 999;
   auto const builder = serializeToBuilder(future);
 
-  OwnedMetadata strict;
+  VectorIndexMetadata strict;
   EXPECT_THROW(velocypack::deserialize(builder.slice(), strict),
                arangodb::basics::Exception);
 }
