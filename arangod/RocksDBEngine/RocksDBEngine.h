@@ -185,10 +185,6 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
                 ISortingPolicy const& sortingPolicy);
   ~RocksDBEngine();
 
-  // Temporary, for easier refactoring:
-  template<typename Type>
-  auto getFeature() const -> Type&;
-
   auto getDatabaseProvider() const -> IDatabaseProvider&;
 
   auto getFlushControl() const -> IFlushControl&;
