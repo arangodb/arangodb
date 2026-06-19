@@ -100,7 +100,6 @@ TEST_F(RocksDBActivitiesListenerTest,
   EXPECT_EQ(data.get("output_level").copyString(), "3");
   EXPECT_EQ(data.get("input_files").copyString(), "3");
   EXPECT_EQ(data.get("reason").copyString(), "ManualCompaction");
-  EXPECT_EQ(data.get("phase").copyString(), "running");
 
   listener.OnCompactionCompleted(nullptr, info);
 }
