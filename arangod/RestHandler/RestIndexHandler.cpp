@@ -1119,14 +1119,24 @@ async<void> RestIndexHandler::autotuneVectorIndex() {
     co_return;
   }
 
+  auto const& table = outcome.get();
+  bool const reachedMinRecall =
+      !table.points.empty() &&
+      table.points.back().recall >=
+          table.minRecall - vector::kAutoTuneRecallEpsilon;
+
   VPackBuilder out;
   {
     VPackObjectBuilder guard(&out);
     out.add(StaticStrings::Error, VPackValue(false));
     out.add(StaticStrings::Code,
             VPackValue(static_cast<int>(rest::ResponseCode::OK)));
-    out.add("oldNProbe", VPackValue(outcome.get().first));
-    out.add("newNProbe", VPackValue(outcome.get().second));
+    out.add("topK", VPackValue(table.topK));
+    out.add("minRecall", VPackValue(table.minRecall));
+    out.add("operatingPointCount", VPackValue(table.points.size()));
+    out.add("reachedMinRecall", VPackValue(reachedMinRecall));
+    out.add(VPackValue("table"));
+    velocypack::serialize(out, table);
   }
   generateResult(rest::ResponseCode::OK, out.slice());
 }
