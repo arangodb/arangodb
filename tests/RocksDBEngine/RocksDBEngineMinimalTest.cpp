@@ -108,7 +108,7 @@ struct TestCacheManagerProvider final : ICacheManagerProvider {
   cache::Manager* manager() override { return nullptr; }
 };
 
-struct TestSortingPolicy final : rocksdb::ISortingPolicy {
+struct TestSortingPolicy final : ISortingPolicy {
   bool useLegacySorting() const noexcept override { return false; }
 };
 

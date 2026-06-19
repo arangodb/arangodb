@@ -182,7 +182,7 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
                 IDatabaseProvider& databaseProvider,
                 IIndexCacheRefill& indexCacheRefill,
                 ICacheManagerProvider& cacheManagerProvider,
-                rocksdb::ISortingPolicy const& sortingPolicy);
+                ISortingPolicy const& sortingPolicy);
   ~RocksDBEngine();
 
   auto getDatabaseProvider() const -> IDatabaseProvider&;
@@ -368,7 +368,7 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   void addParametersForNewCollection(velocypack::Builder& builder,
                                      velocypack::Slice info) override;
 
-  ::rocksdb::TransactionDB* db() const { return _db; }
+  rocksdb::TransactionDB* db() const { return _db; }
 
   Result writeDatabaseMarker(TRI_voc_tick_t id, velocypack::Slice slice,
                              RocksDBLogValue&& logValue);
@@ -467,7 +467,7 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
       std::vector<enterprise::EncryptionSecret>& userKeys,
       std::string& encryptionKey) const;
 
-  void configureEnterpriseRocksDBOptions(::rocksdb::DBOptions& options,
+  void configureEnterpriseRocksDBOptions(rocksdb::DBOptions& options,
                                          bool createdEngineDir);
 #endif
 
@@ -477,7 +477,7 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   // enabled or disable sha file creation. Requires feature not be started.
   void setCreateShaFiles(bool create) { _createShaFiles = create; }
 
-  ::rocksdb::EncryptionProvider* encryptionProvider() const noexcept {
+  rocksdb::EncryptionProvider* encryptionProvider() const noexcept {
 #ifdef USE_ENTERPRISE
     return _eeData._encryptionProvider;
 #else
@@ -485,7 +485,7 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
 #endif
   }
 
-  ::rocksdb::DBOptions const& rocksDBOptions() const { return _dbOptions; }
+  rocksdb::DBOptions const& rocksDBOptions() const { return _dbOptions; }
 
   /// @brief recovery manager
   RocksDBSettingsManager* settingsManager() const {
@@ -527,7 +527,7 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
 
   class RocksDBSnapshot final : public StorageSnapshot {
    public:
-    explicit RocksDBSnapshot(::rocksdb::DB& db) : _snapshot(&db) {}
+    explicit RocksDBSnapshot(rocksdb::DB& db) : _snapshot(&db) {}
 
     TRI_voc_tick_t tick() const noexcept override {
       return _snapshot.snapshot()->GetSequenceNumber();
@@ -536,7 +536,7 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
     decltype(auto) getSnapshot() const { return _snapshot.snapshot(); }
 
    private:
-    mutable ::rocksdb::ManagedSnapshot _snapshot;
+    mutable rocksdb::ManagedSnapshot _snapshot;
   };
 
   std::shared_ptr<StorageSnapshot> currentSnapshot() override;
@@ -569,7 +569,7 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
 
   std::string getCompressionSupport() const;
 
-  [[noreturn]] void verifySstFiles(::rocksdb::Options const& options) const;
+  [[noreturn]] void verifySstFiles(rocksdb::Options const& options) const;
 
   [[nodiscard]] bool isVectorIndexEnabled() const;
 
@@ -592,12 +592,12 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
 #endif
 
   bool checkExistingDB(
-      std::vector<::rocksdb::ColumnFamilyDescriptor> const& cfFamilies);
+      std::vector<rocksdb::ColumnFamilyDescriptor> const& cfFamilies);
 
   auto makeLogStorageMethods(replication2::LogId logId, uint64_t objectId,
                              std::uint64_t vocbaseId,
-                             ::rocksdb::ColumnFamilyHandle* const logCf,
-                             ::rocksdb::ColumnFamilyHandle* const metaCf)
+                             rocksdb::ColumnFamilyHandle* const logCf,
+                             rocksdb::ColumnFamilyHandle* const metaCf)
       -> std::unique_ptr<replication2::storage::IStorageEngineMethods>;
 
  public:
@@ -622,15 +622,15 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   IDatabaseProvider& _databaseProvider;
   IIndexCacheRefill& _indexCacheRefill;
   ICacheManagerProvider& _cacheManagerProvider;
-  rocksdb::ISortingPolicy const& _sortingPolicy;
+  ISortingPolicy const& _sortingPolicy;
   RocksDBOptionsProvider& _optionsProvider;
 
   metrics::ICollector& _metrics;
 
   /// single rocksdb database used in this storage engine
-  ::rocksdb::TransactionDB* _db;
+  rocksdb::TransactionDB* _db;
   /// default read options
-  ::rocksdb::DBOptions _dbOptions;
+  rocksdb::DBOptions _dbOptions;
   /// path used by rocksdb (inside _basePath)
   std::string _path;
   /// path to arangodb data dir
@@ -774,7 +774,7 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   /// we track this because we want to avoid running multiple compactions on
   /// the same column family concurrently. this can help to avoid a shutdown
   /// hanger in rocksdb.
-  containers::FlatHashSet<::rocksdb::ColumnFamilyHandle*>
+  containers::FlatHashSet<rocksdb::ColumnFamilyHandle*>
       _runningCompactionsColumnFamilies;
 
   // frequency for throttle in milliseconds between iterations
@@ -842,15 +842,15 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   metrics::Counter& _metricsEdgeCacheEmptyInserts;
 
   // @brief persistor for replicated logs
-  std::shared_ptr<replication2::storage::rocksdb::AsyncLogWriteBatcherMetrics>
+  std::shared_ptr<replication2::storagerocksdb::AsyncLogWriteBatcherMetrics>
       _logMetrics;
-  std::shared_ptr<replication2::storage::rocksdb::IAsyncLogWriteBatcher>
+  std::shared_ptr<replication2::storagerocksdb::IAsyncLogWriteBatcher>
       _logPersistor;
 
   // Checksum env for when creation of sha files is enabled
   // this is for when encryption is enabled, sha files will be created
   // after the encryption of the .sst and .blob files
-  std::unique_ptr<::rocksdb::Env> _checksumEnv;
+  std::unique_ptr<rocksdb::Env> _checksumEnv;
 
   std::unique_ptr<RocksDBDumpManager> _dumpManager;
 

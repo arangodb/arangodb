@@ -22,11 +22,11 @@
 
 #pragma once
 
-namespace arangodb::rocksdb {
+namespace arangodb {
 
 struct ISortingPolicy {
   virtual ~ISortingPolicy() = default;
   virtual bool useLegacySorting() const noexcept = 0;
 };
 
-}  // namespace arangodb::rocksdb
+}  // namespace arangodb

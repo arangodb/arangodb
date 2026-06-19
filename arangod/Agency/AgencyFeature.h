@@ -33,7 +33,7 @@ class Agent;
 }
 
 class AgencyFeature : public application_features::ApplicationFeature,
-                      public arangodb::rocksdb::ISortingPolicy {
+                      public ISortingPolicy {
  public:
   static constexpr std::string_view name() { return "Agency"; }
 

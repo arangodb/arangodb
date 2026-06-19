@@ -267,7 +267,7 @@ RocksDBEngine::RocksDBEngine(
     RocksDBRecoveryManager const& rocksDbRecoveryManager,
     IDatabaseProvider& databaseProvider, IIndexCacheRefill& indexCacheRefill,
     ICacheManagerProvider& cacheManagerProvider,
-    rocksdb::ISortingPolicy const& sortingPolicy)
+    ISortingPolicy const& sortingPolicy)
     : StorageEngine(server, kEngineName, name(), typeid(RocksDBEngine),
                     std::make_unique<RocksDBIndexFactory>(server)),
       _databasePathProvider(databasePathProvider),
