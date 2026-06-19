@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertFalse, assertTrue, fail */
+/*global assertEqual, assertFalse, assertTrue */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -31,11 +31,11 @@ const {
   randomNumberGeneratorFloat,
   generateSeed,
 } = require("@arangodb/testutils/seededRandom");
-const errors = internal.errors;
 const {
   generateDocs,
   waitForVectorIndexState,
   VectorIndexTrainingState,
+  assertEnsureIndexResultUnusable,
 } = require("@arangodb/testutils/vector-index-common");
 
 const isCluster = internal.isCluster();
@@ -167,10 +167,9 @@ function VectorTrackIndexCreationBackgroundSuite() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Test that ensureIndex returns an error when there is not enough
-///        data to train the vector index (single server only — on coordinator
-///        the error propagation from DBServers through Current is asynchronous
-///        and the timing is not deterministic enough for a reliable test).
+/// @brief A synchronous ensureIndex must return successfully even when training
+///        fails (e.g. not enough data); the response then reflects the
+///        `unusable` trainingState and surfaces the training error.
 ////////////////////////////////////////////////////////////////////////////////
 
 function VectorTrackIndexCreationBelowThresholdSuite() {
@@ -197,32 +196,26 @@ function VectorTrackIndexCreationBelowThresholdSuite() {
       db._dropDatabase(dbName);
     },
 
-    testBelowThresholdReturnsError: function () {
+    testBelowThresholdReturnsUnusableIndex: function () {
       const seed = generateSeed();
       const gen = randomNumberGeneratorFloat(seed);
       const belowThresholdCount = trainingThreshold - 1;
       const docs = generateDocs(gen, belowThresholdCount, dimension);
       collection.insert(docs);
 
-      try {
-        createIndex(collection, /*inBackground*/ false);
-        fail("ensureIndex should have thrown for below-threshold data");
-      } catch (e) {
-        assertEqual(errors.ERROR_QUERY_VECTOR_INDEX_NOT_READY.code,
-          e.errorNum,
-          "Expected vector index not ready error");
-      }
+      const result = createIndex(collection, /*inBackground*/ false);
+      assertEnsureIndexResultUnusable(result, "below-threshold data");
+
+      const idx = collection.indexes().find(i => i.name === "vec_l2");
+      assertEqual(VectorIndexTrainingState.kUnusable, idx.trainingState);
     },
 
-    testEmptyCollectionReturnsError: function () {
-      try {
-        createIndex(collection, /*inBackground*/ false);
-        fail("ensureIndex should have thrown for empty collection");
-      } catch (e) {
-        assertEqual(errors.ERROR_QUERY_VECTOR_INDEX_NOT_READY.code,
-          e.errorNum,
-          "Expected vector index not ready error");
-      }
+    testEmptyCollectionReturnsUnusableIndex: function () {
+      const result = createIndex(collection, /*inBackground*/ false);
+      assertEnsureIndexResultUnusable(result, "empty collection");
+
+      const idx = collection.indexes().find(i => i.name === "vec_l2");
+      assertEqual(VectorIndexTrainingState.kUnusable, idx.trainingState);
     },
   };
 }

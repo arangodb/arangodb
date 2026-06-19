@@ -47,7 +47,6 @@
 #include "Basics/ResourceUsage.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "Sharding/ShardingFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
 #include "VocBase/AccessMode.h"

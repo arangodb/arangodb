@@ -713,7 +713,9 @@ class agencyMgr {
   }
 
   dumpAgent(agent, path, method, fn, dumpdir) {
-    print('--------------------------------- '+ fn + ' -----------------------------------------------');
+    if (this.options.extremeVerbosity) {
+      print('--------------------------------- '+ fn + ' -----------------------------------------------');
+    }
     let agencyReply = this.getAnyAgent(agent, path, method);
     if (agencyReply.code === 200) {
       if (fn === "agencyState") {
@@ -755,7 +757,9 @@ class agencyMgr {
       if (!arangod.checkArangoAlive()) {
         print(Date() + " this agent is already dead: " + JSON.stringify(arangod.getStructure()));
       } else {
-        print(Date() + " Attempting to dump Agent: " + JSON.stringify(arangod.getStructure()));
+        if (this.options.extremeVerbosity) {
+          print(Date() + " Attempting to dump Agent: " + JSON.stringify(arangod.getStructure()));
+        }
         try {
           this.dumpAgent(arangod,  '/_api/agency/config', 'GET', 'agencyConfig', dumpdir);
 
@@ -774,7 +778,9 @@ class agencyMgr {
         zipfiles.push(file);
       }
     });
-    print(`${CYAN}${Date()} Zipping ${zipfn}${RESET}`);
+    if (this.options.extremeVerbosity) {
+      print(`${CYAN}${Date()} Zipping ${zipfn}${RESET}`);
+    }
     fs.zipFile(zipfn, dumpdir, zipfiles);
     zipfiles.forEach(file => {
       fs.remove(fs.join(dumpdir, file));

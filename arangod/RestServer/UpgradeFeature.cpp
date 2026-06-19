@@ -49,7 +49,6 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/InitDatabaseFeature.h"
 #include "RestServer/RestartAction.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "VocBase/Methods/Upgrade.h"
 #include "VocBase/vocbase.h"
@@ -395,8 +394,7 @@ Result UpgradeFeature::performFullCompaction() {
   LOG_TOPIC("e8f45", INFO, arangodb::Logger::ENGINES)
       << "starting full RocksDB compaction after upgrade";
 
-  TRI_ASSERT(server().hasFeature<EngineSelectorFeature>());
-  StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
+  StorageEngine& engine = server().getFeature<DatabaseFeature>().engine();
 
   // Perform full compaction with both changeLevel and compactBottomMostLevel
   // enabled This matches the behavior of the /_admin/compact API with

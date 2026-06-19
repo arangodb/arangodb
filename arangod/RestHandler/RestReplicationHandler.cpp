@@ -64,7 +64,6 @@
 #include "VectorIndex/VectorIndexFeature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "Sharding/ShardingInfo.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionState.h"
@@ -443,7 +442,6 @@ RestReplicationHandler::RestReplicationHandler(
     GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response),
       _clusterFeature(server.getFeature<ClusterFeature>()),
-      _engineSelectorFeature(server.getFeature<EngineSelectorFeature>()),
       _replicationFeature(server.getFeature<ReplicationFeature>()),
       _databaseFeature(server.getFeature<DatabaseFeature>()) {}
 
@@ -2922,8 +2920,7 @@ RestReplicationHandler::handleCommandHoldReadLockCollection() {
     // than the tick of the transaction created above, but it still can be
     // used by a follower as an upper bound until which to tail the WAL _at
     // most_.
-    TRI_ASSERT(server().hasFeature<EngineSelectorFeature>());
-    StorageEngine& engine = _engineSelectorFeature.engine();
+    auto& engine = _vocbase.engine();
     b.add("lastLogTick", VPackValue(engine.currentTick()));
   }
 
@@ -3003,8 +3000,7 @@ void RestReplicationHandler::handleCommandGetIdForReadLockCollection() {
 }
 
 void RestReplicationHandler::handleCommandLoggerState() {
-  TRI_ASSERT(server().hasFeature<EngineSelectorFeature>());
-  StorageEngine& engine = _engineSelectorFeature.engine();
+  auto& engine = _vocbase.engine();
 
   VPackBuilder builder;
   auto res = engine.createLoggerState(&_vocbase, builder);
@@ -3027,8 +3023,8 @@ void RestReplicationHandler::handleCommandLoggerLast() {
   auto tickStart = _request->parsedValue("tickStart", uint64_t(0));
   auto tickEnd = _request->parsedValue("tickEnd", uint64_t(0xbadbadbadbadULL));
 
-  Result res = server().getFeature<EngineSelectorFeature>().engine().lastLogger(
-      _vocbase, tickStart, tickEnd, builder);
+  Result res =
+      _vocbase.engine().lastLogger(_vocbase, tickStart, tickEnd, builder);
   generateResult(rest::ResponseCode::OK, builder.slice());
 }
 

@@ -46,8 +46,6 @@
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBIndex.h"
-#include "RocksDBEngine/RocksDBValue.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
@@ -625,11 +623,7 @@ std::optional<velocypack::Builder> rewriteIndexTypesInArray(
 }
 
 Result convertHashSkiplistInDefinitionsColumnFamily(TRI_vocbase_t& vocbase) {
-  auto& selectorFeature = vocbase.server().getFeature<EngineSelectorFeature>();
-  if (!selectorFeature.isRocksDB()) {
-    return {};
-  }
-  auto& engine = selectorFeature.engine<RocksDBEngine>();
+  auto& engine = vocbase.engine<RocksDBEngine>();
   rocksdb::TransactionDB* db = engine.db();
   auto* cf = RocksDBColumnFamilyManager::get(
       RocksDBColumnFamilyManager::Family::Definitions);

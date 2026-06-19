@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "PushFilterIntoEnumerateNear.h"
+
 #include <memory>
 
 #include "Aql/Ast.h"
@@ -44,7 +45,7 @@
 #include "Assertions/Assert.h"
 #include "Basics/Exceptions.h"
 #include "Indexes/Index.h"
-#include "VocBase/vocbase.h"
+#include "VectorIndex/VectorSearchStrategy.h"
 
 namespace arangodb::aql {
 
@@ -76,7 +77,7 @@ std::unique_ptr<Expression> tryRemoveFilterNode(
 
   auto filterExpression = calculationNode->expression()->clone(plan->getAst());
 
-  // TODO this will be resolved in the ticket COR-461
+  // TODO(jbajic COR-461) Allow vector search to filter on distance
   VarSet filterVars;
   filterExpression->variables(filterVars);
   if (filterVars.contains(distanceOutVariable)) {
@@ -86,15 +87,19 @@ std::unique_ptr<Expression> tryRemoveFilterNode(
         "search; the distance is produced by the search itself");
   }
 
-  // CalculationNode will be removed by the subsequent rule if it is not
-  // referenced by any other node. EnumerateNearVectorNode advertises the
-  // filter's variables through getVariablesUsedHere, so the register planner
-  // keeps them alive up to this node.
   plan->unlinkNode(filterExecutionNode);
+
+  // Since we are handling filter node lets remove correcponding calculation
+  // node if it is not used later on
+  plan->findVarUsage();
+  if (!maybeCalculationNode->isVarUsedLater(filterInVar)) {
+    plan->unlinkNode(const_cast<ExecutionNode*>(maybeCalculationNode));
+  }
 
   return filterExpression;
 }
 
+// TODO(jbajic COR-511): fix this, it does not handle nested values in filtering
 bool areAllAttributesCovered(
     std::unique_ptr<ExecutionPlan> const& plan,
     std::unique_ptr<Expression> const& filterExpression,
@@ -102,8 +107,8 @@ bool areAllAttributesCovered(
     std::vector<std::vector<basics::AttributeName>> const& storedValues) {
   containers::FlatHashSet<aql::AttributeNamePath> filterAttributes;
   Ast::getReferencedAttributesRecursive(
-      filterExpression->node(), enumerateNearVectorNode->documentOutVariable(),
-      "", filterAttributes, plan->getAst()->query().resourceMonitor());
+      filterExpression->node(), enumerateNearVectorNode->outVariable(), "",
+      filterAttributes, plan->getAst()->query().resourceMonitor());
 
   for (auto const& attr : filterAttributes) {
     auto const matchesAttribute =
@@ -147,16 +152,16 @@ std::shared_ptr<Index> findBestVectorIndex(
     if (!isCompatibleVectorIndex(candidate, currentIndex, ascending)) {
       continue;
     }
-    auto const& storedValues = candidate->storedValues();
+    auto const& storedValues = candidate->coveredFields();
     if (storedValues.empty()) {
       LOG_RULE << "Index " << candidate->name()
-               << " has no storedValues, skipping";
+               << " has no coveredFields, skipping";
       continue;
     }
     if (!areAllAttributesCovered(plan, filterExpression,
                                  enumerateNearVectorNode, storedValues)) {
       LOG_RULE << "Index " << candidate->name()
-               << " storedValues don't cover filter";
+               << " coveredFields don't cover filter";
       continue;
     }
     return candidate;
@@ -210,20 +215,29 @@ void pushFilterIntoEnumerateNear(Optimizer* opt,
           TRI_ERROR_QUERY_VECTOR_SEARCH_NOT_APPLIED,
           "filter node could not be moved into EnumerateNearVector node!");
     }
-    // We are handling filtering in EnumerateNearVectorNode
-    enumerateNearVectorNode->setFilterExpression(filterExpression.get());
-    modified = true;
 
+    // Try finding better index with coveredFields covering filtering
+    // TODO(jbajic COR-541) we should optiomize the we find best index covering
+    // both projection and filtering
     if (auto bestIndex = findBestVectorIndex(plan, filterExpression,
                                              enumerateNearVectorNode);
         bestIndex != nullptr) {
       if (bestIndex != enumerateNearVectorNode->index()) {
         enumerateNearVectorNode->setIndex(std::move(bestIndex));
       }
-      enumerateNearVectorNode->setIsCoveredByStoredValues(true);
+      enumerateNearVectorNode->setFilterMode(vector::FilterMode::kStoredValues);
+    } else {
+      // Filter pushed down but no index coveredFields cover its attributes:
+      // the iterator must load the full doc to evaluate it.
+      enumerateNearVectorNode->setFilterMode(vector::FilterMode::kDocument);
     }
+
+    enumerateNearVectorNode->setFilter(std::move(filterExpression));
+
+    modified = true;
   }
 
   opt->addPlan(std::move(plan), rule, modified);
 }
+
 }  // namespace arangodb::aql

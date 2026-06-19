@@ -3,7 +3,8 @@ add_library(arango_tests_activities OBJECT
   ActivitiesSchedulerTest.cpp
   ActivityRegistryTest.cpp
   GenericActivityTest.cpp
-  CustomGuardedActivityTest.cpp)
+  CustomGuardedActivityTest.cpp
+  InternalRequestActivityTest.cpp)
 target_link_libraries(arango_tests_activities PRIVATE
   arango_activities_global
   arango_tests_basics 

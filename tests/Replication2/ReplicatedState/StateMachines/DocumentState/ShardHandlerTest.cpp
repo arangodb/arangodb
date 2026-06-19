@@ -36,6 +36,7 @@
 #include "Replication2/Mocks/DocumentStateMocks.h"
 #include "Replication2/Mocks/MockVocbase.h"
 #include "Replication2/StateMachines/Document/DocumentStateShardHandler.h"
+#include "RestServer/DatabaseFeature.h"
 #include "velocypack/Value.h"
 #include "gmock/gmock.h"
 
@@ -52,6 +53,7 @@ struct ShardHandlerTest : testing::Test {
   std::shared_ptr<MockVocbase> vocbaseMock = nullptr;
 
   void SetUp() override {
+    mockServer.server().addFeature<arangodb::DatabaseFeature>();
     vocbaseMock = std::make_shared<MockVocbase>(mockServer.server(),
                                                 "shardHandlerTestDb", 1);
   }

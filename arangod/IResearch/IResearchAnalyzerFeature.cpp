@@ -70,7 +70,6 @@
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionState.h"
@@ -1084,7 +1083,6 @@ IResearchAnalyzerFeature::Dependencies::fromServer(
     application_features::ApplicationServer& server) {
   return {
       .databaseFeature = server.getFeature<DatabaseFeature>(),
-      .engineSelector = server.getFeature<EngineSelectorFeature>(),
       .systemDatabase = server.getFeature<SystemDatabaseFeature>(),
       .networkFeature = server.hasFeature<NetworkFeature>()
                             ? &server.getFeature<NetworkFeature>()
@@ -1105,7 +1103,6 @@ IResearchAnalyzerFeature::IResearchAnalyzerFeature(
     application_features::ApplicationServer& server, Dependencies deps)
     : ApplicationFeature{server, *this},
       _clusterFeature(deps.clusterFeature),
-      _engineSelector(deps.engineSelector),
       _systemDatabase(deps.systemDatabase),
       _databaseFeature(deps.databaseFeature),
       _networkFeature(deps.networkFeature),
@@ -1424,7 +1421,6 @@ Result IResearchAnalyzerFeature::emplace(
       return res;
     }
 
-    auto& engine = _engineSelector.engine();
     bool erase = emplaceRes.second;  // an insertion took place
     irs::Finally cleanup = [&erase, this, &emplaceRes]() noexcept {
       if (erase) {
@@ -1446,7 +1442,7 @@ Result IResearchAnalyzerFeature::emplace(
       }
 
       // persist only on coordinator and single-server while not in recovery
-      if ((!engine.inRecovery())  // do not persist during recovery
+      if ((!engine().inRecovery())  // do not persist during recovery
           && (ServerState::instance()->isCoordinator()          // coordinator
               || ServerState::instance()->isSingleServer())) {  // single-server
         res = storeAnalyzer(*pool, operationOrigin);
@@ -1985,10 +1981,9 @@ Result IResearchAnalyzerFeature::cleanupAnalyzersCollection(
     AnalyzersRevision::Revision buildingRevision,
     transaction::OperationOrigin operationOrigin) {
   if (ServerState::instance()->isCoordinator()) {
-    auto& engine = _engineSelector.engine();
     auto vocbase = _databaseFeature.useDatabase(database);
     if (!vocbase) {
-      if (engine.inRecovery()) {
+      if (engine().inRecovery()) {
         return {};  // database might not have come up yet
       }
       return {TRI_ERROR_INTERNAL,
@@ -2150,12 +2145,11 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
     // .........................................................................
 
     // database key used in '_lastLoad'
-    auto& engine = _engineSelector.engine();
     auto itr = _lastLoad.find(database);
 
     auto vocbase = _databaseFeature.useDatabase(database);
     if (!vocbase) {
-      if (engine.inRecovery()) {
+      if (engine().inRecovery()) {
         return {};  // database might not have come up yet
       }
       if (itr != _lastLoad.end()) {
@@ -2171,7 +2165,7 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
     AnalyzersRevision::Revision loadingRevision{
         getAnalyzersRevision(*vocbase, true)->getRevision()};
 
-    if (engine.inRecovery()) {
+    if (engine().inRecovery()) {
       // always load if inRecovery since collection contents might have changed
       // unless on db-server which does not store analyzer definitions in
       // collections
@@ -2662,10 +2656,8 @@ Result IResearchAnalyzerFeature::remove(
                        "' while removing arangosearch analyzer '", name, "'")};
     }
 
-    auto& engine = _engineSelector.engine();
-
     // do not allow persistence while in recovery
-    if (engine.inRecovery()) {
+    if (engine().inRecovery()) {
       return {TRI_ERROR_INTERNAL,
               absl::StrCat("failure to remove arangosearch analyzer '", name,
                            "' configuration while storage engine in recovery")};
@@ -2825,10 +2817,8 @@ Result IResearchAnalyzerFeature::storeAnalyzer(
                            pool.name(), "' configuration with 'null' type")};
     }
 
-    auto& engine = _engineSelector.engine();
-
     // do not allow persistence while in recovery
-    if (engine.inRecovery()) {
+    if (engine().inRecovery()) {
       return {TRI_ERROR_INTERNAL,
               absl::StrCat("failure to persist arangosearch analyzer '",
                            pool.name(),
