@@ -36,6 +36,7 @@ const {
     waitForVectorIndexState,
     VectorIndexTrainingState
 } = require("@arangodb/testutils/vector-index-common");
+const {deriveTestSuite} = require("@arangodb/test-helper-common");
 const isCluster = require("internal").isCluster();
 const IM = global.instanceManager;
 const numberOfShards = 3;
@@ -496,7 +497,10 @@ function VectorCoveredProjectionDuringIngestionRegressionSuite() {
 
 for (const config of ITERATOR_SCENARIO_CONFIGS) {
     jsunity.run(function () {
-        return VectorIndexIteratorScenariosTestSuite(config);
+        let suite = {};
+        deriveTestSuite(VectorIndexIteratorScenariosTestSuite(config), suite,
+                        "_" + config.name);
+        return suite;
     });
 }
 
