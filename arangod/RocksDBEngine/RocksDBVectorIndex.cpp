@@ -60,6 +60,7 @@
 #include <rocksdb/db.h>
 #include "RocksDBEngine/RocksDBMetaCollection.h"
 #include "VectorIndex/VectorIndexDefinition.h"
+#include "VectorIndex/Metadata.h"
 
 #include "faiss/MetricType.h"
 #include "faiss/utils/distances.h"
@@ -81,29 +82,6 @@ static_assert(std::is_same_v<faiss::idx_t, std::int64_t>,
 #define LOG_VECTOR_INDEX(lid, level, topic) \
   LOG_TOPIC((lid), level, topic)            \
       << "[shard=" << _collection.name() << ", index=" << _iid.id() << "] "
-
-namespace {
-// On-disk metadata record for a vector index. Templated on how codeData is held
-// so the view alias can serialize straight from live state without copying the
-// (potentially large) blob.
-template<class Bytes>
-struct StoredMetadata {
-  Bytes codeData;
-  std::optional<std::int64_t> tunedNProbe;
-  vector::VectorIndexFormatVersion formatVersion =
-      vector::VectorIndexFormatVersion::kV1;
-
-  template<class Inspector>
-  friend auto inspect(Inspector& f, StoredMetadata& x) {
-    return f.object(x).fields(
-        f.field("codeData", x.codeData), f.field("tunedNProbe", x.tunedNProbe),
-        f.field("formatVersion", x.formatVersion)
-            .fallback(vector::VectorIndexFormatVersion::kV1));
-  }
-};
-using OwnedMetadata = StoredMetadata<std::vector<std::uint8_t>>;
-using MetadataView = StoredMetadata<std::vector<std::uint8_t> const&>;
-}  // namespace
 
 std::string_view trainingStateToString(
     VectorIndexTrainingState const state) noexcept {
@@ -216,18 +194,22 @@ void RocksDBVectorIndex::loadStoredMetadata(velocypack::Slice info) {
     return _engine.db()->GetRootDB()->Get(ro, _cf, key.string(), &raw).ok();
   };
 
-  OwnedMetadata result;
+  // Read leniently: a record may carry fields this binary no longer knows
+  // (e.g. the legacy tunedNProbe once it is removed) and must still load.
+  inspection::ParseOptions const opts{.ignoreUnknownFields = true};
+
+  vector::OwnedMetadata result;
   std::string raw;
   if (readSlot(vector::VectorIndexFormatVersion::kV2, raw) ||
       readSlot(vector::VectorIndexFormatVersion::kV1, raw)) {
     auto slice =
         velocypack::Slice(reinterpret_cast<uint8_t const*>(raw.data()));
-    velocypack::deserialize(slice, result);
+    velocypack::deserialize(slice, result, opts);
   } else if (auto data = info.get("trainedData"); !data.isNone()) {
     // Backwards compatibility: load from definitions CF for pre-migration
     // indexes. Such records contain only TrainedData fields (codeData +
     // tunedNProbe), so formatVersion stays at the default kV1.
-    velocypack::deserialize(data, result);
+    velocypack::deserialize(data, result, opts);
   } else {
     // Brand-new index: stamp it with the current on-disk format. Has no
     // effect for indexes without storedValues since their entry layout is
@@ -237,13 +219,14 @@ void RocksDBVectorIndex::loadStoredMetadata(velocypack::Slice info) {
 
   _trainedData.codeData = std::move(result.codeData);
   _trainedData.tunedNProbe = result.tunedNProbe;
+  _trainedData.tunedTables = std::move(result.tunedTables);
   _formatVersion = result.formatVersion;
 }
 
 Result RocksDBVectorIndex::persistMetadata() const {
   // View alias: codeData is borrowed from live state, not copied.
-  MetadataView view{_trainedData.codeData, _trainedData.tunedNProbe,
-                    _formatVersion};
+  vector::MetadataView view{_trainedData.codeData, _trainedData.tunedNProbe,
+                            _trainedData.tunedTables, _formatVersion};
   velocypack::Builder builder;
   velocypack::serialize(builder, view);
 

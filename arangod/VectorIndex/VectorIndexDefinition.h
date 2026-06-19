@@ -60,16 +60,61 @@ inline auto inspect(Inspector& f, SimilarityMetric& x) {
       SimilarityMetric::kInnerProduct, "innerProduct");
 }
 
+/// @brief A single autotuned operating point: a search-parameter configuration
+/// (the verbatim FAISS combination key, e.g. "nprobe=32") together with the
+/// recall it achieves and how long that search took during the sweep.
+struct OperatingPoint {
+  double recall{0.0};
+  std::string faissKey;
+  double timeSeconds{0.0};
+
+  bool operator==(OperatingPoint const&) const noexcept = default;
+
+  template<class Inspector>
+  friend inline auto inspect(Inspector& f, OperatingPoint& x) {
+    return f.object(x).fields(
+        f.field("recall", x.recall).fallback(0.0),
+        f.field("faissKey", x.faissKey).fallback(""),
+        f.field("timeSeconds", x.timeSeconds).fallback(0.0));
+  }
+};
+
+/// @brief The operating-point table produced by one autotune run, valid for a
+/// single `topK`. `points` is ordered by ascending recall (== ascending cost);
+/// query time picks the cheapest point meeting the requested recall.
+///
+/// Conceptually a map keyed by `topK`, but stored as a vector-of-tables (the
+/// key carried inline) because VPack object keys must be strings — the
+/// inspection framework cannot serialize a map with an integer key.
+struct OperatingPointTable {
+  std::int64_t topK{0};
+  std::vector<OperatingPoint> points;
+
+  bool operator==(OperatingPointTable const&) const noexcept = default;
+
+  template<class Inspector>
+  friend inline auto inspect(Inspector& f, OperatingPointTable& x) {
+    return f.object(x).fields(
+        f.field("topK", x.topK).fallback(std::int64_t{0}),
+        f.field("points", x.points).fallback(std::vector<OperatingPoint>{}));
+  }
+};
+
 struct TrainedData {
   std::vector<std::uint8_t> codeData;
-  // TODO(jbajic) check for downgrades
-  // When set, takes precedence over defaultNProbe at search time.
+  // Legacy single tuned nprobe. Superseded by `tunedTables`; kept until the
+  // search/apply path migrates to operating-point tables. Old on-disk records
+  // still carry it and continue to load.
   std::optional<std::int64_t> tunedNProbe;
+  // Autotuned operating-point tables, one per tuned topK.
+  std::vector<OperatingPointTable> tunedTables;
 
   template<class Inspector>
   friend inline auto inspect(Inspector& f, TrainedData& x) {
-    return f.object(x).fields(f.field("codeData", x.codeData),
-                              f.field("tunedNProbe", x.tunedNProbe));
+    return f.object(x).fields(
+        f.field("codeData", x.codeData), f.field("tunedNProbe", x.tunedNProbe),
+        f.field("tunedTables", x.tunedTables)
+            .fallback(std::vector<OperatingPointTable>{}));
   }
 };
 
