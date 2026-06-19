@@ -28,6 +28,10 @@
 namespace arangodb::iresearch {
 
 struct IResearchOptionsProvider : OptionsProvider<IResearchOptions> {
+  static const std::string SKIP_RECOVERY;
+  static const std::string CACHE_LIMIT;
+  static const std::string CACHE_ONLY_LEADER;
+
   void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
                       IResearchOptions& options) override;
 

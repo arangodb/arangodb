@@ -45,7 +45,6 @@ std::string const CONSOLIDATION_THREADS_IDLE_PARAM(
     "--arangosearch.consolidation-threads-idle");
 std::string const FAIL_ON_OUT_OF_SYNC(
     "--arangosearch.fail-queries-on-out-of-sync");
-std::string const SKIP_RECOVERY("--arangosearch.skip-recovery");
 std::string const SEARCH_THREADS_LIMIT(
     "--arangosearch.execution-threads-limit");
 std::string const SEARCH_DEFAULT_PARALLELISM(
@@ -65,6 +64,10 @@ uint32_t computeThreadsCount(uint32_t threads, uint32_t threadsLimit,
 }
 
 }  // namespace
+
+const std::string IResearchOptionsProvider::SKIP_RECOVERY{"--arangosearch.skip-recovery"};
+const std::string IResearchOptionsProvider::CACHE_LIMIT{"--arangosearch.columns-cache-limit"};
+const std::string IResearchOptionsProvider::CACHE_ONLY_LEADER{"--arangosearch.columns-cache-only-leader"};
 
 void IResearchOptionsProvider::declareOptions(
     std::shared_ptr<options::ProgramOptions> options, IResearchOptions& opts) {

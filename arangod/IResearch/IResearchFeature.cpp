@@ -39,8 +39,6 @@
 #include "Aql/ExpressionContext.h"
 #include "Aql/Function.h"
 #include "Aql/Functions.h"
-#include "Basics/application-exit.h"
-#include "Basics/application-exit.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #ifdef USE_ENTERPRISE
@@ -64,10 +62,8 @@
 #include "IResearch/IResearchView.h"
 #include "IResearch/IResearchViewCoordinator.h"
 #include "IResearch/Search.h"
-#include "IResearch/VelocyPackHelper.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Topics.h"
-#include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/FlushFeature.h"
 #include "RestServer/UpgradeFeature.h"
@@ -150,10 +146,6 @@ void IResearchLogTopic::setIResearchLogLevel(LogLevel level) {
     }
   }
 }
-
-std::string const SKIP_RECOVERY("--arangosearch.skip-recovery");
-std::string const CACHE_LIMIT("--arangosearch.columns-cache-limit");
-std::string const CACHE_ONLY_LEADER("--arangosearch.columns-cache-only-leader");
 
 aql::AqlValue dummyFunc(aql::ExpressionContext*, aql::AstNode const& node,
                         std::span<aql::AqlValue const>) {
@@ -865,7 +857,7 @@ void IResearchFeature::collectOptions(
   auto& manager =
       basics::downCast<LimitedResourceManager>(_columnsCacheMemoryUsed);
   options
-      ->addOption(CACHE_LIMIT,
+      ->addOption(IResearchOptionsProvider::CACHE_LIMIT,
                   "The limit (in bytes) for ArangoSearch columns cache "
                   "(0 = no caching).",
                   new options::UInt64Parameter(&manager.limit),
@@ -876,7 +868,7 @@ void IResearchFeature::collectOptions(
       .setIntroducedIn(3'09'05);
   options
       ->addOption(
-          CACHE_ONLY_LEADER,
+          IResearchOptionsProvider::CACHE_ONLY_LEADER,
           "Cache ArangoSearch columns only for leader shards.",
           new options::BooleanParameter(&_options.columnsCacheOnlyLeader),
           options::makeDefaultFlags(options::Flags::DefaultNoComponents,
@@ -1053,7 +1045,7 @@ void IResearchFeature::registerRecoveryHelper() {
   if (!_options.skipRecoveryItems.empty()) {
     LOG_TOPIC("e36f2", WARN, arangodb::iresearch::TOPIC)
         << "arangosearch recovery explicitly disabled via the '"
-        << SKIP_RECOVERY << "' startup option for the following links/indexes: "
+        << IResearchOptionsProvider::SKIP_RECOVERY << "' startup option for the following links/indexes: "
         << _options.skipRecoveryItems
         << ". all affected links/indexes that are touched during "
            "recovery will be marked as out of sync and should be recreated "
