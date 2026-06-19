@@ -71,6 +71,21 @@ function aqlMatchStatementVariableLengthTestSuite() {
               db.ec1.save({_from: `vc1/v${i}`, _to: `vc2/v${i}`});
               db.ec1.save({_from: `vc2/v${i}`, _to: `vc3/v${i}`});
             }
+
+            // Self-contained vertex/edge collections used by the collection
+            // bind-parameter tests. Their edges never leave `vcbp`, so the
+            // generated traversal never reaches an undeclared collection and the
+            // queries do not require an explicit WITH (which a pure MATCH using
+            // bind parameters cannot express). This keeps the tests valid on a
+            // cluster, where traversals must know every reachable collection.
+            db._create("vcbp");
+            for (let i = 0; i < 4; i++) {
+              db.vcbp.save({_key: `v${i}`});
+            }
+            db._createEdgeCollection("ecbp");
+            for (let i = 0; i < 3; i++) {
+              db.ecbp.save({_from: `vcbp/v${i}`, _to: `vcbp/v${i+1}`});
+            }
        },
 
         tearDownAll: function () {
@@ -232,13 +247,13 @@ function aqlMatchStatementVariableLengthTestSuite() {
         testMatchVariableLengthCollectionBindParameters: function() {
           const query = "MATCH (v :@@vc) -[ e : @@ec * 1..1 ]-> (w :@@vc) RETURN [v, e, w]";
           const expected = [
-            "(vc1/v0) -[]-> (vc1/v1)",
-            "(vc1/v1) -[]-> (vc1/v2)",
-            "(vc1/v2) -[]-> (vc1/v3)"
+            "(vcbp/v0) -[]-> (vcbp/v1)",
+            "(vcbp/v1) -[]-> (vcbp/v2)",
+            "(vcbp/v2) -[]-> (vcbp/v3)"
           ];
           expected.sort();
 
-          const result = db._query(query, { "@vc": "vc1", "@ec": "ec1" }, options)
+          const result = db._query(query, { "@vc": "vcbp", "@ec": "ecbp" }, options)
             .toArray()
             .map((x) => pathToString(x[1]));
           result.sort();
@@ -258,15 +273,15 @@ function aqlMatchStatementVariableLengthTestSuite() {
         testMatchVariableLengthDataSourceBindParameterCollections: function() {
           const query = "MATCH (v :@@vc) -[ e : @@ec * 1..2 ]-> (w :@@vc) RETURN [v, e, w]";
           const expected = [
-            "(vc1/v0) -[]-> (vc1/v1)",
-            "(vc1/v0) -[]-> (vc1/v1) -[]-> (vc1/v2)",
-            "(vc1/v1) -[]-> (vc1/v2)",
-            "(vc1/v1) -[]-> (vc1/v2) -[]-> (vc1/v3)",
-            "(vc1/v2) -[]-> (vc1/v3)"
+            "(vcbp/v0) -[]-> (vcbp/v1)",
+            "(vcbp/v0) -[]-> (vcbp/v1) -[]-> (vcbp/v2)",
+            "(vcbp/v1) -[]-> (vcbp/v2)",
+            "(vcbp/v1) -[]-> (vcbp/v2) -[]-> (vcbp/v3)",
+            "(vcbp/v2) -[]-> (vcbp/v3)"
           ];
           expected.sort();
 
-          const result = db._query(query, { "@vc": "vc1", "@ec": "ec1" }, options)
+          const result = db._query(query, { "@vc": "vcbp", "@ec": "ecbp" }, options)
             .toArray()
             .map((x) => pathToString(x[1]));
           result.sort();
