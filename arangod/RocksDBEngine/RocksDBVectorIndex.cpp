@@ -194,22 +194,18 @@ void RocksDBVectorIndex::loadStoredMetadata(velocypack::Slice info) {
     return _engine.db()->GetRootDB()->Get(ro, _cf, key.string(), &raw).ok();
   };
 
-  // Read leniently: a record may carry fields this binary no longer knows
-  // (e.g. the legacy tunedNProbe once it is removed) and must still load.
-  inspection::ParseOptions const opts{.ignoreUnknownFields = true};
-
   vector::OwnedMetadata result;
   std::string raw;
   if (readSlot(vector::VectorIndexFormatVersion::kV2, raw) ||
       readSlot(vector::VectorIndexFormatVersion::kV1, raw)) {
     auto slice =
         velocypack::Slice(reinterpret_cast<uint8_t const*>(raw.data()));
-    velocypack::deserialize(slice, result, opts);
+    result = vector::decodeStoredMetadata(slice);
   } else if (auto data = info.get("trainedData"); !data.isNone()) {
     // Backwards compatibility: load from definitions CF for pre-migration
     // indexes. Such records contain only TrainedData fields (codeData +
     // tunedNProbe), so formatVersion stays at the default kV1.
-    velocypack::deserialize(data, result, opts);
+    result = vector::decodeStoredMetadata(data);
   } else {
     // Brand-new index: stamp it with the current on-disk format. Has no
     // effect for indexes without storedValues since their entry layout is
@@ -217,18 +213,11 @@ void RocksDBVectorIndex::loadStoredMetadata(velocypack::Slice info) {
     result.formatVersion = vector::kCurrentVectorIndexFormatVersion;
   }
 
-  _trainedData.codeData = std::move(result.codeData);
-  _trainedData.tunedNProbe = result.tunedNProbe;
-  _trainedData.tunedTables = std::move(result.tunedTables);
-  _formatVersion = result.formatVersion;
+  vector::assignStoredMetadata(std::move(result), _trainedData, _formatVersion);
 }
 
 Result RocksDBVectorIndex::persistMetadata() const {
-  // View alias: codeData is borrowed from live state, not copied.
-  vector::MetadataView view{_trainedData.codeData, _trainedData.tunedNProbe,
-                            _trainedData.tunedTables, _formatVersion};
-  velocypack::Builder builder;
-  velocypack::serialize(builder, view);
+  auto builder = vector::encodeStoredMetadata(_trainedData, _formatVersion);
 
   // V1 metadata stays at the legacy slot so older binaries can still read it
   // after a downgrade. V2 metadata is parked in a separate slot; an old binary

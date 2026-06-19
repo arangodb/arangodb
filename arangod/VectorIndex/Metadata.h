@@ -25,9 +25,14 @@
 
 #include <cstdint>
 #include <optional>
+#include <utility>
 #include <vector>
 
+#include "Inspection/VPack.h"
 #include "VectorIndex/VectorIndexDefinition.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
 
 namespace arangodb::vector {
 
@@ -57,5 +62,41 @@ struct StoredMetadata {
 
 using OwnedMetadata = StoredMetadata<std::vector<std::uint8_t>>;
 using MetadataView = StoredMetadata<std::vector<std::uint8_t> const&>;
+
+/// @brief Serialize the live trained data into a VPack record for persistence.
+/// codeData is borrowed (not copied) via MetadataView. This is the single
+/// definition of how a metadata record is written; persistMetadata and the
+/// tests both go through here.
+inline velocypack::Builder encodeStoredMetadata(
+    TrainedData const& data, VectorIndexFormatVersion version) {
+  MetadataView const view{data.codeData, data.tunedNProbe, data.tunedTables,
+                          version};
+  velocypack::Builder builder;
+  velocypack::serialize(builder, view);
+  return builder;
+}
+
+/// @brief Parse a stored metadata record. Reads leniently
+/// (ignoreUnknownFields) so a record carrying a field this binary no longer
+/// knows (e.g. the legacy tunedNProbe once removed) still loads instead of
+/// failing deserialization. This is the single definition of how a record is
+/// read.
+inline OwnedMetadata decodeStoredMetadata(velocypack::Slice slice) {
+  OwnedMetadata result;
+  velocypack::deserialize(
+      slice, result, inspection::ParseOptions{.ignoreUnknownFields = true});
+  return result;
+}
+
+/// @brief Copy a parsed record into the index's live state. The single
+/// definition of the stored-record -> in-memory-field mapping; a field added
+/// to the record schema must be wired through here too.
+inline void assignStoredMetadata(OwnedMetadata&& stored, TrainedData& data,
+                                 VectorIndexFormatVersion& version) {
+  data.codeData = std::move(stored.codeData);
+  data.tunedNProbe = stored.tunedNProbe;
+  data.tunedTables = std::move(stored.tunedTables);
+  version = stored.formatVersion;
+}
 
 }  // namespace arangodb::vector
