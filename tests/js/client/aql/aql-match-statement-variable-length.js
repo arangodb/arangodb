@@ -229,8 +229,8 @@ function aqlMatchStatementVariableLengthTestSuite() {
           result.sort();
           assertEqual(result, expected);
         },
-        testMatchVariableLengthBindParameterCollections: function() {
-          const query = "MATCH (v :@vc) -[ e : @ec * 1..1 ]-> (w :@vc) RETURN [v, e, w]";
+        testMatchVariableLengthCollectionBindParameters: function() {
+          const query = "MATCH (v :@@vc) -[ e : @@ec * 1..1 ]-> (w :@@vc) RETURN [v, e, w]";
           const expected = [
             "(vc1/v0) -[]-> (vc1/v1)",
             "(vc1/v1) -[]-> (vc1/v2)",
@@ -238,11 +238,21 @@ function aqlMatchStatementVariableLengthTestSuite() {
           ];
           expected.sort();
 
-          const result = db._query(query, { vc: "vc1", ec: "ec1" }, options)
+          const result = db._query(query, { "@vc": "vc1", "@ec": "ec1" }, options)
             .toArray()
             .map((x) => pathToString(x[1]));
           result.sort();
           assertEqual(result, expected);
+        },
+        testMatchVariableLengthValueBindParameterRejected: function() {
+          // a value bind parameter (@name) cannot denote a collection / edge type
+          try {
+            db._query("MATCH (v :vc1) -[ e : @ec * 1..1 ]-> (w :vc1) RETURN [v, e, w]",
+                      { ec: "ec1" }, options).toArray();
+            fail();
+          } catch (err) {
+            assertEqual(err.errorNum, errors.ERROR_QUERY_BIND_PARAMETER_TYPE.code);
+          }
         },
         testMatchVariableLengthDataSourceBindParameterCollections: function() {
           const query = "MATCH (v :@@vc) -[ e : @@ec * 1..2 ]-> (w :@@vc) RETURN [v, e, w]";

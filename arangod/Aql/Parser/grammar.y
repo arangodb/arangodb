@@ -1138,8 +1138,16 @@ pattern_label:
         auto const& resolver = parser->query().resolver();
         $$ = parser->ast()->createNodeDataSource(resolver, {$2.value, $2.length}, arangodb::AccessMode::Type::READ, true, false);
     }
-  | T_COLON bind_parameter_datasource_expected {
-        $$ = $2;
+  | T_COLON T_DATA_SOURCE_PARAMETER {
+        // a collection bind parameter (@@name) injects the collection name used
+        // as a label / edge type.
+        std::string_view name($2.value, $2.length);
+        $$ = parser->ast()->createNodeParameterDatasource(name);
+    }
+  | T_COLON T_PARAMETER {
+        // a bind parameter (@name) holds a single value, not a collection; therefore, an error must be thrown.
+        $$ = nullptr;
+        parser->registerParseError(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, "a value bind parameter cannot be used as a label or edge type; use a collection bind parameter (@@) instead", yylloc.first_line, yylloc.first_column);
     }
 
 %type <node> pattern_maybe_where_expression;
