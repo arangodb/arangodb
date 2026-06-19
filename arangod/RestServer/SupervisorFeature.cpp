@@ -25,7 +25,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include <cstdint>
 
 #include "SupervisorFeature.h"
 
@@ -39,10 +38,9 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerFeature.h"
 #include "Logger/LoggerStream.h"
-#include "ProgramOptions/Option.h"
-#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/DaemonFeature.h"
+#include "RestServer/SupervisorOptionsProvider.h"
 
 #ifdef TRI_HAVE_SYS_PRCTL_H
 #include <sys/prctl.h>
@@ -113,18 +111,8 @@ SupervisorFeature::SupervisorFeature(
 
 void SupervisorFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
-  options
-      ->addOption(
-          "--supervisor",
-          "Start the server in supervisor mode. Requires --pid-file to be set.",
-          new BooleanParameter(&_options.supervisor),
-          arangodb::options::makeDefaultFlags(
-              arangodb::options::Flags::Uncommon))
-      .setLongDescription(R"(Runs an arangod process as supervisor with another
-arangod process as child, which acts as the server. In the event that the server
-unexpectedly terminates due to an internal error, the supervisor automatically
-restarts the server. Enabling this option implies that the server runs as a
-daemon.)");
+  SupervisorOptionsProvider provider;
+  provider.declareOptions(options, _options);
 }
 
 void SupervisorFeature::validateOptions(

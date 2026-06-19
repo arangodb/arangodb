@@ -45,43 +45,6 @@
 namespace arangodb::aql {
 using EN = ExecutionNode;
 
-namespace {
-
-class AttributeAccessReplacer final
-    : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
- public:
-  AttributeAccessReplacer(ExecutionNode const* self,
-                          Variable const* searchVariable,
-                          std::span<std::string_view> attribute,
-                          Variable const* replaceVariable, size_t index)
-      : _self(self),
-        _searchVariable(searchVariable),
-        _attribute(attribute),
-        _replaceVariable(replaceVariable),
-        _index(index) {
-    TRI_ASSERT(_searchVariable != nullptr);
-    TRI_ASSERT(!_attribute.empty());
-    TRI_ASSERT(_replaceVariable != nullptr);
-  }
-
-  bool before(ExecutionNode* en) override final {
-    en->replaceAttributeAccess(_self, _searchVariable, _attribute,
-                               _replaceVariable, _index);
-
-    // always continue
-    return false;
-  }
-
- private:
-  ExecutionNode const* _self;
-  Variable const* _searchVariable;
-  std::span<std::string_view> _attribute;
-  Variable const* _replaceVariable;
-  size_t _index;
-};
-
-}  // namespace
-
 void optimizeProjections(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
                          OptimizerRule const& rule) {
   containers::SmallVector<ExecutionNode*, 8> nodes;
@@ -91,22 +54,12 @@ void optimizeProjections(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
 
   auto replace = [&plan](ExecutionNode* self, Projections& p,
                          Variable const* searchVariable, size_t index) {
-    bool modified = false;
-    std::vector<std::string_view> path;
-    for (size_t i = 0; i < p.size(); ++i) {
-      TRI_ASSERT(p[i].variable == nullptr);
-      p[i].variable = plan->getAst()->variables()->createTemporaryVariable();
-      path.clear();
-      for (auto const& it : p[i].path.get()) {
-        path.emplace_back(it);
-      }
-
-      AttributeAccessReplacer replacer(self, searchVariable, std::span(path),
-                                       p[i].variable, index);
-      plan->root()->walk(replacer);
-      modified = true;
+    if (p.empty()) {
+      return false;
     }
-    return modified;
+    utils::rewriteProjectionAttributeAccesses(*plan, self, searchVariable, p,
+                                              index);
+    return true;
   };
 
   bool modified = false;

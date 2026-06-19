@@ -38,7 +38,6 @@
 #include "RocksDBEngine/RocksDBMultiDimIndex.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
 #include "RocksDBEngine/RocksDBVPackIndex.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 #include "Logger/LogMacros.h"
@@ -107,7 +106,7 @@ ClusterIndex::ClusterIndex(IndexId id, LogicalCollection& collection,
     } else if (_indexType == TRI_IDX_TYPE_VECTOR_INDEX) {
       velocypack::deserialize(info.get("params"), _vectorIndexDefinition);
       TRI_ASSERT(_vectorIndexDefinition != nullptr);
-      _storedValues =
+      _coveredFields =
           Index::parseFields(info.get(StaticStrings::IndexStoredValues),
                              /*allowEmpty*/ true, /*allowExpansion*/ false);
     }
@@ -510,6 +509,13 @@ Index::StreamSupportResult ClusterIndex::supportsStreamInterface(
   return Index::StreamSupportResult::makeUnsupported();
 }
 
+bool ClusterIndex::isLinearScanEnabled() const noexcept {
+  //  Linear scanning is enabled only for vector indexes.
+  if (ADB_LIKELY(_indexType == TRI_IDX_TYPE_VECTOR_INDEX)) return true;
+
+  return false;
+}
+
 bool ClusterIndex::isVectorIndexReady() const noexcept {
   if (_indexType != TRI_IDX_TYPE_VECTOR_INDEX) {
     return false;
@@ -559,8 +565,6 @@ ClusterIndex::getVectorIndexDefinition() {
   }
   return *_vectorIndexDefinition;
 }
-
-StoredValues const& ClusterIndex::storedValues() const { return _storedValues; }
 
 bool ClusterIndex::supportsDistinctScan(
     IndexDistinctScanOptions const& scanOptions) const noexcept {

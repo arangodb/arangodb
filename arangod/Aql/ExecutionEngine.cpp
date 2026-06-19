@@ -55,6 +55,9 @@
 #include "Cluster/RebootTracker.h"
 #include "Cluster/ServerState.h"
 #include "Containers/FlatHashMap.h"
+#include "Enterprise/VocBase/VirtualClusterSmartEdgeCollection.h"
+#include "Enterprise/VocBase/VirtualSmartEdgeCollection.h"
+#include "ExecutionNode/IndexNode.h"
 #include "Logger/LogMacros.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
@@ -780,13 +783,16 @@ async<void> ExecutionEngine::instantiateFromPlan(Query& query,
   if (arangodb::ServerState::isSingleServerOrCoordinator(role)) {
     ExecutionEngine::parallelizeTraversals(query, plan, aliases);
   }
-#endif
 
+  localizeSmartEdgeCollectionAccess(query, plan, aliases);
+#endif
   if (ServerState::isCoordinator(role)) {
     // distributed query
     DistributedQueryInstanciator inst(query, plan.getNodesById(),
                                       pushToSingleServer);
-    plan.root()->flatWalk(inst, true);
+    //    LOG_DEVEL << "PLAN:";
+    // plan.show();
+    plan.root()->flatWalk(inst, ExecutionNode::FlattenType::INLINE_ALL);
 
     Result res = co_await inst.buildEngines();
     if (res.fail()) {

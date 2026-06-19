@@ -60,7 +60,6 @@
 #include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/AqlFeature.h"
 #include "Sharding/ShardingFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/BatchOptions.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"

@@ -54,6 +54,7 @@
 #include "Aql/Optimizer/Rule/ScatterViewInCluster.h"
 #include "Aql/Optimizer/Rule/ParallelizeGather.h"
 #include "Aql/Optimizer/Rule/PropagateConstantAttributes.h"
+#include "Aql/Optimizer/Rule/MaterializeForEnumerateNear.h"
 #include "Aql/Optimizer/Rule/PushDownLateMaterialization.h"
 #include "Aql/Optimizer/Rule/PushFilterIntoEnumerateNear.h"
 #include "Aql/Optimizer/Rule/PushLimitIntoIndex.h"
@@ -97,6 +98,7 @@
 #include "Enterprise/Aql/Optimizer/Rule/RemoveSatelliteJoins.h"
 #include "Enterprise/Aql/Optimizer/Rule/ScatterSatelliteGraph.h"
 #include "Enterprise/Aql/Optimizer/Rule/SmartJoins.h"
+#include "Enterprise/Aql/Optimizer/Rule/SmartJoinSmartEdge.h"
 #include "Enterprise/Aql/Optimizer/Rule/SubqueryToDBServer.h"
 #include "Enterprise/Aql/Optimizer/Rule/DistributeOffsetInfoToCluster.h"
 #include "Enterprise/Aql/Optimizer/Rule/LateMaterializationOffsetInfo.h"
@@ -108,7 +110,7 @@
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/AqlFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
+#include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/StorageEngine.h"
 
 using namespace arangodb::application_features;
@@ -665,6 +667,14 @@ down calculations to a DB-Server.)");
                R"(Reduce inter-node joins to server-local joins.
 This rule is only employed when joining two collections with identical sharding
 setup via their shard keys.)");
+
+  registerRule("smart-join-smart-edge", smartJoinSmartEdgeRule,
+               OptimizerRule::smartJoinSmartEdgeRule,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
+                                        OptimizerRule::Flags::ClusterOnly,
+                                        OptimizerRule::Flags::EnterpriseOnly),
+               R"(Similar to smart-joins, reduce inter-node joins to
+server-local joins using knowledge about smart edge data distribution.)");
 #endif
 
   // distribute operations in cluster
@@ -921,6 +931,15 @@ vector embeddings with vector similarity AQL functions.)");
 filtering by using `storedValues`. This rule is only enabled by the
 `use-vector-index` rule.)");
 
+  registerRule("materialize-for-enumerate-near", materializeForEnumerateNear,
+               OptimizerRule::materializeForEnumerateNearRule,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
+               R"(Choose how each EnumerateNearVectorNode emits its document.
+If the vector index storedValues cover the downstream projections, or if a
+pushed-down filter already loaded the document, the vector node produces the
+output directly. Otherwise a MaterializeRocksDBNode is inserted after the
+vector node to translate the doc-id into the full document.)");
+
   registerRule(
       "immutable-search-condition", iresearch::immutableSearchCondition,
       OptimizerRule::immutableSearchConditionRule,
@@ -1002,7 +1021,7 @@ run in parallel. This is only possible for certain operations in a query.)");
 }
 
 void OptimizerRulesFeature::addStorageEngineRules() {
-  StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
+  StorageEngine& engine = server().getFeature<DatabaseFeature>().engine();
   engine.addOptimizerRules(*this);
 }
 

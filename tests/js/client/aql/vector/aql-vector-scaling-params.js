@@ -32,6 +32,9 @@ const {
     randomNumberGeneratorFloat,
     generateSeed
 } = require("@arangodb/testutils/seededRandom");
+const {
+    assertEnsureIndexResultUnusable,
+} = require("@arangodb/testutils/vector-index-common");
 
 const isCluster = internal.isCluster();
 const dbName = "vectorScalingDB";
@@ -283,35 +286,29 @@ function VectorIndexScalingTestSuite() {
         },
 
         testFixedFactoryWithMismatchedScalingFails: function() {
-            try {
-                collection.ensureIndex({
-                    name: idxName,
-                    type: "vector",
-                    fields: ["vector"],
-                    inBackground: false,
-                    params: {
-                        metric: "l2", dimension,
-                        factory: "IVF20,Flat",
-                        nLists: {
-                            strategy: "autoSqrt",
-                            multiplier: 1,
-                            minNLists: 15,
-                            tiers: [],
-                        },
+            // The factory string fixes nLists at 20 while the scaling spec
+            // demands at least 15 — the mismatch is only detected by FAISS
+            // during training, so the index is created but ends up in the
+            // 'unusable' state with the training error surfaced in the
+            // response.
+            const result = collection.ensureIndex({
+                name: idxName,
+                type: "vector",
+                fields: ["vector"],
+                inBackground: false,
+                params: {
+                    metric: "l2", dimension,
+                    factory: "IVF20,Flat",
+                    nLists: {
+                        strategy: "autoSqrt",
+                        multiplier: 1,
+                        minNLists: 15,
+                        tiers: [],
                     },
-                });
-                fail();
-            } catch (e) {
-                // Single-server propagates the createFaissIndex throw as
-                // ERROR_BAD_PARAMETER. In a cluster the coordinator polls
-                // per-shard training state and surfaces any unusable shard as
-                // ERROR_QUERY_VECTOR_INDEX_NOT_READY, with the original
-                // message preserved as a string.
-                const expected = isCluster
-                    ? errors.ERROR_QUERY_VECTOR_INDEX_NOT_READY.code
-                    : errors.ERROR_BAD_PARAMETER.code;
-                assertEqual(expected, e.errorNum);
-            }
+                },
+            });
+            assertEnsureIndexResultUnusable(result,
+                "factory IVF20 vs scaling minNLists=15 mismatch");
         },
     };
 }
@@ -476,26 +473,22 @@ function VectorIndexScalingEmptyCollectionTestSuite() {
         },
 
         testScaledNListsOnEmptyCollectionRejected: function() {
-            try {
-                collection.ensureIndex({
-                    name: idxName,
-                    type: "vector",
-                    fields: ["vector"],
-                    inBackground: false,
-                    params: {
-                        metric: "l2", dimension,
-                        nLists: {
-                            strategy: "autoSqrt",
-                            multiplier: 4,
-                            minNLists: 2,
-                            tiers: [],
-                        },
+            const result = collection.ensureIndex({
+                name: idxName,
+                type: "vector",
+                fields: ["vector"],
+                inBackground: false,
+                params: {
+                    metric: "l2", dimension,
+                    nLists: {
+                        strategy: "autoSqrt",
+                        multiplier: 4,
+                        minNLists: 2,
+                        tiers: [],
                     },
-                });
-                fail();
-            } catch (e) {
-                assertEqual(errors.ERROR_QUERY_VECTOR_INDEX_NOT_READY.code, e.errorNum);
-            }
+                },
+            });
+            assertEnsureIndexResultUnusable(result, "empty collection");
         },
     };
 }

@@ -86,8 +86,8 @@ struct DocumentStateMachineTest : testing::Test {
   MockTransactionManager transactionManagerMock;
   arangodb::tests::mocks::MockServer mockServer =
       arangodb::tests::mocks::MockServer();
-  MockVocbase vocbaseMock = MockVocbase(
-      mockServer.server(), MockDocumentStateHandlersFactory::kDbName, 2);
+  MockVocbase vocbaseMock =
+      makeVocbase(mockServer, MockDocumentStateHandlersFactory::kDbName, 2);
   std::shared_ptr<IScheduler> schedulerMock =
       std::make_shared<test::SyncScheduler>();
 
@@ -134,6 +134,13 @@ struct DocumentStateMachineTest : testing::Test {
     return std::make_shared<DocumentFollowerStateWrapper>(
         factory.constructCore(vocbaseMock, globalId, coreParams),
         handlersFactoryMock, schedulerMock);
+  }
+
+  static replication2::tests::MockVocbase makeVocbase(
+      arangodb::tests::mocks::MockServer& s, std::string const& name,
+      std::uint64_t id) {
+    s.server().addFeature<arangodb::DatabaseFeature>();
+    return replication2::tests::MockVocbase(s.server(), name, id);
   }
 
   void SetUp() override {

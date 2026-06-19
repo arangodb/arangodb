@@ -23,7 +23,8 @@
 
 #pragma once
 
-#include "Manager.h"
+#include "Basics/ErrorCode.h"
+#include "Cache/Manager.h"
 
 namespace arangodb {
 namespace cache {

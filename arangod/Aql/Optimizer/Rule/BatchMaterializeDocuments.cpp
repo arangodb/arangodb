@@ -123,6 +123,15 @@ void batchMaterializeDocumentsRule(Optimizer* opt,
       }
     }
 
+    auto flag =
+        indexNode->getAnnotatedFlag("smart-edge-smart-join/do-not-materialize");
+    if (flag.has_value() && *flag == true) {
+      LOG_RULE << "INDEX " << indexNode->id()
+               << " is inserted by smart-join-smart-edge and does not support "
+                  "late materialisation";
+      continue;
+    }
+
     LOG_RULE << "FOUND INDEX NODE " << indexNode->id();
 
     auto docIdVar = plan->getAst()->variables()->createTemporaryVariable();
@@ -133,6 +142,9 @@ void batchMaterializeDocumentsRule(Optimizer* opt,
     auto materialized = plan->createNode<materialize::MaterializeRocksDBNode>(
         plan.get(), plan->nextId(), indexNode->collection(), *docIdVar,
         *newOutVariable, *oldOutVariable);
+    if (indexNode->collection()->isSatellite()) {
+      materialized->useAsSatelliteOf(indexNode->id());
+    }
 
     plan->insertAfter(indexNode, materialized);
 

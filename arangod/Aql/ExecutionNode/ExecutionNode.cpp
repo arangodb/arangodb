@@ -70,6 +70,7 @@
 #include "Aql/Variable.h"
 #include "Aql/WalkerWorker.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/StaticStrings.h"
 
 #include <absl/strings/str_cat.h>
 #include <frozen/unordered_map.h>
@@ -409,8 +410,9 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan,
     case TRAVERSAL:
     case SHORTEST_PATH:
     case ENUMERATE_PATHS: {
-      if (basics::VelocyPackHelper::getBooleanValue(slice, "isLocalGraphNode",
-                                                    false)) {
+      if (slice.hasKey(StaticStrings::ProtoCollection) &&
+          basics::VelocyPackHelper::getBooleanValue(
+              slice, StaticStrings::IsLocalGraphNode, false)) {
         return createLocalGraphNode(plan, slice);
       }
       if (nodeType == TRAVERSAL) {
@@ -636,7 +638,8 @@ void ExecutionNode::allToVelocyPack(velocypack::Builder& builder,
   } nodeSerializer{builder, flags};
 
   VPackArrayBuilder guard(&builder);
-  const_cast<ExecutionNode*>(this)->flatWalk(nodeSerializer, true);
+  const_cast<ExecutionNode*>(this)->flatWalk(nodeSerializer,
+                                             FlattenType::INLINE_ASYNC);
 }
 
 /// @brief execution Node clone utility to be called by derived classes
@@ -779,13 +782,19 @@ bool ExecutionNode::walkSubqueriesFirst(
 }
 
 bool ExecutionNode::flatWalk(WalkerWorkerBase<ExecutionNode>& worker,
-                             bool onlyFlattenAsync) {
-  if (onlyFlattenAsync) {
-    return doWalk(worker, false, FlattenType::INLINE_ASYNC);
-  }
-  return doWalk(worker, false, FlattenType::INLINE_ALL);
+                             FlattenType ft) {
+  return doWalk(worker, false, ft);
 }
 
+/*
+ FlattenType::NONE : enumerate all paths, depth first through the execution DAG
+                     starting from this execution node in dependency direction
+                     (towards SINGLETON).
+ FlattenType::INLINE_ASYNC:
+ FlattenType::INLINE_ALL: enumerates dependencies of this execution node in a
+                          topoligical order.
+
+ */
 bool ExecutionNode::doWalk(WalkerWorkerBase<ExecutionNode>& worker,
                            bool subQueryFirst, FlattenType flattenType) {
   enum class State { Pending, Processed, InSubQuery };
@@ -839,7 +848,8 @@ bool ExecutionNode::doWalk(WalkerWorkerBase<ExecutionNode>& worker,
           TRI_ASSERT(n->getType() == SCATTER || n->getType() == MUTEX ||
                      n->getType() == DISTRIBUTE);
           if (flattenType == FlattenType::INLINE_ALL || n->getType() == MUTEX) {
-            ADB_PROD_ASSERT(!parallelStarter.empty());
+            ADB_PROD_ASSERT(!parallelStarter.empty())
+                << n->id() << " " << n->getTypeString();
             // If we are not INLINE_ALL, only flatten the MUTEX, which is the
             // counterpart of ASYNC
             auto& starter = parallelStarter.back();
@@ -859,6 +869,7 @@ bool ExecutionNode::doWalk(WalkerWorkerBase<ExecutionNode>& worker,
             }
           }
         }
+
         if (worker.done(n)) {
           nodes.pop_back();
           break;
@@ -890,7 +901,9 @@ bool ExecutionNode::doWalk(WalkerWorkerBase<ExecutionNode>& worker,
             // by the time this code was implemented only
             // GATHER nodes were allowed to have more than
             // one dependency, so all others indicated an issue on plan
-            TRI_ASSERT(n->getType() == GATHER);
+            TRI_ASSERT(n->getType() == GATHER)
+                << "unexpected multiple dependencies on node " << n->id() << " "
+                << n->getTypeString();
             if (flattenType == FlattenType::INLINE_ALL) {
               // Remember where we started the flattening process
               parallelStarter.emplace_back(n);
@@ -900,9 +913,7 @@ bool ExecutionNode::doWalk(WalkerWorkerBase<ExecutionNode>& worker,
               TRI_ASSERT(flattenType == FlattenType::INLINE_ASYNC);
               auto peek = n->getFirstDependency();
               if (peek->getType() == ASYNC) {
-                // Only Async nodes shall be flattened
-                // So yes we found the combination we want to falten here
-
+                // So yes we found the combination we want to flatten here
                 // Remember where we started the flattening process
                 parallelStarter.emplace_back(n);
                 // Add the next dependency to continue
@@ -1611,6 +1622,22 @@ void ExecutionNode::setAnnotation(std::string name, VPackValue value) {
 void ExecutionNode::setAnnotatedString(std::string name,
                                        std::string_view value) {
   setAnnotation(std::move(name), VPackValue(value));
+}
+
+void ExecutionNode::setAnnotatedFlag(std::string name, bool value) {
+  setAnnotation(std::move(name), VPackValue(value));
+}
+
+std::optional<bool> ExecutionNode::getAnnotatedFlag(
+    std::string_view name) const noexcept {
+  auto s = getAnnotation(name);
+  if (s.isNone() || s.isNull()) {
+    return std::nullopt;
+  }
+  ADB_PROD_ASSERT(s.isBool())
+      << "annotation `" << name << "` expected to be a flag, found "
+      << s.typeName();
+  return s.getBoolean();
 }
 
 void ExecutionNode::setId(ExecutionNodeId id) { _id = id; }

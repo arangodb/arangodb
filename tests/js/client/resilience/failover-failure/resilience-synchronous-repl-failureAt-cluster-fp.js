@@ -33,8 +33,6 @@ const ERRORS = arangodb.errors;
 const _ = require("lodash");
 const wait = require("internal").wait;
 const instanceRoledbServer = 'dbserver';
-const suspendExternal = require("internal").suspendExternal;
-const continueExternal = require("internal").continueExternal;
 const {
   getEndpointById,
   getServersByType,
@@ -117,7 +115,7 @@ function SynchronousReplicationSuite() {
       IM.debugSetFailAt(failAt, '', follower);
       print("Have added failure in follower", follower, " at ", failAt);
     } else {
-      assertTrue(suspendExternal(arangods[0].pid));
+      assertTrue(arangods[0].suspend());
       print("Have failed follower", follower);
     }
     failedState.follower = { failAt: (failAt ? failAt : null), failedServer: follower };
@@ -136,7 +134,7 @@ function SynchronousReplicationSuite() {
       IM.debugRemoveFailAt(failAt, '', follower);
       print("Have removed failure in follower", follower, " at ", failAt);
     } else {
-      assertTrue(continueExternal(arangods[0].pid));
+      assertTrue(arangods[0].resume());
       print("Have healed follower", follower);
     }
     failedState.follower = null;
@@ -154,7 +152,7 @@ function SynchronousReplicationSuite() {
       IM.debugSetFailAt(failAt, '', leader);
       print("Have failed leader", leader, " at ", failAt);
     } else {
-      assertTrue(suspendExternal(arangods[0].pid));
+      assertTrue(arangods[0].suspend());
       print("Have failed leader", leader);
     }
     failedState.leader = { failAt: (failAt ? failAt : null), failedServer: leader };
@@ -173,7 +171,7 @@ function SynchronousReplicationSuite() {
       IM.debugRemoveFailAt(failAt, '', leader);
       print("Have removed failure in leader", leader, " at ", failAt);
     } else {
-      assertTrue(continueExternal(arangods[0].pid));
+      assertTrue(arangods[0].resume());
       print("Have healed leader", leader);
     }
     failedState.leader = null;

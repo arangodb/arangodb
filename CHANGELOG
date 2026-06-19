@@ -4,6 +4,16 @@
   operator, e.g. `["foo", "bar"] ANY LIKE "b%"` and
   `["foo", "bar", "baz"] AT LEAST(2) LIKE "b%"`.
 
+* Upgraded included rclone to v1.74.3 with go1.25.11 and non-vulnerable
+  dependencies.
+
+* Upgraded OpenSSL to 3.5.7.
+
+* COR-572: BugFix - Resolved unintended warnings raised by eager evaluation in 
+  the ternary operator during traversal and optimization.
+
+* Updated ArangoDB Starter to v0.20.0-preview-12.
+
 * COR-522: Use Distribute on repeated smart edge join.
 
 * COR-299: Upgrade ScatterNode to DistributeNode if shardkey is known
@@ -12,11 +22,6 @@
 
 * COR-531: With this fix, APPEND() now correctly removes duplicate values when the unique parameter 
   is set to true, even if the appender array is null/empty or the first parameter is null.
-
-* Updated ArangoDB Starter to v0.20.0-preview-10.
-
-* Upgraded included rclone to v1.73.5 with go1.25.9 and non-vulnerable
-  dependencies.
 
 * COR-542: New AQL function UNION_DISTINCT_STABLE – merges arrays without duplicates
   while preserving order, helping maintain predictable array ordering in queries
@@ -59,8 +64,6 @@
   string, behavior is unchanged: `+` still applies the existing numeric coercion
   for `null`, booleans, arrays, objects, and numbers. Constant `+` expressions
   are constant-folded at optimization time using the same rules as at runtime.
-
-* Upgraded OpenSSL to 3.5.6.
 
 * COR-293: Removed ConnectionStatistics and replaced with MetricsFeature for connection tracking.
 
@@ -348,12 +351,53 @@
 3.12.10-devel (XXXX-XX-XX)
 --------------------------
 
-* Upgraded included rclone to v1.73.5 with go1.25.10 and non-vulnerable
+* Updated ArangoDB Starter to v0.19.23.
+
+* COR-607: Fix a problem that causes cluster queries involving a materialize node
+  collection access that is used as a satellite to crash in maintainer mode,
+  and fail with an internal error with the message "Did not find a DBServer to
+  contact for RemoteNode" in production.
+
+* COR-473: Enabled linear scanning of shards that are untrained and in
+  unusable state for having insufficient documents
+
+* COR-616: Fixed a DB-Server error during rolling upgrades when deserializing a graph
+  traversal plan from an older coordinator that lacks the "protoCollection"
+  attribute.
+
+* Upgraded included rclone to v1.73.5 with go1.25.11 and non-vulnerable
   dependencies.
 
-* Updated node module fast-uri to 3.1.2.
+* COR-584/OASIS-27899: Fixed an edge case in range_column_iterator::seek where
+  executing a seek on an uninitialized iterator would return incorrect results
+  if the target is greater than the max value of that iterator.
 
-* Updated ArangoDB Starter to v0.19.22.
+* COR-573: Fix missing erase after std::ranges::remove.
+
+* COR-75: Removed RocksDBKeyLeaser, making RocksDBKey own its leased string buffer directly.
+
+* COR-471: Improved filter optimization, rewriting `x IN [a]` to `x == a`,
+  removing always-false/true branches, and deduplicating identical conditions.
+  Fixed `==`/`!=` incorrectly using ICU comparison instead of byte comparison.
+
+* Fix shipped cmake file to make the build work on cmake >= 4.
+
+* Upgraded FAISS to v1.14.2.
+
+* COR-320: Vector search now supports projections, allowing covered queries
+  to skip the document materialization step. Adds optimizer rule
+  `materialize-for-enumerate-near`.
+
+* [COR-546]: Fixed bug in the `remove-filter-covered-by-traversal`
+  optimizer rule where filters on path arrays with different quantifiers
+  (e.g. `ALL` vs `NONE`) were incorrectly treated as equivalent and one
+  of the filters could be dropped, producing wrong query results.
+
+* COR-387: Synchronous vector index creation no longer throws when training
+  fails. The index is created with `trainingState: "unusable"` and the
+  training error returned in `errorMessage`.
+
+* Updated node module fast-uri to 3.1.2.
 
 * COR-519: Vector index `factory` strings may now be combined with the scaling
   `nLists` specification (previously rejected). A factory string can contain a
@@ -374,6 +418,12 @@
  - brace-expansion to 1.1.13
  - ajv to 8.18.0
  - @xmldom/xmldom@0.8.13
+
+* COR-467: Extended `compareAstNodes` to compare AST nodes that are not directly
+  VPack-serializable (references, attribute accesses, function calls, operators).
+  `a == b` and `b == a` (and `!=`) compare as equal, as do NARY conditions and
+  IN/NOT IN literal arrays regardless of operand order. Bind parameters and
+  quantifiers are also handled.
 
 * COR-466: Added constant folding empty array comparisons in `FILTER` nodes,
   allowing filter optimizations:

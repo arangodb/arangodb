@@ -24,6 +24,14 @@
 /// @author Wilfried Goesgens
 /// @author Copyright 2019, ArangoDB Inc, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
+const fs = require('fs');
+const jsunity = require("jsunity");
+const { assertEqual, assertTrue, assertFalse, assertNotEqual } = jsunity.jsUnity.assertions;
+const internal = require('internal');
+const db = internal.db;
+const arango = require('@arangodb').arango;
+const { assertEndpointGetOnly } = require('@arangodb/test-helper');
+let IM = global.instanceManager;
 
 if (getOptions === true) {
   return {
@@ -46,20 +54,15 @@ if (runSetup === true) {
   return true;
 }
 
-var jsunity = require('jsunity');
-const { assertEndpointGetOnly } = require('@arangodb/test-helper');
-
 function testSuite() {
-  let endpoint = arango.getEndpoint();
-  let db = require("@arangodb").db;
-  const isCluster = require("internal").isCluster();
+  const isCluster = internal.isCluster();
 
   return {
     setUp: function() {},
     tearDown: function() {},
 
     testCanAccessVersionRw : function() {
-      arango.reconnect(endpoint, db._name(), "test_rw", "testi");
+      arango.reconnect(IM.endpoint, db._name(), "test_rw", "testi");
       let result = arango.GET("/_api/version");
       assertTrue(result.hasOwnProperty("version"));
       assertTrue(result.hasOwnProperty("license"));
@@ -67,45 +70,45 @@ function testSuite() {
     },
 
     testCanAccessVersionRo : function() {
-      arango.reconnect(endpoint, db._name(), "test_ro", "testi");
+      arango.reconnect(IM.endpoint, db._name(), "test_ro", "testi");
       let result = arango.GET("/_api/version");
       assertFalse(result.hasOwnProperty("version"));
       assertTrue(result.hasOwnProperty("license"));
     },
 
     testVersionOnlyAcceptsGet : function() {
-      arango.reconnect(endpoint, db._name(), "test_rw", "testi");
+      arango.reconnect(IM.endpoint, db._name(), "test_rw", "testi");
       let url = "/_api/version";  
       assertEndpointGetOnly(url);
     },
 
     testCanAccessEngineRw : function() {
-      arango.reconnect(endpoint, db._name(), "test_rw", "testi");
+      arango.reconnect(IM.endpoint, db._name(), "test_rw", "testi");
       let result = arango.GET("/_api/engine");
       assertTrue(result.hasOwnProperty("name"));
     },
 
     testCanAccessEngineRo : function() {
-      arango.reconnect(endpoint, db._name(), "test_ro", "testi");
+      arango.reconnect(IM.endpoint, db._name(), "test_ro", "testi");
       let result = arango.GET("/_api/engine");
       assertTrue(result.hasOwnProperty("name"));
     },
 
     testCanAccessEngineStatsRw : function() {
-      arango.reconnect(endpoint, db._name(), "test_rw", "testi");
+      arango.reconnect(IM.endpoint, db._name(), "test_rw", "testi");
       let result = arango.GET("/_api/engine/stats");
       assertFalse(result.error);
     },
 
     testCanAccessEngineStatsRo : function() {
-      arango.reconnect(endpoint, db._name(), "test_ro", "testi");
+      arango.reconnect(IM.endpoint, db._name(), "test_ro", "testi");
       let result = arango.GET("/_api/engine/stats");
       assertTrue(result.error);
       assertEqual(403, result.code);
     },
 
     testCanAccessAdminStatusRw : function() {
-      arango.reconnect(endpoint, db._name(), "test_rw", "testi");
+      arango.reconnect(IM.endpoint, db._name(), "test_rw", "testi");
       let result = arango.GET("/_admin/status");
       assertTrue(result.hasOwnProperty("version"));
       assertTrue(result.hasOwnProperty("serverInfo"));
@@ -114,7 +117,7 @@ function testSuite() {
     },
 
     testCanAccessAdminStatusRo : function() {
-      arango.reconnect(endpoint, db._name(), "test_ro", "testi");
+      arango.reconnect(IM.endpoint, db._name(), "test_ro", "testi");
       let result = arango.GET("/_admin/status");
       assertTrue(result.error);
       assertEqual(403, result.code);
@@ -125,37 +128,37 @@ function testSuite() {
     },
 
     testAdminStatusOnlyAcceptsGet : function() {
-      arango.reconnect(endpoint, db._name(), "test_rw", "testi");
+      arango.reconnect(IM.endpoint, db._name(), "test_rw", "testi");
       let url = "/_admin/status";
       assertEndpointGetOnly(url);
     },
 
     testCanAccessAdminMetricsRw : function() {
-      arango.reconnect(endpoint, db._name(), "test_rw", "testi");
+      arango.reconnect(IM.endpoint, db._name(), "test_rw", "testi");
       let result = arango.GET("/_admin/metrics");
     },
 
     testCanAccessAdminMetricsRo : function() {
-      arango.reconnect(endpoint, db._name(), "test_ro", "testi");
+      arango.reconnect(IM.endpoint, db._name(), "test_ro", "testi");
       let result = arango.GET("/_admin/metrics");
       assertTrue(result.error);
       assertEqual(403, result.code);
     },
 
     testCanAccessAdminSystemReportRw : function() {
-      arango.reconnect(endpoint, db._name(), "test_rw", "testi");
+      arango.reconnect(IM.endpoint, db._name(), "test_rw", "testi");
       let result = arango.GET("/_admin/system-report");
     },
 
     testCanAccessAdminSystemReportRo : function() {
-      arango.reconnect(endpoint, db._name(), "test_ro", "testi");
+      arango.reconnect(IM.endpoint, db._name(), "test_ro", "testi");
       let result = arango.GET("/_admin/system-report");
       assertTrue(result.error);
       assertEqual(403, result.code);
     },
 
     testCanAccessAdminLogEntriesRw : function() {
-      arango.reconnect(endpoint, db._name(), "test_rw", "testi");
+      arango.reconnect(IM.endpoint, db._name(), "test_rw", "testi");
       let result = arango.GET("/_admin/log/entries");
       assertFalse(result.error);
       assertTrue(result.hasOwnProperty("total"));
@@ -171,7 +174,7 @@ function testSuite() {
     },
 
     testCanAccessAdminLogEntriesRo : function() {
-      arango.reconnect(endpoint, db._name(), "test_ro", "testi");
+      arango.reconnect(IM.endpoint, db._name(), "test_ro", "testi");
       let result = arango.GET("/_admin/log/entries");
       assertTrue(result.error);
       assertEqual(403, result.code);
@@ -180,7 +183,7 @@ function testSuite() {
     },
 
     testCanAccessDeprecatedAdminLogRw : function() {
-      arango.reconnect(endpoint, db._name(), "test_rw", "testi");
+      arango.reconnect(IM.endpoint, db._name(), "test_rw", "testi");
       let result = arango.GET("/_admin/log");
       assertTrue(result.error);
       assertEqual(410, result.code);
@@ -189,7 +192,7 @@ function testSuite() {
     },
 
     testCanAccessDeprecatedAdminLogRo : function() {
-      arango.reconnect(endpoint, db._name(), "test_ro", "testi");
+      arango.reconnect(IM.endpoint, db._name(), "test_ro", "testi");
       let result = arango.GET("/_admin/log");
       assertTrue(result.error);
       assertEqual(403, result.code);
@@ -198,7 +201,7 @@ function testSuite() {
     },
 
     testCanAccessAdminLogLevelRw : function() {
-      arango.reconnect(endpoint, db._name(), "test_rw", "testi");
+      arango.reconnect(IM.endpoint, db._name(), "test_rw", "testi");
       let result = arango.GET("/_admin/log/level");
       assertTrue(result.hasOwnProperty("agency"));
       assertTrue(result.hasOwnProperty("aql"));
@@ -207,14 +210,14 @@ function testSuite() {
     },
 
     testCanAccessAdminLogLevelRo : function() {
-      arango.reconnect(endpoint, db._name(), "test_ro", "testi");
+      arango.reconnect(IM.endpoint, db._name(), "test_ro", "testi");
       let result = arango.GET("/_admin/log/level");
       assertTrue(result.error);
       assertEqual(403, result.code);
     },
     
     testCanAccessGetNumberOfServersRw : function() {
-      arango.reconnect(endpoint, db._name(), "test_rw", "testi");
+      arango.reconnect(IM.endpoint, db._name(), "test_rw", "testi");
       if (isCluster) {
         let result = arango.GET("/_admin/cluster/numberOfServers");
         assertFalse(result.error);
@@ -230,7 +233,7 @@ function testSuite() {
     },
 
     testCanAccessGetNumberOfServersRo : function() {
-      arango.reconnect(endpoint, db._name(), "test_ro", "testi");
+      arango.reconnect(IM.endpoint, db._name(), "test_ro", "testi");
       if (isCluster) {
         let result = arango.GET("/_admin/cluster/numberOfServers");
         assertTrue(result.error);
@@ -245,7 +248,7 @@ function testSuite() {
     },
 
     testCanAccessPutNumberOfServersRw : function() {
-      arango.reconnect(endpoint, db._name(), "test_rw", "testi");
+      arango.reconnect(IM.endpoint, db._name(), "test_rw", "testi");
       const data = {};
       if (isCluster) {
         let result = arango.PUT("/_admin/cluster/numberOfServers", data);
@@ -260,7 +263,7 @@ function testSuite() {
     },
 
     testCanAccessPutNumberOfServersRo : function() {
-      arango.reconnect(endpoint, db._name(), "test_ro", "testi");
+      arango.reconnect(IM.endpoint, db._name(), "test_ro", "testi");
       const data = {};
       if (isCluster) {
         let result = arango.PUT("/_admin/cluster/numberOfServers", data);
@@ -276,7 +279,7 @@ function testSuite() {
     },
 
     testAdminTimeOnlyAcceptsGet : function() {
-      arango.reconnect(endpoint, db._name(), "test_rw", "testi");
+      arango.reconnect(IM.endpoint, db._name(), "test_rw", "testi");
       let url = "/_admin/time";
       assertEndpointGetOnly(url);
     },

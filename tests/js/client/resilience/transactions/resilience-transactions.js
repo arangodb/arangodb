@@ -28,11 +28,8 @@ const jsunity = require("jsunity");
 
 const arangodb = require("@arangodb");
 const db = arangodb.db;
-const ERRORS = arangodb.errors;
 const _ = require("lodash");
 const wait = require("internal").wait;
-const suspendExternal = require("internal").suspendExternal;
-const continueExternal = require("internal").continueExternal;
 const {
   getDBServers,
   getEndpointById,
@@ -99,10 +96,10 @@ function ClusterTransactionSuite() {
     let arangods = getDBServers();
 
     var pos = _.findIndex(arangods,
-                          x => x.url === endpoint);
-  
+      x => x.url === endpoint);
+
     assertTrue(pos >= 0);
-    assertTrue(suspendExternal(arangods[pos].pid));
+    assertTrue(arangods[pos].suspend());
     console.info("Have failed follower", follower);
     return pos;
   }
@@ -117,9 +114,9 @@ function ClusterTransactionSuite() {
     let arangods = getDBServers();
 
     var pos = _.findIndex(arangods,
-                          x => x.url === endpoint);
+      x => x.url === endpoint);
     assertTrue(pos >= 0);
-    assertTrue(continueExternal(arangods[pos].pid));
+    assertTrue(arangods[pos].resume());
     console.info("Have healed follower", follower);
   }
 
@@ -167,7 +164,7 @@ function ClusterTransactionSuite() {
     /// @brief check if a synchronously replicated collection gets online
     ////////////////////////////////////////////////////////////////////////////////
 
-    testSetup : function () {
+    testSetup: function () {
       for (var count = 0; count < 120; ++count) {
         let dbservers = getDBServers();
         if (dbservers.length === 5) {
@@ -180,16 +177,16 @@ function ClusterTransactionSuite() {
       assertTrue(false, "Timeout waiting for 5 dbservers.");
     },
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief fail the follower, transaction should succeed regardless
-  ////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief fail the follower, transaction should succeed regardless
+    ////////////////////////////////////////////////////////////////////////////////
     testFailFollower: function () {
       assertTrue(waitForSynchronousReplication("_system"));
 
       let docs = [];
       let x = 0;
       while (x++ < 1000) {
-        docs.push({_key: 'test' + x});
+        docs.push({ _key: 'test' + x });
       }
       db._collection(cn).save(docs);
       assertEqual(db._collection(cn).count(), 1000);

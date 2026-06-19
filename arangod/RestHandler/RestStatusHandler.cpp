@@ -46,9 +46,9 @@
 #include "Cluster/ServerState.h"
 #include "GeneralServer/ServerSecurityFeature.h"
 #include "Rest/Version.h"
+#include "RestServer/DatabaseFeature.h"
 #include "RestServer/ServerFeature.h"
 #include "StorageEngine/StorageEngine.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 
 #include <absl/strings/escaping.h>
 
@@ -64,7 +64,7 @@ RestStatusHandler::RestStatusHandler(
     application_features::ApplicationServer& server, GeneralRequest* request,
     GeneralResponse* response)
     : RestBaseHandler(server, request, response),
-      _engineSelector(server.getFeature<EngineSelectorFeature>()) {}
+      _engine(server.getFeature<DatabaseFeature>().engine()) {}
 
 RestStatus RestStatusHandler::execute() {
   if (!isAllowedHttpMethod({RequestType::GET})) {
@@ -128,8 +128,7 @@ RestStatus RestStatusHandler::executeStandard(ServerSecurityFeature& security) {
     result.add("progress", VPackValue(VPackValueType::Object));
     result.add("phase", VPackValue(progressPhase));
     result.add("feature", VPackValue(progressFeature));
-    StorageEngine& engine = _engineSelector.engine();
-    result.add("recoveryTick", VPackValue(engine.recoveryTick()));
+    result.add("recoveryTick", VPackValue(_engine.recoveryTick()));
     result.close();  // progress
 
     result.add("maintenance",
@@ -212,8 +211,7 @@ RestStatus RestStatusHandler::executeOverview() {
   result.add("license", VPackValue("community"));
 #endif
 
-  StorageEngine& engine = _engineSelector.engine();
-  result.add("engine", VPackValue(engine.typeName()));
+  result.add("engine", VPackValue(_engine.typeName()));
 
   StringBuffer buffer;
 
