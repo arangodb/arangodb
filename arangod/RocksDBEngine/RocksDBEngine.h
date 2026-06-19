@@ -842,9 +842,9 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   metrics::Counter& _metricsEdgeCacheEmptyInserts;
 
   // @brief persistor for replicated logs
-  std::shared_ptr<replication2::storagerocksdb::AsyncLogWriteBatcherMetrics>
+  std::shared_ptr<replication2::storage::rocksdb::AsyncLogWriteBatcherMetrics>
       _logMetrics;
-  std::shared_ptr<replication2::storagerocksdb::IAsyncLogWriteBatcher>
+  std::shared_ptr<replication2::storage::rocksdb::IAsyncLogWriteBatcher>
       _logPersistor;
 
   // Checksum env for when creation of sha files is enabled
