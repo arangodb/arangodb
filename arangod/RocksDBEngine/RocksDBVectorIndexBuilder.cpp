@@ -159,16 +159,16 @@ Result readDocumentVectorData(
   }
 }
 
-TrainedData serializeIndex(faiss::IndexIVF const& index) {
+VectorIndexMetadata serializeIndex(faiss::IndexIVF const& index) {
   faiss::VectorIOWriter writer;
   faiss::write_index(&index, &writer);
-  TrainedData td;
+  VectorIndexMetadata td;
   td.codeData = std::move(writer.data);
   return td;
 }
 
 std::shared_ptr<faiss::IndexIVF> VectorIndexTrainer::restoreFromTrainedData(
-    TrainedData const& data) {
+    VectorIndexMetadata const& data) {
   faiss::VectorIOReader reader;
   // TODO prevent this copy, but instead implement own IOReader, reading
   // directly from the training data.
@@ -809,14 +809,13 @@ VectorIndexBuilder::VectorIndexBuilder(RocksDBVectorIndex& index,
       _rcoll(static_cast<RocksDBCollection*>(index.collection().getPhysical())),
       _bounds(_rcoll->bounds()) {}
 
-ResultT<std::pair<std::int64_t, std::int64_t>> autoTuneVectorIndex(
+ResultT<OperatingPointTable> autoTuneVectorIndex(
     RocksDBVectorIndex& index, ResourceMonitor& resourceMonitor,
     AutotuneParams const& params, std::stop_token stopToken) {
   if (index.faissIndex() == nullptr) {
     return Result{TRI_ERROR_QUERY_VECTOR_INDEX_NOT_READY,
                   "vector index has no trained data to autotune"};
   }
-  std::int64_t const oldNProbe = index.effectiveNProbe();
 
   auto const& def = index.getDefinition();
   auto* rootDB =
@@ -824,20 +823,28 @@ ResultT<std::pair<std::int64_t, std::int64_t>> autoTuneVectorIndex(
   auto* rcoll =
       static_cast<RocksDBCollection*>(index.collection().getPhysical());
 
+  // Sample size derived from the requested minRecall via the Wilson score
+  // interval, capped so a single run stays bounded.
+  auto const sampleSize =
+      std::min(wilsonSampleSize(params.minRecall, kAutoTuneConfidenceZ,
+                                kAutoTuneRecallTolerance),
+               kAutoTuneSampleCap);
+
   // Fresh sample from the indexed data: reusing training vectors would bias
   // recall optimistically (they defined the centroids).
-  ResourceUsageScope sampleScope(resourceMonitor,
-                                 static_cast<std::uint64_t>(params.sampleSize) *
-                                     def.dimension * sizeof(float));
+  // TODO(jbajic) should we predice to not go oom and get error?
+  ResourceUsageScope sampleScope(
+      resourceMonitor,
+      static_cast<std::uint64_t>(sampleSize) * def.dimension * sizeof(float));
   BoundedDocumentIterator docIt{rcoll->bounds(), rootDB};
-  auto sample = collectAutoTuneSample(index, *docIt.it, docIt.upper,
-                                      params.sampleSize, stopToken);
+  auto sample = collectAutoTuneSample(index, *docIt.it, docIt.upper, sampleSize,
+                                      stopToken);
   if (sample.fail()) {
     return std::move(sample).result();
   }
   if (sample.get().empty()) {
-    // No vectors to tune against; keep the current value.
-    return std::pair{oldNProbe, oldNProbe};
+    return Result{TRI_ERROR_QUERY_VECTOR_INDEX_NOT_READY,
+                  "no vectors available to autotune"};
   }
 
   SingleCollectionTransaction trx(
@@ -851,21 +858,22 @@ ResultT<std::pair<std::int64_t, std::int64_t>> autoTuneVectorIndex(
 
   RocksDBFaissIteratorContext faissCtx{
       IteratorContext{.trx = static_cast<transaction::Methods*>(&trx)}};
-  // The sweep mutates nprobe, so tune a copy, not the live index.
+  // The sweep mutates search parameters, so tune a copy, not the live index.
   auto tuningIndex = index.cloneFaissIndex();
-  auto tuned = autoTuneNProbe(*tuningIndex, sample.get(), &faissCtx, params.R,
-                              params.targetRecall);
-  if (tuned.fail()) {
-    return std::move(tuned).result();
+  auto table = autoTuneTable(*tuningIndex, sample.get(), &faissCtx, params.R,
+                             params.minRecall);
+  if (table.fail()) {
+    return std::move(table).result();
   }
 
-  // Apply then persist. nprobe is a soft tuning hint, so a failed persist that
-  // leaves the new value live until the next restart is harmless.
-  index.applyTunedNProbe(tuned.get());
+  // Store the table for its topK then persist. The table is a soft tuning
+  // hint, so a failed persist that leaves the new table live until the next
+  // restart is harmless.
+  index.applyTunedTable(table.get());
   if (auto res = index.persistMetadata(); res.fail()) {
     return res;
   }
-  return std::pair{oldNProbe, tuned.get()};
+  return std::move(table).get();
 }
 
 Result VectorIndexBuilder::build(

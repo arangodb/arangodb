@@ -194,36 +194,44 @@ void RocksDBVectorIndex::loadStoredMetadata(velocypack::Slice info) {
     return _engine.db()->GetRootDB()->Get(ro, _cf, key.string(), &raw).ok();
   };
 
-  vector::OwnedMetadata result;
   std::string raw;
   if (readSlot(vector::VectorIndexFormatVersion::kV2, raw) ||
       readSlot(vector::VectorIndexFormatVersion::kV1, raw)) {
     auto slice =
         velocypack::Slice(reinterpret_cast<uint8_t const*>(raw.data()));
-    result = vector::decodeStoredMetadata(slice);
+    _trainedData = vector::decodeMetadata(slice);
   } else if (auto data = info.get("trainedData"); !data.isNone()) {
     // Backwards compatibility: load from definitions CF for pre-migration
-    // indexes. Such records contain only TrainedData fields (codeData +
-    // tunedNProbe), so formatVersion stays at the default kV1.
-    result = vector::decodeStoredMetadata(data);
+    // indexes. Such records contain only codeData + tunedNProbe, so
+    // formatVersion stays at the default kV1.
+    _trainedData = vector::decodeMetadata(data);
   } else {
     // Brand-new index: stamp it with the current on-disk format. Has no
     // effect for indexes without storedValues since their entry layout is
     // already format-agnostic.
-    result.formatVersion = vector::kCurrentVectorIndexFormatVersion;
+    _trainedData.formatVersion = vector::kCurrentVectorIndexFormatVersion;
   }
+}
 
-  vector::assignStoredMetadata(std::move(result), _trainedData, _formatVersion);
+void RocksDBVectorIndex::applyTunedTable(vector::OperatingPointTable table) {
+  for (auto& existing : _trainedData.tunedTables) {
+    if (existing.topK == table.topK) {
+      existing = std::move(table);
+      return;
+    }
+  }
+  _trainedData.tunedTables.push_back(std::move(table));
 }
 
 Result RocksDBVectorIndex::persistMetadata() const {
-  auto builder = vector::encodeStoredMetadata(_trainedData, _formatVersion);
+  velocypack::Builder builder;
+  velocypack::serialize(builder, _trainedData);
 
   // V1 metadata stays at the legacy slot so older binaries can still read it
   // after a downgrade. V2 metadata is parked in a separate slot; an old binary
   // looking at the V1 slot won't find it and treats the index as unusable.
   RocksDBKey key;
-  key.constructVectorIndexTrainedData(objectId(), _formatVersion);
+  key.constructVectorIndexTrainedData(objectId(), _trainedData.formatVersion);
   auto value = RocksDBValue::VectorIndexValue(builder.slice());
 
   auto* vectorCF = RocksDBColumnFamilyManager::get(
@@ -550,9 +558,14 @@ Result RocksDBVectorIndex::readDocumentVectorData(
 
 void RocksDBVectorIndex::applyTrainingResult(
     std::shared_ptr<faiss::IndexIVF> faissIndex,
-    vector::TrainedData trainedData) {
+    vector::VectorIndexMetadata trainedData) {
   _faissIndex = std::move(faissIndex);
+  // Retraining replaces codeData and resets tuning (the old tables no longer
+  // describe this index), but the on-disk entry-layout format version is a
+  // property of the index, not of a training run, so preserve it.
+  auto const formatVersion = _trainedData.formatVersion;
   _trainedData = std::move(trainedData);
+  _trainedData.formatVersion = formatVersion;
   _liveNProbe.store(_trainedData.tunedNProbe.value_or(0),
                     std::memory_order_release);
 
@@ -700,7 +713,7 @@ Result RocksDBVectorIndex::insert(transaction::Methods& trx,
               ->get();
       auto storedValues = extractedAttributeValues->sharedSlice();
 
-      if (_formatVersion == vector::VectorIndexFormatVersion::kV2) {
+      if (_trainedData.formatVersion == vector::VectorIndexFormatVersion::kV2) {
         return RocksDBValue::VectorIndexValueV2(
             flat_codes.get(), _faissIndex->code_size, storedValues);
       }

@@ -58,8 +58,8 @@ namespace arangodb::vector {
 /// indexes and builds them one at a time. The same thread scans and builds.
 class VectorIndexBuildManager {
  public:
-  // {oldNProbe, newNProbe} on success.
-  using AutoTuneResult = ResultT<std::pair<std::int64_t, std::int64_t>>;
+  // The persisted operating-point table on success.
+  using AutoTuneResult = ResultT<OperatingPointTable>;
 
   static constexpr auto kScanInterval = std::chrono::seconds(5);
   static constexpr auto kSleepGranularity = std::chrono::seconds(1);

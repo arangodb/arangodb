@@ -32,6 +32,7 @@
 
 #include "Basics/StaticStrings.h"
 #include "RocksDBIndex.h"
+#include "VectorIndex/Metadata.h"
 #include "VectorIndex/VectorIndexDefinition.h"
 #include "VectorIndex/VectorReadBatch.h"
 #include "RocksDBEngine/RocksDBIndex.h"
@@ -113,7 +114,7 @@ class RocksDBVectorIndex final : public RocksDBIndex {
   std::size_t trainingThreshold() const noexcept { return _trainingThreshold; }
 
   void applyTrainingResult(std::shared_ptr<faiss::IndexIVF> faissIndex,
-                           vector::TrainedData trainedData);
+                           vector::VectorIndexMetadata trainedData);
 
   std::shared_ptr<faiss::IndexIVF> cloneFaissIndex();
 
@@ -131,6 +132,10 @@ class RocksDBVectorIndex final : public RocksDBIndex {
     _liveNProbe.store(nprobe, std::memory_order_release);
   }
 
+  // Upsert the autotuned operating-point table for its topK, replacing any
+  // existing table for the same topK. Persist via persistMetadata() afterwards.
+  void applyTunedTable(vector::OperatingPointTable table);
+
   // Serialize the current trained data and format version into the index's
   // metadata slot in the VectorIndex column family.
   Result persistMetadata() const;
@@ -142,7 +147,7 @@ class RocksDBVectorIndex final : public RocksDBIndex {
   /// @brief On-disk format version for this index's list entries. Internal
   /// detail; never surfaced through toVelocyPack or the REST API.
   vector::VectorIndexFormatVersion formatVersion() const noexcept {
-    return _formatVersion;
+    return _trainedData.formatVersion;
   }
 
   std::vector<std::vector<basics::AttributeName>> const& coveredFields()
@@ -180,7 +185,7 @@ class RocksDBVectorIndex final : public RocksDBIndex {
                 OperationOptions const& /*options*/) override;
 
  private:
-  // Read the stored metadata record into _trainedData and _formatVersion.
+  // Read the stored metadata record into _trainedData.
   void loadStoredMetadata(velocypack::Slice info);
 
   //  Helper functions for bruteForceSearch
@@ -209,9 +214,7 @@ class RocksDBVectorIndex final : public RocksDBIndex {
 
   vector::UserVectorIndexDefinition _definition;
   std::shared_ptr<faiss::IndexIVF> _faissIndex;
-  vector::TrainedData _trainedData;
-  vector::VectorIndexFormatVersion _formatVersion{
-      vector::kCurrentVectorIndexFormatVersion};
+  vector::VectorIndexMetadata _trainedData;
   StoredValues const _storedValues;
 
   std::size_t _trainingThreshold{0};

@@ -28,6 +28,7 @@
 #include "Basics/Result.h"
 #include "Basics/ResultT.h"
 #include "VectorIndex/AutoTuner.h"
+#include "VectorIndex/Metadata.h"
 #include "VectorIndex/VectorIndexDefinition.h"
 #include "Metrics/Fwd.h"
 #include "RocksDBEngine/RocksDBCollection.h"
@@ -60,7 +61,7 @@ namespace arangodb::vector {
 
 class VectorIndexTrainingSampler;
 
-TrainedData serializeIndex(faiss::IndexIVF const& index);
+VectorIndexMetadata serializeIndex(faiss::IndexIVF const& index);
 
 Result readDocumentVectorData(
     velocypack::Slice doc,
@@ -98,7 +99,7 @@ class VectorIndexTrainer {
                      RocksDBKeyBounds bounds);
 
   static std::shared_ptr<faiss::IndexIVF> restoreFromTrainedData(
-      TrainedData const& data);
+      VectorIndexMetadata const& data);
 
   std::shared_ptr<faiss::IndexIVF> createFaissIndex(
       std::size_t resolvedNLists) const;
@@ -137,7 +138,7 @@ Result ingestVectors(RocksDBVectorIndex& index, rocksdb::DB* rootDB,
                      std::unique_ptr<rocksdb::Iterator> documentIterator,
                      std::stop_token stopToken = {});
 
-ResultT<std::pair<std::int64_t, std::int64_t>> autoTuneVectorIndex(
+ResultT<OperatingPointTable> autoTuneVectorIndex(
     RocksDBVectorIndex& index, ResourceMonitor& resourceMonitor,
     AutotuneParams const& params, std::stop_token stopToken = {});
 
