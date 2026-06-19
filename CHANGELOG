@@ -1,6 +1,9 @@
 3.12.9.4 (XXXX-XX-XX)
 ---------------------
 
+* Upgraded included rclone to v1.74.3 with go1.25.11 and non-vulnerable
+  dependencies.
+
 * Updated node modules:
  - qs to 6.15.2
  - brace-expansion to 5.0.6
