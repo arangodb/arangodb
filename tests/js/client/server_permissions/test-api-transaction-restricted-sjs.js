@@ -53,6 +53,7 @@ function testSuite() {
 
   return {
     setUp: function() {
+      IM.rememberConnection();
       try {
         db._dropDatabase("UnitTestsApiTest");
       } catch (err) {}
@@ -64,7 +65,7 @@ function testSuite() {
     },
 
     tearDown: function() {
-      db._useDatabase("_system");
+      IM.reconnectMe();
       db._dropDatabase("UnitTestsApiTest");
     },
 

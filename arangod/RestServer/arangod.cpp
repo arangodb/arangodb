@@ -182,7 +182,6 @@ void ArangodServer::addFeatures(
   addFeature<SoftShutdownFeature>();
   addFeature<SslFeature>();
   addFeature<StatisticsFeature>(metrics);
-  addFeature<StorageEngineFeature>();
   addFeature<TempFeature>(std::string{binaryName});
   addFeature<TemporaryStorageFeature>();
   addFeature<TtlFeature>();

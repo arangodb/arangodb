@@ -21,6 +21,7 @@
 /// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
 #include "SystemMonitor/AsyncRegistry/Feature.h"
+#include "SystemMonitor/AsyncRegistry/OptionsProvider.h"
 
 #include "Async/Registry/registry_variable.h"
 #include "Containers/Forest/depth_first.h"
@@ -180,20 +181,8 @@ void Feature::start() {
 void Feature::stop() { _cleanupThread.reset(); }
 
 void Feature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
-  options->addSection("async-registry", "Options for the async-registry");
-
-  options
-      ->addOption(
-          "--async-registry.cleanup-timeout",
-          "Timeout in seconds between async-registry garbage collection "
-          "swipes.",
-          new options::SizeTParameter(&_options.gc_timeout, /*base*/ 1,
-                                      /*minValue*/ 1))
-      .setLongDescription(
-          R"(Each thread that is involved in the async-registry needs to
-garbage collect its finished async function calls regularly. This option
-controls how often this is done in seconds. This can possibly be performance
-relevant because each involved thread acquires a lock.)");
+  async_registry::OptionsProvider provider;
+  provider.declareOptions(options, _options);
 }
 
 velocypack::Builder Feature::getData() const {

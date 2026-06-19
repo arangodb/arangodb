@@ -1,6 +1,11 @@
 3.12.10-devel (XXXX-XX-XX)
 --------------------------
 
+* Upgraded included rclone to v1.74.3 with go1.25.11 and non-vulnerable
+  dependencies.
+
+* Upgraded OpenSSL to 3.5.7.
+
 * Updated ArangoDB Starter to v0.19.23.
 
 * COR-607: Fix a problem that causes cluster queries involving a materialize node
@@ -14,9 +19,6 @@
 * COR-616: Fixed a DB-Server error during rolling upgrades when deserializing a graph
   traversal plan from an older coordinator that lacks the "protoCollection"
   attribute.
-
-* Upgraded included rclone to v1.73.5 with go1.25.11 and non-vulnerable
-  dependencies.
 
 * COR-584/OASIS-27899: Fixed an edge case in range_column_iterator::seek where
   executing a seek on an uninitialized iterator would return incorrect results

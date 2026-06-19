@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertTrue, assertEqual */
+/*global */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -26,9 +26,11 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
+const {assertEqual, assertTrue, assertFalse, assertNotEqual} = jsunity.jsUnity.assertions;
 const arango = require("@arangodb").arango;
 const db = require("internal").db;
 const users = require("@arangodb/users");
+let IM = global.instanceManager;
 
 function AuthSuite() {
   'use strict';
@@ -40,7 +42,7 @@ function AuthSuite() {
       
   return {
     setUpAll: function () {
-      arango.reconnect(arango.getEndpoint(), '_system', "root", "");
+      IM.rememberConnection();
 
       try {
         users.remove(user1);
@@ -67,7 +69,7 @@ function AuthSuite() {
     },
 
     tearDownAll: function () {
-      arango.reconnect(arango.getEndpoint(), '_system', "root", "");
+      IM.reconnectMe();
       try {
         users.remove(user1);
       } catch (err) {
@@ -84,15 +86,15 @@ function AuthSuite() {
     },
     
     tearDown: function () {
-      arango.reconnect(arango.getEndpoint(), 'UnitTestsDatabase', "root", "");
+      arango.reconnect(IM.endpoint, 'UnitTestsDatabase', "root", "");
       db._drop(cn);
 
-      arango.reconnect(arango.getEndpoint(), '_system', "root", "");
+      IM.reconnectMe();
       db._drop(cn);
     },
     
     testRestoreSystemDBRoot: function () {
-      arango.reconnect(arango.getEndpoint(), '_system', 'root', '');
+      IM.reconnectMe();
     
       let result = arango.PUT('/_api/replication/restore-collection', {
         parameters: { name: cn, type: 2 }, indexes: [] 
@@ -101,7 +103,7 @@ function AuthSuite() {
     },
     
     testRestoreSystemDBRootOverwrite: function () {
-      arango.reconnect(arango.getEndpoint(), '_system', 'root', '');
+      IM.reconnectMe();
     
       let result = arango.PUT('/_api/replication/restore-collection', {
         parameters: { name: cn, type: 2 }, indexes: [] 
@@ -126,7 +128,7 @@ function AuthSuite() {
     },
     
     testRestoreOtherDBRoot: function () {
-      arango.reconnect(arango.getEndpoint(), 'UnitTestsDatabase', 'root', '');
+      arango.reconnect(IM.endpoint, 'UnitTestsDatabase', 'root', '');
     
       let result = arango.PUT('/_api/replication/restore-collection', {
         parameters: { name: cn, type: 2 }, indexes: [] 
@@ -135,7 +137,7 @@ function AuthSuite() {
     },
     
     testRestoreOtherDBRW: function () {
-      arango.reconnect(arango.getEndpoint(), 'UnitTestsDatabase', user1, 'foobar');
+      arango.reconnect(IM.endpoint, 'UnitTestsDatabase', user1, 'foobar');
     
       let result = arango.PUT('/_api/replication/restore-collection', {
         parameters: { name: cn, type: 2 }, indexes: [] 
@@ -144,7 +146,7 @@ function AuthSuite() {
     },
     
     testRestoreOtherDBRWOverwrite: function () {
-      arango.reconnect(arango.getEndpoint(), 'UnitTestsDatabase', user1, 'foobar');
+      arango.reconnect(IM.endpoint, 'UnitTestsDatabase', user1, 'foobar');
     
       let result = arango.PUT('/_api/replication/restore-collection', {
         parameters: { name: cn, type: 2 }, indexes: [] 
@@ -169,7 +171,7 @@ function AuthSuite() {
     },
     
     testRestoreOtherDBRO: function () {
-      arango.reconnect(arango.getEndpoint(), 'UnitTestsDatabase', user2, 'foobar');
+      arango.reconnect(IM.endpoint, 'UnitTestsDatabase', user2, 'foobar');
     
       let result = arango.PUT('/_api/replication/restore-collection', {
         parameters: { name: cn, type: 2 }, indexes: [] 

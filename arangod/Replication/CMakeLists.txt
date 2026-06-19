@@ -11,6 +11,7 @@ add_library(arango_replication STATIC
   ReplicationClients.cpp
   ReplicationFeature.cpp
   ReplicationMetricsFeature.cpp
+  ReplicationOptionsProvider.cpp
   Syncer.cpp
   SyncerId.cpp
   TailingSyncer.cpp
