@@ -143,13 +143,13 @@ TEST(AutoTunerTest, baselineNProbeOneHasLowRecall) {
   EXPECT_LT(recall, 0.85);
 }
 
-TEST(AutoTunerTest, picksNProbeAboveOneAndMeetsTargetRecall) {
+TEST(AutoTunerTest, producesAscendingTableReachingMinRecall) {
   constexpr std::size_t d = 16;
   constexpr std::size_t nClusters = 32;
   constexpr std::size_t pointsPerCluster = 200;
   constexpr std::size_t nlist = 64;
   constexpr std::int64_t R = 10;
-  constexpr double target = 0.9;
+  constexpr double minRecall = 0.9;
 
   auto ds = makeClusterDataset(d, nClusters, pointsPerCluster, /*seed=*/42);
   auto [quantizer, ivf] = buildIvfIndex(ds, nlist);
@@ -158,22 +158,22 @@ TEST(AutoTunerTest, picksNProbeAboveOneAndMeetsTargetRecall) {
   std::vector<float> xq(ds.vectors.begin(), ds.vectors.begin() + nq * d);
 
   auto tuned =
-      autoTuneNProbe(*ivf, xq, /*invertedListContext=*/nullptr, R, target);
+      autoTuneTable(*ivf, xq, /*invertedListContext=*/nullptr, R, minRecall);
   ASSERT_TRUE(tuned.ok()) << tuned.errorMessage();
-  EXPECT_GT(tuned.get(), 1) << "autotune should pick nprobe > 1 on a "
-                               "clustered dataset where nprobe=1 underperforms";
-  EXPECT_LE(tuned.get(), static_cast<std::int64_t>(nlist));
+  auto const& table = tuned.get();
 
-  // Recompute recall at the chosen nprobe against the same ground truth as
-  // the tuner used and verify the criterion is met.
-  std::vector<faiss::idx_t> gtI(nq * R);
-  std::vector<float> gtD(nq * R);
-  auto const savedNProbe = ivf->nprobe;
-  ivf->nprobe = nlist;
-  ivf->search(nq, xq.data(), R, gtD.data(), gtI.data());
-  ivf->nprobe = savedNProbe;  // autotuner already set it; keep the chosen one
+  EXPECT_EQ(table.topK, R);
+  EXPECT_DOUBLE_EQ(table.minRecall, minRecall);
+  ASSERT_FALSE(table.points.empty());
 
-  EXPECT_GE(recallAtR(*ivf, xq, gtI, R), target);
+  // The Pareto front is ordered by ascending recall (== ascending cost).
+  for (std::size_t i = 1; i < table.points.size(); ++i) {
+    EXPECT_GE(table.points[i].recall, table.points[i - 1].recall);
+  }
+  // On this clustered dataset the sweep can reach the requested recall.
+  EXPECT_GE(table.points.back().recall, minRecall);
+  // The keys are the verbatim FAISS combination strings (nprobe sweep here).
+  EXPECT_NE(table.points.front().faissKey.find("nprobe="), std::string::npos);
 }
 
 TEST(AutoTunerTest, misalignedQuerySetTrapsAssertion) {
@@ -183,9 +183,38 @@ TEST(AutoTunerTest, misalignedQuerySetTrapsAssertion) {
   auto [quantizer, ivf] = buildIvfIndex(ds, /*nlist=*/8);
 
   // querySet length is not a multiple of d: precondition violation, the
-  // TRI_ASSERT in autoTuneNProbe should fire and abort the process.
+  // TRI_ASSERT in autoTuneTable should fire and abort the process.
   std::vector<float> bad(d + 1);
-  EXPECT_DEATH(autoTuneNProbe(*ivf, bad, /*invertedListContext=*/nullptr,
-                              /*R=*/10, /*targetRecall=*/0.9),
+  EXPECT_DEATH(autoTuneTable(*ivf, bad, /*invertedListContext=*/nullptr,
+                             /*R=*/10, /*minRecall=*/0.9),
                "");
+}
+
+// The worked examples from the proposal (confidence 0.99 -> z = 2.576,
+// recallTolerance 0.03). Tolerance of 1 absorbs the z rounding in the doc.
+TEST(AutoTunerTest, wilsonSampleSizeMatchesWorkedExamples) {
+  constexpr double z = kAutoTuneConfidenceZ;
+  constexpr double m = kAutoTuneRecallTolerance;
+  EXPECT_NEAR(static_cast<double>(wilsonSampleSize(0.90, z, m)), 668.0, 1.0);
+  EXPECT_NEAR(static_cast<double>(wilsonSampleSize(0.80, z, m)), 1177.0, 1.0);
+  EXPECT_NEAR(static_cast<double>(wilsonSampleSize(0.50, z, m)), 1837.0, 1.0);
+}
+
+// p = 0.5 is the maximum-variance point: it must demand the largest sample.
+TEST(AutoTunerTest, wilsonSampleSizePeaksAtHalf) {
+  constexpr double z = kAutoTuneConfidenceZ;
+  constexpr double m = kAutoTuneRecallTolerance;
+  EXPECT_GT(wilsonSampleSize(0.50, z, m), wilsonSampleSize(0.80, z, m));
+  EXPECT_GT(wilsonSampleSize(0.80, z, m), wilsonSampleSize(0.90, z, m));
+  EXPECT_GT(wilsonSampleSize(0.90, z, m), wilsonSampleSize(0.99, z, m));
+}
+
+// Tighter tolerance and higher confidence both enlarge the required sample.
+TEST(AutoTunerTest, wilsonSampleSizeGrowsWithPrecisionAndConfidence) {
+  constexpr double m = kAutoTuneRecallTolerance;
+  EXPECT_GT(wilsonSampleSize(0.90, kAutoTuneConfidenceZ, 0.01),
+            wilsonSampleSize(0.90, kAutoTuneConfidenceZ, m));
+  // z: 0.95 -> 1.960, 0.99 -> 2.576.
+  EXPECT_GT(wilsonSampleSize(0.90, kAutoTuneConfidenceZ, m),
+            wilsonSampleSize(0.90, 1.959963985, m));
 }
