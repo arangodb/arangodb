@@ -1,14 +1,14 @@
 v3.11.14.5 (XXXX-XX-XX)
 -----------------------
 
+* Upgraded included rclone to v1.74.3 with go1.25.11 and non-vulnerable
+  dependencies.
+
 * Upgraded OpenSSL to 3.5.7.
 
 * Removed arangosync.
 
 * Updated ArangoDB Starter to v0.18.26.
-
-* Rebuilt included rclone v1.73.5 with go1.25.10 and non-vulnerable
-  dependencies.
 
 
 v3.11.14.4 (2026-05-20)
