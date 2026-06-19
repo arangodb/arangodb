@@ -839,6 +839,14 @@ function ahuacatlParseTestSuite () {
       assertAtLeastLikeParse('RETURN ["bar", "baz", "foo"] AT LEAST(2) NOT LIKE "x%"', 2, true);
     },
 
+    testArrayLikeMissingPatternParse : function() {
+      assertParseError(errors.ERROR_QUERY_PARSE.code, 'RETURN ["foo"] ANY LIKE');
+    },
+
+    testArrayAtLeastEmptyCountParse : function() {
+      assertParseError(errors.ERROR_QUERY_PARSE.code, 'RETURN ["foo"] AT LEAST() LIKE "x%"');
+    },
+
     testLikeFunctionCallParse : function() {
       let result = db._parse('RETURN LIKE("foo", "f%")').ast;
 

@@ -194,6 +194,70 @@ function arrayLikeTestSuite () {
         pattern: "b%"
       }).toArray();
       assertEqual([ true ], result);
+    },
+
+    testAtLeastZeroLike : function () {
+      let result = db._query('RETURN @values AT LEAST(0) LIKE "x%"', { values }).toArray();
+      assertEqual([ true ], result);
+
+      result = db._query('RETURN [] AT LEAST(0) LIKE "x%"').toArray();
+      assertEqual([ true ], result);
+    },
+
+    testAtLeastFourLike : function () {
+      let result = db._query('RETURN @values AT LEAST(4) LIKE "f%"', { values }).toArray();
+      assertEqual([ false ], result);
+    },
+
+    testEmptyStringLike : function () {
+      let result = db._query('RETURN [""] ANY LIKE ""').toArray();
+      assertEqual([ true ], result);
+
+      result = db._query('RETURN ["foo"] ANY LIKE ""').toArray();
+      assertEqual([ false ], result);
+    },
+
+    testNullElementsLike : function () {
+      let result = db._query('RETURN [null, "bar"] ANY LIKE "b%"').toArray();
+      assertEqual([ true ], result);
+
+      result = db._query('RETURN [null] ALL LIKE "b%"').toArray();
+      assertEqual([ false ], result);
+
+      result = db._query('RETURN [null] NONE LIKE "b%"').toArray();
+      assertEqual([ true ], result);
+    },
+
+    testNonStringElementsLike : function () {
+      let result = db._query('RETURN [1, 2, 3] ANY LIKE "1%"').toArray();
+      assertEqual([ true ], result);
+
+      result = db._query('RETURN [true, false] ANY LIKE "t%"').toArray();
+      assertEqual([ true ], result);
+    },
+
+    testNonArrayScalarTypesLike : function () {
+      let result = db._query('RETURN null ANY LIKE "f%"').toArray();
+      assertEqual([ false ], result);
+
+      result = db._query('RETURN 123 ANY LIKE "1%"').toArray();
+      assertEqual([ false ], result);
+
+      result = db._query('RETURN {} ANY LIKE "%"').toArray();
+      assertEqual([ false ], result);
+    },
+
+    testLikeEscapeCharacters : function () {
+      let result = db._query('RETURN ["a_b"] ANY LIKE "a\\_b"').toArray();
+      assertEqual([ true ], result);
+
+      result = db._query('RETURN ["a%b"] ANY LIKE "a\\%b"').toArray();
+      assertEqual([ true ], result);
+    },
+
+    testUnicodeLike : function () {
+      let result = db._query('RETURN ["möt", "ör", "möy"] ALL LIKE "mö%"').toArray();
+      assertEqual([ false ], result);
     }
   };
 }
