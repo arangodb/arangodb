@@ -24,6 +24,7 @@
 #include "VectorIndex/AutoTuner.h"
 
 #include <chrono>
+#include <cmath>
 #include <cstddef>
 #include <exception>
 #include <format>
@@ -43,22 +44,6 @@
 namespace arangodb::vector {
 
 namespace {
-
-// FAISS formats single-parameter keys as "nprobe=32" (see
-// ParameterSpace::combination_name in faiss/AutoTune.cpp).
-ResultT<std::int64_t> parseNProbeKey(std::string const& key) {
-  auto const eq = key.find('=');
-  if (eq == std::string::npos) {
-    return Result{TRI_ERROR_INTERNAL,
-                  std::format("unexpected autotune key '{}'", key)};
-  }
-  try {
-    return std::stoll(key.substr(eq + 1));
-  } catch (std::exception const&) {
-    return Result{TRI_ERROR_INTERNAL,
-                  std::format("could not parse autotune key '{}'", key)};
-  }
-}
 
 // Use nLists as nProbe to get ground truth. Distance is unused
 ResultT<std::vector<faiss::idx_t>> computeGroundTruth(
@@ -124,30 +109,6 @@ ResultT<faiss::OperatingPoints> exploreParameterSpace(
   return ops;
 }
 
-// On the Pareto front, OperatingPoint::perf is recall and points are
-// ordered by ascending recall (which also means ascending cost). Pick the
-// cheapest point that still meets `targetRecall` (within
-// kAutoTuneRecallEpsilon); if none qualify, fall back to the highest-recall
-// point we saw. Empty-keyed entries (FAISS's default dummy at perf=0) are
-// skipped. Returns nullptr only if `ops` has no non-empty Pareto points.
-faiss::OperatingPoint const* pickParetoOperatingPoint(
-    faiss::OperatingPoints const& ops, double targetRecall) {
-  faiss::OperatingPoint const* chosen = nullptr;
-  faiss::OperatingPoint const* fallback = nullptr;
-  for (auto const& op : ops.optimal_pts) {
-    if (op.key.empty()) {
-      continue;
-    }
-    if (fallback == nullptr || op.perf > fallback->perf) {
-      fallback = &op;
-    }
-    if (chosen == nullptr && op.perf >= targetRecall - kAutoTuneRecallEpsilon) {
-      chosen = &op;
-    }
-  }
-  return chosen != nullptr ? chosen : fallback;
-}
-
 // Single-line summary of every trial in `ops.all_pts`. Pareto-optimal points
 // get `*`, the chosen one gets ` <-chosen`. LOG_TOPIC escapes newlines so we
 // join with `; `.
@@ -176,12 +137,30 @@ std::string formatOperatingPoints(faiss::OperatingPoints const& ops,
 
 }  // namespace
 
-ResultT<std::int64_t> autoTuneNProbe(faiss::IndexIVF& index,
-                                     std::span<float const> querySet,
-                                     void* invertedListContext, std::int64_t R,
-                                     double targetRecall) {
+std::size_t wilsonSampleSize(double p, double z, double m) {
+  TRI_ASSERT(p > 0.0 && p < 1.0);
+  TRI_ASSERT(z > 0.0);
+  TRI_ASSERT(m > 0.0);
+
+  // Setting the Wilson half-width equal to m and solving for n yields a
+  // quadratic A n^2 + B n + C = 0 (see proposal). C < 0 here (m^2 < 1/4), so
+  // the discriminant is positive and the larger root is the n we want.
+  double const z2 = z * z;
+  double const z4 = z2 * z2;
+  double const m2 = m * m;
+  double const a = m2;
+  double const b = z2 * (2.0 * m2 - p * (1.0 - p));
+  double const c = z4 * (m2 - 0.25);
+  double const n = (-b + std::sqrt(b * b - 4.0 * a * c)) / (2.0 * a);
+  return static_cast<std::size_t>(std::ceil(n));
+}
+
+ResultT<OperatingPointTable> autoTuneTable(faiss::IndexIVF& index,
+                                           std::span<float const> querySet,
+                                           void* invertedListContext,
+                                           std::int64_t R, double minRecall) {
   TRI_ASSERT(R >= 1);
-  TRI_ASSERT(targetRecall > 0.0 && targetRecall <= 1.0);
+  TRI_ASSERT(minRecall > 0.0 && minRecall <= 1.0);
   TRI_ASSERT(index.d > 0);
 
   auto const d = static_cast<std::size_t>(index.d);
@@ -192,8 +171,8 @@ ResultT<std::int64_t> autoTuneNProbe(faiss::IndexIVF& index,
 
   LOG_TOPIC("e16af", INFO, Logger::ENGINES)
       << "Autotune starting: numberOfQueries=" << numberOfQueries
-      << " nlist=" << index.nlist << " R=" << R
-      << " targetRecall=" << targetRecall << ".";
+      << " nlist=" << index.nlist << " R=" << R << " minRecall=" << minRecall
+      << ".";
   auto const startTime = std::chrono::steady_clock::now();
   auto elapsedSecs = [&] {
     return std::chrono::duration<double>(std::chrono::steady_clock::now() -
@@ -226,25 +205,41 @@ ResultT<std::int64_t> autoTuneNProbe(faiss::IndexIVF& index,
   }
   auto const& ops = opsRes.get();
 
-  auto const* chosen = pickParetoOperatingPoint(ops, targetRecall);
-  if (chosen == nullptr) {
+  // Keep the whole Pareto front: every recall level paired with its fastest
+  // configuration. FAISS orders optimal_pts by ascending recall (== cost);
+  // skip the empty-keyed default dummy at perf=0.
+  OperatingPointTable table;
+  table.topK = R;
+  table.minRecall = minRecall;
+  table.points.reserve(ops.optimal_pts.size());
+  for (auto const& op : ops.optimal_pts) {
+    if (op.key.empty()) {
+      continue;
+    }
+    table.points.push_back(OperatingPoint{op.perf, op.key, op.t});
+  }
+
+  if (table.points.empty()) {
     outcome = Result{TRI_ERROR_INTERNAL,
                      "autotune found no non-empty operating points"};
     return outcome;
   }
 
-  auto chosenNProbe = parseNProbeKey(chosen->key);
-  if (chosenNProbe.fail()) {
-    outcome = std::move(chosenNProbe).result();
-    return outcome;
-  }
-
   failLog.cancel();
+  double const bestRecall = table.points.back().recall;
+  if (bestRecall < minRecall - kAutoTuneRecallEpsilon) {
+    LOG_TOPIC("e16ac", WARN, Logger::ENGINES)
+        << "Autotune could not reach minRecall=" << minRecall
+        << " for topK=" << R << "; best attainable recall=" << bestRecall
+        << ". Returning best-attainable table.";
+  }
   LOG_TOPIC("e16ad", INFO, Logger::ENGINES)
-      << "Autotune chose nprobe=" << chosenNProbe.get() << " (target recall@"
-      << R << "≥" << targetRecall << ", took " << elapsedSecs()
-      << "s). Operating points: " << formatOperatingPoints(ops, chosen);
-  return chosenNProbe.get();
+      << "Autotune produced " << table.points.size()
+      << " operating points for topK=" << R << " (recall "
+      << table.points.front().recall << ".." << bestRecall << ", minRecall "
+      << minRecall << ", took " << elapsedSecs()
+      << "s). Operating points: " << formatOperatingPoints(ops, nullptr);
+  return table;
 }
 
 }  // namespace arangodb::vector
