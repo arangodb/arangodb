@@ -148,7 +148,7 @@ defmodule ToastTest.PostExecution.Attribution.ServerLogsTest do
     end
   end
 
-  describe "compute_windows/2 — infrastructure timeout" do
+  describe "compute_windows/2 — infrastructure" do
     test "pads timeout timestamp by [-10s, 0s]" do
       ts = us("10:05:00")
 
@@ -169,16 +169,30 @@ defmodule ToastTest.PostExecution.Attribution.ServerLogsTest do
       assert finish == us("10:05:00")
     end
 
+    test "pads a non-timeout subtype (port_exhaustion) by the same [-10s, 0s]" do
+      ts = us("10:05:00")
+
+      issue = %{
+        type: :infrastructure,
+        detail: %{subtype: :port_exhaustion, timestamp: ts}
+      }
+
+      [{start, finish}] = ServerLogs.compute_windows([issue], windows())
+
+      assert start == us("10:04:50")
+      assert finish == us("10:05:00")
+    end
+
     test "produces no window when detail lacks timestamp" do
       issue = %{type: :infrastructure, detail: %{subtype: :timeout, source: :startup}}
 
       assert ServerLogs.compute_windows([issue], windows()) == []
     end
 
-    test "produces no window when timestamp is nil" do
+    test "produces no window when timestamp is nil (any subtype)" do
       issue = %{
         type: :infrastructure,
-        detail: %{subtype: :timeout, source: :startup, timestamp: nil}
+        detail: %{subtype: :port_exhaustion, timestamp: nil}
       }
 
       assert ServerLogs.compute_windows([issue], windows()) == []

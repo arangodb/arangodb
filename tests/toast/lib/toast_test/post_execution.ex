@@ -68,7 +68,9 @@ defmodule ToastTest.PostExecution do
 
   alias ToastTest.{EventStore, SuiteResult}
   alias ToastTest.Formatting.{Color, Utils}
+  alias ToastTest.PostExecution.Attribution
   alias ToastTest.PostExecution.Context
+  alias ToastTest.PostExecution.Enrichment
   alias ToastTest.PostExecution.ResultBuilder
 
   require Logger
@@ -135,17 +137,12 @@ defmodule ToastTest.PostExecution do
   defp collect_artifacts(ctx) do
     servers = build_servers(ctx.snapshot)
     opts = [coredump_dir: ctx.config.coredump_dir, not_before: ctx.test_data.started_at]
-
-    put_enriched(
-      ctx,
-      :artifacts,
-      ToastTest.PostExecution.ArtifactCollector.collect(servers, ctx.snapshot.pids_by_server, opts)
-    )
+    put_enriched(ctx, :artifacts, __MODULE__.ArtifactCollector.collect(servers, opts))
   end
 
   defp enrich_crashes(ctx) do
     {events, warnings} =
-      ToastTest.PostExecution.Enrichment.enrich_crashes(
+      Enrichment.enrich_crashes(
         raw_crashes(ctx),
         ctx.enriched.artifacts,
         build_coredump_analyzer_opts(ctx.config)
@@ -161,7 +158,7 @@ defmodule ToastTest.PostExecution do
     do: put_enriched(ctx, :crash_events, fallback_enriched(raw_crashes(ctx)))
 
   defp read_sanitizer_reports(ctx) do
-    {reports, warnings} = ToastTest.PostExecution.Enrichment.sanitizer_reports(ctx.enriched.artifacts)
+    {reports, warnings} = Enrichment.sanitizer_reports(ctx.enriched.artifacts)
     ctx |> put_enriched(:sanitizer_reports, reports) |> append_warnings(warnings)
   end
 
@@ -169,10 +166,7 @@ defmodule ToastTest.PostExecution do
     put_enriched(
       ctx,
       :timeout_kills,
-      ToastTest.PostExecution.Enrichment.enrich_timeout_kills(
-        ctx.snapshot.timeout_kills,
-        ctx.enriched.artifacts
-      )
+      Enrichment.enrich_timeout_kills(ctx.snapshot.timeout_kills, ctx.enriched.artifacts)
     )
   end
 
@@ -200,17 +194,13 @@ defmodule ToastTest.PostExecution do
 
   defp invalidate_failures(ctx) do
     test_data =
-      ToastTest.PostExecution.Attribution.Invalidation.apply(
-        ctx.test_data,
-        ctx.enriched.crash_events,
-        ctx.windows
-      )
+      Attribution.Invalidation.apply(ctx.test_data, ctx.enriched.crash_events, ctx.windows)
 
     %{ctx | test_data: test_data}
   end
 
   defp attribute_issues(ctx) do
-    inputs = %ToastTest.PostExecution.Attribution.Inputs{
+    inputs = %Attribution.Inputs{
       failures: ctx.test_data.failures,
       crashes: ctx.enriched.crash_events,
       sanitizer_reports: ctx.enriched.sanitizer_reports,
@@ -218,9 +208,8 @@ defmodule ToastTest.PostExecution do
       infrastructure: ctx.snapshot.infrastructure_issues
     }
 
-    issues = ToastTest.PostExecution.Attribution.run(inputs, ctx.windows)
+    issues = Attribution.run(inputs, ctx.windows)
     coredumps = Enum.flat_map(ctx.enriched.crash_events, & &1.coredump_reports)
-
     %{ctx | issues: issues, coredumps: coredumps}
   end
 
@@ -237,7 +226,7 @@ defmodule ToastTest.PostExecution do
 
   defp collect_server_logs(ctx) do
     all_log_files = ResultBuilder.collect_log_files(ctx.snapshot.servers)
-    logs = ToastTest.PostExecution.Attribution.ServerLogs.collect(ctx.issues, all_log_files, ctx.windows)
+    logs = Attribution.ServerLogs.collect(ctx.issues, all_log_files, ctx.windows)
     %{ctx | server_logs: logs}
   end
 

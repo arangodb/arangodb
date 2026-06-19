@@ -67,12 +67,6 @@ defmodule ToastTest.EventStore do
     :ok
   end
 
-  @doc "Return a map of `%{server_id => [os_pid, ...]}` from `:server_started` events."
-  @spec pids_by_server() :: %{String.t() => [non_neg_integer()]}
-  def pids_by_server do
-    snapshot().pids_by_server
-  end
-
   @doc "Return all unexpected crash events in chronological order."
   @spec unexpected_crashes() :: [map()]
   def unexpected_crashes do
@@ -112,7 +106,7 @@ defmodule ToastTest.EventStore do
   @doc """
   Return all projections in a single pass over the event stream.
 
-  Returns `%{events: [...], pids_by_server: %{...}, unexpected_crashes: [...],
+  Returns `%{events: [...], unexpected_crashes: [...],
   timeout_kills: [...], deployments: %{...}, servers: %{...}}`.
   """
   @spec snapshot() :: map()

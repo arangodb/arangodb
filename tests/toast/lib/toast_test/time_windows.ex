@@ -74,17 +74,23 @@ defmodule ToastTest.TimeWindows do
 
   A test window extends to its `:between_tests_finished` timestamp when
   present, so crashes detected during the between-tests barrier still
-  attribute to the test. Tests lacking either bound (e.g. aborted mid-run)
-  produce no window. Module setup ends at the first `:test_started`;
-  teardown begins at the last `:test_finished`.
+  attribute to the test. A test that started but never cleanly finished (e.g.
+  the run aborted mid-test) is retained with a synthetic end = the last event
+  timestamp in the stream, so a crash during it still attributes to that test
+  (tests run sequentially, so a missing `:test_finished` means nothing started
+  after it). Module setup ends at the first `:test_started`; teardown begins at
+  the last `:test_finished`.
   """
-  @spec build([map()]) :: windows()
-  def build(events) when is_list(events) do
+  @spec build([map(), ...]) :: windows()
+  def build([_ | _] = events) do
     %{modules: modules, tests: tests} =
       Enum.reduce(events, %{modules: %{}, tests: %{}}, &collect_event/2)
 
-    %{modules: modules, tests: finalize_tests(tests)}
+    %{modules: modules, tests: finalize_tests(tests, stream_end(events))}
   end
+
+  # The last known instant in the run — the synthetic end for a still-running test.
+  defp stream_end(events), do: events |> Enum.map(& &1.timestamp) |> Enum.max()
 
   @empty_module_window %{
     started_at: nil,
@@ -130,13 +136,16 @@ defmodule ToastTest.TimeWindows do
     %{acc | modules: Map.put(acc.modules, m, fun.(window))}
   end
 
-  defp finalize_tests(tests) do
-    for {key, %{started_at: s, finished_at: f} = w} <- tests,
-        s != nil and f != nil,
-        into: %{} do
-      {key, %{started_at: s, finished_at: w.barrier_finished_at || f}}
+  defp finalize_tests(tests, stream_end) do
+    for {key, %{started_at: s} = w} <- tests, s != nil, into: %{} do
+      {key, %{started_at: s, finished_at: test_end(w, stream_end)}}
     end
   end
+
+  # A finished test ends at its barrier-extended finish; a still-running test
+  # (no `:test_finished`) ends at the stream's last instant.
+  defp test_end(%{finished_at: nil}, stream_end), do: stream_end
+  defp test_end(%{finished_at: f, barrier_finished_at: b}, _stream_end), do: b || f
 
   @type phase :: :setup | :teardown | nil
 

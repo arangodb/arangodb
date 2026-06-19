@@ -138,13 +138,15 @@ defmodule ToastTest.PostExecution.Attribution.ServerLogs do
 
   defp issue_window(%{type: :crash}, _windows), do: []
 
-  defp issue_window(
-         %{type: :infrastructure, detail: %{subtype: :timeout, timestamp: ts}},
-         _windows
-       )
+  # Every infrastructure subtype (timeout, port_exhaustion, …) carries a
+  # timestamp and gets the same surrounding-log window — the useful context is
+  # what led up to the event. A non-integer/absent timestamp falls through.
+  defp issue_window(%{type: :infrastructure, detail: %{timestamp: ts}}, _windows)
        when is_integer(ts) do
     [pad(ts, ts, :infrastructure)]
   end
+
+  defp issue_window(%{type: :infrastructure}, _windows), do: []
 
   defp issue_window(_issue, _windows), do: []
 

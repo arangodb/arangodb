@@ -96,73 +96,6 @@ defmodule ToastTest.EventStoreTest do
     end
   end
 
-  describe "pids_by_server/0" do
-    test "returns empty map when no events recorded" do
-      assert EventStore.pids_by_server() == %{}
-    end
-
-    test "collects OS PIDs from server_started events" do
-      EventStore.notify(%{
-        event: :server_started,
-        server_id: "s1",
-        pid: 1001,
-        timestamp: ts()
-      })
-
-      EventStore.notify(%{
-        event: :server_started,
-        server_id: "s2",
-        pid: 1002,
-        timestamp: ts()
-      })
-
-      assert EventStore.pids_by_server() == %{"s1" => [1001], "s2" => [1002]}
-    end
-
-    test "collects multiple PIDs for the same server (relaunch)" do
-      EventStore.notify(%{
-        event: :server_started,
-        server_id: "s1",
-        pid: 1001,
-        timestamp: ts()
-      })
-
-      EventStore.notify(%{
-        event: :server_started,
-        server_id: "s1",
-        pid: 1002,
-        timestamp: ts()
-      })
-
-      result = EventStore.pids_by_server()
-      assert result["s1"] == [1001, 1002]
-    end
-
-    test "deduplicates repeated PIDs" do
-      EventStore.notify(%{
-        event: :server_started,
-        server_id: "s1",
-        pid: 1001,
-        timestamp: ts()
-      })
-
-      EventStore.notify(%{
-        event: :server_started,
-        server_id: "s1",
-        pid: 1001,
-        timestamp: ts()
-      })
-
-      assert EventStore.pids_by_server() == %{"s1" => [1001]}
-    end
-
-    test "ignores non-server_started events" do
-      EventStore.notify(%{event: :server_stopped, server_id: "s1", pid: 1001, timestamp: ts()})
-
-      assert EventStore.pids_by_server() == %{}
-    end
-  end
-
   describe "unexpected_crashes/0" do
     test "returns empty list when no events recorded" do
       assert EventStore.unexpected_crashes() == []
@@ -628,14 +561,12 @@ defmodule ToastTest.EventStoreTest do
                  :events,
                  :infrastructure_issues,
                  :netstat_snapshots,
-                 :pids_by_server,
                  :servers,
                  :timeout_kills,
                  :unexpected_crashes
                ]
 
       assert snapshot.events == EventStore.events()
-      assert snapshot.pids_by_server == EventStore.pids_by_server()
       assert snapshot.unexpected_crashes == EventStore.unexpected_crashes()
       assert snapshot.timeout_kills == EventStore.timeout_kills()
       assert snapshot.deployments == EventStore.deployments()
@@ -744,7 +675,7 @@ defmodule ToastTest.EventStoreTest do
       assert EventStore.servers() == %{}
     end
 
-    test "server_started without deployment_started" do
+    test "server_started without deployment_started records no server entry" do
       EventStore.notify(%{
         event: :server_started,
         deployment_id: "d1",
@@ -753,7 +684,6 @@ defmodule ToastTest.EventStoreTest do
         timestamp: ts()
       })
 
-      assert EventStore.pids_by_server() == %{"s1" => [1001]}
       assert EventStore.servers() == %{}
     end
 

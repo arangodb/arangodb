@@ -132,15 +132,22 @@ defmodule ToastTest.TimeWindowsTest do
       refute Map.has_key?(windows.tests, {Ghost, :nope})
     end
 
-    test "a test that never finished produces no window" do
+    test "a test that never finished is retained with a window ending at the last event" do
+      # A crash aborted the run mid-test: test_started fired, test_finished did
+      # not. The test is kept with a synthetic end = the last event timestamp, so
+      # events during it still attribute to the test (see §3).
       events = [
         event(:module_started, @mod_a_started, %{module: ModA}),
-        event(:test_started, @test1_started, %{module: ModA, name: :aborted_test})
+        event(:test_started, @test1_started, %{module: ModA, name: :aborted_test}),
+        event(:server_crashed, @test1_finished, %{server_id: "s1", pid: 1})
       ]
 
       windows = TimeWindows.build(events)
-      refute Map.has_key?(windows.tests, {ModA, :aborted_test})
-      # but it still marks the end of module setup
+
+      assert windows.tests[{ModA, :aborted_test}] ==
+               %{started_at: to_us(@test1_started), finished_at: to_us(@test1_finished)}
+
+      # still marks the end of module setup
       assert windows.modules[ModA].setup_finished_at == to_us(@test1_started)
     end
 
@@ -154,6 +161,22 @@ defmodule ToastTest.TimeWindowsTest do
           ]
 
       assert TimeWindows.build(events) == build_windows()
+    end
+  end
+
+  describe "attribute/3 — crash during a still-running (aborted) test" do
+    test "attributes to the running test with :high confidence" do
+      events = [
+        event(:module_started, @mod_a_started, %{module: ModA}),
+        event(:test_started, @test1_started, %{module: ModA, name: :aborted_test}),
+        event(:server_crashed, @test1_finished, %{server_id: "s1", pid: 1})
+      ]
+
+      windows = TimeWindows.build(events)
+      crash_ts = to_us(~U[2026-03-09 10:00:30Z])
+
+      assert {{:test, ModA, :aborted_test}, :high, nil} =
+               TimeWindows.attribute(crash_ts, windows)
     end
   end
 

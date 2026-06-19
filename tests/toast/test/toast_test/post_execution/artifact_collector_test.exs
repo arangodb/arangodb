@@ -28,7 +28,8 @@ defmodule ToastTest.PostExecution.ArtifactCollectorTest do
     %{
       id: id,
       server_dir: Keyword.get(opts, :server_dir),
-      log_file: Keyword.get(opts, :log_file)
+      log_file: Keyword.get(opts, :log_file),
+      incarnations: Keyword.get(opts, :incarnations, [])
     }
   end
 
@@ -118,6 +119,26 @@ defmodule ToastTest.PostExecution.ArtifactCollectorTest do
       assert map_size(result) == 2
       assert result["s1"].sanitizer_files == [file1]
       assert result["s2"].sanitizer_files == [file2]
+    end
+
+    test "discovers coredumps for the pids on the server's incarnations" do
+      dir = create_tmp_dir()
+      coredump_dir = create_tmp_dir()
+
+      ours = Path.join(coredump_dir, "core.1001")
+      foreign = Path.join(coredump_dir, "core.9999")
+      File.write!(ours, String.duplicate("x", 20))
+      File.write!(foreign, String.duplicate("y", 20))
+
+      server =
+        make_server("s1",
+          server_dir: dir,
+          incarnations: [%{pid: 1001, started_at: 1, stopped_at: 2}]
+        )
+
+      result = ArtifactCollector.collect(%{"s1" => server}, coredump_dir: coredump_dir)
+
+      assert result["s1"].coredump_paths == [ours]
     end
 
     test "non-sanitizer files are not collected" do

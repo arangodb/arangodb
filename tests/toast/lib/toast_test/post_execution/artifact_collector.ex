@@ -30,8 +30,15 @@ defmodule ToastTest.PostExecution.ArtifactCollector do
 
   require Logger
 
+  @type incarnation :: %{
+          pid: non_neg_integer(),
+          started_at: integer(),
+          stopped_at: integer() | nil
+        }
+
   @type server_info :: %{
           :server_dir => Path.t(),
+          :incarnations => [incarnation()],
           optional(:log_file) => Path.t() | nil
         }
 
@@ -45,14 +52,14 @@ defmodule ToastTest.PostExecution.ArtifactCollector do
 
   @min_sanitizer_bytes 10
 
-  @spec collect(%{String.t() => server_info()}, map(), keyword()) :: t()
-  def collect(servers, pid_history \\ %{}, opts \\ []) do
+  @spec collect(%{String.t() => server_info()}, keyword()) :: t()
+  def collect(servers, opts \\ []) do
     result =
       servers
       |> Enum.filter(fn {_id, server} -> server.server_dir != nil end)
       |> Task.async_stream(
         fn {id, server} ->
-          {id, collect_server_artifacts(id, server, Map.get(pid_history, id, []), opts)}
+          {id, collect_server_artifacts(id, server, opts)}
         end,
         timeout: :infinity,
         ordered: false
@@ -77,20 +84,21 @@ defmodule ToastTest.PostExecution.ArtifactCollector do
     Enum.sum_by(Map.values(artifacts), &length(&1.sanitizer_files))
   end
 
-  defp collect_server_artifacts(id, server, historical_pids, opts) do
+  defp collect_server_artifacts(id, server, opts) do
     %{
       log_file: server.log_file,
-      coredump_paths: discover_coredumps(id, server, historical_pids, opts),
+      coredump_paths: discover_coredumps(id, server, opts),
       sanitizer_files: discover_sanitizer_files(server.server_dir)
     }
   end
 
-  defp discover_coredumps(id, server, historical_pids, opts) do
-    Logger.debug("Discovering coredumps for server #{id} with PIDs #{inspect(historical_pids)}")
+  defp discover_coredumps(id, server, opts) do
+    os_pids = server.incarnations |> Enum.map(& &1.pid) |> Enum.uniq()
+    Logger.debug("Discovering coredumps for server #{id} with PIDs #{inspect(os_pids)}")
 
     opts
     |> Keyword.take([:coredump_dir, :not_before])
-    |> Keyword.merge(server_dir: server.server_dir, os_pids: historical_pids)
+    |> Keyword.merge(server_dir: server.server_dir, os_pids: os_pids)
     |> Coredump.Discovery.discover()
   end
 

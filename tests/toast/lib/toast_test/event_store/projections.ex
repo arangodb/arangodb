@@ -24,14 +24,13 @@ defmodule ToastTest.EventStore.Projections do
   Pure-functional projections over the event stream.
 
   Given a chronological list of events, `build/1` produces a map of
-  derived views (pids_by_server, deployments, servers, etc.) in a
-  single pass.
+  derived views (deployments, servers, etc.) in a single pass.
   """
 
   @doc """
   Build all projections from a list of events.
 
-  Returns `%{events: [...], pids_by_server: %{...}, unexpected_crashes: [...],
+  Returns `%{events: [...], unexpected_crashes: [...],
   timeout_kills: [...], deployments: %{...}, servers: %{...}}`.
   """
   @spec build([map()]) :: map()
@@ -40,8 +39,6 @@ defmodule ToastTest.EventStore.Projections do
       events,
       %{
         events: events,
-        pids_by_server: %{},
-        pid_sets: %{},
         unexpected_crashes: [],
         timeout_kills: [],
         netstat_snapshots: [],
@@ -54,11 +51,9 @@ defmodule ToastTest.EventStore.Projections do
     |> finalize()
   end
 
-  defp process_event(%{event: :server_started, server_id: sid, pid: pid} = e, acc)
+  defp process_event(%{event: :server_started, pid: pid} = e, acc)
        when is_integer(pid) do
-    acc
-    |> collect_pid(sid, pid)
-    |> add_incarnation(e)
+    add_incarnation(acc, e)
   end
 
   defp process_event(%{event: :server_stopped} = e, acc), do: close_incarnation(acc, e)
@@ -146,20 +141,6 @@ defmodule ToastTest.EventStore.Projections do
 
   defp process_event(_, acc), do: acc
 
-  defp collect_pid(acc, sid, pid) do
-    seen = Map.get(acc.pid_sets, sid, MapSet.new())
-
-    if MapSet.member?(seen, pid) do
-      acc
-    else
-      %{
-        acc
-        | pid_sets: Map.put(acc.pid_sets, sid, MapSet.put(seen, pid)),
-          pids_by_server: Map.update(acc.pids_by_server, sid, [pid], fn pids -> [pid | pids] end)
-      }
-    end
-  end
-
   defp add_incarnation(acc, %{deployment_id: did, server_id: sid, pid: pid, timestamp: ts}) do
     update_server_in(acc, did, sid, fn server ->
       incarnation = %{pid: pid, started_at: ts, stopped_at: nil}
@@ -224,7 +205,6 @@ defmodule ToastTest.EventStore.Projections do
   defp finalize(acc) do
     %{
       events: acc.events,
-      pids_by_server: Map.new(acc.pids_by_server, fn {k, v} -> {k, Enum.reverse(v)} end),
       unexpected_crashes: Enum.reverse(acc.unexpected_crashes),
       timeout_kills: Enum.reverse(acc.timeout_kills),
       netstat_snapshots: Enum.reverse(acc.netstat_snapshots),
