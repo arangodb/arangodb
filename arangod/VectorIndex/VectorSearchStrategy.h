@@ -31,7 +31,11 @@
 namespace arangodb::vector {
 
 struct SearchParameters {
+  // Manual override: scan exactly this many inverted lists.
   std::optional<std::int64_t> nProbe;
+  // Recall-driven: pick the cheapest autotuned configuration achieving at least
+  // this recall for the query's topK. Mutually exclusive with nProbe.
+  std::optional<double> targetRecall;
 
   template<class Inspector>
   friend inline auto inspect(Inspector& f, SearchParameters& x) {
@@ -40,6 +44,13 @@ struct SearchParameters {
             .invariant([](auto value) -> inspection::Status {
               if (value.has_value() && *value < 1) {
                 return {"nProbe must be 1 or greater!"};
+              }
+              return inspection::Status::Success{};
+            }),
+        f.field("targetRecall", x.targetRecall)
+            .invariant([](auto value) -> inspection::Status {
+              if (value.has_value() && (*value <= 0.0 || *value > 1.0)) {
+                return {"targetRecall must be a number in (0, 1]!"};
               }
               return inspection::Status::Success{};
             }));

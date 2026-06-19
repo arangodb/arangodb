@@ -37,8 +37,6 @@ namespace arangodb::vector {
 /// @brief A vector index metadata
 struct VectorIndexMetadata {
   std::vector<std::uint8_t> codeData;
-  // Legacy single tuned nprobe. Superseded by `tunedTables`
-  std::optional<std::int64_t> tunedNProbe;
   // Autotuned operating-point tables, one per tuned topK.
   std::vector<OperatingPointTable> tunedTables;
   VectorIndexFormatVersion formatVersion = VectorIndexFormatVersion::kV1;
@@ -46,7 +44,6 @@ struct VectorIndexMetadata {
   template<class Inspector>
   friend inline auto inspect(Inspector& f, VectorIndexMetadata& x) {
     return f.object(x).fields(f.field("codeData", x.codeData),
-                              f.field("tunedNProbe", x.tunedNProbe),
                               f.field("tunedTables", x.tunedTables)
                                   .fallback(std::vector<OperatingPointTable>{}),
                               f.field("formatVersion", x.formatVersion)
