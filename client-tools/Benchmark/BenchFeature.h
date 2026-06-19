@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -26,6 +25,7 @@
 #include <atomic>
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "Benchmark/BenchFeatureOptions.h"
 #include "Benchmark/BenchmarkThread.h"
 #include "Benchmark/BenchmarkStats.h"
 
@@ -61,27 +61,31 @@ class BenchFeature final : public application_features::ApplicationFeature {
   void prepare() override final;
   void start() override final;
 
-  bool async() const { return _async; }
-  uint64_t threadCount() const { return _threadCount; }
-  uint64_t operations() const { return _operations; }
-  bool createCollection() const { return _createCollection; }
-  bool keepAlive() const { return _keepAlive; }
-  std::string const& collection() const { return _collection; }
-  std::string const& testCase() const { return _testCase; }
-  uint64_t complexity() const { return _complexity; }
-  bool delay() const { return _delay; }
-  bool progress() const { return _progress; }
-  bool verbose() const { return _verbose; }
-  bool quiet() const { return _quiet; }
-  uint64_t runs() const { return _runs; }
-  std::string const& junitReportFile() const { return _junitReportFile; }
-  uint64_t replicationFactor() const { return _replicationFactor; }
-  uint64_t numberOfShards() const { return _numberOfShards; }
-  bool waitForSync() const { return _waitForSync; }
+  bool async() const { return _options.async; }
+  uint64_t threadCount() const { return _options.threadCount; }
+  uint64_t operations() const { return _options.operations; }
+  bool createCollection() const { return _options.createCollection; }
+  bool keepAlive() const { return _options.keepAlive; }
+  std::string const& collection() const { return _options.collection; }
+  std::string const& testCase() const { return _options.testCase; }
+  uint64_t complexity() const { return _options.complexity; }
+  bool delay() const { return _options.delay; }
+  bool progress() const { return _options.progress; }
+  bool verbose() const { return _options.verbose; }
+  bool quiet() const { return _options.quiet; }
+  uint64_t runs() const { return _options.runs; }
+  std::string const& junitReportFile() const {
+    return _options.junitReportFile;
+  }
+  uint64_t replicationFactor() const { return _options.replicationFactor; }
+  uint64_t numberOfShards() const { return _options.numberOfShards; }
+  bool waitForSync() const { return _options.waitForSync; }
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
 
-  std::string const& customQuery() const { return _customQuery; }
-  std::string const& customQueryFile() const { return _customQueryFile; }
+  std::string const& customQuery() const { return _options.customQuery; }
+  std::string const& customQueryFile() const {
+    return _options.customQueryFile;
+  }
   std::shared_ptr<VPackBuilder> customQueryBindVars() const {
     return _customQueryBindVarsBuilder;
   }
@@ -101,39 +105,12 @@ class BenchFeature final : public application_features::ApplicationFeature {
           threads,
       arangodb::arangobench::BenchmarkStats& totalStats);
 
-  uint64_t _threadCount;
-  uint64_t _operations;
-  uint64_t _realOperations;
-  uint64_t _duration;
-  std::string _collection;
-  std::string _testCase;
-  uint64_t _complexity;
-  bool _async;
-  bool _keepAlive;
-  bool _createDatabase;
-  bool _createCollection{true};
-  bool _delay;
-  bool _progress;
-  bool _verbose;
-  bool _quiet;
-  bool _waitForSync;
-  bool _generateHistogram;  // don't generate histogram by default
-  uint64_t _runs;
-  std::string _junitReportFile;
-  std::string _jsonReportFile;
-  uint64_t _replicationFactor;
-  uint64_t _numberOfShards;
+  BenchFeatureOptions _options;
 
-  std::string _customQuery;
-  std::string _customQueryFile;
-  std::string _customQueryBindVars;
+  uint64_t _realOperations = 0;
   std::shared_ptr<VPackBuilder> _customQueryBindVarsBuilder;
 
   int* _result;
-
-  uint64_t _histogramNumIntervals;
-  double _histogramIntervalSize;
-  std::vector<double> _percentiles;
 
   static void updateStartCounter();
   static int getStartCounter();
