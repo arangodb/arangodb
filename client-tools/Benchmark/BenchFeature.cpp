@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -27,6 +27,7 @@
 #include <velocypack/Slice.h>
 
 #include "BenchFeature.h"
+#include "BenchOptionsProvider.h"
 
 #include <ctime>
 #include <fstream>
@@ -77,31 +78,7 @@ using namespace arangodb::rest;
 
 BenchFeature::BenchFeature(application_features::ApplicationServer& server,
                            int* result)
-    : ApplicationFeature{server, *this},
-      _threadCount(NumberOfCores::getValue()),
-      _operations(1000),
-      _realOperations(0),
-      _duration(0),
-      _collection("ArangoBenchmark"),
-      _testCase("version"),
-      _complexity(1),
-      _async(false),
-      _keepAlive(true),
-      _createDatabase(false),
-      _delay(false),
-      _progress(true),
-      _quiet(false),
-      _waitForSync(false),
-      _generateHistogram(false),
-      _runs(1),
-      _junitReportFile(""),
-      _jsonReportFile(""),
-      _replicationFactor(1),
-      _numberOfShards(1),
-      _result(result),
-      _histogramNumIntervals(1000),
-      _histogramIntervalSize(0.0),
-      _percentiles({50.0, 80.0, 85.0, 90.0, 95.0, 99.0, 99.99}) {
+    : ApplicationFeature{server, *this}, _result(result) {
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseClient>();
 
@@ -121,181 +98,29 @@ BenchFeature::BenchFeature(application_features::ApplicationServer& server,
 }
 
 void BenchFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("histogram", "Benchmark statistics configuration");
-  options->addOption(
-      "--histogram.interval-size",
-      "The bucket width, dynamically calculated by default: "
-      "`(first measured time * 20) / num-intervals`.",
-      new DoubleParameter(&_histogramIntervalSize),
-      arangodb::options::makeDefaultFlags(options::Flags::Dynamic));
-  options->addOption("--histogram.num-intervals",
-                     "The number of buckets (resolution).",
-                     new UInt64Parameter(&_histogramNumIntervals));
-  options->addOption(
-      "--histogram.percentiles", "Which percentiles to calculate.",
-      new VectorParameter<DoubleParameter>(&_percentiles),
-      arangodb::options::makeDefaultFlags(options::Flags::FlushOnFirst));
-  options
-      ->addOption(
-          "--histogram.generate", "Display a histogram.",
-          new BooleanParameter(&_generateHistogram),
-          arangodb::options::makeDefaultFlags(options::Flags::FlushOnFirst))
-      .setIntroducedIn(31000);
-
-  options->addOption("--async", "Send asynchronous requests.",
-                     new BooleanParameter(&_async));
-
-  options->addOldOption("--concurrency", "threads");
-  options
-      ->addOption("--threads",
-                  "The number of parallel threads and connections.",
-                  new UInt64Parameter(&_threadCount))
-      .setIntroducedIn(31000);
-
-  options->addOption("--requests", "The total number of operations.",
-                     new UInt64Parameter(&_operations));
-
-  options->addObsoleteOption(
-      "--batch-size", "number of operations in one batch (0 disables batching)",
-      true);
-
-  options->addOption("--keep-alive", "Use HTTP keep-alive.",
-                     new BooleanParameter(&_keepAlive));
-
-  options->addOption(
-      "--collection",
-      "The collection name to use in tests (if they involve collections).",
-      new StringParameter(&_collection));
-
-  options->addOption(
-      "--replication-factor",
-      "The replication factor of created collections (cluster only).",
-      new UInt64Parameter(&_replicationFactor));
-
-  options->addOption(
-      "--number-of-shards",
-      "The number of shards of created collections (cluster only).",
-      new UInt64Parameter(&_numberOfShards));
-
-  options->addOption("--wait-for-sync",
-                     "Use waitForSync for created collections.",
-                     new BooleanParameter(&_waitForSync));
-
-  options->addOption("--create-database",
-                     "Whether to create the database specified via "
-                     "the `--server.database` option.",
-                     new BooleanParameter(&_createDatabase));
-
-  options
-      ->addOption("--create-collection",
-                  "Whether to create the collection specified via "
-                  "the `--collection` option.",
-                  new BooleanParameter(&_createCollection))
-      .setIntroducedIn(31000);
-
-  options->addOption("--duration",
-                     "Test for a duration of this many seconds instead of a "
-                     "fixed test count.",
-                     new UInt64Parameter(&_duration));
-
-  std::unordered_set<std::string> cases;
-  for (auto& [name, _] : BenchmarkOperation::allBenchmarks()) {
-    cases.emplace(name);
-  }
-  options->addOption(
-      "--test-case", "The test case to use.",
-      new DiscreteValuesParameter<StringParameter>(&_testCase, cases));
-
-  options->addOption(
-      "--complexity",
-      "The complexity parameter for the test (meaning depends on test case).",
-      new UInt64Parameter(&_complexity));
-
-  options->addOption("--delay",
-                     "Use a startup delay (necessary only when run in series).",
-                     new BooleanParameter(&_delay));
-
-  options->addOption("--junit-report-file",
-                     "The filename to write junit-style report to.",
-                     new StringParameter(&_junitReportFile));
-
-  options->addOption("--json-report-file",
-                     "The filename to write a report in JSON format to.",
-                     new StringParameter(&_jsonReportFile));
-
-  options->addOption("--runs",
-                     "Run test this many times (and calculate statistics based "
-                     "on the median).",
-                     new UInt64Parameter(&_runs));
-
-  options->addOption("--progress", "Log intermediate progress.",
-                     new BooleanParameter(&_progress));
-
-  options
-      ->addOption("--custom-query",
-                  "The query to be used in the \"custom-query\" test case.",
-                  new StringParameter(&_customQuery))
-      .setIntroducedIn(30800);
-
-  options
-      ->addOption(
-          "--custom-query-file",
-          "A path to the file with the query to use in the \"custom-query\" "
-          "test case. "
-          "If `--custom-query` is specified as well, it has higher priority.",
-          new StringParameter(&_customQueryFile))
-      .setIntroducedIn(30800);
-
-  options
-      ->addOption(
-          "--custom-query-bindvars",
-          "The bind parameters to be used in the \"custom-query\" test case.",
-          new StringParameter(&_customQueryBindVars))
-      .setIntroducedIn(31000);
-
-  options->addOption("--quiet", "suppress status messages",
-                     new BooleanParameter(&_quiet));
-
-  options->addObsoleteOption(
-      "--verbose",
-      "Print out replies if the HTTP header indicates database errors.", false);
+  BenchOptionsProvider provider;
+  provider.declareOptions(options, _options);
 }
 
 void BenchFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
-  if (!_generateHistogram) {
-    if (options->processingResult().touched("--histogram.interval-size")) {
-      LOG_TOPIC("8b53b", WARN, arangodb::Logger::BENCH)
-          << "For flag '--histogram.interval-size " << _histogramIntervalSize
-          << "': histogram is disabled by default. Enable it with flag "
-             "'--histogram.generate = true'.";
-    }
-    if (options->processingResult().touched("--histogram.num-intervals")) {
-      LOG_TOPIC("02916", WARN, arangodb::Logger::BENCH)
-          << "For flag '--histogram.num-intervals " << _histogramNumIntervals
-          << "': histogram is disabled by default. Enable it with flag "
-             "'--histogram.generate = true'.";
-    }
-    if (options->processingResult().touched("--histogram.percentiles")) {
-      LOG_TOPIC("ad47b", WARN, arangodb::Logger::BENCH)
-          << "For flag '--histogram.percentiles " << _percentiles
-          << "': histogram is disabled by default. Enable it with flag "
-             "'--histogram.generate = true'.";
-    }
-  }
-  if (!_customQueryBindVars.empty()) {
+  BenchOptionsProvider provider;
+  provider.validateOptions(options, _options);
+
+  if (!_options.customQueryBindVars.empty()) {
     try {
-      _customQueryBindVarsBuilder = VPackParser::fromJson(_customQueryBindVars);
+      _customQueryBindVarsBuilder =
+          VPackParser::fromJson(_options.customQueryBindVars);
     } catch (...) {
       LOG_TOPIC("a3468", FATAL, arangodb::Logger::BENCH)
-          << "For flag '--custom-query-bindvars " << _customQueryBindVars
-          << "': invalid JSON format.";
+          << "For flag '--custom-query-bindvars "
+          << _options.customQueryBindVars << "': invalid JSON format.";
       FATAL_ERROR_EXIT();
     }
   }
 }
 
 void BenchFeature::status(std::string const& value) {
-  if (!_quiet) {
+  if (!_options.quiet) {
     LOG_TOPIC("a6905", INFO, arangodb::Logger::BENCH) << value;
   }
 }
@@ -308,7 +133,7 @@ int BenchFeature::getStartCounter() { return _started; }
 
 void BenchFeature::setupHistogram(std::stringstream& pp) {
   pp << "Interval/Percentile:";
-  for (auto percentile : _percentiles) {
+  for (auto percentile : _options.percentiles) {
     pp << std::fixed << std::right << std::setw(13) << std::setprecision(2)
        << percentile << "%";
   }
@@ -318,15 +143,15 @@ void BenchFeature::updateStatsValues(
     std::stringstream& pp, VPackBuilder& builder,
     const std::vector<std::unique_ptr<BenchmarkThread>>& threads,
     BenchmarkStats& totalStats) {
-  for (size_t i = 0; i < static_cast<size_t>(_threadCount); ++i) {
-    if (_duration != 0) {
+  for (size_t i = 0; i < static_cast<size_t>(_options.threadCount); ++i) {
+    if (_options.duration != 0) {
       _realOperations += threads[i]->_counter;
     }
 
     totalStats.add(threads[i]->stats());
-    if (_generateHistogram) {
+    if (_options.generateHistogram) {
       double scope;
-      auto res = threads[i]->getPercentiles(_percentiles, scope);
+      auto res = threads[i]->getPercentiles(_options.percentiles, scope);
 
       builder.add(std::to_string(i), VPackValue(VPackValueType::Object));
       size_t j = 0;
@@ -339,7 +164,7 @@ void BenchFeature::updateStatsValues(
                   VPackValue(threads[i]->_histogramIntervalSize));
 
       for (auto time : res) {
-        builder.add(std::to_string(_percentiles[j]), VPackValue(time));
+        builder.add(std::to_string(_options.percentiles[j]), VPackValue(time));
         pp << "   " << std::right << std::fixed << std::setw(9)
            << std::setprecision(4) << (time * 1000) << std::setw(0) << "ms";
         j++;
@@ -353,12 +178,12 @@ void BenchFeature::updateStatsValues(
 void BenchFeature::prepare() { logLGPLNotice(); }
 
 void BenchFeature::start() {
-  std::sort(_percentiles.begin(), _percentiles.end());
+  std::sort(_options.percentiles.begin(), _options.percentiles.end());
   std::error_code existsEc;
-  if (!_jsonReportFile.empty() &&
-      std::filesystem::exists(_jsonReportFile, existsEc)) {
+  if (!_options.jsonReportFile.empty() &&
+      std::filesystem::exists(_options.jsonReportFile, existsEc)) {
     LOG_TOPIC("ee2a4", FATAL, arangodb::Logger::BENCH)
-        << "file already exists: '" << _jsonReportFile
+        << "file already exists: '" << _options.jsonReportFile
         << "' - won't overwrite it." << existsEc.message();
     FATAL_ERROR_EXIT();
   }
@@ -367,7 +192,7 @@ void BenchFeature::start() {
   client.setRetries(3);
   client.setWarn(true);
 
-  if (_createDatabase) {
+  if (_options.createDatabase) {
     auto connectDB = client.databaseName();
     client.setDatabaseName(StaticStrings::SystemDatabase);
     auto createDbClient = client.createHttpClient();
@@ -402,16 +227,16 @@ void BenchFeature::start() {
   *_result = ret;
 
   std::unique_ptr<BenchmarkOperation> benchmark =
-      BenchmarkOperation::createBenchmark(_testCase, *this);
+      BenchmarkOperation::createBenchmark(_options.testCase, *this);
 
   if (benchmark == nullptr) {
     LOG_TOPIC("ee2a5", FATAL, arangodb::Logger::BENCH)
-        << "invalid test case name '" << _testCase << "'";
+        << "invalid test case name '" << _options.testCase << "'";
     FATAL_ERROR_EXIT();
   }
 
   LOG_TOPIC("69091", INFO, arangodb::Logger::BENCH)
-      << "Running test case '" << _testCase
+      << "Running test case '" << _options.testCase
       << "': " << benchmark->getDescription();
   if (benchmark->isDeprecated()) {
     LOG_TOPIC("caf8a", WARN, arangodb::Logger::BENCH)
@@ -419,12 +244,13 @@ void BenchFeature::start() {
            "future version.";
   }
 
-  if (_duration != 0) {
-    _operations = std::numeric_limits<uint64_t>::max();
+  if (_options.duration != 0) {
+    _options.operations = std::numeric_limits<uint64_t>::max();
   } else {
-    _realOperations = _operations;
+    _realOperations = _options.operations;
   }
-  double const stepSize = (double)_operations / (double)_threadCount;
+  double const stepSize =
+      (double)_options.operations / (double)_options.threadCount;
   uint64_t realStep = static_cast<uint64_t>(stepSize);
 
   if (stepSize - static_cast<double>(static_cast<uint64_t>(stepSize)) > 0.0) {
@@ -448,42 +274,44 @@ void BenchFeature::start() {
   bool ok = true;
   std::vector<BenchRunResult> results;
   std::stringstream pp;
-  if (_generateHistogram) {
+  if (_options.generateHistogram) {
     builder.add("histogram", VPackValue(VPackValueType::Object));
     setupHistogram(pp);
   }
 
-  for (uint64_t j = 0; j < _runs; j++) {
+  for (uint64_t j = 0; j < _options.runs; j++) {
     status("starting threads...");
     double runUntil = 0.0;
 
-    if (_duration != 0) {
-      runUntil = TRI_microtime() + _duration;
+    if (_options.duration != 0) {
+      runUntil = TRI_microtime() + _options.duration;
     }
 
-    BenchmarkCounter<uint64_t> operationsCounter(0, _operations, runUntil);
+    BenchmarkCounter<uint64_t> operationsCounter(0, _options.operations,
+                                                 runUntil);
     ConditionVariable startCondition;
 
     // start client threads
     _started = 0;
 
-    for (uint64_t i = 0; i < _threadCount; ++i) {
+    for (uint64_t i = 0; i < _options.threadCount; ++i) {
       auto thread = std::make_unique<BenchmarkThread>(
           server(), benchmark.get(), &startCondition,
           &BenchFeature::updateStartCounter, static_cast<int>(i),
-          &operationsCounter, client, _keepAlive, _async,
-          _histogramIntervalSize, _histogramNumIntervals, _generateHistogram);
+          &operationsCounter, client, _options.keepAlive, _options.async,
+          _options.histogramIntervalSize, _options.histogramNumIntervals,
+          _options.generateHistogram);
       thread->setOffset(i * realStep);
       thread->start();
       threads.push_back(std::move(thread));
     }
 
     // give all threads a chance to start so they will not miss the broadcast
-    while (getStartCounter() < static_cast<int>(_threadCount)) {
+    while (getStartCounter() < static_cast<int>(_options.threadCount)) {
       std::this_thread::sleep_for(std::chrono::milliseconds(5));
     }
 
-    if (_delay) {
+    if (_options.delay) {
       status("sleeping (startup delay)...");
       std::this_thread::sleep_for(std::chrono::seconds(10));
     }
@@ -497,7 +325,7 @@ void BenchFeature::start() {
       startCondition.cv.notify_all();
     }
 
-    uint64_t const stepValue = _operations / 20;
+    uint64_t const stepValue = _options.operations / 20;
     uint64_t nextReportValue = stepValue;
 
     if (nextReportValue < 100) {
@@ -507,11 +335,11 @@ void BenchFeature::start() {
     while (true) {
       uint64_t const numOperations = operationsCounter.getDone();
 
-      if (numOperations >= _operations) {
+      if (numOperations >= _options.operations) {
         break;
       }
 
-      if (_progress && numOperations >= nextReportValue) {
+      if (_options.progress && numOperations >= nextReportValue) {
         LOG_TOPIC("c3604", INFO, arangodb::Logger::BENCH)
             << "number of operations: " << nextReportValue;
         nextReportValue += stepValue;
@@ -524,7 +352,7 @@ void BenchFeature::start() {
 
     // sum up times of all threads
     double requestTime = 0.0;
-    for (size_t i = 0; i < static_cast<size_t>(_threadCount); ++i) {
+    for (size_t i = 0; i < static_cast<size_t>(_options.threadCount); ++i) {
       requestTime += threads[i]->stats().total;
     }
 
@@ -543,7 +371,7 @@ void BenchFeature::start() {
 
     threads.clear();
   }
-  if (_generateHistogram) {
+  if (_options.generateHistogram) {
     builder.close();
   }
 
@@ -558,9 +386,9 @@ void BenchFeature::start() {
 
   builder.close();
 
-  if (!_jsonReportFile.empty()) {
+  if (!_options.jsonReportFile.empty()) {
     auto json = builder.toJson();
-    TRI_WriteFile(_jsonReportFile.c_str(), json.c_str(), json.length());
+    TRI_WriteFile(_options.jsonReportFile.c_str(), json.c_str(), json.length());
   }
 
   if (!ok) {
@@ -580,35 +408,37 @@ void BenchFeature::report(ClientFeature& client,
                           std::vector<BenchRunResult> const& results,
                           BenchmarkStats const& stats,
                           std::string const& histogram, VPackBuilder& builder) {
-  if (_generateHistogram) {
+  if (_options.generateHistogram) {
     std::cout << histogram << '\n';
   }
 
   std::cout << "Total number of operations: " << _realOperations
-            << ", runs: " << _runs
-            << ", keep alive: " << (_keepAlive ? "yes" : "no")
-            << ", async: " << (_async ? "yes" : "no")
-            << ", replication factor: " << _replicationFactor
-            << ", number of shards: " << _numberOfShards
-            << ", wait for sync: " << (_waitForSync ? "true" : "false")
-            << ", concurrency level (threads): " << _threadCount << std::endl;
+            << ", runs: " << _options.runs
+            << ", keep alive: " << (_options.keepAlive ? "yes" : "no")
+            << ", async: " << (_options.async ? "yes" : "no")
+            << ", replication factor: " << _options.replicationFactor
+            << ", number of shards: " << _options.numberOfShards
+            << ", wait for sync: " << (_options.waitForSync ? "true" : "false")
+            << ", concurrency level (threads): " << _options.threadCount
+            << std::endl;
 
-  std::cout << "Test case: " << _testCase << ", complexity: " << _complexity
-            << ", database: '" << client.databaseName() << "', collection: '"
-            << _collection << "'" << std::endl;
+  std::cout << "Test case: " << _options.testCase
+            << ", complexity: " << _options.complexity << ", database: '"
+            << client.databaseName() << "', collection: '"
+            << _options.collection << "'" << std::endl;
 
   builder.add("totalNumberOfOperations", VPackValue(_realOperations));
-  builder.add("runs", VPackValue(_runs));
-  builder.add("keepAlive", VPackValue(_keepAlive));
-  builder.add("async", VPackValue(_async));
-  builder.add("replicationFactor", VPackValue(_replicationFactor));
-  builder.add("numberOfShards", VPackValue(_numberOfShards));
-  builder.add("waitForSync", VPackValue(_waitForSync));
-  builder.add("concurrencyLevel", VPackValue(_threadCount));
-  builder.add("testCase", VPackValue(_testCase));
-  builder.add("complexity", VPackValue(_complexity));
+  builder.add("runs", VPackValue(_options.runs));
+  builder.add("keepAlive", VPackValue(_options.keepAlive));
+  builder.add("async", VPackValue(_options.async));
+  builder.add("replicationFactor", VPackValue(_options.replicationFactor));
+  builder.add("numberOfShards", VPackValue(_options.numberOfShards));
+  builder.add("waitForSync", VPackValue(_options.waitForSync));
+  builder.add("concurrencyLevel", VPackValue(_options.threadCount));
+  builder.add("testCase", VPackValue(_options.testCase));
+  builder.add("complexity", VPackValue(_options.complexity));
   builder.add("database", VPackValue(client.databaseName()));
-  builder.add("collection", VPackValue(_collection));
+  builder.add("collection", VPackValue(_options.collection));
 
   TRI_ASSERT(
       std::is_sorted(std::begin(results), std::end(results),
@@ -618,7 +448,7 @@ void BenchFeature::report(ClientFeature& client,
 
   BenchRunResult output{0, 0, 0, 0};
 
-  if (_runs > 1) {
+  if (_options.runs > 1) {
     size_t size = results.size();
 
     std::cout << std::endl;
@@ -650,7 +480,7 @@ void BenchFeature::report(ClientFeature& client,
     } else {
       output = results[mid];
     }
-  } else if (_runs > 0) {
+  } else if (_options.runs > 0) {
     output = results[0];
   }
 
@@ -670,16 +500,16 @@ void BenchFeature::report(ClientFeature& client,
   builder.add("avg", VPackValue(stats.avg()));
   builder.add("max", VPackValue(stats.max));
 
-  if (!_junitReportFile.empty()) {
+  if (!_options.junitReportFile.empty()) {
     writeJunitReport(output);
   }
 }
 
 bool BenchFeature::writeJunitReport(BenchRunResult const& result) {
-  std::ofstream outfile(_junitReportFile, std::ofstream::binary);
+  std::ofstream outfile(_options.junitReportFile, std::ofstream::binary);
   if (!outfile.is_open()) {
-    std::cerr << "Could not open JUnit Report File: " << _junitReportFile
-              << std::endl;
+    std::cerr << "Could not open JUnit Report File: "
+              << _options.junitReportFile << std::endl;
     return false;
   }
 
@@ -708,7 +538,7 @@ bool BenchFeature::writeJunitReport(BenchRunResult const& result) {
     ok = true;
   } catch (...) {
     std::cerr << "Got an exception writing to junit report file "
-              << _junitReportFile;
+              << _options.junitReportFile;
     ok = false;
   }
   outfile.close();
@@ -721,10 +551,10 @@ void BenchFeature::printResult(BenchRunResult const& result,
             << std::fixed << result._requestTime << " s" << std::endl;
   builder.add("requestTime", VPackValue(result._requestTime));
   std::cout << "Request/response duration (per thread): " << std::fixed
-            << (result._requestTime / (double)_threadCount) << " s"
+            << (result._requestTime / (double)_options.threadCount) << " s"
             << std::endl;
   builder.add("requestResponseDurationPerThread",
-              VPackValue(result._requestTime / (double)_threadCount));
+              VPackValue(result._requestTime / (double)_options.threadCount));
 
   std::cout << "Time needed per operation: " << std::fixed
             << (result._time / _realOperations) << " s" << std::endl;
@@ -732,11 +562,12 @@ void BenchFeature::printResult(BenchRunResult const& result,
               VPackValue(result._time / _realOperations));
 
   std::cout << "Time needed per operation per thread: " << std::fixed
-            << (result._time / (double)_realOperations * (double)_threadCount)
+            << (result._time / (double)_realOperations *
+                (double)_options.threadCount)
             << " s" << std::endl;
   builder.add("timeNeededPerOperationPerThread",
               VPackValue(result._time / (double)_realOperations *
-                         (double)_threadCount));
+                         (double)_options.threadCount));
 
   std::cout << "Operations per second rate: " << std::fixed
             << ((double)_realOperations / result._time) << std::endl;
