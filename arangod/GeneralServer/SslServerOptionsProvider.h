@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -18,32 +18,23 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
-#include "Cache/CacheOptionsProvider.h"
+#include "ApplicationFeatures/OptionsProvider.h"
+#include "GeneralServer/SslServerOptions.h"
 
 namespace arangodb {
 
-class CacheOptionsFeature final
-    : public application_features::ApplicationFeature,
-      public CacheOptionsProvider {
- public:
-  static constexpr std::string_view name() { return "CacheOptions"; }
+struct SslServerOptionsProvider : OptionsProvider<SslServerOptions> {
+  SslServerOptionsProvider() = default;
 
-  explicit CacheOptionsFeature(application_features::ApplicationServer& server);
-  ~CacheOptionsFeature() = default;
+  void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
+                      SslServerOptions& options) override;
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
-
-  CacheOptions getOptions() const override final;
-
- private:
-  CacheOptions _options;
+  void validateOptions(std::shared_ptr<options::ProgramOptions> opts,
+                       SslServerOptions& options) override;
 };
 
 }  // namespace arangodb
