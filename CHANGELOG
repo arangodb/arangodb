@@ -1,15 +1,15 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* Upgraded included rclone to v1.74.3 with go1.25.11 and non-vulnerable
+  dependencies.
+
 * Upgraded OpenSSL to 3.5.7.
 
 * COR-572: BugFix - Resolved unintended warnings raised by eager evaluation in 
   the ternary operator during traversal and optimization.
 
 * Updated ArangoDB Starter to v0.20.0-preview-12.
-
-* Upgraded included rclone to v1.73.5 with go1.25.11 and non-vulnerable
-  dependencies.
 
 * COR-522: Use Distribute on repeated smart edge join.
 
