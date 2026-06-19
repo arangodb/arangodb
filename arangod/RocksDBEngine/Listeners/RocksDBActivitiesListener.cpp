@@ -47,12 +47,12 @@ void RocksDBActivitiesListener::OnCompactionBegin(
     _activities.emplace(info.job_id, std::move(handle));
   } catch (std::exception const& e) {
     LOG_TOPIC("5a91c", WARN, Logger::ENGINES)
-        << "failed to create RocksDBCompaction activity for job "
-        << info.job_id << ": " << e.what();
+        << "failed to create RocksDBCompaction activity for job " << info.job_id
+        << ": " << e.what();
   } catch (...) {
     LOG_TOPIC("5a91d", WARN, Logger::ENGINES)
-        << "failed to create RocksDBCompaction activity for job "
-        << info.job_id << ": unknown exception";
+        << "failed to create RocksDBCompaction activity for job " << info.job_id
+        << ": unknown exception";
   }
 }
 
