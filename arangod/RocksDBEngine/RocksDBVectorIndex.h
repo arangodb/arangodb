@@ -84,7 +84,8 @@ class RocksDBVectorIndex final : public RocksDBIndex {
   vector::SearchResult readBatch(vector::VectorSearchConfig const& config,
                                  vector::VectorSearchContext const& ctx) const;
 
-  vector::UserVectorIndexDefinition const& getVectorIndexDefinition() override;
+  vector::UserVectorIndexDefinition const& getVectorIndexDefinition()
+      const override;
 
   bool isVectorIndexReady() const noexcept override;
 

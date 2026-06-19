@@ -719,7 +719,7 @@ Result RocksDBVectorIndex::remove(transaction::Methods& /*trx*/,
 }
 
 vector::UserVectorIndexDefinition const&
-RocksDBVectorIndex::getVectorIndexDefinition() {
+RocksDBVectorIndex::getVectorIndexDefinition() const {
   return getDefinition();
 }
 
