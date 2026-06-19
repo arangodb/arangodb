@@ -59,7 +59,27 @@ EnumerateNearVectorsExecutor::EnumerateNearVectorsExecutor(Fetcher& /*unused*/,
                                                            Infos& infos)
     : _infos(infos),
       _trx(_infos.queryContext.newTrxContext()),
-      _collection(_infos.collection) {}
+      _collection(_infos.collection),
+      _vectorIndex(resolveVectorIndex(_infos)) {}
+
+RocksDBVectorIndex const& EnumerateNearVectorsExecutor::resolveVectorIndex(
+    Infos const& infos) {
+  auto const* index = infos.index.get();
+  if (auto const* vectorIndex = dynamic_cast<RocksDBVectorIndex const*>(index);
+      vectorIndex != nullptr) {
+    return *vectorIndex;
+  }
+  // While the index is still being built the collection hands out a
+  // RocksDBBuilderIndex wrapping the real vector index; unwrap it.
+  auto const* builderIndex = dynamic_cast<RocksDBBuilderIndex const*>(index);
+  TRI_ASSERT(builderIndex != nullptr)
+      << "EnumerateNearVectors index must be a RocksDBVectorIndex or a "
+         "RocksDBBuilderIndex wrapping one";
+  auto const* wrapped =
+      dynamic_cast<RocksDBVectorIndex const*>(&builderIndex->wrapped());
+  TRI_ASSERT(wrapped != nullptr);
+  return *wrapped;
+}
 
 void EnumerateNearVectorsExecutor::writeProjectionsFromDocument(
     velocypack::Slice docSlice, OutputAqlItemRow& output) {
@@ -117,7 +137,7 @@ void EnumerateNearVectorsExecutor::fillInput(
   // size
   _inputRowConverted.clear();
 
-  auto const dimension = _infos.index->getVectorIndexDefinition().dimension;
+  auto const dimension = _vectorIndex.getVectorIndexDefinition().dimension;
   _inputRowConverted.reserve(dimension);
   std::size_t vectorComponentsCount{0};
   for (arangodb::velocypack::ArrayIterator itr(value.slice()); itr.valid();
@@ -138,25 +158,13 @@ void EnumerateNearVectorsExecutor::fillInput(
 }
 
 void EnumerateNearVectorsExecutor::searchResults() {
-  auto const* vectorIndex =
-      dynamic_cast<RocksDBVectorIndex const*>(_infos.index.get());
-  if (vectorIndex == nullptr) {
-    auto* builderIndex = dynamic_cast<RocksDBBuilderIndex*>(_infos.index.get());
-    TRI_ASSERT(builderIndex != nullptr)
-        << "Expected index to be either RocksDBVectorIndex or "
-           "RocksDBBuilderIndex, both cannot be true";
-    vectorIndex =
-        dynamic_cast<RocksDBVectorIndex const*>(&builderIndex->wrapped());
-  }
-  TRI_ASSERT(vectorIndex != nullptr);
-
   vector::VectorSearchContext ctx{
       .inputs = &_inputRowConverted,
       .inputRow = &_inputRow,
       .trx = &_trx,
       .queryContext = &_infos.queryContext,
   };
-  auto result = vectorIndex->readBatch(_infos.searchConfig, ctx);
+  auto result = _vectorIndex.readBatch(_infos.searchConfig, ctx);
   _labels = std::move(result.labels);
   _distances = std::move(result.distances);
   _documents = std::move(result.capturedDocuments);
