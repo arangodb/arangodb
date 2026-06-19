@@ -26,6 +26,7 @@
 #include <unistd.h>
 
 #include "V8ShellFeature.h"
+#include "Shell/V8ShellOptionsProvider.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/GreetingsFeature.h"
@@ -139,13 +140,7 @@ namespace arangodb {
 V8ShellFeature::V8ShellFeature(application_features::ApplicationServer& server,
                                std::string const& name)
     : ApplicationFeature(server, *this),
-      _startupDirectory("js"),
-      _clientModule(DEFAULT_CLIENT_MODULE),
-      _currentModuleDirectory(true),
-      _copyInstallation(false),
       _removeCopyInstallation(false),
-      _gcInterval(50),
-      _executionDeadline(0),
       _name(name),
       _isolate(nullptr) {
   setOptional(false);
@@ -158,77 +153,25 @@ V8ShellFeature::V8ShellFeature(application_features::ApplicationServer& server,
 }
 
 void V8ShellFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("javascript", "JavaScript engine");
-
-  options->addOption(
-      "--javascript.startup-directory",
-      "The startup paths containing the JavaScript files.",
-      new StringParameter(&_startupDirectory),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
-
-  options->addOption(
-      "--javascript.client-module", "The client module to use at startup.",
-      new StringParameter(&_clientModule),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
-
-  options->addOption(
-      "--javascript.copy-directory",
-      "The target directory to copy files from "
-      "`--javascript.startup-directory` "
-      "to (only used if `--javascript.copy-installation` is enabled).",
-      new StringParameter(&_copyDirectory));
-
-  options->addOption(
-      "--javascript.module-directory",
-      "Additional paths containing JavaScript modules.",
-      new VectorParameter<StringParameter>(&_moduleDirectories),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
-
-  options->addOption("--javascript.current-module-directory",
-                     "Add the current directory to the module path.",
-                     new BooleanParameter(&_currentModuleDirectory));
-
-  options->addOption("--javascript.copy-installation",
-                     "Copy the contents of `--javascript.startup-directory`.",
-                     new BooleanParameter(&_copyInstallation));
-
-  options->addOption(
-      "--javascript.gc-interval",
-      "Request-based garbage collection interval (each n-th command).",
-      new UInt64Parameter(&_gcInterval));
-
-  options->addOption(
-      "--javascript.execution-deadline",
-      "deadline in seconds. Once reached, calls will throw. "
-      "HTTP timeouts will be adjusted.",
-      new UInt32Parameter(&_executionDeadline),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
+  V8ShellOptionsProvider provider;
+  provider.declareOptions(options, _options);
 }
 
 void V8ShellFeature::validateOptions(
     std::shared_ptr<options::ProgramOptions> options) {
-  if (_startupDirectory.empty()) {
-    LOG_TOPIC("6380f", FATAL, arangodb::Logger::FIXME)
-        << "no '--javascript.startup-directory' has been supplied, giving up";
-    FATAL_ERROR_EXIT();
-  }
-
-  if (!_moduleDirectories.empty()) {
-    LOG_TOPIC("90ca0", DEBUG, Logger::V8)
-        << "using JavaScript modules at '"
-        << StringUtils::join(_moduleDirectories, ";") << "'";
-  }
+  V8ShellOptionsProvider provider;
+  provider.validateOptions(options, _options);
 }
 
 void V8ShellFeature::start() {
   auto& platform = server().getFeature<V8PlatformFeature>();
 
-  if (_copyInstallation) {
+  if (_options.copyInstallation) {
     copyInstallationFiles();  // will exit process on error
   }
 
-  LOG_TOPIC("9c2f7", DEBUG, Logger::V8)
-      << "using JavaScript startup files at '" << _startupDirectory << "'";
+  LOG_TOPIC("9c2f7", DEBUG, Logger::V8) << "using JavaScript startup files at '"
+                                        << _options.startupDirectory << "'";
 
   ::global_isolate = _isolate = platform.createIsolate();
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -318,49 +261,49 @@ void V8ShellFeature::unprepare() {
 }
 
 void V8ShellFeature::stop() {
-  if (_removeCopyInstallation && !_copyDirectory.empty()) {
-    auto res = TRI_RemoveDirectory(_copyDirectory.c_str());
+  if (_removeCopyInstallation && !_options.copyDirectory.empty()) {
+    auto res = TRI_RemoveDirectory(_options.copyDirectory.c_str());
 
     if (res != TRI_ERROR_NO_ERROR) {
       LOG_TOPIC("cac43", DEBUG, Logger::V8)
           << "could not cleanup installation file copy in path '"
-          << _copyDirectory << "': " << TRI_errno_string(res);
+          << _options.copyDirectory << "': " << TRI_errno_string(res);
     }
   }
 }
 
 void V8ShellFeature::copyInstallationFiles() {
-  if (_copyDirectory.empty()) {
+  if (_options.copyDirectory.empty()) {
     uint64_t r = RandomGenerator::interval(UINT64_MAX);
     char buf[sizeof(uint64_t) * 2 + 1];
     auto len = TRI_StringUInt64HexInPlace(r, buf);
     std::string name("arangosh-js-");
     name.append(buf, len);
-    _copyDirectory = FileUtils::buildFilename(TRI_GetTempPath(), name);
+    _options.copyDirectory = FileUtils::buildFilename(TRI_GetTempPath(), name);
     _removeCopyInstallation = true;
   }
 
   LOG_TOPIC("65ed7", DEBUG, Logger::V8)
-      << "Copying JS installation files from '" << _startupDirectory << "' to '"
-      << _copyDirectory << "'";
+      << "Copying JS installation files from '" << _options.startupDirectory
+      << "' to '" << _options.copyDirectory << "'";
 
-  _nodeModulesDirectory = _startupDirectory;
-  if (std::filesystem::exists(_copyDirectory)) {
+  _nodeModulesDirectory = _options.startupDirectory;
+  if (std::filesystem::exists(_options.copyDirectory)) {
     auto res = TRI_ERROR_NO_ERROR;
-    res = TRI_RemoveDirectory(_copyDirectory.c_str());
+    res = TRI_RemoveDirectory(_options.copyDirectory.c_str());
     if (res != TRI_ERROR_NO_ERROR) {
       LOG_TOPIC("379f5", FATAL, Logger::V8)
-          << "Error cleaning JS installation path '" << _copyDirectory
+          << "Error cleaning JS installation path '" << _options.copyDirectory
           << "': " << TRI_errno_string(res);
       FATAL_ERROR_EXIT();
     }
   }
 
   if (auto ec = std::error_code{};
-      !std::filesystem::create_directory(_copyDirectory, ec)) {
+      !std::filesystem::create_directory(_options.copyDirectory, ec)) {
     auto err = TRI_last_error();
     LOG_TOPIC("6d915", FATAL, Logger::V8)
-        << "Error creating JS installation path '" << _copyDirectory
+        << "Error creating JS installation path '" << _options.copyDirectory
         << "': " << ec.message();
     FATAL_ERROR_EXIT();
   }
@@ -407,15 +350,15 @@ void V8ShellFeature::copyInstallationFiles() {
     return false;
   };
   std::string error;
-  if (!FileUtils::copyRecursive(_startupDirectory, _copyDirectory, filter,
-                                error)) {
+  if (!FileUtils::copyRecursive(_options.startupDirectory,
+                                _options.copyDirectory, filter, error)) {
     LOG_TOPIC("913c4", FATAL, Logger::V8)
-        << "Error copying JS installation files to '" << _copyDirectory
+        << "Error copying JS installation files to '" << _options.copyDirectory
         << "': " << error;
     FATAL_ERROR_EXIT();
   }
 
-  _startupDirectory = _copyDirectory;
+  _options.startupDirectory = _options.copyDirectory;
 }
 
 bool V8ShellFeature::printHello() {
@@ -426,7 +369,7 @@ bool V8ShellFeature::printHello() {
   // http://www.network-science.de/ascii/   Font: ogre
 
   if (!console.quiet()) {
-    if (_clientModule == DEFAULT_CLIENT_MODULE) {
+    if (_options.clientModule == DEFAULT_CLIENT_MODULE) {
       std::string g = ShellColorsFeature::SHELL_COLOR_GREEN;
       std::string r = ShellColorsFeature::SHELL_COLOR_RED;
       std::string z = ShellColorsFeature::SHELL_COLOR_RESET;
@@ -669,7 +612,7 @@ ErrorCode V8ShellFeature::runShell(
     console.flushLog();
 
     // gc
-    if (++nrCommands >= _gcInterval ||
+    if (++nrCommands >= _options.gcInterval ||
         V8PlatformFeature::isOutOfMemory(_isolate)) {
       nrCommands = 0;
       TRI_RunGarbageCollectionV8(_isolate, 500.0);
@@ -1111,8 +1054,10 @@ void V8ShellFeature::initGlobals() {
     FATAL_ERROR_EXIT();
   }
 
-  ctx->normalizePath(_startupDirectory, "javascript.startup-directory", true);
-  ctx->normalizePath(_moduleDirectories, "javascript.module-directory", false);
+  ctx->normalizePath(_options.startupDirectory, "javascript.startup-directory",
+                     true);
+  ctx->normalizePath(_options.moduleDirectories, "javascript.module-directory",
+                     false);
 
   V8SecurityFeature& v8security = server().getFeature<V8SecurityFeature>();
 
@@ -1120,19 +1065,19 @@ void V8ShellFeature::initGlobals() {
   // so instead of "/path/to/js" we will get "/path/to/js/3.4.0"
   std::string const versionAppendix = std::regex_replace(
       rest::Version::getServerVersion(), std::regex("-.*$"), "");
-  std::string versionedPath =
-      basics::FileUtils::buildFilename(_startupDirectory, versionAppendix);
+  std::string versionedPath = basics::FileUtils::buildFilename(
+      _options.startupDirectory, versionAppendix);
 
   LOG_TOPIC("5095d", DEBUG, Logger::V8)
       << "checking for existence of version-specific startup-directory '"
       << versionedPath << "'";
   if (std::filesystem::is_directory(versionedPath)) {
     // version-specific js path exists!
-    _startupDirectory = versionedPath;
+    _options.startupDirectory = versionedPath;
   }
-  v8security.addToInternalReadAllowList(_startupDirectory);
+  v8security.addToInternalReadAllowList(_options.startupDirectory);
 
-  for (auto& it : _moduleDirectories) {
+  for (auto& it : _options.moduleDirectories) {
     versionedPath = basics::FileUtils::buildFilename(it, versionAppendix);
 
     LOG_TOPIC("2abe3", DEBUG, Logger::V8)
@@ -1146,14 +1091,14 @@ void V8ShellFeature::initGlobals() {
   }
 
   LOG_TOPIC("930d9", DEBUG, Logger::V8)
-      << "effective startup-directory is '" << _startupDirectory
-      << "', effective module-directory is " << _moduleDirectories;
+      << "effective startup-directory is '" << _options.startupDirectory
+      << "', effective module-directory is " << _options.moduleDirectories;
 
   // initialize standard modules
   std::vector<std::string> directories;
-  directories.insert(directories.end(), _moduleDirectories.begin(),
-                     _moduleDirectories.end());
-  directories.emplace_back(_startupDirectory);
+  directories.insert(directories.end(), _options.moduleDirectories.begin(),
+                     _options.moduleDirectories.end());
+  directories.emplace_back(_options.startupDirectory);
   if (!_nodeModulesDirectory.empty()) {
     directories.emplace_back(_nodeModulesDirectory);
   }
@@ -1170,7 +1115,7 @@ void V8ShellFeature::initGlobals() {
                FileUtils::buildFilename(directory, "node");
   }
 
-  if (_currentModuleDirectory) {
+  if (_options.currentModuleDirectory) {
     auto const cwd = std::filesystem::current_path();
     modules += sep + cwd.string();
     v8security.addToInternalReadAllowList(cwd);
@@ -1178,12 +1123,12 @@ void V8ShellFeature::initGlobals() {
 
   v8security.dumpAccessLists();
 
-  // we take the last entry in _startupDirectory as global path;
+  // we take the last entry in _options.startupDirectory as global path;
   // all the other entries are only used for the modules
 
   TRI_InitV8Buffer(_isolate);
-  TRI_InitV8Utils(_isolate, context, _startupDirectory, modules);
-  TRI_InitV8Deadline(_isolate, _executionDeadline);
+  TRI_InitV8Utils(_isolate, context, _options.startupDirectory, modules);
+  TRI_InitV8Deadline(_isolate, _options.executionDeadline);
   TRI_InitV8Shell(_isolate);
 
   // pager functions (overwrite existing SYS_OUTPUT from InitV8Utils)
@@ -1255,7 +1200,7 @@ void V8ShellFeature::initMode(ShellFeature::RunMode runMode,
 
 void V8ShellFeature::loadModules(ShellFeature::RunMode runMode) {
   JSLoader loader;
-  loader.setDirectory(_startupDirectory);
+  loader.setDirectory(_options.startupDirectory);
 
   // load all init files
   std::vector<std::string> files;
@@ -1280,7 +1225,7 @@ void V8ShellFeature::loadModules(ShellFeature::RunMode runMode) {
   files.push_back(
       "common/bootstrap/modules.js");  // must come last before patches
 
-  files.push_back("client/" + _clientModule);  // needs internal
+  files.push_back("client/" + _options.clientModule);  // needs internal
 
   for (auto const& file : files) {
     switch (loader.loadScript(_isolate, file, nullptr)) {

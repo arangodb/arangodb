@@ -28,12 +28,11 @@
 
 'use strict';
 
-const expect = require('chai').expect;
+const jsunity = require("jsunity");
+const {assertEqual, assertTrue, assertFalse, assertNotEqual, assertNotUndefined} = jsunity.jsUnity.assertions;
 const users = require('@arangodb/users');
 const helper = require('@arangodb/testutils/user-helper');
 const tasks = require('@arangodb/tasks');
-const pu = require('@arangodb/testutils/process-utils');
-const download = require('internal').download;
 const dbName = helper.dbName;
 const colName = helper.colName;
 const rightLevels = helper.rightLevels;
@@ -48,6 +47,7 @@ const colLevel = helper.colLevel;
 const arango = require('internal').arango;
 let connectionHandle = arango.getConnectionHandle();
 const db = require('internal').db;
+
 for (let l of rightLevels) {
   systemLevel[l] = new Set();
   dbLevel[l] = new Set();
@@ -62,7 +62,7 @@ const wait = (keySpaceId, key) => {
 };
 
 const createKeySpace = (keySpaceId) => {
-  return executeJS(`return global.KEYSPACE_CREATE('${keySpaceId}', 128, true);`).body === 'true';
+  return executeJS(`return global.KEYSPACE_CREATE('${keySpaceId}', 128, true);`).parsedBody === true;
 };
 
 const setKeySpace = (keySpaceId, name) => {
@@ -74,20 +74,11 @@ const dropKeySpace = (keySpaceId) => {
 };
 
 const getKey = (keySpaceId, key) => {
-  return executeJS(`return global.KEY_GET('${keySpaceId}', '${key}');`).body === 'true';
+  return executeJS(`return global.KEY_GET('${keySpaceId}', '${key}');`).parsedBody === true;
 };
 
 const executeJS = (code) => {
-  let httpOptions = pu.makeAuthorizationHeaders({
-    username: 'root',
-    password: ''
-  }, {});
-  httpOptions.method = 'POST';
-  httpOptions.timeout = 1800;
-  httpOptions.returnBodyOnError = true;
-  return download(arango.getEndpoint().replace('tcp', 'http') + `/_db/${dbName}/_admin/execute?returnAsJSON=true`,
-    code,
-    httpOptions);
+  return arango.POST_RAW('/_admin/execute', code);
 };
 
 helper.switchUser('root', '_system');
@@ -97,10 +88,10 @@ helper.generateAllUsers();
 describe('User Rights Management', () => {
   it('should check if all users are created', () => {
     helper.switchUser('root', '_system');
-    expect(userSet.size).to.be.greaterThan(0); 
-    expect(userSet.size).to.equal(helper.userCount);
+    assertTrue(userSet.size > 0); 
+    assertEqual(userSet.size, helper.userCount);
     for (let name of userSet) {
-      expect(users.document(name), `Could not find user: ${name}`).to.not.be.undefined;
+      assertNotUndefined(users.document(name), `Could not find user: ${name}`);
     }
   });
 
@@ -142,11 +133,11 @@ describe('User Rights Management', () => {
                 db._useDatabase(dbName);
                 rootTruncateCollection();
                 dropKeySpace(keySpaceId);
-                expect(createKeySpace(keySpaceId)).to.equal(true, 'keySpace creation failed!');
+                assertTrue(createKeySpace(keySpaceId), 'keySpace creation failed!');
               });
 
               it('by key', () => {
-                expect(rootTestCollection()).to.equal(true, 'Precondition failed, the collection does not exist');
+                assertTrue(rootTestCollection(), 'Precondition failed, the collection does not exist');
                 setKeySpace(keySpaceId, name);
                 const taskId = 'task_collection_level_create_by_key' + name;
                 const task = {
@@ -173,12 +164,12 @@ describe('User Rights Management', () => {
                     let col = db._collection(colName);
                     try {
                       col.document('123');
-                      expect(false).to.equal(true, 'Precondition failed, document already inserted.');
+                      assertFalse(true, 'Precondition failed, document already inserted.');
                     } catch (e) {}
                     tasks.register(task);
                     wait(keySpaceId, name);
-                    expect(getKey(keySpaceId, `${name}_status`)).to.equal(true, `${name} the create did not pass through...`);
-                    expect(col.document('123').foo).to.equal('bar', `${name} the create did not pass through...`);
+                    assertTrue(getKey(keySpaceId, `${name}_status`), `${name} the create did not pass through...`);
+                    assertEqual(col.document('123').foo, 'bar', `${name} the create did not pass through...`);
                   } else {
                     let hasReadAccess = ((dbLevel['rw'].has(name) || dbLevel['ro'].has(name)) &&
                       (colLevel['rw'].has(name) || colLevel['ro'].has(name)));
@@ -186,31 +177,31 @@ describe('User Rights Management', () => {
                       let col = db._collection(colName);
                       try {
                         col.document('123');
-                        expect(false).to.equal(true, 'Precondition failed, document already inserted.');
+                        assertFalse(true, 'Precondition failed, document already inserted.');
                       } catch (e) {}
                     }
                     tasks.register(task);
                     wait(keySpaceId, name);
-                    expect(getKey(keySpaceId, `${name}_status`)).to.not.equal(true, `${name} managed to create the document with insufficient rights`);
+                    assertFalse(getKey(keySpaceId, `${name}_status`), `${name} managed to create the document with insufficient rights`);
                     if (hasReadAccess) {
                       let col = db._collection(colName);
                       try {
-                        expect(col.document('123').foo).to.not.equal('bar', `${name} managed to create the document with insufficient rights`);
+                        assertNotEqual(col.document('123').foo, 'bar', `${name} managed to create the document with insufficient rights`);
                       } catch (e) {}
                     }
                   }
                 } else {
                   try {
                     tasks.register(task);
-                    expect(false).to.equal(true, `${name} managed to register a task with insufficient rights`);
+                    assertFalse(true, `${name} managed to register a task with insufficient rights`);
                   } catch (e) {
-                    expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code);
+                    assertEqual(e.errorNum, errors.ERROR_FORBIDDEN.code);
                   }
                 }
               });
 
               it('by aql', () => {
-                expect(rootTestCollection()).to.equal(true, 'Precondition failed, the collection does not exist');
+                assertTrue(rootTestCollection(), 'Precondition failed, the collection does not exist');
                 const taskId = 'task_collection_level_create_by_aql' + name;
                 let q = `INSERT {_key: '456', foo: 'bar'} IN ${colName} RETURN NEW`;
                 setKeySpace(keySpaceId, name);
@@ -235,28 +226,28 @@ describe('User Rights Management', () => {
                     let col = db._collection(colName);
                     tasks.register(task);
                     wait(keySpaceId, name);
-                    expect(getKey(keySpaceId, `${name}_status`)).to.equal(true, `${name} the create did not pass through...`);
+                    assertTrue(getKey(keySpaceId, `${name}_status`), `${name} the create did not pass through...`);
                     let doc = col.document('456');
-                    expect(doc.foo).to.equal('bar', `${name}  the create did not pass through...`);
+                    assertEqual(doc.foo, 'bar', `${name}  the create did not pass through...`);
                   } else {
                     let hasReadAccess = ((dbLevel['rw'].has(name) || dbLevel['ro'].has(name)) &&
                       (colLevel['rw'].has(name) || colLevel['ro'].has(name)));
                     tasks.register(task);
                     wait(keySpaceId, name);
-                    expect(getKey(keySpaceId, `${name}_status`)).to.not.equal(true, `${name} managed to create the document with insufficient rights`);
+                    assertFalse(getKey(keySpaceId, `${name}_status`), `${name} managed to create the document with insufficient rights`);
                     if (hasReadAccess) {
                       let col = db._collection(colName);
                       try {
-                        expect(col.document('456').foo).to.not.equal('bar', `${name} managed to create the document with insufficient rights`);
+                        assertNotEqual(col.document('456').foo, 'bar', `${name} managed to create the document with insufficient rights`);
                       } catch (e) {}
                     }
                   }
                 } else {
                   try {
                     tasks.register(task);
-                    expect(false).to.equal(true, `${name} managed to register a task with insufficient rights`);
+                    assertFalse(true, `${name} managed to register a task with insufficient rights`);
                   } catch (e) {
-                    expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code);
+                    assertEqual(e.errorNum, errors.ERROR_FORBIDDEN.code);
                   }
                 }
               });

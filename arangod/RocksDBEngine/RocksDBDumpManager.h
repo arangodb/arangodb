@@ -38,10 +38,6 @@ struct TRI_vocbase_t;
 namespace arangodb {
 class RocksDBEngine;
 
-namespace metrics {
-class MetricsFeature;
-}
-
 namespace velocypack {
 struct Options;
 }
@@ -49,7 +45,7 @@ struct Options;
 class RocksDBDumpManager {
  public:
   explicit RocksDBDumpManager(RocksDBEngine& engine,
-                              metrics::MetricsFeature& metricsFeature,
+                              metrics::ICollector& metrics,
                               DumpLimitsFeatureOptions const& limits);
 
   ~RocksDBDumpManager();

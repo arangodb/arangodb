@@ -170,7 +170,9 @@ add_library(arangoserver STATIC
   RestServer/PrivilegeOptionsProvider.cpp
   RestServer/QueryRegistryFeature.cpp
   RestServer/QueryRegistryFeatureOptions.cpp
+  RestServer/QueryRegistryOptionsProvider.cpp
   RestServer/ServerFeature.cpp
+  RestServer/ServerOptionsProvider.cpp
   RestServer/ServerIdFeature.cpp
   RestServer/SharedPRNGFeature.cpp
   RestServer/SoftShutdownFeature.cpp
@@ -178,10 +180,14 @@ add_library(arangoserver STATIC
   RestServer/SupervisorOptionsProvider.cpp
   RestServer/SystemDatabaseFeature.cpp
   RestServer/TemporaryStorageFeature.cpp
+  RestServer/TemporaryStorageOptionsProvider.cpp
   RestServer/TimeZoneFeature.cpp
   RestServer/TtlFeature.cpp
+  RestServer/TtlOptionsProvider.cpp
+  RestServer/TtlProperties.cpp
   RestServer/UpgradeFeature.cpp
   VectorIndex/AutoTuner.cpp
+  RestServer/UpgradeOptionsProvider.cpp
   VectorIndex/VectorIndexFeature.cpp
   VectorIndex/VectorIndexBuildManager.cpp
   VectorIndex/VectorIndexOptionsProvider.cpp
