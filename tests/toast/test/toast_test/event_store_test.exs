@@ -560,7 +560,6 @@ defmodule ToastTest.EventStoreTest do
                  :deployments,
                  :events,
                  :infrastructure_issues,
-                 :netstat_snapshots,
                  :servers,
                  :timeout_kills,
                  :unexpected_crashes
@@ -571,37 +570,6 @@ defmodule ToastTest.EventStoreTest do
       assert snapshot.timeout_kills == EventStore.timeout_kills()
       assert snapshot.deployments == EventStore.deployments()
       assert snapshot.servers == EventStore.servers()
-    end
-  end
-
-  describe "netstat_snapshots/0" do
-    test "returns empty list when no snapshots recorded" do
-      assert EventStore.netstat_snapshots() == []
-    end
-
-    test "collects netstat_snapshot events in chronological order" do
-      t1 = to_us(~U[2026-03-09 10:00:00Z])
-      t2 = to_us(~U[2026-03-09 10:01:00Z])
-
-      EventStore.notify(%{
-        event: :netstat_snapshot,
-        total: 100,
-        timestamp: t1
-      })
-
-      EventStore.notify(%{
-        event: :netstat_snapshot,
-        total: 500,
-        timestamp: t2
-      })
-
-      snapshots = EventStore.netstat_snapshots()
-      assert length(snapshots) == 2
-      assert [first, second] = snapshots
-      assert first.total == 100
-      assert first.timestamp == t1
-      assert second.total == 500
-      assert second.timestamp == t2
     end
   end
 

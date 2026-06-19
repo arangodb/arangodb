@@ -136,7 +136,7 @@ defmodule ToastTest.PostExecution do
 
   defp collect_artifacts(ctx) do
     servers = build_servers(ctx.snapshot)
-    opts = [coredump_dir: ctx.config.coredump_dir, not_before: ctx.test_data.started_at]
+    opts = [coredump_dir: ctx.config.coredump_dir, not_before: ctx.windows.suite.started_at]
     put_enriched(ctx, :artifacts, __MODULE__.ArtifactCollector.collect(servers, opts))
   end
 
@@ -240,6 +240,7 @@ defmodule ToastTest.PostExecution do
   defp build_and_write(ctx) do
     suite_result =
       SuiteResult.build(ctx.test_data, ctx.issues,
+        windows: ctx.windows,
         warnings: ctx.warnings,
         deployments: ctx.deployments,
         coredumps: ctx.coredumps,
@@ -291,6 +292,8 @@ defmodule ToastTest.PostExecution do
     end
   end
 
+  # Flatten the per-deployment server maps into one keyed by server_id.
+  # (server_ids are globally unique within a run)
   defp build_servers(snapshot) do
     snapshot.servers
     |> Map.values()

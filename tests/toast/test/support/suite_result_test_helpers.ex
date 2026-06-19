@@ -35,42 +35,40 @@ defmodule ToastTest.SuiteResultTestHelpers do
   @test2_started_at ~U[2026-03-09 10:01:01Z]
   @test2_finished_at ~U[2026-03-09 10:02:00Z]
 
-  def suite_started_at, do: @suite_started_at
-  def suite_finished_at, do: @suite_finished_at
-  def mod_started_at, do: @mod_started_at
-  def mod_finished_at, do: @mod_finished_at
-  def setup_finished_at, do: @setup_finished_at
-  def teardown_started_at, do: @teardown_started_at
-  def test1_started_at, do: @test1_started_at
-  def test1_finished_at, do: @test1_finished_at
+  # All timestamps are microseconds since the epoch — the unified representation
+  # used by the event stream, TimeWindows, and SuiteResult.
+  def suite_started_at, do: us(@suite_started_at)
+  def suite_finished_at, do: us(@suite_finished_at)
+  def mod_started_at, do: us(@mod_started_at)
+  def mod_finished_at, do: us(@mod_finished_at)
+  def setup_finished_at, do: us(@setup_finished_at)
+  def teardown_started_at, do: us(@teardown_started_at)
+  def test1_started_at, do: us(@test1_started_at)
+  def test1_finished_at, do: us(@test1_finished_at)
+  def test2_started_at, do: us(@test2_started_at)
+  def test2_finished_at, do: us(@test2_finished_at)
 
+  defp us(dt), do: DateTime.to_unix(dt, :microsecond)
+
+  # Collector-shape test_data: outcomes/durations/tags only. Module and per-test
+  # time windows live in `build_windows/0` and are attached by `SuiteResult.build`.
   def build_test_data(overrides \\ %{}) do
     defaults = %{
       suite: "smoke",
-      started_at: @suite_started_at,
-      finished_at: @suite_finished_at,
       times_us: %{async: 0, load: 5000, run: 300_000_000},
       modules: %{
         FakeModule => %{
-          started_at: @mod_started_at,
-          finished_at: @mod_finished_at,
-          setup_finished_at: @setup_finished_at,
-          teardown_started_at: @teardown_started_at,
           tests: [
             %{
               name: :"test passes",
               outcome: :passed,
               duration_us: 58_000_000,
-              started_at: @test1_started_at,
-              finished_at: @test1_finished_at,
               tags: %{file: "test/fake_test.exs", line: 10}
             },
             %{
               name: :"test fails",
               outcome: :failed,
               duration_us: 59_000_000,
-              started_at: @test2_started_at,
-              finished_at: @test2_finished_at,
               tags: %{file: "test/fake_test.exs", line: 20}
             }
           ]
@@ -79,6 +77,31 @@ defmodule ToastTest.SuiteResultTestHelpers do
     }
 
     Map.merge(defaults, overrides)
+  end
+
+  # Event-derived windows matching the default `build_test_data/1` modules.
+  def build_windows do
+    %{
+      suite: %{started_at: suite_started_at(), finished_at: suite_finished_at()},
+      modules: %{
+        FakeModule => %{
+          started_at: mod_started_at(),
+          finished_at: mod_finished_at(),
+          setup_finished_at: setup_finished_at(),
+          teardown_started_at: teardown_started_at()
+        }
+      },
+      tests: %{
+        {FakeModule, :"test passes"} => %{
+          started_at: test1_started_at(),
+          finished_at: test1_finished_at()
+        },
+        {FakeModule, :"test fails"} => %{
+          started_at: test2_started_at(),
+          finished_at: test2_finished_at()
+        }
+      }
+    }
   end
 
   def build_issues do
@@ -118,6 +141,7 @@ defmodule ToastTest.SuiteResultTestHelpers do
     deployments = Keyword.get(opts, :deployments, %{})
 
     ToastTest.SuiteResult.build(test_data, issues,
+      windows: Keyword.get(opts, :windows, build_windows()),
       events: events,
       deployments: deployments
     )

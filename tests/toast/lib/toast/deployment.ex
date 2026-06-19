@@ -248,6 +248,8 @@ defmodule Toast.Deployment do
     id = Keyword.get_lazy(opts, :id, fn -> generate_id(mode) end)
     Logger.info("Starting #{mode} deployment (deployment_dir=#{deployment_dir})")
 
+    # Stamped onto :deployment_starting so post-execution analysis can trace a
+    # deployment back to the test/suite code that started it.
     stacktrace = capture_caller_stacktrace()
 
     listener = Keyword.get(opts, :event_listener, DefaultEventListener)
@@ -299,6 +301,12 @@ defmodule Toast.Deployment do
   defp build_specs(:cluster, config, id, deployment_dir),
     do: Toast.Deployment.Factory.build_cluster(config, id, deployment_dir)
 
+  # Every server_id embeds this deployment id (single-server: server_id ==
+  # deployment_id; cluster: "<deployment_id>-<role>-<index>", see Factory). The
+  # deployment number comes from a process-monotonic counter, so deployment ids
+  # — and the server_ids derived from them — are globally unique within a run.
+  # Post-execution relies on this to merge per-deployment servers into one flat
+  # map keyed by server_id (see PostExecution.build_servers/1).
   @doc "Generate a unique deployment ID for the given mode."
   @spec generate_id(:single_server | :cluster) :: String.t()
   def generate_id(:single_server), do: "single-#{next_deployment_number()}"

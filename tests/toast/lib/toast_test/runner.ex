@@ -29,6 +29,7 @@ defmodule ToastTest.Runner do
 
   alias ToastTest.ExUnitCompat, as: Compat
   alias ToastTest.Abort
+  alias ToastTest.Runner.Events
 
   require Logger
 
@@ -639,7 +640,7 @@ defmodule ToastTest.Runner do
 
         # Extend prev_test's attribution window to now, so any crash whose
         # :DOWN arrived during the barrier wait still attributes to it.
-        __MODULE__.Events.between_tests_finished(prev_test.module, prev_test.name)
+        Events.between_tests_finished(prev_test.module, prev_test.name)
 
         result
     end
@@ -649,7 +650,7 @@ defmodule ToastTest.Runner do
 
   defp record_netstat_baseline(tool, label) do
     total = Toast.Deployment.Netstat.count_sockets(tool)
-    __MODULE__.Events.netstat_snapshot(total, label)
+    Events.netstat_snapshot(total, label)
     total
   end
 
@@ -658,12 +659,12 @@ defmodule ToastTest.Runner do
   defp check_netstat(deployment, {tool, baseline}) do
     case Toast.Deployment.Netstat.check(deployment, tool, baseline) do
       {:ok, total} ->
-        __MODULE__.Events.netstat_snapshot(total)
+        Events.netstat_snapshot(total)
         :ok
 
       {:port_exhaustion, detail} ->
-        __MODULE__.Events.netstat_snapshot(detail.total)
-        __MODULE__.Events.infrastructure_issue(:port_exhaustion, detail)
+        Events.netstat_snapshot(detail.total)
+        Events.infrastructure_issue(:port_exhaustion, detail)
 
         kind_label = if detail.kind == :deployment, do: "Deployment", else: "System"
 
@@ -734,7 +735,7 @@ defmodule ToastTest.Runner do
     :erlang.system_flag(:backtrace_depth, Keyword.fetch!(opts, :stacktrace_depth))
 
     start_time = System.monotonic_time()
-    Compat.suite_started(pipeline.manager, opts)
+    Events.suite_started(pipeline.manager, opts)
 
     __MODULE__.TestExecution.run_modules(config, test_modules)
 
@@ -783,7 +784,7 @@ defmodule ToastTest.Runner do
     opts = normalize_opts(Keyword.merge(ExUnit.configuration(), ex_unit_opts))
     suite_name = derive_suite_name(suite_module, mode)
     pipeline = start_event_pipeline(opts, suite_name)
-    Compat.suite_started(pipeline.manager, opts)
+    Events.suite_started(pipeline.manager, opts)
 
     for module <- test_modules, do: emit_fn.(pipeline.manager, module)
 
@@ -791,7 +792,7 @@ defmodule ToastTest.Runner do
   end
 
   defp finish_event_pipeline(%Pipeline{} = pipeline, times_us) do
-    Compat.suite_finished(pipeline.manager, times_us)
+    Events.suite_finished(pipeline.manager, times_us)
     stats = Compat.stats(pipeline.stats_pid)
     test_data = ToastTest.ResultCollector.get_data(pipeline.result_collector_pid)
     Compat.stop(pipeline.manager)

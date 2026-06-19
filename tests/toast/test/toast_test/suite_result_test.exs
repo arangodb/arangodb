@@ -42,7 +42,7 @@ defmodule ToastTest.SuiteResultTest do
       assert result.suite == "smoke"
     end
 
-    test "populates timestamps from test_data" do
+    test "populates suite timestamps from the suite window" do
       result = build_suite_result()
 
       assert result.started_at == suite_started_at()
@@ -60,6 +60,29 @@ defmodule ToastTest.SuiteResultTest do
 
       assert map_size(result.modules) == 1
       assert %{tests: [_, _]} = result.modules[FakeModule]
+    end
+
+    test "attaches module and test time windows from the windows option" do
+      result = build_suite_result()
+      mod = result.modules[FakeModule]
+
+      assert mod.started_at == mod_started_at()
+      assert mod.finished_at == mod_finished_at()
+      assert mod.setup_finished_at == setup_finished_at()
+      assert mod.teardown_started_at == teardown_started_at()
+
+      passed = Enum.find(mod.tests, &(&1.name == :"test passes"))
+      assert passed.started_at == test1_started_at()
+      assert passed.finished_at == test1_finished_at()
+    end
+
+    test "module and test timestamps are nil when no windows are given" do
+      result = SuiteResult.build(build_test_data(), [])
+      mod = result.modules[FakeModule]
+
+      assert mod.started_at == nil
+      assert mod.setup_finished_at == nil
+      assert Enum.all?(mod.tests, &(&1.started_at == nil and &1.finished_at == nil))
     end
 
     test "populates issues" do
@@ -116,19 +139,8 @@ defmodule ToastTest.SuiteResultTest do
       modules =
         build_test_data().modules
         |> Map.put(OtherModule, %{
-          started_at: mod_started_at(),
-          finished_at: mod_finished_at(),
-          setup_finished_at: nil,
-          teardown_started_at: nil,
           tests: [
-            %{
-              name: :"test other",
-              outcome: :skipped,
-              duration_us: 0,
-              started_at: test1_started_at(),
-              finished_at: test1_finished_at(),
-              tags: %{}
-            }
+            %{name: :"test other", outcome: :skipped, duration_us: 0, tags: %{}}
           ]
         })
 
@@ -179,8 +191,8 @@ defmodule ToastTest.SuiteResultTest do
         SuiteResult.write_outcomes_json(result, dir)
 
         decoded = read_json!(dir, "outcomes.json")
-        assert decoded["started_at"] == "2026-03-09T10:00:00Z"
-        assert decoded["finished_at"] == "2026-03-09T10:05:00Z"
+        assert decoded["started_at"] == "2026-03-09T10:00:00.000000Z"
+        assert decoded["finished_at"] == "2026-03-09T10:05:00.000000Z"
       end)
     end
 
@@ -228,18 +240,12 @@ defmodule ToastTest.SuiteResultTest do
     test "handles all outcome types in summary" do
       modules = %{
         AllOutcomes => %{
-          started_at: mod_started_at(),
-          finished_at: mod_finished_at(),
-          setup_finished_at: nil,
-          teardown_started_at: nil,
           tests:
             for {outcome, i} <- Enum.with_index([:passed, :failed, :skipped, :excluded, :invalid]) do
               %{
                 name: :"test #{outcome}",
                 outcome: outcome,
                 duration_us: 1000 * (i + 1),
-                started_at: test1_started_at(),
-                finished_at: test1_finished_at(),
                 tags: %{}
               }
             end

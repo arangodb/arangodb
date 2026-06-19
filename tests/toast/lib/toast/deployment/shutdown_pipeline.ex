@@ -139,7 +139,7 @@ defmodule Toast.Deployment.ShutdownPipeline do
       %ServerInstance{server_pid: pid} when pid != nil ->
         result = ServerProcess.stop(pid, timeout)
         DynamicSupervisor.terminate_child(ProcessSupervisor, pid)
-        Events.server_stopped(state.event_listener, state.id, server_id, server.pid)
+        Events.server_stopped(state.event_listener, state.id, server_id, server.pid, :shutdown)
 
         case result do
           :escalated ->

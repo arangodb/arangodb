@@ -246,8 +246,9 @@ defmodule Mix.Tasks.Toast.Analyze.Detail.Body do
 
   defp build_test_timeline(modules) do
     for {mod, %{tests: tests}} <- modules,
-        %{finished_at: %DateTime{} = finished_at} = test <- tests do
-      {DateTime.to_unix(finished_at, :microsecond), "#{inspect(mod)}.#{test.name}"}
+        %{finished_at: finished_at} = test <- tests,
+        not is_nil(finished_at) do
+      {finished_at, "#{inspect(mod)}.#{test.name}"}
     end
     |> Enum.sort_by(&elem(&1, 0))
   end
@@ -279,7 +280,7 @@ defmodule Mix.Tasks.Toast.Analyze.Detail.Body do
         if(info.os_pid, do: "PID #{info.os_pid}"),
         Issues.format_signal(info.signal),
         if(info.exit_status, do: "exit_status: #{info.exit_status}"),
-        if(match?(%DateTime{}, info.timestamp), do: "at: #{DateTime.to_iso8601(info.timestamp)}")
+        Issues.format_timestamp(info.timestamp)
       ]
       |> Toast.Utils.compact()
 

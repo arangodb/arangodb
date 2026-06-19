@@ -101,11 +101,22 @@ defmodule Toast.Deployment.Events do
     emit(listener, deployment_id, :server_started, payload)
   end
 
-  @spec server_stopped(listener(), deployment_id(), String.t(), non_neg_integer() | nil) :: :ok
-  def server_stopped(listener, deployment_id, server_id, os_pid)
+  @typedoc "Why a server was intentionally stopped (carried by `:server_stopped`)."
+  @type stop_reason :: :requested | :restart | :shutdown
+
+  @spec server_stopped(
+          listener(),
+          deployment_id(),
+          String.t(),
+          non_neg_integer() | nil,
+          stop_reason()
+        ) ::
+          :ok
+  def server_stopped(listener, deployment_id, server_id, os_pid, reason)
       when is_atom(listener) and is_binary(deployment_id) and is_binary(server_id) and
-             (is_integer(os_pid) or is_nil(os_pid)) do
-    payload = %{server_id: server_id, pid: os_pid, reason: nil}
+             (is_integer(os_pid) or is_nil(os_pid)) and
+             reason in [:requested, :restart, :shutdown] do
+    payload = %{server_id: server_id, pid: os_pid, reason: reason}
     emit(listener, deployment_id, :server_stopped, payload)
   end
 

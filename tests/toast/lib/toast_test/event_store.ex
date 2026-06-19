@@ -79,12 +79,6 @@ defmodule ToastTest.EventStore do
     snapshot().timeout_kills
   end
 
-  @doc "Return netstat snapshot events in chronological order."
-  @spec netstat_snapshots() :: [map()]
-  def netstat_snapshots do
-    snapshot().netstat_snapshots
-  end
-
   @doc "Return infrastructure issue events in chronological order."
   @spec infrastructure_issues() :: [map()]
   def infrastructure_issues do

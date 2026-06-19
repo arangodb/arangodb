@@ -79,8 +79,9 @@ defmodule Mix.Tasks.Toast.Analyze.Data do
 
   # --- Formatting helpers used by multiple subcommands ---
 
-  def fmt_dt(%DateTime{} = dt), do: DateTime.to_iso8601(dt)
-  def fmt_dt(us) when is_integer(us), do: us |> DateTime.from_unix!(:microsecond) |> fmt_dt()
+  @doc "Format a microsecond timestamp as an ISO8601 string."
+  def fmt_dt(us) when is_integer(us),
+    do: us |> DateTime.from_unix!(:microsecond) |> DateTime.to_iso8601()
 
   def format_scope(%{scope: scope} = issue) do
     base = Issues.format_scope(scope) || ":suite"
@@ -121,12 +122,8 @@ defmodule Mix.Tasks.Toast.Analyze.Data do
     case modules do
       %{^mod => %{tests: tests}} ->
         case Enum.find(tests, &(&1.name == name)) do
-          %{started_at: %DateTime{} = s, finished_at: %DateTime{} = f} ->
-            Map.put(
-              issue,
-              :time_bounds,
-              {DateTime.to_unix(s, :microsecond), DateTime.to_unix(f, :microsecond)}
-            )
+          %{started_at: s, finished_at: f} when is_integer(s) and is_integer(f) ->
+            Map.put(issue, :time_bounds, {s, f})
 
           _ ->
             Map.put(issue, :time_bounds, nil)

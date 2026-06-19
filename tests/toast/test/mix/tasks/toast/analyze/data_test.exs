@@ -147,9 +147,9 @@ defmodule Mix.Tasks.Toast.Analyze.DataTest do
   end
 
   describe "attach_time_bounds via collect_issues/2 — test_failure clause" do
-    test "test_failure with matching module and test with DateTime bounds sets time_bounds tuple" do
-      started = ~U[2026-01-01 10:00:00Z]
-      finished = ~U[2026-01-01 10:00:05Z]
+    test "test_failure with matching module and µs bounds sets time_bounds tuple" do
+      started = DateTime.to_unix(~U[2026-01-01 10:00:00Z], :microsecond)
+      finished = DateTime.to_unix(~U[2026-01-01 10:00:05Z], :microsecond)
 
       issue = %{type: :test_failure, scope: {:test, MyMod, :"test something"}}
 
@@ -163,9 +163,7 @@ defmodule Mix.Tasks.Toast.Analyze.DataTest do
 
       [result] = Data.collect_issues([minimal_result([issue], modules)], [])
 
-      expected_start = DateTime.to_unix(started, :microsecond)
-      expected_end = DateTime.to_unix(finished, :microsecond)
-      assert result.time_bounds == {expected_start, expected_end}
+      assert result.time_bounds == {started, finished}
     end
 
     test "test_failure with no matching module sets time_bounds to nil" do

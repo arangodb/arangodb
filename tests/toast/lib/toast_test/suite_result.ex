@@ -75,8 +75,8 @@ defmodule ToastTest.SuiteResult do
   @type t :: %__MODULE__{
           version: pos_integer(),
           suite: String.t(),
-          started_at: DateTime.t(),
-          finished_at: DateTime.t() | nil,
+          started_at: Toast.timestamp(),
+          finished_at: Toast.timestamp() | nil,
           times_us: %{
             async: non_neg_integer() | nil,
             load: non_neg_integer() | nil,
@@ -93,19 +93,23 @@ defmodule ToastTest.SuiteResult do
         }
 
   @type module_result :: %{
-          started_at: DateTime.t(),
-          finished_at: DateTime.t(),
-          setup_finished_at: DateTime.t() | nil,
-          teardown_started_at: DateTime.t() | nil,
+          started_at: Toast.timestamp() | nil,
+          finished_at: Toast.timestamp() | nil,
+          setup_finished_at: Toast.timestamp() | nil,
+          teardown_started_at: Toast.timestamp() | nil,
           tests: [test_result()]
         }
 
+  # `started_at`/`finished_at` are the event-derived attribution window — test
+  # start through its between-tests barrier — not `started_at + duration_us`.
+  # `duration_us` is ExUnit's own measurement of the test body; the window is
+  # generally wider. Use `duration_us` for "how long", the window for "when".
   @type test_result :: %{
           name: atom(),
           outcome: :passed | :failed | :skipped | :excluded | :invalid | :invalidated,
           duration_us: non_neg_integer(),
-          started_at: DateTime.t() | nil,
-          finished_at: DateTime.t() | nil,
+          started_at: Toast.timestamp() | nil,
+          finished_at: Toast.timestamp() | nil,
           tags: map()
         }
 
@@ -136,15 +140,26 @@ defmodule ToastTest.SuiteResult do
     pcap_path: nil
   ]
 
+  @empty_module_window %{
+    started_at: nil,
+    finished_at: nil,
+    setup_finished_at: nil,
+    teardown_started_at: nil
+  }
+
+  @empty_windows %{modules: %{}, tests: %{}, suite: %{started_at: nil, finished_at: nil}}
+
   @spec build(ToastTest.ResultCollector.test_data(), [issue()], keyword()) :: t()
   def build(test_data, issues, opts \\ []) do
+    windows = Map.merge(@empty_windows, Keyword.get(opts, :windows, %{}))
+
     %__MODULE__{
       version: 1,
       suite: test_data.suite,
-      started_at: test_data.started_at,
-      finished_at: test_data.finished_at,
+      started_at: windows.suite.started_at,
+      finished_at: windows.suite.finished_at,
       times_us: test_data.times_us || %{async: nil, load: nil, run: 0},
-      modules: test_data.modules,
+      modules: attach_time_windows(test_data.modules, windows),
       issues: issues,
       deployments: Keyword.get(opts, :deployments, %{}),
       coredumps: Keyword.get(opts, :coredumps, []),
@@ -153,6 +168,28 @@ defmodule ToastTest.SuiteResult do
       traffic: Keyword.get(opts, :traffic, []),
       pcap_path: Keyword.get(opts, :pcap_path)
     }
+  end
+
+  # Module/test display timestamps come from the event-derived TimeWindows — the
+  # single source also used for crash attribution — not from the collector.
+  defp attach_time_windows(modules, windows) do
+    Map.new(modules, fn {mod, module_result} ->
+      window = Map.get(windows.modules, mod, @empty_module_window)
+
+      {mod,
+       %{
+         started_at: window.started_at,
+         finished_at: window.finished_at,
+         setup_finished_at: window.setup_finished_at,
+         teardown_started_at: window.teardown_started_at,
+         tests: Enum.map(module_result.tests, &attach_test_window(&1, mod, windows.tests))
+       }}
+    end)
+  end
+
+  defp attach_test_window(test, mod, test_windows) do
+    window = Map.get(test_windows, {mod, test.name}, %{started_at: nil, finished_at: nil})
+    Map.merge(test, %{started_at: window.started_at, finished_at: window.finished_at})
   end
 
   @spec write_all(t(), Path.t()) :: :ok

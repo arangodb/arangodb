@@ -248,17 +248,11 @@ defmodule ToastTest.SuiteResult.JUnitXMLTest do
   test "handles suite with only passed tests and no issues" do
     modules = %{
       CleanModule => %{
-        started_at: mod_started_at(),
-        finished_at: mod_finished_at(),
-        setup_finished_at: nil,
-        teardown_started_at: nil,
         tests: [
           %{
             name: :"test ok",
             outcome: :passed,
             duration_us: 1000,
-            started_at: test1_started_at(),
-            finished_at: test1_finished_at(),
             tags: %{}
           }
         ]
@@ -279,25 +273,17 @@ defmodule ToastTest.SuiteResult.JUnitXMLTest do
   test "skipped and excluded tests have skipped elements" do
     modules = %{
       SkipModule => %{
-        started_at: mod_started_at(),
-        finished_at: mod_finished_at(),
-        setup_finished_at: nil,
-        teardown_started_at: nil,
         tests: [
           %{
             name: :"test skipped",
             outcome: :skipped,
             duration_us: 0,
-            started_at: test1_started_at(),
-            finished_at: test1_finished_at(),
             tags: %{}
           },
           %{
             name: :"test excluded",
             outcome: :excluded,
             duration_us: 0,
-            started_at: test1_started_at(),
-            finished_at: test1_finished_at(),
             tags: %{}
           }
         ]
@@ -318,17 +304,11 @@ defmodule ToastTest.SuiteResult.JUnitXMLTest do
   test "invalid tests have error elements" do
     modules = %{
       ErrorModule => %{
-        started_at: mod_started_at(),
-        finished_at: mod_finished_at(),
-        setup_finished_at: nil,
-        teardown_started_at: nil,
         tests: [
           %{
             name: :"test invalid",
             outcome: :invalid,
             duration_us: 500,
-            started_at: test1_started_at(),
-            finished_at: test1_finished_at(),
             tags: %{}
           }
         ]
@@ -349,17 +329,11 @@ defmodule ToastTest.SuiteResult.JUnitXMLTest do
   test "invalidated tests have skipped elements with crash message" do
     modules = %{
       InvalidatedModule => %{
-        started_at: mod_started_at(),
-        finished_at: mod_finished_at(),
-        setup_finished_at: nil,
-        teardown_started_at: nil,
         tests: [
           %{
             name: :"test invalidated",
             outcome: :invalidated,
             duration_us: 0,
-            started_at: test1_started_at(),
-            finished_at: test1_finished_at(),
             tags: %{}
           }
         ]
@@ -831,17 +805,11 @@ defmodule ToastTest.SuiteResult.JUnitXMLTest do
   test "xml special characters in test and module names are escaped" do
     modules = %{
       :"Elixir.Module<With>&\"Chars" => %{
-        started_at: mod_started_at(),
-        finished_at: mod_finished_at(),
-        setup_finished_at: nil,
-        teardown_started_at: nil,
         tests: [
           %{
             name: :"test <angle> & \"quote\"",
             outcome: :passed,
             duration_us: 1000,
-            started_at: test1_started_at(),
-            finished_at: test1_finished_at(),
             tags: %{}
           }
         ]
@@ -1000,33 +968,21 @@ defmodule ToastTest.SuiteResult.JUnitXMLTest do
   test "multiple modules are sorted by name in output" do
     modules = %{
       ZModule => %{
-        started_at: mod_started_at(),
-        finished_at: mod_finished_at(),
-        setup_finished_at: nil,
-        teardown_started_at: nil,
         tests: [
           %{
             name: :"test z",
             outcome: :passed,
             duration_us: 1000,
-            started_at: test1_started_at(),
-            finished_at: test1_finished_at(),
             tags: %{}
           }
         ]
       },
       AModule => %{
-        started_at: mod_started_at(),
-        finished_at: mod_finished_at(),
-        setup_finished_at: nil,
-        teardown_started_at: nil,
         tests: [
           %{
             name: :"test a",
             outcome: :passed,
             duration_us: 1000,
-            started_at: test1_started_at(),
-            finished_at: test1_finished_at(),
             tags: %{}
           }
         ]

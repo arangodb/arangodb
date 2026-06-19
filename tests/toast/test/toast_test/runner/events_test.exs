@@ -55,6 +55,18 @@ defmodule ToastTest.Runner.EventsTest do
       %{manager: manager}
     end
 
+    test "suite_started/2 records a suite_started event", %{manager: manager} do
+      Runner.Events.suite_started(manager, [])
+
+      assert recorded() == %{event: :suite_started}
+    end
+
+    test "suite_finished/2 records a suite_finished event", %{manager: manager} do
+      Runner.Events.suite_finished(manager, %{async: 0, load: nil, run: 1000})
+
+      assert recorded() == %{event: :suite_finished}
+    end
+
     test "module_started/4 records the module", %{manager: manager} do
       Runner.Events.module_started(manager, SomeMod, %ExUnit.TestModule{name: SomeMod, state: nil})
 

@@ -33,8 +33,8 @@ defmodule ToastTest.PostExecutionTest do
   alias ToastTest.{Config, EventStore}
   alias ToastTest.PostExecution
 
-  @started ~U[2026-03-09 10:00:00Z]
-  @finished ~U[2026-03-09 10:05:00Z]
+  @started DateTime.to_unix(~U[2026-03-09 10:00:00Z], :microsecond)
+  @finished DateTime.to_unix(~U[2026-03-09 10:05:00Z], :microsecond)
 
   setup do
     EventStore.clear()

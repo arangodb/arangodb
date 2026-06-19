@@ -30,8 +30,8 @@ defmodule ToastTest.SuiteResult.JSON do
 
     data = %{
       "suite" => result.suite,
-      "started_at" => DateTime.to_iso8601(result.started_at),
-      "finished_at" => if(result.finished_at, do: DateTime.to_iso8601(result.finished_at)),
+      "started_at" => iso8601(result.started_at),
+      "finished_at" => iso8601(result.finished_at),
       "duration_us" => result.times_us.run,
       "summary" => build_summary(tests),
       "tests" => Enum.map(tests, &encode_test/1)
@@ -63,6 +63,9 @@ defmodule ToastTest.SuiteResult.JSON do
       "duration_us" => test.duration_us
     }
   end
+
+  defp iso8601(nil), do: nil
+  defp iso8601(us), do: us |> DateTime.from_unix!(:microsecond) |> DateTime.to_iso8601()
 
   defp json_encoder(nil, _encoder, _opts), do: "null"
 

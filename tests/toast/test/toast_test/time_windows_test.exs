@@ -109,6 +109,25 @@ defmodule ToastTest.TimeWindowsTest do
       assert windows.modules[ModB].teardown_started_at == nil
     end
 
+    test "builds a suite window from suite_started/suite_finished events" do
+      suite_started = ~U[2026-03-09 10:00:00Z]
+      suite_finished = ~U[2026-03-09 10:09:30Z]
+
+      events =
+        [event(:suite_started, suite_started, %{})] ++
+          build_events() ++ [event(:suite_finished, suite_finished, %{})]
+
+      windows = TimeWindows.build(events)
+
+      assert windows.suite.started_at == to_us(suite_started)
+      assert windows.suite.finished_at == to_us(suite_finished)
+    end
+
+    test "suite window is nil when no suite events are present" do
+      windows = build_windows()
+      assert windows.suite == %{started_at: nil, finished_at: nil}
+    end
+
     test "test window finished_at extends to between_tests_finished when present" do
       barrier_finished = ~U[2026-03-09 10:01:04Z]
 

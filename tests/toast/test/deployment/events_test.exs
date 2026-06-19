@@ -110,16 +110,18 @@ defmodule Toast.Deployment.EventsTest do
            }
   end
 
-  test "server_stopped/4" do
-    Events.server_stopped(CaptureListener, "dep-1", "dbserver-1", 4242)
+  test "server_stopped/5 carries the stop reason" do
+    for reason <- [:requested, :restart, :shutdown] do
+      Events.server_stopped(CaptureListener, "dep-1", "dbserver-1", 4242, reason)
 
-    assert emitted() == %{
-             event: :server_stopped,
-             deployment_id: "dep-1",
-             server_id: "dbserver-1",
-             pid: 4242,
-             reason: nil
-           }
+      assert emitted() == %{
+               event: :server_stopped,
+               deployment_id: "dep-1",
+               server_id: "dbserver-1",
+               pid: 4242,
+               reason: reason
+             }
+    end
   end
 
   test "server_killed/4" do

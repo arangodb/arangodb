@@ -55,7 +55,8 @@ defmodule ToastTest.TimeWindows do
           modules: %{module() => module_window()},
           tests: %{
             {module(), atom()} => %{started_at: Toast.timestamp(), finished_at: Toast.timestamp()}
-          }
+          },
+          suite: %{started_at: Toast.timestamp() | nil, finished_at: Toast.timestamp() | nil}
         }
 
   @type module_window :: %{
@@ -68,8 +69,9 @@ defmodule ToastTest.TimeWindows do
   @doc """
   Build time windows from EventStore events.
 
-  Folds `:module_started`/`:module_finished`, `:test_started`/`:test_finished`,
-  and `:between_tests_finished` events into per-module and per-test windows;
+  Folds `:suite_started`/`:suite_finished` into a suite window,
+  `:module_started`/`:module_finished`, `:test_started`/`:test_finished`,
+  and `:between_tests_finished` into per-module and per-test windows;
   all other events are ignored.
 
   A test window extends to its `:between_tests_finished` timestamp when
@@ -81,12 +83,18 @@ defmodule ToastTest.TimeWindows do
   after it). Module setup ends at the first `:test_started`; teardown begins at
   the last `:test_finished`.
   """
+  @empty_suite_window %{started_at: nil, finished_at: nil}
+
   @spec build([map(), ...]) :: windows()
   def build([_ | _] = events) do
-    %{modules: modules, tests: tests} =
-      Enum.reduce(events, %{modules: %{}, tests: %{}}, &collect_event/2)
+    %{modules: modules, tests: tests, suite: suite} =
+      Enum.reduce(
+        events,
+        %{modules: %{}, tests: %{}, suite: @empty_suite_window},
+        &collect_event/2
+      )
 
-    %{modules: modules, tests: finalize_tests(tests, stream_end(events))}
+    %{modules: modules, tests: finalize_tests(tests, stream_end(events)), suite: suite}
   end
 
   # The last known instant in the run — the synthetic end for a still-running test.
@@ -127,6 +135,14 @@ defmodule ToastTest.TimeWindows do
 
   defp collect_event(%{event: :between_tests_finished, module: m, name: n, timestamp: ts}, acc) do
     %{acc | tests: Map.replace_lazy(acc.tests, {m, n}, &%{&1 | barrier_finished_at: ts})}
+  end
+
+  defp collect_event(%{event: :suite_started, timestamp: ts}, acc) do
+    %{acc | suite: %{acc.suite | started_at: ts}}
+  end
+
+  defp collect_event(%{event: :suite_finished, timestamp: ts}, acc) do
+    %{acc | suite: %{acc.suite | finished_at: ts}}
   end
 
   defp collect_event(_event, acc), do: acc

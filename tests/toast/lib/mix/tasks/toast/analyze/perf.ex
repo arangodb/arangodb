@@ -203,18 +203,9 @@ defmodule Mix.Tasks.Toast.Analyze.Perf do
   end
 
   defp module_timing(mod, data) do
-    total_us = datetime_diff_us(data.started_at, data.finished_at)
-
-    setup_us =
-      if data.setup_finished_at,
-        do: datetime_diff_us(data.started_at, data.setup_finished_at),
-        else: 0
-
-    teardown_us =
-      if data.teardown_started_at,
-        do: datetime_diff_us(data.teardown_started_at, data.finished_at),
-        else: 0
-
+    total_us = diff_us(data.started_at, data.finished_at)
+    setup_us = diff_us(data.started_at, data.setup_finished_at)
+    teardown_us = diff_us(data.teardown_started_at, data.finished_at)
     tests_us = max(total_us - setup_us - teardown_us, 0)
 
     %{
@@ -228,11 +219,8 @@ defmodule Mix.Tasks.Toast.Analyze.Perf do
     }
   end
 
-  defp datetime_diff_us(from, to) when not is_nil(from) and not is_nil(to) do
-    DateTime.diff(to, from, :microsecond) |> max(0)
-  end
-
-  defp datetime_diff_us(_, _), do: 0
+  defp diff_us(from, to) when not is_nil(from) and not is_nil(to), do: max(to - from, 0)
+  defp diff_us(_, _), do: 0
 
   defp phase_bar(stat, suite_total_us, color) when suite_total_us > 0 do
     total_cells = @bar_width

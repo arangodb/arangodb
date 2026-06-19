@@ -20,18 +20,23 @@
 ################################################################################
 
 defmodule ToastTest.ResultCollector do
-  @moduledoc "ExUnit formatter that collects test results with module-level timestamp tracking."
+  @moduledoc "ExUnit formatter that collects test outcomes, durations, and failures."
 
   use GenServer
 
   alias ToastTest.ResultCollector.State
 
+  @type collected_test :: %{
+          name: atom(),
+          outcome: atom(),
+          duration_us: non_neg_integer(),
+          tags: map()
+        }
+
   @type test_data :: %{
           suite: String.t() | nil,
-          started_at: DateTime.t(),
-          finished_at: DateTime.t() | nil,
           times_us: map() | nil,
-          modules: %{module() => ToastTest.SuiteResult.module_result()},
+          modules: %{module() => %{tests: [collected_test()]}},
           failures: [ExUnit.Test.t()]
         }
 
@@ -44,12 +49,12 @@ defmodule ToastTest.ResultCollector do
 
   @doc false
   def init(opts) do
-    {:ok, State.new(DateTime.utc_now(), opts)}
+    {:ok, State.new(opts)}
   end
 
   @doc false
   def handle_cast({event_type, payload}, state) do
-    {:noreply, State.apply_event(state, {event_type, payload, DateTime.utc_now()})}
+    {:noreply, State.apply_event(state, {event_type, payload})}
   end
 
   @doc false

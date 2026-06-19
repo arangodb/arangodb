@@ -443,7 +443,7 @@ defmodule Toast.Deployment.Controller do
       end,
       state: [operational_state: :stopped, expecting_exit: true],
       notify: fn server ->
-        Events.server_stopped(acc.event_listener, acc.id, server_id, server.pid)
+        Events.server_stopped(acc.event_listener, acc.id, server_id, server.pid, :requested)
       end
     )
   end
@@ -487,7 +487,7 @@ defmodule Toast.Deployment.Controller do
   defp do_restart_server(server_id, acc, opts) do
     with {:ok, server} <- fetch_server(acc, server_id) do
       ServerLifecycle.stop_before_restart(server, timeout_factor: acc.config.timeout_factor)
-      Events.server_stopped(acc.event_listener, acc.id, server_id, server.pid)
+      Events.server_stopped(acc.event_listener, acc.id, server_id, server.pid, :restart)
 
       acc =
         update_server(acc, server_id, operational_state: :stopped, expecting_exit: true)

@@ -44,6 +44,18 @@ defmodule ToastTest.Runner.Events do
   @type manager :: Compat.event_manager()
   @type timestamp_opt :: {:timestamp, non_neg_integer()}
 
+  @spec suite_started(manager(), keyword()) :: :ok
+  def suite_started(manager, opts) do
+    EventStore.notify(%{event: :suite_started})
+    Compat.suite_started(manager, opts)
+  end
+
+  @spec suite_finished(manager(), map()) :: :ok
+  def suite_finished(manager, times_us) do
+    Compat.suite_finished(manager, times_us)
+    EventStore.notify(%{event: :suite_finished})
+  end
+
   @spec module_started(manager(), module(), ExUnit.TestModule.t(), [timestamp_opt]) :: :ok
   def module_started(manager, module, test_module, opts \\ []) do
     EventStore.notify(maybe_timestamp(%{event: :module_started, module: module}, opts))
