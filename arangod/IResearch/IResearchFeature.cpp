@@ -1045,7 +1045,8 @@ void IResearchFeature::registerRecoveryHelper() {
   if (!_options.skipRecoveryItems.empty()) {
     LOG_TOPIC("e36f2", WARN, arangodb::iresearch::TOPIC)
         << "arangosearch recovery explicitly disabled via the '"
-        << IResearchOptionsProvider::SKIP_RECOVERY << "' startup option for the following links/indexes: "
+        << IResearchOptionsProvider::SKIP_RECOVERY
+        << "' startup option for the following links/indexes: "
         << _options.skipRecoveryItems
         << ". all affected links/indexes that are touched during "
            "recovery will be marked as out of sync and should be recreated "

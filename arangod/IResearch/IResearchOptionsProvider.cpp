@@ -65,9 +65,12 @@ uint32_t computeThreadsCount(uint32_t threads, uint32_t threadsLimit,
 
 }  // namespace
 
-const std::string IResearchOptionsProvider::SKIP_RECOVERY{"--arangosearch.skip-recovery"};
-const std::string IResearchOptionsProvider::CACHE_LIMIT{"--arangosearch.columns-cache-limit"};
-const std::string IResearchOptionsProvider::CACHE_ONLY_LEADER{"--arangosearch.columns-cache-only-leader"};
+const std::string IResearchOptionsProvider::SKIP_RECOVERY{
+    "--arangosearch.skip-recovery"};
+const std::string IResearchOptionsProvider::CACHE_LIMIT{
+    "--arangosearch.columns-cache-limit"};
+const std::string IResearchOptionsProvider::CACHE_ONLY_LEADER{
+    "--arangosearch.columns-cache-only-leader"};
 
 void IResearchOptionsProvider::declareOptions(
     std::shared_ptr<options::ProgramOptions> options, IResearchOptions& opts) {
