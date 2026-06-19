@@ -738,6 +738,7 @@ function optimizerRuleTestSuite () {
     testInsertsDistributeInputCalculationForInsert : function () {
       const query = "FOR k IN  ['1','2','3'] INSERT k IN  " + cn1;
 
+      const plan = db._createStatement({query: query, options: thisRuleEnabled}).explain().plan;
       const distributeNode = plan.nodes.find(n => n.type === "DistributeNode");
       const modificationNode = plan.nodes.find(n => n.type === "InsertNode");
       assertTrue(distributeNode);
