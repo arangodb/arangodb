@@ -92,6 +92,16 @@ function ahuacatlParseTestSuite () {
     assertEqual("LIKE", filter.name);
   }
 
+  function assertAtLeastLikeParse (query, count, negate) {
+    assertArrayLikeParse(query, negate);
+
+    let result = db._parse(query).ast;
+    let quantifier = result[0].subNodes[0].subNodes[0].subNodes[2].subNodes[0];
+
+    assertEqual("at least", quantifier.quantifier);
+    assertEqual(count, quantifier.subNodes[0].value);
+  }
+
   return {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -822,11 +832,11 @@ function ahuacatlParseTestSuite () {
     },
 
     testArrayAtLeastLike : function() {
-      assertArrayLikeParse('RETURN ["bar", "baz", "foo"] AT LEAST(2) LIKE "b%"', false);
+      assertAtLeastLikeParse('RETURN ["bar", "baz", "foo"] AT LEAST(2) LIKE "b%"', 2, false);
     },
 
     testArrayAtLeastNotLike : function() {
-      assertArrayLikeParse('RETURN ["bar", "baz", "foo"] AT LEAST(2) NOT LIKE "x%"', true);
+      assertAtLeastLikeParse('RETURN ["bar", "baz", "foo"] AT LEAST(2) NOT LIKE "x%"', 2, true);
     },
 
     testLikeFunctionCallParse : function() {

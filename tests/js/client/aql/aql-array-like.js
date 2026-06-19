@@ -101,6 +101,12 @@ function arrayLikeTestSuite () {
       assertEqual(shorthand, expansion);
     },
 
+    testEquivalentAtLeastBooleanExpansion : function () {
+      let shorthand = db._query('RETURN @values AT LEAST(2) LIKE "b%"', { values }).toArray();
+      let expansion = db._query('RETURN @values[? AT LEAST(2) FILTER CURRENT LIKE "b%"]', { values }).toArray();
+      assertEqual(shorthand, expansion);
+    },
+
     testAllLikeTrue : function () {
       let result = db._query('RETURN ["bar", "baz"] ALL LIKE "b%"').toArray();
       assertEqual([ true ], result);
@@ -131,6 +137,14 @@ function arrayLikeTestSuite () {
       assertEqual([ true ], result);
     },
 
+    testEmptyArrayAtLeastNotLike : function () {
+      let result = db._query('RETURN [] AT LEAST(0) NOT LIKE "x%"').toArray();
+      assertEqual([ true ], result);
+
+      result = db._query('RETURN [] AT LEAST(1) NOT LIKE "x%"').toArray();
+      assertEqual([ false ], result);
+    },
+
     testAtLeastNotLike : function () {
       let result = db._query('RETURN @values AT LEAST(2) NOT LIKE "x%"', { values }).toArray();
       assertEqual([ true ], result);
@@ -159,6 +173,27 @@ function arrayLikeTestSuite () {
         'FOR x IN [1, 2, 3] FILTER ["a", "b"] NONE LIKE "a%" RETURN x'
       ).toArray();
       assertEqual([], result);
+    },
+
+    testAtLeastFilterContext : function () {
+      let result = db._query(
+        'FOR x IN [1, 2, 3] FILTER ["a", "b", "ab"] AT LEAST(2) LIKE "a%" RETURN x'
+      ).toArray();
+      assertEqual([ 1, 2, 3 ], result);
+
+      result = db._query(
+        'FOR x IN [1, 2, 3] FILTER ["a", "b", "ab"] AT LEAST(3) LIKE "a%" RETURN x'
+      ).toArray();
+      assertEqual([], result);
+    },
+
+    testAtLeastBindParameters : function () {
+      let result = db._query('RETURN @values AT LEAST(@count) LIKE @pattern', {
+        values: values,
+        count: 2,
+        pattern: "b%"
+      }).toArray();
+      assertEqual([ true ], result);
     }
   };
 }

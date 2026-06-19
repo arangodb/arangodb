@@ -1337,7 +1337,7 @@ AstNode* Ast::createNodeBooleanExpansion(int64_t levels,
   return node;
 }
 
-/// @brief create an AST node for array ALL|ANY|NONE LIKE expressions
+/// @brief create an AST node for array ALL|ANY|NONE|AT LEAST LIKE expressions
 AstNode* Ast::createNodeArrayLikeOperator(AstNode const* lhs,
                                           AstNode const* pattern,
                                           AstNode const* quantifier,

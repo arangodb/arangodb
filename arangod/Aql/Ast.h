@@ -357,7 +357,7 @@ class Ast {
   AstNode* createNodeBooleanExpansion(int64_t, AstNode const*, AstNode const*,
                                       AstNode const*);
 
-  /// @brief create an AST node for array ALL|ANY|NONE LIKE expressions
+  /// @brief create an AST node for array ALL|ANY|NONE|AT LEAST LIKE expressions
   AstNode* createNodeArrayLikeOperator(AstNode const* lhs,
                                        AstNode const* pattern,
                                        AstNode const* quantifier, bool negate);
