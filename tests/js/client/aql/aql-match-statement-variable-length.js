@@ -245,13 +245,14 @@ function aqlMatchStatementVariableLengthTestSuite() {
           assertEqual(result, expected);
         },
         testMatchVariableLengthValueBindParameterRejected: function() {
-          // a value bind parameter (@name) cannot denote a collection / edge type
+          // a value bind parameter (@name) cannot denote a collection / edge type;
+          // only a collection bind parameter (@@name) is accepted. parsing fails.
           try {
             db._query("MATCH (v :vc1) -[ e : @ec * 1..1 ]-> (w :vc1) RETURN [v, e, w]",
                       { ec: "ec1" }, options).toArray();
             fail();
           } catch (err) {
-            assertEqual(err.errorNum, errors.ERROR_QUERY_BIND_PARAMETER_TYPE.code);
+            assertEqual(err.errorNum, errors.ERROR_QUERY_PARSE.code);
           }
         },
         testMatchVariableLengthDataSourceBindParameterCollections: function() {
