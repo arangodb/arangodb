@@ -29,14 +29,9 @@
 #include <mutex>
 #include <unordered_map>
 
-namespace rocksdb {
-struct CompactionJobInfo;
-class DB;
-}  // namespace rocksdb
-
 namespace arangodb {
 
-class RocksDBActivitiesListener : public rocksdb::EventListener {
+class RocksDBActivitiesListener final : public rocksdb::EventListener {
  public:
   RocksDBActivitiesListener() = default;
 
@@ -49,4 +44,5 @@ class RocksDBActivitiesListener : public rocksdb::EventListener {
   std::mutex _mutex;
   std::unordered_map<int, activities::GenericActivity::HandleType> _activities;
 };
+
 }  // namespace arangodb

@@ -23,7 +23,6 @@
 #include <gtest/gtest.h>
 #include <rocksdb/listener.h>
 #include <velocypack/Iterator.h>
-#include <boost/token_functions.hpp>
 
 #include "Activities/Registry.h"
 #include "Activities/RegistryGlobalVariable.h"
@@ -82,61 +81,62 @@ TEST_F(RocksDBActivitiesListenerTest,
   listener.OnCompactionCompleted(nullptr, info);
 }
 
-TEST_F(RocksDBActivitiesListenerTest, activity_data_contains_all_expected_fields) {
-    auto info = makeInfo(7, "documents", 2, 3);
-    info.input_files = {"sst1.sst", "sst2.sst", "sst3.sst"};
-    info.compaction_reason = rocksdb::CompactionReason::kManualCompaction;
-    listener.OnCompactionBegin(nullptr, info);
-    
-    auto acts = compactionActivities();
-    ASSERT_EQ(acts.size(), 1u);
-    EXPECT_EQ(acts[0].get("type").copyString(), "RocksDBCompaction");
-    EXPECT_TRUE(acts[0].get("parent").isNone());
-    
-    auto data = acts[0].get("data");
-    EXPECT_EQ(data.get("job_id").copyString(), "7");
-    EXPECT_EQ(data.get("column_family").copyString(), "documents");
-    EXPECT_EQ(data.get("base_input_level").copyString(), "2");
-    EXPECT_EQ(data.get("output_level").copyString(), "3");
-    EXPECT_EQ(data.get("input_files").copyString(), "3");
-    EXPECT_EQ(data.get("reason").copyString(), "ManualCompaction");
-    EXPECT_EQ(data.get("phase").copyString(), "running");
+TEST_F(RocksDBActivitiesListenerTest,
+       activity_data_contains_all_expected_fields) {
+  auto info = makeInfo(7, "documents", 2, 3);
+  info.input_files = {"sst1.sst", "sst2.sst", "sst3.sst"};
+  info.compaction_reason = rocksdb::CompactionReason::kManualCompaction;
+  listener.OnCompactionBegin(nullptr, info);
 
-    listener.OnCompactionCompleted(nullptr, info);
+  auto acts = compactionActivities();
+  ASSERT_EQ(acts.size(), 1u);
+  EXPECT_EQ(acts[0].get("type").copyString(), "RocksDBCompaction");
+  EXPECT_TRUE(acts[0].get("parent").isNone());
+
+  auto data = acts[0].get("data");
+  EXPECT_EQ(data.get("job_id").copyString(), "7");
+  EXPECT_EQ(data.get("column_family").copyString(), "documents");
+  EXPECT_EQ(data.get("base_input_level").copyString(), "2");
+  EXPECT_EQ(data.get("output_level").copyString(), "3");
+  EXPECT_EQ(data.get("input_files").copyString(), "3");
+  EXPECT_EQ(data.get("reason").copyString(), "ManualCompaction");
+  EXPECT_EQ(data.get("phase").copyString(), "running");
+
+  listener.OnCompactionCompleted(nullptr, info);
 }
 
-TEST_F(RocksDBActivitiesListenerTest, multiple_compactions_complete_out_of_order) {
-    listener.OnCompactionBegin(nullptr, makeInfo(1, "A"));
-    listener.OnCompactionBegin(nullptr, makeInfo(2, "B"));
-    EXPECT_EQ(compactionActivities().size(), 2u);
+TEST_F(RocksDBActivitiesListenerTest,
+       multiple_compactions_complete_out_of_order) {
+  listener.OnCompactionBegin(nullptr, makeInfo(1, "A"));
+  listener.OnCompactionBegin(nullptr, makeInfo(2, "B"));
+  EXPECT_EQ(compactionActivities().size(), 2u);
 
-    listener.OnCompactionCompleted(nullptr, makeInfo(2, "B"));
-    auto acts = compactionActivities();
-    ASSERT_EQ(acts.size(), 1u);
-    EXPECT_EQ(acts[0].get("data").get("job_id").copyString(), "1");
+  listener.OnCompactionCompleted(nullptr, makeInfo(2, "B"));
+  auto acts = compactionActivities();
+  ASSERT_EQ(acts.size(), 1u);
+  EXPECT_EQ(acts[0].get("data").get("job_id").copyString(), "1");
 
-    listener.OnCompactionCompleted(nullptr, makeInfo(1, "A"));
-    EXPECT_TRUE(compactionActivities().empty());
+  listener.OnCompactionCompleted(nullptr, makeInfo(1, "A"));
+  EXPECT_TRUE(compactionActivities().empty());
 }
 
 TEST_F(RocksDBActivitiesListenerTest, completion_without_begin_is_noop) {
-    listener.OnCompactionCompleted(nullptr, makeInfo(0));
-    EXPECT_TRUE(compactionActivities().empty());
+  listener.OnCompactionCompleted(nullptr, makeInfo(0));
+  EXPECT_TRUE(compactionActivities().empty());
 }
 
-TEST_F(RocksDBActivitiesListenerTest, duplecate_begin_for_same_job_id_keeps_first_activity) {
-    auto first = makeInfo(5, "first");
-    auto second = makeInfo(5, "second");
-    listener.OnCompactionBegin(nullptr, first);
-    listener.OnCompactionBegin(nullptr, second);
+TEST_F(RocksDBActivitiesListenerTest,
+       duplecate_begin_for_same_job_id_keeps_first_activity) {
+  auto first = makeInfo(5, "first");
+  auto second = makeInfo(5, "second");
+  listener.OnCompactionBegin(nullptr, first);
+  listener.OnCompactionBegin(nullptr, second);
 
-    auto acts = compactionActivities();
-    ASSERT_EQ(acts.size(), 1u);
-    EXPECT_EQ(acts[0].get("data").get("column_family").copyString(), "first");
+  auto acts = compactionActivities();
+  ASSERT_EQ(acts.size(), 1u);
+  EXPECT_EQ(acts[0].get("data").get("column_family").copyString(), "first");
 
-    listener.OnCompactionCompleted(nullptr, first);
+  listener.OnCompactionCompleted(nullptr, first);
 }
-
-
 
 }  // namespace arangodb

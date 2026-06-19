@@ -23,28 +23,37 @@
 #include "RocksDBActivitiesListener.h"
 
 #include "Activities/RegistryGlobalVariable.h"
+#include "Logger/LogMacros.h"
 
-#include <rocksdb/listener.h>
 #include <string>
 
 namespace arangodb {
 
 void RocksDBActivitiesListener::OnCompactionBegin(
     rocksdb::DB*, rocksdb::CompactionJobInfo const& info) {
-  auto handle = activities::make<activities::GenericActivity>(
-      "RocksDBCompaction",
-      activities::GenericActivityData{
-          {"job_id", std::to_string(info.job_id)},
-          {"column_family", info.cf_name},
-          {"base_input_level", std::to_string(info.base_input_level)},
-          {"output_level", std::to_string(info.output_level)},
-          {"input_files", std::to_string(info.input_files.size())},
-          {"reason", std::string(rocksdb::GetCompactionReasonString(
-                         info.compaction_reason))},
-          {"phase", "running"}});
+  try {
+    auto handle = activities::make<activities::GenericActivity>(
+        "RocksDBCompaction",
+        activities::GenericActivityData{
+            {"job_id", std::to_string(info.job_id)},
+            {"column_family", info.cf_name},
+            {"base_input_level", std::to_string(info.base_input_level)},
+            {"output_level", std::to_string(info.output_level)},
+            {"input_files", std::to_string(info.input_files.size())},
+            {"reason", std::string(rocksdb::GetCompactionReasonString(
+                           info.compaction_reason))}});
 
-  std::lock_guard guard(_mutex);
-  _activities.emplace(info.job_id, std::move(handle));
+    std::lock_guard guard(_mutex);
+    _activities.emplace(info.job_id, std::move(handle));
+  } catch (std::exception const& e) {
+    LOG_TOPIC("5a91c", WARN, Logger::ENGINES)
+        << "failed to create RocksDBCompaction activity for job "
+        << info.job_id << ": " << e.what();
+  } catch (...) {
+    LOG_TOPIC("5a91d", WARN, Logger::ENGINES)
+        << "failed to create RocksDBCompaction activity for job "
+        << info.job_id << ": unknown exception";
+  }
 }
 
 void RocksDBActivitiesListener::OnCompactionCompleted(

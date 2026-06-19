@@ -10,6 +10,7 @@ target_link_libraries(arango_tests_activities PRIVATE
   arango_activities_global
   arango_tests_basics 
   arango_async
+  arango_rocksdb
   gtest
 )
 
