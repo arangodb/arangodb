@@ -1,7 +1,10 @@
 import { Global } from "@emotion/react";
 import { JsonEditor } from "jsoneditor-react";
-import React, { useEffect } from "react";
+import useResizeObserver from "@react-hook/resize-observer";
+import React, { useEffect, useRef } from "react";
 import { useQueryContext } from "../QueryContextProvider";
+
+const AQL_EDITOR_CONTAINER_CLASS = "aql-editor-container";
 
 export const AQLEditor = ({
   value,
@@ -17,6 +20,11 @@ export const AQLEditor = ({
   autoFocus?: boolean;
 }) => {
   const { aqlJsonEditorRef } = useQueryContext();
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useResizeObserver(containerRef, () => {
+    (aqlJsonEditorRef.current as any)?.jsonEditor?.aceEditor?.resize();
+  });
 
   useEffect(() => {
     const editor = (aqlJsonEditorRef.current as any)?.jsonEditor;
@@ -58,12 +66,25 @@ export const AQLEditor = ({
   }, [autoFocus]);
   useSetupAQLEditor(aqlJsonEditorRef);
   return (
-    <>
+    <div ref={containerRef} className={AQL_EDITOR_CONTAINER_CLASS}
+    style={{
+      height: "100%",
+      width: "100%", 
+      minHeight: 0,
+      overflow: "hidden"
+    }}
+    >
       <Global
         styles={{
           ".jsoneditor div.jsoneditor-outer.has-status-bar": {
             padding: "0px",
             marginTop: "0px"
+          },
+          [`.${AQL_EDITOR_CONTAINER_CLASS} .jsoneditor,
+            .${AQL_EDITOR_CONTAINER_CLASS} .jsoneditor > div,
+            .${AQL_EDITOR_CONTAINER_CLASS} .jsoneditor-outer`]: {
+            height: "100%",
+            overflow: "hidden"
           }
         }}
       />
@@ -80,7 +101,7 @@ export const AQLEditor = ({
         }}
         mainMenuBar={false}
       />
-    </>
+    </div>
   );
 };
 
