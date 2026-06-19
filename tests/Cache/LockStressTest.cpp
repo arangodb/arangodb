@@ -53,9 +53,8 @@ TEST(CacheLockStressTest, test_transactionality_for_mixed_load) {
     scheduler.post(fn);
     return true;
   };
-  MockMetricsServer server;
-  SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
-  Manager manager(sharedPRNG, postFn, 16 * 1024 * 1024);
+  basics::SharedPRNG prng;
+  Manager manager(prng, postFn, 16 * 1024 * 1024);
   TransactionalStore store(&manager);
   std::uint64_t totalDocuments = 1000000;
   std::uint64_t readBatchSize = 10000;

@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, assertEqual, assertTrue, fail */
+/* global getOptions, assertTrue */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -35,13 +35,13 @@ if (getOptions === true) {
 const jsunity = require('jsunity');
 const internal = require('internal');
 const db = internal.db;
-const errors = internal.errors;
 const {
   randomNumberGeneratorFloat,
   generateSeed,
 } = require('@arangodb/testutils/seededRandom');
 const {
   generateDocs,
+  assertEnsureIndexResultUnusable,
 } = require('@arangodb/testutils/vector-index-common');
 
 const dbName = 'vectorMemoryLimitDb';
@@ -83,32 +83,23 @@ function vectorIndexMemoryLimitSuite() {
     },
 
     testTrainingReservoirHitsGlobalMemoryLimit: function () {
-      // inBackground:false makes ensureIndex block until the build manager
-      // finishes training; on failure the call throws synchronously with the
-      // real error, so we don't have to poll for state transitions.
-      try {
-        collection.ensureIndex({
-          name: 'vec_l2',
-          type: 'vector',
-          fields: ['vector'],
-          inBackground: false,
-          params: {
-            metric: 'l2',
-            dimension,
-            nLists,
-            numberOfDocsPerCentroid: docsPerCentroid,
-            trainingIterations: 10,
-          },
-        });
-        fail();
-      } catch (err) {
-        assertEqual(errors.ERROR_RESOURCE_LIMIT.code, err.errorNum,
-          'Expected ERROR_RESOURCE_LIMIT, got: ' +
-          err.errorNum + ' / ' + err.errorMessage);
-        assertTrue(/memory|resource/i.test(err.errorMessage),
-          'Expected error to mention memory/resource limit, got: ' +
-          err.errorMessage);
-      }
+      const result = collection.ensureIndex({
+        name: 'vec_l2',
+        type: 'vector',
+        fields: ['vector'],
+        inBackground: false,
+        params: {
+          metric: 'l2',
+          dimension,
+          nLists,
+          numberOfDocsPerCentroid: docsPerCentroid,
+          trainingIterations: 10,
+        },
+      });
+      assertEnsureIndexResultUnusable(result, 'reservoir exceeds memory limit');
+      assertTrue(/memory|resource/i.test(result.errorMessage),
+        'Expected training error to mention memory/resource limit, got: ' +
+        result.errorMessage);
     },
   };
 }

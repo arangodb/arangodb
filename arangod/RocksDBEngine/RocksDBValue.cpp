@@ -111,11 +111,25 @@ RocksDBValue RocksDBValue::VectorIndexValue(uint8_t const* data, size_t size) {
   return RocksDBValue(reinterpret_cast<char const*>(data), size);
 }
 
-RocksDBValue RocksDBValue::VectorIndexValue(
+RocksDBValue RocksDBValue::VectorIndexValueV1(
     RocksDBVectorIndexEntryValue const& entryValue) {
   velocypack::Builder builder;
   velocypack::serialize(builder, entryValue);
   return RocksDBValue(RocksDBEntryType::VectorVPackIndexValue, builder.slice());
+}
+
+RocksDBValue RocksDBValue::VectorIndexValueV2(
+    uint8_t const* encodedValue, size_t encodedSize,
+    velocypack::SharedSlice const& storedValues) {
+  RocksDBValue value(RocksDBEntryType::VectorVPackIndexValue);
+  auto storedSlice = storedValues.slice();
+  size_t const storedSize = static_cast<size_t>(storedSlice.byteSize());
+  value._buffer.reserve(encodedSize + storedSize);
+  value._buffer.append(reinterpret_cast<char const*>(encodedValue),
+                       encodedSize);
+  value._buffer.append(reinterpret_cast<char const*>(storedSlice.start()),
+                       storedSize);
+  return value;
 }
 
 RocksDBValue RocksDBValue::View(VPackSlice data) {
@@ -216,22 +230,28 @@ S2Point RocksDBValue::centroid(rocksdb::Slice const& s) {
       ::intToDouble(uint64FromPersistent(s.data() + sizeof(uint64_t) * 2)));
 }
 
-RocksDBVectorIndexEntryValue RocksDBValue::vectorIndexEntryValue(
-    RocksDBValue const& value) {
-  return vectorIndexEntryValue(std::string_view(value.string()));
-}
-
-RocksDBVectorIndexEntryValue RocksDBValue::vectorIndexEntryValue(
+RocksDBVectorIndexEntryValue RocksDBValue::vectorIndexEntryValueV1(
     rocksdb::Slice const& slice) {
-  return vectorIndexEntryValue(std::string_view(slice.data(), slice.size()));
+  TRI_ASSERT(slice.data() != nullptr);
+  VPackSlice vpack(reinterpret_cast<uint8_t const*>(slice.data()));
+  RocksDBVectorIndexEntryValue result;
+  velocypack::deserialize(vpack, result);
+  return result;
 }
 
-RocksDBVectorIndexEntryValue RocksDBValue::vectorIndexEntryValue(
-    std::string_view s) {
-  TRI_ASSERT(s.data() != nullptr);
-  VPackSlice slice(reinterpret_cast<uint8_t const*>(s.data()));
+RocksDBVectorIndexEntryValue RocksDBValue::vectorIndexEntryValueV2(
+    rocksdb::Slice const& slice, size_t codeSize) {
+  TRI_ASSERT(slice.data() != nullptr);
+  TRI_ASSERT(slice.size() >= codeSize);
+
+  uint8_t const* data = reinterpret_cast<uint8_t const*>(slice.data());
+  size_t storedSize = slice.size() - codeSize;
+
   RocksDBVectorIndexEntryValue result;
-  velocypack::deserialize(slice, result);
+  result.encodedValue.assign(data, data + codeSize);
+  velocypack::Buffer<uint8_t> buf;
+  buf.append(data + codeSize, storedSize);
+  result.storedValues = velocypack::SharedSlice{std::move(buf)};
   return result;
 }
 

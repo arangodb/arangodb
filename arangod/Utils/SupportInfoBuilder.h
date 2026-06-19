@@ -27,6 +27,15 @@
 
 namespace arangodb {
 
+class CpuUsageFeature;
+class DatabaseFeature;
+class EnvironmentFeature;
+class FileDescriptorsFeature;
+
+namespace metrics {
+class MetricsFeature;
+}  // namespace metrics
+
 namespace velocypack {
 class Builder;
 class Slice;
@@ -48,7 +57,11 @@ class SupportInfoBuilder {
                               velocypack::Slice infoSlice,
                               application_features::ApplicationServer& server);
   static void buildHostInfo(velocypack::Builder& result,
-                            application_features::ApplicationServer& server,
+                            EnvironmentFeature const& environment,
+                            metrics::MetricsFeature& metrics,
+                            FileDescriptorsFeature& fileDescriptors,
+                            CpuUsageFeature& cpuUsage,
+                            DatabaseFeature& databaseFeature,
                             bool isTelemetricsReq);
   static void normalizeKeyForTelemetrics(std::string& key);
 };

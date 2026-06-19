@@ -41,7 +41,8 @@ DataSourceRegistry::getDataSources() const {
 void DataSourceRegistry::removeDataSource(
     CrashHandlerDataSource const* dataSource) {
   std::lock_guard guard(_dataSourceMtx);
-  std::ranges::remove(_dataSources, dataSource);
+  auto const ret = std::ranges::remove(_dataSources, dataSource);
+  _dataSources.erase(ret.begin(), ret.end());
 }
 
 }  // namespace arangodb::crash_handler
