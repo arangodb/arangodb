@@ -27,6 +27,7 @@
 #include <string>
 #include <string_view>
 
+#include "Shell/ClientFeatureOptions.h"
 #include "Shell/ShellConsoleFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
@@ -155,44 +156,19 @@ class ClientFeature final : public HttpEndpointProvider {
   void readJwtToken();
   void loadJwtSecretFile();
 
+  ClientFeatureOptions _options;
+
   CommunicationFeaturePhase& _comm;
   ShellConsoleFeature* _console;
 
-  // protects most settings except codepage
   basics::ReadWriteLock mutable _settingsLock;
 
-  std::vector<std::string> _endpoints;
-  size_t const _maxNumEndpoints;
-
-  std::string _databaseName;
-  std::string _username;
-  std::string _password;
   std::string _jwtSecret;
-  std::string _jwtSecretFile;
-  std::string _jwtToken;
-  double _connectionTimeout;
-  double _requestTimeout;
-  double _jwtRenewalThreshold;  // seconds before expiry to renew JWT
-  uint64_t _maxPacketSize;
-  // if > 0, it means that request bodies >= this value will be
-  // sent our compressed.
-  uint64_t _compressRequestThreshold;
-  // only set at startup
-  uint64_t _sslProtocol;
   size_t _retries;
-
-  bool const _allowJwtSecret;
-  bool _authentication;
-  bool _askJwtSecret;
 
   bool _warn;
   bool _warnConnect;
   bool _haveServerPassword;
-  bool _forceJson;
-  // if true, all requests sent out will add an extra
-  // HTTP header "Accept-Encoding: deflate" to advertise that
-  // the remote can compress the response body.
-  bool _compressTransfer;
 };
 
 }  // namespace arangodb
