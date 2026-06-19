@@ -68,6 +68,7 @@
 #include "Aql/RegisterPlan.h"
 #include "Aql/Variable.h"
 #include "Aql/WalkerWorker.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 
 #include <absl/strings/str_cat.h>
@@ -406,8 +407,9 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan,
     case TRAVERSAL:
     case SHORTEST_PATH:
     case ENUMERATE_PATHS: {
-      if (basics::VelocyPackHelper::getBooleanValue(slice, "isLocalGraphNode",
-                                                    false)) {
+      if (slice.hasKey(StaticStrings::ProtoCollection) &&
+          basics::VelocyPackHelper::getBooleanValue(
+              slice, StaticStrings::IsLocalGraphNode, false)) {
         return createLocalGraphNode(plan, slice);
       }
       if (nodeType == TRAVERSAL) {
