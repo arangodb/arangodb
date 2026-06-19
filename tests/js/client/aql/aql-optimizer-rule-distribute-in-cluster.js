@@ -727,9 +727,10 @@ function optimizerRuleTestSuite () {
 
         const plan = db._createStatement({query: query, options: thisRuleEnabled}).explain().plan;
         const varAttribute = op === "RemoveNode" ? "inVariable" : "inKeyVariable";
-        const [distributeNode, modificationNode] = plan.nodes.filter(node => ["DistributeNode", op].includes(node.type));
-        assertEqual(distributeNode.type, "DistributeNode");
-        assertEqual(modificationNode.type, op);
+        const distributeNode = plan.nodes.find(n => n.type === "DistributeNode");
+        const modificationNode = plan.nodes.find(n => n.type === op);
+        assertTrue(distributeNode);
+        assertTrue(modificationNode);
         assertEqual(distributeNode.variable.id, modificationNode[varAttribute].id);
       });
     },
@@ -737,9 +738,10 @@ function optimizerRuleTestSuite () {
     testInsertsDistributeInputCalculationForInsert : function () {
       const query = "FOR k IN  ['1','2','3'] INSERT k IN  " + cn1;
 
-      const plan = db._createStatement({query: query, options: thisRuleEnabled}).explain().plan;
-      const [distributeNode, modificationNode] = plan.nodes.filter(node => ["DistributeNode", "InsertNode"].includes(node.type));
-      assertEqual(distributeNode.type, "DistributeNode");
+      const distributeNode = plan.nodes.find(n => n.type === "DistributeNode");
+      const modificationNode = plan.nodes.find(n => n.type === "InsertNode");
+      assertTrue(distributeNode);
+      assertTrue(modificationNode);
       assertEqual(modificationNode.type, "InsertNode");
       assertEqual(distributeNode.variable.id, modificationNode.inVariable.id);
     },
@@ -748,9 +750,10 @@ function optimizerRuleTestSuite () {
       const query = "FOR k IN  ['1','2','3'] UPSERT {_key: k} INSERT { miau: 42 } UPDATE { } IN  " + cn1;
 
       const plan = db._createStatement({query: query, options: thisRuleEnabled}).explain().plan;
-      const [distributeNode, modificationNode] = plan.nodes.filter(node => ["DistributeNode", "UpsertNode"].includes(node.type));
-      assertEqual(distributeNode.type, "DistributeNode");
-      assertEqual(modificationNode.type, "UpsertNode");
+      const distributeNode = plan.nodes.find(n => n.type === "DistributeNode");
+      const modificationNode = plan.nodes.find(n => n.type === "UpsertNode");
+      assertTrue(distributeNode);
+      assertTrue(modificationNode);
       assertEqual(distributeNode.variable.id, modificationNode.insertVariable.id);
     },
   };

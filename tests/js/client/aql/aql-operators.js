@@ -641,7 +641,10 @@ function ahuacatlOperatorsTestSuite () {
         let actual = db._query(q).next();
         let expected = v.ex;
         if (expected[0] === "{") {
-          const normalizeObject = value => JSON.stringify(JSON.parse(value), Object.keys(JSON.parse(value)).sort());
+          const normalizeObject = value => {
+            const parsed = JSON.parse(value);
+            return JSON.stringify(parsed, Object.keys(parsed).sort());
+           };
           expected = normalizeObject(expected);
           actual = normalizeObject(actual);
         }

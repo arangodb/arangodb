@@ -755,7 +755,6 @@ AqlValue Expression::executeSimpleExpressionObject(ExpressionContext& ctx,
     return AqlValue(AqlValueHintEmptyObject());
   }
 
-  // unified object assembly pipeline
   struct ObjectEntry {
     std::string key;
     AqlValue value;
@@ -828,7 +827,7 @@ AqlValue Expression::executeSimpleExpressionObject(ExpressionContext& ctx,
           // materialize attribute value into independent AqlValue
           AqlValue copiedValue(it.value());
 
-          addOrUpdateEntry(it.key().copyString(), copiedValue, false);
+          addOrUpdateEntry(it.key().copyString(), copiedValue, true);
         }
       } else if (spliceValue.isNull(true)) {
         // no-op
