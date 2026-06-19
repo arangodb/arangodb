@@ -1,11 +1,24 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
-* COR-564: Specify the WeightAttribute in the contained data vector.
-  WeightAttribute like:
-   OPTIONS { order: "weighted", weightAttribute: "Data.Weight" } backword compatibility
-   OPTIONS { order: "weighted", weightAttribute: ["Data.Weight"]} new implementation
-   OPTIONS { order: "weighted", weightAttribute: ["Data", "Weight"] } new implementation
+* COR-564: Allow sub-attribute as weightAttribute for traversal.
+  
+  The `weightAttribute` option for weighted traversals is no longer limited to
+  top-level document attributes. For an edge document like
+  `{ "Data": { "Weight": 3 } }`, you can use the value of the inner object by
+  specifying an array of strings as follows:
+
+  `OPTIONS { order: "weighted", weightAttribute: ["Data", "Weight"] }`
+
+  A `.` character is still interpreted as a literal dot to select the value of
+  a top-level document attribute, like `{ "Data.Weight": 6 }`:
+
+  `OPTIONS { order: "weighted", weightAttribute: ["Data.Weight"] }`
+
+  You can still pass a string as before for backward compatibility, which is
+  equivalent to the above example that selects a top-level attribute:
+
+  `OPTIONS { order: "weighted", weightAttribute: "Data.Weight" }
 
 * Upgraded included rclone to v1.74.3 with go1.25.11 and non-vulnerable
   dependencies.
