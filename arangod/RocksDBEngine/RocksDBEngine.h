@@ -39,7 +39,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Containers/FlatHashSet.h"
 #include "Metrics/Fwd.h"
-#include "Agency/ISortingPolicy.h"
+#include "ISortingPolicy.h"
 #include "Cache/ICacheManagerProvider.h"
 #include "Metrics/ICollector.h"
 #include "Replication2/ReplicatedLog/IReplicatedLogProvider.h"
@@ -180,9 +180,9 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
                 replication2::IReplicatedLogProvider* replicatedLogProvider,
                 RocksDBRecoveryManager const& rocksDbRecoveryManager,
                 IDatabaseProvider& databaseProvider,
-                IIndexCacheRefill& rocksDbIndexCacheRefillFeature,
+                IIndexCacheRefill& indexCacheRefill,
                 ICacheManagerProvider& cacheManagerProvider,
-                ISortingPolicy const& sortingPolicy);
+                rocksdb::ISortingPolicy const& sortingPolicy);
   ~RocksDBEngine();
 
   auto getDatabaseProvider() const -> IDatabaseProvider&;
@@ -620,9 +620,9 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   replication2::IReplicatedLogProvider* _replicatedLogProvider;
   RocksDBRecoveryManager const& _rocksDbRecoveryManager;
   IDatabaseProvider& _databaseProvider;
-  IIndexCacheRefill& _rocksDbIndexCacheRefillFeature;
+  IIndexCacheRefill& _indexCacheRefill;
   ICacheManagerProvider& _cacheManagerProvider;
-  ISortingPolicy const& _sortingPolicy;
+  rocksdb::ISortingPolicy const& _sortingPolicy;
   RocksDBOptionsProvider& _optionsProvider;
 
   metrics::ICollector& _metrics;

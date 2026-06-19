@@ -63,7 +63,7 @@ void RocksDBBackgroundThread::beginShutdown() {
 }
 
 void RocksDBBackgroundThread::run() {
-  auto& flushFeature = _engine.getFlushControl();
+  auto& flushControl = _engine.getFlushControl();
 
   double const startTime = TRI_microtime();
   uint64_t runsUntilSyncForced = 1;
@@ -85,7 +85,7 @@ void RocksDBBackgroundThread::run() {
 
     try {
       if (!isStopping()) {
-        flushFeature.releaseUnusedTicks();
+        flushControl.releaseUnusedTicks();
 
         // it is important that we wrap the sync operation inside a
         // try..catch of its own, because we still want the following

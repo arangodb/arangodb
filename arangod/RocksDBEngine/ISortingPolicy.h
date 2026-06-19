@@ -18,16 +18,15 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Julia Puget
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-namespace arangodb {
+namespace arangodb::rocksdb {
 
 struct ISortingPolicy {
   virtual ~ISortingPolicy() = default;
   virtual bool useLegacySorting() const noexcept = 0;
 };
 
-}  // namespace arangodb
+}  // namespace arangodb::rocksdb

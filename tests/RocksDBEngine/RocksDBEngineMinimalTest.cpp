@@ -27,7 +27,7 @@
 #include "Metrics/ICollector.h"
 
 // interface headers
-#include "Agency/ISortingPolicy.h"
+#include "RocksDBEngine/ISortingPolicy.h"
 #include "Cache/ICacheManagerProvider.h"
 #include "Replication2/ReplicatedLog/IReplicatedLogProvider.h"
 #include "RestServer/IDatabasePathProvider.h"
@@ -108,7 +108,7 @@ struct TestCacheManagerProvider final : ICacheManagerProvider {
   cache::Manager* manager() override { return nullptr; }
 };
 
-struct TestSortingPolicy final : ISortingPolicy {
+struct TestSortingPolicy final : rocksdb::ISortingPolicy {
   bool useLegacySorting() const noexcept override { return false; }
 };
 

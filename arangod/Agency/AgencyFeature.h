@@ -25,7 +25,7 @@
 
 #include "Agency/AgencyOptions.h"
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "Agency/ISortingPolicy.h"
+#include "RocksDBEngine/ISortingPolicy.h"
 
 namespace arangodb {
 namespace consensus {
@@ -33,7 +33,7 @@ class Agent;
 }
 
 class AgencyFeature : public application_features::ApplicationFeature,
-                      public ISortingPolicy {
+                      public arangodb::rocksdb::ISortingPolicy {
  public:
   static constexpr std::string_view name() { return "Agency"; }
 

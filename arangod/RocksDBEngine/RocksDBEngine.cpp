@@ -265,10 +265,9 @@ RocksDBEngine::RocksDBEngine(
     IFlushControl& flushControl, IDumpLimitsProvider const& dumpLimitsProvider,
     replication2::IReplicatedLogProvider* replicatedLogProvider,
     RocksDBRecoveryManager const& rocksDbRecoveryManager,
-    IDatabaseProvider& databaseProvider,
-    IIndexCacheRefill& rocksDbIndexCacheRefillFeature,
+    IDatabaseProvider& databaseProvider, IIndexCacheRefill& indexCacheRefill,
     ICacheManagerProvider& cacheManagerProvider,
-    ISortingPolicy const& sortingPolicy)
+    rocksdb::ISortingPolicy const& sortingPolicy)
     : StorageEngine(server, kEngineName, name(), typeid(RocksDBEngine),
                     std::make_unique<RocksDBIndexFactory>(server)),
       _databasePathProvider(databasePathProvider),
@@ -278,7 +277,7 @@ RocksDBEngine::RocksDBEngine(
       _replicatedLogProvider(replicatedLogProvider),
       _rocksDbRecoveryManager(rocksDbRecoveryManager),
       _databaseProvider(databaseProvider),
-      _rocksDbIndexCacheRefillFeature(rocksDbIndexCacheRefillFeature),
+      _indexCacheRefill(indexCacheRefill),
       _cacheManagerProvider(cacheManagerProvider),
       _sortingPolicy(sortingPolicy),
       _optionsProvider(optionsProvider),
@@ -3333,21 +3332,18 @@ void RocksDBEngine::loadReplicatedStates(TRI_vocbase_t& vocbase) {
 void RocksDBEngine::scheduleFullIndexRefill(std::string const& database,
                                             std::string const& collection,
                                             IndexId iid) {
-  _rocksDbIndexCacheRefillFeature.scheduleFullIndexRefill(database, collection,
-                                                          iid);
+  _indexCacheRefill.scheduleFullIndexRefill(database, collection, iid);
 }
 
 bool RocksDBEngine::autoRefillIndexCaches() const {
-  return _rocksDbIndexCacheRefillFeature.autoRefill();
+  return _indexCacheRefill.autoRefill();
 }
 
 bool RocksDBEngine::autoRefillIndexCachesOnFollowers() const {
-  return _rocksDbIndexCacheRefillFeature.autoRefillOnFollowers();
+  return _indexCacheRefill.autoRefillOnFollowers();
 }
 
-void RocksDBEngine::syncIndexCaches() {
-  _rocksDbIndexCacheRefillFeature.waitForCatchup();
-}
+void RocksDBEngine::syncIndexCaches() { _indexCacheRefill.waitForCatchup(); }
 
 auto RocksDBEngine::makeLogStorageMethods(
     replication2::LogId logId, uint64_t objectId, std::uint64_t vocbaseId,
