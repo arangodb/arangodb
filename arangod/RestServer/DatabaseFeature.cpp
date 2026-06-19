@@ -63,7 +63,6 @@
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/StorageEngine.h"
-#include "StorageEngine/StorageEngineFeature.h"
 #include "Transaction/OperationOrigin.h"
 #include "Utilities/NameValidator.h"
 #include "Utils/CollectionNameResolver.h"
@@ -284,7 +283,6 @@ DatabaseFeature::DatabaseFeature(
   startsAfter<ClusterEngine>();
   startsAfter<RocksDBEngine>();
   startsAfter<InitDatabaseFeature>();
-  startsAfter<StorageEngineFeature>();
   startsAfter<metrics::MetricsFeature>();
 }
 

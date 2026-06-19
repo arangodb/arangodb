@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen : 4000 */
-/* global assertEqual, arango */
+/* global */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -25,50 +25,52 @@
 // / @author Copyright 2018, ArangoDB Inc., Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
-const internal = require('internal');
 const jsunity = require('jsunity');
+const {assertEqual} = jsunity.jsUnity.assertions;
+const arango = require("@arangodb").arango;
+const db = require("@arangodb").db;
 let IM = global.instanceManager;
 
-const request = require('@arangodb/request');
-
-const db = require("@arangodb").db;
-
-const MOUNT = "/test";
-const serviceUrl = (url) => {
-  return url + "/_db/" + encodeURIComponent(db._name()) + MOUNT;
-};
+const path = "/_db/" + encodeURIComponent(db._name()) + "/test";
 const _ = require('lodash');
-const options = {
-  json: true
-};
-
-function getCoordinators() {
-  return IM.arangods.filter(arangod => {
-    return arangod.isFrontend(); }).map(arangod => {
-      return arangod.url;}).map(serviceUrl);
-}
 
 
 function foxxTestSuite () {
   return {
     setUp: () => {
+      IM.rememberConnection();
     },
-    tearDown: () => {},
+    tearDown: () => {
+      IM.reconnectMe();
+    },
 
     testServiceIsMounted: function () {
-      const serversToTest = getCoordinators();
-      const res = request.get(serversToTest[0], options);
-      assertEqual(200, res.statusCode);
-      assertEqual({hello: 'world'}, res.json);
+      IM.rememberConnection();
+      IM.arangods.forEach(d => {
+        if (d.isFrontend()){
+          d.toThisInstance(() => {
+            let res = arango.GET_RAW(path);
+            assertEqual(200, res.code);
+            assertEqual({hello: 'world'}, res.parsedBody);
+          });
+          return;
+        }
+      });
+      IM.reconnectMe();
     },
 
     testServiceIsPropagated: function () {
-      const serversToTest = getCoordinators();
-      serversToTest.forEach(m => {
-        const res = request.get(m, options);
-        assertEqual(200, res.statusCode);
-        assertEqual({hello: 'world'}, res.json);
+      IM.rememberConnection();
+      IM.arangods.forEach(d => {
+        if (d.isFrontend()){
+          d.toThisInstance(() => {
+            let res = arango.GET_RAW(path);
+            assertEqual(200, res.code);
+            assertEqual({hello: 'world'}, res.parsedBody);
+          });
+        }
       });
+      IM.reconnectMe();
     }
   };
 }

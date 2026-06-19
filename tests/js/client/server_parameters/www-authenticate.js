@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, assertEqual, assertFalse, assertTrue, arango, print */
+/* global getOptions, print */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -31,31 +31,28 @@ if (getOptions === true) {
   };
 }
 const jsunity = require('jsunity');
+const {assertEqual, assertTrue, assertFalse, assertNotEqual} = jsunity.jsUnity.assertions;
 const crypto = require('@arangodb/crypto');
 const protocols = ["tcp", "h2"];
 const users = require("@arangodb/users");
+const arango = require('@arangodb').arango;
 const db = require('internal').db;
 let maintainerMode = require('internal').db._version(true)['details']['maintainer-mode'];
-const helper = require('@arangodb/testutils/user-helper');
 const user = "testUser";
-
-let connectWith = function(protocol, user, password) {
-  let endpoint = arango.getEndpoint().replace(/^[a-zA-Z0-9\+]+:/, protocol + ':');
-  arango.reconnect(endpoint, db._name(), user, password);
-};
+let IM = global.instanceManager;
 
 function HttpAuthenticateSuite() {
 
   return {
 
     setUp: function() {
-      connectWith("tcp", "root", "");
+      IM.rememberConnection();
       users.save(user, "");
       users.grantDatabase(user, '_system', 'rw');
     },
 
     tearDown: function() {
-      connectWith("tcp", "root", "");
+      IM.reconnectMe();
       users.remove(user);
     },
 
@@ -68,7 +65,7 @@ function HttpAuthenticateSuite() {
       }, 'HS256');
       protocols.forEach(protocol => {
         print(`connecting with ${protocol}`);
-        connectWith(protocol, user, "");
+        arango.reconnect(IM.endpoint.replace(/^[a-zA-Z0-9\+]+:/, protocol + ':'), db._name(), user, "");
         let result = arango.GET_RAW("/_api/version", {"bearer": jwtRoot});
         assertEqual(200, result.code, JSON.stringify(result));
         assertFalse(result.headers.hasOwnProperty('www-authenticate'), JSON.stringify(result));

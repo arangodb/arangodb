@@ -27,7 +27,6 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryOptions.h"
-#include "StorageEngine/StorageEngineFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
@@ -40,6 +39,7 @@
 #include "Logger/LogMacros.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
+#include "RestServer/TemporaryStorageOptionsProvider.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RocksDBEngine/RocksDBTempStorage.h"
 
@@ -113,7 +113,6 @@ void StorageUsageTracker::decreaseUsage(std::uint64_t value) noexcept {
 TemporaryStorageFeature::TemporaryStorageFeature(
     application_features::ApplicationServer& server)
     : ApplicationFeature{server, *this}, _cleanedUpDirectory(false) {
-  startsAfter<StorageEngineFeature>();
   startsAfter<RocksDBEngine>();
 }
 
@@ -129,83 +128,8 @@ TemporaryStorageFeature::~TemporaryStorageFeature() {
 
 void TemporaryStorageFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
-  options
-      ->addOption(
-          "--temp.intermediate-results-path",
-          "The path for storing ephemeral, intermediate results on disk "
-          "(empty = not used).",
-          new StringParameter(&_options.basePath),
-          arangodb::options::makeDefaultFlags(
-              arangodb::options::Flags::Experimental))
-      .setIntroducedIn(31000)
-      .setLongDescription(R"(Queries can store intermediate and final results
-temporarily on disk if a specified threshold is exceeded, to decrease the memory
-usage. Specify a path to a directory for the temporary data to activate the
-spillover feature. The directory must not be located underneath the instance's
-database directory.
-
-The threshold value to start spilling data onto disk is either a number of rows
-produced by a query or an amount of memory used in bytes, which you can set as
-query options (`spillOverThresholdNumRows` and `spillOverThresholdMemoryUsage`).
-
-**Note**: This feature is experimental and is turned off by default.
-Also, the query results are still built up entirely in memory on Coordinators
-and single servers for non-streaming queries. To avoid the buildup of the entire
-query result in RAM, use a streaming query.)");
-
-  options
-      ->addOption("--temp.intermediate-results-capacity",
-                  "The maximum capacity (in bytes) to use for ephemeral, "
-                  "intermediate results on disk (0 = unlimited).",
-                  new UInt64Parameter(&_options.maxDiskCapacity),
-                  arangodb::options::makeDefaultFlags(
-                      arangodb::options::Flags::Experimental))
-      .setIntroducedIn(31000);
-
-  options
-      ->addOption(
-          "--temp.intermediate-results-spillover-threshold-num-rows",
-          "The number of result rows after which a spillover from RAM to disk "
-          "happens for intermediate results (threshold per query executor).",
-          new SizeTParameter(&_options.spillOverThresholdNumRows),
-          arangodb::options::makeDefaultFlags(
-              arangodb::options::Flags::Experimental))
-      .setIntroducedIn(31000);
-
-  options
-      ->addOption(
-          "--temp.intermediate-results-spillover-threshold-memory-usage",
-          "The memory usage threshold (in bytes) after which a spillover from "
-          "RAM to disk happens for intermediate results "
-          "(threshold per query executor).",
-          new SizeTParameter(&_options.spillOverThresholdMemoryUsage),
-          arangodb::options::makeDefaultFlags(
-              arangodb::options::Flags::Experimental))
-      .setIntroducedIn(31000);
-
-#ifdef USE_ENTERPRISE
-  options
-      ->addOption("--temp.intermediate-results-encryption",
-                  "Encrypt ephemeral, intermediate results on disk.",
-                  new BooleanParameter(&_options.useEncryption),
-                  arangodb::options::makeDefaultFlags(
-                      arangodb::options::Flags::Enterprise,
-                      arangodb::options::Flags::Experimental))
-      .setIntroducedIn(31000);
-
-  options
-      ->addOption(
-          "--temp.intermediate-results-encryption-hardware-acceleration",
-          "Use Intel intrinsics-based encryption, requiring a CPU with "
-          "the AES-NI instruction set. "
-          "If turned off, then OpenSSL is used, which may use "
-          "hardware-accelerated encryption, too.",
-          new BooleanParameter(&_options.allowHWAcceleration),
-          arangodb::options::makeDefaultFlags(
-              arangodb::options::Flags::Enterprise,
-              arangodb::options::Flags::Experimental))
-      .setIntroducedIn(31000);
-#endif
+  TemporaryStorageOptionsProvider provider;
+  provider.declareOptions(options, _options);
 }
 
 void TemporaryStorageFeature::validateOptions(

@@ -121,20 +121,6 @@ class ReplicationFeature final
  private:
   ReplicationOptions _options;
 
-  /// @brief connection timeout for replication requests
-  double _connectTimeout;
-
-  /// @brief request timeout for replication requests
-  double _requestTimeout;
-
-  /// @brief whether or not the user-defined connect timeout is forced to be
-  /// used this is true only if the user set the connect timeout at startup
-  bool _forceConnectTimeout;
-
-  /// @brief whether or not the user-defined request timeout is forced to be
-  /// used this is true only if the user set the request timeout at startup
-  bool _forceRequestTimeout;
-
   /// @brief cache for reusable connections
   httpclient::ConnectionCache _connectionCache;
 
