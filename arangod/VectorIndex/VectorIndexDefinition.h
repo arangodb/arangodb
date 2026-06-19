@@ -88,6 +88,7 @@ struct OperatingPoint {
 /// inspection framework cannot serialize a map with an integer key.
 struct OperatingPointTable {
   std::int64_t topK{0};
+  double minRecall{0.0};
   std::vector<OperatingPoint> points;
 
   bool operator==(OperatingPointTable const&) const noexcept = default;
@@ -96,25 +97,8 @@ struct OperatingPointTable {
   friend inline auto inspect(Inspector& f, OperatingPointTable& x) {
     return f.object(x).fields(
         f.field("topK", x.topK).fallback(std::int64_t{0}),
+        f.field("minRecall", x.minRecall).fallback(0.0),
         f.field("points", x.points).fallback(std::vector<OperatingPoint>{}));
-  }
-};
-
-struct TrainedData {
-  std::vector<std::uint8_t> codeData;
-  // Legacy single tuned nprobe. Superseded by `tunedTables`; kept until the
-  // search/apply path migrates to operating-point tables. Old on-disk records
-  // still carry it and continue to load.
-  std::optional<std::int64_t> tunedNProbe;
-  // Autotuned operating-point tables, one per tuned topK.
-  std::vector<OperatingPointTable> tunedTables;
-
-  template<class Inspector>
-  friend inline auto inspect(Inspector& f, TrainedData& x) {
-    return f.object(x).fields(
-        f.field("codeData", x.codeData), f.field("tunedNProbe", x.tunedNProbe),
-        f.field("tunedTables", x.tunedTables)
-            .fallback(std::vector<OperatingPointTable>{}));
   }
 };
 
