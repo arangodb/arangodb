@@ -367,6 +367,16 @@ defmodule ToastTest.Traffic.ExtractionTest do
     end
 
     @tag :integration
+    test "returns an error when tshark fails to process the file" do
+      bad = Path.join(System.tmp_dir!(), "toast_invalid.pcap")
+      File.write!(bad, "not a pcap file")
+      on_exit(fn -> File.rm(bad) end)
+
+      assert {:error, {:tshark_exited, code}} = Extraction.extract(bad)
+      assert code != 0
+    end
+
+    @tag :integration
     test "VPack bodies are decodable" do
       assert {:ok, entries} = Extraction.extract(@pcap_fixture)
 

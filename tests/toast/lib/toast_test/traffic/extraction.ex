@@ -62,7 +62,9 @@ defmodule ToastTest.Traffic.Extraction do
   Run tshark on a pcap file and stream its output, parsing entries on the fly.
   Aborts tshark if accumulated entry data exceeds the size limit.
   """
-  @spec extract(String.t()) :: {:ok, [traffic_entry()]} | {:error, term()}
+  @spec extract(String.t()) ::
+          {:ok, [traffic_entry()]}
+          | {:error, :tshark_not_found | {:tshark_exited, non_neg_integer()}}
   def extract(pcap_path) do
     disable_args = Enum.flat_map(@disabled_subdissectors, &["--disable-protocol", &1])
     args = ["-r", pcap_path, "-T", "ek", "-Y", "http"] ++ disable_args
@@ -84,9 +86,14 @@ defmodule ToastTest.Traffic.Extraction do
             {:args, args}
           ])
 
-        result = consume_port(port, %{entries: [], size: 0, count: 0, buffer: ""})
-        log_result(result)
-        {:ok, result.entries}
+        case consume_port(port, %{entries: [], size: 0, count: 0, buffer: ""}) do
+          {:ok, result} ->
+            log_result(result)
+            {:ok, result.entries}
+
+          {:error, reason} ->
+            {:error, reason}
+        end
     end
   end
 
@@ -113,7 +120,7 @@ defmodule ToastTest.Traffic.Extraction do
 
               Port.close(port)
               drain_port(port)
-              state
+              {:ok, finalize(state)}
             else
               consume_port(port, %{
                 state
@@ -128,19 +135,21 @@ defmodule ToastTest.Traffic.Extraction do
         consume_port(port, %{state | buffer: state.buffer <> chunk})
 
       {^port, {:exit_status, 0}} ->
-        %{state | entries: Enum.reverse(state.entries)}
+        {:ok, finalize(state)}
 
       {^port, {:exit_status, code}} ->
-        Logger.warning("tshark exited with code #{code}")
-        %{state | entries: Enum.reverse(state.entries)}
+        Logger.warning("tshark exited with code #{code} — traffic extraction failed")
+        {:error, {:tshark_exited, code}}
     after
       300_000 ->
         Logger.warning("tshark timed out after 5 minutes — killing process")
         Port.close(port)
         drain_port(port)
-        %{state | entries: Enum.reverse(state.entries)}
+        {:ok, finalize(state)}
     end
   end
+
+  defp finalize(state), do: %{state | entries: Enum.reverse(state.entries)}
 
   defp drain_port(port) do
     receive do
