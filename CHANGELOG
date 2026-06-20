@@ -1,7 +1,12 @@
 3.12.9.4 (XXXX-XX-XX)
 ---------------------
 
-* Upgraded OpenSSL to 3.5.6.
+* Updated node modules:
+ - qs to 6.15.2
+ - brace-expansion to 5.0.6
+ - js-yaml to 4.2.0
+
+* Upgraded OpenSSL to 3.5.7.
 
 * Updated ArangoDB Starter to v0.19.23.
 
