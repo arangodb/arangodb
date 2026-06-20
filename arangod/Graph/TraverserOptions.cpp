@@ -68,7 +68,7 @@ std::vector<std::string> parseWeightAttribute(VPackSlice obj) {
   } else if (!weightAttribute.isNone()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
-        "The options require weightAttribute to be a string or array of "
+        "The option require weightAttribute to be a string or array of "
         "strings");
   }
   return {};
@@ -78,9 +78,7 @@ void addWeightAttribute(VPackBuilder& builder,
                         std::vector<std::string> const& weightAttribute) {
   if (weightAttribute.empty()) {
     builder.add("weightAttribute", VPackValue(""));
-  } else if (weightAttribute.size() == 1) {
-    builder.add("weightAttribute", VPackValue(weightAttribute.front()));
-  } else {
+
     VPackArrayBuilder guard(&builder, "weightAttribute");
     for (auto const& part : weightAttribute) {
       builder.add(VPackValue(part));

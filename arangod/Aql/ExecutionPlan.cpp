@@ -353,9 +353,7 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(
         } else if (name == "weightAttribute") {
           if (value->isStringValue()) {
             std::string attribute = value->getString();
-            if (attribute.empty()) {
-              options->weightAttribute.clear();
-            } else {
+            if (!attribute.empty()) {
               options->weightAttribute = {std::move(attribute)};
             }
           } else if (value->type == NODE_TYPE_ARRAY) {
@@ -373,12 +371,16 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(
             if (valid) {
               options->weightAttribute = std::move(weightAttribute);
             } else {
-              ExecutionPlan::invalidOptionAttribute(ast->query(), "invalid",
-                                                    "TRAVERSAL", name);
+              ExecutionPlan::invalidOptionAttribute(
+                  ast->query(),
+                  "Invalid use of the OPTIONS attribute 'weightAttribute'.",
+                  "TRAVERSAL", name);
             }
           } else {
-            ExecutionPlan::invalidOptionAttribute(ast->query(), "invalid",
-                                                  "TRAVERSAL", name);
+            ExecutionPlan::invalidOptionAttribute(
+                ast->query(),
+                "Invalid use of the OPTIONS attribute 'weightAttribute'.",
+                "TRAVERSAL", name);
           }
         } else if (name == "parallelism") {
           if (ast->canApplyParallelism()) {

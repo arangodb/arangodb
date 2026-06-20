@@ -66,23 +66,8 @@ double getEdgeWeight(VPackSlice edge,
     return defaultWeight;
   }
 
-  if (weightAttribute.size() == 1) {
-    return basics::VelocyPackHelper::getNumericValue<double>(
-        edge, weightAttribute.front(), defaultWeight);
-  }
-
-  VPackSlice current = edge;
-  for (auto const& part : weightAttribute) {
-    if (!current.isObject()) {
-      return defaultWeight;
-    }
-    current = current.get(part);
-    if (current.isNone()) {
-      return defaultWeight;
-    }
-  }
-  return basics::VelocyPackHelper::getNumericValue<double>(current,
-                                                           defaultWeight);
+  return basics::VelocyPackHelper::getNumericValue<double>(
+      edge.get(weightAttribute), defaultWeight);
 }
 }  // namespace
 
