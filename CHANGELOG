@@ -1,4 +1,10 @@
-3.12.9.4 (#####)
+3.12.9.4 (XXXX-XX-XX)
+---------------------
+
+* COR-607: Fix a problem that causes cluster queries involving a materialize node
+  collection access that is used as a satellite to crash in maintainer mode,
+  and fail with an internal error with the message "Did not find a DBServer to
+  contact for RemoteNode" in production.
 
 * COR-616: Fixed a DB-Server error during rolling upgrades when deserializing a graph
   traversal plan from an older coordinator that lacks the "protoCollection"
@@ -7,10 +13,6 @@
 
 3.12.9.3 (2026-06-04)
 ---------------------
-* COR-607: Fix a problem that causes cluster queries involving a materialize node
-  collection access that is used as a satellite to crash in maintainer mode,
-  and fail with an internal error with the message "Did not find a DBServer to
-  contact for RemoteNode" in production.
 
 * COR-584/OASIS-27899: Fixed an edge case in range_column_iterator::seek where
   executing a seek on an uninitialized iterator would return incorrect results
