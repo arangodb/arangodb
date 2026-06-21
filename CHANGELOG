@@ -1,3 +1,10 @@
+3.12.9.4 (#####)
+
+* COR-616: Fixed a DB-Server error during rolling upgrades when deserializing a graph
+  traversal plan from an older coordinator that lacks the "protoCollection"
+  attribute.
+
+
 3.12.9.3 (2026-06-04)
 ---------------------
 * COR-607: Fix a problem that causes cluster queries involving a materialize node
