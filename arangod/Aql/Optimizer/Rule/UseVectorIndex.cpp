@@ -160,15 +160,6 @@ vector::SearchParameters getSearchParameters(
           std::format("error parsing searchParameters: {}!", res.error()));
     }
 
-    // Manual nProbe and recall-driven targetRecall conflict; reject both.
-    if (searchParameters.nProbe.has_value() &&
-        searchParameters.targetRecall.has_value()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_BAD_PARAMETER,
-          "specify either 'nProbe' or 'targetRecall' in the vector search "
-          "parameters, not both");
-    }
-
     return searchParameters;
   }
 
