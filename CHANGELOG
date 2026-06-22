@@ -1,5 +1,10 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
+
+* COR-553: Added AQL array `ALL`/`ANY`/`NONE`/`AT LEAST` support for the `LIKE`
+  operator, e.g. `["foo", "bar"] ANY LIKE "b%"` and
+  `["foo", "bar", "baz"] AT LEAST(2) LIKE "b%"`.
+
 * COR-379: Bind Parameters in Edge collection types.
 
 * COR-380: Bind Parameters in Vertex collection types.

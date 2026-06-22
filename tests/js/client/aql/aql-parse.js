@@ -69,6 +69,39 @@ function ahuacatlParseTestSuite () {
     return vars;
   }
 
+  function assertArrayLikeParse (query, negate) {
+    let result = db._parse(query).ast;
+
+    assertEqual("root", result[0].type);
+    result = result[0].subNodes;
+
+    assertEqual("return", result[0].type);
+    result = result[0].subNodes;
+
+    assertEqual("expansion", result[0].type);
+    assertTrue(result[0].booleanize);
+    assertEqual("array filter", result[0].subNodes[2].type);
+    assertEqual("quantifier", result[0].subNodes[2].subNodes[0].type);
+
+    let filter = result[0].subNodes[2].subNodes[1];
+    if (negate) {
+      assertEqual("unary not", filter.type);
+      filter = filter.subNodes[0];
+    }
+    assertEqual("function call", filter.type);
+    assertEqual("LIKE", filter.name);
+  }
+
+  function assertAtLeastLikeParse (query, count, negate) {
+    assertArrayLikeParse(query, negate);
+
+    let result = db._parse(query).ast;
+    let quantifier = result[0].subNodes[0].subNodes[0].subNodes[2].subNodes[0];
+
+    assertEqual("at least", quantifier.quantifier);
+    assertEqual(count, quantifier.subNodes[0].value);
+  }
+
   return {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -772,6 +805,91 @@ function ahuacatlParseTestSuite () {
 
       assertEqual("function call", sub.type);
       assertEqual("LIKE", sub.name);
+    },
+
+    testArrayAnyLike : function() {
+      assertArrayLikeParse('RETURN ["foo", "bar"] ANY LIKE "b%"', false);
+    },
+
+    testArrayAnyNotLike : function() {
+      assertArrayLikeParse('RETURN ["foo", "bar"] ANY NOT LIKE "b%"', true);
+    },
+
+    testArrayAllLike : function() {
+      assertArrayLikeParse('RETURN ["bar", "baz"] ALL LIKE "b%"', false);
+    },
+
+    testArrayNoneLike : function() {
+      assertArrayLikeParse('RETURN ["foo"] NONE LIKE "b%"', false);
+    },
+
+    testArrayAllNotLike : function() {
+      assertArrayLikeParse('RETURN ["bar", "baz"] ALL NOT LIKE "b%"', true);
+    },
+
+    testArrayNoneNotLike : function() {
+      assertArrayLikeParse('RETURN ["bar", "baz"] NONE NOT LIKE "b%"', true);
+    },
+
+    testArrayAtLeastLike : function() {
+      assertAtLeastLikeParse('RETURN ["bar", "baz", "foo"] AT LEAST(2) LIKE "b%"', 2, false);
+    },
+
+    testArrayAtLeastNotLike : function() {
+      assertAtLeastLikeParse('RETURN ["bar", "baz", "foo"] AT LEAST(2) NOT LIKE "x%"', 2, true);
+    },
+
+    testArrayLikeMissingPatternParse : function() {
+      assertParseError(errors.ERROR_QUERY_PARSE.code, 'RETURN ["foo"] ANY LIKE');
+    },
+
+    testArrayAtLeastEmptyCountParse : function() {
+      assertParseError(errors.ERROR_QUERY_PARSE.code, 'RETURN ["foo"] AT LEAST() LIKE "x%"');
+    },
+
+    testLikeFunctionCallParse : function() {
+      let result = db._parse('RETURN LIKE("foo", "f%")').ast;
+
+      assertEqual("root", result[0].type);
+      result = result[0].subNodes;
+
+      assertEqual("return", result[0].type);
+      result = result[0].subNodes;
+
+      assertEqual("function call", result[0].type);
+      assertEqual("LIKE", result[0].name);
+    },
+
+    testGraphAnyDirectionParse : function() {
+      let parsed = db._parse('FOR x IN OUTBOUND "vertices/1" ANY edges RETURN x');
+      assertTrue(parsed.parsed);
+    },
+
+    testAnyLikeOpenParenIsLikeFunction : function() {
+      // ANY LIKE( must not tokenize as T_ANY_LIKE; LIKE(...) stays a function call.
+      let parsed = db._parse('RETURN ["a"] ANY == LIKE("x", "y")');
+      assertTrue(parsed.parsed);
+
+      let foundLikeCall = false;
+      let foundArrayLikeExpansion = false;
+
+      let walk = (nodes) => {
+        nodes.forEach((node) => {
+          if (node.type === 'function call' && node.name === 'LIKE') {
+            foundLikeCall = true;
+          }
+          if (node.type === 'expansion' && node.booleanize) {
+            foundArrayLikeExpansion = true;
+          }
+          if (node.subNodes) {
+            walk(node.subNodes);
+          }
+        });
+      };
+
+      walk(parsed.ast);
+      assertTrue(foundLikeCall);
+      assertFalse(foundArrayLikeExpansion);
     },
 
     testNotMatches : function() {
