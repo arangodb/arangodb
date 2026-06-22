@@ -357,6 +357,11 @@ class Ast {
   AstNode* createNodeBooleanExpansion(int64_t, AstNode const*, AstNode const*,
                                       AstNode const*);
 
+  /// @brief create an AST node for array ALL|ANY|NONE|AT LEAST LIKE expressions
+  AstNode* createNodeArrayLikeOperator(AstNode const* lhs,
+                                       AstNode const* pattern,
+                                       AstNode const* quantifier, bool negate);
+
   /// @brief create an AST expansion node
   AstNode* createNodeExpansion(int64_t, AstNode const*, AstNode const*,
                                AstNode const*, AstNode const*, AstNode const*);
@@ -477,6 +482,9 @@ class Ast {
   AstNode* createNodeVariableOrReference(std::string_view name);
 
   AstNode* createNodeArraySplice(AstNode const* in);
+
+  /// @brief create an AST object splice node (object spread: ...expr)
+  AstNode* createNodeObjectSplice(AstNode const* in);
 
   /// @brief injects first-stage bind parameter values into the AST
   /// (i.e. collection bind parameters and bound attribute names,

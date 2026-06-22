@@ -68,6 +68,16 @@ function splicingSuite () {
       assertEqual(errors.ERROR_QUERY_ARRAY_EXPECTED.code,
         data.extra.warnings[0].code);
     },
+    testArraySplicingRange : function() {
+      let query = `LET x = 1..3 RETURN [...x]`;
+      let res = db._query(query).toArray();
+      assertEqual([[1, 2, 3]], res);
+    },
+    testArraySplicingMultipleRanges : function() {
+      let query = `LET x = 1..3 LET y = 4..6 RETURN [...x, ...y]`;
+      let res = db._query(query).toArray();
+      assertEqual([[1, 2, 3, 4, 5, 6]], res);
+    },
     testArraySplicingNested : function() {
       let query = `LET a = [[1,2,3],[4]] RETURN [...[...a]]`;
       let res = db._query(query).toArray();

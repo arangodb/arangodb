@@ -28,6 +28,7 @@
 
 #include <s2/s2point.h>
 
+#include <velocypack/SharedSlice.h>
 #include <velocypack/Slice.h>
 
 #include "RocksDBEngine/RocksDBTypes.h"
@@ -66,8 +67,17 @@ class RocksDBValue {
                                             VPackSlice data);
   static RocksDBValue VectorIndexValue(VPackSlice data);
   static RocksDBValue VectorIndexValue(uint8_t const* data, size_t size);
-  static RocksDBValue VectorIndexValue(
+  /// @brief Build a v1 (legacy) value for a vector-index entry that carries
+  /// stored values: VPack array of {blob(encodedValue), storedValuesSlice}.
+  static RocksDBValue VectorIndexValueV1(
       RocksDBVectorIndexEntryValue const& entryValue);
+  /// @brief Build a v2 value for a vector-index entry with stored values:
+  /// raw concat [encodedValue codeSize bytes][storedValues VPack slice].
+  /// Writes straight into the underlying buffer to avoid copying the encoded
+  /// vector through an intermediate std::vector.
+  static RocksDBValue VectorIndexValueV2(
+      uint8_t const* encodedValue, size_t encodedSize,
+      velocypack::SharedSlice const& storedValues);
   static RocksDBValue View(VPackSlice data);
   static RocksDBValue ReplicationApplierConfig(VPackSlice data);
   static RocksDBValue KeyGeneratorValue(VPackSlice data);
@@ -125,15 +135,17 @@ class RocksDBValue {
   static S2Point centroid(rocksdb::Slice const&);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Extracts the VectorIndexEntryValue from a value
-  ///
-  /// May be called only on VectorIndexValue values. Other types will throw.
+  /// @brief Extract a VectorIndexEntryValue stored in v1 (legacy VPack) layout.
   //////////////////////////////////////////////////////////////////////////////
-  static RocksDBVectorIndexEntryValue vectorIndexEntryValue(
-      RocksDBValue const&);
-  static RocksDBVectorIndexEntryValue vectorIndexEntryValue(
-      rocksdb::Slice const&);
-  static RocksDBVectorIndexEntryValue vectorIndexEntryValue(std::string_view);
+  static RocksDBVectorIndexEntryValue vectorIndexEntryValueV1(
+      rocksdb::Slice const& slice);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Extract a VectorIndexEntryValue stored in v2 (raw concat) layout.
+  /// codeSize comes from the index and is fixed across the index's lifetime.
+  //////////////////////////////////////////////////////////////////////////////
+  static RocksDBVectorIndexEntryValue vectorIndexEntryValueV2(
+      rocksdb::Slice const& slice, size_t codeSize);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Extract the term of a log index value

@@ -59,6 +59,7 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 #include <cstdint>
+#include <ranges>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -1337,6 +1338,36 @@ AstNode* Ast::createNodeBooleanExpansion(int64_t levels,
   return node;
 }
 
+/// @brief create an AST node for array ALL|ANY|NONE|AT LEAST LIKE expressions
+AstNode* Ast::createNodeArrayLikeOperator(AstNode const* lhs,
+                                          AstNode const* pattern,
+                                          AstNode const* quantifier,
+                                          bool negate) {
+  TRI_ASSERT(lhs != nullptr);
+  TRI_ASSERT(pattern != nullptr);
+  TRI_ASSERT(quantifier != nullptr);
+
+  std::string const varName = variables()->nextName() + "_";
+  AstNode* iterator = createNodeIterator(varName.c_str(), varName.size(), lhs);
+  auto* variableNode = iterator->getMember(0);
+  TRI_ASSERT(variableNode->type == NODE_TYPE_VARIABLE);
+  auto* variable = static_cast<Variable*>(variableNode->getData());
+
+  AstNode* arguments = createNodeArray(2);
+  arguments->addMember(createNodeReference(variable));
+  arguments->addMember(pattern);
+
+  AstNode* likeCall = createNodeFunctionCall("LIKE", arguments, false);
+  AstNode* filter =
+      negate ? createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_NOT, likeCall)
+             : likeCall;
+
+  AstNode* arrayFilter = createNodeArrayFilter(quantifier, filter);
+
+  return createNodeBooleanExpansion(1, iterator, createNodeReference(variable),
+                                    arrayFilter);
+}
+
 /// @brief create an AST expansion node, with or without a filter
 AstNode* Ast::createNodeExpansion(int64_t levels, AstNode const* iterator,
                                   AstNode const* expanded,
@@ -2077,6 +2108,12 @@ AstNode* Ast::createNodeVariableOrReference(std::string_view name) {
 
 AstNode* Ast::createNodeArraySplice(AstNode const* in) {
   AstNode* node = createNode(NODE_TYPE_ARRAY_SPLICE);
+  node->addMember(in);
+  return node;
+}
+
+AstNode* Ast::createNodeObjectSplice(AstNode const* in) {
+  AstNode* node = createNode(NODE_TYPE_OBJECT_SPLICE);
   node->addMember(in);
   return node;
 }
@@ -3691,11 +3728,12 @@ AstNode* Ast::optimizeBinaryOperatorRelational(
 
   if (!lhsIsConst) {
     if (rhs->numMembers() >= AstNode::kSortNumberThreshold &&
-        rhs->type == NODE_TYPE_ARRAY &&
+        rhs->type == NODE_TYPE_ARRAY && rhs->isConstant() &&
         (node->type == NODE_TYPE_OPERATOR_BINARY_IN ||
          node->type == NODE_TYPE_OPERATOR_BINARY_NIN)) {
-      // if the IN list contains a considerable amount of items, we will sort
-      // it, so we can find elements quicker later using a binary search
+      // only sort constant arrays; non-constant ones can't be sorted at compile
+      // time. if the IN list contains a considerable amount of items, we will
+      // sort it, so we can find elements quicker later using a binary search
       // note that sorting will also set a flag for the node
 
       // first copy the original node before sorting, as the node may be used
@@ -3920,7 +3958,7 @@ AstNode* Ast::optimizeAttributeAccess(
     std::string_view search = node->getStringView();
 
     ast::ObjectNode object(what);
-    for (auto member : object.getElements()) {
+    for (auto member : object.getElements() | std::views::reverse) {
       if (member->type == NODE_TYPE_OBJECT_ELEMENT &&
           member->getStringView() == search) {
         // found matching member

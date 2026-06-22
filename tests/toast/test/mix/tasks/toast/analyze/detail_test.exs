@@ -112,4 +112,54 @@ defmodule Mix.Tasks.Toast.Analyze.DetailTest do
       refute Detail.issue_spec?("-1")
     end
   end
+
+  # --- parse_event_detail/2 ---
+  #
+  # Parses an event detail string into an atom.
+  # When the value is nil, defaults to :basic if any stream is enabled, :none otherwise.
+  # Explicit values always win regardless of the stream flag.
+
+  describe "parse_event_detail/2 — nil defaults based on stream flag" do
+    test "defaults to :basic when a stream is enabled" do
+      assert Detail.parse_event_detail(nil, true) == :basic
+    end
+
+    test "defaults to :none when no stream is enabled" do
+      assert Detail.parse_event_detail(nil, false) == :none
+    end
+  end
+
+  describe "parse_event_detail/2 — explicit values override stream flag" do
+    test ~s("none" with stream enabled) do
+      assert Detail.parse_event_detail("none", true) == :none
+    end
+
+    test ~s("none" with stream disabled) do
+      assert Detail.parse_event_detail("none", false) == :none
+    end
+
+    test ~s("basic" with stream disabled) do
+      assert Detail.parse_event_detail("basic", false) == :basic
+    end
+
+    test ~s("basic" with stream enabled) do
+      assert Detail.parse_event_detail("basic", true) == :basic
+    end
+
+    test ~s("full" with stream enabled) do
+      assert Detail.parse_event_detail("full", true) == :full
+    end
+
+    test ~s("full" with stream disabled) do
+      assert Detail.parse_event_detail("full", false) == :full
+    end
+  end
+
+  describe "parse_event_detail/2 — invalid value" do
+    test "raises on unrecognized value" do
+      assert_raise Mix.Error, fn ->
+        Detail.parse_event_detail("invalid", true)
+      end
+    end
+  end
 end

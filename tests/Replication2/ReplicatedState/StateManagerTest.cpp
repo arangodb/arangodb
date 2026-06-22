@@ -89,8 +89,15 @@ struct StateManagerTest : testing::Test {
   arangodb::tests::mocks::MockServer mockServer =
       arangodb::tests::mocks::MockServer();
   replication2::tests::MockVocbase vocbaseMock =
-      replication2::tests::MockVocbase(mockServer.server(),
-                                       "documentStateMachineTestDb", 2);
+      makeVocbase(mockServer, "documentStateMachineTestDb", 2);
+
+  static replication2::tests::MockVocbase makeVocbase(
+      arangodb::tests::mocks::MockServer& s, std::string const& name,
+      std::uint64_t id) {
+    s.server().addFeature<arangodb::DatabaseFeature>();
+    return replication2::tests::MockVocbase(s.server(), name, id);
+  }
+
   std::shared_ptr<storage::rocksdb::test::DelayedExecutor> executor =
       std::make_shared<storage::rocksdb::test::DelayedExecutor>();
   // Note that this purposefully does not initialize the PersistedStateInfo that

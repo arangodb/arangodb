@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -44,41 +44,43 @@
 namespace arangodb::aql {
 
 namespace {
-constexpr std::string_view kInVariableName = "inVariable";
-constexpr std::string_view kDocumentOutVariable = "documentOutVariable";
-constexpr std::string_view kDistanceOutVariable = "distanceOutVariable";
-constexpr std::string_view kOldDocumentVariable = "oldDocumentVariable";
-constexpr std::string_view kLimit = "limit";
-constexpr std::string_view kOffset = "offset";
-constexpr std::string_view kIsCoveredByStoredValues = "isCoveredByStoredValues";
-constexpr std::string_view kSearchParameters = "searchParameters";
-constexpr std::string_view kFilterExpression = "filterExpression";
+constexpr std::string_view kInVariableName{"inVariable"};
+constexpr std::string_view kDistanceOutVariable{"distanceOutVariable"};
+constexpr std::string_view kLimit{"limit"};
+constexpr std::string_view kOffset{"offset"};
+constexpr std::string_view kFilterMode{"filterMode"};
+constexpr std::string_view kSearchParameters{"searchParameters"};
+constexpr std::string_view kProjectionMode{"projectionMode"};
 }  // namespace
 
 EnumerateNearVectorNode::EnumerateNearVectorNode(
     ExecutionPlan* plan, arangodb::aql::ExecutionNodeId id,
-    Variable const* inVariable, Variable const* oldDocumentVariable,
-    Variable const* documentOutVariable, Variable const* distanceOutVariable,
-    std::size_t limit, bool ascending, std::size_t offset,
-    vector::SearchParameters searchParameters,
+    Variable const* inVariable, Variable const* outVariable,
+    Variable const* distanceOutVariable, std::size_t limit, bool ascending,
+    std::size_t offset, vector::SearchParameters searchParameters,
     aql::Collection const* collection,
     transaction::Methods::IndexHandle indexHandle,
-    std::unique_ptr<Expression> filterExpression, bool isCoveredByStoredValues)
+    std::unique_ptr<Expression> filterExpression, vector::FilterMode filterMode,
+    vector::ProjectionMode projectionMode)
     : ExecutionNode(plan, id),
+      DocumentProducingNode(outVariable),
       CollectionAccessingNode(collection),
       _inVariable(inVariable),
-      _oldDocumentVariable(oldDocumentVariable),
-      _documentOutVariable(documentOutVariable),
       _distanceOutVariable(distanceOutVariable),
       _limit(limit),
       _ascending(ascending),
       _offset(offset),
       _searchParameters(std::move(searchParameters)),
       _index(std::move(indexHandle)),
-      _filterExpression(std::move(filterExpression)),
-      _isCoveredByStoredValues(isCoveredByStoredValues) {
+      _filterMode(filterMode),
+      _projectionMode(projectionMode) {
   TRI_ASSERT(_index->type() == Index::IndexType::TRI_IDX_TYPE_VECTOR_INDEX);
-  TRI_ASSERT(_filterExpression != nullptr || !_isCoveredByStoredValues);
+  // If any mode of filterin is enabled, we need a filter expression.
+  TRI_ASSERT((_filterMode == vector::FilterMode::kNone) ==
+             (filterExpression == nullptr));
+  if (filterExpression != nullptr) {
+    DocumentProducingNode::setFilter(std::move(filterExpression));
+  }
 }
 
 ExecutionNode::NodeType EnumerateNearVectorNode::getType() const {
@@ -91,19 +93,18 @@ size_t EnumerateNearVectorNode::getMemoryUsedBytes() const {
 
 std::vector<std::pair<VariableId, RegisterId>>
 EnumerateNearVectorNode::extractFilterVarsToRegs() const {
+  TRI_ASSERT(hasFilter());
   VarSet inVars;
-  _filterExpression->variables(inVars);
+  filter()->variables(inVars);
   std::vector<std::pair<VariableId, RegisterId>> filterVarsToRegs;
   filterVarsToRegs.reserve(inVars.size());
 
-  // Here we take all variables in the expression
   for (auto const& var : inVars) {
     TRI_ASSERT(var != nullptr);
-    if (var->id == _oldDocumentVariable->id) {
+    if (var->id == _outVariable->id) {
       continue;
     }
-    auto regId = variableToRegisterId(var);
-    filterVarsToRegs.emplace_back(var->id, regId);
+    filterVarsToRegs.emplace_back(var->id, variableToRegisterId(var));
   }
 
   return filterVarsToRegs;
@@ -111,13 +112,26 @@ EnumerateNearVectorNode::extractFilterVarsToRegs() const {
 
 std::unique_ptr<ExecutionBlock> EnumerateNearVectorNode::createBlock(
     ExecutionEngine& engine) const {
-  auto writableOutputRegisters = RegIdSet{};
-  containers::FlatHashMap<VariableId, RegisterId> varsToRegs;
+  RegIdSet writableOutputRegisters;
+  // The doc-variable register is written for everything except kCovered.
+  RegisterId outDocumentRegId = RegisterId::maxRegisterId;
+  if (_projectionMode != vector::ProjectionMode::kCovered) {
+    outDocumentRegId = variableToRegisterId(_outVariable);
+    writableOutputRegisters.emplace(outDocumentRegId);
+  }
 
-  RegisterId outDocumentRegId = variableToRegisterId(_documentOutVariable);
-  writableOutputRegisters.emplace(outDocumentRegId);
   RegisterId outDistanceRegId = variableToRegisterId(_distanceOutVariable);
   writableOutputRegisters.emplace(outDistanceRegId);
+  // per-projection output registers (set by the projections rule)
+  containers::FlatHashMap<VariableId, RegisterId> projectionVarsToRegs;
+  for (size_t i = 0; i < _projections.size(); ++i) {
+    auto const* var = _projections[i].variable;
+    if (var != nullptr) {
+      RegisterId regId = variableToRegisterId(var);
+      writableOutputRegisters.emplace(regId);
+      projectionVarsToRegs.try_emplace(var->id, regId);
+    }
+  }
 
   RegisterId inNmDocIdRegId = variableToRegisterId(_inVariable);
   RegIdSet readableInputRegisters;
@@ -125,15 +139,49 @@ std::unique_ptr<ExecutionBlock> EnumerateNearVectorNode::createBlock(
 
   // check which variables are used by the node's post-filter
   std::vector<std::pair<VariableId, RegisterId>> filterVarsToRegs;
-  if (_filterExpression) {
+  if (hasFilter()) {
     filterVarsToRegs = extractFilterVarsToRegs();
+    for (auto const& [_, regId] : filterVarsToRegs) {
+      readableInputRegisters.emplace(regId);
+    }
   }
 
-  auto executorInfos = EnumerateNearVectorsExecutorInfos(
-      inNmDocIdRegId, outDocumentRegId, outDistanceRegId, _index,
-      engine.getQuery(), _collectionAccess.collection(), _limit, _offset,
-      _searchParameters, _filterExpression.get(), std::move(filterVarsToRegs),
-      _isCoveredByStoredValues, _oldDocumentVariable);
+  vector::SearchStrategy searchStrategy{.filter = _filterMode,
+                                        .projection = _projectionMode};
+
+  // produceFromIndex needs each projection's coveringIndexPosition set
+  // against the index's storedValues. Do it on a copy so the node's own
+  // projections list is left untouched.
+  Projections projections = _projections;
+  if (_projectionMode == vector::ProjectionMode::kCovered &&
+      !projections.empty()) {
+    [[maybe_unused]] bool const ok = _index->covers(projections);
+    ADB_PROD_ASSERT(ok) << "projections must be covered by the index if "
+                           "projection mode is COVERED";
+    projections.setCoveringContext(_collectionAccess.collection()->id(),
+                                   _index);
+  }
+
+  EnumerateNearVectorsExecutorInfos executorInfos{
+      .inputReg = inNmDocIdRegId,
+      .outDocumentIdReg = outDocumentRegId,
+      .outDistancesReg = outDistanceRegId,
+      .projectionVarsToRegs = std::move(projectionVarsToRegs),
+      .index = _index,
+      .queryContext = engine.getQuery(),
+      .collection = _collectionAccess.collection(),
+      .searchConfig =
+          vector::VectorSearchConfig{
+              .searchParameters = _searchParameters,
+              .topK = _limit + _offset,
+              .filterExpression = filter(),
+              .filterVarsToRegs = std::move(filterVarsToRegs),
+              .documentVariable = _outVariable,
+              .strategy = searchStrategy,
+          },
+      .projections = std::move(projections),
+      .projectionMode = _projectionMode,
+  };
   auto registerInfos = createRegisterInfos(std::move(readableInputRegisters),
                                            std::move(writableOutputRegisters));
 
@@ -144,17 +192,18 @@ std::unique_ptr<ExecutionBlock> EnumerateNearVectorNode::createBlock(
 ExecutionNode* EnumerateNearVectorNode::clone(ExecutionPlan* plan,
                                               bool withDependencies) const {
   auto filterExpression = std::invoke([&]() -> std::unique_ptr<Expression> {
-    if (_filterExpression) {
-      return _filterExpression->clone(plan->getAst(), true);
+    if (hasFilter()) {
+      return filter()->clone(plan->getAst(), true);
     }
     return nullptr;
   });
 
   auto c = std::make_unique<EnumerateNearVectorNode>(
-      plan, _id, _inVariable, _oldDocumentVariable, _documentOutVariable,
-      _distanceOutVariable, _limit, _ascending, _offset, _searchParameters,
-      collection(), _index, std::move(filterExpression),
-      _isCoveredByStoredValues);
+      plan, _id, _inVariable, _outVariable, _distanceOutVariable, _limit,
+      _ascending, _offset, _searchParameters, collection(), _index,
+      std::move(filterExpression), _filterMode, _projectionMode);
+  c->_projections = _projections;
+  c->_filterProjections = _filterProjections;
   CollectionAccessingNode::cloneInto(*c);
   return cloneHelper(std::move(c), withDependencies);
 }
@@ -178,46 +227,62 @@ CostEstimate EnumerateNearVectorNode::estimateCost() const {
 
 void EnumerateNearVectorNode::getVariablesUsedHere(VarSet& vars) const {
   vars.emplace(_inVariable);
-  if (_filterExpression != nullptr) {
-    Ast::getReferencedVariables(_filterExpression->node(), vars);
-    // the filter expression is evaluated inside the vector index search
-    // path, which reconstructs the document itself (either from the
-    // materialized doc downstream or from stored values). the filter's
-    // document variable is therefore not read from an input register, so
-    // remove it to keep the register planner honest.
-    vars.erase(_oldDocumentVariable);
+  if (hasFilter()) {
+    Ast::getReferencedVariables(filter()->node(), vars);
+  }
+  // the filter expression and any projections reference _outVariable, but it
+  // is not read from a register here: the doc is bound internally by the
+  // index code (loaded doc or storedValues).
+  vars.erase(_outVariable);
+  // projection output variables are produced here, not consumed
+  for (size_t i = 0; i < _projections.size(); ++i) {
+    if (_projections[i].variable != nullptr) {
+      vars.erase(_projections[i].variable);
+    }
   }
 }
 
 std::vector<const Variable*> EnumerateNearVectorNode::getVariablesSetHere()
     const {
-  // TODO(jbajic) the distance might not be used, and documents is materialized
-  // regardless if it is being used later on
-  return {_documentOutVariable, _distanceOutVariable};
+  std::vector<Variable const*> result;
+  result.reserve(2 + _projections.size());
+  if (_projectionMode != vector::ProjectionMode::kCovered) {
+    result.push_back(_outVariable);
+  }
+  result.push_back(_distanceOutVariable);
+  for (size_t i = 0; i < _projections.size(); ++i) {
+    if (_projections[i].variable != nullptr) {
+      result.push_back(_projections[i].variable);
+    }
+  }
+  return result;
+}
+
+bool EnumerateNearVectorNode::isProduceResult() const {
+  // The vector index always produces a result (either the doc, projection
+  // values, or a doc-id label for downstream materialization).
+  return true;
 }
 
 void EnumerateNearVectorNode::doToVelocyPack(velocypack::Builder& builder,
                                              unsigned int flags) const {
+  // outVariable, projections, filter, filterProjections, count, etc.
+  DocumentProducingNode::toVelocyPack(builder, flags);
+
   builder.add(VPackValue(kInVariableName));
   _inVariable->toVelocyPack(builder);
 
-  builder.add(VPackValue(kOldDocumentVariable));
-  _oldDocumentVariable->toVelocyPack(builder);
-  builder.add(VPackValue(kDocumentOutVariable));
-  _documentOutVariable->toVelocyPack(builder);
   builder.add(VPackValue(kDistanceOutVariable));
   _distanceOutVariable->toVelocyPack(builder);
 
   builder.add(kLimit, VPackValue(_limit));
   builder.add(kOffset, VPackValue(_offset));
-  builder.add(kIsCoveredByStoredValues, VPackValue(_isCoveredByStoredValues));
+
+  builder.add(kFilterMode, velocypack::serialize(_filterMode).slice());
+  builder.add(kProjectionMode, velocypack::serialize(_projectionMode).slice());
 
   builder.add(VPackValue(kSearchParameters));
   builder.add(velocypack::serialize(_searchParameters));
-  if (_filterExpression != nullptr) {
-    builder.add(VPackValue(kFilterExpression));
-    _filterExpression->toVelocyPack(builder, flags);
-  }
 
   CollectionAccessingNode::toVelocyPack(builder, flags);
 
@@ -228,18 +293,21 @@ void EnumerateNearVectorNode::doToVelocyPack(velocypack::Builder& builder,
 EnumerateNearVectorNode::EnumerateNearVectorNode(
     ExecutionPlan* plan, arangodb::velocypack::Slice base)
     : ExecutionNode(plan, base),
+      DocumentProducingNode(plan, base),
       CollectionAccessingNode(plan, base),
       _inVariable(
           Variable::varFromVPack(plan->getAst(), base, kInVariableName)),
-      _oldDocumentVariable(
-          Variable::varFromVPack(plan->getAst(), base, kOldDocumentVariable)),
-      _documentOutVariable(
-          Variable::varFromVPack(plan->getAst(), base, kDocumentOutVariable)),
       _distanceOutVariable(
           Variable::varFromVPack(plan->getAst(), base, kDistanceOutVariable)),
       _limit(base.get(kLimit).getNumericValue<std::size_t>()),
       _offset(base.get(kOffset).getNumericValue<std::size_t>()),
-      _isCoveredByStoredValues(base.get(kIsCoveredByStoredValues).getBool()) {
+      _filterMode(std::invoke([&] {
+        vector::FilterMode mode{vector::FilterMode::kNone};
+        if (auto slice = base.get(kFilterMode); !slice.isNone()) {
+          velocypack::deserialize(slice, mode);
+        }
+        return mode;
+      })) {
   std::string iid = base.get("index").get("id").copyString();
 
   if (auto const res = velocypack::deserializeWithStatus(
@@ -249,24 +317,18 @@ EnumerateNearVectorNode::EnumerateNearVectorNode(
         TRI_ERROR_INTERNAL, "Deserialization of searchParameters has failed!");
   }
 
-  VPackSlice p = base.get(kFilterExpression);
-  if (!p.isNone()) {
-    Ast* ast = plan->getAst();
-    // new AstNode is memory-managed by the Ast
-    _filterExpression = std::make_unique<Expression>(ast, ast->createNode(p));
-  }
-
   _index = collection()->indexByIdentifier(iid);
+
+  if (auto slice = base.get(kProjectionMode); !slice.isNone()) {
+    velocypack::deserialize(slice, _projectionMode);
+  }
 }
 
 void EnumerateNearVectorNode::replaceVariables(
     const std::unordered_map<VariableId, const Variable*>& replacements) {
+  DocumentProducingNode::replaceVariables(replacements);
   _inVariable = Variable::replace(_inVariable, replacements);
-  _documentOutVariable = Variable::replace(_documentOutVariable, replacements);
   _distanceOutVariable = Variable::replace(_distanceOutVariable, replacements);
-  if (_filterExpression != nullptr) {
-    _filterExpression->replaceVariables(replacements);
-  }
 }
 
 bool EnumerateNearVectorNode::isAscending() const noexcept {
@@ -278,16 +340,6 @@ void EnumerateNearVectorNode::setIndex(
   TRI_ASSERT(indexHandle->type() ==
              Index::IndexType::TRI_IDX_TYPE_VECTOR_INDEX);
   _index = std::move(indexHandle);
-}
-
-void EnumerateNearVectorNode::setFilterExpression(
-    Expression* filterExpression) {
-  _filterExpression = filterExpression->clone(_plan->getAst());
-}
-
-void EnumerateNearVectorNode::setIsCoveredByStoredValues(
-    bool isCoveredByStoredValues) noexcept {
-  _isCoveredByStoredValues = isCoveredByStoredValues;
 }
 
 }  // namespace arangodb::aql
