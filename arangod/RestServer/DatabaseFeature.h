@@ -51,6 +51,8 @@ class IOHeartbeatThread;
 class LogicalCollection;
 class ReplicationFeature;
 class StorageEngine;
+class ClusterEngine;
+class RocksDBEngine;
 class V8DealerFeature;
 
 namespace metrics {
@@ -118,6 +120,7 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
 
   // used by unit tests
 #ifdef ARANGODB_USE_GOOGLE_TESTS
+  void setEngineTesting(StorageEngine* engine) noexcept { _engine = engine; }
   ErrorCode loadDatabases(velocypack::Slice databases) {
     return iterateDatabases(databases);
   }

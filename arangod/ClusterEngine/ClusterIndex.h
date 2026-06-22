@@ -119,11 +119,12 @@ class ClusterIndex : public Index {
     return _prefixFields;
   }
 
-  vector::UserVectorIndexDefinition const& getVectorIndexDefinition() override;
+  vector::UserVectorIndexDefinition const& getVectorIndexDefinition()
+      const override;
 
   bool isVectorIndexReady() const noexcept override;
 
-  StoredValues const& storedValues() const override;
+  bool isLinearScanEnabled() const noexcept override;
 
  protected:
   ClusterEngineType _engineType;
@@ -134,11 +135,9 @@ class ClusterIndex : public Index {
 
   std::unique_ptr<vector::UserVectorIndexDefinition> _vectorIndexDefinition;
 
-  // Only used in RocksDB edge index.
+  // Only used in RocksDB edge index and vector index.
   std::vector<std::vector<basics::AttributeName>> _coveredFields;
   // Only used in TRI_IDX_TYPE_MDI_PREFIXED_INDEX
   std::vector<std::vector<basics::AttributeName>> _prefixFields;
-  // Only used in TRI_IDX_TYPE_VECTOR_INDEX
-  StoredValues _storedValues;
 };
 }  // namespace arangodb

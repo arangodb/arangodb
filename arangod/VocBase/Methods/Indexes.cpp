@@ -39,7 +39,6 @@
 #include "Indexes/IndexFactory.h"
 #include "IResearch/IResearchCommon.h"
 #include "RestServer/DatabaseFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Helpers.h"

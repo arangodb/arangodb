@@ -36,7 +36,6 @@
 #include "RestServer/arangod.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "Statistics/StatisticsFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 
 using namespace arangodb;
 
@@ -52,7 +51,7 @@ TEST(RocksDBTransactionManager, test_non_overlapping) {
   auto& metrics = server.addFeature<metrics::MetricsFeature>(
       LazyApplicationFeatureReference<QueryRegistryFeature>(nullptr),
       LazyApplicationFeatureReference<StatisticsFeature>(nullptr),
-      LazyApplicationFeatureReference<EngineSelectorFeature>(nullptr),
+      LazyApplicationFeatureReference<DatabaseFeature>(nullptr),
       LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(nullptr),
       LazyApplicationFeatureReference<ClusterFeature>(nullptr));
   transaction::ManagerFeature feature(server, metrics);
@@ -79,7 +78,7 @@ TEST(RocksDBTransactionManager, test_overlapping) {
   auto& metrics = server.addFeature<metrics::MetricsFeature>(
       LazyApplicationFeatureReference<QueryRegistryFeature>(nullptr),
       LazyApplicationFeatureReference<StatisticsFeature>(nullptr),
-      LazyApplicationFeatureReference<EngineSelectorFeature>(nullptr),
+      LazyApplicationFeatureReference<DatabaseFeature>(nullptr),
       LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(nullptr),
       LazyApplicationFeatureReference<ClusterFeature>(nullptr));
   transaction::ManagerFeature feature(server, metrics);

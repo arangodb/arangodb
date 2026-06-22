@@ -25,6 +25,7 @@
 #include <velocypack/SharedSlice.h>
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "CrashHandler/DataSource.h"
+#include "SystemMonitor/Activities/FeatureOptions.h"
 #include "SystemMonitor/Activities/Metrics.h"
 
 namespace arangodb::activities {
@@ -53,11 +54,7 @@ class Feature final : public application_features::ApplicationFeature,
   bool isOnlySuperUserEnabled() { return _options.isOnlySuperUserEnabled; }
 
  private:
-  struct Options {
-    size_t gc_timeout{1};
-    bool isOnlySuperUserEnabled{false};
-  };
-  Options _options;
+  FeatureOptions _options;
 
   std::shared_ptr<RegistryMetrics> _metrics;
 

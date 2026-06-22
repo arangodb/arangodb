@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, runSetup, assertTrue, assertFalse, assertEqual, assertNotEqual, arango */
+/* global getOptions, runSetup */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -24,6 +24,11 @@
 /// @author Wilfried Goesgens
 /// @author Copyright 2019, ArangoDB Inc, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
+const jsunity = require("jsunity");
+const {assertEqual, assertTrue, assertFalse, assertNotEqual} = jsunity.jsUnity.assertions;
+const arango = require("@arangodb").arango;
+const errors = require('@arangodb').errors;
+let IM = global.instanceManager;
 
 if (getOptions === true) {
   return {
@@ -43,15 +48,12 @@ if (runSetup === true) {
   return true;
 }
 
-var jsunity = require('jsunity');
-
 function testSuite() {
-  let endpoint = arango.getEndpoint();
   let db = require("@arangodb").db;
-  const errors = require('@arangodb').errors;
 
   return {
     setUp: function() {
+      IM.rememberConnection();
       try {
         db._dropDatabase("UnitTestsApiTest");
       } catch (err) {}
@@ -63,12 +65,12 @@ function testSuite() {
     },
 
     tearDown: function() {
-      db._useDatabase("_system");
+      IM.reconnectMe();
       db._dropDatabase("UnitTestsApiTest");
     },
 
     testCanSwitchDatabase : function() {
-      arango.reconnect(endpoint, db._name(), "test_rw", "testi");
+      arango.reconnect(IM.endpoint, db._name(), "test_rw", "testi");
 
       let data = {
         collections: { },
@@ -85,7 +87,7 @@ function testSuite() {
     },
 
     testReadArbitraryFiles : function() {
-      arango.reconnect(endpoint, db._name(), "test_rw", "testi");
+      arango.reconnect(IM.endpoint, db._name(), "test_rw", "testi");
 
       let data = {
         collections: { },
@@ -103,7 +105,7 @@ function testSuite() {
     },
 
     testDownload : function() {
-      arango.reconnect(endpoint, db._name(), "test_rw", "testi");
+      arango.reconnect(IM.endpoint, db._name(), "test_rw", "testi");
 
       let data = {
         collections: { },

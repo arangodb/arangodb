@@ -31,9 +31,12 @@
 #include "VocBase/voc-types.h"
 #include "Zkd/ZkdHelper.h"
 
+#include "Basics/ThreadLocalLeaser.h"
+
 #include <cstddef>
 #include <cstdint>
 #include <iosfwd>
+#include <optional>
 #include <string>
 #include <string_view>
 
@@ -48,6 +51,10 @@ class LogId;
 struct LogIndex;
 };  // namespace replication2
 
+namespace vector {
+enum class VectorIndexFormatVersion : std::uint8_t;
+}  // namespace vector
+
 class RocksDBKey {
  public:
   RocksDBKey()
@@ -55,9 +62,8 @@ class RocksDBKey {
         _local(),
         _buffer(&_local) {}
 
-  /// @brief construct a leased RocksDBKey
-  /// @param leased will use _local std::string if nullptr
-  explicit RocksDBKey(std::string* leased);
+  /// @brief construct a RocksDBKey using a leased string buffer
+  explicit RocksDBKey(ThreadLocalStringLeaser::Lease lease);
 
   explicit RocksDBKey(rocksdb::Slice slice);
 
@@ -201,7 +207,11 @@ class RocksDBKey {
   void constructVectorIndexValue(uint64_t indexId, std::size_t listNumber,
                                  LocalDocumentId documentId);
 
-  void constructVectorIndexTrainedData(uint64_t indexId);
+  /// @brief Build the sentinel key under which the per-index vector metadata
+  /// record is stored in the VectorIndex CF. The format version selects which
+  /// sentinel slot is used.
+  void constructVectorIndexTrainedData(
+      uint64_t indexId, vector::VectorIndexFormatVersion version);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Create a fully-specified key for revision tree for a collection
@@ -342,9 +352,6 @@ class RocksDBKey {
     return _type == other._type && *_buffer == *(other._buffer);
   }
 
-  /// @brief does this use the inline buffer or a leased one
-  inline bool usesInlineBuffer() const { return &_local == _buffer; }
-
   /// @brief  internal buffer string, unmanaged use carefully
   inline std::string* buffer() const { return _buffer; }
 
@@ -397,7 +404,8 @@ class RocksDBKey {
   static const char _stringSeparator;
 
   RocksDBEntryType _type;
-  std::string _local;  // local inline buffer
+  std::string _local;
+  std::optional<ThreadLocalStringLeaser::Lease> _lease;
   std::string* _buffer;
 };
 

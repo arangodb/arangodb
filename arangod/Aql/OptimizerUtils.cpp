@@ -40,9 +40,11 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Aql/NonConstExpressionContainer.h"
+#include "Aql/Projections.h"
 #include "Aql/QueryContext.h"
 #include "Aql/SortCondition.h"
 #include "Aql/Variable.h"
+#include "Aql/WalkerWorker.h"
 #include "Basics/StaticStrings.h"
 #include "IResearch/IResearchFeature.h"
 #include "Indexes/Index.h"
@@ -897,9 +899,64 @@ void extractNonConstPartsOfJunctionCondition(
   }
 }
 
+// Walks the plan and rewrites attribute accesses on `searchVariable` into
+// direct register reads on `replaceVariable`. Used by both
+// optimizeProjections and materializeForEnumerateNear.
+class AttributeAccessReplacer final
+    : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
+ public:
+  AttributeAccessReplacer(ExecutionNode const* self,
+                          Variable const* searchVariable,
+                          std::span<std::string_view> attribute,
+                          Variable const* replaceVariable, size_t index)
+      : _self(self),
+        _searchVariable(searchVariable),
+        _attribute(attribute),
+        _replaceVariable(replaceVariable),
+        _index(index) {
+    TRI_ASSERT(_searchVariable != nullptr);
+    TRI_ASSERT(!_attribute.empty());
+    TRI_ASSERT(_replaceVariable != nullptr);
+  }
+
+  bool before(ExecutionNode* en) override final {
+    en->replaceAttributeAccess(_self, _searchVariable, _attribute,
+                               _replaceVariable, _index);
+    return false;
+  }
+
+ private:
+  ExecutionNode const* _self;
+  Variable const* _searchVariable;
+  std::span<std::string_view> _attribute;
+  Variable const* _replaceVariable;
+  size_t _index;
+};
+
 }  // namespace
 
 namespace utils {
+
+void rewriteProjectionAttributeAccesses(ExecutionPlan& plan,
+                                        ExecutionNode* self,
+                                        Variable const* searchVariable,
+                                        Projections& projections,
+                                        size_t index) {
+  std::vector<std::string_view> path;
+  for (size_t i = 0; i < projections.size(); ++i) {
+    TRI_ASSERT(projections[i].variable == nullptr);
+    projections[i].variable =
+        plan.getAst()->variables()->createTemporaryVariable();
+
+    path.clear();
+    for (auto const& it : projections[i].path.get()) {
+      path.emplace_back(it);
+    }
+    AttributeAccessReplacer replacer(self, searchVariable, std::span(path),
+                                     projections[i].variable, index);
+    plan.root()->walk(replacer);
+  }
+}
 
 // find projection attributes for variable v, starting from node n
 // down to the root node of the plan/subquery.

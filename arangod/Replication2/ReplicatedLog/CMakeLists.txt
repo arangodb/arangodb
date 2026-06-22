@@ -7,6 +7,7 @@ target_sources(arango_replication2 PRIVATE
   ReplicatedLog.cpp
   SupervisionAgencyTrx.cpp
   ReplicatedLogFeature.cpp
+  ReplicatedLogOptionsProvider.cpp
   ReplicatedLogMetrics.tpp
   DefaultRebootIdCache.cpp DefaultRebootIdCache.h
   )

@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global fail, assertTrue, assertEqual */
+/*global fail */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -26,17 +26,14 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
+const {assertEqual, assertTrue, assertFalse} = jsunity.jsUnity.assertions;
 const arango = require("@arangodb").arango;
 const db = require("internal").db;
 const users = require("@arangodb/users");
-const request = require('@arangodb/request');
+let IM = global.instanceManager;
 
 function AuthSuite() {
   'use strict';
-  let baseUrl = function () {
-    return arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:');
-  };
-
   const user1 = 'hackers@arango.ai';
   const user2 = 'noone@arango.ai';
   let servers = [];
@@ -68,13 +65,12 @@ function AuthSuite() {
   return {
 
     setUpAll: function () {
+      IM.rememberConnection();
       servers = Object.keys(arango.GET('/_admin/cluster/health').Health).filter(function(s) {
         return s.match(/^PRMR/);
       });
 
       assertTrue(servers.length > 0, servers);
-
-      arango.reconnect(arango.getEndpoint(), '_system', "root", "");
 
       try {
         users.remove(user1);
@@ -97,7 +93,7 @@ function AuthSuite() {
     },
 
     tearDownAll: function () {
-      arango.reconnect(arango.getEndpoint(), '_system', "root", "");
+      IM.reconnectMe();
       try {
         users.remove(user1);
       } catch (err) {
@@ -114,62 +110,62 @@ function AuthSuite() {
     },
     
     testClusterHealthRoot: function () {
-      arango.reconnect(arango.getEndpoint(), 'UnitTestsDatabase', 'root', '');
+      arango.reconnect(IM.endpoint, 'UnitTestsDatabase', 'root', '');
       checkClusterHealth();
     },
     
     testClusterHealthOtherDBRW: function () {
-      arango.reconnect(arango.getEndpoint(), 'UnitTestsDatabase', user1, "foobar");
+      arango.reconnect(IM.endpoint, 'UnitTestsDatabase', user1, "foobar");
       checkClusterHealth();
     },
     
     testClusterHealthOtherDBRO: function () {
-      arango.reconnect(arango.getEndpoint(), 'UnitTestsDatabase', user2, "foobar");
+      arango.reconnect(IM.endpoint, 'UnitTestsDatabase', user2, "foobar");
       checkClusterHealth();
     },
     
     testClusterNodeVersionRoot: function () {
-      arango.reconnect(arango.getEndpoint(), 'UnitTestsDatabase', 'root', '');
+      arango.reconnect(IM.endpoint, 'UnitTestsDatabase', 'root', '');
       checkClusterNodeVersion();
     },
     
     testClusterNodeVersionDBRW: function () {
-      arango.reconnect(arango.getEndpoint(), 'UnitTestsDatabase', user1, "foobar");
+      arango.reconnect(IM.endpoint, 'UnitTestsDatabase', user1, "foobar");
       checkClusterNodeVersion();
     },
     
     testClusterNodeVersionDBRO: function () {
-      arango.reconnect(arango.getEndpoint(), 'UnitTestsDatabase', user2, "foobar");
+      arango.reconnect(IM.endpoint, 'UnitTestsDatabase', user2, "foobar");
       checkClusterNodeVersion();
     },
     
     testClusterNodeEngineRoot: function () {
-      arango.reconnect(arango.getEndpoint(), 'UnitTestsDatabase', 'root', '');
+      arango.reconnect(IM.endpoint, 'UnitTestsDatabase', 'root', '');
       checkClusterNodeEngine();
     },
     
     testClusterNodeEngineOtherDBRW: function () {
-      arango.reconnect(arango.getEndpoint(), 'UnitTestsDatabase', user1, "foobar");
+      arango.reconnect(IM.endpoint, 'UnitTestsDatabase', user1, "foobar");
       checkClusterNodeEngine();
     },
     
     testClusterNodeEngineOtherDBRO: function () {
-      arango.reconnect(arango.getEndpoint(), 'UnitTestsDatabase', user2, "foobar");
+      arango.reconnect(IM.endpoint, 'UnitTestsDatabase', user2, "foobar");
       checkClusterNodeEngine();
     },
     
     testClusterNodeStatsRoot: function () {
-      arango.reconnect(arango.getEndpoint(), 'UnitTestsDatabase', 'root', '');
+      arango.reconnect(IM.endpoint, 'UnitTestsDatabase', 'root', '');
       checkClusterNodeStats();
     },
     
     testClusterNodeStatsOtherDBRW: function () {
-      arango.reconnect(arango.getEndpoint(), 'UnitTestsDatabase', user1, "foobar");
+      arango.reconnect(IM.endpoint, 'UnitTestsDatabase', user1, "foobar");
       checkClusterNodeStats();
     },
     
     testClusterNodeStatsOtherDBRO: function () {
-      arango.reconnect(arango.getEndpoint(), 'UnitTestsDatabase', user2, "foobar");
+      arango.reconnect(IM.endpoint, 'UnitTestsDatabase', user2, "foobar");
       checkClusterNodeStats();
     },
     

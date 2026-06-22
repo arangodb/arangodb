@@ -38,7 +38,6 @@
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
 #include "Logger/LogMacros.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/IndexesSnapshot.h"

@@ -29,7 +29,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterAdminOperations.h"
 #include "Cluster/ServerState.h"
-#include "StorageEngine/EngineSelectorFeature.h"
+#include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"
@@ -88,10 +88,7 @@ RestStatus ClusterRestWalHandler::execute() {
       return RestStatus::DONE;
     }
 #endif
-    server()
-        .getFeature<EngineSelectorFeature>()
-        .engine()
-        .waitForEstimatorSync();
+    server().getFeature<DatabaseFeature>().engine().waitForEstimatorSync();
     generateResult(rest::ResponseCode::OK,
                    arangodb::velocypack::Slice::emptyObjectSlice());
     return RestStatus::DONE;

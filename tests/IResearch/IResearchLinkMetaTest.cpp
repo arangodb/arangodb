@@ -52,7 +52,6 @@
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "Sharding/ShardingFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #ifdef USE_V8
 #include "V8Server/V8DealerFeature.h"
 #endif

@@ -27,12 +27,11 @@
 
 'use strict';
 
-const expect = require('chai').expect;
+const jsunity = require("jsunity");
+const {assertEqual, assertTrue, assertFalse, assertNotEqual, assertNotUndefined} = jsunity.jsUnity.assertions;
 const users = require('@arangodb/users');
 const helper = require('@arangodb/testutils/user-helper');
 const tasks = require('@arangodb/tasks');
-const pu = require('@arangodb/testutils/process-utils');
-const download = require('internal').download;
 const errors = require('@arangodb').errors;
 const db = require('@arangodb').db;
 const namePrefix = helper.namePrefix;
@@ -51,6 +50,7 @@ const colLevel = helper.colLevel;
 
 const arango = require('internal').arango;
 let connectionHandle = arango.getConnectionHandle();
+
 for (let l of rightLevels) {
   systemLevel[l] = new Set();
   dbLevel[l] = new Set();
@@ -67,7 +67,7 @@ const wait = (keySpaceId, key) => {
 };
 
 const createKeySpace = (keySpaceId) => {
-  return executeJS(`return global.KEYSPACE_CREATE('${keySpaceId}', 128, true);`).body === 'true';
+  return executeJS(`return global.KEYSPACE_CREATE('${keySpaceId}', 128, true);`).parsedBody === true;
 };
 
 const dropKeySpace = (keySpaceId) => {
@@ -75,7 +75,7 @@ const dropKeySpace = (keySpaceId) => {
 };
 
 const getKey = (keySpaceId, key) => {
-  return executeJS(`return global.KEY_GET('${keySpaceId}', '${key}');`).body === 'true';
+  return executeJS(`return global.KEY_GET('${keySpaceId}', '${key}');`).parsedBody === true;
 };
 
 const setKey = (keySpaceId, name) => {
@@ -83,16 +83,7 @@ const setKey = (keySpaceId, name) => {
 };
 
 const executeJS = (code) => {
-  let httpOptions = pu.makeAuthorizationHeaders({
-    username: 'root',
-    password: ''
-  }, {});
-  httpOptions.method = 'POST';
-  httpOptions.timeout = 1800;
-  httpOptions.returnBodyOnError = true;
-  return download(arango.getEndpoint().replace('tcp', 'http') + `/_db/${dbName}/_admin/execute?returnAsJSON=true`,
-    code,
-    httpOptions);
+  return arango.POST_RAW('/_admin/execute', code);
 };
 
 helper.switchUser('root', '_system');
@@ -102,15 +93,15 @@ helper.generateAllUsers();
 describe('User Rights Management', () => {
   it('should check if all users are created', () => {
     helper.switchUser('root', '_system');
-    expect(userSet.size).to.be.greaterThan(0); 
-    expect(userSet.size).to.equal(helper.userCount);
+    assertTrue(userSet.size > 0); 
+    assertEqual(userSet.size, helper.userCount);
     for (let name of userSet) {
-      expect(users.document(name), `Could not find user: ${name}`).to.not.be.undefined;
+      assertNotUndefined(users.document(name), `Could not find user: ${name}`);
     }
   });
 
   it('should test rights for', () => {
-    expect(userSet.size).to.be.greaterThan(0);
+    assertTrue(userSet.size > 0);
     for (let testViewType of ["arangosearch", "search-alias"]) {
       describe(`view type ${testViewType}`, () => {
         for (let name of userSet) {
@@ -126,7 +117,7 @@ describe('User Rights Management', () => {
             describe(`user ${name}`, () => {
               before(() => {
                 helper.switchUser(name, dbName);
-                expect(createKeySpace(keySpaceId)).to.equal(true, 'keySpace creation failed!');
+                assertTrue(createKeySpace(keySpaceId), 'keySpace creation failed!');
               });
 
               after(() => {
@@ -207,8 +198,8 @@ describe('User Rights Management', () => {
                 };
 
                 const checkError = (e) => {
-                  expect(e.code).to.equal(403, "Expected to get forbidden REST error code, but got another one");
-                  expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code, "Expected to get forbidden error number, but got another one");
+                  assertEqual(e.code, 403, "Expected to get forbidden REST error code, but got another one");
+                  assertEqual(e.errorNum, errors.ERROR_FORBIDDEN.code, "Expected to get forbidden error number, but got another one");
                 };
 
                 describe('drop a', () => {
@@ -226,7 +217,7 @@ describe('User Rights Management', () => {
 
                   it('view without links', () => {
                     rootCreateView(testViewName, testViewType);
-                    expect(rootTestView(testViewName)).to.equal(true, 'Precondition failed, the view doesn not exist');
+                    assertTrue(rootTestView(testViewName), 'Precondition failed, the view doesn not exist');
                     setKey(keySpaceId, key);
                     const taskId = 'task_drop_view_without_links_' + key;
                     const task = {
@@ -247,8 +238,8 @@ describe('User Rights Management', () => {
                     if (dbLevel['rw'].has(name)) {
                       tasks.register(task);
                       wait(keySpaceId, key);
-                      expect(getKey(keySpaceId, `${key}_status`)).to.equal(true, `${name} could not drop the view with sufficient rights`);
-                      expect(rootTestView(testViewName)).to.equal(false, 'View deletion reported success, but view was found afterwards');
+                      assertTrue(getKey(keySpaceId, `${key}_status`), `${name} could not drop the view with sufficient rights`);
+                      assertFalse(rootTestView(testViewName), 'View deletion reported success, but view was found afterwards');
                     } else {
                       try {
                         tasks.register(task);
@@ -257,9 +248,9 @@ describe('User Rights Management', () => {
                         checkError(e);
                         return;
                       } finally {
-                        expect(rootTestView(testViewName)).to.equal(true, `${name} was able to drop a view with insufficent rights`);
+                        assertTrue(rootTestView(testViewName), `${name} was able to drop a view with insufficent rights`);
                       }
-                      expect(false).to.equal(true, `${name} managed to register a task with insufficient rights`);
+                      assertFalse(true, `${name} managed to register a task with insufficient rights`);
                     }
                   });
 
@@ -269,7 +260,7 @@ describe('User Rights Management', () => {
                       rootCreateCollection("NonExistentCol");
                       rootCreateView(testViewName, testViewType, { links: { "NonExistentCol" : { includeAllFields: true } } });
                       rootDropCollection("NonExistentCol");
-                      expect(rootTestView(testViewName)).to.equal(true, 'Precondition failed, the view doesn not exist');
+                      assertTrue(rootTestView(testViewName), 'Precondition failed, the view doesn not exist');
                       setKey(keySpaceId, key);
                       const taskId = 'task_drop_view_with_link_to_nonexist_col' + key;
                       const task = {
@@ -290,7 +281,7 @@ describe('User Rights Management', () => {
                       if (dbLevel['rw'].has(name)) {
                         tasks.register(task);
                         wait(keySpaceId, key);
-                        expect(rootTestView(testViewName)).to.equal(false, 'View deletion reported success, but view was found afterwards');
+                        assertFalse(rootTestView(testViewName), 'View deletion reported success, but view was found afterwards');
                       } else {
                         try {
                           tasks.register(task);
@@ -299,9 +290,9 @@ describe('User Rights Management', () => {
                           checkError(e);
                           return;
                         } finally {
-                          expect(rootTestView(testViewName)).to.equal(true, `${name} was able to drop a view with insufficent rights`);
+                          assertTrue(rootTestView(testViewName), `${name} was able to drop a view with insufficent rights`);
                         }
-                        expect(false).to.equal(true, `${name} managed to register a task with insufficient rights`);
+                        assertFalse(true, `${name} managed to register a task with insufficient rights`);
                       }
                     });
 
@@ -311,7 +302,7 @@ describe('User Rights Management', () => {
 
                       rootCreateCollection(testCol1Name);
                       rootCreateView(testViewName, testViewType, { links: { [testCol1Name]: { includeAllFields: true } } });
-                      expect(rootTestView(testViewName)).to.equal(true, 'Precondition failed, the view doesn not exist');
+                      assertTrue(rootTestView(testViewName), 'Precondition failed, the view doesn not exist');
                       setKey(keySpaceId, key);
                       const taskId = 'task_drop_view_with_link_to_existing_col' + key;
                       const task = {
@@ -333,12 +324,12 @@ describe('User Rights Management', () => {
                         if(colLevel['rw'].has(name) || colLevel['ro'].has(name)){
                           tasks.register(task);
                           wait(keySpaceId, key);
-                          expect(rootTestView(testViewName)).to.equal(false, 'View deletion reported success, but view was found afterwards');
+                          assertFalse(rootTestView(testViewName), 'View deletion reported success, but view was found afterwards');
                         } else {
                           tasks.register(task);
                           wait(keySpaceId, key);
-                          expect(getKey(keySpaceId, `${key}_status`)).to.equal(false, `${name} managed to drop the view with insufficient rights`);
-                          expect(rootTestView(testViewName)).to.equal(true, 'View deletion reported success, but view was found afterwards');
+                          assertFalse(getKey(keySpaceId, `${key}_status`), `${name} managed to drop the view with insufficient rights`);
+                          assertTrue(rootTestView(testViewName), 'View deletion reported success, but view was found afterwards');
                         }
                       } else {
                         try {
@@ -348,9 +339,9 @@ describe('User Rights Management', () => {
                           checkError(e);
                           return;
                         } finally {
-                          expect(rootTestView(testViewName)).to.equal(true, `${name} was able to drop a view with insufficent rights`);
+                          assertTrue(rootTestView(testViewName), `${name} was able to drop a view with insufficent rights`);
                         }
-                        expect(false).to.equal(true, `${name} managed to register a task with insufficient rights`);
+                        assertFalse(true, `${name} managed to register a task with insufficient rights`);
                       }
                     });
 
@@ -363,7 +354,7 @@ describe('User Rights Management', () => {
                         rootCreateCollection(testCol1Name);
                         rootCreateCollection(testCol2Name);
                         rootCreateView(testViewName, testViewType, { links: { [testCol1Name]: { includeAllFields: true }, [testCol2Name]: { includeAllFields: true } } });
-                        expect(rootTestView(testViewName)).to.equal(true, 'Precondition failed, the view doesn not exist');
+                        assertTrue(rootTestView(testViewName), 'Precondition failed, the view doesn not exist');
                         rootGrantCollection(testCol2Name, name, 'rw');
 
                         setKey(keySpaceId, key);
@@ -387,12 +378,12 @@ describe('User Rights Management', () => {
                           if (colLevel['ro'].has(name)) {
                             tasks.register(task);
                             wait(keySpaceId, key);
-                            expect(rootTestView(testViewName)).to.equal(false, 'View deletion reported success, but view was found afterwards');
+                            assertFalse(rootTestView(testViewName), 'View deletion reported success, but view was found afterwards');
                           } else {
                             tasks.register(task);
                             wait(keySpaceId, key);
-                            expect(getKey(keySpaceId, `${key}_status`)).to.equal(false, `${name} could drop the view with insufficient rights`);
-                            expect(rootTestView(testViewName)).to.equal(true, `${name} was able to drop a view with insufficent rights`);
+                            assertFalse(getKey(keySpaceId, `${key}_status`), `${name} could drop the view with insufficient rights`);
+                            assertTrue(rootTestView(testViewName), `${name} was able to drop a view with insufficent rights`);
                           }
                         } else {
                           try {
@@ -402,9 +393,9 @@ describe('User Rights Management', () => {
                             checkError(e);
                             return;
                           } finally {
-                            expect(getKey(keySpaceId, `${key}_status`)).to.equal(false, `${name} could drop the view with insufficient rights`);
+                            assertFalse(getKey(keySpaceId, `${key}_status`), `${name} could drop the view with insufficient rights`);
                           }
-                          expect(false).to.equal(true, `${name} managed to register a task with insufficient rights`);
+                          assertFalse(true, `${name} managed to register a task with insufficient rights`);
                         }
                       });
 

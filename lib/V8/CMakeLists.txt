@@ -1,6 +1,8 @@
 add_library(arango_v8 STATIC
   V8PlatformFeature.cpp
+  V8PlatformOptionsProvider.cpp
   V8SecurityFeature.cpp
+  V8SecurityOptionsProvider.cpp
   JavaScriptSecurityContext.cpp
   JSLoader.cpp
   V8LineEditor.cpp

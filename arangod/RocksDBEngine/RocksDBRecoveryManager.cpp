@@ -53,8 +53,6 @@
 #include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "RocksDBEngine/RocksDBVPackIndex.h"
 #include "RocksDBEngine/RocksDBValue.h"
-#include "StorageEngine/EngineSelectorFeature.h"
-#include "StorageEngine/StorageEngineFeature.h"
 #include "Transaction/Helpers.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/ticks.h"
@@ -87,7 +85,6 @@ RocksDBRecoveryManager::RocksDBRecoveryManager(
   startsAfter<DatabaseFeature>();
   startsAfter<RocksDBEngine>();
   startsAfter<ServerIdFeature>();
-  startsAfter<StorageEngineFeature>();
   startsAfter<SystemDatabaseFeature>();
 
   onlyEnabledWith<RocksDBEngine>();
@@ -188,8 +185,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
         _lastRemovedDocRid(0),
         _batchStartSequence(0),
         _currentSequence(currentSequence),
-        _engine(_server.getFeature<EngineSelectorFeature>()
-                    .engine<RocksDBEngine>()) {}
+        _engine(_server.getFeature<RocksDBEngine>()) {}
 
   void startNewBatch(rocksdb::SequenceNumber startSequence) {
     TRI_ASSERT(_currentSequence <= startSequence);
@@ -639,8 +635,8 @@ Result RocksDBRecoveryManager::parseRocksWAL() {
   Result shutdownRv;
 
   Result res = basics::catchToResult([&, &server = server()]() -> Result {
-    RocksDBEngine& engine =
-        server.getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
+    RocksDBEngine& engine = static_cast<RocksDBEngine&>(
+        server.getFeature<DatabaseFeature>().engine());
 
     auto db = engine.db();
 

@@ -46,7 +46,6 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/ViewTypesFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "Utils/ExecContext.h"
 #include "V8/v8-vpack.h"
 #include "V8Server/V8DealerFeature.h"

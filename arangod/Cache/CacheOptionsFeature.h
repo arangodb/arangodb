@@ -43,8 +43,6 @@ class CacheOptionsFeature final
   CacheOptions getOptions() const override final;
 
  private:
-  static constexpr std::uint64_t minRebalancingInterval = 500 * 1000;
-
   CacheOptions _options;
 };
 

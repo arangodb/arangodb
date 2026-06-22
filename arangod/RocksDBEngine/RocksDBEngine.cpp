@@ -61,7 +61,7 @@
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/HistogramBuilder.h"
 #include "Metrics/Metric.h"
-#include "Metrics/MetricsFeature.h"
+#include "Metrics/ICollector.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Replication/ReplicationClients.h"
@@ -277,7 +277,7 @@ RocksDBFilePurgeEnabler::RocksDBFilePurgeEnabler(
 // create the storage engine
 RocksDBEngine::RocksDBEngine(
     application_features::ApplicationServer& server,
-    RocksDBOptionsProvider& optionsProvider, metrics::MetricsFeature& metrics,
+    RocksDBOptionsProvider& optionsProvider, metrics::ICollector& metrics,
     DatabasePathFeature const& databasePathFeature,
     VectorIndexFeature const& vectorIndexFeature, FlushFeature& flushFeature,
     DumpLimitsFeature const& dumpLimitsFeature,
@@ -466,6 +466,9 @@ void RocksDBEngine::flushOpenFilesIfRequired() {
 // add the storage engine's specific options to the global list of options
 void RocksDBEngine::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
+  options->addObsoleteOption("--server.storage-engine",
+                             "The storage engine type", true);
+
   options->addSection("rocksdb", "RocksDB engine");
 
   /// @brief minimum required percentage of free disk space for considering
@@ -951,31 +954,30 @@ namespace {
 struct RocksDBAsyncLogWriteBatcherMetricsImpl
     : replication2::storage::rocksdb::AsyncLogWriteBatcherMetrics {
   explicit RocksDBAsyncLogWriteBatcherMetricsImpl(
-      metrics::MetricsFeature* metricsFeature) {
+      metrics::ICollector& metrics) {
     using namespace arangodb::replication2::storage::rocksdb;
-    numWorkerThreadsWaitForSync = &metricsFeature->add(
+    numWorkerThreadsWaitForSync = &metrics.add(
         arangodb_replication2_rocksdb_num_persistor_worker{}.withLabel("ws",
                                                                        "true"));
-    numWorkerThreadsNoWaitForSync = &metricsFeature->add(
+    numWorkerThreadsNoWaitForSync = &metrics.add(
         arangodb_replication2_rocksdb_num_persistor_worker{}.withLabel(
             "ws", "false"));
 
-    queueLength =
-        &metricsFeature->add(arangodb_replication2_rocksdb_queue_length{});
+    queueLength = &metrics.add(arangodb_replication2_rocksdb_queue_length{});
     writeBatchSize =
-        &metricsFeature->add(arangodb_replication2_rocksdb_write_batch_size{});
+        &metrics.add(arangodb_replication2_rocksdb_write_batch_size{});
     rocksdbWriteTimeInUs =
-        &metricsFeature->add(arangodb_replication2_rocksdb_write_time{});
+        &metrics.add(arangodb_replication2_rocksdb_write_time{});
     rocksdbSyncTimeInUs =
-        &metricsFeature->add(arangodb_replication2_rocksdb_sync_time{});
+        &metrics.add(arangodb_replication2_rocksdb_sync_time{});
 
-    operationLatencyInsert = &metricsFeature->add(
+    operationLatencyInsert = &metrics.add(
         arangodb_replication2_storage_operation_latency{}.withLabel("op",
                                                                     "insert"));
-    operationLatencyRemoveFront = &metricsFeature->add(
+    operationLatencyRemoveFront = &metrics.add(
         arangodb_replication2_storage_operation_latency{}.withLabel(
             "op", "remove-front"));
-    operationLatencyRemoveBack = &metricsFeature->add(
+    operationLatencyRemoveBack = &metrics.add(
         arangodb_replication2_storage_operation_latency{}.withLabel(
             "op", "remove-back"));
   }
@@ -986,6 +988,23 @@ void RocksDBEngine::start() {
   // it is already decided that rocksdb is used
   TRI_ASSERT(isEnabled());
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
+
+  auto path = _databasePathFeature.directory();
+  auto engineFilePath = basics::FileUtils::buildFilename(path, "ENGINE");
+
+  // Starter still expects ENGINE file to be present
+  if (!std::filesystem::is_regular_file(engineFilePath)) {
+    try {
+      basics::FileUtils::spit(engineFilePath, std::string{kEngineName}, true);
+    } catch (std::exception const& ex) {
+      LOG_TOPIC("4ff0f", FATAL, Logger::STARTUP)
+          << "unable to write 'ENGINE' file '" << engineFilePath
+          << "': " << ex.what()
+          << ". please make sure the file/directory is writable for the "
+             "arangod process and user";
+      FATAL_ERROR_EXIT();
+    }
+  }
 
   if (ServerState::instance()->isAgent() &&
       !server().options()->processingResult().touched(
@@ -1324,7 +1343,7 @@ void RocksDBEngine::start() {
   };
 
   _logMetrics =
-      std::make_shared<RocksDBAsyncLogWriteBatcherMetricsImpl>(&_metrics);
+      std::make_shared<RocksDBAsyncLogWriteBatcherMetricsImpl>(_metrics);
 
   // When using the custom WAL implementation, we don't need to register a
   // RocksDB sync listener.
@@ -1353,8 +1372,8 @@ void RocksDBEngine::start() {
   _settingsManager->retrieveInitialValues();
 
   double const counterSyncSeconds = 2.5;
-  _backgroundThread =
-      std::make_unique<RocksDBBackgroundThread>(*this, counterSyncSeconds);
+  _backgroundThread = std::make_unique<RocksDBBackgroundThread>(
+      *this, counterSyncSeconds, _metrics);
   if (!_backgroundThread->start()) {
     LOG_TOPIC("a5e96", FATAL, Logger::ENGINES)
         << "could not start rocksdb counter manager thread";
@@ -4326,9 +4345,6 @@ std::string RocksDBEngine::getLanguageFile() const {
 
 auto RocksDBEngine::getDatabaseFeature() const -> DatabaseFeature& {
   return _databaseFeature;
-}
-auto RocksDBEngine::getMetricsFeature() const -> metrics::MetricsFeature& {
-  return _metrics;
 }
 auto RocksDBEngine::getFlushFeature() const -> FlushFeature& {
   return _flushFeature;

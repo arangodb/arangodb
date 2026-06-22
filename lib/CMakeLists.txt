@@ -154,6 +154,7 @@ add_library(arango_basic_utils STATIC
 
         Random/RandomGenerator.cpp
         Random/RandomFeature.cpp
+        Random/RandomOptionsProvider.cpp
         Random/UniformCharacter.cpp
 
         Zip/ioapi.cpp
@@ -198,16 +199,24 @@ add_library(arango_basic_features STATIC
         ApplicationFeatures/ShellColorsFeature.cpp
         ApplicationFeatures/ApplicationFeaturePhase.cpp
         ApplicationFeatures/BumpFileDescriptorsFeature.cpp
+        ApplicationFeatures/BumpFileDescriptorsFeatureOptions.cpp
+        ApplicationFeatures/BumpFileDescriptorsOptionsProvider.cpp
         ApplicationFeatures/CommunicationFeaturePhase.cpp
         ApplicationFeatures/ConfigFeature.cpp
+        ApplicationFeatures/ConfigOptionsProvider.cpp
         ApplicationFeatures/FileSystemFeature.cpp
+        ApplicationFeatures/FileSystemOptionsProvider.cpp
         ApplicationFeatures/GreetingsFeature.cpp
         ApplicationFeatures/LanguageFeature.cpp
+        ApplicationFeatures/LanguageOptionsProvider.cpp
         ApplicationFeatures/OptionsCheckFeature.cpp
         ApplicationFeatures/ShutdownFeature.cpp
         ApplicationFeatures/TempFeature.cpp
+        ApplicationFeatures/TempOptionsProvider.cpp
         ApplicationFeatures/VersionFeature.cpp
+        ApplicationFeatures/VersionOptionsProvider.cpp
         ApplicationFeatures/ProcessEnvironmentFeature.cpp
+        ApplicationFeatures/ProcessEnvironmentOptionsProvider.cpp
 )
 target_link_libraries(arango_basic_features
   PUBLIC velocypack
@@ -365,18 +374,6 @@ endif()
 
 add_library(arango STATIC
   ${PROJECT_SOURCE_DIR}/3rdParty/date/src/tz.cpp
-  ApplicationFeatures/ApplicationFeaturePhase.cpp
-  ApplicationFeatures/BumpFileDescriptorsFeature.cpp
-  ApplicationFeatures/CommunicationFeaturePhase.cpp
-  ApplicationFeatures/ConfigFeature.cpp
-  ApplicationFeatures/FileSystemFeature.cpp
-  ApplicationFeatures/GreetingsFeature.cpp
-  ApplicationFeatures/LanguageFeature.cpp
-  ApplicationFeatures/OptionsCheckFeature.cpp
-  ApplicationFeatures/ShutdownFeature.cpp
-  ApplicationFeatures/TempFeature.cpp
-  ApplicationFeatures/VersionFeature.cpp
-  ApplicationFeatures/ProcessEnvironmentFeature.cpp
   Assertions/AssertionConditionalLogger.cpp
   Assertions/AssertionLogger.cpp
   Basics/RocksDBLogger.cpp
@@ -391,6 +388,7 @@ target_link_libraries(arango
          boost_system
          boost_boost
          arango_futures
+         arango_basic_features
          arango_static_strings
          arango_crashhandler
          arango_basic_http_client

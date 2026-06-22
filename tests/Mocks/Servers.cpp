@@ -110,8 +110,6 @@
 #include "Sharding/ShardingFeature.h"
 #include "Statistics/StatisticsFeature.h"
 #include "Statistics/StatisticsWorker.h"
-#include "StorageEngine/EngineSelectorFeature.h"
-#include "StorageEngine/StorageEngineFeature.h"
 #include "TemplateSpecializer.h"
 #include "Transaction/ManagerFeature.h"
 #include "Transaction/Methods.h"
@@ -159,7 +157,7 @@ static void SetupGreetingsPhase(MockServer& server) {
   server.addFeature<metrics::MetricsFeature>(
       false, LazyApplicationFeatureReference<QueryRegistryFeature>(nullptr),
       LazyApplicationFeatureReference<StatisticsFeature>(nullptr),
-      LazyApplicationFeatureReference<EngineSelectorFeature>(nullptr),
+      LazyApplicationFeatureReference<DatabaseFeature>(nullptr),
       LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(nullptr),
       LazyApplicationFeatureReference<ClusterFeature>(nullptr));
   server.addFeature<SoftShutdownFeature>(false);
@@ -181,8 +179,6 @@ static void SetupDatabaseFeaturePhase(MockServer& server) {
   server.addFeature<AuthenticationFeature>(true);
   server.addFeature<transaction::ManagerFeature>(false, metrics);
   auto& databaseFeature = server.addFeature<DatabaseFeature>(false);
-  server.addFeature<EngineSelectorFeature>(false);
-  server.addFeature<StorageEngineFeature>(false);
   server.addFeature<SystemDatabaseFeature>(true);
   server.addFeature<InitDatabaseFeature>(true,
                                          std::span<const std::type_index>{});
@@ -307,7 +303,9 @@ void MockServer::startFeatures() {
   _server.setupDependencies(false);
   auto orderedFeatures = _server.getOrderedFeatures();
 
-  _server.getFeature<EngineSelectorFeature>().setEngineTesting(_engine.get());
+  if (_server.hasFeature<DatabaseFeature>()) {
+    _server.getFeature<DatabaseFeature>().setEngineTesting(_engine.get());
+  }
 
   if (_server.hasFeature<SchedulerFeature>()) {
     auto& sched = _server.getFeature<SchedulerFeature>();
@@ -440,7 +438,6 @@ TRI_vocbase_t& MockServer::getSystemDatabase() const {
 MockMetricsServer::MockMetricsServer(bool start) : MockServer() {
   // setup required application features
   SetupGreetingsPhase(*this);
-  addFeature<EngineSelectorFeature>(false);
 
   if (start) {
     MockMetricsServer::startFeatures();

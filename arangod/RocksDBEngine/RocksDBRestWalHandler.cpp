@@ -29,8 +29,8 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterAdminOperations.h"
 #include "Cluster/ServerState.h"
+#include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/StorageEngine.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"
 #include "Utils/ExecContext.h"
@@ -88,10 +88,7 @@ RestStatus RocksDBRestWalHandler::execute() {
       return RestStatus::DONE;
     }
 #endif
-    server()
-        .getFeature<EngineSelectorFeature>()
-        .engine()
-        .waitForEstimatorSync();
+    server().getFeature<DatabaseFeature>().engine().waitForEstimatorSync();
     generateResult(rest::ResponseCode::OK,
                    arangodb::velocypack::Slice::emptyObjectSlice());
     return RestStatus::DONE;
@@ -150,7 +147,7 @@ void RocksDBRestWalHandler::flush() {
     auto& feature = server().getFeature<ClusterFeature>();
     res = flushWalOnAllDBServers(feature, waitForSync, flushColumnFamilies);
   } else {
-    server().getFeature<EngineSelectorFeature>().engine().flushWal(
+    server().getFeature<DatabaseFeature>().engine().flushWal(
         waitForSync, flushColumnFamilies);
   }
 

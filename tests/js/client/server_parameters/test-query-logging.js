@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 200 */
-/* global getOptions, fail, arango, assertEqual, assertFalse, assertTrue, assertMatch, assertInstanceOf */
+/* global getOptions, fail */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -26,13 +26,16 @@
 
 'use strict';
 const jsunity = require('jsunity');
+const {assertEqual, assertTrue, assertFalse, assertNotEqual, assertInstanceOf} = jsunity.jsUnity.assertions;
 const arangodb = require('@arangodb');
+const arango = arangodb.arango;
 const db = arangodb.db;
 const crypto = require('@arangodb/crypto');
 const request = require("@arangodb/request");
 const users = require("@arangodb/users");
 const internal = require('internal');
 const errors = internal.errors;
+let IM = global.instanceManager;
 
 const jwtSecret = 'haxxmann';
 const cn = "UnitTestsQueries";
@@ -54,11 +57,11 @@ const jwt = crypto.jwtEncode(jwtSecret, {
   "server_id": "ABCD",
   "iss": "arangodb", "exp": Math.floor(Date.now() / 1000) + 3600
 }, 'HS256');
-  
+
 const baseUrl = function (dbName = '_system') {
-  return arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:') + `/_db/${dbName}`;
+  return IM.url + `/_db/${dbName}`;
 };
-  
+
 const waitForCollection = () => {
   let tries = 0;
   while (++tries < 200) {
@@ -590,11 +593,10 @@ function QueryLoggerSuite() {
     },
 
     testDifferentUser: function () {
-      let endpoint = arango.getEndpoint();
       users.save("test_user", "testi");
       users.grantDatabase("test_user", "_system", "rw");
       try {
-        arango.reconnect(endpoint, db._name(), "test_user", "testi");
+        arango.reconnect(IM.endpoint, db._name(), "test_user", "testi");
         const query = `${uniqid()} FOR i IN 1..10000 RETURN i`;
         db._query(query).toArray();
 
@@ -609,22 +611,21 @@ function QueryLoggerSuite() {
           exitCode: 0
         });
       } finally {
-        arango.reconnect(endpoint, db._name(), "root", "");
+        arango.reconnect(IM.endpoint, db._name(), "root", "");
         try {
           users.remove("test_user");
         } catch (err) {
         }
       }
     },
-    
+
     testDifferentUserInDifferentDatabase: function () {
-      let endpoint = arango.getEndpoint();
       users.save("test_user", "testi");
       users.grantDatabase("test_user", cn, "ro");
       users.grantDatabase("test_user", "_system", "ro");
       db._createDatabase(cn);
       try {
-        arango.reconnect(endpoint, cn, "test_user", "testi");
+        arango.reconnect(IM.endpoint, cn, "test_user", "testi");
         const query = `${uniqid()} FOR i IN 1..10000 RETURN i`;
         db._query(query).toArray();
 
@@ -639,7 +640,7 @@ function QueryLoggerSuite() {
           exitCode: 0
         });
       } finally {
-        arango.reconnect(endpoint, "_system", "root", "");
+        arango.reconnect(IM.endpoint, "_system", "root", "");
         try {
           users.remove("test_user");
         } catch (err) {

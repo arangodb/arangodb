@@ -32,7 +32,6 @@
 #include "Basics/datetime.h"
 #include "Containers/HashSet.h"
 #include "IResearch/IResearchCommon.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Utilities/NameValidator.h"
 #include "VocBase/LogicalCollection.h"
@@ -1023,7 +1022,10 @@ bool Index::canWarmup() const noexcept { return false; }
 
 bool Index::isVectorIndexReady() const noexcept { return false; }
 
-vector::UserVectorIndexDefinition const& Index::getVectorIndexDefinition() {
+bool Index::isLinearScanEnabled() const noexcept { return false; }
+
+vector::UserVectorIndexDefinition const& Index::getVectorIndexDefinition()
+    const {
   TRI_ASSERT(false);
   THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_NOT_IMPLEMENTED,

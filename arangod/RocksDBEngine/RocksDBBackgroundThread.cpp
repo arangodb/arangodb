@@ -27,7 +27,7 @@
 #include "Basics/system-functions.h"
 #include "Logger/LogMacros.h"
 #include "Metrics/GaugeBuilder.h"
-#include "Metrics/MetricsFeature.h"
+#include "Metrics/ICollector.h"
 #include "Replication/ReplicationClients.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/FlushFeature.h"
@@ -46,12 +46,13 @@ DECLARE_GAUGE(rocksdb_wal_released_tick_replication, uint64_t,
               "Released tick for RocksDB WAL deletion (replication-induced)");
 
 RocksDBBackgroundThread::RocksDBBackgroundThread(RocksDBEngine& engine,
-                                                 double interval)
+                                                 double interval,
+                                                 metrics::ICollector& metrics)
     : Thread(engine.server(), "RocksDBThread"),
       _engine(engine),
       _interval(interval),
-      _metricsWalReleasedTickReplication(engine.getMetricsFeature().add(
-          rocksdb_wal_released_tick_replication{})) {}
+      _metricsWalReleasedTickReplication(
+          metrics.add(rocksdb_wal_released_tick_replication{})) {}
 
 RocksDBBackgroundThread::~RocksDBBackgroundThread() { shutdown(); }
 

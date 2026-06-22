@@ -28,14 +28,13 @@
 
 'use strict';
 
-const expect = require('chai').expect;
+const jsunity = require("jsunity");
+const {assertEqual, assertTrue, assertFalse, assertNotEqual, assertNotUndefined} = jsunity.jsUnity.assertions;
 const tasks = require('@arangodb/tasks');
-const pu = require('@arangodb/testutils/process-utils');
 const users = require('@arangodb/users');
 const internal = require('internal');
 const db = internal.db;
 const helper = require('@arangodb/testutils/user-helper');
-const download = internal.download;
 const keySpaceId = 'task_update_user_keyspace';
 const taskId = 'task_update_user_periodic';
 const arango = internal.arango;
@@ -43,7 +42,7 @@ let connectionHandle = arango.getConnectionHandle();
 const taskPeriod = 0.3;
 
 const createKeySpace = (keySpaceId) => {
-  return executeJS(`return global.KEYSPACE_CREATE('${keySpaceId}', 128, true);`).body === 'true';
+  return executeJS(`return global.KEYSPACE_CREATE('${keySpaceId}', 128, true);`).parsedBody === true;
 };
 
 const dropKeySpace = (keySpaceId) => {
@@ -55,7 +54,7 @@ const setKey = (keySpaceId, key) => {
 };
 
 const getKey = (keySpaceId, key) => {
-  let res = executeJS(`return global.KEY_GET('${keySpaceId}', '${key}');`).body;
+  let res = executeJS(`return global.KEY_GET('${keySpaceId}', '${key}');`).parsedBody;
   let num = Number(res);
   if (isNaN(num)) {
     console.error('KEY_GET response: ' + res);
@@ -65,19 +64,7 @@ const getKey = (keySpaceId, key) => {
 };
 
 const executeJS = (code) => {
-  let username = 'root';
-  let password = '';
-
-  let httpOptions = pu.makeAuthorizationHeaders({
-    username: username,
-    password: password
-  }, {});
-  httpOptions.method = 'POST';
-  httpOptions.timeout = 1800;
-  httpOptions.returnBodyOnError = true;
-  return download(arango.getEndpoint().replace('tcp', 'http') + '/_admin/execute?returnAsJSON=true',
-    code,
-    httpOptions);
+  return arango.POST_RAW('/_admin/execute', code);
 };
 
 const waitForTaskStart = () => {
@@ -88,7 +75,7 @@ const waitForTaskStart = () => {
       break;
     }
   }
-  expect(i).to.be.above(0, 'Task must have run at least once');
+  assertTrue(i > 0, 'Task must have run at least once');
 };
 
 const waitForTaskStop = () => {
@@ -97,14 +84,14 @@ const waitForTaskStop = () => {
   while (--i > 0) {
     internal.wait(taskPeriod);
     let current = getKey(keySpaceId, 'bob');
-    expect(current).to.not.be.equal(0, 'Received invalid key');
+    assertNotEqual(current, 0, 'Received invalid key');
     if (current === last) {
       break;
     }
     last = current;
     internal.wait(taskPeriod);
   }
-  expect(i).to.be.above(0, 'The repeatable task was able continue running with insufficient rights');
+  assertTrue(i > 0, 'The repeatable task was able continue running with insufficient rights');
 };
 
 describe('User Rights Management', () => {
@@ -115,7 +102,7 @@ describe('User Rights Management', () => {
     users.grantCollection('bob', '_system', '*', 'rw');
 
     helper.switchUser('bob');
-    expect(createKeySpace(keySpaceId)).to.equal(true, 'keySpace creation failed!');
+    assertTrue(createKeySpace(keySpaceId), 'keySpace creation failed!');
   });
   after(() => {
     helper.switchUser('root', '_system');

@@ -43,7 +43,6 @@
 #include "Rest/GeneralRequest.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/ServerFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/HealthData.h"
 #include "StorageEngine/StorageEngine.h"
 
@@ -658,16 +657,13 @@ std::string const AgencyComm::AGENCY_URL_PREFIX = "/_api/agency";
 
 AgencyComm::AgencyComm(application_features::ApplicationServer& server)
     : AgencyComm(server, server.getFeature<ClusterFeature>(),
-                 server.getFeature<EngineSelectorFeature>(),
                  server.getFeature<DatabaseFeature>()) {}
 
 AgencyComm::AgencyComm(ApplicationServer& server,
                        ClusterFeature& clusterFeature,
-                       EngineSelectorFeature& engineSelectorFeature,
                        DatabaseFeature& databaseFeature)
     : _server(server),
       _clusterFeature(clusterFeature),
-      _engineSelectorFeature(engineSelectorFeature),
       _databaseFeature(databaseFeature),
       _agency_comm_request_time_ms(
           _clusterFeature.agency_comm_request_time_ms()) {}
@@ -686,7 +682,7 @@ AgencyCommResult AgencyComm::sendServerState(double timeout) {
 
     if (ServerState::instance()->isDBServer()) {
       // use storage engine health self-assessment and send it to agency too
-      arangodb::HealthData hd = _engineSelectorFeature.engine().healthCheck();
+      arangodb::HealthData hd = _databaseFeature.engine().healthCheck();
       hd.toVelocyPack(builder, /*withDetails*/ false);
     }
 

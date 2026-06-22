@@ -32,9 +32,8 @@
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/MetricsFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "StorageEngine/EngineSelectorFeature.h"
+#include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/StorageEngine.h"
-#include "StorageEngine/StorageEngineFeature.h"
 
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
@@ -52,15 +51,13 @@ FlushFeature::FlushFeature(ApplicationServer& server,
       _metricsFlushSubscriptions(metrics.add(arangodb_flush_subscriptions{})) {
   setOptional(true);
   startsAfter<BasicFeaturePhaseServer>();
-  startsAfter<StorageEngineFeature>();
 }
 
 FlushFeature::~FlushFeature() = default;
 
 void FlushFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addObsoleteOption(
-      "--server.flush-interval",
-      "The interval (in microseconds) for flushing data.", true);
+  FlushOptionsProvider provider;
+  provider.declareOptions(options, _options);
 }
 
 void FlushFeature::registerFlushSubscription(
@@ -84,7 +81,7 @@ void FlushFeature::registerFlushSubscription(
 }
 
 std::tuple<size_t, size_t, TRI_voc_tick_t> FlushFeature::releaseUnusedTicks() {
-  auto& engine = server().getFeature<EngineSelectorFeature>().engine();
+  auto& engine = server().getFeature<DatabaseFeature>().engine();
   auto const initialTick = engine.currentTick();
 
   size_t stale = 0;

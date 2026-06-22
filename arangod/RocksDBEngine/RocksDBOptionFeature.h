@@ -35,6 +35,7 @@
 #include "RocksDBEngine/RocksDBOptionsProvider.h"
 
 namespace arangodb {
+class AgencyFeature;
 namespace options {
 class ProgramOptions;
 }

@@ -45,7 +45,6 @@
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
 #include "RestServer/DatabaseFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "StorageEngine/TransactionState.h"
@@ -1718,7 +1717,8 @@ bool Manager::storeManagedState(
 bool Manager::isAuthorized(ManagedTrx const& trx) const {
   auto const& exec = ExecContext::current();
   if (exec.isSuperuser()) {
-    // see the comment below, in isAuthorized(ManagedTrx const&, std::string_view)
+    // see the comment below, in isAuthorized(ManagedTrx const&,
+    // std::string_view)
     return true;
   }
   auto const* const vocbaseContext = dynamic_cast<VocbaseContext const*>(&exec);
