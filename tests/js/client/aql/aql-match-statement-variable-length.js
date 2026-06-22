@@ -281,7 +281,7 @@ function aqlMatchStatementVariableLengthTestSuite() {
           }
         },
 
-        testCollectionBindParameterUsesCorrectCollection : function () {
+        testCollectionBindParameterUsesNonexistentCollection : function () {
           try{
             const result = db._query("MATCH (v :@@vc) RETURN COUNT(v)",{ "@vc": "someOtherCollection" },
             options).toArray();
