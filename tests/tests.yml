@@ -131,6 +131,15 @@
       buckets: 2
       type: single
 
+- shell_client_aql_large:
+    options:
+      priority: 250
+      type: single
+      suffix: _large
+    args:
+      # TODO: BTS-2283
+      encryptionAtRest: false
+
 - shell_client_transaction:
     options:
       priority: 750
