@@ -69,6 +69,21 @@ function geoContainsFieldFirstTestSuite() {
     [[[14, 14], [16, 14], [16, 16], [14, 16], [14, 14]]],
     [[[13, 13], [14, 13], [14, 14], [13, 14], [13, 13]]]
   ];
+  // SOMETHING intersects doc.geometry but is not fully contained in it
+  const overlapPolygonCoords = [[[28, 28], [32, 28], [32, 32], [28, 32], [28, 28]]];
+  const corridorOverlapPolygonCoords = [[[45, 9], [55, 9], [55, 13], [45, 13], [45, 9]]];
+  const overlapMultiPolygonCoords = [
+    [[[14, 14], [16, 14], [16, 16], [14, 16], [14, 14]]],
+    [[[35, 35], [36, 35], [36, 36], [35, 36], [35, 35]]]
+  ];
+  const overlapMultiPointCoords = [[15, 15], [35, 35]];
+  // SOMETHING is disjoint from doc.geometry
+  const outsidePolygonCoords = [[[60, 60], [65, 60], [65, 65], [60, 65], [60, 60]]];
+  const outsideMultiPolygonCoords = [
+    [[[60, 60], [65, 60], [65, 65], [60, 65], [60, 60]]],
+    [[[70, 70], [75, 70], [75, 75], [70, 75], [70, 70]]]
+  ];
+  const outsideMultiPointCoords = [[60, 60], [61, 61]];
 
   let geocol;
 
@@ -95,6 +110,18 @@ function geoContainsFieldFirstTestSuite() {
     return rows.slice().sort(function (l, r) {
       return l.key < r.key ? -1 : (l.key > r.key ? 1 : 0);
     });
+  };
+
+  const noOpt = { optimizer: { rules: ["-all"] } };
+
+  const runGeoContainsQuery = function (query) {
+    const resultIndexed = db._query(
+      query.string, query.bindVars || {}).toArray().slice().sort();
+    const resultNoOpt = db._query(
+      query.string, query.bindVars || {}, noOpt).toArray().slice().sort();
+    const expected = query.expected.slice().sort();
+    assertEqual(expected, resultIndexed, query.string + " (indexed)");
+    assertEqual(expected, resultNoOpt, query.string + " (no optimizer)");
   };
 
   return {
@@ -211,79 +238,308 @@ function geoContainsFieldFirstTestSuite() {
     },
 
     testGeoContainsFieldFirstGeoPolygon: function () {
-      const query = {
+      runGeoContainsQuery({
         string: `
           FOR doc IN @@cc
             FILTER GEO_CONTAINS(doc.geometry, GEO_POLYGON(@coords))
             RETURN doc._key`,
-        bindVars: { "@cc": colName, coords: innerPolygonCoords }
-      };
-
-      const result = db._createStatement({
-        query: query.string,
-        bindVars: query.bindVars
-      }).execute();
-      assertEqual(
-        sortedKeys(["big_square", "small_square", "large_region"]),
-        sortedKeys(result.toArray()),
-        query.string);
+        bindVars: { "@cc": colName, coords: innerPolygonCoords },
+        expected: ["big_square", "small_square", "large_region"]
+      });
     },
 
     testGeoContainsFieldFirstGeoMultiPoint: function () {
-      const query = {
+      runGeoContainsQuery({
         string: `
           FOR doc IN @@cc
             FILTER GEO_CONTAINS(doc.geometry, GEO_MULTIPOINT([[15, 15], [16, 16]]))
             RETURN doc._key`,
-        bindVars: { "@cc": colName }
-      };
-
-      const result = db._createStatement({
-        query: query.string,
-        bindVars: query.bindVars
-      }).execute();
-      assertEqual(
-        sortedKeys(["big_square", "small_square", "large_region"]),
-        sortedKeys(result.toArray()),
-        query.string);
+        bindVars: { "@cc": colName },
+        expected: ["big_square", "small_square", "large_region"]
+      });
     },
 
     testGeoContainsFieldFirstGeoMultiPolygon: function () {
-      const query = {
+      runGeoContainsQuery({
         string: `
           FOR doc IN @@cc
             FILTER GEO_CONTAINS(doc.geometry, GEO_MULTIPOLYGON(@coords))
             RETURN doc._key`,
-        bindVars: { "@cc": colName, coords: innerMultiPolygonCoords }
-      };
-
-      const result = db._createStatement({
-        query: query.string,
-        bindVars: query.bindVars
-      }).execute();
-      assertEqual(
-        sortedKeys(["big_square", "small_square", "large_region"]),
-        sortedKeys(result.toArray()),
-        query.string);
+        bindVars: { "@cc": colName, coords: innerMultiPolygonCoords },
+        expected: ["big_square", "small_square", "large_region"]
+      });
     },
 
     testGeoContainsFieldFirstGeoPolygonInCorridor: function () {
-      const query = {
+      runGeoContainsQuery({
         string: `
           FOR doc IN @@cc
             FILTER GEO_CONTAINS(doc.geometry, GEO_POLYGON(@coords))
             RETURN doc._key`,
-        bindVars: { "@cc": colName, coords: corridorPolygonCoords }
-      };
+        bindVars: { "@cc": colName, coords: corridorPolygonCoords },
+        expected: ["long_corridor", "large_region"]
+      });
+    },
 
-      const result = db._createStatement({
-        query: query.string,
-        bindVars: query.bindVars
-      }).execute();
-      assertEqual(
-        sortedKeys(["long_corridor", "large_region"]),
-        sortedKeys(result.toArray()),
-        query.string);
+    testGeoContainsFieldFirstNonPointFullyContained: function () {
+      const cases = [
+        {
+          string: `
+            FOR doc IN @@cc
+              FILTER GEO_CONTAINS(doc.geometry, GEO_POLYGON(@coords))
+              RETURN doc._key`,
+          bindVars: { "@cc": colName, coords: innerPolygonCoords },
+          expected: ["big_square", "small_square", "large_region"]
+        },
+        {
+          string: `
+            FOR doc IN @@cc
+              FILTER GEO_CONTAINS(doc.geometry, GEO_MULTIPOINT(@coords))
+              RETURN doc._key`,
+          bindVars: { "@cc": colName, coords: [[15, 15], [16, 16]] },
+          expected: ["big_square", "small_square", "large_region"]
+        },
+        {
+          string: `
+            FOR doc IN @@cc
+              FILTER GEO_CONTAINS(doc.geometry, GEO_MULTIPOLYGON(@coords))
+              RETURN doc._key`,
+          bindVars: { "@cc": colName, coords: innerMultiPolygonCoords },
+          expected: ["big_square", "small_square", "large_region"]
+        },
+        {
+          string: `
+            FOR doc IN @@cc
+              FILTER GEO_CONTAINS(doc.geometry, GEO_POLYGON(@coords))
+              RETURN doc._key`,
+          bindVars: { "@cc": colName, coords: corridorPolygonCoords },
+          expected: ["long_corridor", "large_region"]
+        }
+      ];
+
+      cases.forEach(runGeoContainsQuery);
+    },
+
+    testGeoContainsFieldFirstNonPointIntersectsNotContained: function () {
+      const cases = [
+        {
+          string: `
+            FOR doc IN @@cc
+              FILTER GEO_CONTAINS(doc.geometry, GEO_POLYGON(@coords))
+              RETURN doc._key`,
+          bindVars: { "@cc": colName, coords: overlapPolygonCoords },
+          expected: ["large_region"]
+        },
+        {
+          string: `
+            FOR doc IN @@cc
+              FILTER GEO_CONTAINS(doc.geometry, GEO_POLYGON(@coords))
+              RETURN doc._key`,
+          bindVars: { "@cc": colName, coords: corridorOverlapPolygonCoords },
+          expected: []
+        },
+        {
+          string: `
+            FOR doc IN @@cc
+              FILTER GEO_CONTAINS(doc.geometry, GEO_MULTIPOINT(@coords))
+              RETURN doc._key`,
+          bindVars: { "@cc": colName, coords: overlapMultiPointCoords },
+          expected: ["large_region"]
+        },
+        {
+          string: `
+            FOR doc IN @@cc
+              FILTER GEO_CONTAINS(doc.geometry, GEO_MULTIPOLYGON(@coords))
+              RETURN doc._key`,
+          bindVars: { "@cc": colName, coords: overlapMultiPolygonCoords },
+          expected: ["large_region"]
+        }
+      ];
+
+      cases.forEach(runGeoContainsQuery);
+    },
+
+    testGeoContainsFieldFirstNonPointNotContained: function () {
+      const cases = [
+        {
+          string: `
+            FOR doc IN @@cc
+              FILTER GEO_CONTAINS(doc.geometry, GEO_POLYGON(@coords))
+              RETURN doc._key`,
+          bindVars: { "@cc": colName, coords: outsidePolygonCoords },
+          expected: []
+        },
+        {
+          string: `
+            FOR doc IN @@cc
+              FILTER GEO_CONTAINS(doc.geometry, GEO_MULTIPOINT(@coords))
+              RETURN doc._key`,
+          bindVars: { "@cc": colName, coords: outsideMultiPointCoords },
+          expected: []
+        },
+        {
+          string: `
+            FOR doc IN @@cc
+              FILTER GEO_CONTAINS(doc.geometry, GEO_MULTIPOLYGON(@coords))
+              RETURN doc._key`,
+          bindVars: { "@cc": colName, coords: outsideMultiPolygonCoords },
+          expected: []
+        }
+      ];
+
+      cases.forEach(runGeoContainsQuery);
+    },
+
+    testGeoContainsFieldFirstNonPointContainmentSemantics: function () {
+      const shapes = [
+        {
+          label: "fully contained polygon",
+          expr: "GEO_POLYGON(@coords)",
+          bindVars: { coords: innerPolygonCoords },
+          expected: [
+            { key: "big_square", contains: true },
+            { key: "small_square", contains: true },
+            { key: "long_corridor", contains: false },
+            { key: "large_region", contains: true }
+          ]
+        },
+        {
+          label: "intersecting but not contained polygon",
+          expr: "GEO_POLYGON(@coords)",
+          bindVars: { coords: overlapPolygonCoords },
+          expected: [
+            { key: "big_square", contains: false },
+            { key: "small_square", contains: false },
+            { key: "long_corridor", contains: false },
+            { key: "large_region", contains: true }
+          ]
+        },
+        {
+          label: "disjoint polygon",
+          expr: "GEO_POLYGON(@coords)",
+          bindVars: { coords: outsidePolygonCoords },
+          expected: [
+            { key: "big_square", contains: false },
+            { key: "small_square", contains: false },
+            { key: "long_corridor", contains: false },
+            { key: "large_region", contains: false }
+          ]
+        },
+        {
+          label: "fully contained multipoint",
+          expr: "GEO_MULTIPOINT(@coords)",
+          bindVars: { coords: [[15, 15], [16, 16]] },
+          expected: [
+            { key: "big_square", contains: true },
+            { key: "small_square", contains: true },
+            { key: "long_corridor", contains: false },
+            { key: "large_region", contains: true }
+          ]
+        },
+        {
+          label: "intersecting but not contained multipoint",
+          expr: "GEO_MULTIPOINT(@coords)",
+          bindVars: { coords: overlapMultiPointCoords },
+          expected: [
+            { key: "big_square", contains: false },
+            { key: "small_square", contains: false },
+            { key: "long_corridor", contains: false },
+            { key: "large_region", contains: true }
+          ]
+        },
+        {
+          label: "fully contained multipolygon",
+          expr: "GEO_MULTIPOLYGON(@coords)",
+          bindVars: { coords: innerMultiPolygonCoords },
+          expected: [
+            { key: "big_square", contains: true },
+            { key: "small_square", contains: true },
+            { key: "long_corridor", contains: false },
+            { key: "large_region", contains: true }
+          ]
+        },
+        {
+          label: "intersecting but not contained multipolygon",
+          expr: "GEO_MULTIPOLYGON(@coords)",
+          bindVars: { coords: overlapMultiPolygonCoords },
+          expected: [
+            { key: "big_square", contains: false },
+            { key: "small_square", contains: false },
+            { key: "long_corridor", contains: false },
+            { key: "large_region", contains: true }
+          ]
+        }
+      ];
+
+      shapes.forEach(function (shape) {
+        const query = {
+          string: `
+            FOR doc IN @@cc
+              RETURN { key: doc._key,
+                       contains: GEO_CONTAINS(doc.geometry, ${shape.expr}) }`,
+          bindVars: Object.assign({ "@cc": colName }, shape.bindVars)
+        };
+
+        const resultIndexed = db._query(query.string, query.bindVars).toArray();
+        const resultNoOpt = db._query(query.string, query.bindVars, noOpt).toArray();
+        assertEqual(
+          sortedByKey(shape.expected),
+          sortedByKey(resultIndexed),
+          shape.label + " (indexed)");
+        assertEqual(
+          sortedByKey(shape.expected),
+          sortedByKey(resultNoOpt),
+          shape.label + " (no optimizer)");
+      });
+    },
+
+    testGeoContainsFieldFirstNonPointGeoIndexBehavior: function () {
+      const queries = [
+        {
+          string: `
+            FOR doc IN @@cc
+              FILTER GEO_CONTAINS(doc.geometry, GEO_POLYGON(@coords))
+              RETURN doc`,
+          bindVars: { "@cc": colName, coords: innerPolygonCoords }
+        },
+        {
+          string: `
+            FOR doc IN @@cc
+              FILTER GEO_CONTAINS(doc.geometry, GEO_POLYGON(@coords))
+              RETURN doc`,
+          bindVars: { "@cc": colName, coords: overlapPolygonCoords }
+        },
+        {
+          string: `
+            FOR doc IN @@cc
+              FILTER GEO_CONTAINS(doc.geometry, GEO_POLYGON(@coords))
+              RETURN doc`,
+          bindVars: { "@cc": colName, coords: outsidePolygonCoords }
+        },
+        {
+          string: `
+            FOR doc IN @@cc
+              FILTER GEO_CONTAINS(doc.geometry, GEO_MULTIPOINT(@coords))
+              RETURN doc`,
+          bindVars: { "@cc": colName, coords: overlapMultiPointCoords }
+        },
+        {
+          string: `
+            FOR doc IN @@cc
+              FILTER GEO_CONTAINS(doc.geometry, GEO_MULTIPOLYGON(@coords))
+              RETURN doc`,
+          bindVars: { "@cc": colName, coords: overlapMultiPolygonCoords }
+        }
+      ];
+
+      queries.forEach(function (query) {
+        const plan = db._createStatement({
+          query: query.string,
+          bindVars: query.bindVars
+        }).explain();
+        hasIndexNode(plan, query);
+        hasNoFilterNode(plan, query);
+      });
     },
 
     testGeoContainsFieldFirstGeoIndexBehavior: function () {
