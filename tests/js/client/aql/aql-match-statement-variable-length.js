@@ -270,6 +270,26 @@ function aqlMatchStatementVariableLengthTestSuite() {
             assertEqual(err.errorNum, errors.ERROR_QUERY_PARSE.code);
           }
         },
+
+        testMatchVariableLengthValueBindParameterMissing: function() {
+          try {
+            db._query("MATCH (v :@@vc1) -[ e : @@ec * 1..1 ]-> (w :vc1) RETURN [v, e, w]",
+                      { "@ec": "ec1" }, options).toArray();
+            fail();
+          } catch (err) {
+            assertEqual(err.errorNum, errors.ERROR_QUERY_BIND_PARAMETER_MISSING.code);
+          }
+        },
+
+        testCollectionBindParameterUsesCorrectCollection : function () {
+          try{
+            const result = db._query("MATCH (v :@@vc) RETURN COUNT(v)",{ "@vc": "someOtherCollection" },
+            options).toArray();
+          } catch (err) {
+            assertEqual(err.errorNum, errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
+          }
+        },
+
         testMatchVariableLengthDataSourceBindParameterCollections: function() {
           const query = "MATCH (v :@@vc) -[ e : @@ec * 1..2 ]-> (w :@@vc) RETURN [v, e, w]";
           const expected = [
