@@ -60,9 +60,8 @@ inline auto inspect(Inspector& f, SimilarityMetric& x) {
       SimilarityMetric::kInnerProduct, "innerProduct");
 }
 
-/// @brief A single autotuned operating point: a search-parameter configuration
-/// (the verbatim FAISS combination key, e.g. "nprobe=32") together with the
-/// recall it achieves and how long that search took during the sweep.
+/// @brief One autotuned configuration: the verbatim FAISS combination key
+/// (e.g. "nprobe=32"), the recall it achieves, and its sweep search time.
 struct OperatingPoint {
   double recall{0.0};
   std::string faissKey;
@@ -79,13 +78,9 @@ struct OperatingPoint {
   }
 };
 
-/// @brief The operating-point table produced by one autotune run, valid for a
-/// single `topK`. `points` is ordered by ascending recall (== ascending cost);
-/// query time picks the cheapest point meeting the requested recall.
-///
-/// Conceptually a map keyed by `topK`, but stored as a vector-of-tables (the
-/// key carried inline) because VPack object keys must be strings — the
-/// inspection framework cannot serialize a map with an integer key.
+/// @brief One autotune run's result for a single `topK`: `points` ordered by
+/// ascending recall (== ascending cost). A flat vector keyed by the inline
+/// `topK` rather than a map, since VPack object keys must be strings.
 struct OperatingPointTable {
   std::int64_t topK{0};
   double minRecall{0.0};
