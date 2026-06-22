@@ -23,6 +23,7 @@
 
 #include "VectorIndex/AutoTuner.h"
 
+#include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <cstddef>
@@ -142,9 +143,8 @@ std::size_t wilsonSampleSize(double p, double z, double m) {
   TRI_ASSERT(z > 0.0);
   TRI_ASSERT(m > 0.0);
 
-  // Setting the Wilson half-width equal to m and solving for n yields a
-  // quadratic A n^2 + B n + C = 0 (see proposal). C < 0 here (m^2 < 1/4), so
-  // the discriminant is positive and the larger root is the n we want.
+  // Wilson half-width == m solved for n: quadratic a n^2 + b n + c = 0, larger
+  // root (c < 0 since m^2 < 1/4, so the discriminant is positive).
   double const z2 = z * z;
   double const z4 = z2 * z2;
   double const m2 = m * m;
@@ -205,9 +205,7 @@ ResultT<OperatingPointTable> autoTuneTable(faiss::IndexIVF& index,
   }
   auto const& ops = opsRes.get();
 
-  // Keep the whole Pareto front: every recall level paired with its fastest
-  // configuration. FAISS orders optimal_pts by ascending recall (== cost);
-  // skip the empty-keyed default dummy at perf=0.
+  // FAISS orders optimal_pts by ascending recall; skip the empty-keyed dummy.
   OperatingPointTable table;
   table.topK = R;
   table.minRecall = minRecall;
@@ -240,6 +238,52 @@ ResultT<OperatingPointTable> autoTuneTable(faiss::IndexIVF& index,
       << minRecall << ", took " << elapsedSecs()
       << "s). Operating points: " << formatOperatingPoints(ops, nullptr);
   return table;
+}
+
+ResultT<OperatingPoint> selectOperatingPoint(
+    std::vector<OperatingPointTable> const& tables, std::int64_t topK,
+    double targetRecall) {
+  auto const it = std::ranges::find(tables, topK, &OperatingPointTable::topK);
+  if (it == tables.end()) {
+    return Result{
+        TRI_ERROR_BAD_PARAMETER,
+        std::format("no autotuned operating-point table for topK={}; run "
+                    "autotune for this topK first",
+                    topK)};
+  }
+  // ascending recall (== ascending cost): first match is the cheapest.
+  for (auto const& point : it->points) {
+    if (point.recall >= targetRecall - kAutoTuneRecallEpsilon) {
+      return point;
+    }
+  }
+  double const best = it->points.empty() ? 0.0 : it->points.back().recall;
+  return Result{
+      TRI_ERROR_BAD_PARAMETER,
+      std::format("targetRecall={} exceeds the autotuned range for topK={} "
+                  "(highest achievable recall {})",
+                  targetRecall, topK, best)};
+}
+
+ResultT<std::int64_t> nProbeFromFaissKey(std::string const& key) {
+  if (key.find(',') != std::string::npos) {
+    return Result{
+        TRI_ERROR_NOT_IMPLEMENTED,
+        std::format("composite autotune configuration '{}' is not yet "
+                    "supported at query time",
+                    key)};
+  }
+  auto const eq = key.find('=');
+  if (eq == std::string::npos || key.substr(0, eq) != "nprobe") {
+    return Result{TRI_ERROR_INTERNAL,
+                  std::format("unexpected autotune key '{}'", key)};
+  }
+  try {
+    return std::stoll(key.substr(eq + 1));
+  } catch (std::exception const&) {
+    return Result{TRI_ERROR_INTERNAL,
+                  std::format("could not parse autotune key '{}'", key)};
+  }
 }
 
 }  // namespace arangodb::vector

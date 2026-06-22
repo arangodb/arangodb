@@ -42,25 +42,19 @@ inline constexpr double kDefaultAutoTuneMinRecall{0.9};
 inline constexpr double kAutoTuneRecallEpsilon{5e-4};
 inline constexpr std::size_t kAutoTuneSampleCap{1024};
 
-// Fixed planning parameters for the Wilson sample-size derivation. The
-// confidence level is expressed directly as its two-sided normal quantile z*
-// (0.90 -> 1.645, 0.95 -> 1.960, 0.99 -> 2.576) to avoid an inverse-normal CDF.
+// confidence as its two-sided normal quantile z* (0.99 -> 2.576), avoiding an
+// inverse-normal CDF.
 inline constexpr double kAutoTuneConfidenceZ{2.5758293035489004};  // 99%
 inline constexpr double kAutoTuneRecallTolerance{0.03};
 
 // Smallest sample size n whose Wilson score interval half-width at proportion
-// `p` equals `m`, for the two-sided normal quantile `z`. Wilson stays
-// boundary-aware near the high-recall end where the textbook Wald rule
-// collapses (Brown, Cai & DasGupta 2001,
-// https://doi.org/10.1214/ss/1009213286). Requires p in (0, 1), m > 0, z > 0.
+// `p` equals `m`, for the two-sided normal quantile `z` (Brown, Cai & DasGupta
+// 2001, https://doi.org/10.1214/ss/1009213286). Requires p in (0,1), m,z > 0.
 std::size_t wilsonSampleSize(double p, double z, double m);
 
 struct AutotuneParams {
-  // Result set size the table is optimized for (the query-time LIMIT).
-  std::int64_t R{kDefaultAutoTuneR};
-  // Lowest recall the table must stay valid down to. Drives the sample size
-  // (via Wilson) and is recorded on the table as the validity floor;
-  // targetRecall is chosen per query, not here.
+  std::int64_t R{kDefaultAutoTuneR};  // topK the table is optimized for
+  // Recall floor: drives the sample size and is the table's validity floor.
   double minRecall{kDefaultAutoTuneMinRecall};
 
   template<class Inspector>
@@ -85,12 +79,21 @@ struct AutotuneParams {
   }
 };
 
-// Sweep the index's search parameters via FAISS's ParameterSpace::explore and
-// return the full operating-point table: every Pareto-optimal configuration
-// paired with the recall it achieves
+// Sweep the index's search parameters and return the full Pareto front as an
+// operating-point table for `R` (topK), tuned down to `minRecall`.
 ResultT<OperatingPointTable> autoTuneTable(
     faiss::IndexIVF& index, std::span<float const> querySet,
     void* invertedListContext = nullptr, std::int64_t R = kDefaultAutoTuneR,
     double minRecall = kDefaultAutoTuneMinRecall);
+
+// Cheapest operating point reaching `targetRecall` for `topK`. Fails if no
+// table was tuned for `topK` or `targetRecall` exceeds the table's range.
+ResultT<OperatingPoint> selectOperatingPoint(
+    std::vector<OperatingPointTable> const& tables, std::int64_t topK,
+    double targetRecall);
+
+// nProbe from a FAISS key. Only "nprobe=N" is supported; a composite key fails
+// with TRI_ERROR_NOT_IMPLEMENTED.
+ResultT<std::int64_t> nProbeFromFaissKey(std::string const& key);
 
 }  // namespace arangodb::vector
