@@ -80,6 +80,33 @@ function assertTunedOk(parsedBody) {
     }
 }
 
+function assertOperatingPointTable(table) {
+    assertTrue(Number.isInteger(table.topK));
+    assertTrue(table.topK >= 1);
+    assertEqual("number", typeof table.minRecall);
+    assertTrue(Array.isArray(table.points));
+    for (const point of table.points) {
+        assertEqual("number", typeof point.recall);
+        assertEqual("string", typeof point.faissKey);
+    }
+}
+
+function assertTablesOk(parsedBody) {
+    assertEqual(false, parsedBody.error);
+    const tableLists = isCluster
+        ? parsedBody.result.map((entry) => {
+            assertTrue(entry.hasOwnProperty("shard"));
+            assertTrue(entry.hasOwnProperty("server"));
+            assertEqual(false, entry.error);
+            return entry.tunedTables;
+        })
+        : [parsedBody.tunedTables];
+    for (const tables of tableLists) {
+        assertTrue(Array.isArray(tables));
+        tables.forEach(assertOperatingPointTable);
+    }
+}
+
 function VectorIndexAutotuneTestSuite() {
     let collection;
     let randomPoint;
@@ -150,6 +177,25 @@ function VectorIndexAutotuneTestSuite() {
                 {topK: 5, minRecall: 0.95});
             assertEqual(200, res.code);
             assertTunedOk(res.parsedBody);
+        },
+
+        testGetAutotuneTables: function() {
+            const id = vectorIndexId(collection);
+            const tuned = arango.POST_RAW(
+                `/_api/index/${collName}/${id}/autotune`, {topK: 5});
+            assertEqual(200, tuned.code);
+
+            const res = arango.GET_RAW(
+                `/_api/index/${collName}/${id}/autotune`);
+            assertEqual(200, res.code);
+            assertTablesOk(res.parsedBody);
+        },
+
+        testGetAutotuneTablesUnknownIndex: function() {
+            const res = arango.GET_RAW(
+                `/_api/index/${collName}/999999999/autotune`);
+            assertNotEqual(200, res.code);
+            assertEqual(true, res.parsedBody.error);
         },
 
         // Search keeps working after a re-tune.
