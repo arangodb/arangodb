@@ -203,6 +203,11 @@ futures::Future<futures::Unit> RestIndexHandler::executeAsync() {
       co_await getSelectivityEstimates();
       co_return;
     }
+    if (_request->suffixes().size() == 3 &&
+        _request->suffixes()[2] == "autotune") {
+      co_await getAutotuneTables();
+      co_return;
+    }
     co_await getIndexes();
     co_return;
   }
@@ -1137,6 +1142,68 @@ async<void> RestIndexHandler::autotuneVectorIndex() {
     out.add("reachedMinRecall", VPackValue(reachedMinRecall));
     out.add(VPackValue("table"));
     velocypack::serialize(out, table);
+  }
+  generateResult(rest::ResponseCode::OK, out.slice());
+}
+
+async<void> RestIndexHandler::getAutotuneTables() {
+  // GET /_api/index/<collection>/<index-id>/autotune
+  std::vector<std::string> const& suffixes = _request->decodedSuffixes();
+  // we know there are 3 suffixes
+  std::string const& cName = suffixes[0];
+  auto const coll = collection(cName);
+  if (coll == nullptr) {
+    generateError(rest::ResponseCode::NOT_FOUND,
+                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+    co_return;
+  }
+
+  // Accept either a bare numeric id or a "<collection>/<id>" handle.
+  std::string bareId = suffixes[1];
+  if (auto const pos = bareId.find(TRI_INDEX_HANDLE_SEPARATOR_CHR);
+      pos != std::string::npos) {
+    bareId = bareId.substr(pos + 1);
+  }
+
+  // Coordinator: fan out to every shard, report a per-shard breakdown. The
+  // fan-out awaits the DBServer responses without blocking a thread.
+  if (ServerState::instance()->isCoordinator()) {
+    VPackBuilder shardResults;
+    auto const res = co_await getVectorIndexTunedTablesOnAllDBServers(
+        _clusterFeature, _vocbase.name(), cName, bareId, shardResults);
+    if (res.fail()) {
+      generateError(res);
+      co_return;
+    }
+    VPackBuilder out;
+    {
+      VPackObjectBuilder guard(&out);
+      out.add(StaticStrings::Error, VPackValue(false));
+      out.add(StaticStrings::Code,
+              VPackValue(static_cast<int>(rest::ResponseCode::OK)));
+      out.add("result", shardResults.slice());
+    }
+    generateResult(rest::ResponseCode::OK, out.slice());
+    co_return;
+  }
+
+  // DBServer / SingleServer: read the persisted tables off the local index.
+  auto idx = coll->lookupIndex(IndexId{basics::StringUtils::uint64(bareId)});
+  if (idx == nullptr || idx->type() != Index::TRI_IDX_TYPE_VECTOR_INDEX) {
+    generateError(rest::ResponseCode::NOT_FOUND,
+                  TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
+    co_return;
+  }
+  auto const* vectorIndex = static_cast<RocksDBVectorIndex const*>(idx.get());
+
+  VPackBuilder out;
+  {
+    VPackObjectBuilder guard(&out);
+    out.add(StaticStrings::Error, VPackValue(false));
+    out.add(StaticStrings::Code,
+            VPackValue(static_cast<int>(rest::ResponseCode::OK)));
+    out.add(VPackValue("tunedTables"));
+    velocypack::serialize(out, vectorIndex->tunedTables());
   }
   generateResult(rest::ResponseCode::OK, out.slice());
 }

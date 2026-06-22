@@ -30,6 +30,8 @@ namespace arangodb {
 
 class ClusterFeature;
 class Result;
+template<typename>
+struct async;
 
 namespace velocypack {
 class Builder;
@@ -51,6 +53,16 @@ Result autoTuneVectorIndexOnAllDBServers(ClusterFeature&,
                                          std::string const& indexId,
                                          velocypack::Slice params,
                                          velocypack::Builder& result);
+
+/// @brief fetch the persisted autotune operating-point tables from all shards
+/// (every replica) without re-tuning. Fully async: awaits the DBServer
+/// responses without blocking a thread. Each shard's outcome — its
+/// `tunedTables` or an error — is appended to `result` as an array element. The
+/// returned Result fails only on setup problems (collection not found, shutting
+/// down).
+async<Result> getVectorIndexTunedTablesOnAllDBServers(
+    ClusterFeature&, std::string const& dbname, std::string const& collname,
+    std::string const& indexId, velocypack::Builder& result);
 
 /// @brief recalculate collection count on all DBServers
 Result recalculateCountsOnAllDBServers(ClusterFeature&, std::string_view dbname,

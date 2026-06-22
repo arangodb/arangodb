@@ -24,6 +24,7 @@
 #include "Cluster/ClusterAdminOperations.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Async/async.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
@@ -222,6 +223,72 @@ Result autoTuneVectorIndexOnAllDBServers(ClusterFeature& feature,
   result.close();
 
   return {};
+}
+
+async<Result> getVectorIndexTunedTablesOnAllDBServers(
+    ClusterFeature& feature, std::string const& dbname,
+    std::string const& collname, std::string const& indexId,
+    VPackBuilder& result) {
+  NetworkFeature const& nf = feature.server().getFeature<NetworkFeature>();
+  network::ConnectionPool* pool = nf.pool();
+  if (pool == nullptr) {
+    // nullptr happens only during controlled shutdown
+    co_return Result{TRI_ERROR_SHUTTING_DOWN};
+  }
+  ClusterInfo& ci = feature.clusterInfo();
+
+  auto collinfo = ci.getCollectionNT(dbname, collname);
+  if (collinfo == nullptr) {
+    co_return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
+  }
+
+  network::RequestOptions options;
+  options.database = dbname;
+
+  struct Target {
+    std::string shard;
+    std::string server;
+  };
+  std::vector<Target> targets;
+  std::shared_ptr<ShardMap> shardList = collinfo->shardIds();
+  std::vector<network::FutureRes> futures;
+  for (auto const& shard : *shardList) {
+    for (ServerID const& serverId : shard.second) {
+      std::string uri = absl::StrCat("/_api/index/", std::string{shard.first},
+                                     "/", indexId, "/autotune");
+      futures.emplace_back(network::sendRequestRetry(
+          pool, "server:" + serverId, fuerte::RestVerb::Get, std::move(uri),
+          VPackBuffer<uint8_t>{}, options));
+      targets.push_back({std::string{shard.first}, serverId});
+    }
+  }
+
+  // Await every shard without blocking a thread; collectAll never rejects, so
+  // each outcome is reported individually.
+  auto responses = co_await futures::collectAll(futures);
+
+  result.openArray();
+  for (std::size_t i = 0; i < responses.size(); ++i) {
+    network::Response const& r = responses[i].get();
+    VPackObjectBuilder o(&result);
+    result.add("shard", VPackValue(targets[i].shard));
+    result.add("server", VPackValue(targets[i].server));
+    if (Result const res = r.combinedResult(); res.fail()) {
+      result.add(StaticStrings::Error, VPackValue(true));
+      result.add(StaticStrings::ErrorNum, VPackValue(res.errorNumber()));
+      result.add(StaticStrings::ErrorMessage, VPackValue(res.errorMessage()));
+    } else {
+      result.add(StaticStrings::Error, VPackValue(false));
+      if (VPackSlice const slice = r.slice(); slice.isObject()) {
+        if (auto s = slice.get("tunedTables"); !s.isNone()) {
+          result.add("tunedTables", s);
+        }
+      }
+    }
+  }
+  result.close();
+
+  co_return Result{};
 }
 
 /// @brief compact the entire dataset on all DB servers

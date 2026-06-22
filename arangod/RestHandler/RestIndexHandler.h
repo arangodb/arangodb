@@ -63,6 +63,12 @@ class RestIndexHandler : public arangodb::RestVocbaseBaseHandler {
   // Coordinator it fans out to all shards and reports a per-shard breakdown.
   async<void> autotuneVectorIndex();
 
+  // GET /_api/index/<collection>/<index-id>/autotune
+  // Returns the persisted autotune operating-point tables of a vector index
+  // without re-tuning. On DBServer/SingleServer reads the local index; on a
+  // Coordinator fans out to all shards and reports a per-shard breakdown.
+  async<void> getAutotuneTables();
+
   // Wait for a vector index to reach a definitive training outcome. On
   // DBServer/SingleServer delegates to VectorIndexBuildManager. On
   // Coordinator, polls shard training states from CollectionInfoCurrent
