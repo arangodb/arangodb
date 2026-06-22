@@ -46,7 +46,6 @@ class QueryInfoLoggerFeature final
   ~QueryInfoLoggerFeature();
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
   void beginShutdown() override;
   void start() override;
   void stop() override;

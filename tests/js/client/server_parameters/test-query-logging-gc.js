@@ -28,6 +28,7 @@
 const jsunity = require('jsunity');
 const arangodb = require('@arangodb');
 const db = arangodb.db;
+const arango = arangodb.arango;
 const request = require("@arangodb/request");
 const internal = require('internal');
 const errors = internal.errors;
@@ -45,21 +46,13 @@ if (getOptions === true) {
   };
 }
 
-const baseUrl = function (dbName = '_system') {
-  return arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:') + `/_db/${dbName}`;
-};
-  
 const waitForCollection = () => {
   let tries = 0;
   while (++tries < 200) {
-    let result = request.post({
-      url: baseUrl() + "/_api/cursor",
-      body: {query:"FOR doc IN _queries LIMIT 1 RETURN doc"},
-      json: true,
-    });
+    let body = arango.POST("/_api/cursor",
+      {query:"FOR doc IN _queries LIMIT 1 RETURN doc"},
+    );
 
-    assertInstanceOf(request.Response, result);
-    let body = JSON.parse(result.body);
     if (!body.error) {
       return;
     }

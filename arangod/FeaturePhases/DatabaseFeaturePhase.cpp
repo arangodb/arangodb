@@ -37,7 +37,6 @@
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBRecoveryManager.h"
 #include "StorageEngine/StorageEngineFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/ManagerFeature.h"
 
 namespace arangodb::application_features {
@@ -52,7 +51,6 @@ DatabaseFeaturePhase::DatabaseFeaturePhase(
   startsAfter<CacheManagerFeature>();
   startsAfter<CheckVersionFeature>();
   startsAfter<DatabaseFeature>();
-  startsAfter<EngineSelectorFeature>();
   startsAfter<FlushFeature>();
   startsAfter<InitDatabaseFeature>();
   startsAfter<LockfileFeature>();

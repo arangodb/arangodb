@@ -42,6 +42,14 @@ class Parser;
 #include "Aql/Parser/Parser.h"
 #include "Aql/QueryContext.h"
 
+#ifndef YYSTYPE
+#define YYSTYPE AQLSTYPE
+#endif
+
+#ifndef YYLTYPE
+#define YYLTYPE AQLLTYPE
+#endif
+
 #define YY_EXTRA_TYPE arangodb::aql::Parser*
 
 #define YY_USER_ACTION                                                   \
@@ -124,6 +132,10 @@ class Parser;
 
 (?i:NOT[ \t\r\n]+IN)/[^_a-zA-Z0-9] {
   return T_NOT_IN;
+}
+
+(?i:NOT[ \t\r\n]+LIKE)/[^_a-zA-Z0-9] {
+  return T_NOT_LIKE;
 }
 
 (?i:NOT) {
@@ -210,6 +222,30 @@ class Parser;
   return T_INBOUND;
 }
 
+(?i:ALL[ \t\r\n]+NOT[ \t\r\n]+LIKE)/[^(_a-zA-Z0-9] {
+  return T_ALL_NOT_LIKE;
+}
+
+(?i:ANY[ \t\r\n]+NOT[ \t\r\n]+LIKE)/[^(_a-zA-Z0-9] {
+  return T_ANY_NOT_LIKE;
+}
+
+(?i:NONE[ \t\r\n]+NOT[ \t\r\n]+LIKE)/[^(_a-zA-Z0-9] {
+  return T_NONE_NOT_LIKE;
+}
+
+(?i:ALL[ \t\r\n]+LIKE)/[^(_a-zA-Z0-9] {
+  return T_ALL_LIKE;
+}
+
+(?i:ANY[ \t\r\n]+LIKE)/[^(_a-zA-Z0-9] {
+  return T_ANY_LIKE;
+}
+
+(?i:NONE[ \t\r\n]+LIKE)/[^(_a-zA-Z0-9] {
+  return T_NONE_LIKE;
+}
+
 (?i:ANY) {
   yylval->strval.value = yyextra->ast()->resources().registerString(yytext, yyleng);
   yylval->strval.length = yyleng;
@@ -236,10 +272,6 @@ class Parser;
   yylval->strval.value = yyextra->ast()->resources().registerString(yytext, yyleng);
   yylval->strval.length = yyleng;
   return T_LIKE;
-}
-
-(?i:MATCH) {
-  return T_MATCH;
 }
 
 (?i:WHILE) {
@@ -332,6 +364,10 @@ class Parser;
 
 (?i:![ \t\r\n]*IN)/[^_a-zA-Z0-9] {
   return T_NOT_IN;
+}
+
+(?i:![ \t\r\n]*LIKE)/[^_a-zA-Z0-9] {
+  return T_NOT_LIKE;
 }
 
 "!" {

@@ -209,6 +209,7 @@
     "ERROR_QUERY_INVALID_ARITHMETIC_VALUE" : { "code" : 1561, "message" : "invalid arithmetic value" },
     "ERROR_QUERY_DIVISION_BY_ZERO" : { "code" : 1562, "message" : "division by zero" },
     "ERROR_QUERY_ARRAY_EXPECTED"   : { "code" : 1563, "message" : "array expected" },
+    "ERROR_QUERY_OBJECT_EXPECTED"  : { "code" : 1564, "message" : "object expected" },
     "ERROR_QUERY_COLLECTION_USED_IN_EXPRESSION" : { "code" : 1568, "message" : "collection '%s' used as expression operand" },
     "ERROR_QUERY_FAIL_CALLED"      : { "code" : 1569, "message" : "FAIL(%s) called" },
     "ERROR_QUERY_GEO_INDEX_MISSING" : { "code" : 1570, "message" : "no suitable geo index found for geo restriction on '%s'" },

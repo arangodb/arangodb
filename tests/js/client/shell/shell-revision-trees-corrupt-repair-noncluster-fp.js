@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused : false */
-/* global assertEqual, assertFalse, assertTrue, assertNotEqual, arango */
+/* global */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -25,12 +25,11 @@
 // / @author Copyright 2021, ArangoDB GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
+const jsunity = require('jsunity');
+const {assertEqual, assertTrue, assertFalse, assertNotEqual} = jsunity.jsUnity.assertions;
 const db = require('@arangodb').db;
 const internal = require('internal');
-const jsunity = require('jsunity');
 const wait = internal.wait;
-const primaryEndpoint = arango.getEndpoint();
-const helper = require("@arangodb/test-helper");
 
 function waitForTreeReady(c) {
   while (true) {
@@ -80,7 +79,7 @@ function corruptRepairSuite () {
       assertTrue(trees.equal);
       // Now let's corrupt the tree:
       c1._CollectionRevisionTreeCorrupt(17,17);
-      global.instanceManager.debugSetFailAt("MerkleTree::skipConsistencyCheck", '', primaryEndpoint);
+      global.instanceManager.debugSetFailAt("MerkleTree::skipConsistencyCheck", '', global.instanceManager.endpoint);
       trees = c1._revisionTreeVerification();
       assertFalse(trees.equal);
       global.instanceManager.debugClearFailAt();
