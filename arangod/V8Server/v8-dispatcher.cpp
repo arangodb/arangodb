@@ -249,7 +249,7 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
   command = "(function (params) { " + command + " } )(params);";
 
   ErrorCode res = TRI_ERROR_NO_ERROR;
-  auto task = Task::createTask(id, name, ExecContext::currentAsShared(),
+  auto task = Task::createTask(id, name, ExecContext::currentAsSharedNonNull(),
                                v8g->_vocbase, command, isSystem, res);
 
   if (res != TRI_ERROR_NO_ERROR) {

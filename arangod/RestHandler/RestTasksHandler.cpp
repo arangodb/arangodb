@@ -291,7 +291,7 @@ void RestTasksHandler::registerTask(bool byId) {
   command = absl::StrCat("(function (params) { ", command, " } )(params);");
 
   auto res = TRI_ERROR_NO_ERROR;
-  auto task = Task::createTask(id, name, ExecContext::currentAsShared(),
+  auto task = Task::createTask(id, name, ExecContext::currentAsSharedNonNull(),
                                &_vocbase, command, isSystem, res);
 
   if (res != TRI_ERROR_NO_ERROR) {
