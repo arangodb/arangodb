@@ -119,7 +119,8 @@ class ClusterIndex : public Index {
     return _prefixFields;
   }
 
-  vector::UserVectorIndexDefinition const& getVectorIndexDefinition() override;
+  vector::UserVectorIndexDefinition const& getVectorIndexDefinition()
+      const override;
 
   bool isVectorIndexReady() const noexcept override;
 
