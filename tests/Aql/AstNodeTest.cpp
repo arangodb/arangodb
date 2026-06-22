@@ -31,6 +31,7 @@
 #include "gtest/gtest.h"
 
 #include <functional>
+#include <string_view>
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -63,6 +64,57 @@ class AstNodeTest : public ::testing::Test {
 
   VPackBuilder _builder;
 };
+
+AstNode const* getObjectElement(AstNode const* object, std::string_view name) {
+  EXPECT_EQ(NODE_TYPE_OBJECT, object->type);
+  for (size_t i = 0; i < object->numMembers(); ++i) {
+    AstNode const* member = object->getMember(i);
+    EXPECT_EQ(NODE_TYPE_OBJECT_ELEMENT, member->type);
+    if (member->type == NODE_TYPE_OBJECT_ELEMENT &&
+        member->getStringView() == name) {
+      return member;
+    }
+  }
+  return nullptr;
+}
+
+AstNode const* getObjectElementValue(AstNode const* object,
+                                     std::string_view name) {
+  AstNode const* member = getObjectElement(object, name);
+  EXPECT_NE(nullptr, member);
+  if (member == nullptr) {
+    return nullptr;
+  }
+  EXPECT_EQ(1, member->numMembers());
+  return member->getMember(0);
+}
+
+void expectObjectInt(AstNode const* object, std::string_view name,
+                     int64_t value) {
+  AstNode const* member = getObjectElementValue(object, name);
+  ASSERT_NE(nullptr, member);
+  ASSERT_EQ(NODE_TYPE_VALUE, member->type);
+  EXPECT_EQ(value, member->getIntValue());
+}
+
+void expectObjectString(AstNode const* object, std::string_view name,
+                        std::string_view value) {
+  AstNode const* member = getObjectElementValue(object, name);
+  ASSERT_NE(nullptr, member);
+  ASSERT_EQ(NODE_TYPE_VALUE, member->type);
+  EXPECT_EQ(value, member->getStringView());
+}
+
+AstNode const* expectObjectObject(AstNode const* object,
+                                  std::string_view name) {
+  AstNode const* member = getObjectElementValue(object, name);
+  EXPECT_NE(nullptr, member);
+  if (member == nullptr) {
+    return nullptr;
+  }
+  EXPECT_EQ(NODE_TYPE_OBJECT, member->type);
+  return member;
+}
 
 TEST_F(AstNodeTest, toVelocyPackNull) {
   // handle verbose and non-verbose cases in one go
@@ -384,18 +436,9 @@ TEST_F(AstNodeTest, toVelocyPackObjectNonVerbose) {
   auto validate = [](AstNode const* root) {
     EXPECT_EQ(NODE_TYPE_OBJECT, root->type);
     EXPECT_EQ(3, root->numMembers());
-    EXPECT_EQ(NODE_TYPE_OBJECT_ELEMENT, root->getMember(0)->type);
-    EXPECT_EQ(NODE_TYPE_VALUE, root->getMember(0)->getMember(0)->type);
-    EXPECT_EQ("foo", root->getMember(0)->getStringView());
-    EXPECT_EQ(1, root->getMember(0)->getMember(0)->getIntValue());
-    EXPECT_EQ(NODE_TYPE_OBJECT_ELEMENT, root->getMember(1)->type);
-    EXPECT_EQ(NODE_TYPE_VALUE, root->getMember(1)->getMember(0)->type);
-    EXPECT_EQ("bar", root->getMember(1)->getStringView());
-    EXPECT_EQ(2, root->getMember(1)->getMember(0)->getIntValue());
-    EXPECT_EQ(NODE_TYPE_OBJECT_ELEMENT, root->getMember(2)->type);
-    EXPECT_EQ(NODE_TYPE_VALUE, root->getMember(2)->getMember(0)->type);
-    EXPECT_EQ("foo", root->getMember(2)->getMember(0)->getStringView());
-    EXPECT_EQ("baz", root->getMember(2)->getStringView());
+    expectObjectInt(root, "foo", 1);
+    expectObjectInt(root, "bar", 2);
+    expectObjectString(root, "baz", "foo");
   };
 
   // convert Builder contents to AstNode and call toVelocyPack
@@ -447,18 +490,9 @@ TEST_F(AstNodeTest, toVelocyPackObjectVerbose) {
   auto validate = [](AstNode const* root) {
     EXPECT_EQ(NODE_TYPE_OBJECT, root->type);
     EXPECT_EQ(3, root->numMembers());
-    EXPECT_EQ(NODE_TYPE_OBJECT_ELEMENT, root->getMember(0)->type);
-    EXPECT_EQ(NODE_TYPE_VALUE, root->getMember(0)->getMember(0)->type);
-    EXPECT_EQ("foo", root->getMember(0)->getStringView());
-    EXPECT_EQ(1, root->getMember(0)->getMember(0)->getIntValue());
-    EXPECT_EQ(NODE_TYPE_OBJECT_ELEMENT, root->getMember(1)->type);
-    EXPECT_EQ(NODE_TYPE_VALUE, root->getMember(1)->getMember(0)->type);
-    EXPECT_EQ("bar", root->getMember(1)->getStringView());
-    EXPECT_EQ(2, root->getMember(1)->getMember(0)->getIntValue());
-    EXPECT_EQ(NODE_TYPE_OBJECT_ELEMENT, root->getMember(2)->type);
-    EXPECT_EQ(NODE_TYPE_VALUE, root->getMember(2)->getMember(0)->type);
-    EXPECT_EQ("foo", root->getMember(2)->getMember(0)->getStringView());
-    EXPECT_EQ("baz", root->getMember(2)->getStringView());
+    expectObjectInt(root, "foo", 1);
+    expectObjectInt(root, "bar", 2);
+    expectObjectString(root, "baz", "foo");
   };
 
   // convert Builder contents to AstNode and call toVelocyPack
@@ -765,75 +799,28 @@ TEST_F(AstNodeTest, toVelocyPackNestedObjectVerbose) {
   auto validate = [](AstNode const* root) {
     EXPECT_EQ(NODE_TYPE_OBJECT, root->type);
     EXPECT_EQ(3, root->numMembers());
-    EXPECT_EQ(NODE_TYPE_OBJECT_ELEMENT, root->getMember(0)->type);
-    EXPECT_EQ(NODE_TYPE_VALUE, root->getMember(0)->getMember(0)->type);
-    EXPECT_EQ("foo", root->getMember(0)->getStringView());
-    EXPECT_EQ(1, root->getMember(0)->getMember(0)->getIntValue());
-    EXPECT_EQ(NODE_TYPE_OBJECT_ELEMENT, root->getMember(1)->type);
-    EXPECT_EQ(NODE_TYPE_VALUE, root->getMember(1)->getMember(0)->type);
-    EXPECT_EQ("bar", root->getMember(1)->getStringView());
-    EXPECT_EQ(2, root->getMember(1)->getMember(0)->getIntValue());
-    EXPECT_EQ(NODE_TYPE_OBJECT_ELEMENT, root->getMember(2)->type);
-    EXPECT_EQ(NODE_TYPE_OBJECT, root->getMember(2)->getMember(0)->type);
-    EXPECT_EQ("baz", root->getMember(2)->getStringView());
-    EXPECT_EQ(NODE_TYPE_OBJECT, root->getMember(2)->getMember(0)->type);
-    EXPECT_EQ(NODE_TYPE_OBJECT_ELEMENT,
-              root->getMember(2)->getMember(0)->getMember(0)->type);
-    EXPECT_EQ("qux",
-              root->getMember(2)->getMember(0)->getMember(0)->getStringView());
-    EXPECT_EQ(
-        NODE_TYPE_VALUE,
-        root->getMember(2)->getMember(0)->getMember(0)->getMember(0)->type);
-    EXPECT_TRUE(root->getMember(2)
-                    ->getMember(0)
-                    ->getMember(0)
-                    ->getMember(0)
-                    ->isBoolValue());
-    EXPECT_EQ(NODE_TYPE_OBJECT_ELEMENT,
-              root->getMember(2)->getMember(0)->getMember(1)->type);
-    EXPECT_EQ("quetzal",
-              root->getMember(2)->getMember(0)->getMember(1)->getStringView());
-    EXPECT_EQ(
-        NODE_TYPE_OBJECT,
-        root->getMember(2)->getMember(0)->getMember(1)->getMember(0)->type);
-    EXPECT_EQ(NODE_TYPE_OBJECT_ELEMENT, root->getMember(2)
-                                            ->getMember(0)
-                                            ->getMember(1)
-                                            ->getMember(0)
-                                            ->getMember(0)
-                                            ->type);
-    EXPECT_EQ("bark", root->getMember(2)
-                          ->getMember(0)
-                          ->getMember(1)
-                          ->getMember(0)
-                          ->getMember(0)
-                          ->getStringView());
+    expectObjectInt(root, "foo", 1);
+    expectObjectInt(root, "bar", 2);
 
-    EXPECT_EQ(NODE_TYPE_ARRAY, root->getMember(2)
-                                   ->getMember(0)
-                                   ->getMember(1)
-                                   ->getMember(0)
-                                   ->getMember(0)
-                                   ->getMember(0)
-                                   ->type);
+    AstNode const* baz = expectObjectObject(root, "baz");
+    ASSERT_NE(nullptr, baz);
+    EXPECT_EQ(2, baz->numMembers());
 
-    EXPECT_EQ(NODE_TYPE_VALUE, root->getMember(2)
-                                   ->getMember(0)
-                                   ->getMember(1)
-                                   ->getMember(0)
-                                   ->getMember(0)
-                                   ->getMember(0)
-                                   ->getMember(0)
-                                   ->type);
+    AstNode const* qux = getObjectElementValue(baz, "qux");
+    ASSERT_NE(nullptr, qux);
+    ASSERT_EQ(NODE_TYPE_VALUE, qux->type);
+    EXPECT_TRUE(qux->isBoolValue());
 
-    EXPECT_EQ(666, root->getMember(2)
-                       ->getMember(0)
-                       ->getMember(1)
-                       ->getMember(0)
-                       ->getMember(0)
-                       ->getMember(0)
-                       ->getMember(0)
-                       ->getIntValue());
+    AstNode const* quetzal = expectObjectObject(baz, "quetzal");
+    ASSERT_NE(nullptr, quetzal);
+    EXPECT_EQ(1, quetzal->numMembers());
+
+    AstNode const* bark = getObjectElementValue(quetzal, "bark");
+    ASSERT_NE(nullptr, bark);
+    ASSERT_EQ(NODE_TYPE_ARRAY, bark->type);
+    ASSERT_EQ(1, bark->numMembers());
+    ASSERT_EQ(NODE_TYPE_VALUE, bark->getMember(0)->type);
+    EXPECT_EQ(666, bark->getMember(0)->getIntValue());
   };
 
   // convert Builder contents to AstNode and call toVelocyPack

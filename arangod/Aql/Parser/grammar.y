@@ -1146,6 +1146,12 @@ pattern_label:
         auto const& resolver = parser->query().resolver();
         $$ = parser->ast()->createNodeDataSource(resolver, {$2.value, $2.length}, arangodb::AccessMode::Type::READ, true, false);
     }
+  | T_COLON T_DATA_SOURCE_PARAMETER {
+        // a collection bind parameter (@@name) injects the collection name used
+        // as a label / edge type. it is resolved during bind parameter injection.
+        std::string_view name($2.value, $2.length);
+        $$ = parser->ast()->createNodeParameterDatasource(name);
+    }
 
 %type <node> pattern_maybe_where_expression;
 pattern_maybe_where_expression:
@@ -2563,6 +2569,9 @@ object_element:
       // [ attribute-name-expression ] : attribute-value
       parser->pushObjectElement($2, $5);
     }
+  | T_ELLIPSIS expression {
+      parser->pushObjectSplice($2);
+    }
   ;
 
 array_filter_operator:
@@ -2762,6 +2771,7 @@ reference:
         $$ = $2;
       }
     }
+  
   | T_OPEN {
       parser->lazyConditions().flushAssignments();
 
