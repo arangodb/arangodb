@@ -155,13 +155,6 @@ Result ExecContext::canUseView(std::string_view db, std::string_view viewName,
 
 Result ExecContext::canRenameView(std::string_view db,
                                   std::string_view oldViewName,
-                                  std::string_view newViewName) const {
-  using namespace auth::perms;
-  return can(RenameView{});
-}
-
-Result ExecContext::canRenameView(std::string_view db,
-                                  std::string_view oldViewName,
                                   std::string_view newViewName,
                                   std::vector<std::string> collections) const {
   using namespace auth::perms;

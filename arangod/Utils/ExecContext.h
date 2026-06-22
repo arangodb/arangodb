@@ -150,12 +150,6 @@ class ExecContext : public RequestContext {
                       std::span<std::string> collectionNames) const;
   Result canUseGraph(std::string_view db, std::string_view graph,
                      GraphAccessLevel const level) const;
-
-  // TODO These are not yet in path_permissions.md!
-  // TODO We should need only the second, but it's additional work
-  //      to refactor the code in that way.
-  Result canRenameView(std::string_view db, std::string_view oldViewName,
-                       std::string_view newViewName) const;
   Result canRenameView(std::string_view db, std::string_view oldViewName,
                        std::string_view newViewName,
                        std::vector<std::string> collections) const;

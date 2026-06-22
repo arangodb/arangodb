@@ -244,6 +244,8 @@ return a `Result`, so that a decline can return the actual reason
  - `canCreateView(std::string_view db, std::string_view view) -> Result`
  - `canDropView(std::string_view db, std::string_view view) -> Result`
  - `canUseView(std::string_view db, std::string_view view) -> Result`
+ - `canRenameView(std::string_view db, std::string_view oldViewName,
+                  std::string_view newViewName, std::vector<std::string> collections) -> Result`
 
  - `canSeeAnalyzer(std::string_view db, std::string_view analyzer) -> Result`
  - `canCreateAnalyzer(std::string_view db, std::string_view analyzer) -> Result`
@@ -366,6 +368,13 @@ central implementation of these methods.
    has `canUseCollection(RO)` for all linked collections.
   
    If the user is not allowed to see the view, this must return NOT_FOUND!
+  
+ - `canRenameView(std::string_view db, std::string_view oldViewName,
+                  std::string_view newViewName, std::vector<std::string> collections) -> Result`
+
+   This should check that the new name is actually different from the old name
+   and return an error if not. Furthermore, it should do the same check as
+   `canUseView` with ÀccessLevel::WriteMeta.
   
  - `canSeeAnalyzer(std::string_view db, std::string_view analyzer) -> Result`
 
@@ -514,6 +523,12 @@ central implementation of these methods.
    has `canUseCollection(RO)` for all linked collections.
   
    If the user is not allowed to see the view, this must return NOT_FOUND!
+  
+ - `canRenameView(std::string_view db, std::string_view oldViewName,
+                  std::string_view newViewName, std::vector<std::string> collections) -> Result`
+
+   This should check that the new name is actually different from the old name.
+   Then it should do the same check as `canUseView` above with `AccessLevel::WriteMeta`.
   
  - `canSeeAnalyzer(std::string_view db, std::string_view analyzer) -> Result`
 
