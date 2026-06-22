@@ -85,6 +85,12 @@ defmodule ToastTest.EventStore do
     snapshot().infrastructure_issues
   end
 
+  @doc "Return agency dump file paths keyed by deployment ID."
+  @spec agency_dumps() :: %{String.t() => Path.t()}
+  def agency_dumps do
+    snapshot().agency_dumps
+  end
+
   @doc "Reconstruct deployment metadata from events."
   @spec deployments() :: %{String.t() => map()}
   def deployments do

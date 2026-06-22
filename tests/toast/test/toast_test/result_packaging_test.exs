@@ -127,6 +127,27 @@ defmodule ToastTest.ResultPackagingTest do
       assert File.exists?(Path.join(result_dir, "toast.log"))
     end
 
+    @tag :tmp_dir
+    test "tier 1: compresses agency dumps in place for upload", %{tmp_dir: tmp_dir} do
+      result_dir = Path.join(tmp_dir, "results")
+      File.mkdir_p!(result_dir)
+      dump = Path.join(result_dir, "agency-dump-d1.json")
+      File.write!(dump, ~s({"log":[]}))
+
+      assert :ok =
+               ResultPackaging.package(
+                 ci: true,
+                 run_results: green_results(),
+                 result_dir: result_dir,
+                 base_dir: Path.join(tmp_dir, "work"),
+                 suite_diagnostics: []
+               )
+
+      compressed = Path.wildcard(Path.join(result_dir, "agency-dump-d1.json.*"))
+      assert [_one] = compressed
+      refute File.exists?(dump)
+    end
+
     # --- Tier 2 gating ---
 
     @tag :tmp_dir

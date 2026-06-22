@@ -42,6 +42,7 @@ defmodule ToastTest.EventStore.Projections do
         unexpected_crashes: [],
         timeout_kills: [],
         infrastructure_issues: [],
+        agency_dumps: %{},
         deployments: %{},
         servers: %{}
       },
@@ -134,6 +135,10 @@ defmodule ToastTest.EventStore.Projections do
     %{acc | infrastructure_issues: [e | acc.infrastructure_issues]}
   end
 
+  defp process_event(%{event: :agency_dump_captured, deployment_id: did, path: path}, acc) do
+    %{acc | agency_dumps: Map.put(acc.agency_dumps, did, path)}
+  end
+
   defp process_event(_, acc), do: acc
 
   defp add_incarnation(acc, %{deployment_id: did, server_id: sid, pid: pid, timestamp: ts}) do
@@ -203,6 +208,7 @@ defmodule ToastTest.EventStore.Projections do
       unexpected_crashes: Enum.reverse(acc.unexpected_crashes),
       timeout_kills: Enum.reverse(acc.timeout_kills),
       infrastructure_issues: Enum.reverse(acc.infrastructure_issues),
+      agency_dumps: acc.agency_dumps,
       deployments: acc.deployments,
       servers: finalize_servers(acc.servers)
     }

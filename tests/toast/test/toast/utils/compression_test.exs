@@ -42,24 +42,16 @@ defmodule Toast.Utils.CompressionTest do
     end
   end
 
-  describe "compress_file/2" do
+  describe "compress_auto/2" do
     @tag :tmp_dir
-    test "compresses a file", %{tmp_dir: tmp_dir} do
-      source = Path.join(tmp_dir, "test.txt")
+    test "appends the chosen tool's extension and shrinks the file", %{tmp_dir: tmp_dir} do
+      source = Path.join(tmp_dir, "dump.json")
       File.write!(source, String.duplicate("hello world\n", 1000))
-      dest = Path.join(tmp_dir, "test.txt.compressed")
 
-      assert {:ok, compressed_path} = Compression.compress_file(source, dest)
-      assert File.exists?(compressed_path)
-      assert File.stat!(compressed_path).size < File.stat!(source).size
-    end
-
-    @tag :tmp_dir
-    test "returns error for nonexistent source", %{tmp_dir: tmp_dir} do
-      source = Path.join(tmp_dir, "nonexistent.txt")
-      dest = Path.join(tmp_dir, "out.compressed")
-
-      assert {:error, :enoent} = Compression.compress_file(source, dest)
+      assert {:ok, dest} = Compression.compress_auto(source, source)
+      assert dest in [source <> ".zst", source <> ".gz"]
+      assert File.exists?(dest)
+      assert File.stat!(dest).size < File.stat!(source).size
     end
   end
 end

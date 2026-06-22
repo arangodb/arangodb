@@ -189,4 +189,88 @@ defmodule Toast.Diagnostics.AgencyDumpTest do
       assert File.read!(path) == ~s({"key":"value"})
     end
   end
+
+  describe "extract_log_entries_from_file/1" do
+    @log_entries [
+      %{"epoch_millis" => 1_700_000_100_000, "message" => "first"},
+      %{"epoch_millis" => 1_700_000_200_000, "message" => "second"},
+      %{"epoch_millis" => 1_700_000_300_000, "message" => "third"}
+    ]
+
+    defp write_dump!(dir, data) do
+      path = Path.join(dir, "agency-dump.json")
+      File.write!(path, Jason.encode!(data))
+      path
+    end
+
+    @tag :tmp_dir
+    test "returns log entries in the order they appear in the dump", %{tmp_dir: tmp_dir} do
+      path = write_dump!(tmp_dir, %{"agency" => %{}, "log" => @log_entries})
+
+      assert {:ok, entries} = AgencyDump.extract_log_entries_from_file(path)
+      assert Enum.map(entries, & &1["message"]) == ["first", "second", "third"]
+    end
+
+    @tag :tmp_dir
+    test "converts epoch_millis to time_us in microseconds", %{tmp_dir: tmp_dir} do
+      path = write_dump!(tmp_dir, %{"log" => [%{"epoch_millis" => 1_700_000_100_000}]})
+
+      assert {:ok, [entry]} = AgencyDump.extract_log_entries_from_file(path)
+      assert entry["time_us"] == 1_700_000_100_000 * 1_000
+    end
+
+    @tag :tmp_dir
+    test "preserves all original fields", %{tmp_dir: tmp_dir} do
+      log = [%{"epoch_millis" => 100, "message" => "hi", "level" => "INFO", "extra" => 42}]
+      path = write_dump!(tmp_dir, %{"log" => log})
+
+      assert {:ok, [entry]} = AgencyDump.extract_log_entries_from_file(path)
+      assert entry["message"] == "hi"
+      assert entry["level"] == "INFO"
+      assert entry["extra"] == 42
+      assert entry["epoch_millis"] == 100
+    end
+
+    @tag :tmp_dir
+    test "returns empty list when dump has no log key", %{tmp_dir: tmp_dir} do
+      path = write_dump!(tmp_dir, %{"agency" => %{}})
+
+      assert {:ok, []} = AgencyDump.extract_log_entries_from_file(path)
+    end
+
+    @tag :tmp_dir
+    test "rejects the dump when an entry is missing epoch_millis", %{tmp_dir: tmp_dir} do
+      log = [
+        %{"epoch_millis" => 100, "message" => "good"},
+        %{"message" => "no timestamp"},
+        %{"epoch_millis" => 200, "message" => "also good"}
+      ]
+
+      path = write_dump!(tmp_dir, %{"log" => log})
+
+      assert {:error, :invalid_log_entry} = AgencyDump.extract_log_entries_from_file(path)
+    end
+
+    @tag :tmp_dir
+    test "rejects the dump when epoch_millis is present but not numeric", %{tmp_dir: tmp_dir} do
+      path = write_dump!(tmp_dir, %{"log" => [%{"epoch_millis" => "100", "message" => "bad"}]})
+
+      assert {:error, :invalid_log_entry} = AgencyDump.extract_log_entries_from_file(path)
+    end
+
+    @tag :tmp_dir
+    test "returns :invalid_json for content that is not JSON", %{tmp_dir: tmp_dir} do
+      path = Path.join(tmp_dir, "agency-dump.json")
+      File.write!(path, "not json")
+
+      assert {:error, :invalid_json} = AgencyDump.extract_log_entries_from_file(path)
+    end
+
+    @tag :tmp_dir
+    test "returns :not_an_agency_dump for valid JSON that is not an object", %{tmp_dir: tmp_dir} do
+      path = write_dump!(tmp_dir, [1, 2, 3])
+
+      assert {:error, :not_an_agency_dump} = AgencyDump.extract_log_entries_from_file(path)
+    end
+  end
 end

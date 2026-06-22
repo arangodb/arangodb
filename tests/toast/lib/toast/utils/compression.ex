@@ -43,17 +43,18 @@ defmodule Toast.Utils.Compression do
   end
 
   @doc """
-  Compress a file with zstd, falling back to gzip.
+  Compress `source` to `dest_base` plus the chosen tool's extension.
 
-  Returns `{:ok, dest}` on success or `{:error, reason}` on failure.
+  Picks zstd (`.zst`) when available, else gzip (`.gz`). Returns
+  `{:ok, dest}` with the extension-suffixed path actually written, or
+  `{:error, :no_compression_tool}` when neither tool is present.
   """
-  @spec compress_file(Path.t(), Path.t()) :: {:ok, Path.t()} | {:error, term()}
-  def compress_file(source, dest) do
-    cond do
-      not File.exists?(source) -> {:error, :enoent}
-      zstd_available?() -> compress_with_zstd(source, dest)
-      gzip_available?() -> compress_with_gzip(source, dest)
-      true -> {:error, :no_compression_tool}
+  @spec compress_auto(Path.t(), Path.t()) :: {:ok, Path.t()} | {:error, term()}
+  def compress_auto(source, dest_base) do
+    case detect_tool() do
+      :zstd -> compress_with_zstd(source, dest_base <> ".zst")
+      :gzip -> compress_with_gzip(source, dest_base <> ".gz")
+      nil -> {:error, :no_compression_tool}
     end
   end
 

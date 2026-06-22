@@ -568,7 +568,10 @@ defmodule ToastTest.Runner do
         test_data.failures != []
 
     if has_error and test_config.dump_agency_on_error do
-      Toast.Diagnostics.AgencyDump.try_collect(deployment, test_config.result_dir)
+      case Toast.Diagnostics.AgencyDump.try_collect(deployment, test_config.result_dir) do
+        {:ok, path} -> Events.agency_dump_captured(deployment.id, path)
+        :error -> :ok
+      end
     end
   end
 

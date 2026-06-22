@@ -139,6 +139,12 @@ defmodule ToastTest.Runner.Events do
     EventStore.notify(%{event: :timeout_kill, source: source, reason: reason, servers: servers})
   end
 
+  @spec agency_dump_captured(String.t(), Path.t()) :: :ok
+  def agency_dump_captured(deployment_id, path)
+      when is_binary(deployment_id) and is_binary(path) do
+    EventStore.notify(%{event: :agency_dump_captured, deployment_id: deployment_id, path: path})
+  end
+
   defp maybe_timestamp(event, opts) do
     case Keyword.fetch(opts, :timestamp) do
       {:ok, ts} -> Map.put(event, :timestamp, ts)

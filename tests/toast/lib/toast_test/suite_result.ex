@@ -89,6 +89,9 @@ defmodule ToastTest.SuiteResult do
           events: [map()],
           warnings: [String.t()],
           traffic: [ToastTest.Traffic.Extraction.traffic_entry()],
+          agency_logs: %{
+            optional(String.t()) => [{Toast.timestamp(), Toast.timestamp(), [map()]}]
+          },
           pcap_path: Path.t() | nil
         }
 
@@ -137,6 +140,7 @@ defmodule ToastTest.SuiteResult do
     events: [],
     warnings: [],
     traffic: [],
+    agency_logs: %{},
     pcap_path: nil
   ]
 
@@ -166,6 +170,7 @@ defmodule ToastTest.SuiteResult do
       events: Keyword.get(opts, :events, []),
       warnings: Keyword.get(opts, :warnings, []),
       traffic: Keyword.get(opts, :traffic, []),
+      agency_logs: Keyword.get(opts, :agency_logs, %{}),
       pcap_path: Keyword.get(opts, :pcap_path)
     }
   end

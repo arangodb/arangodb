@@ -122,6 +122,22 @@ defmodule ToastTest.SuiteResultTest do
       assert result.warnings == warnings
     end
 
+    test "defaults agency_logs to an empty map when not provided" do
+      test_data = build_test_data()
+      result = SuiteResult.build(test_data, [])
+
+      assert result.agency_logs == %{}
+    end
+
+    test "populates agency_logs when provided" do
+      entries = [%{"time_us" => 100_000, "message" => "agency"}]
+      agency_logs = %{"d1" => [{1_000_000, 2_000_000, entries}]}
+      test_data = build_test_data()
+      result = SuiteResult.build(test_data, [], agency_logs: agency_logs)
+
+      assert result.agency_logs == agency_logs
+    end
+
     test "handles empty modules" do
       test_data = build_test_data(%{modules: %{}})
       result = SuiteResult.build(test_data, [])

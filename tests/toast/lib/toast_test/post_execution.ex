@@ -39,6 +39,9 @@ defmodule ToastTest.PostExecution.Context do
           coredumps: [ToastTest.SuiteResult.coredump_report()],
           deployments: %{optional(String.t()) => map()},
           traffic: [map()],
+          agency_logs: %{
+            optional(String.t()) => [{Toast.timestamp(), Toast.timestamp(), [map()]}]
+          },
           warnings: [String.t()]
         }
 
@@ -59,6 +62,7 @@ defmodule ToastTest.PostExecution.Context do
     coredumps: [],
     deployments: %{},
     traffic: [],
+    agency_logs: %{},
     warnings: []
   ]
 end
@@ -220,6 +224,7 @@ defmodule ToastTest.PostExecution do
 
     ctx
     |> stage("Server log collection", &collect_server_logs/1)
+    |> stage("Agency log collection", &collect_agency_logs/1)
     |> stage("Deployment assembly", &assemble_deployments/1)
     |> stage("Traffic extraction", &extract_traffic_into/1)
   end
@@ -228,6 +233,11 @@ defmodule ToastTest.PostExecution do
     all_log_files = ResultBuilder.collect_log_files(ctx.snapshot.servers)
     logs = Attribution.ServerLogs.collect(ctx.issues, all_log_files, ctx.windows)
     %{ctx | server_logs: logs}
+  end
+
+  defp collect_agency_logs(ctx) do
+    logs = Attribution.AgencyLogs.collect(ctx.issues, ctx.snapshot.agency_dumps, ctx.windows)
+    %{ctx | agency_logs: logs}
   end
 
   defp assemble_deployments(ctx),
@@ -246,6 +256,7 @@ defmodule ToastTest.PostExecution do
         coredumps: ctx.coredumps,
         events: ctx.snapshot.events,
         traffic: ctx.traffic,
+        agency_logs: ctx.agency_logs,
         pcap_path: ctx.pcap_path
       )
 

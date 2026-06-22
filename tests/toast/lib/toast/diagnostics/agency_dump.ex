@@ -29,6 +29,11 @@ defmodule Toast.Diagnostics.AgencyDump do
 
   require Logger
 
+  defmodule InvalidDumpError do
+    @moduledoc false
+    defexception message: "agency dump log entry is missing a numeric epoch_millis"
+  end
+
   @doc """
   Capture agency dump from an agent.
 
@@ -63,41 +68,77 @@ defmodule Toast.Diagnostics.AgencyDump do
   @doc """
   Fetch agency state from the deployment and write it to `result_dir`.
 
-  Silently does nothing when the deployment is not a cluster or the agents
-  are unreachable.
+  Returns `{:ok, path}` when a dump was written, or `:error` when the
+  deployment is not a cluster, the agents are unreachable, or the write fails.
   """
-  @spec try_collect(Toast.Deployment.t(), Path.t()) :: :ok
+  @spec try_collect(Toast.Deployment.t(), Path.t()) :: {:ok, Path.t()} | :error
   def try_collect(deployment, result_dir) do
     case Toast.Deployment.dump_agency(deployment) do
       {:ok, json} when json != nil ->
         case write(json, result_dir, deployment.id) do
-          {:ok, path} -> Logger.info("Agency dump written to #{path}")
-          {:error, reason} -> Logger.warning("Failed to write agency dump: #{inspect(reason)}")
+          {:ok, path} ->
+            Logger.info("Agency dump written to #{path}")
+            {:ok, path}
+
+          {:error, reason} ->
+            Logger.warning("Failed to write agency dump: #{inspect(reason)}")
+            :error
         end
 
       {:ok, nil} ->
         Logger.warning("Agency dump returned nil (no responsive agents?)")
+        :error
 
       {:error, reason} ->
         Logger.debug("Agency dump skipped: #{inspect(reason)}")
+        :error
     end
-
-    :ok
   rescue
     e ->
       Logger.warning("Agency dump failed: #{Exception.message(e)}")
-      :ok
+      :error
   end
 
-  # 1 MB — below this we keep raw JSON for easy inspection
-  @compress_threshold 1_024 * 1_024
+  @doc """
+  Read an agency dump file and return its `"log"` entries.
+
+  Each returned entry carries the original fields plus a `"time_us"` field
+  (`epoch_millis` converted to microseconds), kept in the dump's own order
+  (already ascending by time).
+  """
+  @spec extract_log_entries_from_file(Path.t()) :: {:ok, [map()]} | {:error, term()}
+  def extract_log_entries_from_file(path) do
+    with {:ok, json} <- File.read(path),
+         {:ok, %{} = decoded} <- decode_json(json) do
+      {:ok, Enum.map(Map.get(decoded, "log", []), &stamp_time_us/1)}
+    else
+      {:ok, _non_object} -> {:error, :not_an_agency_dump}
+      {:error, _} = error -> error
+    end
+  rescue
+    InvalidDumpError -> {:error, :invalid_log_entry}
+  end
+
+  defp decode_json(json) do
+    {:ok, :json.decode(json)}
+  rescue
+    _ -> {:error, :invalid_json}
+  end
+
+  # A valid dump has a numeric `epoch_millis` on every entry; anything else is
+  # a corrupt dump (rare), so we let the mismatch raise rather than paying a
+  # validation pass on every normal run.
+  defp stamp_time_us(%{"epoch_millis" => ms} = entry) when is_number(ms),
+    do: Map.put(entry, "time_us", round(ms * 1_000))
+
+  defp stamp_time_us(_entry), do: raise(InvalidDumpError)
 
   @doc """
   Write agency dump JSON to a file in the given directory.
 
-  The file is named `agency-dump-<deployment_id>.json`. If the content exceeds
-  #{@compress_threshold} bytes, it is compressed (zstd or gzip) and the
-  compressed path is returned.
+  The file is named `agency-dump-<deployment_id>.json` and written
+  uncompressed so post-execution can read it directly; CI artifact
+  compression is handled separately by `ToastTest.ResultPackaging`.
 
   Returns `{:ok, path}` on success or `{:error, reason}` on failure.
   """
@@ -105,29 +146,10 @@ defmodule Toast.Diagnostics.AgencyDump do
   def write(json, dir, deployment_id) do
     File.mkdir_p!(dir)
     json_path = Path.join(dir, "agency-dump-#{deployment_id}.json")
-
     File.write!(json_path, json)
-
-    if IO.iodata_length(json) > @compress_threshold do
-      compress_and_remove(json_path)
-    else
-      {:ok, json_path}
-    end
+    {:ok, json_path}
   rescue
     e -> {:error, Exception.message(e)}
-  end
-
-  defp compress_and_remove(json_path) do
-    ext = if Toast.Utils.Compression.zstd_available?(), do: ".zst", else: ".gz"
-
-    case Toast.Utils.Compression.compress_file(json_path, json_path <> ext) do
-      {:ok, compressed} ->
-        File.rm(json_path)
-        {:ok, compressed}
-
-      {:error, _} ->
-        {:ok, json_path}
-    end
   end
 
   # --- Capture internals ---

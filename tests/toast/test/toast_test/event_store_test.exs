@@ -557,6 +557,7 @@ defmodule ToastTest.EventStoreTest do
 
       assert Map.keys(snapshot) |> Enum.sort() ==
                [
+                 :agency_dumps,
                  :deployments,
                  :events,
                  :infrastructure_issues,
@@ -570,6 +571,62 @@ defmodule ToastTest.EventStoreTest do
       assert snapshot.timeout_kills == EventStore.timeout_kills()
       assert snapshot.deployments == EventStore.deployments()
       assert snapshot.servers == EventStore.servers()
+    end
+  end
+
+  describe "agency_dumps/0" do
+    test "returns empty map when no dumps captured" do
+      assert EventStore.agency_dumps() == %{}
+    end
+
+    test "records agency dump path keyed by deployment" do
+      EventStore.notify(%{
+        event: :agency_dump_captured,
+        deployment_id: "d1",
+        path: "/tmp/results/agency-dump-d1.json",
+        timestamp: ts()
+      })
+
+      assert %{"d1" => "/tmp/results/agency-dump-d1.json"} = EventStore.agency_dumps()
+    end
+
+    test "tracks dumps for multiple deployments" do
+      EventStore.notify(%{
+        event: :agency_dump_captured,
+        deployment_id: "d1",
+        path: "/tmp/agency-dump-d1.json",
+        timestamp: ts()
+      })
+
+      EventStore.notify(%{
+        event: :agency_dump_captured,
+        deployment_id: "d2",
+        path: "/tmp/agency-dump-d2.json",
+        timestamp: ts()
+      })
+
+      assert EventStore.agency_dumps() == %{
+               "d1" => "/tmp/agency-dump-d1.json",
+               "d2" => "/tmp/agency-dump-d2.json"
+             }
+    end
+
+    test "a later dump for the same deployment replaces the earlier path" do
+      EventStore.notify(%{
+        event: :agency_dump_captured,
+        deployment_id: "d1",
+        path: "/tmp/first.json",
+        timestamp: ts()
+      })
+
+      EventStore.notify(%{
+        event: :agency_dump_captured,
+        deployment_id: "d1",
+        path: "/tmp/second.json",
+        timestamp: ts()
+      })
+
+      assert EventStore.agency_dumps() == %{"d1" => "/tmp/second.json"}
     end
   end
 

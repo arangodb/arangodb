@@ -85,8 +85,32 @@ defmodule ToastTest.ResultPackaging do
         end
     end
 
+    compress_agency_dumps(result_dir)
+
     # results.json and results.xml should already be in result_dir from export step
     :ok
+  end
+
+  # Agency dumps are written uncompressed to result_dir at capture time so
+  # post-execution can read them; for CI upload we compress them in place.
+  defp compress_agency_dumps(result_dir) do
+    result_dir
+    |> Path.join("agency-dump-*.json")
+    |> Path.wildcard()
+    |> Enum.each(&compress_in_place/1)
+  end
+
+  defp compress_in_place(path) do
+    case Toast.Utils.Compression.compress_auto(path, path) do
+      {:ok, _compressed} ->
+        File.rm(path)
+
+      {:error, :no_compression_tool} ->
+        :ok
+
+      {:error, reason} ->
+        Logger.warning("Failed to compress agency dump #{path}: #{inspect(reason)}")
+    end
   end
 
   # --- Tier 2: Compressed archive ---
@@ -134,19 +158,17 @@ defmodule ToastTest.ResultPackaging do
   # --- Tier 3: Large individually compressed files ---
 
   defp package_tier3(opts, result_dir) do
-    tool = Toast.Utils.Compression.detect_tool()
-
     suite_diagnostics = Keyword.get(opts, :suite_diagnostics, [])
 
     suite_diagnostics
     |> Enum.flat_map(&Map.get(&1, :core_dumps, []))
     |> Enum.filter(&File.exists?/1)
-    |> Enum.each(&package_core_dump(&1, result_dir, tool))
+    |> Enum.each(&package_core_dump(&1, result_dir))
 
     suite_diagnostics
     |> Enum.flat_map(&Map.get(&1, :pcap_files, []))
     |> Enum.filter(&File.exists?/1)
-    |> Enum.each(&package_large_file(&1, result_dir, tool))
+    |> Enum.each(&package_large_file(&1, result_dir))
 
     package_base_dir(opts, result_dir)
   end
@@ -176,39 +198,27 @@ defmodule ToastTest.ResultPackaging do
     end
   end
 
-  defp package_core_dump(path, result_dir, tool) do
-    package_large_file(path, result_dir, tool, warn_on_no_tool: true)
+  defp package_core_dump(path, result_dir) do
+    package_large_file(path, result_dir, warn_on_no_tool: true)
   end
 
-  defp package_large_file(path, result_dir, tool, opts \\ [])
+  # Compress an external artifact into result_dir. Falls back to copying it
+  # uncompressed when no compression tool is available.
+  defp package_large_file(path, result_dir, opts \\ []) do
+    dest_base = Path.join(result_dir, Path.basename(path))
 
-  defp package_large_file(path, result_dir, tool, opts) do
-    basename = Path.basename(path)
+    case Toast.Utils.Compression.compress_auto(path, dest_base) do
+      {:ok, _dest} ->
+        :ok
 
-    case tool do
-      nil ->
+      {:error, :no_compression_tool} ->
         if Keyword.get(opts, :warn_on_no_tool, false) do
           Logger.warning(
             "No compression tool (zstd, gzip) available; copying #{path} uncompressed"
           )
         end
 
-        File.cp!(path, Path.join(result_dir, basename))
-
-      :zstd ->
-        dest = Path.join(result_dir, basename <> ".zst")
-        compress_file(path, dest, &Toast.Utils.Compression.compress_with_zstd/2)
-
-      :gzip ->
-        dest = Path.join(result_dir, basename <> ".gz")
-        compress_file(path, dest, &Toast.Utils.Compression.compress_with_gzip/2)
-    end
-  end
-
-  defp compress_file(path, dest, compress_fn) do
-    case compress_fn.(path, dest) do
-      {:ok, _} ->
-        :ok
+        File.cp!(path, dest_base)
 
       {:error, reason} ->
         Logger.warning("Failed to compress #{path}: #{inspect(reason)}")
