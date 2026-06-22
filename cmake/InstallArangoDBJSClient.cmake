@@ -40,10 +40,9 @@ install(
   REGEX "^.*/@sinonjs"                                     EXCLUDE
   REGEX "^.*/@xmldom"                                      EXCLUDE
   REGEX "^.*/ansi_up"                                      EXCLUDE
-  REGEX "^.*/has-flag"                                     EXCLUDE
   REGEX "^.*/node-netstat"                                 EXCLUDE
   REGEX "^.*/parse-prometheus-text-format"                 EXCLUDE
   REGEX "^.*/sinon"                                        EXCLUDE
-  REGEX "^.*/node/node_modules/supports-color"             EXCLUDE
-  REGEX "^.*/node/node_modules/type-detect"                EXCLUDE
+  REGEX "^.*/node/node_modules/is-wsl"                     EXCLUDE
+  REGEX "^.*/node/node_modules/shallow-equal"              EXCLUDE
 )
