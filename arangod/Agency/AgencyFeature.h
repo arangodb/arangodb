@@ -49,9 +49,8 @@ class AgencyFeature : public application_features::ApplicationFeature,
   void unprepare() override final;
 
   bool activated() const noexcept { return _options.activated; }
-  //  Agents have no old Legacy sorted data on disk and can jump
-  //  straight to Correct. Everyone else might have old data
-  // and must use Legacy for compatibility.
+  // Old deployments use legacy sorting for agency data backwards compatibility;
+  // newer deployments always use correct sorting.
 
   basics::VelocyPackHelper::SortingMethod getSortingMethod()
       const noexcept override {
