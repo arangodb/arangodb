@@ -157,8 +157,6 @@ RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
   velocypack::deserialize(info.get("params"), _definition);
 
   loadStoredMetadata(info);
-  _liveNProbe.store(_trainedData.tunedNProbe.value_or(0),
-                    std::memory_order_relaxed);
 
   if (!_trainedData.codeData.empty()) {
     _faissIndex =
@@ -202,8 +200,8 @@ void RocksDBVectorIndex::loadStoredMetadata(velocypack::Slice info) {
     _trainedData = vector::decodeMetadata(slice);
   } else if (auto data = info.get("trainedData"); !data.isNone()) {
     // Backwards compatibility: load from definitions CF for pre-migration
-    // indexes. Such records contain only codeData + tunedNProbe, so
-    // formatVersion stays at the default kV1.
+    // indexes. Such records predate the formatVersion field, so it stays at
+    // the default kV1.
     _trainedData = vector::decodeMetadata(data);
   } else {
     // Brand-new index: stamp it with the current on-disk format. Has no
@@ -221,6 +219,30 @@ void RocksDBVectorIndex::applyTunedTable(vector::OperatingPointTable table) {
     }
   }
   _trainedData.tunedTables.push_back(std::move(table));
+}
+
+ResultT<std::int64_t> RocksDBVectorIndex::resolveSearchNProbe(
+    vector::SearchParameters const& params, std::size_t topK) const {
+  bool const hasNProbe = params.nProbe.has_value();
+  bool const hasTargetRecall = params.targetRecall.has_value();
+
+  TRI_ASSERT(!(hasNProbe && hasTargetRecall))
+      << "Cannot specify both nProbe and targetRecall";
+
+  if (hasNProbe) {
+    return *params.nProbe;
+  }
+  if (!hasTargetRecall) {
+    return _definition.defaultNProbe;
+  }
+
+  auto point = vector::selectOperatingPoint(_trainedData.tunedTables,
+                                            static_cast<std::int64_t>(topK),
+                                            *params.targetRecall);
+  if (point.fail()) {
+    return std::move(point).result();
+  }
+  return vector::nProbeFromFaissKey(point.get().faissKey);
 }
 
 Result RocksDBVectorIndex::persistMetadata() const {
@@ -526,9 +548,13 @@ vector::SearchResult RocksDBVectorIndex::readBatch(
 
   auto faissSearchContext = makeFaissIteratorContext(config, ctx, captureSink);
 
+  auto nprobe = resolveSearchNProbe(config.searchParameters, config.topK);
+  if (nprobe.fail()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(nprobe.errorNumber(), nprobe.errorMessage());
+  }
+
   faiss::SearchParametersIVF searchParametersIvf;
-  searchParametersIvf.nprobe =
-      config.searchParameters.nProbe.value_or(effectiveNProbe());
+  searchParametersIvf.nprobe = nprobe.get();
   searchParametersIvf.inverted_list_context = &faissSearchContext;
   _faissIndex->search(1, inputs.data(), config.topK, result.distances.data(),
                       result.labels.data(), &searchParametersIvf);
@@ -560,14 +586,11 @@ void RocksDBVectorIndex::applyTrainingResult(
     std::shared_ptr<faiss::IndexIVF> faissIndex,
     vector::VectorIndexMetadata trainedData) {
   _faissIndex = std::move(faissIndex);
-  // Retraining replaces codeData and resets tuning (the old tables no longer
-  // describe this index), but the on-disk entry-layout format version is a
-  // property of the index, not of a training run, so preserve it.
+  // Retraining resets tuning, but formatVersion is the index's entry layout,
+  // not a training-run property, so preserve it across the replace.
   auto const formatVersion = _trainedData.formatVersion;
   _trainedData = std::move(trainedData);
   _trainedData.formatVersion = formatVersion;
-  _liveNProbe.store(_trainedData.tunedNProbe.value_or(0),
-                    std::memory_order_release);
 
   _faissIndex->replace_invlists(
       new vector::RocksDBInvertedLists(this, &collection(), _faissIndex->nlist,
@@ -646,7 +669,6 @@ void RocksDBVectorIndex::truncateCommit(TruncateGuard&& guard,
   setTrainingError(std::string{StaticStrings::VectorIndexDefaultTrainingError});
   _faissIndex.reset();
   _trainedData = {};
-  _liveNProbe.store(0, std::memory_order_release);
   RocksDBIndex::truncateCommit(std::move(guard), tick, trx);
 }
 

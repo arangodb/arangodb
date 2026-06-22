@@ -118,20 +118,6 @@ class RocksDBVectorIndex final : public RocksDBIndex {
 
   std::shared_ptr<faiss::IndexIVF> cloneFaissIndex();
 
-  // Tuned nprobe if set, else the configured default. Read atomically so
-  // autotune can update it while searches run concurrently.
-  std::int64_t effectiveNProbe() const noexcept {
-    auto const tuned = _liveNProbe.load(std::memory_order_acquire);
-    return tuned != 0 ? tuned : _definition.defaultNProbe;
-  }
-
-  // Update the tuned nprobe: the persistence source and the atomic searches
-  // read. Persist via persistMetadata() afterwards.
-  void applyTunedNProbe(std::int64_t nprobe) noexcept {
-    _trainedData.tunedNProbe = nprobe;
-    _liveNProbe.store(nprobe, std::memory_order_release);
-  }
-
   // Upsert the autotuned operating-point table for its topK, replacing any
   // existing table for the same topK. Persist via persistMetadata() afterwards.
   void applyTunedTable(vector::OperatingPointTable table);
@@ -188,6 +174,10 @@ class RocksDBVectorIndex final : public RocksDBIndex {
   // Read the stored metadata record into _trainedData.
   void loadStoredMetadata(velocypack::Slice info);
 
+  // pick the default or the autotune nProbe
+  ResultT<std::int64_t> resolveSearchNProbe(
+      vector::SearchParameters const& params, std::size_t topK) const;
+
   //  Helper functions for bruteForceSearch
   void captureDocument(
       vector::VectorSearchConfig const& config,
@@ -220,10 +210,6 @@ class RocksDBVectorIndex final : public RocksDBIndex {
   std::size_t _trainingThreshold{0};
   std::atomic<VectorIndexTrainingState> _trainingState{
       VectorIndexTrainingState::kUnusable};
-
-  // Live nprobe consumed by search (0 = unset → fall back to defaultNProbe).
-  // Atomic because on-demand autotune writes it while searches read it.
-  std::atomic<std::int64_t> _liveNProbe{0};
 
   mutable std::mutex _trainingErrorMutex;
   // Placeholder used while the build manager hasn't yet diagnosed why the
