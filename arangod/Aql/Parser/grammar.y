@@ -2529,6 +2529,9 @@ object_element:
       // [ attribute-name-expression ] : attribute-value
       parser->pushObjectElement($2, $5);
     }
+  | T_ELLIPSIS expression {
+      parser->pushObjectSplice($2);
+    }
   ;
 
 array_filter_operator:
@@ -2728,6 +2731,7 @@ reference:
         $$ = $2;
       }
     }
+  
   | T_OPEN {
       parser->lazyConditions().flushAssignments();
 

@@ -45,27 +45,27 @@ function ahuacatlDuplicateAttributesTestSuite () {
     testInsertDuplicate : function () {
       let query = "INSERT { 'a': 1, 'a': 2, 'a': 3, '': 0, '': 2, 'x': 3 } INTO @@collection RETURN NEW";
       let result = db._query(query, { "@collection" : cn }).toArray();
-      assertEqual([{ a: 1, "": 0 }], result.map(function(doc) { return { a: doc.a, "": doc[""] }; }));
+      assertEqual([{ a: 3, "": 2 }], result.map(function(doc) { return { a: doc.a, "": doc[""] }; }));
 
       query = "FOR doc IN @@collection RETURN JSON_STRINGIFY(doc)";
       result = db._query(query, { "@collection" : cn }).toArray();
-      assertMatch(/"a":1/, result[0]);
+      assertMatch(/"a":3/, result[0]);
       assertNotMatch(/"a":2/, result[0]);
-      assertMatch(/"":0/, result[0]);
-      assertNotMatch(/"":2/, result[0]);
+      assertMatch(/"":2/, result[0]);
+      assertNotMatch(/"":0/, result[0]);
     },
     
     testInsertDuplicateDynamic : function () {
       let query = "INSERT NOOPT({ 'a': 1, 'a': 2, 'a': 3, '': 0, '': 2, 'x': 3 }) INTO @@collection RETURN NEW";
       let result = db._query(query, { "@collection" : cn }).toArray();
-      assertEqual([{ a: 1, "": 0 }], result.map(function(doc) { return { a: doc.a, "": doc[""] }; }));
+      assertEqual([{ a: 3, "": 2 }], result.map(function(doc) { return { a: doc.a, "": doc[""] }; }));
 
       query = "FOR doc IN @@collection RETURN JSON_STRINGIFY(doc)";
       result = db._query(query, { "@collection" : cn }).toArray();
-      assertMatch(/"a":1/, result[0]);
+      assertMatch(/"a":3/, result[0]);
       assertNotMatch(/"a":2/, result[0]);
-      assertMatch(/"":0/, result[0]);
-      assertNotMatch(/"":2/, result[0]);
+      assertMatch(/"":2/, result[0]);
+      assertNotMatch(/"":0/, result[0]);
     },
 
     testUpdateDuplicate : function () {
@@ -73,14 +73,14 @@ function ahuacatlDuplicateAttributesTestSuite () {
 
       let query = "UPDATE 'peng' WITH { 'a': 1, 'a': 2, 'a': 3, '': 0, '': 2, 'x': 3 } INTO @@collection RETURN NEW";
       let result = db._query(query, { "@collection" : cn }).toArray();
-      assertEqual([{ a: 1, "": 0, b: 3 }], result.map(function(doc) { return { a: doc.a, b: doc.b, "": doc[""] }; }));
+      assertEqual([{ a: 3, "": 2, b: 3 }], result.map(function(doc) { return { a: doc.a, b: doc.b, "": doc[""] }; }));
 
       query = "FOR doc IN @@collection RETURN JSON_STRINGIFY(doc)";
       result = db._query(query, { "@collection" : cn }).toArray();
-      assertMatch(/"a":1/, result[0]);
+      assertMatch(/"a":3/, result[0]);
       assertNotMatch(/"a":2/, result[0]);
-      assertMatch(/"":0/, result[0]);
-      assertNotMatch(/"":2/, result[0]);
+      assertMatch(/"":2/, result[0]);
+      assertNotMatch(/"":0/, result[0]);
     },
     
     testUpdateDuplicateDynamic : function () {
@@ -88,14 +88,14 @@ function ahuacatlDuplicateAttributesTestSuite () {
 
       let query = "UPDATE 'peng' WITH NOOPT({ 'a': 1, 'a': 2, 'a': 3, '': 0, '': 2, 'x': 3 }) INTO @@collection RETURN NEW";
       let result = db._query(query, { "@collection" : cn }).toArray();
-      assertEqual([{ a: 1, "": 0, b: 3 }], result.map(function(doc) { return { a: doc.a, b: doc.b, "": doc[""] }; }));
+      assertEqual([{ a: 3, "": 2, b: 3 }], result.map(function(doc) { return { a: doc.a, b: doc.b, "": doc[""] }; }));
 
       query = "FOR doc IN @@collection RETURN JSON_STRINGIFY(doc)";
       result = db._query(query, { "@collection" : cn }).toArray();
-      assertMatch(/"a":1/, result[0]);
+      assertMatch(/"a":3/, result[0]);
       assertNotMatch(/"a":2/, result[0]);
-      assertMatch(/"":0/, result[0]);
-      assertNotMatch(/"":2/, result[0]);
+      assertMatch(/"":2/, result[0]);
+      assertNotMatch(/"":0/, result[0]);
     },
     
     testReplaceDuplicate : function () {
@@ -103,14 +103,14 @@ function ahuacatlDuplicateAttributesTestSuite () {
 
       let query = "REPLACE 'peng' WITH { 'a': 1, 'a': 2, 'a': 3, '': 0, '': 2, 'x': 3 } INTO @@collection RETURN NEW";
       let result = db._query(query, { "@collection" : cn }).toArray();
-      assertEqual([{ a: 1, "": 0 }], result.map(function(doc) { return { a: doc.a, "": doc[""] }; }));
+      assertEqual([{ a: 3, "": 2 }], result.map(function(doc) { return { a: doc.a, "": doc[""] }; }));
 
       query = "FOR doc IN @@collection RETURN JSON_STRINGIFY(doc)";
       result = db._query(query, { "@collection" : cn }).toArray();
-      assertMatch(/"a":1/, result[0]);
+      assertMatch(/"a":3/, result[0]);
       assertNotMatch(/"a":2/, result[0]);
-      assertMatch(/"":0/, result[0]);
-      assertNotMatch(/"":2/, result[0]);
+      assertMatch(/"":2/, result[0]);
+      assertNotMatch(/"":0/, result[0]);
     },
     
     testReplaceDuplicateDynamic : function () {
@@ -118,26 +118,26 @@ function ahuacatlDuplicateAttributesTestSuite () {
 
       let query = "REPLACE 'peng' WITH NOOPT({ 'a': 1, 'a': 2, 'a': 3, '': 0, '': 2, 'x': 3 }) INTO @@collection RETURN NEW";
       let result = db._query(query, { "@collection" : cn }).toArray();
-      assertEqual([{ a: 1, "": 0 }], result.map(function(doc) { return { a: doc.a, "": doc[""] }; }));
+      assertEqual([{ a: 3, "": 2 }], result.map(function(doc) { return { a: doc.a, "": doc[""] }; }));
 
       query = "FOR doc IN @@collection RETURN JSON_STRINGIFY(doc)";
       result = db._query(query, { "@collection" : cn }).toArray();
-      assertMatch(/"a":1/, result[0]);
+      assertMatch(/"a":3/, result[0]);
       assertNotMatch(/"a":2/, result[0]);
-      assertMatch(/"":0/, result[0]);
-      assertNotMatch(/"":2/, result[0]);
+      assertMatch(/"":2/, result[0]);
+      assertNotMatch(/"":0/, result[0]);
     },
     
     testResultsDuplicate : function () {
       let query = "RETURN { 'a': 1, 'a': 2, 'a': 3, '': 0, '': 2, 'x': 3 }";
       let result = db._query(query).toArray();
-      assertEqual([{ a: 1, "": 0 }], result.map(function(doc) { return { a: doc.a, "": doc[""] }; }));
+      assertEqual([{ a: 3, "": 2 }], result.map(function(doc) { return { a: doc.a, "": doc[""] }; }));
     },
     
     testResultsDuplicateDynamic : function () {
       let query = "RETURN NOOPT({ 'a': 1, 'a': 2, 'a': 3, '': 0, '': 2, 'x': 3 })";
       let result = db._query(query).toArray();
-      assertEqual([{ a: 1, "": 0 }], result.map(function(doc) { return { a: doc.a, "": doc[""] }; }));
+      assertEqual([{ a: 3, "": 2 }], result.map(function(doc) { return { a: doc.a, "": doc[""] }; }));
     },
 
     testResultsDuplicateMerge : function () {
@@ -145,9 +145,9 @@ function ahuacatlDuplicateAttributesTestSuite () {
 
       let query = "FOR doc IN @@collection RETURN JSON_STRINGIFY(MERGE(doc, { a: 2, a: 3 }))";
       let result = db._query(query, { "@collection" : cn }).toArray();
-      assertMatch(/"a":2/, result[0]);
+      assertMatch(/"a":3/, result[0]);
       assertNotMatch(/"a":1/, result[0]);
-      assertNotMatch(/"a":3/, result[0]);
+      assertNotMatch(/"a":2/, result[0]);
     },
     
   };

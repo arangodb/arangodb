@@ -35,12 +35,14 @@
 #include "Basics/Utf8Helper.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/fasthash.h"
+#include "Containers/FlatHashMap.h"
 #include "Containers/FlatHashSet.h"
 #include "Containers/SmallVector.h"
 #include "Transaction/Methods.h"
 #include "VocBase/vocbase.h"
 
 #include <array>
+#include <vector>
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #include <iostream>
 #endif
@@ -86,7 +88,7 @@ constexpr frozen::unordered_map<int, std::string_view, 26> kOperators{
     {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN), "array NOT IN"}};
 
 /// @brief type names for AST nodes
-frozen::unordered_map<int, std::string_view, 89> kTypeNames{
+frozen::unordered_map<int, std::string_view, 90> kTypeNames{
     {static_cast<int>(NODE_TYPE_ROOT), "root"},
     {static_cast<int>(NODE_TYPE_FOR), "for"},
     {static_cast<int>(NODE_TYPE_LET), "let"},
@@ -181,6 +183,7 @@ frozen::unordered_map<int, std::string_view, 89> kTypeNames{
      "pattern match expression"},
     {static_cast<int>(NODE_TYPE_MATCH), "match"},
     {static_cast<int>(NODE_TYPE_ARRAY_SPLICE), "array splice"},
+    {static_cast<int>(NODE_TYPE_OBJECT_SPLICE), "object splice"},
 };
 
 /// @brief names for AST node value types
@@ -877,6 +880,7 @@ AstNode::AstNode(Ast* ast, arangodb::velocypack::Slice slice)
     case NODE_TYPE_PATTERN_MATCH_EXPRESSION:
     case NODE_TYPE_MATCH:
     case NODE_TYPE_ARRAY_SPLICE:
+    case NODE_TYPE_OBJECT_SPLICE:
       break;
   }
 
@@ -1281,7 +1285,6 @@ void AstNode::toVelocyPackValue(VPackBuilder& builder) const {
   if (type == NODE_TYPE_OBJECT) {
     builder.openObject();
 
-    containers::FlatHashSet<std::string_view> keys;
     size_t const n = numMembers();
 
     // only check for duplicate keys if we have more than a single attribute
@@ -1291,15 +1294,31 @@ void AstNode::toVelocyPackValue(VPackBuilder& builder) const {
       checkUniqueness = hasFlag(VALUE_CHECKUNIQUENESS);
     }
 
+    if (checkUniqueness) {
+      containers::FlatHashMap<std::string_view, AstNode const*> keys;
+      keys.reserve(n);
+
+      for (size_t i = 0; i < n; ++i) {
+        auto member = getMemberUnchecked(i);
+        if (member != nullptr) {
+          keys[member->getStringView()] = member;
+        }
+      }
+
+      for (auto const& it : keys) {
+        AstNode const* member = it.second;
+
+        builder.add(VPackValue(it.first));
+        member->getMember(0)->toVelocyPackValue(builder);
+      }
+
+      builder.close();
+      return;
+    }
     for (size_t i = 0; i < n; ++i) {
       auto member = getMemberUnchecked(i);
       if (member != nullptr) {
         std::string_view key(member->getStringView());
-
-        if (checkUniqueness && !keys.emplace(key).second) {
-          // duplicate key, skip it
-          continue;
-        }
 
         builder.add(VPackValue(key));
         member->getMember(0)->toVelocyPackValue(builder);
@@ -2045,6 +2064,9 @@ bool AstNode::isConstant() const {
           setFlag(DETERMINED_CONSTANT);
           return false;
         }
+      } else if (member->type == NODE_TYPE_OBJECT_SPLICE) {
+        setFlag(DETERMINED_CONSTANT);
+        return false;
       } else {
         // definitely not const!
         TRI_ASSERT(member->type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT);
@@ -2187,6 +2209,7 @@ bool AstNode::mustCheckUniqueness() const {
           mustCheck = true;
           break;
         }
+
       } else if (member->type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT) {
         // dynamic key... we don't know the key yet, so there's no
         // way around check it at runtime later
@@ -2398,6 +2421,10 @@ void AstNode::stringify(std::string& buffer, bool failIfLong) const {
                             member->getStringLength());
         buffer.push_back(':');
 
+        member->getMember(0)->stringify(buffer, failIfLong);
+      } else if (member->type == NODE_TYPE_OBJECT_SPLICE) {
+        TRI_ASSERT(member->numMembers() == 1);
+        buffer.append("...");
         member->getMember(0)->stringify(buffer, failIfLong);
       } else if (member->type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT) {
         TRI_ASSERT(member->numMembers() == 2);

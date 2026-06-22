@@ -174,7 +174,7 @@ function ahuacatlDynamicAttributesTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testDynamicAttributesRepeated : function () {
-      var expected = { FOO: 123, bar: 19 };
+      var expected = { FOO: 23, bar: 19 };
       var query = "{ [ 'FOO' ] : 123, [ PASSTHRU('FOO') ] : 42, [ 'bar' ] : 19, [ PASSTHRU('FOO') ] : 23 }";
       checkResult(query, expected);
     },
@@ -184,7 +184,7 @@ function ahuacatlDynamicAttributesTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testDynamicAttributesMixedWithRegular : function () {
-      var expected = { foo: 1, FOO: 2, bar: 3, baR: 4, foobar: 6 };
+      var expected = { foo: 1, FOO: 2, bar: 5, baR: 4, foobar: 6 };
       var query = "{ 'foo' : 1, [ 'FOO' ] : 2, 'bar' : 3, [ PASSTHRU('baR') ] : 4, [ PASSTHRU('bar') ] : 5, 'foobar' : 6 }";
       checkResult(query, expected);
     },
@@ -194,7 +194,7 @@ function ahuacatlDynamicAttributesTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testDynamicAttributesOverwritingRegular : function () {
-      var expected = { FOO: 2 };
+      var expected = { FOO: 1 };
       var query = "{ FOO : 2, [ PASSTHRU('FOO') ] : 1 }";
       checkResult(query, expected);
     },
@@ -204,7 +204,7 @@ function ahuacatlDynamicAttributesTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testDynamicAttributesOverwrittenByRegular : function () {
-      var expected = { FOO: 1 };
+      var expected = { FOO: 2 };
       var query = "{ [ PASSTHRU('FOO') ] : 1, FOO : 2 }";
       checkResult(query, expected);
     },
