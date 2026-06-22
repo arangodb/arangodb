@@ -49,8 +49,18 @@ function vectorIndexId(collection) {
     return idx.id.split("/")[1];
 }
 
-// Assert a successful autotune response on either topology and return the
-// effective newNProbe (single-server) or the per-shard result array (cluster).
+// Assert the operating-point-table fields of a successful tune are well-formed.
+function assertTuneSummary(entry) {
+    assertTrue(Number.isInteger(entry.topK));
+    assertTrue(entry.topK >= 1);
+    assertEqual("number", typeof entry.minRecall);
+    assertTrue(entry.minRecall > 0 && entry.minRecall <= 1);
+    assertTrue(Number.isInteger(entry.operatingPointCount));
+    assertEqual("boolean", typeof entry.reachedMinRecall);
+}
+
+// Assert a successful autotune response on either topology. Single-server
+// returns the tune summary inline; the coordinator returns a per-shard array.
 function assertTunedOk(parsedBody) {
     assertEqual(false, parsedBody.error);
     if (isCluster) {
@@ -58,18 +68,15 @@ function assertTunedOk(parsedBody) {
         assertTrue(parsedBody.result.length >= numberOfShards,
             "expected at least one result entry per shard");
         assertEqual("boolean", typeof parsedBody.allShardsTuned);
+        assertEqual(true, parsedBody.allShardsTuned);
         for (const entry of parsedBody.result) {
             assertTrue(entry.hasOwnProperty("shard"));
             assertTrue(entry.hasOwnProperty("server"));
-            if (!entry.error) {
-                assertTrue(Number.isInteger(entry.newNProbe));
-                assertTrue(entry.newNProbe >= 1);
-            }
+            assertEqual(false, entry.error);
+            assertTuneSummary(entry);
         }
     } else {
-        assertTrue(Number.isInteger(parsedBody.newNProbe));
-        assertTrue(parsedBody.newNProbe >= 1);
-        assertTrue(Number.isInteger(parsedBody.oldNProbe));
+        assertTuneSummary(parsedBody);
     }
 }
 
@@ -126,7 +133,7 @@ function VectorIndexAutotuneTestSuite() {
             db._dropDatabase(dbName);
         },
 
-        // Re-tuning an already-built index returns a valid nprobe.
+        // Re-tuning an already-built index returns a valid operating-point table.
         testAutotuneDefaultParams: function() {
             const id = vectorIndexId(collection);
             const res = arango.POST_RAW(
@@ -140,7 +147,7 @@ function VectorIndexAutotuneTestSuite() {
             const id = vectorIndexId(collection);
             const res = arango.POST_RAW(
                 `/_api/index/${collName}/${id}/autotune`,
-                {topK: 5, targetRecall: 0.95, sampleSize: 256});
+                {topK: 5, minRecall: 0.95});
             assertEqual(200, res.code);
             assertTunedOk(res.parsedBody);
         },
@@ -156,11 +163,11 @@ function VectorIndexAutotuneTestSuite() {
             assertEqual(5, results.length);
         },
 
-        // targetRecall outside (0, 1] is rejected with a 400.
-        testAutotuneRejectsInvalidTargetRecall: function() {
+        // minRecall outside (0, 1] is rejected with a 400.
+        testAutotuneRejectsInvalidMinRecall: function() {
             const id = vectorIndexId(collection);
             const res = arango.POST_RAW(
-                `/_api/index/${collName}/${id}/autotune`, {targetRecall: 2});
+                `/_api/index/${collName}/${id}/autotune`, {minRecall: 2});
             assertEqual(400, res.code);
             assertEqual(true, res.parsedBody.error);
         },

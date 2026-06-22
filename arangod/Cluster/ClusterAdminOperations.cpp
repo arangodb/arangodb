@@ -210,11 +210,11 @@ Result autoTuneVectorIndexOnAllDBServers(ClusterFeature& feature,
     } else {
       result.add(StaticStrings::Error, VPackValue(false));
       if (VPackSlice const slice = r.slice(); slice.isObject()) {
-        if (auto s = slice.get("oldNProbe"); !s.isNone()) {
-          result.add("oldNProbe", s);
-        }
-        if (auto s = slice.get("newNProbe"); !s.isNone()) {
-          result.add("newNProbe", s);
+        for (auto const* field :
+             {"topK", "minRecall", "operatingPointCount", "reachedMinRecall"}) {
+          if (auto s = slice.get(field); !s.isNone()) {
+            result.add(field, s);
+          }
         }
       }
     }

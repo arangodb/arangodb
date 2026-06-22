@@ -80,7 +80,7 @@ class VectorIndexBuildManager {
 
   // Queue an on-demand autotune for an already-built index. The request runs
   // on this manager's single build thread, so it never overlaps a build (or
-  // another autotune). The future resolves with {oldNProbe, newNProbe}.
+  // another autotune). The future resolves with the operating-point table.
   futures::Future<AutoTuneResult> requestAutoTune(
       std::shared_ptr<LogicalCollection> collection, IndexId indexId,
       AutotuneParams params);

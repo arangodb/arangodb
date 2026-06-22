@@ -41,8 +41,9 @@ Result flushWalOnAllDBServers(ClusterFeature&, bool waitForSync,
                               bool flushColumnFamilies);
 
 /// @brief autotune a vector index on all shards (every replica). Never
-/// fails-fast: each shard's outcome — success {oldNProbe,newNProbe} or an
-/// error — is appended to `result` as an array element. The returned Result
+/// fails-fast: each shard's outcome — success (the operating-point table
+/// summary) or an error — is appended to `result` as an array element. The
+/// returned Result
 /// fails only on setup problems (collection not found, shutting down).
 Result autoTuneVectorIndexOnAllDBServers(ClusterFeature&,
                                          std::string const& dbname,

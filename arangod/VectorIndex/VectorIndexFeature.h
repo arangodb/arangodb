@@ -63,7 +63,7 @@ class VectorIndexFeature final
 
   // Queue an on-demand autotune for an already-built index on this server's
   // build manager (DBServer / SingleServer only — the manager serializes it
-  // against builds). Resolves with {oldNProbe, newNProbe}.
+  // against builds). Resolves with the operating-point table.
   futures::Future<vector::VectorIndexBuildManager::AutoTuneResult>
   autoTuneIndex(std::shared_ptr<LogicalCollection> collection, IndexId indexId,
                 vector::AutotuneParams params);
