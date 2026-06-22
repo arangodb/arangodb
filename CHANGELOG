@@ -1,6 +1,15 @@
 3.12.9.4 (XXXX-XX-XX)
 ---------------------
 
+* Updated node modules:
+ - qs to 6.15.2
+ - brace-expansion to 5.0.6
+ - js-yaml to 4.2.0
+
+* Upgraded OpenSSL to 3.5.7.
+
+* Updated ArangoDB Starter to v0.19.23.
+
 * COR-607: Fix a problem that causes cluster queries involving a materialize node
   collection access that is used as a satellite to crash in maintainer mode,
   and fail with an internal error with the message "Did not find a DBServer to

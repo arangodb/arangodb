@@ -393,7 +393,6 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation) {
     ' Testcase filtering:',
     '   - `skipMemoryIntense`: tests using lots of resources will be skipped.',
     '   - `skipNightly`: omit the nightly tests',
-    '   - `skipRanges`: if set to true the ranges tests are skipped',
     '   - `skipTimeCritical`: if set to true, time critical tests will be skipped.',
     '   - `skipNondeterministic`: if set, nondeterministic tests are skipped.',
     '   - `skipGrey`: if set, grey tests are skipped.',

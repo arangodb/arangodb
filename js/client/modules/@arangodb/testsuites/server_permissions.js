@@ -258,6 +258,7 @@ class permissionsRunner extends trs.runLocalInArangoshRunner {
           status: this.results['shutdown'] && shutdownStatus,
           message: (this.results['shutdown'] && shutdownStatus)? "": "shutdown failed"
         };
+        this.options.cleanup &= shutdownStatus;
         this.instanceManager.destructor(this.results[te].status && shutdownStatus);
       } else {
         if (this.options.extremeVerbosity) {

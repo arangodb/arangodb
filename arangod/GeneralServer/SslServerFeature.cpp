@@ -76,6 +76,19 @@ void SslServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOldOption("server.ssl-options", "ssl.options");
   options->addOldOption("server.ssl-protocol", "ssl.protocol");
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // make the future version known to the old binaries
+  options->addSection("tls", "TLS communication");
+  options->addOldOption("--tls.cafile", "--ssl.cafile");
+  options->addOldOption("--tls.keyfile", "--ssl.keyfile");
+  options->addOldOption("--tls.session-cache", "--ssl.session-cache");
+  options->addOldOption("--tls.cipher-list", "--ssl.cipher-list");
+  options->addOldOption("--tls.protocol", "--ssl.protocol");
+  options->addOldOption("--tls.options", "--ssl.options");
+  options->addOldOption("--tls.ecdh-curve", "--ssl.ecdh-curve");
+  options->addOldOption("--tls.prefer-http1-in-alpn",
+                        "--ssl.prefer-http1-in-alpn");
+#endif
   options->addSection("ssl", "SSL communication");
 
   options
