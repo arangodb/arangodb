@@ -24,8 +24,9 @@ defmodule ToastTest.Traffic.Analysis do
   Filtering, formatting, and server resolution for captured HTTP traffic entries.
   """
 
+  alias ToastTest.Formatting.Utils
+
   @default_body_limit 200
-  @detail_indent "        "
 
   @type display_entry :: %{
           :pair_id => non_neg_integer() | nil,
@@ -180,7 +181,7 @@ defmodule ToastTest.Traffic.Analysis do
 
     case filtered do
       [] -> nil
-      _ -> Enum.map_join(filtered, "\n", &(@detail_indent <> &1))
+      _ -> Utils.indent(Enum.join(filtered, "\n"))
     end
   end
 
@@ -203,7 +204,7 @@ defmodule ToastTest.Traffic.Analysis do
       end
 
     suffix = if truncated, do: " …", else: ""
-    indent_body(text <> suffix)
+    Utils.indent(text <> suffix)
   end
 
   defp vpack?(nil), do: false
@@ -213,7 +214,7 @@ defmodule ToastTest.Traffic.Analysis do
     case VelocyPack.decode(body) do
       {:ok, decoded} ->
         text = inspect(decoded, pretty: true, width: 120)
-        truncate_string(text, limit)
+        Utils.truncate(text, limit)
 
       {:error, _} ->
         format_hex(body, limit)
@@ -222,7 +223,7 @@ defmodule ToastTest.Traffic.Analysis do
 
   defp format_text_or_hex(body, limit) do
     if String.printable?(body) do
-      truncate_string(body, limit)
+      Utils.truncate(body, limit)
     else
       format_hex(body, limit)
     end
@@ -237,18 +238,6 @@ defmodule ToastTest.Traffic.Analysis do
 
   defp truncate_bytes(body, limit) do
     if byte_size(body) <= limit, do: {body, false}, else: {binary_part(body, 0, limit), true}
-  end
-
-  defp truncate_string(text, :unlimited), do: {text, false}
-
-  defp truncate_string(text, limit) do
-    if String.length(text) <= limit, do: {text, false}, else: {String.slice(text, 0, limit), true}
-  end
-
-  defp indent_body(text) do
-    text
-    |> String.split("\n")
-    |> Enum.map_join("\n", &(@detail_indent <> &1))
   end
 
   @doc "Filter traffic entries by time window and optional filters, sorted by timestamp."

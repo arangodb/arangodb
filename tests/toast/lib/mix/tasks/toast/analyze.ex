@@ -64,7 +64,14 @@ defmodule Mix.Tasks.Toast.Analyze do
 
   ## Event options (detail only)
 
-      --events <level>                Event detail: none, basic, full (default: basic when logs/traffic enabled)
+      --events <level>                Event detail: none, basic, full (default: basic when logs/traffic/agency enabled)
+
+  ## Agency log options (detail only)
+
+      --agency-logs                   Enable agency-dump log display (cluster deployments)
+      --agency-window <before>,<after>  Signed milliseconds relative to issue time bounds
+      --agency-body-limit <N>         Max chars of each request transaction to display
+                                      (default: 500, "unlimited" or 0 for no limit)
 
   ## Traffic options (detail only)
 
@@ -120,6 +127,9 @@ defmodule Mix.Tasks.Toast.Analyze do
     traffic_body_limit: :string,
     traffic_raw_body: :boolean,
     traffic_all_headers: :boolean,
+    agency_logs: :boolean,
+    agency_window: :string,
+    agency_body_limit: :string,
     coredumps: :boolean,
     threads: :string,
     backtrace_frames: :integer,

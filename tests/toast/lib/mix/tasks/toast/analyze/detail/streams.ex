@@ -26,19 +26,26 @@ defmodule Mix.Tasks.Toast.Analyze.Detail.Streams do
 
   alias Mix.Tasks.Toast.Analyze.Data
   alias Mix.Tasks.Toast.Analyze.Detail.ServerInfo
+  alias ToastTest.Formatting.AgencyLog, as: AgencyLogFormatting
   alias ToastTest.Formatting.Logs, as: LogFormatting
+  alias ToastTest.Analyze.AgencyLogs, as: AgencyLogAnalysis
   alias ToastTest.Analyze.IssueStreams
   alias ToastTest.Analyze.Logs, as: LogAnalysis
   alias ToastTest.Traffic.Analysis, as: TrafficAnalysis
 
   def print(issue, display, color) do
     label =
-      stream_label(display.log.enabled, display.traffic.enabled, display.event.detail != :none)
+      stream_label(
+        display.log.enabled,
+        display.traffic.enabled,
+        display.agency.enabled,
+        display.event.detail != :none
+      )
 
     bar = String.duplicate("─", 50)
     Mix.shell().info("\n#{colorize("── #{label} " <> bar, :faint, color)}")
 
-    case resolve_window(issue, display.log, display.traffic) do
+    case resolve_window(issue, display.log, display.traffic, display.agency) do
       nil ->
         Mix.shell().info(colorize("  No time bounds available for this issue.", :faint, color))
 
@@ -65,6 +72,7 @@ defmodule Mix.Tasks.Toast.Analyze.Detail.Streams do
             raw: display.traffic.raw_body,
             all_headers: display.traffic.all_headers
           },
+          agency_format_opts: %{limit: display.agency.body_limit},
           color: color
         }
 
@@ -78,12 +86,19 @@ defmodule Mix.Tasks.Toast.Analyze.Detail.Streams do
     log_entries = extract_log_entries(window, display.log, servers)
     traffic_entries = extract_traffic_entries(issue, window, display.traffic, server_ports)
     events = extract_events(issue, window, display.event)
+    agency_streams = extract_agency_entries(issue, window, display.agency)
 
     colored_traffic = TrafficAnalysis.assign_pair_colors(traffic_entries)
 
     event_stream = if events != [], do: [{:event, events}], else: []
     traffic_stream = if colored_traffic != [], do: [{:traffic, colored_traffic}], else: []
-    log_entries ++ event_stream ++ traffic_stream
+    log_entries ++ agency_streams ++ event_stream ++ traffic_stream
+  end
+
+  defp extract_agency_entries(_issue, _window, %{enabled: false}), do: []
+
+  defp extract_agency_entries(issue, window, %{enabled: true}) do
+    AgencyLogAnalysis.extract(issue[:agency_logs] || %{}, window)
   end
 
   defp extract_log_entries(_window, %{enabled: false}, _servers), do: []
@@ -143,7 +158,8 @@ defmodule Mix.Tasks.Toast.Analyze.Detail.Streams do
     |> Enum.each(fn
       {:event, event} -> format_event_line(event, render_ctx) |> Mix.shell().info()
       {:traffic, entry} -> format_traffic_line(entry, render_ctx) |> Mix.shell().info()
-      {server_id, entry} -> format_log_line(server_id, entry, render_ctx) |> Mix.shell().info()
+      {{:agency, did}, entry} -> format_agency_line(did, entry, render_ctx) |> Mix.shell().info()
+      {{:server, sid}, entry} -> format_log_line(sid, entry, render_ctx) |> Mix.shell().info()
     end)
   end
 
@@ -166,6 +182,27 @@ defmodule Mix.Tasks.Toast.Analyze.Detail.Streams do
 
   @detail_color 243
 
+  defp format_agency_line(deployment_id, entry, render_ctx) do
+    {summary, detail} = AgencyLogFormatting.format_entry(entry, render_ctx.agency_format_opts)
+
+    ts = colorize(Data.fmt_dt(entry["time_us"]), :faint, render_ctx.color)
+    tag = colorize("[AGENCY #{deployment_id}]", :magenta, render_ctx.color)
+    summary_line = [ts, " ", tag, " ", summary]
+
+    with_detail(summary_line, detail, render_ctx.color)
+  end
+
+  # Append a colorized detail block below a summary line, or return the summary
+  # line alone when there is no detail.
+  defp with_detail(summary_line, nil, _color), do: summary_line
+
+  defp with_detail(summary_line, detail, color) do
+    detail_line =
+      if color, do: [IO.ANSI.color(@detail_color), detail, IO.ANSI.reset()], else: detail
+
+    [summary_line, "\n", detail_line]
+  end
+
   defp format_traffic_line(entry, render_ctx) do
     {server_id, _direction} = TrafficAnalysis.annotate_server(entry, render_ctx.server_ports)
     sid = server_id || "unknown"
@@ -182,27 +219,17 @@ defmodule Mix.Tasks.Toast.Analyze.Detail.Streams do
         [ts, " ", server_tag, summary]
       end
 
-    if detail do
-      detail_line =
-        if render_ctx.color do
-          [IO.ANSI.color(@detail_color), detail, IO.ANSI.reset()]
-        else
-          detail
-        end
-
-      [summary_line, "\n", detail_line]
-    else
-      summary_line
-    end
+    with_detail(summary_line, detail, render_ctx.color)
   end
 
   # --- Window resolution ---
 
-  defp resolve_window(issue, log_opts, traffic_opts) do
+  defp resolve_window(issue, log_opts, traffic_opts, agency_opts) do
     windows =
       []
       |> maybe_add_window(log_opts.enabled, issue, log_opts.window_spec)
       |> maybe_add_window(traffic_opts.enabled, issue, traffic_opts.window_spec)
+      |> maybe_add_window(agency_opts.enabled, issue, agency_opts.window_spec)
 
     case windows do
       # Events-only: fall back to issue-type default window
@@ -228,8 +255,8 @@ defmodule Mix.Tasks.Toast.Analyze.Detail.Streams do
 
   # --- Helpers ---
 
-  defp stream_label(logs?, traffic?, events?) do
-    [{logs?, "Server logs"}, {traffic?, "Traffic"}, {events?, "Events"}]
+  defp stream_label(logs?, traffic?, agency?, events?) do
+    [{logs?, "Server logs"}, {traffic?, "Traffic"}, {agency?, "Agency logs"}, {events?, "Events"}]
     |> Enum.filter(&elem(&1, 0))
     |> Enum.map(&elem(&1, 1))
     |> case do

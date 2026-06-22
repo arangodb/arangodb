@@ -92,7 +92,8 @@ defmodule ToastTest.Analyze.Logs do
 
   @doc """
   Filter stored log entries by the given display window.
-  Returns `[{server_id, [entry]}]` sorted by server ID.
+  Returns `[{{:server, server_id}, [entry]}]` sorted by server ID — the
+  `{:server, _}` tag lets the stream merge dispatch on a closed set of tags.
 
   `servers` is a pre-filtered map/list of `{server_id => %{logs: [{start, end, [entry]}], ...}}`.
   `window` is `{Toast.timestamp(), Toast.timestamp()}` as returned by `IssueStreams.display_window/2`.
@@ -110,7 +111,7 @@ defmodule ToastTest.Analyze.Logs do
       entries =
         filter_server_entries(meta[:logs] || [], start_us, end_us, level_filter, excluded_ids)
 
-      if entries == [], do: [], else: [{server_id, entries}]
+      if entries == [], do: [], else: [{{:server, server_id}, entries}]
     end)
     |> Enum.sort_by(&elem(&1, 0))
   end

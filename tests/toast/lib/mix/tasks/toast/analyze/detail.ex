@@ -44,6 +44,7 @@ defmodule Mix.Tasks.Toast.Analyze.Detail do
 
     logs_enabled = logs_enabled?(opts)
     traffic_enabled = traffic_enabled?(opts)
+    agency_enabled = agency_enabled?(opts)
 
     log_opts = %{
       enabled: logs_enabled,
@@ -60,13 +61,19 @@ defmodule Mix.Tasks.Toast.Analyze.Detail do
       method_filter: parse_list_filter(opts[:traffic_methods]),
       endpoint_filter: parse_list_filter(opts[:traffic_endpoints]),
       status_filter: parse_status_filter(opts[:traffic_status]),
-      body_limit: parse_body_limit(opts[:traffic_body_limit]),
+      body_limit: parse_body_limit(opts[:traffic_body_limit], 200, "--traffic-body-limit"),
       raw_body: Keyword.get(opts, :traffic_raw_body, false),
       all_headers: Keyword.get(opts, :traffic_all_headers, false)
     }
 
+    agency_opts = %{
+      enabled: agency_enabled,
+      window_spec: IssueStreams.parse_window_spec(opts[:agency_window]),
+      body_limit: parse_body_limit(opts[:agency_body_limit], 500, "--agency-body-limit")
+    }
+
     event_opts = %{
-      detail: parse_event_detail(opts[:events], logs_enabled or traffic_enabled)
+      detail: parse_event_detail(opts[:events], logs_enabled or traffic_enabled or agency_enabled)
     }
 
     bt_opts = %{
@@ -76,7 +83,13 @@ defmodule Mix.Tasks.Toast.Analyze.Detail do
       disassembly: Keyword.get(opts, :disassembly, false)
     }
 
-    display = %{log: log_opts, traffic: traffic_opts, event: event_opts, backtrace: bt_opts}
+    display = %{
+      log: log_opts,
+      traffic: traffic_opts,
+      agency: agency_opts,
+      event: event_opts,
+      backtrace: bt_opts
+    }
 
     if selected == [] do
       Mix.shell().info(colorize("No matching issues.", :yellow, color))
@@ -151,11 +164,11 @@ defmodule Mix.Tasks.Toast.Analyze.Detail do
     end
   end
 
-  defp parse_body_limit(nil), do: 200
+  defp parse_body_limit(nil, default, _flag), do: default
 
-  defp parse_body_limit("unlimited"), do: :unlimited
+  defp parse_body_limit("unlimited", _default, _flag), do: :unlimited
 
-  defp parse_body_limit(val) do
+  defp parse_body_limit(val, _default, flag) do
     case Integer.parse(val) do
       {0, ""} ->
         :unlimited
@@ -164,9 +177,7 @@ defmodule Mix.Tasks.Toast.Analyze.Detail do
         n
 
       _ ->
-        Mix.raise(
-          "Invalid --traffic-body-limit: #{val}. Use a positive integer or \"unlimited\"."
-        )
+        Mix.raise("Invalid #{flag}: #{val}. Use a positive integer or \"unlimited\".")
     end
   end
 
@@ -195,6 +206,12 @@ defmodule Mix.Tasks.Toast.Analyze.Detail do
     opts[:traffic] || Enum.any?(@traffic_implicit_enable_keys, &(opts[&1] != nil))
   end
 
+  @agency_implicit_enable_keys ~w(agency_window agency_body_limit)a
+
+  defp agency_enabled?(opts) do
+    opts[:agency_logs] || Enum.any?(@agency_implicit_enable_keys, &(opts[&1] != nil))
+  end
+
   # --- Issue detail rendering ---
 
   defp print_issue_detail(issue, idx, color, display) do
@@ -206,7 +223,8 @@ defmodule Mix.Tasks.Toast.Analyze.Detail do
   end
 
   defp print_issue_appendices(issue, display, color) do
-    if display.log.enabled or display.traffic.enabled or display.event.detail != :none do
+    if display.log.enabled or display.traffic.enabled or display.agency.enabled or
+         display.event.detail != :none do
       Streams.print(issue, display, color)
     end
   end

@@ -22,6 +22,33 @@
 defmodule ToastTest.Formatting.Utils do
   @moduledoc false
 
+  # Left margin for detail lines shown under a summary line (logs, traffic
+  # bodies, agency request transactions).
+  @detail_indent "        "
+
+  @doc """
+  Truncate `text` to at most `limit` graphemes.
+
+  Returns `{kept, truncated?}`. `limit` may be `:unlimited` to keep everything.
+  """
+  @spec truncate(String.t(), pos_integer() | :unlimited) :: {String.t(), boolean()}
+  def truncate(text, :unlimited), do: {text, false}
+
+  def truncate(text, limit) do
+    case String.split_at(text, limit) do
+      {kept, ""} -> {kept, false}
+      {kept, _rest} -> {kept, true}
+    end
+  end
+
+  @doc "Indent every line of `text` by the shared detail margin."
+  @spec indent(String.t()) :: String.t()
+  def indent(text) do
+    text
+    |> String.split("\n")
+    |> Enum.map_join("\n", &(@detail_indent <> &1))
+  end
+
   def print_header(label, true, color) do
     IO.ANSI.format([
       IO.ANSI.color_background(color),

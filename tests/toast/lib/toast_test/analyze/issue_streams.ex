@@ -136,7 +136,8 @@ defmodule ToastTest.Analyze.IssueStreams do
 
   Each stream is a `{tag, [entry]}` tuple where entries are maps with
   either a `:time` or `:timestamp` key (microseconds). The tag is opaque
-  — it can be a server ID string, `:event`, `:traffic`, or any term.
+  — it can be `:event`, `:traffic`, `{:server, id}`, `{:agency, id}`, or
+  any term.
 
   Returns `[{tag, entry}]` in chronological order across all streams.
   Empty streams are filtered out.

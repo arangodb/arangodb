@@ -406,14 +406,14 @@ defmodule ToastTest.LogAnalysisAndFormattingLogsTest do
       filtered = Map.new(IssueStreams.filter_servers(servers, filter))
       result = Logs.extract(filtered, window)
       server_ids = Enum.map(result, &elem(&1, 0))
-      assert "coordinator1" in server_ids
-      refute "agent1" in server_ids
+      assert {:server, "coordinator1"} in server_ids
+      refute {:server, "agent1"} in server_ids
     end
 
     test "unfiltered includes all servers", %{servers: servers, window: window} do
       result = Logs.extract(servers, window)
       server_ids = Enum.map(result, &elem(&1, 0))
-      assert "agent1" in server_ids
+      assert {:server, "agent1"} in server_ids
     end
 
     test "filters entries by time window", %{servers: servers, window: window} do

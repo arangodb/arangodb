@@ -64,6 +64,7 @@ defmodule Mix.Tasks.Toast.Analyze.Data do
         |> Map.put(:events, events)
         |> Map.put(:modules, result.modules)
         |> Map.put(:traffic, Map.get(result, :traffic, []))
+        |> Map.put(:agency_logs, Map.get(result, :agency_logs, %{}))
       end)
       |> Enum.map(&Issues.attach_test_location(&1, result.modules))
       |> then(&Issues.resolve_coredumps(&1, coredump_index))
