@@ -76,13 +76,9 @@ std::vector<std::string> parseWeightAttribute(VPackSlice obj) {
 
 void addWeightAttribute(VPackBuilder& builder,
                         std::vector<std::string> const& weightAttribute) {
-  if (weightAttribute.empty()) {
-    builder.add("weightAttribute", VPackValue(""));
-
-    VPackArrayBuilder guard(&builder, "weightAttribute");
-    for (auto const& part : weightAttribute) {
-      builder.add(VPackValue(part));
-    }
+  VPackArrayBuilder guard(&builder, "weightAttribute");
+  for (auto const& part : weightAttribute) {
+    builder.add(VPackValue(part));
   }
 }
 
