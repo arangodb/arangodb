@@ -109,7 +109,10 @@ struct TestCacheManagerProvider final : ICacheManagerProvider {
 };
 
 struct TestSortingPolicy final : ISortingPolicy {
-  bool useLegacySorting() const noexcept override { return false; }
+  basics::VelocyPackHelper::SortingMethod getSortingMethod()
+      const noexcept override {
+    return basics::VelocyPackHelper::SortingMethod::Correct;
+  }
 };
 
 struct TestIndexCacheRefill final : IIndexCacheRefill {

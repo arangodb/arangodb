@@ -4292,8 +4292,7 @@ SortingMethod RocksDBEngine::readSortingFile() {
     // to legacy mode, except for agents. Since agents have never used
     // VPackIndexes before we fixed the sorting order, we might as well
     // directly consider them to be migrated to the CORRECT sorting order:
-    sortingMethod = _sortingPolicy.useLegacySorting() ? SortingMethod::Legacy
-                                                      : SortingMethod::Correct;
+    sortingMethod = _sortingPolicy.getSortingMethod();
     LOG_TOPIC("8ff0e", WARN, Logger::STARTUP)
         << "unable to read 'SORTING' file '" << path << "': " << ex.what()
         << ". This is expected directly after an upgrade and will then be "

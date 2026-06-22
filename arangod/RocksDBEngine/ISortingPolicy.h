@@ -22,11 +22,14 @@
 
 #pragma once
 
+#include "Basics/VelocyPackHelper.h"
+
 namespace arangodb {
 
 struct ISortingPolicy {
   virtual ~ISortingPolicy() = default;
-  virtual bool useLegacySorting() const noexcept = 0;
+  virtual basics::VelocyPackHelper::SortingMethod getSortingMethod()
+      const noexcept = 0;
 };
 
 }  // namespace arangodb

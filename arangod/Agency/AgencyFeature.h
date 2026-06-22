@@ -49,7 +49,11 @@ class AgencyFeature : public application_features::ApplicationFeature,
   void unprepare() override final;
 
   bool activated() const noexcept { return _options.activated; }
-  bool useLegacySorting() const noexcept override { return !activated(); }
+  basics::VelocyPackHelper::SortingMethod getSortingMethod()
+      const noexcept override {
+    return activated() ? basics::VelocyPackHelper::SortingMethod::Correct
+                       : basics::VelocyPackHelper::SortingMethod::Legacy;
+  }
 
   consensus::Agent* agent() const;
 
