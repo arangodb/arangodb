@@ -1,5 +1,8 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
+* COR-379: Bind Parameters in Edge collection types.
+
+* COR-380: Bind Parameters in Vertex collection types.
 
 * Upgraded included rclone to v1.74.3 with go1.25.11 and non-vulnerable
   dependencies.
