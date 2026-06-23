@@ -23,8 +23,7 @@
 
 #pragma once
 
-// forward declaration sufficient for reference member
-struct TransactionStatistics;
+#include "Statistics/ServerStatistics.h"
 #include "RocksDBEngine/RocksDBMetaCollection.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
 #include "VocBase/Identifiers/IndexId.h"
