@@ -151,7 +151,8 @@ Result Databases::info(TRI_vocbase_t* vocbase, velocypack::Builder& result) {
 // Grant permissions on newly created database to current user
 // to be able to run the upgrade script
 Result Databases::grantCurrentUser(CreateDatabaseInfo const& info) {
-  auth::UserManager* um = AuthenticationFeature::instance()->userManager();
+  AuthenticationFeature* af = AuthenticationFeature::instance();
+  auth::UserManager* um = af->userManager();
 
   Result res;
 
@@ -160,7 +161,7 @@ Result Databases::grantCurrentUser(CreateDatabaseInfo const& info) {
     // If the current user is empty (which happens if a Maintenance job
     // called us, or when authentication is off), granting rights
     // will fail. We hence ignore it here, but issue a warning below
-    if (exec.canWriteUser(exec.user()).ok()) {
+    if (!exec.user().empty() && af->isActive()) {
       res = um->updateUser(
           exec.user(),
           [&](auth::User& entry) {
