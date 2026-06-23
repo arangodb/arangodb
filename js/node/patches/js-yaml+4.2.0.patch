@@ -1,0 +1,17 @@
+diff --git a/node_modules/js-yaml/index.js b/node_modules/js-yaml/index.js
+index 0b66b8f2764..e46a73efc8f 100644
+--- a/node_modules/js-yaml/index.js
++++ b/node_modules/js-yaml/index.js
+@@ -38,7 +38,8 @@ module.exports.types = {
+   str: require('./lib/type/str')
+ }
+ 
+-// Removed functions from JS-YAML 3.0.x
+-module.exports.safeLoad = renamed('safeLoad', 'load')
+-module.exports.safeLoadAll = renamed('safeLoadAll', 'loadAll')
+-module.exports.safeDump = renamed('safeDump', 'dump')
++// ArangoDB: js-yaml 4 removed safeLoad/safeLoadAll/safeDump (load/loadAll/dump are
++// now safe by default). Re-add working aliases so existing call sites keep functioning.
++module.exports.safeLoad = loader.load
++module.exports.safeLoadAll = loader.loadAll
++module.exports.safeDump = dumper.dump
