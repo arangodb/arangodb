@@ -55,6 +55,7 @@
 
 #include <cstdint>
 #include <cstring>
+#include <optional>
 #include <string_view>
 #include <vector>
 
@@ -1237,33 +1238,82 @@ AqlValue functions::Concat(ExpressionContext* ctx, AstNode const&,
 /// @brief function PARTITION
 AqlValue functions::Partition(ExpressionContext* ctx, AstNode const&,
                               VPackFunctionParametersView parameters) {
-  auto const& vopts = ctx->trx().vpackOptions();
+  static char const* AFN = "PARTITION";
 
-  auto inputBuffer = ThreadLocalStringLeaser::lease();
-  auto separatorBuffer = ThreadLocalStringLeaser::lease();
+  auto const& inputValue = extractFunctionParameterValue(parameters, 0);
+  auto const& separatorValue = extractFunctionParameterValue(parameters, 1);
 
-  velocypack::StringSink inputAdapter(inputBuffer.get());
-  appendAsString(vopts, inputAdapter,
-                 extractFunctionParameterValue(parameters, 0));
+  if (!inputValue.isString()) {
+    registerInvalidArgumentWarning(ctx, AFN);
+    return AqlValue(AqlValueHintNull());
+  }
+  if (!separatorValue.isString()) {
+    registerInvalidArgumentWarning(ctx, AFN);
+    return AqlValue(AqlValueHintNull());
+  }
 
-  velocypack::StringSink separatorAdapter(separatorBuffer.get());
-  appendAsString(vopts, separatorAdapter,
-                 extractFunctionParameterValue(parameters, 1));
+  std::string_view const input = inputValue.slice().stringView();
+  std::string_view const separator = separatorValue.slice().stringView();
 
-  std::string_view const input{inputBuffer->data(), inputBuffer->size()};
-  std::string_view const separator{separatorBuffer->data(),
-                                   separatorBuffer->size()};
+  if (separator.empty()) {
+    registerInvalidArgumentWarning(ctx, AFN);
+    return AqlValue(AqlValueHintNull());
+  }
 
-  auto const pos = input.find(separator);
+  int64_t occurrence = 1;
+  if (parameters.size() >= 3) {
+    auto const& occurrenceValue = extractFunctionParameterValue(parameters, 2);
+    if (!occurrenceValue.isNumber() ||
+        occurrenceValue.toInt64() != occurrenceValue.toDouble()) {
+      registerInvalidArgumentWarning(ctx, AFN);
+      return AqlValue(AqlValueHintNull());
+    }
+    occurrence = occurrenceValue.toInt64();
+    if (occurrence == 0) {
+      registerInvalidArgumentWarning(ctx, AFN);
+      return AqlValue(AqlValueHintNull());
+    }
+  }
 
   VPackBuilder builder;
   builder.openArray();
 
-  if (pos == std::string_view::npos) {
-    builder.add(VPackValue(input));
-    builder.add(VPackValue(""));
-    builder.add(VPackValue(""));
+  std::vector<size_t> positions;
+  positions.reserve(8);
+  size_t searchFrom = 0;
+  while (searchFrom <= input.size()) {
+    auto const pos = input.find(separator, searchFrom);
+    if (pos == std::string_view::npos) {
+      break;
+    }
+    positions.push_back(pos);
+    searchFrom = pos + separator.size();
+  }
+
+  std::optional<size_t> matchPos;
+  if (occurrence > 0) {
+    if (static_cast<size_t>(occurrence) <= positions.size()) {
+      matchPos = positions[static_cast<size_t>(occurrence) - 1];
+    }
   } else {
+    auto const absOcc = static_cast<size_t>(-occurrence);
+    if (absOcc <= positions.size()) {
+      matchPos = positions[positions.size() - absOcc];
+    }
+  }
+
+  if (!matchPos) {
+    if (occurrence > 0) {
+      builder.add(VPackValue(input));
+      builder.add(VPackValue(""));
+      builder.add(VPackValue(""));
+    } else {
+      builder.add(VPackValue(""));
+      builder.add(VPackValue(""));
+      builder.add(VPackValue(input));
+    }
+  } else {
+    auto const pos = *matchPos;
     builder.add(VPackValue(input.substr(0, pos)));
     builder.add(VPackValue(separator));
     builder.add(VPackValue(input.substr(pos + separator.size())));

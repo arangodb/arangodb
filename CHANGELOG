@@ -1,7 +1,7 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
-* COR-552: Added a new AQL string function PARTITION(input, separator) that splits 
-  a string at the first occurrence of the specified separator and returns an array of exactly three strings: the portion before the separator, the separator itself, and the portion after the separator.
+* COR-552: Added a new AQL string function PARTITION(input, separator [, occurrence]) that splits 
+  a string at the specified occurrence of the separator and returns an array of exactly three strings: the portion before the separator, the separator itself, and the portion after the separator. The optional occurrence parameter defaults to 1 (first match); positive values select the n-th match from the start, negative values select from the end (-1 is the last match).
   
 
 * COR-553: Added AQL array `ALL`/`ANY`/`NONE`/`AT LEAST` support for the `LIKE`

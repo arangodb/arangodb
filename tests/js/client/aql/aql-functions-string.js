@@ -1925,10 +1925,30 @@ function ahuacatlStringFunctionsTestSuite () {
       [ [ '', 'foo', 'bar' ], 'foobar', 'foo' ],
       [ [ 'foo', 'bar', '' ], 'foobar', 'bar' ],
       [ [ 'foobar', '', '' ], 'foobar', 'baz' ],
-      [ [ '', '', 'foobar' ], 'foobar', '' ],
       [ [ 'möt', 'ör', 'head' ], 'mötörhead', 'ör' ],
     ].forEach(function (v) {
       assertEqual([ v[0] ], getQueryResults(`RETURN PARTITION(${JSON.stringify(v[1])}, ${JSON.stringify(v[2])})`));
+    });
+  },
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test partition function with occurrence parameter
+// //////////////////////////////////////////////////////////////////////////////
+
+  testPartitionOccurrence: function () {
+    [
+      [ [ 'foo', '-', 'bar-baz' ], 'foo-bar-baz', '-', 1 ],
+      [ [ 'foo-bar', '-', 'baz' ], 'foo-bar-baz', '-', 2 ],
+      [ [ 'foo-bar', '-', 'baz' ], 'foo-bar-baz', '-', -1 ],
+      [ [ 'foo', '-', 'bar-baz' ], 'foo-bar-baz', '-', -2 ],
+      [ [ 'foo', 'bar', '' ], 'foobar', 'bar', -1 ],
+      [ [ 'foo', 'bar', '' ], 'foobar', 'bar', 1 ],
+      [ [ 'foo-bar', '', '' ], 'foo-bar', '-', 5 ],
+      [ [ '', '', 'foo-bar' ], 'foo-bar', '-', -5 ],
+      [ [ 'foo-bar', '', '' ], 'foo-bar', ':', 5 ],
+      [ [ '', '', 'foo-bar' ], 'foo-bar', ':', -5 ]
+    ].forEach(function (v) {
+      assertEqual([ v[0] ], getQueryResults(`RETURN PARTITION(${JSON.stringify(v[1])}, ${JSON.stringify(v[2])}, ${v[3]})`));
     });
   },
 
@@ -1939,9 +1959,15 @@ function ahuacatlStringFunctionsTestSuite () {
   testPartitionInvalid: function () {
     assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, `RETURN PARTITION()`);
     assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, `RETURN PARTITION('foo')`);
-    assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, `RETURN PARTITION('foo', 'o', 'o')`);
-    assertEqual([ [ '1', '2', '3' ] ], getQueryResults(`RETURN PARTITION(123, 2)`));
-    assertEqual([ [ '', '', '' ] ], getQueryResults(`RETURN PARTITION(null, 'x')`));
+    assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, `RETURN PARTITION('foo', 'o', 1, 'extra')`);
+    assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, `RETURN PARTITION(123, 2)`);
+    assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, `RETURN PARTITION(null, 'x')`);
+    assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, `RETURN PARTITION('test', null)`);
+    assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, `RETURN PARTITION('foo', 2)`);
+    assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, `RETURN PARTITION('foo', '')`);
+    assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, `RETURN PARTITION('foo', 'o', 'o')`);
+    assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, `RETURN PARTITION('foo', 'o', 0)`);
+    assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, `RETURN PARTITION('foo', 'o', 2.5)`);
   },
 
 // //////////////////////////////////////////////////////////////////////////////
