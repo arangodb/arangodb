@@ -1,6 +1,8 @@
 3.12.9.4 (XXXX-XX-XX)
 ---------------------
 
+* GitHub issue #22821: Fix overflow issues in LIFO and FIFO cursor queues.
+
 * Upgraded included rclone to v1.74.3 with go1.25.11 and non-vulnerable
   dependencies.
 
