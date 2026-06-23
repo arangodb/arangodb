@@ -73,7 +73,7 @@ rbac::Service* RbacFeature::service() const noexcept {
   // Technically, it's also already available when PREPARED, but there's
   // currently no need to use it before STARTED.
   TRI_ASSERT(state() == State::STARTED);
-  TRI_ASSERT((_service == nullptr) == _authenticationFeature.rbacEnabled());
+  TRI_ASSERT((_service != nullptr) == _authenticationFeature.rbacEnabled());
   return _service.get();
 }
 
