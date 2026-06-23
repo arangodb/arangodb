@@ -2,6 +2,7 @@ add_executable(${BIN_ARANGOBENCH}
   ${ProductVersionFiles_arangobench}
   arangobench.cpp
   BenchFeature.cpp
+  BenchOptionsProvider.cpp
   BenchmarkOperation.cpp
   testcases/helpers.cpp
 )

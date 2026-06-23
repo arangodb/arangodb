@@ -35,6 +35,7 @@ add_library(arangoserver STATIC
   Cluster/HeartbeatThread.cpp
   Cluster/Maintenance.cpp
   Cluster/MaintenanceFeature.cpp
+  Cluster/MaintenanceOptionsProvider.cpp
   Cluster/MaintenanceRestHandler.cpp
   Cluster/MaintenanceWorker.cpp
   Cluster/RebootTracker.cpp
@@ -77,6 +78,7 @@ add_library(arangoserver STATIC
   GeneralServer/ServerSecurityFeature.cpp
   GeneralServer/ServerSecurityOptionsProvider.cpp
   GeneralServer/SslServerFeature.cpp
+  GeneralServer/SslServerOptionsProvider.cpp
   RestHandler/RestAccessTokenHandler.cpp
   RestHandler/RestAdminClusterHandler.cpp
   RestHandler/RestAdminDatabaseHandler.cpp
