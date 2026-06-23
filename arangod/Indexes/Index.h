@@ -450,7 +450,8 @@ class Index {
   virtual std::unique_ptr<AqlIndexDistinctScanIterator> distinctScanFor(
       transaction::Methods* trx, IndexDistinctScanOptions const&);
 
-  virtual vector::UserVectorIndexDefinition const& getVectorIndexDefinition();
+  virtual vector::UserVectorIndexDefinition const& getVectorIndexDefinition()
+      const;
 
   /// @brief Returns true if the vector index is trained and ready for queries.
   /// Default returns false. Overridden only by vector index implementations.
