@@ -84,6 +84,7 @@ struct WalManager;
 }  // namespace replication2::storage
 
 class PhysicalCollection;
+struct TransactionStatistics;
 class RocksDBBackgroundErrorListener;
 class RocksDBBackgroundThread;
 class RocksDBDumpManager;
@@ -439,6 +440,19 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
 
   metrics::Gauge<uint64_t>& indexEstimatorMemoryUsageMetric() const noexcept {
     return _metricsIndexEstimatorMemoryUsage;
+  }
+
+  metrics::Gauge<uint64_t>* transactionMemoryUsageMetric() const noexcept {
+    return _metricsRestTransactionsMemoryUsage;
+  }
+
+  ICacheManagerProvider& getCacheManagerProvider() noexcept {
+    return _cacheManagerProvider;
+  }
+
+  TransactionStatistics& transactionStatistics() const noexcept {
+    TRI_ASSERT(_transactionStatistics != nullptr);
+    return *_transactionStatistics;
   }
 
   std::string getSortingMethodFile() const;
@@ -823,6 +837,8 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   metrics::Gauge<uint64_t>& _metricsWalPruningActive;
   metrics::Gauge<uint64_t>& _metricsTreeMemoryUsage;
   metrics::Gauge<uint64_t>& _metricsTreeBufferedMemoryUsage;
+  metrics::Gauge<uint64_t>* _metricsRestTransactionsMemoryUsage{nullptr};
+  TransactionStatistics* _transactionStatistics{nullptr};
   metrics::Counter& _metricsTreeRebuildsSuccess;
   metrics::Counter& _metricsTreeRebuildsFailure;
   metrics::Counter& _metricsTreeHibernations;

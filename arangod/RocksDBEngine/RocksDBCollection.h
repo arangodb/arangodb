@@ -23,7 +23,8 @@
 
 #pragma once
 
-#include "Statistics/ServerStatistics.h"
+// forward declaration sufficient for reference member
+struct TransactionStatistics;
 #include "RocksDBEngine/RocksDBMetaCollection.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
 #include "VocBase/Identifiers/IndexId.h"
@@ -51,7 +52,9 @@ class RocksDBCollection final : public RocksDBMetaCollection {
 
  public:
   explicit RocksDBCollection(LogicalCollection& collection,
-                             velocypack::Slice info);
+                             velocypack::Slice info,
+                             cache::Manager* cacheManager,
+                             TransactionStatistics& statistics);
   ~RocksDBCollection();
 
   void deferDropCollection(

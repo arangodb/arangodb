@@ -51,6 +51,8 @@ struct MockFlushControl : IFlushControl {
   MOCK_METHOD(bool, isEnabled, (), (const, noexcept, override));
   MOCK_METHOD((std::tuple<std::size_t, std::size_t, TRI_voc_tick_t>),
               releaseUnusedTicks, (), (override));
+  MOCK_METHOD(void, registerFlushSubscription,
+              (std::shared_ptr<FlushSubscription> const&), (override));
 };
 
 struct MockDumpLimitsProvider : IDumpLimitsProvider {

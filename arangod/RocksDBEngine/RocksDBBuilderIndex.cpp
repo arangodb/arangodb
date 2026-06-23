@@ -34,8 +34,7 @@
 #include "Enterprise/RocksDBEngine/RocksDBBuilderIndexEE.h"
 #endif
 #include "Logger/LogMacros.h"
-#include "Metrics/MetricsFeature.h"
-#include "RestServer/FlushFeature.h"
+#include "RestServer/FlushSubscription.h"
 #include "RocksDBEngine/Methods/RocksDBBatchedBaseMethods.h"
 #include "RocksDBEngine/Methods/RocksDBBatchedMethods.h"
 #include "RocksDBEngine/Methods/RocksDBBatchedWithIndexMethods.h"
@@ -391,13 +390,8 @@ Result RocksDBBuilderIndex::beforeCreate() {
   auto& engine = static_cast<RocksDBEngine&>(_collection.vocbase().engine());
   rocksdb::DB* db = engine.db()->GetRootDB();
 
-  auto& metric = _collection.vocbase()
-                     .server()
-                     .getFeature<metrics::MetricsFeature>()
-                     .serverStatistics()
-                     ._transactionsStatistics._restTransactionsMemoryUsage;
   RocksDBMethodsMemoryTracker memoryTracker(
-      nullptr, &metric,
+      nullptr, _engine.transactionMemoryUsageMetric(),
       /*granularity*/ RocksDBMethodsMemoryTracker::kDefaultGranularity);
 
   rocksdb::WriteBatch batch(getBatchSize(_numDocsHint));
@@ -445,13 +439,8 @@ Result RocksDBBuilderIndex::fillIndexForeground(
   auto& engine = static_cast<RocksDBEngine&>(_collection.vocbase().engine());
   rocksdb::DB* db = engine.db()->GetRootDB();
 
-  auto& metric = _collection.vocbase()
-                     .server()
-                     .getFeature<metrics::MetricsFeature>()
-                     .serverStatistics()
-                     ._transactionsStatistics._restTransactionsMemoryUsage;
   RocksDBMethodsMemoryTracker memoryTracker(
-      nullptr, &metric,
+      nullptr, _engine.transactionMemoryUsageMetric(),
       /*granularity*/ RocksDBMethodsMemoryTracker::kDefaultGranularity);
 
   Result res;
@@ -870,9 +859,7 @@ futures::Future<Result> RocksDBBuilderIndex::fillIndexBackground(
   // prevent WAL deletion from this tick
   auto lowerBoundTracker =
       std::make_shared<LowerBoundTracker>(snap->GetSequenceNumber(), name);
-  auto& flushFeature =
-      _collection.vocbase().server().getFeature<FlushFeature>();
-  flushFeature.registerFlushSubscription(lowerBoundTracker);
+  _engine.getFlushControl().registerFlushSubscription(lowerBoundTracker);
 
   locker.unlock();
 
@@ -883,13 +870,8 @@ futures::Future<Result> RocksDBBuilderIndex::fillIndexBackground(
   }
 #endif
 
-  auto& metric = _collection.vocbase()
-                     .server()
-                     .getFeature<metrics::MetricsFeature>()
-                     .serverStatistics()
-                     ._transactionsStatistics._restTransactionsMemoryUsage;
   RocksDBMethodsMemoryTracker memoryTracker(
-      nullptr, &metric,
+      nullptr, _engine.transactionMemoryUsageMetric(),
       /*granularity*/ RocksDBMethodsMemoryTracker::kDefaultGranularity);
 
   Result res;
