@@ -32,6 +32,8 @@
 
 #include "gtest/gtest.h"
 
+#include "Mocks/Death_Test.h"
+
 #include <faiss/IndexFlat.h>
 #include <faiss/IndexHNSW.h>
 #include <faiss/IndexIVFFlat.h>
@@ -302,9 +304,10 @@ TEST(AutoTunerTest, misalignedQuerySetTrapsAssertion) {
   // querySet length is not a multiple of d: precondition violation, the
   // TRI_ASSERT in autoTuneTable should fire and abort the process.
   std::vector<float> bad(d + 1);
-  EXPECT_DEATH(autoTuneTable(*ivf, bad, /*invertedListContext=*/nullptr,
-                             /*R=*/10, /*minRecall=*/0.9),
-               "");
+  EXPECT_DEATH_CORE_FREE(
+      autoTuneTable(*ivf, bad, /*invertedListContext=*/nullptr,
+                    /*R=*/10, /*minRecall=*/0.9),
+      "");
 }
 
 // The worked examples from the proposal (confidence 0.99 -> z = 2.576,
