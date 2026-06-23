@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -18,23 +18,20 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
+/// @author Julia Puget
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "ProgramOptions/ProgramOptions.h"
+#include <memory>
 
-namespace rocksdb {
-class TransactionDB;
-}
+namespace arangodb::replication2 {
+struct ReplicatedLogGlobalSettings;
 
-namespace arangodb {
-struct IDatabaseProvider;
+struct IReplicatedLogProvider {
+  virtual ~IReplicatedLogProvider() = default;
+  virtual std::shared_ptr<ReplicatedLogGlobalSettings const> options()
+      const noexcept = 0;
+};
 
-void rocksdbStartupVersionCheck(options::ProgramOptions const& programOptions,
-                                IDatabaseProvider& databaseProvider,
-                                rocksdb::TransactionDB*, bool dbExisted,
-                                bool forceLittleEndianKeys);
-
-}  // namespace arangodb
+}  // namespace arangodb::replication2

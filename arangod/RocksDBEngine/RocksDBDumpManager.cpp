@@ -31,7 +31,6 @@
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/ICollector.h"
-#include "RestServer/DatabaseFeature.h"
 #include "RestServer/DumpLimitsFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBFormat.h"
@@ -93,7 +92,7 @@ std::shared_ptr<RocksDBDumpContext> RocksDBDumpManager::createContext(
   // generating the dump context can throw exceptions. if it does, then
   // no harm is done, and no resources will be leaked.
   auto context = std::make_shared<RocksDBDumpContext>(
-      _engine, *this, _engine.getDatabaseFeature(), generateId(),
+      _engine, *this, _engine.getDatabaseProvider(), generateId(),
       std::move(opts), user, database, useVPack);
 
   std::lock_guard mutexLocker{_lock};
