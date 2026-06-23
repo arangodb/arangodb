@@ -31,6 +31,7 @@
 #include "Replication2/Version.h"
 #include "RestServer/DatabaseFeatureOptions.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/IDatabaseProvider.h"
 #include "Utils/DatabaseGuard.h"
 #include "Utils/VersionTracker.h"
 #include "VocBase/voc-types.h"
@@ -101,7 +102,8 @@ class DatabaseManagerThread final : public ServerThread {
 #endif
 };
 
-class DatabaseFeature final : public application_features::ApplicationFeature {
+class DatabaseFeature final : public application_features::ApplicationFeature,
+                              public IDatabaseProvider {
   friend class DatabaseManagerThread;
 
  public:
@@ -164,10 +166,10 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
 
   void inventory(arangodb::velocypack::Builder& result, TRI_voc_tick_t,
                  std::function<bool(arangodb::LogicalCollection const*)> const&
-                     nameFilter);
+                     nameFilter) override;
 
-  VocbasePtr useDatabase(std::string_view name) const;
-  VocbasePtr useDatabase(TRI_voc_tick_t id) const;
+  VocbasePtr useDatabase(std::string_view name) const override;
+  VocbasePtr useDatabase(TRI_voc_tick_t id) const override;
 
   bool existsDatabase(std::string_view name) const;
 
@@ -178,7 +180,7 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
   // `useDatabase(...)`, which is safe.
   [[deprecated]] TRI_vocbase_t* lookupDatabase(std::string_view name) const;
   void enumerateDatabases(
-      std::function<void(TRI_vocbase_t& vocbase)> const& func);
+      std::function<void(TRI_vocbase_t& vocbase)> const& func) override;
   std::string translateCollectionName(std::string_view dbName,
                                       std::string_view collectionName);
 
@@ -194,16 +196,20 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
   bool checkVersion() const noexcept { return _checkVersion; }
   bool upgrade() const noexcept { return _upgrade; }
   bool waitForSync() const noexcept { return _options.defaultWaitForSync; }
-  replication::Version defaultReplicationVersion() const noexcept {
+  replication::Version defaultReplicationVersion() const noexcept override {
     return replication::parseVersion(_options.defaultReplicationVersion).get();
   }
 
   /// @brief whether or not extended names for databases, collections, views
   /// and indexes
-  bool extendedNames() const noexcept { return _options.extendedNames; }
+  bool extendedNames() const noexcept override {
+    return _options.extendedNames;
+  }
   /// @brief will be called only during startup when reading stored value from
   /// storage engine
-  void extendedNames(bool value) noexcept { _options.extendedNames = value; }
+  void extendedNames(bool value) noexcept override {
+    _options.extendedNames = value;
+  }
 
   void enableCheckVersion() noexcept { _checkVersion = true; }
   void enableUpgrade() noexcept { _upgrade = true; }

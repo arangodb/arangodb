@@ -107,6 +107,11 @@ class RocksDBBuilderIndex final : public RocksDBIndex {
     return true;  // do not show building indices
   }
 
+  std::vector<std::vector<arangodb::basics::AttributeName>> const&
+  coveredFields() const override {
+    return _wrapped->coveredFields();
+  }
+
   size_t memory() const override { return _wrapped->memory(); }
 
   Result drop() override { return _wrapped->drop(); }

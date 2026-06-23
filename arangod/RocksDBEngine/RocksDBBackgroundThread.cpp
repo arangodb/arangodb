@@ -29,8 +29,6 @@
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/ICollector.h"
 #include "Replication/ReplicationClients.h"
-#include "RestServer/DatabaseFeature.h"
-#include "RestServer/FlushFeature.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBDumpManager.h"
 #include "RocksDBEngine/RocksDBEngine.h"
@@ -65,7 +63,7 @@ void RocksDBBackgroundThread::beginShutdown() {
 }
 
 void RocksDBBackgroundThread::run() {
-  auto& flushFeature = _engine.getFlushFeature();
+  auto& flushControl = _engine.getFlushControl();
 
   double const startTime = TRI_microtime();
   uint64_t runsUntilSyncForced = 1;
@@ -87,7 +85,7 @@ void RocksDBBackgroundThread::run() {
 
     try {
       if (!isStopping()) {
-        flushFeature.releaseUnusedTicks();
+        flushControl.releaseUnusedTicks();
 
         // it is important that we wrap the sync operation inside a
         // try..catch of its own, because we still want the following
@@ -167,7 +165,7 @@ void RocksDBBackgroundThread::run() {
       }
 
       uint64_t minTickForReplication = latestSeqNo;
-      _engine.getDatabaseFeature().enumerateDatabases(
+      _engine.getDatabaseProvider().enumerateDatabases(
           [&minTickForReplication, minTick](TRI_vocbase_t& vocbase) -> void {
             // lowestServedValue will return the lowest of the lastServedTick
             // values stored, or UINT64_MAX if no clients are registered
