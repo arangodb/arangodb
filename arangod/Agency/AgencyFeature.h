@@ -49,9 +49,11 @@ class AgencyFeature : public application_features::ApplicationFeature,
   void unprepare() override final;
 
   bool activated() const noexcept { return _options.activated; }
-  // Old deployments use legacy sorting for agency data backwards compatibility;
-  // newer deployments always use correct sorting.
 
+  // Since agents have never used VPackIndexes before we fixed the sorting
+  // order, we might as well directly consider them to be migrated to the
+  // CORRECT sorting order. Other servers will use the LEGACY sorting order for
+  // backwards compatibility.
   basics::VelocyPackHelper::SortingMethod getSortingMethod()
       const noexcept override {
     return activated() ? basics::VelocyPackHelper::SortingMethod::Correct
