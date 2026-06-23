@@ -741,6 +741,12 @@ mix toast.analyze detail all --traffic --traffic-status 400-599
 
 # Custom time window for traffic
 mix toast.analyze detail all --traffic --traffic-window -30000,5000
+
+# Show cluster agency-dump log entries around issues
+mix toast.analyze detail all --agency-logs
+
+# Interleave agency logs with server logs and traffic
+mix toast.analyze detail all --agency-logs --logs --traffic
 ```
 
 ## Network Traffic Capture
@@ -802,6 +808,38 @@ logs.
 In CI mode, raw pcap files are packaged in Tier 3 artifacts (compressed).
 The extracted HTTP traffic data is included in the diagnostics ETF file
 (Tier 1), so `--traffic` works in analyze even without the raw pcap.
+
+## Agency Logs
+
+For cluster deployments, Toast captures an agency state dump on error (unless
+disabled with `--no-agency-dump`). The dump's raft log entries are windowed
+around each issue and stored in the diagnostics file, so they can be displayed
+as a fourth data stream in the `detail` view — alongside server logs, traffic,
+and events — and merged into the same chronological timeline.
+
+```bash
+# Show agency log entries for all issues
+mix toast.analyze detail all --agency-logs
+
+# Interleave agency logs with server logs and traffic
+mix toast.analyze detail all --agency-logs --logs --traffic
+```
+
+Each entry shows a one-line summary (raft term, log index, and submitting
+client) followed by the full agency `request` transaction as JSON. Entries are
+keyed by deployment and filtered to the issue's time window, just like server
+logs.
+
+#### Agency Log Options
+
+| Option | Description |
+|---|---|
+| `--agency-logs` | Enable agency log display |
+| `--agency-window <before>,<after>` | Override time window (milliseconds, same as `--log-window`) |
+| `--agency-body-limit <n>` | Max characters of each request transaction to display (default: 500, `0` or `unlimited` for no limit) |
+
+Only available for cluster deployments — single-server runs have no agency.
+The dump itself is published as a Tier 1 CI artifact (`agency-dump-*.json`).
 
 ## Test Bucketing
 

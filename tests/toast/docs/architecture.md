@@ -257,9 +257,11 @@ Two leaf helpers are **shared** (used by the live subsystem *and* the offline
 | Module | Role |
 |--------|------|
 | `ToastTest.Formatting` | Base module with shared formatting utilities (colorize, etc.). Also provides `display_module_name/1` which converts module atoms to display strings (strips `Elixir.` prefix for Elixir modules, returns raw path for JS file path atoms). |
+| `ToastTest.Formatting.Utils` | Shared display helpers: header bars and detail-body rendering (`truncate/2`, `indent/1` with the common left margin) reused by traffic and agency-log bodies. |
 | `ToastTest.Formatting.CLI` | Google Test-style console output with timestamps. Replaces ExUnit.CLIFormatter. |
 | `ToastTest.Formatting.Issues` | Format diagnostic issues for display. |
-| `ToastTest.Formatting.Logs` | Format server log excerpts for display. |
+| `ToastTest.Formatting.Logs` | Format server log excerpts and lifecycle events for display. |
+| `ToastTest.Formatting.AgencyLog` | Format agency-dump raft log entries: `term=… #idx client=…` summary plus the `request` transaction as JSON. |
 | `ToastTest.Formatting.PostExecSummary` | Post-execution summary (crash attribution, sanitizer errors, coredump traces). |
 | `ToastTest.Formatting.RunSummary` | Overall run summary across all suites. |
 | `ToastTest.Formatting.RrSummary` | Summary of rr recording locations. |
@@ -308,7 +310,9 @@ Two leaf helpers are **shared** (used by the live subsystem *and* the offline
 | `Toast.Utils.Compression` | Compression tool detection and wrappers (zstd, gzip). |
 | `Toast.Utils.Polling` | Generic poll-until-condition utility with deadline-based timeout. |
 | `Toast.LogFormatter` | Custom log format for both Elixir Logger and Erlang `:logger` handler. |
-| `ToastTest.LogAnalysis` | Data transformation for server log analysis (parsing, filtering, k-way merge). Used by `mix toast.analyze`. |
+| `ToastTest.Analyze.Logs` | Server-log data transformation for `mix toast.analyze` (level/ID filtering, window extraction from chunked storage). |
+| `ToastTest.Analyze.IssueStreams` | Shared stream ops for `mix toast.analyze detail`: server filtering, display windows, event extraction, and k-way merge of tagged streams (`{:server, id}`, `:traffic`, `:event`, `{:agency, id}`). |
+| `ToastTest.Analyze.AgencyLogs` | Window-filter stored agency-dump excerpts (`SuiteResult.agency_logs`) for display, tagged `{:agency, deployment_id}` for the stream merge. |
 | `ToastTest.Supervisor` | Supervisor for ToastTest-specific processes. |
 
 ### CLI (`Mix.Tasks.*`)
@@ -742,6 +746,13 @@ Subcommands:
 - `weights` -- suggest module weights based on runtime distribution
 
 The detail subcommand accepts issue specs (`3`, `2-4`, `all`, `crashes`,
-`sanitizer`) and supports log filtering (`--logs`, `--log-window`,
-`--log-min-level`) and backtrace options (`--threads`, `--backtrace-frames`,
-`--disassembly`).
+`sanitizer`) and renders four time-windowed data streams, each merged into one
+chronological view and individually enabled:
+
+- server logs -- `--logs`, `--log-window`, `--log-min-level`, `--log-servers`
+- HTTP traffic -- `--traffic`, `--traffic-window`, `--traffic-body-limit`, ...
+- agency logs -- `--agency-logs`, `--agency-window`, `--agency-body-limit`
+  (cluster agency-dump raft log entries, keyed by deployment)
+- events -- `--events none|basic|full`
+
+Plus backtrace options (`--threads`, `--backtrace-frames`, `--disassembly`).

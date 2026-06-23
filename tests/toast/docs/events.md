@@ -58,6 +58,7 @@ Test lifecycle events are additionally broadcast to the ExUnit event manager
 | `:netstat_snapshot` | Runner (between-tests check, baselines) | `total` (socket count), `label` (`:pre_deployment`, `:deployment_ready`, or `nil`) | Netstat trajectory in `toast.analyze detail` |
 | `:infrastructure_issue` | Runner (between-tests check) | `subtype` (e.g. `:port_exhaustion`), `detail` (map) | Projections → PostExecution infrastructure issues |
 | `:timeout_kill` | Runner.Timeout (`source: :global` or per-test) | `source`, `reason`, `servers` (same shape as the deployment variant; `[]` when unknown) | Projections → `Attribution.timeout_issues` |
+| `:agency_dump_captured` | Runner (after a successful on-error agency dump) | `deployment_id`, `path` (dump file written to disk) | Projections → `agency_dumps`; PostExecution `Attribution.AgencyLogs` windows the dump's log entries into `SuiteResult.agency_logs`, surfaced by `toast.analyze detail --agency-logs` |
 
 Note: `:timeout_kill` has producers in both layers. The runner variant carries
 no `deployment_id`; consumers must not rely on it.

@@ -474,7 +474,9 @@ Mix.Tasks.Toast.Analyze
   |         Mix.Tasks.Toast.Analyze.Info (file overview)
   |         Mix.Tasks.Toast.Analyze.Perf (performance analysis)
   |         Mix.Tasks.Toast.Analyze.Weights (weight suggestions)
-  |         ToastTest.LogAnalysis (log data transformation)
+  |         ToastTest.Analyze.Logs (server-log data transformation)
+  |         ToastTest.Analyze.IssueStreams (stream filtering/windowing/merge)
+  |         ToastTest.Analyze.AgencyLogs (agency-dump excerpt windowing)
 ```
 
 ### Dependency Principles
