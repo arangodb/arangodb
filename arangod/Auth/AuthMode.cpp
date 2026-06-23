@@ -200,6 +200,9 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
                 effectiveCollectionAuthLevel(collection.db, collection.name);
 
             if (requestedLevel > effectiveLevel) {
+      // deactivate the following code for now, since we do not want
+      // to change the behaviour in comparison to the released version:
+#if 0
               if (effectiveLevel == auth::Level::NONE) {
                 // User has no access to this collection: report as not found
                 // to avoid revealing its existence.
@@ -207,6 +210,7 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
                         "collection or view not found: '" + collection.name +
                             "' in database '" + collection.db + "'"};
               }
+#endif
               return {TRI_ERROR_FORBIDDEN,
                       "insufficient collection access level for '" +
                           collection.name + "' in database '" + collection.db +
