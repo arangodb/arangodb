@@ -197,11 +197,11 @@ struct NListsScalingSpec {
 
     // No tier matched: apply strategy.
     switch (strategy) {
-      case NListsStrategy::kAutoSqrt: {
+      case NListsStrategy::kAutoSqrt:
         return std::max(minNLists, static_cast<std::size_t>(
                                        multiplier * std::sqrt(docCount)));
-      }
     }
+    return minNLists;
   }
 
   template<class Inspector>
