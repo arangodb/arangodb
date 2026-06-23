@@ -27,25 +27,32 @@
 #include "Auth/Rbac/Actions.h"
 #include "Auth/Permissions.h"
 #include "Basics/Result.h"
-#include "Rest/RequestContext.h"
 
+#include <atomic>
+#include <functional>
 #include <memory>
+#include <optional>
 #include <span>
 #include <string>
+
+#include "Utils/DatabaseGuard.h"
+
+struct TRI_vocbase_t;
 
 namespace arangodb {
 namespace transaction {
 class Methods;
 }
 class AuthenticationFeature;
+class GeneralRequest;
 class RbacFeature;
+class ServerSecurityFeature;
 
 /// Carries some information about the current
 /// context in which this thread is executed.
 /// We should strive to have it always accessible
-/// from ExecContext::CURRENT. Inherits from request
-/// context for convenience
-class ExecContext : public RequestContext {
+/// from ExecContext::CURRENT.
+class ExecContext {
   friend struct ExecContextScope;
   friend struct ExecContextSuperuserScope;
 
@@ -54,12 +61,24 @@ class ExecContext : public RequestContext {
   class ConstructorToken {};
 
  public:
-  ExecContext(ConstructorToken, AuthMode authMode);
+  ExecContext(ConstructorToken, AuthMode authMode, VocbasePtr vocbase);
   ExecContext(ExecContext const&) = delete;
   ExecContext(ExecContext&&) = delete;
 
  public:
-  ~ExecContext() override = default;
+  virtual ~ExecContext();
+
+  /// @brief Create an ExecContext from an incoming request with a vocbase.
+  /// This is the main factory for creating real ExecContexts.
+  /// Superuser JWT requests create a dynamic Superuser context (not the static
+  /// one) so that vocbase and request information is preserved.
+  /// @param vocbase VocbasePtr with already incremented reference count.
+  ///                The ExecContext takes ownership and will release on
+  ///                destruction.
+  [[nodiscard]] static std::shared_ptr<ExecContext> create(
+      AuthenticationFeature& authenticationFeature, RbacFeature& rbacFeature,
+      ServerSecurityFeature const& securityFeature, GeneralRequest& req,
+      VocbasePtr vocbase);
 
   /// Should always contain a reference to current user context
   static ExecContext const& current();
@@ -79,20 +98,28 @@ class ExecContext : public RequestContext {
   }
 
   /// @brief tells you if this execution was canceled
-  // TODO I think it's strange to to have this in ExecContext. It's implemented
-  //      in the VocbaseContext.
-  //      It is set to true exclusively from RestVocbaseBaseHandler::cancel().
-  //      The cancel() method on the RestHandler is used exclusively from the
-  //      AsyncJobManager.
-  //      It is read exclusively in transaction::Methods::commitInternal,
-  //      to abort right before a commit.
-  //      So its kind of used to abort transactions, but only those that happen
-  //      to be committed under this ExecContext, and only at commit time.
-  //      Except they are not aborted, just the commit fails; though that might
-  //      lead to the transaction being aborted later, e.g. when the Methods
-  //      object goes out of scope. Probably not for streaming transactions,
-  //      though, which might or might not be desirable.
-  virtual bool isCanceled() const { return false; }
+  virtual bool isCanceled() const noexcept {
+    return _canceled.load(std::memory_order_relaxed);
+  }
+
+  /// @brief cancel execution
+  void cancel() noexcept { _canceled.store(true, std::memory_order_relaxed); }
+
+  /// @brief upgrade to internal superuser, preserving request/vocbase refs
+  void forceSuperuser();
+
+  /// @brief returns the vocbase associated with this context, if any
+  [[nodiscard]] std::optional<std::reference_wrapper<TRI_vocbase_t>> vocbase()
+      const noexcept;
+
+  /// @brief returns the database name associated with this context, if any
+  [[nodiscard]] std::string_view database() const noexcept;
+
+  /// @brief returns the request associated with this context, if any
+  [[nodiscard]] std::optional<std::reference_wrapper<GeneralRequest>> request()
+      const noexcept {
+    return _authMode.getIAuth().request();
+  }
 
   /// @brief current user, may be empty for internal users
   [[nodiscard]] std::string_view user() const {
@@ -182,15 +209,19 @@ class ExecContext : public RequestContext {
   }
 
 #ifdef USE_ENTERPRISE
-  [[nodiscard]] virtual std::string clientAddress() const { return ""; }
-  [[nodiscard]] virtual std::string requestUrl() const { return ""; }
-  [[nodiscard]] virtual std::string authMethod() const { return ""; }
+  [[nodiscard]] virtual std::string clientAddress() const;
+  [[nodiscard]] virtual std::string requestUrl() const;
+  [[nodiscard]] virtual std::string authMethod() const;
 #endif
 
  protected:
   AuthMode _authMode;
+  VocbasePtr _vocbase;
 
  private:
+  /// should be used to indicate a canceled request / thread
+  std::atomic<bool> _canceled{false};
+
   static std::shared_ptr<ExecContext const> const Superuser;
   static thread_local std::shared_ptr<ExecContext const> CURRENT;
 };

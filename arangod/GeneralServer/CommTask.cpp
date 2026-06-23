@@ -45,7 +45,7 @@
 #include "Rest/GeneralResponse.h"
 #include "RestServer/ApiRecordingFeature.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/VocbaseContext.h"
+#include "Utils/ExecContext.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Statistics/ConnectionStatistics.h"
@@ -99,14 +99,13 @@ bool resolveRequestContext(DatabaseFeature& databaseFeature,
 
   TRI_ASSERT(!vocbase->isDangling());
 
-  // FIXME(gnusi): modify VocbaseContext to accept VocbasePtr
-  auto context =
-      VocbaseContext::create(authenticationFeature, rbacFeature,
-                             securityFeature, req, *vocbase.release());
+  // ExecContext takes ownership of the VocbasePtr and will release it on
+  // destruction
+  auto context = ExecContext::create(authenticationFeature, rbacFeature,
+                                     securityFeature, req, std::move(vocbase));
   if (!context) {
     return false;
   }
-  // the VocbaseContext is now responsible for releasing the vocbase
   req.setRequestContext(std::move(context));
 
   // the "true" means the request is the owner of the context
@@ -814,11 +813,11 @@ CommTask::Flow CommTask::canAccessPath(auth::TokenCache::Entry const& token,
   bool userAuthenticated = req.authenticated();
   Flow result = userAuthenticated ? Flow::Continue : Flow::Abort;
 
-  auto vc = basics::downCast<VocbaseContext>(req.requestContext());
-  TRI_ASSERT(vc != nullptr);
+  auto ec = req.requestContext();
+  TRI_ASSERT(ec != nullptr);
   // deny access to database with NONE
   if (result == Flow::Continue &&
-      vc->canUseDatabase(req.databaseName(), DatabaseAccessLevel::Read)
+      ec->canUseDatabase(req.databaseName(), DatabaseAccessLevel::Read)
           .fail()) {
     result = Flow::Abort;
     LOG_TOPIC("0898a", TRACE, Logger::AUTHORIZATION)
@@ -858,7 +857,7 @@ CommTask::Flow CommTask::canAccessPath(auth::TokenCache::Entry const& token,
       if (!path.empty() && path != "/" && !path.starts_with("/_")) {
         // simon: upgrade rights for Foxx apps. FIXME
         result = Flow::Continue;
-        vc->forceSuperuser();
+        ec->forceSuperuser();
         LOG_TOPIC("e2880", TRACE, Logger::AUTHORIZATION)
             << "Upgrading rights for " << path;
       }
@@ -879,7 +878,7 @@ CommTask::Flow CommTask::canAccessPath(auth::TokenCache::Entry const& token,
         //      of the respective RestHandlers be able to handle this? Or to put
         //      it differently: Why are they doing permission checks, if they
         //      are only ever called with superuser permissions?
-        vc->forceSuperuser();
+        ec->forceSuperuser();
       } else if (userAuthenticated && path == "/_api/cluster/endpoints") {
         // allow authenticated users to access cluster/endpoints
         result = Flow::Continue;

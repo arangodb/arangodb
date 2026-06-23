@@ -30,6 +30,8 @@
 #include "Basics/voc-errors.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
+#include "Rest/GeneralRequest.h"
+#include "VocBase/vocbase.h"
 
 namespace arangodb {
 
@@ -63,14 +65,43 @@ auto AuthMode::Superuser::check(auth::Permission permission) const -> Result {
   return {};
 }
 
+auto AuthMode::Superuser::request() const noexcept
+    -> std::optional<std::reference_wrapper<GeneralRequest>> {
+  if (_request != nullptr) {
+    return *_request;
+  }
+  return std::nullopt;
+}
+
+auto AuthMode::Superuser::vocbase() const noexcept
+    -> std::optional<std::reference_wrapper<TRI_vocbase_t>> {
+  if (_vocbase != nullptr) {
+    return *_vocbase;
+  }
+  return std::nullopt;
+}
+
 AuthMode::Classic::Classic(auth::UserManager& userManager, std::string username,
-                           bool apiHardened)
+                           bool apiHardened, GeneralRequest& req,
+                           TRI_vocbase_t& vb)
     : _userManager(userManager),
       _username(std::move(username)),
-      _apiHardened(apiHardened) {}
+      _apiHardened(apiHardened),
+      _request(&req),
+      _vocbase(&vb) {}
 
 auto AuthMode::Classic::username() const noexcept -> std::string_view {
   return _username;
+}
+
+auto AuthMode::Classic::request() const noexcept
+    -> std::optional<std::reference_wrapper<GeneralRequest>> {
+  return *_request;
+}
+
+auto AuthMode::Classic::vocbase() const noexcept
+    -> std::optional<std::reference_wrapper<TRI_vocbase_t>> {
+  return *_vocbase;
 }
 
 auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
@@ -427,11 +458,39 @@ auto AuthMode::Rbac::check(auth::Permission permission) const -> Result {
   // access to the collection somehow!
 }
 
-AuthMode::Unauthenticated::Unauthenticated(std::string username)
-    : _username(std::move(username)) {}
+auto AuthMode::Rbac::request() const noexcept
+    -> std::optional<std::reference_wrapper<GeneralRequest>> {
+  return *_request;
+}
+
+auto AuthMode::Rbac::vocbase() const noexcept
+    -> std::optional<std::reference_wrapper<TRI_vocbase_t>> {
+  return *_vocbase;
+}
+
+AuthMode::Unauthenticated::Unauthenticated(std::string username,
+                                           GeneralRequest& req,
+                                           TRI_vocbase_t& vb)
+    : _username(std::move(username)), _request(&req), _vocbase(&vb) {}
 
 auto AuthMode::Unauthenticated::username() const noexcept -> std::string_view {
   return _username;
+}
+
+auto AuthMode::Unauthenticated::request() const noexcept
+    -> std::optional<std::reference_wrapper<GeneralRequest>> {
+  if (_request != nullptr) {
+    return *_request;
+  }
+  return std::nullopt;
+}
+
+auto AuthMode::Unauthenticated::vocbase() const noexcept
+    -> std::optional<std::reference_wrapper<TRI_vocbase_t>> {
+  if (_vocbase != nullptr) {
+    return *_vocbase;
+  }
+  return std::nullopt;
 }
 
 auto AuthMode::Unauthenticated::check(auth::Permission permission) const
@@ -474,11 +533,22 @@ auto AuthMode::Unauthenticated::check(auth::Permission permission) const
       permission);
 }
 
-AuthMode::Disabled::Disabled(std::string username)
-    : _username(std::move(username)) {}
+AuthMode::Disabled::Disabled(std::string username, GeneralRequest& req,
+                             TRI_vocbase_t& vb)
+    : _username(std::move(username)), _request(&req), _vocbase(&vb) {}
 
 auto AuthMode::Disabled::username() const noexcept -> std::string_view {
   return _username;
+}
+
+auto AuthMode::Disabled::request() const noexcept
+    -> std::optional<std::reference_wrapper<GeneralRequest>> {
+  return *_request;
+}
+
+auto AuthMode::Disabled::vocbase() const noexcept
+    -> std::optional<std::reference_wrapper<TRI_vocbase_t>> {
+  return *_vocbase;
 }
 
 auto AuthMode::Disabled::check(auth::Permission permission) const -> Result {
@@ -493,6 +563,18 @@ auto AuthMode::Mockable::username() const noexcept -> std::string_view {
 auto AuthMode::Mockable::check(auth::Permission permission) const -> Result {
   ADB_PROD_ASSERT(mock != nullptr);
   return mock->check(permission);
+}
+
+auto AuthMode::Mockable::request() const noexcept
+    -> std::optional<std::reference_wrapper<GeneralRequest>> {
+  ADB_PROD_ASSERT(mock != nullptr);
+  return mock->request();
+}
+
+auto AuthMode::Mockable::vocbase() const noexcept
+    -> std::optional<std::reference_wrapper<TRI_vocbase_t>> {
+  ADB_PROD_ASSERT(mock != nullptr);
+  return mock->vocbase();
 }
 
 }  // namespace arangodb

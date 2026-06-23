@@ -26,7 +26,7 @@
 #include "RestHandler/RestBaseHandler.h"
 
 #include "Rest/GeneralResponse.h"
-#include "RestServer/VocbaseContext.h"
+#include "Utils/ExecContext.h"
 #include "Transaction/OperationOrigin.h"
 #include "Transaction/Options.h"
 #include "Utils/OperationResult.h"
@@ -43,8 +43,6 @@ namespace arangodb {
 namespace transaction {
 class Methods;
 }
-
-class VocbaseContext;
 
 // abstract base request handler
 class RestVocbaseBaseHandler : public RestBaseHandler {
@@ -213,10 +211,10 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   }
 
  protected:
-  // request context
-  VocbaseContext& _context;
+  // request context (ExecContext with auth + vocbase)
+  ExecContext& _context;
 
-  // the vocbase, managed by VocbaseContext
+  // the vocbase, managed by ExecContext
   TRI_vocbase_t& _vocbase;
 };
 
