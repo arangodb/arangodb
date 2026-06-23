@@ -107,6 +107,21 @@ function assertTablesOk(parsedBody) {
     }
 }
 
+function collectFaissKeys(parsedBody) {
+    const tableLists = isCluster
+        ? parsedBody.result.map((entry) => entry.tunedTables)
+        : [parsedBody.tunedTables];
+    const keys = [];
+    for (const tables of tableLists) {
+        for (const table of (tables || [])) {
+            for (const point of table.points) {
+                keys.push(point.faissKey);
+            }
+        }
+    }
+    return keys;
+}
+
 function VectorIndexAutotuneTestSuite() {
     let collection;
     let randomPoint;
@@ -228,6 +243,102 @@ function VectorIndexAutotuneTestSuite() {
     };
 }
 
+// Composite FAISS factories surface more than nprobe (ht for PQ,
+// quantizer_efSearch for an HNSW coarse quantizer). These tests confirm the
+// sweep tunes those, persists composite keys, and that a targetRecall query
+// replays them — proving FAISS only emits parameters we can set per query.
+function VectorIndexAutotuneCompositeTestSuite() {
+    const compositeDbName = "vectorAutotuneCompositeDB";
+    const dimension = 32;
+    const seed = generateSeed();
+    const numberOfDocs = (isCluster ? numberOfShards : 1) * 1000;
+
+    function runComposite(factory, nLists, expectedTokens, targetRecall = 0.5) {
+        const cName = "composite";
+        const collection = db._create(cName, { numberOfShards });
+        try {
+            const gen = randomNumberGeneratorFloat(seed);
+            const docs = [];
+            let queryPoint;
+            for (let i = 0; i < numberOfDocs; ++i) {
+                const vector = Array.from({ length: dimension }, () => gen());
+                if (i === 0) {
+                    queryPoint = vector;
+                }
+                docs.push({ vector });
+            }
+            insertDocsAndAssertIndex({
+                collection, docs, seed,
+                indexName: "vector_l2",
+                indexDef: {
+                    type: "vector",
+                    fields: ["vector"],
+                    inBackground: false,
+                    params: { metric: "l2", dimension, factory, nLists },
+                },
+            });
+
+            const id = vectorIndexId(collection);
+            const tuned = arango.POST_RAW(
+                `/_api/index/${cName}/${id}/autotune`,
+                {topK: 5, minRecall: targetRecall});
+            assertEqual(200, tuned.code);
+            assertTunedOk(tuned.parsedBody);
+
+            const tables = arango.GET_RAW(`/_api/index/${cName}/${id}/autotune`);
+            assertEqual(200, tables.code);
+            assertTablesOk(tables.parsedBody);
+            const keys = collectFaissKeys(tables.parsedBody);
+            assertTrue(keys.length > 0, "expected operating points");
+            assertTrue(
+                keys.some((k) => expectedTokens.every((t) => k.includes(t))),
+                `expected a key with all of ${JSON.stringify(expectedTokens)},` +
+                ` got ` + JSON.stringify(keys));
+
+            // A targetRecall query replays the composite operating point; it
+            // throws if any tuned parameter cannot be applied per query.
+            const results = db._query(
+                "FOR d IN " + cName +
+                ` SORT APPROX_NEAR_L2(d.vector, @qp, {targetRecall: ${targetRecall}})` +
+                " LIMIT 5 RETURN d._key", {qp: queryPoint}).toArray();
+            assertEqual(5, results.length);
+        } finally {
+            db._drop(cName);
+        }
+    }
+
+    return {
+        setUpAll: function() {
+            db._useDatabase("_system");
+            db._createDatabase(compositeDbName);
+            db._useDatabase(compositeDbName);
+        },
+
+        tearDownAll: function() {
+            db._useDatabase("_system");
+            db._dropDatabase(compositeDbName);
+        },
+
+        testAutotuneHnswQuantizerComposite: function() {
+            runComposite("IVF8_HNSW8,Flat", 8, ["quantizer_efSearch="]);
+        },
+
+        testAutotunePqComposite: function() {
+            runComposite("IVF8,PQ4np", 8, ["ht="], 0.3);
+        },
+
+        testAutotuneHnswQuantizerPqComposite: function() {
+            runComposite("IVF8_HNSW8,PQ2np", 8,
+                ["quantizer_efSearch=", "ht="], 0.1);
+        },
+
+        testAutotuneScalarQuantizerComposite: function() {
+            runComposite("IVF8,SQ8", 8, ["nprobe="]);
+        },
+    };
+}
+
 jsunity.run(VectorIndexAutotuneTestSuite);
+jsunity.run(VectorIndexAutotuneCompositeTestSuite);
 
 return jsunity.done();
