@@ -29,7 +29,10 @@
 #include <cstddef>
 #include <exception>
 #include <format>
+#include <memory>
+#include <ranges>
 #include <string>
+#include <string_view>
 #include <unordered_set>
 #include <vector>
 
@@ -39,12 +42,22 @@
 #include "Logger/Logger.h"
 
 #include <faiss/AutoTune.h>
+#include <faiss/IndexHNSW.h>
 #include <faiss/IndexIVF.h>
+#include <faiss/IndexIVFPQ.h>
 #include <faiss/impl/FaissException.h>
 
 namespace arangodb::vector {
 
 namespace {
+
+// quantizer_params is non-owning, so these carry its storage inline.
+struct OwningIVFSearchParameters : faiss::SearchParametersIVF {
+  faiss::SearchParametersHNSW ownedQuantizerParams;
+};
+struct OwningIVFPQSearchParameters : faiss::IVFPQSearchParameters {
+  faiss::SearchParametersHNSW ownedQuantizerParams;
+};
 
 // Use nLists as nProbe to get ground truth. Distance is unused
 ResultT<std::vector<faiss::idx_t>> computeGroundTruth(
@@ -73,10 +86,6 @@ ResultT<std::vector<faiss::idx_t>> computeGroundTruth(
   return ids;
 }
 
-// Set up a FAISS ParameterSpace for an nprobe sweep on `index` (powers of
-// two up to nlist) and run a full sweep against `crit`. Returns the
-// operating points or a `Result` error if explore throws or yields no
-// Pareto points to choose from.
 ResultT<faiss::OperatingPoints> exploreParameterSpace(
     faiss::IndexIVF& index, std::span<float const> querySet,
     faiss::idx_t numberOfQueries, void* invertedListContext,
@@ -265,25 +274,74 @@ ResultT<OperatingPoint> selectOperatingPoint(
                   targetRecall, topK, best)};
 }
 
-ResultT<std::int64_t> nProbeFromFaissKey(std::string const& key) {
-  if (key.find(',') != std::string::npos) {
-    return Result{
-        TRI_ERROR_NOT_IMPLEMENTED,
-        std::format("composite autotune configuration '{}' is not yet "
-                    "supported at query time",
-                    key)};
+// FAISS produce a key of search params like so: "nprobe=8,ht=20,max_codes=12".
+// This parses that and builds SearchParametersIVF with the
+ResultT<std::unique_ptr<faiss::SearchParametersIVF>>
+makeSearchParametersFromKey(faiss::IndexIVF const& index,
+                            std::string const& key) {
+  bool const isPQ = dynamic_cast<faiss::IndexIVFPQ const*>(&index) != nullptr;
+  bool const hasHnswQuantizer =
+      dynamic_cast<faiss::IndexHNSW const*>(index.quantizer) != nullptr;
+
+  std::unique_ptr<faiss::SearchParametersIVF> params;
+  faiss::SearchParametersHNSW* ownedQuantizer = nullptr;
+  if (isPQ) {
+    auto p = std::make_unique<OwningIVFPQSearchParameters>();
+    ownedQuantizer = &p->ownedQuantizerParams;
+    params = std::move(p);
+  } else {
+    auto p = std::make_unique<OwningIVFSearchParameters>();
+    ownedQuantizer = &p->ownedQuantizerParams;
+    params = std::move(p);
   }
-  auto const eq = key.find('=');
-  if (eq == std::string::npos || key.substr(0, eq) != "nprobe") {
-    return Result{TRI_ERROR_INTERNAL,
-                  std::format("unexpected autotune key '{}'", key)};
+
+  // Comma-separated `name=value` tokens, e.g. "nprobe=8,ht=20".
+  const auto getPair = [](std::string_view token)
+      -> std::pair<std::string_view, std::string_view> {
+    auto const eq = std::ranges::find(token, '=');
+    if (eq == token.end()) {
+      return {};
+    }
+    return {std::string_view(token.begin(), eq),
+            std::string_view(eq + 1, token.end())};
+  };
+  for (auto const token : std::views::split(key, ',')) {
+    std::string_view const tokenView(token.begin(), token.end());
+    auto const [name, value] = getPair(tokenView);
+    try {
+      if (name == "nprobe") {
+        params->nprobe = std::stoull(std::string(value));
+      } else if (name == "max_codes") {
+        params->max_codes = std::stoull(std::string(value));
+      } else if (name == "ht") {
+        if (!isPQ) {
+          return Result{
+              TRI_ERROR_INTERNAL,
+              std::format("autotune parameter 'ht' requires a PQ index")};
+        }
+        static_cast<faiss::IVFPQSearchParameters*>(params.get())
+            ->polysemous_ht = static_cast<int>(std::stoll(std::string(value)));
+      } else if (name == "quantizer_efSearch") {
+        if (!hasHnswQuantizer) {
+          return Result{TRI_ERROR_INTERNAL,
+                        std::format("autotune parameter 'quantizer_efSearch' "
+                                    "requires an HNSW coarse quantizer")};
+        }
+        ownedQuantizer->efSearch =
+            static_cast<int>(std::stoll(std::string(value)));
+        params->quantizer_params = ownedQuantizer;
+      } else {
+        return Result{TRI_ERROR_NOT_IMPLEMENTED,
+                      std::format("unsupported autotune parameter '{}'", name)};
+      }
+    } catch (std::exception const&) {
+      return Result{
+          TRI_ERROR_INTERNAL,
+          std::format("could not parse autotune token '{}'", tokenView)};
+    }
   }
-  try {
-    return std::stoll(key.substr(eq + 1));
-  } catch (std::exception const&) {
-    return Result{TRI_ERROR_INTERNAL,
-                  std::format("could not parse autotune key '{}'", key)};
-  }
+
+  return params;
 }
 
 }  // namespace arangodb::vector

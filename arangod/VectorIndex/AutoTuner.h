@@ -25,6 +25,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <memory>
 #include <span>
 
 #include "Basics/ResultT.h"
@@ -33,7 +34,8 @@
 
 namespace faiss {
 class IndexIVF;
-}
+struct SearchParametersIVF;
+}  // namespace faiss
 
 namespace arangodb::vector {
 
@@ -92,8 +94,10 @@ ResultT<OperatingPoint> selectOperatingPoint(
     std::vector<OperatingPointTable> const& tables, std::int64_t topK,
     double targetRecall);
 
-// nProbe from a FAISS key. Only "nprobe=N" is supported; a composite key fails
-// with TRI_ERROR_NOT_IMPLEMENTED.
-ResultT<std::int64_t> nProbeFromFaissKey(std::string const& key);
+// Build per-call SearchParameters from a stored FAISS combination key
+// (e.g. "nprobe=8,ht=20").
+ResultT<std::unique_ptr<faiss::SearchParametersIVF>>
+makeSearchParametersFromKey(faiss::IndexIVF const& index,
+                            std::string const& key);
 
 }  // namespace arangodb::vector
