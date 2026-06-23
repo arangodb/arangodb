@@ -77,6 +77,10 @@ struct MockDatabaseProvider : IDatabaseProvider {
 
 struct MockCacheManagerProvider : ICacheManagerProvider {
   MOCK_METHOD(cache::Manager*, manager, (), (override));
+  MOCK_METHOD(std::size_t, minValueSizeForEdgeCompression, (),
+              (const, noexcept, override));
+  MOCK_METHOD(std::uint32_t, accelerationFactorForEdgeCompression, (),
+              (const, noexcept, override));
 };
 
 struct MockSortingPolicy : ISortingPolicy {
