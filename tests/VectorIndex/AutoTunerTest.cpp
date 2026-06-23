@@ -25,6 +25,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <memory>
 #include <random>
 #include <unordered_set>
 #include <vector>
@@ -32,8 +33,11 @@
 #include "gtest/gtest.h"
 
 #include <faiss/IndexFlat.h>
+#include <faiss/IndexHNSW.h>
 #include <faiss/IndexIVFFlat.h>
+#include <faiss/IndexIVFPQ.h>
 #include <faiss/MetricType.h>
+#include <faiss/index_factory.h>
 
 using namespace arangodb::vector;
 
@@ -88,6 +92,30 @@ buildIvfIndex(ClusterDataset const& ds, std::size_t nlist) {
   ivf->add(static_cast<faiss::idx_t>(ds.n), ds.vectors.data());
   ivf->nprobe = 1;
   return {std::move(quantizer), std::move(ivf)};
+}
+
+// IVFPQ index; its sweep adds `ht`. `np` skips slow polysemous training.
+std::shared_ptr<faiss::IndexIVFPQ> buildIvfpqIndex(ClusterDataset const& ds,
+                                                   char const* factory) {
+  std::shared_ptr<faiss::Index> index(
+      faiss::index_factory(static_cast<int>(ds.d), factory, faiss::METRIC_L2));
+  auto ivfpq = std::dynamic_pointer_cast<faiss::IndexIVFPQ>(index);
+  ivfpq->train(static_cast<faiss::idx_t>(ds.n), ds.vectors.data());
+  ivfpq->add(static_cast<faiss::idx_t>(ds.n), ds.vectors.data());
+  ivfpq->nprobe = 1;
+  return ivfpq;
+}
+
+// IVF index with an HNSW coarse quantizer; its sweep adds quantizer_efSearch.
+std::shared_ptr<faiss::IndexIVF> buildIvfHnswIndex(ClusterDataset const& ds,
+                                                   char const* factory) {
+  std::shared_ptr<faiss::Index> index(
+      faiss::index_factory(static_cast<int>(ds.d), factory, faiss::METRIC_L2));
+  auto ivf = std::dynamic_pointer_cast<faiss::IndexIVF>(index);
+  ivf->train(static_cast<faiss::idx_t>(ds.n), ds.vectors.data());
+  ivf->add(static_cast<faiss::idx_t>(ds.n), ds.vectors.data());
+  ivf->nprobe = 1;
+  return ivf;
 }
 
 // Compute recall@R for the current `index.nprobe` setting, using `xq` as
@@ -174,6 +202,95 @@ TEST(AutoTunerTest, producesAscendingTableReachingMinRecall) {
   EXPECT_GE(table.points.back().recall, minRecall);
   // The keys are the verbatim FAISS combination strings (nprobe sweep here).
   EXPECT_NE(table.points.front().faissKey.find("nprobe="), std::string::npos);
+}
+
+TEST(AutoTunerTest, pqSweepEmitsOnlyApplicableParameters) {
+  constexpr std::size_t d = 16;
+  constexpr std::size_t nClusters = 16;
+  constexpr std::size_t pointsPerCluster = 64;
+  constexpr std::int64_t R = 10;
+  constexpr double minRecall = 0.9;
+
+  auto ds = makeClusterDataset(d, nClusters, pointsPerCluster, /*seed=*/42);
+  auto ivfpq = buildIvfpqIndex(ds, "IVF16,PQ8np");
+
+  constexpr std::size_t nq = 128;
+  std::vector<float> xq(ds.vectors.begin(), ds.vectors.begin() + nq * d);
+
+  auto tuned =
+      autoTuneTable(*ivfpq, xq, /*invertedListContext=*/nullptr, R, minRecall);
+  ASSERT_TRUE(tuned.ok()) << tuned.errorMessage();
+  ASSERT_FALSE(tuned.get().points.empty());
+
+  // Every key token must be an applicable parameter.
+  for (auto const& point : tuned.get().points) {
+    std::string const& key = point.faissKey;
+    for (std::size_t pos = 0; pos < key.size();) {
+      auto const comma = key.find(',', pos);
+      std::string const token = key.substr(
+          pos, comma == std::string::npos ? std::string::npos : comma - pos);
+      pos = comma == std::string::npos ? key.size() : comma + 1;
+      std::string const name = token.substr(0, token.find('='));
+      EXPECT_TRUE(name == "nprobe" || name == "max_codes" || name == "ht" ||
+                  name == "quantizer_efSearch")
+          << "unexpected tuned parameter '" << name << "' in key '" << key
+          << "'";
+    }
+  }
+}
+
+TEST(AutoTunerTest, makeSearchParametersFromKeyParsesIvfFields) {
+  auto ds = makeClusterDataset(/*d=*/16, /*nClusters=*/8,
+                               /*pointsPerCluster=*/64, /*seed=*/7);
+  auto [quantizer, ivf] = buildIvfIndex(ds, /*nlist=*/8);
+
+  auto params = makeSearchParametersFromKey(*ivf, "nprobe=8,max_codes=100");
+  ASSERT_TRUE(params.ok()) << params.errorMessage();
+  EXPECT_EQ(params.get()->nprobe, 8U);
+  EXPECT_EQ(params.get()->max_codes, 100U);
+  EXPECT_EQ(dynamic_cast<faiss::IVFPQSearchParameters*>(params.get().get()),
+            nullptr);
+}
+
+TEST(AutoTunerTest, makeSearchParametersFromKeyAppliesHtForPq) {
+  auto ds = makeClusterDataset(/*d=*/16, /*nClusters=*/16,
+                               /*pointsPerCluster=*/64, /*seed=*/42);
+  auto ivfpq = buildIvfpqIndex(ds, "IVF16,PQ8np");
+
+  auto params = makeSearchParametersFromKey(*ivfpq, "nprobe=4,ht=20");
+  ASSERT_TRUE(params.ok()) << params.errorMessage();
+  EXPECT_EQ(params.get()->nprobe, 4U);
+  auto* pqParams =
+      dynamic_cast<faiss::IVFPQSearchParameters*>(params.get().get());
+  ASSERT_NE(pqParams, nullptr);
+  EXPECT_EQ(pqParams->polysemous_ht, 20);
+}
+
+TEST(AutoTunerTest, makeSearchParametersFromKeyAppliesQuantizerEfSearch) {
+  auto ds = makeClusterDataset(/*d=*/16, /*nClusters=*/16,
+                               /*pointsPerCluster=*/64, /*seed=*/42);
+  auto ivf = buildIvfHnswIndex(ds, "IVF16_HNSW32,Flat");
+
+  auto params =
+      makeSearchParametersFromKey(*ivf, "nprobe=4,quantizer_efSearch=40");
+  ASSERT_TRUE(params.ok()) << params.errorMessage();
+  EXPECT_EQ(params.get()->nprobe, 4U);
+  ASSERT_NE(params.get()->quantizer_params, nullptr);
+  auto* hnswParams = dynamic_cast<faiss::SearchParametersHNSW*>(
+      params.get()->quantizer_params);
+  ASSERT_NE(hnswParams, nullptr);
+  EXPECT_EQ(hnswParams->efSearch, 40);
+}
+
+TEST(AutoTunerTest, makeSearchParametersFromKeyRejectsInapplicableKeys) {
+  auto ds = makeClusterDataset(/*d=*/16, /*nClusters=*/8,
+                               /*pointsPerCluster=*/64, /*seed=*/7);
+  auto [quantizer, ivf] = buildIvfIndex(ds, /*nlist=*/8);
+
+  EXPECT_TRUE(makeSearchParametersFromKey(*ivf, "nprobe=4,ht=20").fail());
+  EXPECT_TRUE(
+      makeSearchParametersFromKey(*ivf, "quantizer_efSearch=16").fail());
+  EXPECT_TRUE(makeSearchParametersFromKey(*ivf, "nprobe").fail());
 }
 
 TEST(AutoTunerTest, misalignedQuerySetTrapsAssertion) {
