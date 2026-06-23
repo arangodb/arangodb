@@ -178,8 +178,10 @@ class RocksDBVectorIndex final : public RocksDBIndex {
   // Read the stored metadata record into _trainedData.
   void loadStoredMetadata(velocypack::Slice info);
 
-  // pick the default or the autotune nProbe
-  ResultT<std::int64_t> resolveSearchNProbe(
+  // Build the per-call FAISS search parameters from the request: an explicit
+  // nProbe, the index default, or the autotuned operating point for a requested
+  // targetRecall.
+  ResultT<std::unique_ptr<faiss::SearchParametersIVF>> prepareSearchParameters(
       vector::SearchParameters const& params, std::size_t topK) const;
 
   //  Helper functions for bruteForceSearch

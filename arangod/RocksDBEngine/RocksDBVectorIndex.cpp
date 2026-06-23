@@ -221,7 +221,8 @@ void RocksDBVectorIndex::applyTunedTable(vector::OperatingPointTable table) {
   _trainedData.tunedTables.push_back(std::move(table));
 }
 
-ResultT<std::int64_t> RocksDBVectorIndex::resolveSearchNProbe(
+ResultT<std::unique_ptr<faiss::SearchParametersIVF>>
+RocksDBVectorIndex::prepareSearchParameters(
     vector::SearchParameters const& params, std::size_t topK) const {
   bool const hasNProbe = params.nProbe.has_value();
   bool const hasTargetRecall = params.targetRecall.has_value();
@@ -229,20 +230,20 @@ ResultT<std::int64_t> RocksDBVectorIndex::resolveSearchNProbe(
   TRI_ASSERT(!(hasNProbe && hasTargetRecall))
       << "Cannot specify both nProbe and targetRecall";
 
-  if (hasNProbe) {
-    return *params.nProbe;
-  }
-  if (!hasTargetRecall) {
-    return _definition.defaultNProbe;
+  if (hasTargetRecall) {
+    auto point = vector::selectOperatingPoint(_trainedData.tunedTables,
+                                              static_cast<std::int64_t>(topK),
+                                              *params.targetRecall);
+    if (point.fail()) {
+      return std::move(point).result();
+    }
+    return vector::makeSearchParametersFromKey(*_faissIndex,
+                                               point.get().faissKey);
   }
 
-  auto point = vector::selectOperatingPoint(_trainedData.tunedTables,
-                                            static_cast<std::int64_t>(topK),
-                                            *params.targetRecall);
-  if (point.fail()) {
-    return std::move(point).result();
-  }
-  return vector::nProbeFromFaissKey(point.get().faissKey);
+  auto searchParams = std::make_unique<faiss::SearchParametersIVF>();
+  searchParams->nprobe = hasNProbe ? *params.nProbe : _definition.defaultNProbe;
+  return searchParams;
 }
 
 Result RocksDBVectorIndex::persistMetadata() const {
@@ -548,16 +549,15 @@ vector::SearchResult RocksDBVectorIndex::readBatch(
 
   auto faissSearchContext = makeFaissIteratorContext(config, ctx, captureSink);
 
-  auto nprobe = resolveSearchNProbe(config.searchParameters, config.topK);
-  if (nprobe.fail()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(nprobe.errorNumber(), nprobe.errorMessage());
+  auto searchParametersIvf =
+      prepareSearchParameters(config.searchParameters, config.topK);
+  if (searchParametersIvf.fail()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(searchParametersIvf.errorNumber(),
+                                   searchParametersIvf.errorMessage());
   }
-
-  faiss::SearchParametersIVF searchParametersIvf;
-  searchParametersIvf.nprobe = nprobe.get();
-  searchParametersIvf.inverted_list_context = &faissSearchContext;
+  searchParametersIvf.get()->inverted_list_context = &faissSearchContext;
   _faissIndex->search(1, inputs.data(), config.topK, result.distances.data(),
-                      result.labels.data(), &searchParametersIvf);
+                      result.labels.data(), searchParametersIvf.get().get());
 
   // faiss returns squared distances for L2, square them so they are returned in
   // normal form
