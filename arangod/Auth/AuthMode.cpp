@@ -231,17 +231,18 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
                 effectiveCollectionAuthLevel(collection.db, collection.name);
 
             if (requestedLevel > effectiveLevel) {
-      // deactivate the following code for now, since we do not want
-      // to change the behaviour in comparison to the released version:
-#if 0
-              if (effectiveLevel == auth::Level::NONE) {
-                // User has no access to this collection: report as not found
-                // to avoid revealing its existence.
-                return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                        "collection or view not found: '" + collection.name +
-                            "' in database '" + collection.db + "'"};
+              // If we are using API version > 0, then we return NOT_FOUND to
+              // hide the fact that the collection exists:
+              if (request().has_value() &&
+                  request().value().get().requestedApiVersion() > 0) {
+                if (effectiveLevel == auth::Level::NONE) {
+                  // User has no access to this collection: report as not found
+                  // to avoid revealing its existence.
+                  return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+                          "collection or view not found: '" + collection.name +
+                              "' in database '" + collection.db + "'"};
+                }
               }
-#endif
               return {TRI_ERROR_FORBIDDEN,
                       "insufficient collection access level for '" +
                           collection.name + "' in database '" + collection.db +

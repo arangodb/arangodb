@@ -481,17 +481,16 @@ async<void> RestCollectionHandler::handleCommandPut() {
     co_return standardResponse();
   }
   if (sub == "compact") {
-    // Disable authorization at least temporarily to have the same behaviour
-    // as 3.12.9, read access to the database is enough, and this is already
-    // checked, when we get here.
-#if 0
-    if (auto r = ExecContext::current().canUseCollection(
-            _vocbase.name(), name, AccessLevel::WriteMeta);
-        r.fail()) {
-      generateError(r);
-      co_return;
+    // We only enforce WriteMeta access here if the API version is higher
+    // than 0 for backwards compatibility:
+    if (_request.get()->requestedApiVersion() > 0) {
+      if (auto r = ExecContext::current().canUseCollection(
+              _vocbase.name(), name, AccessLevel::WriteMeta);
+          r.fail()) {
+        generateError(r);
+        co_return;
+      }
     }
-#endif
     if (ServerState::instance()->isCoordinator()) {
       auto& feature = server().getFeature<ClusterFeature>();
       // while this call is technically blocking, the requests to the
