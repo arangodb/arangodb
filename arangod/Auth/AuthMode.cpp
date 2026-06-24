@@ -283,11 +283,13 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
                           "' in database '" + view.db + "'"};
             }
           },
-          [&](p::UseAnalyzer const& /*analyzer*/) -> Result {
+          [&](p::UseAnalyzer const& analyzer) -> Result {
             // Without RBAC, RO access to the database is the only
             // prerequisite for using an analyzer, and that has already been
-            // verified before this is called.  No further check needed.
-            return {};
+            // verified before this is called. No further check needed.
+            // For the sake of readabilty, we perform the check:
+            return check(
+                p::UseDatabase{analyzer.db, DatabaseAccessLevel::Read});
           },
           [&](p::Admin const& /*admin*/) -> Result {
             // Classic admin action requires RW access to the _system database.
@@ -353,10 +355,12 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
             // Dropping a view requires RW access to the database.
             return check(p::UseDatabase{view.db, DatabaseAccessLevel::Write});
           },
-          [&](p::SeeAnalyzer const& /*analyzer*/) -> Result {
+          [&](p::SeeAnalyzer const& analyzer) -> Result {
             // Database RO access is the only prerequisite and has already been
             // checked; an analyzer is always visible if the database is.
-            return {};
+            // For the sake of readabilty, we perform the check:
+            return check(
+                p::UseDatabase{analyzer.db, DatabaseAccessLevel::Read});
           },
           [&](p::CreateAnalyzer const& analyzer) -> Result {
             // Creating an analyzer requires RW access to the database.
