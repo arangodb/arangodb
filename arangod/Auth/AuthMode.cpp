@@ -87,8 +87,8 @@ AuthMode::Classic::Classic(auth::UserManager& userManager, std::string username,
     : _userManager(userManager),
       _username(std::move(username)),
       _apiHardened(apiHardened),
-      _request(&req),
-      _vocbase(&vb) {}
+      _request(req),
+      _vocbase(vb) {}
 
 auto AuthMode::Classic::username() const noexcept -> std::string_view {
   return _username;
@@ -96,12 +96,12 @@ auto AuthMode::Classic::username() const noexcept -> std::string_view {
 
 auto AuthMode::Classic::request() const noexcept
     -> std::optional<std::reference_wrapper<GeneralRequest>> {
-  return *_request;
+  return _request;
 }
 
 auto AuthMode::Classic::vocbase() const noexcept
     -> std::optional<std::reference_wrapper<TRI_vocbase_t>> {
-  return *_vocbase;
+  return _vocbase;
 }
 
 auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
@@ -233,8 +233,7 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
             if (requestedLevel > effectiveLevel) {
               // If we are using API version > 0, then we return NOT_FOUND to
               // hide the fact that the collection exists:
-              if (request().has_value() &&
-                  request().value().get().requestedApiVersion() > 0) {
+              if (_request.requestedApiVersion() > 0) {
                 if (effectiveLevel == auth::Level::NONE) {
                   // User has no access to this collection: report as not found
                   // to avoid revealing its existence.
@@ -460,18 +459,18 @@ auto AuthMode::Rbac::check(auth::Permission permission) const -> Result {
 
 auto AuthMode::Rbac::request() const noexcept
     -> std::optional<std::reference_wrapper<GeneralRequest>> {
-  return *_request;
+  return _request;
 }
 
 auto AuthMode::Rbac::vocbase() const noexcept
     -> std::optional<std::reference_wrapper<TRI_vocbase_t>> {
-  return *_vocbase;
+  return _vocbase;
 }
 
 AuthMode::Unauthenticated::Unauthenticated(std::string username,
                                            GeneralRequest& req,
                                            TRI_vocbase_t& vb)
-    : _username(std::move(username)), _request(&req), _vocbase(&vb) {}
+    : _username(std::move(username)), _request(req), _vocbase(vb) {}
 
 auto AuthMode::Unauthenticated::username() const noexcept -> std::string_view {
   return _username;
@@ -479,18 +478,12 @@ auto AuthMode::Unauthenticated::username() const noexcept -> std::string_view {
 
 auto AuthMode::Unauthenticated::request() const noexcept
     -> std::optional<std::reference_wrapper<GeneralRequest>> {
-  if (_request != nullptr) {
-    return *_request;
-  }
-  return std::nullopt;
+  return _request;
 }
 
 auto AuthMode::Unauthenticated::vocbase() const noexcept
     -> std::optional<std::reference_wrapper<TRI_vocbase_t>> {
-  if (_vocbase != nullptr) {
-    return *_vocbase;
-  }
-  return std::nullopt;
+  return _vocbase;
 }
 
 auto AuthMode::Unauthenticated::check(auth::Permission permission) const
@@ -535,7 +528,7 @@ auto AuthMode::Unauthenticated::check(auth::Permission permission) const
 
 AuthMode::Disabled::Disabled(std::string username, GeneralRequest& req,
                              TRI_vocbase_t& vb)
-    : _username(std::move(username)), _request(&req), _vocbase(&vb) {}
+    : _username(std::move(username)), _request(req), _vocbase(vb) {}
 
 auto AuthMode::Disabled::username() const noexcept -> std::string_view {
   return _username;
@@ -543,12 +536,12 @@ auto AuthMode::Disabled::username() const noexcept -> std::string_view {
 
 auto AuthMode::Disabled::request() const noexcept
     -> std::optional<std::reference_wrapper<GeneralRequest>> {
-  return *_request;
+  return _request;
 }
 
 auto AuthMode::Disabled::vocbase() const noexcept
     -> std::optional<std::reference_wrapper<TRI_vocbase_t>> {
-  return *_vocbase;
+  return _vocbase;
 }
 
 auto AuthMode::Disabled::check(auth::Permission permission) const -> Result {

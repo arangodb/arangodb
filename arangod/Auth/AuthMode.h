@@ -112,8 +112,8 @@ struct AuthMode {
     auth::UserManager& _userManager;
     std::string const _username;
     bool const _apiHardened{};
-    GeneralRequest* _request;
-    TRI_vocbase_t* _vocbase;
+    GeneralRequest& _request;
+    TRI_vocbase_t& _vocbase;
 
     Classic(auth::UserManager& userManager, std::string username,
             bool apiHardened, GeneralRequest& req, TRI_vocbase_t& vb);
@@ -139,8 +139,8 @@ struct AuthMode {
     rbac::Service& _rbacService;
     std::string const _username;
     std::string const _jwtToken;
-    GeneralRequest* _request;
-    TRI_vocbase_t* _vocbase;
+    GeneralRequest& _request;
+    TRI_vocbase_t& _vocbase;
 
     Rbac(AuthenticationFeature& authenticationFeature,
          rbac::Service& rbacService, std::string username, std::string jwtToken,
@@ -149,8 +149,8 @@ struct AuthMode {
           _rbacService(rbacService),
           _username(std::move(username)),
           _jwtToken(std::move(jwtToken)),
-          _request(&req),
-          _vocbase(&vb) {}
+          _request(req),
+          _vocbase(vb) {}
 
     [[nodiscard]] auto username() const noexcept -> std::string_view override;
 
@@ -167,12 +167,9 @@ struct AuthMode {
   // Has basically no permissions.
   struct Unauthenticated : IAuth {
     std::string _username;
-    GeneralRequest* _request;
-    TRI_vocbase_t* _vocbase;
+    GeneralRequest& _request;
+    TRI_vocbase_t& _vocbase;
 
-    // TODO Assuming we keep _username: Drop the default constructor.
-    //      I've added it just so I could compile the tests again quickly.
-    Unauthenticated() : _request(nullptr), _vocbase(nullptr) {}
     explicit Unauthenticated(std::string username, GeneralRequest& req,
                              TRI_vocbase_t& vb);
 
@@ -190,8 +187,8 @@ struct AuthMode {
   // Authentication is disabled, barely any restrictions.
   struct Disabled : IAuth {
     std::string _username;
-    GeneralRequest* _request;
-    TRI_vocbase_t* _vocbase;
+    GeneralRequest& _request;
+    TRI_vocbase_t& _vocbase;
 
     explicit Disabled(std::string username, GeneralRequest& req,
                       TRI_vocbase_t& vb);
