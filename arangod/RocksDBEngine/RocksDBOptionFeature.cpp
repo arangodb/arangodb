@@ -51,7 +51,7 @@
 #include <rocksdb/table.h>
 #include <rocksdb/utilities/transaction_db.h>
 
-// It's not atomic because it shouldn't change after initilization.
+// It's not atomic because it shouldn't change after initialization.
 // And initialization should happen before rocksdb initialization.
 static bool ioUringEnabled = true;
 
@@ -302,15 +302,13 @@ void RocksDBOptionFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
   RocksDBOptionFeatureOptionsProvider provider(ioUringEnabled);
   provider.declareOptions(options, _options);
-  // does this make sense ?
-  ioUringEnabled = _options.ioUringEnabled;
 }
 
 void RocksDBOptionFeature::validateOptions(
     std::shared_ptr<ProgramOptions> options) {
   RocksDBOptionFeatureOptionsProvider provider(ioUringEnabled);
   provider.validateOptions(options, _options);
-
+  ioUringEnabled = _options.ioUringEnabled;
   // behavioral: agency memory limits
   if (_agencyFeature) {
     AgencyFeature const& feature = *_agencyFeature;
