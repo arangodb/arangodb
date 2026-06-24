@@ -5,7 +5,8 @@ target_link_libraries(arangodbtests_rocksdb
   arango_rocksdb
   arango_metrics_base
   gtest
-  gtest_main)
+  gtest_main
+  gmock)
 
 target_include_directories(arangodbtests_rocksdb PRIVATE
   ${PROJECT_SOURCE_DIR}/arangod
