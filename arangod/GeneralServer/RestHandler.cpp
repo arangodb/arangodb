@@ -57,7 +57,6 @@
 #include "Ssl/jwt.h"
 #include <velocypack/Exception.h>
 #include <unordered_map>
-#include <boost/property_tree/ptree_fwd.hpp>
 
 using namespace arangodb;
 using namespace arangodb::basics;
