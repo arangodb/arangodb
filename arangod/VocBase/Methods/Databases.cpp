@@ -162,6 +162,11 @@ Result Databases::grantCurrentUser(CreateDatabaseInfo const& info) {
     // called us, or when authentication is off), granting rights
     // will fail. We hence ignore it here, but issue a warning below
     if (!exec.user().empty() && af->isActive()) {
+      // This is no longer canWriteUser, but the old check from devel!
+      // TODO (Tobias) `exec.canWriteUser(exec.user())` is a very quirky
+      //      way to check for `exec.user().empty()`.
+      //      I'd like to understand a little bit better when this is
+      //      expected to happen, and maybe improve on the readability.
       res = um->updateUser(
           exec.user(),
           [&](auth::User& entry) {

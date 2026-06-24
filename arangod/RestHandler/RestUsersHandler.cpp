@@ -349,17 +349,16 @@ RestStatus RestUsersHandler::postRequest(auth::UserManager* um) {
     VPackSlice s = body.get("user");
     std::string user = s.isString() ? s.copyString() : "";
     auto& exec = ExecContext::current();
-    if (auto r1 = exec.canWriteUser(user); r1.ok()) {
+    if (auto r = exec.canWriteUser(user); r.ok()) {
       // create user
-      Result r = StoreUser(um, 0, user, body);
-      if (r.ok()) {
+      if (auto r = StoreUser(um, 0, user, body); r.ok()) {
         VPackBuilder doc = um->serializeUser(user);
         generateUserResult(ResponseCode::CREATED, doc);
       } else {
         generateError(r);
       }
     } else {
-      generateError(r1);
+      generateError(r);
     }
 
   } else if (suffixes.size() == 1) {
@@ -531,17 +530,16 @@ RestStatus RestUsersHandler::patchRequest(auth::UserManager* um) {
   auto& exec = ExecContext::current();
   if (suffixes.size() == 1) {
     std::string const& user = suffixes[0];
-    if (auto r1 = exec.canWriteUser(user); r1.ok()) {
+    if (auto r = exec.canWriteUser(user); r.ok()) {
       // update a user
-      Result r = StoreUser(um, 2, user, body);
-      if (r.ok()) {
+      if (auto r = StoreUser(um, 2, user, body); r.ok()) {
         VPackBuilder doc = um->serializeUser(user);
         generateUserResult(ResponseCode::OK, doc);
       } else {
         generateError(r);
       }
     } else {
-      generateError(r1);
+      generateError(r);
     }
   } else {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER);

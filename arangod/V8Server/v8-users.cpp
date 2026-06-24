@@ -101,8 +101,9 @@ void StoreUser(v8::FunctionCallbackInfo<v8::Value> const& args, bool replace) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_USER_INVALID_NAME);
   }
   std::string username = TRI_ObjectToString(isolate, args[0]);
-  if (auto r = ExecContext::current().canWriteUser(username); r.fail()) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, r.errorMessage());
+  auto const& exec = ExecContext::current();
+  if (auto r = exec.canWriteUser(username); !r.ok()) {
+    TRI_V8_THROW_EXCEPTION(r);
   }
   std::string pass = args.Length() > 1 && args[1]->IsString()
                          ? TRI_ObjectToString(isolate, args[1])
@@ -153,8 +154,9 @@ static void JS_UpdateUser(v8::FunctionCallbackInfo<v8::Value> const& args) {
         "update(username[, password, active, userData])");
   }
   std::string username = TRI_ObjectToString(isolate, args[0]);
-  if (auto r = ExecContext::current().canWriteUser(username); r.fail()) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, r.errorMessage());
+  auto const& exec = ExecContext::current();
+  if (auto r = exec.canWriteUser(username); !r.ok()) {
+    TRI_V8_THROW_EXCEPTION(r);
   }
 
   VPackBuilder extras;
@@ -194,8 +196,9 @@ static void JS_RemoveUser(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("remove(username)");
   }
   std::string user = TRI_ObjectToString(isolate, args[0]);
-  if (auto r = ExecContext::current().canWriteUser(user); r.fail()) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, r.errorMessage());
+  auto const& exec = ExecContext::current();
+  if (auto r = exec.canWriteUser(user); !r.ok()) {
+    TRI_V8_THROW_EXCEPTION(r);
   }
 
   auth::UserManager* um = AuthenticationFeature::instance()->userManager();
@@ -222,8 +225,9 @@ static void JS_GetUser(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   std::string username = TRI_ObjectToString(isolate, args[0]);
 
-  if (auto r = ExecContext::current().canReadUser(username); r.fail()) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, r.errorMessage());
+  auto const& exec = ExecContext::current();
+  if (auto r = exec.canReadUser(username); !r.ok()) {
+    TRI_V8_THROW_EXCEPTION(r);
   }
 
   auth::UserManager* um = AuthenticationFeature::instance()->userManager();
@@ -269,8 +273,9 @@ static void JS_GrantDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("grantDatabase(username, database, type)");
   }
   std::string username = TRI_ObjectToString(isolate, args[0]);
-  if (auto r = ExecContext::current().canWriteUser(username); r.fail()) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, r.errorMessage());
+  auto const& exec = ExecContext::current();
+  if (auto r = exec.canWriteUser(username); !r.ok()) {
+    TRI_V8_THROW_EXCEPTION(r);
   }
 
   std::string db = TRI_ObjectToString(isolate, args[1]);
@@ -307,8 +312,9 @@ static void JS_RevokeDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("revokeDatabase(username,  database)");
   }
   std::string username = TRI_ObjectToString(isolate, args[0]);
-  if (auto r = ExecContext::current().canWriteUser(username); r.fail()) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, r.errorMessage());
+  auto const& exec = ExecContext::current();
+  if (auto r = exec.canWriteUser(username); !r.ok()) {
+    TRI_V8_THROW_EXCEPTION(r);
   }
 
   auth::UserManager* um = AuthenticationFeature::instance()->userManager();
@@ -344,8 +350,9 @@ static void JS_GrantCollection(
   }
 
   std::string username = TRI_ObjectToString(isolate, args[0]);
-  if (auto r = ExecContext::current().canWriteUser(username); r.fail()) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, r.errorMessage());
+  auto const& exec = ExecContext::current();
+  if (auto r = exec.canWriteUser(username); !r.ok()) {
+    TRI_V8_THROW_EXCEPTION(r);
   }
 
   auth::UserManager* um = AuthenticationFeature::instance()->userManager();
@@ -400,8 +407,9 @@ static void JS_RevokeCollection(
   }
 
   std::string username = TRI_ObjectToString(isolate, args[0]);
-  if (auto r = ExecContext::current().canWriteUser(username); r.fail()) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, r.errorMessage());
+  auto const& exec = ExecContext::current();
+  if (auto r = exec.canWriteUser(username); !r.ok()) {
+    TRI_V8_THROW_EXCEPTION(r);
   }
 
   auth::UserManager* um = AuthenticationFeature::instance()->userManager();
@@ -447,8 +455,9 @@ static void JS_UpdateConfigData(
     TRI_V8_THROW_EXCEPTION_USAGE("updateConfigData(username, key[, value])");
   }
   std::string username = TRI_ObjectToString(isolate, args[0]);
-  if (auto r = ExecContext::current().canWriteUser(username); r.fail()) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, r.errorMessage());
+  auto const& exec = ExecContext::current();
+  if (auto r = exec.canWriteUser(username); !r.ok()) {
+    TRI_V8_THROW_EXCEPTION(r);
   }
 
   std::string key = TRI_ObjectToString(isolate, args[1]);
@@ -492,8 +501,9 @@ static void JS_GetConfigData(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("configData(username[, key])");
   }
   std::string username = TRI_ObjectToString(isolate, args[0]);
-  if (auto r = ExecContext::current().canReadUser(username); r.fail()) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, r.errorMessage());
+  auto const& exec = ExecContext::current();
+  if (auto r = exec.canReadUser(username); !r.ok()) {
+    TRI_V8_THROW_EXCEPTION(r);
   }
 
   auth::UserManager* um = AuthenticationFeature::instance()->userManager();

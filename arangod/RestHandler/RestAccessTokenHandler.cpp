@@ -71,20 +71,20 @@ RestStatus RestAccessTokenHandler::execute() {
   auto& exec = ExecContext::current();
   switch (type) {
     case RequestType::GET:
-      if (exec.canReadUser(user).fail()) {
-        generateError(ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
+      if (auto r = exec.canReadUser(user); !r.ok()) {
+        generateError(r);
         return RestStatus::DONE;
       }
       return showAccessTokens(um, user);
     case RequestType::POST:
-      if (exec.canWriteUser(user).fail()) {
-        generateError(ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
+      if (auto r = exec.canWriteUser(user); !r.ok()) {
+        generateError(r);
         return RestStatus::DONE;
       }
       return createAccessToken(um, user);
     case RequestType::DELETE_REQ:
-      if (exec.canWriteUser(user).fail()) {
-        generateError(ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
+      if (auto r = exec.canWriteUser(user); !r.ok()) {
+        generateError(r);
         return RestStatus::DONE;
       }
       return deleteAccessToken(um, user);
