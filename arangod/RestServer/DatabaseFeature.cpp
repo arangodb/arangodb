@@ -32,7 +32,6 @@
 #include "Aql/QueryPlanCache.h"
 #include "Aql/QueryRegistry.h"
 #include "Auth/UserManager.h"
-#include "Basics/FeatureFlags.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
@@ -53,8 +52,6 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "Replication/ReplicationClients.h"
 #include "Replication/ReplicationFeature.h"
-#include "Replication2/Version.h"
-#include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/FileDescriptorsFeature.h"
 #include "RestServer/IOHeartbeatThread.h"
@@ -63,7 +60,6 @@
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/StorageEngine.h"
-#include "StorageEngine/StorageEngineFeature.h"
 #include "Transaction/OperationOrigin.h"
 #include "Utilities/NameValidator.h"
 #include "Utils/CollectionNameResolver.h"
@@ -284,7 +280,6 @@ DatabaseFeature::DatabaseFeature(
   startsAfter<ClusterEngine>();
   startsAfter<RocksDBEngine>();
   startsAfter<InitDatabaseFeature>();
-  startsAfter<StorageEngineFeature>();
   startsAfter<metrics::MetricsFeature>();
 }
 

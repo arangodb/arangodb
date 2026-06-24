@@ -1,6 +1,7 @@
 add_executable(${BIN_ARANGOVPACK}
   ${ProductVersionFiles_arangovpack}
   VPackFeature.cpp
+  VPackOptionsProvider.cpp
   arangovpack.cpp
 )
 target_include_directories(${BIN_ARANGOVPACK} PRIVATE ${PROJECT_SOURCE_DIR}/client-tools)

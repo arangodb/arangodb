@@ -27,13 +27,13 @@
 
 'use strict';
 
-const expect = require('chai').expect;
+const jsunity = require("jsunity");
+const {assertEqual, assertTrue, assertFalse, assertNotEqual} = jsunity.jsUnity.assertions;
 const helper = require('@arangodb/testutils/user-helper');
 const foxxManager = require('@arangodb/foxx/manager');
 const fs = require('fs');
 const internal = require('internal');
 const basePath = fs.makeAbsolute(fs.join(internal.pathForTesting('common'), 'test-data', 'apps'));
-const request = require('@arangodb/request');
 
 const arangodb = require('@arangodb');
 const arango = require('@arangodb').arango;
@@ -71,66 +71,60 @@ describe('Foxx service', () => {
       RETURN queue
     `).toArray();
     const res = arango.POST_RAW(mount, '');
-    expect(res.code).to.equal(204);
+    assertEqual(res.code, 204);
     const queuesAfter = db._query(aql`
       FOR queue IN _queues
       FILTER queue._key != 'default'
       RETURN queue
     `).toArray();
-    expect(queuesAfter.length - queuesBefore.length).to.equal(1, 'Could not register Foxx queue');
+    assertEqual(queuesAfter.length - queuesBefore.length, 1, 'Could not register Foxx queue');
   });
 
   it('should not register a queue two times', () => {
     const queuesBefore = db._queues.all().toArray();
     let res = arango.POST_RAW(mount, '');
-    expect(res.code).to.equal(204);
+    assertEqual(res.code, 204);
     waitForJob();
     res = arango.POST_RAW(mount, '');
-    expect(res.code).to.equal(204);
+    assertEqual(res.code, 204);
     const queuesAfter = db._queues.all().toArray();
-    expect(queuesAfter.length - queuesBefore.length).to.equal(1);
+    assertEqual(queuesAfter.length - queuesBefore.length, 1);
   });
 
   it('should support jobs running in the queue', () => {
     let res = arango.POST(mount, '');
-    expect(res.code).to.equal(204);
-    expect(waitForJob()).to.equal(true, 'job from Foxx queue did not run!');
+    assertEqual(res.code, 204);
+    assertTrue(waitForJob(), 'job from Foxx queue did not run!');
     const jobResult = db._query(aql`
       FOR i IN foxx_queue_test
         FILTER i.job == true
         RETURN 1
     `).toArray();
-    expect(jobResult.length).to.equal(1);
+    assertEqual(jobResult.length, 1);
   });
 
   it('should support jobs running in the queue', () => {
-    let res = request.post(`${arango.getEndpoint().replace('tcp://', 'http://')}/${mount}`, {
-      body: JSON.stringify({repeatTimes: 2})
-    });
-    expect(res.statusCode).to.equal(204);
-    expect(waitForJob(2)).to.equal(true, 'job from foxx queue did not run!');
+    let res = arango.POST_RAW(mount, {repeatTimes: 2});
+    assertEqual(res.code, 204);
+    assertTrue(waitForJob(2), 'job from foxx queue did not run!');
     const jobResult = db._query(aql`
       FOR i IN foxx_queue_test
         FILTER i.job == true
         RETURN 1
     `).toArray();
-    expect(jobResult.length).to.equal(2);
+    assertEqual(jobResult.length, 2);
   });
 
   it('should ignore the arango user', () => {
-    let res = internal.download(`${arango.getEndpoint().replace('tcp://', 'http://')}/${mount}`, '', {
-      method: 'post',
-      username: 'root',
-      password: ''
-    });
-    expect(res.code).to.equal(204);
-    expect(waitForJob()).to.equal(true, 'job from foxx queue did not run!');
+    let res = arango.POST_RAW(mount, '');
+    assertEqual(res.code, 204);
+    assertTrue(waitForJob(), 'job from foxx queue did not run!');
     const jobResult = db._query(aql`
       FOR i IN foxx_queue_test
         FILTER i.job == true
         RETURN 1
     `).toArray();
-    expect(jobResult.length).to.equal(1);
+    assertEqual(jobResult.length, 1);
   });
 
   const waitForJob = (runs = 1) => {

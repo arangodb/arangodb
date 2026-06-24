@@ -23,12 +23,12 @@
 #include "Feature.h"
 
 #include "Activities/RegistryGlobalVariable.h"
+#include "SystemMonitor/Activities/OptionsProvider.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FutureSharedLock.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/MetricsFeature.h"
-#include "ProgramOptions/Parameters.h"
 #include "velocypack/SharedSlice.h"
 #include "Inspection/VPack.h"
 
@@ -86,28 +86,8 @@ void Feature::start() {
 void Feature::stop() { _cleanupThread.reset(); }
 
 void Feature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
-  options->addSection("activites", "Options for activities");
-
-  options
-      ->addOption(
-          "--activities.registry-cleanup-timeout",
-          "Timeout in seconds between activity registry garbage collections.",
-          new options::SizeTParameter(&_options.gc_timeout, /*base*/ 1,
-                                      /*minValue*/ 1))
-      .setLongDescription(R"(Each thread that is involved in the
-activity-registry needs to garbage collect its finished activities regularly.
-This option controls how often this is done in seconds. This can possibly be
-performance-relevant because each involved thread acquires a lock.)");
-
-  options
-      ->addOption(
-          "--activities.only-superuser-enabled",
-          "Whether only superusers can request the API or all admin users",
-          new options::BooleanParameter(&_options.isOnlySuperUserEnabled),
-          options::makeDefaultFlags(arangodb::options::Flags::Uncommon))
-      .setLongDescription(R"(If enabled, only the superuser is allowed to query
-this endpoint. The default is that all admin users are allowed to query the
-endpoint.)");
+  activities::OptionsProvider provider;
+  provider.declareOptions(options, _options);
 }
 
 velocypack::SharedSlice Feature::getData() const {

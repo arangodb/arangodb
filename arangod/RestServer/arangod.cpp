@@ -182,7 +182,6 @@ void ArangodServer::addFeatures(
   addFeature<SoftShutdownFeature>();
   addFeature<SslFeature>();
   addFeature<StatisticsFeature>(metrics);
-  addFeature<StorageEngineFeature>();
   addFeature<TempFeature>(std::string{binaryName});
   addFeature<TemporaryStorageFeature>();
   addFeature<TtlFeature>();
@@ -227,7 +226,6 @@ void ArangodServer::addFeatures(
 
   addFeature<RocksDBEngine>(
       rocksdbOption, metrics, databasePath, vectorIndex, flush, dumpLimits,
-      scheduler,
       replication2::EnableReplication2 ? &getFeature<ReplicatedLogFeature>()
                                        : nullptr,
       rocksdbRecovery, database, rocksdbCacheRefill, cacheManager, agency);

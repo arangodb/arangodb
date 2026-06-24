@@ -26,6 +26,7 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Result.h"
 #include "Metrics/Fwd.h"
+#include "RocksDBEngine/IIndexCacheRefill.h"
 #include "RocksDBEngine/RocksDBIndexCacheRefillFeatureOptions.h"
 #include "VocBase/Identifiers/IndexId.h"
 
@@ -44,12 +45,9 @@ class DatabaseFeature;
 class LogicalCollection;
 class RocksDBIndexCacheRefillThread;
 
-namespace metrics {
-class MetricsFeature;
-}
-
 class RocksDBIndexCacheRefillFeature final
-    : public application_features::ApplicationFeature {
+    : public application_features::ApplicationFeature,
+      public IIndexCacheRefill {
  public:
   static constexpr std::string_view name() noexcept {
     return "RocksDBIndexCacheRefill";
@@ -58,7 +56,7 @@ class RocksDBIndexCacheRefillFeature final
   RocksDBIndexCacheRefillFeature(
       application_features::ApplicationServer& server,
       DatabaseFeature& databaseFeature, ClusterFeature* clusterFeature,
-      metrics::MetricsFeature& metricsFeature);
+      metrics::ICollector& metricsCollector);
 
   ~RocksDBIndexCacheRefillFeature();
 
@@ -73,22 +71,20 @@ class RocksDBIndexCacheRefillFeature final
 
   // schedule the refill of the full index
   void scheduleFullIndexRefill(std::string const& database,
-                               std::string const& collection, IndexId iid);
+                               std::string const& collection,
+                               IndexId iid) override;
 
-  // wait until the background thread has applied all operations
-  void waitForCatchup();
+  void waitForCatchup() override;
+
+  bool autoRefill() const noexcept override;
+
+  bool autoRefillOnFollowers() const noexcept override;
 
   // maximum capacity for tracking per-key refills
   size_t maxCapacity() const noexcept;
 
-  // auto-refill in-memory cache after every insert/update/replace operation
-  bool autoRefill() const noexcept;
-
   // auto-fill in-memory caches on startup
   bool fillOnStartup() const noexcept;
-
-  // auto-refill in-memory cache also on followers
-  bool autoRefillOnFollowers() const noexcept;
 
  private:
   void stopThread();
@@ -104,7 +100,7 @@ class RocksDBIndexCacheRefillFeature final
   void scheduleIndexRefillTasks();
 
   static metrics::Counter& addTotalFullIndexRefills(
-      metrics::MetricsFeature& metrics);
+      metrics::ICollector& metricsCollector);
 
   // actually fill the specified index cache
   Result warmupIndex(std::string const& database, std::string const& collection,
@@ -112,7 +108,7 @@ class RocksDBIndexCacheRefillFeature final
 
   DatabaseFeature& _databaseFeature;
   ClusterFeature* _clusterFeature{};
-  metrics::MetricsFeature& _metricsFeature;
+  metrics::ICollector& _metricsCollector;
 
   // index refill thread used for auto-refilling after insert/update/replace
   // (not used for initial filling at startup)

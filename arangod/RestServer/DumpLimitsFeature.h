@@ -25,13 +25,15 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "RestServer/DumpLimitsFeatureOptions.h"
+#include "RestServer/IDumpLimitsProvider.h"
 
 namespace arangodb {
 
 // Deprecated: Use DumpLimitsFeatureOptions instead
 using DumpLimits = DumpLimitsFeatureOptions;
 
-class DumpLimitsFeature : public application_features::ApplicationFeature {
+class DumpLimitsFeature final : public application_features::ApplicationFeature,
+                                public IDumpLimitsProvider {
  public:
   static constexpr std::string_view name() noexcept { return "DumpLimits"; }
 
@@ -40,7 +42,9 @@ class DumpLimitsFeature : public application_features::ApplicationFeature {
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
 
-  DumpLimitsFeatureOptions const& limits() const noexcept { return _options; }
+  DumpLimitsFeatureOptions const& limits() const noexcept override final {
+    return _options;
+  }
 
  private:
   DumpLimitsFeatureOptions _options;

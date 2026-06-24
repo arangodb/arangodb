@@ -25,7 +25,7 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
-#include "Basics/VelocyPackHelper.h"
+#include "VPackFeatureOptions.h"
 
 namespace arangodb {
 
@@ -40,11 +40,7 @@ class VPackFeature final : public application_features::ApplicationFeature {
 
  private:
   int* _result;
-  std::string _inputFile;
-  std::string _outputFile;
-  std::string _inputType;
-  std::string _outputType;
-  bool _failOnNonJson;
+  VPackFeatureOptions _options;
 };
 
 }  // namespace arangodb
