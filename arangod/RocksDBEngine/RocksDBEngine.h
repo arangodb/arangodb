@@ -417,6 +417,11 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
 
   bool autoRefillIndexCaches() const override;
   bool autoRefillIndexCachesOnFollowers() const override;
+  bool exclusiveWrites() const noexcept;
+
+  IIndexCacheRefill& getIndexCacheRefill() noexcept {
+    return _indexCacheRefill;
+  }
 
   void syncIndexCaches() override;
 

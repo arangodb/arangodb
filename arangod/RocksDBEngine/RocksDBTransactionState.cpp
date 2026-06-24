@@ -25,6 +25,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryCache.h"
+#include "Cache/Manager.h"
 #include "Basics/Exceptions.h"
 #include "Basics/Result.h"
 #include "Basics/system-compiler.h"

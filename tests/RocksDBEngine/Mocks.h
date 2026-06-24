@@ -94,6 +94,10 @@ struct MockIndexCacheRefill : IIndexCacheRefill {
   MOCK_METHOD(bool, autoRefill, (), (const, noexcept, override));
   MOCK_METHOD(bool, autoRefillOnFollowers, (), (const, noexcept, override));
   MOCK_METHOD(void, waitForCatchup, (), (override));
+  MOCK_METHOD(void, trackRefill,
+              (std::shared_ptr<LogicalCollection> const&, IndexId,
+               std::vector<std::string>),
+              (override));
 };
 
 struct MockMetricsCollector : metrics::ICollector {

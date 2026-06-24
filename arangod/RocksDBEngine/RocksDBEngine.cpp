@@ -3355,6 +3355,10 @@ bool RocksDBEngine::autoRefillIndexCachesOnFollowers() const {
   return _indexCacheRefill.autoRefillOnFollowers();
 }
 
+bool RocksDBEngine::exclusiveWrites() const noexcept {
+  return _optionsProvider.exclusiveWrites();
+}
+
 void RocksDBEngine::syncIndexCaches() { _indexCacheRefill.waitForCatchup(); }
 
 auto RocksDBEngine::makeLogStorageMethods(
