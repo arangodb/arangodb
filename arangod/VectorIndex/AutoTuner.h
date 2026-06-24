@@ -37,6 +37,10 @@ class IndexIVF;
 struct SearchParametersIVF;
 }  // namespace faiss
 
+namespace arangodb {
+struct ResourceMonitor;
+}
+
 namespace arangodb::vector {
 
 inline constexpr std::int64_t kDefaultAutoTuneR{10};
@@ -82,10 +86,12 @@ struct AutotuneParams {
 };
 
 // Sweep the index's search parameters and return the full Pareto front as an
-// operating-point table for `R` (topK), tuned down to `minRecall`.
+// operating-point table for `R` (topK), tuned down to `minRecall`. The
+// ground-truth scratch buffers are charged to `resourceMonitor`.
 ResultT<OperatingPointTable> autoTuneTable(
     faiss::IndexIVF& index, std::span<float const> querySet,
-    void* invertedListContext = nullptr, std::int64_t R = kDefaultAutoTuneR,
+    ResourceMonitor& resourceMonitor, void* invertedListContext = nullptr,
+    std::int64_t R = kDefaultAutoTuneR,
     double minRecall = kDefaultAutoTuneMinRecall);
 
 // Cheapest operating point reaching `targetRecall` for `topK`. Fails if no

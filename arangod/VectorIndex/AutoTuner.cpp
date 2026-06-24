@@ -36,6 +36,7 @@
 #include <unordered_set>
 #include <vector>
 
+#include "Basics/ResourceUsage.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/voc-errors.h"
 #include "Logger/LogMacros.h"
@@ -166,6 +167,7 @@ std::size_t wilsonSampleSize(double p, double z, double m) {
 
 ResultT<OperatingPointTable> autoTuneTable(faiss::IndexIVF& index,
                                            std::span<float const> querySet,
+                                           ResourceMonitor& resourceMonitor,
                                            void* invertedListContext,
                                            std::int64_t R, double minRecall) {
   TRI_ASSERT(R >= 1);
@@ -177,6 +179,13 @@ ResultT<OperatingPointTable> autoTuneTable(faiss::IndexIVF& index,
       << "autotune query set size is not a positive multiple of the index "
          "dimension";
   auto const numberOfQueries = static_cast<faiss::idx_t>(querySet.size() / d);
+
+  // computeGroundTruth holds R ids plus a same-sized distance scratch per
+  // query; reserve both up front so an oversized run is rejected before it
+  // allocates.
+  ResourceUsageScope groundTruthScope(
+      resourceMonitor, static_cast<std::uint64_t>(numberOfQueries) * R *
+                           (sizeof(faiss::idx_t) + sizeof(float)));
 
   LOG_TOPIC("e16af", INFO, Logger::ENGINES)
       << "Autotune starting: numberOfQueries=" << numberOfQueries

@@ -32,6 +32,8 @@
 
 #include "gtest/gtest.h"
 
+#include "Basics/GlobalResourceMonitor.h"
+#include "Basics/ResourceUsage.h"
 #include "Mocks/Death_Test.h"
 
 #include <faiss/IndexFlat.h>
@@ -187,8 +189,10 @@ TEST(AutoTunerTest, producesAscendingTableReachingMinRecall) {
   constexpr std::size_t nq = 256;
   std::vector<float> xq(ds.vectors.begin(), ds.vectors.begin() + nq * d);
 
-  auto tuned =
-      autoTuneTable(*ivf, xq, /*invertedListContext=*/nullptr, R, minRecall);
+  arangodb::GlobalResourceMonitor global;
+  arangodb::ResourceMonitor monitor{global};
+  auto tuned = autoTuneTable(*ivf, xq, monitor, /*invertedListContext=*/nullptr,
+                             R, minRecall);
   ASSERT_TRUE(tuned.ok()) << tuned.errorMessage();
   auto const& table = tuned.get();
 
@@ -219,8 +223,10 @@ TEST(AutoTunerTest, pqSweepEmitsOnlyApplicableParameters) {
   constexpr std::size_t nq = 128;
   std::vector<float> xq(ds.vectors.begin(), ds.vectors.begin() + nq * d);
 
-  auto tuned =
-      autoTuneTable(*ivfpq, xq, /*invertedListContext=*/nullptr, R, minRecall);
+  arangodb::GlobalResourceMonitor global;
+  arangodb::ResourceMonitor monitor{global};
+  auto tuned = autoTuneTable(*ivfpq, xq, monitor,
+                             /*invertedListContext=*/nullptr, R, minRecall);
   ASSERT_TRUE(tuned.ok()) << tuned.errorMessage();
   ASSERT_FALSE(tuned.get().points.empty());
 
@@ -304,8 +310,10 @@ TEST(AutoTunerTest, misalignedQuerySetTrapsAssertion) {
   // querySet length is not a multiple of d: precondition violation, the
   // TRI_ASSERT in autoTuneTable should fire and abort the process.
   std::vector<float> bad(d + 1);
+  arangodb::GlobalResourceMonitor global;
+  arangodb::ResourceMonitor monitor{global};
   EXPECT_DEATH_CORE_FREE(
-      autoTuneTable(*ivf, bad, /*invertedListContext=*/nullptr,
+      autoTuneTable(*ivf, bad, monitor, /*invertedListContext=*/nullptr,
                     /*R=*/10, /*minRecall=*/0.9),
       "");
 }
