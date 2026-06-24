@@ -1,4 +1,4 @@
-3.12.9.4 (XXXX-XX-XX)
+3.12.9.4 (2026-06-24)
 ---------------------
 
 * COR-537, github issue #21843: Fixed incorrect sorting order bug when using
