@@ -34,7 +34,6 @@
 #include "Basics/error.h"
 #include "Logger/LogMacros.h"
 #include "Rest/ApiVersion.h"
-#include "Rest/RequestContext.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -166,7 +165,7 @@ rest::RequestType GeneralRequest::findRequestType(char const* ptr,
 }
 
 void GeneralRequest::setRequestContext(
-    std::shared_ptr<RequestContext> requestContext) {
+    std::shared_ptr<ExecContext> requestContext) {
   TRI_ASSERT(requestContext != nullptr);
 
   _requestContext = std::move(requestContext);
