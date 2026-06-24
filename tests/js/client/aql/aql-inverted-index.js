@@ -35,8 +35,9 @@ const removeFilterCoveredByIndex = "remove-filter-covered-by-index";
 const moveFiltersIntoEnumerate = "move-filters-into-enumerate";
 const useIndexForSort = "use-index-for-sort";
 const lateDocumentMaterialization = "late-document-materialization";
-const sleep = require('internal').sleep;
-const errors = require('internal').errors;
+const internal = require('internal');
+const sleep = internal.sleep;
+const errors = internal.errors;
 
 function optimizerRuleInvertedIndexTestSuite() {
   const colName = 'UnitTestInvertedIndexCollection';
@@ -658,6 +659,47 @@ function optimizerRuleInvertedIndexTestSuite() {
       for(let i = 1; i < executeRes.length; ++i) {
         assertTrue(executeRes[i-1].count > executeRes[i].count);
       }
+    },
+    testEqualityOnlySortIndexedFieldWithoutPrimarySort: function () {
+      let collectionName = 'users';
+      let colUsers = db._create(collectionName);
+      colUsers.ensureIndex({
+        fields: [
+          { name: "name" },
+          { name: "age" }
+        ],
+        name: "inv",
+        type: "inverted"
+      });
+      colUsers.insert({ name: "B", age: 20 });
+      colUsers.insert({ name: "A", age: 20 });
+      colUsers.insert({ name: "C", age: 20 });
+
+      //  https://github.com/arangodb/arangodb/issues/21843
+      //  For queries that use indexes that are already sorted (B-tree, skiplist, etc.),
+      //  execute only equality matches on indexed fields, we kick the SortNode as we
+      //  can leverage the sorted order of field values from the index.
+      //  But this behavior shouldn't be applied to inverted indexes as they're not sorted
+      //  by the field values.
+      //  We should not kick the SortNode when using this structure with inverted indexes.
+      const query = aql`
+              for doc in ${colUsers}
+              OPTIONS { indexHint: 'inv', forceIndexHint: true, waitForSync: true }
+              FILTER doc.age == 20
+              SORT doc.name ASC
+              return doc.name`;
+
+      const res = db._createStatement({query: query.query, bindVars: query.bindVars}).explain();
+      const nodes = res.plan.nodes;
+      let found = nodes.some(node => node.type === 'SortNode');
+      assertTrue(found);
+
+      let executeRes = db._query(query.query, query.bindVars).toArray();
+      assertEqual(executeRes.length, 3);
+      assertEqual(executeRes[0], "A");
+      assertEqual(executeRes[1], "B");
+      assertEqual(executeRes[2], "C");
+      colUsers.drop();
     },
   };
 }
