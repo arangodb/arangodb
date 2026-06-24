@@ -237,6 +237,9 @@ RocksDBVectorIndex::prepareSearchParameters(
     if (point.fail()) {
       return std::move(point).result();
     }
+    LOG_VECTOR_INDEX("e16c1", DEBUG, Logger::QUERIES)
+        << "autotune resolved operating point '" << point.get().faissKey
+        << "' for topK=" << topK << ", targetRecall=" << *params.targetRecall;
     return vector::makeSearchParametersFromKey(*_faissIndex,
                                                point.get().faissKey);
   }
