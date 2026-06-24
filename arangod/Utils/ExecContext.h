@@ -112,9 +112,6 @@ class ExecContext {
   [[nodiscard]] std::optional<std::reference_wrapper<TRI_vocbase_t>> vocbase()
       const noexcept;
 
-  /// @brief returns the database name associated with this context, if any
-  [[nodiscard]] std::string_view database() const noexcept;
-
   /// @brief returns the request associated with this context, if any
   [[nodiscard]] std::optional<std::reference_wrapper<GeneralRequest>> request()
       const noexcept {

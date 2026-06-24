@@ -139,13 +139,6 @@ void ExecContext::forceSuperuser() {
   }
 }
 
-std::string_view ExecContext::database() const noexcept {
-  if (_vocbase) {
-    return _vocbase->name();
-  }
-  return {};
-}
-
 std::optional<std::reference_wrapper<TRI_vocbase_t>> ExecContext::vocbase()
     const noexcept {
   if (_vocbase) {

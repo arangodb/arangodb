@@ -1721,7 +1721,9 @@ bool Manager::isAuthorized(ManagedTrx const& trx) const {
     // std::string_view)
     return true;
   }
-  auto const databaseName = exec.database();
+  auto db = exec.vocbase();
+  TRI_ASSERT(db.has_value());
+  auto const databaseName = db.value().get().name();
   TRI_ASSERT(!databaseName.empty())
       << "This function cannot be called when there's no database context";
   if (databaseName.empty()) {
