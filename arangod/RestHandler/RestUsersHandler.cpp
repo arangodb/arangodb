@@ -128,12 +128,17 @@ RestStatus RestUsersHandler::getRequest(auth::UserManager* um) {
 
   std::vector<std::string> suffixes = _request->decodedSuffixes();
   if (suffixes.empty()) {
-    VPackBuilder users = um->allUsers();
-    VPackSlice usersArray = users.slice().get("result");
-    TRI_ASSERT(usersArray.isArray());
+    if (auto r =
+            exec.canUseAdminAction(arangodb::rbac::Category::AdminReadUser{});
+        r.fail()) {
+      generateError(r);
+      return RestStatus::DONE;
+    }
+    VPackBuilder usersArray = um->allUsers();
+    TRI_ASSERT(usersArray.slice().isArray());
     std::vector<std::string_view> userList;
-    userList.reserve(usersArray.length());
-    for (auto const& u : VPackArrayIterator(usersArray)) {
+    userList.reserve(usersArray.slice().length());
+    for (auto const& u : VPackArrayIterator(usersArray.slice())) {
       VPackSlice un = u.get("user");
       TRI_ASSERT(un.isString());
       userList.push_back(un.stringView());
@@ -151,7 +156,7 @@ RestStatus RestUsersHandler::getRequest(auth::UserManager* um) {
         VPackArrayBuilder guard2(&usersResult);
         for (size_t i = 0; i < allowed.size(); ++i) {
           if (allowed[i]) {
-            usersResult.add(usersArray[i]);
+            usersResult.add(usersArray.slice()[i]);
           }
         }
       }

@@ -430,10 +430,10 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
             ADB_PROD_CRASH();
           },
           [&](p::ReadUser const& /*readUser*/) -> Result {
-            // Reading any user record requires at least RO access to the
+            // Reading any user record requires at least RW access to the
             // _system database.
             return check(p::UseDatabase{StaticStrings::SystemDatabase,
-                                        DatabaseAccessLevel::Read});
+                                        DatabaseAccessLevel::Write});
           },
           [&](p::WriteUser const& /*writeUser*/) -> Result {
             // Writing a user record requires RW access to the _system
