@@ -989,15 +989,6 @@ Result VectorIndexBuilder::build(
   // Swap the real index back and transition to kReady before releasing.
   swapGuard.fire();
 
-  // Build owns the lifecycle here, so this runs inline (no manager
-  // serialization, unlike the on-demand path).
-  if (auto res = autoTuneVectorIndex(_index, _resourceMonitor, AutotuneParams{},
-                                     stopToken);
-      res.fail()) {
-    LOG_VECTOR_BUILD("e16b2", WARN, Logger::ENGINES)
-        << "Skipping autotune: " << res.errorMessage();
-  }
-
   _index.setTrainingState(VectorIndexTrainingState::kIngesting,
                           VectorIndexTrainingState::kReady);
 
