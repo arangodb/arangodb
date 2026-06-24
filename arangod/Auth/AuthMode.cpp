@@ -184,7 +184,8 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
 
             if (requestedLevel <= effectiveLevel) {
               return {};
-            } else if (effectiveLevel == auth::Level::NONE) {
+            } else if (_request.requestedApiVersion() > 0 &&
+                       effectiveLevel == auth::Level::NONE) {
               // User has no access to the database at all: report as not found
               // to avoid revealing its existence.
               return {TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
