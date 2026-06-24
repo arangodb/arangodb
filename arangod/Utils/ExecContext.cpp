@@ -231,7 +231,6 @@ Result ExecContext::canReadUser(std::string_view user) const {
   //   return AdminReadUser(user)
   // else:
   //   return RW(_system)
-  return {};
 }
 
 /// @brief returns true if the user can be modified, note that everybody
@@ -247,7 +246,6 @@ Result ExecContext::canWriteUser(std::string_view user) const {
   //   return AdminWriteUser(user)
   // else:
   //   return RW(_system)
-  return {};
 }
 
 /// @brief returns true for each user which can be read
