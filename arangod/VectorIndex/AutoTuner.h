@@ -44,14 +44,12 @@ struct ResourceMonitor;
 namespace arangodb::vector {
 
 inline constexpr std::int64_t kDefaultAutoTuneR{10};
-inline constexpr double kDefaultAutoTuneMinRecall{0.9};
 inline constexpr double kAutoTuneRecallEpsilon{5e-4};
-inline constexpr std::size_t kAutoTuneSampleCap{1024};
 
 // confidence as its two-sided normal quantile z* (0.99 -> 2.576), avoiding an
 // inverse-normal CDF.
 inline constexpr double kAutoTuneConfidenceZ{2.5758293035489004};  // 99%
-inline constexpr double kAutoTuneRecallTolerance{0.03};
+inline constexpr double kAutoTuneRecallTolerance{0.01};
 
 // Smallest sample size n whose Wilson score interval half-width at proportion
 // `p` equals `m`, for the two-sided normal quantile `z` (Brown, Cai & DasGupta
@@ -61,7 +59,8 @@ std::size_t wilsonSampleSize(double p, double z, double m);
 struct AutotuneParams {
   std::int64_t R{kDefaultAutoTuneR};  // topK the table is optimized for
   // Recall floor: drives the sample size and is the table's validity floor.
-  double minRecall{kDefaultAutoTuneMinRecall};
+  // Required from the caller; there is no server-side default.
+  double minRecall{};
 
   template<class Inspector>
   friend inline auto inspect(Inspector& f, AutotuneParams& x) {
@@ -75,7 +74,6 @@ struct AutotuneParams {
               return inspection::Status::Success{};
             }),
         f.field("minRecall", x.minRecall)
-            .fallback(kDefaultAutoTuneMinRecall)
             .invariant([](auto value) -> inspection::Status {
               if (value <= 0.0 || value > 1.0) {
                 return {"'minRecall' must be a number in (0, 1]"};
@@ -88,11 +86,11 @@ struct AutotuneParams {
 // Sweep the index's search parameters and return the full Pareto front as an
 // operating-point table for `R` (topK), tuned down to `minRecall`. The
 // ground-truth scratch buffers are charged to `resourceMonitor`.
-ResultT<OperatingPointTable> autoTuneTable(
-    faiss::IndexIVF& index, std::span<float const> querySet,
-    ResourceMonitor& resourceMonitor, void* invertedListContext = nullptr,
-    std::int64_t R = kDefaultAutoTuneR,
-    double minRecall = kDefaultAutoTuneMinRecall);
+ResultT<OperatingPointTable> autoTuneTable(faiss::IndexIVF& index,
+                                           std::span<float const> querySet,
+                                           ResourceMonitor& resourceMonitor,
+                                           void* invertedListContext,
+                                           std::int64_t R, double minRecall);
 
 // Cheapest operating point reaching `targetRecall` for `topK`. Fails if no
 // table was tuned for `topK` or `targetRecall` exceeds the table's range.
