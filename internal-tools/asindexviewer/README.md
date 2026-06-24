@@ -144,3 +144,28 @@ Values
 .
 ..
 ```
+# Examples
+This is an example of a simple dataset that can be used to test the tool. Run the tool after creating the following collection and view, then inspect the arangosearch directory with the tool.
+Inspect how the collections are stored in the ArangoSearch index.
+```
+db._create('c1')
+db.c1.insert({ name: 'Hutch', address: { country: 'USA', city: 'Boston' }})
+db.c1.insert({ name: 'John', address: { country: 'Germany', city: 'Hamburg' }})
+db._createView('v1', 'arangosearch')
+db.v1.properties(
+ {
+  links: {
+    c1: {
+      fields: {
+        name: {},
+        address: {
+          fields: {
+            city: {}
+          }
+        }
+      },
+      storeValues: 'id',
+      includeAllFields: true
+    }
+  }})
+```
