@@ -175,13 +175,13 @@ TEST(AutoTunerTest, baselineNProbeOneHasLowRecall) {
   EXPECT_LT(recall, 0.85);
 }
 
-TEST(AutoTunerTest, producesAscendingTableReachingMinRecall) {
+TEST(AutoTunerTest, producesAscendingTableReachingTargetRecall) {
   constexpr std::size_t d = 16;
   constexpr std::size_t nClusters = 32;
   constexpr std::size_t pointsPerCluster = 200;
   constexpr std::size_t nlist = 64;
   constexpr std::int64_t R = 10;
-  constexpr double minRecall = 0.9;
+  constexpr double targetRecall = 0.9;
 
   auto ds = makeClusterDataset(d, nClusters, pointsPerCluster, /*seed=*/42);
   auto [quantizer, ivf] = buildIvfIndex(ds, nlist);
@@ -192,12 +192,12 @@ TEST(AutoTunerTest, producesAscendingTableReachingMinRecall) {
   arangodb::GlobalResourceMonitor global;
   arangodb::ResourceMonitor monitor{global};
   auto tuned = autoTuneTable(*ivf, xq, monitor, /*invertedListContext=*/nullptr,
-                             R, minRecall);
+                             R, targetRecall);
   ASSERT_TRUE(tuned.ok()) << tuned.errorMessage();
   auto const& table = tuned.get();
 
   EXPECT_EQ(table.topK, R);
-  EXPECT_DOUBLE_EQ(table.minRecall, minRecall);
+  EXPECT_DOUBLE_EQ(table.targetRecall, targetRecall);
   ASSERT_FALSE(table.points.empty());
 
   // The Pareto front is ordered by ascending recall (== ascending cost).
@@ -205,7 +205,7 @@ TEST(AutoTunerTest, producesAscendingTableReachingMinRecall) {
     EXPECT_GE(table.points[i].recall, table.points[i - 1].recall);
   }
   // On this clustered dataset the sweep can reach the requested recall.
-  EXPECT_GE(table.points.back().recall, minRecall);
+  EXPECT_GE(table.points.back().recall, targetRecall);
   // The keys are the verbatim FAISS combination strings (nprobe sweep here).
   EXPECT_NE(table.points.front().faissKey.find("nprobe="), std::string::npos);
 }
@@ -215,7 +215,7 @@ TEST(AutoTunerTest, pqSweepEmitsOnlyApplicableParameters) {
   constexpr std::size_t nClusters = 16;
   constexpr std::size_t pointsPerCluster = 64;
   constexpr std::int64_t R = 10;
-  constexpr double minRecall = 0.9;
+  constexpr double targetRecall = 0.9;
 
   auto ds = makeClusterDataset(d, nClusters, pointsPerCluster, /*seed=*/42);
   auto ivfpq = buildIvfpqIndex(ds, "IVF16,PQ8np");
@@ -226,7 +226,7 @@ TEST(AutoTunerTest, pqSweepEmitsOnlyApplicableParameters) {
   arangodb::GlobalResourceMonitor global;
   arangodb::ResourceMonitor monitor{global};
   auto tuned = autoTuneTable(*ivfpq, xq, monitor,
-                             /*invertedListContext=*/nullptr, R, minRecall);
+                             /*invertedListContext=*/nullptr, R, targetRecall);
   ASSERT_TRUE(tuned.ok()) << tuned.errorMessage();
   ASSERT_FALSE(tuned.get().points.empty());
 
@@ -314,7 +314,7 @@ TEST(AutoTunerTest, misalignedQuerySetTrapsAssertion) {
   arangodb::ResourceMonitor monitor{global};
   EXPECT_DEATH_CORE_FREE(
       autoTuneTable(*ivf, bad, monitor, /*invertedListContext=*/nullptr,
-                    /*R=*/10, /*minRecall=*/0.9),
+                    /*R=*/10, /*targetRecall=*/0.9),
       "");
 }
 

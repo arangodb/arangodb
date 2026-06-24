@@ -1011,7 +1011,7 @@ void RestIndexHandler::syncCaches() {
 
 namespace {
 // Parse the autotune request body into AutotuneParams. Field mapping and bounds
-// live in AutotuneParams' inspection; `minRecall` is required, so an absent
+// live in AutotuneParams' inspection; `targetRecall` is required, so an absent
 // body is deserialized as an empty object and fails on the missing field.
 Result parseAutotuneParams(VPackSlice body, vector::AutotuneParams& params) {
   if (body.isNone() || body.isNull()) {
@@ -1125,10 +1125,10 @@ async<void> RestIndexHandler::autotuneVectorIndex() {
   }
 
   auto const& table = outcome.get();
-  bool const reachedMinRecall =
+  bool const reachedTargetRecall =
       !table.points.empty() &&
       table.points.back().recall >=
-          table.minRecall - vector::kAutoTuneRecallEpsilon;
+          table.targetRecall - vector::kAutoTuneRecallEpsilon;
 
   VPackBuilder out;
   {
@@ -1137,9 +1137,9 @@ async<void> RestIndexHandler::autotuneVectorIndex() {
     out.add(StaticStrings::Code,
             VPackValue(static_cast<int>(rest::ResponseCode::OK)));
     out.add("topK", VPackValue(table.topK));
-    out.add("minRecall", VPackValue(table.minRecall));
+    out.add("targetRecall", VPackValue(table.targetRecall));
     out.add("operatingPointCount", VPackValue(table.points.size()));
-    out.add("reachedMinRecall", VPackValue(reachedMinRecall));
+    out.add("reachedTargetRecall", VPackValue(reachedTargetRecall));
     out.add(VPackValue("table"));
     velocypack::serialize(out, table);
   }

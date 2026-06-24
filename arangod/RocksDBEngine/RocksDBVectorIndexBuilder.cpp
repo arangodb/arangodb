@@ -823,10 +823,10 @@ ResultT<OperatingPointTable> autoTuneVectorIndex(
   auto* rcoll =
       static_cast<RocksDBCollection*>(index.collection().getPhysical());
 
-  // Sample size derived from the requested minRecall via the Wilson score
+  // Sample size derived from the requested targetRecall via the Wilson score
   // interval.
   auto const sampleSize = wilsonSampleSize(
-      params.minRecall, kAutoTuneConfidenceZ, kAutoTuneRecallTolerance);
+      params.targetRecall, kAutoTuneConfidenceZ, kAutoTuneRecallTolerance);
 
   // Fresh sample from the indexed data: reusing training vectors would bias
   // recall optimistically (they defined the centroids).
@@ -859,7 +859,7 @@ ResultT<OperatingPointTable> autoTuneVectorIndex(
   // The sweep mutates search parameters, so tune a copy, not the live index.
   auto tuningIndex = index.cloneFaissIndex();
   auto table = autoTuneTable(*tuningIndex, sample.get(), resourceMonitor,
-                             &faissCtx, params.R, params.minRecall);
+                             &faissCtx, params.R, params.targetRecall);
   if (table.fail()) {
     return std::move(table).result();
   }

@@ -53,10 +53,10 @@ function vectorIndexId(collection) {
 function assertTuneSummary(entry) {
     assertTrue(Number.isInteger(entry.topK));
     assertTrue(entry.topK >= 1);
-    assertEqual("number", typeof entry.minRecall);
-    assertTrue(entry.minRecall > 0 && entry.minRecall <= 1);
+    assertEqual("number", typeof entry.targetRecall);
+    assertTrue(entry.targetRecall > 0 && entry.targetRecall <= 1);
     assertTrue(Number.isInteger(entry.operatingPointCount));
-    assertEqual("boolean", typeof entry.reachedMinRecall);
+    assertEqual("boolean", typeof entry.reachedTargetRecall);
 }
 
 // Assert a successful autotune response on either topology. Single-server
@@ -83,7 +83,7 @@ function assertTunedOk(parsedBody) {
 function assertOperatingPointTable(table) {
     assertTrue(Number.isInteger(table.topK));
     assertTrue(table.topK >= 1);
-    assertEqual("number", typeof table.minRecall);
+    assertEqual("number", typeof table.targetRecall);
     assertTrue(Array.isArray(table.points));
     for (const point of table.points) {
         assertEqual("number", typeof point.recall);
@@ -175,17 +175,17 @@ function VectorIndexAutotuneTestSuite() {
             db._dropDatabase(dbName);
         },
 
-        // topK defaults when omitted; minRecall is supplied by the caller.
+        // topK defaults when omitted; targetRecall is supplied by the caller.
         testAutotuneDefaultTopK: function() {
             const id = vectorIndexId(collection);
             const res = arango.POST_RAW(
-                `/_api/index/${collName}/${id}/autotune`, {minRecall: 0.9});
+                `/_api/index/${collName}/${id}/autotune`, {targetRecall: 0.9});
             assertEqual(200, res.code);
             assertTunedOk(res.parsedBody);
         },
 
-        // minRecall has no server-side default; omitting it is a 400.
-        testAutotuneRequiresMinRecall: function() {
+        // targetRecall has no server-side default; omitting it is a 400.
+        testAutotuneRequiresTargetRecall: function() {
             const id = vectorIndexId(collection);
             const res = arango.POST_RAW(
                 `/_api/index/${collName}/${id}/autotune`, {topK: 5});
@@ -198,7 +198,7 @@ function VectorIndexAutotuneTestSuite() {
             const id = vectorIndexId(collection);
             const res = arango.POST_RAW(
                 `/_api/index/${collName}/${id}/autotune`,
-                {topK: 5, minRecall: 0.95});
+                {topK: 5, targetRecall: 0.95});
             assertEqual(200, res.code);
             assertTunedOk(res.parsedBody);
         },
@@ -207,7 +207,7 @@ function VectorIndexAutotuneTestSuite() {
             const id = vectorIndexId(collection);
             const tuned = arango.POST_RAW(
                 `/_api/index/${collName}/${id}/autotune`,
-                {topK: 5, minRecall: 0.9});
+                {topK: 5, targetRecall: 0.9});
             assertEqual(200, tuned.code);
 
             const res = arango.GET_RAW(
@@ -227,7 +227,7 @@ function VectorIndexAutotuneTestSuite() {
         testSearchWorksAfterAutotune: function() {
             const id = vectorIndexId(collection);
             arango.POST_RAW(`/_api/index/${collName}/${id}/autotune`,
-                {minRecall: 0.9});
+                {targetRecall: 0.9});
 
             const query = "FOR d IN " + collName +
                 " SORT APPROX_NEAR_L2(d.vector, @qp) LIMIT 5 RETURN d._key";
@@ -235,11 +235,11 @@ function VectorIndexAutotuneTestSuite() {
             assertEqual(5, results.length);
         },
 
-        // minRecall outside (0, 1] is rejected with a 400.
-        testAutotuneRejectsInvalidMinRecall: function() {
+        // targetRecall outside (0, 1] is rejected with a 400.
+        testAutotuneRejectsInvalidTargetRecall: function() {
             const id = vectorIndexId(collection);
             const res = arango.POST_RAW(
-                `/_api/index/${collName}/${id}/autotune`, {minRecall: 2});
+                `/_api/index/${collName}/${id}/autotune`, {targetRecall: 2});
             assertEqual(400, res.code);
             assertEqual(true, res.parsedBody.error);
         },
@@ -247,7 +247,7 @@ function VectorIndexAutotuneTestSuite() {
         // Autotuning a non-existent index id returns not-found.
         testAutotuneUnknownIndex: function() {
             const res = arango.POST_RAW(
-                `/_api/index/${collName}/999999999/autotune`, {minRecall: 0.9});
+                `/_api/index/${collName}/999999999/autotune`, {targetRecall: 0.9});
             assertNotEqual(200, res.code);
             assertEqual(true, res.parsedBody.error);
         },
@@ -292,7 +292,7 @@ function VectorIndexAutotuneCompositeTestSuite() {
             const id = vectorIndexId(collection);
             const tuned = arango.POST_RAW(
                 `/_api/index/${cName}/${id}/autotune`,
-                {topK: 5, minRecall: targetRecall});
+                {topK: 5, targetRecall: targetRecall});
             assertEqual(200, tuned.code);
             assertTunedOk(tuned.parsedBody);
 

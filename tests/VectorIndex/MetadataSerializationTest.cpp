@@ -89,11 +89,11 @@ VectorIndexMetadata makeMetadata() {
   md.formatVersion = VectorIndexFormatVersion::kV2;
   OperatingPointTable t10;
   t10.topK = 10;
-  t10.minRecall = 0.9;
+  t10.targetRecall = 0.9;
   t10.points = {OperatingPoint{0.95, "nprobe=4", 0.2}};
   OperatingPointTable t100;
   t100.topK = 100;
-  t100.minRecall = 0.8;
+  t100.targetRecall = 0.8;
   t100.points = {OperatingPoint{0.80, "nprobe=8", 0.5},
                  OperatingPoint{0.92, "nprobe=16", 1.1}};
   md.tunedTables = {t10, t100};

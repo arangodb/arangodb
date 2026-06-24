@@ -211,8 +211,8 @@ Result autoTuneVectorIndexOnAllDBServers(ClusterFeature& feature,
     } else {
       result.add(StaticStrings::Error, VPackValue(false));
       if (VPackSlice const slice = r.slice(); slice.isObject()) {
-        for (auto const* field :
-             {"topK", "minRecall", "operatingPointCount", "reachedMinRecall"}) {
+        for (auto const* field : {"topK", "targetRecall", "operatingPointCount",
+                                  "reachedTargetRecall"}) {
           if (auto s = slice.get(field); !s.isNone()) {
             result.add(field, s);
           }

@@ -169,9 +169,10 @@ ResultT<OperatingPointTable> autoTuneTable(faiss::IndexIVF& index,
                                            std::span<float const> querySet,
                                            ResourceMonitor& resourceMonitor,
                                            void* invertedListContext,
-                                           std::int64_t R, double minRecall) {
+                                           std::int64_t R,
+                                           double targetRecall) {
   TRI_ASSERT(R >= 1);
-  TRI_ASSERT(minRecall > 0.0 && minRecall <= 1.0);
+  TRI_ASSERT(targetRecall > 0.0 && targetRecall <= 1.0);
   TRI_ASSERT(index.d > 0);
 
   auto const d = static_cast<std::size_t>(index.d);
@@ -189,8 +190,8 @@ ResultT<OperatingPointTable> autoTuneTable(faiss::IndexIVF& index,
 
   LOG_TOPIC("e16af", INFO, Logger::ENGINES)
       << "Autotune starting: numberOfQueries=" << numberOfQueries
-      << " nlist=" << index.nlist << " R=" << R << " minRecall=" << minRecall
-      << ".";
+      << " nlist=" << index.nlist << " R=" << R
+      << " targetRecall=" << targetRecall << ".";
   auto const startTime = std::chrono::steady_clock::now();
   auto elapsedSecs = [&] {
     return std::chrono::duration<double>(std::chrono::steady_clock::now() -
@@ -226,7 +227,7 @@ ResultT<OperatingPointTable> autoTuneTable(faiss::IndexIVF& index,
   // FAISS orders optimal_pts by ascending recall; skip the empty-keyed dummy.
   OperatingPointTable table;
   table.topK = R;
-  table.minRecall = minRecall;
+  table.targetRecall = targetRecall;
   table.points.reserve(ops.optimal_pts.size());
   for (auto const& op : ops.optimal_pts) {
     if (op.key.empty()) {
@@ -243,17 +244,17 @@ ResultT<OperatingPointTable> autoTuneTable(faiss::IndexIVF& index,
 
   failLog.cancel();
   double const bestRecall = table.points.back().recall;
-  if (bestRecall < minRecall - kAutoTuneRecallEpsilon) {
+  if (bestRecall < targetRecall - kAutoTuneRecallEpsilon) {
     LOG_TOPIC("e16ac", WARN, Logger::ENGINES)
-        << "Autotune could not reach minRecall=" << minRecall
+        << "Autotune could not reach targetRecall=" << targetRecall
         << " for topK=" << R << "; best attainable recall=" << bestRecall
         << ". Returning best-attainable table.";
   }
   LOG_TOPIC("e16ad", INFO, Logger::ENGINES)
       << "Autotune produced " << table.points.size()
       << " operating points for topK=" << R << " (recall "
-      << table.points.front().recall << ".." << bestRecall << ", minRecall "
-      << minRecall << ", took " << elapsedSecs()
+      << table.points.front().recall << ".." << bestRecall << ", targetRecall "
+      << targetRecall << ", took " << elapsedSecs()
       << "s). Operating points: " << formatOperatingPoints(ops, nullptr);
   return table;
 }

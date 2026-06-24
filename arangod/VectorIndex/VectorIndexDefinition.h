@@ -83,7 +83,7 @@ struct OperatingPoint {
 /// `topK` rather than a map, since VPack object keys must be strings.
 struct OperatingPointTable {
   std::int64_t topK{0};
-  double minRecall{0.0};
+  double targetRecall{0.0};
   std::vector<OperatingPoint> points;
 
   bool operator==(OperatingPointTable const&) const noexcept = default;
@@ -92,7 +92,7 @@ struct OperatingPointTable {
   friend inline auto inspect(Inspector& f, OperatingPointTable& x) {
     return f.object(x).fields(
         f.field("topK", x.topK).fallback(std::int64_t{0}),
-        f.field("minRecall", x.minRecall).fallback(0.0),
+        f.field("targetRecall", x.targetRecall).fallback(0.0),
         f.field("points", x.points).fallback(std::vector<OperatingPoint>{}));
   }
 };

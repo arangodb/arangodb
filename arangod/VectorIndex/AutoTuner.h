@@ -58,9 +58,9 @@ std::size_t wilsonSampleSize(double p, double z, double m);
 
 struct AutotuneParams {
   std::int64_t R{kDefaultAutoTuneR};  // topK the table is optimized for
-  // Recall floor: drives the sample size and is the table's validity floor.
+  // Target recall: drives the sample size and is the table's validity floor.
   // Required from the caller; there is no server-side default.
-  double minRecall{};
+  double targetRecall{};
 
   template<class Inspector>
   friend inline auto inspect(Inspector& f, AutotuneParams& x) {
@@ -73,10 +73,10 @@ struct AutotuneParams {
               }
               return inspection::Status::Success{};
             }),
-        f.field("minRecall", x.minRecall)
+        f.field("targetRecall", x.targetRecall)
             .invariant([](auto value) -> inspection::Status {
               if (value <= 0.0 || value > 1.0) {
-                return {"'minRecall' must be a number in (0, 1]"};
+                return {"'targetRecall' must be a number in (0, 1]"};
               }
               return inspection::Status::Success{};
             }));
@@ -84,13 +84,13 @@ struct AutotuneParams {
 };
 
 // Sweep the index's search parameters and return the full Pareto front as an
-// operating-point table for `R` (topK), tuned down to `minRecall`. The
+// operating-point table for `R` (topK), tuned down to `targetRecall`. The
 // ground-truth scratch buffers are charged to `resourceMonitor`.
 ResultT<OperatingPointTable> autoTuneTable(faiss::IndexIVF& index,
                                            std::span<float const> querySet,
                                            ResourceMonitor& resourceMonitor,
                                            void* invertedListContext,
-                                           std::int64_t R, double minRecall);
+                                           std::int64_t R, double targetRecall);
 
 // Cheapest operating point reaching `targetRecall` for `topK`. Fails if no
 // table was tuned for `topK` or `targetRecall` exceeds the table's range.
