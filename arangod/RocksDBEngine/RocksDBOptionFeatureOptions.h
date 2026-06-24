@@ -31,6 +31,12 @@
 
 namespace arangodb {
 
+// This name combination is a combination of already existing, and thus
+// conflicting, classnames and the purpose of the feature that is being
+// extracted here, thats why it leads to this double "Option" and the redundant
+// "Feature" in the name. This all is temporary anyway, and should be remove it
+// further steps.
+
 struct RocksDBOptionFeatureOptions {
   uint64_t transactionLockStripes = 0;
   int64_t transactionLockTimeout = 0;
