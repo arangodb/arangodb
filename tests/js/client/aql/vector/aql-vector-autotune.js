@@ -175,13 +175,22 @@ function VectorIndexAutotuneTestSuite() {
             db._dropDatabase(dbName);
         },
 
-        // Re-tuning an already-built index returns a valid operating-point table.
-        testAutotuneDefaultParams: function() {
+        // topK defaults when omitted; minRecall is supplied by the caller.
+        testAutotuneDefaultTopK: function() {
             const id = vectorIndexId(collection);
             const res = arango.POST_RAW(
-                `/_api/index/${collName}/${id}/autotune`, {});
+                `/_api/index/${collName}/${id}/autotune`, {minRecall: 0.9});
             assertEqual(200, res.code);
             assertTunedOk(res.parsedBody);
+        },
+
+        // minRecall has no server-side default; omitting it is a 400.
+        testAutotuneRequiresMinRecall: function() {
+            const id = vectorIndexId(collection);
+            const res = arango.POST_RAW(
+                `/_api/index/${collName}/${id}/autotune`, {topK: 5});
+            assertEqual(400, res.code);
+            assertEqual(true, res.parsedBody.error);
         },
 
         // Explicit per-request parameters are accepted.
@@ -197,7 +206,8 @@ function VectorIndexAutotuneTestSuite() {
         testGetAutotuneTables: function() {
             const id = vectorIndexId(collection);
             const tuned = arango.POST_RAW(
-                `/_api/index/${collName}/${id}/autotune`, {topK: 5});
+                `/_api/index/${collName}/${id}/autotune`,
+                {topK: 5, minRecall: 0.9});
             assertEqual(200, tuned.code);
 
             const res = arango.GET_RAW(
@@ -216,7 +226,8 @@ function VectorIndexAutotuneTestSuite() {
         // Search keeps working after a re-tune.
         testSearchWorksAfterAutotune: function() {
             const id = vectorIndexId(collection);
-            arango.POST_RAW(`/_api/index/${collName}/${id}/autotune`, {});
+            arango.POST_RAW(`/_api/index/${collName}/${id}/autotune`,
+                {minRecall: 0.9});
 
             const query = "FOR d IN " + collName +
                 " SORT APPROX_NEAR_L2(d.vector, @qp) LIMIT 5 RETURN d._key";
@@ -236,7 +247,7 @@ function VectorIndexAutotuneTestSuite() {
         // Autotuning a non-existent index id returns not-found.
         testAutotuneUnknownIndex: function() {
             const res = arango.POST_RAW(
-                `/_api/index/${collName}/999999999/autotune`, {});
+                `/_api/index/${collName}/999999999/autotune`, {minRecall: 0.9});
             assertNotEqual(200, res.code);
             assertEqual(true, res.parsedBody.error);
         },

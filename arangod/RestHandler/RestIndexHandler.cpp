@@ -1010,12 +1010,12 @@ void RestIndexHandler::syncCaches() {
 }
 
 namespace {
-// Parse the optional autotune request body into AutotuneParams. Field mapping,
-// defaults and bounds live in AutotuneParams' inspection. An absent body keeps
-// all defaults.
+// Parse the autotune request body into AutotuneParams. Field mapping and bounds
+// live in AutotuneParams' inspection; `minRecall` is required, so an absent
+// body is deserialized as an empty object and fails on the missing field.
 Result parseAutotuneParams(VPackSlice body, vector::AutotuneParams& params) {
   if (body.isNone() || body.isNull()) {
-    return {};
+    body = VPackSlice::emptyObjectSlice();
   }
   if (auto status = velocypack::deserializeWithStatus(body, params);
       !status.ok()) {

@@ -824,11 +824,9 @@ ResultT<OperatingPointTable> autoTuneVectorIndex(
       static_cast<RocksDBCollection*>(index.collection().getPhysical());
 
   // Sample size derived from the requested minRecall via the Wilson score
-  // interval, capped so a single run stays bounded.
-  auto const sampleSize =
-      std::min(wilsonSampleSize(params.minRecall, kAutoTuneConfidenceZ,
-                                kAutoTuneRecallTolerance),
-               kAutoTuneSampleCap);
+  // interval.
+  auto const sampleSize = wilsonSampleSize(
+      params.minRecall, kAutoTuneConfidenceZ, kAutoTuneRecallTolerance);
 
   // Fresh sample from the indexed data: reusing training vectors would bias
   // recall optimistically (they defined the centroids).
