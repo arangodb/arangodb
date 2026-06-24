@@ -432,8 +432,7 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
           [&](p::ReadUser const& /*readUser*/) -> Result {
             // Reading any user record requires at least RW access to the
             // _system database.
-            return check(p::UseDatabase{StaticStrings::SystemDatabase,
-                                        DatabaseAccessLevel::Write});
+            return isAdmin();
           },
           [&](p::WriteUser const& /*writeUser*/) -> Result {
             // Writing a user record requires RW access to the _system
