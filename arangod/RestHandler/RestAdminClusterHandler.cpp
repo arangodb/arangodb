@@ -667,7 +667,8 @@ async<void> RestAdminClusterHandler::handleRemoveServer() {
     co_return;
   }
 
-  if (!ServerState::instance()->isCoordinator()) {
+  if (request()->requestedApiVersion() > 0 &&
+      !ServerState::instance()->isCoordinator()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                   "only allowed on coordinators");
     co_return;
