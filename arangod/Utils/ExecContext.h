@@ -64,7 +64,6 @@ class ExecContext {
   ExecContext(ConstructorToken, AuthMode authMode, VocbasePtr vocbase);
   ExecContext(ExecContext const&) = delete;
   ExecContext(ExecContext&&) = delete;
-  virtual ~ExecContext() = default;
 
  public:
   /// @brief Create an ExecContext from an incoming request with a vocbase.
@@ -96,7 +95,7 @@ class ExecContext {
   }
 
   /// @brief tells you if this execution was canceled
-  virtual bool isCanceled() const noexcept {
+  bool isCanceled() const noexcept {
     return _canceled.load(std::memory_order_relaxed);
   }
 
@@ -204,9 +203,9 @@ class ExecContext {
   }
 
 #ifdef USE_ENTERPRISE
-  [[nodiscard]] virtual std::string clientAddress() const;
-  [[nodiscard]] virtual std::string requestUrl() const;
-  [[nodiscard]] virtual std::string authMethod() const;
+  [[nodiscard]] std::string clientAddress() const;
+  [[nodiscard]] std::string requestUrl() const;
+  [[nodiscard]] std::string authMethod() const;
 #endif
 
  protected:
