@@ -270,8 +270,9 @@ RocksDBEngine::RocksDBEngine(
     IDatabaseProvider& databaseProvider, IIndexCacheRefill& indexCacheRefill,
     ICacheManagerProvider& cacheManagerProvider,
     ISortingPolicy const& sortingPolicy)
-    : StorageEngine(server, kEngineName, name(), typeid(RocksDBEngine),
-                    std::make_unique<RocksDBIndexFactory>(server)),
+    : StorageEngine(
+          server, kEngineName, name(), typeid(RocksDBEngine),
+          std::make_unique<RocksDBIndexFactory>(server, vectorIndexProvider)),
       _databasePathProvider(databasePathProvider),
       _vectorIndexProvider(vectorIndexProvider),
       _flushControl(flushControl),
@@ -2444,7 +2445,7 @@ void RocksDBEngine::addV8Functions() {
 
 /// @brief Add engine-specific REST handlers
 void RocksDBEngine::addRestHandlers(rest::RestHandlerFactory& handlerFactory) {
-  RocksDBRestHandlers::registerResources(&handlerFactory);
+  RocksDBRestHandlers::registerResources(&handlerFactory, *this);
 }
 
 void RocksDBEngine::addCollectionMapping(uint64_t objectId, TRI_voc_tick_t did,
