@@ -88,7 +88,6 @@ class ExecContext {
   /// @brief an internal superuser context, is
   ///        a singleton instance, deleting is an error
   static ExecContext const& superuser();
-  static std::shared_ptr<ExecContext const> currentAsSharedNonNull();
   static std::shared_ptr<ExecContext const> superuserAsShared();
 
   [[nodiscard]] bool isSuperuser() const noexcept {

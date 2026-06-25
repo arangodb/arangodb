@@ -50,14 +50,6 @@ ExecContext const& ExecContext::current() {
   return *Superuser;
 }
 
-std::shared_ptr<ExecContext const> ExecContext::currentAsSharedNonNull() {
-  auto copy = CURRENT;
-  if (copy) {
-    return copy;
-  }
-  return Superuser;
-}
-
 /// Note that this intentionally returns CURRENT, even if it is a nullptr: This
 /// makes it suitable to set CURRENT in another thread.
 std::shared_ptr<ExecContext const> ExecContext::currentAsShared() {
