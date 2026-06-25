@@ -1263,44 +1263,69 @@ AqlValue functions::Partition(ExpressionContext* ctx, AstNode const&,
   int64_t occurrence = 1;
   if (parameters.size() >= 3) {
     auto const& occurrenceValue = extractFunctionParameterValue(parameters, 2);
+
     if (!occurrenceValue.isNumber() ||
         occurrenceValue.toInt64() != occurrenceValue.toDouble()) {
       registerInvalidArgumentWarning(ctx, AFN);
       return AqlValue(AqlValueHintNull());
     }
+
     occurrence = occurrenceValue.toInt64();
+
     if (occurrence == 0) {
       registerInvalidArgumentWarning(ctx, AFN);
       return AqlValue(AqlValueHintNull());
     }
   }
 
-  VPackBuilder builder;
-  builder.openArray();
-
-  std::vector<size_t> positions;
-  positions.reserve(8);
-  size_t searchFrom = 0;
-  while (searchFrom <= input.size()) {
-    auto const pos = input.find(separator, searchFrom);
-    if (pos == std::string_view::npos) {
-      break;
-    }
-    positions.push_back(pos);
-    searchFrom = pos + separator.size();
-  }
-
   std::optional<size_t> matchPos;
+
   if (occurrence > 0) {
-    if (static_cast<size_t>(occurrence) <= positions.size()) {
-      matchPos = positions[static_cast<size_t>(occurrence) - 1];
+    // Find nth occurrence from the front.
+    size_t searchFrom = 0;
+
+    for (int64_t i = 0; i < occurrence; ++i) {
+      auto const pos = input.find(separator, searchFrom);
+
+      if (pos == std::string_view::npos) {
+        break;
+      }
+
+      if (i + 1 == occurrence) {
+        matchPos = pos;
+        break;
+      }
+
+      searchFrom = pos + separator.size();
     }
   } else {
+    // Find nth occurrence from the end.
     auto const absOcc = static_cast<size_t>(-occurrence);
-    if (absOcc <= positions.size()) {
-      matchPos = positions[positions.size() - absOcc];
+
+    size_t searchFrom = input.size();
+
+    for (size_t i = 0; i < absOcc; ++i) {
+      auto const pos = input.rfind(separator, searchFrom);
+
+      if (pos == std::string_view::npos) {
+        break;
+      }
+
+      if (i + 1 == absOcc) {
+        matchPos = pos;
+        break;
+      }
+
+      if (pos == 0) {
+        break;
+      }
+
+      searchFrom = pos - 1;
     }
   }
+
+  VPackBuilder builder;
+  builder.openArray();
 
   if (!matchPos) {
     if (occurrence > 0) {
@@ -1314,6 +1339,7 @@ AqlValue functions::Partition(ExpressionContext* ctx, AstNode const&,
     }
   } else {
     auto const pos = *matchPos;
+
     builder.add(VPackValue(input.substr(0, pos)));
     builder.add(VPackValue(separator));
     builder.add(VPackValue(input.substr(pos + separator.size())));
