@@ -4,8 +4,6 @@ import useResizeObserver from "@react-hook/resize-observer";
 import React, { useEffect, useRef } from "react";
 import { useQueryContext } from "../QueryContextProvider";
 
-const AQL_EDITOR_CONTAINER_CLASS = "aql-editor-container";
-
 export const AQLEditor = ({
   value,
   onChange,
@@ -66,25 +64,15 @@ export const AQLEditor = ({
   }, [autoFocus]);
   useSetupAQLEditor(aqlJsonEditorRef);
   return (
-    <div ref={containerRef} className={AQL_EDITOR_CONTAINER_CLASS}
-    style={{
-      height: "100%",
-      width: "100%", 
-      minHeight: 0,
-      overflow: "hidden"
-    }}
+    <div
+      ref={containerRef}
+      style={{ height: "100%", width: "100%", minHeight: 0, overflow: "hidden" }}
     >
       <Global
         styles={{
           ".jsoneditor div.jsoneditor-outer.has-status-bar": {
             padding: "0px",
             marginTop: "0px"
-          },
-          [`.${AQL_EDITOR_CONTAINER_CLASS} .jsoneditor,
-            .${AQL_EDITOR_CONTAINER_CLASS} .jsoneditor > div,
-            .${AQL_EDITOR_CONTAINER_CLASS} .jsoneditor-outer`]: {
-            height: "100%",
-            overflow: "hidden"
           }
         }}
       />
