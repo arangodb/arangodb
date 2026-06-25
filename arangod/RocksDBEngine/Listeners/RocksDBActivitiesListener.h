@@ -33,7 +33,7 @@ namespace arangodb {
 
 class RocksDBActivitiesListener final : public rocksdb::EventListener {
  public:
-  RocksDBActivitiesListener() = default;
+  ~RocksDBActivitiesListener() override = default;
 
   void OnCompactionBegin(rocksdb::DB*,
                          rocksdb::CompactionJobInfo const&) override;
