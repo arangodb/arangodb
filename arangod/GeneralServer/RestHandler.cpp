@@ -24,10 +24,12 @@
 #include "RestHandler.h"
 
 #include "Activities/GenericActivity.h"
+#include "Activities/RegistryGlobalVariable.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Auth/TokenCache.h"
 #include "Basics/dtrace-wrapper.h"
 #include "Basics/error.h"
+#include "Basics/voc-errors.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
@@ -44,10 +46,10 @@
 #include "Rest/HttpResponse.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Statistics/RequestStatistics.h"
+#include "Utils/Events.h"
 #include "Utils/ExecContext.h"
 #include "VocBase/Identifiers/TransactionId.h"
 #include "VocBase/ticks.h"
-#include "Activities/RegistryGlobalVariable.h"
 
 #include <Agency/RestAgencyHandler.h>
 #include <Async/async.h>
@@ -435,6 +437,11 @@ auto RestHandler::runHandlerStateMachine() -> futures::Future<futures::Unit> {
     shutdownExecute(false);
   };
 
+  co_await handleAuthorizationChecks();
+  if (_state == HandlerState::FAILED) {
+    co_return fail();
+  }
+
   auto const logScopeGuard =
       LogContext::Accessor::ScopedValue(makeSharedLogContextValue());
 
@@ -668,6 +675,73 @@ void RestHandler::compressResponse() {
   }
 }
 
+async<Result> RestHandler::checkUserCanAccess() const {
+  auto const* const auth = AuthenticationFeature::instance();
+  if (!auth->isActive()) {
+    co_return Result();
+  }
+
+  bool const userAuthenticated = request()->authenticated();
+  bool canAccess = userAuthenticated;
+  auto const& path = request()->requestPath();
+
+  auto vc = basics::downCast<VocbaseContext>(request()->requestContext());
+  TRI_ASSERT(vc != nullptr)
+      << "no vocbase context in request: " << this->name();
+  // deny access to database with NONE
+  if (canAccess && vc->databaseAuthLevel() == auth::Level::NONE) {
+    canAccess = false;
+    LOG_TOPIC("0898a", TRACE, Logger::AUTHORIZATION)
+        << "Access forbidden to " << path;
+  }
+
+  // we need to check for some special cases, where users may be allowed
+  // to proceed even unauthorized
+  if (not canAccess) {
+#ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
+    // check if we need to run authentication for this type of
+    // endpoint
+    auto const& ci = request()->connectionInfo();
+
+    if (ci.endpointType == Endpoint::DomainType::UNIX &&
+        !auth->authenticationUnixSockets()) {
+      // no authentication required for unix domain socket connections
+      canAccess = true;
+    }
+#endif
+
+    if (not canAccess &&
+        auth->authenticationSystemOnly()) {  // TODO remove in 4.0
+      // authentication required, but only for /_api, /_admin etc.
+      if (!path.empty()) {
+        // check if path starts with /_
+        // or path begins with /
+        if (path[0] != '/' || (path.size() > 1 && path[1] != '_')) {
+          // simon: upgrade rights for Foxx apps. FIXME
+          canAccess = true;
+          vc->forceSuperuser();
+          LOG_TOPIC("e2880", TRACE, Logger::AUTHORIZATION)
+              << "Upgrading rights for " << path;
+        }
+      }
+    }
+  }
+
+  co_return canAccess
+      ? Result()
+      : (userAuthenticated
+             ? Result(TRI_ERROR_HTTP_FORBIDDEN, "No read access to database.")
+             : Result(TRI_ERROR_HTTP_UNAUTHORIZED, "User not authenticated."));
+}
+
+async<void> RestHandler::handleAuthorizationChecks() {
+  if (auto res = co_await checkUserCanAccess(); res.fail()) {
+    _state = HandlerState::FAILED;
+    events::NotAuthorized(*_request);
+    generateError(res);
+  }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates an error
 ////////////////////////////////////////////////////////////////////////////////
@@ -690,7 +764,8 @@ void RestHandler::generateError(arangodb::Result const& r) {
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 protected methods
+// --SECTION--                                                 protected
+// methods
 // -----------------------------------------------------------------------------
 
 void RestHandler::resetResponse(rest::ResponseCode code) {
@@ -698,8 +773,8 @@ void RestHandler::resetResponse(rest::ResponseCode code) {
   _response->reset(code);
 }
 
-// Fallback implementation for old RestHandlers that implement execute() instead
-// of executeAsync().
+// Fallback implementation for old RestHandlers that implement execute()
+// instead of executeAsync().
 futures::Future<futures::Unit> RestHandler::executeAsync() {
   auto state = execute();
   TRI_ASSERT(state != RestStatus::WAITING);

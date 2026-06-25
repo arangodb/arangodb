@@ -66,10 +66,7 @@ using namespace arangodb::rest;
 namespace {
 // some static URL path prefixes
 constexpr std::string_view pathPrefixApi("/_api/");
-constexpr std::string_view pathPrefixApiUser("/_api/user/");
-constexpr std::string_view pathPrefixApiToken("/_api/token/");
 constexpr std::string_view pathPrefixAdmin("/_admin/");
-constexpr std::string_view pathPrefixAdminAardvark("/_admin/aardvark/");
 constexpr std::string_view pathPrefixOpen("/_open/");
 
 VocbasePtr lookupDatabaseFromRequest(DatabaseFeature& databaseFeature,
@@ -316,6 +313,7 @@ CommTask::Flow CommTask::prepareExecution(
     return Flow::Abort;
   }
   TRI_ASSERT(req.requestContext() != nullptr);
+  TRI_ASSERT(downCast<VocbaseContext>(req.requestContext()) != nullptr);
 
   // Step 4: Check the authentication. Will determine if the user can access
   // this path checks db permissions and contains exceptions for the
@@ -811,87 +809,7 @@ CommTask::Flow CommTask::canAccessPath(auth::TokenCache::Entry const& token,
     }
   }
 
-  bool userAuthenticated = req.authenticated();
-  Flow result = userAuthenticated ? Flow::Continue : Flow::Abort;
-
-  auto vc = basics::downCast<VocbaseContext>(req.requestContext());
-  TRI_ASSERT(vc != nullptr);
-  // deny access to database with NONE
-  if (result == Flow::Continue &&
-      vc->canUseDatabase(req.databaseName(), DatabaseAccessLevel::Read)
-          .fail()) {
-    result = Flow::Abort;
-    LOG_TOPIC("0898a", TRACE, Logger::AUTHORIZATION)
-        << "Access forbidden to " << path;
-  }
-
-  // we need to check for some special cases, where users may be allowed
-  // to proceed even unauthorized
-  if (result == Flow::Abort) {
-#ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
-    // check if we need to run authentication for this type of
-    // endpoint
-    ConnectionInfo const& ci = req.connectionInfo();
-
-    if (ci.endpointType == Endpoint::DomainType::UNIX &&
-        !_auth->authenticationUnixSockets()) {
-      // no authentication required for unix domain socket connections
-      result = Flow::Continue;
-    }
-#endif
-
-    // TODO Revisit this in face of RBAC.
-    //      - Can we remove it in 4.0, together with
-    //      `--server.authentication-system-only`?
-    //      - Shouldn't the forceSuperuser be done as part of the responsible
-    //        RestHandler (i.e. RestActionHandler) instead of here?
-    if (result == Flow::Abort && _auth->authenticationSystemOnly()) {
-      // With system-only authentication, authorization is required as usual for
-      // the following paths:
-      // - ""
-      // - "/"
-      // - everything prefixed by "/_" (e.g. "/_api", "/_admin", etc.)
-      // For everything else, authentication is not required. Afaik, this only
-      // includes Foxx apps, i.e. the RestActionHandler.
-      // I think that at least the "forceSuperuser" part should be moved to the
-      // RestActionHandler, while we need to keep overriding the flow-result.
-      if (!path.empty() && path != "/" && !path.starts_with("/_")) {
-        // simon: upgrade rights for Foxx apps. FIXME
-        result = Flow::Continue;
-        vc->forceSuperuser();
-        LOG_TOPIC("e2880", TRACE, Logger::AUTHORIZATION)
-            << "Upgrading rights for " << path;
-      }
-    }
-
-    if (result == Flow::Abort) {
-      // TODO Handle this with a list of allowed paths, to make the logic easier
-      //      to follow. Instead of overriding the result as an afterthought,
-      //      it should be part of the previous check that currently sets result
-      //      to Flow::Abort in the affected cases.
-      if (path == "/" || path.starts_with(::pathPrefixOpen) ||
-          path.starts_with(::pathPrefixAdminAardvark) ||
-          path == "/_admin/server/availability") {
-        // mop: these paths are always callable...they will be able to check
-        // req.user when it could be validated
-        result = Flow::Continue;
-        // TODO Do we really need to do this? Shouldn't the permissions checks
-        //      of the respective RestHandlers be able to handle this? Or to put
-        //      it differently: Why are they doing permission checks, if they
-        //      are only ever called with superuser permissions?
-        vc->forceSuperuser();
-      } else if (userAuthenticated && path == "/_api/cluster/endpoints") {
-        // allow authenticated users to access cluster/endpoints
-        result = Flow::Continue;
-      } else if (userAuthenticated && path.starts_with(::pathPrefixApiUser)) {
-        result = Flow::Continue;
-      } else if (userAuthenticated && path.starts_with(::pathPrefixApiToken)) {
-        result = Flow::Continue;
-      }
-    }
-  }
-
-  return result;
+  return Flow::Continue;
 }
 
 /// deny credentialed requests or not (only CORS)

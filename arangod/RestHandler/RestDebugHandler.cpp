@@ -24,6 +24,7 @@
 #include "RestDebugHandler.h"
 
 #include "Basics/DebugRaceController.h"
+#include "Cluster/ServerState.h"
 
 #include <velocypack/Slice.h>
 
@@ -35,6 +36,21 @@ RestDebugHandler::RestDebugHandler(
     application_features::ApplicationServer& server, GeneralRequest* request,
     GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
+
+async<Result> RestDebugHandler::checkUserCanAccess() const {
+  // Note that this particular RestHandler might be called during startup (or
+  // in maintenance mode). The AuthenticationFeature might not yet be available
+  // for authorization, and must not be consulted.
+  if (auto const mode = ServerState::instance()->mode();
+      mode == ServerState::Mode::STARTUP ||
+      mode == ServerState::Mode::MAINTENANCE) {
+    co_return request()->authenticated()
+        ? Result{}
+        : Result{TRI_ERROR_HTTP_UNAUTHORIZED, "Not authenticated."};
+  }
+
+  co_return co_await RestBaseHandler::checkUserCanAccess();
+}
 
 // Mounted at /_admin/debug (prefix, only when ARANGODB_ENABLE_FAILURE_TESTS is
 // defined)

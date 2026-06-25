@@ -101,6 +101,21 @@ RestVersionHandler::RestVersionHandler(
     GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
+async<Result> RestVersionHandler::checkUserCanAccess() const {
+  // Note that this particular RestHandler might be called during startup (or
+  // in maintenance mode). The AuthenticationFeature might not yet be available
+  // for authorization, and must not be consulted.
+  if (auto const mode = ServerState::mode();
+      mode == ServerState::Mode::STARTUP ||
+      mode == ServerState::Mode::MAINTENANCE) {
+    co_return request()->authenticated()
+        ? Result{}
+        : Result{TRI_ERROR_HTTP_UNAUTHORIZED, "Not authenticated."};
+  }
+
+  co_return co_await RestBaseHandler::checkUserCanAccess();
+}
+
 void RestVersionHandler::getVersion(
     application_features::ApplicationServer& server, bool allowInfo,
     bool includeDetails, VPackBuilder& result, uint32_t requestedApiVersion) {
