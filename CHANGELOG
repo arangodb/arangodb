@@ -1,6 +1,9 @@
 3.12.10-devel (XXXX-XX-XX)
 --------------------------
 
+* COR-537, github issue #21843: Fixed incorrect sorting order bug when using
+  inverted indexes.
+
 * GitHub issue #22821: Fix overflow issues in LIFO and FIFO cursor queues.
 
 * COR-670: Fixed a crash when a vector query with covered projections ran while
