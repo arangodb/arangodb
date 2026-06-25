@@ -619,7 +619,7 @@ void ClusterFeature::startHeartbeatThread(
   _heartbeatThread = std::make_shared<HeartbeatThread>(
       server(), agencyCallbackRegistry,
       std::chrono::microseconds(interval_ms * 1000), maxFailsBeforeWarning,
-      noHeartbeatDelayBeforeShutdown);
+      noHeartbeatDelayBeforeShutdown, _metricsRegistry);
 
   if (!_heartbeatThread->init() || !_heartbeatThread->start()) {
     // failure only occures in cluster mode.
