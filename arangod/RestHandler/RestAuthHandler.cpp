@@ -203,9 +203,9 @@ RestStatus RestAuthHandler::execute() {
 }
 
 async<Result> RestAuthHandler::checkUserCanAccess() const {
-  auto vc = basics::downCast<VocbaseContext>(_request->requestContext());
-  TRI_ASSERT(vc != nullptr);
-  vc->forceSuperuser();
+  auto ec = _request->requestContext();
+  TRI_ASSERT(ec != nullptr);
+  ec->forceSuperuser();
   co_return Result{};
 }
 

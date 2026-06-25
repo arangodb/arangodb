@@ -87,9 +87,9 @@ RestStatus RestAdminServerHandler::execute() {
 async<Result> RestAdminServerHandler::checkUserCanAccess() const {
   auto const& suffixes = _request->suffixes();
   if (suffixes.size() == 1 && suffixes[0] == "availability") {
-    auto vc = basics::downCast<VocbaseContext>(_request->requestContext());
-    TRI_ASSERT(vc != nullptr);
-    vc->forceSuperuser();
+    auto ec = _request->requestContext();
+    TRI_ASSERT(ec != nullptr);
+    ec->forceSuperuser();
     co_return Result{};
   }
 

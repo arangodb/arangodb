@@ -26,7 +26,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Auth/Rbac/Actions.h"
 #include "Auth/UserManager.h"
-#include "Basics/VelocyPackHelper.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Rest/Version.h"
 #include "RestServer/DatabaseFeature.h"
@@ -40,7 +39,6 @@
 
 #include <string_view>
 #include <Basics/DownCast.h>
-#include <RestServer/VocbaseContext.h>
 
 namespace {
 
