@@ -22,38 +22,17 @@
 
 #pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
+#include "ApplicationFeatures/OptionsProvider.h"
 #include "Import/ImportFeatureOptions.h"
-#include "Shell/ClientFeature.h"
-
-#include <memory>
 
 namespace arangodb {
 
-namespace httpclient {
-class GeneralClientConnection;
-class SimpleHttpClient;
-}  // namespace httpclient
+struct ImportOptionsProvider : OptionsProvider<ImportFeatureOptions> {
+  void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
+                      ImportFeatureOptions& options) override;
 
-class ImportFeature final : public application_features::ApplicationFeature {
- public:
-  static constexpr std::string_view name() noexcept { return "Import"; }
-
-  ImportFeature(application_features::ApplicationServer& server, int* result);
-  ~ImportFeature();
-
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void validateOptions(
-      std::shared_ptr<options::ProgramOptions> options) override;
-  void prepare() override;
-  void start() override;
-
- private:
-  ErrorCode tryCreateDatabase(ClientFeature& client, std::string const& name);
-
-  std::unique_ptr<httpclient::SimpleHttpClient> _httpClient;
-  ImportFeatureOptions _options;
-  int* _result;
+  void validateOptions(std::shared_ptr<options::ProgramOptions> opts,
+                       ImportFeatureOptions& options) override;
 };
 
 }  // namespace arangodb
