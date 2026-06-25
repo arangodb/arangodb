@@ -25,7 +25,7 @@
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/HistogramBuilder.h"
 #include "Metrics/LogScale.h"
-#include "Metrics/MetricsFeature.h"
+#include "Metrics/IRegistry.h"
 
 using namespace arangodb;
 
@@ -93,46 +93,50 @@ DECLARE_COUNTER(arangodb_scheduler_threads_stopped_total,
 DECLARE_GAUGE(arangodb_scheduler_queue_memory_usage, std::int64_t,
               "Number of bytes allocated for tasks in the scheduler queue");
 
-SchedulerMetrics::SchedulerMetrics(metrics::MetricsFeature& metrics)
-    : _metricsQueueLength(metrics.add(arangodb_scheduler_queue_length{})),
-      _metricsJobsDoneTotal(metrics.add(arangodb_scheduler_jobs_done_total{})),
+SchedulerMetrics::SchedulerMetrics(metrics::IRegistry& metricsRegistry)
+    : _metricsQueueLength(
+          metricsRegistry.add(arangodb_scheduler_queue_length{})),
+      _metricsJobsDoneTotal(
+          metricsRegistry.add(arangodb_scheduler_jobs_done_total{})),
       _metricsJobsSubmittedTotal(
-          metrics.add(arangodb_scheduler_jobs_submitted_total{})),
+          metricsRegistry.add(arangodb_scheduler_jobs_submitted_total{})),
       _metricsJobsDequeuedTotal(
-          metrics.add(arangodb_scheduler_jobs_dequeued_total{})),
+          metricsRegistry.add(arangodb_scheduler_jobs_dequeued_total{})),
       _metricsNumAwakeThreads(
-          metrics.add(arangodb_scheduler_num_awake_threads{})),
+          metricsRegistry.add(arangodb_scheduler_num_awake_threads{})),
       _metricsNumWorkingThreads(
-          metrics.add(arangodb_scheduler_num_working_threads{})),
+          metricsRegistry.add(arangodb_scheduler_num_working_threads{})),
       _metricsNumWorkerThreads(
-          metrics.add(arangodb_scheduler_num_worker_threads{})),
+          metricsRegistry.add(arangodb_scheduler_num_worker_threads{})),
       _metricsNumDetachedThreads(
-          metrics.add(arangodb_scheduler_num_detached_threads{})),
+          metricsRegistry.add(arangodb_scheduler_num_detached_threads{})),
       _metricsStackMemoryWorkerThreads(
-          metrics.add(arangodb_scheduler_stack_memory_usage{})),
+          metricsRegistry.add(arangodb_scheduler_stack_memory_usage{})),
       _schedulerQueueMemory(
-          metrics.add(arangodb_scheduler_queue_memory_usage{})),
-      _metricsHandlerTasksCreated(
-          metrics.add(arangodb_scheduler_handler_tasks_created_total{})),
+          metricsRegistry.add(arangodb_scheduler_queue_memory_usage{})),
+      _metricsHandlerTasksCreated(metricsRegistry.add(
+          arangodb_scheduler_handler_tasks_created_total{})),
       _metricsThreadsStarted(
-          metrics.add(arangodb_scheduler_threads_started_total{})),
+          metricsRegistry.add(arangodb_scheduler_threads_started_total{})),
       _metricsThreadsStopped(
-          metrics.add(arangodb_scheduler_threads_stopped_total{})),
+          metricsRegistry.add(arangodb_scheduler_threads_stopped_total{})),
       _metricsQueueFull(
-          metrics.add(arangodb_scheduler_queue_full_failures_total{})),
-      _metricsQueueTimeViolations(
-          metrics.add(arangodb_scheduler_queue_time_violations_total{})),
+          metricsRegistry.add(arangodb_scheduler_queue_full_failures_total{})),
+      _metricsQueueTimeViolations(metricsRegistry.add(
+          arangodb_scheduler_queue_time_violations_total{})),
       _ongoingLowPriorityGauge(
-          metrics.add(arangodb_scheduler_ongoing_low_prio{})),
-      _metricsLastLowPriorityDequeueTime(
-          metrics.add(arangodb_scheduler_low_prio_queue_last_dequeue_time{})),
+          metricsRegistry.add(arangodb_scheduler_ongoing_low_prio{})),
+      _metricsLastLowPriorityDequeueTime(metricsRegistry.add(
+          arangodb_scheduler_low_prio_queue_last_dequeue_time{})),
       _metricsDequeueTimes{
-          &metrics.add(arangodb_scheduler_maintenance_prio_dequeue_hist{}),
-          &metrics.add(arangodb_scheduler_high_prio_dequeue_hist{}),
-          &metrics.add(arangodb_scheduler_medium_prio_dequeue_hist{}),
-          &metrics.add(arangodb_scheduler_low_prio_dequeue_hist{})},
+          &metricsRegistry.add(
+              arangodb_scheduler_maintenance_prio_dequeue_hist{}),
+          &metricsRegistry.add(arangodb_scheduler_high_prio_dequeue_hist{}),
+          &metricsRegistry.add(arangodb_scheduler_medium_prio_dequeue_hist{}),
+          &metricsRegistry.add(arangodb_scheduler_low_prio_dequeue_hist{})},
       _metricsQueueLengths{
-          &metrics.add(arangodb_scheduler_maintenance_prio_queue_length{}),
-          &metrics.add(arangodb_scheduler_high_prio_queue_length{}),
-          &metrics.add(arangodb_scheduler_medium_prio_queue_length{}),
-          &metrics.add(arangodb_scheduler_low_prio_queue_length{})} {}
+          &metricsRegistry.add(
+              arangodb_scheduler_maintenance_prio_queue_length{}),
+          &metricsRegistry.add(arangodb_scheduler_high_prio_queue_length{}),
+          &metricsRegistry.add(arangodb_scheduler_medium_prio_queue_length{}),
+          &metricsRegistry.add(arangodb_scheduler_low_prio_queue_length{})} {}
