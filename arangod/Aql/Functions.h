@@ -153,6 +153,8 @@ AqlValue RTrim(arangodb::aql::ExpressionContext*, AstNode const&,
                VPackFunctionParametersView);
 AqlValue Split(arangodb::aql::ExpressionContext*, AstNode const&,
                VPackFunctionParametersView);
+AqlValue Partition(arangodb::aql::ExpressionContext*, AstNode const&,
+                   VPackFunctionParametersView);
 AqlValue Like(arangodb::aql::ExpressionContext*, AstNode const&,
               VPackFunctionParametersView);
 AqlValue RegexMatches(arangodb::aql::ExpressionContext*, AstNode const&,
