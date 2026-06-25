@@ -706,8 +706,6 @@ AqlValue Expression::executeSimpleExpressionArray(ExpressionContext& ctx,
             builder->add(e);
           }
         }
-      } else if (result.isNull(true)) {
-        result.toVelocyPack(&trx.vpackOptions(), *builder.get(), false);
       } else {
         ctx.registerWarning(
             TRI_ERROR_QUERY_ARRAY_EXPECTED,
@@ -829,8 +827,6 @@ AqlValue Expression::executeSimpleExpressionObject(ExpressionContext& ctx,
 
           addOrUpdateEntry(it.key().copyString(), copiedValue, true);
         }
-      } else if (spliceValue.isNull(true)) {
-        // no-op
       } else {
         ctx.registerWarning(
             TRI_ERROR_QUERY_OBJECT_EXPECTED,

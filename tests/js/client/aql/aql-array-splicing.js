@@ -57,8 +57,21 @@ function splicingSuite () {
     },
     testArraySplicingNull : function() {
       let query = `LET a = null RETURN [...a]`;
-      let res = db._query(query).toArray();
-      assertEqual([[null]], res);
+      let data = db._query(query).data;
+      assertEqual([[]], data.result);
+      assertEqual(1, data.extra.warnings.length);
+      assertEqual(errors.ERROR_QUERY_ARRAY_EXPECTED.code,
+        data.extra.warnings[0].code);
+      assertTrue(data.extra.warnings[0].message.includes('array splice'));
+    },
+    testArraySplicingInlineNull : function() {
+      let query = `RETURN [1, ...null, 3]`;
+      let data = db._query(query).data;
+      assertEqual([[1, 3]], data.result);
+      assertEqual(1, data.extra.warnings.length);
+      assertEqual(errors.ERROR_QUERY_ARRAY_EXPECTED.code,
+        data.extra.warnings[0].code);
+      assertTrue(data.extra.warnings[0].message.includes('array splice'));
     },
     testArraySplicingObject : function() {
       let query = `LET a = {} RETURN [...a]`;
