@@ -38,13 +38,17 @@ class TransactionDB;
 
 namespace arangodb {
 
+class RocksDBEngine;
+struct IRecoveryCallback;
+
 class RocksDBRecoveryManager final
     : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() { return "RocksDBRecoveryManager"; }
 
   explicit RocksDBRecoveryManager(
-      application_features::ApplicationServer& server);
+      application_features::ApplicationServer& server,
+      IRecoveryCallback& recoveryCallback);
 
   void start() override;
 
@@ -60,6 +64,8 @@ class RocksDBRecoveryManager final
 
   std::atomic<rocksdb::SequenceNumber> _currentSequenceNumber;
   std::atomic<RecoveryState> _recoveryState;
+  IRecoveryCallback& _recoveryCallback;
+  RocksDBEngine* _engine = nullptr;
 };
 
 }  // namespace arangodb

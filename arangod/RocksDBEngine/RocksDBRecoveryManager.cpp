@@ -34,12 +34,10 @@
 #include "Basics/application-exit.h"
 #include "Basics/exitcodes.h"
 #include "Basics/files.h"
-#include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
-#include "RestServer/DatabaseFeature.h"
+#include "RestServer/IRecoveryCallback.h"
 #include "RestServer/ServerIdFeature.h"
-#include "RestServer/SystemDatabaseFeature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -75,23 +73,22 @@ namespace arangodb {
 /// Constructor needs to be called synchronously,
 /// will load counts from the db and scan the WAL
 RocksDBRecoveryManager::RocksDBRecoveryManager(
-    application_features::ApplicationServer& server)
+    application_features::ApplicationServer& server,
+    IRecoveryCallback& recoveryCallback)
     : application_features::ApplicationFeature{server, *this},
       _currentSequenceNumber(0),
-      _recoveryState(RecoveryState::BEFORE) {
+      _recoveryState(RecoveryState::BEFORE),
+      _recoveryCallback(recoveryCallback) {
   setOptional(true);
-  startsAfter<BasicFeaturePhaseServer>();
-
-  startsAfter<DatabaseFeature>();
   startsAfter<RocksDBEngine>();
   startsAfter<ServerIdFeature>();
-  startsAfter<SystemDatabaseFeature>();
 
   onlyEnabledWith<RocksDBEngine>();
 }
 
 void RocksDBRecoveryManager::start() {
   TRI_ASSERT(isEnabled());
+  _engine = &server().getFeature<RocksDBEngine>();
 
   // synchronizes with acquire inRecovery()
   _recoveryState.store(RecoveryState::IN_PROGRESS, std::memory_order_release);
@@ -103,8 +100,7 @@ void RocksDBRecoveryManager::start() {
   _recoveryState.store(RecoveryState::DONE, std::memory_order_release);
 
   // notify everyone that recovery is now done
-  auto& databaseFeature = server().getFeature<DatabaseFeature>();
-  databaseFeature.recoveryDone();
+  _recoveryCallback.recoveryDone();
 }
 
 /// parse recent RocksDB WAL entries and notify the
@@ -133,8 +129,6 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
  private:
   WBReader(WBReader const&) = delete;
   WBReader const& operator=(WBReader const&) = delete;
-
-  application_features::ApplicationServer& _server;
 
   struct ProgressState {
     // sequence number from which we start recovering
@@ -172,12 +166,11 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
 
  public:
   /// @param seqs sequence number from which to count operations
-  explicit WBReader(application_features::ApplicationServer& server,
+  explicit WBReader(RocksDBEngine& engine,
                     rocksdb::SequenceNumber recoveryStartSequence,
                     rocksdb::SequenceNumber latestSequence,
                     std::atomic<rocksdb::SequenceNumber>& currentSequence)
-      : _server(server),
-        _progressState{recoveryStartSequence, latestSequence},
+      : _progressState{recoveryStartSequence, latestSequence},
         _minimumServerTick(TRI_NewTickServer()),
         _maxTickFound(0),
         _maxHLCFound(0),
@@ -185,7 +178,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
         _lastRemovedDocRid(0),
         _batchStartSequence(0),
         _currentSequence(currentSequence),
-        _engine(_server.getFeature<RocksDBEngine>()) {}
+        _engine(engine) {}
 
   void startNewBatch(rocksdb::SequenceNumber startSequence) {
     TRI_ASSERT(_currentSequence <= startSequence);
@@ -268,8 +261,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
       // collection with this objectID not known.Skip.
       return nullptr;
     }
-    DatabaseFeature& df = _server.getFeature<DatabaseFeature>();
-    auto vocbase = df.useDatabase(dbColPair.first);
+    auto vocbase = _engine.getDatabaseProvider().useDatabase(dbColPair.first);
     if (vocbase == nullptr) {
       return nullptr;
     }
@@ -283,8 +275,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
       return nullptr;
     }
 
-    DatabaseFeature& df = _server.getFeature<DatabaseFeature>();
-    auto vb = df.useDatabase(std::get<0>(triple));
+    auto vb = _engine.getDatabaseProvider().useDatabase(std::get<0>(triple));
     if (vb == nullptr) {
       return nullptr;
     }
@@ -634,9 +625,8 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
 Result RocksDBRecoveryManager::parseRocksWAL() {
   Result shutdownRv;
 
-  Result res = basics::catchToResult([&, &server = server()]() -> Result {
-    RocksDBEngine& engine = static_cast<RocksDBEngine&>(
-        server.getFeature<DatabaseFeature>().engine());
+  Result res = basics::catchToResult([&]() -> Result {
+    RocksDBEngine& engine = *_engine;
 
     auto db = engine.db();
 
@@ -688,7 +678,7 @@ Result RocksDBRecoveryManager::parseRocksWAL() {
 
     // Tell the WriteBatch reader the transaction markers to look for
     TRI_ASSERT(_currentSequenceNumber == 0);
-    WBReader handler(server, recoveryStartSequence, latestSequenceNumber,
+    WBReader handler(engine, recoveryStartSequence, latestSequenceNumber,
                      _currentSequenceNumber);
 
     // prevent purging of WAL files while we are in here
