@@ -91,12 +91,12 @@ ExecContext::ExecContext(ConstructorToken, AuthMode authMode,
         req.authenticationMethod() == rest::AuthenticationMethod::JWT;
     if (isSuperUser) {
       // For a superuser JWT request, create a dynamic Superuser context that
-      // preserves the request and vocbase references (for auditing etc.).
-      return AuthMode::Superuser(req, *vocbasePtr);
+      // preserves the request reference (for auditing etc.).
+      return AuthMode::Superuser(req);
     }
 
     if (!authenticationFeature.isActive()) {
-      return AuthMode::Disabled(req.user(), req, *vocbasePtr);
+      return AuthMode::Disabled(req.user(), req);
     }
 
     auto* userManager = authenticationFeature.userManager();
@@ -104,18 +104,17 @@ ExecContext::ExecContext(ConstructorToken, AuthMode authMode,
     // there is no UserManager, but at least the SuperUser can be
     // authenticated. In that case we treat the request as unauthenticated.
     if (!req.authenticated() || userManager == nullptr) {
-      return AuthMode::Unauthenticated(req.user(), req, *vocbasePtr);
+      return AuthMode::Unauthenticated(req.user(), req);
     }
 
     if (auto* rbacService = rbacFeature.service(); rbacService != nullptr) {
       return AuthMode::Rbac(authenticationFeature, *rbacService, req.user(),
-                            req.jwtToken(), req, *vocbasePtr);
+                            req.jwtToken(), req);
     }
 
     ADB_PROD_ASSERT(userManager != nullptr);
     return AuthMode::Classic(*userManager, req.user(),
-                             securityFeature.isRestApiHardened(), req,
-                             *vocbasePtr);
+                             securityFeature.isRestApiHardened(), req);
   }()};
 
   return std::make_shared<ExecContext>(ConstructorToken{}, std::move(authMode),
@@ -126,10 +125,9 @@ void ExecContext::forceSuperuser() {
   // Preserve any existing request/vocbase references in the new Superuser
   // mode so that the destructor can still release the vocbase correctly,
   // and auditing information remains accessible.
-  auto vb = _authMode.getIAuth().vocbase();
   auto req = _authMode.getIAuth().request();
-  if (vb.has_value() && req.has_value()) {
-    _authMode.reset<AuthMode::Superuser>(req->get(), vb->get());
+  if (_vocbase && req.has_value()) {
+    _authMode.reset<AuthMode::Superuser>(req->get());
   } else {
     _authMode.reset<AuthMode::Superuser>();
   }

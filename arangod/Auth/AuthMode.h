@@ -23,7 +23,6 @@
 
 #pragma once
 
-#include "Auth/Common.h"
 #include "Auth/Permissions.h"
 #include "Basics/Result.h"
 
@@ -34,7 +33,6 @@
 namespace arangodb::auth {
 class UserManager;
 }
-struct TRI_vocbase_t;
 namespace arangodb {
 class AuthenticationFeature;
 class GeneralRequest;
@@ -79,32 +77,24 @@ struct AuthMode {
     // Returns the GeneralRequest associated with this auth context, if any.
     [[nodiscard]] virtual auto request() const noexcept
         -> std::optional<std::reference_wrapper<GeneralRequest>> = 0;
-
-    // Returns the TRI_vocbase_t associated with this auth context, if any.
-    [[nodiscard]] virtual auto vocbase() const noexcept
-        -> std::optional<std::reference_wrapper<TRI_vocbase_t>> = 0;
   };
 
   // Superuser; may do anything, without further checks.
-  // Optionally holds a reference to a request and vocbase (when created from
+  // Optionally holds a reference to a request (when created from
   // a superuser JWT token on a real request).
   struct Superuser : IAuth {
-    // For the static singleton superuser (no request/vocbase).
+    // For the static singleton superuser (no request).
     Superuser() = default;
-    // For a dynamically created superuser context with request and vocbase.
-    Superuser(GeneralRequest& req, TRI_vocbase_t& vb)
-        : _request(&req), _vocbase(&vb) {}
+    // For a dynamically created superuser context with request.
+    Superuser(GeneralRequest& req) : _request(&req) {}
 
     [[nodiscard]] auto username() const noexcept -> std::string_view override;
     [[nodiscard]] auto check(auth::Permission permission) const
         -> Result override;
     [[nodiscard]] auto request() const noexcept
         -> std::optional<std::reference_wrapper<GeneralRequest>> override;
-    [[nodiscard]] auto vocbase() const noexcept
-        -> std::optional<std::reference_wrapper<TRI_vocbase_t>> override;
 
     GeneralRequest* _request{nullptr};
-    TRI_vocbase_t* _vocbase{nullptr};
   };
 
   // Classic, arangodb-internal authorization, based on permissions in _users.
@@ -113,10 +103,9 @@ struct AuthMode {
     std::string const _username;
     bool const _apiHardened{};
     GeneralRequest& _request;
-    TRI_vocbase_t& _vocbase;
 
     Classic(auth::UserManager& userManager, std::string username,
-            bool apiHardened, GeneralRequest& req, TRI_vocbase_t& vb);
+            bool apiHardened, GeneralRequest& req);
 
     [[nodiscard]] auto username() const noexcept -> std::string_view override;
 
@@ -125,8 +114,6 @@ struct AuthMode {
 
     [[nodiscard]] auto request() const noexcept
         -> std::optional<std::reference_wrapper<GeneralRequest>> override;
-    [[nodiscard]] auto vocbase() const noexcept
-        -> std::optional<std::reference_wrapper<TRI_vocbase_t>> override;
 
    protected:
     // has _system RW access
@@ -140,17 +127,15 @@ struct AuthMode {
     std::string const _username;
     std::string const _jwtToken;
     GeneralRequest& _request;
-    TRI_vocbase_t& _vocbase;
 
     Rbac(AuthenticationFeature& authenticationFeature,
          rbac::Service& rbacService, std::string username, std::string jwtToken,
-         GeneralRequest& req, TRI_vocbase_t& vb)
+         GeneralRequest& req)
         : _authenticationFeature(authenticationFeature),
           _rbacService(rbacService),
           _username(std::move(username)),
           _jwtToken(std::move(jwtToken)),
-          _request(req),
-          _vocbase(vb) {}
+          _request(req) {}
 
     [[nodiscard]] auto username() const noexcept -> std::string_view override;
 
@@ -159,8 +144,6 @@ struct AuthMode {
 
     [[nodiscard]] auto request() const noexcept
         -> std::optional<std::reference_wrapper<GeneralRequest>> override;
-    [[nodiscard]] auto vocbase() const noexcept
-        -> std::optional<std::reference_wrapper<TRI_vocbase_t>> override;
   };
 
   // Authentication is on, but the current user is without authentication.
@@ -168,10 +151,8 @@ struct AuthMode {
   struct Unauthenticated : IAuth {
     std::string _username;
     GeneralRequest& _request;
-    TRI_vocbase_t& _vocbase;
 
-    explicit Unauthenticated(std::string username, GeneralRequest& req,
-                             TRI_vocbase_t& vb);
+    explicit Unauthenticated(std::string username, GeneralRequest& req);
 
     [[nodiscard]] auto username() const noexcept -> std::string_view override;
 
@@ -180,18 +161,14 @@ struct AuthMode {
 
     [[nodiscard]] auto request() const noexcept
         -> std::optional<std::reference_wrapper<GeneralRequest>> override;
-    [[nodiscard]] auto vocbase() const noexcept
-        -> std::optional<std::reference_wrapper<TRI_vocbase_t>> override;
   };
 
   // Authentication is disabled, barely any restrictions.
   struct Disabled : IAuth {
     std::string _username;
     GeneralRequest& _request;
-    TRI_vocbase_t& _vocbase;
 
-    explicit Disabled(std::string username, GeneralRequest& req,
-                      TRI_vocbase_t& vb);
+    explicit Disabled(std::string username, GeneralRequest& req);
 
     [[nodiscard]] auto username() const noexcept -> std::string_view override;
 
@@ -200,8 +177,6 @@ struct AuthMode {
 
     [[nodiscard]] auto request() const noexcept
         -> std::optional<std::reference_wrapper<GeneralRequest>> override;
-    [[nodiscard]] auto vocbase() const noexcept
-        -> std::optional<std::reference_wrapper<TRI_vocbase_t>> override;
   };
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
@@ -226,8 +201,6 @@ struct AuthMode {
         -> Result override;
     [[nodiscard]] auto request() const noexcept
         -> std::optional<std::reference_wrapper<GeneralRequest>> override;
-    [[nodiscard]] auto vocbase() const noexcept
-        -> std::optional<std::reference_wrapper<TRI_vocbase_t>> override;
   };
 #define MOCKABLE , Mockable
 #else
