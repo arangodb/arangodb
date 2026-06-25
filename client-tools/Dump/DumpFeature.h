@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -27,6 +27,7 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/BoundedChannel.h"
 #include "Basics/Result.h"
+#include "Dump/DumpFeatureOptions.h"
 #include "Maskings/Maskings.h"
 #include "Utils/ClientManager.h"
 #include "Utils/ClientTaskQueue.h"
@@ -65,36 +66,7 @@ class DumpFeature final : public application_features::ApplicationFeature {
   void reportError(Result const& error);
 
   /// @brief Holds configuration data to pass between methods
-  struct Options {
-    std::vector<std::string> collections{};
-    // Collections in here, will be ignored during the dump
-    std::vector<std::string> collectionsToBeIgnored{};
-    std::vector<std::string> shards{};
-    std::string outputPath{};
-    std::string maskingsFile{};
-    uint64_t docsPerBatch{1000 * 10};
-    uint64_t initialChunkSize{1024 * 1024 * 8};
-    uint64_t maxChunkSize{1024 * 1024 * 64};
-    // actual default value depends on the number of available cores
-    uint32_t threadCount{2};
-    bool allDatabases{false};
-    bool clusterMode{false};
-    bool dumpData{true};
-    bool dumpViews{true};
-    bool force{false};
-    bool ignoreDistributeShardsLikeErrors{false};
-    bool includeSystemCollections{false};
-    bool overwrite{false};
-    bool progress{true};
-    bool useGzipForStorage{true};
-    bool useVPack{false};
-    bool useParalleDump{true};
-    bool splitFiles{false};
-    std::uint64_t dbserverWorkerThreads{5};
-    std::uint64_t dbserverPrefetchBatches{5};
-    std::uint64_t localWriterThreads{5};
-    std::uint64_t localNetworkThreads{4};
-  };
+  using Options = DumpFeatureOptions;
 
   /// @brief Stores stats about the overall dump progress
   struct Stats {
