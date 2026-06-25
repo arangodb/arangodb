@@ -931,8 +931,7 @@ namespace {
 
 struct RocksDBAsyncLogWriteBatcherMetricsImpl
     : replication2::storage::rocksdb::AsyncLogWriteBatcherMetrics {
-  explicit RocksDBAsyncLogWriteBatcherMetricsImpl(
-      metrics::IRegistry& metrics) {
+  explicit RocksDBAsyncLogWriteBatcherMetricsImpl(metrics::IRegistry& metrics) {
     using namespace arangodb::replication2::storage::rocksdb;
     numWorkerThreadsWaitForSync = &metrics.add(
         arangodb_replication2_rocksdb_num_persistor_worker{}.withLabel("ws",
