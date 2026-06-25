@@ -689,7 +689,9 @@ async<Result> RestHandler::checkUserCanAccess() const {
   TRI_ASSERT(vc != nullptr)
       << "no vocbase context in request: " << this->name();
   // deny access to database with NONE
-  if (canAccess && vc->databaseAuthLevel() == auth::Level::NONE) {
+  if (canAccess &&
+      vc->canUseDatabase(request()->databaseName(), DatabaseAccessLevel::Read)
+          .fail()) {
     canAccess = false;
     LOG_TOPIC("0898a", TRACE, Logger::AUTHORIZATION)
         << "Access forbidden to " << path;

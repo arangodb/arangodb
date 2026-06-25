@@ -118,16 +118,6 @@ async<Result> RestUsersHandler::checkUserCanAccess() const {
   constexpr std::string_view pathPrefixApiUser("/_api/user/");
 
   auto const& path = _request->requestPath();
-  auto const& username = _request->user();
-
-  auto vc = basics::downCast<VocbaseContext>(_request->requestContext());
-  TRI_ASSERT(vc != nullptr);
-
-  if (_request->requestType() == RequestType::POST && !username.empty() &&
-      path.starts_with(std::string{pathPrefixApiUser} + username + '/')) {
-    vc->forceReadOnly();
-    co_return Result{};
-  }
 
   if (_request->authenticated() && path.starts_with(pathPrefixApiUser)) {
     co_return Result{};
