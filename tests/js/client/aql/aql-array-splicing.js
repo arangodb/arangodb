@@ -57,8 +57,21 @@ function splicingSuite () {
     },
     testArraySplicingNull : function() {
       let query = `LET a = null RETURN [...a]`;
-      let res = db._query(query).toArray();
-      assertEqual([[null]], res);
+      let data = db._query(query).data;
+      assertEqual([[]], data.result);
+      assertEqual(1, data.extra.warnings.length);
+      assertEqual(errors.ERROR_QUERY_ARRAY_EXPECTED.code,
+        data.extra.warnings[0].code);
+      assertTrue(data.extra.warnings[0].message.includes('array splice'));
+    },
+    testArraySplicingInlineNull : function() {
+      let query = `RETURN [1, ...null, 3]`;
+      let data = db._query(query).data;
+      assertEqual([[1, 3]], data.result);
+      assertEqual(1, data.extra.warnings.length);
+      assertEqual(errors.ERROR_QUERY_ARRAY_EXPECTED.code,
+        data.extra.warnings[0].code);
+      assertTrue(data.extra.warnings[0].message.includes('array splice'));
     },
     testArraySplicingObject : function() {
       let query = `LET a = {} RETURN [...a]`;
@@ -67,6 +80,16 @@ function splicingSuite () {
       assertEqual(1, data.extra.warnings.length);
       assertEqual(errors.ERROR_QUERY_ARRAY_EXPECTED.code,
         data.extra.warnings[0].code);
+    },
+    testArraySplicingRange : function() {
+      let query = `LET x = 1..3 RETURN [...x]`;
+      let res = db._query(query).toArray();
+      assertEqual([[1, 2, 3]], res);
+    },
+    testArraySplicingMultipleRanges : function() {
+      let query = `LET x = 1..3 LET y = 4..6 RETURN [...x, ...y]`;
+      let res = db._query(query).toArray();
+      assertEqual([[1, 2, 3, 4, 5, 6]], res);
     },
     testArraySplicingNested : function() {
       let query = `LET a = [[1,2,3],[4]] RETURN [...[...a]]`;

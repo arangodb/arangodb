@@ -20,6 +20,21 @@
 
   `OPTIONS { order: "weighted", weightAttribute: "Data.Weight" }
 
+* COR-688: BugFix - Fixed inconsistent handling of null in array and object spread operations. 
+  null spread operands now produce query warnings, matching the behavior of other unsupported operand types.
+
+* COR-553: Added AQL array `ALL`/`ANY`/`NONE`/`AT LEAST` support for the `LIKE`
+  operator, e.g. `["foo", "bar"] ANY LIKE "b%"` and
+  `["foo", "bar", "baz"] AT LEAST(2) LIKE "b%"`.
+
+* COR-379: Bind Parameters in Edge collection types.
+
+* COR-380: Bind Parameters in Vertex collection types.
+
+* COR-458: Supports dynamic object composition similar to JavaScript object spreading, 
+  enabling efficient object merging and extension with minimal effort, and now follows 
+  a last-key-wins strategy instead of the previous first-key-wins behavior.
+  
 * Upgraded included rclone to v1.74.3 with go1.25.11 and non-vulnerable
   dependencies.
 
@@ -33,6 +48,13 @@
 * COR-522: Use Distribute on repeated smart edge join.
 
 * COR-299: Upgrade ScatterNode to DistributeNode if shardkey is known
+
+* COR-539: The geo index optimizer and iterators now support
+  `GEO_CONTAINS` with the indexed field as the first argument
+  (e.g. `FILTER GEO_CONTAINS(doc.geometry, @shape)`), in addition to the
+  existing `GEO_CONTAINS(@shape, doc.geometry)` form. Previously such
+  queries did not use the geo index and were executed as a full collection
+  scan.
 
 * COR-540: When spreading arrays, register a warning when input is neither an array nor null.
 

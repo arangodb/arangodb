@@ -519,6 +519,13 @@ AstNode* transformOutputVariables(Parser* parser, AstNode const* names) {
 %token T_OR "or operator"
 
 %token T_NOT_IN "not in operator"
+%token T_NOT_LIKE "not like operator"
+%token T_ANY_LIKE "any like operator"
+%token T_ALL_LIKE "all like operator"
+%token T_NONE_LIKE "none like operator"
+%token T_ANY_NOT_LIKE "any not like operator"
+%token T_ALL_NOT_LIKE "all not like operator"
+%token T_NONE_NOT_LIKE "none not like operator"
 %token T_REGEX_MATCH "~= operator"
 %token T_REGEX_NON_MATCH "~! operator"
 
@@ -578,7 +585,8 @@ AstNode* transformOutputVariables(Parser* parser, AstNode const* names) {
 %nonassoc T_OUTBOUND T_INBOUND T_ANY T_ALL T_NONE 
 %left T_AT_LEAST
 %left T_EQ T_NE T_LIKE T_REGEX_MATCH T_REGEX_NON_MATCH
-%left T_IN T_NOT T_NOT_IN 
+%left T_IN T_NOT T_NOT_IN T_NOT_LIKE T_ANY_LIKE T_ALL_LIKE T_NONE_LIKE
+%left T_ANY_NOT_LIKE T_ALL_NOT_LIKE T_NONE_NOT_LIKE
 %left T_LT T_GT T_LE T_GE
 %left T_RANGE
 %left T_PLUS T_MINUS
@@ -1137,6 +1145,12 @@ pattern_label:
     T_COLON T_STRING {
         auto const& resolver = parser->query().resolver();
         $$ = parser->ast()->createNodeDataSource(resolver, {$2.value, $2.length}, arangodb::AccessMode::Type::READ, true, false);
+    }
+  | T_COLON T_DATA_SOURCE_PARAMETER {
+        // a collection bind parameter (@@name) injects the collection name used
+        // as a label / edge type. it is resolved during bind parameter injection.
+        std::string_view name($2.value, $2.length);
+        $$ = parser->ast()->createNodeParameterDatasource(name);
     }
 
 %type <node> pattern_maybe_where_expression;
@@ -2100,10 +2114,10 @@ operator_binary:
   | expression T_NOT_IN expression {
       $$ = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_NIN, $1, $3);
     }
-  | expression T_NOT T_LIKE expression {
+  | expression T_NOT_LIKE expression {
       AstNode* arguments = parser->ast()->createNodeArray(2);
       arguments->addMember($1);
-      arguments->addMember($4);
+      arguments->addMember($3);
       AstNode* expression = parser->ast()->createNodeFunctionCall("LIKE", arguments, false);
       $$ = parser->ast()->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_NOT, expression);
     }
@@ -2194,6 +2208,38 @@ operator_binary:
   | expression T_AT_LEAST T_OPEN expression T_CLOSE T_NOT_IN expression {
       AstNode* quantifier = parser->ast()->createNodeQuantifier(Quantifier::Type::kAtLeast, $4);
       $$ = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN, $1, $7, quantifier);
+    }
+  | expression T_ANY_LIKE expression {
+      $$ = parser->ast()->createNodeArrayLikeOperator(
+          $1, $3, parser->ast()->createNodeQuantifier(Quantifier::Type::kAny), false);
+    }
+  | expression T_ALL_LIKE expression {
+      $$ = parser->ast()->createNodeArrayLikeOperator(
+          $1, $3, parser->ast()->createNodeQuantifier(Quantifier::Type::kAll), false);
+    }
+  | expression T_NONE_LIKE expression {
+      $$ = parser->ast()->createNodeArrayLikeOperator(
+          $1, $3, parser->ast()->createNodeQuantifier(Quantifier::Type::kNone), false);
+    }
+  | expression T_ANY_NOT_LIKE expression {
+      $$ = parser->ast()->createNodeArrayLikeOperator(
+          $1, $3, parser->ast()->createNodeQuantifier(Quantifier::Type::kAny), true);
+    }
+  | expression T_ALL_NOT_LIKE expression {
+      $$ = parser->ast()->createNodeArrayLikeOperator(
+          $1, $3, parser->ast()->createNodeQuantifier(Quantifier::Type::kAll), true);
+    }
+  | expression T_NONE_NOT_LIKE expression {
+      $$ = parser->ast()->createNodeArrayLikeOperator(
+          $1, $3, parser->ast()->createNodeQuantifier(Quantifier::Type::kNone), true);
+    }
+  | expression T_AT_LEAST T_OPEN expression T_CLOSE T_LIKE expression {
+      AstNode* quantifier = parser->ast()->createNodeQuantifier(Quantifier::Type::kAtLeast, $4);
+      $$ = parser->ast()->createNodeArrayLikeOperator($1, $7, quantifier, false);
+    }
+  | expression T_AT_LEAST T_OPEN expression T_CLOSE T_NOT_LIKE expression {
+      AstNode* quantifier = parser->ast()->createNodeQuantifier(Quantifier::Type::kAtLeast, $4);
+      $$ = parser->ast()->createNodeArrayLikeOperator($1, $7, quantifier, true);
     }
   ;
 
@@ -2523,6 +2569,9 @@ object_element:
       // [ attribute-name-expression ] : attribute-value
       parser->pushObjectElement($2, $5);
     }
+  | T_ELLIPSIS expression {
+      parser->pushObjectSplice($2);
+    }
   ;
 
 array_filter_operator:
@@ -2722,6 +2771,7 @@ reference:
         $$ = $2;
       }
     }
+  
   | T_OPEN {
       parser->lazyConditions().flushAssignments();
 

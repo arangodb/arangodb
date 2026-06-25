@@ -96,13 +96,14 @@ using namespace arangodb;
 //      FOR d IN coll
 //        FILTER GEO_INTERSECTS(obj, d.geo)
 //        RETURN d
-// In principle, there could also be:
-//  (4) Find everything in the database, which contains a given object:
+//  (4) Find everything in the database whose indexed geometry contains a
+//      given object (point, polygon, ...):
 //      FOR d IN coll
 //        FILTER GEO_CONTAINS(d.geo, obj)
 //        RETURN d
-//      but we do not support this. It will be executed by steam without
-//      using the geo index.
+//
+//  (Previously (4) was described as unsupported; the geo index optimizer and
+//   iterator now handle it using FilterType::IS_CONTAINED.)
 //
 // All of these can get a LIMIT clause and we can take advantage of this
 // knowledge when the LIMIT is given in the QueryParams. Furthermore,
@@ -271,6 +272,8 @@ class RDBNearIterator final : public IndexIterator {
               TRI_ASSERT(res.ok());  // this should never fail here
               if (res.fail() ||
                   (ft == geo::FilterType::CONTAINS && !filter.contains(test)) ||
+                  (ft == geo::FilterType::IS_CONTAINED &&
+                   !test.contains(filter)) ||
                   (ft == geo::FilterType::INTERSECTS &&
                    !filter.intersects(test))) {
                 result = false;
@@ -308,6 +311,8 @@ class RDBNearIterator final : public IndexIterator {
               TRI_ASSERT(res.ok());  // this should never fail here
               if (res.fail() ||
                   (ft == geo::FilterType::CONTAINS && !filter.contains(test)) ||
+                  (ft == geo::FilterType::IS_CONTAINED &&
+                   !test.contains(filter)) ||
                   (ft == geo::FilterType::INTERSECTS &&
                    !filter.intersects(test))) {
                 result = false;
@@ -487,6 +492,8 @@ class RDBCoveringIterator final : public IndexIterator {
             TRI_ASSERT(res.ok());  // this should never fail here
             if (res.fail() ||
                 (ft == geo::FilterType::CONTAINS && !filter.contains(test)) ||
+                (ft == geo::FilterType::IS_CONTAINED &&
+                 !test.contains(filter)) ||
                 (ft == geo::FilterType::INTERSECTS &&
                  !filter.intersects(test))) {
               result = false;
@@ -522,6 +529,8 @@ class RDBCoveringIterator final : public IndexIterator {
               TRI_ASSERT(res.ok());  // this should never fail here
               if (res.fail() ||
                   (ft == geo::FilterType::CONTAINS && !filter.contains(test)) ||
+                  (ft == geo::FilterType::IS_CONTAINED &&
+                   !test.contains(filter)) ||
                   (ft == geo::FilterType::INTERSECTS &&
                    !filter.intersects(test))) {
                 result = false;
@@ -755,12 +764,13 @@ std::unique_ptr<IndexIterator> RocksDBGeoIndex::iteratorForCondition(
 
   // First check if we can use the simpler method with a covering of the
   // target object:
-  // If we have a `GEO_CONTAINS` or `GEO_INTERSECTS` clause but no
-  // restriction on the `GEO_DISTANCE` and no sorting of results by
-  // `GEO_DISTANCE`, we use the simpler method:
+  // If we have a `GEO_CONTAINS` / `GEO_INTERSECTS` / inverted `GEO_CONTAINS`
+  // clause but no restriction on the `GEO_DISTANCE` and no sorting of results
+  // by `GEO_DISTANCE`, we use the simpler method:
   if (!params.sorted &&
       (params.filterType == geo::FilterType::CONTAINS ||
-       params.filterType == geo::FilterType::INTERSECTS) &&
+       params.filterType == geo::FilterType::INTERSECTS ||
+       params.filterType == geo::FilterType::IS_CONTAINED) &&
       !params.distanceRestricted) {
     LOG_TOPIC("54612", DEBUG, Logger::AQL)
         << "Using RDBCoveringIterator for geo index query: "
@@ -778,7 +788,8 @@ std::unique_ptr<IndexIterator> RocksDBGeoIndex::iteratorForCondition(
     // centroid is not in the circumcircle of our bounding box.
     TRI_ASSERT(!params.filterShape.empty());
     params.filterShape.updateBounds(params);
-  } else if (params.filterType == geo::FilterType::INTERSECTS) {
+  } else if (params.filterType == geo::FilterType::INTERSECTS ||
+             params.filterType == geo::FilterType::IS_CONTAINED) {
     // We need to set the origin still:
     S2LatLng ll(params.filterShape.centroid());
     params.origin = ll;
