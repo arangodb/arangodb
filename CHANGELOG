@@ -1,5 +1,7 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
+* COR-688: BugFix - Fixed inconsistent handling of null in array and object spread operations. 
+  null spread operands now produce query warnings, matching the behavior of other unsupported operand types.
 
 * COR-553: Added AQL array `ALL`/`ANY`/`NONE`/`AT LEAST` support for the `LIKE`
   operator, e.g. `["foo", "bar"] ANY LIKE "b%"` and

@@ -70,10 +70,23 @@ function objectSplicingSuite () {
       assertEqual(errors.ERROR_QUERY_OBJECT_EXPECTED.code,
         data.extra.warnings[0].code);
     },
-    testObjectSplicingNullNoOp: function () {
+    testObjectSplicingNull: function () {
       let query = `LET x = null RETURN { ...x }`;
-      let res = db._query(query).toArray();
-      assertEqual([{}], res);
+      let data = db._query(query).data;
+      assertEqual([{}], data.result);
+      assertEqual(1, data.extra.warnings.length);
+      assertEqual(errors.ERROR_QUERY_OBJECT_EXPECTED.code,
+        data.extra.warnings[0].code);
+      assertTrue(data.extra.warnings[0].message.includes('object splice'));
+    },
+    testObjectSplicingInlineNull: function () {
+      let query = `RETURN { a: 1, ...null, c: 3 }`;
+      let data = db._query(query).data;
+      assertEqual([{ a: 1, c: 3 }], data.result);
+      assertEqual(1, data.extra.warnings.length);
+      assertEqual(errors.ERROR_QUERY_OBJECT_EXPECTED.code,
+        data.extra.warnings[0].code);
+      assertTrue(data.extra.warnings[0].message.includes('object splice'));
     },
     testObjectSplicingEmptyObject: function () {
       let query = `LET o = {} RETURN { ...o, x: 1 }`;
