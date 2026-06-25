@@ -65,7 +65,7 @@
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/HistogramBuilder.h"
 #include "Metrics/LogScale.h"
-#include "Metrics/MetricsFeature.h"
+#include "Metrics/IRegistry.h"
 #include "Replication2/Methods.h"
 #include "Replication2/AgencyCollectionSpecification.h"
 #include "Replication2/AgencyCollectionSpecificationInspectors.h"
@@ -467,7 +467,7 @@ ClusterInfo::ClusterInfo(application_features::ApplicationServer& server,
                          AgencyCache& agencyCache,
                          AgencyCallbackRegistry& agencyCallbackRegistry,
                          ErrorCode syncerShutdownCode,
-                         metrics::MetricsFeature& metrics)
+                         metrics::IRegistry& metricsRegistry)
     : _server(server),
       _clusterFeature(server.getFeature<ClusterFeature>()),
       _agency(server),
@@ -475,12 +475,12 @@ ClusterInfo::ClusterInfo(application_features::ApplicationServer& server,
       _agencyCallbackRegistry(agencyCallbackRegistry),
       _rebootTracker(SchedulerFeature::SCHEDULER),
       _syncerShutdownCode(syncerShutdownCode),
-      _memoryUsage(
-          metrics.addShared(arangodb_internal_cluster_info_memory_usage{})),
-      _lpTimer(metrics.add(arangodb_load_plan_runtime{})),
-      _lcTimer(metrics.add(arangodb_load_current_runtime{})),
+      _memoryUsage(metricsRegistry.add(
+          arangodb_internal_cluster_info_memory_usage{})),
+      _lpTimer(metricsRegistry.add(arangodb_load_plan_runtime{})),
+      _lcTimer(metricsRegistry.add(arangodb_load_current_runtime{})),
       _metadataMetrics(std::nullopt),
-      _resourceMonitor(*_memoryUsage),
+      _resourceMonitor(_memoryUsage),
       _servers(_resourceMonitor),
       _serverAliases(_resourceMonitor),
       _serverAdvertisedEndpoints(_resourceMonitor),
@@ -538,7 +538,7 @@ ClusterInfo::ClusterInfo(application_features::ApplicationServer& server,
 #endif
 
   if (ServerState::instance()->isCoordinator()) {
-    _metadataMetrics.emplace(metrics);
+    _metadataMetrics.emplace(metricsRegistry);
   }
 }
 
@@ -6356,21 +6356,23 @@ auto ClusterInfo::getReplicatedLogPlanSpecification(replication2::LogId id)
   return it->second;
 }
 
-ClusterInfo::MetadataMetrics::MetadataMetrics(metrics::MetricsFeature& metrics)
-    : numberOfShards(metrics.add(arangodb_metadata_number_of_shards{})),
+ClusterInfo::MetadataMetrics::MetadataMetrics(
+    metrics::IRegistry& metricsRegistry)
+    : numberOfShards(metricsRegistry.add(arangodb_metadata_number_of_shards{})),
       numberOfCollections(
-          metrics.add(arangodb_metadata_number_of_collections{})),
-      numberOfDatabases(metrics.add(arangodb_metadata_number_of_databases{})),
+          metricsRegistry.add(arangodb_metadata_number_of_collections{})),
+      numberOfDatabases(
+          metricsRegistry.add(arangodb_metadata_number_of_databases{})),
       totalNumberOfShards(
-          metrics.add(arangodb_metadata_total_number_of_shards{})),
+          metricsRegistry.add(arangodb_metadata_total_number_of_shards{})),
       numberOutOfSyncShards(
-          metrics.add(arangodb_metadata_number_out_of_sync_shards{})),
-      numberNotReplicatedShards(
-          metrics.add(arangodb_metadata_number_not_replicated_shards{})),
+          metricsRegistry.add(arangodb_metadata_number_out_of_sync_shards{})),
+      numberNotReplicatedShards(metricsRegistry.add(
+          arangodb_metadata_number_not_replicated_shards{})),
       numberFollowerShards(
-          metrics.add(arangodb_metadata_number_follower_shards{})),
-      shardFollowersOutOfSync(
-          metrics.add(arangodb_metadata_shard_followers_out_of_sync_number{})) {
+          metricsRegistry.add(arangodb_metadata_number_follower_shards{})),
+      shardFollowersOutOfSync(metricsRegistry.add(
+          arangodb_metadata_shard_followers_out_of_sync_number{})) {
   // TODO We should expose these on a single server as well, but that can't
   //      happen in the ClusterInfo.
   TRI_ASSERT(ServerState::instance()->isCoordinator())

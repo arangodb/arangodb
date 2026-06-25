@@ -40,7 +40,7 @@ class CommunicationFeaturePhase;
 class DatabaseFeaturePhase;
 }  // namespace application_features
 namespace metrics {
-class MetricsFeature;
+struct IRegistry;
 }
 namespace network {
 class ConnectionPool;
@@ -58,7 +58,7 @@ class ClusterFeature : public application_features::ApplicationFeature {
   static constexpr std::string_view name() noexcept { return "Cluster"; }
 
   explicit ClusterFeature(application_features::ApplicationServer& server,
-                          metrics::MetricsFeature& metrics);
+                          metrics::IRegistry& metricsRegistry);
   ~ClusterFeature();
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -229,7 +229,7 @@ class ClusterFeature : public application_features::ApplicationFeature {
 
  private:
   ClusterFeature(application_features::ApplicationServer& server,
-                 metrics::MetricsFeature& metrics, DatabaseFeature& database,
+                 metrics::IRegistry& metricsRegistry, DatabaseFeature& database,
                  std::type_index registration);
   void reportRole(ServerState::RoleEnum);
   void scheduleConnectivityCheck(std::uint32_t inSeconds);
@@ -243,7 +243,7 @@ class ClusterFeature : public application_features::ApplicationFeature {
   std::unique_ptr<AgencyCache> _agencyCache;
   uint64_t _heartbeatInterval = 0;
   std::unique_ptr<AgencyCallbackRegistry> _agencyCallbackRegistry;
-  metrics::MetricsFeature& _metrics;
+  metrics::IRegistry& _metricsRegistry;
   metrics::Histogram<metrics::LogScale<uint64_t>>& _agency_comm_request_time_ms;
   std::unique_ptr<network::ConnectionPool> _asyncAgencyCommPool;
   metrics::Counter* _followersDroppedCounter = nullptr;
