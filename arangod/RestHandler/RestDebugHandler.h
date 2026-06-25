@@ -31,6 +31,9 @@ class RestDebugHandler : public arangodb::RestBaseHandler {
   RestDebugHandler(application_features::ApplicationServer&, GeneralRequest*,
                    GeneralResponse*);
 
+ protected:
+  async<Result> checkUserCanAccess() const override;
+
  public:
   char const* name() const override final { return "RestDebugHandler"; }
   RequestLane lane() const override final { return RequestLane::CLIENT_FAST; }

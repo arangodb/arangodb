@@ -39,6 +39,8 @@
 #include <velocypack/Collection.h>
 
 #include <string_view>
+#include <Basics/DownCast.h>
+#include <RestServer/VocbaseContext.h>
 
 namespace {
 
@@ -110,6 +112,18 @@ RestStatus RestUsersHandler::execute() {
       generateError(ResponseCode::BAD, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
       return RestStatus::DONE;
   }
+}
+
+async<Result> RestUsersHandler::checkUserCanAccess() const {
+  constexpr std::string_view pathPrefixApiUser("/_api/user/");
+
+  auto const& path = _request->requestPath();
+
+  if (_request->authenticated() && path.starts_with(pathPrefixApiUser)) {
+    co_return Result{};
+  }
+
+  co_return co_await RestBaseHandler::checkUserCanAccess();
 }
 
 /// helper to generate a compliant response for individual user requests

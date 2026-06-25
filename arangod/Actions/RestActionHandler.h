@@ -42,6 +42,9 @@ class RestActionHandler : public RestVocbaseBaseHandler {
   RestStatus execute() override;
   void cancel() override;
 
+ protected:
+  async<Result> checkUserCanAccess() const override;
+
  private:
   // executes an action
   void executeAction();
