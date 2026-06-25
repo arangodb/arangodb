@@ -56,6 +56,26 @@ const {assertEqual} = jsunity.jsUnity.assertions;
 
 const db = require('internal').db;
 const graphModule = require('@arangodb/general-graph');
+const versionHas = require('@arangodb/test-helper').versionHas;
+
+const isInstrumented = versionHas('asan') || versionHas('tsan') || versionHas('coverage');
+const queryTimeoutFactor = isInstrumented ? 5 : 1;
+
+function withTimeout(connection, factor, cb) {
+  const oldTimeout = connection.timeout();
+  try {
+    try { connection.timeout(oldTimeout * factor); } catch (err) {}
+    return cb();
+  } finally {
+    try { connection.timeout(oldTimeout); } catch (err) {}
+  }
+}
+
+function cleanup(gn, vn, en) {
+    try { graphModule._drop(gn, true); } catch (err) {}
+    try { db._drop(vn); } catch (err) {}
+    try { db._drop(en); } catch (err) {}
+}
 
 // Recursion depth of the fatal pop() call; must exceed the scheduler thread's
 // stack budget. 1,000,000 overflows comfortably across stack-size/optimization
@@ -75,29 +95,34 @@ function bfsWideFanoutSuite() {
 
     return {
         setUpAll: function () {
+            cleanup(gn, vn, en);
             graphModule._create(gn, [graphModule._relation(en, [vn], [vn])], []);
 
             db[vn].insert({_key: 'hub'});
             const batch = 100 * 1000;
-            for (let start = 0; start < size; start += batch) {
-                const end = Math.min(start + batch, size) - 1;
-                db._query('FOR i IN @start..@end INSERT {_key: CONCAT("v", i)} INTO @@v',
-                    {start: start, end: end, '@v': vn});
-                db._query('FOR i IN @start..@end ' +
-                    'INSERT {_from: @hub, _to: CONCAT(@vp, i)} INTO @@e',
-                    {start: start, end: end, hub: hub, vp: vn + '/v', '@e': en});
-            }
+            withTimeout(db._connection, queryTimeoutFactor, function () {
+                for (let start = 0; start < size; start += batch) {
+                    const end = Math.min(start + batch, size) - 1;
+                    db._query('FOR i IN @start..@end INSERT {_key: CONCAT("v", i)} INTO @@v',
+                        {start: start, end: end, '@v': vn});
+                    db._query('FOR i IN @start..@end ' +
+                        'INSERT {_from: @hub, _to: CONCAT(@vp, i)} INTO @@e',
+                        {start: start, end: end, hub: hub, vp: vn + '/v', '@e': en});
+                }
+            });
         },
 
         tearDownAll: function () {
-            graphModule._drop(gn, true);
+            cleanup(gn, vn, en);
         },
 
         // Used to overflow the stack in CursorFifoQueue::pop() and crash the server.
         testBfsWideFanoutDoesNotOverflowStack: function () {
-            const result = db._query(
-                'FOR v IN 0..@d OUTBOUND @start GRAPH @g OPTIONS {order: "bfs"} RETURN v',
-                {d: maxDepth, start: hub, g: gn}).toArray();
+            const result = withTimeout(db._connection, queryTimeoutFactor, function () {
+                return db._query(
+                    'FOR v IN 0..@d OUTBOUND @start GRAPH @g OPTIONS {order: "bfs"} RETURN v',
+                    {d: maxDepth, start: hub, g: gn}).toArray();
+            });
             // hub (depth 0) + every leaf (depth 1); leaves have no outgoing edges.
             assertEqual(1 + size, result.length);
         }
@@ -118,24 +143,29 @@ function dfsDeepChainSuite() {
 
     return {
         setUpAll: function () {
+            cleanup(gn, vn, en);
             graphModule._create(gn, [graphModule._relation(en, [vn], [vn])], []);
 
             // vertices v0 .. v{size}, edges vi -> v{i+1}
-            db._query('FOR i IN 0..2 INSERT {_key: CONCAT("v", i)} INTO @@v',
-                {'@v': vn});
-            db._query('FOR i IN 0..2 INSERT {_from: CONCAT(@vp, i), _to: CONCAT(@vp, (i + 1)%@s)} INTO @@e',
-                {s: 3, vp: vn + '/v', '@e': en});
+            withTimeout(db._connection, queryTimeoutFactor, function () {
+                db._query('FOR i IN 0..2 INSERT {_key: CONCAT("v", i)} INTO @@v',
+                    {'@v': vn});
+                db._query('FOR i IN 0..2 INSERT {_from: CONCAT(@vp, i), _to: CONCAT(@vp, (i + 1)%@s)} INTO @@e',
+                    {s: 3, vp: vn + '/v', '@e': en});
+            });
         },
 
         tearDownAll: function () {
-            graphModule._drop(gn, true);
+            cleanup(gn, vn, en);
         },
 
         // Used to overflow the stack in CursorLifoQueue::pop() and crash the server.
         testDfsDeepChainDoesNotOverflowStack: function () {
-            const result = db._query(
-                'FOR v IN 0..@d OUTBOUND @start GRAPH @g OPTIONS {order: "dfs", uniqueEdges: "none", uniqueVertices: "none"} RETURN v',
-                {d: maxDepth, start: start, g: gn}).toArray();
+            const result = withTimeout(db._connection, queryTimeoutFactor, function () {
+                return db._query(
+                    'FOR v IN 0..@d OUTBOUND @start GRAPH @g OPTIONS {order: "dfs", uniqueEdges: "none", uniqueVertices: "none"} RETURN v',
+                    {d: maxDepth, start: start, g: gn}).toArray();
+            });
             // The chain v0..v{size} yields size + 1 vertices.
             assertEqual(size + 1, result.length);
         }
