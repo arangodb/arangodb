@@ -475,8 +475,8 @@ ClusterInfo::ClusterInfo(application_features::ApplicationServer& server,
       _agencyCallbackRegistry(agencyCallbackRegistry),
       _rebootTracker(SchedulerFeature::SCHEDULER),
       _syncerShutdownCode(syncerShutdownCode),
-      _memoryUsage(metricsRegistry.add(
-          arangodb_internal_cluster_info_memory_usage{})),
+      _memoryUsage(
+          metricsRegistry.add(arangodb_internal_cluster_info_memory_usage{})),
       _lpTimer(metricsRegistry.add(arangodb_load_plan_runtime{})),
       _lcTimer(metricsRegistry.add(arangodb_load_current_runtime{})),
       _metadataMetrics(std::nullopt),
