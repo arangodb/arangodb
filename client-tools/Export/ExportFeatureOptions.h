@@ -22,38 +22,35 @@
 
 #pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
-#include "Import/ImportFeatureOptions.h"
-#include "Shell/ClientFeature.h"
+#include <velocypack/Builder.h>
 
+#include <cstdint>
 #include <memory>
+#include <string>
+#include <vector>
 
 namespace arangodb {
 
-namespace httpclient {
-class GeneralClientConnection;
-class SimpleHttpClient;
-}  // namespace httpclient
-
-class ImportFeature final : public application_features::ApplicationFeature {
- public:
-  static constexpr std::string_view name() noexcept { return "Import"; }
-
-  ImportFeature(application_features::ApplicationServer& server, int* result);
-  ~ImportFeature();
-
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void validateOptions(
-      std::shared_ptr<options::ProgramOptions> options) override;
-  void prepare() override;
-  void start() override;
-
- private:
-  ErrorCode tryCreateDatabase(ClientFeature& client, std::string const& name);
-
-  std::unique_ptr<httpclient::SimpleHttpClient> _httpClient;
-  ImportFeatureOptions _options;
-  int* _result;
+struct ExportFeatureOptions {
+  std::vector<std::string> collections;
+  std::string customQuery;
+  std::string customQueryFile;
+  std::string customQueryBindVars;
+  std::shared_ptr<VPackBuilder> customQueryBindVarsBuilder;
+  std::string graphName;
+  std::string xgmmlLabelAttribute = "label";
+  std::string typeExport = "jsonl";
+  std::string csvFieldOptions;
+  std::vector<std::string> csvFields;
+  std::string outputDirectory;
+  double customQueryMaxRuntime = 0.0;
+  bool useMaxRuntime = false;
+  bool escapeCsvFormulae = true;
+  bool xgmmlLabelOnly = false;
+  bool overwrite = false;
+  bool progress = true;
+  bool useGzip = false;
+  uint64_t documentsPerBatch = 1000;
 };
 
 }  // namespace arangodb
