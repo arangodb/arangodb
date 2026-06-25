@@ -1,8 +1,7 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
-* COR-552: Added a new AQL string function PARTITION(input, separator [, occurrence]) that splits 
-  a string at the specified occurrence of the separator and returns an array of exactly three strings: the portion before the separator, the separator itself, and the portion after the separator. The optional occurrence parameter defaults to 1 (first match); positive values select the n-th match from the start, negative values select from the end (-1 is the last match).
-  
+* COR-688: BugFix - Fixed inconsistent handling of null in array and object spread operations. 
+  null spread operands now produce query warnings, matching the behavior of other unsupported operand types.
 
 * COR-553: Added AQL array `ALL`/`ANY`/`NONE`/`AT LEAST` support for the `LIKE`
   operator, e.g. `["foo", "bar"] ANY LIKE "b%"` and
@@ -29,6 +28,13 @@
 * COR-522: Use Distribute on repeated smart edge join.
 
 * COR-299: Upgrade ScatterNode to DistributeNode if shardkey is known
+
+* COR-539: The geo index optimizer and iterators now support
+  `GEO_CONTAINS` with the indexed field as the first argument
+  (e.g. `FILTER GEO_CONTAINS(doc.geometry, @shape)`), in addition to the
+  existing `GEO_CONTAINS(@shape, doc.geometry)` form. Previously such
+  queries did not use the geo index and were executed as a full collection
+  scan.
 
 * COR-540: When spreading arrays, register a warning when input is neither an array nor null.
 
