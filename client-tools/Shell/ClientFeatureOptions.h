@@ -46,6 +46,7 @@ struct ClientFeatureOptions {
   bool askJwtSecret = false;
   bool forceJson = false;
   bool compressTransfer = false;
+  bool haveServerPassword = false;
 
   bool allowJwtSecret = false;
   size_t maxNumEndpoints = 1;

@@ -54,20 +54,25 @@ using namespace arangodb::application_features;
 using namespace arangodb::httpclient;
 using namespace arangodb::options;
 
+namespace {
+constexpr size_t DEFAULT_RETRIES = 2;
+}  // anonymous namespace
+
 namespace arangodb {
 
 ClientFeature::ClientFeature(ApplicationServer& server,
                              CommunicationFeaturePhase& comm,
-                             std::type_index registration, bool allowJwtSecret,
-                             size_t maxNumEndpoints, double connectionTimeout,
-                             double requestTimeout)
+                             std::type_index registration,
+                             bool const allowJwtSecret,
+                             size_t const maxNumEndpoints,
+                             double const connectionTimeout,
+                             double const requestTimeout)
     : HttpEndpointProvider(server, registration, name()),
       _comm{comm},
       _console{},
       _retries(DEFAULT_RETRIES),
       _warn(false),
-      _warnConnect(true),
-      _haveServerPassword(false) {
+      _warnConnect(true) {
   _options.endpoints = {Endpoint::defaultEndpoint()};
   _options.maxNumEndpoints = maxNumEndpoints;
   _options.databaseName = StaticStrings::SystemDatabase;
@@ -86,8 +91,6 @@ void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 void ClientFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   ClientOptionsProvider provider;
   provider.validateOptions(options, _options);
-
-  _haveServerPassword = !options->processingResult().touched("server.password");
 
   if (auto res = DatabaseNameValidator::validateName(true, true,
                                                      _options.databaseName);
@@ -168,7 +171,7 @@ void ClientFeature::prepare() {
     readJwtSecret();
   } else if (!_options.jwtSecretFile.empty()) {
     loadJwtSecretFile();
-  } else if (_options.authentication && _haveServerPassword) {
+  } else if (_options.authentication && _options.haveServerPassword) {
     // ask for a password
     readPassword();
   } else if (!_options.jwtToken.empty() && _options.jwtToken == "-") {

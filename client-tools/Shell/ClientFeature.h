@@ -53,10 +53,8 @@ struct SimpleHttpClientParams;
 
 class ClientFeature final : public HttpEndpointProvider {
  public:
-  constexpr static double const DEFAULT_REQUEST_TIMEOUT = 1200.0;
-  constexpr static double const DEFAULT_CONNECTION_TIMEOUT = 5.0;
-  constexpr static size_t const DEFAULT_RETRIES = 2;
-  constexpr static double const LONG_TIMEOUT = 86400.0;
+  constexpr static double DEFAULT_REQUEST_TIMEOUT = 1200.0;
+  constexpr static double DEFAULT_CONNECTION_TIMEOUT = 5.0;
   constexpr static std::string_view name() noexcept { return "Client"; }
 
   ClientFeature(application_features::ApplicationServer& server,
@@ -168,7 +166,6 @@ class ClientFeature final : public HttpEndpointProvider {
 
   bool _warn;
   bool _warnConnect;
-  bool _haveServerPassword;
 };
 
 }  // namespace arangodb

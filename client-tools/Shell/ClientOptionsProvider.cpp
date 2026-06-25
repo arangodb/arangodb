@@ -34,6 +34,10 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "Ssl/ssl-helper.h"
 
+namespace {
+constexpr double LONG_TIMEOUT = 86400.0;
+}  // anonymous namespace
+
 namespace arangodb {
 
 using namespace arangodb::options;
@@ -223,16 +227,18 @@ void ClientOptionsProvider::validateOptions(
     LOG_TOPIC("81598", FATAL, arangodb::Logger::FIXME)
         << "invalid value for --server.connect-timeout, must be >= 0";
     FATAL_ERROR_EXIT();
-  } else if (options.connectionTimeout == 0.0) {
-    options.connectionTimeout = 86400.0;
+  }
+  if (options.connectionTimeout == 0.0) {
+    options.connectionTimeout = LONG_TIMEOUT;
   }
 
   if (options.requestTimeout < 0.0) {
     LOG_TOPIC("fb847", FATAL, arangodb::Logger::FIXME)
         << "invalid value for --server.request-timeout, must be positive";
     FATAL_ERROR_EXIT();
-  } else if (options.requestTimeout == 0.0) {
-    options.requestTimeout = 86400.0;
+  }
+  if (options.requestTimeout == 0.0) {
+    options.requestTimeout = LONG_TIMEOUT;
   }
 
   if (options.maxPacketSize < 1 * 1024 * 1024) {
@@ -253,6 +259,8 @@ void ClientOptionsProvider::validateOptions(
         << "cannot specify both --server.password and jwt secret source";
     FATAL_ERROR_EXIT();
   }
+  options.haveServerPassword =
+      !opts->processingResult().touched("server.password");
 
   if ((options.askJwtSecret || hasJwtSecretFile) &&
       opts->processingResult().touched("server.username")) {
