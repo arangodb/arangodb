@@ -227,7 +227,8 @@ void MaintenanceFeature::initializeMetrics() {
     // This actually is only necessary because of tests
     return;
   }
-  metrics::IRegistry& metricsRegistry = server().getFeature<metrics::MetricsFeature>();
+  metrics::IRegistry& metricsRegistry =
+      server().getFeature<metrics::MetricsFeature>();
 
   _phase1_runtime_msec =
       &metricsRegistry.add(arangodb_maintenance_phase1_runtime_msec{});
@@ -421,7 +422,7 @@ void MaintenanceFeature::stop() {
     while (itWorker->isRunning()) {
       _workerCompletion.cv.wait_for(cLock, std::chrono::milliseconds(10));
     }  // if
-  }    // for
+  }  // for
 }
 
 void MaintenanceFeature::countTimedOutSyncAttempt() {
@@ -701,7 +702,7 @@ std::shared_ptr<Action> MaintenanceFeature::findReadyAction(
           } else {
             ++loop;
           }  // else
-        }    // for
+        }  // for
         if (actions_removed > 0) {
           TRI_ASSERT(_action_done_counter != nullptr);
           _action_done_counter->count(actions_removed);
@@ -809,7 +810,9 @@ arangodb::Result MaintenanceFeature::storeShardError(
     eb.add(StaticStrings::ErrorMessage, VPackValue(failure.errorMessage()));
     eb.add(StaticStrings::ErrorNum, VPackValue(failure.errorNumber()));
     eb.add(VPackValue("indexes"));
-    { VPackArrayBuilder a(&eb); }  // []
+    {
+      VPackArrayBuilder a(&eb);
+    }  // []
     eb.add(VPackValue("servers"));
     {
       VPackArrayBuilder a(&eb);  // [serverId]
