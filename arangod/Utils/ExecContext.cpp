@@ -75,10 +75,6 @@ ExecContext::ExecContext(ConstructorToken, AuthMode authMode,
                          VocbasePtr vocbase)
     : _authMode(std::move(authMode)), _vocbase(std::move(vocbase)) {}
 
-ExecContext::~ExecContext() {
-  // VocbasePtr's deleter automatically releases the vocbase when it goes out
-  // of scope
-}
 /*static*/ std::shared_ptr<ExecContext> ExecContext::create(
     AuthenticationFeature& authenticationFeature, RbacFeature& rbacFeature,
     ServerSecurityFeature const& securityFeature, GeneralRequest& req,

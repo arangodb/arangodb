@@ -64,10 +64,9 @@ class ExecContext {
   ExecContext(ConstructorToken, AuthMode authMode, VocbasePtr vocbase);
   ExecContext(ExecContext const&) = delete;
   ExecContext(ExecContext&&) = delete;
+  virtual ~ExecContext() = default;
 
  public:
-  virtual ~ExecContext();
-
   /// @brief Create an ExecContext from an incoming request with a vocbase.
   /// This is the main factory for creating real ExecContexts.
   /// Superuser JWT requests create a dynamic Superuser context (not the static
