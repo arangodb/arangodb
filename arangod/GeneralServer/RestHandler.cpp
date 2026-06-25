@@ -33,6 +33,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "Futures/coro-helper.h"
 #include "Futures/Utilities.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServerFeature.h"
@@ -441,6 +442,38 @@ auto RestHandler::runHandlerStateMachine() -> futures::Future<futures::Unit> {
   if (_state == HandlerState::FAILED) {
     co_return fail();
   }
+
+  // forward to correct server if necessary
+  bool forwarded;
+  auto res = forwardRequest(forwarded);
+  auto rr = co_await res;
+
+#if 0
+  if (forwarded) {
+    _statistics.SET_SUPERUSER();
+    Result res2 = co_await res;
+    generateResponse(stealResponse(),
+    _sendResponseCallback(
+
+    std::move(res).thenFinal(
+        [self(shared_from_this()), h(std::move(handler)),
+         messageId](futures::Try<Result>&& /*ignored*/) -> void {
+      self->sendResponse(h->stealResponse(),
+                         self->stealRequestStatistics(messageId));
+      re
+        });
+    co_return;
+  }
+#endif
+
+#if 0
+  if (res.hasValue() && res.waitAndGet().fail()) {
+    auto& r = res.waitAndGet();
+    sendErrorResponse(GeneralResponse::responseCode(r.errorNumber()), respType,
+                      messageId, r.errorNumber(), r.errorMessage());
+    co_return;
+  }
+#endif
 
   auto const logScopeGuard =
       LogContext::Accessor::ScopedValue(makeSharedLogContextValue());
