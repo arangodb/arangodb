@@ -44,7 +44,7 @@
 #include "Rest/CommonDefines.h"
 
 namespace arangodb {
-class RequestContext;
+class ExecContext;
 
 using rest::ContentType;
 using rest::EncodingType;
@@ -97,13 +97,13 @@ class GeneralRequest {
   std::string const& jwtToken() const { return _jwtToken; }
   void setJwtToken(std::string token);
 
-  /// @brief the request context depends on the application
-  std::shared_ptr<RequestContext> requestContext() const {
+  /// @brief the execution context (auth, vocbase) associated with this request
+  std::shared_ptr<ExecContext> requestContext() const {
     return _requestContext;
   }
 
-  /// @brief set request context
-  void setRequestContext(std::shared_ptr<RequestContext>);
+  /// @brief set execution context
+  void setRequestContext(std::shared_ptr<ExecContext>);
 
   RequestType requestType() const { return _type; }
 
@@ -260,7 +260,7 @@ class GeneralRequest {
   uint64_t const _messageId;
 
   // request context (might contain vocbase)
-  std::shared_ptr<RequestContext> _requestContext;
+  std::shared_ptr<ExecContext> _requestContext;
 
   double _tokenExpiry;
 

@@ -65,7 +65,7 @@
 #include "Enterprise/VocBase/VirtualClusterSmartEdgeCollection.h"
 #endif
 
-#include "RestServer/VocbaseContext.h"
+#include "Utils/ExecContext.h"
 
 #include <absl/strings/str_cat.h>
 #include "Ssl/jwt.h"
@@ -1721,15 +1721,17 @@ bool Manager::isAuthorized(ManagedTrx const& trx) const {
     // std::string_view)
     return true;
   }
-  auto const* const vocbaseContext = dynamic_cast<VocbaseContext const*>(&exec);
-  TRI_ASSERT(vocbaseContext != nullptr)
+  auto db = exec.vocbase();
+  TRI_ASSERT(db.has_value());
+  auto const databaseName = db.value().get().name();
+  TRI_ASSERT(!databaseName.empty())
       << "This function cannot be called when there's no database context";
-  if (vocbaseContext == nullptr) {
+  if (databaseName.empty()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL,
         "Trying to access a transaction outside of a database context");
   }
-  return isAuthorized(trx, vocbaseContext->database());
+  return isAuthorized(trx, databaseName);
 }
 
 bool Manager::isAuthorized(ManagedTrx const& trx,

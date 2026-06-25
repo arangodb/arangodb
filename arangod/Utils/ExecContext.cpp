@@ -23,7 +23,13 @@
 
 #include "ExecContext.h"
 
+#include "Assertions/ProdAssert.h"
+#include "Auth/Rbac/RbacFeature.h"
 #include "Basics/Result.h"
+#include "GeneralServer/AuthenticationFeature.h"
+#include "GeneralServer/ServerSecurityFeature.h"
+#include "Rest/GeneralRequest.h"
+#include "VocBase/vocbase.h"
 
 #include <ranges>
 
@@ -33,7 +39,8 @@ thread_local std::shared_ptr<ExecContext const> ExecContext::CURRENT = nullptr;
 
 std::shared_ptr<ExecContext const> const ExecContext::Superuser =
     std::make_shared<ExecContext const>(ConstructorToken{},
-                                        AuthMode{AuthMode::Superuser{}});
+                                        AuthMode{AuthMode::Superuser{}},
+                                        VocbasePtr{nullptr});
 
 /// Should always contain a reference to current user context
 ExecContext const& ExecContext::current() {
@@ -42,6 +49,7 @@ ExecContext const& ExecContext::current() {
   }
   return *Superuser;
 }
+
 /// Note that this intentionally returns CURRENT, even if it is a nullptr: This
 /// makes it suitable to set CURRENT in another thread.
 std::shared_ptr<ExecContext const> ExecContext::currentAsShared() {
@@ -55,8 +63,105 @@ std::shared_ptr<ExecContext const> ExecContext::superuserAsShared() {
   return Superuser;
 }
 
-ExecContext::ExecContext(ConstructorToken, AuthMode authMode)
-    : _authMode(std::move(authMode)) {}
+ExecContext::ExecContext(ConstructorToken, AuthMode authMode,
+                         VocbasePtr vocbase)
+    : _authMode(std::move(authMode)), _vocbase(std::move(vocbase)) {}
+
+/*static*/ std::shared_ptr<ExecContext> ExecContext::create(
+    AuthenticationFeature& authenticationFeature, RbacFeature& rbacFeature,
+    ServerSecurityFeature const& securityFeature, GeneralRequest& req,
+    VocbasePtr vocbase) {
+  // Extract raw pointer for AuthMode construction
+  // The VocbasePtr will be moved into ExecContext, which will own the
+  // reference
+  TRI_vocbase_t* vocbasePtr = vocbase.get();
+  TRI_ASSERT(vocbasePtr && !vocbasePtr->isDangling());
+
+  auto authMode = AuthMode{[&]() -> AuthMode::Any {
+    bool isSuperUser =
+        req.authenticated() && req.user().empty() &&
+        req.authenticationMethod() == rest::AuthenticationMethod::JWT;
+    if (isSuperUser) {
+      // For a superuser JWT request, create a dynamic Superuser context that
+      // preserves the request reference (for auditing etc.).
+      return AuthMode::Superuser(req);
+    }
+
+    if (!authenticationFeature.isActive()) {
+      return AuthMode::Disabled(req.user(), req);
+    }
+
+    auto* userManager = authenticationFeature.userManager();
+    // In a Cluster, with authentication enabled, on DBServers and Agents,
+    // there is no UserManager, but at least the SuperUser can be
+    // authenticated. In that case we treat the request as unauthenticated.
+    if (!req.authenticated() || userManager == nullptr) {
+      return AuthMode::Unauthenticated(req.user(), req);
+    }
+
+    if (auto* rbacService = rbacFeature.service(); rbacService != nullptr) {
+      return AuthMode::Rbac(authenticationFeature, *rbacService, req.user(),
+                            req.jwtToken(), req);
+    }
+
+    ADB_PROD_ASSERT(userManager != nullptr);
+    return AuthMode::Classic(*userManager, req.user(),
+                             securityFeature.isRestApiHardened(), req);
+  }()};
+
+  return std::make_shared<ExecContext>(ConstructorToken{}, std::move(authMode),
+                                       std::move(vocbase));
+}
+
+void ExecContext::forceSuperuser() {
+  // Preserve any existing request/vocbase references in the new Superuser
+  // mode so that the destructor can still release the vocbase correctly,
+  // and auditing information remains accessible.
+  auto req = _authMode.getIAuth().request();
+  if (_vocbase && req.has_value()) {
+    _authMode.reset<AuthMode::Superuser>(req->get());
+  } else {
+    _authMode.reset<AuthMode::Superuser>();
+  }
+}
+
+std::optional<std::reference_wrapper<TRI_vocbase_t>> ExecContext::vocbase()
+    const noexcept {
+  if (_vocbase) {
+    return *_vocbase;
+  }
+  return std::nullopt;
+}
+
+#ifdef USE_ENTERPRISE
+std::string ExecContext::clientAddress() const {
+  if (auto req = request(); req.has_value()) {
+    return req->get().connectionInfo().fullClient();
+  }
+  return {};
+}
+
+std::string ExecContext::requestUrl() const {
+  if (auto req = request(); req.has_value()) {
+    return req->get().fullUrl();
+  }
+  return {};
+}
+
+std::string ExecContext::authMethod() const {
+  if (auto req = request(); req.has_value()) {
+    switch (req->get().authenticationMethod()) {
+      case rest::AuthenticationMethod::BASIC:
+        return "http basic";
+      case rest::AuthenticationMethod::JWT:
+        return "http jwt";
+      case rest::AuthenticationMethod::NONE:
+        break;
+    }
+  }
+  return "n/a";
+}
+#endif
 
 Result ExecContext::canUseAdminAction(rbac::Category::Any const& action) const {
   using namespace auth::perms;

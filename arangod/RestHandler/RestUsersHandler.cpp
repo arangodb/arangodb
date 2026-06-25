@@ -26,7 +26,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Auth/Rbac/Actions.h"
 #include "Auth/UserManager.h"
-#include "Basics/VelocyPackHelper.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Rest/Version.h"
 #include "RestServer/DatabaseFeature.h"
@@ -40,7 +39,6 @@
 
 #include <string_view>
 #include <Basics/DownCast.h>
-#include <RestServer/VocbaseContext.h>
 
 namespace {
 
@@ -142,12 +140,17 @@ RestStatus RestUsersHandler::getRequest(auth::UserManager* um) {
 
   std::vector<std::string> suffixes = _request->decodedSuffixes();
   if (suffixes.empty()) {
-    VPackBuilder users = um->allUsers();
-    VPackSlice usersArray = users.slice().get("result");
-    TRI_ASSERT(usersArray.isArray());
+    if (auto r =
+            exec.canUseAdminAction(arangodb::rbac::Category::AdminReadUser{});
+        r.fail()) {
+      generateError(r);
+      return RestStatus::DONE;
+    }
+    VPackBuilder usersArray = um->allUsers();
+    TRI_ASSERT(usersArray.slice().isArray());
     std::vector<std::string_view> userList;
-    userList.reserve(usersArray.length());
-    for (auto const& u : VPackArrayIterator(usersArray)) {
+    userList.reserve(usersArray.slice().length());
+    for (auto const& u : VPackArrayIterator(usersArray.slice())) {
       VPackSlice un = u.get("user");
       TRI_ASSERT(un.isString());
       userList.push_back(un.stringView());
@@ -165,7 +168,7 @@ RestStatus RestUsersHandler::getRequest(auth::UserManager* um) {
         VPackArrayBuilder guard2(&usersResult);
         for (size_t i = 0; i < allowed.size(); ++i) {
           if (allowed[i]) {
-            usersResult.add(usersArray[i]);
+            usersResult.add(usersArray.slice()[i]);
           }
         }
       }
@@ -370,6 +373,20 @@ RestStatus RestUsersHandler::postRequest(auth::UserManager* um) {
       generateError(r);
     }
 
+  } else if (suffixes.size() == 1) {
+    // validate username / password
+    std::string const& user = suffixes[0];
+    std::string password;
+    VPackSlice s = body.get("passwd");
+    if (s.isString()) {
+      password = s.copyString();
+    }
+    std::string un;
+    if (um->checkCredentials(user, password, un)) {
+      generateOk(rest::ResponseCode::OK, VPackSlice::trueSlice());
+    } else {
+      generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_USER_NOT_FOUND);
+    }
   } else {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER);
   }

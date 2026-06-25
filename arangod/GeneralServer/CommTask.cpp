@@ -45,7 +45,7 @@
 #include "Rest/GeneralResponse.h"
 #include "RestServer/ApiRecordingFeature.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/VocbaseContext.h"
+#include "Utils/ExecContext.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Statistics/ConnectionStatistics.h"
@@ -96,14 +96,13 @@ bool resolveRequestContext(DatabaseFeature& databaseFeature,
 
   TRI_ASSERT(!vocbase->isDangling());
 
-  // FIXME(gnusi): modify VocbaseContext to accept VocbasePtr
-  auto context =
-      VocbaseContext::create(authenticationFeature, rbacFeature,
-                             securityFeature, req, *vocbase.release());
+  // ExecContext takes ownership of the VocbasePtr and will release it on
+  // destruction
+  auto context = ExecContext::create(authenticationFeature, rbacFeature,
+                                     securityFeature, req, std::move(vocbase));
   if (!context) {
     return false;
   }
-  // the VocbaseContext is now responsible for releasing the vocbase
   req.setRequestContext(std::move(context));
 
   // the "true" means the request is the owner of the context
@@ -313,7 +312,6 @@ CommTask::Flow CommTask::prepareExecution(
     return Flow::Abort;
   }
   TRI_ASSERT(req.requestContext() != nullptr);
-  TRI_ASSERT(downCast<VocbaseContext>(req.requestContext()) != nullptr);
 
   // Step 4: Check the authentication. Will determine if the user can access
   // this path checks db permissions and contains exceptions for the

@@ -193,6 +193,13 @@ RestStatus RestWalAccessHandler::execute() {
     return RestStatus::DONE;
   }
 
+  if (auto r = ExecContext::current().canUseAdminAction(
+          arangodb::rbac::Category::AdminWalAccess{});
+      r.fail()) {
+    generateError(r);
+    return RestStatus::DONE;
+  }
+
   std::vector<std::string> suffixes = _request->decodedSuffixes();
   if (suffixes.empty()) {
     generateError(

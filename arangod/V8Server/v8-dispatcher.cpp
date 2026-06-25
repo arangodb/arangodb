@@ -248,9 +248,13 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   command = "(function (params) { " + command + " } )(params);";
 
+  auto exec = ExecContext::currentAsShared();
+  if (!exec) {
+    exec = ExecContext::superuserAsShared();
+  }
   ErrorCode res = TRI_ERROR_NO_ERROR;
-  auto task = Task::createTask(id, name, ExecContext::currentAsShared(),
-                               v8g->_vocbase, command, isSystem, res);
+  auto task =
+      Task::createTask(id, name, exec, v8g->_vocbase, command, isSystem, res);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);

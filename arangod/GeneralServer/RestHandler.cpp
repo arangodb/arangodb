@@ -685,12 +685,11 @@ async<Result> RestHandler::checkUserCanAccess() const {
   bool canAccess = userAuthenticated;
   auto const& path = request()->requestPath();
 
-  auto vc = basics::downCast<VocbaseContext>(request()->requestContext());
-  TRI_ASSERT(vc != nullptr)
-      << "no vocbase context in request: " << this->name();
+  auto ec = request()->requestContext();
+  TRI_ASSERT(ec != nullptr) << "no exec context in request: " << this->name();
   // deny access to database with NONE
   if (canAccess &&
-      vc->canUseDatabase(request()->databaseName(), DatabaseAccessLevel::Read)
+      ec->canUseDatabase(request()->databaseName(), DatabaseAccessLevel::Read)
           .fail()) {
     canAccess = false;
     LOG_TOPIC("0898a", TRACE, Logger::AUTHORIZATION)
@@ -721,7 +720,7 @@ async<Result> RestHandler::checkUserCanAccess() const {
         if (path[0] != '/' || (path.size() > 1 && path[1] != '_')) {
           // simon: upgrade rights for Foxx apps. FIXME
           canAccess = true;
-          vc->forceSuperuser();
+          ec->forceSuperuser();
           LOG_TOPIC("e2880", TRACE, Logger::AUTHORIZATION)
               << "Upgrading rights for " << path;
         }
@@ -732,7 +731,8 @@ async<Result> RestHandler::checkUserCanAccess() const {
   co_return canAccess
       ? Result()
       : (userAuthenticated
-             ? Result(TRI_ERROR_HTTP_FORBIDDEN, "No read access to database.")
+             ? Result(TRI_ERROR_HTTP_UNAUTHORIZED,
+                      "No read access to database.")
              : Result(TRI_ERROR_HTTP_UNAUTHORIZED, "User not authenticated."));
 }
 

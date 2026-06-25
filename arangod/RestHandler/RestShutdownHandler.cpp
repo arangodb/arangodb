@@ -57,6 +57,14 @@ RestStatus RestShutdownHandler::execute() {
   auto const& softShutdownFeature{server().getFeature<SoftShutdownFeature>()};
   auto& softShutdownTracker{softShutdownFeature.softShutdownTracker()};
 
+  if (auto r = ExecContext::current().canUseAdminAction(
+          rbac::Category::AdminShutdown{});
+      r.fail()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                  r.errorMessage());
+    return RestStatus::DONE;
+  }
+
   if (_request->requestType() == rest::RequestType::GET) {
     if (!ServerState::instance()->isCoordinator()) {
       generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
@@ -66,14 +74,6 @@ RestStatus RestShutdownHandler::execute() {
     VPackBuilder builder;
     softShutdownTracker.toVelocyPack(builder);
     generateResult(rest::ResponseCode::OK, builder.slice());
-    return RestStatus::DONE;
-  }
-
-  if (auto r = ExecContext::current().canUseAdminAction(
-          rbac::Category::AdminShutdown{});
-      r.fail()) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                  r.errorMessage());
     return RestStatus::DONE;
   }
 

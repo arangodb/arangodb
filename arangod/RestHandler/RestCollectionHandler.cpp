@@ -481,11 +481,15 @@ async<void> RestCollectionHandler::handleCommandPut() {
     co_return standardResponse();
   }
   if (sub == "compact") {
-    if (auto r = ExecContext::current().canUseCollection(
-            _vocbase.name(), name, AccessLevel::WriteMeta);
-        r.fail()) {
-      generateError(r);
-      co_return;
+    // We only enforce WriteMeta access here if the API version is higher
+    // than 0 for backwards compatibility:
+    if (_request.get()->requestedApiVersion() > 0) {
+      if (auto r = ExecContext::current().canUseCollection(
+              _vocbase.name(), name, AccessLevel::WriteMeta);
+          r.fail()) {
+        generateError(r);
+        co_return;
+      }
     }
     if (ServerState::instance()->isCoordinator()) {
       auto& feature = server().getFeature<ClusterFeature>();

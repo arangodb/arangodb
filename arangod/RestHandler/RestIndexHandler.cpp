@@ -37,7 +37,6 @@
 #include "Logger/LogMacros.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
-#include "RestServer/VocbaseContext.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
@@ -229,10 +228,13 @@ std::shared_ptr<LogicalCollection> RestIndexHandler::collection(
     std::string const& cName) {
   if (!cName.empty()) {
     if (ServerState::instance()->isCoordinator()) {
-      if (auto r = ExecContext::current().canUseCollection(
-              _vocbase.name(), cName, AccessLevel::Read);
-          r.fail()) {
-        return nullptr;
+      // Restrict access properly from API version 1 on:
+      if (_request->requestedApiVersion() > 0) {
+        if (auto r = ExecContext::current().canUseCollection(
+                _vocbase.name(), cName, AccessLevel::Read);
+            r.fail()) {
+          return nullptr;
+        }
       }
       return _clusterFeature.clusterInfo().getCollectionNT(_vocbase.name(),
                                                            cName);

@@ -30,6 +30,7 @@
 #include "Basics/voc-errors.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
+#include "Rest/GeneralRequest.h"
 
 namespace arangodb {
 
@@ -63,14 +64,28 @@ auto AuthMode::Superuser::check(auth::Permission permission) const -> Result {
   return {};
 }
 
+auto AuthMode::Superuser::request() const noexcept
+    -> std::optional<std::reference_wrapper<GeneralRequest>> {
+  if (_request != nullptr) {
+    return *_request;
+  }
+  return std::nullopt;
+}
+
 AuthMode::Classic::Classic(auth::UserManager& userManager, std::string username,
-                           bool apiHardened)
+                           bool apiHardened, GeneralRequest& req)
     : _userManager(userManager),
       _username(std::move(username)),
-      _apiHardened(apiHardened) {}
+      _apiHardened(apiHardened),
+      _request(req) {}
 
 auto AuthMode::Classic::username() const noexcept -> std::string_view {
   return _username;
+}
+
+auto AuthMode::Classic::request() const noexcept
+    -> std::optional<std::reference_wrapper<GeneralRequest>> {
+  return _request;
 }
 
 auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
@@ -144,18 +159,21 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
       },
   };
 
-  // TODO Instead of recursing in the following visit, implement
-  //      methods resembling canUseDatabase and canUseCollection, like
-  //      they existed on ExecContext previously.
-
   return std::visit(
       overload{
           [&](p::UseDatabase const& database) -> Result {
-            auto effectiveLevel = effectiveDatabaseAuthLevel(database.name);
-            auto requestedLevel = accessLevelToAuthLevel(database.level);
+            auto const effectiveLevel =
+                effectiveDatabaseAuthLevel(database.name);
+            auto const requestedLevel = accessLevelToAuthLevel(database.level);
 
             if (requestedLevel <= effectiveLevel) {
               return {};
+            } else if (_request.requestedApiVersion() > 0 &&
+                       effectiveLevel == auth::Level::NONE) {
+              // User has no access to the database at all: report as not found
+              // to avoid revealing its existence.
+              return {TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
+                      "database not accessible: '" + database.name + "'"};
             } else {
               return {TRI_ERROR_FORBIDDEN,
                       "insufficient database access level for '" +
@@ -166,9 +184,10 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
             auto const requestedLevel =
                 accessLevelToAuthLevel(collection.level);
 
-            // handle fixed permissions of certain system collections
+            // Handle fixed permissions of certain system collections.
             if (collection.name.starts_with('_')) {
-              // _system._users
+              // _system._users: always NONE access (no user may touch it
+              // through normal APIs).
               if (collection.db == StaticStrings::SystemDatabase &&
                   collection.name == StaticStrings::UsersCollection) {
                 if (requestedLevel == auth::Level::NONE) {
@@ -178,7 +197,7 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
                         std::format("access to {} is restricted",
                                     StaticStrings::UsersCollection)};
               }
-              // _queues
+              // _queues: read-only for everyone.
               if (collection.name == StaticStrings::QueuesCollection) {
                 if (requestedLevel <= auth::Level::RO) {
                   return {};
@@ -187,7 +206,7 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
                         std::format("write access to {} is restricted",
                                     StaticStrings::QueuesCollection)};
               }
-              // _frontend
+              // _frontend: full access for everyone.
               if (collection.name == StaticStrings::FrontendCollection) {
                 return {};
               }
@@ -196,86 +215,218 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
             auto const effectiveLevel =
                 effectiveCollectionAuthLevel(collection.db, collection.name);
 
-            if (requestedLevel <= effectiveLevel) {
-              return {};
-            } else {
+            if (requestedLevel > effectiveLevel) {
+              // If we are using API version > 0, then we return NOT_FOUND to
+              // hide the fact that the collection exists:
+              if (_request.requestedApiVersion() > 0) {
+                if (effectiveLevel == auth::Level::NONE) {
+                  // User has no access to this collection: report as not found
+                  // to avoid revealing its existence.
+                  return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+                          "collection or view not found: '" + collection.name +
+                              "' in database '" + collection.db + "'"};
+                }
+              }
               return {TRI_ERROR_FORBIDDEN,
                       "insufficient collection access level for '" +
                           collection.name + "' in database '" + collection.db +
                           "'"};
             }
+
+            // WriteMeta additionally requires RW access to the database
+            // (container principle: modifying a collection's meta-data
+            // requires write permission on the containing database).
+            if (collection.level == CollectionAccessLevel::WriteMeta) {
+              auto const dbLevel = effectiveDatabaseAuthLevel(collection.db);
+              if (dbLevel < auth::Level::RW) {
+                return {TRI_ERROR_FORBIDDEN,
+                        "insufficient database access level for write-meta "
+                        "operation on collection '" +
+                            collection.name + "' in database '" +
+                            collection.db + "'"};
+              }
+            }
+
+            return {};
           },
           [&](p::UseView const& view) -> Result {
-            auto const effectiveLevel =
-                effectiveCollectionAuthLevel(view.db, view.name);
+            // In the classic system views delegate to database-level access
+            // (per-view collection-level auth is not used for views).
+            auto const effectiveLevel = effectiveDatabaseAuthLevel(view.db);
             auto const requestedLevel = accessLevelToAuthLevel(view.level);
 
             if (requestedLevel <= effectiveLevel) {
               return {};
+            } else if (effectiveLevel == auth::Level::NONE) {
+              // No database access at all: report the view as not found.
+              return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+                      "view not accessible: '" + view.name + "' in database '" +
+                          view.db + "'"};
             } else {
               return {TRI_ERROR_FORBIDDEN,
-                      "insufficient view access level for '" + view.name +
+                      "insufficient access level for view '" + view.name +
                           "' in database '" + view.db + "'"};
             }
           },
           [&](p::UseAnalyzer const& analyzer) -> Result {
-            auto const effectiveLevel =
-                effectiveCollectionAuthLevel(analyzer.db, analyzer.name);
-            auto const requestedLevel = accessLevelToAuthLevel(analyzer.level);
-
-            if (requestedLevel <= effectiveLevel) {
-              return {};
-            } else {
-              return {TRI_ERROR_FORBIDDEN,
-                      "insufficient analyzer access level for '" +
-                          analyzer.name + "' in database '" + analyzer.db +
-                          "'"};
-            }
+            // Without RBAC, RO access to the database is the only
+            // prerequisite for using an analyzer, and that has already been
+            // verified before this is called. No further check needed.
+            // For the sake of readabilty, we perform the check:
+            return check(
+                p::UseDatabase{analyzer.db, DatabaseAccessLevel::Read});
           },
-          [&](p::Admin const& admin) -> Result {
-            // recurses into check() with a UseDatabase permission
+          [&](p::Admin const& /*admin*/) -> Result {
+            // Classic admin action requires RW access to the _system database.
             return isAdmin();
           },
-          // TODO Implement proper classic-system checks for these.
-          [&](p::HardenedAdmin const& admin) -> Result {
+          [&](p::HardenedAdmin const& /*admin*/) -> Result {
             if (!_apiHardened) {
               return {};
-            } else {
-              // recurses into check() with a UseDatabase permission
-              return isAdmin();
             }
+            return isAdmin();
           },
           [&](p::SeeDatabase const& database) -> Result {
-            // recurses into check() with a UseDatabase permission
             return check(
                 p::UseDatabase{database.name, DatabaseAccessLevel::Read});
           },
-          [&](p::CreateDatabase const&) -> Result { return {}; },
-          [&](p::DropDatabase const&) -> Result { return {}; },
-          [&](p::SeeCollection const&) -> Result { return {}; },
-          [&](p::CreateCollection const&) -> Result { return {}; },
-          [&](p::DropCollection const&) -> Result { return {}; },
-          [&](p::SeeView const&) -> Result { return {}; },
-          [&](p::CreateView const&) -> Result { return {}; },
-          [&](p::ModifyView const&) -> Result { return {}; },
-          [&](p::RenameView const&) -> Result { return {}; },
-          [&](p::DropView const&) -> Result {
-            // TODO this must check
-            //      * RW access to the database
-            //      * RO access to each collection
-            //      and possibly some access to the view itself, but I
-            //      haven't looked where that check currently happens.
+          [&](p::CreateDatabase const& /*database*/) -> Result {
+            // Creating a database requires RW access to the _system database.
+            return isAdmin();
+          },
+          [&](p::DropDatabase const& /*database*/) -> Result {
+            // Dropping a database requires RW access to the _system database.
+            return isAdmin();
+          },
+          [&](p::SeeCollection const& /*collection*/) -> Result {
+            // Database RO access is the only prerequisite and has already been
+            // checked; a collection is always visible if the database is.
             return {};
           },
-          [&](p::SeeAnalyzer const&) -> Result { return {}; },
-          [&](p::CreateAnalyzer const&) -> Result { return {}; },
-          [&](p::DropAnalyzer const&) -> Result { return {}; },
-          [&](p::SeeGraph const&) -> Result { return {}; },
-          [&](p::CreateGraph const&) -> Result { return {}; },
-          [&](p::DropGraph const&) -> Result { return {}; },
-          [&](p::UseGraph const&) -> Result { return {}; },
-          [&](p::ReadUser const&) -> Result { return {}; },
-          [&](p::WriteUser const&) -> Result { return {}; },
+          [&](p::CreateCollection const& collection) -> Result {
+            // Creating a collection requires RW access to the database
+            // (container principle).
+            return check(
+                p::UseDatabase{collection.db, DatabaseAccessLevel::Write});
+          },
+          [&](p::DropCollection const& collection) -> Result {
+            // Dropping a collection requires RW access to the database
+            // (container principle).
+            return check(
+                p::UseDatabase{collection.db, DatabaseAccessLevel::Write});
+          },
+          [&](p::SeeView const& /*view*/) -> Result {
+            // Database RO access is the only prerequisite and has already been
+            // checked; a view is always visible if the database is.
+            return {};
+          },
+          [&](p::CreateView const& view) -> Result {
+            // Creating a view requires RW access to the database.
+            return check(p::UseDatabase{view.db, DatabaseAccessLevel::Write});
+          },
+          [&](p::ModifyView const& view) -> Result {
+            // Modifying a view requires RW access to the database.
+            return check(p::UseDatabase{view.db, DatabaseAccessLevel::Write});
+          },
+          [&](p::RenameView const& view) -> Result {
+            if (view.oldName == view.newName) {
+              return {TRI_ERROR_BAD_PARAMETER,
+                      "new view name must be different from old view name"};
+            }
+            // Renaming a view requires RW access to the database.
+            return check(p::UseDatabase{view.db, DatabaseAccessLevel::Write});
+          },
+          [&](p::DropView const& view) -> Result {
+            // Dropping a view requires RW access to the database.
+            return check(p::UseDatabase{view.db, DatabaseAccessLevel::Write});
+          },
+          [&](p::SeeAnalyzer const& analyzer) -> Result {
+            // Database RO access is the only prerequisite and has already been
+            // checked; an analyzer is always visible if the database is.
+            // For the sake of readabilty, we perform the check:
+            return check(
+                p::UseDatabase{analyzer.db, DatabaseAccessLevel::Read});
+          },
+          [&](p::CreateAnalyzer const& analyzer) -> Result {
+            // Creating an analyzer requires RW access to the database.
+            return check(
+                p::UseDatabase{analyzer.db, DatabaseAccessLevel::Write});
+          },
+          [&](p::DropAnalyzer const& analyzer) -> Result {
+            // Dropping an analyzer requires RW access to the database.
+            return check(
+                p::UseDatabase{analyzer.db, DatabaseAccessLevel::Write});
+          },
+          [&](p::SeeGraph const& graph) -> Result {
+            // Seeing a graph requires at least read access to the database
+            // (which grants implicit access to the _graphs system collection).
+            return check(p::UseDatabase{graph.db, DatabaseAccessLevel::Read});
+          },
+          [&](p::CreateGraph const& graph) -> Result {
+            // Creating a graph requires RW access to the database (to write
+            // to _graphs), plus the ability to create/read any linked
+            // collections.
+            if (auto r =
+                    check(p::UseDatabase{graph.db, DatabaseAccessLevel::Write});
+                !r.ok()) {
+              return r;
+            }
+            for (auto const& coll : graph.collectionNamesToCreate) {
+              if (auto r = check(p::CreateCollection{graph.db, coll});
+                  !r.ok()) {
+                return r;
+              }
+            }
+            for (auto const& coll : graph.collectionNamesToRead) {
+              if (auto r = check(p::UseCollection{graph.db, coll,
+                                                  CollectionAccessLevel::Read});
+                  !r.ok()) {
+                return r;
+              }
+            }
+            return {};
+          },
+          [&](p::DropGraph const& graph) -> Result {
+            // Dropping a graph requires RW access to the database (to write
+            // to _graphs), plus the ability to drop any listed collections.
+            if (auto r =
+                    check(p::UseDatabase{graph.db, DatabaseAccessLevel::Write});
+                !r.ok()) {
+              return r;
+            }
+            for (auto const& coll : graph.collectionNames) {
+              if (auto r = check(p::DropCollection{graph.db, coll}); !r.ok()) {
+                return r;
+              }
+            }
+            return {};
+          },
+          [&](p::UseGraph const& graph) -> Result {
+            // In the classic system, graph access follows database-level
+            // access (the _graphs collection is a system collection that is
+            // read/write-accessible together with the whole database).
+            switch (graph.level) {
+              case GraphAccessLevel::None:
+                return {};
+              case GraphAccessLevel::Read:
+                return check(
+                    p::UseDatabase{graph.db, DatabaseAccessLevel::Read});
+              case GraphAccessLevel::Modify:
+                return check(
+                    p::UseDatabase{graph.db, DatabaseAccessLevel::Write});
+            }
+            ADB_PROD_CRASH();
+          },
+          [&](p::ReadUser const& /*readUser*/) -> Result {
+            // Reading any user record requires at least RW access to the
+            // _system database.
+            return isAdmin();
+          },
+          [&](p::WriteUser const& /*writeUser*/) -> Result {
+            // Writing a user record requires RW access to the _system
+            // database (equivalent to being an admin).
+            return isAdmin();
+          },
       },
       permission);
 }
@@ -295,11 +446,22 @@ auto AuthMode::Rbac::check(auth::Permission permission) const -> Result {
   // access to the collection somehow!
 }
 
-AuthMode::Unauthenticated::Unauthenticated(std::string username)
-    : _username(std::move(username)) {}
+auto AuthMode::Rbac::request() const noexcept
+    -> std::optional<std::reference_wrapper<GeneralRequest>> {
+  return _request;
+}
+
+AuthMode::Unauthenticated::Unauthenticated(std::string username,
+                                           GeneralRequest& req)
+    : _username(std::move(username)), _request(req) {}
 
 auto AuthMode::Unauthenticated::username() const noexcept -> std::string_view {
   return _username;
+}
+
+auto AuthMode::Unauthenticated::request() const noexcept
+    -> std::optional<std::reference_wrapper<GeneralRequest>> {
+  return _request;
 }
 
 auto AuthMode::Unauthenticated::check(auth::Permission permission) const
@@ -342,11 +504,16 @@ auto AuthMode::Unauthenticated::check(auth::Permission permission) const
       permission);
 }
 
-AuthMode::Disabled::Disabled(std::string username)
-    : _username(std::move(username)) {}
+AuthMode::Disabled::Disabled(std::string username, GeneralRequest& req)
+    : _username(std::move(username)), _request(req) {}
 
 auto AuthMode::Disabled::username() const noexcept -> std::string_view {
   return _username;
+}
+
+auto AuthMode::Disabled::request() const noexcept
+    -> std::optional<std::reference_wrapper<GeneralRequest>> {
+  return _request;
 }
 
 auto AuthMode::Disabled::check(auth::Permission permission) const -> Result {
@@ -361,6 +528,12 @@ auto AuthMode::Mockable::username() const noexcept -> std::string_view {
 auto AuthMode::Mockable::check(auth::Permission permission) const -> Result {
   ADB_PROD_ASSERT(mock != nullptr);
   return mock->check(permission);
+}
+
+auto AuthMode::Mockable::request() const noexcept
+    -> std::optional<std::reference_wrapper<GeneralRequest>> {
+  ADB_PROD_ASSERT(mock != nullptr);
+  return mock->request();
 }
 
 }  // namespace arangodb

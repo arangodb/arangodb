@@ -151,7 +151,8 @@ Result Databases::info(TRI_vocbase_t* vocbase, velocypack::Builder& result) {
 // Grant permissions on newly created database to current user
 // to be able to run the upgrade script
 Result Databases::grantCurrentUser(CreateDatabaseInfo const& info) {
-  auth::UserManager* um = AuthenticationFeature::instance()->userManager();
+  AuthenticationFeature* af = AuthenticationFeature::instance();
+  auth::UserManager* um = af->userManager();
 
   Result res;
 
@@ -160,11 +161,12 @@ Result Databases::grantCurrentUser(CreateDatabaseInfo const& info) {
     // If the current user is empty (which happens if a Maintenance job
     // called us, or when authentication is off), granting rights
     // will fail. We hence ignore it here, but issue a warning below
-    // TODO (Tobias) `exec.canWriteUser(exec.user())` is a very quirky
-    //      way to check for `exec.user().empty()`.
-    //      I'd like to understand a little bit better when this is
-    //      expected to happen, and maybe improve on the readability.
-    if (exec.canWriteUser(exec.user()).ok()) {
+    if (!exec.user().empty() && af->isActive()) {
+      // This is no longer canWriteUser, but the old check from devel!
+      // TODO (Tobias) `exec.canWriteUser(exec.user())` is a very quirky
+      //      way to check for `exec.user().empty()`.
+      //      I'd like to understand a little bit better when this is
+      //      expected to happen, and maybe improve on the readability.
       res = um->updateUser(
           exec.user(),
           [&](auth::User& entry) {
