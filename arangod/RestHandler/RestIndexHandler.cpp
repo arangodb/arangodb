@@ -999,7 +999,8 @@ async<void> RestIndexHandler::dropIndex() {
 }
 
 void RestIndexHandler::syncCaches() {
-  if (ServerState::instance()->isCoordinator()) {
+  if (_request->requestedApiVersion() > 0 &&
+      ServerState::instance()->isCoordinator()) {
     generateError(rest::ResponseCode::NOT_IMPLEMENTED,
                   TRI_ERROR_NOT_IMPLEMENTED,
                   "Not implemented on coordinators!");
