@@ -27,13 +27,11 @@
 
 #include <filesystem>
 
-#include "Agency/AgencyFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/LanguageFeature.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FeatureFlags.h"
 #include "Basics/FileUtils.h"
-#include "Basics/NumberOfCores.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/Result.h"
 #include "Basics/RocksDBLogger.h"
@@ -42,12 +40,10 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/application-exit.h"
-#include "Basics/build.h"
 #include "Basics/exitcodes.h"
 #include "Basics/files.h"
 #include "Basics/system-functions.h"
 #include "Cache/Cache.h"
-#include "Cache/CacheManagerFeature.h"
 #include "Cache/Manager.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
@@ -62,20 +58,13 @@
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/HistogramBuilder.h"
 #include "Metrics/Metric.h"
-#include "Metrics/ICollector.h"
+#include "Metrics/IRegistry.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Replication/ReplicationClients.h"
-#include "Replication2/ReplicatedLog/ReplicatedLogFeature.h"
 #include "Replication2/Storage/IStorageEngineMethods.h"
 #include "Rest/Version.h"
-#include "RestHandler/RestHandlerCreator.h"
-#include "RestServer/DatabaseFeature.h"
-#include "RestServer/DatabasePathFeature.h"
-#include "RestServer/FlushFeature.h"
-#include "RestServer/DumpLimitsFeature.h"
 #include "RestServer/LanguageCheckFeature.h"
-#include "VectorIndex/VectorIndexFeature.h"
 #include "RestServer/ServerIdFeature.h"
 #include "Replication2/Storage/LogStorageMethods.h"
 #include "Replication2/Storage/RocksDB/AsyncLogWriteBatcher.h"
@@ -84,8 +73,6 @@
 #include "Replication2/Storage/RocksDB/StatePersistor.h"
 #include "Replication2/Storage/RocksDB/Metrics.h"
 #include "Replication2/Storage/RocksDB/ReplicatedStateInfo.h"
-#include "Replication2/Storage/WAL/IFileManager.h"
-#include "Replication2/Storage/WAL/IFileWriter.h"
 #include "Replication2/Storage/WAL/LogPersistor.h"
 #include "Replication2/Storage/WAL/WalManager.h"
 #include "RocksDBEngine/Listeners/RocksDBBackgroundErrorListener.h"
@@ -97,7 +84,6 @@
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCFStats.h"
 
-#include "Inspection/VPack.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBComparator.h"
@@ -105,7 +91,7 @@
 #include "RocksDBEngine/RocksDBFormat.h"
 #include "RocksDBEngine/RocksDBIncrementalSync.h"
 #include "RocksDBEngine/RocksDBIndex.h"
-#include "RocksDBEngine/RocksDBIndexCacheRefillFeature.h"
+#include "RocksDBEngine/IIndexCacheRefill.h"
 #include "RocksDBEngine/RocksDBIndexFactory.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
@@ -116,7 +102,6 @@
 #include "RocksDBEngine/RocksDBReplicationTailing.h"
 #include "RocksDBEngine/RocksDBRestHandlers.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
-#include "RocksDBEngine/RocksDBChecksumEnv.h"
 #include "RocksDBEngine/RocksDBSyncThread.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "RocksDBEngine/RocksDBUpgrade.h"
@@ -128,10 +113,8 @@
 #include "Transaction/Context.h"
 #include "Transaction/Manager.h"
 #include "Transaction/Options.h"
-#include "Transaction/StandaloneContext.h"
 #include "VocBase/LogicalView.h"
 #include "VocBase/VocbaseInfo.h"
-#include "VocBase/VocBaseLogManager.h"
 #include "VocBase/ticks.h"
 
 #include <rocksdb/convenience.h>
@@ -140,7 +123,6 @@
 #include <rocksdb/filter_policy.h>
 #include <rocksdb/iterator.h>
 #include <rocksdb/options.h>
-#include <rocksdb/slice_transform.h>
 #include <rocksdb/sst_file_reader.h>
 #include <rocksdb/statistics.h>
 #include <rocksdb/table.h>
@@ -274,30 +256,27 @@ RocksDBFilePurgeEnabler::RocksDBFilePurgeEnabler(
 // create the storage engine
 RocksDBEngine::RocksDBEngine(
     application_features::ApplicationServer& server,
-    RocksDBOptionsProvider& optionsProvider, metrics::ICollector& metrics,
-    DatabasePathFeature const& databasePathFeature,
-    VectorIndexFeature const& vectorIndexFeature, FlushFeature& flushFeature,
-    DumpLimitsFeature const& dumpLimitsFeature,
-    SchedulerFeature& schedulerFeature,
-    ReplicatedLogFeature* replicatedLogFeature,
+    RocksDBOptionsProvider& optionsProvider, metrics::IRegistry& metrics,
+    IDatabasePathProvider const& databasePathProvider,
+    IVectorIndexProvider const& vectorIndexProvider,
+    IFlushControl& flushControl, IDumpLimitsProvider const& dumpLimitsProvider,
+    replication2::IReplicatedLogProvider* replicatedLogProvider,
     RocksDBRecoveryManager const& rocksDbRecoveryManager,
-    DatabaseFeature& databaseFeature,
-    RocksDBIndexCacheRefillFeature& rocksDbIndexCacheRefillFeature,
-    CacheManagerFeature& cacheManagerFeature,
-    AgencyFeature const& agencyFeature)
+    IDatabaseProvider& databaseProvider, IIndexCacheRefill& indexCacheRefill,
+    ICacheManagerProvider& cacheManagerProvider,
+    ISortingPolicy const& sortingPolicy)
     : StorageEngine(server, kEngineName, name(), typeid(RocksDBEngine),
                     std::make_unique<RocksDBIndexFactory>(server)),
-      _databasePathFeature(databasePathFeature),
-      _vectorIndexFeature(vectorIndexFeature),
-      _flushFeature(flushFeature),
-      _dumpLimitsFeature(dumpLimitsFeature),
-      _schedulerFeature(schedulerFeature),
-      _replicatedLogFeature(replicatedLogFeature),
+      _databasePathProvider(databasePathProvider),
+      _vectorIndexProvider(vectorIndexProvider),
+      _flushControl(flushControl),
+      _dumpLimitsProvider(dumpLimitsProvider),
+      _replicatedLogProvider(replicatedLogProvider),
       _rocksDbRecoveryManager(rocksDbRecoveryManager),
-      _databaseFeature(databaseFeature),
-      _rocksDbIndexCacheRefillFeature(rocksDbIndexCacheRefillFeature),
-      _cacheManagerFeature(cacheManagerFeature),
-      _agencyFeature(agencyFeature),
+      _databaseProvider(databaseProvider),
+      _indexCacheRefill(indexCacheRefill),
+      _cacheManagerProvider(cacheManagerProvider),
+      _sortingPolicy(sortingPolicy),
       _optionsProvider(optionsProvider),
       _metrics(metrics),
       _db(nullptr),
@@ -345,7 +324,6 @@ RocksDBEngine::RocksDBEngine(
       _sortingMethod(
           arangodb::basics::VelocyPackHelper::SortingMethod::Correct) {
   startsAfter<BasicFeaturePhaseServer>();
-  startsAfter<VectorIndexFeature>();
   // inherits order from StorageEngine but requires "RocksDBOption" that is
   // used to configure this engine
   startsAfter<RocksDBOptionFeature>();
@@ -463,7 +441,7 @@ void RocksDBEngine::validateOptions(
 // the storage engine must not start any threads here or write any files
 void RocksDBEngine::prepare() {
   // get base path from DatabaseServerFeature
-  _basePath = _databasePathFeature.directory();
+  _basePath = _databasePathProvider.directory();
 
   TRI_ASSERT(!_basePath.empty());
 
@@ -508,15 +486,14 @@ void RocksDBEngine::verifySstFiles(rocksdb::Options const& options) const {
 }
 
 bool RocksDBEngine::isVectorIndexEnabled() const {
-  return _vectorIndexFeature.isVectorIndexEnabled();
+  return _vectorIndexProvider.isVectorIndexEnabled();
 }
 
 namespace {
 
 struct RocksDBAsyncLogWriteBatcherMetricsImpl
     : replication2::storage::rocksdb::AsyncLogWriteBatcherMetrics {
-  explicit RocksDBAsyncLogWriteBatcherMetricsImpl(
-      metrics::ICollector& metrics) {
+  explicit RocksDBAsyncLogWriteBatcherMetricsImpl(metrics::IRegistry& metrics) {
     using namespace arangodb::replication2::storage::rocksdb;
     numWorkerThreadsWaitForSync = &metrics.add(
         arangodb_replication2_rocksdb_num_persistor_worker{}.withLabel("ws",
@@ -551,7 +528,7 @@ void RocksDBEngine::start() {
   TRI_ASSERT(isEnabled());
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 
-  auto path = _databasePathFeature.directory();
+  auto path = _databasePathProvider.directory();
   auto engineFilePath = basics::FileUtils::buildFilename(path, "ENGINE");
 
   // Starter still expects ENGINE file to be present
@@ -581,7 +558,7 @@ void RocksDBEngine::start() {
       << ", supported compression types: " << getCompressionSupport();
 
   // set the database sub-directory for RocksDB
-  _path = _databasePathFeature.subdirectoryName("engine-rocksdb");
+  _path = _databasePathProvider.subdirectoryName("engine-rocksdb");
 
   [[maybe_unused]] bool createdEngineDir = false;
   if (!std::filesystem::is_directory(_path)) {
@@ -867,7 +844,7 @@ void RocksDBEngine::start() {
   _db->SetDBOptions({{"max_total_wal_size",
                       std::to_string(_optionsProvider.maxTotalWalSize())}});
 
-  _useReleasedTick = _flushFeature.isEnabled();
+  _useReleasedTick = _flushControl.isEnabled();
 
   // useReleasedTick should be true on DB servers and single servers
   TRI_ASSERT((arangodb::ServerState::instance()->isCoordinator() ||
@@ -889,14 +866,13 @@ void RocksDBEngine::start() {
   _settingsManager = std::make_unique<RocksDBSettingsManager>(*this);
   _replicationManager = std::make_unique<RocksDBReplicationManager>(*this);
   _dumpManager = std::make_unique<RocksDBDumpManager>(
-      *this, _metrics, _dumpLimitsFeature.limits());
+      *this, _metrics, _dumpLimitsProvider.limits());
   _walManager = std::make_shared<replication2::storage::wal::WalManager>(
-      _databasePathFeature.subdirectoryName("replicated-logs"));
+      _databasePathProvider.subdirectoryName("replicated-logs"));
 
   struct SchedulerExecutor
       : replication2::storage::rocksdb::AsyncLogWriteBatcher::IAsyncExecutor {
-    explicit SchedulerExecutor([[maybe_unused]] SchedulerFeature& /* require the SchedulerFeature to exist */)
-        : _scheduler(arangodb::SchedulerFeature::SCHEDULER) {}
+    SchedulerExecutor() : _scheduler(arangodb::SchedulerFeature::SCHEDULER) {}
 
     void operator()(fu2::unique_function<void() noexcept> func) override {
       _scheduler->queue(RequestLane::CLUSTER_INTERNAL, std::move(func));
@@ -916,9 +892,8 @@ void RocksDBEngine::start() {
         std::make_shared<replication2::storage::rocksdb::AsyncLogWriteBatcher>(
             RocksDBColumnFamilyManager::get(
                 RocksDBColumnFamilyManager::Family::ReplicatedLogs),
-            _db->GetRootDB(),
-            std::make_shared<SchedulerExecutor>(_schedulerFeature),
-            _replicatedLogFeature->options(), _logMetrics);
+            _db->GetRootDB(), std::make_shared<SchedulerExecutor>(),
+            _replicatedLogProvider->options(), _logMetrics);
     _logPersistor = logPersistor;
 
     if (auto* syncer = syncThread(); syncer != nullptr) {
@@ -1526,7 +1501,7 @@ void RocksDBEngine::processTreeRebuilds() {
       if (!server().isStopping()) {
         VocbasePtr vocbase;
         try {
-          vocbase = _databaseFeature.useDatabase(candidate.first);
+          vocbase = _databaseProvider.useDatabase(candidate.first);
           if (vocbase != nullptr) {
             auto collection = vocbase->lookupCollectionByUuid(candidate.second);
             if (collection != nullptr && !collection->deleted()) {
@@ -2170,7 +2145,7 @@ Result RocksDBEngine::flushWal(bool waitForSync, bool flushColumnFamilies) {
 
 void RocksDBEngine::waitForEstimatorSync() {
   // release all unused ticks from flush feature
-  _flushFeature.releaseUnusedTicks();
+  _flushControl.releaseUnusedTicks();
 
   // force-flush
   _settingsManager->sync(/*force*/ true);
@@ -2699,7 +2674,7 @@ void RocksDBEngine::addSystemDatabase() {
   // Also store the ReplicationVersion when creating the Database
   builder.add(StaticStrings::ReplicationVersion,
               VPackValue(replication::versionToString(
-                  _databaseFeature.defaultReplicationVersion())));
+                  _databaseProvider.defaultReplicationVersion())));
   builder.close();
 
   RocksDBLogValue log = RocksDBLogValue::DatabaseCreate(id);
@@ -2919,21 +2894,18 @@ void RocksDBEngine::loadReplicatedStates(TRI_vocbase_t& vocbase) {
 void RocksDBEngine::scheduleFullIndexRefill(std::string const& database,
                                             std::string const& collection,
                                             IndexId iid) {
-  _rocksDbIndexCacheRefillFeature.scheduleFullIndexRefill(database, collection,
-                                                          iid);
+  _indexCacheRefill.scheduleFullIndexRefill(database, collection, iid);
 }
 
 bool RocksDBEngine::autoRefillIndexCaches() const {
-  return _rocksDbIndexCacheRefillFeature.autoRefill();
+  return _indexCacheRefill.autoRefill();
 }
 
 bool RocksDBEngine::autoRefillIndexCachesOnFollowers() const {
-  return _rocksDbIndexCacheRefillFeature.autoRefillOnFollowers();
+  return _indexCacheRefill.autoRefillOnFollowers();
 }
 
-void RocksDBEngine::syncIndexCaches() {
-  _rocksDbIndexCacheRefillFeature.waitForCatchup();
-}
+void RocksDBEngine::syncIndexCaches() { _indexCacheRefill.waitForCatchup(); }
 
 auto RocksDBEngine::makeLogStorageMethods(
     replication2::LogId logId, uint64_t objectId, std::uint64_t vocbaseId,
@@ -3276,7 +3248,7 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
 
   {
     // in-memory cache statistics
-    cache::Manager* manager = _cacheManagerFeature.manager();
+    cache::Manager* manager = _cacheManagerProvider.manager();
 
     std::pair<double, double> rates;
     cache::Manager::MemoryStats stats;
@@ -3845,7 +3817,7 @@ void RocksDBEngine::addCacheMetrics(uint64_t initial, uint64_t effective,
 using SortingMethod = arangodb::basics::VelocyPackHelper::SortingMethod;
 
 Result RocksDBEngine::writeSortingFile(SortingMethod sortingMethod) {
-  std::string path = _databasePathFeature.subdirectoryName(kSortingMethodFile);
+  std::string path = _databasePathProvider.subdirectoryName(kSortingMethodFile);
   std::string value =
       sortingMethod == SortingMethod::Legacy ? "LEGACY" : "CORRECT";
   try {
@@ -3862,7 +3834,7 @@ Result RocksDBEngine::writeSortingFile(SortingMethod sortingMethod) {
 
 SortingMethod RocksDBEngine::readSortingFile() {
   SortingMethod sortingMethod = SortingMethod::Legacy;
-  std::string path = _databasePathFeature.subdirectoryName(kSortingMethodFile);
+  std::string path = _databasePathProvider.subdirectoryName(kSortingMethodFile);
   std::string value;
   try {
     basics::FileUtils::slurp(path, value);
@@ -3870,20 +3842,9 @@ SortingMethod RocksDBEngine::readSortingFile() {
     sortingMethod =
         (value == "LEGACY") ? SortingMethod::Legacy : SortingMethod::Correct;
   } catch (std::exception const& ex) {
-    // To find out if we are an agent, we need to check if the AgencyFeature
-    // is activated! Note that we cannot use ServerState::isAgent here for
-    // the following reason: When we run an upgraded version for the first
-    // time, we almost certainly run with --database.auto-upgrade=true .
-    // But in this case, the AgencyFeature and the ClusterFeature are
-    // disabled! Therefore, the role of the server is not correctly
-    // reported to the ServerState class!
-
     // When we see a database directory without SORTING file, we fall back
-    // to legacy mode, except for agents. Since agents have never used
-    // VPackIndexes before we fixed the sorting order, we might as well
-    // directly consider them to be migrated to the CORRECT sorting order:
-    sortingMethod = _agencyFeature.activated() ? SortingMethod::Correct
-                                               : SortingMethod::Legacy;
+    // to whatever the externally configured sorting policy is.
+    sortingMethod = _sortingPolicy.getSortingMethod();
     LOG_TOPIC("8ff0e", WARN, Logger::STARTUP)
         << "unable to read 'SORTING' file '" << path << "': " << ex.what()
         << ". This is expected directly after an upgrade and will then be "
@@ -3906,11 +3867,11 @@ std::string RocksDBEngine::getLanguageFile() const {
   return arangodb::basics::FileUtils::buildFilename(_basePath, kLanguageFile);
 }
 
-auto RocksDBEngine::getDatabaseFeature() const -> DatabaseFeature& {
-  return _databaseFeature;
+auto RocksDBEngine::getDatabaseProvider() const -> IDatabaseProvider& {
+  return _databaseProvider;
 }
-auto RocksDBEngine::getFlushFeature() const -> FlushFeature& {
-  return _flushFeature;
+auto RocksDBEngine::getFlushControl() const -> IFlushControl& {
+  return _flushControl;
 }
 
 }  // namespace arangodb

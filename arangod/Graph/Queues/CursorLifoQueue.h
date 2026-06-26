@@ -128,31 +128,32 @@ class CursorLifoQueue {
   }
 
   std::optional<Step> pop() {
-    if (isEmpty()) {
-      return std::nullopt;
+    while (true) {
+      if (isEmpty()) {
+        return std::nullopt;
+      }
+      auto first = _queue.front();
+      LOG_TOPIC("9cda4", TRACE, Logger::GRAPHS)
+          << "<BatchedLifoQueue> Pop: "
+          << (std::holds_alternative<Step>(first)
+                  ? std::get<Step>(first).toString()
+                  : "next batch");
+      if (std::holds_alternative<Step>(first)) {
+        _resourceMonitor.decreaseMemoryUsage(sizeof(Entry));
+        _queue.pop_front();
+        return {std::get<Step>(first)};
+      }
+      auto& cursor = std::get<std::reference_wrapper<Cursor>>(first).get();
+      if (not cursor.hasMore()) {
+        _resourceMonitor.decreaseMemoryUsage(sizeof(Entry));
+        _queue.pop_front();
+        cursor.markForDeletion();
+        continue;
+      }
+      for (auto&& step : cursor.next()) {
+        append(step);
+      }
     }
-    auto first = _queue.front();
-    LOG_TOPIC("9cda4", TRACE, Logger::GRAPHS)
-        << "<BatchedLifoQueue> Pop: "
-        << (std::holds_alternative<Step>(first)
-                ? std::get<Step>(first).toString()
-                : "next batch");
-    if (std::holds_alternative<Step>(first)) {
-      _resourceMonitor.decreaseMemoryUsage(sizeof(Entry));
-      _queue.pop_front();
-      return {std::get<Step>(first)};
-    }
-    auto& cursor = std::get<std::reference_wrapper<Cursor>>(first).get();
-    if (not cursor.hasMore()) {
-      _resourceMonitor.decreaseMemoryUsage(sizeof(Entry));
-      _queue.pop_front();
-      cursor.markForDeletion();
-      return pop();
-    }
-    for (auto&& step : cursor.next()) {
-      append(step);
-    }
-    return pop();
   }
 
   std::vector<Step*> getStepsWithoutFetchedVertex() {
