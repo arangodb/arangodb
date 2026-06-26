@@ -450,6 +450,17 @@ export default [
     type: "admin",
     method: "GET",
     path: "/_db/_system/_api/wal/tail",
+    setup: async (ctx) => {
+      const resp = await ctx.request('POST', '/_db/_system/_api/collection',
+        { name: "dummy" });
+      if (!resp.body || !resp.body.id) {
+        throw new Error(`setup: failed to create collection: ${resp.status} ${JSON.stringify(resp.body)}`);
+      }
+      return {};
+    },
+    teardown: async (ctx) => {
+      await ctx.request('DELETE', `/_db/_system/_api/collection/dummy`);
+    },
   },
 
   {
