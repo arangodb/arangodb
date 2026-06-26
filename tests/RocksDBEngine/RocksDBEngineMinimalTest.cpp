@@ -31,6 +31,7 @@
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBOptionsProvider.h"
 #include "RocksDBEngine/RocksDBRecoveryManager.h"
+#include "RestServer/IRecoveryCallback.h"
 
 using namespace arangodb;
 using namespace arangodb::tests;
@@ -53,6 +54,10 @@ struct TestRocksDBOptionsProvider final : RocksDBOptionsProvider {
   }
 };
 
+struct NullRecoveryCallback final : IRecoveryCallback {
+  void recoveryDone() override {}
+};
+
 TEST(RocksDBEngineMinimal, CanConstruct) {
   MockMetricsCollector metricsCollector;
   ON_CALL(metricsCollector, doAdd(_))
@@ -70,7 +75,8 @@ TEST(RocksDBEngineMinimal, CanConstruct) {
   ON_CALL(dumpLimits, limits()).WillByDefault(ReturnRef(limitsOptions));
 
   application_features::ApplicationServer server{nullptr, nullptr};
-  auto& recovery = server.addFeature<RocksDBRecoveryManager>();
+  NullRecoveryCallback nullCallback;
+  auto& recovery = server.addFeature<RocksDBRecoveryManager>(nullCallback);
 
   TestRocksDBOptionsProvider optionsProvider;
   MockVectorIndexProvider vectorIdx;

@@ -254,7 +254,7 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
   _server.addFeature<RocksDBOptionFeature>(
       _server.hasFeature<AgencyFeature>() ? &_server.getFeature<AgencyFeature>()
                                           : nullptr);
-  auto& rocksdbRecovery = _server.addFeature<RocksDBRecoveryManager>();
+  auto& rocksdbRecovery = _server.addFeature<RocksDBRecoveryManager>(database);
 #ifdef TRI_HAVE_GETRLIMIT
   _server.addFeature<FileDescriptorsFeature>(metrics);
 #endif
