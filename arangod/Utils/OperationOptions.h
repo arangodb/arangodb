@@ -194,7 +194,7 @@ struct OperationOptions {
   // using a transaction or creates a new one.
   bool allowDirtyReads = false;
 
-private:
+ private:
   // get associated execution context
   ExecContext const& context() const;
 
