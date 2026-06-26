@@ -8,6 +8,7 @@ target_link_libraries(arango_tests_futures
     arango
     arango_futures
     gtest
+    gmock
     velocypack)
 target_include_directories(arango_tests_futures PRIVATE
   ${PROJECT_SOURCE_DIR}/arangod
