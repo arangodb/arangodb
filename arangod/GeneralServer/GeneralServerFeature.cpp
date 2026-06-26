@@ -23,6 +23,8 @@
 
 #include "GeneralServerFeature.h"
 
+#include "GeneralServer/GeneralServerOptionsProvider.h"
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Actions/RestActionHandler.h"
 #include "Agency/AgencyFeature.h"
@@ -32,7 +34,6 @@
 #include "Aql/RestAqlHandler.h"
 #include "RestHandler/RestCrashHandler.h"
 #include "SystemMonitor/AsyncRegistry/RestHandler.h"
-#include "Basics/StringUtils.h"
 #include "Basics/application-exit.h"
 #include "Basics/debugging.h"
 #include "Basics/FeatureFlags.h"
@@ -51,9 +52,7 @@
 #include "Metrics/HistogramBuilder.h"
 #include "Metrics/MetricsFeature.h"
 #include "Network/NetworkFeature.h"
-#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
 #include "Rest/HttpResponse.h"
 #include "RestHandler/RestAdminClusterHandler.h"
 #include "RestHandler/RestAdminDatabaseHandler.h"
@@ -187,214 +186,14 @@ GeneralServerFeature::GeneralServerFeature(
 
 void GeneralServerFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
-  options->addOldOption("server.allow-method-override",
-                        "http.allow-method-override");
-  options->addOldOption("server.hide-product-header",
-                        "http.hide-product-header");
-  options->addOldOption("server.keep-alive-timeout", "http.keep-alive-timeout");
-  options->addOldOption("no-server", "server.rest-server");
-
-  options
-      ->addOption("--server.telemetrics-api",
-                  "Whether to enable the telemetrics API.",
-                  new options::BooleanParameter(&_options.enableTelemetrics),
-                  arangodb::options::makeFlags(
-                      arangodb::options::Flags::Uncommon,
-                      arangodb::options::Flags::DefaultNoComponents,
-                      arangodb::options::Flags::OnCoordinator,
-                      arangodb::options::Flags::OnDBServer,
-                      arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(31100);
-
-  options
-      ->addOption("--server.telemetrics-api-max-requests",
-                  "The maximum number of requests from arangosh that the "
-                  "telemetrics API responds to without rate-limiting.",
-                  new options::UInt64Parameter(
-                      &_options.telemetricsMaxRequestsPerInterval),
-                  arangodb::options::makeFlags(
-                      arangodb::options::Flags::Uncommon,
-                      arangodb::options::Flags::DefaultNoComponents,
-                      arangodb::options::Flags::OnCoordinator,
-                      arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(31100)
-      .setLongDescription(R"(This option limits requests from the arangosh to
-the telemetrics API, but not any other requests to the API.
-
-Requests to the telemetrics API are counted for every 2 hour interval, and then
-reset. This means after a period of at most 2 hours, the telemetrics API
-becomes usable again.
-
-The purpose of this option is to keep a deployment from being overwhelmed by
-too many telemetrics requests issued by arangosh instances that are used for
-batch processing.)");
-
-  options->addOption(
-      "--server.io-threads", "The number of threads used to handle I/O.",
-      new UInt64Parameter(&_options.numIoThreads, /*base*/ 1, /*minValue*/ 1),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic));
-
-  options
-      ->addOption("--server.support-info-api",
-                  "The policy for exposing the support info and also the "
-                  "telemetrics API.",
-                  new DiscreteValuesParameter<StringParameter>(
-                      &_options.supportInfoApiPolicy,
-                      std::unordered_set<std::string>{"disabled", "jwt",
-                                                      "admin", "public"}))
-      .setIntroducedIn(30900);
-
-  options
-      ->addOption("--server.options-api",
-                  "The policy for exposing the options API.",
-                  new DiscreteValuesParameter<StringParameter>(
-                      &_options.optionsApiPolicy,
-                      std::unordered_set<std::string>{"disabled", "jwt",
-                                                      "admin", "public"}))
-      .setIntroducedIn(31200);
-
-  options->addSection("http", "HTTP server features");
-
-  // option was deprecated in 3.8 and removed in 3.12.
-  options->addObsoleteOption(
-      "--http.allow-method-override",
-      "Allow HTTP method override using special headers.", true);
-
-  options
-      ->addOption("--http.keep-alive-timeout",
-                  "The keep-alive timeout for HTTP connections (in seconds).",
-                  new DoubleParameter(&_options.keepAliveTimeout))
-      .setLongDescription(R"(Idle keep-alive connections are closed by the
-server automatically when the timeout is reached. A keep-alive-timeout value of
-`0` disables the keep-alive feature entirely.)");
-
-  // option was deprecated in 3.8 and removed in 3.12.
-  options->addObsoleteOption(
-      "--http.hide-product-header",
-      "Whether to omit the `Server: ArangoDB` header in HTTP responses.", true);
-
-  options->addOption(
-      "--http.trusted-origin",
-      "The trusted origin URLs for CORS requests with credentials.",
-      new VectorParameter<StringParameter>(
-          &_options.accessControlAllowOrigins));
-
-  options->addOption("--http.redirect-root-to", "Redirect of the root URL.",
-                     new StringParameter(&_options.redirectRootTo));
-
-  options->addOption("--http.permanently-redirect-root",
-                     "Whether to use a permanent or temporary redirect.",
-                     new BooleanParameter(&_options.permanentRootRedirect));
-
-  options
-      ->addOption("--http.return-queue-time-header",
-                  "Whether to return the `x-arango-queue-time-seconds` header "
-                  "in all responses.",
-                  new BooleanParameter(&_options.returnQueueTimeHeader))
-      .setIntroducedIn(30900)
-      .setLongDescription(R"(The value contained in this header indicates the
-current queueing/dequeuing time for requests in the scheduler (in seconds).
-Client applications and drivers can use this value to control the server load
-and also react on overload.)");
-
-  options
-      ->addOption("--http.compress-response-threshold",
-                  "The HTTP response body size from which on responses are "
-                  "transparently compressed in case the client asks for it.",
-                  new UInt64Parameter(&_options.compressResponseThreshold))
-      .setIntroducedIn(31200)
-      .setLongDescription(
-          R"(Automatically compress outgoing HTTP responses with the
-deflate or gzip compression format, in case the client request advertises
-support for this. Compression will only happen for HTTP/1.1 and HTTP/2
-connections, if the size of the uncompressed response body exceeds
-the threshold value controlled by this startup option,
-and if the response body size after compression is less than the original
-response body size.
-Using the value 0 disables the automatic response compression.")");
-
-  options
-      ->addOption("--server.early-connections",
-                  "Allow requests to a limited set of APIs early during the "
-                  "server startup.",
-                  new BooleanParameter(&_options.allowEarlyConnections))
-      .setIntroducedIn(31000);
-
-  options->addOldOption("frontend.proxy-request-check",
-                        "web-interface.proxy-request-check");
-
-  options->addOption("--web-interface.proxy-request-check",
-                     "Enable proxy request checking.",
-                     new BooleanParameter(&_options.proxyCheck),
-                     arangodb::options::makeFlags(
-                         arangodb::options::Flags::DefaultNoComponents,
-                         arangodb::options::Flags::OnCoordinator,
-                         arangodb::options::Flags::OnSingle));
-
-  options->addOldOption("frontend.trusted-proxy",
-                        "web-interface.trusted-proxy");
-
-  options->addOption(
-      "--web-interface.trusted-proxy",
-      "The list of proxies to trust (can be IP or network). Make "
-      "sure `--web-interface.proxy-request-check` is enabled.",
-      new VectorParameter<StringParameter>(&_options.trustedProxies),
-      arangodb::options::makeFlags(
-          arangodb::options::Flags::DefaultNoComponents,
-          arangodb::options::Flags::OnCoordinator,
-          arangodb::options::Flags::OnSingle));
-
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
-  options->addOption(
-      "--server.failure-point",
-      "The failure point to set during server startup (requires compilation "
-      "with failure points support).",
-      new VectorParameter<StringParameter>(&_options.failurePoints),
-      arangodb::options::makeFlags(arangodb::options::Flags::Default,
-                                   arangodb::options::Flags::Uncommon));
-#endif
-
-  options
-      ->addOption(
-          "--http.handle-content-encoding-for-unauthenticated-requests",
-          "Handle Content-Encoding headers for unauthenticated requests.",
-          new BooleanParameter(
-              &_options.handleContentEncodingForUnauthenticatedRequests))
-      .setIntroducedIn(31200)
-      .setLongDescription(
-          R"(If the option is set to `true`, the server will automatically
-uncompress incoming HTTP requests with Content-Encodings gzip and deflate
-even if the request is not authenticated.)");
+  GeneralServerOptionsProvider provider;
+  provider.declareOptions(options, _options);
 }
 
-void GeneralServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
-  if (!_options.accessControlAllowOrigins.empty()) {
-    // trim trailing slash from all members
-    for (auto& it : _options.accessControlAllowOrigins) {
-      if (it == "*" || it == "all") {
-        // special members "*" or "all" means all origins are allowed
-        _options.accessControlAllowOrigins.clear();
-        _options.accessControlAllowOrigins.push_back("*");
-        break;
-      } else if (it == "none") {
-        // "none" means no origins are allowed
-        _options.accessControlAllowOrigins.clear();
-        break;
-      } else if (it.ends_with('/')) {
-        // strip trailing slash
-        it = it.substr(0, it.size() - 1);
-      }
-    }
-
-    // remove empty members
-    _options.accessControlAllowOrigins.erase(
-        std::remove_if(_options.accessControlAllowOrigins.begin(),
-                       _options.accessControlAllowOrigins.end(),
-                       [](std::string const& value) {
-                         return basics::StringUtils::trim(value).empty();
-                       }),
-        _options.accessControlAllowOrigins.end());
-  }
+void GeneralServerFeature::validateOptions(
+    std::shared_ptr<ProgramOptions> options) {
+  GeneralServerOptionsProvider provider;
+  provider.validateOptions(options, _options);
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   for (auto const& it : _options.failurePoints) {

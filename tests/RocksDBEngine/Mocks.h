@@ -26,7 +26,7 @@
 #include <gmock/gmock.h>
 
 #include "Cache/ICacheManagerProvider.h"
-#include "Metrics/ICollector.h"
+#include "Metrics/IRegistry.h"
 #include "RestServer/IDatabasePathProvider.h"
 #include "RestServer/IDatabaseProvider.h"
 #include "RestServer/IDumpLimitsProvider.h"
@@ -96,7 +96,7 @@ struct MockReplicatedLogProvider : replication2::IReplicatedLogProvider {
               options, (), (const, noexcept, override));
 };
 
-struct MetricsCollector : metrics::ICollector {
+struct MetricsCollector : metrics::IRegistry {
   std::shared_ptr<metrics::Metric> doAdd(metrics::Builder& builder) override {
     return builder.build();
   }

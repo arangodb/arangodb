@@ -30,7 +30,7 @@
 #include "Logger/LogMacros.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/GaugeBuilder.h"
-#include "Metrics/ICollector.h"
+#include "Metrics/IRegistry.h"
 #include "RestServer/DumpLimitsFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBFormat.h"
@@ -53,7 +53,7 @@ DECLARE_COUNTER(
     "Number of times a dump thread was blocked because of memory restrictions");
 
 RocksDBDumpManager::RocksDBDumpManager(RocksDBEngine& engine,
-                                       metrics::ICollector& metrics,
+                                       metrics::IRegistry& metrics,
                                        DumpLimits const& limits)
     : _engine(engine),
       _limits(limits),
