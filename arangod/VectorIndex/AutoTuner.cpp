@@ -233,12 +233,16 @@ ResultT<OperatingPointTable> autoTuneTable(faiss::IndexIVF& index,
         << "s: " << outcome.errorMessage();
   });
 
+  auto const gtStart = std::chrono::steady_clock::now();
   auto gt = computeGroundTruth(index, querySet, numberOfQueries, R,
                                invertedListContext, logContext);
   if (gt.fail()) {
     outcome = std::move(gt).result();
     return outcome;
   }
+  double const groundTruthSecs =
+      std::chrono::duration<double>(std::chrono::steady_clock::now() - gtStart)
+          .count();
 
   CappedIntersectionCriterion crit(numberOfQueries, R, targetRecall);
   crit.set_groundtruth(static_cast<int>(R), nullptr, gt.get().data());
@@ -278,11 +282,13 @@ ResultT<OperatingPointTable> autoTuneTable(faiss::IndexIVF& index,
         << " for topK=" << R << "; best attainable recall=" << bestRecall
         << ". Returning best-attainable table.";
   }
+  double const totalSecs = elapsedSecs();
   LOG_TOPIC("e16ad", INFO, Logger::ENGINES)
       << logContext << "Autotune produced " << table.points.size()
       << " operating points for topK=" << R << " (recall "
       << table.points.front().recall << ".." << bestRecall << ", targetRecall "
-      << targetRecall << ", took " << elapsedSecs()
+      << targetRecall << ", took " << totalSecs << "s = ground truth "
+      << groundTruthSecs << "s + sweep " << (totalSecs - groundTruthSecs)
       << "s). Operating points: " << formatOperatingPoints(ops, nullptr);
   return table;
 }
