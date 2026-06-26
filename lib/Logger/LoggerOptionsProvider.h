@@ -22,38 +22,16 @@
 
 #pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
-#include "Import/ImportFeatureOptions.h"
-#include "Shell/ClientFeature.h"
-
-#include <memory>
+#include "ApplicationFeatures/OptionsProvider.h"
+#include "Logger/LoggerOptions.h"
 
 namespace arangodb {
 
-namespace httpclient {
-class GeneralClientConnection;
-class SimpleHttpClient;
-}  // namespace httpclient
-
-class ImportFeature final : public application_features::ApplicationFeature {
- public:
-  static constexpr std::string_view name() noexcept { return "Import"; }
-
-  ImportFeature(application_features::ApplicationServer& server, int* result);
-  ~ImportFeature();
-
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void validateOptions(
-      std::shared_ptr<options::ProgramOptions> options) override;
-  void prepare() override;
-  void start() override;
-
- private:
-  ErrorCode tryCreateDatabase(ClientFeature& client, std::string const& name);
-
-  std::unique_ptr<httpclient::SimpleHttpClient> _httpClient;
-  ImportFeatureOptions _options;
-  int* _result;
+struct LoggerOptionsProvider : OptionsProvider<LoggerOptions> {
+  void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
+                      LoggerOptions& options) override;
+  void validateOptions(std::shared_ptr<options::ProgramOptions> opts,
+                       LoggerOptions& options) override;
 };
 
 }  // namespace arangodb
