@@ -484,27 +484,6 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
     return;
   }
 
-  // forward to correct server if necessary
-  bool forwarded;
-  auto res = handler->forwardRequest(forwarded);
-  if (forwarded) {
-    requestStatistics(messageId).SET_SUPERUSER();
-    std::move(res).thenFinal(
-        [self(shared_from_this()), h(std::move(handler)),
-         messageId](futures::Try<Result>&& /*ignored*/) -> void {
-          self->sendResponse(h->stealResponse(),
-                             self->stealRequestStatistics(messageId));
-        });
-    return;
-  }
-
-  if (res.hasValue() && res.waitAndGet().fail()) {
-    auto& r = res.waitAndGet();
-    sendErrorResponse(GeneralResponse::responseCode(r.errorNumber()), respType,
-                      messageId, r.errorNumber(), r.errorMessage());
-    return;
-  }
-
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
   SchedulerFeature::SCHEDULER->trackCreateHandlerTask();
 
