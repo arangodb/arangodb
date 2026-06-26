@@ -35,6 +35,8 @@
 #include <velocypack/Buffer.h>
 #include <functional>
 #include <span>
+#include <string>
+#include <vector>
 
 namespace arangodb {
 namespace velocypack {
@@ -125,6 +127,11 @@ class LogicalView : public LogicalDataSource {
   /// @return visitation was successful
   //////////////////////////////////////////////////////////////////////////////
   virtual bool visitCollections(CollectionVisitor const& visitor) const = 0;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief collect the names of all collections linked to this view
+  //////////////////////////////////////////////////////////////////////////////
+  std::vector<std::string> linkedCollectionNames() const;
 
   [[nodiscard]] virtual bool isBuilding() const { return false; }
 

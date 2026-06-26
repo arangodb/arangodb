@@ -21,7 +21,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "LogicalView.h"
+#include "VocBase/LogicalCollection.h"
+#include "VocBase/LogicalView.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
@@ -185,6 +186,18 @@ Result LogicalView::drop() {
     setUndeleted();
     throw;
   }
+}
+
+std::vector<std::string> LogicalView::linkedCollectionNames() const {
+  std::vector<std::string> result;
+  visitCollections([&](DataSourceId cid, Indexes*) {
+    auto collection = vocbase().lookupCollection(cid);
+    if (collection) {
+      result.emplace_back(collection->name());
+    }
+    return true;
+  });
+  return result;
 }
 
 bool LogicalView::enumerate(

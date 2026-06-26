@@ -386,7 +386,8 @@ void RestViewHandler::deleteView() {
   // end of parameter parsing
   // ...........................................................................
 
-  if (auto r = ExecContext::current().canDropView(_vocbase.name(), name);
+  if (auto r = ExecContext::current().canDropView(
+          _vocbase.name(), name, view->linkedCollectionNames());
       !r.ok()) {
     // check auth after ensuring that the view exists
     generateError(r);

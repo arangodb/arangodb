@@ -338,7 +338,20 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
           },
           [&](p::DropView const& view) -> Result {
             // Dropping a view requires RW access to the database.
-            return check(p::UseDatabase{view.db, DatabaseAccessLevel::Write});
+            if (auto r =
+                    check(p::UseDatabase{view.db, DatabaseAccessLevel::Write});
+                !r.ok()) {
+              return r;
+            }
+            // We also need read access on all linked collections.
+            for (auto const& coll : view.linkedCollections) {
+              if (auto r = check(p::UseCollection{view.db, coll,
+                                                  CollectionAccessLevel::Read});
+                  !r.ok()) {
+                return r;
+              }
+            }
+            return {};
           },
           [&](p::SeeAnalyzer const& analyzer) -> Result {
             // Database RO access is the only prerequisite and has already been

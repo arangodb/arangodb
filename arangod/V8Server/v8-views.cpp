@@ -319,7 +319,8 @@ static void JS_DropViewVocbase(
   auto view = CollectionNameResolver(vocbase).getView(name);
 
   if (view) {
-    if (auto r = ExecContext::current().canDropView(vocbase.name(), name);
+    if (auto r = ExecContext::current().canDropView(
+            vocbase.name(), name, view->linkedCollectionNames());
         r.fail()) {  // check auth after ensuring
                      // that the view exists
       events::DropView(vocbase.name(), view->name(), TRI_ERROR_FORBIDDEN);
@@ -386,7 +387,8 @@ static void JS_DropViewVocbaseObj(
   // end of parameter parsing
   // ...........................................................................
 
-  if (auto r = ExecContext::current().canDropView(vocbase.name(), view->name());
+  if (auto r = ExecContext::current().canDropView(
+          vocbase.name(), view->name(), view->linkedCollectionNames());
       r.fail()) {
     // check auth after ensuring that the view exists
     events::DropView(vocbase.name(), view->name(), TRI_ERROR_FORBIDDEN);
