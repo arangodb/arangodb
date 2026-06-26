@@ -44,7 +44,7 @@
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/HistogramBuilder.h"
 #include "Metrics/LogScale.h"
-#include "Metrics/MetricsFeature.h"
+#include "Metrics/IRegistry.h"
 #include "Random/RandomGenerator.h"
 #include "Replication2/AgencyMethods.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
@@ -201,7 +201,7 @@ struct HealthRecord {
 std::string Supervision::_agencyPrefix = "/arango";
 
 Supervision::Supervision(application_features::ApplicationServer& server,
-                         metrics::MetricsFeature& metrics)
+                         metrics::IRegistry& metricsRegistry)
     : arangodb::ServerThread(server, "Supervision"),
       _agent(nullptr),
       _snapshot(nullptr),
@@ -219,11 +219,11 @@ Supervision::Supervision(application_features::ApplicationServer& server,
       _upgraded(false),
       _nextServerCleanup(),
       _supervision_runtime_msec(
-          metrics.add(arangodb_agency_supervision_runtime_msec{})),
-      _supervision_runtime_wait_for_sync_msec(metrics.add(
+          metricsRegistry.add(arangodb_agency_supervision_runtime_msec{})),
+      _supervision_runtime_wait_for_sync_msec(metricsRegistry.add(
           arangodb_agency_supervision_runtime_wait_for_replication_msec{})),
-      _supervision_failed_server_counter(
-          metrics.add(arangodb_agency_supervision_failed_server_total{})) {}
+      _supervision_failed_server_counter(metricsRegistry.add(
+          arangodb_agency_supervision_failed_server_total{})) {}
 
 Supervision::~Supervision() { shutdown(); }
 
@@ -245,9 +245,13 @@ void Supervision::upgradeOne(Builder& builder) {
         VPackObjectBuilder oper(&builder);
         builder.add("/Agency/Definition", VPackValue(1));
         builder.add(VPackValue("/Target/ToDo"));
-        { VPackObjectBuilder empty(&builder); }
+        {
+          VPackObjectBuilder empty(&builder);
+        }
         builder.add(VPackValue("/Target/Pending"));
-        { VPackObjectBuilder empty(&builder); }
+        {
+          VPackObjectBuilder empty(&builder);
+        }
       }
       {
         VPackObjectBuilder o(&builder);
@@ -275,7 +279,9 @@ void Supervision::upgradeZero(Builder& builder) {
           if (fails->slice().length() > 0) {
             for (VPackSlice fail : VPackArrayIterator(fails->slice())) {
               builder.add(VPackValue(fail.stringView()));
-              { VPackArrayBuilder ooo(&builder); }
+              {
+                VPackArrayBuilder ooo(&builder);
+              }
             }
           }
         }
@@ -1997,7 +2003,9 @@ void arangodb::consensus::cleanupHotbackupTransferJobsFunctional(
           VPackObjectBuilder guard3(envelope.get());
           envelope->add("op", VPackValue("set"));
           envelope->add(VPackValue("new"));
-          { VPackObjectBuilder guard4(envelope.get()); }
+          {
+            VPackObjectBuilder guard4(envelope.get());
+          }
         }
       }
       {
