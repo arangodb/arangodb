@@ -1063,7 +1063,7 @@ async<void> RestIndexHandler::autotuneVectorIndex() {
   // Coordinator: fan out to every shard, report a per-shard breakdown.
   if (ServerState::instance()->isCoordinator()) {
     VPackBuilder shardResults;
-    auto const res = autoTuneVectorIndexOnAllDBServers(
+    auto const res = co_await autoTuneVectorIndexOnAllDBServers(
         _clusterFeature, _vocbase.name(), cName, bareId, body, shardResults);
     if (res.fail()) {
       generateError(res);

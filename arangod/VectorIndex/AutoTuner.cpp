@@ -304,12 +304,14 @@ ResultT<OperatingPoint> selectOperatingPoint(
                     "autotune for this topK first",
                     topK)};
   }
+
   // ascending recall (== ascending cost): first match is the cheapest.
   for (auto const& point : it->points) {
     if (point.recall >= targetRecall - kAutoTuneRecallEpsilon) {
       return point;
     }
   }
+
   double const best = it->points.empty() ? 0.0 : it->points.back().recall;
   return Result{
       TRI_ERROR_BAD_PARAMETER,

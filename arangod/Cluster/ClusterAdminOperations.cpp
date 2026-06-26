@@ -143,23 +143,23 @@ constexpr double kAutoTuneRequestTimeoutSecs = 600.0;
 
 // autotune a vector index on all shards (every replica), collecting per-shard
 // outcomes without failing fast.
-Result autoTuneVectorIndexOnAllDBServers(ClusterFeature& feature,
-                                         std::string const& dbname,
-                                         std::string const& collname,
-                                         std::string const& indexId,
-                                         velocypack::Slice params,
-                                         VPackBuilder& result) {
+async<Result> autoTuneVectorIndexOnAllDBServers(ClusterFeature& feature,
+                                                std::string const& dbname,
+                                                std::string const& collname,
+                                                std::string const& indexId,
+                                                velocypack::Slice params,
+                                                VPackBuilder& result) {
   NetworkFeature const& nf = feature.server().getFeature<NetworkFeature>();
   network::ConnectionPool* pool = nf.pool();
   if (pool == nullptr) {
     // nullptr happens only during controlled shutdown
-    return TRI_ERROR_SHUTTING_DOWN;
+    co_return Result{TRI_ERROR_SHUTTING_DOWN};
   }
   ClusterInfo& ci = feature.clusterInfo();
 
   auto collinfo = ci.getCollectionNT(dbname, collname);
   if (collinfo == nullptr) {
-    return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
+    co_return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
   }
 
   // Forward the tuning parameters verbatim to every shard; default to an empty
@@ -196,7 +196,7 @@ Result autoTuneVectorIndexOnAllDBServers(ClusterFeature& feature,
   }
 
   // collectAll never rejects: every shard outcome is reported, none aborts.
-  auto responses = futures::collectAll(futures).waitAndGet();
+  auto responses = co_await futures::collectAll(futures);
 
   result.openArray();
   for (std::size_t i = 0; i < responses.size(); ++i) {
@@ -222,7 +222,7 @@ Result autoTuneVectorIndexOnAllDBServers(ClusterFeature& feature,
   }
   result.close();
 
-  return {};
+  co_return Result{};
 }
 
 async<Result> getVectorIndexTunedTablesOnAllDBServers(
