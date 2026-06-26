@@ -27,6 +27,7 @@
 #include <cstdint>
 #include <memory>
 #include <span>
+#include <string_view>
 
 #include "Basics/ResultT.h"
 #include "Inspection/Status.h"
@@ -90,7 +91,8 @@ ResultT<OperatingPointTable> autoTuneTable(faiss::IndexIVF& index,
                                            std::span<float const> querySet,
                                            ResourceMonitor& resourceMonitor,
                                            void* invertedListContext,
-                                           std::int64_t R, double targetRecall);
+                                           std::int64_t R, double targetRecall,
+                                           std::string_view logContext);
 
 // Cheapest operating point reaching `targetRecall` for `topK`. Fails if no
 // table was tuned for `topK` or `targetRecall` exceeds the table's range.

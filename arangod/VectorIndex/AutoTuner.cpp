@@ -63,7 +63,8 @@ struct OwningIVFPQSearchParameters : faiss::IVFPQSearchParameters {
 // Use nLists as nProbe to get ground truth. Distance is unused
 ResultT<std::vector<faiss::idx_t>> computeGroundTruth(
     faiss::IndexIVF& index, std::span<float const> querySet,
-    faiss::idx_t numberOfQueries, std::int64_t R, void* invertedListContext) {
+    faiss::idx_t numberOfQueries, std::int64_t R, void* invertedListContext,
+    std::string_view logContext) {
   auto const total = static_cast<std::size_t>(numberOfQueries) * R;
   std::vector<faiss::idx_t> ids(total);
   std::vector<float> distancesScratch(total);
@@ -80,7 +81,8 @@ ResultT<std::vector<faiss::idx_t>> computeGroundTruth(
         std::format("autotune ground-truth search failed: {}", e.what())};
   }
   LOG_TOPIC("e16b1", INFO, Logger::ENGINES)
-      << "Autotune ground truth (nprobe=" << index.nlist << ") done in "
+      << logContext << "Autotune ground truth (nprobe=" << index.nlist
+      << ") done in "
       << std::chrono::duration<double>(std::chrono::steady_clock::now() - start)
              .count()
       << "s.";
@@ -169,8 +171,8 @@ ResultT<OperatingPointTable> autoTuneTable(faiss::IndexIVF& index,
                                            std::span<float const> querySet,
                                            ResourceMonitor& resourceMonitor,
                                            void* invertedListContext,
-                                           std::int64_t R,
-                                           double targetRecall) {
+                                           std::int64_t R, double targetRecall,
+                                           std::string_view logContext) {
   TRI_ASSERT(R >= 1);
   TRI_ASSERT(targetRecall > 0.0 && targetRecall <= 1.0);
   TRI_ASSERT(index.d > 0);
@@ -189,7 +191,7 @@ ResultT<OperatingPointTable> autoTuneTable(faiss::IndexIVF& index,
                            (sizeof(faiss::idx_t) + sizeof(float)));
 
   LOG_TOPIC("e16af", INFO, Logger::ENGINES)
-      << "Autotune starting: numberOfQueries=" << numberOfQueries
+      << logContext << "Autotune starting: numberOfQueries=" << numberOfQueries
       << " nlist=" << index.nlist << " R=" << R
       << " targetRecall=" << targetRecall << ".";
   auto const startTime = std::chrono::steady_clock::now();
@@ -202,12 +204,12 @@ ResultT<OperatingPointTable> autoTuneTable(faiss::IndexIVF& index,
   Result outcome;
   auto failLog = ScopeGuard([&]() noexcept {
     LOG_TOPIC("e16ae", WARN, Logger::ENGINES)
-        << "Autotune failed after " << elapsedSecs()
+        << logContext << "Autotune failed after " << elapsedSecs()
         << "s: " << outcome.errorMessage();
   });
 
   auto gt = computeGroundTruth(index, querySet, numberOfQueries, R,
-                               invertedListContext);
+                               invertedListContext, logContext);
   if (gt.fail()) {
     outcome = std::move(gt).result();
     return outcome;
@@ -246,12 +248,13 @@ ResultT<OperatingPointTable> autoTuneTable(faiss::IndexIVF& index,
   double const bestRecall = table.points.back().recall;
   if (bestRecall < targetRecall - kAutoTuneRecallEpsilon) {
     LOG_TOPIC("e16ac", WARN, Logger::ENGINES)
+        << logContext
         << "Autotune could not reach targetRecall=" << targetRecall
         << " for topK=" << R << "; best attainable recall=" << bestRecall
         << ". Returning best-attainable table.";
   }
   LOG_TOPIC("e16ad", INFO, Logger::ENGINES)
-      << "Autotune produced " << table.points.size()
+      << logContext << "Autotune produced " << table.points.size()
       << " operating points for topK=" << R << " (recall "
       << table.points.front().recall << ".." << bestRecall << ", targetRecall "
       << targetRecall << ", took " << elapsedSecs()

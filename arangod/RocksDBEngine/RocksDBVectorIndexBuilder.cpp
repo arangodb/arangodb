@@ -858,8 +858,11 @@ ResultT<OperatingPointTable> autoTuneVectorIndex(
       IteratorContext{.trx = static_cast<transaction::Methods*>(&trx)}};
   // The sweep mutates search parameters, so tune a copy, not the live index.
   auto tuningIndex = index.cloneFaissIndex();
-  auto table = autoTuneTable(*tuningIndex, sample.get(), resourceMonitor,
-                             &faissCtx, params.R, params.targetRecall);
+  auto const logContext = std::format(
+      "[shard={}, index={}] ", index.collection().name(), index.id().id());
+  auto table =
+      autoTuneTable(*tuningIndex, sample.get(), resourceMonitor, &faissCtx,
+                    params.R, params.targetRecall, logContext);
   if (table.fail()) {
     return std::move(table).result();
   }

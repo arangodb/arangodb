@@ -192,7 +192,7 @@ TEST(AutoTunerTest, producesAscendingTableReachingTargetRecall) {
   arangodb::GlobalResourceMonitor global;
   arangodb::ResourceMonitor monitor{global};
   auto tuned = autoTuneTable(*ivf, xq, monitor, /*invertedListContext=*/nullptr,
-                             R, targetRecall);
+                             R, targetRecall, /*logContext=*/{});
   ASSERT_TRUE(tuned.ok()) << tuned.errorMessage();
   auto const& table = tuned.get();
 
@@ -226,7 +226,8 @@ TEST(AutoTunerTest, pqSweepEmitsOnlyApplicableParameters) {
   arangodb::GlobalResourceMonitor global;
   arangodb::ResourceMonitor monitor{global};
   auto tuned = autoTuneTable(*ivfpq, xq, monitor,
-                             /*invertedListContext=*/nullptr, R, targetRecall);
+                             /*invertedListContext=*/nullptr, R, targetRecall,
+                             /*logContext=*/{});
   ASSERT_TRUE(tuned.ok()) << tuned.errorMessage();
   ASSERT_FALSE(tuned.get().points.empty());
 
@@ -314,15 +315,16 @@ TEST(AutoTunerTest, misalignedQuerySetTrapsAssertion) {
   arangodb::ResourceMonitor monitor{global};
   EXPECT_DEATH_CORE_FREE(
       autoTuneTable(*ivf, bad, monitor, /*invertedListContext=*/nullptr,
-                    /*R=*/10, /*targetRecall=*/0.9),
+                    /*R=*/10, /*targetRecall=*/0.9, /*logContext=*/{}),
       "");
 }
 
 // The worked examples from the proposal (confidence 0.99 -> z = 2.576,
-// recallTolerance 0.03). Tolerance of 1 absorbs the z rounding in the doc.
+// recallTolerance 0.03). Fixed inputs so the math is checked independently of
+// the configured tolerance. Tolerance of 1 absorbs the z rounding in the doc.
 TEST(AutoTunerTest, wilsonSampleSizeMatchesWorkedExamples) {
   constexpr double z = kAutoTuneConfidenceZ;
-  constexpr double m = kAutoTuneRecallTolerance;
+  constexpr double m = 0.03;
   EXPECT_NEAR(static_cast<double>(wilsonSampleSize(0.90, z, m)), 668.0, 1.0);
   EXPECT_NEAR(static_cast<double>(wilsonSampleSize(0.80, z, m)), 1177.0, 1.0);
   EXPECT_NEAR(static_cast<double>(wilsonSampleSize(0.50, z, m)), 1837.0, 1.0);
@@ -339,7 +341,7 @@ TEST(AutoTunerTest, wilsonSampleSizePeaksAtHalf) {
 
 // Tighter tolerance and higher confidence both enlarge the required sample.
 TEST(AutoTunerTest, wilsonSampleSizeGrowsWithPrecisionAndConfidence) {
-  constexpr double m = kAutoTuneRecallTolerance;
+  constexpr double m = 0.02;
   EXPECT_GT(wilsonSampleSize(0.90, kAutoTuneConfidenceZ, 0.01),
             wilsonSampleSize(0.90, kAutoTuneConfidenceZ, m));
   // z: 0.95 -> 1.960, 0.99 -> 2.576.
