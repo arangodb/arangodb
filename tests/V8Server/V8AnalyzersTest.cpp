@@ -38,6 +38,7 @@
 #include <velocypack/Parser.h>
 
 #include "IResearch/common.h"
+#include "Mocks/ExecContextFactory.h"
 #include "Mocks/LogLevels.h"
 
 #include "ApplicationFeatures/HttpEndpointProvider.h"
@@ -139,14 +140,14 @@ class V8AnalyzerTest
     EXPECT_CALL(*um, databaseAuthLevel)
         .Times(AtLeast(1))
         .WillRepeatedly(WithArgs<0, 1>(
-            [this](std::string const& username, std::string_view dbname) {
+            [this](std::string_view username, std::string_view dbname) {
               auto const it = _userMap.find(username);
               EXPECT_NE(it, _userMap.end());
               return it->second.databaseAuthLevel(dbname);
             }));
     EXPECT_CALL(*um, collectionAuthLevel)
         .Times(AtLeast(1))
-        .WillRepeatedly(WithArgs<0, 1, 2>([this](std::string const& username,
+        .WillRepeatedly(WithArgs<0, 1, 2>([this](std::string_view username,
                                                  std::string_view dbname,
                                                  std::string_view const cname) {
           auto const it = _userMap.find(username);
@@ -227,17 +228,11 @@ TEST_F(V8AnalyzerTest, test_instance_accessors) {
                     arangodb::transaction::OperationOriginTestCase{});
   ASSERT_FALSE(!analyzer);
 
-  struct ExecContext : public arangodb::ExecContext {
-    ExecContext()
-        : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                                arangodb::ExecContext::Type::Default, "", "",
-                                arangodb::auth::Level::NONE,
-                                arangodb::auth::Level::NONE, false) {}
-  };
-  auto execContext = std::make_shared<ExecContext>();
-  arangodb::ExecContextScope execContextScope(execContext);
   auto& authFeature = server.getFeature<arangodb::AuthenticationFeature>();
   auto* userManager = authFeature.userManager();
+  auto execCtxBundle =
+      arangodb::tests::mocks::makeClassicExecContextFrom(*userManager, "");
+  arangodb::ExecContextScope execContextScope(execCtxBundle.execContext);
 
   arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
   TRI_vocbase_t vocbase(systemDBInfo(server.server()), server.engine());
@@ -538,17 +533,11 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
             .ok());
   }
 
-  struct ExecContext : public arangodb::ExecContext {
-    ExecContext()
-        : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                                arangodb::ExecContext::Type::Default, "", "",
-                                arangodb::auth::Level::NONE,
-                                arangodb::auth::Level::NONE, false) {}
-  };
-  auto execContext = std::make_shared<ExecContext>();
-  arangodb::ExecContextScope execContextScope(execContext);
   auto& authFeature = server.getFeature<arangodb::AuthenticationFeature>();
   auto* userManager = authFeature.userManager();
+  auto execCtxBundle =
+      arangodb::tests::mocks::makeClassicExecContextFrom(*userManager, "");
+  arangodb::ExecContextScope execContextScope(execCtxBundle.execContext);
 
   TRI_vocbase_t vocbase(systemDBInfo(server.server()), server.engine());
   v8::Isolate::CreateParams isolateParams;
@@ -1026,17 +1015,11 @@ TEST_F(V8AnalyzerTest, test_manager_get) {
                             VPackSlice::noneSlice(),
                             arangodb::transaction::OperationOriginTestCase{})
                    .ok()));
-  struct ExecContext : public arangodb::ExecContext {
-    ExecContext()
-        : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                                arangodb::ExecContext::Type::Default, "", "",
-                                arangodb::auth::Level::NONE,
-                                arangodb::auth::Level::NONE, false) {}
-  };
-  auto execContext = std::make_shared<ExecContext>();
-  arangodb::ExecContextScope execContextScope(execContext);
   auto& authFeature = server.getFeature<arangodb::AuthenticationFeature>();
   auto* userManager = authFeature.userManager();
+  auto execCtxBundle =
+      arangodb::tests::mocks::makeClassicExecContextFrom(*userManager, "");
+  arangodb::ExecContextScope execContextScope(execCtxBundle.execContext);
 
   TRI_vocbase_t vocbase(systemDBInfo(server.server()), server.engine());
   v8::Isolate::CreateParams isolateParams;
@@ -1462,17 +1445,11 @@ TEST_F(V8AnalyzerTest, test_manager_list) {
                           arangodb::transaction::OperationOriginTestCase{});
   ASSERT_TRUE(res.ok());
 
-  struct ExecContext : public arangodb::ExecContext {
-    ExecContext()
-        : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                                arangodb::ExecContext::Type::Default, "", "",
-                                arangodb::auth::Level::NONE,
-                                arangodb::auth::Level::NONE, false) {}
-  };
-  auto execContext = std::make_shared<ExecContext>();
-  arangodb::ExecContextScope execContextScope(execContext);
   auto& authFeature = server.getFeature<arangodb::AuthenticationFeature>();
   auto* userManager = authFeature.userManager();
+  auto execCtxBundle =
+      arangodb::tests::mocks::makeClassicExecContextFrom(*userManager, "");
+  arangodb::ExecContextScope execContextScope(execCtxBundle.execContext);
 
   TRI_vocbase_t systemDBVocbase(systemDBInfo(server.server()), server.engine());
   TRI_vocbase_t testDBVocbase(testDBInfo(server.server()), server.engine());
@@ -1862,17 +1839,11 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
                               arangodb::transaction::OperationOriginTestCase{})
                      .ok()));
   }
-  struct ExecContext : public arangodb::ExecContext {
-    ExecContext()
-        : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                                arangodb::ExecContext::Type::Default, "", "",
-                                arangodb::auth::Level::NONE,
-                                arangodb::auth::Level::NONE, false) {}
-  };
-  auto execContext = std::make_shared<ExecContext>();
-  arangodb::ExecContextScope execContextScope(execContext);
   auto& authFeature = server.getFeature<arangodb::AuthenticationFeature>();
   auto* userManager = authFeature.userManager();
+  auto execCtxBundle =
+      arangodb::tests::mocks::makeClassicExecContextFrom(*userManager, "");
+  arangodb::ExecContextScope execContextScope(execCtxBundle.execContext);
 
   TRI_vocbase_t systemDBVocbase(systemDBInfo(server.server()), server.engine());
   TRI_vocbase_t testDBVocbase(testDBInfo(server.server()), server.engine());

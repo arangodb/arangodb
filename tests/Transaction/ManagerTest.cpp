@@ -35,6 +35,7 @@
 #include "Transaction/Status.h"
 #include "Utils/ExecContext.h"
 #include "Utils/SingleCollectionTransaction.h"
+#include "Mocks/ExecContextFactory.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Parser.h>
@@ -607,15 +608,10 @@ TEST_F(TransactionManagerTest, permission_denied_readonly) {
   }
   ASSERT_NE(coll, nullptr);
 
-  struct ExecContext : public arangodb::ExecContext {
-    ExecContext()
-        : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                                arangodb::ExecContext::Type::Internal, "dummy",
-                                "testVocbase", arangodb::auth::Level::RO,
-                                arangodb::auth::Level::RO, false) {}
-  };
-  auto execContext = std::make_shared<ExecContext>();
-  arangodb::ExecContextScope execContextScope(execContext);
+  auto classicCtx = arangodb::tests::mocks::makeClassicExecContext(
+      "dummy", "testVocbase", arangodb::auth::Level::RO,
+      arangodb::auth::Level::RO);
+  arangodb::ExecContextScope execContextScope(classicCtx.execContext);
 
   auto json = arangodb::velocypack::Parser::fromJson(
       "{ \"collections\":{\"read\": [\"42\"]}}");
@@ -644,15 +640,10 @@ TEST_F(TransactionManagerTest, permission_denied_forbidden) {
   }
   ASSERT_NE(coll, nullptr);
 
-  struct ExecContext : public arangodb::ExecContext {
-    ExecContext()
-        : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                                arangodb::ExecContext::Type::Internal, "dummy",
-                                "testVocbase", arangodb::auth::Level::NONE,
-                                arangodb::auth::Level::NONE, false) {}
-  };
-  auto execContext = std::make_shared<ExecContext>();
-  arangodb::ExecContextScope execContextScope(execContext);
+  auto classicCtx = arangodb::tests::mocks::makeClassicExecContext(
+      "dummy", "testVocbase", arangodb::auth::Level::NONE,
+      arangodb::auth::Level::NONE);
+  arangodb::ExecContextScope execContextScope(classicCtx.execContext);
 
   auto json = arangodb::velocypack::Parser::fromJson(
       "{ \"collections\":{\"read\": [\"42\"]}}");

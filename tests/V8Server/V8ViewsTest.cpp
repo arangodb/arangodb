@@ -35,6 +35,7 @@
 #include "velocypack/Parser.h"
 
 #include "IResearch/common.h"
+#include "Mocks/ExecContextFactory.h"
 #include "Mocks/LogLevels.h"
 
 #include "ApplicationFeatures/HttpEndpointProvider.h"
@@ -191,7 +192,7 @@ class V8ViewsTest
     EXPECT_CALL(*um, databaseAuthLevel)
         .Times(AtLeast(1))
         .WillRepeatedly(WithArgs<0, 1>(
-            [this](std::string const& username, std::string_view dbname) {
+            [this](std::string_view username, std::string_view dbname) {
               if (_userMap.empty()) {
                 return auth::Level::NONE;
               }
@@ -251,17 +252,11 @@ TEST_F(V8ViewsTest, test_auth) {
 
     EXPECT_TRUE(vocbase.views().empty());
 
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                                  arangodb::ExecContext::Type::Default, "", "",
-                                  arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE, false) {}
-    };
-    auto execContext = std::make_shared<ExecContext>();
-    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
+    auto execCtxBundle =
+        arangodb::tests::mocks::makeClassicExecContextFrom(*userManager, "");
+    arangodb::ExecContextScope execContextScope(execCtxBundle.execContext);
 
     // not authorized (missing user)
     {
@@ -388,17 +383,11 @@ TEST_F(V8ViewsTest, test_auth) {
         TRI_V8_ASCII_STRING(isolate.get(), "testView"),
     };
 
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                                  arangodb::ExecContext::Type::Default, "", "",
-                                  arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE, false) {}
-    };
-    auto execContext = std::make_shared<ExecContext>();
-    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
+    auto execCtxBundle =
+        arangodb::tests::mocks::makeClassicExecContextFrom(*userManager, "");
+    arangodb::ExecContextScope execContextScope(execCtxBundle.execContext);
 
     // not authorized (missing user)
     {
@@ -525,17 +514,11 @@ TEST_F(V8ViewsTest, test_auth) {
         SLOT_CLASS, v8::External::New(isolate.get(), logicalView.get()));
     std::vector<v8::Local<v8::Value>> args = {};
 
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                                  arangodb::ExecContext::Type::Default, "", "",
-                                  arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE, false) {}
-    };
-    auto execContext = std::make_shared<ExecContext>();
-    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
+    auto execCtxBundle =
+        arangodb::tests::mocks::makeClassicExecContextFrom(*userManager, "");
+    arangodb::ExecContextScope execContextScope(execCtxBundle.execContext);
 
     // not authorized (missing user)
     {
@@ -658,17 +641,11 @@ TEST_F(V8ViewsTest, test_auth) {
         TRI_V8_ASCII_STRING(isolate.get(), "testView1"),
     };
 
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                                  arangodb::ExecContext::Type::Default, "", "",
-                                  arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE, false) {}
-    };
-    auto execContext = std::make_shared<ExecContext>();
-    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
+    auto execCtxBundle =
+        arangodb::tests::mocks::makeClassicExecContextFrom(*userManager, "");
+    arangodb::ExecContextScope execContextScope(execCtxBundle.execContext);
 
     // not authorized (missing user)
     {
@@ -850,17 +827,11 @@ TEST_F(V8ViewsTest, test_auth) {
                                          ->slice()),
     };
 
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                                  arangodb::ExecContext::Type::Default, "", "",
-                                  arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE, false) {}
-    };
-    auto execContext = std::make_shared<ExecContext>();
-    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
+    auto execCtxBundle =
+        arangodb::tests::mocks::makeClassicExecContextFrom(*userManager, "");
+    arangodb::ExecContextScope execContextScope(execCtxBundle.execContext);
 
     // not authorized (missing user)
     {
@@ -1044,17 +1015,11 @@ TEST_F(V8ViewsTest, test_auth) {
         TRI_V8_ASCII_STRING(isolate.get(), "testView"),
     };
 
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                                  arangodb::ExecContext::Type::Default, "", "",
-                                  arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE, false) {}
-    };
-    auto execContext = std::make_shared<ExecContext>();
-    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
+    auto execCtxBundle =
+        arangodb::tests::mocks::makeClassicExecContextFrom(*userManager, "");
+    arangodb::ExecContextScope execContextScope(execCtxBundle.execContext);
 
     // not authorized (missing user)
     {
@@ -1204,17 +1169,11 @@ TEST_F(V8ViewsTest, test_auth) {
         SLOT_CLASS, v8::External::New(isolate.get(), logicalView.get()));
     std::vector<v8::Local<v8::Value>> args = {};
 
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                                  arangodb::ExecContext::Type::Default, "", "",
-                                  arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE, false) {}
-    };
-    auto execContext = std::make_shared<ExecContext>();
-    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
+    auto execCtxBundle =
+        arangodb::tests::mocks::makeClassicExecContextFrom(*userManager, "");
+    arangodb::ExecContextScope execContextScope(execCtxBundle.execContext);
 
     // not authorized (missing user)
     {
@@ -1363,17 +1322,11 @@ TEST_F(V8ViewsTest, test_auth) {
 
     std::vector<v8::Local<v8::Value>> args = {};
 
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                                  arangodb::ExecContext::Type::Default, "", "",
-                                  arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE, false) {}
-    };
-    auto execContext = std::make_shared<ExecContext>();
-    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
+    auto execCtxBundle =
+        arangodb::tests::mocks::makeClassicExecContextFrom(*userManager, "");
+    arangodb::ExecContextScope execContextScope(execCtxBundle.execContext);
 
     // not authorized (missing user)
     {

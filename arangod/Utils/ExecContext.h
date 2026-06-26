@@ -184,6 +184,14 @@ class ExecContext {
   /// @brief returns true if the user can be read
   Result canReadUser(std::string_view user) const;
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  /// @brief returns the collection auth level for the current user.
+  /// This method is only available in test builds and is used for asserting
+  /// permission state in existing tests that predate the new Result-based API.
+  [[nodiscard]] auth::Level collectionAuthLevel(std::string_view db,
+                                                std::string_view coll) const;
+#endif
+
   /// @brief returns true for each user which can be read
   // TODO Should this return a std::vector<Result>?
   // MAX: I do not think so, it is used only once to filter the visible

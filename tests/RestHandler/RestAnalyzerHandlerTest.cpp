@@ -32,6 +32,7 @@
 
 #include "IResearch/RestHandlerMock.h"
 #include "IResearch/common.h"
+#include "Mocks/ExecContextFactory.h"
 #include "Mocks/LogLevels.h"
 #include "Mocks/Servers.h"
 #include "Mocks/StorageEngineMock.h"
@@ -107,15 +108,8 @@ class RestAnalyzerHandlerTest
   arangodb::AuthenticationFeature& authFeature;
   arangodb::auth::UserManager* userManager;
 
-  struct ExecContext : public arangodb::ExecContext {
-    ExecContext()
-        : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                                arangodb::ExecContext::Type::Default, "", "",
-                                arangodb::auth::Level::NONE,
-                                arangodb::auth::Level::NONE, false) {}
-  };
-  std::shared_ptr<ExecContext> execContext;
-  arangodb::ExecContextScope execContextScope;  // (execContext);
+  arangodb::tests::mocks::BorrowedExecContext _execCtxBundle;
+  arangodb::ExecContextScope execContextScope;
   arangodb::auth::User _user{arangodb::auth::User::newUser("", "")};
 
   RestAnalyzerHandlerTest()
@@ -126,8 +120,9 @@ class RestAnalyzerHandlerTest
         dbFeature(server.getFeature<arangodb::DatabaseFeature>()),
         authFeature(server.getFeature<arangodb::AuthenticationFeature>()),
         userManager(authFeature.userManager()),
-        execContext(std::make_shared<ExecContext>()),
-        execContextScope(execContext) {
+        _execCtxBundle(arangodb::tests::mocks::makeClassicExecContextFrom(
+            *userManager, "")),
+        execContextScope(_execCtxBundle.execContext) {
     expectUserManagerCalls();
     grantOnDb(arangodb::StaticStrings::SystemDatabase,
               arangodb::auth::Level::RW);
@@ -238,13 +233,13 @@ class RestAnalyzerHandlerTest
     EXPECT_CALL(*um, databaseAuthLevel)
         .Times(AtLeast(1))
         .WillRepeatedly(WithArgs<0, 1>(
-            [this](std::string const& username, std::string_view dbname) {
+            [this](std::string_view username, std::string_view dbname) {
               EXPECT_EQ(username, _user.username());
               return _user.databaseAuthLevel(dbname);
             }));
     EXPECT_CALL(*um, collectionAuthLevel)
         .Times(AtLeast(1))
-        .WillRepeatedly(WithArgs<0, 1, 2>([this](std::string const& username,
+        .WillRepeatedly(WithArgs<0, 1, 2>([this](std::string_view username,
                                                  std::string_view dbname,
                                                  std::string_view const cname) {
           EXPECT_EQ(username, _user.username());
@@ -252,7 +247,7 @@ class RestAnalyzerHandlerTest
         }));
     EXPECT_CALL(*um, updateUser)
         .Times(AtLeast(1))
-        .WillRepeatedly([this](std::string const& username,
+        .WillRepeatedly([this](std::string_view username,
                                auth::UserManager::UserCallback&& cb,
                                auth::UserManager::RetryOnConflict const) {
           EXPECT_EQ(username, _user.username());

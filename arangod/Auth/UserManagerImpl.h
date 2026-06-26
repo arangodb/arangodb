@@ -46,10 +46,6 @@ class ReadLocker;
 
 namespace auth {
 
-using UserMap =
-    std::unordered_map<std::string, User, basics::TransparentStringHash,
-                       std::equal_to<>>;
-
 class UserManagerImpl final : public UserManager {
  public:
   explicit UserManagerImpl(application_features::ApplicationServer&);
@@ -104,11 +100,11 @@ class UserManagerImpl final : public UserManager {
   // Overwrite internally cached permissions, only use
   // for testing purposes.
   // This will assert that the underlying UpdateThread was started.
-  void setAuthInfo(UserMap const& userEntryMap);
+  void setAuthInfo(UserMap const& userEntryMap) override;
 
   // Need this to find out if the loadFromDB was run and the internal version
   // was updated
-  [[nodiscard]] uint64_t internalVersion() const noexcept;
+  [[nodiscard]] uint64_t internalVersion() const noexcept override;
 #endif  // ARANGODB_USE_GOOGLE_TESTS
 
  private:

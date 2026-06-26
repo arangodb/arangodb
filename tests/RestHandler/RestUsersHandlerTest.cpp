@@ -28,6 +28,7 @@
 
 #include "IResearch/RestHandlerMock.h"
 #include "IResearch/common.h"
+#include "Mocks/ExecContextFactory.h"
 #include "Mocks/LogLevels.h"
 #include "Mocks/Servers.h"
 #include "Mocks/StorageEngineMock.h"
@@ -40,7 +41,6 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/ViewTypesFeature.h"
-#include "RestServer/VocbaseContext.h"
 #include "Utils/ExecContext.h"
 #ifdef USE_V8
 #include "V8Server/V8DealerFeature.h"
@@ -165,7 +165,7 @@ class RestUsersHandlerTest
         });
     EXPECT_CALL(*um, updateUser)
         .Times(AtLeast(1))
-        .WillRepeatedly([this](std::string const& username,
+        .WillRepeatedly([this](std::string_view username,
                                auth::UserManager::UserCallback&& cb,
                                auth::UserManager::RetryOnConflict const) {
           const auto it = _userMap.find(username);
@@ -176,7 +176,7 @@ class RestUsersHandlerTest
         });
     EXPECT_CALL(*um, collectionAuthLevel)
         .Times(AtLeast(1))
-        .WillRepeatedly(WithArgs<0, 1, 2>([this](std::string const& username,
+        .WillRepeatedly(WithArgs<0, 1, 2>([this](std::string_view username,
                                                  std::string_view dbname,
                                                  std::string_view cname) {
           auto const it = _userMap.find(username);
@@ -264,15 +264,9 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
   revokeWildcardRequest.addSuffix("*");
   revokeWildcardRequest.setRequestType(arangodb::rest::RequestType::DELETE_REQ);
 
-  struct ExecContext : public arangodb::ExecContext {
-    ExecContext()
-        : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                                arangodb::ExecContext::Type::Default, userName,
-                                "", arangodb::auth::Level::RW,
-                                arangodb::auth::Level::NONE, true) {
-    }  // ExecContext::isAdminUser() == true
-  };
-  auto execContext = std::make_shared<ExecContext>();
+  auto execCtxBundle = arangodb::tests::mocks::makeClassicExecContextFrom(
+      *userManager, userName);
+  auto execContext = execCtxBundle.execContext;
   arangodb::ExecContextScope execContextScope(execContext);
 
   // test auth missing (grant)
@@ -336,11 +330,11 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
           return arangodb::Result();
         });
     ASSERT_NE(nullptr, userPtr);
-    userPtr->grantCollection(vocbase->name(), "testDataSource",
-                             arangodb::CollectionAccessLevel::
-                                 Read);  // for missing collections
-                                         // User::collectionAuthLevel(...)
-                                         // returns database auth::Level
+    userPtr->grantCollection(
+        vocbase->name(), "testDataSource",
+        arangodb::auth::Level::RO);  // for missing collections
+                                     // User::collectionAuthLevel(...)
+                                     // returns database auth::Level
 
     EXPECT_FALSE(execContext
                      ->canUseCollection(vocbase->name(), "testDataSource",
@@ -367,7 +361,7 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
                      ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum)
                                    .getNumber<int>()}));
     EXPECT_TRUE(
-        (arangodb::CollectionAccessLevel::Read ==
+        (arangodb::auth::Level::RO ==
          execContext->collectionAuthLevel(
              vocbase->name(), "testDataSource")));  // not modified from above
   }
@@ -431,11 +425,11 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
           return arangodb::Result();
         });
     ASSERT_NE(nullptr, userPtr);
-    userPtr->grantCollection(vocbase->name(), "testDataSource",
-                             arangodb::CollectionAccessLevel::
-                                 Read);  // for missing collections
-                                         // User::collectionAuthLevel(...)
-                                         // returns database auth::Level
+    userPtr->grantCollection(
+        vocbase->name(), "testDataSource",
+        arangodb::auth::Level::RO);  // for missing collections
+                                     // User::collectionAuthLevel(...)
+                                     // returns database auth::Level
     auto logicalCollection = std::shared_ptr<arangodb::LogicalCollection>(
         vocbase->createCollection(collectionJson->slice()).get(),
         [vocbase](arangodb::LogicalCollection* ptr) -> void {
@@ -444,7 +438,7 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
     ASSERT_FALSE(!logicalCollection);
 
     EXPECT_TRUE(
-        (arangodb::CollectionAccessLevel::Read ==
+        (arangodb::auth::Level::RO ==
          execContext->collectionAuthLevel(vocbase->name(), "testDataSource")));
     auto status = revokeHandler.execute();
     EXPECT_EQ(arangodb::RestStatus::DONE, status);
@@ -538,11 +532,11 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
           return arangodb::Result();
         });
     ASSERT_NE(nullptr, userPtr);
-    userPtr->grantCollection(vocbase->name(), "testDataSource",
-                             arangodb::CollectionAccessLevel::
-                                 Read);  // for missing collections
-                                         // User::collectionAuthLevel(...)
-                                         // returns database auth::Level
+    userPtr->grantCollection(
+        vocbase->name(), "testDataSource",
+        arangodb::auth::Level::RO);  // for missing collections
+                                     // User::collectionAuthLevel(...)
+                                     // returns database auth::Level
     auto logicalView = std::shared_ptr<arangodb::LogicalView>(
         vocbase->createView(viewJson->slice(), false).get(),
         [vocbase](arangodb::LogicalView* ptr) -> void {
@@ -551,7 +545,7 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
     ASSERT_FALSE(!logicalView);
 
     EXPECT_TRUE(
-        (arangodb::CollectionAccessLevel::Read ==
+        (arangodb::auth::Level::RO ==
          execContext->collectionAuthLevel(vocbase->name(), "testDataSource")));
     auto status = revokeHandler.execute();
     EXPECT_EQ(arangodb::RestStatus::DONE, status);
@@ -574,7 +568,7 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
                      ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum)
                                    .getNumber<int>()}));
     EXPECT_TRUE(
-        (arangodb::CollectionAccessLevel::Read ==
+        (arangodb::auth::Level::RO ==
          execContext->collectionAuthLevel(
              vocbase->name(), "testDataSource")));  // not modified from above
   }
@@ -639,11 +633,11 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
           return arangodb::Result();
         });
     ASSERT_NE(nullptr, userPtr);
-    userPtr->grantCollection(vocbase->name(), "testDataSource",
-                             arangodb::CollectionAccessLevel::
-                                 Read);  // for missing collections
-                                         // User::collectionAuthLevel(...)
-                                         // returns database auth::Level
+    userPtr->grantCollection(
+        vocbase->name(), "testDataSource",
+        arangodb::auth::Level::RO);  // for missing collections
+                                     // User::collectionAuthLevel(...)
+                                     // returns database auth::Level
     auto logicalCollection = std::shared_ptr<arangodb::LogicalCollection>(
         vocbase->createCollection(collectionJson->slice()).get(),
         [vocbase](arangodb::LogicalCollection* ptr) -> void {
@@ -652,7 +646,7 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
     ASSERT_FALSE(!logicalCollection);
 
     EXPECT_TRUE(
-        (arangodb::CollectionAccessLevel::Read ==
+        (arangodb::auth::Level::RO ==
          execContext->collectionAuthLevel(vocbase->name(), "testDataSource")));
     auto status = revokeWildcardHandler.execute();
     EXPECT_EQ(arangodb::RestStatus::DONE, status);
@@ -670,7 +664,7 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
          slice.get(arangodb::StaticStrings::Error).isBoolean() &&
          false == slice.get(arangodb::StaticStrings::Error).getBoolean()));
     EXPECT_TRUE(
-        (arangodb::CollectionAccessLevel::Read ==
+        (arangodb::auth::Level::RO ==
          execContext->collectionAuthLevel(
              vocbase->name(),
              "testDataSource")));  // unchanged since revocation is only for

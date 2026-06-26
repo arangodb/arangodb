@@ -41,6 +41,7 @@
 #include "Aql/QueryRegistry.h"
 #include "Auth/UserManagerMock.h"
 #include "Basics/StaticStrings.h"
+#include "Mocks/ExecContextFactory.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
@@ -175,7 +176,7 @@ class V8UsersTest
         });
     EXPECT_CALL(*um, updateUser)
         .Times(AtLeast(1))
-        .WillRepeatedly([this](std::string const& username,
+        .WillRepeatedly([this](std::string_view username,
                                auth::UserManager::UserCallback&& cb,
                                auth::UserManager::RetryOnConflict const) {
           const auto it = _userMap.find(username);
@@ -186,7 +187,7 @@ class V8UsersTest
         });
     EXPECT_CALL(*um, collectionAuthLevel)
         .Times(AtLeast(1))
-        .WillRepeatedly(WithArgs<0, 1, 2>([this](std::string const& username,
+        .WillRepeatedly(WithArgs<0, 1, 2>([this](std::string_view username,
                                                  std::string_view dbname,
                                                  std::string_view cname) {
           auto const it = _userMap.find(username);
@@ -276,18 +277,12 @@ TEST_F(V8UsersTest, test_collection_auth) {
       TRI_V8_ASCII_STRING(isolate.get(), "*"),
   };
 
-  struct ExecContext : public arangodb::ExecContext {
-    ExecContext()
-        : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                                arangodb::ExecContext::Type::Default, userName,
-                                "", arangodb::auth::Level::RW,
-                                arangodb::auth::Level::NONE, true) {
-    }  // ExecContext::isAdminUser() == true
-  };
-  auto execContext = std::make_shared<ExecContext>();
-  arangodb::ExecContextScope execContextScope(execContext);
   auto* authFeature = arangodb::AuthenticationFeature::instance();
   auto* userManager = authFeature->userManager();
+  auto execCtxBundle = arangodb::tests::mocks::makeClassicExecContextFrom(
+      *userManager, userName);
+  auto execContext = execCtxBundle.execContext;
+  arangodb::ExecContextScope execContextScope(execContext);
 
   // test auth missing (grant)
   {
