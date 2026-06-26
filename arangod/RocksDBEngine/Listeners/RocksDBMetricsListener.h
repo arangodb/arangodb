@@ -42,7 +42,7 @@ namespace arangodb {
 /// alone.
 class RocksDBMetricsListener : public rocksdb::EventListener {
  public:
-  explicit RocksDBMetricsListener(metrics::ICollector& metricsFeature);
+  explicit RocksDBMetricsListener(metrics::ICollector& metrics);
 
   void OnFlushBegin(rocksdb::DB*, rocksdb::FlushJobInfo const& info) override;
   void OnFlushCompleted(rocksdb::DB*,
