@@ -63,8 +63,8 @@ ReplicationFeature::ReplicationFeature(
     : application_features::ApplicationFeature{server, *this},
       _connectionCache{comm, httpclient::ConnectionCache::Options{5, 120}},
       _parallelTailingInvocations(0),
-      _inventoryRequests(
-          metricsRegistry.add(arangodb_replication_cluster_inventory_requests_total{})),
+      _inventoryRequests(metricsRegistry.add(
+          arangodb_replication_cluster_inventory_requests_total{})),
       _clients(metricsRegistry.add(arangodb_replication_clients{})) {
   setOptional(true);
   startsAfter<BasicFeaturePhaseServer>();
