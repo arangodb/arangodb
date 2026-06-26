@@ -271,7 +271,7 @@ class ClusterInfo final {
                        AgencyCache& agencyCache,
                        AgencyCallbackRegistry& agencyCallbackRegistry,
                        ErrorCode syncerShutdownCode,
-                       metrics::MetricsFeature& metrics);
+                       metrics::IRegistry& metricsRegistry);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief shuts down library
@@ -1120,7 +1120,7 @@ class ClusterInfo final {
   /// overridden during testing
   ErrorCode const _syncerShutdownCode;
 
-  std::shared_ptr<metrics::Gauge<std::uint64_t>> _memoryUsage;
+  metrics::Gauge<std::uint64_t>& _memoryUsage;
   /// @brief histogram for loadPlan runtime
   metrics::Histogram<metrics::LogScale<float>>& _lpTimer;
   /// @brief histogram for loadCurrent runtime
@@ -1138,7 +1138,7 @@ class ClusterInfo final {
     metrics::Gauge<std::uint64_t>& numberFollowerShards;
     metrics::Gauge<std::uint64_t>& shardFollowersOutOfSync;
 
-    explicit MetadataMetrics(metrics::MetricsFeature& metrics);
+    explicit MetadataMetrics(metrics::IRegistry& metricsRegistry);
   };
   // Report these only on Coordinators.
   std::optional<MetadataMetrics> _metadataMetrics;

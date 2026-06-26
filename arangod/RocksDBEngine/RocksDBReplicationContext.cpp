@@ -38,7 +38,6 @@
 #include "Replication/Syncer.h"
 #include "Replication/common-defines.h"
 #include "Replication/utilities.h"
-#include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -90,8 +89,8 @@ bool RocksDBReplicationContext::findCollection(
     std::string const& dbName, T const& collection,
     std::function<void(TRI_vocbase_t& vocbase,
                        LogicalCollection& collection)> const& cb) {
-  auto& dbfeature = _engine.getDatabaseFeature();
-  auto vocbase = dbfeature.useDatabase(dbName);
+  auto& dbProvider = _engine.getDatabaseProvider();
+  auto vocbase = dbProvider.useDatabase(dbName);
   if (!vocbase) {
     return false;
   }
@@ -390,7 +389,7 @@ Result RocksDBReplicationContext::getInventory(TRI_vocbase_t& vocbase,
 
   if (global) {
     // global inventory
-    _engine.getDatabaseFeature().inventory(inventory, tick, nameFilter);
+    _engine.getDatabaseProvider().inventory(inventory, tick, nameFilter);
   } else {
     // database-specific inventory
     inventory.openObject();
