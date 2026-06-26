@@ -1,6 +1,8 @@
 3.12.10-devel (XXXX-XX-XX)
 --------------------------
 
+* Add missing case to return 403 for error HTTP_UNAUTHORIZED.
+
 * COR-537, github issue #21843: Fixed incorrect sorting order bug when using
   inverted indexes.
 
