@@ -8,6 +8,8 @@
   - GET /_api/index/<collection>/<index-id>/autotune returns the persisted
     autotune operating-point tables of a vector index.
 
+* Add missing case to return 403 for error HTTP_UNAUTHORIZED.
+
 * COR-537, github issue #21843: Fixed incorrect sorting order bug when using
   inverted indexes.
 

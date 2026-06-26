@@ -26,7 +26,7 @@
 #include "Indexes/Index.h"
 #include "Logger/LogMacros.h"
 #include "Metrics/CounterBuilder.h"
-#include "Metrics/ICollector.h"
+#include "Metrics/IRegistry.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "Transaction/OperationOrigin.h"
@@ -48,7 +48,7 @@ DECLARE_COUNTER(rocksdb_cache_auto_refill_dropped_total,
 using application_features::ApplicationServer;
 
 RocksDBIndexCacheRefillThread::RocksDBIndexCacheRefillThread(
-    DatabaseFeature& databaseFeature, metrics::ICollector& metricsCollector,
+    DatabaseFeature& databaseFeature, metrics::IRegistry& metricsRegistry,
     size_t maxCapacity)
     : Thread("RocksDBCacheRefiller"),
       _databaseFeature(databaseFeature),
@@ -56,9 +56,9 @@ RocksDBIndexCacheRefillThread::RocksDBIndexCacheRefillThread(
       _numQueued(0),
       _proceeding(0),
       _totalNumQueued(
-          metricsCollector.add(rocksdb_cache_auto_refill_loaded_total{})),
+          metricsRegistry.add(rocksdb_cache_auto_refill_loaded_total{})),
       _totalNumDropped(
-          metricsCollector.add(rocksdb_cache_auto_refill_dropped_total{})) {}
+          metricsRegistry.add(rocksdb_cache_auto_refill_dropped_total{})) {}
 
 RocksDBIndexCacheRefillThread::~RocksDBIndexCacheRefillThread() { shutdown(); }
 
