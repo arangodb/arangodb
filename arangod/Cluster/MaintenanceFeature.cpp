@@ -227,32 +227,33 @@ void MaintenanceFeature::initializeMetrics() {
     // This actually is only necessary because of tests
     return;
   }
-  auto& metricsFeature = server().getFeature<metrics::MetricsFeature>();
+  metrics::IRegistry& metricsRegistry =
+      server().getFeature<metrics::MetricsFeature>();
 
   _phase1_runtime_msec =
-      &metricsFeature.add(arangodb_maintenance_phase1_runtime_msec{});
+      &metricsRegistry.add(arangodb_maintenance_phase1_runtime_msec{});
   _phase2_runtime_msec =
-      &metricsFeature.add(arangodb_maintenance_phase2_runtime_msec{});
+      &metricsRegistry.add(arangodb_maintenance_phase2_runtime_msec{});
   _agency_sync_total_runtime_msec =
-      &metricsFeature.add(arangodb_maintenance_agency_sync_runtime_msec{});
+      &metricsRegistry.add(arangodb_maintenance_agency_sync_runtime_msec{});
 
-  _shards_out_of_sync = &metricsFeature.add(arangodb_shards_out_of_sync{});
-  _shards_total_count = &metricsFeature.add(arangodb_shards_number{});
-  _shards_leader_count = &metricsFeature.add(arangodb_shards_leader_number{});
+  _shards_out_of_sync = &metricsRegistry.add(arangodb_shards_out_of_sync{});
+  _shards_total_count = &metricsRegistry.add(arangodb_shards_number{});
+  _shards_leader_count = &metricsRegistry.add(arangodb_shards_leader_number{});
   _shards_follower_count =
-      &metricsFeature.add(arangodb_shards_follower_number{});
+      &metricsRegistry.add(arangodb_shards_follower_number{});
   _followers_out_of_sync_count =
-      &metricsFeature.add(arangodb_shard_followers_out_of_sync_number{});
+      &metricsRegistry.add(arangodb_shard_followers_out_of_sync_number{});
   _shards_not_replicated_count =
-      &metricsFeature.add(arangodb_shards_not_replicated{});
-  _sync_timeouts_total = &metricsFeature.add(arangodb_sync_timeouts_total{});
+      &metricsRegistry.add(arangodb_shards_not_replicated{});
+  _sync_timeouts_total = &metricsRegistry.add(arangodb_sync_timeouts_total{});
 
   _action_duplicated_counter =
-      &metricsFeature.add(arangodb_maintenance_action_duplicate_total{});
+      &metricsRegistry.add(arangodb_maintenance_action_duplicate_total{});
   _action_registered_counter =
-      &metricsFeature.add(arangodb_maintenance_action_registered_total{});
+      &metricsRegistry.add(arangodb_maintenance_action_registered_total{});
   _action_done_counter =
-      &metricsFeature.add(arangodb_maintenance_action_done_total{});
+      &metricsRegistry.add(arangodb_maintenance_action_done_total{});
 
   static constexpr const char* instrumentedActions[] = {
       CREATE_COLLECTION, CREATE_DATABASE, UPDATE_COLLECTION, SYNCHRONIZE_SHARD,
@@ -262,12 +263,12 @@ void MaintenanceFeature::initializeMetrics() {
   for (const char* action : instrumentedActions) {
     _maintenance_job_metrics_map.try_emplace(
         action,
-        metricsFeature.add(
+        metricsRegistry.add(
             arangodb_maintenance_action_runtime_msec{}.withLabel(key, action)),
-        metricsFeature.add(
+        metricsRegistry.add(
             arangodb_maintenance_action_queue_time_msec{}.withLabel(key,
                                                                     action)),
-        metricsFeature.add(
+        metricsRegistry.add(
             arangodb_maintenance_action_failure_total{}.withLabel(key,
                                                                   action)));
   }

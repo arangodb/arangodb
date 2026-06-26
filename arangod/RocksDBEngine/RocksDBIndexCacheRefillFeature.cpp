@@ -32,7 +32,7 @@
 #include "Indexes/Index.h"
 #include "Logger/LogMacros.h"
 #include "Metrics/CounterBuilder.h"
-#include "Metrics/ICollector.h"
+#include "Metrics/IRegistry.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "RocksDBEngine/RocksDBIndexCacheRefillOptionsProvider.h"
@@ -56,12 +56,12 @@ DECLARE_COUNTER(rocksdb_cache_full_index_refills_total,
 RocksDBIndexCacheRefillFeature::RocksDBIndexCacheRefillFeature(
     application_features::ApplicationServer& server,
     DatabaseFeature& databaseFeature, ClusterFeature* clusterFeature,
-    metrics::ICollector& metricsCollector)
+    metrics::IRegistry& metricsRegistry)
     : application_features::ApplicationFeature{server, *this},
       _databaseFeature(databaseFeature),
       _clusterFeature(clusterFeature),
-      _metricsCollector(metricsCollector),
-      _totalFullIndexRefills(addTotalFullIndexRefills(metricsCollector)),
+      _metricsRegistry(metricsRegistry),
+      _totalFullIndexRefills(addTotalFullIndexRefills(metricsRegistry)),
       _currentlyRunningIndexFillTasks(0) {
   setOptional(true);
   // we want to be late in the startup sequence
@@ -100,7 +100,7 @@ void RocksDBIndexCacheRefillFeature::start() {
   }
 
   _refillThread = std::make_unique<RocksDBIndexCacheRefillThread>(
-      _databaseFeature, _metricsCollector, _options.maxCapacity);
+      _databaseFeature, _metricsRegistry, _options.maxCapacity);
 
   if (!_refillThread->start()) {
     LOG_TOPIC("836a6", FATAL, Logger::ENGINES)
@@ -294,6 +294,6 @@ Result RocksDBIndexCacheRefillFeature::warmupIndex(
 }
 
 metrics::Counter& RocksDBIndexCacheRefillFeature::addTotalFullIndexRefills(
-    metrics::ICollector& metricsCollector) {
-  return metricsCollector.add(rocksdb_cache_full_index_refills_total{});
+    metrics::IRegistry& metricsRegistry) {
+  return metricsRegistry.add(rocksdb_cache_full_index_refills_total{});
 }

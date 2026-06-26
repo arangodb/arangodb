@@ -57,7 +57,7 @@
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/HistogramBuilder.h"
 #include "Metrics/Metric.h"
-#include "Metrics/ICollector.h"
+#include "Metrics/IRegistry.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Replication/ReplicationClients.h"
@@ -259,7 +259,7 @@ RocksDBFilePurgeEnabler::RocksDBFilePurgeEnabler(
 // create the storage engine
 RocksDBEngine::RocksDBEngine(
     application_features::ApplicationServer& server,
-    RocksDBOptionsProvider& optionsProvider, metrics::ICollector& metrics,
+    RocksDBOptionsProvider& optionsProvider, metrics::IRegistry& metrics,
     IDatabasePathProvider const& databasePathProvider,
     IVectorIndexProvider const& vectorIndexProvider,
     IFlushControl& flushControl, IDumpLimitsProvider const& dumpLimitsProvider,
@@ -931,8 +931,7 @@ namespace {
 
 struct RocksDBAsyncLogWriteBatcherMetricsImpl
     : replication2::storage::rocksdb::AsyncLogWriteBatcherMetrics {
-  explicit RocksDBAsyncLogWriteBatcherMetricsImpl(
-      metrics::ICollector& metrics) {
+  explicit RocksDBAsyncLogWriteBatcherMetricsImpl(metrics::IRegistry& metrics) {
     using namespace arangodb::replication2::storage::rocksdb;
     numWorkerThreadsWaitForSync = &metrics.add(
         arangodb_replication2_rocksdb_num_persistor_worker{}.withLabel("ws",

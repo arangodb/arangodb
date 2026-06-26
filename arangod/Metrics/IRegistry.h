@@ -27,8 +27,8 @@
 
 namespace arangodb::metrics {
 
-struct ICollector {
-  virtual ~ICollector() = default;
+struct IRegistry {
+  virtual ~IRegistry() = default;
 
   // tries to add metric. throws if such metric already exists
   template<typename MetricBuilder>
