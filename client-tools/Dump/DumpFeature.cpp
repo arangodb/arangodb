@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -23,6 +23,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "DumpFeature.h"
+#include "Dump/DumpOptionsProvider.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/BumpFileDescriptorsFeature.h"
@@ -45,7 +46,6 @@
 #include "Logger/LogMacros.h"
 #include "Logger/LogTimeFormat.h"
 #include "Maskings/Maskings.h"
-#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Random/RandomGenerator.h"
 #include "Shell/ClientFeature.h"
@@ -73,19 +73,6 @@ namespace {
 /// keeps track of all connected clients
 std::string clientId;
 std::string syncerId;
-
-/// @brief minimum amount of data to fetch from server in a single batch
-constexpr uint64_t minChunkSize = 1024 * 128;
-
-/// @brief maximum amount of data to fetch from server in a single batch
-/// NB: larger value may cause tcp issues (check exact limits)
-constexpr uint64_t maxChunkSize = 1024 * 1024 * 96;
-
-/// @brief minimum number of documents per batch
-constexpr uint64_t minDocsPerBatch = 100;
-
-/// @brief maximum number of documents per batch
-constexpr uint64_t maxDocsPerBatch = 100 * 1000;
 
 std::string serverLabel(std::string const& server) {
   if (server.empty()) {
@@ -800,247 +787,14 @@ DumpFeature::DumpFeature(application_features::ApplicationServer& server,
 
 void DumpFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
-  using arangodb::options::BooleanParameter;
-  using arangodb::options::StringParameter;
-  using arangodb::options::UInt32Parameter;
-  using arangodb::options::UInt64Parameter;
-  using arangodb::options::VectorParameter;
-
-  options->addOption(
-      "--collection",
-      "Restrict the dump to this collection name (can be specified multiple "
-      "times). Either --collection or --ignore-collection can be used at the "
-      "same time.",
-      new VectorParameter<StringParameter>(&_options.collections));
-
-  options
-      ->addOption(
-          "--ignore-collection",
-          "Ignore and exclude this collection during the dump process (can be "
-          "specified multiple times). Either --collection or "
-          "--ignore-collection can be used at the same time. ",
-          new VectorParameter<StringParameter>(
-              &_options.collectionsToBeIgnored))
-      .setIntroducedIn(31200);
-
-  options
-      ->addOption(
-          "--shard",
-          "Restrict the dump to this shard (can be specified multiple times).",
-          new VectorParameter<StringParameter>(&_options.shards))
-      .setIntroducedIn(30800);
-
-  options->addOption("--initial-batch-size",
-                     "The initial size for individual data batches (in bytes).",
-                     new UInt64Parameter(&_options.initialChunkSize));
-
-  options->addOption("--batch-size",
-                     "The maximum size for individual data batches (in bytes).",
-                     new UInt64Parameter(&_options.maxChunkSize));
-
-  options
-      ->addOption("--docs-per-batch",
-                  "The maximum number of documents to be returned per batch.",
-                  new UInt64Parameter(&_options.docsPerBatch))
-      .setIntroducedIn(31200);
-
-  options->addOption(
-      "--threads",
-      "The maximum number of collections/shards to process in parallel.",
-      new UInt32Parameter(&_options.threadCount),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic));
-
-  options->addOption("--dump-data", "Whether to dump collection data.",
-                     new BooleanParameter(&_options.dumpData));
-
-  options
-      ->addOption("--dump-views", "Whether to dump view definitions.",
-                  new BooleanParameter(&_options.dumpViews))
-      .setIntroducedIn(31100);
-
-  options->addOption("--all-databases", "Whether to dump all databases.",
-                     new BooleanParameter(&_options.allDatabases));
-
-  options->addOption(
-      "--force",
-      "Continue dumping even in the face of some server-side errors.",
-      new BooleanParameter(&_options.force));
-
-  options->addOption(
-      "--ignore-distribute-shards-like-errors",
-      "Continue dumping even if a sharding prototype collection is "
-      "not backed up, too.",
-      new BooleanParameter(&_options.ignoreDistributeShardsLikeErrors));
-
-  options->addOption("--include-system-collections",
-                     "Include system collections.",
-                     new BooleanParameter(&_options.includeSystemCollections));
-
-  options->addOption("--output-directory",
-                     "The folder path to write the dump to.",
-                     new StringParameter(&_options.outputPath));
-
-  options->addOption("--overwrite", "Overwrite data in the output directory.",
-                     new BooleanParameter(&_options.overwrite));
-
-  options->addOption("--progress", "Show the dump progress.",
-                     new BooleanParameter(&_options.progress));
-
-  options->addObsoleteOption(
-      "--envelope",
-      "Wrap each document into a {type, data} envelope "
-      "(this is required for compatibility with v3.7 and before).",
-      false);
-
-  options->addObsoleteOption("--tick-start",
-                             "Only include data after this tick.", true);
-
-  options->addObsoleteOption("--tick-end",
-                             "Last tick to be included in data dump.", true);
-
-  options->addOption("--maskings", "A path to a file with masking definitions.",
-                     new StringParameter(&_options.maskingsFile));
-
-  options->addOption("--compress-output",
-                     "Compress files containing collection contents using the "
-                     "gzip format.",
-                     new BooleanParameter(&_options.useGzipForStorage));
-
-  options
-      ->addOption("--dump-vpack",
-                  "Dump collection data in velocypack format (more compact "
-                  "than JSON, but requires ArangoDB 3.12 or higher to restore)",
-                  new BooleanParameter(&_options.useVPack),
-                  arangodb::options::makeDefaultFlags(
-                      arangodb::options::Flags::Experimental,
-                      arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(31200);
-
-  options
-      ->addOption("--parallel-dump", "Enable highly parallel dump behavior.",
-                  new BooleanParameter(&_options.useParalleDump),
-                  arangodb::options::makeDefaultFlags(
-                      arangodb::options::Flags::Uncommon))
-      .setLongDescription(R"(This option enables a highly parallel variant
-of the dump protocol on the server side. It is only supported with ArangoDB
-servers running version 3.12 or higher.
-If the dump should be restored into versions of ArangoDB older than 3.12, this
-option should be turned off.)")
-      .setIntroducedIn(31008)
-      .setIntroducedIn(31102);
-  // option was renamed in 3.12
-  options->addOldOption("--use-experimental-dump", "--parallel-dump");
-
-  options
-      ->addOption(
-          "--split-files",
-          "Split a collection in multiple files to increase throughput.",
-          new BooleanParameter(&_options.splitFiles))
-      .setLongDescription(R"(This option only has effect when the option
-`--parallel-dump` is set to `true`. Restoring split files also
-requires an arangorestore version that is capable of restoring data of a
-single collection/shard from multiple files.)")
-      .setIntroducedIn(31010)
-      .setIntroducedIn(31102);
-
-  options
-      ->addOption("--dbserver-worker-threads",
-                  "Number of worker threads on each DB-Server.",
-                  new UInt64Parameter(&_options.dbserverWorkerThreads),
-                  arangodb::options::makeDefaultFlags(
-                      arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(31008)
-      .setIntroducedIn(31102);
-
-  options
-      ->addOption("--dbserver-prefetch-batches",
-                  "Number of batches to prefetch on each DB-Server.",
-                  new UInt64Parameter(&_options.dbserverPrefetchBatches),
-                  arangodb::options::makeDefaultFlags(
-                      arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(31008)
-      .setIntroducedIn(31102);
-
-  options
-      ->addOption("--local-writer-threads", "Number of local writer threads.",
-                  new UInt64Parameter(&_options.localWriterThreads),
-                  arangodb::options::makeDefaultFlags(
-                      arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(31008)
-      .setIntroducedIn(31102);
-
-  options
-      ->addOption("--local-network-threads",
-                  "Number of local network threads, i.e. how many requests "
-                  "are sent in parallel.",
-                  new UInt64Parameter(&_options.localNetworkThreads, /*base*/ 1,
-                                      /*minValue*/ 1),
-                  arangodb::options::makeDefaultFlags(
-                      arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(31008)
-      .setIntroducedIn(31102);
+  DumpOptionsProvider provider;
+  provider.declareOptions(options, _options);
 }
 
 void DumpFeature::validateOptions(
     std::shared_ptr<options::ProgramOptions> options) {
-  auto const& positionals = options->processingResult()._positionals;
-  size_t n = positionals.size();
-
-  if (1 == n) {
-    _options.outputPath = positionals[0];
-  } else if (1 < n) {
-    LOG_TOPIC("a62e0", FATAL, arangodb::Logger::DUMP)
-        << "expecting at most one directory, got " +
-               arangodb::basics::StringUtils::join(positionals, ", ");
-    FATAL_ERROR_EXIT();
-  }
-
-  // clamp chunk values to allowed ranges
-  _options.docsPerBatch =
-      std::clamp(_options.docsPerBatch, ::minDocsPerBatch, ::maxDocsPerBatch);
-  _options.initialChunkSize =
-      std::clamp(_options.initialChunkSize, ::minChunkSize, ::maxChunkSize);
-  _options.maxChunkSize = std::clamp(_options.maxChunkSize,
-                                     _options.initialChunkSize, ::maxChunkSize);
-
-  if (options->processingResult().touched("server.database") &&
-      _options.allDatabases) {
-    LOG_TOPIC("17e2b", FATAL, arangodb::Logger::DUMP)
-        << "cannot use --server.database and --all-databases at the same time";
-    FATAL_ERROR_EXIT();
-  }
-
-  if (options->processingResult().touched("collection") &&
-      options->processingResult().touched("ignore-collection")) {
-    LOG_TOPIC("17e2a", FATAL, arangodb::Logger::DUMP)
-        << "cannot use --collection and --ignore-collection at the same time";
-    FATAL_ERROR_EXIT();
-  }
-
-  // trim trailing slash from path because it may cause problems on ...
-  // Windows
-  if (!_options.outputPath.empty() &&
-      _options.outputPath.back() == TRI_DIR_SEPARATOR_CHAR) {
-    TRI_ASSERT(_options.outputPath.size() > 0);
-    _options.outputPath.pop_back();
-  }
-  TRI_NormalizePath(_options.outputPath);
-
-  uint32_t clamped =
-      std::clamp(_options.threadCount, uint32_t(1),
-                 4 * static_cast<uint32_t>(NumberOfCores::getValue()));
-  if (_options.threadCount != clamped) {
-    LOG_TOPIC("0460e", WARN, Logger::DUMP)
-        << "capping --threads value to " << clamped;
-    _options.threadCount = clamped;
-  }
-
-  if (_options.splitFiles && !_options.useParalleDump) {
-    LOG_TOPIC("b0cbe", FATAL, Logger::DUMP)
-        << "--split-files is only available when using "
-           "--parallel-dump.";
-    FATAL_ERROR_EXIT();
-  }
+  DumpOptionsProvider provider;
+  provider.validateOptions(options, _options);
 }
 
 // dump data from cluster via a coordinator

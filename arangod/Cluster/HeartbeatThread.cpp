@@ -45,7 +45,7 @@
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/HistogramBuilder.h"
 #include "Metrics/LogScale.h"
-#include "Metrics/MetricsFeature.h"
+#include "Metrics/IRegistry.h"
 #include "Replication/GlobalReplicationApplier.h"
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
@@ -211,7 +211,7 @@ HeartbeatThread::HeartbeatThread(
     application_features::ApplicationServer& server,
     AgencyCallbackRegistry* agencyCallbackRegistry,
     std::chrono::microseconds interval, uint64_t maxFailsBeforeWarning,
-    double noHeartbeatDelayBeforeShutdown)
+    double noHeartbeatDelayBeforeShutdown, metrics::IRegistry& metricsRegistry)
     : arangodb::ServerThread(server, "Heartbeat"),
       _agencyCallbackRegistry(agencyCallbackRegistry),
       _statusLock(std::make_shared<std::mutex>()),
@@ -240,11 +240,10 @@ HeartbeatThread::HeartbeatThread(
       _lastUnhealthyTimestamp(std::chrono::steady_clock::time_point()),
       _agencySync(server, this),
       _clusterFeature(server.getFeature<ClusterFeature>()),
-      _heartbeat_send_time_ms(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_heartbeat_send_time_msec{})),
+      _heartbeat_send_time_ms(
+          metricsRegistry.add(arangodb_heartbeat_send_time_msec{})),
       _heartbeat_failure_counter(
-          server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_heartbeat_failures_total{})) {
+          metricsRegistry.add(arangodb_heartbeat_failures_total{})) {
   TRI_ASSERT(_maxFailsBeforeWarning > 0);
 }
 

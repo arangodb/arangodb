@@ -270,7 +270,6 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
 #endif
   _server.addFeature<RocksDBEngine>(
       _optionsProvider, metrics, databasePath, vectorIndex, flush, dumpLimits,
-      scheduler,
       replication2::EnableReplication2
           ? &_server.getFeature<ReplicatedLogFeature>()
           : nullptr,
