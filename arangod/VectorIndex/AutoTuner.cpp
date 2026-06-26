@@ -60,6 +60,17 @@ struct OwningIVFPQSearchParameters : faiss::IVFPQSearchParameters {
   faiss::SearchParametersHNSW ownedQuantizerParams;
 };
 
+// Recall capped at the target so the sweep's Pareto pruning treats every
+// above-target operating point as non-improving and skips its search.
+struct CappedIntersectionCriterion : faiss::IntersectionCriterion {
+  double cap;
+  CappedIntersectionCriterion(faiss::idx_t nq, faiss::idx_t R, double cap)
+      : faiss::IntersectionCriterion(nq, R), cap(cap) {}
+  double evaluate(float const* D, faiss::idx_t const* I) const override {
+    return std::min(faiss::IntersectionCriterion::evaluate(D, I), cap);
+  }
+};
+
 // Use nLists as nProbe to get ground truth. Distance is unused
 ResultT<std::vector<faiss::idx_t>> computeGroundTruth(
     faiss::IndexIVF& index, std::span<float const> querySet,
@@ -71,6 +82,14 @@ ResultT<std::vector<faiss::idx_t>> computeGroundTruth(
   faiss::SearchParametersIVF params;
   params.inverted_list_context = invertedListContext;
   params.nprobe = index.nlist;
+  // nprobe=nlist is exhaustive only if the coarse quantizer returns every
+  // centroid. An HNSW quantizer caps that at its efSearch, so raise efSearch to
+  // nlist; otherwise the ground truth scans only a fraction of the lists.
+  faiss::SearchParametersHNSW quantizerParams;
+  if (dynamic_cast<faiss::IndexHNSW const*>(index.quantizer) != nullptr) {
+    quantizerParams.efSearch = static_cast<int>(index.nlist);
+    params.quantizer_params = &quantizerParams;
+  }
   auto const start = std::chrono::steady_clock::now();
   try {
     index.search(numberOfQueries, querySet.data(), R, distancesScratch.data(),
@@ -102,8 +121,14 @@ ResultT<faiss::OperatingPoints> exploreParameterSpace(
   ps.verbose = false;
 #endif
   ps.initialize(&index);
-  ps.n_experiments = 0;  // do full trials TODO(jbajic): maybe add a cap and/or
-                         // randomize if we have too many?
+  // Visit every combination, but via the path that consults the Pareto bounds
+  // and skips the search for combinations that cannot beat the front. Paired
+  // with the target-capped criterion this prunes the over-target tail.
+  // (n_experiments==0 would search every combination unconditionally; the >0
+  // path requires n_experiments > 2.)
+  auto const numCombinations = ps.n_combinations();
+  ps.n_experiments =
+      numCombinations <= 2 ? 0 : static_cast<int>(numCombinations);
   ps.batchsize = static_cast<std::size_t>(numberOfQueries);
 
   faiss::OperatingPoints ops;
@@ -215,7 +240,7 @@ ResultT<OperatingPointTable> autoTuneTable(faiss::IndexIVF& index,
     return outcome;
   }
 
-  faiss::IntersectionCriterion crit(numberOfQueries, R);
+  CappedIntersectionCriterion crit(numberOfQueries, R, targetRecall);
   crit.set_groundtruth(static_cast<int>(R), nullptr, gt.get().data());
 
   auto opsRes = exploreParameterSpace(index, querySet, numberOfQueries,
