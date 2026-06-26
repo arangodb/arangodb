@@ -716,6 +716,10 @@ void BackupFeature::collectOptions(
 
 void BackupFeature::validateOptions(
     std::shared_ptr<options::ProgramOptions> options) {
+  if (opts->processingResult().touched("--version") ||
+      opts->processingResult().touched("--version-json")) {
+    return;
+  }
   BackupOptionsProvider provider;
   provider.validateOptions(options, _options);
 
