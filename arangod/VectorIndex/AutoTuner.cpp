@@ -175,6 +175,9 @@ std::string formatOperatingPoints(faiss::OperatingPoints const& ops,
 
 }  // namespace
 
+// This just flips the Wilson score interval half-width formula around to solve
+// for n. See
+// https://en.wikipedia.org/wiki/Binomial_proportion_confidence_interval#Wilson_score_interval
 std::size_t wilsonSampleSize(double p, double z, double m) {
   TRI_ASSERT(p > 0.0 && p < 1.0);
   TRI_ASSERT(z > 0.0);

@@ -44,9 +44,7 @@ struct ResourceMonitor;
 
 namespace arangodb::vector {
 
-inline constexpr std::int64_t kDefaultAutoTuneR{10};
 inline constexpr double kAutoTuneRecallEpsilon{5e-4};
-
 // confidence as its two-sided normal quantile z* (0.99 -> 2.576), avoiding an
 // inverse-normal CDF.
 inline constexpr double kAutoTuneConfidenceZ{2.5758293035489004};  // 99%
@@ -58,7 +56,9 @@ inline constexpr double kAutoTuneRecallTolerance{0.01};
 std::size_t wilsonSampleSize(double p, double z, double m);
 
 struct AutotuneParams {
-  std::int64_t R{kDefaultAutoTuneR};  // topK the table is optimized for
+  // topK the table is optimized for. Required from the caller; there is no
+  // server-side default.
+  std::int64_t R{};
   // Target recall: drives the sample size and is the table's validity floor.
   // Required from the caller; there is no server-side default.
   double targetRecall{};
@@ -66,14 +66,12 @@ struct AutotuneParams {
   template<class Inspector>
   friend inline auto inspect(Inspector& f, AutotuneParams& x) {
     return f.object(x).fields(
-        f.field("topK", x.R)
-            .fallback(kDefaultAutoTuneR)
-            .invariant([](auto value) -> inspection::Status {
-              if (value < 1) {
-                return {"'topK' must be a positive integer"};
-              }
-              return inspection::Status::Success{};
-            }),
+        f.field("topK", x.R).invariant([](auto value) -> inspection::Status {
+          if (value < 1) {
+            return {"'topK' must be a positive integer"};
+          }
+          return inspection::Status::Success{};
+        }),
         f.field("targetRecall", x.targetRecall)
             .invariant([](auto value) -> inspection::Status {
               if (value <= 0.0 || value > 1.0) {

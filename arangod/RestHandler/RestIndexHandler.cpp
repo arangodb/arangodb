@@ -1011,8 +1011,9 @@ void RestIndexHandler::syncCaches() {
 
 namespace {
 // Parse the autotune request body into AutotuneParams. Field mapping and bounds
-// live in AutotuneParams' inspection; `targetRecall` is required, so an absent
-// body is deserialized as an empty object and fails on the missing field.
+// live in AutotuneParams' inspection; `topK` and `targetRecall` are required,
+// so an absent body is deserialized as an empty object and fails on a missing
+// field.
 Result parseAutotuneParams(VPackSlice body, vector::AutotuneParams& params) {
   if (body.isNone() || body.isNull()) {
     body = VPackSlice::emptyObjectSlice();

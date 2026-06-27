@@ -175,13 +175,13 @@ function VectorIndexAutotuneTestSuite() {
             db._dropDatabase(dbName);
         },
 
-        // topK defaults when omitted; targetRecall is supplied by the caller.
-        testAutotuneDefaultTopK: function() {
+        // topK has no server-side default; omitting it is a 400.
+        testAutotuneRequiresTopK: function() {
             const id = vectorIndexId(collection);
             const res = arango.POST_RAW(
                 `/_api/index/${collName}/${id}/autotune`, {targetRecall: 0.9});
-            assertEqual(200, res.code);
-            assertTunedOk(res.parsedBody);
+            assertEqual(400, res.code);
+            assertEqual(true, res.parsedBody.error);
         },
 
         // targetRecall has no server-side default; omitting it is a 400.
@@ -227,7 +227,7 @@ function VectorIndexAutotuneTestSuite() {
         testSearchWorksAfterAutotune: function() {
             const id = vectorIndexId(collection);
             arango.POST_RAW(`/_api/index/${collName}/${id}/autotune`,
-                {targetRecall: 0.9});
+                {topK: 5, targetRecall: 0.9});
 
             const query = "FOR d IN " + collName +
                 " SORT APPROX_NEAR_L2(d.vector, @qp) LIMIT 5 RETURN d._key";
@@ -239,7 +239,8 @@ function VectorIndexAutotuneTestSuite() {
         testAutotuneRejectsInvalidTargetRecall: function() {
             const id = vectorIndexId(collection);
             const res = arango.POST_RAW(
-                `/_api/index/${collName}/${id}/autotune`, {targetRecall: 2});
+                `/_api/index/${collName}/${id}/autotune`,
+                {topK: 5, targetRecall: 2});
             assertEqual(400, res.code);
             assertEqual(true, res.parsedBody.error);
         },
@@ -247,7 +248,8 @@ function VectorIndexAutotuneTestSuite() {
         // Autotuning a non-existent index id returns not-found.
         testAutotuneUnknownIndex: function() {
             const res = arango.POST_RAW(
-                `/_api/index/${collName}/999999999/autotune`, {targetRecall: 0.9});
+                `/_api/index/${collName}/999999999/autotune`,
+                {topK: 5, targetRecall: 0.9});
             assertNotEqual(200, res.code);
             assertEqual(true, res.parsedBody.error);
         },
