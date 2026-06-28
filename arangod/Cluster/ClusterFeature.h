@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include <atomic>
 #include <mutex>
 #include <unordered_set>
 
@@ -239,7 +240,7 @@ class ClusterFeature : public application_features::ApplicationFeature {
 
   ErrorCode _syncerShutdownCode = TRI_ERROR_SHUTTING_DOWN;
   std::unique_ptr<ClusterInfo> _clusterInfo;
-  std::shared_ptr<HeartbeatThread> _heartbeatThread;
+  std::atomic<std::shared_ptr<HeartbeatThread>> _heartbeatThread;
   std::unique_ptr<AgencyCache> _agencyCache;
   uint64_t _heartbeatInterval = 0;
   std::unique_ptr<AgencyCallbackRegistry> _agencyCallbackRegistry;
