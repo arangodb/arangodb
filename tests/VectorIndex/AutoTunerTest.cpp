@@ -207,7 +207,8 @@ TEST(AutoTunerTest, producesAscendingTableReachingTargetRecall) {
   // On this clustered dataset the sweep can reach the requested recall.
   EXPECT_GE(table.points.back().recall, targetRecall);
   // The keys are the verbatim FAISS combination strings (nprobe sweep here).
-  EXPECT_NE(table.points.front().faissKey.find("nprobe="), std::string::npos);
+  EXPECT_NE(table.points.front().searchParameters.find("nprobe="),
+            std::string::npos);
 }
 
 TEST(AutoTunerTest, pqSweepEmitsOnlyApplicableParameters) {
@@ -233,7 +234,7 @@ TEST(AutoTunerTest, pqSweepEmitsOnlyApplicableParameters) {
 
   // Every key token must be an applicable parameter.
   for (auto const& point : tuned.get().points) {
-    std::string const& key = point.faissKey;
+    std::string const& key = point.searchParameters;
     for (std::size_t pos = 0; pos < key.size();) {
       auto const comma = key.find(',', pos);
       std::string const token = key.substr(

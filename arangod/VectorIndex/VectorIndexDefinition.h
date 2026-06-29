@@ -60,11 +60,11 @@ inline auto inspect(Inspector& f, SimilarityMetric& x) {
       SimilarityMetric::kInnerProduct, "innerProduct");
 }
 
-/// @brief One autotuned configuration: the verbatim FAISS combination key
+/// @brief One autotuned configuration: the verbatim search-parameter string
 /// (e.g. "nprobe=32"), the recall it achieves, and its sweep search time.
 struct OperatingPoint {
   double recall{0.0};
-  std::string faissKey;
+  std::string searchParameters;
   double timeSeconds{0.0};
 
   bool operator==(OperatingPoint const&) const noexcept = default;
@@ -73,7 +73,7 @@ struct OperatingPoint {
   friend inline auto inspect(Inspector& f, OperatingPoint& x) {
     return f.object(x).fields(
         f.field("recall", x.recall).fallback(0.0),
-        f.field("faissKey", x.faissKey).fallback(""),
+        f.field("searchParameters", x.searchParameters).fallback(""),
         f.field("timeSeconds", x.timeSeconds).fallback(0.0));
   }
 };

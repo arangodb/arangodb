@@ -56,11 +56,9 @@ inline constexpr double kAutoTuneRecallTolerance{0.01};
 std::size_t wilsonSampleSize(double p, double z, double m);
 
 struct AutotuneParams {
-  // topK the table is optimized for. Required from the caller; there is no
-  // server-side default.
+  // topK the table is optimized for.
   std::int64_t R{};
   // Target recall: drives the sample size and is the table's validity floor.
-  // Required from the caller; there is no server-side default.
   double targetRecall{};
 
   template<class Inspector>
@@ -83,8 +81,7 @@ struct AutotuneParams {
 };
 
 // Sweep the index's search parameters and return the full Pareto front as an
-// operating-point table for `R` (topK), tuned down to `targetRecall`. The
-// ground-truth scratch buffers are charged to `resourceMonitor`.
+// operating-point table for `R` (topK), tuned down to `targetRecall`.
 ResultT<OperatingPointTable> autoTuneTable(faiss::IndexIVF& index,
                                            std::span<float const> querySet,
                                            ResourceMonitor& resourceMonitor,

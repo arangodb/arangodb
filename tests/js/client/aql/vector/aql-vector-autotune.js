@@ -85,7 +85,7 @@ function assertOperatingPointTable(table) {
     assertTrue(Array.isArray(table.points));
     for (const point of table.points) {
         assertEqual("number", typeof point.recall);
-        assertEqual("string", typeof point.faissKey);
+        assertEqual("string", typeof point.searchParameters);
     }
 }
 
@@ -113,7 +113,7 @@ function collectFaissKeys(parsedBody) {
     for (const tables of tableLists) {
         for (const table of (tables || [])) {
             for (const point of table.points) {
-                keys.push(point.faissKey);
+                keys.push(point.searchParameters);
             }
         }
     }

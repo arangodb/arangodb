@@ -238,10 +238,10 @@ RocksDBVectorIndex::prepareSearchParameters(
       return std::move(point).result();
     }
     LOG_VECTOR_INDEX("e16c1", DEBUG, Logger::QUERIES)
-        << "autotune resolved operating point '" << point.get().faissKey
+        << "autotune resolved operating point '" << point.get().searchParameters
         << "' for topK=" << topK << ", targetRecall=" << *params.targetRecall;
     return vector::makeSearchParametersFromKey(*_faissIndex,
-                                               point.get().faissKey);
+                                               point.get().searchParameters);
   }
 
   auto searchParams = std::make_unique<faiss::SearchParametersIVF>();
