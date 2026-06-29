@@ -25,11 +25,11 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryCache.h"
+#include "Cache/Manager.h"
 #include "Basics/Exceptions.h"
 #include "Basics/Result.h"
 #include "Basics/system-compiler.h"
 #include "Basics/system-functions.h"
-#include "Cache/CacheManagerFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -142,7 +142,7 @@ futures::Future<Result> RocksDBTransactionState::beginTransaction(
 
   // start cache transaction
   auto* manager =
-      vocbase().server().getFeature<CacheManagerFeature>().manager();
+      vocbase().engine<RocksDBEngine>().getCacheManagerProvider().manager();
   if (manager != nullptr) {
     manager->beginTransaction(_cacheTx, isReadOnlyTransaction());
   }
@@ -153,7 +153,7 @@ futures::Future<Result> RocksDBTransactionState::beginTransaction(
 void RocksDBTransactionState::cleanupTransaction() noexcept {
   if (_cacheTx.term != cache::Transaction::kInvalidTerm) {
     auto* manager =
-        vocbase().server().getFeature<CacheManagerFeature>().manager();
+        vocbase().engine<RocksDBEngine>().getCacheManagerProvider().manager();
     TRI_ASSERT(manager != nullptr);
     manager->endTransaction(_cacheTx);
 
