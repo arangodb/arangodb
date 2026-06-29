@@ -25,6 +25,9 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StringUtils.h"
+#include "Cluster/ClusterAdminOperations.h"
+#include "Cluster/ClusterFeature.h"
+#include "Cluster/ServerState.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"
@@ -134,7 +137,17 @@ void RocksDBRestWalHandler::flush() {
     }
   }
 
-  _engine->flushWal(waitForSync, flushColumnFamilies);
+  Result res;
+  if (ServerState::instance()->isCoordinator()) {
+    auto& feature = server().getFeature<ClusterFeature>();
+    res = flushWalOnAllDBServers(feature, waitForSync, flushColumnFamilies);
+  } else {
+    _engine->flushWal(waitForSync, flushColumnFamilies);
+  }
+
+  if (res.fail()) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
   generateResult(rest::ResponseCode::OK,
                  arangodb::velocypack::Slice::emptyObjectSlice());
 }

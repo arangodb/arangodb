@@ -40,8 +40,6 @@ void RocksDBRestHandlers::registerResources(
   handlerFactory->addPrefixHandler(
       "/_api/replication",
       RestHandlerCreator<RocksDBRestReplicationHandler>::createNoData, {0, 1});
-  // Coordinator nodes handle WAL via ClusterRestWalHandler; this handler runs
-  // only on DB-servers and single servers.
   handlerFactory->addPrefixHandler(
       "/_admin/wal",
       RestHandlerCreator<RocksDBRestWalHandler>::createData<StorageEngine*>,

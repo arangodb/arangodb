@@ -33,7 +33,7 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "Metrics/GaugeBuilder.h"
-#include "Metrics/MetricsFeature.h"
+#include "Metrics/IRegistry.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/EnvironmentFeature.h"
 
@@ -62,11 +62,13 @@ DECLARE_GAUGE(
 
 namespace arangodb {
 
-FileDescriptorsFeature::FileDescriptorsFeature(ApplicationServer& server,
-                                               metrics::MetricsFeature& metrics)
+FileDescriptorsFeature::FileDescriptorsFeature(
+    ApplicationServer& server, metrics::IRegistry& metricsRegistry)
     : ApplicationFeature{server, *this},
-      _fileDescriptorsCurrent(metrics.add(arangodb_file_descriptors_current{})),
-      _fileDescriptorsLimit(metrics.add(arangodb_file_descriptors_limit{})) {
+      _fileDescriptorsCurrent(
+          metricsRegistry.add(arangodb_file_descriptors_current{})),
+      _fileDescriptorsLimit(
+          metricsRegistry.add(arangodb_file_descriptors_limit{})) {
   setOptional(false);
   startsAfter<BumpFileDescriptorsFeature>();
   startsAfter<GreetingsFeaturePhase>();

@@ -35,7 +35,6 @@
 #include "Basics/ThreadLocalLeaser.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cache/CachedValue.h"
-#include "Cache/CacheManagerFeature.h"
 #include "Cache/TransactionalCache.h"
 #include "Cache/VPackKeyHasher.h"
 #include "Containers/Enumerate.h"
@@ -49,7 +48,6 @@
 #include "RocksDBEngine/RocksDBComparator.h"
 #include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
 #include "RocksDBEngine/RocksDBEngine.h"
-#include "RocksDBEngine/RocksDBIndexCacheRefillFeature.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "RocksDBEngine/RocksDBIndexingDisabler.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
@@ -1228,15 +1226,13 @@ RocksDBVPackIndex::RocksDBVPackIndex(IndexId iid, LogicalCollection& collection,
                        info, StaticStrings::CacheEnabled, false),
                    /*cacheManager*/
                    collection.vocbase()
-                       .server()
-                       .getFeature<CacheManagerFeature>()
+                       .engine<RocksDBEngine>()
+                       .getCacheManagerProvider()
                        .manager(),
                    /*engine*/
                    collection.vocbase().engine<RocksDBEngine>()),
-      _forceCacheRefill(collection.vocbase()
-                            .server()
-                            .getFeature<RocksDBIndexCacheRefillFeature>()
-                            .autoRefill()),
+      _forceCacheRefill(
+          collection.vocbase().engine<RocksDBEngine>().autoRefillIndexCaches()),
       _deduplicate(basics::VelocyPackHelper::getBooleanValue(
           info, StaticStrings::IndexDeduplicate, true)),
       _estimates(true),
