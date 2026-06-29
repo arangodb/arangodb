@@ -25,7 +25,7 @@
 
 #include "Auth/UserManager.h"
 
-#include "gmock/gmock.h"
+#include <gmock/gmock.h>
 
 namespace arangodb::auth {
 
