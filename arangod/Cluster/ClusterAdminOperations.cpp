@@ -176,11 +176,7 @@ async<Result> autoTuneVectorIndexOnAllDBServers(ClusterFeature& feature,
   options.database = dbname;
   options.timeout = network::Timeout(kAutoTuneRequestTimeoutSecs);
 
-  struct Target {
-    std::string shard;
-    std::string server;
-  };
-  std::vector<Target> targets;
+  std::vector<std::string> shardNames;
   std::shared_ptr<ShardMap> shardList = collinfo->shardIds();
   std::vector<network::FutureRes> futures;
   for (auto const& shard : *shardList) {
@@ -190,7 +186,7 @@ async<Result> autoTuneVectorIndexOnAllDBServers(ClusterFeature& feature,
       futures.emplace_back(network::sendRequestRetry(
           pool, "server:" + serverId, fuerte::RestVerb::Post, std::move(uri),
           body, options, headers));
-      targets.push_back({std::string{shard.first}, serverId});
+      shardNames.push_back(std::string{shard.first});
     }
   }
 
@@ -201,18 +197,23 @@ async<Result> autoTuneVectorIndexOnAllDBServers(ClusterFeature& feature,
   for (std::size_t i = 0; i < responses.size(); ++i) {
     network::Response const& r = responses[i].get();
     VPackObjectBuilder o(&result);
-    result.add("shard", VPackValue(targets[i].shard));
-    result.add("server", VPackValue(targets[i].server));
+    result.add("shard", VPackValue(shardNames[i]));
     if (Result const res = r.combinedResult(); res.fail()) {
       result.add(StaticStrings::Error, VPackValue(true));
       result.add(StaticStrings::ErrorNum, VPackValue(res.errorNumber()));
       result.add(StaticStrings::ErrorMessage, VPackValue(res.errorMessage()));
     } else {
       result.add(StaticStrings::Error, VPackValue(false));
-      if (VPackSlice const slice = r.slice(); slice.isObject()) {
+      // The DBServer answers with the single-server shape, so the tune summary
+      // sits in its lone result entry; lift those fields up to this shard.
+      VPackSlice const slice = r.slice();
+      VPackSlice const entries =
+          slice.isObject() ? slice.get("result") : VPackSlice::noneSlice();
+      if (entries.isArray() && entries.length() > 0) {
+        VPackSlice const summary = entries.at(0);
         for (auto const* field : {"topK", "targetRecall", "operatingPointCount",
                                   "reachedTargetRecall"}) {
-          if (auto s = slice.get(field); !s.isNone()) {
+          if (auto s = summary.get(field); !s.isNone()) {
             result.add(field, s);
           }
         }

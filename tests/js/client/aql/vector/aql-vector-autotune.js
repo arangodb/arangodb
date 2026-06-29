@@ -73,9 +73,6 @@ function assertTunedOk(parsedBody, collectionName) {
     }
     for (const entry of parsedBody.result) {
         assertTrue(entry.hasOwnProperty("shard"));
-        if (isCluster) {
-            assertTrue(entry.hasOwnProperty("server"));
-        }
         assertEqual(false, entry.error);
         assertTuneSummary(entry);
     }
