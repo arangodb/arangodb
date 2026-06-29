@@ -1040,9 +1040,6 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
   if (cache == nullptr) {
     return;
   }
-  size_t const minValueSizeForCompression = _minValueSizeForEdgeCompression;
-  int const accelerationFactor = _accelerationFactorForEdgeCompression;
-
   auto rocksColl = toRocksDBCollection(_collection);
 
   // intentional copy of the read options
@@ -1079,9 +1076,10 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
 
     size_t const originalSize = b.slice().byteSize();
 
-    auto [data, size, didCompress] = tryCompress(
-        b.slice(), originalSize, minValueSizeForCompression, accelerationFactor,
-        lz4CompressBuffer, [](size_t /*memoryUsage*/) {});
+    auto [data, size, didCompress] =
+        tryCompress(b.slice(), originalSize, _minValueSizeForEdgeCompression,
+                    _accelerationFactorForEdgeCompression, lz4CompressBuffer,
+                    [](size_t /*memoryUsage*/) {});
 
     cache::Cache::SimpleInserter<EdgeIndexCacheType>{
         static_cast<EdgeIndexCacheType&>(*cache), cacheKey.data(),

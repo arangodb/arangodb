@@ -33,6 +33,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/debugging.h"
 #include "Cache/BinaryKeyHasher.h"
+#include "Metrics/MetricsFeature.h"
 #include "Statistics/ServerStatistics.h"
 #include "Cache/Common.h"
 #include "Cache/Manager.h"
@@ -312,14 +313,17 @@ void syncIndexOnCreate(Index&);
 
 RocksDBCollection::RocksDBCollection(LogicalCollection& collection,
                                      velocypack::Slice info,
-                                     cache::Manager* cacheManager,
-                                     TransactionStatistics& statistics)
+                                     cache::Manager* cacheManager)
     : RocksDBMetaCollection(collection, info),
       _primaryIndex(nullptr),
       _cacheManager(cacheManager),
       _maxCacheValueSize(
           _cacheManager == nullptr ? 0 : _cacheManager->maxCacheValueSize()),
-      _statistics(statistics),
+      _statistics(collection.vocbase()
+                      .server()
+                      .getFeature<metrics::MetricsFeature>()
+                      .serverStatistics()
+                      ._transactionsStatistics),
       _cacheEnabled(_cacheManager != nullptr && !collection.system() &&
                     !collection.isAStub() &&
                     !ServerState::instance()->isCoordinator() &&

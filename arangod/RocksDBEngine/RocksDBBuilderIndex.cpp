@@ -34,6 +34,7 @@
 #include "Enterprise/RocksDBEngine/RocksDBBuilderIndexEE.h"
 #endif
 #include "Logger/LogMacros.h"
+#include "Metrics/MetricsFeature.h"
 #include "RestServer/FlushSubscription.h"
 #include "RocksDBEngine/Methods/RocksDBBatchedBaseMethods.h"
 #include "RocksDBEngine/Methods/RocksDBBatchedMethods.h"
@@ -390,8 +391,13 @@ Result RocksDBBuilderIndex::beforeCreate() {
   auto& engine = static_cast<RocksDBEngine&>(_collection.vocbase().engine());
   rocksdb::DB* db = engine.db()->GetRootDB();
 
+  auto& metric = _collection.vocbase()
+                     .server()
+                     .getFeature<metrics::MetricsFeature>()
+                     .serverStatistics()
+                     ._transactionsStatistics._restTransactionsMemoryUsage;
   RocksDBMethodsMemoryTracker memoryTracker(
-      nullptr, _engine.transactionMemoryUsageMetric(),
+      nullptr, &metric,
       /*granularity*/ RocksDBMethodsMemoryTracker::kDefaultGranularity);
 
   rocksdb::WriteBatch batch(getBatchSize(_numDocsHint));
@@ -439,8 +445,13 @@ Result RocksDBBuilderIndex::fillIndexForeground(
   auto& engine = static_cast<RocksDBEngine&>(_collection.vocbase().engine());
   rocksdb::DB* db = engine.db()->GetRootDB();
 
+  auto& metric = _collection.vocbase()
+                     .server()
+                     .getFeature<metrics::MetricsFeature>()
+                     .serverStatistics()
+                     ._transactionsStatistics._restTransactionsMemoryUsage;
   RocksDBMethodsMemoryTracker memoryTracker(
-      nullptr, _engine.transactionMemoryUsageMetric(),
+      nullptr, &metric,
       /*granularity*/ RocksDBMethodsMemoryTracker::kDefaultGranularity);
 
   Result res;
@@ -870,8 +881,13 @@ futures::Future<Result> RocksDBBuilderIndex::fillIndexBackground(
   }
 #endif
 
+  auto& metric = _collection.vocbase()
+                     .server()
+                     .getFeature<metrics::MetricsFeature>()
+                     .serverStatistics()
+                     ._transactionsStatistics._restTransactionsMemoryUsage;
   RocksDBMethodsMemoryTracker memoryTracker(
-      nullptr, _engine.transactionMemoryUsageMetric(),
+      nullptr, &metric,
       /*granularity*/ RocksDBMethodsMemoryTracker::kDefaultGranularity);
 
   Result res;

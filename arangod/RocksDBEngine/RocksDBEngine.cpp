@@ -58,8 +58,6 @@
 #include "Metrics/HistogramBuilder.h"
 #include "Metrics/Metric.h"
 #include "Metrics/ICollector.h"
-#include "Metrics/MetricsFeature.h"
-#include "Statistics/ServerStatistics.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Replication/ReplicationClients.h"
@@ -970,14 +968,6 @@ void RocksDBEngine::start() {
   TRI_ASSERT(isEnabled());
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 
-  auto& transStats = server()
-                         .getFeature<metrics::MetricsFeature>()
-                         .serverStatistics()
-                         ._transactionsStatistics;
-  _metricsRestTransactionsMemoryUsage =
-      &transStats._restTransactionsMemoryUsage;
-  _transactionStatistics = &transStats;
-
   auto path = _databasePathProvider.directory();
   auto engineFilePath = basics::FileUtils::buildFilename(path, "ENGINE");
 
@@ -1522,8 +1512,7 @@ void RocksDBEngine::addParametersForNewCollection(VPackBuilder& builder,
 std::unique_ptr<PhysicalCollection> RocksDBEngine::createPhysicalCollection(
     LogicalCollection& collection, velocypack::Slice info) {
   return std::make_unique<RocksDBCollection>(collection, info,
-                                             _cacheManagerProvider.manager(),
-                                             transactionStatistics());
+                                             _cacheManagerProvider.manager());
 }
 
 // inventory functionality
