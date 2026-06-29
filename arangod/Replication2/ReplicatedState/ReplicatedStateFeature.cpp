@@ -35,6 +35,7 @@
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "Replication2/ReplicatedState/ReplicatedStateMetrics.h"
 #include "Metrics/MetricsFeature.h"
+#include "Metrics/FakeRegistry.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -82,12 +83,8 @@ void replicated_state::ReplicatedStateFeature::assertWasInserted(
 
 auto replicated_state::ReplicatedStateFeature::createMetricsObject(
     std::string_view name) -> std::shared_ptr<ReplicatedStateMetrics> {
-  struct ReplicatedStateMetricsMock : ReplicatedStateMetrics {
-    explicit ReplicatedStateMetricsMock(std::string_view name)
-        : ReplicatedStateMetrics(nullptr, name) {}
-  };
-
-  return std::make_shared<ReplicatedStateMetricsMock>(name);
+  static metrics::FakeRegistry fakeRegistry;
+  return std::make_shared<ReplicatedStateMetrics>(fakeRegistry, name);
 }
 
 replicated_state::ReplicatedStateAppFeature::ReplicatedStateAppFeature(

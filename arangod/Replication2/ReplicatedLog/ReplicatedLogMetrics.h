@@ -65,14 +65,8 @@ struct ReplicatedLogMetrics {
   metrics::Counter* replicatedLogNumberCompactedEntries{nullptr};
 };
 
-template<bool Mock>
 struct ReplicatedLogMetricsIndirect : ReplicatedLogMetrics {
-  explicit ReplicatedLogMetricsIndirect(metrics::IRegistry* metricsRegistry);
-
- private:
-  template<typename Builder>
-  static auto createMetric(metrics::IRegistry* metricsRegistry) ->
-      typename Builder::MetricT*;
+  explicit ReplicatedLogMetricsIndirect(metrics::IRegistry& metricsRegistry);
 };
 
 }  // namespace arangodb::replication2::replicated_log

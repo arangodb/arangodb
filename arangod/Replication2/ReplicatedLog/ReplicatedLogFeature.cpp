@@ -58,8 +58,8 @@ auto ReplicatedLogFeature::metrics() const noexcept -> std::shared_ptr<
 }
 
 void ReplicatedLogFeature::start() {
-  _replicatedLogMetrics = std::make_shared<ReplicatedLogMetricsIndirect<false>>(
-      &this->server().getFeature<metrics::MetricsFeature>());
+  _replicatedLogMetrics = std::make_shared<ReplicatedLogMetricsIndirect>(
+      this->server().getFeature<metrics::MetricsFeature>());
 }
 
 auto ReplicatedLogFeature::options() const noexcept
@@ -86,8 +86,3 @@ void ReplicatedLogFeature::collectOptions(
 }
 
 ReplicatedLogFeature::~ReplicatedLogFeature() = default;
-
-#include "ReplicatedLogMetrics.tpp"
-
-template struct arangodb::replication2::replicated_log::
-    ReplicatedLogMetricsIndirect<false>;
