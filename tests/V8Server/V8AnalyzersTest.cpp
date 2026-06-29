@@ -145,16 +145,6 @@ class V8AnalyzerTest
               EXPECT_NE(it, _userMap.end());
               return it->second.databaseAuthLevel(dbname);
             }));
-    EXPECT_CALL(*um, collectionAuthLevel)
-        .Times(AtLeast(1))
-        .WillRepeatedly(WithArgs<0, 1, 2>([this](std::string_view username,
-                                                 std::string_view dbname,
-                                                 std::string_view const cname) {
-          auto const it = _userMap.find(username);
-          EXPECT_NE(it, _userMap.end());
-          EXPECT_EQ(username, it->second.username());
-          return it->second.collectionAuthLevel(dbname, cname);
-        }));
     EXPECT_CALL(*um, setAuthInfo)
         .Times(AtLeast(1))
         .WillRepeatedly(
