@@ -31,6 +31,7 @@
 #include "RestServer/IDatabaseProvider.h"
 #include "RestServer/IDumpLimitsProvider.h"
 #include "RestServer/IFlushControl.h"
+#include "Replication2/ReplicatedLog/IReplicatedLogProvider.h"
 #include "RocksDBEngine/IIndexCacheRefill.h"
 #include "RocksDBEngine/ISortingPolicy.h"
 #include "VectorIndex/IVectorIndexProvider.h"
@@ -90,9 +91,15 @@ struct MockIndexCacheRefill : IIndexCacheRefill {
   MOCK_METHOD(void, waitForCatchup, (), (override));
 };
 
-struct MockMetricsRegistry : metrics::IRegistry {
-  MOCK_METHOD(std::shared_ptr<metrics::Metric>, doAdd, (metrics::Builder&),
-              (override));
+struct MockReplicatedLogProvider : replication2::IReplicatedLogProvider {
+  MOCK_METHOD(std::shared_ptr<replication2::ReplicatedLogGlobalSettings const>,
+              options, (), (const, noexcept, override));
+};
+
+struct MetricsCollector : metrics::IRegistry {
+  std::shared_ptr<metrics::Metric> doAdd(metrics::Builder& builder) override {
+    return builder.build();
+  }
 };
 
 }  // namespace arangodb::tests

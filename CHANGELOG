@@ -8,6 +8,9 @@
   - GET /_api/index/<collection>/<index-id>/autotune returns the persisted
     autotune operating-point tables of a vector index.
 
+* Upgraded included rclone to v1.74.3 with go1.25.11 and non-vulnerable
+  dependencies.
+
 * Add missing case to return 403 for error HTTP_UNAUTHORIZED.
 
 * COR-537, github issue #21843: Fixed incorrect sorting order bug when using
@@ -22,9 +25,6 @@
  - qs to 6.15.2
  - brace-expansion to 5.0.6
  - js-yaml to 4.2.0
-
-* Upgraded included rclone to v1.74.3 with go1.25.11 and non-vulnerable
-  dependencies.
 
 * Upgraded OpenSSL to 3.5.7.
 
