@@ -23,9 +23,17 @@
 
 #include "ReplicatedStateMetricsMock.h"
 
-using namespace arangodb;
+#include "Metrics/FakeRegistry.h"
 
 namespace arangodb::replication2::tests {
+
+namespace {
+auto fakeRegistry() -> arangodb::metrics::IRegistry& {
+  static arangodb::metrics::FakeRegistry fakeRegistry;
+  return fakeRegistry;
+}
+}  // namespace
+
 ReplicatedStateMetricsMock::ReplicatedStateMetricsMock(std::string_view impl)
-    : ReplicatedStateMetrics(nullptr, impl) {}
+    : ReplicatedStateMetrics(fakeRegistry(), impl) {}
 }  // namespace arangodb::replication2::tests

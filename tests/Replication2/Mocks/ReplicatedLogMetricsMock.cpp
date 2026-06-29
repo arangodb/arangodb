@@ -23,12 +23,16 @@
 
 #include "ReplicatedLogMetricsMock.h"
 
+#include "Metrics/FakeRegistry.h"
+
 using namespace arangodb::replication2::test;
 
+namespace {
+auto fakeRegistry() -> arangodb::metrics::IRegistry& {
+  static arangodb::metrics::FakeRegistry fakeRegistry;
+  return fakeRegistry;
+}
+}  // namespace
+
 ReplicatedLogMetricsMock::ReplicatedLogMetricsMock()
-    : ReplicatedLogMetricsIndirect(nullptr) {}
-
-#include "Replication2/ReplicatedLog/ReplicatedLogMetrics.tpp"
-
-template struct arangodb::replication2::replicated_log::
-    ReplicatedLogMetricsIndirect<true>;
+    : ReplicatedLogMetricsIndirect(fakeRegistry()) {}
