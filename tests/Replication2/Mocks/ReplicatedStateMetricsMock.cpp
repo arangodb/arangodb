@@ -29,8 +29,8 @@ namespace arangodb::replication2::tests {
 
 namespace {
 auto fakeRegistry() -> arangodb::metrics::IRegistry& {
-  static arangodb::metrics::FakeRegistry fakeRegistry;
-  return fakeRegistry;
+  static arangodb::metrics::FakeRegistry instance;
+  return instance;
 }
 }  // namespace
 
