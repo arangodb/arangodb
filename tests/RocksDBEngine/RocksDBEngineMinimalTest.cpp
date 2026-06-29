@@ -54,8 +54,8 @@ struct TestRocksDBOptionsProvider final : RocksDBOptionsProvider {
 };
 
 TEST(RocksDBEngineMinimal, CanConstruct) {
-  MockMetricsCollector metricsCollector;
-  ON_CALL(metricsCollector, doAdd(_))
+  MockMetricsRegistry metricsRegistry;
+  ON_CALL(metricsRegistry, doAdd(_))
       .WillByDefault([](metrics::Builder& builder) { return builder.build(); });
 
   std::string dir{"/tmp/test"};
@@ -81,7 +81,7 @@ TEST(RocksDBEngineMinimal, CanConstruct) {
   MockIndexCacheRefill indexCacheRefill;
 
   auto& engine = server.addFeature<RocksDBEngine>(
-      optionsProvider, metricsCollector, dbPath, vectorIdx, flush, dumpLimits,
+      optionsProvider, metricsRegistry, dbPath, vectorIdx, flush, dumpLimits,
       nullptr /* IReplicatedLogProvider* */, recovery, dbProvider,
       indexCacheRefill, cacheManager, sortingPolicy);
 

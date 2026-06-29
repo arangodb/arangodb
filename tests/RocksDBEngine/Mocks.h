@@ -26,7 +26,7 @@
 #include <gmock/gmock.h>
 
 #include "Cache/ICacheManagerProvider.h"
-#include "Metrics/ICollector.h"
+#include "Metrics/IRegistry.h"
 #include "RestServer/IDatabasePathProvider.h"
 #include "RestServer/IDatabaseProvider.h"
 #include "RestServer/IDumpLimitsProvider.h"
@@ -100,7 +100,7 @@ struct MockIndexCacheRefill : IIndexCacheRefill {
               (override));
 };
 
-struct MockMetricsCollector : metrics::ICollector {
+struct MockMetricsRegistry : metrics::IRegistry {
   MOCK_METHOD(std::shared_ptr<metrics::Metric>, doAdd, (metrics::Builder&),
               (override));
 };

@@ -33,7 +33,7 @@ namespace arangodb {
 
 class Scheduler;
 namespace metrics {
-class MetricsFeature;
+struct IRegistry;
 }
 
 class SchedulerFeature final : public application_features::ApplicationFeature {
@@ -43,7 +43,7 @@ class SchedulerFeature final : public application_features::ApplicationFeature {
   static Scheduler* SCHEDULER;
 
   SchedulerFeature(application_features::ApplicationServer& server,
-                   metrics::MetricsFeature& metrics,
+                   metrics::IRegistry& metricsRegistry,
                    basics::SharedPRNG& sharedPRNG);
   ~SchedulerFeature();
 
@@ -70,7 +70,7 @@ class SchedulerFeature final : public application_features::ApplicationFeature {
 
   std::unique_ptr<Scheduler> _scheduler;
   basics::SharedPRNG& _sharedPRNG;
-  metrics::MetricsFeature& _metricsFeature;
+  metrics::IRegistry& _metricsRegistry;
 
   struct AsioHandler;
   std::unique_ptr<AsioHandler> _asioHandler;
