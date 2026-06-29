@@ -35,7 +35,9 @@
 #include "ApplicationFeatures/ShutdownFeature.h"
 #include "ApplicationFeatures/TempFeature.h"
 #include "ApplicationFeatures/VersionFeature.h"
+#include "Aql/AqlFunctionFeature.h"
 #include "Basics/ArangoGlobalContext.h"
+#include "RestServer/VectorIndexFeature.h"
 #include "FeaturePhases/BasicFeaturePhaseClient.h"
 #include "Import/ImportFeature.h"
 #include "Logger/LogMacros.h"
@@ -88,6 +90,10 @@ int main(int argc, char* argv[]) {
 #endif
     server.addFeature<SslFeature>();
     server.addFeature<TempFeature>(context.binaryName());
+    // AQL function registry — needed for --custom-query expression parsing.
+    // VectorIndexFeature is required by AqlFunctionFeature::addMiscFunctions().
+    server.addFeature<VectorIndexFeature>();
+    server.addFeature<aql::AqlFunctionFeature>();
 #ifdef USE_ENTERPRISE
     server.addFeature<EncryptionFeature>();
 #endif

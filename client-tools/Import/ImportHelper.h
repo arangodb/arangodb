@@ -44,6 +44,10 @@ struct SimpleHttpClientParams;
 }  // namespace httpclient
 }  // namespace arangodb
 
+namespace arangodb::import {
+class IDocumentTransformer;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief class for http requests
 ////////////////////////////////////////////////////////////////////////////////
@@ -60,6 +64,10 @@ struct ImportStatistics {
   size_t _numberErrors = 0;
   size_t _numberUpdated = 0;
   size_t _numberIgnored = 0;
+
+  // Custom query transform statistics
+  size_t _docsSkippedByTransform = 0;
+  size_t _transformErrors = 0;
 
   std::mutex _mutex;
   QuickHistogram _histogram;
@@ -283,6 +291,15 @@ class ImportHelper {
 
   size_t getNumberIgnored() const { return _stats._numberIgnored; }
 
+  size_t getDocsSkipped() const { return _stats._docsSkippedByTransform; }
+
+  size_t getTransformErrors() const { return _stats._transformErrors; }
+
+  /// @brief set the document transformer for --custom-query.
+  /// Uses shared_ptr because the concrete type (AqlDocumentTransformer) must
+  /// not be complete in arangoimport_utils (shared with arangosh).
+  void setTransformer(std::shared_ptr<IDocumentTransformer> transformer);
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief increase the row counter
   //////////////////////////////////////////////////////////////////////////////
@@ -412,6 +429,9 @@ class ImportHelper {
   bool _headersSeen;
   bool _emittedField;
   std::vector<std::string> _errorMessages;
+
+  // AQL document transformer for --custom-query (nullptr if unused)
+  std::shared_ptr<IDocumentTransformer> _transformer;
 
   static constexpr double kProgressStep = 3.0;
 };
