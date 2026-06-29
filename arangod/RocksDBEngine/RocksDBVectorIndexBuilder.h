@@ -59,7 +59,7 @@ class RocksDBEngine;
 
 namespace arangodb::vector {
 
-class VectorIndexTrainingSampler;
+class VectorIndexSampler;
 
 VectorIndexMetadata serializeIndex(faiss::IndexIVF const& index);
 
@@ -120,10 +120,11 @@ class VectorIndexTrainer {
   /// Sparse+scaling post-iteration step: recompute reservoir capacity from
   /// the actual valid-vector count, shrink the sampler, and release the
   /// freed bytes from the resource monitor.
-  Result shrinkReservoirForSparseScaling(
-      std::size_t validSeen, std::size_t reservoirCapacity,
-      std::uint64_t expectedReservoirBytes, ResourceUsageScope& memScope,
-      VectorIndexTrainingSampler& sampler) const;
+  Result shrinkReservoirForSparseScaling(std::size_t validSeen,
+                                         std::size_t reservoirCapacity,
+                                         std::uint64_t expectedReservoirBytes,
+                                         ResourceUsageScope& memScope,
+                                         VectorIndexSampler& sampler) const;
 
   RocksDBVectorIndex const& _index;
   ResourceMonitor& _resourceMonitor;

@@ -194,7 +194,7 @@ add_library(arangoserver STATIC
   VectorIndex/VectorIndexFeature.cpp
   VectorIndex/VectorIndexBuildManager.cpp
   VectorIndex/VectorIndexOptionsProvider.cpp
-  VectorIndex/VectorIndexTrainingSampler.cpp
+  VectorIndex/VectorIndexSampler.cpp
   RestServer/ViewTypesFeature.cpp
   RestServer/VocbaseContext.cpp
   Sharding/ShardDistributionReporter.cpp

@@ -64,7 +64,7 @@
 #include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/SingleCollectionTransaction.h"
-#include "VectorIndex/VectorIndexTrainingSampler.h"
+#include "VectorIndex/VectorIndexSampler.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <rocksdb/db.h>
@@ -87,14 +87,13 @@ namespace arangodb::vector {
   LOG_TOPIC((lid), level, topic) << "[shard=" << _index.collection().name() \
                                  << ", index=" << _index.id().id() << "] "
 
-// Internal helpers shared by the training and autotune sampling paths.
+// Forward-declared because it is called from collectTrainingDataset above its
+// definition; collectAutoTuneSample needs no such declaration as it is defined
+// before its first use.
 static Result sampleVectors(RocksDBVectorIndex const& index,
                             rocksdb::Iterator& it, rocksdb::Slice upper,
-                            VectorIndexTrainingSampler& sampler,
+                            VectorIndexSampler& sampler,
                             std::stop_token stopToken);
-static ResultT<std::vector<float>> collectAutoTuneSample(
-    RocksDBVectorIndex const& index, rocksdb::Iterator& it,
-    rocksdb::Slice upper, std::size_t capacity, std::stop_token stopToken);
 
 // Shallow field-presence probe; ingestion already rejects malformed vectors.
 bool hasVectorField(
@@ -306,7 +305,7 @@ VectorIndexTrainer::collectTrainingDataset(rocksdb::Iterator& it,
       _index.sparse() ? "sparse" : "non-sparse", numDocsHint, reservoirCapacity,
       expectedReservoirBytes / (1024 * 1024), seed);
 
-  VectorIndexTrainingSampler sampler{def.dimension, reservoirCapacity, seed};
+  VectorIndexSampler sampler{def.dimension, reservoirCapacity, seed};
   if (auto res = sampleVectors(_index, it, upper, sampler, stopToken);
       res.fail()) {
     return res;
@@ -343,7 +342,7 @@ VectorIndexTrainer::collectTrainingDataset(rocksdb::Iterator& it,
 
 static Result sampleVectors(RocksDBVectorIndex const& index,
                             rocksdb::Iterator& it, rocksdb::Slice upper,
-                            VectorIndexTrainingSampler& sampler,
+                            VectorIndexSampler& sampler,
                             std::stop_token stopToken) {
   auto const& def = index.getDefinition();
   std::vector<float> inputBuffer;
@@ -395,8 +394,7 @@ static ResultT<std::vector<float>> collectAutoTuneSample(
     RocksDBVectorIndex const& index, rocksdb::Iterator& it,
     rocksdb::Slice upper, std::size_t capacity, std::stop_token stopToken) {
   auto const& def = index.getDefinition();
-  VectorIndexTrainingSampler sampler{def.dimension, capacity,
-                                     RandomDevice::seed64()};
+  VectorIndexSampler sampler{def.dimension, capacity, RandomDevice::seed64()};
   if (auto res = sampleVectors(index, it, upper, sampler, stopToken);
       res.fail()) {
     return res;
@@ -429,7 +427,7 @@ ResultT<std::size_t> VectorIndexTrainer::resolveNLists(
 Result VectorIndexTrainer::shrinkReservoirForSparseScaling(
     std::size_t validSeen, std::size_t reservoirCapacity,
     std::uint64_t expectedReservoirBytes, ResourceUsageScope& memScope,
-    VectorIndexTrainingSampler& sampler) const {
+    VectorIndexSampler& sampler) const {
   auto resolvedNLists = resolveNLists(validSeen);
   if (resolvedNLists.fail()) {
     return std::move(resolvedNLists).result();
@@ -830,7 +828,6 @@ ResultT<OperatingPointTable> autoTuneVectorIndex(
 
   // Fresh sample from the indexed data: reusing training vectors would bias
   // recall optimistically (they defined the centroids).
-  // TODO(jbajic) should we predice to not go oom and get error?
   ResourceUsageScope sampleScope(
       resourceMonitor,
       static_cast<std::uint64_t>(sampleSize) * def.dimension * sizeof(float));
