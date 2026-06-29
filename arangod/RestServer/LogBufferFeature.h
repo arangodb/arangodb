@@ -39,7 +39,7 @@ class ProgramOptions;
 
 namespace arangodb {
 namespace metrics {
-class MetricsFeature;
+struct IRegistry;
 }  // namespace metrics
 
 struct LogBuffer {
@@ -59,7 +59,7 @@ class LogBufferFeature final : public application_features::ApplicationFeature {
   static constexpr uint32_t BufferSize = 2048;
 
   LogBufferFeature(application_features::ApplicationServer& server,
-                   metrics::MetricsFeature& metrics);
+                   metrics::IRegistry& metricsRegistry);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override;
