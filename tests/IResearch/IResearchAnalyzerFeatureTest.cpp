@@ -528,7 +528,7 @@ class IResearchAnalyzerFeatureTest
 TEST_F(IResearchAnalyzerFeatureTest, test_auth_no_auth) {
   TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
   EXPECT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::canUse(
-      vocbase, arangodb::CollectionAccessLevel::WriteMeta));
+      vocbase, arangodb::AnalyzerAccessLevel::Modify));
 }
 TEST_F(IResearchAnalyzerFeatureTest, test_auth_no_vocbase_read) {
   // no vocbase read access
@@ -537,7 +537,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_auth_no_vocbase_read) {
   auto ctxt = getLoggedInContext();
   arangodb::ExecContextScope execContextScope(ctxt.execContext);
   EXPECT_FALSE(arangodb::iresearch::IResearchAnalyzerFeature::canUse(
-      vocbase, arangodb::CollectionAccessLevel::Read));
+                   vocbase, arangodb::AnalyzerAccessLevel::Read)
+                   .ok());
 }
 
 // no collection read access (vocbase read access, no user)
@@ -548,7 +549,8 @@ TEST_F(IResearchAnalyzerFeatureTest,
   auto ctxt = getLoggedInContext();
   arangodb::ExecContextScope execContextScope(ctxt.execContext);
   EXPECT_FALSE(arangodb::iresearch::IResearchAnalyzerFeature::canUse(
-      vocbase, arangodb::CollectionAccessLevel::Read));
+                   vocbase, arangodb::AnalyzerAccessLevel::Read)
+                   .ok());
 }
 
 // no collection read access (vocbase read access)
@@ -560,10 +562,12 @@ TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_ro_collection_none) {
   // implicit RO access to collection _analyzers collection granted due to RO
   // access to db
   EXPECT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::canUse(
-      vocbase, arangodb::CollectionAccessLevel::Read));
+                  vocbase, arangodb::AnalyzerAccessLevel::Read)
+                  .ok());
 
   EXPECT_FALSE(arangodb::iresearch::IResearchAnalyzerFeature::canUse(
-      vocbase, arangodb::CollectionAccessLevel::WriteMeta));
+                   vocbase, arangodb::AnalyzerAccessLevel::Modify)
+                   .ok());
 }
 
 TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_ro_collection_ro) {
@@ -572,9 +576,10 @@ TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_ro_collection_ro) {
   auto ctxt = getLoggedInContext();
   arangodb::ExecContextScope execContextScope(ctxt.execContext);
   EXPECT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::canUse(
-      vocbase, arangodb::CollectionAccessLevel::Read));
+      vocbase, arangodb::AnalyzerAccessLevel::Read));
   EXPECT_FALSE(arangodb::iresearch::IResearchAnalyzerFeature::canUse(
-      vocbase, arangodb::CollectionAccessLevel::WriteMeta));
+                   vocbase, arangodb::AnalyzerAccessLevel::Modify)
+                   .ok());
 }
 
 TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_ro_collection_rw) {
@@ -583,9 +588,10 @@ TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_ro_collection_rw) {
   auto ctxt = getLoggedInContext();
   arangodb::ExecContextScope execContextScope(ctxt.execContext);
   EXPECT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::canUse(
-      vocbase, arangodb::CollectionAccessLevel::Read));
+      vocbase, arangodb::AnalyzerAccessLevel::Read));
   EXPECT_FALSE(arangodb::iresearch::IResearchAnalyzerFeature::canUse(
-      vocbase, arangodb::CollectionAccessLevel::WriteMeta));
+                   vocbase, arangodb::AnalyzerAccessLevel::Modify)
+                   .ok());
 }
 
 TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_rw_collection_ro) {
@@ -594,11 +600,11 @@ TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_rw_collection_ro) {
   auto ctxt = getLoggedInContext();
   arangodb::ExecContextScope execContextScope(ctxt.execContext);
   EXPECT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::canUse(
-      vocbase, arangodb::CollectionAccessLevel::Read));
+      vocbase, arangodb::AnalyzerAccessLevel::Read));
   // implicit access for system analyzers collection granted due to RW access to
   // database
   EXPECT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::canUse(
-      vocbase, arangodb::CollectionAccessLevel::WriteMeta));
+      vocbase, arangodb::AnalyzerAccessLevel::Modify));
 }
 
 TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_rw_collection_rw) {
@@ -607,9 +613,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_rw_collection_rw) {
   auto ctxt = getLoggedInContext();
   arangodb::ExecContextScope execContextScope(ctxt.execContext);
   EXPECT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::canUse(
-      vocbase, arangodb::CollectionAccessLevel::Read));
+      vocbase, arangodb::AnalyzerAccessLevel::Read));
   EXPECT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::canUse(
-      vocbase, arangodb::CollectionAccessLevel::WriteMeta));
+      vocbase, arangodb::AnalyzerAccessLevel::Modify));
 }
 
 // -----------------------------------------------------------------------------
