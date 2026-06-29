@@ -105,10 +105,16 @@ function assertTablesOk(parsedBody) {
     }
 }
 
-function collectFaissKeys(parsedBody) {
-    const tableLists = isCluster
+// Per-shard operating-point table lists: one list per shard in a cluster,
+// a single list on single-server.
+function tableListsPerShard(parsedBody) {
+    return isCluster
         ? parsedBody.result.map((entry) => entry.tunedTables)
         : [parsedBody.tunedTables];
+}
+
+function collectFaissKeys(parsedBody) {
+    const tableLists = tableListsPerShard(parsedBody);
     const keys = [];
     for (const tables of tableLists) {
         for (const table of (tables || [])) {
@@ -173,7 +179,6 @@ function VectorIndexAutotuneTestSuite() {
             db._dropDatabase(dbName);
         },
 
-        // topK has no server-side default; omitting it is a 400.
         testAutotuneRequiresTopK: function() {
             const id = vectorIndexId(collection);
             const res = arango.POST_RAW(
@@ -182,7 +187,6 @@ function VectorIndexAutotuneTestSuite() {
             assertEqual(true, res.parsedBody.error);
         },
 
-        // targetRecall has no server-side default; omitting it is a 400.
         testAutotuneRequiresTargetRecall: function() {
             const id = vectorIndexId(collection);
             const res = arango.POST_RAW(
@@ -191,7 +195,6 @@ function VectorIndexAutotuneTestSuite() {
             assertEqual(true, res.parsedBody.error);
         },
 
-        // Explicit per-request parameters are accepted.
         testAutotuneWithParams: function() {
             const id = vectorIndexId(collection);
             const res = arango.POST_RAW(
@@ -199,19 +202,11 @@ function VectorIndexAutotuneTestSuite() {
                 {topK: 5, targetRecall: 0.95});
             assertEqual(200, res.code);
             assertTunedOk(res.parsedBody, collName);
-        },
 
-        testGetAutotuneTables: function() {
-            const id = vectorIndexId(collection);
-            const tuned = arango.POST_RAW(
-                `/_api/index/${collName}/${id}/autotune`,
-                {topK: 5, targetRecall: 0.9});
-            assertEqual(200, tuned.code);
-
-            const res = arango.GET_RAW(
+            const tables = arango.GET_RAW(
                 `/_api/index/${collName}/${id}/autotune`);
-            assertEqual(200, res.code);
-            assertTablesOk(res.parsedBody);
+            assertEqual(200, tables.code);
+            assertTablesOk(tables.parsedBody);
         },
 
         testGetAutotuneTablesUnknownIndex: function() {
@@ -221,7 +216,6 @@ function VectorIndexAutotuneTestSuite() {
             assertEqual(true, res.parsedBody.error);
         },
 
-        // Search keeps working after a re-tune.
         testSearchWorksAfterAutotune: function() {
             const id = vectorIndexId(collection);
             arango.POST_RAW(`/_api/index/${collName}/${id}/autotune`,
@@ -233,7 +227,6 @@ function VectorIndexAutotuneTestSuite() {
             assertEqual(5, results.length);
         },
 
-        // targetRecall outside (0, 1] is rejected with a 400.
         testAutotuneRejectsInvalidTargetRecall: function() {
             const id = vectorIndexId(collection);
             const res = arango.POST_RAW(
@@ -243,13 +236,70 @@ function VectorIndexAutotuneTestSuite() {
             assertEqual(true, res.parsedBody.error);
         },
 
-        // Autotuning a non-existent index id returns not-found.
         testAutotuneUnknownIndex: function() {
             const res = arango.POST_RAW(
                 `/_api/index/${collName}/999999999/autotune`,
                 {topK: 5, targetRecall: 0.9});
             assertNotEqual(200, res.code);
             assertEqual(true, res.parsedBody.error);
+        },
+
+        testAutotuneOverridesPreviousTableForSameTopK: function() {
+            const id = vectorIndexId(collection);
+
+            assertEqual(200, arango.POST_RAW(
+                `/_api/index/${collName}/${id}/autotune`,
+                {topK: 5, targetRecall: 0.9}).code);
+            assertEqual(200, arango.POST_RAW(
+                `/_api/index/${collName}/${id}/autotune`,
+                {topK: 5, targetRecall: 0.5}).code);
+
+            const tables = arango.GET_RAW(
+                `/_api/index/${collName}/${id}/autotune`);
+            assertEqual(200, tables.code);
+            for (const shardTables of tableListsPerShard(tables.parsedBody)) {
+                const topK5 = shardTables.filter((t) => t.topK === 5);
+                assertEqual(1, topK5.length,
+                    "re-tuning the same topK must not append a duplicate");
+                assertEqual(0.5, topK5[0].targetRecall,
+                    "stored table should reflect the most recent tune");
+            }
+
+            assertEqual(200, arango.POST_RAW(
+                `/_api/index/${collName}/${id}/autotune`,
+                {topK: 10, targetRecall: 0.9}).code);
+
+            const after = arango.GET_RAW(
+                `/_api/index/${collName}/${id}/autotune`);
+            assertEqual(200, after.code);
+            for (const shardTables of tableListsPerShard(after.parsedBody)) {
+                assertEqual(1, shardTables.filter((t) => t.topK === 5).length);
+                assertEqual(1, shardTables.filter((t) => t.topK === 10).length);
+            }
+        },
+
+        testAutotuneOnUnusableIndexFails: function() {
+            const unusableColl = "vectorAutotuneUnusableColl";
+            const coll = db._create(unusableColl, {numberOfShards});
+            try {
+                const idx = coll.ensureIndex({
+                    name: "vec_unusable",
+                    type: "vector",
+                    fields: ["vector"],
+                    inBackground: false,
+                    params: {metric: "l2", dimension, nLists},
+                });
+                const bareId = idx.id.split("/")[1];
+                const res = arango.POST_RAW(
+                    `/_api/index/${unusableColl}/${bareId}/autotune`,
+                    {topK: 5, targetRecall: 0.9});
+                assertNotEqual(200, res.code);
+                assertEqual(true, res.parsedBody.error);
+                assertEqual(ERRORS.ERROR_QUERY_VECTOR_INDEX_NOT_READY.code,
+                    res.parsedBody.errorNum);
+            } finally {
+                db._drop(unusableColl);
+            }
         },
     };
 }
