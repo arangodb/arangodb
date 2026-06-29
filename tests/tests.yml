@@ -67,6 +67,7 @@
       - fuerte:
           args:
             protocol: ssl
+            suffix: ssl
           requires:
             coverage: false
       - endpoints:

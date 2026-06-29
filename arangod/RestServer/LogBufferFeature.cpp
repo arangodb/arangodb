@@ -32,7 +32,7 @@
 #include "Logger/LoggerFeature.h"
 #include "Logger/Logger.h"
 #include "Metrics/CounterBuilder.h"
-#include "Metrics/MetricsFeature.h"
+#include "Metrics/IRegistry.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/LogBufferOptionsProvider.h"
 
@@ -159,12 +159,12 @@ class LogAppenderRingBuffer final : public LogAppender {
 /// in our metrics
 class LogAppenderMetricsCounter final : public LogAppender {
  public:
-  LogAppenderMetricsCounter(metrics::MetricsFeature& metrics)
+  LogAppenderMetricsCounter(metrics::IRegistry& metricsRegistry)
       : LogAppender(),
-        _warningsCounter(metrics.add(arangodb_logger_warnings_total{})),
-        _errorsCounter(metrics.add(arangodb_logger_errors_total{})),
+        _warningsCounter(metricsRegistry.add(arangodb_logger_warnings_total{})),
+        _errorsCounter(metricsRegistry.add(arangodb_logger_errors_total{})),
         _droppedMessagesCounter(
-            metrics.add(arangodb_logger_messages_dropped_total{})) {}
+            metricsRegistry.add(arangodb_logger_messages_dropped_total{})) {}
 
   void logMessage(LogMessage const& message) override {
     // only handle WARN and ERR log messages
@@ -187,12 +187,13 @@ class LogAppenderMetricsCounter final : public LogAppender {
 
 LogBufferFeature::LogBufferFeature(
     application_features::ApplicationServer& server,
-    metrics::MetricsFeature& metrics)
+    metrics::IRegistry& metricsRegistry)
     : ApplicationFeature{server, *this} {
   setOptional(true);
   startsAfter<LoggerFeature>();
 
-  _metricsCounter = std::make_shared<LogAppenderMetricsCounter>(metrics);
+  _metricsCounter =
+      std::make_shared<LogAppenderMetricsCounter>(metricsRegistry);
 
   Logger::addGlobalAppender(Logger::defaultLogGroup(), _metricsCounter);
 

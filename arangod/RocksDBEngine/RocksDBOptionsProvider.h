@@ -49,6 +49,7 @@ struct RocksDBOptionsProvider {
 
   virtual bool useFileLogging() const noexcept { return false; }
   virtual bool limitOpenFilesAtStartup() const noexcept { return false; }
+  virtual bool exclusiveWrites() const noexcept { return false; }
   virtual uint64_t maxTotalWalSize() const noexcept = 0;
   virtual uint32_t numThreadsHigh() const noexcept = 0;
   virtual uint32_t numThreadsLow() const noexcept = 0;

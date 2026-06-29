@@ -51,7 +51,8 @@ class RocksDBCollection final : public RocksDBMetaCollection {
 
  public:
   explicit RocksDBCollection(LogicalCollection& collection,
-                             velocypack::Slice info);
+                             velocypack::Slice info,
+                             cache::Manager* cacheManager);
   ~RocksDBCollection();
 
   void deferDropCollection(
