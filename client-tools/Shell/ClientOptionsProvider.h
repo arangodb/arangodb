@@ -18,16 +18,20 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Julia Puget
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <gtest/gtest.h>
+#pragma once
 
-#include "StorageEngineFixture.h"
+#include "ApplicationFeatures/OptionsProvider.h"
+#include "Shell/ClientFeatureOptions.h"
 
-using namespace arangodb;
-using namespace arangodb::tests;
+namespace arangodb {
 
-TEST_F(StorageEngineFixture, CanConstruct) {
-  EXPECT_EQ(engine().kEngineName, "rocksdb");
-}
+struct ClientOptionsProvider : OptionsProvider<ClientFeatureOptions> {
+  void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
+                      ClientFeatureOptions& options) override;
+  void validateOptions(std::shared_ptr<options::ProgramOptions> opts,
+                       ClientFeatureOptions& options) override;
+};
+
+}  // namespace arangodb

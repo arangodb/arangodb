@@ -18,16 +18,38 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Julia Puget
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <gtest/gtest.h>
+#pragma once
 
-#include "StorageEngineFixture.h"
+#include <cstddef>
+#include <cstdint>
+#include <string>
+#include <vector>
 
-using namespace arangodb;
-using namespace arangodb::tests;
+namespace arangodb {
 
-TEST_F(StorageEngineFixture, CanConstruct) {
-  EXPECT_EQ(engine().kEngineName, "rocksdb");
-}
+struct ClientFeatureOptions {
+  std::vector<std::string> endpoints;
+  std::string databaseName;
+  std::string username = "root";
+  std::string password;
+  std::string jwtSecretFile;
+  std::string jwtToken;
+  double connectionTimeout;
+  double requestTimeout;
+  double jwtRenewalThreshold = 300.0;
+  uint64_t maxPacketSize = 1024 * 1024 * 1024;
+  uint64_t compressRequestThreshold = 0;
+  uint64_t sslProtocol;
+  bool authentication = true;
+  bool askJwtSecret = false;
+  bool forceJson = false;
+  bool compressTransfer = false;
+  bool haveServerPassword = false;
+
+  bool allowJwtSecret = false;
+  size_t maxNumEndpoints = 1;
+};
+
+}  // namespace arangodb
