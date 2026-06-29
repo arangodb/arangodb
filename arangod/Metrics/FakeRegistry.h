@@ -27,9 +27,8 @@
 
 namespace arangodb::metrics {
 
-
 // A registry that populates metrics but does not register them with any
-// actual metrics endpoint. Returned shared_ptr is the only owner.  
+// actual metrics endpoint. Returned shared_ptr is the only owner.
 struct FakeRegistry : public IRegistry {
  protected:
   std::shared_ptr<metrics::Metric> doAdd(metrics::Builder& builder) override {
