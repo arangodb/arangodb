@@ -1117,8 +1117,8 @@ async<void> RestIndexHandler::autotuneVectorIndex() {
   }
 
   auto& vectorIndexFeature = server().getFeature<VectorIndexFeature>();
-  auto outcome =
-      co_await vectorIndexFeature.autoTuneIndex(coll, idx->id(), params);
+  auto outcome = co_await vectorIndexFeature.autoTuneIndex(coll, idx->id(),
+                                                           std::move(params));
   if (outcome.fail()) {
     generateError(rest::ResponseCode::BAD, outcome.errorNumber(),
                   outcome.errorMessage());

@@ -90,10 +90,6 @@ class VectorIndexTrainer {
   };
 
  public:
-  struct TrainingResult {
-    std::shared_ptr<faiss::IndexIVF> index;
-  };
-
   VectorIndexTrainer(RocksDBVectorIndex const& index,
                      ResourceMonitor& resourceMonitor, rocksdb::DB* db,
                      RocksDBKeyBounds bounds);
@@ -109,8 +105,8 @@ class VectorIndexTrainer {
   ///  2. Create the FAISS index
   ///  3. Load training vectors from the iterator
   ///  4. Train the FAISS index
-  ResultT<TrainingResult> train(std::size_t numDocsHint,
-                                std::stop_token stopToken = {});
+  ResultT<std::shared_ptr<faiss::IndexIVF>> train(
+      std::size_t numDocsHint, std::stop_token stopToken = {});
 
  private:
   ResultT<TrainingDataset> collectTrainingDataset(

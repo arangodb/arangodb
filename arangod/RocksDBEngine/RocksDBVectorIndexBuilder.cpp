@@ -440,7 +440,7 @@ Result VectorIndexTrainer::shrinkReservoirForSparseScaling(
   return {};
 }
 
-ResultT<VectorIndexTrainer::TrainingResult> VectorIndexTrainer::train(
+ResultT<std::shared_ptr<faiss::IndexIVF>> VectorIndexTrainer::train(
     std::size_t numDocsHint, std::stop_token stopToken) {
   auto res =
       collectTrainingDataset(*_docIt.it, _docIt.upper, numDocsHint, stopToken);
@@ -493,7 +493,7 @@ ResultT<VectorIndexTrainer::TrainingResult> VectorIndexTrainer::train(
       << std::format("[shard={}, index={}] Finished training.",
                      _index.collection().name(), _index.id().id());
 
-  return TrainingResult{std::move(faissIndex)};
+  return faissIndex;
 }
 
 Result ingestVectors(RocksDBVectorIndex& index, rocksdb::DB* rootDB,
@@ -916,7 +916,7 @@ Result VectorIndexBuilder::build(
     return std::move(trainingResult).result();
   }
 
-  auto faissIndex = std::move(trainingResult.get().index);
+  auto faissIndex = std::move(trainingResult).get();
   trainingDuration.count(
       std::chrono::duration<double>(trainEnd - trainStart).count());
 
