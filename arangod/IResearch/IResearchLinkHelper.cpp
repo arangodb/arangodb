@@ -101,13 +101,10 @@ Result canUseAnalyzers(IResearchLinkMeta const& meta,
     auto result = IResearchAnalyzerFeature::canUse(
         IResearchAnalyzerFeature::normalize(pool->name(),
                                             defaultVocbase.name()),
-        AccessLevel::Read);
+        AnalyzerAccessLevel::Read);
 
-    if (!result) {
-      return {
-          TRI_ERROR_FORBIDDEN,
-          absl::StrCat("read access is forbidden to arangosearch analyzer '",
-                       pool->name(), "'")};
+    if (result.fail()) {
+      return result;
     }
   }
 

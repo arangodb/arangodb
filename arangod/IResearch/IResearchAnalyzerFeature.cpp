@@ -2059,7 +2059,7 @@ Result IResearchAnalyzerFeature::loadAvailableAnalyzers(
     return {};
   }
   Result res{};
-  if (canUseVocbase(dbName, CollectionAccessLevel::Read)) {
+  if (canUseVocbase(dbName, AnalyzerAccessLevel::Read).ok()) {
     res = loadAnalyzers(operationOrigin, dbName);
     if (res.fail()) {
       return res;
@@ -2067,7 +2067,8 @@ Result IResearchAnalyzerFeature::loadAvailableAnalyzers(
   }
   if (dbName != arangodb::StaticStrings::SystemDatabase &&
       canUseVocbase(arangodb::StaticStrings::SystemDatabase,
-                    CollectionAccessLevel::Read)) {
+                    AnalyzerAccessLevel::Read)
+          .ok()) {
     // System is available for all other databases. So reload its analyzers too
     res =
         loadAnalyzers(operationOrigin, arangodb::StaticStrings::SystemDatabase);

@@ -165,10 +165,10 @@ void RestAnalyzerHandler::createAnalyzer(  // create
   // end of parameter parsing
   // ...........................................................................
 
-  if (!IResearchAnalyzerFeature::canUse(name, AccessLevel::WriteData)) {
-    generateError(arangodb::rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
-                  std::string("insufficient rights while creating analyzer: ") +
-                      body.toString());
+  if (auto r =
+          IResearchAnalyzerFeature::canUse(name, AnalyzerAccessLevel::Modify);
+      r.fail()) {
+    generateError(r);
     return;
   }
 
@@ -282,11 +282,10 @@ void RestAnalyzerHandler::getAnalyzer(IResearchAnalyzerFeature& analyzers,
     return;
   }
 
-  if (!IResearchAnalyzerFeature::canUse(normalizedName, AccessLevel::Read)) {
-    generateError(arangodb::Result(
-        TRI_ERROR_FORBIDDEN,
-        std::string("insufficient rights while getting analyzer: ")
-            .append(normalizedName)));
+  if (auto r = IResearchAnalyzerFeature::canUse(normalizedName,
+                                                AnalyzerAccessLevel::Read);
+      r.fail()) {
+    generateError(r);
     return;
   }
 
@@ -330,7 +329,8 @@ void RestAnalyzerHandler::getAnalyzers(IResearchAnalyzerFeature& analyzers) {
                   transaction::OperationOriginREST{
                       ::moduleName});  // include static analyzers
 
-  if (IResearchAnalyzerFeature::canUse(_vocbase, AccessLevel::Read)) {
+  if (IResearchAnalyzerFeature::canUse(_vocbase, AnalyzerAccessLevel::Read)
+          .ok()) {
     analyzers.visit(visitor, &_vocbase,
                     transaction::OperationOriginREST{::moduleName});
   }
@@ -342,7 +342,9 @@ void RestAnalyzerHandler::getAnalyzers(IResearchAnalyzerFeature& analyzers) {
 
     if (sysVocbase                                // have system vocbase
         && sysVocbase->name() != _vocbase.name()  // not same vocbase as current
-        && IResearchAnalyzerFeature::canUse(*sysVocbase, AccessLevel::Read)) {
+        &&
+        IResearchAnalyzerFeature::canUse(*sysVocbase, AnalyzerAccessLevel::Read)
+            .ok()) {
       analyzers.visit(visitor, sysVocbase.get(),
                       transaction::OperationOriginREST{::moduleName});
     }
@@ -383,12 +385,10 @@ void RestAnalyzerHandler::removeAnalyzer(IResearchAnalyzerFeature& analyzers,
   auto normalizedName =
       IResearchAnalyzerFeature::normalize(name, _vocbase.name());
 
-  if (!IResearchAnalyzerFeature::canUse(normalizedName,
-                                        AccessLevel::WriteData)) {
-    generateError(arangodb::Result(
-        TRI_ERROR_FORBIDDEN,
-        std::string("insufficient rights while removing analyzer: ")
-            .append(normalizedName)));
+  if (auto r = IResearchAnalyzerFeature::canUse(normalizedName,
+                                                AnalyzerAccessLevel::Modify);
+      r.fail()) {
+    generateError(r);
     return;
   }
 
