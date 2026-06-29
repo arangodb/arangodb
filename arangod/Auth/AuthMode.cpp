@@ -269,12 +269,13 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
             }
           },
           [&](p::UseAnalyzer const& analyzer) -> Result {
-            // Without RBAC, RO access to the database is the only
-            // prerequisite for using an analyzer, and that has already been
-            // verified before this is called. No further check needed.
-            // For the sake of readabilty, we perform the check:
-            return check(
-                p::UseDatabase{analyzer.db, DatabaseAccessLevel::Read});
+            // Without RBAC, database access is the only prerequisite for
+            // using an analyzer. Reading analyzers requires RO database
+            // access; creating or dropping analyzers requires RW.
+            auto const dbLevel = analyzer.level >= AnalyzerAccessLevel::Modify
+                                     ? DatabaseAccessLevel::Write
+                                     : DatabaseAccessLevel::Read;
+            return check(p::UseDatabase{analyzer.db, dbLevel});
           },
           [&](p::Admin const& /*admin*/) -> Result {
             // Classic admin action requires RW access to the _system database.

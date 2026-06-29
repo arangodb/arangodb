@@ -1151,10 +1151,15 @@ bool IResearchAnalyzerFeature::canUseVocbase(
     std::string_view vocbaseName, CollectionAccessLevel const& level) {
   TRI_ASSERT(!vocbaseName.empty());
   auto& ctx = ExecContext::current();
-  auto const nameStr = static_cast<std::string>(vocbaseName);
+  // In Classic auth mode, analyzer access is governed by database-level
+  // permissions, not by individual collection permissions on _analyzers.
+  // Map the collection access level to an analyzer access level.
+  auto const analyzerLevel =
+      level >= CollectionAccessLevel::WriteData ? AnalyzerAccessLevel::Modify
+      : level == CollectionAccessLevel::Read    ? AnalyzerAccessLevel::Read
+                                                : AnalyzerAccessLevel::None;
   return ctx
-      .canUseCollection(nameStr, arangodb::StaticStrings::AnalyzersCollection,
-                        level)
+      .canUseAnalyzer(static_cast<std::string>(vocbaseName), "", analyzerLevel)
       .ok();
 }
 
@@ -1165,12 +1170,37 @@ bool IResearchAnalyzerFeature::canUse(TRI_vocbase_t const& vocbase,
 
 bool IResearchAnalyzerFeature::canUse(std::string_view name,
                                       CollectionAccessLevel const& level) {
-  // We do no further checks here and simply let everything through.
-  // When we later use AQL to access the `_analyzers` collection, we will
-  // get the corresponding checks there.
-  // Note that without RBAC, this will fall back to check the access level
-  // of the database, since `_analyzers is a system collection.
-  return true;
+  auto& ctx = ExecContext::current();
+
+  if (ctx.isSuperuser()) {
+    return true;  // authentication disabled or superuser
+  }
+
+  auto& staticAnalyzers = getStaticAnalyzers();
+
+  if (staticAnalyzers.contains(irs::hashed_string_view{name})) {
+    // special case for singleton static analyzers (always allowed)
+    return true;
+  }
+
+  auto split = splitAnalyzerName(name);
+
+  if (irs::IsNull(split.first)) {
+    // unprefixed (static) analyzer - always allowed
+    return true;
+  }
+
+  auto const vocbaseName = static_cast<std::string>(split.first);
+  // In Classic auth mode, analyzer access is governed by database-level
+  // permissions. Map the collection access level to an analyzer access level.
+  auto const analyzerLevel =
+      level >= CollectionAccessLevel::WriteData ? AnalyzerAccessLevel::Modify
+      : level == CollectionAccessLevel::Read    ? AnalyzerAccessLevel::Read
+                                                : AnalyzerAccessLevel::None;
+  return ctx
+      .canUseAnalyzer(vocbaseName, static_cast<std::string>(split.second),
+                      analyzerLevel)
+      .ok();
 }
 
 Result IResearchAnalyzerFeature::copyAnalyzerPool(AnalyzerPool::ptr& analyzer,
