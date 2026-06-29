@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -18,40 +18,38 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "Basics/ConditionVariable.h"
-#include "Basics/Thread.h"
-#include "Metrics/Fwd.h"
+#include <cstddef>
+#include <cstdint>
+#include <string>
+#include <vector>
 
 namespace arangodb {
 
-class RocksDBEngine;
+struct ClientFeatureOptions {
+  std::vector<std::string> endpoints;
+  std::string databaseName;
+  std::string username = "root";
+  std::string password;
+  std::string jwtSecretFile;
+  std::string jwtToken;
+  double connectionTimeout;
+  double requestTimeout;
+  double jwtRenewalThreshold = 300.0;
+  uint64_t maxPacketSize = 1024 * 1024 * 1024;
+  uint64_t compressRequestThreshold = 0;
+  uint64_t sslProtocol;
+  bool authentication = true;
+  bool askJwtSecret = false;
+  bool forceJson = false;
+  bool compressTransfer = false;
+  bool haveServerPassword = false;
 
-class RocksDBBackgroundThread final : public Thread {
- public:
-  RocksDBBackgroundThread(RocksDBEngine& eng, double interval,
-                          metrics::IRegistry& metrics);
-  ~RocksDBBackgroundThread();
-
-  void beginShutdown() override;
-
- protected:
-  void run() override;
-
- private:
-  /// @brief engine pointer
-  RocksDBEngine& _engine;
-
-  /// @brief interval in which we will run
-  double const _interval;
-
-  /// @brief condition variable for heartbeat
-  arangodb::basics::ConditionVariable _condition;
-
-  metrics::Gauge<uint64_t>& _metricsWalReleasedTickReplication;
+  bool allowJwtSecret = false;
+  size_t maxNumEndpoints = 1;
 };
+
 }  // namespace arangodb

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -18,40 +18,20 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "Basics/ConditionVariable.h"
-#include "Basics/Thread.h"
-#include "Metrics/Fwd.h"
+#include "ApplicationFeatures/OptionsProvider.h"
+#include "Shell/ClientFeatureOptions.h"
 
 namespace arangodb {
 
-class RocksDBEngine;
-
-class RocksDBBackgroundThread final : public Thread {
- public:
-  RocksDBBackgroundThread(RocksDBEngine& eng, double interval,
-                          metrics::IRegistry& metrics);
-  ~RocksDBBackgroundThread();
-
-  void beginShutdown() override;
-
- protected:
-  void run() override;
-
- private:
-  /// @brief engine pointer
-  RocksDBEngine& _engine;
-
-  /// @brief interval in which we will run
-  double const _interval;
-
-  /// @brief condition variable for heartbeat
-  arangodb::basics::ConditionVariable _condition;
-
-  metrics::Gauge<uint64_t>& _metricsWalReleasedTickReplication;
+struct ClientOptionsProvider : OptionsProvider<ClientFeatureOptions> {
+  void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
+                      ClientFeatureOptions& options) override;
+  void validateOptions(std::shared_ptr<options::ProgramOptions> opts,
+                       ClientFeatureOptions& options) override;
 };
+
 }  // namespace arangodb

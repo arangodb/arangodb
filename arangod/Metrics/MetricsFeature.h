@@ -23,7 +23,7 @@
 
 #pragma once
 
-#include "ICollector.h"
+#include "IRegistry.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/LazyApplicationFeatureReference.h"
 #include "Basics/DownCast.h"
@@ -53,7 +53,7 @@ namespace arangodb::metrics {
 class ClusterMetricsFeature;
 
 class MetricsFeature final : public application_features::ApplicationFeature,
-                             public ICollector {
+                             public IRegistry {
  public:
   // Maintain backward compatibility for existing code
   using UsageTrackingMode = metrics::UsageTrackingMode;

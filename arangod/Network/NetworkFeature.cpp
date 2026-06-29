@@ -39,7 +39,7 @@
 #include "Metrics/FixScale.h"
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/HistogramBuilder.h"
-#include "Metrics/MetricsFeature.h"
+#include "Metrics/IRegistry.h"
 #include "Network/Methods.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/ServerFeature.h"
@@ -312,22 +312,27 @@ DECLARE_GAUGE(arangodb_network_requests_in_flight, uint64_t,
               "Number of outgoing internal requests in flight");
 
 NetworkFeature::NetworkFeature(application_features::ApplicationServer& server,
-                               metrics::MetricsFeature& metrics,
+                               metrics::IRegistry& metricsRegistry,
                                network::ConnectionPool::Config config)
     : application_features::ApplicationFeature{server, *this},
       _options(config),
       _prepared(false),
       _forwardedRequests(
-          metrics.add(arangodb_network_forwarded_requests_total{})),
-      _requestsInFlight(metrics.add(arangodb_network_requests_in_flight{})),
-      _requestTimeouts(metrics.add(arangodb_network_request_timeouts_total{})),
-      _requestDurations(metrics.add(
+          metricsRegistry.add(arangodb_network_forwarded_requests_total{})),
+      _requestsInFlight(
+          metricsRegistry.add(arangodb_network_requests_in_flight{})),
+      _requestTimeouts(
+          metricsRegistry.add(arangodb_network_request_timeouts_total{})),
+      _requestDurations(metricsRegistry.add(
           arangodb_network_request_duration_as_percentage_of_timeout{})),
-      _unfinishedSends(metrics.add(arangodb_network_unfinished_sends_total{})),
-      _dequeueDurations(metrics.add(arangodb_network_dequeue_duration{})),
-      _sendDurations(metrics.add(arangodb_network_send_duration{})),
-      _responseDurations(metrics.add(arangodb_network_response_duration{})),
-      _metrics(metrics) {
+      _unfinishedSends(
+          metricsRegistry.add(arangodb_network_unfinished_sends_total{})),
+      _dequeueDurations(
+          metricsRegistry.add(arangodb_network_dequeue_duration{})),
+      _sendDurations(metricsRegistry.add(arangodb_network_send_duration{})),
+      _responseDurations(
+          metricsRegistry.add(arangodb_network_response_duration{})),
+      _metricsRegistry(metricsRegistry) {
   setOptional(true);
   startsAfter<ClusterFeature>();
   startsAfter<SchedulerFeature>();
@@ -375,7 +380,7 @@ void NetworkFeature::prepare() {
   config.clusterInfo = ci;
   config.name = "ClusterComm";
   config.metrics = network::ConnectionPool::Metrics::fromMetricsFeature(
-      _metrics, config.name);
+      _metricsRegistry, config.name);
 
   // using an internal network protocol other than HTTP/1 is
   // not supported since 3.9. the protocol is always hard-coded
