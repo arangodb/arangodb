@@ -81,6 +81,7 @@ RocksDBRecoveryManager::RocksDBRecoveryManager(
       _recoveryCallback(recoveryCallback) {
   setOptional(true);
   startsAfter<RocksDBEngine>();
+  // implies DatabaseFeature + SystemDatabaseFeature ordering
   startsAfter<ServerIdFeature>();
 
   onlyEnabledWith<RocksDBEngine>();
@@ -103,8 +104,7 @@ void RocksDBRecoveryManager::start() {
   _recoveryCallback.recoveryDone();
 }
 
-/// parse recent RocksDB WAL entries and notify the
-/// DatabaseFeature about the successful recovery
+/// parse recent RocksDB WAL entries
 void RocksDBRecoveryManager::runRecovery() {
   auto res = parseRocksWAL();
   if (res.fail()) {
