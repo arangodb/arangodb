@@ -28,8 +28,11 @@ namespace rest {
 class RestHandlerFactory;
 }
 
+class StorageEngine;
+
 struct RocksDBRestHandlers {
-  static void registerResources(rest::RestHandlerFactory*);
+  static void registerResources(rest::RestHandlerFactory*,
+                                StorageEngine& engine);
 };
 
 }  // namespace arangodb

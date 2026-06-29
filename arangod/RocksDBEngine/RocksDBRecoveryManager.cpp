@@ -36,6 +36,7 @@
 #include "Basics/files.h"
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
+#include "RestServer/IDatabaseProvider.h"
 #include "RestServer/IRecoveryCallback.h"
 #include "RestServer/ServerIdFeature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
@@ -74,10 +75,11 @@ namespace arangodb {
 /// will load counts from the db and scan the WAL
 RocksDBRecoveryManager::RocksDBRecoveryManager(
     application_features::ApplicationServer& server,
-    IRecoveryCallback& recoveryCallback)
+    IDatabaseProvider& dbProvider, IRecoveryCallback& recoveryCallback)
     : application_features::ApplicationFeature{server, *this},
       _currentSequenceNumber(0),
       _recoveryState(RecoveryState::BEFORE),
+      _dbProvider(dbProvider),
       _recoveryCallback(recoveryCallback) {
   setOptional(true);
   startsAfter<RocksDBEngine>();
@@ -161,12 +163,13 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
   std::atomic<rocksdb::SequenceNumber>& _currentSequence;
 
   RocksDBEngine& _engine;
+  IDatabaseProvider& _dbProvider;
   // whether we are currently at the start of a batch
   bool _startOfBatch = false;
 
  public:
   /// @param seqs sequence number from which to count operations
-  explicit WBReader(RocksDBEngine& engine,
+  explicit WBReader(RocksDBEngine& engine, IDatabaseProvider& dbProvider,
                     rocksdb::SequenceNumber recoveryStartSequence,
                     rocksdb::SequenceNumber latestSequence,
                     std::atomic<rocksdb::SequenceNumber>& currentSequence)
@@ -178,7 +181,8 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
         _lastRemovedDocRid(0),
         _batchStartSequence(0),
         _currentSequence(currentSequence),
-        _engine(engine) {}
+        _engine(engine),
+        _dbProvider(dbProvider) {}
 
   void startNewBatch(rocksdb::SequenceNumber startSequence) {
     TRI_ASSERT(_currentSequence <= startSequence);
@@ -261,7 +265,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
       // collection with this objectID not known.Skip.
       return nullptr;
     }
-    auto vocbase = _engine.getDatabaseProvider().useDatabase(dbColPair.first);
+    auto vocbase = _dbProvider.useDatabase(dbColPair.first);
     if (vocbase == nullptr) {
       return nullptr;
     }
@@ -275,7 +279,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
       return nullptr;
     }
 
-    auto vb = _engine.getDatabaseProvider().useDatabase(std::get<0>(triple));
+    auto vb = _dbProvider.useDatabase(std::get<0>(triple));
     if (vb == nullptr) {
       return nullptr;
     }
@@ -678,8 +682,8 @@ Result RocksDBRecoveryManager::parseRocksWAL() {
 
     // Tell the WriteBatch reader the transaction markers to look for
     TRI_ASSERT(_currentSequenceNumber == 0);
-    WBReader handler(engine, recoveryStartSequence, latestSequenceNumber,
-                     _currentSequenceNumber);
+    WBReader handler(engine, _dbProvider, recoveryStartSequence,
+                     latestSequenceNumber, _currentSequenceNumber);
 
     // prevent purging of WAL files while we are in here
     RocksDBFilePurgePreventer purgePreventer(engine.disallowPurging());

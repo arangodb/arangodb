@@ -123,7 +123,7 @@ class StorageEngineFixture : public ::testing::Test {
   ::testing::NiceMock<MockReplicatedLogProvider> _logProvider;
 
   NullRecoveryCallback _nullCallback;
-  RocksDBRecoveryManager _recoveryManager{_server, _nullCallback};
+  RocksDBRecoveryManager _recoveryManager{_server, _dbProvider, _nullCallback};
 
   RocksDBEngine _engine{_server,       _optionsProvider,  _metricsCollector,
                         _dbPath,       _vectorIdx,        _flush,

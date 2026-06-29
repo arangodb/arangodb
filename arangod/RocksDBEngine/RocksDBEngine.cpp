@@ -2431,7 +2431,7 @@ void RocksDBEngine::addV8Functions() {
 
 /// @brief Add engine-specific REST handlers
 void RocksDBEngine::addRestHandlers(rest::RestHandlerFactory& handlerFactory) {
-  RocksDBRestHandlers::registerResources(&handlerFactory);
+  RocksDBRestHandlers::registerResources(&handlerFactory, *this);
 }
 
 void RocksDBEngine::addCollectionMapping(uint64_t objectId, TRI_voc_tick_t did,

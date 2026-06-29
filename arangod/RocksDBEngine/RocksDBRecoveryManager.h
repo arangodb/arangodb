@@ -39,6 +39,7 @@ class TransactionDB;
 namespace arangodb {
 
 class RocksDBEngine;
+struct IDatabaseProvider;
 struct IRecoveryCallback;
 
 class RocksDBRecoveryManager final
@@ -48,7 +49,7 @@ class RocksDBRecoveryManager final
 
   explicit RocksDBRecoveryManager(
       application_features::ApplicationServer& server,
-      IRecoveryCallback& recoveryCallback);
+      IDatabaseProvider& dbProvider, IRecoveryCallback& recoveryCallback);
 
   void start() override;
 
@@ -64,6 +65,7 @@ class RocksDBRecoveryManager final
 
   std::atomic<rocksdb::SequenceNumber> _currentSequenceNumber;
   std::atomic<RecoveryState> _recoveryState;
+  IDatabaseProvider& _dbProvider;
   IRecoveryCallback& _recoveryCallback;
   RocksDBEngine* _engine = nullptr;
 };
