@@ -59,24 +59,25 @@ function assertTuneSummary(entry) {
     assertEqual("boolean", typeof entry.reachedTargetRecall);
 }
 
-// Assert a successful autotune response on either topology. Single-server
-// returns the tune summary inline; the coordinator returns a per-shard array.
-function assertTunedOk(parsedBody) {
+// Assert a successful autotune response. Both topologies return a per-shard
+// array; single-server reports one entry keyed by the collection name.
+function assertTunedOk(parsedBody, collectionName) {
     assertEqual(false, parsedBody.error);
+    assertTrue(Array.isArray(parsedBody.result));
     if (isCluster) {
-        assertTrue(Array.isArray(parsedBody.result));
         assertTrue(parsedBody.result.length >= numberOfShards,
             "expected at least one result entry per shard");
-        assertEqual("boolean", typeof parsedBody.allShardsTuned);
-        assertEqual(true, parsedBody.allShardsTuned);
-        for (const entry of parsedBody.result) {
-            assertTrue(entry.hasOwnProperty("shard"));
-            assertTrue(entry.hasOwnProperty("server"));
-            assertEqual(false, entry.error);
-            assertTuneSummary(entry);
-        }
     } else {
-        assertTuneSummary(parsedBody);
+        assertEqual(1, parsedBody.result.length);
+        assertEqual(collectionName, parsedBody.result[0].shard);
+    }
+    for (const entry of parsedBody.result) {
+        assertTrue(entry.hasOwnProperty("shard"));
+        if (isCluster) {
+            assertTrue(entry.hasOwnProperty("server"));
+        }
+        assertEqual(false, entry.error);
+        assertTuneSummary(entry);
     }
 }
 
@@ -200,7 +201,7 @@ function VectorIndexAutotuneTestSuite() {
                 `/_api/index/${collName}/${id}/autotune`,
                 {topK: 5, targetRecall: 0.95});
             assertEqual(200, res.code);
-            assertTunedOk(res.parsedBody);
+            assertTunedOk(res.parsedBody, collName);
         },
 
         testGetAutotuneTables: function() {
@@ -296,7 +297,7 @@ function VectorIndexAutotuneCompositeTestSuite() {
                 `/_api/index/${cName}/${id}/autotune`,
                 {topK: 5, targetRecall: targetRecall});
             assertEqual(200, tuned.code);
-            assertTunedOk(tuned.parsedBody);
+            assertTunedOk(tuned.parsedBody, cName);
 
             const tables = arango.GET_RAW(`/_api/index/${cName}/${id}/autotune`);
             assertEqual(200, tables.code);

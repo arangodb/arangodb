@@ -162,8 +162,7 @@ async<Result> autoTuneVectorIndexOnAllDBServers(ClusterFeature& feature,
     co_return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
   }
 
-  // Forward the tuning parameters verbatim to every shard; default to an empty
-  // object when the caller sent no usable body.
+  // Forward the tuning parameters to every shard
   VPackBuffer<uint8_t> body;
   if (params.isObject()) {
     body.append(params.start(), params.byteSize());

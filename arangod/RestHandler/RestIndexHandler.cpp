@@ -1062,6 +1062,7 @@ async<void> RestIndexHandler::autotuneVectorIndex() {
   }
 
   // Coordinator: fan out to every shard, report a per-shard breakdown.
+  // This part could be replaced with agency to be more robust
   if (ServerState::instance()->isCoordinator()) {
     VPackBuilder shardResults;
     auto const res = co_await autoTuneVectorIndexOnAllDBServers(
@@ -1100,7 +1101,6 @@ async<void> RestIndexHandler::autotuneVectorIndex() {
                     "vector index autotune failed on one or more shards: ",
                     firstErrorMsg)));
       }
-      out.add("allShardsTuned", VPackValue(allShardsTuned));
       out.add("result", shardResults.slice());
     }
     generateResult(code, out.slice());
@@ -1131,18 +1131,23 @@ async<void> RestIndexHandler::autotuneVectorIndex() {
       table.points.back().recall >=
           table.targetRecall - vector::kAutoTuneRecallEpsilon;
 
+  // Mirror the coordinator's per-shard breakdown: a single entry keyed by the
+  // collection name stands in for the lone shard.
   VPackBuilder out;
   {
     VPackObjectBuilder guard(&out);
     out.add(StaticStrings::Error, VPackValue(false));
     out.add(StaticStrings::Code,
             VPackValue(static_cast<int>(rest::ResponseCode::OK)));
+    out.add(VPackValue("result"));
+    VPackArrayBuilder resultGuard(&out);
+    VPackObjectBuilder shardGuard(&out);
+    out.add("shard", VPackValue(cName));
+    out.add(StaticStrings::Error, VPackValue(false));
     out.add("topK", VPackValue(table.topK));
     out.add("targetRecall", VPackValue(table.targetRecall));
     out.add("operatingPointCount", VPackValue(table.points.size()));
     out.add("reachedTargetRecall", VPackValue(reachedTargetRecall));
-    out.add(VPackValue("table"));
-    velocypack::serialize(out, table);
   }
   generateResult(rest::ResponseCode::OK, out.slice());
 }
