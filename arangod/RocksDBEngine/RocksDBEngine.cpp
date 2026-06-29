@@ -823,7 +823,7 @@ void RocksDBEngine::start() {
                  ->GetID() == 0);
 
   // will crash the process if version does not match
-  arangodb::rocksdbStartupVersionCheck(*server().options(), _databaseFeature,
+  arangodb::rocksdbStartupVersionCheck(*server().options(), _databaseProvider,
                                        _db, dbExisted,
                                        _options.forceLittleEndianKeys);
 
