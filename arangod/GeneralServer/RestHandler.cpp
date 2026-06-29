@@ -242,8 +242,7 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
   // we must use the request's permissions here and set them in the
   // thread-local variable when calling forwardingTarget().
   // this is because forwardingTarget() may run permission checks.
-  ExecContextScope scope(
-      basics::downCast<ExecContext>(_request->requestContext()));
+  ExecContextScope scope(_request->requestContext());
 
   ResultT forwardResult = forwardingTarget();
   if (forwardResult.fail()) {
@@ -448,16 +447,19 @@ auto RestHandler::runHandlerStateMachine() -> futures::Future<futures::Unit> {
   auto res = forwardRequest(forwarded);
   if (forwarded) {
     _statistics.SET_SUPERUSER();
-    Result res2 = co_await std::move(res);
+    std::ignore = co_await std::move(res);
+    // Request response already set by the forwarding logic!
     _sendResponseCallback(this);
     co_return;
   }
 
-  if (res.hasValue() && res.waitAndGet().fail()) {
+  if (res.hasValue()) {
     Result r = co_await std::move(res);
-    generateError(r);
-    _sendResponseCallback(this);
-    co_return;
+    if (r.fail()) {
+      generateError(r);
+      _sendResponseCallback(this);
+      co_return;
+    }
   }
 
   auto const logScopeGuard =

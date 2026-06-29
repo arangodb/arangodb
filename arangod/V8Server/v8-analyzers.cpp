@@ -107,12 +107,10 @@ void JS_AnalyzerFeatures(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // end of parameter parsing
   // ...........................................................................
 
-  if (!arangodb::iresearch::IResearchAnalyzerFeature::canUse(
-          analyzer->name(), arangodb::AccessLevel::Read)) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(            // exception
-        TRI_ERROR_FORBIDDEN,                   // code
-        "insufficient rights to get analyzer"  // message
-    );
+  if (auto r = arangodb::iresearch::IResearchAnalyzerFeature::canUse(
+          analyzer->name(), arangodb::AnalyzerAccessLevel::Read);
+      r.fail()) {
+    TRI_V8_THROW_EXCEPTION(r);
   }
 
   try {
@@ -158,12 +156,10 @@ void JS_AnalyzerName(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // end of parameter parsing
   // ...........................................................................
 
-  if (!arangodb::iresearch::IResearchAnalyzerFeature::canUse(
-          analyzer->name(), arangodb::AccessLevel::Read)) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(            // exception
-        TRI_ERROR_FORBIDDEN,                   // code
-        "insufficient rights to get analyzer"  // message
-    );
+  if (auto r = arangodb::iresearch::IResearchAnalyzerFeature::canUse(
+          analyzer->name(), arangodb::AnalyzerAccessLevel::Read);
+      r.fail()) {
+    TRI_V8_THROW_EXCEPTION(r);
   }
 
   try {
@@ -197,12 +193,10 @@ void JS_AnalyzerProperties(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // end of parameter parsing
   // ...........................................................................
 
-  if (!arangodb::iresearch::IResearchAnalyzerFeature::canUse(
-          analyzer->name(), arangodb::AccessLevel::Read)) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(            // exception
-        TRI_ERROR_FORBIDDEN,                   // code
-        "insufficient rights to get analyzer"  // message
-    );
+  if (auto r = arangodb::iresearch::IResearchAnalyzerFeature::canUse(
+          analyzer->name(), arangodb::AnalyzerAccessLevel::Read);
+      r.fail()) {
+    TRI_V8_THROW_EXCEPTION(r);
   }
 
   try {
@@ -236,12 +230,10 @@ void JS_AnalyzerType(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // end of parameter parsing
   // ...........................................................................
 
-  if (!arangodb::iresearch::IResearchAnalyzerFeature::canUse(
-          analyzer->name(), arangodb::AccessLevel::Read)) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(            // exception
-        TRI_ERROR_FORBIDDEN,                   // code
-        "insufficient rights to get analyzer"  // message
-    );
+  if (auto r = arangodb::iresearch::IResearchAnalyzerFeature::canUse(
+          analyzer->name(), arangodb::AnalyzerAccessLevel::Read);
+      r.fail()) {
+    TRI_V8_THROW_EXCEPTION(r);
   }
 
   try {
@@ -373,12 +365,10 @@ void JS_Create(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // end of parameter parsing
   // ...........................................................................
 
-  if (!arangodb::iresearch::IResearchAnalyzerFeature::canUse(
-          name, arangodb::AccessLevel::WriteMeta)) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(               // exception
-        TRI_ERROR_FORBIDDEN,                      // code
-        "insufficient rights to create analyzer"  // message
-    );
+  if (auto r = arangodb::iresearch::IResearchAnalyzerFeature::canUse(
+          name, arangodb::AnalyzerAccessLevel::Modify);
+      r.fail()) {
+    TRI_V8_THROW_EXCEPTION(r);
   }
 
   try {
@@ -461,12 +451,10 @@ void JS_Get(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                    errorMessage);
   }
 
-  if (!arangodb::iresearch::IResearchAnalyzerFeature::canUse(
-          name, arangodb::AccessLevel::Read)) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(            // exception
-        TRI_ERROR_FORBIDDEN,                   // code
-        "insufficient rights to get analyzer"  // message
-    );
+  if (auto r = arangodb::iresearch::IResearchAnalyzerFeature::canUse(
+          name, arangodb::AnalyzerAccessLevel::Read);
+      r.fail()) {
+    TRI_V8_THROW_EXCEPTION(r);
   }
 
   try {
@@ -535,7 +523,8 @@ void JS_List(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                          // analyzers
 
     if (arangodb::iresearch::IResearchAnalyzerFeature::canUse(
-            vocbase, arangodb::AccessLevel::Read)) {
+            vocbase, arangodb::AnalyzerAccessLevel::Read)
+            .ok()) {
       analyzers.visit(visitor, &vocbase,
                       arangodb::transaction::OperationOriginREST{::moduleName});
     }
@@ -544,7 +533,8 @@ void JS_List(v8::FunctionCallbackInfo<v8::Value> const& args) {
     if (sysVocbase                               // have system vocbase
         && sysVocbase->name() != vocbase.name()  // not same vocbase as current
         && arangodb::iresearch::IResearchAnalyzerFeature::canUse(
-               *sysVocbase, arangodb::AccessLevel::Read)) {
+               *sysVocbase, arangodb::AnalyzerAccessLevel::Read)
+               .ok()) {
       analyzers.visit(visitor, sysVocbase.get(),
                       arangodb::transaction::OperationOriginREST{::moduleName});
     }
@@ -638,12 +628,10 @@ void JS_Remove(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // end of parameter parsing
   // ...........................................................................
 
-  if (!arangodb::iresearch::IResearchAnalyzerFeature::canUse(
-          name, arangodb::AccessLevel::WriteMeta)) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(               // exception
-        TRI_ERROR_FORBIDDEN,                      // code
-        "insufficient rights to remove analyzer"  // message
-    );
+  if (auto r = arangodb::iresearch::IResearchAnalyzerFeature::canUse(
+          name, arangodb::AnalyzerAccessLevel::Modify);
+      r.fail()) {
+    TRI_V8_THROW_EXCEPTION(r);
   }
 
   try {
