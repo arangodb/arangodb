@@ -40,7 +40,7 @@ struct TRI_vocbase_t;
 
 namespace arangodb {
 namespace metrics {
-class MetricsFeature;
+struct IRegistry;
 }  // namespace metrics
 class FlushThread;
 
@@ -50,7 +50,7 @@ class FlushFeature final : public application_features::ApplicationFeature,
   static constexpr std::string_view name() noexcept { return "Flush"; }
 
   FlushFeature(application_features::ApplicationServer& server,
-               metrics::MetricsFeature& metrics);
+               metrics::IRegistry& metricsRegistry);
 
   ~FlushFeature();
 
