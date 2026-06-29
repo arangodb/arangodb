@@ -26,7 +26,6 @@
 #include "Assertions/ProdAssert.h"
 #include "Auth/Rbac/RbacFeature.h"
 #include "Basics/Result.h"
-#include "Auth/UserManager.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/ServerSecurityFeature.h"
 #include "Rest/GeneralRequest.h"
@@ -365,24 +364,6 @@ std::vector<bool> ExecContext::canReadUsers(
   auto view = users | std::views::transform(canRead);
   return std::vector<bool>{view.begin(), view.end()};
 }
-
-#ifdef ARANGODB_USE_GOOGLE_TESTS
-auth::Level ExecContext::collectionAuthLevel(std::string_view db,
-                                             std::string_view coll) const {
-  if (isSuperuser()) {
-    return auth::Level::RW;
-  }
-  auto* feature = AuthenticationFeature::instance();
-  if (!feature) {
-    return auth::Level::RW;
-  }
-  auto* um = feature->userManager();
-  if (!um) {
-    return auth::Level::RW;
-  }
-  return um->collectionAuthLevel(user(), db, coll, /*configured=*/false);
-}
-#endif
 
 ExecContextScope::ExecContextScope(std::shared_ptr<ExecContext const> exe)
     : _old(std::move(exe)) {
