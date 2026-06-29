@@ -179,7 +179,7 @@ std::string formatOperatingPoints(faiss::OperatingPoints const& ops,
 // for n. See
 // https://en.wikipedia.org/wiki/Binomial_proportion_confidence_interval#Wilson_score_interval
 std::size_t wilsonSampleSize(double p, double z, double m) {
-  TRI_ASSERT(p > 0.0 && p < 1.0);
+  TRI_ASSERT(p > 0.0 && p <= 1.0);
   TRI_ASSERT(z > 0.0);
   TRI_ASSERT(m > 0.0);
 
