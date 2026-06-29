@@ -18,16 +18,31 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Julia Puget
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <gtest/gtest.h>
+#pragma once
 
-#include "StorageEngineFixture.h"
+#include "Activities/GenericActivity.h"
 
-using namespace arangodb;
-using namespace arangodb::tests;
+#include <rocksdb/listener.h>
 
-TEST_F(StorageEngineFixture, CanConstruct) {
-  EXPECT_EQ(engine().kEngineName, "rocksdb");
-}
+#include <mutex>
+#include <unordered_map>
+
+namespace arangodb {
+
+class RocksDBActivitiesListener final : public rocksdb::EventListener {
+ public:
+  ~RocksDBActivitiesListener() override = default;
+
+  void OnCompactionBegin(rocksdb::DB*,
+                         rocksdb::CompactionJobInfo const&) override;
+  void OnCompactionCompleted(rocksdb::DB*,
+                             rocksdb::CompactionJobInfo const&) override;
+
+ private:
+  std::mutex _mutex;
+  std::unordered_map<int, activities::GenericActivity::HandleType> _activities;
+};
+
+}  // namespace arangodb
