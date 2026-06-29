@@ -1,0 +1,24 @@
+add_library(arango_tests_rocksdb_engine OBJECT
+  RocksDBEngineMinimalTest.cpp)
+
+target_include_directories(arango_tests_rocksdb_engine PRIVATE
+  ${PROJECT_SOURCE_DIR}/arangod
+  ${PROJECT_SOURCE_DIR}/lib
+  ${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR})
+
+target_link_libraries(arango_tests_rocksdb_engine
+  PRIVATE
+    arango_rocksdb
+    arango_metrics_base
+    arango_vocbase
+    gtest
+    gmock)
+
+add_executable(arangodbtests_rocksdb)
+
+target_link_libraries(arangodbtests_rocksdb
+  arango_tests_rocksdb_engine
+  gtest_main)
+
+add_test(NAME arangodbtests_rocksdb
+  COMMAND arangodbtests_rocksdb)

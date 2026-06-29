@@ -30,10 +30,10 @@ class TransactionDB;
 }
 
 namespace arangodb {
-class DatabaseFeature;
+struct IDatabaseProvider;
 
 void rocksdbStartupVersionCheck(options::ProgramOptions const& programOptions,
-                                DatabaseFeature& databaseFeature,
+                                IDatabaseProvider& databaseProvider,
                                 rocksdb::TransactionDB*, bool dbExisted,
                                 bool forceLittleEndianKeys);
 

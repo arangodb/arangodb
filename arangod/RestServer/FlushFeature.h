@@ -26,6 +26,7 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Metrics/Fwd.h"
+#include "RestServer/IFlushControl.h"
 #include "VocBase/voc-types.h"
 
 #include <cstdint>
@@ -54,7 +55,8 @@ struct FlushSubscription {
   virtual std::string const& name() const = 0;
 };
 
-class FlushFeature final : public application_features::ApplicationFeature {
+class FlushFeature final : public application_features::ApplicationFeature,
+                           public IFlushControl {
  public:
   static constexpr std::string_view name() noexcept { return "Flush"; }
 
@@ -75,7 +77,11 @@ class FlushFeature final : public application_features::ApplicationFeature {
   /// flush scriptions removed, and the tick value up to which the storage
   /// engine could release ticks. if no active or stale flush subscriptions were
   /// found, the returned tick value is 0.
-  std::tuple<size_t, size_t, TRI_voc_tick_t> releaseUnusedTicks();
+  bool isEnabled() const noexcept override {
+    return application_features::ApplicationFeature::isEnabled();
+  }
+  std::tuple<std::size_t, std::size_t, TRI_voc_tick_t> releaseUnusedTicks()
+      override;
 
   void stop() override;
 

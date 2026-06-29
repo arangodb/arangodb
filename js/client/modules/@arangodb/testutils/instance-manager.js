@@ -733,6 +733,7 @@ class instanceManager {
         print(`${GREEN}${Date()} DONE ${jobMessage} ${JSON.stringify(jobStatus)}${RESET}`);
         return true;
       }
+      count += 1;
     }
   }
 

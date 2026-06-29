@@ -333,6 +333,7 @@ target_link_libraries(arangodbtests
   arango_tests_actor
   arango_tests_inspection
   arango_tests_internal_rest_handler
+  arango_tests_rocksdb_engine
   arango_inspection_test_helper
   arango_agency
   arango_cluster_engine
@@ -400,6 +401,7 @@ add_subdirectory(Activities)
 add_subdirectory(Actor)
 add_subdirectory(Async)
 add_subdirectory(Containers)
+add_subdirectory(RocksDBEngine)
 add_subdirectory(sepp)
 add_subdirectory(VocBase/Properties)
 add_subdirectory(SystemMonitor)

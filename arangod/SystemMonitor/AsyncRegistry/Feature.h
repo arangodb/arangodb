@@ -27,6 +27,7 @@
 #include "CrashHandler/DataSource.h"
 #include "CrashHandler/DataSourceRegistry.h"
 #include "Containers/Forest/forest.h"
+#include "SystemMonitor/AsyncRegistry/FeatureOptions.h"
 #include "SystemMonitor/AsyncRegistry/Metrics.h"
 
 namespace arangodb::async_registry {
@@ -60,10 +61,7 @@ class Feature final : public application_features::ApplicationFeature,
   std::string_view getDataSourceName() const override;
 
  private:
-  struct Options {
-    size_t gc_timeout{1};
-  };
-  Options _options;
+  FeatureOptions _options;
 
   std::shared_ptr<RegistryMetrics> _metrics;
 

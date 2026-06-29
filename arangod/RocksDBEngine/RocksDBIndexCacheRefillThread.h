@@ -43,9 +43,9 @@ class LogicalCollection;
 
 class RocksDBIndexCacheRefillThread final : public Thread {
  public:
-  explicit RocksDBIndexCacheRefillThread(
-      DatabaseFeature& databaseFeature, metrics::MetricsFeature& metricsFeature,
-      size_t maxCapacity);
+  explicit RocksDBIndexCacheRefillThread(DatabaseFeature& databaseFeature,
+                                         metrics::IRegistry& metricsRegistry,
+                                         size_t maxCapacity);
 
   ~RocksDBIndexCacheRefillThread();
 

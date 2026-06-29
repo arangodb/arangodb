@@ -34,7 +34,6 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/StorageEngine.h"
-#include "StorageEngine/StorageEngineFeature.h"
 
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
@@ -52,7 +51,6 @@ FlushFeature::FlushFeature(ApplicationServer& server,
       _metricsFlushSubscriptions(metrics.add(arangodb_flush_subscriptions{})) {
   setOptional(true);
   startsAfter<BasicFeaturePhaseServer>();
-  startsAfter<StorageEngineFeature>();
 }
 
 FlushFeature::~FlushFeature() = default;
