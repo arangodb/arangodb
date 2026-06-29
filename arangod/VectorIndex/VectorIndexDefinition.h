@@ -60,8 +60,7 @@ inline auto inspect(Inspector& f, SimilarityMetric& x) {
       SimilarityMetric::kInnerProduct, "innerProduct");
 }
 
-/// @brief One autotuned configuration: the verbatim search-parameter string
-/// (e.g. "nprobe=32"), the recall it achieves, and its sweep search time.
+/// @brief One autotuned configuration
 struct OperatingPoint {
   double recall{0.0};
   std::string searchParameters;

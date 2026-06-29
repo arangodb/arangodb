@@ -33,8 +33,7 @@ namespace arangodb::vector {
 struct SearchParameters {
   // Manual override: scan exactly this many inverted lists.
   std::optional<std::int64_t> nProbe;
-  // Recall-driven: pick the cheapest autotuned configuration achieving at least
-  // this recall for the query's topK. Mutually exclusive with nProbe.
+  // Recall-driven, requires autotune table
   std::optional<double> targetRecall;
 
   template<class Inspector>
