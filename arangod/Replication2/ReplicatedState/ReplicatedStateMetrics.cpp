@@ -96,16 +96,14 @@ ReplicatedStateMetrics::ReplicatedStateMetrics(
 
 template<typename Builder, bool mock>
 auto ReplicatedStateMetrics::createMetric(metrics::IRegistry* metricsRegistry,
-                                          std::string_view impl) ->
-    typename Builder::MetricT* {
+                                          std::string_view impl)
+    -> std::shared_ptr<typename Builder::MetricT> {
   TRI_ASSERT((metricsRegistry == nullptr) == mock);
   if constexpr (!mock) {
-    return &metricsRegistry->add(Builder{}.withLabel("state_impl", impl));
+    return metricsRegistry->addShared(Builder{}.withLabel("state_impl", impl));
   } else {
-    static std::vector<std::shared_ptr<typename Builder::MetricT>> metrics;
-    auto ptr =
-        std::dynamic_pointer_cast<typename Builder::MetricT>(Builder{}.build());
-    return metrics.emplace_back(ptr).get();
+    return std::dynamic_pointer_cast<typename Builder::MetricT>(
+        Builder{}.build());
   }
 }
 

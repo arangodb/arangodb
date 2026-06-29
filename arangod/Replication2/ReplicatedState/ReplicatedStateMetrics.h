@@ -39,7 +39,8 @@ struct ReplicatedStateMetrics {
  private:
   template<typename Builder, bool mock = false>
   static auto createMetric(metrics::IRegistry* metricsRegistry,
-                           std::string_view impl) -> typename Builder::MetricT*;
+                           std::string_view impl)
+      -> std::shared_ptr<typename Builder::MetricT>;
 
  protected:
   template<typename MFP,
@@ -50,28 +51,34 @@ struct ReplicatedStateMetrics {
   explicit ReplicatedStateMetrics(MFP metricsRegistry, std::string_view impl);
 
  public:
-  metrics::Gauge<uint64_t>* const replicatedStateNumber;
-  metrics::Gauge<uint64_t>* const replicatedStateNumberLeaders;
-  metrics::Gauge<uint64_t>* const replicatedStateNumberFollowers;
+  std::shared_ptr<metrics::Gauge<uint64_t>> const replicatedStateNumber;
+  std::shared_ptr<metrics::Gauge<uint64_t>> const replicatedStateNumberLeaders;
+  std::shared_ptr<metrics::Gauge<uint64_t>> const
+      replicatedStateNumberFollowers;
 
-  metrics::Histogram<metrics::LogScale<std::uint64_t>>* const
+  std::shared_ptr<metrics::Histogram<metrics::LogScale<std::uint64_t>>> const
       replicatedStateApplyEntriesRtt;
-  metrics::Histogram<metrics::LogScale<std::uint64_t>>* const
+  std::shared_ptr<metrics::Histogram<metrics::LogScale<std::uint64_t>>> const
       replicatedStateRecoverEntriesRtt;
-  metrics::Histogram<metrics::LogScale<std::uint64_t>>* const
+  std::shared_ptr<metrics::Histogram<metrics::LogScale<std::uint64_t>>> const
       replicatedStateAcquireSnapshotRtt;
 
-  metrics::Gauge<uint64_t>* const replicatedStateNumberWaitingForSnapshot;
-  metrics::Gauge<uint64_t>* const replicatedStateNumberWaitingForLeader;
-  metrics::Gauge<uint64_t>* const replicatedStateNumberWaitingForRecovery;
+  std::shared_ptr<metrics::Gauge<uint64_t>> const
+      replicatedStateNumberWaitingForSnapshot;
+  std::shared_ptr<metrics::Gauge<uint64_t>> const
+      replicatedStateNumberWaitingForLeader;
+  std::shared_ptr<metrics::Gauge<uint64_t>> const
+      replicatedStateNumberWaitingForRecovery;
 
-  metrics::Counter* const replicatedStateNumberAppliedEntries;
-  metrics::Counter* const replicatedStateNumberProcessedEntries;
+  std::shared_ptr<metrics::Counter> const replicatedStateNumberAppliedEntries;
+  std::shared_ptr<metrics::Counter> const replicatedStateNumberProcessedEntries;
 
-  metrics::Counter* const replicatedStateNumberAcquireSnapshotErrors;
-  metrics::Counter* const replicatedStateNumberApplyEntriesErrors;
+  std::shared_ptr<metrics::Counter> const
+      replicatedStateNumberAcquireSnapshotErrors;
+  std::shared_ptr<metrics::Counter> const
+      replicatedStateNumberApplyEntriesErrors;
 
-  metrics::Gauge<std::uint64_t>* const replicatedStateApplyDebt;
+  std::shared_ptr<metrics::Gauge<std::uint64_t>> const replicatedStateApplyDebt;
 };
 
 }  // namespace arangodb::replication2::replicated_state
