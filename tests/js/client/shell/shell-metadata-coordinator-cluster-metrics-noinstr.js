@@ -28,6 +28,7 @@ const arangodb = require("@arangodb");
 const db = arangodb.db;
 const inst = require('@arangodb/testutils/instance');
 const { moveShard, eventuallyAssertMetric } = require("@arangodb/test-helper");
+let IM = global.instanceManager;
 
 function metadataCoordinatorMetricsSuite() {
   'use strict';

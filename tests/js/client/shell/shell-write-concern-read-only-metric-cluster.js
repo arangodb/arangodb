@@ -59,8 +59,8 @@ function WriteConcernReadOnlyMetricSuite() {
     testCheckMetric: function () {
       const c = db._create("c", {numberOfShards: 1, replicationFactor: 2, writeConcern: 2});
       const [shard, [leaderID, followerID]] = Object.entries(c.shards(true))[0];
-      let leader = getInstanceByID(leaderID);
-      let follower = getInstanceByID(followerID);
+      let leader = IM.getInstanceByID(leaderID);
+      let follower = IM.getInstanceByID(followerID);
 
       // this should work
       c.insert({});
@@ -94,8 +94,8 @@ function WriteConcernReadOnlyMetricSuite() {
     testMetricAfterCollectionDrop: function () {
       const c = db._create("c", {numberOfShards: 1, replicationFactor: 2, writeConcern: 2});
       const [shard, [leaderID, followerID]] = Object.entries(c.shards(true))[0];
-      let leader = getInstanceByID(leaderID);
-      let follower = getInstanceByID(followerID);
+      let leader = IM.getInstanceByID(leaderID);
+      let follower = IM.getInstanceByID(followerID);
 
       // this should work
       c.insert({});
@@ -124,7 +124,8 @@ function WriteConcernReadOnlyMetricSuite() {
 
       const c = db._create("c", {numberOfShards: 1, replicationFactor: 2, writeConcern: 2});
       const [shard, [leaderID, followerID]] = Object.entries(c.shards(true))[0];
-      let leader = getInstanceByID(leaderID);
+      let leader = IM.getInstanceByID(leaderID);
+      let follower = IM.getInstanceByID(followerID);
 
       // this should work
       c.insert({});
