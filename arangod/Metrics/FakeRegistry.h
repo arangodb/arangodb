@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -30,10 +30,10 @@
 
 namespace arangodb::metrics {
 
-// A registry that populates metrics but does not register them with any
-// actual metrics endpoint. The registry holds ownership of all the metrics.
-// The reference returned by IRegistry::add() is valid for the registry's
-// lifetime.
+// A lightweight registry that populates metrics but does not register them
+// with any actual metrics endpoint.
+// The registry holds the ownership of all the metrics. So, the reference
+// returned by IRegistry::add() is valid for this registry's lifetime.
 struct FakeRegistry : public IRegistry {
  protected:
   std::shared_ptr<metrics::Metric> doAdd(metrics::Builder& builder) override {
