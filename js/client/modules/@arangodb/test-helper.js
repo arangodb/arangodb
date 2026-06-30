@@ -283,6 +283,7 @@ exports.getCompleteMetricsValues = function (name, roles = "") {
   function transpose(matrix) {
     return matrix[0].map((col, i) => matrix.map(row => row[i]));
   };
+  const IM = exports.getInstanceInfo();
 
   let metrics = IM.getMetric(name);
 
