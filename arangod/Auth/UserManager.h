@@ -131,15 +131,5 @@ class UserManager {
   // This will shut down the running thread on demand.
   // It should only be use when the UserManager is being destroyed.
   virtual void shutdown() = 0;
-
-#ifdef ARANGODB_USE_GOOGLE_TESTS
-  // Overwrite internally cached permissions. Only for testing purposes.
-  // The underlying update thread must have been started before calling this.
-  virtual void setAuthInfo(UserMap const& userEntryMap) = 0;
-
-  // Returns the internal cache version. Use to verify that loadFromDB was
-  // triggered. Only for testing purposes.
-  [[nodiscard]] virtual uint64_t internalVersion() const noexcept = 0;
-#endif
 };
 }  // namespace arangodb::auth

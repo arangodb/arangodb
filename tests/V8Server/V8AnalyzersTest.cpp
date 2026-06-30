@@ -43,7 +43,7 @@
 
 #include "ApplicationFeatures/HttpEndpointProvider.h"
 #include "Aql/QueryRegistry.h"
-#include "Auth/UserManagerMock.h"
+#include "Mocks/Auth/UserManagerTester.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchCommon.h"
@@ -125,32 +125,7 @@ class V8AnalyzerTest
 
   V8AnalyzerTest() {
     arangodb::tests::v8Init();  // one-time initialize V8
-    expectUserManagerCalls();
   }
-
-  void expectUserManagerCalls() {
-    using namespace arangodb;
-    auto* authFeature = AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
-    auto* um =
-        dynamic_cast<testing::StrictMock<auth::UserManagerMock>*>(userManager);
-    EXPECT_NE(um, nullptr);
-
-    using namespace ::testing;
-    EXPECT_CALL(*um, databaseAuthLevel)
-        .Times(AtLeast(1))
-        .WillRepeatedly(WithArgs<0, 1>(
-            [this](std::string_view username, std::string_view dbname) {
-              auto const it = _userMap.find(username);
-              EXPECT_NE(it, _userMap.end());
-              return it->second.databaseAuthLevel(dbname);
-            }));
-    EXPECT_CALL(*um, setAuthInfo)
-        .Times(AtLeast(1))
-        .WillRepeatedly(
-            [this](auth::UserMap const& userMap) { _userMap = userMap; });
-  }
-  arangodb::auth::UserMap _userMap;
 };
 
 v8::Local<v8::Object> getAnalyzerManagerInstance(TRI_v8_global_t* v8g,
@@ -219,7 +194,8 @@ TEST_F(V8AnalyzerTest, test_instance_accessors) {
   ASSERT_FALSE(!analyzer);
 
   auto& authFeature = server.getFeature<arangodb::AuthenticationFeature>();
-  auto* userManager = authFeature.userManager();
+  auto* userManager = static_cast<arangodb::auth::UserManagerTester*>(
+      authFeature.userManager());
   auto execCtxBundle =
       arangodb::tests::mocks::makeClassicExecContextFrom(*userManager, "");
   arangodb::ExecContextScope execContextScope(execCtxBundle.execContext);
@@ -524,7 +500,8 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
   }
 
   auto& authFeature = server.getFeature<arangodb::AuthenticationFeature>();
-  auto* userManager = authFeature.userManager();
+  auto* userManager = static_cast<arangodb::auth::UserManagerTester*>(
+      authFeature.userManager());
   auto execCtxBundle =
       arangodb::tests::mocks::makeClassicExecContextFrom(*userManager, "");
   arangodb::ExecContextScope execContextScope(execCtxBundle.execContext);
@@ -1006,7 +983,8 @@ TEST_F(V8AnalyzerTest, test_manager_get) {
                             arangodb::transaction::OperationOriginTestCase{})
                    .ok()));
   auto& authFeature = server.getFeature<arangodb::AuthenticationFeature>();
-  auto* userManager = authFeature.userManager();
+  auto* userManager = static_cast<arangodb::auth::UserManagerTester*>(
+      authFeature.userManager());
   auto execCtxBundle =
       arangodb::tests::mocks::makeClassicExecContextFrom(*userManager, "");
   arangodb::ExecContextScope execContextScope(execCtxBundle.execContext);
@@ -1436,7 +1414,8 @@ TEST_F(V8AnalyzerTest, test_manager_list) {
   ASSERT_TRUE(res.ok());
 
   auto& authFeature = server.getFeature<arangodb::AuthenticationFeature>();
-  auto* userManager = authFeature.userManager();
+  auto* userManager = static_cast<arangodb::auth::UserManagerTester*>(
+      authFeature.userManager());
   auto execCtxBundle =
       arangodb::tests::mocks::makeClassicExecContextFrom(*userManager, "");
   arangodb::ExecContextScope execContextScope(execCtxBundle.execContext);
@@ -1830,7 +1809,8 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
                      .ok()));
   }
   auto& authFeature = server.getFeature<arangodb::AuthenticationFeature>();
-  auto* userManager = authFeature.userManager();
+  auto* userManager = static_cast<arangodb::auth::UserManagerTester*>(
+      authFeature.userManager());
   auto execCtxBundle =
       arangodb::tests::mocks::makeClassicExecContextFrom(*userManager, "");
   arangodb::ExecContextScope execContextScope(execCtxBundle.execContext);

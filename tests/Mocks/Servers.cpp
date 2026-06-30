@@ -52,7 +52,7 @@
 #include "Aql/Query.h"
 #include "Aql/QueryInfoLoggerFeature.h"
 #include "Async/async.h"
-#include "Auth/UserManagerMock.h"
+#include "Mocks/Auth/UserManagerTester.h"
 #include "Basics/StringUtils.h"
 #include "Basics/TimeString.h"
 #include "Basics/files.h"
@@ -325,14 +325,12 @@ void MockServer::startFeatures() {
         f.prepare();
         if (f.name() == AuthenticationFeature::name()) {
           auto& auth = static_cast<AuthenticationFeature&>(f);
-          std::unique_ptr<auth::UserManagerMock> userManager(
-              new testing::StrictMock<auth::UserManagerMock>());
           if (auth.userManager() != nullptr) {
             // prepare should have created a userManager
             // If there is none, there was a reason for that, we do not want to
             // overwrite that.
-            EXPECT_CALL(*userManager, shutdown);
-            auth.setUserManager(std::move(userManager));
+            auto testerPtr = std::make_unique<auth::UserManagerTester>();
+            auth.setUserManager(std::move(testerPtr));
           }
         }
       } catch (...) {

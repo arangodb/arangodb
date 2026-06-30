@@ -40,7 +40,7 @@
 #include "Aql/QueryRegistry.h"
 #include "Aql/SortCondition.h"
 #include "Async/async.h"
-#include "Auth/UserManagerMock.h"
+#include "Mocks/Auth/UserManagerTester.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/GlobalResourceMonitor.h"
@@ -78,37 +78,10 @@ class IResearchViewCoordinatorTest : public ::testing::Test {
 
   IResearchViewCoordinatorTest() : server("CRDN_0001") {
     arangodb::tests::init();
-    expectUserManagerCalls();
     TransactionStateMock::abortTransactionCount = 0;
     TransactionStateMock::beginTransactionCount = 0;
     TransactionStateMock::commitTransactionCount = 0;
   }
-
-  void expectUserManagerCalls() {
-    using namespace arangodb;
-    auto* authFeature = AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
-    auto* um =
-        dynamic_cast<testing::StrictMock<auth::UserManagerMock>*>(userManager);
-    EXPECT_NE(um, nullptr);
-
-    using namespace ::testing;
-    EXPECT_CALL(*um, collectionAuthLevel)
-        .WillRepeatedly(WithArgs<0, 1, 2>([this](std::string_view username,
-                                                 std::string_view dbname,
-                                                 std::string_view cname) {
-          auto const it = _userMap.find(username);
-          if (it == _userMap.end()) {
-            return auth::Level::NONE;
-          }
-          EXPECT_EQ(username, it->second.username());
-          return it->second.collectionAuthLevel(dbname, cname);
-        }));
-    EXPECT_CALL(*um, setAuthInfo)
-        .WillRepeatedly(WithArgs<0>(
-            [this](auth::UserMap const& userMap) { _userMap = userMap; }));
-  }
-  arangodb::auth::UserMap _userMap;
 
   void createTestDatabase(TRI_vocbase_t*& vocbase) {
     vocbase = server.createDatabase("testDatabase");
@@ -248,7 +221,8 @@ TEST_F(IResearchViewCoordinatorTest, visit_collections) {
 TEST_F(IResearchViewCoordinatorTest, test_defaults) {
   auto& ci = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
   auto* authFeature = arangodb::AuthenticationFeature::instance();
-  auto* userManager = authFeature->userManager();
+  auto* userManager = static_cast<arangodb::auth::UserManagerTester*>(
+      authFeature->userManager());
   userManager->setAuthInfo({});
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
 
@@ -847,7 +821,8 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_with_link) {
 
   {
     auto* authFeature = arangodb::AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
+    auto* userManager = static_cast<arangodb::auth::UserManagerTester*>(
+        authFeature->userManager());
     auto execCtxBundle =
         arangodb::tests::mocks::makeClassicExecContextFrom(*userManager, "");
     arangodb::ExecContextScope execContextScope(execCtxBundle.execContext);
@@ -4546,7 +4521,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
                         arangodb::LogicalView::Indexes*) { return false; })));
 
     auto* authFeature = arangodb::AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
+    auto* userManager = static_cast<arangodb::auth::UserManagerTester*>(
+        authFeature->userManager());
     auto execCtxBundle =
         arangodb::tests::mocks::makeClassicExecContextFrom(*userManager, "");
     arangodb::ExecContextScope execContextScope(execCtxBundle.execContext);
@@ -6113,7 +6089,8 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
                         arangodb::LogicalView::Indexes*) { return false; })));
 
     auto* authFeature = arangodb::AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
+    auto* userManager = static_cast<arangodb::auth::UserManagerTester*>(
+        authFeature->userManager());
     auto execCtxBundle =
         arangodb::tests::mocks::makeClassicExecContextFrom(*userManager, "");
     arangodb::ExecContextScope execContextScope(execCtxBundle.execContext);
@@ -6336,7 +6313,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
     }
 
     auto* authFeature = arangodb::AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
+    auto* userManager = static_cast<arangodb::auth::UserManagerTester*>(
+        authFeature->userManager());
     auto execCtxBundle =
         arangodb::tests::mocks::makeClassicExecContextFrom(*userManager, "");
     arangodb::ExecContextScope execContextScope(execCtxBundle.execContext);
@@ -6458,7 +6436,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
                         arangodb::LogicalView::Indexes*) { return false; })));
 
     auto* authFeature = arangodb::AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
+    auto* userManager = static_cast<arangodb::auth::UserManagerTester*>(
+        authFeature->userManager());
     auto execCtxBundle =
         arangodb::tests::mocks::makeClassicExecContextFrom(*userManager, "");
     arangodb::ExecContextScope execContextScope(execCtxBundle.execContext);
@@ -6563,7 +6542,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
     }
 
     auto* authFeature = arangodb::AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
+    auto* userManager = static_cast<arangodb::auth::UserManagerTester*>(
+        authFeature->userManager());
     auto execCtxBundle =
         arangodb::tests::mocks::makeClassicExecContextFrom(*userManager, "");
     arangodb::ExecContextScope execContextScope(execCtxBundle.execContext);
@@ -6724,7 +6704,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
     }
 
     auto* authFeature = arangodb::AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
+    auto* userManager = static_cast<arangodb::auth::UserManagerTester*>(
+        authFeature->userManager());
     auto execCtxBundle =
         arangodb::tests::mocks::makeClassicExecContextFrom(*userManager, "");
     arangodb::ExecContextScope execContextScope(execCtxBundle.execContext);
@@ -6913,7 +6894,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
     }
 
     auto* authFeature = arangodb::AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
+    auto* userManager = static_cast<arangodb::auth::UserManagerTester*>(
+        authFeature->userManager());
     auto execCtxBundle =
         arangodb::tests::mocks::makeClassicExecContextFrom(*userManager, "");
     arangodb::ExecContextScope execContextScope(execCtxBundle.execContext);
@@ -7191,7 +7173,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
     }
 
     auto* authFeature = arangodb::AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
+    auto* userManager = static_cast<arangodb::auth::UserManagerTester*>(
+        authFeature->userManager());
     auto execCtxBundle =
         arangodb::tests::mocks::makeClassicExecContextFrom(*userManager, "");
     arangodb::ExecContextScope execContextScope(execCtxBundle.execContext);
@@ -7313,7 +7296,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
                         arangodb::LogicalView::Indexes*) { return false; })));
 
     auto* authFeature = arangodb::AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
+    auto* userManager = static_cast<arangodb::auth::UserManagerTester*>(
+        authFeature->userManager());
     auto execCtxBundle =
         arangodb::tests::mocks::makeClassicExecContextFrom(*userManager, "");
     arangodb::ExecContextScope execContextScope(execCtxBundle.execContext);
@@ -7417,7 +7401,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
     }
 
     auto* authFeature = arangodb::AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
+    auto* userManager = static_cast<arangodb::auth::UserManagerTester*>(
+        authFeature->userManager());
     auto execCtxBundle =
         arangodb::tests::mocks::makeClassicExecContextFrom(*userManager, "");
     arangodb::ExecContextScope execContextScope(execCtxBundle.execContext);
@@ -7586,7 +7571,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
     }
 
     auto* authFeature = arangodb::AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
+    auto* userManager = static_cast<arangodb::auth::UserManagerTester*>(
+        authFeature->userManager());
     auto execCtxBundle =
         arangodb::tests::mocks::makeClassicExecContextFrom(*userManager, "");
     arangodb::ExecContextScope execContextScope(execCtxBundle.execContext);
@@ -7775,7 +7761,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
     }
 
     auto* authFeature = arangodb::AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
+    auto* userManager = static_cast<arangodb::auth::UserManagerTester*>(
+        authFeature->userManager());
     auto execCtxBundle =
         arangodb::tests::mocks::makeClassicExecContextFrom(*userManager, "");
     arangodb::ExecContextScope execContextScope(execCtxBundle.execContext);

@@ -34,7 +34,7 @@
 #include "Mocks/StorageEngineMock.h"
 
 #include "Aql/QueryRegistry.h"
-#include "Auth/UserManagerMock.h"
+#include "Mocks/Auth/UserManagerTester.h"
 #include "Basics/StaticStrings.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "RestHandler/RestUsersHandler.h"
@@ -120,96 +120,15 @@ class RestUsersHandlerTest
   RestUsersHandlerTest()
       : server(),
         system(server.getFeature<arangodb::SystemDatabaseFeature>().use()) {
-    expectUserManagerCalls();
     auto& viewTypesFeature = server.getFeature<arangodb::ViewTypesFeature>();
     viewTypesFeature.emplace(TestView::typeInfo().second, viewFactory);
   }
-
-  void expectUserManagerCalls() {
-    using namespace arangodb;
-    auto* authFeature = AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
-    auto* um =
-        dynamic_cast<testing::StrictMock<auth::UserManagerMock>*>(userManager);
-    EXPECT_NE(um, nullptr);
-
-    using namespace ::testing;
-    EXPECT_CALL(*um, storeUser)
-        .Times(AtLeast(1))
-        .WillRepeatedly([this](bool const replace, std::string const& username,
-                               std::string const& pass, bool const active,
-                               velocypack::Slice const extras) {
-          auto user = auth::User::newUser(username, pass);
-          user.setActive(active);
-          if (extras.isObject() && !extras.isEmptyObject()) {
-            user.setUserData(VPackBuilder(extras));
-          }
-          const auto it = _userMap.find(username);
-          EXPECT_NE(replace, it == _userMap.end());
-          if (replace) {
-            it->second = user;
-          } else {
-            _userMap.emplace(username, user);
-          }
-          return Result{};
-        });
-    EXPECT_CALL(*um, accessUser)
-        .Times(AtLeast(1))
-        .WillRepeatedly([this](std::string const& username,
-                               auth::UserManager::ConstUserCallback&& cb) {
-          const auto it = _userMap.find(username);
-          EXPECT_NE(it, _userMap.end());
-          auto const r = cb(it->second);
-          EXPECT_TRUE(r.ok());
-          return Result{};
-        });
-    EXPECT_CALL(*um, updateUser)
-        .Times(AtLeast(1))
-        .WillRepeatedly([this](std::string_view username,
-                               auth::UserManager::UserCallback&& cb,
-                               auth::UserManager::RetryOnConflict const) {
-          const auto it = _userMap.find(username);
-          EXPECT_NE(it, _userMap.end());
-          auto const r = cb(it->second);
-          EXPECT_TRUE(r.ok());
-          return Result{};
-        });
-    EXPECT_CALL(*um, collectionAuthLevel)
-        .Times(AtLeast(1))
-        .WillRepeatedly(WithArgs<0, 1, 2>([this](std::string_view username,
-                                                 std::string_view dbname,
-                                                 std::string_view cname) {
-          auto const it = _userMap.find(username);
-          EXPECT_NE(it, _userMap.end());
-          EXPECT_EQ(username, it->second.username());
-          return it->second.collectionAuthLevel(dbname, cname);
-        }));
-    EXPECT_CALL(*um, databaseAuthLevel)
-        .Times(AtLeast(1))
-        .WillRepeatedly([this](std::string_view username,
-                               std::string_view dbname, bool /*onlyCache*/) {
-          // The test user must be treated as an admin (RW on _system) so that
-          // canWriteUser() succeeds inside the REST grant/revoke handlers.
-          if (dbname == arangodb::StaticStrings::SystemDatabase) {
-            return arangodb::auth::Level::RW;
-          }
-          auto const it = _userMap.find(username);
-          if (it == _userMap.end()) {
-            return arangodb::auth::Level::NONE;
-          }
-          return it->second.databaseAuthLevel(dbname);
-        });
-    EXPECT_CALL(*um, setAuthInfo)
-        .Times(AtLeast(1))
-        .WillRepeatedly(WithArgs<0>(
-            [this](auth::UserMap const& userMap) { _userMap = userMap; }));
-  }
-  arangodb::auth::UserMap _userMap;
 };
 
 TEST_F(RestUsersHandlerTest, test_collection_auth) {
   auto* authFeature = arangodb::AuthenticationFeature::instance();
-  auto* userManager = authFeature->userManager();
+  auto* userManager = static_cast<arangodb::auth::UserManagerTester*>(
+      authFeature->userManager());
 
   static const std::string userName("testUser");
   auto& databaseFeature = server.getFeature<arangodb::DatabaseFeature>();

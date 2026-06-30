@@ -64,10 +64,10 @@ class UserManagerClusterTest : public ::testing::Test {
   mocks::MockCoordinator _server{"CRDN_0001"};
 
  protected:
-  auth::UserManager* userManager() {
-    auto um = _server.getFeature<AuthenticationFeature>().userManager();
+  auth::UserManagerImpl* userManager() {
+    auto* um = _server.getFeature<AuthenticationFeature>().userManager();
     TRI_ASSERT(um != nullptr);
-    return um;
+    return static_cast<auth::UserManagerImpl*>(um);
   }
 
   void simulateOneHeartbeat() {

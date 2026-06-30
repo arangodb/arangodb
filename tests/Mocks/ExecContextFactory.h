@@ -26,12 +26,12 @@
 #include "Auth/AuthMode.h"
 #include "Auth/Common.h"
 #include "Auth/UserManager.h"
+#include "Basics/StaticStrings.h"
 #include "Endpoint/ConnectionInfo.h"
-#include "Mocks/Auth/UserManagerMock.h"
+#include "Mocks/Auth/UserManagerTester.h"
 #include "Rest/GeneralRequest.h"
 #include "Utils/ExecContext.h"
 
-#include <gmock/gmock.h>
 #include <velocypack/Slice.h>
 
 #include <memory>
@@ -80,13 +80,13 @@ struct FakeGeneralRequest final : public arangodb::GeneralRequest {
 /// execContext, because AuthMode::Classic holds raw references to userManager
 /// and request.
 struct ClassicExecContext {
-  std::shared_ptr<testing::NiceMock<auth::UserManagerMock>> userManager;
+  std::shared_ptr<auth::UserManagerTester> userManager;
   std::shared_ptr<FakeGeneralRequest> request;
   std::shared_ptr<arangodb::ExecContext> execContext;
 };
 
-/// @brief Create an ExecContext backed by a real AuthMode::Classic, with the
-/// UserManager mock pre-configured to return the given access levels.
+/// @brief Create an ExecContext backed by a real AuthMode::Classic, with a
+/// UserManagerTester pre-populated to return the given access levels.
 ///
 /// @param username   Username stored in the Classic auth context.
 /// @param dbname     The "home" database: collectionAuthLevel queries for this
@@ -96,50 +96,31 @@ struct ClassicExecContext {
 /// @param dbLevel      Access level returned for dbname (and its collections).
 /// @param apiHardened  Passed to Classic ctor; set true to require admin for
 ///                     hardened actions. Defaults to false.
-///
-/// ON_CALL rules are used (not EXPECT_CALL), so calls are not mandatory and
-/// no unmet-expectation failures are produced. NiceMock suppresses warnings
-/// for any unmocked method calls.
-///
-/// ON_CALL registration order: general default first, then specific matchers
-/// so that gmock's "last-registered wins" rule gives the specific rules
-/// priority over the catch-all default.
 inline ClassicExecContext makeClassicExecContext(std::string username,
                                                  std::string dbname,
                                                  auth::Level systemLevel,
                                                  auth::Level dbLevel,
                                                  bool apiHardened = false) {
-  using ::testing::_;
-  using ::testing::NiceMock;
-  using ::testing::Return;
+  auto um = std::make_shared<auth::UserManagerTester>();
 
-  auto um = std::make_shared<NiceMock<auth::UserManagerMock>>();
-
-  // ---- databaseAuthLevel ------------------------------------------------
-  // Default: no access to any database.
-  ON_CALL(*um, databaseAuthLevel(_, _, _))
-      .WillByDefault(Return(auth::Level::NONE));
-  // _system database gets systemLevel.
-  ON_CALL(*um, databaseAuthLevel(_, "_system", _))
-      .WillByDefault(Return(systemLevel));
-  // The home database gets dbLevel (only when it is not _system and not empty).
-  if (!dbname.empty() && dbname != "_system") {
-    ON_CALL(*um, databaseAuthLevel(_, dbname, _))
-        .WillByDefault(Return(dbLevel));
+  // Build a UserMap containing one entry for 'username' with the requested
+  // access levels, plus a wildcard catch-all at Level::NONE.
+  auth::UserMap userMap;
+  auto& user = userMap.emplace(username, auth::User::newUser(username, ""))
+                   .first->second;
+  user.setActive(true);
+  user.grantDatabase(arangodb::StaticStrings::SystemDatabase, systemLevel);
+  user.grantCollection(arangodb::StaticStrings::SystemDatabase, "*",
+                       systemLevel);
+  if (!dbname.empty() && dbname != arangodb::StaticStrings::SystemDatabase) {
+    user.grantDatabase(dbname, dbLevel);
+    user.grantCollection(dbname, "*", dbLevel);
   }
+  // Catch-all: no access to any other database.
+  user.grantDatabase("*", auth::Level::NONE);
+  user.grantCollection("*", "*", auth::Level::NONE);
 
-  // ---- collectionAuthLevel -----------------------------------------------
-  // Default: no access.
-  ON_CALL(*um, collectionAuthLevel(_, _, _, _))
-      .WillByDefault(Return(auth::Level::NONE));
-  // Collections in _system follow systemLevel.
-  ON_CALL(*um, collectionAuthLevel(_, "_system", _, _))
-      .WillByDefault(Return(systemLevel));
-  // Collections in the home database follow dbLevel.
-  if (!dbname.empty() && dbname != "_system") {
-    ON_CALL(*um, collectionAuthLevel(_, dbname, _, _))
-        .WillByDefault(Return(dbLevel));
-  }
+  um->setAuthInfo(userMap);
 
   auto req = std::make_shared<FakeGeneralRequest>();
 
@@ -164,9 +145,9 @@ struct BorrowedExecContext {
 /// already-configured UserManager (real or mock) from the test fixture.
 ///
 /// Use this instead of makeClassicExecContext when the test already owns a
-/// UserManager that it configures separately (e.g. via setAuthInfo /
-/// EXPECT_CALL on a UserManagerMock from MockAqlServer, or via the real
-/// UserManagerImpl from a full server fixture).
+/// UserManager that it configures separately (e.g. via setAuthInfo on a
+/// UserManagerTester from MockAqlServer, or via the real UserManagerImpl
+/// from a full server fixture).
 ///
 /// @param existingUserManager  The UserManager to delegate permission checks
 /// to.
