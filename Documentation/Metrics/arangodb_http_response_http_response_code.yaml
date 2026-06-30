@@ -4,7 +4,7 @@ help: |
   Total number of HTTP responses by response code.
 unit: number
 type: counter
-category: Metrics
+category: Statistics
 complexity: simple
 exposedBy:
   - coordinator
