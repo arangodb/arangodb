@@ -23,6 +23,7 @@
 #include <gtest/gtest.h>
 #include <rocksdb/listener.h>
 #include <velocypack/Iterator.h>
+#include <velocypack/SharedSlice.h>
 
 #include "Activities/Registry.h"
 #include "Activities/RegistryGlobalVariable.h"
@@ -42,11 +43,10 @@ rocksdb::CompactionJobInfo makeInfo(int job_id, std::string cf = "default",
   return info;
 }
 
-std::vector<velocypack::Slice> compactionActivities() {
-  auto snap = activities::registry.snapshot();
-  EXPECT_TRUE(snap.ok());
+std::vector<velocypack::Slice> compactionActivities(
+    velocypack::SharedSlice snap) {
   std::vector<velocypack::Slice> out;
-  for (auto entry : velocypack::ArrayIterator(snap.get().slice())) {
+  for (auto entry : velocypack::ArrayIterator(snap.slice())) {
     auto type = entry.get("type");
     if (type.isString() && type.stringView() == "RocksDBCompaction") {
       out.push_back(entry);
@@ -71,7 +71,9 @@ TEST_F(RocksDBActivitiesListenerTest,
                        /*outLevel*/ 3);
   listener.OnCompactionBegin(nullptr, info);
 
-  auto acts = compactionActivities();
+  auto snap = activities::registry.snapshot();
+  ASSERT_TRUE(snap.ok());
+  auto acts = compactionActivities(snap.get());
   ASSERT_EQ(acts.size(), 1u);
   auto data = acts[0].get("data");
   EXPECT_EQ(data.get("job_id").copyString(), "3");
@@ -88,7 +90,9 @@ TEST_F(RocksDBActivitiesListenerTest,
   info.compaction_reason = rocksdb::CompactionReason::kManualCompaction;
   listener.OnCompactionBegin(nullptr, info);
 
-  auto acts = compactionActivities();
+  auto snap = activities::registry.snapshot();
+  ASSERT_TRUE(snap.ok());
+  auto acts = compactionActivities(snap.get());
   ASSERT_EQ(acts.size(), 1u);
   EXPECT_EQ(acts[0].get("type").copyString(), "RocksDBCompaction");
   EXPECT_TRUE(acts[0].get("parent").isNone());
@@ -108,20 +112,29 @@ TEST_F(RocksDBActivitiesListenerTest,
        multiple_compactions_complete_out_of_order) {
   listener.OnCompactionBegin(nullptr, makeInfo(1, "A"));
   listener.OnCompactionBegin(nullptr, makeInfo(2, "B"));
-  EXPECT_EQ(compactionActivities().size(), 2u);
+
+  auto snap = activities::registry.snapshot();
+  ASSERT_TRUE(snap.ok());
+  EXPECT_EQ(compactionActivities(snap.get()).size(), 2u);
 
   listener.OnCompactionCompleted(nullptr, makeInfo(2, "B"));
-  auto acts = compactionActivities();
+  snap = activities::registry.snapshot();
+  ASSERT_TRUE(snap.ok());
+  auto acts = compactionActivities(snap.get());
   ASSERT_EQ(acts.size(), 1u);
   EXPECT_EQ(acts[0].get("data").get("job_id").copyString(), "1");
 
   listener.OnCompactionCompleted(nullptr, makeInfo(1, "A"));
-  EXPECT_TRUE(compactionActivities().empty());
+  snap = activities::registry.snapshot();
+  ASSERT_TRUE(snap.ok());
+  EXPECT_TRUE(compactionActivities(snap.get()).empty());
 }
 
 TEST_F(RocksDBActivitiesListenerTest, completion_without_begin_is_noop) {
   listener.OnCompactionCompleted(nullptr, makeInfo(0));
-  EXPECT_TRUE(compactionActivities().empty());
+  auto snap = activities::registry.snapshot();
+  ASSERT_TRUE(snap.ok());
+  EXPECT_TRUE(compactionActivities(snap.get()).empty());
 }
 
 TEST_F(RocksDBActivitiesListenerTest,
@@ -131,7 +144,9 @@ TEST_F(RocksDBActivitiesListenerTest,
   listener.OnCompactionBegin(nullptr, first);
   listener.OnCompactionBegin(nullptr, second);
 
-  auto acts = compactionActivities();
+  auto snap = activities::registry.snapshot();
+  ASSERT_TRUE(snap.ok());
+  auto acts = compactionActivities(snap.get());
   ASSERT_EQ(acts.size(), 1u);
   EXPECT_EQ(acts[0].get("data").get("column_family").copyString(), "first");
 
