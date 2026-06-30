@@ -269,7 +269,7 @@ exports.getCompleteMetricsValues = function (name) {
   };
   const IM = exports.getInstanceInfo();
 
-  let metrics = IM.getMetric(name);
+  let metrics = IM.getAllMetricsByName(name);
 
   if (typeof name === "string") {
     // In case of "string", 'metrics' variable is an array with values of metric from each server
