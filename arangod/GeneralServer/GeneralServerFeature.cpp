@@ -163,7 +163,7 @@ DECLARE_COUNTER(arangodb_http1_connections_total,
                 "Total number of HTTP/1.1 connections");
 DECLARE_COUNTER(arangodb_http2_connections_total,
                 "Total number of HTTP/2 connections");
-DECLARE_COUNTER(arangodb_http_response_http_response_code,
+DECLARE_COUNTER(arangodb_http_response_http_response_code_total,
                 "Total number of HTTP responses by response code");
 DECLARE_GAUGE(arangodb_requests_memory_usage, std::uint64_t,
               "Memory consumed by incoming requests");
@@ -191,7 +191,7 @@ void GeneralServerFeature::countHttpResponseCode(
     rest::ResponseCode code) noexcept {
   try {
     std::string const codeStr = std::to_string(static_cast<int>(code));
-    arangodb_http_response_http_response_code builder;
+    arangodb_http_response_http_response_code_total builder;
     builder.reserveSpaceForLabels(4 + codeStr.size());
     builder.addLabel("code", codeStr);
     _metricsFeature.ensureMetric(std::move(builder)).count();

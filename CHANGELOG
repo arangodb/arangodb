@@ -1,7 +1,7 @@
 3.12.10-devel (XXXX-XX-XX)
 --------------------------
 * COR-613: Create Response Code Metrics
-  arangodb_http_response_http_response_code{code="<response-code>"}
+  arangodb_http_response_http_response_code_total{code="<response-code>"}
 
 * Upgraded included rclone to v1.74.3 with go1.25.11 and non-vulnerable
   dependencies.
