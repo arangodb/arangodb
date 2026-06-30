@@ -26,9 +26,9 @@
 #include "GeneralServer/RestHandlerFactory.h"
 #include "RestHandler/RestHandlerCreator.h"
 #include "RocksDBEngine/RocksDBRestCollectionHandler.h"
-#include "StorageEngine/StorageEngine.h"
 #include "RocksDBEngine/RocksDBRestReplicationHandler.h"
 #include "RocksDBEngine/RocksDBRestWalHandler.h"
+#include "StorageEngine/StorageEngine.h"
 
 using namespace arangodb;
 
