@@ -74,7 +74,7 @@ struct CappedIntersectionCriterion : faiss::IntersectionCriterion {
 // Use nLists as nProbe to get ground truth. Distance is unused
 ResultT<std::vector<faiss::idx_t>> computeGroundTruth(
     faiss::IndexIVF& index, std::span<float const> querySet,
-    faiss::idx_t numberOfQueries, std::int64_t R, void* invertedListContext,
+    faiss::idx_t numberOfQueries, std::uint64_t R, void* invertedListContext,
     std::string_view logContext) {
   auto const total = static_cast<std::size_t>(numberOfQueries) * R;
   std::vector<faiss::idx_t> ids(total);
@@ -92,8 +92,8 @@ ResultT<std::vector<faiss::idx_t>> computeGroundTruth(
   }
   auto const start = std::chrono::steady_clock::now();
   try {
-    index.search(numberOfQueries, querySet.data(), R, distancesScratch.data(),
-                 ids.data(), &params);
+    index.search(numberOfQueries, querySet.data(), static_cast<faiss::idx_t>(R),
+                 distancesScratch.data(), ids.data(), &params);
   } catch (faiss::FaissException const& e) {
     return Result{
         TRI_ERROR_INTERNAL,
@@ -199,7 +199,7 @@ ResultT<OperatingPointTable> autoTuneTable(faiss::IndexIVF& index,
                                            std::span<float const> querySet,
                                            ResourceMonitor& resourceMonitor,
                                            void* invertedListContext,
-                                           std::int64_t R, double targetRecall,
+                                           std::uint64_t R, double targetRecall,
                                            std::string_view logContext) {
   TRI_ASSERT(R >= 1);
   TRI_ASSERT(targetRecall > 0.0 && targetRecall <= 1.0);
@@ -247,7 +247,8 @@ ResultT<OperatingPointTable> autoTuneTable(faiss::IndexIVF& index,
       std::chrono::duration<double>(std::chrono::steady_clock::now() - gtStart)
           .count();
 
-  CappedIntersectionCriterion crit(numberOfQueries, R, targetRecall);
+  CappedIntersectionCriterion crit(numberOfQueries,
+                                   static_cast<faiss::idx_t>(R), targetRecall);
   crit.set_groundtruth(static_cast<int>(R), nullptr, gt.get().data());
 
   auto opsRes = exploreParameterSpace(index, querySet, numberOfQueries,
@@ -296,10 +297,10 @@ ResultT<OperatingPointTable> autoTuneTable(faiss::IndexIVF& index,
   return table;
 }
 
-ResultT<OperatingPoint> selectOperatingPoint(
-    std::vector<OperatingPointTable> const& tables, std::int64_t topK,
-    double targetRecall) {
-  auto const it = std::ranges::find(tables, topK, &OperatingPointTable::topK);
+ResultT<OperatingPoint> selectOperatingPoint(TunedTables const& tables,
+                                             std::uint64_t topK,
+                                             double targetRecall) {
+  auto const it = tables.find(topK);
   if (it == tables.end()) {
     return Result{
         TRI_ERROR_BAD_PARAMETER,
@@ -309,13 +310,14 @@ ResultT<OperatingPoint> selectOperatingPoint(
   }
 
   // ascending recall (== ascending cost): first match is the cheapest.
-  for (auto const& point : it->points) {
+  for (auto const& point : it->second.points) {
     if (point.recall >= targetRecall - kAutoTuneRecallEpsilon) {
       return point;
     }
   }
 
-  double const best = it->points.empty() ? 0.0 : it->points.back().recall;
+  double const best =
+      it->second.points.empty() ? 0.0 : it->second.points.back().recall;
   return Result{
       TRI_ERROR_BAD_PARAMETER,
       std::format("targetRecall={} exceeds the autotuned range for topK={} "

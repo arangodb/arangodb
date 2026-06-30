@@ -1233,7 +1233,10 @@ async<void> RestIndexHandler::getAutotuneTables() {
     out.add(StaticStrings::Code,
             VPackValue(static_cast<int>(rest::ResponseCode::OK)));
     out.add(VPackValue("tunedTables"));
-    velocypack::serialize(out, vectorIndex->tunedTables());
+    VPackArrayBuilder tablesGuard(&out);
+    for (auto const& [topK, table] : vectorIndex->tunedTables()) {
+      velocypack::serialize(out, table);
+    }
   }
   generateResult(rest::ResponseCode::OK, out.slice());
 }

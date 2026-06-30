@@ -27,6 +27,7 @@
 #include <cmath>
 #include <cstdint>
 #include <format>
+#include <map>
 #include <optional>
 #include <string>
 #include <variant>
@@ -78,10 +79,9 @@ struct OperatingPoint {
 };
 
 /// @brief One autotune run's result for a single `topK`: `points` ordered by
-/// ascending recall (== ascending cost). A flat vector keyed by the inline
-/// `topK` rather than a map, since VPack object keys must be strings.
+/// ascending recall (== ascending cost).
 struct OperatingPointTable {
-  std::int64_t topK{0};
+  std::uint64_t topK{0};
   double targetRecall{0.0};
   std::vector<OperatingPoint> points;
 
@@ -90,11 +90,15 @@ struct OperatingPointTable {
   template<class Inspector>
   friend inline auto inspect(Inspector& f, OperatingPointTable& x) {
     return f.object(x).fields(
-        f.field("topK", x.topK).fallback(std::int64_t{0}),
+        f.field("topK", x.topK).fallback(std::uint64_t{0}),
         f.field("targetRecall", x.targetRecall).fallback(0.0),
         f.field("points", x.points).fallback(std::vector<OperatingPoint>{}));
   }
 };
+
+// Autotuned operating-point tables keyed by topK. A map makes the topK unique
+// by construction; it is serialized as a plain array of tables.
+using TunedTables = std::map<std::uint64_t, OperatingPointTable>;
 
 /// @brief On-disk format version for vector index list entries.
 ///

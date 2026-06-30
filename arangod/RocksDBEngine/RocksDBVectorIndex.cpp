@@ -212,13 +212,8 @@ void RocksDBVectorIndex::loadStoredMetadata(velocypack::Slice info) {
 }
 
 void RocksDBVectorIndex::applyTunedTable(vector::OperatingPointTable table) {
-  for (auto& existing : _trainedData.tunedTables) {
-    if (existing.topK == table.topK) {
-      existing = std::move(table);
-      return;
-    }
-  }
-  _trainedData.tunedTables.push_back(std::move(table));
+  auto const topK = table.topK;
+  _trainedData.tunedTables.insert_or_assign(topK, std::move(table));
 }
 
 ResultT<std::unique_ptr<faiss::SearchParametersIVF>>
@@ -232,7 +227,7 @@ RocksDBVectorIndex::prepareSearchParameters(
 
   if (hasTargetRecall) {
     auto point = vector::selectOperatingPoint(_trainedData.tunedTables,
-                                              static_cast<std::int64_t>(topK),
+                                              static_cast<std::uint64_t>(topK),
                                               *params.targetRecall);
     if (point.fail()) {
       return std::move(point).result();

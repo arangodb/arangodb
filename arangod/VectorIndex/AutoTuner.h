@@ -57,7 +57,7 @@ std::size_t wilsonSampleSize(double p, double z, double m);
 
 struct AutotuneParams {
   // topK the table is optimized for.
-  std::int64_t R{};
+  std::uint64_t R{};
   // Target recall: drives the sample size and is the table's validity floor.
   double targetRecall{};
 
@@ -86,14 +86,14 @@ ResultT<OperatingPointTable> autoTuneTable(faiss::IndexIVF& index,
                                            std::span<float const> querySet,
                                            ResourceMonitor& resourceMonitor,
                                            void* invertedListContext,
-                                           std::int64_t R, double targetRecall,
+                                           std::uint64_t R, double targetRecall,
                                            std::string_view logContext);
 
 // Cheapest operating point reaching `targetRecall` for `topK`. Fails if no
 // table was tuned for `topK` or `targetRecall` exceeds the table's range.
-ResultT<OperatingPoint> selectOperatingPoint(
-    std::vector<OperatingPointTable> const& tables, std::int64_t topK,
-    double targetRecall);
+ResultT<OperatingPoint> selectOperatingPoint(TunedTables const& tables,
+                                             std::uint64_t topK,
+                                             double targetRecall);
 
 // Build per-call SearchParameters from a stored FAISS combination key
 // (e.g. "nprobe=8,ht=20").

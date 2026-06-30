@@ -123,7 +123,7 @@ class RocksDBVectorIndex final : public RocksDBIndex {
   // existing table for the same topK. Persist via persistMetadata() afterwards.
   void applyTunedTable(vector::OperatingPointTable table);
 
-  std::vector<vector::OperatingPointTable> const& tunedTables() const noexcept {
+  vector::TunedTables const& tunedTables() const noexcept {
     return _trainedData.tunedTables;
   }
 
