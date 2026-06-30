@@ -18,31 +18,31 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Julia Puget
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "VocBase/Identifiers/IndexId.h"
+#include "Activities/GenericActivity.h"
 
-#include <memory>
-#include <string>
-#include <vector>
+#include <rocksdb/listener.h>
+
+#include <mutex>
+#include <unordered_map>
 
 namespace arangodb {
 
-class LogicalCollection;
+class RocksDBActivitiesListener final : public rocksdb::EventListener {
+ public:
+  ~RocksDBActivitiesListener() override = default;
 
-struct IIndexCacheRefill {
-  virtual ~IIndexCacheRefill() = default;
-  virtual void scheduleFullIndexRefill(std::string const& database,
-                                       std::string const& collection,
-                                       IndexId iid) = 0;
-  virtual bool autoRefill() const noexcept = 0;
-  virtual bool autoRefillOnFollowers() const noexcept = 0;
-  virtual void waitForCatchup() = 0;
-  virtual void trackRefill(std::shared_ptr<LogicalCollection> const& collection,
-                           IndexId iid, std::vector<std::string> keys) = 0;
+  void OnCompactionBegin(rocksdb::DB*,
+                         rocksdb::CompactionJobInfo const&) override;
+  void OnCompactionCompleted(rocksdb::DB*,
+                             rocksdb::CompactionJobInfo const&) override;
+
+ private:
+  std::mutex _mutex;
+  std::unordered_map<int, activities::GenericActivity::HandleType> _activities;
 };
 
 }  // namespace arangodb

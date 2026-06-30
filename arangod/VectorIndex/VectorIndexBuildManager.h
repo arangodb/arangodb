@@ -66,7 +66,7 @@ class VectorIndexBuildManager {
 
   explicit VectorIndexBuildManager(DatabaseFeature& dbFeature,
                                    MaintenanceFeature& maintenance,
-                                   metrics::MetricsFeature& metrics,
+                                   metrics::IRegistry& metricsRegistry,
                                    Scheduler& scheduler);
 
   void start();

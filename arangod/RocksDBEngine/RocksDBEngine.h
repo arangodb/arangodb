@@ -84,6 +84,7 @@ struct WalManager;
 }  // namespace replication2::storage
 
 class PhysicalCollection;
+struct TransactionStatistics;
 class RocksDBBackgroundErrorListener;
 class RocksDBBackgroundThread;
 class RocksDBDumpManager;
@@ -416,6 +417,11 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
 
   bool autoRefillIndexCaches() const override;
   bool autoRefillIndexCachesOnFollowers() const override;
+  bool exclusiveWrites() const noexcept;
+
+  IIndexCacheRefill& getIndexCacheRefill() noexcept {
+    return _indexCacheRefill;
+  }
 
   void syncIndexCaches() override;
 
@@ -439,6 +445,10 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
 
   metrics::Gauge<uint64_t>& indexEstimatorMemoryUsageMetric() const noexcept {
     return _metricsIndexEstimatorMemoryUsage;
+  }
+
+  ICacheManagerProvider& getCacheManagerProvider() noexcept {
+    return _cacheManagerProvider;
   }
 
   std::string getSortingMethodFile() const;

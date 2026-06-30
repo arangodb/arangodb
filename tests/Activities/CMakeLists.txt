@@ -4,11 +4,13 @@ add_library(arango_tests_activities OBJECT
   ActivityRegistryTest.cpp
   GenericActivityTest.cpp
   CustomGuardedActivityTest.cpp
-  InternalRequestActivityTest.cpp)
+  InternalRequestActivityTest.cpp
+  RocksDBActivitiesListenerTest.cpp)
 target_link_libraries(arango_tests_activities PRIVATE
   arango_activities_global
   arango_tests_basics 
   arango_async
+  arango_rocksdb
   gtest
 )
 

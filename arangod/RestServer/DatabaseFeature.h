@@ -57,7 +57,7 @@ class RocksDBEngine;
 class V8DealerFeature;
 
 namespace metrics {
-class MetricsFeature;
+struct IRegistry;
 template<typename T>
 class Gauge;
 }  // namespace metrics
@@ -302,7 +302,7 @@ class DatabaseFeature final : public application_features::ApplicationFeature,
     metrics::Gauge<std::uint64_t>& numberOfCollections;
     metrics::Gauge<std::uint64_t>& numberOfDatabases;
 
-    explicit MetadataMetrics(metrics::MetricsFeature& metrics);
+    explicit MetadataMetrics(metrics::IRegistry& metricsRegistry);
   };
   // Report these only on single servers
   std::optional<MetadataMetrics> _metadataMetrics;

@@ -52,6 +52,8 @@ struct MockFlushControl : IFlushControl {
   MOCK_METHOD(bool, isEnabled, (), (const, noexcept, override));
   MOCK_METHOD((std::tuple<std::size_t, std::size_t, TRI_voc_tick_t>),
               releaseUnusedTicks, (), (override));
+  MOCK_METHOD(void, registerFlushSubscription,
+              (std::shared_ptr<FlushSubscription> const&), (override));
 };
 
 struct MockDumpLimitsProvider : IDumpLimitsProvider {
@@ -76,6 +78,10 @@ struct MockDatabaseProvider : IDatabaseProvider {
 
 struct MockCacheManagerProvider : ICacheManagerProvider {
   MOCK_METHOD(cache::Manager*, manager, (), (override));
+  MOCK_METHOD(std::size_t, minValueSizeForEdgeCompression, (),
+              (const, noexcept, override));
+  MOCK_METHOD(std::uint32_t, accelerationFactorForEdgeCompression, (),
+              (const, noexcept, override));
 };
 
 struct MockSortingPolicy : ISortingPolicy {
@@ -89,6 +95,10 @@ struct MockIndexCacheRefill : IIndexCacheRefill {
   MOCK_METHOD(bool, autoRefill, (), (const, noexcept, override));
   MOCK_METHOD(bool, autoRefillOnFollowers, (), (const, noexcept, override));
   MOCK_METHOD(void, waitForCatchup, (), (override));
+  MOCK_METHOD(void, trackRefill,
+              (std::shared_ptr<LogicalCollection> const&, IndexId,
+               std::vector<std::string>),
+              (override));
 };
 
 struct MockReplicatedLogProvider : replication2::IReplicatedLogProvider {
@@ -98,8 +108,14 @@ struct MockReplicatedLogProvider : replication2::IReplicatedLogProvider {
 
 struct MetricsCollector : metrics::IRegistry {
   std::shared_ptr<metrics::Metric> doAdd(metrics::Builder& builder) override {
-    return builder.build();
+    auto metric = builder.build();
+    _metrics.emplace_back(metric);
+    return metric;
   }
+
+ private:
+  // "add" hands out references, so we we have to keep the metrics alive here
+  std::vector<std::shared_ptr<metrics::Metric>> _metrics;
 };
 
 }  // namespace arangodb::tests

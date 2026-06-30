@@ -74,6 +74,7 @@
 #include "Replication2/Storage/RocksDB/ReplicatedStateInfo.h"
 #include "Replication2/Storage/WAL/LogPersistor.h"
 #include "Replication2/Storage/WAL/WalManager.h"
+#include "RocksDBEngine/Listeners/RocksDBActivitiesListener.h"
 #include "RocksDBEngine/Listeners/RocksDBBackgroundErrorListener.h"
 #include "RocksDBEngine/Listeners/RocksDBMetricsListener.h"
 #include "RocksDBEngine/Listeners/RocksDBThrottle.h"
@@ -268,8 +269,9 @@ RocksDBEngine::RocksDBEngine(
     IDatabaseProvider& databaseProvider, IIndexCacheRefill& indexCacheRefill,
     ICacheManagerProvider& cacheManagerProvider,
     ISortingPolicy const& sortingPolicy)
-    : StorageEngine(server, kEngineName, name(), typeid(RocksDBEngine),
-                    std::make_unique<RocksDBIndexFactory>(server)),
+    : StorageEngine(
+          server, kEngineName, name(), typeid(RocksDBEngine),
+          std::make_unique<RocksDBIndexFactory>(server, vectorIndexProvider)),
       _databasePathProvider(databasePathProvider),
       _vectorIndexProvider(vectorIndexProvider),
       _flushControl(flushControl),
@@ -1158,6 +1160,7 @@ void RocksDBEngine::start() {
   _dbOptions.listeners.push_back(_errorListener);
   _dbOptions.listeners.push_back(
       std::make_shared<RocksDBMetricsListener>(_metrics));
+  _dbOptions.listeners.push_back(std::make_shared<RocksDBActivitiesListener>());
 
   rocksdb::BlockBasedTableOptions tableOptions =
       _optionsProvider.getTableOptions();
@@ -1260,9 +1263,12 @@ void RocksDBEngine::start() {
                  RocksDBColumnFamilyManager::Family::Definitions)
                  ->GetID() == 0);
 
-  // will crash the process if version does not match
-  arangodb::rocksdbStartupVersionCheck(*server().options(), _databaseProvider,
-                                       _db, dbExisted, _forceLittleEndianKeys);
+  if (server().options()) {
+    // will crash the process if version does not match
+    arangodb::rocksdbStartupVersionCheck(*server().options(), _databaseProvider,
+                                         _db, dbExisted,
+                                         _forceLittleEndianKeys);
+  }
 
   _dbExisted = dbExisted;
 
@@ -1509,7 +1515,8 @@ void RocksDBEngine::addParametersForNewCollection(VPackBuilder& builder,
 // create storage-engine specific collection
 std::unique_ptr<PhysicalCollection> RocksDBEngine::createPhysicalCollection(
     LogicalCollection& collection, velocypack::Slice info) {
-  return std::make_unique<RocksDBCollection>(collection, info);
+  return std::make_unique<RocksDBCollection>(collection, info,
+                                             _cacheManagerProvider.manager());
 }
 
 // inventory functionality
@@ -2431,7 +2438,7 @@ void RocksDBEngine::addV8Functions() {
 
 /// @brief Add engine-specific REST handlers
 void RocksDBEngine::addRestHandlers(rest::RestHandlerFactory& handlerFactory) {
-  RocksDBRestHandlers::registerResources(&handlerFactory);
+  RocksDBRestHandlers::registerResources(&handlerFactory, *this);
 }
 
 void RocksDBEngine::addCollectionMapping(uint64_t objectId, TRI_voc_tick_t did,
@@ -3340,6 +3347,10 @@ bool RocksDBEngine::autoRefillIndexCaches() const {
 
 bool RocksDBEngine::autoRefillIndexCachesOnFollowers() const {
   return _indexCacheRefill.autoRefillOnFollowers();
+}
+
+bool RocksDBEngine::exclusiveWrites() const noexcept {
+  return _optionsProvider.exclusiveWrites();
 }
 
 void RocksDBEngine::syncIndexCaches() { _indexCacheRefill.waitForCatchup(); }

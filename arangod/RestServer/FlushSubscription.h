@@ -23,26 +23,21 @@
 
 #pragma once
 
-#include "VocBase/Identifiers/IndexId.h"
+#include "VocBase/voc-types.h"
 
-#include <memory>
 #include <string>
-#include <vector>
 
 namespace arangodb {
 
-class LogicalCollection;
-
-struct IIndexCacheRefill {
-  virtual ~IIndexCacheRefill() = default;
-  virtual void scheduleFullIndexRefill(std::string const& database,
-                                       std::string const& collection,
-                                       IndexId iid) = 0;
-  virtual bool autoRefill() const noexcept = 0;
-  virtual bool autoRefillOnFollowers() const noexcept = 0;
-  virtual void waitForCatchup() = 0;
-  virtual void trackRefill(std::shared_ptr<LogicalCollection> const& collection,
-                           IndexId iid, std::vector<std::string> keys) = 0;
+//////////////////////////////////////////////////////////////////////////////
+/// @struct FlushSubscription
+/// @brief subscription is intended to notify FlushFeature
+///        on the WAL tick which can be safely released
+//////////////////////////////////////////////////////////////////////////////
+struct FlushSubscription {
+  virtual ~FlushSubscription() = default;
+  virtual TRI_voc_tick_t tick() const = 0;
+  virtual std::string const& name() const = 0;
 };
 
 }  // namespace arangodb
