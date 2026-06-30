@@ -534,6 +534,7 @@ auto AuthMode::Disabled::check(auth::Permission permission) const -> Result {
   return {};
 }
 
+#ifdef ARANGODB_USE_GOOGLE_TEST
 auto AuthMode::Mockable::username() const noexcept -> std::string_view {
   ADB_PROD_ASSERT(mock != nullptr);
   return mock->username();
@@ -549,5 +550,6 @@ auto AuthMode::Mockable::request() const noexcept
   ADB_PROD_ASSERT(mock != nullptr);
   return mock->request();
 }
+#endif
 
 }  // namespace arangodb
