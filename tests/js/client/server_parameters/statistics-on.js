@@ -37,7 +37,7 @@ const request = require("@arangodb/request");
 const db = internal.db;
 const getMetric = require('@arangodb/test-helper').getMetricSingle;
 
-const HTTP_RESPONSE_CODE_METRIC = "arangodb_http_response_http_response_code";
+const HTTP_RESPONSE_CODE_METRIC = "arangodb_http_response_http_response_code_total";
 
 function getHttpResponseCodeMetric(code) {
   let res = arango.GET_RAW("/_admin/metrics/v2");
