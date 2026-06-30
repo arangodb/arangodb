@@ -1701,6 +1701,15 @@ class instanceManager {
     }
   }
 
+  getAllMetricsByName(gaugeName) {
+    let ret = [];
+    this.arangods.forEach(arangod => {
+      ret.push(arangod.getMetric(gaugeName));
+    });
+    return ret;
+  }
+
+
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief get process stats over the SUT
   // //////////////////////////////////////////////////////////////////////////////

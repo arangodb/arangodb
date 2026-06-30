@@ -712,63 +712,6 @@ exports.deactivateFailure = function (name) {
   });
 };
 
-exports.getAllMetricsFromEndpoints = function (roles = "") {
-  const isCluster = require("internal").isCluster();
-  
-  let res = [];
-  let endpoints = [];
-  
-  if (isCluster) {
-    exports.triggerMetrics();
-
-    if (roles === "" || roles === "dbservers" || roles === "all") {
-      endpoints = endpoints.concat(exports.getDBServerEndpoints());
-    }
-    if (roles === "coordinators" || roles === "all") {
-      endpoints = endpoints.concat(exports.getCoordinatorEndpoints());
-    }
-  } else {
-    endpoints = endpoints.concat(exports.getSingleServerEndpoint());
-  }
-
-  endpoints.forEach(e => {
-    res.push(exports.getAllMetric(e, ''));
-  });
-  return res;
-};
-
-exports.getMetricsByNameFromEndpoints = function (name, roles = "") {
-  function func (text, name_str) {
-    let value;
-    try {
-      value = getMetricName(text, name_str);
-    } catch (e) {
-      value = NaN;
-    }
-    return value;
-  };
-  let result = [];
-
-  // This is an array with metrics from all required endpoints.
-  let all_server_metrics = exports.getAllMetricsFromEndpoints(roles);
-  // Now we need to parse every element from this array and extract
-  // required metrics.
-  all_server_metrics.forEach(server_metrics => {
-    if (typeof name === "string") {
-      result.push(func(server_metrics, name));
-    } else if (typeof name === "object") {
-      let res = [];
-      name.forEach(curr_metric_name => {
-        res.push(func(server_metrics, curr_metric_name));
-      });
-      result.push(res);
-    } else {
-      throw Error(`Unsupported ${typeof name} type`);
-    }   
-  });
-  return result;
-};
-
 exports.getEndpoints = function (role) {
   return exports.getServers(role).map(instance => endpointToURL(instance.endpoint));
 };
