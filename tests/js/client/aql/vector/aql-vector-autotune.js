@@ -301,6 +301,49 @@ function VectorIndexAutotuneTestSuite() {
                 db._drop(unusableColl);
             }
         },
+
+        testAutotuneApproximateQueryWarnings: function() {
+            const id = vectorIndexId(collection);
+            // Tune a high topK no other test uses, with a low targetRecall so
+            // the table's best point sits well below 1.0.
+            const tuned = arango.POST_RAW(
+                `/_api/index/${collName}/${id}/autotune`,
+                {topK: 200, targetRecall: 0.5});
+            assertEqual(200, tuned.code);
+
+            const hasApproxWarning = (cursor) =>
+                cursor.getExtra().warnings.some((w) =>
+                    w.code === ERRORS.ERROR_QUERY_VECTOR_AUTOTUNE_APPROXIMATE.code);
+
+            // topK=150 has no exact table: served by the topK=200 table (ceiling)
+            // with a warning; the query still returns.
+            const fallback = db._query(
+                `FOR d IN ${collName} SORT APPROX_NEAR_L2(d.vector, @qp, ` +
+                `{targetRecall: 0.1}) LIMIT 150 RETURN d._key`, {qp: randomPoint});
+            assertTrue(hasApproxWarning(fallback),
+                JSON.stringify(fallback.getExtra().warnings));
+
+            // targetRecall above what the topK=200 table achieves: best-effort
+            // point with a warning, query still returns.
+            const recall = db._query(
+                `FOR d IN ${collName} SORT APPROX_NEAR_L2(d.vector, @qp, ` +
+                `{targetRecall: 0.99}) LIMIT 200 RETURN d._key`, {qp: randomPoint});
+            assertTrue(hasApproxWarning(recall),
+                JSON.stringify(recall.getExtra().warnings));
+
+            // topK beyond every tuned table is a hard error, not a warning.
+            let threw = false;
+            try {
+                db._query(
+                    `FOR d IN ${collName} SORT APPROX_NEAR_L2(d.vector, @qp, ` +
+                    `{targetRecall: 0.5}) LIMIT 250 RETURN d._key`,
+                    {qp: randomPoint}).toArray();
+            } catch (err) {
+                threw = true;
+                assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
+            }
+            assertTrue(threw, "topK above all tuned tables must fail the query");
+        },
     };
 }
 

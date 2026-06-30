@@ -89,11 +89,18 @@ ResultT<OperatingPointTable> autoTuneTable(faiss::IndexIVF& index,
                                            std::uint64_t R, double targetRecall,
                                            std::string_view logContext);
 
-// Cheapest operating point reaching `targetRecall` for `topK`. Fails if no
-// table was tuned for `topK` or `targetRecall` exceeds the table's range.
-ResultT<OperatingPoint> selectOperatingPoint(TunedTables const& tables,
-                                             std::uint64_t topK,
-                                             double targetRecall);
+struct SelectedOperatingPoint {
+  OperatingPoint point;
+  std::uint64_t tunedTopK{0};
+  bool reachedTargetRecall{true};
+};
+
+// Uses the table tuned for the smallest topK >= the requested one; a larger
+// topK over-searches, preserving recall. Best-effort on unreachable
+// targetRecall; fails only when topK exceeds every tuned topK.
+ResultT<SelectedOperatingPoint> selectOperatingPoint(TunedTables const& tables,
+                                                     std::uint64_t topK,
+                                                     double targetRecall);
 
 // Build per-call SearchParameters from a stored FAISS combination key
 // (e.g. "nprobe=8,ht=20").

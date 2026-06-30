@@ -37,6 +37,8 @@
 #include "Aql/DocumentExpressionContext.h"
 #include "Basics/StaticStrings.h"
 #include "Aql/Function.h"
+#include "Aql/QueryContext.h"
+#include "Aql/QueryWarnings.h"
 #include "Assertions/Assert.h"
 #include "Basics/Exceptions.h"
 #include "Basics/voc-errors.h"
@@ -218,7 +220,8 @@ void RocksDBVectorIndex::applyTunedTable(vector::OperatingPointTable table) {
 
 ResultT<std::unique_ptr<faiss::SearchParametersIVF>>
 RocksDBVectorIndex::prepareSearchParameters(
-    vector::SearchParameters const& params, std::size_t topK) const {
+    vector::SearchParameters const& params, std::size_t topK,
+    vector::VectorSearchContext const& ctx) const {
   bool const hasNProbe = params.nProbe.has_value();
   bool const hasTargetRecall = params.targetRecall.has_value();
 
@@ -226,17 +229,39 @@ RocksDBVectorIndex::prepareSearchParameters(
       << "Cannot specify both nProbe and targetRecall";
 
   if (hasTargetRecall) {
-    auto point = vector::selectOperatingPoint(_trainedData.tunedTables,
-                                              static_cast<std::uint64_t>(topK),
-                                              *params.targetRecall);
-    if (point.fail()) {
-      return std::move(point).result();
+    auto selected = vector::selectOperatingPoint(
+        _trainedData.tunedTables, static_cast<std::uint64_t>(topK),
+        *params.targetRecall);
+    if (selected.fail()) {
+      return std::move(selected).result();
     }
+    auto const& point = selected.get();
+
+    // Both fallbacks still execute; warn that the result is approximate.
+    if (ctx.queryContext != nullptr) {
+      if (point.tunedTopK != topK) {
+        ctx.queryContext->warnings().registerWarning(
+            TRI_ERROR_QUERY_VECTOR_AUTOTUNE_APPROXIMATE,
+            std::format("no autotuned table for topK={}; using the table tuned "
+                        "for topK={} (recall preserved)",
+                        topK, point.tunedTopK));
+      }
+      if (!point.reachedTargetRecall) {
+        ctx.queryContext->warnings().registerWarning(
+            TRI_ERROR_QUERY_VECTOR_AUTOTUNE_APPROXIMATE,
+            std::format("targetRecall={} is not achievable for topK={}; using "
+                        "the most thorough autotuned operating point (recall "
+                        "{})",
+                        *params.targetRecall, point.tunedTopK,
+                        point.point.recall));
+      }
+    }
+
     LOG_VECTOR_INDEX("e16c1", DEBUG, Logger::QUERIES)
-        << "autotune resolved operating point '" << point.get().searchParameters
+        << "autotune resolved operating point '" << point.point.searchParameters
         << "' for topK=" << topK << ", targetRecall=" << *params.targetRecall;
     return vector::makeSearchParametersFromKey(*_faissIndex,
-                                               point.get().searchParameters);
+                                               point.point.searchParameters);
   }
 
   auto searchParams = std::make_unique<faiss::SearchParametersIVF>();
@@ -548,7 +573,7 @@ vector::SearchResult RocksDBVectorIndex::readBatch(
   auto faissSearchContext = makeFaissIteratorContext(config, ctx, captureSink);
 
   auto searchParametersIvf =
-      prepareSearchParameters(config.searchParameters, config.topK);
+      prepareSearchParameters(config.searchParameters, config.topK, ctx);
   if (searchParametersIvf.fail()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(searchParametersIvf.errorNumber(),
                                    searchParametersIvf.errorMessage());

@@ -206,6 +206,7 @@
     "ERROR_QUERY_BIND_PARAMETER_TYPE" : { "code" : 1553, "message" : "bind parameter '%s' has an invalid value or type" },
     "ERROR_QUERY_VECTOR_SEARCH_NOT_APPLIED" : { "code" : 1554, "message" : "failed vector search" },
     "ERROR_QUERY_VECTOR_INDEX_NOT_READY" : { "code" : 1555, "message" : "vector index not ready" },
+    "ERROR_QUERY_VECTOR_AUTOTUNE_APPROXIMATE" : { "code" : 1556, "message" : "vector autotune approximate result" },
     "ERROR_QUERY_INVALID_ARITHMETIC_VALUE" : { "code" : 1561, "message" : "invalid arithmetic value" },
     "ERROR_QUERY_DIVISION_BY_ZERO" : { "code" : 1562, "message" : "division by zero" },
     "ERROR_QUERY_ARRAY_EXPECTED"   : { "code" : 1563, "message" : "array expected" },

@@ -183,7 +183,8 @@ class RocksDBVectorIndex final : public RocksDBIndex {
   // nProbe, the index default, or the autotuned operating point for a requested
   // targetRecall.
   ResultT<std::unique_ptr<faiss::SearchParametersIVF>> prepareSearchParameters(
-      vector::SearchParameters const& params, std::size_t topK) const;
+      vector::SearchParameters const& params, std::size_t topK,
+      vector::VectorSearchContext const& ctx) const;
 
   //  Helper functions for bruteForceSearch
   void captureDocument(

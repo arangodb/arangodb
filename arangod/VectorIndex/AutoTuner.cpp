@@ -297,32 +297,37 @@ ResultT<OperatingPointTable> autoTuneTable(faiss::IndexIVF& index,
   return table;
 }
 
-ResultT<OperatingPoint> selectOperatingPoint(TunedTables const& tables,
-                                             std::uint64_t topK,
-                                             double targetRecall) {
-  auto const it = tables.find(topK);
+ResultT<SelectedOperatingPoint> selectOperatingPoint(TunedTables const& tables,
+                                                     std::uint64_t topK,
+                                                     double targetRecall) {
+  // Smallest tuned topK >= requested: a larger topK over-searches (recall
+  // preserved); a smaller one would under-search, so it is never used.
+  auto const it = tables.lower_bound(topK);
   if (it == tables.end()) {
     return Result{
         TRI_ERROR_BAD_PARAMETER,
-        std::format("no autotuned operating-point table for topK={}; run "
-                    "autotune for this topK first",
-                    topK)};
+        std::format("requested topK={} exceeds the largest autotuned topK={}; "
+                    "run autotune for this topK first",
+                    topK, tables.empty() ? 0 : tables.rbegin()->first)};
+  }
+
+  auto const& table = it->second;
+  if (table.points.empty()) {
+    return Result{TRI_ERROR_BAD_PARAMETER,
+                  std::format("autotuned table for topK={} has no operating "
+                              "points",
+                              table.topK)};
   }
 
   // ascending recall (== ascending cost): first match is the cheapest.
-  for (auto const& point : it->second.points) {
+  for (auto const& point : table.points) {
     if (point.recall >= targetRecall - kAutoTuneRecallEpsilon) {
-      return point;
+      return SelectedOperatingPoint{point, table.topK, /*reached=*/true};
     }
   }
 
-  double const best =
-      it->second.points.empty() ? 0.0 : it->second.points.back().recall;
-  return Result{
-      TRI_ERROR_BAD_PARAMETER,
-      std::format("targetRecall={} exceeds the autotuned range for topK={} "
-                  "(highest achievable recall {})",
-                  targetRecall, topK, best)};
+  return SelectedOperatingPoint{table.points.back(), table.topK,
+                                /*reached=*/false};
 }
 
 // FAISS produce a key of search params like so: "nprobe=8,ht=20,max_codes=12".

@@ -144,8 +144,7 @@ double recallAtR(faiss::IndexIVFFlat& index, std::vector<float> const& xq,
   return static_cast<double>(hits) / static_cast<double>(nq * R);
 }
 
-// Two tuned tables with distinct, recognizable operating points so a selection
-// can be pinned to a specific table and point. Points are in ascending recall.
+// Distinct operating points (ascending recall) so a selection can be pinned.
 TunedTables makeTwoTables() {
   OperatingPointTable t10;
   t10.topK = 10;
@@ -319,16 +318,19 @@ TEST(AutoTunerTest, makeSearchParametersFromKeyRejectsInapplicableKeys) {
   EXPECT_TRUE(makeSearchParametersFromKey(*ivf, "nprobe").fail());
 }
 
-TEST(AutoTunerTest, selectOperatingPointPicksTableMatchingTopK) {
+TEST(AutoTunerTest, selectOperatingPointExactTopKNoFallback) {
   auto const tables = makeTwoTables();
 
   auto p10 = selectOperatingPoint(tables, /*topK=*/10, /*targetRecall=*/0.5);
   ASSERT_TRUE(p10.ok()) << p10.errorMessage();
-  EXPECT_EQ(p10.get().searchParameters, "nprobe=4");
+  EXPECT_EQ(p10.get().point.searchParameters, "nprobe=4");
+  EXPECT_EQ(p10.get().tunedTopK, 10u);
+  EXPECT_TRUE(p10.get().reachedTargetRecall);
 
   auto p100 = selectOperatingPoint(tables, /*topK=*/100, /*targetRecall=*/0.5);
   ASSERT_TRUE(p100.ok()) << p100.errorMessage();
-  EXPECT_EQ(p100.get().searchParameters, "nprobe=16");
+  EXPECT_EQ(p100.get().point.searchParameters, "nprobe=16");
+  EXPECT_EQ(p100.get().tunedTopK, 100u);
 }
 
 TEST(AutoTunerTest, selectOperatingPointReturnsCheapestMeetingTarget) {
@@ -337,13 +339,40 @@ TEST(AutoTunerTest, selectOperatingPointReturnsCheapestMeetingTarget) {
   // 0.80 already meets a 0.80 target, so the cheapest point is chosen.
   auto cheap = selectOperatingPoint(tables, /*topK=*/10, /*targetRecall=*/0.80);
   ASSERT_TRUE(cheap.ok()) << cheap.errorMessage();
-  EXPECT_EQ(cheap.get().searchParameters, "nprobe=4");
+  EXPECT_EQ(cheap.get().point.searchParameters, "nprobe=4");
 
   // 0.85 skips the 0.80 point and takes the next-cheapest that reaches it.
   auto stricter =
       selectOperatingPoint(tables, /*topK=*/10, /*targetRecall=*/0.85);
   ASSERT_TRUE(stricter.ok()) << stricter.errorMessage();
-  EXPECT_EQ(stricter.get().searchParameters, "nprobe=8");
+  EXPECT_EQ(stricter.get().point.searchParameters, "nprobe=8");
+  EXPECT_TRUE(stricter.get().reachedTargetRecall);
+}
+
+TEST(AutoTunerTest, selectOperatingPointFallsBackToLargerTopK) {
+  auto const tables = makeTwoTables();
+
+  auto between =
+      selectOperatingPoint(tables, /*topK=*/50, /*targetRecall=*/0.5);
+  ASSERT_TRUE(between.ok()) << between.errorMessage();
+  EXPECT_EQ(between.get().tunedTopK, 100u);
+  EXPECT_EQ(between.get().point.searchParameters, "nprobe=16");
+  EXPECT_TRUE(between.get().reachedTargetRecall);
+
+  auto belowMin =
+      selectOperatingPoint(tables, /*topK=*/5, /*targetRecall=*/0.5);
+  ASSERT_TRUE(belowMin.ok()) << belowMin.errorMessage();
+  EXPECT_EQ(belowMin.get().tunedTopK, 10u);
+}
+
+TEST(AutoTunerTest, selectOperatingPointBestEffortWhenRecallUnreachable) {
+  auto const tables = makeTwoTables();
+
+  auto res = selectOperatingPoint(tables, /*topK=*/10, /*targetRecall=*/0.99);
+  ASSERT_TRUE(res.ok()) << res.errorMessage();
+  EXPECT_FALSE(res.get().reachedTargetRecall);
+  EXPECT_EQ(res.get().point.searchParameters, "nprobe=8");  // highest recall
+  EXPECT_EQ(res.get().tunedTopK, 10u);
 }
 
 TEST(AutoTunerTest, selectOperatingPointToleratesRecallWithinEpsilon) {
@@ -359,25 +388,14 @@ TEST(AutoTunerTest, selectOperatingPointToleratesRecallWithinEpsilon) {
   auto within = selectOperatingPoint(tables, /*topK=*/10,
                                      0.90 + kAutoTuneRecallEpsilon / 2);
   ASSERT_TRUE(within.ok()) << within.errorMessage();
-  EXPECT_EQ(within.get().searchParameters, "nprobe=8");
-
-  // Beyond the tolerance no point qualifies.
-  auto beyond = selectOperatingPoint(tables, /*topK=*/10,
-                                     0.90 + 2 * kAutoTuneRecallEpsilon);
-  EXPECT_TRUE(beyond.fail());
+  EXPECT_EQ(within.get().point.searchParameters, "nprobe=8");
+  EXPECT_TRUE(within.get().reachedTargetRecall);
 }
 
-TEST(AutoTunerTest, selectOperatingPointFailsWhenNoTableForTopK) {
+TEST(AutoTunerTest, selectOperatingPointFailsWhenTopKExceedsAllTables) {
   auto const tables = makeTwoTables();
   EXPECT_TRUE(
-      selectOperatingPoint(tables, /*topK=*/42, /*targetRecall=*/0.5).fail());
-}
-
-TEST(AutoTunerTest, selectOperatingPointFailsWhenTargetExceedsRange) {
-  auto const tables = makeTwoTables();
-  // Highest achievable recall for topK=10 is 0.95.
-  EXPECT_TRUE(
-      selectOperatingPoint(tables, /*topK=*/10, /*targetRecall=*/0.99).fail());
+      selectOperatingPoint(tables, /*topK=*/200, /*targetRecall=*/0.5).fail());
 }
 
 TEST(AutoTunerTest, misalignedQuerySetTrapsAssertion) {

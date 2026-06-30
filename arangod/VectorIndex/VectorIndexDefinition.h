@@ -96,8 +96,7 @@ struct OperatingPointTable {
   }
 };
 
-// Autotuned operating-point tables keyed by topK. A map makes the topK unique
-// by construction; it is serialized as a plain array of tables.
+// Keyed by topK, so the topK is unique by construction.
 using TunedTables = std::map<std::uint64_t, OperatingPointTable>;
 
 /// @brief On-disk format version for vector index list entries.

@@ -35,10 +35,8 @@
 
 namespace arangodb::vector {
 
-// Persist the topK-keyed table map as a plain array of tables (each table
-// carries its topK inline). Keeping the array on the wire means existing
-// records still load, while in memory the map makes the topK unique by
-// construction.
+// Persists the topK-keyed map as a plain array (each table carries its topK
+// inline), so existing array-shaped records still load.
 struct TunedTablesTransformer {
   using SerializedType = std::vector<OperatingPointTable>;
 
