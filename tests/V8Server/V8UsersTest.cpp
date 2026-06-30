@@ -185,16 +185,6 @@ class V8UsersTest
           EXPECT_TRUE(r.ok());
           return Result{};
         });
-    EXPECT_CALL(*um, collectionAuthLevel)
-        .Times(AtLeast(1))
-        .WillRepeatedly(WithArgs<0, 1, 2>([this](std::string_view username,
-                                                 std::string_view dbname,
-                                                 std::string_view cname) {
-          auto const it = _userMap.find(username);
-          EXPECT_NE(it, _userMap.end());
-          EXPECT_EQ(username, it->second.username());
-          return it->second.collectionAuthLevel(dbname, cname);
-        }));
     EXPECT_CALL(*um, setAuthInfo)
         .Times(AtLeast(1))
         .WillRepeatedly(WithArgs<0>(
@@ -300,9 +290,11 @@ TEST_F(V8UsersTest, test_collection_auth) {
         });
     ASSERT_NE(nullptr, userPtr);
 
-    EXPECT_TRUE(
-        (arangodb::auth::Level::NONE ==
-         execContext->collectionAuthLevel(vocbase->name(), "testDataSource")));
+    EXPECT_TRUE(execContext
+                    ->canUseCollection(vocbase->name(), "testDataSource",
+                                       arangodb::CollectionAccessLevel::Read)
+                    .fail());
+
     arangodb::velocypack::Builder response;
     v8::TryCatch tryCatch(isolate.get());
     auto result = v8::Function::Cast(*fn_grantCollection)
@@ -319,9 +311,10 @@ TEST_F(V8UsersTest, test_collection_auth) {
                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND ==
                      ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum)
                                    .getNumber<int>()}));
-    EXPECT_TRUE(
-        (arangodb::auth::Level::NONE ==
-         execContext->collectionAuthLevel(vocbase->name(), "testDataSource")));
+    EXPECT_TRUE(execContext
+                    ->canUseCollection(vocbase->name(), "testDataSource",
+                                       arangodb::CollectionAccessLevel::Read)
+                    .fail());
   }
 
   // test auth missing (revoke)
@@ -345,9 +338,15 @@ TEST_F(V8UsersTest, test_collection_auth) {
                                      // User::collectionAuthLevel(...) returns
                                      // database auth::Level
 
+    EXPECT_TRUE(execContext
+                    ->canUseCollection(vocbase->name(), "testDataSource",
+                                       arangodb::CollectionAccessLevel::Read)
+                    .ok());
     EXPECT_TRUE(
-        (arangodb::auth::Level::RO ==
-         execContext->collectionAuthLevel(vocbase->name(), "testDataSource")));
+        execContext
+            ->canUseCollection(vocbase->name(), "testDataSource",
+                               arangodb::CollectionAccessLevel::WriteData)
+            .fail());
     arangodb::velocypack::Builder response;
     v8::TryCatch tryCatch(isolate.get());
     auto result = v8::Function::Cast(*fn_revokeCollection)
@@ -364,10 +363,15 @@ TEST_F(V8UsersTest, test_collection_auth) {
                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND ==
                      ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum)
                                    .getNumber<int>()}));
+    EXPECT_TRUE(execContext
+                    ->canUseCollection(vocbase->name(), "testDataSource",
+                                       arangodb::CollectionAccessLevel::Read)
+                    .ok());  // not modified from above
     EXPECT_TRUE(
-        (arangodb::auth::Level::RO ==
-         execContext->collectionAuthLevel(
-             vocbase->name(), "testDataSource")));  // not modified from above
+        execContext
+            ->canUseCollection(vocbase->name(), "testDataSource",
+                               arangodb::CollectionAccessLevel::WriteData)
+            .fail());  // not modified from above
   }
 
   // test auth collection (grant)
@@ -394,9 +398,10 @@ TEST_F(V8UsersTest, test_collection_auth) {
         });
     ASSERT_FALSE(!logicalCollection);
 
-    EXPECT_TRUE(
-        (arangodb::auth::Level::NONE ==
-         execContext->collectionAuthLevel(vocbase->name(), "testDataSource")));
+    EXPECT_TRUE(execContext
+                    ->canUseCollection(vocbase->name(), "testDataSource",
+                                       arangodb::CollectionAccessLevel::Read)
+                    .fail());
     arangodb::velocypack::Builder response;
     v8::TryCatch tryCatch(isolate.get());
     auto result = v8::Function::Cast(*fn_grantCollection)
@@ -407,8 +412,10 @@ TEST_F(V8UsersTest, test_collection_auth) {
     EXPECT_TRUE(result.ToLocalChecked()->IsUndefined());
     EXPECT_FALSE(tryCatch.HasCaught());
     EXPECT_TRUE(
-        (arangodb::auth::Level::RW ==
-         execContext->collectionAuthLevel(vocbase->name(), "testDataSource")));
+        execContext
+            ->canUseCollection(vocbase->name(), "testDataSource",
+                               arangodb::CollectionAccessLevel::WriteData)
+            .ok());
   }
 
   // test auth collection (revoke)
@@ -440,9 +447,15 @@ TEST_F(V8UsersTest, test_collection_auth) {
         });
     ASSERT_FALSE(!logicalCollection);
 
+    EXPECT_TRUE(execContext
+                    ->canUseCollection(vocbase->name(), "testDataSource",
+                                       arangodb::CollectionAccessLevel::Read)
+                    .ok());
     EXPECT_TRUE(
-        (arangodb::auth::Level::RO ==
-         execContext->collectionAuthLevel(vocbase->name(), "testDataSource")));
+        execContext
+            ->canUseCollection(vocbase->name(), "testDataSource",
+                               arangodb::CollectionAccessLevel::WriteData)
+            .fail());
     arangodb::velocypack::Builder response;
     v8::TryCatch tryCatch(isolate.get());
     auto result = v8::Function::Cast(*fn_revokeCollection)
@@ -452,9 +465,10 @@ TEST_F(V8UsersTest, test_collection_auth) {
     EXPECT_FALSE(result.IsEmpty());
     EXPECT_TRUE(result.ToLocalChecked()->IsUndefined());
     EXPECT_FALSE(tryCatch.HasCaught());
-    EXPECT_TRUE(
-        (arangodb::auth::Level::UNDEFINED ==
-         execContext->collectionAuthLevel(vocbase->name(), "testDataSource")));
+    EXPECT_TRUE(execContext
+                    ->canUseCollection(vocbase->name(), "testDataSource",
+                                       arangodb::CollectionAccessLevel::Read)
+                    .fail());
   }
 
   // test auth view (grant)
@@ -481,9 +495,10 @@ TEST_F(V8UsersTest, test_collection_auth) {
         });
     ASSERT_FALSE(!logicalView);
 
-    EXPECT_TRUE(
-        (arangodb::auth::Level::NONE ==
-         execContext->collectionAuthLevel(vocbase->name(), "testDataSource")));
+    EXPECT_TRUE(execContext
+                    ->canUseView(vocbase->name(), "testDataSource",
+                                 arangodb::ViewAccessLevel::Read)
+                    .fail());
     arangodb::velocypack::Builder response;
     v8::TryCatch tryCatch(isolate.get());
     auto result = v8::Function::Cast(*fn_grantCollection)
@@ -500,9 +515,10 @@ TEST_F(V8UsersTest, test_collection_auth) {
                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND ==
                      ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum)
                                    .getNumber<int>()}));
-    EXPECT_TRUE(
-        (arangodb::auth::Level::NONE ==
-         execContext->collectionAuthLevel(vocbase->name(), "testDataSource")));
+    EXPECT_TRUE(execContext
+                    ->canUseView(vocbase->name(), "testDataSource",
+                                 arangodb::ViewAccessLevel::Read)
+                    .fail());
   }
 
   // test auth view (revoke)
@@ -534,9 +550,14 @@ TEST_F(V8UsersTest, test_collection_auth) {
         });
     ASSERT_FALSE(!logicalView);
 
-    EXPECT_TRUE(
-        (arangodb::auth::Level::RO ==
-         execContext->collectionAuthLevel(vocbase->name(), "testDataSource")));
+    EXPECT_TRUE(execContext
+                    ->canUseView(vocbase->name(), "testDataSource",
+                                 arangodb::ViewAccessLevel::Read)
+                    .ok());
+    EXPECT_TRUE(execContext
+                    ->canUseView(vocbase->name(), "testDataSource",
+                                 arangodb::ViewAccessLevel::Modify)
+                    .fail());
     arangodb::velocypack::Builder response;
     v8::TryCatch tryCatch(isolate.get());
     auto result = v8::Function::Cast(*fn_revokeCollection)
@@ -553,10 +574,14 @@ TEST_F(V8UsersTest, test_collection_auth) {
                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND ==
                      ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum)
                                    .getNumber<int>()}));
-    EXPECT_TRUE(
-        (arangodb::auth::Level::RO ==
-         execContext->collectionAuthLevel(
-             vocbase->name(), "testDataSource")));  // not modified from above
+    EXPECT_TRUE(execContext
+                    ->canUseView(vocbase->name(), "testDataSource",
+                                 arangodb::ViewAccessLevel::Read)
+                    .ok());  // not modified from above
+    EXPECT_TRUE(execContext
+                    ->canUseView(vocbase->name(), "testDataSource",
+                                 arangodb::ViewAccessLevel::Modify)
+                    .fail());  // not modified from above
   }
 
   // test auth wildcard (grant)
@@ -583,9 +608,10 @@ TEST_F(V8UsersTest, test_collection_auth) {
         });
     ASSERT_FALSE(!logicalCollection);
 
-    EXPECT_TRUE(
-        (arangodb::auth::Level::NONE ==
-         execContext->collectionAuthLevel(vocbase->name(), "testDataSource")));
+    EXPECT_TRUE(execContext
+                    ->canUseCollection(vocbase->name(), "testDataSource",
+                                       arangodb::CollectionAccessLevel::Read)
+                    .fail());
     arangodb::velocypack::Builder response;
     v8::TryCatch tryCatch(isolate.get());
     auto result =
@@ -597,8 +623,10 @@ TEST_F(V8UsersTest, test_collection_auth) {
     EXPECT_TRUE(result.ToLocalChecked()->IsUndefined());
     EXPECT_FALSE(tryCatch.HasCaught());
     EXPECT_TRUE(
-        (arangodb::auth::Level::RW ==
-         execContext->collectionAuthLevel(vocbase->name(), "testDataSource")));
+        execContext
+            ->canUseCollection(vocbase->name(), "testDataSource",
+                               arangodb::CollectionAccessLevel::WriteData)
+            .ok());
   }
 
   // test auth wildcard (revoke)
@@ -630,9 +658,15 @@ TEST_F(V8UsersTest, test_collection_auth) {
         });
     ASSERT_FALSE(!logicalCollection);
 
+    EXPECT_TRUE(execContext
+                    ->canUseCollection(vocbase->name(), "testDataSource",
+                                       arangodb::CollectionAccessLevel::Read)
+                    .ok());
     EXPECT_TRUE(
-        (arangodb::auth::Level::RO ==
-         execContext->collectionAuthLevel(vocbase->name(), "testDataSource")));
+        execContext
+            ->canUseCollection(vocbase->name(), "testDataSource",
+                               arangodb::CollectionAccessLevel::WriteData)
+            .fail());
     arangodb::velocypack::Builder response;
     v8::TryCatch tryCatch(isolate.get());
     auto result =
@@ -643,11 +677,16 @@ TEST_F(V8UsersTest, test_collection_auth) {
     EXPECT_FALSE(result.IsEmpty());
     EXPECT_TRUE(result.ToLocalChecked()->IsUndefined());
     EXPECT_FALSE(tryCatch.HasCaught());
+    EXPECT_TRUE(execContext
+                    ->canUseCollection(vocbase->name(), "testDataSource",
+                                       arangodb::CollectionAccessLevel::Read)
+                    .ok());  // unchanged since revocation is only for
+                             // exactly matching collection names
     EXPECT_TRUE(
-        (arangodb::auth::Level::RO ==
-         execContext->collectionAuthLevel(
-             vocbase->name(),
-             "testDataSource")));  // unchanged since revocation is only for
-                                   // exactly matching collection names
+        execContext
+            ->canUseCollection(vocbase->name(), "testDataSource",
+                               arangodb::CollectionAccessLevel::WriteData)
+            .fail());  // unchanged since revocation is only for
+                       // exactly matching collection names
   }
 }
