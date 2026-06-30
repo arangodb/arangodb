@@ -34,31 +34,27 @@ const analyzers = require("@arangodb/analyzers");
 const request = require("@arangodb/request");
 const db = arangodb.db;
 const {
-  clearAllFailurePoints,
   deriveTestSuite,
-  getEndpointById,
-  getServersByType,
-  getCoordinators,
-  getDBServers,
   runParallelArangoshTests,
   waitForShardsInSync,
   getInstanceInfo
 } = require('@arangodb/test-helper');
 let { instanceRole } = require('@arangodb/testutils/instance');
+let IM = global.instanceManager;
 
-const fetchRevisionTree = (serverUrl, shardId) => {
-  let result = request({ method: "POST", url: serverUrl + "/_api/replication/batch", body: {ttl : 3600}, json: true });
-  assertEqual(200, result.statusCode);
-  const batch = JSON.parse(result.body);
-  if (!batch.hasOwnProperty("id")) {
-    throw "Could not create batch!";
-  }
+const fetchRevisionTree = (server, shardId) => {
+  return server.toThisInstance(() => {
+    let result = arango.POST_RAW("/_api/replication/batch", {ttl : 3600});
+    assertEqual(200, result.statusCode);
+    if (!result.parsedBody.hasOwnProperty("id")) {
+      throw "Could not create batch!";
+    }
   
-  result = request({ method: "GET",
-    url: serverUrl + `/_api/replication/revisions/tree?collection=${encodeURIComponent(shardId)}&verification=true&batchId=${batch.id}&onlyPopulated=true`});
-  assertEqual(200, result.statusCode, result);
-  request({ method: "DELETE", url: serverUrl + `/_api/replication/batch/${batch.id}`});
-  return JSON.parse(result.body);
+    result = arango.GET_RAW(`/_api/replication/revisions/tree?collection=${encodeURIComponent(shardId)}&verification=true&batchId=${batch.id}&onlyPopulated=true`);
+    assertEqual(200, result.statusCode, result);
+    arango.DELETE(`/_api/replication/batch/${batch.id}`);
+    return result.parsedBody;
+  })[0];
 };
 
 const compareTree = function (left, right) {
@@ -68,19 +64,21 @@ const compareTree = function (left, right) {
 
 const checkCollectionConsistency = (cn) => {
   const c = db._collection(cn);
-  const servers = getDBServers();
+  const dbServers = IM.getInstancesRole(instanceRole.dbserver);
   const shardInfo = c.shards(true);
   
   let failed;
   let message = "";
-  const getServerUrl = (serverId) => servers.filter((server) => server.id === serverId)[0].url + '/_db/' + encodeURIComponent(db._name());
+  const getServerUrl = (serverId) => dbServers.filter((server) => server.id === serverId)[0].url + '/_db/' + encodeURIComponent(db._name());
   let tries = 0;
   do {
     failed = false;
     message = "";
     Object.entries(shardInfo).forEach(
-      ([shard, [leader, follower]]) => {
-        const leaderTree = fetchRevisionTree(getServerUrl(leader), shard);
+      ([shard, [leaderID, followerID]]) => {
+        let leader = IM.getInstanceByID(leaderID);
+        let follower = IM.getInstanceByID(followerID);
+        const leaderTree = fetchRevisionTree(leader, shard);
         // We remove the computed and stored nodes since we may want to print the trees, but we
         // don't want to print the 262k buckets! Equality of the trees is checked using the single
         // combined hash and document count.
@@ -94,7 +92,7 @@ const checkCollectionConsistency = (cn) => {
         // note: with rf > 1, follower is always present. the code is generalized however so
         // that the tests can easily be run with rf = 1 for debugging purposes.
         if (follower) {
-          const followerTree = fetchRevisionTree(getServerUrl(follower), shard);
+          const followerTree = fetchRevisionTree(follower, shard);
           followerTree.computed.nodes = "<reduced>";
           followerTree.stored.nodes = "<reduced>";
           if (!followerTree.equal) {
@@ -162,6 +160,7 @@ function BaseChaosSuite(testOpts) {
   // generate a random collection name
   const cn = "UnitTests" + require("@arangodb/crypto").md5(internal.genRandomAlphaNumbers(32));
   const coordination_cn = cn + "_coord";
+  let IM = getInstanceInfo();
 
   const createAnalyzers = () => {
     try {
@@ -282,7 +281,7 @@ function BaseChaosSuite(testOpts) {
       }
       db._drop(cn);
       db._drop(coordination_cn);
-      const replicationFactor = Math.max(2, getDBServers().length);
+      const replicationFactor = Math.max(2, IM.getInstancesRole(instanceRole.dbserver).length);
       const numberOfShards = (testOpts.withOneShard ? 1 : replicationFactor * 2);
       db._create(cn, {numberOfShards, replicationFactor});
       if (testOpts.withViews) {
@@ -292,7 +291,6 @@ function BaseChaosSuite(testOpts) {
       db._create(coordination_cn);
 
       if (testOpts.withFailurePoints) {
-        let IM = getInstanceInfo();
         IM.debugSetFailAt("replicateOperations_randomize_timeout", instanceRole.dbServer);
         IM.debugSetFailAt("delayed_synchronous_replication_request_processing", instanceRole.dbServer);
         IM.debugSetFailAt("Query::setupTimeout", instanceRole.dbServer);
@@ -325,7 +323,7 @@ function BaseChaosSuite(testOpts) {
       db._useDatabase(dbname);
       try {
         print(Date() + " tearDown: flushing failurepoints");
-        clearAllFailurePoints();
+        IM.debugClearFailAt();
         if (testOpts.withViews) {
           removeViews(false);
           removeViews(true);
@@ -607,7 +605,7 @@ function BaseChaosSuite(testOpts) {
         let client_ret = runParallelArangoshTests(tests, 3 * 60, coordination_cn);
 
         print(Date() + " Finished load test; Clearing failurepoints");
-        clearAllFailurePoints();
+        IM.debugClearFailAt();
         print(Date() + " Waiting for shards to get in sync");
         waitForShardsInSync(cn, 300, db[cn].properties().replicationFactor - 1);
         print(Date() + " checking consistency");

@@ -82,25 +82,6 @@ exports.getInstanceInfo = function() {
 
 let reconnectRetry = exports.reconnectRetry = require('@arangodb/replication-common').reconnectRetry;
 
-
-
-
-exports.clearAllFailurePoints = function () {
-  const old = db._name();
-  try {
-    for (const server of exports.getDBServers()) {
-      exports.debugClearFailAt(exports.getEndpointById(server.id));
-    }
-    for (const server of exports.getCoordinators()) {
-      exports.debugClearFailAt(exports.getEndpointById(server.id));
-    }
-  } finally {
-    // need to restore original database, as debugFailAt() can 
-    // change into a different database...
-    db._useDatabase(old);
-  }
-};
-
 /// @brief set failure point
 exports.debugCanUseFailAt = function (endpoint) {
   const primaryEndpoint = arango.getEndpoint();
