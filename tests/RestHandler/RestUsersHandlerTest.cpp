@@ -351,10 +351,15 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
                                      // User::collectionAuthLevel(...)
                                      // returns database auth::Level
 
-    EXPECT_FALSE(execContext
-                     ->canUseCollection(vocbase->name(), "testDataSource",
-                                        arangodb::CollectionAccessLevel::Read)
-                     .ok());
+    EXPECT_TRUE(execContext
+                    ->canUseCollection(vocbase->name(), "testDataSource",
+                                       arangodb::CollectionAccessLevel::Read)
+                    .ok());
+    EXPECT_TRUE(
+        execContext
+            ->canUseCollection(vocbase->name(), "testDataSource",
+                               arangodb::CollectionAccessLevel::WriteData)
+            .fail());
     auto status = revokeHandler.execute();
     EXPECT_EQ(arangodb::RestStatus::DONE, status);
     EXPECT_EQ(arangodb::rest::ResponseCode::NOT_FOUND,
