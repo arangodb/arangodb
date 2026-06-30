@@ -300,6 +300,13 @@ class instanceManager {
     }
     return ret[0];
   }
+  getInstancesRole(role) {
+    let ret = this.arangods.filter(arangod => arangod.matches(role));
+    if (ret.length === 0) {
+      throw new Error(`wasn't able to find any of kind ${role} ${ret}`);
+    }
+    return ret;
+  }
   getTypeToUrlsMap() {
     let ret = new Map();
     this.instanceRoles.forEach(role => {

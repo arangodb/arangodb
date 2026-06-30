@@ -228,11 +228,11 @@ exports.getMetric = function (endpoint, name) {
 
 // Eventually assert a metric from a single server endpoint.
 // compareFn takes the metric value and returns true if the assertion should pass.
-exports.eventuallyAssertMetric = function(endpoint, metricName, compareFn, errorMessage, maxIterations = 200) {
+exports.eventuallyAssertMetric = function(server, metricName, compareFn, errorMessage, maxIterations = 200) {
   let metricValue;
   for (let i = 0; i < maxIterations; i++) {
     internal.wait(0.1);
-    metricValue = exports.getMetric(endpoint, metricName);
+    metricValue = server.getMetric(metricName);
     if (compareFn(metricValue)) {
       break;
     }
@@ -249,7 +249,7 @@ exports.eventuallyAssertMetricSum = function(servers, metricName, compareFn, err
     internal.wait(0.1);
     metricValue = 0;
     for (let server of servers) {
-      metricValue += exports.getMetric(server.endpoint, metricName);
+      metricValue += server.getMetric(metricName);
     }
     if (compareFn(metricValue)) {
       break;
@@ -259,27 +259,11 @@ exports.eventuallyAssertMetricSum = function(servers, metricName, compareFn, err
   return metricValue;
 };
 
-exports.getMetricSingle = function (name) {
-  let res = arango.GET_RAW("/_admin/metrics");
-  if (res.code !== 200) {
-    throw "error fetching metric";
-  }
-  return getMetricName(res.body, name);
-};
-
 // Function for getting metric/metrics from either cluster or single server deployments.
 // - 'name' - can be either string or array of strings.
 //    If 'name' is string, we want to get the only one metric value with name 'name'
 //    If 'name' is array of strings, we want to get values for every metric which is defined in this array 
-// - 'roles' - string
-//    Specify which roles of arangod should be queried for particular metric/metrics.
-//    This argument will be used in function getAllMetricsFromEndpoints.
-//    Possible values are:
-//      "coordinators" - get metric/metrics only from coordinators.
-//      "dbservers" - get metric/metrics only from dbservers.
-//      "all" - get metric/metrics from dbservers and from coordinators.
-//    In case of single server deployment, this argument is ommited.
-exports.getCompleteMetricsValues = function (name, roles = "") {
+exports.getCompleteMetricsValues = function (name) {
   function transpose(matrix) {
     return matrix[0].map((col, i) => matrix.map(row => row[i]));
   };
@@ -630,9 +614,6 @@ exports.getServers = function (role) {
 
 exports.getCoordinators = function () {
   return exports.getServers(inst.instanceRole.coordinator);
-};
-exports.getDBServers = function () {
-  return exports.getServers(inst.instanceRole.dbServer);
 };
 exports.getAgents = function () {
   return exports.getServers(inst.instanceRole.agent);

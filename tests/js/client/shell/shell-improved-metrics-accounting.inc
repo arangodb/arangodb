@@ -27,7 +27,7 @@
 
   'use strict';
   const db = require('@arangodb').db;
-  const { getMetricSingle, getCompleteMetricsValues } = require('@arangodb/test-helper');
+  const { getCompleteMetricsValues } = require('@arangodb/test-helper');
   const isCluster = require("internal").isCluster();
   const IM = global.instanceManager;
 

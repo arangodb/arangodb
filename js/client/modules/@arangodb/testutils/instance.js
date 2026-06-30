@@ -1531,24 +1531,22 @@ class instance {
     return [];
   }
   debugSetFailAt(failurePoint) {
-    if (!this.connect()) {
-      throw new Error(`${this.name}: failed to connect my instance {JSON.stringify(this.getStructure())}`);
-    }
-    let reply = arango.PUT_RAW('/_admin/debug/failat/' + failurePoint, '');
-    if (reply.code !== 200) {
-      throw new Error(`${this.name}: Failed to set ${failurePoint}: ${reply.parsedBody}`);
-    }
+    this.toThisInstance(() => {
+      let reply = arango.PUT_RAW('/_admin/debug/failat/' + failurePoint, '');
+      if (reply.code !== 200) {
+        throw new Error(`${this.name}: Failed to set ${failurePoint}: ${reply.parsedBody}`);
+      }
+    });
     return true;
   }
   debugShouldFailAt(failurePoint) {
     throw new Error("not implemented!");
-    if (!this.connect()) {
-      throw new Error(`${this.name}: failed to connect my instance {JSON.stringify(this.getStructure())}`);
-    }
-    let reply = arango.PUT_RAW('/_admin/debug/failat/' + failurePoint, '');
-    if (reply.code !== 200) {
-      throw new Error(`${this.name}: Failed to set ${failurePoint}: ${reply.parsedBody}`);
-    }
+    this.toThisInstance(() => {
+      let reply = arango.PUT_RAW('/_admin/debug/failat/' + failurePoint, '');
+      if (reply.code !== 200) {
+        throw new Error(`${this.name}: Failed to set ${failurePoint}: ${reply.parsedBody}`);
+      }
+    });
     return true;
   }
   debugResetRaceControl() {
