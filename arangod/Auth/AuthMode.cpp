@@ -534,7 +534,7 @@ auto AuthMode::Disabled::check(auth::Permission permission) const -> Result {
   return {};
 }
 
-#ifdef ARANGODB_USE_GOOGLE_TEST
+#ifdef ARANGODB_USE_GOOGLE_TESTS
 auto AuthMode::Mockable::username() const noexcept -> std::string_view {
   ADB_PROD_ASSERT(mock != nullptr);
   return mock->username();
