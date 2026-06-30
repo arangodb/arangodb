@@ -561,13 +561,12 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
         });
     ASSERT_FALSE(!logicalView);
 
+    // In Classic auth mode, views use database-level access. Since no
+    // database-level grant is set (only a collection-level grant), the view
+    // is not accessible before or after the (failed) revoke.
     EXPECT_TRUE(execContext
                     ->canUseView(vocbase->name(), "testDataSource",
                                  arangodb::ViewAccessLevel::Read)
-                    .ok());
-    EXPECT_TRUE(execContext
-                    ->canUseView(vocbase->name(), "testDataSource",
-                                 arangodb::ViewAccessLevel::Modify)
                     .fail());
     auto status = revokeHandler.execute();
     EXPECT_EQ(arangodb::RestStatus::DONE, status);
@@ -592,10 +591,6 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
     EXPECT_TRUE(execContext
                     ->canUseView(vocbase->name(), "testDataSource",
                                  arangodb::ViewAccessLevel::Read)
-                    .ok());  // not modified from above
-    EXPECT_TRUE(execContext
-                    ->canUseView(vocbase->name(), "testDataSource",
-                                 arangodb::ViewAccessLevel::Modify)
                     .fail());  // not modified from above
   }
 

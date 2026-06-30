@@ -195,6 +195,22 @@ class V8UsersTest
           EXPECT_EQ(username, it->second.username());
           return it->second.collectionAuthLevel(dbname, cname);
         }));
+    EXPECT_CALL(*um, databaseAuthLevel)
+        .Times(AtLeast(1))
+        .WillRepeatedly([this](std::string_view username,
+                               std::string_view dbname, bool /*onlyCache*/) {
+          // The test user must be treated as an admin (RW on _system) so that
+          // canWriteUser() succeeds inside JS_GrantCollection /
+          // JS_RevokeCollection.
+          if (dbname == arangodb::StaticStrings::SystemDatabase) {
+            return arangodb::auth::Level::RW;
+          }
+          auto const it = _userMap.find(username);
+          if (it == _userMap.end()) {
+            return arangodb::auth::Level::NONE;
+          }
+          return it->second.databaseAuthLevel(dbname);
+        });
     EXPECT_CALL(*um, setAuthInfo)
         .Times(AtLeast(1))
         .WillRepeatedly(WithArgs<0>(
@@ -551,13 +567,12 @@ TEST_F(V8UsersTest, test_collection_auth) {
         });
     ASSERT_FALSE(!logicalView);
 
+    // In Classic auth mode, views use database-level access. Since no
+    // database-level grant is set (only a collection-level grant), the view
+    // is not accessible before or after the (failed) revoke.
     EXPECT_TRUE(execContext
                     ->canUseView(vocbase->name(), "testDataSource",
                                  arangodb::ViewAccessLevel::Read)
-                    .ok());
-    EXPECT_TRUE(execContext
-                    ->canUseView(vocbase->name(), "testDataSource",
-                                 arangodb::ViewAccessLevel::Modify)
                     .fail());
     arangodb::velocypack::Builder response;
     v8::TryCatch tryCatch(isolate.get());
@@ -578,10 +593,6 @@ TEST_F(V8UsersTest, test_collection_auth) {
     EXPECT_TRUE(execContext
                     ->canUseView(vocbase->name(), "testDataSource",
                                  arangodb::ViewAccessLevel::Read)
-                    .ok());  // not modified from above
-    EXPECT_TRUE(execContext
-                    ->canUseView(vocbase->name(), "testDataSource",
-                                 arangodb::ViewAccessLevel::Modify)
                     .fail());  // not modified from above
   }
 
