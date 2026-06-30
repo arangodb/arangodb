@@ -35,7 +35,7 @@ namespace arangodb {
 
 struct RocksDBOptionFeatureOptionsProvider
     : OptionsProvider<RocksDBOptionFeatureOptions> {
-  RocksDBOptionFeatureOptionsProvider(bool _ioUringEnabled);
+  RocksDBOptionFeatureOptionsProvider(bool ioUringEnabled);
   void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
                       RocksDBOptionFeatureOptions& options) override;
   void validateOptions(std::shared_ptr<options::ProgramOptions> opts,

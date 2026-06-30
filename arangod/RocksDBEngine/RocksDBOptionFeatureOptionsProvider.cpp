@@ -1386,7 +1386,6 @@ void RocksDBOptionFeatureOptionsProvider::validateOptions(
     // turn off blob garbage collection to avoid potential side effects
     // for performance
     options.enableBlobGarbageCollection = false;
-    options.enableBlobGarbageCollection = false;
   }
 }
 
