@@ -67,12 +67,11 @@ struct ReplicatedLogMetrics {
 
 template<bool Mock>
 struct ReplicatedLogMetricsIndirect : ReplicatedLogMetrics {
-  explicit ReplicatedLogMetricsIndirect(
-      metrics::MetricsFeature* metricsFeature);
+  explicit ReplicatedLogMetricsIndirect(metrics::IRegistry* metricsRegistry);
 
  private:
   template<typename Builder>
-  static auto createMetric(metrics::MetricsFeature* metricsFeature) ->
+  static auto createMetric(metrics::IRegistry* metricsRegistry) ->
       typename Builder::MetricT*;
 };
 

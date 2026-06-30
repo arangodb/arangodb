@@ -63,7 +63,9 @@ class RocksDBOptionFeature final
   rocksdb::ColumnFamilyOptions getColumnFamilyOptions(
       RocksDBColumnFamilyManager::Family family) const override;
 
-  bool exclusiveWrites() const noexcept { return _options.exclusiveWrites; }
+  bool exclusiveWrites() const noexcept override {
+    return _options.exclusiveWrites;
+  }
   bool useFileLogging() const noexcept override {
     return _options.useFileLogging;
   }

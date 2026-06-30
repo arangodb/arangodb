@@ -22,22 +22,16 @@
 
 #pragma once
 
-#include "Metrics/Builder.h"
-#include "Metrics/Metric.h"
+#include "ApplicationFeatures/OptionsProvider.h"
+#include "Shell/ClientFeatureOptions.h"
 
-namespace arangodb::metrics {
+namespace arangodb {
 
-struct ICollector {
-  virtual ~ICollector() = default;
-
-  // tries to add metric. throws if such metric already exists
-  template<typename MetricBuilder>
-  auto add(MetricBuilder&& builder) -> typename MetricBuilder::MetricT& {
-    return static_cast<typename MetricBuilder::MetricT&>(*doAdd(builder));
-  }
-
- protected:
-  virtual std::shared_ptr<Metric> doAdd(Builder& builder) = 0;
+struct ClientOptionsProvider : OptionsProvider<ClientFeatureOptions> {
+  void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
+                      ClientFeatureOptions& options) override;
+  void validateOptions(std::shared_ptr<options::ProgramOptions> opts,
+                       ClientFeatureOptions& options) override;
 };
 
-}  // namespace arangodb::metrics
+}  // namespace arangodb

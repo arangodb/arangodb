@@ -58,8 +58,8 @@ class CacheManagerFeature final
   /// @brief Pointer to global instance; Can be null if cache is disabled
   cache::Manager* manager() override;
 
-  std::size_t minValueSizeForEdgeCompression() const noexcept;
-  std::uint32_t accelerationFactorForEdgeCompression() const noexcept;
+  std::size_t minValueSizeForEdgeCompression() const noexcept override;
+  std::uint32_t accelerationFactorForEdgeCompression() const noexcept override;
 
  private:
   std::unique_ptr<cache::Manager> _manager;

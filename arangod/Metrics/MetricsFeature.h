@@ -23,7 +23,7 @@
 
 #pragma once
 
-#include "ICollector.h"
+#include "IRegistry.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/LazyApplicationFeatureReference.h"
 #include "Basics/DownCast.h"
@@ -53,7 +53,7 @@ namespace arangodb::metrics {
 class ClusterMetricsFeature;
 
 class MetricsFeature final : public application_features::ApplicationFeature,
-                             public ICollector {
+                             public IRegistry {
  public:
   // Maintain backward compatibility for existing code
   using UsageTrackingMode = metrics::UsageTrackingMode;
@@ -85,13 +85,6 @@ class MetricsFeature final : public application_features::ApplicationFeature,
       typename MetricBuilder::MetricT& {
     return static_cast<typename MetricBuilder::MetricT&>(
         *doEnsureMetric(builder));
-  }
-
-  template<typename MetricBuilder>
-  auto addShared(MetricBuilder&& builder)  // TODO(MBkkt) Remove this method
-      -> std::shared_ptr<typename MetricBuilder::MetricT> {
-    return std::static_pointer_cast<typename MetricBuilder::MetricT>(
-        doAdd(builder));
   }
 
   // tries to add dynamic metric. does not fail if such metric already exists

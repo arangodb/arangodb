@@ -47,7 +47,7 @@ class ReplicationFeature final
   ReplicationFeature(
       application_features::ApplicationServer& server,
       application_features::CommunicationFeaturePhase& commFeature,
-      metrics::MetricsFeature& metrics);
+      metrics::IRegistry& metricsRegistry);
   ~ReplicationFeature();
 
   void collectOptions(

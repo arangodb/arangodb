@@ -39,7 +39,7 @@
 #include "Logger/LoggerStream.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/GaugeBuilder.h"
-#include "Metrics/MetricsFeature.h"
+#include "Metrics/IRegistry.h"
 #include "Random/RandomGenerator.h"
 #include "RestServer/DatabaseFeature.h"
 
@@ -56,14 +56,14 @@ DECLARE_GAUGE(arangodb_agency_callback_number, uint64_t,
 AgencyCallbackRegistry::AgencyCallbackRegistry(
     application_features::ApplicationServer& server,
     ClusterFeature& clusterFeature, DatabaseFeature& databaseFeature,
-    metrics::MetricsFeature& metrics, std::string const& callbackBasePath)
+    metrics::IRegistry& metricsRegistry, std::string const& callbackBasePath)
     : _server(server),
       _clusterFeature(clusterFeature),
       _agencyComm(server, clusterFeature, databaseFeature),
       _callbackBasePath(callbackBasePath),
       _totalCallbacksRegistered(
-          metrics.add(arangodb_agency_callback_registered_total{})),
-      _callbacksCount(metrics.add(arangodb_agency_callback_number{})) {}
+          metricsRegistry.add(arangodb_agency_callback_registered_total{})),
+      _callbacksCount(metricsRegistry.add(arangodb_agency_callback_number{})) {}
 
 AgencyCallbackRegistry::~AgencyCallbackRegistry() = default;
 

@@ -41,7 +41,7 @@
 #include "Metrics/Fwd.h"
 #include "ISortingPolicy.h"
 #include "Cache/ICacheManagerProvider.h"
-#include "Metrics/ICollector.h"
+#include "Metrics/IRegistry.h"
 #include "Replication2/ReplicatedLog/IReplicatedLogProvider.h"
 #include "RestServer/IDatabasePathProvider.h"
 #include "RestServer/IDatabaseProvider.h"
@@ -84,6 +84,7 @@ struct WalManager;
 }  // namespace replication2::storage
 
 class PhysicalCollection;
+struct TransactionStatistics;
 class RocksDBBackgroundErrorListener;
 class RocksDBBackgroundThread;
 class RocksDBDumpManager;
@@ -172,7 +173,7 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   // create the storage engine
   RocksDBEngine(application_features::ApplicationServer& server,
                 RocksDBOptionsProvider& optionsProvider,
-                metrics::ICollector& metrics,
+                metrics::IRegistry& metrics,
                 IDatabasePathProvider const& databasePathProvider,
                 IVectorIndexProvider const& vectorIndexProvider,
                 IFlushControl& flushControl,
@@ -416,6 +417,11 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
 
   bool autoRefillIndexCaches() const override;
   bool autoRefillIndexCachesOnFollowers() const override;
+  bool exclusiveWrites() const noexcept;
+
+  IIndexCacheRefill& getIndexCacheRefill() noexcept {
+    return _indexCacheRefill;
+  }
 
   void syncIndexCaches() override;
 
@@ -439,6 +445,10 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
 
   metrics::Gauge<uint64_t>& indexEstimatorMemoryUsageMetric() const noexcept {
     return _metricsIndexEstimatorMemoryUsage;
+  }
+
+  ICacheManagerProvider& getCacheManagerProvider() noexcept {
+    return _cacheManagerProvider;
   }
 
   std::string getSortingMethodFile() const;
@@ -625,7 +635,7 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   ISortingPolicy const& _sortingPolicy;
   RocksDBOptionsProvider& _optionsProvider;
 
-  metrics::ICollector& _metrics;
+  metrics::IRegistry& _metrics;
 
   /// single rocksdb database used in this storage engine
   rocksdb::TransactionDB* _db;

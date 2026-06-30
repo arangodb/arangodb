@@ -34,7 +34,7 @@
 #include "Metrics/Counter.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/GaugeBuilder.h"
-#include "Metrics/MetricsFeature.h"
+#include "Metrics/IRegistry.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Replication/DatabaseReplicationApplier.h"
 #include "Replication/GlobalReplicationApplier.h"
@@ -59,13 +59,13 @@ namespace arangodb {
 ReplicationFeature::ReplicationFeature(
     application_features::ApplicationServer& server,
     application_features::CommunicationFeaturePhase& comm,
-    metrics::MetricsFeature& metrics)
+    metrics::IRegistry& metricsRegistry)
     : application_features::ApplicationFeature{server, *this},
       _connectionCache{comm, httpclient::ConnectionCache::Options{5, 120}},
       _parallelTailingInvocations(0),
-      _inventoryRequests(
-          metrics.add(arangodb_replication_cluster_inventory_requests_total{})),
-      _clients(metrics.add(arangodb_replication_clients{})) {
+      _inventoryRequests(metricsRegistry.add(
+          arangodb_replication_cluster_inventory_requests_total{})),
+      _clients(metricsRegistry.add(arangodb_replication_clients{})) {
   setOptional(true);
   startsAfter<BasicFeaturePhaseServer>();
 

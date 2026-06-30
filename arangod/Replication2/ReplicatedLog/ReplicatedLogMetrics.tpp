@@ -24,17 +24,17 @@
 #include "ReplicatedLogMetrics.h"
 
 #include "Replication2/ReplicatedLog/ReplicatedLogMetricsDeclarations.h"
-#include "Metrics/MetricsFeature.h"
+#include "Metrics/IRegistry.h"
 
 namespace arangodb::replication2::replicated_log {
 
 template<bool mock>
 template<typename Builder>
 auto ReplicatedLogMetricsIndirect<mock>::createMetric(
-    metrics::MetricsFeature* metricsFeature) -> typename Builder::MetricT* {
+    metrics::IRegistry* metricsRegistry) -> typename Builder::MetricT* {
   if constexpr (not mock) {
-    TRI_ASSERT((metricsFeature == nullptr) == mock);
-    return &metricsFeature->add(Builder{});
+    TRI_ASSERT((metricsRegistry == nullptr) == mock);
+    return &metricsRegistry->add(Builder{});
   } else {
     static std::vector<std::shared_ptr<typename Builder::MetricT>> metrics;
     auto ptr =
@@ -45,74 +45,75 @@ auto ReplicatedLogMetricsIndirect<mock>::createMetric(
 
 template<bool mock>
 ReplicatedLogMetricsIndirect<mock>::ReplicatedLogMetricsIndirect(
-    metrics::MetricsFeature* metricsFeature) {
+    metrics::IRegistry* metricsRegistry) {
   replicatedLogNumber =
-      createMetric<arangodb_replication2_replicated_log_number>(metricsFeature);
+      createMetric<arangodb_replication2_replicated_log_number>(
+          metricsRegistry);
   replicatedLogAppendEntriesRttUs =
       createMetric<arangodb_replication2_replicated_log_append_entries_rtt>(
-          metricsFeature);
+          metricsRegistry);
   replicatedLogFollowerAppendEntriesRtUs = createMetric<
       arangodb_replication2_replicated_log_follower_append_entries_rt>(
-      metricsFeature);
+      metricsRegistry);
   replicatedLogCreationNumber =
       createMetric<arangodb_replication2_replicated_log_creation_total>(
-          metricsFeature);
+          metricsRegistry);
   replicatedLogDeletionNumber =
       createMetric<arangodb_replication2_replicated_log_deletion_total>(
-          metricsFeature);
+          metricsRegistry);
   replicatedLogLeaderNumber =
       createMetric<arangodb_replication2_replicated_log_leader_number>(
-          metricsFeature);
+          metricsRegistry);
   replicatedLogFollowerNumber =
       createMetric<arangodb_replication2_replicated_log_follower_number>(
-          metricsFeature);
+          metricsRegistry);
   replicatedLogInactiveNumber =
       createMetric<arangodb_replication2_replicated_log_inactive_number>(
-          metricsFeature);
+          metricsRegistry);
   replicatedLogLeaderTookOverNumber =
       createMetric<arangodb_replication2_replicated_log_leader_took_over_total>(
-          metricsFeature);
+          metricsRegistry);
   replicatedLogStartedFollowingNumber = createMetric<
       arangodb_replication2_replicated_log_started_following_total>(
-      metricsFeature);
+      metricsRegistry);
   replicatedLogInsertsBytes =
       createMetric<arangodb_replication2_replicated_log_inserts_bytes>(
-          metricsFeature);
+          metricsRegistry);
   replicatedLogInsertsRtt =
       createMetric<arangodb_replication2_replicated_log_inserts_rtt>(
-          metricsFeature);
+          metricsRegistry);
   replicatedLogNumberAcceptedEntries = createMetric<
       arangodb_replication2_replicated_log_number_accepted_entries_total>(
-      metricsFeature);
+      metricsRegistry);
   replicatedLogNumberCommittedEntries = createMetric<
       arangodb_replication2_replicated_log_number_committed_entries_total>(
-      metricsFeature);
+      metricsRegistry);
   replicatedLogNumberMetaEntries = createMetric<
       arangodb_replication2_replicated_log_number_meta_entries_total>(
-      metricsFeature);
+      metricsRegistry);
   replicatedLogNumberCompactedEntries = createMetric<
       arangodb_replication2_replicated_log_number_compacted_entries_total>(
-      metricsFeature);
+      metricsRegistry);
 
   leaderNumInMemoryEntries =
       createMetric<arangodb_replication2_leader_in_memory_entries>(
-          metricsFeature);
+          metricsRegistry);
   leaderNumInMemoryBytes =
       createMetric<arangodb_replication2_leader_in_memory_bytes>(
-          metricsFeature);
+          metricsRegistry);
 
   replicatedLogAppendEntriesNumEntries = createMetric<
       arangodb_replication2_replicated_log_append_entries_num_entries>(
-      metricsFeature);
+      metricsRegistry);
   replicatedLogAppendEntriesSize =
       createMetric<arangodb_replication2_replicated_log_append_entries_size>(
-          metricsFeature);
+          metricsRegistry);
   replicatedLogFollowerEntryDropCount = createMetric<
       arangodb_replication2_replicated_log_follower_entry_drop_total>(
-      metricsFeature);
+      metricsRegistry);
   replicatedLogLeaderAppendEntriesErrorCount = createMetric<
       arangodb_replication2_replicated_log_leader_append_entries_error_total>(
-      metricsFeature);
+      metricsRegistry);
 }
 
 }  // namespace arangodb::replication2::replicated_log
