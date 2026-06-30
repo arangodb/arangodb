@@ -83,10 +83,9 @@ struct FutureRecord {
 };
 using OwnedFuture = FutureRecord<std::vector<std::uint8_t>>;
 
-VectorIndexMetadata makeMetadata() {
-  VectorIndexMetadata md;
-  md.codeData = {1, 2, 3, 4, 5};
-  md.formatVersion = VectorIndexFormatVersion::kV2;
+// The raw list of tables as it appears on the wire (and in legacy/future
+// records that still model tunedTables as a plain array).
+std::vector<OperatingPointTable> makeTables() {
   OperatingPointTable t10;
   t10.topK = 10;
   t10.targetRecall = 0.9;
@@ -96,7 +95,16 @@ VectorIndexMetadata makeMetadata() {
   t100.targetRecall = 0.8;
   t100.points = {OperatingPoint{0.80, "nprobe=8", 0.5},
                  OperatingPoint{0.92, "nprobe=16", 1.1}};
-  md.tunedTables = {t10, t100};
+  return {t10, t100};
+}
+
+VectorIndexMetadata makeMetadata() {
+  VectorIndexMetadata md;
+  md.codeData = {1, 2, 3, 4, 5};
+  md.formatVersion = VectorIndexFormatVersion::kV2;
+  for (auto const& table : makeTables()) {
+    md.tunedTables.emplace(table.topK, table);
+  }
   return md;
 }
 
@@ -142,7 +150,7 @@ TEST(VectorIndexMetadataSerialization, UpgradeLoadsLegacyRecord) {
 TEST(VectorIndexMetadataSerialization, DecodeToleratesUnknownFutureField) {
   OwnedFuture future;
   future.codeData = {4, 5, 6};
-  future.tunedTables = makeMetadata().tunedTables;
+  future.tunedTables = makeTables();
   future.formatVersion = VectorIndexFormatVersion::kV2;
   future.addedInFutureVersion = 999;
 
@@ -151,7 +159,8 @@ TEST(VectorIndexMetadataSerialization, DecodeToleratesUnknownFutureField) {
       { restored = decodeMetadata(serializeToBuilder(future).slice()); });
 
   EXPECT_EQ(restored.codeData, future.codeData);
-  EXPECT_EQ(restored.tunedTables, future.tunedTables);
+  // The plain-array wire form decodes into the topK-keyed map.
+  EXPECT_EQ(restored.tunedTables, makeMetadata().tunedTables);
   EXPECT_EQ(restored.formatVersion, VectorIndexFormatVersion::kV2);
 }
 
