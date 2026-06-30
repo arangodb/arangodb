@@ -25,15 +25,27 @@
 #include "Metrics/Builder.h"
 #include "Metrics/Metric.h"
 
+#include <vector>
+#include <mutex>
+
 namespace arangodb::metrics {
 
 // A registry that populates metrics but does not register them with any
-// actual metrics endpoint. Returned shared_ptr is the only owner.
+// actual metrics endpoint. The registry holds ownership of all the metrics.
+// The reference returned by IRegistry::add() is valid for the registry's
+// lifetime.
 struct FakeRegistry : public IRegistry {
  protected:
   std::shared_ptr<metrics::Metric> doAdd(metrics::Builder& builder) override {
-    return builder.build();
+    auto metrics = builder.build();
+    std::lock_guard lock{_mutex};
+    _metrics.push_back(metrics);
+    return metrics;
   }
+
+ private:
+  std::mutex _mutex;
+  std::vector<std::shared_ptr<metrics::Metric>> _metrics;
 };
 
 }  // namespace arangodb::metrics
