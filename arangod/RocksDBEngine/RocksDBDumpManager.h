@@ -45,7 +45,7 @@ struct Options;
 class RocksDBDumpManager {
  public:
   explicit RocksDBDumpManager(RocksDBEngine& engine,
-                              metrics::ICollector& metrics,
+                              metrics::IRegistry& metrics,
                               DumpLimitsFeatureOptions const& limits);
 
   ~RocksDBDumpManager();

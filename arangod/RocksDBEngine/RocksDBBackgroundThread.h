@@ -34,7 +34,7 @@ class RocksDBEngine;
 class RocksDBBackgroundThread final : public Thread {
  public:
   RocksDBBackgroundThread(RocksDBEngine& eng, double interval,
-                          metrics::ICollector& metrics);
+                          metrics::IRegistry& metrics);
   ~RocksDBBackgroundThread();
 
   void beginShutdown() override;

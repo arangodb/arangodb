@@ -26,7 +26,7 @@
 #include "Basics/debugging.h"
 #include "Logger/LogMacros.h"
 #include "Metrics/CounterBuilder.h"
-#include "Metrics/ICollector.h"
+#include "Metrics/IRegistry.h"
 
 DECLARE_COUNTER(
     arangodb_rocksdb_write_stalls_total,
@@ -37,7 +37,7 @@ DECLARE_COUNTER(arangodb_rocksdb_write_stops_total,
 namespace arangodb {
 
 /// @brief Setup the object, clearing variables, but do no real work
-RocksDBMetricsListener::RocksDBMetricsListener(metrics::ICollector& metrics)
+RocksDBMetricsListener::RocksDBMetricsListener(metrics::IRegistry& metrics)
     : _writeStalls(metrics.add(arangodb_rocksdb_write_stalls_total{})),
       _writeStops(metrics.add(arangodb_rocksdb_write_stops_total{})) {}
 

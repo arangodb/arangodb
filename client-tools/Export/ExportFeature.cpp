@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Manuel Baesler
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ExportFeature.h"
@@ -33,6 +32,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/application-exit.h"
 #include "Basics/files.h"
+#include "Export/ExportOptionsProvider.h"
 #include "FeaturePhases/BasicFeaturePhaseClient.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/Parameters.h"
@@ -71,204 +71,26 @@ namespace arangodb {
 
 ExportFeature::ExportFeature(application_features::ApplicationServer& server,
                              int* result)
-    : ApplicationFeature{server, *this},
-      _xgmmlLabelAttribute("label"),
-      _typeExport("jsonl"),
-      _customQueryMaxRuntime(0.0),
-      _useMaxRuntime(false),
-      _escapeCsvFormulae(true),
-      _xgmmlLabelOnly(false),
-      _overwrite(false),
-      _progress(true),
-      _useGzip(false),
-      _firstLine(true),
-      _documentsPerBatch(1000),
-      _skippedDeepNested(0),
-      _httpRequestsDone(0),
-      _currentCollection(),
-      _currentGraph(),
-      _result(result) {
+    : ApplicationFeature{server, *this}, _result(result) {
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseClient>();
 
   auto const cwd = std::filesystem::current_path();
-  _outputDirectory = FileUtils::buildFilename(cwd.string(), "export");
+  _options.outputDirectory = FileUtils::buildFilename(cwd.string(), "export");
 }
 
 ExportFeature::~ExportFeature() = default;
 
 void ExportFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
-  options->addOption("--collection",
-                     "Restrict the export to this collection name (can be "
-                     "specified multiple times).",
-                     new VectorParameter<StringParameter>(&_collections));
-
-  options->addOldOption("--query", "custom-query");
-  options->addOption(
-      "--custom-query",
-      "An AQL query to run for computing the data you want to export.",
-      new StringParameter(&_customQuery));
-  options->addOldOption("--query-max-runtime", "custom-query-max-runtime");
-  options
-      ->addOption(
-          "--custom-query-max-runtime",
-          "The runtime threshold for AQL queries (in seconds, 0 = no limit).",
-          new DoubleParameter(&_customQueryMaxRuntime))
-      .setIntroducedIn(30800);
-  options
-      ->addOption("--custom-query-file",
-                  "A path to a file with the custom query to be used.",
-                  new StringParameter(&_customQueryFile))
-      .setIntroducedIn(31000);
-
-  options
-      ->addOption("--custom-query-bindvars",
-                  "The bind parameters to be used with the `--custom-query` or "
-                  "`--custom-query-file` option.",
-                  new StringParameter(&_customQueryBindVars))
-      .setIntroducedIn(31000);
-
-  options->addOption("--graph-name", "The name of a graph to export.",
-                     new StringParameter(&_graphName));
-
-  options->addOption("--xgmml-label-only", "Export XGMML label only.",
-                     new BooleanParameter(&_xgmmlLabelOnly));
-
-  options->addOption(
-      "--xgmml-label-attribute",
-      "Specify the document attribute to use as the XGMML label.",
-      new StringParameter(&_xgmmlLabelAttribute));
-
-  options->addOption("--output-directory", "The output directory.",
-                     new StringParameter(&_outputDirectory));
-
-  options
-      ->addOption("--documents-per-batch",
-                  "The number of documents to return in each batch.",
-                  new UInt64Parameter(&_documentsPerBatch))
-      .setIntroducedIn(30800);
-
-  options
-      ->addOption("--escape-csv-formulae",
-                  "Prefix string cells in CSV output with extra single quote "
-                  "to prevent formula injection.",
-                  new BooleanParameter(&_escapeCsvFormulae))
-      .setIntroducedIn(30805);
-
-  options->addOption("--overwrite",
-                     "Overwrite the data in the output directory.",
-                     new BooleanParameter(&_overwrite));
-
-  options->addOption("--progress", "Show the progress.",
-                     new BooleanParameter(&_progress));
-
-  options->addOption(
-      "--fields", "A comma-separated list of fields to export to a CSV file.",
-      new StringParameter(&_csvFieldOptions));
-
-  std::unordered_set<std::string> exports = {"csv", "json", "jsonl", "xgmml",
-                                             "xml"};
-  options->addOption(
-      "--type", "type of export",
-      new DiscreteValuesParameter<StringParameter>(&_typeExport, exports));
-
-  options->addOption("--compress-output",
-                     "Compress files containing collection contents using the "
-                     "gzip format.",
-                     new BooleanParameter(&_useGzip));
+  ExportOptionsProvider provider;
+  provider.declareOptions(options, _options);
 }
 
 void ExportFeature::validateOptions(
     std::shared_ptr<options::ProgramOptions> options) {
-  auto const& positionals = options->processingResult()._positionals;
-  size_t n = positionals.size();
-
-  if (1 == n) {
-    _outputDirectory = positionals[0];
-  } else if (1 < n) {
-    LOG_TOPIC("71137", FATAL, Logger::CONFIG)
-        << "expecting at most one directory, got " +
-               StringUtils::join(positionals, ", ");
-    FATAL_ERROR_EXIT();
-  }
-
-  // trim trailing slash from path because it may cause problems on ...
-  // Windows
-  if (!_outputDirectory.empty() &&
-      _outputDirectory.back() == TRI_DIR_SEPARATOR_CHAR) {
-    TRI_ASSERT(_outputDirectory.size() > 0);
-    _outputDirectory.pop_back();
-  }
-  TRI_NormalizePath(_outputDirectory);
-
-  if (!_customQueryFile.empty()) {
-    if (!_customQuery.empty()) {
-      LOG_TOPIC("2b57e", FATAL, Logger::CONFIG)
-          << "expecting either `--custom-query` or `--custom-query-file'";
-      FATAL_ERROR_EXIT();
-    }
-
-    try {
-      basics::FileUtils::slurp(_customQueryFile, _customQuery);
-    } catch (std::exception const& ex) {
-      LOG_TOPIC("45275", FATAL, Logger::CONFIG)
-          << "unable to read custom query from file '" << _customQueryFile
-          << "': " << ex.what();
-      FATAL_ERROR_EXIT();
-    }
-  }
-
-  if (_graphName.empty() && _collections.empty() && _customQuery.empty()) {
-    LOG_TOPIC("488d8", FATAL, Logger::CONFIG)
-        << "expecting at least one collection, a graph name or an AQL query";
-    FATAL_ERROR_EXIT();
-  }
-
-  if (!_customQuery.empty() && (!_collections.empty() || !_graphName.empty())) {
-    LOG_TOPIC("6ff88", FATAL, Logger::CONFIG)
-        << "expecting either a list of collections or an AQL query";
-    FATAL_ERROR_EXIT();
-  }
-
-  if (!_customQueryBindVars.empty()) {
-    try {
-      _customQueryBindVarsBuilder = VPackParser::fromJson(_customQueryBindVars);
-    } catch (...) {
-      LOG_TOPIC("bafc2", FATAL, arangodb::Logger::BENCH)
-          << "For flag '--custom-query-bindvars " << _customQueryBindVars
-          << "': invalid JSON format.";
-      FATAL_ERROR_EXIT();
-    }
-  }
-
-  if (_typeExport == "xgmml" && _graphName.empty()) {
-    LOG_TOPIC("2c3be", FATAL, Logger::CONFIG)
-        << "expecting a graph name to dump a graph";
-    FATAL_ERROR_EXIT();
-  }
-
-  if ((_typeExport == "json" || _typeExport == "jsonl" ||
-       _typeExport == "csv") &&
-      _collections.empty() && _customQuery.empty()) {
-    LOG_TOPIC("cdcf7", FATAL, Logger::CONFIG)
-        << "expecting at least one collection or an AQL query";
-    FATAL_ERROR_EXIT();
-  }
-
-  if (_typeExport == "csv") {
-    if (_csvFieldOptions.empty()) {
-      LOG_TOPIC("76fbf", FATAL, Logger::CONFIG)
-          << "expecting at least one field definition";
-      FATAL_ERROR_EXIT();
-    }
-
-    _csvFields = StringUtils::split(_csvFieldOptions, ',');
-  }
-
-  // we will use _maxRuntime only if the option was set by the user
-  _useMaxRuntime =
-      options->processingResult().touched("--custom-query-max-runtime");
+  ExportOptionsProvider provider;
+  provider.validateOptions(options, _options);
 }
 
 void ExportFeature::prepare() {
@@ -279,17 +101,19 @@ void ExportFeature::prepare() {
   encryption = &server().getFeature<EncryptionFeature>();
 #endif
 
-  _directory = std::make_unique<ManagedDirectory>(encryption, _outputDirectory,
-                                                  !_overwrite, true, _useGzip);
+  _directory = std::make_unique<ManagedDirectory>(
+      encryption, _options.outputDirectory, !_options.overwrite, true,
+      _options.useGzip);
   if (_directory->status().fail()) {
     switch (static_cast<int>(_directory->status().errorNumber())) {
       case static_cast<int>(TRI_ERROR_FILE_EXISTS):
         LOG_TOPIC("72723", FATAL, Logger::FIXME)
-            << "cannot write to output directory '" << _outputDirectory << "'";
+            << "cannot write to output directory '" << _options.outputDirectory
+            << "'";
         break;
       case static_cast<int>(TRI_ERROR_CANNOT_OVERWRITE_FILE):
         LOG_TOPIC("81812", FATAL, Logger::FIXME)
-            << "output directory '" << _outputDirectory
+            << "output directory '" << _options.outputDirectory
             << "' already exists. use \"--overwrite true\" to "
                "overwrite data in it";
         break;
@@ -343,16 +167,18 @@ void ExportFeature::start() {
   uint64_t exportedSize = 0;
   std::string progressDetails;
 
-  if (_typeExport == "json" || _typeExport == "jsonl" || _typeExport == "xml" ||
-      _typeExport == "csv") {
-    if (_collections.size()) {
-      progressDetails = std::to_string(_collections.size()) + " collection(s)";
+  if (_options.typeExport == "json" || _options.typeExport == "jsonl" ||
+      _options.typeExport == "xml" || _options.typeExport == "csv") {
+    if (_options.collections.size()) {
+      progressDetails =
+          std::to_string(_options.collections.size()) + " collection(s)";
       collectionExport(httpClient.get());
 
-      for (auto const& collection : _collections) {
-        std::string filePath = _outputDirectory + TRI_DIR_SEPARATOR_STR +
-                               collection + "." + _typeExport;
-        if (_useGzip) {
+      for (auto const& collection : _options.collections) {
+        std::string filePath = _options.outputDirectory +
+                               TRI_DIR_SEPARATOR_STR + collection + "." +
+                               _options.typeExport;
+        if (_options.useGzip) {
           filePath.append(".gz");
         }  // if
         int64_t fileSize = TRI_SizeFile(filePath.c_str());
@@ -361,23 +187,23 @@ void ExportFeature::start() {
           exportedSize += fileSize;
         }
       }
-    } else if (!_customQuery.empty()) {
+    } else if (!_options.customQuery.empty()) {
       progressDetails = "1 query";
       queryExport(httpClient.get());
 
-      std::string filePath =
-          _outputDirectory + TRI_DIR_SEPARATOR_STR + "query." + _typeExport;
-      if (_useGzip) {
+      std::string filePath = _options.outputDirectory + TRI_DIR_SEPARATOR_STR +
+                             "query." + _options.typeExport;
+      if (_options.useGzip) {
         filePath.append(".gz");
       }  // if
       exportedSize += TRI_SizeFile(filePath.c_str());
     }
-  } else if (_typeExport == "xgmml" && _graphName.size()) {
+  } else if (_options.typeExport == "xgmml" && _options.graphName.size()) {
     progressDetails = "1 graph";
     graphExport(httpClient.get());
-    std::string filePath = _outputDirectory + TRI_DIR_SEPARATOR_STR +
-                           _graphName + "." + _typeExport;
-    if (_useGzip) {
+    std::string filePath = _options.outputDirectory + TRI_DIR_SEPARATOR_STR +
+                           _options.graphName + "." + _options.typeExport;
+    if (_options.useGzip) {
       filePath.append(".gz");
     }  // if
     int64_t fileSize = TRI_SizeFile(filePath.c_str());
@@ -399,8 +225,8 @@ void ExportFeature::start() {
 void ExportFeature::collectionExport(SimpleHttpClient* httpClient) {
   std::string errorMsg;
 
-  for (auto const& collection : _collections) {
-    if (_progress) {
+  for (auto const& collection : _options.collections) {
+    if (_options.progress) {
       std::cout << "# Exporting collection '" << collection << "'..."
                 << std::endl;
     }
@@ -416,7 +242,7 @@ void ExportFeature::collectionExport(SimpleHttpClient* httpClient) {
     post.add("@collection", VPackValue(collection));
     post.close();
     post.add("ttl", VPackValue(::ttlValue));
-    post.add("batchSize", VPackValue(_documentsPerBatch));
+    post.add("batchSize", VPackValue(_options.documentsPerBatch));
     post.add("options", VPackValue(VPackValueType::Object));
     post.add("stream", VPackSlice::trueSlice());
     post.close();
@@ -426,10 +252,10 @@ void ExportFeature::collectionExport(SimpleHttpClient* httpClient) {
         httpCall(httpClient, url, rest::RequestType::POST, post.toJson());
     VPackSlice body = parsedBody->slice();
 
-    std::string fileName = collection + "." + _typeExport;
+    std::string fileName = collection + "." + _options.typeExport;
 
     std::unique_ptr<ManagedDirectory::File> fd =
-        _directory->writableFile(fileName, _overwrite, 0, true);
+        _directory->writableFile(fileName, _options.overwrite, 0, true);
 
     if (nullptr == fd.get() || !fd->status().ok()) {
       errorMsg = "cannot write to file '" + fileName + "'";
@@ -448,10 +274,10 @@ void ExportFeature::collectionExport(SimpleHttpClient* httpClient) {
       writeBatch(*fd, VPackArrayIterator(body.get("result")), fileName);
     }
 
-    if (_typeExport == "json") {
+    if (_options.typeExport == "json") {
       std::string closingBracket = "\n]";
       writeToFile(*fd, closingBracket);
-    } else if (_typeExport == "xml") {
+    } else if (_options.typeExport == "xml") {
       std::string xmlFooter = "</collection>";
       writeToFile(*fd, xmlFooter);
     }
@@ -461,23 +287,24 @@ void ExportFeature::collectionExport(SimpleHttpClient* httpClient) {
 void ExportFeature::queryExport(SimpleHttpClient* httpClient) {
   std::string errorMsg;
 
-  if (_progress) {
-    std::cout << "# Running AQL query '" << _customQuery << "'..." << std::endl;
+  if (_options.progress) {
+    std::cout << "# Running AQL query '" << _options.customQuery << "'..."
+              << std::endl;
   }
 
   std::string const url = "_api/cursor";
 
   VPackBuilder post;
   post.openObject();
-  post.add("query", VPackValue(_customQuery));
-  if (!_customQueryBindVars.empty()) {
-    post.add("bindVars", _customQueryBindVarsBuilder->slice());
+  post.add("query", VPackValue(_options.customQuery));
+  if (!_options.customQueryBindVars.empty()) {
+    post.add("bindVars", _options.customQueryBindVarsBuilder->slice());
   }
   post.add("ttl", VPackValue(::ttlValue));
-  post.add("batchSize", VPackValue(_documentsPerBatch));
+  post.add("batchSize", VPackValue(_options.documentsPerBatch));
   post.add("options", VPackValue(VPackValueType::Object));
-  if (_useMaxRuntime) {
-    post.add("maxRuntime", VPackValue(_customQueryMaxRuntime));
+  if (_options.useMaxRuntime) {
+    post.add("maxRuntime", VPackValue(_options.customQueryMaxRuntime));
   }
 
   post.add("stream", VPackSlice::trueSlice());
@@ -487,10 +314,10 @@ void ExportFeature::queryExport(SimpleHttpClient* httpClient) {
   std::shared_ptr<VPackBuilder> parsedBody =
       httpCall(httpClient, url, rest::RequestType::POST, post.toJson());
   VPackSlice body = parsedBody->slice();
-  std::string fileName = "query." + _typeExport;
+  std::string fileName = "query." + _options.typeExport;
 
   std::unique_ptr<ManagedDirectory::File> fd =
-      _directory->writableFile(fileName, _overwrite, 0, true);
+      _directory->writableFile(fileName, _options.overwrite, 0, true);
 
   if (nullptr == fd.get() || !fd->status().ok()) {
     errorMsg = "cannot write to file '" + fileName + "'";
@@ -509,10 +336,10 @@ void ExportFeature::queryExport(SimpleHttpClient* httpClient) {
     writeBatch(*fd, VPackArrayIterator(body.get("result")), fileName);
   }
 
-  if (_typeExport == "json") {
+  if (_options.typeExport == "json") {
     std::string closingBracket = "\n]";
     writeToFile(*fd, closingBracket);
-  } else if (_typeExport == "xml") {
+  } else if (_options.typeExport == "xml") {
     std::string xmlFooter = "</collection>";
     writeToFile(*fd, xmlFooter);
   }
@@ -522,11 +349,11 @@ void ExportFeature::writeFirstLine(ManagedDirectory::File& fd,
                                    std::string const& fileName,
                                    std::string const& collection) {
   _firstLine = true;
-  if (_typeExport == "json") {
+  if (_options.typeExport == "json") {
     std::string openingBracket = "[";
     writeToFile(fd, openingBracket);
 
-  } else if (_typeExport == "xml") {
+  } else if (_options.typeExport == "xml") {
     std::string xmlHeader =
         "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n"
         "<collection name=\"";
@@ -534,10 +361,10 @@ void ExportFeature::writeFirstLine(ManagedDirectory::File& fd,
     xmlHeader.append("\">\n");
     writeToFile(fd, xmlHeader);
 
-  } else if (_typeExport == "csv") {
+  } else if (_options.typeExport == "csv") {
     std::string firstLine;
     bool isFirstValue = true;
-    for (auto const& str : _csvFields) {
+    for (auto const& str : _options.csvFields) {
       if (isFirstValue) {
         isFirstValue = false;
       } else {
@@ -556,7 +383,7 @@ void ExportFeature::writeBatch(ManagedDirectory::File& fd,
   std::string line;
   line.reserve(1024);
 
-  if (_typeExport == "jsonl") {
+  if (_options.typeExport == "jsonl") {
     VPackStringSink sink(&line);
     VPackDumper dumper(&sink);
 
@@ -566,7 +393,7 @@ void ExportFeature::writeBatch(ManagedDirectory::File& fd,
       line.push_back('\n');
       writeToFile(fd, line);
     }
-  } else if (_typeExport == "json") {
+  } else if (_options.typeExport == "json") {
     VPackStringSink sink(&line);
     VPackDumper dumper(&sink);
 
@@ -581,13 +408,13 @@ void ExportFeature::writeBatch(ManagedDirectory::File& fd,
       dumper.dump(doc);
       writeToFile(fd, line);
     }
-  } else if (_typeExport == "csv") {
+  } else if (_options.typeExport == "csv") {
     std::string value;
     for (auto const& doc : it) {
       line.clear();
       bool isFirstValue = true;
 
-      for (auto const& key : _csvFields) {
+      for (auto const& key : _options.csvFields) {
         if (isFirstValue) {
           isFirstValue = false;
         } else {
@@ -625,7 +452,7 @@ void ExportFeature::writeBatch(ManagedDirectory::File& fd,
       line.push_back('\n');
       writeToFile(fd, line);
     }
-  } else if (_typeExport == "xml") {
+  } else if (_options.typeExport == "xml") {
     for (auto const& doc : it) {
       line.clear();
       line.append("<doc key=\"");
@@ -689,14 +516,14 @@ std::shared_ptr<VPackBuilder> ExportFeature::httpCall(
 void ExportFeature::graphExport(SimpleHttpClient* httpClient) {
   std::string errorMsg;
 
-  _currentGraph = _graphName;
+  _currentGraph = _options.graphName;
 
-  if (_collections.empty()) {
-    if (_progress) {
-      std::cout << "# Export graph '" << _graphName << "'" << std::endl;
+  if (_options.collections.empty()) {
+    if (_options.progress) {
+      std::cout << "# Export graph '" << _options.graphName << "'" << std::endl;
     }
     std::string const url =
-        "/_api/gharial/" + StringUtils::urlEncode(_graphName);
+        "/_api/gharial/" + StringUtils::urlEncode(_options.graphName);
     std::shared_ptr<VPackBuilder> parsedBody =
         httpCall(httpClient, url, rest::RequestType::GET);
     VPackSlice body = parsedBody->slice();
@@ -717,20 +544,20 @@ void ExportFeature::graphExport(SimpleHttpClient* httpClient) {
     }
 
     for (auto const& cn : collections) {
-      _collections.push_back(cn);
+      _options.collections.push_back(cn);
     }
   } else {
-    if (_progress) {
+    if (_options.progress) {
       std::cout << "# Export graph with collections "
-                << StringUtils::join(_collections, ", ") << " as '"
-                << _graphName << "'" << std::endl;
+                << StringUtils::join(_options.collections, ", ") << " as '"
+                << _options.graphName << "'" << std::endl;
     }
   }
 
-  std::string fileName = _graphName + "." + _typeExport;
+  std::string fileName = _options.graphName + "." + _options.typeExport;
 
   std::unique_ptr<ManagedDirectory::File> fd =
-      _directory->writableFile(fileName, _overwrite, 0, true);
+      _directory->writableFile(fileName, _options.overwrite, 0, true);
 
   if (nullptr == fd.get() || !fd->status().ok()) {
     errorMsg = "cannot write to file '" + fileName + "'";
@@ -741,7 +568,7 @@ void ExportFeature::graphExport(SimpleHttpClient* httpClient) {
       R"(<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <graph label=")";
   writeToFile(*fd, xmlHeader);
-  writeToFile(*fd, _graphName);
+  writeToFile(*fd, _options.graphName);
 
   xmlHeader = R"("
 xmlns="http://www.cs.rpi.edu/XGMML"
@@ -749,8 +576,8 @@ directed="1">
 )";
   writeToFile(*fd, xmlHeader);
 
-  for (auto const& collection : _collections) {
-    if (_progress) {
+  for (auto const& collection : _options.collections) {
+    if (_options.progress) {
       std::cout << "# Exporting collection '" << collection << "'..."
                 << std::endl;
     }
@@ -764,7 +591,7 @@ directed="1">
     post.add("@collection", VPackValue(collection));
     post.close();
     post.add("ttl", VPackValue(::ttlValue));
-    post.add("batchSize", VPackValue(_documentsPerBatch));
+    post.add("batchSize", VPackValue(_options.documentsPerBatch));
     post.add("options", VPackValue(VPackValueType::Object));
     post.add("stream", VPackSlice::trueSlice());
     post.close();
@@ -800,17 +627,18 @@ void ExportFeature::writeGraphBatch(ManagedDirectory::File& fd,
 
   for (auto const& doc : it) {
     if (doc.hasKey("_from")) {
-      xmlTag =
-          "<edge label=\"" +
-          encode_char_entities(doc.hasKey(_xgmmlLabelAttribute) &&
-                                       doc.get(_xgmmlLabelAttribute).isString()
-                                   ? doc.get(_xgmmlLabelAttribute).copyString()
-                                   : "Default-Label") +
-          "\" source=\"" + encode_char_entities(doc.get("_from").copyString()) +
-          "\" target=\"" + encode_char_entities(doc.get("_to").copyString()) +
-          "\"";
+      xmlTag = "<edge label=\"" +
+               encode_char_entities(
+                   doc.hasKey(_options.xgmmlLabelAttribute) &&
+                           doc.get(_options.xgmmlLabelAttribute).isString()
+                       ? doc.get(_options.xgmmlLabelAttribute).copyString()
+                       : "Default-Label") +
+               "\" source=\"" +
+               encode_char_entities(doc.get("_from").copyString()) +
+               "\" target=\"" +
+               encode_char_entities(doc.get("_to").copyString()) + "\"";
       writeToFile(fd, xmlTag);
-      if (!_xgmmlLabelOnly) {
+      if (!_options.xgmmlLabelOnly) {
         xmlTag = ">\n";
         writeToFile(fd, xmlTag);
 
@@ -827,15 +655,16 @@ void ExportFeature::writeGraphBatch(ManagedDirectory::File& fd,
       }
 
     } else {
-      xmlTag =
-          "<node label=\"" +
-          encode_char_entities(doc.hasKey(_xgmmlLabelAttribute) &&
-                                       doc.get(_xgmmlLabelAttribute).isString()
-                                   ? doc.get(_xgmmlLabelAttribute).copyString()
-                                   : "Default-Label") +
-          "\" id=\"" + encode_char_entities(doc.get("_id").copyString()) + "\"";
+      xmlTag = "<node label=\"" +
+               encode_char_entities(
+                   doc.hasKey(_options.xgmmlLabelAttribute) &&
+                           doc.get(_options.xgmmlLabelAttribute).isString()
+                       ? doc.get(_options.xgmmlLabelAttribute).copyString()
+                       : "Default-Label") +
+               "\" id=\"" + encode_char_entities(doc.get("_id").copyString()) +
+               "\"";
       writeToFile(fd, xmlTag);
-      if (!_xgmmlLabelOnly) {
+      if (!_options.xgmmlLabelOnly) {
         xmlTag = ">\n";
         writeToFile(fd, xmlTag);
 
@@ -938,7 +767,7 @@ void ExportFeature::appendCsvStringValue(std::string& output,
   // +, -, @ need to be escaped with an extra single quote (') so that their
   // contents will not be interpreted as formulae 🙄
   // https://infosecwriteups.com/formula-injection-exploiting-csv-functionality-cd3d8efd02ec
-  if (_escapeCsvFormulae && !value.empty()) {
+  if (_options.escapeCsvFormulae && !value.empty()) {
     bool escapeFormula = value.front() == '=' || value.front() == '+' ||
                          value.front() == '-' || value.front() == '@';
     if (escapeFormula) {

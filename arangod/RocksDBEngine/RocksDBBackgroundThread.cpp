@@ -27,7 +27,7 @@
 #include "Basics/system-functions.h"
 #include "Logger/LogMacros.h"
 #include "Metrics/GaugeBuilder.h"
-#include "Metrics/ICollector.h"
+#include "Metrics/IRegistry.h"
 #include "Replication/ReplicationClients.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBDumpManager.h"
@@ -45,7 +45,7 @@ DECLARE_GAUGE(rocksdb_wal_released_tick_replication, uint64_t,
 
 RocksDBBackgroundThread::RocksDBBackgroundThread(RocksDBEngine& engine,
                                                  double interval,
-                                                 metrics::ICollector& metrics)
+                                                 metrics::IRegistry& metrics)
     : Thread(engine.server(), "RocksDBThread"),
       _engine(engine),
       _interval(interval),

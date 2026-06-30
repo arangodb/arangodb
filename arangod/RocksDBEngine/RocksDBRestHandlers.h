@@ -24,12 +24,13 @@
 #pragma once
 
 namespace arangodb {
+class StorageEngine;
 namespace rest {
 class RestHandlerFactory;
 }
 
 struct RocksDBRestHandlers {
-  static void registerResources(rest::RestHandlerFactory*);
+  static void registerResources(rest::RestHandlerFactory*, StorageEngine&);
 };
 
 }  // namespace arangodb

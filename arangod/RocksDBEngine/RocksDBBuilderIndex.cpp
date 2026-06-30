@@ -35,7 +35,7 @@
 #endif
 #include "Logger/LogMacros.h"
 #include "Metrics/MetricsFeature.h"
-#include "RestServer/FlushFeature.h"
+#include "RestServer/FlushSubscription.h"
 #include "RocksDBEngine/Methods/RocksDBBatchedBaseMethods.h"
 #include "RocksDBEngine/Methods/RocksDBBatchedMethods.h"
 #include "RocksDBEngine/Methods/RocksDBBatchedWithIndexMethods.h"
@@ -870,9 +870,7 @@ futures::Future<Result> RocksDBBuilderIndex::fillIndexBackground(
   // prevent WAL deletion from this tick
   auto lowerBoundTracker =
       std::make_shared<LowerBoundTracker>(snap->GetSequenceNumber(), name);
-  auto& flushFeature =
-      _collection.vocbase().server().getFeature<FlushFeature>();
-  flushFeature.registerFlushSubscription(lowerBoundTracker);
+  _engine.getFlushControl().registerFlushSubscription(lowerBoundTracker);
 
   locker.unlock();
 

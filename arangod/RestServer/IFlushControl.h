@@ -23,9 +23,11 @@
 
 #pragma once
 
+#include "RestServer/FlushSubscription.h"
 #include "VocBase/voc-types.h"
 
 #include <cstddef>
+#include <memory>
 #include <tuple>
 
 namespace arangodb {
@@ -35,6 +37,8 @@ struct IFlushControl {
   virtual bool isEnabled() const noexcept = 0;
   virtual std::tuple<std::size_t, std::size_t, TRI_voc_tick_t>
   releaseUnusedTicks() = 0;
+  virtual void registerFlushSubscription(
+      std::shared_ptr<FlushSubscription> const&) = 0;
 };
 
 }  // namespace arangodb
