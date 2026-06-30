@@ -284,7 +284,7 @@ exports.getCompleteMetricsValues = function (name, roles = "") {
     return matrix[0].map((col, i) => matrix.map(row => row[i]));
   };
 
-  let metrics = exports.getMetricsByNameFromEndpoints(name, roles);
+  let metrics = IM.getMetric(name);
 
   if (typeof name === "string") {
     // In case of "string", 'metrics' variable is an array with values of metric from each server
