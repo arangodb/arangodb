@@ -184,6 +184,21 @@ class RestUsersHandlerTest
           EXPECT_EQ(username, it->second.username());
           return it->second.collectionAuthLevel(dbname, cname);
         }));
+    EXPECT_CALL(*um, databaseAuthLevel)
+        .Times(AtLeast(1))
+        .WillRepeatedly([this](std::string_view username,
+                               std::string_view dbname, bool /*onlyCache*/) {
+          // The test user must be treated as an admin (RW on _system) so that
+          // canWriteUser() succeeds inside the REST grant/revoke handlers.
+          if (dbname == arangodb::StaticStrings::SystemDatabase) {
+            return arangodb::auth::Level::RW;
+          }
+          auto const it = _userMap.find(username);
+          if (it == _userMap.end()) {
+            return arangodb::auth::Level::NONE;
+          }
+          return it->second.databaseAuthLevel(dbname);
+        });
     EXPECT_CALL(*um, setAuthInfo)
         .Times(AtLeast(1))
         .WillRepeatedly(WithArgs<0>(
