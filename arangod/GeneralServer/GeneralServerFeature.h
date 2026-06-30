@@ -35,6 +35,7 @@
 #include "Metrics/Gauge.h"
 #include "Metrics/MetricsFeature.h"
 #include "Rest/ApiVersion.h"
+#include "Rest/CommonDefines.h"
 
 #include <cstdint>
 #include <memory>
@@ -89,6 +90,8 @@ class GeneralServerFeature final
 
   void countHttp2Connection() { _http2Connections.count(); }
 
+  void countHttpResponseCode(rest::ResponseCode code) noexcept;
+
   bool isTelemetricsEnabled() const noexcept {
     return _options.enableTelemetrics;
   }
@@ -122,6 +125,7 @@ class GeneralServerFeature final
   metrics::Histogram<metrics::LogScale<uint64_t>>& _requestBodySizeHttp2;
   metrics::Counter& _http1Connections;
   metrics::Counter& _http2Connections;
+  metrics::MetricsFeature& _metricsFeature;
 };
 
 }  // namespace arangodb

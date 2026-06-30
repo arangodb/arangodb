@@ -163,6 +163,8 @@ DECLARE_COUNTER(arangodb_http1_connections_total,
                 "Total number of HTTP/1.1 connections");
 DECLARE_COUNTER(arangodb_http2_connections_total,
                 "Total number of HTTP/2 connections");
+DECLARE_COUNTER(arangodb_http_response_http_response_code,
+                "Total number of HTTP responses by response code");
 DECLARE_GAUGE(arangodb_requests_memory_usage, std::uint64_t,
               "Memory consumed by incoming requests");
 
@@ -174,7 +176,8 @@ GeneralServerFeature::GeneralServerFeature(
       _requestBodySizeHttp1(metrics.add(arangodb_request_body_size_http1{})),
       _requestBodySizeHttp2(metrics.add(arangodb_request_body_size_http2{})),
       _http1Connections(metrics.add(arangodb_http1_connections_total{})),
-      _http2Connections(metrics.add(arangodb_http2_connections_total{})) {
+      _http2Connections(metrics.add(arangodb_http2_connections_total{})),
+      _metricsFeature(metrics) {
   setOptional(true);
   startsAfter<application_features::AqlFeaturePhase>();
 
@@ -182,6 +185,19 @@ GeneralServerFeature::GeneralServerFeature(
   startsAfter<SslServerFeature>();
   startsAfter<SchedulerFeature>();
   startsAfter<UpgradeFeature>();
+}
+
+void GeneralServerFeature::countHttpResponseCode(
+    rest::ResponseCode code) noexcept {
+  try {
+    std::string const codeStr = std::to_string(static_cast<int>(code));
+    arangodb_http_response_http_response_code builder;
+    builder.reserveSpaceForLabels(4 + codeStr.size());
+    builder.addLabel("code", codeStr);
+    _metricsFeature.ensureMetric(std::move(builder)).count();
+  } catch (...) {
+    // must not throw from response path
+  }
 }
 
 void GeneralServerFeature::collectOptions(
