@@ -41,6 +41,7 @@
 #include "Metrics/Counter.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/TtlFeature.h"
+#include "StorageEngine/StorageEngine.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Statistics/ConnectionStatistics.h"

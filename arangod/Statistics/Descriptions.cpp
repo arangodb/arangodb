@@ -30,6 +30,7 @@
 #include "Statistics/StatisticsFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Scheduler/Scheduler.h"
+#include "StorageEngine/StorageEngine.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Statistics/ConnectionStatistics.h"
 #include "Statistics/RequestStatistics.h"
