@@ -36,12 +36,6 @@ struct ReplicatedStateMetrics {
   explicit ReplicatedStateMetrics(metrics::IRegistry& metricsRegistry,
                                   std::string_view impl);
 
- private:
-  template<typename Builder>
-  static auto createMetric(metrics::IRegistry& metricsRegistry,
-                           std::string_view impl)
-      -> std::shared_ptr<typename Builder::MetricT>;
-
  public:
   std::shared_ptr<metrics::Gauge<uint64_t>> const replicatedStateNumber;
   std::shared_ptr<metrics::Gauge<uint64_t>> const replicatedStateNumberLeaders;

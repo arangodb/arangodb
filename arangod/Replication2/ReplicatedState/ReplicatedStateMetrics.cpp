@@ -88,71 +88,55 @@ DECLARE_GAUGE(arangodb_replication2_replicated_state_follower_apply_debt,
 
 }  // namespace arangodb
 
-using namespace arangodb::replication2::replicated_state;
-
-template<typename Builder>
-auto ReplicatedStateMetrics::createMetric(metrics::IRegistry& metricsRegistry,
-                                          std::string_view impl)
-    -> std::shared_ptr<typename Builder::MetricT> {
-  return metricsRegistry.addShared(Builder{}.withLabel("state_impl", impl));
-}
+namespace arangodb::replication2::replicated_state {
 
 ReplicatedStateMetrics::ReplicatedStateMetrics(
     metrics::IRegistry& metricsRegistry, std::string_view impl)
-    : replicatedStateNumber(
-          createMetric<arangodb_replication2_replicated_state_number>(
-              metricsRegistry, impl)),
-      replicatedStateNumberLeaders(
-          createMetric<arangodb_replication2_replicated_state_leader_number>(
-              metricsRegistry, impl)),
-      replicatedStateNumberFollowers(
-          createMetric<arangodb_replication2_replicated_state_follower_number>(
-              metricsRegistry, impl)),
-      replicatedStateApplyEntriesRtt(
-          createMetric<
-              arangodb_replication2_replicated_state_follower_apply_entries_rt>(
-              metricsRegistry, impl)),
+    : replicatedStateNumber(metricsRegistry.addShared(
+          arangodb_replication2_replicated_state_number{}.withLabel(
+              "state_impl", impl))),
+      replicatedStateNumberLeaders(metricsRegistry.addShared(
+          arangodb_replication2_replicated_state_leader_number{}.withLabel(
+              "state_impl", impl))),
+      replicatedStateNumberFollowers(metricsRegistry.addShared(
+          arangodb_replication2_replicated_state_follower_number{}.withLabel(
+              "state_impl", impl))),
+      replicatedStateApplyEntriesRtt(metricsRegistry.addShared(
+          arangodb_replication2_replicated_state_follower_apply_entries_rt{}
+              .withLabel("state_impl", impl))),
 
-      replicatedStateRecoverEntriesRtt(
-          createMetric<
-              arangodb_replication2_replicated_state_leader_recover_entries_rt>(
-              metricsRegistry, impl)),
-      replicatedStateAcquireSnapshotRtt(
-          createMetric<
-              arangodb_replication2_replicated_state_follower_acquire_snapshot_rt>(
-              metricsRegistry, impl)),
+      replicatedStateRecoverEntriesRtt(metricsRegistry.addShared(
+          arangodb_replication2_replicated_state_leader_recover_entries_rt{}
+              .withLabel("state_impl", impl))),
+      replicatedStateAcquireSnapshotRtt(metricsRegistry.addShared(
+          arangodb_replication2_replicated_state_follower_acquire_snapshot_rt{}
+              .withLabel("state_impl", impl))),
 
-      replicatedStateNumberWaitingForSnapshot(
-          createMetric<
-              arangodb_replication2_replicated_state_follower_waiting_for_snapshot_number>(
-              metricsRegistry, impl)),
-      replicatedStateNumberWaitingForLeader(
-          createMetric<
-              arangodb_replication2_replicated_state_follower_waiting_for_leader_number>(
-              metricsRegistry, impl)),
-      replicatedStateNumberWaitingForRecovery(
-          createMetric<
-              arangodb_replication2_replicated_state_leader_waiting_for_recovery_number>(
-              metricsRegistry, impl)),
+      replicatedStateNumberWaitingForSnapshot(metricsRegistry.addShared(
+          arangodb_replication2_replicated_state_follower_waiting_for_snapshot_number{}
+              .withLabel("state_impl", impl))),
+      replicatedStateNumberWaitingForLeader(metricsRegistry.addShared(
+          arangodb_replication2_replicated_state_follower_waiting_for_leader_number{}
+              .withLabel("state_impl", impl))),
+      replicatedStateNumberWaitingForRecovery(metricsRegistry.addShared(
+          arangodb_replication2_replicated_state_leader_waiting_for_recovery_number{}
+              .withLabel("state_impl", impl))),
 
-      replicatedStateNumberAppliedEntries(
-          createMetric<
-              arangodb_replication2_replicated_state_applied_entries_total>(
-              metricsRegistry, impl)),
-      replicatedStateNumberProcessedEntries(
-          createMetric<
-              arangodb_replication2_replicated_state_processed_entries_total>(
-              metricsRegistry, impl)),
+      replicatedStateNumberAppliedEntries(metricsRegistry.addShared(
+          arangodb_replication2_replicated_state_applied_entries_total{}
+              .withLabel("state_impl", impl))),
+      replicatedStateNumberProcessedEntries(metricsRegistry.addShared(
+          arangodb_replication2_replicated_state_processed_entries_total{}
+              .withLabel("state_impl", impl))),
 
-      replicatedStateNumberAcquireSnapshotErrors(
-          createMetric<
-              arangodb_replication2_replicated_state_acquire_snapshot_errors_total>(
-              metricsRegistry, impl)),
-      replicatedStateNumberApplyEntriesErrors(
-          createMetric<
-              arangodb_replication2_replicated_state_apply_entries_errors_total>(
-              metricsRegistry, impl)),
-      replicatedStateApplyDebt(
-          createMetric<
-              arangodb_replication2_replicated_state_follower_apply_debt>(
-              metricsRegistry, impl)) {}
+      replicatedStateNumberAcquireSnapshotErrors(metricsRegistry.addShared(
+          arangodb_replication2_replicated_state_acquire_snapshot_errors_total{}
+              .withLabel("state_impl", impl))),
+      replicatedStateNumberApplyEntriesErrors(metricsRegistry.addShared(
+          arangodb_replication2_replicated_state_apply_entries_errors_total{}
+              .withLabel("state_impl", impl))),
+      replicatedStateApplyDebt(metricsRegistry.addShared(
+          arangodb_replication2_replicated_state_follower_apply_debt{}
+              .withLabel("state_impl", impl))) {}
+
+}  // namespace arangodb::replication2::replicated_state
