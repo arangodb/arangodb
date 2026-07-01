@@ -40,9 +40,6 @@ namespace arangodb::replication2::replicated_state {
 struct ReplicatedStateMetrics;
 
 struct ReplicatedStateFeature {
-  ReplicatedStateFeature() = default; // Used by ReplicatedStateAppFeature
-  explicit ReplicatedStateFeature(metrics::IRegistry& reg) : _registry(&reg) {}
-
   /**
    * Registers a new State implementation with the given name.
    * @tparam S State Machine
@@ -100,11 +97,9 @@ struct ReplicatedStateFeature {
     return createMetricsObject(impl);
   }
   virtual auto createMetricsObject(std::string_view impl)
-      -> std::shared_ptr<ReplicatedStateMetrics>;
+      -> std::shared_ptr<ReplicatedStateMetrics> = 0;
 
  private:
-  metrics::IRegistry* _registry = nullptr;
-  
   static void assertWasInserted(std::string_view name, bool wasInserted);
   struct InternalFactoryBase
       : std::enable_shared_from_this<InternalFactoryBase> {

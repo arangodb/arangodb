@@ -23,10 +23,9 @@
 
 #include <gtest/gtest.h>
 
-#include "Metrics/FakeRegistry.h"
 #include "Mocks/LogLevels.h"
 #include "Replication2/ReplicatedLog/TestHelper.h"
-
+#include "Replication2/Mocks/TestReplicatedStateFeature.h"
 #include "Replication2/ReplicatedState/ReplicatedState.h"
 #include "Replication2/ReplicatedState/ReplicatedStateFeature.h"
 #include "Replication2/Streams/LogMultiplexer.h"
@@ -48,19 +47,16 @@ struct ReplicatedStateFeatureTest : ReplicatedLogTest {
 };
 
 TEST_F(ReplicatedStateFeatureTest, create_feature) {
-  metrics::FakeRegistry fakeRegistry;
-  auto feature = std::make_shared<ReplicatedStateFeature>(fakeRegistry);
+  auto feature = std::make_shared<tests::TestReplicatedStateFeature>();
 }
 
 TEST_F(ReplicatedStateFeatureTest, register_state_machine) {
-  metrics::FakeRegistry fakeRegistry;
-  auto feature = std::make_shared<ReplicatedStateFeature>(fakeRegistry);
+  auto feature = std::make_shared<tests::TestReplicatedStateFeature>();
   feature->registerStateType<MyState>("my-state");
 }
 
 TEST_F(ReplicatedStateFeatureTest, create_state_machine) {
-  metrics::FakeRegistry fakeRegistry;
-  auto feature = std::make_shared<ReplicatedStateFeature>(fakeRegistry);
+  auto feature = std::make_shared<tests::TestReplicatedStateFeature>();
   feature->registerStateType<MyState>("my-state");
 
   auto log = makeReplicatedLog(LogId{1});
@@ -69,8 +65,7 @@ TEST_F(ReplicatedStateFeatureTest, create_state_machine) {
 }
 
 TEST_F(ReplicatedStateFeatureTest, create_non_existing_state_machine) {
-  metrics::FakeRegistry fakeRegistry;
-  auto feature = std::make_shared<ReplicatedStateFeature>(fakeRegistry);
+  auto feature = std::make_shared<tests::TestReplicatedStateFeature>();
   feature->registerStateType<MyState>("my-state");
 
   auto log = makeReplicatedLog(LogId{1});
@@ -84,8 +79,7 @@ TEST_F(ReplicatedStateFeatureTest, create_non_existing_state_machine) {
 
 TEST_F(ReplicatedStateFeatureTest,
        register_duplicated_state_machine_DeathTest) {
-  metrics::FakeRegistry fakeRegistry;
-  auto feature = std::make_shared<ReplicatedStateFeature>(fakeRegistry);
+  auto feature = std::make_shared<tests::TestReplicatedStateFeature>();
   feature->registerStateType<MyState>("my-state");
   ASSERT_DEATH_IF_SUPPORTED(
       { feature->registerStateType<MyState>("my-state"); }, ".*");

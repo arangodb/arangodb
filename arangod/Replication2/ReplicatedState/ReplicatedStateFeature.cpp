@@ -80,13 +80,6 @@ void replicated_state::ReplicatedStateFeature::assertWasInserted(
   }
 }
 
-auto replicated_state::ReplicatedStateFeature::createMetricsObject(
-    std::string_view name) -> std::shared_ptr<ReplicatedStateMetrics> {
-  // If not injected, ReplicatedStateAppFeature must override this
-  TRI_ASSERT(_registry != nullptr);
-  return std::make_shared<ReplicatedStateMetrics>(*_registry, name);
-}
-
 replicated_state::ReplicatedStateAppFeature::ReplicatedStateAppFeature(
     application_features::ApplicationServer& server)
     : application_features::ApplicationFeature{server, *this} {
