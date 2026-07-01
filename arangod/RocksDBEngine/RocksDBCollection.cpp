@@ -27,6 +27,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/RecursiveLocker.h"
+#include "Basics/DownCast.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/ThreadLocalLeaser.h"
