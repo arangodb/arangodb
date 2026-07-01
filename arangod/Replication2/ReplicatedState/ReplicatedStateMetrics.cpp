@@ -24,7 +24,7 @@
 #include "ReplicatedStateMetrics.h"
 
 #include "Replication2/ReplicatedLog/ReplicatedLogMetricsDeclarations.h"
-#include "Metrics/MetricsFeature.h"
+#include "Metrics/IRegistry.h"
 #include "Metrics/Gauge.h"
 #include "Metrics/Scale.h"
 
@@ -91,91 +91,89 @@ DECLARE_GAUGE(arangodb_replication2_replicated_state_follower_apply_debt,
 using namespace arangodb::replication2::replicated_state;
 
 ReplicatedStateMetrics::ReplicatedStateMetrics(
-    metrics::MetricsFeature& metricsFeature, std::string_view impl)
-    : ReplicatedStateMetrics(&metricsFeature, impl) {}
+    metrics::IRegistry& metricsRegistry, std::string_view impl)
+    : ReplicatedStateMetrics(&metricsRegistry, impl) {}
 
 template<typename Builder, bool mock>
-auto ReplicatedStateMetrics::createMetric(
-    metrics::MetricsFeature* metricsFeature, std::string_view impl)
+auto ReplicatedStateMetrics::createMetric(metrics::IRegistry* metricsRegistry,
+                                          std::string_view impl)
     -> std::shared_ptr<typename Builder::MetricT> {
-  TRI_ASSERT((metricsFeature == nullptr) == mock);
+  TRI_ASSERT((metricsRegistry == nullptr) == mock);
   if constexpr (!mock) {
-    return metricsFeature->addShared(Builder{}.withLabel("state_impl", impl));
+    return metricsRegistry->addShared(Builder{}.withLabel("state_impl", impl));
   } else {
     return std::dynamic_pointer_cast<typename Builder::MetricT>(
         Builder{}.build());
   }
 }
 
-template<
-    typename MFP,
-    std::enable_if_t<std::is_same_v<arangodb::metrics::MetricsFeature*, MFP> ||
-                         std::is_null_pointer_v<MFP>,
-                     int>,
-    bool mock>
-ReplicatedStateMetrics::ReplicatedStateMetrics(MFP metricsFeature,
+template<typename MFP,
+         std::enable_if_t<std::is_same_v<arangodb::metrics::IRegistry*, MFP> ||
+                              std::is_null_pointer_v<MFP>,
+                          int>,
+         bool mock>
+ReplicatedStateMetrics::ReplicatedStateMetrics(MFP metricsRegistry,
                                                std::string_view impl)
     : replicatedStateNumber(
           createMetric<arangodb_replication2_replicated_state_number, mock>(
-              metricsFeature, impl)),
+              metricsRegistry, impl)),
       replicatedStateNumberLeaders(
           createMetric<arangodb_replication2_replicated_state_leader_number,
-                       mock>(metricsFeature, impl)),
+                       mock>(metricsRegistry, impl)),
       replicatedStateNumberFollowers(
           createMetric<arangodb_replication2_replicated_state_follower_number,
-                       mock>(metricsFeature, impl)),
+                       mock>(metricsRegistry, impl)),
       replicatedStateApplyEntriesRtt(
           createMetric<
               arangodb_replication2_replicated_state_follower_apply_entries_rt,
-              mock>(metricsFeature, impl)),
+              mock>(metricsRegistry, impl)),
 
       replicatedStateRecoverEntriesRtt(
           createMetric<
               arangodb_replication2_replicated_state_leader_recover_entries_rt,
-              mock>(metricsFeature, impl)),
+              mock>(metricsRegistry, impl)),
       replicatedStateAcquireSnapshotRtt(
           createMetric<
               arangodb_replication2_replicated_state_follower_acquire_snapshot_rt,
-              mock>(metricsFeature, impl)),
+              mock>(metricsRegistry, impl)),
 
       replicatedStateNumberWaitingForSnapshot(
           createMetric<
               arangodb_replication2_replicated_state_follower_waiting_for_snapshot_number,
-              mock>(metricsFeature, impl)),
+              mock>(metricsRegistry, impl)),
       replicatedStateNumberWaitingForLeader(
           createMetric<
               arangodb_replication2_replicated_state_follower_waiting_for_leader_number,
-              mock>(metricsFeature, impl)),
+              mock>(metricsRegistry, impl)),
       replicatedStateNumberWaitingForRecovery(
           createMetric<
               arangodb_replication2_replicated_state_leader_waiting_for_recovery_number,
-              mock>(metricsFeature, impl)),
+              mock>(metricsRegistry, impl)),
 
       replicatedStateNumberAppliedEntries(
           createMetric<
               arangodb_replication2_replicated_state_applied_entries_total,
-              mock>(metricsFeature, impl)),
+              mock>(metricsRegistry, impl)),
       replicatedStateNumberProcessedEntries(
           createMetric<
               arangodb_replication2_replicated_state_processed_entries_total,
-              mock>(metricsFeature, impl)),
+              mock>(metricsRegistry, impl)),
 
       replicatedStateNumberAcquireSnapshotErrors(
           createMetric<
               arangodb_replication2_replicated_state_acquire_snapshot_errors_total,
-              mock>(metricsFeature, impl)),
+              mock>(metricsRegistry, impl)),
       replicatedStateNumberApplyEntriesErrors(
           createMetric<
               arangodb_replication2_replicated_state_apply_entries_errors_total,
-              mock>(metricsFeature, impl)),
+              mock>(metricsRegistry, impl)),
       replicatedStateApplyDebt(
           createMetric<
               arangodb_replication2_replicated_state_follower_apply_debt, mock>(
-              metricsFeature, impl)) {}
+              metricsRegistry, impl)) {}
 
 template arangodb::replication2::replicated_state::ReplicatedStateMetrics::
-    ReplicatedStateMetrics(arangodb::metrics::MetricsFeature*,
-                           std::string_view);
+    ReplicatedStateMetrics(arangodb::metrics::IRegistry*, std::string_view);
 
 template arangodb::replication2::replicated_state::ReplicatedStateMetrics::
     ReplicatedStateMetrics(std::nullptr_t, std::string_view);

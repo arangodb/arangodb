@@ -54,7 +54,7 @@ class Agent;
 class State {
  public:
   /// @brief Default constructor
-  explicit State(metrics::MetricsFeature& metrics);
+  explicit State(metrics::IRegistry& metricsRegistry);
 
   /// @brief Default Destructor
   virtual ~State();

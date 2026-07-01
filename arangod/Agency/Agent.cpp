@@ -47,7 +47,7 @@
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/HistogramBuilder.h"
 #include "Metrics/LogScale.h"
-#include "Metrics/MetricsFeature.h"
+#include "Metrics/IRegistry.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -96,11 +96,11 @@ std::string const NO_LEADER("");
 
 /// Agent configuration
 Agent::Agent(application_features::ApplicationServer& server,
-             metrics::MetricsFeature& metrics, config_t const& config)
+             metrics::IRegistry& metricsRegistry, config_t const& config)
     : arangodb::ServerThread(server, "Agent"),
       _constituent(server),
-      _supervision(std::make_unique<Supervision>(server, metrics)),
-      _state(metrics),
+      _supervision(std::make_unique<Supervision>(server, metricsRegistry)),
+      _state(metricsRegistry),
       _config(config),
       _commitIndex(0),
       _agentNeedsWakeup(false),
@@ -108,15 +108,18 @@ Agent::Agent(application_features::ApplicationServer& server,
       _ready(false),
       _preparing(0),
       _loaded(false),
-      _write_ok(metrics.add(arangodb_agency_write_ok_total{})),
-      _write_no_leader(metrics.add(arangodb_agency_write_no_leader_total{})),
-      _read_ok(metrics.add(arangodb_agency_read_ok_total{})),
-      _read_no_leader(metrics.add(arangodb_agency_read_no_leader_total{})),
-      _write_hist_msec(metrics.add(arangodb_agency_write_hist{})),
-      _commit_hist_msec(metrics.add(arangodb_agency_commit_hist{})),
-      _append_hist_msec(metrics.add(arangodb_agency_append_hist{})),
-      _compaction_hist_msec(metrics.add(arangodb_agency_compaction_hist{})),
-      _local_index(metrics.add(arangodb_agency_local_commit_index{})) {
+      _write_ok(metricsRegistry.add(arangodb_agency_write_ok_total{})),
+      _write_no_leader(
+          metricsRegistry.add(arangodb_agency_write_no_leader_total{})),
+      _read_ok(metricsRegistry.add(arangodb_agency_read_ok_total{})),
+      _read_no_leader(
+          metricsRegistry.add(arangodb_agency_read_no_leader_total{})),
+      _write_hist_msec(metricsRegistry.add(arangodb_agency_write_hist{})),
+      _commit_hist_msec(metricsRegistry.add(arangodb_agency_commit_hist{})),
+      _append_hist_msec(metricsRegistry.add(arangodb_agency_append_hist{})),
+      _compaction_hist_msec(
+          metricsRegistry.add(arangodb_agency_compaction_hist{})),
+      _local_index(metricsRegistry.add(arangodb_agency_local_commit_index{})) {
   _state.configure(this);
   _constituent.configure(this);
   _inception = std::make_unique<Inception>(*this);

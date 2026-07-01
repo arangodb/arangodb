@@ -18,33 +18,16 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
+/// @author Julia Puget
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "Metrics/Builder.h"
-#include "Metrics/Metric.h"
+namespace arangodb {
 
-namespace arangodb::metrics {
-
-struct IRegistry {
-  virtual ~IRegistry() = default;
-
-  // tries to add metric. throws if such metric already exists
-  template<typename MetricBuilder>
-  auto add(MetricBuilder&& builder) -> typename MetricBuilder::MetricT& {
-    return static_cast<typename MetricBuilder::MetricT&>(*doAdd(builder));
-  }
-
-  template<typename MetricBuilder>
-  auto addShared(MetricBuilder&& builder)
-      -> std::shared_ptr<typename MetricBuilder::MetricT> {
-    return std::static_pointer_cast<typename MetricBuilder::MetricT>(
-        doAdd(builder));
-  }
-
- protected:
-  virtual std::shared_ptr<Metric> doAdd(Builder& builder) = 0;
+struct IRecoveryCallback {
+  virtual ~IRecoveryCallback() = default;
+  virtual void recoveryDone() = 0;
 };
 
-}  // namespace arangodb::metrics
+}  // namespace arangodb
