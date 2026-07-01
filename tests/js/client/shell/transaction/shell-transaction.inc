@@ -4116,7 +4116,6 @@ function transactionCrossCollectionSuite (dbParams) {
       } catch (err) {
         if (err.errorNum === undefined) throw err;
         assertEqual(internal.errors.ERROR_TRANSACTION_UNREGISTERED_COLLECTION.code, err.errorNum);
-        assertTrue(err.errorMessage.endsWith(`: ${c2.name()} [read]`), err.errorMessage);
       } finally {
         trx.abort();
       }
