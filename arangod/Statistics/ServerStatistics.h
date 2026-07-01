@@ -24,8 +24,6 @@
 #pragma once
 
 #include <cstdint>
-#include <optional>
-#include <functional>
 
 #include "Metrics/Fwd.h"
 
@@ -37,8 +35,6 @@ struct TransactionStatistics {
   TransactionStatistics(TransactionStatistics&&) = delete;
   TransactionStatistics& operator=(TransactionStatistics const&) = delete;
   TransactionStatistics& operator=(TransactionStatistics&&) = delete;
-
-  void setupDocumentMetrics();
 
   metrics::IRegistry& _metrics;
 
@@ -62,31 +58,6 @@ struct TransactionStatistics {
   metrics::Histogram<metrics::LogScale<double>>& _lockTimes;
   // Total number of times we used a fallback to sequential locking
   metrics::Counter& _sequentialLocks;
-
-  struct ReadWriteMetrics {
-    // Total number of write operations in storage engine (excl. sync
-    // replication)
-    metrics::Counter& numWrites;
-    // Total number of write operations in storage engine by sync replication
-    metrics::Counter& numWritesReplication;
-    // Total number of truncate operations (not number of documents truncated!)
-    // (excl. sync replication)
-    metrics::Counter& numTruncates;
-    // Total number of truncate operations (not number of documents truncated!)
-    // by sync replication
-    metrics::Counter& numTruncatesReplication;
-
-    /// @brief the following metrics are conditional and only initialized if
-    /// startup option `--server.export-read-write-metrics` is set
-    metrics::Histogram<metrics::LogScale<float>>& rocksdb_read_sec;
-    metrics::Histogram<metrics::LogScale<float>>& rocksdb_insert_sec;
-    metrics::Histogram<metrics::LogScale<float>>& rocksdb_replace_sec;
-    metrics::Histogram<metrics::LogScale<float>>& rocksdb_remove_sec;
-    metrics::Histogram<metrics::LogScale<float>>& rocksdb_update_sec;
-    metrics::Histogram<metrics::LogScale<float>>& rocksdb_truncate_sec;
-  };
-
-  std::optional<ReadWriteMetrics> _readWriteMetrics;
 };
 
 struct ServerStatistics {

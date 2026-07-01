@@ -70,9 +70,8 @@ MetricsFeature::MetricsFeature(
 
 void MetricsFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
-  double const startTime = StatisticsFeature::time();
-  StatisticsFeature::setServerStartTime(startTime);
-  _serverStatistics = std::make_unique<ServerStatistics>(startTime);
+  _serverStatistics =
+      std::make_unique<ServerStatistics>(StatisticsFeature::time());
 
   metrics::MetricsOptionsProvider provider;
   provider.declareOptions(options, _options);

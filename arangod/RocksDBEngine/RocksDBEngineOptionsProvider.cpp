@@ -41,12 +41,6 @@ void RocksDBEngineOptionsProvider::declareOptions(
     std::shared_ptr<ProgramOptions> opts, RocksDBEngineOptions& options) {
   opts->addObsoleteOption("--server.storage-engine", "The storage engine type",
                           true);
-  opts->addObsoleteOption(
-      "--server.export-read-write-metrics",
-      "Whether to enable metrics for document reads and "
-      "writes (moved to --rocksdb.export-read-write-metrics).",
-      false);
-
   opts->addSection("rocksdb", "RocksDB engine");
 
   opts->addOption(
@@ -388,7 +382,8 @@ Only use this option for testing purposes! It is bad for performance and
 disables a few features like parallel index generation!)");
 #endif
 
-  opts->addOption("--rocksdb.export-read-write-metrics",
+  // TODO: consider moving this option to --rocksdb.export-read-write-metrics
+  opts->addOption("--server.export-read-write-metrics",
                   "Whether to enable metrics for document reads and writes.",
                   new BooleanParameter(&options.exportReadWriteMetrics),
                   arangodb::options::makeFlags(

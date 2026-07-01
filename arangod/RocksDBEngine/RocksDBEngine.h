@@ -31,6 +31,7 @@
 #include <map>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <tuple>
@@ -42,9 +43,9 @@
 #include "Containers/FlatHashSet.h"
 #include "Metrics/Fwd.h"
 #include "ISortingPolicy.h"
+#include "RocksDBEngine/RocksDBReadWriteMetrics.h"
 #include "Cache/ICacheManagerProvider.h"
 #include "Metrics/IRegistry.h"
-#include "Statistics/ServerStatistics.h"
 #include "Replication2/ReplicatedLog/IReplicatedLogProvider.h"
 #include "RestServer/IDatabasePathProvider.h"
 #include "RestServer/IDatabaseProvider.h"
@@ -87,7 +88,6 @@ struct WalManager;
 }  // namespace replication2::storage
 
 class PhysicalCollection;
-struct TransactionStatistics;
 class RocksDBBackgroundErrorListener;
 class RocksDBBackgroundThread;
 class RocksDBDumpManager;
@@ -211,9 +211,6 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
 
   void flushOpenFilesIfRequired();
   HealthData healthCheck() override;
-
-  TransactionStatistics& transactionStatistics() noexcept override;
-  TransactionStatistics const& transactionStatistics() const noexcept override;
 
   std::unique_ptr<transaction::Manager> createTransactionManager(
       transaction::ManagerFeature&) override;
@@ -642,7 +639,8 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   RocksDBOptionsProvider& _optionsProvider;
 
   metrics::IRegistry& _metrics;
-  std::unique_ptr<TransactionStatistics> _transactionStatistics;
+  // only set if startup option `--server.export-read-write-metrics` is enabled
+  std::optional<RocksDBReadWriteMetrics> _readWriteMetrics;
 
   /// single rocksdb database used in this storage engine
   rocksdb::TransactionDB* _db;

@@ -25,7 +25,6 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/OptimizerRulesFeature.h"
-#include "Assertions/ProdAssert.h"
 #include "Basics/Exceptions.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
@@ -43,7 +42,6 @@
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/Storage/IStorageEngineMethods.h"
 #include "RocksDBEngine/RocksDBEngine.h"
-#include "Statistics/ServerStatistics.h"
 #include "RocksDBEngine/RocksDBOptimizerRules.h"
 #include "Transaction/Context.h"
 #include "Transaction/Manager.h"
@@ -76,19 +74,6 @@ ClusterEngine::ClusterEngine(application_features::ApplicationServer& server,
 ClusterEngine::~ClusterEngine() = default;
 
 void ClusterEngine::setActualEngine(StorageEngine* e) { _actualEngine = e; }
-
-TransactionStatistics& ClusterEngine::transactionStatistics() noexcept {
-  ADB_PROD_ASSERT(_transactionStatistics != nullptr)
-      << "transactionStatistics() called before start()";
-  return *_transactionStatistics;
-}
-
-TransactionStatistics const& ClusterEngine::transactionStatistics()
-    const noexcept {
-  ADB_PROD_ASSERT(_transactionStatistics != nullptr)
-      << "transactionStatistics() called before start()";
-  return *_transactionStatistics;
-}
 
 bool ClusterEngine::isRocksDB() const {
   return !ClusterEngine::Mocking && _actualEngine &&
@@ -131,7 +116,7 @@ void ClusterEngine::prepare() {
 
 void ClusterEngine::start() {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
-  _transactionStatistics = std::make_unique<TransactionStatistics>(_metrics);
+  initTransactionStatistics(_metrics);
 }
 
 std::unique_ptr<transaction::Manager> ClusterEngine::createTransactionManager(

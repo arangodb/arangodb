@@ -59,6 +59,7 @@
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/HistogramBuilder.h"
 #include "Metrics/Metric.h"
+#include "Metrics/TimeScale.h"
 #include "Metrics/IRegistry.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
@@ -204,6 +205,31 @@ DECLARE_COUNTER(
     rocksdb_cache_edge_empty_inserts_total,
     "Number of inserts into the edge cache that were an empty array");
 
+DECLARE_COUNTER(arangodb_collection_truncates_total,
+                "Total number of collection truncate operations (excl. "
+                "synchronous replication)");
+DECLARE_COUNTER(arangodb_collection_truncates_replication_total,
+                "Total number of collection truncate operations by synchronous "
+                "replication");
+DECLARE_COUNTER(arangodb_document_writes_total,
+                "Total number of document write operations (excl. synchronous "
+                "replication)");
+DECLARE_COUNTER(
+    arangodb_document_writes_replication_total,
+    "Total number of document write operations by synchronous replication");
+DECLARE_HISTOGRAM(arangodb_document_read_time, TimeScale<>,
+                  "Total time spent in document read operations [s]");
+DECLARE_HISTOGRAM(arangodb_document_insert_time, TimeScale<>,
+                  "Total time spent in document insert operations [s]");
+DECLARE_HISTOGRAM(arangodb_document_replace_time, TimeScale<>,
+                  "Total time spent in document replace operations [s]");
+DECLARE_HISTOGRAM(arangodb_document_remove_time, TimeScale<>,
+                  "Total time spent in document remove operations [s]");
+DECLARE_HISTOGRAM(arangodb_document_update_time, TimeScale<>,
+                  "Total time spent in document update operations [s]");
+DECLARE_HISTOGRAM(arangodb_collection_truncate_time, TimeScale<>,
+                  "Total time spent in collection truncate operations [s]");
+
 // global flag to cancel all compactions. will be flipped to true on shutdown
 static std::atomic<bool> cancelCompactions{false};
 
@@ -337,19 +363,6 @@ RocksDBEngine::RocksDBEngine(
 RocksDBEngine::~RocksDBEngine() {
   _recoveryHelpers.clear();
   shutdownRocksDBInstance();
-}
-
-TransactionStatistics& RocksDBEngine::transactionStatistics() noexcept {
-  ADB_PROD_ASSERT(_transactionStatistics != nullptr)
-      << "transactionStatistics() called before start()";
-  return *_transactionStatistics;
-}
-
-TransactionStatistics const& RocksDBEngine::transactionStatistics()
-    const noexcept {
-  ADB_PROD_ASSERT(_transactionStatistics != nullptr)
-      << "transactionStatistics() called before start()";
-  return *_transactionStatistics;
 }
 
 /// shuts down the RocksDB instance. this is called from unprepare
@@ -544,9 +557,20 @@ void RocksDBEngine::start() {
   TRI_ASSERT(isEnabled());
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 
-  _transactionStatistics = std::make_unique<TransactionStatistics>(_metrics);
+  initTransactionStatistics(_metrics);
   if (_options.exportReadWriteMetrics) {
-    _transactionStatistics->setupDocumentMetrics();
+    _readWriteMetrics.emplace(RocksDBReadWriteMetrics{
+        _metrics.add(arangodb_document_writes_total{}),
+        _metrics.add(arangodb_document_writes_replication_total{}),
+        _metrics.add(arangodb_collection_truncates_total{}),
+        _metrics.add(arangodb_collection_truncates_replication_total{}),
+        _metrics.add(arangodb_document_read_time{}),
+        _metrics.add(arangodb_document_insert_time{}),
+        _metrics.add(arangodb_document_replace_time{}),
+        _metrics.add(arangodb_document_remove_time{}),
+        _metrics.add(arangodb_document_update_time{}),
+        _metrics.add(arangodb_collection_truncate_time{}),
+    });
   }
 
   auto path = _databasePathProvider.directory();
@@ -1096,9 +1120,8 @@ void RocksDBEngine::addParametersForNewCollection(VPackBuilder& builder,
 // create storage-engine specific collection
 std::unique_ptr<PhysicalCollection> RocksDBEngine::createPhysicalCollection(
     LogicalCollection& collection, velocypack::Slice info) {
-  return std::make_unique<RocksDBCollection>(collection, info,
-                                             _cacheManagerProvider.manager(),
-                                             transactionStatistics());
+  return std::make_unique<RocksDBCollection>(
+      collection, info, _cacheManagerProvider.manager(), _readWriteMetrics);
 }
 
 // inventory functionality

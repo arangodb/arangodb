@@ -66,9 +66,6 @@ class ClusterEngine final : public StorageEngine {
 
   HealthData healthCheck() override;
 
-  TransactionStatistics& transactionStatistics() noexcept override;
-  TransactionStatistics const& transactionStatistics() const noexcept override;
-
   std::unique_ptr<transaction::Manager> createTransactionManager(
       transaction::ManagerFeature&) override;
   std::shared_ptr<TransactionState> createTransactionState(
@@ -247,7 +244,6 @@ class ClusterEngine final : public StorageEngine {
  private:
   ClusterFeature& _clusterFeature;
   metrics::IRegistry& _metrics;
-  std::unique_ptr<TransactionStatistics> _transactionStatistics;
   /// path to arangodb data dir
   std::string _basePath;
   StorageEngine* _actualEngine;

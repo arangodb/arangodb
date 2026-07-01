@@ -23,13 +23,14 @@
 
 #pragma once
 
-#include "Statistics/ServerStatistics.h"
 #include "RocksDBEngine/RocksDBMetaCollection.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
+#include "RocksDBEngine/RocksDBReadWriteMetrics.h"
 #include "VocBase/Identifiers/IndexId.h"
 
 #include <atomic>
 #include <memory>
+#include <optional>
 
 namespace rocksdb {
 class PinnableSlice;
@@ -50,10 +51,10 @@ class RocksDBCollection final : public RocksDBMetaCollection {
   friend class RocksDBEngine;
 
  public:
-  explicit RocksDBCollection(LogicalCollection& collection,
-                             velocypack::Slice info,
-                             cache::Manager* cacheManager,
-                             TransactionStatistics& statistics);
+  explicit RocksDBCollection(
+      LogicalCollection& collection, velocypack::Slice info,
+      cache::Manager* cacheManager,
+      std::optional<RocksDBReadWriteMetrics>& readWriteMetrics);
   ~RocksDBCollection();
 
   void deferDropCollection(
@@ -261,7 +262,7 @@ class RocksDBCollection final : public RocksDBMetaCollection {
   /// use only with std::atomic_load|store_explicit()!
   mutable std::shared_ptr<cache::Cache> _cache;
 
-  TransactionStatistics& _statistics;
+  std::optional<RocksDBReadWriteMetrics>& _readWriteMetrics;
 
   std::atomic_bool _cacheEnabled;
 };

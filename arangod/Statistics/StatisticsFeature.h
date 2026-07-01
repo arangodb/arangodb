@@ -98,8 +98,6 @@ class StatisticsFeature final
                              metrics::MetricsFeature& metrics);
 
   static double time();
-  static void setServerStartTime(double t) noexcept;
-  static double serverUptime() noexcept;
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -137,6 +135,7 @@ class StatisticsFeature final
                               std::initializer_list<std::string> const& les,
                               bool isInteger, std::string_view globals,
                               bool ensureWhitespace);
+  static double serverUptime() noexcept;
   static double _serverStartTime;
 
   StatisticsFeatureOptions _options;

@@ -637,6 +637,7 @@ StatisticsFeature::StatisticsFeature(
   setOptional(true);
   startsAfter<AqlFeaturePhase>();
   startsAfter<NetworkFeature>();
+  _serverStartTime = time();
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   bool foundError = false;
@@ -688,10 +689,6 @@ StatisticsFeature::StatisticsFeature(
 /*static*/ double StatisticsFeature::_serverStartTime = 0.0;
 
 /*static*/ double StatisticsFeature::time() { return TRI_microtime(); }
-
-/*static*/ void StatisticsFeature::setServerStartTime(double t) noexcept {
-  _serverStartTime = t;
-}
 
 /*static*/ double StatisticsFeature::serverUptime() noexcept {
   return time() - _serverStartTime;
