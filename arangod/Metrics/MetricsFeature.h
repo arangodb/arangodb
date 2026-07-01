@@ -23,7 +23,6 @@
 
 #pragma once
 
-#include "IMetricsConfig.h"
 #include "IRegistry.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/LazyApplicationFeatureReference.h"
@@ -54,8 +53,7 @@ namespace arangodb::metrics {
 class ClusterMetricsFeature;
 
 class MetricsFeature final : public application_features::ApplicationFeature,
-                             public IRegistry,
-                             public IMetricsConfig {
+                             public IRegistry {
  public:
   // Maintain backward compatibility for existing code
   using UsageTrackingMode = metrics::UsageTrackingMode;
@@ -75,7 +73,6 @@ class MetricsFeature final : public application_features::ApplicationFeature,
 
   bool exportAPI() const noexcept;
   bool ensureWhitespace() const noexcept;
-  bool exportReadWriteMetrics() const noexcept override;
   UsageTrackingMode usageTrackingMode() const noexcept;
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) final;

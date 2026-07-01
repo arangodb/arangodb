@@ -146,10 +146,6 @@ bool MetricsFeature::ensureWhitespace() const noexcept {
   return _options.ensureWhitespace;
 }
 
-bool MetricsFeature::exportReadWriteMetrics() const noexcept {
-  return _options.exportReadWriteMetrics;
-}
-
 MetricsFeature::UsageTrackingMode MetricsFeature::usageTrackingMode()
     const noexcept {
   return _options.usageTrackingMode;

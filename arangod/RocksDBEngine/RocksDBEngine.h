@@ -43,7 +43,6 @@
 #include "Metrics/Fwd.h"
 #include "ISortingPolicy.h"
 #include "Cache/ICacheManagerProvider.h"
-#include "Metrics/IMetricsConfig.h"
 #include "Metrics/IRegistry.h"
 #include "Statistics/ServerStatistics.h"
 #include "Replication2/ReplicatedLog/IReplicatedLogProvider.h"
@@ -178,7 +177,6 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   RocksDBEngine(application_features::ApplicationServer& server,
                 RocksDBOptionsProvider& optionsProvider,
                 metrics::IRegistry& metrics,
-                metrics::IMetricsConfig& metricsConfig,
                 IDatabasePathProvider const& databasePathProvider,
                 IVectorIndexProvider const& vectorIndexProvider,
                 IFlushControl& flushControl,
@@ -644,8 +642,7 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   RocksDBOptionsProvider& _optionsProvider;
 
   metrics::IRegistry& _metrics;
-  metrics::IMetricsConfig& _metricsConfig;
-  TransactionStatistics _transactionStatistics;
+  std::unique_ptr<TransactionStatistics> _transactionStatistics;
 
   /// single rocksdb database used in this storage engine
   rocksdb::TransactionDB* _db;

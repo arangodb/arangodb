@@ -43,6 +43,7 @@
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/Storage/IStorageEngineMethods.h"
 #include "RocksDBEngine/RocksDBEngine.h"
+#include "Statistics/ServerStatistics.h"
 #include "RocksDBEngine/RocksDBOptimizerRules.h"
 #include "Transaction/Context.h"
 #include "Transaction/Manager.h"
@@ -62,10 +63,12 @@ bool ClusterEngine::Mocking = false;
 #endif
 
 // create the storage engine
-ClusterEngine::ClusterEngine(application_features::ApplicationServer& server)
+ClusterEngine::ClusterEngine(application_features::ApplicationServer& server,
+                             metrics::IRegistry& metrics)
     : StorageEngine(server, EngineName, name(), typeid(ClusterEngine),
                     std::make_unique<ClusterIndexFactory>(server, *this)),
       _clusterFeature(server.getFeature<ClusterFeature>()),
+      _metrics(metrics),
       _actualEngine(nullptr) {
   setOptional(true);
 }
@@ -75,16 +78,16 @@ ClusterEngine::~ClusterEngine() = default;
 void ClusterEngine::setActualEngine(StorageEngine* e) { _actualEngine = e; }
 
 TransactionStatistics& ClusterEngine::transactionStatistics() noexcept {
-  ADB_PROD_ASSERT(_actualEngine != nullptr)
-      << "transactionStatistics() called before setActualEngine()";
-  return _actualEngine->transactionStatistics();
+  ADB_PROD_ASSERT(_transactionStatistics != nullptr)
+      << "transactionStatistics() called before start()";
+  return *_transactionStatistics;
 }
 
 TransactionStatistics const& ClusterEngine::transactionStatistics()
     const noexcept {
-  ADB_PROD_ASSERT(_actualEngine != nullptr)
-      << "transactionStatistics() called before setActualEngine()";
-  return _actualEngine->transactionStatistics();
+  ADB_PROD_ASSERT(_transactionStatistics != nullptr)
+      << "transactionStatistics() called before start()";
+  return *_transactionStatistics;
 }
 
 bool ClusterEngine::isRocksDB() const {
@@ -128,6 +131,7 @@ void ClusterEngine::prepare() {
 
 void ClusterEngine::start() {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
+  _transactionStatistics = std::make_unique<TransactionStatistics>(_metrics);
 }
 
 std::unique_ptr<transaction::Manager> ClusterEngine::createTransactionManager(

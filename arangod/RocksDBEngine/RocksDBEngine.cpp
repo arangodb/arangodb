@@ -258,7 +258,6 @@ RocksDBFilePurgeEnabler::RocksDBFilePurgeEnabler(
 RocksDBEngine::RocksDBEngine(
     application_features::ApplicationServer& server,
     RocksDBOptionsProvider& optionsProvider, metrics::IRegistry& metrics,
-    metrics::IMetricsConfig& metricsConfig,
     IDatabasePathProvider const& databasePathProvider,
     IVectorIndexProvider const& vectorIndexProvider,
     IFlushControl& flushControl, IDumpLimitsProvider const& dumpLimitsProvider,
@@ -282,8 +281,6 @@ RocksDBEngine::RocksDBEngine(
       _sortingPolicy(sortingPolicy),
       _optionsProvider(optionsProvider),
       _metrics(metrics),
-      _metricsConfig(metricsConfig),
-      _transactionStatistics(_metrics),
       _db(nullptr),
       _walAccess(std::make_unique<RocksDBWalAccess>(*this)),
       _releasedTick(0),
@@ -342,12 +339,16 @@ RocksDBEngine::~RocksDBEngine() {
 }
 
 TransactionStatistics& RocksDBEngine::transactionStatistics() noexcept {
-  return _transactionStatistics;
+  ADB_PROD_ASSERT(_transactionStatistics != nullptr)
+      << "transactionStatistics() called before start()";
+  return *_transactionStatistics;
 }
 
 TransactionStatistics const& RocksDBEngine::transactionStatistics()
     const noexcept {
-  return _transactionStatistics;
+  ADB_PROD_ASSERT(_transactionStatistics != nullptr)
+      << "transactionStatistics() called before start()";
+  return *_transactionStatistics;
 }
 
 /// shuts down the RocksDB instance. this is called from unprepare
@@ -459,10 +460,6 @@ void RocksDBEngine::prepare() {
 
   TRI_ASSERT(!_basePath.empty());
 
-  if (_metricsConfig.exportReadWriteMetrics()) {
-    transactionStatistics().setupDocumentMetrics();
-  }
-
 #ifdef USE_ENTERPRISE
   prepareEnterprise();
 #endif
@@ -545,6 +542,11 @@ void RocksDBEngine::start() {
   // it is already decided that rocksdb is used
   TRI_ASSERT(isEnabled());
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
+
+  _transactionStatistics = std::make_unique<TransactionStatistics>(_metrics);
+  if (_options.exportReadWriteMetrics) {
+    _transactionStatistics->setupDocumentMetrics();
+  }
 
   auto path = _databasePathProvider.directory();
   auto engineFilePath = basics::FileUtils::buildFilename(path, "ENGINE");
