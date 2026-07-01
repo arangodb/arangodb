@@ -112,7 +112,7 @@ function ArangoTransaction (database, data) {
   this._collections = data.collections;
   let body = {collections: this._collections};
   // copy transaction options
-  [ 'lockTimeout', 'maxTransactionSize', 'intermediateCommitSize', 'intermediateCommitCount', 'waitForSync' ].forEach(function(o) {
+  [ 'allowImplicit', 'lockTimeout', 'maxTransactionSize', 'skipFastLockRound', 'waitForSync' ].forEach(function(o) {
     if (data.hasOwnProperty(o)) {
       body[o] = data[o];
     }
@@ -133,7 +133,7 @@ exports.ArangoTransaction = ArangoTransaction;
 
 function ArangoTransactionCollection(trx, coll) {
   if (!trx || !coll || !coll.isArangoCollection) {
-    throw "invaliid input";
+    throw "invalid input";
   }
   this._transaction = trx;
   this._collection = coll;

@@ -1,6 +1,9 @@
 3.12.10-devel (XXXX-XX-XX)
 --------------------------
 
+* Fixed a bug in the JavaScript API causing `allowImplicit` and
+  `skipFastLockRound` to not be forwarded to the server for Stream Transactions.
+
 * Upgraded included rclone to v1.74.3 with go1.25.11 and non-vulnerable
   dependencies.
 
