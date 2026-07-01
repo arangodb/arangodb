@@ -26,6 +26,7 @@
 #include "Activities/GenericActivity.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Auth/TokenCache.h"
+#include "Basics/DownCast.h"
 #include "Basics/dtrace-wrapper.h"
 #include "Basics/error.h"
 #include "Cluster/ClusterFeature.h"
