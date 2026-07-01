@@ -27,7 +27,7 @@
 
 namespace arangodb::replication2::test {
 
-struct ReplicatedLogMetricsMock : replicated_log::ReplicatedLogMetricsIndirect {
+struct ReplicatedLogMetricsMock : replicated_log::ReplicatedLogMetrics {
   ReplicatedLogMetricsMock();
 };
 }  // namespace arangodb::replication2::test

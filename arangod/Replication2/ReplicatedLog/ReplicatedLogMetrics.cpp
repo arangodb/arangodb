@@ -28,7 +28,7 @@
 
 namespace arangodb::replication2::replicated_log {
 
-ReplicatedLogMetricsIndirect::ReplicatedLogMetricsIndirect(
+ReplicatedLogMetrics::ReplicatedLogMetrics(
     metrics::IRegistry& metricsRegistry) {
   replicatedLogNumber =
       &metricsRegistry.add(arangodb_replication2_replicated_log_number{});

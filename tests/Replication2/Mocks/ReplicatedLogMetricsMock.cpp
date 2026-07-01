@@ -35,4 +35,4 @@ auto fakeRegistry() -> arangodb::metrics::IRegistry& {
 }  // namespace
 
 ReplicatedLogMetricsMock::ReplicatedLogMetricsMock()
-    : ReplicatedLogMetricsIndirect(fakeRegistry()) {}
+    : ReplicatedLogMetrics(fakeRegistry()) {}

@@ -58,7 +58,7 @@ auto ReplicatedLogFeature::metrics() const noexcept -> std::shared_ptr<
 }
 
 void ReplicatedLogFeature::start() {
-  _replicatedLogMetrics = std::make_shared<ReplicatedLogMetricsIndirect>(
+  _replicatedLogMetrics = std::make_shared<ReplicatedLogMetrics>(
       this->server().getFeature<metrics::MetricsFeature>());
 }
 
