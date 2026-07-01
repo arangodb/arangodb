@@ -35,7 +35,6 @@
 #include "Replication2/Mocks/FakeStorageEngineMethods.h"
 #include "Replication2/Mocks/RebootIdCacheMock.h"
 #include "Replication2/Mocks/ReplicatedStateHandleMock.h"
-#include "Replication2/Mocks/ReplicatedStateMetricsMock.h"
 #include "Replication2/Mocks/SchedulerMocks.h"
 
 #include "Replication2/ReplicatedLog/ILogInterfaces.h"

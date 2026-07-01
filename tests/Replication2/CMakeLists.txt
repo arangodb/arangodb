@@ -16,7 +16,6 @@ set(ARANGODB_REPLICATION2_TEST_HELPER_SOURCES
 
   Mocks/ParticipantsFactoryMock.h
   Mocks/FakeReplicatedState.cpp Mocks/FakeReplicatedState.h
-  Mocks/ReplicatedStateMetricsMock.cpp Mocks/ReplicatedStateMetricsMock.h
 
   Mocks/DocumentStateMocks.cpp Mocks/DocumentStateMocks.h
   Mocks/MockOracle.h

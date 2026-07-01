@@ -23,6 +23,7 @@
 
 #include <gtest/gtest.h>
 
+#include "Metrics/FakeRegistry.h"
 #include "Metrics/Gauge.h"
 #include "Mocks/LogLevels.h"
 #include "Replication2/ReplicatedLog/TestHelper.h"
@@ -33,7 +34,6 @@
 #include "Replication2/ReplicatedState/ReplicatedState.h"
 
 #include "StateMachines/MyStateMachine.h"
-#include "Replication2/Mocks/ReplicatedStateMetricsMock.h"
 #include "Replication2/Mocks/MockStatePersistorInterface.h"
 
 using namespace arangodb;
@@ -42,8 +42,10 @@ using namespace arangodb::replication2::replicated_state;
 using namespace arangodb::replication2::test;
 
 struct ReplicatedStateMetricsTest : test::ReplicatedLogTest {
+  metrics::FakeRegistry fakeRegistry;
   std::shared_ptr<ReplicatedStateMetrics> metrics =
-      std::make_shared<ReplicatedStateMetricsMock>("my-state>");
+      std::make_shared<replicated_state::ReplicatedStateMetrics>(fakeRegistry,
+                                                                 "my-state>");
   std::shared_ptr<MyFactory> factory = std::make_shared<MyFactory>();
 
   std::shared_ptr<MockStatePersistorInterface> statePersistor =

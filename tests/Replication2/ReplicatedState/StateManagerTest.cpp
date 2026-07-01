@@ -38,7 +38,6 @@
 #include "Replication2/Mocks/LeaderCommunicatorMock.h"
 #include "Replication2/Mocks/MockVocbase.h"
 #include "Replication2/Mocks/ParticipantsFactoryMock.h"
-#include "Replication2/Mocks/ReplicatedStateMetricsMock.h"
 #include "Replication2/Mocks/SchedulerMocks.h"
 #include "Replication2/Mocks/StorageEngineMethodsMock.h"
 #include "Mocks/Servers.h"
@@ -113,10 +112,9 @@ struct StateManagerTest : testing::Test {
   metrics::FakeRegistry fakeRegistry;
   std::shared_ptr<replicated_log::ReplicatedLogMetrics> logMetricsMock =
       std::make_shared<replicated_log::ReplicatedLogMetrics>(fakeRegistry);
-  std::shared_ptr<replication2::tests::ReplicatedStateMetricsMock>
-      stateMetricsMock =
-          std::make_shared<replication2::tests::ReplicatedStateMetricsMock>(
-              "foo");
+  std::shared_ptr<replicated_state::ReplicatedStateMetrics> stateMetricsMock =
+      std::make_shared<replicated_state::ReplicatedStateMetrics>(fakeRegistry,
+                                                                 "foo");
   std::shared_ptr<ReplicatedLogGlobalSettings> optionsMock =
       std::make_shared<ReplicatedLogGlobalSettings>();
   LoggerContext loggerContext = LoggerContext(Logger::REPLICATION2);

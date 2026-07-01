@@ -23,11 +23,10 @@
 
 #include <gtest/gtest.h>
 
+#include "Metrics/FakeRegistry.h"
 #include "Replication2/ReplicatedState/ReplicatedState.h"
 #include "Replication2/ReplicatedState/ReplicatedStateImpl.tpp"
 #include "Replication2/ReplicatedState/ReplicatedStateMetrics.h"
-
-#include "Replication2/Mocks/ReplicatedStateMetricsMock.h"
 #include "Replication2/ReplicatedState/ReplicatedStateFeature.h"
 
 using namespace arangodb;
@@ -49,8 +48,10 @@ struct ReplicatedStateFollowerResignTest : ::testing::Test {
       std::make_shared<State::FactoryType>();
   std::unique_ptr<State::CoreType> core = std::make_unique<State::CoreType>();
   LoggerContext const loggerCtx{Logger::REPLICATED_STATE};
+  metrics::FakeRegistry _fakeRegistry;
   std::shared_ptr<ReplicatedStateMetrics> _metrics =
-      std::make_shared<ReplicatedStateMetricsMock>("foo");
+      std::make_shared<replicated_state::ReplicatedStateMetrics>(_fakeRegistry,
+                                                                 "foo");
   std::shared_ptr<test::MockStatePersistorInterface> _persistor =
       std::make_shared<test::MockStatePersistorInterface>();
 
