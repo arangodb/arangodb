@@ -40,21 +40,20 @@ const {
   getInstanceInfo
 } = require('@arangodb/test-helper');
 let { instanceRole } = require('@arangodb/testutils/instance');
-let IM = global.instanceManager;
 
 const fetchRevisionTree = (server, shardId) => {
   return server.toThisInstance(() => {
     let result = arango.POST_RAW("/_api/replication/batch", {ttl : 3600});
-    assertEqual(200, result.statusCode);
+    assertEqual(200, result.code);
     if (!result.parsedBody.hasOwnProperty("id")) {
       throw "Could not create batch!";
     }
-  
-    result = arango.GET_RAW(`/_api/replication/revisions/tree?collection=${encodeURIComponent(shardId)}&verification=true&batchId=${batch.id}&onlyPopulated=true`);
-    assertEqual(200, result.statusCode, result);
-    arango.DELETE(`/_api/replication/batch/${batch.id}`);
+    let cursorID = result.parsedBody.id;
+    result = arango.GET_RAW(`/_api/replication/revisions/tree?collection=${encodeURIComponent(shardId)}&verification=true&batchId=${cursorID}&onlyPopulated=true`);
+    assertEqual(200, result.code, result);
+    arango.DELETE_RAW(`/_api/replication/batch/${cursorID}`);
     return result.parsedBody;
-  })[0];
+  });
 };
 
 const compareTree = function (left, right) {
@@ -64,6 +63,7 @@ const compareTree = function (left, right) {
 
 const checkCollectionConsistency = (cn) => {
   const c = db._collection(cn);
+  let IM = getInstanceInfo();
   const dbServers = IM.getInstancesRole(instanceRole.dbserver);
   const shardInfo = c.shards(true);
   
