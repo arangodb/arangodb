@@ -55,8 +55,9 @@ struct ReplicatedStateLeaderResignTest : test::ReplicatedLogTest {
   ReplicatedStateLeaderResignTest() {
     feature->registerStateType<State>("my-state");
   }
+  metrics::FakeRegistry _fakeRegistry;
   std::shared_ptr<ReplicatedStateFeature> feature =
-      std::make_shared<ReplicatedStateFeature>();
+      std::make_shared<ReplicatedStateFeature>(_fakeRegistry);
 
   std::shared_ptr<test::FakeLeader> logLeader =
       std::make_shared<test::FakeLeader>();
@@ -64,7 +65,6 @@ struct ReplicatedStateLeaderResignTest : test::ReplicatedLogTest {
       std::make_shared<State::FactoryType>();
   std::unique_ptr<State::CoreType> core = std::make_unique<State::CoreType>();
   std::shared_ptr<State::LeaderType> leaderState;
-  metrics::FakeRegistry _fakeRegistry;
   std::shared_ptr<ReplicatedStateMetrics> _metrics =
       std::make_shared<replicated_state::ReplicatedStateMetrics>(_fakeRegistry,
                                                                  "foo");

@@ -23,6 +23,7 @@
 
 #include <gtest/gtest.h>
 
+#include "Metrics/FakeRegistry.h"
 #include "Replication2/ReplicatedLog/TestHelper.h"
 
 #include "Replication2/ReplicatedState/ReplicatedState.h"
@@ -104,13 +105,14 @@ struct MyHelperFactory {
 #include "Replication2/Mocks/MockStatePersistorInterface.h"
 
 struct ReplicatedStateRecoveryTest : test::ReplicatedLogTest {
+  metrics::FakeRegistry _fakeRegistry;
   ReplicatedStateRecoveryTest() {
     feature->registerStateType<MyHelperState>("my-state", *this);
   }
 
   std::shared_ptr<MyHelperLeaderState> leaderState;
   std::shared_ptr<ReplicatedStateFeature> feature =
-      std::make_shared<ReplicatedStateFeature>();
+      std::make_shared<ReplicatedStateFeature>(_fakeRegistry);
   std::shared_ptr<MockStatePersistorInterface> statePersistor =
       std::make_shared<MockStatePersistorInterface>();
 };

@@ -35,7 +35,6 @@
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "Replication2/ReplicatedState/ReplicatedStateMetrics.h"
 #include "Metrics/MetricsFeature.h"
-#include "Metrics/FakeRegistry.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -83,8 +82,9 @@ void replicated_state::ReplicatedStateFeature::assertWasInserted(
 
 auto replicated_state::ReplicatedStateFeature::createMetricsObject(
     std::string_view name) -> std::shared_ptr<ReplicatedStateMetrics> {
-  static metrics::FakeRegistry fakeRegistry;
-  return std::make_shared<ReplicatedStateMetrics>(fakeRegistry, name);
+  // If not injected, ReplicatedStateAppFeature must override this
+  TRI_ASSERT(_registry != nullptr);
+  return std::make_shared<ReplicatedStateMetrics>(*_registry, name);
 }
 
 replicated_state::ReplicatedStateAppFeature::ReplicatedStateAppFeature(
