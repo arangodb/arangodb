@@ -27,8 +27,7 @@
 
 'use strict';
 const jsunity = require('jsunity');
-
-const { getDBServers } = require('@arangodb/test-helper');
+let { instanceRole } = require('@arangodb/testutils/instance');
 
 function numberOfServersSuite () {
   let numberFound = 3;  // will be overwritten in setUp
@@ -37,7 +36,8 @@ function numberOfServersSuite () {
       // We need the actual number of DBServers, since when we later
       // set the target number, we want that no cleanOutServer job is
       // started.
-      const dbservers = getDBServers();
+      let IM = global.instanceManager;
+      const dbServers = IM.getInstancesRole(instanceRole.dbserver);
       numberFound = dbservers.length;
     },
 

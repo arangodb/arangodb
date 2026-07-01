@@ -33,8 +33,9 @@ if (getOptions === true) {
 
 const jsunity = require('jsunity');
 const db = require('@arangodb').db;
-const { getDBServers, getCoordinators } = require("@arangodb/test-helper");
 const request = require("@arangodb/request");
+let { instanceRole } = require('@arangodb/testutils/instance');
+let IM = global.instanceManager;
 
 function testSuite() {
   const baseName = "UnitTestsCollection";
@@ -47,7 +48,7 @@ function testSuite() {
 
   let getRawMetrics = function() {
     let lines = [];
-    getDBServers().forEach((server) => {
+    IM.getInstancesRole(instanceRole.dbserver).forEach((server) => {
       let res = request({ method: "GET", url: server.url + "/_admin/usage-metrics" });
       lines = lines.concat(res.body.split(/\n/).filter((l) => l.match(/^arangodb_collection_leader_(reads|writes)_total/)));
     });
@@ -118,7 +119,7 @@ function testSuite() {
         
         // check if the normal metrics endpoint exports any shard-specific metrics
         let lines = [];
-        getDBServers().forEach((server) => {
+        IM.getInstancesRole(instanceRole.dbserver).forEach((server) => {
           let res = request({ method: "GET", url: server.url + "/_admin/metrics" });
           lines = lines.concat(res.body.split(/\n/).filter((l) => l.match(/^arangodb_collection_leader_(reads|writes)_total/)));
         });
@@ -126,7 +127,7 @@ function testSuite() {
 
         // check if the usage-metrics endpoint exports any regular metrics
         lines = [];
-        getDBServers().forEach((server) => {
+        IM.getInstancesRole(instanceRole.dbserver).forEach((server) => {
           let res = request({ method: "GET", url: server.url + "/_admin/usage-metrics" });
           // we look for any metric name starting with "rocksdb_" here as a placeholder
           lines = lines.concat(res.body.split(/\n/).filter((l) => l.match(/^rocksdb_/)));

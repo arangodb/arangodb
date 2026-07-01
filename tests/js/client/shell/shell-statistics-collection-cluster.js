@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 200 */
-/* global assertEqual, assertTrue, assertNull, assertNotNull, assertMatch */
+/* global assertEqual, assertTrue, assertNull, assertNotNull, assertMatch, arango */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -28,8 +28,8 @@ const jsunity = require('jsunity');
 const arangodb = require('@arangodb');
 const db = arangodb.db;
 const request = require("@arangodb/request");
-const { getDBServers } = require('@arangodb/test-helper');
-
+let { instanceRole } = require('@arangodb/testutils/instance');
+let IM = global.instanceManager;
 
 function statisticsCollectionsSuite() {
   'use strict';
@@ -63,19 +63,20 @@ function statisticsCollectionsSuite() {
     },
 
     testStatisticsCollectionsOnDBServer: function () {
-      let dbservers = getDBServers();
-      dbservers.forEach((server) => {
-        let result = request({ method: "GET", url: server.url + "/_api/collection", body: {} });
-        assertEqual(200, result.json.code);
-        let shards = result.json.result;
-        assertTrue(Array.isArray(shards));
-        // verify that there are no shards named _statistics, _statistics15, _statisticsRaw
-        collections.forEach((collectionName) => {
-          let shardNames = shards.map((s) => s.name);
-          shardNames.forEach((s) => {
-            assertMatch(/^s[0-9]+$/, s);
+      IM.getInstancesRole(instanceRole.dbserver).forEach((server) => {
+        server.toThisInstance(() => {
+          let result = arango.GET_RAW("/_api/collection");
+          assertEqual(200, result.code);
+          let shards = result.parsedBody.result;
+          assertTrue(Array.isArray(shards));
+          // verify that there are no shards named _statistics, _statistics15, _statisticsRaw
+          collections.forEach((collectionName) => {
+            let shardNames = shards.map((s) => s.name);
+            shardNames.forEach((s) => {
+              assertMatch(/^s[0-9]+$/, s);
+            });
+            assertEqual(-1, shardNames.indexOf(collectionName));
           });
-          assertEqual(-1, shardNames.indexOf(collectionName));
         });
       });
     },

@@ -33,14 +33,11 @@ const ERRORS = arangodb.errors;
 const _ = require("lodash");
 const isEnterprise = require("internal").isEnterprise();
 const wait = require("internal").wait;
-const {
-  getDBServers,
-  getEndpointById,
-} = require("@arangodb/test-helper");
 const CI = require('@arangodb/cluster-info');
 
 const IM = GLOBAL.instanceManager;
 const AM = IM.agencyMgr;
+let { instanceRole } = require('@arangodb/testutils/instance');
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -119,11 +116,11 @@ function SynchronousReplicationWithViewSuite () {
 
   function failFollower() {
     var follower = cinfo.shards[shards[0]][1];
-    var endpoint = getEndpointById(follower);
-    let arangods = getDBServers();
+    var url = IM.getInstanceByID(follower).url;
+    let arangods = IM.getInstancesRole(instanceRole.dbserver);
     // Now look for instanceManager:
     var pos = _.findIndex(arangods,
-                          x => x.url === endpoint);
+                          x => x.url === url);
     assertTrue(pos >= 0);
     assertTrue(arangods[pos].suspend());
     console.info("Have failed follower", follower);
@@ -136,11 +133,11 @@ function SynchronousReplicationWithViewSuite () {
 
   function healFollower(follower = null) {
     if (follower == null) follower = cinfo.shards[shards[0]][1];
-    var endpoint = getEndpointById(follower);
-    let arangods = getDBServers();
+    var url = IM.getInstanceByID(follower).url;
+    let arangods = IM.getInstancesRole(instanceRole.dbserver);
     // Now look for instanceManager:
     var pos = _.findIndex(arangods,
-                          x => x.url === endpoint);
+                          x => x.url === url);
     assertTrue(pos >= 0);
     assertTrue(arangods[pos].resume());
     console.info("Have healed follower", follower);
@@ -153,11 +150,11 @@ function SynchronousReplicationWithViewSuite () {
 
   function failLeader() {
     var leader = cinfo.shards[shards[0]][0];
-    var endpoint = getEndpointById(leader);
-    let arangods = getDBServers();
+    var url = IM.getInstanceByID(leader).url;
+    let arangods = IM.getInstancesRole(instanceRole.dbserver);
     // Now look for instanceManager:
     var pos = _.findIndex(arangods,
-                          x => x.url === endpoint);
+                          x => x.url === url);
     assertTrue(pos >= 0);
     assertTrue(arangods[pos].suspend());
     console.info("Have failed leader", leader);
@@ -171,11 +168,11 @@ function SynchronousReplicationWithViewSuite () {
 
   function healLeader(leader) {
     if (leader == null) leader = cinfo.shards[shards[0]][0];
-    var endpoint = getEndpointById(leader);
-    let arangods = getDBServers();
+    var url = IM.getInstanceByID(leader).url;
+    let arangods = IM.getInstancesRole(instanceRole.dbserver);
     // Now look for instanceManager:
     var pos = _.findIndex(arangods,
-                          x => x.url === endpoint);
+                          x => x.url === url);
     assertTrue(pos >= 0);
     assertTrue(arangods[pos].resume());
     console.info("Have healed leader", leader);
@@ -639,12 +636,12 @@ function SynchronousReplicationWithViewSuite () {
 
     testSetup : function () {
       for (var count = 0; count < 120; ++count) {
-        let dbservers = getDBServers();
-        if (dbservers.length === 5) {
+        let dbServers = IM.getInstancesRole(instanceRole.dbserver);
+        if (dbServers.length === 5) {
           assertTrue(waitForSynchronousReplication("_system"));
           return;
         }
-        console.log("Waiting for 5 dbservers to be present:", JSON.stringify(dbservers));
+        console.log("Waiting for 5 dbservers to be present:", JSON.stringify(dbServers));
         wait(1.0);
       }
       assertTrue(false, "Timeout waiting for 5 dbservers.");

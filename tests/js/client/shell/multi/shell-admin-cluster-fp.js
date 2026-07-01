@@ -25,13 +25,7 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require('jsunity');
-let { getEndpointById,
-      getEndpointsByType,
-      getServersByType,
-      reconnectRetry,
-      getCoordinators,
-      getDBServers
-    } = require('@arangodb/test-helper');
+let { reconnectRetry } = require('@arangodb/test-helper');
 let { instanceRole } = require('@arangodb/testutils/instance');
 let IM = global.instanceManager;
 
@@ -50,7 +44,8 @@ function adminClusterSuite() {
     },
 
     testRemoveServerNonExisting: function () {
-      let coords = getCoordinators();
+      let coords = IM.getInstancesRole(instanceRole.coordinator);
+
       assertTrue(coords.length > 0);
       
       // this is assumed to be an invalid server id, so the operation must fail
@@ -66,7 +61,7 @@ function adminClusterSuite() {
     },
 
     testRemoveNonFailedCoordinatorString: function () {
-      let coords = getCoordinators();
+      let coords = IM.getInstancesRole(instanceRole.coordinator);
       assertTrue(coords.length > 0);
       
       let coordinatorId = coords[0].id;
@@ -88,7 +83,7 @@ function adminClusterSuite() {
     },
     
     testRemoveNonFailedCoordinatorObject: function () {
-      let coords = getCoordinators();
+      let coords = IM.getInstancesRole(instanceRole.coordinator);
       assertTrue(coords.length > 0);
       
       let coordinatorId = coords[0].id;
@@ -110,7 +105,7 @@ function adminClusterSuite() {
     },
     
     testRemoveNonFailedDBServersString: function () {
-      let coords = getCoordinators();
+      let coords = IM.getInstancesRole(instanceRole.coordinator);
       assertTrue(coords.length > 0);
       
       let coordinatorId = coords[0].id;
@@ -119,9 +114,9 @@ function adminClusterSuite() {
         // make removeServer fail quickly in case precondition is not met. if we don't set this, it will cycle for 60s
         IM.debugSetFailAt("removeServer::noRetry", instanceRole.coordinator, ep);
 
-        let dbservers = getDBServers();
-        assertTrue(dbservers.length > 0);
-        dbservers.forEach((dbs) => {
+        const dbServers = IM.getInstancesRole(instanceRole.dbserver);
+        assertTrue(dbServers.length > 0);
+        dbServers.forEach((dbs) => {
           reconnectRetry(ep, db._name(), "root", "");
           let res = arango.POST_RAW("/_admin/cluster/removeServer",
                                     new Buffer('"' + dbs.id + '"'), {
@@ -136,7 +131,7 @@ function adminClusterSuite() {
     },
     
     testRemoveNonFailedDBServersObject: function () {
-      let coords = getCoordinators();
+      let coords = IM.getInstancesRole(instanceRole.coordinator);
       assertTrue(coords.length > 0);
       
       let coordinatorId = coords[0].id;
@@ -145,9 +140,9 @@ function adminClusterSuite() {
         // make removeServer fail quickly in case precondition is not met. if we don't set this, it will cycle for 60s
         IM.debugSetFailAt("removeServer::noRetry", instanceRole.coordinator, ep);
 
-        let dbservers = getDBServers();
-        assertTrue(dbservers.length > 0);
-        dbservers.forEach((dbs) => {
+        const dbServers = IM.getInstancesRole(instanceRole.dbserver);
+        assertTrue(dbServers.length > 0);
+        dbServers.forEach((dbs) => {
           reconnectRetry(ep, "_system", "root", "");
           let res = arango.POST_RAW("/_admin/cluster/removeServer",
                                     new Buffer('"' + dbs.id + '"'), {
@@ -163,7 +158,7 @@ function adminClusterSuite() {
     },
     
     testCleanoutServerStringNonExisting: function () {
-      let coords = getCoordinators();
+      let coords = IM.getInstancesRole(instanceRole.coordinator);
       assertTrue(coords.length > 0);
       
       let coordinatorId = coords[0].id;
@@ -183,7 +178,7 @@ function adminClusterSuite() {
     },
 
     testCleanoutServerObjectNonExisting: function () {
-      let coords = getCoordinators();
+      let coords = IM.getInstancesRole(instanceRole.coordinator);
       assertTrue(coords.length > 0);
       
       let coordinatorId = coords[0].id;

@@ -34,10 +34,11 @@ if (getOptions === true) {
 const jsunity = require('jsunity');
 const db = require('@arangodb').db;
 const internal = require('internal');
-const { getDBServers } = require("@arangodb/test-helper");
 const request = require("@arangodb/request");
 const dh = require("@arangodb/testutils/document-state-helper");
 const lh = require("@arangodb/testutils/replicated-logs-helper");
+let { instanceRole } = require('@arangodb/testutils/instance');
+let IM = global.instanceManager;
 
 // note: these tests will currently partially fail under replication2.
 // the reason is that the tests expect the bytes_written metrics to be
@@ -65,7 +66,7 @@ function testSuite() {
 
   let getRawMetrics = function() {
     let lines = [];
-    getDBServers().forEach((server) => {
+    IM.getInstancesRole(instanceRole.dbserver).forEach((server) => {
       let res = request({ method: "GET", url: server.url + "/_admin/usage-metrics" });
       lines = lines.concat(res.body.split(/\n/).filter((l) => l.match(/^arangodb_collection_requests_bytes_(read|written)_total/)));
     });
@@ -281,7 +282,7 @@ function testSuite() {
         
         // check if the normal metrics endpoint exports any shard-specific metrics
         let lines = [];
-        getDBServers().forEach((server) => {
+        IM.getInstancesRole(instanceRole.dbserver).forEach((server) => {
           let res = request({ method: "GET", url: server.url + "/_admin/metrics" });
           lines = lines.concat(res.body.split(/\n/).filter((l) => l.match(/^arangodb_collection_requests_bytes_(read|written)_total/)));
         });
@@ -289,7 +290,7 @@ function testSuite() {
 
         // check if the usage-metrics endpoint exports any regular metrics
         lines = [];
-        getDBServers().forEach((server) => {
+        IM.getInstancesRole(instanceRole.dbserver).forEach((server) => {
           let res = request({ method: "GET", url: server.url + "/_admin/usage-metrics" });
           // we look for any metric name starting with "rocksdb_" here as a placeholder
           lines = lines.concat(res.body.split(/\n/).filter((l) => l.match(/^rocksdb_/)));

@@ -30,10 +30,7 @@ let internal = require('internal');
 let arangodb = require('@arangodb');
 const request = require("@arangodb/request");
 let db = arangodb.db;
-
-const {
-  getDBServers
-} = require('@arangodb/test-helper');
+let IM = global.instanceManager;
 
 function moveShardCreateCollectionSuite() {
   'use strict';
@@ -163,21 +160,16 @@ function moveShardCreateCollectionSuite() {
       // Get the shard information
       const shardInfo = arango.GET("/_admin/cluster/shardDistribution");
       const shardId = Object.keys(shardInfo.results[cn].Plan)[0];
-      const fromServer = shardInfo.results[cn].Plan[shardId].leader;
-      const toServer = shardInfo.results[cn].Plan[shardId].followers[0];
+      const fromServerID = shardInfo.results[cn].Plan[shardId].leader;
+      const toServerID = shardInfo.results[cn].Plan[shardId].followers[0];
       
+      const fromServer = IM.getInstanceByID(fromServerID);
+      const toServer = IM.getInstanceByID(toServerID);
+
       // Set failure points on the follower
-      const dbservers = getDBServers();
-      let endpoints = {};
-      for (let dbs of dbservers) {
-        endpoints[dbs.shortName] = dbs.url;
-        endpoints[dbs.id] = dbs.url;
-      }
       try {
-        let result = request({ method: "PUT", url: endpoints[toServer] + "/_admin/debug/failat/DelayCreateShard15", body: {} });
-        assertEqual(200, result.status);
-        result = request({ method: "PUT", url: endpoints[toServer] + "/_admin/debug/failat/DelayTakeoverShardLeadership15", body: {} });
-        assertEqual(200, result.status);
+        fromServer.debugShouldFailAt("DelayCreateShard15");
+        toServer.debugShouldFailAt("DelayTakeoverShardLeadership15");
         
         // Schedule MoveShard operation
         const moveShardResult = arango.POST("/_admin/cluster/moveShard", {
@@ -193,18 +185,7 @@ function moveShardCreateCollectionSuite() {
         internal.wait(1);
         
         // Check if MoveShard operation is pending:
-        let moveShardPending = false;
-        let maxWait = 30; // 30 seconds timeout
-        while (maxWait > 0) {
-          const jobStatus = arango.GET(`/_admin/cluster/queryAgencyJob?id=${moveShardId}`);
-          if (jobStatus.status === "Pending") {
-            moveShardPending = true;
-            break;
-          }
-          internal.wait(1);
-          maxWait--;
-        }
-        assertTrue(moveShardPending, "MoveShard operation should become pending");
+        IM.waitForAgencyJob(moveShardId, 30, "MoveShard operation should become pending");
         // Try to create second collection in background
         const createJob = arango.POST_RAW("/_api/collection", {
           name: cn2,
@@ -222,28 +203,13 @@ function moveShardCreateCollectionSuite() {
         assertEqual(moveShardStatus.status, "Pending");
 
         // Stop the delays:
-        result = request({ method: "PUT", url: endpoints[toServer] + "/_admin/debug/failat/DontDelayCreateShard15", body: {} });
-        assertEqual(200, result.status);
-        result = request({ method: "PUT", url: endpoints[toServer] + "/_admin/debug/failat/DontDelayTakeoverShardLeadership15", body: {} });
-        assertEqual(200, result.status);
+        toServer.debugShouldFailAt("DontDelayCreateShard15");
+        toServer.debugShouldFailAt("DontDelayTakeoverShardLeadership15");
 
-        // Check if create operation completed
-        let createJobCompleted = false;
-        maxWait = 30; // 30 seconds timeout
-        while (maxWait > 0) {
-          const jobStatus = arango.GET(`/_api/job/${jobId}`);
-          if (jobStatus.code !== 204) {
-            assertEqual(jobStatus.code, 200, "Create collection operation should have been successful");
-            createJobCompleted = true;
-            break;
-          }
-          internal.wait(1);
-          maxWait--;
-        }
-        assertTrue(createJobCompleted, "Create collection operation should complete after delays expire");
+        IM.waitForAgencyJob(moveShardId, 30,"Create collection operation should have been successful");
 
         // Wait for collection to be visible:
-        maxWait = 30; // 30 seconds timeout
+        let maxWait = 30; // 30 seconds timeout
         while (maxWait > 0) {
           try {
             const col = db._collection(cn2);
@@ -259,21 +225,9 @@ function moveShardCreateCollectionSuite() {
         assertTrue(db._collection(cn2) !== null, "Collection should be visible after delays expire");
         
         // Check if MoveShard operation finished successfully
-        let moveShardCompleted = false;
-        maxWait = 30; // 30 seconds timeout
-        while (maxWait > 0) {
-          const jobStatus = arango.GET(`/_admin/cluster/queryAgencyJob?id=${moveShardId}`);
-          if (jobStatus.status === "Finished") {
-            moveShardCompleted = true;
-            break;
-          }
-          internal.wait(1);
-          maxWait--;
-        }
-        assertTrue(moveShardCompleted, "MoveShard operation should complete after delays expire");
+        IM.waitForAgencyJob(moveShardId, 30, "MoveShard operation should complete after delays expire");
       } finally {
-        let result = request({ method: "DELETE", url: endpoints[toServer] + "/_admin/debug/failat"});
-        assertEqual(200, result.status);
+        IM.debugClearFailAt();
       }
     },
     

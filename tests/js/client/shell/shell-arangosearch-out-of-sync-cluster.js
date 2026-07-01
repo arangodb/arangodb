@@ -31,25 +31,14 @@ const getMetric = require('@arangodb/test-helper').getMetric;
 const internal = require("internal");
 const errors = internal.errors;
 const isEnterprise = require("internal").isEnterprise();
-  
-const {
-  getCoordinators,
-  getDBServers
-} = require('@arangodb/test-helper');
-
-let clearFailurePoints = function () {
-  getDBServers().forEach((server) => {
-    // clear all failure points
-    request({ method: "DELETE", url: server.url + "/_admin/debug/failat" });
-  });
-};
+let IM = global.instanceManager;
 
 function ArangoSearchOutOfSyncSuite () {
   'use strict';
   
   return {
     tearDown : function () {
-      clearFailurePoints([]);
+      IM.debugClearFailAt();
       db._dropView('UnitTestsRecoveryView1');
       db._dropView('UnitTestsRecoveryView2');
       db._drop('UnitTestsRecovery1');
@@ -80,21 +69,18 @@ function ArangoSearchOutOfSyncSuite () {
       }
       v.properties(viewMeta);
       
-      let servers = getDBServers();
       let shardInfo = c1.shards(true);
       let shards = Object.keys(shardInfo);
 
-      let leaderUrls = new Set();
+      let leaders = [];
       shards.forEach((s) => {
-        let leader = shardInfo[s][0];
-        let leaderUrl = servers.filter((server) => server.id === leader)[0].url;
-        leaderUrls.add(leaderUrl);
+        let leaderID = shardInfo[s][0];
+        leaders.push(IM.getInstanceByID(leaderID));
       });
 
-      for (let leaderUrl of leaderUrls) {
+      for (let leader of leaders) {
         // break search commit on the DB servers
-        let result = request({ method: "PUT", url: leaderUrl + "/_admin/debug/failat/" + encodeURIComponent("ArangoSearch::FailOnCommit"), body: {} });
-        assertEqual(200, result.status);
+        leader.debugShouldFailAt("ArangoSearch::FailOnCommit");
       }
 
       let docs = [];
@@ -107,7 +93,7 @@ function ArangoSearchOutOfSyncSuite () {
       db._query("FOR doc IN UnitTestsRecoveryView1 OPTIONS {waitForSync: true} RETURN doc");
       db._query("FOR doc IN UnitTestsRecovery1 OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true} FILTER doc.value == '1' RETURN doc");
       
-      clearFailurePoints();
+      IM.debugClearFailAt();
       
       let c2 = db._create('UnitTestsRecovery2', { numberOfShards: 5, replicationFactor: 1 });
       c2.ensureIndex({ type: 'inverted', name: 'inverted', fields: indexFields });
@@ -132,10 +118,9 @@ function ArangoSearchOutOfSyncSuite () {
       // in a cluster, the coordinator doesn't make the outOfSync error flag available
       assertFalse(idx.hasOwnProperty('error'));
       
-      for (let leaderUrl of leaderUrls) {
+      for (let leader of leaders) {
         // break search commit on the DB servers
-        let result = request({ method: "PUT", url: leaderUrl + "/_admin/debug/failat/" + encodeURIComponent("ArangoSearch::FailQueriesOnOutOfSync"), body: {} });
-        assertEqual(200, result.status);
+        leader.debugShouldFailAt("ArangoSearch::FailQueriesOnOutOfSync");
       }
       
       // query must fail because the link is marked as out of sync
@@ -166,7 +151,7 @@ function ArangoSearchOutOfSyncSuite () {
       assertEqual(0, result.length);
     
       // clear all failure points
-      clearFailurePoints();
+      IM.debugClearFailAt();
 
       // queries must not fail now because we removed the failure point
       result = db._query("FOR doc IN UnitTestsRecoveryView1 OPTIONS {waitForSync: true} RETURN doc").toArray();
@@ -184,8 +169,8 @@ function ArangoSearchOutOfSyncSuite () {
       assertEqual(0, result.length);
       
       let outOfSync = 0;
-      for (let leaderUrl of leaderUrls) {
-        let m = getMetric(leaderUrl, "arangodb_search_num_out_of_sync_links");
+      for (let leader of leaders) {
+        let m = leader.getMetric("arangodb_search_num_out_of_sync_links");
         outOfSync += parseInt(m);
       }
       // 5 shards, counted twice, because the is out of sync per shard plus the inverted index
@@ -195,8 +180,5 @@ function ArangoSearchOutOfSyncSuite () {
   };
 }
 
-let res = request({ method: "GET", url: getCoordinators()[0].url + "/_admin/debug/failat" });
-if (res.body === "true") {
-  jsunity.run(ArangoSearchOutOfSyncSuite);
-}
+jsunity.run(ArangoSearchOutOfSyncSuite);
 return jsunity.done();
