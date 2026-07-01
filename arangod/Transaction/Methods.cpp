@@ -52,6 +52,7 @@
 #include "Indexes/Index.h"
 #include "Logger/Logger.h"
 #include "Metrics/Counter.h"
+#include "Metrics/MetricsFeature.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"

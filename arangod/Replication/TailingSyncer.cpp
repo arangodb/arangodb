@@ -22,6 +22,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Metrics/MetricsFeature.h"
 #include "TailingSyncer.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"

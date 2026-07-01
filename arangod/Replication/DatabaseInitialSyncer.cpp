@@ -21,6 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Metrics/MetricsFeature.h"
 #include "DatabaseInitialSyncer.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"

@@ -41,6 +41,7 @@
 #include "Metrics/ClusterMetricsFeature.h"
 #include "Metrics/Metric.h"
 #include "Metrics/MetricKey.h"
+#include "Metrics/MetricsFeature.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "VocBase/LogicalCollection.h"
 
