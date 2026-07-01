@@ -27,6 +27,7 @@
 #include "Basics/Result.h"
 #include "Futures/Future.h"
 #include "StorageEngine/HealthData.h"
+#include "Statistics/ServerStatistics.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionState.h"
 #include "VocBase/Identifiers/IndexId.h"

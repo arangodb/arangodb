@@ -35,6 +35,7 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "Metrics/Counter.h"
+#include "Statistics/ServerStatistics.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"

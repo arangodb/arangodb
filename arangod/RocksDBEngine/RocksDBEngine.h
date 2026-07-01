@@ -42,6 +42,7 @@
 #include "ISortingPolicy.h"
 #include "Cache/ICacheManagerProvider.h"
 #include "Metrics/IRegistry.h"
+#include "Statistics/ServerStatistics.h"
 #include "Replication2/ReplicatedLog/IReplicatedLogProvider.h"
 #include "RestServer/IDatabasePathProvider.h"
 #include "RestServer/IDatabaseProvider.h"
