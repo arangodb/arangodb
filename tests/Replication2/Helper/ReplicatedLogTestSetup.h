@@ -26,6 +26,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "Metrics/FakeRegistry.h"
 #include "Replication2/Mocks/DelayedLogFollower.h"
 #include "Replication2/Mocks/FakeAbstractFollower.h"
 #include "Replication2/Mocks/FakeAsyncExecutor.h"
@@ -33,12 +34,12 @@
 #include "Replication2/Mocks/FakeReplicatedState.h"
 #include "Replication2/Mocks/FakeStorageEngineMethods.h"
 #include "Replication2/Mocks/RebootIdCacheMock.h"
-#include "Replication2/Mocks/ReplicatedLogMetricsMock.h"
 #include "Replication2/Mocks/ReplicatedStateHandleMock.h"
 #include "Replication2/Mocks/ReplicatedStateMetricsMock.h"
 #include "Replication2/Mocks/SchedulerMocks.h"
 
 #include "Replication2/ReplicatedLog/ILogInterfaces.h"
+#include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
 #include "Replication2/ReplicatedState/StateCommon.h"
 #include "Futures/Utilities.h"
 
@@ -355,13 +356,17 @@ struct LogContainer : IHasScheduler {
   }
 
   template<typename T>
-  requires std::is_same_v<T, ParticipantWithFakes> ||
-      std::is_same_v<T, ParticipantFakeFollower>
-  auto contains() const { return std::holds_alternative<T>(_log); }
+    requires std::is_same_v<T, ParticipantWithFakes> ||
+             std::is_same_v<T, ParticipantFakeFollower>
+  auto contains() const {
+    return std::holds_alternative<T>(_log);
+  }
   template<typename T>
-  requires std::is_same_v<T, ParticipantWithFakes> ||
-      std::is_same_v<T, ParticipantFakeFollower>
-  [[nodiscard]] auto getAs() -> T& { return std::get<T>(_log); }
+    requires std::is_same_v<T, ParticipantWithFakes> ||
+             std::is_same_v<T, ParticipantFakeFollower>
+  [[nodiscard]] auto getAs() -> T& {
+    return std::get<T>(_log);
+  }
   [[nodiscard]] auto getAsParticipant() -> ParticipantWithFakes& {
     return getAs<ParticipantWithFakes>();
   }
@@ -515,8 +520,9 @@ struct WholeLog {
   }
 
  public:
-  std::shared_ptr<test::ReplicatedLogMetricsMock> logMetricsMock =
-      std::make_shared<test::ReplicatedLogMetricsMock>();
+  metrics::FakeRegistry fakeRegistry;
+  std::shared_ptr<replicated_log::ReplicatedLogMetrics> logMetricsMock =
+      std::make_shared<replicated_log::ReplicatedLogMetrics>(fakeRegistry);
 
  protected:
   LoggerContext const loggerContext;
@@ -565,7 +571,7 @@ struct ReplicatedLogTest : ::testing::Test {
   }
 
   template<std::size_t replicationFactor>
-  requires requires { replicationFactor >= 1; }
+    requires requires { replicationFactor >= 1; }
   auto createLogs(LogConfig config)
       -> std::pair<LogContainer,
                    std::array<LogContainer, replicationFactor - 1>> {
