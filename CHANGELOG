@@ -3,6 +3,8 @@
 
 * Fixed a bug in the JavaScript API causing `allowImplicit` and
   `skipFastLockRound` to not be forwarded to the server for Stream Transactions.
+  The `intermediateCommitSize` and `intermediateCommitCount` options are not
+  forwarded anymore as they are not available for Stream Transactions.
 
 * Upgraded included rclone to v1.74.3 with go1.25.11 and non-vulnerable
   dependencies.
