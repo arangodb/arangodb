@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertTrue, assertEqual, ArangoAgency, ArangoClusterInfo, GLOBAL */
+/*global assertTrue, assertEqual, ArangoAgency, ArangoClusterInfo, GLOBAL, arango */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -36,16 +36,11 @@ const {errors, wait} = internal;
 const supervisionState = require("@arangodb/testutils/cluster-test-helper").supervisionState;
 const queryAgencyJob = require("@arangodb/testutils/cluster-test-helper").queryAgencyJob;
 const CI = require('@arangodb/cluster-info');
-const {getServersByType, deriveTestSuite, getUrlById, versionHas } = require('@arangodb/test-helper-common');
+const { deriveTestSuite, versionHas } = require('@arangodb/test-helper-common');
 const isCov = versionHas('coverage');
-const request = require('@arangodb/request');
 const helper = require("@arangodb/testutils/replicated-logs-helper");
 const lpreds = require("@arangodb/testutils/replicated-logs-predicates");
 const {
-  getDBServers,
-  getAgents,
-  getEndpointById,
-  getCoordinators,
   findCollectionServers
 } = require('@arangodb/test-helper');
 const { instanceRole } = require("@arangodb/testutils/instance");
@@ -55,7 +50,7 @@ const AM = IM.agencyMgr;
 // in the `useData` case, use this many documents:
 const numDocuments = 1000;
 
-const dbservers = getDBServers().map(arangod => arangod.id);
+const dbservers = IM.getInstancesRole(instanceRole.dbserver);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -147,27 +142,16 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
 ////////////////////////////////////////////////////////////////////////////////
 
   function getCleanedOutServers() {
-    var coordEndpoint =
-        getCoordinators()[0];
-
-    var request = require("@arangodb/request");
-    var url = coordEndpoint.url;
-
-
-    var res;
-    try {
-      var envelope =
-          {method: "GET", url: url + "/_admin/cluster/numberOfServers"};
-      res = request(envelope);
-    } catch (err) {
+    var coord = IM.getInstancesRole(instanceRole.coordinator)[0];
+    var result = coord.toThisInstance(() => {
+      return arango.GET_RAW("/_admin/cluster/numberOfServers");
+    });
+    if (result.code !== 200) {
       console.error(
-          "Exception for GET /_admin/cluster/cleanOutServer:", err.stack);
+          "Error for GET /_admin/cluster/cleanOutServer:", result.parsedBody);
       return {cleanedServers: []};
     }
-    if (res.statusCode !== 200) {
-      return {cleanedServers: []};
-    }
-    var body = res.body;
+    var body = result.parsedBody;
     if (typeof body === "string") {
       try {
         body = JSON.parse(body);
@@ -186,25 +170,14 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
 ////////////////////////////////////////////////////////////////////////////////
 
   function displayAgencyInformation() {
-    var coordEndpoint =
-        getCoordinators()[0];
-    var request = require("@arangodb/request");
-    var url = coordEndpoint.url;
-
-    var res;
-    try {
-      var envelope = {method: "GET", url: url + "/_api/cluster/agency-dump"};
-      res = request(envelope);
-    } catch (err) {
-      console.error(
-          "Exception for GET /_api/cluster/agency-dump:", err.stack);
+    var coord = IM.getInstancesRole(instanceRole.coordinator)[0];
+    var result = coord.toThisInstance(() => {
+      return arango.GET_RAW("/_api/cluster/agency-dump");
+    });
+    if (result.code !== 200) {
       return;
     }
-    if (res.statusCode !== 200) {
-      return;
-    }
-    var body = res.body;
-    console.error("Agency state after disaster:", body);
+    console.error("Agency state after disaster:", result.parsedBody);
   }
 
   function testServerNoLeader(id, fromCollNr, toCollNr) {
@@ -351,32 +324,25 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
 ////////////////////////////////////////////////////////////////////////////////
 
   function cleanOutServer(id, dontwait = false) {
-    var coordEndpoint =
-        getCoordinators()[0];
-    var request = require("@arangodb/request");
-    var url = coordEndpoint.url;
-    var body = {"server": id};
-    var result;
-    try {
-      result = request({
-        method: "POST",
-        url: url + "/_admin/cluster/cleanOutServer",
-        body: JSON.stringify(body)
-      });
-    } catch (err) {
+    var coord = IM.getInstancesRole(instanceRole.coordinator)[0];
+    const body = {"server": id};
+    var result = coord.toThisInstance(() => {
+      return arango.POST_RAW("/_admin/cluster/cleanOutServer", body);
+    });
+    if (result.code !== 200) {
       console.error(
-          "Exception for POST /_admin/cluster/cleanOutServer:", err.stack);
+          "Exception for POST /_admin/cluster/cleanOutServer:", result.parsedBody);
       return false;
     }
     console.info("cleanOutServer job:", JSON.stringify(body));
-    console.info("result of request:", JSON.stringify(result.json));
+    console.info("result of request:", JSON.stringify(result.parsedBody));
     if (dontwait) {
       return result;
     }
     // Now wait until the job we triggered is finished:
     var count = (isCov)? 24000 : 1200; // seconds
     while (true) {
-      var job = queryAgencyJob(result.json.id);
+      var job = queryAgencyJob(result.parsedBody.id);
       console.info("Status of cleanOutServer job:", job.status);
       if (job.error === false) {
         if (job.status === "Finished") {
@@ -400,29 +366,23 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
 ////////////////////////////////////////////////////////////////////////////////
 
   function resignLeadership(id, undoMoves = false) {
-    var coordEndpoint =
-        getCoordinators()[0];
-    var request = require("@arangodb/request");
-    var url = coordEndpoint.url;
+    var coord = IM.getInstancesRole(instanceRole.coordinator)[0];
     var body = {"server": id, undoMoves};
-    var result;
-    try {
-      result = request({
-        method: "POST",
-        url: url + "/_admin/cluster/resignLeadership",
-        body: JSON.stringify(body)
-      });
-    } catch (err) {
-      console.error(
-          "Exception for POST /_admin/cluster/resignLeadership:", err.stack);
+    var result = coord.toThisInstance(() => {
+      return arango.POST_RAW("/_admin/cluster/resignLeadership", body);
+    });
+
+    if (result.code !== 200) {
+      console.error("Error for POST /_admin/cluster/numberOfServers:", result.parsedBody);
       return false;
     }
+
     console.info("resignLeadership job:", JSON.stringify(body));
-    console.info("result of request:", JSON.stringify(result.json));
+    console.info("result of request:", JSON.stringify(result));
     // Now wait until the job we triggered is finished:
     var count = (isCov)? 24000 : 1200; // seconds
     while (true) {
-      var job = queryAgencyJob(result.json.id);
+      var job = queryAgencyJob(result.parsedBody.id);
       console.info("Status of resignLeadership job:", job.status);
       if (job.error === false && job.status === "Finished") {
         return result;
@@ -430,7 +390,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       if (count-- < 0) {
         console.error(
             "Timeout in waiting for resignLeadership to complete: "
-            + JSON.stringify(body));
+            + JSON.stringify(result.parsedBody));
         return false;
       }
       wait(isCov ? 1.5 : 1.0);
@@ -442,24 +402,16 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
 ////////////////////////////////////////////////////////////////////////////////
 
   function shrinkCluster(toNum) {
-    var coordEndpoint =
-        getCoordinators()[0];
-    var request = require("@arangodb/request");
-    var url = coordEndpoint.url;
-    var body = {"numberOfDBServers": toNum};
-    let res = {};
-    try {
-      res = request({
-        method: "PUT",
-        url: url + "/_admin/cluster/numberOfServers",
-        body: JSON.stringify(body)
-      });
-    } catch (err) {
-      console.error(
-          "Exception for PUT /_admin/cluster/numberOfServers:", err.stack);
+    var coord = IM.getInstancesRole(instanceRole.coordinator)[0];
+    return coord.toThisInstance(() => {
+      var body = {"numberOfDBServers": toNum};
+      let result = arango.PUT_RAW("/_admin/cluster/numberOfServers", body);
+      if (result.code === 200) {
+        return true;
+      }
+      console.error("Error for PUT /_admin/cluster/numberOfServers:", result.parsedBody);
       return false;
-    }
-    return res.hasOwnProperty("statusCode") && res.statusCode === 200;
+    });
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -467,46 +419,40 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
 ////////////////////////////////////////////////////////////////////////////////
 
   function resetCleanedOutServers() {
-    var coordEndpoint =
-        getCoordinators()[0];
-    var request = require("@arangodb/request");
-    var url = coordEndpoint.url;
+    var coord = IM.getInstancesRole(instanceRole.coordinator)[0];
     var numberOfDBServers = dbservers.length;
-    var body = {"cleanedServers": [], "numberOfDBServers": numberOfDBServers};
-    try {
-      var res = request({
-        method: "PUT",
-        url: url + "/_admin/cluster/numberOfServers",
-        body: JSON.stringify(body)
-      });
-      // To ensure that all our favourite Coordinator0001 has actually
-      // updated its agencyCache to reflect the newly empty CleanedServers
-      // list, we ask him to create a collection with replicationFactor
-      // numberOfDBServers. If this works, we can get rid of the collection
-      // again and all is well. If it does not work, we have to wait a bit
-      // longer:
-      var maxCount = (isCov)? 1200 : 120;
-      for (var count = 0; count < maxCount; ++count) {
-        try {
-          var c = db._create("collectionProbe", {replicationFactor: numberOfDBServers});
-          c.drop();
-          return res;
-        } catch (err2) {
-          if (err2.errorNum !== errors.ERROR_CLUSTER_INSUFFICIENT_DBSERVERS.code) {
-            console.error("Got unexpected error from collection probe: ", err2.stack);
-            return false;
-          }
-        }
-        console.log("Collection probe unsuccessful for replicationFactor=", numberOfDBServers, " count=", count);
-        wait(isCov ? 1.5 : 0.5);
-      }
-      console.error("Could not successfully create collection probe for 60s, giving up!");
-      return false;
-    } catch (err) {
+    var result = coord.toThisInstance(() => {
+      var body = {"cleanedServers": [], "numberOfDBServers": numberOfDBServers};
+      return arango.PUT_RAW("/_admin/cluster/numberOfServers", body);
+    });
+    if (result.code !== 200) {
       console.error(
-          "Exception for PUT /_admin/cluster/numberOfServers:", err.stack);
+        "Exception for PUT /_admin/cluster/numberOfServers:", result.parsedBody);
       return false;
     }
+    // To ensure that all our favourite Coordinator0001 has actually
+    // updated its agencyCache to reflect the newly empty CleanedServers
+    // list, we ask him to create a collection with replicationFactor
+    // numberOfDBServers. If this works, we can get rid of the collection
+    // again and all is well. If it does not work, we have to wait a bit
+    // longer:
+    var maxCount = (isCov)? 1200 : 120;
+    for (var count = 0; count < maxCount; ++count) {
+      try {
+        var c = db._create("collectionProbe", {replicationFactor: numberOfDBServers});
+        c.drop();
+        return result.parsedBody;
+      } catch (err2) {
+        if (err2.errorNum !== errors.ERROR_CLUSTER_INSUFFICIENT_DBSERVERS.code) {
+          console.error("Got unexpected error from collection probe: ", err2.stack);
+          return false;
+        }
+      }
+      console.log("Collection probe unsuccessful for replicationFactor=", numberOfDBServers, " count=", count);
+      wait(isCov ? 1.5 : 0.5);
+    }
+    console.error("Could not successfully create collection probe for 60s, giving up!");
+    return false;
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -514,32 +460,25 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
 ////////////////////////////////////////////////////////////////////////////////
 
   function moveShard(database, collection, shard, fromServer, toServer, dontwait, expectedResult) {
-    var coordEndpoint =
-        getCoordinators()[0];
-    var request = require("@arangodb/request");
-    var url = coordEndpoint.url;
+    var coord = IM.getInstancesRole(instanceRole.coordinator)[0];
     var body = {database, collection, shard, fromServer, toServer};
-    var result;
-    try {
-      result = request({
-        method: "POST",
-        url: url + "/_admin/cluster/moveShard",
-        body: JSON.stringify(body)
-      });
-    } catch (err) {
+    var result = coord.toThisInstance(() => {
+      return arango.POST_RAW("/_admin/cluster/moveShard", body);
+    });
+    if (result.code !== 200) {
       console.error(
-          "Exception for PUT /_admin/cluster/moveShard:", err.stack);
+          "Exception for PUT /_admin/cluster/moveShard:", result.parsedBody);
       return false;
     }
     console.info("moveShard job:", JSON.stringify(body));
-    console.info("result of request:", JSON.stringify(result.json));
+    console.info("result of request:", JSON.stringify(result.parsedBody));
     if (dontwait) {
       return result;
     }
     // Now wait until the job we triggered is finished:
     var count = (isCov)? 12000 : 600; // seconds
     while (true) {
-      var job = queryAgencyJob(result.json.id);
+      var job = queryAgencyJob(result.parsedBody.id);
       console.info("Status of moveShard job:", job.status);
       if (job.error === false && job.status === expectedResult) {
         return result;
@@ -561,20 +500,13 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
 
   function maintenanceMode(mode) {
     console.log("Switching supervision maintenance " + mode);
-    var coordEndpoint =
-        getCoordinators()[0];
-    var request = require("@arangodb/request");
-    var url = coordEndpoint.url;
-    var req;
-    try {
-      req = request({
-        method: "PUT",
-        url: url + "/_admin/cluster/maintenance",
-        body: JSON.stringify(mode)
-      });
-    } catch (err) {
+    var coord = IM.getInstancesRole(instanceRole.coordinator)[0];
+    var result = coord.toThisInstance(() => {
+      arango.PUT_RAW("/_admin/cluster/maintenance", mode);
+    });
+    if (result.code !== 200) {
       console.error(
-          "Exception for PUT /_admin/cluster/maintenance:", err.stack);
+          "Exception for PUT /_admin/cluster/maintenance:", result.parsedBody);
       return false;
     }
     console.log("Supervision maintenance is " + mode);
@@ -588,26 +520,13 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
 
   function cancelAgencyJob(id) {
     console.log("Killing job " + id);
-    var coordEndpoint =
-        getCoordinators()[0];
-    var request = require("@arangodb/request");
-    var url = coordEndpoint.url;
-    var req;
+    var coord = IM.getInstancesRole(instanceRole.coordinator)[0];
     for (let i = 0; i < 10; i++) {
-      try {
-        req = request({
-          method: "POST",
-          url: url + "/_admin/cluster/cancelAgencyJob",
-          body: JSON.stringify({id: id})
-        });
-      } catch (err) {
-        console.error(
-            "Exception for POS /_admin/cluster/cancelAgencyJob:" + {id: id}, err.stack);
-        return false;
-      }
+      var result = coord.toThisInstance(() => {
+        return arango.POST_RAW("/_admin/cluster/cancelAgencyJob", {id: id});
+      });
 
-      const result = JSON.parse(req.body);
-      if (result.error === false) {
+      if (result.parsedBody.error === false) {
         return true;
       } else if (result.code !== 404) {
         console.error("Failed to cancel job " + id + ": " + JSON.stringify(result));
@@ -1128,13 +1047,12 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       var servers = findCollectionServers(dbn, c[1].name(), replVersion);
       var leader = servers[0];
       var fromServer = servers[1];
-      var leaderUrl = getUrlById(leader);
       // Switch off something in the maintenance on the leader to detect
       // followers which are not in Plan. This means that the moveShard
       // below will leave the old server in Current/servers and
       // Current/failoverCandidates.
       try {
-        IM.debugSetFailAt("Maintenance::doNotRemoveUnPlannedFollowers", instanceRole.dbServer, leaderUrl);
+        leader.debugSetFailAt("Maintenance::doNotRemoveUnPlannedFollowers");
 
         var toServer = findServerNotOnList(servers);
         var cinfo = CI.getCollectionInfo(
