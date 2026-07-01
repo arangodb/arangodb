@@ -355,13 +355,17 @@ struct LogContainer : IHasScheduler {
   }
 
   template<typename T>
-  requires std::is_same_v<T, ParticipantWithFakes> ||
-      std::is_same_v<T, ParticipantFakeFollower>
-  auto contains() const { return std::holds_alternative<T>(_log); }
+    requires std::is_same_v<T, ParticipantWithFakes> ||
+             std::is_same_v<T, ParticipantFakeFollower>
+  auto contains() const {
+    return std::holds_alternative<T>(_log);
+  }
   template<typename T>
-  requires std::is_same_v<T, ParticipantWithFakes> ||
-      std::is_same_v<T, ParticipantFakeFollower>
-  [[nodiscard]] auto getAs() -> T& { return std::get<T>(_log); }
+    requires std::is_same_v<T, ParticipantWithFakes> ||
+             std::is_same_v<T, ParticipantFakeFollower>
+  [[nodiscard]] auto getAs() -> T& {
+    return std::get<T>(_log);
+  }
   [[nodiscard]] auto getAsParticipant() -> ParticipantWithFakes& {
     return getAs<ParticipantWithFakes>();
   }
@@ -385,6 +389,13 @@ struct LogContainer : IHasScheduler {
 // going over
 // multiple terms.
 struct WholeLog {
+  // fakeRegistry must live longer than every ReplicatedLog stored in `logs`
+  // because they touch ReplicatedLogMetrics raw pointers that are owned
+  // by fakeRegistry.
+  metrics::FakeRegistry fakeRegistry;
+  std::shared_ptr<replicated_log::ReplicatedLogMetrics> logMetricsMock =
+      std::make_shared<replicated_log::ReplicatedLogMetrics>(fakeRegistry);
+
   LogId const logId;
   // Relying on stable pointers and references to logs for now. Move to
   // shared_ptr<LogContainer> if necessary.
@@ -514,11 +525,6 @@ struct WholeLog {
     return &it->second;
   }
 
- public:
-  metrics::FakeRegistry fakeRegistry;
-  std::shared_ptr<replicated_log::ReplicatedLogMetrics> logMetricsMock =
-      std::make_shared<replicated_log::ReplicatedLogMetrics>(fakeRegistry);
-
  protected:
   LoggerContext const loggerContext;
   std::size_t _nextParticipantId = 1;
@@ -566,7 +572,7 @@ struct ReplicatedLogTest : ::testing::Test {
   }
 
   template<std::size_t replicationFactor>
-  requires requires { replicationFactor >= 1; }
+    requires requires { replicationFactor >= 1; }
   auto createLogs(LogConfig config)
       -> std::pair<LogContainer,
                    std::array<LogContainer, replicationFactor - 1>> {
