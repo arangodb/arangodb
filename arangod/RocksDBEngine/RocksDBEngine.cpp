@@ -59,7 +59,6 @@
 #include "Metrics/HistogramBuilder.h"
 #include "Metrics/Metric.h"
 #include "Metrics/IRegistry.h"
-#include "Metrics/MetricsFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Replication/ReplicationClients.h"
@@ -259,6 +258,7 @@ RocksDBFilePurgeEnabler::RocksDBFilePurgeEnabler(
 RocksDBEngine::RocksDBEngine(
     application_features::ApplicationServer& server,
     RocksDBOptionsProvider& optionsProvider, metrics::IRegistry& metrics,
+    metrics::IMetricsConfig& metricsConfig,
     IDatabasePathProvider const& databasePathProvider,
     IVectorIndexProvider const& vectorIndexProvider,
     IFlushControl& flushControl, IDumpLimitsProvider const& dumpLimitsProvider,
@@ -282,6 +282,7 @@ RocksDBEngine::RocksDBEngine(
       _sortingPolicy(sortingPolicy),
       _optionsProvider(optionsProvider),
       _metrics(metrics),
+      _metricsConfig(metricsConfig),
       _transactionStatistics(_metrics),
       _db(nullptr),
       _walAccess(std::make_unique<RocksDBWalAccess>(*this)),
@@ -458,7 +459,7 @@ void RocksDBEngine::prepare() {
 
   TRI_ASSERT(!_basePath.empty());
 
-  if (server().getFeature<metrics::MetricsFeature>().exportReadWriteMetrics()) {
+  if (_metricsConfig.exportReadWriteMetrics()) {
     transactionStatistics().setupDocumentMetrics();
   }
 

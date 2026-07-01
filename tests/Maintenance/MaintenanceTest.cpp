@@ -571,7 +571,7 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
     // need to construct this after adding the MetricsFeature to the application
     // server
     engine = std::make_unique<RocksDBEngine>(
-        as, roOptions, metrics, dbpath, vectorIndex, flush, dumpLimits,
+        as, roOptions, metrics, metrics, dbpath, vectorIndex, flush, dumpLimits,
         replicatedLogFeature, rocksDbRecoveryManager, dbFeature,
         rocksDbIndexCacheRefillFeature, cacheManagerFeature, agencyFeature);
     dbFeature.setEngineTesting(engine.get());

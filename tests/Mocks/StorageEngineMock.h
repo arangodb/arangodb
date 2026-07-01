@@ -26,6 +26,7 @@
 
 #include "Basics/Result.h"
 #include "Futures/Future.h"
+#include "Metrics/IRegistry.h"
 #include "StorageEngine/HealthData.h"
 #include "Statistics/ServerStatistics.h"
 #include "StorageEngine/StorageEngine.h"
@@ -95,6 +96,18 @@ class TransactionStateMock : public arangodb::TransactionState {
   uint64_t _numInserts{0};
   uint64_t _numRemoves{0};
   StorageEngineMock& _engine;
+};
+
+struct MockRegistry : arangodb::metrics::IRegistry {
+  std::shared_ptr<arangodb::metrics::Metric> doAdd(
+      arangodb::metrics::Builder& builder) override {
+    auto metric = builder.build();
+    _metrics.emplace_back(metric);
+    return metric;
+  }
+
+ private:
+  std::vector<std::shared_ptr<arangodb::metrics::Metric>> _metrics;
 };
 
 class StorageEngineMockSnapshot final : public arangodb::StorageSnapshot {
@@ -240,6 +253,7 @@ class StorageEngineMock : public arangodb::StorageEngine {
   void incrementTick(uint64_t tick) { _engineTick.fetch_add(tick); }
 
  private:
+  MockRegistry _mockRegistry;
   TRI_voc_tick_t _releasedTick;
   std::atomic_uint64_t _engineTick{100};
   arangodb::VersionTracker _versionTracker;
