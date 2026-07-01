@@ -209,6 +209,9 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   void flushOpenFilesIfRequired();
   HealthData healthCheck() override;
 
+  TransactionStatistics& transactionStatistics() noexcept override;
+  TransactionStatistics const& transactionStatistics() const noexcept override;
+
   std::unique_ptr<transaction::Manager> createTransactionManager(
       transaction::ManagerFeature&) override;
   std::shared_ptr<TransactionState> createTransactionState(
@@ -636,6 +639,7 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   RocksDBOptionsProvider& _optionsProvider;
 
   metrics::IRegistry& _metrics;
+  TransactionStatistics _transactionStatistics;
 
   /// single rocksdb database used in this storage engine
   rocksdb::TransactionDB* _db;

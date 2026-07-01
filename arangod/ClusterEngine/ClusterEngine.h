@@ -64,6 +64,9 @@ class ClusterEngine final : public StorageEngine {
 
   HealthData healthCheck() override;
 
+  TransactionStatistics& transactionStatistics() noexcept override;
+  TransactionStatistics const& transactionStatistics() const noexcept override;
+
   std::unique_ptr<transaction::Manager> createTransactionManager(
       transaction::ManagerFeature&) override;
   std::shared_ptr<TransactionState> createTransactionState(

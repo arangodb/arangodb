@@ -32,7 +32,7 @@
 namespace arangodb {
 
 struct TransactionStatistics {
-  explicit TransactionStatistics(metrics::MetricsFeature&);
+  explicit TransactionStatistics(metrics::IRegistry&);
   TransactionStatistics(TransactionStatistics const&) = delete;
   TransactionStatistics(TransactionStatistics&&) = delete;
   TransactionStatistics& operator=(TransactionStatistics const&) = delete;
@@ -40,7 +40,7 @@ struct TransactionStatistics {
 
   void setupDocumentMetrics();
 
-  metrics::MetricsFeature& _metrics;
+  metrics::IRegistry& _metrics;
 
   metrics::Gauge<uint64_t>& _restTransactionsMemoryUsage;
   metrics::Gauge<uint64_t>& _internalTransactionsMemoryUsage;
@@ -95,15 +95,11 @@ struct ServerStatistics {
   ServerStatistics& operator=(ServerStatistics const&) = delete;
   ServerStatistics& operator=(ServerStatistics&&) = delete;
 
-  void setupDocumentMetrics();
-
-  TransactionStatistics _transactionsStatistics;
   double const _startTime;
 
   double uptime() const noexcept;
 
-  explicit ServerStatistics(metrics::MetricsFeature& metrics, double start)
-      : _transactionsStatistics(metrics), _startTime(start) {}
+  explicit ServerStatistics(double start) : _startTime(start) {}
 };
 
 }  // namespace arangodb

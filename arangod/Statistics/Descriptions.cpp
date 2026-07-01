@@ -27,7 +27,8 @@
 #include "Basics/PhysicalMemory.h"
 #include "Basics/process-utils.h"
 #include "Metrics/Counter.h"
-#include "Metrics/MetricsFeature.h"
+#include "Statistics/StatisticsFeature.h"
+#include "RestServer/DatabaseFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Statistics/ConnectionStatistics.h"
@@ -434,24 +435,18 @@ void stats::Descriptions::serverStatistics(velocypack::Builder& b) const {
   auto& dealer = _server.getFeature<V8DealerFeature>();
 #endif
 
-  ServerStatistics const& info =
-      _server.getFeature<metrics::MetricsFeature>().serverStatistics();
-  b.add("uptime", VPackValue(info.uptime()));
+  b.add("uptime", VPackValue(StatisticsFeature::serverUptime()));
   b.add("physicalMemory", VPackValue(PhysicalMemory::getValue()));
 
+  auto const& ts =
+      _server.getFeature<DatabaseFeature>().engine().transactionStatistics();
   b.add("transactions", VPackValue(VPackValueType::Object));
-  b.add("started",
-        VPackValue(info._transactionsStatistics._transactionsStarted.load()));
-  b.add("aborted",
-        VPackValue(info._transactionsStatistics._transactionsAborted.load()));
-  b.add("committed",
-        VPackValue(info._transactionsStatistics._transactionsCommitted.load()));
-  b.add("intermediateCommits",
-        VPackValue(info._transactionsStatistics._intermediateCommits.load()));
-  b.add("readOnly",
-        VPackValue(info._transactionsStatistics._readTransactions.load()));
-  b.add("dirtyReadOnly",
-        VPackValue(info._transactionsStatistics._dirtyReadTransactions.load()));
+  b.add("started", VPackValue(ts._transactionsStarted.load()));
+  b.add("aborted", VPackValue(ts._transactionsAborted.load()));
+  b.add("committed", VPackValue(ts._transactionsCommitted.load()));
+  b.add("intermediateCommits", VPackValue(ts._intermediateCommits.load()));
+  b.add("readOnly", VPackValue(ts._readTransactions.load()));
+  b.add("dirtyReadOnly", VPackValue(ts._dirtyReadTransactions.load()));
   b.close();
 
 #ifdef USE_V8

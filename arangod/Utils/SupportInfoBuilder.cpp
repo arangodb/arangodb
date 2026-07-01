@@ -37,7 +37,6 @@
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Indexes/Index.h"
 #include "Logger/LogMacros.h"
-#include "Metrics/MetricsFeature.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
@@ -48,7 +47,7 @@
 #include "RestServer/EnvironmentFeature.h"
 #include "RestServer/FileDescriptorsFeature.h"
 #include "RestServer/ServerIdFeature.h"
-#include "Statistics/ServerStatistics.h"
+#include "Statistics/StatisticsFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
@@ -223,11 +222,10 @@ void SupportInfoBuilder::buildInfoMessage(VPackBuilder& result,
   VPackBuilder hostInfo;
 
   auto& environment = server.getFeature<EnvironmentFeature>();
-  auto& metrics = server.getFeature<metrics::MetricsFeature>();
   auto& fileDescriptors = server.getFeature<FileDescriptorsFeature>();
   auto& cpuUsage = server.getFeature<CpuUsageFeature>();
   auto& databaseFeature = server.getFeature<DatabaseFeature>();
-  buildHostInfo(hostInfo, environment, metrics, fileDescriptors, cpuUsage,
+  buildHostInfo(hostInfo, environment, fileDescriptors, cpuUsage,
                 databaseFeature, isTelemetricsReq);
 
   std::string timeString;
@@ -440,7 +438,6 @@ void SupportInfoBuilder::buildInfoMessage(VPackBuilder& result,
 
 void SupportInfoBuilder::buildHostInfo(VPackBuilder& result,
                                        EnvironmentFeature const& environment,
-                                       metrics::MetricsFeature& metrics,
                                        FileDescriptorsFeature& fileDescriptors,
                                        CpuUsageFeature& cpuUsage,
                                        DatabaseFeature& databaseFeature,
@@ -518,8 +515,8 @@ void SupportInfoBuilder::buildHostInfo(VPackBuilder& result,
   result.close();  // number of cores
 
   result.add(keys["processStats"], VPackValue(VPackValueType::Object));
-  ServerStatistics const& serverInfo = metrics.serverStatistics();
-  result.add(keys["processUptime"], VPackValue(serverInfo.uptime()));
+  result.add(keys["processUptime"],
+             VPackValue(StatisticsFeature::serverUptime()));
 
   ProcessInfo info = TRI_ProcessInfoSelf();
   result.add(keys["nThreads"], VPackValue(info._numberThreads));

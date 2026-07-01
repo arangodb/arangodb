@@ -209,6 +209,10 @@ class StorageEngineMock : public arangodb::StorageEngine {
   bool autoRefillIndexCaches() const override;
   bool autoRefillIndexCachesOnFollowers() const override;
 
+  arangodb::TransactionStatistics& transactionStatistics() noexcept override;
+  arangodb::TransactionStatistics const& transactionStatistics()
+      const noexcept override;
+
   static std::shared_ptr<arangodb::iresearch::IResearchLinkMock> buildLinkMock(
       arangodb::IndexId id, arangodb::LogicalCollection& collection,
       VPackSlice const& info);
@@ -238,4 +242,5 @@ class StorageEngineMock : public arangodb::StorageEngine {
   TRI_voc_tick_t _releasedTick;
   std::atomic_uint64_t _engineTick{100};
   arangodb::VersionTracker _versionTracker;
+  arangodb::TransactionStatistics _transactionStatistics;
 };

@@ -47,6 +47,7 @@
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "Indexes/SortedIndexAttributeMatcher.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Metrics/MetricsFeature.h"
 #include "RestServer/FlushFeature.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Hints.h"
@@ -205,7 +206,19 @@ StorageEngineMock::StorageEngineMock(
                     std::unique_ptr<arangodb::IndexFactory>(
                         new IndexFactoryMock(server, injectClusterIndexes))),
       vocbaseCount(1),
-      _releasedTick(0) {}
+      _releasedTick(0),
+      _transactionStatistics(
+          server.getFeature<arangodb::metrics::MetricsFeature>()) {}
+
+arangodb::TransactionStatistics&
+StorageEngineMock::transactionStatistics() noexcept {
+  return _transactionStatistics;
+}
+
+arangodb::TransactionStatistics const&
+StorageEngineMock::transactionStatistics() const noexcept {
+  return _transactionStatistics;
+}
 
 arangodb::HealthData StorageEngineMock::healthCheck() { return {}; }
 

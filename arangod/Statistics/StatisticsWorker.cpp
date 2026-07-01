@@ -39,7 +39,7 @@
 #include "Logger/LoggerStream.h"
 #include "Random/RandomGenerator.h"
 #include "Metrics/Counter.h"
-#include "Metrics/MetricsFeature.h"
+#include "RestServer/DatabaseFeature.h"
 #include "RestServer/TtlFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -895,10 +895,7 @@ void StatisticsWorker::generateRawStatistics(VPackBuilder& builder,
   RequestStatistics::getSnapshot(requestStats,
                                  stats::RequestStatisticsSource::ALL);
 
-  ServerStatistics const& serverInfo =
-      _vocbase.server()
-          .getFeature<metrics::MetricsFeature>()
-          .serverStatistics();
+  auto const& ts = _vocbase.engine().transactionStatistics();
 
   builder.openObject();
   if (!_clusterId.empty()) {
@@ -993,32 +990,16 @@ void StatisticsWorker::generateRawStatistics(VPackBuilder& builder,
 
   // _serverStatistics()
   builder.add("server", VPackValue(VPackValueType::Object));
-  builder.add("uptime", VPackValue(serverInfo.uptime()));
+  builder.add("uptime", VPackValue(StatisticsFeature::serverUptime()));
   builder.add("physicalMemory", VPackValue(PhysicalMemory::getValue()));
   builder.add("transactions", VPackValue(VPackValueType::Object));
-  builder.add(
-      "started",
-      VPackValue(
-          serverInfo._transactionsStatistics._transactionsStarted.load()));
-  builder.add(
-      "aborted",
-      VPackValue(
-          serverInfo._transactionsStatistics._transactionsAborted.load()));
-  builder.add(
-      "committed",
-      VPackValue(
-          serverInfo._transactionsStatistics._transactionsCommitted.load()));
-  builder.add(
-      "intermediateCommits",
-      VPackValue(
-          serverInfo._transactionsStatistics._intermediateCommits.load()));
-  builder.add(
-      "readOnly",
-      VPackValue(serverInfo._transactionsStatistics._readTransactions.load()));
-  builder.add(
-      "dirtyReadOnly",
-      VPackValue(
-          serverInfo._transactionsStatistics._dirtyReadTransactions.load()));
+  builder.add("started", VPackValue(ts._transactionsStarted.load()));
+  builder.add("aborted", VPackValue(ts._transactionsAborted.load()));
+  builder.add("committed", VPackValue(ts._transactionsCommitted.load()));
+  builder.add("intermediateCommits",
+              VPackValue(ts._intermediateCommits.load()));
+  builder.add("readOnly", VPackValue(ts._readTransactions.load()));
+  builder.add("dirtyReadOnly", VPackValue(ts._dirtyReadTransactions.load()));
   builder.close();
 
   // export v8 statistics

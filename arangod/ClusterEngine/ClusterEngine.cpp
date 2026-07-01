@@ -25,6 +25,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/OptimizerRulesFeature.h"
+#include "Assertions/ProdAssert.h"
 #include "Basics/Exceptions.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
@@ -72,6 +73,19 @@ ClusterEngine::ClusterEngine(application_features::ApplicationServer& server)
 ClusterEngine::~ClusterEngine() = default;
 
 void ClusterEngine::setActualEngine(StorageEngine* e) { _actualEngine = e; }
+
+TransactionStatistics& ClusterEngine::transactionStatistics() noexcept {
+  ADB_PROD_ASSERT(_actualEngine != nullptr)
+      << "transactionStatistics() called before setActualEngine()";
+  return _actualEngine->transactionStatistics();
+}
+
+TransactionStatistics const& ClusterEngine::transactionStatistics()
+    const noexcept {
+  ADB_PROD_ASSERT(_actualEngine != nullptr)
+      << "transactionStatistics() called before setActualEngine()";
+  return _actualEngine->transactionStatistics();
+}
 
 bool ClusterEngine::isRocksDB() const {
   return !ClusterEngine::Mocking && _actualEngine &&

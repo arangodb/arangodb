@@ -41,6 +41,8 @@
 
 namespace arangodb {
 
+struct TransactionStatistics;
+
 namespace velocypack {
 class Slice;
 class Builder;
@@ -375,6 +377,10 @@ class StorageEngine : public application_features::ApplicationFeature {
   virtual bool autoRefillIndexCaches() const = 0;
   virtual bool autoRefillIndexCachesOnFollowers() const = 0;
   virtual void syncIndexCaches();
+
+  virtual TransactionStatistics& transactionStatistics() noexcept = 0;
+  virtual TransactionStatistics const& transactionStatistics()
+      const noexcept = 0;
 
  protected:
   void registerCollection(

@@ -34,7 +34,7 @@
 #include "Containers/FlatHashSet.h"
 #include "Containers/SmallVector.h"
 #include "Futures/Future.h"
-#include "Metrics/MetricsFeature.h"
+#include "Metrics/MetricsOptions.h"
 #include "Transaction/Hints.h"
 #include "Transaction/OperationOrigin.h"
 #include "Transaction/Options.h"
@@ -499,7 +499,7 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
 
   transaction::OperationOrigin const _operationOrigin;
 
-  metrics::MetricsFeature::UsageTrackingMode _usageTrackingMode;
+  metrics::UsageTrackingMode _usageTrackingMode;
 
   /// @brief name of user who originated the transaction. may be empty.
   /// this user name is informational only and can be used for logging,

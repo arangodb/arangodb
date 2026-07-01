@@ -70,8 +70,9 @@ MetricsFeature::MetricsFeature(
 
 void MetricsFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
-  _serverStatistics =
-      std::make_unique<ServerStatistics>(*this, StatisticsFeature::time());
+  double const startTime = StatisticsFeature::time();
+  StatisticsFeature::setServerStartTime(startTime);
+  _serverStatistics = std::make_unique<ServerStatistics>(startTime);
 
   metrics::MetricsOptionsProvider provider;
   provider.declareOptions(options, _options);
@@ -145,6 +146,10 @@ bool MetricsFeature::ensureWhitespace() const noexcept {
   return _options.ensureWhitespace;
 }
 
+bool MetricsFeature::exportReadWriteMetrics() const noexcept {
+  return _options.exportReadWriteMetrics;
+}
+
 MetricsFeature::UsageTrackingMode MetricsFeature::usageTrackingMode()
     const noexcept {
   return _options.usageTrackingMode;
@@ -154,10 +159,6 @@ void MetricsFeature::validateOptions(
     std::shared_ptr<options::ProgramOptions> options) {
   metrics::MetricsOptionsProvider provider;
   provider.validateOptions(options, _options);
-
-  if (_options.exportReadWriteMetrics) {
-    serverStatistics().setupDocumentMetrics();
-  }
 }
 
 void MetricsFeature::toPrometheus(std::string& result,

@@ -58,6 +58,7 @@
 #include "Metrics/HistogramBuilder.h"
 #include "Metrics/Metric.h"
 #include "Metrics/IRegistry.h"
+#include "Metrics/MetricsFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Replication/ReplicationClients.h"
@@ -284,6 +285,7 @@ RocksDBEngine::RocksDBEngine(
       _sortingPolicy(sortingPolicy),
       _optionsProvider(optionsProvider),
       _metrics(metrics),
+      _transactionStatistics(_metrics),
       _db(nullptr),
       _walAccess(std::make_unique<RocksDBWalAccess>(*this)),
       _maxTransactionSize(transaction::Options::defaultMaxTransactionSize),
@@ -364,6 +366,15 @@ RocksDBEngine::RocksDBEngine(
 RocksDBEngine::~RocksDBEngine() {
   _recoveryHelpers.clear();
   shutdownRocksDBInstance();
+}
+
+TransactionStatistics& RocksDBEngine::transactionStatistics() noexcept {
+  return _transactionStatistics;
+}
+
+TransactionStatistics const& RocksDBEngine::transactionStatistics()
+    const noexcept {
+  return _transactionStatistics;
 }
 
 /// shuts down the RocksDB instance. this is called from unprepare
@@ -884,6 +895,10 @@ void RocksDBEngine::prepare() {
   _basePath = _databasePathProvider.directory();
 
   TRI_ASSERT(!_basePath.empty());
+
+  if (server().getFeature<metrics::MetricsFeature>().exportReadWriteMetrics()) {
+    transactionStatistics().setupDocumentMetrics();
+  }
 
 #ifdef USE_ENTERPRISE
   prepareEnterprise();
@@ -1516,7 +1531,8 @@ void RocksDBEngine::addParametersForNewCollection(VPackBuilder& builder,
 std::unique_ptr<PhysicalCollection> RocksDBEngine::createPhysicalCollection(
     LogicalCollection& collection, velocypack::Slice info) {
   return std::make_unique<RocksDBCollection>(collection, info,
-                                             _cacheManagerProvider.manager());
+                                             _cacheManagerProvider.manager(),
+                                             transactionStatistics());
 }
 
 // inventory functionality

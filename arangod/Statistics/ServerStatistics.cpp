@@ -28,7 +28,7 @@
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/HistogramBuilder.h"
 #include "Metrics/LogScale.h"
-#include "Metrics/MetricsFeature.h"
+#include "Metrics/IRegistry.h"
 
 using namespace arangodb;
 
@@ -92,7 +92,7 @@ DECLARE_HISTOGRAM(arangodb_document_update_time, TimeScale<>,
 DECLARE_HISTOGRAM(arangodb_collection_truncate_time, TimeScale<>,
                   "Total time spent in collection truncate operations [s]");
 
-TransactionStatistics::TransactionStatistics(metrics::MetricsFeature& metrics)
+TransactionStatistics::TransactionStatistics(metrics::IRegistry& metrics)
     : _metrics(metrics),
       _restTransactionsMemoryUsage(
           _metrics.add(arangodb_transactions_rest_memory_usage{})),
@@ -117,6 +117,9 @@ TransactionStatistics::TransactionStatistics(metrics::MetricsFeature& metrics)
           _metrics.add(arangodb_collection_lock_sequential_mode_total{})) {}
 
 void TransactionStatistics::setupDocumentMetrics() {
+  if (_readWriteMetrics.has_value()) {
+    return;
+  }
   // the following metrics are conditional, so we don't initialize them in the
   // constructor
   _readWriteMetrics.emplace(ReadWriteMetrics{
@@ -131,10 +134,6 @@ void TransactionStatistics::setupDocumentMetrics() {
       _metrics.add(arangodb_document_update_time{}),
       _metrics.add(arangodb_collection_truncate_time{}),
   });
-}
-
-void ServerStatistics::setupDocumentMetrics() {
-  _transactionsStatistics.setupDocumentMetrics();
 }
 
 double ServerStatistics::uptime() const noexcept {

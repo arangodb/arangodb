@@ -35,6 +35,7 @@
 #include "Rest/GeneralRequest.h"
 #include "Metrics/Counter.h"
 #include "Metrics/MetricsFeature.h"
+#include "RestServer/DatabaseFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Statistics/ConnectionStatistics.h"
@@ -119,14 +120,12 @@ static void JS_ServerStatistics(
   auto context = TRI_IGETC;
 
   TRI_GET_SERVER_GLOBALS(ArangodServer);
-  ServerStatistics const& info =
-      v8g->server().getFeature<metrics::MetricsFeature>().serverStatistics();
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
   result
       ->Set(context, TRI_V8_ASCII_STRING(isolate, "uptime"),
-            v8::Number::New(isolate, (double)info.uptime()))
+            v8::Number::New(isolate, StatisticsFeature::serverUptime()))
       .FromMaybe(false);
   result
       ->Set(context, TRI_V8_ASCII_STRING(isolate, "physicalMemory"),
@@ -134,7 +133,10 @@ static void JS_ServerStatistics(
       .FromMaybe(false);
 
   // transaction info
-  auto const& ts = info._transactionsStatistics;
+  auto const& ts = v8g->server()
+                       .getFeature<DatabaseFeature>()
+                       .engine()
+                       .transactionStatistics();
   v8::Handle<v8::Object> v8TransactionInfoObj = v8::Object::New(isolate);
   v8TransactionInfoObj
       ->Set(context, TRI_V8_ASCII_STRING(isolate, "started"),

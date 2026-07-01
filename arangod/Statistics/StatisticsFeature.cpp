@@ -685,7 +685,17 @@ StatisticsFeature::StatisticsFeature(
 #endif
 }
 
+/*static*/ double StatisticsFeature::_serverStartTime = 0.0;
+
 /*static*/ double StatisticsFeature::time() { return TRI_microtime(); }
+
+/*static*/ void StatisticsFeature::setServerStartTime(double t) noexcept {
+  _serverStartTime = t;
+}
+
+/*static*/ double StatisticsFeature::serverUptime() noexcept {
+  return time() - _serverStartTime;
+}
 
 void StatisticsFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
@@ -900,9 +910,6 @@ void StatisticsFeature::toPrometheus(std::string& result, double now,
            static_cast<double>(PhysicalMemory::getValue());
   }
 
-  ServerStatistics const& serverInfo =
-      server().getFeature<metrics::MetricsFeature>().serverStatistics();
-
   // processStatistics()
   appendMetric(result, std::to_string(info._minorPageFaults), "minorPageFaults",
                globals, ensureWhitespace);
@@ -928,7 +935,7 @@ void StatisticsFeature::toPrometheus(std::string& result, double now,
                globals, ensureWhitespace);
   appendMetric(result, std::to_string(PhysicalMemory::getValue()),
                "physicalSize", globals, ensureWhitespace);
-  appendMetric(result, std::to_string(serverInfo.uptime()), "uptime", globals,
+  appendMetric(result, std::to_string(serverUptime()), "uptime", globals,
                ensureWhitespace);
   appendMetric(result, std::to_string(NumberOfCores::getValue()), "cores",
                globals, ensureWhitespace);

@@ -73,6 +73,7 @@ class MetricsFeature final : public application_features::ApplicationFeature,
 
   bool exportAPI() const noexcept;
   bool ensureWhitespace() const noexcept;
+  bool exportReadWriteMetrics() const noexcept;
   UsageTrackingMode usageTrackingMode() const noexcept;
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) final;
