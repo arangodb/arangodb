@@ -205,31 +205,6 @@ DECLARE_COUNTER(
     rocksdb_cache_edge_empty_inserts_total,
     "Number of inserts into the edge cache that were an empty array");
 
-DECLARE_COUNTER(arangodb_collection_truncates_total,
-                "Total number of collection truncate operations (excl. "
-                "synchronous replication)");
-DECLARE_COUNTER(arangodb_collection_truncates_replication_total,
-                "Total number of collection truncate operations by synchronous "
-                "replication");
-DECLARE_COUNTER(arangodb_document_writes_total,
-                "Total number of document write operations (excl. synchronous "
-                "replication)");
-DECLARE_COUNTER(
-    arangodb_document_writes_replication_total,
-    "Total number of document write operations by synchronous replication");
-DECLARE_HISTOGRAM(arangodb_document_read_time, TimeScale<>,
-                  "Total time spent in document read operations [s]");
-DECLARE_HISTOGRAM(arangodb_document_insert_time, TimeScale<>,
-                  "Total time spent in document insert operations [s]");
-DECLARE_HISTOGRAM(arangodb_document_replace_time, TimeScale<>,
-                  "Total time spent in document replace operations [s]");
-DECLARE_HISTOGRAM(arangodb_document_remove_time, TimeScale<>,
-                  "Total time spent in document remove operations [s]");
-DECLARE_HISTOGRAM(arangodb_document_update_time, TimeScale<>,
-                  "Total time spent in document update operations [s]");
-DECLARE_HISTOGRAM(arangodb_collection_truncate_time, TimeScale<>,
-                  "Total time spent in collection truncate operations [s]");
-
 // global flag to cancel all compactions. will be flipped to true on shutdown
 static std::atomic<bool> cancelCompactions{false};
 
@@ -559,18 +534,7 @@ void RocksDBEngine::start() {
 
   initTransactionStatistics(_metrics);
   if (_options.exportReadWriteMetrics) {
-    _readWriteMetrics.emplace(RocksDBReadWriteMetrics{
-        _metrics.add(arangodb_document_writes_total{}),
-        _metrics.add(arangodb_document_writes_replication_total{}),
-        _metrics.add(arangodb_collection_truncates_total{}),
-        _metrics.add(arangodb_collection_truncates_replication_total{}),
-        _metrics.add(arangodb_document_read_time{}),
-        _metrics.add(arangodb_document_insert_time{}),
-        _metrics.add(arangodb_document_replace_time{}),
-        _metrics.add(arangodb_document_remove_time{}),
-        _metrics.add(arangodb_document_update_time{}),
-        _metrics.add(arangodb_collection_truncate_time{}),
-    });
+    _readWriteMetrics.emplace(RocksDBReadWriteMetrics{_metrics});
   }
 
   auto path = _databasePathProvider.directory();

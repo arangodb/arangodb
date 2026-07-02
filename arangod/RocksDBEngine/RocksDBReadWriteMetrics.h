@@ -28,6 +28,8 @@
 namespace arangodb {
 
 struct RocksDBReadWriteMetrics {
+  explicit RocksDBReadWriteMetrics(metrics::IRegistry& registry);
+
   // Total number of write operations in storage engine (excl. sync replication)
   metrics::Counter& numWrites;
   // Total number of write operations in storage engine by sync replication
