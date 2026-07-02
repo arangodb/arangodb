@@ -23,18 +23,15 @@
 
 #pragma once
 
-#include "Utils/ExecContext.h"
-
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #include <iosfwd>
 #endif
 
+#include <cstdint>
 #include <string>
 #include <string_view>
 
 namespace arangodb {
-class ExecContext;
-
 /// @brief Indicates whether we want to observe writes performed within the
 /// current (sub) transaction. This is only relevant for AQL queries.
 /// AQL queries are performed transcationally, i.e., either all changes are
@@ -90,7 +87,6 @@ struct OperationOptions {
   };
 
   OperationOptions() = default;
-  explicit OperationOptions(ExecContext const&);
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   friend std::ostream& operator<<(std::ostream& os,
@@ -193,17 +189,6 @@ struct OperationOptions {
   // `RestVocbaseBaseHandler::createTransaction`, which either continues
   // using a transaction or creates a new one.
   bool allowDirtyReads = false;
-
-private:
-  // get associated execution context
-  ExecContext const& context() const;
-
- private:
-  // TODO Remove _context, it's unnecessary. Its original intent was to preserve
-  //      the context for asynchronous calls. This has been achieved by the
-  //      Context struct and corresponding save&restore operations in both
-  //      Futures and async coroutines.
-  ExecContext const* _context = nullptr;
 };
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
