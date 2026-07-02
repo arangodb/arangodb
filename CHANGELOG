@@ -1,5 +1,8 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
+* COR-679: Added AQL array `ALL`/`ANY`/`NONE`/`AT LEAST` support for the `=~` and
+  `!~` regex operators, e.g. `["foo", "bar"] ANY =~ "^ba"` and
+  `["foo1", "bar2", "baz3baz"] AT LEAST(2) =~ "\\w\\d$"`.
 
 * Upgraded included rclone to v1.74.3 with go1.25.11 and non-vulnerable
   dependencies.
