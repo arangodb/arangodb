@@ -32,6 +32,7 @@ const {assertEqual, assertTrue, assertFalse, assertNotEqual} = jsunity.jsUnity.a
 const arango = require('@arangodb').arango;
 const db = require('@arangodb').db;
 const _ = require("lodash");
+const { instanceRole } = require('@arangodb/testutils/instance');
 const IM = global.instanceManager;
 
 const cn = "UnitTestsQueries";
@@ -70,12 +71,12 @@ function queriesTestSuite () {
       assertEqual(5, Object.keys(shardMap).length, shardMap);
 
       const dbServers = IM.getInstancesRole(instanceRole.dbserver);
-      assertTrue(dbservers.length > 0, "no dbservers found");
+      assertTrue(dbServers.length > 0, "no dbServers found");
         
       let totalCount = 0, totalToArray = 0, totalQuery = 0;
        
-      dbservers.forEach(function(dbserver, i) {
-        server.toThisInstance(() => {
+      dbServers.forEach(function(dbserver, i) {
+        dbserver.toThisInstance(() => {
           let id = dbserver.id;
           require("console").warn("connecting to dbserver", dbserver.endpoint, id);
 
@@ -110,10 +111,10 @@ function queriesTestSuite () {
     // test executing operations on the DB-Server, without collection
     testDBServerNoCollection: function() {
       const dbServers = IM.getInstancesRole(instanceRole.dbserver);
-      assertTrue(dbservers.length > 0, "no dbservers found");
+      assertTrue(dbServers.length > 0, "no dbServers found");
         
-      dbservers.forEach(function(dbserver, i) {
-        server.toThisInstance(() => {
+      dbServers.forEach(function(dbserver, i) {
+        dbserver.toThisInstance(() => {
           let id = dbserver.id;
           require("console").warn("connecting to dbserver", dbserver.endpoint, id);
           let result = db._query("RETURN [DECODE_REV('_dpq8a-----'), DECODE_REV('_bpq8a-----')]").toArray();

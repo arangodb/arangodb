@@ -38,7 +38,7 @@ function numberOfServersSuite () {
       // started.
       let IM = global.instanceManager;
       const dbServers = IM.getInstancesRole(instanceRole.dbserver);
-      numberFound = dbservers.length;
+      numberFound = dbServers.length;
     },
 
     setUp : function () {

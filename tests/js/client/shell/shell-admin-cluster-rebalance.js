@@ -32,7 +32,7 @@ const database = "cluster_rebalance_db";
 
 const wait = require("internal").wait;
 let { instanceRole } = require('@arangodb/testutils/instance');
-const IM = GLOBAL.instanceManager;
+const IM = global.instanceManager;
 
 function resignServer(server) {
   let res = arango.POST_RAW("/_admin/cluster/resignLeadership", {server});
