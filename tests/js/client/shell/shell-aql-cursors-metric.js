@@ -28,11 +28,11 @@
 'use strict';
 const jsunity = require('jsunity');
 const db = require("@arangodb").db;
-const { getMetricSingle } = require("@arangodb/test-helper");
 const queries = require("@arangodb/aql/queries");
 
 const cn = "UnitTestsCollection";
-  
+let IM = global.instanceManager;
+
 function MetricsSuite () {
   'use strict';
 
@@ -40,7 +40,7 @@ function MetricsSuite () {
       
   return {
     testMetricForCursorWithTtl: function () {
-      const metricBefore = getMetricSingle(name);
+      const metricBefore = IM.getAllMetricsByName(name)[0];
 
       const n = 10;
       let ids = [];
@@ -50,7 +50,7 @@ function MetricsSuite () {
         ids.push(cursor.data.id);
       }
 
-      let metricAfter = getMetricSingle(name);
+      let metricAfter = IM.getAllMetricsByName(name)[0];
       // add some leeway in case some other, unrelated query from outside this test
       // was running in the before snapshot
       assertTrue(metricAfter >= metricBefore + (n - 1), { metricBefore, metricAfter });
@@ -61,7 +61,7 @@ function MetricsSuite () {
         assertEqual(202, res.code, res);
       });
       
-      metricAfter = getMetricSingle(name);
+      metricAfter = IM.getAllMetricsByName(name)[0];
       // add some leeway in case some other, unrelated query from outside this test
       // is running in the current snapshot
       assertTrue(metricAfter <= metricBefore + 1, { metricBefore, metricAfter });
