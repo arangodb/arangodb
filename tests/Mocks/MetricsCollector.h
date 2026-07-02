@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2025 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -22,26 +22,24 @@
 
 #pragma once
 
-#include <string>
+#include <memory>
+#include <vector>
 
-namespace arangodb::metrics {
+#include "Metrics/IRegistry.h"
 
-enum class UsageTrackingMode {
-  // no tracking
-  kDisabled,
-  // tracking per shard (one-dimensional)
-  kEnabledPerShard,
-  // tracking per shard and per user (two-dimensional)
-  kEnabledPerShardPerUser,
+namespace arangodb::tests {
+
+// Minimal IRegistry implementation for tests. Keeps registered metric objects
+// alive so that the references handed out by add() remain valid.
+struct MetricsCollector : metrics::IRegistry {
+  std::shared_ptr<metrics::Metric> doAdd(metrics::Builder& builder) override {
+    auto metric = builder.build();
+    _metrics.emplace_back(metric);
+    return metric;
+  }
+
+ private:
+  std::vector<std::shared_ptr<metrics::Metric>> _metrics;
 };
 
-struct MetricsOptions {
-  bool exportAPI = true;
-  bool ensureWhitespace = true;
-  std::string usageTrackingModeString = "disabled";
-
-  // Computed during validation
-  UsageTrackingMode usageTrackingMode = UsageTrackingMode::kDisabled;
-};
-
-}  // namespace arangodb::metrics
+}  // namespace arangodb::tests

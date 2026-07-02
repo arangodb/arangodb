@@ -32,6 +32,7 @@
 #include <map>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <tuple>
@@ -45,6 +46,7 @@
 #include "Containers/FlatHashSet.h"
 #include "Metrics/Fwd.h"
 #include "ISortingPolicy.h"
+#include "RocksDBEngine/RocksDBReadWriteMetrics.h"
 #include "Cache/ICacheManagerProvider.h"
 #include "Metrics/IRegistry.h"
 #include "Replication2/ReplicatedLog/IReplicatedLogProvider.h"
@@ -89,7 +91,6 @@ struct WalManager;
 }  // namespace replication2::storage
 
 class PhysicalCollection;
-struct TransactionStatistics;
 class RocksDBBackgroundErrorListener;
 class RocksDBBackgroundThread;
 class RocksDBDumpManager;
@@ -643,6 +644,8 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   RocksDBOptionsProvider& _optionsProvider;
 
   metrics::IRegistry& _metrics;
+  // only set if startup option `--server.export-read-write-metrics` is enabled
+  std::optional<RocksDBReadWriteMetrics> _readWriteMetrics;
 
   /// single rocksdb database used in this storage engine
   rocksdb::TransactionDB* _db;

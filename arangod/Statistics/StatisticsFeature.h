@@ -135,6 +135,7 @@ class StatisticsFeature final
                               std::initializer_list<std::string> const& les,
                               bool isInteger, std::string_view globals,
                               bool ensureWhitespace);
+
   StatisticsFeatureOptions _options;
   bool _statisticsHistoryTouched = false;
 

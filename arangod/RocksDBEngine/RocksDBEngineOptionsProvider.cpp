@@ -41,7 +41,6 @@ void RocksDBEngineOptionsProvider::declareOptions(
     std::shared_ptr<ProgramOptions> opts, RocksDBEngineOptions& options) {
   opts->addObsoleteOption("--server.storage-engine", "The storage engine type",
                           true);
-
   opts->addSection("rocksdb", "RocksDB engine");
 
   opts->addOption(
@@ -382,6 +381,30 @@ is generated, the legacy little endian key encoding is used.
 Only use this option for testing purposes! It is bad for performance and
 disables a few features like parallel index generation!)");
 #endif
+
+  // TODO: consider moving this option to --rocksdb.export-read-write-metrics
+  opts->addOption("--server.export-read-write-metrics",
+                  "Whether to enable metrics for document reads and writes.",
+                  new BooleanParameter(&options.exportReadWriteMetrics),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnDBServer,
+                      arangodb::options::Flags::OnSingle,
+                      arangodb::options::Flags::Uncommon))
+      .setLongDescription(R"(Enabling this option exposes the following
+additional metrics via the `GET /_admin/metrics/v2` endpoint:
+
+- `arangodb_document_writes_total`
+- `arangodb_document_writes_replication_total`
+- `arangodb_document_insert_time`
+- `arangodb_document_read_time`
+- `arangodb_document_update_time`
+- `arangodb_document_replace_time`
+- `arangodb_document_remove_time`
+- `arangodb_collection_truncates_total`
+- `arangodb_collection_truncates_replication_total`
+- `arangodb_collection_truncate_time`
+)");
 }
 
 void RocksDBEngineOptionsProvider::validateOptions(

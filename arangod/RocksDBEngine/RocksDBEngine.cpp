@@ -29,6 +29,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/LanguageFeature.h"
+#include "Basics/DownCast.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FeatureFlags.h"
 #include "Basics/FileUtils.h"
@@ -56,11 +57,9 @@
 #include "Logger/LoggerStream.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/GaugeBuilder.h"
-#include "Metrics/HistogramBuilder.h"
 #include "Metrics/Metric.h"
 #include "Metrics/IRegistry.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
 #include "Replication/ReplicationClients.h"
 #include "Replication2/Storage/IStorageEngineMethods.h"
 #include "Rest/Version.h"
@@ -526,6 +525,11 @@ void RocksDBEngine::start() {
   // it is already decided that rocksdb is used
   TRI_ASSERT(isEnabled());
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
+
+  initTransactionStatistics(_metrics);
+  if (_options.exportReadWriteMetrics) {
+    _readWriteMetrics.emplace(RocksDBReadWriteMetrics{_metrics});
+  }
 
   auto path = _databasePathProvider.directory();
   auto engineFilePath = basics::FileUtils::buildFilename(path, "ENGINE");
@@ -1074,8 +1078,8 @@ void RocksDBEngine::addParametersForNewCollection(VPackBuilder& builder,
 // create storage-engine specific collection
 std::unique_ptr<PhysicalCollection> RocksDBEngine::createPhysicalCollection(
     LogicalCollection& collection, velocypack::Slice info) {
-  return std::make_unique<RocksDBCollection>(collection, info,
-                                             _cacheManagerProvider.manager());
+  return std::make_unique<RocksDBCollection>(
+      collection, info, _cacheManagerProvider.manager(), _readWriteMetrics);
 }
 
 // inventory functionality
