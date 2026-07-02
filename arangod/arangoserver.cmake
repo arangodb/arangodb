@@ -8,6 +8,7 @@ add_library(arangoserver STATIC
   Auth/Permissions.cpp Auth/Permissions.h
   Auth/TokenCache.cpp
   Auth/User.cpp
+  Auth/UserManagerBase.cpp
   Auth/UserManagerImpl.cpp
   Auth/Rbac/Backend.cpp Auth/Rbac/Backend.h
   Auth/Rbac/BackendImpl.cpp Auth/Rbac/BackendImpl.h

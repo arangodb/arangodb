@@ -23,40 +23,26 @@
 
 #include "gtest/gtest.h"
 
+#include "Auth/AuthMode.h"
 #include "Auth/Common.h"
+#include "Auth/Rbac/Actions.h"
+#include "Mocks/ExecContextFactory.h"
 #include "Utils/ExecContext.h"
 
 #include <memory>
 #include <string>
-#include <vector>
 
 using namespace arangodb;
+using namespace arangodb::tests::mocks;
 
 namespace arangodb::tests {
-
-struct TestExecContext : public ExecContext {
-  TestExecContext(std::string const& user, std::string const& database,
-                  CollectionAccessLevel systemLevel,
-                  CollectionAccessLevel dbLevel, bool isAdminUser,
-                  std::vector<std::string> const& roles = {},
-                  std::string const& jwtToken = "")
-      : ExecContext(ConstructorToken{}, Type::Default, user, database,
-                    systemLevel, dbLevel, isAdminUser, roles, jwtToken) {}
-
-  TestExecContext(bool isInternal, std::string const& user,
-                  std::string const& database,
-                  CollectionAccessLevel systemLevel,
-                  CollectionAccessLevel dbLevel, bool isAdminUser)
-      : ExecContext(ConstructorToken{},
-                    isInternal ? Type::Internal : Type::Default, user, database,
-                    systemLevel, dbLevel, isAdminUser) {}
-};
 
 // --- Construction ---
 
 TEST(ExecContextTest, basic_construction) {
-  TestExecContext ctx("testuser", "testdb", CollectionAccessLevel::WriteMeta,
-                      CollectionAccessLevel::WriteMeta, true);
+  auto cec = makeClassicExecContext("testuser", "testdb", auth::Level::RW,
+                                    auth::Level::RW);
+  auto& ctx = *cec.execContext;
 
   EXPECT_EQ(ctx.user(), "testuser");
   EXPECT_TRUE(ctx.canUseDatabase("_system", DatabaseAccessLevel::Write).ok());
@@ -64,124 +50,99 @@ TEST(ExecContextTest, basic_construction) {
   EXPECT_TRUE(
       ctx.canUseAdminAction(arangodb::rbac::Category::AdminBackup{}).ok());
   EXPECT_FALSE(ctx.isSuperuser());
-  // EXPECT_FALSE(ctx.isReadOnly());
-  EXPECT_FALSE(ctx.hasJwtToken());
-  EXPECT_TRUE(ctx.jwtToken().empty());
-  EXPECT_TRUE(ctx.roles().empty());
+  // NOTE: hasJwtToken(), jwtToken(), and roles() were removed from ExecContext
+  // in the auth refactoring — they are RBAC-only concepts. Tests for those are
+  // deferred to the RBAC test suite.
 }
 
-TEST(ExecContextTest, construction_with_jwt_and_roles) {
-  std::vector<std::string> roles = {"admin", "developer", "viewer"};
-  std::string jwtToken = "eyJhbGciOiJIUzI1NiJ9.test.signature";
-
-  TestExecContext ctx("jwtuser", "testdb", auth::Level::RW, auth::Level::RO,
-                      true, roles, jwtToken);
-
-  EXPECT_EQ(ctx.user(), "jwtuser");
-  EXPECT_TRUE(ctx.canUseDatabase("_system", DatabaseAccessLevel::Write).ok());
-  EXPECT_TRUE(ctx.canUseDatabase("testdb", DatabaseAccessLevel::Read));
-  EXPECT_TRUE(ctx.hasJwtToken());
-  EXPECT_EQ(ctx.jwtToken(), jwtToken);
-
-  auto const& ctxRoles = ctx.roles();
-  ASSERT_EQ(ctxRoles.size(), 3u);
-  EXPECT_EQ(ctxRoles[0], "admin");
-  EXPECT_EQ(ctxRoles[1], "developer");
-  EXPECT_EQ(ctxRoles[2], "viewer");
-}
-
-TEST(ExecContextTest, duplicate_roles_are_preserved) {
-  std::vector<std::string> roles = {"admin", "dev", "admin"};
-  TestExecContext ctx("user", "db", auth::Level::RW, auth::Level::RW, false,
-                      roles, "tok");
-
-  auto const& ctxRoles = ctx.roles();
-  ASSERT_EQ(ctxRoles.size(), 3u);
-  EXPECT_EQ(ctxRoles[0], "admin");
-  EXPECT_EQ(ctxRoles[2], "admin");
-}
+// construction_with_jwt_and_roles and duplicate_roles_are_preserved are
+// omitted: hasJwtToken(), jwtToken(), and roles() do not exist on ExecContext
+// in the Classic auth path. These will be covered by future RBAC tests.
 
 // --- isSuperuser() predicate ---
 
-TEST(ExecContextTest, superuser_requires_internal_and_rw_rw) {
-  TestExecContext ctx(true, "", "", auth::Level::RW, auth::Level::RW, true);
+TEST(ExecContextTest, superuser_requires_superuser_authmode) {
+  // In the new API, isSuperuser() is true only for AuthMode::Superuser (or
+  // AuthMode::Disabled). The old Type::Internal+RW/RW maps to Superuser here.
+  auto ctx = ExecContextAccessor::make(AuthMode{AuthMode::Superuser{}},
+                                       VocbasePtr{nullptr});
 
-  EXPECT_TRUE(ctx.isSuperuser());
-  // EXPECT_FALSE(ctx.isReadOnly());
+  EXPECT_TRUE(ctx->isSuperuser());
 }
 
-TEST(ExecContextTest, internal_ro_ro_is_readonly_not_superuser) {
-  TestExecContext ctx(true, "", "db", auth::Level::RO, auth::Level::RO, false);
+TEST(ExecContextTest, classic_ro_ro_is_not_superuser) {
+  auto cec = makeClassicExecContext("", "db", auth::Level::RO, auth::Level::RO);
 
-  EXPECT_FALSE(ctx.isSuperuser());
-  // EXPECT_TRUE(ctx.isReadOnly());
+  EXPECT_FALSE(cec.execContext->isSuperuser());
 }
 
-TEST(ExecContextTest, internal_rw_ro_is_neither_superuser_nor_readonly) {
-  TestExecContext ctx(true, "", "db", auth::Level::RW, auth::Level::RO, false);
+TEST(ExecContextTest, classic_rw_ro_is_not_superuser) {
+  auto cec = makeClassicExecContext("", "db", auth::Level::RW, auth::Level::RO);
 
-  EXPECT_FALSE(ctx.isSuperuser());
-  // EXPECT_FALSE(ctx.isReadOnly());
+  EXPECT_FALSE(cec.execContext->isSuperuser());
 }
 
-TEST(ExecContextTest, internal_ro_rw_is_readonly_not_superuser) {
-  TestExecContext ctx(true, "", "db", auth::Level::RO, auth::Level::RW, false);
+TEST(ExecContextTest, classic_ro_rw_is_not_superuser) {
+  auto cec = makeClassicExecContext("", "db", auth::Level::RO, auth::Level::RW);
 
-  EXPECT_FALSE(ctx.isSuperuser());
-  // EXPECT_TRUE(ctx.isReadOnly());
+  EXPECT_FALSE(cec.execContext->isSuperuser());
 }
 
-TEST(ExecContextTest, internal_none_none_is_neither) {
-  TestExecContext ctx(true, "", "db", auth::Level::NONE, auth::Level::NONE,
-                      false);
+TEST(ExecContextTest, classic_none_none_is_not_superuser) {
+  auto cec =
+      makeClassicExecContext("", "db", auth::Level::NONE, auth::Level::NONE);
 
-  EXPECT_FALSE(ctx.isSuperuser());
-  // EXPECT_FALSE(ctx.isReadOnly());
+  EXPECT_FALSE(cec.execContext->isSuperuser());
 }
 
-TEST(ExecContextTest, default_rw_rw_is_not_superuser) {
-  TestExecContext ctx("user", "db", auth::Level::RW, auth::Level::RW, true);
+TEST(ExecContextTest, classic_rw_rw_is_not_superuser) {
+  auto cec =
+      makeClassicExecContext("user", "db", auth::Level::RW, auth::Level::RW);
 
-  EXPECT_FALSE(ctx.isSuperuser());
-  // EXPECT_FALSE(ctx.isReadOnly());
+  EXPECT_FALSE(cec.execContext->isSuperuser());
 }
 
-TEST(ExecContextTest, default_ro_ro_is_not_superuser_not_readonly) {
-  // isReadOnly requires isInternal
-  TestExecContext ctx("user", "db", auth::Level::RO, auth::Level::RO, false);
+TEST(ExecContextTest, classic_ro_ro_non_admin_is_not_superuser) {
+  auto cec =
+      makeClassicExecContext("user", "db", auth::Level::RO, auth::Level::RO);
 
-  EXPECT_FALSE(ctx.isSuperuser());
-  // EXPECT_FALSE(ctx.isReadOnly());
+  EXPECT_FALSE(cec.execContext->isSuperuser());
 }
 
-// --- canUseDatabase (two-arg: internal and same-database paths) ---
+// --- canUseDatabase ---
 
-TEST(ExecContextTest, canUseDatabase_internal_uses_dbAuthLevel) {
-  TestExecContext ctx(true, "", "", CollectionAccessLevel::WriteMeta,
-                      CollectionAccessLevel::WriteMeta, true);
+TEST(ExecContextTest, canUseDatabase_superuser_grants_all_databases) {
+  // AuthMode::Superuser grants access to any database at any level (the old
+  // Type::Internal+WriteMeta/WriteMeta behaviour maps to this).
+  auto ctx = ExecContextAccessor::make(AuthMode{AuthMode::Superuser{}},
+                                       VocbasePtr{nullptr});
+
+  EXPECT_TRUE(ctx->canUseDatabase("anydb", DatabaseAccessLevel::Write).ok());
+  EXPECT_TRUE(ctx->canUseDatabase("anotherdb", DatabaseAccessLevel::Read).ok());
+}
+
+TEST(ExecContextTest, canUseDatabase_classic_ro_rejects_write) {
+  // Classic context where the mock returns RO for "anydb": read is allowed,
+  // write is not (the old Type::Internal+RO/RO restriction maps here).
+  auto cec =
+      makeClassicExecContext("", "anydb", auth::Level::NONE, auth::Level::RO);
 
   EXPECT_TRUE(
-      ctx.canUseDatabase("anydb", CollectionAccessLevel::WriteMeta).ok());
-  EXPECT_TRUE(
-      ctx.canUseDatabase("anotherdb", CollectionAccessLevel::Read).ok());
-}
-
-TEST(ExecContextTest, canUseDatabase_internal_ro_rejects_rw) {
-  TestExecContext ctx(true, "", "", CollectionAccessLevel::Read,
-                      CollectionAccessLevel::Read, false);
-
-  EXPECT_TRUE(ctx.canUseDatabase("anydb", CollectionAccessLevel::Read).ok());
+      cec.execContext->canUseDatabase("anydb", DatabaseAccessLevel::Read).ok());
   EXPECT_FALSE(
-      ctx.canUseDatabase("anydb", CollectionAccessLevel::WriteMeta).ok());
+      cec.execContext->canUseDatabase("anydb", DatabaseAccessLevel::Write)
+          .ok());
 }
 
 TEST(ExecContextTest, canUseDatabase_same_db_uses_dbAuthLevel) {
-  TestExecContext ctx("user", "mydb", CollectionAccessLevel::WriteMeta,
-                      CollectionAccessLevel::Read, false);
+  // Classic context: "mydb" has RO access; _system has RW.
+  auto cec =
+      makeClassicExecContext("user", "mydb", auth::Level::RW, auth::Level::RO);
 
-  EXPECT_TRUE(ctx.canUseDatabase("mydb", CollectionAccessLevel::Read).ok());
+  EXPECT_TRUE(
+      cec.execContext->canUseDatabase("mydb", DatabaseAccessLevel::Read).ok());
   EXPECT_FALSE(
-      ctx.canUseDatabase("mydb", CollectionAccessLevel::WriteMeta).ok());
+      cec.execContext->canUseDatabase("mydb", DatabaseAccessLevel::Write).ok());
 }
 
 // --- Static superuser singleton ---
@@ -190,7 +151,6 @@ TEST(ExecContextTest, superuser_singleton) {
   auto const& su = ExecContext::superuser();
 
   EXPECT_TRUE(su.isSuperuser());
-  // EXPECT_FALSE(su.isReadOnly());
 }
 
 TEST(ExecContextTest, superuser_as_shared_returns_same_object) {
@@ -216,16 +176,15 @@ TEST(ExecContextTest, current_returns_superuser_when_no_context_set) {
 TEST(ExecContextTest, set_swaps_and_returns_old_value) {
   auto old = ExecContext::set(nullptr);
 
-  auto ctx =
-      std::make_shared<TestExecContext>("u", "db", CollectionAccessLevel::Read,
-                                        CollectionAccessLevel::Read, false);
-  auto prev = ExecContext::set(ctx);
+  auto cec =
+      makeClassicExecContext("u", "db", auth::Level::RO, auth::Level::RO);
+  auto prev = ExecContext::set(cec.execContext);
   EXPECT_EQ(prev, nullptr);
-  EXPECT_EQ(ExecContext::currentAsShared(), ctx);
+  EXPECT_EQ(ExecContext::currentAsShared(), cec.execContext);
   EXPECT_EQ(ExecContext::current().user(), "u");
 
   auto prev2 = ExecContext::set(old);
-  EXPECT_EQ(prev2, ctx);
+  EXPECT_EQ(prev2, cec.execContext);
 }
 
 // --- ExecContextScope RAII ---
@@ -233,13 +192,12 @@ TEST(ExecContextTest, set_swaps_and_returns_old_value) {
 TEST(ExecContextTest, scope_sets_and_restores_current) {
   auto original = ExecContext::currentAsShared();
 
-  auto ctx = std::make_shared<TestExecContext>(
-      "scoped", "db", CollectionAccessLevel::WriteMeta,
-      CollectionAccessLevel::WriteMeta, false);
+  auto cec =
+      makeClassicExecContext("scoped", "db", auth::Level::RW, auth::Level::RW);
   {
-    ExecContextScope scope(ctx);
+    ExecContextScope scope(cec.execContext);
     EXPECT_EQ(ExecContext::current().user(), "scoped");
-    EXPECT_EQ(ExecContext::currentAsShared(), ctx);
+    EXPECT_EQ(ExecContext::currentAsShared(), cec.execContext);
   }
 
   EXPECT_EQ(ExecContext::currentAsShared(), original);
@@ -248,17 +206,15 @@ TEST(ExecContextTest, scope_sets_and_restores_current) {
 TEST(ExecContextTest, nested_scopes_restore_correctly) {
   auto original = ExecContext::currentAsShared();
 
-  auto ctx1 = std::make_shared<TestExecContext>(
-      "outer", "db", CollectionAccessLevel::WriteMeta,
-      CollectionAccessLevel::WriteMeta, false);
-  auto ctx2 = std::make_shared<TestExecContext>(
-      "inner", "db", CollectionAccessLevel::Read, CollectionAccessLevel::Read,
-      false);
+  auto cec1 =
+      makeClassicExecContext("outer", "db", auth::Level::RW, auth::Level::RW);
+  auto cec2 =
+      makeClassicExecContext("inner", "db", auth::Level::RO, auth::Level::RO);
   {
-    ExecContextScope outer(ctx1);
+    ExecContextScope outer(cec1.execContext);
     EXPECT_EQ(ExecContext::current().user(), "outer");
     {
-      ExecContextScope inner(ctx2);
+      ExecContextScope inner(cec2.execContext);
       EXPECT_EQ(ExecContext::current().user(), "inner");
     }
     EXPECT_EQ(ExecContext::current().user(), "outer");
@@ -272,11 +228,10 @@ TEST(ExecContextTest, nested_scopes_restore_correctly) {
 TEST(ExecContextTest, superuser_scope_sets_and_restores) {
   auto original = ExecContext::currentAsShared();
 
-  auto ctx = std::make_shared<TestExecContext>(
-      "regular", "db", CollectionAccessLevel::Read, CollectionAccessLevel::Read,
-      false);
+  auto cec =
+      makeClassicExecContext("regular", "db", auth::Level::RO, auth::Level::RO);
   {
-    ExecContextScope setup(ctx);
+    ExecContextScope setup(cec.execContext);
     EXPECT_EQ(ExecContext::current().user(), "regular");
     {
       ExecContextSuperuserScope su;
@@ -291,11 +246,10 @@ TEST(ExecContextTest, superuser_scope_sets_and_restores) {
 TEST(ExecContextTest, superuser_scope_false_is_noop) {
   auto original = ExecContext::currentAsShared();
 
-  auto ctx = std::make_shared<TestExecContext>(
-      "regular", "db", CollectionAccessLevel::Read, CollectionAccessLevel::Read,
-      false);
+  auto cec =
+      makeClassicExecContext("regular", "db", auth::Level::RO, auth::Level::RO);
   {
-    ExecContextScope setup(ctx);
+    ExecContextScope setup(cec.execContext);
     EXPECT_EQ(ExecContext::current().user(), "regular");
     {
       ExecContextSuperuserScope noop(false);

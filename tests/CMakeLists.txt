@@ -54,6 +54,7 @@ add_library(arango_tests_basics OBJECT
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/PhysicalCollectionMock.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/StorageEngineMock.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/Servers.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/Auth/UserManagerTester.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/MockGraph.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/MockGraphProvider.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Basics/icu-helper.cpp
