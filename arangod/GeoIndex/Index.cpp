@@ -228,10 +228,9 @@ S2LatLng Index::parseDistFCall(aql::AstNode const* node,
 void Index::handleNode(aql::AstNode const* node, aql::Variable const* ref,
                        geo::QueryParams& qp, bool legacy) {
   switch (node->type) {
-    // Handle GEO_CONTAINS(<geoJson-object>, doc.field)
-    // or GEO_INTERSECTS(<geoJson-object>, doc.field)
+    // Handle GEO_CONTAINS / GEO_INTERSECTS with indexed field in either
+    // argument position (constant or bindable geometry in the other).
     case aql::NODE_TYPE_FCALL: {
-      // TODO handle GEO_CONTAINS / INTERSECT
       aql::AstNode const* args = node->getMemberUnchecked(0);
       TRI_ASSERT(args->numMembers() == 2);
       if (args->numMembers() != 2) {
@@ -239,18 +238,29 @@ void Index::handleNode(aql::AstNode const* node, aql::Variable const* ref,
             TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH);
       }
 
-      aql::AstNode const* geoJson = args->getMemberUnchecked(0);
-      aql::AstNode const* symbol = args->getMemberUnchecked(1);
-      // geojson or array with variables
-      TRI_ASSERT(symbol->isAttributeAccessForVariable(ref, true) ||
-                 (symbol->isArray() && symbol->numMembers() == 2 &&
-                  symbol->getMember(0)->getAttributeAccessForVariable(true) !=
-                      nullptr &&
-                  symbol->getMember(1)->getAttributeAccessForVariable(true) !=
-                      nullptr));
-      TRI_ASSERT(geoJson->type != aql::NODE_TYPE_REFERENCE);
+      aql::AstNode const* arg0 = args->getMemberUnchecked(0);
+      aql::AstNode const* arg1 = args->getMemberUnchecked(1);
 
-      // arrays can't occur only handle real GeoJSON
+      auto isIndexedGeoAccess = [&](aql::AstNode const* symbol) -> bool {
+        return symbol->isAttributeAccessForVariable(ref, true) ||
+               (symbol->isArray() && symbol->numMembers() == 2 &&
+                symbol->getMember(0)->getAttributeAccessForVariable(true) !=
+                    nullptr &&
+                symbol->getMember(1)->getAttributeAccessForVariable(true) !=
+                    nullptr);
+      };
+
+      aql::AstNode const* geoJson = nullptr;
+      bool outerContainsInner = true;
+      if (isIndexedGeoAccess(arg1) && !isIndexedGeoAccess(arg0)) {
+        geoJson = arg0;
+      } else if (isIndexedGeoAccess(arg0) && !isIndexedGeoAccess(arg1)) {
+        geoJson = arg1;
+        outerContainsInner = false;
+      } else {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_INVALID_GEO_VALUE);
+      }
+
       VPackBuilder bb;
       geoJson->toVelocyPackValue(bb);
       auto res = geo::json::parseRegion(bb.slice(), qp.filterShape, legacy);
@@ -261,7 +271,8 @@ void Index::handleNode(aql::AstNode const* node, aql::Variable const* ref,
       aql::Function* func = static_cast<aql::Function*>(node->getData());
       TRI_ASSERT(func != nullptr);
       if (func->name == "GEO_CONTAINS") {
-        qp.filterType = geo::FilterType::CONTAINS;
+        qp.filterType = outerContainsInner ? geo::FilterType::CONTAINS
+                                           : geo::FilterType::IS_CONTAINED;
       } else if (func->name == "GEO_INTERSECTS") {
         qp.filterType = geo::FilterType::INTERSECTS;
       } else {
