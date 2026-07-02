@@ -3067,7 +3067,7 @@ futures::Future<OperationResult> Methods::countCoordinatorHelper(
                 if (res.fail()) {
                   co_return;
                 }
-                OperationOptions options(ExecContext::current());
+                OperationOptions options;
                 auto opResult = co_await trx->countAsync(
                     collectionName, CountType::kNormal, options);
                 if (opResult.result.fail()) {

@@ -136,7 +136,7 @@ class RestAnalyzerHandlerTest
     // create system vocbase
     {
       std::shared_ptr<arangodb::LogicalCollection> unused;
-      arangodb::OperationOptions options(arangodb::ExecContext::current());
+      arangodb::OperationOptions options;
       arangodb::methods::Collections::createSystem(
           server.getSystemDatabase(), options,
           arangodb::tests::AnalyzerCollectionName, false, unused);
@@ -186,7 +186,7 @@ class RestAnalyzerHandlerTest
          {arangodb::StaticStrings::SystemDatabase, arangodb::auth::Level::RW}});
 
     std::shared_ptr<arangodb::LogicalCollection> ignored;
-    arangodb::OperationOptions options(arangodb::ExecContext::current());
+    arangodb::OperationOptions options;
     auto vocbase = dbFeature.useDatabase(name);
     arangodb::Result res = arangodb::methods::Collections::createSystem(
         *vocbase, options, arangodb::tests::AnalyzerCollectionName, false,

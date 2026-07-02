@@ -1324,7 +1324,7 @@ futures::Future<Result> Collections::warmup(TRI_vocbase_t& vocbase,
   if (ServerState::instance()->isCoordinator()) {
     auto cid = std::to_string(coll.id().id());
     auto& feature = vocbase.server().getFeature<ClusterFeature>();
-    OperationOptions options(exec);
+    OperationOptions options;
     return warmupOnCoordinator(feature, vocbase.name(), cid, options);
   }
 
@@ -1371,7 +1371,7 @@ futures::Future<Result> Collections::checksum(LogicalCollection& collection,
   if (ServerState::instance()->isCoordinator()) {
     auto cid = std::to_string(collection.id().id());
     auto& feature = collection.vocbase().server().getFeature<ClusterFeature>();
-    OperationOptions options(ExecContext::current());
+    OperationOptions options;
     auto res =
         co_await checksumOnCoordinator(feature, collection.vocbase().name(),
                                        cid, options, withRevisions, withData);

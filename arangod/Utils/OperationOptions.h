@@ -56,6 +56,8 @@ enum class ReadOwnWrites : bool {
   yes,
 };
 
+class ExecContext;
+
 // mode to signal how operation should behave
 enum class IndexOperationMode : uint8_t { normal, internal, rollback };
 
