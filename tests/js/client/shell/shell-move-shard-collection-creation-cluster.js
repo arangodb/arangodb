@@ -63,16 +63,16 @@ function moveShardCreateCollectionSuite() {
       // Get the shard information
       const shardInfo = arango.GET("/_admin/cluster/shardDistribution");
       const shardId = Object.keys(shardInfo.results[cn].Plan)[0];
-      const fromServer = shardInfo.results[cn].Plan[shardId].leader;
-      const toServer = shardInfo.results[cn].Plan[shardId].followers[0];
+      const fromServerID = shardInfo.results[cn].Plan[shardId].leader;
+      const toServerID = shardInfo.results[cn].Plan[shardId].followers[0];
       
       // Schedule MoveShard operation
       const moveShardResult = arango.POST("/_admin/cluster/moveShard", {
         database: "_system",
         collection: cn,
         shard: shardId,
-        fromServer: fromServer,
-        toServer: toServer
+        fromServer: fromServerID,
+        toServer: toServerID
       });
       const moveShardId = moveShardResult.id;
 
@@ -168,16 +168,16 @@ function moveShardCreateCollectionSuite() {
 
       // Set failure points on the follower
       try {
-        fromServer.debugShouldFailAt("DelayCreateShard15");
-        toServer.debugShouldFailAt("DelayTakeoverShardLeadership15");
+        fromServer.debugSetFailAt("DelayCreateShard15");
+        toServer.debugSetFailAt("DelayTakeoverShardLeadership15");
         
         // Schedule MoveShard operation
         const moveShardResult = arango.POST("/_admin/cluster/moveShard", {
           database: "_system",
           collection: cn,
           shard: shardId,
-          fromServer: fromServer,
-          toServer: toServer
+          fromServer: fromServerID,
+          toServer: toServerID
         });
         const moveShardId = moveShardResult.id;
 
@@ -203,8 +203,8 @@ function moveShardCreateCollectionSuite() {
         assertEqual(moveShardStatus.status, "Pending");
 
         // Stop the delays:
-        toServer.debugShouldFailAt("DontDelayCreateShard15");
-        toServer.debugShouldFailAt("DontDelayTakeoverShardLeadership15");
+        toServer.debugSetFailAt("DontDelayCreateShard15");
+        toServer.debugSetFailAt("DontDelayTakeoverShardLeadership15");
 
         IM.waitForAgencyJob(moveShardId, 30,"Create collection operation should have been successful");
 
