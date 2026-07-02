@@ -60,6 +60,17 @@ class MetricsFeature final : public application_features::ApplicationFeature,
 
   static constexpr std::string_view name() noexcept { return "Metrics"; }
 
+  MetricsFeature(
+      application_features::ApplicationServer& server,
+      LazyApplicationFeatureReference<QueryRegistryFeature>
+          lazyQueryRegistryFeatureRef,
+      LazyApplicationFeatureReference<StatisticsFeature>
+          lazyStatisticsFeatureRef,
+      LazyApplicationFeatureReference<DatabaseFeature> lazyDatabaseFeatureRef,
+      LazyApplicationFeatureReference<ClusterMetricsFeature>
+          lazyClusterMetricsFeatureRef,
+      LazyApplicationFeatureReference<ClusterFeature> lazyClusterFeatureRef,
+      MetricsOptions options);
   explicit MetricsFeature(
       application_features::ApplicationServer& server,
       LazyApplicationFeatureReference<QueryRegistryFeature>

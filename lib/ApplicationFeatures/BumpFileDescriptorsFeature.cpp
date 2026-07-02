@@ -47,6 +47,22 @@ using namespace arangodb::options;
 #ifdef TRI_HAVE_GETRLIMIT
 namespace arangodb {
 
+BumpFileDescriptorsFeature::BumpFileDescriptorsFeature(
+    ApplicationServer& server, std::string optionName)
+    : BumpFileDescriptorsFeature(server, std::move(optionName),
+                                 BumpFileDescriptorsFeatureOptions{}) {}
+
+BumpFileDescriptorsFeature::BumpFileDescriptorsFeature(
+    ApplicationServer& server, std::string optionName,
+    BumpFileDescriptorsFeatureOptions options)
+    : ApplicationFeature{server, *this},
+      _optionName(std::move(optionName)),
+      _options(std::move(options)) {
+  setOptional(false);
+  startsAfter<GreetingsFeaturePhase>();
+  startsAfter<LoggerFeature>();
+}
+
 void BumpFileDescriptorsFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
   BumpFileDescriptorsOptionsProvider provider(_optionName);

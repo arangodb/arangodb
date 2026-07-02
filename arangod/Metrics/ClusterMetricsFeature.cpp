@@ -137,7 +137,14 @@ static std::shared_ptr<ClusterMetricsFeature::Data> createEmptyData() {
 
 ClusterMetricsFeature::ClusterMetricsFeature(
     application_features::ApplicationServer& server)
-    : ApplicationFeature{server, *this}, _data{createEmptyData()} {
+    : ClusterMetricsFeature(server, ClusterMetricsOptions{}) {}
+
+ClusterMetricsFeature::ClusterMetricsFeature(
+    application_features::ApplicationServer& server,
+    ClusterMetricsOptions options)
+    : ApplicationFeature{server, *this},
+      _data{createEmptyData()},
+      _options(std::move(options)) {
   setOptional();
   startsAfter<ClusterFeature>();
   startsAfter<NetworkFeature>();

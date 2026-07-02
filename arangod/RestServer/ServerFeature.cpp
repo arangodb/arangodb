@@ -57,7 +57,12 @@ using namespace arangodb::rest;
 namespace arangodb {
 
 ServerFeature::ServerFeature(ApplicationServer& server, int* res)
+    : ServerFeature(server, res, ServerFeatureOptions{}) {}
+
+ServerFeature::ServerFeature(ApplicationServer& server, int* res,
+                             ServerFeatureOptions options)
     : ApplicationFeature{server, *this},
+      _options(std::move(options)),
       _result(res),
       _operationMode(OperationMode::MODE_SERVER) {
   setOptional(true);

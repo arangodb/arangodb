@@ -188,7 +188,12 @@ class LogAppenderMetricsCounter final : public LogAppender {
 LogBufferFeature::LogBufferFeature(
     application_features::ApplicationServer& server,
     metrics::IRegistry& metricsRegistry)
-    : ApplicationFeature{server, *this} {
+    : LogBufferFeature(server, metricsRegistry, LogBufferFeatureOptions{}) {}
+
+LogBufferFeature::LogBufferFeature(
+    application_features::ApplicationServer& server,
+    metrics::IRegistry& metricsRegistry, LogBufferFeatureOptions options)
+    : ApplicationFeature{server, *this}, _options(std::move(options)) {
   setOptional(true);
   startsAfter<LoggerFeature>();
 

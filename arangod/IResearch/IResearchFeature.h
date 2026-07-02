@@ -110,6 +110,9 @@ class IResearchFeature final : public application_features::ApplicationFeature {
   static constexpr std::string_view name() noexcept { return "ArangoSearch"; }
 
   explicit IResearchFeature(application_features::ApplicationServer& server,
+                            metrics::IRegistry& metricsRegistry,
+                            IResearchOptions options);
+  explicit IResearchFeature(application_features::ApplicationServer& server,
                             metrics::IRegistry& metricsRegistry);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) final;

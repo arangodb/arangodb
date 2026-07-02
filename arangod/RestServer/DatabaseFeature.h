@@ -111,6 +111,8 @@ class DatabaseFeature final : public application_features::ApplicationFeature,
  public:
   static constexpr std::string_view name() noexcept { return "Database"; }
 
+  explicit DatabaseFeature(application_features::ApplicationServer& server,
+                           DatabaseFeatureOptions options);
   explicit DatabaseFeature(application_features::ApplicationServer& server);
   ~DatabaseFeature() final;
 

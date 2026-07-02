@@ -44,6 +44,10 @@ class SchedulerFeature final : public application_features::ApplicationFeature {
 
   SchedulerFeature(application_features::ApplicationServer& server,
                    metrics::IRegistry& metricsRegistry,
+                   basics::SharedPRNG& sharedPRNG,
+                   SchedulerFeatureOptions options);
+  SchedulerFeature(application_features::ApplicationServer& server,
+                   metrics::IRegistry& metricsRegistry,
                    basics::SharedPRNG& sharedPRNG);
   ~SchedulerFeature();
 

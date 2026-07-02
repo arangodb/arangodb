@@ -44,6 +44,8 @@ class ExportFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Export"; }
 
+  ExportFeature(application_features::ApplicationServer& server, int* result,
+                ExportFeatureOptions options);
   ExportFeature(application_features::ApplicationServer& server, int* result);
   ~ExportFeature();
 
