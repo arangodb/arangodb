@@ -28,38 +28,6 @@
 #include "Metrics/Fwd.h"
 
 namespace arangodb {
-
-struct TransactionStatistics {
-  explicit TransactionStatistics(metrics::IRegistry&);
-  TransactionStatistics(TransactionStatistics const&) = delete;
-  TransactionStatistics(TransactionStatistics&&) = delete;
-  TransactionStatistics& operator=(TransactionStatistics const&) = delete;
-  TransactionStatistics& operator=(TransactionStatistics&&) = delete;
-
-  metrics::IRegistry& _metrics;
-
-  metrics::Gauge<uint64_t>& _restTransactionsMemoryUsage;
-  metrics::Gauge<uint64_t>& _internalTransactionsMemoryUsage;
-
-  metrics::Counter& _transactionsStarted;
-  metrics::Counter& _transactionsAborted;
-  metrics::Counter& _transactionsCommitted;
-  metrics::Counter& _intermediateCommits;
-  metrics::Counter& _readTransactions;
-  metrics::Counter& _dirtyReadTransactions;
-
-  // total number of lock timeouts for exclusive locks
-  metrics::Counter& _exclusiveLockTimeouts;
-  // total number of lock timeouts for write locks
-  metrics::Counter& _writeLockTimeouts;
-  // total duration of lock acquisition (in microseconds)
-  metrics::Counter& _lockTimeMicros;
-  // histogram for lock acquisition (in seconds)
-  metrics::Histogram<metrics::LogScale<double>>& _lockTimes;
-  // Total number of times we used a fallback to sequential locking
-  metrics::Counter& _sequentialLocks;
-};
-
 struct ServerStatistics {
   ServerStatistics(ServerStatistics const&) = delete;
   ServerStatistics(ServerStatistics&&) = delete;
