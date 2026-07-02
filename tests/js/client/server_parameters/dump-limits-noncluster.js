@@ -35,8 +35,8 @@ if (getOptions === true) {
 const jsunity = require('jsunity');
 const internal = require('internal');
 const db = internal.db;
-const { getMetricSingle } = require('@arangodb/test-helper');
 const dump = require('@arangodb/arango-dump');
+let IM = global.instanceManager;
 
 function testSuite() {
   const cn = "UnitTestsCollection";
@@ -65,7 +65,7 @@ function testSuite() {
     },
     
     testSingleDumpWithoutBlocking: function() {
-      const originalBlocked = getMetricSingle("arangodb_dump_threads_blocked_total");
+      const originalBlocked = IM.getAllMetricsByName("arangodb_dump_threads_blocked_total")[0];
 
       let config = { 
         docsPerBatch: 10000, 
@@ -85,15 +85,15 @@ function testSuite() {
         let counter = 0;
         while (++tries < 120) {
           // we expect exactly 1 dump to be ongoing
-          let ongoing = getMetricSingle("arangodb_dump_ongoing");
+          let ongoing = IM.getAllMetricsByName("arangodb_dump_ongoing")[0];
           assertEqual(1, ongoing);
           
           // we expect no further blocking by our small dump
-          let blocked = getMetricSingle("arangodb_dump_threads_blocked_total");
+          let blocked = IM.getAllMetricsByName("arangodb_dump_threads_blocked_total")[0];
           assertEqual(originalBlocked, blocked);
 
           // memory usage should be below 16 MB, but with a bit of leeway. 
-          let memoryUsage = getMetricSingle("arangodb_dump_memory_usage");
+          let memoryUsage = IM.getAllMetricsByName("arangodb_dump_memory_usage")[0];
           assertTrue(memoryUsage <= 16777216 + 1048576, {memoryUsage});
           if (memoryUsage !== previousMemoryUsage) {
             previousMemoryUsage = memoryUsage;
@@ -113,13 +113,13 @@ function testSuite() {
      
         // after finishing the dump, the number of ongoing dumps should
         // be back to 0.
-        let ongoing = getMetricSingle("arangodb_dump_ongoing");
+        let ongoing = IM.getAllMetricsByName("arangodb_dump_ongoing")[0];
         assertEqual(0, ongoing);
       }
     },
 
     testSingleDumpWithBlocking: function() {
-      const originalBlocked = getMetricSingle("arangodb_dump_threads_blocked_total");
+      const originalBlocked = IM.getAllMetricsByName("arangodb_dump_threads_blocked_total")[0];
 
       // we are telling the server to fetch up to 1024 batches.
       // this will surely exceed the allowed max memory value of 16 MB
@@ -140,17 +140,17 @@ function testSuite() {
         let blocked = 0;
         while (++tries < 120) {
           // we expect exactly 1 dump to be ongoing
-          let ongoing = getMetricSingle("arangodb_dump_ongoing");
+          let ongoing = IM.getAllMetricsByName("arangodb_dump_ongoing")[0];
           assertEqual(1, ongoing);
 
           // memory usage should be below 16 MB, but with a bit of leeway. 
-          let memoryUsage = getMetricSingle("arangodb_dump_memory_usage");
+          let memoryUsage = IM.getAllMetricsByName("arangodb_dump_memory_usage")[0];
           assertTrue(memoryUsage <= 16777216 + 1048576, {memoryUsage});
          
           // as we are only waiting here and not fetching any data from the
           // server, we expect the number of blocked threads to increase
           // at some point
-          blocked = getMetricSingle("arangodb_dump_threads_blocked_total");
+          blocked = IM.getAllMetricsByName("arangodb_dump_threads_blocked_total")[0];
           if (blocked > originalBlocked) {
             break;
           }
@@ -162,13 +162,13 @@ function testSuite() {
      
         // after finishing the dump, the number of ongoing dumps should
         // be back to 0.
-        let ongoing = getMetricSingle("arangodb_dump_ongoing");
+        let ongoing = IM.getAllMetricsByName("arangodb_dump_ongoing")[0];
         assertEqual(0, ongoing);
       }
     },
     
     testCheckProgressWithMultipleDumpsThatHitMemoryLimit: function() {
-      const originalBlocked = getMetricSingle("arangodb_dump_threads_blocked_total");
+      const originalBlocked = IM.getAllMetricsByName("arangodb_dump_threads_blocked_total")[0];
 
       // we are telling the server to fetch up to 512 batches.
       // this will surely exceed the allowed max memory value of 16 MB
@@ -195,7 +195,7 @@ function testSuite() {
 
       let tries = 60;
       while (--tries > 0) {
-        let blocked = getMetricSingle("arangodb_dump_threads_blocked_total");
+        let blocked = IM.getAllMetricsByName("arangodb_dump_threads_blocked_total")[0];
         if (blocked > originalBlocked) {
           break;
         }
@@ -246,11 +246,11 @@ function testSuite() {
           }
           
           // we expect exactly n dumps to be ongoing
-          let ongoing = getMetricSingle("arangodb_dump_ongoing");
+          let ongoing = IM.getAllMetricsByName("arangodb_dump_ongoing")[0];
           assertEqual(n, ongoing);
           
           // memory usage should be below 16 MB, but with a bit of leeway. 
-          let memoryUsage = getMetricSingle("arangodb_dump_memory_usage");
+          let memoryUsage = IM.getAllMetricsByName("arangodb_dump_memory_usage")[0];
           assertTrue(memoryUsage <= 16777216 + 1048576, {memoryUsage});
         }
       } finally {
@@ -258,12 +258,12 @@ function testSuite() {
           dump.delete(d.id);
         });
           
-        let blocked = getMetricSingle("arangodb_dump_threads_blocked_total");
+        let blocked = IM.getAllMetricsByName("arangodb_dump_threads_blocked_total")[0];
         assertTrue(blocked > originalBlocked, { blocked, originalBlocked });
      
         // after finishing the dump, the number of ongoing dumps should
         // be back to 0.
-        let ongoing = getMetricSingle("arangodb_dump_ongoing");
+        let ongoing = IM.getAllMetricsByName("arangodb_dump_ongoing")[0];
         assertEqual(0, ongoing);
       }
     },

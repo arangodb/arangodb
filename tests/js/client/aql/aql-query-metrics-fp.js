@@ -42,7 +42,7 @@ function QueryMetricsTestSuite() {
     },
 
     testMetricAqlCurrentQueryWithoutRunningQueries: function () {
-      let aqlCurrentQueryMetric = getMetricSingle("arangodb_aql_current_query");
+      let aqlCurrentQueryMetric = IM.getAllMetricsByName("arangodb_aql_current_query")[0];
       assertEqual(aqlCurrentQueryMetric, 0);
 
       for (let i = 0; i < 1000; ++i) {
@@ -51,7 +51,7 @@ function QueryMetricsTestSuite() {
         db._query(query);
       }
 
-      aqlCurrentQueryMetric = getMetricSingle("arangodb_aql_current_query");
+      aqlCurrentQueryMetric = IM.getAllMetricsByName("arangodb_aql_current_query")[0];
       assertEqual(aqlCurrentQueryMetric, 0);
     },
 
@@ -65,12 +65,12 @@ function QueryMetricsTestSuite() {
         assertEqual(ERRORS.ERROR_QUERY_PARSE.code, e.errorNum);
       }
 
-      let aqlCurrentQueryMetric = getMetricSingle("arangodb_aql_current_query");
+      let aqlCurrentQueryMetric = IM.getAllMetricsByName("arangodb_aql_current_query")[0];
       assertEqual(aqlCurrentQueryMetric, 0);
     },
 
     testMetricAqlCurrentQueryWithStreamingQueries: function () {
-      let aqlCurrentQueryMetric = getMetricSingle("arangodb_aql_current_query");
+      let aqlCurrentQueryMetric = IM.getAllMetricsByName("arangodb_aql_current_query")[0];
       assertEqual(aqlCurrentQueryMetric, 0);
 
       let queries = [];
@@ -80,7 +80,7 @@ function QueryMetricsTestSuite() {
                                        batchSize: 2});
         queries.push(stmt.execute());
       }
-      aqlCurrentQueryMetric = getMetricSingle("arangodb_aql_current_query");
+      aqlCurrentQueryMetric = IM.getAllMetricsByName("arangodb_aql_current_query")[0];
       assertEqual(aqlCurrentQueryMetric, 100);
 
       queries.forEach(function(cursor) {
@@ -91,12 +91,12 @@ function QueryMetricsTestSuite() {
         assertFalse(cursor.hasNext());
       });
 
-      aqlCurrentQueryMetric = getMetricSingle("arangodb_aql_current_query");
+      aqlCurrentQueryMetric = IM.getAllMetricsByName("arangodb_aql_current_query")[0];
       assertEqual(aqlCurrentQueryMetric, 0);
     },
 
     testMetricAqlCurrentQueryFailurePoint: function () {
-      let aqlCurrentQueryMetric = getMetricSingle("arangodb_aql_current_query");
+      let aqlCurrentQueryMetric = IM.getAllMetricsByName("arangodb_aql_current_query")[0];
       assertEqual(aqlCurrentQueryMetric, 0);
 
       try {
@@ -115,7 +115,7 @@ function QueryMetricsTestSuite() {
         const maxIterations = 100; // 10 seconds with 0.1s sleep
         let iterations = 0;
         while (iterations < maxIterations) {
-          aqlCurrentQueryMetric = getMetricSingle("arangodb_aql_current_query");
+          aqlCurrentQueryMetric = IM.getAllMetricsByName("arangodb_aql_current_query")[0];
           if (aqlCurrentQueryMetric >= numberOfRunningQueries) {
             break;
           }
@@ -136,7 +136,7 @@ function QueryMetricsTestSuite() {
         iterations = 0;
         // The metrics should eventually reach 0
         while (iterations < maxIterations) {
-          aqlCurrentQueryMetric = getMetricSingle("arangodb_aql_current_query");
+          aqlCurrentQueryMetric = IM.getAllMetricsByName("arangodb_aql_current_query")[0];
           if (aqlCurrentQueryMetric === 0) {
             break;
           }

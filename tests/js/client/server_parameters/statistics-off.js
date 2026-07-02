@@ -33,8 +33,8 @@ if (getOptions === true) {
 const jsunity = require('jsunity');
 const errors = require('@arangodb').errors;
 const internal = require('internal');
-const getMetric = require('@arangodb/test-helper').getMetricSingle;
 const db = internal.db;
+let IM = global.instanceManager;
 
 function testSuite() {
   return {
@@ -45,16 +45,16 @@ function testSuite() {
     },
 
     testMetricsAlwaysThere : function() {
-      let value = getMetric("arangodb_process_statistics_resident_set_size");
+      let value = IM.getAllMetricsByName("arangodb_process_statistics_resident_set_size")[0];
       assertTrue(value > 0, value);
       
-      value = getMetric("arangodb_server_statistics_server_uptime_total");
+      value = IM.getAllMetricsByName("arangodb_server_statistics_server_uptime_total")[0];
       assertTrue(value > 0, value);
     },
 
     testHttpMetrics : function() {
       try {
-        getMetric("arangodb_http_request_statistics_total_requests_total");
+        IM.getAllMetricsByName("arangodb_http_request_statistics_total_requests_total")[0];
         fail();
       } catch (err) {
         assertEqual("Metric arangodb_http_request_statistics_total_requests_total not found", err);
@@ -81,8 +81,8 @@ function testSuite() {
          arango.GET_RAW("/_admin/metrics");
       }
       // metric values should always be 0 if statistics are disabled
-      assertEqual(0, getMetric("arangodb_connection_statistics_memory_usage"));
-      assertEqual(0, getMetric("arangodb_request_statistics_memory_usage"));
+      assertEqual(0, IM.getAllMetricsByName("arangodb_connection_statistics_memory_usage")[0]);
+      assertEqual(0, IM.getAllMetricsByName("arangodb_request_statistics_memory_usage")[0]);
     },
   };
 }
