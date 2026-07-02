@@ -26,7 +26,7 @@
 
 #include "Basics/Result.h"
 #include "Futures/Future.h"
-#include "Metrics/IRegistry.h"
+#include "Mocks/MetricsCollector.h"
 #include "StorageEngine/HealthData.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionState.h"
@@ -97,18 +97,6 @@ class TransactionStateMock : public arangodb::TransactionState {
   StorageEngineMock& _engine;
 };
 
-struct MockRegistry : arangodb::metrics::IRegistry {
-  std::shared_ptr<arangodb::metrics::Metric> doAdd(
-      arangodb::metrics::Builder& builder) override {
-    auto metric = builder.build();
-    _metrics.emplace_back(metric);
-    return metric;
-  }
-
- private:
-  std::vector<std::shared_ptr<arangodb::metrics::Metric>> _metrics;
-};
-
 class StorageEngineMockSnapshot final : public arangodb::StorageSnapshot {
  public:
   StorageEngineMockSnapshot(TRI_voc_tick_t t) : _t(t) {}
@@ -118,7 +106,13 @@ class StorageEngineMockSnapshot final : public arangodb::StorageSnapshot {
   TRI_voc_tick_t _t;
 };
 
-class StorageEngineMock : public arangodb::StorageEngine {
+// Base ensures _mockRegistry outlives StorageEngine's _transactionStatistics.
+struct StorageEngineMockBase {
+  arangodb::tests::MetricsCollector _mockRegistry;
+};
+
+class StorageEngineMock : private StorageEngineMockBase,
+                          public arangodb::StorageEngine {
  public:
   static std::function<void()> before;
   static arangodb::Result flushSubscriptionResult;
@@ -248,7 +242,6 @@ class StorageEngineMock : public arangodb::StorageEngine {
   void incrementTick(uint64_t tick) { _engineTick.fetch_add(tick); }
 
  private:
-  MockRegistry _mockRegistry;
   TRI_voc_tick_t _releasedTick;
   std::atomic_uint64_t _engineTick{100};
   arangodb::VersionTracker _versionTracker;

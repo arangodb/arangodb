@@ -26,7 +26,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
 #include "Metrics/ClusterMetricsFeature.h"
-#include "Metrics/MetricsFeature.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <absl/strings/str_cat.h>

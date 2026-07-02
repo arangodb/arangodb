@@ -39,8 +39,8 @@ class ClusterEngine final : public StorageEngine {
   static constexpr std::string_view name() noexcept { return "ClusterEngine"; }
 
   // create the storage engine
-  ClusterEngine(application_features::ApplicationServer& server,
-                metrics::IRegistry& metrics);
+  explicit ClusterEngine(application_features::ApplicationServer& server,
+                         metrics::IRegistry& metrics);
   ~ClusterEngine();
 
   void setActualEngine(StorageEngine* e);

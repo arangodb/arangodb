@@ -691,6 +691,9 @@ StatisticsFeature::StatisticsFeature(
 /*static*/ double StatisticsFeature::time() { return TRI_microtime(); }
 
 /*static*/ double StatisticsFeature::serverUptime() noexcept {
+  if (_serverStartTime == 0.0) {
+    return 0.0;
+  }
   return time() - _serverStartTime;
 }
 
