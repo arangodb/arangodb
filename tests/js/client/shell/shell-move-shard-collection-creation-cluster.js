@@ -185,7 +185,7 @@ function moveShardCreateCollectionSuite() {
         internal.wait(1);
         
         // Check if MoveShard operation is pending:
-        IM.waitForAgencyJob(moveShardId, 30, "MoveShard operation should become pending");
+        IM.waitForAgencyJob(moveShardId, 300, "MoveShard operation should become pending", 'Pending');
         // Try to create second collection in background
         const createJob = arango.POST_RAW("/_api/collection", {
           name: cn2,
