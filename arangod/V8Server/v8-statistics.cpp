@@ -27,12 +27,7 @@
 
 #include "v8-statistics.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/Exceptions.h"
 #include "Basics/PhysicalMemory.h"
-#include "Basics/StringUtils.h"
-#include "Basics/process-utils.h"
-#include "Rest/GeneralRequest.h"
 #include "Metrics/Counter.h"
 #include "Metrics/MetricsFeature.h"
 #include "RestServer/DatabaseFeature.h"
@@ -41,7 +36,6 @@
 #include "Scheduler/SchedulerFeature.h"
 #include "Statistics/ConnectionStatistics.h"
 #include "Statistics/RequestStatistics.h"
-#include "Statistics/ServerStatistics.h"
 #include "Statistics/StatisticsFeature.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"

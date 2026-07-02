@@ -204,7 +204,6 @@ add_library(arangoserver STATIC
   Statistics/ConnectionStatistics.cpp
   Statistics/Descriptions.cpp
   Statistics/RequestStatistics.cpp
-  Statistics/ServerStatistics.cpp
   Statistics/StatisticsFeature.cpp
   Statistics/StatisticsWorker.cpp
   Statistics/StatisticsOptionsProvider.cpp

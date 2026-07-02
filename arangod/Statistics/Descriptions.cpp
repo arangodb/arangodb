@@ -34,7 +34,6 @@
 #include "Scheduler/SchedulerFeature.h"
 #include "Statistics/ConnectionStatistics.h"
 #include "Statistics/RequestStatistics.h"
-#include "Statistics/ServerStatistics.h"
 #ifdef USE_V8
 #include "V8Server/V8DealerFeature.h"
 #endif

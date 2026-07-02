@@ -47,10 +47,8 @@
 #include "RocksDBEngine/RocksDBMethodsMemoryTracker.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
-#include "Statistics/ServerStatistics.h"
 #include "Transaction/StandaloneContext.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/ticks.h"
 
 #include <absl/strings/str_cat.h>
 
@@ -62,7 +60,6 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
-#include <stdexcept>
 
 using namespace arangodb;
 using namespace arangodb::rocksutils;

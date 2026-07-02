@@ -23,7 +23,6 @@
 
 #pragma once
 
-#include "IRegistry.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/LazyApplicationFeatureReference.h"
 #include "Basics/DownCast.h"
@@ -32,12 +31,12 @@
 #include "Metrics/Builder.h"
 #include "Metrics/CollectMode.h"
 #include "Metrics/IBatch.h"
+#include "Metrics/IRegistry.h"
 #include "Metrics/Metric.h"
 #include "Metrics/MetricKey.h"
 #include "Metrics/MetricsOptions.h"
 #include "Metrics/MetricsParts.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "Statistics/ServerStatistics.h"
 
 #include <map>
 #include <shared_mutex>
@@ -107,8 +106,6 @@ class MetricsFeature final : public application_features::ApplicationFeature,
   //////////////////////////////////////////////////////////////////////////////
   void toVPack(velocypack::Builder& builder, MetricsParts metricsParts) const;
 
-  ServerStatistics& serverStatistics() noexcept;
-
   template<typename MetricType>
   MetricType& batchAdd(std::string_view name, std::string_view labels) {
     std::unique_lock lock{_mutex};
@@ -152,8 +149,6 @@ class MetricsFeature final : public application_features::ApplicationFeature,
   std::map<MetricKeyView, std::shared_ptr<Metric>> _registry;
 
   containers::FlatHashMap<std::string_view, std::unique_ptr<IBatch>> _batch;
-
-  std::unique_ptr<ServerStatistics> _serverStatistics;
 
   mutable std::string _globals;
   mutable bool hasShortname = false;

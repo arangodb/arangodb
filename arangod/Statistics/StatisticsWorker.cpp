@@ -23,7 +23,6 @@
 
 #include "StatisticsWorker.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/system-functions.h"
 #include "Aql/Query.h"
 #include "Aql/QueryString.h"
@@ -31,7 +30,6 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/process-utils.h"
 #include "Basics/system-functions.h"
-#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
@@ -46,7 +44,6 @@
 #include "Scheduler/SchedulerFeature.h"
 #include "Statistics/ConnectionStatistics.h"
 #include "Statistics/RequestStatistics.h"
-#include "Statistics/ServerStatistics.h"
 #include "Statistics/StatisticsFeature.h"
 #include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
@@ -56,7 +53,6 @@
 #include "V8Server/V8DealerFeature.h"
 #endif
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Indexes.h"
 
 #include <velocypack/Exception.h>

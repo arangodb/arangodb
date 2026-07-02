@@ -28,7 +28,6 @@
 #include <velocypack/Builder.h>
 
 #include <chrono>
-#include <unordered_set>
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
@@ -39,7 +38,6 @@
 #include "Logger/LoggerFeature.h"
 #include "Metrics/ClusterMetricsFeature.h"
 #include "Metrics/Metric.h"
-#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
@@ -70,9 +68,6 @@ MetricsFeature::MetricsFeature(
 
 void MetricsFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
-  _serverStatistics =
-      std::make_unique<ServerStatistics>(StatisticsFeature::time());
-
   metrics::MetricsOptionsProvider provider;
   provider.declareOptions(options, _options);
 }
@@ -262,10 +257,6 @@ void MetricsFeature::toVPack(velocypack::Builder& builder,
   }
   lock.unlock();
   builder.close();
-}
-
-ServerStatistics& MetricsFeature::serverStatistics() noexcept {
-  return *_serverStatistics;
 }
 
 std::shared_lock<std::shared_mutex> MetricsFeature::initGlobalLabels() const {

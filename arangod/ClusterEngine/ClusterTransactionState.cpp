@@ -31,16 +31,13 @@
 #include "Cluster/ClusterTrxMethods.h"
 #include "ClusterEngine/ClusterEngine.h"
 #include "ClusterEngine/ClusterTransactionCollection.h"
-#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "Metrics/Counter.h"
-#include "Statistics/ServerStatistics.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"
 #include "Transaction/Methods.h"
-#include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
 
 using namespace arangodb;

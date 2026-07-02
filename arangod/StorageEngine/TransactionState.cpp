@@ -41,7 +41,6 @@
 #include "Metrics/Counter.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/MetricsFeature.h"
-#include "Statistics/ServerStatistics.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "Transaction/Context.h"
@@ -53,7 +52,6 @@
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/ExecContext.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/ticks.h"
 
 #include <absl/strings/str_cat.h>
 #include <algorithm>
