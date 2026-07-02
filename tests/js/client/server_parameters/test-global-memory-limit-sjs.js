@@ -35,7 +35,7 @@ const jsunity = require('jsunity');
 const errors = require('@arangodb').errors;
 const cn = "UnitTestsCollection";
 const db = require('internal').db;
-IM = global.instanceManager;
+let IM = global.instanceManager;
 
 function testSuite() {
   return {
