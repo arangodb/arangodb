@@ -1488,14 +1488,14 @@ class instance {
 
   getRawMetric(tags) {
     return this.toThisInstance(() => {
-      return arango.GET_RAW('/_admin/metrics' + tags, { 'accept-encoding': 'identity' });
+      return arango.GET_RAW('/_admin/metrics/' + tags, { 'accept-encoding': 'identity' });
     });
   }
 
   getAllMetric(tags) {
     let res = this.getRawMetric(tags);
     if (res.code !== 200) {
-      throw "error fetching metric";
+      throw new Error(`error fetching metric ${tags} on ${this.name} - ${JSON.stringify(res)}`);
     }
     return res.body;
   }
@@ -1504,7 +1504,7 @@ class instance {
     let re = new RegExp("^" + name);
     let matches = text.split('\n').filter((line) => !line.match(/^#/)).filter((line) => line.match(re));
     if (!matches.length) {
-      throw "Metric " + name + " not found";
+      throw new Error(`Metric ${name} not found`);
     }
     let res = 0; // Sum up values from all matches
     for(let i = 0; i < matches.length; i+= 1) {
