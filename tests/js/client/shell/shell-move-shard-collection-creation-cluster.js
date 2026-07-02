@@ -28,7 +28,6 @@ const _ = require('lodash');
 let jsunity = require('jsunity');
 let internal = require('internal');
 let arangodb = require('@arangodb');
-const request = require("@arangodb/request");
 let db = arangodb.db;
 let IM = global.instanceManager;
 
