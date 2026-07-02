@@ -29,6 +29,7 @@
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/MetricsFeature.h"
+#include "Metrics/IRegistry.h"
 #include "velocypack/SharedSlice.h"
 #include "Inspection/VPack.h"
 
@@ -54,11 +55,11 @@ Feature::Feature(
   startsAfter<metrics::MetricsFeature>();
 }
 
-auto Feature::create_metrics(metrics::MetricsFeature& metrics_feature)
+auto Feature::create_metrics(metrics::IRegistry& registry)
     -> std::shared_ptr<RegistryMetrics> {
   return std::make_shared<RegistryMetrics>(
-      metrics_feature.addShared(arangodb_activities_total{}),
-      metrics_feature.addShared(arangodb_activities_existing{}));
+      registry.addShared(arangodb_activities_total{}),
+      registry.addShared(arangodb_activities_existing{}));
 }
 struct Feature::CleanupThread {
   CleanupThread(size_t gc_timeout)
