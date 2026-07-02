@@ -92,16 +92,6 @@ void RocksDBRecoveryManager::start() {
 
   _engine.setRecoveryState(RecoveryState::IN_PROGRESS);
 
-  runRecovery();
-
-  _engine.setRecoveryTick(_currentSequenceNumber);
-  _engine.setRecoveryState(RecoveryState::DONE);
-
-  _recoveryCallback.recoveryDone();
-}
-
-/// parse recent RocksDB WAL entries
-void RocksDBRecoveryManager::runRecovery() {
   auto res = parseRocksWAL();
   if (res.fail()) {
     LOG_TOPIC("be0ce", FATAL, Logger::ENGINES)
@@ -109,7 +99,10 @@ void RocksDBRecoveryManager::runRecovery() {
     FATAL_ERROR_EXIT_CODE(TRI_EXIT_RECOVERY);
   }
 
-  // now restore collection counts into collections
+  _engine.setRecoveryTick(_currentSequenceNumber);
+  _engine.setRecoveryState(RecoveryState::DONE);
+
+  _recoveryCallback.recoveryDone();
 }
 
 class WBReader final : public rocksdb::WriteBatch::Handler {
@@ -367,7 +360,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
       _startOfBatch = false;
     } else {
       // we are inside a batch already. now increase sequence number
-      _currentSequence.fetch_add(1, std::memory_order_relaxed);
+      ++_currentSequence;
     }
   }
 

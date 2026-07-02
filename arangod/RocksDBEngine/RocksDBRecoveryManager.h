@@ -47,7 +47,6 @@ class RocksDBRecoveryManager final
   void start() override;
 
  private:
-  void runRecovery();
   Result parseRocksWAL();
 
   RocksDBEngine& _engine;
