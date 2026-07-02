@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2025 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -18,30 +18,19 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
+/// @author Julia CP
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include <string>
+#include "Metrics/LogScale.h"
 
-namespace arangodb::metrics {
+namespace arangodb {
 
-enum class UsageTrackingMode {
-  // no tracking
-  kDisabled,
-  // tracking per shard (one-dimensional)
-  kEnabledPerShard,
-  // tracking per shard and per user (two-dimensional)
-  kEnabledPerShardPerUser,
+/// @brief log scale for operation time histograms (seconds, range 0–1000)
+template<typename T = float>
+struct TimeScale {
+  static metrics::LogScale<T> scale() { return {10., 0.0, 1000.0, 11}; }
 };
 
-struct MetricsOptions {
-  bool exportAPI = true;
-  bool ensureWhitespace = true;
-  std::string usageTrackingModeString = "disabled";
-
-  // Computed during validation
-  UsageTrackingMode usageTrackingMode = UsageTrackingMode::kDisabled;
-};
-
-}  // namespace arangodb::metrics
+}  // namespace arangodb

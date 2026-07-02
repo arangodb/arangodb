@@ -21,6 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Metrics/MetricsFeature.h"
 #include "RestServer/arangod.h"
 
 #include <filesystem>
@@ -223,7 +224,7 @@ void ArangodServer::addFeatures(
           .aqlFunctionFeature = &aqlFunctionFeature,
       });
   addFeature<iresearch::IResearchFeature>(metrics);
-  addFeature<ClusterEngine>();
+  addFeature<ClusterEngine>(metrics);
 
   addFeature<RocksDBEngine>(
       rocksdbOption, metrics, databasePath, vectorIndex, flush, dumpLimits,

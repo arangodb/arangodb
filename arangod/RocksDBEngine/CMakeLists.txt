@@ -39,6 +39,7 @@ add_library(arango_rocksdb STATIC
   RocksDBOptionFeatureOptionsProvider.cpp
   RocksDBOptionsProvider.cpp
   RocksDBPrimaryIndex.cpp
+  RocksDBReadWriteMetrics.cpp
   RocksDBRecoveryManager.cpp
   RocksDBReplicationCommon.cpp
   RocksDBReplicationContext.cpp
@@ -71,7 +72,7 @@ add_library(arango_rocksdb STATIC
   SimpleRocksDBTransactionState.cpp
   SortedRowsStorageBackendRocksDB.cpp)
 
-if (USE_V8) 
+if (USE_V8)
   target_sources(arango_rocksdb PRIVATE
     RocksDBV8Functions.cpp)
 endif()

@@ -28,9 +28,9 @@
 #include <velocypack/Builder.h>
 
 #include <chrono>
-#include <unordered_set>
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/system-functions.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Agency/Node.h"
 #include "Basics/debugging.h"
@@ -39,7 +39,6 @@
 #include "Logger/LoggerFeature.h"
 #include "Metrics/ClusterMetricsFeature.h"
 #include "Metrics/Metric.h"
-#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
@@ -66,13 +65,20 @@ MetricsFeature::MetricsFeature(
   setOptional(false);
   startsAfter<LoggerFeature>();
   startsBefore<application_features::GreetingsFeaturePhase>();
+  _serverStartTime = TRI_microtime();
+}
+
+/*static*/ double MetricsFeature::_serverStartTime = 0.0;
+
+/*static*/ double MetricsFeature::serverUptime() noexcept {
+  if (_serverStartTime == 0.0) {
+    return 0.0;
+  }
+  return TRI_microtime() - _serverStartTime;
 }
 
 void MetricsFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
-  _serverStatistics =
-      std::make_unique<ServerStatistics>(*this, StatisticsFeature::time());
-
   metrics::MetricsOptionsProvider provider;
   provider.declareOptions(options, _options);
 }
@@ -154,10 +160,6 @@ void MetricsFeature::validateOptions(
     std::shared_ptr<options::ProgramOptions> options) {
   metrics::MetricsOptionsProvider provider;
   provider.validateOptions(options, _options);
-
-  if (_options.exportReadWriteMetrics) {
-    serverStatistics().setupDocumentMetrics();
-  }
 }
 
 void MetricsFeature::toPrometheus(std::string& result,
@@ -266,10 +268,6 @@ void MetricsFeature::toVPack(velocypack::Builder& builder,
   }
   lock.unlock();
   builder.close();
-}
-
-ServerStatistics& MetricsFeature::serverStatistics() noexcept {
-  return *_serverStatistics;
 }
 
 std::shared_lock<std::shared_mutex> MetricsFeature::initGlobalLabels() const {
