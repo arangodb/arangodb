@@ -24,8 +24,8 @@ target_link_libraries(fuerte PUBLIC
   absl::strings
   velocypack)
 
-include(CheckTypeSize)
-check_type_size("ssize_t" SIZEOF_SSIZE_T)
+# include(CheckTypeSize)
+# check_type_size("ssize_t" SIZEOF_SSIZE_T)
 if(SIZEOF_SSIZE_T STREQUAL "")
   # ssize_t is a signed type in POSIX storing at least -1.
   # Set it to "int" to match the behavior of AC_TYPE_SSIZE_T (autotools).
