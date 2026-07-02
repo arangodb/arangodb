@@ -230,20 +230,20 @@ struct ExecContextScope {
   std::shared_ptr<ExecContext const> _old;
 };
 
-struct ExecContextSuperuserScope {
-  explicit ExecContextSuperuserScope() : _old(ExecContext::CURRENT) {
-    ExecContext::CURRENT = ExecContext::Superuser;
-  }
+struct [[deprecated(
+    "Upgrading to Superuser rights should not be necessary; instead, "
+    "authorization methods on ExecContext should handle the case properly on "
+    "their own.")]] ExecContextSuperuserScope {
+  explicit ExecContextSuperuserScope();
 
-  explicit ExecContextSuperuserScope(bool cond) : _old(ExecContext::CURRENT) {
-    if (cond) {
-      ExecContext::CURRENT = ExecContext::Superuser;
-    }
-  }
+  explicit ExecContextSuperuserScope(bool cond);
 
   ~ExecContextSuperuserScope() { ExecContext::CURRENT = _old; }
 
  private:
+  static auto getSuperuserContextFrom(ExecContext const* old)
+      -> std::shared_ptr<ExecContext const>;
+
   std::shared_ptr<ExecContext const> _old;
 };
 
