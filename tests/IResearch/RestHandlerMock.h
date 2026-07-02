@@ -32,14 +32,8 @@
 
 struct TRI_vocbase_t;
 
-namespace arangodb {
-class VocbaseContext;
-}
-
 struct GeneralRequestMock : public arangodb::GeneralRequest {
   int64_t _contentLength;
-  std::shared_ptr<arangodb::VocbaseContext>
-      _context;  // VocbaseContext required for use with RestVocbaseBaseHandler
   arangodb::velocypack::Builder _payload;  // request body
 
   GeneralRequestMock(TRI_vocbase_t& vocbase);
