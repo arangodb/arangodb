@@ -98,7 +98,6 @@
 #include "RocksDBEngine/RocksDBLogValue.h"
 #include "RocksDBEngine/RocksDBOptimizerRules.h"
 #include "RocksDBEngine/RocksDBOptionFeature.h"
-#include "RocksDBEngine/RocksDBRecoveryManager.h"
 #include "RocksDBEngine/RocksDBReplicationManager.h"
 #include "RocksDBEngine/RocksDBReplicationTailing.h"
 #include "RocksDBEngine/RocksDBRestHandlers.h"
@@ -262,7 +261,6 @@ RocksDBEngine::RocksDBEngine(
     IVectorIndexProvider const& vectorIndexProvider,
     IFlushControl& flushControl, IDumpLimitsProvider const& dumpLimitsProvider,
     replication2::IReplicatedLogProvider* replicatedLogProvider,
-    RocksDBRecoveryManager const& rocksDbRecoveryManager,
     IDatabaseProvider& databaseProvider, IIndexCacheRefill& indexCacheRefill,
     ICacheManagerProvider& cacheManagerProvider,
     ISortingPolicy const& sortingPolicy)
@@ -274,7 +272,6 @@ RocksDBEngine::RocksDBEngine(
       _flushControl(flushControl),
       _dumpLimitsProvider(dumpLimitsProvider),
       _replicatedLogProvider(replicatedLogProvider),
-      _rocksDbRecoveryManager(rocksDbRecoveryManager),
       _databaseProvider(databaseProvider),
       _indexCacheRefill(indexCacheRefill),
       _cacheManagerProvider(cacheManagerProvider),
@@ -1443,14 +1440,20 @@ Result RocksDBEngine::dropDatabase(TRI_vocbase_t& database) {
   return dropDatabase(database.id());
 }
 
-// current recovery state
 RecoveryState RocksDBEngine::recoveryState() noexcept {
-  return _rocksDbRecoveryManager.recoveryState();
+  return _recoveryState.load(std::memory_order_acquire);
 }
 
-// current recovery tick
 TRI_voc_tick_t RocksDBEngine::recoveryTick() noexcept {
-  return _rocksDbRecoveryManager.recoverySequenceNumber();
+  return _recoveryTick.load(std::memory_order_relaxed);
+}
+
+void RocksDBEngine::setRecoveryState(RecoveryState state) noexcept {
+  _recoveryState.store(state, std::memory_order_release);
+}
+
+void RocksDBEngine::setRecoveryTick(rocksdb::SequenceNumber tick) noexcept {
+  _recoveryTick.store(tick, std::memory_order_relaxed);
 }
 
 void RocksDBEngine::scheduleTreeRebuild(TRI_voc_tick_t database,

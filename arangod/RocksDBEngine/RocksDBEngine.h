@@ -26,6 +26,7 @@
 
 #include "RocksDBEngine/RocksDBEngineOptions.h"
 
+#include <atomic>
 #include <chrono>
 #include <deque>
 #include <map>
@@ -36,6 +37,8 @@
 #include <tuple>
 #include <unordered_map>
 #include <vector>
+
+#include <rocksdb/types.h>
 
 #include "Basics/ReadWriteLock.h"
 #include "Basics/VelocyPackHelper.h"
@@ -93,7 +96,6 @@ class RocksDBDumpManager;
 class RocksDBKey;
 class RocksDBLogValue;
 class RocksDBRecoveryHelper;
-class RocksDBRecoveryManager;
 class RocksDBReplicationManager;
 class RocksDBSettingsManager;
 class RocksDBSyncThread;
@@ -181,7 +183,6 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
                 IFlushControl& flushControl,
                 IDumpLimitsProvider const& dumpLimitsProvider,
                 replication2::IReplicatedLogProvider* replicatedLogProvider,
-                RocksDBRecoveryManager const& rocksDbRecoveryManager,
                 IDatabaseProvider& databaseProvider,
                 IIndexCacheRefill& indexCacheRefill,
                 ICacheManagerProvider& cacheManagerProvider,
@@ -561,6 +562,11 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   getCacheMetrics();
 
  private:
+  friend class RocksDBRecoveryManager;
+
+  void setRecoveryState(RecoveryState state) noexcept;
+  void setRecoveryTick(rocksdb::SequenceNumber tick) noexcept;
+
   void loadReplicatedStates(TRI_vocbase_t& vocbase);
   [[nodiscard]] Result dropReplicatedStates(TRI_voc_tick_t databaseId);
   void shutdownRocksDBInstance() noexcept;
@@ -630,7 +636,6 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   IFlushControl& _flushControl;
   IDumpLimitsProvider const& _dumpLimitsProvider;
   replication2::IReplicatedLogProvider* _replicatedLogProvider;
-  RocksDBRecoveryManager const& _rocksDbRecoveryManager;
   IDatabaseProvider& _databaseProvider;
   IIndexCacheRefill& _indexCacheRefill;
   ICacheManagerProvider& _cacheManagerProvider;
@@ -742,6 +747,9 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   /// hanger in rocksdb.
   containers::FlatHashSet<rocksdb::ColumnFamilyHandle*>
       _runningCompactionsColumnFamilies;
+
+  std::atomic<RecoveryState> _recoveryState{RecoveryState::BEFORE};
+  std::atomic<rocksdb::SequenceNumber> _recoveryTick{0};
 
   // sequence number from which WAL recovery was started. used only
   // for testing

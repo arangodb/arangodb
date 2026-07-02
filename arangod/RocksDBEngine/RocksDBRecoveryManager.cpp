@@ -74,11 +74,10 @@ namespace arangodb {
 /// Constructor needs to be called synchronously,
 /// will load counts from the db and scan the WAL
 RocksDBRecoveryManager::RocksDBRecoveryManager(
-    application_features::ApplicationServer& server,
+    application_features::ApplicationServer& server, RocksDBEngine& engine,
     IDatabaseProvider& dbProvider, IRecoveryCallback& recoveryCallback)
     : application_features::ApplicationFeature{server, *this},
-      _currentSequenceNumber(0),
-      _recoveryState(RecoveryState::BEFORE),
+      _engine(engine),
       _dbProvider(dbProvider),
       _recoveryCallback(recoveryCallback) {
   setOptional(true);
@@ -91,18 +90,15 @@ RocksDBRecoveryManager::RocksDBRecoveryManager(
 
 void RocksDBRecoveryManager::start() {
   TRI_ASSERT(isEnabled());
-  _engine = &server().getFeature<RocksDBEngine>();
 
-  // synchronizes with acquire inRecovery()
-  _recoveryState.store(RecoveryState::IN_PROGRESS, std::memory_order_release);
+  _engine.setRecoveryState(RecoveryState::IN_PROGRESS);
 
-  // start recovery
   runRecovery();
 
-  // synchronizes with acquire inRecovery()
-  _recoveryState.store(RecoveryState::DONE, std::memory_order_release);
+  _engine.setRecoveryTick(
+      _currentSequenceNumber.load(std::memory_order_relaxed));
+  _engine.setRecoveryState(RecoveryState::DONE);
 
-  // notify everyone that recovery is now done
   _recoveryCallback.recoveryDone();
 }
 
@@ -116,15 +112,6 @@ void RocksDBRecoveryManager::runRecovery() {
   }
 
   // now restore collection counts into collections
-}
-
-RecoveryState RocksDBRecoveryManager::recoveryState() const noexcept {
-  return _recoveryState.load(std::memory_order_acquire);
-}
-
-rocksdb::SequenceNumber RocksDBRecoveryManager::recoverySequenceNumber()
-    const noexcept {
-  return _currentSequenceNumber.load(std::memory_order_relaxed);
 }
 
 class WBReader final : public rocksdb::WriteBatch::Handler {
@@ -630,7 +617,7 @@ Result RocksDBRecoveryManager::parseRocksWAL() {
   Result shutdownRv;
 
   Result res = basics::catchToResult([&]() -> Result {
-    RocksDBEngine& engine = *_engine;
+    RocksDBEngine& engine = _engine;
 
     auto db = engine.db();
 
@@ -681,7 +668,6 @@ Result RocksDBRecoveryManager::parseRocksWAL() {
     }
 
     // Tell the WriteBatch reader the transaction markers to look for
-    TRI_ASSERT(_currentSequenceNumber == 0);
     WBReader handler(engine, _dbProvider, recoveryStartSequence,
                      latestSequenceNumber, _currentSequenceNumber);
 

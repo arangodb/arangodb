@@ -254,8 +254,6 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
   _server.addFeature<RocksDBOptionFeature>(
       _server.hasFeature<AgencyFeature>() ? &_server.getFeature<AgencyFeature>()
                                           : nullptr);
-  auto& rocksdbRecovery =
-      _server.addFeature<RocksDBRecoveryManager>(database, database);
 #ifdef TRI_HAVE_GETRLIMIT
   _server.addFeature<FileDescriptorsFeature>(metrics);
 #endif
@@ -269,12 +267,13 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
   _server.addFeature<HotBackupFeature>();
   _server.addFeature<EncryptionFeature>();
 #endif
-  _server.addFeature<RocksDBEngine>(
+  auto& rocksdbEngine = _server.addFeature<RocksDBEngine>(
       _optionsProvider, metrics, databasePath, vectorIndex, flush, dumpLimits,
       replication2::EnableReplication2
           ? &_server.getFeature<ReplicatedLogFeature>()
           : nullptr,
-      rocksdbRecovery, database, rocksdbCacheRefill, cacheManager, agency);
+      database, rocksdbCacheRefill, cacheManager, agency);
+  _server.addFeature<RocksDBRecoveryManager>(rocksdbEngine, database, database);
 
   _server
       .addFeature<replication2::replicated_state::ReplicatedStateAppFeature>();

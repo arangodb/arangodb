@@ -123,13 +123,14 @@ class StorageEngineFixture : public ::testing::Test {
   ::testing::NiceMock<MockReplicatedLogProvider> _logProvider;
 
   NullRecoveryCallback _nullCallback;
-  RocksDBRecoveryManager _recoveryManager{_server, _dbProvider, _nullCallback};
 
-  RocksDBEngine _engine{_server,       _optionsProvider,  _metricsCollector,
-                        _dbPath,       _vectorIdx,        _flush,
-                        _dumpLimits,   &_logProvider,     _recoveryManager,
-                        _dbProvider,   _indexCacheRefill, _cacheManager,
-                        _sortingPolicy};
+  RocksDBEngine _engine{_server,           _optionsProvider, _metricsCollector,
+                        _dbPath,           _vectorIdx,       _flush,
+                        _dumpLimits,       &_logProvider,    _dbProvider,
+                        _indexCacheRefill, _cacheManager,    _sortingPolicy};
+
+  RocksDBRecoveryManager _recoveryManager{_server, _engine, _dbProvider,
+                                          _nullCallback};
 };
 
 }  // namespace arangodb::tests

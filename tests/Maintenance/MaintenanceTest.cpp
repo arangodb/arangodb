@@ -555,8 +555,6 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
     auto& dumpLimits = as.addFeature<DumpLimitsFeature>();
     as.addFeature<SchedulerFeature>(metrics, sharedPRNG);
 
-    auto& rocksDbRecoveryManager =
-        as.addFeature<RocksDBRecoveryManager>(dbFeature, dbFeature);
     auto& vectorIndex = as.addFeature<VectorIndexFeature>(dbFeature);
     auto& rocksDbIndexCacheRefillFeature =
         as.addFeature<RocksDBIndexCacheRefillFeature>(dbFeature, nullptr,
@@ -572,8 +570,9 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
     // server
     engine = std::make_unique<RocksDBEngine>(
         as, roOptions, metrics, dbpath, vectorIndex, flush, dumpLimits,
-        replicatedLogFeature, rocksDbRecoveryManager, dbFeature,
-        rocksDbIndexCacheRefillFeature, cacheManagerFeature, agencyFeature);
+        replicatedLogFeature, dbFeature, rocksDbIndexCacheRefillFeature,
+        cacheManagerFeature, agencyFeature);
+    as.addFeature<RocksDBRecoveryManager>(*engine, dbFeature, dbFeature);
     dbFeature.setEngineTesting(engine.get());
   }
 
