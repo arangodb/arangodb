@@ -267,9 +267,8 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
   network::ConnectionPool* pool = nf.pool();
   if (pool == nullptr) {
     // nullptr happens only during controlled shutdown
-    generateError(rest::ResponseCode::SERVICE_UNAVAILABLE,
-                  TRI_ERROR_SHUTTING_DOWN, "shutting down server");
-    return futures::makeFuture(Result(TRI_ERROR_SHUTTING_DOWN));
+    return futures::makeFuture(
+        Result(TRI_ERROR_SHUTTING_DOWN, "shutting down server"));
   }
   LOG_TOPIC("38d99", DEBUG, Logger::REQUESTS)
       << "forwarding request " << _request->messageId() << " to " << serverId;
