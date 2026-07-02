@@ -168,7 +168,7 @@ function moveShardCreateCollectionSuite() {
 
       // Set failure points on the follower
       try {
-        fromServer.debugSetFailAt("DelayCreateShard15");
+        toServer.debugSetFailAt("DelayCreateShard15");
         toServer.debugSetFailAt("DelayTakeoverShardLeadership15");
         
         // Schedule MoveShard operation
