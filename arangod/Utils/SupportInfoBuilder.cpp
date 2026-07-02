@@ -47,7 +47,7 @@
 #include "RestServer/EnvironmentFeature.h"
 #include "RestServer/FileDescriptorsFeature.h"
 #include "RestServer/ServerIdFeature.h"
-#include "Statistics/StatisticsFeature.h"
+#include "Metrics/MetricsFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
@@ -516,7 +516,7 @@ void SupportInfoBuilder::buildHostInfo(VPackBuilder& result,
 
   result.add(keys["processStats"], VPackValue(VPackValueType::Object));
   result.add(keys["processUptime"],
-             VPackValue(StatisticsFeature::serverUptime()));
+             VPackValue(metrics::MetricsFeature::serverUptime()));
 
   ProcessInfo info = TRI_ProcessInfoSelf();
   result.add(keys["nThreads"], VPackValue(info._numberThreads));

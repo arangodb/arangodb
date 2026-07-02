@@ -121,6 +121,8 @@ class MetricsFeature final : public application_features::ApplicationFeature,
 
   void prepare() override;
 
+  static double serverUptime() noexcept;
+
  protected:
   std::shared_ptr<Metric> doAdd(Builder& builder) override;
 
@@ -155,6 +157,8 @@ class MetricsFeature final : public application_features::ApplicationFeature,
   mutable bool hasRole = false;
 
   MetricsOptions _options;
+
+  static double _serverStartTime;
 };
 
 }  // namespace arangodb::metrics

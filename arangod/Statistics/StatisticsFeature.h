@@ -117,8 +117,6 @@ class StatisticsFeature final
 
   bool allDatabases() const noexcept { return _options.statisticsAllDatabases; }
 
-  static double serverUptime() noexcept;
-
  private:
   static void appendMetric(std::string& result, std::string const& val,
                            std::string const& label, std::string_view globals,
@@ -137,7 +135,6 @@ class StatisticsFeature final
                               std::initializer_list<std::string> const& les,
                               bool isInteger, std::string_view globals,
                               bool ensureWhitespace);
-  static double _serverStartTime;
 
   StatisticsFeatureOptions _options;
   bool _statisticsHistoryTouched = false;

@@ -635,7 +635,6 @@ StatisticsFeature::StatisticsFeature(
   setOptional(true);
   startsAfter<AqlFeaturePhase>();
   startsAfter<NetworkFeature>();
-  _serverStartTime = time();
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   bool foundError = false;
@@ -684,16 +683,7 @@ StatisticsFeature::StatisticsFeature(
 #endif
 }
 
-/*static*/ double StatisticsFeature::_serverStartTime = 0.0;
-
 /*static*/ double StatisticsFeature::time() { return TRI_microtime(); }
-
-/*static*/ double StatisticsFeature::serverUptime() noexcept {
-  if (_serverStartTime == 0.0) {
-    return 0.0;
-  }
-  return time() - _serverStartTime;
-}
 
 void StatisticsFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
@@ -933,8 +923,8 @@ void StatisticsFeature::toPrometheus(std::string& result, double now,
                globals, ensureWhitespace);
   appendMetric(result, std::to_string(PhysicalMemory::getValue()),
                "physicalSize", globals, ensureWhitespace);
-  appendMetric(result, std::to_string(serverUptime()), "uptime", globals,
-               ensureWhitespace);
+  appendMetric(result, std::to_string(metrics::MetricsFeature::serverUptime()),
+               "uptime", globals, ensureWhitespace);
   appendMetric(result, std::to_string(NumberOfCores::getValue()), "cores",
                globals, ensureWhitespace);
 

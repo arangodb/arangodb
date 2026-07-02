@@ -44,6 +44,7 @@
 #include "Scheduler/SchedulerFeature.h"
 #include "Statistics/ConnectionStatistics.h"
 #include "Statistics/RequestStatistics.h"
+#include "Metrics/MetricsFeature.h"
 #include "Statistics/StatisticsFeature.h"
 #include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
@@ -987,7 +988,7 @@ void StatisticsWorker::generateRawStatistics(VPackBuilder& builder,
 
   // _serverStatistics()
   builder.add("server", VPackValue(VPackValueType::Object));
-  builder.add("uptime", VPackValue(StatisticsFeature::serverUptime()));
+  builder.add("uptime", VPackValue(metrics::MetricsFeature::serverUptime()));
   builder.add("physicalMemory", VPackValue(PhysicalMemory::getValue()));
   builder.add("transactions", VPackValue(VPackValueType::Object));
   builder.add("started", VPackValue(ts._transactionsStarted.load()));

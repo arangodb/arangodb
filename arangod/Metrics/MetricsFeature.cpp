@@ -30,6 +30,7 @@
 #include <chrono>
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/system-functions.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Agency/Node.h"
 #include "Basics/debugging.h"
@@ -64,6 +65,16 @@ MetricsFeature::MetricsFeature(
   setOptional(false);
   startsAfter<LoggerFeature>();
   startsBefore<application_features::GreetingsFeaturePhase>();
+  _serverStartTime = TRI_microtime();
+}
+
+/*static*/ double MetricsFeature::_serverStartTime = 0.0;
+
+/*static*/ double MetricsFeature::serverUptime() noexcept {
+  if (_serverStartTime == 0.0) {
+    return 0.0;
+  }
+  return TRI_microtime() - _serverStartTime;
 }
 
 void MetricsFeature::collectOptions(

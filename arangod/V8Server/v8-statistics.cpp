@@ -120,7 +120,7 @@ static void JS_ServerStatistics(
 
   result
       ->Set(context, TRI_V8_ASCII_STRING(isolate, "uptime"),
-            v8::Number::New(isolate, StatisticsFeature::serverUptime()))
+            v8::Number::New(isolate, metrics::MetricsFeature::serverUptime()))
       .FromMaybe(false);
   result
       ->Set(context, TRI_V8_ASCII_STRING(isolate, "physicalMemory"),
