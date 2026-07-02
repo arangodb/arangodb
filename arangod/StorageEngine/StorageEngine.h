@@ -27,7 +27,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Result.h"
 #include "Indexes/IndexFactory.h"
-#include "Metrics/Fwd.h"
 #include "Statistics/ServerStatistics.h"
 #include "StorageEngine/HealthData.h"
 #include "Transaction/ManagerFeature.h"
