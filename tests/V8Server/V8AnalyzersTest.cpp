@@ -173,7 +173,7 @@ TEST_F(V8AnalyzerTest, test_instance_accessors) {
     auto vocbase =
         dbFeature.useDatabase(arangodb::StaticStrings::SystemDatabase);
     std::shared_ptr<arangodb::LogicalCollection> ignored;
-    arangodb::OperationOptions options(arangodb::ExecContext::current());
+    arangodb::OperationOptions options;
     arangodb::methods::Collections::createSystem(
         *vocbase, options, arangodb::tests::AnalyzerCollectionName, false,
         ignored);
@@ -471,7 +471,7 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
     auto vocbase =
         dbFeature.useDatabase(arangodb::StaticStrings::SystemDatabase);
     std::shared_ptr<arangodb::LogicalCollection> ignored;
-    arangodb::OperationOptions options(arangodb::ExecContext::current());
+    arangodb::OperationOptions options;
     arangodb::methods::Collections::createSystem(
         *vocbase, options, arangodb::tests::AnalyzerCollectionName, false,
         ignored);
@@ -953,7 +953,7 @@ TEST_F(V8AnalyzerTest, test_manager_get) {
         std::string("[ {\"name\" : \"testVocbase\"} ]"));
     ASSERT_EQ(TRI_ERROR_NO_ERROR, dbFeature.loadDatabases(databases->slice()));
   }
-  arangodb::OperationOptions options(arangodb::ExecContext::current());
+  arangodb::OperationOptions options;
   {
     auto vocbase =
         dbFeature.useDatabase(arangodb::StaticStrings::SystemDatabase);
@@ -1382,7 +1382,7 @@ TEST_F(V8AnalyzerTest, test_manager_list) {
       server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
   auto& dbFeature = server.getFeature<arangodb::DatabaseFeature>();
 
-  arangodb::OperationOptions options(arangodb::ExecContext::current());
+  arangodb::OperationOptions options;
   {
     auto vocbase =
         dbFeature.useDatabase(arangodb::StaticStrings::SystemDatabase);
@@ -1750,7 +1750,7 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
       server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
   auto& dbFeature = server.getFeature<arangodb::DatabaseFeature>();
 
-  arangodb::OperationOptions options(arangodb::ExecContext::current());
+  arangodb::OperationOptions options;
   {
     auto vocbase =
         dbFeature.useDatabase(arangodb::StaticStrings::SystemDatabase);

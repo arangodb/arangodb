@@ -35,7 +35,7 @@
 #include "Logger/LoggerStream.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Utils/DatabaseGuard.h"
-#include "Utils/OperationOptions.h"
+#include "Utils/ExecContext.h"
 #include "VocBase/Methods/Databases.h"
 
 using namespace arangodb;

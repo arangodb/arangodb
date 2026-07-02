@@ -446,7 +446,7 @@ class IResearchAnalyzerFeatureTest
     auto vocbase =
         _databaseFeature.useDatabase(arangodb::StaticStrings::SystemDatabase);
     std::shared_ptr<arangodb::LogicalCollection> unused;
-    arangodb::OperationOptions options(arangodb::ExecContext::current());
+    arangodb::OperationOptions options;
     arangodb::methods::Collections::createSystem(
         *vocbase, options, arangodb::tests::AnalyzerCollectionName, false,
         unused);
@@ -1235,7 +1235,7 @@ class IResearchAnalyzerFeatureGetTest : public IResearchAnalyzerFeatureTest {
             .ok());
     ASSERT_NE(_vocbase, nullptr);
     std::shared_ptr<arangodb::LogicalCollection> unused;
-    arangodb::OperationOptions options(arangodb::ExecContext::current());
+    arangodb::OperationOptions options;
     arangodb::methods::Collections::createSystem(
         *_vocbase, options, arangodb::tests::AnalyzerCollectionName, false,
         unused);
@@ -3094,7 +3094,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_start) {
       arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
       auto feature = createAnalyzerFeature();
       std::shared_ptr<arangodb::LogicalCollection> unused;
-      arangodb::OperationOptions options(arangodb::ExecContext::current());
+      arangodb::OperationOptions options;
       arangodb::methods::Collections::createSystem(
           *vocbase, options, arangodb::tests::AnalyzerCollectionName, false,
           unused);
@@ -3224,7 +3224,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_start) {
       arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
       auto feature = createAnalyzerFeature();
       std::shared_ptr<arangodb::LogicalCollection> unused;
-      arangodb::OperationOptions options(arangodb::ExecContext::current());
+      arangodb::OperationOptions options;
       arangodb::methods::Collections::createSystem(
           *vocbase, options, arangodb::tests::AnalyzerCollectionName, false,
           unused);
@@ -3347,7 +3347,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
   }
 
   std::shared_ptr<arangodb::LogicalCollection> unused;
-  arangodb::OperationOptions options(arangodb::ExecContext::current());
+  arangodb::OperationOptions options;
   arangodb::methods::Collections::createSystem(
       *vocbase, options, arangodb::tests::AnalyzerCollectionName, false,
       unused);
@@ -3986,7 +3986,7 @@ TEST_F(IResearchAnalyzerFeatureUpgradeStaticLegacyTest, no_system_no_analyzer) {
   // TODO: We should use global system creation here instead of all the
   // exissting manual stuff ...
   std::shared_ptr<arangodb::LogicalCollection> unused;
-  arangodb::OperationOptions options(arangodb::ExecContext::current());
+  arangodb::OperationOptions options;
   arangodb::methods::Collections::createSystem(
       *vocbase, options, arangodb::tests::AnalyzerCollectionName, false,
       unused);
@@ -4038,7 +4038,7 @@ TEST_F(IResearchAnalyzerFeatureUpgradeStaticLegacyTest,
   // TODO: We should use global system creation here instead of all the
   // exissting manual stuff ...
   std::shared_ptr<arangodb::LogicalCollection> unused;
-  arangodb::OperationOptions options(arangodb::ExecContext::current());
+  arangodb::OperationOptions options;
   arangodb::methods::Collections::createSystem(
       *vocbase, options, arangodb::tests::AnalyzerCollectionName, false,
       unused);
@@ -4083,7 +4083,7 @@ TEST_F(IResearchAnalyzerFeatureUpgradeStaticLegacyTest,
   // TODO: We should use global system creation here instead of all the
   // exissting manual stuff ...
   std::shared_ptr<arangodb::LogicalCollection> unused;
-  arangodb::OperationOptions options(arangodb::ExecContext::current());
+  arangodb::OperationOptions options;
   arangodb::methods::Collections::createSystem(
       *vocbase, options, arangodb::tests::AnalyzerCollectionName, false,
       unused);
@@ -4141,7 +4141,7 @@ TEST_F(IResearchAnalyzerFeatureUpgradeStaticLegacyTest,
   // TODO: We should use global system creation here instead of all the
   // exissting manual stuff ...
   std::shared_ptr<arangodb::LogicalCollection> unused;
-  arangodb::OperationOptions options(arangodb::ExecContext::current());
+  arangodb::OperationOptions options;
   arangodb::methods::Collections::createSystem(
       *vocbase, options, arangodb::tests::AnalyzerCollectionName, false,
       unused);
@@ -4206,7 +4206,7 @@ TEST_F(IResearchAnalyzerFeatureUpgradeStaticLegacyTest,
   // TODO: We should use global system creation here instead of all the
   // exissting manual stuff ...
   std::shared_ptr<arangodb::LogicalCollection> unused;
-  arangodb::OperationOptions options(arangodb::ExecContext::current());
+  arangodb::OperationOptions options;
   arangodb::methods::Collections::createSystem(
       *vocbase, options, arangodb::tests::AnalyzerCollectionName, false,
       unused);
@@ -4264,7 +4264,7 @@ TEST_F(IResearchAnalyzerFeatureUpgradeStaticLegacyTest,
   // TODO: We should use global system creation here instead of all the
   // exissting manual stuff ...
   std::shared_ptr<arangodb::LogicalCollection> unused;
-  arangodb::OperationOptions options(arangodb::ExecContext::current());
+  arangodb::OperationOptions options;
   arangodb::methods::Collections::createSystem(
       *vocbase, options, arangodb::tests::AnalyzerCollectionName, false,
       unused);
@@ -4410,7 +4410,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
     sysDatabase.start();  // get system database from DatabaseFeature
     auto system = sysDatabase.use();
     std::shared_ptr<arangodb::LogicalCollection> unused;
-    arangodb::OperationOptions options(arangodb::ExecContext::current());
+    arangodb::OperationOptions options;
     arangodb::methods::Collections::createSystem(
         *system, options, arangodb::tests::AnalyzerCollectionName, false,
         unused);
@@ -4538,7 +4538,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
           .createDatabase(createInfo(server.server(), "vocbase2", 1), vocbase2)
           .ok());
   std::shared_ptr<arangodb::LogicalCollection> unused;
-  arangodb::OperationOptions options(arangodb::ExecContext::current());
+  arangodb::OperationOptions options;
   arangodb::methods::Collections::createSystem(
       *vocbase0, options, arangodb::tests::AnalyzerCollectionName, false,
       unused);
@@ -4762,7 +4762,7 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_toVelocyPack) {
     auto vocbase =
         dbFeature.useDatabase(arangodb::StaticStrings::SystemDatabase);
     std::shared_ptr<arangodb::LogicalCollection> unused;
-    arangodb::OperationOptions options(arangodb::ExecContext::current());
+    arangodb::OperationOptions options;
     arangodb::methods::Collections::createSystem(
         *vocbase, options, arangodb::tests::AnalyzerCollectionName, false,
         unused);
@@ -4915,7 +4915,7 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_vpack_create) {
     auto vocbase =
         dbFeature.useDatabase(arangodb::StaticStrings::SystemDatabase);
     std::shared_ptr<arangodb::LogicalCollection> unused;
-    arangodb::OperationOptions options(arangodb::ExecContext::current());
+    arangodb::OperationOptions options;
     arangodb::methods::Collections::createSystem(
         *vocbase, options, arangodb::tests::AnalyzerCollectionName, false,
         unused);

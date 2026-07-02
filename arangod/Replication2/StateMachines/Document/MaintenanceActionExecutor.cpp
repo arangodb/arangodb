@@ -68,7 +68,7 @@ auto MaintenanceActionExecutor::executeCreateCollection(
   }
   std::shared_ptr<LogicalCollection> col;
   auto res = basics::catchToResult([&]() -> Result {
-    OperationOptions options(ExecContext::current());
+    OperationOptions options;
     return methods::Collections::createShard(
         _vocbase, options, shard, collectionType, properties.slice(), col);
   });
@@ -101,7 +101,7 @@ auto MaintenanceActionExecutor::executeModifyCollection(
     velocypack::SharedSlice properties) noexcept -> Result {
   auto res =
       basics::catchToResult([&col, properties = std::move(properties)]() {
-        OperationOptions options(ExecContext::current());
+        OperationOptions options;
         return methods::Collections::updateProperties(*col, properties.slice(),
                                                       options)
             .waitAndGet();
