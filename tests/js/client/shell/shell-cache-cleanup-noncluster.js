@@ -29,15 +29,15 @@
 const jsunity = require('jsunity');
 const db = require("@arangodb").db;
 const internal = require("internal");
-const { getMetricSingle } = require('@arangodb/test-helper');
   
+let IM = global.instanceManager;
 const cn = "UnitTestsCollection";
 
 function CacheCleanupSuite () {
   'use strict';
       
   let getMetric = () => { 
-    return getMetricSingle("rocksdb_cache_active_tables");
+    return IM.getAllMetricsByName("rocksdb_cache_active_tables")[0];
   };
   
   return {
