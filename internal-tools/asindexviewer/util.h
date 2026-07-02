@@ -3,8 +3,4 @@
 
 #include <string>
 
-namespace utils {
-    std::string demangle(const char* name);
-}
-
 #endif

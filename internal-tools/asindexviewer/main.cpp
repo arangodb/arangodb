@@ -323,7 +323,7 @@ std::string printSegmentLocalDocId(size_t const segment_index,
     }
   }
 
-  return std::move(oss.str());
+  return oss.str();
 }
 
 void printSegmentLocalDocTable(size_t const segment_index,
@@ -410,8 +410,9 @@ void printTermPostings(irs::field_meta const& meta,
                        DocPkMap const* pk_by_doc,
                        VPackArrayWrapper<VPackBuilder>& postingsArr) {
   irs::IndexFeatures const ff = meta.index_features;
-  bool const field_has_pos =
-      (ff & irs::IndexFeatures::POS) != irs::IndexFeatures::NONE;
+
+  // bool const field_has_pos =
+  //     (ff & irs::IndexFeatures::POS) != irs::IndexFeatures::NONE;
 
   // Intersected with `ff` inside the postings reader; ask for all optional
   // layers this tool can print.
@@ -441,13 +442,11 @@ void printTermPostings(irs::field_meta const& meta,
       },
   */
   //  postings (per doc: in-doc frequency, 1-based term positions in field)
-  bool any_doc = false;
   while (posts->next()) {
     VPackObjectWrapper postingObj(postingsArr.get());
 
     std::string docId;
     std::string docFreq;
-    any_doc = true;
 
     //  document id
     postingObj["docId"] = VPackValue(
@@ -515,6 +514,7 @@ void processSegmentField(irs::field_iterator::ptr& fields, size_t segmentIndex,
   ArangoFieldTypeInfo const detected = detectArangoFieldType(storage_name);
 
   fieldWrapper["name"] = VPackValue(storage_name);
+  //  TODO
   // printArangoFieldHeader(storage_name, detected, b);
   {
     VPackObjectWrapper fieldIndexFeatures(fieldsArray.get(), "fieldIndexFeatures");
@@ -576,7 +576,8 @@ void processSegment(const irs::SubReader& segment, size_t segmentIndex, VPackArr
       //--------------------------------
       
       // //--------------------------------
-      // //  Column store
+      // //  Column store [TODO]
+      // //  Enable this code again
       // //--------------------------------
       // b.add("columns", VPackValue(VPackValueType::Array));
       // for (auto columns = segment.columns(); columns->next();) {
@@ -612,7 +613,7 @@ void processSegment(const irs::SubReader& segment, size_t segmentIndex, VPackArr
     }
   }
 
-void readIndexData(const std::string& indexPath, VPackBuilder& b) {
+void readIndexData(const std::filesystem::path& indexPath, VPackBuilder& b) {
   irs::FSDirectory dir(indexPath);
   auto reader = irs::DirectoryReader(dir);
 
@@ -642,7 +643,6 @@ int main(int argc, char* argv[]) {
     }
 
     VPackObjectWrapper obj(b);
-    // obj.add(VPackValue(VPackValueType::Object));
     readIndexData(argv[1], obj.get());
   }
 
