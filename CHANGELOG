@@ -1,6 +1,8 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* COR-419: Allow multiple edge type in relation.
+
 * Upgraded included rclone to v1.74.3 with go1.25.11 and non-vulnerable
   dependencies.
 
