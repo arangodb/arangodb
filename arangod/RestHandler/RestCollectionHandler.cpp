@@ -288,7 +288,7 @@ async<void> RestCollectionHandler::handleCommandGet() {
     // /_api/collection/<identifier>/revision
 
     _ctxt = std::make_unique<methods::Collections::Context>(coll);
-    OperationOptions options(_context);
+    OperationOptions options;
     auto res = co_await methods::Collections::revisionId(*_ctxt, options);
     if (res.fail()) {
       generateTransactionError(coll->name(), res);
@@ -385,7 +385,7 @@ async<void> RestCollectionHandler::handleCommandPost() {
   std::vector<CreateCollectionBody> collections{
       std::move(planCollection.get())};
 
-  OperationOptions options(_context);
+  OperationOptions options;
   auto result = methods::Collections::create(
       _vocbase,  // collection vocbase
       options, collections,
@@ -548,7 +548,7 @@ async<void> RestCollectionHandler::handleCommandPut() {
   }
   if (sub == "truncate") {
     // Collection permission check in transaction!
-    OperationOptions opts(_context);
+    OperationOptions opts;
 
     opts.waitForSync =
         _request->parsedValue(StaticStrings::WaitForSyncString, false);
@@ -642,7 +642,7 @@ async<void> RestCollectionHandler::handleCommandPut() {
         StaticStrings::CacheEnabled,         StaticStrings::SupportsRBAC};
     VPackBuilder props = VPackCollection::keep(body, keep);
 
-    OperationOptions options(_context);
+    OperationOptions options;
     // Permission check inside this call:
     res = co_await methods::Collections::updateProperties(*coll, props.slice(),
                                                           options);
@@ -677,7 +677,7 @@ async<void> RestCollectionHandler::handleCommandPut() {
     co_return;
   }
   if (sub == "loadIndexesIntoMemory") {
-    OperationOptions options(_context);
+    OperationOptions options;
     auto res = co_await methods::Collections::warmup(_vocbase, *coll);
     if (res.fail()) {
       generateTransactionError(coll->name(), OperationResult(res, options), "");
@@ -826,7 +826,7 @@ futures::Future<futures::Unit> RestCollectionHandler::collectionRepresentation(
     }
   }
 
-  OperationOptions options(_context);
+  OperationOptions options;
   futures::Future<OperationResult> figures =
       futures::makeFuture(OperationResult(Result(), options));
   if (showFigures != FiguresType::None) {

@@ -1094,7 +1094,7 @@ static void JS_FiguresVocbaseCol(
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  OperationOptions options(ExecContext::current());
+  OperationOptions options;
   auto opRes = collection->figures(details, options).waitAndGet();
 
   if (trx.finish(opRes.result).ok()) {
@@ -1270,7 +1270,7 @@ static void JS_PropertiesVocbaseCol(
       VPackBuilder builder;
       TRI_V8ToVPack(isolate, builder, args[0], false);
       TRI_ASSERT(builder.isClosed());
-      OperationOptions options(ExecContext::current());
+      OperationOptions options;
 
       auto res = methods::Collections::updateProperties(
                      *consoleColl, builder.slice(), options)
@@ -1726,7 +1726,7 @@ static void JS_RevisionVocbaseCol(
   // a shared_ptr here
   std::shared_ptr<LogicalCollection> coll(collection, NonDeleter());
   methods::Collections::Context ctxt(coll);
-  OperationOptions options(ExecContext::current());
+  OperationOptions options;
   auto res = methods::Collections::revisionId(ctxt, options).waitAndGet();
 
   if (res.fail()) {
@@ -2467,7 +2467,7 @@ static void JS_CountVocbaseCol(
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  OperationOptions options(ExecContext::current());
+  OperationOptions options;
   OperationResult opResult =
       trx.count(collectionName,
                 details ? transaction::CountType::kDetailed

@@ -80,7 +80,7 @@ Result GraphOperations::checkCanModifyGraphStructure() const {
 futures::Future<OperationResult> GraphOperations::changeEdgeDefinitionForGraph(
     Graph& graph, EdgeDefinition const& newEdgeDef, bool waitForSync,
     transaction::Methods& trx) {
-  OperationOptions options(ExecContext::current());
+  OperationOptions options;
   options.waitForSync = waitForSync;
 
   VPackBuilder builder;
@@ -107,7 +107,7 @@ futures::Future<OperationResult> GraphOperations::changeEdgeDefinitionForGraph(
 futures::Future<OperationResult> GraphOperations::eraseEdgeDefinition(
     bool waitForSync, std::string const& edgeDefinitionName,
     bool dropCollection) {
-  OperationOptions options(ExecContext::current());
+  OperationOptions options;
   options.waitForSync = waitForSync;
 
   // Check permission:
@@ -248,7 +248,7 @@ futures::Future<OperationResult> GraphOperations::editEdgeDefinition(
     VPackSlice edgeDefinitionSlice, VPackSlice definitionOptions,
     bool waitForSync, std::string const& edgeDefinitionName) {
   TRI_ASSERT(definitionOptions.isObject());
-  OperationOptions options(ExecContext::current());
+  OperationOptions options;
 
   // Check permission:
   auto r = checkCanModifyGraphStructure();
@@ -339,7 +339,7 @@ futures::Future<OperationResult> GraphOperations::addOrphanCollection(
 
   std::shared_ptr<LogicalCollection> def;
 
-  OperationOptions options(ExecContext::current());
+  OperationOptions options;
   options.waitForSync = waitForSync;
 
   // Check permission:
@@ -457,7 +457,7 @@ futures::Future<OperationResult> GraphOperations::addOrphanCollection(
 
 futures::Future<OperationResult> GraphOperations::eraseOrphanCollection(
     bool waitForSync, std::string const& collectionName, bool dropCollection) {
-  OperationOptions options(ExecContext::current());
+  OperationOptions options;
 #ifdef USE_ENTERPRISE
   {
     if (dropCollection) {
@@ -569,7 +569,7 @@ futures::Future<OperationResult> GraphOperations::addEdgeDefinition(
     VPackSlice edgeDefinitionSlice, VPackSlice definitionOptions,
     bool waitForSync) {
   TRI_ASSERT(definitionOptions.isObject());
-  OperationOptions options(ExecContext::current());
+  OperationOptions options;
 
   // Check permission:
   auto r = checkCanModifyGraphStructure();
@@ -618,7 +618,7 @@ futures::Future<OperationResult> GraphOperations::getVertex(
     std::string const& collectionName, std::string const& key,
     std::optional<RevisionId> rev) {
   // check if the vertex collection is part of the graph
-  OperationOptions options(ExecContext::current());
+  OperationOptions options;
   Result checkVertexRes = checkVertexCollectionAvailability(collectionName);
   if (checkVertexRes.fail()) {
     co_return OperationResult(checkVertexRes, options);
@@ -630,7 +630,7 @@ futures::Future<OperationResult> GraphOperations::getEdge(
     std::string const& definitionName, std::string const& key,
     std::optional<RevisionId> rev) {
   // check if the edge collection is part of the graph
-  OperationOptions options(ExecContext::current());
+  OperationOptions options;
   Result checkEdgeRes = checkEdgeCollectionAvailability(definitionName);
   if (checkEdgeRes.fail()) {
     co_return OperationResult(checkEdgeRes, options);
@@ -686,7 +686,7 @@ futures::Future<OperationResult> GraphOperations::removeEdge(
     std::string const& definitionName, std::string const& key,
     std::optional<RevisionId> rev, bool waitForSync, bool returnOld) {
   // check if the edge collection is part of the graph
-  OperationOptions options(ExecContext::current());
+  OperationOptions options;
   Result checkEdgeRes = checkEdgeCollectionAvailability(definitionName);
   if (checkEdgeRes.fail()) {
     co_return OperationResult(checkEdgeRes, options);
@@ -763,7 +763,7 @@ futures::Future<OperationResult> GraphOperations::updateEdge(
     VPackSlice document, std::optional<RevisionId> rev, bool waitForSync,
     bool returnOld, bool returnNew, bool keepNull) {
   // check if the edge collection is part of the graph
-  OperationOptions options(ExecContext::current());
+  OperationOptions options;
   Result checkEdgeRes = checkEdgeCollectionAvailability(definitionName);
   if (checkEdgeRes.fail()) {
     co_return OperationResult(checkEdgeRes, options);
@@ -787,7 +787,7 @@ futures::Future<OperationResult> GraphOperations::replaceEdge(
     VPackSlice document, std::optional<RevisionId> rev, bool waitForSync,
     bool returnOld, bool returnNew, bool keepNull) {
   // check if the edge collection is part of the graph
-  OperationOptions options(ExecContext::current());
+  OperationOptions options;
   Result checkEdgeRes = checkEdgeCollectionAvailability(definitionName);
   if (checkEdgeRes.fail()) {
     co_return OperationResult(checkEdgeRes, options);
@@ -842,7 +842,7 @@ GraphOperations::validateEdge(std::string const& definitionName,
 
   Result tRes = co_await trx->beginAsync();
 
-  OperationOptions options(ExecContext::current());
+  OperationOptions options;
 
   if (!tRes.ok()) {
     co_return std::make_pair(OperationResult(tRes, options), nullptr);
@@ -876,7 +876,7 @@ OperationResult GraphOperations::validateEdgeVertices(
     bF.add(StaticStrings::KeyString, VPackValue(fromCollectionKey));
   }
 
-  OperationOptions options(ExecContext::current());
+  OperationOptions options;
   OperationResult resultFrom =
       trx.document(fromCollectionName, bF.slice(), options);
   OperationResult resultTo =
@@ -896,7 +896,7 @@ std::pair<OperationResult, bool> GraphOperations::validateEdgeContent(
     std::string& toCollectionKey, bool isUpdate) {
   VPackSlice fromStringSlice = document.get(StaticStrings::FromString);
   VPackSlice toStringSlice = document.get(StaticStrings::ToString);
-  OperationOptions options(ExecContext::current());
+  OperationOptions options;
 
   // Validate from & to slices or
   // validate from || to slices
@@ -986,7 +986,7 @@ futures::Future<OperationResult> GraphOperations::createEdge(
     std::string const& definitionName, VPackSlice document, bool waitForSync,
     bool returnNew) {
   // check if edgeCollection is available in the graph definition
-  OperationOptions options(ExecContext::current());
+  OperationOptions options;
   Result checkEdgeRes = checkEdgeCollectionAvailability(definitionName);
   if (checkEdgeRes.fail()) {
     co_return OperationResult(checkEdgeRes, options);
@@ -1009,7 +1009,7 @@ futures::Future<OperationResult> GraphOperations::updateVertex(
     VPackSlice document, std::optional<RevisionId> rev, bool waitForSync,
     bool returnOld, bool returnNew, bool keepNull) {
   // check if the vertex collection is part of the graph
-  OperationOptions options(ExecContext::current());
+  OperationOptions options;
   Result checkVertexRes = checkVertexCollectionAvailability(collectionName);
   if (checkVertexRes.fail()) {
     co_return OperationResult(checkVertexRes, options);
@@ -1025,7 +1025,7 @@ futures::Future<OperationResult> GraphOperations::updateVertex(
   Result tRes = co_await trx.beginAsync();
 
   if (!tRes.ok()) {
-    OperationOptions options(ExecContext::current());
+    OperationOptions options;
     co_return OperationResult(tRes, options);
   }
   co_return co_await modifyDocument(collectionName, key, document, true,
@@ -1038,7 +1038,7 @@ futures::Future<OperationResult> GraphOperations::replaceVertex(
     VPackSlice document, std::optional<RevisionId> rev, bool waitForSync,
     bool returnOld, bool returnNew, bool keepNull) {
   // check if the vertex collection is part of the graph
-  OperationOptions options(ExecContext::current());
+  OperationOptions options;
   Result checkVertexRes = checkVertexCollectionAvailability(collectionName);
   if (checkVertexRes.fail()) {
     co_return OperationResult(checkVertexRes, options);
@@ -1054,7 +1054,7 @@ futures::Future<OperationResult> GraphOperations::replaceVertex(
   Result tRes = co_await trx.beginAsync();
 
   if (!tRes.ok()) {
-    OperationOptions options(ExecContext::current());
+    OperationOptions options;
     co_return OperationResult(tRes, options);
   }
   co_return co_await modifyDocument(collectionName, key, document, false,
@@ -1066,7 +1066,7 @@ futures::Future<OperationResult> GraphOperations::createVertex(
     std::string const& collectionName, VPackSlice document, bool waitForSync,
     bool returnNew) {
   // check if the vertex collection is part of the graph
-  OperationOptions options(ExecContext::current());
+  OperationOptions options;
   Result checkVertexRes = checkVertexCollectionAvailability(collectionName);
   if (checkVertexRes.fail()) {
     co_return OperationResult(checkVertexRes, options);
@@ -1081,7 +1081,7 @@ futures::Future<OperationResult> GraphOperations::createVertex(
   Result res = co_await trx.beginAsync();
 
   if (!res.ok()) {
-    OperationOptions options(ExecContext::current());
+    OperationOptions options;
     co_return OperationResult(res, options);
   }
 
@@ -1188,7 +1188,7 @@ futures::Future<OperationResult> GraphOperations::removeVertex(
     std::string const& collectionName, std::string const& key,
     std::optional<RevisionId> rev, bool waitForSync, bool returnOld) {
   // check if the vertex collection is part of the graph
-  OperationOptions options(ExecContext::current());
+  OperationOptions options;
   Result checkVertexRes = checkVertexCollectionAvailability(collectionName);
   if (checkVertexRes.fail()) {
     co_return OperationResult(checkVertexRes, options);

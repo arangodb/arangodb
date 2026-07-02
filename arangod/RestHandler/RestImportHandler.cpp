@@ -376,7 +376,7 @@ futures::Future<futures::Unit> RestImportHandler::createFromJson(
   }
 
   if (overwrite) {
-    OperationOptions truncateOpts(_context);
+    OperationOptions truncateOpts;
     truncateOpts.waitForSync = false;
     // truncate collection first
     std::ignore = co_await trx.truncateAsync(collectionName, truncateOpts);
@@ -788,7 +788,7 @@ futures::Future<futures::Unit> RestImportHandler::createFromKeyValueList() {
   }
 
   if (overwrite) {
-    OperationOptions truncateOpts(_context);
+    OperationOptions truncateOpts;
     truncateOpts.waitForSync = false;
     // truncate collection first
     std::ignore = co_await trx.truncateAsync(collectionName, truncateOpts);
@@ -1094,7 +1094,7 @@ bool RestImportHandler::checkKeys(VPackSlice const& keys) const {
 }
 
 OperationOptions RestImportHandler::buildOperationOptions() const {
-  OperationOptions opOptions(_context);
+  OperationOptions opOptions;
 
   opOptions.waitForSync =
       _request->parsedValue(StaticStrings::WaitForSyncString, false);
