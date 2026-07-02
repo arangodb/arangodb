@@ -71,6 +71,10 @@ function aqlMatchStatementVariableLengthTestSuite() {
               db.ec1.save({_from: `vc1/v${i}`, _to: `vc2/v${i}`});
               db.ec1.save({_from: `vc2/v${i}`, _to: `vc3/v${i}`});
             }
+
+            db._createEdgeCollection("ec2");
+            // an edge only present in ec2, so ec1|ec2 is a true union
+            db.ec2.save({_from: `vc1/v0`, _to: `vc1/v2`});
        },
 
         tearDownAll: function () {
@@ -229,6 +233,42 @@ function aqlMatchStatementVariableLengthTestSuite() {
           result.sort();
           assertEqual(result, expected);
         },
+
+        testMatchVariableLengthMultipleEdgeTypes: function() {
+          const query = aql`WITH vc1
+                              MATCH (v :vc1) -[ e :ec1 | ec2 * 1..1 ]-> (w :vc1)
+                              RETURN [v, e, w]`;
+          const expected = [
+            "(vc1/v0) -[]-> (vc1/v1)",
+            "(vc1/v0) -[]-> (vc1/v2)",
+            "(vc1/v1) -[]-> (vc1/v2)",
+            "(vc1/v2) -[]-> (vc1/v3)"
+          ];
+          expected.sort();
+
+          const result = db._query(query, {}, options)
+            .toArray()
+            .map((x) => pathToString(x[1]));
+          result.sort();
+          assertEqual(result, expected);
+        },
+
+        testMatchVariableLengthCollectionBindParameterMultipleEdgeTypes: function() {
+          const query = "MATCH (v :vc1) -[ e :@@ec1 | @@ec2 * 1..1 ]-> (w :vc1) RETURN [v, e, w]";
+          const expected = [
+            "(vc1/v0) -[]-> (vc1/v1)",
+            "(vc1/v0) -[]-> (vc1/v2)",
+            "(vc1/v1) -[]-> (vc1/v2)",
+            "(vc1/v2) -[]-> (vc1/v3)"
+          ];
+          expected.sort();
+
+          const result = db._query(query, { "@ec1": "ec1", "@ec2": "ec2" }, options)
+            .toArray()
+            .map((x) => pathToString(x[1]));
+          result.sort();
+          assertEqual(result, expected);
+        }
 
     };
 }

@@ -566,6 +566,8 @@ AstNode* transformOutputVariables(Parser* parser, AstNode const* names) {
 %token T_NONE "none modifier"
 %token T_AT_LEAST "at least modifier"
 
+%token T_PIPE "| operator"
+
 /* define operator precedence */
 %left T_COMMA
 %left T_DISTINCT
@@ -1201,14 +1203,44 @@ pattern_close_relation:
   | T_ARRAY_CLOSE T_MINUS T_GT { $$ = true; }
 
 %type <node> pattern_edge;
-pattern_edge: pattern_open_relation pattern_out_variable pattern_label pattern_maybe_property_key_value_expression
+pattern_edge: pattern_open_relation pattern_out_variable pattern_edge_label pattern_maybe_property_key_value_expression
     pattern_maybe_where_expression pattern_close_relation {
         $$ = parser->ast()->createPatternEdge($2, $3, $4, $5, nullptr, $1, $6);
     }
-    | pattern_open_relation pattern_out_variable pattern_label pattern_variable_length_relationship pattern_close_relation {
+    | pattern_open_relation pattern_out_variable pattern_edge_label pattern_variable_length_relationship pattern_close_relation {
         $$ = parser->ast()->createPatternEdge($2, $3, nullptr, nullptr, $4, $1, $5);
     }
 
+%type <node> pattern_edge_label;
+pattern_edge_label:
+    T_COLON pattern_edge_collection_list { $$ = $2; }
+  ;
+
+%type <node> pattern_edge_collection_list;
+pattern_edge_collection_list:
+    pattern_edge_collection_name {
+        auto* list = parser->ast()->createNodeArray();
+        list->addMember($1);
+        $$ = list;
+    }
+  | pattern_edge_collection_list T_PIPE pattern_edge_collection_name {
+        $1->addMember($3);
+        $$ = $1;
+    }
+  ;
+
+%type <node> pattern_edge_collection_name;
+pattern_edge_collection_name:
+    T_STRING {
+        auto const& resolver = parser->query().resolver();
+        $$ = parser->ast()->createNodeDataSource(resolver, {$1.value, $1.length}, arangodb::AccessMode::Type::READ, true, false);
+    }
+  | T_DATA_SOURCE_PARAMETER {
+        std::string_view name($1.value, $1.length);
+        $$ = parser->ast()->createNodeParameterDatasource(name);
+    }
+  ;
+  
 pattern_segment: pattern_edge pattern_node_pattern {
     auto node = parser->ast()->createPatternSegment($1, $2);
     parser->pushPatternNode(node);
