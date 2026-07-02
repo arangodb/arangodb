@@ -32,6 +32,7 @@
 #include "RestServer/DatabaseFeatureOptions.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "RestServer/IDatabaseProvider.h"
+#include "RestServer/IRecoveryCallback.h"
 #include "Utils/DatabaseGuard.h"
 #include "Utils/VersionTracker.h"
 #include "VocBase/voc-types.h"
@@ -56,7 +57,7 @@ class ClusterEngine;
 class RocksDBEngine;
 
 namespace metrics {
-class MetricsFeature;
+struct IRegistry;
 template<typename T>
 class Gauge;
 }  // namespace metrics
@@ -99,7 +100,8 @@ class DatabaseManagerThread final : public ServerThread {
 };
 
 class DatabaseFeature final : public application_features::ApplicationFeature,
-                              public IDatabaseProvider {
+                              public IDatabaseProvider,
+                              public IRecoveryCallback {
   friend class DatabaseManagerThread;
 
  public:
@@ -128,7 +130,7 @@ class DatabaseFeature final : public application_features::ApplicationFeature,
   /// this will call the engine-specific recoveryDone() procedures
   /// and will execute engine-unspecific operations (such as starting
   /// the replication appliers) for all databases
-  void recoveryDone();
+  void recoveryDone() override;
 
   /// @brief whether or not the DatabaseFeature has started (and thus has
   /// completely populated its lists of databases and collections from
@@ -298,7 +300,7 @@ class DatabaseFeature final : public application_features::ApplicationFeature,
     metrics::Gauge<std::uint64_t>& numberOfCollections;
     metrics::Gauge<std::uint64_t>& numberOfDatabases;
 
-    explicit MetadataMetrics(metrics::MetricsFeature& metrics);
+    explicit MetadataMetrics(metrics::IRegistry& metricsRegistry);
   };
   // Report these only on single servers
   std::optional<MetadataMetrics> _metadataMetrics;

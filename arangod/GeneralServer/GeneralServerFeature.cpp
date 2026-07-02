@@ -50,7 +50,7 @@
 #include "InternalRestHandler/InternalRestTraverserHandler.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/HistogramBuilder.h"
-#include "Metrics/MetricsFeature.h"
+#include "Metrics/IRegistry.h"
 #include "Network/NetworkFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Rest/HttpResponse.h"
@@ -109,7 +109,6 @@
 #include "Metrics/HistogramBuilder.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/GaugeBuilder.h"
-#include "Metrics/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/UpgradeFeature.h"
 #include "Scheduler/Scheduler.h"
@@ -163,7 +162,7 @@ DECLARE_GAUGE(arangodb_client_connection_statistics_client_connections, double,
 
 GeneralServerFeature::GeneralServerFeature(
     application_features::ApplicationServer& server,
-    metrics::MetricsFeature& metrics)
+    metrics::IRegistry& metrics)
     : ApplicationFeature{server, *this},
       _currentRequestsSize(metrics.add(arangodb_requests_memory_usage{})),
       _requestBodySizeHttp1(metrics.add(arangodb_request_body_size_http1{})),

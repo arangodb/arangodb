@@ -84,13 +84,6 @@ class MetricsFeature final : public application_features::ApplicationFeature,
         *doEnsureMetric(builder));
   }
 
-  template<typename MetricBuilder>
-  auto addShared(MetricBuilder&& builder)  // TODO(MBkkt) Remove this method
-      -> std::shared_ptr<typename MetricBuilder::MetricT> {
-    return std::static_pointer_cast<typename MetricBuilder::MetricT>(
-        doAdd(builder));
-  }
-
   // tries to add dynamic metric. does not fail if such metric already exists
   template<typename MetricBuilder>
   auto addDynamic(MetricBuilder&& builder) -> typename MetricBuilder::MetricT& {

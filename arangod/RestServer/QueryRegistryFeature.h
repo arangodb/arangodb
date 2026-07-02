@@ -43,7 +43,7 @@ class QueryRegistryFeature final
   }
 
   QueryRegistryFeature(application_features::ApplicationServer& server,
-                       metrics::MetricsFeature& metrics);
+                       metrics::IRegistry& metricsRegistry);
   ~QueryRegistryFeature();
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;

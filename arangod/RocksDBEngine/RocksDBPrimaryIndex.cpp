@@ -23,7 +23,6 @@
 
 #include "RocksDBPrimaryIndex.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/IndexStreamIterator.h"
@@ -35,12 +34,9 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Cache/BinaryKeyHasher.h"
 #include "Cache/CachedValue.h"
-#include "Cache/CacheManagerFeature.h"
 #include "Cache/TransactionalCache.h"
 #include "Cluster/ServerState.h"
 #include "Indexes/SortedIndexAttributeMatcher.h"
-#include "Logger/Logger.h"
-#include "Logger/LogMacros.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -51,9 +47,7 @@
 #include "RocksDBEngine/RocksDBPrefixExtractor.h"
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
-#include "RocksDBEngine/RocksDBTypes.h"
 #include "RocksDBEngine/RocksDBValue.h"
-#include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "Utils/CollectionNameResolver.h"
@@ -605,8 +599,8 @@ RocksDBPrimaryIndex::RocksDBPrimaryIndex(LogicalCollection& collection,
               ->cacheEnabled(),
           /*cacheManager*/
           collection.vocbase()
-              .server()
-              .getFeature<CacheManagerFeature>()
+              .engine<RocksDBEngine>()
+              .getCacheManagerProvider()
               .manager(),
           /*engine*/
           collection.vocbase().engine<RocksDBEngine>()),

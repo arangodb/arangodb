@@ -42,7 +42,7 @@ class ReplicationMetricsFeature final
 
   explicit ReplicationMetricsFeature(
       application_features::ApplicationServer& server,
-      metrics::MetricsFeature& metrics);
+      metrics::IRegistry& metricsRegistry);
 
   struct InitialSyncStats {
     explicit InitialSyncStats(ReplicationMetricsFeature& feature,

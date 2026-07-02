@@ -156,7 +156,8 @@ void ArangodServer::addFeatures(
   auto& rocksdbCacheRefill = addFeature<RocksDBIndexCacheRefillFeature>(
       database, &clusterFeature, metrics);
   auto& rocksdbOption = addFeature<RocksDBOptionFeature>(&agency);
-  auto& rocksdbRecovery = addFeature<RocksDBRecoveryManager>();
+  auto& rocksdbRecovery =
+      addFeature<RocksDBRecoveryManager>(database, database);
 #ifdef TRI_HAVE_GETRLIMIT
   addFeature<FileDescriptorsFeature>(metrics);
 #endif

@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "BackupFeature.h"
+#include "Backup/BackupOptionsProvider.h"
 
 #include <chrono>
 #include <regex>
@@ -718,125 +719,18 @@ std::string BackupFeature::operationList(std::string const& separator) {
 
 void BackupFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
-  using arangodb::options::BooleanParameter;
-  using arangodb::options::DiscreteValuesParameter;
-  using arangodb::options::DoubleParameter;
-  using arangodb::options::Flags;
-  using arangodb::options::StringParameter;
-  using arangodb::options::UInt32Parameter;
-  using arangodb::options::UInt64Parameter;
-  using arangodb::options::VectorParameter;
-
-  options->addOption(
-      "--operation",
-      "The operation to perform (may be specified as positional "
-      "argument without '--operation').",
-      new DiscreteValuesParameter<StringParameter>(&_options.operation,
-                                                   ::Operations),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
-
-  options->addOption(
-      "--allow-inconsistent",
-      "Whether to attempt to continue in face of errors; "
-      "may result in inconsistent backup state (create operation).",
-      new BooleanParameter(&_options.allowInconsistent));
-
-  options->addOption(
-      "--ignore-version",
-      "Ignore stored version of a backup. "
-      "Restore may not work if versions mismatch (restore operation).",
-      new BooleanParameter(&_options.ignoreVersion));
-
-  options->addOption("--identifier",
-                     "a unique identifier for a backup "
-                     "(restore/upload/download operation)",
-                     new StringParameter(&_options.identifier));
-
-  options->addOption(
-      "--label",
-      "An additional label to add to the backup identifier (create operation)-",
-      new StringParameter(&_options.label));
-
-  options->addOption("--max-wait-for-lock",
-                     "The maximum time to wait (in seconds) to acquire a lock "
-                     "on all necessary resources (create operation).",
-                     new DoubleParameter(&_options.maxWaitForLock));
-
-  options->addOption(
-      "--max-wait-for-restart",
-      "The maximum time to wait (in seconds) for the server to restart after a "
-      "restore operation before reporting an error; if zero, arangobackup does "
-      "not wait to check that the server restarts and simply returns the "
-      "result of the restore request (restore operation).",
-      new DoubleParameter(&_options.maxWaitForRestart));
-
-#ifdef USE_ENTERPRISE
-  options->addOption(
-      "--status-id",
-      "Return the status of a transfer process "
-      "(upload/download operation).",
-      new StringParameter(&_options.statusId),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Enterprise,
-                                          arangodb::options::Flags::Command));
-
-  options->addOption("--rclone-config-file",
-                     "A path to the rclone configuration file to use for"
-                     "file transfer (upload/download operation).",
-                     new StringParameter(&_options.rcloneConfigFile),
-                     arangodb::options::makeDefaultFlags(
-                         arangodb::options::Flags::Enterprise));
-
-  options->addOption("--remote-path",
-                     "The remote rclone path of a directory to use to store or "
-                     "receive backups (upload/download operation).",
-                     new StringParameter(&_options.remoteDirectory),
-                     arangodb::options::makeDefaultFlags(
-                         arangodb::options::Flags::Enterprise));
-
-  options->addOption(
-      "--abort",
-      "Abort the transfer with the given status-id "
-      "(upload/download operation).",
-      new BooleanParameter(&_options.abort),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Enterprise,
-                                          arangodb::options::Flags::Command));
-
-  options->addOption(
-      "--force",
-      "Abort transactions if needed to ensure a consistent snapshot. "
-      "This option can destroy the atomicity of your transactions in the "
-      "presence of intermediate commits! Use it with great care and only "
-      "if you really need a consistent backup at all costs (create operation).",
-      new BooleanParameter(&_options.abortTransactionsIfNeeded),
-      arangodb::options::makeDefaultFlags(
-          arangodb::options::Flags::Enterprise));
-#endif
-  /*
-    options->addSection(
-        "remote", "Options detailing a remote connection to use for
-    operations");
-
-    options->addOption("--remote.credentials",
-                       "the credentials used for the remote endpoint",
-                       new StringParameter(&_options.credentials));
-
-    options->addOption("--remote.endpoint",
-                       "the remote endpoint",
-                       new StringParameter(&_options.endpoint));
-  */
+  BackupOptionsProvider provider;
+  provider.declareOptions(options, _options);
 }
 
 void BackupFeature::validateOptions(
     std::shared_ptr<options::ProgramOptions> options) {
-  using namespace arangodb::application_features;
-
-  auto const& positionals = options->processingResult()._positionals;
-
   if (options->processingResult().touched("--version") ||
       options->processingResult().touched("--version-json")) {
-    // skip validation of options when --version* command is specified
     return;
   }
+  BackupOptionsProvider provider;
+  provider.validateOptions(options, _options);
 
   if (_client.databaseName() != StaticStrings::SystemDatabase) {
     LOG_TOPIC("6b53c", FATAL, Logger::BACKUP)
@@ -844,91 +738,6 @@ void BackupFeature::validateOptions(
            "database with super user privileges";
     FATAL_ERROR_EXIT();
   }
-
-  if (1 == positionals.size()) {
-    _options.operation = positionals[0];
-  } else {
-    LOG_TOPIC("48e32", FATAL, Logger::BACKUP)
-        << "expected exactly one operation of "
-           "create|delete|download|list|restore|upload, got '"
-        << basics::StringUtils::join(positionals, ", ") << "'";
-    FATAL_ERROR_EXIT();
-  }
-
-  auto const it = ::Operations.find(_options.operation);
-  if (it == ::Operations.end()) {
-    LOG_TOPIC("138ed", FATAL, Logger::BACKUP)
-        << "expected operation to be one of: " << operationList(", ");
-    FATAL_ERROR_EXIT();
-  }
-
-  if (_options.operation == ::OperationCreate) {
-    if (!_options.label.empty()) {
-      std::regex re =
-          std::regex("^([a-zA-Z0-9\\._\\-]+)$", std::regex::ECMAScript);
-      if (!std::regex_match(_options.label, re)) {
-        LOG_TOPIC("7829b", FATAL, Logger::BACKUP)
-            << "--label value may only contain numbers, letters, periods, "
-               "dashes, and underscores";
-        FATAL_ERROR_EXIT();
-      }
-    }
-
-    if (_options.maxWaitForLock < 0.0) {
-      LOG_TOPIC("6caeb", FATAL, Logger::BACKUP)
-          << "expected --max-wait-for-lock to be a non-negative number, got '"
-          << _options.maxWaitForLock << "'";
-      FATAL_ERROR_EXIT();
-    }
-  }
-
-  if (_options.operation == ::OperationDelete ||
-      _options.operation == ::OperationRestore) {
-    if (_options.identifier.empty()) {
-      LOG_TOPIC("e83ef", FATAL, Logger::BACKUP)
-          << "must specify a backup via --identifier";
-      FATAL_ERROR_EXIT();
-    }
-  }
-
-  if (_options.operation == ::OperationRestore) {
-    if (_options.maxWaitForRestart < 0.0) {
-      LOG_TOPIC("efa20", FATAL, Logger::BACKUP)
-          << "expected --max-wait-for-restart to "
-             "be a non-negative number, got '"
-          << _options.maxWaitForRestart << "'";
-      FATAL_ERROR_EXIT();
-    }
-  }
-#ifdef USE_ENTERPRISE
-  if (_options.operation == ::OperationUpload ||
-      _options.operation == ::OperationDownload) {
-    if (_options.statusId.empty() == _options.identifier.empty()) {
-      // Either both or none are set
-      LOG_TOPIC("2d0fa", FATAL, Logger::BACKUP)
-          << "either --status-id or --identifier"
-             " must be set";
-      FATAL_ERROR_EXIT();
-    }
-
-    if (_options.abort == true &&
-        (_options.statusId.empty() || !_options.identifier.empty())) {
-      LOG_TOPIC("62375", FATAL, Logger::BACKUP)
-          << "--abort true expects --status-id to be set";
-      FATAL_ERROR_EXIT();
-    }
-
-    if (!_options.identifier.empty()) {
-      if (_options.rcloneConfigFile.empty() ||
-          _options.remoteDirectory.empty()) {
-        LOG_TOPIC("6063d", FATAL, Logger::BACKUP)
-            << "for data transfer --rclone-config-file"
-               " and --remote-path must be set";
-        FATAL_ERROR_EXIT();
-      }
-    }
-  }
-#endif
 }
 
 void BackupFeature::prepare() { logLGPLNotice(); }

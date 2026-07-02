@@ -33,7 +33,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/debugging.h"
 #include "Cache/BinaryKeyHasher.h"
-#include "Cache/CacheManagerFeature.h"
+#include "Metrics/MetricsFeature.h"
 #include "Cache/Common.h"
 #include "Cache/Manager.h"
 #include "Cache/TransactionalCache.h"
@@ -49,7 +49,6 @@
 #include "Metrics/Counter.h"
 #include "Metrics/Histogram.h"
 #include "Metrics/LogScale.h"
-#include "Metrics/MetricsFeature.h"
 #include "RocksDBEngine/RocksDBMethodsMemoryTracker.h"
 #include "RocksDBEngine/RocksDBBuilderIndex.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
@@ -312,13 +311,11 @@ namespace arangodb {
 void syncIndexOnCreate(Index&);
 
 RocksDBCollection::RocksDBCollection(LogicalCollection& collection,
-                                     velocypack::Slice info)
+                                     velocypack::Slice info,
+                                     cache::Manager* cacheManager)
     : RocksDBMetaCollection(collection, info),
       _primaryIndex(nullptr),
-      _cacheManager(collection.vocbase()
-                        .server()
-                        .getFeature<CacheManagerFeature>()
-                        .manager()),
+      _cacheManager(cacheManager),
       _maxCacheValueSize(
           _cacheManager == nullptr ? 0 : _cacheManager->maxCacheValueSize()),
       _statistics(collection.vocbase()

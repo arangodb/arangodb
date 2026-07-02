@@ -49,7 +49,7 @@
 #include "CrashHandler/CrashHandler.h"
 #include "FeaturePhases/ClusterFeaturePhase.h"
 #include "Metrics/GaugeBuilder.h"
-#include "Metrics/MetricsFeature.h"
+#include "Metrics/IRegistry.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchExecutionPool.h"
 #include "IResearch/IResearchFilterFactory.h"
@@ -827,16 +827,17 @@ bool isOffsetInfo(aql::Function const& func) noexcept {
 
 IResearchFeature::IResearchFeature(
     application_features::ApplicationServer& server,
-    metrics::MetricsFeature& metrics)
+    metrics::IRegistry& metricsRegistry)
     : ApplicationFeature{server, *this},
       _async(std::make_unique<IResearchAsync>()),
-      _outOfSyncLinks(metrics.add(arangodb_search_num_out_of_sync_links{})),
+      _outOfSyncLinks(
+          metricsRegistry.add(arangodb_search_num_out_of_sync_links{})),
 #ifdef USE_ENTERPRISE
       _columnsCacheMemoryUsed(
-          metrics.add(arangodb_search_columns_cache_size{})),
+          metricsRegistry.add(arangodb_search_columns_cache_size{})),
 #endif
       _searchExecutionPool(
-          metrics.add(arangodb_search_execution_threads_demand{})) {
+          metricsRegistry.add(arangodb_search_execution_threads_demand{})) {
   setOptional(true);
   startsAfter<application_features::ClusterFeaturePhase>();
   startsAfter<IResearchAnalyzerFeature>();

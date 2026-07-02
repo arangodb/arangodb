@@ -40,7 +40,7 @@
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/HistogramBuilder.h"
 #include "Metrics/LogScale.h"
-#include "Metrics/MetricsFeature.h"
+#include "Metrics/IRegistry.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -91,28 +91,31 @@ DECLARE_GAUGE(
     "Total memory usage of the AQL query plan cache across all databases");
 
 QueryRegistryFeature::QueryRegistryFeature(ApplicationServer& server,
-                                           metrics::MetricsFeature& metrics)
+                                           metrics::IRegistry& metricsRegistry)
     : ApplicationFeature{server, *this},
-      _queryTimes(metrics.add(arangodb_aql_query_time{})),
-      _slowQueryTimes(metrics.add(arangodb_aql_slow_query_time{})),
+      _queryTimes(metricsRegistry.add(arangodb_aql_query_time{})),
+      _slowQueryTimes(metricsRegistry.add(arangodb_aql_slow_query_time{})),
       _totalQueryExecutionTime(
-          metrics.add(arangodb_aql_total_query_time_msec_total{})),
-      _queriesCounter(metrics.add(arangodb_aql_all_query_total{})),
-      _runningQueries(metrics.add(arangodb_aql_current_query{})),
-      _globalQueryMemoryUsage(metrics.add(arangodb_aql_global_memory_usage{})),
-      _globalQueryMemoryLimit(metrics.add(arangodb_aql_global_memory_limit{})),
-      _globalQueryMemoryLimitReached(
-          metrics.add(arangodb_aql_global_query_memory_limit_reached_total{})),
-      _localQueryMemoryLimitReached(
-          metrics.add(arangodb_aql_local_query_memory_limit_reached_total{})),
-      _activeCursors(metrics.add(arangodb_aql_cursors_active{})),
-      _cursorsMemoryUsage(metrics.add(arangodb_aql_cursors_memory_usage{})),
+          metricsRegistry.add(arangodb_aql_total_query_time_msec_total{})),
+      _queriesCounter(metricsRegistry.add(arangodb_aql_all_query_total{})),
+      _runningQueries(metricsRegistry.add(arangodb_aql_current_query{})),
+      _globalQueryMemoryUsage(
+          metricsRegistry.add(arangodb_aql_global_memory_usage{})),
+      _globalQueryMemoryLimit(
+          metricsRegistry.add(arangodb_aql_global_memory_limit{})),
+      _globalQueryMemoryLimitReached(metricsRegistry.add(
+          arangodb_aql_global_query_memory_limit_reached_total{})),
+      _localQueryMemoryLimitReached(metricsRegistry.add(
+          arangodb_aql_local_query_memory_limit_reached_total{})),
+      _activeCursors(metricsRegistry.add(arangodb_aql_cursors_active{})),
+      _cursorsMemoryUsage(
+          metricsRegistry.add(arangodb_aql_cursors_memory_usage{})),
       _queryPlanCacheHitsMetric(
-          metrics.add(arangodb_aql_query_plan_cache_hits_total{})),
+          metricsRegistry.add(arangodb_aql_query_plan_cache_hits_total{})),
       _queryPlanCacheMissesMetric(
-          metrics.add(arangodb_aql_query_plan_cache_misses_total{})),
+          metricsRegistry.add(arangodb_aql_query_plan_cache_misses_total{})),
       _queryPlanCacheMemoryUsage(
-          metrics.add(arangodb_aql_query_plan_cache_memory_usage{})) {
+          metricsRegistry.add(arangodb_aql_query_plan_cache_memory_usage{})) {
   setOptional(false);
   startsAfter<application_features::ClusterFeaturePhase>();
 

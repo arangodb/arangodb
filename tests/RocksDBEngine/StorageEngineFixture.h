@@ -34,6 +34,7 @@
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBOptionsProvider.h"
 #include "RocksDBEngine/RocksDBRecoveryManager.h"
+#include "RestServer/IRecoveryCallback.h"
 
 namespace arangodb::tests {
 
@@ -62,6 +63,10 @@ struct TestRocksDBOptionsProvider final : RocksDBOptionsProvider {
 // directory. The engine is started in SetUp() and ready to use; all
 // collaborators are owned by the fixture and torn down (including the on-disk
 // data) when the test ends.
+struct NullRecoveryCallback final : IRecoveryCallback {
+  void recoveryDone() override {}
+};
+
 class StorageEngineFixture : public ::testing::Test {
  protected:
   void SetUp() override {
@@ -117,7 +122,8 @@ class StorageEngineFixture : public ::testing::Test {
   ::testing::NiceMock<MockIndexCacheRefill> _indexCacheRefill;
   ::testing::NiceMock<MockReplicatedLogProvider> _logProvider;
 
-  RocksDBRecoveryManager _recoveryManager{_server};
+  NullRecoveryCallback _nullCallback;
+  RocksDBRecoveryManager _recoveryManager{_server, _dbProvider, _nullCallback};
 
   RocksDBEngine _engine{_server,       _optionsProvider,  _metricsCollector,
                         _dbPath,       _vectorIdx,        _flush,
