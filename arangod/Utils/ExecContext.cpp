@@ -371,3 +371,31 @@ ExecContextScope::ExecContextScope(std::shared_ptr<ExecContext const> exe)
 }
 
 ExecContextScope::~ExecContextScope() { std::swap(ExecContext::CURRENT, _old); }
+
+ExecContextSuperuserScope::ExecContextSuperuserScope()
+    : _old(ExecContext::CURRENT) {
+  ExecContext::CURRENT = getSuperuserContextFrom(_old.get());
+}
+
+ExecContextSuperuserScope::ExecContextSuperuserScope(bool cond)
+    : _old(ExecContext::CURRENT) {
+  if (cond) {
+    ExecContext::CURRENT = getSuperuserContextFrom(_old.get());
+  }
+}
+
+auto ExecContextSuperuserScope::getSuperuserContextFrom(
+    ExecContext const* const old) -> std::shared_ptr<ExecContext const> {
+  // save the original request for audit logging, if there is one
+  if (old != nullptr && old->request().has_value()) {
+    struct EC : ExecContext {};
+    // NOTE we could store the vocbase as well, but I'm unsure if that's helpful
+    //      (note that an exec context contains a request iff it
+    //      contains a vocbase)
+    return std::make_shared<ExecContext>(
+        EC::ConstructorToken{}, AuthMode{AuthMode::Superuser{*old->request()}},
+        nullptr);
+  } else {
+    return ExecContext::Superuser;
+  }
+}
