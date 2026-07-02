@@ -25,8 +25,8 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StringUtils.h"
-#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterAdminOperations.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Manager.h"

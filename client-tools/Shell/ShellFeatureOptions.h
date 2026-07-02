@@ -22,29 +22,21 @@
 
 #pragma once
 
-#include "Metrics/Builder.h"
-#include "Metrics/Metric.h"
+#include <string>
+#include <vector>
 
-namespace arangodb::metrics {
+namespace arangodb {
 
-struct IRegistry {
-  virtual ~IRegistry() = default;
-
-  // tries to add metric. throws if such metric already exists
-  template<typename MetricBuilder>
-  auto add(MetricBuilder&& builder) -> typename MetricBuilder::MetricT& {
-    return static_cast<typename MetricBuilder::MetricT&>(*doAdd(builder));
-  }
-
-  template<typename MetricBuilder>
-  auto addShared(MetricBuilder&& builder)
-      -> std::shared_ptr<typename MetricBuilder::MetricT> {
-    return std::static_pointer_cast<typename MetricBuilder::MetricT>(
-        doAdd(builder));
-  }
-
- protected:
-  virtual std::shared_ptr<Metric> doAdd(Builder& builder) = 0;
+struct ShellFeatureOptions {
+  std::vector<std::string> executeScripts;
+  std::vector<std::string> executeStrings;
+  std::vector<std::string> checkSyntaxFiles;
+  std::vector<std::string> unitTests;
+  std::string unitTestFilter;
+  std::vector<std::string> scriptParameters;
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  std::vector<std::string> failurePoints;
+#endif
 };
 
-}  // namespace arangodb::metrics
+}  // namespace arangodb

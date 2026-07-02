@@ -22,29 +22,27 @@
 
 #pragma once
 
-#include "Metrics/Builder.h"
-#include "Metrics/Metric.h"
+#include "ApplicationFeatures/OptionsProvider.h"
+#include "RocksDBEngine/RocksDBOptionFeatureOptions.h"
 
-namespace arangodb::metrics {
+namespace arangodb {
 
-struct IRegistry {
-  virtual ~IRegistry() = default;
+// This name combination is a combination of already existing, and thus
+// conflicting, classnames and the purpose of the feature that is being
+// extracted here, thats why it leads to this double "Option" and the redundant
+// "Feature" in the name. This all is temporary anyway, and should be remove it
+// further steps.
 
-  // tries to add metric. throws if such metric already exists
-  template<typename MetricBuilder>
-  auto add(MetricBuilder&& builder) -> typename MetricBuilder::MetricT& {
-    return static_cast<typename MetricBuilder::MetricT&>(*doAdd(builder));
-  }
+struct RocksDBOptionFeatureOptionsProvider
+    : OptionsProvider<RocksDBOptionFeatureOptions> {
+  RocksDBOptionFeatureOptionsProvider(bool ioUringEnabled);
+  void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
+                      RocksDBOptionFeatureOptions& options) override;
+  void validateOptions(std::shared_ptr<options::ProgramOptions> opts,
+                       RocksDBOptionFeatureOptions& options) override;
 
-  template<typename MetricBuilder>
-  auto addShared(MetricBuilder&& builder)
-      -> std::shared_ptr<typename MetricBuilder::MetricT> {
-    return std::static_pointer_cast<typename MetricBuilder::MetricT>(
-        doAdd(builder));
-  }
-
- protected:
-  virtual std::shared_ptr<Metric> doAdd(Builder& builder) = 0;
+ private:
+  bool const _ioUringEnabled;
 };
 
-}  // namespace arangodb::metrics
+}  // namespace arangodb

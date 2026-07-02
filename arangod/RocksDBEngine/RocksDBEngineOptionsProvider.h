@@ -22,29 +22,16 @@
 
 #pragma once
 
-#include "Metrics/Builder.h"
-#include "Metrics/Metric.h"
+#include "ApplicationFeatures/OptionsProvider.h"
+#include "RocksDBEngine/RocksDBEngineOptions.h"
 
-namespace arangodb::metrics {
+namespace arangodb {
 
-struct IRegistry {
-  virtual ~IRegistry() = default;
-
-  // tries to add metric. throws if such metric already exists
-  template<typename MetricBuilder>
-  auto add(MetricBuilder&& builder) -> typename MetricBuilder::MetricT& {
-    return static_cast<typename MetricBuilder::MetricT&>(*doAdd(builder));
-  }
-
-  template<typename MetricBuilder>
-  auto addShared(MetricBuilder&& builder)
-      -> std::shared_ptr<typename MetricBuilder::MetricT> {
-    return std::static_pointer_cast<typename MetricBuilder::MetricT>(
-        doAdd(builder));
-  }
-
- protected:
-  virtual std::shared_ptr<Metric> doAdd(Builder& builder) = 0;
+struct RocksDBEngineOptionsProvider : OptionsProvider<RocksDBEngineOptions> {
+  void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
+                      RocksDBEngineOptions& options) override;
+  void validateOptions(std::shared_ptr<options::ProgramOptions> opts,
+                       RocksDBEngineOptions& options) override;
 };
 
-}  // namespace arangodb::metrics
+}  // namespace arangodb
