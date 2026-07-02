@@ -45,6 +45,7 @@ struct FakeRegistry : public IRegistry {
 
  private:
   std::mutex _mutex;
+  // "add()" hands out references, so we we have to keep the metrics alive here
   std::vector<std::shared_ptr<metrics::Metric>> _metrics;
 };
 
