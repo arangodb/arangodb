@@ -23,23 +23,41 @@
 
 #pragma once
 
-#include "Auth/UserManagerBase.h"
+#include "Auth/UserManager.h"
+
+#include "Auth/Common.h"
+#include "Auth/User.h"
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
+#include "Basics/TransparentStringHash.h"
 
 #include <thread>
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
 
 namespace arangodb {
+namespace basics {
+template<typename T>
+class ReadLocker;
+}
+
 namespace auth {
 
-class UserManagerImpl final : public UserManagerBase {
+using UserMap =
+    std::unordered_map<std::string, User, basics::TransparentStringHash,
+                       std::equal_to<>>;
+
+class UserManagerImpl final : public UserManager {
  public:
   explicit UserManagerImpl(application_features::ApplicationServer&);
   ~UserManagerImpl() override;
 
   void loadUserCacheAndStartUpdateThread() noexcept override;
+  void setGlobalVersion(uint64_t version) noexcept override;
+  [[nodiscard]] uint64_t globalVersion() const noexcept override;
 
   static void triggerGlobalReload(application_features::ApplicationServer&);
   void triggerGlobalReload() const override;
@@ -58,17 +76,46 @@ class UserManagerImpl final : public UserManagerBase {
   Result updateUser(std::string_view user, UserCallback&&,
                     RetryOnConflict retryOnConflict) override;
 
+  Result accessUser(std::string const& user, ConstUserCallback&&) override;
+
+  bool userExists(std::string const& user) override;
+
+  velocypack::Builder serializeUser(std::string const& user) override;
+
   Result removeUser(std::string const& user) override;
   Result removeAllUsers() override;
 
+  bool checkCredentials(std::string const& username, std::string const& token,
+                        std::string& un) override;
+
+  Level databaseAuthLevel(std::string_view username, std::string_view dbname,
+                          bool configured) override;
+  Level collectionAuthLevel(std::string_view username, std::string_view dbname,
+                            std::string_view coll, bool configured) override;
+
+  Result accessTokens(std::string const& user, velocypack::Builder&) override;
+  Result deleteAccessToken(std::string const& user, uint64_t id) override;
+  Result createAccessToken(std::string const& user, std::string const& name,
+                           double validUntil, velocypack::Builder&) override;
+
   void shutdown() override;
 
-  // Returns the internal version — the version last loaded from DB.
-  // Exposed (non-virtually) for integration tests that use a real
-  // UserManagerImpl (e.g. UserManagerClusterTest).
-  uint64_t internalVersion() const noexcept;
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  // Overwrite internally cached permissions, only use
+  // for testing purposes.
+  // This will assert that the underlying UpdateThread was started.
+  void setAuthInfo(UserMap const& userEntryMap);
+
+  // Need this to find out if the loadFromDB was run and the internal version
+  // was updated
+  [[nodiscard]] uint64_t internalVersion() const noexcept;
+#endif  // ARANGODB_USE_GOOGLE_TESTS
 
  private:
+  bool checkPassword(std::string const& username, std::string const& password);
+  bool checkAccessToken(std::string const& username, std::string const& token,
+                        std::string& un);
+
   // Load users and permissions from local database.
   // Returns the version that was loaded and written to the _internalVersion.
   // Will be 0 if the load failed for any reason.
@@ -77,20 +124,27 @@ class UserManagerImpl final : public UserManagerBase {
   // This function will throw if the thread was not yet started
   // and the user-cache was not yet preloaded.
   // Basically guards most of the functions from being called too early.
-  void checkIfUserDataIsAvailable() const override final;
-
-  // Translate a numeric collection ID to a name using DatabaseFeature.
-  std::string translateCollectionName(std::string_view dbname,
-                                      std::string_view coll) override;
+  void checkIfUserDataIsAvailable() const;
 
   // store or replace user object
   Result storeUserInternal(User const& user, bool replace);
 
+  // extract the username from the access token
+  Result extractUsername(std::string const& token, std::string& username) const;
+
   // underlying application server
   application_features::ApplicationServer& _server;
 
+  // Protect the _userCache access
+  basics::ReadWriteLock _userCacheLock;
+
+  // used to update caches
+  std::atomic<uint64_t> _globalVersion;
   std::atomic<uint64_t> _internalVersion;
   std::jthread _userCacheUpdateThread;
+
+  // Caches permissions and other user info
+  UserMap _userCache;
 };
 }  // namespace auth
 }  // namespace arangodb
