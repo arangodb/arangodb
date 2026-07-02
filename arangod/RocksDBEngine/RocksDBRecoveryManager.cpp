@@ -65,7 +65,6 @@
 #include <velocypack/Slice.h>
 
 #include <absl/cleanup/cleanup.h>
-#include <atomic>
 
 using namespace arangodb::application_features;
 
@@ -95,8 +94,7 @@ void RocksDBRecoveryManager::start() {
 
   runRecovery();
 
-  _engine.setRecoveryTick(
-      _currentSequenceNumber.load(std::memory_order_relaxed));
+  _engine.setRecoveryTick(_currentSequenceNumber);
   _engine.setRecoveryState(RecoveryState::DONE);
 
   _recoveryCallback.recoveryDone();
@@ -147,7 +145,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
   // can be used for debugging later)
   rocksdb::SequenceNumber _batchStartSequence;
   // current sequence number
-  std::atomic<rocksdb::SequenceNumber>& _currentSequence;
+  rocksdb::SequenceNumber& _currentSequence;
 
   RocksDBEngine& _engine;
   IDatabaseProvider& _dbProvider;
@@ -159,7 +157,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
   explicit WBReader(RocksDBEngine& engine, IDatabaseProvider& dbProvider,
                     rocksdb::SequenceNumber recoveryStartSequence,
                     rocksdb::SequenceNumber latestSequence,
-                    std::atomic<rocksdb::SequenceNumber>& currentSequence)
+                    rocksdb::SequenceNumber& currentSequence)
       : _progressState{recoveryStartSequence, latestSequence},
         _minimumServerTick(TRI_NewTickServer()),
         _maxTickFound(0),

@@ -27,7 +27,6 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Result.h"
 
-#include <atomic>
 #include <rocksdb/types.h>
 
 namespace arangodb {
@@ -47,15 +46,14 @@ class RocksDBRecoveryManager final
 
   void start() override;
 
-  void runRecovery();
-
  private:
+  void runRecovery();
   Result parseRocksWAL();
 
   RocksDBEngine& _engine;
   IDatabaseProvider& _dbProvider;
   IRecoveryCallback& _recoveryCallback;
-  std::atomic<rocksdb::SequenceNumber> _currentSequenceNumber{0};
+  rocksdb::SequenceNumber _currentSequenceNumber{0};
 };
 
 }  // namespace arangodb
