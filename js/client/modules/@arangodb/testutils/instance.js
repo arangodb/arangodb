@@ -1500,17 +1500,28 @@ class instance {
     return res.body;
   }
 
-  getMetricName(text, name) {
-    let re = new RegExp("^" + name);
-    let matches = text.split('\n').filter((line) => !line.match(/^#/)).filter((line) => line.match(re));
-    if (!matches.length) {
-      throw new Error(`Metric ${name} not found`);
+  getMetricName(text, names) {
+    function getOneMetric(name) {
+      let re = new RegExp("^" + name);
+      let matches = text.split('\n').filter((line) => !line.match(/^#/)).filter((line) => line.match(re));
+      if (!matches.length) {
+        throw new Error(`Metric ${name} not found`);
+      }
+      let res = 0; // Sum up values from all matches
+      for(let i = 0; i < matches.length; i+= 1) {
+        res += Number(matches[i].replace(/^.*?(\{.*?\})?\s*([0-9.]+)$/, "$2"));
+      }
+      return res;
     }
-    let res = 0; // Sum up values from all matches
-    for(let i = 0; i < matches.length; i+= 1) {
-      res += Number(matches[i].replace(/^.*?(\{.*?\})?\s*([0-9.]+)$/, "$2"));
+    if (!Array.isArray(names)) {
+      return getOneMetric(names);
+    } else {
+      let res = [];
+      names.forEach(name => {
+        res.push(getOneMetric(name));
+      });
+      return res;
     }
-    return res;
   }
 
   getMetric(name) {
