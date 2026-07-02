@@ -35,18 +35,15 @@ target_compile_definitions(asindexviewer PRIVATE
 # ------------------------------------------------------------------------------
 target_include_directories(asindexviewer PRIVATE
     ../../lib/iresearch/core
-    ../../3rdParty/abseil-cpp
-    ../../3rdParty/velocypack/include
     ../../lib
 )
 
 target_include_directories(asindexviewer SYSTEM PRIVATE
-    ../../3rdParty/iresearch/external
     ../../3rdParty/boost/1.78.0
-    ../../3rdParty/iresearch/external/frozen/include
-    ../../3rdParty/iresearch/external/highway
-    ../../3rdParty/iresearch/external/openfst
-    ../../3rdParty/iresearch/external/kaldi/src
+    ../../lib/iresearch/external/frozen/include
+    ../../lib/iresearch/external/highway
+    ../../lib/iresearch/external/openfst
+    ../../lib/iresearch/external/kaldi/src
     ../../3rdParty
 )
 
@@ -69,17 +66,12 @@ target_link_directories(asindexviewer PRIVATE
 )
 
 # ------------------------------------------------------------------------------
-# Linker options (whole-archive handling)
-# ------------------------------------------------------------------------------
-target_link_options(asindexviewer PRIVATE
-    -Wl,--whole-archive
-)
-
-# ------------------------------------------------------------------------------
 # Libraries
 # ------------------------------------------------------------------------------
 target_link_libraries(asindexviewer PRIVATE
-    iresearch-s
+    -Wl,--whole-archive
+
+    iresearch-static
     format-1_0-s
     absl_crc32c
     absl_base

@@ -39,7 +39,7 @@ enterprise
 # which would silently swallow the vendored debian packaging templates:
 !scripts/packaging/debian/enterprise/
 upgrade-data-tests
-# compile_commands.json
+compile_commands.json
 instanceinfo.json
 testresult.json
 testsStarted
@@ -90,7 +90,7 @@ nbproject/
 .idea
 .vs
 CMakeSettings.json
-# .vscode
+.vscode
 *.sublime-workspace
 *.sublime-project
 
