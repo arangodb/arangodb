@@ -120,11 +120,11 @@ struct ThreadOwnedList
   }
   auto add(F&& create_data) noexcept -> Node* {
     auto current_thread = basics::ThreadId::current();
-    ADB_PROD_ASSERT(current_thread == thread) << std::format(
-        "ThreadOwnedList::add was called from thread {} but needs to "
-        "be called from ThreadOwnedList's owning thread {}. {}",
-        inspection::json(current_thread), inspection::json(thread),
-        (void*)this);
+    ADB_PROD_ASSERT(current_thread == thread)
+        << "ThreadOwnedList::add was called from thread "
+        << inspection::json(current_thread)
+        << " but needs to be called from ThreadOwnedList's owning thread "
+        << inspection::json(thread) << ". " << (void*)this;
     auto current_head = _head.load(std::memory_order_relaxed);
     auto node = new Node{.data = create_data(),
                          .next = current_head,
@@ -203,11 +203,11 @@ struct ThreadOwnedList
    */
   auto garbage_collect() noexcept -> void {
     auto current_thread = basics::ThreadId::current();
-    ADB_PROD_ASSERT(current_thread == thread) << std::format(
-        "ThreadOwnedList::garbage_collect was called from thread {} but needs "
-        "to be called from ThreadOwnedList's owning thread {}. {}",
-        inspection::json(current_thread), inspection::json(thread),
-        (void*)this);
+    ADB_PROD_ASSERT(current_thread == thread)
+        << "ThreadOwnedList::garbage_collect was called from thread "
+        << inspection::json(current_thread)
+        << " but needs to be called from ThreadOwnedList's owning thread "
+        << inspection::json(thread) << ". " << (void*)this;
     auto guard = std::lock_guard(_mutex);
     cleanup();
   }
