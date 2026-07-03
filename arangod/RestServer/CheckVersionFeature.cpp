@@ -52,7 +52,15 @@ namespace arangodb {
 CheckVersionFeature::CheckVersionFeature(
     ApplicationServer& server, int* result,
     std::span<const std::type_index> nonServerFeatures)
+    : CheckVersionFeature(server, result, nonServerFeatures,
+                          CheckVersionFeatureOptions{}) {}
+
+CheckVersionFeature::CheckVersionFeature(
+    ApplicationServer& server, int* result,
+    std::span<const std::type_index> nonServerFeatures,
+    CheckVersionFeatureOptions options)
     : ApplicationFeature{server, *this},
+      _options(std::move(options)),
       _result(result),
       _nonServerFeatures(nonServerFeatures) {
   setOptional(false);

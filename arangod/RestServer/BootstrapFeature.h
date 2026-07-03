@@ -48,6 +48,17 @@ class BootstrapFeature final : public application_features::ApplicationFeature {
                             ,
                             V8DealerFeature* v8DealerFeature
 #endif
+                            ,
+                            BootstrapFeatureOptions options);
+  explicit BootstrapFeature(application_features::ApplicationServer& server,
+                            ClusterFeature& clusterFeature,
+                            DatabaseFeature& databaseFeature,
+                            SystemDatabaseFeature* systemDatabaseFeature,
+                            ClusterUpgradeFeature* clusterUpgradeFeature
+#ifdef USE_V8
+                            ,
+                            V8DealerFeature* v8DealerFeature
+#endif
   );
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;

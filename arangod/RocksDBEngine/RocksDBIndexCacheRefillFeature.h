@@ -56,6 +56,11 @@ class RocksDBIndexCacheRefillFeature final
   RocksDBIndexCacheRefillFeature(
       application_features::ApplicationServer& server,
       DatabaseFeature& databaseFeature, ClusterFeature* clusterFeature,
+      metrics::IRegistry& metricsRegistry,
+      RocksDBIndexCacheRefillFeatureOptions options);
+  RocksDBIndexCacheRefillFeature(
+      application_features::ApplicationServer& server,
+      DatabaseFeature& databaseFeature, ClusterFeature* clusterFeature,
       metrics::IRegistry& metricsRegistry);
 
   ~RocksDBIndexCacheRefillFeature();

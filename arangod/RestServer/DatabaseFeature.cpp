@@ -272,7 +272,12 @@ void DatabaseManagerThread::run() {
 
 DatabaseFeature::DatabaseFeature(
     application_features::ApplicationServer& server)
-    : ApplicationFeature{server, *this} {
+    : DatabaseFeature(server, DatabaseFeatureOptions{}) {}
+
+DatabaseFeature::DatabaseFeature(
+    application_features::ApplicationServer& server,
+    DatabaseFeatureOptions options)
+    : ApplicationFeature{server, *this}, _options(std::move(options)) {
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseServer>();
 

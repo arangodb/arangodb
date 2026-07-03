@@ -626,7 +626,13 @@ class StatisticsThread final : public ServerThread {
 StatisticsFeature::StatisticsFeature(
     application_features::ApplicationServer& server,
     metrics::IRegistry& registry)
+    : StatisticsFeature(server, registry, StatisticsFeatureOptions{}) {}
+
+StatisticsFeature::StatisticsFeature(
+    application_features::ApplicationServer& server,
+    metrics::IRegistry& registry, StatisticsFeatureOptions options)
     : application_features::ApplicationFeature{server, *this},
+      _options(std::move(options)),
       _descriptions(server),
       _requestStatisticsMemoryUsage{
           registry.add(arangodb_request_statistics_memory_usage{})},

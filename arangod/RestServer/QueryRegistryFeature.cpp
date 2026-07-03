@@ -93,7 +93,14 @@ DECLARE_GAUGE(
 
 QueryRegistryFeature::QueryRegistryFeature(ApplicationServer& server,
                                            metrics::IRegistry& metricsRegistry)
+    : QueryRegistryFeature(server, metricsRegistry,
+                           QueryRegistryFeatureOptions{}) {}
+
+QueryRegistryFeature::QueryRegistryFeature(ApplicationServer& server,
+                                           metrics::IRegistry& metricsRegistry,
+                                           QueryRegistryFeatureOptions options)
     : ApplicationFeature{server, *this},
+      _options(std::move(options)),
       _queryTimes(metricsRegistry.add(arangodb_aql_query_time{})),
       _slowQueryTimes(metricsRegistry.add(arangodb_aql_slow_query_time{})),
       _totalQueryExecutionTime(

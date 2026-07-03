@@ -42,7 +42,12 @@ using namespace arangodb::options;
 namespace arangodb {
 
 FoxxFeature::FoxxFeature(application_features::ApplicationServer& server)
+    : FoxxFeature(server, FoxxFeatureOptions{}) {}
+
+FoxxFeature::FoxxFeature(application_features::ApplicationServer& server,
+                         FoxxFeatureOptions options)
     : ApplicationFeature{server, *this},
+      _options(std::move(options)),
       _queueVersion(0),
       _localQueueInserts(0) {
   setOptional(true);

@@ -46,6 +46,9 @@ class Feature final : public application_features::ApplicationFeature,
  public:
   static constexpr std::string_view name() { return "AsyncRegistry"; }
 
+  Feature(application_features::ApplicationServer& server,
+          std::shared_ptr<crash_handler::DataSourceRegistry> dataSourceRegistry,
+          FeatureOptions options);
   Feature(
       application_features::ApplicationServer& server,
       std::shared_ptr<crash_handler::DataSourceRegistry> dataSourceRegistry);

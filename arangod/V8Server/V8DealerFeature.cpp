@@ -132,7 +132,13 @@ DECLARE_COUNTER(arangodb_v8_context_exited_total, "V8 context exit events");
 V8DealerFeature::V8DealerFeature(
     application_features::ApplicationServer& server,
     metrics::IRegistry& metricsRegistry)
+    : V8DealerFeature(server, metricsRegistry, V8DealerFeatureOptions{}) {}
+
+V8DealerFeature::V8DealerFeature(
+    application_features::ApplicationServer& server,
+    metrics::IRegistry& metricsRegistry, V8DealerFeatureOptions options)
     : ApplicationFeature{server, *this},
+      _options(std::move(options)),
       _nrInflightExecutors(0),
       _nextId(0),
       _stopping(false),

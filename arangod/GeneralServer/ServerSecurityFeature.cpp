@@ -33,7 +33,12 @@ using namespace arangodb::options;
 
 ServerSecurityFeature::ServerSecurityFeature(
     application_features::ApplicationServer& server)
-    : ApplicationFeature{server, *this} {
+    : ServerSecurityFeature(server, ServerSecurityFeatureOptions{}) {}
+
+ServerSecurityFeature::ServerSecurityFeature(
+    application_features::ApplicationServer& server,
+    ServerSecurityFeatureOptions options)
+    : ApplicationFeature{server, *this}, _options(std::move(options)) {
   setOptional(false);
   startsAfter<application_features::GreetingsFeaturePhase>();
 }

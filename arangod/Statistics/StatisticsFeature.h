@@ -94,6 +94,9 @@ class StatisticsFeature final
  public:
   static constexpr std::string_view name() noexcept { return "Statistics"; }
 
+  StatisticsFeature(application_features::ApplicationServer& server,
+                    metrics::MetricsFeature& metrics,
+                    StatisticsFeatureOptions options);
   explicit StatisticsFeature(application_features::ApplicationServer& server,
                              metrics::IRegistry& registry);
 

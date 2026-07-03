@@ -55,6 +55,9 @@ class RestoreFeature final : public application_features::ApplicationFeature {
   static constexpr std::string_view name() noexcept { return "Restore"; }
 
   RestoreFeature(application_features::ApplicationServer& server,
+                 ClientFeature& client, int& exitCode,
+                 RestoreFeatureOptions options);
+  RestoreFeature(application_features::ApplicationServer& server,
                  ClientFeature& client, int& exitCode);
 
   // for documentation of virtual methods, see `ApplicationFeature`

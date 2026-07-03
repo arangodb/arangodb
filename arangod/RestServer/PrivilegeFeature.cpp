@@ -62,7 +62,12 @@ namespace arangodb {
 
 PrivilegeFeature::PrivilegeFeature(
     application_features::ApplicationServer& server)
-    : ApplicationFeature{server, *this} {
+    : PrivilegeFeature(server, PrivilegeFeatureOptions{}) {}
+
+PrivilegeFeature::PrivilegeFeature(
+    application_features::ApplicationServer& server,
+    PrivilegeFeatureOptions options)
+    : ApplicationFeature{server, *this}, _options(std::move(options)) {
   setOptional(true);
   startsAfter<application_features::GreetingsFeaturePhase>();
 }

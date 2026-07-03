@@ -120,6 +120,10 @@ class ApiRecordingFeature : public application_features::ApplicationFeature,
   ApiRecordingFeature(
       application_features::ApplicationServer& server,
       std::shared_ptr<crash_handler::DataSourceRegistry> dataSourceRegistry,
+      metrics::IRegistry& metricsRegistry, ApiRecordingFeatureOptions options);
+  ApiRecordingFeature(
+      application_features::ApplicationServer& server,
+      std::shared_ptr<crash_handler::DataSourceRegistry> dataSourceRegistry,
       metrics::IRegistry& metricsRegistry);
   ~ApiRecordingFeature() override;
 
