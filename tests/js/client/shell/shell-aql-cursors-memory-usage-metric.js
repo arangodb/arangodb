@@ -39,7 +39,7 @@ function MetricsSuite () {
       
   return {
     testMemoryUsageNonStream: function () {
-      const metricBefore = IM.getAllMetricsByName(name)[0];
+      const metricBefore = IM.getMetric(name);
 
       const n = 10;
       let ids = [];
@@ -49,7 +49,7 @@ function MetricsSuite () {
         ids.push(cursor.data.id);
       }
 
-      let metricAfter = IM.getAllMetricsByName(name)[0];
+      let metricAfter = IM.getMetric(name);
       assertTrue(metricAfter >= metricBefore + 32 * 1024 * 1024, { metricBefore, metricAfter });
 
       // delete all cursors
@@ -58,13 +58,13 @@ function MetricsSuite () {
         assertEqual(202, res.code, res);
       });
       
-      metricAfter = IM.getAllMetricsByName(name)[0];
+      metricAfter = IM.getMetric(name);
       // add some buffer for arbitrary other background queries
       assertTrue(Math.abs(metricAfter - metricBefore) < 1024 * 1024, { metricBefore, metricAfter });
     },
     
     testMemoryUsageStream: function () {
-      const metricBefore = IM.getAllMetricsByName(name)[0];
+      const metricBefore = IM.getMetric(name);
 
       const n = 10;
       let ids = [];
@@ -74,7 +74,7 @@ function MetricsSuite () {
         ids.push(cursor.data.id);
       }
 
-      let metricAfter = IM.getAllMetricsByName(name)[0];
+      let metricAfter = IM.getMetric(name);
       assertTrue(metricAfter >= metricBefore + 10 * 2000, { metricBefore, metricAfter });
 
       // delete all cursors
@@ -83,7 +83,7 @@ function MetricsSuite () {
         assertEqual(202, res.code, res);
       });
       
-      metricAfter = IM.getAllMetricsByName(name)[0];
+      metricAfter = IM.getMetric(name);
       // add some buffer for arbitrary other background queries
       assertTrue(Math.abs(metricAfter - metricBefore) < 10000, { metricBefore, metricAfter });
     },

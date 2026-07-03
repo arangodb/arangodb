@@ -67,7 +67,7 @@ function testSuite() {
       // now give it a second to make sure it has allocated _some_ memory
       require("internal").sleep(1.0);
 
-      const previousValue = IM.getAllMetricsByName("arangodb_aql_global_query_memory_limit_reached_total")[0];
+      const previousValue = IM.getMetric("arangodb_aql_global_query_memory_limit_reached_total");
       try {
         // we expect this query here to violate the global memory limit, because some memory is already
         // allocated by the other, sleeping query
@@ -81,7 +81,7 @@ function testSuite() {
         queries.kill(current[0].id);
       }
       
-      const currentValue = IM.getAllMetricsByName("arangodb_aql_global_query_memory_limit_reached_total")[0];
+      const currentValue = IM.getMetric("arangodb_aql_global_query_memory_limit_reached_total");
       assertTrue(currentValue > previousValue);
     },
     

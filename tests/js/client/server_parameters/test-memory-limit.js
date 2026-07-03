@@ -45,7 +45,7 @@ function testSuite() {
     },
     
     testQueryAboveLimit: function() {
-      const previousValue = IM.getAllMetricsByName("arangodb_aql_local_query_memory_limit_reached_total")[0];
+      const previousValue = IM.getMetric("arangodb_aql_local_query_memory_limit_reached_total");
       try {
         // we expect this query here to violate the memory limit
         db._query("LET testi = (FOR i IN 1..10000 FOR j IN 1..100 RETURN CONCAT('testmann-der-fuxxx', i, j)) RETURN testi");
@@ -55,7 +55,7 @@ function testSuite() {
         assertNotMatch(/global/, err.errorMessage);
       }
       
-      const currentValue = IM.getAllMetricsByName("arangodb_aql_local_query_memory_limit_reached_total")[0];
+      const currentValue = IM.getMetric("arangodb_aql_local_query_memory_limit_reached_total");
       assertTrue(currentValue > previousValue);
     },
     

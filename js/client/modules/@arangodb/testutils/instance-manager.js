@@ -1728,6 +1728,12 @@ class instanceManager {
     }
   }
 
+  getMetric(gaugeName) {
+    return this.arangods.filter(arangod => {
+      return arangod.isFrontend();
+    })[0].getMetric(gaugeName);
+  }
+
   getAllMetricsByName(gaugeName) {
     let ret = [];
     this.triggerMetrics();

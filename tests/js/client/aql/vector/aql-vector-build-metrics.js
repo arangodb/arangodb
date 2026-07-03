@@ -55,7 +55,7 @@ function getMetricValue(name) {
   if (isCluster) {
     return getCompleteMetricsValues(name, "dbservers");
   }
-  return IM.getAllMetricsByName(name)[0];
+  return IM.getMetric(name);
 }
 
 function VectorIndexBuildMetricsSuite() {

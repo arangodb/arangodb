@@ -43,7 +43,7 @@ function LoggerSuite() {
 
   return {
     testDroppedInfoMessages: function () {
-      const oldValue = IM.getAllMetricsByName("arangodb_logger_messages_dropped_total")[0];
+      const oldValue = IM.getMetric("arangodb_logger_messages_dropped_total");
       
       let oldLogLevel;
       try {
@@ -62,7 +62,7 @@ function LoggerSuite() {
         }
         arango.POST_RAW('/_admin/log/', messages);
 
-        const newValue = IM.getAllMetricsByName("arangodb_logger_messages_dropped_total")[0];
+        const newValue = IM.getMetric("arangodb_logger_messages_dropped_total");
         assertTrue(newValue >= oldValue + 100, {oldValue, newValue});
       } finally {
         // restore previous log level for "general" topic;
@@ -71,7 +71,7 @@ function LoggerSuite() {
     },
 
     testNotDroppedWarningMessages: function () {
-      const oldValue = IM.getAllMetricsByName("arangodb_logger_messages_dropped_total")[0];
+      const oldValue = IM.getMetric("arangodb_logger_messages_dropped_total");
       
       let oldLogLevel;
       try {
@@ -90,7 +90,7 @@ function LoggerSuite() {
         }
         arango.POST_RAW('/_admin/log/', messages);
 
-        const newValue = IM.getAllMetricsByName("arangodb_logger_messages_dropped_total")[0];
+        const newValue = IM.getMetric("arangodb_logger_messages_dropped_total");
         // allow for up to 20 unrelated log messages (from other server
         // parts to be dropped)
         assertTrue(newValue <= oldValue + 20, {oldValue, newValue});
@@ -101,7 +101,7 @@ function LoggerSuite() {
     },
 
     testNotDroppedErrorMessages: function () {
-      const oldValue = IM.getAllMetricsByName("arangodb_logger_messages_dropped_total")[0];
+      const oldValue = IM.getMetric("arangodb_logger_messages_dropped_total");
 
       // messages with level "error" will not be dropped
         let messages = [];
@@ -115,7 +115,7 @@ function LoggerSuite() {
         }
         arango.POST_RAW('/_admin/log/', messages);
 
-      const newValue = IM.getAllMetricsByName("arangodb_logger_messages_dropped_total")[0];
+      const newValue = IM.getMetric("arangodb_logger_messages_dropped_total");
       // allow for up to 20 unrelated log messages (from other server
       // parts to be dropped)
       assertTrue(newValue <= oldValue + 20, {oldValue, newValue});

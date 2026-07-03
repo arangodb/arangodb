@@ -43,7 +43,7 @@ function MetricsSuite () {
       }
       
       let c = db._create(cn);
-      while (IM.getAllMetricsByName("rocksdb_total_sst_files")[0] <= 3) {
+      while (IM.getMetric("rocksdb_total_sst_files") <= 3) {
         c.insert(docs);
       }
     },

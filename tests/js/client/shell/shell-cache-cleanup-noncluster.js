@@ -37,7 +37,7 @@ function CacheCleanupSuite () {
   'use strict';
       
   let getMetric = () => { 
-    return IM.getAllMetricsByName("rocksdb_cache_active_tables")[0];
+    return IM.getMetric("rocksdb_cache_active_tables");
   };
   
   return {

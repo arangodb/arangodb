@@ -59,7 +59,7 @@ function FillIndexCacheOnStartup() {
     setUpAll: function() {
       let end = time() + 60;
       while (time() < end) {
-        const value = IM.getAllMetricsByName("rocksdb_cache_full_index_refills_total")[0];
+        const value = IM.getMetric("rocksdb_cache_full_index_refills_total");
         if (value >= 3) {
           // the two sides of the edge index count as 2 indexes here...
           return;

@@ -40,7 +40,7 @@ function MetricsSuite () {
       
   return {
     testMetricForCursorWithTtl: function () {
-      const metricBefore = IM.getAllMetricsByName(name)[0];
+      const metricBefore = IM.getMetric(name);
 
       const n = 10;
       let ids = [];
@@ -50,7 +50,7 @@ function MetricsSuite () {
         ids.push(cursor.data.id);
       }
 
-      let metricAfter = IM.getAllMetricsByName(name)[0];
+      let metricAfter = IM.getMetric(name);
       // add some leeway in case some other, unrelated query from outside this test
       // was running in the before snapshot
       assertTrue(metricAfter >= metricBefore + (n - 1), { metricBefore, metricAfter });
@@ -61,7 +61,7 @@ function MetricsSuite () {
         assertEqual(202, res.code, res);
       });
       
-      metricAfter = IM.getAllMetricsByName(name)[0];
+      metricAfter = IM.getMetric(name);
       // add some leeway in case some other, unrelated query from outside this test
       // is running in the current snapshot
       assertTrue(metricAfter <= metricBefore + 1, { metricBefore, metricAfter });

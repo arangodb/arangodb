@@ -45,16 +45,16 @@ function testSuite() {
     },
 
     testMetricsAlwaysThere : function() {
-      let value = IM.getAllMetricsByName("arangodb_process_statistics_resident_set_size")[0];
+      let value = IM.getMetric("arangodb_process_statistics_resident_set_size");
       assertTrue(value > 0, value);
       
-      value = IM.getAllMetricsByName("arangodb_server_statistics_server_uptime_total")[0];
+      value = IM.getMetric("arangodb_server_statistics_server_uptime_total");
       assertTrue(value > 0, value);
     },
 
     testHttpMetrics : function() {
       try {
-        IM.getAllMetricsByName("arangodb_http_request_statistics_total_requests_total")[0];
+        IM.getMetric("arangodb_http_request_statistics_total_requests_total");
         fail();
       } catch (err) {
         assertTrue(String(err).trim().search("Metric arangodb_http_request_statistics_total_requests_total not found") > 0, err);
@@ -81,8 +81,8 @@ function testSuite() {
          arango.GET_RAW("/_admin/metrics");
       }
       // metric values should always be 0 if statistics are disabled
-      assertEqual(0, IM.getAllMetricsByName("arangodb_connection_statistics_memory_usage")[0]);
-      assertEqual(0, IM.getAllMetricsByName("arangodb_request_statistics_memory_usage")[0]);
+      assertEqual(0, IM.getMetric("arangodb_connection_statistics_memory_usage"));
+      assertEqual(0, IM.getMetric("arangodb_request_statistics_memory_usage"));
     },
   };
 }

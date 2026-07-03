@@ -1501,7 +1501,7 @@ class instance {
     return res.body;
   }
 
-  getMetricName(text, names) {
+  getMetricByName(text, names) {
     let me = this;
     function getOneMetric(name) {
       let re = new RegExp("^" + name);
@@ -1528,8 +1528,7 @@ class instance {
 
   getMetric(name) {
     let text = this.getAllMetric('');
-    //print(text)
-    return this.getMetricName(text, name);
+    return this.getMetricByName(text, name);
   }
   
   debugGetFailurePoints() {

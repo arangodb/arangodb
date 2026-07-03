@@ -48,15 +48,15 @@ function testSuite() {
     },
 
     testMetricsAlwaysThere : function() {
-      let value = IM.getAllMetricsByName("arangodb_process_statistics_resident_set_size")[0];
+      let value = IM.getMetric("arangodb_process_statistics_resident_set_size");
       assertTrue(value > 0, value);
       
-      value = IM.getAllMetricsByName("arangodb_server_statistics_server_uptime_total")[0];
+      value = IM.getMetric("arangodb_server_statistics_server_uptime_total");
       assertTrue(value > 0, value);
     },
 
     testHttpMetrics : function() {
-      let oldValue = IM.getAllMetricsByName("arangodb_http_request_statistics_total_requests_total")[0];
+      let oldValue = IM.getMetric("arangodb_http_request_statistics_total_requests_total");
       for (let i = 0; i < 10; ++i) {
         arango.GET("/_api/version");
       }
@@ -64,7 +64,7 @@ function testSuite() {
       let newValue;
       let tries = 0;
       while (++tries < 4 * 10) {
-        newValue = IM.getAllMetricsByName("arangodb_http_request_statistics_total_requests_total")[0];
+        newValue = IM.getMetric("arangodb_http_request_statistics_total_requests_total");
         if (newValue - oldValue >= 10) {
           break;
         }
@@ -89,9 +89,9 @@ function testSuite() {
 
     testMemoryUsageMetrics : function() {
       // metric values should never be 0 if statistics are enabled
-      const connectionsBefore = IM.getAllMetricsByName("arangodb_connection_statistics_memory_usage")[0];
+      const connectionsBefore = IM.getMetric("arangodb_connection_statistics_memory_usage");
       assertNotEqual(0, connectionsBefore);
-      const requestsBefore = IM.getAllMetricsByName("arangodb_request_statistics_memory_usage")[0];
+      const requestsBefore = IM.getMetric("arangodb_request_statistics_memory_usage");
       assertNotEqual(0, requestsBefore);
       
       // issue some random requests to the server
@@ -101,8 +101,8 @@ function testSuite() {
       
       // metrics values shouldn't have changed, because the statistics memory
       // is allocated at startup and shouldn't grow under normal circumstances
-      assertEqual(connectionsBefore, IM.getAllMetricsByName("arangodb_connection_statistics_memory_usage")[0]);
-      assertEqual(requestsBefore, IM.getAllMetricsByName("arangodb_request_statistics_memory_usage")[0]);
+      assertEqual(connectionsBefore, IM.getMetric("arangodb_connection_statistics_memory_usage"));
+      assertEqual(requestsBefore, IM.getMetric("arangodb_request_statistics_memory_usage"));
     }
 
   };
