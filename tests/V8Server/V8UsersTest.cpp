@@ -252,7 +252,7 @@ TEST_F(V8UsersTest, test_collection_auth) {
     EXPECT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                  slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
-                 TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND ==
+                 TRI_ERROR_FORBIDDEN ==
                      ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum)
                                    .getNumber<int>()}));
     EXPECT_TRUE(execContext
@@ -301,7 +301,7 @@ TEST_F(V8UsersTest, test_collection_auth) {
     EXPECT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                  slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
-                 TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND ==
+                 TRI_ERROR_FORBIDDEN ==
                      ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum)
                                    .getNumber<int>()}));
     EXPECT_TRUE(execContext
@@ -343,6 +343,7 @@ TEST_F(V8UsersTest, test_collection_auth) {
                     ->canUseCollection(vocbase->name(), "testDataSource",
                                        arangodb::CollectionAccessLevel::Read)
                     .fail());
+    userPtr->grantDatabase("_system", arangodb::auth::Level::RW);
     arangodb::velocypack::Builder response;
     v8::TryCatch tryCatch(isolate.get());
     auto result = v8::Function::Cast(*fn_grantCollection)
@@ -352,6 +353,7 @@ TEST_F(V8UsersTest, test_collection_auth) {
     ASSERT_FALSE(result.IsEmpty());
     EXPECT_TRUE(result.ToLocalChecked()->IsUndefined());
     EXPECT_FALSE(tryCatch.HasCaught());
+    userPtr->grantDatabase("_system", arangodb::auth::Level::NONE);
     EXPECT_TRUE(
         execContext
             ->canUseCollection(vocbase->name(), "testDataSource",
@@ -394,12 +396,14 @@ TEST_F(V8UsersTest, test_collection_auth) {
             ->canUseCollection(vocbase->name(), "testDataSource",
                                arangodb::CollectionAccessLevel::WriteData)
             .fail());
+    userPtr->grantDatabase("_system", arangodb::auth::Level::RW);
     arangodb::velocypack::Builder response;
     v8::TryCatch tryCatch(isolate.get());
     auto result = v8::Function::Cast(*fn_revokeCollection)
                       ->CallAsFunction(context, arangoUsers,
                                        static_cast<int>(revokeArgs.size()),
                                        revokeArgs.data());
+    userPtr->grantDatabase("_system", arangodb::auth::Level::NONE);
     EXPECT_FALSE(result.IsEmpty());
     EXPECT_TRUE(result.ToLocalChecked()->IsUndefined());
     EXPECT_FALSE(tryCatch.HasCaught());
@@ -437,12 +441,14 @@ TEST_F(V8UsersTest, test_collection_auth) {
                     ->canUseView(vocbase->name(), "testDataSource",
                                  arangodb::ViewAccessLevel::Read)
                     .fail());
+    userPtr->grantDatabase("_system", arangodb::auth::Level::RW);
     arangodb::velocypack::Builder response;
     v8::TryCatch tryCatch(isolate.get());
     auto result = v8::Function::Cast(*fn_grantCollection)
                       ->CallAsFunction(context, arangoUsers,
                                        static_cast<int>(grantArgs.size()),
                                        grantArgs.data());
+    userPtr->grantDatabase("_system", arangodb::auth::Level::NONE);
     EXPECT_TRUE(result.IsEmpty());
     EXPECT_TRUE(tryCatch.HasCaught());
     TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
@@ -492,12 +498,14 @@ TEST_F(V8UsersTest, test_collection_auth) {
                     ->canUseView(vocbase->name(), "testDataSource",
                                  arangodb::ViewAccessLevel::Read)
                     .fail());
+    userPtr->grantDatabase("_system", arangodb::auth::Level::RW);
     arangodb::velocypack::Builder response;
     v8::TryCatch tryCatch(isolate.get());
     auto result = v8::Function::Cast(*fn_revokeCollection)
                       ->CallAsFunction(context, arangoUsers,
                                        static_cast<int>(revokeArgs.size()),
                                        revokeArgs.data());
+    userPtr->grantDatabase("_system", arangodb::auth::Level::NONE);
     EXPECT_TRUE(result.IsEmpty());
     EXPECT_TRUE(tryCatch.HasCaught());
     TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
@@ -542,6 +550,7 @@ TEST_F(V8UsersTest, test_collection_auth) {
                     ->canUseCollection(vocbase->name(), "testDataSource",
                                        arangodb::CollectionAccessLevel::Read)
                     .fail());
+    userPtr->grantDatabase("_system", arangodb::auth::Level::RW);
     arangodb::velocypack::Builder response;
     v8::TryCatch tryCatch(isolate.get());
     auto result =
@@ -549,6 +558,7 @@ TEST_F(V8UsersTest, test_collection_auth) {
             ->CallAsFunction(context, arangoUsers,
                              static_cast<int>(grantWildcardArgs.size()),
                              grantWildcardArgs.data());
+    userPtr->grantDatabase("_system", arangodb::auth::Level::NONE);
     EXPECT_FALSE(result.IsEmpty());
     EXPECT_TRUE(result.ToLocalChecked()->IsUndefined());
     EXPECT_FALSE(tryCatch.HasCaught());
@@ -594,6 +604,7 @@ TEST_F(V8UsersTest, test_collection_auth) {
             ->canUseCollection(vocbase->name(), "testDataSource",
                                arangodb::CollectionAccessLevel::WriteData)
             .fail());
+    userPtr->grantDatabase("_system", arangodb::auth::Level::RW);
     arangodb::velocypack::Builder response;
     v8::TryCatch tryCatch(isolate.get());
     auto result =
@@ -601,6 +612,7 @@ TEST_F(V8UsersTest, test_collection_auth) {
             ->CallAsFunction(context, arangoUsers,
                              static_cast<int>(revokeWildcardArgs.size()),
                              revokeWildcardArgs.data());
+    userPtr->grantDatabase("_system", arangodb::auth::Level::NONE);
     EXPECT_FALSE(result.IsEmpty());
     EXPECT_TRUE(result.ToLocalChecked()->IsUndefined());
     EXPECT_FALSE(tryCatch.HasCaught());
