@@ -162,7 +162,11 @@ ArangoTransaction.prototype.collection = function(col) {
   if (col.isArangoCollection) {
     return new ArangoTransactionCollection(this, col);
   }
-  return new ArangoTransactionCollection(this, this._database._collection(col));
+  const maybeCol = this._database._collection(col);
+  if (maybeCol) {
+    return new ArangoTransactionCollection(this, maybeCol);
+  }
+  throw "collection not found";
 };
 
 ArangoTransaction.prototype.commit = function() {
