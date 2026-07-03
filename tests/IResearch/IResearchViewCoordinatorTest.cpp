@@ -833,6 +833,10 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_with_link) {
       arangodb::auth::UserMap userMap;
       auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
+      // Contrary to earlier versions, we have to grant RW on the database
+      // to actually trigger the collection check, since the database is
+      // now checked in `canDropView`, too.
+      user.grantDatabase(vocbase->name(), arangodb::auth::Level::RW);
       user.grantCollection(
           vocbase->name(), "testCollection",
           arangodb::auth::Level::NONE);   // for missing collections
@@ -854,6 +858,10 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_with_link) {
       arangodb::auth::UserMap userMap;
       auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
+      // Contrary to earlier versions, we have to grant RW on the database
+      // to make this work, since the database is now checked in
+      // `canDropView`, too.
+      user.grantDatabase(vocbase->name(), arangodb::auth::Level::RW);
       user.grantCollection(
           vocbase->name(), "testCollection",
           arangodb::auth::Level::RO);  // for missing collections
