@@ -29,6 +29,7 @@
 #include "CrashHandler/DataSource.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/GaugeBuilder.h"
+#include "Metrics/IRegistry.h"
 #include "Metrics/MetricsFeature.h"
 #include "ProgramOptions/Parameters.h"
 #include "Inspection/VPack.h"
@@ -145,14 +146,14 @@ Feature::Feature(
   startsAfter<metrics::MetricsFeature>();
 }
 
-auto Feature::create_metrics(metrics::MetricsFeature& metrics_feature)
+auto Feature::create_metrics(metrics::IRegistry& registry)
     -> std::shared_ptr<RegistryMetrics> {
   return std::make_shared<RegistryMetrics>(
-      metrics_feature.addShared(arangodb_async_promises_total{}),
-      metrics_feature.addShared(arangodb_async_existing_promises{}),
-      metrics_feature.addShared(arangodb_async_ready_for_deletion_promises{}),
-      metrics_feature.addShared(arangodb_async_thread_registries_total{}),
-      metrics_feature.addShared(arangodb_async_existing_thread_registries{}));
+      registry.addShared(arangodb_async_promises_total{}),
+      registry.addShared(arangodb_async_existing_promises{}),
+      registry.addShared(arangodb_async_ready_for_deletion_promises{}),
+      registry.addShared(arangodb_async_thread_registries_total{}),
+      registry.addShared(arangodb_async_existing_thread_registries{}));
 }
 struct Feature::PromiseCleanupThread {
   PromiseCleanupThread(size_t gc_timeout)
