@@ -32,6 +32,18 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
+FileSystemFeature::FileSystemFeature(
+    application_features::ApplicationServer& server)
+    : FileSystemFeature(server, FileSystemFeatureOptions{}) {}
+
+FileSystemFeature::FileSystemFeature(
+    application_features::ApplicationServer& server,
+    FileSystemFeatureOptions options)
+    : ApplicationFeature{server, *this}, _options(std::move(options)) {
+  setOptional(false);
+  startsAfter<LoggerFeature>();
+}
+
 void FileSystemFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
   FileSystemOptionsProvider provider;

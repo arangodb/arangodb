@@ -64,7 +64,14 @@ namespace arangodb {
 
 FileDescriptorsFeature::FileDescriptorsFeature(
     ApplicationServer& server, metrics::IRegistry& metricsRegistry)
+    : FileDescriptorsFeature(server, metricsRegistry,
+                             FileDescriptorsFeatureOptions{}) {}
+
+FileDescriptorsFeature::FileDescriptorsFeature(
+    ApplicationServer& server, metrics::IRegistry& metricsRegistry,
+    FileDescriptorsFeatureOptions options)
     : ApplicationFeature{server, *this},
+      _options(std::move(options)),
       _fileDescriptorsCurrent(
           metricsRegistry.add(arangodb_file_descriptors_current{})),
       _fileDescriptorsLimit(

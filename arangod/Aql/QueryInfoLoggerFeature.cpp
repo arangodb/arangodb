@@ -488,7 +488,13 @@ class QueryInfoLoggerThread final : public Thread {
 
 QueryInfoLoggerFeature::QueryInfoLoggerFeature(
     application_features::ApplicationServer& server)
-    : application_features::ApplicationFeature{server, *this} {
+    : QueryInfoLoggerFeature(server, QueryInfoLoggerOptions{}) {}
+
+QueryInfoLoggerFeature::QueryInfoLoggerFeature(
+    application_features::ApplicationServer& server,
+    QueryInfoLoggerOptions options)
+    : application_features::ApplicationFeature{server, *this},
+      _options(std::move(options)) {
   setOptional(true);
   startsAfter<application_features::DatabaseFeaturePhase>();
   startsAfter<RocksDBEngine>();

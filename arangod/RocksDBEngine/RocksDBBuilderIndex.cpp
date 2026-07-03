@@ -34,7 +34,6 @@
 #include "Enterprise/RocksDBEngine/RocksDBBuilderIndexEE.h"
 #endif
 #include "Logger/LogMacros.h"
-#include "Metrics/MetricsFeature.h"
 #include "RestServer/FlushSubscription.h"
 #include "RocksDBEngine/Methods/RocksDBBatchedBaseMethods.h"
 #include "RocksDBEngine/Methods/RocksDBBatchedMethods.h"
@@ -48,10 +47,8 @@
 #include "RocksDBEngine/RocksDBMethodsMemoryTracker.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
-#include "Statistics/ServerStatistics.h"
 #include "Transaction/StandaloneContext.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/ticks.h"
 
 #include <absl/strings/str_cat.h>
 
@@ -63,7 +60,6 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
-#include <stdexcept>
 
 using namespace arangodb;
 using namespace arangodb::rocksutils;
@@ -391,11 +387,7 @@ Result RocksDBBuilderIndex::beforeCreate() {
   auto& engine = static_cast<RocksDBEngine&>(_collection.vocbase().engine());
   rocksdb::DB* db = engine.db()->GetRootDB();
 
-  auto& metric = _collection.vocbase()
-                     .server()
-                     .getFeature<metrics::MetricsFeature>()
-                     .serverStatistics()
-                     ._transactionsStatistics._restTransactionsMemoryUsage;
+  auto& metric = engine.transactionStatistics()._restTransactionsMemoryUsage;
   RocksDBMethodsMemoryTracker memoryTracker(
       nullptr, &metric,
       /*granularity*/ RocksDBMethodsMemoryTracker::kDefaultGranularity);
@@ -445,11 +437,7 @@ Result RocksDBBuilderIndex::fillIndexForeground(
   auto& engine = static_cast<RocksDBEngine&>(_collection.vocbase().engine());
   rocksdb::DB* db = engine.db()->GetRootDB();
 
-  auto& metric = _collection.vocbase()
-                     .server()
-                     .getFeature<metrics::MetricsFeature>()
-                     .serverStatistics()
-                     ._transactionsStatistics._restTransactionsMemoryUsage;
+  auto& metric = engine.transactionStatistics()._restTransactionsMemoryUsage;
   RocksDBMethodsMemoryTracker memoryTracker(
       nullptr, &metric,
       /*granularity*/ RocksDBMethodsMemoryTracker::kDefaultGranularity);
@@ -881,11 +869,7 @@ futures::Future<Result> RocksDBBuilderIndex::fillIndexBackground(
   }
 #endif
 
-  auto& metric = _collection.vocbase()
-                     .server()
-                     .getFeature<metrics::MetricsFeature>()
-                     .serverStatistics()
-                     ._transactionsStatistics._restTransactionsMemoryUsage;
+  auto& metric = engine.transactionStatistics()._restTransactionsMemoryUsage;
   RocksDBMethodsMemoryTracker memoryTracker(
       nullptr, &metric,
       /*granularity*/ RocksDBMethodsMemoryTracker::kDefaultGranularity);

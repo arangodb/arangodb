@@ -24,11 +24,9 @@
 #include "RocksDBSingleOperationTrxMethods.h"
 
 #include "Aql/QueryCache.h"
-#include "Random/RandomGenerator.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
-#include "Statistics/ServerStatistics.h"
 
 #include <rocksdb/utilities/write_batch_with_index.h>
 

@@ -32,10 +32,6 @@ class DatabaseFeature;
 class EnvironmentFeature;
 class FileDescriptorsFeature;
 
-namespace metrics {
-class MetricsFeature;
-}  // namespace metrics
-
 namespace velocypack {
 class Builder;
 class Slice;
@@ -58,7 +54,6 @@ class SupportInfoBuilder {
                               application_features::ApplicationServer& server);
   static void buildHostInfo(velocypack::Builder& result,
                             EnvironmentFeature const& environment,
-                            metrics::MetricsFeature& metrics,
                             FileDescriptorsFeature& fileDescriptors,
                             CpuUsageFeature& cpuUsage,
                             DatabaseFeature& databaseFeature,

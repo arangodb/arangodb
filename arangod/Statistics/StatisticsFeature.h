@@ -94,6 +94,9 @@ class StatisticsFeature final
  public:
   static constexpr std::string_view name() noexcept { return "Statistics"; }
 
+  StatisticsFeature(application_features::ApplicationServer& server,
+                    metrics::MetricsFeature& metrics,
+                    StatisticsFeatureOptions options);
   explicit StatisticsFeature(application_features::ApplicationServer& server,
                              metrics::MetricsFeature& metrics);
 
@@ -135,6 +138,7 @@ class StatisticsFeature final
                               std::initializer_list<std::string> const& les,
                               bool isInteger, std::string_view globals,
                               bool ensureWhitespace);
+
   StatisticsFeatureOptions _options;
   bool _statisticsHistoryTouched = false;
 

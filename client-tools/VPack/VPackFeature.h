@@ -33,6 +33,8 @@ class VPackFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "VPack"; }
 
+  VPackFeature(application_features::ApplicationServer& server, int* result,
+               VPackFeatureOptions options);
   VPackFeature(application_features::ApplicationServer& server, int* result);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
