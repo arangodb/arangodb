@@ -112,7 +112,15 @@ function ArangoTransaction (database, data) {
   this._collections = data.collections;
   let body = {collections: this._collections};
   // copy transaction options
-  [ 'allowImplicit', 'lockTimeout', 'maxTransactionSize', 'skipFastLockRound', 'waitForSync' ].forEach(function(o) {
+  [
+    'allowImplicit',
+    'intermediateCommitSize',
+    'intermediateCommitCount',
+    'lockTimeout',
+    'maxTransactionSize',
+    'skipFastLockRound',
+    'waitForSync'
+  ].forEach(function(o) {
     if (data.hasOwnProperty(o)) {
       body[o] = data[o];
     }
