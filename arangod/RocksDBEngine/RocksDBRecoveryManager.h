@@ -26,7 +26,10 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Result.h"
+#include "RocksDBEngine/IRecoveryState.h"
+#include "StorageEngine/StorageEngine.h"
 
+#include <atomic>
 #include <rocksdb/types.h>
 
 namespace arangodb {
@@ -36,23 +39,33 @@ struct IDatabaseProvider;
 struct IRecoveryCallback;
 
 class RocksDBRecoveryManager final
-    : public application_features::ApplicationFeature {
+    : public application_features::ApplicationFeature,
+      public IRecoveryState {
  public:
   static constexpr std::string_view name() { return "RocksDBRecoveryManager"; }
 
   explicit RocksDBRecoveryManager(
-      application_features::ApplicationServer& server, RocksDBEngine& engine,
+      application_features::ApplicationServer& server,
       IDatabaseProvider& dbProvider, IRecoveryCallback& recoveryCallback);
+
+  // must be called before start()
+  void attachEngine(RocksDBEngine& engine) noexcept;
+
+  RecoveryState recoveryState() const noexcept override;
+  TRI_voc_tick_t recoveryTick() const noexcept override;
 
   void start() override;
 
  private:
   Result parseRocksWAL();
 
-  RocksDBEngine& _engine;
+  RocksDBEngine* _engine{nullptr};
   IDatabaseProvider& _dbProvider;
   IRecoveryCallback& _recoveryCallback;
-  rocksdb::SequenceNumber _currentSequenceNumber{0};
+  // release-stores synchronize with acquire reads in recoveryState()
+  std::atomic<RecoveryState> _recoveryState{RecoveryState::BEFORE};
+  // relaxed writes become visible after the DONE release-store above
+  std::atomic<rocksdb::SequenceNumber> _currentSequenceNumber{0};
 };
 
 }  // namespace arangodb

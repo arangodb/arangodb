@@ -24,9 +24,9 @@
 
 #pragma once
 
+#include "RocksDBEngine/IRecoveryState.h"
 #include "RocksDBEngine/RocksDBEngineOptions.h"
 
-#include <atomic>
 #include <chrono>
 #include <deque>
 #include <map>
@@ -177,6 +177,7 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
 
   // create the storage engine
   RocksDBEngine(application_features::ApplicationServer& server,
+                IRecoveryState& recovery,
                 RocksDBOptionsProvider& optionsProvider,
                 metrics::IRegistry& metrics,
                 IDatabasePathProvider const& databasePathProvider,
@@ -303,10 +304,13 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   Result dropDatabase(TRI_vocbase_t& database) override;
 
   // wal in recovery
-  RecoveryState recoveryState() noexcept override;
+  RecoveryState recoveryState() noexcept override {
+    return _recovery.recoveryState();
+  }
 
-  /// @brief current recovery tick
-  TRI_voc_tick_t recoveryTick() noexcept override;
+  TRI_voc_tick_t recoveryTick() noexcept override {
+    return _recovery.recoveryTick();
+  }
 
   /// @brief disallow purging of WAL files even if the archive gets too big
   /// removing WAL files does not seem to be thread-safe, so we have to track
@@ -563,11 +567,6 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   getCacheMetrics();
 
  private:
-  friend class RocksDBRecoveryManager;
-
-  void setRecoveryState(RecoveryState state) noexcept;
-  void setRecoveryTick(rocksdb::SequenceNumber tick) noexcept;
-
   void loadReplicatedStates(TRI_vocbase_t& vocbase);
   [[nodiscard]] Result dropReplicatedStates(TRI_voc_tick_t databaseId);
   void shutdownRocksDBInstance() noexcept;
@@ -632,6 +631,7 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   }
 
  private:
+  IRecoveryState& _recovery;
   IDatabasePathProvider const& _databasePathProvider;
   IVectorIndexProvider const& _vectorIndexProvider;
   IFlushControl& _flushControl;
@@ -750,9 +750,6 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   /// hanger in rocksdb.
   containers::FlatHashSet<rocksdb::ColumnFamilyHandle*>
       _runningCompactionsColumnFamilies;
-
-  std::atomic<RecoveryState> _recoveryState{RecoveryState::BEFORE};
-  std::atomic<rocksdb::SequenceNumber> _recoveryTick{0};
 
   // sequence number from which WAL recovery was started. used only
   // for testing

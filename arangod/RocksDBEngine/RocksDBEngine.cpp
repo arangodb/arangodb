@@ -25,6 +25,7 @@
 #include "RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBEngineOptionsProvider.h"
 
+#include <atomic>
 #include <filesystem>
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -254,7 +255,7 @@ RocksDBFilePurgeEnabler::RocksDBFilePurgeEnabler(
 
 // create the storage engine
 RocksDBEngine::RocksDBEngine(
-    application_features::ApplicationServer& server,
+    application_features::ApplicationServer& server, IRecoveryState& recovery,
     RocksDBOptionsProvider& optionsProvider, metrics::IRegistry& metrics,
     IDatabasePathProvider const& databasePathProvider,
     IVectorIndexProvider const& vectorIndexProvider,
@@ -266,6 +267,7 @@ RocksDBEngine::RocksDBEngine(
     : StorageEngine(
           server, kEngineName, name(), typeid(RocksDBEngine),
           std::make_unique<RocksDBIndexFactory>(server, vectorIndexProvider)),
+      _recovery(recovery),
       _databasePathProvider(databasePathProvider),
       _vectorIndexProvider(vectorIndexProvider),
       _flushControl(flushControl),
@@ -1442,22 +1444,6 @@ Result RocksDBEngine::dropDatabase(TRI_vocbase_t& database) {
   dumpManager()->dropDatabase(database);
 
   return dropDatabase(database.id());
-}
-
-RecoveryState RocksDBEngine::recoveryState() noexcept {
-  return _recoveryState.load(std::memory_order_acquire);
-}
-
-TRI_voc_tick_t RocksDBEngine::recoveryTick() noexcept {
-  return _recoveryTick.load(std::memory_order_relaxed);
-}
-
-void RocksDBEngine::setRecoveryState(RecoveryState state) noexcept {
-  _recoveryState.store(state, std::memory_order_release);
-}
-
-void RocksDBEngine::setRecoveryTick(rocksdb::SequenceNumber tick) noexcept {
-  _recoveryTick.store(tick, std::memory_order_relaxed);
 }
 
 void RocksDBEngine::scheduleTreeRebuild(TRI_voc_tick_t database,

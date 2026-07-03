@@ -81,6 +81,7 @@ class StorageEngineFixture : public ::testing::Test {
     ON_CALL(_dbProvider, defaultReplicationVersion())
         .WillByDefault(Return(replication::Version::ONE));
 
+    _recoveryManager.attachEngine(_engine);
     _engine.start();
   }
 
@@ -124,13 +125,22 @@ class StorageEngineFixture : public ::testing::Test {
 
   NullRecoveryCallback _nullCallback;
 
-  RocksDBEngine _engine{_server,           _optionsProvider, _metricsCollector,
-                        _dbPath,           _vectorIdx,       _flush,
-                        _dumpLimits,       &_logProvider,    _dbProvider,
-                        _indexCacheRefill, _cacheManager,    _sortingPolicy};
+  // must outlive _engine, which holds IRecoveryState& to it
+  RocksDBRecoveryManager _recoveryManager{_server, _dbProvider, _nullCallback};
 
-  RocksDBRecoveryManager _recoveryManager{_server, _engine, _dbProvider,
-                                          _nullCallback};
+  RocksDBEngine _engine{_server,
+                        _recoveryManager,
+                        _optionsProvider,
+                        _metricsCollector,
+                        _dbPath,
+                        _vectorIdx,
+                        _flush,
+                        _dumpLimits,
+                        &_logProvider,
+                        _dbProvider,
+                        _indexCacheRefill,
+                        _cacheManager,
+                        _sortingPolicy};
 };
 
 }  // namespace arangodb::tests

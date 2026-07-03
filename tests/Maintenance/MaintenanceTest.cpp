@@ -519,14 +519,13 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
   int _dummy;
   std::shared_ptr<options::ProgramOptions> po;
   basics::SharedPRNG sharedPRNG;
+  // declared before 'as' so the engine outlives the recovery manager inside it
+  std::unique_ptr<RocksDBEngine> engine;
   ArangodServer as;
   containers::FlatHashSet<DatabaseID> makeDirty;
   MaintenanceFeature::errors_t errors;
 
   std::map<std::string, NodePtr> localNodes;
-
-  std::unique_ptr<RocksDBEngine>
-      engine;  // arbitrary implementation that has index types registered
 
   MaintenanceTestActionPhaseOne()
       : SharedMaintenanceTest(),
@@ -566,13 +565,13 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
     auto* replicatedLogFeature = replication2::EnableReplication2
                                      ? &as.addFeature<ReplicatedLogFeature>()
                                      : nullptr;
-    // need to construct this after adding the MetricsFeature to the application
-    // server
+    auto& recoveryManager =
+        as.addFeature<RocksDBRecoveryManager>(dbFeature, dbFeature);
     engine = std::make_unique<RocksDBEngine>(
-        as, roOptions, metrics, dbpath, vectorIndex, flush, dumpLimits,
-        replicatedLogFeature, dbFeature, rocksDbIndexCacheRefillFeature,
-        cacheManagerFeature, agencyFeature);
-    as.addFeature<RocksDBRecoveryManager>(*engine, dbFeature, dbFeature);
+        as, recoveryManager, roOptions, metrics, dbpath, vectorIndex, flush,
+        dumpLimits, replicatedLogFeature, dbFeature,
+        rocksDbIndexCacheRefillFeature, cacheManagerFeature, agencyFeature);
+    recoveryManager.attachEngine(*engine);
     dbFeature.setEngineTesting(engine.get());
   }
 
