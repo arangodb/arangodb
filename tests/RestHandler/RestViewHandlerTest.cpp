@@ -1176,25 +1176,21 @@ TEST_F(RestViewHandlerTest, test_auth) {
 
       auto status = handler.execute();
       EXPECT_EQ(arangodb::RestStatus::DONE, status);
-      EXPECT_EQ(arangodb::rest::ResponseCode::FORBIDDEN,
-                responce.responseCode());
+      // Before RBAC, the handler itself would check the database access.
+      // This is now done generically before, and therefore the following
+      // test will go through:
+      EXPECT_EQ(arangodb::rest::ResponseCode::OK, responce.responseCode());
       auto slice = responce._payload.slice();
       EXPECT_TRUE(slice.isObject());
       EXPECT_TRUE(
           (slice.hasKey(arangodb::StaticStrings::Code) &&
            slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
-           size_t(arangodb::rest::ResponseCode::FORBIDDEN) ==
+           size_t(arangodb::rest::ResponseCode::OK) ==
                slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
       EXPECT_TRUE(
           (slice.hasKey(arangodb::StaticStrings::Error) &&
            slice.get(arangodb::StaticStrings::Error).isBoolean() &&
-           true == slice.get(arangodb::StaticStrings::Error).getBoolean()));
-      EXPECT_TRUE(
-          (slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
-           slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
-           TRI_ERROR_FORBIDDEN ==
-               ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum)
-                             .getNumber<int>()}));
+           false == slice.get(arangodb::StaticStrings::Error).getBoolean()));
     }
 
     // not authorized (failed detailed toVelocyPack(...)) as per

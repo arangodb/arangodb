@@ -325,10 +325,18 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
             return check(
                 p::UseDatabase{collection.db, DatabaseAccessLevel::Write});
           },
-          [&](p::SeeView const& /*view*/) -> Result {
+          [&](p::SeeView const& view) -> Result {
             // Database RO access is the only prerequisite and has already been
             // checked; a view is always visible if the database is.
-            return {};
+            // Nevertheless, we test this here again, if only to make unit tests
+            // happy:
+            auto const effectiveLevel = effectiveDatabaseAuthLevel(view.db);
+            if (arangodb::auth::Level::RO <= effectiveLevel) {
+              return {};
+            }
+            return {TRI_ERROR_FORBIDDEN,
+                    "insufficient access level for view '" + view.name +
+                        "' in database '" + view.db + "'"};
           },
           [&](p::CreateView const& view) -> Result {
             // Creating a view requires RW access to the database.
