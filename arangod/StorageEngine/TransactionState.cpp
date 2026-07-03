@@ -757,9 +757,7 @@ Result TransactionState::checkCollectionPermission(
         << "User " << exec.user()
         << " has no write (data) right for collection " << cname;
 
-    return {TRI_ERROR_ARANGO_READ_ONLY,
-            absl::StrCat(TRI_errno_string(TRI_ERROR_ARANGO_READ_ONLY), ": ",
-                         cname, " [", AccessMode::typeString(accessType), "]")};
+    return r;
   }
 
   return {};

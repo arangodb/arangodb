@@ -227,10 +227,18 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
                               "' in database '" + collection.db + "'"};
                 }
               }
-              return {TRI_ERROR_FORBIDDEN,
-                      "insufficient collection access level for '" +
-                          collection.name + "' in database '" + collection.db +
-                          "'"};
+              if (requestedLevel == arangodb::auth::Level::RW &&
+                  effectiveLevel == arangodb::auth::Level::RO) {
+                return {TRI_ERROR_ARANGO_READ_ONLY,
+                        "read-only collection access level for '" +
+                            collection.name + "' in database '" +
+                            collection.db + "'"};
+              } else {
+                return {TRI_ERROR_FORBIDDEN,
+                        "insufficient collection access level for '" +
+                            collection.name + "' in database '" +
+                            collection.db + "'"};
+              }
             }
 
             // WriteMeta additionally requires RW access to the database

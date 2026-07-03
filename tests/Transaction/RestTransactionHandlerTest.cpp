@@ -192,7 +192,9 @@ TEST_F(RestTransactionHandlerTest, simple_transaction_abort) {
 
   request.setRequestType(arangodb::rest::RequestType::POST);
   request.addSuffix("begin");
-  parser.parse("{ \"collections\":{\"read\": [\"42\"]}}");
+  // Need to use collection name here, since the UserManagerTester cannot
+  // do the lookup from id.
+  parser.parse("{ \"collections\":{\"read\": [\"testCollection\"]}}");
 
   handler.executeAsync().wait();
   EXPECT_EQ(arangodb::rest::ResponseCode::CREATED, responce.responseCode());
@@ -270,7 +272,9 @@ TEST_F(RestTransactionHandlerTest, simple_transaction_and_commit) {
 
   request.setRequestType(arangodb::rest::RequestType::POST);
   request.addSuffix("begin");
-  parser.parse("{ \"collections\":{\"read\": [\"42\"]}}");
+  // Need to use the collection name here, since the UserManagerTester
+  // cannot lookup the name.
+  parser.parse("{ \"collections\":{\"read\": [\"testCollection\"]}}");
 
   handler.executeAsync().wait();
   EXPECT_EQ(arangodb::rest::ResponseCode::CREATED, responce.responseCode());
@@ -331,7 +335,9 @@ TEST_F(RestTransactionHandlerTest, permission_denied_read_only) {
 
   request.setRequestType(arangodb::rest::RequestType::POST);
   request.addSuffix("begin");
-  parser.parse("{ \"collections\":{\"write\": [\"42\"]}}");
+  // Need to use the colleciton name here, since the UserManagerTester
+  // cannot lookup the name:
+  parser.parse("{ \"collections\":{\"write\": [\"testCollection\"]}}");
 
   handler.executeAsync().wait();
   EXPECT_EQ(arangodb::rest::ResponseCode::FORBIDDEN, responce.responseCode());
@@ -369,7 +375,9 @@ TEST_F(RestTransactionHandlerTest, permission_denied_forbidden) {
 
   request.setRequestType(arangodb::rest::RequestType::POST);
   request.addSuffix("begin");
-  parser.parse("{ \"collections\":{\"write\": [\"42\"]}}");
+  // Need to use the collection name here, since the UserManagerTester
+  // cannot lookup the name:
+  parser.parse("{ \"collections\":{\"write\": [\"testCollection\"]}}");
 
   handler.executeAsync().wait();
   EXPECT_EQ(arangodb::rest::ResponseCode::FORBIDDEN, responce.responseCode());
