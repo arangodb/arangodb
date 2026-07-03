@@ -31,7 +31,7 @@
 #include "Containers/Concurrent/Registry.h"
 
 #include "Inspection/Status.h"
-#include "Registry.h"
+#include "Containers/Concurrent/ThreadOwnedList.h"
 
 #include <velocypack/SharedSlice.h>
 
@@ -40,26 +40,7 @@
 
 namespace arangodb::activities {
 
-// We need a wrapper because the concurrent-registry needs a compile-time
-// constant item type but our activities can have different types (all
-// inheriting from Activity)
-struct ActivityPtr {
-  // either this (ownership in ActivityOwner and children)
-  std::weak_ptr<Activity> item;
-  // or this (after marked_for_deletion)
-  std::unique_ptr<Activity> owned;
-
-  using Snapshot = Activity::Snapshot;
-
-  auto snapshot() -> Snapshot {
-    return item.lock()->snapshot();
-  }
-};
-
 using ThreadRegistry = containers::ThreadRegistry<ActivityPtr>;
-
-template<typename T>
-struct ActivityOwner;
 
 struct Registry : containers::Registry<ActivityPtr> {
   auto get_thread_registry() noexcept -> ThreadRegistry& {
@@ -80,26 +61,16 @@ struct Registry : containers::Registry<ActivityPtr> {
   template<typename T, typename... Args>
   auto makeActivityWithParent(ActivityHandle parent, Args&&... args) ->
       typename T::HandleType {
-    auto id = _activityIdCounter.fetch_add(1);
-    auto deleter =
-        std::make_shared<std::function<void(T*)>>([](T* ptr) { delete ptr; });
-    // The activity owner creates and owns the shared_ptr to the activity.
-    // We add a custom (at this point standard) deleter.
-    auto h = std::shared_ptr<T>(
-        new T{id, std::move(parent), std::forward<Args>(args)...},
-        [deleter](T* ptr) { (*deleter)(ptr); });
-    // We add an ActivityPtr (with a weak_ptr to the activity) to the registry.
-    auto node = this->get_thread_registry().add(
-        [&]() { return ActivityPtr{.item = h}; });
-    // Now we can properly set the deleter: when the shared_ptr of activity goes
-    // out of scope, the node continues to own the activity and the node is
-    // marked for deletion. This way, the activity is deleted when the node is
-    // deleted.
-    *deleter = [node](T* ptr) {
-      node->data.owned = std::unique_ptr<Activity>(ptr);
-      node->list->mark_for_deletion(node);
-    };
-    return h;
+    auto const id = _activityIdCounter.fetch_add(1);
+    // create the node - which is a specific activity of type T at the same time
+    auto node =
+        std::make_unique<T>(id, std::move(parent), std::forward<Args>(args)...);
+    auto* const rawNode = node.get();
+    this->get_thread_registry().add(std::move(node));
+    // The deleter must not free the activity itself, since the registry owns
+    // it, but marks it for deletion. Then it can be deleted in a gc-run.
+    return std::shared_ptr<T>(rawNode,
+                              [](T* item) { item->mark_for_deletion(); });
   }
   template<typename T, typename... Args>
   auto makeActivity(Args&&... args) -> typename T::HandleType {

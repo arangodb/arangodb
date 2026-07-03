@@ -26,6 +26,7 @@
 #include "Activities/ActivityCreated.h"
 #include "Activities/ActivityType.h"
 #include "Inspection/Transformers.h"
+#include "Containers/Concurrent/ThreadOwnedList.h"
 
 #include <velocypack/Builder.h>
 #include <Inspection/Status.h>
@@ -34,9 +35,32 @@
 
 namespace arangodb::activities {
 
-struct Activity : std::enable_shared_from_this<Activity> {
+struct Snapshot {
+  ActivityId id;
+  std::optional<ActivityId> parentId;
+  ActivityType type;
+  ActivityCreated created;
+  VPackBuilder data;
+};
+
+// We need a wrapper because the concurrent-registry needs a compile-time
+// constant item type but our activities can have different types (all
+// inheriting from Activity)
+struct Activity;
+struct ActivityPtr {
+  Activity* a;
+
+  using Snapshot = Snapshot;
+
+  auto snapshot() -> Snapshot;
+};
+
+struct Activity : std::enable_shared_from_this<Activity>,
+                  containers::ThreadOwnedList<ActivityPtr>::Node {
+  using Snapshot = Snapshot;
   Activity(ActivityId id, ActivityHandle parent, ActivityType type)
-      : _id(std::move(id)),
+      : Node{ActivityPtr{this}},
+        _id(std::move(id)),
         _parent(std::move(parent)),
         _type(std::move(type)),
         _created(std::chrono::system_clock::now()) {}
@@ -63,13 +87,6 @@ struct Activity : std::enable_shared_from_this<Activity> {
   virtual auto snapshot(velocypack::Builder& builder) -> inspection::Status {
     return inspection::Status{};
   };
-  struct Snapshot {
-    ActivityId id;
-    std::optional<ActivityId> parentId;
-    ActivityType type;
-    ActivityCreated created;
-    VPackBuilder data;
-  };
   auto snapshot() -> Snapshot {
     return Snapshot{.id = id(),
                     .parentId = parentId(),
@@ -85,7 +102,7 @@ struct Activity : std::enable_shared_from_this<Activity> {
   ActivityCreated _created;
 };
 template<typename Inspector>
-auto inspect(Inspector& f, Activity::Snapshot& x) {
+auto inspect(Inspector& f, Snapshot& x) {
   return f.object(x).fields(
       f.field("id", x.id), f.field("parent", x.parentId),
       f.field("type", x.type),

@@ -76,6 +76,22 @@ struct ThreadOwnedList
     // identifies the promise list it belongs to, to be able to mark itself for
     // deletion. Is emptied when the node is marked for deletion.
     std::shared_ptr<ThreadOwnedList<T>> list;
+
+    Node() = default;
+
+    template<typename F>
+    requires requires(F f) {
+      { f() } -> std::same_as<T>;
+    }
+    Node(F&& create_data, Node* next, std::shared_ptr<ThreadOwnedList<T>> list)
+        : data{create_data()}, next{next}, list{std::move(list)} {}
+
+    template<typename U = T>
+    requires std::movable<U> Node(T data) : data{std::move(data)} {}
+
+    virtual ~Node() = default;
+
+    auto mark_for_deletion() -> void { list->mark_for_deletion(this); }
   };
 
  private:
@@ -103,11 +119,11 @@ struct ThreadOwnedList
   }
 
   /**
-     Adds a node to the list.
+     Adds a node to the list with data that is created in the closure.
 
-     Can only be called on the owning thread, crashes
-     otherwise. Input data needs to be given as a callback to be able to use
-     data types that are non-movable and non-copyable.
+     Can only be called on the owning thread, crashes otherwise. Input data
+     needs to be given as a callback to be able to use data types that are
+     non-movable and non-copyable.
    */
   template<typename F>
   requires requires(F f) {
@@ -121,9 +137,7 @@ struct ThreadOwnedList
         << " but needs to be called from ThreadOwnedList's owning thread "
         << inspection::json(thread) << ". " << (void*)this;
     auto current_head = _head.load(std::memory_order_relaxed);
-    auto node = new Node{.data = create_data(),
-                         .next = current_head,
-                         .list = this->shared_from_this()};
+    auto node = new Node{create_data, current_head, this->shared_from_this()};
     if (current_head != nullptr) {
       // (6) - this store synchronizes with the load in (7) and (9)
       current_head->previous.store(node, std::memory_order_release);
@@ -135,6 +149,35 @@ struct ThreadOwnedList
       _metrics->increment_total_nodes();
     }
     return node;
+  }
+
+  /**
+   Adds a node to the list.
+
+   Can only be called on the owning thread, crashes otherwise. Overwrites next
+   and list properties of the node. Can be used to reduce allocations for the
+   list.
+ */
+  auto add(std::unique_ptr<Node> node) noexcept -> void {
+    auto current_thread = basics::ThreadId::current();
+    ADB_PROD_ASSERT(current_thread == thread)
+        << "ThreadOwnedList::add was called from thread "
+        << inspection::json(current_thread)
+        << " but needs to be called from ThreadOwnedList's owning thread "
+        << inspection::json(thread) << ". " << (void*)this;
+    auto current_head = _head.load(std::memory_order_relaxed);
+    node->next = current_head;
+    node->list = this->shared_from_this();
+    if (current_head != nullptr) {
+      // (6) - this store synchronizes with the load in (7) and (9)
+      current_head->previous.store(node.get(), std::memory_order_release);
+    }
+    // (1) - this store synchronizes with load in (2)
+    _head.store(node.release(), std::memory_order_release);
+    if (_metrics) {
+      _metrics->increment_registered_nodes();
+      _metrics->increment_total_nodes();
+    }
   }
 
   /**
