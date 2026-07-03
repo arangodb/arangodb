@@ -24,6 +24,7 @@
 #include "Cluster/ClusterAdminOperations.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Async/async.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
@@ -133,6 +134,161 @@ Result recalculateCountsOnAllDBServers(ClusterFeature& feature,
   }
 
   return {};
+}
+
+// Per-shard autotune draws a fresh sample and sweeps nprobe via FAISS, which
+// can take minutes on large shards. Allow a generous window before the
+// coordinator gives up on a shard.
+constexpr double kAutoTuneRequestTimeoutSecs = 600.0;
+
+// autotune a vector index on all shards (every replica), collecting per-shard
+// outcomes without failing fast.
+async<Result> autoTuneVectorIndexOnAllDBServers(ClusterFeature& feature,
+                                                std::string const& dbname,
+                                                std::string const& collname,
+                                                std::string const& indexId,
+                                                velocypack::Slice params,
+                                                VPackBuilder& result) {
+  NetworkFeature const& nf = feature.server().getFeature<NetworkFeature>();
+  network::ConnectionPool* pool = nf.pool();
+  if (pool == nullptr) {
+    // nullptr happens only during controlled shutdown
+    co_return Result{TRI_ERROR_SHUTTING_DOWN};
+  }
+  ClusterInfo& ci = feature.clusterInfo();
+
+  auto collinfo = ci.getCollectionNT(dbname, collname);
+  if (collinfo == nullptr) {
+    co_return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
+  }
+
+  // Forward the tuning parameters to every shard
+  VPackBuffer<uint8_t> body;
+  if (params.isObject()) {
+    body.append(params.start(), params.byteSize());
+  } else {
+    VPackSlice const empty = VPackSlice::emptyObjectSlice();
+    body.append(empty.start(), empty.byteSize());
+  }
+
+  network::Headers headers;
+  network::RequestOptions options;
+  options.database = dbname;
+  options.timeout = network::Timeout(kAutoTuneRequestTimeoutSecs);
+
+  std::vector<std::string> shardNames;
+  std::shared_ptr<ShardMap> shardList = collinfo->shardIds();
+  std::vector<network::FutureRes> futures;
+  for (auto const& shard : *shardList) {
+    for (ServerID const& serverId : shard.second) {
+      std::string uri = absl::StrCat("/_api/index/", std::string{shard.first},
+                                     "/", indexId, "/autotune");
+      futures.emplace_back(network::sendRequestRetry(
+          pool, "server:" + serverId, fuerte::RestVerb::Post, std::move(uri),
+          body, options, headers));
+      shardNames.push_back(std::string{shard.first});
+    }
+  }
+
+  // collectAll never rejects: every shard outcome is reported, none aborts.
+  auto responses = co_await futures::collectAll(futures);
+
+  result.openArray();
+  for (std::size_t i = 0; i < responses.size(); ++i) {
+    network::Response const& r = responses[i].get();
+    VPackObjectBuilder o(&result);
+    result.add("shard", VPackValue(shardNames[i]));
+    if (Result const res = r.combinedResult(); res.fail()) {
+      result.add(StaticStrings::Error, VPackValue(true));
+      result.add(StaticStrings::ErrorNum, VPackValue(res.errorNumber()));
+      result.add(StaticStrings::ErrorMessage, VPackValue(res.errorMessage()));
+    } else {
+      result.add(StaticStrings::Error, VPackValue(false));
+      // The DBServer answers with the single-server shape, so the tune summary
+      // sits in its lone result entry; lift those fields up to this shard.
+      VPackSlice const slice = r.slice();
+      VPackSlice const entries =
+          slice.isObject() ? slice.get("result") : VPackSlice::noneSlice();
+      if (entries.isArray() && entries.length() > 0) {
+        VPackSlice const summary = entries.at(0);
+        for (auto const* field : {"topK", "targetRecall", "operatingPointCount",
+                                  "reachedTargetRecall"}) {
+          if (auto s = summary.get(field); !s.isNone()) {
+            result.add(field, s);
+          }
+        }
+      }
+    }
+  }
+  result.close();
+
+  co_return Result{};
+}
+
+async<Result> getVectorIndexTunedTablesOnAllDBServers(
+    ClusterFeature& feature, std::string const& dbname,
+    std::string const& collname, std::string const& indexId,
+    VPackBuilder& result) {
+  NetworkFeature const& nf = feature.server().getFeature<NetworkFeature>();
+  network::ConnectionPool* pool = nf.pool();
+  if (pool == nullptr) {
+    // nullptr happens only during controlled shutdown
+    co_return Result{TRI_ERROR_SHUTTING_DOWN};
+  }
+  ClusterInfo& ci = feature.clusterInfo();
+
+  auto collinfo = ci.getCollectionNT(dbname, collname);
+  if (collinfo == nullptr) {
+    co_return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
+  }
+
+  network::RequestOptions options;
+  options.database = dbname;
+
+  struct Target {
+    std::string shard;
+    std::string server;
+  };
+  std::vector<Target> targets;
+  std::shared_ptr<ShardMap> shardList = collinfo->shardIds();
+  std::vector<network::FutureRes> futures;
+  for (auto const& shard : *shardList) {
+    for (ServerID const& serverId : shard.second) {
+      std::string uri = absl::StrCat("/_api/index/", std::string{shard.first},
+                                     "/", indexId, "/autotune");
+      futures.emplace_back(network::sendRequestRetry(
+          pool, "server:" + serverId, fuerte::RestVerb::Get, std::move(uri),
+          VPackBuffer<uint8_t>{}, options));
+      targets.push_back({std::string{shard.first}, serverId});
+    }
+  }
+
+  // Await every shard without blocking a thread; collectAll never rejects, so
+  // each outcome is reported individually.
+  auto responses = co_await futures::collectAll(futures);
+
+  result.openArray();
+  for (std::size_t i = 0; i < responses.size(); ++i) {
+    network::Response const& r = responses[i].get();
+    VPackObjectBuilder o(&result);
+    result.add("shard", VPackValue(targets[i].shard));
+    result.add("server", VPackValue(targets[i].server));
+    if (Result const res = r.combinedResult(); res.fail()) {
+      result.add(StaticStrings::Error, VPackValue(true));
+      result.add(StaticStrings::ErrorNum, VPackValue(res.errorNumber()));
+      result.add(StaticStrings::ErrorMessage, VPackValue(res.errorMessage()));
+    } else {
+      result.add(StaticStrings::Error, VPackValue(false));
+      if (VPackSlice const slice = r.slice(); slice.isObject()) {
+        if (auto s = slice.get("tunedTables"); !s.isNone()) {
+          result.add("tunedTables", s);
+        }
+      }
+    }
+  }
+  result.close();
+
+  co_return Result{};
 }
 
 /// @brief compact the entire dataset on all DB servers

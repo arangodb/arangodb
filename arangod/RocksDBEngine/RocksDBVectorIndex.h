@@ -23,13 +23,16 @@
 #pragma once
 
 #include <atomic>
+#include <cstdint>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <string>
 #include <type_traits>
 
 #include "Basics/StaticStrings.h"
 #include "RocksDBIndex.h"
+#include "VectorIndex/Metadata.h"
 #include "VectorIndex/VectorIndexDefinition.h"
 #include "VectorIndex/VectorReadBatch.h"
 #include "RocksDBEngine/RocksDBIndex.h"
@@ -112,7 +115,21 @@ class RocksDBVectorIndex final : public RocksDBIndex {
   std::size_t trainingThreshold() const noexcept { return _trainingThreshold; }
 
   void applyTrainingResult(std::shared_ptr<faiss::IndexIVF> faissIndex,
-                           vector::TrainedData trainedData);
+                           vector::VectorIndexMetadata trainedData);
+
+  std::shared_ptr<faiss::IndexIVF> cloneFaissIndex();
+
+  // Upsert the autotuned operating-point table for its topK, replacing any
+  // existing table for the same topK. Persist via persistMetadata() afterwards.
+  void applyTunedTable(vector::OperatingPointTable table);
+
+  vector::TunedTables const& tunedTables() const noexcept {
+    return _trainedData.tunedTables;
+  }
+
+  // Serialize the current trained data and format version into the index's
+  // metadata slot in the VectorIndex column family.
+  Result persistMetadata() const;
 
   bool hasStoredValues() const noexcept;
 
@@ -121,7 +138,7 @@ class RocksDBVectorIndex final : public RocksDBIndex {
   /// @brief On-disk format version for this index's list entries. Internal
   /// detail; never surfaced through toVelocyPack or the REST API.
   vector::VectorIndexFormatVersion formatVersion() const noexcept {
-    return _formatVersion;
+    return _trainedData.formatVersion;
   }
 
   std::vector<std::vector<basics::AttributeName>> const& coveredFields()
@@ -159,6 +176,16 @@ class RocksDBVectorIndex final : public RocksDBIndex {
                 OperationOptions const& /*options*/) override;
 
  private:
+  // Read the stored metadata record into _trainedData.
+  void loadStoredMetadata(velocypack::Slice info);
+
+  // Build the per-call FAISS search parameters from the request: an explicit
+  // nProbe, the index default, or the autotuned operating point for a requested
+  // targetRecall.
+  ResultT<std::unique_ptr<faiss::SearchParametersIVF>> prepareSearchParameters(
+      vector::SearchParameters const& params, std::size_t topK,
+      vector::VectorSearchContext const& ctx) const;
+
   //  Helper functions for bruteForceSearch
   void captureDocument(
       vector::VectorSearchConfig const& config,
@@ -183,14 +210,9 @@ class RocksDBVectorIndex final : public RocksDBIndex {
       containers::NodeHashMap<LocalDocumentId, velocypack::SharedSlice>*
           captureSink) const;
 
-  vector::VectorIndexMetadata loadVectorIndexMetadata(
-      velocypack::Slice info) const;
-
   vector::UserVectorIndexDefinition _definition;
   std::shared_ptr<faiss::IndexIVF> _faissIndex;
-  vector::TrainedData _trainedData;
-  vector::VectorIndexFormatVersion _formatVersion{
-      vector::kCurrentVectorIndexFormatVersion};
+  vector::VectorIndexMetadata _trainedData;
   StoredValues const _storedValues;
 
   std::size_t _trainingThreshold{0};

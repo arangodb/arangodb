@@ -30,14 +30,30 @@ namespace arangodb {
 
 class ClusterFeature;
 class Result;
+template<typename>
+struct async;
 
 namespace velocypack {
 class Builder;
-}
+class Slice;
+}  // namespace velocypack
 
 /// @brief flush Wal on all DBservers
 Result flushWalOnAllDBServers(ClusterFeature&, bool waitForSync,
                               bool flushColumnFamilies);
+
+/// @brief autotune a vector index on all shards (leaders and followers).
+async<Result> autoTuneVectorIndexOnAllDBServers(ClusterFeature&,
+                                                std::string const& dbname,
+                                                std::string const& collname,
+                                                std::string const& indexId,
+                                                velocypack::Slice params,
+                                                velocypack::Builder& result);
+
+/// @brief fetch the persisted autotune operating-point tables from all shards
+async<Result> getVectorIndexTunedTablesOnAllDBServers(
+    ClusterFeature&, std::string const& dbname, std::string const& collname,
+    std::string const& indexId, velocypack::Builder& result);
 
 /// @brief recalculate collection count on all DBServers
 Result recalculateCountsOnAllDBServers(ClusterFeature&, std::string_view dbname,

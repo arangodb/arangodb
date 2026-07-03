@@ -267,7 +267,9 @@ set(ARANGODB_TESTS_SOURCES
   Utils/ExecContextTest.cpp
   Utils/NameValidatorTest.cpp
   Utils/QuickGen.cpp
-  VectorIndex/VectorIndexTrainingSamplerTest.cpp
+  VectorIndex/AutoTunerTest.cpp
+  VectorIndex/MetadataSerializationTest.cpp
+  VectorIndex/VectorIndexSamplerTest.cpp
   VocBase/ComputedValuesTest.cpp
   VocBase/KeyGeneratorTest.cpp
   VocBase/LogicalDataSourceTest.cpp

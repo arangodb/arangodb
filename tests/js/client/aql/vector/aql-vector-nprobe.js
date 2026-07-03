@@ -26,6 +26,9 @@
 
 const internal = require("internal");
 const jsunity = require("jsunity");
+const helper = require("@arangodb/aql-helper");
+const assertQueryError = helper.assertQueryError;
+const errors = internal.errors;
 const db = internal.db;
 const {
     randomNumberGeneratorFloat,
@@ -156,6 +159,20 @@ function VectorIndexL2NprobeTestSuite() {
             const resultsWithoutNProbe = db._query(queryWithoutNProbe, bindVars).toArray();
             const resultsWithNProbe = db._query(queryWithNProbe, bindVars).toArray();
             assertNotEqual(resultsWithoutNProbe, resultsWithNProbe);
+        },
+
+        testApproxL2RejectsNProbeAndTargetRecall: function() {
+            const query =
+                "FOR d IN " +
+                collection.name() +
+                " SORT APPROX_NEAR_L2(d.vector, @qp, {nProbe: 1, targetRecall: 0.9}) " +
+                "LIMIT 5 RETURN {key: d._key}";
+
+            assertQueryError(
+                errors.ERROR_QUERY_PARSE.code,
+                query,
+                {qp: randomPoint},
+            );
         },
     };
 }

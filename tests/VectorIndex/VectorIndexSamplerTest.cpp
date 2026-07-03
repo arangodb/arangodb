@@ -21,7 +21,7 @@
 /// @author Jure Bajic
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "VectorIndex/VectorIndexTrainingSampler.h"
+#include "VectorIndex/VectorIndexSampler.h"
 
 #include <array>
 #include <cstddef>
@@ -41,7 +41,7 @@ namespace {
 // Feeds one vector through the sampler. Mirrors the production caller: only
 // consume when the sampler wants the item; otherwise advance the seen-counter
 // via skip().
-void feed(VectorIndexTrainingSampler& s, std::vector<float> const& vector) {
+void feed(VectorIndexSampler& s, std::vector<float> const& vector) {
   if (s.wantsItem()) {
     s.consume(vector);
   } else {
@@ -69,8 +69,8 @@ constexpr std::uint64_t kFixedSeed = 0xABCDEF0123456789ULL;
 // Fill phase
 // -----------------------------------------------------------------------------
 
-TEST(VectorIndexTrainingSamplerTest, below_capacity_keeps_everything) {
-  VectorIndexTrainingSampler s{/*dimension=*/1, /*capacity=*/10, kFixedSeed};
+TEST(VectorIndexSamplerTest, below_capacity_keeps_everything) {
+  VectorIndexSampler s{/*dimension=*/1, /*capacity=*/10, kFixedSeed};
   for (int i = 0; i < 5; ++i) {
     feed(s, scalar(static_cast<float>(i)));
   }
@@ -82,8 +82,8 @@ TEST(VectorIndexTrainingSamplerTest, below_capacity_keeps_everything) {
   }
 }
 
-TEST(VectorIndexTrainingSamplerTest, at_capacity_keeps_everything) {
-  VectorIndexTrainingSampler s{/*dimension=*/1, /*capacity=*/5, kFixedSeed};
+TEST(VectorIndexSamplerTest, at_capacity_keeps_everything) {
+  VectorIndexSampler s{/*dimension=*/1, /*capacity=*/5, kFixedSeed};
   for (int i = 0; i < 5; ++i) {
     feed(s, scalar(static_cast<float>(i)));
   }
@@ -99,10 +99,10 @@ TEST(VectorIndexTrainingSamplerTest, at_capacity_keeps_everything) {
 // Replace phase
 // -----------------------------------------------------------------------------
 
-TEST(VectorIndexTrainingSamplerTest, over_capacity_size_matches_capacity) {
+TEST(VectorIndexSamplerTest, over_capacity_size_matches_capacity) {
   constexpr std::size_t k = 10;
   constexpr std::size_t n = 1000;
-  VectorIndexTrainingSampler s{/*dimension=*/1, /*capacity=*/k, kFixedSeed};
+  VectorIndexSampler s{/*dimension=*/1, /*capacity=*/k, kFixedSeed};
   for (std::size_t i = 0; i < n; ++i) {
     feed(s, scalar(static_cast<float>(i)));
   }
@@ -111,12 +111,12 @@ TEST(VectorIndexTrainingSamplerTest, over_capacity_size_matches_capacity) {
   EXPECT_EQ(data.size(), k);
 }
 
-TEST(VectorIndexTrainingSamplerTest, reservoir_is_subset_of_distinct_inputs) {
+TEST(VectorIndexSamplerTest, reservoir_is_subset_of_distinct_inputs) {
   // Feed N distinct scalar inputs; reservoir must contain k distinct values,
   // each drawn from the input stream.
   constexpr std::size_t k = 16;
   constexpr std::size_t n = 500;
-  VectorIndexTrainingSampler s{/*dimension=*/1, /*capacity=*/k, kFixedSeed};
+  VectorIndexSampler s{/*dimension=*/1, /*capacity=*/k, kFixedSeed};
   for (std::size_t i = 0; i < n; ++i) {
     feed(s, scalar(static_cast<float>(i)));
   }
@@ -137,11 +137,11 @@ TEST(VectorIndexTrainingSamplerTest, reservoir_is_subset_of_distinct_inputs) {
 // Multi-dimensional slot layout
 // -----------------------------------------------------------------------------
 
-TEST(VectorIndexTrainingSamplerTest, multi_dimensional_slots_are_contiguous) {
+TEST(VectorIndexSamplerTest, multi_dimensional_slots_are_contiguous) {
   constexpr std::size_t dim = 4;
   constexpr std::size_t k = 8;
   constexpr std::size_t n = 200;
-  VectorIndexTrainingSampler s{dim, /*capacity=*/k, kFixedSeed};
+  VectorIndexSampler s{dim, /*capacity=*/k, kFixedSeed};
 
   // Feed items where each i maps to the vector (i, i+1, i+2, i+3) so we can
   // identify which input produced a slot.
@@ -170,11 +170,11 @@ TEST(VectorIndexTrainingSamplerTest, multi_dimensional_slots_are_contiguous) {
 // Determinism
 // -----------------------------------------------------------------------------
 
-TEST(VectorIndexTrainingSamplerTest, fixed_seed_is_deterministic) {
+TEST(VectorIndexSamplerTest, fixed_seed_is_deterministic) {
   constexpr std::size_t k = 32;
   constexpr std::size_t n = 1000;
   auto run = [&] {
-    VectorIndexTrainingSampler s{/*dimension=*/1, /*capacity=*/k, kFixedSeed};
+    VectorIndexSampler s{/*dimension=*/1, /*capacity=*/k, kFixedSeed};
     for (std::size_t i = 0; i < n; ++i) {
       feed(s, scalar(static_cast<float>(i)));
     }
@@ -183,11 +183,11 @@ TEST(VectorIndexTrainingSamplerTest, fixed_seed_is_deterministic) {
   EXPECT_EQ(run(), run());
 }
 
-TEST(VectorIndexTrainingSamplerTest, different_seeds_diverge) {
+TEST(VectorIndexSamplerTest, different_seeds_diverge) {
   constexpr std::size_t k = 32;
   constexpr std::size_t n = 1000;
   auto run = [&](std::uint64_t seed) {
-    VectorIndexTrainingSampler s{/*dimension=*/1, /*capacity=*/k, seed};
+    VectorIndexSampler s{/*dimension=*/1, /*capacity=*/k, seed};
     for (std::size_t i = 0; i < n; ++i) {
       feed(s, scalar(static_cast<float>(i)));
     }
@@ -202,10 +202,10 @@ TEST(VectorIndexTrainingSamplerTest, different_seeds_diverge) {
 // resize()
 // -----------------------------------------------------------------------------
 
-TEST(VectorIndexTrainingSamplerTest, resize_smaller_shrinks_reservoir) {
+TEST(VectorIndexSamplerTest, resize_smaller_shrinks_reservoir) {
   constexpr std::size_t k = 20;
   constexpr std::size_t n = 200;
-  VectorIndexTrainingSampler s{/*dimension=*/1, /*capacity=*/k, kFixedSeed};
+  VectorIndexSampler s{/*dimension=*/1, /*capacity=*/k, kFixedSeed};
   for (std::size_t i = 0; i < n; ++i) {
     feed(s, scalar(static_cast<float>(i)));
   }
@@ -221,9 +221,9 @@ TEST(VectorIndexTrainingSamplerTest, resize_smaller_shrinks_reservoir) {
   }
 }
 
-TEST(VectorIndexTrainingSamplerTest, resize_larger_is_noop) {
+TEST(VectorIndexSamplerTest, resize_larger_is_noop) {
   constexpr std::size_t k = 10;
-  VectorIndexTrainingSampler s{/*dimension=*/1, /*capacity=*/k, kFixedSeed};
+  VectorIndexSampler s{/*dimension=*/1, /*capacity=*/k, kFixedSeed};
   for (std::size_t i = 0; i < k; ++i) {
     feed(s, scalar(static_cast<float>(i)));
   }
@@ -235,10 +235,10 @@ TEST(VectorIndexTrainingSamplerTest, resize_larger_is_noop) {
   }
 }
 
-TEST(VectorIndexTrainingSamplerTest, resize_on_undersized_reservoir_is_noop) {
+TEST(VectorIndexSamplerTest, resize_on_undersized_reservoir_is_noop) {
   // Reservoir never filled past 5 items; resize(10) should leave all 5 in
   // place (new capacity >= current size).
-  VectorIndexTrainingSampler s{/*dimension=*/1, /*capacity=*/20, kFixedSeed};
+  VectorIndexSampler s{/*dimension=*/1, /*capacity=*/20, kFixedSeed};
   for (std::size_t i = 0; i < 5; ++i) {
     feed(s, scalar(static_cast<float>(i)));
   }
@@ -250,12 +250,12 @@ TEST(VectorIndexTrainingSamplerTest, resize_on_undersized_reservoir_is_noop) {
   }
 }
 
-TEST(VectorIndexTrainingSamplerTest, itemsSeen_counts_every_consumed_vector) {
+TEST(VectorIndexSamplerTest, itemsSeen_counts_every_consumed_vector) {
   // itemsSeen must count every consumed vector regardless of whether
   // Algorithm L kept or evicted it.
   constexpr std::size_t k = 5;
   constexpr std::size_t n = 123;
-  VectorIndexTrainingSampler s{/*dimension=*/1, /*capacity=*/k, kFixedSeed};
+  VectorIndexSampler s{/*dimension=*/1, /*capacity=*/k, kFixedSeed};
   for (std::size_t i = 0; i < n; ++i) {
     feed(s, scalar(static_cast<float>(i)));
   }
@@ -266,25 +266,24 @@ TEST(VectorIndexTrainingSamplerTest, itemsSeen_counts_every_consumed_vector) {
 // wantsItem() / skip() semantics
 // -----------------------------------------------------------------------------
 
-TEST(VectorIndexTrainingSamplerTest, wants_item_true_through_fill_phase) {
+TEST(VectorIndexSamplerTest, wants_item_true_through_fill_phase) {
   // Every position in the fill phase must request the item; otherwise the
   // reservoir would end up short and Algorithm L's invariant would break.
   constexpr std::size_t k = 8;
-  VectorIndexTrainingSampler s{/*dimension=*/1, /*capacity=*/k, kFixedSeed};
+  VectorIndexSampler s{/*dimension=*/1, /*capacity=*/k, kFixedSeed};
   for (std::size_t i = 0; i < k; ++i) {
     EXPECT_TRUE(s.wantsItem()) << "wantsItem() false at fill index " << i;
     feed(s, scalar(static_cast<float>(i)));
   }
 }
 
-TEST(VectorIndexTrainingSamplerTest,
-     wants_item_decides_whether_skip_or_consume_runs) {
+TEST(VectorIndexSamplerTest, wants_item_decides_whether_skip_or_consume_runs) {
   // Past capacity, wantsItem() must be true exactly at positions where
   // feed() actually mutates the reservoir, and false everywhere else.
   constexpr std::size_t dim = 1;
   constexpr std::size_t k = 4;
   constexpr std::size_t n = 200;
-  VectorIndexTrainingSampler s{dim, k, kFixedSeed};
+  VectorIndexSampler s{dim, k, kFixedSeed};
 
   std::size_t consumed = 0;
   std::size_t skipped = 0;

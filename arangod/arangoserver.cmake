@@ -189,11 +189,12 @@ add_library(arangoserver STATIC
   RestServer/TtlOptionsProvider.cpp
   RestServer/TtlProperties.cpp
   RestServer/UpgradeFeature.cpp
+  VectorIndex/AutoTuner.cpp
   RestServer/UpgradeOptionsProvider.cpp
   VectorIndex/VectorIndexFeature.cpp
   VectorIndex/VectorIndexBuildManager.cpp
   VectorIndex/VectorIndexOptionsProvider.cpp
-  VectorIndex/VectorIndexTrainingSampler.cpp
+  VectorIndex/VectorIndexSampler.cpp
   RestServer/ViewTypesFeature.cpp
   RestServer/VocbaseContext.cpp
   Sharding/ShardDistributionReporter.cpp

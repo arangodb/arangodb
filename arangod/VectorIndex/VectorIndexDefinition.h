@@ -27,6 +27,7 @@
 #include <cmath>
 #include <cstdint>
 #include <format>
+#include <map>
 #include <optional>
 #include <string>
 #include <variant>
@@ -60,14 +61,43 @@ inline auto inspect(Inspector& f, SimilarityMetric& x) {
       SimilarityMetric::kInnerProduct, "innerProduct");
 }
 
-struct TrainedData {
-  std::vector<std::uint8_t> codeData;
+/// @brief One autotuned configuration
+struct OperatingPoint {
+  double recall{0.0};
+  std::string searchParameters;
+  double timeSeconds{0.0};
+
+  bool operator==(OperatingPoint const&) const noexcept = default;
 
   template<class Inspector>
-  friend inline auto inspect(Inspector& f, TrainedData& x) {
-    return f.object(x).fields(f.field("codeData", x.codeData));
+  friend inline auto inspect(Inspector& f, OperatingPoint& x) {
+    return f.object(x).fields(
+        f.field("recall", x.recall).fallback(0.0),
+        f.field("searchParameters", x.searchParameters).fallback(""),
+        f.field("timeSeconds", x.timeSeconds).fallback(0.0));
   }
 };
+
+/// @brief One autotune run's result for a single `topK`: `points` ordered by
+/// ascending recall (== ascending cost).
+struct OperatingPointTable {
+  std::uint64_t topK{0};
+  double targetRecall{0.0};
+  std::vector<OperatingPoint> points;
+
+  bool operator==(OperatingPointTable const&) const noexcept = default;
+
+  template<class Inspector>
+  friend inline auto inspect(Inspector& f, OperatingPointTable& x) {
+    return f.object(x).fields(
+        f.field("topK", x.topK).fallback(std::uint64_t{0}),
+        f.field("targetRecall", x.targetRecall).fallback(0.0),
+        f.field("points", x.points).fallback(std::vector<OperatingPoint>{}));
+  }
+};
+
+// Keyed by topK, so the topK is unique by construction.
+using TunedTables = std::map<std::uint64_t, OperatingPointTable>;
 
 /// @brief On-disk format version for vector index list entries.
 ///
@@ -92,21 +122,6 @@ inline auto inspect(Inspector& f, VectorIndexFormatVersion& x) {
 
 static constexpr VectorIndexFormatVersion kCurrentVectorIndexFormatVersion =
     VectorIndexFormatVersion::kV2;
-
-/// @brief Per-index metadata sentinel record stored in the VectorIndex CF.
-/// Wraps TrainedData and adds the on-disk formatVersion. The kV1 default
-/// covers legacy records that pre-date the formatVersion field.
-struct VectorIndexMetadata {
-  TrainedData trainedData;
-  VectorIndexFormatVersion formatVersion = VectorIndexFormatVersion::kV1;
-
-  template<class Inspector>
-  friend inline auto inspect(Inspector& f, VectorIndexMetadata& x) {
-    return f.object(x).fields(f.field("codeData", x.trainedData.codeData),
-                              f.field("formatVersion", x.formatVersion)
-                                  .fallback(VectorIndexFormatVersion::kV1));
-  }
-};
 
 /// @brief Strategy for computing nLists from document count.
 enum class NListsStrategy : std::uint8_t {
@@ -184,11 +199,11 @@ struct NListsScalingSpec {
 
     // No tier matched: apply strategy.
     switch (strategy) {
-      case NListsStrategy::kAutoSqrt: {
+      case NListsStrategy::kAutoSqrt:
         return std::max(minNLists, static_cast<std::size_t>(
                                        multiplier * std::sqrt(docCount)));
-      }
     }
+    return minNLists;
   }
 
   template<class Inspector>

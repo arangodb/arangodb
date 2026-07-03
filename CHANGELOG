@@ -1,6 +1,13 @@
 3.12.10-devel (XXXX-XX-XX)
 --------------------------
 
+* COR-563: Added autotuning of the vector index search parameters to reach a
+  requested target recall. Two new endpoints were added:
+  - POST /_api/index/<collection>/<index-id>/autotune re-tunes the search
+    parameters of an already-built vector index.
+  - GET /_api/index/<collection>/<index-id>/autotune returns the persisted
+    autotune operating-point tables of a vector index.
+
 * Upgraded included rclone to v1.74.3 with go1.25.11 and non-vulnerable
   dependencies.
 

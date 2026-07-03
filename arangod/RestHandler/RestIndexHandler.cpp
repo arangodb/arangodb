@@ -27,11 +27,13 @@
 #include "Async/async.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/AgencyCache.h"
+#include "Cluster/ClusterAdminOperations.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/CollectionInfoCurrent.h"
 #include "Cluster/Utils/VectorIndexShardStates.h"
 #include "Cluster/ServerState.h"
+#include "Inspection/VPack.h"
 #include "RocksDBEngine/RocksDBBuilderIndex.h"
 #include "RocksDBEngine/RocksDBVectorIndex.h"
 #include "Logger/LogMacros.h"
@@ -201,6 +203,11 @@ futures::Future<futures::Unit> RestIndexHandler::executeAsync() {
       co_await getSelectivityEstimates();
       co_return;
     }
+    if (_request->suffixes().size() == 3 &&
+        _request->suffixes()[2] == "autotune") {
+      co_await getAutotuneTables();
+      co_return;
+    }
     co_await getIndexes();
     co_return;
   }
@@ -212,6 +219,11 @@ futures::Future<futures::Unit> RestIndexHandler::executeAsync() {
       // refill background thread. it is not supposed to
       // be used publicly.
       co_return syncCaches();
+    }
+    if (_request->suffixes().size() == 3 &&
+        _request->suffixes()[2] == "autotune") {
+      co_await autotuneVectorIndex();
+      co_return;
     }
     co_await createIndex();
     co_return;
@@ -995,4 +1007,236 @@ void RestIndexHandler::syncCaches() {
   engine.syncIndexCaches();
 
   generateResult(rest::ResponseCode::OK, VPackSlice::emptyObjectSlice());
+}
+
+namespace {
+// Parse the autotune request body into AutotuneParams. Field mapping and bounds
+// live in AutotuneParams' inspection; `topK` and `targetRecall` are required,
+// so an absent body is deserialized as an empty object and fails on a missing
+// field.
+Result parseAutotuneParams(VPackSlice body, vector::AutotuneParams& params) {
+  if (body.isNone() || body.isNull()) {
+    body = VPackSlice::emptyObjectSlice();
+  }
+  if (auto status = velocypack::deserializeWithStatus(body, params);
+      !status.ok()) {
+    std::string msg = status.error();
+    if (!status.path().empty()) {
+      msg = absl::StrCat(msg, " (at '", status.path(), "')");
+    }
+    return {TRI_ERROR_HTTP_BAD_PARAMETER, std::move(msg)};
+  }
+  return {};
+}
+}  // namespace
+
+async<void> RestIndexHandler::autotuneVectorIndex() {
+  // POST /_api/index/<collection>/<index-id>/autotune
+  std::vector<std::string> const& suffixes = _request->decodedSuffixes();
+  // we know there are 3 suffixes
+  std::string const& cName = suffixes[0];
+  auto const coll = collection(cName);
+  if (coll == nullptr) {
+    generateError(rest::ResponseCode::NOT_FOUND,
+                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+    co_return;
+  }
+
+  // Accept either a bare numeric id or a "<collection>/<id>" handle.
+  std::string bareId = suffixes[1];
+  if (auto const pos = bareId.find(TRI_INDEX_HANDLE_SEPARATOR_CHR);
+      pos != std::string::npos) {
+    bareId = bareId.substr(pos + 1);
+  }
+
+  bool parseSuccess = false;
+  VPackSlice body = parseVPackBody(parseSuccess);
+  if (!parseSuccess) {
+    co_return;
+  }
+  vector::AutotuneParams params;
+  if (auto const res = parseAutotuneParams(body, params); res.fail()) {
+    generateError(rest::ResponseCode::BAD, res.errorNumber(),
+                  res.errorMessage());
+    co_return;
+  }
+
+  // Coordinator: fan out to every shard, report a per-shard breakdown.
+  // This part could be replaced with agency to be more robust
+  if (ServerState::instance()->isCoordinator()) {
+    VPackBuilder shardResults;
+    auto const res = co_await autoTuneVectorIndexOnAllDBServers(
+        _clusterFeature, _vocbase.name(), cName, bareId, body, shardResults);
+    if (res.fail()) {
+      generateError(res);
+      co_return;
+    }
+    // Fail the request if any shard failed, reporting the first shard error as
+    // the cause; the body still carries the full per-shard breakdown.
+    bool allShardsTuned = true;
+    ::ErrorCode firstError = TRI_ERROR_NO_ERROR;
+    std::string firstErrorMsg;
+    for (auto const e : VPackArrayIterator(shardResults.slice())) {
+      if (e.get(StaticStrings::Error).isTrue()) {
+        allShardsTuned = false;
+        firstError =
+            ::ErrorCode{e.get(StaticStrings::ErrorNum).getNumber<int>()};
+        firstErrorMsg = e.get(StaticStrings::ErrorMessage).copyString();
+        break;
+      }
+    }
+
+    auto const code = allShardsTuned
+                          ? rest::ResponseCode::OK
+                          : GeneralResponse::responseCode(firstError);
+    VPackBuilder out;
+    {
+      VPackObjectBuilder guard(&out);
+      out.add(StaticStrings::Error, VPackValue(!allShardsTuned));
+      out.add(StaticStrings::Code, VPackValue(static_cast<int>(code)));
+      if (!allShardsTuned) {
+        out.add(StaticStrings::ErrorNum, VPackValue(firstError));
+        out.add(StaticStrings::ErrorMessage,
+                VPackValue(absl::StrCat(
+                    "vector index autotune failed on one or more shards: ",
+                    firstErrorMsg)));
+      }
+      out.add("result", shardResults.slice());
+    }
+    generateResult(code, out.slice());
+    co_return;
+  }
+
+  // DBServer / SingleServer: validate the index, then run through the build
+  // manager so it never overlaps a build.
+  auto idx = coll->lookupIndex(IndexId{basics::StringUtils::uint64(bareId)});
+  if (idx == nullptr || idx->type() != Index::TRI_IDX_TYPE_VECTOR_INDEX) {
+    generateError(rest::ResponseCode::NOT_FOUND,
+                  TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
+    co_return;
+  }
+
+  auto& vectorIndexFeature = server().getFeature<VectorIndexFeature>();
+  auto outcome = co_await vectorIndexFeature.autoTuneIndex(coll, idx->id(),
+                                                           std::move(params));
+  if (outcome.fail()) {
+    generateError(rest::ResponseCode::BAD, outcome.errorNumber(),
+                  outcome.errorMessage());
+    co_return;
+  }
+
+  auto const& table = outcome.get();
+  bool const reachedTargetRecall =
+      !table.points.empty() &&
+      table.points.back().recall >=
+          table.targetRecall - vector::kAutoTuneRecallEpsilon;
+
+  // Mirror the coordinator's per-shard breakdown: a single entry keyed by the
+  // collection name stands in for the lone shard.
+  VPackBuilder out;
+  {
+    VPackObjectBuilder guard(&out);
+    out.add(StaticStrings::Error, VPackValue(false));
+    out.add(StaticStrings::Code,
+            VPackValue(static_cast<int>(rest::ResponseCode::OK)));
+    out.add(VPackValue("result"));
+    VPackArrayBuilder resultGuard(&out);
+    VPackObjectBuilder shardGuard(&out);
+    out.add("shard", VPackValue(cName));
+    out.add(StaticStrings::Error, VPackValue(false));
+    out.add("topK", VPackValue(table.topK));
+    out.add("targetRecall", VPackValue(table.targetRecall));
+    out.add("operatingPointCount", VPackValue(table.points.size()));
+    out.add("reachedTargetRecall", VPackValue(reachedTargetRecall));
+  }
+  generateResult(rest::ResponseCode::OK, out.slice());
+}
+
+async<void> RestIndexHandler::getAutotuneTables() {
+  // GET /_api/index/<collection>/<index-id>/autotune
+  std::vector<std::string> const& suffixes = _request->decodedSuffixes();
+  // we know there are 3 suffixes
+  std::string const& cName = suffixes[0];
+  auto const coll = collection(cName);
+  if (coll == nullptr) {
+    generateError(rest::ResponseCode::NOT_FOUND,
+                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+    co_return;
+  }
+
+  // Accept either a bare numeric id or a "<collection>/<id>" handle.
+  std::string bareId = suffixes[1];
+  if (auto const pos = bareId.find(TRI_INDEX_HANDLE_SEPARATOR_CHR);
+      pos != std::string::npos) {
+    bareId = bareId.substr(pos + 1);
+  }
+
+  // Coordinator: fan out to every shard, report a per-shard breakdown. The
+  // fan-out awaits the DBServer responses without blocking a thread.
+  if (ServerState::instance()->isCoordinator()) {
+    VPackBuilder shardResults;
+    auto const res = co_await getVectorIndexTunedTablesOnAllDBServers(
+        _clusterFeature, _vocbase.name(), cName, bareId, shardResults);
+    if (res.fail()) {
+      generateError(res);
+      co_return;
+    }
+    // Fail the request if any shard failed, reporting the first shard error as
+    // the cause; the body still carries the full per-shard breakdown.
+    bool allShardsOk = true;
+    ::ErrorCode firstError = TRI_ERROR_NO_ERROR;
+    std::string firstErrorMsg;
+    for (auto const e : VPackArrayIterator(shardResults.slice())) {
+      if (e.get(StaticStrings::Error).isTrue()) {
+        allShardsOk = false;
+        firstError =
+            ::ErrorCode{e.get(StaticStrings::ErrorNum).getNumber<int>()};
+        firstErrorMsg = e.get(StaticStrings::ErrorMessage).copyString();
+        break;
+      }
+    }
+
+    auto const code = allShardsOk ? rest::ResponseCode::OK
+                                  : GeneralResponse::responseCode(firstError);
+    VPackBuilder out;
+    {
+      VPackObjectBuilder guard(&out);
+      out.add(StaticStrings::Error, VPackValue(!allShardsOk));
+      out.add(StaticStrings::Code, VPackValue(static_cast<int>(code)));
+      if (!allShardsOk) {
+        out.add(StaticStrings::ErrorNum, VPackValue(firstError));
+        out.add(StaticStrings::ErrorMessage,
+                VPackValue(absl::StrCat(
+                    "vector index autotune table lookup failed on one or more "
+                    "shards: ",
+                    firstErrorMsg)));
+      }
+      out.add("result", shardResults.slice());
+    }
+    generateResult(code, out.slice());
+    co_return;
+  }
+
+  // DBServer / SingleServer: read the persisted tables off the local index.
+  auto idx = coll->lookupIndex(IndexId{basics::StringUtils::uint64(bareId)});
+  if (idx == nullptr || idx->type() != Index::TRI_IDX_TYPE_VECTOR_INDEX) {
+    generateError(rest::ResponseCode::NOT_FOUND,
+                  TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
+    co_return;
+  }
+  auto const* vectorIndex = static_cast<RocksDBVectorIndex const*>(idx.get());
+
+  VPackBuilder out;
+  {
+    VPackObjectBuilder guard(&out);
+    out.add(StaticStrings::Error, VPackValue(false));
+    out.add(StaticStrings::Code,
+            VPackValue(static_cast<int>(rest::ResponseCode::OK)));
+    out.add(VPackValue("tunedTables"));
+    VPackArrayBuilder tablesGuard(&out);
+    for (auto const& [topK, table] : vectorIndex->tunedTables()) {
+      velocypack::serialize(out, table);
+    }
+  }
+  generateResult(rest::ResponseCode::OK, out.slice());
 }

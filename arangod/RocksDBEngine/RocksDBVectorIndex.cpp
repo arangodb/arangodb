@@ -37,6 +37,8 @@
 #include "Aql/DocumentExpressionContext.h"
 #include "Basics/StaticStrings.h"
 #include "Aql/Function.h"
+#include "Aql/QueryContext.h"
+#include "Aql/QueryWarnings.h"
 #include "Assertions/Assert.h"
 #include "Basics/Exceptions.h"
 #include "Basics/voc-errors.h"
@@ -60,6 +62,7 @@
 #include <rocksdb/db.h>
 #include "RocksDBEngine/RocksDBMetaCollection.h"
 #include "VectorIndex/VectorIndexDefinition.h"
+#include "VectorIndex/Metadata.h"
 
 #include "faiss/MetricType.h"
 #include "faiss/utils/distances.h"
@@ -155,9 +158,7 @@ RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
   TRI_ASSERT(type() == Index::TRI_IDX_TYPE_VECTOR_INDEX);
   velocypack::deserialize(info.get("params"), _definition);
 
-  auto metadata = loadVectorIndexMetadata(info);
-  _trainedData = std::move(metadata.trainedData);
-  _formatVersion = metadata.formatVersion;
+  loadStoredMetadata(info);
 
   if (!_trainedData.codeData.empty()) {
     _faissIndex =
@@ -181,8 +182,7 @@ RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
 
 RocksDBVectorIndex::~RocksDBVectorIndex() = default;
 
-vector::VectorIndexMetadata RocksDBVectorIndex::loadVectorIndexMetadata(
-    velocypack::Slice info) const {
+void RocksDBVectorIndex::loadStoredMetadata(velocypack::Slice info) {
   // Try the V2 slot first, then fall back to the V1 slot. The slots are
   // distinct so an old binary that only knows the V1 slot will simply miss
   // V2 metadata after a downgrade and treat the index as unusable
@@ -194,25 +194,103 @@ vector::VectorIndexMetadata RocksDBVectorIndex::loadVectorIndexMetadata(
     return _engine.db()->GetRootDB()->Get(ro, _cf, key.string(), &raw).ok();
   };
 
-  vector::VectorIndexMetadata result;
   std::string raw;
   if (readSlot(vector::VectorIndexFormatVersion::kV2, raw) ||
       readSlot(vector::VectorIndexFormatVersion::kV1, raw)) {
     auto slice =
         velocypack::Slice(reinterpret_cast<uint8_t const*>(raw.data()));
-    velocypack::deserialize(slice, result);
+    _trainedData = vector::decodeMetadata(slice);
   } else if (auto data = info.get("trainedData"); !data.isNone()) {
     // Backwards compatibility: load from definitions CF for pre-migration
-    // indexes. Such records contain only TrainedData fields, so formatVersion
-    // stays at the default kV1.
-    velocypack::deserialize(data, result.trainedData);
+    // indexes. Such records predate the formatVersion field, so it stays at
+    // the default kV1.
+    _trainedData = vector::decodeMetadata(data);
   } else {
     // Brand-new index: stamp it with the current on-disk format. Has no
     // effect for indexes without storedValues since their entry layout is
     // already format-agnostic.
-    result.formatVersion = vector::kCurrentVectorIndexFormatVersion;
+    _trainedData.formatVersion = vector::kCurrentVectorIndexFormatVersion;
   }
-  return result;
+}
+
+void RocksDBVectorIndex::applyTunedTable(vector::OperatingPointTable table) {
+  auto const topK = table.topK;
+  _trainedData.tunedTables.insert_or_assign(topK, std::move(table));
+}
+
+ResultT<std::unique_ptr<faiss::SearchParametersIVF>>
+RocksDBVectorIndex::prepareSearchParameters(
+    vector::SearchParameters const& params, std::size_t topK,
+    vector::VectorSearchContext const& ctx) const {
+  bool const hasNProbe = params.nProbe.has_value();
+  bool const hasTargetRecall = params.targetRecall.has_value();
+
+  TRI_ASSERT(!(hasNProbe && hasTargetRecall))
+      << "Cannot specify both nProbe and targetRecall";
+
+  if (hasTargetRecall) {
+    auto selected = vector::selectOperatingPoint(
+        _trainedData.tunedTables, static_cast<std::uint64_t>(topK),
+        *params.targetRecall);
+    if (selected.fail()) {
+      return std::move(selected).result();
+    }
+    auto const& point = selected.get();
+
+    // Both fallbacks still execute; warn that the result is approximate.
+    if (ctx.queryContext != nullptr) {
+      if (point.tunedTopK != topK) {
+        ctx.queryContext->warnings().registerWarning(
+            TRI_ERROR_QUERY_VECTOR_AUTOTUNE_APPROXIMATE,
+            std::format("no autotuned table for topK={}; using the table tuned "
+                        "for topK={} (recall preserved)",
+                        topK, point.tunedTopK));
+      }
+      if (!point.reachedTargetRecall) {
+        ctx.queryContext->warnings().registerWarning(
+            TRI_ERROR_QUERY_VECTOR_AUTOTUNE_APPROXIMATE,
+            std::format("targetRecall={} is not achievable for topK={}; using "
+                        "the most thorough autotuned operating point (recall "
+                        "{})",
+                        *params.targetRecall, point.tunedTopK,
+                        point.point.recall));
+      }
+    }
+
+    LOG_VECTOR_INDEX("e16c1", DEBUG, Logger::QUERIES)
+        << "autotune resolved operating point '" << point.point.searchParameters
+        << "' for topK=" << topK << ", targetRecall=" << *params.targetRecall;
+    return vector::makeSearchParametersFromKey(*_faissIndex,
+                                               point.point.searchParameters);
+  }
+
+  auto searchParams = std::make_unique<faiss::SearchParametersIVF>();
+  searchParams->nprobe = hasNProbe ? *params.nProbe : _definition.defaultNProbe;
+  return searchParams;
+}
+
+Result RocksDBVectorIndex::persistMetadata() const {
+  velocypack::Builder builder;
+  velocypack::serialize(builder, _trainedData);
+
+  // V1 metadata stays at the legacy slot so older binaries can still read it
+  // after a downgrade. V2 metadata is parked in a separate slot; an old binary
+  // looking at the V1 slot won't find it and treats the index as unusable.
+  RocksDBKey key;
+  key.constructVectorIndexTrainedData(objectId(), _trainedData.formatVersion);
+  auto value = RocksDBValue::VectorIndexValue(builder.slice());
+
+  auto* vectorCF = RocksDBColumnFamilyManager::get(
+      RocksDBColumnFamilyManager::Family::VectorIndex);
+  rocksdb::WriteOptions wo;
+  auto status = _engine.db()->GetRootDB()->Put(wo, vectorCF, key.string(),
+                                               value.string());
+  if (!status.ok()) {
+    return Result{TRI_ERROR_INTERNAL,
+                  std::string{"Failed to persist vector index metadata: "} +
+                      status.ToString()};
+  }
+  return {};
 }
 
 /// @brief Test if this index matches the definition
@@ -494,12 +572,15 @@ vector::SearchResult RocksDBVectorIndex::readBatch(
 
   auto faissSearchContext = makeFaissIteratorContext(config, ctx, captureSink);
 
-  faiss::SearchParametersIVF searchParametersIvf;
-  searchParametersIvf.nprobe =
-      config.searchParameters.nProbe.value_or(_definition.defaultNProbe);
-  searchParametersIvf.inverted_list_context = &faissSearchContext;
+  auto searchParametersIvf =
+      prepareSearchParameters(config.searchParameters, config.topK, ctx);
+  if (searchParametersIvf.fail()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(searchParametersIvf.errorNumber(),
+                                   searchParametersIvf.errorMessage());
+  }
+  searchParametersIvf.get()->inverted_list_context = &faissSearchContext;
   _faissIndex->search(1, inputs.data(), config.topK, result.distances.data(),
-                      result.labels.data(), &searchParametersIvf);
+                      result.labels.data(), searchParametersIvf.get().get());
 
   // faiss returns squared distances for L2, square them so they are returned in
   // normal form
@@ -526,14 +607,27 @@ Result RocksDBVectorIndex::readDocumentVectorData(
 
 void RocksDBVectorIndex::applyTrainingResult(
     std::shared_ptr<faiss::IndexIVF> faissIndex,
-    vector::TrainedData trainedData) {
+    vector::VectorIndexMetadata trainedData) {
   _faissIndex = std::move(faissIndex);
+  // Retraining resets tuning, but formatVersion is the index's entry layout,
+  // not a training-run property, so preserve it across the replace.
+  auto const formatVersion = _trainedData.formatVersion;
   _trainedData = std::move(trainedData);
+  _trainedData.formatVersion = formatVersion;
 
   _faissIndex->replace_invlists(
       new vector::RocksDBInvertedLists(this, &collection(), _faissIndex->nlist,
                                        _faissIndex->code_size),
       true /* faiss owns the inverted list */);
+}
+
+std::shared_ptr<faiss::IndexIVF> RocksDBVectorIndex::cloneFaissIndex() {
+  auto clone = vector::VectorIndexTrainer::restoreFromTrainedData(_trainedData);
+  clone->replace_invlists(
+      new vector::RocksDBInvertedLists(this, &collection(), clone->nlist,
+                                       clone->code_size),
+      true /* faiss owns the inverted list */);
+  return clone;
 }
 
 bool RocksDBVectorIndex::setTrainingState(
@@ -664,7 +758,7 @@ Result RocksDBVectorIndex::insert(transaction::Methods& trx,
               ->get();
       auto storedValues = extractedAttributeValues->sharedSlice();
 
-      if (_formatVersion == vector::VectorIndexFormatVersion::kV2) {
+      if (_trainedData.formatVersion == vector::VectorIndexFormatVersion::kV2) {
         return RocksDBValue::VectorIndexValueV2(
             flat_codes.get(), _faissIndex->code_size, storedValues);
       }

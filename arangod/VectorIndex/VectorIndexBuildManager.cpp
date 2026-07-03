@@ -160,6 +160,76 @@ void VectorIndexBuildManager::fulfillAllWaiters(Result const& result) {
   }
 }
 
+futures::Future<VectorIndexBuildManager::AutoTuneResult>
+VectorIndexBuildManager::requestAutoTune(
+    std::shared_ptr<LogicalCollection> collection, IndexId indexId,
+    AutotuneParams params) {
+  futures::Promise<AutoTuneResult> promise;
+  auto future = promise.getFuture();
+  {
+    std::lock_guard lock(_autoTuneMutex);
+    _autoTuneQueue.push_back(AutoTuneRequest{std::move(collection), indexId,
+                                             params, std::move(promise)});
+  }
+  return future;
+}
+
+void VectorIndexBuildManager::processAutoTuneRequests(
+    std::stop_token const& stopToken) {
+  std::vector<AutoTuneRequest> requests;
+  {
+    std::lock_guard lock(_autoTuneMutex);
+    requests = std::move(_autoTuneQueue);
+    _autoTuneQueue.clear();
+  }
+  for (auto& req : requests) {
+    auto result = std::invoke([&]() -> AutoTuneResult {
+      if (stopToken.stop_requested()) {
+        return Result{TRI_ERROR_SHUTTING_DOWN};
+      }
+      try {
+        return runAutoTuneRequest(req, stopToken);
+      } catch (basics::Exception const& e) {
+        return Result{e.code(), e.message()};
+      } catch (std::exception const& e) {
+        return Result{TRI_ERROR_INTERNAL, e.what()};
+      }
+    });
+    fulfillAutoTune(std::move(req.promise), std::move(result));
+  }
+}
+
+VectorIndexBuildManager::AutoTuneResult
+VectorIndexBuildManager::runAutoTuneRequest(AutoTuneRequest const& request,
+                                            std::stop_token const& stopToken) {
+  auto idx = request.collection->lookupIndex(request.indexId);
+  if (idx == nullptr || idx->type() != Index::TRI_IDX_TYPE_VECTOR_INDEX) {
+    return Result{TRI_ERROR_ARANGO_INDEX_NOT_FOUND,
+                  "vector index not found for autotune"};
+  }
+  auto& vecIdx = static_cast<RocksDBVectorIndex&>(*idx);
+  // We run on the build thread, so no build is in flight right now; a
+  // non-ready index simply has not been (successfully) built yet.
+  if (vecIdx.trainingState() != VectorIndexTrainingState::kReady) {
+    return Result{TRI_ERROR_QUERY_VECTOR_INDEX_NOT_READY,
+                  "vector index is not ready; cannot autotune"};
+  }
+  TRI_ASSERT(_resourceMonitor.current() == 0);
+  return autoTuneVectorIndex(vecIdx, _resourceMonitor, request.params,
+                             stopToken);
+}
+
+void VectorIndexBuildManager::fulfillAutoTune(
+    futures::Promise<AutoTuneResult> promise, AutoTuneResult result) {
+  // Resolve on the scheduler so the continuation never runs on the build
+  // thread (mirrors fulfillWaiters).
+  _scheduler.queue(
+      RequestLane::CONTINUATION,
+      [promise = std::move(promise), result = std::move(result)]() mutable {
+        promise.setValue(std::move(result));
+      });
+}
+
 bool VectorIndexBuildManager::shouldSkipRetry(
     FailedBuildsMap const& failedBuilds, std::uint64_t objectId,
     std::uint64_t currentDocCount) {
@@ -186,17 +256,34 @@ void VectorIndexBuildManager::run(std::stop_token stopToken) {
 
   auto fulfillOnExit = scopeGuard([this]() noexcept {
     fulfillAllWaiters(Result{TRI_ERROR_SHUTTING_DOWN});
+    std::vector<AutoTuneRequest> requests;
+    {
+      std::lock_guard lock(_autoTuneMutex);
+      requests = std::move(_autoTuneQueue);
+      _autoTuneQueue.clear();
+    }
+    for (auto& req : requests) {
+      fulfillAutoTune(std::move(req.promise), Result{TRI_ERROR_SHUTTING_DOWN});
+    }
   });
+
+  auto const hasPendingWork = [this]() {
+    {
+      std::lock_guard lock(_waitersMutex);
+      if (!_waiters.empty()) {
+        return true;
+      }
+    }
+    std::lock_guard lock(_autoTuneMutex);
+    return !_autoTuneQueue.empty();
+  };
 
   while (!stopToken.stop_requested()) {
     auto const deadline = std::chrono::steady_clock::now() + kScanInterval;
     while (std::chrono::steady_clock::now() < deadline &&
            !stopToken.stop_requested()) {
-      {
-        std::lock_guard lock(_waitersMutex);
-        if (!_waiters.empty()) {
-          break;
-        }
+      if (hasPendingWork()) {
+        break;
       }
       std::this_thread::sleep_for(kSleepGranularity);
     }
@@ -207,6 +294,10 @@ void VectorIndexBuildManager::run(std::stop_token stopToken) {
       LOG_TOPIC("e170b", WARN, Logger::ENGINES)
           << "VectorIndexBuildManager scan error: " << ex.what();
     }
+
+    // Autotune requests run on this same thread, after the build pass, so a
+    // build and an autotune can never overlap.
+    processAutoTuneRequests(stopToken);
   }
 }
 
@@ -275,8 +366,9 @@ void VectorIndexBuildManager::scanAndBuild(std::stop_token const& stopToken,
         LOG_TOPIC("e171b", INFO, Logger::ENGINES)
             << "[shard=" << vecIdx.collection().name()
             << ", index=" << vecIdx.id().id()
-            << "] Training threshold reached (" << vecIdx.trainingThreshold()
-            << " documents). Starting deferred training.";
+            << "] Training threshold reached ( documents present: " << numDocs
+            << ", threshold: " << vecIdx.trainingThreshold()
+            << "). Starting deferred training.";
 
         _trainingOngoingCount.fetch_add(1);
         TRI_ASSERT(_resourceMonitor.current() == 0);

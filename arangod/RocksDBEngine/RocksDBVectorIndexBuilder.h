@@ -27,6 +27,8 @@
 #include "Basics/ResourceUsage.h"
 #include "Basics/Result.h"
 #include "Basics/ResultT.h"
+#include "VectorIndex/AutoTuner.h"
+#include "VectorIndex/Metadata.h"
 #include "VectorIndex/VectorIndexDefinition.h"
 #include "Metrics/Fwd.h"
 #include "RocksDBEngine/RocksDBCollection.h"
@@ -35,6 +37,7 @@
 #include <cstdint>
 #include <memory>
 #include <stop_token>
+#include <utility>
 #include <vector>
 
 #include <faiss/IndexIVF.h>
@@ -56,9 +59,9 @@ class RocksDBEngine;
 
 namespace arangodb::vector {
 
-class VectorIndexTrainingSampler;
+class VectorIndexSampler;
 
-TrainedData serializeIndex(faiss::IndexIVF const& index);
+VectorIndexMetadata serializeIndex(faiss::IndexIVF const& index);
 
 Result readDocumentVectorData(
     velocypack::Slice doc,
@@ -92,7 +95,7 @@ class VectorIndexTrainer {
                      RocksDBKeyBounds bounds);
 
   static std::shared_ptr<faiss::IndexIVF> restoreFromTrainedData(
-      TrainedData const& data);
+      VectorIndexMetadata const& data);
 
   std::shared_ptr<faiss::IndexIVF> createFaissIndex(
       std::size_t resolvedNLists) const;
@@ -102,7 +105,6 @@ class VectorIndexTrainer {
   ///  2. Create the FAISS index
   ///  3. Load training vectors from the iterator
   ///  4. Train the FAISS index
-  ///  5. Serialize the trained index data
   ResultT<std::shared_ptr<faiss::IndexIVF>> train(
       std::size_t numDocsHint, std::stop_token stopToken = {});
 
@@ -118,10 +120,11 @@ class VectorIndexTrainer {
   /// Sparse+scaling post-iteration step: recompute reservoir capacity from
   /// the actual valid-vector count, shrink the sampler, and release the
   /// freed bytes from the resource monitor.
-  Result shrinkReservoirForSparseScaling(
-      std::size_t validSeen, std::size_t reservoirCapacity,
-      std::uint64_t expectedReservoirBytes, ResourceUsageScope& memScope,
-      VectorIndexTrainingSampler& sampler) const;
+  Result shrinkReservoirForSparseScaling(std::size_t validSeen,
+                                         std::size_t reservoirCapacity,
+                                         std::uint64_t expectedReservoirBytes,
+                                         ResourceUsageScope& memScope,
+                                         VectorIndexSampler& sampler) const;
 
   RocksDBVectorIndex const& _index;
   ResourceMonitor& _resourceMonitor;
@@ -131,6 +134,10 @@ class VectorIndexTrainer {
 Result ingestVectors(RocksDBVectorIndex& index, rocksdb::DB* rootDB,
                      std::unique_ptr<rocksdb::Iterator> documentIterator,
                      std::stop_token stopToken = {});
+
+ResultT<OperatingPointTable> autoTuneVectorIndex(
+    RocksDBVectorIndex& index, ResourceMonitor& resourceMonitor,
+    AutotuneParams const& params, std::stop_token stopToken = {});
 
 class VectorIndexBuilder {
  public:
@@ -143,8 +150,6 @@ class VectorIndexBuilder {
                std::stop_token stopToken = {});
 
  private:
-  Result persistVectorIndexMetadata(VectorIndexMetadata const& metadata);
-
   RocksDBVectorIndex& _index;
   ResourceMonitor& _resourceMonitor;
   RocksDBEngine& _engine;

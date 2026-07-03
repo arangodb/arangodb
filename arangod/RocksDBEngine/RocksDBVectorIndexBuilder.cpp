@@ -30,6 +30,7 @@
 #include "RocksDBEngine/RocksDBBuilderIndex.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBVectorIndex.h"
+#include "VectorIndex/AutoTuner.h"
 
 #include <atomic>
 #include <chrono>
@@ -38,6 +39,7 @@
 #include <format>
 #include <functional>
 #include <limits>
+#include <optional>
 #include <string>
 #include <thread>
 
@@ -59,7 +61,10 @@
 #include "RocksDBEngine/RocksDBValue.h"
 #include "RocksDBEngine/RocksDBVectorIndexList.h"
 #include "Transaction/Helpers.h"
-#include "VectorIndex/VectorIndexTrainingSampler.h"
+#include "Transaction/OperationOrigin.h"
+#include "Transaction/StandaloneContext.h"
+#include "Utils/SingleCollectionTransaction.h"
+#include "VectorIndex/VectorIndexSampler.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <rocksdb/db.h>
@@ -77,6 +82,18 @@
 #include "faiss/utils/distances.h"
 
 namespace arangodb::vector {
+
+#define LOG_VECTOR_BUILD(lid, level, topic)                                 \
+  LOG_TOPIC((lid), level, topic) << "[shard=" << _index.collection().name() \
+                                 << ", index=" << _index.id().id() << "] "
+
+// Forward-declared because it is called from collectTrainingDataset above its
+// definition; collectAutoTuneSample needs no such declaration as it is defined
+// before its first use.
+static Result sampleVectors(RocksDBVectorIndex const& index,
+                            rocksdb::Iterator& it, rocksdb::Slice upper,
+                            VectorIndexSampler& sampler,
+                            std::stop_token stopToken);
 
 // Shallow field-presence probe; ingestion already rejects malformed vectors.
 bool hasVectorField(
@@ -141,16 +158,16 @@ Result readDocumentVectorData(
   }
 }
 
-TrainedData serializeIndex(faiss::IndexIVF const& index) {
+VectorIndexMetadata serializeIndex(faiss::IndexIVF const& index) {
   faiss::VectorIOWriter writer;
   faiss::write_index(&index, &writer);
-  TrainedData td;
+  VectorIndexMetadata td;
   td.codeData = std::move(writer.data);
   return td;
 }
 
 std::shared_ptr<faiss::IndexIVF> VectorIndexTrainer::restoreFromTrainedData(
-    TrainedData const& data) {
+    VectorIndexMetadata const& data) {
   faiss::VectorIOReader reader;
   // TODO prevent this copy, but instead implement own IOReader, reading
   // directly from the training data.
@@ -288,47 +305,10 @@ VectorIndexTrainer::collectTrainingDataset(rocksdb::Iterator& it,
       _index.sparse() ? "sparse" : "non-sparse", numDocsHint, reservoirCapacity,
       expectedReservoirBytes / (1024 * 1024), seed);
 
-  VectorIndexTrainingSampler sampler{def.dimension, reservoirCapacity, seed};
-  std::vector<float> inputBuffer;
-  inputBuffer.reserve(def.dimension);
-
-  while (it.Valid()) {
-    if (stopToken.stop_requested()) {
-      return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                    "vector training aborted"};
-    }
-    TRI_ASSERT(it.key().compare(upper) < 0);
-    auto doc = VPackSlice(reinterpret_cast<uint8_t const*>(it.value().data()));
-
-    if (!sampler.wantsItem()) {
-      // Sparse mode: rows without the vector field must not count toward
-      // itemsSeen, preserving the Algorithm L invariant over valid vectors.
-      if (_index.sparse() && !hasVectorField(doc, _index.fields())) {
-        it.Next();
-        continue;
-      }
-      sampler.skip();
-      it.Next();
-      continue;
-    }
-
-    inputBuffer.clear();
-    if (auto const res = readDocumentVectorData(doc, _index.fields(),
-                                                def.dimension, inputBuffer);
-        res.fail()) {
-      if (res.is(TRI_ERROR_BAD_PARAMETER) && _index.sparse()) {
-        it.Next();
-        continue;
-      }
-      return Result{
-          res.errorNumber(),
-          std::format(
-              "failed to read document vector data, "
-              "embeddings are in a wrong format and index is not sparse: {}",
-              res.errorMessage())};
-    }
-    sampler.consume(inputBuffer);
-    it.Next();
+  VectorIndexSampler sampler{def.dimension, reservoirCapacity, seed};
+  if (auto res = sampleVectors(_index, it, upper, sampler, stopToken);
+      res.fail()) {
+    return res;
   }
 
   std::size_t const validSeen = sampler.itemsSeen();
@@ -360,6 +340,76 @@ VectorIndexTrainer::collectTrainingDataset(rocksdb::Iterator& it,
       {std::move(trainingData), validSeen, std::move(memScope)});
 }
 
+static Result sampleVectors(RocksDBVectorIndex const& index,
+                            rocksdb::Iterator& it, rocksdb::Slice upper,
+                            VectorIndexSampler& sampler,
+                            std::stop_token stopToken) {
+  auto const& def = index.getDefinition();
+  std::vector<float> inputBuffer;
+  inputBuffer.reserve(def.dimension);
+
+  while (it.Valid()) {
+    if (stopToken.stop_requested()) {
+      return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+                    "vector index sampling aborted"};
+    }
+    TRI_ASSERT(it.key().compare(upper) < 0);
+    auto doc = VPackSlice(reinterpret_cast<uint8_t const*>(it.value().data()));
+
+    if (!sampler.wantsItem()) {
+      // Sparse mode: rows without the vector field must not count toward
+      // itemsSeen, preserving the Algorithm L invariant over valid vectors.
+      if (index.sparse() && !hasVectorField(doc, index.fields())) {
+        it.Next();
+        continue;
+      }
+      sampler.skip();
+      it.Next();
+      continue;
+    }
+
+    inputBuffer.clear();
+    if (auto const res = readDocumentVectorData(doc, index.fields(),
+                                                def.dimension, inputBuffer);
+        res.fail()) {
+      if (res.is(TRI_ERROR_BAD_PARAMETER) && index.sparse()) {
+        it.Next();
+        continue;
+      }
+      return Result{
+          res.errorNumber(),
+          std::format(
+              "failed to read document vector data, "
+              "embeddings are in a wrong format and index is not sparse: {}",
+              res.errorMessage())};
+    }
+    sampler.consume(inputBuffer);
+    it.Next();
+  }
+
+  return {};
+}
+
+static ResultT<std::vector<float>> collectAutoTuneSample(
+    RocksDBVectorIndex const& index, rocksdb::Iterator& it,
+    rocksdb::Slice upper, std::size_t capacity, std::stop_token stopToken) {
+  auto const& def = index.getDefinition();
+  VectorIndexSampler sampler{def.dimension, capacity, RandomDevice::seed64()};
+  if (auto res = sampleVectors(index, it, upper, sampler, stopToken);
+      res.fail()) {
+    return res;
+  }
+
+  auto sample = std::move(sampler).release();
+  std::size_t const sampleCount = sample.size() / def.dimension;
+  // Match how stored vectors are normalized so recall is measured on the same
+  // geometry the index uses.
+  if (def.metric == SimilarityMetric::kCosine) {
+    faiss::fvec_renorm_L2(def.dimension, sampleCount, sample.data());
+  }
+  return sample;
+}
+
 ResultT<std::size_t> VectorIndexTrainer::resolveNLists(
     std::uint64_t numDocsHint) const {
   auto const& nLists = _index.getDefinition().nLists;
@@ -377,7 +427,7 @@ ResultT<std::size_t> VectorIndexTrainer::resolveNLists(
 Result VectorIndexTrainer::shrinkReservoirForSparseScaling(
     std::size_t validSeen, std::size_t reservoirCapacity,
     std::uint64_t expectedReservoirBytes, ResourceUsageScope& memScope,
-    VectorIndexTrainingSampler& sampler) const {
+    VectorIndexSampler& sampler) const {
   auto resolvedNLists = resolveNLists(validSeen);
   if (resolvedNLists.fail()) {
     return std::move(resolvedNLists).result();
@@ -757,30 +807,71 @@ VectorIndexBuilder::VectorIndexBuilder(RocksDBVectorIndex& index,
       _rcoll(static_cast<RocksDBCollection*>(index.collection().getPhysical())),
       _bounds(_rcoll->bounds()) {}
 
-Result VectorIndexBuilder::persistVectorIndexMetadata(
-    VectorIndexMetadata const& metadata) {
-  velocypack::Builder builder;
-  velocypack::serialize(builder, metadata);
-
-  // V1 metadata stays at the legacy slot so older binaries can still read it
-  // after a downgrade. V2 metadata is parked in a separate slot; an old
-  // binary looking at the V1 slot won't find it and will treat the index as
-  // unusable
-  RocksDBKey key;
-  key.constructVectorIndexTrainedData(_index.objectId(),
-                                      metadata.formatVersion);
-  auto value = RocksDBValue::VectorIndexValue(builder.slice());
-
-  auto* vectorCF = RocksDBColumnFamilyManager::get(
-      RocksDBColumnFamilyManager::Family::VectorIndex);
-  rocksdb::WriteOptions wo;
-  auto status = _rootDB->Put(wo, vectorCF, key.string(), value.string());
-  if (!status.ok()) {
-    return Result{TRI_ERROR_INTERNAL,
-                  std::string{"Failed to persist vector index metadata: "} +
-                      status.ToString()};
+ResultT<OperatingPointTable> autoTuneVectorIndex(
+    RocksDBVectorIndex& index, ResourceMonitor& resourceMonitor,
+    AutotuneParams const& params, std::stop_token stopToken) {
+  if (index.faissIndex() == nullptr) {
+    return Result{TRI_ERROR_QUERY_VECTOR_INDEX_NOT_READY,
+                  "vector index has no trained data to autotune"};
   }
-  return {};
+
+  auto const& def = index.getDefinition();
+  auto* rootDB =
+      index.collection().vocbase().engine<RocksDBEngine>().db()->GetRootDB();
+  auto* rcoll =
+      static_cast<RocksDBCollection*>(index.collection().getPhysical());
+
+  // Sample size derived from the requested targetRecall via the Wilson score
+  // interval.
+  auto const sampleSize = wilsonSampleSize(
+      params.targetRecall, kAutoTuneConfidenceZ, kAutoTuneRecallTolerance);
+
+  // Fresh sample from the indexed data: reusing training vectors would bias
+  // recall optimistically (they defined the centroids).
+  ResourceUsageScope sampleScope(
+      resourceMonitor,
+      static_cast<std::uint64_t>(sampleSize) * def.dimension * sizeof(float));
+  BoundedDocumentIterator docIt{rcoll->bounds(), rootDB};
+  auto sample = collectAutoTuneSample(index, *docIt.it, docIt.upper, sampleSize,
+                                      stopToken);
+  if (sample.fail()) {
+    return std::move(sample).result();
+  }
+  if (sample.get().empty()) {
+    return Result{TRI_ERROR_QUERY_VECTOR_INDEX_NOT_READY,
+                  "no vectors available to autotune"};
+  }
+
+  SingleCollectionTransaction trx(
+      transaction::StandaloneContext::create(
+          index.collection().vocbase(),
+          transaction::OperationOriginInternal{"vector index autotune"}),
+      index.collection(), AccessMode::Type::READ);
+  if (auto trxRes = trx.begin(); trxRes.fail()) {
+    return trxRes;
+  }
+
+  RocksDBFaissIteratorContext faissCtx{
+      IteratorContext{.trx = static_cast<transaction::Methods*>(&trx)}};
+  // The sweep mutates search parameters, so tune a copy, not the live index.
+  auto tuningIndex = index.cloneFaissIndex();
+  auto const logContext = std::format(
+      "[shard={}, index={}] ", index.collection().name(), index.id().id());
+  auto table =
+      autoTuneTable(*tuningIndex, sample.get(), resourceMonitor, &faissCtx,
+                    params.R, params.targetRecall, logContext);
+  if (table.fail()) {
+    return std::move(table).result();
+  }
+
+  // Store the table for its topK then persist. The table is a soft tuning
+  // hint, so a failed persist that leaves the new table live until the next
+  // restart is harmless.
+  index.applyTunedTable(table.get());
+  if (auto res = index.persistMetadata(); res.fail()) {
+    return res;
+  }
+  return std::move(table).get();
 }
 
 Result VectorIndexBuilder::build(
@@ -815,14 +906,14 @@ Result VectorIndexBuilder::build(
     _index.resetTrainingState();
     return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
   }
-  auto faissIndexResult = trainer.train(numDocsHint, stopToken);
+  auto trainingResult = trainer.train(numDocsHint, stopToken);
   auto const trainEnd = std::chrono::steady_clock::now();
-  if (faissIndexResult.fail()) {
+  if (trainingResult.fail()) {
     _index.resetTrainingState();
-    return std::move(faissIndexResult).result();
+    return std::move(trainingResult).result();
   }
 
-  auto faissIndex = std::move(faissIndexResult).get();
+  auto faissIndex = std::move(trainingResult).get();
   trainingDuration.count(
       std::chrono::duration<double>(trainEnd - trainStart).count());
 
@@ -831,21 +922,16 @@ Result VectorIndexBuilder::build(
     return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
   }
 
-  LOG_TOPIC("e163b", INFO, Logger::ENGINES)
-      << "[shard=" << _index.collection().name()
-      << ", index=" << _index.id().id() << "] "
+  LOG_VECTOR_BUILD("e163b", INFO, Logger::ENGINES)
       << "Training complete. Ingesting vectors.";
 
   auto trainedData = serializeIndex(*faissIndex);
+  _index.applyTrainingResult(std::move(faissIndex), std::move(trainedData));
 
-  VectorIndexMetadata metadata{.trainedData = trainedData,
-                               .formatVersion = _index.formatVersion()};
-  if (auto res = persistVectorIndexMetadata(metadata); res.fail()) {
+  if (auto res = _index.persistMetadata(); res.fail()) {
     _index.resetTrainingState();
     return res;
   }
-
-  _index.applyTrainingResult(std::move(faissIndex), std::move(trainedData));
   _index.setTrainingState(VectorIndexTrainingState::kTraining,
                           VectorIndexTrainingState::kIngesting);
 
@@ -888,9 +974,7 @@ Result VectorIndexBuilder::build(
   auto const ingestEnd = std::chrono::steady_clock::now();
 
   if (res.fail()) {
-    LOG_TOPIC("e166b", ERR, Logger::ENGINES)
-        << "[shard=" << _index.collection().name()
-        << ", index=" << _index.id().id() << "] "
+    LOG_VECTOR_BUILD("e166b", ERR, Logger::ENGINES)
         << "Vector index fill + WAL catch-up failed: " << res.errorMessage();
     _index.resetTrainingState();
     return res;
@@ -902,12 +986,11 @@ Result VectorIndexBuilder::build(
   // fillIndexBackground returns with the exclusive lock still held.
   // Swap the real index back and transition to kReady before releasing.
   swapGuard.fire();
+
   _index.setTrainingState(VectorIndexTrainingState::kIngesting,
                           VectorIndexTrainingState::kReady);
 
-  LOG_TOPIC("e169c", INFO, Logger::ENGINES)
-      << "[shard=" << _index.collection().name()
-      << ", index=" << _index.id().id() << "] "
+  LOG_VECTOR_BUILD("e169c", INFO, Logger::ENGINES)
       << "Vector index build completed (fill + WAL catch-up).";
 
   return res;
