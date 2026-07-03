@@ -53,6 +53,7 @@
 #include "VocBase/ticks.h"
 
 #include <absl/strings/str_cat.h>
+#include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 
 #include <memory>
@@ -443,10 +444,17 @@ void TraversalNode::replaceAttributeAccess(
     _pruneVariables = std::move(variables);
   }
 
+  LOG_DEVEL << this->id() << "condition replace " << searchVariable->name
+            << " by " << replaceVariable->name;
   if (_condition && self != this) {
+    LOG_DEVEL << this->id() << " is happening";
     _condition->replaceAttributeAccess(searchVariable, attribute,
                                        replaceVariable);
+    VPackBuilder b;
+    _condition->toVelocyPack(b, true);
+    LOG_DEVEL << this->id() << " condition " << b.toJson();
   }
+  LOG_DEVEL << this->id() << "done";
 
   if (_postFilterExpression != nullptr) {
     _postFilterExpression->replaceAttributeAccess(searchVariable, attribute,
@@ -502,12 +510,17 @@ void TraversalNode::replaceAttributeAccess(
 
 /// @brief getVariablesUsedHere
 void TraversalNode::getVariablesUsedHere(VarSet& result) const {
-  for (auto const& condVar : _conditionVariables) {
-    if (condVar != pathOutVariable() && condVar != getTemporaryVariable()) {
-      result.emplace(condVar);
+  LOG_DEVEL << this->id() << "variables used here called";
+  if (_condition != nullptr && _condition->root() != nullptr) {
+    auto re = VarSet{};
+    Ast::getReferencedVariables(_condition->root(), re);
+    for (auto const& condVar : re) {
+      if (condVar != vertexOutVariable() && condVar != edgeOutVariable() &&
+          condVar != pathOutVariable() && condVar != getTemporaryVariable()) {
+        result.emplace(condVar);
+      }
     }
   }
-
   for (auto const& pruneVar : _pruneVariables) {
     if (pruneVar != vertexOutVariable() && pruneVar != edgeOutVariable() &&
         pruneVar != pathOutVariable()) {
@@ -524,6 +537,10 @@ void TraversalNode::getVariablesUsedHere(VarSet& result) const {
 
   if (usesInVariable()) {
     result.emplace(_inVariable);
+  }
+
+  for (auto&& v : result) {
+    LOG_DEVEL << this->id() << " uses " << v->name;
   }
 }
 
@@ -1094,6 +1111,7 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
     if (it != _tmpObjVariable) {
       auto idIt = varInfo.find(it->id);
       TRI_ASSERT(idIt != varInfo.end());
+      LOG_DEVEL << this->id() << " adding condition var " << it->name;
       filterConditionVariables.emplace_back(
           std::make_pair(it, idIt->second.registerId));
       inputRegisters.emplace(idIt->second.registerId);
@@ -1340,6 +1358,10 @@ void TraversalNode::setCondition(
   VarSet varsUsedByCondition;
 
   Ast::getReferencedVariables(condition->root(), varsUsedByCondition);
+
+  VPackBuilder b;
+  condition->toVelocyPack(b, true);
+  LOG_DEVEL << this->id() << " the condition: " << b.toJson();
 
   for (auto const& oneVar : varsUsedByCondition) {
     if ((_vertexOutVariable == nullptr ||
