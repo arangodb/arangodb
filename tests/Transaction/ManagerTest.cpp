@@ -614,7 +614,7 @@ TEST_F(TransactionManagerTest, permission_denied_readonly) {
   arangodb::ExecContextScope execContextScope(classicCtx.execContext);
 
   auto json = arangodb::velocypack::Parser::fromJson(
-      "{ \"collections\":{\"read\": [\"42\"]}}");
+      "{ \"collections\":{\"read\": [\"testCollection\"]}}");
   Result res =
       mgr->ensureManagedTrx(vocbase, tid, json->slice(),
                             transaction::OperationOriginTestCase{}, false)
@@ -624,7 +624,7 @@ TEST_F(TransactionManagerTest, permission_denied_readonly) {
 
   tid = TransactionId::createSingleServer();
   json = arangodb::velocypack::Parser::fromJson(
-      "{ \"collections\":{\"write\": [\"42\"]}}");
+      "{ \"collections\":{\"write\": [\"testCollection\"]}}");
   res = mgr->ensureManagedTrx(vocbase, tid, json->slice(),
                               transaction::OperationOriginTestCase{}, false)
             .waitAndGet();
@@ -646,7 +646,7 @@ TEST_F(TransactionManagerTest, permission_denied_forbidden) {
   arangodb::ExecContextScope execContextScope(classicCtx.execContext);
 
   auto json = arangodb::velocypack::Parser::fromJson(
-      "{ \"collections\":{\"read\": [\"42\"]}}");
+      "{ \"collections\":{\"read\": [\"testCollection\"]}}");
   Result res =
       mgr->ensureManagedTrx(vocbase, tid, json->slice(),
                             transaction::OperationOriginTestCase{}, false)
