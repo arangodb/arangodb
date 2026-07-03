@@ -220,10 +220,11 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
     ASSERT_NE(nullptr, userPtr);
     userPtr->grantDatabase("_system", arangodb::auth::Level::RW);
 
-    EXPECT_FALSE(execContext
-                     ->canUseCollection(vocbase->name(), "testDataSource",
-                                        arangodb::CollectionAccessLevel::Read)
-                     .ok());
+    // Since we have _system RW access, we will have access to this collection!
+    EXPECT_TRUE(execContext
+                    ->canUseCollection(vocbase->name(), "testDataSource",
+                                       arangodb::CollectionAccessLevel::Read)
+                    .ok());
     auto status = grantHandler.execute();
     EXPECT_EQ(arangodb::RestStatus::DONE, status);
     EXPECT_EQ(arangodb::rest::ResponseCode::NOT_FOUND,
@@ -244,10 +245,12 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND ==
                      ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum)
                                    .getNumber<int>()}));
-    EXPECT_FALSE(execContext
-                     ->canUseCollection(vocbase->name(), "testDataSource",
-                                        arangodb::CollectionAccessLevel::Read)
-                     .ok());
+    // Again, since we have RW access to _system, we do have access to the
+    // collection!
+    EXPECT_TRUE(execContext
+                    ->canUseCollection(vocbase->name(), "testDataSource",
+                                       arangodb::CollectionAccessLevel::Read)
+                    .ok());
   }
 
   // test auth missing (revoke)
@@ -337,10 +340,12 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
         });
     ASSERT_FALSE(!logicalCollection);
 
+    // Since we have access to the _system database, we also have access
+    // to the collection:
     EXPECT_TRUE(execContext
                     ->canUseCollection(vocbase->name(), "testDataSource",
                                        arangodb::CollectionAccessLevel::Read)
-                    .fail());
+                    .ok());
     auto status = grantHandler.execute();
     EXPECT_EQ(arangodb::RestStatus::DONE, status);
     EXPECT_EQ(arangodb::rest::ResponseCode::OK, grantResponce.responseCode());
@@ -414,11 +419,12 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
          false == slice.get(arangodb::StaticStrings::Error).getBoolean()));
     // Granting collection-level access sets the Database level to UNDEFINED
     // (see User::grantCollection) after the collection-level access is revoked,
-    // the DB level stays UNDEFINED
+    // the DB level stays UNDEFINED. However, this means due to our RW access
+    // to the _system database, we have access to the collection, too:
     EXPECT_TRUE(execContext
                     ->canUseCollection(vocbase->name(), "testDataSource",
                                        arangodb::CollectionAccessLevel::Read)
-                    .fail());
+                    .ok());
   }
 
   // test auth view (grant)
@@ -446,10 +452,12 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
         });
     ASSERT_FALSE(!logicalView);
 
+    // Our access to the _system database grants us access to the
+    // view:
     EXPECT_TRUE(execContext
                     ->canUseView(vocbase->name(), "testDataSource",
                                  arangodb::ViewAccessLevel::Read)
-                    .fail());
+                    .ok());
     auto status = grantHandler.execute();
     EXPECT_EQ(arangodb::RestStatus::DONE, status);
     EXPECT_EQ(arangodb::rest::ResponseCode::NOT_FOUND,
@@ -470,10 +478,11 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND ==
                      ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum)
                                    .getNumber<int>()}));
+    // Our access to the _system database grants us access to the view:
     EXPECT_TRUE(execContext
                     ->canUseView(vocbase->name(), "testDataSource",
                                  arangodb::ViewAccessLevel::Read)
-                    .fail());
+                    .ok());
   }
 
   // test auth view (revoke)
@@ -506,13 +515,12 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
         });
     ASSERT_FALSE(!logicalView);
 
-    // In Classic auth mode, views use database-level access. Since no
-    // database-level grant is set (only a collection-level grant), the view
-    // is not accessible before or after the (failed) revoke.
+    // In Classic auth mode, views use database-level access. Since we
+    // have RW access to _system, the view is accessible:
     EXPECT_TRUE(execContext
                     ->canUseView(vocbase->name(), "testDataSource",
                                  arangodb::ViewAccessLevel::Read)
-                    .fail());
+                    .ok());
     auto status = revokeHandler.execute();
     EXPECT_EQ(arangodb::RestStatus::DONE, status);
     EXPECT_EQ(arangodb::rest::ResponseCode::NOT_FOUND,
@@ -533,10 +541,11 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND ==
                      ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum)
                                    .getNumber<int>()}));
+    // Our RW access to _system gives us access to the view:
     EXPECT_TRUE(execContext
                     ->canUseView(vocbase->name(), "testDataSource",
                                  arangodb::ViewAccessLevel::Read)
-                    .fail());  // not modified from above
+                    .ok());  // not modified from above
   }
 
   // test auth wildcard (grant)
@@ -564,10 +573,11 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
         });
     ASSERT_FALSE(!logicalCollection);
 
+    // Our access to the _system database grants us access to the view:
     EXPECT_TRUE(execContext
                     ->canUseCollection(vocbase->name(), "testDataSource",
                                        arangodb::CollectionAccessLevel::Read)
-                    .fail());
+                    .ok());
     auto status = grantWildcardHandler.execute();
     EXPECT_EQ(arangodb::RestStatus::DONE, status);
     EXPECT_EQ(arangodb::rest::ResponseCode::OK,
