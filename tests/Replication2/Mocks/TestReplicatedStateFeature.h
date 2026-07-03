@@ -20,7 +20,7 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
-#include "Metrics/FakeRegistry.h"
+#include "Mocks/FakeRegistry.h"
 #include "Replication2/ReplicatedState/ReplicatedStateFeature.h"
 #include "Replication2/ReplicatedState/ReplicatedStateMetrics.h"
 

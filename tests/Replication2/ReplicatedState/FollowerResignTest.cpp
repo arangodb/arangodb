@@ -23,7 +23,7 @@
 
 #include <gtest/gtest.h>
 
-#include "Metrics/FakeRegistry.h"
+#include "Mocks/FakeRegistry.h"
 #include "Replication2/ReplicatedState/ReplicatedState.h"
 #include "Replication2/ReplicatedState/ReplicatedStateImpl.tpp"
 #include "Replication2/ReplicatedState/ReplicatedStateMetrics.h"

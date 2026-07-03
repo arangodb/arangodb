@@ -30,14 +30,11 @@
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/Version.h"
 #include "Scheduler/ISchedulerProvider.h"
-
-#include "Metrics/FakeRegistry.h"
-
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBOptionsProvider.h"
 #include "RocksDBEngine/RocksDBRecoveryManager.h"
 #include "RestServer/IRecoveryCallback.h"
-
+#include "Mocks/FakeRegistry.h"
 #include "Mocks/FakeScheduler.h"
 #include "RocksDBEngine/Mocks.h"
 #include "RocksDBEngine/TempDatabasePathProvider.h"

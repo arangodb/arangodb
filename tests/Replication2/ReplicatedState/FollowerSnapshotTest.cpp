@@ -28,7 +28,7 @@
 #include "Logger/LogMacros.h"
 #include "LogLevels.h"
 #include "Death_Test.h"
-#include "Metrics/FakeRegistry.h"
+#include "Mocks/FakeRegistry.h"
 #include "Replication2/Mocks/FakeFollower.h"
 #include "Replication2/Mocks/FakeReplicatedState.h"
 #include "Replication2/Mocks/PersistedLog.h"

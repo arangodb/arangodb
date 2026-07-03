@@ -30,7 +30,7 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
-#include "Metrics/FakeRegistry.h"
+#include "Mocks/FakeRegistry.h"
 #include "Replication2/Mocks/FakeAsyncExecutor.h"
 #include "Replication2/Mocks/FakeFollowerFactory.h"
 #include "Replication2/Mocks/FakeReplicatedState.h"

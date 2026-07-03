@@ -26,7 +26,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "Metrics/FakeRegistry.h"
+#include "Mocks/FakeRegistry.h"
 #include "Replication2/Mocks/DelayedLogFollower.h"
 #include "Replication2/Mocks/FakeAbstractFollower.h"
 #include "Replication2/Mocks/FakeAsyncExecutor.h"

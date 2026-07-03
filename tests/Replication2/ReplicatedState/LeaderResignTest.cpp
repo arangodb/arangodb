@@ -23,7 +23,7 @@
 
 #include <gtest/gtest.h>
 
-#include "Metrics/FakeRegistry.h"
+#include "Mocks/FakeRegistry.h"
 
 #include "Replication2/Mocks/TestReplicatedStateFeature.h"
 #include "Replication2/ReplicatedLog/TestHelper.h"
