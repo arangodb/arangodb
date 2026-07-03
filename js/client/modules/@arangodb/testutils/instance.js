@@ -1486,26 +1486,28 @@ class instance {
     return ret;
   }
 
-  getRawMetric(tags) {
+  getRawMetric(tags="") {
     return this.toThisInstance(() => {
-      return arango.GET_RAW('/_admin/metrics/' + tags, { 'accept-encoding': 'identity' });
+      return arango.GET_RAW('/_admin/metrics' + tags, { 'accept-encoding': 'identity' });
     });
   }
 
-  getAllMetric(tags) {
+  getAllMetric(tags="") {
     let res = this.getRawMetric(tags);
     if (res.code !== 200) {
       throw new Error(`error fetching metric ${tags} on ${this.name} - ${JSON.stringify(res)}`);
     }
+    //print(res.body)
     return res.body;
   }
 
   getMetricName(text, names) {
+    let me = this;
     function getOneMetric(name) {
       let re = new RegExp("^" + name);
       let matches = text.split('\n').filter((line) => !line.match(/^#/)).filter((line) => line.match(re));
       if (!matches.length) {
-        throw new Error(`Metric ${name} not found`);
+        throw new Error(`Metric ${name} not found in ${me.name}`);
       }
       let res = 0; // Sum up values from all matches
       for(let i = 0; i < matches.length; i+= 1) {
@@ -1526,6 +1528,7 @@ class instance {
 
   getMetric(name) {
     let text = this.getAllMetric('');
+    //print(text)
     return this.getMetricName(text, name);
   }
   
