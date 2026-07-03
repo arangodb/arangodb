@@ -362,10 +362,11 @@ class Ast {
                                        AstNode const* pattern,
                                        AstNode const* quantifier, bool negate);
 
-  /// @brief create an AST node for array ALL|ANY|NONE|AT LEAST =~/!~ expressions
+  /// @brief create an AST node for array ALL|ANY|NONE|AT LEAST =~/!~
+  /// expressions
   AstNode* createNodeArrayRegexOperator(AstNode const* lhs,
-                                      AstNode const* pattern,
-                                      AstNode const* quantifier, bool negate);
+                                        AstNode const* pattern,
+                                        AstNode const* quantifier, bool negate);
 
   /// @brief create an AST expansion node
   AstNode* createNodeExpansion(int64_t, AstNode const*, AstNode const*,
