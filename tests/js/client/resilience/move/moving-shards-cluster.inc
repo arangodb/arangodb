@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertTrue, assertEqual, ArangoAgency, ArangoClusterInfo, GLOBAL, arango */
+/*global assertTrue, assertEqual, ArangoAgency, ArangoClusterInfo, GLOBAL, arango, print */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -266,9 +266,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       // Wait until the server appears in the list of cleanedOutServers:
       var obj;
       while (--count > 0) {
-        print('bbbb')
         obj = getCleanedOutServers();
-        print(obj)
         if (!searchID) {
           if (obj.cleanedServers.length === cleanoutCount) {
             ok = true;
@@ -277,17 +275,15 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
           }
         } else if (obj.cleanedServers.indexOf(searchID) >= 0) {
           ok = true;
-          print(
-              "Success: Server " + searchID + " cleaned out after " + (600 - count) + " seconds");
+          print("Success: Server " + searchID + " cleaned out after " + (600 - count) + " seconds");
           break;
         }
         wait(isCov ? 1.5 : 1.0);
       }
 
       if (!ok) {
-        console.info(
-            "Failed: Server " + searchID + " was not cleaned out. List of cleaned servers: ["
-            + obj.cleanedServers + "]");
+        print("Failed: Server " + searchID + " was not cleaned out. List of cleaned servers: ["
+              + obj.cleanedServers + "]");
         displayAgencyInformation();
       }
 
@@ -296,7 +292,6 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       for (var i = fromCollNr; i <= toCollNr; ++i) {
 
         while (--count > 0) {
-          print("aaaa")
           wait(isCov ? 1.5 : 1.0);
           CI.flush();
           var servers = findCollectionServers(dbn, c[i].name(), replVersion);
@@ -398,7 +393,6 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
     return coord.toThisInstance(() => {
       var body = {"numberOfDBServers": toNum};
       let result = arango.PUT_RAW("/_admin/cluster/numberOfServers", body);
-      print(result)
       if (result.code === 200) {
         return true;
       }
@@ -609,7 +603,6 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
     var count = (isCov)? 1200 : 300; // seconds
     while (--count > 0) {
       var state = supervisionState();
-      print(state)
       if (!state.error &&
           Object.keys(state.ToDo).length === 0 &&
           Object.keys(state.Pending).length === 0) {
@@ -1201,7 +1194,6 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       }
       createSomeCollections(1, 1, 3, useData);
       assertTrue(waitForSynchronousReplication(dbn));
-      print(c[1].name())
       var servers = findCollectionServers(dbn, c[1].name(), replVersion);
       var fromServer = servers[0];
       var cinfo = CI.getCollectionInfo(
