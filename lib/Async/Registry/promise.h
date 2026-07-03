@@ -45,12 +45,11 @@ overloaded(Ts...) -> overloaded<Ts...>;
 
 namespace arangodb::async_registry {
 
-enum class State { Running = 0, Suspended, Resolved, Deleted };
+enum class State { Running = 0, Suspended, Resolved };
 template<typename Inspector>
 auto inspect(Inspector& f, State& x) {
   return f.enumeration(x).values(State::Running, "Running", State::Suspended,
-                                 "Suspended", State::Resolved, "Resolved",
-                                 State::Deleted, "Deleted");
+                                 "Suspended", State::Resolved, "Resolved");
 }
 
 struct PromiseId {
@@ -129,9 +128,6 @@ struct Promise {
         .state = state.load(),
         .thread = running_thread.load(std::memory_order_acquire),
         .source_location = source_location.snapshot()};
-  }
-  auto set_to_deleted() -> void {
-    state.store(State::Deleted, std::memory_order_relaxed);
   }
 
   containers::SharedPtr<basics::ThreadInfo> owning_thread;

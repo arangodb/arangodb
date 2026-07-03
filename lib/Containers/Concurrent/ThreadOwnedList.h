@@ -34,11 +34,6 @@
 
 namespace arangodb::containers {
 
-template<typename T>
-concept CanBeSetToDeleted = requires(T t) {
-  t.set_to_deleted();
-};
-
 /**
    This list is owned by one thread: nodes can only be added on its owning
    thread. But other threads can read the list and mark nodes for deletion.
@@ -60,7 +55,7 @@ concept CanBeSetToDeleted = requires(T t) {
    thread is deleted and all nodes are marked for deletion.
  */
 template<typename T>
-requires HasSnapshot<T> && CanBeSetToDeleted<T>
+requires HasSnapshot<T>
 struct ThreadOwnedList
     : public std::enable_shared_from_this<ThreadOwnedList<T>> {
   using Item = T;
@@ -79,7 +74,7 @@ struct ThreadOwnedList
     std::atomic<Node*> previous = nullptr;
     Node* next_to_free = nullptr;
     // identifies the promise list it belongs to, to be able to mark itself for
-    // deletion
+    // deletion. Is emptied when the node is marked for deletion.
     std::shared_ptr<ThreadOwnedList<T>> list;
   };
 
@@ -143,8 +138,8 @@ struct ThreadOwnedList
   }
 
   /**
-     Executes a function on each node in the list that is not yet deleted
-     (including nodes that are marked for deletion).
+     Executes a function on each node in the list that is not yet
+     marked-for-deletion.
 
      Can be called from any thread. It makes sure that all
      items stay valid during iteration (i.e. are not deleted in the meantime).
@@ -156,8 +151,21 @@ struct ThreadOwnedList
     // (2) - this load synchronizes with store in (1) and (3)
     for (auto current = _head.load(std::memory_order_acquire);
          current != nullptr; current = current->next) {
-      function(current->data.snapshot());
+      if (current->list != nullptr) {
+        function(current->data.snapshot());
+      }
     }
+  }
+
+  auto size() noexcept -> size_t {
+    size_t count = 0;
+    auto guard = std::lock_guard(_mutex);
+    // (2) - this load synchronizes with store in (1) and (3)
+    for (auto current = _head.load(std::memory_order_acquire);
+         current != nullptr; current = current->next) {
+      count++;
+    }
+    return count;
   }
 
   /**
@@ -171,8 +179,6 @@ struct ThreadOwnedList
   auto mark_for_deletion(Node* node) noexcept -> void {
     // makes sure that node is really in this list
     ADB_PROD_ASSERT(node->list.get() == this);
-
-    node->data.set_to_deleted();
 
     // keep a local copy of the shared pointer. This node might be the
     // last of the list.

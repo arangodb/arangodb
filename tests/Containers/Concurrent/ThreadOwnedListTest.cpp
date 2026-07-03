@@ -52,7 +52,6 @@ std::size_t InstanceCounterValue::instanceCounter = 0;
 
 struct NodeData : InstanceCounterValue {
   int number;
-  bool isDeleted = false;
 
   NodeData(int number) : number{number} {}
 
@@ -61,7 +60,6 @@ struct NodeData : InstanceCounterValue {
     bool operator==(Snapshot const&) const = default;
   };
   auto snapshot() -> Snapshot { return Snapshot{.number = number}; }
-  auto set_to_deleted() -> void { isDeleted = true; };
 };
 
 using MyList = ThreadOwnedList<NodeData>;
@@ -142,21 +140,41 @@ TEST_F(ThreadOwnedListTest, iterates_in_another_thread_over_all_promises) {
   registry->mark_for_deletion(third_node);
 }
 
+TEST_F(ThreadOwnedListTest,
+       iterates_only_over_promises_not_marked_for_deletion) {
+  auto registry = MyList::make();
+
+  auto* first_node = registry->add([]() { return NodeData{5}; });
+  auto* second_node = registry->add([]() { return NodeData{9}; });
+  auto* third_node = registry->add([]() { return NodeData{10}; });
+
+  EXPECT_EQ(nodes_in_registry(registry),
+            (std::vector<NodeData::Snapshot>{third_node->data.snapshot(),
+                                             second_node->data.snapshot(),
+                                             first_node->data.snapshot()}));
+
+  registry->mark_for_deletion(second_node);
+
+  EXPECT_EQ(nodes_in_registry(registry),
+            (std::vector<NodeData::Snapshot>{third_node->data.snapshot(),
+                                             first_node->data.snapshot()}));
+
+  // make sure registry is cleaned up
+  registry->mark_for_deletion(first_node);
+  registry->mark_for_deletion(third_node);
+}
+
 TEST_F(ThreadOwnedListTest, marked_promises_are_deleted_in_garbage_collection) {
   auto registry = MyList::make();
   auto* node_to_delete = registry->add([]() { return NodeData{1}; });
   auto* another_node = registry->add([]() { return NodeData{77}; });
+  EXPECT_EQ(registry->size(), 2);
 
   registry->mark_for_deletion(node_to_delete);
-  EXPECT_EQ(nodes_in_registry(registry),
-            (std::vector<NodeData::Snapshot>{another_node->data.snapshot(),
-                                             node_to_delete->data.snapshot()}));
-  EXPECT_TRUE(node_to_delete->data.isDeleted);
-  EXPECT_FALSE(another_node->data.isDeleted);
+  EXPECT_EQ(registry->size(), 2);
 
   registry->garbage_collect();
-  EXPECT_EQ(nodes_in_registry(registry),
-            (std::vector<NodeData::Snapshot>{another_node->data.snapshot()}));
+  EXPECT_EQ(registry->size(), 1);
 
   // make sure registry is cleaned up
   registry->mark_for_deletion(another_node);
