@@ -759,11 +759,16 @@ Result DumpFeature::DumpShardJob::run(
 
 DumpFeature::DumpFeature(application_features::ApplicationServer& server,
                          ClientFeature& client, int& exitCode)
+    : DumpFeature(server, client, exitCode, DumpFeatureOptions{}) {}
+
+DumpFeature::DumpFeature(application_features::ApplicationServer& server,
+                         ClientFeature& client, int& exitCode, Options options)
     : ApplicationFeature{server, *this},
       _client(client),
       _clientManager{client, Logger::DUMP},
       _clientTaskQueue{server, ::processJob},
-      _exitCode{exitCode} {
+      _exitCode{exitCode},
+      _options(std::move(options)) {
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseClient>();
 #ifdef TRI_HAVE_GETRLIMIT

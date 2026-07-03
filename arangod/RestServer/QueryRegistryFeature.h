@@ -43,6 +43,9 @@ class QueryRegistryFeature final
   }
 
   QueryRegistryFeature(application_features::ApplicationServer& server,
+                       metrics::IRegistry& metricsRegistry,
+                       QueryRegistryFeatureOptions options);
+  QueryRegistryFeature(application_features::ApplicationServer& server,
                        metrics::IRegistry& metricsRegistry);
   ~QueryRegistryFeature();
 

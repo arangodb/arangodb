@@ -49,8 +49,15 @@ DECLARE_GAUGE(arangodb_activities_existing, std::uint64_t,
 Feature::Feature(
     application_features::ApplicationServer& server,
     std::shared_ptr<crash_handler::DataSourceRegistry> dataSourceRegistry)
+    : Feature(server, std::move(dataSourceRegistry), FeatureOptions{}) {}
+
+Feature::Feature(
+    application_features::ApplicationServer& server,
+    std::shared_ptr<crash_handler::DataSourceRegistry> dataSourceRegistry,
+    FeatureOptions options)
     : application_features::ApplicationFeature{server, *this},
-      crash_handler::CrashHandlerDataSource(std::move(dataSourceRegistry)) {
+      crash_handler::CrashHandlerDataSource(std::move(dataSourceRegistry)),
+      _options(std::move(options)) {
   startsAfter<metrics::MetricsFeature>();
 }
 

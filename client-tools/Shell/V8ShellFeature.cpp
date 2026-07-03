@@ -139,7 +139,13 @@ namespace arangodb {
 
 V8ShellFeature::V8ShellFeature(application_features::ApplicationServer& server,
                                std::string const& name)
+    : V8ShellFeature(server, name, V8ShellFeatureOptions{}) {}
+
+V8ShellFeature::V8ShellFeature(application_features::ApplicationServer& server,
+                               std::string const& name,
+                               V8ShellFeatureOptions options)
     : ApplicationFeature(server, *this),
+      _options(std::move(options)),
       _removeCopyInstallation(false),
       _name(name),
       _isolate(nullptr) {

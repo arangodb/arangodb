@@ -89,6 +89,22 @@ auto optionToRegex(std::vector<std::string> values, std::string optionName,
 
 }  // namespace
 
+V8SecurityFeature::V8SecurityFeature(
+    application_features::ApplicationServer& server,
+    AllowListStrictness strictness)
+    : V8SecurityFeature(server, strictness, V8SecurityFeatureOptions{}) {}
+
+V8SecurityFeature::V8SecurityFeature(
+    application_features::ApplicationServer& server,
+    AllowListStrictness strictness, V8SecurityFeatureOptions options)
+    : ApplicationFeature{server, *this},
+      _options(std::move(options)),
+      _strictness(strictness) {
+  setOptional(false);
+  startsAfter<TempFeature>();
+  startsAfter<V8PlatformFeature>();
+}
+
 void V8SecurityFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
   V8SecurityOptionsProvider provider;

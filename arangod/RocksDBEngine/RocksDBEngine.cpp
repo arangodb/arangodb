@@ -265,6 +265,23 @@ RocksDBEngine::RocksDBEngine(
     IDatabaseProvider& databaseProvider, IIndexCacheRefill& indexCacheRefill,
     ICacheManagerProvider& cacheManagerProvider,
     ISortingPolicy const& sortingPolicy)
+    : RocksDBEngine(server, optionsProvider, metrics, databasePathProvider,
+                    vectorIndexProvider, flushControl, dumpLimitsProvider,
+                    replicatedLogProvider, rocksDbRecoveryManager,
+                    databaseProvider, indexCacheRefill, cacheManagerProvider,
+                    sortingPolicy, RocksDBEngineOptions{}) {}
+
+RocksDBEngine::RocksDBEngine(
+    application_features::ApplicationServer& server,
+    RocksDBOptionsProvider& optionsProvider, metrics::IRegistry& metrics,
+    IDatabasePathProvider const& databasePathProvider,
+    IVectorIndexProvider const& vectorIndexProvider,
+    IFlushControl& flushControl, IDumpLimitsProvider const& dumpLimitsProvider,
+    replication2::IReplicatedLogProvider* replicatedLogProvider,
+    RocksDBRecoveryManager const& rocksDbRecoveryManager,
+    IDatabaseProvider& databaseProvider, IIndexCacheRefill& indexCacheRefill,
+    ICacheManagerProvider& cacheManagerProvider,
+    ISortingPolicy const& sortingPolicy, RocksDBEngineOptions options)
     : StorageEngine(
           server, kEngineName, name(), typeid(RocksDBEngine),
           std::make_unique<RocksDBIndexFactory>(server, vectorIndexProvider)),
@@ -282,6 +299,7 @@ RocksDBEngine::RocksDBEngine(
       _metrics(metrics),
       _db(nullptr),
       _walAccess(std::make_unique<RocksDBWalAccess>(*this)),
+      _options(std::move(options)),
       _releasedTick(0),
       _useReleasedTick(false),
       _lastHealthCheckSuccessful(false),

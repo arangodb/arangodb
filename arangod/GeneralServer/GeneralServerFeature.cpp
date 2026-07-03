@@ -168,9 +168,15 @@ DECLARE_GAUGE(arangodb_requests_memory_usage, std::uint64_t,
 GeneralServerFeature::GeneralServerFeature(
     application_features::ApplicationServer& server,
     metrics::IRegistry& metricsRegistry)
+    : GeneralServerFeature(server, metricsRegistry, GeneralServerOptions{}) {}
+
+GeneralServerFeature::GeneralServerFeature(
+    application_features::ApplicationServer& server,
+    metrics::IRegistry& metricsRegistry, GeneralServerOptions options)
     : ApplicationFeature{server, *this},
       _currentRequestsSize(
           metricsRegistry.add(arangodb_requests_memory_usage{})),
+      _options(std::move(options)),
       _requestBodySizeHttp1(
           metricsRegistry.add(arangodb_request_body_size_http1{})),
       _requestBodySizeHttp2(

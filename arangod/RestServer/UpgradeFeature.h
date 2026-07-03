@@ -47,6 +47,9 @@ class UpgradeFeature final : public application_features::ApplicationFeature {
   static constexpr std::string_view name() noexcept { return "Upgrade"; }
 
   UpgradeFeature(application_features::ApplicationServer& server, int* result,
+                 std::span<const std::type_index> nonServerFeatures,
+                 UpgradeFeatureOptions options);
+  UpgradeFeature(application_features::ApplicationServer& server, int* result,
                  std::span<const std::type_index> nonServerFeatures);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
