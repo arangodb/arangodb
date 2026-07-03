@@ -265,7 +265,8 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
 
             if (requestedLevel <= effectiveLevel) {
               return {};
-            } else if (effectiveLevel == auth::Level::NONE) {
+            } else if (_request.requestedApiVersion() > 0 &&
+                       effectiveLevel == auth::Level::NONE) {
               // No database access at all: report the view as not found.
               return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
                       "view not accessible: '" + view.name + "' in database '" +
