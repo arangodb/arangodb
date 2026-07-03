@@ -80,7 +80,7 @@ function ArangoSearchOutOfSyncSuite () {
 
       for (let leader of leaders) {
         // break search commit on the DB servers
-        leader.debugShouldFailAt("ArangoSearch::FailOnCommit");
+        leader.debugSetFailAt("ArangoSearch::FailOnCommit");
       }
 
       let docs = [];
@@ -120,7 +120,7 @@ function ArangoSearchOutOfSyncSuite () {
       
       for (let leader of leaders) {
         // break search commit on the DB servers
-        leader.debugShouldFailAt("ArangoSearch::FailQueriesOnOutOfSync");
+        leader.debugSetFailAt("ArangoSearch::FailQueriesOnOutOfSync");
       }
       
       // query must fail because the link is marked as out of sync
