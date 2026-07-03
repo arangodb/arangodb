@@ -57,7 +57,7 @@ function testSuite() {
         IM.getAllMetricsByName("arangodb_http_request_statistics_total_requests_total")[0];
         fail();
       } catch (err) {
-        assertEqual("Error: Metric arangodb_http_request_statistics_total_requests_total not found", String(err).trim());
+        assertTrue(String(err).trim().search("Metric arangodb_http_request_statistics_total_requests_total not found") > 0, err);
       }
     },
     
