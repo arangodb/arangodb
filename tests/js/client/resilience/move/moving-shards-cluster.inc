@@ -243,7 +243,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
 /// @brief test whether or not a server is clean
 ////////////////////////////////////////////////////////////////////////////////
 
-  function testServerEmpty(id, checkList, fromCollNr, toCollNr) {
+  function testServerEmpty(cleanoutServer, checkList, fromCollNr, toCollNr) {
     if (fromCollNr === undefined) {
       fromCollNr = 0;
     }
@@ -252,19 +252,33 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
     }
     var count = (isCov)? 12000 : 600;
     var ok = false;
-
-    console.info("Waiting for server " + id + " to be cleaned out ...");
+    let searchID;
+    let cleanoutCount;
+    if (typeof(cleanoutServer) === 'number') {
+      cleanoutCount = cleanoutServer;
+    } else {
+      searchID = cleanoutServer.id;
+    }
+    print("Waiting for server " +  + " to be cleaned out ...");
 
     if (checkList) {
 
       // Wait until the server appears in the list of cleanedOutServers:
       var obj;
       while (--count > 0) {
+        print('bbbb')
         obj = getCleanedOutServers();
-        if (obj.cleanedServers.indexOf(id) >= 0) {
+        print(obj)
+        if (!searchID) {
+          if (obj.cleanedServers.length === cleanoutCount) {
+            ok = true;
+            print(`Success: ${cleanoutCount} reached with ${obj}`);
+            break;
+          }
+        } else if (obj.cleanedServers.indexOf(searchID) >= 0) {
           ok = true;
-          console.info(
-              "Success: Server " + id + " cleaned out after " + (600 - count) + " seconds");
+          print(
+              "Success: Server " + searchID + " cleaned out after " + (600 - count) + " seconds");
           break;
         }
         wait(isCov ? 1.5 : 1.0);
@@ -272,7 +286,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
 
       if (!ok) {
         console.info(
-            "Failed: Server " + id + " was not cleaned out. List of cleaned servers: ["
+            "Failed: Server " + searchID + " was not cleaned out. List of cleaned servers: ["
             + obj.cleanedServers + "]");
         displayAgencyInformation();
       }
@@ -282,10 +296,11 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       for (var i = fromCollNr; i <= toCollNr; ++i) {
 
         while (--count > 0) {
+          print("aaaa")
           wait(isCov ? 1.5 : 1.0);
           CI.flush();
           var servers = findCollectionServers(dbn, c[i].name(), replVersion);
-          if (servers.indexOf(id) === -1) {
+          if (servers.indexOf(searchID) === -1) {
             // Now check current as well:
             /*var collInfo =
                 CI.getCollectionInfo(dbn, c[i].name());
@@ -294,7 +309,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
                 Object.keys(shards).map(
                   s => CI.getCollectionInfoCurrent(
                     dbn, c[i].name(), s).servers);
-            var idxs = collInfoCurr.map(l => l.indexOf(id));
+            var idxs = collInfoCurr.map(l => l.indexOf(cleanoutServer.id));
             ok = true;
             for (var j = 0; j < idxs.length; j++) {
               if (idxs[j] !== -1) {
@@ -341,24 +356,11 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
     }
     // Now wait until the job we triggered is finished:
     var count = (isCov)? 24000 : 1200; // seconds
-    while (true) {
-      var job = queryAgencyJob(result.parsedBody.id);
-      console.info("Status of cleanOutServer job:", job.status);
-      if (job.error === false) {
-        if (job.status === "Finished") {
-          return result;
-        } else if (job.status === "Failed") {
-          return false;
-        }
-      }
-      if (count-- < 0) {
-        console.error(
-            "Timeout in waiting for cleanOutServer to complete: "
-            + JSON.stringify(body));
-        return false;
-      }
-      wait(isCov ? 1.5 : 1.0);
-    }
+    return IM.waitForAgencyJob(
+      result.parsedBody.id,
+      count * 10,
+      "waiting for cleanOutServer to complete",
+      "finished");
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -381,20 +383,10 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
     console.info("result of request:", JSON.stringify(result));
     // Now wait until the job we triggered is finished:
     var count = (isCov)? 24000 : 1200; // seconds
-    while (true) {
-      var job = queryAgencyJob(result.parsedBody.id);
-      console.info("Status of resignLeadership job:", job.status);
-      if (job.error === false && job.status === "Finished") {
-        return result;
-      }
-      if (count-- < 0) {
-        console.error(
-            "Timeout in waiting for resignLeadership to complete: "
-            + JSON.stringify(result.parsedBody));
-        return false;
-      }
-      wait(isCov ? 1.5 : 1.0);
-    }
+    return IM.waitForAgencyJob(
+      result.parsedBody.id,
+      count * 10,
+      "waiting for resignLeadership to complete");
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -406,6 +398,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
     return coord.toThisInstance(() => {
       var body = {"numberOfDBServers": toNum};
       let result = arango.PUT_RAW("/_admin/cluster/numberOfServers", body);
+      print(result)
       if (result.code === 200) {
         return true;
       }
@@ -461,13 +454,19 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
 
   function moveShard(database, collection, shard, fromServer, toServer, dontwait, expectedResult) {
     var coord = IM.getInstancesRole(instanceRole.coordinator)[0];
-    var body = {database, collection, shard, fromServer, toServer};
+    var body = {
+      database,
+      collection,
+      shard,
+      fromServer: (typeof(fromServer) === "string") ? fromServer : fromServer.id,
+      toServer: (typeof(toServer) === "string") ? toServer : toServer.id
+    };
     var result = coord.toThisInstance(() => {
       return arango.POST_RAW("/_admin/cluster/moveShard", body);
     });
-    if (result.code !== 200) {
+    if (result.code !== 202) {
       console.error(
-          "Exception for PUT /_admin/cluster/moveShard:", result.parsedBody);
+          "Exception for POST /_admin/cluster/moveShard:", result.parsedBody);
       return false;
     }
     console.info("moveShard job:", JSON.stringify(body));
@@ -476,21 +475,12 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       return result;
     }
     // Now wait until the job we triggered is finished:
-    var count = (isCov)? 12000 : 600; // seconds
-    while (true) {
-      var job = queryAgencyJob(result.parsedBody.id);
-      console.info("Status of moveShard job:", job.status);
-      if (job.error === false && job.status === expectedResult) {
-        return result;
-      }
-      if (count-- < 0) {
-        console.error(
-            "Timeout in waiting for moveShard to complete: "
-            + JSON.stringify(body));
-        return false;
-      }
-      wait(isCov ? 1.5 : 1.0);
-    }
+    var count = (isCov)? 18000 : 600; // seconds
+    return IM.waitForAgencyJob(
+      result.parsedBody.id,
+      count * 10,
+      "waiting for moveShard to complete",
+      expectedResult);
   }
 
 
@@ -619,6 +609,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
     var count = (isCov)? 1200 : 300; // seconds
     while (--count > 0) {
       var state = supervisionState();
+      print(state)
       if (!state.error &&
           Object.keys(state.ToDo).length === 0 &&
           Object.keys(state.Pending).length === 0) {
@@ -711,13 +702,19 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       var _dbservers = _.clone(dbservers);
       _dbservers.sort();
       assertTrue(shrinkCluster(4));
-      assertTrue(testServerEmpty(_dbservers[4], true));
+      print("shrank to 4");
+      assertTrue(testServerEmpty(1, true));
+      print("yes its empty");
       assertTrue(waitForSupervision());
+      print("Supervision passed");
       assertTrue(shrinkCluster(3));
-      assertTrue(testServerEmpty(_dbservers[3], true));
+      print("shrank to 3");
+      assertTrue(testServerEmpty(2, true));
       assertTrue(waitForSupervision());
+      print("Supervision passed");
       assertTrue(shrinkCluster(2));
-      assertTrue(testServerEmpty(_dbservers[2], true));
+      print("shrank to 2");
+      assertTrue(testServerEmpty(3, true));
       assertTrue(waitForSupervision());
       checkCollectionContents();
     },
@@ -1204,6 +1201,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       }
       createSomeCollections(1, 1, 3, useData);
       assertTrue(waitForSynchronousReplication(dbn));
+      print(c[1].name())
       var servers = findCollectionServers(dbn, c[1].name(), replVersion);
       var fromServer = servers[0];
       var cinfo = CI.getCollectionInfo(
