@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -24,7 +24,6 @@
 
 #pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Result.h"
 #include "RocksDBEngine/IRecoveryState.h"
 #include "StorageEngine/StorageEngine.h"
@@ -38,28 +37,19 @@ class RocksDBEngine;
 struct IDatabaseProvider;
 struct IRecoveryCallback;
 
-class RocksDBRecoveryManager final
-    : public application_features::ApplicationFeature,
-      public IRecoveryState {
+class RocksDBRecoveryManager final : public IRecoveryState {
  public:
-  static constexpr std::string_view name() { return "RocksDBRecoveryManager"; }
+  RocksDBRecoveryManager(IDatabaseProvider& dbProvider,
+                         IRecoveryCallback& recoveryCallback);
 
-  explicit RocksDBRecoveryManager(
-      application_features::ApplicationServer& server,
-      IDatabaseProvider& dbProvider, IRecoveryCallback& recoveryCallback);
-
-  // must be called before start()
-  void attachEngine(RocksDBEngine& engine) noexcept;
+  void runRecovery(RocksDBEngine& engine);
 
   RecoveryState recoveryState() const noexcept override;
   TRI_voc_tick_t recoveryTick() const noexcept override;
 
-  void start() override;
-
  private:
-  Result parseRocksWAL();
+  Result parseRocksWAL(RocksDBEngine& engine);
 
-  RocksDBEngine* _engine{nullptr};
   IDatabaseProvider& _dbProvider;
   IRecoveryCallback& _recoveryCallback;
   // release-stores synchronize with acquire reads in recoveryState()

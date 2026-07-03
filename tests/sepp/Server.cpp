@@ -268,16 +268,12 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
   _server.addFeature<HotBackupFeature>();
   _server.addFeature<EncryptionFeature>();
 #endif
-  auto& rocksdbRecovery =
-      _server.addFeature<RocksDBRecoveryManager>(database, database);
-  auto& rocksdbEngine = _server.addFeature<RocksDBEngine>(
-      rocksdbRecovery, _optionsProvider, metrics, databasePath, vectorIndex,
-      flush, dumpLimits,
+  _server.addFeature<RocksDBEngine>(
+      _optionsProvider, metrics, databasePath, vectorIndex, flush, dumpLimits,
       replication2::EnableReplication2
           ? &_server.getFeature<ReplicatedLogFeature>()
           : nullptr,
-      database, rocksdbCacheRefill, cacheManager, agency);
-  rocksdbRecovery.attachEngine(rocksdbEngine);
+      database, database, rocksdbCacheRefill, cacheManager, agency);
 
   _server
       .addFeature<replication2::replicated_state::ReplicatedStateAppFeature>();

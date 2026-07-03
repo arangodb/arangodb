@@ -24,8 +24,9 @@
 
 #pragma once
 
-#include "RocksDBEngine/IRecoveryState.h"
+#include "RestServer/IRecoveryCallback.h"
 #include "RocksDBEngine/RocksDBEngineOptions.h"
+#include "RocksDBEngine/RocksDBRecoveryManager.h"
 
 #include <chrono>
 #include <deque>
@@ -38,8 +39,6 @@
 #include <tuple>
 #include <unordered_map>
 #include <vector>
-
-#include <rocksdb/types.h>
 
 #include "Basics/ReadWriteLock.h"
 #include "Basics/VelocyPackHelper.h"
@@ -177,7 +176,6 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
 
   // create the storage engine
   RocksDBEngine(application_features::ApplicationServer& server,
-                IRecoveryState& recovery,
                 RocksDBOptionsProvider& optionsProvider,
                 metrics::IRegistry& metrics,
                 IDatabasePathProvider const& databasePathProvider,
@@ -186,6 +184,7 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
                 IDumpLimitsProvider const& dumpLimitsProvider,
                 replication2::IReplicatedLogProvider* replicatedLogProvider,
                 IDatabaseProvider& databaseProvider,
+                IRecoveryCallback& recoveryCallback,
                 IIndexCacheRefill& indexCacheRefill,
                 ICacheManagerProvider& cacheManagerProvider,
                 ISortingPolicy const& sortingPolicy);
@@ -305,11 +304,11 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
 
   // wal in recovery
   RecoveryState recoveryState() noexcept override {
-    return _recovery.recoveryState();
+    return _recoveryManager.recoveryState();
   }
 
   TRI_voc_tick_t recoveryTick() noexcept override {
-    return _recovery.recoveryTick();
+    return _recoveryManager.recoveryTick();
   }
 
   /// @brief disallow purging of WAL files even if the archive gets too big
@@ -631,7 +630,7 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   }
 
  private:
-  IRecoveryState& _recovery;
+  RocksDBRecoveryManager _recoveryManager;
   IDatabasePathProvider const& _databasePathProvider;
   IVectorIndexProvider const& _vectorIndexProvider;
   IFlushControl& _flushControl;

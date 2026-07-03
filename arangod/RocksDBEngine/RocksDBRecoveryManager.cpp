@@ -24,7 +24,6 @@
 
 #include "RocksDBRecoveryManager.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
 #include "Basics/NumberUtils.h"
@@ -38,7 +37,6 @@
 #include "Logger/LogMacros.h"
 #include "RestServer/IDatabaseProvider.h"
 #include "RestServer/IRecoveryCallback.h"
-#include "RestServer/ServerIdFeature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -66,27 +64,11 @@
 
 #include <absl/cleanup/cleanup.h>
 
-using namespace arangodb::application_features;
-
 namespace arangodb {
 
 RocksDBRecoveryManager::RocksDBRecoveryManager(
-    application_features::ApplicationServer& server,
     IDatabaseProvider& dbProvider, IRecoveryCallback& recoveryCallback)
-    : application_features::ApplicationFeature{server, *this},
-      _dbProvider(dbProvider),
-      _recoveryCallback(recoveryCallback) {
-  setOptional(true);
-  startsAfter<RocksDBEngine>();
-  // implies DatabaseFeature + SystemDatabaseFeature ordering
-  startsAfter<ServerIdFeature>();
-
-  onlyEnabledWith<RocksDBEngine>();
-}
-
-void RocksDBRecoveryManager::attachEngine(RocksDBEngine& engine) noexcept {
-  _engine = &engine;
-}
+    : _dbProvider(dbProvider), _recoveryCallback(recoveryCallback) {}
 
 RecoveryState RocksDBRecoveryManager::recoveryState() const noexcept {
   return _recoveryState.load(std::memory_order_acquire);
@@ -96,13 +78,10 @@ TRI_voc_tick_t RocksDBRecoveryManager::recoveryTick() const noexcept {
   return _currentSequenceNumber.load(std::memory_order_relaxed);
 }
 
-void RocksDBRecoveryManager::start() {
-  TRI_ASSERT(isEnabled());
-  TRI_ASSERT(_engine != nullptr);
-
+void RocksDBRecoveryManager::runRecovery(RocksDBEngine& engine) {
   _recoveryState.store(RecoveryState::IN_PROGRESS, std::memory_order_release);
 
-  auto res = parseRocksWAL();
+  auto res = parseRocksWAL(engine);
   if (res.fail()) {
     LOG_TOPIC("be0ce", FATAL, Logger::ENGINES)
         << "failed during rocksdb WAL recovery: " << res.errorMessage();
@@ -615,33 +594,33 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
 };
 
 /// parse the WAL with the above handler parser class
-Result RocksDBRecoveryManager::parseRocksWAL() {
+Result RocksDBRecoveryManager::parseRocksWAL(RocksDBEngine& engine) {
   Result shutdownRv;
 
   Result res = basics::catchToResult([&]() -> Result {
-    auto db = _engine->db();
+    auto db = engine.db();
 
     Result rv;
-    for (auto& helper : _engine->recoveryHelpers()) {
+    for (auto& helper : engine.recoveryHelpers()) {
       helper->prepare();
     }
     auto helpersCleanup = absl::Cleanup{[&]() noexcept {
-      for (auto& helper : _engine->recoveryHelpers()) {
+      for (auto& helper : engine.recoveryHelpers()) {
         helper->unprepare();
       }
     }};
 
     rocksdb::SequenceNumber earliest =
-        _engine->settingsManager()->earliestSeqNeeded();
-    auto recoveryStartSequence = std::min(earliest, _engine->releasedTick());
+        engine.settingsManager()->earliestSeqNeeded();
+    auto recoveryStartSequence = std::min(earliest, engine.releasedTick());
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-    _engine->recoveryStartSequence(recoveryStartSequence);
+    engine.recoveryStartSequence(recoveryStartSequence);
 #endif
 
     auto latestSequenceNumber = db->GetLatestSequenceNumber();
 
-    if (_engine->dbExisted()) {
+    if (engine.dbExisted()) {
       size_t filesActive = 0;
       size_t filesInArchive = 0;
       try {
@@ -668,11 +647,12 @@ Result RocksDBRecoveryManager::parseRocksWAL() {
     }
 
     // Tell the WriteBatch reader the transaction markers to look for
-    WBReader handler(*_engine, _dbProvider, recoveryStartSequence,
+    TRI_ASSERT(_currentSequenceNumber == 0);
+    WBReader handler(engine, _dbProvider, recoveryStartSequence,
                      latestSequenceNumber, _currentSequenceNumber);
 
     // prevent purging of WAL files while we are in here
-    RocksDBFilePurgePreventer purgePreventer(_engine->disallowPurging());
+    RocksDBFilePurgePreventer purgePreventer(engine.disallowPurging());
 
     std::unique_ptr<rocksdb::TransactionLogIterator> iterator;
     rocksdb::Status s =

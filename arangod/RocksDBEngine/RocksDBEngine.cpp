@@ -24,6 +24,7 @@
 
 #include "RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBEngineOptionsProvider.h"
+#include "RestServer/IRecoveryCallback.h"
 
 #include <atomic>
 #include <filesystem>
@@ -255,19 +256,20 @@ RocksDBFilePurgeEnabler::RocksDBFilePurgeEnabler(
 
 // create the storage engine
 RocksDBEngine::RocksDBEngine(
-    application_features::ApplicationServer& server, IRecoveryState& recovery,
+    application_features::ApplicationServer& server,
     RocksDBOptionsProvider& optionsProvider, metrics::IRegistry& metrics,
     IDatabasePathProvider const& databasePathProvider,
     IVectorIndexProvider const& vectorIndexProvider,
     IFlushControl& flushControl, IDumpLimitsProvider const& dumpLimitsProvider,
     replication2::IReplicatedLogProvider* replicatedLogProvider,
-    IDatabaseProvider& databaseProvider, IIndexCacheRefill& indexCacheRefill,
+    IDatabaseProvider& databaseProvider, IRecoveryCallback& recoveryCallback,
+    IIndexCacheRefill& indexCacheRefill,
     ICacheManagerProvider& cacheManagerProvider,
     ISortingPolicy const& sortingPolicy)
     : StorageEngine(
           server, kEngineName, name(), typeid(RocksDBEngine),
           std::make_unique<RocksDBIndexFactory>(server, vectorIndexProvider)),
-      _recovery(recovery),
+      _recoveryManager(databaseProvider, recoveryCallback),
       _databasePathProvider(databasePathProvider),
       _vectorIndexProvider(vectorIndexProvider),
       _flushControl(flushControl),
@@ -929,6 +931,8 @@ void RocksDBEngine::start() {
   if (!systemDatabaseExists()) {
     addSystemDatabase();
   }
+
+  _recoveryManager.runRecovery(*this);
 
   // to populate initial health check data
   HealthData hd = healthCheck();

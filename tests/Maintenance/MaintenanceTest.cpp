@@ -60,7 +60,6 @@
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBIndexCacheRefillFeature.h"
 #include "RocksDBEngine/RocksDBOptionFeature.h"
-#include "RocksDBEngine/RocksDBRecoveryManager.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Statistics/StatisticsFeature.h"
 #include "VocBase/LogicalCollection.h"
@@ -519,7 +518,6 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
   int _dummy;
   std::shared_ptr<options::ProgramOptions> po;
   basics::SharedPRNG sharedPRNG;
-  // declared before 'as' so the engine outlives the recovery manager inside it
   std::unique_ptr<RocksDBEngine> engine;
   ArangodServer as;
   containers::FlatHashSet<DatabaseID> makeDirty;
@@ -565,13 +563,10 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
     auto* replicatedLogFeature = replication2::EnableReplication2
                                      ? &as.addFeature<ReplicatedLogFeature>()
                                      : nullptr;
-    auto& recoveryManager =
-        as.addFeature<RocksDBRecoveryManager>(dbFeature, dbFeature);
     engine = std::make_unique<RocksDBEngine>(
-        as, recoveryManager, roOptions, metrics, dbpath, vectorIndex, flush,
-        dumpLimits, replicatedLogFeature, dbFeature,
+        as, roOptions, metrics, dbpath, vectorIndex, flush, dumpLimits,
+        replicatedLogFeature, dbFeature, dbFeature,
         rocksDbIndexCacheRefillFeature, cacheManagerFeature, agencyFeature);
-    recoveryManager.attachEngine(*engine);
     dbFeature.setEngineTesting(engine.get());
   }
 
