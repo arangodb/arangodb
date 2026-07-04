@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -18,34 +18,28 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
-#include "Cache/CacheOptionsProvider.h"
+#include <memory>
+#include <vector>
 
-namespace arangodb {
+#include "Metrics/IRegistry.h"
 
-class CacheOptionsFeature final
-    : public application_features::ApplicationFeature,
-      public CacheOptionsProvider {
- public:
-  static constexpr std::string_view name() { return "CacheOptions"; }
+namespace arangodb::tests {
 
-  explicit CacheOptionsFeature(application_features::ApplicationServer& server,
-                               CacheOptions options);
-  explicit CacheOptionsFeature(application_features::ApplicationServer& server);
-  ~CacheOptionsFeature() = default;
-
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
-
-  CacheOptions getOptions() const override final;
+// Minimal IRegistry implementation for tests. Keeps registered metric objects
+// alive so that the references handed out by add() remain valid.
+struct MetricsCollector : metrics::IRegistry {
+  std::shared_ptr<metrics::Metric> doAdd(metrics::Builder& builder) override {
+    auto metric = builder.build();
+    _metrics.emplace_back(metric);
+    return metric;
+  }
 
  private:
-  CacheOptions _options;
+  std::vector<std::shared_ptr<metrics::Metric>> _metrics;
 };
 
-}  // namespace arangodb
+}  // namespace arangodb::tests

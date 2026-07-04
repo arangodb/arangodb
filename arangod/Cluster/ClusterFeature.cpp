@@ -70,7 +70,13 @@ DECLARE_HISTOGRAM(arangodb_agencycomm_request_time_msec, ClusterFeatureScale,
 
 ClusterFeature::ClusterFeature(ApplicationServer& server,
                                metrics::IRegistry& metricsRegistry)
+    : ClusterFeature(server, metricsRegistry, ClusterOptions{}) {}
+
+ClusterFeature::ClusterFeature(ApplicationServer& server,
+                               metrics::IRegistry& metricsRegistry,
+                               ClusterOptions options)
     : application_features::ApplicationFeature{server, *this},
+      _options(std::move(options)),
       _metricsRegistry(metricsRegistry),
       _agency_comm_request_time_ms(
           _metricsRegistry.add(arangodb_agencycomm_request_time_msec{})) {

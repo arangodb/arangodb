@@ -60,21 +60,7 @@ class ClientFeature final : public HttpEndpointProvider {
   ClientFeature(application_features::ApplicationServer& server,
                 bool allowJwtSecret, size_t maxNumEndpoints = 1,
                 double connectionTimeout = DEFAULT_CONNECTION_TIMEOUT,
-                double requestTimeout = DEFAULT_REQUEST_TIMEOUT)
-      : ClientFeature{server,
-                      server.getFeature<CommunicationFeaturePhase>(),
-                      typeid(HttpEndpointProvider),
-                      allowJwtSecret,
-                      maxNumEndpoints,
-                      connectionTimeout,
-                      requestTimeout} {
-    if (server.hasFeature<ShellConsoleFeature>()) {
-      _console = &server.getFeature<ShellConsoleFeature>();
-    }
-
-    startsAfter<CommunicationFeaturePhase>();
-    startsAfter<GreetingsFeaturePhase>();
-  }
+                double requestTimeout = DEFAULT_REQUEST_TIMEOUT);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -145,9 +131,8 @@ class ClientFeature final : public HttpEndpointProvider {
  private:
   ClientFeature(ApplicationServer& server, CommunicationFeaturePhase& comm,
                 std::type_index registration, bool allowJwtSecret,
-                size_t maxNumEndpoints = 1,
-                double connectionTimeout = DEFAULT_CONNECTION_TIMEOUT,
-                double requestTimeout = DEFAULT_REQUEST_TIMEOUT);
+                size_t maxNumEndpoints, double connectionTimeout,
+                double requestTimeout, ClientFeatureOptions options);
 
   void readPassword();
   void readJwtSecret();

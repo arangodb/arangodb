@@ -38,7 +38,15 @@ namespace arangodb {
 VectorIndexFeature::VectorIndexFeature(
     application_features::ApplicationServer& server,
     DatabaseFeature& databaseFeature)
-    : ApplicationFeature{server, *this}, _databaseFeature{databaseFeature} {
+    : VectorIndexFeature(server, databaseFeature, VectorIndexFeatureOptions{}) {
+}
+
+VectorIndexFeature::VectorIndexFeature(
+    application_features::ApplicationServer& server,
+    DatabaseFeature& databaseFeature, VectorIndexFeatureOptions options)
+    : ApplicationFeature{server, *this},
+      _databaseFeature{databaseFeature},
+      _options(std::move(options)) {
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseServer>();
 }

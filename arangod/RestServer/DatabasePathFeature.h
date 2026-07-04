@@ -35,6 +35,8 @@ class DatabasePathFeature final
  public:
   static constexpr std::string_view name() { return "DatabasePath"; }
 
+  explicit DatabasePathFeature(application_features::ApplicationServer& server,
+                               DatabasePathFeatureOptions options);
   explicit DatabasePathFeature(application_features::ApplicationServer& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;

@@ -112,7 +112,14 @@ void StorageUsageTracker::decreaseUsage(std::uint64_t value) noexcept {
 
 TemporaryStorageFeature::TemporaryStorageFeature(
     application_features::ApplicationServer& server)
-    : ApplicationFeature{server, *this}, _cleanedUpDirectory(false) {
+    : TemporaryStorageFeature(server, TemporaryStorageFeatureOptions{}) {}
+
+TemporaryStorageFeature::TemporaryStorageFeature(
+    application_features::ApplicationServer& server,
+    TemporaryStorageFeatureOptions options)
+    : ApplicationFeature{server, *this},
+      _options(std::move(options)),
+      _cleanedUpDirectory(false) {
   startsAfter<RocksDBEngine>();
 }
 

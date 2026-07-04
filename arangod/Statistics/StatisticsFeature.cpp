@@ -31,7 +31,6 @@
 #include "Basics/NumberOfCores.h"
 #include "Basics/PhysicalMemory.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/StringUtils.h"
 #include "Basics/application-exit.h"
 #include "Basics/process-utils.h"
 #include "Basics/system-functions.h"
@@ -57,7 +56,6 @@
 #include "Statistics/ConnectionStatistics.h"
 #include "Statistics/Descriptions.h"
 #include "Statistics/RequestStatistics.h"
-#include "Statistics/ServerStatistics.h"
 #include "Statistics/StatisticsWorker.h"
 #include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
@@ -627,13 +625,19 @@ class StatisticsThread final : public ServerThread {
 
 StatisticsFeature::StatisticsFeature(
     application_features::ApplicationServer& server,
-    metrics::MetricsFeature& metrics)
+    metrics::IRegistry& registry)
+    : StatisticsFeature(server, registry, StatisticsFeatureOptions{}) {}
+
+StatisticsFeature::StatisticsFeature(
+    application_features::ApplicationServer& server,
+    metrics::IRegistry& registry, StatisticsFeatureOptions options)
     : application_features::ApplicationFeature{server, *this},
+      _options(std::move(options)),
       _descriptions(server),
       _requestStatisticsMemoryUsage{
-          metrics.add(arangodb_request_statistics_memory_usage{})},
+          registry.add(arangodb_request_statistics_memory_usage{})},
       _connectionStatisticsMemoryUsage{
-          metrics.add(arangodb_connection_statistics_memory_usage{})} {
+          registry.add(arangodb_connection_statistics_memory_usage{})} {
   setOptional(true);
   startsAfter<AqlFeaturePhase>();
   startsAfter<NetworkFeature>();
@@ -900,9 +904,6 @@ void StatisticsFeature::toPrometheus(std::string& result, double now,
            static_cast<double>(PhysicalMemory::getValue());
   }
 
-  ServerStatistics const& serverInfo =
-      server().getFeature<metrics::MetricsFeature>().serverStatistics();
-
   // processStatistics()
   appendMetric(result, std::to_string(info._minorPageFaults), "minorPageFaults",
                globals, ensureWhitespace);
@@ -928,8 +929,8 @@ void StatisticsFeature::toPrometheus(std::string& result, double now,
                globals, ensureWhitespace);
   appendMetric(result, std::to_string(PhysicalMemory::getValue()),
                "physicalSize", globals, ensureWhitespace);
-  appendMetric(result, std::to_string(serverInfo.uptime()), "uptime", globals,
-               ensureWhitespace);
+  appendMetric(result, std::to_string(metrics::MetricsFeature::serverUptime()),
+               "uptime", globals, ensureWhitespace);
   appendMetric(result, std::to_string(NumberOfCores::getValue()), "cores",
                globals, ensureWhitespace);
 
