@@ -427,10 +427,10 @@ arangodb::Result StorageEngineMock::handleSyncKeys(
   return arangodb::Result();
 }
 
-arangodb::EngineState StorageEngineMock::recoveryState() {
+arangodb::EngineState StorageEngineMock::recoveryState() noexcept {
   return recoveryStateResult;
 }
-TRI_voc_tick_t StorageEngineMock::recoveryTick() {
+TRI_voc_tick_t StorageEngineMock::recoveryTick() noexcept {
   if (recoveryTickCallback) {
     recoveryTickCallback();
   }

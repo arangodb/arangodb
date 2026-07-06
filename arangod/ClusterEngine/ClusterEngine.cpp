@@ -209,12 +209,12 @@ Result ClusterEngine::dropDatabase(TRI_vocbase_t& database) {
 }
 
 // current recovery state
-EngineState ClusterEngine::recoveryState() {
+EngineState ClusterEngine::recoveryState() noexcept {
   return EngineState::running;  // never in recovery
 }
 
 // current recovery tick
-TRI_voc_tick_t ClusterEngine::recoveryTick() {
+TRI_voc_tick_t ClusterEngine::recoveryTick() noexcept {
   return 0;  // never in recovery
 }
 

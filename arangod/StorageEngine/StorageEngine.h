@@ -206,10 +206,10 @@ class StorageEngine : public application_features::ApplicationFeature {
   bool inRecovery();
 
   /// @brief current recovery state
-  virtual EngineState recoveryState() = 0;
+  virtual EngineState recoveryState() noexcept = 0;
 
   /// @brief current recovery tick
-  virtual TRI_voc_tick_t recoveryTick() = 0;
+  virtual TRI_voc_tick_t recoveryTick() noexcept = 0;
 
   virtual auto dropReplicatedState(
       TRI_vocbase_t&,

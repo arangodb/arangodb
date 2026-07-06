@@ -185,8 +185,8 @@ class StorageEngineMock : private StorageEngineMockBase,
   arangodb::Result handleSyncKeys(arangodb::DatabaseInitialSyncer& syncer,
                                   arangodb::LogicalCollection& col,
                                   std::string const& keysId) override;
-  arangodb::EngineState recoveryState() override;
-  TRI_voc_tick_t recoveryTick() override;
+  arangodb::EngineState recoveryState() noexcept override;
+  TRI_voc_tick_t recoveryTick() noexcept override;
 
   arangodb::Result lastLogger(
       TRI_vocbase_t& vocbase, uint64_t tickStart, uint64_t tickEnd,

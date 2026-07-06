@@ -107,8 +107,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
   uint64_t _entriesScanned;
   // last document removed
   RevisionId _lastRemovedDocRid = RevisionId::none();
-  // start of batch sequence number (currently only set, but not read back -
-  // can be used for debugging later)
+  // start of batch sequence number; used to gate rangeBegin initialization
   rocksdb::SequenceNumber _batchStartSequence;
   // current sequence number (single-threaded; engine notified via
   // _tickObserver)
@@ -133,9 +132,9 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
         _entriesScanned(0),
         _lastRemovedDocRid(0),
         _batchStartSequence(0),
+        _tickObserver(tickObserver),
         _engine(engine),
-        _dbProvider(dbProvider),
-        _tickObserver(tickObserver) {}
+        _dbProvider(dbProvider) {}
 
   void startNewBatch(rocksdb::SequenceNumber startSequence) {
     TRI_ASSERT(_currentSequence <= startSequence);
