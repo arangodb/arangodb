@@ -1,0 +1,54 @@
+Source: arangodb3
+Section: database
+Priority: optional
+Maintainer: ArangoDB GmbH <info@arangodb.com>
+Build-Depends: debhelper (>= 9), docker-ce
+
+Package: arangodb3
+Architecture: @ARCHITECTURE@
+Depends: ${misc:Depends}
+Conflicts: arangodb3-client, arangodb3e-client, arangodb3e
+Description: a scalable graph database system to drive value from connected data,
+ faster. Native graphs, an integrated search engine, and JSON support, via a
+ single query language. ArangoDB runs on-prem, in the cloud - anywhere.
+ .
+ Copyright: 2012-2013 by triAGENS GmbH
+ Copyright: 2014-2024 by ArangoDB GmbH
+ ArangoDB Software
+ www.arangodb.com
+
+Package: arangodb3-client
+Architecture: @ARCHITECTURE@
+Depends: ${misc:Depends}
+Conflicts: arangodb3, arangodb3e, arangodb3e-client
+Description: stand-alone shell
+ ArangoDB is a scalable graph database system to drive value from connected data,
+ faster. Native graphs, an integrated search engine, and JSON support, via a
+ single query language. ArangoDB runs on-prem, in the cloud - anywhere.
+ .
+ Copyright: 2012-2013 by triAGENS GmbH
+ Copyright: 2014-2024 by ArangoDB GmbH
+ ArangoDB Software
+ www.arangodb.com
+
+Package: arangodb3-dbg
+Architecture: @ARCHITECTURE@
+Section: debug
+Priority: extra
+Conflicts:
+    arangodb3e,
+    arangodb3e-client,
+    arangodb3e-dbg,
+    arangodb3 (<< ${binary:Version}),
+    arangodb3 (>> ${binary:Version}),
+    arangodb3-client (<< ${binary:Version}),
+    arangodb3-client (>> ${binary:Version})
+Pre-Depends:
+    arangodb3 (= ${binary:Version}) | arangodb3-client (= ${binary:Version}),
+    ${misc:Depends}
+Description: debugging symbols for arangodb
+ ArangoDB is a scalable graph database system to drive value from connected data,
+ faster. Native graphs, an integrated search engine, and JSON support, via a
+ single query language. ArangoDB runs on-prem, in the cloud - anywhere.
+ .
+ This package contains the debugging symbols.

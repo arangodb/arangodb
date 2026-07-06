@@ -3,7 +3,7 @@
 # Source this file; do not execute it directly.
 #
 # Usage:
-#   source scripts/oskar.bash
+#   source scripts/ci/helpers.bash
 #   set_nightly_version /path/to/CMakeLists.txt   # modifies file in-place,
 #                                                 # then calls find_arangodb_version
 #   # All ARANGODB_* and DOCKER_TAG variables are now exported.
@@ -96,9 +96,12 @@ find_arangodb_version() {
   ARANGODB_DEBIAN_REVISION="1"
 
   # RPM: upstream = plain version only (no release suffix);
-  # revision = 0.1 for pre-releases so they sort before the stable -1.
+  # revision sorts pre-releases before the stable -1: devel = 0.1,
+  # nightly = 0.2 (matching oskar), stable = 1.
   ARANGODB_RPM_UPSTREAM="${ARANGODB_PLAIN_VERSION}"
-  if [ -n "${ARANGODB_VERSION_RELEASE_TYPE}" ]; then
+  if [ "${ARANGODB_VERSION_RELEASE_TYPE}" = "nightly" ]; then
+    ARANGODB_RPM_REVISION="0.2"
+  elif [ -n "${ARANGODB_VERSION_RELEASE_TYPE}" ]; then
     ARANGODB_RPM_REVISION="0.1"
   else
     ARANGODB_RPM_REVISION="1"
@@ -150,9 +153,9 @@ find_arangodb_version() {
 # ---------------------------------------------------------------------------
 # set_nightly_version [<CMakeLists.txt>]
 #
-# Modifies CMakeLists.txt in-place to turn a devel tree into a nightly build:
-#   ARANGODB_VERSION_RELEASE_TYPE   "devel"  →  "nightly"
-#   ARANGODB_VERSION_RELEASE_NUMBER ""       →  YYYYMMDD
+# Modifies CMakeLists.txt in-place to turn any tree into a nightly build:
+#   ARANGODB_VERSION_RELEASE_TYPE   <any>    →  "nightly"
+#   ARANGODB_VERSION_RELEASE_NUMBER <any>    →  YYYYMMDD
 #
 # Defaults to ../CMakeLists.txt relative to this script when no path given.
 # Calls find_arangodb_version afterwards so all ARANGODB_* variables are
@@ -167,13 +170,78 @@ set_nightly_version() {
     cmake_file="${_default_cmake}"
   fi
 
+  # NIGHTLY_DATE lets CI pin one date for all jobs of a workflow,
+  # so builds spanning midnight still produce a single version.
   local date_str
-  date_str="$(date +%Y%m%d)"
+  date_str="${NIGHTLY_DATE:-$(date +%Y%m%d)}"
 
+  # Like oskar's setNightlyVersion: force "nightly" over ANY prior release
+  # type (devel, rc, beta, or stable's "") so a nightly run of a release
+  # branch can never produce stable-looking artifacts.
   sed -i \
-    -e "s/set(ARANGODB_VERSION_RELEASE_TYPE \"devel\")/set(ARANGODB_VERSION_RELEASE_TYPE \"nightly\")/" \
-    -e "s/set(ARANGODB_VERSION_RELEASE_NUMBER \"\")/set(ARANGODB_VERSION_RELEASE_NUMBER \"${date_str}\")/" \
+    -e "s/set(ARANGODB_VERSION_RELEASE_TYPE .*/set(ARANGODB_VERSION_RELEASE_TYPE \"nightly\")/" \
+    -e "s/set(ARANGODB_VERSION_RELEASE_NUMBER .*/set(ARANGODB_VERSION_RELEASE_NUMBER \"${date_str}\")/" \
     "${cmake_file}"
 
   find_arangodb_version "${cmake_file}"
+}
+
+# ---------------------------------------------------------------------------
+# sourceInfo.log / sourceInfo.json helpers
+#
+# Bash ports of oskar's initSourceInfo / setupSourceInfo / convertSItoJSON.
+# The former "oskar" field is now called "CI" and identifies the CI run that
+# produced the artifacts. The log lives at
+# ${SOURCE_INFO_DIR:-.}/sourceInfo.log; the JSON twin is regenerated on every
+# update.
+#
+#   init_source_info [<ci-field-value>]
+#   setup_source_info <field> <value>     # field: VERSION|Community|Starter|Enterprise|Rclone|CI
+# ---------------------------------------------------------------------------
+convert_source_info_to_json() {
+  local dir="${SOURCE_INFO_DIR:-.}"
+  local log="${dir}/sourceInfo.log"
+  [ -f "${log}" ] || return 0
+
+  local fields=""
+  local var val
+  while IFS= read -r line; do
+    var="$(echo "${line}" | cut -f1 -d ':')"
+    case "${var}" in
+      CI|VERSION|Community|Starter|Enterprise|Rclone)
+        val="$(echo "${line}" | cut -f2 -d ' ')"
+        if [ -n "${val}" ]; then
+          fields="${fields:+${fields},$'\n'}  \"${var}\":\"${val}\""
+        fi
+        ;;
+    esac
+  done < "${log}"
+
+  if [ -n "${fields}" ]; then
+    echo "convert ${log} to ${dir}/sourceInfo.json"
+    printf '{\n%s\n}' "${fields}" > "${dir}/sourceInfo.json"
+  fi
+}
+
+init_source_info() {
+  local dir="${SOURCE_INFO_DIR:-.}"
+  local ci_value="${1:-N/A}"
+  mkdir -p "${dir}"
+  {
+    echo "CI: ${ci_value}"
+    echo "VERSION: N/A"
+    echo "Community: N/A"
+    echo "Starter: N/A"
+    echo "Enterprise: N/A"
+    echo "Rclone: N/A"
+  } > "${dir}/sourceInfo.log"
+  convert_source_info_to_json
+}
+
+setup_source_info() {
+  local field="$1"
+  local value="$2"
+  local dir="${SOURCE_INFO_DIR:-.}"
+  sed -i -E "s|^${field}:.*\$|${field}: ${value}|g" "${dir}/sourceInfo.log"
+  convert_source_info_to_json
 }

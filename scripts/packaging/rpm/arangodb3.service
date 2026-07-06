@@ -1,0 +1,56 @@
+# This file is part of package arangodb.
+#
+# Description:
+#
+#  Used to start ArangoDB
+#
+#  A scalable graph database system to drive value from connected data, faster.
+#  Native graphs, an integrated search engine, and JSON support, via a single
+#  query language. ArangoDB runs on-prem, in the cloud - anywhere.
+#
+#  http://www.arangodb.com
+#
+
+[Unit]
+Description=ArangoDB database server
+After=sysinit.target sockets.target timers.target paths.target slices.target network.target syslog.target
+
+[Service]
+# we could use another type for more reliable reporting
+Type=simple
+
+PermissionsStartOnly=true
+User=arangodb
+Group=arangodb
+
+# system limits
+LimitNOFILE=131072
+LimitNPROC=131072
+TasksMax=131072
+
+PIDFile=/var/run/arangodb3/arangod.pid
+Environment=GLIBCXX_FORCE_NEW=1
+
+# Protect users from making their installation unusable by
+# starting arangod with wrong permissions (e.g. as root).
+# This will reset the permissions to the working default.
+ExecStartPre=/usr/bin/install -g arangodb -o arangodb -d /var/tmp/arangodb3
+ExecStartPre=/usr/bin/install -g arangodb -o arangodb -d /var/run/arangodb3
+ExecStartPre=/bin/chown -R arangodb:arangodb /var/log/arangodb3
+ExecStartPre=/bin/chmod 700 /var/log/arangodb3
+ExecStartPre=/bin/chown -R arangodb:arangodb /var/lib/arangodb3
+ExecStartPre=/bin/chmod 700 /var/lib/arangodb3
+ExecStartPre=/bin/chown -R arangodb:arangodb /var/lib/arangodb3-apps
+ExecStartPre=/bin/chmod 700 /var/lib/arangodb3-apps
+
+ExecStart=/usr/sbin/arangod --pid-file /var/run/arangodb3/arangod.pid --temp.path /var/tmp/arangodb3 --log.foreground-tty true
+
+TimeoutStopSec=3600
+TimeoutSec=3600
+
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+
