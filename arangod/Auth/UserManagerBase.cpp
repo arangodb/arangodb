@@ -43,11 +43,10 @@ namespace arangodb::auth {
 using namespace arangodb::basics;
 using namespace arangodb::velocypack;
 
-namespace {
-
 /// @brief Convert documents from _system/_users into the format used in
 /// the REST user API and Foxx.
-void ConvertLegacyFormat(VPackSlice doc, VPackBuilder& result) {
+void UserManagerBase::ConvertLegacyFormat(VPackSlice doc,
+                                          VPackBuilder& result) {
   doc = doc.resolveExternals();
   VPackSlice authDataSlice = doc.get("authData");
   {
@@ -59,8 +58,6 @@ void ConvertLegacyFormat(VPackSlice doc, VPackBuilder& result) {
                extra.isNone() ? VPackSlice::emptyObjectSlice() : extra);
   }
 }
-
-}  // namespace
 
 UserManagerBase::UserManagerBase() : _globalVersion(1) {}
 

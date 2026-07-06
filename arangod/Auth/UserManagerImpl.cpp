@@ -161,21 +161,6 @@ static std::shared_ptr<VPackBuilder> QueryAllUsers(
   return queryResult.data;
 }
 
-/// Convert documents from _system/_users into the format used in
-/// the REST user API and Foxx
-static void ConvertLegacyFormat(VPackSlice doc, VPackBuilder& result) {
-  doc = doc.resolveExternals();
-  VPackSlice authDataSlice = doc.get("authData");
-  {
-    VPackObjectBuilder b(&result, true);
-    result.add("user", doc.get("user"));
-    result.add("active", authDataSlice.get("active"));
-    VPackSlice extra = doc.get("userData");
-    result.add("extra",
-               extra.isNone() ? VPackSlice::emptyObjectSlice() : extra);
-  }
-}
-
 void UserManagerImpl::loadUserCacheAndStartUpdateThread() noexcept {
   TRI_ASSERT(ServerState::instance()->isSingleServerOrCoordinator());
 

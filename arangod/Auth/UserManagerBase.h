@@ -70,6 +70,11 @@ class UserManagerBase : public UserManager {
                            velocypack::Builder&) override final;
 
  protected:
+  /// @brief Convert documents from _system/_users into the format used in
+  /// the REST user API and Foxx.  Shared by all subclasses.
+  static void ConvertLegacyFormat(velocypack::VPackSlice doc,
+                                  velocypack::Builder& result);
+
   /// @brief Called by read-only implementations before accessing the cache.
   /// UserManagerImpl asserts that the update thread has been started.
   /// UserManagerTester provides a no-op implementation.

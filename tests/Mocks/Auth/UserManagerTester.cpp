@@ -37,25 +37,6 @@ namespace arangodb::auth {
 using namespace arangodb::basics;
 using namespace arangodb::velocypack;
 
-namespace {
-
-/// @brief Convert a User::toVPackBuilder() slice into the legacy REST API
-/// format used by allUsers() (same transformation as in UserManagerImpl).
-void ConvertLegacyFormat(VPackSlice doc, VPackBuilder& result) {
-  doc = doc.resolveExternals();
-  VPackSlice authDataSlice = doc.get("authData");
-  {
-    VPackObjectBuilder b(&result, true);
-    result.add("user", doc.get("user"));
-    result.add("active", authDataSlice.get("active"));
-    VPackSlice extra = doc.get("userData");
-    result.add("extra",
-               extra.isNone() ? VPackSlice::emptyObjectSlice() : extra);
-  }
-}
-
-}  // namespace
-
 // ---- extra methods
 // -----------------------------------------------------------
 
