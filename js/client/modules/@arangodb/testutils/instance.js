@@ -299,6 +299,7 @@ class instance {
   }
 
   dumpConnectionTable(force) {
+    // return; /// TODO
     if (this.options.extremeVerbosity || force === true) {
       let currentHandle = arango.getConnectionHandle();
       const tableColumnHeaders = [
@@ -1545,7 +1546,7 @@ class instance {
   }
   debugSetFailAt(failurePoint) {
     this.toThisInstance(() => {
-      let reply = arango.PUT_RAW('/_admin/debug/failat/' + failurePoint, '');
+      let reply = arango.PUT_RAW('/_admin/debug/failat/' + encodeURIComponent(failurePoint), '');
       if (reply.code !== 200) {
         throw new Error(`${this.name}: Failed to set ${failurePoint}: ${reply.parsedBody}`);
       }
@@ -1555,7 +1556,7 @@ class instance {
   debugShouldFailAt(failurePoint) {
     throw new Error("not implemented!");
     this.toThisInstance(() => {
-      let reply = arango.PUT_RAW('/_admin/debug/failat/' + failurePoint, '');
+      let reply = arango.PUT_RAW('/_admin/debug/failat/' + encodeURIComponent(failurePoint), '');
       if (reply.code !== 200) {
         throw new Error(`${this.name}: Failed to set ${failurePoint}: ${reply.parsedBody}`);
       }
@@ -1598,7 +1599,7 @@ class instance {
       if (failurePoint === "") {
         failurePoint = undefined;
       }
-      let deleteUrl = `/_admin/debug/failat/${(failurePoint=== undefined)?'': '/' + failurePoint}`;
+      let deleteUrl = `/_admin/debug/failat/${(failurePoint=== undefined)?'': + encodeURIComponent(failurePoint)}`;
       let reply;
       let count = 0;
       while (count < 10) {
