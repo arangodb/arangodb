@@ -1323,14 +1323,14 @@ Result IResearchDataStore::initDataStore(
       readerOptions.resource_manager);
 
   switch (_engine->recoveryState()) {
-    case RecoveryState::BEFORE:  // Link is being opened before recovery
+    case EngineState::uninitialized:  // Link is being opened before recovery
       [[fallthrough]];
-    case RecoveryState::DONE: {  // Link is being created after recovery
+    case EngineState::running: {  // Link is being created after recovery
       // Will be adjusted in post-recovery callback
       _dataStore._recoveryTickHigh = _dataStore._recoveryTickLow =
           _engine->recoveryTick();
     } break;
-    case RecoveryState::IN_PROGRESS: {  // Link is being created during recovery
+    case EngineState::recovering: {  // Link is being created during recovery
       _dataStore._recoveryTickHigh = _dataStore._recoveryTickLow =
           _engine->releasedTick();
     } break;
@@ -1551,7 +1551,7 @@ void IResearchDataStore::properties(LinkLock linkLock,
     linkLock->_dataStore._meta.storeFull(meta);
   }
 
-  if (linkLock->_engine->recoveryState() == RecoveryState::DONE) {
+  if (linkLock->_engine->recoveryState() == EngineState::running) {
     if (meta._commitIntervalMsec) {
       linkLock->scheduleCommit(
           std::chrono::milliseconds(meta._commitIntervalMsec));

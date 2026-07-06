@@ -25,9 +25,10 @@
 #pragma once
 
 #include "RestServer/IRecoveryCallback.h"
+#include "RocksDBEngine/ITickObserver.h"
 #include "RocksDBEngine/RocksDBEngineOptions.h"
-#include "RocksDBEngine/RocksDBRecoveryManager.h"
 
+#include <atomic>
 #include <chrono>
 #include <deque>
 #include <map>
@@ -165,7 +166,9 @@ struct ICompactKeyRange {
   virtual void compactRange(RocksDBKeyBounds bounds) = 0;
 };
 
-class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
+class RocksDBEngine final : public StorageEngine,
+                            public ICompactKeyRange,
+                            public ITickObserver {
   friend class RocksDBFilePurgePreventer;
   friend class RocksDBFilePurgeEnabler;
 
@@ -303,12 +306,16 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   Result dropDatabase(TRI_vocbase_t& database) override;
 
   // wal in recovery
-  RecoveryState recoveryState() noexcept override {
-    return _recoveryManager.recoveryState();
+  EngineState recoveryState() noexcept override {
+    return _engineState.load(std::memory_order_acquire);
   }
 
   TRI_voc_tick_t recoveryTick() noexcept override {
-    return _recoveryManager.recoveryTick();
+    return _recoveryTick.load(std::memory_order_relaxed);
+  }
+
+  void onTick(rocksdb::SequenceNumber seq) noexcept override {
+    _recoveryTick.store(seq, std::memory_order_relaxed);
   }
 
   /// @brief disallow purging of WAL files even if the archive gets too big
@@ -630,7 +637,11 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   }
 
  private:
-  RocksDBRecoveryManager _recoveryManager;
+  IRecoveryCallback& _recoveryCallback;
+  // release-stores synchronize with acquire reads in recoveryState()
+  std::atomic<EngineState> _engineState{EngineState::uninitialized};
+  // relaxed writes become visible after the running release-store above
+  std::atomic<rocksdb::SequenceNumber> _recoveryTick{0};
   IDatabasePathProvider const& _databasePathProvider;
   IVectorIndexProvider const& _vectorIndexProvider;
   IFlushControl& _flushControl;

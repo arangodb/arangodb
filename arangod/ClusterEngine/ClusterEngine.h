@@ -166,7 +166,7 @@ class ClusterEngine final : public StorageEngine {
   Result dropDatabase(TRI_vocbase_t& database) override;
 
   // current recovery state
-  RecoveryState recoveryState() override;
+  EngineState recoveryState() override;
   // current recovery tick
   TRI_voc_tick_t recoveryTick() override;
 

@@ -21,17 +21,13 @@
 
 #pragma once
 
-#include "VocBase/voc-types.h"
+#include <rocksdb/types.h>
 
 namespace arangodb {
 
-enum class RecoveryState : uint32_t;
-
-// RocksDBEngine delegates recoveryState()/recoveryTick() to this.
-struct IRecoveryState {
-  virtual RecoveryState recoveryState() const noexcept = 0;
-  virtual TRI_voc_tick_t recoveryTick() const noexcept = 0;
-  virtual ~IRecoveryState() = default;
+struct ITickObserver {
+  virtual void onTick(rocksdb::SequenceNumber seq) noexcept = 0;
+  virtual ~ITickObserver() = default;
 };
 
 }  // namespace arangodb

@@ -25,37 +25,25 @@
 #pragma once
 
 #include "Basics/Result.h"
-#include "RocksDBEngine/IRecoveryState.h"
-#include "StorageEngine/StorageEngine.h"
-
-#include <atomic>
-#include <rocksdb/types.h>
+#include "RocksDBEngine/ITickObserver.h"
 
 namespace arangodb {
 
 class RocksDBEngine;
 struct IDatabaseProvider;
-struct IRecoveryCallback;
 
-class RocksDBRecoveryManager final : public IRecoveryState {
+class RocksDBRecoveryManager final {
  public:
   RocksDBRecoveryManager(IDatabaseProvider& dbProvider,
-                         IRecoveryCallback& recoveryCallback);
+                         ITickObserver& tickObserver);
 
   void runRecovery(RocksDBEngine& engine);
-
-  RecoveryState recoveryState() const noexcept override;
-  TRI_voc_tick_t recoveryTick() const noexcept override;
 
  private:
   Result parseRocksWAL(RocksDBEngine& engine);
 
   IDatabaseProvider& _dbProvider;
-  IRecoveryCallback& _recoveryCallback;
-  // release-stores synchronize with acquire reads in recoveryState()
-  std::atomic<RecoveryState> _recoveryState{RecoveryState::BEFORE};
-  // relaxed writes become visible after the DONE release-store above
-  std::atomic<rocksdb::SequenceNumber> _currentSequenceNumber{0};
+  ITickObserver& _tickObserver;
 };
 
 }  // namespace arangodb

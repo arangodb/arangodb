@@ -36,7 +36,6 @@
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
 #include "RestServer/IDatabaseProvider.h"
-#include "RestServer/IRecoveryCallback.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -66,32 +65,17 @@
 
 namespace arangodb {
 
-RocksDBRecoveryManager::RocksDBRecoveryManager(
-    IDatabaseProvider& dbProvider, IRecoveryCallback& recoveryCallback)
-    : _dbProvider(dbProvider), _recoveryCallback(recoveryCallback) {}
-
-RecoveryState RocksDBRecoveryManager::recoveryState() const noexcept {
-  return _recoveryState.load(std::memory_order_acquire);
-}
-
-TRI_voc_tick_t RocksDBRecoveryManager::recoveryTick() const noexcept {
-  return _currentSequenceNumber.load(std::memory_order_relaxed);
-}
+RocksDBRecoveryManager::RocksDBRecoveryManager(IDatabaseProvider& dbProvider,
+                                               ITickObserver& tickObserver)
+    : _dbProvider(dbProvider), _tickObserver(tickObserver) {}
 
 void RocksDBRecoveryManager::runRecovery(RocksDBEngine& engine) {
-  _recoveryState.store(RecoveryState::IN_PROGRESS, std::memory_order_release);
-
   auto res = parseRocksWAL(engine);
   if (res.fail()) {
     LOG_TOPIC("be0ce", FATAL, Logger::ENGINES)
         << "failed during rocksdb WAL recovery: " << res.errorMessage();
     FATAL_ERROR_EXIT_CODE(TRI_EXIT_RECOVERY);
   }
-
-  // makes all relaxed tick writes visible to acquire readers
-  _recoveryState.store(RecoveryState::DONE, std::memory_order_release);
-
-  _recoveryCallback.recoveryDone();
 }
 
 class WBReader final : public rocksdb::WriteBatch::Handler {
@@ -126,8 +110,10 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
   // start of batch sequence number (currently only set, but not read back -
   // can be used for debugging later)
   rocksdb::SequenceNumber _batchStartSequence;
-  // current sequence number
-  std::atomic<rocksdb::SequenceNumber>& _currentSequence;
+  // current sequence number (single-threaded; engine notified via
+  // _tickObserver)
+  rocksdb::SequenceNumber _currentSequence{0};
+  ITickObserver& _tickObserver;
 
   RocksDBEngine& _engine;
   IDatabaseProvider& _dbProvider;
@@ -139,7 +125,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
   explicit WBReader(RocksDBEngine& engine, IDatabaseProvider& dbProvider,
                     rocksdb::SequenceNumber recoveryStartSequence,
                     rocksdb::SequenceNumber latestSequence,
-                    std::atomic<rocksdb::SequenceNumber>& currentSequence)
+                    ITickObserver& tickObserver)
       : _progressState{recoveryStartSequence, latestSequence},
         _minimumServerTick(TRI_NewTickServer()),
         _maxTickFound(0),
@@ -147,13 +133,12 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
         _entriesScanned(0),
         _lastRemovedDocRid(0),
         _batchStartSequence(0),
-        _currentSequence(currentSequence),
         _engine(engine),
-        _dbProvider(dbProvider) {}
+        _dbProvider(dbProvider),
+        _tickObserver(tickObserver) {}
 
   void startNewBatch(rocksdb::SequenceNumber startSequence) {
-    TRI_ASSERT(_currentSequence.load(std::memory_order_relaxed) <=
-               startSequence);
+    TRI_ASSERT(_currentSequence <= startSequence);
 
     if (_batchStartSequence == 0) {
       // for the first call, initialize the [from - to] recovery range values
@@ -186,6 +171,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
     // starting new write batch
     _batchStartSequence = startSequence;
     _currentSequence = startSequence;
+    _tickObserver.onTick(_currentSequence);
     _startOfBatch = true;
   }
 
@@ -350,7 +336,8 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
       _startOfBatch = false;
     } else {
       // we are inside a batch already. now increase sequence number
-      _currentSequence.fetch_add(1, std::memory_order_relaxed);
+      ++_currentSequence;
+      _tickObserver.onTick(_currentSequence);
     }
   }
 
@@ -647,9 +634,8 @@ Result RocksDBRecoveryManager::parseRocksWAL(RocksDBEngine& engine) {
     }
 
     // Tell the WriteBatch reader the transaction markers to look for
-    TRI_ASSERT(_currentSequenceNumber == 0);
     WBReader handler(engine, _dbProvider, recoveryStartSequence,
-                     latestSequenceNumber, _currentSequenceNumber);
+                     latestSequenceNumber, _tickObserver);
 
     // prevent purging of WAL files while we are in here
     RocksDBFilePurgePreventer purgePreventer(engine.disallowPurging());

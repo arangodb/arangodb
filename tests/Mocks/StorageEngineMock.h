@@ -116,7 +116,7 @@ class StorageEngineMock : private StorageEngineMockBase,
  public:
   static std::function<void()> before;
   static arangodb::Result flushSubscriptionResult;
-  static arangodb::RecoveryState recoveryStateResult;
+  static arangodb::EngineState recoveryStateResult;
   static TRI_voc_tick_t recoveryTickResult;
   static std::string versionFilenameResult;
   static std::function<void()> recoveryTickCallback;
@@ -185,7 +185,7 @@ class StorageEngineMock : private StorageEngineMockBase,
   arangodb::Result handleSyncKeys(arangodb::DatabaseInitialSyncer& syncer,
                                   arangodb::LogicalCollection& col,
                                   std::string const& keysId) override;
-  arangodb::RecoveryState recoveryState() override;
+  arangodb::EngineState recoveryState() override;
   TRI_voc_tick_t recoveryTick() override;
 
   arangodb::Result lastLogger(

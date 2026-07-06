@@ -99,6 +99,7 @@
 #include "RocksDBEngine/RocksDBLogValue.h"
 #include "RocksDBEngine/RocksDBOptimizerRules.h"
 #include "RocksDBEngine/RocksDBOptionFeature.h"
+#include "RocksDBEngine/RocksDBRecoveryManager.h"
 #include "RocksDBEngine/RocksDBReplicationManager.h"
 #include "RocksDBEngine/RocksDBReplicationTailing.h"
 #include "RocksDBEngine/RocksDBRestHandlers.h"
@@ -269,7 +270,7 @@ RocksDBEngine::RocksDBEngine(
     : StorageEngine(
           server, kEngineName, name(), typeid(RocksDBEngine),
           std::make_unique<RocksDBIndexFactory>(server, vectorIndexProvider)),
-      _recoveryManager(databaseProvider, recoveryCallback),
+      _recoveryCallback(recoveryCallback),
       _databasePathProvider(databasePathProvider),
       _vectorIndexProvider(vectorIndexProvider),
       _flushControl(flushControl),
@@ -932,7 +933,13 @@ void RocksDBEngine::start() {
     addSystemDatabase();
   }
 
-  _recoveryManager.runRecovery(*this);
+  _engineState.store(EngineState::recovering, std::memory_order_release);
+  {
+    RocksDBRecoveryManager manager(_databaseProvider, *this);
+    manager.runRecovery(*this);
+  }
+  _engineState.store(EngineState::running, std::memory_order_release);
+  _recoveryCallback.recoveryDone();
 
   // to populate initial health check data
   HealthData hd = healthCheck();

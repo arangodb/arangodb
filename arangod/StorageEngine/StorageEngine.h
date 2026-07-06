@@ -47,16 +47,7 @@ class Slice;
 class Builder;
 }  // namespace velocypack
 
-enum class RecoveryState : uint32_t {
-  /// @brief recovery is not yet started
-  BEFORE = 0,
-
-  /// @brief recovery is in progress
-  IN_PROGRESS,
-
-  /// @brief recovery is done
-  DONE
-};
+enum class EngineState : uint32_t { uninitialized = 0, recovering, running };
 
 namespace aql {
 class OptimizerRulesFeature;
@@ -215,7 +206,7 @@ class StorageEngine : public application_features::ApplicationFeature {
   bool inRecovery();
 
   /// @brief current recovery state
-  virtual RecoveryState recoveryState() = 0;
+  virtual EngineState recoveryState() = 0;
 
   /// @brief current recovery tick
   virtual TRI_voc_tick_t recoveryTick() = 0;
