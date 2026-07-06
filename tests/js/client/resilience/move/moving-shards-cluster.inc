@@ -180,7 +180,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
     console.error("Agency state after disaster:", result.parsedBody);
   }
 
-  function testServerNoLeader(id, fromCollNr, toCollNr) {
+  function testServerNoLeader(dbServer, fromCollNr, toCollNr) {
     if (fromCollNr === undefined) {
       fromCollNr = 0;
     }
@@ -190,7 +190,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
     for (var i = fromCollNr; i <= toCollNr; ++i) {
       CI.flush();
       var servers = findCollectionServers(dbn, c[i].name(), replVersion);
-      if (servers.indexOf(id) === 0 && servers.length !== 1) {
+      if (servers.indexOf(dbServer.id) === 0 && servers.length !== 1) {
         return false;
       }
 
@@ -205,7 +205,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
                     dbn, c[i].name(), s).servers);
         // quick hack here, if the list of servers has length one, we map it to -1
         // thus the check below will not return false in the case replFact === 1
-        var idxs = collInfoCurr.map(l => (l.length > 1) ? l.indexOf(id) : -1);
+        var idxs = collInfoCurr.map(l => (l.length > 1) ? l.indexOf(dbServer.id) : -1);
         for (var j = 0; j < idxs.length; j++) {
           if (idxs[j] === 0) {
             return false;
@@ -459,12 +459,12 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       return arango.POST_RAW("/_admin/cluster/moveShard", body);
     });
     if (result.code !== 202) {
-      console.error(
+      print(
           "Exception for POST /_admin/cluster/moveShard:", result.parsedBody);
       return false;
     }
-    console.info("moveShard job:", JSON.stringify(body));
-    console.info("result of request:", JSON.stringify(result.parsedBody));
+    print("moveShard job:", JSON.stringify(body));
+    print("result of request:", JSON.stringify(result.parsedBody));
     if (dontwait) {
       return result;
     }
@@ -493,7 +493,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
           "Exception for PUT /_admin/cluster/maintenance:", result.parsedBody);
       return false;
     }
-    console.log("Supervision maintenance is " + mode);
+    print("Supervision maintenance is " + mode);
     return true;
   }
 
@@ -717,6 +717,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
 ////////////////////////////////////////////////////////////////////////////////
 
     testMoveShardFromFollower: function () {
+      print(dbn)
       assertTrue(waitForSynchronousReplication(dbn));
       var servers = findCollectionServers(dbn, c[0].name(), replVersion);
       var fromServer = servers[1];
@@ -852,7 +853,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       assertTrue(waitForSynchronousReplication(dbn));
       var servers = findCollectionServers(dbn, c[0].name(), replVersion);
       var toResign = servers[0];
-      assertTrue(resignLeadership(toResign));
+      assertTrue(resignLeadership(toResign.id));
       assertTrue(testServerNoLeader(toResign));
       assertTrue(waitForSupervision());
       checkCollectionContents();
@@ -1035,8 +1036,10 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       createSomeCollections(1, 1, 3, useData);
       assertTrue(waitForSynchronousReplication(dbn));
       var servers = findCollectionServers(dbn, c[1].name(), replVersion);
-      var leader = servers[0];
-      var fromServer = servers[1];
+      print(servers)
+      var leaderID = servers[0];
+      var leader = IM.getInstanceByID(leaderID);
+      var fromServerID = servers[1];
       // Switch off something in the maintenance on the leader to detect
       // followers which are not in Plan. This means that the moveShard
       // below will leave the old server in Current/servers and
@@ -1044,18 +1047,18 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       try {
         leader.debugSetFailAt("Maintenance::doNotRemoveUnPlannedFollowers");
 
-        var toServer = findServerNotOnList(servers);
+        var toServerID = findServerNotOnList(servers);
         var cinfo = CI.getCollectionInfo(
             dbn, c[1].name());
         var shard = Object.keys(cinfo.shards)[0];
-        assertTrue(moveShard(dbn, c[1]._id, shard, fromServer, toServer, false, "Finished"));
+        assertTrue(moveShard(dbn, c[1]._id, shard, fromServerID, toServerID, false, "Finished"));
         assertTrue(waitForIncompleteMoveShard(dbn, c[1].name(), 3));
         wait(5);   // After 5 seconds the situation should be unchanged!
         assertTrue(waitForIncompleteMoveShard(dbn, c[1].name(), 3));
         // Now we know that the old follower is not in the plan but is in
         // failoverCandidates (and indeed in Current/servers). Let's now
         // try to move the shard back, this ought to be denied:
-        assertTrue(moveShard(dbn, c[1]._id, shard, toServer, fromServer, false, "Failed"));
+        assertTrue(moveShard(dbn, c[1]._id, shard, toServerID, fromServerID, false, "Failed"));
         IM.debugClearFailAt();
         // Now we should go back to only 3 servers in Current.
         assertTrue(waitForSynchronousReplication(dbn));
