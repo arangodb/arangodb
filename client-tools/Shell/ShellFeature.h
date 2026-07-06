@@ -43,6 +43,8 @@ class ShellFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Shell"; }
 
+  ShellFeature(application_features::ApplicationServer& server, int* result,
+               ShellFeatureOptions options);
   ShellFeature(application_features::ApplicationServer& server, int* result);
 
   ~ShellFeature();

@@ -27,6 +27,7 @@
 #include <velocypack/Slice.h>
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Assertions/ProdAssert.h"
 #include "Cache/CacheManagerFeature.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "RestServer/ViewTypesFeature.h"
@@ -160,3 +161,20 @@ void StorageEngine::addV8Functions() {}
 #endif
 
 void StorageEngine::addRestHandlers(rest::RestHandlerFactory& handlerFactory) {}
+
+TransactionStatistics& StorageEngine::transactionStatistics() noexcept {
+  ADB_PROD_ASSERT(_transactionStatistics != nullptr)
+      << "transactionStatistics() called before start()";
+  return *_transactionStatistics;
+}
+
+TransactionStatistics const& StorageEngine::transactionStatistics()
+    const noexcept {
+  ADB_PROD_ASSERT(_transactionStatistics != nullptr)
+      << "transactionStatistics() called before start()";
+  return *_transactionStatistics;
+}
+
+void StorageEngine::initTransactionStatistics(metrics::IRegistry& metrics) {
+  _transactionStatistics = std::make_unique<TransactionStatistics>(metrics);
+}

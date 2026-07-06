@@ -35,7 +35,11 @@ using namespace arangodb::options;
 namespace arangodb {
 
 FrontendFeature::FrontendFeature(ApplicationServer& server)
-    : ApplicationFeature{server, *this} {
+    : FrontendFeature(server, FrontendFeatureOptions{}) {}
+
+FrontendFeature::FrontendFeature(ApplicationServer& server,
+                                 FrontendFeatureOptions options)
+    : ApplicationFeature{server, *this}, _options(std::move(options)) {
   setOptional(true);
   startsAfter<ServerFeaturePhase>();
 }

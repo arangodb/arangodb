@@ -26,6 +26,7 @@
 
 #include "Basics/Result.h"
 #include "Futures/Future.h"
+#include "Mocks/MetricsCollector.h"
 #include "StorageEngine/HealthData.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionState.h"
@@ -105,7 +106,13 @@ class StorageEngineMockSnapshot final : public arangodb::StorageSnapshot {
   TRI_voc_tick_t _t;
 };
 
-class StorageEngineMock : public arangodb::StorageEngine {
+// Base ensures _mockRegistry outlives StorageEngine's _transactionStatistics.
+struct StorageEngineMockBase {
+  arangodb::tests::MetricsCollector _mockRegistry;
+};
+
+class StorageEngineMock : private StorageEngineMockBase,
+                          public arangodb::StorageEngine {
  public:
   static std::function<void()> before;
   static arangodb::Result flushSubscriptionResult;

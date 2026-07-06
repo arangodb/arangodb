@@ -40,6 +40,10 @@ class CheckVersionFeature final
 
   explicit CheckVersionFeature(
       application_features::ApplicationServer& server, int* result,
+      std::span<const std::type_index> nonServerFeatures,
+      CheckVersionFeatureOptions options);
+  explicit CheckVersionFeature(
+      application_features::ApplicationServer& server, int* result,
       std::span<const std::type_index> nonServerFeatures);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;

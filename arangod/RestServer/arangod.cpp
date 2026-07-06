@@ -21,6 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Metrics/MetricsFeature.h"
 #include "RestServer/arangod.h"
 
 #include <filesystem>
@@ -223,13 +224,14 @@ void ArangodServer::addFeatures(
           .aqlFunctionFeature = &aqlFunctionFeature,
       });
   addFeature<iresearch::IResearchFeature>(metrics);
-  addFeature<ClusterEngine>();
+  addFeature<ClusterEngine>(metrics);
 
   addFeature<RocksDBEngine>(
       rocksdbOption, metrics, databasePath, vectorIndex, flush, dumpLimits,
       replication2::EnableReplication2 ? &getFeature<ReplicatedLogFeature>()
                                        : nullptr,
-      rocksdbRecovery, database, rocksdbCacheRefill, cacheManager, agency);
+      scheduler, rocksdbRecovery, database, rocksdbCacheRefill, cacheManager,
+      agency);
 
   addFeature<replication2::replicated_state::ReplicatedStateAppFeature>();
   addFeature<replication2::replicated_state::black_hole::

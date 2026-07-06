@@ -59,6 +59,7 @@ struct RocksDBEngineOptions {
   double autoFlushCheckInterval = 60.0 * 30.0;
   bool forceLegacySortingMethod = false;
   bool forceLittleEndianKeys = false;
+  bool exportReadWriteMetrics = false;
 };
 
 }  // namespace arangodb

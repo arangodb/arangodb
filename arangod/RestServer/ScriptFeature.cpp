@@ -49,7 +49,13 @@ using namespace arangodb::options;
 namespace arangodb {
 
 ScriptFeature::ScriptFeature(ApplicationServer& server, int* result)
-    : ApplicationFeature{server, *this}, _result(result) {
+    : ScriptFeature(server, result, ScriptFeatureOptions{}) {}
+
+ScriptFeature::ScriptFeature(ApplicationServer& server, int* result,
+                             ScriptFeatureOptions options)
+    : ApplicationFeature{server, *this},
+      _options(std::move(options)),
+      _result(result) {
   setOptional(true);
   startsAfter<AgencyFeaturePhase>();
 }

@@ -17,30 +17,24 @@
 /// limitations under the License.
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include <cstdint>
-#include <optional>
-#include <functional>
-
 #include "Metrics/Fwd.h"
+
+#include <cstdint>
 
 namespace arangodb {
 
 struct TransactionStatistics {
-  explicit TransactionStatistics(metrics::MetricsFeature&);
+  explicit TransactionStatistics(metrics::IRegistry&);
   TransactionStatistics(TransactionStatistics const&) = delete;
   TransactionStatistics(TransactionStatistics&&) = delete;
   TransactionStatistics& operator=(TransactionStatistics const&) = delete;
   TransactionStatistics& operator=(TransactionStatistics&&) = delete;
 
-  void setupDocumentMetrics();
-
-  metrics::MetricsFeature& _metrics;
+  metrics::IRegistry& _metrics;
 
   metrics::Gauge<uint64_t>& _restTransactionsMemoryUsage;
   metrics::Gauge<uint64_t>& _internalTransactionsMemoryUsage;
@@ -62,48 +56,6 @@ struct TransactionStatistics {
   metrics::Histogram<metrics::LogScale<double>>& _lockTimes;
   // Total number of times we used a fallback to sequential locking
   metrics::Counter& _sequentialLocks;
-
-  struct ReadWriteMetrics {
-    // Total number of write operations in storage engine (excl. sync
-    // replication)
-    metrics::Counter& numWrites;
-    // Total number of write operations in storage engine by sync replication
-    metrics::Counter& numWritesReplication;
-    // Total number of truncate operations (not number of documents truncated!)
-    // (excl. sync replication)
-    metrics::Counter& numTruncates;
-    // Total number of truncate operations (not number of documents truncated!)
-    // by sync replication
-    metrics::Counter& numTruncatesReplication;
-
-    /// @brief the following metrics are conditional and only initialized if
-    /// startup option `--server.export-read-write-metrics` is set
-    metrics::Histogram<metrics::LogScale<float>>& rocksdb_read_sec;
-    metrics::Histogram<metrics::LogScale<float>>& rocksdb_insert_sec;
-    metrics::Histogram<metrics::LogScale<float>>& rocksdb_replace_sec;
-    metrics::Histogram<metrics::LogScale<float>>& rocksdb_remove_sec;
-    metrics::Histogram<metrics::LogScale<float>>& rocksdb_update_sec;
-    metrics::Histogram<metrics::LogScale<float>>& rocksdb_truncate_sec;
-  };
-
-  std::optional<ReadWriteMetrics> _readWriteMetrics;
-};
-
-struct ServerStatistics {
-  ServerStatistics(ServerStatistics const&) = delete;
-  ServerStatistics(ServerStatistics&&) = delete;
-  ServerStatistics& operator=(ServerStatistics const&) = delete;
-  ServerStatistics& operator=(ServerStatistics&&) = delete;
-
-  void setupDocumentMetrics();
-
-  TransactionStatistics _transactionsStatistics;
-  double const _startTime;
-
-  double uptime() const noexcept;
-
-  explicit ServerStatistics(metrics::MetricsFeature& metrics, double start)
-      : _transactionsStatistics(metrics), _startTime(start) {}
 };
 
 }  // namespace arangodb
