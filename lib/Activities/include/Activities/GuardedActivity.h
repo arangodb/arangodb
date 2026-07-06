@@ -32,6 +32,7 @@
 #include "Inspection/VPackSaveInspector.h"
 
 #include "Basics/Guarded.h"
+#include "thread.h"
 
 namespace arangodb::activities {
 
@@ -56,6 +57,7 @@ struct GuardedActivity : Activity {
     std::optional<ActivityId> parent;
     ActivityType type;
     ActivityCreated created;
+    std::vector<basics::ThreadInfo> threads;
     Data data;
 
     template<typename Inspector>
@@ -66,6 +68,7 @@ struct GuardedActivity : Activity {
           f.field("type", s.type),      //
           f.field("created", s.created)
               .transformWith(inspection::TimeStampTransformer{}),  //
+          f.field("threads", s.threads),                           //
           f.field("data", s.data));
     }
   };
@@ -75,6 +78,7 @@ struct GuardedActivity : Activity {
                          .parent = parentId(),  //
                          .type = type(),        //
                          .created = created(),  //
+                         .threads = threads(),  //
                          .data = _data.copy()};
     auto inspector = inspection::VPackSaveInspector<>(builder);
     return inspector.apply(snap);

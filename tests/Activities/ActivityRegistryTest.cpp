@@ -29,6 +29,7 @@
 #include "Activities/RegistryGlobalVariable.h"
 #include "Futures/Promise.h"
 #include "Inspection/JsonPrintInspector.h"
+#include "Inspection/VPackWithErrorT.h"
 #include "Logger/LogMacros.h"
 #include "Futures/Utilities.h"
 
@@ -299,4 +300,76 @@ TEST_F(ActivityRegistryTest, gc_requires_several_cycles_to_cleanup_parents) {
   ASSERT_EQ(registry.size(), 1);
   registry.garbageCollect();  // deletes parent_activity
   ASSERT_EQ(registry.size(), 0);
+}
+
+TEST_F(ActivityRegistryTest, sets_thread) {
+  auto a = activities::make<GenericActivity>("GenericActivity",
+                                             activities::GenericActivityData{});
+  EXPECT_EQ(a->threads(), (std::vector<basics::ThreadInfo>{}));
+  {
+    auto scope = Registry::ScopedCurrentlyExecutingActivity(a);
+    EXPECT_EQ(a->threads(),
+              (std::vector<basics::ThreadInfo>{
+                  basics::ThreadInfo::current().get_ref().value()}));
+  }
+  EXPECT_EQ(a->threads(), (std::vector<basics::ThreadInfo>{}));
+}
+
+TEST_F(ActivityRegistryTest, thread_belongs_to_child_not_parent) {
+  auto parent = activities::make<GenericActivity>(
+      "parent", activities::GenericActivityData{});
+  {
+    auto scope = Registry::ScopedCurrentlyExecutingActivity(parent);
+    EXPECT_EQ(parent->threads(),
+              (std::vector<basics::ThreadInfo>{
+                  basics::ThreadInfo::current().get_ref().value()}));
+    auto child = activities::make<GenericActivity>(
+        "child", activities::GenericActivityData{});
+    {
+      auto scope = Registry::ScopedCurrentlyExecutingActivity(child);
+
+      EXPECT_EQ(parent->threads(), (std::vector<basics::ThreadInfo>{}));
+      EXPECT_EQ(child->threads(),
+                (std::vector<basics::ThreadInfo>{
+                    basics::ThreadInfo::current().get_ref().value()}));
+    }
+  }
+}
+
+TEST_F(ActivityRegistryTest,
+       several_threads_can_be_added_and_removed_in_between) {
+  auto a = activities::make<GenericActivity>("GenericActivity",
+                                             activities::GenericActivityData{});
+  EXPECT_EQ(a->threads(), (std::vector<basics::ThreadInfo>{}));
+  {
+    auto scope = Registry::ScopedCurrentlyExecutingActivity(a);
+
+    std::jthread(withCurrentlyExecutingActivity(
+        [a, other_thread = basics::ThreadInfo::current()]() {
+          EXPECT_EQ(a->threads(),
+                    (std::vector<basics::ThreadInfo>{
+                        other_thread.get_ref().value(),
+                        basics::ThreadInfo::current().get_ref().value()}));
+        }));
+    EXPECT_EQ(a->threads(),
+              (std::vector<basics::ThreadInfo>{
+                  basics::ThreadInfo::current().get_ref().value()}));
+  }
+}
+
+TEST_F(ActivityRegistryTest, snapshot_includes_threads) {
+  auto a = activities::make<GenericActivity>("GenericActivity",
+                                             activities::GenericActivityData{});
+  auto scope = Registry::ScopedCurrentlyExecutingActivity(a);
+  auto snapshot = registry.snapshot();
+  EXPECT_TRUE(snapshot.ok());
+  auto activities = velocypack::ArrayIterator(snapshot.get().slice());
+  EXPECT_EQ(activities.size(), 1);
+  auto threads =
+      velocypack::ArrayIterator((*activities.begin()).get("threads"));
+  EXPECT_EQ(threads.size(), 1);
+  auto thread =
+      inspection::deserializeWithErrorT<basics::ThreadInfo>(*threads.begin());
+  EXPECT_TRUE(thread.ok());
+  EXPECT_EQ(thread.get(), basics::ThreadInfo::current().get_ref().value());
 }

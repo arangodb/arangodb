@@ -22,6 +22,7 @@
 #pragma once
 
 #include "Activities/ActivityHandle.h"
+#include "Activities/Activity.h"
 #include "Activities/ActivityId.h"
 #include "Activities/IRegistryMetrics.h"
 #include "Containers/Concurrent/metrics.h"
@@ -37,6 +38,24 @@
 #include <memory>
 
 namespace arangodb::activities {
+
+/**
+   Structure for the currently executing activity
+
+   It adds the current thread to the activity-thread-list at construction and
+   removes the thread on destruction.
+ */
+struct CurrentlyExecuting {
+  ActivityHandle activity;
+  std::list<containers::SharedPtr<basics::ThreadInfo>>::iterator _position;
+  CurrentlyExecuting(ActivityHandle handle);
+  ~CurrentlyExecuting();
+  CurrentlyExecuting(CurrentlyExecuting&& other) noexcept;
+  auto operator=(CurrentlyExecuting&& other) noexcept -> CurrentlyExecuting&;
+  CurrentlyExecuting(CurrentlyExecuting const& other) noexcept = delete;
+  auto operator=(CurrentlyExecuting const& other) noexcept
+      -> CurrentlyExecuting& = delete;
+};
 
 struct Registry {
   explicit Registry() = default;
@@ -60,11 +79,11 @@ struct Registry {
   auto garbageCollectAll() -> void;
 
   static auto currentlyExecutingActivity() noexcept -> ActivityHandle {
-    return _currentlyExecutingActivity;
+    return _currentlyExecutingActivity.activity;
   }
   static auto setCurrentlyExecutingActivity(ActivityHandle activity) noexcept
       -> void {
-    _currentlyExecutingActivity = std::move(activity);
+    _currentlyExecutingActivity = CurrentlyExecuting{std::move(activity)};
   }
 
   template<typename T, typename... Args>
@@ -84,7 +103,7 @@ struct Registry {
   }
   template<typename T, typename... Args>
   auto makeActivity(Args&&... args) -> T::HandleType {
-    return makeActivityWithParent<T>(_currentlyExecutingActivity,
+    return makeActivityWithParent<T>(_currentlyExecutingActivity.activity,
                                      std::forward<Args>(args)...);
   }
 
@@ -97,7 +116,7 @@ struct Registry {
   auto increment_registered_nodes() -> void;
   auto store_registered_nodes(std::uint64_t count) -> void;
 
-  static thread_local ActivityHandle _currentlyExecutingActivity;
+  static thread_local CurrentlyExecuting _currentlyExecutingActivity;
   Guarded<std::deque<ActivityHandle>> _registry;
   std::atomic<ActivityId> _activityIdCounter{0};
   std::shared_ptr<IRegistryMetrics> _metrics{nullptr};

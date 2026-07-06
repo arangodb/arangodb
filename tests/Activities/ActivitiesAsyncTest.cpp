@@ -337,3 +337,34 @@ TYPED_TEST(ActivitiesAsyncTest, current_activity_correct_exception) {
   EXPECT_TRUE(awaitable.await_ready());
   awaitable.await_resume();
 }
+
+TYPED_TEST(ActivitiesAsyncTest,
+           activity_threads_are_updated_for_suspended_coroutine) {
+  auto activity = activities::make<GenericActivity>(
+      "GenericActivity", activities::GenericActivityData{});
+  EXPECT_EQ(activity->threads(), (std::vector<basics::ThreadInfo>{}));
+  auto coro = [&]() -> async<void> {
+    auto coro_activity =
+        activities::make<GenericActivity>("TestActivity", this->activityData);
+    auto guard =
+        activities::Registry::ScopedCurrentlyExecutingActivity(activity);
+
+    EXPECT_EQ(activity->threads(),
+              (std::vector<basics::ThreadInfo>{
+                  basics::ThreadInfo::current().get_ref().value()}));
+
+    co_await this->wait;
+
+    EXPECT_EQ(activity->threads(),
+              (std::vector<basics::ThreadInfo>{
+                  basics::ThreadInfo::current().get_ref().value()}));
+    co_return;
+  };
+  std::ignore = coro();
+
+  EXPECT_EQ(activity->threads(), (std::vector<basics::ThreadInfo>{}));
+  this->wait.resume();
+  EXPECT_EQ(activity->threads(), (std::vector<basics::ThreadInfo>{}));
+  this->wait.await();
+  EXPECT_EQ(activity->threads(), (std::vector<basics::ThreadInfo>{}));
+}
