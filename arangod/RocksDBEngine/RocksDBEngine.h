@@ -112,6 +112,7 @@ struct Options;
 }  // namespace transaction
 
 class RocksDBEngine;  // forward
+struct ISchedulerProvider;
 struct RocksDBOptionsProvider;
 
 /// @brief helper class to make file-purging thread-safe
@@ -182,6 +183,7 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
                 IFlushControl& flushControl,
                 IDumpLimitsProvider const& dumpLimitsProvider,
                 replication2::IReplicatedLogProvider* replicatedLogProvider,
+                ISchedulerProvider const& schedulerProvider,
                 RocksDBRecoveryManager const& rocksDbRecoveryManager,
                 IDatabaseProvider& databaseProvider,
                 IIndexCacheRefill& indexCacheRefill,
@@ -631,6 +633,7 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   IFlushControl& _flushControl;
   IDumpLimitsProvider const& _dumpLimitsProvider;
   replication2::IReplicatedLogProvider* _replicatedLogProvider;
+  ISchedulerProvider const& _schedulerProvider;
   RocksDBRecoveryManager const& _rocksDbRecoveryManager;
   IDatabaseProvider& _databaseProvider;
   IIndexCacheRefill& _indexCacheRefill;

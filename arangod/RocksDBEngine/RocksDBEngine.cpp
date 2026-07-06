@@ -109,7 +109,8 @@
 #include "RocksDBEngine/RocksDBValue.h"
 #include "RocksDBEngine/RocksDBWalAccess.h"
 #include "RocksDBEngine/SimpleRocksDBTransactionState.h"
-#include "Scheduler/SchedulerFeature.h"
+#include "Scheduler/ISchedulerProvider.h"
+#include "Scheduler/Scheduler.h"
 #include "Transaction/Context.h"
 #include "Transaction/Manager.h"
 #include "Transaction/Options.h"
@@ -261,6 +262,7 @@ RocksDBEngine::RocksDBEngine(
     IVectorIndexProvider const& vectorIndexProvider,
     IFlushControl& flushControl, IDumpLimitsProvider const& dumpLimitsProvider,
     replication2::IReplicatedLogProvider* replicatedLogProvider,
+    ISchedulerProvider const& schedulerProvider,
     RocksDBRecoveryManager const& rocksDbRecoveryManager,
     IDatabaseProvider& databaseProvider, IIndexCacheRefill& indexCacheRefill,
     ICacheManagerProvider& cacheManagerProvider,
@@ -273,6 +275,7 @@ RocksDBEngine::RocksDBEngine(
       _flushControl(flushControl),
       _dumpLimitsProvider(dumpLimitsProvider),
       _replicatedLogProvider(replicatedLogProvider),
+      _schedulerProvider(schedulerProvider),
       _rocksDbRecoveryManager(rocksDbRecoveryManager),
       _databaseProvider(databaseProvider),
       _indexCacheRefill(indexCacheRefill),
@@ -881,7 +884,7 @@ void RocksDBEngine::start() {
 
   struct SchedulerExecutor
       : replication2::storage::rocksdb::AsyncLogWriteBatcher::IAsyncExecutor {
-    SchedulerExecutor() : _scheduler(arangodb::SchedulerFeature::SCHEDULER) {}
+    explicit SchedulerExecutor(Scheduler* scheduler) : _scheduler(scheduler) {}
 
     void operator()(fu2::unique_function<void() noexcept> func) override {
       _scheduler->queue(RequestLane::CLUSTER_INTERNAL, std::move(func));
@@ -901,7 +904,8 @@ void RocksDBEngine::start() {
         std::make_shared<replication2::storage::rocksdb::AsyncLogWriteBatcher>(
             RocksDBColumnFamilyManager::get(
                 RocksDBColumnFamilyManager::Family::ReplicatedLogs),
-            _db->GetRootDB(), std::make_shared<SchedulerExecutor>(),
+            _db->GetRootDB(),
+            std::make_shared<SchedulerExecutor>(_schedulerProvider.scheduler()),
             _replicatedLogProvider->options(), _logMetrics);
     _logPersistor = logPersistor;
 
@@ -1465,7 +1469,7 @@ void RocksDBEngine::scheduleTreeRebuild(TRI_voc_tick_t database,
 }
 
 void RocksDBEngine::processTreeRebuilds() {
-  Scheduler* scheduler = arangodb::SchedulerFeature::SCHEDULER;
+  Scheduler* scheduler = _schedulerProvider.scheduler();
   if (scheduler == nullptr) {
     return;
   }
@@ -1591,7 +1595,7 @@ void RocksDBEngine::compactRange(RocksDBKeyBounds bounds) {
 }
 
 void RocksDBEngine::processCompactions() {
-  Scheduler* scheduler = arangodb::SchedulerFeature::SCHEDULER;
+  Scheduler* scheduler = _schedulerProvider.scheduler();
   if (scheduler == nullptr) {
     return;
   }
