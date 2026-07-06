@@ -55,7 +55,13 @@ namespace arangodb {
 
 ShellConsoleFeature::ShellConsoleFeature(
     application_features::ApplicationServer& server)
+    : ShellConsoleFeature(server, ShellConsoleFeatureOptions{}) {}
+
+ShellConsoleFeature::ShellConsoleFeature(
+    application_features::ApplicationServer& server,
+    ShellConsoleFeatureOptions options)
     : ApplicationFeature(server, *this),
+      _options(std::move(options)),
       _promptError(false),
       _supportsColors(isatty(STDIN_FILENO) != 0),
       _toPager(stdout),

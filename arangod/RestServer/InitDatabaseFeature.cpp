@@ -53,7 +53,16 @@ namespace arangodb {
 InitDatabaseFeature::InitDatabaseFeature(
     ApplicationServer& server,
     std::span<const std::type_index> nonServerFeatures)
-    : ApplicationFeature{server, *this}, _nonServerFeatures(nonServerFeatures) {
+    : InitDatabaseFeature(server, nonServerFeatures,
+                          InitDatabaseFeatureOptions{}) {}
+
+InitDatabaseFeature::InitDatabaseFeature(
+    ApplicationServer& server,
+    std::span<const std::type_index> nonServerFeatures,
+    InitDatabaseFeatureOptions options)
+    : ApplicationFeature{server, *this},
+      _options(std::move(options)),
+      _nonServerFeatures(nonServerFeatures) {
   setOptional(false);
   startsAfter<BasicFeaturePhaseServer>();
 }

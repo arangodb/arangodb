@@ -1,6 +1,9 @@
 3.12.10-devel (XXXX-XX-XX)
 --------------------------
 
+* GitHub issue #22532: Fixed query editor content becoming hidden after resizing
+  the editor pane in the web UI.
+
 * Upgraded included rclone to v1.74.3 with go1.25.11 and non-vulnerable
   dependencies.
 

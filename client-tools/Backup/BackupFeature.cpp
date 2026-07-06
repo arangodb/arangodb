@@ -690,10 +690,16 @@ namespace arangodb {
 
 BackupFeature::BackupFeature(application_features::ApplicationServer& server,
                              ClientFeature& client, int& exitCode)
+    : BackupFeature(server, client, exitCode, BackupFeatureOptions{}) {}
+
+BackupFeature::BackupFeature(application_features::ApplicationServer& server,
+                             ClientFeature& client, int& exitCode,
+                             Options options)
     : ApplicationFeature{server, *this},
       _client(client),
       _clientManager{client, Logger::BACKUP},
-      _exitCode{exitCode} {
+      _exitCode{exitCode},
+      _options(std::move(options)) {
   setOptional(false);
   startsAfter<HttpEndpointProvider>();
 }

@@ -44,7 +44,13 @@ namespace arangodb {
 
 ReplicationTimeoutFeature::ReplicationTimeoutFeature(
     application_features::ApplicationServer& server)
-    : application_features::ApplicationFeature{server, *this} {
+    : ReplicationTimeoutFeature(server, ReplicationTimeoutFeatureOptions{}) {}
+
+ReplicationTimeoutFeature::ReplicationTimeoutFeature(
+    application_features::ApplicationServer& server,
+    ReplicationTimeoutFeatureOptions options)
+    : application_features::ApplicationFeature{server, *this},
+      _options(std::move(options)) {
   setOptional(true);
   startsAfter<application_features::DatabaseFeaturePhase>();
 }

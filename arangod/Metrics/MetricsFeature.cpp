@@ -56,12 +56,29 @@ MetricsFeature::MetricsFeature(
     LazyApplicationFeatureReference<ClusterMetricsFeature>
         lazyClusterMetricsFeatureRef,
     LazyApplicationFeatureReference<ClusterFeature> lazyClusterFeatureRef)
+    : MetricsFeature(server, std::move(lazyQueryRegistryFeatureRef),
+                     std::move(lazyStatisticsFeatureRef),
+                     std::move(lazyDatabaseFeatureRef),
+                     std::move(lazyClusterMetricsFeatureRef),
+                     std::move(lazyClusterFeatureRef), MetricsOptions{}) {}
+
+MetricsFeature::MetricsFeature(
+    application_features::ApplicationServer& server,
+    LazyApplicationFeatureReference<QueryRegistryFeature>
+        lazyQueryRegistryFeatureRef,
+    LazyApplicationFeatureReference<StatisticsFeature> lazyStatisticsFeatureRef,
+    LazyApplicationFeatureReference<DatabaseFeature> lazyDatabaseFeatureRef,
+    LazyApplicationFeatureReference<ClusterMetricsFeature>
+        lazyClusterMetricsFeatureRef,
+    LazyApplicationFeatureReference<ClusterFeature> lazyClusterFeatureRef,
+    MetricsOptions options)
     : ApplicationFeature{server, *this},
       _lazyQueryRegistryFeatureRef(std::move(lazyQueryRegistryFeatureRef)),
       _lazyStatisticsFeatureRef(std::move(lazyStatisticsFeatureRef)),
       _lazyDatabaseFeatureRef(std::move(lazyDatabaseFeatureRef)),
       _lazyClusterMetricsFeatureRef(std::move(lazyClusterMetricsFeatureRef)),
-      _lazyClusterFeatureRef(std::move(lazyClusterFeatureRef)) {
+      _lazyClusterFeatureRef(std::move(lazyClusterFeatureRef)),
+      _options(std::move(options)) {
   setOptional(false);
   startsAfter<LoggerFeature>();
   startsBefore<application_features::GreetingsFeaturePhase>();

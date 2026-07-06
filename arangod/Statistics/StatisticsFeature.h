@@ -41,7 +41,7 @@ struct TRI_vocbase_t;
 
 namespace arangodb {
 namespace metrics {
-class MetricsFeature;
+struct IRegistry;
 }  // namespace metrics
 class Thread;
 class StatisticsWorker;
@@ -94,8 +94,11 @@ class StatisticsFeature final
  public:
   static constexpr std::string_view name() noexcept { return "Statistics"; }
 
+  StatisticsFeature(application_features::ApplicationServer& server,
+                    metrics::IRegistry& metrics,
+                    StatisticsFeatureOptions options);
   explicit StatisticsFeature(application_features::ApplicationServer& server,
-                             metrics::MetricsFeature& metrics);
+                             metrics::IRegistry& registry);
 
   static double time();
 

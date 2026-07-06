@@ -217,7 +217,15 @@ uint64_t defaultMinWriteBufferNumberToMerge(uint64_t totalSize,
 RocksDBOptionFeature::RocksDBOptionFeature(
     application_features::ApplicationServer& server,
     AgencyFeature const* agencyFeature)
-    : ApplicationFeature{server, *this}, _agencyFeature(agencyFeature) {
+    : RocksDBOptionFeature(server, agencyFeature,
+                           RocksDBOptionFeatureOptions{}) {}
+
+RocksDBOptionFeature::RocksDBOptionFeature(
+    application_features::ApplicationServer& server,
+    AgencyFeature const* agencyFeature, RocksDBOptionFeatureOptions options)
+    : ApplicationFeature{server, *this},
+      _options(std::move(options)),
+      _agencyFeature(agencyFeature) {
   _options.transactionLockStripes =
       std::max(NumberOfCores::getValue(), std::size_t(16));
   _options.transactionLockTimeout = rocksDBTrxDefaults.transaction_lock_timeout;
