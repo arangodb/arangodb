@@ -57,10 +57,11 @@ function checkMetricsMoveSuite() {
       // all sorts of requests constantly arrive and we can never be
       // sure that nothing happens. In a single server, this is OK, 
       // only our own requests should arrive at the server.
-      let http1ReqCount = IM.getMetric("arangodb_request_body_size_http1_count");
-      let http1ReqSum = IM.getMetric("arangodb_request_body_size_http1_sum");
-      let http2ReqCount = IM.getMetric("arangodb_request_body_size_http2_count");
-      let http2ReqSum = IM.getMetric("arangodb_request_body_size_http2_sum");
+      let metricsToCompare = ["arangodb_request_body_size_http1_count",
+                              "arangodb_request_body_size_http1_sum",
+                              "arangodb_request_body_size_http2_count",
+                              "arangodb_request_body_size_http2_sum"];
+      let metricsBefore = IM.getMetric(metricsToCompare);
       // Do a few requests:
       for (let i = 0; i < 10; ++i) {
         let res = arango.GET_RAW("/_api/version");
@@ -72,23 +73,22 @@ function checkMetricsMoveSuite() {
       let res = arango.PUT_RAW("/_admin/log/level", logging);
       assertEqual(200, res.code);
       // And get the values again:
-      let http1ReqCount2 = IM.getMetric("arangodb_request_body_size_http1_count");
-      let http1ReqSum2 = IM.getMetric("arangodb_request_body_size_http1_sum");
-      let http2ReqCount2 = IM.getMetric("arangodb_request_body_size_http2_count");
-      let http2ReqSum2 = IM.getMetric("arangodb_request_body_size_http2_sum");
+      let metricsAfter = IM.getMetric(metricsToCompare);
+      let msg = `${metricsToCompare} => ${JSON.stringify(metricsBefore)} -> ${JSON.stringify(metricsAfter)}`;
       if (arango.protocol() === "http") {
-        assertNotEqual(http1ReqCount, http1ReqCount2);
-        assertNotEqual(http1ReqSum, http1ReqSum2);
+        assertNotEqual(metricsBefore[0], metricsAfter[0], msg);
+        assertNotEqual(metricsBefore[1], metricsAfter[1], msg);
       } else {
-        assertEqual(http1ReqCount, http1ReqCount2);
-        assertEqual(http1ReqSum, http1ReqSum2);
+        // it seems the statistics call is added here..
+        assertEqual(metricsBefore[0] + 1, metricsAfter[0], msg);
+        assertEqual(metricsBefore[1], metricsAfter[1], msg);
       }
       if (arango.protocol() === "http2") {
-        assertNotEqual(http2ReqCount, http2ReqCount2);
-        assertNotEqual(http2ReqSum, http2ReqSum2);
+        assertNotEqual(metricsBefore[2], metricsAfter[2], msg);
+        assertNotEqual(metricsBefore[3], metricsAfter[3], msg);
       } else {
-        assertEqual(http2ReqCount, http2ReqCount2);
-        assertEqual(http2ReqSum, http2ReqSum2);
+        assertEqual(metricsBefore[2], metricsAfter[2], msg);
+        assertEqual(metricsBefore[3], metricsAfter[3], msg);
       }
     },
 
