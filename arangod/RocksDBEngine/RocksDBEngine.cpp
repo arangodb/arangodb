@@ -269,9 +269,10 @@ RocksDBEngine::RocksDBEngine(
     ISortingPolicy const& sortingPolicy)
     : RocksDBEngine(server, optionsProvider, metrics, databasePathProvider,
                     vectorIndexProvider, flushControl, dumpLimitsProvider,
-                    replicatedLogProvider, rocksDbRecoveryManager,
-                    databaseProvider, indexCacheRefill, cacheManagerProvider,
-                    sortingPolicy, RocksDBEngineOptions{}) {}
+                    replicatedLogProvider, schedulerProvider,
+                    rocksDbRecoveryManager, databaseProvider, indexCacheRefill,
+                    cacheManagerProvider, sortingPolicy,
+                    RocksDBEngineOptions{}) {}
 
 RocksDBEngine::RocksDBEngine(
     application_features::ApplicationServer& server,
@@ -280,6 +281,7 @@ RocksDBEngine::RocksDBEngine(
     IVectorIndexProvider const& vectorIndexProvider,
     IFlushControl& flushControl, IDumpLimitsProvider const& dumpLimitsProvider,
     replication2::IReplicatedLogProvider* replicatedLogProvider,
+    ISchedulerProvider const& schedulerProvider,
     RocksDBRecoveryManager const& rocksDbRecoveryManager,
     IDatabaseProvider& databaseProvider, IIndexCacheRefill& indexCacheRefill,
     ICacheManagerProvider& cacheManagerProvider,

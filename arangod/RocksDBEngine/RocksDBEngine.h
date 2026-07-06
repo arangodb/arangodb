@@ -198,6 +198,7 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
                 IFlushControl& flushControl,
                 IDumpLimitsProvider const& dumpLimitsProvider,
                 replication2::IReplicatedLogProvider* replicatedLogProvider,
+                ISchedulerProvider const& schedulerProvider,
                 RocksDBRecoveryManager const& rocksDbRecoveryManager,
                 IDatabaseProvider& databaseProvider,
                 IIndexCacheRefill& indexCacheRefill,
