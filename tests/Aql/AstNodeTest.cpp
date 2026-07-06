@@ -414,6 +414,15 @@ TEST_F(AstNodeTest, constantObjectWithSpliceCanMaterializeToVPack) {
   EXPECT_EQ(3, slice.get("c").getInt());
 }
 
+TEST_F(AstNodeTest, objectWithInlineNullSpliceIsNotConstant) {
+  AstNode const* objectNode =
+      parseReturnExpression(_server, "RETURN { a: 1, ...null, c: 3 }");
+  ASSERT_NE(nullptr, objectNode);
+  ASSERT_EQ(NODE_TYPE_OBJECT, objectNode->type);
+  EXPECT_FALSE(objectNode->isConstant());
+  EXPECT_TRUE(objectHasObjectSplice(objectNode));
+}
+
 TEST_F(AstNodeTest, objectWithConstantObjectSpliceIsConstant) {
   AstNode const* objectNode =
       parseReturnExpression(_server, "RETURN { ...{ a: 1, b: 2 }, c: 3 }");

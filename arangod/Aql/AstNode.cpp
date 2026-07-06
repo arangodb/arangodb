@@ -1197,6 +1197,14 @@ void AstNode::setConstantFlags() noexcept {
   setFlag(DETERMINED_RUNONDBSERVER, VALUE_RUNONDBSERVER);
 }
 
+namespace {
+
+bool astNodeIsConstantObjectLiteral(AstNode const* node) noexcept {
+  return node != nullptr && node->type == NODE_TYPE_OBJECT && node->isConstant();
+}
+
+}  // namespace
+
 bool AstNode::valueHasVelocyPackRepresentation() const {
   switch (type) {
     case NODE_TYPE_VALUE:
@@ -1231,8 +1239,7 @@ bool AstNode::valueHasVelocyPackRepresentation() const {
         } else if (member->type == NODE_TYPE_OBJECT_SPLICE) {
           auto source = member->getMember(0);
           TRI_ASSERT(source != nullptr);
-          if (!source->isConstant() ||
-              !source->valueHasVelocyPackRepresentation()) {
+          if (!astNodeIsConstantObjectLiteral(source)) {
             return false;
           }
         } else {
@@ -2167,7 +2174,7 @@ bool AstNode::isConstant() const {
           return false;
         }
       } else if (member->type == NODE_TYPE_OBJECT_SPLICE) {
-        if (!member->getMember(0)->isConstant()) {
+        if (!astNodeIsConstantObjectLiteral(member->getMember(0))) {
           setFlag(DETERMINED_CONSTANT);
           return false;
         }
