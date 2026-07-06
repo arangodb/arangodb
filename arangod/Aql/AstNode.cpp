@@ -1200,7 +1200,8 @@ void AstNode::setConstantFlags() noexcept {
 namespace {
 
 bool astNodeIsConstantObjectLiteral(AstNode const* node) noexcept {
-  return node != nullptr && node->type == NODE_TYPE_OBJECT && node->isConstant();
+  return node != nullptr && node->type == NODE_TYPE_OBJECT &&
+         node->isConstant();
 }
 
 }  // namespace
