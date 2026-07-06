@@ -209,8 +209,8 @@ Result ClusterEngine::dropDatabase(TRI_vocbase_t& database) {
 }
 
 // current recovery state
-EngineState ClusterEngine::recoveryState() noexcept {
-  return EngineState::running;  // never in recovery
+EngineState ClusterEngine::engineState() noexcept {
+  return EngineState::kRunning;  // never in recovery
 }
 
 // current recovery tick

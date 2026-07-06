@@ -936,21 +936,15 @@ void RocksDBEngine::start() {
     addSystemDatabase();
   }
 
-  _engineState.store(EngineState::recovering, std::memory_order_release);
+  _engineState.store(EngineState::kRecovering, std::memory_order_release);
   {
-    struct TickUpdater final : ITickObserver {
-      explicit TickUpdater(std::atomic<rocksdb::SequenceNumber>& t) noexcept
-          : _tick(t) {}
-      void onTick(rocksdb::SequenceNumber seq) noexcept override {
-        _tick.store(seq, std::memory_order_relaxed);
-      }
-      std::atomic<rocksdb::SequenceNumber>& _tick;
-    };
-    TickUpdater tickUpdater{_recoveryTick};
-    RocksDBRecoveryManager manager(*this, tickUpdater);
+    RocksDBRecoveryManager manager(
+        *this, [&tick = _recoveryTick](rocksdb::SequenceNumber seq) noexcept {
+          tick.store(seq, std::memory_order_relaxed);
+        });
     manager.runRecovery();
   }
-  _engineState.store(EngineState::running, std::memory_order_release);
+  _engineState.store(EngineState::kRunning, std::memory_order_release);
   _recoveryCallback.recoveryDone();
 
   // to populate initial health check data

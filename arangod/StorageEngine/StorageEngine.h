@@ -47,7 +47,7 @@ class Slice;
 class Builder;
 }  // namespace velocypack
 
-enum class EngineState : uint32_t { uninitialized = 0, recovering, running };
+enum class EngineState : uint32_t { kUninitialized = 0, kRecovering, kRunning };
 
 namespace aql {
 class OptimizerRulesFeature;
@@ -206,7 +206,7 @@ class StorageEngine : public application_features::ApplicationFeature {
   bool inRecovery();
 
   /// @brief current recovery state
-  virtual EngineState recoveryState() noexcept = 0;
+  virtual EngineState engineState() noexcept = 0;
 
   /// @brief current recovery tick
   virtual TRI_voc_tick_t recoveryTick() noexcept = 0;

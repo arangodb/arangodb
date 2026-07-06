@@ -2818,11 +2818,11 @@ class IResearchLinkInRecoveryDBServerOnUpgradeTest
     TRI_CreateDirectory(testFilesystemPath.c_str(), systemError,
                         systemErrorStr);
     // simulate running recovery
-    StorageEngineMock::recoveryStateResult = arangodb::EngineState::recovering;
+    StorageEngineMock::recoveryStateResult = arangodb::EngineState::kRecovering;
   }
 
   ~IResearchLinkInRecoveryDBServerOnUpgradeTest() override {
-    StorageEngineMock::recoveryStateResult = arangodb::EngineState::running;
+    StorageEngineMock::recoveryStateResult = arangodb::EngineState::kRunning;
     TRI_RemoveDirectory(testFilesystemPath.c_str());
   }
 };

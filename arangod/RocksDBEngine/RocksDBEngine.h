@@ -306,7 +306,7 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   Result dropDatabase(TRI_vocbase_t& database) override;
 
   // wal in recovery
-  EngineState recoveryState() noexcept override {
+  EngineState engineState() noexcept override {
     return _engineState.load(std::memory_order_acquire);
   }
 
@@ -634,8 +634,8 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
 
  private:
   IRecoveryCallback& _recoveryCallback;
-  // release-stores synchronize with acquire reads in recoveryState()
-  std::atomic<EngineState> _engineState{EngineState::uninitialized};
+  // release-stores synchronize with acquire reads in engineState()
+  std::atomic<EngineState> _engineState{EngineState::kUninitialized};
   // relaxed writes become visible after the running release-store above
   std::atomic<rocksdb::SequenceNumber> _recoveryTick{0};
   IDatabasePathProvider const& _databasePathProvider;

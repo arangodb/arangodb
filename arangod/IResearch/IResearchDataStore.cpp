@@ -1322,15 +1322,15 @@ Result IResearchDataStore::initDataStore(
       initCallback ? initCallback() : irs::directory_attributes{},
       readerOptions.resource_manager);
 
-  switch (_engine->recoveryState()) {
-    case EngineState::uninitialized:  // Link is being opened before recovery
+  switch (_engine->engineState()) {
+    case EngineState::kUninitialized:  // Link is being opened before recovery
       [[fallthrough]];
-    case EngineState::running: {  // Link is being created after recovery
+    case EngineState::kRunning: {  // Link is being created after recovery
       // Will be adjusted in post-recovery callback
       _dataStore._recoveryTickHigh = _dataStore._recoveryTickLow =
           _engine->recoveryTick();
     } break;
-    case EngineState::recovering: {  // Link is being created during recovery
+    case EngineState::kRecovering: {  // Link is being created during recovery
       _dataStore._recoveryTickHigh = _dataStore._recoveryTickLow =
           _engine->releasedTick();
     } break;
@@ -1551,7 +1551,7 @@ void IResearchDataStore::properties(LinkLock linkLock,
     linkLock->_dataStore._meta.storeFull(meta);
   }
 
-  if (linkLock->_engine->recoveryState() == EngineState::running) {
+  if (linkLock->_engine->engineState() == EngineState::kRunning) {
     if (meta._commitIntervalMsec) {
       linkLock->scheduleCommit(
           std::chrono::milliseconds(meta._commitIntervalMsec));

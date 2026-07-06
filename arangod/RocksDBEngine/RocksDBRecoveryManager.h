@@ -25,7 +25,9 @@
 #pragma once
 
 #include "Basics/Result.h"
-#include "RocksDBEngine/ITickObserver.h"
+
+#include <functional>
+#include <rocksdb/types.h>
 
 namespace arangodb {
 
@@ -34,7 +36,9 @@ struct IDatabaseProvider;
 
 class RocksDBRecoveryManager final {
  public:
-  RocksDBRecoveryManager(RocksDBEngine& engine, ITickObserver& tickObserver);
+  using TickCallback = std::function<void(rocksdb::SequenceNumber)>;
+
+  RocksDBRecoveryManager(RocksDBEngine& engine, TickCallback onTick);
 
   void runRecovery();
 
@@ -43,7 +47,7 @@ class RocksDBRecoveryManager final {
 
   RocksDBEngine& _engine;
   IDatabaseProvider& _dbProvider;
-  ITickObserver& _tickObserver;
+  TickCallback _onTick;
 };
 
 }  // namespace arangodb

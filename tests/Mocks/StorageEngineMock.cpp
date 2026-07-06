@@ -191,7 +191,7 @@ StorageEngineMock::buildInvertedIndexMock(
 
 std::function<void()> StorageEngineMock::before = []() -> void {};
 arangodb::EngineState StorageEngineMock::recoveryStateResult =
-    arangodb::EngineState::running;
+    arangodb::EngineState::kRunning;
 TRI_voc_tick_t StorageEngineMock::recoveryTickResult = 0;
 std::function<void()> StorageEngineMock::recoveryTickCallback = []() -> void {};
 
@@ -427,7 +427,7 @@ arangodb::Result StorageEngineMock::handleSyncKeys(
   return arangodb::Result();
 }
 
-arangodb::EngineState StorageEngineMock::recoveryState() noexcept {
+arangodb::EngineState StorageEngineMock::engineState() noexcept {
   return recoveryStateResult;
 }
 TRI_voc_tick_t StorageEngineMock::recoveryTick() noexcept {

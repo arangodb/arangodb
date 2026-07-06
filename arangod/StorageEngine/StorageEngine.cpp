@@ -81,7 +81,7 @@ Result StorageEngine::writeCreateDatabaseMarker(TRI_voc_tick_t id,
 Result StorageEngine::prepareDropDatabase(TRI_vocbase_t& vocbase) { return {}; }
 
 bool StorageEngine::inRecovery() {
-  return recoveryState() < EngineState::running;
+  return engineState() == EngineState::kRecovering;
 }
 
 void StorageEngine::scheduleFullIndexRefill(std::string const& database,
