@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertTrue */
+/*global assertEqual, assertTrue, assertFalse */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -26,6 +26,52 @@ const internal = require("internal");
 const jsunity = require("jsunity");
 const db = internal.db;
 const errors = internal.errors;
+
+function getReturnCalculation(query) {
+  let plan = db._createStatement({query: query}).explain();
+  let nodes = plan.plan.nodes;
+  let returnNode = nodes.find(n => n.type === 'ReturnNode');
+  assertTrue(returnNode !== undefined);
+  let calcId = returnNode.dependencies[0];
+  let calc = nodes.find(n => n.id === calcId);
+  assertTrue(calc !== undefined);
+  return calc;
+}
+
+function expressionHasObjectSplice(expression) {
+  if (expression.type === 'object splice') {
+    return true;
+  }
+  if (expression.subNodes) {
+    for (let subNode of expression.subNodes) {
+      if (expressionHasObjectSplice(subNode)) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+function assertFoldedConstantObject(query, expected) {
+  assertEqual([expected], db._query(query).toArray());
+  let calc = getReturnCalculation(query);
+  assertEqual('json', calc.expressionType);
+  assertEqual('object', calc.expression.type);
+  assertFalse(expressionHasObjectSplice(calc.expression));
+}
+
+function assertNotFoldedObjectSplice(query) {
+  let calc = getReturnCalculation(query);
+  assertEqual('simple', calc.expressionType);
+  assertTrue(expressionHasObjectSplice(calc.expression));
+}
+
+function assertFlattenedObjectLiteralSplice(query) {
+  let calc = getReturnCalculation(query);
+  assertEqual('simple', calc.expressionType);
+  assertEqual('object', calc.expression.type);
+  assertFalse(expressionHasObjectSplice(calc.expression));
+}
 
 function objectSplicingSuite () {
   return {
@@ -176,6 +222,91 @@ function objectSplicingSuite () {
       let query = `LET a = "prefix" LET x = {name: "Chrome", prefixname: "Google" } LET y = { [a + "name"]: "GoogleChrome"} RETURN [{...x, ...y}]`;
       let res = db._query(query).toArray();
       assertEqual([[{ "name" : "Chrome", "prefixname" : "GoogleChrome" }]], res);
+    },
+
+    testConstantLetObjectSpliceFolding: function () {
+      let query = `LET x = {foo:1, bar:2, baz:3} RETURN {...x, foo:2}`;
+      assertFoldedConstantObject(query, {foo: 2, bar: 2, baz: 3});
+    },
+
+    testMultipleConstantObjectSpliceFolding: function () {
+      let query = `LET a = { u: 1 } LET b = { v: 2 } RETURN { ...a, ...b, w: 3 }`;
+      assertFoldedConstantObject(query, {u: 1, v: 2, w: 3});
+    },
+
+    testConstantObjectSpliceOverwritePrecedence: function () {
+      let query = `LET o = { a: 1, b: 2 } RETURN { a: 9, ...o, b: 3 }`;
+      assertFoldedConstantObject(query, {a: 1, b: 3});
+    },
+
+    testNestedConstantObjectSpliceFolding: function () {
+      let query = `LET x = { a: 1 } RETURN { ...{ ...x, b: 2 }, c: 3 }`;
+      assertFoldedConstantObject(query, {a: 1, b: 2, c: 3});
+    },
+
+    testNonConstantLetObjectSpliceNotFolded: function () {
+      let query = `FOR i IN 1..1 LET x = { a: i } RETURN { ...x, b: 2 }`;
+      assertEqual([{a: 1, b: 2}], db._query(query).toArray());
+      assertNotFoldedObjectSplice(query);
+    },
+
+    testCalculatedAttributeWithConstantSplicesDoesNotCrash: function () {
+      let query = `RETURN {
+        ...{ a:1, b:2 },
+        [ CONCAT("he","llo") ] : "world",
+        c: {
+          ...{ x:10, y:20 },
+          z:30
+        }
+      }`;
+      let expected = { a: 1, b: 2, hello: "world", c: { x: 10, y: 20, z: 30 } };
+      assertEqual([expected], db._query(query).toArray());
+
+      let plan = db._createStatement({
+        query: query,
+        options: { matchStatement: "experimental" }
+      }).explain();
+      assertTrue(plan.plan !== undefined);
+
+      let calc = getReturnCalculation(query);
+      assertEqual('simple', calc.expressionType);
+      assertFalse(expressionHasObjectSplice(calc.expression));
+    },
+
+    testObjectLiteralSpliceFlattening: function () {
+      assertFlattenedObjectLiteralSplice(
+        `FOR i IN 1..10 RETURN { ...{ a: i }, b: 2 }`);
+    },
+
+    testObjectLiteralSpliceFlatteningPreservesOrder: function () {
+      assertFlattenedObjectLiteralSplice(
+        `FOR i IN 1..10 RETURN { x: 1, ...{ a: i }, y: 2 }`);
+    },
+
+    testMultipleObjectLiteralSplicesFlattening: function () {
+      assertFlattenedObjectLiteralSplice(
+        `FOR i IN 1..10 FOR j IN 1..10 RETURN { ...{ a: i }, ...{ b: j } }`);
+    },
+
+    testNestedObjectLiteralSpliceFlattening: function () {
+      assertFlattenedObjectLiteralSplice(
+        `FOR i IN 1..10 RETURN { ...{ a: i, c: { ...{ x: 1 }, y: 2 } }, b: 2 }`);
+    },
+
+    testObjectLiteralSpliceWithCalculatedAttributeFlattening: function () {
+      assertFlattenedObjectLiteralSplice(
+        `FOR i IN 1..10 RETURN { ...{ a: i }, [ CONCAT("he","llo") ] : "world" }`);
+    },
+
+    testVariableObjectSpliceNotFlattened: function () {
+      let query = `FOR i IN 1..1 LET x = { a: i } RETURN { ...x, b: 2 }`;
+      assertEqual([{a: 1, b: 2}], db._query(query).toArray());
+      assertNotFoldedObjectSplice(query);
+    },
+
+    testFunctionObjectSpliceNotFlattened: function () {
+      let query = `FOR i IN 1..10 RETURN { ...NOOPT({ a: i }), b: 2 }`;
+      assertNotFoldedObjectSplice(query);
     }
   };
 }

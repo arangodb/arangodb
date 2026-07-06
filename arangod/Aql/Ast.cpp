@@ -26,6 +26,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Aggregator.h"
 #include "Aql/AqlFunctionFeature.h"
+#include "Aql/AqlValue.h"
 #include "Aql/AqlValueMaterializer.h"
 #include "Aql/AstNode.h"
 #include "Aql/ExecutionNode/TraversalNode.h"
@@ -120,6 +121,47 @@ struct ValidateAndOptimizeContext {
   bool hasSeenAnyWriteNode = false;
   bool hasSeenWriteNodeInCurrentScope = false;
 };
+
+bool astNodeObjectHasObjectSplice(AstNode const* node) noexcept {
+  size_t const n = node->numMembers();
+  for (size_t i = 0; i < n; ++i) {
+    if (node->getMemberUnchecked(i)->type == NODE_TYPE_OBJECT_SPLICE) {
+      return true;
+    }
+  }
+  return false;
+}
+
+bool astNodeIsConstantObjectExpression(AstNode const* source) noexcept {
+  return source != nullptr && source->isConstant() &&
+         source->type == NODE_TYPE_OBJECT;
+}
+
+bool astNodeObjectCanFullyConstantFold(AstNode const* node) noexcept {
+  if (astNodeObjectHasObjectSplice(node)) {
+    return false;
+  }
+
+  size_t const n = node->numMembers();
+  for (size_t i = 0; i < n; ++i) {
+    AstNode const* member = node->getMemberUnchecked(i);
+
+    // Computed attribute names cannot be resolved during constant folding.
+    if (member->type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT) {
+      return false;
+    }
+
+    if (member->type == NODE_TYPE_OBJECT_ELEMENT) {
+      if (!member->getMember(0)->isConstant()) {
+        return false;
+      }
+    } else {
+      return false;
+    }
+  }
+
+  return true;
+}
 
 auto doNothingVisitor = [](AstNode const*) {};
 
@@ -2922,7 +2964,8 @@ void Ast::validateAndOptimize(transaction::Methods& trx,
     }
 
     if (node->type == NODE_TYPE_OBJECT) {
-      return this->optimizeObject(node);
+      return this->optimizeObject(ctx->trx, ctx->aqlFunctionsInternalCache,
+                                  node);
     }
 
     // traversal
@@ -4121,8 +4164,192 @@ AstNode* Ast::optimizeFor(AstNode* node) {
   return node;
 }
 
+void Ast::clearObjectOptimizationFlags(AstNode* node) {
+  TRI_ASSERT(node != nullptr);
+  TRI_ASSERT(node->type == NODE_TYPE_OBJECT);
+
+  node->removeFlag(DETERMINED_CONSTANT);
+  node->removeFlag(VALUE_CONSTANT);
+  node->removeFlag(DETERMINED_CHECKUNIQUENESS);
+  node->removeFlag(VALUE_CHECKUNIQUENESS);
+}
+
+void Ast::flattenObjectLiteralMemberValues(AstNode* node) {
+  size_t const n = node->numMembers();
+  for (size_t i = 0; i < n; ++i) {
+    AstNode* member = node->getMemberUnchecked(i);
+
+    if (member->type == NODE_TYPE_OBJECT_ELEMENT) {
+      AstNode* value = member->getMemberUnchecked(0);
+      if (value != nullptr && value->type == NODE_TYPE_OBJECT) {
+        AstNode* flattened = flattenObjectLiteralSplices(value);
+        if (flattened != value) {
+          TEMPORARILY_UNLOCK_NODE(member);
+          member->changeMember(0, flattened);
+        }
+      }
+    } else if (member->type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT) {
+      AstNode* value = member->getMemberUnchecked(1);
+      if (value != nullptr && value->type == NODE_TYPE_OBJECT) {
+        AstNode* flattened = flattenObjectLiteralSplices(value);
+        if (flattened != value) {
+          TEMPORARILY_UNLOCK_NODE(member);
+          member->changeMember(1, flattened);
+        }
+      }
+    }
+  }
+}
+
+/// @brief flatten object literal splices into the parent object
+AstNode* Ast::flattenObjectLiteralSplices(AstNode* node) {
+  if (node == nullptr || node->type != NODE_TYPE_OBJECT) {
+    return node;
+  }
+
+  flattenObjectLiteralMemberValues(node);
+
+  if (!astNodeObjectHasObjectSplice(node)) {
+    return node;
+  }
+
+  size_t const n = node->numMembers();
+  containers::SmallVector<AstNode*, 8> newMembers;
+  bool changed = false;
+
+  for (size_t i = 0; i < n; ++i) {
+    AstNode* member = node->getMemberUnchecked(i);
+
+    if (member->type == NODE_TYPE_OBJECT_SPLICE) {
+      AstNode* source = member->getMemberUnchecked(0);
+      if (source == nullptr || source->type != NODE_TYPE_OBJECT) {
+        newMembers.push_back(member);
+        continue;
+      }
+
+      source = flattenObjectLiteralSplices(source);
+      changed = true;
+
+      size_t const innerMembers = source->numMembers();
+      for (size_t j = 0; j < innerMembers; ++j) {
+        newMembers.push_back(clone(source->getMemberUnchecked(j)));
+      }
+    } else {
+      newMembers.push_back(member);
+    }
+  }
+
+  if (!changed) {
+    return node;
+  }
+
+  TEMPORARILY_UNLOCK_NODE(node);
+  node->clearMembers();
+  for (auto* member : newMembers) {
+    node->addMember(member);
+  }
+
+  clearObjectOptimizationFlags(node);
+  return node;
+}
+
 /// @brief optimizes an object literal or an object expression
-AstNode* Ast::optimizeObject(AstNode* node) {
+AstNode* Ast::foldConstantObjectSplices(AstNode* node) {
+  if (!astNodeObjectHasObjectSplice(node)) {
+    return node;
+  }
+
+  size_t const n = node->numMembers();
+  containers::SmallVector<AstNode*, 8> newMembers;
+  bool changed = false;
+
+  for (size_t i = 0; i < n; ++i) {
+    AstNode* member = node->getMemberUnchecked(i);
+
+    if (member->type == NODE_TYPE_OBJECT_SPLICE) {
+      AstNode* source = member->getMemberUnchecked(0);
+      if (!source->isConstant() || !source->isDeterministic() ||
+          !astNodeIsConstantObjectExpression(source)) {
+        newMembers.push_back(member);
+        continue;
+      }
+      size_t const sizeBefore = newMembers.size();
+      if (!appendObjectElementsFromConstantObject(source, newMembers)) {
+        newMembers.resize(sizeBefore);
+        newMembers.push_back(member);
+        continue;
+      }
+      changed = true;
+    } else {
+      newMembers.push_back(member);
+    }
+  }
+
+  if (!changed) {
+    return node;
+  }
+
+  TEMPORARILY_UNLOCK_NODE(node);
+  node->clearMembers();
+  for (auto* member : newMembers) {
+    node->addMember(member);
+  }
+
+  clearObjectOptimizationFlags(node);
+  return node;
+}
+
+bool Ast::appendObjectElementsFromConstantObject(
+    AstNode const* source, containers::SmallVector<AstNode*, 8>& out) {
+  TRI_ASSERT(source != nullptr);
+  TRI_ASSERT(source->isConstant());
+
+  if (source->type != NODE_TYPE_OBJECT) {
+    return false;
+  }
+
+  size_t const n = source->numMembers();
+  for (size_t i = 0; i < n; ++i) {
+    AstNode const* member = source->getMemberUnchecked(i);
+    if (member->type == NODE_TYPE_OBJECT_ELEMENT) {
+      char const* name = _resources.registerString(member->getStringView());
+      out.push_back(createNodeObjectElement(
+          std::string_view(name, member->getStringLength()),
+          clone(member->getMember(0))));
+    } else if (member->type == NODE_TYPE_OBJECT_SPLICE) {
+      AstNode const* spliceSource = member->getMemberUnchecked(0);
+      if (!astNodeIsConstantObjectExpression(spliceSource)) {
+        return false;
+      }
+      if (!appendObjectElementsFromConstantObject(spliceSource, out)) {
+        return false;
+      }
+    } else {
+      return false;
+    }
+  }
+  return true;
+}
+
+/// @brief optimizes an object literal or an object expression
+AstNode* Ast::optimizeObject(
+    transaction::Methods& trx,
+    AqlFunctionsInternalCache& aqlFunctionsInternalCache, AstNode* node) {
+  node = flattenObjectLiteralSplices(node);
+  node = foldConstantObjectSplices(node);
+
+  if (astNodeObjectCanFullyConstantFold(node)) {
+    Expression exp(this, node);
+    FixedVarExpressionContext context(trx, _query, aqlFunctionsInternalCache);
+    bool mustDestroy = false;
+    AqlValue a = exp.execute(&context, mustDestroy);
+    AqlValueGuard guard(a, mustDestroy);
+
+    AqlValueMaterializer materializer(
+        trx.transactionContextPtr()->getVPackOptions());
+    node = nodeFromVPack(materializer.slice(a), true);
+  }
+
   ast::ObjectNode object(node);
 
   auto members = object.getElements();
@@ -4138,9 +4365,10 @@ AstNode* Ast::optimizeObject(AstNode* node) {
           node->setFlag(DETERMINED_CHECKUNIQUENESS, VALUE_CHECKUNIQUENESS);
           return node;
         }
-      } else if (member->type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT) {
-        // dynamic key... we don't know the key yet, so there's no
-        // way around check it at runtime later
+      } else if (member->type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT ||
+                 member->type == NODE_TYPE_OBJECT_SPLICE) {
+        // dynamic key or object splice... we don't know the final shape yet,
+        // so there's no way around checking it at runtime later
         node->setFlag(DETERMINED_CHECKUNIQUENESS, VALUE_CHECKUNIQUENESS);
         return node;
       }

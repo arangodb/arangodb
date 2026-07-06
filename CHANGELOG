@@ -1,6 +1,9 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* COR-675: Constant-Folding for Object splice, enhanced AQL constant folding 
+  for object literals. Object literals with constant object splices and constant computed attribute names are now precomputed during query optimization, reducing runtime overhead and improving query performance
+
 * Upgraded included rclone to v1.74.3 with go1.25.11 and non-vulnerable
   dependencies.
 

@@ -23,10 +23,14 @@
 
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
+#include "Aql/Parser/Parser.h"
 #include "Aql/Quantifier.h"
 #include "Aql/Query.h"
+#include "Aql/QueryString.h"
+#include "Aql/StandaloneCalculation.h"
 #include "Logger/LogMacros.h"
 #include "Mocks/Servers.h"
+#include "Transaction/OperationOrigin.h"
 
 #include "gtest/gtest.h"
 
@@ -69,9 +73,10 @@ AstNode const* getObjectElement(AstNode const* object, std::string_view name) {
   EXPECT_EQ(NODE_TYPE_OBJECT, object->type);
   for (size_t i = 0; i < object->numMembers(); ++i) {
     AstNode const* member = object->getMember(i);
-    EXPECT_EQ(NODE_TYPE_OBJECT_ELEMENT, member->type);
-    if (member->type == NODE_TYPE_OBJECT_ELEMENT &&
-        member->getStringView() == name) {
+    if (member->type != NODE_TYPE_OBJECT_ELEMENT) {
+      continue;
+    }
+    if (member->getStringView() == name) {
       return member;
     }
   }
@@ -114,6 +119,387 @@ AstNode const* expectObjectObject(AstNode const* object,
   }
   EXPECT_EQ(NODE_TYPE_OBJECT, member->type);
   return member;
+}
+
+AstNode const* parseReturnExpression(tests::mocks::MockAqlServer const& server,
+                                     std::string_view query) {
+  auto queryContext = StandaloneCalculation::buildQueryContext(
+      server.getSystemDatabase(), transaction::OperationOriginTestCase{});
+  Ast ast(*queryContext);
+  QueryString queryString(query);
+  Parser parser(*queryContext, ast, queryString);
+  parser.parse();
+
+  AstNode const* rootNode = ast.root();
+  if (rootNode == nullptr) {
+    ADD_FAILURE() << "root node is null for query: " << query;
+    return nullptr;
+  }
+  EXPECT_EQ(NODE_TYPE_ROOT, rootNode->type);
+  if (rootNode->numMembers() == 0) {
+    return nullptr;
+  }
+
+  for (size_t i = 0; i < rootNode->numMembers(); ++i) {
+    AstNode const* node = rootNode->getMember(i);
+    if (node->type != NODE_TYPE_RETURN) {
+      continue;
+    }
+    EXPECT_EQ(1, node->numMembers());
+    if (node->numMembers() != 1) {
+      return nullptr;
+    }
+    return node->getMember(0);
+  }
+
+  ADD_FAILURE() << "no RETURN node found in query: " << query;
+  return nullptr;
+}
+
+AstNode const* findReturnExpression(AstNode const* node) {
+  if (node == nullptr) {
+    return nullptr;
+  }
+
+  if (node->type == NODE_TYPE_RETURN) {
+    if (node->numMembers() != 1) {
+      return nullptr;
+    }
+    return node->getMember(0);
+  }
+
+  size_t const n = node->numMembers();
+  for (size_t i = 0; i < n; ++i) {
+    if (AstNode const* result = findReturnExpression(node->getMember(i))) {
+      return result;
+    }
+  }
+  return nullptr;
+}
+
+AstNode const* parseAndOptimizeReturnExpression(
+    tests::mocks::MockAqlServer const& server, std::string_view query) {
+  auto queryContext = StandaloneCalculation::buildQueryContext(
+      server.getSystemDatabase(), transaction::OperationOriginTestCase{});
+  Ast ast(*queryContext);
+  QueryString queryString(query);
+  Parser parser(*queryContext, ast, queryString);
+  parser.parse();
+  ast.validateAndOptimize(queryContext->trxForOptimization(),
+                          {.optimizeNonCacheable = true});
+
+  AstNode const* rootNode = ast.root();
+  EXPECT_EQ(NODE_TYPE_ROOT, rootNode->type);
+  if (rootNode == nullptr) {
+    return nullptr;
+  }
+
+  AstNode const* returnExpression = findReturnExpression(rootNode);
+  if (returnExpression == nullptr) {
+    ADD_FAILURE() << "no RETURN node found in query: " << query;
+  }
+  return returnExpression;
+}
+
+bool objectHasObjectSplice(AstNode const* object) {
+  EXPECT_EQ(NODE_TYPE_OBJECT, object->type);
+  for (size_t i = 0; i < object->numMembers(); ++i) {
+    if (object->getMember(i)->type == NODE_TYPE_OBJECT_SPLICE) {
+      return true;
+    }
+  }
+  return false;
+}
+
+TEST_F(AstNodeTest, constantLetObjectSpliceIsFoldedDuringOptimization) {
+  AstNode const* objectNode = parseAndOptimizeReturnExpression(
+      _server, "LET x = {foo:1, bar:2, baz:3} RETURN {...x, foo:2}");
+  ASSERT_NE(nullptr, objectNode);
+  ASSERT_EQ(NODE_TYPE_OBJECT, objectNode->type);
+  EXPECT_TRUE(objectNode->isConstant());
+  EXPECT_FALSE(objectHasObjectSplice(objectNode));
+  expectObjectInt(objectNode, "foo", 2);
+  expectObjectInt(objectNode, "bar", 2);
+  expectObjectInt(objectNode, "baz", 3);
+}
+
+TEST_F(AstNodeTest, nonConstantLetObjectSpliceIsNotFoldedDuringOptimization) {
+  AstNode const* objectNode = parseAndOptimizeReturnExpression(
+      _server, "FOR i IN 1..1 LET x = { a: i } RETURN { ...x, b: 2 }");
+  ASSERT_NE(nullptr, objectNode);
+  ASSERT_EQ(NODE_TYPE_OBJECT, objectNode->type);
+  EXPECT_FALSE(objectNode->isConstant());
+  EXPECT_TRUE(objectHasObjectSplice(objectNode));
+}
+
+TEST_F(AstNodeTest, objectLiteralSpliceIsFlattenedDuringOptimization) {
+  AstNode const* objectNode = parseAndOptimizeReturnExpression(
+      _server, "FOR i IN 1..10 RETURN { ...{ a: i }, b: 2 }");
+  ASSERT_NE(nullptr, objectNode);
+  ASSERT_EQ(NODE_TYPE_OBJECT, objectNode->type);
+  EXPECT_FALSE(objectHasObjectSplice(objectNode));
+  EXPECT_FALSE(objectNode->isConstant());
+
+  AstNode const* aValue = getObjectElementValue(objectNode, "a");
+  ASSERT_NE(nullptr, aValue);
+  EXPECT_EQ(NODE_TYPE_REFERENCE, aValue->type);
+  expectObjectInt(objectNode, "b", 2);
+}
+
+TEST_F(AstNodeTest, constantObjectLiteralSpliceIsFlattenedDuringOptimization) {
+  AstNode const* objectNode =
+      parseAndOptimizeReturnExpression(_server, "RETURN { ...{ a: 1 }, b: 2 }");
+  ASSERT_NE(nullptr, objectNode);
+  EXPECT_FALSE(objectHasObjectSplice(objectNode));
+  EXPECT_TRUE(objectNode->isConstant());
+  expectObjectInt(objectNode, "a", 1);
+  expectObjectInt(objectNode, "b", 2);
+}
+
+TEST_F(AstNodeTest, objectLiteralSplicePreservesMemberOrder) {
+  AstNode const* objectNode = parseAndOptimizeReturnExpression(
+      _server,
+      "FOR i IN 1..10 FOR j IN 1..10 RETURN { x: 1, ...{ a: i }, y: 2 }");
+  ASSERT_NE(nullptr, objectNode);
+  EXPECT_FALSE(objectHasObjectSplice(objectNode));
+  ASSERT_EQ(3, objectNode->numMembers());
+  expectObjectInt(objectNode, "x", 1);
+  expectObjectInt(objectNode, "y", 2);
+  AstNode const* aValue = getObjectElementValue(objectNode, "a");
+  ASSERT_NE(nullptr, aValue);
+  EXPECT_EQ(NODE_TYPE_REFERENCE, aValue->type);
+}
+
+TEST_F(AstNodeTest,
+       multipleObjectLiteralSplicesAreFlattenedDuringOptimization) {
+  AstNode const* objectNode = parseAndOptimizeReturnExpression(
+      _server,
+      "FOR i IN 1..10 FOR j IN 1..10 RETURN { ...{ a: i }, ...{ b: j } }");
+  ASSERT_NE(nullptr, objectNode);
+  EXPECT_FALSE(objectHasObjectSplice(objectNode));
+  ASSERT_EQ(2, objectNode->numMembers());
+}
+
+TEST_F(AstNodeTest, nestedObjectLiteralSplicesAreFlattenedDuringOptimization) {
+  AstNode const* objectNode = parseAndOptimizeReturnExpression(
+      _server,
+      "FOR i IN 1..10 RETURN { ...{ a: i, c: { ...{ x: 1 }, y: 2 } }, b: 2 }");
+  ASSERT_NE(nullptr, objectNode);
+  EXPECT_FALSE(objectHasObjectSplice(objectNode));
+
+  AstNode const* cObject = expectObjectObject(objectNode, "c");
+  ASSERT_NE(nullptr, cObject);
+  EXPECT_FALSE(objectHasObjectSplice(cObject));
+  expectObjectInt(cObject, "x", 1);
+  expectObjectInt(cObject, "y", 2);
+  expectObjectInt(objectNode, "b", 2);
+}
+
+TEST_F(AstNodeTest, objectLiteralSpliceWithCalculatedKeyIsFlattened) {
+  AstNode const* objectNode = parseAndOptimizeReturnExpression(
+      _server,
+      R"aql(FOR i IN 1..10 RETURN { ...{ a: i }, [ CONCAT("he","llo") ] : "world" })aql");
+  ASSERT_NE(nullptr, objectNode);
+  EXPECT_FALSE(objectHasObjectSplice(objectNode));
+  EXPECT_FALSE(objectNode->isConstant());
+  ASSERT_EQ(2, objectNode->numMembers());
+  EXPECT_EQ(NODE_TYPE_OBJECT_ELEMENT, objectNode->getMember(0)->type);
+  EXPECT_EQ(NODE_TYPE_CALCULATED_OBJECT_ELEMENT,
+            objectNode->getMember(1)->type);
+}
+
+TEST_F(AstNodeTest, variableObjectSpliceIsNotFlattenedDuringOptimization) {
+  AstNode const* objectNode = parseAndOptimizeReturnExpression(
+      _server, "FOR i IN 1..10 RETURN { ...i, b: 2 }");
+  ASSERT_NE(nullptr, objectNode);
+  EXPECT_TRUE(objectHasObjectSplice(objectNode));
+}
+
+TEST_F(AstNodeTest, functionObjectSpliceIsNotFlattenedDuringOptimization) {
+  AstNode const* objectNode = parseAndOptimizeReturnExpression(
+      _server, "FOR i IN 1..10 RETURN { ...NOOPT({ a: i }), b: 2 }");
+  ASSERT_NE(nullptr, objectNode);
+  EXPECT_TRUE(objectHasObjectSplice(objectNode));
+}
+
+TEST_F(AstNodeTest, multipleConstantObjectSplicesAreFoldedDuringOptimization) {
+  AstNode const* objectNode = parseAndOptimizeReturnExpression(
+      _server, "LET a = { u: 1 } LET b = { v: 2 } RETURN { ...a, ...b, w: 3 }");
+  ASSERT_NE(nullptr, objectNode);
+  EXPECT_TRUE(objectNode->isConstant());
+  EXPECT_FALSE(objectHasObjectSplice(objectNode));
+  expectObjectInt(objectNode, "u", 1);
+  expectObjectInt(objectNode, "v", 2);
+  expectObjectInt(objectNode, "w", 3);
+}
+
+TEST_F(AstNodeTest, constantObjectSpliceOverwritePrecedenceIsFolded) {
+  AstNode const* objectNode = parseAndOptimizeReturnExpression(
+      _server, "LET o = { a: 1, b: 2 } RETURN { a: 9, ...o, b: 3 }");
+  ASSERT_NE(nullptr, objectNode);
+  EXPECT_TRUE(objectNode->isConstant());
+  expectObjectInt(objectNode, "a", 1);
+  expectObjectInt(objectNode, "b", 3);
+}
+
+TEST_F(AstNodeTest, nestedConstantObjectSpliceIsFoldedDuringOptimization) {
+  AstNode const* objectNode = parseAndOptimizeReturnExpression(
+      _server, "LET x = { a: 1 } RETURN { ...{ ...x, b: 2 }, c: 3 }");
+  ASSERT_NE(nullptr, objectNode);
+  EXPECT_TRUE(objectNode->isConstant());
+  EXPECT_FALSE(objectHasObjectSplice(objectNode));
+  expectObjectInt(objectNode, "a", 1);
+  expectObjectInt(objectNode, "b", 2);
+  expectObjectInt(objectNode, "c", 3);
+}
+
+TEST_F(AstNodeTest,
+       objectWithCalculatedKeyAndConstantSplicesIsPartiallyFolded) {
+  AstNode const* objectNode = parseAndOptimizeReturnExpression(
+      _server,
+      R"aql(RETURN { ...{ a:1, b:2 }, [ CONCAT("he","llo") ] : "world", c:{ ...{ x:10, y:20 }, z:30 } })aql");
+  ASSERT_NE(nullptr, objectNode);
+  ASSERT_EQ(NODE_TYPE_OBJECT, objectNode->type);
+  EXPECT_FALSE(objectNode->isConstant());
+  EXPECT_FALSE(objectHasObjectSplice(objectNode));
+
+  expectObjectInt(objectNode, "a", 1);
+  expectObjectInt(objectNode, "b", 2);
+
+  bool hasCalculated = false;
+  for (size_t i = 0; i < objectNode->numMembers(); ++i) {
+    if (objectNode->getMember(i)->type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT) {
+      hasCalculated = true;
+      break;
+    }
+  }
+  EXPECT_TRUE(hasCalculated);
+
+  AstNode const* cObject = expectObjectObject(objectNode, "c");
+  ASSERT_NE(nullptr, cObject);
+  EXPECT_TRUE(cObject->isConstant());
+  EXPECT_FALSE(objectHasObjectSplice(cObject));
+  expectObjectInt(cObject, "x", 10);
+  expectObjectInt(cObject, "y", 20);
+  expectObjectInt(cObject, "z", 30);
+}
+
+TEST_F(AstNodeTest, constantObjectWithSpliceCanMaterializeToVPack) {
+  auto queryContext = StandaloneCalculation::buildQueryContext(
+      _server.getSystemDatabase(), transaction::OperationOriginTestCase{});
+  Ast ast(*queryContext);
+  QueryString queryString(
+      std::string_view("RETURN { ...{ a: 1, b: 2 }, c: 3 }"));
+  Parser parser(*queryContext, ast, queryString);
+  parser.parse();
+
+  AstNode* objectNode = nullptr;
+  AstNode const* rootNode = ast.root();
+  for (size_t i = 0; i < rootNode->numMembers(); ++i) {
+    AstNode const* node = rootNode->getMember(i);
+    if (node->type == NODE_TYPE_RETURN) {
+      objectNode = node->getMember(0);
+      break;
+    }
+  }
+  ASSERT_NE(nullptr, objectNode);
+  EXPECT_TRUE(objectNode->isConstant());
+
+  VPackBuilder builder;
+  objectNode->toVelocyPackValue(builder);
+  VPackSlice slice = builder.slice();
+  ASSERT_TRUE(slice.isObject());
+  EXPECT_EQ(1, slice.get("a").getInt());
+  EXPECT_EQ(2, slice.get("b").getInt());
+  EXPECT_EQ(3, slice.get("c").getInt());
+}
+
+TEST_F(AstNodeTest, objectWithConstantObjectSpliceIsConstant) {
+  AstNode const* objectNode =
+      parseReturnExpression(_server, "RETURN { ...{ a: 1, b: 2 }, c: 3 }");
+  ASSERT_NE(nullptr, objectNode);
+  ASSERT_EQ(NODE_TYPE_OBJECT, objectNode->type);
+  EXPECT_TRUE(objectNode->isConstant());
+
+  ASSERT_EQ(2, objectNode->numMembers());
+
+  AstNode const* spliceNode = objectNode->getMember(0);
+  ASSERT_EQ(NODE_TYPE_OBJECT_SPLICE, spliceNode->type);
+  ASSERT_EQ(1, spliceNode->numMembers());
+
+  AstNode const* splicedObject = spliceNode->getMember(0);
+  ASSERT_EQ(NODE_TYPE_OBJECT, splicedObject->type);
+  EXPECT_TRUE(splicedObject->isConstant());
+  expectObjectInt(splicedObject, "a", 1);
+  expectObjectInt(splicedObject, "b", 2);
+
+  expectObjectInt(objectNode, "c", 3);
+}
+
+TEST_F(AstNodeTest, objectWithNonConstantObjectSpliceIsNotConstant) {
+  AstNode const* objectNode = parseReturnExpression(
+      _server, "FOR i IN 1..10 RETURN { ...{ a: i }, b: 2 }");
+  ASSERT_NE(nullptr, objectNode);
+  ASSERT_EQ(NODE_TYPE_OBJECT, objectNode->type);
+  EXPECT_FALSE(objectNode->isConstant());
+
+  ASSERT_EQ(2, objectNode->numMembers());
+
+  AstNode const* spliceNode = objectNode->getMember(0);
+  ASSERT_EQ(NODE_TYPE_OBJECT_SPLICE, spliceNode->type);
+  ASSERT_EQ(1, spliceNode->numMembers());
+
+  AstNode const* splicedObject = spliceNode->getMember(0);
+  ASSERT_EQ(NODE_TYPE_OBJECT, splicedObject->type);
+  EXPECT_FALSE(splicedObject->isConstant());
+
+  AstNode const* aValue = getObjectElementValue(splicedObject, "a");
+  ASSERT_NE(nullptr, aValue);
+  EXPECT_EQ(NODE_TYPE_REFERENCE, aValue->type);
+
+  expectObjectInt(objectNode, "b", 2);
+}
+
+TEST_F(AstNodeTest, complexObjectWithSpliceAndCalculatedKeyIsNotConstant) {
+  AstNode const* objectNode = parseReturnExpression(
+      _server,
+      R"aql(RETURN { ...{ a:1, b:2 }, [ CONCAT("he","llo") ] : "world", c:{ ...{ x:10, y:20 }, z:30 } })aql");
+  ASSERT_NE(nullptr, objectNode);
+  ASSERT_EQ(NODE_TYPE_OBJECT, objectNode->type);
+  EXPECT_FALSE(objectNode->isConstant());
+
+  ASSERT_EQ(3, objectNode->numMembers());
+
+  AstNode const* spliceNode = objectNode->getMember(0);
+  ASSERT_EQ(NODE_TYPE_OBJECT_SPLICE, spliceNode->type);
+  AstNode const* abObject = spliceNode->getMember(0);
+  ASSERT_EQ(NODE_TYPE_OBJECT, abObject->type);
+  EXPECT_TRUE(abObject->isConstant());
+  expectObjectInt(abObject, "a", 1);
+  expectObjectInt(abObject, "b", 2);
+
+  AstNode const* helloElement = objectNode->getMember(1);
+  ASSERT_EQ(NODE_TYPE_CALCULATED_OBJECT_ELEMENT, helloElement->type);
+  ASSERT_EQ(2, helloElement->numMembers());
+  ASSERT_EQ(NODE_TYPE_FCALL, helloElement->getMember(0)->type);
+
+  AstNode const* worldValue = helloElement->getMember(1);
+  ASSERT_EQ(NODE_TYPE_VALUE, worldValue->type);
+  EXPECT_EQ("world", worldValue->getStringView());
+
+  AstNode const* cObject = expectObjectObject(objectNode, "c");
+  ASSERT_NE(nullptr, cObject);
+  EXPECT_TRUE(cObject->isConstant());
+  ASSERT_EQ(2, cObject->numMembers());
+
+  AstNode const* xySplice = cObject->getMember(0);
+  ASSERT_EQ(NODE_TYPE_OBJECT_SPLICE, xySplice->type);
+  AstNode const* xyObject = xySplice->getMember(0);
+  ASSERT_EQ(NODE_TYPE_OBJECT, xyObject->type);
+  EXPECT_TRUE(xyObject->isConstant());
+  expectObjectInt(xyObject, "x", 10);
+  expectObjectInt(xyObject, "y", 20);
+  expectObjectInt(cObject, "z", 30);
 }
 
 TEST_F(AstNodeTest, toVelocyPackNull) {
