@@ -26,17 +26,17 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ServerState.h"
+#include "Mocks/FakeRegistry.h"
+#include "Mocks/FakeScheduler.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/Version.h"
-#include "Scheduler/ISchedulerProvider.h"
+#include "RestServer/IRecoveryCallback.h"
+#include "RocksDBEngine/Mocks.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBOptionsProvider.h"
 #include "RocksDBEngine/RocksDBRecoveryManager.h"
-#include "RestServer/IRecoveryCallback.h"
-
-#include "Mocks/FakeScheduler.h"
-#include "RocksDBEngine/Mocks.h"
 #include "RocksDBEngine/TempDatabasePathProvider.h"
+#include "Scheduler/ISchedulerProvider.h"
 
 namespace arangodb::tests {
 
@@ -108,7 +108,7 @@ class StorageEngineFixture : public ::testing::Test {
 
   RocksDBEngine& engine() noexcept { return _engine; }
 
-  MetricsCollector _metricsCollector;
+  metrics::FakeRegistry _metricsRegistry;
   application_features::ApplicationServer _server{nullptr, nullptr};
   // ServerState is a process-wide singleton. The reset guard detaches any
   // existing instance (e.g. the one installed by tests/main.cpp in the combined
@@ -138,7 +138,7 @@ class StorageEngineFixture : public ::testing::Test {
   FakeScheduler _scheduler{_server};
   TestSchedulerProvider _schedulerProvider{_scheduler};
 
-  RocksDBEngine _engine{_server,          _optionsProvider, _metricsCollector,
+  RocksDBEngine _engine{_server,          _optionsProvider, _metricsRegistry,
                         _dbPath,          _vectorIdx,       _flush,
                         _dumpLimits,      &_logProvider,    _schedulerProvider,
                         _recoveryManager, _dbProvider,      _indexCacheRefill,

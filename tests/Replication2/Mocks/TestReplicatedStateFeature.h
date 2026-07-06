@@ -18,14 +18,26 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
-
-#include "ReplicatedStateMetricsMock.h"
-
-using namespace arangodb;
+#pragma once
+#include "Mocks/FakeRegistry.h"
+#include "Replication2/ReplicatedState/ReplicatedStateFeature.h"
+#include "Replication2/ReplicatedState/ReplicatedStateMetrics.h"
 
 namespace arangodb::replication2::tests {
-ReplicatedStateMetricsMock::ReplicatedStateMetricsMock(std::string_view impl)
-    : ReplicatedStateMetrics(nullptr, impl) {}
+
+// Suitable for tests; populate with mock metrics objects with FakeRegistry
+// so they don't need a MetricsFeature.
+struct TestReplicatedStateFeature : replicated_state::ReplicatedStateFeature {
+ protected:
+  auto createMetricsObject(std::string_view impl)
+      -> std::shared_ptr<replicated_state::ReplicatedStateMetrics> override {
+    return std::make_shared<replicated_state::ReplicatedStateMetrics>(
+        _fakeRegistry, impl);
+  }
+
+ private:
+  metrics::FakeRegistry _fakeRegistry;
+};
+
 }  // namespace arangodb::replication2::tests
