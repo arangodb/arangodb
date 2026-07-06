@@ -938,8 +938,17 @@ void RocksDBEngine::start() {
 
   _engineState.store(EngineState::recovering, std::memory_order_release);
   {
-    RocksDBRecoveryManager manager(_databaseProvider, *this);
-    manager.runRecovery(*this);
+    struct TickUpdater final : ITickObserver {
+      explicit TickUpdater(std::atomic<rocksdb::SequenceNumber>& t) noexcept
+          : _tick(t) {}
+      void onTick(rocksdb::SequenceNumber seq) noexcept override {
+        _tick.store(seq, std::memory_order_relaxed);
+      }
+      std::atomic<rocksdb::SequenceNumber>& _tick;
+    };
+    TickUpdater tickUpdater{_recoveryTick};
+    RocksDBRecoveryManager manager(*this, tickUpdater);
+    manager.runRecovery();
   }
   _engineState.store(EngineState::running, std::memory_order_release);
   _recoveryCallback.recoveryDone();

@@ -34,14 +34,14 @@ struct IDatabaseProvider;
 
 class RocksDBRecoveryManager final {
  public:
-  RocksDBRecoveryManager(IDatabaseProvider& dbProvider,
-                         ITickObserver& tickObserver);
+  RocksDBRecoveryManager(RocksDBEngine& engine, ITickObserver& tickObserver);
 
-  void runRecovery(RocksDBEngine& engine);
+  void runRecovery();
 
  private:
-  Result parseRocksWAL(RocksDBEngine& engine);
+  Result parseRocksWAL();
 
+  RocksDBEngine& _engine;
   IDatabaseProvider& _dbProvider;
   ITickObserver& _tickObserver;
 };

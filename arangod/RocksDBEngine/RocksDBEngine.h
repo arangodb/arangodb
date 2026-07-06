@@ -25,7 +25,6 @@
 #pragma once
 
 #include "RestServer/IRecoveryCallback.h"
-#include "RocksDBEngine/ITickObserver.h"
 #include "RocksDBEngine/RocksDBEngineOptions.h"
 
 #include <atomic>
@@ -167,9 +166,7 @@ struct ICompactKeyRange {
   virtual void compactRange(RocksDBKeyBounds bounds) = 0;
 };
 
-class RocksDBEngine final : public StorageEngine,
-                            public ICompactKeyRange,
-                            public ITickObserver {
+class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   friend class RocksDBFilePurgePreventer;
   friend class RocksDBFilePurgeEnabler;
 
@@ -315,10 +312,6 @@ class RocksDBEngine final : public StorageEngine,
 
   TRI_voc_tick_t recoveryTick() noexcept override {
     return _recoveryTick.load(std::memory_order_relaxed);
-  }
-
-  void onTick(rocksdb::SequenceNumber seq) noexcept override {
-    _recoveryTick.store(seq, std::memory_order_relaxed);
   }
 
   /// @brief disallow purging of WAL files even if the archive gets too big
