@@ -832,12 +832,10 @@ void RocksDBEngine::start() {
                  RocksDBColumnFamilyManager::Family::Definitions)
                  ->GetID() == 0);
 
-  if (server().options()) {
-    // will crash the process if version does not match
-    arangodb::rocksdbStartupVersionCheck(*server().options(), _databaseProvider,
-                                         _db, dbExisted,
-                                         _options.forceLittleEndianKeys);
-  }
+  // will crash the process if version does not match
+  arangodb::rocksdbStartupVersionCheck(server().options(), _databaseProvider,
+                                       _db, dbExisted,
+                                       _options.forceLittleEndianKeys);
 
   _dbExisted = dbExisted;
 
