@@ -14,7 +14,8 @@ target_link_libraries(arango_tests_activities PRIVATE
   gtest
 )
 
-add_executable(arangodbtests_activities EXCLUDE_FROM_ALL)
+add_executable(arangodbtests_activities EXCLUDE_FROM_ALL
+ ActivityPerformanceTest.cpp)
 target_link_libraries(arangodbtests_activities
   arango_tests_activities
   arango_tests_basics 

@@ -32,8 +32,8 @@ auto RegistryMetrics::increment_total_nodes() -> void {
 auto RegistryMetrics::increment_registered_nodes() -> void {
   existing_activities->fetch_add(1);
 }
-auto RegistryMetrics::store_registered_nodes(std::uint64_t count) -> void {
-  existing_activities->store(count, std::memory_order_relaxed);
-}
+// auto RegistryMetrics::store_registered_nodes(std::uint64_t count) -> void {
+//   existing_activities->store(count, std::memory_order_relaxed);
+// }
 
 }  // namespace arangodb::activities

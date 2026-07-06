@@ -23,13 +23,15 @@
 
 #include "Activities/ActivityHandle.h"
 #include "Activities/ActivityId.h"
-#include "Activities/IRegistryMetrics.h"
 #include "Containers/Concurrent/metrics.h"
+#include "Activities/Activity.h"
 
 #include "Basics/ErrorT.h"
 #include "Basics/Guarded.h"
+#include "Containers/Concurrent/Registry.h"
 
 #include "Inspection/Status.h"
+#include "Containers/Concurrent/ThreadOwnedList.h"
 
 #include <velocypack/SharedSlice.h>
 
@@ -38,27 +40,45 @@
 
 namespace arangodb::activities {
 
-struct Registry {
-  explicit Registry() = default;
-  Registry(Registry const&) = delete;
-  Registry(Registry&&) = delete;
-  auto operator=(Registry const&) = delete;
-  auto operator=(Registry&&) = delete;
+using ThreadRegistry = containers::ThreadRegistry<ActivityPtr>;
+
+struct Registry : containers::Registry<ActivityPtr> {
+  auto get_thread_registry() noexcept -> ThreadRegistry& {
+    struct Guard {
+      explicit Guard(Registry& registry)
+          : _self{registry},
+            _registry{ThreadRegistry::make(registry.get_metrics())} {
+        registry.add(_registry);
+      }
+
+      Registry& _self;
+      std::shared_ptr<ThreadRegistry> _registry;
+    };
+    static thread_local auto guard = Guard{*this};
+    return *guard._registry;
+  }
+
+  template<typename T, typename... Args>
+  auto makeActivityWithParent(ActivityHandle parent, Args&&... args) ->
+      typename T::HandleType {
+    auto const id = _activityIdCounter.fetch_add(1);
+    // create the node - which is a specific activity of type T at the same time
+    auto node =
+        std::make_unique<T>(id, std::move(parent), std::forward<Args>(args)...);
+    auto* const rawNode = node.get();
+    this->get_thread_registry().add(std::move(node));
+    // The deleter must not free the activity itself, since the registry owns
+    // it, but marks it for deletion. Then it can be deleted in a gc-run.
+    return std::shared_ptr<T>(rawNode,
+                              [](T* item) { item->mark_for_deletion(); });
+  }
+  template<typename T, typename... Args>
+  auto makeActivity(Args&&... args) -> typename T::HandleType {
+    return makeActivityWithParent<T>(_currentlyExecutingActivity,
+                                     std::forward<Args>(args)...);
+  }
 
   struct [[nodiscard]] ScopedCurrentlyExecutingActivity;
-
-  auto setMetrics(std::shared_ptr<IRegistryMetrics> metrics) -> void;
-  auto garbageCollect() -> void;
-
-  /**
-     Delete all dangling activities, including dangling parents after deleting
-     child.
-
-     Is  currently only used in tests. Goes over registry several times until no
-     more activites can be deleted any more. Will be worked on in COR-582.
-   */
-  auto garbageCollectAll() -> void;
-
   static auto currentlyExecutingActivity() noexcept -> ActivityHandle {
     return _currentlyExecutingActivity;
   }
@@ -67,40 +87,12 @@ struct Registry {
     _currentlyExecutingActivity = std::move(activity);
   }
 
-  template<typename T, typename... Args>
-  auto makeActivityWithParent(ActivityHandle parent, Args&&... args)
-      -> T::HandleType {
-    auto id = _activityIdCounter.fetch_add(1);
-    auto activity =
-        std::make_shared<T>(id, std::move(parent), std::forward<Args>(args)...);
-
-    _registry.doUnderLock([this, &activity](auto&& reg) {
-      reg.emplace_front(activity);
-      increment_total_nodes();
-      increment_registered_nodes();
-    });
-
-    return activity;
-  }
-  template<typename T, typename... Args>
-  auto makeActivity(Args&&... args) -> T::HandleType {
-    return makeActivityWithParent<T>(_currentlyExecutingActivity,
-                                     std::forward<Args>(args)...);
-  }
-
   auto snapshot()
       -> errors::ErrorT<inspection::Status, velocypack::SharedSlice>;
-  auto size() -> size_t;
 
  private:
-  auto increment_total_nodes() -> void;
-  auto increment_registered_nodes() -> void;
-  auto store_registered_nodes(std::uint64_t count) -> void;
-
   static thread_local ActivityHandle _currentlyExecutingActivity;
-  Guarded<std::deque<ActivityHandle>> _registry;
   std::atomic<ActivityId> _activityIdCounter{0};
-  std::shared_ptr<IRegistryMetrics> _metrics{nullptr};
 };
 
 struct [[nodiscard]] Registry::ScopedCurrentlyExecutingActivity {

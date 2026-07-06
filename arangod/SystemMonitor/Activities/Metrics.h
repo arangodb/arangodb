@@ -22,14 +22,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "Activities/IRegistryMetrics.h"
+#include "Containers/Concurrent/metrics.h"
 #include "Metrics/Fwd.h"
 
 #include <memory>
 
 namespace arangodb::activities {
 
-struct RegistryMetrics : IRegistryMetrics {
+struct RegistryMetrics : arangodb::containers::Metrics {
   RegistryMetrics(std::shared_ptr<arangodb::metrics::Counter> activities_total,
                   std::shared_ptr<arangodb::metrics::Gauge<std::uint64_t>>
                       existing_activities)
@@ -39,7 +39,8 @@ struct RegistryMetrics : IRegistryMetrics {
   ~RegistryMetrics() = default;
   auto increment_total_nodes() -> void override;
   auto increment_registered_nodes() -> void override;
-  auto store_registered_nodes(std::uint64_t count) -> void override;
+  // TODO where used
+  // auto store_registered_nodes(std::uint64_t count) -> void override;
 
  private:
   std::shared_ptr<arangodb::metrics::Counter> activities_total = nullptr;
