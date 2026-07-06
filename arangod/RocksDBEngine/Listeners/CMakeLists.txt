@@ -1,4 +1,4 @@
-target_sources(arango_rocksdb_core PRIVATE
+target_sources(arango_rocksdb PRIVATE
   RocksDBActivitiesListener.cpp
   RocksDBBackgroundErrorListener.cpp
   RocksDBMetricsListener.cpp
