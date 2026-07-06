@@ -23,7 +23,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "DumpFeature.h"
-#include "Dump/DumpOptionsProvider.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/BumpFileDescriptorsFeature.h"
@@ -42,6 +41,7 @@
 #include "Basics/application-exit.h"
 #include "Basics/files.h"
 #include "Basics/system-functions.h"
+#include "Dump/DumpOptionsProvider.h"
 #include "FeaturePhases/BasicFeaturePhaseClient.h"
 #include "Logger/LogMacros.h"
 #include "Logger/LogTimeFormat.h"
@@ -766,7 +766,7 @@ DumpFeature::DumpFeature(application_features::ApplicationServer& server,
     : ApplicationFeature{server, *this},
       _client(client),
       _clientManager{client, Logger::DUMP},
-      _clientTaskQueue{server, ::processJob},
+      _clientTaskQueue{::processJob},
       _exitCode{exitCode},
       _options(std::move(options)) {
   setOptional(false);

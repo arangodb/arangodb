@@ -26,14 +26,16 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ServerState.h"
-#include "Mocks.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/Version.h"
-#include "TempDatabasePathProvider.h"
-
+#include "Scheduler/ISchedulerProvider.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBOptionsProvider.h"
 #include "RestServer/IRecoveryCallback.h"
+
+#include "Mocks/FakeScheduler.h"
+#include "RocksDBEngine/Mocks.h"
+#include "RocksDBEngine/TempDatabasePathProvider.h"
 
 namespace arangodb::tests {
 
@@ -64,6 +66,14 @@ struct TestRocksDBOptionsProvider final : RocksDBOptionsProvider {
 // data) when the test ends.
 struct NullRecoveryCallback final : IRecoveryCallback {
   void recoveryDone() override {}
+};
+
+// Adapts a Scheduler to the ISchedulerProvider port the engine expects.
+struct TestSchedulerProvider final : ISchedulerProvider {
+  explicit TestSchedulerProvider(Scheduler& scheduler)
+      : _scheduler(scheduler) {}
+  Scheduler* scheduler() const noexcept override { return &_scheduler; }
+  Scheduler& _scheduler;
 };
 
 class StorageEngineFixture : public ::testing::Test {
@@ -123,11 +133,14 @@ class StorageEngineFixture : public ::testing::Test {
 
   NullRecoveryCallback _nullCallback;
 
-  RocksDBEngine _engine{_server,       _optionsProvider,  _metricsCollector,
-                        _dbPath,       _vectorIdx,        _flush,
-                        _dumpLimits,   &_logProvider,     _dbProvider,
-                        _nullCallback, _indexCacheRefill, _cacheManager,
-                        _sortingPolicy};
+  FakeScheduler _scheduler{_server};
+  TestSchedulerProvider _schedulerProvider{_scheduler};
+
+  RocksDBEngine _engine{_server,       _optionsProvider, _metricsCollector,
+                        _dbPath,       _vectorIdx,       _flush,
+                        _dumpLimits,   &_logProvider,    _schedulerProvider,
+                        _dbProvider,   _nullCallback,    _indexCacheRefill,
+                        _cacheManager, _sortingPolicy};
 };
 
 }  // namespace arangodb::tests

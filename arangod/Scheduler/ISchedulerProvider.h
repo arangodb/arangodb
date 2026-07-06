@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -17,37 +17,17 @@
 /// limitations under the License.
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include <cstdint>
-
-#include "Basics/ConditionVariable.h"
-#include "Basics/Thread.h"
-#include "Cache/Manager.h"
-#include "Cache/Rebalancer.h"
-
 namespace arangodb {
 
-class CacheRebalancerThread final : public Thread {
- public:
-  CacheRebalancerThread(cache::Manager* manager, std::uint64_t interval);
-  ~CacheRebalancerThread();
+class Scheduler;
 
-  void beginShutdown() override;
-
- protected:
-  void run() override;
-
- private:
-  cache::Manager* _manager;
-  cache::Rebalancer _rebalancer;
-  std::uint64_t _fullInterval;
-  std::uint64_t _shortInterval;
-  basics::ConditionVariable _condition;
+struct ISchedulerProvider {
+  virtual ~ISchedulerProvider() = default;
+  virtual Scheduler* scheduler() const noexcept = 0;
 };
 
-};  // end namespace arangodb
+}  // namespace arangodb
