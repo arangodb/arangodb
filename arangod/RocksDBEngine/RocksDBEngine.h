@@ -191,20 +191,7 @@ class RocksDBEngine final : public StorageEngine,
                 IIndexCacheRefill& indexCacheRefill,
                 ICacheManagerProvider& cacheManagerProvider,
                 ISortingPolicy const& sortingPolicy,
-                RocksDBEngineOptions options);
-  RocksDBEngine(application_features::ApplicationServer& server,
-                RocksDBOptionsProvider& optionsProvider,
-                metrics::IRegistry& metrics,
-                IDatabasePathProvider const& databasePathProvider,
-                IVectorIndexProvider const& vectorIndexProvider,
-                IFlushControl& flushControl,
-                IDumpLimitsProvider const& dumpLimitsProvider,
-                replication2::IReplicatedLogProvider* replicatedLogProvider,
-                RocksDBRecoveryManager const& rocksDbRecoveryManager,
-                IDatabaseProvider& databaseProvider,
-                IIndexCacheRefill& indexCacheRefill,
-                ICacheManagerProvider& cacheManagerProvider,
-                ISortingPolicy const& sortingPolicy);
+                RocksDBEngineOptions options = {});
   ~RocksDBEngine();
 
   auto getDatabaseProvider() const -> IDatabaseProvider&;
