@@ -10,9 +10,15 @@ target_include_directories(arango_tests_rocksdb_engine PRIVATE
 
 target_link_libraries(arango_tests_rocksdb_engine
   PRIVATE
-    arango_rocksdb
+    arango_rocksdb_core
+    arango_rocksdb_replication
+    arango_rocksdb_dump
+    arango_rocksdb_indexes
+    arango_rocksdb_rest
+    arango_rocksdb_aql
+    arango_rocksdb_v8
+    arango_restart_action
     arango_metrics_base
-    arango_vocbase
     gtest
     gmock)
 

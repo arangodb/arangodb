@@ -1,4 +1,4 @@
-target_sources(arango_rocksdb PRIVATE
+target_sources(arango_rocksdb_core PRIVATE
   RocksDBBatchedBaseMethods.cpp
   RocksDBBatchedMethods.cpp
   RocksDBBatchedWithIndexMethods.cpp
