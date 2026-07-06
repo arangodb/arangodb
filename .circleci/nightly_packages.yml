@@ -84,7 +84,7 @@ parameters:
     description: "Enterprise repo branch to use. Defaults to the same branch as arangodb, falling back to devel."
   build-docker-image:
     type: string
-    default: "public.ecr.aws/b0b8h2r4/arangodb/ubuntubuildarangodb-312:24.04-c059b0dad"
+    default: "public.ecr.aws/b0b8h2r4/arangodb/ubuntubuildarangodb-312:24.04-d2eb28e68"
   build-debian-package:
     type: boolean
     default: true
