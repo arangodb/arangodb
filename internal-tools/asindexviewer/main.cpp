@@ -43,7 +43,6 @@ clang++-19 -std=c++20   -DBOOST_TEXT_DISABLE_CONCEPTS   -DUNICODE -D_UNICODE \
 #include "utils/string.hpp"
 #include "utils/type_limits.hpp"
 #include "utils/numeric_utils.hpp"  // Add this include at the top
-#include "util.h"
 #include "velocypack/Builder.h"
 #include "Basics/ScopeGuard.h"
 using std::cout, std::endl;
