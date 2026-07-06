@@ -25,6 +25,16 @@ version: 2.1
 #                       database is cached in ${CLAMAV_DB_BUCKET} (S3),
 #                       similar to the sccache bucket; the <file>.clamav
 #                       reports are published next to the scanned files
+#   security-check-*    Trivy scan of every published item [security-check]:
+#                       one job per package format+arch (contents extracted,
+#                       then fs-scanned) and per Docker image (image scan) —
+#                       strictest gate: all severities, unfixed CVEs included,
+#                       secret scanning on, EOL base-OS check on images. One
+#                       job per item so every item still gets scanned when
+#                       another fails; publish-nightly requires them all, so
+#                       any single finding blocks the whole publish. The
+#                       <target>.trivy.{txt,json} reports are published next
+#                       to the scanned files, like the ClamAV reports.
 #   sign-packages       detached GPG signatures (.asc) [sign-packages]
 #   publish-nightly     THE ONLY JOB THAT PUBLISHES ANYTHING; runs only when
 #                       every selected job succeeded. Split into a stage
@@ -65,6 +75,7 @@ version: 2.1
 orbs:
   aws-cli: circleci/aws-cli@4.1.1
   aws-ecr: circleci/aws-ecr@9.0.1
+  trivy-scan: arangodb/trivy-scan@0.1.1
 
 parameters:
   enterprise-branch:
@@ -74,9 +85,6 @@ parameters:
   build-docker-image:
     type: string
     default: "public.ecr.aws/b0b8h2r4/arangodb/ubuntubuildarangodb-312:24.04-6e8eaed38"
-  automated-commit:
-    type: boolean
-    default: false
   build-debian-package:
     type: boolean
     default: true
@@ -105,6 +113,10 @@ parameters:
     type: boolean
     default: true
     description: "Scan all packages with ClamAV before publishing."
+  security-check:
+    type: boolean
+    default: true
+    description: "Trivy scan (CVEs + secrets) of every package and Docker image before publishing; any finding blocks the publish."
 
 commands:
   halt-unless:
@@ -299,9 +311,12 @@ jobs:
     # Pins the nightly date once for the whole workflow, resolves the
     # enterprise commit once, and creates sourceInfo.log/sourceInfo.json
     # (oskar: setNightlyVersion + initSourceInfo/setupSourceInfo).
+    # Self-hosted: needs only git/ssh/bash + the workspace, all of which the
+    # runner fleet supports; the build image is used because it is already
+    # cached on the runner nodes (cimg/base would pull from Docker Hub).
     docker:
-      - image: cimg/base:current
-    resource_class: small
+      - image: << pipeline.parameters.build-docker-image >>
+    resource_class: arangodb/large-amd64
     steps:
       - checkout-arangodb:
           destination: /home/circleci/project
@@ -732,6 +747,154 @@ jobs:
       - store_artifacts:
           path: /tmp/clamav-report.tar.gz
 
+  # ── Trivy security check ─────────────────────────────────────────────────────
+  # One job instance per published item, so a finding in one item never
+  # prevents the remaining items from being scanned; publish-nightly requires
+  # every instance, so any single finding still blocks the whole publish.
+  # Strictest gate the orb offers for blocking scans: all severities, unfixed
+  # CVEs included, secret scanning kept enabled (orb default), EOL base-OS
+  # check on image scans. detection-priority stays "precise" — the orb
+  # explicitly recommends against "comprehensive" on blocking gates.
+  # Runs on CircleCI-hosted executors: the orb caches the Trivy DB with
+  # save_cache/restore_cache, which the self-hosted runner classes do not
+  # support (the same reason the ClamAV database lives in S3).
+  security-check-package:
+    # Trivy does not look inside .deb/.rpm/.tar.gz files, so the packages of
+    # one format+arch are extracted first and the extracted contents are
+    # fs-scanned (CVEs in bundled dependencies + committed secrets).
+    parameters:
+      target:
+        type: enum
+        enum: ["deb", "rpm", "tar"]
+      arch:
+        type: string
+      target-enabled:
+        type: boolean
+        description: "The build-* pipeline parameter of the scanned format; this job halts with it."
+    docker:
+      - image: << pipeline.parameters.build-docker-image >>
+    # medium suffices: the fs scan parses package metadata/lockfiles and
+    # secret-scans only small text files; extraction is I/O-bound.
+    resource_class: medium
+    working_directory: /root/project
+    steps:
+      - halt-unless:
+          enabled: << pipeline.parameters.security-check >>
+      - halt-unless:
+          enabled: << parameters.target-enabled >>
+      - attach_workspace:
+          at: /tmp/nightly
+      - run:
+          name: Extract << parameters.target >> packages for scanning
+          command: |
+            set -eu
+            SRC=/tmp/nightly/packages/<< parameters.arch >>
+            OUT=/tmp/scan-root
+            mkdir -p "${OUT}"
+            FOUND=0
+            case "<< parameters.target >>" in
+              deb)
+                for f in "${SRC}"/*.deb; do
+                  [ -e "$f" ] || continue
+                  FOUND=1
+                  dpkg-deb -x "$f" "${OUT}/$(basename "$f")"
+                done
+                ;;
+              rpm)
+                for f in "${SRC}"/*.rpm; do
+                  [ -e "$f" ] || continue
+                  FOUND=1
+                  d="${OUT}/$(basename "$f")"
+                  mkdir -p "$d"
+                  (cd "$d" && rpm2cpio "$f" | cpio -idm --quiet)
+                done
+                ;;
+              tar)
+                for f in "${SRC}"/*.tar.gz; do
+                  [ -e "$f" ] || continue
+                  FOUND=1
+                  d="${OUT}/$(basename "$f" .tar.gz)"
+                  mkdir -p "$d"
+                  tar -xzf "$f" -C "$d"
+                done
+                ;;
+            esac
+            # No files while this format is enabled means a broken workspace,
+            # not a clean scan — fail loudly instead of false-passing.
+            if [ "${FOUND}" = "0" ]; then
+              echo "No << parameters.target >> packages found in ${SRC}" >&2
+              exit 1
+            fi
+      - trivy-scan/scan:
+          scan-type: fs
+          scan-path: /tmp/scan-root
+          severity: "CRITICAL,HIGH,MEDIUM,LOW,UNKNOWN"
+          fail-on-findings: true
+          ignore-unfixed: false
+          store-junit-results: true
+      # Reached only when the scan passed — on findings the job fails and
+      # nothing publishes anyway (the reports remain job artifacts).
+      - run:
+          name: Stage Trivy report for publishing
+          command: |
+            OUT=/tmp/nightly/trivy-reports/<< parameters.arch >>
+            mkdir -p "${OUT}"
+            cp /tmp/trivy-results.txt  "${OUT}/<< parameters.target >>.trivy.txt"
+            cp /tmp/trivy-results.json "${OUT}/<< parameters.target >>.trivy.json"
+      - persist_to_workspace:
+          root: /tmp/nightly
+          paths:
+            - trivy-reports/<< parameters.arch >>
+
+  security-check-docker-image:
+    # Loads the exported per-arch image into the remote Docker daemon and
+    # scans it before publish-nightly is allowed to push it anywhere.
+    parameters:
+      arch:
+        type: string
+    docker:
+      - image: cimg/base:current
+    # medium suffices: the image is Alpine-sized and the daemon runs on the
+    # separate remote-docker VM anyway.
+    resource_class: medium
+    steps:
+      - halt-unless:
+          enabled: << pipeline.parameters.security-check >>
+      - halt-unless:
+          enabled: << pipeline.parameters.build-docker-manifest >>
+      - attach_workspace:
+          at: /tmp/nightly
+      - setup_remote_docker
+      - run:
+          name: Load exported image into the Docker daemon
+          command: |
+            set -eu
+            # Orb parameters are static, so the dynamically versioned tag is
+            # re-tagged to a fixed reference the scan step can name.
+            LOADED="$(docker load -i /tmp/nightly/docker/enterprise-preview-<< parameters.arch >>.tar | sed -n 's/^Loaded image: //p')"
+            docker tag "${LOADED}" nightly-security-scan:<< parameters.arch >>
+      - trivy-scan/scan:
+          scan-type: image
+          image-ref: nightly-security-scan:<< parameters.arch >>
+          severity: "CRITICAL,HIGH,MEDIUM,LOW,UNKNOWN"
+          fail-on-findings: true
+          ignore-unfixed: false
+          exit-on-eol: "1"
+          store-junit-results: true
+      # Reached only when the scan passed — on findings the job fails and
+      # nothing publishes anyway (the reports remain job artifacts).
+      - run:
+          name: Stage Trivy report for publishing
+          command: |
+            OUT=/tmp/nightly/trivy-reports/<< parameters.arch >>
+            mkdir -p "${OUT}"
+            cp /tmp/trivy-results.txt  "${OUT}/docker-image.trivy.txt"
+            cp /tmp/trivy-results.json "${OUT}/docker-image.trivy.json"
+      - persist_to_workspace:
+          root: /tmp/nightly
+          paths:
+            - trivy-reports/<< parameters.arch >>
+
   # ── GPG signing ──────────────────────────────────────────────────────────────
   sign-packages:
     # Creates detached .asc signatures for every package of both
@@ -840,6 +1003,11 @@ jobs:
                     cp /tmp/nightly/clamav-reports/${src}/${arch}/*.clamav "${STAGE}/${GCS_ARCH[$arch]}/"
                   fi
                 done
+                # Trivy reports (<target>.trivy.{txt,json} per package format
+                # plus docker-image.trivy.*) land next to the packages they cover
+                if [ -d "/tmp/nightly/trivy-reports/${arch}" ]; then
+                  cp /tmp/nightly/trivy-reports/${arch}/* "${STAGE}/${GCS_ARCH[$arch]}/"
+                fi
                 cp /tmp/nightly/sourceInfo.log /tmp/nightly/sourceInfo.json "${STAGE}/${GCS_ARCH[$arch]}/"
               fi
             done
@@ -1078,10 +1246,71 @@ workflows:
             - rpm-enterprise-arm64
             - tar-enterprise-arm64
 
+      # ── Trivy security gates: one per published item ─────────────────────────
+      - security-check-package:
+          name: security-check-deb-amd64
+          target: deb
+          arch: amd64
+          target-enabled: << pipeline.parameters.build-debian-package >>
+          requires: [deb-enterprise-amd64]
+
+      - security-check-package:
+          name: security-check-rpm-amd64
+          target: rpm
+          arch: amd64
+          target-enabled: << pipeline.parameters.build-rpm-package >>
+          requires: [rpm-enterprise-amd64]
+
+      - security-check-package:
+          name: security-check-tar-amd64
+          target: tar
+          arch: amd64
+          target-enabled: << pipeline.parameters.build-tarball >>
+          requires: [tar-enterprise-amd64]
+
+      - security-check-package:
+          name: security-check-deb-arm64
+          target: deb
+          arch: arm64
+          target-enabled: << pipeline.parameters.build-debian-package >>
+          requires: [deb-enterprise-arm64]
+
+      - security-check-package:
+          name: security-check-rpm-arm64
+          target: rpm
+          arch: arm64
+          target-enabled: << pipeline.parameters.build-rpm-package >>
+          requires: [rpm-enterprise-arm64]
+
+      - security-check-package:
+          name: security-check-tar-arm64
+          target: tar
+          arch: arm64
+          target-enabled: << pipeline.parameters.build-tarball >>
+          requires: [tar-enterprise-arm64]
+
+      - security-check-docker-image:
+          name: security-check-docker-amd64
+          arch: amd64
+          requires: [docker-enterprise-amd64]
+
+      - security-check-docker-image:
+          name: security-check-docker-arm64
+          arch: arm64
+          requires: [docker-enterprise-arm64]
+
       - publish-nightly:
           context: [ nightly-publish ]
           requires:
             - scan-packages
             - sign-packages
+            - security-check-deb-amd64
+            - security-check-rpm-amd64
+            - security-check-tar-amd64
+            - security-check-deb-arm64
+            - security-check-rpm-arm64
+            - security-check-tar-arm64
+            - security-check-docker-amd64
+            - security-check-docker-arm64
             - docker-enterprise-amd64
             - docker-enterprise-arm64

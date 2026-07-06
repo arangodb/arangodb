@@ -71,6 +71,6 @@ make manifest    IMAGE=public.ecr.aws/b0b8h2r4/arangodb/ubuntubuildarangodb-312 
                  TAG=24.04-abc1234 ALLOW_ECR_PUSH=1
 ```
 
-After a successful CI run with `automated-commit=true`, the tag and the
-`build-docker-image` defaults in `.circleci/config.yml`, `.circleci/base_config.yml`,
-and `.circleci/nightly_packages.yml` are updated automatically.
+After a successful CI run, the tag and the `build-docker-image` defaults in
+`.circleci/config.yml`, `.circleci/base_config.yml`, and
+`.circleci/nightly_packages.yml` are updated and committed back automatically.
