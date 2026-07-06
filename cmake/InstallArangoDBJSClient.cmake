@@ -14,12 +14,8 @@ install(
   REGEX "^.*/js/client/modules/@arangodb/testutils" EXCLUDE
 )
 
-install(
-  FILES
-    ${ARANGODB_SOURCE_DIR}/js/JS_SHA1SUM.txt
-  DESTINATION
-    ${CMAKE_INSTALL_DATAROOTDIR_ARANGO}/${ARANGODB_JS_VERSION}
-)
+# JS_SHA1SUM.txt is generated at install time over the installed tree; see
+# cmake/GenerateJsSha1Sum.cmake (declared last in the top-level CMakeLists).
 
 if (USE_ENTERPRISE)
   install(
