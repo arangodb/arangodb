@@ -29,9 +29,6 @@
 #include <atomic>
 
 namespace arangodb {
-namespace application_features {
-class ApplicationServer;
-}
 namespace rest {
 
 class IoContext {
@@ -40,7 +37,7 @@ class IoContext {
  private:
   class IoThread final : public Thread {
    public:
-    explicit IoThread(application_features::ApplicationServer&, IoContext&);
+    explicit IoThread(IoContext&);
     explicit IoThread(IoThread const&);
     ~IoThread();
     void run() override;
@@ -56,13 +53,12 @@ class IoContext {
   asio_ns::io_context io_context;
 
  private:
-  application_features::ApplicationServer& _server;
   IoThread _thread;
   asio_ns::executor_work_guard<asio_ns::io_context::executor_type> _work;
   std::atomic<unsigned> _clients;
 
  public:
-  explicit IoContext(application_features::ApplicationServer&);
+  explicit IoContext();
   explicit IoContext(IoContext const&);
   ~IoContext();
 

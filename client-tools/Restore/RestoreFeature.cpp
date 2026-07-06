@@ -1914,7 +1914,7 @@ RestoreFeature::RestoreFeature(application_features::ApplicationServer& server,
     : ApplicationFeature{server, *this},
       _client(client),
       _clientManager{client, Logger::RESTORE},
-      _clientTaskQueue{server, ::processJob},
+      _clientTaskQueue{::processJob},
       _exitCode{exitCode},
       _options(std::move(options)) {
   setOptional(false);

@@ -47,9 +47,8 @@ namespace StringUtils = arangodb::basics::StringUtils;
 /// @brief common replication applier
 struct ApplierThread : public Thread {
  public:
-  ApplierThread(application_features::ApplicationServer& server,
-                ReplicationApplier* applier, std::shared_ptr<Syncer> syncer)
-      : Thread(server, "ReplicationApplier"),
+  ApplierThread(ReplicationApplier* applier, std::shared_ptr<Syncer> syncer)
+      : Thread("ReplicationApplier"),
         _applier(applier),
         _syncer(std::move(syncer)) {
     TRI_ASSERT(_syncer);
@@ -105,10 +104,9 @@ struct ApplierThread : public Thread {
 
 /// @brief sync thread class
 struct FullApplierThread final : public ApplierThread {
-  FullApplierThread(application_features::ApplicationServer& server,
-                    ReplicationApplier* applier,
+  FullApplierThread(ReplicationApplier* applier,
                     std::shared_ptr<InitialSyncer>&& syncer)
-      : ApplierThread(server, applier, std::move(syncer)) {}
+      : ApplierThread(applier, std::move(syncer)) {}
 
   ~FullApplierThread() { shutdown(); }
 
@@ -141,10 +139,9 @@ struct FullApplierThread final : public ApplierThread {
 
 /// @brief applier thread class. run only the tailing code
 struct TailingApplierThread final : public ApplierThread {
-  TailingApplierThread(application_features::ApplicationServer& server,
-                       ReplicationApplier* applier,
+  TailingApplierThread(ReplicationApplier* applier,
                        std::shared_ptr<TailingSyncer>&& syncer)
-      : ApplierThread(server, applier, std::move(syncer)) {}
+      : ApplierThread(applier, std::move(syncer)) {}
 
   ~TailingApplierThread() { shutdown(); }
 
@@ -353,8 +350,7 @@ void ReplicationApplier::startReplication() {
   doStart(
       [&]() {
         std::shared_ptr<InitialSyncer> syncer = buildInitialSyncer();
-        _thread = std::make_unique<FullApplierThread>(_configuration._server,
-                                                      this, std::move(syncer));
+        _thread = std::make_unique<FullApplierThread>(this, std::move(syncer));
       },
       ReplicationApplierState::ActivityPhase::INITIAL);
 }
@@ -372,8 +368,8 @@ void ReplicationApplier::startTailing(TRI_voc_tick_t initialTick,
             << ". initialTick: " << initialTick << ", useTick: " << useTick;
         std::shared_ptr<TailingSyncer> syncer =
             buildTailingSyncer(initialTick, useTick);
-        _thread = std::make_unique<TailingApplierThread>(
-            _configuration._server, this, std::move(syncer));
+        _thread =
+            std::make_unique<TailingApplierThread>(this, std::move(syncer));
       },
       ReplicationApplierState::ActivityPhase::TAILING);
 
