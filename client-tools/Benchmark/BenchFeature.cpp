@@ -78,7 +78,13 @@ using namespace arangodb::rest;
 
 BenchFeature::BenchFeature(application_features::ApplicationServer& server,
                            int* result)
-    : ApplicationFeature{server, *this}, _result(result) {
+    : BenchFeature(server, result, BenchFeatureOptions{}) {}
+
+BenchFeature::BenchFeature(application_features::ApplicationServer& server,
+                           int* result, BenchFeatureOptions options)
+    : ApplicationFeature{server, *this},
+      _options(std::move(options)),
+      _result(result) {
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseClient>();
 

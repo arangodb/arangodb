@@ -49,7 +49,12 @@ namespace arangodb {
 
 DatabasePathFeature::DatabasePathFeature(
     application_features::ApplicationServer& server)
-    : ApplicationFeature{server, *this} {
+    : DatabasePathFeature(server, DatabasePathFeatureOptions{}) {}
+
+DatabasePathFeature::DatabasePathFeature(
+    application_features::ApplicationServer& server,
+    DatabasePathFeatureOptions options)
+    : ApplicationFeature{server, *this}, _options(std::move(options)) {
   setOptional(false);
   startsAfter<GreetingsFeaturePhase>();
 

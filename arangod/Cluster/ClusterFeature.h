@@ -59,6 +59,9 @@ class ClusterFeature : public application_features::ApplicationFeature {
   static constexpr std::string_view name() noexcept { return "Cluster"; }
 
   explicit ClusterFeature(application_features::ApplicationServer& server,
+                          metrics::IRegistry& metricsRegistry,
+                          ClusterOptions options);
+  explicit ClusterFeature(application_features::ApplicationServer& server,
                           metrics::IRegistry& metricsRegistry);
   ~ClusterFeature();
 
@@ -231,7 +234,7 @@ class ClusterFeature : public application_features::ApplicationFeature {
  private:
   ClusterFeature(application_features::ApplicationServer& server,
                  metrics::IRegistry& metricsRegistry, DatabaseFeature& database,
-                 std::type_index registration);
+                 std::type_index registration, ClusterOptions options);
   void reportRole(ServerState::RoleEnum);
   void scheduleConnectivityCheck(std::uint32_t inSeconds);
   void runConnectivityCheck();

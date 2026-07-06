@@ -59,7 +59,14 @@ ReplicationFeature::ReplicationFeature(
     application_features::ApplicationServer& server,
     application_features::CommunicationFeaturePhase& comm,
     metrics::IRegistry& metricsRegistry)
+    : ReplicationFeature(server, comm, metricsRegistry, ReplicationOptions{}) {}
+
+ReplicationFeature::ReplicationFeature(
+    application_features::ApplicationServer& server,
+    application_features::CommunicationFeaturePhase& comm,
+    metrics::IRegistry& metricsRegistry, ReplicationOptions options)
     : application_features::ApplicationFeature{server, *this},
+      _options(std::move(options)),
       _connectionCache{comm, httpclient::ConnectionCache::Options{5, 120}},
       _parallelTailingInvocations(0),
       _inventoryRequests(metricsRegistry.add(

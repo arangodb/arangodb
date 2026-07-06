@@ -625,13 +625,19 @@ class StatisticsThread final : public ServerThread {
 
 StatisticsFeature::StatisticsFeature(
     application_features::ApplicationServer& server,
-    metrics::MetricsFeature& metrics)
+    metrics::IRegistry& registry)
+    : StatisticsFeature(server, registry, StatisticsFeatureOptions{}) {}
+
+StatisticsFeature::StatisticsFeature(
+    application_features::ApplicationServer& server,
+    metrics::IRegistry& registry, StatisticsFeatureOptions options)
     : application_features::ApplicationFeature{server, *this},
+      _options(std::move(options)),
       _descriptions(server),
       _requestStatisticsMemoryUsage{
-          metrics.add(arangodb_request_statistics_memory_usage{})},
+          registry.add(arangodb_request_statistics_memory_usage{})},
       _connectionStatisticsMemoryUsage{
-          metrics.add(arangodb_connection_statistics_memory_usage{})} {
+          registry.add(arangodb_connection_statistics_memory_usage{})} {
   setOptional(true);
   startsAfter<AqlFeaturePhase>();
   startsAfter<NetworkFeature>();

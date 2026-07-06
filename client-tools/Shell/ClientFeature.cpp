@@ -60,14 +60,32 @@ constexpr size_t DEFAULT_RETRIES = 2;
 
 namespace arangodb {
 
-ClientFeature::ClientFeature(ApplicationServer& server,
-                             CommunicationFeaturePhase& comm,
-                             std::type_index registration,
-                             bool const allowJwtSecret,
-                             size_t const maxNumEndpoints,
-                             double const connectionTimeout,
-                             double const requestTimeout)
+ClientFeature::ClientFeature(ApplicationServer& server, bool allowJwtSecret,
+                             size_t maxNumEndpoints, double connectionTimeout,
+                             double requestTimeout)
+    : ClientFeature{server,
+                    server.getFeature<CommunicationFeaturePhase>(),
+                    typeid(HttpEndpointProvider),
+                    allowJwtSecret,
+                    maxNumEndpoints,
+                    connectionTimeout,
+                    requestTimeout,
+                    ClientFeatureOptions{}} {
+  if (server.hasFeature<ShellConsoleFeature>()) {
+    _console = &server.getFeature<ShellConsoleFeature>();
+  }
+
+  startsAfter<CommunicationFeaturePhase>();
+  startsAfter<GreetingsFeaturePhase>();
+}
+
+ClientFeature::ClientFeature(
+    ApplicationServer& server, CommunicationFeaturePhase& comm,
+    std::type_index registration, bool const allowJwtSecret,
+    size_t const maxNumEndpoints, double const connectionTimeout,
+    double const requestTimeout, ClientFeatureOptions options)
     : HttpEndpointProvider(server, registration, name()),
+      _options(std::move(options)),
       _comm{comm},
       _console{},
       _retries(DEFAULT_RETRIES),

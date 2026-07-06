@@ -36,7 +36,13 @@ using namespace arangodb::options;
 
 MaxMapCountFeature::MaxMapCountFeature(
     application_features::ApplicationServer& server)
-    : application_features::ApplicationFeature{server, *this} {
+    : MaxMapCountFeature(server, MaxMapCountFeatureOptions{}) {}
+
+MaxMapCountFeature::MaxMapCountFeature(
+    application_features::ApplicationServer& server,
+    MaxMapCountFeatureOptions options)
+    : application_features::ApplicationFeature{server, *this},
+      _options(std::move(options)) {
   setOptional(false);
   startsAfter<application_features::GreetingsFeaturePhase>();
 }

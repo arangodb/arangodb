@@ -35,8 +35,16 @@ namespace arangodb {
 CrashHandlerFeature::CrashHandlerFeature(
     application_features::ApplicationServer& server,
     std::shared_ptr<crash_handler::DumpManager> dumpManager)
+    : CrashHandlerFeature(server, std::move(dumpManager),
+                          CrashHandlerFeatureOptions{}) {}
+
+CrashHandlerFeature::CrashHandlerFeature(
+    application_features::ApplicationServer& server,
+    std::shared_ptr<crash_handler::DumpManager> dumpManager,
+    CrashHandlerFeatureOptions options)
     : application_features::ApplicationFeature{server, *this},
-      _dumpManager(std::move(dumpManager)) {
+      _dumpManager(std::move(dumpManager)),
+      _options(std::move(options)) {
   setOptional(false);
   // Feature must start after DatabasePathFeature
   // otherwise it won't be able to set the crashes directory

@@ -50,6 +50,9 @@ class FlushFeature final : public application_features::ApplicationFeature,
   static constexpr std::string_view name() noexcept { return "Flush"; }
 
   FlushFeature(application_features::ApplicationServer& server,
+               metrics::IRegistry& metricsRegistry,
+               FlushFeatureOptions options);
+  FlushFeature(application_features::ApplicationServer& server,
                metrics::IRegistry& metricsRegistry);
 
   ~FlushFeature();

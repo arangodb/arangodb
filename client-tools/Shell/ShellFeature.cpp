@@ -43,7 +43,12 @@ namespace arangodb {
 
 ShellFeature::ShellFeature(application_features::ApplicationServer& server,
                            int* result)
+    : ShellFeature(server, result, ShellFeatureOptions{}) {}
+
+ShellFeature::ShellFeature(application_features::ApplicationServer& server,
+                           int* result, ShellFeatureOptions options)
     : ApplicationFeature(server, *this),
+      _options(std::move(options)),
       _result(result),
       _runMode(RunMode::INTERACTIVE) {
   setOptional(false);
