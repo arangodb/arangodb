@@ -195,8 +195,6 @@ void ApplicationServer::run(int argc, char* argv[]) {
   reportServerProgress(State::IN_VALIDATE_OPTIONS);
   validateOptions();
 
-  addFeaturesWithOptionProvider();
-
   // setup and validate all feature dependencies
   // This is needed to also add the feature coming from
   // addFeaturesWithOptionProvider to the _orderedFeatures vector

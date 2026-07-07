@@ -58,16 +58,15 @@ static auto const kNonServerFeatures =
                std::type_index(typeid(SslServerFeature)),
                std::type_index(typeid(StatisticsFeature))};
 
-void ArangodServer::collectOptions() {
-  LOG_TOPIC("0eac8", TRACE, Logger::STARTUP) << "ArangodServer::collectOptions";
-  ApplicationServer::collectOptions();
+void ArangodServer::declareAdditionalOptions() {
+  LOG_TOPIC("0eac8", TRACE, Logger::STARTUP)
+      << "ArangodServer::declareAdditionalOptions";
   _optionProviders.declareOptions(_programOptions);
 }
 
-void ArangodServer::validateOptions() {
+void ArangodServer::validateAdditionalOptions() {
   LOG_TOPIC("1ed28", TRACE, Logger::STARTUP)
-      << "ArangodServer::validateOptions";
-  ApplicationServer::validateOptions();
+      << "ArangodServer::validateAdditionalOptions";
   _optionProviders.validateOptions(_programOptions);
 }
 
@@ -247,7 +246,7 @@ void ArangodServer::addFeatures(
   addFeature<ClusterEngine>(metrics);
 }
 
-void ArangodServer::addFeaturesWithOptionProvider() {
+void ArangodServer::addAdditionalFeatures() {
   auto& rocksdbOption = getFeature<RocksDBOptionFeature>();
   auto& metrics = getFeature<metrics::MetricsFeature>();
   auto& databasePath = getFeature<DatabasePathFeature>();
@@ -256,6 +255,7 @@ void ArangodServer::addFeaturesWithOptionProvider() {
   auto& vectorIndex = getFeature<VectorIndexFeature>();
   auto& flush = getFeature<FlushFeature>();
   auto& dumpLimits = getFeature<DumpLimitsFeature>();
+  auto& scheduler = getFeature<SchedulerFeature>();
   auto& rocksdbRecovery = getFeature<RocksDBRecoveryManager>();
   auto& cacheManager = getFeature<CacheManagerFeature>();
   auto& agency = getFeature<AgencyFeature>();
@@ -311,7 +311,9 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
 
     server.setAddFeaturesWithOptionProviderDependencies(name, crashDumpManager,
                                                         dataSourceRegistry);
-
+    server.declareAdditionalOptions();
+    server.validateAdditionalOptions();
+    server.addAdditionalFeatures();
     try {
       server.run(argc, argv);
       if (server.helpShown()) {

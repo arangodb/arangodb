@@ -50,11 +50,9 @@ class ArangodServer : public application_features::ApplicationServer {
       std::shared_ptr<crash_handler::DumpManager>& dumpManager,
       std::shared_ptr<crash_handler::DataSourceRegistry>& dataSourceRegistry);
 
- protected:
-  void collectOptions() final;
-  void validateOptions() final;
-  // Called by server::run() after collect & validate.
-  void addFeaturesWithOptionProvider() final;
+  void declareAdditionalOptions();
+  void validateAdditionalOptions();
+  void addAdditionalFeatures();
 
  private:
   std::shared_ptr<options::ProgramOptions> _programOptions;

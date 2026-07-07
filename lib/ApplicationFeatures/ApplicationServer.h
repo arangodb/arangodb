@@ -338,16 +338,13 @@ class ApplicationServer {
 
   // collects the program options from all features,
   // without validating them
-  virtual void collectOptions();
+  void collectOptions();
 
   // parse options
   void parseOptions(int argc, char* argv[]);
 
   // allows features to cross-validate their program options
-  virtual void validateOptions();
-
-  // adds the features that receive their options as a c-tor dependency.
-  virtual void addFeaturesWithOptionProvider(){};
+  void validateOptions();
 
   // allows process control
   void daemonize();
