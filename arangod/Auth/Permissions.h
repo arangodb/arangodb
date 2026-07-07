@@ -278,7 +278,7 @@ struct WriteUser {
 // pass a `perms::Xxx{...}` and it is wrapped automatically.
 using Permission = std::variant<
     // admin actions
-    perms::Admin, perms::HardenedAdmin,
+    perms::Admin,
     // database permissions
     perms::SeeDatabase, perms::CreateDatabase, perms::DropDatabase,
     perms::UseDatabase,
