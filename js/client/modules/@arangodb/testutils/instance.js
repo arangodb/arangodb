@@ -1599,7 +1599,7 @@ class instance {
       if (failurePoint === "") {
         failurePoint = undefined;
       }
-      let deleteUrl = `/_admin/debug/failat/${(failurePoint=== undefined)?'': + encodeURIComponent(failurePoint)}`;
+      let deleteUrl = `/_admin/debug/failat/${(failurePoint=== undefined)?'': encodeURIComponent(failurePoint)}`;
       let reply;
       let count = 0;
       while (count < 10) {
