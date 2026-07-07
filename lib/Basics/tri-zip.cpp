@@ -25,6 +25,7 @@
 #include <sys/stat.h>
 #include <algorithm>
 #include <cstring>
+#include <format>
 
 #include "tri-zip.h"
 
@@ -76,11 +77,11 @@ static char const* translateError(int err) {
 /// @brief extracts the current file
 ////////////////////////////////////////////////////////////////////////////////
 
-static ErrorCode ExtractCurrentFile(unzFile uf, void* buffer,
-                                    size_t const bufferSize,
-                                    char const* outPath, bool const skipPaths,
-                                    bool const overwrite, char const* password,
-                                    std::string& errorMessage) {
+static ErrorCode ExtractCurrentFile(
+    unzFile uf, void* buffer, size_t const bufferSize, char const* outPath,
+    bool const skipPaths, bool const overwrite, char const* password,
+    std::string& errorMessage,
+    std::function<bool(std::filesystem::path)> validatePath) {
   char filenameInZip[256];
   char* filenameWithoutPath;
   char* p;
@@ -132,6 +133,12 @@ static ErrorCode ExtractCurrentFile(unzFile uf, void* buffer,
   if (*filenameWithoutPath == '\0') {
     if (!skipPaths) {
       fullPath = basics::FileUtils::buildFilename(outPath, filenameInZip);
+
+      if (!validatePath(fullPath)) {
+        errorMessage = std::format("Filename '{}' failed validation", fullPath);
+        return TRI_ERROR_INTERNAL;
+      }
+
       auto res = TRI_CreateRecursiveDirectory(fullPath.c_str(), systemError,
                                               errorMessage);
 
@@ -160,6 +167,11 @@ static ErrorCode ExtractCurrentFile(unzFile uf, void* buffer,
 
     // prefix the name from the zip file with the path specified
     fullPath = basics::FileUtils::buildFilename(outPath, writeFilename);
+
+    if (!validatePath(fullPath)) {
+      errorMessage = std::format("Filename '{}' failed validation.", fullPath);
+      return TRI_ERROR_INTERNAL;
+    }
 
     if (!overwrite && TRI_ExistsFile(fullPath.c_str())) {
       errorMessage = std::string("not allowed to overwrite file ") + fullPath;
@@ -256,10 +268,11 @@ static ErrorCode ExtractCurrentFile(unzFile uf, void* buffer,
 /// @brief unzips a single file
 ////////////////////////////////////////////////////////////////////////////////
 
-static ErrorCode UnzipFile(unzFile uf, void* buffer, size_t const bufferSize,
-                           char const* outPath, bool const skipPaths,
-                           bool const overwrite, char const* password,
-                           std::string& errorMessage) {
+static ErrorCode UnzipFile(
+    unzFile uf, void* buffer, size_t const bufferSize, char const* outPath,
+    bool const skipPaths, bool const overwrite, char const* password,
+    std::string& errorMessage,
+    std::function<bool(std::filesystem::path)> validatePath) {
   unz_global_info64 gi;
   uLong i;
   auto res = TRI_ERROR_NO_ERROR;
@@ -273,7 +286,7 @@ static ErrorCode UnzipFile(unzFile uf, void* buffer, size_t const bufferSize,
 
   for (i = 0; i < gi.number_entry; i++) {
     res = ExtractCurrentFile(uf, buffer, bufferSize, outPath, skipPaths,
-                             overwrite, password, errorMessage);
+                             overwrite, password, errorMessage, validatePath);
 
     if (res != TRI_ERROR_NO_ERROR) {
       break;
@@ -471,9 +484,10 @@ ErrorCode TRI_Adler32(char const* filename, uint32_t& checksum) {
 /// @brief unzips a file
 ////////////////////////////////////////////////////////////////////////////////
 
-ErrorCode TRI_UnzipFile(char const* filename, char const* outPath,
-                        bool skipPaths, bool overwrite, char const* password,
-                        std::string& errorMessage) {
+ErrorCode TRI_UnzipFile(
+    char const* filename, char const* outPath, bool skipPaths, bool overwrite,
+    char const* password, std::string& errorMessage,
+    std::function<bool(std::filesystem::path)> validatePath) {
 #ifdef USEWIN32IOAPI
   zlib_filefunc64_def ffunc;
 #endif
@@ -497,7 +511,7 @@ ErrorCode TRI_UnzipFile(char const* filename, char const* outPath,
   }
 
   auto res = UnzipFile(uf, buffer, bufferSize, outPath, skipPaths, overwrite,
-                       password, errorMessage);
+                       password, errorMessage, validatePath);
 
   unzClose(uf);
 

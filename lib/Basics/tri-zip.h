@@ -46,6 +46,7 @@ ErrorCode TRI_ZipFile(
 /// @brief unzips a file
 ////////////////////////////////////////////////////////////////////////////////
 
-ErrorCode TRI_UnzipFile(char const* filename, char const* outPath,
-                        bool skipPaths, bool overwrite, char const* password,
-                        std::string& errorMessage);
+ErrorCode TRI_UnzipFile(
+    char const* filename, char const* outPath, bool skipPaths, bool overwrite,
+    char const* password, std::string& errorMessage,
+    std::function<bool(std::filesystem::path)> validatePath);

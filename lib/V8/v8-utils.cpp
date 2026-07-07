@@ -1883,9 +1883,15 @@ static void JS_UnzipFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
         std::string("not allowed to modify files in this path: ") + outPath);
   }
 
+  auto validatePath = [&v8security,
+                       &isolate](std::filesystem::path path) -> bool {
+    return v8security.isAllowedToAccessPath(isolate, path.string(),
+                                            FSAccessType::WRITE);
+  };
+
   std::string errMsg;
   auto res = TRI_UnzipFile(filename.c_str(), outPath.c_str(), skipPaths,
-                           overwrite, p, errMsg);
+                           overwrite, p, errMsg, validatePath);
 
   if (res == TRI_ERROR_NO_ERROR) {
     TRI_V8_RETURN_TRUE();
