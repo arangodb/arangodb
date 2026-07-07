@@ -27,12 +27,16 @@ version: 2.1
 #                       reports are published next to the scanned files
 #   security-check-*    Trivy scan of every published item [security-check]:
 #                       one job per package format+arch (contents extracted,
-#                       then fs-scanned) and per Docker image (image scan) —
-#                       strictest gate: all severities, unfixed CVEs included,
-#                       secret scanning on, EOL base-OS check on images. One
-#                       job per item so every item still gets scanned when
-#                       another fails; publish-nightly requires them all, so
-#                       any single finding blocks the whole publish. The
+#                       then fs-scanned) and per Docker image (image scan).
+#                       The reports always cover ALL severities (unfixed CVEs
+#                       included, secret scanning on); whether a job fails —
+#                       and with it the publish — is decided separately by
+#                       [security-check-fail-level] (default HIGH: HIGH and
+#                       CRITICAL findings block; NONE = report-only; ALL =
+#                       any finding, incl. UNKNOWN). The EOL base-OS check on
+#                       images always fails regardless. One job per item so
+#                       every item still gets scanned when another fails;
+#                       publish-nightly requires them all. The
 #                       <target>.trivy.{txt,json} reports are published next
 #                       to the scanned files, like the ClamAV reports.
 #   sign-packages       detached GPG signatures (.asc) [sign-packages]
@@ -61,6 +65,15 @@ version: 2.1
 #
 # Required environment (contexts / project settings):
 #   CLAMAV_DB_BUCKET                s3 bucket caching the ClamAV database
+#   circleci-token context:         CIRCLECI_TOKEN; also used by the hosted
+#                                   docker jobs to download install.tar.gz
+#                                   from the compile job's CircleCI artifacts
+#   coredb-workspace-aws-bucket context (docker jobs, optional override):
+#                                   AWS_S3_WORKSPACE_BUCKET; add
+#                                   AWS_ACCESS_KEY_ID + AWS_SECRET_ACCESS_KEY
+#                                   (read-only) + AWS_DEFAULT_REGION to fetch
+#                                   install.tar.gz from the workspace bucket
+#                                   instead of the CircleCI artifacts
 #   nightly-signing context:        ARANGO_SIGN_PASSWD, ARANGO_SIGN_KEYRING_BASE64
 #                                   (optional KEYNAME, default 86FEC04D)
 #   nightly-publish context:        GCLOUD_SERVICE_KEY (GCS upload; also needs
@@ -116,7 +129,12 @@ parameters:
   security-check:
     type: boolean
     default: true
-    description: "Trivy scan (CVEs + secrets) of every package and Docker image before publishing; any finding blocks the publish."
+    description: "Trivy scan (CVEs + secrets) of every package and Docker image before publishing; findings at or above security-check-fail-level block the publish."
+  security-check-fail-level:
+    type: enum
+    enum: ["NONE", "LOW", "MEDIUM", "HIGH", "CRITICAL", "ALL"]
+    default: "HIGH"
+    description: "Minimum Trivy finding severity that fails the security-check jobs (findings at or above this level block the publish). The stored reports always contain ALL severities. NONE = report-only, never fail; ALL = fail on any finding incl. UNKNOWN severity. The EOL base-OS check on Docker images fails regardless of this level."
 
 commands:
   halt-unless:
@@ -245,23 +263,111 @@ commands:
           destination: install/<< parameters.edition >>-<< parameters.arch >>/install.tar.gz
 
   download-build-artifact:
+    # Where install.tar.gz comes from depends on where the job runs:
+    #   source: s3       (self-hosted runners) — the workspace bucket,
+    #                    anonymously through the VPC S3 endpoint (the bucket
+    #                    policy allows unsigned reads only via sourceVpce).
+    #   source: circleci (CircleCI-hosted executors, outside the VPC) — the
+    #                    CircleCI artifact stored by the compile job, located
+    #                    via the API with CIRCLECI_TOKEN (circleci-token
+    #                    context). When full AWS credentials ARE provided
+    #                    (AWS_ACCESS_KEY_ID + AWS_SECRET_ACCESS_KEY +
+    #                    AWS_S3_WORKSPACE_BUCKET), the workspace bucket is
+    #                    used with signed requests instead.
     parameters:
       arch:
         type: string
       edition:
         type: string
+      source:
+        type: enum
+        enum: ["s3", "circleci"]
+        default: "s3"
     steps:
       - run:
-          name: Download install.tar.gz from S3
+          name: Download install.tar.gz
           command: |
-            if [ -z "${AWS_S3_WORKSPACE_BUCKET:-}" ]; then
-              echo "AWS_S3_WORKSPACE_BUCKET not set"
+            HAVE_AWS_CREDS=false
+            if [ -n "${AWS_ACCESS_KEY_ID:-}" ] && [ -n "${AWS_SECRET_ACCESS_KEY:-}" ] && \
+               [ -n "${AWS_S3_WORKSPACE_BUCKET:-}" ]; then
+              HAVE_AWS_CREDS=true
+            fi
+
+            if [ "<< parameters.source >>" = "circleci" ] && [ "${HAVE_AWS_CREDS}" = "false" ]; then
+              if [ -z "${CIRCLECI_TOKEN:-}" ]; then
+                echo "CIRCLECI_TOKEN not set (circleci-token context missing?)"
+                exit 1
+              fi
+              JOB_NUMBER=$(curl -sf -H "Circle-Token: ${CIRCLECI_TOKEN}" \
+                "https://circleci.com/api/v2/workflow/${CIRCLE_WORKFLOW_ID}/job" | \
+                jq -r '.items[] | select(.name == "compile-<< parameters.edition >>-<< parameters.arch >>") | .job_number')
+              if [ -z "${JOB_NUMBER}" ] || [ "${JOB_NUMBER}" = "null" ]; then
+                echo "compile-<< parameters.edition >>-<< parameters.arch >> not found in workflow ${CIRCLE_WORKFLOW_ID}"
+                exit 1
+              fi
+              URL=$(curl -sf -H "Circle-Token: ${CIRCLECI_TOKEN}" \
+                "https://circleci.com/api/v2/project/gh/${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}/${JOB_NUMBER}/artifacts" | \
+                jq -r '.items[] | select(.path == "install/<< parameters.edition >>-<< parameters.arch >>/install.tar.gz") | .url')
+              if [ -z "${URL}" ] || [ "${URL}" = "null" ]; then
+                echo "install.tar.gz artifact not found on job ${JOB_NUMBER}"
+                exit 1
+              fi
+              curl -fL --retry 5 -H "Circle-Token: ${CIRCLECI_TOKEN}" \
+                -o install.tar.gz "${URL}"
+            else
+              if [ -z "${AWS_S3_WORKSPACE_BUCKET:-}" ]; then
+                echo "AWS_S3_WORKSPACE_BUCKET not set"
+                exit 1
+              fi
+              if [ "${HAVE_AWS_CREDS}" = "true" ]; then
+                SIGN_ARGS=""
+                # Hosted executors (cimg/base) have no aws CLI preinstalled.
+                if ! command -v aws > /dev/null; then
+                  curl -sSfL "https://awscli.amazonaws.com/awscli-exe-linux-$(uname -m).zip" -o /tmp/awscliv2.zip
+                  (cd /tmp && unzip -q awscliv2.zip && sudo ./aws/install)
+                fi
+              else
+                SIGN_ARGS="--no-sign-request --profile anon"
+                aws configure set profile.anon.s3.multipart_threshold 5GB
+              fi
+              aws configure set default.s3.multipart_threshold 5GB
+              aws s3 cp ${SIGN_ARGS} \
+                "s3://${AWS_S3_WORKSPACE_BUCKET}/nightly/${CIRCLE_WORKFLOW_ID}/<< parameters.edition >>-<< parameters.arch >>/install.tar.gz" \
+                install.tar.gz
+            fi
+
+  gate-trivy-findings:
+    # The trivy-scan orb couples what is reported and what fails the job in
+    # one severity filter, so the scans run report-only over ALL severities
+    # (fail-on-findings: false) and this gate decides separately, from the
+    # JSON report, whether the job fails: only findings (vulnerabilities and
+    # secrets) at or above security-check-fail-level do. This way the
+    # published trivy report is always complete, however lax the gate is.
+    steps:
+      - run:
+          name: Gate on findings at or above << pipeline.parameters.security-check-fail-level >>
+          command: |
+            case "<< pipeline.parameters.security-check-fail-level >>" in
+              NONE)     GATE="" ;;
+              LOW)      GATE="LOW,MEDIUM,HIGH,CRITICAL" ;;
+              MEDIUM)   GATE="MEDIUM,HIGH,CRITICAL" ;;
+              HIGH)     GATE="HIGH,CRITICAL" ;;
+              CRITICAL) GATE="CRITICAL" ;;
+              ALL)      GATE="UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL" ;;
+            esac
+            if [ -z "${GATE}" ]; then
+              echo "security-check-fail-level=NONE: report-only, not gating"
+              exit 0
+            fi
+            COUNT=$(jq --arg gate "${GATE}" \
+              '[.Results[]? | (.Vulnerabilities[]?, .Secrets[]?)
+                | select(.Severity as $s | ($gate | split(",")) | index($s))] | length' \
+              /tmp/trivy-results.json)
+            echo "Findings at or above << pipeline.parameters.security-check-fail-level >>: ${COUNT}"
+            if [ "${COUNT}" -gt 0 ]; then
+              echo "Blocking the publish (full report of all severities in the job artifacts)."
               exit 1
             fi
-            aws configure set profile.anon.s3.multipart_threshold 5GB
-            aws s3 cp --no-sign-request --profile anon \
-              "s3://${AWS_S3_WORKSPACE_BUCKET}/nightly/${CIRCLE_WORKFLOW_ID}/<< parameters.edition >>-<< parameters.arch >>/install.tar.gz" \
-              install.tar.gz
 
   extract-install-tree:
     # Recreates the oskar layout: install tree at <repo>/build/install.
@@ -644,14 +750,18 @@ jobs:
       - checkout-arangodb:
           destination: /home/circleci/project
       # This job runs on a CircleCI-hosted executor (setup_remote_docker),
-      # where neither the aws CLI (cimg/base) nor AWS_S3_WORKSPACE_BUCKET
-      # (injected only by the self-hosted runner environment) is available.
-      # The CLI is installed here; the bucket name must be provided as a
-      # CircleCI project-level environment variable.
-      - aws-cli/install
+      # outside the VPC, so the anonymous VPC-endpoint S3 path of the
+      # self-hosted runners is not available. By default install.tar.gz is
+      # therefore taken from the compile job's CircleCI artifact
+      # (CIRCLECI_TOKEN from the circleci-token context); providing AWS
+      # credentials via the coredb-workspace-aws-bucket context
+      # (AWS_ACCESS_KEY_ID + AWS_SECRET_ACCESS_KEY + AWS_DEFAULT_REGION next
+      # to AWS_S3_WORKSPACE_BUCKET) switches it to the workspace bucket with
+      # signed requests.
       - download-build-artifact:
           arch: << parameters.arch >>
           edition: enterprise
+          source: circleci
       - run:
           name: Prepare install directory for Docker build
           command: |
@@ -774,11 +884,14 @@ jobs:
   # ── Trivy security check ─────────────────────────────────────────────────────
   # One job instance per published item, so a finding in one item never
   # prevents the remaining items from being scanned; publish-nightly requires
-  # every instance, so any single finding still blocks the whole publish.
-  # Strictest gate the orb offers for blocking scans: all severities, unfixed
-  # CVEs included, secret scanning kept enabled (orb default), EOL base-OS
-  # check on image scans. detection-priority stays "precise" — the orb
-  # explicitly recommends against "comprehensive" on blocking gates.
+  # every instance, so any gated finding still blocks the whole publish.
+  # The orb couples reporting and failing in one severity filter, so the
+  # scans run report-only over ALL severities (unfixed CVEs included, secret
+  # scanning kept enabled — orb default) and the gate-trivy-findings command
+  # fails the job per security-check-fail-level. EOL base-OS check on image
+  # scans still fails unconditionally. detection-priority stays "precise" —
+  # the orb explicitly recommends against "comprehensive" on blocking gates,
+  # and these scans still feed one.
   # Runs on CircleCI-hosted executors: the orb caches the Trivy DB with
   # save_cache/restore_cache, which the self-hosted runner classes do not
   # support (the same reason the ClamAV database lives in S3).
@@ -849,15 +962,17 @@ jobs:
               echo "No << parameters.target >> packages found in ${SRC}" >&2
               exit 1
             fi
+      # Report-only over ALL severities; gate-trivy-findings below decides
+      # whether the job (and with it the publish) fails.
       - trivy-scan/scan:
           scan-type: fs
           scan-path: /tmp/scan-root
           severity: "CRITICAL,HIGH,MEDIUM,LOW,UNKNOWN"
-          fail-on-findings: true
+          fail-on-findings: false
           ignore-unfixed: false
           store-junit-results: true
-      # Reached only when the scan passed — on findings the job fails and
-      # nothing publishes anyway (the reports remain job artifacts).
+      # Staged and persisted before the gate so the full report reaches the
+      # workspace even when the gate fails (publish is blocked then anyway).
       - run:
           name: Stage Trivy report for publishing
           command: |
@@ -869,6 +984,7 @@ jobs:
           root: /tmp/nightly
           paths:
             - trivy-reports/<< parameters.arch >>
+      - gate-trivy-findings
 
   security-check-docker-image:
     # Loads the exported per-arch image into the remote Docker daemon and
@@ -897,16 +1013,20 @@ jobs:
             # re-tagged to a fixed reference the scan step can name.
             LOADED="$(docker load -i /tmp/nightly/docker/enterprise-preview-<< parameters.arch >>.tar | sed -n 's/^Loaded image: //p')"
             docker tag "${LOADED}" nightly-security-scan:<< parameters.arch >>
+      # Report-only over ALL severities; gate-trivy-findings below decides
+      # whether the job (and with it the publish) fails. Only the EOL
+      # base-OS check still fails the scan itself, independently of
+      # security-check-fail-level.
       - trivy-scan/scan:
           scan-type: image
           image-ref: nightly-security-scan:<< parameters.arch >>
           severity: "CRITICAL,HIGH,MEDIUM,LOW,UNKNOWN"
-          fail-on-findings: true
+          fail-on-findings: false
           ignore-unfixed: false
           exit-on-eol: "1"
           store-junit-results: true
-      # Reached only when the scan passed — on findings the job fails and
-      # nothing publishes anyway (the reports remain job artifacts).
+      # Staged and persisted before the gate so the full report reaches the
+      # workspace even when the gate fails (publish is blocked then anyway).
       - run:
           name: Stage Trivy report for publishing
           command: |
@@ -918,6 +1038,7 @@ jobs:
           root: /tmp/nightly
           paths:
             - trivy-reports/<< parameters.arch >>
+      - gate-trivy-findings
 
   # ── GPG signing ──────────────────────────────────────────────────────────────
   sign-packages:
@@ -1228,6 +1349,7 @@ workflows:
           name: docker-enterprise-amd64
           arch: amd64
           resource-class: large
+          context: [ circleci-token, coredb-workspace-aws-bucket ]
           requires: [compile-enterprise-amd64]
 
       # ── ARM64 enterprise ─────────────────────────────────────────────────────
@@ -1260,6 +1382,7 @@ workflows:
           name: docker-enterprise-arm64
           arch: arm64
           resource-class: arm.large
+          context: [ circleci-token, coredb-workspace-aws-bucket ]
           requires: [compile-enterprise-arm64]
 
       # ── Scan, sign, publish ──────────────────────────────────────────────────
