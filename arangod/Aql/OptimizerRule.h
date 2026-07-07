@@ -148,6 +148,8 @@ struct OptimizerRule {
 
     interchangeAdjacentEnumerationsRule,
 
+    optimizeJoinOrder,
+
     // replace attribute accesses that are equal due to a filter statement
     // with the same value. This might enable other optimizations later on.
 

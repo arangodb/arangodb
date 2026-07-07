@@ -108,6 +108,7 @@
 #include "FeaturePhases/ClusterFeaturePhase.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Optimizer/Rule/OptimizeJoinOrder.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/AqlFeature.h"
 #include "RestServer/DatabaseFeature.h"
@@ -317,6 +318,13 @@ optimizations.)");
       OptimizerRule::interchangeAdjacentEnumerationsRule,
       OptimizerRule::makeFlags(OptimizerRule::Flags::CanCreateAdditionalPlans,
                                OptimizerRule::Flags::CanBeDisabled),
+      R"(Try out permutations of `FOR` statements in queries that contain
+multiple loops, which may enable further optimizations by other rules.)");
+
+  registerRule(
+      "optimize-join-order", optimizeJoinOrder,
+      OptimizerRule::optimizeJoinOrder,
+      OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
       R"(Try out permutations of `FOR` statements in queries that contain
 multiple loops, which may enable further optimizations by other rules.)");
 
