@@ -32,6 +32,8 @@
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Rest/GeneralRequest.h"
 
+#include "absl/strings/str_cat.h"
+
 namespace arangodb {
 
 auto AuthMode::getIAuth() -> AuthMode::IAuth& {
@@ -350,7 +352,13 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
               if (auto r = check(p::UseCollection{view.db, coll,
                                                   CollectionAccessLevel::Read});
                   !r.ok()) {
-                return r;
+                return Result(
+                    TRI_ERROR_FORBIDDEN,
+                    absl::StrCat(
+                        "insufficient collection access to collection '", coll,
+                        "' to drop view '", view.name, "' in database '",
+                        view.db, "'"));
+                ;
               }
             }
             return {};
