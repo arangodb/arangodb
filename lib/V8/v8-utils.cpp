@@ -1936,13 +1936,14 @@ static void JS_ZipFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
     v8::Handle<v8::Value> file =
         files->Get(context, i).FromMaybe(v8::Handle<v8::Value>());
     if (file->IsString()) {
-      if (!v8security.isAllowedToAccessPath(isolate, filename,
+      auto fileToAdd = TRI_ObjectToString(isolate, file);
+      if (!v8security.isAllowedToAccessPath(isolate, fileToAdd,
                                             FSAccessType::READ)) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
             TRI_ERROR_FORBIDDEN,
-            std::string("not allowed to read files in this path: ") + filename);
+            std::string("not allowed to read: ") + fileToAdd);
       }
-      filenames.emplace_back(TRI_ObjectToString(isolate, file));
+      filenames.emplace_back(fileToAdd);
     } else {
       res = TRI_ERROR_BAD_PARAMETER;
       break;
