@@ -18,5 +18,10 @@ target_link_libraries(arango_activities_global
 PUBLIC
   arango_activities)
 
-add_subdirectory(docu)
+option(USE_ACTIVITY_DOCS
+  "build the activities documentation generator (requires the LLVM/Clang 19 development libraries, e.g. libclang-19-dev and llvm-19-dev)"
+  OFF)
+if(USE_ACTIVITY_DOCS)
+  add_subdirectory(docu)
+endif()
 add_subdirectory(src)
