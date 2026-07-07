@@ -25,11 +25,9 @@
 
 #include "TakeoverShardLeadership.h"
 
-#include "Agency/AgencyCommon.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/GlobalSerialization.h"
 #include "Basics/StringUtils.h"
-#include "Basics/VelocyPackHelper.h"
 #include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
@@ -45,12 +43,11 @@
 #include "RestServer/DatabaseFeature.h"
 #include "Transaction/ClusterUtils.h"
 #include "Transaction/Methods.h"
-#include "Transaction/StandaloneContext.h"
 #include "Utils/DatabaseGuard.h"
-#include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Databases.h"
+#include "VocBase/vocbase.h"
 
 #include <velocypack/Compare.h>
 #include <velocypack/Iterator.h>

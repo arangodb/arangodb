@@ -55,8 +55,7 @@ class EnumeratePathsNode : public virtual GraphNode {
   EnumeratePathsNode(ExecutionPlan& plan, EnumeratePathsNode const& node);
 
  public:
-  EnumeratePathsNode(ExecutionPlan* plan, ExecutionNodeId id,
-                     TRI_vocbase_t* vocbase,
+  EnumeratePathsNode(ExecutionPlan* plan, ExecutionNodeId id, Database* vocbase,
                      arangodb::graph::PathType::Type pathType,
                      AstNode const* direction, AstNode const* start,
                      AstNode const* target, AstNode const* graph,
@@ -67,17 +66,19 @@ class EnumeratePathsNode : public virtual GraphNode {
   ~EnumeratePathsNode();
 
   /// @brief Internal constructor to clone the node.
-  EnumeratePathsNode(
-      ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
-      arangodb::graph::PathType::Type pathType,
-      std::vector<Collection*> const& edgeColls,
-      std::vector<Collection*> const& vertexColls,
-      TRI_edge_direction_e defaultDirection,
-      std::vector<TRI_edge_direction_e> const& directions,
-      Variable const* inStartVariable, std::string const& startVertexId,
-      Variable const* inTargetVariable, std::string const& targetVertexId,
-      std::unique_ptr<graph::BaseOptions> options, graph::Graph const* graph,
-      Variable const* distributeVariable);
+  EnumeratePathsNode(ExecutionPlan* plan, ExecutionNodeId id, Database* vocbase,
+                     arangodb::graph::PathType::Type pathType,
+                     std::vector<Collection*> const& edgeColls,
+                     std::vector<Collection*> const& vertexColls,
+                     TRI_edge_direction_e defaultDirection,
+                     std::vector<TRI_edge_direction_e> const& directions,
+                     Variable const* inStartVariable,
+                     std::string const& startVertexId,
+                     Variable const* inTargetVariable,
+                     std::string const& targetVertexId,
+                     std::unique_ptr<graph::BaseOptions> options,
+                     graph::Graph const* graph,
+                     Variable const* distributeVariable);
 
   /// @brief return the type of the node
   NodeType getType() const override final { return ENUMERATE_PATHS; }

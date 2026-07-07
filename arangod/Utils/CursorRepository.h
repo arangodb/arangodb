@@ -30,9 +30,8 @@
 #include "Utils/Cursor.h"
 #include "VocBase/voc-types.h"
 
-struct TRI_vocbase_t;
-
 namespace arangodb {
+struct Database;
 
 namespace futures {
 template<typename T>
@@ -58,7 +57,7 @@ class CursorRepository {
   CursorRepository& operator=(CursorRepository const&) = delete;
 
  public:
-  explicit CursorRepository(TRI_vocbase_t& vocbase,
+  explicit CursorRepository(Database& vocbase,
                             metrics::Gauge<uint64_t>* numberOfCursorsMetric,
                             metrics::Gauge<uint64_t>* memoryUsageMetric);
 
@@ -113,7 +112,7 @@ class CursorRepository {
   /// @brief maximum number of cursors to garbage-collect in one go
   static constexpr size_t maxCollectCount = 1024;
 
-  TRI_vocbase_t& _vocbase;
+  Database& _vocbase;
 
   /// @brief mutex for the cursors repository
   std::mutex mutable _lock;

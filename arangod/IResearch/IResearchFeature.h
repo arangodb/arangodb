@@ -28,7 +28,6 @@
 #include "Aql/AstNode.h"
 #include "IResearch/IResearchOptions.h"
 #include "Metrics/Fwd.h"
-#include "VocBase/voc-types.h"
 #include "resource_manager.hpp"
 #include "function2.hpp"
 
@@ -39,6 +38,7 @@
 #include <filesystem>
 
 namespace arangodb {
+struct Database;
 class DatabasePathFeature;
 struct IndexTypeFactory;
 namespace metrics {
@@ -98,9 +98,9 @@ inline bool isOffsetInfo(aql::AstNode const& node) noexcept {
 }
 
 std::filesystem::path getPersistedPath(DatabasePathFeature const& dbPathFeature,
-                                       TRI_vocbase_t& database);
+                                       Database& database);
 
-void cleanupDatabase(TRI_vocbase_t& database);
+void cleanupDatabase(Database& database);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class IResearchFeature

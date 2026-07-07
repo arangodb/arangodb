@@ -22,14 +22,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "StandaloneContext.h"
-#include "StorageEngine/TransactionState.h"
-#include "Utils/CollectionNameResolver.h"
 
-struct TRI_vocbase_t;
+#include "StorageEngine/TransactionState.h"
 
 namespace arangodb::transaction {
 
-StandaloneContext::StandaloneContext(TRI_vocbase_t& vocbase,
+StandaloneContext::StandaloneContext(Database& vocbase,
                                      OperationOrigin operationOrigin)
     : SmartContext(vocbase, Context::makeTransactionId(), nullptr,
                    operationOrigin) {}
@@ -62,7 +60,7 @@ std::shared_ptr<Context> StandaloneContext::clone() const {
 
 /// @brief create a context, returned in a shared ptr
 /*static*/ std::shared_ptr<transaction::Context>
-transaction::StandaloneContext::create(TRI_vocbase_t& vocbase,
+transaction::StandaloneContext::create(Database& vocbase,
                                        OperationOrigin operationOrigin) {
   return std::make_shared<transaction::StandaloneContext>(vocbase,
                                                           operationOrigin);

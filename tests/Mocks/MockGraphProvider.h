@@ -23,7 +23,6 @@
 
 #pragma once
 
-#include <numeric>
 #include <ostream>
 #include <unordered_map>
 #include <vector>
@@ -31,10 +30,7 @@
 
 #include "Mocks/MockGraph.h"
 #include "Aql/TraversalStats.h"
-#include "Basics/Exceptions.h"
 #include "Basics/debugging.h"
-#include "Basics/voc-errors.h"
-#include "Transaction/Hints.h"
 #include "Transaction/Methods.h"
 
 #include "Aql/QueryContext.h"
@@ -345,7 +341,7 @@ class MockGraphProvider {
   [[nodiscard]] bool hasDepthSpecificLookup(uint64_t depth) const noexcept;
 
   [[nodiscard]] transaction::Methods* trx();
-  [[nodiscard]] TRI_vocbase_t const& vocbase() const;
+  [[nodiscard]] Database const& vocbase() const;
 
   arangodb::aql::TraversalStats stealStats();
 

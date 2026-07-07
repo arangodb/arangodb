@@ -333,7 +333,7 @@ bool MockGraphProvider::hasDepthSpecificLookup(uint64_t depth) const noexcept {
   return false;
 }
 [[nodiscard]] transaction::Methods* MockGraphProvider::trx() { return &_trx; }
-[[nodiscard]] TRI_vocbase_t const& MockGraphProvider::vocbase() const {
+[[nodiscard]] Database const& MockGraphProvider::vocbase() const {
   return _trx.vocbase();
 }
 
