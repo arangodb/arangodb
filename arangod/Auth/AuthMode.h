@@ -101,11 +101,10 @@ struct AuthMode {
   struct Classic : IAuth {
     auth::UserManager& _userManager;
     std::string const _username;
-    bool const _apiHardened{};
     GeneralRequest& _request;
 
     Classic(auth::UserManager& userManager, std::string username,
-            bool apiHardened, GeneralRequest& req);
+            GeneralRequest& req);
 
     [[nodiscard]] auto username() const noexcept -> std::string_view override;
 
