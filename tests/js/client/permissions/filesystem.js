@@ -583,7 +583,17 @@ function testSuite() {
     }
     tryExistsAllowed(zip, true);
   }
-
+  function tryZipFileWithForbiddenContent(zip, sn) {
+    let files = [];
+    try {
+      // Should contain a file that we are not allowed to access
+      files = fs.list(sn);
+      fs.zipFile(zip, sn, files);
+      fail();
+    } catch (err) {
+      assertTrue(false, "succeeded to Zip into " + zip + " these files:" + sn + "[ " + files + " ] - " + err);
+    }
+  }
   function tryUnZipFileForbidden(zip, sn) {
     try {
       let rc = fs.unzipFile(zip, sn, undefined, true);
@@ -842,6 +852,8 @@ function testSuite() {
       tryZipFileForbidden(allowedZipFileName, topLevelForbidden);
 
       tryZipFileAllowed(allowedZipFileName, topLevelAllowed);
+
+      tryZipFileWithForbiddenContent(allowedZipFileName, topLevelAllowed);
 
       tryUnZipFileForbidden('/etc/nothere.zip', topLevelAllowed);
       tryUnZipFileForbidden(allowedZipFileName, topLevelForbidden);
