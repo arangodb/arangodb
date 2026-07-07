@@ -5,9 +5,9 @@ Finds every Activity subclass (arangodb::activities::Activity in lib/Activities/
 Concrete subclasses inherit via the CRTP intermediate `GuardedActivity<Self, Data>` which provides a data member of per-subclass type `Data`.
 
 Intermediate representation of an activity (`ActivityDeclaration`):
-- owner: source code location of the declaration that holds the activity (FieldDecl or non-param VarDecl)
-- `data_type`: fully qualified `Data` type name
-- `field_types`: description of the `Data` type (not the full Activity type as the envelope is the same for every activity)
+- `owner`: name of the declaration that holds the activity (FieldDecl or non-param VarDecl)
+- `type`: fully qualified `Data` type name
+- `data_type_definition`: description of the `Data` type (not the full Activity type as the envelope is the same for every activity)
 
 ## Tech Stack
 - LibTooling
@@ -24,12 +24,12 @@ Intermediate representation of an activity (`ActivityDeclaration`):
 - header input files are routed to their sibling .cpp files
 - one activity class (e.g. `GenericActivity`) can be used for more than one activity at different source locations
 - skips activity declarations done inside the activity library (only internal plumbing)
-- run_docs.sh and generated/ currently unused
 
 ## State
 - [x] first implementation with local tests
-- [ ] GenericActivityData content is also shown in field_types
-- [x] show all data types recursively (including enums)
+- [x] show all data types recursively
+- [x] convert the results to one markdown file (future session)
+- [ ] describe not only structs/classes but also enums and aliases in data_type_definition
+- [ ] also show the activity's "type" string, given by the user
 - [ ] use inspectors for data members
-- [ ] improve GenericActivity output
-- [ ] convert the results to one markdown file (future session)
+- [ ] stream results: give results as soon as they are found

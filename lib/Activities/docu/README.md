@@ -1,78 +1,31 @@
 # Activity documentation generator
 
-Walks the project's `compile_commands.json` with Clang LibTooling, finds every
-concrete subclass of `arangodb::activities::Activity`, and emits a single
-`generated/Activities.md` describing each one's serialized shape (Snapshot
-envelope + Data fields, recursively one level for project-local nested types).
+Looks at all files in a given path and finds every concrete subclass instance (either a field in a record or a local variable) of `arangodb::activities::Activity`.
 
-The generated file is git-ignored and meant to be regenerated on demand.
+It walks the project's `compile_commands.json` with Clang LibTooling to find these instances and markdown output on stdout describing each activity's serialized shape and its owner.
 
 ## Prerequisites
 
-LLVM/Clang **19** (development headers + libraries) and `jq`:
+LLVM/Clang **19** (development headers + libraries):
 
 ```sh
-sudo apt install libclang-19-dev llvm-19-dev clang-19 jq
+sudo apt install libclang-19-dev llvm-19-dev clang-19
 ```
 
 You also need a configured ArangoDB build directory whose
-`compile_commands.json` covers the sources you want to scan. By default the
-target reads from `build-presets/my-edition`.
+`compile_commands.json` covers the sources you want to scan. Make sure that
+this file is located at the repository root. 
 
 ## Build
 
 ```sh
-cmake -S lib/Activities/docu -B lib/Activities/docu/build
-cmake --build lib/Activities/docu/build
-```
-
-Override Clang location if needed:
-
-```sh
-cmake -S lib/Activities/docu -B lib/Activities/docu/build \
-      -DClang_DIR=/usr/lib/llvm-19/lib/cmake/clang \
-      -DLLVM_DIR=/usr/lib/llvm-19/lib/cmake/llvm
+cmake --build find-activity-subclasses
 ```
 
 ## Run
 
 ```sh
-cmake --build lib/Activities/docu/build --target activity-docs
+./find-activity-subclasses <path in which to to search for activities (directory or file)>
 ```
 
-Output lands at `lib/Activities/docu/generated/Activities.md`.
-
-To point at a different build directory:
-
-```sh
-cmake -S lib/Activities/docu -B lib/Activities/docu/build \
-      -DACTIVITY_DOCS_COMPILE_DB=/path/to/build-presets/community-developer
-cmake --build lib/Activities/docu/build --target activity-docs
-```
-
-Tunables (env vars read by `run_docs.sh`):
-
-- `ACTIVITY_DOCS_PARALLEL` — number of parallel `xargs` workers (default 8)
-- `ACTIVITY_DOCS_BATCH` — files per worker invocation (default 50)
-
-## How it finds subclasses
-
-The tool's AST matcher is:
-
-```cpp
-cxxRecordDecl(
-    isDefinition(),
-    isDerivedFrom(hasName("::arangodb::activities::Activity")),
-    unless(hasName("GuardedActivity")))
-  .bind("activity");
-```
-
-For each match it walks the bases, finds the `GuardedActivity<Self, Data>`
-specialization, and resolves the second template argument to the `Data`
-record. The Data's public `FieldDecl`s become the documented fields. If a
-field's type is a record defined inside the project, one level of nested
-fields is also emitted.
-
-To enumerate subclasses of a different base class without recompiling, pass
-`--base-class=::your::Base --guarded-template=YourCRTPName` directly to the
-binary.
+Output is written to stdout.

@@ -13,8 +13,10 @@ namespace {
 
 auto activity_filter(std::string_view activity_binding) {
   auto activity_subclass =
-      cxxRecordDecl(isDerivedFrom(hasName(BASE_CLASS)), hasDefinition(),
-                    unless(classTemplatePartialSpecializationDecl()))
+      cxxRecordDecl(
+          isDerivedFrom(hasName(BASE_CLASS)), hasDefinition(),
+          unless(classTemplatePartialSpecializationDecl())  // concrete subclass
+          )
           .bind(activity_binding);
 
   return hasType(hasUnqualifiedDesugaredType(recordType(hasDeclaration(
@@ -42,5 +44,6 @@ auto matcher::activity_as_field(std::string_view activity_binding)
 auto matcher::activity_as_variable(std::string_view activity_binding)
     -> internal::BindableMatcher<clang::Decl> {
   return varDecl(activity_filter(activity_binding), project_filter(),
-                 unless(parmVarDecl()));
+                 unless(parmVarDecl())  // no function parameters
+  );
 }
