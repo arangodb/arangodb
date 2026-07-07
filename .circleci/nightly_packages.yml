@@ -219,7 +219,10 @@ commands:
 
   upload-build-artifact:
     # Uploads install.tar.gz (unstripped binaries + starter/rclone) to S3.
-    # Keyed by workflow ID + edition + arch so downstream jobs can fetch it.
+    # Keyed by workflow ID + edition + arch so downstream jobs can fetch it
+    # (download-build-artifact always reads from S3, never from the job
+    # artifact). Additionally stored as a CircleCI job artifact so it can be
+    # downloaded straight from the finished job's Artifacts tab.
     parameters:
       arch:
         type: string
@@ -237,6 +240,9 @@ commands:
             aws s3 cp --no-sign-request --profile anon \
               install.tar.gz \
               "s3://${AWS_S3_WORKSPACE_BUCKET}/nightly/${CIRCLE_WORKFLOW_ID}/<< parameters.edition >>-<< parameters.arch >>/install.tar.gz"
+      - store_artifacts:
+          path: install.tar.gz
+          destination: install/<< parameters.edition >>-<< parameters.arch >>/install.tar.gz
 
   download-build-artifact:
     parameters:
@@ -470,6 +476,11 @@ jobs:
           root: /tmp/nightly
           paths:
             - objectfiles/<< parameters.arch >>
+      # Like install.tar.gz, the objectfiles archive is also kept as a
+      # CircleCI job artifact for easy download from a finished job.
+      - store_artifacts:
+          path: /tmp/nightly/objectfiles/<< parameters.arch >>
+          destination: objectfiles/<< parameters.arch >>
       - run:
           name: SCCache Statistics
           command: sccache -s
@@ -632,6 +643,12 @@ jobs:
           docker_layer_caching: true
       - checkout-arangodb:
           destination: /home/circleci/project
+      # This job runs on a CircleCI-hosted executor (setup_remote_docker),
+      # where neither the aws CLI (cimg/base) nor AWS_S3_WORKSPACE_BUCKET
+      # (injected only by the self-hosted runner environment) is available.
+      # The CLI is installed here; the bucket name must be provided as a
+      # CircleCI project-level environment variable.
+      - aws-cli/install
       - download-build-artifact:
           arch: << parameters.arch >>
           edition: enterprise
@@ -640,6 +657,20 @@ jobs:
           command: |
             mkdir -p /home/circleci/project/scripts/docker/deploy/install
             tar -xzf install.tar.gz -C /home/circleci/project/scripts/docker/deploy/install
+      - run:
+          name: Strip binaries for the Docker image
+          command: |
+            # Same strip policy as the packages (oskar ran prepareInstall on
+            # the docker tree too): client tools are stripped, arangod and
+            # the starter keep their symbols. cimg/base has no binutils.
+            if ! command -v strip > /dev/null; then
+              sudo apt-get update
+              sudo apt-get install -y binutils
+            fi
+            export EDITION=enterprise
+            export PACKAGE_STRIP=ExceptArangod
+            /home/circleci/project/scripts/packaging/strip-install-tree.sh \
+              /home/circleci/project/scripts/docker/deploy/install
       - run:
           name: Build and export Docker image
           command: |
@@ -1074,12 +1105,26 @@ jobs:
               PACKAGES="$(cat /tmp/nightly/nightly-major-minor.txt)"
               DST="${NIGHTLY_GCS_DEST:-gs://download.arangodb.com/nightly}"
               STAGE_GCS="${DST}-staging/${CIRCLE_WORKFLOW_ID}"
-              for arch_dir in /tmp/stage/"${PACKAGES}"/Linux/*/; do
-                arch_dir="$(basename "${arch_dir}")"
-                retry gsutil -m rsync -d -r \
-                  "${STAGE_GCS}/${PACKAGES}/Linux/${arch_dir}" \
-                  "${DST}/${PACKAGES}/Linux/${arch_dir}"
-              done
+              # Promote the whole <major.minor> tree with delete semantics:
+              # afterwards the live directory contains EXACTLY this one
+              # nightly — older dated packages, legacy platform dirs from the
+              # NAS era and stale index.html files are all removed (the
+              # index is regenerated in the next step). Both arches are
+              # always staged together, so nothing legitimate is deleted.
+              retry gsutil -m rsync -d -r \
+                "${STAGE_GCS}/${PACKAGES}" \
+                "${DST}/${PACKAGES}"
+
+              # nightly/devel points at the current devel tree. The old NAS
+              # used a filesystem symlink; GCS has no symlinks, so the
+              # pipeline maintains a server-side mirror instead (updated only
+              # when the published tree IS the devel tree). index.html files
+              # are excluded both ways: the regeneration step creates and
+              # owns devel's own index.
+              if grep -qx "devel-nightly" /tmp/nightly/rolling-tags.txt; then
+                retry gsutil -m rsync -d -r -x "(^|/)index\.html$" \
+                  "${DST}/${PACKAGES}" "${DST}/devel"
+              fi
             fi
 
             if [ "<< pipeline.parameters.build-docker-manifest >>" = "true" ]; then
@@ -1158,7 +1203,7 @@ workflows:
           name: compile-enterprise-amd64
           arch: amd64
           preset: nightly
-          resource-class: arangodb/large-amd64
+          resource-class: arangodb/xlarge-amd64
           requires: [prepare-nightly]
 
       - build-deb-package:
@@ -1190,7 +1235,7 @@ workflows:
           name: compile-enterprise-arm64
           arch: arm64
           preset: nightly-arm
-          resource-class: arangodb/large-arm64
+          resource-class: arangodb/xlarge-arm64
           requires: [prepare-nightly]
 
       - build-deb-package:

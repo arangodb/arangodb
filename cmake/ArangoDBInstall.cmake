@@ -74,6 +74,17 @@ if(USE_V8)
   ### @brief install server-side JavaScript files
   ################################################################################
 
+  # Test-only server modules are stripped from non-maintainer (release)
+  # installs; see the matching block in InstallArangoDBJSClient.cmake.
+  # (@arangodb/foxx/mocha and @arangodb/foxx/test-utils stay: they implement
+  # the runtime "foxx test" feature. statistics-helper stays: used by the
+  # aardvark statistics API.)
+  set(ARANGODB_JS_SERVER_TEST_EXCLUDES "")
+  if (NOT USE_MAINTAINER_MODE)
+    set(ARANGODB_JS_SERVER_TEST_EXCLUDES
+      REGEX "^.*/js/server/modules/@arangodb/(test-helper|aql-helper)\\.js$" EXCLUDE)
+  endif ()
+
   # js/apps/system/_admin/aardvark/APP/manifest.json list files must be included
   install(
     DIRECTORY
@@ -85,6 +96,7 @@ if(USE_V8)
     REGEX       "^.*/aardvark/APP/react.*$"                  EXCLUDE
     REGEX       "^.*/js/server/assets/swagger/*.map$"        EXCLUDE
     REGEX       "^.*/.bin"                                   EXCLUDE
+    ${ARANGODB_JS_SERVER_TEST_EXCLUDES}
   )
 
   if(USE_FRONTEND)

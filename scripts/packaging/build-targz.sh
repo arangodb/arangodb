@@ -49,26 +49,6 @@ fi
 V="${ARANGODB_TGZ_UPSTREAM}"
 OS=linux
 
-# prepareInstall: strip client tools per policy; arangod stays unstripped
-# unless PACKAGE_STRIP=All (3.12: never, stripping arangod only for <= 3.10).
-prepare_install() {
-  local path="$1"
-  pushd "${path}" > /dev/null
-  case "${PACKAGE_STRIP}" in
-    All|ExceptArangod)
-      strip usr/bin/arangodump usr/bin/arangoexport usr/bin/arangoimport \
-            usr/bin/arangorestore usr/bin/arangosh usr/bin/arangovpack \
-            usr/bin/arangobench
-      ;;
-  esac
-  if [ "${EDITION}" != "enterprise" ]; then
-    rm -f bin/arangobackup usr/bin/arangobackup usr/sbin/arangobackup
-  elif [ -f usr/bin/arangobackup ] && [ "${PACKAGE_STRIP}" != "None" ]; then
-    strip usr/bin/arangobackup
-  fi
-  popd > /dev/null
-}
-
 WORK="$(mktemp -d)"
 trap 'rm -rf "${WORK}"' EXIT
 
@@ -82,7 +62,8 @@ cp -a "${SCRIPT_DIR}/binForTarGz" bin
 find bin \( -name "*.bak" -o -name "*~" \) -delete
 cp "bin/README.${OS}.server" ./README
 sed -i -E "s/@ARANGODB_PACKAGE_NAME@/${NAME}-${OS}-${V}${ARCH_SUFFIX}/g" README
-prepare_install "${WORK}/targz"
+# prepareInstall: strip client tools per policy; arangod stays unstripped.
+"${SCRIPT_DIR}/strip-install-tree.sh" "${WORK}/targz"
 
 mkdir -p "${PACKAGES_OUT}"
 
