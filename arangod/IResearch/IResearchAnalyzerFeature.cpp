@@ -1147,18 +1147,6 @@ IResearchAnalyzerFeature::IResearchAnalyzerFeature(
   };
 }
 
-Result IResearchAnalyzerFeature::canUseVocbase(
-    std::string_view vocbaseName, AnalyzerAccessLevel const& level) {
-  TRI_ASSERT(!vocbaseName.empty());
-  auto& ctx = ExecContext::current();
-  return ctx.canUseAnalyzer(static_cast<std::string>(vocbaseName), "", level);
-}
-
-Result IResearchAnalyzerFeature::canUse(TRI_vocbase_t const& vocbase,
-                                        AnalyzerAccessLevel const& level) {
-  return canUseVocbase(vocbase.name(), level);
-}
-
 Result IResearchAnalyzerFeature::canUse(std::string_view name,
                                         AnalyzerAccessLevel const& level) {
   auto& staticAnalyzers = getStaticAnalyzers();
@@ -2058,17 +2046,15 @@ Result IResearchAnalyzerFeature::loadAvailableAnalyzers(
     // and dbservers never should start ddl by themselves.
     return {};
   }
-  Result res{};
-  if (canUseVocbase(dbName, AnalyzerAccessLevel::Read).ok()) {
-    res = loadAnalyzers(operationOrigin, dbName);
-    if (res.fail()) {
-      return res;
-    }
+  // No authorization is required here: loading analyzers merely (re-)fills
+  // an internal cache and does not expose any information to the caller.
+  // Authorization for seeing/using individual analyzers is enforced where
+  // analyzers are actually read or listed.
+  Result res = loadAnalyzers(operationOrigin, dbName);
+  if (res.fail()) {
+    return res;
   }
-  if (dbName != arangodb::StaticStrings::SystemDatabase &&
-      canUseVocbase(arangodb::StaticStrings::SystemDatabase,
-                    AnalyzerAccessLevel::Read)
-          .ok()) {
+  if (dbName != arangodb::StaticStrings::SystemDatabase) {
     // System is available for all other databases. So reload its analyzers too
     res =
         loadAnalyzers(operationOrigin, arangodb::StaticStrings::SystemDatabase);
