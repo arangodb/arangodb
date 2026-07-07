@@ -1479,7 +1479,7 @@ class instance {
     try {
       ret = callback();
     } catch (err) {
-      print(`${RED}${Date()} failed to connect ${this.name} - ${err}${reset}`);
+      print(`${RED}${Date()} failed to connect ${this.name} - ${err}${RESET}`);
       throw err;
     } finally {
       reconnected = arango.connectHandle(handle);
