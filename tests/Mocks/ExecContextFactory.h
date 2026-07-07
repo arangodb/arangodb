@@ -54,7 +54,8 @@ struct ExecContextAccessor final : public arangodb::ExecContext {
  private:
   ExecContextAccessor(ConstructorToken token, AuthMode authMode,
                       VocbasePtr vocbase)
-      : arangodb::ExecContext(token, std::move(authMode), std::move(vocbase)) {}
+      : arangodb::ExecContext(token, std::move(authMode), false,
+                              std::move(vocbase)) {}
 };
 
 /// @brief Minimal GeneralRequest subclass for use in tests.
@@ -124,8 +125,7 @@ inline ClassicExecContext makeClassicExecContext(std::string username,
 
   auto req = std::make_shared<FakeGeneralRequest>();
 
-  auto authMode =
-      AuthMode{AuthMode::Classic{*um, std::move(username), apiHardened, *req}};
+  auto authMode = AuthMode{AuthMode::Classic{*um, std::move(username), *req}};
   auto ctx =
       ExecContextAccessor::make(std::move(authMode), VocbasePtr{nullptr});
 
@@ -162,8 +162,8 @@ inline BorrowedExecContext makeClassicExecContextFrom(
     auth::UserManager& existingUserManager, std::string username,
     bool apiHardened = false) {
   auto req = std::make_shared<FakeGeneralRequest>();
-  auto authMode = AuthMode{AuthMode::Classic{
-      existingUserManager, std::move(username), apiHardened, *req}};
+  auto authMode = AuthMode{
+      AuthMode::Classic{existingUserManager, std::move(username), *req}};
   auto ctx =
       ExecContextAccessor::make(std::move(authMode), VocbasePtr{nullptr});
   return BorrowedExecContext{std::move(req), std::move(ctx)};
