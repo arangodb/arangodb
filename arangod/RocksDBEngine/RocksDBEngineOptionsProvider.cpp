@@ -27,7 +27,10 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "ProgramOptions/Parameters.h"
-#include "ProgramOptions/ProgramOptions.h"
+
+#ifdef USE_ENTERPRISE
+#include "Enterprise/RocksDBEngine/RocksDBEngineEEOptionsProvider.h"
+#endif
 
 namespace arangodb {
 
@@ -38,7 +41,7 @@ constexpr uint64_t minSyncInterval = 5;
 }
 
 void RocksDBEngineOptionsProvider::declareOptions(
-    std::shared_ptr<ProgramOptions> opts, RocksDBEngineOptions& options) {
+    std::shared_ptr<ProgramOptions>& opts) {
   opts->addObsoleteOption("--server.storage-engine", "The storage engine type",
                           true);
   opts->addSection("rocksdb", "RocksDB engine");
@@ -47,7 +50,8 @@ void RocksDBEngineOptionsProvider::declareOptions(
           "--rocksdb.minimum-disk-free-percent",
           "The minimum percentage of free disk space for considering the "
           "server healthy in health checks (0 = disable the check).",
-          new DoubleParameter(&options.requiredDiskFreePercentage, /*base*/ 1.0,
+          new DoubleParameter(&_options.requiredDiskFreePercentage,
+                              /*base*/ 1.0,
                               /*minValue*/ 0.0, /*maxValue*/ 1.0),
           arangodb::options::makeFlags(
               arangodb::options::Flags::DefaultNoComponents,
@@ -58,7 +62,7 @@ void RocksDBEngineOptionsProvider::declareOptions(
   opts->addOption("--rocksdb.minimum-disk-free-bytes",
                   "The minimum number of free disk bytes for considering the "
                   "server healthy in health checks (0 = disable the check).",
-                  new UInt64Parameter(&options.requiredDiskFreeBytes),
+                  new UInt64Parameter(&_options.requiredDiskFreeBytes),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnDBServer,
@@ -67,7 +71,7 @@ void RocksDBEngineOptionsProvider::declareOptions(
 
   opts->addOption("--rocksdb.max-transaction-size",
                   "The transaction size limit (in bytes).",
-                  new UInt64Parameter(&options.maxTransactionSize))
+                  new UInt64Parameter(&_options.maxTransactionSize))
       .setLongDescription(R"(Transactions store all keys and values in RAM, so
 large transactions run the risk of causing out-of-memory situations. This
 setting allows you to ensure that it does not happen by limiting the size of
@@ -79,23 +83,23 @@ RAM than this threshold value are aborted automatically with error 32
                   "An intermediate commit is performed automatically "
                   "when a transaction has accumulated operations of this "
                   "size (in bytes), and a new transaction is started.",
-                  new UInt64Parameter(&options.intermediateCommitSize));
+                  new UInt64Parameter(&_options.intermediateCommitSize));
 
   opts->addOption("--rocksdb.intermediate-commit-count",
                   "An intermediate commit is performed automatically "
                   "when this number of operations is reached in a "
                   "transaction, and a new transaction is started.",
-                  new UInt64Parameter(&options.intermediateCommitCount));
+                  new UInt64Parameter(&_options.intermediateCommitCount));
 
   opts->addOption("--rocksdb.max-parallel-compactions",
                   "The maximum number of parallel compactions jobs.",
-                  new UInt64Parameter(&options.maxParallelCompactions));
+                  new UInt64Parameter(&_options.maxParallelCompactions));
 
   opts->addOption(
           "--rocksdb.sync-interval",
           "The interval for automatic, non-requested disk syncs (in "
           "milliseconds, 0 = turn automatic syncing off)",
-          new UInt64Parameter(&options.syncInterval),
+          new UInt64Parameter(&_options.syncInterval),
           arangodb::options::makeFlags(arangodb::options::Flags::OnDBServer,
                                        arangodb::options::Flags::OnSingle))
       .setLongDescription(R"(Automatic synchronization of data from RocksDB's
@@ -108,7 +112,7 @@ attribute.)");
       "The threshold for self-observation of WAL disk syncs "
       "(in milliseconds, 0 = no warnings). Any WAL disk sync longer ago "
       "than this threshold triggers a warning ",
-      new UInt64Parameter(&options.syncDelayThreshold),
+      new UInt64Parameter(&_options.syncDelayThreshold),
       arangodb::options::makeFlags(
           arangodb::options::Flags::DefaultNoComponents,
           arangodb::options::Flags::OnDBServer,
@@ -118,7 +122,7 @@ attribute.)");
   opts->addOption("--rocksdb.wal-file-timeout",
                   "The timeout after which unused WAL files are deleted "
                   "(in seconds).",
-                  new DoubleParameter(&options.pruneWaitTime),
+                  new DoubleParameter(&_options.pruneWaitTime),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnDBServer,
@@ -134,7 +138,7 @@ case.)");
   opts->addOption("--rocksdb.wal-file-timeout-initial",
                   "The initial timeout (in seconds) after which unused WAL "
                   "files deletion kicks in after server start.",
-                  new DoubleParameter(&options.pruneWaitTimeInitial),
+                  new DoubleParameter(&_options.pruneWaitTimeInitial),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnDBServer,
@@ -146,7 +150,7 @@ testing environments that are space-restricted and do not require keeping much
 WAL file data at all.)");
 
   opts->addOption("--rocksdb.throttle", "Enable write-throttling.",
-                  new BooleanParameter(&options.useThrottle),
+                  new BooleanParameter(&_options.useThrottle),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnDBServer,
@@ -158,7 +162,7 @@ and blocking incoming writes.)");
   opts->addOption("--rocksdb.throttle-slots",
                   "The number of historic metrics to use for throttle value "
                   "calculation.",
-                  new UInt64Parameter(&options.throttleSlots, /*base*/ 1,
+                  new UInt64Parameter(&_options.throttleSlots, /*base*/ 1,
                                       /*minValue*/ 1),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
@@ -172,7 +176,7 @@ the number of previous intervals to use for throttle value calculation.)");
   opts->addOption(
           "--rocksdb.throttle-frequency",
           "The frequency for write-throttle calculations (in milliseconds).",
-          new UInt64Parameter(&options.throttleFrequency),
+          new UInt64Parameter(&_options.throttleFrequency),
           arangodb::options::makeFlags(
               arangodb::options::Flags::DefaultNoComponents,
               arangodb::options::Flags::OnDBServer,
@@ -185,7 +189,7 @@ new maximum ingestion rate with this frequency.)");
   opts->addOption(
           "--rocksdb.throttle-scaling-factor",
           "The adaptiveness scaling factor for write-throttle calculations.",
-          new UInt64Parameter(&options.throttleScalingFactor),
+          new UInt64Parameter(&_options.throttleScalingFactor),
           arangodb::options::makeFlags(
               arangodb::options::Flags::DefaultNoComponents,
               arangodb::options::Flags::OnDBServer,
@@ -197,7 +201,7 @@ new maximum ingestion rate with this frequency.)");
   opts->addOption("--rocksdb.throttle-max-write-rate",
                   "The maximum write rate enforced by throttle (in bytes per "
                   "second, 0 = unlimited).",
-                  new UInt64Parameter(&options.throttleMaxWriteRate),
+                  new UInt64Parameter(&_options.throttleMaxWriteRate),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnDBServer,
@@ -213,7 +217,7 @@ on the write rate.)");
                   "The number of level 0 files whose payload "
                   "is not considered in throttle calculations when penalizing "
                   "the presence of L0 files.",
-                  new UInt64Parameter(&options.throttleSlowdownWritesTrigger),
+                  new UInt64Parameter(&_options.throttleSlowdownWritesTrigger),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnDBServer,
@@ -225,7 +229,7 @@ on the write rate.)");
   opts->addOption("--rocksdb.throttle-lower-bound-bps",
                   "The lower bound for throttle's write bandwidth "
                   "(in bytes per second).",
-                  new UInt64Parameter(&options.throttleLowerBoundBps),
+                  new UInt64Parameter(&_options.throttleLowerBoundBps),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnDBServer,
@@ -237,7 +241,7 @@ on the write rate.)");
   opts->addOption("--rocksdb.create-sha-files",
                   "Whether to enable the generation of sha256 files for "
                   "each .sst file.",
-                  new BooleanParameter(&options.createShaFiles),
+                  new BooleanParameter(&_options.createShaFiles),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnDBServer,
@@ -251,7 +255,7 @@ on the write rate.)");
 
   opts->addOption("--rocksdb.debug-logging",
                   "Whether to enable RocksDB debug logging.",
-                  new BooleanParameter(&options.debugLogging),
+                  new BooleanParameter(&_options.debugLogging),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnDBServer,
@@ -272,7 +276,7 @@ RocksDB internals and performance.)");
   opts->addOption("--rocksdb.verify-sst",
                   "Verify the validity of .sst files present in the "
                   "`engine-rocksdb` directory on startup.",
-                  new BooleanParameter(&options.verifySst),
+                  new BooleanParameter(&_options.verifySst),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::Command,
                       arangodb::options::Flags::DefaultNoComponents,
@@ -290,7 +294,7 @@ exit code if there is an error in any of the .sst files.)");
   opts->addOption("--rocksdb.wal-archive-size-limit",
                   "The maximum total size (in bytes) of archived WAL files to "
                   "keep on the leader (0 = unlimited).",
-                  new UInt64Parameter(&options.maxWalArchiveSizeLimit),
+                  new UInt64Parameter(&_options.maxWalArchiveSizeLimit),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnDBServer,
@@ -330,7 +334,7 @@ when disk size is very constrained and no replication is used.)");
                   "The minimum number of live WAL files that triggers an "
                   "auto-flush of WAL "
                   "and column family data.",
-                  new UInt64Parameter(&options.autoFlushMinWalFiles),
+                  new UInt64Parameter(&_options.autoFlushMinWalFiles),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnDBServer,
@@ -341,7 +345,7 @@ when disk size is very constrained and no replication is used.)");
           "--rocksdb.auto-flush-check-interval",
           "The interval (in seconds) in which auto-flushes of WAL and column "
           "family data is executed.",
-          new DoubleParameter(&options.autoFlushCheckInterval),
+          new DoubleParameter(&_options.autoFlushCheckInterval),
           arangodb::options::makeFlags(
               arangodb::options::Flags::DefaultNoComponents,
               arangodb::options::Flags::OnDBServer,
@@ -352,7 +356,7 @@ when disk size is very constrained and no replication is used.)");
           "--rocksdb.force-legacy-comparator",
           "If set to `true`, forces a new database directory to use the "
           "legacy sorting method. This is only for testing. Don't use.",
-          new BooleanParameter(&options.forceLegacySortingMethod),
+          new BooleanParameter(&_options.forceLegacySortingMethod),
           arangodb::options::makeFlags(
               arangodb::options::Flags::DefaultNoComponents,
               arangodb::options::Flags::OnDBServer,
@@ -366,7 +370,7 @@ when disk size is very constrained and no replication is used.)");
           "--rocksdb.force-legacy-little-endian-keys",
           "Force usage of legacy little endian key encoding when creating "
           "a new RocksDB database directory. DO NOT USE IN PRODUCTION.",
-          new BooleanParameter(&options.forceLittleEndianKeys),
+          new BooleanParameter(&_options.forceLittleEndianKeys),
           arangodb::options::makeFlags(
               arangodb::options::Flags::DefaultNoComponents,
               arangodb::options::Flags::Uncommon,
@@ -385,7 +389,7 @@ disables a few features like parallel index generation!)");
   // TODO: consider moving this option to --rocksdb.export-read-write-metrics
   opts->addOption("--server.export-read-write-metrics",
                   "Whether to enable metrics for document reads and writes.",
-                  new BooleanParameter(&options.exportReadWriteMetrics),
+                  new BooleanParameter(&_options.exportReadWriteMetrics),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnDBServer,
@@ -405,50 +409,58 @@ additional metrics via the `GET /_admin/metrics/v2` endpoint:
 - `arangodb_collection_truncates_replication_total`
 - `arangodb_collection_truncate_time`
 )");
+#ifdef USE_ENTERPRISE
+  enterprise::RocksDBEngineEEOptionsProvider::declareOptions(
+      opts, _options.eeOptions);
+#endif
 }
 
 void RocksDBEngineOptionsProvider::validateOptions(
-    std::shared_ptr<ProgramOptions> opts, RocksDBEngineOptions& options) {
-  if (options.throttleScalingFactor == 0) {
-    options.throttleScalingFactor = 1;
+    std::shared_ptr<ProgramOptions>& opts) {
+  if (_options.throttleScalingFactor == 0) {
+    _options.throttleScalingFactor = 1;
   }
 
-  if (options.throttleSlots < 8) {
-    options.throttleSlots = 8;
+  if (_options.throttleSlots < 8) {
+    _options.throttleSlots = 8;
   }
 
-  if (options.syncInterval > 0) {
-    if (options.syncInterval < minSyncInterval) {
+  if (_options.syncInterval > 0) {
+    if (_options.syncInterval < minSyncInterval) {
       LOG_TOPIC("bbd68", FATAL, arangodb::Logger::CONFIG)
           << "invalid value for --rocksdb.sync-interval. Please use a value "
           << "of at least " << minSyncInterval;
       FATAL_ERROR_EXIT();
     }
 
-    if (options.syncDelayThreshold > 0 &&
-        options.syncDelayThreshold <= options.syncInterval) {
+    if (_options.syncDelayThreshold > 0 &&
+        _options.syncDelayThreshold <= _options.syncInterval) {
       if (!opts->processingResult().touched("rocksdb.sync-interval") &&
           opts->processingResult().touched("rocksdb.sync-delay-threshold")) {
         LOG_TOPIC("c3f45", WARN, arangodb::Logger::CONFIG)
             << "invalid value for --rocksdb.sync-delay-threshold. should be "
                "higher "
             << "than the value of --rocksdb.sync-interval ("
-            << options.syncInterval << ")";
+            << _options.syncInterval << ")";
       }
 
-      options.syncDelayThreshold = 10 * options.syncInterval;
+      _options.syncDelayThreshold = 10 * _options.syncInterval;
       LOG_TOPIC("c0fa3", WARN, arangodb::Logger::CONFIG)
           << "auto-adjusting value of --rocksdb.sync-delay-threshold to "
-          << options.syncDelayThreshold << " ms";
+          << _options.syncDelayThreshold << " ms";
     }
   }
 
-  if (options.pruneWaitTimeInitial < 10) {
+  if (_options.pruneWaitTimeInitial < 10) {
     LOG_TOPIC("a9667", WARN, arangodb::Logger::ENGINES)
         << "consider increasing the value for "
            "--rocksdb.wal-file-timeout-initial. "
         << "Replication clients might have trouble to get in sync";
   }
+#ifdef USE_ENTERPRISE
+  enterprise::RocksDBEngineEEOptionsProvider::validateOptions(
+      opts, _options.eeOptions);
+#endif
 }
 
 }  // namespace arangodb

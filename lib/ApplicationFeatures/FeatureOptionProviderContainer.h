@@ -17,23 +17,26 @@
 /// limitations under the License.
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
 ////////////////////////////////////////////////////////////////////////////////
-
 #pragma once
 
 #include "ProgramOptions/ProgramOptions.h"
-#include "RocksDBEngine/RocksDBEngineOptions.h"
+#include "RocksDBEngine/RocksDBEngineOptionsProvider.h"
 
-namespace arangodb {
+#include <tuple>
 
-struct RocksDBEngineOptionsProvider {
-  void declareOptions(std::shared_ptr<options::ProgramOptions>& opts);
-  void validateOptions(std::shared_ptr<options::ProgramOptions>& opts);
-  [[nodiscard]] RocksDBEngineOptions options() const { return _options; };
+namespace arangodb::application_features {
+class FeatureOptionProviderContainer final {
+ public:
+  void declareOptions(std::shared_ptr<options::ProgramOptions> programOptions);
+  void validateOptions(std::shared_ptr<options::ProgramOptions> programOptions);
+
+  template<typename ProviderType>
+  ProviderType& get() {
+    return std::get<ProviderType>(_providers);
+  }
 
  private:
-  RocksDBEngineOptions _options;
+  std::tuple<RocksDBEngineOptionsProvider> _providers{};
 };
-
-}  // namespace arangodb
+}  // namespace arangodb::application_features
