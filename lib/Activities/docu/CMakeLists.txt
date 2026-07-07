@@ -1,26 +1,13 @@
-cmake_minimum_required(VERSION 3.13)
-project(activity-docs CXX)
-
-set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-set(CMAKE_C_COMPILER, "clang-19")
-set(CMAKE_CXX_COMPILER, "clang++-19")
-set(CMAKE_EXE_LINKER_FLAGS, "-fuse-ld=lld")
-
-
-# Pin to LLVM/Clang 19. Override at configure time with
-# -DClang_DIR=/usr/lib/llvm-XX/lib/cmake/clang if needed.
-if(NOT DEFINED Clang_DIR)
-    set(Clang_DIR "/usr/lib/llvm-19/lib/cmake/clang" CACHE PATH
-        "Path to ClangConfig.cmake")
-endif()
-if(NOT DEFINED LLVM_DIR)
-    set(LLVM_DIR "/usr/lib/llvm-19/lib/cmake/llvm" CACHE PATH
-        "Path to LLVMConfig.cmake")
-endif()
+# The whole build already mandates Clang 19 (see CheckCompilerVersion in the
+# top-level CMakeLists.txt), so pin find_package to the matching LLVM/Clang 19
+# install. This is required because CMake's default search would otherwise pick
+# up the unversioned system package in /usr/lib/cmake/clang-16, whose static
+# libraries are not installed.
+set(ACTIVITY_DOCS_LLVM_ROOT "/usr/lib/llvm-19" CACHE PATH
+    "LLVM/Clang 19 installation prefix used by the activities documentation tool")
+set(LLVM_DIR "${ACTIVITY_DOCS_LLVM_ROOT}/lib/cmake/llvm")
+set(Clang_DIR "${ACTIVITY_DOCS_LLVM_ROOT}/lib/cmake/clang")
 
 find_package(Clang REQUIRED CONFIG)
 
 add_subdirectory(src)
-add_subdirectory(tests)

@@ -9,9 +9,8 @@
  *
  * # Activities
  *
- * ## <type>
- * owner: <file>:<line>
- * data: <data_type>
+ * ## <owner>
+ * type: <activity type>
 
  * ### <type_definition[0].name>
  * | Field                               | Type                                |

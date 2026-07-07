@@ -18,4 +18,5 @@ target_link_libraries(arango_activities_global
 PUBLIC
   arango_activities)
 
+add_subdirectory(docu)
 add_subdirectory(src)
