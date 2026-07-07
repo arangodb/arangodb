@@ -24,7 +24,6 @@
 
 #pragma once
 
-#include "RestServer/IRecoveryCallback.h"
 #include "RocksDBEngine/RocksDBEngineOptions.h"
 
 #include <atomic>
@@ -186,7 +185,6 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
                 replication2::IReplicatedLogProvider* replicatedLogProvider,
                 ISchedulerProvider const& schedulerProvider,
                 IDatabaseProvider& databaseProvider,
-                IRecoveryCallback& recoveryCallback,
                 IIndexCacheRefill& indexCacheRefill,
                 ICacheManagerProvider& cacheManagerProvider,
                 ISortingPolicy const& sortingPolicy,
@@ -304,6 +302,8 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
                                    velocypack::Slice slice) override;
   Result prepareDropDatabase(TRI_vocbase_t& vocbase) override;
   Result dropDatabase(TRI_vocbase_t& database) override;
+
+  void runRecovery();
 
   // wal in recovery
   EngineState engineState() noexcept override {
@@ -633,7 +633,6 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   }
 
  private:
-  IRecoveryCallback& _recoveryCallback;
   // release-stores synchronize with acquire reads in engineState()
   std::atomic<EngineState> _engineState{EngineState::kUninitialized};
   // relaxed writes become visible after the running release-store above

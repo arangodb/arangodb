@@ -224,11 +224,12 @@ void ArangodServer::addFeatures(
   addFeature<iresearch::IResearchFeature>(metrics);
   addFeature<ClusterEngine>(metrics);
 
-  addFeature<RocksDBEngine>(
+  auto& rocksdbEngine = addFeature<RocksDBEngine>(
       rocksdbOption, metrics, databasePath, vectorIndex, flush, dumpLimits,
       replication2::EnableReplication2 ? &getFeature<ReplicatedLogFeature>()
                                        : nullptr,
-      scheduler, database, database, rocksdbCacheRefill, cacheManager, agency);
+      scheduler, database, rocksdbCacheRefill, cacheManager, agency);
+  addFeature<RocksDBRecoveryFeature>(rocksdbEngine, database);
 
   addFeature<replication2::replicated_state::ReplicatedStateAppFeature>();
   addFeature<replication2::replicated_state::black_hole::

@@ -322,7 +322,6 @@ void DatabaseFeature::start() {
   }
 #endif
 
-  // scan all databases
   VPackBuilder builder;
   _engine->getDatabases(builder);
 

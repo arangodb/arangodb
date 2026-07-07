@@ -32,7 +32,6 @@
 #include "RestServer/DatabaseFeatureOptions.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "RestServer/IDatabaseProvider.h"
-#include "RestServer/IRecoveryCallback.h"
 #include "Utils/DatabaseGuard.h"
 #include "Utils/VersionTracker.h"
 #include "VocBase/voc-types.h"
@@ -104,8 +103,7 @@ class DatabaseManagerThread final : public ServerThread {
 };
 
 class DatabaseFeature final : public application_features::ApplicationFeature,
-                              public IDatabaseProvider,
-                              public IRecoveryCallback {
+                              public IDatabaseProvider {
   friend class DatabaseManagerThread;
 
  public:
@@ -136,7 +134,7 @@ class DatabaseFeature final : public application_features::ApplicationFeature,
   /// this will call the engine-specific recoveryDone() procedures
   /// and will execute engine-unspecific operations (such as starting
   /// the replication appliers) for all databases
-  void recoveryDone() override;
+  void recoveryDone();
 
   /// @brief whether or not the DatabaseFeature has started (and thus has
   /// completely populated its lists of databases and collections from

@@ -21,13 +21,23 @@
 /// @author Julia Puget
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#include "RocksDBRecoveryFeature.h"
+
+#include "RestServer/DatabaseFeature.h"
+#include "RocksDBEngine/RocksDBEngine.h"
 
 namespace arangodb {
 
-struct IRecoveryCallback {
-  virtual ~IRecoveryCallback() = default;
-  virtual void recoveryDone() = 0;
-};
+RocksDBRecoveryFeature::RocksDBRecoveryFeature(
+    application_features::ApplicationServer& server, RocksDBEngine& engine,
+    DatabaseFeature& database)
+    : ApplicationFeature(server, *this), _engine(engine), _database(database) {}
+
+void RocksDBRecoveryFeature::prepare() { startsAfter<DatabaseFeature>(); }
+
+void RocksDBRecoveryFeature::start() {
+  _engine.runRecovery();
+  _database.recoveryDone();
+}
 
 }  // namespace arangodb

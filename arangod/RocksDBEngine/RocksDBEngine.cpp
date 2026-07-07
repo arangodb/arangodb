@@ -24,7 +24,6 @@
 
 #include "RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBEngineOptionsProvider.h"
-#include "RestServer/IRecoveryCallback.h"
 
 #include <atomic>
 #include <filesystem>
@@ -265,14 +264,12 @@ RocksDBEngine::RocksDBEngine(
     IFlushControl& flushControl, IDumpLimitsProvider const& dumpLimitsProvider,
     replication2::IReplicatedLogProvider* replicatedLogProvider,
     ISchedulerProvider const& schedulerProvider,
-    IDatabaseProvider& databaseProvider, IRecoveryCallback& recoveryCallback,
-    IIndexCacheRefill& indexCacheRefill,
+    IDatabaseProvider& databaseProvider, IIndexCacheRefill& indexCacheRefill,
     ICacheManagerProvider& cacheManagerProvider,
     ISortingPolicy const& sortingPolicy, RocksDBEngineOptions options)
     : StorageEngine(
           server, kEngineName, name(), typeid(RocksDBEngine),
           std::make_unique<RocksDBIndexFactory>(server, vectorIndexProvider)),
-      _recoveryCallback(recoveryCallback),
       _databasePathProvider(databasePathProvider),
       _vectorIndexProvider(vectorIndexProvider),
       _flushControl(flushControl),
@@ -936,17 +933,6 @@ void RocksDBEngine::start() {
     addSystemDatabase();
   }
 
-  _engineState.store(EngineState::kRecovering, std::memory_order_release);
-  {
-    RocksDBRecoveryManager manager(
-        *this, [&tick = _recoveryTick](rocksdb::SequenceNumber seq) noexcept {
-          tick.store(seq, std::memory_order_relaxed);
-        });
-    manager.runRecovery();
-  }
-  _engineState.store(EngineState::kRunning, std::memory_order_release);
-  _recoveryCallback.recoveryDone();
-
   // to populate initial health check data
   HealthData hd = healthCheck();
   if (hd.res.fail()) {
@@ -957,6 +943,15 @@ void RocksDBEngine::start() {
   // metrics are correctly populated once the HTTP interface comes
   // up
   determineWalFilesInitial();
+}
+
+void RocksDBEngine::runRecovery() {
+  _engineState.store(EngineState::kRecovering, std::memory_order_release);
+  RocksDBRecoveryManager manager(*this, [this](rocksdb::SequenceNumber seq) {
+    _recoveryTick.store(seq, std::memory_order_relaxed);
+  });
+  manager.runRecovery();
+  _engineState.store(EngineState::kRunning, std::memory_order_release);
 }
 
 void RocksDBEngine::beginShutdown() {
