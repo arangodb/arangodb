@@ -26,7 +26,6 @@
 #include <gmock/gmock.h>
 
 #include "Cache/ICacheManagerProvider.h"
-#include "Mocks/MetricsCollector.h"
 #include "RestServer/IDatabasePathProvider.h"
 #include "RestServer/IDatabaseProvider.h"
 #include "RestServer/IDumpLimitsProvider.h"
