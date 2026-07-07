@@ -1,5 +1,5 @@
-FROM alpine:3.17
-MAINTAINER hackers@arangodb.chmod
+FROM alpine:3.24
+MAINTAINER Max Neunhoeffer <hackers@arangodb.com>
 
 ARG arch
 
