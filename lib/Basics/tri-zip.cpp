@@ -298,9 +298,10 @@ static ErrorCode UnzipFile(unzFile uf, void* buffer, size_t const bufferSize,
 /// @brief zips a file
 ////////////////////////////////////////////////////////////////////////////////
 
-ErrorCode TRI_ZipFile(char const* filename, char const* dir,
-                      std::vector<std::string> const& files,
-                      char const* password) {
+ErrorCode TRI_ZipFile(
+    char const* filename, char const* dir,
+    std::vector<std::string> const& files, char const* password,
+    std::function<bool(std::filesystem::path path)> validatePath) {
   void* buffer;
 #ifdef USEWIN32IOAPI
   zlib_filefunc64_def ffunc;
@@ -340,6 +341,10 @@ ErrorCode TRI_ZipFile(char const* filename, char const* dir,
       fullfile = files[i];
     } else {
       fullfile = arangodb::basics::FileUtils::buildFilename(dir, files[i]);
+    }
+
+    if (!validatePath(fullfile)) {
+      return TRI_ERROR_INTERNAL;
     }
 
     zip_fileinfo zi;
