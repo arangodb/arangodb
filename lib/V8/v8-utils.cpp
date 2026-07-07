@@ -1936,13 +1936,7 @@ static void JS_ZipFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
     v8::Handle<v8::Value> file =
         files->Get(context, i).FromMaybe(v8::Handle<v8::Value>());
     if (file->IsString()) {
-      auto fileToAdd = TRI_ObjectToString(isolate, file);
-      if (!v8security.isAllowedToAccessPath(isolate, fileToAdd,
-                                            FSAccessType::READ)) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_FORBIDDEN,
-            std::string("not allowed to read: ") + fileToAdd);
-      }
+      auto const fileToAdd = TRI_ObjectToString(isolate, file);
       filenames.emplace_back(fileToAdd);
     } else {
       res = TRI_ERROR_BAD_PARAMETER;
@@ -1969,7 +1963,11 @@ static void JS_ZipFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
         std::string("not allowed to modify files in this path: ") + filename);
   }
 
-  res = TRI_ZipFile(filename.c_str(), dir.c_str(), filenames, p);
+  res = TRI_ZipFile(filename.c_str(), dir.c_str(), filenames, p,
+                    [&v8security, isolate](std::filesystem::path path) {
+                      return v8security.isAllowedToAccessPath(
+                          isolate, path, FSAccessType::READ);
+                    });
 
   if (res == TRI_ERROR_NO_ERROR) {
     TRI_V8_RETURN_TRUE();
