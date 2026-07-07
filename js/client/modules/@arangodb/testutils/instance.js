@@ -1478,6 +1478,9 @@ class instance {
     let ret;
     try {
       ret = callback();
+    } catch (err) {
+      print(`${RED}${Date()} failed to connect ${this.name} - ${err}${reset}`);
+      throw err;
     } finally {
       reconnected = arango.connectHandle(handle);
     }
