@@ -283,10 +283,18 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
             // Without RBAC, database access is the only prerequisite for
             // using an analyzer. Reading analyzers requires RO database
             // access; creating or dropping analyzers requires RW.
-            DatabaseAccessLevel dbLevel = DatabaseAccessLevel::None;
-            dbLevel = analyzer.level >= AnalyzerAccessLevel::Modify
-                          ? DatabaseAccessLevel::Write
-                          : DatabaseAccessLevel::Read;
+            DatabaseAccessLevel dbLevel;
+            switch (analyzer.level) {
+              case AnalyzerAccessLevel::Modify:
+                dbLevel = DatabaseAccessLevel::Write;
+                break;
+              case AnalyzerAccessLevel::Read:
+                dbLevel = DatabaseAccessLevel::Read;
+                break;
+              case AnalyzerAccessLevel::None:
+                dbLevel = DatabaseAccessLevel::None;
+                break;
+            }
             return check(p::UseDatabase{analyzer.db, dbLevel});
           },
           [&](p::Admin const& /*admin*/) -> Result {

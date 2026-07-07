@@ -38,6 +38,7 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "Utilities/NameValidator.h"
+#include "Utils/ExecContext.h"
 
 namespace {
 constexpr std::string_view moduleName("analyzers management");
@@ -314,8 +315,18 @@ void RestAnalyzerHandler::getAnalyzers(IResearchAnalyzerFeature& analyzers) {
 
   typedef arangodb::iresearch::AnalyzerPool::ptr AnalyzerPoolPtr;
   arangodb::velocypack::Builder builder;
-  auto visitor = [&builder](AnalyzerPoolPtr const& analyzer) -> bool {
+  auto const& execContext = arangodb::ExecContext::current();
+  auto visitor = [&builder,
+                  &execContext](AnalyzerPoolPtr const& analyzer) -> bool {
     if (!analyzer) {
+      return true;  // continue with next analyzer
+    }
+
+    // filter out analyzers the current user is not allowed to see
+    auto const split =
+        IResearchAnalyzerFeature::splitAnalyzerName(analyzer->name());
+    if (!irs::IsNull(split.first) &&
+        !execContext.canSeeAnalyzer(split.first, split.second).ok()) {
       return true;  // continue with next analyzer
     }
 
@@ -329,7 +340,10 @@ void RestAnalyzerHandler::getAnalyzers(IResearchAnalyzerFeature& analyzers) {
                   transaction::OperationOriginREST{
                       ::moduleName});  // include static analyzers
 
-  if (IResearchAnalyzerFeature::canUse(_vocbase, AnalyzerAccessLevel::Read)
+  // only attempt to read analyzers from a database if we have read access to
+  // it; individual analyzers are then filtered via canSeeAnalyzer above
+  if (execContext
+          .canUseDatabase(_vocbase.name(), arangodb::DatabaseAccessLevel::Read)
           .ok()) {
     analyzers.visit(visitor, &_vocbase,
                     transaction::OperationOriginREST{::moduleName});
@@ -342,9 +356,10 @@ void RestAnalyzerHandler::getAnalyzers(IResearchAnalyzerFeature& analyzers) {
 
     if (sysVocbase                                // have system vocbase
         && sysVocbase->name() != _vocbase.name()  // not same vocbase as current
-        &&
-        IResearchAnalyzerFeature::canUse(*sysVocbase, AnalyzerAccessLevel::Read)
-            .ok()) {
+        && execContext
+               .canUseDatabase(sysVocbase->name(),
+                               arangodb::DatabaseAccessLevel::Read)
+               .ok()) {
       analyzers.visit(visitor, sysVocbase.get(),
                       transaction::OperationOriginREST{::moduleName});
     }
