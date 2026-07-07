@@ -4496,9 +4496,8 @@ function transactionTTLStreamSuite (dbParams) {
     // //////////////////////////////////////////////////////////////////////////////
 
     testAbortIdleTrx: function () {
-      global.instanceManager.debugSetFailAt("lowStreamingIdleTimeout");
-
       try {
+        IM.debugSetFailAt("lowStreamingIdleTimeout");
         let trx = db._createTransaction({
           collections: { write: cn }
         });
@@ -4518,9 +4517,7 @@ function transactionTTLStreamSuite (dbParams) {
           fail(); // should not be reached
         }
       } finally {
-        try {
-          global.instanceManager.debugRemoveFailAt("lowStreamingIdleTimeout");
-        } catch (err) {}
+        IM.debugRemoveFailAt("lowStreamingIdleTimeout");
       }
     }
   };
