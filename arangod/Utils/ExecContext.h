@@ -61,7 +61,8 @@ class ExecContext {
   class ConstructorToken {};
 
  public:
-  ExecContext(ConstructorToken, AuthMode authMode, VocbasePtr vocbase);
+  ExecContext(ConstructorToken, AuthMode authMode, bool isRestApiHardened,
+              VocbasePtr vocbase);
   ExecContext(ExecContext const&) = delete;
   ExecContext(ExecContext&&) = delete;
 
@@ -206,11 +207,12 @@ class ExecContext {
   [[nodiscard]] std::string authMethod() const;
 #endif
 
- protected:
+ private:
   AuthMode _authMode;
+  bool const _isRestApiHardened;
   VocbasePtr _vocbase;
 
- private:
+  // TODO (Tobias) this feels out of place. Look into it.
   /// should be used to indicate a canceled request / thread
   std::atomic<bool> _canceled{false};
 
