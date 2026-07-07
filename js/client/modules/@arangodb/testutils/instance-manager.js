@@ -711,12 +711,11 @@ class instanceManager {
       }
       sleep(0.1);
       jobStatus = arango.GET_RAW('/_admin/cluster/queryAgencyJob?id=' + jobId);
-      if (jobStatus.parsedBody.status === 'Failed') {
+      if (jobStatus.parsedBody.status === 'Failed' && expectState !== 'Failed') {
         let msg = `FAILED ${jobMessage} - ${JSON.stringify(jobStatus)}`;
-        print(`${RED}${Date()}${msg} ${JSON.stringify(jobStatus)}${RESET}`);
+        print(`${RED}${Date()} ${msg} ${JSON.stringify(jobStatus)}${RESET}`);
         return false;
       }
-      print(jobStatus.parsedBody.status);
       if (jobStatus.parsedBody.status === expectState) {
         print(`${GREEN}${Date()} DONE ${jobMessage} ${JSON.stringify(jobStatus)}${RESET}`);
         return true;
