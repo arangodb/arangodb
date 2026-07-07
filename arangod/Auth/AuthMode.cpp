@@ -32,6 +32,8 @@
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Rest/GeneralRequest.h"
 
+#include "absl/strings/str_cat.h"
+
 namespace arangodb {
 
 auto AuthMode::getIAuth() -> AuthMode::IAuth& {
@@ -281,9 +283,10 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
             // Without RBAC, database access is the only prerequisite for
             // using an analyzer. Reading analyzers requires RO database
             // access; creating or dropping analyzers requires RW.
-            auto const dbLevel = analyzer.level >= AnalyzerAccessLevel::Modify
-                                     ? DatabaseAccessLevel::Write
-                                     : DatabaseAccessLevel::Read;
+            DatabaseAccessLevel dbLevel = DatabaseAccessLevel::None;
+            dbLevel = analyzer.level >= AnalyzerAccessLevel::Modify
+                          ? DatabaseAccessLevel::Write
+                          : DatabaseAccessLevel::Read;
             return check(p::UseDatabase{analyzer.db, dbLevel});
           },
           [&](p::Admin const& /*admin*/) -> Result {
@@ -366,7 +369,13 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
               if (auto r = check(p::UseCollection{view.db, coll,
                                                   CollectionAccessLevel::Read});
                   !r.ok()) {
-                return r;
+                return Result(
+                    TRI_ERROR_FORBIDDEN,
+                    absl::StrCat(
+                        "insufficient collection access to collection '", coll,
+                        "' to drop view '", view.name, "' in database '",
+                        view.db, "'"));
+                ;
               }
             }
             return {};
