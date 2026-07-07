@@ -1712,17 +1712,14 @@ class instanceManager {
     this.arangods.forEach(arangod => {
       if (arangod.isRole(instanceRole.coordinator)) {
         if (count === 0) {
-          print('write');
-          print(arangod.getRawMetric('?mode=write_global'));
+          arangod.getRawMetric('?mode=write_global');
         } else {
-          print('trigger');
-          print(arangod.getRawMetric('?mode=trigger_global'));
+          arangod.getRawMetric('?mode=trigger_global');
         }
         count += 1;
       }
     });
     if (count > 0) {
-      print('sleep');
       require("internal").sleep(2);
     }
   }
@@ -1738,8 +1735,6 @@ class instanceManager {
     this.triggerMetrics();
     this.arangods.forEach(arangod => {
       if (!arangod.isAgent() && !arangod.isRole(instanceRole.coordinator)) {
-        //print('----------')
-        //print(arangod.name)
         ret.push(arangod.getMetric(gaugeName));
       }
     });

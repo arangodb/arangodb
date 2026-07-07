@@ -1511,7 +1511,7 @@ class instance {
       let re = new RegExp("^" + name);
       let matches = text.split('\n').filter((line) => !line.match(/^#/)).filter((line) => line.match(re));
       if (!matches.length) {
-        throw new Error(`Metric ${name} not found in ${me.name}`);
+        return NaN;
       }
       let res = 0; // Sum up values from all matches
       for(let i = 0; i < matches.length; i+= 1) {
@@ -1536,16 +1536,17 @@ class instance {
   }
   
   debugGetFailurePoints() {
-    this.connect();
-    let haveFailAt = arango.GET("/_admin/debug/failat") === true;
-    if (haveFailAt) {
-      let res = arango.GET_RAW('/_admin/debug/failat/all');
-      if (res.code !== 200) {
-        throw "Error checking failure points = " + JSON.stringify(res);
+    return this.toThisInstance(() => {
+      let haveFailAt = arango.GET("/_admin/debug/failat") === true;
+      if (haveFailAt) {
+        let res = arango.GET_RAW('/_admin/debug/failat/all');
+        if (res.code !== 200) {
+          throw "Error checking failure points = " + JSON.stringify(res);
+        }
+        return res.parsedBody;
       }
-      return res.parsedBody;
-    }
-    return [];
+      return [];
+    });
   }
   debugSetFailAt(failurePoint) {
     this.toThisInstance(() => {
