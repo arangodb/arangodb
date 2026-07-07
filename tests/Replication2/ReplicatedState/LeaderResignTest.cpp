@@ -23,16 +23,16 @@
 
 #include <gtest/gtest.h>
 
-#include "Replication2/ReplicatedLog/TestHelper.h"
+#include "Mocks/FakeRegistry.h"
 
+#include "Replication2/Mocks/TestReplicatedStateFeature.h"
+#include "Replication2/ReplicatedLog/TestHelper.h"
 #include "Replication2/ReplicatedState/ReplicatedState.h"
 #include "Replication2/ReplicatedState/ReplicatedStateImpl.tpp"
 #include "Replication2/ReplicatedState/ReplicatedStateMetrics.h"
 #include "Replication2/Streams/LogMultiplexer.h"
 #include "Replication2/Mocks/FakeReplicatedState.h"
 #include "Replication2/Mocks/FakeLeader.h"
-
-#include "Replication2/Mocks/ReplicatedStateMetricsMock.h"
 #include "Replication2/ReplicatedState/ReplicatedStateFeature.h"
 #include "Replication2/Mocks/MockStatePersistorInterface.h"
 
@@ -55,8 +55,8 @@ struct ReplicatedStateLeaderResignTest : test::ReplicatedLogTest {
   ReplicatedStateLeaderResignTest() {
     feature->registerStateType<State>("my-state");
   }
-  std::shared_ptr<ReplicatedStateFeature> feature =
-      std::make_shared<ReplicatedStateFeature>();
+  std::shared_ptr<tests::TestReplicatedStateFeature> feature =
+      std::make_shared<tests::TestReplicatedStateFeature>();
 
   std::shared_ptr<test::FakeLeader> logLeader =
       std::make_shared<test::FakeLeader>();
@@ -64,8 +64,11 @@ struct ReplicatedStateLeaderResignTest : test::ReplicatedLogTest {
       std::make_shared<State::FactoryType>();
   std::unique_ptr<State::CoreType> core = std::make_unique<State::CoreType>();
   std::shared_ptr<State::LeaderType> leaderState;
+  // _fakeRegisty must live longer than _metrics!
+  metrics::FakeRegistry _fakeRegistry;
   std::shared_ptr<ReplicatedStateMetrics> _metrics =
-      std::make_shared<ReplicatedStateMetricsMock>("foo");
+      std::make_shared<replicated_state::ReplicatedStateMetrics>(_fakeRegistry,
+                                                                 "foo");
   std::shared_ptr<test::MockStatePersistorInterface> _persistor =
       std::make_shared<test::MockStatePersistorInterface>();
   LoggerContext const loggerCtx{Logger::REPLICATED_STATE};

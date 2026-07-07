@@ -151,6 +151,19 @@ void fatalCallback(char const* location, char const* message) {
 
 std::string const V8PlatformFeature::fn("icudtl.dat");
 
+V8PlatformFeature::V8PlatformFeature(
+    application_features::ApplicationServer& server)
+    : V8PlatformFeature(server, V8PlatformFeatureOptions{}) {}
+
+V8PlatformFeature::V8PlatformFeature(
+    application_features::ApplicationServer& server,
+    V8PlatformFeatureOptions options)
+    : ApplicationFeature{server, *this},
+      _binaryPath(server.getBinaryPath()),
+      _options(std::move(options)) {
+  setOptional(true);
+}
+
 void V8PlatformFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
   V8PlatformOptionsProvider provider;

@@ -37,6 +37,8 @@ class AgencyFeature : public application_features::ApplicationFeature,
  public:
   static constexpr std::string_view name() { return "Agency"; }
 
+  explicit AgencyFeature(application_features::ApplicationServer& server,
+                         AgencyOptions options);
   explicit AgencyFeature(application_features::ApplicationServer& server);
   ~AgencyFeature();
 

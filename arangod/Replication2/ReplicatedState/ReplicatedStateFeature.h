@@ -97,7 +97,7 @@ struct ReplicatedStateFeature {
     return createMetricsObject(impl);
   }
   virtual auto createMetricsObject(std::string_view impl)
-      -> std::shared_ptr<ReplicatedStateMetrics>;
+      -> std::shared_ptr<ReplicatedStateMetrics> = 0;
 
  private:
   static void assertWasInserted(std::string_view name, bool wasInserted);

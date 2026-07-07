@@ -50,7 +50,7 @@
 #include "InternalRestHandler/InternalRestTraverserHandler.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/HistogramBuilder.h"
-#include "Metrics/MetricsFeature.h"
+#include "Metrics/IRegistry.h"
 #include "Network/NetworkFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Rest/HttpResponse.h"
@@ -125,7 +125,6 @@
 #include "Metrics/HistogramBuilder.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/GaugeBuilder.h"
-#include "Metrics/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/UpgradeFeature.h"
 #include "Scheduler/Scheduler.h"
@@ -170,14 +169,24 @@ DECLARE_GAUGE(arangodb_requests_memory_usage, std::uint64_t,
 
 GeneralServerFeature::GeneralServerFeature(
     application_features::ApplicationServer& server,
-    metrics::MetricsFeature& metrics)
+    metrics::IRegistry& metricsRegistry)
+    : GeneralServerFeature(server, metricsRegistry, GeneralServerOptions{}) {}
+
+GeneralServerFeature::GeneralServerFeature(
+    application_features::ApplicationServer& server,
+    metrics::IRegistry& metricsRegistry, GeneralServerOptions options)
     : ApplicationFeature{server, *this},
-      _currentRequestsSize(metrics.add(arangodb_requests_memory_usage{})),
-      _requestBodySizeHttp1(metrics.add(arangodb_request_body_size_http1{})),
-      _requestBodySizeHttp2(metrics.add(arangodb_request_body_size_http2{})),
-      _http1Connections(metrics.add(arangodb_http1_connections_total{})),
-      _http2Connections(metrics.add(arangodb_http2_connections_total{})),
-      _metricsFeature(metrics) {
+      _currentRequestsSize(
+          metricsRegistry.add(arangodb_requests_memory_usage{})),
+      _options(std::move(options)),
+      _requestBodySizeHttp1(
+          metricsRegistry.add(arangodb_request_body_size_http1{})),
+      _requestBodySizeHttp2(
+          metricsRegistry.add(arangodb_request_body_size_http2{})),
+      _http1Connections(
+          metricsRegistry.add(arangodb_http1_connections_total{})),
+      _http2Connections(
+          metricsRegistry.add(arangodb_http2_connections_total{})) {
   setOptional(true);
   startsAfter<application_features::AqlFeaturePhase>();
 

@@ -74,7 +74,10 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
   static constexpr std::string_view name() noexcept { return "V8Dealer"; }
 
   V8DealerFeature(application_features::ApplicationServer& server,
-                  metrics::MetricsFeature& metrics);
+                  metrics::IRegistry& metricsRegistry,
+                  V8DealerFeatureOptions options);
+  V8DealerFeature(application_features::ApplicationServer& server,
+                  metrics::IRegistry& metricsRegistry);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) final;

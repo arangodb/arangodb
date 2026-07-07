@@ -28,11 +28,12 @@
 #include "RocksDBEngine/RocksDBRestCollectionHandler.h"
 #include "RocksDBEngine/RocksDBRestReplicationHandler.h"
 #include "RocksDBEngine/RocksDBRestWalHandler.h"
+#include "StorageEngine/StorageEngine.h"
 
 using namespace arangodb;
 
 void RocksDBRestHandlers::registerResources(
-    rest::RestHandlerFactory* handlerFactory) {
+    rest::RestHandlerFactory* handlerFactory, StorageEngine& engine) {
   handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::COLLECTION_PATH,
       RestHandlerCreator<RocksDBRestCollectionHandler>::createNoData, {0, 1});
@@ -40,6 +41,7 @@ void RocksDBRestHandlers::registerResources(
       "/_api/replication",
       RestHandlerCreator<RocksDBRestReplicationHandler>::createNoData, {0, 1});
   handlerFactory->addPrefixHandler(
-      "/_admin/wal", RestHandlerCreator<RocksDBRestWalHandler>::createNoData,
-      {0, 1});
+      "/_admin/wal",
+      RestHandlerCreator<RocksDBRestWalHandler>::createData<StorageEngine*>,
+      {0, 1}, &engine);
 }

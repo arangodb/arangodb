@@ -37,6 +37,8 @@ class ScriptFeature final : public application_features::ApplicationFeature {
   static constexpr std::string_view name() noexcept { return "Script"; }
 
   explicit ScriptFeature(application_features::ApplicationServer& server,
+                         int* result, ScriptFeatureOptions options);
+  explicit ScriptFeature(application_features::ApplicationServer& server,
                          int* result);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
