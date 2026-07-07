@@ -26,6 +26,8 @@
 #include <cstdint>
 #include <string>
 #include <vector>
+#include <filesystem>
+#include <functional>
 
 #include "ErrorCode.h"
 
@@ -43,6 +45,7 @@ ErrorCode TRI_ZipFile(char const* filename, char const* dir,
 /// @brief unzips a file
 ////////////////////////////////////////////////////////////////////////////////
 
-ErrorCode TRI_UnzipFile(char const* filename, char const* outPath,
-                        bool skipPaths, bool overwrite, char const* password,
-                        std::string& errorMessage);
+ErrorCode TRI_UnzipFile(
+    char const* filename, char const* outPath, bool skipPaths, bool overwrite,
+    char const* password, std::string& errorMessage,
+    std::function<bool(std::filesystem::path)> validatePath);
