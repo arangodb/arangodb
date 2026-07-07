@@ -87,15 +87,61 @@ namespace perms {
 
 // Is the current identity allowed to execute this admin-class RBAC action?
 // In the classic system this collapses to "RW on _system".
+//
+// TODO This struct is transitional. All of its possible `action` values now
+//      also exist as first-class `perms::Admin*` structs below (moved out of
+//      rbac::Category). The next step is to remove `Admin` entirely and let
+//      `ExecContext::canUseAdminAction`/`canUseHardenedAction` accept only the
+//      admin-class `perms::` structs -- either via a dedicated variant or a
+//      concept constraining the parameter.
 struct Admin {
   rbac::Category::Any action;
 };
 
-// Hardened variant: identical question, but only actually enforced when
-// `--server.harden` (or RBAC, which implies it) is in effect.
-struct HardenedAdmin {
-  rbac::Category::Any action;
+// Admin-class actions. These are the concrete actions that used to be passed
+// through `perms::Admin` (i.e. handed to
+// ExecContext::canUseAdminAction/canUseHardenedAction) as a
+// `rbac::Category::Any`. They have been moved here so that `perms::` is the
+// single, flat home for every authorization question. Fields mirror their
+// former rbac::Category counterparts.
+//
+// TODO Once `Admin` is gone, gather these into a single type list to derive
+//      both the admin-only variant (parameter of canUseAdminAction) and a
+//      concept, instead of listing them by hand here and in `Permission`.
+
+// Admin action carrying a user resource. Note this is the admin-level
+// "may I enumerate/read users at all" question, distinct from the per-user
+// `perms::ReadUser` above.
+struct AdminReadUser {
+  std::string username;
 };
+
+// Admin actions without a resource.
+struct AdminMoveShards {};
+struct AdminMonitoring {};
+struct AdminMonitoringInternal {};
+struct AdminAuthReload {};
+struct AdminCrashHandler {};
+struct AdminApiCalls {};
+struct AdminAqlQueries {};
+struct AdminShutdown {};
+struct AdminReadLogs {};
+struct AdminSetLogLevel {};
+struct AdminOptions {};
+struct AdminSupervisionState {};
+struct AdminRemoveServer {};
+struct AdminClusterInfo {};
+struct AdminMaintenance {};
+struct AdminRebalance {};
+struct AdminLicense {};
+struct AdminBackup {};
+struct AdminReadReplicatedLog {};
+struct AdminWriteReplicatedLog {};
+struct AdminDump {};
+struct AdminRestore {};
+struct AdminWalAccess {};
+struct AdminReadAgency {};
+struct AdminQueryCache {};
 
 // ---------------------------------------------------------------------------
 // Databases
@@ -278,7 +324,19 @@ struct WriteUser {
 // pass a `perms::Xxx{...}` and it is wrapped automatically.
 using Permission = std::variant<
     // admin actions
+    // TODO `Admin` is transitional and will be removed once all callers use
+    //      the flat `perms::Admin*` alternatives below directly.
     perms::Admin,
+    // admin actions
+    perms::AdminReadUser, perms::AdminMoveShards, perms::AdminMonitoring,
+    perms::AdminMonitoringInternal, perms::AdminAuthReload,
+    perms::AdminCrashHandler, perms::AdminApiCalls, perms::AdminAqlQueries,
+    perms::AdminShutdown, perms::AdminReadLogs, perms::AdminSetLogLevel,
+    perms::AdminOptions, perms::AdminSupervisionState, perms::AdminRemoveServer,
+    perms::AdminClusterInfo, perms::AdminMaintenance, perms::AdminRebalance,
+    perms::AdminLicense, perms::AdminBackup, perms::AdminReadReplicatedLog,
+    perms::AdminWriteReplicatedLog, perms::AdminDump, perms::AdminRestore,
+    perms::AdminWalAccess, perms::AdminReadAgency, perms::AdminQueryCache,
     // database permissions
     perms::SeeDatabase, perms::CreateDatabase, perms::DropDatabase,
     perms::UseDatabase,
