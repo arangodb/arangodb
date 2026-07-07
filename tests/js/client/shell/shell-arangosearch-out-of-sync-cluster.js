@@ -30,6 +30,7 @@ const request = require("@arangodb/request");
 const getMetric = require('@arangodb/test-helper').getMetric;
 const internal = require("internal");
 const errors = internal.errors;
+const inst = require('@arangodb/testutils/instance');
 const isEnterprise = require("internal").isEnterprise();
 let IM = global.instanceManager;
 
@@ -73,15 +74,19 @@ function ArangoSearchOutOfSyncSuite () {
       let shards = Object.keys(shardInfo);
 
       let leaders = [];
+      let leaderIDs = [];
       shards.forEach((s) => {
         let leaderID = shardInfo[s][0];
-        leaders.push(IM.getInstanceByID(leaderID));
+        if (leaderIDs.indexOf(leaderID) < 0) {
+          leaders.push(IM.getInstanceByID(leaderID));
+          leaderIDs.push(leaderID);
+        }
       });
 
-      for (let leader of leaders) {
+      leaders.forEach(leader => {
         // break search commit on the DB servers
         leader.debugSetFailAt("ArangoSearch::FailOnCommit");
-      }
+      });
 
       let docs = [];
       for (let i = 0; i < 1000; ++i) {
@@ -93,7 +98,7 @@ function ArangoSearchOutOfSyncSuite () {
       db._query("FOR doc IN UnitTestsRecoveryView1 OPTIONS {waitForSync: true} RETURN doc");
       db._query("FOR doc IN UnitTestsRecovery1 OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true} FILTER doc.value == '1' RETURN doc");
       
-      IM.debugClearFailAt();
+      IM.debugClearFailAt('', inst.instanceRole.dbserver);
       
       let c2 = db._create('UnitTestsRecovery2', { numberOfShards: 5, replicationFactor: 1 });
       c2.ensureIndex({ type: 'inverted', name: 'inverted', fields: indexFields });
@@ -118,10 +123,10 @@ function ArangoSearchOutOfSyncSuite () {
       // in a cluster, the coordinator doesn't make the outOfSync error flag available
       assertFalse(idx.hasOwnProperty('error'));
       
-      for (let leader of leaders) {
+      leaders.forEach(leader => {
         // break search commit on the DB servers
         leader.debugSetFailAt("ArangoSearch::FailQueriesOnOutOfSync");
-      }
+      });
       
       // query must fail because the link is marked as out of sync
       try {
@@ -151,7 +156,7 @@ function ArangoSearchOutOfSyncSuite () {
       assertEqual(0, result.length);
     
       // clear all failure points
-      IM.debugClearFailAt();
+      IM.debugClearFailAt('', inst.instanceRole.dbserver);
 
       // queries must not fail now because we removed the failure point
       result = db._query("FOR doc IN UnitTestsRecoveryView1 OPTIONS {waitForSync: true} RETURN doc").toArray();
@@ -169,10 +174,10 @@ function ArangoSearchOutOfSyncSuite () {
       assertEqual(0, result.length);
       
       let outOfSync = 0;
-      for (let leader of leaders) {
+      leaders.forEach(leader => {
         let m = leader.getMetric("arangodb_search_num_out_of_sync_links");
         outOfSync += parseInt(m);
-      }
+      });
       // 5 shards, counted twice, because the is out of sync per shard plus the inverted index
       assertEqual(2 * 5, outOfSync);
     },
