@@ -161,8 +161,7 @@ void V8SecurityFeature::validateOptions(
       _options.filesAllowList.emplace_back(".*");
     }
 
-    // file access (a denylist for file access does not exist (yet))
-    auto denyRegex = std::nullopt;
+    auto denyRegex = optionToRegex(_options.filesDenyList, "files", "deny");
     auto allowRegex = optionToRegex(_options.filesAllowList, "files", "allow");
 
     _files = DenyAllow(denyRegex, allowRegex);
