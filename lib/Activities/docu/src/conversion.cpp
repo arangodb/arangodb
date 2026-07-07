@@ -41,10 +41,10 @@ auto fully_qualified_type_to_string(QualType qt, ASTContext const& ctx)
 /**
  * Convert a clang QualType to a human-readable string.
  */
-auto type_to_string(QualType qt, ASTContext const& ctx) -> std::string {
-  auto pp = PrintingPolicy(ctx.getLangOpts());
-  return qt.getAsString(pp);
-}
+// auto type_to_string(QualType qt, ASTContext const& ctx) -> std::string {
+//   auto pp = PrintingPolicy(ctx.getLangOpts());
+//   return qt.getAsString(pp);
+// }
 
 /**
  * Whether a source location is inside the project's own code.
@@ -249,9 +249,8 @@ auto conversion::ActivityCallback::run(
 
   auto const data_type = get_data_type(rd);
   if (data_type.isNull()) {
-    _out_activities.push_back(
-        ActivityDeclaration{.owner = owner_name(decl),
-                            .type = rd->getQualifiedNameAsString()});
+    _out_activities.push_back(ActivityDeclaration{
+        .owner = owner_name(decl), .type = rd->getQualifiedNameAsString()});
     return;
   }
 
