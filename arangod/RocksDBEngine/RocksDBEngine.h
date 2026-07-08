@@ -650,7 +650,6 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   replication2::IReplicatedLogProvider* _replicatedLogProvider;
   ISchedulerProvider const& _schedulerProvider;
   RocksDBRecoveryManager const& _rocksDbRecoveryManager;
-  IDatabaseProvider& _databaseProvider;
   IIndexCacheRefill& _indexCacheRefill;
   ICacheManagerProvider& _cacheManagerProvider;
   ISortingPolicy const& _sortingPolicy;

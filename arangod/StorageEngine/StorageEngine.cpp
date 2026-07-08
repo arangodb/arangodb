@@ -33,7 +33,7 @@
 #include "RestServer/ViewTypesFeature.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/Storage/IStorageEngineMethods.h"
-#include "RestServer/DatabaseFeature.h"
+#include "RestServer/IDatabaseProvider.h"
 #include "VocBase/VocbaseInfo.h"
 #include "VocBase/vocbase.h"
 
@@ -45,8 +45,10 @@ StorageEngine::StorageEngine(application_features::ApplicationServer& server,
                              std::string_view engineName,
                              std::string_view featureName,
                              std::type_index registration,
-                             std::unique_ptr<IndexFactory>&& indexFactory)
+                             std::unique_ptr<IndexFactory>&& indexFactory,
+                             IDatabaseProvider& databaseProvider)
     : ApplicationFeature{server, registration, featureName},
+      _databaseProvider(databaseProvider),
       _indexFactory(std::move(indexFactory)),
       _typeName(engineName) {
   // each specific storage engine feature is optional. the storage engine
@@ -66,11 +68,8 @@ void StorageEngine::addParametersForNewCollection(velocypack::Builder&,
 
 std::unique_ptr<TRI_vocbase_t> StorageEngine::createDatabase(
     CreateDatabaseInfo&& info) {
-  DatabaseFeature& databaseFeature =
-      info.server().getFeature<DatabaseFeature>();
-  return std::make_unique<TRI_vocbase_t>(
-      std::move(info), databaseFeature.engine(),
-      databaseFeature.versionTracker(), databaseFeature.extendedNames());
+  return std::make_unique<TRI_vocbase_t>(std::move(info), *this,
+                                         _databaseProvider);
 }
 
 Result StorageEngine::writeCreateDatabaseMarker(TRI_voc_tick_t id,

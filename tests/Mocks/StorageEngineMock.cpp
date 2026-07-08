@@ -48,6 +48,7 @@
 #include "Indexes/SortedIndexAttributeMatcher.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "RestServer/FlushFeature.h"
+#include "RestServer/IDatabaseProvider.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Hints.h"
 #include "Transaction/Manager.h"
@@ -203,10 +204,12 @@ StorageEngineMock::StorageEngineMock(
     : StorageEngine(server, "Mock", "Mock",
                     std::type_index(typeid(StorageEngineMock)),
                     std::unique_ptr<arangodb::IndexFactory>(
-                        new IndexFactoryMock(server, injectClusterIndexes))),
+                        new IndexFactoryMock(server, injectClusterIndexes)),
+                    _dbProvider),
       vocbaseCount(1),
       _releasedTick(0) {
   initTransactionStatistics(_mockRegistry);
+  ON_CALL(_dbProvider, extendedNames()).WillByDefault(::testing::Return(true));
 }
 
 arangodb::HealthData StorageEngineMock::healthCheck() { return {}; }
@@ -452,7 +455,7 @@ std::unique_ptr<TRI_vocbase_t> StorageEngineMock::openDatabase(
   new_info.setId(++vocbaseCount);
 
   return std::make_unique<TRI_vocbase_t>(std::move(new_info), *this,
-                                         _versionTracker, true);
+                                         _dbProvider);
 }
 
 TRI_voc_tick_t StorageEngineMock::releasedTick() const {

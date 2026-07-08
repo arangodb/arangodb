@@ -41,6 +41,7 @@
 #include "Logger/Logger.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/Storage/IStorageEngineMethods.h"
+#include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBOptimizerRules.h"
 #include "Transaction/Context.h"
@@ -64,7 +65,8 @@ bool ClusterEngine::Mocking = false;
 ClusterEngine::ClusterEngine(application_features::ApplicationServer& server,
                              metrics::IRegistry& metrics)
     : StorageEngine(server, EngineName, name(), typeid(ClusterEngine),
-                    std::make_unique<ClusterIndexFactory>(server, *this)),
+                    std::make_unique<ClusterIndexFactory>(server, *this),
+                    server.getFeature<DatabaseFeature>()),
       _clusterFeature(server.getFeature<ClusterFeature>()),
       _metrics(metrics),
       _actualEngine(nullptr) {

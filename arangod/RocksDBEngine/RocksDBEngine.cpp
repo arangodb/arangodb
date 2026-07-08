@@ -288,7 +288,8 @@ RocksDBEngine::RocksDBEngine(
     ISortingPolicy const& sortingPolicy, RocksDBEngineOptions options)
     : StorageEngine(
           server, kEngineName, name(), typeid(RocksDBEngine),
-          std::make_unique<RocksDBIndexFactory>(server, vectorIndexProvider)),
+          std::make_unique<RocksDBIndexFactory>(server, vectorIndexProvider),
+          databaseProvider),
       _databasePathProvider(databasePathProvider),
       _vectorIndexProvider(vectorIndexProvider),
       _flushControl(flushControl),
@@ -296,7 +297,6 @@ RocksDBEngine::RocksDBEngine(
       _replicatedLogProvider(replicatedLogProvider),
       _schedulerProvider(schedulerProvider),
       _rocksDbRecoveryManager(rocksDbRecoveryManager),
-      _databaseProvider(databaseProvider),
       _indexCacheRefill(indexCacheRefill),
       _cacheManagerProvider(cacheManagerProvider),
       _sortingPolicy(sortingPolicy),

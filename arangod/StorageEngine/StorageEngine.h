@@ -70,6 +70,7 @@ class Result;
 class TransactionCollection;
 class TransactionState;
 class WalAccess;
+struct IDatabaseProvider;
 
 namespace rest {
 class RestHandlerFactory;
@@ -105,7 +106,8 @@ class StorageEngine : public application_features::ApplicationFeature {
   StorageEngine(application_features::ApplicationServer& server,
                 std::string_view engineName, std::string_view featureName,
                 std::type_index registration,
-                std::unique_ptr<IndexFactory>&& indexFactory);
+                std::unique_ptr<IndexFactory>&& indexFactory,
+                IDatabaseProvider& databaseProvider);
 
   virtual HealthData healthCheck() = 0;
 
@@ -382,6 +384,7 @@ class StorageEngine : public application_features::ApplicationFeature {
 
  protected:
   void initTransactionStatistics(metrics::IRegistry& metrics);
+
   void registerCollection(
       TRI_vocbase_t& vocbase,
       std::shared_ptr<arangodb::LogicalCollection> const& collection);
@@ -392,6 +395,10 @@ class StorageEngine : public application_features::ApplicationFeature {
   static void registerReplicatedState(
       TRI_vocbase_t& vocbase, arangodb::replication2::LogId,
       std::unique_ptr<replication2::storage::IStorageEngineMethods>);
+
+  // provides access to the database catalog (database objects, version tracker,
+  // name settings).
+  IDatabaseProvider& _databaseProvider;
 
  private:
   std::unique_ptr<IndexFactory> const _indexFactory;
