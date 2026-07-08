@@ -1,4 +1,4 @@
-name: arangodb_http_response_http_response_code_total
+name: arangodb_http_response_code_total
 introducedIn: "3.12.10"
 help: |
   Total number of HTTP responses by response code.
