@@ -42,7 +42,7 @@ class ClusterIndexFactory final : public IndexFactory {
   Result enhanceIndexDefinition(velocypack::Slice const definition,
                                 velocypack::Builder& normalized,
                                 bool isCreation,
-                                TRI_vocbase_t const& vocbase) const override;
+                                Database const& vocbase) const override;
 
   /// @brief index name aliases (e.g. "persistent" => "hash", "skiplist" =>
   /// "hash") used to display storage engine capabilities

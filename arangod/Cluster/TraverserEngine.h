@@ -23,17 +23,15 @@
 
 #pragma once
 
-#include <velocypack/Builder.h>
-#include <functional>
-#include <memory>
-#include <unordered_map>
-
 #include "Aql/Collections.h"
 #include "Basics/MemoryTypes/MemoryTypes.h"
 #include "Graph/EdgeDocumentToken.h"
 #include "Graph/Cursors/EdgeCursor.h"
 
-struct TRI_vocbase_t;
+#include <velocypack/Builder.h>
+
+#include <memory>
+#include <unordered_map>
 
 namespace arangodb {
 
@@ -98,10 +96,10 @@ class BaseEngine {
   enum EngineType { TRAVERSER, SHORTESTPATH };
 
   static std::unique_ptr<BaseEngine> buildEngine(
-      TRI_vocbase_t& vocbase, aql::QueryContext& query,
+      Database& vocbase, aql::QueryContext& query,
       arangodb::velocypack::Slice info);
 
-  BaseEngine(TRI_vocbase_t& vocbase, aql::QueryContext& query,
+  BaseEngine(Database& vocbase, aql::QueryContext& query,
              arangodb::velocypack::Slice info);
 
  public:
@@ -141,7 +139,7 @@ class BaseTraverserEngine : public BaseEngine {
   // deletes an engine but the registry
   // does not get informed properly
 
-  BaseTraverserEngine(TRI_vocbase_t& vocbase, aql::QueryContext& query,
+  BaseTraverserEngine(Database& vocbase, aql::QueryContext& query,
                       arangodb::velocypack::Slice info);
 
   ~BaseTraverserEngine();
@@ -190,7 +188,7 @@ class ShortestPathEngine : public BaseEngine {
   // deletes an engine but the registry
   // does not get informed properly
 
-  ShortestPathEngine(TRI_vocbase_t& vocbase, aql::QueryContext& query,
+  ShortestPathEngine(Database& vocbase, aql::QueryContext& query,
                      arangodb::velocypack::Slice info);
 
   ~ShortestPathEngine();
@@ -221,7 +219,7 @@ class TraverserEngine : public BaseTraverserEngine {
   // deletes an engine but the registry
   // does not get informed properly
 
-  TraverserEngine(TRI_vocbase_t& vocbase, aql::QueryContext& query,
+  TraverserEngine(Database& database, aql::QueryContext& query,
                   arangodb::velocypack::Slice info);
 
   ~TraverserEngine();

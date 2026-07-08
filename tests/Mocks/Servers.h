@@ -31,12 +31,8 @@
 #include "Cluster/ClusterTypes.h"
 #include "Cluster/ServerState.h"
 #include "IResearch/IResearchCommon.h"
-#include "Logger/LogMacros.h"
 #include "Mocks/StorageEngineMock.h"
-#include "Transaction/Hints.h"
 #include "VocBase/Identifiers/DataSourceId.h"
-
-struct TRI_vocbase_t;
 
 class StorageEngineMock;
 
@@ -80,7 +76,7 @@ class MockServer {
   ArangodServer& server();
   void init();
 
-  TRI_vocbase_t& getSystemDatabase() const;
+  Database& getSystemDatabase() const;
   std::string const testFilesystemPath() const { return _testFilesystemPath; }
 
   // add a feature to the underlying server, keep track of it;
@@ -227,7 +223,7 @@ class MockClusterServer
       public LogSuppressor<iresearch::TOPIC, LogLevel::FATAL>,
       public IResearchLogSuppressor {
  public:
-  virtual TRI_vocbase_t* createDatabase(std::string const& name) = 0;
+  virtual Database* createDatabase(std::string const& name) = 0;
   virtual void dropDatabase(std::string const& name) = 0;
   void startFeatures() override;
 
@@ -308,7 +304,7 @@ class MockDBServer : public MockClusterServer {
                bool useAgencyMockConnection = true);
   ~MockDBServer();
 
-  TRI_vocbase_t* createDatabase(std::string const& name) override;
+  Database* createDatabase(std::string const& name) override;
   void dropDatabase(std::string const& name) override;
 
   void createShard(std::string const& dbName, std::string const& shardName,
@@ -322,7 +318,7 @@ class MockCoordinator : public MockClusterServer {
                   bool injectClusterIndexes = false);
   ~MockCoordinator();
 
-  TRI_vocbase_t* createDatabase(std::string const& name) override;
+  Database* createDatabase(std::string const& name) override;
   void dropDatabase(std::string const& name) override;
 
   std::pair<std::string, std::string> registerFakedDBServer(

@@ -69,7 +69,7 @@ size_t getWriteConcern(VPackSlice slice, ServerDefaults const& serverDefaults) {
 
 #ifndef USE_ENTERPRISE
 // Factory methods
-std::unique_ptr<Graph> Graph::fromPersistence(TRI_vocbase_t& vocbase,
+std::unique_ptr<Graph> Graph::fromPersistence(Database& vocbase,
                                               VPackSlice document) {
   document = document.resolveExternal();
   std::unique_ptr<Graph> result(
@@ -77,7 +77,7 @@ std::unique_ptr<Graph> Graph::fromPersistence(TRI_vocbase_t& vocbase,
   return result;
 }
 
-std::unique_ptr<Graph> Graph::fromUserInput(TRI_vocbase_t& vocbase,
+std::unique_ptr<Graph> Graph::fromUserInput(Database& vocbase,
                                             std::string&& name,
                                             VPackSlice document,
                                             VPackSlice options) {
@@ -88,7 +88,7 @@ std::unique_ptr<Graph> Graph::fromUserInput(TRI_vocbase_t& vocbase,
 }
 #endif
 
-std::unique_ptr<Graph> Graph::fromUserInput(TRI_vocbase_t& vocbase,
+std::unique_ptr<Graph> Graph::fromUserInput(Database& vocbase,
                                             std::string const& name,
                                             VPackSlice document,
                                             VPackSlice options) {
@@ -156,8 +156,8 @@ Graph::Graph(velocypack::Slice const& slice,
 }
 
 // From user input
-Graph::Graph(TRI_vocbase_t& vocbase, std::string&& graphName,
-             VPackSlice const& info, VPackSlice const& options)
+Graph::Graph(Database& vocbase, std::string&& graphName, VPackSlice const& info,
+             VPackSlice const& options)
     : _graphName(std::move(graphName)),
       _vertexColls(),
       _edgeColls(),

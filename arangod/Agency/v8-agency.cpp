@@ -25,11 +25,8 @@
 
 #include "Agency/AgencyFeature.h"
 #include "Agency/Agent.h"
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "V8/V8SecurityFeature.h"
 #include "Logger/LogMacros.h"
-#include "V8/v8-buffer.h"
-#include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"

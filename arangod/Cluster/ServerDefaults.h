@@ -24,11 +24,13 @@
 #pragma once
 
 #include <cstdint>
-#include "ApplicationFeatures/ApplicationServer.h"
-
-struct TRI_vocbase_t;
 
 namespace arangodb {
+
+struct Database;
+namespace application_features {
+class ApplicationServer;
+}
 
 struct ServerDefaults {
   uint64_t numberOfShards = 1;
@@ -44,7 +46,7 @@ struct ServerDefaults {
 #endif
   explicit ServerDefaults(application_features::ApplicationServer& server);
 
-  explicit ServerDefaults(TRI_vocbase_t const& vocbase);
+  explicit ServerDefaults(Database const& database);
 };
 
 }  // namespace arangodb

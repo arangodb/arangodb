@@ -4766,14 +4766,14 @@ static void JS_ExecuteExternalAndWait(
 
   TRI_Utf8ValueNFC name(isolate, args[0]);
 
+  if (*name == nullptr) {
+    TRI_V8_THROW_TYPE_ERROR("<filename> must be a string");
+  }
+
   if (!v8security.isAllowedToAccessPath(isolate, *name, FSAccessType::READ)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_FORBIDDEN,
         std::string("not allowed to read files in this path: ") + *name);
-  }
-
-  if (*name == nullptr) {
-    TRI_V8_THROW_TYPE_ERROR("<filename> must be a string");
   }
 
   std::vector<std::string> arguments;

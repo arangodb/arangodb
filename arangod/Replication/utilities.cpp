@@ -47,8 +47,6 @@
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "Utils/UrlHelper.h"
 
-struct TRI_vocbase_t;
-
 namespace {
 /// @brief handle the state response of the leader
 arangodb::Result handleLeaderStateResponse(
