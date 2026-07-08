@@ -33,17 +33,14 @@ target_compile_definitions(asindexviewer PRIVATE
 # Include directories
 # ------------------------------------------------------------------------------
 target_include_directories(asindexviewer PRIVATE
-    ../../lib/iresearch/core
-    ../../lib
+    ${CMAKE_SOURCE_DIR}/lib/iresearch/core
+    ${CMAKE_SOURCE_DIR}/lib/
 )
 
 target_include_directories(asindexviewer SYSTEM PRIVATE
-    ../../3rdParty/boost/1.78.0
-    ../../lib/iresearch/external/frozen/include
-    ../../lib/iresearch/external/highway
-    ../../lib/iresearch/external/openfst
-    ../../lib/iresearch/external/kaldi/src
-    ../../3rdParty
+    ${CMAKE_SOURCE_DIR}/3rdParty/boost/1.78.0
+    ${CMAKE_SOURCE_DIR}/3rdParty
+    ../../../../3rdParty
 )
 
 # ------------------------------------------------------------------------------
@@ -61,7 +58,7 @@ target_compile_options(asindexviewer PRIVATE
 # Link directories
 # ------------------------------------------------------------------------------
 target_link_directories(asindexviewer PRIVATE
-    ../../build/bin
+    ${CMAKE_SOURCE_DIR}/build/bin
 )
 
 # ------------------------------------------------------------------------------
