@@ -1500,7 +1500,20 @@ class instance {
     if (res.code !== 200) {
       throw new Error(`error fetching metric ${tags} on ${this.name} - ${JSON.stringify(res)}`);
     }
-    //print(res.body)
+    return res.body;
+  }
+
+  getRawUsageMetric(tags="") {
+    return this.toThisInstance(() => {
+      return arango.GET_RAW('/_admin/usage-metrics' + tags, { 'accept-encoding': 'identity' });
+    });
+  }
+
+  getAllUsageMetric(tags="") {
+    let res = this.getRawUsageMetric(tags);
+    if (res.code !== 200) {
+      throw new Error(`error fetching metric ${tags} on ${this.name} - ${JSON.stringify(res)}`);
+    }
     return res.body;
   }
 
