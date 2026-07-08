@@ -77,7 +77,6 @@ const instanceRole = inst.instanceRole;
 
 let instanceCount = 1;
 const seconds = x => x * 1000;
-
 class instanceManager {
   constructor(protocol, options, addArgs, testname, tmpDir) {
     this.instanceCount = instanceCount++;
@@ -144,8 +143,10 @@ class instanceManager {
   }
 
   destructor(cleanup) {
+    arango.disconnectHandle(this.connectionHandle)
     this.arangods.forEach(arangod => {
       arangod.pm.deregister(arangod.port);
+      arangod._disconnect();
       if (arangod.serverCrashedLocal) {
         cleanup = false;
       }
@@ -154,6 +155,8 @@ class instanceManager {
     if (this.cleanup && cleanup) {
       this._cleanup();
     }
+    arango.flushConnectionCache();
+    this.arangods = [];
   }
   getStructure() {
     let d = [];
