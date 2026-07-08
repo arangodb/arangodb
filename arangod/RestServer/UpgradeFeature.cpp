@@ -63,7 +63,15 @@ namespace arangodb {
 UpgradeFeature::UpgradeFeature(
     ApplicationServer& server, int* result,
     std::span<const std::type_index> nonServerFeatures)
+    : UpgradeFeature(server, result, nonServerFeatures,
+                     UpgradeFeatureOptions{}) {}
+
+UpgradeFeature::UpgradeFeature(
+    ApplicationServer& server, int* result,
+    std::span<const std::type_index> nonServerFeatures,
+    UpgradeFeatureOptions options)
     : ApplicationFeature{server, *this},
+      _options(std::move(options)),
       _result(result),
       _nonServerFeatures(nonServerFeatures) {
   setOptional(false);

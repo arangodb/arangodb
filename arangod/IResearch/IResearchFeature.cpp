@@ -828,7 +828,13 @@ bool isOffsetInfo(aql::Function const& func) noexcept {
 IResearchFeature::IResearchFeature(
     application_features::ApplicationServer& server,
     metrics::IRegistry& metricsRegistry)
+    : IResearchFeature(server, metricsRegistry, IResearchOptions{}) {}
+
+IResearchFeature::IResearchFeature(
+    application_features::ApplicationServer& server,
+    metrics::IRegistry& metricsRegistry, IResearchOptions options)
     : ApplicationFeature{server, *this},
+      _options(std::move(options)),
       _async(std::make_unique<IResearchAsync>()),
       _outOfSyncLinks(
           metricsRegistry.add(arangodb_search_num_out_of_sync_links{})),

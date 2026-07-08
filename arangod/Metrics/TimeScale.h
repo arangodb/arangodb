@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -18,16 +18,19 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Tobias Gödderz
+/// @author Julia CP
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "Replication2/ReplicatedState/ReplicatedStateMetrics.h"
+#include "Metrics/LogScale.h"
 
-namespace arangodb::replication2::tests {
-struct ReplicatedStateMetricsMock
-    : arangodb::replication2::replicated_state::ReplicatedStateMetrics {
-  explicit ReplicatedStateMetricsMock(std::string_view);
+namespace arangodb {
+
+/// @brief log scale for operation time histograms (seconds, range 0–1000)
+template<typename T = float>
+struct TimeScale {
+  static metrics::LogScale<T> scale() { return {10., 0.0, 1000.0, 11}; }
 };
-}  // namespace arangodb::replication2::tests
+
+}  // namespace arangodb

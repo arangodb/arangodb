@@ -32,6 +32,7 @@
 #include "Agency/TransactionBuilder.h"
 #include "Agency/Supervision.h"
 #include "Aql/QueryPlanCache.h"
+#include "Basics/DownCast.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FeatureFlags.h"
 #include "Basics/GlobalSerialization.h"

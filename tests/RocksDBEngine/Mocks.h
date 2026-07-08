@@ -26,7 +26,6 @@
 #include <gmock/gmock.h>
 
 #include "Cache/ICacheManagerProvider.h"
-#include "Metrics/IRegistry.h"
 #include "RestServer/IDatabasePathProvider.h"
 #include "RestServer/IDatabaseProvider.h"
 #include "RestServer/IDumpLimitsProvider.h"
@@ -104,18 +103,6 @@ struct MockIndexCacheRefill : IIndexCacheRefill {
 struct MockReplicatedLogProvider : replication2::IReplicatedLogProvider {
   MOCK_METHOD(std::shared_ptr<replication2::ReplicatedLogGlobalSettings const>,
               options, (), (const, noexcept, override));
-};
-
-struct MetricsCollector : metrics::IRegistry {
-  std::shared_ptr<metrics::Metric> doAdd(metrics::Builder& builder) override {
-    auto metric = builder.build();
-    _metrics.emplace_back(metric);
-    return metric;
-  }
-
- private:
-  // "add" hands out references, so we we have to keep the metrics alive here
-  std::vector<std::shared_ptr<metrics::Metric>> _metrics;
 };
 
 }  // namespace arangodb::tests

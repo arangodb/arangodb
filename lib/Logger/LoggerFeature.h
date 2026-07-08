@@ -46,11 +46,7 @@ class LoggerFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() { return "Logger"; }
 
-  LoggerFeature(application_features::ApplicationServer& server, bool threaded)
-      : LoggerFeature(server, typeid(LoggerFeature), threaded) {
-    startsAfter<ShellColorsFeature>();
-    startsAfter<VersionFeature>();
-  }
+  LoggerFeature(application_features::ApplicationServer& server, bool threaded);
 
   ~LoggerFeature();
 
@@ -69,7 +65,8 @@ class LoggerFeature final : public application_features::ApplicationFeature {
 
  private:
   LoggerFeature(application_features::ApplicationServer& server,
-                std::type_index registration, bool threaded);
+                std::type_index registration, bool threaded,
+                LoggerOptions options);
 
   LoggerOptions _options;
   bool _supervisor = false;

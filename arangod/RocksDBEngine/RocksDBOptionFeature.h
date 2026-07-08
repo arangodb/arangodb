@@ -51,6 +51,9 @@ class RocksDBOptionFeature final
  public:
   static constexpr std::string_view name() noexcept { return "RocksDBOption"; }
 
+  RocksDBOptionFeature(application_features::ApplicationServer& server,
+                       AgencyFeature const* agencyFeature,
+                       RocksDBOptionFeatureOptions options);
   explicit RocksDBOptionFeature(application_features::ApplicationServer& server,
                                 AgencyFeature const* agencyFeature);
 

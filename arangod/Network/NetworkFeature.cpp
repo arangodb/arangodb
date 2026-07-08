@@ -314,8 +314,13 @@ DECLARE_GAUGE(arangodb_network_requests_in_flight, uint64_t,
 NetworkFeature::NetworkFeature(application_features::ApplicationServer& server,
                                metrics::IRegistry& metricsRegistry,
                                network::ConnectionPool::Config config)
+    : NetworkFeature(server, metricsRegistry, NetworkOptions{config}) {}
+
+NetworkFeature::NetworkFeature(application_features::ApplicationServer& server,
+                               metrics::IRegistry& metricsRegistry,
+                               NetworkOptions options)
     : application_features::ApplicationFeature{server, *this},
-      _options(config),
+      _options(std::move(options)),
       _prepared(false),
       _forwardedRequests(
           metricsRegistry.add(arangodb_network_forwarded_requests_total{})),

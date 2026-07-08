@@ -39,6 +39,8 @@ class ServerFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Server"; }
 
+  ServerFeature(application_features::ApplicationServer& server, int* result,
+                ServerFeatureOptions options);
   ServerFeature(application_features::ApplicationServer& server, int* result);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;

@@ -65,7 +65,11 @@ using namespace arangodb::options;
 
 SslServerFeature::SslServerFeature(
     application_features::ApplicationServer& server)
-    : ApplicationFeature{server, *this} {
+    : SslServerFeature(server, SslServerOptions{}) {}
+
+SslServerFeature::SslServerFeature(
+    application_features::ApplicationServer& server, SslServerOptions options)
+    : ApplicationFeature{server, *this}, _options(std::move(options)) {
   setOptional(true);
 }
 

@@ -23,27 +23,20 @@
 
 #include "RocksDBTransactionState.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryCache.h"
 #include "Cache/Manager.h"
 #include "Basics/Exceptions.h"
 #include "Basics/Result.h"
-#include "Basics/system-compiler.h"
 #include "Basics/system-functions.h"
-#include "Logger/LogMacros.h"
-#include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "Metrics/Counter.h"
 #include "Metrics/Histogram.h"
 #include "Metrics/LogScale.h"
-#include "RocksDBEngine/Methods/RocksDBTrxBaseMethods.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
-#include "RocksDBEngine/RocksDBKey.h"
-#include "RocksDBEngine/RocksDBLogValue.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
-#include "Statistics/TransactionStatistics.h"
+#include "RocksDBEngine/RocksDBTransactionMethods.h"
 #include "StorageEngine/TransactionCollection.h"
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #include "Transaction/History.h"
@@ -52,7 +45,6 @@
 #include "Transaction/ManagerFeature.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
 #include <absl/strings/str_cat.h>

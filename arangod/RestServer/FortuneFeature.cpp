@@ -67,7 +67,11 @@ static char const* cookies[] = {
 }  // namespace
 
 FortuneFeature::FortuneFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature{server, *this} {
+    : FortuneFeature(server, FortuneFeatureOptions{}) {}
+
+FortuneFeature::FortuneFeature(application_features::ApplicationServer& server,
+                               FortuneFeatureOptions options)
+    : ApplicationFeature{server, *this}, _options(std::move(options)) {
   startsAfter<BootstrapFeature>();
 }
 

@@ -27,9 +27,8 @@
 #include <frozen/unordered_set.h>
 #include <velocypack/Builder.h>
 
-#include <unordered_set>
-
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/system-functions.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Agency/Node.h"
 #include "Basics/application-exit.h"
@@ -41,7 +40,6 @@
 #include "Logger/LoggerFeature.h"
 #include "Metrics/ClusterMetricsFeature.h"
 #include "Metrics/Metric.h"
-#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Basics/CGroupDetection.h"
 #include "Basics/NumberOfCores.h"
@@ -51,9 +49,7 @@
 #include "GeneralServer/RequestStatisticsMetrics.h"
 #include "Metrics/Builder.h"
 #include "Metrics/CounterBuilder.h"
-#include "Metrics/FixScale.h"
 #include "Metrics/GaugeBuilder.h"
-#include "Metrics/HistogramBuilder.h"
 #include "RestServer/CpuUsageFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
@@ -69,21 +65,43 @@ MetricsFeature::MetricsFeature(
     LazyApplicationFeatureReference<ClusterMetricsFeature>
         lazyClusterMetricsFeatureRef,
     LazyApplicationFeatureReference<ClusterFeature> lazyClusterFeatureRef)
+    : MetricsFeature(server, std::move(lazyQueryRegistryFeatureRef),
+                     std::move(lazyDatabaseFeatureRef),
+                     std::move(lazyClusterMetricsFeatureRef),
+                     std::move(lazyClusterFeatureRef), MetricsOptions{}) {}
+
+MetricsFeature::MetricsFeature(
+    application_features::ApplicationServer& server,
+    LazyApplicationFeatureReference<QueryRegistryFeature>
+        lazyQueryRegistryFeatureRef,
+    LazyApplicationFeatureReference<DatabaseFeature> lazyDatabaseFeatureRef,
+    LazyApplicationFeatureReference<ClusterMetricsFeature>
+        lazyClusterMetricsFeatureRef,
+    LazyApplicationFeatureReference<ClusterFeature> lazyClusterFeatureRef,
+    MetricsOptions options)
     : ApplicationFeature{server, *this},
       _lazyQueryRegistryFeatureRef(std::move(lazyQueryRegistryFeatureRef)),
       _lazyDatabaseFeatureRef(std::move(lazyDatabaseFeatureRef)),
       _lazyClusterMetricsFeatureRef(std::move(lazyClusterMetricsFeatureRef)),
       _lazyClusterFeatureRef(std::move(lazyClusterFeatureRef)),
-      _transactionStatistics(std::make_unique<TransactionStatistics>(*this)) {
+      _options(std::move(options)) {
   setOptional(false);
   startsAfter<LoggerFeature>();
   startsBefore<application_features::GreetingsFeaturePhase>();
+  _serverStartTime = TRI_microtime();
+}
+
+/*static*/ double MetricsFeature::_serverStartTime = 0.0;
+
+/*static*/ double MetricsFeature::serverUptime() noexcept {
+  if (_serverStartTime == 0.0) {
+    return 0.0;
+  }
+  return TRI_microtime() - _serverStartTime;
 }
 
 void MetricsFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
-  _startTime = TRI_microtime();
-
   metrics::MetricsOptionsProvider provider;
   provider.declareOptions(options, _options);
 }
@@ -165,10 +183,6 @@ void MetricsFeature::validateOptions(
     std::shared_ptr<options::ProgramOptions> options) {
   metrics::MetricsOptionsProvider provider;
   provider.validateOptions(options, _options);
-
-  if (_options.exportReadWriteMetrics) {
-    transactionStatistics().setupDocumentMetrics();
-  }
 }
 
 namespace {
@@ -619,7 +633,7 @@ void MetricsFeature::toPrometheus(std::string& result,
                  _globals, _options.ensureWhitespace);
     appendMetric(result, std::to_string(PhysicalMemory::getValue()),
                  "physicalSize", _globals, _options.ensureWhitespace);
-    appendMetric(result, std::to_string(uptime()), "uptime", _globals,
+    appendMetric(result, std::to_string(serverUptime()), "uptime", _globals,
                  _options.ensureWhitespace);
     appendMetric(result, std::to_string(NumberOfCores::getValue()), "cores",
                  _globals, _options.ensureWhitespace);
@@ -712,14 +726,6 @@ void MetricsFeature::toVPack(velocypack::Builder& builder,
   }
   lock.unlock();
   builder.close();
-}
-
-TransactionStatistics& MetricsFeature::transactionStatistics() noexcept {
-  return *_transactionStatistics;
-}
-
-double MetricsFeature::uptime() const noexcept {
-  return TRI_microtime() - _startTime;
 }
 
 std::shared_lock<std::shared_mutex> MetricsFeature::initGlobalLabels() const {

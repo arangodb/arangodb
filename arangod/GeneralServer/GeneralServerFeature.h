@@ -55,6 +55,9 @@ class GeneralServerFeature final
   static constexpr std::string_view name() noexcept { return "GeneralServer"; }
 
   explicit GeneralServerFeature(application_features::ApplicationServer& server,
+                                metrics::IRegistry& metricsRegistry,
+                                GeneralServerOptions options);
+  explicit GeneralServerFeature(application_features::ApplicationServer& server,
                                 metrics::IRegistry& metricsRegistry);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;

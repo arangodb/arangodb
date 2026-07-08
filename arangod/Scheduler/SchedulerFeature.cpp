@@ -76,7 +76,15 @@ struct SchedulerFeature::AsioHandler {
 SchedulerFeature::SchedulerFeature(
     application_features::ApplicationServer& server,
     metrics::IRegistry& metricsRegistry, basics::SharedPRNG& sharedPRNG)
+    : SchedulerFeature(server, metricsRegistry, sharedPRNG,
+                       SchedulerFeatureOptions{}) {}
+
+SchedulerFeature::SchedulerFeature(
+    application_features::ApplicationServer& server,
+    metrics::IRegistry& metricsRegistry, basics::SharedPRNG& sharedPRNG,
+    SchedulerFeatureOptions options)
     : ApplicationFeature{server, *this},
+      _options(std::move(options)),
       _scheduler(nullptr),
       _sharedPRNG(sharedPRNG),
       _metricsRegistry(metricsRegistry),

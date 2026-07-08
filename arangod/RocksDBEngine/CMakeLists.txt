@@ -39,6 +39,7 @@ add_library(arango_rocksdb STATIC
   RocksDBOptionFeatureOptionsProvider.cpp
   RocksDBOptionsProvider.cpp
   RocksDBPrimaryIndex.cpp
+  RocksDBReadWriteMetrics.cpp
   RocksDBRecoveryManager.cpp
   RocksDBReplicationCommon.cpp
   RocksDBReplicationContext.cpp

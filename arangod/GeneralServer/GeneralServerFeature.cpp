@@ -162,9 +162,15 @@ DECLARE_GAUGE(arangodb_client_connection_statistics_client_connections, double,
 
 GeneralServerFeature::GeneralServerFeature(
     application_features::ApplicationServer& server,
-    metrics::IRegistry& metrics)
+    metrics::IRegistry& metricsRegistry)
+    : GeneralServerFeature(server, metricsRegistry, GeneralServerOptions{}) {}
+
+GeneralServerFeature::GeneralServerFeature(
+    application_features::ApplicationServer& server,
+    metrics::IRegistry& metrics, GeneralServerOptions options)
     : ApplicationFeature{server, *this},
       _currentRequestsSize(metrics.add(arangodb_requests_memory_usage{})),
+      _options(std::move(options)),
       _requestBodySizeHttp1(metrics.add(arangodb_request_body_size_http1{})),
       _requestBodySizeHttp2(metrics.add(arangodb_request_body_size_http2{})),
       _histTotalTime(

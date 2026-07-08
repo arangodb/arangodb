@@ -42,7 +42,13 @@ using namespace arangodb::options;
 namespace arangodb {
 
 ServerFeature::ServerFeature(ApplicationServer& server, int* res)
-    : ApplicationFeature{server, *this}, _result(res) {
+    : ServerFeature(server, res, ServerFeatureOptions{}) {}
+
+ServerFeature::ServerFeature(ApplicationServer& server, int* res,
+                             ServerFeatureOptions options)
+    : ApplicationFeature{server, *this},
+      _options(std::move(options)),
+      _result(res) {
   setOptional(true);
   startsAfter<AqlFeaturePhase>();
   startsAfter<UpgradeFeature>();

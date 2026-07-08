@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -18,36 +18,35 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
-
 #pragma once
 
-#include <cstdint>
+#include "Metrics/IRegistry.h"
+#include "Metrics/Builder.h"
+#include "Metrics/Metric.h"
 
-#include "Basics/ConditionVariable.h"
-#include "Basics/Thread.h"
-#include "Cache/Manager.h"
-#include "Cache/Rebalancer.h"
+#include <vector>
+#include <mutex>
 
-namespace arangodb {
+namespace arangodb::metrics {
 
-class CacheRebalancerThread final : public Thread {
- public:
-  CacheRebalancerThread(cache::Manager* manager, std::uint64_t interval);
-  ~CacheRebalancerThread();
-
-  void beginShutdown() override;
-
+// A lightweight registry that populates metrics but does not register them
+// with any actual metrics endpoint.
+// The registry holds the ownership of all the metrics. So, the reference
+// returned by IRegistry::add() is valid for this registry's lifetime.
+struct FakeRegistry : public IRegistry {
  protected:
-  void run() override;
+  std::shared_ptr<metrics::Metric> doAdd(metrics::Builder& builder) override {
+    auto metrics = builder.build();
+    std::lock_guard lock{_mutex};
+    _metrics.push_back(metrics);
+    return metrics;
+  }
 
  private:
-  cache::Manager* _manager;
-  cache::Rebalancer _rebalancer;
-  std::uint64_t _fullInterval;
-  std::uint64_t _shortInterval;
-  basics::ConditionVariable _condition;
+  std::mutex _mutex;
+  // "add()" hands out references, so we we have to keep the metrics alive here
+  std::vector<std::shared_ptr<metrics::Metric>> _metrics;
 };
 
-};  // end namespace arangodb
+}  // namespace arangodb::metrics

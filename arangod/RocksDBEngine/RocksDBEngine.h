@@ -31,6 +31,7 @@
 #include <map>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <tuple>
@@ -42,6 +43,7 @@
 #include "Containers/FlatHashSet.h"
 #include "Metrics/Fwd.h"
 #include "ISortingPolicy.h"
+#include "RocksDBEngine/RocksDBReadWriteMetrics.h"
 #include "Cache/ICacheManagerProvider.h"
 #include "Metrics/IRegistry.h"
 #include "Replication2/ReplicatedLog/IReplicatedLogProvider.h"
@@ -86,7 +88,6 @@ struct WalManager;
 }  // namespace replication2::storage
 
 class PhysicalCollection;
-struct TransactionStatistics;
 class RocksDBBackgroundErrorListener;
 class RocksDBBackgroundThread;
 class RocksDBDumpManager;
@@ -111,6 +112,7 @@ struct Options;
 }  // namespace transaction
 
 class RocksDBEngine;  // forward
+struct ISchedulerProvider;
 struct RocksDBOptionsProvider;
 
 /// @brief helper class to make file-purging thread-safe
@@ -181,6 +183,22 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
                 IFlushControl& flushControl,
                 IDumpLimitsProvider const& dumpLimitsProvider,
                 replication2::IReplicatedLogProvider* replicatedLogProvider,
+                ISchedulerProvider const& schedulerProvider,
+                RocksDBRecoveryManager const& rocksDbRecoveryManager,
+                IDatabaseProvider& databaseProvider,
+                IIndexCacheRefill& indexCacheRefill,
+                ICacheManagerProvider& cacheManagerProvider,
+                ISortingPolicy const& sortingPolicy,
+                RocksDBEngineOptions options);
+  RocksDBEngine(application_features::ApplicationServer& server,
+                RocksDBOptionsProvider& optionsProvider,
+                metrics::IRegistry& metrics,
+                IDatabasePathProvider const& databasePathProvider,
+                IVectorIndexProvider const& vectorIndexProvider,
+                IFlushControl& flushControl,
+                IDumpLimitsProvider const& dumpLimitsProvider,
+                replication2::IReplicatedLogProvider* replicatedLogProvider,
+                ISchedulerProvider const& schedulerProvider,
                 RocksDBRecoveryManager const& rocksDbRecoveryManager,
                 IDatabaseProvider& databaseProvider,
                 IIndexCacheRefill& indexCacheRefill,
@@ -622,6 +640,7 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   IFlushControl& _flushControl;
   IDumpLimitsProvider const& _dumpLimitsProvider;
   replication2::IReplicatedLogProvider* _replicatedLogProvider;
+  ISchedulerProvider const& _schedulerProvider;
   RocksDBRecoveryManager const& _rocksDbRecoveryManager;
   IDatabaseProvider& _databaseProvider;
   IIndexCacheRefill& _indexCacheRefill;
@@ -630,6 +649,8 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   RocksDBOptionsProvider& _optionsProvider;
 
   metrics::IRegistry& _metrics;
+  // only set if startup option `--server.export-read-write-metrics` is enabled
+  std::optional<RocksDBReadWriteMetrics> _readWriteMetrics;
 
   /// single rocksdb database used in this storage engine
   rocksdb::TransactionDB* _db;

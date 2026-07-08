@@ -36,20 +36,6 @@ struct ReplicatedStateMetrics {
   explicit ReplicatedStateMetrics(metrics::IRegistry& metricsRegistry,
                                   std::string_view impl);
 
- private:
-  template<typename Builder, bool mock = false>
-  static auto createMetric(metrics::IRegistry* metricsRegistry,
-                           std::string_view impl)
-      -> std::shared_ptr<typename Builder::MetricT>;
-
- protected:
-  template<typename MFP,
-           std::enable_if_t<std::is_same_v<metrics::IRegistry*, MFP> ||
-                                std::is_null_pointer_v<MFP>,
-                            int> = 0,
-           bool mock = std::is_null_pointer_v<MFP>>
-  explicit ReplicatedStateMetrics(MFP metricsRegistry, std::string_view impl);
-
  public:
   std::shared_ptr<metrics::Gauge<uint64_t>> const replicatedStateNumber;
   std::shared_ptr<metrics::Gauge<uint64_t>> const replicatedStateNumberLeaders;

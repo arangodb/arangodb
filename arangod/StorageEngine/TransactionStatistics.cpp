@@ -17,23 +17,17 @@
 /// limitations under the License.
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "TransactionStatistics.h"
+
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/HistogramBuilder.h"
-#include "Metrics/LogScale.h"
-#include "Metrics/MetricsFeature.h"
+#include "Metrics/IRegistry.h"
+#include "Metrics/TimeScale.h"
 
-using namespace arangodb;
-
-template<typename T = float>
-struct TimeScale {
-  static metrics::LogScale<T> scale() { return {10., 0.0, 1000.0, 11}; }
-};
+namespace arangodb {
 
 DECLARE_COUNTER(arangodb_collection_lock_acquisition_micros_total,
                 "Total amount of collection lock acquisition time [μs]");
@@ -65,32 +59,7 @@ DECLARE_COUNTER(arangodb_read_transactions_total,
 DECLARE_COUNTER(arangodb_dirty_read_transactions_total,
                 "Number of read transactions which can do dirty reads");
 
-DECLARE_COUNTER(arangodb_collection_truncates_total,
-                "Total number of collection truncate operations (excl. "
-                "synchronous replication)");
-DECLARE_COUNTER(arangodb_collection_truncates_replication_total,
-                "Total number of collection truncate operations by synchronous "
-                "replication");
-DECLARE_COUNTER(arangodb_document_writes_total,
-                "Total number of document write operations (excl. synchronous "
-                "replication)");
-DECLARE_COUNTER(
-    arangodb_document_writes_replication_total,
-    "Total number of document write operations by synchronous replication");
-DECLARE_HISTOGRAM(arangodb_document_read_time, TimeScale<>,
-                  "Total time spent in document read operations [s]");
-DECLARE_HISTOGRAM(arangodb_document_insert_time, TimeScale<>,
-                  "Total time spent in document insert operations [s]");
-DECLARE_HISTOGRAM(arangodb_document_replace_time, TimeScale<>,
-                  "Total time spent in document replace operations [s]");
-DECLARE_HISTOGRAM(arangodb_document_remove_time, TimeScale<>,
-                  "Total time spent in document remove operations [s]");
-DECLARE_HISTOGRAM(arangodb_document_update_time, TimeScale<>,
-                  "Total time spent in document update operations [s]");
-DECLARE_HISTOGRAM(arangodb_collection_truncate_time, TimeScale<>,
-                  "Total time spent in collection truncate operations [s]");
-
-TransactionStatistics::TransactionStatistics(metrics::MetricsFeature& metrics)
+TransactionStatistics::TransactionStatistics(metrics::IRegistry& metrics)
     : _metrics(metrics),
       _restTransactionsMemoryUsage(
           _metrics.add(arangodb_transactions_rest_memory_usage{})),
@@ -114,19 +83,4 @@ TransactionStatistics::TransactionStatistics(metrics::MetricsFeature& metrics)
       _sequentialLocks(
           _metrics.add(arangodb_collection_lock_sequential_mode_total{})) {}
 
-void TransactionStatistics::setupDocumentMetrics() {
-  // the following metrics are conditional, so we don't initialize them in the
-  // constructor
-  _readWriteMetrics.emplace(ReadWriteMetrics{
-      _metrics.add(arangodb_document_writes_total{}),
-      _metrics.add(arangodb_document_writes_replication_total{}),
-      _metrics.add(arangodb_collection_truncates_total{}),
-      _metrics.add(arangodb_collection_truncates_replication_total{}),
-      _metrics.add(arangodb_document_read_time{}),
-      _metrics.add(arangodb_document_insert_time{}),
-      _metrics.add(arangodb_document_replace_time{}),
-      _metrics.add(arangodb_document_remove_time{}),
-      _metrics.add(arangodb_document_update_time{}),
-      _metrics.add(arangodb_collection_truncate_time{}),
-  });
-}
+}  // namespace arangodb

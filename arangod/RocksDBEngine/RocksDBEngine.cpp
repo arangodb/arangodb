@@ -29,6 +29,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/LanguageFeature.h"
+#include "Basics/DownCast.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FeatureFlags.h"
 #include "Basics/FileUtils.h"
@@ -56,11 +57,9 @@
 #include "Logger/LoggerStream.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/GaugeBuilder.h"
-#include "Metrics/HistogramBuilder.h"
 #include "Metrics/Metric.h"
 #include "Metrics/IRegistry.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
 #include "Replication/ReplicationClients.h"
 #include "Replication2/Storage/IStorageEngineMethods.h"
 #include "Rest/Version.h"
@@ -109,7 +108,8 @@
 #include "RocksDBEngine/RocksDBValue.h"
 #include "RocksDBEngine/RocksDBWalAccess.h"
 #include "RocksDBEngine/SimpleRocksDBTransactionState.h"
-#include "Scheduler/SchedulerFeature.h"
+#include "Scheduler/ISchedulerProvider.h"
+#include "Scheduler/Scheduler.h"
 #include "Transaction/Context.h"
 #include "Transaction/Manager.h"
 #include "Transaction/Options.h"
@@ -261,10 +261,30 @@ RocksDBEngine::RocksDBEngine(
     IVectorIndexProvider const& vectorIndexProvider,
     IFlushControl& flushControl, IDumpLimitsProvider const& dumpLimitsProvider,
     replication2::IReplicatedLogProvider* replicatedLogProvider,
+    ISchedulerProvider const& schedulerProvider,
     RocksDBRecoveryManager const& rocksDbRecoveryManager,
     IDatabaseProvider& databaseProvider, IIndexCacheRefill& indexCacheRefill,
     ICacheManagerProvider& cacheManagerProvider,
     ISortingPolicy const& sortingPolicy)
+    : RocksDBEngine(server, optionsProvider, metrics, databasePathProvider,
+                    vectorIndexProvider, flushControl, dumpLimitsProvider,
+                    replicatedLogProvider, schedulerProvider,
+                    rocksDbRecoveryManager, databaseProvider, indexCacheRefill,
+                    cacheManagerProvider, sortingPolicy,
+                    RocksDBEngineOptions{}) {}
+
+RocksDBEngine::RocksDBEngine(
+    application_features::ApplicationServer& server,
+    RocksDBOptionsProvider& optionsProvider, metrics::IRegistry& metrics,
+    IDatabasePathProvider const& databasePathProvider,
+    IVectorIndexProvider const& vectorIndexProvider,
+    IFlushControl& flushControl, IDumpLimitsProvider const& dumpLimitsProvider,
+    replication2::IReplicatedLogProvider* replicatedLogProvider,
+    ISchedulerProvider const& schedulerProvider,
+    RocksDBRecoveryManager const& rocksDbRecoveryManager,
+    IDatabaseProvider& databaseProvider, IIndexCacheRefill& indexCacheRefill,
+    ICacheManagerProvider& cacheManagerProvider,
+    ISortingPolicy const& sortingPolicy, RocksDBEngineOptions options)
     : StorageEngine(
           server, kEngineName, name(), typeid(RocksDBEngine),
           std::make_unique<RocksDBIndexFactory>(server, vectorIndexProvider)),
@@ -273,6 +293,7 @@ RocksDBEngine::RocksDBEngine(
       _flushControl(flushControl),
       _dumpLimitsProvider(dumpLimitsProvider),
       _replicatedLogProvider(replicatedLogProvider),
+      _schedulerProvider(schedulerProvider),
       _rocksDbRecoveryManager(rocksDbRecoveryManager),
       _databaseProvider(databaseProvider),
       _indexCacheRefill(indexCacheRefill),
@@ -282,6 +303,7 @@ RocksDBEngine::RocksDBEngine(
       _metrics(metrics),
       _db(nullptr),
       _walAccess(std::make_unique<RocksDBWalAccess>(*this)),
+      _options(std::move(options)),
       _releasedTick(0),
       _useReleasedTick(false),
       _lastHealthCheckSuccessful(false),
@@ -528,6 +550,11 @@ void RocksDBEngine::start() {
   // it is already decided that rocksdb is used
   TRI_ASSERT(isEnabled());
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
+
+  initTransactionStatistics(_metrics);
+  if (_options.exportReadWriteMetrics) {
+    _readWriteMetrics.emplace(RocksDBReadWriteMetrics{_metrics});
+  }
 
   auto path = _databasePathProvider.directory();
   auto engineFilePath = basics::FileUtils::buildFilename(path, "ENGINE");
@@ -825,12 +852,10 @@ void RocksDBEngine::start() {
                  RocksDBColumnFamilyManager::Family::Definitions)
                  ->GetID() == 0);
 
-  if (server().options()) {
-    // will crash the process if version does not match
-    arangodb::rocksdbStartupVersionCheck(*server().options(), _databaseProvider,
-                                         _db, dbExisted,
-                                         _options.forceLittleEndianKeys);
-  }
+  // will crash the process if version does not match
+  arangodb::rocksdbStartupVersionCheck(server().options(), _databaseProvider,
+                                       _db, dbExisted,
+                                       _options.forceLittleEndianKeys);
 
   _dbExisted = dbExisted;
 
@@ -877,7 +902,7 @@ void RocksDBEngine::start() {
 
   struct SchedulerExecutor
       : replication2::storage::rocksdb::AsyncLogWriteBatcher::IAsyncExecutor {
-    SchedulerExecutor() : _scheduler(arangodb::SchedulerFeature::SCHEDULER) {}
+    explicit SchedulerExecutor(Scheduler* scheduler) : _scheduler(scheduler) {}
 
     void operator()(fu2::unique_function<void() noexcept> func) override {
       _scheduler->queue(RequestLane::CLUSTER_INTERNAL, std::move(func));
@@ -897,7 +922,8 @@ void RocksDBEngine::start() {
         std::make_shared<replication2::storage::rocksdb::AsyncLogWriteBatcher>(
             RocksDBColumnFamilyManager::get(
                 RocksDBColumnFamilyManager::Family::ReplicatedLogs),
-            _db->GetRootDB(), std::make_shared<SchedulerExecutor>(),
+            _db->GetRootDB(),
+            std::make_shared<SchedulerExecutor>(_schedulerProvider.scheduler()),
             _replicatedLogProvider->options(), _logMetrics);
     _logPersistor = logPersistor;
 
@@ -1077,8 +1103,8 @@ void RocksDBEngine::addParametersForNewCollection(VPackBuilder& builder,
 // create storage-engine specific collection
 std::unique_ptr<PhysicalCollection> RocksDBEngine::createPhysicalCollection(
     LogicalCollection& collection, velocypack::Slice info) {
-  return std::make_unique<RocksDBCollection>(collection, info,
-                                             _cacheManagerProvider.manager());
+  return std::make_unique<RocksDBCollection>(
+      collection, info, _cacheManagerProvider.manager(), _readWriteMetrics);
 }
 
 // inventory functionality
@@ -1461,7 +1487,7 @@ void RocksDBEngine::scheduleTreeRebuild(TRI_voc_tick_t database,
 }
 
 void RocksDBEngine::processTreeRebuilds() {
-  Scheduler* scheduler = arangodb::SchedulerFeature::SCHEDULER;
+  Scheduler* scheduler = _schedulerProvider.scheduler();
   if (scheduler == nullptr) {
     return;
   }
@@ -1587,7 +1613,7 @@ void RocksDBEngine::compactRange(RocksDBKeyBounds bounds) {
 }
 
 void RocksDBEngine::processCompactions() {
-  Scheduler* scheduler = arangodb::SchedulerFeature::SCHEDULER;
+  Scheduler* scheduler = _schedulerProvider.scheduler();
   if (scheduler == nullptr) {
     return;
   }

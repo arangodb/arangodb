@@ -10,6 +10,7 @@
 #include "Transaction/Methods.h"
 #include "StorageEngine/TransactionState.h"
 
+#include <absl/strings/str_cat.h>
 #include <string>
 
 #include <velocypack/Slice.h>
