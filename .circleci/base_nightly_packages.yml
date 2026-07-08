@@ -55,7 +55,7 @@ version: 2.1
 #                       sourceInfo.(log|json) to a GCS staging prefix, push
 #                       only the dated per-arch Docker tags) and a commit
 #                       phase (server-side promote into the live nightly
-#                       tree, flip the rolling Docker tags + manifests), so
+#                       tree, update the multi-arch manifest tags), so
 #                       the publish is as close to all-or-nothing as
 #                       possible. Pushes to docker.io (always) and
 #                       gcr.io/gcr-for-testing [push-images-to-gcr-also].
@@ -67,16 +67,15 @@ version: 2.1
 #
 # Docker tag scheme (scripts/ci/helpers.bash: set_nightly_version → find_arangodb_version):
 #   per-arch:  arangodb/enterprise-preview:<VERSION>-<ARCH>              e.g. 3.12.10-nightly.20260702-amd64
-#   rolling:   arangodb/enterprise-preview:<MAJOR_MINOR>-nightly-<ARCH>  e.g. 3.12-nightly-amd64
-#              arangodb/enterprise-preview:devel-nightly-<ARCH>          (only when the tree was "devel")
 #   manifests: arangodb/enterprise-preview:<VERSION>                     e.g. 3.12.10-nightly.20260702
 #              arangodb/enterprise-preview:<MAJOR_MINOR>-nightly         e.g. 3.12-nightly
 #              arangodb/enterprise-preview:devel-nightly                 (only when the tree was "devel")
+#   Every manifest references the dated per-arch images directly; no
+#   rolling per-arch tags are pushed.
 #   The UBI and Ubuntu images insert -ubi / -deb after the version part and
 #   before the arch suffix (oskar: DOCKER_TAG-$DOCKER_DISTRO), e.g.
-#   3.12.10-nightly.20260702-ubi-amd64, 3.12-nightly-deb-arm64v8, and form
-#   <TAG>-ubi / <TAG>-deb manifests, e.g. 3.12-nightly-ubi. Alpine stays
-#   suffix-less.
+#   3.12.10-nightly.20260702-ubi-amd64, and form <TAG>-ubi / <TAG>-deb
+#   manifests, e.g. 3.12-nightly-ubi. Alpine stays suffix-less.
 #
 # Required environment (contexts / project settings):
 #   CLAMAV_DB_BUCKET                s3 bucket caching the ClamAV database
@@ -866,11 +865,8 @@ jobs:
               echo
               echo "Tags applied by publish-nightly (docker.io, plus GCR when selected):"
               echo "  ${VERSION_TAG}"
-              while read -r ROLLING_TAG; do
-                echo "  ${IMAGE}:${ROLLING_TAG}${SUFFIX}-${TAG_ARCH}"
-              done < /tmp/nightly/rolling-tags.txt
               echo
-              echo "Multi-arch manifest tags (both architectures):"
+              echo "Multi-arch manifest tags (both architectures, referencing the dated per-arch images):"
               echo "  ${IMAGE}:${VERSION}${SUFFIX}"
               while read -r ROLLING_TAG; do
                 echo "  ${IMAGE}:${ROLLING_TAG}${SUFFIX}"
@@ -1151,7 +1147,7 @@ jobs:
     #           while nothing visible has changed yet.
     #   commit: server-side rsync staging -> live nightly tree
     #           (oskar: copyPackagesToStage2 + nightlyUploadFiles.fish), then
-    #           flip the rolling Docker tags + multi-arch manifests (oskar:
+    #           update the multi-arch manifest tags (oskar:
     #           pushDockerImage + makeDockerMultiarch). Blobs are already in
     #           the registries, so these are fast, retried metadata-only
     #           operations - the window for partial visibility is seconds.
@@ -1260,8 +1256,8 @@ jobs:
             fi
             # Uploads all image blobs under the dated per-arch tags (e.g.
             # 3.12.10-nightly.20260702-amd64), which no user consumes.
-            # Nothing that users pull changes until the commit step flips the
-            # rolling tags and manifests.
+            # Nothing that users pull changes until the commit step updates
+            # the multi-arch manifests.
             VERSION="$(cat /tmp/nightly/nightly-version.txt)"
             # The image is always arangodb/enterprise-preview; the registry
             # prefix selects where it is pushed (docker.io always, GCR when
@@ -1312,7 +1308,7 @@ jobs:
               done
             done
       - run:
-          name: Commit nightly (promote packages, flip Docker tags)
+          name: Commit nightly (promote packages, push Docker manifests)
           command: |
             # The "commit point": everything slow or failure-prone already
             # happened, so only fast, retried metadata operations are left
@@ -1374,22 +1370,10 @@ jobs:
 
               distro_suffix() { if [ "$1" = "alpine" ]; then echo ""; else echo "-$1"; fi; }
 
+              # No rolling per-arch tags: every manifest (dated and rolling)
+              # references the dated per-arch images pushed in the stage
+              # phase directly.
               REPORT=/tmp/docker-publish-report.txt
-              printf '\nRolling per-arch tags (commit phase):\n' >> "${REPORT}"
-              for DISTRO in "${DISTROS[@]}"; do
-                SUFFIX="$(distro_suffix "${DISTRO}")"
-                for REG_PREFIX in "${REG_PREFIXES[@]}"; do
-                  REPO="${REG_PREFIX}${IMAGE}"
-                  for TAG_ARCH in amd64 arm64v8; do
-                    for ROLLING_TAG in "${ROLLING_TAGS[@]}"; do
-                      docker tag "${IMAGE}:${VERSION}${SUFFIX}-${TAG_ARCH}" "${REPO}:${ROLLING_TAG}${SUFFIX}-${TAG_ARCH}"
-                      retry docker push "${REPO}:${ROLLING_TAG}${SUFFIX}-${TAG_ARCH}"
-                      echo "  ${REPO}:${ROLLING_TAG}${SUFFIX}-${TAG_ARCH}" >> "${REPORT}"
-                    done
-                  done
-                done
-              done
-
               printf '\nMulti-arch manifest tags (what users pull):\n' >> "${REPORT}"
               for DISTRO in "${DISTROS[@]}"; do
                 SUFFIX="$(distro_suffix "${DISTRO}")"
