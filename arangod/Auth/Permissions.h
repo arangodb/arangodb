@@ -149,6 +149,25 @@ struct UseCollection {
   CollectionAccessLevel level;
 };
 
+// May the current identity dump (read out via arangodump) this collection?
+// Behaves like `UseCollection(Read)`, except that in the classic system it
+// is additionally granted to identities with RW access to the `_system`
+// database (i.e. "admins", equivalent to `Admin{AdminDump}`).
+struct DumpCollection {
+  std::string db;
+  std::string name;
+};
+
+// May the current identity restore (write via arangorestore) this
+// collection? Behaves like `UseCollection(WriteData)`, except that in the
+// classic system it is additionally granted to identities with RW access to
+// the `_system` database (i.e. "admins", equivalent to
+// `Admin{AdminRestore}`).
+struct RestoreCollection {
+  std::string db;
+  std::string name;
+};
+
 // ---------------------------------------------------------------------------
 // Views
 // ---------------------------------------------------------------------------
@@ -284,7 +303,7 @@ using Permission = std::variant<
     perms::UseDatabase,
     // collection permissions
     perms::SeeCollection, perms::CreateCollection, perms::DropCollection,
-    perms::UseCollection,
+    perms::UseCollection, perms::DumpCollection, perms::RestoreCollection,
     // view permissions
     perms::SeeView, perms::CreateView, perms::ModifyView, perms::RenameView,
     perms::DropView, perms::UseView,

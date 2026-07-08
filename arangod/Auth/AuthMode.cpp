@@ -258,6 +258,27 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
 
             return {};
           },
+          [&](p::DumpCollection const& collection) -> Result {
+            // Behaves like UseCollection(Read), but is additionally granted
+            // to identities with RW access to the _system database (which
+            // corresponds to canUseAdminAction(AdminDump) with RBAC).
+            if (isAdmin().ok()) {
+              return {};
+            }
+            return check(p::UseCollection{collection.db, collection.name,
+                                          CollectionAccessLevel::Read});
+          },
+          [&](p::RestoreCollection const& collection) -> Result {
+            // Behaves like UseCollection(WriteData), but is additionally
+            // granted to identities with RW access to the _system database
+            // (which corresponds to canUseAdminAction(AdminRestore) with
+            // RBAC).
+            if (isAdmin().ok()) {
+              return {};
+            }
+            return check(p::UseCollection{collection.db, collection.name,
+                                          CollectionAccessLevel::WriteMeta});
+          },
           [&](p::UseView const& view) -> Result {
             // In the classic system views delegate to database-level access
             // (per-view collection-level auth is not used for views).

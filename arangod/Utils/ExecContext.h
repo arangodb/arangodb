@@ -153,6 +153,21 @@ class ExecContext {
   Result canUseCollection(std::string_view db, std::string_view coll,
                           CollectionAccessLevel level) const;
 
+  // May the current identity dump (via arangodump) this collection?
+  // Behaves like `canUseCollection(db, coll, CollectionAccessLevel::Read)`,
+  // except that in Classic Mode it is additionally granted to identities
+  // with RW access to the `_system` database (i.e. "admins", equivalent to
+  // `canUseAdminAction(rbac::Category::AdminDump{})`).
+  Result canDumpCollection(std::string_view db, std::string_view coll) const;
+
+  // May the current identity restore (via arangorestore) this collection?
+  // Behaves like
+  // `canUseCollection(db, coll, CollectionAccessLevel::WriteData)`, except
+  // that in Classic Mode it is additionally granted to identities with RW
+  // access to the `_system` database (i.e. "admins", equivalent to
+  // `canUseAdminAction(rbac::Category::AdminRestore{})`).
+  Result canRestoreCollection(std::string_view db, std::string_view coll) const;
+
   Result canCreateIndex(std::string_view db, std::string_view coll) const;
   Result canDropIndex(std::string_view db, std::string_view coll) const;
 

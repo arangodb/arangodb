@@ -228,6 +228,18 @@ Result ExecContext::canUseCollection(std::string_view db, std::string_view coll,
   return can(UseCollection{.db{db}, .name{coll}, .level = level});
 }
 
+Result ExecContext::canDumpCollection(std::string_view db,
+                                      std::string_view coll) const {
+  using namespace auth::perms;
+  return can(DumpCollection{.db{db}, .name{coll}});
+}
+
+Result ExecContext::canRestoreCollection(std::string_view db,
+                                         std::string_view coll) const {
+  using namespace auth::perms;
+  return can(RestoreCollection{.db{db}, .name{coll}});
+}
+
 Result ExecContext::canCreateIndex(std::string_view db,
                                    std::string_view coll) const {
   using namespace auth::perms;

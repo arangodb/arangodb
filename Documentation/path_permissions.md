@@ -237,6 +237,9 @@ return a `Result`, so that a decline can return the actual reason
  - `canDropCollection(std::string_view db, std::string_view coll) -> Result`
  - `canUseCollection(std::string_view db, std::string_view coll, CollectionAccessLevel const level) -> Result`
 
+ - `canDumpCollection(std::string_view db, std::string_view coll) -> Result`
+ - `canRestoreCollection(std::string_view db, std::string_view coll) -> Result`
+
  - `canCreateIndex(std::string_view db, std::string_view coll) -> Result`
  - `canDropIndex(std::stgring_view db, std::string_view coll) -> Result`
 
@@ -333,7 +336,25 @@ central implementation of these methods.
       - CollectionAccessLevel::WriteMeta: needs auth::Level::RW and auth::Level::RW on database!
 
    If the user is not allowed to see the collection, this must return NOT_FOUND!
-  
+
+ - `canDumpCollection(std::string_view db, std::string_view coll) -> Result`
+
+   Behaves exactly like `canUseCollection(db, coll, CollectionAccessLevel::Read)`,
+   except that access is additionally granted if the identity has RW access to
+   the `_system` database (i.e. is an "admin"; equivalent to
+   `canUseAdminAction(rbac::Category::AdminDump{})`). This mirrors the classic
+   behaviour of `arangodump`, which could always be run by an admin, regardless
+   of specific per-collection permissions.
+
+ - `canRestoreCollection(std::string_view db, std::string_view coll) -> Result`
+
+   Behaves exactly like `canUseCollection(db, coll, CollectionAccessLevel::WriteData)`,
+   except that access is additionally granted if the identity has RW access to
+   the `_system` database (i.e. is an "admin"; equivalent to
+   `canUseAdminAction(rbac::Category::AdminRestore{})`). This mirrors the classic
+   behaviour of `arangorestore`, which could always be run by an admin, regardless
+   of specific per-collection permissions.
+
  - `canCreateIndex(std::string_view db, std::string_view coll) -> Result`
 
    The user needs to have CollectionAccessLevel::WriteMeta for the collection
@@ -491,6 +512,17 @@ central implementation of these methods.
 
    If the user is not allowed to see the collection, this must return NOT_FOUND!
   
+ - `canDumpCollection(std::string_view db, std::string_view coll) -> Result`
+
+   check collection access level to be at least RO, i.e., check RBAC action
+   `db:ReadCollection`, OR check RBAC action `db:AdminDump`.
+
+ - `canRestoreCollection(std::string_view db, std::string_view coll) -> Result`
+
+   check collection access level to be at least RWDATA, i.e., check RBAC
+   actions `db:ReadCollection` and `db:WriteCollectionData`, OR check RBAC
+   action `db:AdminRestore`.
+
  - `canCreateIndex(std::string_view db, std::string_view coll) -> Result`
 
    check `db:WriteCollectionMeta` for the collection.
