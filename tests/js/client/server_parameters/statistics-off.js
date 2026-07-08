@@ -53,12 +53,8 @@ function testSuite() {
     },
 
     testHttpMetrics : function() {
-      try {
-        IM.getMetric("arangodb_http_request_statistics_total_requests_total");
-        fail();
-      } catch (err) {
-        assertTrue(String(err).trim().search("Metric arangodb_http_request_statistics_total_requests_total not found") > 0, err);
-      }
+      let res = IM.getMetric("arangodb_http_request_statistics_total_requests_total");
+      assertEqual(res, NaN);
     },
     
     testStatisticsHistory : function() {
