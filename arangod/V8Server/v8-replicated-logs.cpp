@@ -106,7 +106,7 @@ static void JS_GetReplicatedLog(
 
   auto id = LogId{TRI_ObjectToUInt64(isolate, args[0], true)};
   if (auto r = arangodb::ExecContext::current().canUseAdminAction(
-          arangodb::rbac::Category::AdminReadReplicatedLog{});
+          arangodb::auth::perms::AdminReadReplicatedLog{});
       r.fail()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, r.errorMessage());
   }
@@ -125,7 +125,7 @@ static void JS_CreateReplicatedLog(
   v8::HandleScope scope(isolate);
 
   if (auto r = arangodb::ExecContext::current().canUseAdminAction(
-          arangodb::rbac::Category::AdminWriteReplicatedLog{});
+          arangodb::auth::perms::AdminWriteReplicatedLog{});
       r.fail()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, r.errorMessage());
   }
@@ -159,7 +159,7 @@ static void JS_Id(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   auto id = UnwrapReplicatedLog(isolate, args.Holder());
   if (auto r = arangodb::ExecContext::current().canUseAdminAction(
-          arangodb::rbac::Category::AdminReadReplicatedLog{});
+          arangodb::auth::perms::AdminReadReplicatedLog{});
       r.fail()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, r.errorMessage());
   }
@@ -177,7 +177,7 @@ static void JS_Drop(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto& vocbase = GetContextVocBase(isolate);
   auto id = UnwrapReplicatedLog(isolate, args.Holder());
   if (auto r = arangodb::ExecContext::current().canUseAdminAction(
-          arangodb::rbac::Category::AdminWriteReplicatedLog{});
+          arangodb::auth::perms::AdminWriteReplicatedLog{});
       r.fail()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, r.errorMessage());
   }
@@ -223,7 +223,7 @@ static void JS_Insert(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto& vocbase = GetContextVocBase(isolate);
   auto id = UnwrapReplicatedLog(isolate, args.Holder());
   if (auto r = arangodb::ExecContext::current().canUseAdminAction(
-          arangodb::rbac::Category::AdminWriteReplicatedLog{});
+          arangodb::auth::perms::AdminWriteReplicatedLog{});
       r.fail()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, r.errorMessage());
   }
@@ -274,7 +274,7 @@ static void JS_Ping(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto& vocbase = GetContextVocBase(isolate);
   auto id = UnwrapReplicatedLog(isolate, args.Holder());
   if (auto r = arangodb::ExecContext::current().canUseAdminAction(
-          arangodb::rbac::Category::AdminWriteReplicatedLog{});
+          arangodb::auth::perms::AdminWriteReplicatedLog{});
       r.fail()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, r.errorMessage());
   }
@@ -313,7 +313,7 @@ static void JS_MultiInsert(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto& vocbase = GetContextVocBase(isolate);
   auto id = UnwrapReplicatedLog(isolate, args.Holder());
   if (auto r = arangodb::ExecContext::current().canUseAdminAction(
-          arangodb::rbac::Category::AdminWriteReplicatedLog{});
+          arangodb::auth::perms::AdminWriteReplicatedLog{});
       r.fail()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, r.errorMessage());
   }
@@ -370,7 +370,7 @@ static void JS_Status(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto& vocbase = GetContextVocBase(isolate);
   auto id = UnwrapReplicatedLog(isolate, args.Holder());
   if (auto r = arangodb::ExecContext::current().canUseAdminAction(
-          arangodb::rbac::Category::AdminReadReplicatedLog{});
+          arangodb::auth::perms::AdminReadReplicatedLog{});
       r.fail()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, r.errorMessage());
   }
@@ -394,7 +394,7 @@ static void JS_GlobalStatus(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto& vocbase = GetContextVocBase(isolate);
   auto id = UnwrapReplicatedLog(isolate, args.Holder());
   if (auto r = arangodb::ExecContext::current().canUseAdminAction(
-          arangodb::rbac::Category::AdminReadReplicatedLog{});
+          arangodb::auth::perms::AdminReadReplicatedLog{});
       r.fail()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, r.errorMessage());
   }
@@ -432,7 +432,7 @@ static void JS_Head(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto& vocbase = GetContextVocBase(isolate);
   auto id = UnwrapReplicatedLog(isolate, args.Holder());
   if (auto r = arangodb::ExecContext::current().canUseAdminAction(
-          arangodb::rbac::Category::AdminReadReplicatedLog{});
+          arangodb::auth::perms::AdminReadReplicatedLog{});
       r.fail()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, r.errorMessage());
   }
@@ -467,7 +467,7 @@ static void JS_Tail(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto& vocbase = GetContextVocBase(isolate);
   auto id = UnwrapReplicatedLog(isolate, args.Holder());
   if (auto r = arangodb::ExecContext::current().canUseAdminAction(
-          arangodb::rbac::Category::AdminReadReplicatedLog{});
+          arangodb::auth::perms::AdminReadReplicatedLog{});
       r.fail()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, r.errorMessage());
   }
@@ -502,7 +502,7 @@ static void JS_Slice(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto& vocbase = GetContextVocBase(isolate);
   auto id = UnwrapReplicatedLog(isolate, args.Holder());
   if (auto r = arangodb::ExecContext::current().canUseAdminAction(
-          arangodb::rbac::Category::AdminReadReplicatedLog{});
+          arangodb::auth::perms::AdminReadReplicatedLog{});
       r.fail()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, r.errorMessage());
   }
@@ -541,7 +541,7 @@ static void JS_Poll(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto& vocbase = GetContextVocBase(isolate);
   auto id = UnwrapReplicatedLog(isolate, args.Holder());
   if (auto r = arangodb::ExecContext::current().canUseAdminAction(
-          arangodb::rbac::Category::AdminReadReplicatedLog{});
+          arangodb::auth::perms::AdminReadReplicatedLog{});
       r.fail()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, r.errorMessage());
   }
@@ -580,7 +580,7 @@ static void JS_At(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto& vocbase = GetContextVocBase(isolate);
   auto id = UnwrapReplicatedLog(isolate, args.Holder());
   if (auto r = arangodb::ExecContext::current().canUseAdminAction(
-          arangodb::rbac::Category::AdminReadReplicatedLog{});
+          arangodb::auth::perms::AdminReadReplicatedLog{});
       r.fail()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, r.errorMessage());
   }
@@ -613,7 +613,7 @@ static void JS_Release(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto& vocbase = GetContextVocBase(isolate);
   auto id = UnwrapReplicatedLog(isolate, args.Holder());
   if (auto r = arangodb::ExecContext::current().canUseAdminAction(
-          arangodb::rbac::Category::AdminWriteReplicatedLog{});
+          arangodb::auth::perms::AdminWriteReplicatedLog{});
       r.fail()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, r.errorMessage());
   }
@@ -641,7 +641,7 @@ static void JS_Compact(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto& vocbase = GetContextVocBase(isolate);
   auto id = UnwrapReplicatedLog(isolate, args.Holder());
   if (auto r = arangodb::ExecContext::current().canUseAdminAction(
-          arangodb::rbac::Category::AdminWriteReplicatedLog{});
+          arangodb::auth::perms::AdminWriteReplicatedLog{});
       r.fail()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, r.errorMessage());
   }

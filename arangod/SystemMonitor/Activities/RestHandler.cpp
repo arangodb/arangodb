@@ -126,7 +126,7 @@ auto RestHandler::executeAsync() -> futures::Future<futures::Unit> {
     }
   } else {
     if (auto r = ExecContext::current().canUseAdminAction(
-            arangodb::rbac::Category::AdminMonitoringInternal{});
+            auth::perms::AdminMonitoringInternal{});
         r.fail()) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                     r.errorMessage());

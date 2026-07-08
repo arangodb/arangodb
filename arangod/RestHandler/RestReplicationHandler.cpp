@@ -137,7 +137,7 @@ auto handlingOfExistingCollection(TRI_vocbase_t& vocbase,
   ExecContextSuperuserScope escope(
       ExecContext::current().isSuperuser() ||
       (ExecContext::current()
-           .canUseAdminAction(arangodb::rbac::Category::AdminRestore{})
+           .canUseAdminAction(auth::perms::AdminRestore{})
            .ok() &&
        !ServerState::readOnly()));
 
@@ -841,8 +841,7 @@ Result RestReplicationHandler::testPermissions() {
 
       if (!collectionName.empty()) {
         auto& exec = ExecContext::current();
-        if (exec.canUseAdminAction(arangodb::rbac::Category::AdminDump{})
-                .fail() &&
+        if (exec.canUseAdminAction(auth::perms::AdminDump{}).fail() &&
             exec.canUseCollection(_vocbase.name(), collectionName,
                                   AccessLevel::Read)
                 .fail()) {
@@ -879,9 +878,7 @@ Result RestReplicationHandler::testPermissions() {
                 vocbase->lookupCollection(collectionName) == nullptr) {
               // 1.) re-create collection, means: overwrite=true (rw database)
               // OR 2.) not existing, new collection (rw database)
-              if (exec.canUseAdminAction(
-                          arangodb::rbac::Category::AdminRestore{})
-                      .fail() &&
+              if (exec.canUseAdminAction(auth::perms::AdminRestore{}).fail() &&
                   exec.canCreateCollection(dbName, collectionName).fail()) {
                 return Result(TRI_ERROR_FORBIDDEN,
                               absl::StrCat("insufficient permissions to access "
@@ -892,9 +889,7 @@ Result RestReplicationHandler::testPermissions() {
             } else {
               // 3.) Existing collection (ro database, rw collection)
               // no overwrite. restoring into an existing collection
-              if (exec.canUseAdminAction(
-                          arangodb::rbac::Category::AdminRestore{})
-                      .fail() &&
+              if (exec.canUseAdminAction(auth::perms::AdminRestore{}).fail() &&
                   exec.canUseCollection(dbName, collectionName,
                                         AccessLevel::WriteData)
                       .fail()) {
@@ -1047,8 +1042,7 @@ void RestReplicationHandler::handleCommandClusterInventory() {
 
   resultBuilder.add("collections", VPackValue(VPackValueType::Array));
   for (std::shared_ptr<LogicalCollection> const& c : cols) {
-    if (exec.canUseAdminAction(arangodb::rbac::Category::AdminClusterInfo{})
-            .fail() &&
+    if (exec.canUseAdminAction(auth::perms::AdminClusterInfo{}).fail() &&
         exec.canUseCollection(dbName, c->name(), AccessLevel::Read).fail()) {
       continue;
     }
@@ -1341,7 +1335,7 @@ futures::Future<Result> RestReplicationHandler::processRestoreData(
 
   ExecContextSuperuserScope escope(
       ExecContext::current()
-          .canUseAdminAction(arangodb::rbac::Category::AdminRestore{})
+          .canUseAdminAction(auth::perms::AdminRestore{})
           .ok() &&
       !ServerState::readOnly());
 
@@ -1894,7 +1888,7 @@ Result RestReplicationHandler::processRestoreIndexes(
 
   ExecContextSuperuserScope escope(
       ExecContext::current()
-          .canUseAdminAction(arangodb::rbac::Category::AdminRestore{})
+          .canUseAdminAction(auth::perms::AdminRestore{})
           .ok() &&
       !ServerState::readOnly());
 
@@ -2012,7 +2006,7 @@ Result RestReplicationHandler::processRestoreIndexesCoordinator(
 
   // Check permissions:
   auto& exec = ExecContext::current();
-  if (exec.canUseAdminAction(rbac::Category::AdminRestore{}).fail()) {
+  if (exec.canUseAdminAction(auth::perms::AdminRestore{}).fail()) {
     if (auto r = exec.canCreateIndex(_vocbase.name(), name); r.fail()) {
       return r;
     }
@@ -2168,7 +2162,7 @@ void RestReplicationHandler::handleCommandRestoreView() {
         return;
       }
 
-      auto r1 = exec.canUseAdminAction(rbac::Category::AdminRestore{});
+      auto r1 = exec.canUseAdminAction(auth::perms::AdminRestore{});
       auto r2 = exec.canDropView(_vocbase.name(), name);
       if (r1.fail() && r2.fail()) {
         generateError(r2);
@@ -2183,7 +2177,7 @@ void RestReplicationHandler::handleCommandRestoreView() {
     }
 
     // must create() since view was drop()ed
-    auto r1 = exec.canUseAdminAction(rbac::Category::AdminRestore{});
+    auto r1 = exec.canUseAdminAction(auth::perms::AdminRestore{});
     auto r2 = exec.canCreateView(_vocbase.name(), name);
     if (r1.fail() && r2.fail()) {
       generateError(r2);
@@ -3219,8 +3213,7 @@ bool RestReplicationHandler::prepareCollectionForRevisionOperation(
 
   ExecContextSuperuserScope escope(
       ExecContext::current()
-          .canUseAdminAction(
-              arangodb::rbac::Category::AdminWriteReplicatedLog{})
+          .canUseAdminAction(auth::perms::AdminWriteReplicatedLog{})
           .ok());
 
   if (auto r = ExecContext::current().canUseCollection(

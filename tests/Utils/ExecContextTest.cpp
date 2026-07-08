@@ -61,8 +61,7 @@ TEST(ExecContextTest, basic_construction) {
   EXPECT_EQ(ctx.user(), "testuser");
   EXPECT_TRUE(ctx.canUseDatabase("_system", DatabaseAccessLevel::Write).ok());
   EXPECT_TRUE(ctx.canUseDatabase("testdb", DatabaseAccessLevel::Write).ok());
-  EXPECT_TRUE(
-      ctx.canUseAdminAction(arangodb::rbac::Category::AdminBackup{}).ok());
+  EXPECT_TRUE(ctx.canUseAdminAction(arangodb::auth::perms::AdminBackup{}).ok());
   EXPECT_FALSE(ctx.isSuperuser());
   // EXPECT_FALSE(ctx.isReadOnly());
   EXPECT_FALSE(ctx.hasJwtToken());

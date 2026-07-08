@@ -47,7 +47,7 @@ RestUsageMetricsHandler::RestUsageMetricsHandler(
 // Mounted at /_admin/usage-metrics (prefix)
 auto RestUsageMetricsHandler::executeAsync() -> futures::Future<futures::Unit> {
   if (auto r = ExecContext::current().canUseHardenedAction(
-          rbac::Category::AdminMonitoringInternal{});
+          auth::perms::AdminMonitoringInternal{});
       r.fail()) {
     // don't leak information about server internals here
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,

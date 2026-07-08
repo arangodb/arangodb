@@ -78,7 +78,7 @@ arangodb::Result RestAdminLogHandler::verifyPermitted(RequestType const type) {
   } else {
     if (type == RequestType::GET) {
       if (auto r = ExecContext::current().canUseAdminAction(
-              arangodb::rbac::Category::AdminReadLogs{});
+              auth::perms::AdminReadLogs{});
           r.fail()) {
         return r;
       }
@@ -86,7 +86,7 @@ arangodb::Result RestAdminLogHandler::verifyPermitted(RequestType const type) {
       // Please note that this means that both `clearLogs` as well as
       // setting logs levels is allowed by AdminSetLogLevel!
       if (auto r = ExecContext::current().canUseAdminAction(
-              arangodb::rbac::Category::AdminSetLogLevel{});
+              auth::perms::AdminSetLogLevel{});
           r.fail()) {
         return r;
       }

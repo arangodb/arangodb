@@ -52,7 +52,7 @@ auto RestLogHandler::executeAsync() -> futures::Future<futures::Unit> {
   // for now required admin access to the database
   if (_request->requestType() == RequestType::GET) {
     if (auto r = ExecContext::current().canUseAdminAction(
-            arangodb::rbac::Category::AdminReadReplicatedLog{});
+            auth::perms::AdminReadReplicatedLog{});
         r.fail()) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                     r.errorMessage());
@@ -60,7 +60,7 @@ auto RestLogHandler::executeAsync() -> futures::Future<futures::Unit> {
     }
   } else {
     if (auto r = ExecContext::current().canUseAdminAction(
-            arangodb::rbac::Category::AdminWriteReplicatedLog{});
+            auth::perms::AdminWriteReplicatedLog{});
         r.fail()) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                     r.errorMessage());

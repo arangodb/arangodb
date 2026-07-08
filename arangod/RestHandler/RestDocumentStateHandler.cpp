@@ -75,7 +75,7 @@ RestStatus RestDocumentStateHandler::execute() {
   auto const type = _request->requestType();
   if (type == RequestType::GET) {
     if (auto r = ExecContext::current().canUseAdminAction(
-            arangodb::rbac::Category::AdminReadReplicatedLog{});
+            auth::perms::AdminReadReplicatedLog{});
         r.fail()) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                     r.errorMessage());
@@ -83,7 +83,7 @@ RestStatus RestDocumentStateHandler::execute() {
     }
   } else {
     if (auto r = ExecContext::current().canUseAdminAction(
-            arangodb::rbac::Category::AdminWriteReplicatedLog{});
+            auth::perms::AdminWriteReplicatedLog{});
         r.fail()) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                     r.errorMessage());

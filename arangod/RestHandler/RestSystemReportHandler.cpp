@@ -81,7 +81,7 @@ std::string exec(std::string const& cmd) {
 // Mounted at /_admin/system-report (exact)
 RestStatus RestSystemReportHandler::execute() {
   if (auto r = ExecContext::current().canUseHardenedAction(
-          arangodb::rbac::Category::AdminMonitoringInternal{});
+          arangodb::auth::perms::AdminMonitoringInternal{});
       r.fail()) {
     // dont leak information about server internals here
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,

@@ -275,42 +275,8 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
             return check(
                 p::UseDatabase{analyzer.db, DatabaseAccessLevel::Read});
           },
-          [&](p::Admin const& /*admin*/) -> Result {
-            // Classic admin action requires RW access to the _system database.
-            return isAdmin();
-          },
-          // Flat admin-class actions (moved out of rbac::Category). In the
-          // classic system they all collapse to "RW on _system", exactly like
-          // p::Admin above.
-          // TODO Once the admin actions are described by a concept (see the
-          //      type-list side-quest), these can collapse into a single
-          //      `[&](IsAdminAction auto const&) { return isAdmin(); }`.
-          [&](p::AdminReadUser const&) -> Result { return isAdmin(); },
-          [&](p::AdminMoveShards const&) -> Result { return isAdmin(); },
-          [&](p::AdminMonitoring const&) -> Result { return isAdmin(); },
-          [&](p::AdminMonitoringInternal const&) -> Result { return isAdmin(); },
-          [&](p::AdminAuthReload const&) -> Result { return isAdmin(); },
-          [&](p::AdminCrashHandler const&) -> Result { return isAdmin(); },
-          [&](p::AdminApiCalls const&) -> Result { return isAdmin(); },
-          [&](p::AdminAqlQueries const&) -> Result { return isAdmin(); },
-          [&](p::AdminShutdown const&) -> Result { return isAdmin(); },
-          [&](p::AdminReadLogs const&) -> Result { return isAdmin(); },
-          [&](p::AdminSetLogLevel const&) -> Result { return isAdmin(); },
-          [&](p::AdminOptions const&) -> Result { return isAdmin(); },
-          [&](p::AdminSupervisionState const&) -> Result { return isAdmin(); },
-          [&](p::AdminRemoveServer const&) -> Result { return isAdmin(); },
-          [&](p::AdminClusterInfo const&) -> Result { return isAdmin(); },
-          [&](p::AdminMaintenance const&) -> Result { return isAdmin(); },
-          [&](p::AdminRebalance const&) -> Result { return isAdmin(); },
-          [&](p::AdminLicense const&) -> Result { return isAdmin(); },
-          [&](p::AdminBackup const&) -> Result { return isAdmin(); },
-          [&](p::AdminReadReplicatedLog const&) -> Result { return isAdmin(); },
-          [&](p::AdminWriteReplicatedLog const&) -> Result { return isAdmin(); },
-          [&](p::AdminDump const&) -> Result { return isAdmin(); },
-          [&](p::AdminRestore const&) -> Result { return isAdmin(); },
-          [&](p::AdminWalAccess const&) -> Result { return isAdmin(); },
-          [&](p::AdminReadAgency const&) -> Result { return isAdmin(); },
-          [&](p::AdminQueryCache const&) -> Result { return isAdmin(); },
+          // Classic admin action requires RW access to the _system database.
+          [&](p::AnyAdmin auto const&) -> Result { return isAdmin(); },
           [&](p::SeeDatabase const& database) -> Result {
             return check(
                 p::UseDatabase{database.name, DatabaseAccessLevel::Read});

@@ -171,9 +171,7 @@ void RestDumpHandler::handleCommandDumpStart() {
   //      before. Should it be specific to `database`?
   //      Should isSingleServer() be part of the permission check?
   ExecContextSuperuserScope escope(
-      ExecContext::current()
-          .canUseAdminAction(rbac::Category::AdminDump{})
-          .ok() &&
+      ExecContext::current().canUseAdminAction(auth::perms::AdminDump{}).ok() &&
       ServerState::instance()->isSingleServer());
 
   auto guard =
@@ -316,7 +314,7 @@ Result RestDumpHandler::validateRequest() {
         // an admin user, you can dump every collection
         ExecContextSuperuserScope escope(
             ExecContext::current()
-                .canUseAdminAction(arangodb::rbac::Category::AdminDump{})
+                .canUseAdminAction(auth::perms::AdminDump{})
                 .ok());
 
         // validate permissions for all participating shards

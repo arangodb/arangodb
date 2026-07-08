@@ -48,7 +48,7 @@ RestLicenseHandler::RestLicenseHandler(
 // Mounted at /_admin/license (prefix)
 RestStatus RestLicenseHandler::execute() {
   if (auto r = ExecContext::current().canUseHardenedAction(
-          arangodb::rbac::Category::AdminLicense{});
+          arangodb::auth::perms::AdminLicense{});
       r.fail()) {
     // dont leak information about server internals here
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,

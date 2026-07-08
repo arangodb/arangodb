@@ -51,8 +51,8 @@ bool RestOptionsBaseHandler::checkAuthentication() {
     }
   }
 
-  if (auto r = ExecContext::current().canUseAdminAction(
-          arangodb::rbac::Category::AdminOptions{});
+  if (auto r =
+          ExecContext::current().canUseAdminAction(auth::perms::AdminOptions{});
       apiPolicy == "admin" && r.fail()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                   r.errorMessage());

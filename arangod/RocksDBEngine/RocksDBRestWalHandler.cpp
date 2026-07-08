@@ -81,7 +81,7 @@ RestStatus RocksDBRestWalHandler::execute() {
     }
 #else
     if (auto r = ExecContext::current().canUseAdminAction(
-            arangodb::rbac::Category::AdminWalAccess{});
+            auth::perms::AdminWalAccess{});
         r.fail()) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                     r.errorMessage());

@@ -165,24 +165,6 @@ std::string ExecContext::authMethod() const {
 }
 #endif
 
-Result ExecContext::canUseAdminAction(rbac::Category::Any const& action) const {
-  using namespace auth::perms;
-  return can(Admin{.action{action}});
-}
-
-Result ExecContext::canUseHardenedAction(
-    rbac::Category::Any const& action) const {
-  using namespace auth::perms;
-  ADB_PROD_ASSERT(!_authMode.isRbac() || _isRestApiHardened)
-      << "RBAC is enabled, but REST API is not hardened: "
-         "RBAC implies --server.harden=true ("
-         "ServerSecurityFeatureOptions::hardenedRestApi = true).";
-  if (!_isRestApiHardened) {
-    return {};
-  }
-  return can(Admin{.action{action}});
-}
-
 Result ExecContext::canSeeDatabase(std::string_view db) const {
   using namespace auth::perms;
   return can(SeeDatabase{.name{db}});

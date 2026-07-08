@@ -44,7 +44,7 @@ RestAuthReloadHandler::RestAuthReloadHandler(
 // Mounted at /_admin/auth/reload (exact)
 RestStatus RestAuthReloadHandler::execute() {
   if (auto r = ExecContext::current().canUseAdminAction(
-          arangodb::rbac::Category::AdminAuthReload{});
+          auth::perms::AdminAuthReload{});
       r.fail()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                   r.errorMessage());

@@ -140,8 +140,7 @@ RestStatus RestUsersHandler::getRequest(auth::UserManager* um) {
 
   std::vector<std::string> suffixes = _request->decodedSuffixes();
   if (suffixes.empty()) {
-    if (auto r =
-            exec.canUseAdminAction(arangodb::rbac::Category::AdminReadUser{});
+    if (auto r = exec.canUseAdminAction(auth::perms::AdminReadUser{});
         r.fail()) {
       generateError(r);
       return RestStatus::DONE;

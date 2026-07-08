@@ -194,7 +194,7 @@ RestStatus RestWalAccessHandler::execute() {
   }
 
   if (auto r = ExecContext::current().canUseAdminAction(
-          arangodb::rbac::Category::AdminWalAccess{});
+          auth::perms::AdminWalAccess{});
       r.fail()) {
     generateError(r);
     return RestStatus::DONE;
