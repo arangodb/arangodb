@@ -30,8 +30,14 @@ const arangodb = require("@arangodb");
 const db = arangodb.db;
 const tasks = require("@arangodb/tasks");
 const _ = require("lodash");
-const wait = require("internal").wait;
+const {
+  wait,
+  time,
+  wal,
+} = require("internal");
+let { instanceRole } = require('@arangodb/testutils/instance');
 const CI = require('@arangodb/cluster-info');
+let IM = global.instanceManager;
 
 const tasksCompleted = () => {
   return 0 === tasks.get().filter((task) => {
@@ -39,20 +45,17 @@ const tasksCompleted = () => {
   }).length;
 };
 const waitForTasks = () => {
-  const time = require("internal").time;
   const start = time();
   while (!tasksCompleted()) {
     if (time() - start > 300) { // wait for 5 minutes maximum
       fail("Timeout after 5 minutes");
     }
-    require("internal").wait(0.5, false);
+    wait(0.5, false);
   }
-  require('internal').wal.flush(true, true);
+  wal.flush(true, true);
   // wait an extra second for good measure
-  require("internal").wait(1.0, false);
+  wait(1.0, false);
 };
-let { instanceRole } = require('@arangodb/testutils/instance');
-let IM = global.instanceManager;
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
@@ -108,17 +111,10 @@ function ClusterTransactionSuite() {
   ////////////////////////////////////////////////////////////////////////////////
 
   function failFollower() {
-    var follower = cinfo.shards[shards[0]][1];
-    var url = IM.getInstanceByID(follower).url;
-    let arangods = IM.getInstancesRole(instanceRole.dbserver);
-
-    var pos = _.findIndex(arangods,
-                          x => x.url === url);
-  
-    assertTrue(pos >= 0);
-    assertTrue(arangods[pos].suspend());
+    var followerID = cinfo.shards[shards[0]][1];
+    var follower = IM.getInstanceByID(followerID);
+    assertTrue(follower.suspend());
     console.info("Have failed follower", follower);
-    return pos;
   }
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -127,13 +123,8 @@ function ClusterTransactionSuite() {
 
   function healFollower() {
     var followerID = cinfo.shards[shards[0]][1];
-    var url = IM.getInstanceByID(followerID).url;
-    let arangods = IM.getInstancesRole(instanceRole.dbserver);
-
-    var pos = _.findIndex(arangods,
-                          x => x.url === url);
-    assertTrue(pos >= 0);
-    assertTrue(arangods[pos].resume());
+    var follower = IM.getInstanceByID(followerID);
+    assertTrue(follower.resume());
     console.info("Have healed follower", followerID);
   }
 

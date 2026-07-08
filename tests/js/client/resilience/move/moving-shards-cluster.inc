@@ -696,18 +696,12 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       var _dbservers = _.clone(dbservers);
       _dbservers.sort();
       assertTrue(shrinkCluster(4));
-      print("shrank to 4");
       assertTrue(testServerEmpty(1, true));
-      print("yes its empty");
       assertTrue(waitForSupervision());
-      print("Supervision passed");
       assertTrue(shrinkCluster(3));
-      print("shrank to 3");
       assertTrue(testServerEmpty(2, true));
       assertTrue(waitForSupervision());
-      print("Supervision passed");
       assertTrue(shrinkCluster(2));
-      print("shrank to 2");
       assertTrue(testServerEmpty(3, true));
       assertTrue(waitForSupervision());
       checkCollectionContents();
