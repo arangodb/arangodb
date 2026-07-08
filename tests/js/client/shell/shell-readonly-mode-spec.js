@@ -154,7 +154,7 @@ describe('Readonly mode api', function () {
     }
 
     let server = setReadOnlyAndGetDBServer();
-    let resp = arango.GET_RAW(endpoint + '/_admin/metrics?serverId=' + server);
+    let resp = arango.GET_RAW('/_admin/metrics?serverId=' + server);
     expect(resp.code).to.equal(200);
     const body = typeof resp.body === 'string' ? resp.body : String(resp.body);
     expect(body).to.include('arangodb_server_statistics_server_uptime_total');
