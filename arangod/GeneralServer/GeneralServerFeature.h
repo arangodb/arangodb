@@ -40,6 +40,7 @@
 #include <cstdint>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 namespace arangodb {
@@ -117,18 +118,22 @@ class GeneralServerFeature final
   void defineInitialHandlers(rest::RestHandlerFactory& f);
   // define remaining REST handlers
   void defineRemainingHandlers(rest::RestHandlerFactory& f);
+  // register one Counter per rest::ResponseCode enumerator, once, so
+  // countHttpResponseCode() never has to touch the metrics registry
+  void initResponseCodeCounters();
 
   GeneralServerOptions _options;
   std::shared_ptr<rest::RestHandlerFactory> _handlerFactory;
   std::unique_ptr<rest::AsyncJobManager> _jobManager;
   std::vector<std::unique_ptr<rest::GeneralServer>> _servers;
+  std::unordered_map<rest::ResponseCode, metrics::Counter*> _responseCodeCounters;
 
   // Some metrics about requests and connections
   metrics::Histogram<metrics::LogScale<uint64_t>>& _requestBodySizeHttp1;
   metrics::Histogram<metrics::LogScale<uint64_t>>& _requestBodySizeHttp2;
   metrics::Counter& _http1Connections;
   metrics::Counter& _http2Connections;
-  metrics::MetricsFeature& _metricsFeature;
+  metrics::IRegistry& _metricsRegistry;
 };
 
 }  // namespace arangodb
