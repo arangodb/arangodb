@@ -65,7 +65,7 @@ function EdgeIndexCompressionSuite() {
       c.insert(docs);
       
       const oldUncompressedSize = IM.getMetric(uncompressedName);
-      const oldCompressedSize = IM.getMetric("rocksdb_cache_edge_inserts_effective_entries_size_total");
+      const oldCompressedSize = IM.getMetric(effectiveName);
 
       runWithRetry(() => {
         let result = db._query(`FOR i IN 0..${n - 1} FOR e IN ${cn} FILTER e._from == CONCAT('v/test', i) RETURN e`);
