@@ -190,6 +190,10 @@ static ErrorCode ExtractCurrentFile(
       // create target directory recursively
       std::string tmp =
           basics::FileUtils::buildFilename(outPath, filenameInZip);
+      if (!validatePath(tmp)) {
+        errorMessage = std::format("not allowed to create directory {}", tmp);
+        return TRI_ERROR_INTERNAL;
+      }
       auto res =
           TRI_CreateRecursiveDirectory(tmp.c_str(), systemError, errorMessage);
 
@@ -208,6 +212,10 @@ static ErrorCode ExtractCurrentFile(
       // strip filename so we only have the directory name
       std::string dir =
           TRI_Dirname(basics::FileUtils::buildFilename(outPath, filenameInZip));
+      if (!validatePath(dir)) {
+        errorMessage = std::format("not allowed to create directory {}", dir);
+        return TRI_ERROR_INTERNAL;
+      }
       auto res =
           TRI_CreateRecursiveDirectory(dir.c_str(), systemError, errorMessage);
 
