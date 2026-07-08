@@ -27,7 +27,6 @@
 const jsunity = require('jsunity');
 const arangodb = require('@arangodb');
 const db = arangodb.db;
-const request = require("@arangodb/request");
 let { instanceRole } = require('@arangodb/testutils/instance');
 let IM = global.instanceManager;
 

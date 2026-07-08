@@ -115,33 +115,29 @@ function SynchronousReplicationWithViewSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
   function failFollower() {
-    var follower = cinfo.shards[shards[0]][1];
-    var url = IM.getInstanceByID(follower).url;
-    let arangods = IM.getInstancesRole(instanceRole.dbserver);
-    // Now look for instanceManager:
-    var pos = _.findIndex(arangods,
-                          x => x.url === url);
-    assertTrue(pos >= 0);
-    assertTrue(arangods[pos].suspend());
-    console.info("Have failed follower", follower);
-    failedState.follower = follower;
+    var followerID = cinfo.shards[shards[0]][1];
+    var follower = IM.getInstanceByID(followerID);
+    assertTrue(follower.suspend());
+    console.info("Have failed follower", followerID);
+    failedState.follower = followerID;
   }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief heal the follower
 ////////////////////////////////////////////////////////////////////////////////
 
-  function healFollower(follower = null) {
-    if (follower == null) follower = cinfo.shards[shards[0]][1];
-    var url = IM.getInstanceByID(follower).url;
-    let arangods = IM.getInstancesRole(instanceRole.dbserver);
-    // Now look for instanceManager:
-    var pos = _.findIndex(arangods,
-                          x => x.url === url);
-    assertTrue(pos >= 0);
-    assertTrue(arangods[pos].resume());
-    console.info("Have healed follower", follower);
-    if (failedState.follower === follower) failedState.follower = null;
+  function healFollower(followerID = null) {
+    if (followerID == null) {
+      followerID = cinfo.shards[shards[0]][1];
+    } else if (typeof(followerID) !== "string") {
+      followerID = followerID.id;
+    }
+    var follower = IM.getInstanceByID(followerID);
+    follower.resume();
+    console.info("Have healed follower", followerID);
+    if (failedState.followerID === followerID) {
+      failedState.follower = null;
+    }
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -149,34 +145,28 @@ function SynchronousReplicationWithViewSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
   function failLeader() {
-    var leader = cinfo.shards[shards[0]][0];
-    var url = IM.getInstanceByID(leader).url;
-    let arangods = IM.getInstancesRole(instanceRole.dbserver);
-    // Now look for instanceManager:
-    var pos = _.findIndex(arangods,
-                          x => x.url === url);
-    assertTrue(pos >= 0);
-    assertTrue(arangods[pos].suspend());
-    console.info("Have failed leader", leader);
-    failedState.leader = leader;
-    return leader;
+    var leaderID = cinfo.shards[shards[0]][0];
+    var leader = IM.getInstanceByID(leaderID);
+    assertTrue(leader.suspend());
+    console.info("Have failed leader", leaderID);
+    failedState.leader = leaderID;
+    return leaderID;
   }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief heal the follower
 ////////////////////////////////////////////////////////////////////////////////
 
-  function healLeader(leader) {
-    if (leader == null) leader = cinfo.shards[shards[0]][0];
-    var url = IM.getInstanceByID(leader).url;
-    let arangods = IM.getInstancesRole(instanceRole.dbserver);
-    // Now look for instanceManager:
-    var pos = _.findIndex(arangods,
-                          x => x.url === url);
-    assertTrue(pos >= 0);
-    assertTrue(arangods[pos].resume());
-    console.info("Have healed leader", leader);
-    if (failedState.leader === leader) failedState.leader = null;
+  function healLeader(leaderID) {
+    if (leaderID == null) {
+      leaderID = cinfo.shards[shards[0]][0];
+    }
+    var leader = IM.getInstanceByID(leaderID);
+    assertTrue(leader.resume());
+    console.info("Have healed leader", leaderID);
+    if (failedState.leader === leaderID) {
+      failedState.leader = null;
+    }
   }
 
 ////////////////////////////////////////////////////////////////////////////////
