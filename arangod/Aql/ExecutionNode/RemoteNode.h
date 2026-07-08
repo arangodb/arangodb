@@ -28,8 +28,6 @@
 #include "Aql/ExecutionNodeId.h"
 #include "Aql/Variable.h"
 #include "Aql/types.h"
-#include "VocBase/voc-types.h"
-#include "VocBase/vocbase.h"
 
 #include <string>
 #include <utility>
@@ -51,7 +49,7 @@ class RemoteNode final : public DistributeConsumerNode {
 
  public:
   /// @brief constructor with an id
-  RemoteNode(ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
+  RemoteNode(ExecutionPlan* plan, ExecutionNodeId id, Database* vocbase,
              std::string server, std::string const& ownName,
              std::string queryId)
       : DistributeConsumerNode(plan, id, ownName),
@@ -81,7 +79,7 @@ class RemoteNode final : public DistributeConsumerNode {
   CostEstimate estimateCost() const override final;
 
   /// @brief return the database
-  TRI_vocbase_t* vocbase() const { return _vocbase; }
+  Database* vocbase() const { return _vocbase; }
 
   /// @brief return the server name
   std::string server() const { return _server; }
@@ -105,7 +103,7 @@ class RemoteNode final : public DistributeConsumerNode {
 
  private:
   /// @brief the underlying database
-  TRI_vocbase_t* _vocbase;
+  Database* _vocbase;
 
   /// @brief our server, can be like "shard:S1000" or like "server:Claus"
   std::string _server;

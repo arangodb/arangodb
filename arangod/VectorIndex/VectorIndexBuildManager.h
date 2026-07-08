@@ -23,6 +23,13 @@
 
 #pragma once
 
+#include "Basics/ResourceUsage.h"
+#include "Basics/Result.h"
+#include "Futures/Future.h"
+#include "Futures/Promise.h"
+#include "Metrics/Fwd.h"
+#include "VocBase/Identifiers/IndexId.h"
+
 #include <chrono>
 #include <cstdint>
 #include <mutex>
@@ -31,16 +38,8 @@
 #include <unordered_map>
 #include <vector>
 
-#include "Basics/ResourceUsage.h"
-#include "Basics/Result.h"
-#include "Futures/Future.h"
-#include "Futures/Promise.h"
-#include "Metrics/Fwd.h"
-#include "VocBase/Identifiers/IndexId.h"
-
-struct TRI_vocbase_t;
-
 namespace arangodb {
+struct Database;
 class DatabaseFeature;
 class LogicalCollection;
 class MaintenanceFeature;
@@ -94,12 +93,10 @@ class VectorIndexBuildManager {
 
   void fulfillAllWaiters(Result const& result);
 
-  void reportIndexError(TRI_vocbase_t const& vocbase,
-                        LogicalCollection const& coll,
+  void reportIndexError(Database const& vocbase, LogicalCollection const& coll,
                         RocksDBVectorIndex const& vecIdx, Result const& error);
 
-  void clearIndexError(TRI_vocbase_t const& vocbase,
-                       LogicalCollection const& coll,
+  void clearIndexError(Database const& vocbase, LogicalCollection const& coll,
                        RocksDBVectorIndex const& vecIdx);
 
   DatabaseFeature& _dbFeature;

@@ -24,12 +24,12 @@
 #include "RestSimpleQueryHandler.h"
 
 #include "Aql/QueryRegistry.h"
-#include "Basics/Exceptions.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Transaction/OperationOrigin.h"
 #include "Utils/Cursor.h"
 #include "Utils/CursorRepository.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/vocbase.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>

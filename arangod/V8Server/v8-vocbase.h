@@ -27,12 +27,10 @@
 #error this file is not supposed to be used in builds with -DUSE_V8=Off
 #endif
 
-#include "Utils/DatabaseGuard.h"
 #include "V8/v8-globals.h"
 
-struct TRI_vocbase_t;
-
 namespace arangodb {
+struct Database;
 
 namespace aql {
 
@@ -45,9 +43,9 @@ class JSLoader;
 }  // namespace arangodb
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a TRI_vocbase_t global context
+/// @brief creates a Database global context
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                          arangodb::aql::QueryRegistry* queryRegistry,
-                         TRI_vocbase_t& vocbase, size_t threadNumber);
+                         arangodb::Database& vocbase, size_t threadNumber);

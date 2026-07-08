@@ -66,10 +66,9 @@
   while (0) LOG_TOPIC(logid, llevel, arangodb::Logger::TRANSACTIONS)
 #endif
 
-struct TRI_vocbase_t;
-
 namespace arangodb {
 class CollectionNameResolver;
+struct Database;
 struct ResourceMonitor;
 
 namespace transaction {
@@ -109,7 +108,7 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   TransactionState(TransactionState const&) = delete;
   TransactionState& operator=(TransactionState const&) = delete;
 
-  TransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
+  TransactionState(Database& vocbase, TransactionId tid,
                    transaction::Options const& options,
                    transaction::OperationOrigin operationOrigin);
   virtual ~TransactionState();
@@ -138,7 +137,7 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   [[nodiscard]] transaction::Options const& options() const noexcept {
     return _options;
   }
-  [[nodiscard]] TRI_vocbase_t& vocbase() const noexcept { return _vocbase; }
+  [[nodiscard]] Database& vocbase() const noexcept { return _vocbase; }
   [[nodiscard]] TransactionId id() const noexcept { return _id; }
   [[nodiscard]] transaction::Status status() const noexcept { return _status; }
   [[nodiscard]] bool isRunning() const noexcept {
@@ -440,7 +439,7 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   void publishShardMetrics(CollectionNameResolver const& resolver);
 
  protected:
-  TRI_vocbase_t& _vocbase;  /// @brief vocbase for this transaction
+  Database& _vocbase;  /// @brief vocbase for this transaction
 
   /// @brief access type (read|write)
   AccessMode::Type _type = AccessMode::Type::READ;

@@ -128,7 +128,7 @@ class SingleServerProvider {
 
   [[nodiscard]] ResourceMonitor& monitor();
   [[nodiscard]] transaction::Methods* trx();
-  [[nodiscard]] TRI_vocbase_t const& vocbase() const;
+  [[nodiscard]] Database const& vocbase() const;
 
   aql::TraversalStats stealStats();
 

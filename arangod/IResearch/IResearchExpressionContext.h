@@ -28,7 +28,6 @@
 #include "Aql/ExpressionContext.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/RegisterPlan.h"
-#include "Basics/Exceptions.h"
 #include "Containers/FlatHashMap.h"
 
 #include <velocypack/Slice.h>
@@ -78,7 +77,7 @@ struct ViewExpressionContextBase : public arangodb::aql::ExpressionContext {
   arangodb::ValidatorBase* buildValidator(
       arangodb::velocypack::Slice) override final;
 
-  TRI_vocbase_t& vocbase() const override final;
+  Database& vocbase() const override final;
   /// may be inaccessible on some platforms
   transaction::Methods& trx() const override final;
   bool killed() const override final;

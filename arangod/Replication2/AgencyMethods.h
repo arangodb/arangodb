@@ -43,8 +43,6 @@ struct LogPlanSpecification;
 struct LogPlanTermSpecification;
 }  // namespace arangodb::replication2::agency
 
-struct TRI_vocbase_t;
-
 namespace arangodb::replication2::agency::methods {
 
 auto deleteReplicatedLogTrx(arangodb::agency::envelope envelope,

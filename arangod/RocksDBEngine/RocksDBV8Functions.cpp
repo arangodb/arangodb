@@ -22,22 +22,19 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBV8Functions.h"
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Functions.h"
-#include "Basics/Exceptions.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
-#include "RestServer/FlushFeature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBReplicationContext.h"
 #include "RocksDBEngine/RocksDBReplicationContextGuard.h"
 #include "RocksDBEngine/RocksDBReplicationManager.h"
-#include "RocksDBEngine/RocksDBSettingsManager.h"
+#include "RestServer/arangod.h"
 #include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Utils/ExecContext.h"
@@ -46,7 +43,6 @@
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
 #include "V8Server/v8-collection.h"
-#include "V8Server/v8-externals.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <v8.h>

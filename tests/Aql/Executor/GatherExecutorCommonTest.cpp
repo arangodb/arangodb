@@ -33,6 +33,7 @@
 #include "Aql/Executor/UnsortedGatherExecutor.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/SortRegister.h"
+#include "Logger/LogMacros.h"
 #include "TestLambdaExecutor.h"
 
 using namespace arangodb;

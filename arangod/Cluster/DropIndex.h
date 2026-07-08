@@ -27,10 +27,6 @@
 #include "ActionBase.h"
 #include "ActionDescription.h"
 
-#include <chrono>
-
-struct TRI_vocbase_t;
-
 namespace arangodb {
 
 class LogicalCollection;

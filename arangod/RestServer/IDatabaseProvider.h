@@ -28,7 +28,6 @@
 
 #include <functional>
 #include <string_view>
-struct TRI_vocbase_t;
 
 namespace arangodb {
 class LogicalCollection;
@@ -44,7 +43,7 @@ struct IDatabaseProvider {
   virtual VocbasePtr useDatabase(TRI_voc_tick_t id) const = 0;
 
   virtual void enumerateDatabases(
-      std::function<void(TRI_vocbase_t& vocbase)> const& func) = 0;
+      std::function<void(Database& vocbase)> const& func) = 0;
 
   virtual void inventory(
       velocypack::Builder& result, TRI_voc_tick_t,
