@@ -25,18 +25,11 @@
 
 #pragma once
 
-#include <memory>
-#include <mutex>
-#include <optional>
-#include <span>
-#include <string>
-#include <string_view>
-#include <unordered_map>
-
 #include "Agency/AgencyComm.h"
 #include "Agency/AgencyCommon.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/ReadWriteLock.h"
+#include "Basics/ResourceUsage.h"
 #include "Cluster/CallbackGuard.h"
 #include "Cluster/ClusterTypes.h"
 #include "Cluster/RebootTracker.h"
@@ -46,9 +39,13 @@
 #include "Replication2/AgencyCollectionSpecification.h"
 #include "Replication2/Version.h"
 
-#include "Basics/ResourceUsage.h"
-
-struct TRI_vocbase_t;
+#include <memory>
+#include <mutex>
+#include <optional>
+#include <span>
+#include <string>
+#include <string_view>
+#include <unordered_map>
 
 namespace arangodb {
 
@@ -85,6 +82,7 @@ struct ClusterCollectionCreationInfo;
 class ClusterInfo;
 class CollectionInfoCurrent;
 class CreateDatabaseInfo;
+struct Database;
 class IndexId;
 class LogicalDataSource;
 class LogicalCollection;
@@ -469,7 +467,7 @@ class ClusterInfo final {
 
   [[nodiscard]] std::unordered_map<std::string,
                                    std::shared_ptr<LogicalCollection>>
-  generateCollectionStubs(TRI_vocbase_t& database);
+  generateCollectionStubs(Database& database);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief ask about a view
@@ -1029,8 +1027,8 @@ class ClusterInfo final {
   /// possible
   CollectionWithHash buildCollection(
       bool isBuilding, AllCollections::const_iterator existingCollections,
-      std::string_view collectionId, velocypack::Slice data,
-      TRI_vocbase_t& vocbase, uint64_t planVersion, bool cleanupLinks) const;
+      std::string_view collectionId, velocypack::Slice data, Database& database,
+      uint64_t planVersion, bool cleanupLinks) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief (re-)load the information about our plan

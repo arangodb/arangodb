@@ -28,15 +28,14 @@
 #include "Replication2/ReplicatedState/ReplicatedStateManager.h"
 #include "Replication2/Streams/StreamSpecification.h"
 
-#include "Basics/Guarded.h"
+namespace arangodb {
 
-struct TRI_vocbase_t;
-
-namespace arangodb::velocypack {
+struct Database;
+namespace velocypack {
 class SharedSlice;
 }
 
-namespace arangodb::replication2 {
+namespace replication2 {
 struct IScheduler;
 namespace replicated_log {
 struct ReplicatedLog;
@@ -73,7 +72,7 @@ struct ReplicatedStateBase {
   }
 
   [[nodiscard]] virtual auto createStateHandle(
-      TRI_vocbase_t& vocbase,
+      Database& vocbase,
       std::optional<velocypack::SharedSlice> const& coreParameters)
       -> std::unique_ptr<replicated_log::IReplicatedStateHandle> = 0;
 
@@ -118,14 +117,14 @@ struct ReplicatedState final
   [[nodiscard]] auto getLeader() const -> std::shared_ptr<LeaderType>;
 
   auto createStateHandle(
-      TRI_vocbase_t& vocbase,
+      Database& vocbase,
       std::optional<velocypack::SharedSlice> const& coreParameter)
       -> std::unique_ptr<replicated_log::IReplicatedStateHandle> override;
 
   auto type() const noexcept -> std::string_view override { return S::NAME; }
 
  private:
-  auto buildCore(TRI_vocbase_t& vocbase,
+  auto buildCore(Database& vocbase,
                  std::optional<velocypack::SharedSlice> const& coreParameter);
   auto getLeaderBase() -> std::shared_ptr<IReplicatedLeaderStateBase> final {
     return getLeader();
@@ -148,4 +147,5 @@ struct ReplicatedState final
 };
 
 }  // namespace replicated_state
-}  // namespace arangodb::replication2
+}  // namespace replication2
+}  // namespace arangodb

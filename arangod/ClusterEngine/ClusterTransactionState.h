@@ -26,9 +26,8 @@
 #include "StorageEngine/TransactionState.h"
 #include "VocBase/Identifiers/TransactionId.h"
 
-struct TRI_vocbase_t;
-
 namespace arangodb {
+struct Database;
 class Result;
 
 namespace transaction {
@@ -38,7 +37,7 @@ struct Options;
 /// @brief transaction type
 class ClusterTransactionState final : public TransactionState {
  public:
-  ClusterTransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
+  ClusterTransactionState(Database& database, TransactionId tid,
                           transaction::Options const& options,
                           transaction::OperationOrigin operationOrigin);
   ~ClusterTransactionState();

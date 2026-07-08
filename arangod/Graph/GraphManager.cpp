@@ -35,7 +35,6 @@
 #include "Cluster/ServerState.h"
 #include "Containers/FlatHashSet.h"
 #include "Graph/Graph.h"
-#include "Graph/GraphOperations.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -51,17 +50,16 @@
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/Methods/CollectionCreationInfo.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Properties/CreateCollectionBody.h"
 #include "VocBase/Properties/DatabaseConfiguration.h"
+#include "VocBase/vocbase.h"
 
 #include <boost/range/join.hpp>
 #include <velocypack/Buffer.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
 
-#include <array>
 #include <utility>
 
 using namespace arangodb;

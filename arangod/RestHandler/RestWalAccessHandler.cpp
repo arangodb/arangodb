@@ -405,3 +405,12 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
         replutils::BatchInfo::DefaultTimeoutForTailing);
   });
 }
+
+auto RestVocbaseBaseHandler::makeSharedLogContextValue() const
+    -> std::shared_ptr<LogContext::Values> {
+  return LogContext::makeValue()
+      .with<structuredParams::UrlName>(_request->fullUrl())
+      .with<structuredParams::UserName>(_request->user())
+      .with<structuredParams::DatabaseName>(_vocbase.name())
+      .share();
+}
