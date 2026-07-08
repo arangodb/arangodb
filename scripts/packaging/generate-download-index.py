@@ -12,8 +12,10 @@ The emitted HTML replicates that tool's templates/template.html rendering
 configured there), so the nightly pages keep the exact look of the rest of
 download.arangodb.com. Differences to the original: directory sizes show
 "-" instead of the filesystem block size, directory dates are the newest
-date of any file below them, and dates stay UTC (the original added one
-hour to fake local time).
+date of any file below them, dates stay UTC (the original added one hour
+to fake local time), and the parent-directory link is labelled ".." and
+appears on every level including the root of the generated tree, whose
+parent on the download site exists as well.
 
 Usage:
   gsutil ls -l -r gs://download.arangodb.com/nightly > listing.txt
@@ -222,7 +224,7 @@ PAGE = """<!DOCTYPE html>
 
 PARENT_ROW = """                <tr>
                   <!--<td class="icon"><img src="@ICONS@/back.gif" alt="back.gif"></td>-->
-                    <td class="name"><a href="../index.html">Parent Directory</a></td>
+                    <td class="name"><a href="../index.html">..</a></td>
                     <td class="date" />
                     <td class="size">-</td>
                     <td class="open" />
@@ -250,10 +252,12 @@ def entry_row(name: str, url: str, date: str, size: str, icon: str) -> str:
     )
 
 
-def render_dir(index_of: str, entry, dir_dates, rel: str, is_root: bool) -> str:
+def render_dir(index_of: str, entry, dir_dates, rel: str) -> str:
     rows = []
-    if not is_root:
-        rows.append(PARENT_ROW.replace("@ICONS@", LINK_TO_ICONS))
+    # Every level gets a parent-directory row (shown as ".."), including
+    # the root of the generated tree: its parent (e.g.
+    # download.arangodb.com/) exists and has an index of its own.
+    rows.append(PARENT_ROW.replace("@ICONS@", LINK_TO_ICONS))
     # like the original: directories first, then files, each sorted by name;
     # entries named "enterprise" and hidden entries are not listed
     for d in sorted(entry["dirs"]):
@@ -302,7 +306,7 @@ def main() -> int:
         out_dir.mkdir(parents=True, exist_ok=True)
         index_of = f"{args.prefix}/{rel}".strip("/")
         (out_dir / "index.html").write_text(
-            render_dir(index_of, entry, dir_dates, rel, is_root=(rel == "")),
+            render_dir(index_of, entry, dir_dates, rel),
             encoding="utf-8",
         )
         count += 1

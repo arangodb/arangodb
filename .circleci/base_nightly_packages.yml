@@ -45,9 +45,15 @@ version: 2.1
 #                       any finding, incl. UNKNOWN). The EOL base-OS check on
 #                       images always fails regardless. One job per item so
 #                       every item still gets scanned when another fails;
-#                       publish-nightly requires them all. The
-#                       <target>.trivy.{txt,json} reports are published next
-#                       to the scanned files, like the ClamAV reports.
+#                       publish-nightly requires them all. Reports: one
+#                       <package>.trivy.{json,log} pair per package file,
+#                       published next to it like the ClamAV reports (the
+#                       format+arch is scanned in one pass, then the JSON is
+#                       split per package); one pair per Docker image, named
+#                       after the pushed per-arch image ref and published
+#                       into the Docker/ directory. The .log tables are
+#                       ASCII-only (box-drawing chars mapped), so they render
+#                       correctly whatever charset a viewer assumes.
 #   sign-packages       detached GPG signatures (.asc) [sign-packages]
 #   publish-nightly     THE ONLY JOB THAT PUBLISHES ANYTHING; runs only when
 #                       every selected job succeeded. Split into a stage
@@ -59,6 +65,10 @@ version: 2.1
 #                       the publish is as close to all-or-nothing as
 #                       possible. Pushes to docker.io (always) and
 #                       gcr.io/gcr-for-testing [push-images-to-gcr-also].
+#                       Afterwards <major.minor>/Docker/ gets one
+#                       arangodb_enterprise-preview_<VERSION>[-<distro>].txt
+#                       publish report per image (pushed refs + digests) with
+#                       the per-arch Trivy reports next to it.
 #
 # Skipping semantics: jobs disabled via pipeline parameters are removed from
 # the generated workflow by generate_nightly_packages_config.py (together with their
@@ -409,6 +419,35 @@ commands:
               echo "Blocking the publish (full report of all severities in the job artifacts)."
               exit 1
             fi
+
+  setup-gcloud:
+    # Installs the google-cloud-cli (gsutil) and activates the nightly
+    # publishing service account from GCLOUD_SERVICE_KEY_BASE64. Any subset
+    # of packages/Docker images may be selected and several publish steps
+    # talk to GCS, so each of them relies on this one job-level setup step
+    # instead of installing on its own.
+    steps:
+      - run:
+          name: Install google-cloud-cli and authenticate
+          command: |
+            # gsutil comes with the google-cloud-cli
+            sudo apt-get update && sudo apt-get install -y apt-transport-https ca-certificates gnupg curl
+            curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | \
+              sudo gpg --dearmor -o /usr/share/keyrings/cloud.google.gpg
+            echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" | \
+              sudo tee /etc/apt/sources.list.d/google-cloud-sdk.list
+            sudo apt-get update && sudo apt-get install -y google-cloud-cli
+
+            if [ -z "${GCLOUD_SERVICE_KEY_BASE64:-}" ]; then
+              echo "GCLOUD_SERVICE_KEY_BASE64 is empty; set it in the coredb-nightly-packages context (base64 -w0 of the service-account JSON)"
+              exit 1
+            fi
+            echo "${GCLOUD_SERVICE_KEY_BASE64}" | base64 -d > /tmp/gcs-key.json
+            if ! python3 -m json.tool /tmp/gcs-key.json > /dev/null; then
+              echo "GCLOUD_SERVICE_KEY_BASE64 does not decode to valid JSON; re-create it with: base64 -w0 <service-account>.json"
+              exit 1
+            fi
+            gcloud auth activate-service-account --key-file=/tmp/gcs-key.json
 
   extract-install-tree:
     # Recreates the oskar layout: install tree at <repo>/build/install.
@@ -1014,7 +1053,10 @@ jobs:
                 for f in "${SRC}"/*.tar.gz; do
                   [ -e "$f" ] || continue
                   FOUND=1
-                  d="${OUT}/$(basename "$f" .tar.gz)"
+                  # Full basename (incl. .tar.gz), so the per-package report
+                  # names derived from these directories match the published
+                  # package files exactly, like for deb/rpm.
+                  d="${OUT}/$(basename "$f")"
                   mkdir -p "$d"
                   tar -xzf "$f" -C "$d"
                 done
@@ -1035,15 +1077,47 @@ jobs:
           fail-on-findings: false
           ignore-unfixed: false
           store-junit-results: true
-      # Staged and persisted before the gate so the full report reaches the
+      # Staged and persisted before the gate so the full reports reach the
       # workspace even when the gate fails (publish is blocked then anyway).
       - run:
-          name: Stage Trivy report for publishing
+          name: Stage per-package Trivy reports for publishing
           command: |
+            set -eu
+            # The scan above covered all packages of this format+arch in one
+            # pass (one Trivy DB load); here its JSON is split into one report
+            # per package — the extraction directories are named exactly after
+            # the package files — so every published package gets its own
+            # <package>.trivy.{json,log} right next to it. The table (.log)
+            # is rendered with the trivy binary the scan step installed and
+            # left on PATH via BASH_ENV; box-drawing characters are mapped to
+            # ASCII so the report stays readable no matter what charset a
+            # browser or pager assumes (the raw UTF-8 tables rendered as
+            # Latin-1 mojibake when served without an explicit charset).
+            to_ascii() {
+              sed -e 's/─/-/g' -e 's/│/|/g' \
+                  -e 's/┌/+/g' -e 's/┬/+/g' -e 's/┐/+/g' \
+                  -e 's/├/+/g' -e 's/┼/+/g' -e 's/┤/+/g' \
+                  -e 's/└/+/g' -e 's/┴/+/g' -e 's/┘/+/g' "$1"
+            }
             OUT=/tmp/nightly/trivy-reports/<< parameters.arch >>
             mkdir -p "${OUT}"
-            cp /tmp/trivy-results.txt  "${OUT}/<< parameters.target >>.trivy.txt"
-            cp /tmp/trivy-results.json "${OUT}/<< parameters.target >>.trivy.json"
+            cd /tmp/scan-root
+            for d in */; do
+              PKG="${d%/}"
+              jq --arg p "${PKG}" \
+                '.ArtifactName = $p
+                 | .Results = [.Results[]?
+                     | select(.Target == $p or (.Target | startswith($p + "/")))]' \
+                /tmp/trivy-results.json > "${OUT}/${PKG}.trivy.json"
+              trivy convert --format table --output /tmp/pkg-table.txt \
+                "${OUT}/${PKG}.trivy.json" 2>/dev/null || : > /tmp/pkg-table.txt
+              to_ascii /tmp/pkg-table.txt > "${OUT}/${PKG}.trivy.log"
+              if ! [ -s "${OUT}/${PKG}.trivy.log" ]; then
+                echo "No findings (all severities scanned, secret scanning included)." \
+                  > "${OUT}/${PKG}.trivy.log"
+              fi
+            done
+            ls -la "${OUT}"
       - persist_to_workspace:
           root: /tmp/nightly
           paths:
@@ -1095,14 +1169,44 @@ jobs:
       - run:
           name: Stage Trivy report for publishing
           command: |
-            OUT=/tmp/nightly/trivy-reports/<< parameters.arch >>
+            set -eu
+            # The report pair is named after the pushed per-arch image
+            # reference (arangodb/enterprise-preview:<VERSION>[-<distro>]-
+            # <amd64|arm64v8>, with / and : mapped to _), so on
+            # download.arangodb.com it reads as "the scan of exactly this
+            # image". publish-nightly puts these into the Docker/ directory
+            # of the nightly tree, next to the per-image publish reports —
+            # not next to the packages. Box-drawing characters are mapped to
+            # ASCII for the same reason as in the package scan jobs.
+            to_ascii() {
+              sed -e 's/─/-/g' -e 's/│/|/g' \
+                  -e 's/┌/+/g' -e 's/┬/+/g' -e 's/┐/+/g' \
+                  -e 's/├/+/g' -e 's/┼/+/g' -e 's/┤/+/g' \
+                  -e 's/└/+/g' -e 's/┴/+/g' -e 's/┘/+/g' "$1"
+            }
+            VERSION="$(cat /tmp/nightly/nightly-version.txt)"
+            if [ "<< parameters.distro >>" = "alpine" ]; then
+              SUFFIX=""
+            else
+              SUFFIX="-<< parameters.distro >>"
+            fi
+            case "<< parameters.arch >>" in
+              amd64) TAG_ARCH="amd64" ;;
+              arm64) TAG_ARCH="arm64v8" ;;
+            esac
+            NAME="arangodb_enterprise-preview_${VERSION}${SUFFIX}-${TAG_ARCH}"
+            OUT=/tmp/nightly/trivy-reports/docker
             mkdir -p "${OUT}"
-            cp /tmp/trivy-results.txt  "${OUT}/docker-image-<< parameters.distro >>.trivy.txt"
-            cp /tmp/trivy-results.json "${OUT}/docker-image-<< parameters.distro >>.trivy.json"
+            cp /tmp/trivy-results.json "${OUT}/${NAME}.trivy.json"
+            to_ascii /tmp/trivy-results.txt > "${OUT}/${NAME}.trivy.log"
+            if ! [ -s "${OUT}/${NAME}.trivy.log" ]; then
+              echo "No findings (all severities scanned, secret scanning included)." \
+                > "${OUT}/${NAME}.trivy.log"
+            fi
       - persist_to_workspace:
           root: /tmp/nightly
           paths:
-            - trivy-reports/<< parameters.arch >>
+            - trivy-reports/docker
       - gate-trivy-findings
 
   # ── GPG signing ──────────────────────────────────────────────────────────────
@@ -1166,6 +1270,7 @@ jobs:
       - checkout-arangodb:
           destination: /home/circleci/project
       - setup_remote_docker
+      - setup-gcloud
       - run:
           name: Stage packages and sourceInfo in GCS (not yet visible)
           command: |
@@ -1175,25 +1280,6 @@ jobs:
               echo "No packages selected, skipping GCS staging"
               exit 0
             fi
-
-            # gsutil comes with the google-cloud-cli
-            sudo apt-get update && sudo apt-get install -y apt-transport-https ca-certificates gnupg curl
-            curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | \
-              sudo gpg --dearmor -o /usr/share/keyrings/cloud.google.gpg
-            echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" | \
-              sudo tee /etc/apt/sources.list.d/google-cloud-sdk.list
-            sudo apt-get update && sudo apt-get install -y google-cloud-cli
-
-            if [ -z "${GCLOUD_SERVICE_KEY_BASE64:-}" ]; then
-              echo "GCLOUD_SERVICE_KEY_BASE64 is empty; set it in the coredb-nightly-packages context (base64 -w0 of the service-account JSON)"
-              exit 1
-            fi
-            echo "${GCLOUD_SERVICE_KEY_BASE64}" | base64 -d > /tmp/gcs-key.json
-            if ! python3 -m json.tool /tmp/gcs-key.json > /dev/null; then
-              echo "GCLOUD_SERVICE_KEY_BASE64 does not decode to valid JSON; re-create it with: base64 -w0 <service-account>.json"
-              exit 1
-            fi
-            gcloud auth activate-service-account --key-file=/tmp/gcs-key.json
 
             PACKAGES="$(cat /tmp/nightly/nightly-major-minor.txt)"
             DST="${NIGHTLY_GCS_DEST:-gs://download.arangodb.com/nightly}"
@@ -1219,8 +1305,10 @@ jobs:
                     cp /tmp/nightly/clamav-reports/${src}/${arch}/*.clamav "${STAGE}/${GCS_ARCH[$arch]}/"
                   fi
                 done
-                # Trivy reports (<target>.trivy.{txt,json} per package format
-                # plus docker-image.trivy.*) land next to the packages they cover
+                # Per-package Trivy reports (<package>.trivy.{json,log}) land
+                # next to the packages they cover; the Docker image scan
+                # reports live under trivy-reports/docker and are published
+                # into the Docker/ directory after the commit step instead
                 if [ -d "/tmp/nightly/trivy-reports/${arch}" ]; then
                   cp /tmp/nightly/trivy-reports/${arch}/* "${STAGE}/${GCS_ARCH[$arch]}/"
                 fi
@@ -1296,14 +1384,22 @@ jobs:
               docker load -i /tmp/nightly/docker/enterprise-preview-${DISTRO}-arm64.tar
             done
 
+            # Next to the combined report, the pushed refs are also collected
+            # per distro (/tmp/docker-stage-<distro>.txt): the "Publish
+            # per-image Docker reports" step folds them into the per-image
+            # <image>.txt reports in the Docker/ directory.
             for DISTRO in "${DISTROS[@]}"; do
               SUFFIX="$(distro_suffix "${DISTRO}")"
+              FRAG="/tmp/docker-stage-${DISTRO}.txt"
+              : > "${FRAG}"
               for REG_PREFIX in "${REG_PREFIXES[@]}"; do
                 REPO="${REG_PREFIX}${IMAGE}"
                 for TAG_ARCH in amd64 arm64v8; do
                   docker tag "${IMAGE}:${VERSION}${SUFFIX}-${TAG_ARCH}" "${REPO}:${VERSION}${SUFFIX}-${TAG_ARCH}"
                   DIGEST="$(retry docker push "${REPO}:${VERSION}${SUFFIX}-${TAG_ARCH}" | sed -n 's/.*digest: \(sha256:[0-9a-f]*\).*/\1/p' | tail -1)"
-                  echo "  ${REPO}:${VERSION}${SUFFIX}-${TAG_ARCH} (${DIGEST})" >> "${REPORT}"
+                  LINE="  ${REPO}:${VERSION}${SUFFIX}-${TAG_ARCH} (${DIGEST})"
+                  echo "${LINE}" >> "${REPORT}"
+                  echo "${LINE}" >> "${FRAG}"
                 done
               done
             done
@@ -1336,7 +1432,11 @@ jobs:
               # NAS era and stale index.html files are all removed (the
               # index is regenerated in the next step). Both arches are
               # always staged together, so nothing legitimate is deleted.
-              retry gsutil -m rsync -d -r \
+              # The Docker/ directory is excluded: it is owned by the
+              # "Publish per-image Docker reports" step (which needs the
+              # manifest digests from this step, so it runs after it) and it
+              # must survive packages-only runs.
+              retry gsutil -m rsync -d -r -x "^Docker/" \
                 "${STAGE_GCS}/${PACKAGES}" \
                 "${DST}/${PACKAGES}"
 
@@ -1345,9 +1445,11 @@ jobs:
               # pipeline maintains a server-side mirror instead (updated only
               # when the published tree IS the devel tree). index.html files
               # are excluded both ways: the regeneration step creates and
-              # owns devel's own index.
+              # owns devel's own index. Docker/ is excluded for the same
+              # reason: the "Publish per-image Docker reports" step below
+              # writes it into both trees itself.
               if grep -qx "devel-nightly" /tmp/nightly/rolling-tags.txt; then
-                retry gsutil -m rsync -d -r -x "(^|/)index\.html$" \
+                retry gsutil -m rsync -d -r -x "(^|/)index\.html$|^Docker/" \
                   "${DST}/${PACKAGES}" "${DST}/devel"
               fi
             fi
@@ -1375,8 +1477,12 @@ jobs:
               # phase directly.
               REPORT=/tmp/docker-publish-report.txt
               printf '\nMulti-arch manifest tags (what users pull):\n' >> "${REPORT}"
+              # As in the stage step, the refs are also collected per distro
+              # (/tmp/docker-commit-<distro>.txt) for the per-image reports.
               for DISTRO in "${DISTROS[@]}"; do
                 SUFFIX="$(distro_suffix "${DISTRO}")"
+                FRAG="/tmp/docker-commit-${DISTRO}.txt"
+                : > "${FRAG}"
                 for REG_PREFIX in "${REG_PREFIXES[@]}"; do
                   REPO="${REG_PREFIX}${IMAGE}"
                   for MANIFEST_TAG in "${VERSION}" "${ROLLING_TAGS[@]}"; do
@@ -1385,7 +1491,9 @@ jobs:
                       --amend "${REPO}:${VERSION}${SUFFIX}-amd64" \
                       --amend "${REPO}:${VERSION}${SUFFIX}-arm64v8"
                     DIGEST="$(retry docker manifest push --purge "${REPO}:${MANIFEST_TAG}${SUFFIX}" | tail -1)"
-                    echo "  ${REPO}:${MANIFEST_TAG}${SUFFIX} (${DIGEST})" >> "${REPORT}"
+                    LINE="  ${REPO}:${MANIFEST_TAG}${SUFFIX} (${DIGEST})"
+                    echo "${LINE}" >> "${REPORT}"
+                    echo "${LINE}" >> "${FRAG}"
                   done
                 done
               done
@@ -1398,6 +1506,76 @@ jobs:
               # lifecycle rule on the *-staging prefix.
               gsutil -m rm -r "${STAGE_GCS}" || true
             fi
+      - run:
+          name: Publish per-image Docker reports (Docker/ directory)
+          command: |
+            # One <image>.txt per published image name — arangodb/
+            # enterprise-preview:<VERSION>[-<distro>] with / and : mapped to
+            # _ — carrying that image's slice of nightly-publish-report.txt:
+            # the dated per-arch pushes and the multi-arch manifest tags,
+            # each with digests. The per-arch Trivy scan reports
+            # (<image>-<amd64|arm64v8>.trivy.{json,log}) are published next
+            # to it. Everything lands in <major.minor>/Docker/ (and in the
+            # devel mirror when this nightly is the devel one) — after the
+            # commit step, because the manifest digests only exist then.
+            # Created even when skipping, so the store_artifacts step below
+            # always has a path to store.
+            OUT=/tmp/docker-reports
+            mkdir -p "${OUT}"
+
+            DISTROS=()
+            if [ "<< pipeline.parameters.build-alpine-images >>" = "true" ]; then DISTROS+=("alpine"); fi
+            if [ "<< pipeline.parameters.build-ubi-images >>" = "true" ]; then DISTROS+=("ubi"); fi
+            if [ "<< pipeline.parameters.build-deb-images >>" = "true" ]; then DISTROS+=("deb"); fi
+            if [ ${#DISTROS[@]} -eq 0 ]; then
+              echo "Docker images not selected, skipping Docker reports"
+              exit 0
+            fi
+
+            VERSION="$(cat /tmp/nightly/nightly-version.txt)"
+            PACKAGES="$(cat /tmp/nightly/nightly-major-minor.txt)"
+            DST="${NIGHTLY_GCS_DEST:-gs://download.arangodb.com/nightly}"
+
+            distro_suffix() { if [ "$1" = "alpine" ]; then echo ""; else echo "-$1"; fi; }
+
+            for DISTRO in "${DISTROS[@]}"; do
+              SUFFIX="$(distro_suffix "${DISTRO}")"
+              NAME="arangodb_enterprise-preview_${VERSION}${SUFFIX}"
+              {
+                echo "ArangoDB nightly Docker image publish report"
+                echo "============================================"
+                echo "Image:     arangodb/enterprise-preview:${VERSION}${SUFFIX}"
+                echo "Base:      ${DISTRO}"
+                echo "Published: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+                echo "Workflow:  ${CIRCLE_WORKFLOW_ID}"
+                echo
+                echo "Dated per-arch tags (stage phase):"
+                cat "/tmp/docker-stage-${DISTRO}.txt"
+                echo
+                echo "Multi-arch manifest tags (what users pull):"
+                cat "/tmp/docker-commit-${DISTRO}.txt"
+              } > "${OUT}/${NAME}.txt"
+            done
+
+            # Per-arch Trivy scan reports, already named after the pushed
+            # image refs; absent when [security-check] is disabled.
+            if [ -d /tmp/nightly/trivy-reports/docker ]; then
+              cp /tmp/nightly/trivy-reports/docker/* "${OUT}/"
+            fi
+
+            ls -la "${OUT}"
+
+            retry() { "$@" || { sleep 5; "$@"; } || { sleep 15; "$@"; } || { sleep 30; "$@"; }; }
+            # Delete semantics within Docker/ only: afterwards it contains
+            # exactly this run's reports (the promote/mirror rsyncs in the
+            # commit step exclude Docker/, so this step is its sole owner).
+            retry gsutil -m rsync -d "${OUT}" "${DST}/${PACKAGES}/Docker"
+            if grep -qx "devel-nightly" /tmp/nightly/rolling-tags.txt; then
+              retry gsutil -m rsync -d "${OUT}" "${DST}/devel/Docker"
+            fi
+      - store_artifacts:
+          path: /tmp/docker-reports
+          destination: reports/docker
       - run:
           name: Write nightly publish report
           command: |
@@ -1448,10 +1626,16 @@ jobs:
       - run:
           name: Regenerate download index.html files
           command: |
+            # The Docker/ report directory is part of the indexed tree, so
+            # the index is regenerated whenever anything was published to
+            # GCS — packages or Docker image reports.
             if [ "<< pipeline.parameters.build-debian-packages >>" = "false" ] && \
                [ "<< pipeline.parameters.build-rpm-packages >>" = "false" ] && \
-               [ "<< pipeline.parameters.build-tarballs >>" = "false" ]; then
-              echo "No packages selected, skipping index regeneration"
+               [ "<< pipeline.parameters.build-tarballs >>" = "false" ] && \
+               [ "<< pipeline.parameters.build-alpine-images >>" = "false" ] && \
+               [ "<< pipeline.parameters.build-ubi-images >>" = "false" ] && \
+               [ "<< pipeline.parameters.build-deb-images >>" = "false" ]; then
+              echo "Nothing was published to GCS, skipping index regeneration"
               exit 0
             fi
             # Replaces oskar's createIndex (file-browser over the NAS tree):
