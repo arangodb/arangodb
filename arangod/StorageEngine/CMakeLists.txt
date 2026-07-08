@@ -27,7 +27,10 @@ target_include_directories(arango_storage_engine PRIVATE
 add_library(arango_storage_engine_common STATIC
   ReplicationIterator.cpp
   WalAccess.cpp)
-target_link_libraries(arango_storage_engine_common arango_replication2 velocypack)
+target_link_libraries(arango_storage_engine_common
+  arango_replication2_pure
+  velocypack
+  arango::validation)
 target_include_directories(arango_storage_engine_common PRIVATE
   "${PROJECT_SOURCE_DIR}/arangod"
   "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")

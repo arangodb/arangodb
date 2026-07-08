@@ -11,8 +11,8 @@ target_include_directories(arango_tests_rocksdb_engine PRIVATE
 target_link_libraries(arango_tests_rocksdb_engine
   PRIVATE
     arango_rocksdb
-    arango_metrics_base
-    arango_vocbase
+    #arango_metrics_base
+    #arango_vocbase
     gtest
     gmock)
 

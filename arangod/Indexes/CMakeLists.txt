@@ -10,9 +10,10 @@ add_library(arango_indexes STATIC
 
 target_link_libraries(arango_indexes
   PUBLIC
-    arango_replication2
+    arango_replication2_pure
     arango_geo
     arango::validation
+    rocksdb_interface
   PRIVATE
     date_interface)
   
