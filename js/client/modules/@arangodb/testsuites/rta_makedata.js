@@ -251,7 +251,7 @@ function makeDataWrapper (options) {
       res[whichRTA] = rc;
       if (!rc.status) {
         this.continueTesting = false;
-        res[whichRTA].message += file + ':\n' + ct.run.readRtaErrorLog(logFile),
+        res[whichRTA].message += file + ':\n' + ct.run.readRtaErrorLog(logFile);
         res.status = false;
         res.failed += 1;
       } else {
