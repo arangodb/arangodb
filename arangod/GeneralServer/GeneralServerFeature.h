@@ -126,7 +126,8 @@ class GeneralServerFeature final
   std::shared_ptr<rest::RestHandlerFactory> _handlerFactory;
   std::unique_ptr<rest::AsyncJobManager> _jobManager;
   std::vector<std::unique_ptr<rest::GeneralServer>> _servers;
-  std::unordered_map<rest::ResponseCode, metrics::Counter*> _responseCodeCounters;
+  std::unordered_map<rest::ResponseCode, metrics::Counter*>
+      _responseCodeCounters;
 
   // Some metrics about requests and connections
   metrics::Histogram<metrics::LogScale<uint64_t>>& _requestBodySizeHttp1;
