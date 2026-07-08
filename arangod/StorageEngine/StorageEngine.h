@@ -47,7 +47,7 @@ class Slice;
 class Builder;
 }  // namespace velocypack
 
-enum class EngineState : uint32_t { kUninitialized = 0, kRecovering, kRunning };
+enum class EngineState : uint32_t { kPreRecovery = 0, kRecovering, kRunning };
 
 namespace aql {
 class OptimizerRulesFeature;

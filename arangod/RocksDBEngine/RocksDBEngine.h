@@ -634,7 +634,7 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
 
  private:
   // release-stores synchronize with acquire reads in engineState()
-  std::atomic<EngineState> _engineState{EngineState::kUninitialized};
+  std::atomic<EngineState> _engineState{EngineState::kPreRecovery};
   // relaxed writes become visible after the running release-store above
   std::atomic<rocksdb::SequenceNumber> _recoveryTick{0};
   IDatabasePathProvider const& _databasePathProvider;
