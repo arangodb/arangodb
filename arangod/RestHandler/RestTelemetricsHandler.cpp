@@ -24,7 +24,6 @@
 #include "RestTelemetricsHandler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Auth/Rbac/Actions.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "Utils/ExecContext.h"

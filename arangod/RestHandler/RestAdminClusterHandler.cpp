@@ -36,7 +36,6 @@
 #include "Agency/Supervision.h"
 #include "Agency/TransactionBuilder.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Auth/Rbac/Actions.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/ResultT.h"
 #include "Basics/StaticStrings.h"
@@ -48,11 +47,9 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterHelpers.h"
 #include "Cluster/ClusterInfo.h"
-#include "Cluster/FollowerInfo.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/GeneralServerFeature.h"
-#include "GeneralServer/ServerSecurityFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -65,7 +62,6 @@
 #include "StorageEngine/VPackSortMigration.h"
 #include "Utils/ExecContext.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/Methods/Databases.h"
 #include "Inspection/VPack.h"
 
 using namespace arangodb;

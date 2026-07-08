@@ -23,19 +23,12 @@
 
 #include "RestSupervisionStateHandler.h"
 
-#include <chrono>
-
 #include "Agency/AgencyPaths.h"
 #include "Agency/AsyncAgencyComm.h"
-#include "Auth/Rbac/Actions.h"
-#include "Basics/ResultT.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/GeneralServerFeature.h"
-#include "GeneralServer/RestHandlerFactory.h"
-#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
-#include "Logger/LoggerStream.h"
 #include "Utils/ExecContext.h"
 
 using namespace arangodb;

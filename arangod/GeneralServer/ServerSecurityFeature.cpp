@@ -23,10 +23,8 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
-#include "Auth/Rbac/Actions.h"
 #include "GeneralServer/ServerSecurityFeature.h"
 #include "GeneralServer/ServerSecurityOptionsProvider.h"
-#include "Utils/ExecContext.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;

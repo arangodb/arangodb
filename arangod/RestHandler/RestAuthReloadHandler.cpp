@@ -24,7 +24,6 @@
 #include "RestAuthReloadHandler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Auth/Rbac/Actions.h"
 #include "Auth/UserManager.h"
 #include "Basics/StaticStrings.h"
 #include "GeneralServer/AuthenticationFeature.h"

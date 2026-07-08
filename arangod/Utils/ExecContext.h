@@ -27,6 +27,7 @@
 #include "Auth/AuthMode.h"
 #include "Auth/Permissions.h"
 #include "Basics/Result.h"
+#include "Utils/DatabaseGuard.h"
 
 #include <atomic>
 #include <functional>
@@ -34,8 +35,6 @@
 #include <optional>
 #include <span>
 #include <string>
-
-#include "Utils/DatabaseGuard.h"
 
 struct TRI_vocbase_t;
 
@@ -57,7 +56,6 @@ class ExecContext {
   friend struct ExecContextSuperuserScope;
 
  protected:
-  enum class Type { Default, Internal };
   class ConstructorToken {};
 
  public:
@@ -66,14 +64,10 @@ class ExecContext {
   ExecContext(ExecContext const&) = delete;
   ExecContext(ExecContext&&) = delete;
 
- public:
   /// @brief Create an ExecContext from an incoming request with a vocbase.
   /// This is the main factory for creating real ExecContexts.
   /// Superuser JWT requests create a dynamic Superuser context (not the static
   /// one) so that vocbase and request information is preserved.
-  /// @param vocbase VocbasePtr with already incremented reference count.
-  ///                The ExecContext takes ownership and will release on
-  ///                destruction.
   [[nodiscard]] static std::shared_ptr<ExecContext> create(
       AuthenticationFeature& authenticationFeature, RbacFeature& rbacFeature,
       ServerSecurityFeature const& securityFeature, GeneralRequest& req,

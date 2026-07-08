@@ -27,12 +27,9 @@
 #include <velocypack/Slice.h>
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Auth/Rbac/Actions.h"
 #ifdef USE_ENTERPRISE
 #include "Enterprise/License/LicenseFeature.h"
 #endif
-#include "GeneralServer/AuthenticationFeature.h"
-#include "GeneralServer/ServerSecurityFeature.h"
 #include "Utils/ExecContext.h"
 
 using namespace arangodb;

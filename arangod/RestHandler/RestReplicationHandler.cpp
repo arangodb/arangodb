@@ -26,7 +26,6 @@
 #include "Agency/AgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
-#include "Auth/Rbac/Actions.h"
 #include "Auth/UserManager.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/Result.h"
@@ -34,7 +33,6 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
-#include "Basics/hashes.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterHelpers.h"
 #include "Cluster/ClusterInfo.h"
@@ -45,14 +43,12 @@
 #include "Cluster/RebootTracker.h"
 #include "Cluster/ResignShardLeadership.h"
 #include "Cluster/ServerState.h"
-#include "Containers/HashSet.h"
 #include "Containers/MerkleTree.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "Indexes/Index.h"
 #include "Metrics/Counter.h"
 #include "Network/NetworkFeature.h"
-#include "Network/Utils.h"
 #include "Replication/DatabaseInitialSyncer.h"
 #include "Replication/DatabaseReplicationApplier.h"
 #include "Replication/GlobalInitialSyncer.h"
@@ -64,7 +60,6 @@
 #include "RestServer/ServerIdFeature.h"
 #include "VectorIndex/VectorIndexFeature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
-#include "Sharding/ShardingInfo.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionState.h"
@@ -75,13 +70,11 @@
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
-#include "Utilities/NameValidator.h"
 #include "VocBase/Identifiers/RevisionId.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 #include "VocBase/Properties/CreateCollectionBody.h"
 #include "VocBase/Methods/Collections.h"
-#include "VocBase/Methods/CollectionCreationInfo.h"
 #include "VocBase/Properties/DatabaseConfiguration.h"
 
 #include <absl/strings/str_cat.h>
@@ -96,7 +89,6 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 using namespace arangodb::cluster;
-using Helper = arangodb::basics::VelocyPackHelper;
 
 namespace {
 std::string const dataString("data");

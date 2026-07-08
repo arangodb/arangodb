@@ -24,7 +24,6 @@
 #include "RestOptionsBaseHandler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Auth/Rbac/Actions.h"
 #include "Basics/StaticStrings.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "Utils/ExecContext.h"

@@ -23,15 +23,10 @@
 
 #include "RestSystemReportHandler.h"
 
-#include "Agency/AgencyFeature.h"
 #include "Agency/Agent.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Auth/Rbac/Actions.h"
 #include "Cluster/ServerState.h"
-#include "GeneralServer/ServerSecurityFeature.h"
 #include "Rest/HttpRequest.h"
-#include "Rest/Version.h"
-#include "RestServer/ServerFeature.h"
 #include "Utils/ExecContext.h"
 
 #include <velocypack/Builder.h>

@@ -24,10 +24,8 @@
 #include "RestUsersHandler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Auth/Rbac/Actions.h"
 #include "Auth/UserManager.h"
 #include "GeneralServer/AuthenticationFeature.h"
-#include "Rest/Version.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
@@ -38,7 +36,6 @@
 #include <velocypack/Collection.h>
 
 #include <string_view>
-#include <Basics/DownCast.h>
 
 namespace {
 

@@ -23,9 +23,8 @@
 
 #pragma once
 
-#include "Auth/Rbac/Actions.h"
-#include "GeneralServer/ServerSecurityFeatureOptions.h"
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "GeneralServer/ServerSecurityFeatureOptions.h"
 
 namespace arangodb {
 

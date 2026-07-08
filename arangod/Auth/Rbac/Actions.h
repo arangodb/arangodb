@@ -107,9 +107,8 @@ struct Category {
   struct AdminJobs {};               // [unused] no perms:: pendant
   struct AdminReadReplicatedLog {};  // [moved] perms::AdminReadReplicatedLog
   struct AdminWriteReplicatedLog {}; // [moved] perms::AdminWriteReplicatedLog
-  // [moved] perms::AdminDump. Do we want this in RBAC, or just internally for
-  // Classic compatibility?
-  struct AdminDump {};
+  // Do we want this in RBAC, or just internally for Classic compatibility?
+  struct AdminDump {};               // [moved] perms::AdminDump.
   struct AdminRestore {};            // [moved] perms::AdminRestore
   struct AdminWalAccess {};          // [moved] perms::AdminWalAccess
   struct AdminReadAgency {};         // [moved] perms::AdminReadAgency

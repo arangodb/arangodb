@@ -23,8 +23,6 @@
 
 #pragma once
 
-#include "Auth/Common.h"
-#include "Auth/Rbac/Actions.h"
 #include "Basics/Meta/TypeList.h"
 
 #include <span>
@@ -80,10 +78,9 @@ namespace perms {
 //      (e.g. std::string_view, std::span<std::string_view>).
 
 // ---------------------------------------------------------------------------
-// Admin and hardened-admin actions
+// Admin permissions
 // ---------------------------------------------------------------------------
 
-// Admin actions without a resource.
 struct AdminReadUsers {};
 struct AdminMoveShards {};
 struct AdminMonitoring {};
@@ -309,16 +306,6 @@ using CompleteList = meta::detail::Union<AdminList, NonAdminList>::type;
 }  // namespace detail
 
 }  // namespace perms
-
-// TODO When the dust has settled, we need to think about consolidating
-//      auth::Permission and its types, with rbac::Category and its types.
-//      They *are* different and have a different role, but they are closely
-//      related. Maybe they need to stay separate, but if we can reduce some
-//      of the duplication, that would be worth thinking about.
-//      Currently, Permission::*Admin already uses the *Admin types from
-//      rbac::Category, though it can't stay as it is (i.e, we should not
-//      use rbac::Category::Any). See the TODO comment above, before
-//      `struct Admin`.
 
 // Closed sum of every authorization question `IAuth` can be asked. Useful
 // for internal dispatch, batching and logging; a `std::variant` is

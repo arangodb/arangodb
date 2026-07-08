@@ -25,13 +25,11 @@
 
 #include "Agency/AgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Auth/Rbac/Actions.h"
 #include "Auth/UserManager.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FeatureFlags.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/AgencyCache.h"
@@ -41,7 +39,6 @@
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/LogMacros.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/SystemDatabaseFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "Sharding/ShardingInfo.h"
 #include "Utils/Events.h"
@@ -66,7 +63,6 @@
 #include <v8.h>
 #endif
 #include <velocypack/Builder.h>
-#include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 
 using namespace arangodb;

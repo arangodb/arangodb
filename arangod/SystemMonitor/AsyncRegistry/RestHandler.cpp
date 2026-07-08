@@ -22,9 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 #include "RestHandler.h"
 
-#include "Containers/Forest/forest.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Auth/Rbac/Actions.h"
 
 using namespace arangodb;
 using namespace arangodb::async_registry;

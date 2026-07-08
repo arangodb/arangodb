@@ -35,14 +35,11 @@
 #include "v8-externals.h"
 #include "v8-vocbaseprivate.h"
 
-#include "velocypack/Iterator.h"
 #include "Inspection/VPack.h"
 
-#include "Auth/Rbac/Actions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/ResultT.h"
 #include "Replication2/Methods.h"
-#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/LogLeader.h"
 #include "Replication2/ReplicatedLog/Utilities.h"

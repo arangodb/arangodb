@@ -25,7 +25,6 @@
 #include <velocypack/Builder.h>
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Auth/Rbac/Actions.h"
 #include "Inspection/VPack.h"
 #include "RestServer/CrashHandlerFeature.h"
 #include "Utils/ExecContext.h"

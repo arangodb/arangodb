@@ -23,7 +23,6 @@
 
 #include "RestHandler/RestDocumentStateHandler.h"
 
-#include "Auth/Rbac/Actions.h"
 #include "Basics/ResultT.h"
 #include "Inspection/VPack.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"

@@ -30,17 +30,13 @@
 #include "Agency/AsyncAgencyComm.h"
 #include "Agency/Supervision.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Auth/Rbac/Actions.h"
 #include "Auth/UserManager.h"
 #include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/CollectionInfoCurrent.h"
 #include "Cluster/ServerState.h"
-#include "GeneralServer/AuthenticationFeature.h"
-#include "Replication/ReplicationFeature.h"
 #include "VocBase/LogicalCollection.h"
-#include "Rest/Version.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
