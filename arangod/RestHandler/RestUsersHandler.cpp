@@ -140,7 +140,7 @@ RestStatus RestUsersHandler::getRequest(auth::UserManager* um) {
 
   std::vector<std::string> suffixes = _request->decodedSuffixes();
   if (suffixes.empty()) {
-    if (auto r = exec.canUseAdminAction(auth::perms::AdminReadUser{});
+    if (auto r = exec.canUseAdminAction(auth::perms::AdminReadUsers{});
         r.fail()) {
       generateError(r);
       return RestStatus::DONE;

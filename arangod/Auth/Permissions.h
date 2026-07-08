@@ -84,7 +84,7 @@ namespace perms {
 // ---------------------------------------------------------------------------
 
 // Admin actions without a resource.
-struct AdminReadUser {};  // TODO rename to ReadUsers
+struct AdminReadUsers {};
 struct AdminMoveShards {};
 struct AdminMonitoring {};
 struct AdminMonitoringInternal {};
@@ -113,7 +113,7 @@ struct AdminQueryCache {};
 
 namespace detail {
 using AdminList = meta::TypeList<
-    AdminReadUser, AdminMoveShards, AdminMonitoring, AdminMonitoringInternal,
+    AdminReadUsers, AdminMoveShards, AdminMonitoring, AdminMonitoringInternal,
     AdminAuthReload, AdminCrashHandler, AdminApiCalls, AdminAqlQueries,
     AdminShutdown, AdminReadLogs, AdminSetLogLevel, AdminOptions,
     AdminSupervisionState, AdminRemoveServer, AdminClusterInfo,
