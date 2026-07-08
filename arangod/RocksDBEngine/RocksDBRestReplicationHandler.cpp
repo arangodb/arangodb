@@ -735,11 +735,12 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
       << "requested collection dump for collection '" << collection
       << "' using contextId '" << ctx->id() << "'";
 
-  if (auto r = ExecContext::current().canUseCollection(_vocbase.name(), cname,
-                                                       AccessLevel::Read);
+  // This is for the single server case, in case we are a DBServer, this
+  // has already been checked in `forwardingTarget` and this check here
+  // is actually meaningless, since we are SuperUser anyway!
+  if (auto r = ExecContext::current().canDumpCollection(_vocbase.name(), cname);
       r.fail()) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
-                  r.errorMessage());
+    generateError(r);
     return;
   }
 

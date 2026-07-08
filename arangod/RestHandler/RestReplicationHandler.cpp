@@ -841,16 +841,10 @@ Result RestReplicationHandler::testPermissions() {
 
       if (!collectionName.empty()) {
         auto& exec = ExecContext::current();
-        if (exec.canUseAdminAction(arangodb::rbac::Category::AdminDump{})
-                .fail() &&
-            exec.canUseCollection(_vocbase.name(), collectionName,
-                                  AccessLevel::Read)
-                .fail()) {
+        if (auto r = exec.canDumpCollection(_vocbase.name(), collectionName);
+            r.fail()) {
           // not enough rights
-          return Result(
-              TRI_ERROR_FORBIDDEN,
-              absl::StrCat("insufficient permissions to access collection '",
-                           collectionName, "'"));
+          return r;
         }
       } else {
         // not found, return 404
