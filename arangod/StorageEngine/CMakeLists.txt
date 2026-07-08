@@ -17,7 +17,8 @@ target_link_libraries(arango_storage_engine
   arango_cluster_engine
   arango_rocksdb
   arango_health
-  arango_replication2)
+  arango_replication2_pure
+  arango_actor)
 target_include_directories(arango_storage_engine PRIVATE
   "${PROJECT_SOURCE_DIR}/arangod"
   "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
