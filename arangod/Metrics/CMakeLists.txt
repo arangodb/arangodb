@@ -26,7 +26,7 @@ target_link_libraries(arango_metrics
   arango_metrics_base
   arango
   arango::validation
-  arango_replication2
+  arango_replication2_pure
   immer
   rocksdb_interface)
 

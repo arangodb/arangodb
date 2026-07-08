@@ -23,7 +23,7 @@ target_link_libraries(arango_vocbase
   arango_cluster_methods
   arango_indexes
   arango_replication
-  arango_replication2
+  arango_replication2_pure
   arango_vocbase_api
   boost_system
   arango::validation)

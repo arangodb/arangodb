@@ -13,7 +13,7 @@ target_link_libraries(arango_network
   llhttp
   nghttp2
   arango::validation
-  arango_replication2
+  arango_replication2_pure
   immer)
 
 target_include_directories(arango_network PRIVATE
