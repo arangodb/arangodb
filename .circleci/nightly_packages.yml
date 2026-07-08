@@ -158,7 +158,7 @@ jobs:
       - run:
           name: Build continuation parameters
           command: |
-            cat > parameters.json <<EOF
+            cat > parameters.json \<<EOF
             {
               "enterprise-branch": "<< pipeline.parameters.enterprise-branch >>",
               "build-docker-image": "<< pipeline.parameters.build-docker-image >>",
