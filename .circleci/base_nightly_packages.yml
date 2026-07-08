@@ -96,9 +96,12 @@ version: 2.1
 #                                   instead of the CircleCI artifacts
 #   nightly-signing context:        ARANGO_SIGN_PASSWD, ARANGO_SIGN_KEYRING_BASE64
 #                                   (optional KEYNAME, default 86FEC04D)
-#   coredb-nightly-packages context: GCLOUD_SERVICE_KEY (raw service-account
-#                                   JSON, not base64; GCS upload; also needs
-#                                   GCR push rights when push-images-to-gcr-also
+#   coredb-nightly-packages context: GCLOUD_SERVICE_KEY_BASE64 (service-account
+#                                   JSON, base64-encoded to one line:
+#                                   "base64 -w0 key.json" — raw JSON pastes
+#                                   proved to mangle the \n escapes inside
+#                                   private_key; GCS upload; also needs GCR
+#                                   push rights when push-images-to-gcr-also
 #                                   is set), DOCKER_USER, DOCKER_PASS (Docker
 #                                   Hub credentials)
 #                                   (optional NIGHTLY_GCS_DEST, default
@@ -168,9 +171,17 @@ parameters:
 
 commands:
   checkout-arangodb:
+    # Only compile-nightly needs the real source tree (sparse: false). All
+    # other jobs work on the install tree / workspace and need just the
+    # support files, so they default to a sparse blob-filtered checkout of
+    # scripts/ + CMakeLists.txt + VERSIONS + LICENSE — a few MB instead of
+    # the full tree.
     parameters:
       destination:
         type: string
+      sparse:
+        type: boolean
+        default: true
       with-submodules:
         type: boolean
         default: false
@@ -182,7 +193,12 @@ commands:
             cd << parameters.destination >>
             git init
             git remote add origin https://github.com/arangodb/arangodb.git
-            git fetch --depth 1 origin << pipeline.git.revision >>
+            if [ "<< parameters.sparse >>" = "true" ]; then
+              git sparse-checkout set --no-cone /scripts/ /CMakeLists.txt /VERSIONS /LICENSE
+              git fetch --depth 1 --filter=blob:none origin << pipeline.git.revision >>
+            else
+              git fetch --depth 1 origin << pipeline.git.revision >>
+            fi
             git checkout << pipeline.git.revision >>
       - when:
           condition: << parameters.with-submodules >>
@@ -518,6 +534,7 @@ jobs:
           at: /tmp/nightly
       - checkout-arangodb:
           destination: /root/project
+          sparse: false
           with-submodules: true
       - checkout-enterprise:
           destination: /root/project/enterprise
@@ -1142,7 +1159,7 @@ jobs:
     # the cause and "Rerun from Failed" to republish cleanly. Leftover
     # staging data is cleaned up on success; abandoned staging dirs should be
     # covered by a bucket lifecycle rule on the *-staging prefix.
-    # Needs the coredb-nightly-packages context (GCLOUD_SERVICE_KEY, DOCKER_USER,
+    # Needs the coredb-nightly-packages context (GCLOUD_SERVICE_KEY_BASE64, DOCKER_USER,
     # DOCKER_PASS).
     docker:
       - image: cimg/base:current
@@ -1171,11 +1188,15 @@ jobs:
               sudo tee /etc/apt/sources.list.d/google-cloud-sdk.list
             sudo apt-get update && sudo apt-get install -y google-cloud-cli
 
-            if [ -z "${GCLOUD_SERVICE_KEY:-}" ]; then
-              echo "GCLOUD_SERVICE_KEY is empty; set it in the coredb-nightly-packages context (raw service-account JSON, not base64)"
+            if [ -z "${GCLOUD_SERVICE_KEY_BASE64:-}" ]; then
+              echo "GCLOUD_SERVICE_KEY_BASE64 is empty; set it in the coredb-nightly-packages context (base64 -w0 of the service-account JSON)"
               exit 1
             fi
-            printf '%s\n' "${GCLOUD_SERVICE_KEY}" > /tmp/gcs-key.json
+            echo "${GCLOUD_SERVICE_KEY_BASE64}" | base64 -d > /tmp/gcs-key.json
+            if ! python3 -m json.tool /tmp/gcs-key.json > /dev/null; then
+              echo "GCLOUD_SERVICE_KEY_BASE64 does not decode to valid JSON; re-create it with: base64 -w0 <service-account>.json"
+              exit 1
+            fi
             gcloud auth activate-service-account --key-file=/tmp/gcs-key.json
 
             PACKAGES="$(cat /tmp/nightly/nightly-major-minor.txt)"
@@ -1250,11 +1271,11 @@ jobs:
 
             echo "${DOCKER_PASS}" | docker login -u "${DOCKER_USER}" --password-stdin
             if [ "<< pipeline.parameters.push-images-to-gcr-also >>" = "true" ]; then
-              if [ -z "${GCLOUD_SERVICE_KEY:-}" ]; then
-                echo "GCLOUD_SERVICE_KEY is empty; set it in the coredb-nightly-packages context (raw service-account JSON, not base64)"
+              if [ -z "${GCLOUD_SERVICE_KEY_BASE64:-}" ]; then
+                echo "GCLOUD_SERVICE_KEY_BASE64 is empty; set it in the coredb-nightly-packages context (base64 -w0 of the service-account JSON)"
                 exit 1
               fi
-              echo "${GCLOUD_SERVICE_KEY}" | docker login -u _json_key --password-stdin https://gcr.io
+              echo "${GCLOUD_SERVICE_KEY_BASE64}" | base64 -d | docker login -u _json_key --password-stdin https://gcr.io
               REG_PREFIXES+=("${NIGHTLY_GCR_PREFIX:-gcr.io/gcr-for-testing/}")
             fi
 
