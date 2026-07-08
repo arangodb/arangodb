@@ -306,7 +306,7 @@ class instanceManager {
   getInstancesRole(role) {
     let ret = this.arangods.filter(arangod => arangod.matches(role));
     if (ret.length === 0) {
-      throw new Error(`wasn't able to find any of kind ${role} ${ret}`);
+      throw new Error(`wasn't able to find any instance of kind ${role}`);
     }
     return ret;
   }
