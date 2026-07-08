@@ -299,7 +299,6 @@ class instance {
   }
 
   dumpConnectionTable(force) {
-    // return; /// TODO
     if (this.options.extremeVerbosity || force === true) {
       let currentHandle = arango.getConnectionHandle();
       const tableColumnHeaders = [
