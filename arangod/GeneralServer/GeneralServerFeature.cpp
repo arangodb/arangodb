@@ -206,29 +206,60 @@ void GeneralServerFeature::initResponseCodeCounters() {
     arangodb_http_response_code_total builder;
     builder.reserveSpaceForLabels(4 + codeStr.size());
     builder.addLabel("code", codeStr);
-    _responseCodeCounters.try_emplace(code,
-                                       &_metricsRegistry.add(std::move(builder)));
+    _responseCodeCounters.try_emplace(
+        code, &_metricsRegistry.add(std::move(builder)));
   };
 
   for (auto code : {
-           ResponseCode::CONTINUE, ResponseCode::SWITCHING_PROTOCOLS, ResponseCode::PROCESSING,
-           ResponseCode::OK, ResponseCode::CREATED, ResponseCode::ACCEPTED, ResponseCode::PARTIAL,
-           ResponseCode::NO_CONTENT, ResponseCode::RESET_CONTENT, ResponseCode::PARTIAL_CONTENT,
-           ResponseCode::MOVED_PERMANENTLY, ResponseCode::FOUND, ResponseCode::SEE_OTHER,
-           ResponseCode::NOT_MODIFIED, ResponseCode::TEMPORARY_REDIRECT, ResponseCode::PERMANENT_REDIRECT,
-           ResponseCode::BAD, ResponseCode::UNAUTHORIZED, ResponseCode::PAYMENT_REQUIRED,
-           ResponseCode::FORBIDDEN, ResponseCode::NOT_FOUND, ResponseCode::METHOD_NOT_ALLOWED,
-           ResponseCode::NOT_ACCEPTABLE, ResponseCode::REQUEST_TIMEOUT, ResponseCode::CONFLICT,
-           ResponseCode::GONE, ResponseCode::LENGTH_REQUIRED, ResponseCode::PRECONDITION_FAILED,
-           ResponseCode::REQUEST_ENTITY_TOO_LARGE, ResponseCode::REQUEST_URI_TOO_LONG,
-           ResponseCode::UNSUPPORTED_MEDIA_TYPE, ResponseCode::REQUESTED_RANGE_NOT_SATISFIABLE,
-           ResponseCode::EXPECTATION_FAILED, ResponseCode::I_AM_A_TEAPOT, ResponseCode::ENHANCE_YOUR_CALM,
-           ResponseCode::MISDIRECTED_REQUEST, ResponseCode::UNPROCESSABLE_ENTITY, ResponseCode::LOCKED,
-           ResponseCode::PRECONDITION_REQUIRED, ResponseCode::TOO_MANY_REQUESTS,
-           ResponseCode::REQUEST_HEADER_FIELDS_TOO_LARGE, ResponseCode::UNAVAILABLE_FOR_LEGAL_REASONS,
-           ResponseCode::SERVER_ERROR, ResponseCode::NOT_IMPLEMENTED, ResponseCode::BAD_GATEWAY,
-           ResponseCode::SERVICE_UNAVAILABLE, ResponseCode::GATEWAY_TIMEOUT,
-           ResponseCode::HTTP_VERSION_NOT_SUPPORTED, ResponseCode::BANDWIDTH_LIMIT_EXCEEDED,
+           ResponseCode::CONTINUE,
+           ResponseCode::SWITCHING_PROTOCOLS,
+           ResponseCode::PROCESSING,
+           ResponseCode::OK,
+           ResponseCode::CREATED,
+           ResponseCode::ACCEPTED,
+           ResponseCode::PARTIAL,
+           ResponseCode::NO_CONTENT,
+           ResponseCode::RESET_CONTENT,
+           ResponseCode::PARTIAL_CONTENT,
+           ResponseCode::MOVED_PERMANENTLY,
+           ResponseCode::FOUND,
+           ResponseCode::SEE_OTHER,
+           ResponseCode::NOT_MODIFIED,
+           ResponseCode::TEMPORARY_REDIRECT,
+           ResponseCode::PERMANENT_REDIRECT,
+           ResponseCode::BAD,
+           ResponseCode::UNAUTHORIZED,
+           ResponseCode::PAYMENT_REQUIRED,
+           ResponseCode::FORBIDDEN,
+           ResponseCode::NOT_FOUND,
+           ResponseCode::METHOD_NOT_ALLOWED,
+           ResponseCode::NOT_ACCEPTABLE,
+           ResponseCode::REQUEST_TIMEOUT,
+           ResponseCode::CONFLICT,
+           ResponseCode::GONE,
+           ResponseCode::LENGTH_REQUIRED,
+           ResponseCode::PRECONDITION_FAILED,
+           ResponseCode::REQUEST_ENTITY_TOO_LARGE,
+           ResponseCode::REQUEST_URI_TOO_LONG,
+           ResponseCode::UNSUPPORTED_MEDIA_TYPE,
+           ResponseCode::REQUESTED_RANGE_NOT_SATISFIABLE,
+           ResponseCode::EXPECTATION_FAILED,
+           ResponseCode::I_AM_A_TEAPOT,
+           ResponseCode::ENHANCE_YOUR_CALM,
+           ResponseCode::MISDIRECTED_REQUEST,
+           ResponseCode::UNPROCESSABLE_ENTITY,
+           ResponseCode::LOCKED,
+           ResponseCode::PRECONDITION_REQUIRED,
+           ResponseCode::TOO_MANY_REQUESTS,
+           ResponseCode::REQUEST_HEADER_FIELDS_TOO_LARGE,
+           ResponseCode::UNAVAILABLE_FOR_LEGAL_REASONS,
+           ResponseCode::SERVER_ERROR,
+           ResponseCode::NOT_IMPLEMENTED,
+           ResponseCode::BAD_GATEWAY,
+           ResponseCode::SERVICE_UNAVAILABLE,
+           ResponseCode::GATEWAY_TIMEOUT,
+           ResponseCode::HTTP_VERSION_NOT_SUPPORTED,
+           ResponseCode::BANDWIDTH_LIMIT_EXCEEDED,
            ResponseCode::NOT_EXTENDED,
        }) {
     switch (code) {
@@ -284,8 +315,8 @@ void GeneralServerFeature::initResponseCodeCounters() {
       case ResponseCode::NOT_EXTENDED:
         addCounter(code);
         break;
-      // Deliberately no default case defined. The switch has to be exhaustive.
-      // This helps catch missing enum values.
+        // Deliberately no default case defined. The switch has to be
+        // exhaustive. This helps catch missing enum values.
     }
   }
 }
