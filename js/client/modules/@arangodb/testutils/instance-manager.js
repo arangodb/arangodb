@@ -143,7 +143,7 @@ class instanceManager {
   }
 
   destructor(cleanup) {
-    arango.disconnectHandle(this.connectionHandle)
+    arango.disconnectHandle(this.connectionHandle);
     this.arangods.forEach(arangod => {
       arangod.pm.deregister(arangod.port);
       arangod._disconnect();
