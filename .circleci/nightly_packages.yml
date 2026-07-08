@@ -4,16 +4,17 @@ version: 2.1
 # Triggered via: pipeline-type=nightly-packages
 #
 # Like the testing pipeline (config.yml), this is a dynamic-config setup
-# stage: generate-nightly-config prunes the jobs disabled by pipeline
+# stage: generate-nightly-packages-config prunes the jobs disabled by pipeline
 # parameters (package formats, Docker, scan, sign, security checks) from
 # base_nightly_packages.yml — including their entries in requires lists —
 # and continues the pipeline with the result. Disabled jobs are therefore
 # never scheduled instead of each spinning up a node just to halt.
 #
-# All pipeline parameters are passed through to the continuation verbatim
-# (parameters.json below); the base config declares the same parameters and
+# The base config declares the same parameters with the same defaults and
 # keeps using them for everything below job granularity (e.g. the publish
-# steps and the Trivy gate level).
+# steps and the Trivy gate level): trigger-time parameter values carry over
+# into the continued pipeline automatically (passing them again would be a
+# "Conflicting pipeline parameters." error).
 #
 # The workflow itself (jobs, publishing semantics, required contexts) is
 # documented in base_nightly_packages.yml.
@@ -32,18 +33,18 @@ parameters:
     type: string
     default: "public.ecr.aws/b0b8h2r4/arangodb/ubuntubuildarangodb-312:24.04-d2eb28e68"
     description: "Ubuntu build image (compiler toolchain + packaging/scan tools) the compile, packaging, scan, and sign jobs run in. The tag is bumped automatically by the infrastructure pipeline's build-image rebuild; override only to try a new build image."
-  build-debian-package:
+  build-debian-packages:
     type: boolean
     default: true
-    description: "Build DEB packages."
-  build-rpm-package:
+    description: "Build the DEB packages (server, client, dbg) for amd64 and arm64."
+  build-rpm-packages:
     type: boolean
     default: true
-    description: "Build RPM packages."
-  build-tarball:
+    description: "Build the RPM packages (server, client, debuginfo) for amd64 and arm64."
+  build-tarballs:
     type: boolean
     default: true
-    description: "Build TAR.GZ bundles."
+    description: "Build the TAR.GZ server and client bundles for amd64 and arm64."
   build-alpine-images:
     type: boolean
     default: true
@@ -117,7 +118,7 @@ jobs:
               echo "Nothing to cancel"
             fi
 
-  generate-nightly-config:
+  generate-nightly-packages-config:
     docker:
       - image: cimg/python:3.11.1
     executor: continuation/default
@@ -145,45 +146,29 @@ jobs:
             set -x
             python3 .circleci/generate_nightly_packages_config.py \
               --base .circleci/base_nightly_packages.yml \
-              --build-debian-package "<< pipeline.parameters.build-debian-package >>" \
-              --build-rpm-package "<< pipeline.parameters.build-rpm-package >>" \
-              --build-tarball "<< pipeline.parameters.build-tarball >>" \
+              --build-debian-packages "<< pipeline.parameters.build-debian-packages >>" \
+              --build-rpm-packages "<< pipeline.parameters.build-rpm-packages >>" \
+              --build-tarballs "<< pipeline.parameters.build-tarballs >>" \
               --build-alpine-images "<< pipeline.parameters.build-alpine-images >>" \
               --build-ubi-images "<< pipeline.parameters.build-ubi-images >>" \
               --build-deb-images "<< pipeline.parameters.build-deb-images >>" \
               --sign-packages "<< pipeline.parameters.sign-packages >>" \
               --scan-viruses "<< pipeline.parameters.scan-viruses >>" \
               --security-check "<< pipeline.parameters.security-check >>" \
-              -o continuation_config.yml
-      - run:
-          name: Build continuation parameters
-          command: |
-            cat > parameters.json \<<EOF
-            {
-              "enterprise-branch": "<< pipeline.parameters.enterprise-branch >>",
-              "build-docker-image": "<< pipeline.parameters.build-docker-image >>",
-              "build-debian-package": << pipeline.parameters.build-debian-package >>,
-              "build-rpm-package": << pipeline.parameters.build-rpm-package >>,
-              "build-tarball": << pipeline.parameters.build-tarball >>,
-              "build-alpine-images": << pipeline.parameters.build-alpine-images >>,
-              "build-ubi-images": << pipeline.parameters.build-ubi-images >>,
-              "build-deb-images": << pipeline.parameters.build-deb-images >>,
-              "push-images-to-gcr-also": << pipeline.parameters.push-images-to-gcr-also >>,
-              "sign-packages": << pipeline.parameters.sign-packages >>,
-              "scan-viruses": << pipeline.parameters.scan-viruses >>,
-              "security-check": << pipeline.parameters.security-check >>,
-              "security-check-fail-level": "<< pipeline.parameters.security-check-fail-level >>"
-            }
-            EOF
-            cat parameters.json
+              -o nightly_packages_continuation_config.yml
+      # No parameters are passed to the continuation: parameters set at
+      # trigger time carry over into the continued pipeline automatically,
+      # and re-passing them is rejected by the continuation API with
+      # "Conflicting pipeline parameters." Values left at their defaults
+      # resolve identically in the base config, which declares the same
+      # parameters with the same defaults.
       - continuation/continue:
-          configuration_path: continuation_config.yml
-          parameters: parameters.json
+          configuration_path: nightly_packages_continuation_config.yml
 
 workflows:
   setup-nightly-packages:
     jobs:
       - cancel-redundant-pipelines:
           context: [ circleci-token ]
-      - generate-nightly-config:
+      - generate-nightly-packages-config:
           requires: [cancel-redundant-pipelines]

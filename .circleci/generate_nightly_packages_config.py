@@ -6,7 +6,7 @@ pipeline parameters, including their entries in other jobs' requires lists,
 so a disabled job never occupies an executor (the former in-job
 "circleci-agent step halt" skipping kept scheduling a node per skipped job).
 
-Invoked by the generate-nightly-config job in nightly_packages.yml (the
+Invoked by the generate-nightly-packages-config job in nightly_packages.yml (the
 setup config); the boolean pipeline parameters are passed through as
 true/false CLI options.
 """
@@ -126,23 +126,23 @@ def check_workflow(config: Dict[str, Any]) -> None:
 def generate(base: Dict[str, Any], args: argparse.Namespace) -> Dict[str, Any]:
     if not any(
         (
-            args.build_debian_package,
-            args.build_rpm_package,
-            args.build_tarball,
+            args.build_debian_packages,
+            args.build_rpm_packages,
+            args.build_tarballs,
             args.build_alpine_images,
             args.build_ubi_images,
             args.build_deb_images,
         )
     ):
         raise ValueError(
-            "nothing selected: enable at least one of build-debian-package, "
-            "build-rpm-package, build-tarball, build-alpine-images, "
+            "nothing selected: enable at least one of build-debian-packages, "
+            "build-rpm-packages, build-tarballs, build-alpine-images, "
             "build-ubi-images, build-deb-images"
         )
     drop = disabled_jobs(
-        deb=args.build_debian_package,
-        rpm=args.build_rpm_package,
-        tar=args.build_tarball,
+        deb=args.build_debian_packages,
+        rpm=args.build_rpm_packages,
+        tar=args.build_tarballs,
         alpine_image=args.build_alpine_images,
         ubi_image=args.build_ubi_images,
         deb_image=args.build_deb_images,
@@ -160,9 +160,9 @@ def parse_args(argv: List[str]) -> Tuple[argparse.ArgumentParser, argparse.Names
     parser.add_argument("--base", required=True, help="path to base_nightly_packages.yml")
     parser.add_argument("-o", "--output", required=True, help="continuation config to write")
     for option in (
-        "build-debian-package",
-        "build-rpm-package",
-        "build-tarball",
+        "build-debian-packages",
+        "build-rpm-packages",
+        "build-tarballs",
         "build-alpine-images",
         "build-ubi-images",
         "build-deb-images",

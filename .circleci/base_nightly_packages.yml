@@ -2,16 +2,17 @@ version: 2.1
 # Nightly images and packages pipeline — base (continuation) config.
 #
 # CircleCI never reads this file directly: nightly_packages.yml is the setup
-# config the pipeline definition points at, and its generate-nightly-config
+# config the pipeline definition points at, and its
+# generate-nightly-packages-config
 # job prunes the jobs disabled by pipeline parameters from this file (see
 # generate_nightly_packages_config.py) before continuing the pipeline with
 # the result.
 # Disabled jobs therefore never occupy an executor at all.
 #
 # Produces for the enterprise edition, on x86_64 and arm64:
-#   - DEB packages (server, -client, -dbg)        [build-debian-package]
-#   - RPM packages (server, client, debuginfo)    [build-rpm-package]
-#   - TAR.GZ bundles (server, client)             [build-tarball]
+#   - DEB packages (server, -client, -dbg)        [build-debian-packages]
+#   - RPM packages (server, client, debuginfo)    [build-rpm-packages]
+#   - TAR.GZ bundles (server, client)             [build-tarballs]
 #   - Docker images + multi-arch manifests
 #     (Alpine [build-alpine-images], Red Hat UBI [build-ubi-images] and
 #     Ubuntu [build-deb-images] based; UBI/Ubuntu tags carry -ubi / -deb)
@@ -119,18 +120,18 @@ parameters:
     type: string
     default: "public.ecr.aws/b0b8h2r4/arangodb/ubuntubuildarangodb-312:24.04-d2eb28e68"
     description: "Ubuntu build image (compiler toolchain + packaging/scan tools) the compile, packaging, scan, and sign jobs run in. The tag is bumped automatically by the infrastructure pipeline's build-image rebuild; override only to try a new build image."
-  build-debian-package:
+  build-debian-packages:
     type: boolean
     default: true
-    description: "Build DEB packages."
-  build-rpm-package:
+    description: "Build the DEB packages (server, client, dbg) for amd64 and arm64."
+  build-rpm-packages:
     type: boolean
     default: true
-    description: "Build RPM packages."
-  build-tarball:
+    description: "Build the RPM packages (server, client, debuginfo) for amd64 and arm64."
+  build-tarballs:
     type: boolean
     default: true
-    description: "Build TAR.GZ bundles."
+    description: "Build the TAR.GZ server and client bundles for amd64 and arm64."
   build-alpine-images:
     type: boolean
     default: true
@@ -1155,9 +1156,9 @@ jobs:
       - run:
           name: Stage packages and sourceInfo in GCS (not yet visible)
           command: |
-            if [ "<< pipeline.parameters.build-debian-package >>" = "false" ] && \
-               [ "<< pipeline.parameters.build-rpm-package >>" = "false" ] && \
-               [ "<< pipeline.parameters.build-tarball >>" = "false" ]; then
+            if [ "<< pipeline.parameters.build-debian-packages >>" = "false" ] && \
+               [ "<< pipeline.parameters.build-rpm-packages >>" = "false" ] && \
+               [ "<< pipeline.parameters.build-tarballs >>" = "false" ]; then
               echo "No packages selected, skipping GCS staging"
               exit 0
             fi
@@ -1302,9 +1303,9 @@ jobs:
             retry() { "$@" || { sleep 5; "$@"; } || { sleep 15; "$@"; } || { sleep 30; "$@"; }; }
 
             PACKAGES_SELECTED=true
-            if [ "<< pipeline.parameters.build-debian-package >>" = "false" ] && \
-               [ "<< pipeline.parameters.build-rpm-package >>" = "false" ] && \
-               [ "<< pipeline.parameters.build-tarball >>" = "false" ]; then
+            if [ "<< pipeline.parameters.build-debian-packages >>" = "false" ] && \
+               [ "<< pipeline.parameters.build-rpm-packages >>" = "false" ] && \
+               [ "<< pipeline.parameters.build-tarballs >>" = "false" ]; then
               PACKAGES_SELECTED=false
             fi
 
@@ -1409,9 +1410,9 @@ jobs:
               echo "Workflow:  ${CIRCLE_WORKFLOW_ID}"
             } > "${REPORT}"
 
-            if [ "<< pipeline.parameters.build-debian-package >>" = "false" ] && \
-               [ "<< pipeline.parameters.build-rpm-package >>" = "false" ] && \
-               [ "<< pipeline.parameters.build-tarball >>" = "false" ]; then
+            if [ "<< pipeline.parameters.build-debian-packages >>" = "false" ] && \
+               [ "<< pipeline.parameters.build-rpm-packages >>" = "false" ] && \
+               [ "<< pipeline.parameters.build-tarballs >>" = "false" ]; then
               printf '\nPackages: not selected\n' >> "${REPORT}"
             else
               PACKAGES="$(cat /tmp/nightly/nightly-major-minor.txt)"
@@ -1442,9 +1443,9 @@ jobs:
       - run:
           name: Regenerate download index.html files
           command: |
-            if [ "<< pipeline.parameters.build-debian-package >>" = "false" ] && \
-               [ "<< pipeline.parameters.build-rpm-package >>" = "false" ] && \
-               [ "<< pipeline.parameters.build-tarball >>" = "false" ]; then
+            if [ "<< pipeline.parameters.build-debian-packages >>" = "false" ] && \
+               [ "<< pipeline.parameters.build-rpm-packages >>" = "false" ] && \
+               [ "<< pipeline.parameters.build-tarballs >>" = "false" ]; then
               echo "No packages selected, skipping index regeneration"
               exit 0
             fi

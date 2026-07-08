@@ -15,9 +15,9 @@ import generate_nightly_packages_config as gen
 BASE_PATH = Path(__file__).parent.parent / "base_nightly_packages.yml"
 
 ALL_TRUE = {
-    "build-debian-package": "true",
-    "build-rpm-package": "true",
-    "build-tarball": "true",
+    "build-debian-packages": "true",
+    "build-rpm-packages": "true",
+    "build-tarballs": "true",
     "build-alpine-images": "true",
     "build-ubi-images": "true",
     "build-deb-images": "true",
@@ -70,7 +70,7 @@ def test_no_security_check_drops_all_trivy_jobs(base_config):
 
 
 def test_disabled_format_drops_build_and_scan_jobs(base_config):
-    config = run_generate(base_config, **{"build-debian-package": "false"})
+    config = run_generate(base_config, **{"build-debian-packages": "false"})
     names = workflow_names(config)
     assert "deb-enterprise-amd64" not in names
     assert "deb-enterprise-arm64" not in names
@@ -98,9 +98,9 @@ def test_docker_only_drops_package_pipeline(base_config):
     config = run_generate(
         base_config,
         **{
-            "build-debian-package": "false",
-            "build-rpm-package": "false",
-            "build-tarball": "false",
+            "build-debian-packages": "false",
+            "build-rpm-packages": "false",
+            "build-tarballs": "false",
         },
     )
     names = workflow_names(config)
@@ -167,9 +167,9 @@ def test_nothing_selected_is_an_error(base_config):
         run_generate(
             base_config,
             **{
-                "build-debian-package": "false",
-                "build-rpm-package": "false",
-                "build-tarball": "false",
+                "build-debian-packages": "false",
+                "build-rpm-packages": "false",
+                "build-tarballs": "false",
                 "build-alpine-images": "false",
                 "build-ubi-images": "false",
                 "build-deb-images": "false",
