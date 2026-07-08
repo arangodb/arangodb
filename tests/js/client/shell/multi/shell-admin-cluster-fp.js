@@ -25,7 +25,6 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require('jsunity');
-let { reconnectRetry } = require('@arangodb/test-helper');
 let { instanceRole } = require('@arangodb/testutils/instance');
 let IM = global.instanceManager;
 
@@ -50,7 +49,6 @@ function adminClusterSuite() {
       
       // this is assumed to be an invalid server id, so the operation must fail
       try {
-        reconnectRetry(coords[0].endpoint, db._name(), "root", "");
         let res = arango.POST_RAW("/_admin/cluster/removeServer", new Buffer('"testmann123456"'), {
           "content-type": "application/json"
         });
@@ -69,7 +67,6 @@ function adminClusterSuite() {
       try {
         // make removeServer fail quickly in case precondition is not met. if we don't set this, it will cycle for 60s
         IM.debugSetFailAt("removeServer::noRetry", instanceRole.coordinator, ep);
-        reconnectRetry(ep, db._name(), "root", "");
         let res = arango.POST_RAW("/_admin/cluster/removeServer",
                                   new Buffer('"' + coordinatorId + '"'), {
                                     "content-type": "application/json"
@@ -91,7 +88,6 @@ function adminClusterSuite() {
       try {
         // make removeServer fail quickly in case precondition is not met. if we don't set this, it will cycle for 60s
         IM.debugSetFailAt("removeServer::noRetry", instanceRole.coordinator, ep);
-        reconnectRetry(ep, db._name(), "root", "");
         let res = arango.POST_RAW("/_admin/cluster/removeServer",
                                   new Buffer('"' + coordinatorId + '"'), {
                                     "content-type": "application/json"
@@ -117,7 +113,6 @@ function adminClusterSuite() {
         const dbServers = IM.getInstancesRole(instanceRole.dbserver);
         assertTrue(dbServers.length > 0);
         dbServers.forEach((dbs) => {
-          reconnectRetry(ep, db._name(), "root", "");
           let res = arango.POST_RAW("/_admin/cluster/removeServer",
                                     new Buffer('"' + dbs.id + '"'), {
                                     "content-type": "application/json"
@@ -143,7 +138,6 @@ function adminClusterSuite() {
         const dbServers = IM.getInstancesRole(instanceRole.dbserver);
         assertTrue(dbServers.length > 0);
         dbServers.forEach((dbs) => {
-          reconnectRetry(ep, "_system", "root", "");
           let res = arango.POST_RAW("/_admin/cluster/removeServer",
                                     new Buffer('"' + dbs.id + '"'), {
                                     "content-type": "application/json"
@@ -165,7 +159,6 @@ function adminClusterSuite() {
       let ep = coords[0].endpoint;
       try {
         // this is assumed to be an invalid server id, so the operation must fail
-        reconnectRetry(ep, "_system", "root", "");
         let res = arango.POST_RAW("/_admin/cluster/cleanOutServer",
                                   new Buffer('"testmann123456"'), {
                                     "content-type": "application/json"
@@ -185,7 +178,6 @@ function adminClusterSuite() {
       let ep = coords[0].endpoint;
       try {
         // this is assumed to be an invalid server id, so the operation must fail
-        reconnectRetry(ep, "_system", "root", "");
         let res = arango.POST_RAW("/_admin/cluster/cleanOutServer", { server: "testmann123456" });
         assertEqual(202, res.code);
         assertTrue(res.parsedBody.hasOwnProperty("id"));
