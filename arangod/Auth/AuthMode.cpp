@@ -276,8 +276,63 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
             if (isAdmin().ok()) {
               return {};
             }
+            if (collection.overwrite) {
+              if (auto r =
+                      check(p::DropCollection(collection.db, collection.name));
+                  r.fail()) {
+                return r;
+              }
+              if (auto r = check(
+                      p::CreateCollection(collection.db, collection.name));
+                  r.fail()) {
+                return r;
+              }
+              return {};
+            }
             return check(p::UseCollection{collection.db, collection.name,
+                                          CollectionAccessLevel::WriteData});
+          },
+          [&](p::RestoreCreateIndex const& idx) -> Result {
+            // Behaves like UseCollection(WriteMeta), but is additionally
+            // granted to identities with RW access to the _system database
+            // (which corresponds to canUseAdminAction(AdminRestore) with
+            // RBAC).
+            if (isAdmin().ok()) {
+              return {};
+            }
+            return check(p::UseCollection{idx.db, idx.collName,
                                           CollectionAccessLevel::WriteMeta});
+          },
+          [&](p::RestoreCreateView const& view) -> Result {
+            // Behaves like CreateView, but is additionally granted to
+            // identities with RW access to the _system database (which
+            // corresponds to canUseAdminAction(AdminRestore) with RBAC).
+            if (isAdmin().ok()) {
+              return {};
+            }
+            return check(
+                p::CreateView{view.db, view.viewName, view.linkedCollNames});
+          },
+          [&](p::RestoreDropView const& view) -> Result {
+            // Behaves like DropView, but is additionally granted to
+            // identities with RW access to the _system database (which
+            // corresponds to canUseAdminAction(AdminRestore) with RBAC).
+            if (isAdmin().ok()) {
+              return {};
+            }
+            return check(
+                p::DropView{view.db, view.viewName, view.linkedCollNames});
+          },
+          [&](p::RestoreWriteData const& data) -> Result {
+            // Behaves like UseCollection(WriteData), but is additionally
+            // granted to identities with RW access to the _system database
+            // (which corresponds to canUseAdminAction(AdminRestore) with
+            // RBAC).
+            if (isAdmin().ok()) {
+              return {};
+            }
+            return check(p::UseCollection{data.db, data.collName,
+                                          CollectionAccessLevel::WriteData});
           },
           [&](p::UseView const& view) -> Result {
             // In the classic system views delegate to database-level access

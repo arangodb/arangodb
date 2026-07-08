@@ -163,9 +163,38 @@ struct DumpCollection {
 // classic system it is additionally granted to identities with RW access to
 // the `_system` database (i.e. "admins", equivalent to
 // `Admin{AdminRestore}`).
+// The flag `overwrite` indicates if we need to be able to drop and recreate
+// the collection!
 struct RestoreCollection {
   std::string db;
   std::string name;
+  bool overwrite;
+};
+
+// For the create index process during restore we need this:
+struct RestoreCreateIndex {
+  std::string db;
+  std::string collName;
+};
+
+// For the create view process during restore we need this:
+struct RestoreCreateView {
+  std::string db;
+  std::string viewName;
+  std::vector<std::string> linkedCollNames;
+};
+
+// For the drop view process during restore we need this:
+struct RestoreDropView {
+  std::string db;
+  std::string viewName;
+  std::vector<std::string> linkedCollNames;
+};
+
+// For the write data process during restore we need this:
+struct RestoreWriteData {
+  std::string db;
+  std::string collName;
 };
 
 // ---------------------------------------------------------------------------
@@ -304,6 +333,9 @@ using Permission = std::variant<
     // collection permissions
     perms::SeeCollection, perms::CreateCollection, perms::DropCollection,
     perms::UseCollection, perms::DumpCollection, perms::RestoreCollection,
+    perms::RestoreCreateIndex, perms::RestoreCreateView, perms::RestoreDropView,
+    perms::RestoreWriteData,
+
     // view permissions
     perms::SeeView, perms::CreateView, perms::ModifyView, perms::RenameView,
     perms::DropView, perms::UseView,

@@ -166,7 +166,19 @@ class ExecContext {
   // that in Classic Mode it is additionally granted to identities with RW
   // access to the `_system` database (i.e. "admins", equivalent to
   // `canUseAdminAction(rbac::Category::AdminRestore{})`).
-  Result canRestoreCollection(std::string_view db, std::string_view coll) const;
+  // The flag `overwrite` indicates if we need to drop and recreate the
+  // collection in the "overwrite" case.
+  Result canRestoreCollection(std::string_view db, std::string_view coll,
+                              bool overwrite) const;
+
+  Result canRestoreCreateIndex(std::string_view db,
+                               std::string_view coll) const;
+  Result canRestoreCreateView(std::string_view db, std::string_view viewName,
+                              std::vector<std::string> view) const;
+  Result canRestoreDropView(
+      std::string_view db, std::string_view view,
+      std::vector<std::string> linkedCollectionNames) const;
+  Result canRestoreWriteData(std::string_view db, std::string_view coll) const;
 
   Result canCreateIndex(std::string_view db, std::string_view coll) const;
   Result canDropIndex(std::string_view db, std::string_view coll) const;

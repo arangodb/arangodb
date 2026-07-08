@@ -235,9 +235,41 @@ Result ExecContext::canDumpCollection(std::string_view db,
 }
 
 Result ExecContext::canRestoreCollection(std::string_view db,
-                                         std::string_view coll) const {
+                                         std::string_view coll,
+                                         bool overwrite) const {
   using namespace auth::perms;
-  return can(RestoreCollection{.db{db}, .name{coll}});
+  return can(RestoreCollection{.db{db}, .name{coll}, .overwrite = overwrite});
+}
+
+Result ExecContext::canRestoreCreateIndex(std::string_view db,
+                                          std::string_view coll) const {
+  using namespace auth::perms;
+  return can(RestoreCreateIndex{.db{db}, .collName{coll}});
+}
+
+Result ExecContext::canRestoreCreateView(
+    std::string_view db, std::string_view viewName,
+    std::vector<std::string> linkedCollNames) const {
+  using namespace auth::perms;
+  return can(RestoreCreateView{.db{db},
+                               .viewName{viewName},
+                               .linkedCollNames{std::move(linkedCollNames)}});
+}
+
+Result ExecContext::canRestoreDropView(
+    std::string_view db, std::string_view view,
+    std::vector<std::string> linkedCollectionNames) const {
+  using namespace auth::perms;
+  return can(
+      RestoreDropView{.db{db},
+                      .viewName{view},
+                      .linkedCollNames{std::move(linkedCollectionNames)}});
+}
+
+Result ExecContext::canRestoreWriteData(std::string_view db,
+                                        std::string_view coll) const {
+  using namespace auth::perms;
+  return can(RestoreWriteData{.db{db}, .collName{coll}});
 }
 
 Result ExecContext::canCreateIndex(std::string_view db,
@@ -409,7 +441,8 @@ auto ExecContextSuperuserScope::getSuperuserContextFrom(
     ExecContext const* const old) -> std::shared_ptr<ExecContext const> {
   // save the original request for audit logging, if there is one
   if (old != nullptr && old->request().has_value()) {
-    // NOTE we could store the vocbase as well, but I'm unsure if that's helpful
+    // NOTE we could store the vocbase as well, but I'm unsure if that's
+    // helpful
     //      (note that an exec context contains a request iff it
     //      contains a vocbase)
     return std::make_shared<ExecContext>(
