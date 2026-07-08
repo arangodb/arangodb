@@ -39,7 +39,7 @@ const arango = internal.arango;
 const arangodb = require('@arangodb');
 const db = arangodb.db;
 const {
-  testHelper,
+  helper,
   deriveTestSuite
 } = require('@arangodb/test-helper');
 const analyzers = require('@arangodb/analyzers');
@@ -2519,7 +2519,7 @@ function transactionRollbackSuite (dbParams) {
 
       assertEqual(0, c1.count());
 
-      testHelper.waitUnload(c1);
+      helper.waitUnload(c1);
 
       assertEqual(0, c1.count());
     },
@@ -3925,8 +3925,8 @@ function transactionCrossCollectionSuite (dbParams) {
       assertEqual(0, c1.count());
       assertEqual(0, c2.count());
 
-      testHelper.waitUnload(c1);
-      testHelper.waitUnload(c2);
+      helper.waitUnload(c1);
+      helper.waitUnload(c2);
 
       assertEqual(0, c1.count());
       assertEqual(0, c2.count());
@@ -3974,8 +3974,8 @@ function transactionCrossCollectionSuite (dbParams) {
       assertEqual(9, c1.count());
       assertEqual(9, c2.count());
 
-      testHelper.waitUnload(c1);
-      testHelper.waitUnload(c2);
+      helper.waitUnload(c1);
+      helper.waitUnload(c2);
 
       assertEqual(9, c1.count());
       assertEqual(9, c2.count());
@@ -4027,8 +4027,8 @@ function transactionCrossCollectionSuite (dbParams) {
 
       c1.unload();
       c2.unload();
-      testHelper.waitUnload(c1);
-      testHelper.waitUnload(c2);
+      helper.waitUnload(c1);
+      helper.waitUnload(c2);
 
       assertEqual(1, c1.count());
       assertEqual(1, c2.count());
@@ -4076,7 +4076,7 @@ function transactionCrossCollectionSuite (dbParams) {
 
       assertEqual(10, c1.count());
 
-      testHelper.waitUnload(c1);
+      helper.waitUnload(c1);
 
       assertEqual(10, c1.count());
     }
