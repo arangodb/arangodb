@@ -72,5 +72,6 @@ make manifest    IMAGE=public.ecr.aws/b0b8h2r4/arangodb/ubuntubuildarangodb-312 
 ```
 
 After a successful CI run, the tag and the `build-docker-image` defaults in
-`.circleci/config.yml`, `.circleci/base_config.yml`, and
-`.circleci/nightly_packages.yml` are updated and committed back automatically.
+`.circleci/config.yml`, `.circleci/base_config.yml`,
+`.circleci/nightly_packages.yml`, and `.circleci/base_nightly_packages.yml`
+are updated and committed back automatically.

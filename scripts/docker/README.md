@@ -7,7 +7,8 @@
 - the pipeline builds and pushes the images, then automatically commits the
   updated image tags back to the triggering branch (the `default` values in
   `.circleci/config.yml`, `.circleci/base_config.yml`, and — for the build
-  image — `.circleci/nightly_packages.yml`). No manual tag editing is needed.
+  image — `.circleci/nightly_packages.yml` and
+  `.circleci/base_nightly_packages.yml`). No manual tag editing is needed.
 - images already built for the current commit are skipped, so re-running the
   pipeline on the same commit is a no-op.
 

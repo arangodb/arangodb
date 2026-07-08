@@ -184,6 +184,12 @@ set_nightly_version() {
     "${cmake_file}"
 
   find_arangodb_version "${cmake_file}"
+
+  # oskar's setNightlyVersion also rewrote ARANGO-VERSION. CMake regenerates
+  # it from lib/Basics/VERSION.in at configure time, but jobs that only patch
+  # the version and never configure (packaging, docker) would otherwise keep
+  # the stale checked-in content (e.g. 3.12.10-devel) in their checkout.
+  echo "${ARANGODB_VERSION}" > "$(dirname "${cmake_file}")/ARANGO-VERSION"
 }
 
 # ---------------------------------------------------------------------------

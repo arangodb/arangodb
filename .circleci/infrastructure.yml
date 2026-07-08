@@ -617,12 +617,14 @@ jobs:
             sed -i "s|public\.ecr\.aws/b0b8h2r4/arangodb/ubuntubuildarangodb-[^\"]*|${IMAGE}:${TAG}|g" \
               /home/circleci/project/.circleci/config.yml \
               /home/circleci/project/.circleci/base_config.yml \
-              /home/circleci/project/.circleci/nightly_packages.yml
+              /home/circleci/project/.circleci/nightly_packages.yml \
+              /home/circleci/project/.circleci/base_nightly_packages.yml
             cd /home/circleci/project
             git add scripts/docker/build/linux/amd64-build-tag.txt \
                     .circleci/config.yml \
                     .circleci/base_config.yml \
-                    .circleci/nightly_packages.yml
+                    .circleci/nightly_packages.yml \
+                    .circleci/base_nightly_packages.yml
       - commit-and-push:
           message: "chore: update Ubuntu build image tag [skip ci]"
       - cleanup-pushed-on-failure
