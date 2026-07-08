@@ -12,9 +12,9 @@ version: 2.1
 #   - DEB packages (server, -client, -dbg)        [build-debian-package]
 #   - RPM packages (server, client, debuginfo)    [build-rpm-package]
 #   - TAR.GZ bundles (server, client)             [build-tarball]
-#   - Docker images + multi-arch manifests        [build-docker-manifest]
-#     (Alpine [build-alpine-image], Red Hat UBI [build-ubi-image] and
-#     Ubuntu [build-deb-image] based; UBI/Ubuntu tags carry -ubi / -deb)
+#   - Docker images + multi-arch manifests
+#     (Alpine [build-alpine-images], Red Hat UBI [build-ubi-images] and
+#     Ubuntu [build-deb-images] based; UBI/Ubuntu tags carry -ubi / -deb)
 #
 # Build flow (mirrors oskar's buildEnterprisePackage; see scripts/packaging/):
 #   prepare-nightly     pins the nightly date/version, resolves the enterprise
@@ -118,6 +118,7 @@ parameters:
   build-docker-image:
     type: string
     default: "public.ecr.aws/b0b8h2r4/arangodb/ubuntubuildarangodb-312:24.04-d2eb28e68"
+    description: "Ubuntu build image (compiler toolchain + packaging/scan tools) the compile, packaging, scan, and sign jobs run in. The tag is bumped automatically by the infrastructure pipeline's build-image rebuild; override only to try a new build image."
   build-debian-package:
     type: boolean
     default: true
@@ -130,22 +131,18 @@ parameters:
     type: boolean
     default: true
     description: "Build TAR.GZ bundles."
-  build-docker-manifest:
+  build-alpine-images:
     type: boolean
     default: true
-    description: "Build Docker images and push them (with a multi-arch manifest) on publish."
-  build-alpine-image:
+    description: "Build the Alpine-based Docker images (one per architecture: amd64 and arm64); the publish job pushes them and creates their multi-arch manifests at the end. The default image with suffix-less tags."
+  build-ubi-images:
     type: boolean
     default: true
-    description: "Build the Alpine-based Docker image (the default image, suffix-less tags). Only effective when build-docker-manifest is true."
-  build-ubi-image:
+    description: "Build the Red Hat UBI-based Docker images (one per architecture: amd64 and arm64); the publish job pushes them and creates their multi-arch manifests at the end. Tags carry -ubi between version and arch."
+  build-deb-images:
     type: boolean
     default: true
-    description: "Build the Red Hat UBI-based Docker image (tags carry -ubi between version and arch). Only effective when build-docker-manifest is true."
-  build-deb-image:
-    type: boolean
-    default: true
-    description: "Build the Ubuntu-based Docker image (tags carry -deb between version and arch). Only effective when build-docker-manifest is true."
+    description: "Build the Ubuntu-based Docker images (one per architecture: amd64 and arm64); the publish job pushes them and creates their multi-arch manifests at the end. Tags carry -deb between version and arch."
   push-images-to-gcr-also:
     type: boolean
     default: false
@@ -1231,10 +1228,10 @@ jobs:
             # Alpine is the suffix-less default image; UBI and Ubuntu images
             # carry -ubi / -deb between version and arch (oskar tag scheme).
             DISTROS=()
-            if [ "<< pipeline.parameters.build-alpine-image >>" = "true" ]; then DISTROS+=("alpine"); fi
-            if [ "<< pipeline.parameters.build-ubi-image >>" = "true" ]; then DISTROS+=("ubi"); fi
-            if [ "<< pipeline.parameters.build-deb-image >>" = "true" ]; then DISTROS+=("deb"); fi
-            if [ "<< pipeline.parameters.build-docker-manifest >>" = "false" ] || [ ${#DISTROS[@]} -eq 0 ]; then
+            if [ "<< pipeline.parameters.build-alpine-images >>" = "true" ]; then DISTROS+=("alpine"); fi
+            if [ "<< pipeline.parameters.build-ubi-images >>" = "true" ]; then DISTROS+=("ubi"); fi
+            if [ "<< pipeline.parameters.build-deb-images >>" = "true" ]; then DISTROS+=("deb"); fi
+            if [ ${#DISTROS[@]} -eq 0 ]; then
               echo "Docker images not selected, nothing was pushed." > "${REPORT}"
               echo "Docker images not selected, skipping push"
               exit 0
@@ -1338,10 +1335,10 @@ jobs:
             fi
 
             DISTROS=()
-            if [ "<< pipeline.parameters.build-alpine-image >>" = "true" ]; then DISTROS+=("alpine"); fi
-            if [ "<< pipeline.parameters.build-ubi-image >>" = "true" ]; then DISTROS+=("ubi"); fi
-            if [ "<< pipeline.parameters.build-deb-image >>" = "true" ]; then DISTROS+=("deb"); fi
-            if [ "<< pipeline.parameters.build-docker-manifest >>" = "true" ] && [ ${#DISTROS[@]} -gt 0 ]; then
+            if [ "<< pipeline.parameters.build-alpine-images >>" = "true" ]; then DISTROS+=("alpine"); fi
+            if [ "<< pipeline.parameters.build-ubi-images >>" = "true" ]; then DISTROS+=("ubi"); fi
+            if [ "<< pipeline.parameters.build-deb-images >>" = "true" ]; then DISTROS+=("deb"); fi
+            if [ ${#DISTROS[@]} -gt 0 ]; then
               set -x
               VERSION="$(cat /tmp/nightly/nightly-version.txt)"
               # Rolling tags from prepare-nightly: <major.minor>-nightly, plus

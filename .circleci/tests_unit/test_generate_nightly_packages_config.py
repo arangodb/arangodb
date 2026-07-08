@@ -18,10 +18,9 @@ ALL_TRUE = {
     "build-debian-package": "true",
     "build-rpm-package": "true",
     "build-tarball": "true",
-    "build-docker-manifest": "true",
-    "build-alpine-image": "true",
-    "build-ubi-image": "true",
-    "build-deb-image": "true",
+    "build-alpine-images": "true",
+    "build-ubi-images": "true",
+    "build-deb-images": "true",
     "sign-packages": "true",
     "scan-viruses": "true",
     "security-check": "true",
@@ -125,8 +124,14 @@ def test_docker_only_drops_package_pipeline(base_config):
 
 
 def test_packages_only_drops_docker_jobs(base_config):
-    # build-docker-manifest=false overrides the per-distro image flags
-    config = run_generate(base_config, **{"build-docker-manifest": "false"})
+    config = run_generate(
+        base_config,
+        **{
+            "build-alpine-images": "false",
+            "build-ubi-images": "false",
+            "build-deb-images": "false",
+        },
+    )
     names = workflow_names(config)
     for distro in ("alpine", "ubi", "deb"):
         for arch in ("amd64", "arm64"):
@@ -138,7 +143,7 @@ def test_packages_only_drops_docker_jobs(base_config):
 
 def test_per_distro_image_flags(base_config):
     config = run_generate(
-        base_config, **{"build-ubi-image": "false", "build-deb-image": "false"}
+        base_config, **{"build-ubi-images": "false", "build-deb-images": "false"}
     )
     names = workflow_names(config)
     for distro in ("ubi", "deb"):
@@ -149,7 +154,7 @@ def test_per_distro_image_flags(base_config):
         assert f"docker-enterprise-alpine-{arch}" in names
         assert f"security-check-docker-alpine-{arch}" in names
 
-    config = run_generate(base_config, **{"build-alpine-image": "false"})
+    config = run_generate(base_config, **{"build-alpine-images": "false"})
     names = workflow_names(config)
     for arch in ("amd64", "arm64"):
         assert f"docker-enterprise-alpine-{arch}" not in names
@@ -165,20 +170,9 @@ def test_nothing_selected_is_an_error(base_config):
                 "build-debian-package": "false",
                 "build-rpm-package": "false",
                 "build-tarball": "false",
-                "build-docker-manifest": "false",
-            },
-        )
-    # docker selected but every distro image deselected counts as nothing too
-    with pytest.raises(ValueError, match="nothing selected"):
-        run_generate(
-            base_config,
-            **{
-                "build-debian-package": "false",
-                "build-rpm-package": "false",
-                "build-tarball": "false",
-                "build-alpine-image": "false",
-                "build-ubi-image": "false",
-                "build-deb-image": "false",
+                "build-alpine-images": "false",
+                "build-ubi-images": "false",
+                "build-deb-images": "false",
             },
         )
 

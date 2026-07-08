@@ -35,7 +35,6 @@ def disabled_jobs(
     deb: bool,
     rpm: bool,
     tar: bool,
-    docker: bool,
     alpine_image: bool,
     ubi_image: bool,
     deb_image: bool,
@@ -53,13 +52,13 @@ def disabled_jobs(
         if not enabled or not security:
             drop.update(f"security-check-{fmt}-{arch}" for arch in ARCHES)
 
-    # build-docker-manifest is the master switch; each distro image has its
-    # own flag on top of it, and every built image gets its own Trivy job.
+    # Each distro image has its own build-*-image flag, and every built
+    # image gets its own Trivy job.
     distros = {"alpine": alpine_image, "ubi": ubi_image, "deb": deb_image}
     for distro, enabled in distros.items():
-        if not docker or not enabled:
+        if not enabled:
             drop.update(f"docker-enterprise-{distro}-{arch}" for arch in ARCHES)
-        if not docker or not enabled or not security:
+        if not enabled or not security:
             drop.update(
                 f"security-check-docker-{distro}-{arch}" for arch in ARCHES
             )
@@ -125,30 +124,28 @@ def check_workflow(config: Dict[str, Any]) -> None:
 
 
 def generate(base: Dict[str, Any], args: argparse.Namespace) -> Dict[str, Any]:
-    any_docker = args.build_docker_manifest and any(
-        (args.build_alpine_image, args.build_ubi_image, args.build_deb_image)
-    )
     if not any(
         (
             args.build_debian_package,
             args.build_rpm_package,
             args.build_tarball,
-            any_docker,
+            args.build_alpine_images,
+            args.build_ubi_images,
+            args.build_deb_images,
         )
     ):
         raise ValueError(
             "nothing selected: enable at least one of build-debian-package, "
-            "build-rpm-package, build-tarball, or build-docker-manifest with "
-            "at least one of build-alpine-image/build-ubi-image/build-deb-image"
+            "build-rpm-package, build-tarball, build-alpine-images, "
+            "build-ubi-images, build-deb-images"
         )
     drop = disabled_jobs(
         deb=args.build_debian_package,
         rpm=args.build_rpm_package,
         tar=args.build_tarball,
-        docker=args.build_docker_manifest,
-        alpine_image=args.build_alpine_image,
-        ubi_image=args.build_ubi_image,
-        deb_image=args.build_deb_image,
+        alpine_image=args.build_alpine_images,
+        ubi_image=args.build_ubi_images,
+        deb_image=args.build_deb_images,
         sign=args.sign_packages,
         scan=args.scan_viruses,
         security=args.security_check,
@@ -166,10 +163,9 @@ def parse_args(argv: List[str]) -> Tuple[argparse.ArgumentParser, argparse.Names
         "build-debian-package",
         "build-rpm-package",
         "build-tarball",
-        "build-docker-manifest",
-        "build-alpine-image",
-        "build-ubi-image",
-        "build-deb-image",
+        "build-alpine-images",
+        "build-ubi-images",
+        "build-deb-images",
         "sign-packages",
         "scan-viruses",
         "security-check",
