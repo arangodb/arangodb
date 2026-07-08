@@ -33,7 +33,6 @@ if (getOptions === true) {
 
 const jsunity = require('jsunity');
 const db = require('@arangodb').db;
-const request = require("@arangodb/request");
 let { instanceRole } = require('@arangodb/testutils/instance');
 let IM = global.instanceManager;
 
@@ -46,11 +45,11 @@ function testSuite() {
     return baseName + nextCollectionId++;
   };
 
-  let getRawMetrics = function() {
+  let getRawReadWriteMetrics = function() {
     let lines = [];
-    IM.getInstancesRole(instanceRole.dbserver).forEach((server) => {
-      let res = request({ method: "GET", url: server.url + "/_admin/usage-metrics" });
-      lines = lines.concat(res.body.split(/\n/).filter((l) => l.match(/^arangodb_collection_leader_(reads|writes)_total/)));
+    IM.getInstancesRole(instanceRole.dbserver).forEach((arangod) => {
+      let res = arangod.getAllUsageMetric();
+      lines = lines.concat(res.split(/\n/).filter((l) => l.match(/^arangodb_collection_leader_(reads|writes)_total/)));
     });
     return lines;
   };
@@ -60,7 +59,7 @@ function testSuite() {
     if (!Array.isArray(collections)) {
       collections = [ collections ];
     }
-    let metrics = getRawMetrics();
+    let metrics = getRawReadWriteMetrics();
     let result = {};
     metrics.forEach((line) => {
       let matches = line.match(/^arangodb_collection_leader_(reads|writes)_total\s*\{(.*)?\}\s*(\d+)$/);
@@ -119,18 +118,18 @@ function testSuite() {
         
         // check if the normal metrics endpoint exports any shard-specific metrics
         let lines = [];
-        IM.getInstancesRole(instanceRole.dbserver).forEach((server) => {
-          let res = request({ method: "GET", url: server.url + "/_admin/metrics" });
-          lines = lines.concat(res.body.split(/\n/).filter((l) => l.match(/^arangodb_collection_leader_(reads|writes)_total/)));
+        IM.getInstancesRole(instanceRole.dbserver).forEach((arangod) => {
+          let res = arangod.getAllMetric();
+          lines = lines.concat(res.split(/\n/).filter((l) => l.match(/^arangodb_collection_leader_(reads|writes)_total/)));
         });
         assertEqual([], lines);
 
         // check if the usage-metrics endpoint exports any regular metrics
         lines = [];
-        IM.getInstancesRole(instanceRole.dbserver).forEach((server) => {
-          let res = request({ method: "GET", url: server.url + "/_admin/usage-metrics" });
+        IM.getInstancesRole(instanceRole.dbserver).forEach((arangod) => {
+          let res = arangod.getAllUsageMetric();
           // we look for any metric name starting with "rocksdb_" here as a placeholder
-          lines = lines.concat(res.body.split(/\n/).filter((l) => l.match(/^rocksdb_/)));
+          lines = lines.concat(res.split(/\n/).filter((l) => l.match(/^rocksdb_/)));
         });
         assertEqual([], lines);
       } finally {
