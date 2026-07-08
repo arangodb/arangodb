@@ -27,12 +27,13 @@
 TEST(AsyncTest, source_location_in_registry_is_co_await_line) {
   {
     async_tests::NoWait wait;
-    auto coro = [&]() -> async<void> {
+    auto fn = [&]() -> async<void> {
       auto void_fn = []() {};
       co_await wait;
       void_fn();
       co_return;
-    }();
+    };
+    std::ignore = fn();
 
     uint count = 0;
     arangodb::async_registry::registry.for_node(
@@ -45,18 +46,19 @@ TEST(AsyncTest, source_location_in_registry_is_co_await_line) {
   arangodb::async_registry::get_thread_registry().garbage_collect();
   {
     async_tests::WaitSlot wait;
-    auto coro = [&]() -> async<void> {
+    auto fn = [&]() -> async<void> {
       auto void_fn = []() {};
       co_await wait;
       void_fn();
       co_return;
-    }();
+    };
+    std::ignore = fn();
 
     uint count = 0;
     arangodb::async_registry::registry.for_node(
         [&](arangodb::async_registry::PromiseSnapshot promise) {
           count++;
-          EXPECT_EQ(promise.source_location.line, 50);
+          EXPECT_EQ(promise.source_location.line, 51);
         });
     EXPECT_EQ(count, 1);
     wait.resume();
@@ -65,25 +67,26 @@ TEST(AsyncTest, source_location_in_registry_is_co_await_line) {
     arangodb::async_registry::registry.for_node(
         [&](arangodb::async_registry::PromiseSnapshot promise) {
           count++;
-          EXPECT_EQ(promise.source_location.line, 52);
+          EXPECT_EQ(promise.source_location.line, 53);
         });
     EXPECT_EQ(count, 1);
   }
   arangodb::async_registry::get_thread_registry().garbage_collect();
   {
     async_tests::ConcurrentNoWait wait;
-    auto coro = [&]() -> async<void> {
+    auto fn = [&]() -> async<void> {
       auto void_fn = []() {};
       co_await wait;
       void_fn();
       co_return;
-    }();
+    };
+    std::ignore = fn();
 
     uint count = 0;
     arangodb::async_registry::registry.for_node(
         [&](arangodb::async_registry::PromiseSnapshot promise) {
           count++;
-          EXPECT_EQ(promise.source_location.line, 77);
+          EXPECT_EQ(promise.source_location.line, 79);
         });
     EXPECT_EQ(count, 1);
     wait.await();
@@ -92,7 +95,7 @@ TEST(AsyncTest, source_location_in_registry_is_co_await_line) {
     arangodb::async_registry::registry.for_node(
         [&](arangodb::async_registry::PromiseSnapshot promise) {
           count++;
-          EXPECT_EQ(promise.source_location.line, 79);
+          EXPECT_EQ(promise.source_location.line, 81);
         });
     EXPECT_EQ(count, 1);
   }
