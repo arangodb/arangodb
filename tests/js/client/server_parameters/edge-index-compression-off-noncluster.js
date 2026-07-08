@@ -40,6 +40,7 @@ let IM = global.instanceManager;
 const cn = 'UnitTestsCollection';
 const uncompressedName = "rocksdb_cache_edge_inserts_uncompressed_entries_size_total";
 const effectiveName = "rocksdb_cache_edge_inserts_effective_entries_size_total";
+const compressionRatio = "rocksdb_cache_edge_compression_ratio";
 
 function EdgeIndexCompressionSuite() {
   'use strict';
@@ -83,7 +84,7 @@ function EdgeIndexCompressionSuite() {
         assertEqual(newCompressedSize - oldCompressedSize, newUncompressedSize - oldUncompressedSize, { newCompressedSize, oldCompressedSize, newUncompressedSize, oldUncompressedSize });
       }, retryCb);
       
-      const ratio = IM.getMetric("rocksdb_cache_edge_compression_ratio");
+      const ratio = IM.getMetric(compressionRatio);
       assertTrue(ratio < 0.001, ratio);
     },
     
@@ -117,7 +118,7 @@ function EdgeIndexCompressionSuite() {
         assertEqual(newCompressedSize - oldCompressedSize, newUncompressedSize - oldUncompressedSize, { newCompressedSize, oldCompressedSize, newUncompressedSize, oldUncompressedSize });
       }, retryCb);
       
-      const ratio = IM.getMetric("rocksdb_cache_edge_compression_ratio");
+      const ratio = IM.getMetric(compressionRatio);
       assertTrue(ratio < 0.001, ratio);
     },
     
@@ -151,7 +152,7 @@ function EdgeIndexCompressionSuite() {
         assertEqual(newCompressedSize - oldCompressedSize, newUncompressedSize - oldUncompressedSize, { newCompressedSize, oldCompressedSize, newUncompressedSize, oldUncompressedSize });
       }, retryCb);
       
-      const ratio = IM.getMetric("rocksdb_cache_edge_compression_ratio");
+      const ratio = IM.getMetric(compressionRatio);
       assertTrue(ratio < 0.001, ratio);
     },
     
@@ -185,7 +186,7 @@ function EdgeIndexCompressionSuite() {
         assertEqual(newCompressedSize - oldCompressedSize, newUncompressedSize - oldUncompressedSize, { newCompressedSize, oldCompressedSize, newUncompressedSize, oldUncompressedSize });
       }, retryCb);
       
-      const ratio = IM.getMetric("rocksdb_cache_edge_compression_ratio");
+      const ratio = IM.getMetric(compressionRatio);
       assertTrue(ratio < 0.001, ratio);
     },
 

@@ -40,6 +40,7 @@ let IM = global.instanceManager;
 const cn = 'UnitTestsCollection';
 const uncompressedName = "rocksdb_cache_edge_inserts_uncompressed_entries_size_total";
 const effectiveName = "rocksdb_cache_edge_inserts_effective_entries_size_total";
+const compressionRatio = "rocksdb_cache_edge_compression_ratio";
 
 function EdgeIndexCompressionSuite() {
   'use strict';
@@ -126,7 +127,7 @@ function EdgeIndexCompressionSuite() {
       }
       c.insert(docs);
       
-      const oldRatio = IM.getMetric("rocksdb_cache_edge_compression_ratio");
+      const oldRatio = IM.getMetric(compressionRatio);
       const oldUncompressedSize = IM.getMetric(uncompressedName);
       const oldCompressedSize = IM.getMetric(effectiveName);
 
@@ -146,7 +147,7 @@ function EdgeIndexCompressionSuite() {
         assertTrue(newCompressedSize - oldCompressedSize < newUncompressedSize - oldUncompressedSize, { newCompressedSize, oldCompressedSize, newUncompressedSize, oldUncompressedSize });
       }, retryCb);
       
-      const newRatio = IM.getMetric("rocksdb_cache_edge_compression_ratio");
+      const newRatio = IM.getMetric(compressionRatio);
       assertTrue(newRatio > oldRatio, { oldRatio, newRatio });
     },
     
@@ -161,7 +162,7 @@ function EdgeIndexCompressionSuite() {
       }
       c.insert(docs);
       
-      const oldRatio = IM.getMetric("rocksdb_cache_edge_compression_ratio");
+      const oldRatio = IM.getMetric(compressionRatio);
       const oldUncompressedSize = IM.getMetric(uncompressedName);
       const oldCompressedSize = IM.getMetric(effectiveName);
 
@@ -181,7 +182,7 @@ function EdgeIndexCompressionSuite() {
         assertTrue(newCompressedSize - oldCompressedSize < newUncompressedSize - oldUncompressedSize, { newCompressedSize, oldCompressedSize, newUncompressedSize, oldUncompressedSize });
       }, retryCb);
       
-      const newRatio = IM.getMetric("rocksdb_cache_edge_compression_ratio");
+      const newRatio = IM.getMetric(compressionRatio);
       assertTrue(newRatio > oldRatio, { oldRatio, newRatio });
     },
 
