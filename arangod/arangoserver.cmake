@@ -130,6 +130,7 @@ add_library(arangoserver STATIC
   RestHandler/RestViewHandler.cpp
   RestHandler/RestVocbaseBaseHandler.cpp
   RestHandler/RestWalAccessHandler.cpp
+  RestServer/ArangodServer.cpp
   RestServer/AqlFeature.cpp
   RestServer/BootstrapFeature.cpp
   RestServer/BootstrapOptionsProvider.cpp
