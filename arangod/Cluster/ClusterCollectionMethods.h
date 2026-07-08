@@ -23,11 +23,11 @@
 
 #pragma once
 
-#include "Cluster/ClusterTypes.h"
-#include <vector>
-#include <memory>
+#include "Basics/Result.h"
 
-struct TRI_vocbase_t;
+#include <memory>
+#include <unordered_map>
+#include <vector>
 
 namespace arangodb {
 
@@ -36,6 +36,7 @@ class ResultT;
 
 struct AgencyIsBuildingFlags;
 struct CreateCollectionBody;
+struct Database;
 struct PlanCollectionEntry;
 struct PlanCollectionEntryReplication2;
 class LogicalCollection;
@@ -63,7 +64,7 @@ struct ClusterCollectionMethods {
   /// @param isNewDatabase
 
   [[nodiscard]] static auto createCollectionsOnCoordinator(
-      TRI_vocbase_t& vocbase,
+      Database& vocbase,
       std::vector<CreateCollectionBody> parametersOfCollections,
       bool ignoreDistributeShardsLikeErrors, bool waitForSyncReplication,
       bool enforceReplicationFactor, bool isNewDatabase)
@@ -96,7 +97,7 @@ struct ClusterCollectionMethods {
       -> ResultT<replication2::CollectionGroupUpdates>;
 
   [[nodiscard]] static auto updateCollectionProperties(
-      TRI_vocbase_t& vocbase, LogicalCollection const& col) -> Result;
+      Database& database, LogicalCollection const& col) -> Result;
 };
 
 }  // namespace arangodb

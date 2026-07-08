@@ -26,7 +26,7 @@
 
 #include "Basics/Result.h"
 #include "Futures/Future.h"
-#include "Mocks/MetricsCollector.h"
+#include "Mocks/FakeRegistry.h"
 #include "StorageEngine/HealthData.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionState.h"
@@ -108,7 +108,7 @@ class StorageEngineMockSnapshot final : public arangodb::StorageSnapshot {
 
 // Base ensures _mockRegistry outlives StorageEngine's _transactionStatistics.
 struct StorageEngineMockBase {
-  arangodb::tests::MetricsCollector _mockRegistry;
+  arangodb::metrics::FakeRegistry _mockRegistry;
 };
 
 class StorageEngineMock : private StorageEngineMockBase,

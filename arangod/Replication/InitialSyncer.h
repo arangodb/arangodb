@@ -33,8 +33,6 @@
 
 #include <mutex>
 
-struct TRI_vocbase_t;
-
 namespace arangodb {
 
 class InitialSyncer : public Syncer {

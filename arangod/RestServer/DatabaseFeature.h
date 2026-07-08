@@ -42,12 +42,11 @@
 #include <memory>
 #include <vector>
 
-struct TRI_vocbase_t;
-
 namespace arangodb {
 namespace application_features {
 class ApplicationServer;
 }  // namespace application_features
+struct Database;
 class IOHeartbeatThread;
 class LogicalCollection;
 class ReplicationFeature;
@@ -142,7 +141,7 @@ class DatabaseFeature final : public application_features::ApplicationFeature,
   bool started() const noexcept;
 
   /// @brief enumerate all databases
-  void enumerate(std::function<void(TRI_vocbase_t*)> const& callback);
+  void enumerate(std::function<void(Database*)> const& callback);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief register a callback
@@ -161,7 +160,7 @@ class DatabaseFeature final : public application_features::ApplicationFeature,
   std::vector<std::string> getDatabaseNames();
   std::vector<std::string> getDatabaseNamesForUser(std::string const& user);
 
-  Result createDatabase(arangodb::CreateDatabaseInfo&&, TRI_vocbase_t*& result);
+  Result createDatabase(arangodb::CreateDatabaseInfo&&, Database*& result);
 
   ErrorCode dropDatabase(std::string_view name);
   ErrorCode dropDatabase(TRI_voc_tick_t id);
@@ -180,9 +179,9 @@ class DatabaseFeature final : public application_features::ApplicationFeature,
   // concurrently while the returned pointer is used).
   // this is a potentially unsafe API. if in doubt, prefer using
   // `useDatabase(...)`, which is safe.
-  [[deprecated]] TRI_vocbase_t* lookupDatabase(std::string_view name) const;
+  [[deprecated]] Database* lookupDatabase(std::string_view name) const;
   void enumerateDatabases(
-      std::function<void(TRI_vocbase_t& vocbase)> const& func) override;
+      std::function<void(Database& vocbase)> const& func) override;
   std::string translateCollectionName(std::string_view dbName,
                                       std::string_view collectionName);
 
@@ -220,7 +219,7 @@ class DatabaseFeature final : public application_features::ApplicationFeature,
 
   size_t maxDatabases() const noexcept { return _options.maxDatabases; }
 
-  static TRI_vocbase_t& getCalculationVocbase();
+  static Database& getCalculationVocbase();
 
   /// @brief update metadata metrics (number of databases, collections, shards)
   /// This should only be called on single servers
@@ -255,7 +254,7 @@ class DatabaseFeature final : public application_features::ApplicationFeature,
   std::unique_ptr<DatabaseManagerThread> _databaseManager;
   std::unique_ptr<IOHeartbeatThread> _ioHeartbeatThread;
 
-  using DatabasesList = containers::FlatHashMap<std::string, TRI_vocbase_t*>;
+  using DatabasesList = containers::FlatHashMap<std::string, Database*>;
   class DatabasesListGuard {
    public:
     [[nodiscard]] static std::shared_ptr<DatabasesList> create() {
@@ -284,7 +283,7 @@ class DatabaseFeature final : public application_features::ApplicationFeature,
     std::shared_ptr<DatabasesList const> _impl = create();
   } _databases;
   mutable std::mutex _databasesMutex;
-  containers::FlatHashSet<TRI_vocbase_t*> _droppedDatabases;
+  containers::FlatHashSet<Database*> _droppedDatabases;
 
   /// @brief lock for serializing the creation of databases
   std::mutex _databaseCreateLock;

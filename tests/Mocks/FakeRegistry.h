@@ -19,27 +19,34 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 ////////////////////////////////////////////////////////////////////////////////
-
 #pragma once
 
-#include <memory>
-#include <vector>
-
 #include "Metrics/IRegistry.h"
+#include "Metrics/Builder.h"
+#include "Metrics/Metric.h"
 
-namespace arangodb::tests {
+#include <vector>
+#include <mutex>
 
-// Minimal IRegistry implementation for tests. Keeps registered metric objects
-// alive so that the references handed out by add() remain valid.
-struct MetricsCollector : metrics::IRegistry {
+namespace arangodb::metrics {
+
+// A lightweight registry that populates metrics but does not register them
+// with any actual metrics endpoint.
+// The registry holds the ownership of all the metrics. So, the reference
+// returned by IRegistry::add() is valid for this registry's lifetime.
+struct FakeRegistry : public IRegistry {
+ protected:
   std::shared_ptr<metrics::Metric> doAdd(metrics::Builder& builder) override {
-    auto metric = builder.build();
-    _metrics.emplace_back(metric);
-    return metric;
+    auto metrics = builder.build();
+    std::lock_guard lock{_mutex};
+    _metrics.push_back(metrics);
+    return metrics;
   }
 
  private:
+  std::mutex _mutex;
+  // "add()" hands out references, so we we have to keep the metrics alive here
   std::vector<std::shared_ptr<metrics::Metric>> _metrics;
 };
 
-}  // namespace arangodb::tests
+}  // namespace arangodb::metrics

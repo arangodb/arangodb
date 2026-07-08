@@ -235,7 +235,7 @@ struct DefaultFactory {
       -> std::shared_ptr<FollowerType> {
     return std::make_shared<FollowerType>(std::move(core));
   }
-  auto constructCore(TRI_vocbase_t&, GlobalLogIdentifier const&)
+  auto constructCore(Database&, GlobalLogIdentifier const&)
       -> std::unique_ptr<CoreType> {
     return std::make_unique<CoreType>();
   }
@@ -271,7 +271,7 @@ struct RecordingFactory {
     return ptr;
   }
 
-  auto constructCore(TRI_vocbase_t&, GlobalLogIdentifier const&)
+  auto constructCore(Database&, GlobalLogIdentifier const&)
       -> std::unique_ptr<CoreType> {
     return std::make_unique<CoreType>();
   }

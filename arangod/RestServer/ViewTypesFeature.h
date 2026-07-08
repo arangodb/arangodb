@@ -36,12 +36,12 @@ struct ViewFactory {
   // LogicalView factory for end-user validation instantiation and
   // persistence.
   // Return if success then 'view' is set, else 'view' state is undefined
-  virtual Result create(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
+  virtual Result create(LogicalView::ptr& view, Database& vocbase,
                         velocypack::Slice definition,
                         bool isUserRequest) const = 0;
 
   // LogicalView factory for internal instantiation only
-  virtual Result instantiate(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
+  virtual Result instantiate(LogicalView::ptr& view, Database& vocbase,
                              velocypack::Slice definition,
                              bool isUserRequest) const = 0;
 };

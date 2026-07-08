@@ -41,16 +41,13 @@
 #include "Network/Methods.h"
 #include "Network/Utils.h"
 #include "Replication/ReplicationFeature.h"
-#include "Rest/GeneralRequest.h"
 #include "Sharding/ShardDistributionReporter.h"
-#include "V8/v8-buffer.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
 #include "V8Server/v8-vocbaseprivate.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb;

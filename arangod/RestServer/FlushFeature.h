@@ -36,8 +36,6 @@
 #include <tuple>
 #include <vector>
 
-struct TRI_vocbase_t;
-
 namespace arangodb {
 namespace metrics {
 struct IRegistry;

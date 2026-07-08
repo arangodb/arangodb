@@ -25,13 +25,9 @@
 
 #include "Aql/types.h"
 #include "Futures/Future.h"
-#include "Logger/LogContext.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
-#include <memory>
 #include <string>
-
-struct TRI_vocbase_t;
 
 namespace arangodb::velocypack {
 class Slice;

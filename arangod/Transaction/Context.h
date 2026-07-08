@@ -23,17 +23,15 @@
 
 #pragma once
 
-#include <memory>
-
+#include "Assertions/Assert.h"
 #include "Activities/GenericActivity.h"
-#include "Basics/Exceptions.h"
 #include "Transaction/OperationOrigin.h"
 #include "VocBase/Identifiers/TransactionId.h"
-#include "VocBase/voc-types.h"
 
-struct TRI_vocbase_t;
+#include <memory>
 
 namespace arangodb {
+struct Database;
 
 namespace velocypack {
 struct CustomTypeHandler;
@@ -52,7 +50,7 @@ class Context {
   Context& operator=(Context const&) = delete;
 
   /// @brief create the context
-  explicit Context(TRI_vocbase_t& vocbase, OperationOrigin operationOrigin);
+  explicit Context(Database& vocbase, OperationOrigin operationOrigin);
 
  public:
   /// @brief destroy the context
@@ -68,11 +66,10 @@ class Context {
 
   /// @brief factory to create a custom type handler, not managed
   static std::unique_ptr<arangodb::velocypack::CustomTypeHandler>
-  createCustomTypeHandler(TRI_vocbase_t&,
-                          arangodb::CollectionNameResolver const&);
+  createCustomTypeHandler(Database&, arangodb::CollectionNameResolver const&);
 
   /// @brief return the vocbase
-  TRI_vocbase_t& vocbase() const { return _vocbase; }
+  Database& vocbase() const { return _vocbase; }
 
   /// @brief get velocypack options with a custom type handler
   TEST_VIRTUAL velocypack::Options const* getVPackOptions() const noexcept;
@@ -141,7 +138,7 @@ class Context {
   std::shared_ptr<TransactionState> createState(
       transaction::Options const& options);
 
-  TRI_vocbase_t& _vocbase;
+  Database& _vocbase;
 
  private:
   std::unique_ptr<CollectionNameResolver> _resolver;

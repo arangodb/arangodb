@@ -31,8 +31,6 @@
 
 #include <unordered_map>
 
-struct TRI_vocbase_t;
-
 namespace arangodb {
 namespace aql {
 

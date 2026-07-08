@@ -33,9 +33,7 @@
 #include "Aql/QueryResult.h"
 #include "Aql/QueryString.h"
 #include "Basics/Guarded.h"
-#include "Basics/ResourceUsage.h"
 #include "Futures/Future.h"
-#include "Futures/Try.h"
 #include "Futures/Unit.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "VocBase/Identifiers/TransactionId.h"
@@ -49,8 +47,6 @@
 #include <mutex>
 #include <optional>
 #include <vector>
-
-struct TRI_vocbase_t;
 
 #ifdef USE_V8
 namespace v8 {
@@ -121,7 +117,7 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   /// we do not revisit all call sites and ensure that we have access
   /// to the `AqlFeature` now. So this cleanup is for a later
   /// day. Therefore, we use the `server()` functionality in the
-  /// `TRI_vocbase_t` in the `transaction::Context` to get access to the
+  /// `Database` in the `transaction::Context` to get access to the
   /// `AqlFeature` for now. Over time, one should have access to the
   /// `AqlFeature` to create a new `Query` object, but we are not there
   /// yet. If you use AQL queries from within C++ code in the future,
