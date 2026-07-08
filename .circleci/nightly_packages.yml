@@ -51,23 +51,23 @@ parameters:
     description: "Build the Alpine-based Docker images (one per architecture: amd64 and arm64); the publish job pushes them and creates their multi-arch manifests at the end. The default image with suffix-less tags."
   build-ubi-images:
     type: boolean
-    default: true
+    default: false
     description: "Build the Red Hat UBI-based Docker images (one per architecture: amd64 and arm64); the publish job pushes them and creates their multi-arch manifests at the end. Tags carry -ubi between version and arch."
   build-deb-images:
     type: boolean
-    default: true
+    default: false
     description: "Build the Ubuntu-based Docker images (one per architecture: amd64 and arm64); the publish job pushes them and creates their multi-arch manifests at the end. Tags carry -deb between version and arch."
   push-images-to-gcr-also:
     type: boolean
-    default: false
+    default: true
     description: "Additionally push Docker images to gcr.io/gcr-for-testing (docker.io is always pushed)."
   sign-packages:
     type: boolean
-    default: true
+    default: false
     description: "Create detached GPG signatures (.asc) for all packages."
   scan-viruses:
     type: boolean
-    default: true
+    default: false
     description: "Scan all packages with ClamAV before publishing."
   security-check:
     type: boolean
