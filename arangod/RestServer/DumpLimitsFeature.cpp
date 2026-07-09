@@ -59,16 +59,4 @@ DumpLimitsFeature::DumpLimitsFeature(ApplicationServer& server,
   _options.memoryUsage = defaultMemoryUsage();
 }
 
-void DumpLimitsFeature::collectOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  DumpLimitsOptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
-
-void DumpLimitsFeature::validateOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  DumpLimitsOptionsProvider provider;
-  provider.validateOptions(options, _options);
-}
-
 }  // namespace arangodb

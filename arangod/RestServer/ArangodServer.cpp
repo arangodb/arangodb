@@ -139,8 +139,6 @@ void ArangodServer::addFeatures(
   addFeature<V8SecurityFeature>(AllowListStrictness::STRICT);
 #endif
   addFeature<CpuUsageFeature>();
-  addFeature<DatabasePathFeature>();
-  addFeature<DumpLimitsFeature>();
   addFeature<HttpEndpointProvider, EndpointFeature>();
   auto& systemDatabaseFeature = addFeature<SystemDatabaseFeature>();
   addFeature<BootstrapFeature>(clusterFeature, database, &systemDatabaseFeature,
@@ -251,7 +249,6 @@ void ArangodServer::addFeaturesWithOptionProvider() {
   auto& database = getFeature<DatabaseFeature>();
   auto& vectorIndex = getFeature<VectorIndexFeature>();
   auto& flush = getFeature<FlushFeature>();
-  auto& dumpLimits = getFeature<DumpLimitsFeature>();
   auto& scheduler = getFeature<SchedulerFeature>();
   auto& rocksdbRecovery = getFeature<RocksDBRecoveryManager>();
   auto& cacheManager = getFeature<CacheManagerFeature>();
@@ -262,12 +259,18 @@ void ArangodServer::addFeaturesWithOptionProvider() {
       _optionProviders.get<RocksDBOptionFeatureOptionsProvider>().options();
   auto& rocksdbOption = addFeature<RocksDBOptionFeature>(
       &agency, std::move(rocksdbOptionFeatureOptions));
-  
+
   // Add DatabasePathFeature
   auto databasePathOptions =
       _optionProviders.get<DatabasePathOptionsProvider>().options();
-  auto& databasePath = addFeature<DatabasePathFeature>(std::move(databasePathOptions));
-  
+  auto& databasePath =
+      addFeature<DatabasePathFeature>(std::move(databasePathOptions));
+
+  // Add DumpLimitsFeature
+  auto dumpLimitsOptions =
+      _optionProviders.get<DumpLimitsOptionsProvider>().options();
+  auto& dumpLimits = addFeature<DumpLimitsFeature>(std::move(dumpLimitsOptions));
+
   // Add RocksDBEngine
   RocksDBEngineOptions rocksDBEngineOptions =
       _optionProviders.get<RocksDBEngineOptionsProvider>().options();
@@ -278,6 +281,7 @@ void ArangodServer::addFeaturesWithOptionProvider() {
       scheduler, rocksdbRecovery, database, rocksdbCacheRefill, cacheManager,
       agency, rocksDBEngineOptions);
 
+  // Add FortuneFeature
   addFeature<FortuneFeature>(
       _optionProviders.get<fortune::FortuneOptionsProvider>().options());
 

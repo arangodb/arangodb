@@ -22,6 +22,7 @@
 
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/DatabasePathOptionsProvider.h"
+#include "RestServer/DumpLimitsOptionsProvider.h"
 #include "RestServer/FortuneOptionsProvider.h"
 #include "RocksDBEngine/RocksDBEngineOptionsProvider.h"
 #include "RocksDBEngine/RocksDBOptionFeatureOptionsProvider.h"
@@ -40,8 +41,8 @@ class FeatureOptionProviderContainer final {
   }
 
  private:
-  std::tuple<DatabasePathOptionsProvider, RocksDBEngineOptionsProvider,
-             RocksDBOptionFeatureOptionsProvider,
+  std::tuple<DatabasePathOptionsProvider, DumpLimitsOptionsProvider,
+             RocksDBEngineOptionsProvider, RocksDBOptionFeatureOptionsProvider,
              fortune::FortuneOptionsProvider>
       _providers{};
 };

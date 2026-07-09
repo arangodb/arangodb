@@ -38,7 +38,6 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "RestServer/DatabasePathOptionsProvider.h"
 #include "RestServer/FileDescriptorsFeature.h"
 
 using namespace arangodb::application_features;

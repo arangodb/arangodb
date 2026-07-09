@@ -87,17 +87,20 @@ rocksdb::Options rocksDBDefaults;
 rocksdb::BlockBasedTableOptions rocksDBTableOptionsDefaults;
 
 uint64_t defaultBlockCacheSize() {
-  if (arangodb::PhysicalMemory::getValue() >= (static_cast<uint64_t>(4) << 30)) {
+  if (arangodb::PhysicalMemory::getValue() >=
+      (static_cast<uint64_t>(4) << 30)) {
     // if we have at least 4GB of RAM, the default size is (RAM - 2GB) * 0.3
-    return static_cast<uint64_t>(
-        (arangodb::PhysicalMemory::getValue() - (static_cast<uint64_t>(2) << 30)) *
-        0.3);
+    return static_cast<uint64_t>((arangodb::PhysicalMemory::getValue() -
+                                  (static_cast<uint64_t>(2) << 30)) *
+                                 0.3);
   }
-  if (arangodb::PhysicalMemory::getValue() >= (static_cast<uint64_t>(2) << 30)) {
+  if (arangodb::PhysicalMemory::getValue() >=
+      (static_cast<uint64_t>(2) << 30)) {
     // if we have at least 2GB of RAM, the default size is 512MB
     return (static_cast<uint64_t>(512) << 20);
   }
-  if (arangodb::PhysicalMemory::getValue() >= (static_cast<uint64_t>(1) << 30)) {
+  if (arangodb::PhysicalMemory::getValue() >=
+      (static_cast<uint64_t>(1) << 30)) {
     // if we have at least 1GB of RAM, the default size is 256MB
     return (static_cast<uint64_t>(256) << 20);
   }
@@ -106,13 +109,15 @@ uint64_t defaultBlockCacheSize() {
 }
 
 uint64_t defaultTotalWriteBufferSize() {
-  if (arangodb::PhysicalMemory::getValue() >= (static_cast<uint64_t>(4) << 30)) {
+  if (arangodb::PhysicalMemory::getValue() >=
+      (static_cast<uint64_t>(4) << 30)) {
     // if we have at least 4GB of RAM, the default size is (RAM - 2GB) * 0.4
-    return static_cast<uint64_t>(
-        (arangodb::PhysicalMemory::getValue() - (static_cast<uint64_t>(2) << 30)) *
-        0.4);
+    return static_cast<uint64_t>((arangodb::PhysicalMemory::getValue() -
+                                  (static_cast<uint64_t>(2) << 30)) *
+                                 0.4);
   }
-  if (arangodb::PhysicalMemory::getValue() >= (static_cast<uint64_t>(1) << 30)) {
+  if (arangodb::PhysicalMemory::getValue() >=
+      (static_cast<uint64_t>(1) << 30)) {
     // if we have at least 1GB of RAM, the default size is 512MB
     return (static_cast<uint64_t>(512) << 20);
   }

@@ -22,17 +22,23 @@
 
 #pragma once
 
-#include "ApplicationFeatures/OptionsProvider.h"
+#include <memory>
+
 #include "RestServer/DumpLimitsFeatureOptions.h"
+
+namespace arangodb::options {
+class ProgramOptions;
+}
 
 namespace arangodb {
 
-struct DumpLimitsOptionsProvider : OptionsProvider<DumpLimitsFeatureOptions> {
-  void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
-                      DumpLimitsFeatureOptions& options) override;
+struct DumpLimitsOptionsProvider {
+  void declareOptions(std::shared_ptr<options::ProgramOptions>& prgOptions);
+  void validateOptions(std::shared_ptr<options::ProgramOptions>& prgOptions);
+  [[nodiscard]] DumpLimitsFeatureOptions options() const { return _options; }
 
-  void validateOptions(std::shared_ptr<options::ProgramOptions> opts,
-                       DumpLimitsFeatureOptions& options) override;
+  private:
+  DumpLimitsFeatureOptions _options;
 };
 
 }  // namespace arangodb
