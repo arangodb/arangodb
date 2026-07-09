@@ -31,15 +31,9 @@ namespace arangodb {
 
 struct GeneralServerOptions {
   double keepAliveTimeout = 300.0;
-  uint64_t telemetricsMaxRequestsPerInterval = 3;
   bool startedListening = false;
   bool allowEarlyConnections = false;
   bool handleContentEncodingForUnauthenticatedRequests = false;
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  bool enableTelemetrics = false;
-#else
-  bool enableTelemetrics = true;
-#endif
   bool proxyCheck = true;
   bool returnQueueTimeHeader = true;
   bool permanentRootRedirect = true;

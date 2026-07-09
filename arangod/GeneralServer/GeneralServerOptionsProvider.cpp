@@ -41,47 +41,13 @@ void GeneralServerOptionsProvider::declareOptions(
   opts->addOldOption("server.keep-alive-timeout", "http.keep-alive-timeout");
   opts->addOldOption("no-server", "server.rest-server");
 
-  opts->addOption("--server.telemetrics-api",
-                  "Whether to enable the telemetrics API.",
-                  new BooleanParameter(&options.enableTelemetrics),
-                  arangodb::options::makeFlags(
-                      arangodb::options::Flags::Uncommon,
-                      arangodb::options::Flags::DefaultNoComponents,
-                      arangodb::options::Flags::OnCoordinator,
-                      arangodb::options::Flags::OnDBServer,
-                      arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(31100);
-
-  opts->addOption(
-          "--server.telemetrics-api-max-requests",
-          "The maximum number of requests from arangosh that the "
-          "telemetrics API responds to without rate-limiting.",
-          new UInt64Parameter(&options.telemetricsMaxRequestsPerInterval),
-          arangodb::options::makeFlags(
-              arangodb::options::Flags::Uncommon,
-              arangodb::options::Flags::DefaultNoComponents,
-              arangodb::options::Flags::OnCoordinator,
-              arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(31100)
-      .setLongDescription(R"(This option limits requests from the arangosh to
-the telemetrics API, but not any other requests to the API.
-
-Requests to the telemetrics API are counted for every 2 hour interval, and then
-reset. This means after a period of at most 2 hours, the telemetrics API
-becomes usable again.
-
-The purpose of this option is to keep a deployment from being overwhelmed by
-too many telemetrics requests issued by arangosh instances that are used for
-batch processing.)");
-
   opts->addOption(
       "--server.io-threads", "The number of threads used to handle I/O.",
       new UInt64Parameter(&options.numIoThreads, /*base*/ 1, /*minValue*/ 1),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic));
 
   opts->addOption("--server.support-info-api",
-                  "The policy for exposing the support info and also the "
-                  "telemetrics API.",
+                  "The policy for exposing the support info API.",
                   new DiscreteValuesParameter<StringParameter>(
                       &options.supportInfoApiPolicy,
                       std::unordered_set<std::string>{"disabled", "jwt",

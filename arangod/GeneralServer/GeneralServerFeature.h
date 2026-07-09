@@ -92,13 +92,6 @@ class GeneralServerFeature final
 
   void countHttp2Connection() { _http2Connections.count(); }
 
-  bool isTelemetricsEnabled() const noexcept {
-    return _options.enableTelemetrics;
-  }
-  uint64_t telemetricsMaxRequestsPerInterval() const noexcept {
-    return _options.telemetricsMaxRequestsPerInterval;
-  }
-
   metrics::Gauge<std::uint64_t>& _currentRequestsSize;
 
   [[nodiscard]] bool startedListening() const noexcept {
