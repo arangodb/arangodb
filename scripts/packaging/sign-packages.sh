@@ -7,11 +7,14 @@
 #   *.clamav and sourceInfo.*).
 #
 # Environment:
-#   KEYNAME                       GPG key id            (default 86FEC04D)
-#   ARANGO_SIGN_PASSWD            key passphrase        (required)
-#   ARANGO_SIGN_KEYRING_BASE64    base64 of the secret keyring; when set it is
-#                                 written to ~/.gnupg/secring.gpg and imported
-#                                 (otherwise ~/.gnupg must already be populated)
+#   KEYNAME               GPG key id       (default 86FEC04D)
+#   ARANGO_SIGN_PASSWD    key passphrase   (required)
+#   GNUPGHOME             populated GnuPG home directory (default ~/.gnupg) —
+#                         in CI a private copy of the .gnupg4 directory of the
+#                         arangodb-helper/package-signing repo, the same
+#                         directory Jenkins mounted as /root/.gnupg. It ships
+#                         secring.gpg (no private-keys-v1.d), so the secret
+#                         key is imported below before signing.
 
 set -euo pipefail
 
@@ -23,12 +26,11 @@ if [ -z "${ARANGO_SIGN_PASSWD:-}" ]; then
 fi
 
 export GNUPGHOME="${GNUPGHOME:-${HOME}/.gnupg}"
-mkdir -p "${GNUPGHOME}"
-chmod 700 "${GNUPGHOME}"
-
-if [ -n "${ARANGO_SIGN_KEYRING_BASE64:-}" ]; then
-  echo "${ARANGO_SIGN_KEYRING_BASE64}" | base64 -d > "${GNUPGHOME}/secring.gpg"
+if ! [ -d "${GNUPGHOME}" ]; then
+  echo "sign-packages: GNUPGHOME (${GNUPGHOME}) does not exist" >&2
+  exit 1
 fi
+chmod 700 "${GNUPGHOME}"
 
 PASSPHRASE_FILE="$(mktemp)"
 trap 'rm -f "${PASSPHRASE_FILE}"' EXIT

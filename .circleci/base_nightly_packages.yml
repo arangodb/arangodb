@@ -55,7 +55,13 @@ version: 2.1
 #                       into the Docker/ directory. The .log tables are
 #                       ASCII-only (box-drawing chars mapped), so they render
 #                       correctly whatever charset a viewer assumes.
-#   sign-packages       detached GPG signatures (.asc) [sign-packages]
+#   sign-packages       detached GPG signatures (.asc) for every package and
+#                       objectfiles archive [sign-packages]; keys come from a
+#                       sparse checkout of the private arangodb-helper/
+#                       package-signing repo (.gnupg4, the current key home),
+#                       fetched with the same SSH key as enterprise. No
+#                       embedded deb/rpm signing: oskar does that only when
+#                       building apt/yum repositories
 #   publish-nightly     THE ONLY JOB THAT PUBLISHES ANYTHING; runs only when
 #                       every selected job succeeded. Split into a stage
 #                       phase (upload packages + ClamAV reports +
@@ -109,8 +115,13 @@ version: 2.1
 #                                   (read-only) + AWS_DEFAULT_REGION to fetch
 #                                   install.tar.gz from the workspace bucket
 #                                   instead of the CircleCI artifacts
-#   nightly-signing context:        ARANGO_SIGN_PASSWD, ARANGO_SIGN_KEYRING_BASE64
-#                                   (optional KEYNAME, default 86FEC04D)
+#   nightly-signing context:        ARANGO_SIGN_PASSWD (optional KEYNAME,
+#                                   default 86FEC04D); the signing keyring
+#                                   itself is NOT an env var — it is fetched
+#                                   from arangodb-helper/package-signing, so
+#                                   the checkout SSH key (f9:49:75:...:ce,
+#                                   the one used for arangodb/enterprise)
+#                                   must have read access to that repo
 #   coredb-nightly-packages context: GCLOUD_SERVICE_KEY_BASE64 (service-account
 #                                   JSON, base64-encoded to one line:
 #                                   "base64 -w0 key.json" — raw JSON pastes
@@ -1224,9 +1235,19 @@ jobs:
   # ── GPG signing ──────────────────────────────────────────────────────────────
   sign-packages:
     # Creates detached .asc signatures for every package of both
-    # architectures. Oskar equivalent: scripts/signFile.fish/setupGpg.fish.
-    # Needs the nightly-signing context (ARANGO_SIGN_PASSWD,
-    # ARANGO_SIGN_KEYRING_BASE64, optional KEYNAME).
+    # architectures. Oskar equivalent: scripts/signFile.fish/setupGpg.fish,
+    # with the signing keys coming from the private
+    # arangodb-helper/package-signing repo — exactly like Jenkins, which
+    # mounted a checkout of it into the signing containers. Its CURRENT key
+    # home is .gnupg4 (key 86FEC04D, private key passphrase-protected);
+    # .gnupg/.gnupg2/.gnupg3 hold legacy keys (oskar mounts .gnupg3 as
+    # /root/.gnupg-old only for legacy REPO builds) and are not fetched at
+    # all here. The repo's .rpmmacros (embedded `rpm --addsign`) is likewise
+    # only used by oskar's apt/yum REPOSITORY creation, which nightlies do
+    # not do — nightly packages get detached signatures only.
+    # Needs the nightly-signing context (ARANGO_SIGN_PASSWD, optional
+    # KEYNAME, default 86FEC04D); the checkout SSH key must have read access
+    # to arangodb-helper/package-signing.
     docker:
       - image: << pipeline.parameters.build-docker-image >>
     resource_class: << parameters.resource-class >>
@@ -1239,10 +1260,47 @@ jobs:
           at: /tmp/nightly
       - checkout-arangodb:
           destination: /root/project
+      - add_ssh_keys:
+          fingerprints:
+            - "f9:49:75:1a:ad:44:89:10:4b:3c:70:70:ba:d3:c3:ce"
+      - run:
+          name: Fetch signing keys (package-signing repo, .gnupg4 only)
+          environment:
+            GIT_SSH_COMMAND: "ssh -o StrictHostKeyChecking=no"
+          command: |
+            set -eu
+            # Same mechanism as the enterprise checkout, but sparse and
+            # blob-filtered so that ONLY .gnupg4 is ever downloaded — the
+            # legacy keyrings and everything else in the repo stay on the
+            # server. The keys exist strictly inside this job: they are
+            # never persisted to the workspace nor stored as an artifact
+            # (the persist globs below take only *.asc files).
+            rm -rf /tmp/package-signing
+            mkdir -p /tmp/package-signing
+            cd /tmp/package-signing
+            git init
+            git remote add origin git@github.com:arangodb-helper/package-signing.git
+            git sparse-checkout set --no-cone /.gnupg4/
+            git fetch --depth 1 --filter=blob:none origin HEAD
+            git checkout FETCH_HEAD
+            # gpg needs a private (0700) home it can write to (trustdb,
+            # agent sockets, imports); give it a copy and drop the checkout.
+            rm -rf /tmp/signing-gnupg
+            mkdir -p -m 700 /tmp/signing-gnupg
+            cp -r .gnupg4/. /tmp/signing-gnupg/
+            chmod -R go-rwx /tmp/signing-gnupg
+            cd / && rm -rf /tmp/package-signing
       - run:
           name: Sign packages
           command: |
-            scripts/packaging/sign-packages.sh /tmp/nightly/packages /tmp/nightly/objectfiles
+            GNUPGHOME=/tmp/signing-gnupg \
+              scripts/packaging/sign-packages.sh /tmp/nightly/packages /tmp/nightly/objectfiles
+      - run:
+          name: Remove signing keys
+          when: always
+          command: |
+            gpgconf --homedir /tmp/signing-gnupg --kill gpg-agent 2>/dev/null || true
+            rm -rf /tmp/signing-gnupg /tmp/package-signing
       - persist_to_workspace:
           root: /tmp/nightly
           paths:
@@ -1301,8 +1359,13 @@ jobs:
             STAGE_GCS="${DST}-staging/${CIRCLE_WORKFLOW_ID}"
 
             # Stage with the historical layout (oskar: uname -m arch dirs):
-            # nightly/<major.minor>/Linux/{x86_64,aarch64}/
-            STAGE=/tmp/stage/${PACKAGES}/Linux
+            # nightly/<major.minor>/Linux/{x86_64,aarch64}/ — plus, at the
+            # <major.minor>/ level next to Linux/: sourceInfo.(log|json)
+            # (identical for both arches, so published once instead of per
+            # arch dir) and the arangodb3e-<VERSION>.txt package publish
+            # report.
+            TOP=/tmp/stage/${PACKAGES}
+            STAGE=${TOP}/Linux
             declare -A GCS_ARCH=( [amd64]=x86_64 [arm64]=aarch64 )
             for arch in amd64 arm64; do
               if [ -d "/tmp/nightly/packages/${arch}" ]; then
@@ -1324,9 +1387,44 @@ jobs:
                 if [ -d "/tmp/nightly/trivy-reports/${arch}" ]; then
                   cp /tmp/nightly/trivy-reports/${arch}/* "${STAGE}/${GCS_ARCH[$arch]}/"
                 fi
-                cp /tmp/nightly/sourceInfo.log /tmp/nightly/sourceInfo.json "${STAGE}/${GCS_ARCH[$arch]}/"
               fi
             done
+
+            cp /tmp/nightly/sourceInfo.log /tmp/nightly/sourceInfo.json "${TOP}/"
+
+            # The packages section (per-arch FILE/SIZE/SHA256 tables) is
+            # written once and shared: it goes into the published
+            # arangodb3e-<VERSION>.txt here and into the combined
+            # nightly-publish-report.txt in the final report step.
+            # Supplemental files (.asc, .clamav, .trivy.*) are published too
+            # but not listed (excluded by the globs).
+            VERSION="$(cat /tmp/nightly/nightly-version.txt)"
+            SECTION=/tmp/package-publish-section.txt
+            {
+              printf 'Packages published to %s/%s/Linux/:\n' "${DST}" "${PACKAGES}"
+              for arch in amd64 arm64; do
+                printf '\n%s:\n' "${GCS_ARCH[$arch]}"
+                printf '  %-84s %9s  %s\n' "FILE" "SIZE (MB)" "SHA256"
+                for f in /tmp/nightly/packages/${arch}/*.deb \
+                         /tmp/nightly/packages/${arch}/*.rpm \
+                         /tmp/nightly/packages/${arch}/*.tar.gz \
+                         /tmp/nightly/objectfiles/${arch}/*.tar.gz; do
+                  [ -e "$f" ] || continue
+                  SIZE_MB="$(awk -v b="$(stat -c%s "$f")" 'BEGIN{printf "%.1f", b/1048576}')"
+                  SHA256="$(sha256sum "$f" | cut -d' ' -f1)"
+                  printf '  %-84s %9s  %s\n' "$(basename "$f")" "${SIZE_MB}" "${SHA256}"
+                done
+              done
+            } > "${SECTION}"
+            {
+              echo "ArangoDB nightly packages publish report"
+              echo "========================================"
+              echo "Version:   ${VERSION}"
+              echo "Published: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+              echo "Workflow:  ${CIRCLE_WORKFLOW_ID}"
+              echo
+              cat "${SECTION}"
+            } > "${TOP}/arangodb3e-${VERSION}.txt"
 
             upload() {
               local arch_dir="$1"
@@ -1337,6 +1435,14 @@ jobs:
               # there might be internet hiccups
               upload "${arch_dir}" || upload "${arch_dir}" || upload "${arch_dir}" || upload "${arch_dir}"
             done
+            # The <major.minor>-level files (promoted to the live tree by
+            # the commit step's recursive rsync like everything else)
+            upload_top() {
+              gsutil -m cp "${TOP}/arangodb3e-${VERSION}.txt" \
+                "${TOP}/sourceInfo.log" "${TOP}/sourceInfo.json" \
+                "${STAGE_GCS}/${PACKAGES}/"
+            }
+            upload_top || upload_top || upload_top || upload_top
       - run:
           name: Push per-arch Docker images (dated tags only)
           command: |
@@ -1592,7 +1698,9 @@ jobs:
           name: Write nightly publish report
           command: |
             # Everything this run published: the packages (incl. the
-            # objectfiles archives) with size and SHA256, and the Docker
+            # objectfiles archives) with size and SHA256 — the section
+            # written by the stage step, which is also published standalone
+            # as <major.minor>/arangodb3e-<VERSION>.txt — and the Docker
             # refs collected by the stage/commit steps. Supplemental files
             # (.asc, .clamav, .trivy.*) are published too but not listed.
             REPORT=/tmp/nightly-publish-report.txt
@@ -1605,28 +1713,11 @@ jobs:
               echo "Workflow:  ${CIRCLE_WORKFLOW_ID}"
             } > "${REPORT}"
 
-            if [ "<< pipeline.parameters.build-debian-packages >>" = "false" ] && \
-               [ "<< pipeline.parameters.build-rpm-packages >>" = "false" ] && \
-               [ "<< pipeline.parameters.build-tarballs >>" = "false" ]; then
-              printf '\nPackages: not selected\n' >> "${REPORT}"
+            if [ -s /tmp/package-publish-section.txt ]; then
+              echo >> "${REPORT}"
+              cat /tmp/package-publish-section.txt >> "${REPORT}"
             else
-              PACKAGES="$(cat /tmp/nightly/nightly-major-minor.txt)"
-              DST="${NIGHTLY_GCS_DEST:-gs://download.arangodb.com/nightly}"
-              printf '\nPackages published to %s/%s/Linux/:\n' "${DST}" "${PACKAGES}" >> "${REPORT}"
-              declare -A GCS_ARCH=( [amd64]=x86_64 [arm64]=aarch64 )
-              for arch in amd64 arm64; do
-                printf '\n%s:\n' "${GCS_ARCH[$arch]}" >> "${REPORT}"
-                printf '  %-84s %9s  %s\n' "FILE" "SIZE (MB)" "SHA256" >> "${REPORT}"
-                for f in /tmp/nightly/packages/${arch}/*.deb \
-                         /tmp/nightly/packages/${arch}/*.rpm \
-                         /tmp/nightly/packages/${arch}/*.tar.gz \
-                         /tmp/nightly/objectfiles/${arch}/*.tar.gz; do
-                  [ -e "$f" ] || continue
-                  SIZE_MB="$(awk -v b="$(stat -c%s "$f")" 'BEGIN{printf "%.1f", b/1048576}')"
-                  SHA256="$(sha256sum "$f" | cut -d' ' -f1)"
-                  printf '  %-84s %9s  %s\n' "$(basename "$f")" "${SIZE_MB}" "${SHA256}" >> "${REPORT}"
-                done
-              done
+              printf '\nPackages: not selected\n' >> "${REPORT}"
             fi
 
             echo >> "${REPORT}"
