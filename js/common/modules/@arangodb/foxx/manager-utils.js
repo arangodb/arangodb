@@ -205,39 +205,6 @@ function joinLastPath (tempPath) {
 }
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief creates a zip archive of a Foxx app. Returns the absolute path
-// //////////////////////////////////////////////////////////////////////////////
-function zipDirectory (directory, zipFilename) {
-  if (!fs.isDirectory(directory)) {
-    throw new Error(directory + ' is not a directory.');
-  }
-  if (!zipFilename) {
-    zipFilename = joinLastPath((fs.getTempFile('bundles', false)));
-  }
-
-  var tree = fs.listTree(directory);
-  var files = [];
-  var i;
-  var filename;
-
-  for (i = 0; i < tree.length; i++) {
-    filename = fs.join(directory, tree[i]);
-
-    if (fs.isFile(filename)) {
-      files.push(tree[i]);
-    }
-  }
-  if (files.length === 0) {
-    throwFileNotFound("Directory '" + String(directory) + "' is empty");
-  }
-  // sort files to be sure they are always in same order within the zip file
-  // independent of the OS and file system
-  files.sort();
-  fs.zipFile(zipFilename, directory, files);
-  return zipFilename;
-}
-
-// //////////////////////////////////////////////////////////////////////////////
 // / @brief Exports
 // //////////////////////////////////////////////////////////////////////////////
 
@@ -248,7 +215,6 @@ exports.list = list;
 exports.listDevelopment = listDevelopment;
 exports.buildGithubUrl = buildGithubUrl;
 exports.validateMount = validateMount;
-exports.zipDirectory = zipDirectory;
 exports.getStorage = getStorage;
 exports.getBundleStorage = getBundleStorage;
 exports.pathRegex = pathRegex;

@@ -597,7 +597,7 @@ function _prepareService (serviceInfo, legacy = false) {
     } else if (fs.exists(serviceInfo)) {
       // Local path
       if (fs.isDirectory(serviceInfo)) {
-        utils.zipDirectory(serviceInfo, tempBundlePath);
+        fs.zipDirectory(serviceInfo, tempBundlePath);
         extractServiceBundle(tempBundlePath, tempServicePath);
       } else {
         _buildServiceFromFile(tempServicePath, tempBundlePath, serviceInfo);
@@ -624,14 +624,14 @@ function _prepareService (serviceInfo, legacy = false) {
         }
       }
       patchManifestFile(tempServicePath, info.manifest);
-      utils.zipDirectory(tempServicePath, tempBundlePath);
+      fs.zipDirectory(tempServicePath, tempBundlePath);
     }
     if (legacy) {
       patchManifestFile(tempServicePath, {engines: {arangodb: '^2.8.0'}});
       if (fs.exists(tempBundlePath)) {
         fs.remove(tempBundlePath);
       }
-      utils.zipDirectory(tempServicePath, tempBundlePath);
+      fs.zipDirectory(tempServicePath, tempBundlePath);
     }
     return {
       tempServicePath,
@@ -660,7 +660,7 @@ function _buildServiceBundleFromScript (tempServicePath, tempBundlePath, jsBuffe
   fs.makeDirectoryRecursive(tempServicePath);
   fs.writeFileSync(path.join(tempServicePath, 'index.js'), jsBuffer);
   fs.writeFileSync(path.join(tempServicePath, 'manifest.json'), manifest);
-  utils.zipDirectory(tempServicePath, tempBundlePath);
+  fs.zipDirectory(tempServicePath, tempBundlePath);
 }
 
 function _deleteServiceFromPath (mount, force) {
@@ -784,7 +784,7 @@ function createServiceBundle (mount, bundlePath = FoxxService.bundlePath(mount))
     fs.remove(bundlePath);
   }
   fs.makeDirectoryRecursive(path.dirname(bundlePath));
-  utils.zipDirectory(servicePath, bundlePath);
+  fs.zipDirectory(servicePath, bundlePath);
 }
 
 function downloadServiceBundleFromRemote (url) {

@@ -510,5 +510,38 @@ global.DEFINE_MODULE('fs', (function () {
 
   exports.escapePath = function (s) { return s.replace(/\\/g,'\\\\'); };
 
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief creates a zip archive of a Foxx app. Returns the absolute path
+  // //////////////////////////////////////////////////////////////////////////////
+  exports.zipDirectory = function (directory, zipFilename) {
+    if (!exports.isDirectory(directory)) {
+      throw new Error(directory + ' is not a directory.');
+    }
+    if (!zipFilename) {
+      zipFilename = joinLastPath((exports.getTempFile('bundles', false)));
+    }
+
+    var tree = exports.listTree(directory);
+    var files = [];
+    var i;
+    var filename;
+
+    for (i = 0; i < tree.length; i++) {
+      filename = exports.join(directory, tree[i]);
+
+      if (exports.isFile(filename)) {
+        files.push(tree[i]);
+      }
+    }
+    if (files.length === 0) {
+      throwFileNotFound("Directory '" + String(directory) + "' is empty");
+    }
+    // sort files to be sure they are always in same order within the zip file
+    // independent of the OS and file system
+    files.sort();
+    exports.zipFile(zipFilename, directory, files);
+    return zipFilename;
+  }
+
   return exports;
 }()));
