@@ -744,6 +744,10 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
     return;
   }
 
+  // Now escalate to root, which is necessary on single servers to actually
+  // be able to access the collection:
+  ExecContextSuperuserScope superUser;
+
   // maximum number of documents to be returned per batch
   size_t docsPerBatch =
       _request->parsedValue("docsPerBatch", size_t(10 * 1000));
