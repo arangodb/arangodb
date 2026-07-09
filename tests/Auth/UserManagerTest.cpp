@@ -33,7 +33,7 @@
 #include "Auth/User.h"
 #include "Auth/UserManagerImpl.h"
 #include "Cluster/ServerState.h"
-#include "RestServer/arangod.h"
+#include "RestServer/ArangodServer.h"
 #include "RestServer/DatabaseFeature.h"
 
 using namespace fakeit;

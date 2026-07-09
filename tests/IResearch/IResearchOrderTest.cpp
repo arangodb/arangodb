@@ -46,7 +46,7 @@
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchFilterContext.h"
 #include "IResearch/IResearchOrderFactory.h"
-#include "RestServer/arangod.h"
+#include "RestServer/ArangodServer.h"
 #include "Cluster/MaintenanceFeature.h"
 #include "RestServer/AqlFeature.h"
 #include "RestServer/DatabaseFeature.h"

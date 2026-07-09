@@ -67,7 +67,7 @@
 #include "RestServer/DatabasePathFeature.h"
 #include "VectorIndex/VectorIndexFeature.h"
 #include "Metrics/MetricsFeature.h"
-#include "RestServer/arangod.h"
+#include "RestServer/ArangodServer.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/ViewTypesFeature.h"

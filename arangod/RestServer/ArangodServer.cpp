@@ -20,7 +20,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Metrics/MetricsFeature.h"
-#include "RestServer/arangod.h"
+#include "RestServer/ArangodServer.h"
 
 #include <type_traits>
 

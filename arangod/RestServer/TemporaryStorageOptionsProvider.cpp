@@ -112,7 +112,7 @@ query result in RAM, use a streaming query.)");
               arangodb::options::Flags::Experimental))
       .setIntroducedIn(31000);
 #endif
-} 
+}
 
 void TemporaryStorageOptionsProvider::validateOptions(
     std::shared_ptr<options::ProgramOptions>& /*opts*/) {

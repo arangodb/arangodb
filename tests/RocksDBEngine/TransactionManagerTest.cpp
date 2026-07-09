@@ -33,7 +33,7 @@
 #include "Transaction/ManagerFeature.h"
 #include "Cluster/ClusterFeature.h"
 #include "Metrics/ClusterMetricsFeature.h"
-#include "RestServer/arangod.h"
+#include "RestServer/ArangodServer.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "Statistics/StatisticsFeature.h"
 

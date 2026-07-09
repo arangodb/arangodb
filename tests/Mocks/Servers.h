@@ -26,7 +26,7 @@
 #include "Mocks/LogLevels.h"
 
 #include "Agency/AgencyCommon.h"
-#include "RestServer/arangod.h"
+#include "RestServer/ArangodServer.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ClusterTypes.h"
 #include "Cluster/ServerState.h"

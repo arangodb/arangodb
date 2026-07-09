@@ -30,7 +30,7 @@
 #include "Basics/ReadLocker.h"
 #include "Basics/ScopeGuard.h"
 #include "Cluster/ServerState.h"
-#include "RestServer/arangod.h"
+#include "RestServer/ArangodServer.h"
 #include "Transaction/Methods.h"
 #include "Transaction/Options.h"
 #include "Transaction/V8Context.h"

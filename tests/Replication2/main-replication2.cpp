@@ -34,7 +34,7 @@
 #include "VocBase/Identifiers/ServerId.h"
 #include "Rest/Version.h"
 #include "Basics/VelocyPackHelper.h"
-#include "RestServer/arangod.h"
+#include "RestServer/ArangodServer.h"
 
 char const* ARGV0 = "";
 

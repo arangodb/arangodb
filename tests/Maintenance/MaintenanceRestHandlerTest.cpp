@@ -30,7 +30,7 @@
 #include "Endpoint/ConnectionInfo.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
-#include "RestServer/arangod.h"
+#include "RestServer/ArangodServer.h"
 
 #include <velocypack/Buffer.h>
 #include <velocypack/Builder.h>

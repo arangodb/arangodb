@@ -37,7 +37,7 @@
 #include "ApplicationFeatures/HttpEndpointProvider.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/operating-system.h"
-#include "RestServer/arangod.h"
+#include "RestServer/ArangodServer.h"
 #include "V8/JavaScriptSecurityContext.h"
 #include "V8/V8PlatformFeature.h"
 

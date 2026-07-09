@@ -21,7 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RestServer/arangod.h"
+#include "RestServer/ArangodServer.h"
 
 #include <cstring>
 #include <cstdlib>

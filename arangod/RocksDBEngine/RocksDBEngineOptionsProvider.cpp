@@ -41,12 +41,13 @@ constexpr uint64_t minSyncInterval = 5;
 }
 
 void RocksDBEngineOptionsProvider::declareOptions(
-    std::shared_ptr<ProgramOptions>& opts) {
-  opts->addObsoleteOption("--server.storage-engine", "The storage engine type",
-                          true);
-  opts->addSection("rocksdb", "RocksDB engine");
+    std::shared_ptr<ProgramOptions>& prgOptions) {
+  prgOptions->addObsoleteOption("--server.storage-engine",
+                                "The storage engine type", true);
+  prgOptions->addSection("rocksdb", "RocksDB engine");
 
-  opts->addOption(
+  prgOptions
+      ->addOption(
           "--rocksdb.minimum-disk-free-percent",
           "The minimum percentage of free disk space for considering the "
           "server healthy in health checks (0 = disable the check).",
@@ -59,7 +60,8 @@ void RocksDBEngineOptionsProvider::declareOptions(
               arangodb::options::Flags::OnSingle))
       .setIntroducedIn(30800);
 
-  opts->addOption("--rocksdb.minimum-disk-free-bytes",
+  prgOptions
+      ->addOption("--rocksdb.minimum-disk-free-bytes",
                   "The minimum number of free disk bytes for considering the "
                   "server healthy in health checks (0 = disable the check).",
                   new UInt64Parameter(&_options.requiredDiskFreeBytes),
@@ -69,7 +71,8 @@ void RocksDBEngineOptionsProvider::declareOptions(
                       arangodb::options::Flags::OnSingle))
       .setIntroducedIn(30800);
 
-  opts->addOption("--rocksdb.max-transaction-size",
+  prgOptions
+      ->addOption("--rocksdb.max-transaction-size",
                   "The transaction size limit (in bytes).",
                   new UInt64Parameter(&_options.maxTransactionSize))
       .setLongDescription(R"(Transactions store all keys and values in RAM, so
@@ -79,23 +82,24 @@ any individual transaction. Transactions whose operations would consume more
 RAM than this threshold value are aborted automatically with error 32
 ("resource limit exceeded").)");
 
-  opts->addOption("--rocksdb.intermediate-commit-size",
-                  "An intermediate commit is performed automatically "
-                  "when a transaction has accumulated operations of this "
-                  "size (in bytes), and a new transaction is started.",
-                  new UInt64Parameter(&_options.intermediateCommitSize));
+  prgOptions->addOption("--rocksdb.intermediate-commit-size",
+                        "An intermediate commit is performed automatically "
+                        "when a transaction has accumulated operations of this "
+                        "size (in bytes), and a new transaction is started.",
+                        new UInt64Parameter(&_options.intermediateCommitSize));
 
-  opts->addOption("--rocksdb.intermediate-commit-count",
-                  "An intermediate commit is performed automatically "
-                  "when this number of operations is reached in a "
-                  "transaction, and a new transaction is started.",
-                  new UInt64Parameter(&_options.intermediateCommitCount));
+  prgOptions->addOption("--rocksdb.intermediate-commit-count",
+                        "An intermediate commit is performed automatically "
+                        "when this number of operations is reached in a "
+                        "transaction, and a new transaction is started.",
+                        new UInt64Parameter(&_options.intermediateCommitCount));
 
-  opts->addOption("--rocksdb.max-parallel-compactions",
-                  "The maximum number of parallel compactions jobs.",
-                  new UInt64Parameter(&_options.maxParallelCompactions));
+  prgOptions->addOption("--rocksdb.max-parallel-compactions",
+                        "The maximum number of parallel compactions jobs.",
+                        new UInt64Parameter(&_options.maxParallelCompactions));
 
-  opts->addOption(
+  prgOptions
+      ->addOption(
           "--rocksdb.sync-interval",
           "The interval for automatic, non-requested disk syncs (in "
           "milliseconds, 0 = turn automatic syncing off)",
@@ -107,7 +111,7 @@ write-ahead logs to disk is only performed for not-yet synchronized data, and
 only for operations that have been executed without the `waitForSync`
 attribute.)");
 
-  opts->addOption(
+  prgOptions->addOption(
       "--rocksdb.sync-delay-threshold",
       "The threshold for self-observation of WAL disk syncs "
       "(in milliseconds, 0 = no warnings). Any WAL disk sync longer ago "
@@ -119,7 +123,8 @@ attribute.)");
           arangodb::options::Flags::OnSingle,
           arangodb::options::Flags::Uncommon));
 
-  opts->addOption("--rocksdb.wal-file-timeout",
+  prgOptions
+      ->addOption("--rocksdb.wal-file-timeout",
                   "The timeout after which unused WAL files are deleted "
                   "(in seconds).",
                   new DoubleParameter(&_options.pruneWaitTime),
@@ -135,7 +140,8 @@ multiple smaller RocksDB transactions that are committed individually.
 The entire user transaction does not necessarily have ACID properties in this
 case.)");
 
-  opts->addOption("--rocksdb.wal-file-timeout-initial",
+  prgOptions
+      ->addOption("--rocksdb.wal-file-timeout-initial",
                   "The initial timeout (in seconds) after which unused WAL "
                   "files deletion kicks in after server start.",
                   new DoubleParameter(&_options.pruneWaitTimeInitial),
@@ -149,7 +155,8 @@ removal of obsolete WAL files earlier after server start. This is useful in
 testing environments that are space-restricted and do not require keeping much
 WAL file data at all.)");
 
-  opts->addOption("--rocksdb.throttle", "Enable write-throttling.",
+  prgOptions
+      ->addOption("--rocksdb.throttle", "Enable write-throttling.",
                   new BooleanParameter(&_options.useThrottle),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
@@ -159,7 +166,8 @@ WAL file data at all.)");
 of writes if necessary to reduce chances of compactions getting too far behind
 and blocking incoming writes.)");
 
-  opts->addOption("--rocksdb.throttle-slots",
+  prgOptions
+      ->addOption("--rocksdb.throttle-slots",
                   "The number of historic metrics to use for throttle value "
                   "calculation.",
                   new UInt64Parameter(&_options.throttleSlots, /*base*/ 1,
@@ -173,7 +181,8 @@ and blocking incoming writes.)");
       .setLongDescription(R"(If throttling is enabled, this parameter controls
 the number of previous intervals to use for throttle value calculation.)");
 
-  opts->addOption(
+  prgOptions
+      ->addOption(
           "--rocksdb.throttle-frequency",
           "The frequency for write-throttle calculations (in milliseconds).",
           new UInt64Parameter(&_options.throttleFrequency),
@@ -186,7 +195,8 @@ the number of previous intervals to use for throttle value calculation.)");
       .setLongDescription(R"(If the throttling is enabled, it recalculates a
 new maximum ingestion rate with this frequency.)");
 
-  opts->addOption(
+  prgOptions
+      ->addOption(
           "--rocksdb.throttle-scaling-factor",
           "The adaptiveness scaling factor for write-throttle calculations.",
           new UInt64Parameter(&_options.throttleScalingFactor),
@@ -198,7 +208,8 @@ new maximum ingestion rate with this frequency.)");
       .setIntroducedIn(30805)
       .setLongDescription(R"(There is normally no need to change this value.)");
 
-  opts->addOption("--rocksdb.throttle-max-write-rate",
+  prgOptions
+      ->addOption("--rocksdb.throttle-max-write-rate",
                   "The maximum write rate enforced by throttle (in bytes per "
                   "second, 0 = unlimited).",
                   new UInt64Parameter(&_options.throttleMaxWriteRate),
@@ -213,7 +224,8 @@ throttling is the minimum of this value and the value that the regular throttle
 calculation produces, i.e. this option can be used to set a fixed upper bound
 on the write rate.)");
 
-  opts->addOption("--rocksdb.throttle-slow-down-writes-trigger",
+  prgOptions
+      ->addOption("--rocksdb.throttle-slow-down-writes-trigger",
                   "The number of level 0 files whose payload "
                   "is not considered in throttle calculations when penalizing "
                   "the presence of L0 files.",
@@ -226,7 +238,8 @@ on the write rate.)");
       .setIntroducedIn(30805)
       .setLongDescription(R"(There is normally no need to change this value.)");
 
-  opts->addOption("--rocksdb.throttle-lower-bound-bps",
+  prgOptions
+      ->addOption("--rocksdb.throttle-lower-bound-bps",
                   "The lower bound for throttle's write bandwidth "
                   "(in bytes per second).",
                   new UInt64Parameter(&_options.throttleLowerBoundBps),
@@ -238,22 +251,23 @@ on the write rate.)");
       .setIntroducedIn(30805);
 
 #ifdef USE_ENTERPRISE
-  opts->addOption("--rocksdb.create-sha-files",
-                  "Whether to enable the generation of sha256 files for "
-                  "each .sst file.",
-                  new BooleanParameter(&_options.createShaFiles),
-                  arangodb::options::makeFlags(
-                      arangodb::options::Flags::DefaultNoComponents,
-                      arangodb::options::Flags::OnDBServer,
-                      arangodb::options::Flags::OnSingle,
-                      arangodb::options::Flags::Enterprise));
+  prgOptions->addOption("--rocksdb.create-sha-files",
+                        "Whether to enable the generation of sha256 files for "
+                        "each .sst file.",
+                        new BooleanParameter(&_options.createShaFiles),
+                        arangodb::options::makeFlags(
+                            arangodb::options::Flags::DefaultNoComponents,
+                            arangodb::options::Flags::OnDBServer,
+                            arangodb::options::Flags::OnSingle,
+                            arangodb::options::Flags::Enterprise));
 #endif
 
-  opts->addObsoleteOption(
+  prgOptions->addObsoleteOption(
       "--rocksdb.use-range-delete-in-wal",
       "Enable range delete markers in the write-ahead log (WAL).", false);
 
-  opts->addOption("--rocksdb.debug-logging",
+  prgOptions
+      ->addOption("--rocksdb.debug-logging",
                   "Whether to enable RocksDB debug logging.",
                   new BooleanParameter(&_options.debugLogging),
                   arangodb::options::makeFlags(
@@ -269,11 +283,12 @@ RocksDB's actions into the logfile written by ArangoDB (if the
 This option is turned off by default, but you can enable it for debugging
 RocksDB internals and performance.)");
 
-  opts->addObsoleteOption("--rocksdb.edge-cache",
-                          "Whether to use the in-memory cache for edges",
-                          false);
+  prgOptions->addObsoleteOption("--rocksdb.edge-cache",
+                                "Whether to use the in-memory cache for edges",
+                                false);
 
-  opts->addOption("--rocksdb.verify-sst",
+  prgOptions
+      ->addOption("--rocksdb.verify-sst",
                   "Verify the validity of .sst files present in the "
                   "`engine-rocksdb` directory on startup.",
                   new BooleanParameter(&_options.verifySst),
@@ -291,7 +306,8 @@ potential corruption and errors. The server process stops after the check and
 returns an exit code of `0` if the validation was successful, or a non-zero
 exit code if there is an error in any of the .sst files.)");
 
-  opts->addOption("--rocksdb.wal-archive-size-limit",
+  prgOptions
+      ->addOption("--rocksdb.wal-archive-size-limit",
                   "The maximum total size (in bytes) of archived WAL files to "
                   "keep on the leader (0 = unlimited).",
                   new UInt64Parameter(&_options.maxWalArchiveSizeLimit),
@@ -330,7 +346,8 @@ file deletion happens too early.
 Thus it is best to leave this option at its default value of `0` except in cases
 when disk size is very constrained and no replication is used.)");
 
-  opts->addOption("--rocksdb.auto-flush-min-live-wal-files",
+  prgOptions
+      ->addOption("--rocksdb.auto-flush-min-live-wal-files",
                   "The minimum number of live WAL files that triggers an "
                   "auto-flush of WAL "
                   "and column family data.",
@@ -341,7 +358,8 @@ when disk size is very constrained and no replication is used.)");
                       arangodb::options::Flags::OnSingle))
       .setIntroducedIn(31005);
 
-  opts->addOption(
+  prgOptions
+      ->addOption(
           "--rocksdb.auto-flush-check-interval",
           "The interval (in seconds) in which auto-flushes of WAL and column "
           "family data is executed.",
@@ -352,7 +370,8 @@ when disk size is very constrained and no replication is used.)");
               arangodb::options::Flags::OnSingle))
       .setIntroducedIn(31005);
 
-  opts->addOption(
+  prgOptions
+      ->addOption(
           "--rocksdb.force-legacy-comparator",
           "If set to `true`, forces a new database directory to use the "
           "legacy sorting method. This is only for testing. Don't use.",
@@ -366,7 +385,8 @@ when disk size is very constrained and no replication is used.)");
       .setIntroducedIn(31202);
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  opts->addOption(
+  prgOptions
+      ->addOption(
           "--rocksdb.force-legacy-little-endian-keys",
           "Force usage of legacy little endian key encoding when creating "
           "a new RocksDB database directory. DO NOT USE IN PRODUCTION.",
@@ -387,7 +407,8 @@ disables a few features like parallel index generation!)");
 #endif
 
   // TODO: consider moving this option to --rocksdb.export-read-write-metrics
-  opts->addOption("--server.export-read-write-metrics",
+  prgOptions
+      ->addOption("--server.export-read-write-metrics",
                   "Whether to enable metrics for document reads and writes.",
                   new BooleanParameter(&_options.exportReadWriteMetrics),
                   arangodb::options::makeFlags(
@@ -411,12 +432,12 @@ additional metrics via the `GET /_admin/metrics/v2` endpoint:
 )");
 #ifdef USE_ENTERPRISE
   enterprise::RocksDBEngineEEOptionsProvider::declareOptions(
-      opts, _options.eeOptions);
+      prgOptions, _options.eeOptions);
 #endif
 }
 
 void RocksDBEngineOptionsProvider::validateOptions(
-    std::shared_ptr<ProgramOptions>& opts) {
+    std::shared_ptr<ProgramOptions>& prgOptions) {
   if (_options.throttleScalingFactor == 0) {
     _options.throttleScalingFactor = 1;
   }
@@ -435,8 +456,9 @@ void RocksDBEngineOptionsProvider::validateOptions(
 
     if (_options.syncDelayThreshold > 0 &&
         _options.syncDelayThreshold <= _options.syncInterval) {
-      if (!opts->processingResult().touched("rocksdb.sync-interval") &&
-          opts->processingResult().touched("rocksdb.sync-delay-threshold")) {
+      if (!prgOptions->processingResult().touched("rocksdb.sync-interval") &&
+          prgOptions->processingResult().touched(
+              "rocksdb.sync-delay-threshold")) {
         LOG_TOPIC("c3f45", WARN, arangodb::Logger::CONFIG)
             << "invalid value for --rocksdb.sync-delay-threshold. should be "
                "higher "
@@ -459,7 +481,7 @@ void RocksDBEngineOptionsProvider::validateOptions(
   }
 #ifdef USE_ENTERPRISE
   enterprise::RocksDBEngineEEOptionsProvider::validateOptions(
-      opts, _options.eeOptions);
+      prgOptions, _options.eeOptions);
 #endif
 }
 

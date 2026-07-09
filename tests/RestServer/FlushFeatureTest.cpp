@@ -36,7 +36,7 @@
 #include "Logger/Logger.h"
 #include "RestServer/FlushFeature.h"
 #include "Metrics/MetricsFeature.h"
-#include "RestServer/arangod.h"
+#include "RestServer/ArangodServer.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"

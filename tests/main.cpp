@@ -39,7 +39,7 @@
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
 #include "Rest/Version.h"
-#include "RestServer/arangod.h"
+#include "RestServer/ArangodServer.h"
 #include "RestServer/ServerIdFeature.h"
 #include "VocBase/Identifiers/ServerId.h"
 

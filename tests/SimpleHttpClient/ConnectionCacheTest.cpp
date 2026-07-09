@@ -27,7 +27,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "Endpoint/Endpoint.h"
-#include "RestServer/arangod.h"
+#include "RestServer/ArangodServer.h"
 #include "SimpleHttpClient/ConnectionCache.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 

@@ -145,16 +145,15 @@ void TemporaryStorageFeature::prepare() {
   if (!canBeUsed()) {
     return;
   }
-  
+
   // check that the intermediate-results path is not identical to or inside the
   // database directory. moved here from validateOptions() so that
   // DatabasePathFeature is guaranteed to exist by this point.
   auto const currentDir = std::filesystem::current_path();
-  _options.basePath = normalizePath(currentDir, _options.basePath); 
+  _options.basePath = normalizePath(currentDir, _options.basePath);
   std::string dbPath = normalizePath(
       currentDir, server().getFeature<DatabasePathFeature>().directory());
-  if (dbPath == _options.basePath ||
-      _options.basePath.starts_with(dbPath)) {
+  if (dbPath == _options.basePath || _options.basePath.starts_with(dbPath)) {
     LOG_TOPIC("58b44", FATAL, Logger::STARTUP)
         << "path for intermediate results ('" << _options.basePath
         << "') must not be identical to or inside the database directory ('"
@@ -177,7 +176,6 @@ void TemporaryStorageFeature::prepare() {
     }
   }
 }
-
 
 void TemporaryStorageFeature::start() {
   if (!canBeUsed()) {
