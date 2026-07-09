@@ -32,11 +32,15 @@ class ProgramOptions;
 
 namespace arangodb::fortune {
 
-struct FortuneOptionsProvider : OptionsProvider<FortuneFeatureOptions> {
+struct FortuneOptionsProvider {
   FortuneOptionsProvider() = default;
 
-  void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
-                      FortuneFeatureOptions& options) override;
+  void declareOptions(std::shared_ptr<options::ProgramOptions>& opts);
+  void validateOptions(std::shared_ptr<options::ProgramOptions>& /*opts*/) {}
+  [[nodiscard]] FortuneFeatureOptions options() const { return _options; }
+
+ private:
+  FortuneFeatureOptions _options;
 };
 
 }  // namespace arangodb::fortune

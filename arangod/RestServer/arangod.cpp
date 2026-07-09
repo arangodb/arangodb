@@ -75,7 +75,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
     server.addFeatures(&ret, name, crashDumpManager, dataSourceRegistry);
 
     server.setAddFeaturesWithOptionProviderDependencies(name, crashDumpManager,
-                                                        dataSourceRegistry);
+                                                       dataSourceRegistry);
 
     try {
       server.run(argc, argv);

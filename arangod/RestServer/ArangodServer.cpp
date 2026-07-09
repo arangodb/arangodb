@@ -153,7 +153,6 @@ void ArangodServer::addFeatures(
   addFeature<EnvironmentFeature>();
   addFeature<FileSystemFeature>();
   addFeature<FlushFeature>(metrics);
-  addFeature<FortuneFeature>();
 #ifdef USE_V8
   addFeature<FoxxFeature>();
   addFeature<FrontendFeature>();
@@ -269,6 +268,9 @@ void ArangodServer::addFeaturesWithOptionProvider() {
                                        : nullptr,
       scheduler, rocksdbRecovery, database, rocksdbCacheRefill, cacheManager,
       agency, rocksDBEngineOptions);
+
+  addFeature<FortuneFeature>(
+      _optionProviders.get<fortune::FortuneOptionsProvider>().options());
 
   addFeature<replication2::replicated_state::ReplicatedStateAppFeature>();
   addFeature<replication2::replicated_state::black_hole::
