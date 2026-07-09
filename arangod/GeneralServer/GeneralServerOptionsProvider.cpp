@@ -41,6 +41,16 @@ void GeneralServerOptionsProvider::declareOptions(
   opts->addOldOption("server.keep-alive-timeout", "http.keep-alive-timeout");
   opts->addOldOption("no-server", "server.rest-server");
 
+  // options were removed in 3.12.10 as part of removing the telemetrics API
+  // entirely.
+  opts->addObsoleteOption("--server.telemetrics-api",
+                          "Whether to enable the telemetrics API.", true);
+  opts->addObsoleteOption(
+      "--server.telemetrics-api-max-requests",
+      "The maximum number of requests from arangosh that the "
+      "telemetrics API responds to without rate-limiting.",
+      true);
+
   opts->addOption(
       "--server.io-threads", "The number of threads used to handle I/O.",
       new UInt64Parameter(&options.numIoThreads, /*base*/ 1, /*minValue*/ 1),
