@@ -50,6 +50,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
     auto crashDumpManager =
         std::make_shared<crash_handler::DumpManager>(dataSourceRegistry);
     crash_handler::CrashHandler crashHandler(crashDumpManager);
+    // Initializes the crash handler and starts its thread.
 
     std::string name = context.binaryName();
 
@@ -67,6 +68,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
                ArangodServer::stringifyState(state));
 
            if (state == ArangodServer::State::IN_START) {
+             // drop privileges before starting features
              server.getFeature<PrivilegeFeature>().dropPrivilegesPermanently();
            }
          },
@@ -75,11 +77,12 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
     server.addFeatures(&ret, name, crashDumpManager, dataSourceRegistry);
 
     server.setAddFeaturesWithOptionProviderDependencies(name, crashDumpManager,
-                                                       dataSourceRegistry);
+                                                        dataSourceRegistry);
 
     try {
       server.run(argc, argv);
       if (server.helpShown()) {
+        // --help was displayed
         ret = EXIT_SUCCESS;
       }
     } catch (std::exception const& ex) {
@@ -94,6 +97,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
     }
 
     Logger::flush();
+    // CrashHandler will be deactivated here automatically by its destructor
     return context.exit(ret);
   } catch (std::exception const& ex) {
     LOG_TOPIC("8afa8", ERR, Logger::FIXME)
@@ -126,6 +130,7 @@ static void f() {
 }
 
 int main(int argc, char* argv[]) {
+  // Do not delete this! See above for an explanation.
   if (argc >= 1 && strcmp(argv[0], "not a/valid name") == 0) {
     f();
   }
@@ -154,6 +159,11 @@ int main(int argc, char* argv[]) {
               << ", giving up." << std::endl;
     return res;
   }
+  // It is not clear if we want to do the following under Linux and OSX,
+  // it is a clean way to restart from scratch with the same process ID,
+  // so the process does not have to be terminated. On Windows, we have
+  // to do this because the solution below is not possible. In these
+  // cases, we need outside help to get the process restarted.
   res = chdir(workdir.c_str());
   if (res != 0) {
     std::cerr << "WARNING: could not change into directory '"

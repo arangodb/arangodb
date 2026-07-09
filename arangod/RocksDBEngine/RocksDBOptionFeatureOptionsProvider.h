@@ -22,8 +22,13 @@
 
 #pragma once
 
-#include "ApplicationFeatures/OptionsProvider.h"
+#include <memory>
+
 #include "RocksDBEngine/RocksDBOptionFeatureOptions.h"
+
+namespace arangodb::options {
+class ProgramOptions;
+}
 
 namespace arangodb {
 
@@ -33,7 +38,7 @@ namespace arangodb {
 // "Feature" in the name. This all is temporary anyway, and should be remove it
 // further steps.
 struct RocksDBOptionFeatureOptionsProvider {
-  RocksDBOptionFeatureOptionsProvider() = default;
+  RocksDBOptionFeatureOptionsProvider();
 
   void declareOptions(std::shared_ptr<options::ProgramOptions>& opts);
   void validateOptions(std::shared_ptr<options::ProgramOptions>& opts);

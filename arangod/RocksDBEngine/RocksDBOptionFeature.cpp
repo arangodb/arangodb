@@ -32,7 +32,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Agency/AgencyFeature.h"
 #include "Basics/NumberOfCores.h"
-#include "Basics/PhysicalMemory.h"
 #include "Basics/application-exit.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Logger/LogMacros.h"
@@ -142,9 +141,7 @@ rocksdb::CompactionStyle compactionStyleFromString(std::string_view type) {
 }
 
 // defaults
-rocksdb::TransactionDBOptions rocksDBTrxDefaults;
 rocksdb::Options rocksDBDefaults;
-rocksdb::BlockBasedTableOptions rocksDBTableOptionsDefaults;
 
 // minimum size of a block cache shard. we want to at least store
 // that much data in each shard (rationale: a data block read from
@@ -152,38 +149,6 @@ rocksdb::BlockBasedTableOptions rocksDBTableOptionsDefaults;
 // capacity limit is set. otherwise the block cache will fail reads
 // with Status::Incomplete() or Status::MemoryLimit()).
 constexpr uint64_t minShardSize = 128 * 1024 * 1024;
-
-uint64_t defaultBlockCacheSize() {
-  if (PhysicalMemory::getValue() >= (static_cast<uint64_t>(4) << 30)) {
-    // if we have at least 4GB of RAM, the default size is (RAM - 2GB) * 0.3
-    return static_cast<uint64_t>(
-        (PhysicalMemory::getValue() - (static_cast<uint64_t>(2) << 30)) * 0.3);
-  }
-  if (PhysicalMemory::getValue() >= (static_cast<uint64_t>(2) << 30)) {
-    // if we have at least 2GB of RAM, the default size is 512MB
-    return (static_cast<uint64_t>(512) << 20);
-  }
-  if (PhysicalMemory::getValue() >= (static_cast<uint64_t>(1) << 30)) {
-    // if we have at least 1GB of RAM, the default size is 256MB
-    return (static_cast<uint64_t>(256) << 20);
-  }
-  // for everything else the default size is 128MB
-  return (static_cast<uint64_t>(128) << 20);
-}
-
-uint64_t defaultTotalWriteBufferSize() {
-  if (PhysicalMemory::getValue() >= (static_cast<uint64_t>(4) << 30)) {
-    // if we have at least 4GB of RAM, the default size is (RAM - 2GB) * 0.4
-    return static_cast<uint64_t>(
-        (PhysicalMemory::getValue() - (static_cast<uint64_t>(2) << 30)) * 0.4);
-  }
-  if (PhysicalMemory::getValue() >= (static_cast<uint64_t>(1) << 30)) {
-    // if we have at least 1GB of RAM, the default size is 512MB
-    return (static_cast<uint64_t>(512) << 20);
-  }
-  // for everything else the default size is 256MB
-  return (static_cast<uint64_t>(256) << 20);
-}
 
 uint64_t defaultMinWriteBufferNumberToMerge(uint64_t totalSize,
                                             uint64_t sizePerBuffer,
@@ -218,7 +183,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(
     application_features::ApplicationServer& server,
     AgencyFeature const* agencyFeature)
     : RocksDBOptionFeature(server, agencyFeature,
-                           RocksDBOptionFeatureOptions{}) {}
+                           RocksDBOptionFeatureOptionsProvider{}.options()) {}
 
 RocksDBOptionFeature::RocksDBOptionFeature(
     application_features::ApplicationServer& server,
@@ -226,82 +191,6 @@ RocksDBOptionFeature::RocksDBOptionFeature(
     : ApplicationFeature{server, *this},
       _options(std::move(options)),
       _agencyFeature(agencyFeature) {
-  _options.transactionLockStripes =
-      std::max(NumberOfCores::getValue(), std::size_t(16));
-  _options.transactionLockTimeout = rocksDBTrxDefaults.transaction_lock_timeout;
-  _options.totalWriteBufferSize = rocksDBDefaults.db_write_buffer_size;
-  _options.writeBufferSize = rocksDBDefaults.write_buffer_size;
-  _options.maxWriteBufferNumber =
-      RocksDBColumnFamilyManager::numberOfColumnFamilies + 2;
-  _options.maxTotalWalSize = 80 << 20;
-  _options.delayedWriteRate = rocksDBDefaults.delayed_write_rate;
-  _options.minWriteBufferNumberToMerge = defaultMinWriteBufferNumberToMerge(
-      _options.totalWriteBufferSize, _options.writeBufferSize,
-      _options.maxWriteBufferNumber);
-  _options.numLevels = rocksDBDefaults.num_levels;
-  _options.numUncompressedLevels = 2;
-  _options.maxBytesForLevelBase = rocksDBDefaults.max_bytes_for_level_base;
-  _options.maxBytesForLevelMultiplier =
-      rocksDBDefaults.max_bytes_for_level_multiplier;
-  _options.maxBackgroundJobs = static_cast<int32_t>(
-      std::max(static_cast<size_t>(2), NumberOfCores::getValue()));
-  _options.maxSubcompactions = 2;
-  _options.targetFileSizeBase = rocksDBDefaults.target_file_size_base;
-  _options.targetFileSizeMultiplier =
-      rocksDBDefaults.target_file_size_multiplier;
-  _options.blockCacheSize = ::defaultBlockCacheSize();
-  _options.blockCacheShardBits = -1;
-  _options.minBlobSize = 256;
-  _options.blobFileSize = 1ULL << 30;
-  _options.blobGarbageCollectionAgeCutoff = 0.25;
-  _options.blobGarbageCollectionForceThreshold = 1.0;
-  _options.bloomBitsPerKey = 10.0;
-  _options.tableBlockSize = std::max(
-      rocksDBTableOptionsDefaults.block_size,
-      static_cast<decltype(rocksDBTableOptionsDefaults.block_size)>(16 * 1024));
-  _options.compactionReadaheadSize = 2 * 1024 * 1024;
-  _options.level0CompactionTrigger = 2;
-  _options.level0SlowdownTrigger = 16;
-  _options.level0StopTrigger = 256;
-  _options.pendingCompactionBytesSlowdownTrigger = 1024ULL * 1024ULL * 1024ULL;
-  _options.pendingCompactionBytesStopTrigger =
-      32ULL * 1024ULL * 1024ULL * 1024ULL;
-  _options.periodicCompactionTtl = 24 * 60 * 60;
-  _options.recycleLogFileNum = rocksDBDefaults.recycle_log_file_num;
-  _options.compressionType = ::kCompressionTypeLZ4;
-  _options.blobCompressionType = ::kCompressionTypeLZ4;
-  _options.blockCacheType = ::kBlockCacheTypeLRU;
-  _options.checksumType = ::kChecksumTypeXXHash64;
-  _options.compactionStyle = ::kCompactionStyleLevel;
-  _options.formatVersion = 5;
-  _options.enableIndexCompression =
-      rocksDBTableOptionsDefaults.enable_index_compression;
-  _options.reserveTableBuilderMemory = true;
-  _options.reserveTableReaderMemory = true;
-  _options.reserveFileMetadataMemory = true;
-  _options.cacheIndexAndFilterBlocks = true;
-  _options.cacheIndexAndFilterBlocksWithHighPriority =
-      rocksDBTableOptionsDefaults
-          .cache_index_and_filter_blocks_with_high_priority;
-  _options.pinl0FilterAndIndexBlocksInCache =
-      rocksDBTableOptionsDefaults.pin_l0_filter_and_index_blocks_in_cache;
-  _options.pinTopLevelIndexAndFilter =
-      rocksDBTableOptionsDefaults.pin_top_level_index_and_filter;
-  _options.blockAlignDataBlocks = rocksDBTableOptionsDefaults.block_align;
-  _options.enablePipelinedWrite = true;
-  _options.optimizeFiltersForHits = rocksDBDefaults.optimize_filters_for_hits;
-  _options.useDirectReads = rocksDBDefaults.use_direct_reads;
-  _options.useDirectIoForFlushAndCompaction =
-      rocksDBDefaults.use_direct_io_for_flush_and_compaction;
-  _options.useFSync = rocksDBDefaults.use_fsync;
-  _options.dynamicLevelBytes = true;
-  _options.allowFAllocate = true;
-  _options.enableBlobGarbageCollection = true;
-
-  if (_options.totalWriteBufferSize == 0) {
-    _options.totalWriteBufferSize = ::defaultTotalWriteBufferSize();
-  }
-
   setOptional(true);
   startsAfter<BasicFeaturePhaseServer>();
 }
@@ -319,7 +208,7 @@ void RocksDBOptionFeature::prepare() {
           std::min<uint64_t>(_options.totalWriteBufferSize, uint64_t(512) << 20);
     }
   }
-  
+
   if (_options.enableBlobFiles) {
     LOG_TOPIC("5e48f", WARN, Logger::ENGINES)
         << "using blob files is experimental and not supported for production "
