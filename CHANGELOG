@@ -1,6 +1,8 @@
 3.12.10-devel (XXXX-XX-XX)
 --------------------------
 
+* COR-728: Removed the telemetrics API and the arangosh telemetrics client.
+
 * GitHub issue #22532: Fixed query editor content becoming hidden after resizing
   the editor pane in the web UI.
 
