@@ -87,12 +87,6 @@ RocksDBIndexCacheRefillFeature::~RocksDBIndexCacheRefillFeature() {
   stopThread();
 }
 
-void RocksDBIndexCacheRefillFeature::collectOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  RocksDBIndexCacheRefillOptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
-
 void RocksDBIndexCacheRefillFeature::beginShutdown() {
   {
     std::unique_lock lock(_indexFillTasksMutex);

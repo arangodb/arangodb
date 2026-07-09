@@ -65,7 +65,6 @@ class RocksDBIndexCacheRefillFeature final
 
   ~RocksDBIndexCacheRefillFeature();
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
   void beginShutdown() override;
   void start() override;
   void stop() override;

@@ -35,7 +35,7 @@ struct FlushFeatureOptions {};
 struct FlushOptionsProvider {
   void declareOptions(std::shared_ptr<options::ProgramOptions>& prgOptions);
   void validateOptions(
-      std::shared_ptr<options::ProgramOptions>& /*prgOptions*/) {};
+      std::shared_ptr<options::ProgramOptions>& /*prgOptions*/){};
   [[nodiscard]] FlushFeatureOptions const& options() const noexcept {
     return _options;
   }

@@ -22,7 +22,8 @@
 
 #pragma once
 
-#include "ApplicationFeatures/OptionsProvider.h"
+#include <memory>
+
 #include "RocksDBEngine/RocksDBIndexCacheRefillFeatureOptions.h"
 
 namespace arangodb::options {
@@ -31,10 +32,18 @@ class ProgramOptions;
 
 namespace arangodb {
 
-struct RocksDBIndexCacheRefillOptionsProvider
-    : OptionsProvider<RocksDBIndexCacheRefillFeatureOptions> {
-  void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
-                      RocksDBIndexCacheRefillFeatureOptions& options) override;
+struct RocksDBIndexCacheRefillOptionsProvider {
+  void declareOptions(std::shared_ptr<options::ProgramOptions>& prgOptions);
+  void validateOptions(
+      std::shared_ptr<options::ProgramOptions>& /*prgOptions*/) {};
+
+  [[nodiscard]] RocksDBIndexCacheRefillFeatureOptions const& options()
+      const noexcept {
+    return _options;
+  }
+
+ private:
+  RocksDBIndexCacheRefillFeatureOptions _options;
 };
 
 }  // namespace arangodb

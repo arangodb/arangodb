@@ -214,8 +214,6 @@ void ArangodServer::addFeatures(
   auto& aqlFunctionFeature = addFeature<aql::AqlFunctionFeature>();
   addFeature<aql::OptimizerRulesFeature>();
   addFeature<aql::QueryInfoLoggerFeature>();
-  addFeature<RocksDBIndexCacheRefillFeature>(database, &clusterFeature,
-                                             metrics);
   addFeature<RocksDBRecoveryManager>(database, database);
 #ifdef TRI_HAVE_GETRLIMIT
   addFeature<FileDescriptorsFeature>(metrics);
@@ -252,13 +250,19 @@ void ArangodServer::addFeaturesWithOptionProvider() {
     return;
   }
   auto& metrics = getFeature<metrics::MetricsFeature>();
-  auto& rocksdbCacheRefill = getFeature<RocksDBIndexCacheRefillFeature>();
   auto& database = getFeature<DatabaseFeature>();
   auto& vectorIndex = getFeature<VectorIndexFeature>();
   auto& scheduler = getFeature<SchedulerFeature>();
   auto& rocksdbRecovery = getFeature<RocksDBRecoveryManager>();
   auto& cacheManager = getFeature<CacheManagerFeature>();
   auto& agency = getFeature<AgencyFeature>();
+  auto& clusterFeature = getFeature<ClusterFeature>();
+
+  // Add RocksDBIndexCacheRefillFeature
+  auto rocksdbCacheRefillOptions =
+      _optionProviders.get<RocksDBIndexCacheRefillOptionsProvider>().options();
+  auto& rocksdbCacheRefill = addFeature<RocksDBIndexCacheRefillFeature>(
+      database, &clusterFeature, metrics, std::move(rocksdbCacheRefillOptions));
 
   // Add RocksDBOptionFeature
   auto rocksdbOptionFeatureOptions =
