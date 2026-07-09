@@ -59,12 +59,18 @@ auto const kNonServerFeatures =
 }  // namespace
 
 void ArangodServer::collectOptions() {
+  if (!hasFeature<AgencyFeature>()) {
+    return;  // minimal test setup
+  }
   LOG_TOPIC("0eac8", TRACE, Logger::STARTUP) << "ArangodServer::collectOptions";
   ApplicationServer::collectOptions();
   _optionProviders.declareOptions(_programOptions);
 }
 
 void ArangodServer::validateOptions() {
+  if (!hasFeature<AgencyFeature>()) {
+    return;  // minimal test setup
+  }
   LOG_TOPIC("1ed28", TRACE, Logger::STARTUP)
       << "ArangodServer::validateOptions";
   ApplicationServer::validateOptions();
@@ -202,7 +208,6 @@ void ArangodServer::addFeatures(
   addFeature<SslFeature>();
   addFeature<StatisticsFeature>(metrics);
   addFeature<TempFeature>(std::string{binaryName});
-  addFeature<TemporaryStorageFeature>();
   addFeature<TtlFeature>();
   addFeature<UpgradeFeature>(ret, kNonServerFeatures);
   addFeature<transaction::ManagerFeature>(metrics);
@@ -244,6 +249,9 @@ void ArangodServer::addFeatures(
 }
 
 void ArangodServer::addFeaturesWithOptionProvider() {
+  if (!hasFeature<AgencyFeature>()) {
+    return;
+  }
   auto& metrics = getFeature<metrics::MetricsFeature>();
   auto& rocksdbCacheRefill = getFeature<RocksDBIndexCacheRefillFeature>();
   auto& database = getFeature<DatabaseFeature>();
@@ -260,6 +268,11 @@ void ArangodServer::addFeaturesWithOptionProvider() {
   auto& rocksdbOption = addFeature<RocksDBOptionFeature>(
       &agency, std::move(rocksdbOptionFeatureOptions));
 
+  // Add TemporaryStorageFeature
+  auto temporaryStorageOptions =
+      _optionProviders.get<TemporaryStorageOptionsProvider>().options();
+  addFeature<TemporaryStorageFeature>(std::move(temporaryStorageOptions));
+
   // Add DatabasePathFeature
   auto databasePathOptions =
       _optionProviders.get<DatabasePathOptionsProvider>().options();
@@ -269,7 +282,8 @@ void ArangodServer::addFeaturesWithOptionProvider() {
   // Add DumpLimitsFeature
   auto dumpLimitsOptions =
       _optionProviders.get<DumpLimitsOptionsProvider>().options();
-  auto& dumpLimits = addFeature<DumpLimitsFeature>(std::move(dumpLimitsOptions));
+  auto& dumpLimits =
+      addFeature<DumpLimitsFeature>(std::move(dumpLimitsOptions));
 
   // Add RocksDBEngine
   RocksDBEngineOptions rocksDBEngineOptions =

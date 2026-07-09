@@ -37,7 +37,7 @@ struct DumpLimitsOptionsProvider {
   void validateOptions(std::shared_ptr<options::ProgramOptions>& prgOptions);
   [[nodiscard]] DumpLimitsFeatureOptions options() const { return _options; }
 
-  private:
+ private:
   DumpLimitsFeatureOptions _options;
 };
 

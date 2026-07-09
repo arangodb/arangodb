@@ -22,8 +22,9 @@
 
 #pragma once
 
-#include "ApplicationFeatures/OptionsProvider.h"
 #include "RestServer/TemporaryStorageFeatureOptions.h"
+
+#include <memory>
 
 namespace arangodb::options {
 class ProgramOptions;
@@ -31,10 +32,15 @@ class ProgramOptions;
 
 namespace arangodb {
 
-struct TemporaryStorageOptionsProvider
-    : OptionsProvider<TemporaryStorageFeatureOptions> {
-  void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
-                      TemporaryStorageFeatureOptions& options) override;
+struct TemporaryStorageOptionsProvider {
+  void declareOptions(std::shared_ptr<options::ProgramOptions>& prgOptions);
+  void validateOptions(std::shared_ptr<options::ProgramOptions>& prgOptions);
+  [[nodiscard]] TemporaryStorageFeatureOptions options() const {
+    return _options;
+  }
+
+ private:
+  TemporaryStorageFeatureOptions _options;
 };
 
 }  // namespace arangodb

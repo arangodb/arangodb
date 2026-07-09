@@ -22,6 +22,10 @@
 
 #include "TemporaryStorageOptionsProvider.h"
 
+#include <filesystem>
+
+#include "Basics/StringUtils.h"
+#include "Basics/Thread.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 
@@ -30,14 +34,13 @@ namespace arangodb {
 using namespace arangodb::options;
 
 void TemporaryStorageOptionsProvider::declareOptions(
-    std::shared_ptr<options::ProgramOptions> options,
-    TemporaryStorageFeatureOptions& opts) {
-  options
+    std::shared_ptr<options::ProgramOptions>& prgOptions) {
+  prgOptions
       ->addOption(
           "--temp.intermediate-results-path",
           "The path for storing ephemeral, intermediate results on disk "
           "(empty = not used).",
-          new StringParameter(&opts.basePath),
+          new StringParameter(&_options.basePath),
           arangodb::options::makeDefaultFlags(
               arangodb::options::Flags::Experimental))
       .setIntroducedIn(31000)
@@ -56,59 +59,72 @@ Also, the query results are still built up entirely in memory on Coordinators
 and single servers for non-streaming queries. To avoid the buildup of the entire
 query result in RAM, use a streaming query.)");
 
-  options
+  prgOptions
       ->addOption("--temp.intermediate-results-capacity",
                   "The maximum capacity (in bytes) to use for ephemeral, "
                   "intermediate results on disk (0 = unlimited).",
-                  new UInt64Parameter(&opts.maxDiskCapacity),
+                  new UInt64Parameter(&_options.maxDiskCapacity),
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Experimental))
       .setIntroducedIn(31000);
 
-  options
+  prgOptions
       ->addOption(
           "--temp.intermediate-results-spillover-threshold-num-rows",
           "The number of result rows after which a spillover from RAM to disk "
           "happens for intermediate results (threshold per query executor).",
-          new SizeTParameter(&opts.spillOverThresholdNumRows),
+          new SizeTParameter(&_options.spillOverThresholdNumRows),
           arangodb::options::makeDefaultFlags(
               arangodb::options::Flags::Experimental))
       .setIntroducedIn(31000);
 
-  options
+  prgOptions
       ->addOption(
           "--temp.intermediate-results-spillover-threshold-memory-usage",
           "The memory usage threshold (in bytes) after which a spillover from "
           "RAM to disk happens for intermediate results "
           "(threshold per query executor).",
-          new SizeTParameter(&opts.spillOverThresholdMemoryUsage),
+          new SizeTParameter(&_options.spillOverThresholdMemoryUsage),
           arangodb::options::makeDefaultFlags(
               arangodb::options::Flags::Experimental))
       .setIntroducedIn(31000);
 
 #ifdef USE_ENTERPRISE
-  options
+  prgOptions
       ->addOption("--temp.intermediate-results-encryption",
                   "Encrypt ephemeral, intermediate results on disk.",
-                  new BooleanParameter(&opts.useEncryption),
+                  new BooleanParameter(&_options.useEncryption),
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Enterprise,
                       arangodb::options::Flags::Experimental))
       .setIntroducedIn(31000);
 
-  options
+  prgOptions
       ->addOption(
           "--temp.intermediate-results-encryption-hardware-acceleration",
           "Use Intel intrinsics-based encryption, requiring a CPU with "
           "the AES-NI instruction set. "
           "If turned off, then OpenSSL is used, which may use "
           "hardware-accelerated encryption, too.",
-          new BooleanParameter(&opts.allowHWAcceleration),
+          new BooleanParameter(&_options.allowHWAcceleration),
           arangodb::options::makeDefaultFlags(
               arangodb::options::Flags::Enterprise,
               arangodb::options::Flags::Experimental))
       .setIntroducedIn(31000);
 #endif
+}
+
+void TemporaryStorageOptionsProvider::validateOptions(
+    std::shared_ptr<options::ProgramOptions>& /*opts*/) {
+  if (_options.basePath.empty()) {
+    return;
+  }
+  // replace $PID with current process id
+  _options.basePath = basics::StringUtils::replace(
+      _options.basePath, "$PID", std::to_string(Thread::currentProcessId()));
+  // Note: path normalization + "basePath must not be inside --database.directory"
+  // live in TemporaryStorageFeature::prepare(), since DatabasePathFeature is
+  // only added to the server after all providers have run.
 }
 
 }  // namespace arangodb

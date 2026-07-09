@@ -24,6 +24,7 @@
 #include "RestServer/DatabasePathOptionsProvider.h"
 #include "RestServer/DumpLimitsOptionsProvider.h"
 #include "RestServer/FortuneOptionsProvider.h"
+#include "RestServer/TemporaryStorageOptionsProvider.h"
 #include "RocksDBEngine/RocksDBEngineOptionsProvider.h"
 #include "RocksDBEngine/RocksDBOptionFeatureOptionsProvider.h"
 
@@ -41,9 +42,9 @@ class FeatureOptionProviderContainer final {
   }
 
  private:
-  std::tuple<DatabasePathOptionsProvider, DumpLimitsOptionsProvider,
+  std::tuple<DatabasePathOptionsProvider, DumpLimitsOptionsProvider, fortune::FortuneOptionsProvider,
              RocksDBEngineOptionsProvider, RocksDBOptionFeatureOptionsProvider,
-             fortune::FortuneOptionsProvider>
+             TemporaryStorageOptionsProvider>
       _providers{};
 };
 }  // namespace arangodb::application_features

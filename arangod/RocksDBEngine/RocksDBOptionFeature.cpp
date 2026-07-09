@@ -204,9 +204,10 @@ void RocksDBOptionFeature::prepare() {
       _options.blockCacheSize =
           std::min<uint64_t>(_options.blockCacheSize, uint64_t(1) << 30);
     }
-    if (!opts->processingResult().touched("--rocksdb.total-write-buffer-size")) {
-      _options.totalWriteBufferSize =
-          std::min<uint64_t>(_options.totalWriteBufferSize, uint64_t(512) << 20);
+    if (!opts->processingResult().touched(
+            "--rocksdb.total-write-buffer-size")) {
+      _options.totalWriteBufferSize = std::min<uint64_t>(
+          _options.totalWriteBufferSize, uint64_t(512) << 20);
     }
   }
 

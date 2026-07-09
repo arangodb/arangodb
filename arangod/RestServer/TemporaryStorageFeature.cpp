@@ -37,8 +37,6 @@
 #include "Basics/files.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
-#include "ProgramOptions/Parameters.h"
-#include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/TemporaryStorageOptionsProvider.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RocksDBEngine/RocksDBTempStorage.h"
@@ -121,6 +119,7 @@ TemporaryStorageFeature::TemporaryStorageFeature(
       _options(std::move(options)),
       _cleanedUpDirectory(false) {
   startsAfter<RocksDBEngine>();
+  startsAfter<DatabasePathFeature>();
 }
 
 TemporaryStorageFeature::~TemporaryStorageFeature() {
@@ -133,48 +132,6 @@ TemporaryStorageFeature::~TemporaryStorageFeature() {
   }
 }
 
-void TemporaryStorageFeature::collectOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  TemporaryStorageOptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
-
-void TemporaryStorageFeature::validateOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  if (!canBeUsed()) {
-    // feature not used. this is fine (TM)
-    return;
-  }
-
-  // replace $PID in basepath with current process id
-  _options.basePath = basics::StringUtils::replace(
-      _options.basePath, "$PID", std::to_string(Thread::currentProcessId()));
-
-  auto const currentDir = std::filesystem::current_path();
-
-  // get regular database path
-  std::string dbPath = normalizePath(
-      currentDir, server().getFeature<DatabasePathFeature>().directory());
-  std::string ourPath = normalizePath(currentDir, _options.basePath);
-
-  if (dbPath == ourPath || ourPath.starts_with(dbPath)) {
-    // if our path is the same as the database directory or inside it,
-    // we refuse to start
-    LOG_TOPIC("58b44", FATAL, Logger::STARTUP)
-        << "path for intermediate results ('" << ourPath
-        << "') must not be identical to or inside the database directory ('"
-        << dbPath << "')";
-    FATAL_ERROR_EXIT();
-  }
-
-  _options.basePath = ourPath;
-  // configure defaults for query options
-  aql::QueryOptions::defaultSpillOverThresholdNumRows =
-      _options.spillOverThresholdNumRows;
-  aql::QueryOptions::defaultSpillOverThresholdMemoryUsage =
-      _options.spillOverThresholdMemoryUsage;
-}
-
 void TemporaryStorageFeature::prepare() {
   if (canBeUsed() && ServerState::instance()->isAgent()) {
     // we don't want any storage for intermediate results on agents, because
@@ -185,21 +142,33 @@ void TemporaryStorageFeature::prepare() {
     _options.basePath.clear();
     TRI_ASSERT(!canBeUsed());
   }
-
   if (!canBeUsed()) {
     return;
   }
-
+  
+  // check that the intermediate-results path is not identical to or inside the
+  // database directory. moved here from validateOptions() so that
+  // DatabasePathFeature is guaranteed to exist by this point.
+  auto const currentDir = std::filesystem::current_path();
+  _options.basePath = normalizePath(currentDir, _options.basePath); 
+  std::string dbPath = normalizePath(
+      currentDir, server().getFeature<DatabasePathFeature>().directory());
+  if (dbPath == _options.basePath ||
+      _options.basePath.starts_with(dbPath)) {
+    LOG_TOPIC("58b44", FATAL, Logger::STARTUP)
+        << "path for intermediate results ('" << _options.basePath
+        << "') must not be identical to or inside the database directory ('"
+        << dbPath << "')";
+    FATAL_ERROR_EXIT();
+  }
   if (std::filesystem::is_directory(_options.basePath)) {
     // intentionally do not set _cleanedUpDirectory flag here
     cleanupDirectory();
   } else {
     std::string systemErrorStr;
     long errorNo;
-
     auto res = TRI_CreateRecursiveDirectory(_options.basePath.c_str(), errorNo,
                                             systemErrorStr);
-
     if (res != TRI_ERROR_NO_ERROR) {
       LOG_TOPIC("ed3ef", FATAL, Logger::FIXME)
           << "cannot create directory for intermediate results ('"
@@ -208,6 +177,7 @@ void TemporaryStorageFeature::prepare() {
     }
   }
 }
+
 
 void TemporaryStorageFeature::start() {
   if (!canBeUsed()) {
