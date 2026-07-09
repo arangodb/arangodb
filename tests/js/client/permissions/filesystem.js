@@ -134,8 +134,6 @@ if (getOptions === true) {
   fs.write(topLevelAllowedReadJSONFile, JSONText);
   fs.write(topLevelForbiddenReadJSONFile, JSONText);
   fs.write(subLevelAllowedReadJSONFile, JSONText);
-  const badZipFn = fs.join(rootDir, "bad.zip");
-  fs.zipDirectory(testFilesDir, badZipFn);
   return {
     'temp.path': subInstanceTemp,     // Adjust the temp-path to match our current temp path
     'javascript.files-allowlist': [
@@ -570,6 +568,15 @@ function testSuite() {
       assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum, 'Zipping of ' + zip + ' to ' + sn + ' wasn\'t forbidden: ' + err);
     }
   }
+
+  function tryZipFileForbiddenList(zip, sn, listOfFiles) {
+    try {
+      let rc = fs.zipFile(zip, sn, listOfFiles);
+      fail();
+    } catch (err) {
+      assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum, 'Zipping of ' + zip + ' to ' + sn + ' wasn\'t forbidden: '+ listOfFiles + ' ' + err);
+    }
+  }
   function tryZipFileAllowed(zip, sn) {
     let files = [];
     try {
@@ -853,6 +860,11 @@ function testSuite() {
       tryZipFileForbidden(allowedZipFileName, '/etc/');
       tryZipFileForbidden(allowedZipFileName, topLevelForbidden);
 
+      let prefixEscape = '';
+      for (i = 0; i < topLevelAllowed.split('/').length - 1; i++) {
+        prefixEscape += "../";
+      }
+      tryZipFileForbiddenList(allowedZipFileName, topLevelAllowed, [prefixEscape + 'etc/passwd']);
       tryZipFileAllowed(allowedZipFileName, topLevelAllowed);
 
 //      tryZipFileWithForbiddenContent(allowedZipFileName, topLevelAllowed);
@@ -872,9 +884,6 @@ function testSuite() {
       // Access is file access based for now.
       require("internal").parse(`print('hello world')`);
     },
-    testUnzip : function() {
-      fs.unzipFile(fs.join(rootDir, "bad.zip"), testFilesDir)
-    }
   };
 }
 jsunity.run(testSuite);
