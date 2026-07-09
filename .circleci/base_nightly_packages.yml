@@ -31,9 +31,10 @@ version: 2.1
 #                       builds the image and exports it via "docker save"
 #                       into the workspace (no push here)
 #   scan-packages       ClamAV scan of all packages [scan-viruses]; the AV
-#                       database is cached in ${CLAMAV_DB_BUCKET} (S3),
-#                       similar to the sccache bucket; the <file>.clamav
-#                       reports are published next to the scanned files
+#                       database is cached in ${CLAMAV_BUCKET} (S3, from the
+#                       clamav-aws-bucket context); one <file>.clamav report
+#                       per package, published next to the scanned files.
+#                       Docker images are NOT ClamAV-scanned
 #   security-check-*    Trivy scan of every published item [security-check]:
 #                       one job per package format+arch (contents extracted,
 #                       then fs-scanned) and per Docker image (image scan).
@@ -88,7 +89,12 @@ version: 2.1
 #   manifests, e.g. 3.12-nightly-ubi. Alpine stays suffix-less.
 #
 # Required environment (contexts / project settings):
-#   CLAMAV_DB_BUCKET                s3 bucket caching the ClamAV database
+#   clamav-aws-bucket context:      AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY
+#                                   (same values as the sccache bucket's) and
+#                                   CLAMAV_BUCKET (S3 bucket caching the
+#                                   ClamAV database); AWS_ACCOUNT_ID and
+#                                   AWS_DEFAULT_REGION come from the project
+#                                   env settings
 #   sccache-aws-bucket context:     sccache S3 cache configuration for the
 #                                   compile jobs (same context the testing
 #                                   pipeline attaches to its compile-linux
@@ -925,9 +931,15 @@ jobs:
 
   # ── ClamAV scan ──────────────────────────────────────────────────────────────
   scan-packages:
-    # Scans all packages of both architectures with ClamAV.
-    # The virus database is cached in ${CLAMAV_DB_BUCKET} (S3, credentials
-    # from the environment like sccache) and refreshed via freshclam.
+    # Scans all packages (and objectfiles archives) of both architectures
+    # with ClamAV — one <file>.clamav report per package, next to it, like
+    # the per-package Trivy reports. Docker images are deliberately NOT
+    # ClamAV-scanned: they contain the same binaries as the tar packages and
+    # are covered by the Trivy image scans.
+    # The virus database is cached in ${CLAMAV_BUCKET} and refreshed via
+    # freshclam; the bucket name and AWS credentials (same values as the
+    # sccache bucket's) come from the clamav-aws-bucket context,
+    # AWS_ACCOUNT_ID and AWS_DEFAULT_REGION from the project env settings.
     docker:
       - image: << pipeline.parameters.build-docker-image >>
     resource_class: << parameters.resource-class >>
@@ -943,12 +955,12 @@ jobs:
       - run:
           name: Refresh ClamAV database (cached in S3)
           command: |
-            if [ -z "${CLAMAV_DB_BUCKET:-}" ]; then
-              echo "CLAMAV_DB_BUCKET not set"
+            if [ -z "${CLAMAV_BUCKET:-}" ]; then
+              echo "CLAMAV_BUCKET is empty; set it in the clamav-aws-bucket context"
               exit 1
             fi
             mkdir -p /var/lib/clamav
-            aws s3 sync "s3://${CLAMAV_DB_BUCKET}/clamav-db" /var/lib/clamav || true
+            aws s3 sync "s3://${CLAMAV_BUCKET}/clamav-db" /var/lib/clamav || true
 
             printf 'DatabaseDirectory /var/lib/clamav\nDatabaseMirror database.clamav.net\n' > /tmp/freshclam.conf
             if ! freshclam --config-file=/tmp/freshclam.conf --stdout; then
@@ -957,17 +969,23 @@ jobs:
               echo "freshclam failed, using cached database"
             fi
 
-            aws s3 sync /var/lib/clamav "s3://${CLAMAV_DB_BUCKET}/clamav-db"
+            aws s3 sync /var/lib/clamav "s3://${CLAMAV_BUCKET}/clamav-db"
       - run:
           name: Scan packages with ClamAV
           command: |
+            # packages/ and objectfiles/ only — the docker/ image exports in
+            # the workspace are intentionally not passed in.
             scripts/packaging/clamav-scan.sh /tmp/nightly/packages /tmp/nightly/objectfiles
       - run:
-          name: Stage ClamAV reports for publishing
+          name: Stage per-package ClamAV reports for publishing
+          # when: always — the per-file reports are written before the scan
+          # step fails on an infected file, and they are exactly what is
+          # needed to diagnose such a failure (publish is blocked anyway).
+          when: always
           command: |
-            # The <file>.clamav reports are published next to the scanned
-            # files; collected into their own workspace directory because
-            # empty persist globs fail the job.
+            # One <file>.clamav report per package, published next to the
+            # scanned files; collected into their own workspace directory
+            # because empty persist globs fail the job.
             cd /tmp/nightly
             mkdir -p clamav-reports
             touch clamav-reports/.keep
@@ -979,17 +997,11 @@ jobs:
           root: /tmp/nightly
           paths:
             - clamav-reports
-      - run:
-          name: Collect ClamAV reports
-          when: always
-          command: |
-            cd /tmp/nightly
-            REPORTS="$(find packages objectfiles -name '*.clamav' 2>/dev/null || true)"
-            if [ -n "${REPORTS}" ]; then
-              tar -czf /tmp/clamav-report.tar.gz ${REPORTS}
-            fi
+      # Individual per-package reports as job artifacts (mirrors the layout
+      # published next to the packages), not a combined tarball.
       - store_artifacts:
-          path: /tmp/clamav-report.tar.gz
+          path: /tmp/nightly/clamav-reports
+          destination: reports/clamav
 
   # ── Trivy security check ─────────────────────────────────────────────────────
   # One job instance per published item, so a finding in one item never
@@ -1762,6 +1774,7 @@ workflows:
 
       # ── Scan, sign, publish ──────────────────────────────────────────────────
       - scan-packages:
+          context: [ clamav-aws-bucket ]
           resource-class: arangodb/large-amd64
           requires:
             - deb-enterprise-amd64
