@@ -121,17 +121,12 @@ void ClusterEngine::start() {
   initTransactionStatistics(_metrics);
 }
 
-std::unique_ptr<transaction::Manager> ClusterEngine::createTransactionManager(
-    transaction::ManagerFeature& feature) {
-  return std::make_unique<transaction::Manager>(feature);
-}
-
 std::shared_ptr<TransactionState> ClusterEngine::createTransactionState(
     TRI_vocbase_t& vocbase, TransactionId tid,
     transaction::Options const& options,
     transaction::OperationOrigin operationOrigin) {
-  return std::make_shared<ClusterTransactionState>(vocbase, tid, options,
-                                                   operationOrigin);
+  return std::make_shared<ClusterTransactionState>(
+      vocbase, tid, options, operationOrigin, transactionManager());
 }
 
 void ClusterEngine::addParametersForNewCollection(VPackBuilder& builder,

@@ -73,7 +73,7 @@ class ManagerFeature final : public application_features::ApplicationFeature {
  private:
   void queueGarbageCollection();
 
-  static std::unique_ptr<transaction::Manager> MANAGER;
+  static std::shared_ptr<transaction::Manager> MANAGER;
 
   ManagerFeatureOptions _options;
 

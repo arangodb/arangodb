@@ -111,12 +111,20 @@ class StorageEngine : public application_features::ApplicationFeature {
 
   virtual HealthData healthCheck() = 0;
 
-  virtual std::unique_ptr<transaction::Manager> createTransactionManager(
-      transaction::ManagerFeature&) = 0;
+  // creates the transaction manager and retains a non-owning handle to it, so
+  // that transactions created by this engine can be handed the manager directly
+  // instead of reaching for the global singleton. The returned manager is owned
+  // by the ManagerFeature.
+  std::shared_ptr<transaction::Manager> createTransactionManager(
+      transaction::ManagerFeature&);
   virtual std::shared_ptr<TransactionState> createTransactionState(
       TRI_vocbase_t& vocbase, TransactionId,
       transaction::Options const& options,
       transaction::OperationOrigin operationOrigin) = 0;
+
+  // the transaction manager created by this engine (see
+  // createTransactionManager). Must only be called once the manager exists.
+  transaction::Manager& transactionManager() const;
 
   // when a new collection is created, this method is called to augment the
   // collection creation data with engine-specific information
@@ -404,6 +412,9 @@ class StorageEngine : public application_features::ApplicationFeature {
   std::unique_ptr<IndexFactory> const _indexFactory;
   std::string_view _typeName;
   std::unique_ptr<TransactionStatistics> _transactionStatistics;
+  // non-owning handle to the manager created in createTransactionManager;
+  // owned by the ManagerFeature.
+  std::weak_ptr<transaction::Manager> _transactionManager;
 };
 
 }  // namespace arangodb

@@ -49,7 +49,7 @@ namespace arangodb::transaction {
 DECLARE_COUNTER(arangodb_transactions_expired_total,
                 "Total number of expired transactions");
 
-std::unique_ptr<transaction::Manager> ManagerFeature::MANAGER;
+std::shared_ptr<transaction::Manager> ManagerFeature::MANAGER;
 
 ManagerFeature::ManagerFeature(application_features::ApplicationServer& server,
                                metrics::IRegistry& metricsRegistry)

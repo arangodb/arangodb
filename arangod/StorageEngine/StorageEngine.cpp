@@ -34,6 +34,7 @@
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/Storage/IStorageEngineMethods.h"
 #include "RestServer/IDatabaseProvider.h"
+#include "Transaction/Manager.h"
 #include "VocBase/VocbaseInfo.h"
 #include "VocBase/vocbase.h"
 
@@ -176,4 +177,18 @@ TransactionStatistics const& StorageEngine::transactionStatistics()
 
 void StorageEngine::initTransactionStatistics(metrics::IRegistry& metrics) {
   _transactionStatistics = std::make_unique<TransactionStatistics>(metrics);
+}
+
+std::shared_ptr<transaction::Manager> StorageEngine::createTransactionManager(
+    transaction::ManagerFeature& feature) {
+  ADB_PROD_ASSERT(_transactionManager.expired());
+  auto manager = std::make_shared<transaction::Manager>(feature);
+  _transactionManager = manager;
+  return manager;
+}
+
+transaction::Manager& StorageEngine::transactionManager() const {
+  auto manager = _transactionManager.lock();
+  ADB_PROD_ASSERT(manager != nullptr);
+  return *manager;
 }
