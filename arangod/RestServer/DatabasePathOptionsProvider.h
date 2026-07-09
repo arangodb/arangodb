@@ -22,18 +22,23 @@
 
 #pragma once
 
-#include "ApplicationFeatures/OptionsProvider.h"
 #include "DatabasePathFeatureOptions.h"
+
+#include <memory>
+
+namespace arangodb::options {
+class ProgramOptions;
+}
 
 namespace arangodb {
 
-struct DatabasePathOptionsProvider
-    : OptionsProvider<DatabasePathFeatureOptions> {
-  void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
-                      DatabasePathFeatureOptions& options) override;
+struct DatabasePathOptionsProvider {
+  void declareOptions(std::shared_ptr<options::ProgramOptions>& opts);
+  void validateOptions(std::shared_ptr<options::ProgramOptions>& opts);
+  [[nodiscard]] DatabasePathFeatureOptions options() const { return _options; }
 
-  void validateOptions(std::shared_ptr<options::ProgramOptions> opts,
-                       DatabasePathFeatureOptions& options) override;
+ private:
+  DatabasePathFeatureOptions _options;
 };
 
 }  // namespace arangodb

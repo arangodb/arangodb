@@ -197,6 +197,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(
 
 void RocksDBOptionFeature::prepare() {
   ioUringEnabled = _options.ioUringEnabled;
+  // behavioral: agency memory limits
   if (_agencyFeature && _agencyFeature->activated()) {
     auto const& opts = server().options();
     if (!opts->processingResult().touched("--rocksdb.block-cache-size")) {

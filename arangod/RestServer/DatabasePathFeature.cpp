@@ -65,18 +65,6 @@ DatabasePathFeature::DatabasePathFeature(
   startsAfter<TempFeature>();
 }
 
-void DatabasePathFeature::collectOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  DatabasePathOptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
-
-void DatabasePathFeature::validateOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  DatabasePathOptionsProvider provider;
-  provider.validateOptions(options, _options);
-}
-
 void DatabasePathFeature::prepare() {
   // check if temporary directory and database directory are identical
   {

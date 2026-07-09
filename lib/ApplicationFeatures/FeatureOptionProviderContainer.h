@@ -21,6 +21,7 @@
 #pragma once
 
 #include "ProgramOptions/ProgramOptions.h"
+#include "RestServer/DatabasePathOptionsProvider.h"
 #include "RestServer/FortuneOptionsProvider.h"
 #include "RocksDBEngine/RocksDBEngineOptionsProvider.h"
 #include "RocksDBEngine/RocksDBOptionFeatureOptionsProvider.h"
@@ -39,7 +40,8 @@ class FeatureOptionProviderContainer final {
   }
 
  private:
-  std::tuple<RocksDBEngineOptionsProvider, RocksDBOptionFeatureOptionsProvider,
+  std::tuple<DatabasePathOptionsProvider, RocksDBEngineOptionsProvider,
+             RocksDBOptionFeatureOptionsProvider,
              fortune::FortuneOptionsProvider>
       _providers{};
 };

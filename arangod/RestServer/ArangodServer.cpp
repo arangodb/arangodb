@@ -247,7 +247,6 @@ void ArangodServer::addFeatures(
 
 void ArangodServer::addFeaturesWithOptionProvider() {
   auto& metrics = getFeature<metrics::MetricsFeature>();
-  auto& databasePath = getFeature<DatabasePathFeature>();
   auto& rocksdbCacheRefill = getFeature<RocksDBIndexCacheRefillFeature>();
   auto& database = getFeature<DatabaseFeature>();
   auto& vectorIndex = getFeature<VectorIndexFeature>();
@@ -258,10 +257,18 @@ void ArangodServer::addFeaturesWithOptionProvider() {
   auto& cacheManager = getFeature<CacheManagerFeature>();
   auto& agency = getFeature<AgencyFeature>();
 
+  // Add RocksDBOptionFeature
   auto rocksdbOptionFeatureOptions =
       _optionProviders.get<RocksDBOptionFeatureOptionsProvider>().options();
   auto& rocksdbOption = addFeature<RocksDBOptionFeature>(
       &agency, std::move(rocksdbOptionFeatureOptions));
+  
+  // Add DatabasePathFeature
+  auto databasePathOptions =
+      _optionProviders.get<DatabasePathOptionsProvider>().options();
+  auto& databasePath = addFeature<DatabasePathFeature>(std::move(databasePathOptions));
+  
+  // Add RocksDBEngine
   RocksDBEngineOptions rocksDBEngineOptions =
       _optionProviders.get<RocksDBEngineOptionsProvider>().options();
   addFeature<RocksDBEngine>(

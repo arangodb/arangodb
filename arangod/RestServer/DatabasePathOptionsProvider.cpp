@@ -36,10 +36,10 @@ namespace arangodb {
 using namespace arangodb::options;
 
 void DatabasePathOptionsProvider::declareOptions(
-    std::shared_ptr<ProgramOptions> options, DatabasePathFeatureOptions& opts) {
-  options
+    std::shared_ptr<ProgramOptions>& prgOptions) {
+  prgOptions
       ->addOption("--database.directory", "The path to the database directory.",
-                  new StringParameter(&opts.directory))
+                  new StringParameter(&_options.directory))
       .setLongDescription(R"(This defines the location where all data of a
 server is stored.
 
@@ -49,7 +49,7 @@ NFS. The reason is that networked filesystems might cause inconsistencies when
 there are multiple parallel readers or writers or they lack features required by
 arangod, e.g. `flock()`.)");
 
-  options->addOption(
+  prgOptions->addOption(
       "--database.required-directory-state",
       "The required state of the database directory at startup "
       "(non-existing: the database directory must not exist, existing: the"
@@ -57,17 +57,17 @@ arangod, e.g. `flock()`.)");
       "but be empty, populated: the database directory must exist and contain "
       "specific files already, any: any state is allowed)",
       new DiscreteValuesParameter<StringParameter>(
-          &opts.requiredDirectoryState,
+          &_options.requiredDirectoryState,
           std::unordered_set<std::string>{"any", "non-existing", "existing",
                                           "empty", "populated"}));
 }
 
 void DatabasePathOptionsProvider::validateOptions(
-    std::shared_ptr<ProgramOptions> options, DatabasePathFeatureOptions& opts) {
-  auto const& positionals = options->processingResult()._positionals;
+    std::shared_ptr<ProgramOptions>& prgOptions) {
+  auto const& positionals = prgOptions->processingResult()._positionals;
 
   if (1 == positionals.size()) {
-    opts.directory = positionals[0];
+    _options.directory = positionals[0];
   } else if (1 < positionals.size()) {
     LOG_TOPIC("aeb40", FATAL, arangodb::Logger::FIXME)
         << "expected at most one database directory, got '"
@@ -75,7 +75,7 @@ void DatabasePathOptionsProvider::validateOptions(
     FATAL_ERROR_EXIT();
   }
 
-  if (opts.directory.empty()) {
+  if (_options.directory.empty()) {
     LOG_TOPIC("9aba1", FATAL, arangodb::Logger::FIXME)
         << "no database path has been supplied, giving up, please use "
            "the '--database.directory' option";
@@ -83,8 +83,8 @@ void DatabasePathOptionsProvider::validateOptions(
   }
 
   // strip trailing separators
-  opts.directory =
-      basics::StringUtils::rTrim(opts.directory, TRI_DIR_SEPARATOR_STR);
+  _options.directory =
+      basics::StringUtils::rTrim(_options.directory, TRI_DIR_SEPARATOR_STR);
 
   auto ctx = ArangoGlobalContext::CONTEXT;
 
@@ -94,7 +94,7 @@ void DatabasePathOptionsProvider::validateOptions(
     FATAL_ERROR_EXIT();
   }
 
-  ctx->normalizePath(opts.directory, "database.directory", false);
+  ctx->normalizePath(_options.directory, "database.directory", false);
 }
 
 }  // namespace arangodb
