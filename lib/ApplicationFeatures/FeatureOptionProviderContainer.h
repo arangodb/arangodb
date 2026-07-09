@@ -42,8 +42,9 @@ class FeatureOptionProviderContainer final {
   }
 
  private:
-  std::tuple<DatabasePathOptionsProvider, DumpLimitsOptionsProvider, fortune::FortuneOptionsProvider,
-             RocksDBEngineOptionsProvider, RocksDBOptionFeatureOptionsProvider,
+  std::tuple<DatabasePathOptionsProvider, DumpLimitsOptionsProvider,
+             fortune::FortuneOptionsProvider, RocksDBEngineOptionsProvider,
+             RocksDBOptionFeatureOptionsProvider,
              TemporaryStorageOptionsProvider>
       _providers{};
 };

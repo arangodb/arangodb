@@ -23,14 +23,31 @@
 #include "DumpLimitsOptionsProvider.h"
 
 #include "Basics/application-exit.h"
+#include "Basics/PhysicalMemory.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 
+namespace {
+  uint64_t defaultMemoryUsage() {
+    if (arangodb::PhysicalMemory::getValue() >= (static_cast<uint64_t>(4) << 30)) {
+      // if we have at least 4GB of RAM, the default size is (RAM - 2GB) * 0.2
+      return static_cast<uint64_t>(
+          (arangodb::PhysicalMemory::getValue() - (static_cast<uint64_t>(2) << 30)) * 0.2);
+    }
+    // if we have at least 2GB of RAM, the default size is 64MB
+    return (static_cast<uint64_t>(64) << 20);
+  }
+  }  // namespace
+
 namespace arangodb {
 
 using namespace arangodb::options;
+
+DumpLimitsOptionsProvider::DumpLimitsOptionsProvider() {
+  _options.memoryUsage = ::defaultMemoryUsage();
+}
 
 void DumpLimitsOptionsProvider::declareOptions(
     std::shared_ptr<ProgramOptions>& prgOptions) {

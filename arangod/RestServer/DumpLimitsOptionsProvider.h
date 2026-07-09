@@ -33,6 +33,8 @@ class ProgramOptions;
 namespace arangodb {
 
 struct DumpLimitsOptionsProvider {
+  DumpLimitsOptionsProvider();
+
   void declareOptions(std::shared_ptr<options::ProgramOptions>& prgOptions);
   void validateOptions(std::shared_ptr<options::ProgramOptions>& prgOptions);
   [[nodiscard]] DumpLimitsFeatureOptions options() const { return _options; }

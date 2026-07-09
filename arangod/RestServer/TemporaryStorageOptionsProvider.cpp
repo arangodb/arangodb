@@ -112,7 +112,7 @@ query result in RAM, use a streaming query.)");
               arangodb::options::Flags::Experimental))
       .setIntroducedIn(31000);
 #endif
-}
+} 
 
 void TemporaryStorageOptionsProvider::validateOptions(
     std::shared_ptr<options::ProgramOptions>& /*opts*/) {
@@ -122,9 +122,10 @@ void TemporaryStorageOptionsProvider::validateOptions(
   // replace $PID with current process id
   _options.basePath = basics::StringUtils::replace(
       _options.basePath, "$PID", std::to_string(Thread::currentProcessId()));
-  // Note: path normalization + "basePath must not be inside --database.directory"
-  // live in TemporaryStorageFeature::prepare(), since DatabasePathFeature is
-  // only added to the server after all providers have run.
+  // Note: path normalization + "basePath must not be inside
+  // --database.directory" live in TemporaryStorageFeature::prepare(), since
+  // DatabasePathFeature is only added to the server after all providers have
+  // run.
 }
 
 }  // namespace arangodb
