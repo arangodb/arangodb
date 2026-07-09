@@ -332,9 +332,6 @@ Variable const* TraversalNode::pathOutVariable() const {
 
 /// @brief set the path out variable
 void TraversalNode::setPathOutput(Variable const* outVar) {
-  if (outVar == nullptr) {
-    markUnusedConditionVariable(_pathOutVariable);
-  }
   _pathOutVariable = outVar;
 }
 
@@ -1348,8 +1345,7 @@ void TraversalNode::setCondition(
          oneVar->id != _vertexOutVariable->id) &&
         (_edgeOutVariable == nullptr || oneVar->id != _edgeOutVariable->id) &&
         (_pathOutVariable == nullptr || oneVar->id != _pathOutVariable->id) &&
-        (_inVariable == nullptr || oneVar->id != _inVariable->id) &&
-        (!_optimizedOutVariables.contains(oneVar->id))) {
+        (_inVariable == nullptr || oneVar->id != _inVariable->id)) {
       _conditionVariables.emplace(oneVar);
     }
   }
