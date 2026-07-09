@@ -799,7 +799,8 @@ std::shared_ptr<LogicalCollection> Database::createCollection(
     _databaseProvider.notifyDdlChange("create collection");
 
     // Update metadata metrics on single server
-    if (ServerState::instance()->isSingleServer()) {
+    if (ServerState::instance()->isSingleServer() &&
+        _server.hasFeature<DatabaseFeature>()) {
       _server.getFeature<DatabaseFeature>().incrementCollectionCount();
     }
 
@@ -835,7 +836,8 @@ Database::createCollections(
         createCollections(infoSlice, allowEnterpriseCollectionsOnSingleServer);
 
     // Update metadata metrics on single server after collections are created
-    if (ServerState::instance()->isSingleServer()) {
+    if (ServerState::instance()->isSingleServer() &&
+        _server.hasFeature<DatabaseFeature>()) {
       _server.getFeature<DatabaseFeature>().incrementCollectionCount(
           result.size());
     }
@@ -963,7 +965,8 @@ Result Database::dropCollection(DataSourceId cid, bool allowDropSystem) {
     _databaseProvider.notifyDdlChange("drop collection");
 
     // Update metadata metrics on single server
-    if (ServerState::instance()->isSingleServer()) {
+    if (ServerState::instance()->isSingleServer() &&
+        _server.hasFeature<DatabaseFeature>()) {
       _server.getFeature<DatabaseFeature>().decrementCollectionCount();
     }
   }
