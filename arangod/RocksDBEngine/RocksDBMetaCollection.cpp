@@ -1264,7 +1264,7 @@ void RocksDBMetaCollection::bufferUpdates(
         << "rejecting change with too low sequence number " << seq
         << " for collection " << _logicalCollection.name();
 
-    TRI_ASSERT(_engine.inRecovery());
+    TRI_ASSERT(!_engine.isReady());
     return;
   }
 

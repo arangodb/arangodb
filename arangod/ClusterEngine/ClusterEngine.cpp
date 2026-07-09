@@ -252,7 +252,7 @@ arangodb::Result ClusterEngine::dropView(TRI_vocbase_t const& vocbase,
 }
 
 Result ClusterEngine::changeView(LogicalView const&, velocypack::Slice) {
-  if (inRecovery()) {
+  if (!isReady()) {
     return {};
   }
   return TRI_ERROR_NOT_IMPLEMENTED;

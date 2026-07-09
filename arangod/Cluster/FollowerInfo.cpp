@@ -265,7 +265,7 @@ bool FollowerInfo::getLeaderTouched() const {
 FollowerInfo::WriteState FollowerInfo::allowedToWrite() {
   {
     auto& engine = _docColl->vocbase().engine();
-    if (engine.inRecovery()) {
+    if (!engine.isReady()) {
       return WriteState::ALLOWED;
     }
     READ_LOCKER(readLocker, _canWriteLock);

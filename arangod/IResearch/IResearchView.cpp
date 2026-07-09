@@ -67,8 +67,8 @@ struct IResearchView::ViewFactory final : public arangodb::ViewFactory {
     if (links.isNone()) {
       links = velocypack::Slice::emptyObjectSlice();
     }
-    auto r = engine.inRecovery()
-                 ? Result{}  // do not validate if in recovery
+    auto r = !engine.isReady()
+                 ? Result{}  // do not validate if not yet ready
                  : IResearchLinkHelper::validateLinks(vocbase, links);
 
     if (!r.ok()) {
@@ -213,7 +213,7 @@ IResearchView::IResearchView(TRI_vocbase_t& vocbase, velocypack::Slice info,
     : LogicalView(*this, vocbase, info, isUserRequest),
       _asyncSelf(std::make_shared<AsyncViewPtr::element_type>(this)),
       _meta(IResearchViewMeta::FullTag{}, std::move(meta)),
-      _inRecovery(false) {
+      _isReady(true) {
   // set up in-recovery insertion hooks
   if (vocbase.server().hasFeature<DatabaseFeature>()) {
     auto& databaseFeature = vocbase.server().getFeature<DatabaseFeature>();
@@ -526,7 +526,7 @@ Result IResearchView::link(AsyncLinkPtr const& link) {
 
 void IResearchView::open() {
   auto& engine = vocbase().engine();
-  _inRecovery = engine.inRecovery();
+  _isReady = engine.isReady();
 }
 
 Result IResearchView::properties(velocypack::Slice slice, bool isUserRequest,
@@ -592,8 +592,8 @@ Result IResearchView::updateProperties(velocypack::Slice slice,
     if (links.isNone()) {
       links = velocypack::Slice::emptyObjectSlice();
     }
-    auto r = _inRecovery ? Result{}  // do not validate if in recovery
-                         : IResearchLinkHelper::validateLinks(vocbase(), links);
+    auto r = !_isReady ? Result{}  // do not validate if engine not yet ready
+                       : IResearchLinkHelper::validateLinks(vocbase(), links);
     if (!r.ok()) {
       return r;
     }
@@ -635,8 +635,8 @@ Result IResearchView::updateProperties(velocypack::Slice slice,
         IResearchDataStore::properties(std::move(linkLock), _meta);
       }
     }
-    if (links.isEmptyObject() && (partialUpdate || _inRecovery.load())) {
-      // ignore missing links coming from WAL (inRecovery)
+    if (links.isEmptyObject() && (partialUpdate || !_isReady.load())) {
+      // ignore missing links coming from WAL (engine not yet ready)
       return r;
     }
     // ...........................................................................

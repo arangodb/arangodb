@@ -557,10 +557,10 @@ void DatabaseFeature::prepare() {
 }
 
 void DatabaseFeature::recoveryDone() {
-  TRI_ASSERT(!_engine->inRecovery());
+  TRI_ASSERT(_engine->isReady());
 
   // '_pendingRecoveryCallbacks' will not change because
-  // !StorageEngine.inRecovery()
+  // StorageEngine.isReady()
   // It's single active thread before recovery done,
   // so we could use general purpose thread pool for this
   std::vector<futures::Future<Result>> futures;
@@ -603,8 +603,8 @@ void DatabaseFeature::recoveryDone() {
 
 Result DatabaseFeature::registerPostRecoveryCallback(
     std::function<Result()>&& callback) {
-  if (!_engine->inRecovery()) {
-    return callback();  // if no engine then can't be in recovery
+  if (_engine->isReady()) {
+    return callback();  // engine ready, execute immediately
   }
 
   // do not need a lock since single-thread access during recovery
@@ -697,7 +697,7 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info,
 #endif
     }
 
-    if (!_engine->inRecovery()) {
+    if (_engine->isReady()) {
       if (!ServerState::instance()->isCoordinator() && _replicationFeature) {
         _replicationFeature->startApplier(vocbase.get());
       }
@@ -720,7 +720,7 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info,
   // write marker into log
   Result res;
 
-  if (!_engine->inRecovery()) {
+  if (_engine->isReady()) {
     res = _engine->writeCreateDatabaseMarker(dbId, markerBuilder.slice());
   }
 

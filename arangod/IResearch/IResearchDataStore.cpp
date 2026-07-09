@@ -1323,7 +1323,7 @@ Result IResearchDataStore::initDataStore(
       readerOptions.resource_manager);
 
   switch (_engine->engineState()) {  // TODO could be just if
-                                     // (_engine.inRecovery()) ...
+                                     // (!_engine->isReady()) ...
     case EngineState::kPreRecovery:  // Link is being opened before recovery
       [[fallthrough]];
     case EngineState::kRunning: {  // Link is being created after recovery
@@ -1411,7 +1411,7 @@ Result IResearchDataStore::initDataStore(
   }
   auto& dbFeature = server.getFeature<DatabaseFeature>();
 
-  if (_engine->inRecovery()) {
+  if (!_engine->isReady()) {
     _recoveryRemoves = makePrimaryKeysFilter(_hasNestedFields, *_writersMemory);
     _recoveryTrx = _dataStore._writer->GetBatch();
   }
@@ -1432,7 +1432,7 @@ Result IResearchDataStore::initDataStore(
         auto& index = linkLock->index();
 
         // recovery finished
-        TRI_ASSERT(!linkLock->_engine->inRecovery());
+        TRI_ASSERT(linkLock->_engine->isReady());
 
         const auto recoveryTick = linkLock->_engine->recoveryTick();
 

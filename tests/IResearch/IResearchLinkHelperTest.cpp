@@ -460,7 +460,7 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
                   arangodb::transaction::OperationOriginTestCase{}));
   }
 
-  // analyzer single-server (inRecovery), for creation
+  // analyzer single-server (engine !isReady()), for creation
   {
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \
@@ -508,7 +508,7 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
     EXPECT_EQUAL_SLICES(expected_json->slice(), builder.slice());
   }
 
-  // analyzer single-server (inRecovery), not for creation
+  // analyzer single-server (engine !isReady()), not for creation
   {
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \
@@ -544,7 +544,7 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
     }");
     EXPECT_EQUAL_SLICES(expected_json->slice(), builder.slice());
   }
-  // analyzer single-server (inRecovery), for creation with specified
+  // analyzer single-server (engine !isReady()), for creation with specified
   // compression
   {
     auto json = arangodb::velocypack::Parser::fromJson(

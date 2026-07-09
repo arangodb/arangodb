@@ -223,7 +223,7 @@ Result IResearchLink::initDBServer(bool& pathExists, InitCallback const& init) {
     return linkWideCluster(index().collection(), view.get());
   }
   if (_meta._collectionName.empty() && !clusterEnabled &&
-      vocbase.engine().inRecovery() && _meta.willIndexIdAttribute()) {
+      !vocbase.engine().isReady() && _meta.willIndexIdAttribute()) {
     LOG_TOPIC("f25ce", FATAL, TOPIC)
         << "Upgrade conflicts with recovering ArangoSearch link '"
         << index().id().id()

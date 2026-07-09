@@ -203,7 +203,7 @@ class StorageEngine : public application_features::ApplicationFeature {
   virtual Result dropDatabase(TRI_vocbase_t& database) = 0;
 
   /// @brief is database in recovery
-  bool inRecovery();
+  bool isReady();
 
   /// @brief current recovery state
   virtual EngineState engineState() noexcept = 0;

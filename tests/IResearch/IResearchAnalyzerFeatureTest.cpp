@@ -826,7 +826,7 @@ TEST_F(IResearchAnalyzerFeatureTest,
 }
 
 TEST_F(IResearchAnalyzerFeatureTest, test_emplace_creation_during_recovery) {
-  // add valid inRecovery (failure)
+  // add valid !isReady() (failure)
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
   auto feature = createAnalyzerFeature();
   auto before = StorageEngineMock::recoveryStateResult;
@@ -2619,7 +2619,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
     feature.unprepare();
   }
 
-  // remove existing (inRecovery) single-server
+  // remove existing (engine !isReady()) single-server
   {
     auto feature = createAnalyzerFeature();
 
@@ -2764,7 +2764,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
                   arangodb::transaction::OperationOriginTestCase{}));
   }
 
-  // remove existing (inRecovery) dbserver
+  // remove existing (engine !isReady()) dbserver
   {
     auto beforeRole = arangodb::ServerState::instance()->getRole();
     arangodb::ServerState::instance()->setRole(
@@ -3030,7 +3030,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_prepare) {
 TEST_F(IResearchAnalyzerFeatureTest, test_start) {
   auto vocbase = _systemDatabaseFeature.use();
 
-  // test feature start load configuration (inRecovery, no configuration
+  // test feature start load configuration (engine !isReady(), no configuration
   // collection)
   {
     // ensure no configuration collection
@@ -3090,8 +3090,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_start) {
     feature.unprepare();
   }
 
-  // test feature start load configuration (inRecovery, with configuration
-  // collection)
+  // test feature start load configuration (engine !isReady(), with
+  // configuration collection)
   {
     // ensure there is an empty configuration collection
     {

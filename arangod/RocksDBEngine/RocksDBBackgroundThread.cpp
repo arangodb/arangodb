@@ -76,10 +76,6 @@ void RocksDBBackgroundThread::run() {
                                  static_cast<uint64_t>(_interval * 1000000.0)});
     }
 
-    if (_engine.inRecovery()) {
-      continue;
-    }
-
     TRI_IF_FAILURE("RocksDBBackgroundThread::run") { continue; }
 
     try {

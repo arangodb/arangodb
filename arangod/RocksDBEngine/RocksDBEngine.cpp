@@ -920,15 +920,6 @@ void RocksDBEngine::start() {
 
   _settingsManager->retrieveInitialValues();
 
-  double const counterSyncSeconds = 2.5;
-  _backgroundThread = std::make_unique<RocksDBBackgroundThread>(
-      *this, counterSyncSeconds, _metrics);
-  if (!_backgroundThread->start()) {
-    LOG_TOPIC("a5e96", FATAL, Logger::ENGINES)
-        << "could not start rocksdb counter manager thread";
-    FATAL_ERROR_EXIT();
-  }
-
   if (!systemDatabaseExists()) {
     addSystemDatabase();
   }
@@ -952,6 +943,16 @@ void RocksDBEngine::runRecovery() {
   });
   manager.runRecovery();
   _engineState.store(EngineState::kRunning, std::memory_order_release);
+  // TODO engine must know that the recovery itself runs is done, but the thread
+  // launching shouldn't be here breaks SRP
+  double const counterSyncSeconds = 2.5;
+  _backgroundThread = std::make_unique<RocksDBBackgroundThread>(
+      *this, counterSyncSeconds, _metrics);
+  if (!_backgroundThread->start()) {
+    LOG_TOPIC("a5e96", FATAL, Logger::ENGINES)
+        << "could not start rocksdb counter manager thread";
+    FATAL_ERROR_EXIT();
+  }
 }
 
 void RocksDBEngine::beginShutdown() {
@@ -1945,7 +1946,7 @@ Result RocksDBEngine::changeView(LogicalView const& view,
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   LOG_TOPIC("405da", DEBUG, Logger::ENGINES) << "RocksDBEngine::changeView";
 #endif
-  if (inRecovery()) {
+  if (!isReady()) {
     // nothing to do
     return {};
   }

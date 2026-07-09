@@ -145,7 +145,7 @@ class DatabaseFeature final : public application_features::ApplicationFeature,
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief register a callback
-  ///   if StorageEngine.inRecovery() ->
+  ///   if !StorageEngine.isReady() ->
   ///     call at start of recoveryDone() in parallel with other callbacks
   ///     and fail recovery if callback !ok()
   ///   else ->
