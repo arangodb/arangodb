@@ -65,8 +65,10 @@ function traversalVarsUsedRegressionSuite() {
                 RETURN v
         `;
 
-      let ex = explainer.explain(query);
-      require("internal").log(JSON.stringify(ex));
+      // This test is red up to the fix because arangod errors
+      // with a missing variable error for the doc variable
+      // in the TraversalNode
+      let ex = db._createStatement(query).explain().plan;
     },
 
   };
