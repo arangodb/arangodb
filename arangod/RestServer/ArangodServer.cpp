@@ -156,7 +156,6 @@ void ArangodServer::addFeatures(
   );
   addFeature<EnvironmentFeature>();
   addFeature<FileSystemFeature>();
-  addFeature<FlushFeature>(metrics);
 #ifdef USE_V8
   addFeature<FoxxFeature>();
   addFeature<FrontendFeature>();
@@ -256,7 +255,6 @@ void ArangodServer::addFeaturesWithOptionProvider() {
   auto& rocksdbCacheRefill = getFeature<RocksDBIndexCacheRefillFeature>();
   auto& database = getFeature<DatabaseFeature>();
   auto& vectorIndex = getFeature<VectorIndexFeature>();
-  auto& flush = getFeature<FlushFeature>();
   auto& scheduler = getFeature<SchedulerFeature>();
   auto& rocksdbRecovery = getFeature<RocksDBRecoveryManager>();
   auto& cacheManager = getFeature<CacheManagerFeature>();
@@ -284,6 +282,10 @@ void ArangodServer::addFeaturesWithOptionProvider() {
       _optionProviders.get<DumpLimitsOptionsProvider>().options();
   auto& dumpLimits =
       addFeature<DumpLimitsFeature>(std::move(dumpLimitsOptions));
+
+  // Add FlushFeature
+  auto flushOptions = _optionProviders.get<FlushOptionsProvider>().options();
+  auto& flush = addFeature<FlushFeature>(metrics, std::move(flushOptions));
 
   // Add RocksDBEngine
   RocksDBEngineOptions rocksDBEngineOptions =

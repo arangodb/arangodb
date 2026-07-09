@@ -22,7 +22,7 @@
 
 #pragma once
 
-#include "ApplicationFeatures/OptionsProvider.h"
+#include <memory>
 
 namespace arangodb::options {
 class ProgramOptions;
@@ -32,9 +32,16 @@ namespace arangodb {
 
 struct FlushFeatureOptions {};
 
-struct FlushOptionsProvider : OptionsProvider<FlushFeatureOptions> {
-  void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
-                      FlushFeatureOptions& options) override;
+struct FlushOptionsProvider {
+  void declareOptions(std::shared_ptr<options::ProgramOptions>& prgOptions);
+  void validateOptions(
+      std::shared_ptr<options::ProgramOptions>& /*prgOptions*/) {};
+  [[nodiscard]] FlushFeatureOptions const& options() const noexcept {
+    return _options;
+  }
+
+ private:
+  FlushFeatureOptions _options;
 };
 
 }  // namespace arangodb

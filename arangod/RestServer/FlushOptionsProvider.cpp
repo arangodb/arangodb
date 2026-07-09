@@ -27,9 +27,8 @@
 namespace arangodb {
 
 void FlushOptionsProvider::declareOptions(
-    std::shared_ptr<options::ProgramOptions> options,
-    FlushFeatureOptions& /*opts*/) {
-  options->addObsoleteOption(
+    std::shared_ptr<options::ProgramOptions>& prgOptions) {
+  prgOptions->addObsoleteOption(
       "--server.flush-interval",
       "The interval (in microseconds) for flushing data.", true);
 }
