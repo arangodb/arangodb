@@ -134,7 +134,8 @@ if (getOptions === true) {
   fs.write(topLevelAllowedReadJSONFile, JSONText);
   fs.write(topLevelForbiddenReadJSONFile, JSONText);
   fs.write(subLevelAllowedReadJSONFile, JSONText);
-
+  const badZipFn = fs.join(rootDir, "bad.zip");
+  fs.zipDirectory(testFilesDir, badZipFn);
   return {
     'temp.path': subInstanceTemp,     // Adjust the temp-path to match our current temp path
     'javascript.files-allowlist': [
@@ -142,6 +143,7 @@ if (getOptions === true) {
      fs.escapePath('^' + topLevelAllowed),
      fs.escapePath('^' + subLevelAllowed),
      fs.escapePath('^' + topLevelAllowedRecursive)
+     fs.escapePath('^' + badZipFn)
     ],
     'javascript.files-denylist': [
       fs.escapePath('^' + subLevelForbidden)
@@ -869,9 +871,10 @@ function testSuite() {
       // we can not forbid snippet evaluation.
       // Access is file access based for now.
       require("internal").parse(`print('hello world')`);
+    },
+    testUnzip : function() {
+      fs.unzipFile(fs.join(rootDir, "bad.zip"), testFilesDir)
     }
-
-
   };
 }
 jsunity.run(testSuite);
