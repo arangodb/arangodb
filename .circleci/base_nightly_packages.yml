@@ -115,13 +115,6 @@ version: 2.1
 #                                   (read-only) + AWS_DEFAULT_REGION to fetch
 #                                   install.tar.gz from the workspace bucket
 #                                   instead of the CircleCI artifacts
-#   nightly-signing context:        ARANGO_SIGN_PASSWD (optional KEYNAME,
-#                                   default 86FEC04D); the signing keyring
-#                                   itself is NOT an env var — it is fetched
-#                                   from arangodb-helper/package-signing, so
-#                                   the checkout SSH key (f9:49:75:...:ce,
-#                                   the one used for arangodb/enterprise)
-#                                   must have read access to that repo
 #   coredb-nightly-packages context: GCLOUD_SERVICE_KEY_BASE64 (service-account
 #                                   JSON, base64-encoded to one line:
 #                                   "base64 -w0 key.json" — raw JSON pastes
@@ -129,7 +122,17 @@ version: 2.1
 #                                   private_key; GCS upload; also needs GCR
 #                                   push rights when push-images-to-gcr-also
 #                                   is set), DOCKER_USER, DOCKER_PASS (Docker
-#                                   Hub credentials)
+#                                   Hub credentials),
+#                                   GITHUB_PACKAGE_SIGNING_TOKEN (fine-grained
+#                                   PAT, Contents: read-only on
+#                                   arangodb-helper/package-signing, for the
+#                                   sign-packages keyring checkout; when
+#                                   unset the checkout falls back to the SSH
+#                                   key f9:49:75:...:ce, which then needs
+#                                   read access to that repo),
+#                                   ARANGO_SIGN_PASSWD (signing key
+#                                   passphrase; optional KEYNAME, default
+#                                   86FEC04D)
 #                                   (optional NIGHTLY_GCS_DEST, default
 #                                   gs://download.arangodb.com/nightly;
 #                                   optional NIGHTLY_GCR_PREFIX, default
@@ -1245,9 +1248,11 @@ jobs:
     # all here. The repo's .rpmmacros (embedded `rpm --addsign`) is likewise
     # only used by oskar's apt/yum REPOSITORY creation, which nightlies do
     # not do — nightly packages get detached signatures only.
-    # Needs the nightly-signing context (ARANGO_SIGN_PASSWD, optional
-    # KEYNAME, default 86FEC04D); the checkout SSH key must have read access
-    # to arangodb-helper/package-signing.
+    # Needs the coredb-nightly-packages context: ARANGO_SIGN_PASSWD
+    # (optional KEYNAME, default 86FEC04D) and GITHUB_PACKAGE_SIGNING_TOKEN
+    # for the keyring checkout (without the token the checkout falls back to
+    # the SSH key, which then must have read access to
+    # arangodb-helper/package-signing).
     docker:
       - image: << pipeline.parameters.build-docker-image >>
     resource_class: << parameters.resource-class >>
@@ -1279,7 +1284,23 @@ jobs:
             mkdir -p /tmp/package-signing
             cd /tmp/package-signing
             git init
-            git remote add origin git@github.com:arangodb-helper/package-signing.git
+            if [ -n "${GITHUB_PACKAGE_SIGNING_TOKEN:-}" ]; then
+              # HTTPS with a fine-grained PAT (Contents: read-only on
+              # arangodb-helper/package-signing). The token is handed to git
+              # through a credential helper that reads the env var at use
+              # time, so it never appears in the remote URL, in .git/config,
+              # or in error messages.
+              git remote add origin https://github.com/arangodb-helper/package-signing.git
+              # The empty first entry resets any helper inherited from the
+              # image's system/global git config, so only this one runs.
+              git config --add credential.helper ""
+              git config --add credential.helper \
+                '!f() { echo "username=x-access-token"; echo "password=${GITHUB_PACKAGE_SIGNING_TOKEN}"; }; f'
+            else
+              # Fallback: the checkout SSH key (must have read access to
+              # arangodb-helper/package-signing).
+              git remote add origin git@github.com:arangodb-helper/package-signing.git
+            fi
             git sparse-checkout set --no-cone /.gnupg4/
             git fetch --depth 1 --filter=blob:none origin HEAD
             git checkout FETCH_HEAD
@@ -1876,7 +1897,10 @@ workflows:
             - tar-enterprise-arm64
 
       - sign-packages:
-          context: [ nightly-signing ]
+          # coredb-nightly-packages carries all signing secrets:
+          # ARANGO_SIGN_PASSWD (+ optional KEYNAME) and
+          # GITHUB_PACKAGE_SIGNING_TOKEN for the package-signing checkout.
+          context: [ coredb-nightly-packages ]
           resource-class: arangodb/large-amd64
           requires:
             - deb-enterprise-amd64
