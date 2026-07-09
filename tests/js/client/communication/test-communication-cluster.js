@@ -48,7 +48,6 @@ const { expect } = require('chai');
 const toArgv = require('internal').toArgv;
 
 
-const getMetric = require('@arangodb/test-helper').getMetricSingle;
 let { debugResetRaceControl } = require('@arangodb/test-helper');
 let { instanceRole } = require('@arangodb/testutils/instance');
 let IM = global.instanceManager;
@@ -476,11 +475,11 @@ function GenericAqlSetupPathSuite(type) {
       if (sWrites) {
         numWriters++;
       }
-      const seqLocksBefore = getMetric("arangodb_collection_lock_sequential_mode");
+      const seqLocksBefore = IM.getMetric("arangodb_collection_lock_sequential_mode");
       // run both queries in parallel
       singleRun(tests);
 
-      const seqLocksAfter = getMetric("arangodb_collection_lock_sequential_mode");
+      const seqLocksAfter = IM.getMetric("arangodb_collection_lock_sequential_mode");
       const expectsSequentialLock = () => {
         if (!fWrites || !sWrites) {
           // Both transactions need to write

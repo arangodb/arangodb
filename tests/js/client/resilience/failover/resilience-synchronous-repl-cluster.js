@@ -28,12 +28,9 @@
 const jsunity = require("jsunity");
 const fs = require('fs');
 const internal = require('internal');
+let { instanceRole } = require('@arangodb/testutils/instance');
 
 const wait = require("internal").wait;
-const {
-  getDBServers
-} = require("@arangodb/test-helper");
-
 const IM = GLOBAL.instanceManager;
 const AM = IM.agencyMgr;
 
@@ -90,7 +87,7 @@ function SynchronousReplicationSuite () {
 
     testSetup : function () {
       for (var count = 0; count < 120; ++count) {
-        let dbservers = getDBServers();
+        let dbservers = IM.getInstancesRole(instanceRole.dbserver);
         if (dbservers.length === 5) {
           assertTrue(suite.waitForSynchronousReplication("_system"));
           return;

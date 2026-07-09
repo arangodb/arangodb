@@ -841,6 +841,17 @@ void V8ClientConnection::disconnectHandle(
   }
 }
 
+void V8ClientConnection::flushConnectionCache(
+    v8::Isolate* isolate, v8::FunctionCallbackInfo<v8::Value> const& args,
+    std::string const& handle) {
+  std::lock_guard<std::recursive_mutex> guard(_lock);
+  _connectionCache.clear();
+  _connectionBuilderCache.clear();
+  _connection.reset();
+  _currentConnectionId.erase();
+  TRI_V8_RETURN_TRUE();
+}
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 void V8ClientConnection::reconnectWithNewPassword(std::string const& password) {
   _client.setPassword(password);
@@ -1221,7 +1232,7 @@ static void ClientConnection_connectHandle(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief ClientConnection method "connectHandle"
+/// @brief ClientConnection method "disconnectHandle"
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ClientConnection_disconnectHandle(
@@ -1235,16 +1246,44 @@ static void ClientConnection_disconnectHandle(
 
   if (v8connection == nullptr) {
     TRI_V8_THROW_EXCEPTION_INTERNAL(
-        "connectHandle() must be invoked on an arango connection object "
+        "disconnectHandle() must be invoked on an arango connection object "
         "instance.");
   }
   // check params
   if (args.Length() != 1 || !args[0]->IsString()) {
-    TRI_V8_THROW_EXCEPTION_USAGE("connectHandle(<handleString>)");
+    TRI_V8_THROW_EXCEPTION_USAGE("disconnectHandle(<handleString>)");
   }
 
   auto handle = TRI_ObjectToString(isolate, args[0]);
   v8connection->disconnectHandle(isolate, args, handle);
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ClientConnection method "flushConnectionCache"
+////////////////////////////////////////////////////////////////////////////////
+
+static void ClientConnection_flushConnectionCache(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
+
+  V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
+      args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
+
+  if (v8connection == nullptr) {
+    TRI_V8_THROW_EXCEPTION_INTERNAL(
+        "flushConnectionCache() must be invoked on an arango connection object "
+        "instance.");
+  }
+  // check params
+  if (args.Length() != 0) {
+    TRI_V8_THROW_EXCEPTION_USAGE("flushConnectionCache()");
+  }
+
+  auto handle = TRI_ObjectToString(isolate, args[0]);
+  v8connection->flushConnectionCache(isolate, args, handle);
   TRI_V8_TRY_CATCH_END
 }
 
@@ -3445,6 +3484,11 @@ void V8ClientConnection::initServer(v8::Isolate* isolate,
   connection_proto->Set(
       isolate, "disconnectHandle",
       v8::FunctionTemplate::New(isolate, ClientConnection_disconnectHandle,
+                                v8client));
+
+  connection_proto->Set(
+      isolate, "flushConnectionCache",
+      v8::FunctionTemplate::New(isolate, ClientConnection_flushConnectionCache,
                                 v8client));
 
   connection_proto->Set(isolate, "connectedUser",

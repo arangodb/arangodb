@@ -497,6 +497,8 @@ class testRunner {
       print('done.');
     }
     this.instanceManager.destructor(this.continueTesting && this.results.failed === 0);
+    delete(global.instanceManager);
+    delete(this.instanceManager);
     return this.results;
   }
 }
