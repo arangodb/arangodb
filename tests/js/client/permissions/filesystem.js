@@ -125,7 +125,7 @@ if (getOptions === true) {
   try {
     fs.linkFile(topLevelForbiddenFile, intoTopLevelForbidden);
     fs.linkFile(topLevelAllowedFile, intoTopLevelAllowed);
-    fs.linkFile('/etc/passwd', topLevelAllowedHazardSubFiles);
+    fs.linkFile('/etc/passwd', fs.join(topLevelAllowedHazardSubFiles, 'passwd'));
   } catch (ex) {
     internal.print("unable to create symlinks" + ex);
   }
