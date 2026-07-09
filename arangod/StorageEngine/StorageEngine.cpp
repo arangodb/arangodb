@@ -27,12 +27,13 @@
 #include <velocypack/Slice.h>
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Assertions/ProdAssert.h"
 #include "Cache/CacheManagerFeature.h"
+#include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/Storage/IStorageEngineMethods.h"
 #include "RestServer/DatabaseFeature.h"
-#include "StorageEngine/StorageEngineFeature.h"
 #include "VocBase/VocbaseInfo.h"
 #include "VocBase/vocbase.h"
 
@@ -56,7 +57,6 @@ StorageEngine::StorageEngine(application_features::ApplicationServer& server,
   startsAfter<application_features::BasicFeaturePhaseServer>();
 
   startsAfter<CacheManagerFeature>();
-  startsBefore<StorageEngineFeature>();
   startsAfter<transaction::ManagerFeature>();
   startsAfter<ViewTypesFeature>();
 }
@@ -157,3 +157,20 @@ std::string_view StorageEngine::typeName() const { return _typeName; }
 void StorageEngine::addOptimizerRules(aql::OptimizerRulesFeature&) {}
 
 void StorageEngine::addRestHandlers(rest::RestHandlerFactory& handlerFactory) {}
+
+TransactionStatistics& StorageEngine::transactionStatistics() noexcept {
+  ADB_PROD_ASSERT(_transactionStatistics != nullptr)
+      << "transactionStatistics() called before start()";
+  return *_transactionStatistics;
+}
+
+TransactionStatistics const& StorageEngine::transactionStatistics()
+    const noexcept {
+  ADB_PROD_ASSERT(_transactionStatistics != nullptr)
+      << "transactionStatistics() called before start()";
+  return *_transactionStatistics;
+}
+
+void StorageEngine::initTransactionStatistics(metrics::IRegistry& metrics) {
+  _transactionStatistics = std::make_unique<TransactionStatistics>(metrics);
+}

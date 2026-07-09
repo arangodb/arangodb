@@ -28,6 +28,7 @@
 #include "Basics/Result.h"
 #include "Indexes/IndexFactory.h"
 #include "StorageEngine/HealthData.h"
+#include "StorageEngine/TransactionStatistics.h"
 #include "Transaction/ManagerFeature.h"
 #include "Transaction/OperationOrigin.h"
 #include "VocBase/Identifiers/DataSourceId.h"
@@ -369,7 +370,11 @@ class StorageEngine : public application_features::ApplicationFeature {
   virtual bool autoRefillIndexCachesOnFollowers() const = 0;
   virtual void syncIndexCaches();
 
+  TransactionStatistics& transactionStatistics() noexcept;
+  TransactionStatistics const& transactionStatistics() const noexcept;
+
  protected:
+  void initTransactionStatistics(metrics::IRegistry& metrics);
   void registerCollection(
       TRI_vocbase_t& vocbase,
       std::shared_ptr<arangodb::LogicalCollection> const& collection);
@@ -384,6 +389,7 @@ class StorageEngine : public application_features::ApplicationFeature {
  private:
   std::unique_ptr<IndexFactory> const _indexFactory;
   std::string_view _typeName;
+  std::unique_ptr<TransactionStatistics> _transactionStatistics;
 };
 
 }  // namespace arangodb

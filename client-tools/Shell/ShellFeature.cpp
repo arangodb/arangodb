@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ShellFeature.h"
+#include "Shell/ShellOptionsProvider.h"
 
 #include "Basics/debugging.h"
 #include "FeaturePhases/V8ShellFeaturePhase.h"
@@ -42,7 +43,12 @@ namespace arangodb {
 
 ShellFeature::ShellFeature(application_features::ApplicationServer& server,
                            int* result)
+    : ShellFeature(server, result, ShellFeatureOptions{}) {}
+
+ShellFeature::ShellFeature(application_features::ApplicationServer& server,
+                           int* result, ShellFeatureOptions options)
     : ApplicationFeature(server, *this),
+      _options(std::move(options)),
       _result(result),
       _runMode(RunMode::INTERACTIVE) {
   setOptional(false);
@@ -53,39 +59,8 @@ ShellFeature::~ShellFeature() = default;
 
 void ShellFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
-  options->addSection("javascript", "JavaScript engine");
-
-  options->addOption("--javascript.execute",
-                     "Execute the JavaScript code from the specified file.",
-                     new VectorParameter<StringParameter>(&_executeScripts));
-
-  options->addOption("--javascript.execute-string",
-                     "Execute the JavaScript code from the specified string.",
-                     new VectorParameter<StringParameter>(&_executeStrings));
-
-  options->addOption(
-      "--javascript.check-syntax",
-      "Check the syntax of the JavaScript code from the specified file.",
-      new VectorParameter<StringParameter>(&_checkSyntaxFiles));
-
-  options->addOption("--javascript.unit-tests",
-                     "Do not start as a shell, run unit tests instead.",
-                     new VectorParameter<StringParameter>(&_unitTests));
-
-  options->addOption("--javascript.unit-test-filter",
-                     "Filter the test cases in the test suite.",
-                     new StringParameter(&_unitTestFilter));
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  options->addOption("--javascript.script-parameter", "Script parameter.",
-                     new VectorParameter<StringParameter>(&_scriptParameters));
-#endif
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
-  options->addOption(
-      "--client.failure-points",
-      "The failure point to set during shell startup (requires compilation "
-      "with failure points support).",
-      new VectorParameter<StringParameter>(&_failurePoints));
-#endif
+  ShellOptionsProvider provider;
+  provider.declareOptions(options, _options);
 }
 
 void ShellFeature::validateOptions(
@@ -104,25 +79,25 @@ void ShellFeature::validateOptions(
 
   _runMode = RunMode::INTERACTIVE;
 
-  if (!_executeScripts.empty()) {
+  if (!_options.executeScripts.empty()) {
     console.setQuiet(true);
     _runMode = RunMode::EXECUTE_SCRIPT;
     ++n;
   }
 
-  if (!_executeStrings.empty()) {
+  if (!_options.executeStrings.empty()) {
     console.setQuiet(true);
     _runMode = RunMode::EXECUTE_STRING;
     ++n;
   }
 
-  if (!_checkSyntaxFiles.empty()) {
+  if (!_options.checkSyntaxFiles.empty()) {
     console.setQuiet(true);
     _runMode = RunMode::CHECK_SYNTAX;
     ++n;
   }
 
-  if (!_unitTests.empty()) {
+  if (!_options.unitTests.empty()) {
     console.setQuiet(true);
     _runMode = RunMode::UNIT_TESTS;
     ++n;
@@ -135,7 +110,7 @@ void ShellFeature::validateOptions(
   }
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
-  for (auto const& it : _failurePoints) {
+  for (auto const& it : _options.failurePoints) {
     TRI_AddFailurePointDebugging(it);
   }
 #endif
@@ -163,21 +138,22 @@ void ShellFeature::start() {
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
         TRI_IF_FAILURE("startTelemetricsForTest") { startTelemetrics(); }
 #endif
-        ok = shell.runScript(_executeScripts, _positionals, true,
-                             _scriptParameters);
+        ok = shell.runScript(_options.executeScripts, _positionals, true,
+                             _options.scriptParameters);
         break;
 
       case RunMode::EXECUTE_STRING:
-        ok = shell.runString(_executeStrings, _positionals);
+        ok = shell.runString(_options.executeStrings, _positionals);
         break;
 
       case RunMode::CHECK_SYNTAX:
-        ok = shell.runScript(_checkSyntaxFiles, _positionals, false,
-                             _scriptParameters);
+        ok = shell.runScript(_options.checkSyntaxFiles, _positionals, false,
+                             _options.scriptParameters);
         break;
 
       case RunMode::UNIT_TESTS:
-        ok = shell.runUnitTests(_unitTests, _positionals, _unitTestFilter);
+        ok = shell.runUnitTests(_options.unitTests, _positionals,
+                                _options.unitTestFilter);
         break;
     }
   } catch (std::exception const& ex) {

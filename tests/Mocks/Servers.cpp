@@ -103,7 +103,6 @@
 #include "Scheduler/SchedulerFeature.h"
 #include "Servers.h"
 #include "Sharding/ShardingFeature.h"
-#include "StorageEngine/StorageEngineFeature.h"
 #include "TemplateSpecializer.h"
 #include "Transaction/ManagerFeature.h"
 #include "Transaction/Methods.h"
@@ -167,7 +166,6 @@ static void SetupDatabaseFeaturePhase(MockServer& server) {
   server.addFeature<AuthenticationFeature>(true);
   server.addFeature<transaction::ManagerFeature>(false, metrics);
   auto& databaseFeature = server.addFeature<DatabaseFeature>(false);
-  server.addFeature<StorageEngineFeature>(false);
   server.addFeature<SystemDatabaseFeature>(true);
   server.addFeature<InitDatabaseFeature>(true,
                                          std::span<const std::type_index>{});

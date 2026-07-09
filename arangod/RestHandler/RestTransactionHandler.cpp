@@ -24,8 +24,6 @@
 #include "RestTransactionHandler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/ReadLocker.h"
-#include "Basics/ScopeGuard.h"
 #include "Basics/WriteLocker.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
@@ -40,7 +38,7 @@
 #include "Transaction/OperationOrigin.h"
 #include "Transaction/Status.h"
 #include "Utils/ExecContext.h"
-#include "VocBase/voc-types.h"
+#include "VocBase/vocbase.h"
 
 #include <velocypack/Builder.h>
 

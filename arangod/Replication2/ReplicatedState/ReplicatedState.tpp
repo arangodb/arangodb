@@ -109,7 +109,7 @@ ReplicatedState<S>::~ReplicatedState() {
 
 template<typename S>
 auto ReplicatedState<S>::buildCore(
-    TRI_vocbase_t& vocbase,
+    Database& vocbase,
     std::optional<velocypack::SharedSlice> const& coreParameter) {
   using CoreParameterType = typename S::CoreParameterType;
   if constexpr (std::is_void_v<CoreParameterType>) {
@@ -158,7 +158,7 @@ void ReplicatedState<S>::drop(
 
 template<typename S>
 auto ReplicatedState<S>::createStateHandle(
-    TRI_vocbase_t& vocbase,
+    Database& vocbase,
     std::optional<velocypack::SharedSlice> const& coreParameter)
     -> std::unique_ptr<replicated_log::IReplicatedStateHandle> {
   // TODO Should we make sure not to build the core twice?

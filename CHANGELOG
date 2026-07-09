@@ -392,6 +392,29 @@
 3.12.10-devel (XXXX-XX-XX)
 --------------------------
 
+* GitHub issue #22532: Fixed query editor content becoming hidden after resizing
+  the editor pane in the web UI.
+
+* Upgraded included rclone to v1.74.3 with go1.25.11 and non-vulnerable
+  dependencies.
+
+* Add missing case to return 403 for error HTTP_UNAUTHORIZED.
+
+* COR-537, github issue #21843: Fixed incorrect sorting order bug when using
+  inverted indexes.
+
+* GitHub issue #22821: Fix overflow issues in LIFO and FIFO cursor queues.
+
+* COR-670: Fixed a crash when a vector query with covered projections ran while
+  its vector index was still being built.
+
+* Updated node modules:
+ - qs to 6.15.2
+ - brace-expansion to 5.0.6
+ - js-yaml to 4.2.0
+
+* Upgraded OpenSSL to 3.5.7.
+
 * Updated ArangoDB Starter to v0.19.23.
 
 * COR-607: Fix a problem that causes cluster queries involving a materialize node
@@ -405,9 +428,6 @@
 * COR-616: Fixed a DB-Server error during rolling upgrades when deserializing a graph
   traversal plan from an older coordinator that lacks the "protoCollection"
   attribute.
-
-* Upgraded included rclone to v1.73.5 with go1.25.11 and non-vulnerable
-  dependencies.
 
 * COR-584/OASIS-27899: Fixed an edge case in range_column_iterator::seek where
   executing a seek on an uninitialized iterator would return incorrect results

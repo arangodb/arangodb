@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ShellConsoleFeature.h"
+#include "ShellConsoleOptionsProvider.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/ShellColorsFeature.h"
@@ -54,16 +55,13 @@ namespace arangodb {
 
 ShellConsoleFeature::ShellConsoleFeature(
     application_features::ApplicationServer& server)
+    : ShellConsoleFeature(server, ShellConsoleFeatureOptions{}) {}
+
+ShellConsoleFeature::ShellConsoleFeature(
+    application_features::ApplicationServer& server,
+    ShellConsoleFeatureOptions options)
     : ApplicationFeature(server, *this),
-      _quiet(false),
-      _colors(true),
-      _useHistory(true),
-      _autoComplete(true),
-      _prettyPrint(true),
-      _auditFile(),
-      _pager(false),
-      _pagerCommand("less -X -R -F -L"),
-      _prompt("%E@%d> "),
+      _options(std::move(options)),
       _promptError(false),
       _supportsColors(isatty(STDIN_FILENO) != 0),
       _toPager(stdout),
@@ -73,51 +71,14 @@ ShellConsoleFeature::ShellConsoleFeature(
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseClient>();
   if (!_supportsColors) {
-    _colors = false;
+    _options.colors = false;
   }
 }
 
 void ShellConsoleFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
-  options->addOption("--quiet", "Silent startup.",
-                     new BooleanParameter(&_quiet));
-
-  options->addSection("console", "console");
-
-  options->addOption(
-      "--console.colors", "Enable color support.",
-      new BooleanParameter(&_colors),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic));
-
-  options->addOption("--console.auto-complete", "Enable auto-completion.",
-                     new BooleanParameter(&_autoComplete));
-
-  options->addOption("--console.pretty-print", "Enable pretty-printing.",
-                     new BooleanParameter(&_prettyPrint));
-
-  options->addOption("--console.audit-file",
-                     "The audit log file to save commands and results to.",
-                     new StringParameter(&_auditFile));
-
-  options->addOption("--console.history",
-                     "Whether to load and persist command-line history.",
-                     new BooleanParameter(&_useHistory));
-
-  options->addOption("--console.pager", "Enable paging.",
-                     new BooleanParameter(&_pager));
-
-  options->addOption(
-      "--console.pager-command", "The pager command.",
-      new StringParameter(&_pagerCommand),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
-
-  options->addOption(
-      "--console.prompt",
-      "The prompt used in REPL (placeholders: %t = the current time as "
-      "timestamp, %p = the duration of last command in seconds, %d = the name "
-      "of the current database, %e = the current endpoint, %E = the current "
-      "endpoint without the protocol, %u = the current user",
-      new StringParameter(&_prompt));
+  ShellConsoleOptionsProvider provider;
+  provider.declareOptions(options, _options);
 }
 
 void ShellConsoleFeature::start() { openLog(); }
@@ -167,17 +128,17 @@ std::string ShellConsoleFeature::readPassword() {
 }
 
 void ShellConsoleFeature::printWelcomeInfo() {
-  if (_quiet) {
+  if (_options.quiet) {
     return;
   }
 
   std::ostringstream s;
 
-  if (_pager) {
-    s << "Using pager '" << _pagerCommand << "' for output buffering. ";
+  if (_options.pager) {
+    s << "Using pager '" << _options.pagerCommand << "' for output buffering. ";
   }
 
-  if (_useHistory) {
+  if (_options.useHistory) {
     s << "Command-line history will be persisted when the shell is exited. You "
          "can use `--console.history false` to turn this off";
   } else {
@@ -189,7 +150,7 @@ void ShellConsoleFeature::printWelcomeInfo() {
 }
 
 void ShellConsoleFeature::printByeBye() {
-  if (!_quiet) {
+  if (!_options.quiet) {
     printLine(TRI_BYE_MESSAGE);
   }
 }
@@ -228,16 +189,16 @@ void ShellConsoleFeature::print(std::string const& message) {
 }
 
 void ShellConsoleFeature::openLog() {
-  if (!_auditFile.empty()) {
-    _toAuditFile = TRI_FOPEN(_auditFile.c_str(), "w");
+  if (!_options.auditFile.empty()) {
+    _toAuditFile = TRI_FOPEN(_options.auditFile.c_str(), "w");
 
     std::ostringstream s;
 
     if (_toAuditFile == nullptr) {
-      s << "Cannot open file '" << _auditFile << "' for logging.";
+      s << "Cannot open file '" << _options.auditFile << "' for logging.";
       printErrorLine(s.str());
     } else {
-      s << "Logging input and output to '" << _auditFile << "'.";
+      s << "Logging input and output to '" << _options.auditFile << "'.";
       printLine(s.str());
     }
   }
@@ -272,7 +233,7 @@ ShellConsoleFeature::Prompt ShellConsoleFeature::buildPrompt(
   std::string result;
   bool esc = false;
 
-  for (char c : _prompt) {
+  for (char c : _options.prompt) {
     if (c == '\0') {
       break;
     }
@@ -342,7 +303,7 @@ ShellConsoleFeature::Prompt ShellConsoleFeature::buildPrompt(
 
   std::string colored;
 
-  if (_supportsColors && _colors) {
+  if (_supportsColors && _options.colors) {
     if (_promptError) {
       colored = ShellColorsFeature::SHELL_COLOR_BOLD_RED + result +
                 ShellColorsFeature::SHELL_COLOR_RESET;
@@ -358,17 +319,17 @@ ShellConsoleFeature::Prompt ShellConsoleFeature::buildPrompt(
 }
 
 void ShellConsoleFeature::startPager() {
-  if (!_pager || _pagerCommand.empty() || _pagerCommand == "stdout" ||
-      _pagerCommand == "-") {
+  if (!_options.pager || _options.pagerCommand.empty() ||
+      _options.pagerCommand == "stdout" || _options.pagerCommand == "-") {
     _toPager = stdout;
   } else {
-    _toPager = popen(_pagerCommand.c_str(), "w");
+    _toPager = popen(_options.pagerCommand.c_str(), "w");
 
     if (_toPager == nullptr) {
       LOG_TOPIC("25033", ERR, arangodb::Logger::FIXME)
           << "popen() for pager failed! Using stdout instead!";
       _toPager = stdout;
-      _pager = false;
+      _options.pager = false;
     }
   }
 }

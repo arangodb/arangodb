@@ -35,7 +35,9 @@
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
-class ArangodServer;
+namespace application_features {
+class ApplicationServer;
+}
 class AgencyComm;
 class Result;
 
@@ -74,7 +76,7 @@ class ServerState {
     INVALID = 255,  // this mode is used to indicate shutdown
   };
 
-  explicit ServerState(ArangodServer&);
+  explicit ServerState(application_features::ApplicationServer&);
 
   ~ServerState();
 
@@ -312,7 +314,7 @@ class ServerState {
   bool isUuid(std::string const& value) const;
 
  private:
-  ArangodServer& _server;
+  application_features::ApplicationServer& _server;
 
   /// @brief server role
   std::atomic<RoleEnum> _role;
@@ -363,6 +365,28 @@ class ServerState {
   bool _isGoogleTests = false;
 #endif
 };
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+/// @brief test-only RAII helper that detaches the current ServerState singleton
+/// for the duration of the scope, allowing a test to install its own instance
+/// even when one already exists (e.g. the process-wide instance created by the
+/// combined test binary's main()). The previous instance is restored on
+/// destruction.
+///
+/// Relies on member ordering: declare one *before* the ServerState it guards,
+/// so construction clears the singleton before the new ServerState is built and
+/// destruction restores it only after the new ServerState is gone.
+struct ScopedServerStateReset {
+  ScopedServerStateReset() noexcept;
+  ~ScopedServerStateReset();
+  ScopedServerStateReset(ScopedServerStateReset const&) = delete;
+  ScopedServerStateReset& operator=(ScopedServerStateReset const&) = delete;
+
+ private:
+  ServerState* _previous;
+};
+#endif
+
 }  // namespace arangodb
 
 std::ostream& operator<<(std::ostream&, arangodb::ServerState::RoleEnum);

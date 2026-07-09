@@ -44,9 +44,9 @@
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
-#include "Rest/CommonDefines.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
+#include "VocBase/vocbase.h"
 
 #include <fuerte/connection.h>
 #include <fuerte/message.h>

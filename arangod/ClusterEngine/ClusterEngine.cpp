@@ -58,10 +58,12 @@ bool ClusterEngine::Mocking = false;
 #endif
 
 // create the storage engine
-ClusterEngine::ClusterEngine(application_features::ApplicationServer& server)
+ClusterEngine::ClusterEngine(application_features::ApplicationServer& server,
+                             metrics::IRegistry& metrics)
     : StorageEngine(server, EngineName, name(), typeid(ClusterEngine),
                     std::make_unique<ClusterIndexFactory>(server, *this)),
       _clusterFeature(server.getFeature<ClusterFeature>()),
+      _metrics(metrics),
       _actualEngine(nullptr) {
   setOptional(true);
 }
@@ -111,6 +113,7 @@ void ClusterEngine::prepare() {
 
 void ClusterEngine::start() {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
+  initTransactionStatistics(_metrics);
 }
 
 std::unique_ptr<transaction::Manager> ClusterEngine::createTransactionManager(

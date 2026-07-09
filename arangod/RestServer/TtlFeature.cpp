@@ -24,6 +24,7 @@
 #include "TtlFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/TtlOptionsProvider.h"
 #include "FeaturePhases/DatabaseFeaturePhase.h"
 #include "FeaturePhases/ServerFeaturePhase.h"
 #include "Aql/Query.h"
@@ -109,71 +110,6 @@ void TtlStatistics::toVelocyPack(VPackBuilder& builder) const {
   builder.add("documentsRemoved", VPackValue(documentsRemoved));
   builder.add("limitReached", VPackValue(limitReached));
   builder.close();
-}
-
-void TtlProperties::toVelocyPack(VPackBuilder& builder, bool isActive) const {
-  builder.openObject();
-  builder.add("frequency", VPackValue(frequency));
-  builder.add("maxTotalRemoves", VPackValue(maxTotalRemoves));
-  builder.add("maxCollectionRemoves", VPackValue(maxCollectionRemoves));
-  // this attribute is hard-coded to false since v3.8, and will be removed later
-  builder.add("onlyLoadedCollections", VPackValue(false));
-  builder.add("active", VPackValue(isActive));
-  builder.close();
-}
-
-Result TtlProperties::fromVelocyPack(VPackSlice const& slice) {
-  if (!slice.isObject()) {
-    return Result(TRI_ERROR_BAD_PARAMETER, "expecting object for properties");
-  }
-
-  try {
-    uint64_t frequency = this->frequency;
-    uint64_t maxTotalRemoves = this->maxTotalRemoves;
-    uint64_t maxCollectionRemoves = this->maxCollectionRemoves;
-
-    if (slice.hasKey("frequency")) {
-      if (!slice.get("frequency").isNumber()) {
-        return Result(TRI_ERROR_BAD_PARAMETER,
-                      "expecting numeric value for frequency");
-      }
-      frequency = slice.get("frequency").getNumericValue<uint64_t>();
-      TRI_IF_FAILURE("allow-low-ttl-frequency") {
-        // for faster js tests we want to allow lower frequency values
-      }
-      else {
-        if (frequency < TtlProperties::minFrequency) {
-          return Result(TRI_ERROR_BAD_PARAMETER, "too low value for frequency");
-        }
-      }
-    }
-    if (slice.hasKey("maxTotalRemoves")) {
-      if (!slice.get("maxTotalRemoves").isNumber()) {
-        return Result(TRI_ERROR_BAD_PARAMETER,
-                      "expecting numeric value for maxTotalRemoves");
-      }
-      maxTotalRemoves =
-          slice.get("maxTotalRemoves").getNumericValue<uint64_t>();
-    }
-    if (slice.hasKey("maxCollectionRemoves")) {
-      if (!slice.get("maxCollectionRemoves").isNumber()) {
-        return Result(TRI_ERROR_BAD_PARAMETER,
-                      "expecting numeric value for maxCollectionRemoves");
-      }
-      maxCollectionRemoves =
-          slice.get("maxCollectionRemoves").getNumericValue<uint64_t>();
-    }
-
-    this->frequency = frequency;
-    this->maxTotalRemoves = maxTotalRemoves;
-    this->maxCollectionRemoves = maxCollectionRemoves;
-
-    return Result();
-  } catch (arangodb::basics::Exception const& ex) {
-    return Result(ex.code(), ex.what());
-  } catch (std::exception const& ex) {
-    return Result(TRI_ERROR_INTERNAL, ex.what());
-  }
 }
 
 class TtlThread final : public ServerThread {
@@ -658,59 +594,13 @@ TtlFeature::TtlFeature(application_features::ApplicationServer& server)
 TtlFeature::~TtlFeature() { shutdownThread(); }
 
 void TtlFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("ttl", "TTL index options");
-
-  options
-      ->addOption(
-          "--ttl.frequency",
-          "The frequency (in milliseconds) for the TTL background thread "
-          "invocation (0 = turn the TTL background thread off entirely).",
-          new UInt64Parameter(&_properties.frequency))
-      .setLongDescription(R"(The lower this value, the more frequently the TTL
-background thread kicks in and scans all available TTL indexes for expired
-documents, and the earlier the expired documents are actually removed.)");
-
-  options
-      ->addOption("--ttl.max-total-removes",
-                  "The maximum number of documents to remove per invocation of "
-                  "the TTL thread.",
-                  new UInt64Parameter(&_properties.maxTotalRemoves, /*base*/ 1,
-                                      /*minValue*/ 1))
-      .setLongDescription(R"(In order to avoid "random" load spikes by the
-background thread suddenly kicking in and removing a lot of documents at once,
-you can cap the number of to-be-removed documents per thread invocation.
-
-The TTL background thread goes back to sleep once it has removed the configured
-number of documents in one iteration. If more candidate documents are left for
-removal, they are removed in subsequent runs of the background thread.)");
-
-  options
-      ->addOption(
-          "--ttl.max-collection-removes",
-          "The maximum number of documents to remove per collection in each "
-          "invocation of the TTL thread.",
-          new UInt64Parameter(&_properties.maxCollectionRemoves, /*base*/ 1,
-                              /*minValue*/ 1))
-      .setLongDescription(R"(You can configure this value separately from the
-total removal amount so that the per-collection time window for locking and
-potential write-write conflicts can be reduced.)");
+  TtlOptionsProvider provider;
+  provider.declareOptions(options, _properties);
 }
 
 void TtlFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
-  if (_properties.maxCollectionRemoves == 0) {
-    LOG_TOPIC("2ab82", FATAL, arangodb::Logger::STARTUP)
-        << "invalid value for '--ttl.max-collection-removes'.";
-    FATAL_ERROR_EXIT();
-  }
-
-  std::lock_guard locker{_propertiesMutex};
-
-  if (_properties.frequency > 0 &&
-      _properties.frequency < TtlProperties::minFrequency) {
-    LOG_TOPIC("ea696", FATAL, arangodb::Logger::STARTUP)
-        << "too low value for '--ttl.frequency'.";
-    FATAL_ERROR_EXIT();
-  }
+  TtlOptionsProvider provider;
+  provider.validateOptions(options, _properties);
 }
 
 void TtlFeature::start() {

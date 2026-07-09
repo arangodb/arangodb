@@ -24,6 +24,7 @@
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "Backup/BackupFeatureOptions.h"
 
 #include "Utils/ClientManager.h"
 
@@ -35,6 +36,9 @@ class BackupFeature : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Backup"; }
 
+  BackupFeature(application_features::ApplicationServer& server,
+                ClientFeature& client, int& exitCode,
+                BackupFeatureOptions options);
   BackupFeature(application_features::ApplicationServer& server,
                 ClientFeature& client, int& exitCode);
 
@@ -59,20 +63,7 @@ class BackupFeature : public application_features::ApplicationFeature {
   static std::string operationList(std::string const& separator);
 
  public:
-  struct Options {
-    bool allowInconsistent = false;
-    std::string identifier = "";
-    std::string label = "";
-    std::string statusId = "";
-    std::string rcloneConfigFile = "";
-    std::string remoteDirectory = "";
-    double maxWaitForLock = 60.0;
-    double maxWaitForRestart = 0.0;
-    std::string operation = "list";
-    bool abort = false;
-    bool abortTransactionsIfNeeded = false;
-    bool ignoreVersion = false;
-  };
+  using Options = BackupFeatureOptions;
 
  private:
   ClientFeature& _client;

@@ -40,7 +40,7 @@
 namespace arangodb::replication2::replicated_state::document {
 
 DocumentStateShardHandler::DocumentStateShardHandler(
-    TRI_vocbase_t& vocbase, GlobalLogIdentifier gid,
+    Database& vocbase, GlobalLogIdentifier gid,
     std::shared_ptr<IMaintenanceActionExecutor> maintenance)
     : _gid(std::move(gid)),
       _maintenance(std::move(maintenance)),

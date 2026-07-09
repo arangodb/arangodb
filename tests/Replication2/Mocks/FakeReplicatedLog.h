@@ -25,7 +25,6 @@
 #include <deque>
 #include <memory>
 
-#include "Replication2/Mocks/ReplicatedLogMetricsMock.h"
 #include "Replication2/ReplicatedLog/ILogInterfaces.h"
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
@@ -34,6 +33,7 @@
 #include "Replication2/ReplicatedLog/LogLeader.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
+#include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
 #include "Replication2/ReplicatedLog/types.h"
 
 namespace arangodb::replication2::test {
@@ -44,12 +44,12 @@ struct DelayedFollowerLog : replicated_log::AbstractFollower,
       std::shared_ptr<replicated_log::LogFollower> follower)
       : _follower(std::move(follower)) {}
 
-  DelayedFollowerLog(LoggerContext const& logContext,
-                     std::shared_ptr<ReplicatedLogMetricsMock> logMetricsMock,
-                     std::shared_ptr<ReplicatedLogGlobalSettings const> options,
-                     ParticipantId const& id,
-                     std::unique_ptr<replicated_log::LogCore> logCore,
-                     LogTerm term, ParticipantId leaderId)
+  DelayedFollowerLog(
+      LoggerContext const& logContext,
+      std::shared_ptr<replicated_log::ReplicatedLogMetrics> logMetricsMock,
+      std::shared_ptr<ReplicatedLogGlobalSettings const> options,
+      ParticipantId const& id, std::unique_ptr<replicated_log::LogCore> logCore,
+      LogTerm term, ParticipantId leaderId)
       : DelayedFollowerLog([&] {
           return replicated_log::LogFollower::construct(
               logContext, std::move(logMetricsMock), std::move(options), id,

@@ -29,9 +29,8 @@
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 
-struct TRI_vocbase_t;
-
 namespace arangodb {
+struct Database;
 class LogicalCollection;
 namespace replication2 {
 class LogId;
@@ -62,7 +61,7 @@ struct StateStatus;
 }  // namespace replication2
 
 struct VocBaseLogManager {
-  VocBaseLogManager(TRI_vocbase_t& vocbase, DatabaseID database);
+  VocBaseLogManager(Database& vocbase, DatabaseID database);
 
   [[nodiscard]] auto getReplicatedStateById(replication2::LogId id) -> ResultT<
       std::shared_ptr<replication2::replicated_state::ReplicatedStateBase>>;
@@ -103,7 +102,7 @@ struct VocBaseLogManager {
           std::shared_ptr<replication2::replicated_state::ReplicatedStateBase>>;
 
   application_features::ApplicationServer& _server;
-  TRI_vocbase_t& _vocbase;
+  Database& _vocbase;
   LoggerContext const _logContext;
 
   struct GuardedData {
@@ -124,7 +123,7 @@ struct VocBaseLogManager {
         replication2::LogId id, std::string_view type, VPackSlice parameters,
         replication2::replicated_state::ReplicatedStateAppFeature& feature,
         LoggerContext const& logContext,
-        application_features::ApplicationServer& server, TRI_vocbase_t& vocbase,
+        application_features::ApplicationServer& server, Database& vocbase,
         std::unique_ptr<arangodb::replication2::storage::IStorageEngineMethods>
             storage)
         -> ResultT<std::shared_ptr<
@@ -134,7 +133,7 @@ struct VocBaseLogManager {
         replication2::LogId id, std::string_view type, VPackSlice parameters,
         replication2::replicated_state::ReplicatedStateAppFeature& feature,
         LoggerContext const& logContext,
-        application_features::ApplicationServer& server, TRI_vocbase_t& vocbase)
+        application_features::ApplicationServer& server, Database& vocbase)
         -> ResultT<std::shared_ptr<
             replication2::replicated_state::ReplicatedStateBase>>;
 

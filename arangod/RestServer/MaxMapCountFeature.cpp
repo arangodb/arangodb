@@ -28,7 +28,6 @@
 #include "Basics/FileUtils.h"
 #include "Basics/NumberOfCores.h"
 #include "Basics/StringUtils.h"
-#include "ProgramOptions/ProgramOptions.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;

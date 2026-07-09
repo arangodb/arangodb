@@ -124,7 +124,12 @@ std::vector<OptimizerRule> OptimizerRulesFeature::_rules;
 std::unordered_map<std::string_view, int> OptimizerRulesFeature::_ruleLookup;
 
 OptimizerRulesFeature::OptimizerRulesFeature(ApplicationServer& server)
-    : application_features::ApplicationFeature{server, *this} {
+    : OptimizerRulesFeature(server, OptimizerRulesOptions{}) {}
+
+OptimizerRulesFeature::OptimizerRulesFeature(ApplicationServer& server,
+                                             OptimizerRulesOptions options)
+    : application_features::ApplicationFeature{server, *this},
+      _options(std::move(options)) {
   setOptional(false);
   startsAfter<application_features::ClusterFeaturePhase>();
   startsAfter<AqlFeature>();

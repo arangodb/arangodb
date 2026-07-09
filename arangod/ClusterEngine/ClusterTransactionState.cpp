@@ -31,16 +31,13 @@
 #include "Cluster/ClusterTrxMethods.h"
 #include "ClusterEngine/ClusterEngine.h"
 #include "ClusterEngine/ClusterTransactionCollection.h"
-#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "Metrics/Counter.h"
-#include "Metrics/MetricsFeature.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"
 #include "Transaction/Methods.h"
-#include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
 
 using namespace arangodb;
@@ -151,7 +148,6 @@ futures::Future<Result> ClusterTransactionState::commitTransaction(
   TRI_IF_FAILURE("TransactionWriteCommitMarker") {
     return Result(TRI_ERROR_DEBUG);
   }
-
   updateStatus(transaction::Status::COMMITTED);
   ++statistics()._transactionsCommitted;
 

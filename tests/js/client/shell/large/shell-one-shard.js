@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global arango, assertTrue, assertEqual, assertNotEqual, assertMatch, assertNull, fail, GLOBAL */
+/*global fail, GLOBAL */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -26,13 +26,14 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
+const {assertEqual, assertNotEqual, assertTrue, assertFalse, assertMatch} = jsunity.jsUnity.assertions;
 const arangodb = require("@arangodb");
+const arango = arangodb.arango;
 const db = arangodb.db;
 const internal = require('internal');
 const ERRORS = arangodb.errors;
 const isEnterprise = internal.isEnterprise();
 const isCluster = internal.isCluster();
-const request = require('@arangodb/request');
 const IM = GLOBAL.instanceManager;
 const AM = IM.agencyMgr;
 
@@ -66,36 +67,15 @@ function assertNoDatabasesInPlan () {
   assertEqual(["_system"], keys, result);
 }
 
-function getEndpointsByType(type) {
-  const isType = (d) => (d.instanceRole === type);
-  const toEndpoint = (d) => (d.endpoint);
-  const endpointToURL = (endpoint) => {
-    if (endpoint.substr(0, 6) === 'ssl://') {
-      return 'https://' + endpoint.substr(6);
-    }
-    let pos = endpoint.indexOf('://');
-    if (pos === -1) {
-      return 'http://' + endpoint;
-    }
-    return 'http' + endpoint.substr(pos);
-  };
-
-  return global.instanceManager.arangods.filter(isType)
-                              .map(toEndpoint)
-                              .map(endpointToURL);
-}
-
 function checkDBServerSharding(db, expected) {
   // connect to all db servers and check if they picked up the
   // "sharding" attribute correctly
   // request module can only be used inside arangosh tests
-  let endpoints = getEndpointsByType("dbserver");
-  assertTrue(endpoints.length > 0);
-  endpoints.forEach((ep) => {
-    let res = request.get({ url: ep + "/_db/" + encodeURIComponent(db) + "/_api/database/current" });
-    assertEqual(200, res.status);
-    assertEqual(expected, res.json.result.sharding);
-  });
+  IM.arangods.forEach(d => { if(d.instanceRole === "dbServer") d.toThisInstance(() => {
+    let res = arango.GET_RAW("/_api/database/current");
+    assertEqual(200, res.code);
+    assertEqual(expected, res.parsedBody.result.sharding);
+  });});
 }
 
 function OneShardPropertiesSuite () {
@@ -103,6 +83,7 @@ function OneShardPropertiesSuite () {
 
   return {
     setUp: function () {
+      IM.rememberConnection();
       try {
         db._useDatabase("_system");
         db._dropDatabase(dn);
@@ -111,8 +92,8 @@ function OneShardPropertiesSuite () {
     },
 
     tearDown: function () {
+      IM.reconnectMe();
       try {
-        db._useDatabase("_system");
         db._dropDatabase(dn);
       } catch (ex) {
       }

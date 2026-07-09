@@ -49,17 +49,19 @@ class Slice;
 typedef std::string ServerID;  // ID of a server
 using ShardMap = containers::FlatHashMap<ShardID, std::vector<ServerID>>;
 
-struct UserInputCollectionProperties;
 class ComputedValues;
 class FollowerInfo;
 class Index;
 class IndexIterator;
 class KeyGenerator;
 class LocalDocumentId;
-struct OperationOptions;
 class PhysicalCollection;
 class Result;
 class ShardingInfo;
+
+struct Database;
+struct OperationOptions;
+struct UserInputCollectionProperties;
 
 namespace transaction {
 class Methods;
@@ -94,12 +96,11 @@ struct CollectionGroupId;
 /// collection...
 
 class LogicalCollection : public LogicalDataSource {
-  friend struct ::TRI_vocbase_t;
+  // friend struct arangodb::Database;
 
  public:
   LogicalCollection() = delete;
-  LogicalCollection(TRI_vocbase_t& vocbase, velocypack::Slice info,
-                    bool isAStub);
+  LogicalCollection(Database& vocbase, velocypack::Slice info, bool isAStub);
   LogicalCollection(LogicalCollection const&) = delete;
   LogicalCollection& operator=(LogicalCollection const&) = delete;
   ~LogicalCollection() override;
