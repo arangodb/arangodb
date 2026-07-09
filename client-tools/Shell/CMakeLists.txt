@@ -22,7 +22,6 @@ add_executable(${BIN_ARANGOSH}
 
   ShellFeature.cpp
   ShellOptionsProvider.cpp
-  TelemetricsHandler.cpp
   V8ClientConnection.cpp
   V8ShellFeature.cpp
   V8ShellOptionsProvider.cpp

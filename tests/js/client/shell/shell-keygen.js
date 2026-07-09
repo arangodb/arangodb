@@ -29,7 +29,6 @@ const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
 const db = arangodb.db;
 const ERRORS = arangodb.errors;
-const {getDBServers} = require("@arangodb/test-helper");
 const cluster = require("internal").isCluster();
 const isEnterprise = require("internal").isEnterprise();
 const internal = require("internal");

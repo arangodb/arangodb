@@ -31,13 +31,10 @@ const db = require("@arangodb").db;
 const request = require("@arangodb/request");
 const _ = require("lodash");
 const { waitForShardsInSync } = require('@arangodb/test-helper');
-  
-const cn = "UnitTestsCollection";
+let { instanceRole } = require('@arangodb/testutils/instance');
 
-const {
-  getCoordinators,
-  getDBServers
-} = require('@arangodb/test-helper');
+const cn = "UnitTestsCollection";
+let IM = global.instanceManager;
 
 function abortReplicationSuite () {
   'use strict';
@@ -67,7 +64,7 @@ function abortReplicationSuite () {
       const isCov = require("@arangodb/test-helper").versionHas('coverage');
       let factor = (isCov) ? 4 : 1;
 
-      const servers = getDBServers();
+      const servers = IM.getInstancesRole(instanceRole.dbserver);
       assertTrue(servers.length >= 2, servers);
 
       try {
@@ -103,8 +100,5 @@ function abortReplicationSuite () {
   };
 }
 
-let res = request({ method: "GET", url: getCoordinators()[0].url + "/_admin/debug/failat" });
-if (res.body === "true") {
-  jsunity.run(abortReplicationSuite);
-}
+jsunity.run(abortReplicationSuite);
 return jsunity.done();
