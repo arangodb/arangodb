@@ -1689,37 +1689,28 @@ void TRI_SanitizeObject(VPackSlice slice, VPackBuilder& builder) {
     -> DatabaseConfiguration {
   auto& cl = server().getFeature<ClusterFeature>();
 
-  auto config = std::invoke([&]() -> DatabaseConfiguration {
-    if (!ServerState::instance()->isCoordinator() &&
-        !ServerState::instance()->isDBServer()) {
-      return {[]() { return DataSourceId(TRI_NewTickServer()); },
-              [this](std::string const& name)
-                  -> ResultT<UserInputCollectionProperties> {
-                CollectionNameResolver resolver{*this};
-                auto c = resolver.getCollection(name);
-                if (c == nullptr) {
-                  return Result{TRI_ERROR_CLUSTER_UNKNOWN_DISTRIBUTESHARDSLIKE,
-                                absl::StrCat("Collection not found: ", name,
-                                             " in database ", this->name())};
-                }
-                return c->getCollectionProperties();
-              }};
-    } else {
-      auto& ci = cl.clusterInfo();
-      return {[&ci]() { return DataSourceId(ci.uniqid(1)); },
-              [this](std::string const& name)
-                  -> ResultT<UserInputCollectionProperties> {
-                CollectionNameResolver resolver{*this};
-                auto c = resolver.getCollection(name);
-                if (c == nullptr) {
-                  return Result{TRI_ERROR_CLUSTER_UNKNOWN_DISTRIBUTESHARDSLIKE,
-                                absl::StrCat("Collection not found: ", name,
-                                             " in database ", this->name())};
-                }
-                return c->getCollectionProperties();
-              }};
-    }
-  });
+  std::function<DataSourceId()> idGenerator;
+  if (!ServerState::instance()->isCoordinator() &&
+      !ServerState::instance()->isDBServer()) {
+    idGenerator = []() { return DataSourceId(TRI_NewTickServer()); };
+  } else {
+    auto& ci = cl.clusterInfo();
+    idGenerator = [&ci]() { return DataSourceId(ci.uniqid(1)); };
+  }
+
+  DatabaseConfiguration config{
+      std::move(idGenerator),
+      [this](
+          std::string const& name) -> ResultT<UserInputCollectionProperties> {
+        CollectionNameResolver resolver{*this};
+        auto c = resolver.getCollection(name);
+        if (c == nullptr) {
+          return Result{TRI_ERROR_CLUSTER_UNKNOWN_DISTRIBUTESHARDSLIKE,
+                        absl::StrCat("Collection not found: ", name,
+                                     " in database ", this->name())};
+        }
+        return c->getCollectionProperties();
+      }};
 
   config.isSystemDB = isSystem();
   config.maxNumberOfShards = cl.maxNumberOfShards();
