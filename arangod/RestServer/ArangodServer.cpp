@@ -112,7 +112,7 @@ void ArangodServer::addFeatures(
   addFeature<metrics::ClusterMetricsFeature>();
   addFeature<VersionFeature>();
   addFeature<ActionFeature>();
-  auto& agency = addFeature<AgencyFeature>();
+  addFeature<AgencyFeature>();
   addFeature<ApiRecordingFeature>(dataSourceRegistry, metrics);
   addFeature<AqlFeature>();
   addFeature<async_registry::Feature>(dataSourceRegistry);
@@ -214,7 +214,6 @@ void ArangodServer::addFeatures(
   addFeature<aql::QueryInfoLoggerFeature>();
   addFeature<RocksDBIndexCacheRefillFeature>(database, &clusterFeature,
                                              metrics);
-  addFeature<RocksDBOptionFeature>(&agency);
   addFeature<RocksDBRecoveryManager>(database, database);
 #ifdef TRI_HAVE_GETRLIMIT
   addFeature<FileDescriptorsFeature>(metrics);
@@ -247,7 +246,6 @@ void ArangodServer::addFeatures(
 }
 
 void ArangodServer::addFeaturesWithOptionProvider() {
-  auto& rocksdbOption = getFeature<RocksDBOptionFeature>();
   auto& metrics = getFeature<metrics::MetricsFeature>();
   auto& databasePath = getFeature<DatabasePathFeature>();
   auto& rocksdbCacheRefill = getFeature<RocksDBIndexCacheRefillFeature>();
@@ -260,6 +258,10 @@ void ArangodServer::addFeaturesWithOptionProvider() {
   auto& cacheManager = getFeature<CacheManagerFeature>();
   auto& agency = getFeature<AgencyFeature>();
 
+  auto rocksdbOptionFeatureOptions =
+      _optionProviders.get<RocksDBOptionFeatureOptionsProvider>().options();
+  auto& rocksdbOption = addFeature<RocksDBOptionFeature>(
+      &agency, std::move(rocksdbOptionFeatureOptions));
   RocksDBEngineOptions rocksDBEngineOptions =
       _optionProviders.get<RocksDBEngineOptionsProvider>().options();
   addFeature<RocksDBEngine>(

@@ -23,6 +23,7 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/FortuneOptionsProvider.h"
 #include "RocksDBEngine/RocksDBEngineOptionsProvider.h"
+#include "RocksDBEngine/RocksDBOptionFeatureOptionsProvider.h"
 
 #include <tuple>
 
@@ -38,7 +39,8 @@ class FeatureOptionProviderContainer final {
   }
 
  private:
-  std::tuple<RocksDBEngineOptionsProvider, fortune::FortuneOptionsProvider>
+  std::tuple<RocksDBEngineOptionsProvider, RocksDBOptionFeatureOptionsProvider,
+             fortune::FortuneOptionsProvider>
       _providers{};
 };
 }  // namespace arangodb::application_features

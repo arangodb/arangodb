@@ -306,35 +306,20 @@ RocksDBOptionFeature::RocksDBOptionFeature(
   startsAfter<BasicFeaturePhaseServer>();
 }
 
-void RocksDBOptionFeature::collectOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  RocksDBOptionFeatureOptionsProvider provider(ioUringEnabled);
-  provider.declareOptions(options, _options);
-}
-
-void RocksDBOptionFeature::validateOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  RocksDBOptionFeatureOptionsProvider provider(ioUringEnabled);
-  provider.validateOptions(options, _options);
+void RocksDBOptionFeature::prepare() {
   ioUringEnabled = _options.ioUringEnabled;
-  // behavioral: agency memory limits
-  if (_agencyFeature) {
-    AgencyFeature const& feature = *_agencyFeature;
-    if (feature.activated()) {
-      if (!options->processingResult().touched("--rocksdb.block-cache-size")) {
-        _options.blockCacheSize =
-            std::min<uint64_t>(_options.blockCacheSize, uint64_t(1) << 30);
-      }
-      if (!options->processingResult().touched(
-              "--rocksdb.total-write-buffer-size")) {
-        _options.totalWriteBufferSize = std::min<uint64_t>(
-            _options.totalWriteBufferSize, uint64_t(512) << 20);
-      }
+  if (_agencyFeature && _agencyFeature->activated()) {
+    auto const& opts = server().options();
+    if (!opts->processingResult().touched("--rocksdb.block-cache-size")) {
+      _options.blockCacheSize =
+          std::min<uint64_t>(_options.blockCacheSize, uint64_t(1) << 30);
+    }
+    if (!opts->processingResult().touched("--rocksdb.total-write-buffer-size")) {
+      _options.totalWriteBufferSize =
+          std::min<uint64_t>(_options.totalWriteBufferSize, uint64_t(512) << 20);
     }
   }
-}
-
-void RocksDBOptionFeature::prepare() {
+  
   if (_options.enableBlobFiles) {
     LOG_TOPIC("5e48f", WARN, Logger::ENGINES)
         << "using blob files is experimental and not supported for production "
