@@ -51,6 +51,7 @@ if (getOptions === true) {
 
 
 const topLevelForbidden = fs.join(testFilesDir, 'forbidden');
+const topLevelAllowedHazardSubFiles = fs.join(testFilesDir, "bad_files_inside");
 const forbiddenZipFileName = fs.join(topLevelForbidden, 'forbidden.zip');
 const forbiddenJSFileName = fs.join(topLevelForbidden, 'forbidden.js');
 const topLevelForbiddenRecursive = fs.join(testFilesDir, 'forbidden_recursive');
@@ -106,6 +107,7 @@ if (getOptions === true) {
   fs.makeDirectoryRecursive(topLevelAllowedRecursive);
   fs.makeDirectoryRecursive(topLevelForbiddenRecursive);
   fs.makeDirectoryRecursive(topLevelAllowedUnZip);
+  fs.makeDirectoryRecursive(topLevelAllowedHazardSubFiles);
   fs.write(topLevelAllowedFile, 'this file is allowed.\n');
   fs.write(topLevelForbiddenFile, 'forbidden fruits are tasty!\n');
   fs.write(subLevelAllowedFile, 'this file is allowed.\n');
@@ -123,6 +125,7 @@ if (getOptions === true) {
   try {
     fs.linkFile(topLevelForbiddenFile, intoTopLevelForbidden);
     fs.linkFile(topLevelAllowedFile, intoTopLevelAllowed);
+    fs.linkFile('/etc/passwd', topLevelAllowedHazardSubFiles);
   } catch (ex) {
     internal.print("unable to create symlinks" + ex);
   }
@@ -137,10 +140,11 @@ if (getOptions === true) {
   return {
     'temp.path': subInstanceTemp,     // Adjust the temp-path to match our current temp path
     'javascript.files-allowlist': [
-     fs.escapePath('^' + process.env['RESULT']),
-     fs.escapePath('^' + topLevelAllowed),
-     fs.escapePath('^' + subLevelAllowed),
-     fs.escapePath('^' + topLevelAllowedRecursive)
+      fs.escapePath('^' + process.env['RESULT']),
+      fs.escapePath('^' + topLevelAllowed),
+      fs.escapePath('^' + subLevelAllowed),
+      fs.escapePath('^' + topLevelAllowedRecursive),
+      fs.escapePath('^' + topLevelAllowedHazardSubFiles),
     ]
   };
 }
@@ -855,6 +859,7 @@ function testSuite() {
       tryZipFileForbidden(forbiddenZipFileName, topLevelAllowed);
       tryZipFileForbidden(allowedZipFileName, '/etc/');
       tryZipFileForbidden(allowedZipFileName, topLevelForbidden);
+      tryZipFileForbidden(allowedZipFileName, topLevelAllowedHazardSubFiles);
 
       let prefixEscape = '';
       for (i = 0; i < topLevelAllowed.split('/').length - 1; i++) {
