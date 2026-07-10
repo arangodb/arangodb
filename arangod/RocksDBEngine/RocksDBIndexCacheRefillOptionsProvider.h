@@ -33,7 +33,7 @@ struct RocksDBIndexCacheRefillOptionsProvider
   void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
                           RocksDBIndexCacheRefillFeatureOptions& options);
   void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
-                           RocksDBIndexCacheRefillFeatureOptions& options) {};
+                           RocksDBIndexCacheRefillFeatureOptions& options){};
 };
 
 }  // namespace arangodb
