@@ -191,10 +191,8 @@ GeneralServerFeature::GeneralServerFeature(
           metricsFeature.add(arangodb_request_body_size_http1{})),
       _requestBodySizeHttp2(
           metricsFeature.add(arangodb_request_body_size_http2{})),
-      _http1Connections(
-          metricsFeature.add(arangodb_http1_connections_total{})),
-      _http2Connections(
-          metricsFeature.add(arangodb_http2_connections_total{})),
+      _http1Connections(metricsFeature.add(arangodb_http1_connections_total{})),
+      _http2Connections(metricsFeature.add(arangodb_http2_connections_total{})),
       _metricsFeature(metricsFeature) {
   setOptional(true);
   startsAfter<application_features::AqlFeaturePhase>();
@@ -212,8 +210,8 @@ void GeneralServerFeature::initResponseCodeCounters() {
 
   auto addCounter = [&](ResponseCode code) {
     auto builder = getBuilder(code);
-    _responseCodeCounters.try_emplace(
-        code, &_metricsFeature.add(std::move(builder)));
+    _responseCodeCounters.try_emplace(code,
+                                      &_metricsFeature.add(std::move(builder)));
   };
 
   for (auto code : {
@@ -338,9 +336,8 @@ void GeneralServerFeature::countHttpResponseCode(
 
   // Slow path. Reached only for a ResponseCode that was somehow missed
   // during initialization (e.g. CommonDefines.h gained a new enumerator).
-  TRI_ASSERT(false) << "unhandled response code "
-                     << static_cast<int>(code)
-                     << " missing from initResponseCodeCounters()";
+  TRI_ASSERT(false) << "unhandled response code " << static_cast<int>(code)
+                    << " missing from initResponseCodeCounters()";
   try {
     auto builder = getBuilder(code);
     _metricsFeature.ensureMetric(std::move(builder)).count();
