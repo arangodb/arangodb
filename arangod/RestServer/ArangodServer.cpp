@@ -71,19 +71,7 @@ void ArangodServer::validateOptions() {
   _optionProviders.validateOptions(_programOptions);
 }
 
-void ArangodServer::setAddFeaturesWithOptionProviderDependencies(
-    std::string_view binaryName,
-    std::shared_ptr<crash_handler::DumpManager>& dumpManager,
-    std::shared_ptr<crash_handler::DataSourceRegistry>& dataSourceRegistry) {
-  _binaryName = binaryName;
-  _dumpManager = dumpManager;
-  _dataSourceRegistry = dataSourceRegistry;
-}
-
-void ArangodServer::addFeatures(
-    int* ret, std::string_view binaryName,
-    std::shared_ptr<crash_handler::DumpManager> dumpManager,
-    std::shared_ptr<crash_handler::DataSourceRegistry> dataSourceRegistry) {
+void ArangodServer::addFeatures(int* ret) {
   // Adding the Phases - these must come first and in this order
   addFeature<AgencyFeaturePhase>();
   auto& comm = addFeature<CommunicationFeaturePhase>();
@@ -113,10 +101,10 @@ void ArangodServer::addFeatures(
   addFeature<VersionFeature>();
   addFeature<ActionFeature>();
   addFeature<AgencyFeature>();
-  addFeature<ApiRecordingFeature>(dataSourceRegistry, metrics);
+  addFeature<ApiRecordingFeature>(_dataSourceRegistry, metrics);
   addFeature<AqlFeature>();
-  addFeature<async_registry::Feature>(dataSourceRegistry);
-  addFeature<activities::Feature>(dataSourceRegistry);
+  addFeature<async_registry::Feature>(_dataSourceRegistry);
+  addFeature<activities::Feature>(_dataSourceRegistry);
   addFeature<AuthenticationFeature>();
 
 #ifdef TRI_HAVE_GETRLIMIT
@@ -128,10 +116,10 @@ void ArangodServer::addFeatures(
   addFeature<CacheManagerFeature>(cacheOptions, sharedPRNGFeature.getPRNG());
   addFeature<CheckVersionFeature>(ret, kNonServerFeatures);
   auto& clusterFeature = addFeature<ClusterFeature>(metrics);
-  addFeature<CrashHandlerFeature>(dumpManager);
+  addFeature<CrashHandlerFeature>(_dumpManager);
   auto& database = addFeature<DatabaseFeature>();
   auto& clusterUpgradeFeature = addFeature<ClusterUpgradeFeature>(database);
-  addFeature<ConfigFeature>(std::string{binaryName});
+  addFeature<ConfigFeature>(std::string{_binaryName});
 #ifdef USE_V8
   addFeature<ConsoleFeature>();
   auto& v8DealerFeature = addFeature<V8DealerFeature>(metrics);
@@ -180,7 +168,7 @@ void ArangodServer::addFeatures(
       addFeature<SchedulerFeature>(metrics, sharedPRNGFeature.getPRNG());
   addFeature<VectorIndexFeature>(database);
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  addFeature<ProcessEnvironmentFeature>(std::string{binaryName});
+  addFeature<ProcessEnvironmentFeature>(std::string{_binaryName});
 #endif
 #ifdef USE_V8
   addFeature<ScriptFeature>(ret);
@@ -200,7 +188,7 @@ void ArangodServer::addFeatures(
   addFeature<SoftShutdownFeature>();
   addFeature<SslFeature>();
   addFeature<StatisticsFeature>(metrics);
-  addFeature<TempFeature>(std::string{binaryName});
+  addFeature<TempFeature>(std::string{_binaryName});
   addFeature<TtlFeature>();
   addFeature<UpgradeFeature>(ret, kNonServerFeatures);
   addFeature<transaction::ManagerFeature>(metrics);

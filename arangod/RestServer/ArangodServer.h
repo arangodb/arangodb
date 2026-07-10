@@ -33,22 +33,20 @@ namespace arangodb {
 // ArangodServer - the main server class for arangod
 class ArangodServer : public application_features::ApplicationServer {
  public:
-  ArangodServer(std::shared_ptr<options::ProgramOptions> options,
-                char const* binaryPath)
-      : ApplicationServer(options, binaryPath), _programOptions(options) {}
+  ArangodServer(
+      std::shared_ptr<options::ProgramOptions> options, char const* binaryPath,
+      std::string_view binaryName,
+      std::shared_ptr<crash_handler::DumpManager> dumpManager,
+      std::shared_ptr<crash_handler::DataSourceRegistry> dataSourceRegistry)
+      : ApplicationServer(options, binaryPath),
+        _programOptions(options),
+        _binaryName(binaryName),
+        _dumpManager(dumpManager),
+        _dataSourceRegistry(dataSourceRegistry) {}
 
   // Adds all features to the server. Must be called before run().
   // @param ret pointer to return value (used by some features)
-  // @param binaryName name of the binary (used by some features)
-  void addFeatures(
-      int* ret, std::string_view binaryName,
-      std::shared_ptr<crash_handler::DumpManager> dumpManager,
-      std::shared_ptr<crash_handler::DataSourceRegistry> dataSourceRegistry);
-
-  void setAddFeaturesWithOptionProviderDependencies(
-      std::string_view binaryName,
-      std::shared_ptr<crash_handler::DumpManager>& dumpManager,
-      std::shared_ptr<crash_handler::DataSourceRegistry>& dataSourceRegistry);
+  void addFeatures(int* ret);
 
  protected:
   void collectOptions() final;

@@ -59,7 +59,8 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
         "For more information use:", SBIN_DIRECTORY);
 
     int ret{EXIT_FAILURE};
-    ArangodServer server{options, SBIN_DIRECTORY};
+    ArangodServer server{options, SBIN_DIRECTORY, name, crashDumpManager,
+                         dataSourceRegistry};
     ServerState state{server};
 
     server.addReporter(
@@ -74,10 +75,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
          },
          {}});
 
-    server.addFeatures(&ret, name, crashDumpManager, dataSourceRegistry);
-
-    server.setAddFeaturesWithOptionProviderDependencies(name, crashDumpManager,
-                                                        dataSourceRegistry);
+    server.addFeatures(&ret);
 
     try {
       server.run(argc, argv);
