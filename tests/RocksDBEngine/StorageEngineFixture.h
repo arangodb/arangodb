@@ -131,9 +131,9 @@ class StorageEngineFixture : public ::testing::Test {
   FakeScheduler _scheduler{_server};
   TestSchedulerProvider _schedulerProvider{_scheduler};
 
-  RocksDBEngine _engine{_server,       _optionsProvider, _metricsRegistry,
-                        _dbPath,       _vectorIdx,       _flush,
-                        _dumpLimits,   &_logProvider,    _schedulerProvider,
+  RocksDBEngine _engine{_server,       _optionsProvider,  _metricsRegistry,
+                        _dbPath,       _vectorIdx,        _flush,
+                        _dumpLimits,   &_logProvider,     _schedulerProvider,
                         _dbProvider,   _indexCacheRefill, _cacheManager,
                         _sortingPolicy};
 };
