@@ -53,6 +53,21 @@ function ReplicationForwardingSuite() {
     return {shard, server};
   };
 
+  // Helper used by the "other forwarded commands are forbidden" tests below:
+  // connects as the read-only user, issues the request built by `makeRequest`
+  // (which receives the "?DBserver=...&collection=..." query string) and
+  // asserts that it is rejected with a 403.
+  const checkForwardIsForbidden = function (makeRequest) {
+    const {shard, server} = locateShard();
+    const q = `?DBserver=${encodeURIComponent(server)}&collection=${encodeURIComponent(shard)}`;
+
+    arango.reconnect(IM.endpoint, dbName, roUser, 'foobar');
+    const result = makeRequest(q);
+
+    assertTrue(result.error, JSON.stringify(result));
+    assertEqual(403, result.code, JSON.stringify(result));
+  };
+
   return {
     setUpAll: function () {
       try { users.remove(roUser); } catch (err) {}
@@ -67,7 +82,7 @@ function ReplicationForwardingSuite() {
       users.save(roUser, "foobar");
       users.save(rwUser, "foobar");
       users.grantDatabase(rwUser, dbName);
-      users.grantCollection(rwUser, dbName, "*");
+      users.grantCollection(rwUser, dbName, "*", 'rw');
       users.grantDatabase(roUser, dbName, 'ro');
       users.grantCollection(roUser, dbName, cn, 'none');
       users.reload();
@@ -109,30 +124,44 @@ function ReplicationForwardingSuite() {
 
     // The remaining replication commands do not support the DBserver forward
     // either, so they must reject the DBserver parameter.
-    testOtherForwardedCommandsAreForbidden: function () {
-      const {shard, server} = locateShard();
-      const q = `?DBserver=${encodeURIComponent(server)}&collection=${encodeURIComponent(shard)}`;
+    testRestoreIndexesForwardIsForbidden: function () {
+      checkForwardIsForbidden((q) => arango.PUT(`/_api/replication/restore-indexes${q}`, {}));
+    },
 
-      arango.reconnect(IM.endpoint, dbName, roUser, 'foobar');
+    testRestoreViewForwardIsForbidden: function () {
+      checkForwardIsForbidden((q) => arango.PUT(`/_api/replication/restore-view${q}`, {}));
+    },
 
-      const cases = [
-        () => arango.PUT(`/_api/replication/restore-indexes${q}`, {}),
-        () => arango.PUT(`/_api/replication/restore-view${q}`, {}),
-        () => arango.PUT(`/_api/replication/sync${q}`, {endpoint: "tcp://127.0.0.1:1", database: dbName}),
-        () => arango.PUT(`/_api/replication/applier-start${q}`, {}),
-        () => arango.PUT(`/_api/replication/applier-stop${q}`, {}),
-        () => arango.PUT(`/_api/replication/applier-config${q}`, {}),
-        () => arango.PUT(`/_api/replication/make-follower${q}`, {}),
-        () => arango.PUT(`/_api/replication/addFollower${q}`, {}),
-        () => arango.PUT(`/_api/replication/removeFollower${q}`, {}),
-        () => arango.PUT(`/_api/replication/set-the-leader${q}`, {}),
-      ];
+    testSyncForwardIsForbidden: function () {
+      checkForwardIsForbidden((q) => arango.PUT(`/_api/replication/sync${q}`, {endpoint: "tcp://127.0.0.1:1", database: dbName}));
+    },
 
-      cases.forEach((fn, i) => {
-        const result = fn();
-        assertTrue(result.error, `case ${i}: ${JSON.stringify(result)}`);
-        assertEqual(403, result.code, `case ${i}: ${JSON.stringify(result)}`);
-      });
+    testApplierStartForwardIsForbidden: function () {
+      checkForwardIsForbidden((q) => arango.PUT(`/_api/replication/applier-start${q}`, {}));
+    },
+
+    testApplierStopForwardIsForbidden: function () {
+      checkForwardIsForbidden((q) => arango.PUT(`/_api/replication/applier-stop${q}`, {}));
+    },
+
+    testApplierConfigForwardIsForbidden: function () {
+      checkForwardIsForbidden((q) => arango.PUT(`/_api/replication/applier-config${q}`, {}));
+    },
+
+    testMakeFollowerForwardIsForbidden: function () {
+      checkForwardIsForbidden((q) => arango.PUT(`/_api/replication/make-follower${q}`, {}));
+    },
+
+    testAddFollowerForwardIsForbidden: function () {
+      checkForwardIsForbidden((q) => arango.PUT(`/_api/replication/addFollower${q}`, {}));
+    },
+
+    testRemoveFollowerForwardIsForbidden: function () {
+      checkForwardIsForbidden((q) => arango.PUT(`/_api/replication/removeFollower${q}`, {}));
+    },
+
+    testSetTheLeaderForwardIsForbidden: function () {
+      checkForwardIsForbidden((q) => arango.PUT(`/_api/replication/set-the-leader${q}`, {}));
     },
 
     // batch supports the DBserver forward: an authorized user can create a
