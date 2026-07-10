@@ -27,6 +27,7 @@
 #include "CrashHandler/DataSource.h"
 #include "CrashHandler/DataSourceRegistry.h"
 #include "Containers/Forest/forest.h"
+#include "SystemMonitor/AsyncRegistry/FeatureOptions.h"
 #include "SystemMonitor/AsyncRegistry/Metrics.h"
 
 namespace arangodb::async_registry {
@@ -39,12 +40,15 @@ VPackBuilder serialize(
 class Feature final : public application_features::ApplicationFeature,
                       public crash_handler::CrashHandlerDataSource {
  private:
-  static auto create_metrics(arangodb::metrics::MetricsFeature& metrics_feature)
+  static auto create_metrics(arangodb::metrics::IRegistry& registry)
       -> std::shared_ptr<RegistryMetrics>;
 
  public:
   static constexpr std::string_view name() { return "AsyncRegistry"; }
 
+  Feature(application_features::ApplicationServer& server,
+          std::shared_ptr<crash_handler::DataSourceRegistry> dataSourceRegistry,
+          FeatureOptions options);
   Feature(
       application_features::ApplicationServer& server,
       std::shared_ptr<crash_handler::DataSourceRegistry> dataSourceRegistry);
@@ -60,10 +64,7 @@ class Feature final : public application_features::ApplicationFeature,
   std::string_view getDataSourceName() const override;
 
  private:
-  struct Options {
-    size_t gc_timeout{1};
-  };
-  Options _options;
+  FeatureOptions _options;
 
   std::shared_ptr<RegistryMetrics> _metrics;
 

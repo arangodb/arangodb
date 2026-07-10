@@ -24,7 +24,6 @@
 
 #include "Auth/Common.h"
 #include "Basics/Result.h"
-#include "Basics/ReadWriteLock.h"
 #include "Containers/SmallVector.h"
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/Identifiers/DataSourceId.h"
@@ -33,7 +32,6 @@
 
 #include <velocypack/Buffer.h>
 #include <functional>
-#include <span>
 
 namespace arangodb {
 namespace velocypack {
@@ -88,7 +86,7 @@ class LogicalView : public LogicalDataSource {
   /// @param isUserRequest creation request is coming from a user
   /// @return success and sets 'view' or failure
   //////////////////////////////////////////////////////////////////////////////
-  static Result create(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
+  static Result create(LogicalView::ptr& view, Database& vocbase,
                        velocypack::Slice definition, bool isUserRequest);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -102,7 +100,7 @@ class LogicalView : public LogicalDataSource {
   /// @return full enumeration finished successfully
   //////////////////////////////////////////////////////////////////////////////
   static bool enumerate(
-      TRI_vocbase_t& vocbase,
+      Database& vocbase,
       std::function<bool(std::shared_ptr<LogicalView> const&)> const& callback);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -111,7 +109,7 @@ class LogicalView : public LogicalDataSource {
   /// @param definition the view definition
   /// @return view instance or nullptr on error
   //////////////////////////////////////////////////////////////////////////////
-  static Result instantiate(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
+  static Result instantiate(LogicalView::ptr& view, Database& vocbase,
                             velocypack::Slice definition, bool isUserRequest);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -156,9 +154,8 @@ class LogicalView : public LogicalDataSource {
   virtual Result renameImpl(std::string const& oldName) = 0;
 
  private:
-  LogicalView(std::pair<ViewType, std::string_view> typeInfo,
-              TRI_vocbase_t& vocbase, velocypack::Slice definition,
-              bool isUserRequest);
+  LogicalView(std::pair<ViewType, std::string_view> typeInfo, Database& vocbase,
+              velocypack::Slice definition, bool isUserRequest);
 
   std::pair<ViewType, std::string_view> _typeInfo;
 };
@@ -168,7 +165,7 @@ class LogicalView : public LogicalDataSource {
 ////////////////////////////////////////////////////////////////////////////////
 namespace cluster_helper {
 
-Result construct(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
+Result construct(LogicalView::ptr& view, Database& vocbase,
                  velocypack::Slice definition, bool isUserRequest) noexcept;
 
 Result drop(LogicalView const& view) noexcept;
@@ -182,7 +179,7 @@ Result properties(LogicalView const& view, bool safe) noexcept;
 ////////////////////////////////////////////////////////////////////////////////
 namespace storage_helper {
 
-Result construct(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
+Result construct(LogicalView::ptr& view, Database& vocbase,
                  velocypack::Slice definition, bool isUserRequest) noexcept;
 
 Result drop(LogicalView const& view) noexcept;

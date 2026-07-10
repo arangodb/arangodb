@@ -23,24 +23,18 @@
 
 #pragma once
 
+#include "Aql/QueryString.h"
+#include "Basics/ReadWriteLock.h"
+
 #include <memory>
 #include <mutex>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
-#include "Aql/QueryString.h"
-#include "Basics/ReadWriteLock.h"
-
-struct TRI_vocbase_t;
-
 namespace arangodb {
-
-class LogicalDataSource;  // forward declaration
-
-}
-
-namespace arangodb {
+struct Database;
+class LogicalDataSource;
 namespace velocypack {
 class Builder;
 class Slice;
@@ -207,22 +201,21 @@ class QueryCache {
 
   /// @brief lookup a query result in the cache
   std::shared_ptr<QueryCacheResultEntry> lookup(
-      TRI_vocbase_t* vocbase, uint64_t hash, QueryString const& queryString,
+      Database* vocbase, uint64_t hash, QueryString const& queryString,
       std::shared_ptr<arangodb::velocypack::Builder> const& bindVars) const;
 
   /// @brief store a query cache entry in the cache
-  void store(TRI_vocbase_t* vocbase,
-             std::shared_ptr<QueryCacheResultEntry> entry);
+  void store(Database* vocbase, std::shared_ptr<QueryCacheResultEntry> entry);
 
   /// @brief invalidate all queries for the given data sources
-  void invalidate(TRI_vocbase_t* vocbase,
+  void invalidate(Database* vocbase,
                   std::vector<std::string> const& dataSourceGuids);
 
   /// @brief invalidate all queries for a particular data source
-  void invalidate(TRI_vocbase_t* vocbase, std::string const& dataSourceGuid);
+  void invalidate(Database* vocbase, std::string const& dataSourceGuid);
 
   /// @brief invalidate all queries for a particular database
-  void invalidate(TRI_vocbase_t* vocbase);
+  void invalidate(Database* vocbase);
 
   /// @brief invalidate all queries
   void invalidate();
@@ -231,7 +224,7 @@ class QueryCache {
   static QueryCache* instance();
 
   /// @brief create a velocypack representation of the queries in the cache
-  void queriesToVelocyPack(TRI_vocbase_t* vocbase,
+  void queriesToVelocyPack(Database* vocbase,
                            arangodb::velocypack::Builder& builder) const;
 
  private:
@@ -263,7 +256,7 @@ class QueryCache {
   void setMode(QueryCacheMode);
 
   /// @brief determine which part of the cache to use for the cache entries
-  unsigned int getPart(TRI_vocbase_t const*) const;
+  unsigned int getPart(Database const*) const;
 
  private:
   /// @brief number of R/W locks for the query cache
@@ -276,7 +269,7 @@ class QueryCache {
   mutable arangodb::basics::ReadWriteLock _entriesLock[numberOfParts];
 
   /// @brief cached query entries, organized per database
-  std::unordered_map<TRI_vocbase_t*, std::unique_ptr<QueryCacheDatabaseEntry>>
+  std::unordered_map<Database*, std::unique_ptr<QueryCacheDatabaseEntry>>
       _entries[numberOfParts];
 };
 }  // namespace aql

@@ -42,9 +42,9 @@
 #include "V8/V8PlatformFeature.h"
 
 struct TRI_v8_global_t;
-struct TRI_vocbase_t;
 
 namespace arangodb {
+struct Database;
 class V8SecurityFeature;
 class HttpEndpointProvider;
 class EncryptionFeature;
@@ -514,10 +514,10 @@ struct TRI_v8_global_t {
   /// @brief replicated log template
   v8::Persistent<v8::ObjectTemplate> VocbaseReplicatedLogTempl;
 
-  /// @brief TRI_vocbase_t template
+  /// @brief Database template
   v8::Persistent<v8::ObjectTemplate> VocbaseTempl;
 
-  /// @brief TRI_vocbase_t template
+  /// @brief Database template
   v8::Persistent<v8::ObjectTemplate> EnvTempl;
 
   /// @brief users template
@@ -797,8 +797,8 @@ struct TRI_v8_global_t {
   /// @brief current AQL expressionContext
   void* _expressionContext;
 
-  /// @brief pointer to the vocbase (TRI_vocbase_t*)
-  TRI_vocbase_t* _vocbase;
+  /// @brief pointer to the vocbase (Database*)
+  arangodb::Database* _vocbase;
 
   /// @brief number of v8 externals used in the context
   int64_t _activeExternals;

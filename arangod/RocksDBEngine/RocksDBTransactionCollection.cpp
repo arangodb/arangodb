@@ -23,7 +23,6 @@
 
 #include "RocksDBTransactionCollection.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/system-compiler.h"
 #include "Cluster/ServerState.h"
@@ -34,9 +33,7 @@
 #include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBIndex.h"
-#include "RocksDBEngine/RocksDBIndexCacheRefillFeature.h"
 #include "RocksDBEngine/RocksDBMetaCollection.h"
-#include "Statistics/TransactionStatistics.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Hints.h"
 #include "Transaction/Methods.h"
@@ -322,9 +319,8 @@ void RocksDBTransactionCollection::handleIndexCacheRefills() {
     return;
   }
 
-  auto& refiller = _collection->vocbase()
-                       .server()
-                       .getFeature<RocksDBIndexCacheRefillFeature>();
+  auto& refiller =
+      _collection->vocbase().engine<RocksDBEngine>().getIndexCacheRefill();
 
   for (auto const& it : _trackedCacheRefills) {
     refiller.trackRefill(_collection, it.first, std::move(it.second));

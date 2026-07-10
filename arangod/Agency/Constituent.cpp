@@ -39,7 +39,6 @@
 #include "Utils/OperationOptions.h"
 #include "Utils/OperationResult.h"
 #include "Utils/SingleCollectionTransaction.h"
-#include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Iterator.h>
@@ -68,7 +67,7 @@ void Constituent::configure(Agent* agent) {
 
 // Default ctor
 Constituent::Constituent(application_features::ApplicationServer& server)
-    : Thread(server, "Constituent"),
+    : Thread("Constituent"),
       _vocbase(nullptr),
       _term(0),
       _gterm(server.getFeature<metrics::MetricsFeature>().add(

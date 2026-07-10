@@ -27,6 +27,7 @@
 
 #include "Cluster/Maintenance.h"
 #include "MaintenanceFeature.h"
+#include "Cluster/MaintenanceOptionsProvider.h"
 
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/GaugeBuilder.h"
@@ -165,9 +166,14 @@ arangodb::Result arangodb::maintenance::collectionCount(
 
 MaintenanceFeature::MaintenanceFeature(ApplicationServer& server,
                                        ClusterFeature* clusterFeature)
+    : MaintenanceFeature(server, clusterFeature, MaintenanceOptions{}) {}
+
+MaintenanceFeature::MaintenanceFeature(ApplicationServer& server,
+                                       ClusterFeature* clusterFeature,
+                                       MaintenanceOptions options)
     : application_features::ApplicationFeature{server, *this},
       _clusterFeature(clusterFeature),
-      _options(),
+      _options(std::move(options)),
       _firstRun(true),
       _isShuttingDown(false),
       _nextActionId(1),
@@ -193,118 +199,19 @@ MaintenanceFeature::~MaintenanceFeature() { stop(); }
 void MaintenanceFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
   // Initialize default values that depend on system state
-  // Corresponds to lines 167-170 in MaintenanceFeature constructor
   _options.maintenanceThreadsMax =
       (std::max)(static_cast<uint32_t>(3),  // minThreadLimit
                  static_cast<uint32_t>(NumberOfCores::getValue() / 4 + 1));
   _options.maintenanceThreadsSlowMax = _options.maintenanceThreadsMax / 2;
 
-  options->addOption(
-      "--server.maintenance-threads",
-      "The maximum number of threads available for maintenance actions.",
-      new UInt32Parameter(&_options.maintenanceThreadsMax),
-      arangodb::options::makeFlags(
-          arangodb::options::Flags::DefaultNoComponents,
-          arangodb::options::Flags::OnDBServer,
-          arangodb::options::Flags::Uncommon,
-          arangodb::options::Flags::Dynamic));
-
-  options
-      ->addOption(
-          "--server.maximal-number-sync-shard-actions",
-          "The maximum number of SynchronizeShard actions which may be queued "
-          "at any given time.",
-          new UInt64Parameter(&_options.maximalNumberOfSyncShardActionsQueued,
-                              1, 1, std::numeric_limits<uint64_t>::max()),
-          arangodb::options::makeFlags(
-              arangodb::options::Flags::DefaultNoComponents,
-              arangodb::options::Flags::OnDBServer,
-              arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(31205);
-
-  options
-      ->addOption("--server.maintenance-slow-threads",
-                  "The maximum number of threads available for slow "
-                  "maintenance actions (long SynchronizeShard and long "
-                  "EnsureIndex).",
-                  new UInt32Parameter(&_options.maintenanceThreadsSlowMax),
-                  arangodb::options::makeFlags(
-                      arangodb::options::Flags::DefaultNoComponents,
-                      arangodb::options::Flags::OnDBServer,
-                      arangodb::options::Flags::Uncommon,
-                      arangodb::options::Flags::Dynamic))
-      .setIntroducedIn(30803);
-
-  options->addOption(
-      "--server.maintenance-actions-block",
-      "The minimum number of seconds finished actions block duplicates.",
-      new Int32Parameter(&_options.secondsActionsBlock),
-      arangodb::options::makeFlags(
-          arangodb::options::Flags::DefaultNoComponents,
-          arangodb::options::Flags::OnDBServer,
-          arangodb::options::Flags::Uncommon));
-
-  options->addOption(
-      "--server.maintenance-actions-linger",
-      "The minimum number of seconds finished actions remain in the deque.",
-      new Int32Parameter(&_options.secondsActionsLinger),
-      arangodb::options::makeFlags(
-          arangodb::options::Flags::DefaultNoComponents,
-          arangodb::options::Flags::OnDBServer,
-          arangodb::options::Flags::Uncommon));
-
-  options->addOption(
-      "--cluster.resign-leadership-on-shutdown",
-      "Create a resign leader ship job for this DB-Server on shutdown.",
-      new BooleanParameter(&_options.resignLeadershipOnShutdown),
-      arangodb::options::makeFlags(
-          arangodb::options::Flags::DefaultNoComponents,
-          arangodb::options::Flags::OnDBServer,
-          arangodb::options::Flags::Uncommon));
+  MaintenanceOptionsProvider provider;
+  provider.declareOptions(options, _options);
 }
 
 void MaintenanceFeature::validateOptions(
     std::shared_ptr<ProgramOptions> options) {
-  // Corresponds to lines 260-294 in MaintenanceFeature::validateOptions
-
-  // Explanation: There must always be at least 3 maintenance threads.
-  // The first one only does actions which are labelled "fast track".
-  // The next few threads do "slower" actions, but never work on very slow
-  // actions which came into being by rescheduling. If they stumble on
-  // an actions which seems to take long, they give up and reschedule
-  // with a special slow priority, such that the action is eventually
-  // executed by the slow threads. We can configure both the total number
-  // of threads as well as the number of slow threads. The number of slow
-  // threads must always be at most N-2 if N is the total number of threads.
-  // The default for the slow threads is N/2, unless the user has used
-  // an override.
-  constexpr uint32_t minThreadLimit = 3;
-  constexpr uint32_t maxThreadLimit = 64;
-
-  if (_options.maintenanceThreadsMax < minThreadLimit) {
-    LOG_TOPIC("37726", WARN, Logger::MAINTENANCE)
-        << "Need at least" << minThreadLimit << "maintenance-threads";
-    _options.maintenanceThreadsMax = minThreadLimit;
-  } else if (_options.maintenanceThreadsMax > maxThreadLimit) {
-    LOG_TOPIC("8fb0e", WARN, Logger::MAINTENANCE)
-        << "maintenance-threads limited to " << maxThreadLimit;
-    _options.maintenanceThreadsMax = maxThreadLimit;
-  }
-  if (!options->processingResult().touched("server.maintenance-slow-threads")) {
-    _options.maintenanceThreadsSlowMax = _options.maintenanceThreadsMax / 2;
-  }
-  if (_options.maintenanceThreadsSlowMax + 2 > _options.maintenanceThreadsMax) {
-    _options.maintenanceThreadsSlowMax = _options.maintenanceThreadsMax - 2;
-    LOG_TOPIC("54251", WARN, Logger::MAINTENANCE)
-        << "maintenance-slow-threads limited to "
-        << _options.maintenanceThreadsSlowMax;
-  }
-  if (_options.maintenanceThreadsSlowMax == 0) {
-    _options.maintenanceThreadsSlowMax = 1;
-    LOG_TOPIC("54252", WARN, Logger::MAINTENANCE)
-        << "maintenance-slow-threads raised to "
-        << _options.maintenanceThreadsSlowMax;
-  }
+  MaintenanceOptionsProvider provider;
+  provider.validateOptions(options, _options);
 }
 
 void MaintenanceFeature::prepare() {
@@ -325,32 +232,33 @@ void MaintenanceFeature::initializeMetrics() {
     // This actually is only necessary because of tests
     return;
   }
-  auto& metricsFeature = server().getFeature<metrics::MetricsFeature>();
+  metrics::IRegistry& metricsRegistry =
+      server().getFeature<metrics::MetricsFeature>();
 
   _phase1_runtime_msec =
-      &metricsFeature.add(arangodb_maintenance_phase1_runtime_msec{});
+      &metricsRegistry.add(arangodb_maintenance_phase1_runtime_msec{});
   _phase2_runtime_msec =
-      &metricsFeature.add(arangodb_maintenance_phase2_runtime_msec{});
+      &metricsRegistry.add(arangodb_maintenance_phase2_runtime_msec{});
   _agency_sync_total_runtime_msec =
-      &metricsFeature.add(arangodb_maintenance_agency_sync_runtime_msec{});
+      &metricsRegistry.add(arangodb_maintenance_agency_sync_runtime_msec{});
 
-  _shards_out_of_sync = &metricsFeature.add(arangodb_shards_out_of_sync{});
-  _shards_total_count = &metricsFeature.add(arangodb_shards_number{});
-  _shards_leader_count = &metricsFeature.add(arangodb_shards_leader_number{});
+  _shards_out_of_sync = &metricsRegistry.add(arangodb_shards_out_of_sync{});
+  _shards_total_count = &metricsRegistry.add(arangodb_shards_number{});
+  _shards_leader_count = &metricsRegistry.add(arangodb_shards_leader_number{});
   _shards_follower_count =
-      &metricsFeature.add(arangodb_shards_follower_number{});
+      &metricsRegistry.add(arangodb_shards_follower_number{});
   _followers_out_of_sync_count =
-      &metricsFeature.add(arangodb_shard_followers_out_of_sync_number{});
+      &metricsRegistry.add(arangodb_shard_followers_out_of_sync_number{});
   _shards_not_replicated_count =
-      &metricsFeature.add(arangodb_shards_not_replicated{});
-  _sync_timeouts_total = &metricsFeature.add(arangodb_sync_timeouts_total{});
+      &metricsRegistry.add(arangodb_shards_not_replicated{});
+  _sync_timeouts_total = &metricsRegistry.add(arangodb_sync_timeouts_total{});
 
   _action_duplicated_counter =
-      &metricsFeature.add(arangodb_maintenance_action_duplicate_total{});
+      &metricsRegistry.add(arangodb_maintenance_action_duplicate_total{});
   _action_registered_counter =
-      &metricsFeature.add(arangodb_maintenance_action_registered_total{});
+      &metricsRegistry.add(arangodb_maintenance_action_registered_total{});
   _action_done_counter =
-      &metricsFeature.add(arangodb_maintenance_action_done_total{});
+      &metricsRegistry.add(arangodb_maintenance_action_done_total{});
 
   static constexpr const char* instrumentedActions[] = {
       CREATE_COLLECTION, CREATE_DATABASE, UPDATE_COLLECTION, SYNCHRONIZE_SHARD,
@@ -360,12 +268,12 @@ void MaintenanceFeature::initializeMetrics() {
   for (const char* action : instrumentedActions) {
     _maintenance_job_metrics_map.try_emplace(
         action,
-        metricsFeature.add(
+        metricsRegistry.add(
             arangodb_maintenance_action_runtime_msec{}.withLabel(key, action)),
-        metricsFeature.add(
+        metricsRegistry.add(
             arangodb_maintenance_action_queue_time_msec{}.withLabel(key,
                                                                     action)),
-        metricsFeature.add(
+        metricsRegistry.add(
             arangodb_maintenance_action_failure_total{}.withLabel(key,
                                                                   action)));
   }

@@ -46,4 +46,6 @@ class Histogram;
 
 class MetricsFeature;
 
+struct IRegistry;
+
 }  // namespace arangodb::metrics

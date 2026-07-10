@@ -6,7 +6,7 @@ var isMatcher = require("./is-matcher");
  * Throws a TypeError when `value` is not a matcher
  *
  * @private
- * @param {*} value The value to examine
+ * @param {unknown} value The value to examine
  */
 function assertMatcher(value) {
     if (!isMatcher(value)) {

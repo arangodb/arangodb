@@ -28,6 +28,7 @@
 #include "Basics/Result.h"
 #include "Futures/Future.h"
 #include "ProgramOptions/ProgramOptions.h"
+#include "VectorIndex/IVectorIndexProvider.h"
 #include "VectorIndex/VectorIndexBuildManager.h"
 #include "VocBase/Identifiers/IndexId.h"
 
@@ -36,7 +37,8 @@ namespace arangodb {
 class DatabaseFeature;
 
 class VectorIndexFeature final
-    : public application_features::ApplicationFeature {
+    : public application_features::ApplicationFeature,
+      public IVectorIndexProvider {
  public:
   VectorIndexFeature(application_features::ApplicationServer& server,
                      DatabaseFeature& databaseFeature);
@@ -51,7 +53,7 @@ class VectorIndexFeature final
 
   void stop() override final;
 
-  bool isVectorIndexEnabled() const;
+  bool isVectorIndexEnabled() const noexcept override final;
 
   // Wait until the given vector index is trained. On single server or
   // DBServer, returns a future that resolves when the build manager finishes

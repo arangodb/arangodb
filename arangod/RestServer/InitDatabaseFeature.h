@@ -37,6 +37,9 @@ class InitDatabaseFeature final
   static constexpr std::string_view name() noexcept { return "InitDatabase"; }
 
   InitDatabaseFeature(application_features::ApplicationServer& server,
+                      std::span<const std::type_index> nonServerFeatures,
+                      InitDatabaseFeatureOptions options);
+  InitDatabaseFeature(application_features::ApplicationServer& server,
                       std::span<const std::type_index> nonServerFeatures);
 
   std::string const& defaultPassword() const { return _options.password; }

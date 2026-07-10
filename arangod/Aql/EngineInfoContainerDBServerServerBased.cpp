@@ -41,6 +41,7 @@
 #include "Transaction/Methods.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/ExecContext.h"
+#include "VocBase/vocbase.h"
 
 #include <velocypack/Collection.h>
 

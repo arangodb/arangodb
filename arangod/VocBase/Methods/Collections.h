@@ -25,18 +25,18 @@
 
 #include "Basics/Result.h"
 #include "Futures/Future.h"
-#include "Transaction/Hints.h"
 #include "Utils/OperationResult.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/Identifiers/RevisionId.h"
+#include "VocBase/Properties/DatabaseConfiguration.h"
 #include "VocBase/voc-types.h"
-#include "VocBase/vocbase.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 #include <functional>
 
 namespace arangodb {
+struct Database;
 class ClusterFeature;
 class LogicalCollection;
 struct CollectionCreationInfo;
@@ -88,27 +88,27 @@ struct Collections {
 
   /// @brief returns all collections, sorted by names
   static std::vector<std::shared_ptr<LogicalCollection>> sorted(
-      TRI_vocbase_t& vocbase);
+      Database& vocbase);
 
   static void enumerate(
-      TRI_vocbase_t* vocbase,
+      Database* vocbase,
       std::function<void(std::shared_ptr<LogicalCollection> const&)> const&);
 
   static std::vector<std::shared_ptr<LogicalCollection>> getNotDeleted(
-      const TRI_vocbase_t& vocbase);
+      const Database& vocbase);
 
   /// @brief lookup a collection in vocbase or clusterinfo.
-  static Result lookup(              // find collection
-      TRI_vocbase_t const& vocbase,  // vocbase to search
-      std::string const& name,       // collection name
+  static Result lookup(         // find collection
+      Database const& vocbase,  // vocbase to search
+      std::string const& name,  // collection name
       std::shared_ptr<LogicalCollection>& ret);
 
   /// Create collection, ownership of collection in callback is
   /// transferred to callee
   [[nodiscard]] static arangodb::ResultT<
       std::vector<std::shared_ptr<LogicalCollection>>>
-  create(                      // create collection
-      TRI_vocbase_t& vocbase,  // collection vocbase
+  create(                 // create collection
+      Database& vocbase,  // collection vocbase
       OperationOptions const& options,
       std::vector<CreateCollectionBody> collections,  // Collections to create
       bool createWaitsForSyncReplication,             // replication wait flag
@@ -120,7 +120,7 @@ struct Collections {
   /// Create shard, can only be used on DBServers.
   /// Should only be called by Maintenance.
   [[nodiscard]] static arangodb::Result createShard(
-      TRI_vocbase_t& vocbase,  // shard database
+      Database& vocbase,  // shard database
       OperationOptions const& options,
       ShardID const& name,                     // shard name
       TRI_col_type_e collectionType,           // shard type
@@ -128,15 +128,15 @@ struct Collections {
       std::shared_ptr<LogicalCollection>& ret  // ReturnValue: created Shard
   );
 
-  static Result createSystem(TRI_vocbase_t& vocbase, OperationOptions const&,
+  static Result createSystem(Database& vocbase, OperationOptions const&,
                              std::string const& name, bool isNewDatabase,
                              std::shared_ptr<LogicalCollection>& ret);
   static void createSystemCollectionProperties(
       std::string const& collectionName, VPackBuilder& builder,
-      TRI_vocbase_t const&);
+      Database const&);
 
   static void applySystemCollectionProperties(
-      CreateCollectionBody& col, TRI_vocbase_t const& vocbase,
+      CreateCollectionBody& col, Database const& vocbase,
       DatabaseConfiguration const& config, bool isLegacyDatabase);
 
   static futures::Future<Result> properties(Context& ctxt,
@@ -152,7 +152,7 @@ struct Collections {
       arangodb::LogicalCollection& coll,  // collection to drop
       arangodb::CollectionDropOptions options);
 
-  static futures::Future<Result> warmup(TRI_vocbase_t& vocbase,
+  static futures::Future<Result> warmup(Database& vocbase,
                                         LogicalCollection const& coll);
 
   static futures::Future<OperationResult> revisionId(

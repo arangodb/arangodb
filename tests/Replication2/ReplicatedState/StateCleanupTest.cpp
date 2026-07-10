@@ -23,6 +23,7 @@
 
 #include <gtest/gtest.h>
 
+#include "Mocks/FakeRegistry.h"
 #include "Replication2/ReplicatedLog/TestHelper.h"
 
 #include "Replication2/ReplicatedState/ReplicatedState.h"
@@ -32,7 +33,6 @@
 #include "Replication2/Mocks/FakeReplicatedState.h"
 #include "Replication2/Mocks/FakeLeader.h"
 
-#include "Replication2/Mocks/ReplicatedStateMetricsMock.h"
 #include "Replication2/ReplicatedState/ReplicatedStateFeature.h"
 #include "Replication2/Mocks/MockStatePersistorInterface.h"
 
@@ -74,8 +74,10 @@ struct ReplicatedStateCleanupTest : test::ReplicatedLogTest {
   std::shared_ptr<test::MockStatePersistorInterface> _persistor =
       std::make_shared<test::MockStatePersistorInterface>();
   LoggerContext const loggerCtx{Logger::REPLICATED_STATE};
+  metrics::FakeRegistry _fakeRegistry;
   std::shared_ptr<ReplicatedStateMetrics> _metrics =
-      std::make_shared<ReplicatedStateMetricsMock>("foo");
+      std::make_shared<replicated_state::ReplicatedStateMetrics>(_fakeRegistry,
+                                                                 "foo");
 };
 
 TEST_F(ReplicatedStateCleanupTest, complete_run_without_resign) {

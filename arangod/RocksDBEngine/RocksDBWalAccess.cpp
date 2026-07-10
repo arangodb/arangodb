@@ -25,7 +25,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
 #include "Replication/TailingSyncer.h"
-#include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
@@ -100,7 +99,7 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler,
  public:
   MyWALDumper(RocksDBEngine& engine, WalAccess::Filter const& filter,
               WalAccess::MarkerCallback const& f, size_t maxResponseSize)
-      : WalAccessContext(engine.getDatabaseFeature(), filter, f),
+      : WalAccessContext(engine.getDatabaseProvider(), filter, f),
         _engine(engine),
         _definitionsCF(RocksDBColumnFamilyManager::get(
                            RocksDBColumnFamilyManager::Family::Definitions)

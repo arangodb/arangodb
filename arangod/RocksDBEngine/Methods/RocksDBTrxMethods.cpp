@@ -31,7 +31,6 @@
 #include "RocksDBEngine/RocksDBMethodsMemoryTracker.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
-#include "Statistics/TransactionStatistics.h"
 
 #include <rocksdb/utilities/write_batch_with_index.h>
 

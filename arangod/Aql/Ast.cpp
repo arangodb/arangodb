@@ -53,6 +53,7 @@
 #include "Utilities/NameValidator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
+#include "VocBase/vocbase.h"
 
 #include <absl/strings/str_cat.h>
 

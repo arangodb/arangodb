@@ -52,7 +52,6 @@
 #include "Logger/LoggerStream.h"
 #include "Rest/CommonDefines.h"
 #include "Rest/Version.h"
-#include "RestServer/arangod.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -93,7 +92,7 @@ std::atomic<bool> licenseReadOnly(false);
 
 static ServerState* Instance = nullptr;
 
-ServerState::ServerState(ArangodServer& server)
+ServerState::ServerState(application_features::ApplicationServer& server)
     : _server(server),
       _role(RoleEnum::ROLE_UNDEFINED),
       _shortId(0),
@@ -146,7 +145,23 @@ void ServerState::findHost(std::string const& fallback) {
   _host = fallback;
 }
 
-ServerState::~ServerState() = default;
+ServerState::~ServerState() {
+  TRI_ASSERT(Instance == this);
+  Instance = nullptr;
+}
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+ScopedServerStateReset::ScopedServerStateReset() noexcept
+    : _previous(Instance) {
+  Instance = nullptr;
+}
+
+ScopedServerStateReset::~ScopedServerStateReset() {
+  // the ServerState created within this scope must already be gone
+  TRI_ASSERT(Instance == nullptr);
+  Instance = _previous;
+}
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the (sole) instance

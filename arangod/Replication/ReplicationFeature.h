@@ -28,14 +28,13 @@
 #include "Replication/ReplicationOptions.h"
 #include "SimpleHttpClient/ConnectionCache.h"
 
-struct TRI_vocbase_t;
-
 namespace arangodb {
 namespace application_features {
 class ApplicationServer;
 class CommunicationFeaturePhase;
 }  // namespace application_features
 
+struct Database;
 class GeneralResponse;
 class GlobalReplicationApplier;
 
@@ -47,7 +46,11 @@ class ReplicationFeature final
   ReplicationFeature(
       application_features::ApplicationServer& server,
       application_features::CommunicationFeaturePhase& commFeature,
-      metrics::MetricsFeature& metrics);
+      metrics::IRegistry& metricsRegistry, ReplicationOptions options);
+  ReplicationFeature(
+      application_features::ApplicationServer& server,
+      application_features::CommunicationFeaturePhase& commFeature,
+      metrics::IRegistry& metricsRegistry);
   ~ReplicationFeature();
 
   void collectOptions(
@@ -68,10 +71,10 @@ class ReplicationFeature final
   void disableReplicationApplier();
 
   /// @brief start the replication applier for a single database
-  void startApplier(TRI_vocbase_t* vocbase);
+  void startApplier(Database* vocbase);
 
   /// @brief stop the replication applier for a single database
-  void stopApplier(TRI_vocbase_t* vocbase);
+  void stopApplier(Database* vocbase);
 
   /// @brief returns the connect timeout for replication requests
   double connectTimeout() const;
@@ -120,20 +123,6 @@ class ReplicationFeature final
 
  private:
   ReplicationOptions _options;
-
-  /// @brief connection timeout for replication requests
-  double _connectTimeout;
-
-  /// @brief request timeout for replication requests
-  double _requestTimeout;
-
-  /// @brief whether or not the user-defined connect timeout is forced to be
-  /// used this is true only if the user set the connect timeout at startup
-  bool _forceConnectTimeout;
-
-  /// @brief whether or not the user-defined request timeout is forced to be
-  /// used this is true only if the user set the request timeout at startup
-  bool _forceRequestTimeout;
 
   /// @brief cache for reusable connections
   httpclient::ConnectionCache _connectionCache;

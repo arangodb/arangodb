@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, assertEqual, assertFalse, arango */
+/* global getOptions */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -27,7 +27,6 @@
 
 let db = require('internal').db;
 const protocols = ["tcp", "h2"];
-const user = "root";
 
 if (getOptions === true) {
   return {
@@ -35,24 +34,24 @@ if (getOptions === true) {
   };
 }
 const jsunity = require('jsunity');
-const request = require('@arangodb/request').request;
-
-let connectWith = function(protocol, user, password) {
-  let endpoint = arango.getEndpoint().replace(/^[a-zA-Z0-9\+]+:/, protocol + ':');
-  arango.reconnect(endpoint, db._name(), user, password);
-};
+const {assertEqual, assertTrue, assertFalse, assertNotEqual} = jsunity.jsUnity.assertions;
+const arango = require('@arangodb').arango;
+let IM = global.instanceManager;
 
 function testSuite() {
 
   return {
+    setUp: function() {
+      IM.rememberConnection();
+    },
 
     tearDown: function() {
-      connectWith(protocols[0], user, "");
+      IM.reconnectMe();
     },
 
     testHeader: function() {
       protocols.forEach((protocol) => {
-        connectWith(protocol, user, "");
+        arango.reconnect(IM.url.replace(/^[a-zA-Z0-9\+]+:/, protocol + ':'), db._name(), "root", "");
         let result = arango.GET_RAW("/_api/version");
         assertEqual(200, result.code);
         assertFalse(result.headers.hasOwnProperty('www-authenticate'));

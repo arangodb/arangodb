@@ -27,32 +27,31 @@
 
 #include <velocypack/Slice.h>
 
-struct TRI_vocbase_t;
-
+namespace arangodb {
+struct Database;
+}
 namespace arangodb::methods {
 
 /// Code to create and initialize databases
 /// Replaces upgrade-database.js for good
 struct UpgradeTasks {
-  static Result createSystemCollectionsAndIndices(TRI_vocbase_t& vocbase,
+  static Result createSystemCollectionsAndIndices(Database& vocbase,
                                                   velocypack::Slice slice);
-  static Result addDefaultUserOther(TRI_vocbase_t& vocbase,
-                                    velocypack::Slice slice);
-  static Result renameReplicationApplierStateFiles(TRI_vocbase_t& vocbase,
+  static Result addDefaultUserOther(Database& vocbase, velocypack::Slice slice);
+  static Result renameReplicationApplierStateFiles(Database& vocbase,
                                                    velocypack::Slice slice);
-  static Result dropLegacyAnalyzersCollection(TRI_vocbase_t& vocbase,
+  static Result dropLegacyAnalyzersCollection(Database& vocbase,
                                               velocypack::Slice slice);
-  static Result dropPregelQueriesCollection(TRI_vocbase_t& vocbase,
+  static Result dropPregelQueriesCollection(Database& vocbase,
                                             velocypack::Slice slice);
-  static Result dropOldStatisticsCollections(TRI_vocbase_t& vocbase,
+  static Result dropOldStatisticsCollections(Database& vocbase,
                                              velocypack::Slice slice);
-  static Result dropFulltextIndexes(TRI_vocbase_t& vocbase,
-                                    velocypack::Slice slice);
-  static Result migrateHashSkiplistToPersistent(TRI_vocbase_t& vocbase,
+  static Result dropFulltextIndexes(Database& vocbase, velocypack::Slice slice);
+  static Result migrateHashSkiplistToPersistent(Database& vocbase,
                                                 velocypack::Slice slice);
   // Version 4.* wants to drop legacy geo1/geo2 indexes, so 5.* can safely
   // remove geo1/geo2 implementations from the codebase
-  static Result dropLegacyGeoIndexes(TRI_vocbase_t& vocbase,
+  static Result dropLegacyGeoIndexes(Database& vocbase,
                                      velocypack::Slice /*slice*/);
 };
 

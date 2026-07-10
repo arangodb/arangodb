@@ -60,6 +60,8 @@ struct LoggerOptions {
   // Computed during validation
   bool apiEnabled = true;
 
+  bool threaded = false;
+
   LoggerOptions();
 };
 

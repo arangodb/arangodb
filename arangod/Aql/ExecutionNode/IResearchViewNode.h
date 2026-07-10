@@ -143,8 +143,7 @@ class IResearchViewNode final : public aql::ExecutionNode,
                                      aql::Variable const& var) noexcept;
 
   IResearchViewNode(aql::ExecutionPlan& plan, aql::ExecutionNodeId id,
-                    TRI_vocbase_t& vocbase,
-                    std::shared_ptr<const LogicalView> view,
+                    Database& vocbase, std::shared_ptr<const LogicalView> view,
                     aql::Variable const& outVariable,
                     aql::AstNode const* filterCondition,
                     aql::AstNode const* options,
@@ -202,7 +201,7 @@ class IResearchViewNode final : public aql::ExecutionNode,
   aql::Variable const& outVariable() const noexcept { return *_outVariable; }
 
   // Return the database.
-  TRI_vocbase_t& vocbase() const noexcept { return _vocbase; }
+  Database& vocbase() const noexcept { return _vocbase; }
 
   // Return the view.
   auto const& view() const noexcept { return _view; }
@@ -396,7 +395,7 @@ class IResearchViewNode final : public aql::ExecutionNode,
   void doToVelocyPack(velocypack::Builder&, unsigned) const final;
 
   // The database.
-  TRI_vocbase_t& _vocbase;
+  Database& _vocbase;
 
   // Underlying view.
   // Need shared_ptr to ensure view validity.

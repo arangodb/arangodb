@@ -26,6 +26,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "Mocks/FakeRegistry.h"
 #include "Replication2/Mocks/DelayedLogFollower.h"
 #include "Replication2/Mocks/FakeAbstractFollower.h"
 #include "Replication2/Mocks/FakeAsyncExecutor.h"
@@ -33,12 +34,11 @@
 #include "Replication2/Mocks/FakeReplicatedState.h"
 #include "Replication2/Mocks/FakeStorageEngineMethods.h"
 #include "Replication2/Mocks/RebootIdCacheMock.h"
-#include "Replication2/Mocks/ReplicatedLogMetricsMock.h"
 #include "Replication2/Mocks/ReplicatedStateHandleMock.h"
-#include "Replication2/Mocks/ReplicatedStateMetricsMock.h"
 #include "Replication2/Mocks/SchedulerMocks.h"
 
 #include "Replication2/ReplicatedLog/ILogInterfaces.h"
+#include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
 #include "Replication2/ReplicatedState/StateCommon.h"
 #include "Futures/Utilities.h"
 
@@ -385,6 +385,13 @@ struct LogContainer : IHasScheduler {
 // going over
 // multiple terms.
 struct WholeLog {
+  // fakeRegistry must live longer than every ReplicatedLog stored in `logs`
+  // because they touch ReplicatedLogMetrics raw pointers that are owned
+  // by fakeRegistry.
+  metrics::FakeRegistry fakeRegistry;
+  std::shared_ptr<replicated_log::ReplicatedLogMetrics> logMetricsMock =
+      std::make_shared<replicated_log::ReplicatedLogMetrics>(fakeRegistry);
+
   LogId const logId;
   // Relying on stable pointers and references to logs for now. Move to
   // shared_ptr<LogContainer> if necessary.
@@ -513,10 +520,6 @@ struct WholeLog {
     auto it = terms.try_emplace(terms.end(), term, std::move(config));
     return &it->second;
   }
-
- public:
-  std::shared_ptr<test::ReplicatedLogMetricsMock> logMetricsMock =
-      std::make_shared<test::ReplicatedLogMetricsMock>();
 
  protected:
   LoggerContext const loggerContext;

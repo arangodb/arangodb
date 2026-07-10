@@ -49,7 +49,11 @@ using namespace arangodb::rest;
 namespace arangodb {
 
 AgencyFeature::AgencyFeature(ApplicationServer& server)
-    : application_features::ApplicationFeature{server, *this} {
+    : AgencyFeature(server, AgencyOptions{}) {}
+
+AgencyFeature::AgencyFeature(ApplicationServer& server, AgencyOptions options)
+    : application_features::ApplicationFeature{server, *this},
+      _options(std::move(options)) {
   setOptional(true);
   startsAfter<application_features::ServerFeaturePhase>();
 }

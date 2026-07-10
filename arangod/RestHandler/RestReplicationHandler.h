@@ -317,6 +317,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   };
 
   bool prepareRevisionOperation(RevisionOperationContext&);
+  ReplicationFeature& replicationFeature() const { return _replicationFeature; }
 
  private:
   bool prepareCollectionForRevisionOperation(RevisionOperationContext&);

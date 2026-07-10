@@ -30,11 +30,10 @@
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
 #include "Metrics/GaugeBuilder.h"
-#include "Metrics/MetricsFeature.h"
+#include "Metrics/IRegistry.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/StorageEngine.h"
-#include "StorageEngine/StorageEngineFeature.h"
 
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
@@ -46,13 +45,13 @@ DECLARE_GAUGE(arangodb_flush_subscriptions, uint64_t,
 namespace arangodb {
 
 FlushFeature::FlushFeature(ApplicationServer& server,
-                           metrics::MetricsFeature& metrics)
+                           metrics::IRegistry& metricsRegistry)
     : ApplicationFeature{server, *this},
       _stopped(false),
-      _metricsFlushSubscriptions(metrics.add(arangodb_flush_subscriptions{})) {
+      _metricsFlushSubscriptions(
+          metricsRegistry.add(arangodb_flush_subscriptions{})) {
   setOptional(true);
   startsAfter<BasicFeaturePhaseServer>();
-  startsAfter<StorageEngineFeature>();
 }
 
 FlushFeature::~FlushFeature() = default;
