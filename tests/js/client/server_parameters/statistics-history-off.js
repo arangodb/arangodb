@@ -35,7 +35,7 @@ const jsunity = require('jsunity');
 const errors = require('@arangodb').errors;
 const internal = require('internal');
 const db = internal.db;
-const getMetric = require('@arangodb/test-helper').getMetricSingle;
+let IM = global.instanceManager;
 
 function testSuite() {
   return {
@@ -49,15 +49,15 @@ function testSuite() {
     },
 
     testMetricsAlwaysThere : function() {
-      let value = getMetric("arangodb_process_statistics_resident_set_size");
+      let value = IM.getMetric("arangodb_process_statistics_resident_set_size");
       assertTrue(value > 0, value);
       
-      value = getMetric("arangodb_server_statistics_server_uptime_total");
+      value = IM.getMetric("arangodb_server_statistics_server_uptime_total");
       assertTrue(value > 0, value);
     },
     
     testHttpMetrics : function() {
-      let oldValue = getMetric("arangodb_http_request_statistics_total_requests_total");
+      let oldValue = IM.getMetric("arangodb_http_request_statistics_total_requests_total");
       for (let i = 0; i < 10; ++i) {
         arango.GET("/_api/version");
       }
@@ -65,7 +65,7 @@ function testSuite() {
       let newValue;
       let tries = 0;
       while (++tries < 4 * 10) {
-        newValue = getMetric("arangodb_http_request_statistics_total_requests_total");
+        newValue = IM.getMetric("arangodb_http_request_statistics_total_requests_total");
         if (newValue - oldValue >= 10) {
           break;
         }
