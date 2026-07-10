@@ -159,6 +159,7 @@ class CursorFifoQueue {
       if (not cursor.hasMore()) {
         _resourceMonitor.decreaseMemoryUsage(sizeof(CursorRef));
         _continuationQueue.pop_front();
+        cursor.markForDeletion();
         continue;
       }
       for (auto&& step : cursor.next()) {
