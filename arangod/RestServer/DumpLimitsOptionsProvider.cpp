@@ -23,43 +23,23 @@
 #include "DumpLimitsOptionsProvider.h"
 
 #include "Basics/application-exit.h"
-#include "Basics/PhysicalMemory.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 
-namespace {
-uint64_t defaultMemoryUsage() {
-  if (arangodb::PhysicalMemory::getValue() >=
-      (static_cast<uint64_t>(4) << 30)) {
-    // if we have at least 4GB of RAM, the default size is (RAM - 2GB) * 0.2
-    return static_cast<uint64_t>((arangodb::PhysicalMemory::getValue() -
-                                  (static_cast<uint64_t>(2) << 30)) *
-                                 0.2);
-  }
-  // if we have at least 2GB of RAM, the default size is 64MB
-  return (static_cast<uint64_t>(64) << 20);
-}
-}  // namespace
-
 namespace arangodb {
 
 using namespace arangodb::options;
 
-DumpLimitsOptionsProvider::DumpLimitsOptionsProvider() {
-  _options.memoryUsage = ::defaultMemoryUsage();
-}
+void DumpLimitsOptionsProvider::declareOptionsImpl(
+    std::shared_ptr<ProgramOptions> opts, DumpLimitsFeatureOptions& options) {
+  opts->addSection("dump", "Dump limits");
 
-void DumpLimitsOptionsProvider::declareOptions(
-    std::shared_ptr<ProgramOptions>& prgOptions) {
-  prgOptions->addSection("dump", "Dump limits");
-
-  prgOptions
-      ->addOption(
+  opts->addOption(
           "--dump.max-memory-usage",
           "Maximum memory usage (in bytes) to be used by all ongoing dumps.",
-          new UInt64Parameter(&_options.memoryUsage, 1,
+          new UInt64Parameter(&options.memoryUsage, 1,
                               /*minimum*/ 16 * 1024 * 1024),
           makeFlags(Flags::Dynamic, Flags::DefaultNoComponents,
                     Flags::OnDBServer, Flags::OnSingle))
@@ -68,36 +48,33 @@ void DumpLimitsOptionsProvider::declareOptions(
           R"(The approximate per-server maximum allowed memory usage value
 for all ongoing dump actions combined.)");
 
-  prgOptions
-      ->addOption(
+  opts->addOption(
           "--dump.max-docs-per-batch",
           "Maximum number of documents per batch that can be used in a dump.",
-          new UInt64Parameter(&_options.docsPerBatchUpperBound, 1,
-                              /*minimum*/ _options.docsPerBatchLowerBound),
+          new UInt64Parameter(&options.docsPerBatchUpperBound, 1,
+                              /*minimum*/ options.docsPerBatchLowerBound),
           makeFlags(Flags::Uncommon, Flags::DefaultNoComponents,
                     Flags::OnDBServer, Flags::OnSingle))
       .setIntroducedIn(31200)
       .setLongDescription(
           R"(Each batch in a dump can grow to at most this size.)");
 
-  prgOptions
-      ->addOption(
+  opts->addOption(
           "--dump.max-batch-size",
           "Maximum batch size value (in bytes) that can be used in a dump.",
-          new UInt64Parameter(&_options.batchSizeUpperBound, 1,
-                              /*minimum*/ _options.batchSizeLowerBound),
+          new UInt64Parameter(&options.batchSizeUpperBound, 1,
+                              /*minimum*/ options.batchSizeLowerBound),
           makeFlags(Flags::Uncommon, Flags::DefaultNoComponents,
                     Flags::OnDBServer, Flags::OnSingle))
       .setIntroducedIn(31200)
       .setLongDescription(
           R"(Each batch in a dump can grow to at most this size.)");
 
-  prgOptions
-      ->addOption(
+  opts->addOption(
           "--dump.max-parallelism",
           "Maximum parallelism that can be used in a dump.",
-          new UInt64Parameter(&_options.parallelismUpperBound, 1,
-                              /*minimum*/ _options.parallelismLowerBound),
+          new UInt64Parameter(&options.parallelismUpperBound, 1,
+                              /*minimum*/ options.parallelismLowerBound),
           makeFlags(Flags::Uncommon, Flags::DefaultNoComponents,
                     Flags::OnDBServer, Flags::OnSingle))
       .setIntroducedIn(31200)
@@ -106,19 +83,19 @@ this many parallel threads. Note that end users can still start multiple
 dump actions that run in parallel.)");
 }
 
-void DumpLimitsOptionsProvider::validateOptions(
-    std::shared_ptr<ProgramOptions>& /*prgOptions*/) {
-  if (_options.batchSizeLowerBound > _options.batchSizeUpperBound) {
+void DumpLimitsOptionsProvider::validateOptionsImpl(
+    std::shared_ptr<ProgramOptions> opts, DumpLimitsFeatureOptions& options) {
+  if (options.batchSizeLowerBound > options.batchSizeUpperBound) {
     LOG_TOPIC("79c1b", FATAL, arangodb::Logger::CONFIG)
         << "invalid value for --dump.max-batch-size. Please use a value "
-        << "of at least " << _options.batchSizeLowerBound;
+        << "of at least " << options.batchSizeLowerBound;
     FATAL_ERROR_EXIT();
   }
 
-  if (_options.parallelismLowerBound > _options.parallelismUpperBound) {
+  if (options.parallelismLowerBound > options.parallelismUpperBound) {
     LOG_TOPIC("f433c", FATAL, arangodb::Logger::CONFIG)
         << "invalid value for --dump.max-parallelism. Please use a value "
-        << "of at least " << _options.parallelismLowerBound;
+        << "of at least " << options.parallelismLowerBound;
     FATAL_ERROR_EXIT();
   }
 }

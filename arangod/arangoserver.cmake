@@ -145,6 +145,7 @@ add_library(arangoserver STATIC
   RestServer/DatabasePathFeature.cpp
   RestServer/DatabasePathOptionsProvider.cpp
   RestServer/DumpLimitsFeature.cpp
+  RestServer/DumpLimitsFeatureOptions.cpp
   RestServer/DumpLimitsOptionsProvider.cpp
   RestServer/EndpointFeature.cpp
   RestServer/EndpointFeatureOptions.cpp

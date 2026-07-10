@@ -24,23 +24,17 @@
 
 #include <memory>
 
+#include "ApplicationFeatures/OptionsProvider.h"
 #include "RestServer/DumpLimitsFeatureOptions.h"
-
-namespace arangodb::options {
-class ProgramOptions;
-}
 
 namespace arangodb {
 
-struct DumpLimitsOptionsProvider {
-  DumpLimitsOptionsProvider();
-
-  void declareOptions(std::shared_ptr<options::ProgramOptions>& prgOptions);
-  void validateOptions(std::shared_ptr<options::ProgramOptions>& prgOptions);
-  [[nodiscard]] DumpLimitsFeatureOptions options() const { return _options; }
-
- private:
-  DumpLimitsFeatureOptions _options;
+struct DumpLimitsOptionsProvider
+    : OptionsProviderImpl<DumpLimitsOptionsProvider, DumpLimitsFeatureOptions> {
+  void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                          DumpLimitsFeatureOptions& options);
+  void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                           DumpLimitsFeatureOptions& options);
 };
 
 }  // namespace arangodb

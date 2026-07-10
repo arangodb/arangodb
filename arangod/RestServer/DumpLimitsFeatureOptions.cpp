@@ -20,29 +20,23 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#include "DumpLimitsFeatureOptions.h"
 
-#include <cstdint>
+#include "Basics/PhysicalMemory.h"
 
 namespace arangodb {
 
-struct DumpLimitsFeatureOptions {
-  // per-dump value
-  std::uint64_t docsPerBatchLowerBound = 10;
-  // per-dump value
-  std::uint64_t docsPerBatchUpperBound = 1 * 1000 * 1000;
-  // per-dump value
-  std::uint64_t batchSizeLowerBound = 4 * 1024;
-  // per-dump value
-  std::uint64_t batchSizeUpperBound = 1024 * 1024 * 1024;
-  // per-dump value
-  std::uint64_t parallelismLowerBound = 1;
-  // per-dump value
-  std::uint64_t parallelismUpperBound = 8;
-  // server-global. value will be overridden in the .cpp file.
-  std::uint64_t memoryUsage;  // computed in ctor
+namespace {
+std::uint64_t defaultMemoryUsage() {
+  if (PhysicalMemory::getValue() >= (static_cast<std::uint64_t>(4) << 30)) {
+    return static_cast<std::uint64_t>(
+        (PhysicalMemory::getValue() - (static_cast<std::uint64_t>(2) << 30)) * 0.2);
+  }
+  return (static_cast<std::uint64_t>(64) << 20);
+}
+}  // namespace
 
-  DumpLimitsFeatureOptions();
-};
+DumpLimitsFeatureOptions::DumpLimitsFeatureOptions()
+    : memoryUsage(defaultMemoryUsage()) {}
 
 }  // namespace arangodb
