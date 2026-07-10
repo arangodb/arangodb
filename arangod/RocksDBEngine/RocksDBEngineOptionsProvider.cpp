@@ -27,6 +27,7 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "ProgramOptions/Parameters.h"
+#include "ProgramOptions/ProgramOptions.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/RocksDBEngine/RocksDBEngineEEOptionsProvider.h"

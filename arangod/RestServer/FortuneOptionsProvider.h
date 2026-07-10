@@ -29,10 +29,10 @@ namespace arangodb::fortune {
 
 struct FortuneOptionsProvider
     : OptionsProviderImpl<FortuneOptionsProvider, FortuneFeatureOptions> {
-  void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> options,
-                          FortuneFeatureOptions& opts);
-  void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> options,
-                           FortuneFeatureOptions& opts) {};
+  void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                          FortuneFeatureOptions& options);
+  void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                           FortuneFeatureOptions& options){};
 };
 
 }  // namespace arangodb::fortune

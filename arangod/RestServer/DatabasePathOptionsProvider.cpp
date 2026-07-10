@@ -37,7 +37,8 @@ using namespace arangodb::options;
 
 void DatabasePathOptionsProvider::declareOptionsImpl(
     std::shared_ptr<ProgramOptions> options, DatabasePathFeatureOptions& opts) {
-  options->addOption("--database.directory", "The path to the database directory.",
+  options
+      ->addOption("--database.directory", "The path to the database directory.",
                   new StringParameter(&opts.directory))
       .setLongDescription(R"(This defines the location where all data of a
 server is stored.

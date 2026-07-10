@@ -22,8 +22,6 @@
 
 #pragma once
 
-#include <memory>
-
 #include "ApplicationFeatures/OptionsProvider.h"
 #include "RocksDBEngine/RocksDBOptionFeatureOptions.h"
 

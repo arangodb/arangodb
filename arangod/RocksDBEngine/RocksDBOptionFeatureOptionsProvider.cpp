@@ -1317,7 +1317,7 @@ limited number of edge collections/shards/indexes.)");
 }
 
 void RocksDBOptionFeatureOptionsProvider::validateOptionsImpl(
-    std::shared_ptr<options::ProgramOptions> opts,
+    std::shared_ptr<ProgramOptions> opts,
     RocksDBOptionFeatureOptions& options) {
   if (options.writeBufferSize > 0 && options.writeBufferSize < 1024 * 1024) {
     LOG_TOPIC("4ce44", FATAL, arangodb::Logger::STARTUP)
