@@ -129,11 +129,7 @@ class DatabaseFeature final : public application_features::ApplicationFeature,
   }
 #endif
 
-  /// @brief will be called when the recovery phase has run
-  /// this will call the engine-specific recoveryDone() procedures
-  /// and will execute engine-unspecific operations (such as starting
-  /// the replication appliers) for all databases
-  void recoveryDone();
+  void recoveryDone() override;
 
   /// @brief whether or not the DatabaseFeature has started (and thus has
   /// completely populated its lists of databases and collections from

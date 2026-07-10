@@ -937,6 +937,7 @@ void RocksDBEngine::start() {
 
   runRecovery();
   startBackgroundThread();
+  _databaseProvider.recoveryDone();
 }
 
 void RocksDBEngine::runRecovery() {

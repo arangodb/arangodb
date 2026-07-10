@@ -73,6 +73,7 @@ struct MockDatabaseProvider : IDatabaseProvider {
               (const, noexcept, override));
   MOCK_METHOD(bool, extendedNames, (), (const, noexcept, override));
   MOCK_METHOD(void, extendedNames, (bool), (noexcept, override));
+  MOCK_METHOD(void, recoveryDone, (), (override));
 };
 
 struct MockCacheManagerProvider : ICacheManagerProvider {

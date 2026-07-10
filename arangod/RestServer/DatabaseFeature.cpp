@@ -348,7 +348,6 @@ void DatabaseFeature::start() {
   }
 
   _started.store(true);
-  recoveryDone();
 }
 
 // signal to all databases that active cursors can be wiped

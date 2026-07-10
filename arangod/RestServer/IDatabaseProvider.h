@@ -52,6 +52,8 @@ struct IDatabaseProvider {
 
   virtual bool extendedNames() const noexcept = 0;
   virtual void extendedNames(bool value) noexcept = 0;
+
+  virtual void recoveryDone() = 0;
 };
 
 }  // namespace arangodb
