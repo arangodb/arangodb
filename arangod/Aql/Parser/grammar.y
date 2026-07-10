@@ -588,7 +588,12 @@ AstNode* transformOutputVariables(Parser* parser, AstNode const* names) {
 %nonassoc T_INTO
 %left T_OR
 %left T_AND
-%nonassoc T_OUTBOUND T_INBOUND
+/* Bare ANY/ALL/NONE stay with graph direction tokens so
+   FOR ... IN ANY / arr ALL == x keep working. Composite
+   ANY/ALL/NONE LIKE|=~|!~ tokens are below UNEGATION so
+   NOT arr ALL !~ / NOT arr ANY =~ bind as intended. */
+%nonassoc T_OUTBOUND T_INBOUND T_ANY T_ALL T_NONE
+%left T_AT_LEAST
 %left T_EQ T_NE T_LIKE T_REGEX_MATCH T_REGEX_NON_MATCH
 %left T_IN T_NOT T_NOT_IN T_NOT_LIKE
 %left T_LT T_GT T_LE T_GE
@@ -596,8 +601,6 @@ AstNode* transformOutputVariables(Parser* parser, AstNode const* names) {
 %left T_PLUS T_MINUS
 %left T_TIMES T_DIV T_MOD
 %right UMINUS UPLUS UNEGATION
-%nonassoc T_ANY T_ALL T_NONE
-%left T_AT_LEAST
 %left T_ANY_LIKE T_ALL_LIKE T_NONE_LIKE
 %left T_ANY_NOT_LIKE T_ALL_NOT_LIKE T_NONE_NOT_LIKE
 %left T_ANY_REGEX_MATCH T_ALL_REGEX_MATCH T_NONE_REGEX_MATCH
