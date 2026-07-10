@@ -25,6 +25,7 @@
 #pragma once
 
 #include "RocksDBEngine/RocksDBIndex.h"
+#include "Zkd/ZkdHelper.h"
 
 namespace arangodb {
 

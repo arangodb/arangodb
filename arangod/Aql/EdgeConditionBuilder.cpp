@@ -27,9 +27,7 @@
 
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
-#include "Basics/StaticStrings.h"
-#include "Basics/VelocyPackHelper.h"
-#include "Graph/Graph.h"
+#include "Aql/QueryContext.h"
 
 using namespace arangodb::basics;
 namespace arangodb::aql {

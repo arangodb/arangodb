@@ -35,21 +35,19 @@ const ImprovedMemoryAccounting = internal.load(base);
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-if (global.instanceManager.debugCanUseFailAt()) {
-    const base_fail_at = require("fs").join(internal.pathForTesting('client'), 
-    'shell', 'shell-improved-metrics-accounting-fail-at.inc');
-    const ImprovedMemoryAccountingFailAt = internal.load(base_fail_at);
+const base_fail_at = require("fs").join(internal.pathForTesting('client'), 
+                                        'shell', 'shell-improved-metrics-accounting-fail-at.inc');
+const ImprovedMemoryAccountingFailAt = internal.load(base_fail_at);
 
-    jsunity.run(function ImprovedMemoryAccountingFailAtTestSuite_oneshard() {
-        let suite = {};
-        deriveTestSuite(
-            ImprovedMemoryAccountingFailAt("InvertedIndexSearchAliasqlTestSuite_OneShard", {sharding: "single"}, {}),
-            suite,
-            "_OneShard"
-        );
-        return suite;
-    });
-}
+jsunity.run(function ImprovedMemoryAccountingFailAtTestSuite_oneshard() {
+  let suite = {};
+  deriveTestSuite(
+    ImprovedMemoryAccountingFailAt("InvertedIndexSearchAliasqlTestSuite_OneShard", {sharding: "single"}, {}),
+    suite,
+    "_OneShard"
+  );
+  return suite;
+});
 
 jsunity.run(function ImprovedMemoryAccountingTestSuite_oneshard() {
     let suite = {};

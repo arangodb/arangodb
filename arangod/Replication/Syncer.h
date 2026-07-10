@@ -30,15 +30,12 @@
 #include "Replication/utilities.h"
 #include "Utils/DatabaseGuard.h"
 #include "VocBase/Identifiers/ServerId.h"
-#include "VocBase/ticks.h"
 
 #include <function2.hpp>
 
 #include <memory>
 #include <string>
 #include <unordered_map>
-
-struct TRI_vocbase_t;
 
 namespace arangodb {
 namespace httpclient {
@@ -53,6 +50,7 @@ namespace velocypack {
 class Slice;
 }
 
+struct Database;
 class LogicalCollection;
 
 class Syncer : public std::enable_shared_from_this<Syncer> {
@@ -238,7 +236,7 @@ class Syncer : public std::enable_shared_from_this<Syncer> {
 
   /// @brief creates a collection, based on the VelocyPack provided
   // TODO worker safety - create/drop phase
-  Result createCollection(TRI_vocbase_t& vocbase, velocypack::Slice slice,
+  Result createCollection(Database& vocbase, velocypack::Slice slice,
                           LogicalCollection** dst);
 
   /// @brief drops a collection, based on the VelocyPack provided
@@ -256,16 +254,16 @@ class Syncer : public std::enable_shared_from_this<Syncer> {
   Result dropIndex(velocypack::Slice slice);
 
   /// @brief creates a view, based on the VelocyPack provided
-  Result createView(TRI_vocbase_t& vocbase, velocypack::Slice slice);
+  Result createView(Database& vocbase, velocypack::Slice slice);
 
   /// @brief drops a view, based on the VelocyPack provided
   Result dropView(velocypack::Slice slice, bool reportError);
 
   // TODO worker safety
-  virtual TRI_vocbase_t* resolveVocbase(velocypack::Slice slice);
+  virtual Database* resolveVocbase(velocypack::Slice slice);
 
   // TODO worker safety
-  std::shared_ptr<LogicalCollection> resolveCollection(TRI_vocbase_t& vocbase,
+  std::shared_ptr<LogicalCollection> resolveCollection(Database& vocbase,
                                                        velocypack::Slice slice);
 
   // TODO worker safety

@@ -29,7 +29,11 @@
 
 #include "v8-vocbase.h"
 
+namespace arangodb {
+struct Database;
+}
+
 void TRI_InitV8Replication(v8::Isolate* isolate,
                            v8::Handle<v8::Context> context,
-                           TRI_vocbase_t* vocbase, size_t threadNumber,
+                           arangodb::Database* vocbase, size_t threadNumber,
                            TRI_v8_global_t* v8g);

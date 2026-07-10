@@ -37,9 +37,8 @@
 #include <string>
 #include <string_view>
 
-struct TRI_vocbase_t;
-
 namespace arangodb {
+struct Database;
 namespace metrics {
 struct IRegistry;
 }  // namespace metrics
@@ -111,12 +110,11 @@ class StatisticsFeature final
 
   stats::Descriptions const& descriptions() const { return _descriptions; }
 
-  static arangodb::velocypack::Builder fillDistribution(
+  static velocypack::Builder fillDistribution(
       statistics::Distribution const& dist);
 
-  Result getClusterSystemStatistics(
-      TRI_vocbase_t& vocbase, double start,
-      arangodb::velocypack::Builder& result) const;
+  Result getClusterSystemStatistics(Database& vocbase, double start,
+                                    velocypack::Builder& result) const;
 
   bool allDatabases() const noexcept { return _options.statisticsAllDatabases; }
 

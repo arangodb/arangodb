@@ -31,13 +31,12 @@
 #include "Metrics/Counter.h"
 #include "Metrics/MetricsFeature.h"
 #include "RestServer/DatabaseFeature.h"
-#include "StorageEngine/StorageEngine.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Statistics/ConnectionStatistics.h"
 #include "Statistics/RequestStatistics.h"
 #include "Statistics/StatisticsFeature.h"
-#include "V8/v8-conv.h"
+#include "StorageEngine/StorageEngine.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
 #include "V8Server/V8DealerFeature.h"
@@ -114,7 +113,7 @@ static void JS_ServerStatistics(
   v8::HandleScope scope(isolate);
   auto context = TRI_IGETC;
 
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  TRI_GET_GLOBALS();
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
@@ -271,7 +270,7 @@ static void JS_EnabledStatistics(
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
 
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  TRI_GET_GLOBALS();
   bool enabled = v8g->server().getFeature<StatisticsFeature>().isEnabled();
   v8::Handle<v8::Value> result = v8::Boolean::New(isolate, enabled);
   TRI_V8_RETURN(result);
@@ -283,7 +282,7 @@ static void JS_EnabledStatisticsAllDatabases(
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
 
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  TRI_GET_GLOBALS();
   bool enabled = v8g->server().getFeature<StatisticsFeature>().isEnabled();
   bool allDatabases =
       v8g->server().getFeature<StatisticsFeature>().allDatabases();
@@ -301,7 +300,7 @@ static void JS_EnabledMetrics(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
 
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  TRI_GET_GLOBALS();
   bool enabled =
       v8g->server().getFeature<metrics::MetricsFeature>().exportAPI();
   v8::Handle<v8::Value> result = v8::Boolean::New(isolate, enabled);

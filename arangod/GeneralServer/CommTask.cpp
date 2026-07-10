@@ -407,6 +407,8 @@ void CommTask::finishExecution(GeneralResponse& res,
               1000.0));
     }
   }
+
+  _generalServerFeature.countHttpResponseCode(res.responseCode());
 }
 
 /// Push this request into the execution pipeline

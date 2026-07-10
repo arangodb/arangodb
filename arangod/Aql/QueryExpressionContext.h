@@ -70,7 +70,7 @@ class QueryExpressionContext : public aql::ExpressionContext {
   arangodb::ValidatorBase* buildValidator(
       arangodb::velocypack::Slice) override final;
 
-  TRI_vocbase_t& vocbase() const override final;
+  Database& vocbase() const override final;
   // may be inaccessible on some platforms
   transaction::Methods& trx() const override final;
   bool killed() const override final;

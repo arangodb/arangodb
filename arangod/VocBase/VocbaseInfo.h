@@ -32,8 +32,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
-struct TRI_vocbase_t;
-
 namespace arangodb {
 namespace application_features {
 class ApplicationServer;

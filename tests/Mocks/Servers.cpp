@@ -278,7 +278,9 @@ MockServer::~MockServer() {
   ServerState::instance()->setRebootId(_oldRebootId);
 }
 
-ArangodServer& MockServer::server() { return _server; }
+application_features::ApplicationServer& MockServer::server() {
+  return _server;
+}
 
 void MockServer::init() {
   _oldApplicationServerState = _server.state();

@@ -30,12 +30,14 @@ const arangodb = require("@arangodb");
 const db = arangodb.db;
 const tasks = require("@arangodb/tasks");
 const _ = require("lodash");
-const wait = require("internal").wait;
 const {
-  getDBServers,
-  getEndpointById
-} = require("@arangodb/test-helper");
+  wait,
+  time,
+  wal,
+} = require("internal");
+let { instanceRole } = require('@arangodb/testutils/instance');
 const CI = require('@arangodb/cluster-info');
+let IM = global.instanceManager;
 
 const tasksCompleted = () => {
   return 0 === tasks.get().filter((task) => {
@@ -43,19 +45,17 @@ const tasksCompleted = () => {
   }).length;
 };
 const waitForTasks = () => {
-  const time = require("internal").time;
   const start = time();
   while (!tasksCompleted()) {
     if (time() - start > 300) { // wait for 5 minutes maximum
       fail("Timeout after 5 minutes");
     }
-    require("internal").wait(0.5, false);
+    wait(0.5, false);
   }
-  require('internal').wal.flush(true, true);
+  wal.flush(true, true);
   // wait an extra second for good measure
-  require("internal").wait(1.0, false);
+  wait(1.0, false);
 };
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
@@ -111,17 +111,10 @@ function ClusterTransactionSuite() {
   ////////////////////////////////////////////////////////////////////////////////
 
   function failFollower() {
-    var follower = cinfo.shards[shards[0]][1];
-    var endpoint = getEndpointById(follower);
-    let arangods = getDBServers();
-
-    var pos = _.findIndex(arangods,
-                          x => x.url === endpoint);
-  
-    assertTrue(pos >= 0);
-    assertTrue(arangods[pos].suspend());
+    var followerID = cinfo.shards[shards[0]][1];
+    var follower = IM.getInstanceByID(followerID);
+    assertTrue(follower.suspend());
     console.info("Have failed follower", follower);
-    return pos;
   }
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -129,15 +122,10 @@ function ClusterTransactionSuite() {
   ////////////////////////////////////////////////////////////////////////////////
 
   function healFollower() {
-    var follower = cinfo.shards[shards[0]][1];
-    var endpoint = getEndpointById(follower);
-    let arangods = getDBServers();
-
-    var pos = _.findIndex(arangods,
-                          x => x.url === endpoint);
-    assertTrue(pos >= 0);
-    assertTrue(arangods[pos].resume());
-    console.info("Have healed follower", follower);
+    var followerID = cinfo.shards[shards[0]][1];
+    var follower = IM.getInstanceByID(followerID);
+    assertTrue(follower.resume());
+    console.info("Have healed follower", followerID);
   }
 
 
@@ -186,12 +174,12 @@ function ClusterTransactionSuite() {
 
     testSetup : function () {
       for (var count = 0; count < 120; ++count) {
-        let dbservers = getDBServers();
-        if (dbservers.length === 5) {
+        const dbServers = IM.getInstancesRole(instanceRole.dbserver);
+        if (dbServers.length === 5) {
           assertTrue(waitForSynchronousReplication("_system"));
           return;
         }
-        console.log("Waiting for 5 dbservers to be present:", JSON.stringify(dbservers));
+        console.log("Waiting for 5 dbservers to be present:", JSON.stringify(dbServers));
         wait(1.0);
       }
       assertTrue(false, "Timeout waiting for 5 dbservers.");

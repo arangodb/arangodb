@@ -31,8 +31,8 @@ const jsunity = require("jsunity");
 const {assertEqual, assertTrue, assertFalse, assertNotEqual} = jsunity.jsUnity.assertions;
 const arango = require('@arangodb').arango;
 const _ = require("lodash");
-const { getDBServers, getAgents } = require('@arangodb/test-helper');
 let IM = global.instanceManager;
+let { instanceRole } = require('@arangodb/testutils/instance');
 
 function headersClusterSuite () {
   'use strict';
@@ -71,45 +71,47 @@ function headersClusterSuite () {
 
     // test executing requests on DB-Servers
     testDBServer: function() {
-      const dbservers = getDBServers();
-      assertTrue(dbservers.length > 0, "no dbservers found");
+      const dbServers = IM.getInstancesRole(instanceRole.dbserver);
+      assertTrue(dbServers.length > 0, "no dbservers found");
        
-      dbservers.forEach(function(dbserver, i) {
-        let id = dbserver.id;
-        require("console").warn("connecting to dbserver", dbserver.endpoint, id);
-        arango.reconnect(dbserver.endpoint, "_system", arango.connectedUser(), "");
+      dbServers.forEach(function(dbServer, i) {
+        dbServer.toThisInstance(() => {
+          let id = dbServer.id;
+          require("console").warn("connecting to dbserver", dbServer.endpoint, id);
 
-        let result = arango.GET_RAW("/_api/version");
-        assertTrue(result.hasOwnProperty("headers"), "no headers found");
-        assertFalse(result.headers.hasOwnProperty("server"), "server header found");
-      
-        ["cache-control", "content-security-policy", "expires", "pragma", "strict-transport-security", "x-content-type-options"].forEach((h) => {
-          assertFalse(result.headers.hasOwnProperty(h), {h, result});
+          let result = arango.GET_RAW("/_api/version");
+          assertTrue(result.hasOwnProperty("headers"), "no headers found");
+          assertFalse(result.headers.hasOwnProperty("server"), "server header found");
+          
+          ["cache-control", "content-security-policy", "expires", "pragma", "strict-transport-security", "x-content-type-options"].forEach((h) => {
+            assertFalse(result.headers.hasOwnProperty(h), {h, result});
+          });
+
+          assertFalse(result.headers.hasOwnProperty("x-arango-queue-time-seconds"), result);
         });
-
-        assertFalse(result.headers.hasOwnProperty("x-arango-queue-time-seconds"), result);
       });
     },
     
     // test executing requests on agent
     testAgent: function() {
-      const agents = getAgents();
+      const agents = IM.getInstancesRole(instanceRole.agent);
       assertTrue(agents.length > 0, "no agents found");
        
       agents.forEach(function(agent, i) {
-        let id = agent.id;
-        require("console").warn("connecting to agent", agent.endpoint, id);
-        arango.reconnect(agent.endpoint, "_system", arango.connectedUser(), "");
+        agent.toThisInstance(() => {
+          let id = agent.id;
+          require("console").warn("connecting to agent", agent.endpoint, id);
 
-        let result = arango.GET_RAW("/_api/version");
-        assertTrue(result.hasOwnProperty("headers"), "no headers found");
-        assertFalse(result.headers.hasOwnProperty("server"), "server header found");
-      
-        ["cache-control", "content-security-policy", "expires", "pragma", "strict-transport-security", "x-content-type-options"].forEach((h) => {
-          assertFalse(result.headers.hasOwnProperty(h), {h, result});
+          let result = arango.GET_RAW("/_api/version");
+          assertTrue(result.hasOwnProperty("headers"), "no headers found");
+          assertFalse(result.headers.hasOwnProperty("server"), "server header found");
+          
+          ["cache-control", "content-security-policy", "expires", "pragma", "strict-transport-security", "x-content-type-options"].forEach((h) => {
+            assertFalse(result.headers.hasOwnProperty(h), {h, result});
+          });
+
+          assertFalse(result.headers.hasOwnProperty("x-arango-queue-time-seconds"), result);
         });
-
-        assertFalse(result.headers.hasOwnProperty("x-arango-queue-time-seconds"), result);
       });
     },
     
