@@ -20,20 +20,16 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <chrono>
 #include <thread>
 
 #include "gtest/gtest.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/ShellColorsFeature.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
-#include "VocBase/Identifiers/ServerId.h"
 #include "Rest/Version.h"
 #include "Basics/VelocyPackHelper.h"
-#include "RestServer/arangod.h"
 
 char const* ARGV0 = "";
 
@@ -72,7 +68,7 @@ int main(int argc, char* argv[]) {
 
   ARGV0 = subargv[0];
 
-  arangodb::ArangodServer server(nullptr, nullptr);
+  arangodb::application_features::ApplicationServer server(nullptr, nullptr);
 
   arangodb::Logger::setShowLineNumber(logLineNumbers);
   arangodb::Logger::initialize(server, false);

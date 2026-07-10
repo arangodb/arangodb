@@ -49,7 +49,7 @@ static void JS_TtlProperties(v8::FunctionCallbackInfo<v8::Value> const& args) {
   VPackBuilder builder;
   Result result;
 
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  TRI_GET_GLOBALS();
   if (args.Length() == 0) {
     // get properties
     result = methods::Ttl::getProperties(v8g->server().getFeature<TtlFeature>(),
@@ -79,7 +79,7 @@ static void JS_TtlStatistics(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::HandleScope scope(isolate);
 
   VPackBuilder builder;
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  TRI_GET_GLOBALS();
   Result result = methods::Ttl::getStatistics(
       v8g->server().getFeature<TtlFeature>(), builder);
 

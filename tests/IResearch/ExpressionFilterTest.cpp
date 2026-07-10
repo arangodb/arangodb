@@ -22,13 +22,11 @@
 
 #include "gtest/gtest.h"
 
-#include "iresearch/tests/tests_config.hpp"
 #include "analysis/token_attributes.hpp"
 #include "index/directory_reader.hpp"
 #include "search/all_filter.hpp"
 #include "search/cost.hpp"
 #include "search/score.hpp"
-#include "search/scorers.hpp"
 #include "store/memory_directory.hpp"
 #include "store/store_utils.hpp"
 #include "utils/type_limits.hpp"
@@ -57,7 +55,6 @@
 #include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/IResearchView.h"
 #include "IResearch/VelocyPackHelper.h"
-#include "Logger/LogTopic.h"
 #include "Logger/Logger.h"
 #include "RestServer/AqlFeature.h"
 #include "Cluster/MaintenanceFeature.h"
@@ -65,7 +62,6 @@
 #include "RestServer/DatabasePathFeature.h"
 #include "VectorIndex/VectorIndexFeature.h"
 #include "Metrics/MetricsFeature.h"
-#include "RestServer/arangod.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/ViewTypesFeature.h"
@@ -78,7 +74,6 @@
 #include "Cluster/ClusterFeature.h"
 #include "Metrics/ClusterMetricsFeature.h"
 #include "Statistics/StatisticsFeature.h"
-#include "Statistics/StatisticsWorker.h"
 
 extern const char* ARGV0;  // defined in main.cpp
 
@@ -227,7 +222,7 @@ struct IResearchExpressionFilterTest
       public arangodb::tests::LogSuppressor<arangodb::iresearch::TOPIC,
                                             arangodb::LogLevel::FATAL>,
       public arangodb::tests::IResearchLogSuppressor {
-  arangodb::ArangodServer server;
+  arangodb::application_features::ApplicationServer server;
   StorageEngineMock engine;
   std::unique_ptr<TRI_vocbase_t> system;
   std::vector<

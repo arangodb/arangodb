@@ -64,7 +64,8 @@ class IndexNodeTest
 
 };  // IndexNodeTest
 
-arangodb::CreateDatabaseInfo createInfo(arangodb::ArangodServer& server) {
+arangodb::CreateDatabaseInfo createInfo(
+    arangodb::application_features::ApplicationServer& server) {
   arangodb::CreateDatabaseInfo info(server, arangodb::ExecContext::current());
   auto rv = info.load("testVocbase", 2);
   if (rv.fail()) {

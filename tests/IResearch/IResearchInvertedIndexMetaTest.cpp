@@ -28,9 +28,7 @@
 #include "IResearch/IResearchInvertedIndexMeta.h"
 #include "Mocks/LogLevels.h"
 #include "Mocks/Servers.h"
-#include "Mocks/StorageEngineMock.h"
 #include "VocBase/Methods/Collections.h"
-#include "RestServer/AqlFeature.h"
 #include "RestServer/DatabaseFeature.h"
 
 using namespace arangodb;
@@ -39,7 +37,7 @@ using namespace arangodb::basics;
 using namespace std::literals;
 
 namespace {
-void serializationChecker(ArangodServer& server,
+void serializationChecker(application_features::ApplicationServer& server,
                           arangodb::StorageEngine& engine,
                           std::string_view jsonAsString) {
   auto json = VPackParser::fromJson({jsonAsString.data(), jsonAsString.size()});

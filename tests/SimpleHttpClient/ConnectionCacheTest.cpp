@@ -25,7 +25,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "Endpoint/Endpoint.h"
-#include "RestServer/arangod.h"
 #include "SimpleHttpClient/ConnectionCache.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 
@@ -33,7 +32,7 @@ using namespace arangodb;
 using namespace arangodb::httpclient;
 
 TEST(ConnectionCacheTest, testEmpty) {
-  ArangodServer server(nullptr, nullptr);
+  application_features::ApplicationServer server(nullptr, nullptr);
   server.addFeature<application_features::CommunicationFeaturePhase>();
 
   ConnectionCache cache(
@@ -45,7 +44,7 @@ TEST(ConnectionCacheTest, testEmpty) {
 }
 
 TEST(ConnectionCacheTest, testAcquireInvalidEndpoint) {
-  ArangodServer server(nullptr, nullptr);
+  application_features::ApplicationServer server(nullptr, nullptr);
   server.addFeature<application_features::CommunicationFeaturePhase>();
 
   ConnectionCache cache(
@@ -69,7 +68,7 @@ TEST(ConnectionCacheTest, testAcquireInvalidEndpoint) {
 }
 
 TEST(ConnectionCacheTest, testAcquireAndReleaseClosedConnection) {
-  ArangodServer server(nullptr, nullptr);
+  application_features::ApplicationServer server(nullptr, nullptr);
   server.addFeature<application_features::CommunicationFeaturePhase>();
 
   ConnectionCache cache(
@@ -96,7 +95,7 @@ TEST(ConnectionCacheTest, testAcquireAndReleaseClosedConnection) {
 }
 
 TEST(ConnectionCacheTest, testAcquireAndReleaseClosedConnectionForce) {
-  ArangodServer server(nullptr, nullptr);
+  application_features::ApplicationServer server(nullptr, nullptr);
   server.addFeature<application_features::CommunicationFeaturePhase>();
 
   ConnectionCache cache(
@@ -126,7 +125,7 @@ TEST(ConnectionCacheTest, testAcquireAndReleaseClosedConnectionForce) {
 }
 
 TEST(ConnectionCacheTest, testAcquireAndReleaseRepeat) {
-  ArangodServer server(nullptr, nullptr);
+  application_features::ApplicationServer server(nullptr, nullptr);
   server.addFeature<application_features::CommunicationFeaturePhase>();
 
   ConnectionCache cache(
@@ -186,7 +185,7 @@ TEST(ConnectionCacheTest, testAcquireAndReleaseRepeat) {
 }
 
 TEST(ConnectionCacheTest, testSameEndpointMultipleLeases) {
-  ArangodServer server(nullptr, nullptr);
+  application_features::ApplicationServer server(nullptr, nullptr);
   server.addFeature<application_features::CommunicationFeaturePhase>();
 
   ConnectionCache cache(
@@ -235,7 +234,7 @@ TEST(ConnectionCacheTest, testSameEndpointMultipleLeases) {
 }
 
 TEST(ConnectionCacheTest, testDifferentEndpoints) {
-  ArangodServer server(nullptr, nullptr);
+  application_features::ApplicationServer server(nullptr, nullptr);
   server.addFeature<application_features::CommunicationFeaturePhase>();
 
   ConnectionCache cache(
@@ -274,7 +273,7 @@ TEST(ConnectionCacheTest, testDifferentEndpoints) {
 }
 
 TEST(ConnectionCacheTest, testSameEndpointDifferentProtocols) {
-  ArangodServer server(nullptr, nullptr);
+  application_features::ApplicationServer server(nullptr, nullptr);
   server.addFeature<application_features::CommunicationFeaturePhase>();
 
   ConnectionCache cache(
@@ -313,7 +312,7 @@ TEST(ConnectionCacheTest, testSameEndpointDifferentProtocols) {
 }
 
 TEST(ConnectionCacheTest, testDropSuperfluous) {
-  ArangodServer server(nullptr, nullptr);
+  application_features::ApplicationServer server(nullptr, nullptr);
   server.addFeature<application_features::CommunicationFeaturePhase>();
 
   ConnectionCache cache(
@@ -354,7 +353,7 @@ TEST(ConnectionCacheTest, testDropSuperfluous) {
 }
 
 TEST(ConnectionCacheTest, testSameEndpointMultipleLeasesOverExpiry) {
-  ArangodServer server(nullptr, nullptr);
+  application_features::ApplicationServer server(nullptr, nullptr);
   server.addFeature<application_features::CommunicationFeaturePhase>();
 
   ConnectionCache cache(
