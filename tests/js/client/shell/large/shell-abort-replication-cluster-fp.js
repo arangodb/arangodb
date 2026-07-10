@@ -69,7 +69,7 @@ function abortReplicationSuite () {
       try {
         servers.forEach((server) => {
           // set failure point on each DB server, which will trigger an error in replication
-          server.debugShouldFailAt("Replication::forceCheckCancellation");
+          server.debugSetFailAt("Replication::forceCheckCancellation");
         });
 
         // now increase replicationFactor from 1 to whatever number of DB servers we have
