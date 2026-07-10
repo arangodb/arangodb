@@ -30,7 +30,6 @@
 #include "Basics/ReadLocker.h"
 #include "Basics/ScopeGuard.h"
 #include "Cluster/ServerState.h"
-#include "RestServer/arangod.h"
 #include "Transaction/Methods.h"
 #include "Transaction/Options.h"
 #include "Transaction/V8Context.h"
@@ -50,7 +49,7 @@
 namespace arangodb {
 
 bool allowTransactions(v8::Isolate* isolate) {
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  TRI_GET_GLOBALS();
 
   V8DealerFeature& v8Dealer = v8g->server().getFeature<V8DealerFeature>();
   if (v8Dealer.allowJavaScriptTransactions()) {
