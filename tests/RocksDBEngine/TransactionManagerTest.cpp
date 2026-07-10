@@ -26,6 +26,7 @@
 #include <chrono>
 #include <thread>
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Metrics/Counter.h"
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"
