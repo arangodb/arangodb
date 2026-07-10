@@ -62,13 +62,7 @@ class ManagerFeature final : public application_features::ApplicationFeature {
   void beginShutdown() override;
   void unprepare() override;
 
-  size_t streamingMaxTransactionSize() const noexcept;
-  double streamingLockTimeout() const noexcept;
-  double streamingIdleTimeout() const noexcept;
   static transaction::Manager* manager() noexcept;
-
-  /// @brief track number of aborted managed transactions
-  void trackExpired(uint64_t numExpired) noexcept;
 
  private:
   void queueGarbageCollection();

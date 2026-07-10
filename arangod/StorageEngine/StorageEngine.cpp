@@ -35,6 +35,7 @@
 #include "Replication2/Storage/IStorageEngineMethods.h"
 #include "RestServer/IDatabaseProvider.h"
 #include "Transaction/Manager.h"
+#include "Transaction/ManagerFeature.h"
 #include "VocBase/VocbaseInfo.h"
 #include "VocBase/vocbase.h"
 
@@ -180,9 +181,11 @@ void StorageEngine::initTransactionStatistics(metrics::IRegistry& metrics) {
 }
 
 std::shared_ptr<transaction::Manager> StorageEngine::createTransactionManager(
-    transaction::ManagerFeature& feature) {
+    transaction::ManagerFeatureOptions options,
+    metrics::Counter& expiredTransactions) {
   ADB_PROD_ASSERT(_transactionManager.expired());
-  auto manager = std::make_shared<transaction::Manager>(feature);
+  auto manager = std::make_shared<transaction::Manager>(
+      server(), std::move(options), expiredTransactions);
   _transactionManager = manager;
   return manager;
 }

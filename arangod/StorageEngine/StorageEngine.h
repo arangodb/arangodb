@@ -29,7 +29,7 @@
 #include "Indexes/IndexFactory.h"
 #include "StorageEngine/HealthData.h"
 #include "StorageEngine/TransactionStatistics.h"
-#include "Transaction/ManagerFeature.h"
+#include "Transaction/ManagerFeatureOptions.h"
 #include "Transaction/OperationOrigin.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Identifiers/IndexId.h"
@@ -80,11 +80,14 @@ namespace replication2::storage {
 struct PersistedStateInfo;
 }
 
+namespace metrics {
+class Counter;
+}  // namespace metrics
+
 namespace transaction {
 
 class Context;
 class Manager;
-class ManagerFeature;
 class Methods;
 struct Options;
 
@@ -114,9 +117,10 @@ class StorageEngine : public application_features::ApplicationFeature {
   // creates the transaction manager and retains a non-owning handle to it, so
   // that transactions created by this engine can be handed the manager directly
   // instead of reaching for the global singleton. The returned manager is owned
-  // by the ManagerFeature.
+  // by the caller (the ManagerFeature).
   std::shared_ptr<transaction::Manager> createTransactionManager(
-      transaction::ManagerFeature&);
+      transaction::ManagerFeatureOptions options,
+      metrics::Counter& expiredTransactions);
   virtual std::shared_ptr<TransactionState> createTransactionState(
       TRI_vocbase_t& vocbase, TransactionId,
       transaction::Options const& options,

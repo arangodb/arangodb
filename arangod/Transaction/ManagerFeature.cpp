@@ -107,7 +107,7 @@ void ManagerFeature::prepare() {
   } else {
     engine = &server().getFeature<RocksDBEngine>();
   }
-  MANAGER = engine->createTransactionManager(*this);
+  MANAGER = engine->createTransactionManager(_options, _numExpiredTransactions);
 }
 
 void ManagerFeature::start() {
@@ -163,18 +163,6 @@ void ManagerFeature::stop() {
 
 void ManagerFeature::unprepare() { MANAGER.reset(); }
 
-size_t ManagerFeature::streamingMaxTransactionSize() const noexcept {
-  return _options.streamingMaxTransactionSize;
-}
-
-double ManagerFeature::streamingLockTimeout() const noexcept {
-  return _options.streamingLockTimeout;
-}
-
-double ManagerFeature::streamingIdleTimeout() const noexcept {
-  return _options.streamingIdleTimeout;
-}
-
 /*static*/ transaction::Manager* ManagerFeature::manager() noexcept {
   return MANAGER.get();
 }
@@ -188,12 +176,6 @@ void ManagerFeature::queueGarbageCollection() {
       _gcfunc);
   std::lock_guard<std::mutex> guard(_workItemMutex);
   _workItem = std::move(workItem);
-}
-
-void ManagerFeature::trackExpired(uint64_t numExpired) noexcept {
-  if (numExpired > 0) {
-    _numExpiredTransactions.count(numExpired);
-  }
 }
 
 }  // namespace arangodb::transaction
