@@ -247,7 +247,7 @@ static void JS_Compact(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
   }
 
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  TRI_GET_GLOBALS();
   StorageEngine& engine = v8g->server().getFeature<DatabaseFeature>().engine();
   Result res = engine.compactAll(changeLevel, compactBottomMostLevel);
 
@@ -1542,7 +1542,7 @@ static void JS_Engine(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::HandleScope scope(isolate);
 
   // return engine data
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  TRI_GET_GLOBALS();
   StorageEngine& engine = v8g->server().getFeature<DatabaseFeature>().engine();
   VPackBuilder builder;
   engine.getCapabilities(builder);
@@ -1561,7 +1561,7 @@ static void JS_EngineStats(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::HandleScope scope(isolate);
 
   // return engine data
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  TRI_GET_GLOBALS();
   StorageEngine& engine = v8g->server().getFeature<DatabaseFeature>().engine();
   VPackBuilder builder;
   engine.getStatistics(builder);
@@ -1585,7 +1585,7 @@ static void JS_VersionServer(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_RETURN(TRI_V8_ASCII_STRING(isolate, ARANGODB_VERSION));
   }
 
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  TRI_GET_GLOBALS();
   VPackBuilder builder;
   arangodb::RestVersionHandler::getVersion(v8g->server(), true, true, builder,
                                            api_version::defaultApiVersion);
@@ -1597,7 +1597,7 @@ static void JS_VersionServer(v8::FunctionCallbackInfo<v8::Value> const& args) {
 static void JS_PathDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  TRI_GET_GLOBALS();
   StorageEngine& engine = v8g->server().getFeature<DatabaseFeature>().engine();
 
   TRI_V8_RETURN_STD_STRING(engine.databasePath());
@@ -1660,7 +1660,7 @@ static void JS_UseDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("db._useDatabase(<name>)");
   }
 
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  TRI_GET_GLOBALS();
 
   if (!v8g->_securityContext.canUseDatabase()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
@@ -1716,7 +1716,7 @@ static void JS_Databases(v8::FunctionCallbackInfo<v8::Value> const& args) {
     user = TRI_ObjectToString(isolate, args[0]);
   }
 
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  TRI_GET_GLOBALS();
   std::vector<std::string> names =
       methods::Databases::list(v8g->server(), user);
   v8::Handle<v8::Array> result = v8::Array::New(isolate, (int)names.size());
@@ -1858,7 +1858,7 @@ static void JS_Endpoints(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("db._endpoints()");
   }
 
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  TRI_GET_GLOBALS();
   TRI_ASSERT(v8g->server().hasFeature<HttpEndpointProvider>());
   auto& endpoints = v8g->server().getFeature<HttpEndpointProvider>();
   auto& vocbase = GetContextVocBase(isolate);
@@ -1887,7 +1887,7 @@ static void JS_TrustedProxies(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   auto context = TRI_IGETC;
 
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  TRI_GET_GLOBALS();
   auto& gs = v8g->server().getFeature<GeneralServerFeature>();
   if (gs.proxyCheck()) {
     v8::Handle<v8::Array> result = v8::Array::New(isolate);
@@ -1914,7 +1914,7 @@ static void JS_AuthenticationEnabled(
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  TRI_GET_GLOBALS();
   auto& authentication = v8g->server().getFeature<AuthenticationFeature>();
 
   v8::Handle<v8::Boolean> result =
@@ -2014,7 +2014,7 @@ static void JS_CurrentWalFiles(
   v8::HandleScope scope(isolate);
   auto context = TRI_IGETC;
 
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  TRI_GET_GLOBALS();
   StorageEngine& engine = v8g->server().getFeature<DatabaseFeature>().engine();
   std::vector<std::string> names = engine.currentWalFiles();
   std::sort(names.begin(), names.end());
@@ -2112,7 +2112,7 @@ static void JS_EncryptionKeyReload(
     TRI_V8_THROW_EXCEPTION_USAGE("encryptionKeyReload()");
   }
 
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  TRI_GET_GLOBALS();
   auto* engine = dynamic_cast<RocksDBEngine*>(
       &v8g->server().getFeature<DatabaseFeature>().engine());
   if (engine == nullptr) {
@@ -2141,7 +2141,7 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   v8::HandleScope scope(isolate);
 
   // check the isolate
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  TRI_GET_GLOBALS();
 
   TRI_ASSERT(v8g->_transactionContext == nullptr);
   // register the database
