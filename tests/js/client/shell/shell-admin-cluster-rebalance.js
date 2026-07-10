@@ -21,7 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Lars Maier
 // //////////////////////////////////////////////////////////////////////////////
 
 let jsunity = require('jsunity');

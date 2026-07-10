@@ -21,7 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Julia Volmer
 // //////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
