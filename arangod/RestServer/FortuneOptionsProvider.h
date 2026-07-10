@@ -24,23 +24,15 @@
 
 #include "ApplicationFeatures/OptionsProvider.h"
 #include "FortuneFeatureOptions.h"
-#include <memory>
-
-namespace arangodb::options {
-class ProgramOptions;
-}
 
 namespace arangodb::fortune {
 
-struct FortuneOptionsProvider {
-  FortuneOptionsProvider() = default;
-
-  void declareOptions(std::shared_ptr<options::ProgramOptions>& opts);
-  void validateOptions(std::shared_ptr<options::ProgramOptions>& /*opts*/) {}
-  [[nodiscard]] FortuneFeatureOptions options() const { return _options; }
-
- private:
-  FortuneFeatureOptions _options;
+struct FortuneOptionsProvider
+    : OptionsProviderImpl<FortuneOptionsProvider, FortuneFeatureOptions> {
+  void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> options,
+                          FortuneFeatureOptions& opts);
+  void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> options,
+                           FortuneFeatureOptions& opts) {};
 };
 
 }  // namespace arangodb::fortune

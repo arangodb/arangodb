@@ -22,18 +22,17 @@
 
 #pragma once
 
-#include "ProgramOptions/ProgramOptions.h"
+#include "ApplicationFeatures/OptionsProvider.h"
 #include "RocksDBEngine/RocksDBEngineOptions.h"
 
 namespace arangodb {
 
-struct RocksDBEngineOptionsProvider {
-  void declareOptions(std::shared_ptr<options::ProgramOptions>& opts);
-  void validateOptions(std::shared_ptr<options::ProgramOptions>& opts);
-  [[nodiscard]] RocksDBEngineOptions options() const { return _options; };
-
- private:
-  RocksDBEngineOptions _options;
+struct RocksDBEngineOptionsProvider
+    : OptionsProviderImpl<RocksDBEngineOptionsProvider, RocksDBEngineOptions> {
+  void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                          RocksDBEngineOptions& options);
+  void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                           RocksDBEngineOptions& options);
 };
 
 }  // namespace arangodb

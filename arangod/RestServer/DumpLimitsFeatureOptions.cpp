@@ -30,7 +30,8 @@ namespace {
 std::uint64_t defaultMemoryUsage() {
   if (PhysicalMemory::getValue() >= (static_cast<std::uint64_t>(4) << 30)) {
     return static_cast<std::uint64_t>(
-        (PhysicalMemory::getValue() - (static_cast<std::uint64_t>(2) << 30)) * 0.2);
+        (PhysicalMemory::getValue() - (static_cast<std::uint64_t>(2) << 30)) *
+        0.2);
   }
   return (static_cast<std::uint64_t>(64) << 20);
 }

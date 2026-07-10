@@ -121,6 +121,8 @@ struct RocksDBOptionFeatureOptions {
   bool ioUringEnabled = true;
   std::array<uint64_t, RocksDBColumnFamilyManager::numberOfColumnFamilies>
       maxWriteBufferNumberCf{};
+
+  RocksDBOptionFeatureOptions();
 };
 
 }  // namespace arangodb

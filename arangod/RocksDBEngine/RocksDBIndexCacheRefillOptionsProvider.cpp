@@ -29,14 +29,14 @@ namespace arangodb {
 
 using namespace arangodb::options;
 
-void RocksDBIndexCacheRefillOptionsProvider::declareOptions(
-    std::shared_ptr<options::ProgramOptions>& prgOptions) {
-  prgOptions
-      ->addOption("--rocksdb.auto-fill-index-caches-on-startup",
+void RocksDBIndexCacheRefillOptionsProvider::declareOptionsImpl(
+    std::shared_ptr<options::ProgramOptions> opts,
+    RocksDBIndexCacheRefillFeatureOptions& options) {
+  opts->addOption("--rocksdb.auto-fill-index-caches-on-startup",
                   "Whether to automatically fill the in-memory index caches "
                   "with entries from edge indexes and cache-enabled persistent "
                   "indexes on server startup.",
-                  new options::BooleanParameter(&_options.fillOnStartup),
+                  new options::BooleanParameter(&options.fillOnStartup),
                   arangodb::options::makeFlags(
                       options::Flags::DefaultNoComponents,
                       options::Flags::OnDBServer, options::Flags::OnSingle))
@@ -47,13 +47,12 @@ I/O load. You can limit how many index filling operations can execute
 concurrently with the `--rocksdb.max-concurrent-index-fill-tasks` startup
 option.)");
 
-  prgOptions
-      ->addOption("--rocksdb.auto-refill-index-caches-on-modify",
+  opts->addOption("--rocksdb.auto-refill-index-caches-on-modify",
                   "Whether to automatically (re-)fill the in-memory index "
                   "caches with entries from edge indexes and cache-enabled "
                   "persistent indexes on insert/update/replace/remove "
                   "operations by default.",
-                  new options::BooleanParameter(&_options.autoRefill),
+                  new options::BooleanParameter(&options.autoRefill),
                   arangodb::options::makeFlags(
                       options::Flags::DefaultNoComponents,
                       options::Flags::OnDBServer, options::Flags::OnSingle))
@@ -76,12 +75,11 @@ foreground write operations are not slowed down by a lot. It may still cause
 additional I/O activity to look up data from the storage engine to repopulate
 the cache.)");
 
-  prgOptions
-      ->addOption(
+  opts->addOption(
           "--rocksdb.auto-refill-index-caches-queue-capacity",
           "How many changes can be queued at most for automatically refilling "
           "the index caches.",
-          new options::SizeTParameter(&_options.maxCapacity),
+          new options::SizeTParameter(&options.maxCapacity),
           options::makeFlags(options::Flags::DefaultNoComponents,
                              options::Flags::OnDBServer,
                              options::Flags::OnSingle))
@@ -93,12 +91,11 @@ most. This limits the memory usage for the case of the background thread being
 slower than other operations that invalidate cache entries of edge indexes
 or cache-enabled persistent indexes.)");
 
-  prgOptions
-      ->addOption(
+  opts->addOption(
           "--rocksdb.max-concurrent-index-fill-tasks",
           "The maximum number of index fill tasks that can run concurrently on "
           "server startup.",
-          new options::SizeTParameter(&_options.maxConcurrentIndexFillTasks,
+          new options::SizeTParameter(&options.maxConcurrentIndexFillTasks,
                                       /*minValue*/ 1),
           options::makeFlags(options::Flags::DefaultNoComponents,
                              options::Flags::OnDBServer,
@@ -108,12 +105,11 @@ or cache-enabled persistent indexes.)");
       .setLongDescription(R"(The lower this number, the lower the impact of the
 index cache filling, but the longer it takes to complete.)");
 
-  prgOptions
-      ->addOption(
+  opts->addOption(
           "--rocksdb.auto-refill-index-caches-on-followers",
           "Whether or not to automatically (re-)fill the in-memory index "
           "caches on followers as well.",
-          new options::BooleanParameter(&_options.autoRefillOnFollowers),
+          new options::BooleanParameter(&options.autoRefillOnFollowers),
           arangodb::options::makeFlags(options::Flags::DefaultNoComponents,
                                        options::Flags::OnDBServer,
                                        options::Flags::OnSingle))

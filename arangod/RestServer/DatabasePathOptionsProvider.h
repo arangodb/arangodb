@@ -25,8 +25,6 @@
 #include "ApplicationFeatures/OptionsProvider.h"
 #include "DatabasePathFeatureOptions.h"
 
-#include <memory>
-
 namespace arangodb {
 
 struct DatabasePathOptionsProvider
