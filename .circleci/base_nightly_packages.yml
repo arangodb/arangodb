@@ -182,11 +182,11 @@ parameters:
     description: "Additionally push Docker images to gcr.io/gcr-for-testing (docker.io is always pushed)."
   sign-packages:
     type: boolean
-    default: false
+    default: true
     description: "Create detached GPG signatures (.asc) for all packages."
   scan-viruses:
     type: boolean
-    default: false
+    default: true
     description: "Scan all packages with ClamAV before publishing."
   security-check:
     type: boolean
