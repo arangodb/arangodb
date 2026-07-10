@@ -1136,16 +1136,65 @@ function ahuacatlStringFunctionsTestSuite () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN CONTAINS("test", "test", "test", "test")'); 
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN CONTAINS()'); 
       assertEqual([ -1 ], getQueryResults('RETURN CONTAINS("test", "test2", "test3")')); 
-      assertEqual([ false ], getQueryResults('RETURN CONTAINS(null, null)')); 
-      assertEqual([ true ], getQueryResults('RETURN CONTAINS(4, 4)')); 
-      assertEqual([ true ], getQueryResults('RETURN CONTAINS({ }, { })')); 
-      assertEqual([ true ], getQueryResults('RETURN CONTAINS({ a: 1, b: 2 }, { a: 1, b: 2 })')); 
-      assertEqual([ true ], getQueryResults('RETURN CONTAINS([ ], [ ])')); 
-      assertEqual([ true ], getQueryResults('RETURN CONTAINS([ 1, 2, 3 ], [ 1, 2, 3 ])')); 
-      assertEqual([ true ], getQueryResults('RETURN CONTAINS([ 1, 2 ], [ 1, 2 ])')); 
-      assertEqual([ true ], getQueryResults('RETURN CONTAINS([ 1, 2, 3 ], 2)')); 
-      assertEqual([ false ], getQueryResults('RETURN CONTAINS(null, "yes")')); 
-      assertEqual([ false ], getQueryResults('RETURN CONTAINS(3, null)')); 
+      assertEqual([ null ], getQueryResults('RETURN CONTAINS(null, null)')); 
+      assertEqual([ null ], getQueryResults('RETURN CONTAINS(4, 4)')); 
+      assertEqual([ null ], getQueryResults('RETURN CONTAINS({ }, { })')); 
+      assertEqual([ null ], getQueryResults('RETURN CONTAINS({ a: 1, b: 2 }, { a: 1, b: 2 })')); 
+      assertEqual([ null ], getQueryResults('RETURN CONTAINS([ ], [ ])')); 
+      assertEqual([ null ], getQueryResults('RETURN CONTAINS([ 1, 2, 3 ], [ 1, 2, 3 ])')); 
+      assertEqual([ null ], getQueryResults('RETURN CONTAINS([ 1, 2 ], [ 1, 2 ])')); 
+      assertEqual([ null ], getQueryResults('RETURN CONTAINS([ 1, 2, 3 ], 2)')); 
+      assertEqual([ null ], getQueryResults('RETURN CONTAINS(null, "yes")')); 
+      assertEqual([ null ], getQueryResults('RETURN CONTAINS(3, null)')); 
+    },
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test that CONTAINS emits a warning for non-string inputs and
+// /        returns null
+// //////////////////////////////////////////////////////////////////////////////
+
+    testContainsNonStringWarning: function () {
+      const warningCode = errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code;
+
+      const nonStringCases = [
+        'RETURN CONTAINS({ a: 1, b: 2 }, { a: 1, b: 2 })',
+        'RETURN CONTAINS({ }, { })',
+        'RETURN CONTAINS([ 1, 2, 3 ], [ 1, 2, 3 ])',
+        'RETURN CONTAINS([ 1, 2, 3 ], 2)',
+        'RETURN CONTAINS(4, 4)',
+        'RETURN CONTAINS(null, null)',
+        'RETURN CONTAINS("test2", 2)',
+        'RETURN CONTAINS(1234, "23")',
+        'RETURN CONTAINS(null, "yes")',
+        'RETURN CONTAINS(3, null)',
+      ];
+
+      nonStringCases.forEach(function (query) {
+        const data = db._query(query).data;
+        assertEqual([ null ], data.result, query);
+        assertEqual(1, data.extra.warnings.length, query);
+        assertEqual(warningCode, data.extra.warnings[0].code, query);
+      });
+    },
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test that CONTAINS does not emit a warning for string inputs
+// //////////////////////////////////////////////////////////////////////////////
+
+    testContainsStringNoWarning: function () {
+      const stringCases = [
+        'RETURN CONTAINS("test2", "test")',
+        'RETURN CONTAINS("xxasdxx", "asd")',
+        'RETURN CONTAINS("test", "test2")',
+        'RETURN CONTAINS("test123", "")',
+        'RETURN CONTAINS("", "test123")',
+        'RETURN CONTAINS("test2", "test", true)',
+      ];
+
+      stringCases.forEach(function (query) {
+        const data = db._query(query).data;
+        assertEqual(0, data.extra.warnings.length, query);
+      });
     },
 
 // //////////////////////////////////////////////////////////////////////////////

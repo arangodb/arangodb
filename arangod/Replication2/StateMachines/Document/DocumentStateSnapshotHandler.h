@@ -25,11 +25,7 @@
 #include "Replication2/StateMachines/Document/CollectionReader.h"
 #include "Replication2/StateMachines/Document/DocumentStateSnapshot.h"
 
-#include <string_view>
 #include <unordered_map>
-#include <shared_mutex>
-
-struct TRI_vocbase_t;
 
 namespace arangodb::replication2::replicated_state::document {
 struct ICollectionReader;

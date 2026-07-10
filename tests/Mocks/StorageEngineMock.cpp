@@ -205,7 +205,9 @@ StorageEngineMock::StorageEngineMock(
                     std::unique_ptr<arangodb::IndexFactory>(
                         new IndexFactoryMock(server, injectClusterIndexes))),
       vocbaseCount(1),
-      _releasedTick(0) {}
+      _releasedTick(0) {
+  initTransactionStatistics(_mockRegistry);
+}
 
 arangodb::HealthData StorageEngineMock::healthCheck() { return {}; }
 

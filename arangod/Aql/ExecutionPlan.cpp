@@ -76,6 +76,7 @@
 #include "RestServer/QueryRegistryFeature.h"
 #include "Utils/OperationOptions.h"
 #include "VocBase/AccessMode.h"
+#include "VocBase/vocbase.h"
 
 #include <absl/strings/str_cat.h>
 #include <absl/strings/str_join.h>
@@ -2407,8 +2408,7 @@ ExecutionNode* ExecutionPlan::fromNodeMatch(ExecutionNode* previous,
 
   auto const patternEdgeCollectionCount =
       [](AstNode const* edgeLabelMember) -> size_t {
-    if (edgeLabelMember == nullptr ||
-        edgeLabelMember->type == NODE_TYPE_NOP) {
+    if (edgeLabelMember == nullptr || edgeLabelMember->type == NODE_TYPE_NOP) {
       return 0;
     }
     if (edgeLabelMember->type == NODE_TYPE_ARRAY) {
@@ -2417,8 +2417,8 @@ ExecutionNode* ExecutionPlan::fromNodeMatch(ExecutionNode* previous,
     return 1;
   };
 
-  auto const getPatternEdgeCollection =
-      [](AstNode const* edgeLabelMember, size_t index) -> AstNode const* {
+  auto const getPatternEdgeCollection = [](AstNode const* edgeLabelMember,
+                                           size_t index) -> AstNode const* {
     if (edgeLabelMember->type == NODE_TYPE_ARRAY) {
       return edgeLabelMember->getMember(index);
     }
@@ -2496,8 +2496,7 @@ ExecutionNode* ExecutionPlan::fromNodeMatch(ExecutionNode* previous,
   };
 
   auto const createPatternEdgeEnumerateAccess = [&](AstNode const* edge) {
-    auto variable =
-        static_cast<Variable const*>(edge->getMember(0)->getData());
+    auto variable = static_cast<Variable const*>(edge->getMember(0)->getData());
     auto const* collectionNode =
         getPatternEdgeCollection(edge->getMember(1), 0);
     auto collectionName = collectionNode->getString();

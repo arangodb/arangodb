@@ -40,7 +40,11 @@ namespace arangodb {
 using application_features::ApplicationServer;
 
 EndpointFeature::EndpointFeature(ApplicationServer& server)
-    : HttpEndpointProvider{server, *this} {
+    : EndpointFeature(server, EndpointFeatureOptions{}) {}
+
+EndpointFeature::EndpointFeature(ApplicationServer& server,
+                                 EndpointFeatureOptions options)
+    : HttpEndpointProvider{server, *this}, _options(std::move(options)) {
   setOptional(true);
   startsAfter<application_features::AqlFeaturePhase>();
 

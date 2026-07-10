@@ -75,11 +75,19 @@ struct SchedulerFeature::AsioHandler {
 
 SchedulerFeature::SchedulerFeature(
     application_features::ApplicationServer& server,
-    metrics::MetricsFeature& metrics, basics::SharedPRNG& sharedPRNG)
+    metrics::IRegistry& metricsRegistry, basics::SharedPRNG& sharedPRNG)
+    : SchedulerFeature(server, metricsRegistry, sharedPRNG,
+                       SchedulerFeatureOptions{}) {}
+
+SchedulerFeature::SchedulerFeature(
+    application_features::ApplicationServer& server,
+    metrics::IRegistry& metricsRegistry, basics::SharedPRNG& sharedPRNG,
+    SchedulerFeatureOptions options)
     : ApplicationFeature{server, *this},
+      _options(std::move(options)),
       _scheduler(nullptr),
       _sharedPRNG(sharedPRNG),
-      _metricsFeature(metrics),
+      _metricsRegistry(metricsRegistry),
       _asioHandler(std::make_unique<AsioHandler>()) {
   setOptional(false);
   startsAfter<GreetingsFeaturePhase>();
@@ -107,7 +115,7 @@ void SchedulerFeature::prepare() {
   TRI_ASSERT(_options.nrMinimalThreads <= _options.nrMaximalThreads);
   TRI_ASSERT(_options.queueSize > 0);
 
-  auto metrics = std::make_shared<SchedulerMetrics>(_metricsFeature);
+  auto metrics = std::make_shared<SchedulerMetrics>(_metricsRegistry);
   _scheduler = std::invoke([&]() -> std::unique_ptr<Scheduler> {
     if (_options.schedulerType == "supervised") {
       // on a DB server we intentionally disable throttling of incoming

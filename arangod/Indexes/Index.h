@@ -27,8 +27,8 @@
 #include "Basics/AttributeNameParser.h"
 #include "Basics/Result.h"
 #include "Containers/FlatHashSet.h"
+#include "Utils/OperationOptions.h"
 #include "VocBase/Identifiers/IndexId.h"
-#include "VocBase/vocbase.h"
 
 #include <s2/base/integral_types.h>
 
@@ -40,6 +40,7 @@
 #include <vector>
 
 namespace arangodb {
+class StorageEngine;
 class IndexIterator;
 class LogicalCollection;
 struct IndexIteratorOptions;
@@ -450,7 +451,8 @@ class Index {
   virtual std::unique_ptr<AqlIndexDistinctScanIterator> distinctScanFor(
       transaction::Methods* trx, IndexDistinctScanOptions const&);
 
-  virtual vector::UserVectorIndexDefinition const& getVectorIndexDefinition();
+  virtual vector::UserVectorIndexDefinition const& getVectorIndexDefinition()
+      const;
 
   /// @brief Returns true if the vector index is trained and ready for queries.
   /// Default returns false. Overridden only by vector index implementations.

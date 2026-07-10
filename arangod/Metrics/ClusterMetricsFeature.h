@@ -83,6 +83,8 @@ class ClusterMetricsFeature final
     LeaderResponse packed;
     Metrics metrics;
   };
+  ClusterMetricsFeature(application_features::ApplicationServer& server,
+                        ClusterMetricsOptions options);
   explicit ClusterMetricsFeature(
       application_features::ApplicationServer& server);
 

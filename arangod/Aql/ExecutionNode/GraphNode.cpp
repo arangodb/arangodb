@@ -24,7 +24,6 @@
 
 #include "GraphNode.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/Collection.h"
@@ -37,7 +36,6 @@
 #include "Aql/Expression.h"
 #include "Aql/OptimizerRule.h"
 #include "Aql/RegisterPlan.h"
-#include "Aql/SingleRowFetcher.h"
 #include "Aql/SortCondition.h"
 #include "Aql/Variable.h"
 #include "Aql/TypedAstNodes.h"
@@ -50,12 +48,7 @@
 #include "Graph/TraverserOptions.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/ticks.h"
-#ifdef USE_ENTERPRISE
-#include "Enterprise/Aql/LocalEnumeratePathsNode.h"
-#include "Enterprise/Aql/LocalShortestPathNode.h"
-#include "Enterprise/Aql/LocalTraversalNode.h"
-#endif
+#include "VocBase/vocbase.h"
 
 #include <absl/strings/str_cat.h>
 #include <velocypack/Iterator.h>
@@ -176,9 +169,9 @@ TRI_edge_direction_e parseDirection(AstNode const* node) {
 
 }  // namespace
 
-GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
-                     TRI_vocbase_t* vocbase, AstNode const* direction,
-                     AstNode const* graph, std::unique_ptr<BaseOptions> options)
+GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id, Database* vocbase,
+                     AstNode const* direction, AstNode const* graph,
+                     std::unique_ptr<BaseOptions> options)
     : ExecutionNode(plan, id),
       _vocbase(vocbase),
       _vertexOutVariable(nullptr),
@@ -541,8 +534,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, velocypack::Slice base)
 }
 
 /// @brief Internal constructor to clone the node.
-GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
-                     TRI_vocbase_t* vocbase,
+GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id, Database* vocbase,
                      std::vector<Collection*> const& edgeColls,
                      std::vector<Collection*> const& vertexColls,
                      TRI_edge_direction_e defaultDirection,
@@ -1063,7 +1055,7 @@ bool GraphNode::isSmart() const { return _isSmart; }
 
 bool GraphNode::isDisjoint() const { return _isDisjoint; }
 
-TRI_vocbase_t* GraphNode::vocbase() const { return _vocbase; }
+Database* GraphNode::vocbase() const { return _vocbase; }
 
 Variable const* GraphNode::vertexOutVariable() const {
   return _vertexOutVariable;

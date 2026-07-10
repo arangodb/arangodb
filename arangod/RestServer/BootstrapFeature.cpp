@@ -65,11 +65,22 @@ BootstrapFeature::BootstrapFeature(
     ClusterFeature& clusterFeature, DatabaseFeature& databaseFeature,
     SystemDatabaseFeature* systemDatabaseFeature,
     ClusterUpgradeFeature* clusterUpgradeFeature)
+    : BootstrapFeature(server, clusterFeature, databaseFeature,
+                       systemDatabaseFeature, clusterUpgradeFeature,
+                       BootstrapFeatureOptions{}) {}
+
+BootstrapFeature::BootstrapFeature(
+    application_features::ApplicationServer& server,
+    ClusterFeature& clusterFeature, DatabaseFeature& databaseFeature,
+    SystemDatabaseFeature* systemDatabaseFeature,
+    ClusterUpgradeFeature* clusterUpgradeFeature,
+    BootstrapFeatureOptions options)
     : ApplicationFeature{server, *this},
       _clusterFeature(clusterFeature),
       _databaseFeature(databaseFeature),
       _systemDatabaseFeature(systemDatabaseFeature),
       _clusterUpgradeFeature(clusterUpgradeFeature),
+      _options(std::move(options)),
       _isReady(false) {
   startsAfter<application_features::ServerFeaturePhase>();
 

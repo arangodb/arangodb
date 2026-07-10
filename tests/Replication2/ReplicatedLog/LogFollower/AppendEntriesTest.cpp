@@ -23,10 +23,10 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
+#include "Mocks/FakeRegistry.h"
 #include "Replication2/ReplicatedLog/Components/LogFollower.h"
 #include "Replication2/Mocks/FakeStorageEngineMethods.h"
 #include "Replication2/Mocks/FakeAsyncExecutor.h"
-#include "Replication2/Mocks/ReplicatedLogMetricsMock.h"
 #include "Replication2/Mocks/SchedulerMocks.h"
 #include "Replication2/ReplicatedState/StateStatus.h"
 #include <immer/flex_vector_transient.hpp>
@@ -79,8 +79,9 @@ struct AppendEntriesFollowerTest : ::testing::Test {
       std::make_shared<FollowerTermInformation>();
 
   ReplicatedStateHandleMock* stateHandle = new ReplicatedStateHandleMock();
+  metrics::FakeRegistry fakeRegistry;
   std::shared_ptr<ReplicatedLogMetrics> metrics =
-      std::make_shared<test::ReplicatedLogMetricsMock>();
+      std::make_shared<replicated_log::ReplicatedLogMetrics>(fakeRegistry);
 
   MessageId lastMessageId{1};
 

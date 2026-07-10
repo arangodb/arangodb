@@ -33,14 +33,8 @@
 #include <string>
 #include <unordered_map>
 
-struct TRI_vocbase_t;
-
 namespace arangodb {
 class RocksDBEngine;
-
-namespace metrics {
-class MetricsFeature;
-}
 
 namespace velocypack {
 struct Options;
@@ -49,7 +43,7 @@ struct Options;
 class RocksDBDumpManager {
  public:
   explicit RocksDBDumpManager(RocksDBEngine& engine,
-                              metrics::MetricsFeature& metricsFeature,
+                              metrics::IRegistry& metrics,
                               DumpLimitsFeatureOptions const& limits);
 
   ~RocksDBDumpManager();
@@ -79,7 +73,7 @@ class RocksDBDumpManager {
               std::string const& user);
 
   // delete all contexts for the given database.
-  void dropDatabase(TRI_vocbase_t& vocbase);
+  void dropDatabase(Database& vocbase);
 
   void garbageCollect(bool force);
 

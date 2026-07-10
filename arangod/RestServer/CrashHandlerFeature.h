@@ -41,6 +41,10 @@ class CrashHandlerFeature final
 
   explicit CrashHandlerFeature(
       application_features::ApplicationServer& server,
+      std::shared_ptr<crash_handler::DumpManager> dumpManager,
+      CrashHandlerFeatureOptions options);
+  explicit CrashHandlerFeature(
+      application_features::ApplicationServer& server,
       std::shared_ptr<crash_handler::DumpManager> dumpManager);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;

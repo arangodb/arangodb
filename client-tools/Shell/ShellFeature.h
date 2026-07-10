@@ -24,6 +24,7 @@
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "Shell/ShellFeatureOptions.h"
 
 #include <memory>
 #include <optional>
@@ -42,6 +43,8 @@ class ShellFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Shell"; }
 
+  ShellFeature(application_features::ApplicationServer& server, int* result,
+               ShellFeatureOptions options);
   ShellFeature(application_features::ApplicationServer& server, int* result);
 
   ~ShellFeature();
@@ -68,12 +71,6 @@ class ShellFeature final : public application_features::ApplicationFeature {
   void startTelemetrics();
   void restartTelemetrics();
 
- private:
-  std::vector<std::string> _executeScripts;
-  std::vector<std::string> _executeStrings;
-  std::vector<std::string> _checkSyntaxFiles;
-  std::vector<std::string> _unitTests;
-
  public:
   enum class RunMode {
     INTERACTIVE,
@@ -84,15 +81,13 @@ class ShellFeature final : public application_features::ApplicationFeature {
   };
 
  private:
+  ShellFeatureOptions _options;
   int* _result;
   RunMode _runMode;
   std::vector<std::string> _positionals;
-  std::string _unitTestFilter;
-  std::vector<std::string> _scriptParameters;
   std::unique_ptr<TelemetricsHandler> _telemetricsHandler;
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   bool _automaticallySendTelemetricsToEndpoint{true};
-  std::vector<std::string> _failurePoints;
 #endif
 };
 

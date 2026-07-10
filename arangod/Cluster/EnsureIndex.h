@@ -28,10 +28,6 @@
 #include "ActionDescription.h"
 #include "VocBase/Methods/Indexes.h"
 
-#include <chrono>
-
-struct TRI_vocbase_t;
-
 namespace arangodb {
 class LogicalCollection;
 

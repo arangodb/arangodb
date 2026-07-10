@@ -24,18 +24,16 @@
 
 #pragma once
 
-#include <atomic>
-#include <memory>
-#include <queue>
-#include <vector>
-
 #include "Basics/ConditionVariable.h"
 #include "Basics/Result.h"
 #include "Basics/Thread.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
-#include "SimpleHttpClient/SimpleHttpResult.h"
 #include "Utils/ClientManager.h"
 
+#include <atomic>
+#include <memory>
+#include <queue>
+#include <vector>
 namespace arangodb {
 
 /**
@@ -68,15 +66,13 @@ class ClientTaskQueue {
    * the data need not be synchronized. Can be used to requeue a failed job,
    * notify another actor that the job is done, etc.
    *
-   * @param server  A reference the the underlying application server
    * @param jobData Data describing the job which was just processed
    * @param result  The result status of the job
    */
   using JobResultHandler = std::function<void(
       std::unique_ptr<JobData>&& jobData, Result const& result)>;
 
-  ClientTaskQueue(application_features::ApplicationServer& server,
-                  JobProcessor processJob);
+  ClientTaskQueue(JobProcessor processJob);
   virtual ~ClientTaskQueue();
 
   /**
@@ -159,8 +155,7 @@ class ClientTaskQueue {
     Worker& operator=(Worker const&) = delete;
 
    public:
-    explicit Worker(application_features::ApplicationServer&,
-                    ClientTaskQueue<JobData>&,
+    explicit Worker(ClientTaskQueue<JobData>&,
                     std::unique_ptr<httpclient::SimpleHttpClient>&&);
     virtual ~Worker();
 
@@ -184,8 +179,6 @@ class ClientTaskQueue {
   void waitForWork() noexcept;
   void clearQueue(std::unique_lock<std::mutex>& lock) noexcept;
 
-  application_features::ApplicationServer& _server;
-
   JobProcessor _processJob;
 
   // protects _jobs and workers
@@ -201,9 +194,8 @@ class ClientTaskQueue {
 ////////////////////////////////////////////////////////////////////////////////
 
 template<typename JobData>
-inline ClientTaskQueue<JobData>::ClientTaskQueue(
-    application_features::ApplicationServer& server, JobProcessor processJob)
-    : _server(server), _processJob(processJob) {}
+inline ClientTaskQueue<JobData>::ClientTaskQueue(JobProcessor processJob)
+    : _processJob(processJob) {}
 
 template<typename JobData>
 ClientTaskQueue<JobData>::~ClientTaskQueue() {
@@ -228,7 +220,7 @@ inline bool ClientTaskQueue<JobData>::spawnWorkers(
 
     for (; spawned < numWorkers; spawned++) {
       auto client = manager.getConnectedClient(false, false, true, spawned);
-      auto worker = std::make_unique<Worker>(_server, *this, std::move(client));
+      auto worker = std::make_unique<Worker>(*this, std::move(client));
       _workers.emplace_back(std::move(worker));
       _workers.back()->start();
     }
@@ -372,10 +364,9 @@ inline void ClientTaskQueue<JobData>::notifyIdle() noexcept {
 
 template<typename JobData>
 inline ClientTaskQueue<JobData>::Worker::Worker(
-    application_features::ApplicationServer& server,
     ClientTaskQueue<JobData>& queue,
     std::unique_ptr<httpclient::SimpleHttpClient>&& client)
-    : Thread(server, "Worker"),
+    : Thread("Worker"),
       _queue(queue),
       _client(std::move(client)),
       _idle(true) {}

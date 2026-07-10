@@ -41,6 +41,10 @@
 #include <velocypack/Builder.h>
 #include <velocypack/SharedSlice.h>
 
+namespace arangodb {
+class RocksDBVectorIndex;
+}
+
 namespace arangodb::aql {
 
 struct AqlCall;
@@ -115,9 +119,15 @@ class EnumerateNearVectorsExecutor {
 
   uint64_t skipOutput(AqlCall::Limit toSkip) noexcept;
 
+  // Resolves the concrete vector index from the index handle. During index
+  // creation the collection hands out a RocksDBBuilderIndex that wraps the
+  // vector index, so this unwraps it; otherwise it is the vector index itself.
+  static RocksDBVectorIndex const& resolveVectorIndex(Infos const& infos);
+
   Infos const& _infos;
   transaction::Methods _trx;
   aql::Collection const* _collection;
+  RocksDBVectorIndex const& _vectorIndex;
 
   InputAqlItemRow _inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
   std::vector<float> _inputRowConverted;

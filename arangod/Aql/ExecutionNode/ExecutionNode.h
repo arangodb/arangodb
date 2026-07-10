@@ -77,6 +77,7 @@ class Builder;
 class Slice;
 }  // namespace velocypack
 
+struct Database;
 class Index;
 
 namespace aql {

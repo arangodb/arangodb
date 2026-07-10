@@ -22,6 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ApplicationFeatures/ProcessEnvironmentFeature.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/ProcessEnvironmentOptionsProvider.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -34,6 +36,19 @@ extern char** environ;
 namespace arangodb {
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+ProcessEnvironmentFeature::ProcessEnvironmentFeature(
+    application_features::ApplicationServer& server, std::string const& appname)
+    : ProcessEnvironmentFeature(server, appname,
+                                ProcessEnvironmentFeatureOptions{}) {}
+
+ProcessEnvironmentFeature::ProcessEnvironmentFeature(
+    application_features::ApplicationServer& server, std::string const& appname,
+    ProcessEnvironmentFeatureOptions options)
+    : ApplicationFeature{server, *this}, _options(std::move(options)) {
+  setOptional(false);
+  startsAfter<application_features::GreetingsFeaturePhase>();
+}
+
 void ProcessEnvironmentFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
   ProcessEnvironmentOptionsProvider provider;
