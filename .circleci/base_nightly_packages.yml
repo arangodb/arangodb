@@ -1380,11 +1380,11 @@ jobs:
             STAGE_GCS="${DST}-staging/${CIRCLE_WORKFLOW_ID}"
 
             # Stage with the historical layout (oskar: uname -m arch dirs):
-            # nightly/<major.minor>/Linux/{x86_64,aarch64}/ — plus, at the
-            # <major.minor>/ level next to Linux/: sourceInfo.(log|json)
-            # (identical for both arches, so published once instead of per
-            # arch dir) and the arangodb3e-<VERSION>.txt package publish
-            # report.
+            # nightly/<major.minor>/Linux/{x86_64,aarch64}/ — plus
+            # sourceInfo.(log|json) at the <major.minor>/ level next to
+            # Linux/ (identical for both arches, so published once instead
+            # of per arch dir) and the arangodb3e-<VERSION>.txt package
+            # publish report inside Linux/, next to the arch dirs.
             TOP=/tmp/stage/${PACKAGES}
             STAGE=${TOP}/Linux
             declare -A GCS_ARCH=( [amd64]=x86_64 [arm64]=aarch64 )
@@ -1445,7 +1445,7 @@ jobs:
               echo "Workflow:  ${CIRCLE_WORKFLOW_ID}"
               echo
               cat "${SECTION}"
-            } > "${TOP}/arangodb3e-${VERSION}.txt"
+            } > "${STAGE}/arangodb3e-${VERSION}.txt"
 
             upload() {
               local arch_dir="$1"
@@ -1456,11 +1456,14 @@ jobs:
               # there might be internet hiccups
               upload "${arch_dir}" || upload "${arch_dir}" || upload "${arch_dir}" || upload "${arch_dir}"
             done
-            # The <major.minor>-level files (promoted to the live tree by
-            # the commit step's recursive rsync like everything else)
+            # The report at Linux/ level (not covered by the per-arch-dir
+            # rsync loop above) and the <major.minor>-level sourceInfo files;
+            # all promoted to the live tree by the commit step's recursive
+            # rsync like everything else.
             upload_top() {
-              gsutil -m cp "${TOP}/arangodb3e-${VERSION}.txt" \
-                "${TOP}/sourceInfo.log" "${TOP}/sourceInfo.json" \
+              gsutil -m cp "${STAGE}/arangodb3e-${VERSION}.txt" \
+                "${STAGE_GCS}/${PACKAGES}/Linux/" && \
+              gsutil -m cp "${TOP}/sourceInfo.log" "${TOP}/sourceInfo.json" \
                 "${STAGE_GCS}/${PACKAGES}/"
             }
             upload_top || upload_top || upload_top || upload_top
@@ -1721,7 +1724,7 @@ jobs:
             # Everything this run published: the packages (incl. the
             # objectfiles archives) with size and SHA256 — the section
             # written by the stage step, which is also published standalone
-            # as <major.minor>/arangodb3e-<VERSION>.txt — and the Docker
+            # as <major.minor>/Linux/arangodb3e-<VERSION>.txt — and the Docker
             # refs collected by the stage/commit steps. Supplemental files
             # (.asc, .clamav, .trivy.*) are published too but not listed.
             REPORT=/tmp/nightly-publish-report.txt
