@@ -63,7 +63,7 @@ namespace graph {
 struct GraphTestSetup
     : public arangodb::tests::LogSuppressor<arangodb::Logger::FIXME,
                                             arangodb::LogLevel::ERR> {
-  arangodb::ArangodServer server;
+  arangodb::application_features::ApplicationServer server;
   StorageEngineMock engine;
   std::unique_ptr<TRI_vocbase_t> system;
   std::vector<
@@ -89,8 +89,8 @@ struct MockGraphDatabase {
   ::testing::NiceMock<arangodb::tests::MockDatabaseProvider> dbProvider;
   TRI_vocbase_t vocbase;
 
-  MockGraphDatabase(ArangodServer& server, StorageEngine& engine,
-                    std::string name)
+  MockGraphDatabase(application_features::ApplicationServer& server,
+                    StorageEngine& engine, std::string name)
       : vocbase(createInfo(server, name, 1), engine, dbProvider) {
     ON_CALL(dbProvider, extendedNames()).WillByDefault(::testing::Return(true));
   }

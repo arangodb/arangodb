@@ -22,12 +22,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "gtest/gtest.h"
+
 #include <chrono>
 #include <thread>
 
 #include "Metrics/Counter.h"
 #include "Transaction/Manager.h"
-#include "RestServer/arangod.h"
+#include "Transaction/ManagerFeature.h"
 
 using namespace arangodb;
 
@@ -39,7 +40,7 @@ using namespace arangodb;
 
 /// @brief simple non-overlapping
 TEST(RocksDBTransactionManager, test_non_overlapping) {
-  ArangodServer server{nullptr, nullptr};
+  application_features::ApplicationServer server{nullptr, nullptr};
   metrics::Counter expiredTransactions{0, "arangodb_transactions_expired_total",
                                        "", ""};
   transaction::Manager tm(server, transaction::ManagerFeatureOptions{},
@@ -62,7 +63,7 @@ TEST(RocksDBTransactionManager, test_non_overlapping) {
 /// @brief simple non-overlapping
 TEST(RocksDBTransactionManager, test_overlapping) {
   auto trxId = static_cast<TransactionId>(1);
-  ArangodServer server{nullptr, nullptr};
+  application_features::ApplicationServer server{nullptr, nullptr};
   metrics::Counter expiredTransactions{0, "arangodb_transactions_expired_total",
                                        "", ""};
   transaction::Manager tm(server, transaction::ManagerFeatureOptions{},
