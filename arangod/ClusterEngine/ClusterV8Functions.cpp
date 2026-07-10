@@ -80,7 +80,7 @@ static void JS_FlushWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
   }
 
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  TRI_GET_GLOBALS();
   auto& feature = v8g->server().getFeature<ClusterFeature>();
   Result res =
       flushWalOnAllDBServers(feature, waitForSync, flushColumnFamilies);
@@ -177,7 +177,7 @@ static void JS_WaitForEstimatorSync(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  TRI_GET_GLOBALS();
 
   v8g->server().getFeature<DatabaseFeature>().engine().waitForEstimatorSync();
 
@@ -189,7 +189,7 @@ void ClusterV8Functions::registerResources() {
   v8::Isolate* isolate = v8::Isolate::GetCurrent();
   v8::HandleScope scope(isolate);
 
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  TRI_GET_GLOBALS();
 
   // patch ArangoCollection object
   v8::Handle<v8::ObjectTemplate> rt =
