@@ -110,13 +110,11 @@ uint64_t defaultMinWriteBufferNumberToMerge(uint64_t totalSize,
 namespace arangodb {
 
 RocksDBOptionFeatureOptions::RocksDBOptionFeatureOptions() {
-  transactionLockStripes =
-      std::max(NumberOfCores::getValue(), std::size_t(16));
+  transactionLockStripes = std::max(NumberOfCores::getValue(), std::size_t(16));
   transactionLockTimeout = ::rocksDBTrxDefaults.transaction_lock_timeout;
   totalWriteBufferSize = ::rocksDBDefaults.db_write_buffer_size;
   writeBufferSize = ::rocksDBDefaults.write_buffer_size;
-  maxWriteBufferNumber =
-      RocksDBColumnFamilyManager::numberOfColumnFamilies + 2;
+  maxWriteBufferNumber = RocksDBColumnFamilyManager::numberOfColumnFamilies + 2;
   maxTotalWalSize = 80 << 20;
   delayedWriteRate = ::rocksDBDefaults.delayed_write_rate;
   minWriteBufferNumberToMerge = ::defaultMinWriteBufferNumberToMerge(
@@ -124,8 +122,7 @@ RocksDBOptionFeatureOptions::RocksDBOptionFeatureOptions() {
   numLevels = ::rocksDBDefaults.num_levels;
   numUncompressedLevels = 2;
   maxBytesForLevelBase = ::rocksDBDefaults.max_bytes_for_level_base;
-  maxBytesForLevelMultiplier =
-      ::rocksDBDefaults.max_bytes_for_level_multiplier;
+  maxBytesForLevelMultiplier = ::rocksDBDefaults.max_bytes_for_level_multiplier;
   maxBackgroundJobs = static_cast<int32_t>(
       std::max(static_cast<std::size_t>(2), NumberOfCores::getValue()));
   maxSubcompactions = 2;

@@ -82,7 +82,7 @@ namespace arangodb {
 using namespace arangodb::options;
 
 void RocksDBOptionFeatureOptionsProvider::declareOptionsImpl(
-    std::shared_ptr<options::ProgramOptions> opts,
+    std::shared_ptr<ProgramOptions> opts,
     RocksDBOptionFeatureOptions& options) {
   opts->addSection("rocksdb", "RocksDB engine");
 

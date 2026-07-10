@@ -142,6 +142,7 @@ void TemporaryStorageFeature::prepare() {
     _options.basePath.clear();
     TRI_ASSERT(!canBeUsed());
   }
+
   if (!canBeUsed()) {
     return;
   }
@@ -166,8 +167,10 @@ void TemporaryStorageFeature::prepare() {
   } else {
     std::string systemErrorStr;
     long errorNo;
+
     auto res = TRI_CreateRecursiveDirectory(_options.basePath.c_str(), errorNo,
                                             systemErrorStr);
+
     if (res != TRI_ERROR_NO_ERROR) {
       LOG_TOPIC("ed3ef", FATAL, Logger::FIXME)
           << "cannot create directory for intermediate results ('"

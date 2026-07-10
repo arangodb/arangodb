@@ -30,8 +30,7 @@ namespace arangodb::fortune {
 using namespace arangodb::options;
 
 void FortuneOptionsProvider::declareOptionsImpl(
-    std::shared_ptr<options::ProgramOptions> options,
-    FortuneFeatureOptions& opts) {
+    std::shared_ptr<ProgramOptions> options, FortuneFeatureOptions& opts) {
   options->addOption("--fortune", "Show a fortune cookie on startup.",
                      new BooleanParameter(&opts.fortune),
                      makeDefaultFlags(Flags::Uncommon));
