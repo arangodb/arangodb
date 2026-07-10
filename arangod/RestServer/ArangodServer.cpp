@@ -59,18 +59,12 @@ auto const kNonServerFeatures =
 }  // namespace
 
 void ArangodServer::collectOptions() {
-  if (!hasFeature<AgencyFeature>()) {
-    return;  // minimal test setup
-  }
   LOG_TOPIC("0eac8", TRACE, Logger::STARTUP) << "ArangodServer::collectOptions";
   ApplicationServer::collectOptions();
   _optionProviders.declareOptions(_programOptions);
 }
 
 void ArangodServer::validateOptions() {
-  if (!hasFeature<AgencyFeature>()) {
-    return;  // minimal test setup
-  }
   LOG_TOPIC("1ed28", TRACE, Logger::STARTUP)
       << "ArangodServer::validateOptions";
   ApplicationServer::validateOptions();
@@ -246,9 +240,6 @@ void ArangodServer::addFeatures(
 }
 
 void ArangodServer::addFeaturesWithOptionProvider() {
-  if (!hasFeature<AgencyFeature>()) {
-    return;
-  }
   auto& metrics = getFeature<metrics::MetricsFeature>();
   auto& database = getFeature<DatabaseFeature>();
   auto& vectorIndex = getFeature<VectorIndexFeature>();

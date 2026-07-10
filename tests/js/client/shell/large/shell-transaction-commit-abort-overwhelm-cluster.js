@@ -31,7 +31,6 @@ const internal = require("internal");
 const db = internal.db;
 const url = require('url');
 const _ = require("lodash");
-const { getDBServers } = require('@arangodb/test-helper');
 
 const cn = "UnitTestsQueries";
       

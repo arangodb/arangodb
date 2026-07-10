@@ -28,8 +28,6 @@
 #include "Aql/ExecutionNode/ScatterNode.h"
 #include "Aql/ExecutionNodeId.h"
 #include "Aql/types.h"
-#include "VocBase/voc-types.h"
-#include "VocBase/vocbase.h"
 
 #include <memory>
 #include <vector>

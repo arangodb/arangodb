@@ -30,10 +30,6 @@ const arango = require("@arangodb").arango;
 const db = require("@arangodb").db;
 const { deriveTestSuite} = require('@arangodb/test-helper-common');
 const CI = require('@arangodb/cluster-info');
-const {
-  getDBServerEndpoints, 
-  getDBServers
-} = require('@arangodb/test-helper');
 const expect = require('chai').expect;
 const assert = require('chai').assert;
 const colName = "UnitTestDistributionTest";
@@ -41,8 +37,10 @@ const _ = require("lodash");
 const wait = require("internal").wait;
 const waitFor = require("@arangodb/testutils/replicated-logs-helper").waitFor;
 const dbname = "shardDistDB";
-
-let dbServerCount = getDBServerEndpoints().length;
+let { instanceRole } = require('@arangodb/testutils/instance');
+let IM = global.instanceManager;
+const dbServers = IM.getInstancesRole(instanceRole.dbserver);
+let dbServerCount = dbServers.length;
 
 function ShardDistributionTest({replVersion}) {
 
@@ -378,7 +376,7 @@ function ShardDistributionTest({replVersion}) {
       }
       db._create(colName, {replicationFactor, numberOfShards});
       assertTrue(waitForSynchronousReplication(colName));
-      let server = getDBServers()[1].id;
+      let server = dbServers[1].id;
       // Clean out the server that is scheduled second.
       assertFalse(cleanOutServer(server));
       assertTrue(waitForCleanout(server));

@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 5000 */
-/* global assertTrue, assertFalse, assertEqual, assertUndefined, fail */
+/* global assertTrue, assertFalse, assertEqual, assertUndefined, fail, arango */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -31,10 +31,11 @@ const jsunity = require("jsunity");
 const request = require("@arangodb/request");
 const internal = require("internal");
 const db = require("@arangodb").db;
-const { getDBServers } = require('@arangodb/test-helper');
+let { instanceRole } = require('@arangodb/testutils/instance');
 
 const proto = "UnitTestsCollectionProto";
 const other = "UnitTestsCollectionOther";
+let IM = global.instanceManager;
 
 const propertiesOnDBServers = (collection) => {
   let shards = collection.shards(true);
@@ -43,14 +44,15 @@ const propertiesOnDBServers = (collection) => {
   let servers = Object.values(shards)[0];
 
   let p = {};
-  getDBServers().forEach((server) => {
+  IM.getInstancesRole(instanceRole.dbserver).forEach((server) => {
     if (!servers.includes(server.id)) {
       return;
     }
-    let result = request({ method: "GET", url: server.url + "/_api/collection/" + encodeURIComponent(shard) + "/properties" });
-    assertEqual(200, result.status);
-        
-    p[server.id] = result.json;
+    server.toThisInstance(() => {
+      let result = arango.GET_RAW(`/_api/collection/${encodeURIComponent(shard)}/properties`);
+      assertEqual(200, result.code);
+      p[server.id] = result.parsedBody;
+    });
   });
   return p;
 };
@@ -325,7 +327,7 @@ function WriteConcernValidationSuite() {
     },
 
     tearDown : function () {
-      global.instanceManager.debugClearFailAt();
+      IM.debugClearFailAt();
       db._useDatabase("_system");
       db._dropDatabase(dbName);
     },
@@ -359,8 +361,8 @@ function WriteConcernValidationSuite() {
       try {
         // Use fail points to block inserts on the follower and prevent re-sync
         // This is more reliable than suspending the server (which triggers supervision)
-        global.instanceManager.debugSetFailAt("LogicalCollection::insert", '', follower);
-        global.instanceManager.debugSetFailAt("SynchronizeShard::disable", '', follower);
+        IM.debugSetFailAt("LogicalCollection::insert", '', follower);
+        IM.debugSetFailAt("SynchronizeShard::disable", '', follower);
 
         // First insert after fail points: drops the follower but succeeds
         coll.insert({_key: "test2"});
@@ -379,7 +381,7 @@ function WriteConcernValidationSuite() {
         }
       } finally {
         // Always clear fail points, even if the test fails
-        global.instanceManager.debugClearFailAt();
+        IM.debugClearFailAt();
       }
     },
   };

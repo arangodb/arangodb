@@ -30,7 +30,6 @@
 #include "Endpoint/ConnectionInfo.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
-#include "RestServer/ArangodServer.h"
 
 #include <velocypack/Buffer.h>
 #include <velocypack/Builder.h>
@@ -75,7 +74,8 @@ TEST(MaintenanceRestHandler, parse_rest_put) {
   auto* dummyResponse = new arangodb::HttpResponse(
       arangodb::rest::ResponseCode::OK, 1, nullptr,
       arangodb::rest::ResponseCompressionType::kNoCompression);
-  arangodb::ArangodServer dummyServer{nullptr, nullptr};
+  arangodb::application_features::ApplicationServer dummyServer{nullptr,
+                                                                nullptr};
   TestHandler dummyHandler(dummyServer, dummyRequest, dummyResponse);
 
   ASSERT_TRUE(dummyHandler.test_parsePutBody(body.slice()));

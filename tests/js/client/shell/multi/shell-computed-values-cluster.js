@@ -5,12 +5,11 @@
 const jsunity = require('jsunity');
 const db = require("@arangodb").db;
 const request = require("@arangodb/request");
+let { instanceRole } = require('@arangodb/testutils/instance');
 
+let IM = global.instanceManager;
 const cn = "UnitTestsCollection";
 
-const {
-  getDBServers
-} = require('@arangodb/test-helper');
 
 function collectionComputedValuesClusterSuite() {
   'use strict';
@@ -35,7 +34,7 @@ function collectionComputedValuesClusterSuite() {
       }
       c.insert(docs);
 
-      let servers = getDBServers();
+      let servers = IM.getInstancesRole(instanceRole.dbserver);
       let shardInfo = c.shards(true);
       let shard = Object.keys(shardInfo)[0];
 
@@ -43,7 +42,7 @@ function collectionComputedValuesClusterSuite() {
 
       // contact DB servers and verify they have have stored the same RAND()
       // values via replication
-      getDBServers().forEach(server => {
+      servers.forEach(server => {
         if (servers.indexOf(server.id) === -1) {
           return;
         }

@@ -32,7 +32,7 @@ const {assertEqual, assertTrue, assertFalse, assertNotEqual} = jsunity.jsUnity.a
 const arango = require('@arangodb').arango;
 const db = require('@arangodb').db;
 const _ = require("lodash");
-const { getDBServers } = require('@arangodb/test-helper');
+const { instanceRole } = require('@arangodb/testutils/instance');
 const IM = global.instanceManager;
 
 const cn = "UnitTestsQueries";
@@ -58,14 +58,6 @@ function queriesTestSuite () {
       db._drop(cn);
     },
 
-    setUp: function() {
-      IM.rememberConnection();
-    },
-
-    tearDown: function() {
-      IM.reconnectMe();
-    },
-
     // test executing operations on the coordinator
     testCoordinator: function() {
       assertEqual(100, db[cn].count());
@@ -77,24 +69,25 @@ function queriesTestSuite () {
     testDBServer: function() {
       let shardMap = db[cn].shards(true);
       assertEqual(5, Object.keys(shardMap).length, shardMap);
-      
-      const dbservers = getDBServers();
-      assertTrue(dbservers.length > 0, "no dbservers found");
+
+      const dbServers = IM.getInstancesRole(instanceRole.dbserver);
+      assertTrue(dbServers.length > 0, "no dbServers found");
         
       let totalCount = 0, totalToArray = 0, totalQuery = 0;
        
-      dbservers.forEach(function(dbserver, i) {
-        let id = dbserver.id;
-        require("console").warn("connecting to dbserver", dbserver.endpoint, id);
-        arango.reconnect(dbserver.endpoint, "_system", arango.connectedUser(), "");
+      dbServers.forEach(function(dbserver, i) {
+        dbserver.toThisInstance(() => {
+          let id = dbserver.id;
+          require("console").warn("connecting to dbserver", dbserver.endpoint, id);
 
-        let shards = Object.keys(shardMap).filter(function(shard) {
-          return shardMap[shard][0] === id;
-        });
-        shards.forEach(function(shard) {
-          totalCount += db[shard].count();
-          totalToArray += db[shard].toArray().length;
-          totalQuery += db._query("FOR doc IN " + shard + " RETURN doc").toArray().length;
+          let shards = Object.keys(shardMap).filter(function(shard) {
+            return shardMap[shard][0] === id;
+          });
+          shards.forEach(function(shard) {
+            totalCount += db[shard].count();
+            totalToArray += db[shard].toArray().length;
+            totalQuery += db._query("FOR doc IN " + shard + " RETURN doc").toArray().length;
+          });
         });
       });
 
@@ -117,22 +110,22 @@ function queriesTestSuite () {
     
     // test executing operations on the DB-Server, without collection
     testDBServerNoCollection: function() {
-      const dbservers = getDBServers();
-      assertTrue(dbservers.length > 0, "no dbservers found");
+      const dbServers = IM.getInstancesRole(instanceRole.dbserver);
+      assertTrue(dbServers.length > 0, "no dbServers found");
         
-      dbservers.forEach(function(dbserver, i) {
-        let id = dbserver.id;
-        require("console").warn("connecting to dbserver", dbserver.endpoint, id);
-        arango.reconnect(dbserver.endpoint, "_system", arango.connectedUser(), "");
+      dbServers.forEach(function(dbserver, i) {
+        dbserver.toThisInstance(() => {
+          let id = dbserver.id;
+          require("console").warn("connecting to dbserver", dbserver.endpoint, id);
+          let result = db._query("RETURN [DECODE_REV('_dpq8a-----'), DECODE_REV('_bpq8a-----')]").toArray();
 
-        let result = db._query("RETURN [DECODE_REV('_dpq8a-----'), DECODE_REV('_bpq8a-----')]").toArray();
-
-        assertEqual([
-          [ 
-            { "date" : "2022-02-02T16:22:18.368Z", "count" : 0 }, 
-            { "date" : "2021-01-01T00:00:00.000Z", "count" : 0 } 
-          ]
-        ], result);
+          assertEqual([
+            [ 
+              { "date" : "2022-02-02T16:22:18.368Z", "count" : 0 }, 
+              { "date" : "2021-01-01T00:00:00.000Z", "count" : 0 } 
+            ]
+          ], result);
+        });
       });
     },
 

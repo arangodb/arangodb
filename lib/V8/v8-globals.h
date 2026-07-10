@@ -37,14 +37,14 @@
 #include "ApplicationFeatures/HttpEndpointProvider.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/operating-system.h"
-#include "RestServer/ArangodServer.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "V8/JavaScriptSecurityContext.h"
 #include "V8/V8PlatformFeature.h"
 
 struct TRI_v8_global_t;
-struct TRI_vocbase_t;
 
 namespace arangodb {
+struct Database;
 class V8SecurityFeature;
 class HttpEndpointProvider;
 class EncryptionFeature;
@@ -421,10 +421,6 @@ std::string TRI_ObjectToString(v8::Local<v8::Context> context,
   TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>( \
       isolate->GetData(arangodb::V8PlatformFeature::V8_DATA_SLOT))
 
-#define TRI_GET_SERVER_GLOBALS(server)                    \
-  V8Global<server>* v8g = static_cast<V8Global<server>*>( \
-      isolate->GetData(arangodb::V8PlatformFeature::V8_DATA_SLOT))
-
 /// @brief fetch a string-member from the global into the local scope of the
 /// function
 ///     will give you a variable of the same name.
@@ -487,6 +483,10 @@ struct TRI_v8_global_t {
   /// @brief decrease the number of active externals
   void decreaseActiveExternals() { --_activeExternals; }
 
+  arangodb::application_features::ApplicationServer& server() noexcept {
+    return _server;
+  }
+
   /// @brief agency template
   v8::Persistent<v8::ObjectTemplate> AgencyTempl;
 
@@ -514,10 +514,10 @@ struct TRI_v8_global_t {
   /// @brief replicated log template
   v8::Persistent<v8::ObjectTemplate> VocbaseReplicatedLogTempl;
 
-  /// @brief TRI_vocbase_t template
+  /// @brief Database template
   v8::Persistent<v8::ObjectTemplate> VocbaseTempl;
 
-  /// @brief TRI_vocbase_t template
+  /// @brief Database template
   v8::Persistent<v8::ObjectTemplate> EnvTempl;
 
   /// @brief users template
@@ -797,8 +797,8 @@ struct TRI_v8_global_t {
   /// @brief current AQL expressionContext
   void* _expressionContext;
 
-  /// @brief pointer to the vocbase (TRI_vocbase_t*)
-  TRI_vocbase_t* _vocbase;
+  /// @brief pointer to the vocbase (Database*)
+  arangodb::Database* _vocbase;
 
   /// @brief number of v8 externals used in the context
   int64_t _activeExternals;
@@ -850,35 +850,12 @@ struct TRI_v8_global_t {
   std::unordered_map<void*, SharedPtrPersistent> JSSharedPtrs;
 };
 
-// Intentionally final since we don't have virtual destructor
-template<typename Server>
-struct V8Global final : TRI_v8_global_t {
-  V8Global(Server& server, v8::Isolate* isolate, size_t id)
-      : TRI_v8_global_t{server, isolate, id} {}
-
-  Server& server() noexcept {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    auto* p = dynamic_cast<Server*>(&_server);
-    TRI_ASSERT(p);
-    return *p;
-#else
-    return static_cast<Server&>(_server);
-#endif
-  }
-};
+using V8Global = TRI_v8_global_t;
 
 // Creates a global context
-template<typename Server>
-V8Global<Server>* CreateV8Globals(Server& server, v8::Isolate* isolate,
-                                  size_t id) {
-  TRI_GET_GLOBALS();
-
-  TRI_ASSERT(v8g == nullptr);
-  v8g = new V8Global<Server>(server, isolate, id);
-  isolate->SetData(arangodb::V8PlatformFeature::V8_DATA_SLOT, v8g);
-
-  return static_cast<V8Global<Server>*>(v8g);
-}
+V8Global* CreateV8Globals(
+    arangodb::application_features::ApplicationServer& server,
+    v8::Isolate* isolate, size_t id);
 
 /// @brief gets the global context
 TRI_v8_global_t* TRI_GetV8Globals(v8::Isolate*);

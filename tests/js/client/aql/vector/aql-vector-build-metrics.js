@@ -36,10 +36,8 @@ const {
   waitForAllVectorIndexesState,
   VectorIndexTrainingState,
 } = require("@arangodb/testutils/vector-index-common");
-const {
-  getMetricSingle,
-  getCompleteMetricsValues,
-} = require("@arangodb/test-helper");
+const {  getCompleteMetricsValues } = require("@arangodb/test-helper");
+let IM = global.instanceManager;
 
 const isCluster = internal.isCluster();
 const dbName = "vectorBuildMetricsDB";
@@ -57,7 +55,7 @@ function getMetricValue(name) {
   if (isCluster) {
     return getCompleteMetricsValues(name, "dbservers");
   }
-  return getMetricSingle(name);
+  return IM.getMetric(name);
 }
 
 function VectorIndexBuildMetricsSuite() {

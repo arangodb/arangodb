@@ -27,11 +27,12 @@
 let jsunity = require('jsunity');
 const arangodb = require('@arangodb');
 const db = arangodb.db;
-const {getDBServers} = require('@arangodb/test-helper');
 const internal = require('internal');
 const database = "cluster_rebalance_db";
 
 const wait = require("internal").wait;
+let { instanceRole } = require('@arangodb/testutils/instance');
+const IM = global.instanceManager;
 
 function resignServer(server) {
   let res = arango.POST_RAW("/_admin/cluster/resignLeadership", {server});
@@ -81,7 +82,7 @@ function clusterRebalanceSuite() {
       }
 
       // resign one server
-      resignServer(getDBServers()[0].id);
+      resignServer(IM.getInstancesRole(instanceRole.dbserver)[0].id);
     },
 
     tearDownAll: function () {
@@ -211,7 +212,7 @@ function clusterRebalanceOtherOptionsSuite() {
 
 
     testCalcRebalanceStopServer: function () {
-      const dbServers = global.instanceManager.arangods.filter(arangod => arangod.instanceRole === "dbserver");
+      const dbServers = IM.getInstancesRole(instanceRole.dbserver);
       assertNotEqual(dbServers.length, 0);
       for (let i = 0; i < dbServers.length; ++i) {
         const dbServer = dbServers[i];

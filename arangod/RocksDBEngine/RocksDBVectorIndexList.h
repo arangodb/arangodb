@@ -31,6 +31,7 @@
 #include "RocksDBIndex.h"
 #include "RocksDBValue.h"
 #include "RocksDBEngine/RocksDBIndex.h"
+#include "RocksDBEngine/RocksDBKey.h"
 
 #include <faiss/IndexIVFFlat.h>
 #include <faiss/MetricType.h>

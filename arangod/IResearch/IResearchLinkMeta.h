@@ -24,15 +24,8 @@
 
 #pragma once
 
-#include <locale>
-#include <mutex>
 #include <vector>
 
-#include "analysis/analyzer.hpp"
-#include "utils/compression.hpp"
-#include "utils/object_pool.hpp"
-
-#include "Containers.h"
 #include "Containers/NodeHashMap.h"
 #include "IResearchAnalyzerFeature.h"
 #include "IResearchViewSort.h"
@@ -169,7 +162,7 @@ struct FieldMeta {
   bool json(application_features::ApplicationServer& server,
             velocypack::Builder& builder,
             FieldMeta const* ignoreEqual = nullptr,
-            TRI_vocbase_t const* defaultVocbase = nullptr,
+            Database const* defaultVocbase = nullptr,
             Mask const* mask = nullptr) const;
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -316,7 +309,7 @@ struct IResearchLinkMeta : public FieldMeta {
   bool json(application_features::ApplicationServer& server,
             velocypack::Builder& builder, bool writeAnalyzerDefinition,
             IResearchLinkMeta const* ignoreEqual = nullptr,
-            TRI_vocbase_t const* defaultVocbase = nullptr,
+            Database const* defaultVocbase = nullptr,
             Mask const* mask = nullptr) const;
 
   ////////////////////////////////////////////////////////////////////////////////

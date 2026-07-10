@@ -83,6 +83,3 @@ struct hash<std::vector<arangodb::velocypack::Slice>> {
 };
 
 }  // namespace std
-
-/// @brief databases list structure
-struct TRI_vocbase_t;
