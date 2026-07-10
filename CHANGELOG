@@ -1,6 +1,10 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* COR-707 - CONTAINS(): Raise a warning for non-string inputs.
+  Improved validation for the AQL CONTAINS() function. When either argument is not a string, 
+  CONTAINS() now emits a warning and returns null, aligning its behavior with the documented specification. This helps users identify unsupported input types and detect potential query issues more easily.
+
 * Upgraded included rclone to v1.74.3 with go1.25.11 and non-vulnerable
   dependencies.
 
