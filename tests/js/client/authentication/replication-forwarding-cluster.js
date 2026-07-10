@@ -164,6 +164,78 @@ function ReplicationForwardingSuite() {
       checkForwardIsForbidden((q) => arango.PUT(`/_api/replication/set-the-leader${q}`, {}));
     },
 
+    testLoggerStateForwardIsForbidden: function () {
+      checkForwardIsForbidden((q) => arango.GET(`/_api/replication/logger-state${q}`));
+    },
+
+    testLoggerTickRangesForwardIsForbidden: function () {
+      checkForwardIsForbidden((q) => arango.GET(`/_api/replication/logger-tick-ranges${q}`));
+    },
+
+    testLoggerFirstTickForwardIsForbidden: function () {
+      checkForwardIsForbidden((q) => arango.GET(`/_api/replication/logger-first-tick${q}`));
+    },
+
+    testLoggerLastForwardIsForbidden: function () {
+      checkForwardIsForbidden((q) => arango.GET(`/_api/replication/logger-last${q}`));
+    },
+
+    testLoggerFollowForwardIsForbidden: function () {
+      checkForwardIsForbidden((q) => arango.GET(`/_api/replication/logger-follow${q}`));
+    },
+
+    testInventoryForwardIsForbidden: function () {
+      checkForwardIsForbidden((q) => arango.GET(`/_api/replication/inventory${q}`));
+    },
+
+    testKeysForwardIsForbidden: function () {
+      checkForwardIsForbidden((q) => arango.POST(`/_api/replication/keys${q}`, {}));
+    },
+
+    testRevisionsTreeForwardIsForbidden: function () {
+      checkForwardIsForbidden((q) => arango.GET(`/_api/replication/revisions/tree${q}`));
+    },
+
+    testRevisionsTreePendingForwardIsForbidden: function () {
+      checkForwardIsForbidden((q) => arango.GET(`/_api/replication/revisions/treepending${q}`));
+    },
+
+    testRevisionsRangesForwardIsForbidden: function () {
+      checkForwardIsForbidden((q) => arango.PUT(`/_api/replication/revisions/ranges${q}`, {}));
+    },
+
+    testRevisionsDocumentsForwardIsForbidden: function () {
+      checkForwardIsForbidden((q) => arango.PUT(`/_api/replication/revisions/documents${q}`, {}));
+    },
+
+    testServerIdForwardIsForbidden: function () {
+      checkForwardIsForbidden((q) => arango.GET(`/_api/replication/server-id${q}`));
+    },
+
+    testApplierStateForwardIsForbidden: function () {
+      checkForwardIsForbidden((q) => arango.GET(`/_api/replication/applier-state${q}`));
+    },
+
+    testApplierStateAllForwardIsForbidden: function () {
+      checkForwardIsForbidden((q) => arango.GET(`/_api/replication/applier-state-all${q}`));
+    },
+
+    testClusterInventoryForwardIsForbidden: function () {
+      checkForwardIsForbidden((q) => arango.GET(`/_api/replication/clusterInventory${q}`));
+    },
+
+    testHoldReadLockCollectionForwardIsForbidden: function () {
+      checkForwardIsForbidden((q) => arango.POST(`/_api/replication/holdReadLockCollection${q}`, {}));
+    },
+
+    // The following is explicitly not here for the following reason: For the `restore-collection`
+    // case we already fail at the `testPermissions` stage, so we do not fail with FORBIDDEN,
+    // but with another message. The check that we only forward a few select routes
+    // is done later, so we cannot test this here:
+    //testRestoreCollectionForwardIsForbidden: function () {
+    //  checkForwardIsForbidden((q) => arango.PUT(`/_api/replication/restore-collection${q}`, {}));
+    //},
+
     // batch supports the DBserver forward: an authorized user can create a
     // replication batch on the hosting DBServer via ?DBserver= (this is what
     // arangodump uses).
