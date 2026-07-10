@@ -322,28 +322,6 @@ void DatabaseFeature::start() {
   }
 #endif
 
-  VPackBuilder builder;
-  _engine->getDatabases(builder);
-
-  TRI_ASSERT(builder.slice().isArray());
-
-  auto res = iterateDatabases(builder.slice());
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    LOG_TOPIC("0c49d", FATAL, Logger::FIXME)
-        << "could not iterate over all databases: " << TRI_errno_string(res);
-    FATAL_ERROR_EXIT();
-  }
-
-  // Update metadata metrics after databases are loaded
-  updateMetadataMetrics();
-
-  if (!lookupDatabase(StaticStrings::SystemDatabase)) {
-    LOG_TOPIC("97e7c", FATAL, Logger::FIXME)
-        << "No _system database found in database directory. Cannot start!";
-    FATAL_ERROR_EXIT();
-  }
-
   // start database manager thread
   _databaseManager =
       std::make_unique<DatabaseManagerThread>(server(), *this, *_engine);
@@ -370,6 +348,7 @@ void DatabaseFeature::start() {
   }
 
   _started.store(true);
+  recoveryDone();
 }
 
 // signal to all databases that active cursors can be wiped
@@ -553,6 +532,28 @@ void DatabaseFeature::prepare() {
   if (ServerState::instance()->isSingleServer()) {
     auto& metrics = server().getFeature<metrics::MetricsFeature>();
     _metadataMetrics.emplace(metrics);
+  }
+
+  VPackBuilder builder;
+  _engine->getDatabases(builder);
+
+  TRI_ASSERT(builder.slice().isArray());
+
+  auto res = iterateDatabases(builder.slice());
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG_TOPIC("0c49d", FATAL, Logger::FIXME)
+        << "could not iterate over all databases: " << TRI_errno_string(res);
+    FATAL_ERROR_EXIT();
+  }
+
+  // Update metadata metrics after databases are loaded
+  updateMetadataMetrics();
+
+  if (!lookupDatabase(StaticStrings::SystemDatabase)) {
+    LOG_TOPIC("97e7c", FATAL, Logger::FIXME)
+        << "No _system database found in database directory. Cannot start!";
+    FATAL_ERROR_EXIT();
   }
 }
 

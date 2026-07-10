@@ -304,6 +304,7 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   Result dropDatabase(TRI_vocbase_t& database) override;
 
   void runRecovery();
+  void startBackgroundThread();
 
   // wal in recovery
   EngineState engineState() noexcept override {

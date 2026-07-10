@@ -229,8 +229,6 @@ void ArangodServer::addFeatures(
       replication2::EnableReplication2 ? &getFeature<ReplicatedLogFeature>()
                                        : nullptr,
       scheduler, database, rocksdbCacheRefill, cacheManager, agency);
-  addFeature<RocksDBRecoveryFeature>(rocksdbEngine, database);
-
   addFeature<replication2::replicated_state::ReplicatedStateAppFeature>();
   addFeature<replication2::replicated_state::black_hole::
                  BlackHoleStateMachineFeature>();

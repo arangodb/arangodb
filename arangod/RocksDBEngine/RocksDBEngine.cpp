@@ -452,82 +452,7 @@ void RocksDBEngine::prepare() {
 #ifdef USE_ENTERPRISE
   prepareEnterprise();
 #endif
-}
 
-void RocksDBEngine::verifySstFiles(rocksdb::Options const& options) const {
-  TRI_ASSERT(!_path.empty());
-
-  LOG_TOPIC("e210d", INFO, arangodb::Logger::STARTUP)
-      << "verifying RocksDB .sst files in path '" << _path << "'";
-
-  rocksdb::SstFileReader sstReader(options);
-  for (auto const& fileName : TRI_FullTreeDirectory(_path.c_str())) {
-    if (!fileName.ends_with(".sst")) {
-      continue;
-    }
-    std::string filename = basics::FileUtils::buildFilename(_path, fileName);
-    rocksdb::Status res = sstReader.Open(filename);
-    if (res.ok()) {
-      res = sstReader.VerifyChecksum();
-    }
-    if (!res.ok()) {
-      auto result = rocksutils::convertStatus(res);
-      LOG_TOPIC("2943c", FATAL, arangodb::Logger::STARTUP)
-          << "error when verifying .sst file '" << filename
-          << "': " << result.errorMessage();
-      FATAL_ERROR_EXIT_CODE(TRI_EXIT_SST_FILE_CHECK);
-    }
-  }
-
-  LOG_TOPIC("02224", INFO, arangodb::Logger::STARTUP)
-      << "verification of RocksDB .sst files in path '" << _path
-      << "' completed successfully";
-  Logger::flush();
-  // exit with status code = 0, without leaking
-  int exitCode = static_cast<int>(TRI_ERROR_NO_ERROR);
-  TRI_EXIT_FUNCTION(exitCode, nullptr);
-  exit(exitCode);
-}
-
-bool RocksDBEngine::isVectorIndexEnabled() const {
-  return _vectorIndexProvider.isVectorIndexEnabled();
-}
-
-namespace {
-
-struct RocksDBAsyncLogWriteBatcherMetricsImpl
-    : replication2::storage::rocksdb::AsyncLogWriteBatcherMetrics {
-  explicit RocksDBAsyncLogWriteBatcherMetricsImpl(metrics::IRegistry& metrics) {
-    using namespace arangodb::replication2::storage::rocksdb;
-    numWorkerThreadsWaitForSync = &metrics.add(
-        arangodb_replication2_rocksdb_num_persistor_worker{}.withLabel("ws",
-                                                                       "true"));
-    numWorkerThreadsNoWaitForSync = &metrics.add(
-        arangodb_replication2_rocksdb_num_persistor_worker{}.withLabel(
-            "ws", "false"));
-
-    queueLength = &metrics.add(arangodb_replication2_rocksdb_queue_length{});
-    writeBatchSize =
-        &metrics.add(arangodb_replication2_rocksdb_write_batch_size{});
-    rocksdbWriteTimeInUs =
-        &metrics.add(arangodb_replication2_rocksdb_write_time{});
-    rocksdbSyncTimeInUs =
-        &metrics.add(arangodb_replication2_rocksdb_sync_time{});
-
-    operationLatencyInsert = &metrics.add(
-        arangodb_replication2_storage_operation_latency{}.withLabel("op",
-                                                                    "insert"));
-    operationLatencyRemoveFront = &metrics.add(
-        arangodb_replication2_storage_operation_latency{}.withLabel(
-            "op", "remove-front"));
-    operationLatencyRemoveBack = &metrics.add(
-        arangodb_replication2_storage_operation_latency{}.withLabel(
-            "op", "remove-back"));
-  }
-};
-}  // namespace
-
-void RocksDBEngine::start() {
   // it is already decided that rocksdb is used
   TRI_ASSERT(isEnabled());
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
@@ -861,6 +786,109 @@ void RocksDBEngine::start() {
               arangodb::ServerState::instance()->isAgent()) ||
              _useReleasedTick);
 
+  TRI_ASSERT(_db != nullptr);
+  _settingsManager = std::make_unique<RocksDBSettingsManager>(*this);
+  _replicationManager = std::make_unique<RocksDBReplicationManager>(*this);
+  _dumpManager = std::make_unique<RocksDBDumpManager>(
+      *this, _metrics, _dumpLimitsProvider.limits());
+  _walManager = std::make_shared<replication2::storage::wal::WalManager>(
+      _databasePathProvider.subdirectoryName("replicated-logs"));
+
+  _logMetrics =
+      std::make_shared<RocksDBAsyncLogWriteBatcherMetricsImpl>(_metrics);
+
+  _settingsManager->retrieveInitialValues();
+
+  if (!systemDatabaseExists()) {
+    addSystemDatabase();
+  }
+
+  // to populate initial health check data
+  HealthData hd = healthCheck();
+  if (hd.res.fail()) {
+    LOG_TOPIC("4cf5b", ERR, Logger::ENGINES) << hd.res.errorMessage();
+  }
+
+  // make an initial inventory of WAL files, so that all WAL files
+  // metrics are correctly populated once the HTTP interface comes
+  // up
+  determineWalFilesInitial();
+}
+
+void RocksDBEngine::verifySstFiles(rocksdb::Options const& options) const {
+  TRI_ASSERT(!_path.empty());
+
+  LOG_TOPIC("e210d", INFO, arangodb::Logger::STARTUP)
+      << "verifying RocksDB .sst files in path '" << _path << "'";
+
+  rocksdb::SstFileReader sstReader(options);
+  for (auto const& fileName : TRI_FullTreeDirectory(_path.c_str())) {
+    if (!fileName.ends_with(".sst")) {
+      continue;
+    }
+    std::string filename = basics::FileUtils::buildFilename(_path, fileName);
+    rocksdb::Status res = sstReader.Open(filename);
+    if (res.ok()) {
+      res = sstReader.VerifyChecksum();
+    }
+    if (!res.ok()) {
+      auto result = rocksutils::convertStatus(res);
+      LOG_TOPIC("2943c", FATAL, arangodb::Logger::STARTUP)
+          << "error when verifying .sst file '" << filename
+          << "': " << result.errorMessage();
+      FATAL_ERROR_EXIT_CODE(TRI_EXIT_SST_FILE_CHECK);
+    }
+  }
+
+  LOG_TOPIC("02224", INFO, arangodb::Logger::STARTUP)
+      << "verification of RocksDB .sst files in path '" << _path
+      << "' completed successfully";
+  Logger::flush();
+  // exit with status code = 0, without leaking
+  int exitCode = static_cast<int>(TRI_ERROR_NO_ERROR);
+  TRI_EXIT_FUNCTION(exitCode, nullptr);
+  exit(exitCode);
+}
+
+bool RocksDBEngine::isVectorIndexEnabled() const {
+  return _vectorIndexProvider.isVectorIndexEnabled();
+}
+
+namespace {
+
+struct RocksDBAsyncLogWriteBatcherMetricsImpl
+    : replication2::storage::rocksdb::AsyncLogWriteBatcherMetrics {
+  explicit RocksDBAsyncLogWriteBatcherMetricsImpl(metrics::IRegistry& metrics) {
+    using namespace arangodb::replication2::storage::rocksdb;
+    numWorkerThreadsWaitForSync = &metrics.add(
+        arangodb_replication2_rocksdb_num_persistor_worker{}.withLabel("ws",
+                                                                       "true"));
+    numWorkerThreadsNoWaitForSync = &metrics.add(
+        arangodb_replication2_rocksdb_num_persistor_worker{}.withLabel(
+            "ws", "false"));
+
+    queueLength = &metrics.add(arangodb_replication2_rocksdb_queue_length{});
+    writeBatchSize =
+        &metrics.add(arangodb_replication2_rocksdb_write_batch_size{});
+    rocksdbWriteTimeInUs =
+        &metrics.add(arangodb_replication2_rocksdb_write_time{});
+    rocksdbSyncTimeInUs =
+        &metrics.add(arangodb_replication2_rocksdb_sync_time{});
+
+    operationLatencyInsert = &metrics.add(
+        arangodb_replication2_storage_operation_latency{}.withLabel("op",
+                                                                    "insert"));
+    operationLatencyRemoveFront = &metrics.add(
+        arangodb_replication2_storage_operation_latency{}.withLabel(
+            "op", "remove-front"));
+    operationLatencyRemoveBack = &metrics.add(
+        arangodb_replication2_storage_operation_latency{}.withLabel(
+            "op", "remove-back"));
+  }
+};
+}  // namespace
+
+void RocksDBEngine::start() {
   if (_options.syncInterval > 0) {
     _syncThread = std::make_unique<RocksDBSyncThread>(
         *this, std::chrono::milliseconds(_options.syncInterval),
@@ -872,32 +900,22 @@ void RocksDBEngine::start() {
     }
   }
 
-  TRI_ASSERT(_db != nullptr);
-  _settingsManager = std::make_unique<RocksDBSettingsManager>(*this);
-  _replicationManager = std::make_unique<RocksDBReplicationManager>(*this);
-  _dumpManager = std::make_unique<RocksDBDumpManager>(
-      *this, _metrics, _dumpLimitsProvider.limits());
-  _walManager = std::make_shared<replication2::storage::wal::WalManager>(
-      _databasePathProvider.subdirectoryName("replicated-logs"));
-
-  struct SchedulerExecutor
-      : replication2::storage::rocksdb::AsyncLogWriteBatcher::IAsyncExecutor {
-    explicit SchedulerExecutor(Scheduler* scheduler) : _scheduler(scheduler) {}
-
-    void operator()(fu2::unique_function<void() noexcept> func) override {
-      _scheduler->queue(RequestLane::CLUSTER_INTERNAL, std::move(func));
-    }
-
-    Scheduler* _scheduler;
-  };
-
-  _logMetrics =
-      std::make_shared<RocksDBAsyncLogWriteBatcherMetricsImpl>(_metrics);
-
   // When using the custom WAL implementation, we don't need to register a
   // RocksDB sync listener.
 #ifndef USE_CUSTOM_WAL
   if (replication2::EnableReplication2) {
+    struct SchedulerExecutor
+        : replication2::storage::rocksdb::AsyncLogWriteBatcher::IAsyncExecutor {
+      explicit SchedulerExecutor(Scheduler* scheduler)
+          : _scheduler(scheduler) {}
+
+      void operator()(fu2::unique_function<void() noexcept> func) override {
+        _scheduler->queue(RequestLane::CLUSTER_INTERNAL, std::move(func));
+      }
+
+      Scheduler* _scheduler;
+    };
+
     auto logPersistor =
         std::make_shared<replication2::storage::rocksdb::AsyncLogWriteBatcher>(
             RocksDBColumnFamilyManager::get(
@@ -918,22 +936,8 @@ void RocksDBEngine::start() {
   }
 #endif
 
-  _settingsManager->retrieveInitialValues();
-
-  if (!systemDatabaseExists()) {
-    addSystemDatabase();
-  }
-
-  // to populate initial health check data
-  HealthData hd = healthCheck();
-  if (hd.res.fail()) {
-    LOG_TOPIC("4cf5b", ERR, Logger::ENGINES) << hd.res.errorMessage();
-  }
-
-  // make an initial inventory of WAL files, so that all WAL files
-  // metrics are correctly populated once the HTTP interface comes
-  // up
-  determineWalFilesInitial();
+  runRecovery();
+  startBackgroundThread();
 }
 
 void RocksDBEngine::runRecovery() {
@@ -943,8 +947,9 @@ void RocksDBEngine::runRecovery() {
   });
   manager.runRecovery();
   _engineState.store(EngineState::kRunning, std::memory_order_release);
-  // TODO engine must know that the recovery itself runs is done, but the thread
-  // launching shouldn't be here breaks SRP
+}
+
+void RocksDBEngine::startBackgroundThread() {
   double const counterSyncSeconds = 2.5;
   _backgroundThread = std::make_unique<RocksDBBackgroundThread>(
       *this, counterSyncSeconds, _metrics);
