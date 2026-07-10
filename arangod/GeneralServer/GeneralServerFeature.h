@@ -33,12 +33,14 @@
 #include "Metrics/LogScale.h"
 #include "Metrics/Histogram.h"
 #include "Metrics/Gauge.h"
-#include "Metrics/IRegistry.h"
+#include "Metrics/MetricsFeature.h"
 #include "Rest/ApiVersion.h"
+#include "Rest/CommonDefines.h"
 
 #include <cstdint>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 namespace arangodb {
@@ -50,10 +52,10 @@ class GeneralServerFeature final
   static constexpr std::string_view name() noexcept { return "GeneralServer"; }
 
   explicit GeneralServerFeature(application_features::ApplicationServer& server,
-                                metrics::IRegistry& metricsRegistry,
+                                metrics::MetricsFeature& metricsFeature,
                                 GeneralServerOptions options);
   explicit GeneralServerFeature(application_features::ApplicationServer& server,
-                                metrics::IRegistry& metricsRegistry);
+                                metrics::MetricsFeature& metricsFeature);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -92,12 +94,7 @@ class GeneralServerFeature final
 
   void countHttp2Connection() { _http2Connections.count(); }
 
-  bool isTelemetricsEnabled() const noexcept {
-    return _options.enableTelemetrics;
-  }
-  uint64_t telemetricsMaxRequestsPerInterval() const noexcept {
-    return _options.telemetricsMaxRequestsPerInterval;
-  }
+  void countHttpResponseCode(rest::ResponseCode code) noexcept;
 
   metrics::Gauge<std::uint64_t>& _currentRequestsSize;
 
@@ -114,17 +111,22 @@ class GeneralServerFeature final
   void defineInitialHandlers(rest::RestHandlerFactory& f);
   // define remaining REST handlers
   void defineRemainingHandlers(rest::RestHandlerFactory& f);
+  // register one Counter per rest::ResponseCode enumerator, once
+  void initResponseCodeCounters();
 
   GeneralServerOptions _options;
   std::shared_ptr<rest::RestHandlerFactory> _handlerFactory;
   std::unique_ptr<rest::AsyncJobManager> _jobManager;
   std::vector<std::unique_ptr<rest::GeneralServer>> _servers;
+  std::unordered_map<rest::ResponseCode, metrics::Counter*>
+      _responseCodeCounters;
 
   // Some metrics about requests and connections
   metrics::Histogram<metrics::LogScale<uint64_t>>& _requestBodySizeHttp1;
   metrics::Histogram<metrics::LogScale<uint64_t>>& _requestBodySizeHttp2;
   metrics::Counter& _http1Connections;
   metrics::Counter& _http2Connections;
+  metrics::MetricsFeature& _metricsFeature;
 };
 
 }  // namespace arangodb

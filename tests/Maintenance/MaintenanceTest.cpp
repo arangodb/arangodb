@@ -67,7 +67,6 @@
 #include <velocypack/Iterator.h>
 
 #include <iostream>
-#include <iterator>
 #include <memory>
 #include <random>
 
@@ -140,7 +139,7 @@ class SharedMaintenanceTest : public ::testing::Test {
   NodePtr originalPlan;
   NodePtr supervision;
   NodePtr current;
-  ArangodServer server;
+  application_features::ApplicationServer server;
   StorageEngineMock engine;
 
   // map <shortId, UUID>
@@ -518,8 +517,8 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
   int _dummy;
   std::shared_ptr<options::ProgramOptions> po;
   basics::SharedPRNG sharedPRNG;
+  application_features::ApplicationServer as;
   std::unique_ptr<RocksDBEngine> engine;
-  ArangodServer as;
   containers::FlatHashSet<DatabaseID> makeDirty;
   MaintenanceFeature::errors_t errors;
 
