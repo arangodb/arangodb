@@ -28,7 +28,6 @@
 'use strict';
 
 const jsunity = require("jsunity");
-const request = require("@arangodb/request");
 const internal = require("internal");
 const db = require("@arangodb").db;
 let { instanceRole } = require('@arangodb/testutils/instance');
