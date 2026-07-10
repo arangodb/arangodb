@@ -957,6 +957,15 @@ function ahuacatlParseTestSuite () {
       assertAtLeastRegexParse('RETURN ["bar", "baz", "foo"] AT LEAST(2) !~ "^x"', 2, true);
     },
 
+    testNotArrayAllRegexNonMatchParse : function() {
+      let result = db._parse('RETURN NOT ["abcde", "bar"] ALL !~ "^.{5}$"').ast;
+      assertEqual("root", result[0].type);
+      result = result[0].subNodes[0].subNodes;
+      assertEqual("unary not", result[0].type);
+      assertEqual("expansion", result[0].subNodes[0].type);
+      assertTrue(result[0].subNodes[0].booleanize);
+    },
+
     testArrayRegexMissingPatternParse : function() {
       assertParseError(errors.ERROR_QUERY_PARSE.code, 'RETURN ["foo"] ANY =~');
     },

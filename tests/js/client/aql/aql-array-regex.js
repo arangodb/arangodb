@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 700 */
-/*global assertEqual, arango */
+/*global assertEqual, assertTrue, assertFalse, arango */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -24,6 +24,7 @@
 
 const jsunity = require("jsunity");
 const db = require("@arangodb").db;
+const explainer = require("@arangodb/aql/explainer");
 
 function arrayRegexTestSuite () {
   const values = ["foo", "bar", "baz"];
@@ -225,6 +226,31 @@ function arrayRegexTestSuite () {
 
       result = db._query('RETURN {} ANY =~ ".*"').toArray();
       assertEqual([ false ], result);
+    },
+
+    testNotArrayAllRegexNonMatch : function () {
+      // "abcde" matches ^.{5}$ so ALL !~ is false; NOT => true
+      let result = db._query(
+        'RETURN NOT ["abcde", "bar"] ALL !~ "^.{5}$"'
+      ).toArray();
+      assertEqual([ true ], result);
+    },
+
+    testAtLeastRegexExplain : function () {
+      let text = explainer.explain({
+        query: 'RETURN ["foo", "bar", "baz"] AT LEAST(2) =~ "^ba"'
+      }, { colors: false }, false);
+      assertTrue(text.includes('AT LEAST(2)'));
+      assertTrue(text.includes('FILTER'));
+      assertFalse(text.includes('FILTER AT LEAST'));
+    },
+
+    testNotArrayAllRegexExplain : function () {
+      let text = explainer.explain({
+        query: 'RETURN NOT ["foo", "bar", "baz"] ALL !~ "^.{5}$"'
+      }, { colors: false }, false);
+      assertFalse(text.includes('false[?'));
+      assertTrue(text.includes('! ['));
     }
   };
 }
