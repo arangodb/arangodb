@@ -167,27 +167,36 @@ DECLARE_COUNTER(arangodb_http_response_code_total,
 DECLARE_GAUGE(arangodb_requests_memory_usage, std::uint64_t,
               "Memory consumed by incoming requests");
 
-GeneralServerFeature::GeneralServerFeature(
-    application_features::ApplicationServer& server,
-    metrics::IRegistry& metricsRegistry)
-    : GeneralServerFeature(server, metricsRegistry, GeneralServerOptions{}) {}
+static arangodb_http_response_code_total getBuilder(rest::ResponseCode code) {
+  auto const codeStr = std::to_string(static_cast<int>(code));
+  arangodb_http_response_code_total builder;
+  builder.reserveSpaceForLabels(4 + codeStr.size());
+  builder.addLabel("code", codeStr);
+
+  return builder;
+}
 
 GeneralServerFeature::GeneralServerFeature(
     application_features::ApplicationServer& server,
-    metrics::IRegistry& metricsRegistry, GeneralServerOptions options)
+    metrics::MetricsFeature& metricsFeature)
+    : GeneralServerFeature(server, metricsFeature, GeneralServerOptions{}) {}
+
+GeneralServerFeature::GeneralServerFeature(
+    application_features::ApplicationServer& server,
+    metrics::MetricsFeature& metricsFeature, GeneralServerOptions options)
     : ApplicationFeature{server, *this},
       _currentRequestsSize(
-          metricsRegistry.add(arangodb_requests_memory_usage{})),
+          metricsFeature.add(arangodb_requests_memory_usage{})),
       _options(std::move(options)),
       _requestBodySizeHttp1(
-          metricsRegistry.add(arangodb_request_body_size_http1{})),
+          metricsFeature.add(arangodb_request_body_size_http1{})),
       _requestBodySizeHttp2(
-          metricsRegistry.add(arangodb_request_body_size_http2{})),
+          metricsFeature.add(arangodb_request_body_size_http2{})),
       _http1Connections(
-          metricsRegistry.add(arangodb_http1_connections_total{})),
+          metricsFeature.add(arangodb_http1_connections_total{})),
       _http2Connections(
-          metricsRegistry.add(arangodb_http2_connections_total{})),
-      _metricsRegistry(metricsRegistry) {
+          metricsFeature.add(arangodb_http2_connections_total{})),
+      _metricsFeature(metricsFeature) {
   setOptional(true);
   startsAfter<application_features::AqlFeaturePhase>();
 
@@ -201,13 +210,11 @@ GeneralServerFeature::GeneralServerFeature(
 
 void GeneralServerFeature::initResponseCodeCounters() {
   using rest::ResponseCode;
+
   auto addCounter = [&](ResponseCode code) {
-    auto const codeStr = std::to_string(static_cast<int>(code));
-    arangodb_http_response_code_total builder;
-    builder.reserveSpaceForLabels(4 + codeStr.size());
-    builder.addLabel("code", codeStr);
+    auto builder = getBuilder(code);
     _responseCodeCounters.try_emplace(
-        code, &_metricsRegistry.add(std::move(builder)));
+        code, &_metricsFeature.add(std::move(builder)));
   };
 
   for (auto code : {
@@ -323,10 +330,23 @@ void GeneralServerFeature::initResponseCodeCounters() {
 
 void GeneralServerFeature::countHttpResponseCode(
     rest::ResponseCode code) noexcept {
-  auto it = _responseCodeCounters.find(code);
-  TRI_ASSERT(it != _responseCodeCounters.end());
-  if (it != _responseCodeCounters.end()) {
+  // Fast, lock-free path. Covers every ResponseCode registered up front.
+  if (auto it = _responseCodeCounters.find(code);
+      it != _responseCodeCounters.end()) {
     it->second->count();
+    return;
+  }
+
+  // Slow path. Reached only for a ResponseCode that was somehow missed
+  // during initialization (e.g. CommonDefines.h gained a new enumerator).
+  TRI_ASSERT(false) << "unhandled response code "
+                     << static_cast<int>(code)
+                     << " missing from initResponseCodeCounters()";
+  try {
+    auto builder = getBuilder(code);
+    _metricsFeature.ensureMetric(std::move(builder)).count();
+  } catch (...) {
+    // must not throw from this noexcept function
   }
 }
 

@@ -33,7 +33,7 @@
 #include "Metrics/LogScale.h"
 #include "Metrics/Histogram.h"
 #include "Metrics/Gauge.h"
-#include "Metrics/IRegistry.h"
+#include "Metrics/MetricsFeature.h"
 #include "Rest/ApiVersion.h"
 #include "Rest/CommonDefines.h"
 
@@ -52,10 +52,10 @@ class GeneralServerFeature final
   static constexpr std::string_view name() noexcept { return "GeneralServer"; }
 
   explicit GeneralServerFeature(application_features::ApplicationServer& server,
-                                metrics::IRegistry& metricsRegistry,
+                                metrics::MetricsFeature& metricsFeature,
                                 GeneralServerOptions options);
   explicit GeneralServerFeature(application_features::ApplicationServer& server,
-                                metrics::IRegistry& metricsRegistry);
+                                metrics::MetricsFeature& metricsFeature);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -118,8 +118,7 @@ class GeneralServerFeature final
   void defineInitialHandlers(rest::RestHandlerFactory& f);
   // define remaining REST handlers
   void defineRemainingHandlers(rest::RestHandlerFactory& f);
-  // register one Counter per rest::ResponseCode enumerator, once, so
-  // countHttpResponseCode() never has to touch the metrics registry
+  // register one Counter per rest::ResponseCode enumerator, once
   void initResponseCodeCounters();
 
   GeneralServerOptions _options;
@@ -134,7 +133,7 @@ class GeneralServerFeature final
   metrics::Histogram<metrics::LogScale<uint64_t>>& _requestBodySizeHttp2;
   metrics::Counter& _http1Connections;
   metrics::Counter& _http2Connections;
-  metrics::IRegistry& _metricsRegistry;
+  metrics::MetricsFeature& _metricsFeature;
 };
 
 }  // namespace arangodb
