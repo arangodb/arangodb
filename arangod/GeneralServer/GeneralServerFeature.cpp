@@ -106,7 +106,6 @@
 #include "RestHandler/RestSimpleQueryHandler.h"
 #include "RestHandler/RestStatusHandler.h"
 #include "RestHandler/RestSupervisionStateHandler.h"
-#include "RestHandler/RestTelemetricsHandler.h"
 #include "RestHandler/RestSupportInfoHandler.h"
 #include "RestHandler/RestSystemReportHandler.h"
 #include "RestHandler/RestTasksHandler.h"
@@ -370,11 +369,6 @@ void GeneralServerFeature::validateOptions(
 
 void GeneralServerFeature::prepare() {
   ServerState::instance()->setServerMode(ServerState::Mode::STARTUP);
-
-  if (ServerState::instance()->isAgent()) {
-    // telemetrics automatically and always turned off on agents
-    _options.enableTelemetrics = false;
-  }
 
   _jobManager = std::make_unique<AsyncJobManager>();
 
@@ -842,10 +836,6 @@ void GeneralServerFeature::defineRemainingHandlers(
   if (_options.supportInfoApiPolicy != "disabled") {
     f.addHandler("/_admin/support-info",
                  RestHandlerCreator<RestSupportInfoHandler>::createNoData,
-                 {0, 1});
-
-    f.addHandler("/_admin/telemetrics",
-                 RestHandlerCreator<RestTelemetricsHandler>::createNoData,
                  {0, 1});
   }
 

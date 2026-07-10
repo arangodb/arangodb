@@ -44,8 +44,6 @@ class Future;
 }
 }  // namespace arangodb
 
-struct TRI_vocbase_t;
-
 namespace arangodb::replication2 {
 
 namespace agency {

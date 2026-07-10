@@ -23,28 +23,21 @@
 
 #pragma once
 
-#include <rocksdb/options.h>
-#include <rocksdb/status.h>
-#include <cstddef>
-#include <limits>
-
 #include "Cache/Transaction.h"
-#include "Containers/SmallVector.h"
-#include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Hints.h"
 #include "Transaction/Methods.h"
-#include "VocBase/AccessMode.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/voc-types.h"
 
+#include <rocksdb/options.h>
+#include <rocksdb/status.h>
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #include <atomic>
 #endif
-
-struct TRI_vocbase_t;
 
 namespace rocksdb {
 class Iterator;
@@ -52,6 +45,7 @@ class Iterator;
 
 namespace arangodb {
 
+struct Database;
 class LogicalCollection;
 class LogicalDataSource;
 class RocksDBTransactionMethods;
@@ -61,7 +55,7 @@ class RocksDBTransactionState : public TransactionState {
   friend class RocksDBTrxBaseMethods;
 
  public:
-  RocksDBTransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
+  RocksDBTransactionState(Database& vocbase, TransactionId tid,
                           transaction::Options const& options,
                           transaction::OperationOrigin operationOrigin);
   ~RocksDBTransactionState() override;

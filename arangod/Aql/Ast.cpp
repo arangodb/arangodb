@@ -52,6 +52,7 @@
 #include "Utilities/NameValidator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
+#include "VocBase/vocbase.h"
 #ifdef USE_V8
 #include "V8Server/V8DealerFeature.h"
 #endif

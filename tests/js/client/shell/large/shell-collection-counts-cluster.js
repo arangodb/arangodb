@@ -28,29 +28,12 @@
 'use strict';
 const jsunity = require('jsunity');
 const db = require("@arangodb").db;
-const request = require("@arangodb/request");
 const _ = require("lodash");
 const { deriveTestSuite, getEndpointById, getMetric, waitForShardsInSync } = require('@arangodb/test-helper');
-  
+let { instanceRole } = require('@arangodb/testutils/instance');
+
 const cn = "UnitTestsCollection";
-
-const {
-  getCoordinators,
-  getDBServers
-} = require('@arangodb/test-helper');
-
-let clearFailurePoints = function (failurePointsToKeep) {
-  getDBServers().forEach((server) => {
-    // clear all failure points
-    request({ method: "DELETE", url: server.url + "/_admin/debug/failat" });
-    failurePointsToKeep.forEach((fp) => {
-      getDBServers().forEach((server) => {
-        let result = request({ method: "PUT", url: server.url + "/_admin/debug/failat/" + encodeURIComponent(fp), body: {} });
-        assertEqual(200, result.status);
-      });
-    });
-  });
-};
+const IM = global.instanceManager;
 
 function BaseTestConfig () {
   'use strict';
@@ -66,15 +49,14 @@ function BaseTestConfig () {
       assertEqual(200, c.count());
       assertEqual(200, c.toArray().length);
 
-      let servers = getDBServers();
+      let servers;
       let shardInfo = c.shards(true);
       let shard = Object.keys(shardInfo)[0];
-      let leader = shardInfo[shard][0];
-      let leaderUrl = servers.filter((server) => server.id === leader)[0].url;
+      let leaderID = shardInfo[shard][0];
+      let leader = IM.getInstanceByID(leaderID);
 
       // break leaseManagedTrx on the leader, so it will return a nullptr
-      let result = request({ method: "PUT", url: leaderUrl + "/_admin/debug/failat/leaseManagedTrxFail", body: {} });
-      assertEqual(200, result.status);
+      leader.debugSetFailAt("leaseManagedTrxFail");
 
       // add a follower. this will kick off the getting-in-sync protocol,
       // which will eventually call the holdReadLockCollection API, which then
@@ -92,7 +74,7 @@ function BaseTestConfig () {
           }
         } else if (tries === 20) {
           // wait several seconds so we can be sure the failure point was triggered.
-          clearFailurePoints([]);
+          IM.debugClearFailAt();
           waitForShardsInSync(cn, undefined, 1); 
         }
         require("internal").sleep(0.5);
@@ -105,13 +87,15 @@ function BaseTestConfig () {
       let total;
       while (tries++ < 120) {
         total = 0;
-        getDBServers().forEach((server) => {
+        IM.getInstancesRole(instanceRole.dbserver).forEach((server) => {
           if (servers.indexOf(server.id) === -1) {
             return;
           }
-          let result = request({ method: "GET", url: server.url + "/_api/collection/" + shard + "/count" });
-          assertEqual(200, result.status);
-          total += result.json.count;
+          server.toThisInstance(() => {
+            let result = arango.GET_RAW(`/_api/collection/${shard}/count`);
+            assertEqual(200, result.code);
+            total += result.parsedBody.count;
+          });
         });
         if (total === 2 * 200) {
           break;
@@ -131,15 +115,14 @@ function BaseTestConfig () {
       assertEqual(100, c.count());
       assertEqual(100, c.toArray().length);
 
-      let servers = getDBServers();
+      let servers = [];
       let shardInfo = c.shards(true);
       let shard = Object.keys(shardInfo)[0];
-      let leader = shardInfo[shard][0];
-      let leaderUrl = servers.filter((server) => server.id === leader)[0].url;
+      let leaderID = shardInfo[shard][0];
+      let leader = IM.getInstanceByID(leaderID);
 
       // set a failure point to get the counts wrong on the leader
-      let result = request({ method: "PUT", url: leaderUrl + "/_admin/debug/failat/RocksDBCommitCounts", body: {} });
-      assertEqual(200, result.status);
+      leader.debugSetFailAt("RocksDBCommitCounts");
       
       for (let i = 100; i < 200; ++i) {
         c.insert({ _key: "test" + i }); 
@@ -147,7 +130,7 @@ function BaseTestConfig () {
 
       assertNotEqual(200, c.count());
       assertEqual(200, c.toArray().length);
-      clearFailurePoints([]);
+      IM.debugClearFailAt();
 
       c.properties({ replicationFactor: 2 });
       
@@ -171,13 +154,15 @@ function BaseTestConfig () {
       let total;
       while (tries++ < 120) {
         total = 0;
-        getDBServers().forEach((server) => {
+        IM.getInstancesRole(instanceRole.dbserver).forEach((server) => {
           if (servers.indexOf(server.id) === -1) {
             return;
           }
-          let result = request({ method: "GET", url: server.url + "/_api/collection/" + shard + "/count" });
-          assertEqual(200, result.status);
-          total += result.json.count;
+          server.toThisInstance(() => {
+            let result = arango.GET_RAW(`/_api/collection/${shard}/count`);
+            assertEqual(200, result.code);
+            total += result.parsedBody.count;
+          });
         });
         if (total === 2 * 200) {
           break;
@@ -190,15 +175,14 @@ function BaseTestConfig () {
     testWrongCountOnLeaderFullSync2 : function () {
       let c = db._create(cn, { numberOfShards: 1, replicationFactor: 1 }); 
 
-      let servers = getDBServers();
+      let servers = [];
       let shardInfo = c.shards(true);
       let shard = Object.keys(shardInfo)[0];
-      let leader = shardInfo[shard][0];
-      let leaderUrl = servers.filter((server) => server.id === leader)[0].url;
+      let leaderID = shardInfo[shard][0];
+      let leader = IM.getInstanceByID(leaderID);
 
       // set a failure point to get the counts wrong on the leader
-      let result = request({ method: "PUT", url: leaderUrl + "/_admin/debug/failat/RocksDBCommitCounts", body: {} });
-      assertEqual(200, result.status);
+      leader.debugSetFailAt("RocksDBCommitCounts");
       
       for (let i = 0; i < 100; ++i) {
         c.insert({ _key: "test" + i }); 
@@ -230,13 +214,15 @@ function BaseTestConfig () {
       let total;
       while (tries++ < 120) {
         total = 0;
-        getDBServers().forEach((server) => {
+        IM.getInstancesRole(instanceRole.dbserver).forEach((server) => {
           if (servers.indexOf(server.id) === -1) {
             return;
           }
-          let result = request({ method: "GET", url: server.url + "/_api/collection/" + shard + "/count" });
-          assertEqual(200, result.status);
-          total += result.json.count;
+          server.toThisInstance(() => {
+            let result = arango.GET_RAW(`/_api/collection/${shard}/count`);
+            assertEqual(200, result.code);
+            total += result.parsedBody.count;
+          });
         });
         if (total === 2 * 100) {
           break;
@@ -256,15 +242,14 @@ function BaseTestConfig () {
       assertEqual(100, c.count());
       assertEqual(100, c.toArray().length);
 
-      let servers = getDBServers();
+      let servers = [];
       let shardInfo = c.shards(true);
       let shard = Object.keys(shardInfo)[0];
-      let leader = shardInfo[shard][0];
-      let leaderUrl = servers.filter((server) => server.id === leader)[0].url;
+      let leaderID = shardInfo[shard][0];
+      let leader = IM.getInstanceByID(leaderID);
 
       // set a failure point to get the counts wrong on the leader
-      let result = request({ method: "PUT", url: leaderUrl + "/_admin/debug/failat/RocksDBCommitCountsRandom", body: {} });
-      assertEqual(200, result.status);
+      leader.debugSetFailAt("RocksDBCommitCountsRandom");
       
       for (let i = 100; i < 200; ++i) {
         c.insert({ _key: "test" + i }); 
@@ -272,7 +257,7 @@ function BaseTestConfig () {
 
       assertNotEqual(200, c.count());
       assertEqual(200, c.toArray().length);
-      clearFailurePoints([]);
+      IM.debugClearFailAt();
 
       c.properties({ replicationFactor: 2 });
       
@@ -296,13 +281,15 @@ function BaseTestConfig () {
       let total;
       while (tries++ < 120) {
         total = 0;
-        getDBServers().forEach((server) => {
+        IM.getInstancesRole(instanceRole.dbserver).forEach((server) => {
           if (servers.indexOf(server.id) === -1) {
             return;
           }
-          let result = request({ method: "GET", url: server.url + "/_api/collection/" + shard + "/count" });
-          assertEqual(200, result.status);
-          total += result.json.count;
+          server.toThisInstance(() => {
+            let result = arango.GET_RAW(`/_api/collection/${shard}/count`);
+            assertEqual(200, result.code);
+            total += result.parsedBody.count;
+          });
         });
         if (total === 2 * 200) {
           break;
@@ -324,15 +311,14 @@ function BaseTestConfig () {
       assertEqual(50000, c.count());
       assertEqual(50000, c.toArray().length);
 
-      let servers = getDBServers();
+      let servers = [];
       let shardInfo = c.shards(true);
       let shard = Object.keys(shardInfo)[0];
-      let leader = shardInfo[shard][0];
-      let leaderUrl = servers.filter((server) => server.id === leader)[0].url;
+      let leaderID = shardInfo[shard][0];
+      let leader = IM.getInstanceByID(leaderID);
 
       // set a failure point to get the counts wrong on the leader
-      let result = request({ method: "PUT", url: leaderUrl + "/_admin/debug/failat/RocksDBCommitCounts", body: {} });
-      assertEqual(200, result.status);
+      leader.debugSetFailAt("RocksDBCommitCounts");
       
       for (let i = 0; i < 10; ++i) {
         c.insert(docs);
@@ -340,7 +326,7 @@ function BaseTestConfig () {
 
       assertNotEqual(100000, c.count());
       assertEqual(100000, c.toArray().length);
-      clearFailurePoints([]);
+      IM.debugClearFailAt();
 
       c.properties({ replicationFactor: 2 });
       
@@ -364,13 +350,15 @@ function BaseTestConfig () {
       let total;
       while (tries++ < 120) {
         total = 0;
-        getDBServers().forEach((server) => {
+        IM.getInstancesRole(instanceRole.dbserver).forEach((server) => {
           if (servers.indexOf(server.id) === -1) {
             return;
           }
-          let result = request({ method: "GET", url: server.url + "/_api/collection/" + shard + "/count" });
-          assertEqual(200, result.status);
-          total += result.json.count;
+          server.toThisInstance(() => {
+            let result = arango.GET_RAW(`/_api/collection/${shard}/count`);
+            assertEqual(200, result.code);
+            total += result.parsedBody.count;
+          });
         });
         if (total === 2 * 100000) {
           break;
@@ -381,7 +369,7 @@ function BaseTestConfig () {
     },
     
     testWrongCountOnLeaderFullSyncMultipleFollowers : function () {
-      let servers = getDBServers();
+      let servers = IM.getInstancesRole(instanceRole.dbserver);
       if (servers.length <= 2) {
         // we need at least 3 DB servers
         return;
@@ -397,12 +385,11 @@ function BaseTestConfig () {
 
       let shardInfo = c.shards(true);
       let shard = Object.keys(shardInfo)[0];
-      let leader = shardInfo[shard][0];
-      let leaderUrl = servers.filter((server) => server.id === leader)[0].url;
+      let leaderID = shardInfo[shard][0];
+      let leader = IM.getInstanceByID(leaderID);
       
       // set a failure point to get the counts wrong on the leader
-      let result = request({ method: "PUT", url: leaderUrl + "/_admin/debug/failat/RocksDBCommitCounts", body: {} });
-      assertEqual(200, result.status);
+      leader.debugSetFailAt("RocksDBCommitCounts");
       
       for (let i = 100; i < 200; ++i) {
         c.insert({ _key: "test" + i }); 
@@ -410,7 +397,7 @@ function BaseTestConfig () {
 
       assertNotEqual(200, c.count());
       assertEqual(200, c.toArray().length);
-      clearFailurePoints([]);
+      IM.debugClearFailAt();
       
       c.properties({ replicationFactor: 3 });
       
@@ -434,13 +421,15 @@ function BaseTestConfig () {
       let total;
       while (tries++ < 120) {
         total = 0;
-        getDBServers().forEach((server) => {
+        IM.getInstancesRole(instanceRole.dbserver).forEach((server) => {
           if (servers.indexOf(server.id) === -1) {
             return;
           }
-          let result = request({ method: "GET", url: server.url + "/_api/collection/" + shard + "/count" });
-          assertEqual(200, result.status, { shard, server, servers, result: result.json });
-          total += result.json.count;
+          server.toThisInstance(() => {
+            let result = arango.GET_RAW(`/_api/collection/${shard}/count`);
+            assertEqual(200, result.code, { shard, server, servers, result: result.parsedBody });
+            total += result.parsedBody.count;
+          });
         });
         if (total === 3 * 200) {
           break;
@@ -451,7 +440,7 @@ function BaseTestConfig () {
     },
     
     testWrongCountOnLeaderFullSync2MultipleFollowers : function () {
-      let servers = getDBServers();
+      let servers = IM.getInstancesRole(instanceRole.dbserver);
       if (servers.length <= 2) {
         // we need at least 3 DB servers
         return;
@@ -460,12 +449,11 @@ function BaseTestConfig () {
 
       let shardInfo = c.shards(true);
       let shard = Object.keys(shardInfo)[0];
-      let leader = shardInfo[shard][0];
-      let leaderUrl = servers.filter((server) => server.id === leader)[0].url;
+      let leaderID = shardInfo[shard][0];
+      let leader = IM.getInstanceByID(leaderID);
 
       // set a failure point to get the counts wrong on the leader
-      let result = request({ method: "PUT", url: leaderUrl + "/_admin/debug/failat/RocksDBCommitCounts", body: {} });
-      assertEqual(200, result.status);
+      leader.debugSetFailAt("RocksDBCommitCounts");
       
       for (let i = 0; i < 100; ++i) {
         c.insert({ _key: "test" + i }); 
@@ -497,13 +485,15 @@ function BaseTestConfig () {
       let total;
       while (tries++ < 120) {
         total = 0;
-        getDBServers().forEach((server) => {
+        IM.getInstancesRole(instanceRole.dbserver).forEach((server) => {
           if (servers.indexOf(server.id) === -1) {
             return;
           }
-          let result = request({ method: "GET", url: server.url + "/_api/collection/" + shard + "/count" });
-          assertEqual(200, result.status, result);
-          total += result.json.count;
+          server.toThisInstance(() => {
+            let result = arango.GET_RAW(`/_api/collection/${shard}/count`);
+            assertEqual(200, result.code, result);
+            total += result.parsedBody.count;
+          });
         });
         if (total === 3 * 100) {
           break;
@@ -514,11 +504,12 @@ function BaseTestConfig () {
     },
     
     testWrongCountOnLeaderFullSyncLargeCollectionMultipleFollowers : function () {
-      let servers = getDBServers();
-      if (servers.length <= 2) {
+      let dbServers = IM.getInstancesRole(instanceRole.dbserver);
+      if (dbServers.length <= 2) {
         // we need at least 3 DB servers
         return;
       }
+      let servers = [];
       let c = db._create(cn, { numberOfShards: 1, replicationFactor: 1 }); 
       let docs = [];
       for (let i = 0; i < 5000; ++i) {
@@ -532,12 +523,11 @@ function BaseTestConfig () {
 
       let shardInfo = c.shards(true);
       let shard = Object.keys(shardInfo)[0];
-      let leader = shardInfo[shard][0];
-      let leaderUrl = servers.filter((server) => server.id === leader)[0].url;
+      let leaderID = shardInfo[shard][0];
+      let leader = IM.getInstanceByID(leaderID);
 
       // set a failure point to get the counts wrong on the leader
-      let result = request({ method: "PUT", url: leaderUrl + "/_admin/debug/failat/RocksDBCommitCounts", body: {} });
-      assertEqual(200, result.status);
+      leader.debugSetFailAt("RocksDBCommitCounts");
       
       for (let i = 0; i < 10; ++i) {
         c.insert(docs);
@@ -545,7 +535,7 @@ function BaseTestConfig () {
 
       assertNotEqual(100000, c.count());
       assertEqual(100000, c.toArray().length);
-      clearFailurePoints([]);
+      IM.debugClearFailAt();
 
       c.properties({ replicationFactor: 3 });
       
@@ -569,13 +559,15 @@ function BaseTestConfig () {
       let total;
       while (tries++ < 120) {
         total = 0;
-        getDBServers().forEach((server) => {
+        dbServers.forEach((server) => {
           if (servers.indexOf(server.id) === -1) {
             return;
           }
-          let result = request({ method: "GET", url: server.url + "/_api/collection/" + shard + "/count" });
-          assertEqual(200, result.status);
-          total += result.json.count;
+          server.toThisInstance(() => {
+            let result = arango.GET_RAW(`/_api/collection/${shard}/count`);
+            assertEqual(200, result.code);
+            total += result.parsedBody.count;
+          });
         });
         if (total === 3 * 100000) {
           break;
@@ -595,15 +587,13 @@ function BaseTestConfig () {
       assertEqual(100, c.count());
       assertEqual(100, c.toArray().length);
 
-      let servers = getDBServers();
+      let servers = [];
       let shardInfo = c.shards(true);
       let shard = Object.keys(shardInfo)[0];
-      let leader = shardInfo[shard][0];
+      let leaderID = shardInfo[shard][0];
+      let leader = IM.getInstanceByID(leaderID);
       // set failure points to get the counts wrong on the followers
-      getDBServers().filter((server) => server.id !== leader).forEach((server) => {
-        let result = request({ method: "PUT", url: server.url + "/_admin/debug/failat/RocksDBCommitCounts", body: {} });
-        assertEqual(200, result.status);
-      });
+      leader.debugSetFailAt("RocksDBCommitCounts");
 
       c.properties({ replicationFactor: 2 });
       
@@ -627,13 +617,15 @@ function BaseTestConfig () {
       let total;
       while (tries++ < 120) {
         total = 0;
-        getDBServers().forEach((server) => {
+        IM.getInstancesRole(instanceRole.dbserver).forEach((server) => {
           if (servers.indexOf(server.id) === -1) {
             return;
           }
-          let result = request({ method: "GET", url: server.url + "/_api/collection/" + shard + "/count" });
-          assertEqual(200, result.status);
-          total += result.json.count;
+          server.toThisInstance(() => {
+            let result = arango.GET_RAW(`/_api/collection/${shard}/count`);
+            assertEqual(200, result.code);
+            total += result.parsedBody.count;
+          });
         });
         if (total === 2 * 100) {
           break;
@@ -653,14 +645,14 @@ function BaseTestConfig () {
       assertEqual(100, c.count());
       assertEqual(100, c.toArray().length);
 
-      let servers = getDBServers();
+      let servers = [];
       let shardInfo = c.shards(true);
       let shard = Object.keys(shardInfo)[0];
-      let leader = shardInfo[shard][0];
+      let leaderID = shardInfo[shard][0];
+      let leader = IM.getInstanceByID(leaderID);
       // set failure points to get the counts wrong on the followers
-      getDBServers().filter((server) => server.id !== leader).forEach((server) => {
-        let result = request({ method: "PUT", url: server.url + "/_admin/debug/failat/RocksDBCommitCountsRandom", body: {} });
-        assertEqual(200, result.status);
+      IM.getInstancesRole(instanceRole.dbserver).filter((server) => server.id !== leader).forEach((server) => {
+        server.debugSetFailAt("RocksDBCommitCountsRandom");
       });
 
       c.properties({ replicationFactor: 2 });
@@ -685,13 +677,15 @@ function BaseTestConfig () {
       let total;
       while (tries++ < 120) {
         total = 0;
-        getDBServers().forEach((server) => {
+        IM.getInstancesRole(instanceRole.dbserver).forEach((server) => {
           if (servers.indexOf(server.id) === -1) {
             return;
           }
-          let result = request({ method: "GET", url: server.url + "/_api/collection/" + shard + "/count" });
-          assertEqual(200, result.status);
-          total += result.json.count;
+          server.toThisInstance(() => {
+            let result = arango.GET_RAW(`/_api/collection/${shard}/count`);
+            assertEqual(200, result.code);
+            total += result.parsedBody.count;
+          });
         });
         if (total === 2 * 100) {
           break;
@@ -704,12 +698,12 @@ function BaseTestConfig () {
     testWrongCountOnLeaderIncrementalSync : function () {
       let c = db._create(cn, { numberOfShards: 1, replicationFactor: 2 }); 
 
-      let servers = getDBServers();
+      let servers = [];
       let shardInfo = c.shards(true);
       let shard = Object.keys(shardInfo)[0];
       assertEqual(2, shardInfo[shard].length);
-      let leader = shardInfo[shard][0];
-      let leaderUrl = servers.filter((server) => server.id === leader)[0].url;
+      let leaderID = shardInfo[shard][0];
+      let leader = IM.getInstanceByID(leaderID);
       let docs = [];
       for (let i = 0; i < 100; ++i) {
         docs.push({ _key: "test" + i }); 
@@ -730,18 +724,16 @@ function BaseTestConfig () {
       }
       
       // set a failure point to get the counts wrong on the leader
-      let result = request({ method: "PUT", url: leaderUrl + "/_admin/debug/failat/RocksDBCommitCounts", body: {} });
-      assertEqual(200, result.status);
+      leader.debugSetFailAt("RocksDBCommitCounts");
       
       // set a failure point on the leader to drop the follower
-      result = request({ method: "PUT", url: leaderUrl + "/_admin/debug/failat/replicateOperationsDropFollower", body: {} });
-      assertEqual(200, result.status);
+      leader.debugSetFailAt("replicateOperationsDropFollower");
      
       c.insert({ _key: "test100" });
 
       assertEqual(101, c.toArray().length);
       
-      clearFailurePoints([]);
+      IM.debugClearFailAt();
       
       waitForShardsInSync(cn, undefined, 1); 
         
@@ -765,13 +757,15 @@ function BaseTestConfig () {
       let total;
       while (tries++ < 120) {
         total = 0;
-        getDBServers().forEach((server) => {
+        IM.getInstancesRole(instanceRole.dbserver).forEach((server) => {
           if (servers.indexOf(server.id) === -1) {
             return;
           }
-          let result = request({ method: "GET", url: server.url + "/_api/collection/" + shard + "/count" });
-          assertEqual(200, result.status);
-          total += result.json.count;
+          server.toThisInstance(() => {
+            let result = arango.GET_RAW(`/_api/collection/${shard}/count`);
+            assertEqual(200, result.code);
+            total += result.parsedBody.count;
+          });
         });
         if (total === 2 * 101) {
           break;
@@ -784,16 +778,15 @@ function BaseTestConfig () {
     testRandomCountOnLeaderIncrementalSync : function () {
       let c = db._create(cn, { numberOfShards: 1, replicationFactor: 2 }); 
 
-      let servers = getDBServers();
+      let servers = [];
       let shardInfo = c.shards(true);
       let shard = Object.keys(shardInfo)[0];
       assertEqual(2, shardInfo[shard].length);
-      let leader = shardInfo[shard][0];
-      let leaderUrl = servers.filter((server) => server.id === leader)[0].url;
+      let leaderID = shardInfo[shard][0];
+      let leader = IM.getInstanceByID(leaderID);
       
       // set a failure point to get the counts wrong on the leader
-      let result = request({ method: "PUT", url: leaderUrl + "/_admin/debug/failat/RocksDBCommitCountsRandom", body: {} });
-      assertEqual(200, result.status);
+      leader.debugSetFailAt("RocksDBCommitCountsRandom");
 
       for (let i = 0; i < 100; ++i) {
         c.insert({ _key: "test" + i }); 
@@ -813,14 +806,13 @@ function BaseTestConfig () {
       }
       
       // set a failure point on the leader to drop the follower
-      result = request({ method: "PUT", url: leaderUrl + "/_admin/debug/failat/replicateOperationsDropFollower", body: {} });
-      assertEqual(200, result.status);
+      leader.debugSetFailAt("replicateOperationsDropFollower");
      
       c.insert({ _key: "test100" });
 
       assertEqual(101, c.toArray().length);
       
-      clearFailurePoints([]);
+      IM.debugClearFailAt();
       
       waitForShardsInSync(cn, undefined, 1); 
         
@@ -844,13 +836,15 @@ function BaseTestConfig () {
       let total;
       while (tries++ < 120) {
         total = 0;
-        getDBServers().forEach((server) => {
+        IM.getInstancesRole(instanceRole.dbserver).forEach((server) => {
           if (servers.indexOf(server.id) === -1) {
             return;
           }
-          let result = request({ method: "GET", url: server.url + "/_api/collection/" + shard + "/count" });
-          assertEqual(200, result.status);
-          total += result.json.count;
+          server.toThisInstance(() => {
+            let result = arango.GET_RAW(`/_api/collection/${shard}/count`);
+            assertEqual(200, result.code);
+            total += result.parsedBody.count;
+          });
         });
         if (total === 2 * 101) {
           break;
@@ -863,18 +857,14 @@ function BaseTestConfig () {
     testWrongCountOnFollowerIncrementalSync : function () {
       let c = db._create(cn, { numberOfShards: 1, replicationFactor: 2 }); 
 
-      let servers = getDBServers();
+      let servers = [];
       let shardInfo = c.shards(true);
-      let shard = Object.keys(shardInfo)[0];
-      assertEqual(2, shardInfo[shard].length);
-      let leader = shardInfo[shard][0];
-      let leaderUrl = servers.filter((server) => server.id === leader)[0].url;
-      let follower = shardInfo[shard][1];
-      let followerUrl = servers.filter((server) => server.id === follower)[0].url;
+      const [shard, [leaderID, followerID]] = Object.entries(shardInfo)[0];
+      let leader = IM.getInstanceByID(leaderID);
+      let follower = IM.getInstanceByID(followerID);
       
       // set a failure point to get the counts wrong on the follower
-      let result = request({ method: "PUT", url: followerUrl + "/_admin/debug/failat/RocksDBCommitCounts", body: {} });
-      assertEqual(200, result.status);
+      follower.debugSetFailAt("RocksDBCommitCounts");
 
       for (let i = 0; i < 100; ++i) {
         c.insert({ _key: "test" + i }); 
@@ -894,15 +884,14 @@ function BaseTestConfig () {
       }
       
       // set a failure point on the leader to drop the follower
-      result = request({ method: "PUT", url: leaderUrl + "/_admin/debug/failat/replicateOperationsDropFollower", body: {} });
-      assertEqual(200, result.status);
+      leader.debugSetFailAt("replicateOperationsDropFollower");
      
       c.insert({ _key: "test100" });
 
       assertEqual(101, c.toArray().length);
       assertEqual(101, c.count());
       
-      clearFailurePoints([]);
+      IM.debugClearFailAt();
       
       waitForShardsInSync(cn, undefined, 1); 
         
@@ -913,8 +902,12 @@ function BaseTestConfig () {
         servers = shardInfo[shard];
         // also wait for the replication to have repaired the count on the follower
         try {
-          let result = request({ method: "GET", url: followerUrl + "/_api/collection/" + shard + "/count" });
-          if (servers.length === 2 && result.json.count === 101) {
+          let result;
+          follower.toThisInstance(() => {
+            result = arango.GET_RAW(`/_api/collection/${shard}/count`);
+            assertEqual(200, result.code);
+          });
+          if (servers.length === 2 && result.parsedBody.count === 101) {
             break;
           }
         } catch (err) {}
@@ -929,13 +922,15 @@ function BaseTestConfig () {
       let total;
       while (tries++ < 120) {
         total = 0;
-        getDBServers().forEach((server) => {
+        IM.getInstancesRole(instanceRole.dbserver).forEach((server) => {
           if (servers.indexOf(server.id) === -1) {
             return;
           }
-          let result = request({ method: "GET", url: server.url + "/_api/collection/" + shard + "/count" });
-          assertEqual(200, result.status);
-          total += result.json.count;
+          server.toThisInstance(() => {
+            let result = arango.GET_RAW(`/_api/collection/${shard}/count`);
+            assertEqual(200, result.code);
+            total += result.parsedBody.count;
+          });
         });
         if (total === 2 * 101) {
           break;
@@ -948,18 +943,14 @@ function BaseTestConfig () {
     testWrongCountOnFollowerIncrementalSyncManyFailures : function () {
       let c = db._create(cn, { numberOfShards: 1, replicationFactor: 2 }); 
 
-      let servers = getDBServers();
+      let servers = [];
       let shardInfo = c.shards(true);
-      let shard = Object.keys(shardInfo)[0];
-      assertEqual(2, shardInfo[shard].length);
-      let leader = shardInfo[shard][0];
-      let leaderUrl = servers.filter((server) => server.id === leader)[0].url;
-      let follower = shardInfo[shard][1];
-      let followerUrl = servers.filter((server) => server.id === follower)[0].url;
+      const [shard, [leaderID, followerID]] = Object.entries(shardInfo)[0];
+      let leader = IM.getInstanceByID(leaderID);
+      let follower = IM.getInstanceByID(followerID);
       
       // set a failure point to get the counts wrong on the follower
-      let result = request({ method: "PUT", url: followerUrl + "/_admin/debug/failat/RocksDBCommitCounts", body: {} });
-      assertEqual(200, result.status);
+      follower.debugSetFailAt("RocksDBCommitCounts");
 
       for (let i = 0; i < 100; ++i) {
         c.insert({ _key: "test" + i }); 
@@ -979,23 +970,19 @@ function BaseTestConfig () {
       }
         
       // follower count must be broken
-      result = request({ method: "GET", url: followerUrl + "/_api/collection/" + shard + "/count" });
-      assertEqual(200, result.status);
-      assertEqual(0, result.json.count);
+      let result = follower.toThisInstance(() => { return arango.GET_RAW(`/_api/collection/${shard}/count`);} );
+      assertEqual(200, result.code);
+      assertEqual(0, result.parsedBody.count);
       
-      let checksumFailuresBefore = getMetric(followerUrl, "arangodb_sync_wrong_checksum_total");
+      let checksumFailuresBefore = follower.getMetric("arangodb_sync_wrong_checksum_total");
       
       // set a failure point on the leader to drop the follower
-      result = request({ method: "PUT", url: leaderUrl + "/_admin/debug/failat/replicateOperationsDropFollower", body: {} });
-      assertEqual(200, result.status);
+      leader.debugSetFailAt("replicateOperationsDropFollower");
       
       // set failure points on the follower to always retry shard synchronization
-      result = request({ method: "PUT", url: followerUrl + "/_admin/debug/failat/SynchronizeShard%3A%3AnoSleepOnSyncError", body: {} });
-      assertEqual(200, result.status);
-      result = request({ method: "PUT", url: followerUrl + "/_admin/debug/failat/SynchronizeShard%3A%3AwrongChecksum", body: {} });
-      assertEqual(200, result.status);
-      result = request({ method: "PUT", url: followerUrl + "/_admin/debug/failat/disableCountAdjustment", body: {} });
-      assertEqual(200, result.status);
+      follower.debugSetFailAt("SynchronizeShard%3A%3AnoSleepOnSyncError");
+      follower.debugSetFailAt("SynchronizeShard%3A%3AwrongChecksum");
+      follower.debugSetFailAt("disableCountAdjustment");
       
       c.insert({ _key: "test100" });
 
@@ -1003,17 +990,15 @@ function BaseTestConfig () {
       assertEqual(101, c.count());
    
       let cleanup = () => {
-        let result = request({ method: "DELETE", url: followerUrl + "/_admin/debug/failat/SynchronizeShard%3A%3AwrongChecksum" });
-        assertEqual(200, result.status);
-        result = request({ method: "DELETE", url: followerUrl + "/_admin/debug/failat/disableCountAdjustment" });
-        assertEqual(200, result.status);
+        follower.debugClearFailAt("SynchronizeShard%3A%3AwrongChecksum");
+        follower.debugClearFailAt("disableCountAdjustment");
       };
 
       tries = 0;
       try {
         let checksumFailuresAfter;
         while (tries++ < 120) {
-          checksumFailuresAfter = getMetric(followerUrl, "arangodb_sync_wrong_checksum_total");
+          checksumFailuresAfter = follower.getMetric("arangodb_sync_wrong_checksum_total");
 
           if (checksumFailuresAfter > checksumFailuresBefore) {
             break;
@@ -1035,9 +1020,9 @@ function BaseTestConfig () {
       tries = 0;
       let count;
       while (tries++ < 120) {
-        let result = request({ method: "GET", url: followerUrl + "/_api/collection/" + shard + "/count" });
-        assertEqual(200, result.status);
-        count = result.json.count;
+        result = follower.toThisInstance(() => { return arango.GET_RAW(`/_api/collection/${shard}/count`); });
+        assertEqual(200, result.code);
+        count = result.parsedBody.count;
         
         if (count === 101) {
           break;
@@ -1055,13 +1040,12 @@ function collectionCountsSuiteOldFormat () {
 
   let suite = {
     setUp : function () {
-      // this disables usage of the new collection format
-      clearFailurePoints(["disableRevisionsAsDocumentIds"]);
+      IM.debugClearFailAt();
       db._drop(cn);
     },
 
     tearDown : function () {
-      clearFailurePoints([]);
+      IM.debugClearFailAt();
       db._drop(cn);
     }
   };
@@ -1075,12 +1059,12 @@ function collectionCountsSuiteNewFormat () {
 
   let suite = {
     setUp : function () {
-      clearFailurePoints([]);
+      IM.debugClearFailAt();
       db._drop(cn);
     },
 
     tearDown : function () {
-      clearFailurePoints([]);
+      IM.debugClearFailAt();
       db._drop(cn);
     }
   };
@@ -1089,9 +1073,8 @@ function collectionCountsSuiteNewFormat () {
   return suite;
 }
 
-let res = request({ method: "GET", url: getCoordinators()[0].url + "/_admin/debug/failat" });
 // these tests only make sense with the old replication protocol
-if (res.body === "true" && db._properties().replicationVersion !== "2") {
+if (db._properties().replicationVersion !== "2") {
   jsunity.run(collectionCountsSuiteOldFormat);
   jsunity.run(collectionCountsSuiteNewFormat);
 }

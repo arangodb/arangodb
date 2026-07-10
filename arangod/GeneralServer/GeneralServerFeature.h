@@ -96,13 +96,6 @@ class GeneralServerFeature final
 
   void countHttpResponseCode(rest::ResponseCode code) noexcept;
 
-  bool isTelemetricsEnabled() const noexcept {
-    return _options.enableTelemetrics;
-  }
-  uint64_t telemetricsMaxRequestsPerInterval() const noexcept {
-    return _options.telemetricsMaxRequestsPerInterval;
-  }
-
   metrics::Gauge<std::uint64_t>& _currentRequestsSize;
 
   [[nodiscard]] bool startedListening() const noexcept {

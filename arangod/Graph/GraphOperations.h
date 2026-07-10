@@ -23,19 +23,15 @@
 
 #pragma once
 
-#include <velocypack/Buffer.h>
-#include <chrono>
-#include <utility>
-
 #include "Aql/Query.h"
-#include "Aql/VariableGenerator.h"
 #include "Auth/Common.h"
-#include "Basics/ReadWriteLock.h"
 #include "Cluster/ClusterInfo.h"
-#include "Basics/ResultT.h"
 #include "Graph/Graph.h"
-#include "Transaction/StandaloneContext.h"
 #include "Utils/OperationResult.h"
+
+#include <velocypack/Buffer.h>
+
+#include <utility>
 
 namespace arangodb {
 
@@ -51,7 +47,7 @@ enum class VertexValidationOrigin { DEFAULT, FROM_ATTRIBUTE, TO_ATTRIBUTE };
 class GraphOperations {
  private:
   Graph& _graph;
-  TRI_vocbase_t& _vocbase;
+  Database& _vocbase;
   transaction::OperationOrigin _operationOrigin;
   std::shared_ptr<transaction::Context> _ctx;
 
@@ -60,7 +56,7 @@ class GraphOperations {
 
  public:
   GraphOperations() = delete;
-  GraphOperations(Graph& graph_, TRI_vocbase_t& vocbase,
+  GraphOperations(Graph& graph_, Database& vocbase,
                   transaction::OperationOrigin operationOrigin,
                   std::shared_ptr<transaction::Context> const& ctx = nullptr)
       : _graph(graph_),

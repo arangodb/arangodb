@@ -30,9 +30,7 @@
 
 #include <velocypack/Builder.h>
 
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/StringUtils.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -41,7 +39,6 @@
 #include "Scheduler/SchedulerFeature.h"
 #include "Transaction/Hints.h"
 #include "Transaction/V8Context.h"
-#include "Utils/DatabaseGuard.h"
 #include "Utils/ExecContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/OperationResult.h"

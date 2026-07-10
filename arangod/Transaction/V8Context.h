@@ -31,7 +31,6 @@
 
 #include <memory>
 
-struct TRI_vocbase_t;
 struct TRI_v8_global_t;
 
 namespace arangodb {
@@ -43,7 +42,7 @@ namespace transaction {
 class V8Context final : public Context {
  public:
   /// @brief create the context
-  V8Context(TRI_vocbase_t& vocbase, OperationOrigin operationOrigin,
+  V8Context(Database& vocbase, OperationOrigin operationOrigin,
             bool embeddable);
 
   /// @brief destroy the context
@@ -74,12 +73,12 @@ class V8Context final : public Context {
 
   /// @brief create a context
   static std::shared_ptr<transaction::V8Context> create(
-      TRI_vocbase_t& vocbase, OperationOrigin operationOrigin, bool embeddable);
+      Database& vocbase, OperationOrigin operationOrigin, bool embeddable);
 
   /// @brief create a V8 transaction context if we are in a V8 isolate, and a
   /// standlone transaction context otherwise
   static std::shared_ptr<transaction::Context> createWhenRequired(
-      TRI_vocbase_t& vocbase, OperationOrigin operationOrigin, bool embeddable);
+      Database& vocbase, OperationOrigin operationOrigin, bool embeddable);
 
  private:
   static TRI_v8_global_t* getV8State() noexcept;

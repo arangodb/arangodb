@@ -26,9 +26,7 @@
 
 #include "ActionBase.h"
 #include "ActionDescription.h"
-#include "Cluster/ClusterTypes.h"
 
-struct TRI_vocbase_t;
 namespace arangodb {
 class LogicalCollection;
 }

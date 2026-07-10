@@ -23,6 +23,7 @@
 #pragma once
 
 #include "RestHandler/RestVocbaseBaseHandler.h"
+#include "Replication2/ReplicatedLog/LogCommon.h"
 
 namespace arangodb {
 
