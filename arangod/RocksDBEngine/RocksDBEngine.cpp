@@ -49,7 +49,6 @@
 #include "Cache/Manager.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
-#include "GeneralServer/RestHandlerFactory.h"
 #include "IResearch/IResearchCommon.h"
 #include "Inspection/VPack.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"

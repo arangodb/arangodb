@@ -33,7 +33,6 @@
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBReplicationManager.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
-#include "Utils/CursorRepository.h"
 
 #include <atomic>
 

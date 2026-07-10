@@ -43,7 +43,6 @@
 #include "RocksDBEngine/RocksDBEdgeIndex.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBKey.h"
-#include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
 #include "RocksDBEngine/RocksDBRecoveryHelper.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
@@ -58,7 +57,6 @@
 #include <rocksdb/write_batch.h>
 
 #include <velocypack/Iterator.h>
-#include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
 
 #include <absl/cleanup/cleanup.h>
