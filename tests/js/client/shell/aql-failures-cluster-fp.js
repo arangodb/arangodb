@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 400 */
-/*global fail, assertEqual, assertTrue */
+/*global arango fail, assertEqual, assertTrue */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -34,8 +34,8 @@ let IM = global.instanceManager;
 const {ERROR_QUERY_COLLECTION_LOCK_FAILED, ERROR_CLUSTER_AQL_COMMUNICATION} = internal.errors;
 
 const callFinish = (server, route) => {
-  const res server.toThisInstance(() => {
-    return arango.DELETE("/" + route, { code: 0 });
+  const res = server.toThisInstance(() => {
+    return arango.DELETE_RAW("/" + route, { code: 0 });
   });
   // Did not leave an engine behind
   assertEqual(res.code, 200);
@@ -70,7 +70,7 @@ function aqlFailureSuite () {
         assertTrue(serverInfo !== undefined);
         const serverName = serverInfo.split(":")[1];
         assertTrue(serverName !== undefined);
-        callFinish(serverName, route);
+        callFinish(IM.getInstanceByID(serverName), route);
 
         // Make sure we mentioned the database name
         const databaseName = parts.filter(m => m === "_system");

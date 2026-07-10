@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen : 4000 */
-/* global assertTrue, assertEqual */
+/* global arango, assertTrue, assertEqual */
 
 'use strict';
 const jsunity = require('jsunity');
