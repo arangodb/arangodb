@@ -46,13 +46,13 @@ class LoggerFeature final : public application_features::ApplicationFeature {
   static constexpr std::string_view name() { return "Logger"; }
 
   LoggerFeature(application_features::ApplicationServer& server, bool threaded);
+  LoggerFeature(application_features::ApplicationServer& server, bool threaded,
+                LoggerOptions options);
 
   ~LoggerFeature();
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void loadOptions(std::shared_ptr<options::ProgramOptions>,
                    char const* binaryPath) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
   void unprepare() override final;
 

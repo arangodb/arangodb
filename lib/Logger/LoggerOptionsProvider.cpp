@@ -47,8 +47,8 @@ namespace arangodb {
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
-void LoggerOptionsProvider::declareOptions(std::shared_ptr<ProgramOptions> opts,
-                                           LoggerOptions& options) {
+void LoggerOptionsProvider::declareOptionsImpl(
+    std::shared_ptr<ProgramOptions> opts, LoggerOptions& options) {
   opts->addOldOption("log.tty", "log.foreground-tty");
   opts->addOldOption("log.escape", "log.escape-control-chars");
 
@@ -533,7 +533,7 @@ full, log entries are written synchronously until the queue has space again.)");
   opts->addObsoleteOption("log.facility", "", true);
 }
 
-void LoggerOptionsProvider::validateOptions(
+void LoggerOptionsProvider::validateOptionsImpl(
     std::shared_ptr<ProgramOptions> opts, LoggerOptions& options) {
   if (opts->processingResult().touched("log.file")) {
     std::string definition;
