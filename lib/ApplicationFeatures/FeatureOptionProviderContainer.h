@@ -20,6 +20,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+#include "Logger/LoggerOptionsProvider.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/DatabasePathOptionsProvider.h"
 #include "RestServer/DumpLimitsOptionsProvider.h"
@@ -44,11 +45,12 @@ class FeatureOptionProviderContainer final {
   }
 
  private:
-  std::tuple<
-      DatabasePathOptionsProvider, DumpLimitsOptionsProvider,
-      FlushOptionsProvider, fortune::FortuneOptionsProvider,
-      RocksDBEngineOptionsProvider, RocksDBIndexCacheRefillOptionsProvider,
-      RocksDBOptionFeatureOptionsProvider, TemporaryStorageOptionsProvider>
+  std::tuple<DatabasePathOptionsProvider, DumpLimitsOptionsProvider,
+             FlushOptionsProvider, fortune::FortuneOptionsProvider,
+             LoggerOptionsProvider, RocksDBEngineOptionsProvider,
+             RocksDBIndexCacheRefillOptionsProvider,
+             RocksDBOptionFeatureOptionsProvider,
+             TemporaryStorageOptionsProvider>
       _providers{};
 };
 }  // namespace arangodb::application_features
