@@ -212,6 +212,40 @@ static constexpr uint64_t databaseIdForGlobalApplier = 0;
 std::vector<std::shared_ptr<RocksDBRecoveryHelper>>
     RocksDBEngine::_recoveryHelpers;
 
+namespace {
+
+struct RocksDBAsyncLogWriteBatcherMetricsImpl
+    : replication2::storage::rocksdb::AsyncLogWriteBatcherMetrics {
+  explicit RocksDBAsyncLogWriteBatcherMetricsImpl(metrics::IRegistry& metrics) {
+    using namespace arangodb::replication2::storage::rocksdb;
+    numWorkerThreadsWaitForSync = &metrics.add(
+        arangodb_replication2_rocksdb_num_persistor_worker{}.withLabel("ws",
+                                                                       "true"));
+    numWorkerThreadsNoWaitForSync = &metrics.add(
+        arangodb_replication2_rocksdb_num_persistor_worker{}.withLabel(
+            "ws", "false"));
+
+    queueLength = &metrics.add(arangodb_replication2_rocksdb_queue_length{});
+    writeBatchSize =
+        &metrics.add(arangodb_replication2_rocksdb_write_batch_size{});
+    rocksdbWriteTimeInUs =
+        &metrics.add(arangodb_replication2_rocksdb_write_time{});
+    rocksdbSyncTimeInUs =
+        &metrics.add(arangodb_replication2_rocksdb_sync_time{});
+
+    operationLatencyInsert = &metrics.add(
+        arangodb_replication2_storage_operation_latency{}.withLabel("op",
+                                                                    "insert"));
+    operationLatencyRemoveFront = &metrics.add(
+        arangodb_replication2_storage_operation_latency{}.withLabel(
+            "op", "remove-front"));
+    operationLatencyRemoveBack = &metrics.add(
+        arangodb_replication2_storage_operation_latency{}.withLabel(
+            "op", "remove-back"));
+  }
+};
+}  // namespace
+
 RocksDBFilePurgePreventer::RocksDBFilePurgePreventer(RocksDBEngine* engine)
     : _engine(engine) {
   TRI_ASSERT(_engine != nullptr);
@@ -852,40 +886,6 @@ void RocksDBEngine::verifySstFiles(rocksdb::Options const& options) const {
 bool RocksDBEngine::isVectorIndexEnabled() const {
   return _vectorIndexProvider.isVectorIndexEnabled();
 }
-
-namespace {
-
-struct RocksDBAsyncLogWriteBatcherMetricsImpl
-    : replication2::storage::rocksdb::AsyncLogWriteBatcherMetrics {
-  explicit RocksDBAsyncLogWriteBatcherMetricsImpl(metrics::IRegistry& metrics) {
-    using namespace arangodb::replication2::storage::rocksdb;
-    numWorkerThreadsWaitForSync = &metrics.add(
-        arangodb_replication2_rocksdb_num_persistor_worker{}.withLabel("ws",
-                                                                       "true"));
-    numWorkerThreadsNoWaitForSync = &metrics.add(
-        arangodb_replication2_rocksdb_num_persistor_worker{}.withLabel(
-            "ws", "false"));
-
-    queueLength = &metrics.add(arangodb_replication2_rocksdb_queue_length{});
-    writeBatchSize =
-        &metrics.add(arangodb_replication2_rocksdb_write_batch_size{});
-    rocksdbWriteTimeInUs =
-        &metrics.add(arangodb_replication2_rocksdb_write_time{});
-    rocksdbSyncTimeInUs =
-        &metrics.add(arangodb_replication2_rocksdb_sync_time{});
-
-    operationLatencyInsert = &metrics.add(
-        arangodb_replication2_storage_operation_latency{}.withLabel("op",
-                                                                    "insert"));
-    operationLatencyRemoveFront = &metrics.add(
-        arangodb_replication2_storage_operation_latency{}.withLabel(
-            "op", "remove-front"));
-    operationLatencyRemoveBack = &metrics.add(
-        arangodb_replication2_storage_operation_latency{}.withLabel(
-            "op", "remove-back"));
-  }
-};
-}  // namespace
 
 void RocksDBEngine::start() {
   if (_options.syncInterval > 0) {
