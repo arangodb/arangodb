@@ -199,3 +199,4 @@ exports.getStorage = getStorage;
 exports.getBundleStorage = getBundleStorage;
 exports.pathRegex = pathRegex;
 exports.zipDirectory = fs.zipDirectory;
+exports.joinLastPath = fs.joinLastPath;
