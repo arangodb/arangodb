@@ -57,6 +57,8 @@
 #include <string>
 #include <string_view>
 
+#include "absl/strings/str_cat.h"
+
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;

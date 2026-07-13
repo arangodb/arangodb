@@ -37,9 +37,9 @@
 
 #include "Utils/DatabaseGuard.h"
 
-struct TRI_vocbase_t;
-
 namespace arangodb {
+struct Database;
+
 namespace transaction {
 class Methods;
 }
@@ -107,7 +107,7 @@ class ExecContext {
   void forceSuperuser();
 
   /// @brief returns the vocbase associated with this context, if any
-  [[nodiscard]] std::optional<std::reference_wrapper<TRI_vocbase_t>> vocbase()
+  [[nodiscard]] std::optional<std::reference_wrapper<Database>> vocbase()
       const noexcept;
 
   /// @brief returns the request associated with this context, if any
@@ -242,7 +242,7 @@ struct [[deprecated(
 
  private:
   static auto getSuperuserContextFrom(ExecContext const* old)
-      -> std::shared_ptr<ExecContext const>;
+      ->std::shared_ptr<ExecContext const>;
 
   std::shared_ptr<ExecContext const> _old;
 };

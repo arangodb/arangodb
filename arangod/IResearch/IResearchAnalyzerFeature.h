@@ -315,7 +315,7 @@ class IResearchAnalyzerFeature final
   /// @return analyzers in the specified vocbase are granted 'level' access
   //////////////////////////////////////////////////////////////////////////////
   static bool canUse(Database const& vocbase,
-  static bool canUse(Database const& vocbase, auth::Level const& level);
+                     CollectionAccessLevel const& level);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief check permissions for analyzer usage from vocbase by name
@@ -608,8 +608,7 @@ class IResearchAnalyzerFeature final
   Result storeAnalyzer(AnalyzerPool& pool,
                        transaction::OperationOrigin operationOrigin);
 
-  StorageEngine& engine() const noexcept {
-    return _databaseFeature.engine(); }
+  StorageEngine& engine() const noexcept { return _databaseFeature.engine(); }
 
   /// @brief dangling analyzer revisions collector
   std::function<void(bool)> _gcfunc;
