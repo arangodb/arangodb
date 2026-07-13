@@ -970,7 +970,7 @@ static void ClientConnection_ConstructorCallback(
   v8::Local<v8::External> wrap = v8::Local<v8::External>::Cast(args.Data());
   ClientFeature* client = static_cast<ClientFeature*>(wrap->Value());
 
-  TRI_GET_SERVER_GLOBALS(application_features::ApplicationServer);
+  TRI_GET_GLOBALS();
 
   auto v8connection =
       std::make_unique<V8ClientConnection>(v8g->server(), *client);

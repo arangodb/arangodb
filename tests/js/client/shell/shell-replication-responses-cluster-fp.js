@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 200 */
-/* global fail, assertEqual, assertNotEqual, assertTrue */
+/* global arango, fail, assertEqual, assertNotEqual, assertTrue */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -29,8 +29,6 @@ const internal = require('internal');
 const arangodb = require('@arangodb');
 const _ = require('lodash');
 const db = arangodb.db;
-const { debugCanUseFailAt, debugClearFailAt, debugSetFailAt, getEndpointById, getUrlById, getEndpointsByType } = require('@arangodb/test-helper');
-const request = require('@arangodb/request');
 const isReplication2 = db._properties().replicationVersion === "2";
 const {ERROR_HTTP_NOT_ACCEPTABLE, ERROR_REPLICATION_REPLICATED_STATE_NOT_AVAILABLE} = internal.errors;
 let { instanceRole } = require('@arangodb/testutils/instance');
@@ -65,41 +63,37 @@ function followerResponsesSuite() {
       let shard = Object.keys(shards)[0];
       let servers = shards[shard];
 
-      let leader = servers[0];
-      let follower = servers[1];
+      let leader = IM.getInstanceByID(servers[0]);
+      let follower = IM.getInstanceByID(servers[1]);
       
-      let endpoint = getEndpointById(follower);
-      let url = getUrlById(follower);
-      IM.debugSetFailAt("synchronousReplication::neverRefuseOnFollower", instanceRole.dbServer, endpoint);
+      follower.debugSetFailAt("synchronousReplication::neverRefuseOnFollower");
 
       // send a single document replication insert request
-      let response = request({
-        method: "post",
-        url: url + "/_api/document/" + shard + "?isSynchronousReplication=" + encodeURIComponent(leader),
-        body: { _key: "test1" },
-        json: true
+      let response = follower.toThisInstance(() => {
+        return arango.POST_RAW(
+          "/_api/document/" + shard + "?isSynchronousReplication=" + encodeURIComponent(leader.url),
+          { _key: "test1" });
       });
-
       if (isReplication2) {
-        assertIsReplication2FollowerResponse(response.json);
+        assertIsReplication2FollowerResponse(response.parsedBody);
       } else {
         // verify that response is empty
-        assertEqual({}, response.json);
+        assertEqual(response.parsedBody, {});
       }
       
       // send multi document replication insert request
-      response = request({
-        method: "post",
-        url: url + "/_api/document/" + shard + "?isSynchronousReplication=" + encodeURIComponent(leader),
-        body: [ { _key: "test2" }, { _key: "test3" } ],
-        json: true
+      response = follower.toThisInstance(() => {
+        return arango.POST_RAW(
+          "/_api/document/" + shard + "?isSynchronousReplication=" + encodeURIComponent(leader.url),
+          [ { _key: "test2" }, { _key: "test3" } ]
+        );
       });
 
       if (isReplication2) {
-        assertIsReplication2FollowerResponse(response.json);
+        assertIsReplication2FollowerResponse(response.parsedBody);
       } else {
         // verify that response is empty
-        assertEqual({}, response.json);
+        assertEqual(response.parsedBody, {});
       }
     },
     
@@ -115,41 +109,39 @@ function followerResponsesSuite() {
       let shard = Object.keys(shards)[0];
       let servers = shards[shard];
 
-      let leader = servers[0];
-      let follower = servers[1];
+      let leader = IM.getInstanceByID(servers[0]);
+      let follower = IM.getInstanceByID(servers[1]);
       
-      let endpoint = getEndpointById(follower);
-      let url = getUrlById(follower);
-      IM.debugSetFailAt("synchronousReplication::neverRefuseOnFollower", instanceRole.dbServer, endpoint);
+      follower.debugSetFailAt("synchronousReplication::neverRefuseOnFollower");
 
       // send a single document replication update request
-      let response = request({
-        method: "patch",
-        url: url + "/_api/document/" + shard + "/test1?isSynchronousReplication=" + encodeURIComponent(leader),
-        body: { _key: "test1" },
-        json: true
+      let response = follower.toThisInstance(() => {
+        return arango.PATCH_RAW(
+          "/_api/document/" + shard + "/test1?isSynchronousReplication=" + encodeURIComponent(leader.url),
+          { _key: "test1" }
+        );
       });
 
       if (isReplication2) {
-        assertIsReplication2FollowerResponse(response.json);
+        assertIsReplication2FollowerResponse(response.parsedBody);
       } else {
         // verify that response is empty
-        assertEqual({}, response.json);
+        assertEqual(response.parsedBody, {});
       }
       
       // send multi document replication update request
-      response = request({
-        method: "patch",
-        url: url + "/_api/document/" + shard + "?isSynchronousReplication=" + encodeURIComponent(leader),
-        body: [ { _key: "test2" }, { _key: "test3" } ],
-        json: true
+      response = follower.toThisInstance(() => {
+        return arango.PATCH_RAW(
+          "/_api/document/" + shard + "?isSynchronousReplication=" + encodeURIComponent(leader.url),
+          [ { _key: "test2" }, { _key: "test3" } ]
+        );
       });
 
       if (isReplication2) {
-        assertIsReplication2FollowerResponse(response.json);
+        assertIsReplication2FollowerResponse(response.parsedBody);
       } else {
         // verify that response is empty
-        assertEqual({}, response.json);
+        assertEqual(response.parsedBody, {});
       }
     },
     
@@ -165,41 +157,35 @@ function followerResponsesSuite() {
       let shard = Object.keys(shards)[0];
       let servers = shards[shard];
 
-      let leader = servers[0];
-      let follower = servers[1];
-      
-      let endpoint = getEndpointById(follower);
-      let url = getUrlById(follower);
-      IM.debugSetFailAt("synchronousReplication::neverRefuseOnFollower", instanceRole.dbServer, endpoint);
+      let leader = IM.getInstanceByID(servers[0]);
+      let follower = IM.getInstanceByID(servers[1]);
+      follower.debugSetFailAt("synchronousReplication::neverRefuseOnFollower");
 
       // send a single document replication remove request
-      let response = request({
-        method: "delete",
-        url: url + "/_api/document/" + shard + "/test1?isSynchronousReplication=" + encodeURIComponent(leader),
-        body: {},
-        json: true
+      let response = follower.toThisInstance(() => {
+        return arango.DELETE_RAW(
+          "/_api/document/" + shard + "/test1?isSynchronousReplication=" + encodeURIComponent(leader.url), {});
       });
 
       if (isReplication2) {
-        assertIsReplication2FollowerResponse(response.json);
+        assertIsReplication2FollowerResponse(response.parsedBody);
       } else {
         // verify that response is empty
-        assertEqual({}, response.json);
+        assertEqual(response.parsedBody, {});
       }
       
       // send multi document replication remove request
-      response = request({
-        method: "delete",
-        url: url + "/_api/document/" + shard + "?isSynchronousReplication=" + encodeURIComponent(leader),
-        body: [ { _key: "test2" }, { _key: "test3" } ],
-        json: true
+      response = follower.toThisInstance(() => {
+        return arango.DELETE_RAW(
+          "/_api/document/" + shard + "?isSynchronousReplication=" + encodeURIComponent(leader),
+          [ { _key: "test2" }, { _key: "test3" } ]);
       });
 
       if (isReplication2) {
-        assertIsReplication2FollowerResponse(response.json);
+        assertIsReplication2FollowerResponse(response.parsedBody);
       } else {
         // verify that response is empty
-        assertEqual({}, response.json);
+        assertEqual(response.parsedBody, {});
       }
     },
   };

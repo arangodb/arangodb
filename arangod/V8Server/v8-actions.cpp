@@ -1058,7 +1058,7 @@ static TRI_action_result_t ExecuteActionVocbase(
 static void JS_DefineAction(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  TRI_GET_GLOBALS();
 
   if (args.Length() != 3) {
     TRI_V8_THROW_EXCEPTION_USAGE(
@@ -1129,7 +1129,7 @@ static void JS_ReloadRouting(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  TRI_GET_GLOBALS();
   if (!v8g->server().getFeature<V8DealerFeature>().addGlobalExecutorMethod(
           GlobalExecutorMethods::MethodType::kReloadRouting)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -1454,7 +1454,7 @@ static ErrorCode clusterSendToAllServers(
     v8::Isolate* isolate, std::string const& dbname,
     std::string const& path,  // Note: Has to be properly encoded!
     arangodb::rest::RequestType const& method, std::string const& body) {
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  TRI_GET_GLOBALS();
   network::ConnectionPool* pool =
       v8g->server().getFeature<NetworkFeature>().pool();
   if (!pool || !pool->config().clusterInfo) {
@@ -1701,7 +1701,7 @@ static void JS_FoxxQueueVersion(
   }
 
   if (ServerState::instance()->isCoordinator()) {
-    TRI_GET_SERVER_GLOBALS(ArangodServer);
+    TRI_GET_GLOBALS();
 
     auto& feature = v8g->server().getFeature<FoxxFeature>();
 
@@ -1734,7 +1734,7 @@ static void JS_FoxxQueueVersionBump(
 
   if (ServerState::instance()->isCoordinator()) {
     // only necessary in coordinator
-    TRI_GET_SERVER_GLOBALS(ArangodServer);
+    TRI_GET_GLOBALS();
 
     auto& feature = v8g->server().getFeature<FoxxFeature>();
     feature.bumpQueueVersionIfRequired();
@@ -1749,7 +1749,7 @@ static void JS_ClusterApiJwtPolicy(
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
 
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  TRI_GET_GLOBALS();
 
   ClusterFeature const& cf = v8g->server().getFeature<ClusterFeature>();
   std::string const& policy = cf.apiJwtPolicy();
@@ -1763,7 +1763,7 @@ static void JS_IsFoxxApiDisabled(
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
 
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  TRI_GET_GLOBALS();
   ServerSecurityFeature& security =
       v8g->server().getFeature<ServerSecurityFeature>();
   TRI_V8_RETURN_BOOL(security.isFoxxApiDisabled());
@@ -1776,7 +1776,7 @@ static void JS_IsFoxxStoreDisabled(
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
 
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  TRI_GET_GLOBALS();
   ServerSecurityFeature& security =
       v8g->server().getFeature<ServerSecurityFeature>();
   TRI_V8_RETURN_BOOL(security.isFoxxStoreDisabled());
@@ -1789,7 +1789,7 @@ static void JS_FoxxAllowInstallFromRemote(
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
 
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  TRI_GET_GLOBALS();
   ServerSecurityFeature& security =
       v8g->server().getFeature<ServerSecurityFeature>();
   TRI_V8_RETURN_BOOL(security.foxxAllowInstallFromRemote());
@@ -1860,7 +1860,7 @@ static void JS_CreateHotbackup(
 
   VPackBuilder result;
 #if USE_ENTERPRISE
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  TRI_GET_GLOBALS();
   HotBackup h(v8g->server());
   auto r = h.execute("create", obj.slice(), result);
   if (r.fail()) {
@@ -1924,7 +1924,7 @@ void TRI_InitV8ServerUtils(v8::Isolate* isolate) {
       JS_FoxxQueueVersionBump);
 
   // poll interval for Foxx queues
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  TRI_GET_GLOBALS();
   FoxxFeature& foxxFeature = v8g->server().getFeature<FoxxFeature>();
 
   isolate->GetCurrentContext()

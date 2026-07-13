@@ -28,7 +28,6 @@
 'use strict';
 const jsunity = require('jsunity');
 const db = require("@arangodb").db;
-const request = require("@arangodb/request");
 const _ = require("lodash");
 const { waitForShardsInSync } = require('@arangodb/test-helper');
 let { instanceRole } = require('@arangodb/testutils/instance');
@@ -70,8 +69,7 @@ function abortReplicationSuite () {
       try {
         servers.forEach((server) => {
           // set failure point on each DB server, which will trigger an error in replication
-          let result = request({ method: "PUT", url: server.url + "/_admin/debug/failat/Replication%3A%3AforceCheckCancellation", body: {} });
-          assertEqual(200, result.status);
+          server.debugSetFailAt("Replication::forceCheckCancellation");
         });
 
         // now increase replicationFactor from 1 to whatever number of DB servers we have
@@ -83,8 +81,7 @@ function abortReplicationSuite () {
 
         // clear the failure points
         servers.forEach((server) => {
-          console.warn("clearing failure points on " + server.url);
-          request({ method: "DELETE", url: server.url + "/_admin/debug/failat" });
+          server.debugClearFailAt();
         });
       
         // wait for shards to get into sync - this really can take long on a slow CI
@@ -92,7 +89,7 @@ function abortReplicationSuite () {
 
       } finally {
         servers.forEach((server) => {
-          request({ method: "DELETE", url: server.url + "/_admin/debug/failat" });
+          server.debugClearFailAt();
         });
       }
     },

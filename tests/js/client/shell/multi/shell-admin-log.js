@@ -26,14 +26,15 @@
 
 const jsunity = require('jsunity');
 const internal = require("internal");
-const request = require('@arangodb/request');
 const helper = require('@arangodb/test-helper');
 const _ = require("lodash");
+let { instanceRole } = require('@arangodb/testutils/instance');
+let IM = global.instanceManager;
 
-const dbservers = (function () {
-  const isType = (d) => (d.instanceRole.toLowerCase() === "dbserver");
-  return global.instanceManager.arangods.filter(isType).map((x) => x.id);
-})();
+let dbservers = [];
+if (IM.isCluster) {
+  dbservers = IM.getInstancesRole(instanceRole.dbserver);
+}
 
 function adminLogSuite() {
   'use strict';
@@ -175,18 +176,23 @@ function adminLogSuite() {
         return;
       }
       const server = dbservers[0];
-      const url = helper.getEndpointById(server);
-      const old = request.get(`${url}/_admin/log/level`);
+      const old = server.toThisInstance(() => {
+        return arango.GET_RAW('/_admin/log/level');
+      });
       // change the value via coordinator
-      let res = arango.PUT(`/_admin/log/level?serverId=${server}`, {"trx": "trace"});
+      let res = arango.PUT(`/_admin/log/level?serverId=${server.id}`, {"trx": "trace"});
       assertEqual(res.trx, "TRACE");
       // read directly from dbserver
-      const newValue = request.get(`${url}/_admin/log/level`);
+      const newValue = server.toThisInstance(() => {
+        return arango.GET_RAW('/_admin/log/level');
+      });
       assertEqual(newValue.json.trx, "TRACE");
       // restore old value
-      request.put(`${url}/_admin/log/level`, {body: {"trx": old.json.trx}, json: true});
+      server.toThisInstance(() => {
+        arango.PUT_RAW('/_admin/log/level', {"trx": old.parsedBody.trx});
+      });
       // now read the restored value
-      const newOld = arango.GET(`/_admin/log/level?serverId=${server}`);
+      const newOld = arango.GET(`/_admin/log/level?serverId=${server.ID}`);
       assertEqual(old.json.trx, newOld.trx);
     },
 
@@ -497,22 +503,27 @@ function adminLogSuite() {
         return;
       }
       const server = dbservers[0];
-      const url = helper.getEndpointById(server);
-      const old = request.get(`${url}/_admin/log/level`);
+      const old = server.toThisInstance(() => {
+        return arango.GET_RAW('/_admin/log/level');
+      });
       // change the value via coordinator
-      let res = arango.PUT(`/_admin/log/level?serverId=${server}`, {"trx": "trace", "requests": "debug"});
+      let res = arango.PUT(`/_admin/log/level?serverId=${server.id}`, {"trx": "trace", "requests": "debug"});
       assertEqual(res.trx, "TRACE");
       assertEqual(res.requests, "DEBUG");
       // read directly from dbserver
-      const newValue = request.get(`${url}/_admin/log/level`);
-      assertEqual(newValue.json.trx, "TRACE");
-      assertEqual(newValue.json.requests, "DEBUG");
+      const newValue = server.toThisInstance(() => {
+        return arango.GET_RAW('/_admin/log/level');
+      });
+      assertEqual(newValue.parsedBody.trx, "TRACE");
+      assertEqual(newValue.parsedBody.requests, "DEBUG");
       // restore old values
-      request.delete(`${url}/_admin/log/level`);
+      server.toThisInstance(() => {
+        arango.DELETE('/_admin/log/level');
+      });
       // now read the restored value
       const newOld = arango.GET(`/_admin/log/level?serverId=${server}`);
-      assertEqual(old.json.trx, newOld.trx);
-      assertEqual(old.json.requests, newOld.requests);
+      assertEqual(old.parsedBody.trx, newOld.trx);
+      assertEqual(old.parsedBody.requests, newOld.requests);
     },
 
   };

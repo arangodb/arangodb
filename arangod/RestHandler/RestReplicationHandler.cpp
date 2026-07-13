@@ -949,13 +949,51 @@ RestReplicationHandler::forwardingTarget() {
     return res;
   }
 
-  ServerID const& DBserver = _request->value("DBserver");
-  if (!DBserver.empty()) {
+  bool found;
+  ServerID const& DBserver = _request->value("DBserver", found);
+  if (found) {
+    // Forwarding to a client-supplied DBserver strips the caller's
+    // authorization header (removeHeader == true below), so the request is
+    // executed on the target DBServer with cluster-internal superuser
+    // privileges. That is only safe for the few commands that (a) legitimately
+    // need this forward and (b) have fully validated the caller's permissions
+    // in testPermissions() above.
+    if (!isDBserverForwardingAllowed()) {
+      auto const& suffixes = _request->suffixes();
+      LOG_TOPIC("dbc2b", INFO, Logger::AUTHORIZATION)
+          << "rejecting replication request from user '" << _request->user()
+          << "' with 'DBserver' parameter for command '"
+          << (suffixes.empty() ? "" : suffixes[0])
+          << "': forwarding to a DBserver is not supported for this command";
+      return Result(
+          TRI_ERROR_FORBIDDEN,
+          "the 'DBserver' parameter is not allowed for this replication "
+          "command");
+    }
     // if DBserver property present, remove auth header
     return std::make_pair(DBserver, true);
   }
 
   return {std::make_pair(StaticStrings::Empty, false)};
+}
+
+bool RestReplicationHandler::isDBserverForwardingAllowed() const {
+  auto const& suffixes = _request->suffixes();
+  if (suffixes.empty()) {
+    return false;
+  }
+  std::string_view command = suffixes[0];
+  auto const method = _request->requestType();
+
+  // The only replication commands that are legitimately invoked with a
+  // client-supplied 'DBserver' parameter are the ones used by arangodump:
+  //   - "dump"  (GET):           permissions checked in testPermissions()
+  //   - "batch" (POST/PUT/DEL):  batch/snapshot lifecycle management
+  // Both are validated (or intentionally unrestricted, for batch) in
+  // testPermissions(). No other command must be forwardable with the caller's
+  // authorization stripped; see forwardingTarget().
+  return (command == Dump and method == rest::RequestType::GET) or
+         command == Batch;
 }
 
 void RestReplicationHandler::handleCommandMakeFollower() {

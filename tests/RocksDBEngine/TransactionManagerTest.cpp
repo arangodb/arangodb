@@ -22,20 +22,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "gtest/gtest.h"
+
 #include <chrono>
-#include <condition_variable>
-#include <mutex>
 #include <thread>
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Metrics/MetricsFeature.h"
+#include "Metrics/Counter.h"
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"
-#include "Cluster/ClusterFeature.h"
-#include "Metrics/ClusterMetricsFeature.h"
-#include "RestServer/arangod.h"
-#include "RestServer/QueryRegistryFeature.h"
-#include "Statistics/StatisticsFeature.h"
 
 using namespace arangodb;
 
@@ -47,15 +41,11 @@ using namespace arangodb;
 
 /// @brief simple non-overlapping
 TEST(RocksDBTransactionManager, test_non_overlapping) {
-  ArangodServer server{nullptr, nullptr};
-  auto& metrics = server.addFeature<metrics::MetricsFeature>(
-      LazyApplicationFeatureReference<QueryRegistryFeature>(nullptr),
-      LazyApplicationFeatureReference<StatisticsFeature>(nullptr),
-      LazyApplicationFeatureReference<DatabaseFeature>(nullptr),
-      LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(nullptr),
-      LazyApplicationFeatureReference<ClusterFeature>(nullptr));
-  transaction::ManagerFeature feature(server, metrics);
-  transaction::Manager tm(feature);
+  application_features::ApplicationServer server{nullptr, nullptr};
+  metrics::Counter expiredTransactions{0, "arangodb_transactions_expired_total",
+                                       "", ""};
+  transaction::Manager tm(server, transaction::ManagerFeatureOptions{},
+                          expiredTransactions);
 
   EXPECT_EQ(tm.getActiveTransactionCount(), 0);
   EXPECT_TRUE(tm.holdTransactions(500));
@@ -74,15 +64,11 @@ TEST(RocksDBTransactionManager, test_non_overlapping) {
 /// @brief simple non-overlapping
 TEST(RocksDBTransactionManager, test_overlapping) {
   auto trxId = static_cast<TransactionId>(1);
-  ArangodServer server{nullptr, nullptr};
-  auto& metrics = server.addFeature<metrics::MetricsFeature>(
-      LazyApplicationFeatureReference<QueryRegistryFeature>(nullptr),
-      LazyApplicationFeatureReference<StatisticsFeature>(nullptr),
-      LazyApplicationFeatureReference<DatabaseFeature>(nullptr),
-      LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(nullptr),
-      LazyApplicationFeatureReference<ClusterFeature>(nullptr));
-  transaction::ManagerFeature feature(server, metrics);
-  transaction::Manager tm(feature);
+  application_features::ApplicationServer server{nullptr, nullptr};
+  metrics::Counter expiredTransactions{0, "arangodb_transactions_expired_total",
+                                       "", ""};
+  transaction::Manager tm(server, transaction::ManagerFeatureOptions{},
+                          expiredTransactions);
 
   std::chrono::milliseconds five(5);
 
