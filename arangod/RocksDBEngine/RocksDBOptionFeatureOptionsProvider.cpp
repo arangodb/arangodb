@@ -36,48 +36,26 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 
+namespace arangodb {
+
 namespace {
 
-std::string const kCompressionTypeSnappy = "snappy";
-std::string const kCompressionTypeLZ4 = "lz4";
-std::string const kCompressionTypeLZ4HC = "lz4hc";
-std::string const kCompressionTypeNone = "none";
-
 std::unordered_set<std::string> const compressionTypes = {
-    {kCompressionTypeSnappy},
-    {kCompressionTypeLZ4},
-    {kCompressionTypeLZ4HC},
-    {kCompressionTypeNone}};
-
-std::string const kBlockCacheTypeLRU = "lru";
-std::string const kBlockCacheTypeHyperClock = "hyper-clock";
+    std::string{kCompressionTypeSnappy}, std::string{kCompressionTypeLZ4},
+    std::string{kCompressionTypeLZ4HC}, std::string{kCompressionTypeNone}};
 
 std::unordered_set<std::string> const blockCacheTypes = {
-    {kBlockCacheTypeLRU}, {kBlockCacheTypeHyperClock}};
-
-std::string const kChecksumTypeCRC32C = "crc32c";
-std::string const kChecksumTypeXXHash = "xxHash";
-std::string const kChecksumTypeXXHash64 = "xxHash64";
-std::string const kChecksumTypeXXH3 = "XXH3";
+    std::string{kBlockCacheTypeLRU}, std::string{kBlockCacheTypeHyperClock}};
 
 std::unordered_set<std::string> const checksumTypes = {
-    kChecksumTypeCRC32C, kChecksumTypeXXHash, kChecksumTypeXXHash64,
-    kChecksumTypeXXH3};
-
-std::string const kCompactionStyleLevel = "level";
-std::string const kCompactionStyleUniversal = "universal";
-std::string const kCompactionStyleFifo = "fifo";
-std::string const kCompactionStyleNone = "none";
+    std::string{kChecksumTypeCRC32C}, std::string{kChecksumTypeXXHash},
+    std::string{kChecksumTypeXXHash64}, std::string{kChecksumTypeXXH3}};
 
 std::unordered_set<std::string> const compactionStyles = {
-    kCompactionStyleLevel, kCompactionStyleUniversal, kCompactionStyleFifo,
-    kCompactionStyleNone};
-
-constexpr uint64_t minShardSize = 128 * 1024 * 1024;
+    std::string{kCompactionStyleLevel}, std::string{kCompactionStyleUniversal},
+    std::string{kCompactionStyleFifo}, std::string{kCompactionStyleNone}};
 
 }  // namespace
-
-namespace arangodb {
 
 using namespace arangodb::options;
 
@@ -127,11 +105,11 @@ void RocksDBOptionFeatureOptionsProvider::declareOptionsImpl(
           arangodb::options::Flags::OnDBServer,
           arangodb::options::Flags::OnSingle));
 
-  TRI_ASSERT(::compressionTypes.contains(options.compressionType));
+  TRI_ASSERT(compressionTypes.contains(options.compressionType));
   opts->addOption("--rocksdb.compression-type",
                   "The compression algorithm to use within RocksDB.",
                   new DiscreteValuesParameter<StringParameter>(
-                      &options.compressionType, ::compressionTypes))
+                      &options.compressionType, compressionTypes))
       .setIntroducedIn(31000);
 
   opts->addOption("--rocksdb.transaction-lock-stripes",
@@ -524,12 +502,12 @@ are stopped to allow compaction to catch up.)");
                       arangodb::options::Flags::OnSingle))
       .setIntroducedIn(31206);
 
-  TRI_ASSERT(::blockCacheTypes.contains(options.blockCacheType));
+  TRI_ASSERT(blockCacheTypes.contains(options.blockCacheType));
   opts->addOption("--rocksdb.block-cache-type",
                   "The block cache type to use (note: the 'hyper-clock' cache "
                   "type is experimental).",
                   new DiscreteValuesParameter<StringParameter>(
-                      &options.blockCacheType, ::blockCacheTypes))
+                      &options.blockCacheType, blockCacheTypes))
       .setIntroducedIn(31206);
 
   opts->addOption("--rocksdb.num-threads-priority-low",
@@ -794,11 +772,11 @@ collections introduce a noticeable throughput penalty.
 only. This option is thus deprecated, and will be removed in a future
 version.)");
 
-  TRI_ASSERT(::checksumTypes.contains(options.checksumType));
+  TRI_ASSERT(checksumTypes.contains(options.checksumType));
   opts->addOption("--rocksdb.checksum-type",
                   "The checksum type to use for table files.",
                   new DiscreteValuesParameter<StringParameter>(
-                      &options.checksumType, ::checksumTypes),
+                      &options.checksumType, checksumTypes),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnAgent,
@@ -806,13 +784,13 @@ version.)");
                       arangodb::options::Flags::OnSingle))
       .setIntroducedIn(31000);
 
-  TRI_ASSERT(::compactionStyles.contains(options.compactionStyle));
+  TRI_ASSERT(compactionStyles.contains(options.compactionStyle));
   opts->addOption(
           "--rocksdb.compaction-style",
           "The compaction style which is used to pick the next file(s) to "
           "be compacted (note: all styles except 'level' are experimental).",
           new DiscreteValuesParameter<StringParameter>(&options.compactionStyle,
-                                                       ::compactionStyles),
+                                                       compactionStyles),
           arangodb::options::makeFlags(
               arangodb::options::Flags::DefaultNoComponents,
               arangodb::options::Flags::OnAgent,
@@ -956,13 +934,13 @@ of downgrading.)");
               arangodb::options::Flags::OnSingle))
       .setIntroducedIn(31100);
 
-  TRI_ASSERT(::compressionTypes.contains(options.blobCompressionType));
+  TRI_ASSERT(compressionTypes.contains(options.blobCompressionType));
   opts->addOption("--rocksdb.blob-compression-type",
                   "The compression algorithm to use for blob data in the "
                   "documents column family. "
                   "Requires `--rocksdb.enable-blob-files`.",
                   new DiscreteValuesParameter<StringParameter>(
-                      &options.blobCompressionType, ::compressionTypes),
+                      &options.blobCompressionType, compressionTypes),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::Experimental,
                       arangodb::options::Flags::DefaultNoComponents,
@@ -1339,7 +1317,7 @@ void RocksDBOptionFeatureOptionsProvider::validateOptionsImpl(
   options.minWriteBufferNumberToMergeTouched = opts->processingResult().touched(
       "--rocksdb.min-write-buffer-number-to-merge");
 
-  if (options.blockCacheType == ::kBlockCacheTypeLRU &&
+  if (options.blockCacheType == kBlockCacheTypeLRU &&
       opts->processingResult().touched(
           "--rocksdb.block-cache-estimated-entry-charge")) {
     LOG_TOPIC("a527b", WARN, arangodb::Logger::ENGINES)
@@ -1361,8 +1339,9 @@ void RocksDBOptionFeatureOptionsProvider::validateOptionsImpl(
     // note that RocksDB also has an internal upper bound for the number of
     // shards bits, which is 20.
     options.blockCacheShardBits = std::clamp(
-        int64_t(std::floor(std::log2(
-            static_cast<double>(options.blockCacheSize) / ::minShardSize))),
+        int64_t(
+            std::floor(std::log2(static_cast<double>(options.blockCacheSize) /
+                                 kMinBlockCacheShardSize))),
         int64_t(1), int64_t(10));
 
     // TODO: hyper clock cache probably doesn't need as many shards. check this.
