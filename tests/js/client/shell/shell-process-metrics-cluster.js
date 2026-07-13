@@ -26,28 +26,8 @@
 
 let jsunity = require('jsunity');
 let internal = require('internal');
-const request = require('@arangodb/request');
-const getMetric = require('@arangodb/test-helper').getMetric;
-
-function getEndpointsByType(type) {
-  const isType = (d) => (d.instanceRole === type);
-  const toEndpoint = (d) => (d.endpoint);
-  const endpointToURL = (endpoint) => {
-    if (endpoint.substr(0, 6) === 'ssl://') {
-      return 'https://' + endpoint.substr(6);
-    }
-    let pos = endpoint.indexOf('://');
-    if (pos === -1) {
-      return 'http://' + endpoint;
-    }
-    return 'http' + endpoint.substr(pos);
-  };
-
-  const IM = global.instanceManager;
-  return IM.arangods.filter(isType)
-    .map(toEndpoint)
-    .map(endpointToURL);
-}
+let { instanceRole } = require('@arangodb/testutils/instance');
+let IM = global.instanceManager;
 
 function processMetricsSuite() {
   'use strict';
@@ -63,36 +43,36 @@ function processMetricsSuite() {
   return {
     
     testMetricsOnAgent: function () {
-      let endpoints = getEndpointsByType('agent');
-      assertTrue(endpoints.length > 0);
+      let agents = IM.getInstancesRole(instanceRole.agent);
+      assertTrue(agents.length > 0);
 
-      endpoints.forEach((ep) => {
+      agents.forEach((arangod) => {
         metrics.forEach((m) => {
-          let value = getMetric(ep, m);
+          let value = arangod.getMetric(m);
           assertEqual("number", typeof value);
         });
       });
     },
 
     testMetricsOnCoordinator: function () {
-      let endpoints = getEndpointsByType('coordinator');
-      assertTrue(endpoints.length > 0);
+      let coord = IM.getInstancesRole(instanceRole.coordinator);
+      assertTrue(coord.length > 0);
 
-      endpoints.forEach((ep) => {
+      coord.forEach((arangod) => {
         metrics.forEach((m) => {
-          let value = getMetric(ep, m);
+          let value = arangod.getMetric(m);
           assertEqual("number", typeof value);
         });
       });
     },
     
     testMetricsOnDBServer: function () {
-      let endpoints = getEndpointsByType('dbserver');
-      assertTrue(endpoints.length > 0);
+      let dbservers = IM.getInstancesRole(instanceRole.dbserver);
+      assertTrue(dbservers.length > 0);
 
-      endpoints.forEach((ep) => {
+      dbservers.forEach((arangod) => {
         metrics.forEach((m) => {
-          let value = getMetric(ep, m);
+          let value = arangod.getMetric(m);
           assertEqual("number", typeof value);
         });
       });

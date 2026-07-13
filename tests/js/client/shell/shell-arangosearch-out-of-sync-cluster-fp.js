@@ -26,8 +26,6 @@
 'use strict';
 const jsunity = require('jsunity');
 const db = require("@arangodb").db;
-const request = require("@arangodb/request");
-const getMetric = require('@arangodb/test-helper').getMetric;
 const internal = require("internal");
 const errors = internal.errors;
 const inst = require('@arangodb/testutils/instance');

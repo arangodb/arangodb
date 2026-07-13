@@ -287,7 +287,8 @@ RocksDBEngine::RocksDBEngine(
     ISortingPolicy const& sortingPolicy, RocksDBEngineOptions options)
     : StorageEngine(
           server, kEngineName, name(), typeid(RocksDBEngine),
-          std::make_unique<RocksDBIndexFactory>(server, vectorIndexProvider)),
+          std::make_unique<RocksDBIndexFactory>(server, vectorIndexProvider),
+          databaseProvider),
       _databasePathProvider(databasePathProvider),
       _vectorIndexProvider(vectorIndexProvider),
       _flushControl(flushControl),
@@ -295,7 +296,6 @@ RocksDBEngine::RocksDBEngine(
       _replicatedLogProvider(replicatedLogProvider),
       _schedulerProvider(schedulerProvider),
       _rocksDbRecoveryManager(rocksDbRecoveryManager),
-      _databaseProvider(databaseProvider),
       _indexCacheRefill(indexCacheRefill),
       _cacheManagerProvider(cacheManagerProvider),
       _sortingPolicy(sortingPolicy),
@@ -1048,23 +1048,19 @@ bool RocksDBEngine::hasBackgroundError() const {
   return _errorListener != nullptr && _errorListener->called();
 }
 
-std::unique_ptr<transaction::Manager> RocksDBEngine::createTransactionManager(
-    transaction::ManagerFeature& feature) {
-  return std::make_unique<transaction::Manager>(feature);
-}
-
 std::shared_ptr<TransactionState> RocksDBEngine::createTransactionState(
     TRI_vocbase_t& vocbase, TransactionId tid,
     transaction::Options const& options, transaction::OperationOrigin trxType) {
+  auto& manager = transactionManager();
   if (vocbase.replicationVersion() == replication::Version::TWO &&
       (tid.isLeaderTransactionId() || tid.isLegacyTransactionId()) &&
       ServerState::instance()->isRunningInCluster() &&
       !options.allowDirtyReads && options.requiresReplication) {
     return std::make_shared<ReplicatedRocksDBTransactionState>(
-        vocbase, tid, options, trxType);
+        vocbase, tid, options, trxType, manager);
   }
   return std::make_shared<SimpleRocksDBTransactionState>(vocbase, tid, options,
-                                                         trxType);
+                                                         trxType, manager);
 }
 
 void RocksDBEngine::addParametersForNewCollection(VPackBuilder& builder,
