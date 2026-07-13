@@ -213,8 +213,6 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   void flushOpenFilesIfRequired();
   HealthData healthCheck() override;
 
-  std::unique_ptr<transaction::Manager> createTransactionManager(
-      transaction::ManagerFeature&) override;
   std::shared_ptr<TransactionState> createTransactionState(
       TRI_vocbase_t& vocbase, TransactionId,
       transaction::Options const& options,
@@ -643,7 +641,6 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   IDumpLimitsProvider const& _dumpLimitsProvider;
   replication2::IReplicatedLogProvider* _replicatedLogProvider;
   ISchedulerProvider const& _schedulerProvider;
-  IDatabaseProvider& _databaseProvider;
   IIndexCacheRefill& _indexCacheRefill;
   ICacheManagerProvider& _cacheManagerProvider;
   ISortingPolicy const& _sortingPolicy;

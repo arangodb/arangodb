@@ -39,8 +39,9 @@ using namespace arangodb;
 SimpleRocksDBTransactionState::SimpleRocksDBTransactionState(
     TRI_vocbase_t& vocbase, TransactionId tid,
     transaction::Options const& options,
-    transaction::OperationOrigin operationOrigin)
-    : RocksDBTransactionState(vocbase, tid, options, operationOrigin) {}
+    transaction::OperationOrigin operationOrigin, transaction::Manager& manager)
+    : RocksDBTransactionState(vocbase, tid, options, operationOrigin, manager) {
+}
 
 SimpleRocksDBTransactionState::~SimpleRocksDBTransactionState() {}
 

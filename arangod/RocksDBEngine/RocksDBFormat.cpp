@@ -72,17 +72,24 @@ inline void uint64ToPersistentBE(std::string& p, uint64_t value) {
 namespace arangodb {
 namespace rocksutils {
 
-RocksDBEndianness rocksDBEndianness = RocksDBEndianness::Invalid;
+// Default to big-endian, which is the format all newly created databases use.
+// setRocksDBKeyFormatEndianess() overrides this when an existing database was
+// created with a different format (or a test forces little-endian).
+RocksDBEndianness rocksDBEndianness = RocksDBEndianness::Big;
 
-uint16_t (*uint16FromPersistent)(char const* p) = nullptr;
-uint32_t (*uint32FromPersistent)(char const* p) = nullptr;
-uint64_t (*uint64FromPersistent)(char const* p) = nullptr;
+uint16_t (*uint16FromPersistent)(char const* p) = &uint16FromPersistentBE;
+uint32_t (*uint32FromPersistent)(char const* p) = &uint32FromPersistentBE;
+uint64_t (*uint64FromPersistent)(char const* p) = &uint64FromPersistentBE;
 
-void (*uint16ToPersistent)(std::string& p, uint16_t value) = nullptr;
-void (*uint32ToPersistent)(std::string& p, uint32_t value) = nullptr;
-void (*uint64ToPersistent)(std::string& p, uint64_t value) = nullptr;
+void (*uint16ToPersistent)(std::string& p,
+                           uint16_t value) = &uint16ToPersistentBE;
+void (*uint32ToPersistent)(std::string& p,
+                           uint32_t value) = &uint32ToPersistentBE;
+void (*uint64ToPersistent)(std::string& p,
+                           uint64_t value) = &uint64ToPersistentBE;
 
-void (*uint64ToPersistentRaw)(char* p, uint64_t value) = nullptr;
+void (*uint64ToPersistentRaw)(char* p, uint64_t value) =
+    &uintToPersistentRawBE<uint64_t>;
 
 RocksDBEndianness getRocksDBKeyFormatEndianness() noexcept {
   return rocksDBEndianness;
