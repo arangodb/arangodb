@@ -136,7 +136,7 @@ static ErrorCode ExtractCurrentFile(
 
       if (!validatePath(fullPath)) {
         errorMessage = std::format("Filename '{}' failed validation", fullPath);
-        return TRI_ERROR_INTERNAL;
+        return TRI_ERROR_FORBIDDEN;
       }
 
       auto res = TRI_CreateRecursiveDirectory(fullPath.c_str(), systemError,
@@ -170,7 +170,7 @@ static ErrorCode ExtractCurrentFile(
 
     if (!validatePath(fullPath)) {
       errorMessage = std::format("Filename '{}' failed validation.", fullPath);
-      return TRI_ERROR_INTERNAL;
+      return TRI_ERROR_FORBIDDEN;
     }
 
     if (!overwrite && TRI_ExistsFile(fullPath.c_str())) {
@@ -192,7 +192,7 @@ static ErrorCode ExtractCurrentFile(
           basics::FileUtils::buildFilename(outPath, filenameInZip);
       if (!validatePath(tmp)) {
         errorMessage = std::format("not allowed to create directory {}", tmp);
-        return TRI_ERROR_INTERNAL;
+        return TRI_ERROR_FORBIDDEN;
       }
       auto res =
           TRI_CreateRecursiveDirectory(tmp.c_str(), systemError, errorMessage);
@@ -214,7 +214,7 @@ static ErrorCode ExtractCurrentFile(
           TRI_Dirname(basics::FileUtils::buildFilename(outPath, filenameInZip));
       if (!validatePath(dir)) {
         errorMessage = std::format("not allowed to create directory {}", dir);
-        return TRI_ERROR_INTERNAL;
+        return TRI_ERROR_FORBIDDEN;
       }
       auto res =
           TRI_CreateRecursiveDirectory(dir.c_str(), systemError, errorMessage);
@@ -365,7 +365,7 @@ ErrorCode TRI_ZipFile(
     }
 
     if (!validatePath(fullfile)) {
-      return TRI_ERROR_INTERNAL;
+      return TRI_ERROR_FORBIDDEN;
     }
 
     zip_fileinfo zi;

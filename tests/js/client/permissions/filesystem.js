@@ -854,13 +854,16 @@ function testSuite() {
       tryZipFileForbidden(forbiddenZipFileName, topLevelAllowed);
       tryZipFileForbidden(allowedZipFileName, '/etc/');
       tryZipFileForbidden(allowedZipFileName, topLevelForbidden);
-      tryZipFileForbidden(allowedZipFileName, topLevelAllowedHazardSubFiles);
+
+      tryZipFileForbiddenList(allowedZipFileName, topLevelAllowedHazardSubFiles, ['passwd']);
+      fs.remove(allowedZipFileName);
 
       let prefixEscape = '';
       for (i = 0; i < topLevelAllowed.split('/').length - 1; i++) {
         prefixEscape += "../";
       }
       tryZipFileForbiddenList(allowedZipFileName, topLevelAllowed, [prefixEscape + 'etc/passwd']);
+      fs.remove(allowedZipFileName);
       tryZipFileAllowed(allowedZipFileName, topLevelAllowed);
 
       tryUnZipFileForbidden('/etc/nothere.zip', topLevelAllowed);
