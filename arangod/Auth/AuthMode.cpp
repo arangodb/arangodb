@@ -32,8 +32,6 @@
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Rest/GeneralRequest.h"
 
-#include "absl/strings/str_cat.h"
-
 namespace arangodb {
 
 auto AuthMode::getIAuth() -> AuthMode::IAuth& {
@@ -343,26 +341,7 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
           },
           [&](p::DropView const& view) -> Result {
             // Dropping a view requires RW access to the database.
-            if (auto r =
-                    check(p::UseDatabase{view.db, DatabaseAccessLevel::Write});
-                !r.ok()) {
-              return r;
-            }
-            // We also need read access on all linked collections.
-            for (auto const& coll : view.linkedCollections) {
-              if (auto r = check(p::UseCollection{view.db, coll,
-                                                  CollectionAccessLevel::Read});
-                  !r.ok()) {
-                return Result(
-                    TRI_ERROR_FORBIDDEN,
-                    absl::StrCat(
-                        "insufficient collection access to collection '", coll,
-                        "' to drop view '", view.name, "' in database '",
-                        view.db, "'"));
-                ;
-              }
-            }
-            return {};
+            return check(p::UseDatabase{view.db, DatabaseAccessLevel::Write});
           },
           [&](p::SeeAnalyzer const& analyzer) -> Result {
             // Database RO access is the only prerequisite and has already been

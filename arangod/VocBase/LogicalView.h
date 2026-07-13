@@ -126,11 +126,6 @@ class LogicalView : public LogicalDataSource {
   //////////////////////////////////////////////////////////////////////////////
   virtual bool visitCollections(CollectionVisitor const& visitor) const = 0;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief collect the names of all collections linked to this view
-  //////////////////////////////////////////////////////////////////////////////
-  std::vector<std::string> linkedCollectionNames() const;
-
   [[nodiscard]] virtual bool isBuilding() const { return false; }
 
  protected:

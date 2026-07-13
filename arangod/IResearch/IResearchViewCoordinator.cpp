@@ -465,14 +465,10 @@ Result IResearchViewCoordinator::dropImpl() {
   }
   // drop links first
   containers::FlatHashSet<DataSourceId> currentCids;
-  std::vector<std::string> collectionNames;
   for (auto& it : _collections) {
     currentCids.emplace(it.first);
-    collectionNames.emplace_back(it.second->collectionName);
   }
-  // check link auth as per https://github.com/arangodb/backlog/issues/459
-  if (auto r = ExecContext::current().canDropView(vocbase().name(), name(),
-                                                  collectionNames);
+  if (auto r = ExecContext::current().canDropView(vocbase().name(), name());
       !r.ok()) {
     return r;
   }

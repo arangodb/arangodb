@@ -294,8 +294,8 @@ void RestViewHandler::modifyView(bool partialUpdate) {
 
   auto const& execContext = ExecContext::current();
   if (isRename) {
-    if (auto r = execContext.canRenameView(_vocbase.name(), name,
-                                           body.stringView(), {});
+    if (auto r =
+            execContext.canRenameView(_vocbase.name(), name, body.stringView());
         !r.ok()) {
       return generateError(r);
     }
@@ -385,8 +385,7 @@ void RestViewHandler::deleteView() {
   // end of parameter parsing
   // ...........................................................................
 
-  if (auto r = ExecContext::current().canDropView(
-          _vocbase.name(), name, view->linkedCollectionNames());
+  if (auto r = ExecContext::current().canDropView(_vocbase.name(), name);
       !r.ok()) {
     // check auth after ensuring that the view exists
     generateError(r);

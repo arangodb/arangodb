@@ -188,18 +188,6 @@ Result LogicalView::drop() {
   }
 }
 
-std::vector<std::string> LogicalView::linkedCollectionNames() const {
-  std::vector<std::string> result;
-  visitCollections([&](DataSourceId cid, Indexes*) {
-    auto collection = vocbase().lookupCollection(cid);
-    if (collection) {
-      result.emplace_back(collection->name());
-    }
-    return true;
-  });
-  return result;
-}
-
 bool LogicalView::enumerate(
     Database& vocbase,
     std::function<bool(std::shared_ptr<LogicalView> const&)> const& callback) {

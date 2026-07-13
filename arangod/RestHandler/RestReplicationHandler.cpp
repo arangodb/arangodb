@@ -2207,8 +2207,7 @@ void RestReplicationHandler::handleCommandRestoreView() {
       }
 
       auto r1 = exec.canUseAdminAction(rbac::Category::AdminRestore{});
-      auto r2 = exec.canDropView(_vocbase.name(), name,
-                                 view->linkedCollectionNames());
+      auto r2 = exec.canDropView(_vocbase.name(), name);
       if (r1.fail() && r2.fail()) {
         generateError(r2);
         return;
