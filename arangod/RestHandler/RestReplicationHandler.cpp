@@ -421,6 +421,24 @@ bool RestReplicationHandler::isClusterRoleError() {
   return false;
 }
 
+bool RestReplicationHandler::isMaintainerModeError() {
+#ifndef ARANGODB_ENABLE_MAINTAINER_MODE
+  generateError(rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_NOT_IMPLEMENTED,
+                "replication applier is only available in maintainer mode");
+  return true;
+#else
+  return false;
+#endif
+}
+
+bool RestReplicationHandler::isApplierUnavailableError() {
+  if (isMaintainerModeError()) {
+    return true;
+  }
+
+  return isClusterRoleError();
+}
+
 std::string const RestReplicationHandler::LoggerState = "logger-state";
 std::string const RestReplicationHandler::LoggerTickRanges =
     "logger-tick-ranges";
@@ -694,7 +712,7 @@ auto RestReplicationHandler::executeAsync() -> futures::Future<futures::Unit> {
         goto BAD_CALL;
       }
 
-      if (isClusterRoleError()) {
+      if (isApplierUnavailableError()) {
         co_return;
       }
 
@@ -708,7 +726,7 @@ auto RestReplicationHandler::executeAsync() -> futures::Future<futures::Unit> {
         goto BAD_CALL;
       }
 
-      if (isClusterRoleError()) {
+      if (isApplierUnavailableError()) {
         co_return;
       }
 
@@ -718,7 +736,7 @@ auto RestReplicationHandler::executeAsync() -> futures::Future<futures::Unit> {
         goto BAD_CALL;
       }
 
-      if (isClusterRoleError()) {
+      if (isApplierUnavailableError()) {
         co_return;
       }
 
@@ -729,7 +747,7 @@ auto RestReplicationHandler::executeAsync() -> futures::Future<futures::Unit> {
         goto BAD_CALL;
       }
 
-      if (isClusterRoleError()) {
+      if (isApplierUnavailableError()) {
         co_return;
       }
 
@@ -743,7 +761,7 @@ auto RestReplicationHandler::executeAsync() -> futures::Future<futures::Unit> {
         goto BAD_CALL;
       }
 
-      if (isClusterRoleError()) {
+      if (isApplierUnavailableError()) {
         co_return;
       }
 
