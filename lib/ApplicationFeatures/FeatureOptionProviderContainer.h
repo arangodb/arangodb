@@ -39,8 +39,8 @@ class FeatureOptionProviderContainer final {
   void validateOptions(std::shared_ptr<options::ProgramOptions> programOptions);
 
   template<typename ProviderType>
-  ProviderType& get() {
-    return std::get<ProviderType>(_providers);
+  auto& getOptions() const {
+    return std::get<ProviderType>(_providers).options();
   }
 
  private:

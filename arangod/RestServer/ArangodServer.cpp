@@ -239,40 +239,40 @@ void ArangodServer::addFeaturesWithOptionProvider() {
 
   // Add RocksDBIndexCacheRefillFeature
   auto rocksdbCacheRefillOptions =
-      _optionProviders.get<RocksDBIndexCacheRefillOptionsProvider>().options();
+      _optionProviders.getOptions<RocksDBIndexCacheRefillOptionsProvider>();
   auto& rocksdbCacheRefill = addFeature<RocksDBIndexCacheRefillFeature>(
       database, &clusterFeature, metrics, std::move(rocksdbCacheRefillOptions));
 
   // Add RocksDBOptionFeature
   auto rocksdbOptionFeatureOptions =
-      _optionProviders.get<RocksDBOptionFeatureOptionsProvider>().options();
+      _optionProviders.getOptions<RocksDBOptionFeatureOptionsProvider>();
   auto& rocksdbOption = addFeature<RocksDBOptionFeature>(
       &agency, std::move(rocksdbOptionFeatureOptions));
 
   // Add TemporaryStorageFeature
   auto temporaryStorageOptions =
-      _optionProviders.get<TemporaryStorageOptionsProvider>().options();
+      _optionProviders.getOptions<TemporaryStorageOptionsProvider>();
   addFeature<TemporaryStorageFeature>(std::move(temporaryStorageOptions));
 
   // Add DatabasePathFeature
   auto databasePathOptions =
-      _optionProviders.get<DatabasePathOptionsProvider>().options();
+      _optionProviders.getOptions<DatabasePathOptionsProvider>();
   auto& databasePath =
       addFeature<DatabasePathFeature>(std::move(databasePathOptions));
 
   // Add DumpLimitsFeature
   auto dumpLimitsOptions =
-      _optionProviders.get<DumpLimitsOptionsProvider>().options();
+      _optionProviders.getOptions<DumpLimitsOptionsProvider>();
   auto& dumpLimits =
       addFeature<DumpLimitsFeature>(std::move(dumpLimitsOptions));
 
   // Add FlushFeature
-  auto flushOptions = _optionProviders.get<FlushOptionsProvider>().options();
+  auto flushOptions = _optionProviders.getOptions<FlushOptionsProvider>();
   auto& flush = addFeature<FlushFeature>(metrics, std::move(flushOptions));
 
   // Add RocksDBEngine
   RocksDBEngineOptions rocksDBEngineOptions =
-      _optionProviders.get<RocksDBEngineOptionsProvider>().options();
+      _optionProviders.getOptions<RocksDBEngineOptionsProvider>();
   addFeature<RocksDBEngine>(
       rocksdbOption, metrics, databasePath, vectorIndex, flush, dumpLimits,
       replication2::EnableReplication2 ? &getFeature<ReplicatedLogFeature>()
@@ -281,8 +281,9 @@ void ArangodServer::addFeaturesWithOptionProvider() {
       agency, rocksDBEngineOptions);
 
   // Add FortuneFeature
-  addFeature<FortuneFeature>(
-      _optionProviders.get<fortune::FortuneOptionsProvider>().options());
+  auto fortuneOptions =
+      _optionProviders.getOptions<fortune::FortuneOptionsProvider>();
+  addFeature<FortuneFeature>(std::move(fortuneOptions));
 
   addFeature<replication2::replicated_state::ReplicatedStateAppFeature>();
   addFeature<replication2::replicated_state::black_hole::

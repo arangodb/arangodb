@@ -197,6 +197,8 @@ RocksDBOptionFeature::RocksDBOptionFeature(
 
 void RocksDBOptionFeature::prepare() {
   ioUringEnabled = _options.ioUringEnabled;
+  // TODO (COR-760): remove this coupling; RocksDBOptionFeature should be
+  // agnostic of the agency
   // behavioral: agency memory limits
   if (_agencyFeature && _agencyFeature->activated()) {
     auto const& opts = server().options();
