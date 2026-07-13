@@ -35,7 +35,8 @@ class SimpleRocksDBTransactionState final : public RocksDBTransactionState,
  public:
   SimpleRocksDBTransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
                                 transaction::Options const& options,
-                                transaction::OperationOrigin operationOrigin);
+                                transaction::OperationOrigin operationOrigin,
+                                transaction::Manager& manager);
 
   ~SimpleRocksDBTransactionState() override;
 

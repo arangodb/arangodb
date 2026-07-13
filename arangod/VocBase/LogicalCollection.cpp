@@ -1151,7 +1151,7 @@ Result LogicalCollection::properties(velocypack::Slice slice) {
   }
 
   vocbase().engine().changeCollection(vocbase(), *this);
-  vocbase().versionTracker().track("change collection");
+  vocbase().notifyDdlChange("change collection");
 
   return {};
 }
@@ -1185,7 +1185,7 @@ futures::Future<std::shared_ptr<Index>> LogicalCollection::createIndex(
                                              std::move(progress),
                                              std::move(replicationCb));
   if (idx) {
-    vocbase().versionTracker().track("create index");
+    vocbase().notifyDdlChange("create index");
   }
   vocbase().queryPlanCache().invalidate(guid());
 
@@ -1202,7 +1202,7 @@ Result LogicalCollection::dropIndex(IndexId iid) {
   Result res = _physical->dropIndex(iid);
 
   if (res.ok()) {
-    vocbase().versionTracker().track("drop index");
+    vocbase().notifyDdlChange("drop index");
     vocbase().queryPlanCache().invalidate(guid());
   }
 
