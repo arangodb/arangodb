@@ -42,7 +42,7 @@
 #include "RocksDBEngine/RocksDBTtlIndex.h"
 #include "RocksDBIndexFactory.h"
 #include "RocksDBEngine/RocksDBVectorIndex.h"
-#include "VectorGraphIndex/VectorGraphIndex.h"
+#include "Enterprise/VectorGraphIndex/VectorGraphIndex.h"
 #include "VectorIndex/IVectorIndexProvider.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"

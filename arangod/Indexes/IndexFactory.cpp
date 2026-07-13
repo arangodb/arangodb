@@ -32,7 +32,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
-#include "VectorGraphIndex/Definition.h"
+#include "Enterprise/VectorGraphIndex/Definition.h"
 #include "VectorIndex/VectorIndexDefinition.h"
 #include "IResearch/IResearchCommon.h"
 #include "Inspection/VPack.h"

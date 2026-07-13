@@ -177,9 +177,6 @@ add_library(arangoserver STATIC
   RestServer/TtlProperties.cpp
   RestServer/UpgradeFeature.cpp
   RestServer/UpgradeOptionsProvider.cpp
-  VectorGraphIndex/VectorGraphIndex.cpp
-  VectorGraphIndex/SegmentDisk.cpp
-  VectorGraphIndex/SegmentStore.cpp
   VectorIndex/VectorIndexFeature.cpp
   VectorIndex/VectorIndexBuildManager.cpp
   VectorIndex/VectorIndexTrainingSampler.cpp
