@@ -25,11 +25,10 @@
 #include "Aql/BindParameters.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/VelocyPackHelper.h"
 #include "Transaction/OperationOrigin.h"
-#include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/vocbase.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Dumper.h>

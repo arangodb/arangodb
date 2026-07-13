@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -18,14 +18,20 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ReplicatedStateMetricsMock.h"
+#pragma once
 
-using namespace arangodb;
+#include "ApplicationFeatures/OptionsProvider.h"
+#include "Backup/BackupFeatureOptions.h"
 
-namespace arangodb::replication2::tests {
-ReplicatedStateMetricsMock::ReplicatedStateMetricsMock(std::string_view impl)
-    : ReplicatedStateMetrics(nullptr, impl) {}
-}  // namespace arangodb::replication2::tests
+namespace arangodb {
+
+struct BackupOptionsProvider : OptionsProvider<BackupFeatureOptions> {
+  void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
+                      BackupFeatureOptions& options) override;
+  void validateOptions(std::shared_ptr<options::ProgramOptions> opts,
+                       BackupFeatureOptions& options) override;
+};
+
+}  // namespace arangodb

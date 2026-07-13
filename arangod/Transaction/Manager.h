@@ -23,21 +23,18 @@
 
 #pragma once
 
-#include "Basics/Identifier.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/ReadWriteSpinLock.h"
 #include "Basics/Result.h"
-#include "Basics/ResultT.h"
 #include "Cluster/CallbackGuard.h"
+#include "Futures/Future.h"
 #include "Logger/LogMacros.h"
-#include "Metrics/Fwd.h"
 #include "Transaction/ManagedContext.h"
 #include "Transaction/OperationOrigin.h"
 #include "Transaction/Status.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/Identifiers/TransactionId.h"
-#include "VocBase/voc-types.h"
 
 #include <absl/hash/hash.h>
 
@@ -164,13 +161,12 @@ class Manager final : public IManager {
 
   /// @brief create managed transaction, also generate a tranactionId
   futures::Future<ResultT<TransactionId>> createManagedTrx(
-      TRI_vocbase_t& vocbase, velocypack::Slice trxOpts,
+      Database& vocbase, velocypack::Slice trxOpts,
       OperationOrigin operationOrigin, bool allowDirtyReads);
 
   /// @brief ensure managed transaction, either use the one on the given tid
   ///        or create a new one with the given tid
-  futures::Future<Result> ensureManagedTrx(TRI_vocbase_t& vocbase,
-                                           TransactionId tid,
+  futures::Future<Result> ensureManagedTrx(Database& vocbase, TransactionId tid,
                                            velocypack::Slice trxOpts,
                                            OperationOrigin operationOrigin,
                                            bool isFollowerTransaction);
@@ -178,7 +174,7 @@ class Manager final : public IManager {
   /// @brief ensure managed transaction, either use the one on the given tid
   ///        or create a new one with the given tid
   futures::Future<Result> ensureManagedTrx(
-      TRI_vocbase_t& vocbase, TransactionId tid,
+      Database& vocbase, TransactionId tid,
       std::vector<std::string> const& readCollections,
       std::vector<std::string> const& writeCollections,
       std::vector<std::string> const& exclusiveCollections, Options options,
@@ -264,7 +260,7 @@ class Manager final : public IManager {
  private:
   /// @brief create managed transaction, also generate a tranactionId
   futures::Future<ResultT<TransactionId>> createManagedTrx(
-      TRI_vocbase_t& vocbase, std::vector<std::string> const& readCollections,
+      Database& vocbase, std::vector<std::string> const& readCollections,
       std::vector<std::string> const& writeCollections,
       std::vector<std::string> const& exclusiveCollections, Options options,
       OperationOrigin operationOrigin);
@@ -275,7 +271,7 @@ class Manager final : public IManager {
       transaction::Options const& options) const;
 
   futures::Future<Result> addCollections(
-      TRI_vocbase_t& vocbase, std::shared_ptr<TransactionState> state,
+      Database& vocbase, std::shared_ptr<TransactionState> state,
       std::vector<std::string> const& exclusiveCollections,
       std::vector<std::string> const& writeCollections,
       std::vector<std::string> const& readCollections);

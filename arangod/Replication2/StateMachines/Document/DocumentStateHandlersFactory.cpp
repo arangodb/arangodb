@@ -35,6 +35,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Logger/LogContextKeys.h"
+#include "RocksDBEngine/SimpleRocksDBTransactionState.h"
 #include "Transaction/OperationOrigin.h"
 #include "Transaction/ReplicatedContext.h"
 

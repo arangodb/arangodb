@@ -25,13 +25,13 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Result.h"
-#include "Basics/Utf8Helper.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Utils/Events.h"
 #include "VocBase/Methods/Databases.h"
+#include "VocBase/vocbase.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>

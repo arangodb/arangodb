@@ -23,6 +23,7 @@
 
 #include "RestQueryCacheHandler.h"
 #include "Aql/QueryCache.h"
+#include "VocBase/vocbase.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;

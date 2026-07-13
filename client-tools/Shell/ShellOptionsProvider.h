@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -18,17 +18,18 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
+#include "ApplicationFeatures/OptionsProvider.h"
+#include "Shell/ShellFeatureOptions.h"
 
-namespace arangodb::replication2::test {
+namespace arangodb {
 
-struct ReplicatedLogMetricsMock
-    : replicated_log::ReplicatedLogMetricsIndirect<true> {
-  ReplicatedLogMetricsMock();
+struct ShellOptionsProvider : OptionsProvider<ShellFeatureOptions> {
+  void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
+                      ShellFeatureOptions& options) override;
 };
-}  // namespace arangodb::replication2::test
+
+}  // namespace arangodb

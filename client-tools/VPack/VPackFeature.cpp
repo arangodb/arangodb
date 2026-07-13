@@ -117,7 +117,13 @@ struct CustomTypeHandler : public VPackCustomTypeHandler {
 
 VPackFeature::VPackFeature(application_features::ApplicationServer& server,
                            int* result)
-    : ApplicationFeature{server, *this}, _result(result) {
+    : VPackFeature(server, result, VPackFeatureOptions{}) {}
+
+VPackFeature::VPackFeature(application_features::ApplicationServer& server,
+                           int* result, VPackFeatureOptions options)
+    : ApplicationFeature{server, *this},
+      _result(result),
+      _options(std::move(options)) {
   setOptional(false);
 }
 

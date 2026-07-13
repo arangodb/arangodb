@@ -49,6 +49,7 @@
 #include "Logger/LoggerStream.h"
 #include "Metrics/MetricsFeature.h"
 #include "Metrics/Gauge.h"
+#include "Metrics/IRegistry.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Replication/ReplicationClients.h"
 #include "Replication/ReplicationFeature.h"
@@ -271,7 +272,12 @@ void DatabaseManagerThread::run() {
 
 DatabaseFeature::DatabaseFeature(
     application_features::ApplicationServer& server)
-    : ApplicationFeature{server, *this} {
+    : DatabaseFeature(server, DatabaseFeatureOptions{}) {}
+
+DatabaseFeature::DatabaseFeature(
+    application_features::ApplicationServer& server,
+    DatabaseFeatureOptions options)
+    : ApplicationFeature{server, *this}, _options(std::move(options)) {
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseServer>();
 
@@ -1249,10 +1255,11 @@ void DatabaseFeature::closeDroppedDatabases() {
 }
 
 DatabaseFeature::MetadataMetrics::MetadataMetrics(
-    metrics::MetricsFeature& metrics)
+    metrics::IRegistry& metricsRegistry)
     : numberOfCollections(
-          metrics.add(arangodb_metadata_number_of_collections{})),
-      numberOfDatabases(metrics.add(arangodb_metadata_number_of_databases{})) {
+          metricsRegistry.add(arangodb_metadata_number_of_collections{})),
+      numberOfDatabases(
+          metricsRegistry.add(arangodb_metadata_number_of_databases{})) {
   TRI_ASSERT(ServerState::instance()->isSingleServer())
       << "DatabaseFeature::MetadataMetrics should be exposed only on a single "
          "server";

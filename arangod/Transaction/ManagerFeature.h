@@ -47,6 +47,9 @@ class ManagerFeature final : public application_features::ApplicationFeature {
   }
 
   ManagerFeature(application_features::ApplicationServer& server,
+                 metrics::IRegistry& metricsRegistry,
+                 ManagerFeatureOptions options);
+  ManagerFeature(application_features::ApplicationServer& server,
                  metrics::IRegistry& metricsRegistry);
   ~ManagerFeature();
 

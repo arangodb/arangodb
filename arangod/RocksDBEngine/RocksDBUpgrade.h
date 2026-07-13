@@ -32,9 +32,9 @@ class TransactionDB;
 namespace arangodb {
 struct IDatabaseProvider;
 
-void rocksdbStartupVersionCheck(options::ProgramOptions const& programOptions,
-                                IDatabaseProvider& databaseProvider,
-                                rocksdb::TransactionDB*, bool dbExisted,
-                                bool forceLittleEndianKeys);
+void rocksdbStartupVersionCheck(
+    std::shared_ptr<options::ProgramOptions> programOptions,
+    IDatabaseProvider& databaseProvider, rocksdb::TransactionDB*,
+    bool dbExisted, bool forceLittleEndianKeys);
 
 }  // namespace arangodb

@@ -25,9 +25,13 @@
 
 #include "VocBase/Identifiers/IndexId.h"
 
+#include <memory>
 #include <string>
+#include <vector>
 
 namespace arangodb {
+
+class LogicalCollection;
 
 struct IIndexCacheRefill {
   virtual ~IIndexCacheRefill() = default;
@@ -37,6 +41,8 @@ struct IIndexCacheRefill {
   virtual bool autoRefill() const noexcept = 0;
   virtual bool autoRefillOnFollowers() const noexcept = 0;
   virtual void waitForCatchup() = 0;
+  virtual void trackRefill(std::shared_ptr<LogicalCollection> const& collection,
+                           IndexId iid, std::vector<std::string> keys) = 0;
 };
 
 }  // namespace arangodb

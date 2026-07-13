@@ -35,7 +35,12 @@ using namespace arangodb::options;
 namespace arangodb {
 
 CacheOptionsFeature::CacheOptionsFeature(ApplicationServer& server)
-    : application_features::ApplicationFeature{server, *this} {
+    : CacheOptionsFeature(server, CacheOptions{}) {}
+
+CacheOptionsFeature::CacheOptionsFeature(ApplicationServer& server,
+                                         CacheOptions options)
+    : application_features::ApplicationFeature{server, *this},
+      _options(std::move(options)) {
   setOptional(true);
   startsAfter<BasicFeaturePhaseServer>();
 

@@ -21,6 +21,7 @@
 /// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Metrics/MetricsFeature.h"
 #include "common.h"
 #include "gtest/gtest.h"
 

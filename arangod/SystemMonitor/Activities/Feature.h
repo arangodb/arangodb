@@ -33,12 +33,15 @@ namespace arangodb::activities {
 class Feature final : public application_features::ApplicationFeature,
                       public crash_handler::CrashHandlerDataSource {
  private:
-  static auto create_metrics(metrics::MetricsFeature& metrics_feature)
+  static auto create_metrics(metrics::IRegistry& registry)
       -> std::shared_ptr<RegistryMetrics>;
 
  public:
   static constexpr std::string_view name() { return "Activities"; }
 
+  Feature(application_features::ApplicationServer& server,
+          std::shared_ptr<crash_handler::DataSourceRegistry> dataSourceRegistry,
+          FeatureOptions options);
   Feature(
       application_features::ApplicationServer& server,
       std::shared_ptr<crash_handler::DataSourceRegistry> dataSourceRegistry);

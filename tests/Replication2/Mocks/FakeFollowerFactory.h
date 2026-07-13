@@ -25,8 +25,6 @@
 
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
 
-struct TRI_vocbase_t;
-
 namespace arangodb::replication2::test {
 
 struct FakeFollowerFactory : replicated_log::IAbstractFollowerFactory {

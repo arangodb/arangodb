@@ -53,7 +53,13 @@ std::unique_ptr<transaction::Manager> ManagerFeature::MANAGER;
 
 ManagerFeature::ManagerFeature(application_features::ApplicationServer& server,
                                metrics::IRegistry& metricsRegistry)
+    : ManagerFeature(server, metricsRegistry, ManagerFeatureOptions{}) {}
+
+ManagerFeature::ManagerFeature(application_features::ApplicationServer& server,
+                               metrics::IRegistry& metricsRegistry,
+                               ManagerFeatureOptions options)
     : application_features::ApplicationFeature{server, *this},
+      _options(std::move(options)),
       _numExpiredTransactions(
           metricsRegistry.add(arangodb_transactions_expired_total{})) {
   setOptional(false);

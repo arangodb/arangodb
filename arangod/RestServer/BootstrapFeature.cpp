@@ -74,6 +74,27 @@ BootstrapFeature::BootstrapFeature(
     V8DealerFeature* v8DealerFeature
 #endif
     )
+    : BootstrapFeature(server, clusterFeature, databaseFeature,
+                       systemDatabaseFeature, clusterUpgradeFeature
+#ifdef USE_V8
+                       ,
+                       v8DealerFeature
+#endif
+                       ,
+                       BootstrapFeatureOptions{}) {
+}
+
+BootstrapFeature::BootstrapFeature(
+    application_features::ApplicationServer& server,
+    ClusterFeature& clusterFeature, DatabaseFeature& databaseFeature,
+    SystemDatabaseFeature* systemDatabaseFeature,
+    ClusterUpgradeFeature* clusterUpgradeFeature
+#ifdef USE_V8
+    ,
+    V8DealerFeature* v8DealerFeature
+#endif
+    ,
+    BootstrapFeatureOptions options)
     : ApplicationFeature{server, *this},
       _clusterFeature(clusterFeature),
       _databaseFeature(databaseFeature),
@@ -82,6 +103,7 @@ BootstrapFeature::BootstrapFeature(
 #ifdef USE_V8
       _v8DealerFeature(v8DealerFeature),
 #endif
+      _options(std::move(options)),
       _isReady(false) {
   startsAfter<application_features::ServerFeaturePhase>();
 

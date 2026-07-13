@@ -31,14 +31,11 @@
 #include <v8.h>
 #include <velocypack/Builder.h>
 
-#include "Basics/Result.h"
-#include "Basics/VelocyPackHelper.h"
 #include "Scheduler/Scheduler.h"
-
-struct TRI_vocbase_t;
 
 namespace arangodb {
 
+struct Database;
 class DatabaseGuard;
 class ExecContext;
 
@@ -46,7 +43,7 @@ class Task : public std::enable_shared_from_this<Task> {
  public:
   static std::shared_ptr<Task> createTask(
       std::string const& id, std::string const& name,
-      std::shared_ptr<ExecContext const> execContext, TRI_vocbase_t* vocbase,
+      std::shared_ptr<ExecContext const> execContext, Database* vocbase,
       std::string const& command, bool allowUseDatabase, ErrorCode& ec);
 
   static ErrorCode unregisterTask(std::string const& id, bool cancel);
@@ -66,7 +63,7 @@ class Task : public std::enable_shared_from_this<Task> {
 
  public:
   Task(std::string id, std::string name,
-       std::shared_ptr<ExecContext const> execContext, TRI_vocbase_t& vocbase,
+       std::shared_ptr<ExecContext const> execContext, Database& vocbase,
        std::string command, bool allowUseDatabase);
   ~Task();
 

@@ -1,5 +1,6 @@
 add_library(arango_shell STATIC
   ClientFeature.cpp
+  ClientOptionsProvider.cpp
   ShellConsoleFeature.cpp
   ShellConsoleOptionsProvider.cpp
 )
@@ -20,7 +21,7 @@ add_executable(${BIN_ARANGOSH}
   ${ProductVersionFiles_arangosh}
 
   ShellFeature.cpp
-  TelemetricsHandler.cpp
+  ShellOptionsProvider.cpp
   V8ClientConnection.cpp
   V8ShellFeature.cpp
   V8ShellOptionsProvider.cpp

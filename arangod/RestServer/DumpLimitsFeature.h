@@ -37,6 +37,8 @@ class DumpLimitsFeature final : public application_features::ApplicationFeature,
  public:
   static constexpr std::string_view name() noexcept { return "DumpLimits"; }
 
+  explicit DumpLimitsFeature(application_features::ApplicationServer& server,
+                             DumpLimitsFeatureOptions options);
   explicit DumpLimitsFeature(application_features::ApplicationServer& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;

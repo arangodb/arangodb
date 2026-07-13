@@ -36,6 +36,13 @@ struct IRegistry {
     return static_cast<typename MetricBuilder::MetricT&>(*doAdd(builder));
   }
 
+  template<typename MetricBuilder>
+  auto addShared(MetricBuilder&& builder)
+      -> std::shared_ptr<typename MetricBuilder::MetricT> {
+    return std::static_pointer_cast<typename MetricBuilder::MetricT>(
+        doAdd(builder));
+  }
+
  protected:
   virtual std::shared_ptr<Metric> doAdd(Builder& builder) = 0;
 };

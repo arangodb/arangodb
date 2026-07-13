@@ -30,10 +30,8 @@
 
 #include <velocypack/Builder.h>
 
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "Auth/Rbac/Actions.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/StringUtils.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -42,7 +40,6 @@
 #include "Scheduler/SchedulerFeature.h"
 #include "Transaction/Hints.h"
 #include "Transaction/V8Context.h"
-#include "Utils/DatabaseGuard.h"
 #include "Utils/ExecContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/OperationResult.h"
@@ -59,6 +56,8 @@
 
 #include <string>
 #include <string_view>
+
+#include "absl/strings/str_cat.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -94,7 +93,7 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Local<v8::Context> context = isolate->GetCurrentContext();
   v8::HandleScope scope(isolate);
 
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  TRI_GET_GLOBALS();
   V8DealerFeature& v8Dealer = v8g->server().getFeature<V8DealerFeature>();
   V8SecurityFeature& v8security = v8g->server().getFeature<V8SecurityFeature>();
 

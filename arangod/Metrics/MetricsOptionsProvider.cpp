@@ -36,26 +36,6 @@ void MetricsOptionsProvider::declareOptions(
       new BooleanParameter(&options.exportAPI),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
-  opts->addOption("--server.export-read-write-metrics",
-                  "Whether to enable metrics for document reads and writes.",
-                  new BooleanParameter(&options.exportReadWriteMetrics),
-                  arangodb::options::makeDefaultFlags(
-                      arangodb::options::Flags::Uncommon))
-      .setLongDescription(R"(Enabling this option exposes the following
-additional metrics via the `GET /_admin/metrics/v2` endpoint:
-
-- `arangodb_document_writes_total`
-- `arangodb_document_writes_replication_total`
-- `arangodb_document_insert_time`
-- `arangodb_document_read_time`
-- `arangodb_document_update_time`
-- `arangodb_document_replace_time`
-- `arangodb_document_remove_time`
-- `arangodb_collection_truncates_total`
-- `arangodb_collection_truncates_replication_total`
-- `arangodb_collection_truncate_time`
-)");
-
   opts->addOption(
           "--server.ensure-whitespace-metrics-format",
           "Set to `true` to ensure whitespace between the exported metric "

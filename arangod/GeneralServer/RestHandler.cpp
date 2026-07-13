@@ -27,6 +27,7 @@
 #include "Activities/RegistryGlobalVariable.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Auth/TokenCache.h"
+#include "Basics/DownCast.h"
 #include "Basics/dtrace-wrapper.h"
 #include "Basics/error.h"
 #include "Basics/voc-errors.h"
@@ -253,14 +254,14 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
   std::string serverId = std::get<0>(forwardContent);
   bool removeHeader = std::get<1>(forwardContent);
 
-  if (removeHeader) {
-    _request->removeHeader(StaticStrings::Authorization);
-    _request->setUser("");
-  }
-
   if (serverId.empty()) {
     // no need to actually forward
     return futures::makeFuture(Result());
+  }
+
+  if (removeHeader) {
+    _request->removeHeader(StaticStrings::Authorization);
+    _request->setUser("");
   }
 
   NetworkFeature& nf = server().getFeature<NetworkFeature>();
