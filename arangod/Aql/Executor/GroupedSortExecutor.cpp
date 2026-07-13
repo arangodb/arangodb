@@ -35,7 +35,7 @@ std::tuple<ExecutorState, NoStats, AqlCall> GroupedSortExecutor::produceRows(
   while (!output.isFull()) {
     // return if group is finished or input is finished
     _storageBackend.consumeInputRange(inputRange);
-    if (!_storageBackend.hasPendingGroupOrOutput()) {
+    if (!_storageBackend.hasMoreReadyOutputRows()) {
       return {inputRange.upstreamState(), NoStats{}, std::move(upstreamCall)};
     }
     while (!output.isFull() && _storageBackend.hasMoreReadyOutputRows()) {
@@ -63,7 +63,7 @@ GroupedSortExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
   while (call.needSkipMore()) {
     // return if group is finished or input is finished
     _storageBackend.consumeInputRange(inputRange);
-    if (!_storageBackend.hasPendingGroupOrOutput()) {
+    if (!_storageBackend.hasMoreReadyOutputRows()) {
       return {inputRange.upstreamState(), NoStats{}, call.getSkipCount(),
               std::move(upstreamCall)};
     }
