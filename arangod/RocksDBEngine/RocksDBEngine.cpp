@@ -486,6 +486,10 @@ void RocksDBEngine::prepare() {
   prepareEnterprise();
 #endif
 
+  if (!isEnabled()) {
+    return;  // coordinators use ClusterEngine, not RocksDB
+  }
+
   // it is already decided that rocksdb is used
   TRI_ASSERT(isEnabled());
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
@@ -2784,7 +2788,7 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
 
   // replicated states should be loaded before their respective shards
   if (vocbase->replicationVersion() == replication::Version::TWO) {
-    if (syncThread() == nullptr) {
+    if (_options.syncInterval <= 0) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_ILLEGAL_OPTION,
           "Automatic syncing must be enabled for replication "
