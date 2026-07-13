@@ -36,6 +36,9 @@ class ReplicationTimeoutFeature
   static const std::string_view name() noexcept { return "ReplicationTimeout"; }
 
   explicit ReplicationTimeoutFeature(
+      application_features::ApplicationServer& server,
+      ReplicationTimeoutFeatureOptions options);
+  explicit ReplicationTimeoutFeature(
       application_features::ApplicationServer& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;

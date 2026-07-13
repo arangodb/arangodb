@@ -452,7 +452,6 @@ endif()
 set(MAKE make)
 
 find_package(PythonInterp 3 EXACT REQUIRED)
-get_filename_component(PYTHON_EXECUTABLE "${PYTHON_EXECUTABLE}" REALPATH)
 
 set($ENV{PYTHON_EXECUTABLE} ${PYTHON_EXECUTABLE})
 execute_process(

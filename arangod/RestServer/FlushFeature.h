@@ -27,34 +27,20 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Metrics/Fwd.h"
 #include "RestServer/FlushOptionsProvider.h"
+#include "RestServer/FlushSubscription.h"
 #include "RestServer/IFlushControl.h"
-#include "VocBase/voc-types.h"
 
 #include <cstdint>
 #include <memory>
 #include <mutex>
-#include <string>
 #include <tuple>
 #include <vector>
 
-struct TRI_vocbase_t;
-
 namespace arangodb {
 namespace metrics {
-class MetricsFeature;
+struct IRegistry;
 }  // namespace metrics
 class FlushThread;
-
-//////////////////////////////////////////////////////////////////////////////
-/// @struct FlushSubscription
-/// @brief subscription is intended to notify FlushFeature
-///        on the WAL tick which can be safely released
-//////////////////////////////////////////////////////////////////////////////
-struct FlushSubscription {
-  virtual ~FlushSubscription() = default;
-  virtual TRI_voc_tick_t tick() const = 0;
-  virtual std::string const& name() const = 0;
-};
 
 class FlushFeature final : public application_features::ApplicationFeature,
                            public IFlushControl {
@@ -62,7 +48,10 @@ class FlushFeature final : public application_features::ApplicationFeature,
   static constexpr std::string_view name() noexcept { return "Flush"; }
 
   FlushFeature(application_features::ApplicationServer& server,
-               metrics::MetricsFeature& metrics);
+               metrics::IRegistry& metricsRegistry,
+               FlushFeatureOptions options);
+  FlushFeature(application_features::ApplicationServer& server,
+               metrics::IRegistry& metricsRegistry);
 
   ~FlushFeature();
 
@@ -74,7 +63,7 @@ class FlushFeature final : public application_features::ApplicationFeature,
   ///        token commit
   /// @param subscription to register
   void registerFlushSubscription(
-      std::shared_ptr<FlushSubscription> const& subscription);
+      std::shared_ptr<FlushSubscription> const& subscription) override;
 
   /// @brief release all ticks not used by the flush subscriptions
   /// returns number of active flush subscriptions removed, the number of stale

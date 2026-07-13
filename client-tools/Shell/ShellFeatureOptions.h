@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -18,29 +18,25 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Julia Puget
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "RestHandler/RestBaseHandler.h"
+#include <string>
+#include <vector>
 
 namespace arangodb {
-namespace velocypack {
-class Builder;
-}
 
-class RestTelemetricsHandler : public arangodb::RestBaseHandler {
- public:
-  RestTelemetricsHandler(application_features::ApplicationServer&,
-                         GeneralRequest*, GeneralResponse*);
-
-  char const* name() const override final { return "RestTelemetricsHandler"; }
-  RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
-  RestStatus execute() override;
-
- private:
-  void resetTelemetricsRequestsCounter();
-  bool trackTelemetricsRequestsCounter();
+struct ShellFeatureOptions {
+  std::vector<std::string> executeScripts;
+  std::vector<std::string> executeStrings;
+  std::vector<std::string> checkSyntaxFiles;
+  std::vector<std::string> unitTests;
+  std::string unitTestFilter;
+  std::vector<std::string> scriptParameters;
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  std::vector<std::string> failurePoints;
+#endif
 };
+
 }  // namespace arangodb

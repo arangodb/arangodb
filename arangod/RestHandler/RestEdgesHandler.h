@@ -24,6 +24,7 @@
 #pragma once
 
 #include "RestHandler/RestVocbaseBaseHandler.h"
+#include "VocBase/Identifiers/DataSourceId.h"
 
 #include <velocypack/Builder.h>
 

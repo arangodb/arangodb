@@ -41,6 +41,9 @@ class QueryInfoLoggerFeature final
   }
 
   explicit QueryInfoLoggerFeature(
+      application_features::ApplicationServer& server,
+      QueryInfoLoggerOptions options);
+  explicit QueryInfoLoggerFeature(
       application_features::ApplicationServer& server);
 
   ~QueryInfoLoggerFeature();

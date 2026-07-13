@@ -42,6 +42,8 @@ class SupervisorFeature final
  public:
   static constexpr std::string_view name() noexcept { return "Supervisor"; }
 
+  explicit SupervisorFeature(application_features::ApplicationServer& server,
+                             SupervisorFeatureOptions options);
   explicit SupervisorFeature(application_features::ApplicationServer& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;

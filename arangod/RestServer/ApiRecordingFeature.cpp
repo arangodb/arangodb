@@ -30,7 +30,7 @@
 #include "Inspection/VPack.h"
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
-#include "Metrics/MetricsFeature.h"
+#include "Metrics/IRegistry.h"
 #include "ProgramOptions/ProgramOptions.h"
 
 #include <velocypack/Builder.h>
@@ -51,11 +51,21 @@ size_t AqlQueryRecord::memoryUsage() const noexcept {
 ApiRecordingFeature::ApiRecordingFeature(
     application_features::ApplicationServer& server,
     std::shared_ptr<crash_handler::DataSourceRegistry> dataSourceRegistry,
-    metrics::MetricsFeature& metrics)
+    metrics::IRegistry& metricsRegistry)
+    : ApiRecordingFeature(server, std::move(dataSourceRegistry),
+                          metricsRegistry, ApiRecordingFeatureOptions{}) {}
+
+ApiRecordingFeature::ApiRecordingFeature(
+    application_features::ApplicationServer& server,
+    std::shared_ptr<crash_handler::DataSourceRegistry> dataSourceRegistry,
+    metrics::IRegistry& metricsRegistry, ApiRecordingFeatureOptions options)
     : ApplicationFeature{server, *this},
       crash_handler::CrashHandlerDataSource(std::move(dataSourceRegistry)),
-      _recordApiCallTimes(metrics.add(arangodb_api_recording_call_time{})),
-      _recordAqlCallTimes(metrics.add(arangodb_aql_recording_call_time{})) {
+      _options(std::move(options)),
+      _recordApiCallTimes(
+          metricsRegistry.add(arangodb_api_recording_call_time{})),
+      _recordAqlCallTimes(
+          metricsRegistry.add(arangodb_aql_recording_call_time{})) {
   setOptional(false);
   startsAfter<application_features::GreetingsFeaturePhase>();
 }

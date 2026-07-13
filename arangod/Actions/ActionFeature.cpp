@@ -35,7 +35,12 @@ using namespace arangodb::options;
 namespace arangodb {
 
 ActionFeature::ActionFeature(ApplicationServer& server)
-    : application_features::ApplicationFeature{server, *this} {
+    : ActionFeature(server, ActionFeatureOptions{}) {}
+
+ActionFeature::ActionFeature(ApplicationServer& server,
+                             ActionFeatureOptions options)
+    : application_features::ApplicationFeature{server, *this},
+      _options(std::move(options)) {
   setOptional(true);
   startsAfter<application_features::ClusterFeaturePhase>();
 }

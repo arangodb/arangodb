@@ -57,7 +57,13 @@ namespace arangodb {
 
 ImportFeature::ImportFeature(application_features::ApplicationServer& server,
                              int* result)
-    : ApplicationFeature{server, *this}, _result(result) {
+    : ImportFeature(server, result, ImportFeatureOptions{}) {}
+
+ImportFeature::ImportFeature(application_features::ApplicationServer& server,
+                             int* result, ImportFeatureOptions options)
+    : ApplicationFeature{server, *this},
+      _options(std::move(options)),
+      _result(result) {
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseClient>();
   _options.threadCount =

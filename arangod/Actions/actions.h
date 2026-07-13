@@ -28,9 +28,8 @@
 #include <mutex>
 #include <string>
 
-struct TRI_vocbase_t;
-
 namespace arangodb {
+struct Database;
 class GeneralRequest;
 class GeneralResponse;
 }  // namespace arangodb
@@ -57,7 +56,8 @@ class TRI_action_t {
 
   virtual void visit(void*) = 0;
 
-  virtual TRI_action_result_t execute(TRI_vocbase_t*, arangodb::GeneralRequest*,
+  virtual TRI_action_result_t execute(arangodb::Database*,
+                                      arangodb::GeneralRequest*,
                                       arangodb::GeneralResponse*,
                                       std::mutex* dataLock, void** data) = 0;
 
@@ -87,7 +87,7 @@ class TRI_fake_action_t final : public TRI_action_t {
   void visit(void*) override {}
 
   /// @brief actions of this type are executed directly. nothing to do here
-  TRI_action_result_t execute(TRI_vocbase_t*, arangodb::GeneralRequest*,
+  TRI_action_result_t execute(arangodb::Database*, arangodb::GeneralRequest*,
                               arangodb::GeneralResponse*, std::mutex*,
                               void**) override;
 

@@ -34,6 +34,8 @@ class CacheOptionsFeature final
  public:
   static constexpr std::string_view name() { return "CacheOptions"; }
 
+  explicit CacheOptionsFeature(application_features::ApplicationServer& server,
+                               CacheOptions options);
   explicit CacheOptionsFeature(application_features::ApplicationServer& server);
   ~CacheOptionsFeature() = default;
 

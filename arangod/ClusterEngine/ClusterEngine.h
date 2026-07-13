@@ -24,6 +24,7 @@
 #pragma once
 
 #include "ClusterEngine/Common.h"
+#include "Metrics/IRegistry.h"
 #include "StorageEngine/StorageEngine.h"
 
 #include <velocypack/Builder.h>
@@ -38,7 +39,8 @@ class ClusterEngine final : public StorageEngine {
   static constexpr std::string_view name() noexcept { return "ClusterEngine"; }
 
   // create the storage engine
-  explicit ClusterEngine(application_features::ApplicationServer& server);
+  explicit ClusterEngine(application_features::ApplicationServer& server,
+                         metrics::IRegistry& metrics);
   ~ClusterEngine();
 
   void setActualEngine(StorageEngine* e);
@@ -241,6 +243,7 @@ class ClusterEngine final : public StorageEngine {
 
  private:
   ClusterFeature& _clusterFeature;
+  metrics::IRegistry& _metrics;
   /// path to arangodb data dir
   std::string _basePath;
   StorageEngine* _actualEngine;

@@ -25,8 +25,6 @@
 
 #include <velocypack/Slice.h>
 
-#include "VocBase/vocbase.h"
-
 namespace arangodb {
 
 struct CollectionCreationInfo {

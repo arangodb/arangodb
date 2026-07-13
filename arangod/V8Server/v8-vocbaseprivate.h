@@ -27,12 +27,13 @@
 #error this file is not supposed to be used in builds with -DUSE_V8=Off
 #endif
 
-#include "Transaction/V8Context.h"
-#include "V8/v8-utils.h"
 #include "V8Server/v8-vocbase.h"
-#include "VocBase/voc-types.h"
 
 #include <velocypack/Builder.h>
+
+namespace arangodb {
+struct Database;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief macro to make sure we won't continue if we are inside a transaction
@@ -47,7 +48,7 @@
 /// @brief get the vocbase pointer from the current V8 context
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vocbase_t& GetContextVocBase(v8::Isolate* isolate);
+arangodb::Database& GetContextVocBase(v8::Isolate* isolate);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parse document or document handle from a v8 value (string | object)

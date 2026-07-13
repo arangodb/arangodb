@@ -56,6 +56,11 @@ class RocksDBIndexCacheRefillFeature final
   RocksDBIndexCacheRefillFeature(
       application_features::ApplicationServer& server,
       DatabaseFeature& databaseFeature, ClusterFeature* clusterFeature,
+      metrics::IRegistry& metricsRegistry,
+      RocksDBIndexCacheRefillFeatureOptions options);
+  RocksDBIndexCacheRefillFeature(
+      application_features::ApplicationServer& server,
+      DatabaseFeature& databaseFeature, ClusterFeature* clusterFeature,
       metrics::IRegistry& metricsRegistry);
 
   ~RocksDBIndexCacheRefillFeature();
@@ -67,7 +72,7 @@ class RocksDBIndexCacheRefillFeature final
 
   // track the refill of the specified keys
   void trackRefill(std::shared_ptr<LogicalCollection> const& collection,
-                   IndexId iid, std::vector<std::string> keys);
+                   IndexId iid, std::vector<std::string> keys) override;
 
   // schedule the refill of the full index
   void scheduleFullIndexRefill(std::string const& database,

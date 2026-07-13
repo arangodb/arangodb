@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -17,18 +17,17 @@
 /// limitations under the License.
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ReplicatedLogMetricsMock.h"
+#pragma once
 
-using namespace arangodb::replication2::test;
+namespace arangodb {
 
-ReplicatedLogMetricsMock::ReplicatedLogMetricsMock()
-    : ReplicatedLogMetricsIndirect(nullptr) {}
+class Scheduler;
 
-#include "Replication2/ReplicatedLog/ReplicatedLogMetrics.tpp"
+struct ISchedulerProvider {
+  virtual ~ISchedulerProvider() = default;
+  virtual Scheduler* scheduler() const noexcept = 0;
+};
 
-template struct arangodb::replication2::replicated_log::
-    ReplicatedLogMetricsIndirect<true>;
+}  // namespace arangodb

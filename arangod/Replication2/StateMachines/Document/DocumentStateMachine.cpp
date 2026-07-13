@@ -63,8 +63,7 @@ auto DocumentFactory::constructLeader(std::unique_ptr<DocumentCore> core)
       std::move(core), _handlersFactory, _transactionManager);
 }
 
-auto DocumentFactory::constructCore(TRI_vocbase_t& vocbase,
-                                    GlobalLogIdentifier gid,
+auto DocumentFactory::constructCore(Database& vocbase, GlobalLogIdentifier gid,
                                     DocumentCoreParameters coreParameters)
     -> std::unique_ptr<DocumentCore> {
   LoggerContext logContext = _handlersFactory->createLogger(gid);

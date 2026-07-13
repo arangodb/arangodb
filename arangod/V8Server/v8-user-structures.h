@@ -64,7 +64,5 @@ struct DatabaseJavaScriptCache {
 
 }  // namespace arangodb
 
-struct TRI_vocbase_t;
-
 /// @brief creates the user structures functions
 void TRI_InitV8UserStructures(v8::Isolate* isolate, v8::Handle<v8::Context>);
