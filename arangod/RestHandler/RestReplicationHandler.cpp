@@ -2193,8 +2193,7 @@ void RestReplicationHandler::handleCommandRestoreView() {
       }
 
       auto r1 = exec.canUseAdminAction(auth::perms::AdminRestore{});
-      auto r2 = exec.canDropView(_vocbase.name(), name,
-                                 view->linkedCollectionNames());
+      auto r2 = exec.canDropView(_vocbase.name(), name);
       if (r1.fail() && r2.fail()) {
         generateError(r2);
         return;
@@ -2209,7 +2208,15 @@ void RestReplicationHandler::handleCommandRestoreView() {
 
     // must create() since view was drop()ed
     auto r1 = exec.canUseAdminAction(auth::perms::AdminRestore{});
-    auto r2 = exec.canCreateView(_vocbase.name(), name);
+    // Extract linked collection names from the view description's "links"
+    // field.
+    std::vector<std::string> linkedCollections;
+    if (auto linksSlice = slice.get("links"); linksSlice.isObject()) {
+      for (auto const& pair : VPackObjectIterator(linksSlice)) {
+        linkedCollections.push_back(pair.key.copyString());
+      }
+    }
+    auto r2 = exec.canCreateView(_vocbase.name(), name, linkedCollections);
     if (r1.fail() && r2.fail()) {
       generateError(r2);
       return;

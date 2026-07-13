@@ -305,27 +305,6 @@ class IResearchAnalyzerFeature final
   explicit IResearchAnalyzerFeature(
       application_features::ApplicationServer& server, Dependencies deps);
 
-  // TODO We need to review the following canUse functions, and possibly replace
-  //      calls to them with calls to ExecContext (we might need to add a
-  //      method).
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief check permissions
-  /// @param vocbase analyzer vocbase
-  /// @param level access level
-  /// @return analyzers in the specified vocbase are granted 'level' access
-  //////////////////////////////////////////////////////////////////////////////
-  static bool canUse(Database const& vocbase,
-                     CollectionAccessLevel const& level);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief check permissions for analyzer usage from vocbase by name
-  /// @param vocbaseName  vocbase name to check
-  /// @param level access level
-  /// @return analyzers in the specified vocbase are granted 'level' access
-  //////////////////////////////////////////////////////////////////////////////
-  static bool canUseVocbase(std::string_view vocbaseName,
-                            CollectionAccessLevel const& level);
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief check permissions
   /// @param name analyzer name (already normalized)
@@ -333,7 +312,7 @@ class IResearchAnalyzerFeature final
   /// @return analyzer with the given prefixed name (or unprefixed and resides
   ///         in defaultVocbase) is granted 'level' access
   //////////////////////////////////////////////////////////////////////////////
-  static bool canUse(std::string_view name, CollectionAccessLevel const& level);
+  static Result canUse(std::string_view name, AnalyzerAccessLevel const& level);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create new analyzer pool
