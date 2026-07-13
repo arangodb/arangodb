@@ -1,5 +1,9 @@
 3.12.10-devel (XXXX-XX-XX)
 --------------------------
+
+* COR-759: AQL unary plus/minus on bind parameters silently return incorrect values
+  AQL: Fixed an issue where queries using unary operators (+ and -) with bind parameters could cause the server to terminate unexpectedly. These queries are now handled correctly and return the expected results.
+  
 * COR-613: Create Response Code Metrics
   arangodb_http_response_http_response_code_total{code="<response-code>"}
 
