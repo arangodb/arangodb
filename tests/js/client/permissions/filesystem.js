@@ -27,6 +27,7 @@
 
 const fs = require('fs');
 const internal = require('internal');
+const path = require('path');
 
 //  first inst - tmp  --                 /tmp/xxx-arangosh/
 //  first inst - rootDir  --             /tmp/xxx-arangosh/permissions
@@ -94,6 +95,8 @@ const topLevelAllowedCopyFile = fs.join(topLevelAllowed, 'allowed_copy.txt');
 const topLevelForbiddenCopyFile = fs.join(topLevelForbidden, 'forbidden_copy.txt');
 const subLevelAllowedCopyFile = fs.join(subLevelAllowed, 'allowed_copy.txt');
 const subLevelForbiddenCopyFile = fs.join(subLevelForbidden, 'forbidden_json.txt');
+
+const relativePathZipFile = path.resolve(internal.pathForTesting('common'), 'test-data', 'permissions', 'zip-with-relative-paths.zip');
 
 const CSV = 'a,b\n1,2\n3,4\n';
 const CSVParsed = [['a', 'b'], ['1', '2'], ['3', '4']];
@@ -595,17 +598,6 @@ function testSuite() {
     }
     tryExistsAllowed(zip, true);
   }
-  function tryZipFileWithForbiddenContent(zip, sn) {
-    let files = [];
-    try {
-      // Should contain a file that we are not allowed to access
-      files = fs.list(sn);
-      fs.zipFile(zip, sn, files);
-      fail();
-    } catch (err) {
-      assertTrue(false, "succeeded to Zip into " + zip + " these files:" + sn + "[ " + files + " ] - " + err);
-    }
-  }
   function tryUnZipFileForbidden(zip, sn) {
     try {
       let rc = fs.unzipFile(zip, sn, undefined, true);
@@ -871,12 +863,14 @@ function testSuite() {
       tryZipFileForbiddenList(allowedZipFileName, topLevelAllowed, [prefixEscape + 'etc/passwd']);
       tryZipFileAllowed(allowedZipFileName, topLevelAllowed);
 
-//      tryZipFileWithForbiddenContent(allowedZipFileName, topLevelAllowed);
-
       tryUnZipFileForbidden('/etc/nothere.zip', topLevelAllowed);
       tryUnZipFileForbidden(allowedZipFileName, topLevelForbidden);
 
       tryUnZipFileAllowed(allowedZipFileName, topLevelAllowedUnZip);
+
+      // Should try to unzip into the toplevel allowed directory
+      // with a relative path
+      tryUnZipFileForbidden(relativePathZipFile, topLevelAllowed);
     },
     testEval : function() {
       tryJSParseFileForbidden(forbiddenJSFileName);
