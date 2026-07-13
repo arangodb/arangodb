@@ -1,5 +1,15 @@
 3.12.10-devel (XXXX-XX-XX)
 --------------------------
+* COR-613: Create Response Code Metrics
+  arangodb_http_response_http_response_code_total{code="<response-code>"}
+
+* COR-728: Removed the telemetrics API and the arangosh telemetrics client.
+
+* GitHub issue #22532: Fixed query editor content becoming hidden after resizing
+  the editor pane in the web UI.
+
+* Upgraded included rclone to v1.74.3 with go1.25.11 and non-vulnerable
+  dependencies.
 
 * Add missing case to return 403 for error HTTP_UNAUTHORIZED.
 
@@ -15,9 +25,6 @@
  - qs to 6.15.2
  - brace-expansion to 5.0.6
  - js-yaml to 4.2.0
-
-* Upgraded included rclone to v1.74.3 with go1.25.11 and non-vulnerable
-  dependencies.
 
 * Upgraded OpenSSL to 3.5.7.
 

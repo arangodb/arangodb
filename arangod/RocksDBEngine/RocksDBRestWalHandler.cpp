@@ -26,10 +26,9 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Auth/Rbac/Actions.h"
 #include "Basics/StringUtils.h"
-#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterAdminOperations.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
-#include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"
@@ -42,8 +41,8 @@ using namespace arangodb::rest;
 
 RocksDBRestWalHandler::RocksDBRestWalHandler(
     application_features::ApplicationServer& server, GeneralRequest* request,
-    GeneralResponse* response)
-    : RestBaseHandler(server, request, response) {}
+    GeneralResponse* response, StorageEngine* engine)
+    : RestBaseHandler(server, request, response), _engine(engine) {}
 
 // Mounted at /_admin/wal (prefix, RocksDB engine)
 RestStatus RocksDBRestWalHandler::execute() {
@@ -88,7 +87,7 @@ RestStatus RocksDBRestWalHandler::execute() {
       return RestStatus::DONE;
     }
 #endif
-    server().getFeature<DatabaseFeature>().engine().waitForEstimatorSync();
+    _engine->waitForEstimatorSync();
     generateResult(rest::ResponseCode::OK,
                    arangodb::velocypack::Slice::emptyObjectSlice());
     return RestStatus::DONE;
@@ -147,8 +146,7 @@ void RocksDBRestWalHandler::flush() {
     auto& feature = server().getFeature<ClusterFeature>();
     res = flushWalOnAllDBServers(feature, waitForSync, flushColumnFamilies);
   } else {
-    server().getFeature<DatabaseFeature>().engine().flushWal(
-        waitForSync, flushColumnFamilies);
+    _engine->flushWal(waitForSync, flushColumnFamilies);
   }
 
   if (res.fail()) {

@@ -36,6 +36,7 @@ const lp = require("@arangodb/testutils/replicated-logs-predicates");
 const lhttp = require('@arangodb/testutils/replicated-logs-http-helper');
 const dh = require("@arangodb/testutils/document-state-helper");
 const ch = require("@arangodb/testutils/collection-groups-helper");
+let IM = global.instanceManager;
 
 const database = "replication2_document_store_test_db";
 const collectionName = "testCollection";
@@ -928,12 +929,6 @@ const replicatedStateSnapshotTransferSuite = function () {
   const {setUpAll, tearDownAll, setUpAnd, tearDownAnd, stopServerWait, continueServerWait} =
       lh.testHelperFunctions(database, {replicationVersion: "2"});
 
-  const clearAllFailurePoints = () => {
-    for (const server of lh.dbservers) {
-      helper.debugClearFailAt(lh.getServerUrl(server));
-    }
-  };
-
   return {
     setUpAll,
     tearDownAll,
@@ -946,7 +941,7 @@ const replicatedStateSnapshotTransferSuite = function () {
       log = logs[0];
     }),
     tearDown: tearDownAnd(() => {
-      clearAllFailurePoints();
+      IM.debugClearFailAt();
 
       for (let col of extraCollections) {
         db._drop(col.name());

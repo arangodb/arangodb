@@ -166,9 +166,14 @@ arangodb::Result arangodb::maintenance::collectionCount(
 
 MaintenanceFeature::MaintenanceFeature(ApplicationServer& server,
                                        ClusterFeature* clusterFeature)
+    : MaintenanceFeature(server, clusterFeature, MaintenanceOptions{}) {}
+
+MaintenanceFeature::MaintenanceFeature(ApplicationServer& server,
+                                       ClusterFeature* clusterFeature,
+                                       MaintenanceOptions options)
     : application_features::ApplicationFeature{server, *this},
       _clusterFeature(clusterFeature),
-      _options(),
+      _options(std::move(options)),
       _firstRun(true),
       _isShuttingDown(false),
       _nextActionId(1),

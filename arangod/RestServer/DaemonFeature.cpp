@@ -66,7 +66,11 @@ using namespace arangodb::options;
 namespace arangodb {
 
 DaemonFeature::DaemonFeature(ApplicationServer& server)
-    : ApplicationFeature{server, *this} {
+    : DaemonFeature(server, DaemonFeatureOptions{}) {}
+
+DaemonFeature::DaemonFeature(ApplicationServer& server,
+                             DaemonFeatureOptions options)
+    : ApplicationFeature{server, *this}, _options(std::move(options)) {
   setOptional(true);
   startsAfter<application_features::GreetingsFeaturePhase>();
 }

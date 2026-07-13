@@ -27,7 +27,6 @@
 #include "analysis/analyzers.hpp"
 #include "analysis/token_attributes.hpp"
 #include "index/norm.hpp"
-#include <filesystem>
 
 #include "IResearch/IResearchTestCommon.h"
 #include "IResearch/RestHandlerMock.h"
@@ -37,7 +36,6 @@
 #include "Mocks/StorageEngineMock.h"
 
 #include "Agency/AsyncAgencyComm.h"
-#include "Agency/Store.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/AstNode.h"
@@ -63,7 +61,6 @@
 #include "RestServer/AqlFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
-#include "RestServer/FlushFeature.h"
 #include "Metrics/ClusterMetricsFeature.h"
 #include "Metrics/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
@@ -1419,7 +1416,8 @@ TEST_F(IResearchAnalyzerFeatureCoordinatorTest, test_ensure_index_add_factory) {
   // add index factory
   {
     struct IndexTypeFactory : public arangodb::IndexTypeFactory {
-      IndexTypeFactory(arangodb::ArangodServer& server)
+      IndexTypeFactory(
+          arangodb::application_features::ApplicationServer& server)
           : arangodb::IndexTypeFactory(server) {}
 
       virtual bool equal(arangodb::velocypack::Slice lhs,
@@ -2556,7 +2554,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
     // required features cannot use the existing server since its features
     // already have some state
 
-    arangodb::ArangodServer newServer(nullptr, nullptr);
+    arangodb::application_features::ApplicationServer newServer(nullptr,
+                                                                nullptr);
     auto& metrics = newServer.addFeature<arangodb::metrics::MetricsFeature>(
         arangodb::LazyApplicationFeatureReference<
             arangodb::QueryRegistryFeature>(nullptr),
@@ -2657,7 +2656,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
       arangodb::ServerState::instance()->setRole(beforeRole);
     };
 
-    arangodb::ArangodServer newServer(nullptr, nullptr);
+    arangodb::application_features::ApplicationServer newServer(nullptr,
+                                                                nullptr);
     auto& auth = newServer.addFeature<arangodb::AuthenticationFeature>();
     auto& metrics = newServer.addFeature<arangodb::metrics::MetricsFeature>(
         arangodb::LazyApplicationFeatureReference<
@@ -3185,7 +3185,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
   // create a new instance of an ApplicationServer and fill it with the required
   // features cannot use the existing server since its features already have
   // some state
-  arangodb::ArangodServer newServer(nullptr, nullptr);
+  arangodb::application_features::ApplicationServer newServer(nullptr, nullptr);
   StorageEngineMock engine(newServer);
   auto& dbfeature = newServer.addFeature<arangodb::DatabaseFeature>();
   dbfeature.setEngineTesting(&engine);
@@ -4269,7 +4269,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
     }
   };
 
-  arangodb::ArangodServer newServer(nullptr, nullptr);
+  arangodb::application_features::ApplicationServer newServer(nullptr, nullptr);
   auto& dbFeature = newServer.addFeature<arangodb::DatabaseFeature>();
   StorageEngineMock engine(newServer);
   dbFeature.setEngineTesting(&engine);
@@ -4617,7 +4617,7 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_toVelocyPack) {
   // create a new instance of an ApplicationServer and fill it with the required
   // features cannot use the existing server since its features already have
   // some state
-  arangodb::ArangodServer newServer(nullptr, nullptr);
+  arangodb::application_features::ApplicationServer newServer(nullptr, nullptr);
   auto& dbFeature = newServer.addFeature<arangodb::DatabaseFeature>();
   StorageEngineMock engine(newServer);
   dbFeature.setEngineTesting(&engine);
@@ -4770,7 +4770,7 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_vpack_create) {
   // create a new instance of an ApplicationServer and fill it with the required
   // features cannot use the existing server since its features already have
   // some state
-  arangodb::ArangodServer newServer(nullptr, nullptr);
+  arangodb::application_features::ApplicationServer newServer(nullptr, nullptr);
   auto& dbFeature = newServer.addFeature<arangodb::DatabaseFeature>();
   StorageEngineMock engine(newServer);
   dbFeature.setEngineTesting(&engine);

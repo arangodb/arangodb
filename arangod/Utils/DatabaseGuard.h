@@ -25,28 +25,27 @@
 
 #include "VocBase/voc-types.h"
 
-struct TRI_vocbase_t;
-
 namespace arangodb {
+struct Database;
 class DatabaseFeature;
 
 struct IDatabaseGuard {
   virtual ~IDatabaseGuard() = default;
-  [[nodiscard]] virtual TRI_vocbase_t& database() const noexcept = 0;
+  [[nodiscard]] virtual Database& database() const noexcept = 0;
 };
 
 struct VocbaseReleaser {
-  void operator()(TRI_vocbase_t* vocbase) const noexcept;
+  void operator()(Database* vocbase) const noexcept;
 };
 
-using VocbasePtr = std::unique_ptr<TRI_vocbase_t, VocbaseReleaser>;
+using VocbasePtr = std::unique_ptr<Database, VocbaseReleaser>;
 
 /// @brief Scope guard for a database, ensures that it is not
 ///        dropped while still using it.
 class DatabaseGuard final : public IDatabaseGuard {
  public:
   /// @brief create guard on existing db
-  explicit DatabaseGuard(TRI_vocbase_t& vocbase);
+  explicit DatabaseGuard(Database& vocbase);
 
   /// @brief create guard from existing VocbasePtr
   explicit DatabaseGuard(VocbasePtr vocbase);
@@ -58,9 +57,9 @@ class DatabaseGuard final : public IDatabaseGuard {
   DatabaseGuard(DatabaseFeature& feature, std::string_view name);
 
   /// @brief return the database pointer
-  TRI_vocbase_t& database() const noexcept final { return *_vocbase; }
-  TRI_vocbase_t const* operator->() const noexcept { return _vocbase.get(); }
-  TRI_vocbase_t* operator->() noexcept { return _vocbase.get(); }
+  Database& database() const noexcept final { return *_vocbase; }
+  Database const* operator->() const noexcept { return _vocbase.get(); }
+  Database* operator->() noexcept { return _vocbase.get(); }
 
  private:
   VocbasePtr _vocbase;

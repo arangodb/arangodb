@@ -46,14 +46,11 @@ class BumpFileDescriptorsFeature
     return "BumpFileDescriptors";
   }
 
-  explicit BumpFileDescriptorsFeature(
-      application_features::ApplicationServer& server, std::string optionName)
-      : application_features::ApplicationFeature{server, *this},
-        _optionName(std::move(optionName)) {
-    setOptional(false);
-    startsAfter<application_features::GreetingsFeaturePhase>();
-    startsAfter<LoggerFeature>();
-  }
+  BumpFileDescriptorsFeature(application_features::ApplicationServer& server,
+                             std::string optionName,
+                             BumpFileDescriptorsFeatureOptions options);
+  BumpFileDescriptorsFeature(application_features::ApplicationServer& server,
+                             std::string optionName);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;

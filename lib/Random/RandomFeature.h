@@ -35,17 +35,14 @@ class RandomFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Random"; }
 
-  explicit RandomFeature(application_features::ApplicationServer& server)
-      : RandomFeature{server, typeid(RandomFeature)} {
-    startsAfter<LoggerFeature>();
-  }
+  explicit RandomFeature(application_features::ApplicationServer& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
 
  private:
   RandomFeature(application_features::ApplicationServer& server,
-                std::type_index registration);
+                std::type_index registration, RandomFeatureOptions options);
 
   RandomFeatureOptions _options;
 };

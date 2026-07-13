@@ -25,13 +25,11 @@
 #include "DropIndex.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/MaintenanceFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
-#include "Replication2/StateMachines/Document/DocumentFollowerState.h"
 #include "Replication2/StateMachines/Document/DocumentLeaderState.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Utils/DatabaseGuard.h"
@@ -39,6 +37,7 @@
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Databases.h"
 #include "VocBase/Methods/Indexes.h"
+#include "VocBase/vocbase.h"
 
 using namespace arangodb::application_features;
 using namespace arangodb::maintenance;

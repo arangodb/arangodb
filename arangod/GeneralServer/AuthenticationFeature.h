@@ -50,6 +50,9 @@ class AuthenticationFeature final
   static constexpr std::string_view name() noexcept { return "Authentication"; }
 
   explicit AuthenticationFeature(
+      application_features::ApplicationServer& server,
+      AuthenticationOptions options);
+  explicit AuthenticationFeature(
       application_features::ApplicationServer& server);
   ~AuthenticationFeature();
 

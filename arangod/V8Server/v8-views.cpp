@@ -195,7 +195,17 @@ static void JS_CreateViewVocbase(
   // end of parameter parsing
   // ...........................................................................
 
-  if (auto r = ExecContext::current().canCreateView(vocbase.name(), name);
+  // Extract linked collection names from the properties' "links" field.
+  std::vector<std::string> linkedCollections;
+  if (auto linksSlice = properties.slice().get("links");
+      linksSlice.isObject()) {
+    for (auto const& pair : VPackObjectIterator(linksSlice)) {
+      linkedCollections.push_back(pair.key.copyString());
+    }
+  }
+
+  if (auto r = ExecContext::current().canCreateView(vocbase.name(), name,
+                                                    linkedCollections);
       r.fail()) {
     events::CreateView(vocbase.name(), name, TRI_ERROR_FORBIDDEN);
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, r.errorMessage());
@@ -215,7 +225,7 @@ static void JS_CreateViewVocbase(
 
   try {
     // First refresh our analyzers cache to see all latest changes in analyzers
-    TRI_GET_SERVER_GLOBALS(ArangodServer);
+    TRI_GET_GLOBALS();
     auto res =
         v8g->server()
             .getFeature<arangodb::iresearch::IResearchAnalyzerFeature>()
@@ -319,8 +329,7 @@ static void JS_DropViewVocbase(
   auto view = CollectionNameResolver(vocbase).getView(name);
 
   if (view) {
-    if (auto r = ExecContext::current().canDropView(
-            vocbase.name(), name, view->linkedCollectionNames());
+    if (auto r = ExecContext::current().canDropView(vocbase.name(), name);
         r.fail()) {  // check auth after ensuring
                      // that the view exists
       events::DropView(vocbase.name(), view->name(), TRI_ERROR_FORBIDDEN);
@@ -387,8 +396,7 @@ static void JS_DropViewVocbaseObj(
   // end of parameter parsing
   // ...........................................................................
 
-  if (auto r = ExecContext::current().canDropView(
-          vocbase.name(), view->name(), view->linkedCollectionNames());
+  if (auto r = ExecContext::current().canDropView(vocbase.name(), view->name());
       r.fail()) {
     // check auth after ensuring that the view exists
     events::DropView(vocbase.name(), view->name(), TRI_ERROR_FORBIDDEN);
@@ -654,7 +662,7 @@ static void JS_PropertiesViewVocbase(
     }
 
     auto& vocbase = GetContextVocBase(isolate);
-    TRI_GET_SERVER_GLOBALS(ArangodServer);
+    TRI_GET_GLOBALS();
     auto res =
         v8g->server()
             .getFeature<arangodb::iresearch::IResearchAnalyzerFeature>()

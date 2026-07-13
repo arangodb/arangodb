@@ -23,6 +23,9 @@
 
 #pragma once
 
+#include <cstddef>
+#include <cstdint>
+
 namespace arangodb::cache {
 class Manager;
 }
@@ -32,6 +35,9 @@ namespace arangodb {
 struct ICacheManagerProvider {
   virtual ~ICacheManagerProvider() = default;
   virtual cache::Manager* manager() = 0;
+  virtual std::size_t minValueSizeForEdgeCompression() const noexcept = 0;
+  virtual std::uint32_t accelerationFactorForEdgeCompression()
+      const noexcept = 0;
 };
 
 }  // namespace arangodb

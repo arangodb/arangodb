@@ -20,8 +20,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestQueryPlanCacheHandler.h"
+
 #include "Aql/QueryPlanCache.h"
 #include "Utils/ExecContext.h"
+#include "VocBase/vocbase.h"
 
 using namespace arangodb;
 using namespace arangodb::rest;

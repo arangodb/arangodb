@@ -23,20 +23,21 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestViewHandler.h"
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
-#include "Basics/Utf8Helper.h"
-#include "Basics/VelocyPackHelper.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
+#include "Logger/LogMacros.h"
 #include "Rest/GeneralResponse.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Transaction/OperationOrigin.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Events.h"
-#include "Utilities/NameValidator.h"
 #include "VocBase/LogicalView.h"
-#include "Logger/LogMacros.h"
+#include "VocBase/vocbase.h"
+
+#include <velocypack/Iterator.h>
 
 using namespace arangodb::basics;
 
@@ -188,8 +189,17 @@ void RestViewHandler::createView() {
   // ...........................................................................
 
   auto const& execContext = ExecContext::current();
-  if (auto r =
-          execContext.canCreateView(_vocbase.name(), nameSlice.stringView());
+
+  // Extract linked collection names from the body's "links" field.
+  std::vector<std::string> linkedCollections;
+  if (auto linksSlice = body.get("links"); linksSlice.isObject()) {
+    for (auto const& pair : VPackObjectIterator(linksSlice)) {
+      linkedCollections.push_back(pair.key.copyString());
+    }
+  }
+
+  if (auto r = execContext.canCreateView(
+          _vocbase.name(), nameSlice.stringView(), linkedCollections);
       !r.ok()) {
     generateError(r);
     events::CreateView(_vocbase.name(), nameSlice.copyString(),
@@ -294,15 +304,22 @@ void RestViewHandler::modifyView(bool partialUpdate) {
   }
 
   auto const& execContext = ExecContext::current();
+
   if (isRename) {
-    if (auto r = execContext.canRenameView(_vocbase.name(), name,
-                                           body.stringView(), {});
+    if (auto r =
+            execContext.canRenameView(_vocbase.name(), name, body.stringView());
         !r.ok()) {
       return generateError(r);
     }
   } else {
-    if (auto r = execContext.canUseView(_vocbase.name(), name,
-                                        ViewAccessLevel::Modify);
+    std::vector<std::string> linkedCollections;
+    if (auto linksSlice = body.get("links"); linksSlice.isObject()) {
+      for (auto const& pair : VPackObjectIterator(linksSlice)) {
+        linkedCollections.push_back(pair.key.copyString());
+      }
+    }
+    if (auto r =
+            execContext.canModifyView(_vocbase.name(), name, linkedCollections);
         !r.ok()) {
       return generateError(r);
     }
@@ -386,8 +403,7 @@ void RestViewHandler::deleteView() {
   // end of parameter parsing
   // ...........................................................................
 
-  if (auto r = ExecContext::current().canDropView(
-          _vocbase.name(), name, view->linkedCollectionNames());
+  if (auto r = ExecContext::current().canDropView(_vocbase.name(), name);
       !r.ok()) {
     // check auth after ensuring that the view exists
     generateError(r);

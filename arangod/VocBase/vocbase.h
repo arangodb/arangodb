@@ -105,7 +105,6 @@ class StorageEngine;
 class VersionTracker;
 struct VocBaseLogManager;
 struct VocbaseMetrics;
-}  // namespace arangodb
 
 /// @brief document handle separator as character
 inline constexpr char TRI_DOCUMENT_HANDLE_SEPARATOR_CHR = '/';
@@ -120,11 +119,11 @@ inline constexpr char TRI_INDEX_HANDLE_SEPARATOR_CHR = '/';
 inline constexpr auto TRI_INDEX_HANDLE_SEPARATOR_STR = "/";
 
 /// @brief database
-struct TRI_vocbase_t {
+struct Database {
   friend class arangodb::StorageEngine;
 
-  explicit TRI_vocbase_t(arangodb::CreateDatabaseInfo&& info,
-                         arangodb::StorageEngine& engine);
+  explicit Database(arangodb::CreateDatabaseInfo&& info,
+                    arangodb::StorageEngine& engine);
 
   // note: isInternal=true is currently only used for the special internal
   // vocbase object that is used to execute IResearchAqlAnalyzer computations,
@@ -133,27 +132,26 @@ struct TRI_vocbase_t {
   // the isInternal flag is necessary for a slightly different setup of the
   // internal vocbase object, which does not use the MetricsFeature, because
   // it can outlive the entire ApplicationServer stack.
-  TRI_vocbase_t(arangodb::CreateDatabaseInfo&& info,
-                arangodb::StorageEngine& engine,
-                arangodb::VersionTracker& versionTracker, bool extendedNames,
-                bool isInternal = false);
-  TEST_VIRTUAL ~TRI_vocbase_t();
+  Database(arangodb::CreateDatabaseInfo&& info, arangodb::StorageEngine& engine,
+           arangodb::VersionTracker& versionTracker, bool extendedNames,
+           bool isInternal = false);
+  TEST_VIRTUAL ~Database();
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
  protected:
   struct MockConstruct {
   } constexpr static mockConstruct = {};
-  TRI_vocbase_t(MockConstruct, arangodb::CreateDatabaseInfo&& info,
-                arangodb::StorageEngine& engine,
-                arangodb::VersionTracker& versionTracker, bool extendedNames);
+  Database(MockConstruct, arangodb::CreateDatabaseInfo&& info,
+           arangodb::StorageEngine& engine,
+           arangodb::VersionTracker& versionTracker, bool extendedNames);
 #endif
 
  private:
   // explicitly document implicit behavior (due to presence of locks)
-  TRI_vocbase_t(TRI_vocbase_t&&) = delete;
-  TRI_vocbase_t(TRI_vocbase_t const&) = delete;
-  TRI_vocbase_t& operator=(TRI_vocbase_t&&) = delete;
-  TRI_vocbase_t& operator=(TRI_vocbase_t const&) = delete;
+  Database(Database&&) = delete;
+  Database(Database const&) = delete;
+  Database& operator=(Database&&) = delete;
+  Database& operator=(Database const&) = delete;
 
   arangodb::application_features::ApplicationServer& _server;
   arangodb::StorageEngine& _engine;
@@ -559,3 +557,7 @@ struct TRI_vocbase_t {
 /// the result is the object excluding _id, _key and _rev
 void TRI_SanitizeObject(arangodb::velocypack::Slice slice,
                         arangodb::velocypack::Builder& builder);
+
+}  // namespace arangodb
+
+using TRI_vocbase_t = arangodb::Database;

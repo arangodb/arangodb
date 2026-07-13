@@ -52,7 +52,7 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "Metrics/CounterBuilder.h"
-#include "Metrics/MetricsFeature.h"
+#include "Metrics/IRegistry.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "V8Server/V8DealerOptionsProvider.h"
 #include "ProgramOptions/Section.h"
@@ -69,7 +69,6 @@
 #include "V8/V8PlatformFeature.h"
 #include "V8/V8SecurityFeature.h"
 #include "V8/v8-buffer.h"
-#include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-shell.h"
 #include "V8/v8-utils.h"
@@ -84,9 +83,6 @@
 #include "V8Server/v8-user-structures.h"
 #include "V8Server/v8-vocbase.h"
 #include "VocBase/vocbase.h"
-#ifdef USE_ENTERPRISE
-#include "Enterprise/Encryption/EncryptionFeature.h"
-#endif
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -97,7 +93,7 @@ namespace {
 class V8GcThread : public Thread {
  public:
   explicit V8GcThread(V8DealerFeature& dealer)
-      : Thread(dealer.server(), "V8GarbageCollector"),
+      : Thread("V8GarbageCollector"),
         _dealer(dealer),
         _lastGcStamp(static_cast<uint64_t>(TRI_microtime())) {}
 
@@ -131,21 +127,30 @@ DECLARE_COUNTER(arangodb_v8_context_exited_total, "V8 context exit events");
 
 V8DealerFeature::V8DealerFeature(
     application_features::ApplicationServer& server,
-    metrics::MetricsFeature& metrics)
+    metrics::IRegistry& metricsRegistry)
+    : V8DealerFeature(server, metricsRegistry, V8DealerFeatureOptions{}) {}
+
+V8DealerFeature::V8DealerFeature(
+    application_features::ApplicationServer& server,
+    metrics::IRegistry& metricsRegistry, V8DealerFeatureOptions options)
     : ApplicationFeature{server, *this},
+      _options(std::move(options)),
       _nrInflightExecutors(0),
       _nextId(0),
       _stopping(false),
       _gcFinished(false),
       _dynamicExecutorCreationBlockers(0),
       _executorsCreationTime(
-          metrics.add(arangodb_v8_context_creation_time_msec_total{})),
-      _executorsCreated(metrics.add(arangodb_v8_context_created_total{})),
-      _executorsDestroyed(metrics.add(arangodb_v8_context_destroyed_total{})),
-      _executorsEntered(metrics.add(arangodb_v8_context_entered_total{})),
-      _executorsExited(metrics.add(arangodb_v8_context_exited_total{})),
+          metricsRegistry.add(arangodb_v8_context_creation_time_msec_total{})),
+      _executorsCreated(
+          metricsRegistry.add(arangodb_v8_context_created_total{})),
+      _executorsDestroyed(
+          metricsRegistry.add(arangodb_v8_context_destroyed_total{})),
+      _executorsEntered(
+          metricsRegistry.add(arangodb_v8_context_entered_total{})),
+      _executorsExited(metricsRegistry.add(arangodb_v8_context_exited_total{})),
       _executorsEnterFailures(
-          metrics.add(arangodb_v8_context_enter_failures_total{})) {
+          metricsRegistry.add(arangodb_v8_context_enter_failures_total{})) {
   setOptional(true);
   startsAfter<ClusterFeaturePhase>();
 

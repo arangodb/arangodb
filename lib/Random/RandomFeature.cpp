@@ -32,9 +32,16 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
+RandomFeature::RandomFeature(application_features::ApplicationServer& server)
+    : RandomFeature{server, typeid(RandomFeature), RandomFeatureOptions{}} {
+  startsAfter<LoggerFeature>();
+}
+
 RandomFeature::RandomFeature(application_features::ApplicationServer& server,
-                             std::type_index registration)
-    : ApplicationFeature(server, registration, name()) {
+                             std::type_index registration,
+                             RandomFeatureOptions options)
+    : ApplicationFeature(server, registration, name()),
+      _options(std::move(options)) {
   setOptional(false);
 }
 

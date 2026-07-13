@@ -22,6 +22,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Metrics/MetricsFeature.h"
 #include "gtest/gtest.h"
 
 #include "iresearch/tests/tests_config.hpp"

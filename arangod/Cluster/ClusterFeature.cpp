@@ -70,7 +70,13 @@ DECLARE_HISTOGRAM(arangodb_agencycomm_request_time_msec, ClusterFeatureScale,
 
 ClusterFeature::ClusterFeature(ApplicationServer& server,
                                metrics::IRegistry& metricsRegistry)
+    : ClusterFeature(server, metricsRegistry, ClusterOptions{}) {}
+
+ClusterFeature::ClusterFeature(ApplicationServer& server,
+                               metrics::IRegistry& metricsRegistry,
+                               ClusterOptions options)
     : application_features::ApplicationFeature{server, *this},
+      _options(std::move(options)),
       _metricsRegistry(metricsRegistry),
       _agency_comm_request_time_ms(
           _metricsRegistry.add(arangodb_agencycomm_request_time_msec{})) {
@@ -595,7 +601,7 @@ void ClusterFeature::shutdown() try {
 
   // must make sure that the HeartbeatThread is fully stopped before
   // we destroy the AgencyCallbackRegistry.
-  _heartbeatThread.reset();
+  _heartbeatThread.store(nullptr, std::memory_order_release);
 
   if (_asyncAgencyCommPool) {
     _asyncAgencyCommPool->drainConnections();
@@ -616,12 +622,12 @@ void ClusterFeature::startHeartbeatThread(
     AgencyCallbackRegistry* agencyCallbackRegistry, uint64_t interval_ms,
     uint64_t maxFailsBeforeWarning, double noHeartbeatDelayBeforeShutdown,
     std::string const& endpoints) {
-  _heartbeatThread = std::make_shared<HeartbeatThread>(
+  auto heartbeatThread = std::make_shared<HeartbeatThread>(
       server(), agencyCallbackRegistry,
       std::chrono::microseconds(interval_ms * 1000), maxFailsBeforeWarning,
       noHeartbeatDelayBeforeShutdown, _metricsRegistry);
 
-  if (!_heartbeatThread->init() || !_heartbeatThread->start()) {
+  if (!heartbeatThread->init() || !heartbeatThread->start()) {
     // failure only occures in cluster mode.
     LOG_TOPIC("7e050", FATAL, arangodb::Logger::CLUSTER)
         << "heartbeat could not connect to agency endpoints (" << endpoints
@@ -629,10 +635,12 @@ void ClusterFeature::startHeartbeatThread(
     FATAL_ERROR_EXIT();
   }
 
-  while (!_heartbeatThread->isReady()) {
+  while (!heartbeatThread->isReady()) {
     // wait until heartbeat is ready
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
+
+  _heartbeatThread.store(std::move(heartbeatThread), std::memory_order_release);
 }
 
 void ClusterFeature::pruneAsyncAgencyConnectionPool() {
@@ -640,11 +648,12 @@ void ClusterFeature::pruneAsyncAgencyConnectionPool() {
 }
 
 void ClusterFeature::shutdownHeartbeatThread() {
-  if (_heartbeatThread != nullptr) {
-    _heartbeatThread->beginShutdown();
+  auto heartbeatThread = _heartbeatThread.load(std::memory_order_acquire);
+  if (heartbeatThread != nullptr) {
+    heartbeatThread->beginShutdown();
     auto start = std::chrono::steady_clock::now();
     size_t counter = 0;
-    while (_heartbeatThread->isRunning()) {
+    while (heartbeatThread->isRunning()) {
       if (std::chrono::steady_clock::now() - start > std::chrono::seconds(65)) {
         LOG_TOPIC("d8a5b", FATAL, Logger::CLUSTER)
             << "exiting prematurely as we failed terminating the heartbeat "
@@ -699,13 +708,14 @@ void ClusterFeature::shutdownAgencyCache() {
 }
 
 void ClusterFeature::notify() {
-  if (_heartbeatThread != nullptr) {
-    _heartbeatThread->notify();
+  if (auto heartbeatThread = _heartbeatThread.load(std::memory_order_acquire);
+      heartbeatThread != nullptr) {
+    heartbeatThread->notify();
   }
 }
 
 std::shared_ptr<HeartbeatThread> ClusterFeature::heartbeatThread() {
-  return _heartbeatThread;
+  return _heartbeatThread.load(std::memory_order_acquire);
 }
 
 ClusterInfo& ClusterFeature::clusterInfo() {

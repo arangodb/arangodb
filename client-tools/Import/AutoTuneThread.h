@@ -25,7 +25,6 @@
 
 #include "Basics/ConditionVariable.h"
 #include "Basics/Thread.h"
-#include "Logger/Logger.h"
 
 namespace arangodb {
 namespace application_features {
@@ -42,8 +41,7 @@ class AutoTuneThread final : public arangodb::Thread {
   AutoTuneThread& operator=(AutoTuneThread const&) = delete;
 
  public:
-  explicit AutoTuneThread(application_features::ApplicationServer& server,
-                          ImportHelper& importHelper);
+  explicit AutoTuneThread(ImportHelper& importHelper);
 
   ~AutoTuneThread();
 

@@ -71,7 +71,13 @@ namespace arangodb {
 
 ExportFeature::ExportFeature(application_features::ApplicationServer& server,
                              int* result)
-    : ApplicationFeature{server, *this}, _result(result) {
+    : ExportFeature(server, result, ExportFeatureOptions{}) {}
+
+ExportFeature::ExportFeature(application_features::ApplicationServer& server,
+                             int* result, ExportFeatureOptions options)
+    : ApplicationFeature{server, *this},
+      _options(std::move(options)),
+      _result(result) {
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseClient>();
 

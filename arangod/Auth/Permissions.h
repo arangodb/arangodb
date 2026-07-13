@@ -30,7 +30,6 @@
 #include <string>
 #include <string_view>
 #include <variant>
-#include <vector>
 
 namespace arangodb {
 
@@ -200,12 +199,6 @@ struct RestoreWriteData {
 // ---------------------------------------------------------------------------
 // Views
 // ---------------------------------------------------------------------------
-//
-// View lifecycle operations optionally carry the list of collections the
-// view links to. When known, the classic implementation checks access on
-// the linked collections at the same time (mirroring the current
-// auth::Can::{create,modify,drop}View(..., std::span<std::string>) overloads).
-// Leave `linkedCollections` empty when the caller does not know them (yet).
 
 struct SeeView {
   std::string db;
@@ -215,26 +208,24 @@ struct SeeView {
 struct CreateView {
   std::string db;
   std::string name;
-  std::vector<std::string> linkedCollections;
+  std::span<std::string> linkedCollections;
 };
 
 struct ModifyView {
   std::string db;
   std::string name;
-  std::vector<std::string> linkedCollections;
+  std::span<std::string> linkedCollections;
 };
 
 struct RenameView {
   std::string db;
   std::string oldName;
   std::string newName;
-  std::vector<std::string> linkedCollections;
 };
 
 struct DropView {
   std::string db;
   std::string name;
-  std::vector<std::string> linkedCollections;
 };
 
 struct UseView {

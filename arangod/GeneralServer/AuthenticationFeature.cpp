@@ -106,7 +106,13 @@ std::atomic<AuthenticationFeature*> AuthenticationFeature::INSTANCE = nullptr;
 
 AuthenticationFeature::AuthenticationFeature(
     application_features::ApplicationServer& server)
+    : AuthenticationFeature(server, AuthenticationOptions{}) {}
+
+AuthenticationFeature::AuthenticationFeature(
+    application_features::ApplicationServer& server,
+    AuthenticationOptions options)
     : ApplicationFeature{server, *this},
+      _options(std::move(options)),
       _userManager(nullptr),
       _authCache(nullptr) {
   setOptional(false);

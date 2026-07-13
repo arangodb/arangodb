@@ -30,7 +30,6 @@ const arangodb = require("@arangodb");
 const aql = arangodb.aql;
 const db = internal.db;
 const {
-    getDBServers,
     waitForShardsInSync,
     versionHas,
 } = require("@arangodb/test-helper");
@@ -48,7 +47,7 @@ const timeoutMultiplier = isSanitizer ? 2 : 1;
 
 const dbName = "vectorReplicationDb";
 const collName = "vectorReplicationColl";
-
+let IM = global.instanceManager;
 
 // COR-255 vector replication not working
 function VectorIndexReplicationFailoverTest() {
@@ -123,8 +122,7 @@ function VectorIndexReplicationFailoverTest() {
             let leaderServerId = servers[0];
 
             // Shutdown the leader
-            let dbServers = getDBServers();
-            let leaderServer = dbServers.find(s => s.id === leaderServerId);
+            let leaderServer = IM.getInstanceByID(leaderServerId);
             assertTrue(leaderServer !== undefined,
                        "Could not find leader server " + leaderServerId);
             leaderServer.suspend();

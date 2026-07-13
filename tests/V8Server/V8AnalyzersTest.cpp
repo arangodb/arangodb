@@ -221,8 +221,7 @@ TEST_F(V8AnalyzerTest, test_instance_accessors) {
   // required for TRI_AddMethodVocbase(...)
   v8::Context::Scope contextScope(context);
   // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
-  std::unique_ptr<V8Global<arangodb::ArangodServer>> v8g(
-      CreateV8Globals(server.server(), isolate, 0));
+  std::unique_ptr<V8Global> v8g(CreateV8Globals(server.server(), isolate, 0));
   // otherwise v8:-utils::CreateErrorObject(...) will fail
   v8g->ArangoErrorTempl.Reset(isolate, v8::ObjectTemplate::New(isolate));
   v8g->_vocbase = &vocbase;
@@ -529,8 +528,7 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
 
   // required for TRI_AddMethodVocbase(...)
   v8::Context::Scope contextScope(context);
-  std::unique_ptr<V8Global<arangodb::ArangodServer>> v8g(
-      CreateV8Globals(server.server(), isolate, 0));
+  std::unique_ptr<V8Global> v8g(CreateV8Globals(server.server(), isolate, 0));
 
   // otherwise v8:-utils::CreateErrorObject(...) will fail
   v8g->ArangoErrorTempl.Reset(isolate, v8::ObjectTemplate::New(isolate));
@@ -1012,8 +1010,7 @@ TEST_F(V8AnalyzerTest, test_manager_get) {
   v8::Context::Scope contextScope(context);
 
   // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
-  std::unique_ptr<V8Global<arangodb::ArangodServer>> v8g(
-      CreateV8Globals(server.server(), isolate, 0));
+  std::unique_ptr<V8Global> v8g(CreateV8Globals(server.server(), isolate, 0));
   v8g->ArangoErrorTempl.Reset(
       isolate,
       v8::ObjectTemplate::New(
@@ -1441,8 +1438,7 @@ TEST_F(V8AnalyzerTest, test_manager_list) {
   // required for TRI_AddMethodVocbase(...)
   v8::Context::Scope contextScope(context);
   // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
-  std::unique_ptr<V8Global<arangodb::ArangodServer>> v8g(
-      CreateV8Globals(server.server(), isolate, 0));
+  std::unique_ptr<V8Global> v8g(CreateV8Globals(server.server(), isolate, 0));
   // otherwise v8:-utils::CreateErrorObject(...) will fail
   v8g->ArangoErrorTempl.Reset(isolate, v8::ObjectTemplate::New(isolate));
   arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate);
@@ -1836,8 +1832,7 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
   // required for TRI_AddMethodVocbase(...)
   v8::Context::Scope contextScope(context);
   // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
-  std::unique_ptr<V8Global<arangodb::ArangodServer>> v8g(
-      CreateV8Globals(server.server(), isolate, 0));
+  std::unique_ptr<V8Global> v8g(CreateV8Globals(server.server(), isolate, 0));
   // otherwise v8:-utils::CreateErrorObject(...) will fail
   v8g->ArangoErrorTempl.Reset(isolate, v8::ObjectTemplate::New(isolate));
   arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate);

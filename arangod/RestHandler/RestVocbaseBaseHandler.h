@@ -32,12 +32,10 @@
 #include "Utils/OperationResult.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/Identifiers/RevisionId.h"
-#include "VocBase/vocbase.h"
+#include "VocBase/voc-types.h"
 
 #include <memory>
 #include <string_view>
-
-struct TRI_vocbase_t;
 
 namespace arangodb {
 namespace transaction {
@@ -202,20 +200,14 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   // Please see the comment in RestHandler::makeSharedLogContextValue() for
   // some comments.
   [[nodiscard]] auto makeSharedLogContextValue() const
-      -> std::shared_ptr<LogContext::Values> override {
-    return LogContext::makeValue()
-        .with<structuredParams::UrlName>(_request->fullUrl())
-        .with<structuredParams::UserName>(_request->user())
-        .with<structuredParams::DatabaseName>(_vocbase.name())
-        .share();
-  }
+      -> std::shared_ptr<LogContext::Values> override;
 
  protected:
   // request context (ExecContext with auth + vocbase)
   ExecContext& _context;
 
-  // the vocbase, managed by ExecContext
-  TRI_vocbase_t& _vocbase;
+  // the database, managed by ExecContext
+  Database& _vocbase;
 };
 
 }  // namespace arangodb

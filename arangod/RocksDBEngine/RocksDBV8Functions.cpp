@@ -22,23 +22,20 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBV8Functions.h"
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Functions.h"
-#include "Basics/Exceptions.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
-#include "RestServer/DatabaseFeature.h"
-#include "RestServer/FlushFeature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBReplicationContext.h"
 #include "RocksDBEngine/RocksDBReplicationContextGuard.h"
 #include "RocksDBEngine/RocksDBReplicationManager.h"
-#include "RocksDBEngine/RocksDBSettingsManager.h"
+#include "RestServer/arangod.h"
+#include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Utils/ExecContext.h"
 #include "V8/v8-conv.h"
@@ -46,7 +43,6 @@
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
 #include "V8Server/v8-collection.h"
-#include "V8Server/v8-externals.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <v8.h>
@@ -89,7 +85,7 @@ static void JS_FlushWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
   }
 
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  TRI_GET_GLOBALS();
   v8g->server().getFeature<DatabaseFeature>().engine().flushWal(
       waitForSync, flushColumnFamilies);
   TRI_V8_RETURN_TRUE();
@@ -210,7 +206,7 @@ static void JS_WaitForEstimatorSync(
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  TRI_GET_GLOBALS();
 
   v8g->server().getFeature<DatabaseFeature>().engine().waitForEstimatorSync();
 
@@ -224,7 +220,7 @@ static void JS_WalRecoveryStartSequence(
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  TRI_GET_GLOBALS();
   auto* engine = dynamic_cast<RocksDBEngine*>(
       &v8g->server().getFeature<DatabaseFeature>().engine());
   if (engine == nullptr) {

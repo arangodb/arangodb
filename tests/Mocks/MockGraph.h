@@ -23,22 +23,14 @@
 
 #pragma once
 
-#include "Basics/operating-system.h"
-
-#include "Basics/StaticStrings.h"
-#include "Basics/StringUtils.h"
-
 #include "Graph/BaseOptions.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Value.h>
 
 #include <cstdint>
-#include <numeric>
 #include <unordered_set>
 #include <vector>
-
-struct TRI_vocbase_t;
 
 namespace arangodb {
 
@@ -154,8 +146,7 @@ class MockGraph {
                     arangodb::aql::QueryRegistry& queryRegistry) const
       -> uint64_t;
 
-  void storeData(TRI_vocbase_t& vocbase,
-                 std::string const& vertexCollectionName,
+  void storeData(Database& vocbase, std::string const& vertexCollectionName,
                  std::string const& edgeCollectionName,
                  std::string const& edgeCollectionSecondName = "",
                  std::vector<EdgeDef> const& secondEdges = {}) const;
@@ -170,10 +161,10 @@ class MockGraph {
 
  protected:
   void storeVertexData(
-      TRI_vocbase_t& vocbase, std::string const& vertexShardName,
+      Database& vocbase, std::string const& vertexShardName,
       std::unordered_set<VertexDef, hashVertexDef> const& vertexData) const;
 
-  void storeEdgeData(TRI_vocbase_t& vocbase, std::string const& edgeShardName,
+  void storeEdgeData(Database& vocbase, std::string const& edgeShardName,
                      std::vector<EdgeDef> const& edgeData) const;
 
  protected:

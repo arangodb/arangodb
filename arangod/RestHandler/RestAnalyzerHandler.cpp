@@ -39,6 +39,7 @@
 #include "RestServer/SystemDatabaseFeature.h"
 #include "Utilities/NameValidator.h"
 #include "Utils/ExecContext.h"
+#include "VocBase/vocbase.h"
 
 namespace {
 constexpr std::string_view moduleName("analyzers management");

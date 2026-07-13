@@ -29,6 +29,7 @@
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/MetricsFeature.h"
+#include "Metrics/IRegistry.h"
 #include "velocypack/SharedSlice.h"
 #include "Inspection/VPack.h"
 
@@ -49,16 +50,23 @@ DECLARE_GAUGE(arangodb_activities_existing, std::uint64_t,
 Feature::Feature(
     application_features::ApplicationServer& server,
     std::shared_ptr<crash_handler::DataSourceRegistry> dataSourceRegistry)
+    : Feature(server, std::move(dataSourceRegistry), FeatureOptions{}) {}
+
+Feature::Feature(
+    application_features::ApplicationServer& server,
+    std::shared_ptr<crash_handler::DataSourceRegistry> dataSourceRegistry,
+    FeatureOptions options)
     : application_features::ApplicationFeature{server, *this},
-      crash_handler::CrashHandlerDataSource(std::move(dataSourceRegistry)) {
+      crash_handler::CrashHandlerDataSource(std::move(dataSourceRegistry)),
+      _options(std::move(options)) {
   startsAfter<metrics::MetricsFeature>();
 }
 
-auto Feature::create_metrics(metrics::MetricsFeature& metrics_feature)
+auto Feature::create_metrics(metrics::IRegistry& registry)
     -> std::shared_ptr<RegistryMetrics> {
   return std::make_shared<RegistryMetrics>(
-      metrics_feature.addShared(arangodb_activities_total{}),
-      metrics_feature.addShared(arangodb_activities_existing{}));
+      registry.addShared(arangodb_activities_total{}),
+      registry.addShared(arangodb_activities_existing{}));
 }
 struct Feature::CleanupThread {
   CleanupThread(size_t gc_timeout)

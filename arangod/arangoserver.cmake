@@ -127,7 +127,6 @@ add_library(arangoserver STATIC
   RestHandler/RestSupervisionStateHandler.cpp
   RestHandler/RestSupportInfoHandler.cpp
   RestHandler/RestSystemReportHandler.cpp
-  RestHandler/RestTelemetricsHandler.cpp
   RestHandler/RestTimeHandler.cpp
   RestHandler/RestTransactionHandler.cpp
   RestHandler/RestTtlHandler.cpp
@@ -211,7 +210,6 @@ add_library(arangoserver STATIC
   Statistics/ConnectionStatistics.cpp
   Statistics/Descriptions.cpp
   Statistics/RequestStatistics.cpp
-  Statistics/ServerStatistics.cpp
   Statistics/StatisticsFeature.cpp
   Statistics/StatisticsWorker.cpp
   Statistics/StatisticsOptionsProvider.cpp

@@ -36,10 +36,9 @@
 #include <string>
 #include <string_view>
 
-struct TRI_vocbase_t;
-
 namespace arangodb {
 
+struct Database;
 class LogicalCollection;
 class DatabaseInitialSyncer;
 class ReplicationApplierConfiguration;
@@ -57,13 +56,12 @@ class DatabaseInitialSyncer : public InitialSyncer {
  private:
   // constructor is private, as DatabaseInitialSyncer uses shared_from_this()
   // and we must ensure that it is only created via make_shared.
-  DatabaseInitialSyncer(TRI_vocbase_t& vocbase,
+  DatabaseInitialSyncer(Database& vocbase,
                         ReplicationApplierConfiguration const& configuration);
 
  public:
   static std::shared_ptr<DatabaseInitialSyncer> create(
-      TRI_vocbase_t& vocbase,
-      ReplicationApplierConfiguration const& configuration);
+      Database& vocbase, ReplicationApplierConfiguration const& configuration);
 
   /// @brief apply phases
   typedef enum {
@@ -88,12 +86,12 @@ class DatabaseInitialSyncer : public InitialSyncer {
     /// @brief the syncer state (from the base Syncer)
     SyncerState& state;
     /// @brief the database to dump
-    TRI_vocbase_t& vocbase;
+    Database& vocbase;
 
     explicit Configuration(ReplicationApplierConfiguration const&,
                            replutils::BatchInfo&, replutils::Connection&, bool,
                            replutils::LeaderInfo&, replutils::ProgressInfo&,
-                           SyncerState& state, TRI_vocbase_t&);
+                           SyncerState& state, Database&);
 
     bool isChild() const noexcept;  // TODO worker safety
   };
@@ -109,7 +107,7 @@ class DatabaseInitialSyncer : public InitialSyncer {
   Result runWithInventory(bool incremental, velocypack::Slice collections,
                           char const* context = nullptr);
 
-  TRI_vocbase_t* resolveVocbase(velocypack::Slice slice) override {
+  Database* resolveVocbase(velocypack::Slice slice) override {
     return &_config.vocbase;
   }
 
@@ -131,7 +129,7 @@ class DatabaseInitialSyncer : public InitialSyncer {
   }
 
   // TODO worker safety
-  TRI_vocbase_t& vocbase() const {
+  Database& vocbase() const {
     TRI_ASSERT(vocbases().size() == 1);
     return vocbases().begin()->second.database();
   }

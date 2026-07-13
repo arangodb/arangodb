@@ -56,6 +56,7 @@
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Properties/CreateCollectionBody.h"
 #include "VocBase/Properties/DatabaseConfiguration.h"
+#include "VocBase/vocbase.h"
 
 #include <boost/range/join.hpp>
 #include <velocypack/Buffer.h>

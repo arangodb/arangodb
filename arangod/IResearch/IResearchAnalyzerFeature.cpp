@@ -22,6 +22,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Basics/Exceptions.h"
 #include "analysis/analyzers.hpp"
 #include "analysis/delimited_token_stream.hpp"
 #include "analysis/collation_token_stream.hpp"
@@ -1149,6 +1150,9 @@ IResearchAnalyzerFeature::IResearchAnalyzerFeature(
 
 Result IResearchAnalyzerFeature::canUse(std::string_view name,
                                         AnalyzerAccessLevel const& level) {
+  // Note: To use this function the name of the analyzer must either
+  // be a static analyzer name or it must be a normalized name with
+  // the database as prefix and `::` as a separator.
   auto& staticAnalyzers = getStaticAnalyzers();
 
   if (staticAnalyzers.contains(irs::hashed_string_view{name})) {
@@ -1157,10 +1161,15 @@ Result IResearchAnalyzerFeature::canUse(std::string_view name,
   }
 
   auto split = splitAnalyzerName(name);
-
-  if (irs::IsNull(split.first)) {
-    // unprefixed (static) analyzer - always allowed
-    return {};
+  TRI_ASSERT(!irs::IsNull(split.first));
+  TRI_ASSERT(!split.first.empty());
+  // For production code:
+  if (irs::IsNull(split.first) || split.first.empty()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        absl::StrCat("IResearchAnalyzerFeature::canUse: found non-static, "
+                     "non-normalized analyzer name: ",
+                     name));
   }
 
   auto& ctx = ExecContext::current();

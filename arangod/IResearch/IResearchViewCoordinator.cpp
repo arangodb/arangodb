@@ -37,12 +37,10 @@
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
 #include "IResearch/IResearchFeature.h"
-#include "IResearch/IResearchLink.h"
 #include "IResearch/VelocyPackHelper.h"
 #include "Logger/LogMacros.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "Transaction/Methods.h"
-#include "Transaction/StandaloneContext.h"
 #include "Utils/ExecContext.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Indexes.h"
@@ -76,7 +74,7 @@ bool equalPartial(IResearchViewMeta const& lhs, IResearchViewMeta const& rhs) {
 /// @brief IResearchView-specific implementation of a ViewFactory
 ////////////////////////////////////////////////////////////////////////////////
 struct IResearchViewCoordinator::ViewFactory final : arangodb::ViewFactory {
-  Result create(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
+  Result create(LogicalView::ptr& view, Database& vocbase,
                 VPackSlice definition, bool isUserRequest) const final {
     auto& server = vocbase.server();
     if (!server.hasFeature<ClusterFeature>() ||
@@ -138,7 +136,7 @@ struct IResearchViewCoordinator::ViewFactory final : arangodb::ViewFactory {
     // view might be already dropped
     if (view) {
       // open view to match the behavior in StorageEngine::openExistingDatabase
-      // and original behavior of TRI_vocbase_t::createView
+      // and original behavior of Database::createView
       view->open();
     } else {
       return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
@@ -150,7 +148,7 @@ struct IResearchViewCoordinator::ViewFactory final : arangodb::ViewFactory {
     return {};
   }
 
-  Result instantiate(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
+  Result instantiate(LogicalView::ptr& view, Database& vocbase,
                      velocypack::Slice definition,
                      bool isUserRequest) const final {
     std::string error;
@@ -314,7 +312,7 @@ Result IResearchViewCoordinator::unlink(DataSourceId) noexcept {
   return {};  // for breakpoint
 }
 
-IResearchViewCoordinator::IResearchViewCoordinator(TRI_vocbase_t& vocbase,
+IResearchViewCoordinator::IResearchViewCoordinator(Database& vocbase,
                                                    velocypack::Slice info,
                                                    bool isUserRequest)
     : LogicalView(*this, vocbase, info, isUserRequest) {
@@ -467,14 +465,10 @@ Result IResearchViewCoordinator::dropImpl() {
   }
   // drop links first
   containers::FlatHashSet<DataSourceId> currentCids;
-  std::vector<std::string> collectionNames;
   for (auto& it : _collections) {
     currentCids.emplace(it.first);
-    collectionNames.emplace_back(it.second->collectionName);
   }
-  // check link auth as per https://github.com/arangodb/backlog/issues/459
-  if (auto r = ExecContext::current().canDropView(vocbase().name(), name(),
-                                                  collectionNames);
+  if (auto r = ExecContext::current().canDropView(vocbase().name(), name());
       !r.ok()) {
     return r;
   }

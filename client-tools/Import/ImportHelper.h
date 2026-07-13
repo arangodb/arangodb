@@ -24,16 +24,16 @@
 
 #pragma once
 
-#include <atomic>
-#include <mutex>
-#include <unordered_map>
-
 #include "AutoTuneThread.h"
 #include "QuickHistogram.h"
 
 #include "Basics/ConditionVariable.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/csv.h"
+
+#include <atomic>
+#include <mutex>
+#include <unordered_map>
 
 namespace arangodb {
 class ClientFeature;
@@ -64,8 +64,7 @@ struct ImportStatistics {
   std::mutex _mutex;
   QuickHistogram _histogram;
 
-  explicit ImportStatistics(application_features::ApplicationServer&,
-                            uint64_t maxErrors);
+  explicit ImportStatistics(uint64_t maxErrors);
 
   bool logError(std::string_view message);
 };

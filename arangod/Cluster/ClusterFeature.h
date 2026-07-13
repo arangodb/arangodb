@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include <atomic>
 #include <mutex>
 #include <unordered_set>
 
@@ -57,6 +58,9 @@ class ClusterFeature : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Cluster"; }
 
+  explicit ClusterFeature(application_features::ApplicationServer& server,
+                          metrics::IRegistry& metricsRegistry,
+                          ClusterOptions options);
   explicit ClusterFeature(application_features::ApplicationServer& server,
                           metrics::IRegistry& metricsRegistry);
   ~ClusterFeature();
@@ -230,7 +234,7 @@ class ClusterFeature : public application_features::ApplicationFeature {
  private:
   ClusterFeature(application_features::ApplicationServer& server,
                  metrics::IRegistry& metricsRegistry, DatabaseFeature& database,
-                 std::type_index registration);
+                 std::type_index registration, ClusterOptions options);
   void reportRole(ServerState::RoleEnum);
   void scheduleConnectivityCheck(std::uint32_t inSeconds);
   void runConnectivityCheck();
@@ -239,7 +243,7 @@ class ClusterFeature : public application_features::ApplicationFeature {
 
   ErrorCode _syncerShutdownCode = TRI_ERROR_SHUTTING_DOWN;
   std::unique_ptr<ClusterInfo> _clusterInfo;
-  std::shared_ptr<HeartbeatThread> _heartbeatThread;
+  std::atomic<std::shared_ptr<HeartbeatThread>> _heartbeatThread;
   std::unique_ptr<AgencyCache> _agencyCache;
   uint64_t _heartbeatInterval = 0;
   std::unique_ptr<AgencyCallbackRegistry> _agencyCallbackRegistry;
