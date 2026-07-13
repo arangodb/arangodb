@@ -152,7 +152,7 @@ TEST_F(
 // ---------------------------------------------------------------------------
 class UserManagerImplTest : public ::testing::Test {
  protected:
-  ArangodServer server;
+  arangodb::application_features::ApplicationServer server;
   TestQueryRegistry queryRegistry;
   ServerState* state;
   auth::UserManagerImpl um;
