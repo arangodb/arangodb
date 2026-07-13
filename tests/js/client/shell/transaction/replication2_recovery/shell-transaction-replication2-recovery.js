@@ -36,7 +36,6 @@ const lh = require('@arangodb/testutils/replicated-logs-helper');
 const dh = require('@arangodb/testutils/document-state-helper');
 const lpreds = require('@arangodb/testutils/replicated-logs-predicates');
 const lhttp = require('@arangodb/testutils/replicated-logs-http-helper');
-const request = require('@arangodb/request');
 
 /**
  * In this test suite we check if the DocumentState can survive modifications to the cluster participants

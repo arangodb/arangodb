@@ -24,9 +24,9 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require('jsunity');
-const request = require('@arangodb/request');
 const isCluster = require("internal").isCluster();
-const { getEndpointsByType } = require('@arangodb/test-helper');
+let { instanceRole } = require('@arangodb/testutils/instance');
+let IM = global.instanceManager;
 
 function supportInfoApiSuite() {
   'use strict';
@@ -108,20 +108,18 @@ function supportInfoApiSuite() {
         return;
       }
 
-      const getUrl = endpoint => endpoint.replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:');
-
-      let dbs = getEndpointsByType('dbserver');
+      let dbs = IM.getInstancesRole(instanceRole.dbserver);
       assertTrue(dbs.length > 1);
 
-      dbs.forEach((ep) => {
-        const res = request.get({
-          url: getUrl(ep) + '/_admin/support-info'
+      dbs.forEach((arangod) => {
+        const res = arangod.toThisInstance(() => {
+          return arango.GET_RAW('/_admin/support-info');
         });
-        assertFalse(res.json.hasOwnProperty("deployment"));
-        assertTrue(res.json.hasOwnProperty("host"));
-        assertTrue(res.json.host.hasOwnProperty("role"));
-        assertTrue(res.json.host.role === "PRIMARY");
-        validateHost(res.json.host);
+        assertFalse(res.parsedBody.hasOwnProperty("deployment"));
+        assertTrue(res.parsedBody.hasOwnProperty("host"));
+        assertTrue(res.parsedBody.host.hasOwnProperty("role"));
+        assertTrue(res.parsedBody.host.role === "PRIMARY");
+        validateHost(res.parsedBody.host);
       });
     },
   };

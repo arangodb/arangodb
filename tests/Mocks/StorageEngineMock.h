@@ -30,6 +30,8 @@
 #include "StorageEngine/TransactionState.h"
 #include "VocBase/Identifiers/IndexId.h"
 
+#include "RocksDBEngine/Mocks.h"
+
 #include <atomic>
 #include <memory>
 #include <string_view>
@@ -146,8 +148,6 @@ class StorageEngineMock : private StorageEngineMockBase,
       arangodb::LogicalCollection& collection,
       arangodb::velocypack::Slice /*info*/) override;
   arangodb::Result createTickRanges(VPackBuilder&) override;
-  std::unique_ptr<arangodb::transaction::Manager> createTransactionManager(
-      arangodb::transaction::ManagerFeature&) override;
   std::shared_ptr<arangodb::TransactionState> createTransactionState(
       TRI_vocbase_t& vocbase, arangodb::TransactionId tid,
       arangodb::transaction::Options const& options,
@@ -240,7 +240,7 @@ class StorageEngineMock : private StorageEngineMockBase,
   void incrementTick(uint64_t tick) { _engineTick.fetch_add(tick); }
 
  private:
+  ::testing::NiceMock<arangodb::tests::MockDatabaseProvider> _dbProvider;
   TRI_voc_tick_t _releasedTick;
   std::atomic_uint64_t _engineTick{100};
-  arangodb::VersionTracker _versionTracker;
 };

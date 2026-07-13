@@ -31,14 +31,16 @@ class Result;
 
 namespace transaction {
 struct Options;
-}
+class Manager;
+}  // namespace transaction
 
 /// @brief transaction type
 class ClusterTransactionState final : public TransactionState {
  public:
   ClusterTransactionState(Database& database, TransactionId tid,
                           transaction::Options const& options,
-                          transaction::OperationOrigin operationOrigin);
+                          transaction::OperationOrigin operationOrigin,
+                          transaction::Manager& manager);
   ~ClusterTransactionState();
 
   [[nodiscard]] bool ensureSnapshot() override { return false; }
@@ -83,6 +85,8 @@ class ClusterTransactionState final : public TransactionState {
       DataSourceId cid, AccessMode::Type accessType) override;
 
  private:
+  /// @brief transaction manager this transaction registers with when it begins
+  transaction::Manager& _manager;
   uint64_t _numIntermediateCommits;
 };
 

@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 400 */
-/*global fail, assertEqual, assertTrue */
+/*global arango fail, assertEqual, assertTrue */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -27,36 +27,16 @@ const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
 const db = arangodb.db;
 const internal = require("internal");
-const request = require('@arangodb/request');
 let IM = global.instanceManager;
 
 const {ERROR_QUERY_COLLECTION_LOCK_FAILED, ERROR_CLUSTER_AQL_COMMUNICATION} = internal.errors;
 
-const endpointToURL = (endpoint) => {
-  if (endpoint.substr(0, 6) === 'ssl://') {
-    return 'https://' + endpoint.substr(6);
-  }
-  const pos = endpoint.indexOf('://');
-  if (pos === -1) {
-    return 'http://' + endpoint;
-  }
-  return 'http' + endpoint.substr(pos);
-};
-
-const getEndpointById = (id) => {
-  const toEndpoint = (d) => (d.endpoint);
-  return IM.arangods.filter((d) => (d.id === id))
-    .map(toEndpoint)
-    .map(endpointToURL)[0];
-};
-
 const callFinish = (server, route) => {
-  const res = request.delete({
-    url: getEndpointById(server) + "/" + route,
-    body: { code: 0 }
+  const res = server.toThisInstance(() => {
+    return arango.DELETE_RAW("/" + route, { code: 0 });
   });
   // Did not leave an engine behind
-  assertEqual(res.status, 200);
+  assertEqual(res.code, 200);
 };
 
 
@@ -88,7 +68,7 @@ function aqlFailureSuite () {
         assertTrue(serverInfo !== undefined);
         const serverName = serverInfo.split(":")[1];
         assertTrue(serverName !== undefined);
-        callFinish(serverName, route);
+        callFinish(IM.getInstanceByID(serverName), route);
 
         // Make sure we mentioned the database name
         const databaseName = parts.filter(m => m === "_system");

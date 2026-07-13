@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 400 */
-/*global fail, assertNotEqual, instanceManager */
+/*global arango, fail, assertNotEqual, instanceManager */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -27,7 +27,6 @@ var jsunity = require("jsunity");
 var arangodb = require("@arangodb");
 var db = arangodb.db;
 var internal = require("internal");
-const request = require('@arangodb/request');
 const expect = require('chai').expect;
 const wait = internal.wait;
 
@@ -51,7 +50,7 @@ const expectedSystemCollections = [
 ////////////////////////////////////////////////////////////////////////////////
 
 const waitForJob = function (postJobRes) {
-  expect(postJobRes).to.have.property("status", 202);
+  expect(postJobRes).to.have.property("code", 202);
   expect(postJobRes).to.have.property("headers");
   expect(postJobRes.headers).to.have.property('x-arango-async-id');
   const jobId = postJobRes.headers['x-arango-async-id'];
@@ -68,11 +67,10 @@ const waitForJob = function (postJobRes) {
       throw 'Waiting for REST job timed out';
     }
 
-    let putJobRes = request.put(coordinator.url + `/_api/job/${jobId}`);
-
-    expect(putJobRes).to.have.property("status");
-
-    if (putJobRes.status === 204) {
+    let putJobRes = coordinator.toThisInstance(() => {
+      return arango.PUT_RAW(`/_api/job/${jobId}`, '');
+    });
+    if (putJobRes.code === 204) {
       wait(waitInterval, false);
     } else {
       return putJobRes;
@@ -124,14 +122,11 @@ function databaseFailureSuite() {
       }
 
       // create the db async, with job API
-      const postJobRes = request.post(
-        coordinator.url + '/_api/database',
-        {
-          headers: {"x-arango-async": "store"},
-          body: {"name": dn},
-          json: true
-        }
-      );
+      const postJobRes = coordinator.toThisInstance(() => {
+        return arango.POST_RAW('/_api/database',
+                               {"name": dn},
+                               {"x-arango-async": "store"});
+      });
 
       // wait until database creation is finished
       const jobRes = waitForJob(postJobRes);

@@ -53,12 +53,14 @@ const RESET = internal.COLORS.COLOR_RESET;
 
 const functionsDocumentation = {
   'server_permissions': 'permissions test for the server',
-  'server_parameters': 'specifies startup parameters for the instance'
+  'server_parameters': 'specifies startup parameters for the instance',
+  'server_secrets': 'tests the server secrets handling'
 };
 
 const testPaths = {
   'server_permissions': [tu.pathForTesting('client/server_permissions')],
-  'server_parameters': [tu.pathForTesting('client/server_parameters')]
+  'server_parameters': [tu.pathForTesting('client/server_parameters')],
+  'server_secrets': [tu.pathForTesting('client/server_secrets')]
 };
 
 class permissionsRunner extends trs.runLocalInArangoshRunner {

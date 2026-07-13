@@ -45,7 +45,6 @@
 #include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/SingleCollectionTransaction.h"
-#include "Utils/VersionTracker.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <optional>
@@ -84,12 +83,16 @@ struct MockIndexHelpers {
 };
 
 struct MockGraphDatabase {
+  // Declared before `vocbase` so it is fully constructed before the vocbase
+  // ctor captures a reference to it.
+  ::testing::NiceMock<arangodb::tests::MockDatabaseProvider> dbProvider;
   TRI_vocbase_t vocbase;
-  VersionTracker versionTracker;
 
   MockGraphDatabase(application_features::ApplicationServer& server,
                     StorageEngine& engine, std::string name)
-      : vocbase(createInfo(server, name, 1), engine, versionTracker, true) {}
+      : vocbase(createInfo(server, name, 1), engine, dbProvider) {
+    ON_CALL(dbProvider, extendedNames()).WillByDefault(::testing::Return(true));
+  }
 
   ~MockGraphDatabase() {}
 

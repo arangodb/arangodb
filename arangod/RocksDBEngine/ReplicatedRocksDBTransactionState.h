@@ -31,7 +31,8 @@ class ReplicatedRocksDBTransactionState final : public RocksDBTransactionState {
  public:
   ReplicatedRocksDBTransactionState(
       Database& vocbase, TransactionId tid, transaction::Options const& options,
-      transaction::OperationOrigin operationOrigin);
+      transaction::OperationOrigin operationOrigin,
+      transaction::Manager& manager);
 
   ~ReplicatedRocksDBTransactionState() override;
 

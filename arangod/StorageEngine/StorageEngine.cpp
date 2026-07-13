@@ -32,7 +32,9 @@
 #include "RestServer/ViewTypesFeature.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/Storage/IStorageEngineMethods.h"
-#include "RestServer/DatabaseFeature.h"
+#include "RestServer/IDatabaseProvider.h"
+#include "Transaction/Manager.h"
+#include "Transaction/ManagerFeature.h"
 #include "VocBase/VocbaseInfo.h"
 #include "VocBase/vocbase.h"
 
@@ -44,8 +46,10 @@ StorageEngine::StorageEngine(application_features::ApplicationServer& server,
                              std::string_view engineName,
                              std::string_view featureName,
                              std::type_index registration,
-                             std::unique_ptr<IndexFactory>&& indexFactory)
+                             std::unique_ptr<IndexFactory>&& indexFactory,
+                             IDatabaseProvider& databaseProvider)
     : ApplicationFeature{server, registration, featureName},
+      _databaseProvider(databaseProvider),
       _indexFactory(std::move(indexFactory)),
       _typeName(engineName) {
   // each specific storage engine feature is optional. the storage engine
@@ -65,11 +69,8 @@ void StorageEngine::addParametersForNewCollection(velocypack::Builder&,
 
 std::unique_ptr<TRI_vocbase_t> StorageEngine::createDatabase(
     CreateDatabaseInfo&& info) {
-  DatabaseFeature& databaseFeature =
-      info.server().getFeature<DatabaseFeature>();
-  return std::make_unique<TRI_vocbase_t>(
-      std::move(info), databaseFeature.engine(),
-      databaseFeature.versionTracker(), databaseFeature.extendedNames());
+  return std::make_unique<TRI_vocbase_t>(std::move(info), *this,
+                                         _databaseProvider);
 }
 
 Result StorageEngine::writeCreateDatabaseMarker(TRI_voc_tick_t id,
@@ -176,4 +177,20 @@ TransactionStatistics const& StorageEngine::transactionStatistics()
 
 void StorageEngine::initTransactionStatistics(metrics::IRegistry& metrics) {
   _transactionStatistics = std::make_unique<TransactionStatistics>(metrics);
+}
+
+std::shared_ptr<transaction::Manager> StorageEngine::createTransactionManager(
+    transaction::ManagerFeatureOptions options,
+    metrics::Counter& expiredTransactions) {
+  ADB_PROD_ASSERT(_transactionManager.expired());
+  auto manager = std::make_shared<transaction::Manager>(
+      server(), std::move(options), expiredTransactions);
+  _transactionManager = manager;
+  return manager;
+}
+
+transaction::Manager& StorageEngine::transactionManager() const {
+  auto manager = _transactionManager.lock();
+  ADB_PROD_ASSERT(manager != nullptr);
+  return *manager;
 }

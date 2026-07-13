@@ -154,7 +154,9 @@ class DatabaseFeature final : public application_features::ApplicationFeature,
   //////////////////////////////////////////////////////////////////////////////
   Result registerPostRecoveryCallback(std::function<Result()>&& callback);
 
-  VersionTracker& versionTracker() { return _versionTracker; }
+  void notifyDdlChange(char const* reason) override {
+    _versionTracker.track(reason);
+  }
 
   /// @brief get the ids of all local databases
   std::vector<TRI_voc_tick_t> getDatabaseIds(bool includeSystem);

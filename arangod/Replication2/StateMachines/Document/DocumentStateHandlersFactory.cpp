@@ -35,6 +35,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "Logger/LogContextKeys.h"
 #include "RocksDBEngine/SimpleRocksDBTransactionState.h"
+#include "StorageEngine/StorageEngine.h"
 #include "Transaction/OperationOrigin.h"
 #include "Transaction/ReplicatedContext.h"
 
@@ -87,8 +88,8 @@ auto DocumentStateHandlersFactory::createTransaction(
   options.allowImplicitCollectionsForWrite = true;
 
   auto origin = transaction::OperationOriginInternal{"replication transaction"};
-  auto state = std::make_shared<SimpleRocksDBTransactionState>(vocbase, tid,
-                                                               options, origin);
+  auto state = std::make_shared<SimpleRocksDBTransactionState>(
+      vocbase, tid, options, origin, vocbase.engine().transactionManager());
 
   auto ctx =
       std::make_shared<transaction::ReplicatedContext>(tid, state, origin);

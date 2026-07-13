@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 200 */
-/* global fail, assertEqual, assertNotEqual, assertFalse, assertTrue */
+/* global arango, fail, assertEqual, assertNotEqual, assertFalse, assertTrue */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -27,17 +27,14 @@ let jsunity = require('jsunity');
 let internal = require('internal');
 let arangodb = require('@arangodb');
 let db = arangodb.db;
-let request = require("@arangodb/request");
 let errors = arangodb.errors;
-let { getEndpointById,
-      getEndpointsByType,
-      getChecksum,
-      getMetric
+let { getChecksum
     } = require('@arangodb/test-helper');
 let { instanceRole } = require('@arangodb/testutils/instance');
 let IM = global.instanceManager;
 
 const cn = 'UnitTestsTransaction';
+
 
 function assertInSync(leader, follower, shardId) {
   const leaderChecksum = getChecksum(leader, shardId);
@@ -55,14 +52,14 @@ function assertInSync(leader, follower, shardId) {
 
 function replicationIntermediateCommitsSuite() {
   'use strict';
-  let getEndpoints = () => {
+  let getIDs = () => {
     let shards = db._collection(cn).shards(true);
     let shardId = Object.keys(shards)[0];
-    let endpoints = [];
+    let serverIDs = [];
     shards[shardId].forEach((s) => {
-      endpoints.push(getEndpointById(s));
+      serverIDs.push(s);
     });
-    return [shardId, endpoints];
+    return [shardId, serverIDs];
   };
 
   return {
@@ -81,7 +78,9 @@ function replicationIntermediateCommitsSuite() {
         return;
       }
       let c = db._create(cn, { numberOfShards: 1, replicationFactor: 2 });
-      let [shardId, [leader, follower]] = getEndpoints();
+      let [shardId, [leaderID, followerID]] = getIDs();
+      let leader = IM.getInstanceByID(leaderID);
+      let follower = IM.getInstanceByID(followerID);
 
       let docs = [];
       for (let i = 0; i < 5000; ++i) {
@@ -98,7 +97,7 @@ function replicationIntermediateCommitsSuite() {
         }
         if (count === n / 2) {
           // do not replicate from leader to follower after half of documents
-          IM.debugSetFailAt("replicateOperations::skip", instanceRole.dbServer, leader);
+          leader.debugSetFailAt("replicateOperations::skip");
         }
         c.insert(docs);
       }
@@ -106,32 +105,36 @@ function replicationIntermediateCommitsSuite() {
       // verify document counts
       {
         // leader should have all the documents
-        let result = request({ method: "GET", url: leader + "/_api/collection/" + shardId + "/count" });
-        assertEqual(200, result.status);
-        assertEqual(n, result.json.count);
+        let result = leader.toThisInstance(() => {
+          return arango.GET_RAW("/_api/collection/" + shardId + "/count" );
+        });
+        assertEqual(200, result.code);
+        assertEqual(n, result.parsedBody.count);
         // follower should have only half the documents
-        result = request({ method: "GET", url: follower + "/_api/collection/" + shardId + "/count" });
-        assertEqual(200, result.status);
-        assertEqual(n / 2, result.json.count);
+        result = follower.toThisInstance(() => {
+          return arango.GET_RAW("/_api/collection/" + shardId + "/count");
+        });
+        assertEqual(200, result.code);
+        assertEqual(n / 2, result.parsedBody.count);
       }
       
-      IM.debugClearFailAt('', instanceRole.dbServer, leader);
+      leader.debugClearFailAt();
       // this will trigger a drop-follower operation on the next insert on the leader
-      IM.debugSetFailAt("replicateOperationsDropFollower", instanceRole.dbServer, leader);
+      leader.debugSetFailAt("replicateOperationsDropFollower");
 
-      let intermediateCommitsBefore = getMetric(follower, "arangodb_intermediate_commits_total");
-      let droppedFollowersBefore = getMetric(leader, "arangodb_dropped_followers_total");
+      let intermediateCommitsBefore = follower.getMetric("arangodb_intermediate_commits_total");
+      let droppedFollowersBefore = leader.getMetric("arangodb_dropped_followers_total");
 
       // insert a single document. this will drop the follower, and trigger a resync. 
       // the follower will need to get in sync using the incremental sync protocol
       c.insert({});
       
-      let droppedFollowersAfter = getMetric(leader, "arangodb_dropped_followers_total");
+      let droppedFollowersAfter = leader.getMetric("arangodb_dropped_followers_total");
       assertTrue(droppedFollowersBefore < droppedFollowersAfter, { droppedFollowersBefore, droppedFollowersAfter });
       
       assertInSync(leader, follower, shardId);
 
-      let intermediateCommitsAfter = getMetric(leader, "arangodb_intermediate_commits_total");
+      let intermediateCommitsAfter = leader.getMetric("arangodb_intermediate_commits_total");
       // we expect an intermediate commit for every 10k documents.
       let expected = (n / 2 / 10000); 
       assertTrue(intermediateCommitsBefore < intermediateCommitsAfter + expected, { intermediateCommitsBefore, intermediateCommitsAfter, expected });

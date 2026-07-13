@@ -35,7 +35,6 @@
 #include "Metrics/Counter.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "Transaction/Manager.h"
-#include "Transaction/ManagerFeature.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -45,8 +44,9 @@ using namespace arangodb;
 ClusterTransactionState::ClusterTransactionState(
     TRI_vocbase_t& vocbase, TransactionId tid,
     transaction::Options const& options,
-    transaction::OperationOrigin operationOrigin)
+    transaction::OperationOrigin operationOrigin, transaction::Manager& manager)
     : TransactionState(vocbase, tid, options, operationOrigin),
+      _manager(manager),
       _numIntermediateCommits(0) {
   // cppcheck-suppress ignoredReturnValue
   TRI_ASSERT(isCoordinator());
@@ -96,11 +96,8 @@ futures::Future<Result> ClusterTransactionState::beginTransaction(
     ++stats._transactionsStarted;
   }
 
-  transaction::Manager* mgr = transaction::ManagerFeature::manager();
-  TRI_ASSERT(mgr != nullptr);
-
-  _counterGuard = mgr->registerTransaction(id(), isReadOnlyTransaction(),
-                                           isFollowerTransaction());
+  _counterGuard = _manager.registerTransaction(id(), isReadOnlyTransaction(),
+                                               isFollowerTransaction());
 
   if (AccessMode::isWriteOrExclusive(_type) &&
       hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {

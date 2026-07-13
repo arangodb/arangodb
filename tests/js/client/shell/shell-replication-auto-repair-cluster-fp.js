@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 200 */
-/* global fail, assertEqual, assertNotEqual, assertFalse, assertTrue */
+/* global arango, fail, assertEqual, assertNotEqual, assertFalse, assertTrue */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -27,43 +27,35 @@ let jsunity = require('jsunity');
 let internal = require('internal');
 let arangodb = require('@arangodb');
 let db = arangodb.db;
-let request = require("@arangodb/request");
 let errors = arangodb.errors;
-let { getEndpointById,
-      getEndpointsByType,
-      getChecksum,
-      getMetric,
-      versionHas
-    } = require('@arangodb/test-helper');
+let { versionHas } = require('@arangodb/test-helper');
 const isCov = versionHas('coverage');
 let { instanceRole } = require('@arangodb/testutils/instance');
 let IM = global.instanceManager;
 
 const cn = 'UnitTestsReplication';
   
-let getBatch = (ep) => {
-  let result = request({ 
-    method: "POST", 
-    url: ep + "/_api/replication/batch",
-    body: { ttl: 60 },
-    json: true
+let getBatch = (arangod) => {
+  return arangod.toThisInstance(() => {
+    let result = arango.POST_RAW("/_api/replication/batch", { ttl: 60 });
+    assertEqual(200, result.code);
+    return result.parsedBody.id;
   });
-  assertEqual(200, result.status);
-  return result.json.id;
 };
     
-let deleteBatch = (ep, batchId) => {
-  let result = request({ method: "DELETE", url: ep + "/_api/replication/batch/" + batchId });
-  assertEqual(204, result.status);
+let deleteBatch = (arangod, batchId) => {
+  arangod.toThisInstance(() => {
+    let result = arango.DELETE("/_api/replication/batch/" + batchId);
+    assertEqual(204, result.code);
+  });
 };
     
-let getTree = (ep, batchId, shardId) => {
-  let result = request({ 
-    method: "GET", 
-    url: ep + "/_api/replication/revisions/tree?collection=" + encodeURIComponent(shardId) + "&verification=true&onlyPopulated=true&batchId=" + batchId 
+let getTree = (arangod, batchId, shardId) => {
+  return arangod.toThisInstance(() => {
+    let result = arango.GET_RAW("/_api/replication/revisions/tree?collection=" + encodeURIComponent(shardId) + "&verification=true&onlyPopulated=true&batchId=" + batchId);
+    assertEqual(200, result.code);
+    return result.parsedBody;
   });
-  assertEqual(200, result.status);
-  return result.json;
 };
 
 function assertInSync(leader, follower, shardId) {
@@ -102,7 +94,7 @@ function replicationAutoRepairSuite() {
     let shardId = Object.keys(shards)[0];
     let endpoints = [];
     shards[shardId].forEach((s) => {
-      endpoints.push(getEndpointById(s));
+      endpoints.push(s);
     });
     return [shardId, endpoints];
   };
@@ -112,27 +104,33 @@ function replicationAutoRepairSuite() {
   return {
     setUp: function () {
       IM.debugClearFailAt('', instanceRole.dbServer);
-      getEndpointsByType("dbserver").forEach((ep) => {
-        // store original log levels
-        let result = request({ method: "GET", url: ep + "/_admin/log/level" });
-        logLevels[ep] = result.json;
-        // adjust log level for replication topic
-        request({ method: "PUT", url: ep + "/_admin/log/level", body: { replication: "debug", maintenance: "info" }, json: true });
+      IM.getInstancesRole(instanceRole.dbserver).forEach((arangod) => {
+        arangod.toThisInstance(() => {
+          // store original log levels
+          let result = arango.GET_RAW("/_admin/log/level");
+          logLevels[arangod.id] = result.parsedBody;
+          // adjust log level for replication topic
+          arango.PUT_RAW("/_admin/log/level", { replication: "debug", maintenance: "info" });
+        });
       });
     },
 
     tearDown: function () {
       IM.debugClearFailAt('', instanceRole.dbServer);
-      getEndpointsByType("dbserver").forEach((ep) => {
+      IM.getInstancesRole(instanceRole.dbserver).forEach((arangod) => {
         // restore original log level
-        request({ method: "PUT", url: ep + "/_admin/log/level", body: logLevels[ep], json: true });
+        arangod.toThisInstance(() => {
+          arango.PUT_RAW("/_admin/log/level", logLevels[arangod.id]);
+        });
       });
       db._drop(cn);
     },
     
     testAutoRepairWhenTreeBrokenOnLeader: function () {
       let c = db._create(cn, { numberOfShards: 1, replicationFactor: 2 });
-      let [shardId, [leader, follower]] = getEndpoints();
+      let [shardId, [leaderID, followerID]] = getEndpoints();
+      let leader = IM.getInstanceByID(leaderID);
+      let follower = IM.getInstanceByID(followerID);
 
       let docs = [];
       for (let i = 0; i < 5000; ++i) {
@@ -149,7 +147,7 @@ function replicationAutoRepairSuite() {
         }
         if (count === n / 2) {
           // do not replicate from leader to follower after half of documents
-          IM.debugSetFailAt("replicateOperations::skip", instanceRole.dbServer, leader);
+          leader.debugSetFailAt("replicateOperations::skip");
         }
         c.insert(docs);
       }
@@ -157,13 +155,17 @@ function replicationAutoRepairSuite() {
       // verify document counts
       {
         // leader should have all the documents
-        let result = request({ method: "GET", url: leader + "/_api/collection/" + shardId + "/count" });
-        assertEqual(200, result.status);
-        assertEqual(n, result.json.count);
+        let result = leader.toThisInstance(() => {
+          return arango.GET_RAW("/_api/collection/" + shardId + "/count" );
+        });
+        assertEqual(200, result.code);
+        assertEqual(n, result.parsedBody.count);
         // follower should have only half the documents
-        result = request({ method: "GET", url: follower + "/_api/collection/" + shardId + "/count" });
-        assertEqual(200, result.status);
-        assertEqual(n / 2, result.json.count);
+        result = follower.toThisInstance(() => {
+          return arango.GET_RAW("/_api/collection/" + shardId + "/count");
+        });
+        assertEqual(200, result.code);
+        assertEqual(n / 2, result.parsedBody.count);
       }
       
       // corrupt the leader's revision tree
@@ -174,23 +176,25 @@ function replicationAutoRepairSuite() {
         deleteBatch(leader, batchId);
 
         // and now corrupt it
-        result = request({ method: "PUT", url: leader + "/_api/replication/revisions/tree?collection=" + encodeURIComponent(shardId) + "&count=1234&hash=42" });
-        assertEqual(200, result.status);
+        result = leader.toThisInstance(() => {
+          return arango.PUT_RAW("/_api/replication/revisions/tree?collection=" + encodeURIComponent(shardId) + "&count=1234&hash=42", '');
+        });
+        assertEqual(200, result.code);
       }
       
-      IM.debugClearFailAt('', instanceRole.dbServer, leader);
+      leader.debugClearFailAt();
 
       // this will trigger a drop-follower operation on the next insert on the leader
-      IM.debugSetFailAt("replicateOperationsDropFollower", instanceRole.dbServer, leader);
+      leader.debugSetFailAt("replicateOperationsDropFollower");
      
       // enable sending of revision-tree data from follower to leader for comparison
-      IM.debugSetFailAt("synchronizeShardSendTreeData", instanceRole.dbServer, follower);
+      follower.debugSetFailAt("synchronizeShardSendTreeData");
 
       // disable intentional delays of subsequent replication attempts on follower
-      IM.debugSetFailAt("SynchronizeShard::noSleepOnSyncError", instanceRole.dbServer, follower);
+      follower.debugSetFailAt("SynchronizeShard::noSleepOnSyncError");
 
-      let leaderRebuildsBefore = getMetric(leader, "arangodb_sync_tree_rebuilds_total");
-      let droppedFollowersBefore = getMetric(leader, "arangodb_dropped_followers_total");
+      let leaderRebuildsBefore = leader.getMetric("arangodb_sync_tree_rebuilds_total");
+      let droppedFollowersBefore = leader.getMetric("arangodb_dropped_followers_total");
 
       // insert a single document. this will drop the follower, and trigger a resync. 
       // the follower will need to get in sync using the incremental sync protocol
@@ -199,20 +203,22 @@ function replicationAutoRepairSuite() {
       IM.debugClearFailAt('', instanceRole.dbServer, leader);
     
       // follower must have been dropped by the insert
-      let droppedFollowersAfter = getMetric(leader, "arangodb_dropped_followers_total");
+      let droppedFollowersAfter = leader.getMetric("arangodb_dropped_followers_total");
       assertTrue(droppedFollowersBefore < droppedFollowersAfter, { droppedFollowersBefore, droppedFollowersAfter });
       
       // wait for shards to get in sync and revision trees to get repaired
       assertInSync(leader, follower, shardId);
 
       // we must have seen one tree rebuild on the leader
-      let leaderRebuildsAfter = getMetric(leader, "arangodb_sync_tree_rebuilds_total");
+      let leaderRebuildsAfter = leader.getMetric("arangodb_sync_tree_rebuilds_total");
       assertTrue(leaderRebuildsBefore < leaderRebuildsAfter, { leaderRebuildsBefore, leaderRebuildsAfter });
     },
     
     testAutoRepairWhenTreeBrokenOnFollower: function () {
       let c = db._create(cn, { numberOfShards: 1, replicationFactor: 2 });
-      let [shardId, [leader, follower]] = getEndpoints();
+      let [shardId, [leaderID, followerID]] = getEndpoints();
+      let leader = IM.getInstanceByID(leaderID);
+      let follower = IM.getInstanceByID(followerID);
 
       let docs = [];
       for (let i = 0; i < 5000; ++i) {
@@ -229,7 +235,7 @@ function replicationAutoRepairSuite() {
         }
         if (count === n / 2) {
           // do not replicate from leader to follower after half of documents
-           IM.debugSetFailAt("replicateOperations::skip", instanceRole.dbServer, leader);
+          leader.debugSetFailAt("replicateOperations::skip");
         }
         c.insert(docs);
       }
@@ -237,16 +243,20 @@ function replicationAutoRepairSuite() {
       // verify document counts
       {
         // leader should have all the documents
-        let result = request({ method: "GET", url: leader + "/_api/collection/" + shardId + "/count" });
-        assertEqual(200, result.status);
-        assertEqual(n, result.json.count);
+        let result = leader.toThisInstance(() => {
+          return arango.GET_RAW("/_api/collection/" + shardId + "/count" );
+        });
+        assertEqual(200, result.code);
+        assertEqual(n, result.parsedBody.count);
         // follower should have only half the documents
-        result = request({ method: "GET", url: follower + "/_api/collection/" + shardId + "/count" });
-        assertEqual(200, result.status);
-        assertEqual(n / 2, result.json.count);
+        result = follower.toThisInstance(() => {
+          return arango.GET_RAW("/_api/collection/" + shardId + "/count");
+        });
+        assertEqual(200, result.code);
+        assertEqual(n / 2, result.parsedBody.count);
       }
       
-      IM.debugClearFailAt('', instanceRole.dbServer, leader);
+      leader.debugClearFailAt();
     
       // corrupt the followers's revision tree
       {
@@ -256,37 +266,39 @@ function replicationAutoRepairSuite() {
         deleteBatch(follower, batchId);
 
         // and now corrupt it
-        result = request({ method: "PUT", url: follower + "/_api/replication/revisions/tree?collection=" + encodeURIComponent(shardId) + "&count=1234&hash=42" });
-        assertEqual(200, result.status);
+        result = follower.toThisInstance(() => {
+          return arango.PUT_RAW("/_api/replication/revisions/tree?collection=" + encodeURIComponent(shardId) + "&count=1234&hash=42", '');
+        });
+        assertEqual(200, result.code);
       }
 
       // this will trigger a drop-follower operation on the next insert on the leader
-      IM.debugSetFailAt("replicateOperationsDropFollower", instanceRole.dbServer, leader);
+      leader.debugSetFailAt("replicateOperationsDropFollower");
      
       // enable sending of revision-tree data from follower to leader for comparison
-      IM.debugSetFailAt("synchronizeShardSendTreeData", instanceRole.dbServer, follower);
+      follower.debugSetFailAt("synchronizeShardSendTreeData");
 
       // disable intentional delays of subsequent replication attempts on follower
-      IM.debugSetFailAt("SynchronizeShard::noSleepOnSyncError", instanceRole.dbServer, follower);
+      follower.debugSetFailAt("SynchronizeShard::noSleepOnSyncError");
 
-      let followerRebuildsBefore = getMetric(follower, "arangodb_sync_tree_rebuilds_total");
-      let droppedFollowersBefore = getMetric(leader, "arangodb_dropped_followers_total");
+      let followerRebuildsBefore = follower.getMetric("arangodb_sync_tree_rebuilds_total");
+      let droppedFollowersBefore = leader.getMetric("arangodb_dropped_followers_total");
 
       // insert a single document. this will drop the follower, and trigger a resync. 
       // the follower will need to get in sync using the incremental sync protocol
       c.insert({});
       
-      IM.debugClearFailAt('', instanceRole.dbServer, leader);
+      leader.debugClearFailAt();
     
       // follower must have been dropped by the insert
-      let droppedFollowersAfter = getMetric(leader, "arangodb_dropped_followers_total");
+      let droppedFollowersAfter = leader.getMetric("arangodb_dropped_followers_total");
       assertTrue(droppedFollowersBefore < droppedFollowersAfter, { droppedFollowersBefore, droppedFollowersAfter });
       
       // wait for shards to get in sync and revision trees to get repaired
       assertInSync(leader, follower, shardId);
 
       // we must have seen one tree rebuild on the follower
-      let followerRebuildsAfter = getMetric(follower, "arangodb_sync_tree_rebuilds_total");
+      let followerRebuildsAfter = follower.getMetric("arangodb_sync_tree_rebuilds_total");
       assertTrue(followerRebuildsBefore < followerRebuildsAfter, { followerRebuildsBefore, followerRebuildsAfter });
     },
       

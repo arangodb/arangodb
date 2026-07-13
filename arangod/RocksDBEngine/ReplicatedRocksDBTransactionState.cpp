@@ -41,8 +41,9 @@ using namespace arangodb;
 
 ReplicatedRocksDBTransactionState::ReplicatedRocksDBTransactionState(
     Database& vocbase, TransactionId tid, transaction::Options const& options,
-    transaction::OperationOrigin operationOrigin)
-    : RocksDBTransactionState(vocbase, tid, options, operationOrigin) {}
+    transaction::OperationOrigin operationOrigin, transaction::Manager& manager)
+    : RocksDBTransactionState(vocbase, tid, options, operationOrigin, manager) {
+}
 
 ReplicatedRocksDBTransactionState::~ReplicatedRocksDBTransactionState() {}
 
