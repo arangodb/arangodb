@@ -195,7 +195,17 @@ static void JS_CreateViewVocbase(
   // end of parameter parsing
   // ...........................................................................
 
-  if (auto r = ExecContext::current().canCreateView(vocbase.name(), name);
+  // Extract linked collection names from the properties' "links" field.
+  std::vector<std::string> linkedCollections;
+  if (auto linksSlice = properties.slice().get("links");
+      linksSlice.isObject()) {
+    for (auto const& pair : VPackObjectIterator(linksSlice)) {
+      linkedCollections.push_back(pair.key.copyString());
+    }
+  }
+
+  if (auto r = ExecContext::current().canCreateView(vocbase.name(), name,
+                                                    linkedCollections);
       r.fail()) {
     events::CreateView(vocbase.name(), name, TRI_ERROR_FORBIDDEN);
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, r.errorMessage());

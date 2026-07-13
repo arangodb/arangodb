@@ -160,17 +160,20 @@ struct SeeView {
 struct CreateView {
   std::string db;
   std::string name;
+  std::span<std::string> linkedCollections;
 };
 
 struct ModifyView {
   std::string db;
   std::string name;
+  std::span<std::string> linkedCollections;
 };
 
 struct RenameView {
   std::string db;
   std::string oldName;
   std::string newName;
+  std::span<std::string> linkedCollections;
 };
 
 struct DropView {

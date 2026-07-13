@@ -33,6 +33,7 @@
 #include <memory>
 #include <optional>
 #include <span>
+#include <vector>
 #include <string>
 
 #include "Utils/DatabaseGuard.h"
@@ -157,7 +158,10 @@ class ExecContext {
   Result canDropIndex(std::string_view db, std::string_view coll) const;
 
   Result canSeeView(std::string_view db, std::string_view view) const;
-  Result canCreateView(std::string_view db, std::string_view view) const;
+  Result canCreateView(std::string_view db, std::string_view view,
+                       std::span<std::string> linkedCollections) const;
+  Result canModifyView(std::string_view db, std::string_view view,
+                       std::span<std::string> linkedCollections) const;
   Result canDropView(std::string_view db, std::string_view view) const;
   Result canUseView(std::string_view db, std::string_view view,
                     ViewAccessLevel level) const;
@@ -171,7 +175,8 @@ class ExecContext {
   Result canUseGraph(std::string_view db, std::string_view graph,
                      GraphAccessLevel const level) const;
   Result canRenameView(std::string_view db, std::string_view oldViewName,
-                       std::string_view newViewName) const;
+                       std::string_view newViewName,
+                       std::span<std::string> linkedCollections) const;
 
   Result canSeeAnalyzer(std::string_view db, std::string_view analyzer) const;
   Result canCreateAnalyzer(std::string_view db,

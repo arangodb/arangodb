@@ -37,6 +37,8 @@
 #include "VocBase/LogicalView.h"
 #include "VocBase/vocbase.h"
 
+#include <velocypack/Iterator.h>
+
 using namespace arangodb::basics;
 
 namespace arangodb {
@@ -187,8 +189,17 @@ void RestViewHandler::createView() {
   // ...........................................................................
 
   auto const& execContext = ExecContext::current();
-  if (auto r =
-          execContext.canCreateView(_vocbase.name(), nameSlice.stringView());
+
+  // Extract linked collection names from the body's "links" field.
+  std::vector<std::string> linkedCollections;
+  if (auto linksSlice = body.get("links"); linksSlice.isObject()) {
+    for (auto const& pair : VPackObjectIterator(linksSlice)) {
+      linkedCollections.push_back(pair.key.copyString());
+    }
+  }
+
+  if (auto r = execContext.canCreateView(
+          _vocbase.name(), nameSlice.stringView(), linkedCollections);
       !r.ok()) {
     generateError(r);
     events::CreateView(_vocbase.name(), nameSlice.copyString(),
@@ -293,15 +304,27 @@ void RestViewHandler::modifyView(bool partialUpdate) {
   }
 
   auto const& execContext = ExecContext::current();
+
+  // For rename, linkedCollections is empty (the rename itself doesn't change
+  // which collections are linked). For modify, extract from the new body.
+  std::vector<std::string> linkedCollections;
+  if (!isRename) {
+    if (auto linksSlice = body.get("links"); linksSlice.isObject()) {
+      for (auto const& pair : VPackObjectIterator(linksSlice)) {
+        linkedCollections.push_back(pair.key.copyString());
+      }
+    }
+  }
+
   if (isRename) {
-    if (auto r =
-            execContext.canRenameView(_vocbase.name(), name, body.stringView());
+    if (auto r = execContext.canRenameView(
+            _vocbase.name(), name, body.stringView(), linkedCollections);
         !r.ok()) {
       return generateError(r);
     }
   } else {
-    if (auto r = execContext.canUseView(_vocbase.name(), name,
-                                        ViewAccessLevel::Modify);
+    if (auto r =
+            execContext.canModifyView(_vocbase.name(), name, linkedCollections);
         !r.ok()) {
       return generateError(r);
     }

@@ -325,11 +325,37 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
           },
           [&](p::CreateView const& view) -> Result {
             // Creating a view requires RW access to the database.
-            return check(p::UseDatabase{view.db, DatabaseAccessLevel::Write});
+            if (auto r =
+                    check(p::UseDatabase{view.db, DatabaseAccessLevel::Write});
+                !r.ok()) {
+              return r;
+            }
+            // Also check read access to all linked collections.
+            for (auto const& coll : view.linkedCollections) {
+              if (auto r = check(p::UseCollection{view.db, coll,
+                                                  CollectionAccessLevel::Read});
+                  !r.ok()) {
+                return r;
+              }
+            }
+            return {};
           },
           [&](p::ModifyView const& view) -> Result {
             // Modifying a view requires RW access to the database.
-            return check(p::UseDatabase{view.db, DatabaseAccessLevel::Write});
+            if (auto r =
+                    check(p::UseDatabase{view.db, DatabaseAccessLevel::Write});
+                !r.ok()) {
+              return r;
+            }
+            // Also check read access to all newly linked collections.
+            for (auto const& coll : view.linkedCollections) {
+              if (auto r = check(p::UseCollection{view.db, coll,
+                                                  CollectionAccessLevel::Read});
+                  !r.ok()) {
+                return r;
+              }
+            }
+            return {};
           },
           [&](p::RenameView const& view) -> Result {
             if (view.oldName == view.newName) {
@@ -337,7 +363,20 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
                       "new view name must be different from old view name"};
             }
             // Renaming a view requires RW access to the database.
-            return check(p::UseDatabase{view.db, DatabaseAccessLevel::Write});
+            if (auto r =
+                    check(p::UseDatabase{view.db, DatabaseAccessLevel::Write});
+                !r.ok()) {
+              return r;
+            }
+            // Also check read access to all linked collections.
+            for (auto const& coll : view.linkedCollections) {
+              if (auto r = check(p::UseCollection{view.db, coll,
+                                                  CollectionAccessLevel::Read});
+                  !r.ok()) {
+                return r;
+              }
+            }
+            return {};
           },
           [&](p::DropView const& view) -> Result {
             // Dropping a view requires RW access to the database.

@@ -248,10 +248,20 @@ Result ExecContext::canSeeView(std::string_view db,
   return can(SeeView{.db{db}, .name{view}});
 }
 
-Result ExecContext::canCreateView(std::string_view db,
-                                  std::string_view view) const {
+Result ExecContext::canCreateView(
+    std::string_view db, std::string_view view,
+    std::span<std::string> linkedCollections) const {
   using namespace auth::perms;
-  return can(CreateView{.db{db}, .name{view}});
+  return can(
+      CreateView{.db{db}, .name{view}, .linkedCollections{linkedCollections}});
+}
+
+Result ExecContext::canModifyView(
+    std::string_view db, std::string_view view,
+    std::span<std::string> linkedCollections) const {
+  using namespace auth::perms;
+  return can(
+      ModifyView{.db{db}, .name{view}, .linkedCollections{linkedCollections}});
 }
 
 Result ExecContext::canDropView(std::string_view db,
@@ -266,11 +276,15 @@ Result ExecContext::canUseView(std::string_view db, std::string_view viewName,
   return can(UseView{.db{db}, .name{viewName}, .level = requested});
 }
 
-Result ExecContext::canRenameView(std::string_view db,
-                                  std::string_view oldViewName,
-                                  std::string_view newViewName) const {
+Result ExecContext::canRenameView(
+    std::string_view db, std::string_view oldViewName,
+    std::string_view newViewName,
+    std::span<std::string> linkedCollections) const {
   using namespace auth::perms;
-  return can(RenameView{.db{db}, .oldName{oldViewName}, .newName{newViewName}});
+  return can(RenameView{.db{db},
+                        .oldName{oldViewName},
+                        .newName{newViewName},
+                        .linkedCollections{linkedCollections}});
 }
 
 Result ExecContext::canSeeAnalyzer(std::string_view db,
