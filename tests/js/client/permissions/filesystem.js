@@ -856,7 +856,7 @@ function testSuite() {
       fs.remove(allowedZipFileName);
 
       let prefixEscape = '';
-      for (i = 0; i < topLevelAllowed.split('/').length - 1; i++) {
+      for (let i = 0; i < topLevelAllowed.split('/').length - 1; i++) {
         prefixEscape += "../";
       }
       tryZipFileForbiddenList(allowedZipFileName, topLevelAllowed, [prefixEscape + 'etc/passwd']);
