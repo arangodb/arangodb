@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 200 */
-/* global fail, print, assertEqual, assertFalse, assertNotEqual */
+/* global fail, print, assertEqual, assertFalse, assertNotEqual, arango */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -31,21 +31,22 @@ const internal = require('internal');
 const arangodb = require('@arangodb');
 const request = require("@arangodb/request");
 const db = arangodb.db;
-const { getMetric, getDBServers, runParallelArangoshTests, waitForShardsInSync, versionHas } = require('@arangodb/test-helper');
+const { getInstanceInfo, runParallelArangoshTests, waitForShardsInSync, versionHas } = require('@arangodb/test-helper');
+let { instanceRole } = require('@arangodb/testutils/instance');
 
-const fetchRevisionTree = (serverUrl, shardId) => {
-  let result = request({ method: "POST", url: serverUrl + "/_api/replication/batch", body: {ttl : 3600}, json: true });
-  assertEqual(200, result.statusCode);
-  const batch = JSON.parse(result.body);
-  if (!batch.hasOwnProperty("id")) {
-    throw "Could not create batch!";
-  }
-  
-  result = request({ method: "GET",
-    url: serverUrl + `/_api/replication/revisions/tree?collection=${encodeURIComponent(shardId)}&verification=true&batchId=${batch.id}`});
-  assertEqual(200, result.statusCode, result);
-  request({ method: "DELETE", url: serverUrl + `/_api/replication/batch/${batch.id}`});
-  return JSON.parse(result.body);
+const fetchRevisionTree = (server, shardId) => {
+  return server.toThisInstance(() => {
+    let result = arango.POST_RAW("/_api/replication/batch", {ttl : 3600});
+    assertEqual(200, result.code);
+    if (!result.parsedBody.hasOwnProperty("id")) {
+      throw "Could not create batch!";
+    }
+    let cursorID = result.parsedBody.id;
+    result = arango.GET_RAW(`/_api/replication/revisions/tree?collection=${encodeURIComponent(shardId)}&verification=true&batchId=${cursorID}&onlyPopulated=true`);
+    assertEqual(200, result.code, result);
+    arango.DELETE_RAW(`/_api/replication/batch/${cursorID}`);
+    return result.parsedBody;
+  });
 };
 
 const compareTree = function (left, right) {
@@ -55,19 +56,21 @@ const compareTree = function (left, right) {
 
 const checkCollectionConsistency = (cn) => {
   const c = db._collection(cn);
-  const servers = getDBServers();
+  let IM = getInstanceInfo();
+  const dbServers = IM.getInstancesRole(instanceRole.dbserver);
   const shardInfo = c.shards(true);
   
   let failed;
   let message;
-  const getServerUrl = (serverId) => servers.filter((server) => server.id === serverId)[0].url;
   let tries = 0;
   do {
     failed = false;
     message = "";
     Object.entries(shardInfo).forEach(
-      ([shard, [leader, follower]]) => {
-        const leaderTree = fetchRevisionTree(getServerUrl(leader), shard);
+      ([shard, [leaderID, followerID]]) => {
+        let leader = IM.getInstanceByID(leaderID);
+        let follower = IM.getInstanceByID(followerID);
+        const leaderTree = fetchRevisionTree(leader, shard);
         // We remove the computed and stored nodes since we may want to print the trees, but we
         // don't want to print the 262k buckets! Equality of the trees is checked using the single
         // combined hash and document count.
@@ -81,7 +84,7 @@ const checkCollectionConsistency = (cn) => {
         // note: with rf > 1, follower is always present. the code is generalized however so
         // that the tests can easily be run with rf = 1 for debugging purposes.
         if (follower) {
-          const followerTree = fetchRevisionTree(getServerUrl(follower), shard);
+          const followerTree = fetchRevisionTree(follower, shard);
           followerTree.computed.nodes = "<reduced>";
           followerTree.stored.nodes = "<reduced>";
           if (!followerTree.equal) {
@@ -116,11 +119,12 @@ function DeadlockSuite() {
   const coordination_cn = cn + "_coord";
 
   const numCollections = 3;
+  let IM = getInstanceInfo();
 
   return {
     setUp: function () {
       db._drop(coordination_cn);
-      let rf = Math.max(2, getDBServers().length);
+      let rf = Math.max(2, IM.getInstancesRole(instanceRole.dbserver).length);
       for (let i = 0; i < numCollections; ++i) {
         db._create(cn + i, {numberOfShards: rf * 2, replicationFactor: rf});
       }
@@ -344,8 +348,8 @@ function DeadlockSuite() {
       };
      
       let droppedFollowersBefore = {};
-      getDBServers().forEach((s) => {
-        droppedFollowersBefore[s.id] = getMetric(s.url, "arangodb_dropped_followers_total");
+      IM.getInstancesRole(instanceRole.dbserver).forEach((s) => {
+        droppedFollowersBefore[s.id] = s.getMetric("arangodb_dropped_followers_total");
       });
 
       let testOpts = {
@@ -370,8 +374,8 @@ function DeadlockSuite() {
      
       // assume no followers were dropped
       let droppedFollowersAfter = {};
-      getDBServers().forEach((s) => {
-        droppedFollowersAfter[s.id] = getMetric(s.url, "arangodb_dropped_followers_total");
+      IM.getInstancesRole(instanceRole.dbserver).forEach((s) => {
+        droppedFollowersAfter[s.id] = s.getMetric("arangodb_dropped_followers_total");
       });
       assertEqual(droppedFollowersBefore, droppedFollowersAfter, JSON.stringify({droppedFollowersBefore, droppedFollowersAfter}));
 

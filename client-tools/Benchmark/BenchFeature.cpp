@@ -41,10 +41,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/GreetingsFeature.h"
-#include "Basics/FileUtils.h"
-#include "Basics/NumberOfCores.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/Utf8Helper.h"
 #include "Basics/application-exit.h"
 #include "Basics/files.h"
 #include "Basics/system-functions.h"
@@ -53,9 +50,7 @@
 #include "Benchmark/BenchmarkStats.h"
 #include "FeaturePhases/BasicFeaturePhaseClient.h"
 #include "Logger/LogMacros.h"
-#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
 #include "Shell/ClientFeature.h"
 #include "SimpleHttpClient/HttpResponseChecker.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
@@ -78,7 +73,13 @@ using namespace arangodb::rest;
 
 BenchFeature::BenchFeature(application_features::ApplicationServer& server,
                            int* result)
-    : ApplicationFeature{server, *this}, _result(result) {
+    : BenchFeature(server, result, BenchFeatureOptions{}) {}
+
+BenchFeature::BenchFeature(application_features::ApplicationServer& server,
+                           int* result, BenchFeatureOptions options)
+    : ApplicationFeature{server, *this},
+      _options(std::move(options)),
+      _result(result) {
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseClient>();
 
@@ -296,11 +297,10 @@ void BenchFeature::start() {
 
     for (uint64_t i = 0; i < _options.threadCount; ++i) {
       auto thread = std::make_unique<BenchmarkThread>(
-          server(), benchmark.get(), &startCondition,
-          &BenchFeature::updateStartCounter, static_cast<int>(i),
-          &operationsCounter, client, _options.keepAlive, _options.async,
-          _options.histogramIntervalSize, _options.histogramNumIntervals,
-          _options.generateHistogram);
+          benchmark.get(), &startCondition, &BenchFeature::updateStartCounter,
+          static_cast<int>(i), &operationsCounter, client, _options.keepAlive,
+          _options.async, _options.histogramIntervalSize,
+          _options.histogramNumIntervals, _options.generateHistogram);
       thread->setOffset(i * realStep);
       thread->start();
       threads.push_back(std::move(thread));

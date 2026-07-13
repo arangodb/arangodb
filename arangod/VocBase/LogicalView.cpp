@@ -21,7 +21,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "LogicalView.h"
+#include "VocBase/LogicalCollection.h"
+#include "VocBase/LogicalView.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
@@ -83,7 +84,7 @@ bool readIsSystem(velocypack::Slice definition) {
 // The Slice contains the part of the plan that
 // is relevant for this view
 LogicalView::LogicalView(std::pair<ViewType, std::string_view> typeInfo,
-                         TRI_vocbase_t& vocbase, velocypack::Slice definition,
+                         Database& vocbase, velocypack::Slice definition,
                          bool isUserRequest)
     : LogicalDataSource{*this,
                         vocbase,
@@ -132,7 +133,7 @@ Result LogicalView::appendVPack(velocypack::Builder& build, Serialization ctx,
   return appendVPackImpl(build, ctx, safe);
 }
 
-Result LogicalView::create(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
+Result LogicalView::create(LogicalView::ptr& view, Database& vocbase,
                            velocypack::Slice definition, bool isUserRequest) {
   // extract view name
   std::string name;
@@ -187,8 +188,20 @@ Result LogicalView::drop() {
   }
 }
 
+std::vector<std::string> LogicalView::linkedCollectionNames() const {
+  std::vector<std::string> result;
+  visitCollections([&](DataSourceId cid, Indexes*) {
+    auto collection = vocbase().lookupCollection(cid);
+    if (collection) {
+      result.emplace_back(collection->name());
+    }
+    return true;
+  });
+  return result;
+}
+
 bool LogicalView::enumerate(
-    TRI_vocbase_t& vocbase,
+    Database& vocbase,
     std::function<bool(std::shared_ptr<LogicalView> const&)> const& callback) {
   TRI_ASSERT(callback);
   if (!ServerState::instance()->isCoordinator()) {
@@ -214,7 +227,7 @@ bool LogicalView::enumerate(
   return true;
 }
 
-Result LogicalView::instantiate(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
+Result LogicalView::instantiate(LogicalView::ptr& view, Database& vocbase,
                                 velocypack::Slice definition,
                                 bool isUserRequest) {
   auto& server = vocbase.server();
@@ -246,7 +259,7 @@ Result LogicalView::rename(std::string&& newName) {
 
 namespace cluster_helper {
 
-Result construct(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
+Result construct(LogicalView::ptr& view, Database& vocbase,
                  velocypack::Slice definition, bool isUserRequest) noexcept {
   auto& server = vocbase.server();
   if (!server.hasFeature<ClusterFeature>()) {
@@ -284,7 +297,7 @@ Result construct(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
     view = engine.getView(vocbase.name(), id);
     if (view) {
       // open view to match the behavior in StorageEngine::openExistingDatabase
-      // and original behavior of TRI_vocbase_t::createView
+      // and original behavior of Database::createView
       view->open();
     } else {
       return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
@@ -337,7 +350,7 @@ Result properties(LogicalView const& view, bool safe) noexcept {
 }  // namespace cluster_helper
 namespace storage_helper {
 
-Result construct(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
+Result construct(LogicalView::ptr& view, Database& vocbase,
                  velocypack::Slice definition, bool isUserRequest) noexcept {
   return safeCall([&]() -> Result {
     TRI_set_errno(TRI_ERROR_NO_ERROR);  // reset before calling createView(...)

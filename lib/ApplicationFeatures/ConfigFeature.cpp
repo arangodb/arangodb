@@ -56,6 +56,31 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
+ConfigFeature::ConfigFeature(application_features::ApplicationServer& server,
+                             std::string const& progname,
+                             std::string const& configFilename)
+    : ConfigFeature(server, progname, configFilename, ConfigFeatureOptions{}) {}
+
+ConfigFeature::ConfigFeature(application_features::ApplicationServer& server,
+                             std::string const& progname,
+                             std::string const& configFilename,
+                             ConfigFeatureOptions options)
+    : application_features::ApplicationFeature{server, *this},
+      _version{[&server]() {
+        return server.hasFeature<VersionFeature>()
+                   ? &server.getFeature<VersionFeature>()
+                   : nullptr;
+      }()},
+      _options(std::move(options)) {
+  ADB_PROD_ASSERT(_version != nullptr);
+  _options.file = configFilename;
+  _options.progname = progname;
+
+  setOptional(false);
+  startsAfter<LoggerFeature>();
+  startsAfter<ShellColorsFeature>();
+}
+
 void ConfigFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   ConfigOptionsProvider provider;
   provider.declareOptions(options, _options);

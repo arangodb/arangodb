@@ -36,9 +36,9 @@
 #include <span>
 #include <string>
 
-struct TRI_vocbase_t;
-
 namespace arangodb {
+struct Database;
+
 namespace transaction {
 class Methods;
 }
@@ -101,7 +101,7 @@ class ExecContext {
   void forceSuperuser();
 
   /// @brief returns the vocbase associated with this context, if any
-  [[nodiscard]] std::optional<std::reference_wrapper<TRI_vocbase_t>> vocbase()
+  [[nodiscard]] std::optional<std::reference_wrapper<Database>> vocbase()
       const noexcept;
 
   /// @brief returns the request associated with this context, if any
@@ -167,10 +167,8 @@ class ExecContext {
 
   Result canSeeView(std::string_view db, std::string_view view) const;
   Result canCreateView(std::string_view db, std::string_view view) const;
-  // TODO Remove defaulting of the collections parameter, it's only
-  //      there for now so everything compiles.
   Result canDropView(std::string_view db, std::string_view view,
-                     std::vector<std::string> collections = {}) const;
+                     std::vector<std::string> collections) const;
   Result canUseView(std::string_view db, std::string_view view,
                     ViewAccessLevel level) const;
 
@@ -253,7 +251,7 @@ struct [[deprecated(
 
  private:
   static auto getSuperuserContextFrom(ExecContext const* old)
-      -> std::shared_ptr<ExecContext const>;
+      ->std::shared_ptr<ExecContext const>;
 
   std::shared_ptr<ExecContext const> _old;
 };

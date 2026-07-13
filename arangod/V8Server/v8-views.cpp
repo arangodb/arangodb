@@ -215,7 +215,7 @@ static void JS_CreateViewVocbase(
 
   try {
     // First refresh our analyzers cache to see all latest changes in analyzers
-    TRI_GET_SERVER_GLOBALS(ArangodServer);
+    TRI_GET_GLOBALS();
     auto res =
         v8g->server()
             .getFeature<arangodb::iresearch::IResearchAnalyzerFeature>()
@@ -319,7 +319,8 @@ static void JS_DropViewVocbase(
   auto view = CollectionNameResolver(vocbase).getView(name);
 
   if (view) {
-    if (auto r = ExecContext::current().canDropView(vocbase.name(), name);
+    if (auto r = ExecContext::current().canDropView(
+            vocbase.name(), name, view->linkedCollectionNames());
         r.fail()) {  // check auth after ensuring
                      // that the view exists
       events::DropView(vocbase.name(), view->name(), TRI_ERROR_FORBIDDEN);
@@ -386,7 +387,8 @@ static void JS_DropViewVocbaseObj(
   // end of parameter parsing
   // ...........................................................................
 
-  if (auto r = ExecContext::current().canDropView(vocbase.name(), view->name());
+  if (auto r = ExecContext::current().canDropView(
+          vocbase.name(), view->name(), view->linkedCollectionNames());
       r.fail()) {
     // check auth after ensuring that the view exists
     events::DropView(vocbase.name(), view->name(), TRI_ERROR_FORBIDDEN);
@@ -652,7 +654,7 @@ static void JS_PropertiesViewVocbase(
     }
 
     auto& vocbase = GetContextVocBase(isolate);
-    TRI_GET_SERVER_GLOBALS(ArangodServer);
+    TRI_GET_GLOBALS();
     auto res =
         v8g->server()
             .getFeature<arangodb::iresearch::IResearchAnalyzerFeature>()

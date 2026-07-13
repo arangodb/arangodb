@@ -33,9 +33,9 @@
 #include <list>
 #include <mutex>
 
-struct TRI_vocbase_t;
-
 namespace arangodb {
+
+struct Database;
 namespace consensus {
 
 static inline double steadyClockToDouble() {
@@ -105,7 +105,7 @@ class Constituent : public Thread {
   // Orderly shutdown of thread
   void beginShutdown() override;
 
-  bool start(TRI_vocbase_t* vocbase);
+  bool start(Database* database);
 
   // update leaderId and term if inactive
   void update(std::string const&, term_t);
@@ -146,7 +146,7 @@ class Constituent : public Thread {
   // Count election events which are more recent than `threshold` seconds.
   int64_t countRecentElectionEvents(double threshold);
 
-  TRI_vocbase_t* _vocbase;
+  Database* _vocbase;
 
   term_t _term;                    // term number
   metrics::Gauge<term_t>& _gterm;  // term number

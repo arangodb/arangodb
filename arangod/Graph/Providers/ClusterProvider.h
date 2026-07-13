@@ -123,7 +123,7 @@ class ClusterProvider {
   void destroyEngines();
 
   [[nodiscard]] transaction::Methods* trx();
-  [[nodiscard]] TRI_vocbase_t const& vocbase() const;
+  [[nodiscard]] Database const& vocbase() const;
 
   void prepareIndexExpressions(aql::Ast* ast);
 

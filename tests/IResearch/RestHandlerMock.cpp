@@ -23,7 +23,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestHandlerMock.h"
-#include "RestServer/VocbaseContext.h"
+#include "Utils/ExecContext.h"
 #include "VocBase/vocbase.h"
 
 auto GeneralRequestMock::generate(TRI_vocbase_t& vocbase,

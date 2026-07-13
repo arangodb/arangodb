@@ -42,6 +42,9 @@ class ClusterUpgradeFeature final
   static constexpr std::string_view name() noexcept { return "ClusterUpgrade"; }
 
   ClusterUpgradeFeature(application_features::ApplicationServer& server,
+                        DatabaseFeature& databaseFeature,
+                        ClusterUpgradeFeatureOptions options);
+  ClusterUpgradeFeature(application_features::ApplicationServer& server,
                         DatabaseFeature& databaseFeature);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;

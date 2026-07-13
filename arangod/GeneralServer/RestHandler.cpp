@@ -27,12 +27,14 @@
 #include "Activities/RegistryGlobalVariable.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Auth/TokenCache.h"
+#include "Basics/DownCast.h"
 #include "Basics/dtrace-wrapper.h"
 #include "Basics/error.h"
 #include "Basics/voc-errors.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "Futures/coro-helper.h"
 #include "Futures/Utilities.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServerFeature.h"
@@ -253,14 +255,14 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
   std::string serverId = std::get<0>(forwardContent);
   bool removeHeader = std::get<1>(forwardContent);
 
-  if (removeHeader) {
-    _request->removeHeader(StaticStrings::Authorization);
-    _request->setUser("");
-  }
-
   if (serverId.empty()) {
     // no need to actually forward
     return futures::makeFuture(Result());
+  }
+
+  if (removeHeader) {
+    _request->removeHeader(StaticStrings::Authorization);
+    _request->setUser("");
   }
 
   NetworkFeature& nf = server().getFeature<NetworkFeature>();
@@ -440,6 +442,23 @@ auto RestHandler::runHandlerStateMachine() -> futures::Future<futures::Unit> {
   co_await handleAuthorizationChecks();
   if (_state == HandlerState::FAILED) {
     co_return fail();
+  }
+
+  // forward to correct server if necessary
+  bool forwarded;
+  auto res = forwardRequest(forwarded);
+  if (forwarded) {
+    _statistics.SET_SUPERUSER();
+    Result res2 = co_await std::move(res);
+    _sendResponseCallback(this);
+    co_return;
+  }
+
+  if (res.hasValue() && res.waitAndGet().fail()) {
+    Result r = co_await std::move(res);
+    generateError(r);
+    _sendResponseCallback(this);
+    co_return;
   }
 
   auto const logScopeGuard =

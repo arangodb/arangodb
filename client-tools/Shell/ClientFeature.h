@@ -27,6 +27,7 @@
 #include <string>
 #include <string_view>
 
+#include "Shell/ClientFeatureOptions.h"
 #include "Shell/ShellConsoleFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
@@ -52,30 +53,14 @@ struct SimpleHttpClientParams;
 
 class ClientFeature final : public HttpEndpointProvider {
  public:
-  constexpr static double const DEFAULT_REQUEST_TIMEOUT = 1200.0;
-  constexpr static double const DEFAULT_CONNECTION_TIMEOUT = 5.0;
-  constexpr static size_t const DEFAULT_RETRIES = 2;
-  constexpr static double const LONG_TIMEOUT = 86400.0;
+  constexpr static double DEFAULT_REQUEST_TIMEOUT = 1200.0;
+  constexpr static double DEFAULT_CONNECTION_TIMEOUT = 5.0;
   constexpr static std::string_view name() noexcept { return "Client"; }
 
   ClientFeature(application_features::ApplicationServer& server,
                 bool allowJwtSecret, size_t maxNumEndpoints = 1,
                 double connectionTimeout = DEFAULT_CONNECTION_TIMEOUT,
-                double requestTimeout = DEFAULT_REQUEST_TIMEOUT)
-      : ClientFeature{server,
-                      server.getFeature<CommunicationFeaturePhase>(),
-                      typeid(HttpEndpointProvider),
-                      allowJwtSecret,
-                      maxNumEndpoints,
-                      connectionTimeout,
-                      requestTimeout} {
-    if (server.hasFeature<ShellConsoleFeature>()) {
-      _console = &server.getFeature<ShellConsoleFeature>();
-    }
-
-    startsAfter<CommunicationFeaturePhase>();
-    startsAfter<GreetingsFeaturePhase>();
-  }
+                double requestTimeout = DEFAULT_REQUEST_TIMEOUT);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -146,53 +131,26 @@ class ClientFeature final : public HttpEndpointProvider {
  private:
   ClientFeature(ApplicationServer& server, CommunicationFeaturePhase& comm,
                 std::type_index registration, bool allowJwtSecret,
-                size_t maxNumEndpoints = 1,
-                double connectionTimeout = DEFAULT_CONNECTION_TIMEOUT,
-                double requestTimeout = DEFAULT_REQUEST_TIMEOUT);
+                size_t maxNumEndpoints, double connectionTimeout,
+                double requestTimeout, ClientFeatureOptions options);
 
   void readPassword();
   void readJwtSecret();
   void readJwtToken();
   void loadJwtSecretFile();
 
+  ClientFeatureOptions _options;
+
   CommunicationFeaturePhase& _comm;
   ShellConsoleFeature* _console;
 
-  // protects most settings except codepage
   basics::ReadWriteLock mutable _settingsLock;
 
-  std::vector<std::string> _endpoints;
-  size_t const _maxNumEndpoints;
-
-  std::string _databaseName;
-  std::string _username;
-  std::string _password;
   std::string _jwtSecret;
-  std::string _jwtSecretFile;
-  std::string _jwtToken;
-  double _connectionTimeout;
-  double _requestTimeout;
-  double _jwtRenewalThreshold;  // seconds before expiry to renew JWT
-  uint64_t _maxPacketSize;
-  // if > 0, it means that request bodies >= this value will be
-  // sent our compressed.
-  uint64_t _compressRequestThreshold;
-  // only set at startup
-  uint64_t _sslProtocol;
   size_t _retries;
-
-  bool const _allowJwtSecret;
-  bool _authentication;
-  bool _askJwtSecret;
 
   bool _warn;
   bool _warnConnect;
-  bool _haveServerPassword;
-  bool _forceJson;
-  // if true, all requests sent out will add an extra
-  // HTTP header "Accept-Encoding: deflate" to advertise that
-  // the remote can compress the response body.
-  bool _compressTransfer;
 };
 
 }  // namespace arangodb

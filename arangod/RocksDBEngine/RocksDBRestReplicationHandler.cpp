@@ -67,8 +67,7 @@ RocksDBRestReplicationHandler::RocksDBRestReplicationHandler(
     GeneralResponse* response)
     : RestReplicationHandler(server, request, response),
       _manager(_vocbase.engine<RocksDBEngine>().replicationManager()),
-      _quickKeysNumDocsLimit(
-          server.getFeature<ReplicationFeature>().quickKeysLimit()) {
+      _quickKeysNumDocsLimit(replicationFeature().quickKeysLimit()) {
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   adjustQuickKeysNumDocsLimit();
 #endif

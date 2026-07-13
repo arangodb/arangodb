@@ -24,8 +24,8 @@
 #include <gtest/gtest.h>
 
 #include "Mocks/LogLevels.h"
+#include "Replication2/Mocks/TestReplicatedStateFeature.h"
 #include "Replication2/ReplicatedLog/TestHelper.h"
-
 #include "Replication2/Streams/Streams.h"
 #include "Replication2/Streams/LogMultiplexer.h"
 #include "Replication2/ReplicatedState/ReplicatedStateFeature.h"
@@ -41,8 +41,8 @@ using namespace arangodb::replication2::test;
 
 struct ReplicatedStateTest : test::ReplicatedLogTest {
   ReplicatedStateTest() { feature->registerStateType<MyState>("my-state"); }
-  std::shared_ptr<ReplicatedStateFeature> feature =
-      std::make_shared<ReplicatedStateFeature>();
+  std::shared_ptr<tests::TestReplicatedStateFeature> feature =
+      std::make_shared<tests::TestReplicatedStateFeature>();
   std::shared_ptr<MockStatePersistorInterface> statePersistor =
       std::make_shared<MockStatePersistorInterface>();
   std::shared_ptr<MockStatePersistorInterface> statePersistor2 =

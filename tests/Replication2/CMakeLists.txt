@@ -16,7 +16,6 @@ set(ARANGODB_REPLICATION2_TEST_HELPER_SOURCES
 
   Mocks/ParticipantsFactoryMock.h
   Mocks/FakeReplicatedState.cpp Mocks/FakeReplicatedState.h
-  Mocks/ReplicatedStateMetricsMock.cpp Mocks/ReplicatedStateMetricsMock.h
 
   Mocks/DocumentStateMocks.cpp Mocks/DocumentStateMocks.h
   Mocks/MockOracle.h
@@ -122,7 +121,6 @@ add_library(arango_tests_replication2_pure OBJECT
 
 
 target_sources(arango_tests_replication2_pure PRIVATE
-  Mocks/ReplicatedLogMetricsMock.cpp
   Mocks/FakeStorageEngineMethods.cpp
   Mocks/FakeAsyncExecutor.cpp
   Helper/ModelChecker/Actors.cpp

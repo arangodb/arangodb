@@ -31,6 +31,8 @@ class FortuneFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Fortune"; }
 
+  explicit FortuneFeature(application_features::ApplicationServer& server,
+                          FortuneFeatureOptions options);
   explicit FortuneFeature(application_features::ApplicationServer& server);
 
  public:

@@ -63,9 +63,7 @@ arangodb::ValidatorBase* QueryExpressionContext::buildValidator(
   return _aqlFunctionsInternalCache.buildValidator(params);
 }
 
-TRI_vocbase_t& QueryExpressionContext::vocbase() const {
-  return _trx.vocbase();
-}
+Database& QueryExpressionContext::vocbase() const { return _trx.vocbase(); }
 
 transaction::Methods& QueryExpressionContext::trx() const { return _trx; }
 

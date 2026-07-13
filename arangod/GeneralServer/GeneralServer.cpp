@@ -36,7 +36,6 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "Scheduler/Scheduler.h"
-#include "Scheduler/SchedulerFeature.h"
 
 #include <chrono>
 #include <thread>
@@ -53,11 +52,9 @@ using namespace arangodb::rest;
 GeneralServer::GeneralServer(GeneralServerFeature& feature,
                              uint64_t numIoThreads, bool allowEarlyConnections)
     : _feature(feature), _allowEarlyConnections(allowEarlyConnections) {
-  auto& server = feature.server();
-
   _contexts.reserve(numIoThreads);
   for (size_t i = 0; i < numIoThreads; ++i) {
-    _contexts.emplace_back(server);
+    _contexts.emplace_back();
   }
 }
 

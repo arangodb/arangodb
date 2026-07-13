@@ -391,7 +391,7 @@ bool IResearchInvertedIndexMeta::init(
 bool IResearchInvertedIndexMeta::json(
     arangodb::application_features::ApplicationServer& server,
     VPackBuilder& builder, bool writeAnalyzerDefinition,
-    TRI_vocbase_t const* defaultVocbase /*= nullptr*/) const {
+    Database const* defaultVocbase /*= nullptr*/) const {
   if (!IResearchDataStoreMeta::json(builder)) {
     return false;
   }
@@ -466,7 +466,7 @@ bool IResearchInvertedIndexMeta::operator==(
 
 bool IResearchInvertedIndexMeta::matchesDefinition(
     IResearchInvertedIndexMeta const& meta, VPackSlice other,
-    TRI_vocbase_t const& vocbase) {
+    Database const& vocbase) {
   auto value = other.get(arangodb::StaticStrings::IndexFields);
 
   if (!value.isArray()) {
@@ -489,7 +489,7 @@ bool IResearchInvertedIndexMeta::matchesDefinition(
 bool InvertedIndexField::json(
     arangodb::application_features::ApplicationServer& server,
     VPackBuilder& builder, InvertedIndexField const& parent, bool rootMode,
-    TRI_vocbase_t const* defaultVocbase /*= nullptr*/) const {
+    Database const* defaultVocbase /*= nullptr*/) const {
   // FIXME: uncomment once parameter is supported
   // if (rootMode || parent._isArray != _isArray) {
   //  builder.add(kIsArrayFieldName, VPackValue(_isArray));

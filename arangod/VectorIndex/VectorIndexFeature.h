@@ -42,6 +42,9 @@ class VectorIndexFeature final
       public IVectorIndexProvider {
  public:
   VectorIndexFeature(application_features::ApplicationServer& server,
+                     DatabaseFeature& databaseFeature,
+                     VectorIndexFeatureOptions options);
+  VectorIndexFeature(application_features::ApplicationServer& server,
                      DatabaseFeature& databaseFeature);
 
   static constexpr std::string_view name() noexcept { return "VectorIndex"; }

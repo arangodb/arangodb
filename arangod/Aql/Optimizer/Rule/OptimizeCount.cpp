@@ -41,7 +41,7 @@
 #include "Aql/TypedAstNodes.h"
 #include "Aql/Variable.h"
 #include "Containers/SmallVector.h"
-#include "VocBase/Methods/Collections.h"
+#include "VocBase/vocbase.h"
 
 #include <unordered_map>
 #include <unordered_set>

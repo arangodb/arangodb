@@ -616,8 +616,7 @@ static void JS_DropEdgeDefinition(
 }
 
 static void InitV8GeneralGraphClass(v8::Handle<v8::Context> context,
-                                    TRI_vocbase_t* vocbase,
-                                    TRI_v8_global_t* v8g,
+                                    Database* vocbase, TRI_v8_global_t* v8g,
                                     v8::Isolate* isolate) {
   /* FULL API
    * _edgeCollections
@@ -696,7 +695,7 @@ static void InitV8GeneralGraphClass(v8::Handle<v8::Context> context,
 
 #ifdef USE_ENTERPRISE
 static void InitV8SmartGraphClass(v8::Handle<v8::Context> context,
-                                  TRI_vocbase_t* vocbase, TRI_v8_global_t* v8g,
+                                  Database* vocbase, TRI_v8_global_t* v8g,
                                   v8::Isolate* isolate) {
   v8::Handle<v8::ObjectTemplate> rt;
   v8::Handle<v8::FunctionTemplate> ft;
@@ -744,8 +743,7 @@ static void InitV8SmartGraphClass(v8::Handle<v8::Context> context,
 #endif
 
 static void InitV8GeneralGraphModule(v8::Handle<v8::Context> context,
-                                     TRI_vocbase_t* vocbase,
-                                     TRI_v8_global_t* v8g,
+                                     Database* vocbase, TRI_v8_global_t* v8g,
                                      v8::Isolate* isolate) {
   /* These functions still have a JS only implementation
    * JS ONLY:
@@ -794,9 +792,8 @@ static void InitV8GeneralGraphModule(v8::Handle<v8::Context> context,
   }
 }
 
-void TRI_InitV8GeneralGraph(v8::Handle<v8::Context> context,
-                            TRI_vocbase_t* vocbase, TRI_v8_global_t* v8g,
-                            v8::Isolate* isolate) {
+void TRI_InitV8GeneralGraph(v8::Handle<v8::Context> context, Database* vocbase,
+                            TRI_v8_global_t* v8g, v8::Isolate* isolate) {
   InitV8GeneralGraphModule(context, vocbase, v8g, isolate);
   InitV8GeneralGraphClass(context, vocbase, v8g, isolate);
 #ifdef USE_ENTERPRISE

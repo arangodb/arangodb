@@ -26,11 +26,11 @@
 #include <gmock/gmock.h>
 
 #include "Cache/ICacheManagerProvider.h"
-#include "Metrics/IRegistry.h"
 #include "RestServer/IDatabasePathProvider.h"
 #include "RestServer/IDatabaseProvider.h"
 #include "RestServer/IDumpLimitsProvider.h"
 #include "RestServer/IFlushControl.h"
+#include "Replication2/ReplicatedLog/IReplicatedLogProvider.h"
 #include "RocksDBEngine/IIndexCacheRefill.h"
 #include "RocksDBEngine/ISortingPolicy.h"
 #include "VectorIndex/IVectorIndexProvider.h"
@@ -51,6 +51,8 @@ struct MockFlushControl : IFlushControl {
   MOCK_METHOD(bool, isEnabled, (), (const, noexcept, override));
   MOCK_METHOD((std::tuple<std::size_t, std::size_t, TRI_voc_tick_t>),
               releaseUnusedTicks, (), (override));
+  MOCK_METHOD(void, registerFlushSubscription,
+              (std::shared_ptr<FlushSubscription> const&), (override));
 };
 
 struct MockDumpLimitsProvider : IDumpLimitsProvider {
@@ -61,8 +63,8 @@ struct MockDumpLimitsProvider : IDumpLimitsProvider {
 struct MockDatabaseProvider : IDatabaseProvider {
   MOCK_METHOD(VocbasePtr, useDatabase, (std::string_view), (const, override));
   MOCK_METHOD(VocbasePtr, useDatabase, (TRI_voc_tick_t), (const, override));
-  MOCK_METHOD(void, enumerateDatabases,
-              (std::function<void(TRI_vocbase_t&)> const&), (override));
+  MOCK_METHOD(void, enumerateDatabases, (std::function<void(Database&)> const&),
+              (override));
   MOCK_METHOD(void, inventory,
               (velocypack::Builder&, TRI_voc_tick_t,
                std::function<bool(LogicalCollection const*)> const&),
@@ -75,6 +77,10 @@ struct MockDatabaseProvider : IDatabaseProvider {
 
 struct MockCacheManagerProvider : ICacheManagerProvider {
   MOCK_METHOD(cache::Manager*, manager, (), (override));
+  MOCK_METHOD(std::size_t, minValueSizeForEdgeCompression, (),
+              (const, noexcept, override));
+  MOCK_METHOD(std::uint32_t, accelerationFactorForEdgeCompression, (),
+              (const, noexcept, override));
 };
 
 struct MockSortingPolicy : ISortingPolicy {
@@ -88,11 +94,15 @@ struct MockIndexCacheRefill : IIndexCacheRefill {
   MOCK_METHOD(bool, autoRefill, (), (const, noexcept, override));
   MOCK_METHOD(bool, autoRefillOnFollowers, (), (const, noexcept, override));
   MOCK_METHOD(void, waitForCatchup, (), (override));
+  MOCK_METHOD(void, trackRefill,
+              (std::shared_ptr<LogicalCollection> const&, IndexId,
+               std::vector<std::string>),
+              (override));
 };
 
-struct MockMetricsRegistry : metrics::IRegistry {
-  MOCK_METHOD(std::shared_ptr<metrics::Metric>, doAdd, (metrics::Builder&),
-              (override));
+struct MockReplicatedLogProvider : replication2::IReplicatedLogProvider {
+  MOCK_METHOD(std::shared_ptr<replication2::ReplicatedLogGlobalSettings const>,
+              options, (), (const, noexcept, override));
 };
 
 }  // namespace arangodb::tests

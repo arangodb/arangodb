@@ -35,6 +35,18 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
+VersionFeature::VersionFeature(application_features::ApplicationServer& server)
+    : VersionFeature(server, VersionFeatureOptions{}) {}
+
+VersionFeature::VersionFeature(application_features::ApplicationServer& server,
+                               VersionFeatureOptions options)
+    : application_features::ApplicationFeature{server, *this},
+      _options(std::move(options)) {
+  setOptional(false);
+
+  startsAfter<ShellColorsFeature>();
+}
+
 void VersionFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   VersionOptionsProvider provider;
   provider.declareOptions(options, _options);

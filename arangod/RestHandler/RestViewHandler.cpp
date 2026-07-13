@@ -23,20 +23,19 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestViewHandler.h"
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
-#include "Basics/Utf8Helper.h"
-#include "Basics/VelocyPackHelper.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
+#include "Logger/LogMacros.h"
 #include "Rest/GeneralResponse.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Transaction/OperationOrigin.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Events.h"
-#include "Utilities/NameValidator.h"
 #include "VocBase/LogicalView.h"
-#include "Logger/LogMacros.h"
+#include "VocBase/vocbase.h"
 
 using namespace arangodb::basics;
 
@@ -386,7 +385,8 @@ void RestViewHandler::deleteView() {
   // end of parameter parsing
   // ...........................................................................
 
-  if (auto r = ExecContext::current().canDropView(_vocbase.name(), name);
+  if (auto r = ExecContext::current().canDropView(
+          _vocbase.name(), name, view->linkedCollectionNames());
       !r.ok()) {
     // check auth after ensuring that the view exists
     generateError(r);

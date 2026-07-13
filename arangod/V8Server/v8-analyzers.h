@@ -31,7 +31,6 @@
 #include <v8.h>
 
 struct TRI_v8_global_t;  // forward declaration
-struct TRI_vocbase_t;    // forward declaration
 
 namespace arangodb {
 namespace iresearch {
