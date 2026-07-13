@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Manuel Baesler
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -28,6 +27,7 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/files.h"
+#include "Export/ExportFeatureOptions.h"
 #include "Rest/CommonDefines.h"
 #include "Utils/ManagedDirectory.h"
 
@@ -53,7 +53,7 @@ class ExportFeature final : public application_features::ApplicationFeature {
   void prepare() override final;
   void start() override final;
   std::shared_ptr<VPackBuilder> customQueryBindVars() const {
-    return _customQueryBindVarsBuilder;
+    return _options.customQueryBindVarsBuilder;
   }
 
  private:
@@ -76,31 +76,14 @@ class ExportFeature final : public application_features::ApplicationFeature {
 
   void appendCsvStringValue(std::string& output, std::string const& value);
 
+  ExportFeatureOptions _options;
+
   std::unique_ptr<httpclient::SimpleHttpClient> _httpClient;
-  std::vector<std::string> _collections;
-  std::string _customQuery;
-  std::string _customQueryFile;
-  std::string _graphName;
-  std::string _xgmmlLabelAttribute;
-  std::string _typeExport;
-  std::string _csvFieldOptions;
-  std::vector<std::string> _csvFields;
-  std::string _outputDirectory;
-  double _customQueryMaxRuntime;
-  bool _useMaxRuntime;
-  bool _escapeCsvFormulae;
-  bool _xgmmlLabelOnly;
-  bool _overwrite;
-  bool _progress;
-  bool _useGzip;
-  bool _firstLine;
-  uint64_t _documentsPerBatch;
-  uint64_t _skippedDeepNested;
-  uint64_t _httpRequestsDone;
+  bool _firstLine = true;
+  uint64_t _skippedDeepNested = 0;
+  uint64_t _httpRequestsDone = 0;
   std::string _currentCollection;
   std::string _currentGraph;
-  std::string _customQueryBindVars;
-  std::shared_ptr<VPackBuilder> _customQueryBindVarsBuilder;
   std::unique_ptr<ManagedDirectory> _directory;
 
   int* _result;

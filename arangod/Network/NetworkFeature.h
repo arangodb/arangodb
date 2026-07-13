@@ -61,7 +61,7 @@ class NetworkFeature final : public application_features::ApplicationFeature {
   static constexpr std::string_view name() noexcept { return "Network"; }
 
   NetworkFeature(application_features::ApplicationServer& server,
-                 metrics::MetricsFeature& metrics,
+                 metrics::IRegistry& metricsRegistry,
                  network::ConnectionPool::Config);
   ~NetworkFeature();
 
@@ -146,7 +146,7 @@ class NetworkFeature final : public application_features::ApplicationFeature {
   metrics::Histogram<metrics::FixScale<double>>& _sendDurations;
   metrics::Histogram<metrics::FixScale<double>>& _responseDurations;
 
-  metrics::MetricsFeature& _metrics;
+  metrics::IRegistry& _metricsRegistry;
 };
 
 }  // namespace arangodb

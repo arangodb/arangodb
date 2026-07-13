@@ -73,10 +73,9 @@ auto AuthMode::Superuser::request() const noexcept
 }
 
 AuthMode::Classic::Classic(auth::UserManager& userManager, std::string username,
-                           bool apiHardened, GeneralRequest& req)
+                           GeneralRequest& req)
     : _userManager(userManager),
       _username(std::move(username)),
-      _apiHardened(apiHardened),
       _request(req) {}
 
 auto AuthMode::Classic::username() const noexcept -> std::string_view {
@@ -278,12 +277,6 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
           },
           [&](p::Admin const& /*admin*/) -> Result {
             // Classic admin action requires RW access to the _system database.
-            return isAdmin();
-          },
-          [&](p::HardenedAdmin const& /*admin*/) -> Result {
-            if (!_apiHardened) {
-              return {};
-            }
             return isAdmin();
           },
           [&](p::SeeDatabase const& database) -> Result {

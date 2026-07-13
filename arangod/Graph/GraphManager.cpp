@@ -115,7 +115,7 @@ bool GraphManager::renameGraphCollection(std::string const& oldName,
   if (!res.ok()) {
     return false;
   }
-  OperationOptions options(ExecContext::current());
+  OperationOptions options;
 
   for (auto const& graph : renamedGraphs) {
     VPackBuilder builder;
@@ -356,7 +356,7 @@ ResultT<std::unique_ptr<Graph>> GraphManager::lookupGraphByName(
 
 OperationResult GraphManager::createGraph(VPackSlice document,
                                           bool waitForSync) const {
-  OperationOptions options(ExecContext::current());
+  OperationOptions options;
   VPackSlice graphNameSlice = document.get("name");
   if (!graphNameSlice.isString()) {
     return OperationResult{TRI_ERROR_GRAPH_CREATE_MISSING_NAME, options};
@@ -412,7 +412,7 @@ OperationResult GraphManager::storeGraph(Graph const& graph, bool waitForSync,
                                   AccessMode::Type::WRITE);
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
-  OperationOptions options(ExecContext::current());
+  OperationOptions options;
   options.waitForSync = waitForSync;
   Result res = trx.begin();
   if (res.fail()) {
@@ -688,7 +688,7 @@ Result GraphManager::ensureCollections(
   auto& cluster = _vocbase.server().getFeature<ClusterFeature>();
   bool waitForSyncReplication = cluster.createWaitsForSyncReplication();
 
-  OperationOptions opOptions(ExecContext::current());
+  OperationOptions opOptions;
   auto finalResult = methods::Collections::create(
       ctx()->vocbase(), opOptions, std::move(createRequests),
       waitForSyncReplication, true, false,
@@ -865,7 +865,7 @@ OperationResult GraphManager::removeGraph(Graph const& graph, bool waitForSync,
   // the set of collections that have a distributeShardsLike attribute, they
   // are removed before the collections from leadersToBeRemoved
   std::unordered_set<std::string> followersToBeRemoved;
-  OperationOptions options(ExecContext::current());
+  OperationOptions options;
 
   if (dropCollections) {
     // Puts the collection with name colName to leadersToBeRemoved (if
@@ -914,7 +914,7 @@ OperationResult GraphManager::removeGraph(Graph const& graph, bool waitForSync,
   invalidateQueryOptimizerCaches();
 
   {  // Remove from _graphs
-    OperationOptions options(ExecContext::current());
+    OperationOptions options;
     options.waitForSync = waitForSync;
 
     SingleCollectionTransaction trx{ctx(), StaticStrings::GraphsCollection,

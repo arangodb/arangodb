@@ -1272,7 +1272,7 @@ futures::Future<Result> RestReplicationHandler::processRestoreCollection(
   if (input.fail()) {
     co_return input.result();
   }
-  OperationOptions options(_context);
+  OperationOptions options;
 
   if (ignoreHiddenEnterpriseCollection(input->name, force)) {
     co_return {TRI_ERROR_NO_ERROR};
@@ -1736,7 +1736,7 @@ Result RestReplicationHandler::processRestoreDataBatch(
   // RestReplicationHandler::processRestoreData, explicitly creates a SuperUser
   // context. This overrides that for the following operations: But it is not
   // used for permission checks, only for auditing.
-  OperationOptions options(_context);
+  OperationOptions options;
   options.silent = true;
   options.ignoreRevs = true;
   options.isRestore = true;
@@ -2495,7 +2495,7 @@ RestReplicationHandler::handleCommandAddFollower() {
     auto res = co_await trx.beginAsync();
 
     if (res.ok()) {
-      OperationOptions options(_context);
+      OperationOptions options;
       auto countRes =
           trx.count(col->name(), transaction::CountType::kNormal, options);
 

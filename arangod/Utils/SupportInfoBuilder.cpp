@@ -627,7 +627,7 @@ void SupportInfoBuilder::buildDbServerDataStoredInfo(
           Result res = trx.begin();
 
           if (res.ok()) {
-            OperationOptions options(ExecContext::current());
+            OperationOptions options;
 
             OperationResult opResult =
                 trx.count(collName, transaction::CountType::kNormal, options);

@@ -39,7 +39,7 @@ thread_local std::shared_ptr<ExecContext const> ExecContext::CURRENT = nullptr;
 
 std::shared_ptr<ExecContext const> const ExecContext::Superuser =
     std::make_shared<ExecContext const>(ConstructorToken{},
-                                        AuthMode{AuthMode::Superuser{}},
+                                        AuthMode{AuthMode::Superuser{}}, true,
                                         VocbasePtr{nullptr});
 
 /// Should always contain a reference to current user context
@@ -64,8 +64,10 @@ std::shared_ptr<ExecContext const> ExecContext::superuserAsShared() {
 }
 
 ExecContext::ExecContext(ConstructorToken, AuthMode authMode,
-                         VocbasePtr vocbase)
-    : _authMode(std::move(authMode)), _vocbase(std::move(vocbase)) {}
+                         bool isRestApiHardened, VocbasePtr vocbase)
+    : _authMode(std::move(authMode)),
+      _isRestApiHardened(isRestApiHardened),
+      _vocbase(std::move(vocbase)) {}
 
 /*static*/ std::shared_ptr<ExecContext> ExecContext::create(
     AuthenticationFeature& authenticationFeature, RbacFeature& rbacFeature,
@@ -105,11 +107,11 @@ ExecContext::ExecContext(ConstructorToken, AuthMode authMode,
     }
 
     ADB_PROD_ASSERT(userManager != nullptr);
-    return AuthMode::Classic(*userManager, req.user(),
-                             securityFeature.isRestApiHardened(), req);
+    return AuthMode::Classic(*userManager, req.user(), req);
   }()};
 
   return std::make_shared<ExecContext>(ConstructorToken{}, std::move(authMode),
+                                       securityFeature.isRestApiHardened(),
                                        std::move(vocbase));
 }
 
@@ -171,7 +173,14 @@ Result ExecContext::canUseAdminAction(rbac::Category::Any const& action) const {
 Result ExecContext::canUseHardenedAction(
     rbac::Category::Any const& action) const {
   using namespace auth::perms;
-  return can(HardenedAdmin{.action{action}});
+  ADB_PROD_ASSERT(!_authMode.isRbac() || _isRestApiHardened)
+      << "RBAC is enabled, but REST API is not hardened: "
+         "RBAC implies --server.harden=true ("
+         "ServerSecurityFeatureOptions::hardenedRestApi = true).";
+  if (!_isRestApiHardened) {
+    return {};
+  }
+  return can(Admin{.action{action}});
 }
 
 Result ExecContext::canSeeDatabase(std::string_view db) const {
@@ -371,3 +380,31 @@ ExecContextScope::ExecContextScope(std::shared_ptr<ExecContext const> exe)
 }
 
 ExecContextScope::~ExecContextScope() { std::swap(ExecContext::CURRENT, _old); }
+
+ExecContextSuperuserScope::ExecContextSuperuserScope()
+    : _old(ExecContext::CURRENT) {
+  ExecContext::CURRENT = getSuperuserContextFrom(_old.get());
+}
+
+ExecContextSuperuserScope::ExecContextSuperuserScope(bool cond)
+    : _old(ExecContext::CURRENT) {
+  if (cond) {
+    ExecContext::CURRENT = getSuperuserContextFrom(_old.get());
+  }
+}
+
+auto ExecContextSuperuserScope::getSuperuserContextFrom(
+    ExecContext const* const old) -> std::shared_ptr<ExecContext const> {
+  // save the original request for audit logging, if there is one
+  if (old != nullptr && old->request().has_value()) {
+    // NOTE we could store the vocbase as well, but I'm unsure if that's helpful
+    //      (note that an exec context contains a request iff it
+    //      contains a vocbase)
+    return std::make_shared<ExecContext>(
+        ExecContext::ConstructorToken{},
+        AuthMode{AuthMode::Superuser{*old->request()}}, old->_isRestApiHardened,
+        nullptr);
+  } else {
+    return ExecContext::Superuser;
+  }
+}

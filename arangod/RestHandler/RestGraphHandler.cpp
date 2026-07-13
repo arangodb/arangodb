@@ -744,7 +744,7 @@ futures::Future<arangodb::Result> RestGraphHandler::modifyEdgeDefinition(
   // simon: why is this part of el-cheapo ??
   auto ctx = co_await createTransactionContext(AccessMode::Type::WRITE, origin);
   GraphOperations gops{graph, _vocbase, origin, ctx};
-  OperationOptions options(_context);
+  OperationOptions options;
   OperationResult result(Result(), options);
 
   if (action == EdgeDefinitionAction::CREATE) {
@@ -809,7 +809,7 @@ futures::Future<arangodb::Result> RestGraphHandler::modifyVertexDefinition(
 
   auto ctx = co_await createTransactionContext(AccessMode::Type::WRITE, origin);
   GraphOperations gops{graph, _vocbase, origin, ctx};
-  OperationOptions options(_context);
+  OperationOptions options;
   OperationResult result(Result(), options);
 
   if (action == VertexDefinitionAction::CREATE) {
@@ -876,7 +876,7 @@ futures::Future<arangodb::Result> RestGraphHandler::documentModify(
   auto ctx = co_await createTransactionContext(AccessMode::Type::WRITE, origin);
   GraphOperations gops{graph, _vocbase, origin, ctx};
 
-  OperationOptions options(_context);
+  OperationOptions options;
   OperationResult result(Result(), options);
   // TODO get rid of this branching, rather use several functions and reuse the
   // common code another way.
@@ -946,7 +946,7 @@ futures::Future<arangodb::Result> RestGraphHandler::documentCreate(
   auto ctx = co_await createTransactionContext(AccessMode::Type::WRITE, origin);
   GraphOperations gops{graph, _vocbase, origin, ctx};
 
-  OperationOptions options(_context);
+  OperationOptions options;
   OperationResult result(Result(), options);
   if (colType == TRI_COL_TYPE_DOCUMENT) {
     result = co_await gops.createVertex(collectionName, body, waitForSync,

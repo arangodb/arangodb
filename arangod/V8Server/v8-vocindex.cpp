@@ -281,7 +281,7 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
   std::vector<CreateCollectionBody> collections{
       std::move(planCollection.get())};
 
-  OperationOptions options(ExecContext::current());
+  OperationOptions options;
   std::shared_ptr<LogicalCollection> coll;
   auto result = methods::Collections::create(
       vocbase,  // collection vocbase
