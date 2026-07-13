@@ -62,12 +62,17 @@ EnumerateNearVectorsExecutor::EnumerateNearVectorsExecutor(Fetcher& /*unused*/,
       _collection(_infos.collection),
       _vectorIndex(resolveVectorIndex(_infos)) {}
 
-RocksDBVectorIndex const& EnumerateNearVectorsExecutor::resolveVectorIndex(
+RocksDBVectorIndex const* EnumerateNearVectorsExecutor::resolveVectorIndex(
     Infos const& infos) {
   auto const* index = infos.index.get();
+  // The graph-based vector index (PoC skeleton) is not a RocksDBVectorIndex and
+  // stores no data; it is handled by producing an empty result set.
+  if (index->type() == Index::TRI_IDX_TYPE_VECTOR_GRAPH_INDEX) {
+    return nullptr;
+  }
   if (auto const* vectorIndex = dynamic_cast<RocksDBVectorIndex const*>(index);
       vectorIndex != nullptr) {
-    return *vectorIndex;
+    return vectorIndex;
   }
   // While the index is still being built the collection hands out a
   // RocksDBBuilderIndex wrapping the real vector index; unwrap it.
@@ -78,7 +83,7 @@ RocksDBVectorIndex const& EnumerateNearVectorsExecutor::resolveVectorIndex(
   auto const* wrapped =
       dynamic_cast<RocksDBVectorIndex const*>(&builderIndex->wrapped());
   TRI_ASSERT(wrapped != nullptr);
-  return *wrapped;
+  return wrapped;
 }
 
 void EnumerateNearVectorsExecutor::writeProjectionsFromDocument(
@@ -123,6 +128,18 @@ void EnumerateNearVectorsExecutor::fillInput(
   std::tie(_state, _inputRow) =
       inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
 
+  // Graph-based vector index (PoC skeleton): stores nothing, so consume the
+  // input row and produce no results.
+  if (_vectorIndex == nullptr) {
+    ++_processedInputs;
+    _reportedCurrentRowForFullCount = false;
+    _labels.clear();
+    _distances.clear();
+    _documents.clear();
+    _currentProcessedResultCount = 0;
+    return;
+  }
+
   AqlValue value = _inputRow.getValue(docRegId);
 
   // TODO currently we do not accept anything else then array
@@ -137,7 +154,7 @@ void EnumerateNearVectorsExecutor::fillInput(
   // size
   _inputRowConverted.clear();
 
-  auto const dimension = _vectorIndex.getVectorIndexDefinition().dimension;
+  auto const dimension = _vectorIndex->getVectorIndexDefinition().dimension;
   _inputRowConverted.reserve(dimension);
   std::size_t vectorComponentsCount{0};
   for (arangodb::velocypack::ArrayIterator itr(value.slice()); itr.valid();
@@ -164,7 +181,7 @@ void EnumerateNearVectorsExecutor::searchResults() {
       .trx = &_trx,
       .queryContext = &_infos.queryContext,
   };
-  auto result = _vectorIndex.readBatch(_infos.searchConfig, ctx);
+  auto result = _vectorIndex->readBatch(_infos.searchConfig, ctx);
   _labels = std::move(result.labels);
   _distances = std::move(result.distances);
   _documents = std::move(result.capturedDocuments);

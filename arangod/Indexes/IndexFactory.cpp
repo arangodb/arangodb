@@ -32,6 +32,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
+#include "VectorGraphIndex/Definition.h"
 #include "VectorIndex/VectorIndexDefinition.h"
 #include "IResearch/IResearchCommon.h"
 #include "Inspection/VPack.h"
@@ -193,6 +194,16 @@ bool IndexTypeFactory::equal(Index::IndexType type, velocypack::Slice lhs,
     // check if the parameters are the same
     vector::UserVectorIndexDefinition leftDefinition;
     vector::UserVectorIndexDefinition rightDefinition;
+    velocypack::deserialize(lhs.get("params"), leftDefinition);
+    velocypack::deserialize(rhs.get("params"), rightDefinition);
+
+    if (leftDefinition != rightDefinition) {
+      return false;
+    }
+  } else if (Index::IndexType::TRI_IDX_TYPE_VECTOR_GRAPH_INDEX == type) {
+    // check if the parameters (dimension, metric) are the same
+    vector_graph::Definition leftDefinition;
+    vector_graph::Definition rightDefinition;
     velocypack::deserialize(lhs.get("params"), leftDefinition);
     velocypack::deserialize(rhs.get("params"), rightDefinition);
 
@@ -956,6 +967,41 @@ Result IndexFactory::enhanceJsonIndexVector(
     processIndexInBackground(definition, builder);
     processIndexParallelism(definition, builder);
   }
+
+  return res;
+}
+
+/// @brief enhances the json of a graph-based vector index
+///
+/// Unlike the IVF vector index, the params are minimal: just `dimension` and
+/// `metric` (no nLists/training). A single indexed field is required.
+Result IndexFactory::enhanceJsonIndexVectorGraph(
+    arangodb::velocypack::Slice definition,
+    arangodb::velocypack::Builder& builder, bool create) {
+  Result const res =
+      processIndexFields(definition, builder, 1, 1, create,
+                         /*allowExpansion*/ false, /*allowSubAttributes*/ true,
+                         /*allowIdAttribute*/ false);
+  if (res.fail()) {
+    return res;
+  }
+
+  if (definition.get("unique").isTrue()) {
+    return {TRI_ERROR_BAD_PARAMETER, "Vector graph index cannot be unique"};
+  }
+
+  vector_graph::Definition params;
+  if (auto const status =
+          velocypack::deserializeWithStatus(definition.get("params"), params);
+      !status.ok()) {
+    return {TRI_ERROR_BAD_PARAMETER,
+            std::format("Error parsing the `params` attribute in vector-graph "
+                        "index definition: {}",
+                        status.error())};
+  }
+
+  builder.add(VPackValue("params"));
+  velocypack::serialize(builder, params);
 
   return res;
 }

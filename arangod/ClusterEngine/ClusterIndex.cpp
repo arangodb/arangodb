@@ -335,7 +335,8 @@ Index::FilterCosts ClusterIndex::supportsFilterCondition(
     case TRI_IDX_TYPE_INVERTED_INDEX:
     case TRI_IDX_TYPE_IRESEARCH_LINK:
     case TRI_IDX_TYPE_NO_ACCESS_INDEX:
-    case TRI_IDX_TYPE_VECTOR_INDEX: {
+    case TRI_IDX_TYPE_VECTOR_INDEX:
+    case TRI_IDX_TYPE_VECTOR_GRAPH_INDEX: {
       // should not be called for these indexes
       return Index::supportsFilterCondition(trx, allIndexes, node, reference,
                                             itemsInIndex);
@@ -391,6 +392,7 @@ Index::SortCosts ClusterIndex::supportsSortCondition(
     case TRI_IDX_TYPE_MDI_INDEX:
     case TRI_IDX_TYPE_MDI_PREFIXED_INDEX:
     case TRI_IDX_TYPE_VECTOR_INDEX:
+    case TRI_IDX_TYPE_VECTOR_GRAPH_INDEX:
       // Sorting not supported
       return Index::SortCosts{};
 
@@ -449,6 +451,7 @@ aql::AstNode* ClusterIndex::specializeCondition(
     case TRI_IDX_TYPE_MDI_PREFIXED_INDEX:
       return mdi::specializeCondition(this, node, reference);
     case TRI_IDX_TYPE_VECTOR_INDEX:
+    case TRI_IDX_TYPE_VECTOR_GRAPH_INDEX:
     case TRI_IDX_TYPE_UNKNOWN:
       break;
   }

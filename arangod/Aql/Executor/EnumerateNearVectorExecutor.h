@@ -122,12 +122,14 @@ class EnumerateNearVectorsExecutor {
   // Resolves the concrete vector index from the index handle. During index
   // creation the collection hands out a RocksDBBuilderIndex that wraps the
   // vector index, so this unwraps it; otherwise it is the vector index itself.
-  static RocksDBVectorIndex const& resolveVectorIndex(Infos const& infos);
+  // Returns nullptr for the graph-based vector index (PoC skeleton), which
+  // stores nothing and always yields an empty result set.
+  static RocksDBVectorIndex const* resolveVectorIndex(Infos const& infos);
 
   Infos const& _infos;
   transaction::Methods _trx;
   aql::Collection const* _collection;
-  RocksDBVectorIndex const& _vectorIndex;
+  RocksDBVectorIndex const* _vectorIndex;
 
   InputAqlItemRow _inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
   std::vector<float> _inputRowConverted;

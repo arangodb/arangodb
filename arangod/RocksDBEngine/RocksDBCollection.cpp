@@ -601,9 +601,11 @@ futures::Future<std::shared_ptr<Index>> RocksDBCollection::createIndex(
     // Step 4. fill index
     // Vector index creation is handled by the VectorIndexBuildManager,
     // so we skip the filling here.
+    // TODO(jbajic) Think about inserts later
     bool const inBackground = basics::VelocyPackHelper::getBooleanValue(
         info, StaticStrings::IndexInBackground, false);
-    if (buildIdx->type() != Index::TRI_IDX_TYPE_VECTOR_INDEX) {
+    if (buildIdx->type() != Index::TRI_IDX_TYPE_VECTOR_INDEX &&
+        buildIdx->type() != Index::TRI_IDX_TYPE_VECTOR_GRAPH_INDEX) {
       if (inBackground) {
         {
           RECURSIVE_WRITE_LOCKER(_indexesLock, _indexesLockWriteOwner);
@@ -1458,6 +1460,10 @@ void RocksDBCollection::figuresSpecific(
             count = rocksutils::countKeyRange(
                 db, RocksDBKeyBounds::VectorVPackIndex(rix->objectId()),
                 snapshot, true);
+            break;
+          case Index::TRI_IDX_TYPE_VECTOR_GRAPH_INDEX:
+            // PoC skeleton stores no data.
+            count = 0;
             break;
           default:
             // we should not get here

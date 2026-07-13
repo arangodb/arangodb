@@ -444,6 +444,9 @@ Index::IndexType Index::type(std::string_view type) {
   if (type == "vector") {
     return TRI_IDX_TYPE_VECTOR_INDEX;
   }
+  if (type == "vector-graph") {
+    return TRI_IDX_TYPE_VECTOR_GRAPH_INDEX;
+  }
   return TRI_IDX_TYPE_UNKNOWN;
 }
 
@@ -490,6 +493,8 @@ char const* Index::oldtypeName(Index::IndexType type) {
       return arangodb::iresearch::IRESEARCH_INVERTED_INDEX_TYPE.data();
     case TRI_IDX_TYPE_VECTOR_INDEX:
       return "vector";
+    case TRI_IDX_TYPE_VECTOR_GRAPH_INDEX:
+      return "vector-graph";
     case TRI_IDX_TYPE_UNKNOWN: {
     }
   }

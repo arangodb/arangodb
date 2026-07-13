@@ -119,6 +119,7 @@ class Index {
     TRI_IDX_TYPE_MDI_PREFIXED_INDEX,
     TRI_IDX_TYPE_INVERTED_INDEX,
     TRI_IDX_TYPE_VECTOR_INDEX,
+    TRI_IDX_TYPE_VECTOR_GRAPH_INDEX,
   };
 
   /// @brief: helper struct returned by index methods that determine the costs

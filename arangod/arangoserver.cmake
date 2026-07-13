@@ -177,6 +177,9 @@ add_library(arangoserver STATIC
   RestServer/TtlProperties.cpp
   RestServer/UpgradeFeature.cpp
   RestServer/UpgradeOptionsProvider.cpp
+  VectorGraphIndex/VectorGraphIndex.cpp
+  VectorGraphIndex/SegmentDisk.cpp
+  VectorGraphIndex/SegmentStore.cpp
   VectorIndex/VectorIndexFeature.cpp
   VectorIndex/VectorIndexBuildManager.cpp
   VectorIndex/VectorIndexTrainingSampler.cpp
@@ -234,6 +237,7 @@ target_link_libraries(arangoserver
   arango_vocbase
   arango_scheduler
   boost_boost
+  faiss
   ${MSVC_LIBS})
 
 target_include_directories(arangoserver PRIVATE

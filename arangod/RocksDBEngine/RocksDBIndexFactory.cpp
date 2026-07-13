@@ -42,6 +42,7 @@
 #include "RocksDBEngine/RocksDBTtlIndex.h"
 #include "RocksDBIndexFactory.h"
 #include "RocksDBEngine/RocksDBVectorIndex.h"
+#include "VectorGraphIndex/VectorGraphIndex.h"
 #include "VectorIndex/IVectorIndexProvider.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
@@ -446,6 +447,55 @@ struct VectorIndexFactory : public DefaultIndexFactory {
   IVectorIndexProvider const& _vectorIndexProvider;
 };
 
+// PoC skeleton for a graph-based vector index. Reuses the same feature gate as
+// the regular vector index but takes no `params`.
+struct VectorGraphIndexFactory : public DefaultIndexFactory {
+  explicit VectorGraphIndexFactory(
+      application_features::ApplicationServer& server, Index::IndexType type,
+      IVectorIndexProvider const& vectorIndexProvider)
+      : DefaultIndexFactory(server, type),
+        _vectorIndexProvider(vectorIndexProvider) {}
+
+  std::shared_ptr<arangodb::Index> instantiate(
+      arangodb::LogicalCollection& collection,
+      arangodb::velocypack::Slice definition, IndexId id,
+      bool /*isClusterConstructor*/) const override {
+    return std::make_shared<vector_graph::VectorGraphIndex>(id, collection,
+                                                            definition);
+  }
+
+  virtual arangodb::Result normalize(
+      velocypack::Builder& normalized, velocypack::Slice definition,
+      bool isCreation, TRI_vocbase_t const& /*vocbase*/) const override {
+    TRI_ASSERT(normalized.isOpenObject());
+
+    if (!_vectorIndexProvider.isVectorIndexEnabled()) {
+      return {TRI_ERROR_BAD_PARAMETER,
+              "vector index feature is not enabled. Run ArangoDB with "
+              "`--vector-index` flag turned on."};
+    }
+
+    normalized.add(StaticStrings::IndexType,
+                   velocypack::Value(Index::oldtypeName(_type)));
+
+    if (isCreation && !ServerState::instance()->isCoordinator() &&
+        !definition.hasKey(StaticStrings::ObjectId)) {
+      normalized.add(
+          StaticStrings::ObjectId,
+          arangodb::velocypack::Value(std::to_string(TRI_NewTickServer())));
+    }
+
+    // a vector index never uses index estimates
+    normalized.add(StaticStrings::IndexEstimates, velocypack::Value(false));
+
+    return IndexFactory::enhanceJsonIndexVectorGraph(definition, normalized,
+                                                     isCreation);
+  }
+
+ private:
+  IVectorIndexProvider const& _vectorIndexProvider;
+};
+
 struct TtlIndexFactory : public DefaultIndexFactory {
   TtlIndexFactory(application_features::ApplicationServer& server,
                   Index::IndexType type)
@@ -540,6 +590,8 @@ RocksDBIndexFactory::RocksDBIndexFactory(
                                                Index::TRI_IDX_TYPE_MDI_INDEX);
   static const VectorIndexFactory vectorIndexFactory(
       server, Index::TRI_IDX_TYPE_VECTOR_INDEX, vectorIndexProvider);
+  static const VectorGraphIndexFactory vectorGraphIndexFactory(
+      server, Index::TRI_IDX_TYPE_VECTOR_GRAPH_INDEX, vectorIndexProvider);
   static const iresearch::IResearchRocksDBInvertedIndexFactory
       iresearchInvertedIndexFactory(server);
   static const MdiPrefixedIndexFactory mdiPrefixedIndexFactory(server);
@@ -559,6 +611,7 @@ RocksDBIndexFactory::RocksDBIndexFactory(
   emplace("mdi", mdiIndexFactory);
   emplace("mdi-prefixed", mdiPrefixedIndexFactory);
   emplace("vector", vectorIndexFactory);
+  emplace("vector-graph", vectorGraphIndexFactory);
   emplace(arangodb::iresearch::IRESEARCH_INVERTED_INDEX_TYPE.data(),
           iresearchInvertedIndexFactory);
 }

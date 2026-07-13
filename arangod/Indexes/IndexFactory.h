@@ -220,6 +220,11 @@ class IndexFactory {
                                        arangodb::velocypack::Builder& builder,
                                        bool create);
 
+  /// @brief enhances the json of a graph-based vector index
+  static Result enhanceJsonIndexVectorGraph(
+      arangodb::velocypack::Slice definition,
+      arangodb::velocypack::Builder& builder, bool create);
+
  protected:
   /// @brief clear internal factory/normalizer maps
   void clear();
