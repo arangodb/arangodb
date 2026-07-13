@@ -249,16 +249,17 @@ void ArangodServer::addFeaturesWithOptionProvider() {
   auto& rocksdbOption = addFeature<RocksDBOptionFeature>(
       &agency, std::move(rocksdbOptionFeatureOptions));
 
-  // Add TemporaryStorageFeature
-  auto temporaryStorageOptions =
-      _optionProviders.getOptions<TemporaryStorageOptionsProvider>();
-  addFeature<TemporaryStorageFeature>(std::move(temporaryStorageOptions));
-
   // Add DatabasePathFeature
   auto databasePathOptions =
       _optionProviders.getOptions<DatabasePathOptionsProvider>();
   auto& databasePath =
       addFeature<DatabasePathFeature>(std::move(databasePathOptions));
+
+  // Add TemporaryStorageFeature
+  auto temporaryStorageOptions =
+      _optionProviders.getOptions<TemporaryStorageOptionsProvider>();
+  addFeature<TemporaryStorageFeature>(databasePath,
+                                      std::move(temporaryStorageOptions));
 
   // Add DumpLimitsFeature
   auto dumpLimitsOptions =

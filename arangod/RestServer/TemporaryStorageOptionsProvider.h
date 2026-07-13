@@ -33,7 +33,7 @@ struct TemporaryStorageOptionsProvider
   void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
                           TemporaryStorageFeatureOptions& options);
   void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
-                           TemporaryStorageFeatureOptions& options);
+                           TemporaryStorageFeatureOptions& options) {}
 };
 
 }  // namespace arangodb

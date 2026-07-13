@@ -27,6 +27,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryOptions.h"
+#include "RestServer/IDatabasePathProvider.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
@@ -109,17 +110,49 @@ void StorageUsageTracker::decreaseUsage(std::uint64_t value) noexcept {
 }
 
 TemporaryStorageFeature::TemporaryStorageFeature(
-    application_features::ApplicationServer& server)
-    : TemporaryStorageFeature(server, TemporaryStorageFeatureOptions{}) {}
+    application_features::ApplicationServer& server,
+    IDatabasePathProvider& databasePathProvider)
+    : TemporaryStorageFeature(server, databasePathProvider,
+                              TemporaryStorageFeatureOptions{}) {}
 
 TemporaryStorageFeature::TemporaryStorageFeature(
     application_features::ApplicationServer& server,
+    IDatabasePathProvider& databasePathProvider,
     TemporaryStorageFeatureOptions options)
     : ApplicationFeature{server, *this},
       _options(std::move(options)),
-      _cleanedUpDirectory(false) {
+      _cleanedUpDirectory(false),
+      _databasePathProvider(databasePathProvider) {
   startsAfter<RocksDBEngine>();
   startsAfter<DatabasePathFeature>();
+
+  if (!canBeUsed() || ServerState::instance()->isAgent()) {
+    return;  // no basePath configured, or on agent (prepare() will clear it)
+  }
+
+  // replace $PID with current process id
+  _options.basePath = basics::StringUtils::replace(
+      _options.basePath, "$PID", std::to_string(Thread::currentProcessId()));
+
+  // configure defaults for query options
+  aql::QueryOptions::defaultSpillOverThresholdNumRows =
+      _options.spillOverThresholdNumRows;
+  aql::QueryOptions::defaultSpillOverThresholdMemoryUsage =
+      _options.spillOverThresholdMemoryUsage;
+
+  // Verify that the intermediate-results path is not identical to or inside
+  // the database directory.
+  auto const currentDir = std::filesystem::current_path();
+  _options.basePath = normalizePath(currentDir, _options.basePath);
+  std::string dbPath =
+      normalizePath(currentDir, _databasePathProvider.directory());
+  if (dbPath == _options.basePath || _options.basePath.starts_with(dbPath)) {
+    LOG_TOPIC("58b44", FATAL, Logger::STARTUP)
+        << "path for intermediate results ('" << _options.basePath
+        << "') must not be identical to or inside the database directory ('"
+        << dbPath << "')";
+    FATAL_ERROR_EXIT();
+  }
 }
 
 TemporaryStorageFeature::~TemporaryStorageFeature() {
@@ -147,20 +180,6 @@ void TemporaryStorageFeature::prepare() {
     return;
   }
 
-  // check that the intermediate-results path is not identical to or inside the
-  // database directory. moved here from validateOptions() so that
-  // DatabasePathFeature is guaranteed to exist by this point.
-  auto const currentDir = std::filesystem::current_path();
-  _options.basePath = normalizePath(currentDir, _options.basePath);
-  std::string dbPath = normalizePath(
-      currentDir, server().getFeature<DatabasePathFeature>().directory());
-  if (dbPath == _options.basePath || _options.basePath.starts_with(dbPath)) {
-    LOG_TOPIC("58b44", FATAL, Logger::STARTUP)
-        << "path for intermediate results ('" << _options.basePath
-        << "') must not be identical to or inside the database directory ('"
-        << dbPath << "')";
-    FATAL_ERROR_EXIT();
-  }
   if (std::filesystem::is_directory(_options.basePath)) {
     // intentionally do not set _cleanedUpDirectory flag here
     cleanupDirectory();

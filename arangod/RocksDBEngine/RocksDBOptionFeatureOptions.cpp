@@ -33,23 +33,21 @@
 #include "Basics/PhysicalMemory.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 
+namespace arangodb {
+
 namespace {
 
 uint64_t defaultBlockCacheSize() {
-  if (arangodb::PhysicalMemory::getValue() >=
-      (static_cast<uint64_t>(4) << 30)) {
+  if (PhysicalMemory::getValue() >= (static_cast<uint64_t>(4) << 30)) {
     // if we have at least 4GB of RAM, the default size is (RAM - 2GB) * 0.3
-    return static_cast<uint64_t>((arangodb::PhysicalMemory::getValue() -
-                                  (static_cast<uint64_t>(2) << 30)) *
-                                 0.3);
+    return static_cast<uint64_t>(
+        (PhysicalMemory::getValue() - (static_cast<uint64_t>(2) << 30)) * 0.3);
   }
-  if (arangodb::PhysicalMemory::getValue() >=
-      (static_cast<uint64_t>(2) << 30)) {
+  if (PhysicalMemory::getValue() >= (static_cast<uint64_t>(2) << 30)) {
     // if we have at least 2GB of RAM, the default size is 512MB
     return (static_cast<uint64_t>(512) << 20);
   }
-  if (arangodb::PhysicalMemory::getValue() >=
-      (static_cast<uint64_t>(1) << 30)) {
+  if (PhysicalMemory::getValue() >= (static_cast<uint64_t>(1) << 30)) {
     // if we have at least 1GB of RAM, the default size is 256MB
     return (static_cast<uint64_t>(256) << 20);
   }
@@ -75,8 +73,6 @@ uint64_t defaultTotalWriteBufferSize() {
 }
 
 }  // namespace
-
-namespace arangodb {
 
 uint64_t defaultMinWriteBufferNumberToMerge(uint64_t rocksDBDefault,
                                             uint64_t totalSize,
@@ -130,7 +126,7 @@ RocksDBOptionFeatureOptions::RocksDBOptionFeatureOptions() {
   maxSubcompactions = 2;
   targetFileSizeBase = rocksDBDefaults.target_file_size_base;
   targetFileSizeMultiplier = rocksDBDefaults.target_file_size_multiplier;
-  blockCacheSize = ::defaultBlockCacheSize();
+  blockCacheSize = defaultBlockCacheSize();
   blockCacheShardBits = -1;
   minBlobSize = 256;
   blobFileSize = 1ULL << 30;
@@ -178,7 +174,7 @@ RocksDBOptionFeatureOptions::RocksDBOptionFeatureOptions() {
   enableBlobGarbageCollection = true;
 
   if (totalWriteBufferSize == 0) {
-    totalWriteBufferSize = ::defaultTotalWriteBufferSize();
+    totalWriteBufferSize = defaultTotalWriteBufferSize();
   }
 }
 

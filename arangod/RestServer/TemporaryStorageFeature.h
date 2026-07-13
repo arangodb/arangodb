@@ -24,6 +24,7 @@
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "RestServer/IDatabasePathProvider.h"
 #include "RestServer/TemporaryStorageFeatureOptions.h"
 #include "RocksDBEngine/SortedRowsStorageBackendRocksDB.h"
 
@@ -76,9 +77,11 @@ class TemporaryStorageFeature
 
   explicit TemporaryStorageFeature(
       application_features::ApplicationServer& server,
+      IDatabasePathProvider& databasePathProvider,
       TemporaryStorageFeatureOptions options);
   explicit TemporaryStorageFeature(
-      application_features::ApplicationServer& server);
+      application_features::ApplicationServer& server,
+      IDatabasePathProvider& databasePathProvider);
   ~TemporaryStorageFeature();
 
   void prepare() override final;
@@ -107,6 +110,8 @@ class TemporaryStorageFeature
 
   // whether or not we have cleaned up our temp directory already
   bool _cleanedUpDirectory;
+
+  IDatabasePathProvider& _databasePathProvider;
 };
 
 }  // namespace arangodb
