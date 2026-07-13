@@ -409,6 +409,18 @@ bool RestReplicationHandler::isCoordinatorError() {
   return false;
 }
 
+bool RestReplicationHandler::isClusterRoleError() {
+  if (ServerState::instance()->isClusterRole()) {
+    generateError(rest::ResponseCode::NOT_IMPLEMENTED,
+                  TRI_ERROR_CLUSTER_UNSUPPORTED,
+                  "replication API is not supported in a cluster");
+
+    return true;
+  }
+
+  return false;
+}
+
 std::string const RestReplicationHandler::LoggerState = "logger-state";
 std::string const RestReplicationHandler::LoggerTickRanges =
     "logger-tick-ranges";
@@ -678,12 +690,17 @@ auto RestReplicationHandler::executeAsync() -> futures::Future<futures::Unit> {
       }
       handleCommandServerId();
     } else if (command == ApplierConfig) {
+      if (type != rest::RequestType::GET && type != rest::RequestType::PUT) {
+        goto BAD_CALL;
+      }
+
+      if (isClusterRoleError()) {
+        co_return;
+      }
+
       if (type == rest::RequestType::GET) {
         handleCommandApplierGetConfig();
       } else {
-        if (type != rest::RequestType::PUT) {
-          goto BAD_CALL;
-        }
         handleCommandApplierSetConfig();
       }
     } else if (command == ApplierStart) {
@@ -691,7 +708,7 @@ auto RestReplicationHandler::executeAsync() -> futures::Future<futures::Unit> {
         goto BAD_CALL;
       }
 
-      if (isCoordinatorError()) {
+      if (isClusterRoleError()) {
         co_return;
       }
 
@@ -701,24 +718,35 @@ auto RestReplicationHandler::executeAsync() -> futures::Future<futures::Unit> {
         goto BAD_CALL;
       }
 
-      if (isCoordinatorError()) {
+      if (isClusterRoleError()) {
         co_return;
       }
 
       handleCommandApplierStop();
     } else if (command == ApplierState) {
+      if (type != rest::RequestType::DELETE_REQ &&
+          type != rest::RequestType::GET) {
+        goto BAD_CALL;
+      }
+
+      if (isClusterRoleError()) {
+        co_return;
+      }
+
       if (type == rest::RequestType::DELETE_REQ) {
         handleCommandApplierDeleteState();
       } else {
-        if (type != rest::RequestType::GET) {
-          goto BAD_CALL;
-        }
         handleCommandApplierGetState();
       }
     } else if (command == ApplierStateAll) {
       if (type != rest::RequestType::GET) {
         goto BAD_CALL;
       }
+
+      if (isClusterRoleError()) {
+        co_return;
+      }
+
       handleCommandApplierGetStateAll();
     } else if (command == ClusterInventory) {
       if (type != rest::RequestType::GET) {
@@ -811,7 +839,10 @@ Result RestReplicationHandler::testPermissions() {
     if ((command == Batch) ||
         (command == Inventory && type == rest::RequestType::GET) ||
         (command == Dump && type == rest::RequestType::GET) ||
-        (command == RestoreCollection && type == rest::RequestType::PUT)) {
+        (command == RestoreCollection && type == rest::RequestType::PUT) ||
+        (command == ApplierConfig) || (command == ApplierStart) ||
+        (command == ApplierStop) || (command == ApplierState) ||
+        (command == ApplierStateAll)) {
       if (command == Dump) {
         // check dump collection permissions (at least ro needed)
         std::string collectionName = _request->value("collection");
@@ -888,6 +919,16 @@ Result RestReplicationHandler::testPermissions() {
         } else {
           return Result(TRI_ERROR_HTTP_BAD_PARAMETER,
                         "invalid collection parameter type");
+        }
+      } else if (command == ApplierConfig || command == ApplierStart ||
+                 command == ApplierStop || command == ApplierState ||
+                 command == ApplierStateAll) {
+        // applier config/state exposes the endpoint, and start/stop/forget
+        // change what it does, so all of these require RW
+        auto& exec = ExecContext::current();
+        if (!exec.isAdminUser() &&
+            !exec.canUseDatabase(_request->databaseName(), auth::Level::RW)) {
+          return Result(TRI_ERROR_FORBIDDEN);
         }
       }
     }
