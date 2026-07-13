@@ -183,26 +183,6 @@ function updateService (mount, update) {
   return getStorage().replaceByExample({mount}, update);
 }
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief Joins the last two diretories to one subdir, removes the unwanted original
-// //////////////////////////////////////////////////////////////////////////////
-function joinLastPath (tempPath) {
-  var pathParts = tempPath.split(fs.pathSeparator).reverse();
-  var individual = pathParts.shift();
-
-  // we already have a directory which would be shared amongst tasks.
-  // since we don't want that we remove it here.
-  var voidDir = pathParts.slice().reverse().join(fs.pathSeparator);
-  if (fs.isDirectory(voidDir)) {
-    fs.removeDirectoryRecursive(voidDir);
-  }
-
-  var base = pathParts.shift();
-  pathParts.unshift(base + '-' + individual);
-  var rc = pathParts.reverse().join(fs.pathSeparator);
-
-  return rc;
-}
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief Exports
@@ -220,3 +200,4 @@ exports.getBundleStorage = getBundleStorage;
 exports.pathRegex = pathRegex;
 exports.joinLastPath = joinLastPath;
 exports.throwFileNotFound = fs.throwFileNotFound;
+exports.zipDirectory = fs.zipDirectory;
