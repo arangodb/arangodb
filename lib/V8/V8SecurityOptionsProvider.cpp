@@ -133,15 +133,14 @@ void V8SecurityOptionsProvider::declareOptions(
                          arangodb::options::Flags::OnCoordinator,
                          arangodb::options::Flags::OnSingle));
 
-  options->addOption(
-      "--javascript.files-denylist",
-      "Filesystem paths that are inaccessible from within "
-      "JavaScript actions (if not in the allowlist).",
-      new VectorParameter<StringParameter>(&opts.filesDenyList),
-      arangodb::options::makeFlags(
-          arangodb::options::Flags::DefaultNoComponents,
-          arangodb::options::Flags::OnCoordinator,
-          arangodb::options::Flags::OnSingle));
+  options->addOption("--javascript.files-denylist",
+                     "Filesystem paths that are inaccessible from within "
+                     "JavaScript actions (if not in the allowlist).",
+                     new VectorParameter<StringParameter>(&opts.filesDenyList),
+                     arangodb::options::makeFlags(
+                         arangodb::options::Flags::DefaultNoComponents,
+                         arangodb::options::Flags::OnCoordinator,
+                         arangodb::options::Flags::OnSingle));
 }
 
 }  // namespace arangodb
