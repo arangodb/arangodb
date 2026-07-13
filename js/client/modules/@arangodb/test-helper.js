@@ -154,16 +154,26 @@ exports.debugClearFailAt = function (endpoint) {
 };
 
 exports.getChecksum = function (endpoint, name) {
-  const primaryEndpoint = arango.getEndpoint();
-  try {
-    reconnectRetry(endpoint, db._name(), "root", "");
-    let res = arango.GET_RAW('/_api/collection/' + name + '/checksum');
-    if (res.code !== 200) {
-      throw "Error getting collection checksum";
+  if (typeof(endpoint) === "string") {
+    const primaryEndpoint = arango.getEndpoint();
+    try {
+      reconnectRetry(endpoint, db._name(), "root", "");
+      let res = arango.GET_RAW('/_api/collection/' + name + '/checksum');
+      if (res.code !== 200) {
+        throw "Error getting collection checksum";
+      }
+      return res.parsedBody.checksum;
+    } finally {
+      reconnectRetry(primaryEndpoint, db._name(), "root", "");
     }
-    return res.parsedBody.checksum;
-  } finally {
-    reconnectRetry(primaryEndpoint, db._name(), "root", "");
+  } else {
+    return endpoint.toThisInstance(() => {
+      let res = arango.GET_RAW('/_api/collection/' + name + '/checksum');
+      if (res.code !== 200) {
+        throw "Error getting collection checksum";
+      }
+      return res.parsedBody.checksum;
+    });
   }
 };
 
