@@ -2198,8 +2198,8 @@ void RestReplicationHandler::handleCommandRestoreView() {
         return;
       }
 
-      if (auto r = exec.canRestoreDropView(_vocbase.name(), name,
-                                           linkedCollectionNames);
+      if (auto r =
+              exec.canRestoreDropView(_vocbase.name(), name, linkedCollNames);
           r.fail()) {
         generateError(r);
         return;

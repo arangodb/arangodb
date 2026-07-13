@@ -320,8 +320,7 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
             if (isAdmin().ok()) {
               return {};
             }
-            return check(
-                p::DropView{view.db, view.viewName, view.linkedCollNames});
+            return check(p::DropView{view.db, view.viewName});
           },
           [&](p::RestoreWriteData const& data) -> Result {
             // Behaves like UseCollection(WriteData), but is additionally

@@ -30,6 +30,7 @@
 #include <string>
 #include <string_view>
 #include <variant>
+#include <vector>
 
 namespace arangodb {
 
@@ -208,13 +209,13 @@ struct SeeView {
 struct CreateView {
   std::string db;
   std::string name;
-  std::span<std::string> linkedCollections;
+  std::vector<std::string> linkedCollections;
 };
 
 struct ModifyView {
   std::string db;
   std::string name;
-  std::span<std::string> linkedCollections;
+  std::vector<std::string> linkedCollections;
 };
 
 struct RenameView {

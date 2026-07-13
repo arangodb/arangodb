@@ -294,7 +294,7 @@ Result ExecContext::canSeeView(std::string_view db,
 
 Result ExecContext::canCreateView(
     std::string_view db, std::string_view view,
-    std::span<std::string> linkedCollections) const {
+    std::vector<std::string> const& linkedCollections) const {
   using namespace auth::perms;
   return can(
       CreateView{.db{db}, .name{view}, .linkedCollections{linkedCollections}});
@@ -302,7 +302,7 @@ Result ExecContext::canCreateView(
 
 Result ExecContext::canModifyView(
     std::string_view db, std::string_view view,
-    std::span<std::string> linkedCollections) const {
+    std::vector<std::string> const& linkedCollections) const {
   using namespace auth::perms;
   return can(
       ModifyView{.db{db}, .name{view}, .linkedCollections{linkedCollections}});
