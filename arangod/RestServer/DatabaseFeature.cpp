@@ -1114,7 +1114,9 @@ void DatabaseFeature::closeOpenDatabases() {
 
 ErrorCode DatabaseFeature::iterateDatabases(velocypack::Slice databases) {
 #ifdef USE_V8
-  auto& dealer = server().getFeature<V8DealerFeature>();
+  auto* dealer = server().hasFeature<V8DealerFeature>()
+                     ? &server().getFeature<V8DealerFeature>()
+                     : nullptr;
 #endif
 
   auto r = TRI_ERROR_NO_ERROR;
@@ -1147,9 +1149,9 @@ ErrorCode DatabaseFeature::iterateDatabases(velocypack::Slice databases) {
 
     auto name = it.get("name").stringView();
 #ifdef USE_V8
-    if (dealer.isEnabled()) {
+    if (dealer != nullptr && dealer->isEnabled()) {
       auto id = basics::VelocyPackHelper::getStringView(it.get("id"), {});
-      r = dealer.createDatabase(name, id, false);
+      r = dealer->createDatabase(name, id, false);
       if (r != TRI_ERROR_NO_ERROR) {
         break;
       }
