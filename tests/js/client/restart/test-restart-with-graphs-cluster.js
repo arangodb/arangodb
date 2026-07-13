@@ -29,7 +29,6 @@ const _ = require('lodash');
 const pu = require('@arangodb/testutils/process-utils');
 const crypto = require('@arangodb/crypto');
 const db = require("@arangodb").db;
-const request = require("@arangodb/request");
 const time = require("internal").time;
 const { getCtrlCoordinators } = require('@arangodb/test-helper');
 
@@ -38,32 +37,10 @@ const graphs = require('@arangodb/general-graph');
 const gn = "UnitTestsGraph";
 const vn = "UnitTestsVertex";
 const en = "UnitTestsEdge";
+const IM = global.instanceManager;
 
 function testSuite() {
   const jwtSecret = 'haxxmann';
-
-  let waitForAlive = function (timeout, baseurl, data) {
-    let tries = 0, res;
-    let all = Object.assign(data || {}, { method: "get", timeout: 1, url: baseurl + "/_api/version" }); 
-    const end = time() + timeout;
-    while (time() < end) {
-      res = request(all);
-      if (res.status === 200 || res.status === 401 || res.status === 403) {
-        break;
-      }
-      console.warn("waiting for server response from url " + baseurl);
-      require('internal').sleep(0.5);
-    }
-    return res.status;
-  };
-
-  let checkAvailability = function (servers, expectedCode) {
-    require("console").warn("checking (un)availability of " + servers.map((s) => s.url).join(", "));
-    servers.forEach(function(server) {
-      let res = request({ method: "get", url: server.url + "/_api/version", timeout: 3 });
-      assertEqual(expectedCode, res.status);
-    });
-  };
 
   return {
     tearDownAll : function() {
@@ -80,8 +57,8 @@ function testSuite() {
       coordinator.restartOneInstance({
         "server.authentication": "false"
       });
-      let aliveStatus = waitForAlive(30, coordinator.url, {});
-      assertEqual(200, aliveStatus);
+
+      coordinator.pingUntilReady(IM.httpJWTAuthOptions, 30);
     },
 
     testRestartCoordinatorWithGraph : function() {
@@ -118,7 +95,7 @@ function testSuite() {
         "server.jwt-secret": jwtSecret
       });
         
-      waitForAlive(30, coordinator.url, {});
+      coordinator.pingUntilReady(IM.httpJWTAuthOptions, 30);
       
       // vertex collection
       c = db._collection(vn);

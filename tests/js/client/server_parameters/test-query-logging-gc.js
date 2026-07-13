@@ -29,7 +29,6 @@ const jsunity = require('jsunity');
 const arangodb = require('@arangodb');
 const db = arangodb.db;
 const arango = arangodb.arango;
-const request = require("@arangodb/request");
 const internal = require('internal');
 const errors = internal.errors;
 

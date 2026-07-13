@@ -29,7 +29,6 @@ const _ = require('lodash');
 const jsunity = require('jsunity');
 const internal = require('internal');
 const arangodb = require('@arangodb');
-const request = require("@arangodb/request");
 const db = arangodb.db;
 const { getInstanceInfo, runParallelArangoshTests, waitForShardsInSync, versionHas } = require('@arangodb/test-helper');
 let { instanceRole } = require('@arangodb/testutils/instance');
