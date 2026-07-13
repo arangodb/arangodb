@@ -276,15 +276,11 @@ Result ExecContext::canUseView(std::string_view db, std::string_view viewName,
   return can(UseView{.db{db}, .name{viewName}, .level = requested});
 }
 
-Result ExecContext::canRenameView(
-    std::string_view db, std::string_view oldViewName,
-    std::string_view newViewName,
-    std::span<std::string> linkedCollections) const {
+Result ExecContext::canRenameView(std::string_view db,
+                                  std::string_view oldViewName,
+                                  std::string_view newViewName) const {
   using namespace auth::perms;
-  return can(RenameView{.db{db},
-                        .oldName{oldViewName},
-                        .newName{newViewName},
-                        .linkedCollections{linkedCollections}});
+  return can(RenameView{.db{db}, .oldName{oldViewName}, .newName{newViewName}});
 }
 
 Result ExecContext::canSeeAnalyzer(std::string_view db,

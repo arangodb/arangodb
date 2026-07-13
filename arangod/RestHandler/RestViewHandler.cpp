@@ -305,24 +305,19 @@ void RestViewHandler::modifyView(bool partialUpdate) {
 
   auto const& execContext = ExecContext::current();
 
-  // For rename, linkedCollections is empty (the rename itself doesn't change
-  // which collections are linked). For modify, extract from the new body.
-  std::vector<std::string> linkedCollections;
-  if (!isRename) {
+  if (isRename) {
+    if (auto r =
+            execContext.canRenameView(_vocbase.name(), name, body.stringView());
+        !r.ok()) {
+      return generateError(r);
+    }
+  } else {
+    std::vector<std::string> linkedCollections;
     if (auto linksSlice = body.get("links"); linksSlice.isObject()) {
       for (auto const& pair : VPackObjectIterator(linksSlice)) {
         linkedCollections.push_back(pair.key.copyString());
       }
     }
-  }
-
-  if (isRename) {
-    if (auto r = execContext.canRenameView(
-            _vocbase.name(), name, body.stringView(), linkedCollections);
-        !r.ok()) {
-      return generateError(r);
-    }
-  } else {
     if (auto r =
             execContext.canModifyView(_vocbase.name(), name, linkedCollections);
         !r.ok()) {

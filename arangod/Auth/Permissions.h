@@ -173,7 +173,6 @@ struct RenameView {
   std::string db;
   std::string oldName;
   std::string newName;
-  std::span<std::string> linkedCollections;
 };
 
 struct DropView {

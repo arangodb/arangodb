@@ -368,14 +368,6 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
                 !r.ok()) {
               return r;
             }
-            // Also check read access to all linked collections.
-            for (auto const& coll : view.linkedCollections) {
-              if (auto r = check(p::UseCollection{view.db, coll,
-                                                  CollectionAccessLevel::Read});
-                  !r.ok()) {
-                return r;
-              }
-            }
             return {};
           },
           [&](p::DropView const& view) -> Result {
