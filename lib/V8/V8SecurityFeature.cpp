@@ -178,6 +178,7 @@ void V8SecurityFeature::prepare() {
 void V8SecurityFeature::dumpAccessLists() const {
   LOG_TOPIC("2cafe", DEBUG, arangodb::Logger::SECURITY)
       << "files allowed by user:" << _options.filesAllowList
+      << ", files denied by use:" << _options.filesDenyList
       << ", internal read allow list:" << inspection::json(_internalReadAllow)
       << ", internal write allow list:" << inspection::json(_internalWriteAllow)
       << ", internal startup options allow list:"
