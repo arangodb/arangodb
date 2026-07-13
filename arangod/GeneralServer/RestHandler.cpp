@@ -243,8 +243,7 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
   // we must use the request's permissions here and set them in the
   // thread-local variable when calling forwardingTarget().
   // this is because forwardingTarget() may run permission checks.
-  ExecContextScope scope(
-      basics::downCast<ExecContext>(_request->requestContext()));
+  ExecContextScope scope(_request->requestContext());
 
   ResultT forwardResult = forwardingTarget();
   if (forwardResult.fail()) {
@@ -269,9 +268,8 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
   network::ConnectionPool* pool = nf.pool();
   if (pool == nullptr) {
     // nullptr happens only during controlled shutdown
-    generateError(rest::ResponseCode::SERVICE_UNAVAILABLE,
-                  TRI_ERROR_SHUTTING_DOWN, "shutting down server");
-    return futures::makeFuture(Result(TRI_ERROR_SHUTTING_DOWN));
+    return futures::makeFuture(
+        Result(TRI_ERROR_SHUTTING_DOWN, "shutting down server"));
   }
   LOG_TOPIC("38d99", DEBUG, Logger::REQUESTS)
       << "forwarding request " << _request->messageId() << " to " << serverId;
@@ -449,16 +447,19 @@ auto RestHandler::runHandlerStateMachine() -> futures::Future<futures::Unit> {
   auto res = forwardRequest(forwarded);
   if (forwarded) {
     _statistics.SET_SUPERUSER();
-    Result res2 = co_await std::move(res);
+    std::ignore = co_await std::move(res);
+    // Request response already set by the forwarding logic!
     _sendResponseCallback(this);
     co_return;
   }
 
-  if (res.hasValue() && res.waitAndGet().fail()) {
+  if (res.hasValue()) {
     Result r = co_await std::move(res);
-    generateError(r);
-    _sendResponseCallback(this);
-    co_return;
+    if (r.fail()) {
+      generateError(r);
+      _sendResponseCallback(this);
+      co_return;
+    }
   }
 
   auto const logScopeGuard =

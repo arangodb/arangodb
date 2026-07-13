@@ -22,6 +22,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Basics/Exceptions.h"
 #include "analysis/analyzers.hpp"
 #include "analysis/delimited_token_stream.hpp"
 #include "analysis/collation_token_stream.hpp"
@@ -1147,30 +1148,35 @@ IResearchAnalyzerFeature::IResearchAnalyzerFeature(
   };
 }
 
-bool IResearchAnalyzerFeature::canUseVocbase(
-    std::string_view vocbaseName, CollectionAccessLevel const& level) {
-  TRI_ASSERT(!vocbaseName.empty());
+Result IResearchAnalyzerFeature::canUse(std::string_view name,
+                                        AnalyzerAccessLevel const& level) {
+  // Note: To use this function the name of the analyzer must either
+  // be a static analyzer name or it must be a normalized name with
+  // the database as prefix and `::` as a separator.
+  auto& staticAnalyzers = getStaticAnalyzers();
+
+  if (staticAnalyzers.contains(irs::hashed_string_view{name})) {
+    // special case for singleton static analyzers (always allowed)
+    return {};
+  }
+
+  auto split = splitAnalyzerName(name);
+  TRI_ASSERT(!irs::IsNull(split.first));
+  TRI_ASSERT(!split.first.empty());
+  // For production code:
+  if (irs::IsNull(split.first) || split.first.empty()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        absl::StrCat("IResearchAnalyzerFeature::canUse: found non-static, "
+                     "non-normalized analyzer name: ",
+                     name));
+  }
+
   auto& ctx = ExecContext::current();
-  auto const nameStr = static_cast<std::string>(vocbaseName);
-  return ctx
-      .canUseCollection(nameStr, arangodb::StaticStrings::AnalyzersCollection,
-                        level)
-      .ok();
-}
 
-bool IResearchAnalyzerFeature::canUse(TRI_vocbase_t const& vocbase,
-                                      CollectionAccessLevel const& level) {
-  return canUseVocbase(vocbase.name(), level);
-}
-
-bool IResearchAnalyzerFeature::canUse(std::string_view name,
-                                      CollectionAccessLevel const& level) {
-  // We do no further checks here and simply let everything through.
-  // When we later use AQL to access the `_analyzers` collection, we will
-  // get the corresponding checks there.
-  // Note that without RBAC, this will fall back to check the access level
-  // of the database, since `_analyzers is a system collection.
-  return true;
+  auto const vocbaseName = static_cast<std::string>(split.first);
+  return ctx.canUseAnalyzer(vocbaseName, static_cast<std::string>(split.second),
+                            level);
 }
 
 Result IResearchAnalyzerFeature::copyAnalyzerPool(AnalyzerPool::ptr& analyzer,
@@ -2049,16 +2055,15 @@ Result IResearchAnalyzerFeature::loadAvailableAnalyzers(
     // and dbservers never should start ddl by themselves.
     return {};
   }
-  Result res{};
-  if (canUseVocbase(dbName, CollectionAccessLevel::Read)) {
-    res = loadAnalyzers(operationOrigin, dbName);
-    if (res.fail()) {
-      return res;
-    }
+  // No authorization is required here: loading analyzers merely (re-)fills
+  // an internal cache and does not expose any information to the caller.
+  // Authorization for seeing/using individual analyzers is enforced where
+  // analyzers are actually read or listed.
+  Result res = loadAnalyzers(operationOrigin, dbName);
+  if (res.fail()) {
+    return res;
   }
-  if (dbName != arangodb::StaticStrings::SystemDatabase &&
-      canUseVocbase(arangodb::StaticStrings::SystemDatabase,
-                    CollectionAccessLevel::Read)) {
+  if (dbName != arangodb::StaticStrings::SystemDatabase) {
     // System is available for all other databases. So reload its analyzers too
     res =
         loadAnalyzers(operationOrigin, arangodb::StaticStrings::SystemDatabase);

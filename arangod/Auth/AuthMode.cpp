@@ -268,12 +268,22 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
             }
           },
           [&](p::UseAnalyzer const& analyzer) -> Result {
-            // Without RBAC, RO access to the database is the only
-            // prerequisite for using an analyzer, and that has already been
-            // verified before this is called. No further check needed.
-            // For the sake of readabilty, we perform the check:
-            return check(
-                p::UseDatabase{analyzer.db, DatabaseAccessLevel::Read});
+            // Without RBAC, database access is the only prerequisite for
+            // using an analyzer. Reading analyzers requires RO database
+            // access; creating or dropping analyzers requires RW.
+            DatabaseAccessLevel dbLevel;
+            switch (analyzer.level) {
+              case AnalyzerAccessLevel::Modify:
+                dbLevel = DatabaseAccessLevel::Write;
+                break;
+              case AnalyzerAccessLevel::Read:
+                dbLevel = DatabaseAccessLevel::Read;
+                break;
+              case AnalyzerAccessLevel::None:
+                dbLevel = DatabaseAccessLevel::None;
+                break;
+            }
+            return check(p::UseDatabase{analyzer.db, dbLevel});
           },
           [&](p::Admin const& /*admin*/) -> Result {
             // Classic admin action requires RW access to the _system database.
@@ -315,28 +325,12 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
           },
           [&](p::CreateView const& view) -> Result {
             // Creating a view requires RW access to the database.
-            return check(p::UseDatabase{view.db, DatabaseAccessLevel::Write});
-          },
-          [&](p::ModifyView const& view) -> Result {
-            // Modifying a view requires RW access to the database.
-            return check(p::UseDatabase{view.db, DatabaseAccessLevel::Write});
-          },
-          [&](p::RenameView const& view) -> Result {
-            if (view.oldName == view.newName) {
-              return {TRI_ERROR_BAD_PARAMETER,
-                      "new view name must be different from old view name"};
-            }
-            // Renaming a view requires RW access to the database.
-            return check(p::UseDatabase{view.db, DatabaseAccessLevel::Write});
-          },
-          [&](p::DropView const& view) -> Result {
-            // Dropping a view requires RW access to the database.
             if (auto r =
                     check(p::UseDatabase{view.db, DatabaseAccessLevel::Write});
                 !r.ok()) {
               return r;
             }
-            // We also need read access on all linked collections.
+            // Also check read access to all linked collections.
             for (auto const& coll : view.linkedCollections) {
               if (auto r = check(p::UseCollection{view.db, coll,
                                                   CollectionAccessLevel::Read});
@@ -345,6 +339,40 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
               }
             }
             return {};
+          },
+          [&](p::ModifyView const& view) -> Result {
+            // Modifying a view requires RW access to the database.
+            if (auto r =
+                    check(p::UseDatabase{view.db, DatabaseAccessLevel::Write});
+                !r.ok()) {
+              return r;
+            }
+            // Also check read access to all newly linked collections.
+            for (auto const& coll : view.linkedCollections) {
+              if (auto r = check(p::UseCollection{view.db, coll,
+                                                  CollectionAccessLevel::Read});
+                  !r.ok()) {
+                return r;
+              }
+            }
+            return {};
+          },
+          [&](p::RenameView const& view) -> Result {
+            if (view.oldName == view.newName) {
+              return {TRI_ERROR_BAD_PARAMETER,
+                      "new view name must be different from old view name"};
+            }
+            // Renaming a view requires RW access to the database.
+            if (auto r =
+                    check(p::UseDatabase{view.db, DatabaseAccessLevel::Write});
+                !r.ok()) {
+              return r;
+            }
+            return {};
+          },
+          [&](p::DropView const& view) -> Result {
+            // Dropping a view requires RW access to the database.
+            return check(p::UseDatabase{view.db, DatabaseAccessLevel::Write});
           },
           [&](p::SeeAnalyzer const& analyzer) -> Result {
             // Database RO access is the only prerequisite and has already been
@@ -526,6 +554,7 @@ auto AuthMode::Disabled::check(auth::Permission permission) const -> Result {
   return {};
 }
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
 auto AuthMode::Mockable::username() const noexcept -> std::string_view {
   ADB_PROD_ASSERT(mock != nullptr);
   return mock->username();
@@ -541,5 +570,6 @@ auto AuthMode::Mockable::request() const noexcept
   ADB_PROD_ASSERT(mock != nullptr);
   return mock->request();
 }
+#endif
 
 }  // namespace arangodb
