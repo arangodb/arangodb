@@ -501,29 +501,23 @@ void TraversalNode::replaceAttributeAccess(
 
 /// @brief getVariablesUsedHere
 void TraversalNode::getVariablesUsedHere(VarSet& result) const {
-  for (auto const& condVar : _conditionVariables) {
-    if (condVar != pathOutVariable() && condVar != getTemporaryVariable()) {
-      result.emplace(condVar);
-    }
+  if (_condition != nullptr) {
+    Ast::getReferencedVariables(_condition->root(), result);
   }
-
-  for (auto const& pruneVar : _pruneVariables) {
-    if (pruneVar != vertexOutVariable() && pruneVar != edgeOutVariable() &&
-        pruneVar != pathOutVariable()) {
-      result.emplace(pruneVar);
-    }
+  if (_pruneExpression != nullptr) {
+    _pruneExpression->variables(result);
   }
-
-  for (auto const& postVar : _postFilterVariables) {
-    if (postVar != vertexOutVariable() && postVar != edgeOutVariable() &&
-        postVar != pathOutVariable()) {
-      result.emplace(postVar);
-    }
+  if (_postFilterExpression != nullptr) {
+    _postFilterExpression->variables(result);
   }
 
   if (usesInVariable()) {
     result.emplace(_inVariable);
   }
+
+  result.erase(vertexOutVariable());
+  result.erase(edgeOutVariable());
+  result.erase(pathOutVariable());
 }
 
 /// @brief getVariablesSetHere
