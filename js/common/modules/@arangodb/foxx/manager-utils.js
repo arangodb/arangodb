@@ -197,6 +197,6 @@ exports.validateMount = validateMount;
 exports.getStorage = getStorage;
 exports.getBundleStorage = getBundleStorage;
 exports.pathRegex = pathRegex;
-exports.joinLastPath = joinLastPath;
 exports.throwFileNotFound = fs.throwFileNotFound;
 exports.zipDirectory = fs.zipDirectory;
+exports.joinLastPath = fs.joinLastPath;
