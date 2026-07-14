@@ -31,7 +31,6 @@ var arangodb = require('@arangodb');
 var db = arangodb.db;
 var internal = require('internal');
 
-var throwFileNotFound = arangodb.throwFileNotFound;
 var errors = arangodb.errors;
 var ArangoError = arangodb.ArangoError;
 var mountRegEx = /^(\/[a-zA-Z0-9_\-%]+)+$/;
