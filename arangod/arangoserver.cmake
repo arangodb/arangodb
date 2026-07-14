@@ -200,12 +200,6 @@ add_library(arangoserver STATIC
   Sharding/ShardingInfo.cpp
   Sharding/ShardingStrategy.cpp
   Sharding/ShardingStrategyDefault.cpp
-  Statistics/ConnectionStatistics.cpp
-  Statistics/Descriptions.cpp
-  Statistics/RequestStatistics.cpp
-  Statistics/StatisticsFeature.cpp
-  Statistics/StatisticsWorker.cpp
-  Statistics/StatisticsOptionsProvider.cpp
   Transaction/BatchOptions.cpp
   Transaction/ClusterUtils.cpp
   Transaction/Context.cpp
@@ -264,6 +258,7 @@ target_link_libraries(arangoserver
   arango_metrics
   arango_network
   arango_replication
+  arango_statistics
   arango_storage_engine
   arango_utils
   arango_vocbase
