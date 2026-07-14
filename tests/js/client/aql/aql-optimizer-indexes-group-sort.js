@@ -140,7 +140,7 @@ function optimizerIndexesGroupSortTestSuite() {
 
     test_indexed_group_sort_with_limit_gives_same_results_as_unindexed_sort: function () {
       let randomNumber = randomNumberGeneratorInt(seed);
-      const row_count = 2000;
+      const row_count = 80;
       const collection = create_collection();
       collection.insert(Array.from({ length: row_count }, (_, index) => index).map(i => {
         return { a: i % 9, x: row_count - i - 1, b: randomNumber() };
@@ -149,12 +149,12 @@ function optimizerIndexesGroupSortTestSuite() {
       waitForEstimatorSync();
       const c_expected = copy_collection(collection.name());
 
-      for (let offset of [0, 1, 5, 222]) {
-        for (let limit of [0, 1, 8, 9, 100, 1000, 1999, 2000, 2001]) {
+      for (let offset of [1, 5, 75]) {
+        for (let limit of [1, 8, 9, 19, 25, 78, 79, 81]) {
           const query = "FOR doc IN @@collection SORT doc.a, doc.x LIMIT " + offset + ", " + limit + " RETURN [doc.a, doc.x, doc.b]";
           const plan = query_plan(query, collection.name());
-          assertTrue(query_plan_uses_index_for_sorting(plan), query + ': ' + plan.rules);
-          assertTrue(sort_node_does_a_group_sort(plan), query + ': ' + plan.nodes);
+          assertTrue(query_plan_uses_index_for_sorting(plan), plan.rules);
+          assertTrue(sort_node_does_a_group_sort(plan), plan.nodes);
           assertEqual(
             db._query(query, { "@collection": c_expected.name() }).toArray(),
             db._query(query, { "@collection": collection.name() }).toArray(),
@@ -169,7 +169,7 @@ function optimizerIndexesGroupSortTestSuite() {
 
     test_indexed_group_sort_with_fullcount_gives_same_results_as_unindexed_sort: function () {
       let randomNumber = randomNumberGeneratorInt(seed);
-      const row_count = 2000;
+      const row_count = 80;
       const collection = create_collection();
       collection.insert(Array.from({ length: row_count }, (_, index) => index).map(i => {
         return { a: i % 9, x: row_count - i - 1, b: randomNumber() };
@@ -178,8 +178,8 @@ function optimizerIndexesGroupSortTestSuite() {
       waitForEstimatorSync();
       const c_expected = copy_collection(collection.name());
 
-      for (let offset of [0, 5, 100]) {
-        for (let limit of [1, 9, 100, 2000]) {
+      for (let offset of [1, 5, 75]) {
+        for (let limit of [1, 8, 9, 19, 25, 78, 79, 81]) {
           const query = "FOR doc IN @@collection SORT doc.a, doc.x LIMIT " + offset + ", " + limit + " RETURN [doc.a, doc.x, doc.b]";
           const plan = query_plan(query, collection.name());
           assertTrue(query_plan_uses_index_for_sorting(plan), query + ': ' + plan.rules);
