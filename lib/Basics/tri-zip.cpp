@@ -81,7 +81,7 @@ static ErrorCode ExtractCurrentFile(
     unzFile uf, void* buffer, size_t const bufferSize, char const* outPath,
     bool const skipPaths, bool const overwrite, char const* password,
     std::string& errorMessage,
-    std::function<bool(std::filesystem::path)> validatePath) {
+    std::function<bool(std::filesystem::path)> isAllowedAccess) {
   char filenameInZip[256];
   char* filenameWithoutPath;
   char* p;
@@ -134,7 +134,7 @@ static ErrorCode ExtractCurrentFile(
     if (!skipPaths) {
       fullPath = basics::FileUtils::buildFilename(outPath, filenameInZip);
 
-      if (!validatePath(fullPath)) {
+      if (!isAllowedAccess(fullPath)) {
         errorMessage = std::format("Filename '{}' failed validation", fullPath);
         return TRI_ERROR_FORBIDDEN;
       }
@@ -168,7 +168,7 @@ static ErrorCode ExtractCurrentFile(
     // prefix the name from the zip file with the path specified
     fullPath = basics::FileUtils::buildFilename(outPath, writeFilename);
 
-    if (!validatePath(fullPath)) {
+    if (!isAllowedAccess(fullPath)) {
       errorMessage = std::format("Filename '{}' failed validation.", fullPath);
       return TRI_ERROR_FORBIDDEN;
     }
@@ -190,7 +190,7 @@ static ErrorCode ExtractCurrentFile(
       // create target directory recursively
       std::string tmp =
           basics::FileUtils::buildFilename(outPath, filenameInZip);
-      if (!validatePath(tmp)) {
+      if (!isAllowedAccess(tmp)) {
         errorMessage = std::format("not allowed to create directory {}", tmp);
         return TRI_ERROR_FORBIDDEN;
       }
@@ -212,7 +212,7 @@ static ErrorCode ExtractCurrentFile(
       // strip filename so we only have the directory name
       std::string dir =
           TRI_Dirname(basics::FileUtils::buildFilename(outPath, filenameInZip));
-      if (!validatePath(dir)) {
+      if (!isAllowedAccesisAllowedAccess(dir)) {
         errorMessage = std::format("not allowed to create directory {}", dir);
         return TRI_ERROR_FORBIDDEN;
       }
@@ -280,7 +280,7 @@ static ErrorCode UnzipFile(
     unzFile uf, void* buffer, size_t const bufferSize, char const* outPath,
     bool const skipPaths, bool const overwrite, char const* password,
     std::string& errorMessage,
-    std::function<bool(std::filesystem::path)> validatePath) {
+    std::function<bool(std::filesystem::path)> isAllowedAccess) {
   unz_global_info64 gi;
   uLong i;
   auto res = TRI_ERROR_NO_ERROR;
@@ -293,8 +293,9 @@ static ErrorCode UnzipFile(
   }
 
   for (i = 0; i < gi.number_entry; i++) {
-    res = ExtractCurrentFile(uf, buffer, bufferSize, outPath, skipPaths,
-                             overwrite, password, errorMessage, validatePath);
+    res =
+        ExtractCurrentFile(uf, buffer, bufferSize, outPath, skipPaths,
+                           overwrite, password, errorMessage, isAllowedAccess);
 
     if (res != TRI_ERROR_NO_ERROR) {
       break;
@@ -322,7 +323,7 @@ static ErrorCode UnzipFile(
 ErrorCode TRI_ZipFile(
     char const* filename, char const* dir,
     std::vector<std::string> const& files, char const* password,
-    std::function<bool(std::filesystem::path path)> validatePath) {
+    std::function<bool(std::filesystem::path path)> isAllowedAccess) {
   void* buffer;
 #ifdef USEWIN32IOAPI
   zlib_filefunc64_def ffunc;
@@ -364,7 +365,7 @@ ErrorCode TRI_ZipFile(
       fullfile = arangodb::basics::FileUtils::buildFilename(dir, files[i]);
     }
 
-    if (!validatePath(fullfile)) {
+    if (!isAllowedAccess(fullfile)) {
       return TRI_ERROR_FORBIDDEN;
     }
 
@@ -495,7 +496,7 @@ ErrorCode TRI_Adler32(char const* filename, uint32_t& checksum) {
 ErrorCode TRI_UnzipFile(
     char const* filename, char const* outPath, bool skipPaths, bool overwrite,
     char const* password, std::string& errorMessage,
-    std::function<bool(std::filesystem::path)> validatePath) {
+    std::function<bool(std::filesystem::path)> isAllowedAccess) {
 #ifdef USEWIN32IOAPI
   zlib_filefunc64_def ffunc;
 #endif
@@ -519,7 +520,7 @@ ErrorCode TRI_UnzipFile(
   }
 
   auto res = UnzipFile(uf, buffer, bufferSize, outPath, skipPaths, overwrite,
-                       password, errorMessage, validatePath);
+                       password, errorMessage, isAllowedAccess);
 
   unzClose(uf);
 
