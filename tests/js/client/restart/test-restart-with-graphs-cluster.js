@@ -30,9 +30,10 @@ const pu = require('@arangodb/testutils/process-utils');
 const crypto = require('@arangodb/crypto');
 const db = require("@arangodb").db;
 const time = require("internal").time;
-const { getCtrlCoordinators } = require('@arangodb/test-helper');
 
 const graphs = require('@arangodb/general-graph');
+
+let { instanceRole } = require('@arangodb/testutils/instance');
 
 const gn = "UnitTestsGraph";
 const vn = "UnitTestsVertex";
@@ -48,7 +49,7 @@ function testSuite() {
         graphs._drop(gn, true);
       } catch (err) {}
       // Need to restart without authentication for other tests to succeed:
-      let coordinators = getCtrlCoordinators();
+      let coordinators = IM.getInstancesRole(instanceRole.coordinator);
       let coordinator = coordinators[0];
       coordinator.shutdownArangod(false);
       coordinator.waitForInstanceShutdown(30);
@@ -83,7 +84,7 @@ function testSuite() {
       c.insert(docs);
       assertEqual(10, c.count());
 
-      let coordinators = getCtrlCoordinators();
+      let coordinators = IM.getInstancesRole(instanceRole.coordinator);
       assertTrue(coordinators.length > 0);
       let coordinator = coordinators[0];
       coordinator.shutdownArangod(false);
