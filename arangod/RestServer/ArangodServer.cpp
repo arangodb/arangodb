@@ -135,7 +135,6 @@ void ArangodServer::addFeatures(int* ret) {
 #endif
   );
   addFeature<EnvironmentFeature>();
-  addFeature<FileSystemFeature>();
 #ifdef USE_V8
   addFeature<FoxxFeature>();
   addFeature<FrontendFeature>();
@@ -228,6 +227,11 @@ void ArangodServer::addFeaturesWithOptionProvider() {
   auto& cacheManager = getFeature<CacheManagerFeature>();
   auto& agency = getFeature<AgencyFeature>();
   auto& clusterFeature = getFeature<ClusterFeature>();
+
+  // Add FileSystemFeature
+  auto fileSystemOptions =
+      _optionProviders.getOptions<FileSystemOptionsProvider>();
+  addFeature<FileSystemFeature>(std::move(fileSystemOptions));
 
   // Add VersionFeature
   auto versionOptions = _optionProviders.getOptions<VersionOptionsProvider>();
