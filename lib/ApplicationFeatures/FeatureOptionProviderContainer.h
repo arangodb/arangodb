@@ -22,6 +22,7 @@
 
 #include "Logger/LoggerOptionsProvider.h"
 #include "ProgramOptions/ProgramOptions.h"
+#include "RestServer/CrashHandlerOptionsProvider.h"
 #include "RestServer/DatabasePathOptionsProvider.h"
 #include "RestServer/DumpLimitsOptionsProvider.h"
 #include "RestServer/FlushOptionsProvider.h"
@@ -47,10 +48,11 @@ class FeatureOptionProviderContainer final {
 
  private:
   std::tuple<
-      DatabasePathOptionsProvider, DumpLimitsOptionsProvider,
-      FlushOptionsProvider, fortune::FortuneOptionsProvider,
-      LogBufferOptionsProvider, LoggerOptionsProvider,
-      RocksDBEngineOptionsProvider, RocksDBIndexCacheRefillOptionsProvider,
+      crash_handler::CrashHandlerOptionsProvider, DatabasePathOptionsProvider,
+      DumpLimitsOptionsProvider, FlushOptionsProvider,
+      fortune::FortuneOptionsProvider, LogBufferOptionsProvider,
+      LoggerOptionsProvider, RocksDBEngineOptionsProvider,
+      RocksDBIndexCacheRefillOptionsProvider,
       RocksDBOptionFeatureOptionsProvider, TemporaryStorageOptionsProvider>
       _providers{};
 };

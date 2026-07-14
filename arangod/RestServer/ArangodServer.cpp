@@ -235,6 +235,11 @@ void ArangodServer::addFeaturesWithOptionProvider() {
   auto& agency = getFeature<AgencyFeature>();
   auto& clusterFeature = getFeature<ClusterFeature>();
 
+  // Add CrashHandlerFeature
+  auto crashHandlerOptions =
+      _optionProviders.getOptions<crash_handler::CrashHandlerOptionsProvider>();
+  addFeature<CrashHandlerFeature>(_dumpManager, std::move(crashHandlerOptions));
+
   // Add LogBufferFeature
   auto logBufferOptions =
       _optionProviders.getOptions<LogBufferOptionsProvider>();
