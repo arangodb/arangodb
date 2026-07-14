@@ -148,7 +148,6 @@ void ArangodServer::addFeatures(int* ret) {
   addFeature<MaintenanceFeature>(&clusterFeature);
   auto& networkFeature =
       addFeature<NetworkFeature>(metrics, network::ConnectionPool::Config{});
-  addFeature<NonceFeature>();
   addFeature<OptionsCheckFeature>();
   addFeature<PrivilegeFeature>();
   addFeature<QueryRegistryFeature>(metrics);
@@ -226,6 +225,10 @@ void ArangodServer::addFeaturesWithOptionProvider() {
   auto& cacheManager = getFeature<CacheManagerFeature>();
   auto& agency = getFeature<AgencyFeature>();
   auto& clusterFeature = getFeature<ClusterFeature>();
+
+  // Add NonceFeature
+  auto nonceOptions = _optionProviders.getOptions<NonceOptionsProvider>();
+  addFeature<NonceFeature>(std::move(nonceOptions));
 
   // Add MaxMapCountFeature
   auto maxMapCountOptions =
