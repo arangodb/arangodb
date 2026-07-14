@@ -449,3 +449,37 @@ TEST_P(GroupedSortExecutorTest, skip_too_much) {
       .expectedState(ExecutionState::DONE)
       .run();
 }
+
+TEST_P(GroupedSortExecutorTest, offset_and_limit_return_next_group) {
+  auto groupedRegisterId = 0;
+  auto sortRegisterId = 1;
+  makeExecutorTestHelper<2, 2>()
+      .addConsumer<GroupedSortExecutor>(
+          registerInfos(RegIdSet{sortRegisterId, groupedRegisterId}),
+          groupedSortExecutorInfos({groupedRegisterId}, {sortRegisterId}),
+          ExecutionNode::SORT)
+      .setInputSplitType(GetParam())
+      .setInputValue({{0, 5}, {1, 7}})
+      .expectOutput({groupedRegisterId, sortRegisterId}, {{1, 7}})
+      .setCall(AqlCall{1, false, 1, AqlCall::LimitType::HARD})
+      .expectSkipped(1)
+      .expectedState(ExecutionState::DONE)
+      .run();
+}
+
+TEST_P(GroupedSortExecutorTest, reports_hasmore_when_group_still_pending) {
+  auto groupedRegisterId = 0;
+  auto sortRegisterId = 1;
+  makeExecutorTestHelper<2, 2>()
+      .addConsumer<GroupedSortExecutor>(
+          registerInfos(RegIdSet{sortRegisterId, groupedRegisterId}),
+          groupedSortExecutorInfos({groupedRegisterId}, {sortRegisterId}),
+          ExecutionNode::SORT)
+      .setInputSplitType(GetParam())
+      .setInputValue({{2, 3}, {2, 1}, {199, 8}})
+      .expectOutput({groupedRegisterId, sortRegisterId}, {{2, 1}, {2, 3}})
+      .setCall(AqlCall{0, false, 2, AqlCall::LimitType::SOFT})
+      .expectSkipped(0)
+      .expectedState(ExecutionState::HASMORE)
+      .run();
+}

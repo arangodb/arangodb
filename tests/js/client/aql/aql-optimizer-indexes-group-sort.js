@@ -115,6 +115,85 @@ function optimizerIndexesGroupSortTestSuite() {
     },
 
     ///////////////////////////////////////////////////////////////////////////////
+    /// @brief regression test for https://github.com/arangodb/arangodb/issues/22909
+    ////////////////////////////////////////////////////////////////////////////////
+
+    test_group_sort_with_offset_limit_returns_pending_group: function () {
+      const collection = create_collection();
+      collection.insert([
+        { _key: "000000", a: 0, b: 0, payload: { i: 0, text: "" } },
+        { _key: "000001", a: 1, b: 0, payload: { i: 1, text: "x" } },
+      ]);
+      collection.ensureIndex({ type: "persistent", name: "idx_a", fields: ["a"] });
+      waitForEstimatorSync();
+
+      const query = "FOR d IN @@collection FILTER d.a >= 0 SORT d.a, d._key LIMIT 1, 1 RETURN [d._key, d.a, d.b, d.payload]";
+      const plan = query_plan(query, collection.name());
+      assertTrue(query_plan_uses_index_for_sorting(plan), plan.rules);
+      assertTrue(sort_node_does_a_group_sort(plan), plan.nodes);
+      assertEqual([["000001", 1, 0, { i: 1, text: "x" }]], execute(query, collection.name()), query);
+    },
+
+    ///////////////////////////////////////////////////////////////////////////////
+    /// @brief test index usage with limit and offset
+    ////////////////////////////////////////////////////////////////////////////////
+
+    test_indexed_group_sort_with_limit_gives_same_results_as_unindexed_sort: function () {
+      let randomNumber = randomNumberGeneratorInt(seed);
+      const row_count = 2000;
+      const collection = create_collection();
+      collection.insert(Array.from({ length: row_count }, (_, index) => index).map(i => {
+        return { a: i % 9, x: row_count - i - 1, b: randomNumber() };
+      }));
+      collection.ensureIndex({ type: "persistent", fields: ["a", "b"] });
+      waitForEstimatorSync();
+      const c_expected = copy_collection(collection.name());
+
+      for (let offset of [0, 1, 5, 222]) {
+        for (let limit of [0, 1, 8, 9, 100, 1000, 1999, 2000, 2001]) {
+          const query = "FOR doc IN @@collection SORT doc.a, doc.x LIMIT " + offset + ", " + limit + " RETURN [doc.a, doc.x, doc.b]";
+          const plan = query_plan(query, collection.name());
+          assertTrue(query_plan_uses_index_for_sorting(plan), query + ': ' + plan.rules);
+          assertTrue(sort_node_does_a_group_sort(plan), query + ': ' + plan.nodes);
+          assertEqual(
+            db._query(query, { "@collection": c_expected.name() }).toArray(),
+            db._query(query, { "@collection": collection.name() }).toArray(),
+            query);
+        }
+      }
+    },
+
+    ///////////////////////////////////////////////////////////////////////////////
+    /// @brief test index usage with limit and fullCount
+    ////////////////////////////////////////////////////////////////////////////////
+
+    test_indexed_group_sort_with_fullcount_gives_same_results_as_unindexed_sort: function () {
+      let randomNumber = randomNumberGeneratorInt(seed);
+      const row_count = 2000;
+      const collection = create_collection();
+      collection.insert(Array.from({ length: row_count }, (_, index) => index).map(i => {
+        return { a: i % 9, x: row_count - i - 1, b: randomNumber() };
+      }));
+      collection.ensureIndex({ type: "persistent", fields: ["a", "b"] });
+      waitForEstimatorSync();
+      const c_expected = copy_collection(collection.name());
+
+      for (let offset of [0, 5, 100]) {
+        for (let limit of [1, 9, 100, 2000]) {
+          const query = "FOR doc IN @@collection SORT doc.a, doc.x LIMIT " + offset + ", " + limit + " RETURN [doc.a, doc.x, doc.b]";
+          const plan = query_plan(query, collection.name());
+          assertTrue(query_plan_uses_index_for_sorting(plan), query + ': ' + plan.rules);
+          assertTrue(sort_node_does_a_group_sort(plan), query + ': ' + plan.nodes);
+          const actual = db._query(query, { "@collection": collection.name() }, { fullCount: true });
+          const expected = db._query(query, { "@collection": c_expected.name() }, { fullCount: true });
+          assertEqual(expected.toArray(), actual.toArray(), query);
+          assertEqual(row_count, actual.getExtra().stats.fullCount, query);
+          assertEqual(expected.getExtra().stats.fullCount, actual.getExtra().stats.fullCount, query);
+        }
+      }
+    },
+
+    ///////////////////////////////////////////////////////////////////////////////
     /// @brief test index usage
     ////////////////////////////////////////////////////////////////////////////////
 
