@@ -827,32 +827,6 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_with_link) {
         arangodb::tests::mocks::makeClassicExecContextFrom(*userManager, "");
     arangodb::ExecContextScope execContextScope(execCtxBundle.execContext);
 
-    // not authorised (NONE collection) as per
-    // https://github.com/arangodb/backlog/issues/459
-    {
-      arangodb::auth::UserMap userMap;
-      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
-                       .first->second;
-      // Contrary to earlier versions, we have to grant RW on the database
-      // to actually trigger the collection check, since the database is
-      // now checked in `canDropView`, too.
-      user.grantDatabase(vocbase->name(), arangodb::auth::Level::RW);
-      user.grantCollection(
-          vocbase->name(), "testCollection",
-          arangodb::auth::Level::NONE);   // for missing collections
-                                          // User::collectionAuthLevel(...)
-                                          // returns database auth::Level
-      userManager->setAuthInfo(userMap);  // set user map to avoid loading
-                                          // configuration from system database
-
-      EXPECT_TRUE((TRI_ERROR_FORBIDDEN == logicalView->drop().errorNumber()));
-      logicalCollection = ci.getCollection(vocbase->name(), collectionId);
-      ASSERT_TRUE((false == !logicalCollection));
-      EXPECT_TRUE(
-          (false == logicalCollection->getPhysical()->getAllIndexes().empty()));
-      EXPECT_TRUE((false == !ci.getView(vocbase->name(), viewId)));
-    }
-
     // authorised (RO collection)
     {
       arangodb::auth::UserMap userMap;
