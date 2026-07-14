@@ -439,6 +439,32 @@ void Expression::prepareForExecution() {
   }
 }
 
+AqlValue Expression::stealConstantValue() {
+  TRI_ASSERT(_type == ExpressionType::kJson);
+  prepareForExecution();
+  TRI_ASSERT(_data != nullptr);
+  TRI_ASSERT(_usedBytesByData > 0);
+
+  auto const bytes = _usedBytesByData;
+  VPackSlice slice(_data);
+
+  AqlValue value;
+  if (bytes <= sizeof(AqlValue)) {
+    // small enough to be stored inline in an AqlValue
+    value = AqlValue{AqlValueHintSliceCopy{slice}};
+    velocypack_free(_data);
+  } else {
+    // Transfer ownership of the malloc buffer to the returned AqlValue.
+    // Memory accounting is transferred to the caller.
+    value = AqlValue::fromOwnedMallocSlice(_data, static_cast<size_t>(bytes));
+  }
+
+  _resourceMonitor.decreaseMemoryUsage(bytes);
+  _data = nullptr;
+  _usedBytesByData = 0;
+  return value;
+}
+
 // brief execute an expression of type ExpressionType::kSimple, the convention
 // is that the resulting AqlValue will be destroyed outside eventually
 AqlValue Expression::executeSimpleExpression(ExpressionContext& ctx,

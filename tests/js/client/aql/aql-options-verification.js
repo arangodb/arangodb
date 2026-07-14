@@ -124,8 +124,8 @@ function aqlOptionsVerificationSuite(isSearchAlias) {
         [prefix + "{ disableIndex: false, indexHint: 'primary' } RETURN 1"],
 
         // invalid combinations of indexHint and disableIndex
-        [prefix + "{ indexHint: 'primary', disableIndex: true } RETURN 1", "disableIndex"],
-        [prefix + "{ indexHint: ['primary'], disableIndex: true } RETURN 1", "disableIndex"],
+        [prefix + "{ indexHint: 'primary', disableIndex: true } RETURN 1", "indexHint"],
+        [prefix + "{ indexHint: ['primary'], disableIndex: true } RETURN 1", "indexHint"],
         [prefix + "{ disableIndex: true, indexHint: 'primary' } RETURN 1", "indexHint"],
       ];
 

@@ -87,6 +87,25 @@ TEST_F(AqlMergeTest, MergeExceedsMemoryLimitSupervised) {
   EXPECT_EQ(TRI_ERROR_RESOURCE_LIMIT, queryRes.result.errorNumber());
 }
 
+TEST_F(AqlMergeTest, NestedObjectLiteralWithDuplicateKeys) {
+  auto queryRes = runQuery(vocbase, "RETURN { outer: { x: 1, x: 2 } }",
+                           64 * 1024 * 1024);
+  ASSERT_TRUE(queryRes.result.ok()) << queryRes.result.errorMessage();
+  Slice outSlice = queryRes.data->slice();
+  ASSERT_TRUE(outSlice.isArray());
+  ASSERT_EQ(outSlice.length(), 1);
+  ASSERT_FALSE(outSlice.at(0).isNone());
+  EXPECT_EQ(2, outSlice.at(0).get("outer").get("x").getInt());
+}
+
+TEST_F(AqlMergeTest, MergeRecursiveConstantFoldRespectsMemoryLimit) {
+  std::string query =
+      "RETURN MERGE_RECURSIVE({a: {x: REPEAT('x', 1024)}, b: REPEAT('y', 1024)}, "
+      "{a: {y: REPEAT('z', 1024)}, c: REPEAT('w', 1024)})";
+  auto queryRes = runQuery(vocbase, query, 4 * 1024);
+  ASSERT_TRUE(queryRes.result.ok()) << queryRes.result.errorMessage();
+}
+
 TEST_F(AqlMergeTest, MergeRespectsMemoryLimitSupervised) {
   // result should contain 4096 keys
   std::string query =

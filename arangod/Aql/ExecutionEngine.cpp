@@ -920,11 +920,10 @@ void ExecutionEngine::initializeConstValueBlock(
             RegisterId reg = regPlan->variableToOptionalRegisterId(var->id);
             if (reg.value() != RegisterId::maxRegisterId) {
               TRI_ASSERT(reg.isConstRegister());
-              AqlValue value = var->constantValue();
-              TRI_ASSERT(!value.isNone());
-              // the constValueBlock takes ownership, so we have to create a
-              // copy here.
-              block->emplaceValue(0, reg.value(), AqlValue(value.slice()));
+              AqlValue owned = var->extractOwnedConstantValue();
+              block->emplaceValue(0, reg.value(), std::move(owned));
+              var->setConstantBlockReference(
+                  block->getValueReference(0, reg.value()).slice());
             }
           } else if (var->type() == Variable::Type::BindParameter) {
             RegisterId reg = regPlan->variableToOptionalRegisterId(var->id);

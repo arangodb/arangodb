@@ -1199,6 +1199,16 @@ AqlValue::AqlValue(int64_t low, int64_t high) {
   setType(AqlValueType::RANGE);
 }
 
+AqlValue AqlValue::fromOwnedMallocSlice(uint8_t* data, size_t length) {
+  TRI_ASSERT(data != nullptr);
+  TRI_ASSERT(length > sizeof(AqlValue));
+  AqlValue result;
+  result.setManagedSliceData(MemoryOriginType::Malloc,
+                             static_cast<velocypack::ValueLength>(length));
+  result._data.managedSliceMeta.pointer = data;
+  return result;
+}
+
 bool AqlValue::requiresDestruction() const noexcept {
   auto t = type();
   switch (t) {
