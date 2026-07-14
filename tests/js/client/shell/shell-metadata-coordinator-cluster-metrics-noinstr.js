@@ -20,7 +20,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Avanthi Dundigala
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");

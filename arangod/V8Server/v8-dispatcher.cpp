@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef USE_V8

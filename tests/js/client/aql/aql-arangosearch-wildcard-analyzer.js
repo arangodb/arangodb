@@ -21,7 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Valery Mironov
 // //////////////////////////////////////////////////////////////////////////////
 
 let arangodb = require("@arangodb");

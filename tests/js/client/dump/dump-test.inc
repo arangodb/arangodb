@@ -21,9 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Jan Steemann
-/// @author Wilfried Goesgens
-/// @author Copyright 2021, ArangoDB GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 (function () {
@@ -146,7 +143,6 @@
     const gm = (isEnterprise) ? require("@arangodb/smart-graph") : {};
     const satgm = (isEnterprise) ? require("@arangodb/satellite-graph") : {};
     const {map, zipObject} = require('lodash');
-    const request = require("@arangodb/request");
     const {getRawMetric, getEndpointsByType} = require("@arangodb/test-helper");
 
     console.info("Test suite arguments: " + JSON.stringify(args));

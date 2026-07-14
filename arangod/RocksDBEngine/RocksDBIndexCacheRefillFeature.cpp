@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBIndexCacheRefillFeature.h"
@@ -85,12 +84,6 @@ RocksDBIndexCacheRefillFeature::RocksDBIndexCacheRefillFeature(
 
 RocksDBIndexCacheRefillFeature::~RocksDBIndexCacheRefillFeature() {
   stopThread();
-}
-
-void RocksDBIndexCacheRefillFeature::collectOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  RocksDBIndexCacheRefillOptionsProvider provider;
-  provider.declareOptions(options, _options);
 }
 
 void RocksDBIndexCacheRefillFeature::beginShutdown() {

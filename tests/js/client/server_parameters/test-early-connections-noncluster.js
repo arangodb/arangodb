@@ -21,15 +21,13 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Jan Steemann
-/// @author Copyright 2021, ArangoDB Inc, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 const jwtSecret = 'haxxmann';
 const jsunity = require('jsunity');
+const request = require("@arangodb/request");
 const {assertEqual, assertTrue, assertFalse, assertNotEqual} = jsunity.jsUnity.assertions;
 const crypto = require('@arangodb/crypto');
-const request = require('@arangodb/request').request;
 const arango = require('@arangodb').arango;
 let IM = global.instanceManager;
 
@@ -51,14 +49,13 @@ function testSuite() {
 
   return {
     tearDownAll: function() {
-      let result = request({ url: IM.url + "/_admin/debug/failat/startListeningEarly", method: "delete", auth: { bearer: jwtRoot } });
-      assertEqual(200, result.status);
+      let result = IM.debugClearFailAt("startListeningEarly");
 
       // wait until normal REST API responds normally
       let iterations = 0;
       while (iterations++ < 180) {
-        let result = request({ url: IM.url + "/_api/collection", method: "get", auth: { bearer: jwtRoot } });
-        if (result.status === 200) {
+        let result = arango.GET_RAW("/_api/collection");
+        if (result.code === 200) {
           break;
         }
 
@@ -75,15 +72,15 @@ function testSuite() {
     
     testOkWithJWT: function() {
       ["/_api/version", "/_admin/version", "/_admin/status"].forEach((url) => {
-        let result = request({ url: IM.url + url, method: "get", auth: { bearer: jwtRoot } });
-        assertEqual(200, result.status);
+        let result = arango.GET_RAW(url);
+        assertEqual(200, result.code);
       });
     },
     
     testDisabledEndpoint: function() {
       ["/_api/collection", "/_api/transaction", "/_admin/aardvark"].forEach((url) => {
-        let result = request({ url: IM.url + url, method: "get", auth: { bearer: jwtRoot } });
-        assertEqual(503, result.status);
+        let result = arango.GET_RAW(url);
+        assertEqual(503, result.code);
       });
     },
     
