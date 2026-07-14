@@ -340,6 +340,10 @@ ErrorCode TRI_ZipFile(
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
+  if (!isAllowedAccess(filename)) {
+    return TRI_ERROR_FORBIDDEN;
+  }
+
 #ifdef USEWIN32IOAPI
   fill_win32_filefunc64A(&ffunc);
   zipFile zf = zipOpen2_64(filename, 0, NULL, &ffunc);
@@ -505,6 +509,10 @@ ErrorCode TRI_UnzipFile(
 
   if (buffer == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
+  }
+
+  if (!isAllowedAccess(filename)) {
+    return TRI_ERROR_FORBIDDEN;
   }
 
 #ifdef USEWIN32IOAPI
