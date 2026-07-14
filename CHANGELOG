@@ -1,5 +1,8 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
+* COR-679: Added AQL array `ALL`/`ANY`/`NONE`/`AT LEAST` support for the `=~` and
+  `!~` regex operators, e.g. `["foo", "bar"] ANY =~ "^ba"` and
+  `["foo1", "bar2", "baz3baz"] AT LEAST(2) =~ "\\w\\d$"`.
 
 * COR-707 - CONTAINS(): Raise a warning for non-string inputs.
   Improved validation for the AQL CONTAINS() function. When either argument is not a string, 
