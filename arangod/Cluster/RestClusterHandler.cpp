@@ -30,17 +30,13 @@
 #include "Agency/AsyncAgencyComm.h"
 #include "Agency/Supervision.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Auth/Rbac/Actions.h"
 #include "Auth/UserManager.h"
 #include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/CollectionInfoCurrent.h"
 #include "Cluster/ServerState.h"
-#include "GeneralServer/AuthenticationFeature.h"
-#include "Replication/ReplicationFeature.h"
 #include "VocBase/LogicalCollection.h"
-#include "Rest/Version.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
@@ -60,7 +56,7 @@ RestStatus RestClusterHandler::execute() {
   if (!suffixes.empty()) {
     if (suffixes[0] == "cluster-info") {
       if (auto r = ExecContext::current().canUseAdminAction(
-              arangodb::rbac::Category::AdminClusterInfo{});
+              auth::perms::AdminClusterInfo{});
           r.fail()) {
         generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                       r.errorMessage());
@@ -160,8 +156,7 @@ void RestClusterHandler::handleAgencyDump() {
   }
 
   auto const& exec = ExecContext::current();
-  if (auto r =
-          exec.canUseAdminAction(arangodb::rbac::Category::AdminReadAgency{});
+  if (auto r = exec.canUseAdminAction(auth::perms::AdminReadAgency{});
       r.fail()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                   r.errorMessage());
@@ -181,8 +176,7 @@ void RestClusterHandler::handleAgencyDump() {
 
 void RestClusterHandler::handleAgencyCache() {
   auto const& exec = ExecContext::current();
-  if (auto r =
-          exec.canUseAdminAction(arangodb::rbac::Category::AdminReadAgency{});
+  if (auto r = exec.canUseAdminAction(auth::perms::AdminReadAgency{});
       r.fail()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                   r.errorMessage());

@@ -26,7 +26,6 @@
 #include "Agency/AgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
-#include "Auth/Rbac/Actions.h"
 #include "Auth/UserManager.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/Result.h"
@@ -34,7 +33,6 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
-#include "Basics/hashes.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterHelpers.h"
 #include "Cluster/ClusterInfo.h"
@@ -45,14 +43,12 @@
 #include "Cluster/RebootTracker.h"
 #include "Cluster/ResignShardLeadership.h"
 #include "Cluster/ServerState.h"
-#include "Containers/HashSet.h"
 #include "Containers/MerkleTree.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "Indexes/Index.h"
 #include "Metrics/Counter.h"
 #include "Network/NetworkFeature.h"
-#include "Network/Utils.h"
 #include "Replication/DatabaseInitialSyncer.h"
 #include "Replication/DatabaseReplicationApplier.h"
 #include "Replication/GlobalInitialSyncer.h"
@@ -64,7 +60,6 @@
 #include "RestServer/ServerIdFeature.h"
 #include "VectorIndex/VectorIndexFeature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
-#include "Sharding/ShardingInfo.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionState.h"
@@ -75,13 +70,11 @@
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
-#include "Utilities/NameValidator.h"
 #include "VocBase/Identifiers/RevisionId.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 #include "VocBase/Properties/CreateCollectionBody.h"
 #include "VocBase/Methods/Collections.h"
-#include "VocBase/Methods/CollectionCreationInfo.h"
 #include "VocBase/Properties/DatabaseConfiguration.h"
 
 #include <absl/strings/str_cat.h>
@@ -96,7 +89,6 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 using namespace arangodb::cluster;
-using Helper = arangodb::basics::VelocyPackHelper;
 
 namespace {
 std::string const dataString("data");
@@ -137,7 +129,7 @@ auto handlingOfExistingCollection(TRI_vocbase_t& vocbase,
   ExecContextSuperuserScope escope(
       ExecContext::current().isSuperuser() ||
       (ExecContext::current()
-           .canUseAdminAction(arangodb::rbac::Category::AdminRestore{})
+           .canUseAdminAction(auth::perms::AdminRestore{})
            .ok() &&
        !ServerState::readOnly()));
 
@@ -841,8 +833,7 @@ Result RestReplicationHandler::testPermissions() {
 
       if (!collectionName.empty()) {
         auto& exec = ExecContext::current();
-        if (exec.canUseAdminAction(arangodb::rbac::Category::AdminDump{})
-                .fail() &&
+        if (exec.canUseAdminAction(auth::perms::AdminDump{}).fail() &&
             exec.canUseCollection(_vocbase.name(), collectionName,
                                   AccessLevel::Read)
                 .fail()) {
@@ -879,9 +870,7 @@ Result RestReplicationHandler::testPermissions() {
                 vocbase->lookupCollection(collectionName) == nullptr) {
               // 1.) re-create collection, means: overwrite=true (rw database)
               // OR 2.) not existing, new collection (rw database)
-              if (exec.canUseAdminAction(
-                          arangodb::rbac::Category::AdminRestore{})
-                      .fail() &&
+              if (exec.canUseAdminAction(auth::perms::AdminRestore{}).fail() &&
                   exec.canCreateCollection(dbName, collectionName).fail()) {
                 return Result(TRI_ERROR_FORBIDDEN,
                               absl::StrCat("insufficient permissions to access "
@@ -892,9 +881,7 @@ Result RestReplicationHandler::testPermissions() {
             } else {
               // 3.) Existing collection (ro database, rw collection)
               // no overwrite. restoring into an existing collection
-              if (exec.canUseAdminAction(
-                          arangodb::rbac::Category::AdminRestore{})
-                      .fail() &&
+              if (exec.canUseAdminAction(auth::perms::AdminRestore{}).fail() &&
                   exec.canUseCollection(dbName, collectionName,
                                         AccessLevel::WriteData)
                       .fail()) {
@@ -1085,8 +1072,7 @@ void RestReplicationHandler::handleCommandClusterInventory() {
 
   resultBuilder.add("collections", VPackValue(VPackValueType::Array));
   for (std::shared_ptr<LogicalCollection> const& c : cols) {
-    if (exec.canUseAdminAction(arangodb::rbac::Category::AdminClusterInfo{})
-            .fail() &&
+    if (exec.canUseAdminAction(auth::perms::AdminClusterInfo{}).fail() &&
         exec.canUseCollection(dbName, c->name(), AccessLevel::Read).fail()) {
       continue;
     }
@@ -1379,7 +1365,7 @@ futures::Future<Result> RestReplicationHandler::processRestoreData(
 
   ExecContextSuperuserScope escope(
       ExecContext::current()
-          .canUseAdminAction(arangodb::rbac::Category::AdminRestore{})
+          .canUseAdminAction(auth::perms::AdminRestore{})
           .ok() &&
       !ServerState::readOnly());
 
@@ -1932,7 +1918,7 @@ Result RestReplicationHandler::processRestoreIndexes(
 
   ExecContextSuperuserScope escope(
       ExecContext::current()
-          .canUseAdminAction(arangodb::rbac::Category::AdminRestore{})
+          .canUseAdminAction(auth::perms::AdminRestore{})
           .ok() &&
       !ServerState::readOnly());
 
@@ -2050,7 +2036,7 @@ Result RestReplicationHandler::processRestoreIndexesCoordinator(
 
   // Check permissions:
   auto& exec = ExecContext::current();
-  if (exec.canUseAdminAction(rbac::Category::AdminRestore{}).fail()) {
+  if (exec.canUseAdminAction(auth::perms::AdminRestore{}).fail()) {
     if (auto r = exec.canCreateIndex(_vocbase.name(), name); r.fail()) {
       return r;
     }
@@ -2206,7 +2192,7 @@ void RestReplicationHandler::handleCommandRestoreView() {
         return;
       }
 
-      auto r1 = exec.canUseAdminAction(rbac::Category::AdminRestore{});
+      auto r1 = exec.canUseAdminAction(auth::perms::AdminRestore{});
       auto r2 = exec.canDropView(_vocbase.name(), name);
       if (r1.fail() && r2.fail()) {
         generateError(r2);
@@ -2221,7 +2207,7 @@ void RestReplicationHandler::handleCommandRestoreView() {
     }
 
     // must create() since view was drop()ed
-    auto r1 = exec.canUseAdminAction(rbac::Category::AdminRestore{});
+    auto r1 = exec.canUseAdminAction(auth::perms::AdminRestore{});
     // Extract linked collection names from the view description's "links"
     // field.
     std::vector<std::string> linkedCollections;
@@ -3265,8 +3251,7 @@ bool RestReplicationHandler::prepareCollectionForRevisionOperation(
 
   ExecContextSuperuserScope escope(
       ExecContext::current()
-          .canUseAdminAction(
-              arangodb::rbac::Category::AdminWriteReplicatedLog{})
+          .canUseAdminAction(auth::perms::AdminWriteReplicatedLog{})
           .ok());
 
   if (auto r = ExecContext::current().canUseCollection(

@@ -30,9 +30,7 @@
 
 #include <velocypack/Builder.h>
 
-#include "Auth/Rbac/Actions.h"
 #include "Basics/StaticStrings.h"
-#include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"

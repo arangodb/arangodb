@@ -24,7 +24,6 @@
 #include "RocksDBRestWalHandler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Auth/Rbac/Actions.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ClusterAdminOperations.h"
 #include "Cluster/ClusterFeature.h"
@@ -80,7 +79,7 @@ RestStatus RocksDBRestWalHandler::execute() {
     }
 #else
     if (auto r = ExecContext::current().canUseAdminAction(
-            arangodb::rbac::Category::AdminWalAccess{});
+            auth::perms::AdminWalAccess{});
         r.fail()) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                     r.errorMessage());

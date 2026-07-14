@@ -28,7 +28,6 @@
 #include "v8-actions.h"
 #include "Actions/ActionFeature.h"
 #include "Actions/actions.h"
-#include "Auth/Rbac/Actions.h"
 #include "V8/V8SecurityFeature.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/ScopeGuard.h"
@@ -58,7 +57,6 @@
 #include "V8Server/FoxxFeature.h"
 #include "V8Server/GlobalExecutorMethods.h"
 #include "V8Server/V8DealerFeature.h"
-#include "V8Server/v8-vocbase.h"
 #include "VocBase/vocbase.h"
 
 #include <absl/strings/escaping.h>

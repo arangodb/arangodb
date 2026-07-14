@@ -25,14 +25,13 @@
 
 #include "Agency/AsyncAgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Auth/Rbac/Actions.h"
 #include "Basics/voc-errors.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Futures/Utilities.h"
 #include "Inspection/VPackWithErrorT.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
-#include "Cluster/ClusterFeature.h"
 #include "Rest/CommonDefines.h"
 #include "fuerte/ApiVersion.h"
 
@@ -126,7 +125,7 @@ auto RestHandler::executeAsync() -> futures::Future<futures::Unit> {
     }
   } else {
     if (auto r = ExecContext::current().canUseAdminAction(
-            arangodb::rbac::Category::AdminMonitoringInternal{});
+            auth::perms::AdminMonitoringInternal{});
         r.fail()) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                     r.errorMessage());

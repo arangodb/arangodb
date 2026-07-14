@@ -25,7 +25,6 @@
 #include "RocksDBRestReplicationHandler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Auth/Rbac/Actions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/VPackStringBufferAdapter.h"
@@ -34,7 +33,6 @@
 #include "Logger/LogMacros.h"
 #include "Replication/ReplicationClients.h"
 #include "Replication/ReplicationFeature.h"
-#include "Replication/Syncer.h"
 #include "Replication/utilities.h"
 #include "Rest/HttpResponse.h"
 #include "RestServer/DatabaseFeature.h"
