@@ -66,17 +66,19 @@ const intoTopLevelAllowed = fs.join(topLevelForbidden, 'into_allowed.txt');
 const topLevelAllowedFile = fs.join(topLevelAllowed, 'allowed.txt');
 const topLevelForbiddenFile = fs.join(topLevelForbidden, 'forbidden.txt');
 
-// N/A const subLevelForbidden = fs.join(topLevelAllowed, 'forbidden');
+// Denied via files-denylist while still matching files-allowlist (under topLevelAllowed)
+const topLevelDenied = fs.join(topLevelAllowed, 'secrets');
+const topLevelDeniedFile = fs.join(topLevelDenied, 'secrets.txt');
+const topLevelDeniedWriteFile = fs.join(topLevelDenied, 'secrets_write.txt');
+
 const subLevelAllowed = fs.join(topLevelForbidden, 'allowed');
 const intoSubLevelAllowed = topLevelForbidden + '/allowed/aoeu';
 
 const subLevelAllowedFile = fs.join(subLevelAllowed, 'allowed.txt');
-// N/A const subLevelForbiddenFile = fs.join(subLevelForbidden, 'forbidden.txt');
 
 const topLevelAllowedWriteFile = fs.join(topLevelAllowed, 'allowed_write.txt');
 const topLevelForbiddenWriteFile = fs.join(topLevelForbidden, 'forbidden_write.txt');
 const subLevelAllowedWriteFile = fs.join(subLevelAllowed, 'allowed_write.txt');
-// N/A const subLevelForbiddenWriteFile = fs.join(subLevelForbidden, 'forbidden_write.txt');
 
 const topLevelAllowedReadCSVFile = fs.join(topLevelAllowed, 'allowed_csv.txt');
 const topLevelForbiddenReadCSVFile = fs.join(topLevelForbidden, 'forbidden_csv.txt');
@@ -100,16 +102,16 @@ const JSONText = '{"a": true, "b":false, "c": "abc"}\n{"a": true, "b":false, "c"
 const JSONParsed = { "a" : true, "b" : false, "c" : "abc"};
 
 if (getOptions === true) {
-  // N/A fs.makeDirectoryRecursive(subLevelForbidden);
   fs.makeDirectoryRecursive(topLevelAllowed);
+  fs.makeDirectoryRecursive(topLevelDenied);
   fs.makeDirectoryRecursive(subLevelAllowed);
   fs.makeDirectoryRecursive(topLevelAllowedRecursive);
   fs.makeDirectoryRecursive(topLevelForbiddenRecursive);
   fs.makeDirectoryRecursive(topLevelAllowedUnZip);
   fs.write(topLevelAllowedFile, 'this file is allowed.\n');
+  fs.write(topLevelDeniedFile, 'this file is denied by denylist.\n');
   fs.write(topLevelForbiddenFile, 'forbidden fruits are tasty!\n');
   fs.write(subLevelAllowedFile, 'this file is allowed.\n');
-   // N/A fs.write(subLevelForbiddenFile, 'forbidden fruits are tasty!\n');
 
   fs.write(forbiddenJSFileName, `print('hello world');\n`);
   fs.write(allowedJSFileName, `print('hello world');\n`);
@@ -118,7 +120,6 @@ if (getOptions === true) {
   fs.write(topLevelAllowedCopyFile, 'this file is allowed.\n');
   fs.write(topLevelForbiddenCopyFile, 'forbidden fruits are tasty!\n');
   fs.write(subLevelAllowedCopyFile, 'this file is allowed.\n');
-   // N/A fs.write(subLevelForbiddenFile, 'forbidden fruits are tasty!\n');
 
   try {
     fs.linkFile(topLevelForbiddenFile, intoTopLevelForbidden);
@@ -142,6 +143,9 @@ if (getOptions === true) {
      fs.escapePath('^' + topLevelAllowed),
      fs.escapePath('^' + subLevelAllowed),
      fs.escapePath('^' + topLevelAllowedRecursive)
+    ],
+    'javascript.files-denylist': [
+     fs.escapePath('^' + topLevelDenied)
     ]
   };
 }
@@ -641,7 +645,7 @@ function testSuite() {
       tryReadForbidden('/etc/passwd');
       tryReadForbidden('/var/log/mail.log');
       tryReadForbidden(topLevelForbiddenFile);
-      // N/A tryReadForbidden(subLevelForbiddenFile);
+      tryReadForbidden(topLevelDeniedFile);
 
       tryReadAllowed(topLevelAllowedFile, 'this file is allowed.\n');
       tryReadAllowed(subLevelAllowedFile, 'this file is allowed.\n');
@@ -649,7 +653,7 @@ function testSuite() {
       tryAdler32Forbidden('/etc/passwd');
       tryAdler32Forbidden('/var/log/mail.log');
       tryAdler32Forbidden(topLevelForbiddenFile);
-      // N/A tryAdler32Forbidden(subLevelForbiddenFile);
+      tryAdler32Forbidden(topLevelDeniedFile);
 
       tryAdler32Allowed(topLevelAllowedFile, 'this file is allowed.\n');
       tryAdler32Allowed(subLevelAllowedFile, 'this file is allowed.\n');
@@ -658,7 +662,7 @@ function testSuite() {
       tryReadBufferForbidden('/etc/passwd');
       tryReadBufferForbidden('/var/log/mail.log');
       tryReadBufferForbidden(topLevelForbiddenFile);
-      // N/A tryReadForbidden(subLevelForbiddenFile);
+      tryReadBufferForbidden(topLevelDeniedFile);
 
       tryReadBufferAllowed(topLevelAllowedFile, 'this file is allowed.\n');
       tryReadBufferAllowed(subLevelAllowedFile, 'this file is allowed.\n');
@@ -668,7 +672,7 @@ function testSuite() {
       tryRead64Forbidden('/etc/passwd');
       tryRead64Forbidden('/var/log/mail.log');
       tryRead64Forbidden(topLevelForbiddenFile);
-      // N/A tryReadForbidden(subLevelForbiddenFile);
+      tryRead64Forbidden(topLevelDeniedFile);
 
       tryRead64Allowed(topLevelAllowedFile, 'this file is allowed.\n');
       tryRead64Allowed(subLevelAllowedFile, 'this file is allowed.\n');
@@ -694,8 +698,10 @@ function testSuite() {
     testWriteFile : function() {
       tryWriteForbidden('/var/log/mail.log');
       tryWriteForbidden(topLevelForbiddenWriteFile);
+      tryWriteForbidden(topLevelDeniedWriteFile);
       tryAppendForbidden('/var/log/mail.log');
       tryAppendForbidden(topLevelForbiddenWriteFile);
+      tryAppendForbidden(topLevelDeniedWriteFile);
 
       tryWriteAllowed(topLevelAllowedWriteFile);
       tryWriteAllowed(subLevelAllowedWriteFile);
@@ -703,11 +709,19 @@ function testSuite() {
       tryAppendAllowed(subLevelAllowedWriteFile);
 
     },
+    testFilesDenyListOverridesAllowList : function() {
+      // topLevelDenied is under the allowlisted topLevelAllowed prefix, but
+      // matched by javascript.files-denylist and must remain inaccessible.
+      tryReadForbidden(topLevelDeniedFile);
+      tryWriteForbidden(topLevelDeniedWriteFile);
+      tryReadAllowed(topLevelAllowedFile, 'this file is allowed.\n');
+      tryWriteAllowed(topLevelAllowedWriteFile);
+    },
     testChmod : function() {
       tryChmodForbidden('/etc/passwd');
       tryChmodForbidden('/var/log/mail.log');
       tryChmodForbidden(topLevelForbiddenFile);
-      // N/A tryChmodForbidden(subLevelForbiddenFile);
+      tryChmodForbidden(topLevelDeniedFile);
 
       tryChmodAllowed(topLevelAllowedFile);
       tryChmodAllowed(subLevelAllowedFile);
@@ -716,7 +730,7 @@ function testSuite() {
       tryExistsForbidden('/etc/passwd');
       tryExistsForbidden('/var/log/mail.log');
       tryExistsForbidden(topLevelForbiddenFile);
-      // N/A tryExistsForbidden(subLevelForbiddenFile);
+      tryExistsForbidden(topLevelDeniedFile);
 
       tryExistsAllowed(topLevelAllowedFile, true);
       tryExistsAllowed(subLevelAllowedFile, true);
