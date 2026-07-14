@@ -146,7 +146,6 @@ void ArangodServer::addFeatures(int* ret) {
   addFeature<TimeZoneFeature>();
   addFeature<LockfileFeature>();
   addFeature<MaintenanceFeature>(&clusterFeature);
-  addFeature<MaxMapCountFeature>();
   auto& networkFeature =
       addFeature<NetworkFeature>(metrics, network::ConnectionPool::Config{});
   addFeature<NonceFeature>();
@@ -227,6 +226,11 @@ void ArangodServer::addFeaturesWithOptionProvider() {
   auto& cacheManager = getFeature<CacheManagerFeature>();
   auto& agency = getFeature<AgencyFeature>();
   auto& clusterFeature = getFeature<ClusterFeature>();
+
+  // Add MaxMapCountFeature
+  auto maxMapCountOptions =
+      _optionProviders.getOptions<MaxMapCountOptionsProvider>();
+  addFeature<MaxMapCountFeature>(std::move(maxMapCountOptions));
 
   // Add FileSystemFeature
   auto fileSystemOptions =
