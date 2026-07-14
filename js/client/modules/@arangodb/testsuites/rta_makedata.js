@@ -43,8 +43,6 @@ const ct = require('@arangodb/testutils/client-tools');
 const tu = require('@arangodb/testutils/test-utils');
 const im = require('@arangodb/testutils/instance-manager');
 const inst = require('@arangodb/testutils/instance');
-const replication = require("@arangodb/replication");
-const compareTicks = replication.compareTicks;
 const SetGlobalExecutionDeadlineTo = require('internal').SetGlobalExecutionDeadlineTo;
 const testRunnerBase = require('@arangodb/testutils/testrunner').testRunner;
 const yaml = require('js-yaml');
@@ -90,10 +88,6 @@ function makeDataWrapper (options) {
   class rtaMakedataRunner extends testRunnerBase {
     constructor(options, testname, ...optionalArgs) {
       super(options, testname, ...optionalArgs);
-      if (!this.options.cluster) {
-        this.options.singles = 2;
-        this.addArgs = {};
-      }
       this.info = "runRtaInArangosh";
       if (isEnterprise()) {
         this.serverOptions["arangosearch.columns-cache-limit"] = "5000";
@@ -102,117 +96,6 @@ function makeDataWrapper (options) {
     }
     filter(te, filtered) {
       return true;
-    }
-
-    waitForReplState() {
-      print(`${CYAN}${Date()} waiting for follower to catch up!${RESET}`);
-      let state = {};
-      let count = 0;
-      let lastAppliedContinuousTick = 0;
-      var printed = false;
-      state.lastLogTick = replication.logger.state().state.lastUncommittedLogTick;
-      print(state);
-      this.instanceManager.arangods[1].toThisInstance(() => {
-        while (true) {
-          let followerState = replication.globalApplier.state();
-          if (count % 10 === 0) {
-            print(followerState);
-          }
-          internal.sleep(1);
-          count += 1;
-          if (count > 120) {
-            print(`${CYAN}${Date()}giving up to wait - maybe its good anyways?${RESET}`);
-            return;
-          }            
-          if (followerState.state.lastError.errorNum > 0) {
-            print("follower has errored:", JSON.stringify(followerState.state.lastError));
-            throw new Error(JSON.stringify(followerState.state.lastError));
-          }
-
-          if (!followerState.state.running) {
-            print("its not running?");
-            break;
-          }
-
-          if (followerState.state.lastAppliedContinuousTick - lastAppliedContinuousTick !== 0) {
-            // as long as the counter is still moving, keep waiting.
-            internal.sleep(1);
-            count += 1;
-            print(`Skipping: followerState.state.lastAppliedContinuousTick - lastAppliedContinuousTick !== 0)`);
-            lastAppliedContinuousTick = followerState.state.lastAppliedContinuousTick;
-            continue;
-          }
-          lastAppliedContinuousTick = followerState.state.lastAppliedContinuousTick;
-
-          if (compareTicks(followerState.state.lastAppliedContinuousTick, state.lastLogTick) >= 0 ||
-              compareTicks(followerState.state.lastProcessedContinuousTick, state.lastLogTick) >= 0) {
-            print("follower has caught up. state.lastLogTick:", state.lastLogTick, "followerState.lastAppliedContinuousTick:", followerState.state.lastAppliedContinuousTick, "followerState.lastProcessedContinuousTick:", followerState.state.lastProcessedContinuousTick);
-            break;
-          }
-          if (count % 10 === 0) {
-            print(followerState);
-          }
-          internal.sleep(1);
-          count += 1;
-          if (count > 120) {
-            print(`${CYAN}${Date()}giving up to wait - maybe its good anyways?${RESET}`);
-            return;
-          }            
-        }
-      });
-      print(`${CYAN}${Date()} wait done!${RESET}`);
-    }
-    preStart() {
-      if (!this.options.cluster) {
-        // our tests lean on accessing the `_users` collection, hence no auth for secondary
-        this.instanceManager.arangods[1].args['server.authentication'] = false;
-      }
-      return {
-        message: '',
-        state: true,
-      };
-    }
-    postStart() {
-      if (!this.options.cluster) {
-        let message;
-        print("starting replication follower: ");
-        let state = true;
-        this.addArgs['flatCommands'] = [this.instanceManager.arangods[1].endpoint];
-        [0, 1].forEach(which => {
-          this.instanceManager.arangods[which].toThisInstance(() => {
-            this.instanceManager.setPassvoid();
-          });
-        });
-
-        let syncResult;
-        db._useDatabase("_system");
-        db._create("test");
-        db.test.save({});
-        this.instanceManager.arangods[1].toThisInstance(() => {
-          let params = {
-            endpoint: this.instanceManager.arangods[0].endpoint,
-            username: "root",
-            password: this.options.password,
-            verbose: true,
-            includeSystem: true,
-            incremental: true,
-            autoResync: true,
-          };
-          print(params);
-          syncResult = replication.setupReplicationGlobal(params);
-          print(syncResult);
-        });
-        this.waitForReplState();
-        return {
-          message: message,
-          state: state,
-        };
-      } else {
-        return {
-          message: '',
-          state: true,
-        };
-      }
     }
 
     checkSutCleannessBefore(te) {
@@ -226,22 +109,6 @@ function makeDataWrapper (options) {
         return super.checkSutCleannessAfter(te);
       }
       return false;
-    }
-
-    createDump() {
-      this.dumpConfig = ct.createBaseConfig('dump', this.options, this.instanceManager);
-      this.dumpConfig.setOutputDirectory('dump');
-      this.dumpConfig.setIncludeSystem(true);
-      this.dumpConfig.setAllDatabases();
-      return ct.run.arangoDumpRestoreWithConfig(this.dumpConfig, this.options, this.instanceManager.rootDir, this.options.coreCheck);
-
-    }
-    restoreDump() {
-      this.restoreConfig = ct.createBaseConfig('restore', this.options, this.instanceManager);
-      this.restoreConfig.setInputDirectory('dump', true);
-      this.restoreConfig.setIncludeSystem(true);
-      this.restoreConfig.setAllDatabases();
-      return ct.run.arangoDumpRestoreWithConfig(this.restoreConfig, this.options, this.instanceManager.rootDir, this.options.coreCheck);
     }
 
     runMakeData(moreargv, file, whichRTA, count, testCount, launch, res) {
@@ -361,40 +228,6 @@ function makeDataWrapper (options) {
               this.instanceManager.removeServerFromAgency(stoppedDbServerInstance.id);
             }
           }
-        } else {
-          this.waitForReplState();
-          if (count === 2) {
-            this.createDump();
-            this.restoreDump();
-            this.waitForReplState();
-          } else if (count === 3) {
-            try {
-              if (this.options.oldSource !== undefined) {
-                print("switching binary set");
-                pu.switchBinarySet(1);
-              }
-              let me = this;
-              this.instanceManager.upgradeCycleInstance(false, {
-                singleOneDone: function() {
-                  me.waitForReplState();
-                }
-              });
-              this.waitForReplState();
-              this.restoreDump();
-              this.waitForReplState();
-            } catch(e) {
-              res.status = false;
-              res.failed += 1;
-              res[whichRTA] = {
-                'forceTerminate': true,
-                'message': `upgradeCycle failed by: ${e.message}\n${e.stack}`,
-                'failed': 1,
-                'status': false,
-                'duration': 0.0
-              };
-              return;
-            }
-          }
         }
 
         let rc = this.runMakeData(moreargv, file, whichRTA, count, testCount, 0, res);
@@ -405,20 +238,6 @@ function makeDataWrapper (options) {
           if (count === 3) {
             print('relaunching dbserver');
             stoppedDbServerInstance.restartOneInstance({});
-          }
-        } else {
-          this.waitForReplState();
-          // run checkdata for follower.
-          if (count === 2 || count === 3) {
-            // foxx doesn't work on the follower - we don't care for now.
-            let rtaNegFilter = this.options.rtaNegFilter;
-            this.options.rtaNegFilter = "070,071";
-            this.instanceManager.endpoint = this.instanceManager.arangods[1].endpoint;
-            rc += this.runMakeData(moreargv, file, whichRTA, count, testCount, 1, res);
-            res.total++;
-            res.duration += rc.duration;
-            this.instanceManager.endpoint = this.instanceManager.arangods[0].endpoint;
-            this.options.rtaNegFilter = rtaNegFilter;
           }
         }
       });
