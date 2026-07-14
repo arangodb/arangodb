@@ -703,6 +703,45 @@ function cleanupBGShells (clients, cn) {
   });
 }
 
+function readRtaErrorLog(logFile) {
+  let rx = new RegExp(/\\n/g);
+  const unInteristingRtaLogTopics = [
+    "9c2f7",
+    "5095d",
+    "2abe3",
+    "930d9",
+  ];
+  const buf = fs.readBuffer(fs.join(logFile));
+  let lineStart = 0;
+  let maxBuffer = buf.length;
+  let fnLines = "";
+  for (let j = 0; j < maxBuffer; j++) {
+    if (buf[j] === 10) { // \n
+      let line = buf.utf8Slice(lineStart, j);
+      lineStart = j + 1;
+
+      let foundUninteresting = false;
+      unInteristingRtaLogTopics.forEach(logToken => {
+        if (line.search(logToken) !== -1) {
+          foundUninteresting = true;
+        }
+      });
+      if (!foundUninteresting) {
+        // clip unnessecary noise from the start:
+        if (line.search("8a210") > 0) {
+          line = line.substring(line.search(': ') + 2);
+        } else if (line.search("409ee") > 0 ||
+                   line.search("cb0bd") > 0 ||
+                   line.search("cb0bf") > 0) {
+          line = line.substring(line.search('}') + 1);
+        }
+        fnLines += line.replace(rx, '\n') + '\n';
+      }
+    }
+  }
+  return fnLines;
+}
+
 function rtaMakedata(options, instanceManager, writeReadClean, msg, logFile, moreargv=[], addArgs=undefined) {
   let args = Object.assign(makeArgsArangosh(options), {
     'server.endpoint': instanceManager.findEndpoint(),
@@ -873,7 +912,8 @@ exports.run = {
   arangoDumpRestoreWithConfig: runArangoDumpRestoreCfg,
   arangoBackup: runArangoBackup,
   rtaWaitShardsInSync: rtaWaitShardsInSync,
-  rtaMakedata: rtaMakedata
+  rtaMakedata: rtaMakedata,
+  readRtaErrorLog: readRtaErrorLog
 };
 
 exports.registerOptions = function(optionsDefaults, optionsDocumentation) {

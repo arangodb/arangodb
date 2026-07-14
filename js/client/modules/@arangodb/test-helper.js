@@ -82,25 +82,6 @@ exports.getInstanceInfo = function() {
 
 let reconnectRetry = exports.reconnectRetry = require('@arangodb/replication-common').reconnectRetry;
 
-
-
-
-exports.clearAllFailurePoints = function () {
-  const old = db._name();
-  try {
-    for (const server of exports.getDBServers()) {
-      exports.debugClearFailAt(exports.getEndpointById(server.id));
-    }
-    for (const server of exports.getCoordinators()) {
-      exports.debugClearFailAt(exports.getEndpointById(server.id));
-    }
-  } finally {
-    // need to restore original database, as debugFailAt() can 
-    // change into a different database...
-    db._useDatabase(old);
-  }
-};
-
 /// @brief set failure point
 exports.debugCanUseFailAt = function (endpoint) {
   const primaryEndpoint = arango.getEndpoint();
@@ -173,16 +154,26 @@ exports.debugClearFailAt = function (endpoint) {
 };
 
 exports.getChecksum = function (endpoint, name) {
-  const primaryEndpoint = arango.getEndpoint();
-  try {
-    reconnectRetry(endpoint, db._name(), "root", "");
-    let res = arango.GET_RAW('/_api/collection/' + name + '/checksum');
-    if (res.code !== 200) {
-      throw "Error getting collection checksum";
+  if (typeof(endpoint) === "string") {
+    const primaryEndpoint = arango.getEndpoint();
+    try {
+      reconnectRetry(endpoint, db._name(), "root", "");
+      let res = arango.GET_RAW('/_api/collection/' + name + '/checksum');
+      if (res.code !== 200) {
+        throw "Error getting collection checksum";
+      }
+      return res.parsedBody.checksum;
+    } finally {
+      reconnectRetry(primaryEndpoint, db._name(), "root", "");
     }
-    return res.parsedBody.checksum;
-  } finally {
-    reconnectRetry(primaryEndpoint, db._name(), "root", "");
+  } else {
+    return endpoint.toThisInstance(() => {
+      let res = arango.GET_RAW('/_api/collection/' + name + '/checksum');
+      if (res.code !== 200) {
+        throw "Error getting collection checksum";
+      }
+      return res.parsedBody.checksum;
+    });
   }
 };
 
@@ -228,11 +219,11 @@ exports.getMetric = function (endpoint, name) {
 
 // Eventually assert a metric from a single server endpoint.
 // compareFn takes the metric value and returns true if the assertion should pass.
-exports.eventuallyAssertMetric = function(endpoint, metricName, compareFn, errorMessage, maxIterations = 200) {
+exports.eventuallyAssertMetric = function(server, metricName, compareFn, errorMessage, maxIterations = 200) {
   let metricValue;
   for (let i = 0; i < maxIterations; i++) {
     internal.wait(0.1);
-    metricValue = exports.getMetric(endpoint, metricName);
+    metricValue = server.getMetric(metricName);
     if (compareFn(metricValue)) {
       break;
     }
@@ -249,7 +240,7 @@ exports.eventuallyAssertMetricSum = function(servers, metricName, compareFn, err
     internal.wait(0.1);
     metricValue = 0;
     for (let server of servers) {
-      metricValue += exports.getMetric(server.endpoint, metricName);
+      metricValue += server.getMetric(metricName);
     }
     if (compareFn(metricValue)) {
       break;
@@ -274,32 +265,17 @@ exports.assertEndpointGetOnly = function(url) {
   assertEqual(res.errorNum, code405);
 };
 
-exports.getMetricSingle = function (name) {
-  let res = arango.GET_RAW("/_admin/metrics");
-  if (res.code !== 200) {
-    throw "error fetching metric";
-  }
-  return getMetricName(res.body, name);
-};
-
 // Function for getting metric/metrics from either cluster or single server deployments.
 // - 'name' - can be either string or array of strings.
 //    If 'name' is string, we want to get the only one metric value with name 'name'
 //    If 'name' is array of strings, we want to get values for every metric which is defined in this array 
-// - 'roles' - string
-//    Specify which roles of arangod should be queried for particular metric/metrics.
-//    This argument will be used in function getAllMetricsFromEndpoints.
-//    Possible values are:
-//      "coordinators" - get metric/metrics only from coordinators.
-//      "dbservers" - get metric/metrics only from dbservers.
-//      "all" - get metric/metrics from dbservers and from coordinators.
-//    In case of single server deployment, this argument is ommited.
-exports.getCompleteMetricsValues = function (name, roles = "") {
+exports.getCompleteMetricsValues = function (name) {
   function transpose(matrix) {
     return matrix[0].map((col, i) => matrix.map(row => row[i]));
   };
+  const IM = exports.getInstanceInfo();
 
-  let metrics = exports.getMetricsByNameFromEndpoints(name, roles);
+  let metrics = IM.getAllMetricsByName(name);
 
   if (typeof name === "string") {
     // In case of "string", 'metrics' variable is an array with values of metric from each server
@@ -645,9 +621,6 @@ exports.getServers = function (role) {
 exports.getCoordinators = function () {
   return exports.getServers(inst.instanceRole.coordinator);
 };
-exports.getDBServers = function () {
-  return exports.getServers(inst.instanceRole.dbServer);
-};
 exports.getAgents = function () {
   return exports.getServers(inst.instanceRole.agent);
 };
@@ -725,63 +698,6 @@ exports.deactivateFailure = function (name) {
   roles.forEach(role => {
     exports.getEndpointsByType(role).forEach(ep => exports.debugClearFailAt(ep, name));
   });
-};
-
-exports.getAllMetricsFromEndpoints = function (roles = "") {
-  const isCluster = require("internal").isCluster();
-  
-  let res = [];
-  let endpoints = [];
-  
-  if (isCluster) {
-    exports.triggerMetrics();
-
-    if (roles === "" || roles === "dbservers" || roles === "all") {
-      endpoints = endpoints.concat(exports.getDBServerEndpoints());
-    }
-    if (roles === "coordinators" || roles === "all") {
-      endpoints = endpoints.concat(exports.getCoordinatorEndpoints());
-    }
-  } else {
-    endpoints = endpoints.concat(exports.getSingleServerEndpoint());
-  }
-
-  endpoints.forEach(e => {
-    res.push(exports.getAllMetric(e, ''));
-  });
-  return res;
-};
-
-exports.getMetricsByNameFromEndpoints = function (name, roles = "") {
-  function func (text, name_str) {
-    let value;
-    try {
-      value = getMetricName(text, name_str);
-    } catch (e) {
-      value = NaN;
-    }
-    return value;
-  };
-  let result = [];
-
-  // This is an array with metrics from all required endpoints.
-  let all_server_metrics = exports.getAllMetricsFromEndpoints(roles);
-  // Now we need to parse every element from this array and extract
-  // required metrics.
-  all_server_metrics.forEach(server_metrics => {
-    if (typeof name === "string") {
-      result.push(func(server_metrics, name));
-    } else if (typeof name === "object") {
-      let res = [];
-      name.forEach(curr_metric_name => {
-        res.push(func(server_metrics, curr_metric_name));
-      });
-      result.push(res);
-    } else {
-      throw Error(`Unsupported ${typeof name} type`);
-    }   
-  });
-  return result;
 };
 
 exports.getEndpoints = function (role) {

@@ -46,7 +46,6 @@ if (runSetup === true) {
 }
 
 const jsunity = require('jsunity');
-const getMetric = require('@arangodb/test-helper').getMetricSingle;
 const time = require('internal').time;
 
 function FillIndexCacheOnStartup() {

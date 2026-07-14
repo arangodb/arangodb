@@ -31,6 +31,7 @@ const db = arangodb.db;
 const helper = require('@arangodb/test-helper');
 const lh = require("@arangodb/testutils/replicated-logs-helper");
 const lp = require("@arangodb/testutils/replicated-logs-predicates");
+let IM = global.instanceManager;
 
 const database = "replication2_wait_for_sync_test_db";
 
@@ -46,18 +47,12 @@ const replicatedLogSyncIndexSuiteReplication2 = function () {
     return res;
   };
 
-  const clearAllFailurePoints = () => {
-    for (const server of lh.dbservers) {
-      helper.debugClearFailAt(lh.getServerUrl(server));
-    }
-  };
-
   return {
     setUpAll,
     tearDownAll,
     setUp,
     tearDown: tearDownAnd(() => {
-      clearAllFailurePoints();
+      IM.debugClearFailAt();
     }),
 
     testSyncIndexWaitForSyncTrue: function () {

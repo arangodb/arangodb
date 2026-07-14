@@ -45,7 +45,6 @@
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchFilterContext.h"
 #include "IResearch/IResearchOrderFactory.h"
-#include "RestServer/arangod.h"
 #include "Cluster/MaintenanceFeature.h"
 #include "RestServer/AqlFeature.h"
 #include "RestServer/DatabaseFeature.h"
@@ -272,7 +271,7 @@ class IResearchOrderTest
                                             arangodb::LogLevel::FATAL>,
       public arangodb::tests::IResearchLogSuppressor {
  protected:
-  arangodb::ArangodServer server;
+  arangodb::application_features::ApplicationServer server;
   StorageEngineMock engine;
   std::vector<
       std::pair<arangodb::application_features::ApplicationFeature&, bool>>

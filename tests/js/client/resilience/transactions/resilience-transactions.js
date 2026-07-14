@@ -29,12 +29,14 @@ const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
 const db = arangodb.db;
 const _ = require("lodash");
-const wait = require("internal").wait;
 const {
-  getDBServers,
-  getEndpointById,
-} = require("@arangodb/test-helper");
+  wait,
+  time,
+  wal,
+} = require("internal");
+let { instanceRole } = require('@arangodb/testutils/instance');
 const CI = require('@arangodb/cluster-info');
+let IM = global.instanceManager;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -91,17 +93,10 @@ function ClusterTransactionSuite() {
   ////////////////////////////////////////////////////////////////////////////////
 
   function failFollower() {
-    var follower = cinfo.shards[shards[0]][1];
-    var endpoint = getEndpointById(follower);
-    let arangods = getDBServers();
-
-    var pos = _.findIndex(arangods,
-      x => x.url === endpoint);
-
-    assertTrue(pos >= 0);
-    assertTrue(arangods[pos].suspend());
+    var followerID = cinfo.shards[shards[0]][1];
+    var follower = IM.getInstanceByID(followerID);
+    assertTrue(follower.suspend());
     console.info("Have failed follower", follower);
-    return pos;
   }
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -109,15 +104,10 @@ function ClusterTransactionSuite() {
   ////////////////////////////////////////////////////////////////////////////////
 
   function healFollower() {
-    var follower = cinfo.shards[shards[0]][1];
-    var endpoint = getEndpointById(follower);
-    let arangods = getDBServers();
-
-    var pos = _.findIndex(arangods,
-      x => x.url === endpoint);
-    assertTrue(pos >= 0);
-    assertTrue(arangods[pos].resume());
-    console.info("Have healed follower", follower);
+    var followerID = cinfo.shards[shards[0]][1];
+    var follower = IM.getInstanceByID(followerID);
+    assertTrue(follower.resume());
+    console.info("Have healed follower", followerID);
   }
 
 
@@ -166,12 +156,12 @@ function ClusterTransactionSuite() {
 
     testSetup: function () {
       for (var count = 0; count < 120; ++count) {
-        let dbservers = getDBServers();
-        if (dbservers.length === 5) {
+        const dbServers = IM.getInstancesRole(instanceRole.dbserver);
+        if (dbServers.length === 5) {
           assertTrue(waitForSynchronousReplication("_system"));
           return;
         }
-        console.log("Waiting for 5 dbservers to be present:", JSON.stringify(dbservers));
+        console.log("Waiting for 5 dbservers to be present:", JSON.stringify(dbServers));
         wait(1.0);
       }
       assertTrue(false, "Timeout waiting for 5 dbservers.");

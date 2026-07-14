@@ -560,9 +560,8 @@ class persistenceToolkit extends trs.runLocalInArangoshRunner {
     let logFile = fs.join(fs.getTempPath(), `rta_out_makedata.log`);
     let rc = ct.run.rtaMakedata(this.instanceManager.options, this.instanceManager, 0, "creating test data", logFile, this.rtaArgs);
     if (!rc.status) {
-      let rx = new RegExp(/\\n/g);
       this.results.RtaMakedata = {
-        message:  'Makedata:\n' + fs.read(logFile).replace(rx, '\n'),
+        message:  'Makedata:\n' + ct.run.readRtaErrorLog(logFile),
         status: false,
         duration: rc.duration
       };
@@ -650,9 +649,8 @@ class persistenceToolkit extends trs.runLocalInArangoshRunner {
     let logFile = fs.join(fs.getTempPath(), `rta_out_checkdata.log`);
     let rc = ct.run.rtaMakedata(this.secondRunOptions, this.instanceManager, 1, "checking test data", logFile, this.rtaArgs);
     if (!rc.status) {
-      let rx = new RegExp(/\\n/g);
       this.results.RtaCheckdata = {
-        message: 'Checkdata:\n' + fs.read(logFile).replace(rx, '\n'),
+        message: 'Checkdata:\n' + ct.run.readRtaErrorLog(logFile),
         status: false,
         failed: 1,
         duration: rc.duration,

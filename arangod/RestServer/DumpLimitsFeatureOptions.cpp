@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -18,29 +18,26 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Julia Puget
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#include "DumpLimitsFeatureOptions.h"
 
-#include "RestHandler/RestBaseHandler.h"
+#include "Basics/PhysicalMemory.h"
 
 namespace arangodb {
-namespace velocypack {
-class Builder;
+
+namespace {
+std::uint64_t defaultMemoryUsage() {
+  if (PhysicalMemory::getValue() >= (static_cast<std::uint64_t>(4) << 30)) {
+    return static_cast<std::uint64_t>(
+        (PhysicalMemory::getValue() - (static_cast<std::uint64_t>(2) << 30)) *
+        0.2);
+  }
+  return (static_cast<std::uint64_t>(64) << 20);
 }
+}  // namespace
 
-class RestTelemetricsHandler : public arangodb::RestBaseHandler {
- public:
-  RestTelemetricsHandler(application_features::ApplicationServer&,
-                         GeneralRequest*, GeneralResponse*);
+DumpLimitsFeatureOptions::DumpLimitsFeatureOptions()
+    : memoryUsage(defaultMemoryUsage()) {}
 
-  char const* name() const override final { return "RestTelemetricsHandler"; }
-  RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
-  RestStatus execute() override;
-
- private:
-  void resetTelemetricsRequestsCounter();
-  bool trackTelemetricsRequestsCounter();
-};
 }  // namespace arangodb

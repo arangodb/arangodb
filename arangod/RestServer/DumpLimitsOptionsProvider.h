@@ -27,12 +27,12 @@
 
 namespace arangodb {
 
-struct DumpLimitsOptionsProvider : OptionsProvider<DumpLimitsFeatureOptions> {
-  void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
-                      DumpLimitsFeatureOptions& options) override;
-
-  void validateOptions(std::shared_ptr<options::ProgramOptions> opts,
-                       DumpLimitsFeatureOptions& options) override;
+struct DumpLimitsOptionsProvider
+    : OptionsProviderImpl<DumpLimitsOptionsProvider, DumpLimitsFeatureOptions> {
+  void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                          DumpLimitsFeatureOptions& options);
+  void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                           DumpLimitsFeatureOptions& options);
 };
 
 }  // namespace arangodb

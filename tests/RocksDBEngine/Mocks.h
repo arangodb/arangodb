@@ -61,10 +61,11 @@ struct MockDumpLimitsProvider : IDumpLimitsProvider {
 };
 
 struct MockDatabaseProvider : IDatabaseProvider {
+  MOCK_METHOD(void, notifyDdlChange, (char const*), (override));
   MOCK_METHOD(VocbasePtr, useDatabase, (std::string_view), (const, override));
   MOCK_METHOD(VocbasePtr, useDatabase, (TRI_voc_tick_t), (const, override));
-  MOCK_METHOD(void, enumerateDatabases,
-              (std::function<void(TRI_vocbase_t&)> const&), (override));
+  MOCK_METHOD(void, enumerateDatabases, (std::function<void(Database&)> const&),
+              (override));
   MOCK_METHOD(void, inventory,
               (velocypack::Builder&, TRI_voc_tick_t,
                std::function<bool(LogicalCollection const*)> const&),

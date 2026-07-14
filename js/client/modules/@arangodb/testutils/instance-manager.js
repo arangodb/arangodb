@@ -86,7 +86,6 @@ function writeJwtSecretToFile(rootDir, secret, suffix) {
 
 let instanceCount = 1;
 const seconds = x => x * 1000;
-
 class instanceManager {
   constructor(protocol, options, addArgs, testname, tmpDir) {
     this.instanceCount = instanceCount++;
@@ -163,8 +162,10 @@ class instanceManager {
   }
 
   destructor(cleanup) {
+    arango.disconnectHandle(this.connectionHandle);
     this.arangods.forEach(arangod => {
       arangod.pm.deregister(arangod.port);
+      arangod._disconnect();
       if (arangod.serverCrashedLocal) {
         cleanup = false;
       }
@@ -173,6 +174,8 @@ class instanceManager {
     if (this.cleanup && cleanup) {
       this._cleanup();
     }
+    arango.flushConnectionCache();
+    this.arangods = [];
   }
   getStructure() {
     let d = [];
@@ -318,6 +321,13 @@ class instanceManager {
       throw new Error(`wasn't able to determinde ${urlIDOrShortName} ${ret}`);
     }
     return ret[0];
+  }
+  getInstancesRole(role) {
+    let ret = this.arangods.filter(arangod => arangod.matches(role));
+    if (ret.length === 0) {
+      throw new Error(`wasn't able to find any instance of kind ${role}`);
+    }
+    return ret;
   }
   getTypeToUrlsMap() {
     let ret = new Map();
@@ -713,7 +723,7 @@ class instanceManager {
     }
   }
 
-  waitForAgencyJob(jobId, timeout, jobMessage) {
+  waitForAgencyJob(jobId, timeout, jobMessage, expectState='Finished') {
     let count = 0;
     let jobStatus;
 
@@ -723,13 +733,12 @@ class instanceManager {
       }
       sleep(0.1);
       jobStatus = arango.GET_RAW('/_admin/cluster/queryAgencyJob?id=' + jobId);
-      if (jobStatus.parsedBody.status === 'Failed') {
+      if (jobStatus.parsedBody.status === 'Failed' && expectState !== 'Failed') {
         let msg = `FAILED ${jobMessage} - ${JSON.stringify(jobStatus)}`;
-        print(`${RED}${Date()}${msg} ${JSON.stringify(jobStatus)}${RESET}`);
+        print(`${RED}${Date()} ${msg} ${JSON.stringify(jobStatus)}${RESET}`);
         return false;
       }
-      print(jobStatus.parsedBody.status);
-      if (jobStatus.parsedBody.status === 'Finished') {
+      if (jobStatus.parsedBody.status === expectState) {
         print(`${GREEN}${Date()} DONE ${jobMessage} ${JSON.stringify(jobStatus)}${RESET}`);
         return true;
       }
@@ -1704,6 +1713,41 @@ class instanceManager {
       this.tcpdump = null;
     }
   }
+
+  triggerMetrics() {
+    let count = 0;
+    this.arangods.forEach(arangod => {
+      if (arangod.isRole(instanceRole.coordinator)) {
+        if (count === 0) {
+          arangod.getRawMetric('?mode=write_global');
+        } else {
+          arangod.getRawMetric('?mode=trigger_global');
+        }
+        count += 1;
+      }
+    });
+    if (count > 0) {
+      require("internal").sleep(2);
+    }
+  }
+
+  getMetric(gaugeName) {
+    return this.arangods.filter(arangod => {
+      return arangod.isFrontend();
+    })[0].getMetric(gaugeName);
+  }
+
+  getAllMetricsByName(gaugeName) {
+    let ret = [];
+    this.triggerMetrics();
+    this.arangods.forEach(arangod => {
+      if (!arangod.isAgent() && !arangod.isRole(instanceRole.coordinator)) {
+        ret.push(arangod.getMetric(gaugeName));
+      }
+    });
+    return ret;
+  }
+
 
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief get process stats over the SUT

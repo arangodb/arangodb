@@ -103,6 +103,14 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   ResultT<std::pair<std::string, bool>> forwardingTarget() override final;
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief whether the current command may be forwarded to a client-supplied
+  /// DBserver with the caller's authorization stripped. Only true for the
+  /// commands used by arangodump ("dump"/"batch").
+  //////////////////////////////////////////////////////////////////////////////
+
+  bool isDBserverForwardingAllowed() const;
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief creates an error if called on a coordinator server
   //////////////////////////////////////////////////////////////////////////////
 

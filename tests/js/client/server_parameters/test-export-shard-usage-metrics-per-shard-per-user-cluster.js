@@ -27,12 +27,11 @@
 const jwtSecret = 'abc123';
 const jsunity = require('jsunity');
 const {assertEqual, assertTrue, assertFalse, assertNotEqual} = jsunity.jsUnity.assertions;
-const { getDBServers } = require("@arangodb/test-helper");
 const users = require("@arangodb/users");
 const crypto = require('@arangodb/crypto');
-const request = require("@arangodb/request");
 const arango = require("@arangodb").arango;
 const db = require('@arangodb').db;
+let { instanceRole } = require('@arangodb/testutils/instance');
 let IM = global.instanceManager;
 
 if (getOptions === true) {
@@ -83,9 +82,9 @@ function testSuite() {
 
   let getRawMetrics = function() {
     let lines = [];
-    getDBServers().forEach((server) => {
-      let res = request({ method: "GET", url: server.url + "/_admin/usage-metrics", auth: { bearer: jwt } });
-      lines = lines.concat(res.body.split(/\n/).filter((l) => l.match(/^arangodb_collection_leader_(reads|writes)_total/)));
+    IM.getInstancesRole(instanceRole.dbserver).forEach((arangod) => {
+      let res = arangod.getAllUsageMetric();
+      lines = lines.concat(res.split(/\n/).filter((l) => l.match(/^arangodb_collection_leader_(reads|writes)_total/)));
     });
     return lines;
   };
@@ -177,9 +176,9 @@ function testSuite() {
         }
         
         let lines = [];
-        getDBServers().forEach((server) => {
-          let res = request({ method: "GET", url: server.url + "/_admin/metrics" });
-          lines = lines.concat(res.body.split(/\n/).filter((l) => l.match(/^arangodb_collection_leader_(reads|writes)_total/)));
+        IM.getInstancesRole(instanceRole.dbserver).forEach((arangod) => {
+          let res = arangod.getAllMetric();
+          lines = lines.concat(res.split(/\n/).filter((l) => l.match(/^arangodb_collection_leader_(reads|writes)_total/)));
         });
         assertEqual([], lines);
       } finally {

@@ -25,10 +25,10 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require('jsunity');
-const getMetric = require('@arangodb/test-helper').getMetricSingle;
 const console = require('console');
-const db = require('internal').db;
 const internal = require('internal');
+const db = internal.db;
+let IM = global.instanceManager;
 
 function getStats() {
   const res = arango.GET_RAW("/_admin/metrics");
@@ -64,21 +64,22 @@ function checkMetricsMoveSuite() {
       // turn off request/response compression
       arango.compressTransfer(false);
     },
-    
+
     tearDownAll: function () {
       // restore previous default
       arango.compressTransfer(compressTransfer);
     },
-    
+
     testByProtocol: function () {
       // Note that this test is "-noncluster", since in the cluster
       // all sorts of requests constantly arrive and we can never be
       // sure that nothing happens. In a single server, this is OK, 
       // only our own requests should arrive at the server.
-      let http1ReqCount = getMetric("arangodb_request_body_size_http1_count");
-      let http1ReqSum = getMetric("arangodb_request_body_size_http1_sum");
-      let http2ReqCount = getMetric("arangodb_request_body_size_http2_count");
-      let http2ReqSum = getMetric("arangodb_request_body_size_http2_sum");
+      let metricsToCompare = ["arangodb_request_body_size_http1_count",
+        "arangodb_request_body_size_http1_sum",
+        "arangodb_request_body_size_http2_count",
+        "arangodb_request_body_size_http2_sum"];
+      let metricsBefore = IM.getMetric(metricsToCompare);
       // Do a few requests:
       for (let i = 0; i < 10; ++i) {
         let res = arango.GET_RAW("/_api/version");
@@ -90,23 +91,22 @@ function checkMetricsMoveSuite() {
       let res = arango.PUT_RAW("/_admin/log/level", logging);
       assertEqual(200, res.code);
       // And get the values again:
-      let http1ReqCount2 = getMetric("arangodb_request_body_size_http1_count");
-      let http1ReqSum2 = getMetric("arangodb_request_body_size_http1_sum");
-      let http2ReqCount2 = getMetric("arangodb_request_body_size_http2_count");
-      let http2ReqSum2 = getMetric("arangodb_request_body_size_http2_sum");
+      let metricsAfter = IM.getMetric(metricsToCompare);
+      let msg = `${metricsToCompare} => ${JSON.stringify(metricsBefore)} -> ${JSON.stringify(metricsAfter)}`;
       if (arango.protocol() === "http") {
-        assertNotEqual(http1ReqCount, http1ReqCount2);
-        assertNotEqual(http1ReqSum, http1ReqSum2);
+        assertNotEqual(metricsBefore[0], metricsAfter[0], msg);
+        assertNotEqual(metricsBefore[1], metricsAfter[1], msg);
       } else {
-        assertEqual(http1ReqCount, http1ReqCount2);
-        assertEqual(http1ReqSum, http1ReqSum2);
+        // it seems the statistics call is added here..
+        assertEqual(metricsBefore[0] + 1, metricsAfter[0], msg);
+        assertEqual(metricsBefore[1], metricsAfter[1], msg);
       }
       if (arango.protocol() === "http2") {
-        assertNotEqual(http2ReqCount, http2ReqCount2);
-        assertNotEqual(http2ReqSum, http2ReqSum2);
+        assertNotEqual(metricsBefore[2], metricsAfter[2], msg);
+        assertNotEqual(metricsBefore[3], metricsAfter[3], msg);
       } else {
-        assertEqual(http2ReqCount, http2ReqCount2);
-        assertEqual(http2ReqSum, http2ReqSum2);
+        assertEqual(metricsBefore[2], metricsAfter[2], msg);
+        assertEqual(metricsBefore[3], metricsAfter[3], msg);
       }
     },
 
@@ -119,15 +119,15 @@ function checkMetricsMoveSuite() {
       let c = db._create(cn);
       try {
         let s = "abc";
-        for (let i = 0; i < 10; ++i) { 
-          s = s + s; 
+        for (let i = 0; i < 10; ++i) {
+          s = s + s;
         }
-        let k = c.insert({Hallo:s})._key;
+        let k = c.insert({ Hallo: s })._key;
 
         let stats = getStats();
-        let count = getMetric("arangodb_client_connection_statistics_bytes_sent_count");
-        let metric = getMetric("arangodb_client_connection_statistics_bytes_sent_sum");
-        let metricUser = getMetric("arangodb_client_user_connection_statistics_bytes_sent_sum");
+        let count = IM.getMetric("arangodb_client_connection_statistics_bytes_sent_count");
+        let metric = IM.getMetric("arangodb_client_connection_statistics_bytes_sent_sum");
+        let metricUser = IM.getMetric("arangodb_client_user_connection_statistics_bytes_sent_sum");
 
         // Do a few requests:
         for (let i = 0; i < 1000; ++i) {
@@ -137,14 +137,14 @@ function checkMetricsMoveSuite() {
 
         waitForMetricsAggregation(function () {
           let s2 = getStats();
-          let c2 = getMetric("arangodb_client_connection_statistics_bytes_sent_count");
+          let c2 = IM.getMetric("arangodb_client_connection_statistics_bytes_sent_count");
           return (s2.bytesSent - stats.bytesSent > 3000000 && c2 - count >= 1000);
         });
 
         let stats2 = getStats();
-        let count2 = getMetric("arangodb_client_connection_statistics_bytes_sent_count");
-        let metric2 = getMetric("arangodb_client_connection_statistics_bytes_sent_sum");
-        let metric2User = getMetric("arangodb_client_user_connection_statistics_bytes_sent_sum");
+        let count2 = IM.getMetric("arangodb_client_connection_statistics_bytes_sent_count");
+        let metric2 = IM.getMetric("arangodb_client_connection_statistics_bytes_sent_sum");
+        let metric2User = IM.getMetric("arangodb_client_user_connection_statistics_bytes_sent_sum");
 
         // Why 3000000? We have read 1000 docs, and the response body
         // contains a string of 3 * 1024 bytes, so 3000000 is a solid lower limit.
@@ -158,7 +158,7 @@ function checkMetricsMoveSuite() {
         db._drop(cn);
       }
     },
-    
+
     testIngressByProtocolTraffic: function () {
       // Note that this test is "-noncluster", since in the cluster
       // all sorts of requests constantly arrive and we can never be
@@ -168,31 +168,31 @@ function checkMetricsMoveSuite() {
       let c = db._create(cn);
       try {
         let s = "abc";
-        for (let i = 0; i < 10; ++i) { 
-          s = s + s; 
+        for (let i = 0; i < 10; ++i) {
+          s = s + s;
         }
 
         let stats = getStats();
-        let count = getMetric("arangodb_client_connection_statistics_bytes_received_count");
-        let metric = getMetric("arangodb_client_connection_statistics_bytes_received_sum");
-        let metricUser = getMetric("arangodb_client_user_connection_statistics_bytes_received_sum");
+        let count = IM.getMetric("arangodb_client_connection_statistics_bytes_received_count");
+        let metric = IM.getMetric("arangodb_client_connection_statistics_bytes_received_sum");
+        let metricUser = IM.getMetric("arangodb_client_user_connection_statistics_bytes_received_sum");
 
         // Do a few requests:
         for (let i = 0; i < 1000; ++i) {
-          let res = arango.POST_RAW(`/_api/document/${cn}`, {Hallo:i, s:s});
+          let res = arango.POST_RAW(`/_api/document/${cn}`, { Hallo: i, s: s });
           assertEqual(202, res.code);
         }
 
         waitForMetricsAggregation(function () {
           let s2 = getStats();
-          let c2 = getMetric("arangodb_client_connection_statistics_bytes_received_count");
+          let c2 = IM.getMetric("arangodb_client_connection_statistics_bytes_received_count");
           return (s2.bytesReceived - stats.bytesReceived > 3000000 && c2 - count >= 1000);
         });
 
         let stats2 = getStats();
-        let count2 = getMetric("arangodb_client_connection_statistics_bytes_received_count");
-        let metric2 = getMetric("arangodb_client_connection_statistics_bytes_received_sum");
-        let metric2User = getMetric("arangodb_client_user_connection_statistics_bytes_received_sum");
+        let count2 = IM.getMetric("arangodb_client_connection_statistics_bytes_received_count");
+        let metric2 = IM.getMetric("arangodb_client_connection_statistics_bytes_received_sum");
+        let metric2User = IM.getMetric("arangodb_client_user_connection_statistics_bytes_received_sum");
 
         // Why 3000000? We have written 1000 docs, and the request body
         // contains a string of 3 * 1024 bytes, so 3000000 is a solid lower limit.
@@ -206,7 +206,7 @@ function checkMetricsMoveSuite() {
         db._drop(cn);
       }
     },
-    
+
     testIngressHeadersByProtocolTraffic: function () {
       // Note that this test is "-noncluster", since in the cluster
       // all sorts of requests constantly arrive and we can never be
@@ -216,9 +216,9 @@ function checkMetricsMoveSuite() {
 
       // Do a few requests:
       const headers = {
-        "x-arango-foo-bar-baz-this-is-a-long-and-useless-header" : Array(1000).join("x"),
-        "x-arango-foo-bar-baz-this-is-another-long-and-useless-header" : Array(1000).join("y"),
-        "x-arango-foo-bar-baz-this-is-a-third-long-and-useless-header" : Array(1000).join("z")
+        "x-arango-foo-bar-baz-this-is-a-long-and-useless-header": Array(1000).join("x"),
+        "x-arango-foo-bar-baz-this-is-another-long-and-useless-header": Array(1000).join("y"),
+        "x-arango-foo-bar-baz-this-is-a-third-long-and-useless-header": Array(1000).join("z")
       };
 
       for (let i = 0; i < 1000; ++i) {
@@ -248,10 +248,10 @@ function checkMetricsMoveSuite() {
       // Therefore, we must be content here to check that the connection
       // count is non-zero for the currently underlying protocol:
       if (arango.protocol() === "http2") {
-        let http2ConnCount = getMetric("arangodb_http2_connections_total");
+        let http2ConnCount = IM.getMetric("arangodb_http2_connections_total");
         assertNotEqual(0, http2ConnCount);
       } else if (arango.protocol() === "http") {
-        let httpConnCount = getMetric("arangodb_http1_connections_total");
+        let httpConnCount = IM.getMetric("arangodb_http1_connections_total");
         assertNotEqual(0, httpConnCount);
       }
     },

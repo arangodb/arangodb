@@ -38,8 +38,8 @@
 #include "Basics/ResultT.h"
 #include "Containers/FlatHashMap.h"
 #include "Replication2/Version.h"
+#include "RestServer/IDatabaseProvider.h"
 #include "Utils/DatabaseGuard.h"
-#include "Utils/VersionTracker.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/VocbaseInfo.h"
 #include "VocBase/voc-types.h"
@@ -101,7 +101,6 @@ class LogicalView;
 struct CreateCollectionBody;
 class ReplicationClientsProgressTracker;
 class StorageEngine;
-class VersionTracker;
 struct VocBaseLogManager;
 struct VocbaseMetrics;
 
@@ -132,7 +131,7 @@ struct Database {
   // internal vocbase object, which does not use the MetricsFeature, because
   // it can outlive the entire ApplicationServer stack.
   Database(arangodb::CreateDatabaseInfo&& info, arangodb::StorageEngine& engine,
-           arangodb::VersionTracker& versionTracker, bool extendedNames,
+           arangodb::IDatabaseProvider& databaseProvider,
            bool isInternal = false);
   TEST_VIRTUAL ~Database();
 
@@ -142,7 +141,7 @@ struct Database {
   } constexpr static mockConstruct = {};
   Database(MockConstruct, arangodb::CreateDatabaseInfo&& info,
            arangodb::StorageEngine& engine,
-           arangodb::VersionTracker& versionTracker, bool extendedNames);
+           arangodb::IDatabaseProvider& databaseProvider);
 #endif
 
  private:
@@ -154,8 +153,7 @@ struct Database {
 
   arangodb::application_features::ApplicationServer& _server;
   arangodb::StorageEngine& _engine;
-  arangodb::VersionTracker& _versionTracker;
-  bool const _extendedNames;  // TODO - move this into CreateDatabaseInfo
+  arangodb::IDatabaseProvider& _databaseProvider;
 
   arangodb::CreateDatabaseInfo _info;
 
@@ -196,10 +194,14 @@ struct Database {
  public:
   arangodb::StorageEngine& engine() const noexcept { return _engine; }
 
-  auto extendedNames() const noexcept -> bool { return _extendedNames; }
+  auto extendedNames() const noexcept -> bool {
+    return _databaseProvider.extendedNames();
+  }
 
-  auto versionTracker() noexcept -> arangodb::VersionTracker& {
-    return _versionTracker;
+  /// @brief record a DDL change on this database (bumps the global schema
+  /// version). The reason is used for tracing only.
+  void notifyDdlChange(char const* reason) {
+    _databaseProvider.notifyDdlChange(reason);
   }
 
   arangodb::VocbaseMetrics const& metrics() const noexcept { return *_metrics; }

@@ -48,8 +48,8 @@ if (runSetup === true) {
 }
 
 const jsunity = require('jsunity');
-const getMetric = require('@arangodb/test-helper').getMetricSingle;
 const time = require('internal').time;
+let IM = global.instanceManager;
 
 function FillIndexCacheOnStartup() {
   'use strict';
@@ -58,7 +58,7 @@ function FillIndexCacheOnStartup() {
     setUpAll: function() {
       let end = time() + 60;
       while (time() < end) {
-        const value = getMetric("rocksdb_cache_full_index_refills_total");
+        const value = IM.getMetric("rocksdb_cache_full_index_refills_total");
         if (value >= 3) {
           // the two sides of the edge index count as 2 indexes here...
           return;

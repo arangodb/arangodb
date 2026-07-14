@@ -68,7 +68,6 @@
 #include "Utils/CursorRepository.h"
 #include "Utils/Events.h"
 #include "Utils/ExecContext.h"
-#include "Utils/VersionTracker.h"
 #include "Utilities/NameValidator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalDataSource.h"
@@ -794,10 +793,11 @@ std::shared_ptr<LogicalCollection> Database::createCollection(
 
     events::CreateCollection(dbName, name, TRI_ERROR_NO_ERROR);
 
-    _versionTracker.track("create collection");
+    _databaseProvider.notifyDdlChange("create collection");
 
     // Update metadata metrics on single server
-    if (ServerState::instance()->isSingleServer()) {
+    if (ServerState::instance()->isSingleServer() &&
+        _server.hasFeature<DatabaseFeature>()) {
       _server.getFeature<DatabaseFeature>().incrementCollectionCount();
     }
 
@@ -833,7 +833,8 @@ Database::createCollections(
         createCollections(infoSlice, allowEnterpriseCollectionsOnSingleServer);
 
     // Update metadata metrics on single server after collections are created
-    if (ServerState::instance()->isSingleServer()) {
+    if (ServerState::instance()->isSingleServer() &&
+        _server.hasFeature<DatabaseFeature>()) {
       _server.getFeature<DatabaseFeature>().incrementCollectionCount(
           result.size());
     }
@@ -923,7 +924,7 @@ std::vector<std::shared_ptr<LogicalCollection>> Database::createCollections(
     events::CreateCollection(dbName, col->name(), TRI_ERROR_NO_ERROR);
   }
 
-  _versionTracker.track("create collection");
+  _databaseProvider.notifyDdlChange("create collection");
   return collections;
 }
 
@@ -958,10 +959,11 @@ Result Database::dropCollection(DataSourceId cid, bool allowDropSystem) {
 
   if (res.ok()) {
     collection->deferDropCollection(dropCollectionCallback);
-    _versionTracker.track("drop collection");
+    _databaseProvider.notifyDdlChange("drop collection");
 
     // Update metadata metrics on single server
-    if (ServerState::instance()->isSingleServer()) {
+    if (ServerState::instance()->isSingleServer() &&
+        _server.hasFeature<DatabaseFeature>()) {
       _server.getFeature<DatabaseFeature>().decrementCollectionCount();
     }
   }
@@ -979,8 +981,8 @@ Result Database::validateCollectionParameters(velocypack::Slice parameters) {
       parameters, StaticStrings::DataSourceName, "");
   bool isSystem = VelocyPackHelper::getBooleanValue(
       parameters, StaticStrings::DataSourceSystem, false);
-  if (auto res =
-          CollectionNameValidator::validateName(isSystem, _extendedNames, name);
+  if (auto res = CollectionNameValidator::validateName(isSystem,
+                                                       extendedNames(), name);
       res.fail()) {
     return res;
   }
@@ -1030,7 +1032,7 @@ Result Database::renameView(DataSourceId cid, std::string_view oldName) {
   }
 
   if (auto res = ViewNameValidator::validateName(/*allowSystem*/ false,
-                                                 _extendedNames, newName);
+                                                 extendedNames(), newName);
       res.fail()) {
     return res;
   }
@@ -1104,8 +1106,8 @@ Result Database::renameCollection(DataSourceId cid, std::string_view newName) {
     return TRI_ERROR_NO_ERROR;
   }
 
-  if (auto res = CollectionNameValidator::validateName(/*allowSystem*/ false,
-                                                       _extendedNames, newName);
+  if (auto res = CollectionNameValidator::validateName(
+          /*allowSystem*/ false, extendedNames(), newName);
       res.fail()) {
     return res;
   }
@@ -1188,7 +1190,7 @@ Result Database::renameCollection(DataSourceId cid, std::string_view newName) {
 
   locker.unlock();
   writeLocker.unlock();
-  _versionTracker.track("rename collection");
+  _databaseProvider.notifyDdlChange("rename collection");
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -1247,7 +1249,7 @@ std::shared_ptr<LogicalView> Database::createView(velocypack::Slice parameters,
                                             StaticStrings::DataSourceName, "");
 
     valid &= ViewNameValidator::validateName(/*allowSystem*/ false,
-                                             _extendedNames, name)
+                                             extendedNames(), name)
                  .ok();
   }
 
@@ -1294,7 +1296,7 @@ std::shared_ptr<LogicalView> Database::createView(velocypack::Slice parameters,
   }
 
   events::CreateView(dbName, view->name(), TRI_ERROR_NO_ERROR);
-  _versionTracker.track("create view");
+  _databaseProvider.notifyDdlChange("create view");
 
   view->open();  // And lets open it.
 
@@ -1339,7 +1341,7 @@ Result Database::dropView(DataSourceId cid, bool allowDropSystem) {
   writeLocker.unlock();
 
   events::DropView(dbName, view->name(), TRI_ERROR_NO_ERROR);
-  _versionTracker.track("drop view");
+  _databaseProvider.notifyDdlChange("drop view");
 
   return {};
 }
@@ -1347,16 +1349,13 @@ Result Database::dropView(DataSourceId cid, bool allowDropSystem) {
 Database::Database(arangodb::CreateDatabaseInfo&& info,
                    arangodb::StorageEngine& engine)
     : Database(std::move(info), engine,
-               info.server().getFeature<DatabaseFeature>().versionTracker(),
-               info.server().getFeature<DatabaseFeature>().extendedNames()) {}
+               info.server().getFeature<DatabaseFeature>()) {}
 
 Database::Database(CreateDatabaseInfo&& info, StorageEngine& engine,
-                   VersionTracker& versionTracker, bool extendedNames,
-                   bool isInternal)
+                   IDatabaseProvider& databaseProvider, bool isInternal)
     : _server(info.server()),
       _engine(engine),
-      _versionTracker(versionTracker),
-      _extendedNames(extendedNames),
+      _databaseProvider(databaseProvider),
       _info(std::move(info)) {
   TRI_ASSERT(_info.valid());
 
@@ -1414,11 +1413,10 @@ Database::Database(CreateDatabaseInfo&& info, StorageEngine& engine,
 #ifdef ARANGODB_USE_GOOGLE_TESTS
 Database::Database(Database::MockConstruct, CreateDatabaseInfo&& info,
                    arangodb::StorageEngine& engine,
-                   arangodb::VersionTracker& versionTracker, bool extendedNames)
+                   arangodb::IDatabaseProvider& databaseProvider)
     : _server(info.server()),
       _engine(engine),
-      _versionTracker(versionTracker),
-      _extendedNames(extendedNames),
+      _databaseProvider(databaseProvider),
       _info(std::move(info)),
       _metrics(std::make_unique<VocbaseMetrics>()),
       _logManager(std::make_shared<VocBaseLogManager>(*this, name())) {}
@@ -1677,41 +1675,32 @@ void TRI_SanitizeObject(VPackSlice slice, VPackBuilder& builder) {
     -> DatabaseConfiguration {
   auto& cl = server().getFeature<ClusterFeature>();
 
-  auto config = std::invoke([&]() -> DatabaseConfiguration {
-    if (!ServerState::instance()->isCoordinator() &&
-        !ServerState::instance()->isDBServer()) {
-      return {[]() { return DataSourceId(TRI_NewTickServer()); },
-              [this](std::string const& name)
-                  -> ResultT<UserInputCollectionProperties> {
-                CollectionNameResolver resolver{*this};
-                auto c = resolver.getCollection(name);
-                if (c == nullptr) {
-                  return Result{TRI_ERROR_CLUSTER_UNKNOWN_DISTRIBUTESHARDSLIKE,
-                                absl::StrCat("Collection not found: ", name,
-                                             " in database ", this->name())};
-                }
-                return c->getCollectionProperties();
-              }};
-    } else {
-      auto& ci = cl.clusterInfo();
-      return {[&ci]() { return DataSourceId(ci.uniqid(1)); },
-              [this](std::string const& name)
-                  -> ResultT<UserInputCollectionProperties> {
-                CollectionNameResolver resolver{*this};
-                auto c = resolver.getCollection(name);
-                if (c == nullptr) {
-                  return Result{TRI_ERROR_CLUSTER_UNKNOWN_DISTRIBUTESHARDSLIKE,
-                                absl::StrCat("Collection not found: ", name,
-                                             " in database ", this->name())};
-                }
-                return c->getCollectionProperties();
-              }};
-    }
-  });
+  std::function<DataSourceId()> idGenerator;
+  if (!ServerState::instance()->isCoordinator() &&
+      !ServerState::instance()->isDBServer()) {
+    idGenerator = []() { return DataSourceId(TRI_NewTickServer()); };
+  } else {
+    auto& ci = cl.clusterInfo();
+    idGenerator = [&ci]() { return DataSourceId(ci.uniqid(1)); };
+  }
+
+  DatabaseConfiguration config{
+      std::move(idGenerator),
+      [this](
+          std::string const& name) -> ResultT<UserInputCollectionProperties> {
+        CollectionNameResolver resolver{*this};
+        auto c = resolver.getCollection(name);
+        if (c == nullptr) {
+          return Result{TRI_ERROR_CLUSTER_UNKNOWN_DISTRIBUTESHARDSLIKE,
+                        absl::StrCat("Collection not found: ", name,
+                                     " in database ", this->name())};
+        }
+        return c->getCollectionProperties();
+      }};
 
   config.isSystemDB = isSystem();
   config.maxNumberOfShards = cl.maxNumberOfShards();
-  config.allowExtendedNames = _extendedNames;
+  config.allowExtendedNames = extendedNames();
   config.shouldValidateClusterSettings = true;
   config.minReplicationFactor = cl.minReplicationFactor();
   config.maxReplicationFactor = cl.maxReplicationFactor();

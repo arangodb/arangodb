@@ -2563,21 +2563,6 @@ static void JS_CopyRecursive(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string source = TRI_ObjectToString(isolate, args[0]);
   std::string destination = TRI_ObjectToString(isolate, args[1]);
 
-  bool const sourceIsDirectory = TRI_IsDirectory(source.c_str());
-  bool const destinationIsDirectory = TRI_IsDirectory(destination.c_str());
-
-  if (sourceIsDirectory && destinationIsDirectory) {
-    // source is a directory, destination is a directory. this is unsupported
-    TRI_V8_THROW_EXCEPTION_PARAMETER(
-        "cannot copy source directory into destination directory");
-  }
-
-  if (TRI_IsRegularFile(source.c_str()) && destinationIsDirectory) {
-    // source is a file, destination is a directory. this is unsupported
-    TRI_V8_THROW_EXCEPTION_PARAMETER(
-        "cannot copy source file into destination directory");
-  }
-
   TRI_GET_GLOBALS();
   V8SecurityFeature& v8security = v8g->_v8security;
 
@@ -2593,6 +2578,21 @@ static void JS_CopyRecursive(v8::FunctionCallbackInfo<v8::Value> const& args) {
         TRI_ERROR_FORBIDDEN,
         std::string("not allowed to modify files in this path: ") +
             destination);
+  }
+
+  bool const sourceIsDirectory = TRI_IsDirectory(source.c_str());
+  bool const destinationIsDirectory = TRI_IsDirectory(destination.c_str());
+
+  if (sourceIsDirectory && destinationIsDirectory) {
+    // source is a directory, destination is a directory. this is unsupported
+    TRI_V8_THROW_EXCEPTION_PARAMETER(
+        "cannot copy source directory into destination directory");
+  }
+
+  if (TRI_IsRegularFile(source.c_str()) && destinationIsDirectory) {
+    // source is a file, destination is a directory. this is unsupported
+    TRI_V8_THROW_EXCEPTION_PARAMETER(
+        "cannot copy source file into destination directory");
   }
 
   std::string systemErrorStr;

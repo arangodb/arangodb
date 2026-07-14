@@ -25,13 +25,6 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require('jsunity');
-let { getEndpointById,
-      getEndpointsByType,
-      getServersByType,
-      reconnectRetry,
-      getCoordinators,
-      getDBServers
-    } = require('@arangodb/test-helper');
 let { instanceRole } = require('@arangodb/testutils/instance');
 let IM = global.instanceManager;
 
@@ -50,12 +43,12 @@ function adminClusterSuite() {
     },
 
     testRemoveServerNonExisting: function () {
-      let coords = getCoordinators();
+      let coords = IM.getInstancesRole(instanceRole.coordinator);
+
       assertTrue(coords.length > 0);
       
       // this is assumed to be an invalid server id, so the operation must fail
       try {
-        reconnectRetry(coords[0].endpoint, db._name(), "root", "");
         let res = arango.POST_RAW("/_admin/cluster/removeServer", new Buffer('"testmann123456"'), {
           "content-type": "application/json"
         });
@@ -66,7 +59,7 @@ function adminClusterSuite() {
     },
 
     testRemoveNonFailedCoordinatorString: function () {
-      let coords = getCoordinators();
+      let coords = IM.getInstancesRole(instanceRole.coordinator);
       assertTrue(coords.length > 0);
       
       let coordinatorId = coords[0].id;
@@ -74,7 +67,6 @@ function adminClusterSuite() {
       try {
         // make removeServer fail quickly in case precondition is not met. if we don't set this, it will cycle for 60s
         IM.debugSetFailAt("removeServer::noRetry", instanceRole.coordinator, ep);
-        reconnectRetry(ep, db._name(), "root", "");
         let res = arango.POST_RAW("/_admin/cluster/removeServer",
                                   new Buffer('"' + coordinatorId + '"'), {
                                     "content-type": "application/json"
@@ -88,7 +80,7 @@ function adminClusterSuite() {
     },
     
     testRemoveNonFailedCoordinatorObject: function () {
-      let coords = getCoordinators();
+      let coords = IM.getInstancesRole(instanceRole.coordinator);
       assertTrue(coords.length > 0);
       
       let coordinatorId = coords[0].id;
@@ -96,7 +88,6 @@ function adminClusterSuite() {
       try {
         // make removeServer fail quickly in case precondition is not met. if we don't set this, it will cycle for 60s
         IM.debugSetFailAt("removeServer::noRetry", instanceRole.coordinator, ep);
-        reconnectRetry(ep, db._name(), "root", "");
         let res = arango.POST_RAW("/_admin/cluster/removeServer",
                                   new Buffer('"' + coordinatorId + '"'), {
                                     "content-type": "application/json"
@@ -110,7 +101,7 @@ function adminClusterSuite() {
     },
     
     testRemoveNonFailedDBServersString: function () {
-      let coords = getCoordinators();
+      let coords = IM.getInstancesRole(instanceRole.coordinator);
       assertTrue(coords.length > 0);
       
       let coordinatorId = coords[0].id;
@@ -119,10 +110,9 @@ function adminClusterSuite() {
         // make removeServer fail quickly in case precondition is not met. if we don't set this, it will cycle for 60s
         IM.debugSetFailAt("removeServer::noRetry", instanceRole.coordinator, ep);
 
-        let dbservers = getDBServers();
-        assertTrue(dbservers.length > 0);
-        dbservers.forEach((dbs) => {
-          reconnectRetry(ep, db._name(), "root", "");
+        const dbServers = IM.getInstancesRole(instanceRole.dbserver);
+        assertTrue(dbServers.length > 0);
+        dbServers.forEach((dbs) => {
           let res = arango.POST_RAW("/_admin/cluster/removeServer",
                                     new Buffer('"' + dbs.id + '"'), {
                                     "content-type": "application/json"
@@ -136,7 +126,7 @@ function adminClusterSuite() {
     },
     
     testRemoveNonFailedDBServersObject: function () {
-      let coords = getCoordinators();
+      let coords = IM.getInstancesRole(instanceRole.coordinator);
       assertTrue(coords.length > 0);
       
       let coordinatorId = coords[0].id;
@@ -145,10 +135,9 @@ function adminClusterSuite() {
         // make removeServer fail quickly in case precondition is not met. if we don't set this, it will cycle for 60s
         IM.debugSetFailAt("removeServer::noRetry", instanceRole.coordinator, ep);
 
-        let dbservers = getDBServers();
-        assertTrue(dbservers.length > 0);
-        dbservers.forEach((dbs) => {
-          reconnectRetry(ep, "_system", "root", "");
+        const dbServers = IM.getInstancesRole(instanceRole.dbserver);
+        assertTrue(dbServers.length > 0);
+        dbServers.forEach((dbs) => {
           let res = arango.POST_RAW("/_admin/cluster/removeServer",
                                     new Buffer('"' + dbs.id + '"'), {
                                     "content-type": "application/json"
@@ -163,14 +152,13 @@ function adminClusterSuite() {
     },
     
     testCleanoutServerStringNonExisting: function () {
-      let coords = getCoordinators();
+      let coords = IM.getInstancesRole(instanceRole.coordinator);
       assertTrue(coords.length > 0);
       
       let coordinatorId = coords[0].id;
       let ep = coords[0].endpoint;
       try {
         // this is assumed to be an invalid server id, so the operation must fail
-        reconnectRetry(ep, "_system", "root", "");
         let res = arango.POST_RAW("/_admin/cluster/cleanOutServer",
                                   new Buffer('"testmann123456"'), {
                                     "content-type": "application/json"
@@ -183,14 +171,13 @@ function adminClusterSuite() {
     },
 
     testCleanoutServerObjectNonExisting: function () {
-      let coords = getCoordinators();
+      let coords = IM.getInstancesRole(instanceRole.coordinator);
       assertTrue(coords.length > 0);
       
       let coordinatorId = coords[0].id;
       let ep = coords[0].endpoint;
       try {
         // this is assumed to be an invalid server id, so the operation must fail
-        reconnectRetry(ep, "_system", "root", "");
         let res = arango.POST_RAW("/_admin/cluster/cleanOutServer", { server: "testmann123456" });
         assertEqual(202, res.code);
         assertTrue(res.parsedBody.hasOwnProperty("id"));

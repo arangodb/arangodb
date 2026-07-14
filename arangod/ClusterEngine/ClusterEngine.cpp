@@ -38,6 +38,7 @@
 #include "Logger/Logger.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/Storage/IStorageEngineMethods.h"
+#include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBOptimizerRules.h"
 #include "Transaction/Context.h"
@@ -61,7 +62,8 @@ bool ClusterEngine::Mocking = false;
 ClusterEngine::ClusterEngine(application_features::ApplicationServer& server,
                              metrics::IRegistry& metrics)
     : StorageEngine(server, EngineName, name(), typeid(ClusterEngine),
-                    std::make_unique<ClusterIndexFactory>(server, *this)),
+                    std::make_unique<ClusterIndexFactory>(server, *this),
+                    server.getFeature<DatabaseFeature>()),
       _clusterFeature(server.getFeature<ClusterFeature>()),
       _metrics(metrics),
       _actualEngine(nullptr) {
@@ -116,17 +118,12 @@ void ClusterEngine::start() {
   initTransactionStatistics(_metrics);
 }
 
-std::unique_ptr<transaction::Manager> ClusterEngine::createTransactionManager(
-    transaction::ManagerFeature& feature) {
-  return std::make_unique<transaction::Manager>(feature);
-}
-
 std::shared_ptr<TransactionState> ClusterEngine::createTransactionState(
     TRI_vocbase_t& vocbase, TransactionId tid,
     transaction::Options const& options,
     transaction::OperationOrigin operationOrigin) {
-  return std::make_shared<ClusterTransactionState>(vocbase, tid, options,
-                                                   operationOrigin);
+  return std::make_shared<ClusterTransactionState>(
+      vocbase, tid, options, operationOrigin, transactionManager());
 }
 
 void ClusterEngine::addParametersForNewCollection(VPackBuilder& builder,

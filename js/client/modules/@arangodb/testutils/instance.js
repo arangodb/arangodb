@@ -1480,6 +1480,9 @@ class instance {
     let ret;
     try {
       ret = callback();
+    } catch (err) {
+      print(`${RED}${Date()} failed to connect ${this.name} - ${err}${RESET}`);
+      throw err;
     } finally {
       reconnected = arango.connectHandle(handle);
     }
@@ -1489,69 +1492,94 @@ class instance {
     return ret;
   }
 
-  getRawMetric(tags) {
+  getRawMetric(tags="") {
     return this.toThisInstance(() => {
       return arango.GET_RAW('/_admin/metrics' + tags, { 'accept-encoding': 'identity' });
     });
   }
 
-  getAllMetric(tags) {
+  getAllMetric(tags="") {
     let res = this.getRawMetric(tags);
     if (res.code !== 200) {
-      throw "error fetching metric";
+      throw new Error(`error fetching metric ${tags} on ${this.name} - ${JSON.stringify(res)}`);
     }
     return res.body;
   }
 
-  getMetricName(text, name) {
-    let re = new RegExp("^" + name);
-    let matches = text.split('\n').filter((line) => !line.match(/^#/)).filter((line) => line.match(re));
-    if (!matches.length) {
-      throw "Metric " + name + " not found";
+  getRawUsageMetric(tags="") {
+    return this.toThisInstance(() => {
+      return arango.GET_RAW('/_admin/usage-metrics' + tags, { 'accept-encoding': 'identity' });
+    });
+  }
+
+  getAllUsageMetric(tags="") {
+    let res = this.getRawUsageMetric(tags);
+    if (res.code !== 200) {
+      throw new Error(`error fetching metric ${tags} on ${this.name} - ${JSON.stringify(res)}`);
     }
-    let res = 0; // Sum up values from all matches
-    for(let i = 0; i < matches.length; i+= 1) {
-      res += Number(matches[i].replace(/^.*?(\{.*?\})?\s*([0-9.]+)$/, "$2"));
+    return res.body;
+  }
+
+  getMetricByName(text, names) {
+    let me = this;
+    function getOneMetric(name) {
+      let re = new RegExp("^" + name);
+      let matches = text.split('\n').filter((line) => !line.match(/^#/)).filter((line) => line.match(re));
+      if (!matches.length) {
+        return NaN;
+      }
+      let res = 0; // Sum up values from all matches
+      for(let i = 0; i < matches.length; i+= 1) {
+        res += Number(matches[i].replace(/^.*?(\{.*?\})?\s*([0-9.]+)$/, "$2"));
+      }
+      return res;
     }
-    return res;
+    if (!Array.isArray(names)) {
+      return getOneMetric(names);
+    } else {
+      let res = [];
+      names.forEach(name => {
+        res.push(getOneMetric(name));
+      });
+      return res;
+    }
   }
 
   getMetric(name) {
     let text = this.getAllMetric('');
-    return this.getMetricName(text, name);
+    return this.getMetricByName(text, name);
   }
   
   debugGetFailurePoints() {
-    this.connect();
-    let haveFailAt = arango.GET("/_admin/debug/failat") === true;
-    if (haveFailAt) {
-      let res = arango.GET_RAW('/_admin/debug/failat/all');
-      if (res.code !== 200) {
-        throw "Error checking failure points = " + JSON.stringify(res);
+    return this.toThisInstance(() => {
+      let haveFailAt = arango.GET("/_admin/debug/failat") === true;
+      if (haveFailAt) {
+        let res = arango.GET_RAW('/_admin/debug/failat/all');
+        if (res.code !== 200) {
+          throw "Error checking failure points = " + JSON.stringify(res);
+        }
+        return res.parsedBody;
       }
-      return res.parsedBody;
-    }
-    return [];
+      return [];
+    });
   }
   debugSetFailAt(failurePoint) {
-    if (!this.connect()) {
-      throw new Error(`${this.name}: failed to connect my instance {JSON.stringify(this.getStructure())}`);
-    }
-    let reply = arango.PUT_RAW('/_admin/debug/failat/' + failurePoint, '');
-    if (reply.code !== 200) {
-      throw new Error(`${this.name}: Failed to set ${failurePoint}: ${reply.parsedBody}`);
-    }
+    this.toThisInstance(() => {
+      let reply = arango.PUT_RAW('/_admin/debug/failat/' + encodeURIComponent(failurePoint), '');
+      if (reply.code !== 200) {
+        throw new Error(`${this.name}: Failed to set ${failurePoint}: ${reply.parsedBody}`);
+      }
+    });
     return true;
   }
   debugShouldFailAt(failurePoint) {
     throw new Error("not implemented!");
-    if (!this.connect()) {
-      throw new Error(`${this.name}: failed to connect my instance {JSON.stringify(this.getStructure())}`);
-    }
-    let reply = arango.PUT_RAW('/_admin/debug/failat/' + failurePoint, '');
-    if (reply.code !== 200) {
-      throw new Error(`${this.name}: Failed to set ${failurePoint}: ${reply.parsedBody}`);
-    }
+    this.toThisInstance(() => {
+      let reply = arango.PUT_RAW('/_admin/debug/failat/' + encodeURIComponent(failurePoint), '');
+      if (reply.code !== 200) {
+        throw new Error(`${this.name}: Failed to set ${failurePoint}: ${reply.parsedBody}`);
+      }
+    });
     return true;
   }
   debugResetRaceControl() {
@@ -1586,38 +1614,37 @@ class instance {
     return true;
   }
   debugClearFailAt(failurePoint) {
-    if (!this.connect()) {
-      throw new Error(`${this.name}: failed to connect my instance {JSON.stringify(this.getStructure())}`);
-    }
-    if (failurePoint === "") {
-      failurePoint = undefined;
-    }
-    let deleteUrl = `/_admin/debug/failat/${(failurePoint=== undefined)?'': '/' + failurePoint}`;
-    let reply;
-    let count = 0;
-    while (count < 10) {
-      try {
-        reply = arango.DELETE_RAW(deleteUrl);
-        break;
-      } catch (ex) {
-        count += 1;
-        print(`${RED} ${this.name}: failed to delete failurepoint by ${ex}`);
-        this._disconnect();
-        this.connect();
+    return this.toThisInstance(() => {
+      if (failurePoint === "") {
+        failurePoint = undefined;
       }
-    }
-    if (reply.code !== 200) {
-      // we may no longer be able to work on a database as forced by fuerte
-      print(`${BLUE}${this.name}: fallback to internal.download to clear failurepoint${RESET}`);
-      let httpOptions = _.clone(this.authHeaders);
-      httpOptions.method = 'DELETE';
-      httpOptions.returnBodyOnError = true;
-      const reply = download(deleteUrl, '', httpOptions);
+      let deleteUrl = `/_admin/debug/failat/${(failurePoint=== undefined)?'': encodeURIComponent(failurePoint)}`;
+      let reply;
+      let count = 0;
+      while (count < 10) {
+        try {
+          reply = arango.DELETE_RAW(deleteUrl);
+          break;
+        } catch (ex) {
+          count += 1;
+          print(`${RED} ${this.name}: failed to delete failurepoint by ${ex}`);
+          this._disconnect();
+          this.connect();
+        }
+      }
       if (reply.code !== 200) {
-        throw new Error(`${this.name}: Failed to remove FP: '${failurePoint}' =>  ${JSON.stringify(reply.parsedBody)}`);
+        // we may no longer be able to work on a database as forced by fuerte
+        print(`${BLUE}${this.name}: fallback to internal.download to clear failurepoint${RESET}`);
+        let httpOptions = _.clone(this.authHeaders);
+        httpOptions.method = 'DELETE';
+        httpOptions.returnBodyOnError = true;
+        const reply = download(deleteUrl, '', httpOptions);
+        if (reply.code !== 200) {
+          throw new Error(`${this.name}: Failed to remove FP: '${failurePoint}' =>  ${JSON.stringify(reply.parsedBody)}`);
+        }
       }
-    }
-    return true;
+      return true;
+    });
   }
   debugCanUseFailAt() {
     let reply = arango.GET_RAW('/_admin/debug/failat/');
