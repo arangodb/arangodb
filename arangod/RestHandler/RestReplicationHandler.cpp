@@ -134,6 +134,13 @@ bool ignoreHiddenEnterpriseCollection(std::string const& name, bool force) {
 auto handlingOfExistingCollection(TRI_vocbase_t& vocbase,
                                   std::string const& name, bool dropExisting)
     -> futures::Future<ResultT<bool>> {
+  ExecContextSuperuserScope escope(
+      ExecContext::current().isSuperuser() ||
+      (ExecContext::current()
+           .canUseAdminAction(arangodb::rbac::Category::AdminRestore{})
+           .ok() &&
+       !ServerState::readOnly()));
+
   std::shared_ptr<LogicalCollection> col;
   auto lookupResult = methods::Collections::lookup(vocbase, name, col);
 
@@ -2182,7 +2189,7 @@ void RestReplicationHandler::handleCommandRestoreView() {
 
     std::vector<std::string> linkedCollNames;
     VPackSlice links = slice.get("links");
-    if (!links.isObject()) {
+    if (links.isObject()) {
       for (auto const& p : VPackObjectIterator(links)) {
         linkedCollNames.emplace_back(p.key.copyString());
       }
