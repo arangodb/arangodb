@@ -140,6 +140,11 @@ void LegacyOptionsFeature::collectOptions(
                              "Filesystem paths that are accessible from within "
                              "JavaScript actions.",
                              true);
+  options->addObsoleteOption(
+      "--javascript.files-denylist",
+      "Filesystem paths that are inaccessible from within "
+      "JavaScript actions (if not in the allowlist).",
+      true);
 
   // V8PlatformFeature options
   options->addObsoleteOption("--javascript.v8-max-heap",

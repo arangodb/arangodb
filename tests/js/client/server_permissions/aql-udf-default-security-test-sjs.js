@@ -31,6 +31,7 @@ if (getOptions === true) {
     'javascript.endpoints-denylist': [],
     'javascript.endpoints-allowlist': [],
     'javascript.files-allowlist': [],
+    'javascript.files-denylist': [],
   };
 }
 

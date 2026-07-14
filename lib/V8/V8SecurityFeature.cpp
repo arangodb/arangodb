@@ -161,8 +161,8 @@ void V8SecurityFeature::validateOptions(
       _options.filesAllowList.emplace_back(".*");
     }
 
-    // file access (a denylist for file access does not exist (yet))
-    auto denyRegex = std::nullopt;
+    // file access
+    auto denyRegex = optionToRegex(_options.filesDenyList, "files", "deny");
     auto allowRegex = optionToRegex(_options.filesAllowList, "files", "allow");
 
     _files = DenyAllow(denyRegex, allowRegex);
@@ -179,6 +179,7 @@ void V8SecurityFeature::prepare() {
 void V8SecurityFeature::dumpAccessLists() const {
   LOG_TOPIC("2cafe", DEBUG, Logger::V8)
       << "files allowed by user:" << _options.filesAllowList
+      << ", files denied by user: " << _options.filesDenyList
       << ", internal read allow list:" << inspection::json(_internalReadAllow)
       << ", internal write allow list:" << inspection::json(_internalWriteAllow)
       << ", internal startup options allow list:"
