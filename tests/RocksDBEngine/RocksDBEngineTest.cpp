@@ -17,13 +17,11 @@
 /// limitations under the License.
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Julia Puget
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <gtest/gtest.h>
 
-#include "StorageEngineFixture.h"
+#include "RocksDBEngine/StorageEngineFixture.h"
 
 using namespace arangodb;
 using namespace arangodb::tests;

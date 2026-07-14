@@ -61,15 +61,10 @@ struct TestRocksDBOptionsProvider final : RocksDBOptionsProvider {
   }
 };
 
-// Fixture providing a preconfigured RocksDBEngine backed by a temporary
-// directory. The engine is started in SetUp() and ready to use; all
-// collaborators are owned by the fixture and torn down (including the on-disk
-// data) when the test ends.
 struct NullRecoveryCallback final : IRecoveryCallback {
   void recoveryDone() override {}
 };
 
-// Adapts a Scheduler to the ISchedulerProvider port the engine expects.
 struct TestSchedulerProvider final : ISchedulerProvider {
   explicit TestSchedulerProvider(Scheduler& scheduler)
       : _scheduler(scheduler) {}
@@ -77,6 +72,10 @@ struct TestSchedulerProvider final : ISchedulerProvider {
   Scheduler& _scheduler;
 };
 
+// Fixture providing a preconfigured RocksDBEngine backed by a temporary
+// directory. The engine is started in SetUp() and ready to use; all
+// collaborators are owned by the fixture and torn down (including the on-disk
+// data) when the test ends.
 class StorageEngineFixture : public ::testing::Test {
  protected:
   void SetUp() override {
@@ -95,12 +94,9 @@ class StorageEngineFixture : public ::testing::Test {
   }
 
   void TearDown() override {
-    // The engine's background threads assert that the server is stopping when
-    // they are shut down, so move the server into a stopping state first.
+    // first mark the server as shutting down
     _server.beginShutdown();
-    // Then run the ApplicationFeature shutdown lifecycle so the background
-    // threads are stopped before the RocksDB instance (and the engine) are
-    // destroyed.
+    // then we can stop the engine
     _engine.beginShutdown();
     _engine.stop();
     _engine.unprepare();
