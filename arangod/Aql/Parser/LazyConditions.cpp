@@ -21,7 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "LazyConditions.h"
+#include "Aql/Parser/LazyConditions.h"
 
 #include "Aql/Ast.h"
 #include "Aql/Scopes.h"

@@ -23,7 +23,7 @@
 
 #pragma once
 
-#include "Aql/LazyConditions.h"
+#include "Aql/Parser/LazyConditions.h"
 #include "Basics/ErrorCode.h"
 
 #include <cstddef>
