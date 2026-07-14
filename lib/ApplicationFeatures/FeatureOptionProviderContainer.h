@@ -20,6 +20,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+#include "ApplicationFeatures/LanguageOptionsProvider.h"
 #include "ApplicationFeatures/ProcessEnvironmentOptionsProvider.h"
 #include "Logger/LoggerOptionsProvider.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -51,9 +52,10 @@ class FeatureOptionProviderContainer final {
   std::tuple<
       crash_handler::CrashHandlerOptionsProvider, DatabasePathOptionsProvider,
       DumpLimitsOptionsProvider, FlushOptionsProvider,
-      fortune::FortuneOptionsProvider, LogBufferOptionsProvider,
-      LoggerOptionsProvider, ProcessEnvironmentOptionsProvider,
-      RocksDBEngineOptionsProvider, RocksDBIndexCacheRefillOptionsProvider,
+      fortune::FortuneOptionsProvider, LanguageOptionsProvider,
+      LogBufferOptionsProvider, LoggerOptionsProvider,
+      ProcessEnvironmentOptionsProvider, RocksDBEngineOptionsProvider,
+      RocksDBIndexCacheRefillOptionsProvider,
       RocksDBOptionFeatureOptionsProvider, TemporaryStorageOptionsProvider>
       _providers{};
 };

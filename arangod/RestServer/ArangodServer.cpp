@@ -26,7 +26,6 @@
 
 // The list of includes for the features is defined in the following file -
 // please add new includes there!
-#include "RestServer/CrashHandlerFeature.h"
 #include "RestServer/arangod_includes.h"
 #include "V8/V8SecurityFeature.h"
 
@@ -146,7 +145,6 @@ void ArangodServer::addFeatures(int* ret) {
   addFeature<GreetingsFeature>();
   addFeature<InitDatabaseFeature>(kNonServerFeatures);
   addFeature<LanguageCheckFeature>();
-  addFeature<LanguageFeature>();
   addFeature<TimeZoneFeature>();
   addFeature<LockfileFeature>();
   addFeature<MaintenanceFeature>(&clusterFeature);
@@ -231,6 +229,10 @@ void ArangodServer::addFeaturesWithOptionProvider() {
   auto& cacheManager = getFeature<CacheManagerFeature>();
   auto& agency = getFeature<AgencyFeature>();
   auto& clusterFeature = getFeature<ClusterFeature>();
+
+  // Add LanguageFeature
+  auto languageOptions = _optionProviders.getOptions<LanguageOptionsProvider>();
+  addFeature<LanguageFeature>(std::move(languageOptions));
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   auto processEnvironmentOptions =
