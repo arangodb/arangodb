@@ -855,7 +855,6 @@ function testSuite() {
       tryZipFileForbidden(allowedZipFileName, topLevelForbidden);
 
       tryZipFileForbiddenList(allowedZipFileName, topLevelAllowedHazardSubFiles, ['passwd']);
-      fs.remove(allowedZipFileName);
 
       let prefixEscape = '';
       for (let i = 0; i < topLevelAllowed.split('/').length - 1; i++) {
