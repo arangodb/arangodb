@@ -20,6 +20,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+#include "ApplicationFeatures/ProcessEnvironmentOptionsProvider.h"
 #include "Logger/LoggerOptionsProvider.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/CrashHandlerOptionsProvider.h"
@@ -51,8 +52,8 @@ class FeatureOptionProviderContainer final {
       crash_handler::CrashHandlerOptionsProvider, DatabasePathOptionsProvider,
       DumpLimitsOptionsProvider, FlushOptionsProvider,
       fortune::FortuneOptionsProvider, LogBufferOptionsProvider,
-      LoggerOptionsProvider, RocksDBEngineOptionsProvider,
-      RocksDBIndexCacheRefillOptionsProvider,
+      LoggerOptionsProvider, ProcessEnvironmentOptionsProvider,
+      RocksDBEngineOptionsProvider, RocksDBIndexCacheRefillOptionsProvider,
       RocksDBOptionFeatureOptionsProvider, TemporaryStorageOptionsProvider>
       _providers{};
 };

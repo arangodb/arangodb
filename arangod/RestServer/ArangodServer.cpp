@@ -165,9 +165,6 @@ void ArangodServer::addFeatures(int* ret) {
   auto& scheduler =
       addFeature<SchedulerFeature>(metrics, sharedPRNGFeature.getPRNG());
   addFeature<VectorIndexFeature>(database);
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  addFeature<ProcessEnvironmentFeature>(std::string{_binaryName});
-#endif
 #ifdef USE_V8
   addFeature<ScriptFeature>(ret);
 #endif
@@ -234,6 +231,13 @@ void ArangodServer::addFeaturesWithOptionProvider() {
   auto& cacheManager = getFeature<CacheManagerFeature>();
   auto& agency = getFeature<AgencyFeature>();
   auto& clusterFeature = getFeature<ClusterFeature>();
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  auto processEnvironmentOptions =
+      _optionProviders.getOptions<ProcessEnvironmentOptionsProvider>();
+  addFeature<ProcessEnvironmentFeature>(std::string{_binaryName},
+                                        std::move(processEnvironmentOptions));
+#endif
 
   // Add CrashHandlerFeature
   auto crashHandlerOptions =
