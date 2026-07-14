@@ -629,31 +629,28 @@ endif()
 # over compile_commands.json); both read the same check configuration from the
 # .clang-tidy files, so results are consistent.
 #
-# Notes:
-#  * Default OFF, deliberately: clang-tidy runs IN ADDITION to the compile and,
-#    with clang-analyzer-* enabled, is expensive. Measured example -- building
-#    the arango_aql target (345 TUs, -j32, ccache off) took ~150s to compile vs
-#    ~680s to compile+clang-tidy, about 4.5x, the static analyzer dominating. A
-#    full from-scratch build is diluted by 3rdParty/V8 (compiled but not checked)
-#    so its factor is smaller. It is naturally incremental (only recompiled TUs
-#    are re-checked), which suits focused work on a subsystem or a CI job; for
-#    everyday local checks prefer utils/clang-tidy.sh on changed files.
-#  * Checks and header filtering come from the .clang-tidy files (auto-discovered
-#    next to each source), NOT from flags here -- one source of truth.
-#  * clang-tidy uses a clang front-end; it integrates most cleanly when the build
-#    compiler is also clang (the pinned toolchain ships a matching clang-tidy).
-#  * The property is applied to first-party targets only: it is set further down,
-#    after the 3rdParty subdirectories, so vendored third-party targets do not
-#    inherit it. The vendored-but-first-party lib/iresearch tree is included and
-#    uses this same configuration (it owns no clang-tidy setup of its own).
+# * The default is OFF.
+#   Rationale: it's expensive (†), plus, at the time of this writing, we get a
+#   bunch of warnings.
+# * The configuration for checks and header filters is part of .clang-tidy, not
+#   cmake.
+# * The 3rdParty subdirectories are excluded: CMAKE_CXX_CLANG_TIDY is set after
+#   add_subdirectory(3rdParty), so it's not inherited by it.
+# * Note that clang-tidy gets passed the very same flags as the compiler. If
+#   a different compiler than clang is used, it might not understand everything.
+#
+# (†) On my machine, compiling (only) arango_aql takes ~150s. Running clang-tidy
+#     on the same files takes ~530s. Which means a build time
+#     increase of about factor 4.5. This was with ccache disabled, -j32,
+#     and arango_aql contained 345 translation units.
+#     Of course, YMMV, and don't extrapolate it for a full build, as 3rdParty
+#     libraries are not checked. It's just here to give a rough idea.
 option(USE_CLANG_TIDY "run clang-tidy on first-party sources during the build" OFF)
 
 if(USE_CLANG_TIDY)
   find_program(CLANG_TIDY_EXE NAMES clang-tidy DOC "Path to clang-tidy executable")
   if(NOT CLANG_TIDY_EXE)
-    # Hard error rather than a skip: a build configured to run clang-tidy (e.g.
-    # a CI job) must not silently drop the checks just because the tool is
-    # missing. Fail loudly so it is actionable.
+    # Don't skip checks if they've been requested
     message(FATAL_ERROR
       "USE_CLANG_TIDY is ON but clang-tidy was not found on PATH. Install it "
       "(the pinned toolchain ships a matching clang-tidy), or reconfigure with "
@@ -663,7 +660,7 @@ if(USE_CLANG_TIDY)
   if(NOT CMAKE_COMPILER_IS_CLANG)
     # clang-tidy still runs (CMake passes --driver-mode=g++), but the clang
     # front-end may not understand every compiler-specific flag/pragma, so
-    # results can differ from a real clang build. Supported, but not preferred.
+    # results can differ from a real clang build.
     message(WARNING
       "USE_CLANG_TIDY is ON but the C++ compiler is not clang "
       "(${CMAKE_CXX_COMPILER_ID}). clang-tidy uses a clang front-end; some "
@@ -1323,10 +1320,10 @@ list(INSERT SYSTEM_LIBRARIES 0
 )
 
 # Enable clang-tidy for first-party code. Set here -- after the 3rdParty and
-# faiss subdirectories above -- so vendored third-party targets (already
-# created) do not inherit the CXX_CLANG_TIDY property. Everything configured
-# from here on (lib, including lib/iresearch, client-tools, arangod, enterprise)
-# inherits it. See the USE_CLANG_TIDY block earlier.
+# faiss subdirectories above -- so they do not inherit the CXX_CLANG_TIDY
+# property. Everything configured from here on (lib, including lib/iresearch,
+# client-tools, arangod, enterprise) inherits it. See the USE_CLANG_TIDY block
+# earlier.
 if(USE_CLANG_TIDY)
   set(CMAKE_CXX_CLANG_TIDY ${CLANG_TIDY_COMMAND})
 endif()

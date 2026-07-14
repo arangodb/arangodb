@@ -137,32 +137,16 @@ To be safe from committing non-linted stuff add **.git/hooks/pre-commit** with:
 
     ./utils/eslint.sh
 
-### Static analysis (clang-tidy)
+### clang-tidy
 
-We use `clang-tidy` for C++ static analysis. Unlike the sanitizers, clang-tidy
-does **not** run the code: it re-parses each translation unit using the exact
-compile flags recorded in the build's `compile_commands.json` and matches the
-AST against a set of checks. It therefore needs a **configured and built** build
-directory (the generated headers must exist), but no test run.
+clang-tidy can be run on-demand with the wrapper script `./utils/clang-tidy.sh`,
+or along with a build by setting `USE_CLANG_TIDY=On`:
 
-The enabled checks are defined in `.clang-tidy` files, which are the single
-source of truth shared by both ways of running it below:
+#### On demand
 
-- `./.clang-tidy` — the repository-root config. A deliberately conservative,
-  opt-in check set (`bugprone-*`, `performance-*`, `misc-*`, `clang-analyzer-*`
-  and a few hand-picked `modernize-*`/`readability-*`), with header diagnostics
-  scoped to our own source roots. Each entry is annotated with its rationale.
-- `3rdParty/.clang-tidy` — disables all checks for vendored third-party code.
-- `lib/iresearch/.clang-tidy` — iresearch inherits the root config
-  (`InheritParentConfig`); it keeps its historical identifier-naming options but
-  they are dormant unless the corresponding checks are re-enabled there.
-
-Install a `clang-tidy` matching the pinned toolchain version (see `VERSIONS`) so
-the C++20 dialect is parsed identically to the compiler.
-
-#### On demand / for a pull request
-
-Use the wrapper script (needs `clang-tidy`, `run-clang-tidy` and `jq` on PATH):
+This requires `clang-tidy`, `run-clang-tidy` and `jq` in PATH. It also needs an
+existing build directory; defaulting to `./build/`, which can be overridden with
+`--build` or `-B`.
 
     ./utils/clang-tidy.sh                    # files changed vs. HEAD (both repos)
     ./utils/clang-tidy.sh arangod/RestServer # specific files or directories
@@ -170,34 +154,23 @@ Use the wrapper script (needs `clang-tidy`, `run-clang-tidy` and `jq` on PATH):
 
 With no arguments it checks the sources locally modified vs. `HEAD` in both the
 main and the enterprise repository (same selection as `./scripts/clang-format.sh`).
-It defaults to the `./build` build directory; override with `-B`/`--build DIR`
-(e.g. an existing `cmake-build-*`). It warns and skips any file that is not in
-the build's compile database (wrong or un-refreshed build directory). To scan
-the whole codebase, pass the source roots:
 
-    ./utils/clang-tidy.sh --build cmake-build-relwithdebinfo \
+To scan the whole codebase, pass the source roots:
+
+    ./utils/clang-tidy.sh \
       arangod lib client-tools enterprise
 
 #### As part of the build
 
-Configure with `-DUSE_CLANG_TIDY=ON` to run clang-tidy on every first-party
-translation unit as it compiles (via the `CXX_CLANG_TIDY` target property):
-
-    cmake -S . -B <build-dir> -DUSE_CLANG_TIDY=ON
-    cmake --build <build-dir>
+Configure `cmake` with `-DUSE_CLANG_TIDY=On` to run clang-tidy on every
+first-party translation unit as it compiles. It is `Off` by default.
 
 This covers `arangod`, `lib` (including `lib/iresearch`), `client-tools` and
-`enterprise`; vendored `3rdParty` code is excluded. clang-tidy runs in addition
-to the compile and, with `clang-analyzer-*` enabled, is expensive: as a measured
-example, building the `arango_aql` target (345 TUs, `-j32`, ccache off) took
-~150s to compile versus ~680s to compile plus clang-tidy — roughly **4.5×**,
-dominated by the static analyzer. A full from-scratch build is diluted by
-`3rdParty`/V8 (compiled but not checked), so its factor is smaller. It is
-naturally incremental (only recompiled files are re-checked), which makes it
-convenient while iterating on a subsystem; for everyday local checks prefer
-`utils/clang-tidy.sh` on changed files. It is `OFF` by default. If `clang-tidy` is not
-found, configuration fails with an error (so a CI build meant to run the checks
-cannot silently skip them); a warning is emitted when the compiler is not clang.
+`enterprise`; vendored `3rdParty` code is excluded.
+
+clang-tidy runs in addition to the compilation, and can increase the total build
+time significantly. Any partial recompile will also run clang-tidy on the same
+set of translation units.
 
 ### Adding startup options
 

@@ -1,32 +1,19 @@
-# clang-tidy configuration for the vendored iresearch tree.
+# clang-tidy configuration for iresearch.
 #
 # iresearch was developed as a standalone third-party library and still follows
 # a different code style (snake_case identifiers, etc.). Historically it shipped
 # its own comprehensive config here (Checks: '*' with WarningsAsErrors: '*'),
 # which produces ~14k findings on this tree -- far too many to serve as a build
-# gate, and mostly from checks we intentionally do not run elsewhere
-# (readability-identifier-naming, readability-magic-numbers, misc-include-cleaner,
-# hicpp-*, cppcoreguidelines-*, ...).
+# gate, and mostly from checks we intentionally do not run elsewhere.
 #
-# For now iresearch is treated as first-party and INHERITS the repository-root
-# .clang-tidy -- the same conservative, opt-in check set used across
-# arangod/lib/client-tools/enterprise. On this tree that is a few hundred
-# findings, in line with the rest of the codebase, and safe under USE_CLANG_TIDY
-# (which runs clang-tidy at build time via CXX_CLANG_TIDY).
+# Now, iresearch inherits the repository-root .clang-tidy.
 #
-# InheritParentConfig makes the options here layer on top of the root config
-# instead of replacing it; WarningsAsErrors is inherited (empty) from the root.
+# InheritParentConfig makes the options here layer on top of the root config.
 InheritParentConfig: true
 
-# No `Checks:` here on purpose -- the enabled checks come from the root config.
-# To re-introduce iresearch-specific checks later (a dedicated effort), append
-# them here, e.g.:
-#   Checks: 'readability-identifier-naming, readability-magic-numbers'
-
-# iresearch's historical identifier-naming scheme (snake_case). RETAINED but
-# DORMANT: the root config does not enable readability-identifier-naming, so
-# these options have no effect until that check is added to `Checks` above.
-# Kept so that a future iresearch-specific naming pass is a one-line change.
+# iresearch's historical identifier-naming scheme (snake_case).
+# These are currently dormant, as the root config does not (yet) enable
+# readability-identifier-naming.
 CheckOptions:
   - key: readability-identifier-naming.ClassCase
     value: CamelCase

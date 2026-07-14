@@ -114,8 +114,6 @@ execute_process(COMMAND ${CMAKE_C_COMPILER} -dumpversion OUTPUT_VARIABLE GCC_VER
 ################################################################################
 
 option(USE_PVS_STUDIO "Generate target for PVS-Studio check" OFF)
-# USE_CLANG_TIDY is declared and handled in the top-level CMakeLists; iresearch
-# is treated as first-party and inherits CMAKE_CXX_CLANG_TIDY from there.
 option(USE_IWYU "Include IWYU checks" OFF)
 option(USE_UTILS "Build utils" ON)
 option(USE_TESTS "Build tests" OFF)
