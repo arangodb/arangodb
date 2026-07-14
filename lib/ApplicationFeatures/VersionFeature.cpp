@@ -20,17 +20,8 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ApplicationFeatures/GreetingsFeature.h"
+#include "ApplicationFeatures/ShellColorsFeature.h"
 #include "ApplicationFeatures/VersionFeature.h"
-#include "ApplicationFeatures/VersionOptionsProvider.h"
-
-#include "ProgramOptions/ProgramOptions.h"
-#include "Rest/Version.h"
-
-#include <iostream>
-
-using namespace arangodb::rest;
-using namespace arangodb::options;
 
 namespace arangodb {
 
@@ -44,35 +35,6 @@ VersionFeature::VersionFeature(application_features::ApplicationServer& server,
   setOptional(false);
 
   startsAfter<ShellColorsFeature>();
-}
-
-void VersionFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  VersionOptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
-
-void VersionFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
-  if (_options.printVersionJson) {
-    VPackBuilder builder;
-    {
-      VPackObjectBuilder ob(&builder);
-      Version::getVPack(builder);
-
-      builder.add("version", VPackValue(Version::getServerVersion()));
-    }
-
-    std::cout << builder.slice().toJson() << std::endl;
-    exit(EXIT_SUCCESS);
-  }
-
-  if (_options.printVersion) {
-    std::cout << Version::getServerVersion() << std::endl
-              << std::endl
-              << LGPLNotice << std::endl
-              << std::endl
-              << Version::getDetailed() << std::endl;
-    exit(EXIT_SUCCESS);
-  }
 }
 
 }  // namespace arangodb

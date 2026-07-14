@@ -97,7 +97,6 @@ void ArangodServer::addFeatures(int* ret) {
       LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(*this),
       LazyApplicationFeatureReference<ClusterFeature>(*this));
   addFeature<metrics::ClusterMetricsFeature>();
-  addFeature<VersionFeature>();
   addFeature<ActionFeature>();
   addFeature<AgencyFeature>();
   addFeature<ApiRecordingFeature>(_dataSourceRegistry, metrics);
@@ -229,6 +228,10 @@ void ArangodServer::addFeaturesWithOptionProvider() {
   auto& cacheManager = getFeature<CacheManagerFeature>();
   auto& agency = getFeature<AgencyFeature>();
   auto& clusterFeature = getFeature<ClusterFeature>();
+
+  // Add VersionFeature
+  auto versionOptions = _optionProviders.getOptions<VersionOptionsProvider>();
+  addFeature<VersionFeature>(std::move(versionOptions));
 
   // Add LanguageFeature
   auto languageOptions = _optionProviders.getOptions<LanguageOptionsProvider>();
