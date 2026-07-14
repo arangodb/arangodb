@@ -238,14 +238,10 @@ Result ExecContext::canRestoreCreateView(
                                .linkedCollNames{std::move(linkedCollNames)}});
 }
 
-Result ExecContext::canRestoreDropView(
-    std::string_view db, std::string_view view,
-    std::vector<std::string> linkedCollectionNames) const {
+Result ExecContext::canRestoreDropView(std::string_view db,
+                                       std::string_view view) const {
   using namespace auth::perms;
-  return can(
-      RestoreDropView{.db{db},
-                      .viewName{view},
-                      .linkedCollNames{std::move(linkedCollectionNames)}});
+  return can(RestoreDropView{.db{db}, .viewName{view}});
 }
 
 Result ExecContext::canRestoreWriteData(std::string_view db,

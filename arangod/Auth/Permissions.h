@@ -213,7 +213,6 @@ struct RestoreCreateView {
 struct RestoreDropView {
   std::string db;
   std::string viewName;
-  std::vector<std::string> linkedCollNames;
 };
 
 // For the write data process during restore we need this:
@@ -334,7 +333,7 @@ using NonAdminList = meta::TypeList<
     // collection permissions
     SeeCollection, CreateCollection, DropCollection, UseCollection,
     DumpCollection, RestoreCollection, RestoreCreateIndex, RestoreCreateView,
-    RestoreWriteData,
+    RestoreDropView, RestoreWriteData,
     // view permissions
     SeeView, CreateView, ModifyView, RenameView, DropView, UseView,
     // analyzer permissions

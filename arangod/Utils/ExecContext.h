@@ -185,9 +185,7 @@ class ExecContext {
                                std::string_view coll) const;
   Result canRestoreCreateView(std::string_view db, std::string_view viewName,
                               std::vector<std::string> view) const;
-  Result canRestoreDropView(
-      std::string_view db, std::string_view view,
-      std::vector<std::string> linkedCollectionNames) const;
+  Result canRestoreDropView(std::string_view db, std::string_view view) const;
   Result canRestoreWriteData(std::string_view db, std::string_view coll) const;
 
   Result canCreateIndex(std::string_view db, std::string_view coll) const;

@@ -2178,13 +2178,6 @@ void RestReplicationHandler::handleCommandRestoreView() {
     CollectionNameResolver resolver(_vocbase);
     auto view = resolver.getView(name);
 
-    std::vector<std::string> linkedCollNames;
-    VPackSlice links = slice.get("links");
-    if (links.isObject()) {
-      for (auto const& p : VPackObjectIterator(links)) {
-        linkedCollNames.emplace_back(p.key.copyString());
-      }
-    }
     if (view) {
       if (!overwrite) {
         generateError(
@@ -2196,9 +2189,7 @@ void RestReplicationHandler::handleCommandRestoreView() {
         return;
       }
 
-      if (auto r =
-              exec.canRestoreDropView(_vocbase.name(), name, linkedCollNames);
-          r.fail()) {
+      if (auto r = exec.canRestoreDropView(_vocbase.name(), name); r.fail()) {
         generateError(r);
         return;
       }
@@ -2211,6 +2202,13 @@ void RestReplicationHandler::handleCommandRestoreView() {
     }
 
     // must create() since view was drop()ed
+    std::vector<std::string> linkedCollNames;
+    VPackSlice links = slice.get("links");
+    if (links.isObject()) {
+      for (auto const& p : VPackObjectIterator(links)) {
+        linkedCollNames.emplace_back(p.key.copyString());
+      }
+    }
     if (auto r = exec.canRestoreCreateView(_vocbase.name(), name,
                                            std::move(linkedCollNames));
         r.fail()) {
