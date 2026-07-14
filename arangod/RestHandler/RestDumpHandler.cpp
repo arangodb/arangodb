@@ -26,7 +26,6 @@
 #include "Activities/GenericActivity.h"
 #include "Activities/RegistryGlobalVariable.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Auth/Rbac/Actions.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
@@ -171,9 +170,7 @@ void RestDumpHandler::handleCommandDumpStart() {
   //      before. Should it be specific to `database`?
   //      Should isSingleServer() be part of the permission check?
   ExecContextSuperuserScope escope(
-      ExecContext::current()
-          .canUseAdminAction(rbac::Category::AdminDump{})
-          .ok() &&
+      ExecContext::current().canUseAdminAction(auth::perms::AdminDump{}).ok() &&
       ServerState::instance()->isSingleServer());
 
   auto guard =

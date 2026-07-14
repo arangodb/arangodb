@@ -69,7 +69,7 @@ RestStatusHandler::RestStatusHandler(
 // Mounted at /_admin/status (exact)
 RestStatus RestStatusHandler::execute() {
   if (auto r = ExecContext::current().canUseHardenedAction(
-          rbac::Category::AdminMonitoring{});
+          auth::perms::AdminMonitoring{});
       r.fail()) {
     // dont leak information about server internals here
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,

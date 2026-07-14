@@ -24,11 +24,9 @@
 #include "ClusterRestWalHandler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Auth/Rbac/Actions.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterAdminOperations.h"
-#include "Cluster/ServerState.h"
 #include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Manager.h"
@@ -81,7 +79,7 @@ RestStatus ClusterRestWalHandler::execute() {
     }
 #else
     if (auto r = ExecContext::current().canUseAdminAction(
-            arangodb::rbac::Category::AdminWalAccess{});
+            auth::perms::AdminWalAccess{});
         r.fail()) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                     r.errorMessage());

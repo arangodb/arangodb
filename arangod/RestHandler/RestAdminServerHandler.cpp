@@ -26,16 +26,12 @@
 #include "Actions/RestActionHandler.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Auth/Handler.h"
-#include "Auth/Rbac/Actions.h"
 #include "Auth/UserManager.h"
-#include "Basics/StaticStrings.h"
 #include "Cluster/ClusterFeature.h"
-#include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/SslServerFeature.h"
 #include "Inspection/VPack.h"
 #include "Logger/LogMacros.h"
-#include "Replication/ReplicationFeature.h"
 #include "RestServer/ApiRecordingFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Scheduler/Scheduler.h"
@@ -204,7 +200,7 @@ void RestAdminServerHandler::handleMode() {
     writeModeResult(ServerState::readOnly());
   } else if (requestType == rest::RequestType::PUT) {
     if (auto r = ExecContext::current().canUseAdminAction(
-            arangodb::rbac::Category::AdminMaintenance{});
+            auth::perms::AdminMaintenance{});
         r.fail()) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                     r.errorMessage());
@@ -334,7 +330,7 @@ void RestAdminServerHandler::handleApiCalls() {
     }
   } else {
     if (auto r = ExecContext::current().canUseAdminAction(
-            arangodb::rbac::Category::AdminApiCalls{});
+            auth::perms::AdminApiCalls{});
         r.fail()) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                     r.errorMessage());
@@ -389,7 +385,7 @@ void RestAdminServerHandler::handleAqlRecordedQueries() {
     }
   } else {
     if (auto r = ExecContext::current().canUseAdminAction(
-            arangodb::rbac::Category::AdminAqlQueries{});
+            auth::perms::AdminAqlQueries{});
         r.fail()) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                     r.errorMessage());

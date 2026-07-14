@@ -24,10 +24,8 @@
 #include "RestUsersHandler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Auth/Rbac/Actions.h"
 #include "Auth/UserManager.h"
 #include "GeneralServer/AuthenticationFeature.h"
-#include "Rest/Version.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
@@ -38,7 +36,6 @@
 #include <velocypack/Collection.h>
 
 #include <string_view>
-#include <Basics/DownCast.h>
 
 namespace {
 
@@ -140,8 +137,7 @@ RestStatus RestUsersHandler::getRequest(auth::UserManager* um) {
 
   std::vector<std::string> suffixes = _request->decodedSuffixes();
   if (suffixes.empty()) {
-    if (auto r =
-            exec.canUseAdminAction(arangodb::rbac::Category::AdminReadUser{});
+    if (auto r = exec.canUseAdminAction(auth::perms::AdminReadUsers{});
         r.fail()) {
       generateError(r);
       return RestStatus::DONE;

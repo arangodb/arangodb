@@ -67,7 +67,7 @@ void RestQueryCacheHandler::clearCache() {
       return;
     }
     if (auto r = ExecContext::current().canUseAdminAction(
-            rbac::Category::AdminQueryCache{});
+            auth::perms::AdminQueryCache{});
         r.fail()) {
       generateError(r);
       return;
@@ -134,7 +134,7 @@ void RestQueryCacheHandler::replaceProperties() {
   }
   if (_request->requestedApiVersion() > 0) {
     if (auto r = ExecContext::current().canUseAdminAction(
-            rbac::Category::AdminQueryCache{});
+            auth::perms::AdminQueryCache{});
         r.fail()) {
       generateError(r);
       return;

@@ -70,7 +70,7 @@ void RestEngineHandler::handleGet() {
   }
 
   if (auto r = ExecContext::current().canUseHardenedAction(
-          rbac::Category::AdminMonitoringInternal{});
+          auth::perms::AdminMonitoringInternal{});
       r.fail()) {
     // dont leak information about server internals here
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,

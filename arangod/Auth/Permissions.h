@@ -23,8 +23,7 @@
 
 #pragma once
 
-#include "Auth/Common.h"
-#include "Auth/Rbac/Actions.h"
+#include "Basics/Meta/TypeList.h"
 
 #include <span>
 #include <string>
@@ -79,23 +78,49 @@ namespace perms {
 //      (e.g. std::string_view, std::span<std::string_view>).
 
 // ---------------------------------------------------------------------------
-// Admin and hardened-admin actions
+// Admin permissions
 // ---------------------------------------------------------------------------
 
-// TODO rbac::Category::Any is too broad: it contains more than only the admin
-//      actions.
+struct AdminReadUsers {};
+struct AdminMoveShards {};
+struct AdminMonitoring {};
+struct AdminMonitoringInternal {};
+struct AdminAuthReload {};
+struct AdminCrashHandler {};
+struct AdminApiCalls {};
+struct AdminAqlQueries {};
+struct AdminShutdown {};
+struct AdminReadLogs {};
+struct AdminSetLogLevel {};
+struct AdminOptions {};
+struct AdminSupervisionState {};
+struct AdminRemoveServer {};
+struct AdminClusterInfo {};
+struct AdminMaintenance {};
+struct AdminRebalance {};
+struct AdminLicense {};
+struct AdminBackup {};
+struct AdminReadReplicatedLog {};
+struct AdminWriteReplicatedLog {};
+struct AdminDump {};
+struct AdminRestore {};
+struct AdminWalAccess {};
+struct AdminReadAgency {};
+struct AdminQueryCache {};
 
-// Is the current identity allowed to execute this admin-class RBAC action?
-// In the classic system this collapses to "RW on _system".
-struct Admin {
-  rbac::Category::Any action;
-};
+namespace detail {
+using AdminList = meta::TypeList<
+    AdminReadUsers, AdminMoveShards, AdminMonitoring, AdminMonitoringInternal,
+    AdminAuthReload, AdminCrashHandler, AdminApiCalls, AdminAqlQueries,
+    AdminShutdown, AdminReadLogs, AdminSetLogLevel, AdminOptions,
+    AdminSupervisionState, AdminRemoveServer, AdminClusterInfo,
+    AdminMaintenance, AdminRebalance, AdminLicense, AdminBackup,
+    AdminReadReplicatedLog, AdminWriteReplicatedLog, AdminDump, AdminRestore,
+    AdminWalAccess, AdminReadAgency, AdminQueryCache>;
+}
 
-// Hardened variant: identical question, but only actually enforced when
-// `--server.harden` (or RBAC, which implies it) is in effect.
-struct HardenedAdmin {
-  rbac::Category::Any action;
-};
+template<typename T>
+concept AnyAdmin = meta::InList<T, detail::AdminList>;
 
 // ---------------------------------------------------------------------------
 // Databases
@@ -300,45 +325,34 @@ struct WriteUser {
   std::string name;
 };
 
-}  // namespace perms
+namespace detail {
+// Currently there's no need to subdivide this list, but feel free to
+// do that when it becomes useful.
+using NonAdminList = meta::TypeList<
+    // database permissions
+    SeeDatabase, CreateDatabase, DropDatabase, UseDatabase,
+    // collection permissions
+    SeeCollection, CreateCollection, DropCollection, UseCollection,
+    DumpCollection, RestoreCollection, RestoreCreateIndex, RestoreCreateView,
+    RestoreWriteData,
+    // view permissions
+    SeeView, CreateView, ModifyView, RenameView, DropView, UseView,
+    // analyzer permissions
+    SeeAnalyzer, CreateAnalyzer, DropAnalyzer, UseAnalyzer,
+    // graph permissions
+    SeeGraph, CreateGraph, DropGraph, UseGraph,
+    // user permissions
+    ReadUser, WriteUser>;
 
-// TODO When the dust has settled, we need to think about consolidating
-//      auth::Permission and its types, with rbac::Category and its types.
-//      They *are* different and have a different role, but they are closely
-//      related. Maybe they need to stay separate, but if we can reduce some
-//      of the duplication, that would be worth thinking about.
-//      Currently, Permission::*Admin already uses the *Admin types from
-//      rbac::Category, though it can't stay as it is (i.e, we should not
-//      use rbac::Category::Any). See the TODO comment above, before
-//      `struct Admin`.
+using CompleteList = meta::detail::Union<AdminList, NonAdminList>::type;
+}  // namespace detail
+
+}  // namespace perms
 
 // Closed sum of every authorization question `IAuth` can be asked. Useful
 // for internal dispatch, batching and logging; a `std::variant` is
 // implicitly constructible from any of its alternatives, so callers just
 // pass a `perms::Xxx{...}` and it is wrapped automatically.
-using Permission = std::variant<
-    // admin actions
-    perms::Admin,
-    // database permissions
-    perms::SeeDatabase, perms::CreateDatabase, perms::DropDatabase,
-    perms::UseDatabase,
-    // collection permissions
-    perms::SeeCollection, perms::CreateCollection, perms::DropCollection,
-    perms::UseCollection, perms::DumpCollection, perms::RestoreCollection,
-    perms::RestoreCreateIndex, perms::RestoreCreateView, perms::RestoreDropView,
-    perms::RestoreWriteData,
-
-    // view permissions
-    perms::SeeView, perms::CreateView, perms::ModifyView, perms::RenameView,
-    perms::DropView, perms::UseView,
-    // analyzer permissions
-    perms::SeeAnalyzer, perms::CreateAnalyzer, perms::DropAnalyzer,
-    perms::UseAnalyzer,
-    // graph permissions
-    perms::SeeGraph, perms::CreateGraph, perms::DropGraph, perms::UseGraph,
-    // user permissions
-    perms::ReadUser, perms::WriteUser
-    //
-    >;
+using Permission = perms::detail::CompleteList::asVariant;
 
 }  // namespace arangodb::auth

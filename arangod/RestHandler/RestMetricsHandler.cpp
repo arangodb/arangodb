@@ -93,7 +93,7 @@ RestMetricsHandler::RestMetricsHandler(
 // Mounted at /_admin/metrics (prefix)
 auto RestMetricsHandler::executeAsync() -> futures::Future<futures::Unit> {
   if (auto r = ExecContext::current().canUseHardenedAction(
-          rbac::Category::AdminMonitoring{});
+          auth::perms::AdminMonitoring{});
       r.fail()) {
     // don't leak information about server internals here
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,

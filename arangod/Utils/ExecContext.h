@@ -23,10 +23,11 @@
 
 #pragma once
 
+#include "Assertions/ProdAssert.h"
 #include "Auth/AuthMode.h"
-#include "Auth/Rbac/Actions.h"
 #include "Auth/Permissions.h"
 #include "Basics/Result.h"
+#include "Utils/DatabaseGuard.h"
 
 #include <atomic>
 #include <functional>
@@ -35,8 +36,6 @@
 #include <span>
 #include <vector>
 #include <string>
-
-#include "Utils/DatabaseGuard.h"
 
 namespace arangodb {
 struct Database;
@@ -58,7 +57,6 @@ class ExecContext {
   friend struct ExecContextSuperuserScope;
 
  protected:
-  enum class Type { Default, Internal };
   class ConstructorToken {};
 
  public:
@@ -67,14 +65,10 @@ class ExecContext {
   ExecContext(ExecContext const&) = delete;
   ExecContext(ExecContext&&) = delete;
 
- public:
   /// @brief Create an ExecContext from an incoming request with a vocbase.
   /// This is the main factory for creating real ExecContexts.
   /// Superuser JWT requests create a dynamic Superuser context (not the static
   /// one) so that vocbase and request information is preserved.
-  /// @param vocbase VocbasePtr with already incremented reference count.
-  ///                The ExecContext takes ownership and will release on
-  ///                destruction.
   [[nodiscard]] static std::shared_ptr<ExecContext> create(
       AuthenticationFeature& authenticationFeature, RbacFeature& rbacFeature,
       ServerSecurityFeature const& securityFeature, GeneralRequest& req,
@@ -138,10 +132,25 @@ class ExecContext {
 
   // New Result-returning permission check methods:
 
-  Result canUseAdminAction(
-      arangodb::rbac::Category::Any const& rbacAction) const;
+  // Check an admin-class action. This is a thin wrapper around can(); it is
+  // likely to be removed in favor of calling can() directly.
+  Result canUseAdminAction(auth::perms::AnyAdmin auto action) const {
+    return can(std::move(action));
+  }
 
-  Result canUseHardenedAction(rbac::Category::Any const& action) const;
+  // Like canUseAdminAction, but the check is only performed when the REST API
+  // is hardened; otherwise the action is allowed. RBAC always implies a
+  // hardened REST API.
+  Result canUseHardenedAction(auth::perms::AnyAdmin auto action) const {
+    ADB_PROD_ASSERT(!_authMode.isRbac() || _isRestApiHardened)
+        << "RBAC is enabled, but REST API is not hardened: "
+           "RBAC implies --server.harden=true ("
+           "ServerSecurityFeatureOptions::hardenedRestApi = true).";
+    if (!_isRestApiHardened) {
+      return {};
+    }
+    return can(std::move(action));
+  }
 
   Result canSeeDatabase(std::string_view db) const;
   Result canCreateDatabase(std::string_view db) const;

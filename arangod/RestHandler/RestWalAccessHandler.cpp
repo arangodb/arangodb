@@ -24,7 +24,6 @@
 #include "RestWalAccessHandler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Auth/Rbac/Actions.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
@@ -38,7 +37,6 @@
 #include "Replication/ReplicationClients.h"
 #include "Replication/ReplicationFeature.h"
 #include "Replication/Syncer.h"
-#include "Replication/common-defines.h"
 #include "Replication/utilities.h"
 #include "Rest/HttpResponse.h"
 #include "Rest/Version.h"
@@ -194,7 +192,7 @@ RestStatus RestWalAccessHandler::execute() {
   }
 
   if (auto r = ExecContext::current().canUseAdminAction(
-          arangodb::rbac::Category::AdminWalAccess{});
+          auth::perms::AdminWalAccess{});
       r.fail()) {
     generateError(r);
     return RestStatus::DONE;

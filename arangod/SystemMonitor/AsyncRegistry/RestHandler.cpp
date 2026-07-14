@@ -22,9 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 #include "RestHandler.h"
 
-#include "Containers/Forest/forest.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Auth/Rbac/Actions.h"
 
 using namespace arangodb;
 using namespace arangodb::async_registry;
@@ -38,7 +36,7 @@ RestHandler::RestHandler(application_features::ApplicationServer& server,
 // Mounted at /_admin/async-registry (prefix)
 auto RestHandler::executeAsync() -> futures::Future<futures::Unit> {
   if (auto r = ExecContext::current().canUseAdminAction(
-          arangodb::rbac::Category::AdminMonitoringInternal{});
+          auth::perms::AdminMonitoringInternal{});
       r.fail()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                   r.errorMessage());

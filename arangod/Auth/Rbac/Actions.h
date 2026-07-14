@@ -29,82 +29,94 @@
 namespace arangodb::rbac {
 
 struct Category {
-  struct ReadDatabase {
+  // Disposition of each struct with respect to the common `auth::perms`
+  // vocabulary (see Auth/Permissions.h) is noted inline:
+  //   [obsoleted] -- superseded by a perms:: struct (usually a See*/Use*
+  //                  data permission); kept here only as an RBAC-internal
+  //                  translation target for now.
+  //   [moved]     -- a first-class copy now lives in perms:: (these are the
+  //                  admin-class actions that used to flow through
+  //                  perms::Admin, i.e. were passed to
+  //                  ExecContext::canUseAdminAction/canUseHardenedAction).
+  //   [unused]    -- referenced nowhere and has no direct perms:: pendant.
+
+  struct ReadDatabase {  // [obsoleted] perms::SeeDatabase / UseDatabase(Read)
     std::string name;
   };
-  struct WriteDatabase {
+  struct WriteDatabase {  // [obsoleted] perms::UseDatabase(Write)
     std::string name;
   };
-  struct ReadCollection {
+  struct ReadCollection {  // [obsoleted]
+                           // perms::SeeCollection/UseCollection(Read)
     std::string database;
     std::string name;
   };
-  struct WriteCollectionData {
+  struct WriteCollectionData {  // [obsoleted] perms::UseCollection(WriteData)
     std::string database;
     std::string name;
   };
-  struct WriteCollectionMeta {
+  struct WriteCollectionMeta {  // [obsoleted] perms::UseCollection(WriteMeta)
     std::string database;
     std::string name;
   };
-  struct ReadView {
+  struct ReadView {  // [obsoleted] perms::SeeView / UseView(Read)
     std::string database;
     std::string name;
   };
-  struct WriteView {
+  struct WriteView {  // [obsoleted] perms::UseView(Modify) / ModifyView
     std::string database;
     std::string name;
   };
-  struct ReadAnalyzer {
+  struct ReadAnalyzer {  // [obsoleted] perms::SeeAnalyzer / UseAnalyzer(Read)
     std::string database;
     std::string name;
   };
-  struct WriteAnalyzer {
+  struct WriteAnalyzer {  // [obsoleted] perms::UseAnalyzer(Modify)
     std::string database;
     std::string name;
   };
-  struct UseApiVersion {
+  struct UseApiVersion {  // [unused] no perms:: pendant
     std::string version;
   };
   // Admin actions with a user resource:
-  struct AdminReadUser {
+  struct AdminReadUser {  // [moved] perms::AdminReadUser
     std::string username;
   };
-  struct AdminWriteUser {
+  struct AdminWriteUser {  // [obsoleted] perms::WriteUser
     std::string username;
   };
   // Admin actions without a resource:
-  struct AdminMoveShards {};
-  struct AdminMonitoring {};
-  struct AdminMonitoringInternal {};
-  struct AdminCompaction {};
-  struct AdminAuthReload {};
-  struct AdminCrashHandler {};
-  struct AdminApiCalls {};
-  struct AdminAqlQueries {};
-  struct AdminShutdown {};
-  struct AdminReadLogs {};
-  struct AdminSetLogLevel {};
-  struct AdminOptions {};
-  struct AdminSupervisionState {};
-  struct AdminRemoveServer {};
-  struct AdminClusterInfo {};
-  struct AdminMaintenance {};
-  struct AdminRebalance {};
-  struct AdminLicense {};
-  struct AdminBackup {};
-  struct AdminJobs {};
-  struct AdminReadReplicatedLog {};
-  struct AdminWriteReplicatedLog {};
-  struct AdminDump {
-  };  // Do we want this in RBAC, or just internally for Classic compatibility?
-  struct AdminRestore {};
-  struct AdminWalAccess {};
-  struct AdminReadAgency {};
-  struct AdminReadOnlyMode {};
-  struct AdminReadAqlFunctions {};
-  struct AdminWriteAqlFunctions {};
-  struct AdminQueryCache {};
+  struct AdminMoveShards {};          // [moved] perms::AdminMoveShards
+  struct AdminMonitoring {};          // [moved] perms::AdminMonitoring
+  struct AdminMonitoringInternal {};  // [moved] perms::AdminMonitoringInternal
+  struct AdminCompaction {};          // [unused] no perms:: pendant
+  struct AdminAuthReload {};          // [moved] perms::AdminAuthReload
+  struct AdminCrashHandler {};        // [moved] perms::AdminCrashHandler
+  struct AdminApiCalls {};            // [moved] perms::AdminApiCalls
+  struct AdminAqlQueries {};          // [moved] perms::AdminAqlQueries
+  struct AdminShutdown {};            // [moved] perms::AdminShutdown
+  struct AdminReadLogs {};            // [moved] perms::AdminReadLogs
+  struct AdminSetLogLevel {};         // [moved] perms::AdminSetLogLevel
+  struct AdminOptions {};             // [moved] perms::AdminOptions
+  struct AdminSupervisionState {};    // [moved] perms::AdminSupervisionState
+  struct AdminRemoveServer {};        // [moved] perms::AdminRemoveServer
+  struct AdminClusterInfo {};         // [moved] perms::AdminClusterInfo
+  struct AdminMaintenance {};         // [moved] perms::AdminMaintenance
+  struct AdminRebalance {};           // [moved] perms::AdminRebalance
+  struct AdminLicense {};             // [moved] perms::AdminLicense
+  struct AdminBackup {};              // [moved] perms::AdminBackup
+  struct AdminJobs {};                // [unused] no perms:: pendant
+  struct AdminReadReplicatedLog {};   // [moved] perms::AdminReadReplicatedLog
+  struct AdminWriteReplicatedLog {};  // [moved] perms::AdminWriteReplicatedLog
+  // Do we want this in RBAC, or just internally for Classic compatibility?
+  struct AdminDump {};               // [moved] perms::AdminDump.
+  struct AdminRestore {};            // [moved] perms::AdminRestore
+  struct AdminWalAccess {};          // [moved] perms::AdminWalAccess
+  struct AdminReadAgency {};         // [moved] perms::AdminReadAgency
+  struct AdminReadOnlyMode {};       // [unused] no perms:: pendant
+  struct AdminReadAqlFunctions {};   // [unused] no perms:: pendant
+  struct AdminWriteAqlFunctions {};  // [unused] no perms:: pendant
+  struct AdminQueryCache {};         // [moved] perms::AdminQueryCache
   using Any = std::variant<
       ReadDatabase, WriteDatabase, ReadCollection, WriteCollectionData,
       WriteCollectionMeta, ReadView, WriteView, ReadAnalyzer, WriteAnalyzer,

@@ -371,10 +371,8 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
             }
             return check(p::UseDatabase{analyzer.db, dbLevel});
           },
-          [&](p::Admin const& /*admin*/) -> Result {
-            // Classic admin action requires RW access to the _system database.
-            return isAdmin();
-          },
+          // Classic admin action requires RW access to the _system database.
+          [&](p::AnyAdmin auto const&) -> Result { return isAdmin(); },
           [&](p::SeeDatabase const& database) -> Result {
             return check(
                 p::UseDatabase{database.name, DatabaseAccessLevel::Read});

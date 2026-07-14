@@ -23,15 +23,10 @@
 
 #include "RestSystemReportHandler.h"
 
-#include "Agency/AgencyFeature.h"
 #include "Agency/Agent.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Auth/Rbac/Actions.h"
 #include "Cluster/ServerState.h"
-#include "GeneralServer/ServerSecurityFeature.h"
 #include "Rest/HttpRequest.h"
-#include "Rest/Version.h"
-#include "RestServer/ServerFeature.h"
 #include "Utils/ExecContext.h"
 
 #include <velocypack/Builder.h>
@@ -81,7 +76,7 @@ std::string exec(std::string const& cmd) {
 // Mounted at /_admin/system-report (exact)
 RestStatus RestSystemReportHandler::execute() {
   if (auto r = ExecContext::current().canUseHardenedAction(
-          arangodb::rbac::Category::AdminMonitoringInternal{});
+          arangodb::auth::perms::AdminMonitoringInternal{});
       r.fail()) {
     // dont leak information about server internals here
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,

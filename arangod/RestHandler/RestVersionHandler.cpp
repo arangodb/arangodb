@@ -151,7 +151,7 @@ RestStatus RestVersionHandler::execute() {
 
   bool const allowInfo =
       ExecContext::current()
-          .canUseHardenedAction(rbac::Category::AdminMonitoringInternal{})
+          .canUseHardenedAction(auth::perms::AdminMonitoringInternal{})
           .ok();
   bool const includeDetails = _request->parsedValue("details", false);
   getVersion(server(), allowInfo, includeDetails, result,

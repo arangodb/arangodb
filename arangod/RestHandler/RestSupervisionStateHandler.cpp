@@ -23,19 +23,12 @@
 
 #include "RestSupervisionStateHandler.h"
 
-#include <chrono>
-
 #include "Agency/AgencyPaths.h"
 #include "Agency/AsyncAgencyComm.h"
-#include "Auth/Rbac/Actions.h"
-#include "Basics/ResultT.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/GeneralServerFeature.h"
-#include "GeneralServer/RestHandlerFactory.h"
-#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
-#include "Logger/LoggerStream.h"
 #include "Utils/ExecContext.h"
 
 using namespace arangodb;
@@ -50,7 +43,7 @@ RestSupervisionStateHandler::RestSupervisionStateHandler(
 // Mounted at /_admin/supervisionState (exact)
 futures::Future<futures::Unit> RestSupervisionStateHandler::executeAsync() {
   if (auto r = ExecContext::current().canUseAdminAction(
-          arangodb::rbac::Category::AdminSupervisionState{});
+          auth::perms::AdminSupervisionState{});
       r.fail()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                   r.errorMessage());
