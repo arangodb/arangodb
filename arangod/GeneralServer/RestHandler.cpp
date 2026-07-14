@@ -444,24 +444,32 @@ auto RestHandler::runHandlerStateMachine() -> futures::Future<futures::Unit> {
 
   // forward to correct server if necessary
   bool forwarded;
-  auto res = forwardRequest(forwarded);
-  if (forwarded) {
-    _statistics.SET_SUPERUSER();
-    std::ignore = co_await std::move(res);
-    // Request response already set by the forwarding logic!
-    _sendResponseCallback(this);
-    co_return;
-  }
-
-  if (res.hasValue()) {
-    Result r = co_await std::move(res);
-    if (r.fail()) {
-      generateError(r);
+  try {
+    auto res = forwardRequest(forwarded);
+    if (forwarded) {
+      _statistics.SET_SUPERUSER();
+      std::ignore = co_await std::move(res);
+      // Request response already set by the forwarding logic!
       _sendResponseCallback(this);
       co_return;
     }
-  }
 
+    if (res.hasValue()) {
+      Result r = co_await std::move(res);
+      if (r.fail()) {
+        generateError(r);
+        _sendResponseCallback(this);
+        co_return;
+      }
+    }
+
+  } catch (std::exception const& exc) {
+    generateError(
+        ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
+        absl::StrCat("Caught exception in `forwardRequest`: ", exc.what()));
+    _sendResponseCallback(this);
+    co_return;
+  }
   auto const logScopeGuard =
       LogContext::Accessor::ScopedValue(makeSharedLogContextValue());
 
