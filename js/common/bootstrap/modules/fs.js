@@ -541,7 +541,7 @@ global.DEFINE_MODULE('fs', (function () {
     files.sort();
     exports.zipFile(zipFilename, directory, files);
     return zipFilename;
-  }
+  };
 
   return exports;
 }()));

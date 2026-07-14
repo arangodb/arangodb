@@ -146,8 +146,7 @@ if (getOptions === true) {
      fs.escapePath('^' + process.env['RESULT']),
      fs.escapePath('^' + topLevelAllowed),
      fs.escapePath('^' + subLevelAllowed),
-     fs.escapePath('^' + topLevelAllowedRecursive),
-     fs.escapePath('^' + badZipFn)
+     fs.escapePath('^' + topLevelAllowedRecursive)
     ],
     'javascript.files-denylist': [
       fs.escapePath('^' + subLevelForbidden)

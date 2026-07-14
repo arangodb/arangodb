@@ -219,3 +219,4 @@ exports.getStorage = getStorage;
 exports.getBundleStorage = getBundleStorage;
 exports.pathRegex = pathRegex;
 exports.joinLastPath = joinLastPath;
+exoprts.throwFileNotFound = fs.throwFileNotFound;
