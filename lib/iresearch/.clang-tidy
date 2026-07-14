@@ -1,38 +1,32 @@
-Checks: '*,
-         -altera-*,
-         -android-*,
-         -google-objc-*,
-         -linuxkernel-*,
-         -llvmlibc-*,
-         -mpi-*,
-         -objc-*,
-         -openmp-*,
-         -fuchsia-trailing-return,
-         -fuchsia-default-arguments-*,
-         -fuchsia-overloaded-operator,
-         -readability-identifier-length,
-         -readability-suspicious-call-argument,
-         -readability-function-cognitive-complexity,
-         -cppcoreguidelines-owning-memory,
-         -cppcoreguidelines-avoid-c-arrays,
-         -cppcoreguidelines-avoid-do-while,
-         -cppcoreguidelines-avoid-magic-numbers,
-         -cppcoreguidelines-pro-type-union-access,
-         -cppcoreguidelines-pro-bounds-pointer-arithmetic,
-         -cppcoreguidelines-pro-bounds-constant-array-index,
-         -cppcoreguidelines-pro-bounds-array-to-pointer-decay,
-         -modernize-use-nodiscard,
-         -modernize-avoid-c-arrays,
-         -modernize-use-trailing-return-type,
-         -hicpp-avoid-c-arrays,
-         -hicpp-no-array-decay,
-         -bugprone-easily-swappable-parameters,
-         -llvm-header-guard,
-         -cert-err58-cpp,
-         -google-build-using-namespace'
+# clang-tidy configuration for the vendored iresearch tree.
+#
+# iresearch was developed as a standalone third-party library and still follows
+# a different code style (snake_case identifiers, etc.). Historically it shipped
+# its own comprehensive config here (Checks: '*' with WarningsAsErrors: '*'),
+# which produces ~14k findings on this tree -- far too many to serve as a build
+# gate, and mostly from checks we intentionally do not run elsewhere
+# (readability-identifier-naming, readability-magic-numbers, misc-include-cleaner,
+# hicpp-*, cppcoreguidelines-*, ...).
+#
+# For now iresearch is treated as first-party and INHERITS the repository-root
+# .clang-tidy -- the same conservative, opt-in check set used across
+# arangod/lib/client-tools/enterprise. On this tree that is a few hundred
+# findings, in line with the rest of the codebase, and safe under USE_CLANG_TIDY
+# (which runs clang-tidy at build time via CXX_CLANG_TIDY).
+#
+# InheritParentConfig makes the options here layer on top of the root config
+# instead of replacing it; WarningsAsErrors is inherited (empty) from the root.
+InheritParentConfig: true
 
-WarningsAsErrors: '*'
+# No `Checks:` here on purpose -- the enabled checks come from the root config.
+# To re-introduce iresearch-specific checks later (a dedicated effort), append
+# them here, e.g.:
+#   Checks: 'readability-identifier-naming, readability-magic-numbers'
 
+# iresearch's historical identifier-naming scheme (snake_case). RETAINED but
+# DORMANT: the root config does not enable readability-identifier-naming, so
+# these options have no effect until that check is added to `Checks` above.
+# Kept so that a future iresearch-specific naming pass is a one-line change.
 CheckOptions:
   - key: readability-identifier-naming.ClassCase
     value: CamelCase
