@@ -25,15 +25,14 @@
 #include "ApplicationFeatures/OptionsProvider.h"
 #include "LogBufferFeatureOptions.h"
 
-namespace arangodb::options {
-class ProgramOptions;
-}
-
 namespace arangodb {
 
-struct LogBufferOptionsProvider : OptionsProvider<LogBufferFeatureOptions> {
-  void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
-                      LogBufferFeatureOptions& options) override;
+struct LogBufferOptionsProvider
+    : OptionsProviderImpl<LogBufferOptionsProvider, LogBufferFeatureOptions> {
+  void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                          LogBufferFeatureOptions& options);
+  void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> /*opts*/,
+                           LogBufferFeatureOptions& /*options*/) {};
 };
 
 }  // namespace arangodb
