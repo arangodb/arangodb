@@ -21,9 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Achim Brandt
-// / @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-// / @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 var actions = require('@arangodb/actions');
