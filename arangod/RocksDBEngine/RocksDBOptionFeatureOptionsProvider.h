@@ -32,17 +32,16 @@ namespace arangodb {
 // extracted here, thats why it leads to this double "Option" and the redundant
 // "Feature" in the name. This all is temporary anyway, and should be remove it
 // further steps.
-
 struct RocksDBOptionFeatureOptionsProvider
-    : OptionsProvider<RocksDBOptionFeatureOptions> {
-  RocksDBOptionFeatureOptionsProvider(bool ioUringEnabled);
-  void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
-                      RocksDBOptionFeatureOptions& options) override;
-  void validateOptions(std::shared_ptr<options::ProgramOptions> opts,
-                       RocksDBOptionFeatureOptions& options) override;
+    : OptionsProviderImpl<RocksDBOptionFeatureOptionsProvider,
+                          RocksDBOptionFeatureOptions> {
+  void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                          RocksDBOptionFeatureOptions& options);
+  void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                           RocksDBOptionFeatureOptions& options);
 
  private:
-  bool const _ioUringEnabled;
+  bool _ioUringEnabled{true};  // matches the previous default
 };
 
 }  // namespace arangodb
