@@ -18,9 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Max Neunhoeffer
-/// @author Michael Hackstein
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ExecutionBlock.h"

@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Julia Puget
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "TemporaryStorageFeature.h"
@@ -27,6 +26,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryOptions.h"
+#include "RestServer/IDatabasePathProvider.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
@@ -37,8 +37,6 @@
 #include "Basics/files.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
-#include "ProgramOptions/Parameters.h"
-#include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/TemporaryStorageOptionsProvider.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RocksDBEngine/RocksDBTempStorage.h"
@@ -111,16 +109,49 @@ void StorageUsageTracker::decreaseUsage(std::uint64_t value) noexcept {
 }
 
 TemporaryStorageFeature::TemporaryStorageFeature(
-    application_features::ApplicationServer& server)
-    : TemporaryStorageFeature(server, TemporaryStorageFeatureOptions{}) {}
+    application_features::ApplicationServer& server,
+    IDatabasePathProvider& databasePathProvider)
+    : TemporaryStorageFeature(server, databasePathProvider,
+                              TemporaryStorageFeatureOptions{}) {}
 
 TemporaryStorageFeature::TemporaryStorageFeature(
     application_features::ApplicationServer& server,
+    IDatabasePathProvider& databasePathProvider,
     TemporaryStorageFeatureOptions options)
     : ApplicationFeature{server, *this},
       _options(std::move(options)),
-      _cleanedUpDirectory(false) {
+      _cleanedUpDirectory(false),
+      _databasePathProvider(databasePathProvider) {
   startsAfter<RocksDBEngine>();
+  startsAfter<DatabasePathFeature>();
+
+  if (!canBeUsed() || ServerState::instance()->isAgent()) {
+    return;  // no basePath configured, or on agent (prepare() will clear it)
+  }
+
+  // replace $PID with current process id
+  _options.basePath = basics::StringUtils::replace(
+      _options.basePath, "$PID", std::to_string(Thread::currentProcessId()));
+
+  // configure defaults for query options
+  aql::QueryOptions::defaultSpillOverThresholdNumRows =
+      _options.spillOverThresholdNumRows;
+  aql::QueryOptions::defaultSpillOverThresholdMemoryUsage =
+      _options.spillOverThresholdMemoryUsage;
+
+  // Verify that the intermediate-results path is not identical to or inside
+  // the database directory.
+  auto const currentDir = std::filesystem::current_path();
+  _options.basePath = normalizePath(currentDir, _options.basePath);
+  std::string dbPath =
+      normalizePath(currentDir, _databasePathProvider.directory());
+  if (dbPath == _options.basePath || _options.basePath.starts_with(dbPath)) {
+    LOG_TOPIC("58b44", FATAL, Logger::STARTUP)
+        << "path for intermediate results ('" << _options.basePath
+        << "') must not be identical to or inside the database directory ('"
+        << dbPath << "')";
+    FATAL_ERROR_EXIT();
+  }
 }
 
 TemporaryStorageFeature::~TemporaryStorageFeature() {
@@ -131,48 +162,6 @@ TemporaryStorageFeature::~TemporaryStorageFeature() {
     }
     _cleanedUpDirectory = true;
   }
-}
-
-void TemporaryStorageFeature::collectOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  TemporaryStorageOptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
-
-void TemporaryStorageFeature::validateOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  if (!canBeUsed()) {
-    // feature not used. this is fine (TM)
-    return;
-  }
-
-  // replace $PID in basepath with current process id
-  _options.basePath = basics::StringUtils::replace(
-      _options.basePath, "$PID", std::to_string(Thread::currentProcessId()));
-
-  auto const currentDir = std::filesystem::current_path();
-
-  // get regular database path
-  std::string dbPath = normalizePath(
-      currentDir, server().getFeature<DatabasePathFeature>().directory());
-  std::string ourPath = normalizePath(currentDir, _options.basePath);
-
-  if (dbPath == ourPath || ourPath.starts_with(dbPath)) {
-    // if our path is the same as the database directory or inside it,
-    // we refuse to start
-    LOG_TOPIC("58b44", FATAL, Logger::STARTUP)
-        << "path for intermediate results ('" << ourPath
-        << "') must not be identical to or inside the database directory ('"
-        << dbPath << "')";
-    FATAL_ERROR_EXIT();
-  }
-
-  _options.basePath = ourPath;
-  // configure defaults for query options
-  aql::QueryOptions::defaultSpillOverThresholdNumRows =
-      _options.spillOverThresholdNumRows;
-  aql::QueryOptions::defaultSpillOverThresholdMemoryUsage =
-      _options.spillOverThresholdMemoryUsage;
 }
 
 void TemporaryStorageFeature::prepare() {

@@ -22,7 +22,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Markus Pfeiffer
 // //////////////////////////////////////////////////////////////////////////////
 const jsunity = require('jsunity');
 const arangodb = require("@arangodb");

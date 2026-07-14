@@ -2,6 +2,7 @@ add_library(arango_restart_action STATIC
   RestartAction.cpp)
 
 add_library(arango_rest_server STATIC
+  ArangodServer.cpp
   AqlFeature.cpp
   BootstrapFeature.cpp
   BootstrapOptionsProvider.cpp
@@ -17,6 +18,7 @@ add_library(arango_rest_server STATIC
   DatabasePathFeature.cpp
   DatabasePathOptionsProvider.cpp
   DumpLimitsFeature.cpp
+  DumpLimitsFeatureOptions.cpp
   DumpLimitsOptionsProvider.cpp
   EndpointFeature.cpp
   EndpointFeatureOptions.cpp

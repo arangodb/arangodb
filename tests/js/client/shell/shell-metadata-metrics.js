@@ -21,7 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Jure Bajic
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");

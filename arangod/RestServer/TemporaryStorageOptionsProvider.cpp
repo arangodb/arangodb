@@ -22,6 +22,10 @@
 
 #include "TemporaryStorageOptionsProvider.h"
 
+#include <filesystem>
+
+#include "Basics/StringUtils.h"
+#include "Basics/Thread.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 
@@ -29,7 +33,7 @@ namespace arangodb {
 
 using namespace arangodb::options;
 
-void TemporaryStorageOptionsProvider::declareOptions(
+void TemporaryStorageOptionsProvider::declareOptionsImpl(
     std::shared_ptr<options::ProgramOptions> options,
     TemporaryStorageFeatureOptions& opts) {
   options

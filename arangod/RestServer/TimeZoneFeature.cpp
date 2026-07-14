@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andreas Dominik Jung
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <stdlib.h>

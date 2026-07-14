@@ -21,8 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Lars Maier
-/// @author Copyright 2024, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 const jsunity = require("jsunity");
 const db = require("@arangodb").db;

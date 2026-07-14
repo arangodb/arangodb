@@ -32,7 +32,7 @@ namespace arangodb {
 
 using namespace arangodb::options;
 
-void DumpLimitsOptionsProvider::declareOptions(
+void DumpLimitsOptionsProvider::declareOptionsImpl(
     std::shared_ptr<ProgramOptions> options, DumpLimitsFeatureOptions& opts) {
   options->addSection("dump", "Dump limits");
 
@@ -86,7 +86,7 @@ this many parallel threads. Note that end users can still start multiple
 dump actions that run in parallel.)");
 }
 
-void DumpLimitsOptionsProvider::validateOptions(
+void DumpLimitsOptionsProvider::validateOptionsImpl(
     std::shared_ptr<ProgramOptions> /*options*/,
     DumpLimitsFeatureOptions& opts) {
   if (opts.batchSizeLowerBound > opts.batchSizeUpperBound) {

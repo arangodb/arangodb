@@ -16,6 +16,7 @@
       - paths_server
       - version
       - shell_client_large
+      - shell_server_only
 
 # Single Server Replication Tests
 - replication_shell:
@@ -507,6 +508,7 @@
           options:
             suffix: _vpack
           args:
+            suffix: _vpack
             dumpVPack: true
       # takes long, needs to go first. However, doesn't utilize the SUT hard.
       - dump_with_crashes:
@@ -532,6 +534,7 @@
           options:
             suffix: _vpack
           args:
+            suffix: _vpack
             dumpVPack: true
       - dump_authentication:
       - dump_jwt:
@@ -544,6 +547,7 @@
           options:
             suffix: vpack
           args:
+            suffix: _vpack
             dumpVPack: true
       - dump_with_crashes:
           options:
@@ -560,6 +564,7 @@
           options:
             suffix: vpack
           args:
+            suffix: _vpack
             dumpVPack: true
       # BTS-1852 enable after fix:
       # - dump:

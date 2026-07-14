@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasily Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
