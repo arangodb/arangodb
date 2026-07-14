@@ -486,13 +486,10 @@ void RocksDBEngine::prepare() {
   prepareEnterprise();
 #endif
 
-  if (!isEnabled()) {
-    return;  // coordinators use ClusterEngine, not RocksDB
+  if (ServerState::instance()->isCoordinator()) {
+    return;  // DatabaseFeature::prepare() will disable us and use ClusterEngine
+             // instead
   }
-
-  // it is already decided that rocksdb is used
-  TRI_ASSERT(isEnabled());
-  TRI_ASSERT(!ServerState::instance()->isCoordinator());
 
   initTransactionStatistics(_metrics);
   if (_options.exportReadWriteMetrics) {
