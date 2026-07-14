@@ -168,7 +168,10 @@ void Parser::registerParseError(ErrorCode errorCode, std::string_view data,
       absl::StrCat(data, " near '", queryString().extractRegion(line, column),
                    "' at position ", line, ":", (column + 1));
 
-  _query.warnings().registerError(errorCode, errorMessage);
+  if (errorMessage.empty()) {
+    THROW_ARANGO_EXCEPTION(errorCode);
+  }
+  THROW_ARANGO_EXCEPTION_MESSAGE(errorCode, errorMessage);
 }
 
 /// @brief register a warning
