@@ -29,7 +29,6 @@
 
 namespace arangodb {
 
-// Deprecated: Use DumpLimitsFeatureOptions instead
 using DumpLimits = DumpLimitsFeatureOptions;
 
 class DumpLimitsFeature final : public application_features::ApplicationFeature,
@@ -40,9 +39,6 @@ class DumpLimitsFeature final : public application_features::ApplicationFeature,
   explicit DumpLimitsFeature(application_features::ApplicationServer& server,
                              DumpLimitsFeatureOptions options);
   explicit DumpLimitsFeature(application_features::ApplicationServer& server);
-
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
 
   DumpLimitsFeatureOptions const& limits() const noexcept override final {
     return _options;

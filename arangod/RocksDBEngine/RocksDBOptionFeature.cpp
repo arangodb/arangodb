@@ -32,7 +32,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Agency/AgencyFeature.h"
 #include "Basics/NumberOfCores.h"
-#include "Basics/PhysicalMemory.h"
 #include "Basics/application-exit.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Logger/LogMacros.h"
@@ -63,17 +62,6 @@ using namespace arangodb::application_features;
 using namespace arangodb::options;
 
 namespace {
-// compression
-std::string const kCompressionTypeSnappy = "snappy";
-std::string const kCompressionTypeLZ4 = "lz4";
-std::string const kCompressionTypeLZ4HC = "lz4hc";
-std::string const kCompressionTypeNone = "none";
-
-std::unordered_set<std::string> const compressionTypes = {
-    {kCompressionTypeSnappy},
-    {kCompressionTypeLZ4},
-    {kCompressionTypeLZ4HC},
-    {kCompressionTypeNone}};
 
 rocksdb::CompressionType compressionTypeFromString(std::string_view type) {
   if (type == kCompressionTypeNone) {
@@ -93,33 +81,6 @@ rocksdb::CompressionType compressionTypeFromString(std::string_view type) {
       << "unexpected compression type '" << type << "'";
   FATAL_ERROR_EXIT();
 }
-
-// types of block cache
-std::string const kBlockCacheTypeLRU = "lru";
-std::string const kBlockCacheTypeHyperClock = "hyper-clock";
-
-std::unordered_set<std::string> const blockCacheTypes = {
-    {kBlockCacheTypeLRU}, {kBlockCacheTypeHyperClock}};
-
-// checksum types
-std::string const kChecksumTypeCRC32C = "crc32c";
-std::string const kChecksumTypeXXHash = "xxHash";
-std::string const kChecksumTypeXXHash64 = "xxHash64";
-std::string const kChecksumTypeXXH3 = "XXH3";
-
-std::unordered_set<std::string> const checksumTypes = {
-    kChecksumTypeCRC32C, kChecksumTypeXXHash, kChecksumTypeXXHash64,
-    kChecksumTypeXXH3};
-
-// compaction styles
-std::string const kCompactionStyleLevel = "level";
-std::string const kCompactionStyleUniversal = "universal";
-std::string const kCompactionStyleFifo = "fifo";
-std::string const kCompactionStyleNone = "none";
-
-std::unordered_set<std::string> const compactionStyles = {
-    kCompactionStyleLevel, kCompactionStyleUniversal, kCompactionStyleFifo,
-    kCompactionStyleNone};
 
 rocksdb::CompactionStyle compactionStyleFromString(std::string_view type) {
   if (type == kCompactionStyleLevel) {
@@ -141,84 +102,13 @@ rocksdb::CompactionStyle compactionStyleFromString(std::string_view type) {
   FATAL_ERROR_EXIT();
 }
 
-// defaults
-rocksdb::TransactionDBOptions rocksDBTrxDefaults;
-rocksdb::Options rocksDBDefaults;
-rocksdb::BlockBasedTableOptions rocksDBTableOptionsDefaults;
-
-// minimum size of a block cache shard. we want to at least store
-// that much data in each shard (rationale: a data block read from
-// disk must fit into the block cache if the block cache's strict
-// capacity limit is set. otherwise the block cache will fail reads
-// with Status::Incomplete() or Status::MemoryLimit()).
-constexpr uint64_t minShardSize = 128 * 1024 * 1024;
-
-uint64_t defaultBlockCacheSize() {
-  if (PhysicalMemory::getValue() >= (static_cast<uint64_t>(4) << 30)) {
-    // if we have at least 4GB of RAM, the default size is (RAM - 2GB) * 0.3
-    return static_cast<uint64_t>(
-        (PhysicalMemory::getValue() - (static_cast<uint64_t>(2) << 30)) * 0.3);
-  }
-  if (PhysicalMemory::getValue() >= (static_cast<uint64_t>(2) << 30)) {
-    // if we have at least 2GB of RAM, the default size is 512MB
-    return (static_cast<uint64_t>(512) << 20);
-  }
-  if (PhysicalMemory::getValue() >= (static_cast<uint64_t>(1) << 30)) {
-    // if we have at least 1GB of RAM, the default size is 256MB
-    return (static_cast<uint64_t>(256) << 20);
-  }
-  // for everything else the default size is 128MB
-  return (static_cast<uint64_t>(128) << 20);
-}
-
-uint64_t defaultTotalWriteBufferSize() {
-  if (PhysicalMemory::getValue() >= (static_cast<uint64_t>(4) << 30)) {
-    // if we have at least 4GB of RAM, the default size is (RAM - 2GB) * 0.4
-    return static_cast<uint64_t>(
-        (PhysicalMemory::getValue() - (static_cast<uint64_t>(2) << 30)) * 0.4);
-  }
-  if (PhysicalMemory::getValue() >= (static_cast<uint64_t>(1) << 30)) {
-    // if we have at least 1GB of RAM, the default size is 512MB
-    return (static_cast<uint64_t>(512) << 20);
-  }
-  // for everything else the default size is 256MB
-  return (static_cast<uint64_t>(256) << 20);
-}
-
-uint64_t defaultMinWriteBufferNumberToMerge(uint64_t totalSize,
-                                            uint64_t sizePerBuffer,
-                                            uint64_t maxBuffers) {
-  uint64_t safe = rocksDBDefaults.min_write_buffer_number_to_merge;
-  uint64_t test = safe + 1;
-
-  // increase it to as much as 4 if it makes sense
-  for (; test <= 4; ++test) {
-    // next make sure we have enough buffers for it to matter
-    uint64_t minBuffers = 1 + (2 * test);
-    if (maxBuffers < minBuffers) {
-      break;
-    }
-
-    // next make sure we have enough space for all the buffers
-    if (minBuffers * sizePerBuffer *
-            RocksDBColumnFamilyManager::numberOfColumnFamilies >
-        totalSize) {
-      break;
-    }
-
-    safe = test;
-  }
-
-  return safe;
-}
-
 }  // namespace
 
 RocksDBOptionFeature::RocksDBOptionFeature(
     application_features::ApplicationServer& server,
     AgencyFeature const* agencyFeature)
     : RocksDBOptionFeature(server, agencyFeature,
-                           RocksDBOptionFeatureOptions{}) {}
+                           RocksDBOptionFeatureOptionsProvider{}.options()) {}
 
 RocksDBOptionFeature::RocksDBOptionFeature(
     application_features::ApplicationServer& server,
@@ -226,128 +116,41 @@ RocksDBOptionFeature::RocksDBOptionFeature(
     : ApplicationFeature{server, *this},
       _options(std::move(options)),
       _agencyFeature(agencyFeature) {
-  _options.transactionLockStripes =
-      std::max(NumberOfCores::getValue(), std::size_t(16));
-  _options.transactionLockTimeout = rocksDBTrxDefaults.transaction_lock_timeout;
-  _options.totalWriteBufferSize = rocksDBDefaults.db_write_buffer_size;
-  _options.writeBufferSize = rocksDBDefaults.write_buffer_size;
-  _options.maxWriteBufferNumber =
-      RocksDBColumnFamilyManager::numberOfColumnFamilies + 2;
-  _options.maxTotalWalSize = 80 << 20;
-  _options.delayedWriteRate = rocksDBDefaults.delayed_write_rate;
-  _options.minWriteBufferNumberToMerge = defaultMinWriteBufferNumberToMerge(
-      _options.totalWriteBufferSize, _options.writeBufferSize,
-      _options.maxWriteBufferNumber);
-  _options.numLevels = rocksDBDefaults.num_levels;
-  _options.numUncompressedLevels = 2;
-  _options.maxBytesForLevelBase = rocksDBDefaults.max_bytes_for_level_base;
-  _options.maxBytesForLevelMultiplier =
-      rocksDBDefaults.max_bytes_for_level_multiplier;
-  _options.maxBackgroundJobs = static_cast<int32_t>(
-      std::max(static_cast<size_t>(2), NumberOfCores::getValue()));
-  _options.maxSubcompactions = 2;
-  _options.targetFileSizeBase = rocksDBDefaults.target_file_size_base;
-  _options.targetFileSizeMultiplier =
-      rocksDBDefaults.target_file_size_multiplier;
-  _options.blockCacheSize = ::defaultBlockCacheSize();
-  _options.blockCacheShardBits = -1;
-  _options.minBlobSize = 256;
-  _options.blobFileSize = 1ULL << 30;
-  _options.blobGarbageCollectionAgeCutoff = 0.25;
-  _options.blobGarbageCollectionForceThreshold = 1.0;
-  _options.bloomBitsPerKey = 10.0;
-  _options.tableBlockSize = std::max(
-      rocksDBTableOptionsDefaults.block_size,
-      static_cast<decltype(rocksDBTableOptionsDefaults.block_size)>(16 * 1024));
-  _options.compactionReadaheadSize = 2 * 1024 * 1024;
-  _options.level0CompactionTrigger = 2;
-  _options.level0SlowdownTrigger = 16;
-  _options.level0StopTrigger = 256;
-  _options.pendingCompactionBytesSlowdownTrigger = 1024ULL * 1024ULL * 1024ULL;
-  _options.pendingCompactionBytesStopTrigger =
-      32ULL * 1024ULL * 1024ULL * 1024ULL;
-  _options.periodicCompactionTtl = 24 * 60 * 60;
-  _options.recycleLogFileNum = rocksDBDefaults.recycle_log_file_num;
-  _options.compressionType = ::kCompressionTypeLZ4;
-  _options.blobCompressionType = ::kCompressionTypeLZ4;
-  _options.blockCacheType = ::kBlockCacheTypeLRU;
-  _options.checksumType = ::kChecksumTypeXXHash64;
-  _options.compactionStyle = ::kCompactionStyleLevel;
-  _options.formatVersion = 5;
-  _options.enableIndexCompression =
-      rocksDBTableOptionsDefaults.enable_index_compression;
-  _options.reserveTableBuilderMemory = true;
-  _options.reserveTableReaderMemory = true;
-  _options.reserveFileMetadataMemory = true;
-  _options.cacheIndexAndFilterBlocks = true;
-  _options.cacheIndexAndFilterBlocksWithHighPriority =
-      rocksDBTableOptionsDefaults
-          .cache_index_and_filter_blocks_with_high_priority;
-  _options.pinl0FilterAndIndexBlocksInCache =
-      rocksDBTableOptionsDefaults.pin_l0_filter_and_index_blocks_in_cache;
-  _options.pinTopLevelIndexAndFilter =
-      rocksDBTableOptionsDefaults.pin_top_level_index_and_filter;
-  _options.blockAlignDataBlocks = rocksDBTableOptionsDefaults.block_align;
-  _options.enablePipelinedWrite = true;
-  _options.optimizeFiltersForHits = rocksDBDefaults.optimize_filters_for_hits;
-  _options.useDirectReads = rocksDBDefaults.use_direct_reads;
-  _options.useDirectIoForFlushAndCompaction =
-      rocksDBDefaults.use_direct_io_for_flush_and_compaction;
-  _options.useFSync = rocksDBDefaults.use_fsync;
-  _options.dynamicLevelBytes = true;
-  _options.allowFAllocate = true;
-  _options.enableBlobGarbageCollection = true;
-
-  if (_options.totalWriteBufferSize == 0) {
-    _options.totalWriteBufferSize = ::defaultTotalWriteBufferSize();
-  }
-
   setOptional(true);
   startsAfter<BasicFeaturePhaseServer>();
 }
 
-void RocksDBOptionFeature::collectOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  RocksDBOptionFeatureOptionsProvider provider(ioUringEnabled);
-  provider.declareOptions(options, _options);
-}
-
-void RocksDBOptionFeature::validateOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  RocksDBOptionFeatureOptionsProvider provider(ioUringEnabled);
-  provider.validateOptions(options, _options);
+void RocksDBOptionFeature::prepare() {
   ioUringEnabled = _options.ioUringEnabled;
+  // TODO (COR-760): remove this coupling; RocksDBOptionFeature should be
+  // agnostic of the agency
   // behavioral: agency memory limits
-  if (_agencyFeature) {
-    AgencyFeature const& feature = *_agencyFeature;
-    if (feature.activated()) {
-      if (!options->processingResult().touched("--rocksdb.block-cache-size")) {
-        _options.blockCacheSize =
-            std::min<uint64_t>(_options.blockCacheSize, uint64_t(1) << 30);
-      }
-      if (!options->processingResult().touched(
-              "--rocksdb.total-write-buffer-size")) {
-        _options.totalWriteBufferSize = std::min<uint64_t>(
-            _options.totalWriteBufferSize, uint64_t(512) << 20);
-      }
+  if (_agencyFeature && _agencyFeature->activated()) {
+    auto const& opts = server().options();
+    if (!opts->processingResult().touched("--rocksdb.block-cache-size")) {
+      _options.blockCacheSize =
+          std::min<uint64_t>(_options.blockCacheSize, uint64_t(1) << 30);
+    }
+    if (!opts->processingResult().touched(
+            "--rocksdb.total-write-buffer-size")) {
+      _options.totalWriteBufferSize = std::min<uint64_t>(
+          _options.totalWriteBufferSize, uint64_t(512) << 20);
     }
   }
-}
 
-void RocksDBOptionFeature::prepare() {
   if (_options.enableBlobFiles) {
     LOG_TOPIC("5e48f", WARN, Logger::ENGINES)
         << "using blob files is experimental and not supported for production "
            "usage";
   }
 
-  if (_options.compactionStyle != ::kCompactionStyleLevel) {
+  if (_options.compactionStyle != kCompactionStyleLevel) {
     LOG_TOPIC("6db54", WARN, Logger::ENGINES)
         << "using compaction style '" << _options.compactionStyle
         << "' is experimental and not supported for production usage";
   }
 
-  if (_options.blockCacheType == ::kBlockCacheTypeHyperClock) {
+  if (_options.blockCacheType == kBlockCacheTypeHyperClock) {
     LOG_TOPIC("26f64", WARN, Logger::ENGINES)
         << "using block cache type 'hyper-clock' is experimental and not "
            "supported for production usage";
@@ -361,7 +164,7 @@ void RocksDBOptionFeature::prepare() {
     // cache. in this case the block cache may return a Status::Incomplete()
     // or Status::MemoryLimit() error and fail the entire read.
     // warn the user about it!
-    if (shardSize < ::minShardSize) {
+    if (shardSize < kMinBlockCacheShardSize) {
       LOG_TOPIC("31d7c", WARN, Logger::ENGINES)
           << "size of RocksDB block cache shards seems to be too low. "
           << "block cache size: " << _options.blockCacheSize
@@ -678,7 +481,7 @@ rocksdb::BlockBasedTableOptions RocksDBOptionFeature::doGetTableOptions()
     }
 #endif
 
-    if (_options.blockCacheType == ::kBlockCacheTypeLRU) {
+    if (_options.blockCacheType == kBlockCacheTypeLRU) {
       rocksdb::LRUCacheOptions opts;
 
       opts.capacity = _options.blockCacheSize;
@@ -687,7 +490,7 @@ rocksdb::BlockBasedTableOptions RocksDBOptionFeature::doGetTableOptions()
       opts.memory_allocator = allocator;
 
       result.block_cache = rocksdb::NewLRUCache(opts);
-    } else if (_options.blockCacheType == ::kBlockCacheTypeHyperClock) {
+    } else if (_options.blockCacheType == kBlockCacheTypeHyperClock) {
       rocksdb::HyperClockCacheOptions opts(
           _options.blockCacheSize, _options.blockCacheEstimatedEntryCharge,
           static_cast<int>(_options.blockCacheShardBits),
@@ -737,13 +540,13 @@ rocksdb::BlockBasedTableOptions RocksDBOptionFeature::doGetTableOptions()
 
   result.block_align = _options.blockAlignDataBlocks;
 
-  if (_options.checksumType == ::kChecksumTypeCRC32C) {
+  if (_options.checksumType == kChecksumTypeCRC32C) {
     result.checksum = rocksdb::ChecksumType::kCRC32c;
-  } else if (_options.checksumType == ::kChecksumTypeXXHash) {
+  } else if (_options.checksumType == kChecksumTypeXXHash) {
     result.checksum = rocksdb::ChecksumType::kxxHash;
-  } else if (_options.checksumType == ::kChecksumTypeXXHash64) {
+  } else if (_options.checksumType == kChecksumTypeXXHash64) {
     result.checksum = rocksdb::ChecksumType::kxxHash64;
-  } else if (_options.checksumType == ::kChecksumTypeXXH3) {
+  } else if (_options.checksumType == kChecksumTypeXXH3) {
     result.checksum = rocksdb::ChecksumType::kXXH3;
   } else {
     TRI_ASSERT(false);
@@ -838,8 +641,10 @@ rocksdb::ColumnFamilyOptions RocksDBOptionFeature::getColumnFamilyOptions(
         static_cast<int>(_options.maxWriteBufferNumberCf[index]);
   }
   if (!_options.minWriteBufferNumberToMergeTouched) {
+    rocksdb::Options rocksDBDefaults;
     result.min_write_buffer_number_to_merge =
         static_cast<int>(defaultMinWriteBufferNumberToMerge(
+            rocksDBDefaults.min_write_buffer_number_to_merge,
             _options.totalWriteBufferSize, _options.writeBufferSize,
             result.max_write_buffer_number));
   }

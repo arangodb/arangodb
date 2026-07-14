@@ -23,7 +23,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBEngine.h"
-#include "RocksDBEngine/RocksDBEngineOptionsProvider.h"
 
 #include <filesystem>
 
@@ -353,6 +352,10 @@ RocksDBEngine::RocksDBEngine(
   startsAfter<RocksDBOptionFeature>();
   startsAfter<LanguageFeature>();
   startsAfter<LanguageCheckFeature>();
+
+  transaction::Options::setLimits(_options.maxTransactionSize,
+                                  _options.intermediateCommitSize,
+                                  _options.intermediateCommitCount);
 }
 
 RocksDBEngine::~RocksDBEngine() {
@@ -436,31 +439,6 @@ void RocksDBEngine::flushOpenFilesIfRequired() {
 
 // inherited from ApplicationFeature
 // ---------------------------------
-
-// add the storage engine's specific options to the global list of options
-void RocksDBEngine::collectOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  RocksDBEngineOptionsProvider provider;
-  provider.declareOptions(options, _options);
-
-#ifdef USE_ENTERPRISE
-  collectEnterpriseOptions(options);
-#endif
-}
-
-void RocksDBEngine::validateOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  transaction::Options::setLimits(_options.maxTransactionSize,
-                                  _options.intermediateCommitSize,
-                                  _options.intermediateCommitCount);
-#ifdef USE_ENTERPRISE
-  validateEnterpriseOptions(options);
-#endif
-
-  RocksDBEngineOptionsProvider provider;
-  provider.validateOptions(options, _options);
-}
-
 // preparation phase for storage engine. can be used for internal setup.
 // the storage engine must not start any threads here or write any files
 void RocksDBEngine::prepare() {
