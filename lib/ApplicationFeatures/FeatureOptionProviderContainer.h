@@ -26,6 +26,7 @@
 #include "ApplicationFeatures/VersionOptionsProvider.h"
 #include "Logger/LoggerOptionsProvider.h"
 #include "ProgramOptions/ProgramOptions.h"
+#include "Random/RandomOptionsProvider.h"
 #include "RestServer/CrashHandlerOptionsProvider.h"
 #include "RestServer/DatabasePathOptionsProvider.h"
 #include "RestServer/DumpLimitsOptionsProvider.h"
@@ -53,16 +54,16 @@ class FeatureOptionProviderContainer final {
   }
 
  private:
-  std::tuple<crash_handler::CrashHandlerOptionsProvider,
-             DatabasePathOptionsProvider, DumpLimitsOptionsProvider,
-             FileSystemOptionsProvider, FlushOptionsProvider,
-             fortune::FortuneOptionsProvider, LanguageOptionsProvider,
-             LogBufferOptionsProvider, LoggerOptionsProvider,
-             MaxMapCountOptionsProvider, NonceOptionsProvider,
-             ProcessEnvironmentOptionsProvider, RocksDBEngineOptionsProvider,
-             RocksDBIndexCacheRefillOptionsProvider,
-             RocksDBOptionFeatureOptionsProvider,
-             TemporaryStorageOptionsProvider, VersionOptionsProvider>
+  std::tuple<
+      crash_handler::CrashHandlerOptionsProvider, DatabasePathOptionsProvider,
+      DumpLimitsOptionsProvider, FileSystemOptionsProvider,
+      FlushOptionsProvider, fortune::FortuneOptionsProvider,
+      LanguageOptionsProvider, LogBufferOptionsProvider, LoggerOptionsProvider,
+      MaxMapCountOptionsProvider, NonceOptionsProvider,
+      ProcessEnvironmentOptionsProvider, RandomOptionsProvider,
+      RocksDBEngineOptionsProvider, RocksDBIndexCacheRefillOptionsProvider,
+      RocksDBOptionFeatureOptionsProvider, TemporaryStorageOptionsProvider,
+      VersionOptionsProvider>
       _providers{};
 };
 }  // namespace arangodb::application_features

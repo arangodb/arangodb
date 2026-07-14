@@ -151,7 +151,6 @@ void ArangodServer::addFeatures(int* ret) {
   addFeature<OptionsCheckFeature>();
   addFeature<PrivilegeFeature>();
   addFeature<QueryRegistryFeature>(metrics);
-  addFeature<RandomFeature>();
   addFeature<ReplicationFeature>(comm, metrics);
   addFeature<ReplicatedLogFeature>();
   addFeature<ReplicationMetricsFeature>(metrics);
@@ -225,6 +224,10 @@ void ArangodServer::addFeaturesWithOptionProvider() {
   auto& cacheManager = getFeature<CacheManagerFeature>();
   auto& agency = getFeature<AgencyFeature>();
   auto& clusterFeature = getFeature<ClusterFeature>();
+
+  // Add RandomFeature
+  auto randomOptions = _optionProviders.getOptions<RandomOptionsProvider>();
+  addFeature<RandomFeature>(std::move(randomOptions));
 
   // Add NonceFeature
   auto nonceOptions = _optionProviders.getOptions<NonceOptionsProvider>();
