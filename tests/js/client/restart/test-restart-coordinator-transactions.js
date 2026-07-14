@@ -25,56 +25,16 @@
 
 let jsunity = require('jsunity');
 const _ = require('lodash');
-const pu = require('@arangodb/testutils/process-utils');
 const crypto = require('@arangodb/crypto');
-const request = require("@arangodb/request");
 const time = require("internal").time;
 const db = require("internal").db;
 const errors = require("internal").errors;
+let { instanceRole } = require('@arangodb/testutils/instance');
 
-const {
-  getCtrlCoordinators,
-} = require('@arangodb/test-helper');
-
+const IM = global.instanceManager;
 const cn = "UnitTestsCollection";
 
 function testSuite() {
-  let waitForAlive = function (timeout, baseurl, data) {
-    let tries = 0, res;
-    let all = Object.assign(data || {}, { method: "get", timeout: 1, url: baseurl + "/_api/version" }); 
-    const end = time() + timeout;
-    while (time() < end) {
-      res = request(all);
-      if (res.status === 200 || res.status === 401 || res.status === 403) {
-        break;
-      }
-      console.warn("waiting for server response from url " + baseurl);
-      require('internal').sleep(0.5);
-    }
-    return res.status;
-  };
-
-  let sendRequest = function (method, endpoint, body, headers) {
-    const envelope = {
-      json: true,
-      method,
-      url: endpoint,
-      headers,
-    };
-    if (method !== 'GET') {
-      envelope.body = body;
-    }
-    let res = request(envelope);
-
-    if (typeof res.body === "string") {
-      if (res.body === "") {
-        res.body = {};
-      } else {
-        res.body = JSON.parse(res.body);
-      }
-    }
-    return res;
-  };
 
   return {
     setUp : function() {
@@ -93,7 +53,7 @@ function testSuite() {
       let tc = trx.collection(cn);
       tc.insert({ _key: "test1" });
 
-      let coordinators = getCtrlCoordinators();
+      let coordinators = IM.getInstancesRole(instanceRole.coordinator);
       assertTrue(coordinators.length > 1);
 
       for (let i = 0; i < coordinators.length; ++i) {
@@ -108,7 +68,7 @@ function testSuite() {
           "server.authentication": "false"
         });
         
-        waitForAlive(30, coordinator.url, {});
+        coordinator.pingUntilReady(IM.httpJWTAuthOptions, 30);
       }
 
       // connection to server was closed, so next request may fail.
@@ -130,9 +90,11 @@ function testSuite() {
    
       // contact all coordinators - all the requests must fail everywhere
       for (let i = 0; i < coordinators.length; ++i) {
-        let result = sendRequest('PUT', coordinators[i].url + "/_api/transaction/" + encodeURIComponent(trx._id), {}, {});
-        assertEqual(errors.ERROR_TRANSACTION_NOT_FOUND.code, result.body.errorNum);
-        assertMatch(/cannot find target server/, result.body.errorMessage);
+        coordinators[i].toThisInstance(() => {
+          let result = arango.PUT_RAW("/_api/transaction/" + encodeURIComponent(trx._id), {});
+          assertEqual(errors.ERROR_TRANSACTION_NOT_FOUND.code, result.parsedBody.errorNum);
+          assertMatch(/cannot find target server/, result.parsedBody.errorMessage);
+        });
       }
       
       // we should be able to start a new transaction, however
@@ -148,8 +110,10 @@ function testSuite() {
       
         // contact all coordinators - all these requests must succeed
         for (let i = 0; i < coordinators.length; ++i) {
-          let result = sendRequest('POST', coordinators[i].url + "/_api/document/" + encodeURIComponent(cn), { _key: "coord" + i }, { "x-arango-trx-id" : trx._id });
-          assertEqual(202, result.status);
+          coordinators[i].toThisInstance(() => {
+            let result = arango.POST_RAW("/_api/document/" + encodeURIComponent(cn), { _key: "coord" + i }, { "x-arango-trx-id" : trx._id });
+            assertEqual(202, result.code);
+          });
         }
         
         assertEqual(1 + coordinators.length, tc.count()); 

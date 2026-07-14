@@ -60,11 +60,6 @@ FlushFeature::FlushFeature(ApplicationServer& server,
 
 FlushFeature::~FlushFeature() = default;
 
-void FlushFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  FlushOptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
-
 void FlushFeature::registerFlushSubscription(
     std::shared_ptr<FlushSubscription> const& subscription) {
   if (!subscription) {

@@ -22,7 +22,6 @@
 
 #include "RestServer/FortuneFeature.h"
 
-#include "RestServer/FortuneOptionsProvider.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "RestServer/BootstrapFeature.h"
 #include "Logger/LogMacros.h"
@@ -72,11 +71,6 @@ FortuneFeature::FortuneFeature(application_features::ApplicationServer& server,
                                FortuneFeatureOptions options)
     : ApplicationFeature{server, *this}, _options(std::move(options)) {
   startsAfter<BootstrapFeature>();
-}
-
-void FortuneFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  arangodb::fortune::FortuneOptionsProvider provider;
-  provider.declareOptions(options, _options);
 }
 
 void FortuneFeature::start() {

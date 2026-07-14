@@ -79,8 +79,19 @@ template<typename Step>
 struct MockNeighbourCursor {
   auto next() -> std::vector<Step> { return {}; };
   auto hasMore() -> bool { return false; };
-  auto markForDeletion() -> void{};
+  auto markForDeletion() -> void { _deletable = true; };
+
+  bool _deletable = false;
 };
+
+TEST_F(CursorWeightedQueueTest, it_should_mark_appended_cursor_for_deletion) {
+  auto queue =
+      CursorWeightedQueue<Step, MockNeighbourCursor<Step>>(_resourceMonitor);
+  auto cursor = MockNeighbourCursor<Step>{};
+  queue.append(cursor);
+  EXPECT_TRUE(cursor._deletable);
+}
+
 TEST_F(CursorWeightedQueueTest, it_should_be_empty_if_new_queue_initialized) {
   auto queue =
       CursorWeightedQueue<Step, MockNeighbourCursor<Step>>(_resourceMonitor);

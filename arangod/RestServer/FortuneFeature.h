@@ -35,7 +35,6 @@ class FortuneFeature final : public application_features::ApplicationFeature {
   explicit FortuneFeature(application_features::ApplicationServer& server);
 
  public:
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void start() override final;
 
  private:

@@ -38,7 +38,6 @@ const db = require('@arangodb').db;
 const internal = require('internal');
 const { instanceRole } = require("@arangodb/testutils/instance");
 const { deriveTestSuite } = require("@arangodb/test-helper");
-const request = require("@arangodb/request");
 const users = require("@arangodb/users");
 const crypto = require('@arangodb/crypto');
 const dh = require("@arangodb/testutils/document-state-helper");
@@ -76,9 +75,9 @@ function BaseTestSuite(targetUser) {
 
   let getRawMetrics = function() {
     let lines = [];
-    IM.arangods.filter(arangod => arangod.isRole(instanceRole.dbServer)).forEach(server => {
-      let res = request({ method: "GET", url: server.url + "/_admin/usage-metrics", auth: { bearer: jwt } });
-      assertEqual(200, res.status);
+    IM.arangods.filter(arangod => arangod.isRole(instanceRole.dbServer)).forEach(arangod => {
+      let res = arangod.getRawUsageMetric();
+      assertEqual(200, res.code);
       lines = lines.concat(res.body.split(/\n/).filter((l) => l.match(/^arangodb_collection_requests_bytes_(read|written)_total/)));
     });
     return lines;
@@ -287,16 +286,16 @@ function BaseTestSuite(targetUser) {
         
         // check if the normal metrics endpoint exports any shard-specific metrics
         let lines = [];
-        IM.arangods.filter(arangod => arangod.isRole(instanceRole.dbServer)).forEach((server) => {
-          let res = request({ method: "GET", url: server.url + "/_admin/metrics" });
+        IM.arangods.filter(arangod => arangod.isRole(instanceRole.dbServer)).forEach((arangod) => {
+          let res = arangod.getRawMetric();
           lines = lines.concat(res.body.split(/\n/).filter((l) => l.match(/^arangodb_collection_requests_bytes_(read|written)_total/)));
         });
         assertEqual([], lines);
 
         // check if the usage-metrics endpoint exports any regular metrics
         lines = [];
-        IM.arangods.filter(arangod => arangod.isRole(instanceRole.dbServer)).forEach((server) => {
-          let res = request({ method: "GET", url: server.url + "/_admin/usage-metrics" });
+        IM.arangods.filter(arangod => arangod.isRole(instanceRole.dbServer)).forEach((arangod) => {
+          let res = arangod.getRawUsageMetric();
           // we look for any metric name starting with "rocksdb_" here as a placeholder
           lines = lines.concat(res.body.split(/\n/).filter((l) => l.match(/^rocksdb_/)));
         });

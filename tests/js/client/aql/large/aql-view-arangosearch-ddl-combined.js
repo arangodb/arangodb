@@ -30,7 +30,6 @@ var analyzers = require("@arangodb/analyzers");
 var ERRORS = require("@arangodb").errors;
 const isCluster = require("internal").isCluster();
 const isEnterprise = require("internal").isEnterprise();
-const request = require("@arangodb/request");
 const {
   triggerMetrics,
 } = require('@arangodb/test-helper');

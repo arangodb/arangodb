@@ -37,7 +37,6 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "RestServer/DatabasePathOptionsProvider.h"
 #include "RestServer/FileDescriptorsFeature.h"
 
 using namespace arangodb::application_features;
@@ -62,18 +61,6 @@ DatabasePathFeature::DatabasePathFeature(
 #endif
   startsAfter<LanguageFeature>();
   startsAfter<TempFeature>();
-}
-
-void DatabasePathFeature::collectOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  DatabasePathOptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
-
-void DatabasePathFeature::validateOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  DatabasePathOptionsProvider provider;
-  provider.validateOptions(options, _options);
 }
 
 void DatabasePathFeature::prepare() {

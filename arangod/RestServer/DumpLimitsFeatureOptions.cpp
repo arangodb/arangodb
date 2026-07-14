@@ -20,20 +20,24 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#include "DumpLimitsFeatureOptions.h"
 
-#include "ApplicationFeatures/OptionsProvider.h"
-#include "RocksDBEngine/RocksDBIndexCacheRefillFeatureOptions.h"
+#include "Basics/PhysicalMemory.h"
 
 namespace arangodb {
 
-struct RocksDBIndexCacheRefillOptionsProvider
-    : OptionsProviderImpl<RocksDBIndexCacheRefillOptionsProvider,
-                          RocksDBIndexCacheRefillFeatureOptions> {
-  void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
-                          RocksDBIndexCacheRefillFeatureOptions& options);
-  void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
-                           RocksDBIndexCacheRefillFeatureOptions& options){};
-};
+namespace {
+std::uint64_t defaultMemoryUsage() {
+  if (PhysicalMemory::getValue() >= (static_cast<std::uint64_t>(4) << 30)) {
+    return static_cast<std::uint64_t>(
+        (PhysicalMemory::getValue() - (static_cast<std::uint64_t>(2) << 30)) *
+        0.2);
+  }
+  return (static_cast<std::uint64_t>(64) << 20);
+}
+}  // namespace
+
+DumpLimitsFeatureOptions::DumpLimitsFeatureOptions()
+    : memoryUsage(defaultMemoryUsage()) {}
 
 }  // namespace arangodb

@@ -74,6 +74,7 @@ class CursorWeightedQueue {
         append(step);
       }
     }
+    cursor.markForDeletion();
   }
 
   void setStartContent(std::vector<Step> startSteps) {

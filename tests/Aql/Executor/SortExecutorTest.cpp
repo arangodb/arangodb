@@ -39,6 +39,7 @@
 #include "Basics/GlobalResourceMonitor.h"
 #include "Basics/ResourceUsage.h"
 #include "Basics/VelocyPackHelper.h"
+#include "RestServer/DatabasePathFeature.h"
 #include "RestServer/TemporaryStorageFeature.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
@@ -83,8 +84,9 @@ class SortExecutorTest : public AqlExecutorTestCaseWithParam<SortInputParam> {
 
   auto makeExecutorInfos() -> SortExecutorInfos {
     if (tempStorage == nullptr) {
+      auto& server = fakedQuery->vocbase().server();
       tempStorage = std::make_unique<TemporaryStorageFeature>(
-          fakedQuery->vocbase().server());
+          server, server.getFeature<DatabasePathFeature>());
     }
     SortElement sl = SortElement::create(&sortVar, true);
     SortRegister sortReg{0, sl};
