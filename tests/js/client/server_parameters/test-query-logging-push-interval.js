@@ -30,7 +30,6 @@ const {assertEqual, assertTrue, assertFalse, assertNotEqual, assertInstanceOf} =
 const arangodb = require('@arangodb');
 const db = arangodb.db;
 const arango = arangodb.arango;
-const request = require("@arangodb/request");
 const internal = require('internal');
 const errors = internal.errors;
 let IM = global.instanceManager;
@@ -51,19 +50,17 @@ if (getOptions === true) {
 const waitForCollection = () => {
   let tries = 0;
   while (++tries < 200) {
-    let result = request.post({
-      url: IM.url + "/_api/cursor",
-      body: {query:"FOR doc IN _queries LIMIT 1 RETURN doc"},
-      json: true,
-    });
+    let result = arango.POST_RAW(
+      "/_api/cursor",
+      {query:"FOR doc IN _queries LIMIT 1 RETURN doc"},
+    );
 
-    assertInstanceOf(request.Response, result);
-    let body = JSON.parse(result.body);
-    if (!body.error) {
+    if (!result.parsedBody.error) {
       return;
     }
-    if (body.code !== 404 || body.errorNum !== errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code) {
-      throw body;
+    if (result.parsedBody.code !== 404 ||
+        result.parsedBody.errorNum !== errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code) {
+      throw result.parsedBody;
     }
     internal.sleep(0.25);
   }
@@ -78,30 +75,24 @@ function QueryLoggerSuite() {
   };
   
   const clearQueries = () => {
-    let result = request.put({
-      url: IM.url + "/_api/collection/_queries/truncate",
-      body: {},
-      json: true,
-    });
+    let result = arango.PUT_RAW(
+      "/_api/collection/_queries/truncate",
+      {});
     
-    assertInstanceOf(request.Response, result);
-    if (result.statusCode !== 404) {
-      assertEqual(200, result.statusCode);
+    if (result.code !== 404) {
+      assertEqual(200, result.code);
     }
   };
   
   const getQueries = () => {
-    let result = request.post({
-      url: IM.url + "/_api/cursor",
-      body: {query:"FOR doc IN _queries RETURN doc", batchSize, options: {batchSize}},
-      json: true,
-    });
+    let result = arango.POST_RAW(
+      "/_api/cursor",
+      {query:"FOR doc IN _queries RETURN doc", batchSize, options: {batchSize}}
+    );
 
-    assertInstanceOf(request.Response, result);
-    let body = JSON.parse(result.body);
-    assertEqual(201, result.statusCode);
-    assertTrue(Array.isArray(body.result));
-    return body.result;
+    assertEqual(201, result.code);
+    assertTrue(Array.isArray(result.parsedBody.result));
+    return result.parsedBody.result;
   };
       
   const checkForQuery = (n, values) => {
