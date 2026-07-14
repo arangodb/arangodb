@@ -212,7 +212,7 @@ static ErrorCode ExtractCurrentFile(
       // strip filename so we only have the directory name
       std::string dir =
           TRI_Dirname(basics::FileUtils::buildFilename(outPath, filenameInZip));
-      if (!isAllowedAccesisAllowedAccess(dir)) {
+      if (!isAllowedAccess(dir)) {
         errorMessage = std::format("not allowed to create directory {}", dir);
         return TRI_ERROR_FORBIDDEN;
       }
