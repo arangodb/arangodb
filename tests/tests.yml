@@ -497,6 +497,8 @@
     options:
       type: single
       size: medium
+    args:
+      extremeVerbosity: true
     suites:
       - dump_jwt
       - dump_multiple_same
