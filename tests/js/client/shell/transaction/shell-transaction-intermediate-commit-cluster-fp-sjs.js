@@ -34,11 +34,11 @@ let IM = global.instanceManager;
 let errors = arangodb.errors;
 
 function assertInSync(leader, follower, shardId) {
-  const leaderChecksum = getChecksum(leader.endpoint, shardId);
+  const leaderChecksum = getChecksum(leader, shardId);
   let followerChecksum;
   let tries = 0;
   while (++tries < 120) {
-    followerChecksum = getChecksum(follower.endpoint, shardId);
+    followerChecksum = getChecksum(follower, shardId);
     if (followerChecksum === leaderChecksum) {
       break;
     }
