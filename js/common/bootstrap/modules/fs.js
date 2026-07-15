@@ -24,7 +24,6 @@ global.DEFINE_MODULE('fs', (function () {
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Dr. Frank Celler
 // //////////////////////////////////////////////////////////////////////////////
 
   var exports = {};

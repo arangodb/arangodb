@@ -20,8 +20,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Lucas Dohmen
-// / @author Alan Plum
 // //////////////////////////////////////////////////////////////////////////////
 
 const Model = require('@arangodb/foxx/legacy/model').Model;
