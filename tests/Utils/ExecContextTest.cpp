@@ -24,7 +24,6 @@
 
 #include "Auth/AuthMode.h"
 #include "Auth/Common.h"
-#include "Auth/Rbac/Actions.h"
 #include "Mocks/ExecContextFactory.h"
 #include "Utils/ExecContext.h"
 
@@ -62,7 +61,7 @@ TEST(ExecContextTest, basic_construction) {
 TEST(ExecContextTest, superuser_requires_superuser_authmode) {
   // In the new API, isSuperuser() is true only for AuthMode::Superuser (or
   // AuthMode::Disabled). The old Type::Internal+RW/RW maps to Superuser here.
-  auto ctx = ExecContextAccessor::make(AuthMode{AuthMode::Superuser{}},
+  auto ctx = ExecContextAccessor::make(AuthMode{AuthMode::Superuser{}}, false,
                                        VocbasePtr{nullptr});
 
   EXPECT_TRUE(ctx->isSuperuser());
@@ -112,7 +111,7 @@ TEST(ExecContextTest, classic_ro_ro_non_admin_is_not_superuser) {
 TEST(ExecContextTest, canUseDatabase_superuser_grants_all_databases) {
   // AuthMode::Superuser grants access to any database at any level (the old
   // Type::Internal+WriteMeta/WriteMeta behaviour maps to this).
-  auto ctx = ExecContextAccessor::make(AuthMode{AuthMode::Superuser{}},
+  auto ctx = ExecContextAccessor::make(AuthMode{AuthMode::Superuser{}}, false,
                                        VocbasePtr{nullptr});
 
   EXPECT_TRUE(ctx->canUseDatabase("anydb", DatabaseAccessLevel::Write).ok());

@@ -25,6 +25,7 @@
 #include "Assertions/ProdAssert.h"
 #include "Auth/Rbac/RbacFeature.h"
 #include "Basics/Result.h"
+#include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/ServerSecurityFeature.h"
 #include "Rest/GeneralRequest.h"
@@ -171,17 +172,27 @@ Result ExecContext::canSeeDatabase(std::string_view db) const {
 
 Result ExecContext::canCreateDatabase(std::string_view db) const {
   using namespace auth::perms;
+  if (!isSuperuser() && ServerState::readOnly()) {
+    return {TRI_ERROR_FORBIDDEN, "Server is in read-only mode."};
+  }
   return can(CreateDatabase{.name{db}});
 }
 
 Result ExecContext::canDropDatabase(std::string_view db) const {
   using namespace auth::perms;
+  if (!isSuperuser() && ServerState::readOnly()) {
+    return {TRI_ERROR_FORBIDDEN, "Server is in read-only mode."};
+  }
   return can(DropDatabase{.name{db}});
 }
 
 Result ExecContext::canUseDatabase(std::string_view db,
                                    DatabaseAccessLevel level) const {
   using namespace auth::perms;
+  if (!isSuperuser() && ServerState::readOnly() &&
+      level >= DatabaseAccessLevel::Write) {
+    return {TRI_ERROR_FORBIDDEN, "Server is in read-only mode."};
+  }
   return can(UseDatabase{.name{db}, .level = level});
 }
 
@@ -194,18 +205,28 @@ Result ExecContext::canSeeCollection(std::string_view db,
 Result ExecContext::canCreateCollection(std::string_view db,
                                         std::string_view coll) const {
   using namespace auth::perms;
+  if (!isSuperuser() && ServerState::readOnly()) {
+    return {TRI_ERROR_FORBIDDEN, "Server is in read-only mode."};
+  }
   return can(CreateCollection{.db{db}, .name{coll}});
 }
 
 Result ExecContext::canDropCollection(std::string_view db,
                                       std::string_view coll) const {
   using namespace auth::perms;
+  if (!isSuperuser() && ServerState::readOnly()) {
+    return {TRI_ERROR_FORBIDDEN, "Server is in read-only mode."};
+  }
   return can(DropCollection{.db{db}, .name{coll}});
 }
 
 Result ExecContext::canUseCollection(std::string_view db, std::string_view coll,
                                      CollectionAccessLevel level) const {
   using namespace auth::perms;
+  if (!isSuperuser() && ServerState::readOnly() &&
+      level >= CollectionAccessLevel::WriteData) {
+    return {TRI_ERROR_FORBIDDEN, "Server is in read-only mode."};
+  }
   return can(UseCollection{.db{db}, .name{coll}, .level = level});
 }
 
@@ -219,12 +240,18 @@ Result ExecContext::canRestoreCollection(std::string_view db,
                                          std::string_view coll,
                                          bool overwrite) const {
   using namespace auth::perms;
+  if (!isSuperuser() && ServerState::readOnly()) {
+    return {TRI_ERROR_FORBIDDEN, "Server is in read-only mode."};
+  }
   return can(RestoreCollection{.db{db}, .name{coll}, .overwrite = overwrite});
 }
 
 Result ExecContext::canRestoreCreateIndex(std::string_view db,
                                           std::string_view coll) const {
   using namespace auth::perms;
+  if (!isSuperuser() && ServerState::readOnly()) {
+    return {TRI_ERROR_FORBIDDEN, "Server is in read-only mode."};
+  }
   return can(RestoreCreateIndex{.db{db}, .collName{coll}});
 }
 
@@ -232,6 +259,9 @@ Result ExecContext::canRestoreCreateView(
     std::string_view db, std::string_view viewName,
     std::vector<std::string> linkedCollNames) const {
   using namespace auth::perms;
+  if (!isSuperuser() && ServerState::readOnly()) {
+    return {TRI_ERROR_FORBIDDEN, "Server is in read-only mode."};
+  }
   return can(RestoreCreateView{.db{db},
                                .viewName{viewName},
                                .linkedCollNames{std::move(linkedCollNames)}});
@@ -240,18 +270,27 @@ Result ExecContext::canRestoreCreateView(
 Result ExecContext::canRestoreDropView(std::string_view db,
                                        std::string_view view) const {
   using namespace auth::perms;
+  if (!isSuperuser() && ServerState::readOnly()) {
+    return {TRI_ERROR_FORBIDDEN, "Server is in read-only mode."};
+  }
   return can(RestoreDropView{.db{db}, .viewName{view}});
 }
 
 Result ExecContext::canRestoreWriteData(std::string_view db,
                                         std::string_view coll) const {
   using namespace auth::perms;
+  if (!isSuperuser() && ServerState::readOnly()) {
+    return {TRI_ERROR_FORBIDDEN, "Server is in read-only mode."};
+  }
   return can(RestoreWriteData{.db{db}, .collName{coll}});
 }
 
 Result ExecContext::canCreateIndex(std::string_view db,
                                    std::string_view coll) const {
   using namespace auth::perms;
+  if (!isSuperuser() && ServerState::readOnly()) {
+    return {TRI_ERROR_FORBIDDEN, "Server is in read-only mode."};
+  }
   return can(UseCollection{
       .db{db}, .name{coll}, .level = CollectionAccessLevel::WriteMeta});
 }
@@ -259,6 +298,9 @@ Result ExecContext::canCreateIndex(std::string_view db,
 Result ExecContext::canDropIndex(std::string_view db,
                                  std::string_view coll) const {
   using namespace auth::perms;
+  if (!isSuperuser() && ServerState::readOnly()) {
+    return {TRI_ERROR_FORBIDDEN, "Server is in read-only mode."};
+  }
   return can(UseCollection{
       .db{db}, .name{coll}, .level = CollectionAccessLevel::WriteMeta});
 }
@@ -273,6 +315,9 @@ Result ExecContext::canCreateView(
     std::string_view db, std::string_view view,
     std::vector<std::string> const& linkedCollections) const {
   using namespace auth::perms;
+  if (!isSuperuser() && ServerState::readOnly()) {
+    return {TRI_ERROR_FORBIDDEN, "Server is in read-only mode."};
+  }
   return can(
       CreateView{.db{db}, .name{view}, .linkedCollections{linkedCollections}});
 }
@@ -281,6 +326,9 @@ Result ExecContext::canModifyView(
     std::string_view db, std::string_view view,
     std::vector<std::string> const& linkedCollections) const {
   using namespace auth::perms;
+  if (!isSuperuser() && ServerState::readOnly()) {
+    return {TRI_ERROR_FORBIDDEN, "Server is in read-only mode."};
+  }
   return can(
       ModifyView{.db{db}, .name{view}, .linkedCollections{linkedCollections}});
 }
@@ -288,12 +336,19 @@ Result ExecContext::canModifyView(
 Result ExecContext::canDropView(std::string_view db,
                                 std::string_view view) const {
   using namespace auth::perms;
+  if (!isSuperuser() && ServerState::readOnly()) {
+    return {TRI_ERROR_FORBIDDEN, "Server is in read-only mode."};
+  }
   return can(DropView{.db{db}, .name{view}});
 }
 
 Result ExecContext::canUseView(std::string_view db, std::string_view viewName,
                                ViewAccessLevel requested) const {
   using namespace auth::perms;
+  if (!isSuperuser() && ServerState::readOnly() &&
+      requested == ViewAccessLevel::Modify) {
+    return {TRI_ERROR_FORBIDDEN, "Server is in read-only mode."};
+  }
   return can(UseView{.db{db}, .name{viewName}, .level = requested});
 }
 
@@ -301,6 +356,9 @@ Result ExecContext::canRenameView(std::string_view db,
                                   std::string_view oldViewName,
                                   std::string_view newViewName) const {
   using namespace auth::perms;
+  if (!isSuperuser() && ServerState::readOnly()) {
+    return {TRI_ERROR_FORBIDDEN, "Server is in read-only mode."};
+  }
   return can(RenameView{.db{db}, .oldName{oldViewName}, .newName{newViewName}});
 }
 
@@ -313,12 +371,18 @@ Result ExecContext::canSeeAnalyzer(std::string_view db,
 Result ExecContext::canCreateAnalyzer(std::string_view db,
                                       std::string_view analyzer) const {
   using namespace auth::perms;
+  if (!isSuperuser() && ServerState::readOnly()) {
+    return {TRI_ERROR_FORBIDDEN, "Server is in read-only mode."};
+  }
   return can(CreateAnalyzer{.db{db}, .name{analyzer}});
 }
 
 Result ExecContext::canDropAnalyzer(std::string_view db,
                                     std::string_view analyzer) const {
   using namespace auth::perms;
+  if (!isSuperuser() && ServerState::readOnly()) {
+    return {TRI_ERROR_FORBIDDEN, "Server is in read-only mode."};
+  }
   return can(DropAnalyzer{.db{db}, .name{analyzer}});
 }
 
@@ -326,6 +390,10 @@ Result ExecContext::canUseAnalyzer(std::string_view db,
                                    std::string_view analyzer,
                                    AnalyzerAccessLevel level) const {
   using namespace auth::perms;
+  if (!isSuperuser() && ServerState::readOnly() &&
+      level == AnalyzerAccessLevel::Modify) {
+    return {TRI_ERROR_FORBIDDEN, "Server is in read-only mode."};
+  }
   return can(UseAnalyzer{.db{db}, .name{analyzer}, .level = level});
 }
 
@@ -340,6 +408,9 @@ Result ExecContext::canCreateGraph(
     std::span<std::string> collectionNamesToCreate,
     std::span<std::string> collectionNamesToRead) const {
   using namespace auth::perms;
+  if (!isSuperuser() && ServerState::readOnly()) {
+    return {TRI_ERROR_FORBIDDEN, "Server is in read-only mode."};
+  }
   return can(CreateGraph{.db{db},
                          .name{graph},
                          .collectionNamesToCreate{collectionNamesToCreate},
@@ -349,6 +420,9 @@ Result ExecContext::canCreateGraph(
 Result ExecContext::canDropGraph(std::string_view db, std::string_view graph,
                                  std::span<std::string> collectionNames) const {
   using namespace auth::perms;
+  if (!isSuperuser() && ServerState::readOnly()) {
+    return {TRI_ERROR_FORBIDDEN, "Server is in read-only mode."};
+  }
   return can(
       DropGraph{.db{db}, .name{graph}, .collectionNames{collectionNames}});
 }
@@ -356,6 +430,10 @@ Result ExecContext::canDropGraph(std::string_view db, std::string_view graph,
 Result ExecContext::canUseGraph(std::string_view db, std::string_view graph,
                                 GraphAccessLevel const level) const {
   using namespace auth::perms;
+  if (!isSuperuser() && ServerState::readOnly() &&
+      level == GraphAccessLevel::Modify) {
+    return {TRI_ERROR_FORBIDDEN, "Server is in read-only mode."};
+  }
   return can(UseGraph{.db{db}, .name{graph}, .level = level});
 }
 
@@ -363,29 +441,16 @@ Result ExecContext::canUseGraph(std::string_view db, std::string_view graph,
 Result ExecContext::canReadUser(std::string_view user) const {
   using namespace auth::perms;
   return can(ReadUser{.name{user}});
-  // TODO
-  // Pseudocode:
-  // if superuser: true
-  // if self: true
-  // if rbac:
-  //   return AdminReadUser(user)
-  // else:
-  //   return RW(_system)
 }
 
 /// @brief returns true if the user can be modified, note that everybody
 /// can modify themselves (if only to change the password).
 Result ExecContext::canWriteUser(std::string_view user) const {
   using namespace auth::perms;
+  if (!isSuperuser() && ServerState::readOnly()) {
+    return {TRI_ERROR_FORBIDDEN, "Server is in read-only mode."};
+  }
   return can(WriteUser{.name{user}});
-  // TODO
-  // Pseudocode:
-  // if superuser: true
-  // if self: true
-  // if rbac:
-  //   return AdminWriteUser(user)
-  // else:
-  //   return RW(_system)
 }
 
 /// @brief returns true for each user which can be read
