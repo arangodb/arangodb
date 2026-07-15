@@ -86,8 +86,7 @@ void ArangoDumpServer::addFeatures() {
   addFeature<ConfigFeature>(_binaryName);
   addFeature<OptionsCheckFeature>();
   addFeature<ShellColorsFeature>();
-  addFeature<ShutdownFeature>(
-      std::array{std::type_index(typeid(DumpFeature))});
+  addFeature<ShutdownFeature>(std::array{std::type_index(typeid(DumpFeature))});
   addFeature<SslFeature>();
 #ifdef TRI_HAVE_GETRLIMIT
   addFeature<BumpFileDescriptorsFeature>("--descriptors-minimum");

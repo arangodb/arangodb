@@ -29,13 +29,14 @@
 namespace arangodb::crash_handler {
 
 struct CrashHandlerOptionsProvider
-    : OptionsProviderImpl<CrashHandlerOptionsProvider, CrashHandlerFeatureOptions> {
+    : OptionsProviderImpl<CrashHandlerOptionsProvider,
+                          CrashHandlerFeatureOptions> {
   CrashHandlerOptionsProvider() = default;
 
   void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
                           CrashHandlerFeatureOptions& options);
   void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> /*opts*/,
-                           CrashHandlerFeatureOptions& /*options*/){};
+                           CrashHandlerFeatureOptions& /*options*/) {};
 };
 
 }  // namespace arangodb::crash_handler

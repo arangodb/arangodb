@@ -29,10 +29,10 @@
 
 namespace arangodb {
 
-// Options-provider set shared by all client-tool binaries. Individual
+// OptionProvider set shared by all client-tool binaries. Individual
 // binaries can extend it with additional providers via `Extras...`.
 template<class... Extras>
-using ClientToolOptionProviders =
+using CoreOptionProviders =
     application_features::FeatureOptionProviderContainer<
         FileSystemOptionsProvider, LoggerOptionsProvider,
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE

@@ -52,8 +52,8 @@ int main(int argc, char* argv[]) {
 #endif
 
     auto options = std::make_shared<options::ProgramOptions>(
-        argv[0], "Usage: arangodump [<options>]", "For more information use:",
-        BIN_DIRECTORY);
+        argv[0], "Usage: arangodump [<options>]",
+        "For more information use:", BIN_DIRECTORY);
 
     ArangoDumpServer server(options, BIN_DIRECTORY, context.binaryName(), &ret);
     server.addFeatures();

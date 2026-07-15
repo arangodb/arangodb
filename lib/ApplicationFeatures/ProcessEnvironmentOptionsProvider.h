@@ -28,7 +28,8 @@
 namespace arangodb {
 
 struct ProcessEnvironmentOptionsProvider
-    : OptionsProviderImpl<ProcessEnvironmentOptionsProvider, ProcessEnvironmentFeatureOptions> {
+    : OptionsProviderImpl<ProcessEnvironmentOptionsProvider,
+                          ProcessEnvironmentFeatureOptions> {
   void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
                           ProcessEnvironmentFeatureOptions& options);
   void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> /*opts*/,

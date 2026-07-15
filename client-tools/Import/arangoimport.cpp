@@ -40,8 +40,8 @@ int main(int argc, char* argv[]) {
     context.installHup();
 
     auto options = std::make_shared<options::ProgramOptions>(
-        argv[0], "Usage: arangoimport [<options>]", "For more information use:",
-        BIN_DIRECTORY);
+        argv[0], "Usage: arangoimport [<options>]",
+        "For more information use:", BIN_DIRECTORY);
 
     int ret = EXIT_SUCCESS;
     ArangoImportServer server(options, BIN_DIRECTORY, context.binaryName(),

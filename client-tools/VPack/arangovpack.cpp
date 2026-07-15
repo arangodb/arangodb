@@ -42,8 +42,8 @@ int main(int argc, char* argv[]) {
     context.installHup();
 
     auto options = std::make_shared<options::ProgramOptions>(
-        argv[0], "Usage: arangovpack [<options>]", "For more information use:",
-        BIN_DIRECTORY);
+        argv[0], "Usage: arangovpack [<options>]",
+        "For more information use:", BIN_DIRECTORY);
 
     ArangoVPackServer server(options, BIN_DIRECTORY, context.binaryName(),
                              &ret);

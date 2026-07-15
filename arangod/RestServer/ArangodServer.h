@@ -25,8 +25,7 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "ApplicationFeatures/ApplicationFeaturePhase.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "RestServer/ArangodOptionProviers.h"
-
+#include "RestServer/ArangodOptionProviders.h"
 
 namespace arangodb {
 

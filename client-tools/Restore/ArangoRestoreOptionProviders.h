@@ -20,8 +20,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "ApplicationFeatures/ClientToolOptionProviders.h"
+#include "ApplicationFeatures/CoreOptionProviders.h"
 
 namespace arangodb {
-using ArangoRestoreOptionProviders = ClientToolOptionProviders<>;
+using ArangoRestoreOptionProviders = CoreOptionProviders<>;
 }  // namespace arangodb

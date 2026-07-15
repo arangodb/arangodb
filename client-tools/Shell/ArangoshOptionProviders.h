@@ -20,9 +20,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "ApplicationFeatures/ClientToolOptionProviders.h"
+#include "ApplicationFeatures/CoreOptionProviders.h"
 #include "ApplicationFeatures/LanguageOptionsProvider.h"
 
 namespace arangodb {
-using ArangoshOptionProviders = ClientToolOptionProviders<LanguageOptionsProvider>;
+using ArangoshOptionProviders =
+    CoreOptionProviders<LanguageOptionsProvider>;
 }  // namespace arangodb
