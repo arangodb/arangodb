@@ -94,6 +94,7 @@ void ArangoshServer::addFeatures() {
 #endif
   addFeature<ShellConsoleFeature>();
   addFeature<HttpEndpointProvider, ClientFeature>(true);
+  addFeature<VersionFeature>();
   addFeature<ConfigFeature>(_binaryName);
   addFeature<OptionsCheckFeature>();
   addFeature<ShellColorsFeature>();
@@ -111,9 +112,6 @@ void ArangoshServer::addFeatures() {
 }
 
 void ArangoshServer::addFeaturesWithOptionProvider() {
-  addFeature<VersionFeature>(
-      _optionProviders.getOptions<VersionOptionsProvider>());
-
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   addFeature<ProcessEnvironmentFeature>(
       _binaryName,

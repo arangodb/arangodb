@@ -22,16 +22,14 @@
 
 #include "VersionOptionsProvider.h"
 
-#include "ApplicationFeatures/GreetingsFeature.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "Rest/Version.h"
 
 namespace arangodb {
 
 using namespace arangodb::options;
 
-void VersionOptionsProvider::declareOptionsImpl(
+void VersionOptionsProvider::declareOptions(
     std::shared_ptr<ProgramOptions> options, VersionFeatureOptions& opts) {
   options->addOption(
       "--version",
@@ -47,29 +45,6 @@ void VersionOptionsProvider::declareOptionsImpl(
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Command))
       .setIntroducedIn(30900);
-}
-
-void VersionOptionsProvider::validateOptionsImpl(
-    std::shared_ptr<ProgramOptions> /*opts*/, VersionFeatureOptions& options) {
-  if (options.printVersionJson) {
-    VPackBuilder builder;
-    {
-      VPackObjectBuilder ob(&builder);
-      rest::Version::getVPack(builder);
-      builder.add("version", VPackValue(rest::Version::getServerVersion()));
-    }
-    std::cout << builder.slice().toJson() << std::endl;
-    exit(EXIT_SUCCESS);
-  }
-
-  if (options.printVersion) {
-    std::cout << rest::Version::getServerVersion() << std::endl
-              << std::endl
-              << LGPLNotice << std::endl
-              << std::endl
-              << rest::Version::getDetailed() << std::endl;
-    exit(EXIT_SUCCESS);
-  }
 }
 
 }  // namespace arangodb

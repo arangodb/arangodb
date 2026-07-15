@@ -79,6 +79,7 @@ void ArangoBenchServer::addFeatures() {
   addFeature<GreetingsFeaturePhase>(std::true_type{});
   addFeature<HttpEndpointProvider, ClientFeature>(
       false, std::numeric_limits<size_t>::max());
+  addFeature<VersionFeature>();
   addFeature<ConfigFeature>(_binaryName);
   addFeature<OptionsCheckFeature>();
   addFeature<ShellColorsFeature>();
@@ -90,8 +91,6 @@ void ArangoBenchServer::addFeatures() {
 }
 
 void ArangoBenchServer::addFeaturesWithOptionProvider() {
-  addFeature<VersionFeature>(
-      _optionProviders.getOptions<VersionOptionsProvider>());
   addFeature<FileSystemFeature>(
       _optionProviders.getOptions<FileSystemOptionsProvider>());
   addFeature<LoggerFeature>(

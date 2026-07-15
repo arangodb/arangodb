@@ -83,6 +83,7 @@ void ArangoDumpServer::addFeatures() {
   addFeature<GreetingsFeaturePhase>(std::true_type{});
   auto& client = addFeature<HttpEndpointProvider, ClientFeature>(
       true, std::numeric_limits<size_t>::max());
+  addFeature<VersionFeature>();
   addFeature<ConfigFeature>(_binaryName);
   addFeature<OptionsCheckFeature>();
   addFeature<ShellColorsFeature>();
@@ -98,8 +99,6 @@ void ArangoDumpServer::addFeatures() {
 }
 
 void ArangoDumpServer::addFeaturesWithOptionProvider() {
-  addFeature<VersionFeature>(
-      _optionProviders.getOptions<VersionOptionsProvider>());
   addFeature<FileSystemFeature>(
       _optionProviders.getOptions<FileSystemOptionsProvider>());
   addFeature<LoggerFeature>(

@@ -71,6 +71,7 @@ void ArangoVPackServer::validateOptions() {
 void ArangoVPackServer::addFeatures() {
   addFeature<BasicFeaturePhaseClient>();
   addFeature<GreetingsFeaturePhase>(std::true_type{});
+  addFeature<VersionFeature>();
   addFeature<ConfigFeature>(_binaryName, "none");
   addFeature<OptionsCheckFeature>();
   addFeature<ShellColorsFeature>();
@@ -80,8 +81,6 @@ void ArangoVPackServer::addFeatures() {
 }
 
 void ArangoVPackServer::addFeaturesWithOptionProvider() {
-  addFeature<VersionFeature>(
-      _optionProviders.getOptions<VersionOptionsProvider>());
   addFeature<LoggerFeature>(
       false, _optionProviders.getOptions<LoggerOptionsProvider>());
   addFeature<FileSystemFeature>(

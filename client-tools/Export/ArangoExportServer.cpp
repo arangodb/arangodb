@@ -81,6 +81,7 @@ void ArangoExportServer::addFeatures() {
   addFeature<CommunicationFeaturePhase>();
   addFeature<GreetingsFeaturePhase>(std::true_type{});
   addFeature<HttpEndpointProvider, ClientFeature>(false);
+  addFeature<VersionFeature>();
   addFeature<ConfigFeature>(_binaryName);
   addFeature<OptionsCheckFeature>();
   addFeature<ShellColorsFeature>();
@@ -95,8 +96,6 @@ void ArangoExportServer::addFeatures() {
 }
 
 void ArangoExportServer::addFeaturesWithOptionProvider() {
-  addFeature<VersionFeature>(
-      _optionProviders.getOptions<VersionOptionsProvider>());
   addFeature<FileSystemFeature>(
       _optionProviders.getOptions<FileSystemOptionsProvider>());
   addFeature<LoggerFeature>(

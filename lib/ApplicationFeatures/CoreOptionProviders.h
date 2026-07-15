@@ -23,7 +23,6 @@
 #include "ApplicationFeatures/FeatureOptionProviderContainer.h"
 #include "ApplicationFeatures/FileSystemOptionsProvider.h"
 #include "ApplicationFeatures/ProcessEnvironmentOptionsProvider.h"
-#include "ApplicationFeatures/VersionOptionsProvider.h"
 #include "Logger/LoggerOptionsProvider.h"
 #include "Random/RandomOptionsProvider.h"
 
@@ -38,6 +37,6 @@ using CoreOptionProviders =
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
         ProcessEnvironmentOptionsProvider,
 #endif
-        RandomOptionsProvider, VersionOptionsProvider, Extras...>;
+        RandomOptionsProvider, Extras...>;
 
 }  // namespace arangodb
