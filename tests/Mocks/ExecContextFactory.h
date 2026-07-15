@@ -41,23 +41,31 @@ namespace arangodb::tests::mocks {
 /// @brief Thin subclass of ExecContext whose sole purpose is to expose the
 /// protected ConstructorToken to the factory functions in this file.
 /// Never subclass this for any other reason.
-struct ExecContextAccessor final : public arangodb::ExecContext {
-  static std::shared_ptr<arangodb::ExecContext> make(AuthMode authMode,
-                                                     VocbasePtr vocbase,
-                                                     bool apiHardened) {
+struct ExecContextAccessor final : ExecContext {
+  static std::shared_ptr<ExecContext> make(AuthMode authMode, bool apiHardened,
+                                           VocbasePtr vocbase) {
     // std::make_shared cannot call a private constructor, so we use new
     // directly here, which is valid inside the class scope.
-    return std::shared_ptr<arangodb::ExecContext>(
+    return std::shared_ptr<ExecContext>(
         new ExecContextAccessor(ConstructorToken{}, std::move(authMode),
-                                std::move(vocbase), apiHardened));
+                                apiHardened, std::move(vocbase)));
   }
 
  private:
   ExecContextAccessor(ConstructorToken token, AuthMode authMode,
-                      VocbasePtr vocbase, bool apiHardened)
-      : arangodb::ExecContext(token, std::move(authMode), apiHardened,
-                              std::move(vocbase)) {}
+                      bool apiHardened, VocbasePtr vocbase)
+      : ExecContext(token, std::move(authMode), apiHardened,
+                    std::move(vocbase)) {}
 };
+
+auto inline createSharedExecContext(AuthMode authMode, bool isRestApiHardened,
+                                    VocbasePtr vocbase) {
+  struct EC : ExecContext {
+    auto static token() { return ConstructorToken{}; }
+  };
+  return std::make_shared<ExecContext>(EC::token(), std::move(authMode),
+                                       isRestApiHardened, std::move(vocbase));
+}
 
 /// @brief Minimal GeneralRequest subclass for use in tests.
 ///
@@ -66,8 +74,8 @@ struct ExecContextAccessor final : public arangodb::ExecContext {
 /// "no versioned prefix"). This means the "return NOT_FOUND to hide existence"
 /// branches in AuthMode::Classic::check() are never taken, which is the
 /// correct behaviour for tests that only check FORBIDDEN / READ_ONLY outcomes.
-struct FakeGeneralRequest final : public arangodb::GeneralRequest {
-  FakeGeneralRequest() : arangodb::GeneralRequest(ConnectionInfo{}, 0) {}
+struct FakeGeneralRequest final : GeneralRequest {
+  FakeGeneralRequest() : GeneralRequest(ConnectionInfo{}, 0) {}
 
   size_t contentLength() const noexcept override { return 0; }
   std::string_view rawPayload() const override { return {}; }
@@ -84,7 +92,7 @@ struct FakeGeneralRequest final : public arangodb::GeneralRequest {
 struct ClassicExecContext {
   std::shared_ptr<auth::UserManagerTester> userManager;
   std::shared_ptr<FakeGeneralRequest> request;
-  std::shared_ptr<arangodb::ExecContext> execContext;
+  std::shared_ptr<ExecContext> execContext;
 };
 
 /// @brief Create an ExecContext backed by a real AuthMode::Classic, with a
@@ -96,13 +104,11 @@ struct ClassicExecContext {
 ///                   is needed.
 /// @param systemLevel  Access level returned for the _system database.
 /// @param dbLevel      Access level returned for dbname (and its collections).
-/// @param apiHardened  Passed to Classic ctor; set true to require admin for
-///                     hardened actions. Defaults to false.
-inline ClassicExecContext makeClassicExecContext(std::string username,
-                                                 std::string dbname,
-                                                 auth::Level systemLevel,
-                                                 auth::Level dbLevel,
-                                                 bool apiHardened = false) {
+/// @param isRestApiHardened  Passed to Classic ctor; set true to require admin
+///                           for hardened actions. Defaults to false.
+inline ClassicExecContext makeClassicExecContext(
+    std::string username, std::string dbname, auth::Level systemLevel,
+    auth::Level dbLevel, bool isRestApiHardened = false) {
   auto um = std::make_shared<auth::UserManagerTester>();
 
   // Build a UserMap containing one entry for 'username' with the requested
@@ -111,10 +117,9 @@ inline ClassicExecContext makeClassicExecContext(std::string username,
   auto& user = userMap.emplace(username, auth::User::newUser(username, ""))
                    .first->second;
   user.setActive(true);
-  user.grantDatabase(arangodb::StaticStrings::SystemDatabase, systemLevel);
-  user.grantCollection(arangodb::StaticStrings::SystemDatabase, "*",
-                       systemLevel);
-  if (!dbname.empty() && dbname != arangodb::StaticStrings::SystemDatabase) {
+  user.grantDatabase(StaticStrings::SystemDatabase, systemLevel);
+  user.grantCollection(StaticStrings::SystemDatabase, "*", systemLevel);
+  if (!dbname.empty() && dbname != StaticStrings::SystemDatabase) {
     user.grantDatabase(dbname, dbLevel);
     user.grantCollection(dbname, "*", dbLevel);
   }
@@ -127,8 +132,8 @@ inline ClassicExecContext makeClassicExecContext(std::string username,
   auto req = std::make_shared<FakeGeneralRequest>();
 
   auto authMode = AuthMode{AuthMode::Classic{*um, std::move(username), *req}};
-  auto ctx = ExecContextAccessor::make(std::move(authMode), VocbasePtr{nullptr},
-                                       apiHardened);
+  auto ctx = createSharedExecContext(std::move(authMode), isRestApiHardened,
+                                     VocbasePtr{nullptr});
 
   return ClassicExecContext{std::move(um), std::move(req), std::move(ctx)};
 }
@@ -139,7 +144,7 @@ inline ClassicExecContext makeClassicExecContext(std::string username,
 /// for the duration of any ExecContextScope that wraps execContext.
 struct BorrowedExecContext {
   std::shared_ptr<FakeGeneralRequest> request;
-  std::shared_ptr<arangodb::ExecContext> execContext;
+  std::shared_ptr<ExecContext> execContext;
 };
 
 /// @brief Create an ExecContext backed by a real AuthMode::Classic using an
@@ -153,7 +158,7 @@ struct BorrowedExecContext {
 /// @param existingUserManager  The UserManager to delegate permission checks
 /// to.
 /// @param username             Username stored in the Classic auth context.
-/// @param apiHardened          Passed to Classic ctor. Defaults to false.
+/// @param isRestApiHardened    Passed to Classic ctor. Defaults to false.
 ///
 /// IMPORTANT: Keep the returned BorrowedExecContext alive for at least as long
 /// as the ExecContextScope that wraps its execContext, because the
@@ -161,12 +166,12 @@ struct BorrowedExecContext {
 /// AuthMode stored inside the ExecContext.
 inline BorrowedExecContext makeClassicExecContextFrom(
     auth::UserManager& existingUserManager, std::string username,
-    bool apiHardened = false) {
+    bool isRestApiHardened = false) {
   auto req = std::make_shared<FakeGeneralRequest>();
   auto authMode = AuthMode{
       AuthMode::Classic{existingUserManager, std::move(username), *req}};
-  auto ctx = ExecContextAccessor::make(std::move(authMode), VocbasePtr{nullptr},
-                                       apiHardened);
+  auto ctx = createSharedExecContext(std::move(authMode), isRestApiHardened,
+                                     VocbasePtr{nullptr});
   return BorrowedExecContext{std::move(req), std::move(ctx)};
 }
 

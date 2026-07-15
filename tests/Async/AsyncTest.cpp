@@ -298,16 +298,19 @@ TYPED_TEST(AsyncTest, multiple_suspension_points) {
   EXPECT_EQ(awaitable.await_resume(), 0);
 }
 
+auto makeExecContext(std::string username) {
+  return tests::mocks::makeClassicExecContext(
+      std::move(username), "", auth::Level::RW, auth::Level::NONE);
+}
+
 TYPED_TEST(AsyncTest, execution_context_is_local_to_coroutine) {
-  auto ctxBegin = arangodb::tests::mocks::makeClassicExecContext(
-      "Begin", "", arangodb::auth::Level::RW, arangodb::auth::Level::NONE);
+  auto ctxBegin = makeExecContext("Begin");
   ExecContextScope exec(ctxBegin.execContext);
   EXPECT_EQ(ExecContext::current().user(), "Begin");
 
   auto waiting_fn = [&]() -> async<void> {
     EXPECT_EQ(ExecContext::current().user(), "Begin");
-    auto ctxWaiting = arangodb::tests::mocks::makeClassicExecContext(
-        "Waiting", "", arangodb::auth::Level::RW, arangodb::auth::Level::NONE);
+    auto ctxWaiting = makeExecContext("Waiting");
     ExecContextScope exec(ctxWaiting.execContext);
     EXPECT_EQ(ExecContext::current().user(), "Waiting");
     co_await this->wait;
@@ -325,8 +328,7 @@ TYPED_TEST(AsyncTest, execution_context_is_local_to_coroutine) {
 
   auto calling_coro = [&]() -> async<void> {
     EXPECT_EQ(ExecContext::current().user(), "Begin");
-    auto ctxCalling = arangodb::tests::mocks::makeClassicExecContext(
-        "Calling", "", arangodb::auth::Level::RW, arangodb::auth::Level::NONE);
+    auto ctxCalling = makeExecContext("Calling");
     ExecContextScope exec(ctxCalling.execContext);
     EXPECT_EQ(ExecContext::current().user(), "Calling");
     co_await std::move(waiting_coro);
@@ -340,8 +342,7 @@ TYPED_TEST(AsyncTest, execution_context_is_local_to_coroutine) {
   std::ignore = calling_coro();
   EXPECT_EQ(ExecContext::current().user(), "Begin");
 
-  auto ctxEnd = arangodb::tests::mocks::makeClassicExecContext(
-      "End", "", arangodb::auth::Level::RW, arangodb::auth::Level::NONE);
+  auto ctxEnd = makeExecContext("End");
   ExecContextScope new_exec(ctxEnd.execContext);
   EXPECT_EQ(ExecContext::current().user(), "End");
 
