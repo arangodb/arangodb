@@ -126,7 +126,7 @@ auto handlingOfExistingCollection(TRI_vocbase_t& vocbase,
                                   std::string const& name, bool dropExisting)
     -> futures::Future<ResultT<bool>> {
   ExecContextSuperuserScope escope(
-      ExecContext::current().isSuperuser() ||
+      ExecContext::current().isSuperuserOrDisabled() ||
       (ExecContext::current()
            .canUseAdminAction(auth::perms::AdminRestore{})
            .ok() &&

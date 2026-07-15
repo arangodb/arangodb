@@ -178,7 +178,7 @@ Result IResearchViewCoordinator::appendVPackImpl(VPackBuilder& build,
     std::shared_lock lock{_mutex};
     // verify that the current user has access on all linked collections
     ExecContext const& exec = ExecContext::current();
-    if (!exec.isSuperuser()) {
+    if (!exec.isSuperuserOrDisabled()) {
       // TODO This should be changed into a more semantic exec.can().... call;
       //      but I don't know which, because I don't know where this is being
       //      called from (createView? modifyView? both?)
@@ -362,7 +362,7 @@ Result IResearchViewCoordinator::properties(velocypack::Slice slice,
     }
     // check link auth as per https://github.com/arangodb/backlog/issues/459
     auto const& exec = ExecContext::current();
-    if (!exec.isSuperuser()) {  // check existing links
+    if (!exec.isSuperuserOrDisabled()) {  // check existing links
       std::shared_lock lock{_mutex};
       // TODO This should be changed into a more semantic exec.can().... call;
       //      but I don't know which, because I don't know where this is being

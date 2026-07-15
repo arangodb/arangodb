@@ -46,7 +46,7 @@ RestStatus RestSupportInfoHandler::execute() {
   TRI_ASSERT(apiPolicy != "disabled");
 
   if (apiPolicy == "jwt") {
-    if (!ExecContext::current().isSuperuser()) {
+    if (!ExecContext::current().isSuperuserOrDisabled()) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                     "insufficient permissions");
       return RestStatus::DONE;

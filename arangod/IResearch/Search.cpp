@@ -594,7 +594,7 @@ Result Search::appendVPackImpl(velocypack::Builder& build, Serialization ctx,
     // collections
     auto const& execCtx = ExecContext::current();
     bool const checkPermissions =
-        ctx == Serialization::Properties && !execCtx.isSuperuser();
+        ctx == Serialization::Properties && !execCtx.isSuperuserOrDisabled();
 
     for (auto& [cid, handles] : _indexes) {
       for (auto& handle : handles) {
@@ -692,7 +692,8 @@ Result Search::updateProperties(CollectionNameResolver& resolver,
       }
       return {TRI_ERROR_BAD_PARAMETER, "Cannot find collection"};
     }
-    if (auto const& ctx = ExecContext::current(); !ctx.isSuperuser()) {
+    if (auto const& ctx = ExecContext::current();
+        !ctx.isSuperuserOrDisabled()) {
       if (auto r = ctx.canUseCollection(vocbase().name(), collection->name(),
                                         AccessLevel::Read);
           !r.ok()) {

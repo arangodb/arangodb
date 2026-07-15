@@ -84,9 +84,13 @@ class ExecContext {
   static ExecContext const& superuser();
   static std::shared_ptr<ExecContext const> superuserAsShared();
 
-  [[nodiscard]] bool isSuperuser() const noexcept {
+  [[nodiscard]] bool isSuperuserOrDisabled() const noexcept {
     // This will report `true` if authentication is disabled!
     return _authMode.isSuperuser() || _authMode.isDisabled();
+  }
+
+  [[nodiscard]] bool isSuperuser() const noexcept {
+    return _authMode.isSuperuser();
   }
 
   /// @brief tells you if this execution was canceled

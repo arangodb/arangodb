@@ -67,7 +67,7 @@ arangodb::Result RestAdminLogHandler::verifyPermitted(RequestType const type) {
 
   // do we have admin rights (if rights are active)
   if (loggerFeature.onlySuperUser()) {
-    if (!ExecContext::current().isSuperuser()) {
+    if (!ExecContext::current().isSuperuserOrDisabled()) {
       return arangodb::Result(TRI_ERROR_HTTP_FORBIDDEN,
                               "you need super user rights for log operations");
     }

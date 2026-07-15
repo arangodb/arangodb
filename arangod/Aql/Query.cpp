@@ -414,7 +414,7 @@ bool Query::tryLoadPlanFromCache() {
         // check if the current user has permissions on all the collections
         ExecContext const& exec = ExecContext::current();
 
-        if (!exec.isSuperuser()) {
+        if (!exec.isSuperuserOrDisabled()) {
           for (auto const& dataSource : cacheEntry->dataSources) {
             if (exec.canUseCollection(_vocbase.name(), dataSource.second.name,
                                       dataSource.second.level)

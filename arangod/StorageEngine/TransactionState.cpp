@@ -716,7 +716,7 @@ Result TransactionState::checkCollectionPermission(
   ExecContext const& exec = ExecContext::current();
 
   // no need to check for superuser, cluster_sync tests break otherwise
-  if (exec.isSuperuser()) {
+  if (exec.isSuperuserOrDisabled()) {
     return {};
   }
 

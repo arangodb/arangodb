@@ -276,7 +276,7 @@ void RestAdminServerHandler::handleTLS() {
     generateOk(rest::ResponseCode::OK, builder.slice());
   } else if (requestType == rest::RequestType::POST) {
     // Only the superuser may reload TLS data:
-    if (!ExecContext::current().isSuperuser()) {
+    if (!ExecContext::current().isSuperuserOrDisabled()) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
                     "only superusers may reload TLS data");
       return;
@@ -322,7 +322,7 @@ void RestAdminServerHandler::handleApiCalls() {
 
   // Check permission level
   if (_apiRecordingFeature.onlySuperUser()) {
-    if (!ExecContext::current().isSuperuser()) {
+    if (!ExecContext::current().isSuperuserOrDisabled()) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                     "You need super user rights for recording API operations");
       return;
@@ -377,7 +377,7 @@ void RestAdminServerHandler::handleAqlRecordedQueries() {
 
   // Check permission level
   if (_apiRecordingFeature.onlySuperUser()) {
-    if (!ExecContext::current().isSuperuser()) {
+    if (!ExecContext::current().isSuperuserOrDisabled()) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                     "you need super user rights for recording API operations");
       return;

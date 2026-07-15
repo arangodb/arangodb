@@ -80,7 +80,7 @@ using namespace arangodb;
 namespace {
 bool authorized(std::string const& user) {
   auto const& exec = arangodb::ExecContext::current();
-  if (exec.isSuperuser()) {
+  if (exec.isSuperuserOrDisabled()) {
     return true;
   }
   return (user == exec.user());
@@ -1542,7 +1542,8 @@ void Manager::toVelocyPack(VPackBuilder& builder, std::string_view database,
       [this, &builder, &database, details](TransactionId tid,
                                            ManagedTrx const& trx) {
         bool authorized = isAuthorized(trx, database);
-        if (details && arangodb::ExecContext::current().isSuperuser()) {
+        if (details &&
+            arangodb::ExecContext::current().isSuperuserOrDisabled()) {
           authorized = true;
         }
         if (!authorized) {
@@ -1720,7 +1721,7 @@ bool Manager::storeManagedState(
 
 bool Manager::isAuthorized(ManagedTrx const& trx) const {
   auto const& exec = ExecContext::current();
-  if (exec.isSuperuser()) {
+  if (exec.isSuperuserOrDisabled()) {
     // see the comment below, in isAuthorized(ManagedTrx const&,
     // std::string_view)
     return true;
@@ -1741,7 +1742,7 @@ bool Manager::isAuthorized(ManagedTrx const& trx) const {
 bool Manager::isAuthorized(ManagedTrx const& trx,
                            std::string_view database) const {
   auto const& exec = arangodb::ExecContext::current();
-  if (exec.isSuperuser()) {
+  if (exec.isSuperuserOrDisabled()) {
     // if we are a superuser, we do not check the database.
     // This is necessary because we have a few code paths where we no longer
     // have the ExecContext with the user who initiated the request (e.g., the

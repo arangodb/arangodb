@@ -45,7 +45,7 @@
 namespace {
 bool authorized(std::pair<arangodb::Cursor*, std::string> const& cursor) {
   auto const& exec = arangodb::ExecContext::current();
-  if (exec.isSuperuser()) {
+  if (exec.isSuperuserOrDisabled()) {
     return true;
   }
   return (cursor.second == exec.user());

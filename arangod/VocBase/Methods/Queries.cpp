@@ -58,7 +58,7 @@ arangodb::Result checkAuthorization(TRI_vocbase_t& vocbase, bool allDatabases) {
     if (!vocbase.isSystem()) {
       // request must be made in the system database
       res.reset(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
-    } else if (!ExecContext::current().isSuperuser()) {
+    } else if (!ExecContext::current().isSuperuserOrDisabled()) {
       // request must be made only by superusers
       res.reset(
           TRI_ERROR_FORBIDDEN,
@@ -208,7 +208,7 @@ Result Queries::clearSlow(TRI_vocbase_t& vocbase, bool allDatabases,
       return res.reset(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
     }
     auto const& context = ExecContext::current();
-    if (!context.isSuperuser()) {
+    if (!context.isSuperuserOrDisabled()) {
       // request must be made only by superusers
       return res.reset(
           TRI_ERROR_FORBIDDEN,
