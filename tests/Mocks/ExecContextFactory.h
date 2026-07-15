@@ -38,26 +38,8 @@
 
 namespace arangodb::tests::mocks {
 
-/// @brief Thin subclass of ExecContext whose sole purpose is to expose the
-/// protected ConstructorToken to the factory functions in this file.
-/// Never subclass this for any other reason.
-struct ExecContextAccessor final : ExecContext {
-  static std::shared_ptr<ExecContext> make(AuthMode authMode, bool apiHardened,
-                                           VocbasePtr vocbase) {
-    // std::make_shared cannot call a private constructor, so we use new
-    // directly here, which is valid inside the class scope.
-    return std::shared_ptr<ExecContext>(
-        new ExecContextAccessor(ConstructorToken{}, std::move(authMode),
-                                apiHardened, std::move(vocbase)));
-  }
-
- private:
-  ExecContextAccessor(ConstructorToken token, AuthMode authMode,
-                      bool apiHardened, VocbasePtr vocbase)
-      : ExecContext(token, std::move(authMode), apiHardened,
-                    std::move(vocbase)) {}
-};
-
+/// @brief Create an ExecContext without needing access to its protected
+/// constructor token.
 auto inline createSharedExecContext(AuthMode authMode, bool isRestApiHardened,
                                     VocbasePtr vocbase) {
   struct EC : ExecContext {
