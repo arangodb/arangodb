@@ -58,7 +58,8 @@ class VectorIndexBuildManager {
   explicit VectorIndexBuildManager(DatabaseFeature& dbFeature,
                                    MaintenanceFeature& maintenance,
                                    metrics::IRegistry& metricsRegistry,
-                                   Scheduler& scheduler);
+                                   Scheduler& scheduler,
+                                   std::chrono::duration<double> retryBackoff);
 
   void start();
   void beginShutdown();
@@ -70,8 +71,6 @@ class VectorIndexBuildManager {
   futures::Future<Result> waitForIndexReady(IndexId indexId);
 
  private:
-  static constexpr auto kRetryBackoff = std::chrono::minutes(10);
-
   struct FailedBuildInfo {
     std::chrono::steady_clock::time_point failedAt;
     std::uint64_t documentCount;
@@ -79,9 +78,9 @@ class VectorIndexBuildManager {
 
   using FailedBuildsMap = std::unordered_map<std::uint64_t, FailedBuildInfo>;
 
-  static bool shouldSkipRetry(FailedBuildsMap const& failedBuilds,
-                              std::uint64_t objectId,
-                              std::uint64_t currentDocCount);
+  bool shouldSkipRetry(FailedBuildsMap const& failedBuilds,
+                       std::uint64_t objectId,
+                       std::uint64_t currentDocCount) const;
 
   void run(std::stop_token stopToken);
 
@@ -101,6 +100,7 @@ class VectorIndexBuildManager {
   DatabaseFeature& _dbFeature;
   MaintenanceFeature& _maintenance;
   Scheduler& _scheduler;
+  std::chrono::duration<double> _retryBackoff;
   std::jthread _thread;
 
   ResourceMonitor _resourceMonitor;

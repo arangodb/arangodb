@@ -81,10 +81,12 @@ namespace arangodb::vector {
 
 VectorIndexBuildManager::VectorIndexBuildManager(
     DatabaseFeature& dbFeature, MaintenanceFeature& maintenance,
-    metrics::IRegistry& metricsRegistry, Scheduler& scheduler)
+    metrics::IRegistry& metricsRegistry, Scheduler& scheduler,
+    std::chrono::duration<double> retryBackoff)
     : _dbFeature(dbFeature),
       _maintenance(maintenance),
       _scheduler(scheduler),
+      _retryBackoff(retryBackoff),
       _resourceMonitor(GlobalResourceMonitor::instance()),
       _untrainedCount(metricsRegistry.add(arangodb_vector_index_unusable{})),
       _trainingOngoingCount(
@@ -161,14 +163,14 @@ void VectorIndexBuildManager::fulfillAllWaiters(Result const& result) {
 
 bool VectorIndexBuildManager::shouldSkipRetry(
     FailedBuildsMap const& failedBuilds, std::uint64_t objectId,
-    std::uint64_t currentDocCount) {
+    std::uint64_t currentDocCount) const {
   auto const it = failedBuilds.find(objectId);
   if (it == failedBuilds.end()) {
     return false;
   }
   auto const& info = it->second;
   bool backoffElapsed =
-      std::chrono::steady_clock::now() - info.failedAt >= kRetryBackoff;
+      std::chrono::steady_clock::now() - info.failedAt >= _retryBackoff;
   bool docCountChanged = currentDocCount != info.documentCount;
   // Retry if either the backoff has elapsed or the document count has
   // changed.  Using OR avoids permanently blocking retries when the doc
@@ -268,6 +270,16 @@ void VectorIndexBuildManager::scanAndBuild(std::stop_token const& stopToken,
 
         if (shouldSkipRetry(failedBuilds, vecIdx.objectId(), numDocs)) {
           skippedWaiters.insert(vecIdx.id().id());
+          auto const& info = failedBuilds.at(vecIdx.objectId());
+          auto const remaining =
+              std::chrono::duration_cast<std::chrono::duration<double>>(
+                  _retryBackoff -
+                  (std::chrono::steady_clock::now() - info.failedAt));
+          LOG_TOPIC("e172b", INFO, Logger::ENGINES)
+              << "[shard=" << vecIdx.collection().name()
+              << ", index=" << vecIdx.id().id()
+              << "] Vector index build in retry backoff, skipping retry for "
+              << remaining.count() << "s more.";
           continue;
         }
 
@@ -317,6 +329,13 @@ void VectorIndexBuildManager::scanAndBuild(std::stop_token const& stopToken,
           }
           failedBuilds[vecIdx.objectId()] = {std::chrono::steady_clock::now(),
                                              numDocs};
+          LOG_TOPIC("e173b", INFO, Logger::ENGINES)
+              << "[shard=" << vecIdx.collection().name()
+              << ", index=" << vecIdx.id().id() << "] Backing off retries for "
+              << std::chrono::duration_cast<std::chrono::duration<double>>(
+                     _retryBackoff)
+                     .count()
+              << "s (or until the document count changes).";
 
           reportIndexError(vocbase, *coll, vecIdx, res);
           continue;
