@@ -96,20 +96,13 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
   //      to the server being in read-only mode. I think we should
   //      change that, it seems sensible to communicate that to the
   //      user.
-  auto const effectiveCollectionAuthLevel =
-      [this](std::string_view db, std::string_view collection) {
-        auto const storedLevel =
-            _userManager.collectionAuthLevel(username(), db, collection, true);
-        auto const maxLevel =
-            ServerState::readOnly() ? auth::Level::RO : auth::Level::RW;
-        return std::min(storedLevel, maxLevel);
-      };
+  auto const effectiveCollectionAuthLevel = [this](
+                                                std::string_view db,
+                                                std::string_view collection) {
+    return _userManager.collectionAuthLevel(username(), db, collection, true);
+  };
   auto const effectiveDatabaseAuthLevel = [this](std::string_view db) {
-    auto const storedLevel =
-        _userManager.databaseAuthLevel(username(), db, true);
-    auto const maxLevel =
-        ServerState::readOnly() ? auth::Level::RO : auth::Level::RW;
-    return std::min(storedLevel, maxLevel);
+    return _userManager.databaseAuthLevel(username(), db, true);
   };
   auto const accessLevelToAuthLevel = overload{
       [](CollectionAccessLevel level) {
