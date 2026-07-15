@@ -35,7 +35,7 @@ struct CrashHandlerOptionsProvider
   void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
                           CrashHandlerFeatureOptions& options);
   void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> /*opts*/,
-                           CrashHandlerFeatureOptions& /*options*/) {};
+                           CrashHandlerFeatureOptions& /*options*/){};
 };
 
 }  // namespace arangodb::crash_handler

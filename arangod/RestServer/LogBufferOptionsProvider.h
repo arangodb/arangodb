@@ -32,7 +32,7 @@ struct LogBufferOptionsProvider
   void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
                           LogBufferFeatureOptions& options);
   void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> /*opts*/,
-                           LogBufferFeatureOptions& /*options*/) {};
+                           LogBufferFeatureOptions& /*options*/){};
 };
 
 }  // namespace arangodb

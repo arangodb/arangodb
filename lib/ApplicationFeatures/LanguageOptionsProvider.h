@@ -32,7 +32,7 @@ struct LanguageOptionsProvider
   void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
                           LanguageFeatureOptions& options);
   void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> /*opts*/,
-                           LanguageFeatureOptions& /*options*/) {};
+                           LanguageFeatureOptions& /*options*/){};
 };
 
 }  // namespace arangodb
