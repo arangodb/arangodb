@@ -115,7 +115,6 @@ void ArangodServer::addFeatures(int* ret) {
   addFeature<CacheManagerFeature>(cacheOptions, sharedPRNGFeature.getPRNG());
   addFeature<CheckVersionFeature>(ret, kNonServerFeatures);
   auto& clusterFeature = addFeature<ClusterFeature>(metrics);
-  addFeature<CrashHandlerFeature>(_dumpManager);
   auto& database = addFeature<DatabaseFeature>();
   auto& clusterUpgradeFeature = addFeature<ClusterUpgradeFeature>(database);
   addFeature<ConfigFeature>(std::string{_binaryName});
