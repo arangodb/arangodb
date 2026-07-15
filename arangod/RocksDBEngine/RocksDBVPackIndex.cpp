@@ -229,10 +229,12 @@ class RocksDBVPackIndexInIterator final : public IndexIterator {
 
     RocksDBVPackIndexSearchValueFormat format =
         RocksDBVPackIndexSearchValueFormat::kDetect;
-    _index->buildSearchValues(_resourceMonitor, _trx, node, variable,
-                              _indexIteratorOptions, _searchValues, format);
+    bool canProduceResults =
+        _index->buildSearchValues(_resourceMonitor, _trx, node, variable,
+                                  _indexIteratorOptions, _searchValues, format);
 
-    if (_format == RocksDBVPackIndexSearchValueFormat::kValuesOnly &&
+    if (canProduceResults &&
+        _format == RocksDBVPackIndexSearchValueFormat::kValuesOnly &&
         format == RocksDBVPackIndexSearchValueFormat::kIn) {
       reformatLookupCondition();
     }
@@ -243,6 +245,14 @@ class RocksDBVPackIndexInIterator final : public IndexIterator {
     size_t newMemoryUsage = _searchValues.size();
     _resourceMonitor.increaseMemoryUsage(newMemoryUsage);
     _memoryUsage += newMemoryUsage;
+
+    if (!canProduceResults) {
+      // the rebuilt lookup cannot produce any results (e.g. an empty IN
+      // list, or an `_id` lookup value that cannot refer to this
+      // collection). signal the caller that this lookup only produces an
+      // empty result.
+      return false;
+    }
 
     adjustIterator();
     return true;
@@ -360,8 +370,15 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
     auto searchValues = ThreadLocalBuilderLeaser::lease();
     RocksDBVPackIndexSearchValueFormat format =
         RocksDBVPackIndexSearchValueFormat::kValuesOnly;
-    _index->buildSearchValues(_resourceMonitor, _trx, node, variable,
-                              _indexIteratorOptions, *searchValues, format);
+    if (!_index->buildSearchValues(_resourceMonitor, _trx, node, variable,
+                                   _indexIteratorOptions, *searchValues,
+                                   format)) {
+      // the rebuilt lookup cannot produce any results (e.g. an `_id`
+      // lookup value that cannot refer to this collection). signal the
+      // caller that this lookup only produces an empty result.
+      return false;
+    }
+
     // note: we only support the simplified format when building index search
     // values! format must not have changed!
     TRI_ASSERT(format == RocksDBVPackIndexSearchValueFormat::kValuesOnly);
@@ -613,8 +630,15 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
 
     auto searchValues = ThreadLocalBuilderLeaser::lease();
     RocksDBVPackIndexSearchValueFormat format = _format;
-    _index->buildSearchValues(_resourceMonitor, _trx, node, variable,
-                              _indexIteratorOptions, *searchValues, format);
+    if (!_index->buildSearchValues(_resourceMonitor, _trx, node, variable,
+                                   _indexIteratorOptions, *searchValues,
+                                   format)) {
+      // the rebuilt lookup cannot produce any results (e.g. an `_id`
+      // lookup value that cannot refer to this collection). signal the
+      // caller that this lookup only produces an empty result.
+      return false;
+    }
+
     // note: we support two formats when building index search values:
     // - a generic format that supports < > <= >= and ==
     // - a simplified format that only supports ==
@@ -2424,9 +2448,17 @@ std::unique_ptr<IndexIterator> RocksDBVPackIndex::iteratorForCondition(
   auto searchValues = ThreadLocalBuilderLeaser::lease();
   RocksDBVPackIndexSearchValueFormat format =
       RocksDBVPackIndexSearchValueFormat::kDetect;
-  buildSearchValues(monitor, trx, node, reference, opts, *searchValues, format);
+  bool canProduceResults = buildSearchValues(monitor, trx, node, reference,
+                                             opts, *searchValues, format);
   // format must have been set to something valid now.
   TRI_ASSERT(format != RocksDBVPackIndexSearchValueFormat::kDetect);
+
+  if (!canProduceResults) {
+    // the lookup cannot produce any results (e.g. an IN lookup with no
+    // or invalid values, or an `_id` lookup value that cannot refer to
+    // a document of this collection)
+    return std::make_unique<EmptyIndexIterator>(&_collection, trx);
+  }
 
   VPackSlice searchSlice = searchValues->slice();
 
@@ -2434,12 +2466,6 @@ std::unique_ptr<IndexIterator> RocksDBVPackIndex::iteratorForCondition(
 
   if (format == RocksDBVPackIndexSearchValueFormat::kIn) {
     // IN!
-    if (searchSlice.length() == 0 ||
-        (searchSlice.length() == 1 && searchSlice.at(0).isArray() &&
-         searchSlice.at(0).length() == 0)) {
-      // IN with no/invalid condition
-      return std::make_unique<EmptyIndexIterator>(&_collection, trx);
-    }
 
     // build the actual lookup iterator, which can only handle a single
     // equality lookup. however, we will then wrap this lookup iterator
@@ -2476,17 +2502,64 @@ void RocksDBVPackIndex::buildEmptySearchValues(
   result.close();
 }
 
-void RocksDBVPackIndex::buildSearchValues(
+bool RocksDBVPackIndex::isIdLookupOnKeyField(
+    size_t fieldIndex,
+    std::vector<basics::AttributeName> const& accessPath) const {
+  // detect conditions on `doc._id` that were matched against an indexed
+  // `_key` field (cf. the corresponding rule in
+  // SortedIndexAttributeMatcher::accessFitsIndex)
+  return fieldIndex < _fields.size() && _fields[fieldIndex].size() == 1 &&
+         _fields[fieldIndex][0].name == StaticStrings::KeyString &&
+         accessPath.size() == 1 &&
+         accessPath[0].name == StaticStrings::IdString;
+}
+
+bool RocksDBVPackIndex::tryAddIdLookupValue(transaction::Methods* trx,
+                                            aql::AstNode const* value,
+                                            VPackBuilder& searchValues) const {
+  // translate a single `_id` lookup value into a `_key` lookup value,
+  // verifying that it refers to this collection. shared with the primary
+  // index via Index::extractKeyFromIdLookupValue.
+  if (value->isStringValue() && value->getStringLength() > 0) {
+    auto key = Index::extractKeyFromIdLookupValue(*trx, _collection,
+                                                  value->getStringView());
+    if (key.has_value()) {
+      searchValues.add(
+          VPackValuePair(key->data(), key->size(), VPackValueType::String));
+      return true;
+    }
+  }
+  // lookup value is not a string, not a valid document id, or refers to a
+  // different collection: it cannot match any document of this collection.
+  // the lookup must be omitted by the caller, analogous to the primary
+  // index producing no lookup keys for such values.
+  return false;
+}
+
+bool RocksDBVPackIndex::addEqualityLookupValue(
+    transaction::Methods* trx, size_t fieldIndex,
+    std::vector<basics::AttributeName> const& accessPath,
+    aql::AstNode const* value, VPackBuilder& searchValues) const {
+  if (isIdLookupOnKeyField(fieldIndex, accessPath) && value->isConstant()) {
+    return tryAddIdLookupValue(trx, value, searchValues);
+  }
+
+  value->toVelocyPackValue(searchValues);
+  return true;
+}
+
+bool RocksDBVPackIndex::buildSearchValues(
     ResourceMonitor& monitor, transaction::Methods* trx,
     aql::AstNode const* node, aql::Variable const* reference,
     IndexIteratorOptions const& opts, VPackBuilder& searchValues,
     RocksDBVPackIndexSearchValueFormat& format) const {
+  bool canProduceResults = true;
   if (node == nullptr) {
     // We only use this index for sort. Empty searchValue
     buildEmptySearchValues(searchValues);
   } else {
-    buildSearchValuesInner(monitor, trx, node, reference, opts, searchValues,
-                           format);
+    canProduceResults = buildSearchValuesInner(monitor, trx, node, reference,
+                                               opts, searchValues, format);
   }
 
   TRI_IF_FAILURE("PersistentIndex::noIterator") {
@@ -2498,9 +2571,10 @@ void RocksDBVPackIndex::buildSearchValues(
     // simple (values only) format!
     format = RocksDBVPackIndexSearchValueFormat::kValuesOnly;
   }
+  return canProduceResults;
 }
 
-void RocksDBVPackIndex::buildSearchValuesInner(
+bool RocksDBVPackIndex::buildSearchValuesInner(
     ResourceMonitor& monitor, transaction::Methods* trx,
     aql::AstNode const* node, aql::Variable const* reference,
     IndexIteratorOptions const& opts, VPackBuilder& searchValues,
@@ -2564,7 +2638,13 @@ void RocksDBVPackIndex::buildSearchValuesInner(
 
     if (format == RocksDBVPackIndexSearchValueFormat::kValuesOnly) {
       TRI_ASSERT(comp->type == aql::NODE_TYPE_OPERATOR_BINARY_EQ);
-      value->toVelocyPackValue(searchValues);
+      if (!addEqualityLookupValue(trx, usedFields, paramPair.second, value,
+                                  searchValues)) {
+        // the lookup value cannot refer to a document of this collection.
+        // we will not produce any result then
+        buildEmptySearchValues(searchValues);
+        return false;
+      }
       continue;
     }
 
@@ -2590,9 +2670,8 @@ void RocksDBVPackIndex::buildSearchValuesInner(
         if (!value->isArray() || value->numMembers() == 0) {
           // IN lookup value is not an array or empty. we will not
           // produce any result then
-          format = RocksDBVPackIndexSearchValueFormat::kIn;
           buildEmptySearchValues(searchValues);
-          return;
+          return false;
         }
 
         needNormalize = true;
@@ -2603,7 +2682,38 @@ void RocksDBVPackIndex::buildSearchValuesInner(
       break;
     }
     // We have to add the value always, the key was added before
-    value->toVelocyPackValue(searchValues);
+    if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
+      if (!addEqualityLookupValue(trx, usedFields, paramPair.second, value,
+                                  searchValues)) {
+        // the lookup value cannot refer to a document of this collection.
+        // we will not produce any result then
+        buildEmptySearchValues(searchValues);
+        return false;
+      }
+    } else if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_IN &&
+               !isAttributeExpanded(usedFields) && value->isArray() &&
+               isIdLookupOnKeyField(usedFields, paramPair.second)) {
+      // translate every `_id` lookup value in the IN list into a `_key`
+      // lookup value, omitting values that cannot refer to a document of
+      // this collection
+      size_t numAdded = 0;
+      searchValues.openArray();
+      for (size_t m = 0; m < value->numMembers(); ++m) {
+        if (tryAddIdLookupValue(trx, value->getMemberUnchecked(m),
+                                searchValues)) {
+          ++numAdded;
+        }
+      }
+      searchValues.close();
+      if (numAdded == 0) {
+        // none of the lookup values can refer to a document of this
+        // collection. we will not produce any result then
+        buildEmptySearchValues(searchValues);
+        return false;
+      }
+    } else {
+      value->toVelocyPackValue(searchValues);
+    }
     searchValues.close();
   }
 
@@ -2695,6 +2805,8 @@ void RocksDBVPackIndex::buildSearchValuesInner(
                RocksDBVPackIndexSearchValueFormat::kOperatorsAndValues);
     format = RocksDBVPackIndexSearchValueFormat::kIn;
   }
+
+  return true;
 }
 
 /// @brief Transform the list of search slices to search values.

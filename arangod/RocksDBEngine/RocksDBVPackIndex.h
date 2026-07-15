@@ -167,21 +167,53 @@ class RocksDBVPackIndex : public RocksDBIndex {
   void buildEmptySearchValues(velocypack::Builder& result) const;
 
   // build new search values. this can also be called from the
-  // VPackIndexIterator
-  void buildSearchValues(ResourceMonitor& monitor, transaction::Methods* trx,
+  // VPackIndexIterator.
+  // returns true if the search values were built successfully. returns
+  // false if the lookup cannot produce any results (e.g. an empty IN
+  // list, or an `_id` lookup value that cannot refer to a document of
+  // this collection); in that case the contents of `searchValues` must
+  // not be used.
+  bool buildSearchValues(ResourceMonitor& monitor, transaction::Methods* trx,
                          aql::AstNode const* node,
                          aql::Variable const* reference,
                          IndexIteratorOptions const& opts,
                          velocypack::Builder& searchValues,
                          RocksDBVPackIndexSearchValueFormat& format) const;
 
-  void buildSearchValuesInner(ResourceMonitor& monitor,
+  bool buildSearchValuesInner(ResourceMonitor& monitor,
                               transaction::Methods* trx,
                               aql::AstNode const* node,
                               aql::Variable const* reference,
                               IndexIteratorOptions const& opts,
                               velocypack::Builder& searchValues,
                               RocksDBVPackIndexSearchValueFormat& format) const;
+
+  // whether a condition accessing `accessPath` that was matched against
+  // index field `fieldIndex` is a lookup on `_id` answered by an indexed
+  // `_key` field. such lookups need their values translated from `_id`
+  // strings into `_key` strings (cf. Index::extractKeyFromIdLookupValue).
+  bool isIdLookupOnKeyField(
+      size_t fieldIndex,
+      std::vector<basics::AttributeName> const& accessPath) const;
+
+  // add a single `_id` lookup value, translated into a `_key` lookup value
+  // with collection verification. returns true if a lookup value was
+  // added. returns false - without adding anything - if the value cannot
+  // refer to a document of this collection (not a string, not a valid
+  // document id, or a different collection); such a lookup must be omitted
+  // by the caller, as it cannot produce any results.
+  bool tryAddIdLookupValue(transaction::Methods* trx,
+                           aql::AstNode const* value,
+                           velocypack::Builder& searchValues) const;
+
+  // add the lookup value for an equality condition on field `fieldIndex`,
+  // translating `_id` values into `_key` values where needed. returns
+  // false - without adding anything - if the lookup cannot produce any
+  // results (cf. tryAddIdLookupValue).
+  bool addEqualityLookupValue(
+      transaction::Methods* trx, size_t fieldIndex,
+      std::vector<basics::AttributeName> const& accessPath,
+      aql::AstNode const* value, velocypack::Builder& searchValues) const;
 
  protected:
   Result insert(transaction::Methods& trx, RocksDBMethods* methods,

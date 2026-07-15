@@ -98,6 +98,36 @@ std::tuple<size_t, size_t, double, double> analyzeConditions(
 
 }  // namespace
 
+namespace {
+
+// whether `attribute` is exactly `_id` and `idx` has a single-attribute
+// `_key` field, so that lookups on `_id` can be answered by the index after
+// translating the lookup values (cf. Index::extractKeyFromIdLookupValue and
+// the corresponding rule in accessFitsIndex below)
+bool idLookupSupportedViaKeyField(
+    arangodb::Index const* idx,
+    std::vector<arangodb::basics::AttributeName> const& attribute) {
+  if (attribute.size() != 1 || attribute[0].shouldExpand ||
+      attribute[0].name != arangodb::StaticStrings::IdString) {
+    return false;
+  }
+  if (idx->type() !=
+          arangodb::Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX &&
+      idx->type() !=
+          arangodb::Index::IndexType::TRI_IDX_TYPE_PERSISTENT_INDEX) {
+    return false;
+  }
+  for (size_t i = 0; i < idx->fields().size(); ++i) {
+    if (idx->fields()[i].size() == 1 && !idx->isAttributeExpanded(i) &&
+        idx->fields()[i][0].name == arangodb::StaticStrings::KeyString) {
+      return true;
+    }
+  }
+  return false;
+}
+
+}  // namespace
+
 bool SortedIndexAttributeMatcher::accessFitsIndex(
     arangodb::Index const* idx,            // index
     arangodb::aql::AstNode const* access,  // attribute access
@@ -158,7 +188,8 @@ bool SortedIndexAttributeMatcher::accessFitsIndex(
         attributeData.first == reference &&
         !arangodb::basics::TRI_AttributeNamesHaveExpansion(
             attributeData.second) &&
-        idx->attributeMatches(attributeData.second, isPrimaryIndex)) {
+        (idx->attributeMatches(attributeData.second, isPrimaryIndex) ||
+         ::idLookupSupportedViaKeyField(idx, attributeData.second))) {
       // doc.value IN 'value'
       // can use this index
     } else if (other->isAttributeAccessForVariable(attributeData) &&
@@ -189,10 +220,25 @@ bool SortedIndexAttributeMatcher::accessFitsIndex(
     bool match = arangodb::basics::AttributeName::isIdentical(idx->fields()[i],
                                                               fieldNames, true);
 
-    // make exception for primary index as we do not need to match "_key, _id"
-    // but can go directly for "_id"
-    if (!match && isPrimaryIndex && i == 0 &&
-        fieldNames[i].name == StaticStrings::IdString) {
+    // an access to `_id` can be answered by an index whose field is `_key`:
+    // the lookup value is translated from an `_id` string into a `_key`
+    // string - including verification that the value refers to this
+    // collection - by the index implementations, via the shared
+    // Index::extractKeyFromIdLookupValue. this covers the primary index
+    // (its single field is `_key`) as well as persistent indexes with a
+    // `_key` field. the primary index keeps its legacy behavior of
+    // accepting all operators; for persistent indexes the rule is
+    // restricted to == and IN, because range comparisons on `_id` must not
+    // be mapped onto `_key` ordering.
+    if (!match && fieldNames.size() == 1 && !fieldNames[0].shouldExpand &&
+        fieldNames[0].name == StaticStrings::IdString &&
+        idx->fields()[i].size() == 1 && !idx->isAttributeExpanded(i) &&
+        idx->fields()[i][0].name == StaticStrings::KeyString &&
+        (isPrimaryIndex ||
+         (idx->type() ==
+              arangodb::Index::IndexType::TRI_IDX_TYPE_PERSISTENT_INDEX &&
+          (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ ||
+           op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN)))) {
       match = true;
     }
 

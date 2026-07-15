@@ -476,8 +476,10 @@ void Projections::toVelocyPackFromIndexCompactArray(
 
   for (size_t k = 0; k < _projections.size(); k++) {
     auto& it = _projections[k];
-    // _id cannot be part of a user-defined index
-    TRI_ASSERT(it.type != AttributeNamePath::Type::IdAttribute);
+    // note: `_id` projections are valid here: while _id cannot be part of a
+    // user-defined index, it can be served from stored values or from a
+    // covered `_key` value (cf. Index::covers); it is rebuilt via
+    // makeIdFromParts below
 
     // we will get a Slice with an array of index values. now we need
     // to look up the array values from the correct positions to
