@@ -126,12 +126,12 @@ void RestQueryCacheHandler::replaceProperties() {
     return;
   }
 
-  if (!_vocbase.isSystem()) {
-    generateError(rest::ResponseCode::FORBIDDEN,
-                  TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
-    return;
-  }
   if (_request->requestedApiVersion() > 0) {
+    if (!_vocbase.isSystem()) {
+      generateError(rest::ResponseCode::FORBIDDEN,
+                    TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
+      return;
+    }
     if (auto r = ExecContext::current().canUseAdminAction(
             auth::perms::AdminQueryCache{});
         r.fail()) {
