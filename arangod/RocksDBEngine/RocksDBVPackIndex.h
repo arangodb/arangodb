@@ -192,8 +192,7 @@ class RocksDBVPackIndex : public RocksDBIndex {
   // add an `_id` lookup value translated into a `_key` lookup value;
   // returns false (adding nothing) if the value cannot refer to a
   // document of this collection
-  bool tryAddIdLookupValue(transaction::Methods* trx,
-                           aql::AstNode const* value,
+  bool tryAddIdLookupValue(transaction::Methods* trx, aql::AstNode const* value,
                            velocypack::Builder& searchValues) const;
 
   // add the lookup value for an equality condition, translating `_id`
