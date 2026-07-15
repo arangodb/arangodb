@@ -131,8 +131,7 @@ bool idLookupSupportedViaKeyField(
 
 // same, for any field of the index
 bool idLookupSupportedViaKeyField(
-    Index const* idx,
-    std::vector<basics::AttributeName> const& attribute,
+    Index const* idx, std::vector<basics::AttributeName> const& attribute,
     aql::AstNode const* op) {
   for (size_t i = 0; i < idx->fields().size(); ++i) {
     if (idLookupSupportedViaKeyField(idx, i, attribute, op)) {
