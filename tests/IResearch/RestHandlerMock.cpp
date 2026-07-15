@@ -47,7 +47,7 @@ GeneralRequestMock::GeneralRequestMock(TRI_vocbase_t& vocbase)
   // Create a superuser ExecContext that holds a reference to the vocbase,
   // replacing the old VocbaseContext which no longer exists.
   auto ctx = arangodb::tests::mocks::ExecContextAccessor::make(
-      arangodb::AuthMode{arangodb::AuthMode::Superuser{}},
+      arangodb::AuthMode{arangodb::AuthMode::Superuser{}}, false,
       vocbase.getSharedPtr());
   setRequestContext(std::move(ctx));
 }
