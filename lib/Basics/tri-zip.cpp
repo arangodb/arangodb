@@ -18,13 +18,13 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <algorithm>
 #include <cstring>
+#include <format>
 
 #include "tri-zip.h"
 
@@ -76,11 +76,11 @@ static char const* translateError(int err) {
 /// @brief extracts the current file
 ////////////////////////////////////////////////////////////////////////////////
 
-static ErrorCode ExtractCurrentFile(unzFile uf, void* buffer,
-                                    size_t const bufferSize,
-                                    char const* outPath, bool const skipPaths,
-                                    bool const overwrite, char const* password,
-                                    std::string& errorMessage) {
+static ErrorCode ExtractCurrentFile(
+    unzFile uf, void* buffer, size_t const bufferSize, char const* outPath,
+    bool const skipPaths, bool const overwrite, char const* password,
+    std::string& errorMessage,
+    std::function<bool(std::filesystem::path)> isAllowedAccess) {
   char filenameInZip[256];
   char* filenameWithoutPath;
   char* p;
@@ -132,6 +132,12 @@ static ErrorCode ExtractCurrentFile(unzFile uf, void* buffer,
   if (*filenameWithoutPath == '\0') {
     if (!skipPaths) {
       fullPath = basics::FileUtils::buildFilename(outPath, filenameInZip);
+
+      if (!isAllowedAccess(fullPath)) {
+        errorMessage = std::format("Filename '{}' failed validation", fullPath);
+        return TRI_ERROR_FORBIDDEN;
+      }
+
       auto res = TRI_CreateRecursiveDirectory(fullPath.c_str(), systemError,
                                               errorMessage);
 
@@ -161,6 +167,11 @@ static ErrorCode ExtractCurrentFile(unzFile uf, void* buffer,
     // prefix the name from the zip file with the path specified
     fullPath = basics::FileUtils::buildFilename(outPath, writeFilename);
 
+    if (!isAllowedAccess(fullPath)) {
+      errorMessage = std::format("Filename '{}' failed validation.", fullPath);
+      return TRI_ERROR_FORBIDDEN;
+    }
+
     if (!overwrite && TRI_ExistsFile(fullPath.c_str())) {
       errorMessage = std::string("not allowed to overwrite file ") + fullPath;
       return TRI_ERROR_CANNOT_OVERWRITE_FILE;
@@ -178,6 +189,10 @@ static ErrorCode ExtractCurrentFile(unzFile uf, void* buffer,
       // create target directory recursively
       std::string tmp =
           basics::FileUtils::buildFilename(outPath, filenameInZip);
+      if (!isAllowedAccess(tmp)) {
+        errorMessage = std::format("not allowed to create directory {}", tmp);
+        return TRI_ERROR_FORBIDDEN;
+      }
       auto res =
           TRI_CreateRecursiveDirectory(tmp.c_str(), systemError, errorMessage);
 
@@ -196,6 +211,10 @@ static ErrorCode ExtractCurrentFile(unzFile uf, void* buffer,
       // strip filename so we only have the directory name
       std::string dir =
           TRI_Dirname(basics::FileUtils::buildFilename(outPath, filenameInZip));
+      if (!isAllowedAccess(dir)) {
+        errorMessage = std::format("not allowed to create directory {}", dir);
+        return TRI_ERROR_FORBIDDEN;
+      }
       auto res =
           TRI_CreateRecursiveDirectory(dir.c_str(), systemError, errorMessage);
 
@@ -256,10 +275,11 @@ static ErrorCode ExtractCurrentFile(unzFile uf, void* buffer,
 /// @brief unzips a single file
 ////////////////////////////////////////////////////////////////////////////////
 
-static ErrorCode UnzipFile(unzFile uf, void* buffer, size_t const bufferSize,
-                           char const* outPath, bool const skipPaths,
-                           bool const overwrite, char const* password,
-                           std::string& errorMessage) {
+static ErrorCode UnzipFile(
+    unzFile uf, void* buffer, size_t const bufferSize, char const* outPath,
+    bool const skipPaths, bool const overwrite, char const* password,
+    std::string& errorMessage,
+    std::function<bool(std::filesystem::path)> isAllowedAccess) {
   unz_global_info64 gi;
   uLong i;
   auto res = TRI_ERROR_NO_ERROR;
@@ -272,8 +292,9 @@ static ErrorCode UnzipFile(unzFile uf, void* buffer, size_t const bufferSize,
   }
 
   for (i = 0; i < gi.number_entry; i++) {
-    res = ExtractCurrentFile(uf, buffer, bufferSize, outPath, skipPaths,
-                             overwrite, password, errorMessage);
+    res =
+        ExtractCurrentFile(uf, buffer, bufferSize, outPath, skipPaths,
+                           overwrite, password, errorMessage, isAllowedAccess);
 
     if (res != TRI_ERROR_NO_ERROR) {
       break;
@@ -298,9 +319,10 @@ static ErrorCode UnzipFile(unzFile uf, void* buffer, size_t const bufferSize,
 /// @brief zips a file
 ////////////////////////////////////////////////////////////////////////////////
 
-ErrorCode TRI_ZipFile(char const* filename, char const* dir,
-                      std::vector<std::string> const& files,
-                      char const* password) {
+ErrorCode TRI_ZipFile(
+    char const* filename, char const* dir,
+    std::vector<std::string> const& files, char const* password,
+    std::function<bool(std::filesystem::path path)> isAllowedAccess) {
   void* buffer;
 #ifdef USEWIN32IOAPI
   zlib_filefunc64_def ffunc;
@@ -315,6 +337,10 @@ ErrorCode TRI_ZipFile(char const* filename, char const* dir,
 
   if (buffer == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
+  }
+
+  if (!isAllowedAccess(filename)) {
+    return TRI_ERROR_FORBIDDEN;
   }
 
 #ifdef USEWIN32IOAPI
@@ -340,6 +366,10 @@ ErrorCode TRI_ZipFile(char const* filename, char const* dir,
       fullfile = files[i];
     } else {
       fullfile = arangodb::basics::FileUtils::buildFilename(dir, files[i]);
+    }
+
+    if (!isAllowedAccess(fullfile)) {
+      return TRI_ERROR_FORBIDDEN;
     }
 
     zip_fileinfo zi;
@@ -466,9 +496,10 @@ ErrorCode TRI_Adler32(char const* filename, uint32_t& checksum) {
 /// @brief unzips a file
 ////////////////////////////////////////////////////////////////////////////////
 
-ErrorCode TRI_UnzipFile(char const* filename, char const* outPath,
-                        bool skipPaths, bool overwrite, char const* password,
-                        std::string& errorMessage) {
+ErrorCode TRI_UnzipFile(
+    char const* filename, char const* outPath, bool skipPaths, bool overwrite,
+    char const* password, std::string& errorMessage,
+    std::function<bool(std::filesystem::path)> isAllowedAccess) {
 #ifdef USEWIN32IOAPI
   zlib_filefunc64_def ffunc;
 #endif
@@ -477,6 +508,10 @@ ErrorCode TRI_UnzipFile(char const* filename, char const* outPath,
 
   if (buffer == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
+  }
+
+  if (!isAllowedAccess(filename)) {
+    return TRI_ERROR_FORBIDDEN;
   }
 
 #ifdef USEWIN32IOAPI
@@ -492,7 +527,7 @@ ErrorCode TRI_UnzipFile(char const* filename, char const* outPath,
   }
 
   auto res = UnzipFile(uf, buffer, bufferSize, outPath, skipPaths, overwrite,
-                       password, errorMessage);
+                       password, errorMessage, isAllowedAccess);
 
   unzClose(uf);
 

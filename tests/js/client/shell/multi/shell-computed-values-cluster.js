@@ -1,10 +1,9 @@
 /*jshint globalstrict:false, strict:false, maxlen : 4000 */
-/* global assertTrue, assertEqual */
+/* global arango, assertTrue, assertEqual */
 
 'use strict';
 const jsunity = require('jsunity');
 const db = require("@arangodb").db;
-const request = require("@arangodb/request");
 let { instanceRole } = require('@arangodb/testutils/instance');
 
 let IM = global.instanceManager;
@@ -48,18 +47,22 @@ function collectionComputedValuesClusterSuite() {
         }
         randValues[server.id] = {};
 
-        let result = request({method: "GET", url: server.url + "/_api/collection/" + shard + "/properties"});
-        let jsonRes = result.json;
+        let result = server.toThisInstance(() => {
+          return arango.GET_RAW("/_api/collection/" + shard + "/properties");
+        });
+        let jsonRes = result.parsedBody;
         assertTrue(jsonRes.hasOwnProperty("computedValues"));
         assertEqual(jsonRes.computedValues.length, 1);
         assertTrue(jsonRes.computedValues[0].hasOwnProperty("name"));
         assertEqual(jsonRes.computedValues[0].name, "value2");
 
-        c.toArray().forEach(el => {
-          result = request({method: "GET", url: server.url + "/_api/document/" + el._id});
-          jsonRes = result.json;
-          assertTrue(jsonRes.hasOwnProperty("randValue"));
-          randValues[server.id][el._key] = el.randValue;
+        server.toThisInstance(() => {
+          c.toArray().forEach(el => {
+            result = arango.GET_RAW("/_api/document/" + el._id);
+            jsonRes = result.parsedBody;
+            assertTrue(jsonRes.hasOwnProperty("randValue"));
+            randValues[server.id][el._key] = el.randValue;
+          });
         });
 
       });

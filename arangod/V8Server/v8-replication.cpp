@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef USE_V8
@@ -70,7 +69,7 @@ static void JS_StateLoggerReplication(
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  TRI_GET_GLOBALS();
   StorageEngine& engine = v8g->server().getFeature<DatabaseFeature>().engine();
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
   TRI_vocbase_t& vocbase = GetContextVocBase(isolate);
@@ -98,7 +97,7 @@ static void JS_TickRangesLoggerReplication(
   v8::Handle<v8::Array> result;
 
   VPackBuilder builder;
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  TRI_GET_GLOBALS();
   StorageEngine& engine = v8g->server().getFeature<DatabaseFeature>().engine();
   Result res = engine.createTickRanges(builder);
   if (res.fail()) {
@@ -122,7 +121,7 @@ static void JS_FirstTickLoggerReplication(
   v8::HandleScope scope(isolate);
 
   TRI_voc_tick_t tick = UINT64_MAX;
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  TRI_GET_GLOBALS();
   StorageEngine& engine = v8g->server().getFeature<DatabaseFeature>().engine();
   Result res = engine.firstTick(tick);
   if (res.fail()) {
@@ -164,7 +163,7 @@ static void JS_LastLoggerReplication(
   auto transactionContext =
       transaction::V8Context::create(vocbase, origin, true);
   VPackBuilder builder(transactionContext->getVPackOptions());
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  TRI_GET_GLOBALS();
   StorageEngine& engine = v8g->server().getFeature<DatabaseFeature>().engine();
   Result res = engine.lastLogger(vocbase, tickStart, tickEnd, builder);
   v8::Handle<v8::Value> result;
@@ -218,7 +217,7 @@ static void SynchronizeReplication(
             .FromMaybe(v8::Local<v8::Value>()));
   }
 
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  TRI_GET_GLOBALS();
   ReplicationApplierConfiguration configuration =
       ReplicationApplierConfiguration::fromVelocyPack(
           v8g->server(), builder.slice(), databaseName);
@@ -354,7 +353,7 @@ static ReplicationApplier* getContinuousApplier(v8::Isolate* isolate,
     applier = vocbase.replicationApplier();
   } else {
     // applier type global
-    TRI_GET_SERVER_GLOBALS(ArangodServer);
+    TRI_GET_GLOBALS();
     auto& replicationFeature = v8g->server().getFeature<ReplicationFeature>();
     applier = replicationFeature.globalReplicationApplier();
   }
@@ -547,7 +546,7 @@ static void StateApplierReplicationAll(
     TRI_V8_THROW_EXCEPTION_USAGE("stateAll()");
   }
 
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  TRI_GET_GLOBALS();
   DatabaseFeature& databaseFeature =
       v8g->server().getFeature<DatabaseFeature>();
 

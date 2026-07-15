@@ -20,7 +20,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Alexandru Petenchea
 // //////////////////////////////////////////////////////////////////////////////
 
 const internal = require("internal");

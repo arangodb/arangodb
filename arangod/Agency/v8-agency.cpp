@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "v8-agency.h"
@@ -43,7 +42,7 @@ static void JS_StateAgent(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  TRI_GET_GLOBALS();
   V8SecurityFeature& v8security = v8g->server().getFeature<V8SecurityFeature>();
   if (!v8security.isInternalContext(isolate) &&
       !v8security.isAdminScriptContext(isolate)) {
@@ -72,7 +71,7 @@ static void JS_EnabledAgent(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  TRI_GET_GLOBALS();
   V8SecurityFeature& v8security = v8g->server().getFeature<V8SecurityFeature>();
   if (!v8security.isInternalContext(isolate) &&
       !v8security.isAdminScriptContext(isolate)) {
@@ -90,7 +89,7 @@ static void JS_LeadingAgent(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  TRI_GET_GLOBALS();
   V8SecurityFeature& v8security = v8g->server().getFeature<V8SecurityFeature>();
   if (!v8security.isInternalContext(isolate) &&
       !v8security.isAdminScriptContext(isolate)) {
@@ -124,7 +123,7 @@ static void JS_ReadAgent(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  TRI_GET_GLOBALS();
   V8SecurityFeature& v8security = v8g->server().getFeature<V8SecurityFeature>();
   if (!v8security.isInternalContext(isolate) &&
       !v8security.isAdminScriptContext(isolate)) {
@@ -161,7 +160,7 @@ static void JS_WriteAgent(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  TRI_GET_GLOBALS();
   V8SecurityFeature& v8security = v8g->server().getFeature<V8SecurityFeature>();
   if (!v8security.isInternalContext(isolate) &&
       !v8security.isAdminScriptContext(isolate)) {

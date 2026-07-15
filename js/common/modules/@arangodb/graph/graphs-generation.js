@@ -22,7 +22,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Roman Rabinovich
 // //////////////////////////////////////////////////////////////////////////////
 
 const communityGenerator = function (vColl, label) {

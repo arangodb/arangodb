@@ -22,7 +22,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Max Neunhoeffer
 // //////////////////////////////////////////////////////////////////////////////
 
 const functionsDocumentation = {
@@ -232,7 +231,7 @@ function shellServerOnly (options) {
   }
 
   const name = 'shell_server_only';
-  let testCases = tu.scanTestPaths(testPaths[name].shell_server_only, options);
+  let testCases = tu.scanTestPaths(testPaths[name], options);
 
   testCases = tu.splitBuckets(options, testCases);
 

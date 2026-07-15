@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef USE_V8
@@ -291,7 +289,7 @@ void JS_Create(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   PREVENT_EMBEDDED_TRANSACTION();
 
-  TRI_GET_SERVER_GLOBALS(arangodb::ArangodServer);
+  TRI_GET_GLOBALS();
   auto& analyzers =
       v8g->server().getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
 
@@ -434,7 +432,7 @@ void JS_Get(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   PREVENT_EMBEDDED_TRANSACTION();
 
-  TRI_GET_SERVER_GLOBALS(arangodb::ArangodServer);
+  TRI_GET_GLOBALS();
   auto& analyzers =
       v8g->server().getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
 
@@ -507,7 +505,7 @@ void JS_List(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  TRI_GET_SERVER_GLOBALS(arangodb::ArangodServer);
+  TRI_GET_GLOBALS();
   auto& analyzers =
       v8g->server().getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
   auto sysVocbase =
@@ -595,7 +593,7 @@ void JS_Remove(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   PREVENT_EMBEDDED_TRANSACTION();
 
-  TRI_GET_SERVER_GLOBALS(arangodb::ArangodServer);
+  TRI_GET_GLOBALS();
   auto& analyzers =
       v8g->server().getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
 

@@ -22,7 +22,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Manuel Pöter
 // //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
@@ -31,7 +30,6 @@ const jsunity = require('jsunity');
 const internal = require('internal');
 const arangodb = require('@arangodb');
 const analyzers = require("@arangodb/analyzers");
-const request = require("@arangodb/request");
 const db = arangodb.db;
 const {
   deriveTestSuite,

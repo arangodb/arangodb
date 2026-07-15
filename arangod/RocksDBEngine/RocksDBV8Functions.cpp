@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBV8Functions.h"
@@ -34,7 +33,6 @@
 #include "RocksDBEngine/RocksDBReplicationContext.h"
 #include "RocksDBEngine/RocksDBReplicationContextGuard.h"
 #include "RocksDBEngine/RocksDBReplicationManager.h"
-#include "RestServer/arangod.h"
 #include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Utils/ExecContext.h"
@@ -85,7 +83,7 @@ static void JS_FlushWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
   }
 
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  TRI_GET_GLOBALS();
   v8g->server().getFeature<DatabaseFeature>().engine().flushWal(
       waitForSync, flushColumnFamilies);
   TRI_V8_RETURN_TRUE();
@@ -204,7 +202,7 @@ static void JS_WaitForEstimatorSync(
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  TRI_GET_GLOBALS();
 
   v8g->server().getFeature<DatabaseFeature>().engine().waitForEstimatorSync();
 
@@ -218,7 +216,7 @@ static void JS_WalRecoveryStartSequence(
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  TRI_GET_GLOBALS();
   auto* engine = dynamic_cast<RocksDBEngine*>(
       &v8g->server().getFeature<DatabaseFeature>().engine());
   if (engine == nullptr) {
