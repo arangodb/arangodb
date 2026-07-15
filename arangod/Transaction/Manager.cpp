@@ -1721,7 +1721,7 @@ bool Manager::storeManagedState(
 
 bool Manager::isAuthorized(ManagedTrx const& trx) const {
   auto const& exec = ExecContext::current();
-  if (exec.isSuperuserOrDisabled()) {
+  if (exec.isSuperuser()) {
     // see the comment below, in isAuthorized(ManagedTrx const&,
     // std::string_view)
     return true;
@@ -1742,7 +1742,7 @@ bool Manager::isAuthorized(ManagedTrx const& trx) const {
 bool Manager::isAuthorized(ManagedTrx const& trx,
                            std::string_view database) const {
   auto const& exec = arangodb::ExecContext::current();
-  if (exec.isSuperuserOrDisabled()) {
+  if (exec.isSuperuser()) {
     // if we are a superuser, we do not check the database.
     // This is necessary because we have a few code paths where we no longer
     // have the ExecContext with the user who initiated the request (e.g., the
