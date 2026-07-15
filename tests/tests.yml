@@ -223,6 +223,9 @@
     suites:
       - rta_makedata:
           args:
+            suffix: single
+      - rta_makedata:
+          args:
             cluster: true
             suffix: cluster
             encryptionAtRest: true

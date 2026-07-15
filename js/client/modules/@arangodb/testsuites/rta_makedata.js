@@ -1,5 +1,5 @@
 /* jshint strict: false, sub: true */
-/* global print db */
+/* global print */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -97,6 +97,16 @@ function makeDataWrapper (options) {
       return true;
     }
 
+    postStart() {
+      if (!this.options.cluster) {
+        this.instanceManager.setPassvoid();
+      }
+      return {
+        message: '',
+        state: true,
+      };
+    }
+
     checkSutCleannessBefore(te) {
       if (this.continueTesting) {
         return super.checkSutCleannessBefore(te);
@@ -108,6 +118,22 @@ function makeDataWrapper (options) {
         return super.checkSutCleannessAfter(te);
       }
       return false;
+    }
+
+    createDump() {
+      this.dumpConfig = ct.createBaseConfig('dump', this.options, this.instanceManager);
+      this.dumpConfig.setOutputDirectory('dump');
+      this.dumpConfig.setIncludeSystem(true);
+      this.dumpConfig.setAllDatabases();
+      return ct.run.arangoDumpRestoreWithConfig(this.dumpConfig, this.options, this.instanceManager.rootDir, this.options.coreCheck);
+
+    }
+    restoreDump() {
+      this.restoreConfig = ct.createBaseConfig('restore', this.options, this.instanceManager);
+      this.restoreConfig.setInputDirectory('dump', true);
+      this.restoreConfig.setIncludeSystem(true);
+      this.restoreConfig.setAllDatabases();
+      return ct.run.arangoDumpRestoreWithConfig(this.restoreConfig, this.options, this.instanceManager.rootDir, this.options.coreCheck);
     }
 
     runMakeData(moreargv, file, whichRTA, count, testCount, launch, res) {
@@ -225,6 +251,31 @@ function makeDataWrapper (options) {
             moreargv = [ '--disabledDbserverUUID', stoppedDbServerInstance.id];
             if (this.options.replicationVersion === 2 || this.options.replicationVersion === "2") {
               this.instanceManager.removeServerFromAgency(stoppedDbServerInstance.id);
+            }
+          }
+        } else {
+          if (count === 2) {
+            this.createDump();
+            this.restoreDump();
+          } else if (count === 3) {
+            try {
+              if (this.options.oldSource !== undefined) {
+                print("switching binary set");
+                pu.switchBinarySet(1);
+              }
+              this.instanceManager.upgradeCycleInstance(false, {});
+              this.restoreDump();
+            } catch(e) {
+              res.status = false;
+              res.failed += 1;
+              res[whichRTA] = {
+                'forceTerminate': true,
+                'message': `upgradeCycle failed by: ${e.message}\n${e.stack}`,
+                'failed': 1,
+                'status': false,
+                'duration': 0.0
+              };
+              return;
             }
           }
         }
