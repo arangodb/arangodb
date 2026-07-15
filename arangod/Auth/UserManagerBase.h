@@ -47,6 +47,12 @@ class UserManagerBase : public UserManager {
   void setGlobalVersion(uint64_t version) noexcept override final;
   [[nodiscard]] uint64_t globalVersion() const noexcept override final;
 
+  // Returns the internal version - the version last loaded from DB
+  // (UserManagerImpl) or bumped on every setAuthInfo call (UserManagerTester).
+  // Exposed (non-virtually) for integration tests that use a real
+  // UserManagerImpl (e.g. UserManagerClusterTest).
+  [[nodiscard]] uint64_t internalVersion() const noexcept;
+
   Result accessUser(std::string const& user,
                     ConstUserCallback&&) override final;
   bool userExists(std::string const& user) override final;
@@ -91,6 +97,9 @@ class UserManagerBase : public UserManager {
   std::atomic<uint64_t> _globalVersion;
   // Caches permissions and other user info.
   UserMap _userCache;
+  // Version last loaded from DB (UserManagerImpl) or bumped on every
+  // setAuthInfo call (UserManagerTester).
+  std::atomic<uint64_t> _internalVersion;
 
  private:
   bool checkPassword(std::string const& username, std::string const& password);

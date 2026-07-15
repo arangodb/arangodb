@@ -62,11 +62,6 @@ class UserManagerImpl final : public UserManagerBase {
 
   void shutdown() override;
 
-  // Returns the internal version — the version last loaded from DB.
-  // Exposed (non-virtually) for integration tests that use a real
-  // UserManagerImpl (e.g. UserManagerClusterTest).
-  uint64_t internalVersion() const noexcept;
-
  private:
   // Load users and permissions from local database.
   // Returns the version that was loaded and written to the _internalVersion.
@@ -88,7 +83,6 @@ class UserManagerImpl final : public UserManagerBase {
   // underlying application server
   application_features::ApplicationServer& _server;
 
-  std::atomic<uint64_t> _internalVersion;
   std::jthread _userCacheUpdateThread;
 };
 }  // namespace auth

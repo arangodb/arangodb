@@ -24,7 +24,6 @@
 
 #include "Auth/UserManagerBase.h"
 
-#include <atomic>
 #include <functional>
 
 namespace arangodb::auth {
@@ -38,6 +37,7 @@ namespace arangodb::auth {
 /// Extra public methods (not on the UserManager interface):
 ///   setAuthInfo(UserMap const&) — replaces _userCache; bumps _internalVersion
 ///   internalVersion() const noexcept — read _internalVersion for assertions
+///   (both inherited from UserManagerBase)
 class UserManagerTester final : public UserManagerBase {
  public:
   UserManagerTester() = default;
@@ -74,15 +74,9 @@ class UserManagerTester final : public UserManagerBase {
   /// @brief Replace the entire user cache. Bumps _internalVersion.
   void setAuthInfo(UserMap const& userEntryMap);
 
-  /// @brief Read the internal version (for test assertions).
-  uint64_t internalVersion() const noexcept;
-
  protected:
   // No thread / version check needed in tests.
   void checkIfUserDataIsAvailable() const override {}
-
- private:
-  std::atomic<uint64_t> _internalVersion{0};
 };
 
 }  // namespace arangodb::auth

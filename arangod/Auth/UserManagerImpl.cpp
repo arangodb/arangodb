@@ -82,7 +82,7 @@ constexpr auto kVersionMax = std::numeric_limits<uint64_t>::max();
 
 UserManagerImpl::UserManagerImpl(
     application_features::ApplicationServer& server)
-    : _server(server), _internalVersion(0) {}
+    : _server(server) {}
 
 UserManagerImpl::~UserManagerImpl() { shutdown(); }
 
@@ -339,10 +339,6 @@ uint64_t UserManagerImpl::loadFromDB() noexcept {
         << "Exception when loading users from db";
   }
   return 0u;
-}
-
-uint64_t UserManagerImpl::internalVersion() const noexcept {
-  return _internalVersion.load(std::memory_order_acquire);
 }
 
 void UserManagerImpl::checkIfUserDataIsAvailable() const {

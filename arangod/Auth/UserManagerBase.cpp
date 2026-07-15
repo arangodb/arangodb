@@ -58,7 +58,7 @@ void UserManagerBase::ConvertLegacyFormat(VPackSlice doc,
   }
 }
 
-UserManagerBase::UserManagerBase() : _globalVersion(1) {}
+UserManagerBase::UserManagerBase() : _globalVersion(1), _internalVersion(0) {}
 
 std::string UserManagerBase::translateCollectionName(
     std::string_view /*dbname*/, std::string_view coll) {
@@ -81,6 +81,10 @@ void UserManagerBase::setGlobalVersion(uint64_t const version) noexcept {
 /// @brief used for caching
 uint64_t UserManagerBase::globalVersion() const noexcept {
   return _globalVersion.load(std::memory_order_acquire);
+}
+
+uint64_t UserManagerBase::internalVersion() const noexcept {
+  return _internalVersion.load(std::memory_order_acquire);
 }
 
 Result UserManagerBase::accessUser(std::string const& user,

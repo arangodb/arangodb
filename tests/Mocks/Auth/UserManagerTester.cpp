@@ -45,10 +45,6 @@ void UserManagerTester::setAuthInfo(UserMap const& userEntryMap) {
   _internalVersion.fetch_add(1, std::memory_order_relaxed);
 }
 
-uint64_t UserManagerTester::internalVersion() const noexcept {
-  return _internalVersion.load(std::memory_order_relaxed);
-}
-
 // ---- in-memory implementations
 // -----------------------------------------------
 
