@@ -761,8 +761,7 @@ Result RestReplicationHandler::testPermissions() {
           ClusterInfo& ci = _clusterFeature.clusterInfo();
           auto maybeShardID = ShardID::shardIdFromString(collectionName);
           if (maybeShardID.fail()) {
-            // Compatibility with old APcu
-            // I, which would return
+            // Compatibility with old API, which would return
             // an empty collection name if we were not handing in a shard.
             return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
           }
