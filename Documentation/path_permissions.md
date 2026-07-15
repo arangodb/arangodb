@@ -239,6 +239,9 @@ return a `Result`, so that a decline can return the actual reason
 
  - `canDumpCollection(std::string_view db, std::string_view coll) -> Result`
  - `canRestoreCollection(std::string_view db, std::string_view coll) -> Result`
+ - `canRestoreCreateView(std::string_view db, std::string_view viewName, std::vector<std::string> linkedCollNames) -> Result`
+ - `canRestoreDropView(std::string_view db, std::string_view view) -> Result`
+ - `canRestoreWriteData(std::string_view db, std::string_view coll) -> Result`
 
  - `canCreateIndex(std::string_view db, std::string_view coll) -> Result`
  - `canDropIndex(std::stgring_view db, std::string_view coll) -> Result`
@@ -347,6 +350,33 @@ central implementation of these methods.
    of specific per-collection permissions.
 
  - `canRestoreCollection(std::string_view db, std::string_view coll) -> Result`
+
+   Behaves exactly like `canUseCollection(db, coll, CollectionAccessLevel::WriteData)`,
+   except that access is additionally granted if the identity has RW access to
+   the `_system` database (i.e. is an "admin"; equivalent to
+   `canUseAdminAction(rbac::Category::AdminRestore{})`). This mirrors the classic
+   behaviour of `arangorestore`, which could always be run by an admin, regardless
+   of specific per-collection permissions.
+
+ - `canRestoreCreateView(std::string_view db, std::string_view viewName, std::vector<std::string> linkedCollNames) -> Result`
+
+   Behaves exactly like `canCreateView(db, viewName, linkedCollNames)`,
+   except that access is additionally granted if the identity has RW access
+   to the `_system` database (i.e. is an "admin"; equivalent to
+   `canUseAdminAction(rbac::Category::AdminRestore{})`). This mirrors the
+   classic behaviour of `arangorestore`, which could always be run by an
+   admin, regardless of specific per-view permissions.
+
+ - `canRestoreDropView(std::string_view db, std::string_view view) -> Result`
+
+   Behaves exactly like `canDropView(db, view)`, except that access is
+   additionally granted if the identity has RW access to the `_system`
+   database (i.e. is an "admin"; equivalent to
+   `canUseAdminAction(rbac::Category::AdminRestore{})`). This mirrors the
+   classic behaviour of `arangorestore`, which could always be run by an
+   admin, regardless of specific per-view permissions.
+
+ - `canRestoreWriteData(std::string_view db, std::string_view coll) -> Result`
 
    Behaves exactly like `canUseCollection(db, coll, CollectionAccessLevel::WriteData)`,
    except that access is additionally granted if the identity has RW access to
@@ -518,6 +548,22 @@ central implementation of these methods.
    `db:ReadCollection`, OR check RBAC action `db:AdminDump`.
 
  - `canRestoreCollection(std::string_view db, std::string_view coll) -> Result`
+
+   check collection access level to be at least RWDATA, i.e., check RBAC
+   actions `db:ReadCollection` and `db:WriteCollectionData`, OR check RBAC
+   action `db:AdminRestore`.
+
+ - `canRestoreCreateView(std::string_view db, std::string_view viewName, std::vector<std::string> linkedCollNames) -> Result`
+
+   check view access level to be RW, i.e., check RBAC actions `db:ReadView`
+   and `db:WriteView`, OR check RBAC action `db:AdminRestore`.
+
+ - `canRestoreDropView(std::string_view db, std::string_view view) -> Result`
+
+   check view access level to be RW, i.e., check RBAC actions `db:ReadView`
+   and `db:WriteView`, OR check RBAC action `db:AdminRestore`.
+
+ - `canRestoreWriteData(std::string_view db, std::string_view coll) -> Result`
 
    check collection access level to be at least RWDATA, i.e., check RBAC
    actions `db:ReadCollection` and `db:WriteCollectionData`, OR check RBAC
