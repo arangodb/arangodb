@@ -20,38 +20,34 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "ProgramOptions/ProgramOptions.h"
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "Benchmark/ArangoBenchOptionProviders.h"
 
-#include <tuple>
+#include <memory>
+#include <string>
 
-namespace arangodb::application_features {
+namespace arangodb {
+namespace options {
+class ProgramOptions;
+}
 
-template<class... Providers>
-class FeatureOptionProviderContainer final {
+class ArangoBenchServer final : public application_features::ApplicationServer {
  public:
-  void declareOptions(std::shared_ptr<options::ProgramOptions> programOptions) {
-    std::apply(
-        [&](auto&... providers) {
-          (providers.declareOptions(programOptions), ...);
-        },
-        _providers);
-  }
+  ArangoBenchServer(std::shared_ptr<options::ProgramOptions> options,
+                    char const* binaryPath, std::string binaryName, int* ret);
 
-  void validateOptions(
-      std::shared_ptr<options::ProgramOptions> programOptions) {
-    std::apply(
-        [&](auto&... providers) {
-          (providers.validateOptions(programOptions), ...);
-        },
-        _providers);
-  }
+  void addFeatures();
 
-  template<typename ProviderType>
-  auto& getOptions() const {
-    return std::get<ProviderType>(_providers).options();
-  }
+ protected:
+  void collectOptions() final;
+  void validateOptions() final;
+  void addFeaturesWithOptionProvider() final;
 
  private:
-  std::tuple<Providers...> _providers{};
+  std::shared_ptr<options::ProgramOptions> _programOptions;
+  std::string _binaryName;
+  int* _ret;
+  ArangoBenchOptionProviders _optionProviders;
 };
-}  // namespace arangodb::application_features
+
+}  // namespace arangodb

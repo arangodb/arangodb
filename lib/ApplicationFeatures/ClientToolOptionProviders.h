@@ -20,38 +20,24 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "ProgramOptions/ProgramOptions.h"
+#include "ApplicationFeatures/FeatureOptionProviderContainer.h"
+#include "ApplicationFeatures/FileSystemOptionsProvider.h"
+#include "ApplicationFeatures/ProcessEnvironmentOptionsProvider.h"
+#include "ApplicationFeatures/VersionOptionsProvider.h"
+#include "Logger/LoggerOptionsProvider.h"
+#include "Random/RandomOptionsProvider.h"
 
-#include <tuple>
+namespace arangodb {
 
-namespace arangodb::application_features {
+// Options-provider set shared by all client-tool binaries. Individual
+// binaries can extend it with additional providers via `Extras...`.
+template<class... Extras>
+using ClientToolOptionProviders =
+    application_features::FeatureOptionProviderContainer<
+        FileSystemOptionsProvider, LoggerOptionsProvider,
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+        ProcessEnvironmentOptionsProvider,
+#endif
+        RandomOptionsProvider, VersionOptionsProvider, Extras...>;
 
-template<class... Providers>
-class FeatureOptionProviderContainer final {
- public:
-  void declareOptions(std::shared_ptr<options::ProgramOptions> programOptions) {
-    std::apply(
-        [&](auto&... providers) {
-          (providers.declareOptions(programOptions), ...);
-        },
-        _providers);
-  }
-
-  void validateOptions(
-      std::shared_ptr<options::ProgramOptions> programOptions) {
-    std::apply(
-        [&](auto&... providers) {
-          (providers.validateOptions(programOptions), ...);
-        },
-        _providers);
-  }
-
-  template<typename ProviderType>
-  auto& getOptions() const {
-    return std::get<ProviderType>(_providers).options();
-  }
-
- private:
-  std::tuple<Providers...> _providers{};
-};
-}  // namespace arangodb::application_features
+}  // namespace arangodb

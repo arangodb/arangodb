@@ -20,38 +20,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "ProgramOptions/ProgramOptions.h"
+#include "ApplicationFeatures/ClientToolOptionProviders.h"
 
-#include <tuple>
-
-namespace arangodb::application_features {
-
-template<class... Providers>
-class FeatureOptionProviderContainer final {
- public:
-  void declareOptions(std::shared_ptr<options::ProgramOptions> programOptions) {
-    std::apply(
-        [&](auto&... providers) {
-          (providers.declareOptions(programOptions), ...);
-        },
-        _providers);
-  }
-
-  void validateOptions(
-      std::shared_ptr<options::ProgramOptions> programOptions) {
-    std::apply(
-        [&](auto&... providers) {
-          (providers.validateOptions(programOptions), ...);
-        },
-        _providers);
-  }
-
-  template<typename ProviderType>
-  auto& getOptions() const {
-    return std::get<ProviderType>(_providers).options();
-  }
-
- private:
-  std::tuple<Providers...> _providers{};
-};
-}  // namespace arangodb::application_features
+namespace arangodb {
+using ArangoExportOptionProviders = ClientToolOptionProviders<>;
+}  // namespace arangodb

@@ -25,7 +25,8 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "ApplicationFeatures/ApplicationFeaturePhase.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/FeatureOptionProviderContainer.h"
+#include "RestServer/ArangodOptionProviers.h"
+
 
 namespace arangodb {
 
@@ -58,7 +59,7 @@ class ArangodServer : public application_features::ApplicationServer {
   std::string_view _binaryName;
   std::shared_ptr<crash_handler::DumpManager> _dumpManager;
   std::shared_ptr<crash_handler::DataSourceRegistry> _dataSourceRegistry;
-  application_features::FeatureOptionProviderContainer _optionProviders;
+  ArangodOptionProviders _optionProviders;
 };
 
 }  // namespace arangodb
