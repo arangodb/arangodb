@@ -652,37 +652,6 @@ exports.triggerMetrics = function () {
   require("internal").sleep(2);
 };
 
-exports.activateFailure = function (name) {
-  const isCluster = require("internal").isCluster();
-  let roles = [];
-  if (isCluster) {
-    roles.push("dbserver");
-    roles.push("coordinator");
-  } else {
-    roles.push("single");
-  }
-  
-  roles.forEach(role => {
-    exports.getEndpointsByType(role).forEach(ep => exports.debugSetFailAt(ep, name));
-  });
-
-};
-
-exports.deactivateFailure = function (name) {
-  const isCluster = require("internal").isCluster();
-  let roles = [];
-  if (isCluster) {
-    roles.push("dbserver");
-    roles.push("coordinator");
-  } else {
-    roles.push("single");
-  }
-
-  roles.forEach(role => {
-    exports.getEndpointsByType(role).forEach(ep => exports.debugClearFailAt(ep, name));
-  });
-};
-
 exports.getEndpoints = function (role) {
   return exports.getServers(role).map(instance => endpointToURL(instance.endpoint));
 };
