@@ -19,7 +19,6 @@ ALL_TRUE = {
     "build-rpm-packages": "true",
     "build-tarballs": "true",
     "build-alpine-images": "true",
-    "build-ubi-images": "true",
     "build-deb-images": "true",
     "sign-packages": "true",
     "scan-viruses": "true",
@@ -118,7 +117,7 @@ def test_docker_only_drops_package_pipeline(base_config):
     assert set(requires_of(config, "publish-nightly")) == {
         f"{kind}-{distro}-{arch}"
         for kind in ("docker-enterprise", "security-check-docker")
-        for distro in ("alpine", "ubi", "deb")
+        for distro in ("alpine", "deb")
         for arch in ("amd64", "arm64")
     }
 
@@ -128,12 +127,11 @@ def test_packages_only_drops_docker_jobs(base_config):
         base_config,
         **{
             "build-alpine-images": "false",
-            "build-ubi-images": "false",
             "build-deb-images": "false",
         },
     )
     names = workflow_names(config)
-    for distro in ("alpine", "ubi", "deb"):
+    for distro in ("alpine", "deb"):
         for arch in ("amd64", "arm64"):
             assert f"docker-enterprise-{distro}-{arch}" not in names
             assert f"security-check-docker-{distro}-{arch}" not in names
@@ -142,11 +140,9 @@ def test_packages_only_drops_docker_jobs(base_config):
 
 
 def test_per_distro_image_flags(base_config):
-    config = run_generate(
-        base_config, **{"build-ubi-images": "false", "build-deb-images": "false"}
-    )
+    config = run_generate(base_config, **{"build-deb-images": "false"})
     names = workflow_names(config)
-    for distro in ("ubi", "deb"):
+    for distro in ("deb",):
         for arch in ("amd64", "arm64"):
             assert f"docker-enterprise-{distro}-{arch}" not in names
             assert f"security-check-docker-{distro}-{arch}" not in names
@@ -158,7 +154,6 @@ def test_per_distro_image_flags(base_config):
     names = workflow_names(config)
     for arch in ("amd64", "arm64"):
         assert f"docker-enterprise-alpine-{arch}" not in names
-        assert f"docker-enterprise-ubi-{arch}" in names
         assert f"docker-enterprise-deb-{arch}" in names
 
 
@@ -171,14 +166,13 @@ def test_nothing_selected_is_an_error(base_config):
                 "build-rpm-packages": "false",
                 "build-tarballs": "false",
                 "build-alpine-images": "false",
-                "build-ubi-images": "false",
                 "build-deb-images": "false",
             },
         )
 
 
 def test_every_generated_graph_is_consistent(base_config):
-    # brute-force all 2^7 parameter combinations; generate() either raises
+    # brute-force all 2^N parameter combinations; generate() either raises
     # the explicit nothing-selected error or yields a consistent graph
     # (check_workflow inside generate() raises otherwise)
     options = list(ALL_TRUE)

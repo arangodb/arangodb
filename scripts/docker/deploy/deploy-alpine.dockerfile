@@ -3,8 +3,8 @@ MAINTAINER Max Neunhoeffer <hackers@arangodb.com>
 
 ARG arch
 
-RUN apk add --no-cache pwgen nodejs numactl numactl-tools
-RUN apk add --no-cache npm && npm install -g foxx-cli && apk del npm
+RUN apk update --no-cache && apk upgrade --no-cache
+RUN apk add --no-cache pwgen numactl numactl-tools elfutils
 
 COPY ./install/ /
 COPY setup.sh /setup.sh

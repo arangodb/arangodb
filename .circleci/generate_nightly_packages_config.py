@@ -20,7 +20,7 @@ import yaml
 WORKFLOW_NAME = "nightly-packages"
 ARCHES = ("amd64", "arm64")
 PACKAGE_FORMATS = ("deb", "rpm", "tar")
-DOCKER_DISTROS = ("alpine", "ubi", "deb")
+DOCKER_DISTROS = ("alpine", "deb")
 
 JobEntry = Union[str, Dict[str, Any]]
 
@@ -36,7 +36,6 @@ def disabled_jobs(
     rpm: bool,
     tar: bool,
     alpine_image: bool,
-    ubi_image: bool,
     deb_image: bool,
     sign: bool,
     scan: bool,
@@ -54,7 +53,7 @@ def disabled_jobs(
 
     # Each distro image has its own build-*-image flag, and every built
     # image gets its own Trivy job.
-    distros = {"alpine": alpine_image, "ubi": ubi_image, "deb": deb_image}
+    distros = {"alpine": alpine_image, "deb": deb_image}
     for distro, enabled in distros.items():
         if not enabled:
             drop.update(f"docker-enterprise-{distro}-{arch}" for arch in ARCHES)
@@ -156,21 +155,19 @@ def generate(base: Dict[str, Any], args: argparse.Namespace) -> Dict[str, Any]:
             args.build_rpm_packages,
             args.build_tarballs,
             args.build_alpine_images,
-            args.build_ubi_images,
             args.build_deb_images,
         )
     ):
         raise ValueError(
             "nothing selected: enable at least one of build-debian-packages, "
             "build-rpm-packages, build-tarballs, build-alpine-images, "
-            "build-ubi-images, build-deb-images"
+            "build-deb-images"
         )
     drop = disabled_jobs(
         deb=args.build_debian_packages,
         rpm=args.build_rpm_packages,
         tar=args.build_tarballs,
         alpine_image=args.build_alpine_images,
-        ubi_image=args.build_ubi_images,
         deb_image=args.build_deb_images,
         sign=args.sign_packages,
         scan=args.scan_viruses,
@@ -190,7 +187,6 @@ def parse_args(argv: List[str]) -> Tuple[argparse.ArgumentParser, argparse.Names
         "build-rpm-packages",
         "build-tarballs",
         "build-alpine-images",
-        "build-ubi-images",
         "build-deb-images",
         "sign-packages",
         "scan-viruses",

@@ -14,8 +14,8 @@ version: 2.1
 #   - RPM packages (server, client, debuginfo)    [build-rpm-packages]
 #   - TAR.GZ bundles (server, client)             [build-tarballs]
 #   - Docker images + multi-arch manifests
-#     (Alpine [build-alpine-images], Red Hat UBI [build-ubi-images] and
-#     Ubuntu [build-deb-images] based; UBI/Ubuntu tags carry -ubi / -deb)
+#     (Alpine [build-alpine-images] and Ubuntu [build-deb-images] based;
+#     Ubuntu tags carry -deb)
 #
 # Build flow (packaging scripts live in scripts/packaging/):
 #   prepare-nightly     derives the nightly version files and creates
@@ -29,7 +29,7 @@ version: 2.1
 #                       running inside the regular Ubuntu build image (which
 #                       also carries debhelper/rpmbuild/clamav)
 #   build-nightly-docker-image
-#                       one job per distro (Alpine/UBI/Ubuntu) and arch;
+#                       one job per distro (Alpine/Ubuntu) and arch;
 #                       builds the image and exports it via "docker save"
 #                       into the workspace (no push here)
 #   scan-packages       ClamAV scan of all packages [scan-viruses]; the AV
@@ -91,10 +91,9 @@ version: 2.1
 #              arangodb/enterprise-preview:devel-nightly                 (only when the tree was "devel")
 #   Every manifest references the dated per-arch images directly; no
 #   rolling per-arch tags are pushed.
-#   The UBI and Ubuntu images insert -ubi / -deb after the version part and
-#   before the arch suffix, e.g.
-#   3.12.10-nightly.20260702-ubi-amd64, and form <TAG>-ubi / <TAG>-deb
-#   manifests, e.g. 3.12-nightly-ubi. Alpine stays suffix-less.
+#   The Ubuntu images insert -deb after the version part and before the
+#   arch suffix, e.g. 3.12.10-nightly.20260702-deb-amd64, and form
+#   <TAG>-deb manifests, e.g. 3.12-nightly-deb. Alpine stays suffix-less.
 #
 # Required environment (contexts / project settings):
 #   clamav-aws-bucket context:      AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY
@@ -178,13 +177,9 @@ parameters:
     type: boolean
     default: true
     description: "Build the Alpine-based Docker images (one per architecture: amd64 and arm64); the publish job pushes them and creates their multi-arch manifests at the end. The default image with suffix-less tags."
-  build-ubi-images:
-    type: boolean
-    default: false
-    description: "Build the Red Hat UBI-based Docker images (one per architecture: amd64 and arm64); the publish job pushes them and creates their multi-arch manifests at the end. Tags carry -ubi between version and arch."
   build-deb-images:
     type: boolean
-    default: false
+    default: true
     description: "Build the Ubuntu-based Docker images (one per architecture: amd64 and arm64); the publish job pushes them and creates their multi-arch manifests at the end. Tags carry -deb between version and arch."
   push-images-to-gcr-also:
     type: boolean
@@ -702,17 +697,16 @@ jobs:
 
   # ── Docker images ─────────────────────────────────────────────────────────────
   build-nightly-docker-image:
-    # Builds one nightly image (Alpine, UBI, or Ubuntu based) and exports
-    # it via "docker save" into
-    # the workspace. Nothing is pushed here; publish-nightly pushes.
-    # Tag scheme: the non-Alpine distros insert -ubi / -deb between the
-    # version and the arch suffix (e.g. 3.12.10-nightly.20260708-ubi-amd64).
+    # Builds one nightly image (Alpine or Ubuntu based) and exports it via
+    # "docker save" into the workspace. Nothing is pushed here;
+    # publish-nightly pushes. Tag scheme: the Ubuntu images insert -deb
+    # between version and arch suffix (e.g. 3.12.10-nightly.20260708-deb-amd64).
     parameters:
       arch:
         type: string        # amd64 | arm64
       distro:
         type: enum
-        enum: ["alpine", "ubi", "deb"]
+        enum: ["alpine", "deb"]
         default: "alpine"
       resource-class:
         type: string
@@ -773,27 +767,9 @@ jobs:
 
             cd /home/circleci/project/scripts/docker/deploy
 
-            # The UBI image carries Red Hat metadata labels and ships the
-            # license text in the image; the other distros need no extra
-            # args.
-            EXTRA_BUILD_ARGS=()
-            if [ "${DISTRO}" = "ubi" ]; then
-              cp /home/circleci/project/LICENSE .
-              EXTRA_BUILD_ARGS=(
-                --build-arg name=enterprise
-                --build-arg vendor=ArangoDB
-                --build-arg "version=${VERSION}"
-                --build-arg "release=${VERSION}"
-                --build-arg "summary=ArangoDB Enterprise"
-                --build-arg "description=ArangoDB Enterprise"
-                --build-arg maintainer=redhat@arangodb.com
-              )
-            fi
-
             docker build \
               --platform "linux/<< parameters.arch >>" \
               --build-arg arch=<< parameters.arch >> \
-              "${EXTRA_BUILD_ARGS[@]}" \
               --no-cache \
               --pull \
               -t "${VERSION_TAG}" \
@@ -1066,7 +1042,7 @@ jobs:
         type: string
       distro:
         type: enum
-        enum: ["alpine", "ubi", "deb"]
+        enum: ["alpine", "deb"]
         default: "alpine"
     docker:
       - image: cimg/base:current
@@ -1376,11 +1352,10 @@ jobs:
             # The pushed refs (incl. digests) are collected across this and
             # the commit step into a publish report stored as a job artifact.
             REPORT=/tmp/docker-publish-report.txt
-            # Alpine is the suffix-less default image; UBI and Ubuntu images
-            # carry -ubi / -deb between version and arch.
+            # Alpine is the suffix-less default image; Ubuntu images
+            # carry -deb between version and arch.
             DISTROS=()
             if [ "<< pipeline.parameters.build-alpine-images >>" = "true" ]; then DISTROS+=("alpine"); fi
-            if [ "<< pipeline.parameters.build-ubi-images >>" = "true" ]; then DISTROS+=("ubi"); fi
             if [ "<< pipeline.parameters.build-deb-images >>" = "true" ]; then DISTROS+=("deb"); fi
             if [ ${#DISTROS[@]} -eq 0 ]; then
               echo "Docker images not selected, nothing was pushed." > "${REPORT}"
@@ -1516,7 +1491,6 @@ jobs:
 
             DISTROS=()
             if [ "<< pipeline.parameters.build-alpine-images >>" = "true" ]; then DISTROS+=("alpine"); fi
-            if [ "<< pipeline.parameters.build-ubi-images >>" = "true" ]; then DISTROS+=("ubi"); fi
             if [ "<< pipeline.parameters.build-deb-images >>" = "true" ]; then DISTROS+=("deb"); fi
             if [ ${#DISTROS[@]} -gt 0 ]; then
               set -x
@@ -1585,7 +1559,6 @@ jobs:
 
             DISTROS=()
             if [ "<< pipeline.parameters.build-alpine-images >>" = "true" ]; then DISTROS+=("alpine"); fi
-            if [ "<< pipeline.parameters.build-ubi-images >>" = "true" ]; then DISTROS+=("ubi"); fi
             if [ "<< pipeline.parameters.build-deb-images >>" = "true" ]; then DISTROS+=("deb"); fi
             if [ ${#DISTROS[@]} -eq 0 ]; then
               echo "Docker images not selected, skipping Docker reports"
@@ -1678,7 +1651,6 @@ jobs:
                [ "<< pipeline.parameters.build-rpm-packages >>" = "false" ] && \
                [ "<< pipeline.parameters.build-tarballs >>" = "false" ] && \
                [ "<< pipeline.parameters.build-alpine-images >>" = "false" ] && \
-               [ "<< pipeline.parameters.build-ubi-images >>" = "false" ] && \
                [ "<< pipeline.parameters.build-deb-images >>" = "false" ]; then
               echo "Nothing was published to GCS, skipping index regeneration"
               exit 0
@@ -1741,14 +1713,6 @@ workflows:
           requires: [compile-enterprise-amd64]
 
       - build-nightly-docker-image:
-          name: docker-enterprise-ubi-amd64
-          arch: amd64
-          distro: ubi
-          resource-class: large
-          context: [ circleci-token, coredb-workspace-aws-bucket ]
-          requires: [compile-enterprise-amd64]
-
-      - build-nightly-docker-image:
           name: docker-enterprise-deb-amd64
           arch: amd64
           distro: deb
@@ -1790,14 +1754,6 @@ workflows:
           name: docker-enterprise-alpine-arm64
           arch: arm64
           distro: alpine
-          resource-class: arm.large
-          context: [ circleci-token, coredb-workspace-aws-bucket ]
-          requires: [compile-enterprise-arm64]
-
-      - build-nightly-docker-image:
-          name: docker-enterprise-ubi-arm64
-          arch: arm64
-          distro: ubi
           resource-class: arm.large
           context: [ circleci-token, coredb-workspace-aws-bucket ]
           requires: [compile-enterprise-arm64]
@@ -1880,12 +1836,6 @@ workflows:
           requires: [docker-enterprise-alpine-amd64]
 
       - security-check-docker-image:
-          name: security-check-docker-ubi-amd64
-          arch: amd64
-          distro: ubi
-          requires: [docker-enterprise-ubi-amd64]
-
-      - security-check-docker-image:
           name: security-check-docker-deb-amd64
           arch: amd64
           distro: deb
@@ -1896,12 +1846,6 @@ workflows:
           arch: arm64
           distro: alpine
           requires: [docker-enterprise-alpine-arm64]
-
-      - security-check-docker-image:
-          name: security-check-docker-ubi-arm64
-          arch: arm64
-          distro: ubi
-          requires: [docker-enterprise-ubi-arm64]
 
       - security-check-docker-image:
           name: security-check-docker-deb-arm64
@@ -1931,14 +1875,10 @@ workflows:
             - security-check-rpm-arm64
             - security-check-tar-arm64
             - security-check-docker-alpine-amd64
-            - security-check-docker-ubi-amd64
             - security-check-docker-deb-amd64
             - security-check-docker-alpine-arm64
-            - security-check-docker-ubi-arm64
             - security-check-docker-deb-arm64
             - docker-enterprise-alpine-amd64
-            - docker-enterprise-ubi-amd64
             - docker-enterprise-deb-amd64
             - docker-enterprise-alpine-arm64
-            - docker-enterprise-ubi-arm64
             - docker-enterprise-deb-arm64

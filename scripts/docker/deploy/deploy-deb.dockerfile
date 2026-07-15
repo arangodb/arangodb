@@ -8,7 +8,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl jq pwgen n
 ENV GLIBCXX_FORCE_NEW=1
 
 COPY ./install/ /
-COPY setup-deb.sh /setup.sh
+COPY setup.sh /setup.sh
 RUN /setup.sh && rm /setup.sh
 
 # Adjust TZ by default since tzdata package isn't present (BTS-913)
