@@ -21,11 +21,9 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Jan Steemann
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require('jsunity');
-const request = require('@arangodb/request');
 const { getMetric, getEndpointsByType } = require('@arangodb/test-helper');
 
 function loggerMetricsSuite() {

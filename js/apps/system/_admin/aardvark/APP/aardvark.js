@@ -22,9 +22,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Michael Hackstein
-// / @author Heiko Kernbach
-// / @author Alan Plum
 // //////////////////////////////////////////////////////////////////////////////
 
 const joi = require('joi');

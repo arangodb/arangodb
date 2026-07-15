@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -31,6 +30,7 @@
 #include "Futures/Future.h"
 #include "Logger/LogMacros.h"
 #include "Transaction/ManagedContext.h"
+#include "Transaction/ManagerFeatureOptions.h"
 #include "Transaction/OperationOrigin.h"
 #include "Transaction/Status.h"
 #include "VocBase/AccessMode.h"
@@ -47,6 +47,14 @@
 namespace arangodb {
 class TransactionState;
 
+namespace application_features {
+class ApplicationServer;
+}  // namespace application_features
+
+namespace metrics {
+class Counter;
+}  // namespace metrics
+
 namespace velocypack {
 class Builder;
 class Slice;
@@ -55,7 +63,6 @@ class Slice;
 namespace transaction {
 class Context;
 class CounterGuard;
-class ManagerFeature;
 class Hints;
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 class History;
@@ -84,7 +91,7 @@ class Manager final : public IManager {
   static std::string_view typeName(MetaType type);
 
   struct ManagedTrx {
-    ManagedTrx(ManagerFeature const& feature, MetaType type, double ttl,
+    ManagedTrx(ManagerFeatureOptions const& options, MetaType type, double ttl,
                std::shared_ptr<TransactionState> state,
                arangodb::cluster::CallbackGuard rGuard);
     ~ManagedTrx();
@@ -136,7 +143,8 @@ class Manager final : public IManager {
   Manager(Manager const&) = delete;
   Manager& operator=(Manager const&) = delete;
 
-  explicit Manager(ManagerFeature& feature);
+  Manager(application_features::ApplicationServer& server,
+          ManagerFeatureOptions options, metrics::Counter& expiredTransactions);
   ~Manager();
 
   static constexpr double idleTTLDBServer = 5 * 60.0;  //  5 minutes
@@ -302,7 +310,7 @@ class Manager final : public IManager {
       std::function<void(TransactionId, ManagedTrx const&)> const& callback,
       bool details) const;
 
-  static double ttlForType(ManagerFeature const& feature,
+  static double ttlForType(ManagerFeatureOptions const& options,
                            Manager::MetaType type);
 
   bool transactionIdExists(TransactionId tid) const;
@@ -318,7 +326,9 @@ class Manager final : public IManager {
                                            MetaType type);
 
  private:
-  ManagerFeature& _feature;
+  application_features::ApplicationServer& _server;
+  ManagerFeatureOptions const _options;
+  metrics::Counter& _expiredTransactions;
 
   struct {
     // a lock protecting _managed

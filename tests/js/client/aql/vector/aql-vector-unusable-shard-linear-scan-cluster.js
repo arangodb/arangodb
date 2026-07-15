@@ -21,7 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Koushal Kawade
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");

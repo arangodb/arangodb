@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Databases.h"
@@ -275,8 +274,7 @@ Result Databases::createCoordinator(CreateDatabaseInfo const& info) {
   // is just a placeholder
   CreateDatabaseInfo tempInfo = info;
   TRI_vocbase_t vocbase(std::move(tempInfo), databaseFeature.engine(),
-                        databaseFeature.versionTracker(),
-                        databaseFeature.extendedNames());
+                        databaseFeature);
 
   // Now create *all* system collections for the database,
   // if any of these fail, database creation is considered unsuccessful

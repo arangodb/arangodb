@@ -19,15 +19,12 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Alexandru Petenchea
-/// @author Copyright 2024, ArangoDB Inc, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require('jsunity');
 const {assertEqual, assertIdentical, fail} = jsunity.jsUnity.assertions;
 const {db, errors} = require('@arangodb');
 const console = require('console');
-const request = require("@arangodb/request");
 const rh = require('@arangodb/testutils/restart-helper');
 const {getCtrlDBServers} = require('@arangodb/test-helper');
 const {sleep, time} = require('internal');
@@ -53,21 +50,6 @@ function testSuite() {
   const databaseNameR1 = 'replication1_restart_test_db';
   const databaseNameR2 = 'replication2_restart_test_db';
   let dbServer = null;
-
-  let waitForAlive = function (timeout, baseurl, data) {
-    let res;
-    let all = Object.assign(data || {}, { method: "get", timeout: 1, url: baseurl + "/_api/version" });
-    const end = time() + timeout;
-    while (time() < end) {
-      res = request(all);
-      if (res.status === 200 || res.status === 401 || res.status === 403) {
-        break;
-      }
-      console.warn(`waiting for server response from url ${baseurl} - got ${JSON.stringify(res)}`);
-      sleep(0.5);
-    }
-    return res;
-  };
 
   return {
     setUp: function () {
@@ -105,7 +87,7 @@ function testSuite() {
         "server.authentication": "false",
         "rocksdb.sync-interval": 0
       });
-      let aliveStatus = waitForAlive(30, dbServer.url, {});
+      let aliveStatus = dbServer.pingUntilReady(IM.httpJWTAuthOptions, 30);
       assertEqual(200, aliveStatus.status, JSON.stringify(aliveStatus));
       arango.connectHandle(conn);
       // We should not be able to create a replication2 database if the syncer thread is off
@@ -126,7 +108,7 @@ function testSuite() {
         "server.authentication": "false",
         "rocksdb.sync-interval": 100
       });
-      aliveStatus = waitForAlive(30, dbServer.url, {});
+      aliveStatus = dbServer.pingUntilReady(IM.httpJWTAuthOptions, 30);
       assertEqual(200, aliveStatus.status, JSON.stringify(aliveStatus));
       arango.connectHandle(conn);
 
@@ -178,7 +160,7 @@ function testSuite() {
         });
 
         // Things should be back to normal now
-        let aliveStatus = waitForAlive(30, dbServer.url, {});
+        let aliveStatus = dbServer.pingUntilReady(IM.httpJWTAuthOptions, 30);
         assertEqual(200, aliveStatus.status, JSON.stringify(aliveStatus));
       }
 
