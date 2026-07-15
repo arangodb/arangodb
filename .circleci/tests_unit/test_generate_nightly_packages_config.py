@@ -207,3 +207,36 @@ def test_check_workflow_rejects_dangling_requires():
     }
     with pytest.raises(ValueError, match="not-there"):
         gen.check_workflow(config)
+
+
+def test_publish_requires_packaging_jobs_when_all_gates_disabled(base_config):
+    """Regression: publish-nightly used to depend on the packaging jobs only
+    transitively via scan/sign/security-check, so disabling all three gates
+    let publish race the packaging jobs. It must require them directly."""
+    config = run_generate(
+        base_config,
+        **{
+            "sign-packages": "false",
+            "scan-viruses": "false",
+            "security-check": "false",
+        },
+    )
+    requires = set(requires_of(config, "publish-nightly"))
+    for job in (
+        "deb-enterprise-amd64",
+        "rpm-enterprise-amd64",
+        "tar-enterprise-amd64",
+        "deb-enterprise-arm64",
+        "rpm-enterprise-arm64",
+        "tar-enterprise-arm64",
+        "docker-enterprise-alpine-amd64",
+        "docker-enterprise-alpine-arm64",
+    ):
+        assert job in requires
+    # ... and the disabled gate jobs must be gone from the list.
+    gate_leftovers = {
+        name
+        for name in requires
+        if name.startswith("security-check-") or name in ("scan-packages", "sign-packages")
+    }
+    assert not gate_leftovers

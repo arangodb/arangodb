@@ -1,8 +1,6 @@
 #!/bin/bash
 # Build RPM packages (server, client, debuginfo) from an existing install tree.
-# Bash port of oskar's transformSpec + buildRPMPackage (helper.linux.fish) +
-# scripts/buildRPMPackage.fish, using the spec template vendored in
-# scripts/packaging/rpm/.
+# Uses rpmbuild with the spec template from scripts/packaging/rpm/.
 #
 # Run from the repository root; requires:
 #   build/install/            populated install tree ("make install" output,
@@ -69,7 +67,7 @@ cp "${SOURCE}/arangodb3.initd" "${SOURCE}/arangodb3.service" "${SOURCE}/arangodb
   "${PROJECT_DIR}/build/install/usr/share/arangodb3/"
 
 # The spec references the install tree as $INNERWORKDIR/ArangoDB/build/install
-# (oskar layout); provide that view via a symlink.
+# (historical layout the spec was written for); provide that view via a symlink.
 export INNERWORKDIR="${WORK}"
 ln -s "${PROJECT_DIR}" "${WORK}/ArangoDB"
 

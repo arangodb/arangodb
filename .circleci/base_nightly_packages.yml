@@ -17,10 +17,12 @@ version: 2.1
 #     (Alpine [build-alpine-images], Red Hat UBI [build-ubi-images] and
 #     Ubuntu [build-deb-images] based; UBI/Ubuntu tags carry -ubi / -deb)
 #
-# Build flow (mirrors oskar's buildEnterprisePackage; see scripts/packaging/):
-#   prepare-nightly     pins the nightly date/version, resolves the enterprise
-#                       commit, and creates sourceInfo.log/sourceInfo.json
-#   compile-nightly     static release build via the "nightly[-arm]" CMake
+# Build flow (packaging scripts live in scripts/packaging/):
+#   prepare-nightly     derives the nightly version files and creates
+#                       sourceInfo.log/sourceInfo.json (the nightly date and
+#                       the enterprise commit are pipeline parameters,
+#                       resolved once by the setup job)
+#   compile-nightly     static release build via the "nightly-{x86_64,arm}" CMake
 #                       preset + make install + starter/rclone download;
 #                       the install tree is shared with all packaging jobs
 #   build-*-package     one job per package format and architecture, all
@@ -60,8 +62,8 @@ version: 2.1
 #                       sparse checkout of the private arangodb-helper/
 #                       package-signing repo (.gnupg4, the current key home),
 #                       fetched with the same SSH key as enterprise. No
-#                       embedded deb/rpm signing: oskar does that only when
-#                       building apt/yum repositories
+#                       embedded deb/rpm signing: that belongs to apt/yum
+#                       repository builds, which nightlies are not
 #   publish-nightly     THE ONLY JOB THAT PUBLISHES ANYTHING; runs only when
 #                       every selected job succeeded. Split into a stage
 #                       phase (upload packages + ClamAV reports +
@@ -90,7 +92,7 @@ version: 2.1
 #   Every manifest references the dated per-arch images directly; no
 #   rolling per-arch tags are pushed.
 #   The UBI and Ubuntu images insert -ubi / -deb after the version part and
-#   before the arch suffix (oskar: DOCKER_TAG-$DOCKER_DISTRO), e.g.
+#   before the arch suffix, e.g.
 #   3.12.10-nightly.20260702-ubi-amd64, and form <TAG>-ubi / <TAG>-deb
 #   manifests, e.g. 3.12-nightly-ubi. Alpine stays suffix-less.
 #
@@ -147,7 +149,15 @@ parameters:
   enterprise-branch:
     type: string
     default: ""
-    description: "Enterprise repo branch to use. Defaults to the same branch as arangodb, falling back to devel."
+    description: "Enterprise repo branch to use. Defaults to the same branch as arangodb, falling back to devel. Only read by the setup config, which resolves it to enterprise-commit."
+  enterprise-commit:
+    type: string
+    default: ""
+    description: "Resolved enterprise commit, computed and passed in by the setup config (nightly_packages.yml) so every job of one workflow builds exactly the same enterprise revision. Cannot be set at trigger time (the setup config does not declare it)."
+  nightly-date:
+    type: string
+    default: ""
+    description: "Nightly date (YYYYMMDD), pinned once by the setup config so all jobs derive the same version even when the workflow runs across midnight. Cannot be set at trigger time (the setup config does not declare it)."
   build-docker-image:
     type: string
     default: "public.ecr.aws/b0b8h2r4/arangodb/ubuntubuildarangodb-312:24.04-d2eb28e68"
@@ -240,9 +250,10 @@ commands:
                   git submodule update --recursive --depth 1 --jobs 8
 
   checkout-enterprise:
-    # When /tmp/nightly/enterprise-commit.txt exists (persisted by
-    # prepare-nightly) that exact commit is used, so all jobs of one
-    # workflow build the same enterprise revision.
+    # The exact commit was resolved ONCE by the setup job and is passed in
+    # as the enterprise-commit pipeline parameter, so every job of one
+    # workflow builds the same enterprise revision by construction — there
+    # is no per-job fallback that could re-resolve a moving branch.
     parameters:
       destination:
         type: string
@@ -255,22 +266,10 @@ commands:
           environment:
             GIT_SSH_COMMAND: "ssh -o StrictHostKeyChecking=no"
           command: |
-            if [ -f /tmp/nightly/enterprise-commit.txt ]; then
-              ENTERPRISE_COMMIT="$(cat /tmp/nightly/enterprise-commit.txt)"
-            else
-              ENTERPRISE_BRANCH="<< pipeline.parameters.enterprise-branch >>"
-              if [ -z "$ENTERPRISE_BRANCH" ]; then
-                set +e
-                git ls-remote --exit-code --heads git@github.com:arangodb/enterprise.git "$CIRCLE_BRANCH"
-                if [ "$?" == "0" ]; then
-                  ENTERPRISE_BRANCH="$CIRCLE_BRANCH"
-                else
-                  ENTERPRISE_BRANCH="devel"
-                fi
-                set -e
-              fi
-              ENTERPRISE_COMMIT=$(git ls-remote --heads git@github.com:arangodb/enterprise.git "$ENTERPRISE_BRANCH" | cut -f1)
-              echo "Using enterprise branch ${ENTERPRISE_BRANCH}"
+            ENTERPRISE_COMMIT="<< pipeline.parameters.enterprise-commit >>"
+            if [ -z "${ENTERPRISE_COMMIT}" ]; then
+              echo "enterprise-commit pipeline parameter is empty — this pipeline must be started through the setup config (nightly_packages.yml)"
+              exit 1
             fi
             echo "Using enterprise commit ${ENTERPRISE_COMMIT}"
             mkdir -p << parameters.destination >>
@@ -279,8 +278,8 @@ commands:
             git reset --hard "$ENTERPRISE_COMMIT"
 
   set-nightly-version:
-    # Applies the nightly version to CMakeLists.txt using the date pinned by
-    # prepare-nightly, and stores all ARANGODB_* variables in $BASH_ENV so
+    # Applies the nightly version to CMakeLists.txt using the date pinned
+    # by the setup job, and stores all ARANGODB_* variables in $BASH_ENV so
     # subsequent steps of the same job see them.
     parameters:
       repo-path:
@@ -290,28 +289,27 @@ commands:
           name: Set nightly version in CMakeLists.txt
           command: |
             cd << parameters.repo-path >>
-            # The nightly date is pinned ONCE by prepare-nightly and shared
-            # via the workspace, so all jobs derive the same version even
-            # when the workflow runs across midnight. A missing pin must
-            # fail here — falling back to the job's own date would silently
-            # reintroduce exactly that skew ("export VAR=$(cmd)" masks the
-            # cat failure, hence the explicit check).
-            if [ ! -s /tmp/nightly/nightly-date.txt ]; then
-              echo "nightly-date.txt missing/empty (prepare-nightly workspace not attached?)"
+            # The nightly date is pinned ONCE by the setup job and passed in
+            # as a pipeline parameter, so all jobs derive the same version
+            # even when the workflow runs across midnight. An empty value
+            # must fail here — falling back to the job's own date would
+            # silently reintroduce exactly that skew.
+            NIGHTLY_DATE="<< pipeline.parameters.nightly-date >>"
+            if [ -z "${NIGHTLY_DATE}" ]; then
+              echo "nightly-date pipeline parameter is empty — this pipeline must be started through the setup config (nightly_packages.yml)"
               exit 1
             fi
-            NIGHTLY_DATE="$(cat /tmp/nightly/nightly-date.txt)"
             export NIGHTLY_DATE
             source scripts/ci/helpers.bash
             set_nightly_version CMakeLists.txt
             declare -px | grep -E ' (ARANGODB_|DOCKER_TAG)' >> "$BASH_ENV"
 
-  upload-build-artifact:
-    # Uploads install.tar.gz (unstripped binaries + starter/rclone) to S3.
-    # Keyed by workflow ID + edition + arch so downstream jobs can fetch it
-    # (download-build-artifact always reads from S3, never from the job
-    # artifact). Additionally stored as a CircleCI job artifact so it can be
-    # downloaded straight from the finished job's Artifacts tab.
+  persist_workspace_to_s3:
+    # Uploads install.tar.gz to the S3 workspace bucket, anonymously through
+    # the VPC S3 endpoint (self-hosted runners only; the bucket policy
+    # allows unsigned access solely via sourceVpce). Keyed by workflow ID +
+    # edition + arch, mirrored by attach_workspace_from_s3. Named after
+    # base_config.yml's equivalent command.
     parameters:
       arch:
         type: string
@@ -319,7 +317,7 @@ commands:
         type: string
     steps:
       - run:
-          name: Upload install.tar.gz to S3
+          name: Save install.tar.gz to S3
           command: |
             if [ -z "${AWS_S3_WORKSPACE_BUCKET:-}" ]; then
               echo "AWS_S3_WORKSPACE_BUCKET not set"
@@ -329,83 +327,85 @@ commands:
             aws s3 cp --no-sign-request --profile anon \
               install.tar.gz \
               "s3://${AWS_S3_WORKSPACE_BUCKET}/nightly/${CIRCLE_WORKFLOW_ID}/<< parameters.edition >>-<< parameters.arch >>/install.tar.gz"
-      - store_artifacts:
-          path: install.tar.gz
-          destination: install/<< parameters.edition >>-<< parameters.arch >>/install.tar.gz
 
-  download-build-artifact:
-    # Where install.tar.gz comes from depends on where the job runs:
-    #   source: s3       (self-hosted runners) — the workspace bucket,
-    #                    anonymously through the VPC S3 endpoint (the bucket
-    #                    policy allows unsigned reads only via sourceVpce).
-    #   source: circleci (CircleCI-hosted executors, outside the VPC) — the
-    #                    CircleCI artifact stored by the compile job, located
-    #                    via the API with CIRCLECI_TOKEN (circleci-token
-    #                    context). When full AWS credentials ARE provided
-    #                    (AWS_ACCESS_KEY_ID + AWS_SECRET_ACCESS_KEY +
-    #                    AWS_S3_WORKSPACE_BUCKET), the workspace bucket is
-    #                    used with signed requests instead.
+  upload-build-artifact:
+    # Publishes the compile job's install.tar.gz (unstripped binaries +
+    # starter/rclone) for the downstream jobs: to S3 for the self-hosted
+    # packaging jobs (attach_workspace_from_s3) and as a CircleCI job
+    # artifact for the hosted docker jobs (download-artifact) — which also
+    # makes it downloadable straight from the job's Artifacts tab.
     parameters:
       arch:
         type: string
       edition:
         type: string
-      source:
-        type: enum
-        enum: ["s3", "circleci"]
-        default: "s3"
+    steps:
+      - persist_workspace_to_s3:
+          arch: << parameters.arch >>
+          edition: << parameters.edition >>
+      - store_artifacts:
+          path: install.tar.gz
+          destination: install/<< parameters.edition >>-<< parameters.arch >>/install.tar.gz
+
+  attach_workspace_from_s3:
+    # Fetches install.tar.gz from the S3 workspace bucket, anonymously
+    # through the VPC S3 endpoint — self-hosted runners only (the bucket
+    # policy allows unsigned access solely via sourceVpce; hosted executors
+    # use download-artifact instead). Counterpart of persist_workspace_to_s3
+    # and named after base_config.yml's equivalent command.
+    parameters:
+      arch:
+        type: string
+      edition:
+        type: string
     steps:
       - run:
-          name: Download install.tar.gz
+          name: Download install.tar.gz from S3
           command: |
-            HAVE_AWS_CREDS=false
-            if [ -n "${AWS_ACCESS_KEY_ID:-}" ] && [ -n "${AWS_SECRET_ACCESS_KEY:-}" ] && \
-               [ -n "${AWS_S3_WORKSPACE_BUCKET:-}" ]; then
-              HAVE_AWS_CREDS=true
+            if [ -z "${AWS_S3_WORKSPACE_BUCKET:-}" ]; then
+              echo "AWS_S3_WORKSPACE_BUCKET not set"
+              exit 1
             fi
+            aws configure set profile.anon.s3.multipart_threshold 5GB
+            aws configure set default.s3.multipart_threshold 5GB
+            aws s3 cp --no-sign-request --profile anon \
+              "s3://${AWS_S3_WORKSPACE_BUCKET}/nightly/${CIRCLE_WORKFLOW_ID}/<< parameters.edition >>-<< parameters.arch >>/install.tar.gz" \
+              install.tar.gz
 
-            if [ "<< parameters.source >>" = "circleci" ] && [ "${HAVE_AWS_CREDS}" = "false" ]; then
-              if [ -z "${CIRCLECI_TOKEN:-}" ]; then
-                echo "CIRCLECI_TOKEN not set (circleci-token context missing?)"
-                exit 1
-              fi
-              JOB_NUMBER=$(curl -sf -H "Circle-Token: ${CIRCLECI_TOKEN}" \
-                "https://circleci.com/api/v2/workflow/${CIRCLE_WORKFLOW_ID}/job" | \
-                jq -r '.items[] | select(.name == "compile-<< parameters.edition >>-<< parameters.arch >>") | .job_number')
-              if [ -z "${JOB_NUMBER}" ] || [ "${JOB_NUMBER}" = "null" ]; then
-                echo "compile-<< parameters.edition >>-<< parameters.arch >> not found in workflow ${CIRCLE_WORKFLOW_ID}"
-                exit 1
-              fi
-              URL=$(curl -sf -H "Circle-Token: ${CIRCLECI_TOKEN}" \
-                "https://circleci.com/api/v2/project/gh/${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}/${JOB_NUMBER}/artifacts" | \
-                jq -r '.items[] | select(.path == "install/<< parameters.edition >>-<< parameters.arch >>/install.tar.gz") | .url')
-              if [ -z "${URL}" ] || [ "${URL}" = "null" ]; then
-                echo "install.tar.gz artifact not found on job ${JOB_NUMBER}"
-                exit 1
-              fi
-              curl -fL --retry 5 -H "Circle-Token: ${CIRCLECI_TOKEN}" \
-                -o install.tar.gz "${URL}"
-            else
-              if [ -z "${AWS_S3_WORKSPACE_BUCKET:-}" ]; then
-                echo "AWS_S3_WORKSPACE_BUCKET not set"
-                exit 1
-              fi
-              if [ "${HAVE_AWS_CREDS}" = "true" ]; then
-                SIGN_ARGS=""
-                # Hosted executors (cimg/base) have no aws CLI preinstalled.
-                if ! command -v aws > /dev/null; then
-                  curl -sSfL "https://awscli.amazonaws.com/awscli-exe-linux-$(uname -m).zip" -o /tmp/awscliv2.zip
-                  (cd /tmp && unzip -q awscliv2.zip && sudo ./aws/install)
-                fi
-              else
-                SIGN_ARGS="--no-sign-request --profile anon"
-                aws configure set profile.anon.s3.multipart_threshold 5GB
-              fi
-              aws configure set default.s3.multipart_threshold 5GB
-              aws s3 cp ${SIGN_ARGS} \
-                "s3://${AWS_S3_WORKSPACE_BUCKET}/nightly/${CIRCLE_WORKFLOW_ID}/<< parameters.edition >>-<< parameters.arch >>/install.tar.gz" \
-                install.tar.gz
+  download-artifact:
+    # Fetches install.tar.gz from the compile job's CircleCI job artifact,
+    # located via the API with CIRCLECI_TOKEN (circleci-token context) — for
+    # CircleCI-hosted executors, which run outside the VPC and therefore
+    # cannot use the anonymous S3 path of attach_workspace_from_s3.
+    parameters:
+      arch:
+        type: string
+      edition:
+        type: string
+    steps:
+      - run:
+          name: Download install.tar.gz from the compile job's artifacts
+          command: |
+            if [ -z "${CIRCLECI_TOKEN:-}" ]; then
+              echo "CIRCLECI_TOKEN not set (circleci-token context missing?)"
+              exit 1
             fi
+            JOB_NUMBER=$(curl -sf -H "Circle-Token: ${CIRCLECI_TOKEN}" \
+              "https://circleci.com/api/v2/workflow/${CIRCLE_WORKFLOW_ID}/job" | \
+              jq -r '.items[] | select(.name == "compile-<< parameters.edition >>-<< parameters.arch >>") | .job_number')
+            if [ -z "${JOB_NUMBER}" ] || [ "${JOB_NUMBER}" = "null" ]; then
+              echo "compile-<< parameters.edition >>-<< parameters.arch >> not found in workflow ${CIRCLE_WORKFLOW_ID}"
+              exit 1
+            fi
+            URL=$(curl -sf -H "Circle-Token: ${CIRCLECI_TOKEN}" \
+              "https://circleci.com/api/v2/project/gh/${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}/${JOB_NUMBER}/artifacts" | \
+              jq -r '.items[] | select(.path == "install/<< parameters.edition >>-<< parameters.arch >>/install.tar.gz") | .url')
+            if [ -z "${URL}" ] || [ "${URL}" = "null" ]; then
+              echo "install.tar.gz artifact not found on job ${JOB_NUMBER}"
+              exit 1
+            fi
+            curl -fL --retry 5 -H "Circle-Token: ${CIRCLECI_TOKEN}" \
+              -o install.tar.gz "${URL}"
 
   gate-trivy-findings:
     # The trivy-scan orb couples what is reported and what fails the job in
@@ -470,7 +470,8 @@ commands:
             gcloud auth activate-service-account --key-file=/tmp/gcs-key.json
 
   extract-install-tree:
-    # Recreates the oskar layout: install tree at <repo>/build/install.
+    # Recreates the layout the packaging scripts expect: install tree at
+    # <repo>/build/install.
     steps:
       - run:
           name: Extract install tree to build/install
@@ -482,10 +483,9 @@ commands:
 jobs:
   # ── Nightly version + sourceInfo preparation ─────────────────────────────────
   prepare-nightly:
-    # Pins the nightly date once for the whole workflow, resolves the
-    # enterprise commit once, and creates sourceInfo.log/sourceInfo.json
-    # (oskar: setNightlyVersion + initSourceInfo/setupSourceInfo).
-    # Self-hosted: needs only git/ssh/bash + the workspace, all of which the
+    # Derives the nightly version files from the setup-pinned nightly-date
+    # parameter and creates sourceInfo.log/sourceInfo.json.
+    # Self-hosted: needs only git/bash + the workspace, all of which the
     # runner fleet supports; the build image is used because it is already
     # cached on the runner nodes (cimg/base would pull from Docker Hub).
     docker:
@@ -494,35 +494,20 @@ jobs:
     steps:
       - checkout-arangodb:
           destination: /home/circleci/project
-      - add_ssh_keys:
-          fingerprints:
-            - "f9:49:75:1a:ad:44:89:10:4b:3c:70:70:ba:d3:c3:ce"
-      - run:
-          name: Resolve enterprise commit
-          environment:
-            GIT_SSH_COMMAND: "ssh -o StrictHostKeyChecking=no"
-          command: |
-            mkdir -p /tmp/nightly
-            ENTERPRISE_BRANCH="<< pipeline.parameters.enterprise-branch >>"
-            if [ -z "$ENTERPRISE_BRANCH" ]; then
-              set +e
-              git ls-remote --exit-code --heads git@github.com:arangodb/enterprise.git "$CIRCLE_BRANCH"
-              if [ "$?" == "0" ]; then
-                ENTERPRISE_BRANCH="$CIRCLE_BRANCH"
-              else
-                ENTERPRISE_BRANCH="devel"
-              fi
-              set -e
-            fi
-            ENTERPRISE_COMMIT=$(git ls-remote --heads git@github.com:arangodb/enterprise.git "$ENTERPRISE_BRANCH" | cut -f1)
-            echo "Using enterprise branch ${ENTERPRISE_BRANCH} (${ENTERPRISE_COMMIT})"
-            echo "${ENTERPRISE_COMMIT}" > /tmp/nightly/enterprise-commit.txt
       - run:
           name: Derive nightly version and create sourceInfo
           command: |
             cd /home/circleci/project
-            date +%Y%m%d > /tmp/nightly/nightly-date.txt
-            export NIGHTLY_DATE="$(cat /tmp/nightly/nightly-date.txt)"
+            mkdir -p /tmp/nightly
+            # Date and enterprise commit are pipeline parameters, resolved
+            # exactly once by the setup job; set-nightly-version repeats the
+            # empty-check for jobs that run without prepare-nightly.
+            NIGHTLY_DATE="<< pipeline.parameters.nightly-date >>"
+            if [ -z "${NIGHTLY_DATE}" ]; then
+              echo "nightly-date pipeline parameter is empty — this pipeline must be started through the setup config (nightly_packages.yml)"
+              exit 1
+            fi
+            export NIGHTLY_DATE
             source scripts/ci/helpers.bash
 
             # Remember the release type BEFORE it is rewritten to "nightly":
@@ -544,7 +529,7 @@ jobs:
             init_source_info "${CIRCLE_WORKFLOW_ID}"
             setup_source_info "VERSION" "${ARANGODB_VERSION}"
             setup_source_info "Community" "<< pipeline.git.revision >>"
-            setup_source_info "Enterprise" "$(cat /tmp/nightly/enterprise-commit.txt)"
+            setup_source_info "Enterprise" "<< pipeline.parameters.enterprise-commit >>"
 
             STARTER_REV="$(grep -Po 'STARTER_REV "\Kv[0-9.a-z-]+' VERSIONS || echo "N/A")"
             setup_source_info "Starter" "${STARTER_REV}"
@@ -563,17 +548,16 @@ jobs:
 
   # ── Static compilation ──────────────────────────────────────────────────────
   compile-nightly:
-    # Static release build for packaging and Docker images.
-    # Oskar equivalent: buildEnterprisePackage → buildStaticArangoDB +
-    # downloadStarter + downloadRclone (NOSTRIP: stripping happens during
-    # packaging, controlled by PACKAGE_STRIP=ExceptArangod).
-    # All oskar build options live in the "nightly[-arm]" CMake presets;
+    # Static release build for packaging and Docker images, plus the
+    # Starter and rclone downloads. Binaries are built unstripped; stripping
+    # happens later, during packaging (client tools only).
+    # All build options live in the "nightly-{x86_64,arm}" CMake presets;
     # only toolchain/image specific paths are passed on the command line.
     parameters:
       arch:
         type: string        # amd64 | arm64
       preset:
-        type: string        # nightly | nightly-arm
+        type: string        # nightly-x86_64 | nightly-arm
       resource-class:
         type: string
     docker:
@@ -634,12 +618,11 @@ jobs:
       - run:
           name: Pack object files (static-linking compliance)
           command: |
-            # Oskar equivalent: packObjectFiles, enterprise >= 3.12 only.
-            # The archive is persisted with the packages, so it is scanned,
+            # Enterprise only. The archive is persisted with the packages, so it is scanned,
             # signed, and published like any other nightly artifact.
             # The version comes from CMakeLists.txt, which the
             # set-nightly-version step of this job already patched with the
-            # date pinned by prepare-nightly.
+            # setup-pinned nightly date.
             export BUILD_DIR=build-presets/<< parameters.preset >>
             export PACKAGES_OUT=/tmp/nightly/objectfiles/<< parameters.arch >>
             scripts/packaging/pack-object-files.sh
@@ -665,12 +648,19 @@ jobs:
           arch: << parameters.arch >>
           edition: enterprise
 
-  # ── DEB packages ─────────────────────────────────────────────────────────────
-  build-deb-package:
-    # Oskar equivalent: buildDebianPackage (debian/rules binary with the
-    # templates from scripts/packaging/debian/), executed directly inside the
-    # build image, which also carries the packaging toolchain.
+  # ── Packages (DEB / RPM / TAR.GZ) ────────────────────────────────────────────
+  build-package:
+    # Builds one package format from the install tree, executed directly
+    # inside the build image, which also carries the packaging toolchain:
+    #   deb  "debian/rules binary" with the templates from
+    #        scripts/packaging/debian/
+    #   rpm  rpmbuild with the spec from scripts/packaging/rpm/
+    #   tar  server + client tar.gz bundles with the launcher wrappers
+    #        from scripts/packaging/binForTarGz/
     parameters:
+      format:
+        type: enum
+        enum: ["deb", "rpm", "tar"]
       arch:
         type: string
       resource-class:
@@ -686,114 +676,37 @@ jobs:
           destination: /root/project
       - set-nightly-version:
           repo-path: /root/project
-      - download-build-artifact:
+      - attach_workspace_from_s3:
           arch: << parameters.arch >>
           edition: enterprise
       - extract-install-tree
       - run:
-          name: Build DEB packages
-          command: |
-            export EDITION=enterprise
-            export PACKAGE_STRIP=ExceptArangod
-            export PACKAGES_OUT=/tmp/nightly/packages/<< parameters.arch >>
-            scripts/packaging/build-deb.sh
-      - persist_to_workspace:
-          root: /tmp/nightly
-          paths:
-            - packages/<< parameters.arch >>
-      - store_artifacts:
-          path: /tmp/nightly/packages/<< parameters.arch >>
-          destination: packages/deb/<< parameters.arch >>
-
-  # ── RPM packages ─────────────────────────────────────────────────────────────
-  build-rpm-package:
-    # Oskar equivalent: transformSpec + buildRPMPackage (rpmbuild with the
-    # spec from scripts/packaging/rpm/), executed directly inside the build
-    # image.
-    parameters:
-      arch:
-        type: string
-      resource-class:
-        type: string
-    docker:
-      - image: << pipeline.parameters.build-docker-image >>
-    resource_class: << parameters.resource-class >>
-    working_directory: /root/project
-    steps:
-      - attach_workspace:
-          at: /tmp/nightly
-      - checkout-arangodb:
-          destination: /root/project
-      - set-nightly-version:
-          repo-path: /root/project
-      - download-build-artifact:
-          arch: << parameters.arch >>
-          edition: enterprise
-      - extract-install-tree
-      - run:
-          name: Build RPM packages
-          command: |
-            export EDITION=enterprise
-            export PACKAGE_STRIP=ExceptArangod
-            export PACKAGES_OUT=/tmp/nightly/packages/<< parameters.arch >>
-            scripts/packaging/build-rpm.sh
-      - persist_to_workspace:
-          root: /tmp/nightly
-          paths:
-            - packages/<< parameters.arch >>
-      - store_artifacts:
-          path: /tmp/nightly/packages/<< parameters.arch >>
-          destination: packages/rpm/<< parameters.arch >>
-
-  # ── TAR.GZ packages ──────────────────────────────────────────────────────────
-  build-tar-package:
-    # Oskar equivalent: buildTarGzPackage → buildTarGzPackageHelper "linux"
-    # (server + client bundles with the wrappers from
-    # scripts/packaging/binForTarGz/).
-    parameters:
-      arch:
-        type: string
-      resource-class:
-        type: string
-    docker:
-      - image: << pipeline.parameters.build-docker-image >>
-    resource_class: << parameters.resource-class >>
-    working_directory: /root/project
-    steps:
-      - attach_workspace:
-          at: /tmp/nightly
-      - checkout-arangodb:
-          destination: /root/project
-      - set-nightly-version:
-          repo-path: /root/project
-      - download-build-artifact:
-          arch: << parameters.arch >>
-          edition: enterprise
-      - extract-install-tree
-      - run:
-          name: Build TAR.GZ packages
+          name: Build << parameters.format >> packages
           command: |
             export EDITION=enterprise
             export PACKAGE_STRIP=ExceptArangod
             export ARCH=<< parameters.arch >>
             export PACKAGES_OUT=/tmp/nightly/packages/<< parameters.arch >>
-            scripts/packaging/build-targz.sh
+            case "<< parameters.format >>" in
+              deb) scripts/packaging/build-deb.sh ;;
+              rpm) scripts/packaging/build-rpm.sh ;;
+              tar) scripts/packaging/build-targz.sh ;;
+            esac
       - persist_to_workspace:
           root: /tmp/nightly
           paths:
             - packages/<< parameters.arch >>
       - store_artifacts:
           path: /tmp/nightly/packages/<< parameters.arch >>
-          destination: packages/tar/<< parameters.arch >>
+          destination: packages/<< parameters.format >>/<< parameters.arch >>
 
   # ── Docker images ─────────────────────────────────────────────────────────────
   build-nightly-docker-image:
-    # Builds one nightly image (Alpine, UBI, or Ubuntu based — oskar:
-    # DOCKER_DISTRO=alpine/ubi/deb) and exports it via "docker save" into
+    # Builds one nightly image (Alpine, UBI, or Ubuntu based) and exports
+    # it via "docker save" into
     # the workspace. Nothing is pushed here; publish-nightly pushes.
     # Tag scheme: the non-Alpine distros insert -ubi / -deb between the
-    # version and the arch suffix (e.g. 3.12.10-nightly.20260708-ubi-amd64),
-    # matching oskar (helper.fish: DOCKER_TAG-$DOCKER_DISTRO).
+    # version and the arch suffix (e.g. 3.12.10-nightly.20260708-ubi-amd64).
     parameters:
       arch:
         type: string        # amd64 | arm64
@@ -815,17 +728,12 @@ jobs:
           destination: /home/circleci/project
       # This job runs on a CircleCI-hosted executor (setup_remote_docker),
       # outside the VPC, so the anonymous VPC-endpoint S3 path of the
-      # self-hosted runners is not available. By default install.tar.gz is
-      # therefore taken from the compile job's CircleCI artifact
-      # (CIRCLECI_TOKEN from the circleci-token context); providing AWS
-      # credentials via the coredb-workspace-aws-bucket context
-      # (AWS_ACCESS_KEY_ID + AWS_SECRET_ACCESS_KEY + AWS_DEFAULT_REGION next
-      # to AWS_S3_WORKSPACE_BUCKET) switches it to the workspace bucket with
-      # signed requests.
-      - download-build-artifact:
+      # self-hosted runners (attach_workspace_from_s3) is not available;
+      # install.tar.gz is taken from the compile job's CircleCI artifact
+      # instead (CIRCLECI_TOKEN from the circleci-token context).
+      - download-artifact:
           arch: << parameters.arch >>
           edition: enterprise
-          source: circleci
       - run:
           name: Prepare install directory for Docker build
           command: |
@@ -834,9 +742,8 @@ jobs:
       - run:
           name: Strip binaries for the Docker image
           command: |
-            # Same strip policy as the packages (oskar ran prepareInstall on
-            # the docker tree too): client tools are stripped, arangod and
-            # the starter keep their symbols. cimg/base has no binutils.
+            # Same strip policy as the packages: client tools are stripped,
+            # arangod and the starter keep their symbols. cimg/base has no binutils.
             if ! command -v strip > /dev/null; then
               sudo apt-get update
               sudo apt-get install -y binutils
@@ -867,8 +774,8 @@ jobs:
             cd /home/circleci/project/scripts/docker/deploy
 
             # The UBI image carries Red Hat metadata labels and ships the
-            # license text in the image (oskar: buildDockerArgs +
-            # buildDockerAddFiles); the other distros need no extra args.
+            # license text in the image; the other distros need no extra
+            # args.
             EXTRA_BUILD_ARGS=()
             if [ "${DISTRO}" = "ubi" ]; then
               cp /home/circleci/project/LICENSE .
@@ -1238,16 +1145,14 @@ jobs:
   # ── GPG signing ──────────────────────────────────────────────────────────────
   sign-packages:
     # Creates detached .asc signatures for every package of both
-    # architectures. Oskar equivalent: scripts/signFile.fish/setupGpg.fish,
-    # with the signing keys coming from the private
-    # arangodb-helper/package-signing repo — exactly like Jenkins, which
-    # mounted a checkout of it into the signing containers. Its CURRENT key
+    # architectures. The signing keys come from the private
+    # arangodb-helper/package-signing repo, a set of ready-made GnuPG home
+    # directories with passphrase-protected keys. Its CURRENT key
     # home is .gnupg4 (key 86FEC04D, private key passphrase-protected);
-    # .gnupg/.gnupg2/.gnupg3 hold legacy keys (oskar mounts .gnupg3 as
-    # /root/.gnupg-old only for legacy REPO builds) and are not fetched at
-    # all here. The repo's .rpmmacros (embedded `rpm --addsign`) is likewise
-    # only used by oskar's apt/yum REPOSITORY creation, which nightlies do
-    # not do — nightly packages get detached signatures only.
+    # .gnupg/.gnupg2/.gnupg3 hold legacy keys and are not fetched at all
+    # here. The repo's .rpmmacros (embedded `rpm --addsign`) is only needed
+    # when building apt/yum repositories, which nightlies do not do —
+    # nightly packages get detached signatures only.
     # Needs the coredb-nightly-packages context: ARANGO_SIGN_PASSWD
     # (optional KEYNAME, default 86FEC04D) and GITHUB_PACKAGE_SIGNING_TOKEN
     # for the keyring checkout (without the token the checkout falls back to
@@ -1340,10 +1245,8 @@ jobs:
     #           and push only the dated per-arch Docker tags, which no user
     #           consumes. All slow, failure-prone network work happens here
     #           while nothing visible has changed yet.
-    #   commit: server-side rsync staging -> live nightly tree
-    #           (oskar: copyPackagesToStage2 + nightlyUploadFiles.fish), then
-    #           update the multi-arch manifest tags (oskar:
-    #           pushDockerImage + makeDockerMultiarch). Blobs are already in
+    #   commit: server-side rsync staging -> live nightly tree, then
+    #           update the multi-arch manifest tags. Blobs are already in
     #           the registries, so these are fast, retried metadata-only
     #           operations - the window for partial visibility is seconds.
     # Every operation is idempotent; if the commit still fails halfway, fix
@@ -1379,7 +1282,7 @@ jobs:
             # of it, so it is neither indexed nor linked from anywhere.
             STAGE_GCS="${DST}-staging/${CIRCLE_WORKFLOW_ID}"
 
-            # Stage with the historical layout (oskar: uname -m arch dirs):
+            # Stage with the historical layout (uname -m arch dirs):
             # nightly/<major.minor>/Linux/{x86_64,aarch64}/ — plus
             # sourceInfo.(log|json) at the <major.minor>/ level next to
             # Linux/ (identical for both arches, so published once instead
@@ -1474,7 +1377,7 @@ jobs:
             # the commit step into a publish report stored as a job artifact.
             REPORT=/tmp/docker-publish-report.txt
             # Alpine is the suffix-less default image; UBI and Ubuntu images
-            # carry -ubi / -deb between version and arch (oskar tag scheme).
+            # carry -ubi / -deb between version and arch.
             DISTROS=()
             if [ "<< pipeline.parameters.build-alpine-images >>" = "true" ]; then DISTROS+=("alpine"); fi
             if [ "<< pipeline.parameters.build-ubi-images >>" = "true" ]; then DISTROS+=("ubi"); fi
@@ -1568,6 +1471,21 @@ jobs:
               PACKAGES="$(cat /tmp/nightly/nightly-major-minor.txt)"
               DST="${NIGHTLY_GCS_DEST:-gs://download.arangodb.com/nightly}"
               STAGE_GCS="${DST}-staging/${CIRCLE_WORKFLOW_ID}"
+
+              # Guard: never promote an empty or partial staging tree — the
+              # rsync -d below would mirror that emptiness into the live
+              # tree and delete the published packages. Packages are always
+              # staged for both arches together, so each arch dir must hold
+              # at least one package file of some format.
+              STAGE_LISTING="$(gsutil ls -r "${STAGE_GCS}/${PACKAGES}/Linux" 2>/dev/null || true)"
+              for arch_dir in x86_64 aarch64; do
+                if ! echo "${STAGE_LISTING}" | grep -E "/Linux/${arch_dir}/[^/]+\.(deb|rpm|tar\.gz)$" > /dev/null; then
+                  echo "Staging tree ${STAGE_GCS}/${PACKAGES}/Linux/${arch_dir} contains no package files; refusing to promote over the live tree."
+                  echo "The stage step probably did not complete — investigate and rerun from failed."
+                  exit 1
+                fi
+              done
+
               # Promote the whole <major.minor> tree with delete semantics:
               # afterwards the live directory contains EXACTLY this one
               # nightly — older dated packages, legacy platform dirs from the
@@ -1765,8 +1683,7 @@ jobs:
               echo "Nothing was published to GCS, skipping index regeneration"
               exit 0
             fi
-            # Replaces oskar's createIndex (file-browser over the NAS tree):
-            # the whole nightly tree is listed from GCS, one index.html is
+            # The whole nightly tree is listed from GCS, one index.html is
             # generated per directory and uploaded back. Runs after the
             # commit so the index only ever reflects fully published trees.
             DST="${NIGHTLY_GCS_DEST:-gs://download.arangodb.com/nightly}"
@@ -1789,25 +1706,28 @@ workflows:
       - compile-nightly:
           name: compile-enterprise-amd64
           arch: amd64
-          preset: nightly
+          preset: nightly-x86_64
           resource-class: arangodb/xlarge-amd64
           context: [ sccache-aws-bucket ]
           requires: [prepare-nightly]
 
-      - build-deb-package:
+      - build-package:
           name: deb-enterprise-amd64
+          format: deb
           arch: amd64
           resource-class: arangodb/large-amd64
           requires: [compile-enterprise-amd64]
 
-      - build-rpm-package:
+      - build-package:
           name: rpm-enterprise-amd64
+          format: rpm
           arch: amd64
           resource-class: arangodb/large-amd64
           requires: [compile-enterprise-amd64]
 
-      - build-tar-package:
+      - build-package:
           name: tar-enterprise-amd64
+          format: tar
           arch: amd64
           resource-class: arangodb/large-amd64
           requires: [compile-enterprise-amd64]
@@ -1845,20 +1765,23 @@ workflows:
           context: [ sccache-aws-bucket ]
           requires: [prepare-nightly]
 
-      - build-deb-package:
+      - build-package:
           name: deb-enterprise-arm64
+          format: deb
           arch: arm64
           resource-class: arangodb/large-arm64
           requires: [compile-enterprise-arm64]
 
-      - build-rpm-package:
+      - build-package:
           name: rpm-enterprise-arm64
+          format: rpm
           arch: arm64
           resource-class: arangodb/large-arm64
           requires: [compile-enterprise-arm64]
 
-      - build-tar-package:
+      - build-package:
           name: tar-enterprise-arm64
+          format: tar
           arch: arm64
           resource-class: arangodb/large-arm64
           requires: [compile-enterprise-arm64]
@@ -1989,6 +1912,16 @@ workflows:
       - publish-nightly:
           context: [ coredb-nightly-packages ]
           requires:
+            # The packaging jobs are required DIRECTLY, not only transitively
+            # via the scan/sign/security gates: all three gates can be
+            # disabled by pipeline parameters, and publish must still wait
+            # for the packages themselves.
+            - deb-enterprise-amd64
+            - rpm-enterprise-amd64
+            - tar-enterprise-amd64
+            - deb-enterprise-arm64
+            - rpm-enterprise-arm64
+            - tar-enterprise-arm64
             - scan-packages
             - sign-packages
             - security-check-deb-amd64

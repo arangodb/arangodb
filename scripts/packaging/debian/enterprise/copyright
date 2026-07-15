@@ -5,7 +5,7 @@ from sources obtained from http://github.com/arangodb/arangodb.
 Copyright:
 
 Copyright (C) 2012-2013 triAGENS GmbH
-              2014-2024 ArangoDB GmbH
+              2014-@CURRENT_YEAR@ ArangoDB GmbH
 
 License:
 

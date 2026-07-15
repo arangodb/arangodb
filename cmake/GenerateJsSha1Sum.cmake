@@ -2,8 +2,8 @@
 # (expects ARANGODB_INSTALLED_JS_DIR, set by an install(CODE) rule right
 # before the install(SCRIPT) rule that runs this file).
 #
-# This replaces the checksum file that Installation/release.sh (and later
-# oskar's generateJsSha1Sum) generated into the source tree: the checksum is
+# This replaces the checksum file that Installation/release.sh used to
+# generate into the source tree: the checksum is
 # now derived from exactly what was installed — including frontend and
 # enterprise files — and nothing needs to be checked in.
 #

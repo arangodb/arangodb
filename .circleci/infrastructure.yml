@@ -295,75 +295,22 @@ jobs:
             cd /home/circleci/project-rta
             ./jenkins/build_and_push_circle-ci-containers.sh "<< parameters.image >>" "${TAG}"
       - run:
-          name: Build go-test Docker image
+          name: Build per-suite test Docker images
           command: |
             set -x
             cd /home/circleci/project/scripts/docker
-            image=<< parameters.image >>-go
-            /bin/sh build-image.sh $image << parameters.arch >> go-test
-            /bin/sh determine-tag.sh $image << parameters.arch >> | tee << parameters.arch >>-tag-go.txt
-            docker tag $image:latest-<< parameters.arch >> $image:$(cat << parameters.arch >>-tag-go.txt)-<< parameters.arch >>
-            record_push $image:$(cat << parameters.arch >>-tag-go.txt)-<< parameters.arch >>
-      - run:
-          name: Build js-test Docker image
-          command: |
-            set -x
-            cd /home/circleci/project/scripts/docker
-            image=<< parameters.image >>-js
-            /bin/sh build-image.sh $image << parameters.arch >> js-test
-            /bin/sh determine-tag.sh $image << parameters.arch >> | tee << parameters.arch >>-tag-js.txt
-            docker tag $image:latest-<< parameters.arch >> $image:$(cat << parameters.arch >>-tag-js.txt)-<< parameters.arch >>
-            record_push $image:$(cat << parameters.arch >>-tag-js.txt)-<< parameters.arch >>
-      - run:
-          name: Build python-test Docker image
-          command: |
-            set -x
-            cd /home/circleci/project/scripts/docker
-            image=<< parameters.image >>-python
-            /bin/sh build-image.sh $image << parameters.arch >> python-test
-            /bin/sh determine-tag.sh $image << parameters.arch >> | tee << parameters.arch >>-tag-python.txt
-            docker tag $image:latest-<< parameters.arch >> $image:$(cat << parameters.arch >>-tag-python.txt)-<< parameters.arch >>
-            record_push $image:$(cat << parameters.arch >>-tag-python.txt)-<< parameters.arch >>
-      - run:
-          name: Build java-test Docker image
-          command: |
-            set -x
-            cd /home/circleci/project/scripts/docker
-            image=<< parameters.image >>-java
-            /bin/sh build-image.sh $image << parameters.arch >> java-test
-            /bin/sh determine-tag.sh $image << parameters.arch >> | tee << parameters.arch >>-tag-java.txt
-            docker tag $image:latest-<< parameters.arch >> $image:$(cat << parameters.arch >>-tag-java.txt)-<< parameters.arch >>
-            record_push $image:$(cat << parameters.arch >>-tag-java.txt)-<< parameters.arch >>
-      - run:
-          name: Build spark-test Docker image
-          command: |
-            set -x
-            cd /home/circleci/project/scripts/docker
-            image=<< parameters.image >>-spark
-            /bin/sh build-image.sh $image << parameters.arch >> spark-test
-            /bin/sh determine-tag.sh $image << parameters.arch >> | tee << parameters.arch >>-tag-spark.txt
-            docker tag $image:latest-<< parameters.arch >> $image:$(cat << parameters.arch >>-tag-spark.txt)-<< parameters.arch >>
-            record_push $image:$(cat << parameters.arch >>-tag-spark.txt)-<< parameters.arch >>
-      - run:
-          name: Build tinkerpop-test Docker image
-          command: |
-            set -x
-            cd /home/circleci/project/scripts/docker
-            image=<< parameters.image >>-tinkerpop
-            /bin/sh build-image.sh $image << parameters.arch >> tinkerpop-test
-            /bin/sh determine-tag.sh $image << parameters.arch >> | tee << parameters.arch >>-tag-tinkerpop.txt
-            docker tag $image:latest-<< parameters.arch >> $image:$(cat << parameters.arch >>-tag-tinkerpop.txt)-<< parameters.arch >>
-            record_push $image:$(cat << parameters.arch >>-tag-tinkerpop.txt)-<< parameters.arch >>
-      - run:
-          name: Build spring-test Docker image
-          command: |
-            set -x
-            cd /home/circleci/project/scripts/docker
-            image=<< parameters.image >>-spring
-            /bin/sh build-image.sh $image << parameters.arch >> spring-test
-            /bin/sh determine-tag.sh $image << parameters.arch >> | tee << parameters.arch >>-tag-spring.txt
-            docker tag $image:latest-<< parameters.arch >> $image:$(cat << parameters.arch >>-tag-spring.txt)-<< parameters.arch >>
-            record_push $image:$(cat << parameters.arch >>-tag-spring.txt)-<< parameters.arch >>
+            # One image per test suite: <image>-<suite>, built from the
+            # <suite>-test/ Dockerfile directory. Each suite's per-arch tag
+            # is written to <arch>-tag-<suite>.txt, which the manifest job
+            # reads; keep this suite list in sync with the manifest loop in
+            # build-test-docker-manifest.
+            for suite in go js python java spark tinkerpop spring; do
+              image=<< parameters.image >>-${suite}
+              /bin/sh build-image.sh $image << parameters.arch >> ${suite}-test
+              /bin/sh determine-tag.sh $image << parameters.arch >> | tee << parameters.arch >>-tag-${suite}.txt
+              docker tag $image:latest-<< parameters.arch >> $image:$(cat << parameters.arch >>-tag-${suite}.txt)-<< parameters.arch >>
+              record_push $image:$(cat << parameters.arch >>-tag-${suite}.txt)-<< parameters.arch >>
+            done
       - persist_to_workspace:
           root: .
           paths:
@@ -417,51 +364,24 @@ jobs:
             echo "No manifest for commit ${SHORT_SHA}; building."
       - setup-push-tracking
       - run:
-          name: Build test container manifest
+          name: Build test container manifests (base + all suites)
           command: |
+            set -eu
             cd scripts/docker/
-            record_manifest << parameters.image >> $(cat amd64-tag.txt)
+            # The suffix-less base image, then one manifest per test suite;
+            # each suite's per-arch tag was written to amd64-tag-<suite>.txt
+            # by build-test-docker-image — keep this suite list in sync with
+            # the build loop there.
+            record_manifest << parameters.image >> "$(cat amd64-tag.txt)"
+            for suite in go js python java spark tinkerpop spring; do
+              record_manifest << parameters.image >>-${suite} "$(cat amd64-tag-${suite}.txt)"
+            done
       - run:
           name: Build RTA container manifest
           command: |
             TAG="$(cat /home/circleci/project/scripts/docker/amd64-tag.txt)"
             cd /home/circleci/project-rta
             ./jenkins/build_and_push_circle-ci-manifests.sh << parameters.image >> $TAG
-      - run:
-          name: Build go-test container manifest
-          command: |
-            cd scripts/docker/
-            record_manifest << parameters.image >>-go $(cat amd64-tag-go.txt)
-      - run:
-          name: Build js-test container manifest
-          command: |
-            cd scripts/docker/
-            record_manifest << parameters.image >>-js $(cat amd64-tag-js.txt)
-      - run:
-          name: Build python-test container manifest
-          command: |
-            cd scripts/docker/
-            record_manifest << parameters.image >>-python $(cat amd64-tag-python.txt)
-      - run:
-          name: Build java-test container manifest
-          command: |
-            cd scripts/docker
-            record_manifest << parameters.image >>-java $(cat amd64-tag-java.txt)
-      - run:
-          name: Build spark-test container manifest
-          command: |
-            cd scripts/docker
-            record_manifest << parameters.image >>-spark $(cat amd64-tag-spark.txt)
-      - run:
-          name: Build tinkerpop-test container manifest
-          command: |
-            cd scripts/docker
-            record_manifest << parameters.image >>-tinkerpop $(cat amd64-tag-tinkerpop.txt)
-      - run:
-          name: Build spring-test container manifest
-          command: |
-            cd scripts/docker
-            record_manifest << parameters.image >>-spring $(cat amd64-tag-spring.txt)
       - run:
           name: Stage test-docker-image tag update
           command: |

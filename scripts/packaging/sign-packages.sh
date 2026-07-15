@@ -1,6 +1,5 @@
 #!/bin/bash
 # Detach-sign package files with GPG, producing <file>.asc next to each file.
-# Bash port of oskar's scripts/setupGpg.fish + scripts/signFile.fish.
 #
 # Usage: sign-packages.sh <file-or-directory>...
 #   Directories are signed recursively (every regular file except *.asc,

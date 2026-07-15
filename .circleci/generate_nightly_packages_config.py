@@ -122,6 +122,32 @@ def check_workflow(config: Dict[str, Any]) -> None:
     if "publish-nightly" not in known:
         raise ValueError("publish-nightly is missing from the workflow")
 
+    # publish-nightly must gate on every artifact-producing job that is
+    # still in the workflow — DIRECTLY, not only transitively through the
+    # scan/sign/security jobs, which can all be disabled. Without this,
+    # a gates-all-off run would let publish race the packaging jobs.
+    artifact_prefixes = (
+        "deb-enterprise",
+        "rpm-enterprise",
+        "tar-enterprise",
+        "docker-enterprise",
+    )
+    publish_requires: Set[str] = set()
+    for entry in workflow["jobs"]:
+        if entry_name(entry) == "publish-nightly" and isinstance(entry, dict):
+            [(_, job_config)] = entry.items()
+            publish_requires = set((job_config or {}).get("requires", []))
+    missing = sorted(
+        name
+        for name in known
+        if name.startswith(artifact_prefixes) and name not in publish_requires
+    )
+    if missing:
+        raise ValueError(
+            "publish-nightly must directly require every artifact-producing "
+            f"job in the workflow; missing: {missing}"
+        )
+
 
 def generate(base: Dict[str, Any], args: argparse.Namespace) -> Dict[str, Any]:
     if not any(

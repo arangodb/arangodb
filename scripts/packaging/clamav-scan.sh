@@ -1,5 +1,5 @@
 #!/bin/bash
-# Scan built packages with ClamAV. Bash port of oskar's jenkins/runClamAV.fish.
+# Scan built packages with ClamAV.
 #
 # Usage: clamav-scan.sh <packages-directory>...
 #   Directories that do not exist are skipped.
@@ -71,15 +71,16 @@ scan() {
     echo "Filename:  $(basename "${filename}")"
     echo "Date:  $(date)"
     echo
-    clamscan -r -v --max-scansize=2000M --max-recursion=10 "${SANDBOX}/work"
-    scan_status=$?
-    if [ "${scan_status}" -gt 1 ]; then
-      exit 1
-    fi
   } > "${report}"
-  local block_status=$?
+  # --max-filesize must be raised alongside --max-scansize: it defaults
+  # to 25M and any larger file would be silently SKIPPED, still
+  # reporting "Infected files: 0". 2000M is clamscan's upper limit.
+  clamscan -r -v --max-scansize=2000M --max-filesize=2000M --max-recursion=10 \
+    "${SANDBOX}/work" >> "${report}"
+  local scan_status=$?
   rm -rf "${SANDBOX}/work"
-  if [ "${block_status}" -ne 0 ]; then
+  # 0 = clean, 1 = infected (counted from the report below), > 1 = error
+  if [ "${scan_status}" -gt 1 ]; then
     echo "FATAL: clamscan failed for ${filename}" >&2
     return 1
   fi

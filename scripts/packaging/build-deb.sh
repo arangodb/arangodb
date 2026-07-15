@@ -1,8 +1,6 @@
 #!/bin/bash
 # Build Debian packages (server, -client, -dbg) from an existing install tree.
-# Bash port of oskar's buildDebianPackage (helper.linux.fish) +
-# scripts/buildDebianPackage.fish, using the templates vendored in
-# scripts/packaging/debian/.
+# Uses debhelper with the templates from scripts/packaging/debian/.
 #
 # Run from the repository root; requires:
 #   build/install/            populated install tree ("make install" output,
@@ -83,6 +81,11 @@ done
 } > "${TARGET}/changelog"
 
 sed -i "s/@ARCHITECTURE@/${ARCH}/g" "${TARGET}/control"
+
+# The upper copyright year is stamped from the build date, independent of
+# any pipeline-specific context (nightly, release, or a local build).
+CURRENT_YEAR="$(date -u +%Y)"
+sed -i "s/@CURRENT_YEAR@/${CURRENT_YEAR}/g" "${TARGET}/control" "${TARGET}/copyright"
 
 # debian/rules binary writes the .deb files into the parent directory.
 unset LC_ALL LC_CTYPE LANG LANGUAGE || true

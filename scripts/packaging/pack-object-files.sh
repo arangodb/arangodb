@@ -1,16 +1,16 @@
 #!/bin/bash
 # Pack the object files of a static enterprise build into a tar.gz so users
 # can relink the static executables against a newer glibc (BUSL/static
-# linking compliance). Bash port of oskar's scripts/packObjectFiles.fish;
-# runs right after "make install", inside the build image (it needs the
+# linking compliance). Runs right after "make install", inside the build
+# image (it needs the
 # static OpenSSL libraries from /opt).
 #
-# The archive layout matches oskar's: everything below the build directory
+# Archive layout: everything below the build directory
 # appears under "build/" (link_executables.sh and README.static-linking
 # rely on that name), plus lib/BuildId/BuildId.ld and the two helper files.
 #
 # Run from the repository root; requires:
-#   BUILD_DIR        build directory of the preset (e.g. build-presets/nightly)
+#   BUILD_DIR        build directory of the preset (e.g. build-presets/nightly-x86_64)
 #   BUILDMODE        CMake build type used            (default RelWithDebInfo)
 #   PACKAGES_OUT     output directory                 (default ./packages)
 # ARANGODB_VERSION is derived from CMakeLists.txt when not already exported.

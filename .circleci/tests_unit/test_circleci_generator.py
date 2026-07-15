@@ -147,7 +147,7 @@ class TestCreateBuildJob:
         assert "compile-linux" in job
         params = job["compile-linux"]
         assert params["name"] == "build-x64"
-        assert params["preset"] == "enterprise-pr"
+        assert params["preset"] == "enterprise-pr-x86_64"
         assert params["enterprise"] is True
         assert params["arch"] == "x64"
         assert params["resource-class"] == "arangodb/2xlarge-amd64"
@@ -165,7 +165,7 @@ class TestCreateBuildJob:
 
         params = job["compile-linux"]
         assert params["name"] == "build-x64-tsan"
-        assert params["preset"] == "enterprise-pr-tsan"
+        assert params["preset"] == "enterprise-pr-x86_64-tsan"
 
     def test_create_frontend_build_job(self):
         """Test creating frontend build job."""

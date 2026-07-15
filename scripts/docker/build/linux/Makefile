@@ -90,16 +90,21 @@ info:
 	fi
 
 # Guard: block pushes to production ECR from local builds unless ALLOW_ECR_PUSH=1.
+# Literal prefix match via case (the quoted pattern part is not a regex, so
+# the dots in the registry host match only themselves).
 _check-push:
-	@if echo "$(IMAGE)" | grep -q "^$(ECR_REGISTRY)" && [ "$(ALLOW_ECR_PUSH)" != "1" ]; then \
-	  echo ""; \
-	  echo "  Pushing to the production ECR registry is not allowed from local builds."; \
-	  echo "  Use a custom registry instead:"; \
-	  echo "    make push IMAGE=<your-registry>/ubuntubuildarangodb-$(MAJOR_MINOR)"; \
-	  echo "  In CI set ALLOW_ECR_PUSH=1."; \
-	  echo ""; \
-	  exit 1; \
-	fi
+	@case "$(IMAGE)" in \
+	"$(ECR_REGISTRY)"*) \
+	  if [ "$(ALLOW_ECR_PUSH)" != "1" ]; then \
+	    echo ""; \
+	    echo "  Pushing to the production ECR registry is not allowed from local builds."; \
+	    echo "  Use a custom registry instead:"; \
+	    echo "    make push IMAGE=<your-registry>/ubuntubuildarangodb-$(MAJOR_MINOR)"; \
+	    echo "  In CI set ALLOW_ECR_PUSH=1."; \
+	    echo ""; \
+	    exit 1; \
+	  fi ;; \
+	esac
 
 push: push-amd64 push-arm64
 

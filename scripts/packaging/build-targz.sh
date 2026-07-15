@@ -1,7 +1,6 @@
 #!/bin/bash
 # Build the server and client TAR.GZ bundles from an existing install tree.
-# Bash port of oskar's buildTarGzPackageHelper + prepareInstall (helper.fish),
-# using the launcher wrappers vendored in scripts/packaging/binForTarGz/.
+# Uses the launcher wrappers from scripts/packaging/binForTarGz/.
 #
 # Run from the repository root; requires:
 #   build/install/            populated install tree ("make install" output,

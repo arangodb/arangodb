@@ -1,5 +1,5 @@
 #!/bin/bash
-# Bash port of selected oskar fish-shell helpers.
+# Shared CI helpers for version handling and source info.
 # Source this file; do not execute it directly.
 #
 # Usage:
@@ -11,8 +11,8 @@
 # ---------------------------------------------------------------------------
 # find_arangodb_version [<CMakeLists.txt>]
 #
-# Reads version components from CMakeLists.txt, assembles every variable that
-# oskar's findArangoDBVersion sets, exports them all, and prints them.
+# Reads version components from CMakeLists.txt, assembles all derived
+# version variables, exports them all, and prints them.
 # Defaults to ../CMakeLists.txt relative to this script when no path given.
 #
 # Exported variables:
@@ -97,7 +97,7 @@ find_arangodb_version() {
 
   # RPM: upstream = plain version only (no release suffix);
   # revision sorts pre-releases before the stable -1: devel = 0.1,
-  # nightly = 0.2 (matching oskar), stable = 1.
+  # nightly = 0.2, stable = 1.
   ARANGODB_RPM_UPSTREAM="${ARANGODB_PLAIN_VERSION}"
   if [ "${ARANGODB_VERSION_RELEASE_TYPE}" = "nightly" ]; then
     ARANGODB_RPM_REVISION="0.2"
@@ -175,7 +175,7 @@ set_nightly_version() {
   local date_str
   date_str="${NIGHTLY_DATE:-$(date +%Y%m%d)}"
 
-  # Like oskar's setNightlyVersion: force "nightly" over ANY prior release
+  # Force "nightly" over ANY prior release
   # type (devel, rc, beta, or stable's "") so a nightly run of a release
   # branch can never produce stable-looking artifacts.
   sed -i \
@@ -185,7 +185,7 @@ set_nightly_version() {
 
   find_arangodb_version "${cmake_file}"
 
-  # oskar's setNightlyVersion also rewrote ARANGO-VERSION. CMake regenerates
+  # ARANGO-VERSION is rewritten as well. CMake regenerates
   # it from lib/Basics/VERSION.in at configure time, but jobs that only patch
   # the version and never configure (packaging, docker) would otherwise keep
   # the stale checked-in content (e.g. 3.12.10-devel) in their checkout.
@@ -195,8 +195,8 @@ set_nightly_version() {
 # ---------------------------------------------------------------------------
 # sourceInfo.log / sourceInfo.json helpers
 #
-# Bash ports of oskar's initSourceInfo / setupSourceInfo / convertSItoJSON.
-# The former "oskar" field is now called "CI" and identifies the CI run that
+# Collects the source revisions of all involved repositories.
+# The "CI" field identifies the CI run that
 # produced the artifacts. The log lives at
 # ${SOURCE_INFO_DIR:-.}/sourceInfo.log; the JSON twin is regenerated on every
 # update.

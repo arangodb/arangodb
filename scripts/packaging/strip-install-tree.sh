@@ -1,8 +1,7 @@
 #!/bin/bash
 # Strip an install tree the way shipped packages are stripped.
-# Bash port of oskar's prepareInstall (helper.fish): client tools are
-# stripped, arangod and the starter stay unstripped (3.12: arangod was only
-# ever stripped for <= 3.10, even with PACKAGE_STRIP=All).
+# Client tools are stripped, arangod and the starter stay unstripped
+# (arangod was only ever stripped for <= 3.10).
 # Used by build-targz.sh and by the nightly Docker image job.
 #
 # Usage: strip-install-tree.sh <install-tree>

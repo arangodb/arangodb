@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Generate per-directory index.html files for the download site.
 
-Replacement for the file-browser tooling oskar used over the NAS staging
-tree (arangodb-helper/Static-HTML-file-browser-for-Dropbox): since packages
+Replacement for the file-browser tooling previously used over the NAS
+staging tree (arangodb-helper/Static-HTML-file-browser-for-Dropbox): since packages
 are now published straight to GCS, the directory tree is reconstructed from
 a `gsutil ls -l -r <root>` listing instead of a local filesystem walk, and
 one index.html is emitted for every directory level.
