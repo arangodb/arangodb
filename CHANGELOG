@@ -1,7 +1,7 @@
 3.12.10-devel (XXXX-XX-XX)
 --------------------------
 * BTS-2400: Added the `--vector-index-build-retry-backoff` startup option (seconds) to
-  configure the vector index build retry backoff (default: 600).
+  configure the vector index build retry backoff (default: 60).
 
 * COR-613: Create Response Code Metrics
   arangodb_http_response_http_response_code_total{code="<response-code>"}
