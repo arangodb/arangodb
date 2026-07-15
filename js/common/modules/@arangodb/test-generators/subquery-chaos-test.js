@@ -21,7 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Markus Pfeiffer
 // //////////////////////////////////////////////////////////////////////////////
 const db = require("@arangodb").db;
 const _ = require("lodash");

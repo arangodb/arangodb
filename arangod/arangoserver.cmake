@@ -137,6 +137,7 @@ add_library(arangoserver STATIC
   RestHandler/RestViewHandler.cpp
   RestHandler/RestVocbaseBaseHandler.cpp
   RestHandler/RestWalAccessHandler.cpp
+  RestServer/ArangodServer.cpp
   RestServer/AqlFeature.cpp
   RestServer/BootstrapFeature.cpp
   RestServer/BootstrapOptionsProvider.cpp
@@ -152,6 +153,7 @@ add_library(arangoserver STATIC
   RestServer/DatabasePathFeature.cpp
   RestServer/DatabasePathOptionsProvider.cpp
   RestServer/DumpLimitsFeature.cpp
+  RestServer/DumpLimitsFeatureOptions.cpp
   RestServer/DumpLimitsOptionsProvider.cpp
   RestServer/EndpointFeature.cpp
   RestServer/EndpointFeatureOptions.cpp

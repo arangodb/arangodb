@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Metrics/MetricsFeature.h"
@@ -242,7 +241,7 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
   _server.addFeature<StatisticsFeature>(metrics);
   _server.addFeature<SystemDatabaseFeature>();
   _server.addFeature<TempFeature>(name);
-  _server.addFeature<TemporaryStorageFeature>();
+  _server.addFeature<TemporaryStorageFeature>(databasePath);
   _server.addFeature<TtlFeature>();
   _server.addFeature<UpgradeFeature>(&result, kNonServerFeatures);
   _server.addFeature<transaction::ManagerFeature>(metrics);

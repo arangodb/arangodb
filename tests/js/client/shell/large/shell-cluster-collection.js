@@ -20,8 +20,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Jan Steemann
-/// @author Copyright 2014, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
@@ -31,7 +29,6 @@ const ERRORS = arangodb.errors;
 const db = arangodb.db;
 const internal = require("internal");
 const console = require('console');
-const request = require('@arangodb/request');
 const ArangoError = require("@arangodb").ArangoError;
 const CI = require('@arangodb/cluster-info');
 

@@ -204,6 +204,7 @@ add_library(arango_basic_features STATIC
         ApplicationFeatures/CommunicationFeaturePhase.cpp
         ApplicationFeatures/ConfigFeature.cpp
         ApplicationFeatures/ConfigOptionsProvider.cpp
+        ApplicationFeatures/FeatureOptionProviderContainer.cpp
         ApplicationFeatures/FileSystemFeature.cpp
         ApplicationFeatures/FileSystemOptionsProvider.cpp
         ApplicationFeatures/GreetingsFeature.cpp

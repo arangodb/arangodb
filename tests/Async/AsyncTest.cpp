@@ -98,15 +98,16 @@ TYPED_TEST_SUITE(AsyncTest, MyTypes);
 TYPED_TEST(AsyncTest, async_return) {
   using ValueType = TypeParam::second_type;
 
-  auto a = [&]() -> async<ValueType> {
+  auto fn = [&]() -> async<ValueType> {
     co_await this->wait;
     co_return 12;
-  }();
+  };
+  auto coro = fn();
 
   this->wait.resume();
-  EXPECT_TRUE(a.valid());
-  auto awaitable = std::move(a).operator co_await();
-  EXPECT_FALSE(a.valid());
+  EXPECT_TRUE(coro.valid());
+  auto awaitable = std::move(coro).operator co_await();
+  EXPECT_FALSE(coro.valid());
   this->wait.await();
   EXPECT_TRUE(awaitable.await_ready());
   EXPECT_EQ(awaitable.await_resume(), 12);
@@ -115,20 +116,21 @@ TYPED_TEST(AsyncTest, async_return) {
 TYPED_TEST(AsyncTest, async_return_move) {
   using ValueType = TypeParam::second_type;
 
-  auto a = [&]() -> async<ValueType> {
+  auto fn = [&]() -> async<ValueType> {
     co_await this->wait;
     co_return 12;
-  }();
+  };
+  auto coro = fn();
 
-  EXPECT_TRUE(a.valid());
+  EXPECT_TRUE(coro.valid());
 
-  auto b = std::move(a);
-  EXPECT_TRUE(b.valid());
-  EXPECT_FALSE(a.valid());
+  auto moved_coro = std::move(coro);
+  EXPECT_TRUE(moved_coro.valid());
+  EXPECT_FALSE(coro.valid());
 
-  a = std::move(b);
-  EXPECT_TRUE(a.valid());
-  EXPECT_FALSE(b.valid());
+  coro = std::move(moved_coro);
+  EXPECT_TRUE(coro.valid());
+  EXPECT_FALSE(moved_coro.valid());
 
   this->wait.resume();
   this->wait.await();
@@ -137,15 +139,16 @@ TYPED_TEST(AsyncTest, async_return_move) {
 TYPED_TEST(AsyncTest, async_return_destroy) {
   using ValueType = TypeParam::second_type;
 
-  auto a = [&]() -> async<ValueType> {
+  auto fn = [&]() -> async<ValueType> {
     co_await this->wait;
     co_return 12;
-  }();
+  };
+  auto coro = fn();
 
   this->wait.resume();
-  EXPECT_TRUE(a.valid());
-  a.reset();
-  EXPECT_FALSE(a.valid());
+  EXPECT_TRUE(coro.valid());
+  coro.reset();
+  EXPECT_FALSE(coro.valid());
 
   this->wait.await();
 }
@@ -153,17 +156,21 @@ TYPED_TEST(AsyncTest, async_return_destroy) {
 TYPED_TEST(AsyncTest, await_ready_async) {
   using ValueType = TypeParam::second_type;
 
-  auto a = [&]() -> async<ValueType> {
+  auto fn_a = [&]() -> async<ValueType> {
     co_await this->wait;
     co_return 12;
-  }();
+  };
+  auto coro_a = fn_a();
 
-  auto b = [&]() -> async<ValueType> { co_return 2 * co_await std::move(a); }();
+  auto fn_b = [&]() -> async<ValueType> {
+    co_return 2 * co_await std::move(coro_a);
+  };
+  auto coro_b = fn_b();
 
   this->wait.resume();
-  EXPECT_TRUE(b.valid());
-  EXPECT_FALSE(a.valid());
-  auto awaitable = std::move(b).operator co_await();
+  EXPECT_TRUE(coro_b.valid());
+  EXPECT_FALSE(coro_a.valid());
+  auto awaitable = std::move(coro_b).operator co_await();
   this->wait.await();
   EXPECT_TRUE(awaitable.await_ready());
   EXPECT_EQ(awaitable.await_resume(), 24);
@@ -172,14 +179,15 @@ TYPED_TEST(AsyncTest, await_ready_async) {
 TYPED_TEST(AsyncTest, async_throw) {
   using ValueType = TypeParam::second_type;
 
-  auto a = [&]() -> async<ValueType> {
+  auto fn = [&]() -> async<ValueType> {
     co_await this->wait;
     throw std::runtime_error("TEST!");
-  }();
+  };
+  auto coro = fn();
 
   this->wait.resume();
-  EXPECT_TRUE(a.valid());
-  auto awaitable = std::move(a).operator co_await();
+  EXPECT_TRUE(coro.valid());
+  auto awaitable = std::move(coro).operator co_await();
   this->wait.await();
   EXPECT_TRUE(awaitable.await_ready());
   EXPECT_THROW(awaitable.await_resume(), std::runtime_error);
@@ -188,23 +196,25 @@ TYPED_TEST(AsyncTest, async_throw) {
 TYPED_TEST(AsyncTest, await_throw_async) {
   using ValueType = TypeParam::second_type;
 
-  auto a = [&]() -> async<ValueType> {
+  auto fn_a = [&]() -> async<ValueType> {
     co_await this->wait;
     throw std::runtime_error("TEST!");
-  }();
+  };
+  auto coro_a = fn_a();
 
-  auto b = [&]() -> async<ValueType> {
+  auto fn_b = [&]() -> async<ValueType> {
     try {
-      co_return 2 * co_await std::move(a);
+      co_return 2 * co_await std::move(coro_a);
     } catch (std::runtime_error const&) {
       co_return 0;
     }
-  }();
+  };
+  auto coro_b = fn_b();
 
   this->wait.resume();
-  EXPECT_TRUE(b.valid());
-  EXPECT_FALSE(a.valid());
-  auto awaitable = std::move(b).operator co_await();
+  EXPECT_TRUE(coro_b.valid());
+  EXPECT_FALSE(coro_a.valid());
+  auto awaitable = std::move(coro_b).operator co_await();
   this->wait.await();
   EXPECT_TRUE(awaitable.await_ready());
   EXPECT_EQ(awaitable.await_resume(), 0);
@@ -213,20 +223,22 @@ TYPED_TEST(AsyncTest, await_throw_async) {
 TYPED_TEST(AsyncTest, await_async_void) {
   using ValueType = TypeParam::second_type;
 
-  auto a = [&]() -> async<void> {
+  auto fn_a = [&]() -> async<void> {
     co_await this->wait;
     co_return;
-  }();
+  };
+  auto coro_a = fn_a();
 
-  auto b = [&]() -> async<ValueType> {
-    co_await std::move(a);
+  auto fn_b = [&]() -> async<ValueType> {
+    co_await std::move(coro_a);
     co_return 2;
-  }();
+  };
+  auto coro_b = fn_b();
 
   this->wait.resume();
-  EXPECT_TRUE(b.valid());
-  EXPECT_FALSE(a.valid());
-  auto awaitable = std::move(b).operator co_await();
+  EXPECT_TRUE(coro_b.valid());
+  EXPECT_FALSE(coro_a.valid());
+  auto awaitable = std::move(coro_b).operator co_await();
   this->wait.await();
   EXPECT_TRUE(awaitable.await_ready());
   EXPECT_EQ(awaitable.await_resume(), 2);
@@ -235,24 +247,26 @@ TYPED_TEST(AsyncTest, await_async_void) {
 TYPED_TEST(AsyncTest, await_async_void_exception) {
   using ValueType = TypeParam::second_type;
 
-  auto a = [&]() -> async<void> {
+  auto fn_a = [&]() -> async<void> {
     co_await this->wait;
     throw std::runtime_error("TEST!");
-  }();
+  };
+  auto coro_a = fn_a();
 
-  auto b = [&]() -> async<ValueType> {
+  auto fn_b = [&]() -> async<ValueType> {
     try {
-      co_await std::move(a);
+      co_await std::move(coro_a);
       co_return 2;
     } catch (std::runtime_error const&) {
       co_return 0;
     }
-  }();
+  };
+  auto coro_b = fn_b();
 
   this->wait.resume();
-  EXPECT_TRUE(b.valid());
-  EXPECT_FALSE(a.valid());
-  auto awaitable = std::move(b).operator co_await();
+  EXPECT_TRUE(coro_b.valid());
+  EXPECT_FALSE(coro_a.valid());
+  auto awaitable = std::move(coro_b).operator co_await();
   this->wait.await();
   EXPECT_TRUE(awaitable.await_ready());
   EXPECT_EQ(awaitable.await_resume(), 0);
@@ -261,24 +275,24 @@ TYPED_TEST(AsyncTest, await_async_void_exception) {
 TYPED_TEST(AsyncTest, multiple_suspension_points) {
   using ValueType = TypeParam::second_type;
 
-  auto a = [&]() -> async<ValueType> {
+  auto fn_a = [&]() -> async<ValueType> {
     co_await this->wait;
     co_return 12;
   };
 
-  auto lambda = [&]() -> async<ValueType> {
+  auto fn_b = [&]() -> async<ValueType> {
     for (int i = 0; i < 10; i++) {
-      co_await a();
+      co_await fn_a();
     }
 
     co_return 0;
   };
 
-  auto b = lambda();
+  auto coro_b = fn_b();
 
   this->wait.resume();
-  EXPECT_TRUE(b.valid());
-  auto awaitable = std::move(b).operator co_await();
+  EXPECT_TRUE(coro_b.valid());
+  auto awaitable = std::move(coro_b).operator co_await();
   this->wait.await();
   EXPECT_TRUE(awaitable.await_ready());
   EXPECT_EQ(awaitable.await_resume(), 0);
@@ -290,7 +304,7 @@ TYPED_TEST(AsyncTest, execution_context_is_local_to_coroutine) {
   ExecContextScope exec(ctxBegin.execContext);
   EXPECT_EQ(ExecContext::current().user(), "Begin");
 
-  auto waiting_coro = [&]() -> async<void> {
+  auto waiting_fn = [&]() -> async<void> {
     EXPECT_EQ(ExecContext::current().user(), "Begin");
     auto ctxWaiting = arangodb::tests::mocks::makeClassicExecContext(
         "Waiting", "", arangodb::auth::Level::RW, arangodb::auth::Level::NONE);
@@ -299,13 +313,15 @@ TYPED_TEST(AsyncTest, execution_context_is_local_to_coroutine) {
     co_await this->wait;
     EXPECT_EQ(ExecContext::current().user(), "Waiting");
     co_return;
-  }();
+  };
+  auto waiting_coro = waiting_fn();
   EXPECT_EQ(ExecContext::current().user(), "Begin");
 
-  auto trivial_coro = []() -> async<void> {
+  auto trivial_fn = []() -> async<void> {
     EXPECT_EQ(ExecContext::current().user(), "Begin");
     co_return;
-  }();
+  };
+  auto trivial_coro = trivial_fn();
 
   auto calling_coro = [&]() -> async<void> {
     EXPECT_EQ(ExecContext::current().user(), "Begin");
@@ -644,10 +660,11 @@ auto expect_all_promises_in_state(arangodb::async_registry::State state,
 }  // namespace
 TYPED_TEST(AsyncTest, async_promises_in_async_registry_know_their_state) {
   {
-    auto coro = [&]() -> async<int> {
+    auto fn = [&]() -> async<int> {
       co_await this->wait;
       co_return 12;
-    }();
+    };
+    auto coro = fn();
 
     if (std::is_same<decltype(this->wait), async_tests::WaitSlot>()) {
       expect_all_promises_in_state(arangodb::async_registry::State::Suspended,

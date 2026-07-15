@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
-/// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "DatabaseFeature.h"
@@ -310,8 +308,8 @@ void DatabaseFeature::validateOptions(
 
 void DatabaseFeature::initCalculationVocbase() {
   calculationVocbase = std::make_unique<TRI_vocbase_t>(
-      createExpressionVocbaseInfo(server()), engine(), versionTracker(),
-      extendedNames(), /*isInternal*/ true);
+      createExpressionVocbaseInfo(server()), engine(), *this,
+      /*isInternal*/ true);
 }
 
 void DatabaseFeature::start() {
@@ -727,7 +725,7 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info,
 
   result = vocbase.release();
 
-  versionTracker().track("create database");
+  notifyDdlChange("create database");
 
   // Update metadata metrics on single server only after successful creation
   if (res.ok() && ServerState::instance()->isSingleServer()) {
@@ -824,7 +822,7 @@ ErrorCode DatabaseFeature::dropDatabase(std::string_view name) {
   // must not use the database after here, as it may now be
   // deleted by the DatabaseManagerThread!
 
-  versionTracker().track("drop database");
+  notifyDdlChange("drop database");
 
   // Update metadata metrics on single server only after successful drop
   if (res == TRI_ERROR_NO_ERROR && ServerState::instance()->isSingleServer()) {
