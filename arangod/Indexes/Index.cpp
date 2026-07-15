@@ -987,16 +987,11 @@ bool Index::covers(aql::Projections& projections) const {
   auto const& covered = coveredFields();
 
   for (size_t i = 0; i < n; ++i) {
-    // `_id` and `_key` are interchangeable for covering purposes: a covered
-    // `_id` entry physically stores the document's key value (cf.
-    // transaction::extractAttributeValues and the storedValues handling in
-    // RocksDBVPackIndex::insert), and the covering producers in
-    // Projections.cpp rebuild `_id` projections from the covered key value
-    // via transaction::helpers::makeIdFromParts, using the collection set
-    // by Projections::setCoveringContext. so any covered `_key` or `_id`
-    // entry can serve projections on either attribute. this rule only
-    // applies to the exact top-level attributes, not to sub-attributes
-    // that happen to be named alike (e.g. a covered field `a._id`).
+    // top-level `_id` and `_key` are interchangeable for covering purposes:
+    // covered `_id` entries physically store the key value (cf.
+    // transaction::extractAttributeValues), and the covering producers in
+    // Projections.cpp rebuild `_id` projections from a covered key value
+    // via makeIdFromParts
     bool const isKeyOrIdProjection =
         projections[i].type == aql::AttributeNamePath::Type::IdAttribute ||
         projections[i].type == aql::AttributeNamePath::Type::KeyAttribute;

@@ -213,14 +213,9 @@ class Index {
   /// coveringIndexPosition value in it.
   virtual bool covers(aql::Projections& projections) const;
 
-  /// @brief translates the value of a lookup on `_id` into a `_key` lookup
-  /// value for the given collection: resolves the id, verifies that it
-  /// refers to `collection` (by local id, or by planId in a cluster,
-  /// including SmartGraph edge collections), and returns the key part.
-  /// returns std::nullopt if the value cannot refer to a document of
-  /// `collection`, in which case the lookup must produce no results.
-  /// shared by all indexes that answer `_id` lookups via an indexed `_key`
-  /// (the primary index, and persistent indexes with a `_key` field).
+  /// @brief translates an `_id` lookup value into a `_key` lookup value,
+  /// returning std::nullopt if the value cannot refer to a document of
+  /// `collection`
   static std::optional<std::string_view> extractKeyFromIdLookupValue(
       transaction::Methods& trx, LogicalCollection const& collection,
       std::string_view id);
