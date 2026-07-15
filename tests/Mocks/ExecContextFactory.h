@@ -43,17 +43,19 @@ namespace arangodb::tests::mocks {
 /// Never subclass this for any other reason.
 struct ExecContextAccessor final : public arangodb::ExecContext {
   static std::shared_ptr<arangodb::ExecContext> make(AuthMode authMode,
-                                                     VocbasePtr vocbase) {
+                                                     VocbasePtr vocbase,
+                                                     bool apiHardened) {
     // std::make_shared cannot call a private constructor, so we use new
     // directly here, which is valid inside the class scope.
-    return std::shared_ptr<arangodb::ExecContext>(new ExecContextAccessor(
-        ConstructorToken{}, std::move(authMode), std::move(vocbase)));
+    return std::shared_ptr<arangodb::ExecContext>(
+        new ExecContextAccessor(ConstructorToken{}, std::move(authMode),
+                                std::move(vocbase), apiHardened));
   }
 
  private:
   ExecContextAccessor(ConstructorToken token, AuthMode authMode,
-                      VocbasePtr vocbase)
-      : arangodb::ExecContext(token, std::move(authMode), false,
+                      VocbasePtr vocbase, bool apiHardened)
+      : arangodb::ExecContext(token, std::move(authMode), apiHardened,
                               std::move(vocbase)) {}
 };
 
@@ -125,8 +127,8 @@ inline ClassicExecContext makeClassicExecContext(std::string username,
   auto req = std::make_shared<FakeGeneralRequest>();
 
   auto authMode = AuthMode{AuthMode::Classic{*um, std::move(username), *req}};
-  auto ctx =
-      ExecContextAccessor::make(std::move(authMode), VocbasePtr{nullptr});
+  auto ctx = ExecContextAccessor::make(std::move(authMode), VocbasePtr{nullptr},
+                                       apiHardened);
 
   return ClassicExecContext{std::move(um), std::move(req), std::move(ctx)};
 }
@@ -163,8 +165,8 @@ inline BorrowedExecContext makeClassicExecContextFrom(
   auto req = std::make_shared<FakeGeneralRequest>();
   auto authMode = AuthMode{
       AuthMode::Classic{existingUserManager, std::move(username), *req}};
-  auto ctx =
-      ExecContextAccessor::make(std::move(authMode), VocbasePtr{nullptr});
+  auto ctx = ExecContextAccessor::make(std::move(authMode), VocbasePtr{nullptr},
+                                       apiHardened);
   return BorrowedExecContext{std::move(req), std::move(ctx)};
 }
 
