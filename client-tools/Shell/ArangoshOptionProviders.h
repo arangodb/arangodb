@@ -24,6 +24,5 @@
 #include "ApplicationFeatures/LanguageOptionsProvider.h"
 
 namespace arangodb {
-using ArangoshOptionProviders =
-    CoreOptionProviders<LanguageOptionsProvider>;
+using ArangoshOptionProviders = CoreOptionProviders<LanguageOptionsProvider>;
 }  // namespace arangodb
