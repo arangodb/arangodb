@@ -46,7 +46,8 @@ defmodule Toast.Client.Index do
     legacy_polygons: "legacyPolygons",
     stored_values: "storedValues",
     field_value_types: "fieldValueTypes",
-    prefix_fields: "prefixFields"
+    prefix_fields: "prefixFields",
+    params: "params"
   }
 
   @list_param_keys %{with_stats: :withStats, with_hidden: :withHidden}
@@ -69,6 +70,7 @@ defmodule Toast.Client.Index do
     * `:stored_values` — additional attributes to store in the index
     * `:field_value_types` — field value types (for `:mdi` indexes)
     * `:prefix_fields` — prefix fields (for `:mdi_prefixed` indexes)
+    * `:params` — type-specific parameter map (e.g. vector index `dimension`/`metric`)
   """
   @spec ensure(Client.t(), String.t(), atom(), [String.t()], keyword()) ::
           {:ok, map()} | {:error, term()}
