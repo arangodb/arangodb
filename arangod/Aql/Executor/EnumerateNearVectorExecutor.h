@@ -45,6 +45,10 @@ namespace arangodb {
 class RocksDBVectorIndex;
 }
 
+namespace arangodb::vector_graph {
+class VectorGraphIndex;
+}
+
 namespace arangodb::aql {
 
 struct AqlCall;
@@ -105,7 +109,16 @@ class EnumerateNearVectorsExecutor {
  private:
   void fillInput(AqlItemBlockInputRange& inputRange);
 
+  // Reads the query point from the current input row into _inputRowConverted,
+  // validating that it is an array of the index's dimension.
+  void convertQueryVector(std::size_t dimension);
+
   void searchResults();
+
+  // Search path for the graph-based vector index: runs GreedySearch over the
+  // index segments and fills the label/distance/document buffers.
+  // TODO(jbajic) just temp build new executor
+  void searchGraphIndex();
 
   void fillOutput(OutputAqlItemRow& output);
 
@@ -126,10 +139,17 @@ class EnumerateNearVectorsExecutor {
   // stores nothing and always yields an empty result set.
   static RocksDBVectorIndex const* resolveVectorIndex(Infos const& infos);
 
+  // Resolves the graph-based vector index from the index handle (unwrapping a
+  // RocksDBBuilderIndex during construction). Returns nullptr when the index
+  // is not a VectorGraphIndex.
+  static vector_graph::VectorGraphIndex const* resolveGraphIndex(
+      Infos const& infos);
+
   Infos const& _infos;
   transaction::Methods _trx;
   aql::Collection const* _collection;
   RocksDBVectorIndex const* _vectorIndex;
+  vector_graph::VectorGraphIndex const* _graphIndex;
 
   InputAqlItemRow _inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
   std::vector<float> _inputRowConverted;
