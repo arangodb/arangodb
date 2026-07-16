@@ -20,6 +20,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+#include "GeneralServer/AuthenticationOptionsProvider.h"
+#include "GeneralServer/GeneralServerOptionsProvider.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/DatabasePathOptionsProvider.h"
 #include "RestServer/DumpLimitsOptionsProvider.h"
@@ -46,9 +48,10 @@ class FeatureOptionProviderContainer final {
   }
 
  private:
-  std::tuple<DatabasePathOptionsProvider, DumpLimitsOptionsProvider,
+  std::tuple<AuthenticationOptionsProvider, DatabasePathOptionsProvider, DumpLimitsOptionsProvider,
              EndpointOptionsProvider, FlushOptionsProvider,
-             fortune::FortuneOptionsProvider, RocksDBEngineOptionsProvider,
+             fortune::FortuneOptionsProvider, GeneralServerOptionsProvider,
+             RocksDBEngineOptionsProvider,
              RocksDBIndexCacheRefillOptionsProvider,
              RocksDBOptionFeatureOptionsProvider, ServerOptionsProvider,
              TemporaryStorageOptionsProvider>

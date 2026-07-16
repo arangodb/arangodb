@@ -105,7 +105,6 @@ void ArangodServer::addFeatures() {
   addFeature<AqlFeature>();
   addFeature<async_registry::Feature>(_dataSourceRegistry);
   addFeature<activities::Feature>(_dataSourceRegistry);
-  addFeature<AuthenticationFeature>();
 
 #ifdef TRI_HAVE_GETRLIMIT
   addFeature<BumpFileDescriptorsFeature>("--server.descriptors-minimum");
@@ -141,7 +140,6 @@ void ArangodServer::addFeatures() {
   addFeature<FoxxFeature>();
   addFeature<FrontendFeature>();
 #endif
-  addFeature<GeneralServerFeature>(metrics);
   addFeature<GreetingsFeature>();
   addFeature<InitDatabaseFeature>(kNonServerFeatures);
   addFeature<LanguageCheckFeature>();
@@ -234,6 +232,16 @@ void ArangodServer::addFeaturesWithOptionProvider() {
   auto& cacheManager = getFeature<CacheManagerFeature>();
   auto& agency = getFeature<AgencyFeature>();
   auto& clusterFeature = getFeature<ClusterFeature>();
+
+  // Add AuthenticationFeature
+  auto authenticationOptions =
+      _optionProviders.getOptions<AuthenticationOptionsProvider>();
+  addFeature<AuthenticationFeature>(std::move(authenticationOptions));
+
+  // Add GeneralServerFeature
+  auto generalServerOptions =
+      _optionProviders.getOptions<GeneralServerOptionsProvider>();
+  addFeature<GeneralServerFeature>(metrics, std::move(generalServerOptions));
 
   // Add EndpointFeature
   auto endpointOptions = _optionProviders.getOptions<EndpointOptionsProvider>();
