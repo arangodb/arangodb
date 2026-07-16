@@ -44,13 +44,13 @@ if (getOptions === true) {
 
 if (runSetup === true) {
     let users = require("@arangodb/users");
-  
+
   users.save("test_rw", "testi");
   users.grantDatabase("test_rw", "_system", "rw");
-  
+
   users.save("test_ro", "testi");
   users.grantDatabase("test_ro", "_system", "ro");
-  
+
   return true;
 }
 
@@ -78,7 +78,7 @@ function testSuite() {
 
     testVersionOnlyAcceptsGet : function() {
       arango.reconnect(IM.endpoint, db._name(), "test_rw", "testi");
-      let url = "/_api/version";  
+      let url = "/_api/version";
       assertEndpointGetOnly(url);
     },
 
@@ -86,6 +86,14 @@ function testSuite() {
       arango.reconnect(IM.endpoint, db._name(), "test_rw", "testi");
       let result = arango.GET("/_api/engine");
       assertTrue(result.hasOwnProperty("name"));
+
+      let indexes = result.supports.indexes.filter((t) => t !== "vector");
+      assertEqual([
+        "primary", "edge", "fulltext", "ttl", "persistent",
+        "geo", "geo1", "geo2", "mdi", "mdi-prefixed", "inverted"
+      ], indexes);
+
+      assertEqual({ zkd: "mdi" }, result.supports.aliases.indexes);
     },
 
     testCanAccessEngineRo : function() {
@@ -215,7 +223,7 @@ function testSuite() {
       assertTrue(result.error);
       assertEqual(403, result.code);
     },
-    
+
     testCanAccessGetNumberOfServersRw : function() {
       arango.reconnect(IM.endpoint, db._name(), "test_rw", "testi");
       if (isCluster) {
