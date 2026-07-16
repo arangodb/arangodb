@@ -338,6 +338,9 @@ void VectorIndexBuildManager::scanAndBuild(std::stop_token const& stopToken,
               << "s (or until the document count changes).";
 
           reportIndexError(vocbase, *coll, vecIdx, res);
+          if (ServerState::instance()->isDBServer()) {
+            _maintenance.addDirty(vocbase.name());
+          }
           continue;
         }
 
@@ -345,6 +348,16 @@ void VectorIndexBuildManager::scanAndBuild(std::stop_token const& stopToken,
 
         clearIndexError(vocbase, *coll, vecIdx);
         failedBuilds.erase(vecIdx.objectId());
+
+        // Training ran on this thread, outside the maintenance-action
+        // framework, so nothing has marked the database dirty. Without that,
+        // the shard's new "ready" trainingState only reaches agency Current on
+        // the next unrelated maintenance cycle, which under load can lag well
+        // past clients' wait timeouts. Mark it dirty so the DBServer
+        // republishes Current promptly. Only meaningful on a DBServer.
+        if (ServerState::instance()->isDBServer()) {
+          _maintenance.addDirty(vocbase.name());
+        }
 
         // Update the untrained count after each successful build.
         _untrainedCount.store(
