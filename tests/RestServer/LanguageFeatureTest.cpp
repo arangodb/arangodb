@@ -336,7 +336,6 @@ TEST_F(ArangoLanguageFeatureTest, testDefaultLangCheckTrue) {
 
   constexpr std::string_view firstLang = "sv";
   constexpr std::string_view secondLang = "de";
-  ;
 
   // Enable force check for languages
   server.server()
@@ -372,11 +371,6 @@ TEST_F(ArangoLanguageFeatureTest, testDefaultLangCheckTrue) {
     langFeature.resetLanguage(firstLang,
                               arangodb::basics::LanguageType::DEFAULT);
 
-    server.server()
-        .options()
-        ->get<StringParameter>(defaultParameter.data())
-        ->set(firstLang.data());
-
     // Simulate server launch
     langFeature.prepare();
     langCheckFeature.start();
@@ -391,14 +385,9 @@ TEST_F(ArangoLanguageFeatureTest, testDefaultLangCheckTrue) {
   // Assume that server is stoped
   // We launch it again with parameters
   {
+    // Now we try to launch server with same parameter but with another lang
     langFeature.resetLanguage(secondLang,
                               arangodb::basics::LanguageType::DEFAULT);
-
-    // Now we try to launch server with same parameter but with another lang
-    server.server()
-        .options()
-        ->get<StringParameter>(defaultParameter.data())
-        ->set(secondLang.data());
 
     // Simulate server launch
     langFeature.prepare();
@@ -411,17 +400,8 @@ TEST_F(ArangoLanguageFeatureTest, testDefaultLangCheckTrue) {
   // Assume that server is stoped
   // We launch it again with parameters
   {
-    langFeature.resetLanguage(secondLang, arangodb::basics::LanguageType::ICU);
-
     // Now we try to launch server with different parameter
-    server.server()
-        .options()
-        ->get<StringParameter>(defaultParameter.data())
-        ->set("");  // clear value for defaultParameter
-    server.server()
-        .options()
-        ->get<StringParameter>(icuParameter.data())
-        ->set(secondLang.data());
+    langFeature.resetLanguage(secondLang, arangodb::basics::LanguageType::ICU);
 
     // Simulate server launch
     langFeature.prepare();
@@ -432,15 +412,6 @@ TEST_F(ArangoLanguageFeatureTest, testDefaultLangCheckTrue) {
   // We launch it again with parameters
   {
     langFeature.resetLanguage("", arangodb::basics::LanguageType::DEFAULT);
-
-    server.server()
-        .options()
-        ->get<StringParameter>(defaultParameter.data())
-        ->set("");  // clear value for parameter
-    server.server()
-        .options()
-        ->get<StringParameter>(icuParameter.data())
-        ->set("");  // clear value for parameter
 
     // Simulate server launch
     langFeature.prepare();
@@ -498,11 +469,6 @@ TEST_F(ArangoLanguageFeatureTest, testDefaultLangCheckFalse) {
     langFeature.resetLanguage(firstLang,
                               arangodb::basics::LanguageType::DEFAULT);
 
-    server.server()
-        .options()
-        ->get<StringParameter>(defaultParameter.data())
-        ->set(firstLang.data());
-
     // Simulate server launch
     langFeature.prepare();
     langCheckFeature.start();
@@ -517,14 +483,9 @@ TEST_F(ArangoLanguageFeatureTest, testDefaultLangCheckFalse) {
   // Assume that server is stoped
   // We launch it again with parameters
   {
+    // Now we try to launch server with same parameter but with another lang
     langFeature.resetLanguage(secondLang,
                               arangodb::basics::LanguageType::DEFAULT);
-
-    // Now we try to launch server with same parameter but with another lang
-    server.server()
-        .options()
-        ->get<StringParameter>(defaultParameter.data())
-        ->set(secondLang.data());
 
     // Simulate server launch
     langFeature.prepare();
@@ -537,17 +498,8 @@ TEST_F(ArangoLanguageFeatureTest, testDefaultLangCheckFalse) {
   // Assume that server is stoped
   // We launch it again with parameters
   {
-    langFeature.resetLanguage(secondLang, arangodb::basics::LanguageType::ICU);
-
     // Now we try to launch server with different parameter
-    server.server()
-        .options()
-        ->get<StringParameter>(defaultParameter.data())
-        ->set("");  // clear value for defaultParameter
-    server.server()
-        .options()
-        ->get<StringParameter>(icuParameter.data())
-        ->set(secondLang.data());
+    langFeature.resetLanguage(secondLang, arangodb::basics::LanguageType::ICU);
 
     // Simulate server launch
     langFeature.prepare();
@@ -558,15 +510,6 @@ TEST_F(ArangoLanguageFeatureTest, testDefaultLangCheckFalse) {
   // We launch it again with parameters
   {
     langFeature.resetLanguage("", arangodb::basics::LanguageType::DEFAULT);
-
-    server.server()
-        .options()
-        ->get<StringParameter>(defaultParameter.data())
-        ->set("");  // clear value for parameter
-    server.server()
-        .options()
-        ->get<StringParameter>(icuParameter.data())
-        ->set("");  // clear value for parameter
 
     // Simulate server launch
     langFeature.prepare();
@@ -628,11 +571,6 @@ TEST_F(ArangoLanguageFeatureTest, testEmptyLangCheckTrue) {
     langFeature.resetLanguage(firstLang,
                               arangodb::basics::LanguageType::DEFAULT);
 
-    server.server()
-        .options()
-        ->get<StringParameter>(defaultParameter.data())
-        ->set(firstLang.data());
-
     // Simulate server launch
     langFeature.prepare();
     langCheckFeature.start();
@@ -647,14 +585,9 @@ TEST_F(ArangoLanguageFeatureTest, testEmptyLangCheckTrue) {
   // Assume that server is stoped
   // We launch it again with parameters
   {
+    // Now we try to launch server with same parameter but with another lang
     langFeature.resetLanguage(secondLang,
                               arangodb::basics::LanguageType::DEFAULT);
-
-    // Now we try to launch server with same parameter but with another lang
-    server.server()
-        .options()
-        ->get<StringParameter>(defaultParameter.data())
-        ->set(secondLang.data());
 
     // Simulate server launch
     langFeature.prepare();
@@ -667,17 +600,8 @@ TEST_F(ArangoLanguageFeatureTest, testEmptyLangCheckTrue) {
   // Assume that server is stoped
   // We launch it again with parameters
   {
-    langFeature.resetLanguage(secondLang, arangodb::basics::LanguageType::ICU);
-
     // Now we try to launch server with different parameter
-    server.server()
-        .options()
-        ->get<StringParameter>(defaultParameter.data())
-        ->set("");  // clear value for defaultParameter
-    server.server()
-        .options()
-        ->get<StringParameter>(icuParameter.data())
-        ->set(secondLang.data());
+    langFeature.resetLanguage(secondLang, arangodb::basics::LanguageType::ICU);
 
     // Simulate server launch
     langFeature.prepare();
@@ -688,15 +612,6 @@ TEST_F(ArangoLanguageFeatureTest, testEmptyLangCheckTrue) {
   // We launch it again with parameters
   {
     langFeature.resetLanguage("", arangodb::basics::LanguageType::DEFAULT);
-
-    server.server()
-        .options()
-        ->get<StringParameter>(defaultParameter.data())
-        ->set("");  // clear value for parameter
-    server.server()
-        .options()
-        ->get<StringParameter>(icuParameter.data())
-        ->set("");  // clear value for parameter
 
     // Simulate server launch
     langFeature.prepare();
@@ -758,11 +673,6 @@ TEST_F(ArangoLanguageFeatureTest, testEmptyLangCheckFalse) {
     langFeature.resetLanguage(firstLang,
                               arangodb::basics::LanguageType::DEFAULT);
 
-    server.server()
-        .options()
-        ->get<StringParameter>(defaultParameter.data())
-        ->set(firstLang.data());
-
     // Simulate server launch
     langFeature.prepare();
     langCheckFeature.start();
@@ -777,14 +687,9 @@ TEST_F(ArangoLanguageFeatureTest, testEmptyLangCheckFalse) {
   // Assume that server is stoped
   // We launch it again with parameters
   {
+    // Now we try to launch server with same parameter but with another lang
     langFeature.resetLanguage(secondLang,
                               arangodb::basics::LanguageType::DEFAULT);
-
-    // Now we try to launch server with same parameter but with another lang
-    server.server()
-        .options()
-        ->get<StringParameter>(defaultParameter.data())
-        ->set(secondLang.data());
 
     // Simulate server launch
     langFeature.prepare();
@@ -797,17 +702,8 @@ TEST_F(ArangoLanguageFeatureTest, testEmptyLangCheckFalse) {
   // Assume that server is stoped
   // We launch it again with parameters
   {
-    langFeature.resetLanguage(secondLang, arangodb::basics::LanguageType::ICU);
-
     // Now we try to launch server with different parameter
-    server.server()
-        .options()
-        ->get<StringParameter>(defaultParameter.data())
-        ->set("");  // clear value for defaultParameter
-    server.server()
-        .options()
-        ->get<StringParameter>(icuParameter.data())
-        ->set(secondLang.data());
+    langFeature.resetLanguage(secondLang, arangodb::basics::LanguageType::ICU);
 
     // Simulate server launch
     langFeature.prepare();
@@ -818,15 +714,6 @@ TEST_F(ArangoLanguageFeatureTest, testEmptyLangCheckFalse) {
   // We launch it again with parameters
   {
     langFeature.resetLanguage("", arangodb::basics::LanguageType::DEFAULT);
-
-    server.server()
-        .options()
-        ->get<StringParameter>(defaultParameter.data())
-        ->set("");  // clear value for parameter
-    server.server()
-        .options()
-        ->get<StringParameter>(icuParameter.data())
-        ->set("");  // clear value for parameter
 
     // Simulate server launch
     langFeature.prepare();
@@ -883,11 +770,6 @@ TEST_F(ArangoLanguageFeatureTest, testIcuLangCheckTrue) {
   {
     langFeature.resetLanguage(firstLang, arangodb::basics::LanguageType::ICU);
 
-    server.server()
-        .options()
-        ->get<StringParameter>(icuParameter.data())
-        ->set(firstLang.data());
-
     // Simulate server launch
     langFeature.prepare();
     langCheckFeature.start();
@@ -902,13 +784,8 @@ TEST_F(ArangoLanguageFeatureTest, testIcuLangCheckTrue) {
   // Assume that server is stoped
   // We launch it again with parameters
   {
-    langFeature.resetLanguage(secondLang, arangodb::basics::LanguageType::ICU);
-
     // Now we try to launch server with same parameter but with another lang
-    server.server()
-        .options()
-        ->get<StringParameter>(icuParameter.data())
-        ->set(secondLang.data());
+    langFeature.resetLanguage(secondLang, arangodb::basics::LanguageType::ICU);
 
     // Simulate server launch
     langFeature.prepare();
@@ -921,18 +798,9 @@ TEST_F(ArangoLanguageFeatureTest, testIcuLangCheckTrue) {
   // Assume that server is stoped
   // We launch it again with parameters
   {
+    // Now we try to launch server with different parameter
     langFeature.resetLanguage(secondLang,
                               arangodb::basics::LanguageType::DEFAULT);
-
-    // Now we try to launch server with different parameter
-    server.server()
-        .options()
-        ->get<StringParameter>(icuParameter.data())
-        ->set("");  // clear value for defaultParameter
-    server.server()
-        .options()
-        ->get<StringParameter>(defaultParameter.data())
-        ->set(secondLang.data());
 
     // Simulate server launch
     langFeature.prepare();
@@ -943,15 +811,6 @@ TEST_F(ArangoLanguageFeatureTest, testIcuLangCheckTrue) {
   // We launch it again with parameters
   {
     langFeature.resetLanguage("", arangodb::basics::LanguageType::DEFAULT);
-
-    server.server()
-        .options()
-        ->get<StringParameter>(defaultParameter.data())
-        ->set("");  // clear value for parameter
-    server.server()
-        .options()
-        ->get<StringParameter>(icuParameter.data())
-        ->set("");  // clear value for parameter
 
     // Simulate server launch
     langFeature.prepare();
@@ -1008,11 +867,6 @@ TEST_F(ArangoLanguageFeatureTest, testIcuLangCheckFalse) {
   {
     langFeature.resetLanguage(firstLang, arangodb::basics::LanguageType::ICU);
 
-    server.server()
-        .options()
-        ->get<StringParameter>(icuParameter.data())
-        ->set(firstLang.data());
-
     // Simulate server launch
     langFeature.prepare();
     langCheckFeature.start();
@@ -1027,13 +881,8 @@ TEST_F(ArangoLanguageFeatureTest, testIcuLangCheckFalse) {
   // Assume that server is stoped
   // We launch it again with parameters
   {
-    langFeature.resetLanguage(secondLang, arangodb::basics::LanguageType::ICU);
-
     // Now we try to launch server with same parameter but with another lang
-    server.server()
-        .options()
-        ->get<StringParameter>(icuParameter.data())
-        ->set(secondLang.data());
+    langFeature.resetLanguage(secondLang, arangodb::basics::LanguageType::ICU);
 
     // Simulate server launch
     langFeature.prepare();
@@ -1046,17 +895,9 @@ TEST_F(ArangoLanguageFeatureTest, testIcuLangCheckFalse) {
   // Assume that server is stoped
   // We launch it again with parameters
   {
-    langFeature.resetLanguage(secondLang, arangodb::basics::LanguageType::DEFAULT);
-
     // Now we try to launch server with different parameter
-    server.server()
-        .options()
-        ->get<StringParameter>(icuParameter.data())
-        ->set("");  // clear value for defaultParameter
-    server.server()
-        .options()
-        ->get<StringParameter>(defaultParameter.data())
-        ->set(secondLang.data());
+    langFeature.resetLanguage(secondLang,
+                              arangodb::basics::LanguageType::DEFAULT);
 
     // Simulate server launch
     langFeature.prepare();
@@ -1067,15 +908,6 @@ TEST_F(ArangoLanguageFeatureTest, testIcuLangCheckFalse) {
   // We launch it again with parameters
   {
     langFeature.resetLanguage("", arangodb::basics::LanguageType::DEFAULT);
-
-    server.server()
-        .options()
-        ->get<StringParameter>(defaultParameter.data())
-        ->set("");  // clear value for parameter
-    server.server()
-        .options()
-        ->get<StringParameter>(icuParameter.data())
-        ->set("");  // clear value for parameter
 
     // Simulate server launch
     langFeature.prepare();
@@ -1148,13 +980,8 @@ TEST_F(ArangoLanguageFeatureTest, testIcuWithVariantLangCheckTrue) {
   // Assume that server is stoped
   // We launch it again with parameters
   {
-    langFeature.resetLanguage(secondLang, arangodb::basics::LanguageType::ICU);
-
     // Now we try to launch server with same parameter but with another lang
-    server.server()
-        .options()
-        ->get<StringParameter>(icuParameter.data())
-        ->set(secondLang.data());
+    langFeature.resetLanguage(secondLang, arangodb::basics::LanguageType::ICU);
 
     // Simulate server launch
     langFeature.prepare();
@@ -1166,18 +993,9 @@ TEST_F(ArangoLanguageFeatureTest, testIcuWithVariantLangCheckTrue) {
   // Assume that server is stoped
   // We launch it again with parameters
   {
+    // Now we try to launch server with different parameter
     langFeature.resetLanguage(secondLang,
                               arangodb::basics::LanguageType::DEFAULT);
-
-    // Now we try to launch server with different parameter
-    server.server()
-        .options()
-        ->get<StringParameter>(icuParameter.data())
-        ->set("");  // clear value for defaultParameter
-    server.server()
-        .options()
-        ->get<StringParameter>(defaultParameter.data())
-        ->set(secondLang.data());
 
     // Simulate server launch
     langFeature.prepare();
@@ -1187,15 +1005,6 @@ TEST_F(ArangoLanguageFeatureTest, testIcuWithVariantLangCheckTrue) {
   // We launch it again with parameters
   {
     langFeature.resetLanguage("", arangodb::basics::LanguageType::DEFAULT);
-
-    server.server()
-        .options()
-        ->get<StringParameter>(defaultParameter.data())
-        ->set("");  // clear value for parameter
-    server.server()
-        .options()
-        ->get<StringParameter>(icuParameter.data())
-        ->set("");  // clear value for parameter
 
     // Simulate server launch
     langFeature.prepare();
@@ -1251,11 +1060,6 @@ TEST_F(ArangoLanguageFeatureTest, testIcuWithCollationLangCheckTrue) {
   {
     langFeature.resetLanguage(firstLang, arangodb::basics::LanguageType::ICU);
 
-    server.server()
-        .options()
-        ->get<StringParameter>(icuParameter.data())
-        ->set(firstLang.data());
-
     // Simulate server launch
     langFeature.prepare();
     langCheckFeature.start();
@@ -1270,13 +1074,8 @@ TEST_F(ArangoLanguageFeatureTest, testIcuWithCollationLangCheckTrue) {
   // Assume that server is stoped
   // We launch it again with parameters
   {
-    langFeature.resetLanguage(secondLang, arangodb::basics::LanguageType::ICU);
-
     // Now we try to launch server with same parameter but with another lang
-    server.server()
-        .options()
-        ->get<StringParameter>(icuParameter.data())
-        ->set(secondLang.data());
+    langFeature.resetLanguage(secondLang, arangodb::basics::LanguageType::ICU);
 
     // Simulate server launch
     langFeature.prepare();
@@ -1289,18 +1088,9 @@ TEST_F(ArangoLanguageFeatureTest, testIcuWithCollationLangCheckTrue) {
   // Assume that server is stoped
   // We launch it again with parameters
   {
+    // Now we try to launch server with different parameter
     langFeature.resetLanguage(secondLang,
                               arangodb::basics::LanguageType::DEFAULT);
-
-    // Now we try to launch server with different parameter
-    server.server()
-        .options()
-        ->get<StringParameter>(icuParameter.data())
-        ->set("");  // clear value for defaultParameter
-    server.server()
-        .options()
-        ->get<StringParameter>(defaultParameter.data())
-        ->set(secondLang.data());
 
     // Simulate server launch
     langFeature.prepare();
@@ -1311,15 +1101,6 @@ TEST_F(ArangoLanguageFeatureTest, testIcuWithCollationLangCheckTrue) {
   // We launch it again with parameters
   {
     langFeature.resetLanguage("", arangodb::basics::LanguageType::DEFAULT);
-
-    server.server()
-        .options()
-        ->get<StringParameter>(defaultParameter.data())
-        ->set("");  // clear value for parameter
-    server.server()
-        .options()
-        ->get<StringParameter>(icuParameter.data())
-        ->set("");  // clear value for parameter
 
     // Simulate server launch
     langFeature.prepare();
@@ -1378,11 +1159,6 @@ TEST_F(ArangoLanguageFeatureTest, testIcuCountry1WithCollationLangCheckTrue) {
     langFeature.resetLanguage(inputFirstLang,
                               arangodb::basics::LanguageType::ICU);
 
-    server.server()
-        .options()
-        ->get<StringParameter>(icuParameter.data())
-        ->set(inputFirstLang.data());
-
     // Simulate server launch
     langFeature.prepare();
     langCheckFeature.start();
@@ -1397,13 +1173,8 @@ TEST_F(ArangoLanguageFeatureTest, testIcuCountry1WithCollationLangCheckTrue) {
   // Assume that server is stoped
   // We launch it again with parameters
   {
-    langFeature.resetLanguage(secondLang, arangodb::basics::LanguageType::ICU);
-
     // Now we try to launch server with same parameter but with another lang
-    server.server()
-        .options()
-        ->get<StringParameter>(icuParameter.data())
-        ->set(secondLang.data());
+    langFeature.resetLanguage(secondLang, arangodb::basics::LanguageType::ICU);
 
     // Simulate server launch
     langFeature.prepare();
@@ -1416,18 +1187,9 @@ TEST_F(ArangoLanguageFeatureTest, testIcuCountry1WithCollationLangCheckTrue) {
   // Assume that server is stoped
   // We launch it again with parameters
   {
+    // Now we try to launch server with different parameter
     langFeature.resetLanguage(secondLang,
                               arangodb::basics::LanguageType::DEFAULT);
-
-    // Now we try to launch server with different parameter
-    server.server()
-        .options()
-        ->get<StringParameter>(icuParameter.data())
-        ->set("");  // clear value for defaultParameter
-    server.server()
-        .options()
-        ->get<StringParameter>(defaultParameter.data())
-        ->set(secondLang.data());
 
     // Simulate server launch
     langFeature.prepare();
@@ -1438,15 +1200,6 @@ TEST_F(ArangoLanguageFeatureTest, testIcuCountry1WithCollationLangCheckTrue) {
   // We launch it again with parameters
   {
     langFeature.resetLanguage("", arangodb::basics::LanguageType::DEFAULT);
-
-    server.server()
-        .options()
-        ->get<StringParameter>(defaultParameter.data())
-        ->set("");  // clear value for parameter
-    server.server()
-        .options()
-        ->get<StringParameter>(icuParameter.data())
-        ->set("");  // clear value for parameter
 
     // Simulate server launch
     langFeature.prepare();
@@ -1505,11 +1258,6 @@ TEST_F(ArangoLanguageFeatureTest, testIcuCountry2WithCollationLangCheckTrue) {
     langFeature.resetLanguage(inputFirstLang,
                               arangodb::basics::LanguageType::ICU);
 
-    server.server()
-        .options()
-        ->get<StringParameter>(icuParameter.data())
-        ->set(inputFirstLang.data());
-
     // Simulate server launch
     langFeature.prepare();
     langCheckFeature.start();
@@ -1524,13 +1272,8 @@ TEST_F(ArangoLanguageFeatureTest, testIcuCountry2WithCollationLangCheckTrue) {
   // Assume that server is stoped
   // We launch it again with parameters
   {
-    langFeature.resetLanguage(secondLang, arangodb::basics::LanguageType::ICU);
-
     // Now we try to launch server with same parameter but with another lang
-    server.server()
-        .options()
-        ->get<StringParameter>(icuParameter.data())
-        ->set(secondLang.data());
+    langFeature.resetLanguage(secondLang, arangodb::basics::LanguageType::ICU);
 
     // Simulate server launch
     langFeature.prepare();
@@ -1543,18 +1286,9 @@ TEST_F(ArangoLanguageFeatureTest, testIcuCountry2WithCollationLangCheckTrue) {
   // Assume that server is stoped
   // We launch it again with parameters
   {
+    // Now we try to launch server with different parameter
     langFeature.resetLanguage(secondLang,
                               arangodb::basics::LanguageType::DEFAULT);
-
-    // Now we try to launch server with different parameter
-    server.server()
-        .options()
-        ->get<StringParameter>(icuParameter.data())
-        ->set("");  // clear value for defaultParameter
-    server.server()
-        .options()
-        ->get<StringParameter>(defaultParameter.data())
-        ->set(secondLang.data());
 
     // Simulate server launch
     langFeature.prepare();
@@ -1565,15 +1299,6 @@ TEST_F(ArangoLanguageFeatureTest, testIcuCountry2WithCollationLangCheckTrue) {
   // We launch it again with parameters
   {
     langFeature.resetLanguage("", arangodb::basics::LanguageType::DEFAULT);
-
-    server.server()
-        .options()
-        ->get<StringParameter>(defaultParameter.data())
-        ->set("");  // clear value for parameter
-    server.server()
-        .options()
-        ->get<StringParameter>(icuParameter.data())
-        ->set("");  // clear value for parameter
 
     // Simulate server launch
     langFeature.prepare();
@@ -1630,11 +1355,6 @@ TEST_F(ArangoLanguageFeatureTest, testIcuCountry3WithCollationLangCheckTrue) {
   {
     langFeature.resetLanguage(firstLang, arangodb::basics::LanguageType::ICU);
 
-    server.server()
-        .options()
-        ->get<StringParameter>(icuParameter.data())
-        ->set(firstLang.data());
-
     // Simulate server launch
     langFeature.prepare();
     langCheckFeature.start();
@@ -1649,13 +1369,8 @@ TEST_F(ArangoLanguageFeatureTest, testIcuCountry3WithCollationLangCheckTrue) {
   // Assume that server is stoped
   // We launch it again with parameters
   {
-    langFeature.resetLanguage(secondLang, arangodb::basics::LanguageType::ICU);
-
     // Now we try to launch server with same parameter but with another lang
-    server.server()
-        .options()
-        ->get<StringParameter>(icuParameter.data())
-        ->set(secondLang.data());
+    langFeature.resetLanguage(secondLang, arangodb::basics::LanguageType::ICU);
 
     // Simulate server launch
     langFeature.prepare();
@@ -1668,18 +1383,9 @@ TEST_F(ArangoLanguageFeatureTest, testIcuCountry3WithCollationLangCheckTrue) {
   // Assume that server is stoped
   // We launch it again with parameters
   {
+    // Now we try to launch server with different parameter
     langFeature.resetLanguage(secondLang,
                               arangodb::basics::LanguageType::DEFAULT);
-
-    // Now we try to launch server with different parameter
-    server.server()
-        .options()
-        ->get<StringParameter>(icuParameter.data())
-        ->set("");  // clear value for defaultParameter
-    server.server()
-        .options()
-        ->get<StringParameter>(defaultParameter.data())
-        ->set(secondLang.data());
 
     // Simulate server launch
     langFeature.prepare();
@@ -1690,15 +1396,6 @@ TEST_F(ArangoLanguageFeatureTest, testIcuCountry3WithCollationLangCheckTrue) {
   // We launch it again with parameters
   {
     langFeature.resetLanguage("", arangodb::basics::LanguageType::DEFAULT);
-
-    server.server()
-        .options()
-        ->get<StringParameter>(defaultParameter.data())
-        ->set("");  // clear value for parameter
-    server.server()
-        .options()
-        ->get<StringParameter>(icuParameter.data())
-        ->set("");  // clear value for parameter
 
     // Simulate server launch
     langFeature.prepare();
@@ -1758,15 +1455,6 @@ TEST_F(ArangoLanguageFeatureTest, testDefaultWithCollationLangCheckTrue) {
     langFeature.resetLanguage(inputFirstLang,
                               arangodb::basics::LanguageType::DEFAULT);
 
-    server.server()
-        .options()
-        ->get<StringParameter>(defaultParameter.data())
-        ->set(inputFirstLang.data());
-    server.server()
-        .options()
-        ->get<StringParameter>(icuParameter.data())
-        ->set("");
-
     // Simulate server launch
     langFeature.prepare();
     langCheckFeature.start();
@@ -1782,16 +1470,8 @@ TEST_F(ArangoLanguageFeatureTest, testDefaultWithCollationLangCheckTrue) {
   // We launch it again with parameters
   {
     // Now we try to launch server with same parameter but with another lang
-    langFeature.resetLanguage(secondLang, arangodb::basics::LanguageType::DEFAULT);
-
-    server.server()
-        .options()
-        ->get<StringParameter>(defaultParameter.data())
-        ->set(secondLang.data());
-    server.server()
-        .options()
-        ->get<StringParameter>(icuParameter.data())
-        ->set("");
+    langFeature.resetLanguage(secondLang,
+                              arangodb::basics::LanguageType::DEFAULT);
 
     // Simulate server launch
     langFeature.prepare();
@@ -1810,15 +1490,6 @@ TEST_F(ArangoLanguageFeatureTest, testDefaultWithCollationLangCheckTrue) {
     // Now we try to launch server with different parameter
     langFeature.resetLanguage(secondLang, arangodb::basics::LanguageType::ICU);
 
-    server.server()
-        .options()
-        ->get<StringParameter>(defaultParameter.data())
-        ->set("");  // clear value for defaultParameter
-    server.server()
-        .options()
-        ->get<StringParameter>(icuParameter.data())
-        ->set(secondLang.data());
-
     // Simulate server launch
     langFeature.prepare();
     EXPECT_DEATH(langCheckFeature.start(), "");
@@ -1828,15 +1499,6 @@ TEST_F(ArangoLanguageFeatureTest, testDefaultWithCollationLangCheckTrue) {
   // We launch it again with parameters
   {
     langFeature.resetLanguage("", arangodb::basics::LanguageType::DEFAULT);
-
-    server.server()
-        .options()
-        ->get<StringParameter>(defaultParameter.data())
-        ->set("");  // clear value for parameter
-    server.server()
-        .options()
-        ->get<StringParameter>(icuParameter.data())
-        ->set("");  // clear value for parameter
 
     // Simulate server launch
     langFeature.prepare();
@@ -1894,16 +1556,8 @@ TEST_F(ArangoLanguageFeatureTest,
   // Assume that server is stoped
   // We launch it again with parameters
   {
-    langFeature.resetLanguage(inputFirstLang, arangodb::basics::LanguageType::DEFAULT);
-
-    server.server()
-        .options()
-        ->get<StringParameter>(defaultParameter.data())
-        ->set(inputFirstLang.data());
-    server.server()
-        .options()
-        ->get<StringParameter>(icuParameter.data())
-        ->set("");
+    langFeature.resetLanguage(inputFirstLang,
+                              arangodb::basics::LanguageType::DEFAULT);
 
     // Simulate server launch
     langFeature.prepare();
@@ -1919,16 +1573,9 @@ TEST_F(ArangoLanguageFeatureTest,
   // Assume that server is stoped
   // We launch it again with parameters
   {
-    langFeature.resetLanguage(secondLang, arangodb::basics::LanguageType::DEFAULT);
     // Now we try to launch server with same parameter but with another lang
-    server.server()
-        .options()
-        ->get<StringParameter>(defaultParameter.data())
-        ->set(secondLang.data());
-    server.server()
-        .options()
-        ->get<StringParameter>(icuParameter.data())
-        ->set("");
+    langFeature.resetLanguage(secondLang,
+                              arangodb::basics::LanguageType::DEFAULT);
 
     // Simulate server launch
     langFeature.prepare();
@@ -1944,17 +1591,8 @@ TEST_F(ArangoLanguageFeatureTest,
   // Assume that server is stoped
   // We launch it again with parameters
   {
-    langFeature.resetLanguage(secondLang, arangodb::basics::LanguageType::ICU);
-
     // Now we try to launch server with different parameter
-    server.server()
-        .options()
-        ->get<StringParameter>(defaultParameter.data())
-        ->set("");  // clear value for defaultParameter
-    server.server()
-        .options()
-        ->get<StringParameter>(icuParameter.data())
-        ->set(secondLang.data());
+    langFeature.resetLanguage(secondLang, arangodb::basics::LanguageType::ICU);
 
     // Simulate server launch
     langFeature.prepare();
@@ -1965,15 +1603,6 @@ TEST_F(ArangoLanguageFeatureTest,
   // We launch it again with parameters
   {
     langFeature.resetLanguage("", arangodb::basics::LanguageType::DEFAULT);
-
-    server.server()
-        .options()
-        ->get<StringParameter>(defaultParameter.data())
-        ->set("");  // clear value for parameter
-    server.server()
-        .options()
-        ->get<StringParameter>(icuParameter.data())
-        ->set("");  // clear value for parameter
 
     // Simulate server launch
     langFeature.prepare();
@@ -2036,15 +1665,6 @@ TEST_F(ArangoLanguageFeatureTest, testIcuWithWrongCollationLangCheckTrue) {
     langFeature.resetLanguage(inputFirstLang,
                               arangodb::basics::LanguageType::ICU);
 
-    server.server()
-        .options()
-        ->get<StringParameter>(defaultParameter.data())
-        ->set("");  // clear value for parameter
-    server.server()
-        .options()
-        ->get<StringParameter>(icuParameter.data())
-        ->set(inputFirstLang.data());
-
     // Simulate server launch
     langFeature.prepare();
     langCheckFeature.start();
@@ -2059,17 +1679,8 @@ TEST_F(ArangoLanguageFeatureTest, testIcuWithWrongCollationLangCheckTrue) {
   // Assume that server is stoped
   // We launch it again with parameters
   {
-    langFeature.resetLanguage(secondLang, arangodb::basics::LanguageType::ICU);
-
     // Now we try to launch server with same parameter but with another lang
-    server.server()
-        .options()
-        ->get<StringParameter>(defaultParameter.data())
-        ->set("");  // clear value for parameter
-    server.server()
-        .options()
-        ->get<StringParameter>(icuParameter.data())
-        ->set(secondLang.data());
+    langFeature.resetLanguage(secondLang, arangodb::basics::LanguageType::ICU);
 
     // Simulate server launch
     langFeature.prepare();
@@ -2085,17 +1696,9 @@ TEST_F(ArangoLanguageFeatureTest, testIcuWithWrongCollationLangCheckTrue) {
   // Assume that server is stoped
   // We launch it again with parameters
   {
-    langFeature.resetLanguage(secondLang, arangodb::basics::LanguageType::DEFAULT);
-
     // Now we try to launch server with another parameter and with another lang
-    server.server()
-        .options()
-        ->get<StringParameter>(defaultParameter.data())
-        ->set(secondLang.data());
-    server.server()
-        .options()
-        ->get<StringParameter>(icuParameter.data())
-        ->set("");
+    langFeature.resetLanguage(secondLang,
+                              arangodb::basics::LanguageType::DEFAULT);
 
     // Simulate server launch
     langFeature.prepare();
@@ -2106,15 +1709,6 @@ TEST_F(ArangoLanguageFeatureTest, testIcuWithWrongCollationLangCheckTrue) {
   // We launch it again with parameters
   {
     langFeature.resetLanguage("", arangodb::basics::LanguageType::DEFAULT);
-
-    server.server()
-        .options()
-        ->get<StringParameter>(defaultParameter.data())
-        ->set("");  // clear value for parameter
-    server.server()
-        .options()
-        ->get<StringParameter>(icuParameter.data())
-        ->set("");  // clear value for parameter
 
     // Simulate server launch
     langFeature.prepare();
@@ -2174,16 +1768,8 @@ TEST_F(ArangoLanguageFeatureTest, testDefaultWithWrongCollationLangCheckTrue) {
   // Assume that server is stoped
   // We launch it again with parameters
   {
-    langFeature.resetLanguage(inputFirstLang, arangodb::basics::LanguageType::DEFAULT);
-
-    server.server()
-        .options()
-        ->get<StringParameter>(defaultParameter.data())
-        ->set(inputFirstLang.data());
-    server.server()
-        .options()
-        ->get<StringParameter>(icuParameter.data())
-        ->set("");  // clear value for parameter
+    langFeature.resetLanguage(inputFirstLang,
+                              arangodb::basics::LanguageType::DEFAULT);
 
     // Simulate server launch
     langFeature.prepare();
@@ -2199,17 +1785,9 @@ TEST_F(ArangoLanguageFeatureTest, testDefaultWithWrongCollationLangCheckTrue) {
   // Assume that server is stoped
   // We launch it again with parameters
   {
-    langFeature.resetLanguage(secondLang, arangodb::basics::LanguageType::DEFAULT);
-
     // Now we try to launch server with another parameter and with another lang
-    server.server()
-        .options()
-        ->get<StringParameter>(defaultParameter.data())
-        ->set(secondLang.data());
-    server.server()
-        .options()
-        ->get<StringParameter>(icuParameter.data())
-        ->set("");  // clear value for parameter
+    langFeature.resetLanguage(secondLang,
+                              arangodb::basics::LanguageType::DEFAULT);
 
     // Simulate server launch
     langFeature.prepare();
@@ -2225,17 +1803,9 @@ TEST_F(ArangoLanguageFeatureTest, testDefaultWithWrongCollationLangCheckTrue) {
   // Assume that server is stoped
   // We launch it again with parameters
   {
-    langFeature.resetLanguage(secondLang, arangodb::basics::LanguageType::DEFAULT);
-
     // Now we try to launch server with same parameter but with normalized lang
-    server.server()
-        .options()
-        ->get<StringParameter>(defaultParameter.data())
-        ->set(secondLang.data());
-    server.server()
-        .options()
-        ->get<StringParameter>(icuParameter.data())
-        ->set("");
+    langFeature.resetLanguage(secondLang,
+                              arangodb::basics::LanguageType::DEFAULT);
 
     // Simulate server launch
     langFeature.prepare();
@@ -2252,15 +1822,6 @@ TEST_F(ArangoLanguageFeatureTest, testDefaultWithWrongCollationLangCheckTrue) {
   // We launch it again with parameters
   {
     langFeature.resetLanguage("", arangodb::basics::LanguageType::DEFAULT);
-
-    server.server()
-        .options()
-        ->get<StringParameter>(defaultParameter.data())
-        ->set("");  // clear value for parameter
-    server.server()
-        .options()
-        ->get<StringParameter>(icuParameter.data())
-        ->set("");  // clear value for parameter
 
     // Simulate server launch
     langFeature.prepare();
