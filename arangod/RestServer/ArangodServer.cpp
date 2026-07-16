@@ -127,7 +127,6 @@ void ArangodServer::addFeatures() {
   addFeature<V8SecurityFeature>(AllowListStrictness::STRICT);
 #endif
   addFeature<CpuUsageFeature>();
-  addFeature<HttpEndpointProvider, EndpointFeature>();
   auto& systemDatabaseFeature = addFeature<SystemDatabaseFeature>();
   addFeature<BootstrapFeature>(clusterFeature, database, &systemDatabaseFeature,
                                &clusterUpgradeFeature
@@ -235,6 +234,10 @@ void ArangodServer::addFeaturesWithOptionProvider() {
   auto& cacheManager = getFeature<CacheManagerFeature>();
   auto& agency = getFeature<AgencyFeature>();
   auto& clusterFeature = getFeature<ClusterFeature>();
+
+  // Add EndpointFeature
+  auto endpointOptions = _optionProviders.getOptions<EndpointOptionsProvider>();
+  addFeature<HttpEndpointProvider, EndpointFeature>(std::move(endpointOptions));
 
   // Add ServerFeature
   auto serverOptions = _optionProviders.getOptions<ServerOptionsProvider>();

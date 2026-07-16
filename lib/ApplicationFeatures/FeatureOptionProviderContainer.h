@@ -23,6 +23,7 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/DatabasePathOptionsProvider.h"
 #include "RestServer/DumpLimitsOptionsProvider.h"
+#include "RestServer/EndpointOptionsProvider.h"
 #include "RestServer/FlushOptionsProvider.h"
 #include "RestServer/FortuneOptionsProvider.h"
 #include "RestServer/ServerOptionsProvider.h"
@@ -46,8 +47,8 @@ class FeatureOptionProviderContainer final {
 
  private:
   std::tuple<DatabasePathOptionsProvider, DumpLimitsOptionsProvider,
-             FlushOptionsProvider, fortune::FortuneOptionsProvider,
-             RocksDBEngineOptionsProvider,
+             EndpointOptionsProvider, FlushOptionsProvider,
+             fortune::FortuneOptionsProvider, RocksDBEngineOptionsProvider,
              RocksDBIndexCacheRefillOptionsProvider,
              RocksDBOptionFeatureOptionsProvider, ServerOptionsProvider,
              TemporaryStorageOptionsProvider>
