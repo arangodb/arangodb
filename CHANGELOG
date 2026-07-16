@@ -1,5 +1,9 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
+* Removed the deprecated `hash` and `skiplist` index types from the index
+  aliases reported by the `GET /_api/engine` endpoint, as they can no longer
+  be created.
+
 * COR-679: Added AQL array `ALL`/`ANY`/`NONE`/`AT LEAST` support for the `=~` and
   `!~` regex operators, e.g. `["foo", "bar"] ANY =~ "^ba"` and
   `["foo1", "bar2", "baz3baz"] AT LEAST(2) =~ "\\w\\d$"`.
