@@ -946,12 +946,10 @@
         let res = db._query("FOR doc IN " + search.name() + " SEARCH doc.value >= 0 OPTIONS { waitForSync: true } RETURN doc").toArray();
         assertEqual(5000, res.length);
 
-        if (isCluster) {
-          let coordinators = IM.getInstancesRole(instanceRole.coordinator);
-          for (let i = 0; i < coordinators.length; i++) {
-            let c = coordinators[i];
-            c.getRawMetric('?mode=trigger_global');
-          }
+        let coordinators = IM.getInstancesRole(instanceRole.coordinator);
+        for (let i = 0; i < coordinators.length; i++) {
+          let c = coordinators[i];
+          c.getRawMetric('?mode=trigger_global');
         }
         let figures;
         for (let i = 0; i < 100; ++i) {

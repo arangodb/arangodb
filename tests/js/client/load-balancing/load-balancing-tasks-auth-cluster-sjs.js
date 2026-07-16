@@ -34,9 +34,6 @@ const url = require('url');
 const userModule = require("@arangodb/users");
 const _ = require("lodash");
 
-let { instanceRole } = require('@arangodb/testutils/instance');
-let IM = global.instanceManager;
-
 function TasksAuthSuite () {
   'use strict';
   const cns = ["animals", "fruits"];

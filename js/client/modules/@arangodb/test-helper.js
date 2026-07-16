@@ -80,6 +80,63 @@ exports.getInstanceInfo = function() {
 
 let reconnectRetry = exports.reconnectRetry = require('@arangodb/replication-common').reconnectRetry;
 
+/// @brief set failure point
+exports.debugCanUseFailAt = function (endpoint) {
+  const primaryEndpoint = arango.getEndpoint();
+  try {
+    reconnectRetry(endpoint, db._name(), "root", "");
+    
+    let res = arango.GET_RAW('/_admin/debug/failat');
+    return res.code === 200;
+  } finally {
+    reconnectRetry(primaryEndpoint, db._name(), "root", "");
+  }
+};
+
+/// @brief set failure point
+exports.debugSetFailAt = function (endpoint, failAt) {
+  const primaryEndpoint = arango.getEndpoint();
+  try {
+    reconnectRetry(endpoint, db._name(), "root", "");
+    let res = arango.PUT_RAW('/_admin/debug/failat/' + failAt, {});
+    if (res.parsedBody !== true) {
+      throw `Error setting failure point ${failAt} on ${endpoint}: "${JSON.stringify(res)}"`;
+    }
+    return true;
+  } finally {
+    reconnectRetry(primaryEndpoint, db._name(), "root", "");
+  }
+};
+
+/// @brief remove failure point
+exports.debugRemoveFailAt = function (endpoint, failAt) {
+  const primaryEndpoint = arango.getEndpoint();
+  try {
+    reconnectRetry(endpoint, db._name(), "root", "");
+    let res = arango.DELETE_RAW('/_admin/debug/failat/' + failAt);
+    if (res.code !== 200) {
+      throw "Error removing failure point";
+    }
+    return true;
+  } finally {
+    reconnectRetry(primaryEndpoint, db._name(), "root", "");
+  }
+};
+
+exports.debugClearFailAt = function (endpoint) {
+  const primaryEndpoint = arango.getEndpoint();
+  try {
+    reconnectRetry(endpoint, db._name(), "root", "");
+    let res = arango.DELETE_RAW('/_admin/debug/failat');
+    if (res.code !== 200) {
+      throw "Error removing failure points";
+    }
+    return true;
+  } finally {
+    reconnectRetry(primaryEndpoint, db._name(), "root", "");
+  }
+};
+
 exports.getChecksum = function (endpoint, name) {
   if (typeof(endpoint) === "string") {
     const primaryEndpoint = arango.getEndpoint();
@@ -507,6 +564,33 @@ exports.waitForShardsInSync = function (cn, timeout, minimumRequiredFollowers = 
   }
 };
 
+
+exports.triggerMetrics = function () {
+  let coordinators = exports.getEndpointsByType("coordinator");
+  exports.getRawMetric(coordinators[0], '?mode=write_global');
+  for (let i = 1; i < coordinators.length; i++) {
+    let c = coordinators[i];
+    exports.getRawMetric(c, '?mode=trigger_global');
+  }
+  require("internal").sleep(2);
+};
+
+exports.getEndpoints = function (role) {
+  return exports.getServers(role).map(instance => endpointToURL(instance.endpoint));
+};
+
+exports.getSingleServerEndpoint = function () {
+  return exports.getEndpoints(inst.instanceRole.single);
+};
+exports.getCoordinatorEndpoints = function () {
+  return exports.getEndpoints(inst.instanceRole.coordinator);
+};
+exports.getDBServerEndpoints = function () {
+  return exports.getEndpoints(inst.instanceRole.dbServer);
+};
+exports.getAgentEndpoints = function () {
+  return exports.getEndpoints(inst.instanceRole.agent);
+};
 
 const shardIdToLogId = function (shardId) {
   return shardId.slice(1);
