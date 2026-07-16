@@ -184,7 +184,8 @@ set(ARANGODB_TESTS_SOURCES
   Aql/SplicedSubqueryIntegrationTest.cpp
   Aql/WaitingExecutionBlockMock.cpp
   AsyncAgencyComm/AsyncAgencyCommTest.cpp
-  Auth/RbacBackendTest.cpp
+  # Disabled for now, since this needs docker and does not work in CI:
+  # Auth/RbacBackendTest.cpp
   Auth/RbacIntegrationTest.cpp
   Auth/RbacSerializationTest.cpp
   Auth/SmockerClient.cpp
