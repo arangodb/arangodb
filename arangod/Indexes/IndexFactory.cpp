@@ -120,6 +120,19 @@ std::string_view extractName(velocypack::Slice slice) noexcept {
 
 }  // namespace helpers
 
+namespace {
+
+template<typename Definition>
+bool vectorParamsEqual(velocypack::Slice lhs, velocypack::Slice rhs) {
+  Definition leftDefinition;
+  Definition rightDefinition;
+  velocypack::deserialize(lhs.get("params"), leftDefinition);
+  velocypack::deserialize(rhs.get("params"), rightDefinition);
+  return leftDefinition == rightDefinition;
+}
+
+}  // namespace
+
 IndexTypeFactory::IndexTypeFactory(
     application_features::ApplicationServer& server)
     : _server(server) {}
@@ -192,22 +205,12 @@ bool IndexTypeFactory::equal(Index::IndexType type, velocypack::Slice lhs,
     }
   } else if (Index::IndexType::TRI_IDX_TYPE_VECTOR_INDEX == type) {
     // check if the parameters are the same
-    vector::UserVectorIndexDefinition leftDefinition;
-    vector::UserVectorIndexDefinition rightDefinition;
-    velocypack::deserialize(lhs.get("params"), leftDefinition);
-    velocypack::deserialize(rhs.get("params"), rightDefinition);
-
-    if (leftDefinition != rightDefinition) {
+    if (!vectorParamsEqual<vector::UserVectorIndexDefinition>(lhs, rhs)) {
       return false;
     }
   } else if (Index::IndexType::TRI_IDX_TYPE_VECTOR_GRAPH_INDEX == type) {
     // check if the parameters (dimension, metric) are the same
-    vector_graph::Definition leftDefinition;
-    vector_graph::Definition rightDefinition;
-    velocypack::deserialize(lhs.get("params"), leftDefinition);
-    velocypack::deserialize(rhs.get("params"), rightDefinition);
-
-    if (leftDefinition != rightDefinition) {
+    if (!vectorParamsEqual<vector_graph::Definition>(lhs, rhs)) {
       return false;
     }
   }

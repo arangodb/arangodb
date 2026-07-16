@@ -217,11 +217,8 @@ std::vector<std::shared_ptr<Index>> getVectorIndexes(
 
   std::vector<std::shared_ptr<Index>> vectorIndexes;
   std::ranges::copy_if(
-      indexes, std::back_inserter(vectorIndexes), [](auto const& elem) {
-        return elem->type() == Index::IndexType::TRI_IDX_TYPE_VECTOR_INDEX ||
-               elem->type() ==
-                   Index::IndexType::TRI_IDX_TYPE_VECTOR_GRAPH_INDEX;
-      });
+      indexes, std::back_inserter(vectorIndexes),
+      [](auto const& elem) { return Index::isVectorIndexType(elem->type()); });
 
   // Reorder indexes
   if (indexHint.isSimple()) {

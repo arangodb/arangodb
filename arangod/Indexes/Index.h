@@ -122,6 +122,12 @@ class Index {
     TRI_IDX_TYPE_VECTOR_GRAPH_INDEX,
   };
 
+  /// @brief whether the type is one of the vector search indexes
+  static constexpr bool isVectorIndexType(IndexType type) noexcept {
+    return type == TRI_IDX_TYPE_VECTOR_INDEX ||
+           type == TRI_IDX_TYPE_VECTOR_GRAPH_INDEX;
+  }
+
   /// @brief: helper struct returned by index methods that determine the costs
   /// of index usage for filtering
   struct FilterCosts {
