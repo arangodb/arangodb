@@ -376,7 +376,7 @@ function dealing_with_the_loggerSuite () {
     test_fetches_a_create_collection_action_from_the_follow_log_1: function() {
       db._drop("UnitTestsReplication");
 
-      sleep(5);
+      sleep(1);
 
       let cmd = api + "/logger-state";
       let doc = arango.GET_RAW(cmd);
@@ -386,7 +386,7 @@ function dealing_with_the_loggerSuite () {
 
       let cid = db._create("UnitTestsReplication", { waitForSync: true });
 
-      sleep(5);
+      sleep(1);
 
       cmd = api + "/logger-follow?from=" + fromTick;
       doc = arango.GET_RAW(cmd);
@@ -439,7 +439,7 @@ function dealing_with_the_loggerSuite () {
     test_fetches_some_collection_operations_from_the_follow_log_1: function() {
       db._drop("UnitTestsReplication");
 
-      sleep(5);
+      sleep(1);
 
       let cmd = api + "/logger-state";
       let doc = arango.GET_RAW(cmd);
@@ -467,7 +467,7 @@ function dealing_with_the_loggerSuite () {
       doc = arango.DELETE_RAW(cmd);
       assertEqual(doc.code, 200);
 
-      sleep(5);
+      sleep(1);
 
       cmd = api + "/logger-follow?from=" + fromTick;
       doc = arango.GET_RAW(cmd);
@@ -1642,7 +1642,7 @@ function dealing_with_the_logger_Suite () {
       db._useDatabase("UnitTestDB");
       db._drop("UnitTestsReplication");
 
-      sleep(5);
+      sleep(1);
 
       let cmd = api + "/logger-state";
       let doc = arango.GET_RAW(cmd);
@@ -1652,7 +1652,7 @@ function dealing_with_the_logger_Suite () {
 
       let cid = db._create("UnitTestsReplication", { waitForSync: true });
 
-      sleep(5);
+      sleep(1);
 
       cmd = api + "/logger-follow?from=" + fromTick;
       doc = arango.GET_RAW(cmd);
@@ -1706,7 +1706,7 @@ function dealing_with_the_logger_Suite () {
     test_fetches_some_collection_operations_from_the_follow_log_2: function() {
       db._drop("UnitTestsReplication", "UnitTestDB");
 
-      sleep(5);
+      sleep(1);
 
       let cmd = api + "/logger-state";
       let doc = arango.GET_RAW(cmd);
@@ -1717,7 +1717,6 @@ function dealing_with_the_logger_Suite () {
       // create collection;
       db._useDatabase("UnitTestDB");
       let cid = db._create("UnitTestsReplication", { waitForSync: true});
-      db._useDatabase("_system");
 
       // create document;
       cmd = "/_db/UnitTestDB/_api/document?collection=UnitTestsReplication";
@@ -1736,11 +1735,12 @@ function dealing_with_the_logger_Suite () {
       doc = arango.DELETE_RAW(cmd);
       assertEqual(doc.code, 200);
 
-      sleep(5);
+      sleep(1);
 
       cmd = api + "/logger-follow?from=" + fromTick;
       doc = arango.GET_RAW(cmd);
       assertEqual(doc.code, 200);
+      db._useDatabase("_system");
 
       assertMatch(/^[0-9]+$/, doc.headers["x-arango-replication-lastincluded"]);
       assertNotEqual(doc.headers["x-arango-replication-lastincluded"], "0");
