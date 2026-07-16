@@ -65,28 +65,31 @@ EnumerateNearVectorsExecutor::EnumerateNearVectorsExecutor(Fetcher& /*unused*/,
       _vectorIndex(resolveVectorIndex(_infos)),
       _graphIndex(resolveGraphIndex(_infos)) {}
 
+namespace {
+// While the index is still being built the collection hands out a
+// RocksDBBuilderIndex wrapping the real index; unwrap it.
+template<typename T>
+T const* unwrapIndex(Index const* index) {
+  if (auto const* resolved = dynamic_cast<T const*>(index)) {
+    return resolved;
+  }
+  auto const* builderIndex = dynamic_cast<RocksDBBuilderIndex const*>(index);
+  TRI_ASSERT(builderIndex != nullptr)
+      << "EnumerateNearVectors index must be the vector index or a "
+         "RocksDBBuilderIndex wrapping one";
+  auto const* wrapped = dynamic_cast<T const*>(&builderIndex->wrapped());
+  TRI_ASSERT(wrapped != nullptr);
+  return wrapped;
+}
+}  // namespace
+
 RocksDBVectorIndex const* EnumerateNearVectorsExecutor::resolveVectorIndex(
     Infos const& infos) {
   auto const* index = infos.index.get();
-  // The graph-based vector index (PoC skeleton) is not a RocksDBVectorIndex and
-  // stores no data; it is handled by producing an empty result set.
   if (index->type() == Index::TRI_IDX_TYPE_VECTOR_GRAPH_INDEX) {
     return nullptr;
   }
-  if (auto const* vectorIndex = dynamic_cast<RocksDBVectorIndex const*>(index);
-      vectorIndex != nullptr) {
-    return vectorIndex;
-  }
-  // While the index is still being built the collection hands out a
-  // RocksDBBuilderIndex wrapping the real vector index; unwrap it.
-  auto const* builderIndex = dynamic_cast<RocksDBBuilderIndex const*>(index);
-  TRI_ASSERT(builderIndex != nullptr)
-      << "EnumerateNearVectors index must be a RocksDBVectorIndex or a "
-         "RocksDBBuilderIndex wrapping one";
-  auto const* wrapped =
-      dynamic_cast<RocksDBVectorIndex const*>(&builderIndex->wrapped());
-  TRI_ASSERT(wrapped != nullptr);
-  return wrapped;
+  return unwrapIndex<RocksDBVectorIndex>(index);
 }
 
 vector_graph::VectorGraphIndex const*
@@ -95,17 +98,7 @@ EnumerateNearVectorsExecutor::resolveGraphIndex(Infos const& infos) {
   if (index->type() != Index::TRI_IDX_TYPE_VECTOR_GRAPH_INDEX) {
     return nullptr;
   }
-  if (auto const* graphIndex =
-          dynamic_cast<vector_graph::VectorGraphIndex const*>(index);
-      graphIndex != nullptr) {
-    return graphIndex;
-  }
-  // While the index is still being built the collection hands out a
-  // RocksDBBuilderIndex wrapping the real index; unwrap it.
-  auto const* builderIndex = dynamic_cast<RocksDBBuilderIndex const*>(index);
-  TRI_ASSERT(builderIndex != nullptr);
-  return dynamic_cast<vector_graph::VectorGraphIndex const*>(
-      &builderIndex->wrapped());
+  return unwrapIndex<vector_graph::VectorGraphIndex>(index);
 }
 
 void EnumerateNearVectorsExecutor::writeProjectionsFromDocument(
@@ -148,28 +141,20 @@ void EnumerateNearVectorsExecutor::fillInput(
   std::tie(_state, _inputRow) =
       inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
 
-  // Graph-based vector index: run GreedySearch over its segments.
-  if (_graphIndex != nullptr) {
-    searchGraphIndex();
-    return;
-  }
-
-  // No searchable index (should not happen): consume the row, no results.
-  if (_vectorIndex == nullptr) {
-    ++_processedInputs;
-    _reportedCurrentRowForFullCount = false;
-    _labels.clear();
-    _distances.clear();
-    _documents.clear();
-    _currentProcessedResultCount = 0;
-    return;
-  }
-
-  convertQueryVector(_vectorIndex->getVectorIndexDefinition().dimension);
+  TRI_ASSERT((_vectorIndex != nullptr) != (_graphIndex != nullptr));
+  auto const& definition = _graphIndex != nullptr
+                               ? _graphIndex->getVectorIndexDefinition()
+                               : _vectorIndex->getVectorIndexDefinition();
+  convertQueryVector(definition.dimension);
   ++_processedInputs;
   _reportedCurrentRowForFullCount = false;
 
-  searchResults();
+  if (_graphIndex != nullptr) {
+    // Graph-based vector index: run GreedySearch over its segments.
+    searchGraphIndex();
+  } else {
+    searchResults();
+  }
 }
 
 void EnumerateNearVectorsExecutor::convertQueryVector(std::size_t dimension) {
@@ -202,10 +187,6 @@ void EnumerateNearVectorsExecutor::convertQueryVector(std::size_t dimension) {
 }
 
 void EnumerateNearVectorsExecutor::searchGraphIndex() {
-  convertQueryVector(_graphIndex->getVectorIndexDefinition().dimension);
-  ++_processedInputs;
-  _reportedCurrentRowForFullCount = false;
-
   auto hits = _graphIndex->search(_inputRowConverted, _infos.searchConfig.topK);
 
   _labels.clear();
@@ -221,20 +202,27 @@ void EnumerateNearVectorsExecutor::searchGraphIndex() {
   _currentProcessedResultCount = 0;
 
   // The graph index stores only document ids; when the projection needs the
-  // full document, fetch the survivors from the collection.
-  if (_infos.projectionMode == vector::ProjectionMode::kDocument) {
-    auto* physical = _collection->getCollection()->getPhysical();
-    PhysicalCollection::LookupOptions const options{};
+  // full document, fetch the survivors from the collection in one batch.
+  // TODO(jbajic) Move this into seperate executor and we need to get
+  // the embedding fields as a full vector precision for the reranking step.
+  if (_infos.projectionMode == vector::ProjectionMode::kDocument &&
+      !hits.empty()) {
+    std::vector<LocalDocumentId> ids;
+    ids.reserve(hits.size());
     for (auto const& hit : hits) {
-      physical->lookup(
-          &_trx, hit.documentId,
-          [&](LocalDocumentId token, aql::DocumentData&& /*data*/,
-              velocypack::Slice doc) {
-            _documents.insert_or_assign(token, vector::toOwnedSharedSlice(doc));
-            return true;
-          },
-          options);
+      ids.push_back(hit.documentId);
     }
+    _collection->getCollection()->getPhysical()->lookup(
+        &_trx, ids,
+        [&](Result result, LocalDocumentId token, aql::DocumentData&& /*data*/,
+            velocypack::Slice doc) {
+          if (result.fail()) {
+            THROW_ARANGO_EXCEPTION(result);
+          }
+          _documents.insert_or_assign(token, vector::toOwnedSharedSlice(doc));
+          return true;
+        },
+        {});
   }
 
   LOG_TOPIC("f1a2d", DEBUG, Logger::ENGINES) << std::format(

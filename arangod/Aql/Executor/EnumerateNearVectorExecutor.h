@@ -132,16 +132,10 @@ class EnumerateNearVectorsExecutor {
 
   uint64_t skipOutput(AqlCall::Limit toSkip) noexcept;
 
-  // Resolves the concrete vector index from the index handle. During index
-  // creation the collection hands out a RocksDBBuilderIndex that wraps the
-  // vector index, so this unwraps it; otherwise it is the vector index itself.
-  // Returns nullptr for the graph-based vector index (PoC skeleton), which
-  // stores nothing and always yields an empty result set.
+  // Resolve the concrete index from the index handle (unwrapping a
+  // RocksDBBuilderIndex during construction). Exactly one of the two returns
+  // non-nullptr, depending on the index type.
   static RocksDBVectorIndex const* resolveVectorIndex(Infos const& infos);
-
-  // Resolves the graph-based vector index from the index handle (unwrapping a
-  // RocksDBBuilderIndex during construction). Returns nullptr when the index
-  // is not a VectorGraphIndex.
   static vector_graph::VectorGraphIndex const* resolveGraphIndex(
       Infos const& infos);
 
