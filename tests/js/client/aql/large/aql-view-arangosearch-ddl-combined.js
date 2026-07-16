@@ -33,6 +33,7 @@ const isEnterprise = require("internal").isEnterprise();
 const { checkIndexMetrics } = require("@arangodb/test-helper-common");
 const tasks = require('@arangodb/tasks');
 const fs = require('fs');
+let IM = global.instanceManager;
 
 // define global collection which will be used across all testSuites. It will be dropped later
 const collection123 = db._create("collection123");

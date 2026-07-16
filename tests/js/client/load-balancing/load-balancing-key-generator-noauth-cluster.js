@@ -49,7 +49,7 @@ function KeyGeneratorSuite() {
         return arango[method](path, body, headers);
       });
     } catch (err) {
-      console.error(`Exception processing ${method} ${endpoint}`, err.stack);
+      console.error(`Exception processing ${method} ${path}`, err.stack);
       return {};
     }
     return res;
