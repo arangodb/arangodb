@@ -33,9 +33,6 @@ const request = require("@arangodb/request");
 const url = require('url');
 const userModule = require("@arangodb/users");
 const _ = require("lodash");
-const getCoordinatorEndpoints = require('@arangodb/test-helper').getCoordinatorEndpoints;
-
-const servers = getCoordinatorEndpoints();
 
 function TasksAuthSuite () {
   'use strict';
@@ -52,7 +49,7 @@ function TasksAuthSuite () {
   ];
   const baseTasksUrl = `/_api/tasks`;
 
-  function sendRequest(auth, method, endpoint, body, usePrimary) {
+  function sendRequest(auth, method, path, body, usePrimary) {
     let res;
     const i = usePrimary ? 0 : 1;
 
@@ -64,14 +61,14 @@ function TasksAuthSuite () {
         },
         json: true,
         method,
-        url: `${coordinators[i]}${endpoint}`
+        url: `${coordinators[i].url}${path}`
       };
       if (method !== 'GET') {
         envelope.body = body;
       }
       res = request(envelope);
     } catch(err) {
-      console.error(`Exception processing ${method} ${endpoint}`, err.stack);
+      console.error(`Exception processing ${method} ${path}`, err.stack);
       return {};
     }
 
@@ -87,7 +84,7 @@ function TasksAuthSuite () {
 
   return {
     setUp: function() {
-      coordinators = getCoordinatorEndpoints();
+      coordinators = IM.getInstancesRole(instanceRole.coordinator);
       if (coordinators.length < 2) {
         throw new Error('Expecting at least two coordinators');
       }

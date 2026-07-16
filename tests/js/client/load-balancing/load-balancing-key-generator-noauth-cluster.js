@@ -31,22 +31,23 @@ const db = require("internal").db;
 const request = require("@arangodb/request");
 const _ = require("lodash");
 const isEnterprise = require("internal").isEnterprise();
-const getCoordinatorEndpoints = require('@arangodb/test-helper').getCoordinatorEndpoints;
-
-const servers = getCoordinatorEndpoints();
 const ERRORS = require("@arangodb").errors;
+
+let { instanceRole } = require('@arangodb/testutils/instance');
+const IM = global.instanceManager;
 
 function KeyGeneratorSuite() {
   'use strict';
   let cn = 'UnitTestsCollection';
   let coordinators = [];
 
-  function sendRequest(method, db, endpoint, body, headers, usePrimary) {
+  function sendRequest(method, db, path, body, headers, usePrimary) {
     let res;
     const i = usePrimary ? 0 : 1;
     try {
-      arango.reconnect(`${coordinators[i]}`, db, '', '');
-      res = arango[method](endpoint, body, headers);
+      return coordinators[i].toThisInstance(() => {
+        return arango[method](path, body, headers);
+      });
     } catch (err) {
       console.error(`Exception processing ${method} ${endpoint}`, err.stack);
       return {};
@@ -107,7 +108,7 @@ function KeyGeneratorSuite() {
 
   return {
     setUpAll: function() {
-      coordinators = getCoordinatorEndpoints();
+      coordinators = IM.getInstancesRole(instanceRole.coordinator);
       if (coordinators.length < 2) {
         throw new Error('Expecting at least two coordinators');
       }

@@ -27,7 +27,6 @@ var jsunity = require("jsunity");
 var arangodb = require("@arangodb");
 var internal = require("internal");
 var ArangoView = arangodb.ArangoView;
-var testHelper = require("@arangodb/test-helper").Helper;
 var db = arangodb.db;
 var ERRORS = arangodb.errors;
 

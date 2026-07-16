@@ -34,6 +34,7 @@
   const arangosh = require('@arangodb/arangosh');
   const isCluster = internal.isCluster();
   const isEnterprise = internal.isEnterprise();
+  let { instanceRole } = require('@arangodb/testutils/instance');
   let IM = global.instanceManager;
   var db = internal.db;
   const getNoShards = function (defaultNo) {
@@ -143,7 +144,6 @@
     const gm = (isEnterprise) ? require("@arangodb/smart-graph") : {};
     const satgm = (isEnterprise) ? require("@arangodb/satellite-graph") : {};
     const {map, zipObject} = require('lodash');
-    const {getRawMetric, getEndpointsByType} = require("@arangodb/test-helper");
 
     console.info("Test suite arguments: " + JSON.stringify(args));
 
@@ -946,10 +946,10 @@
         let res = db._query("FOR doc IN " + search.name() + " SEARCH doc.value >= 0 OPTIONS { waitForSync: true } RETURN doc").toArray();
         assertEqual(5000, res.length);
 
-        let coordinators = getEndpointsByType("coordinator");
+        let coordinators = IM.getInstancesRole(instanceRole.coordinator);
         for (let i = 0; i < coordinators.length; i++) {
           let c = coordinators[i];
-          getRawMetric(c, '?mode=trigger_global');
+          c.getRawMetric('?mode=trigger_global');
         }
         let figures;
         for (let i = 0; i < 100; ++i) {

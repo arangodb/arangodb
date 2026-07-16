@@ -27,7 +27,6 @@ let jsunity = require('jsunity');
 let arangodb = require('@arangodb');
 let internal = require('internal');
 let db = arangodb.db;
-let { agency } = require('@arangodb/test-helper');
 const IM = GLOBAL.instanceManager;
   
 const cn = 'UnitTestsCollection';

@@ -108,20 +108,6 @@ exports.debugSetFailAt = function (endpoint, failAt) {
   }
 };
 
-exports.debugResetRaceControl = function (endpoint) {
-  const primaryEndpoint = arango.getEndpoint();
-  try {
-    reconnectRetry(endpoint, db._name(), "root", "");
-    let res = arango.DELETE_RAW('/_admin/debug/raceControl');
-    if (res.code !== 200) {
-      throw "Error resetting race control.";
-    }
-    return false;
-  } finally {
-    reconnectRetry(primaryEndpoint, db._name(), "root", "");
-  }
-};
-
 /// @brief remove failure point
 exports.debugRemoveFailAt = function (endpoint, failAt) {
   const primaryEndpoint = arango.getEndpoint();
@@ -578,69 +564,6 @@ exports.waitForShardsInSync = function (cn, timeout, minimumRequiredFollowers = 
   }
 };
 
-exports.getControleableServers = function (role) {
-  return global.theInstanceManager.arangods.filter((instance) => instance.isRole(role));
-};
-
-// These functions lean on special runners to export the actual instance object into the global namespace.
-exports.getCtrlAgents = function() {
-  return exports.getControleableServers(inst.instanceRole.agent);
-};
-exports.getCtrlDBServers = function() {
-  return exports.getControleableServers(inst.instanceRole.dbServer);
-};
-exports.getCtrlCoordinators = function() {
-  return exports.getControleableServers(inst.instanceRole.coordinator);
-};
-
-exports.getServers = function (role) {
-  let ret = exports.getInstanceInfo().arangods.filter(arangod => arangod.isRole(role));
-  if (ret.length === 0) {
-    throw new Error("No instance matched the type " + role);
-  }
-  return ret;
-};
-
-exports.getCoordinators = function () {
-  return exports.getServers(inst.instanceRole.coordinator);
-};
-exports.getAgents = function () {
-  return exports.getServers(inst.instanceRole.agent);
-};
-
-exports.getServerById = function (id) {
-  const instanceInfo = exports.getInstanceInfo();
-  return instanceInfo.arangods.find((d) => (d.id === id));
-};
-
-exports.getServersByType = function (type) {
-  const isType = (d) => (d.instanceRole.toLowerCase() === type);
-  const instanceInfo = exports.getInstanceInfo();
-  return instanceInfo.arangods.filter(isType);
-};
-
-exports.getEndpointById = function (id) {
-  const instanceInfo = exports.getInstanceInfo();
-  const instance = instanceInfo.arangods.find(d => d.id === id || id === d.shortName);
-  return instance.url;
-};
-
-exports.getUrlById = function (id) {
-  const toUrl = (d) => (d.url);
-  const instanceInfo = exports.getInstanceInfo();
-  return instanceInfo.arangods.filter((d) => (d.id === id))
-    .map(toUrl)[0];
-};
-
-exports.getEndpointsByType = function (type) {
-  const isType = (d) => (d.instanceRole.toLowerCase() === type);
-  const toEndpoint = (d) => (d.endpoint);
-
-  const instanceInfo = exports.getInstanceInfo();
-  return instanceInfo.arangods.filter(isType)
-    .map(toEndpoint)
-    .map(endpointToURL);
-};
 
 exports.triggerMetrics = function () {
   let coordinators = exports.getEndpointsByType("coordinator");
