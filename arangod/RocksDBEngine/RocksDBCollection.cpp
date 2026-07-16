@@ -604,8 +604,7 @@ futures::Future<std::shared_ptr<Index>> RocksDBCollection::createIndex(
     // TODO(jbajic) Think about inserts later
     bool const inBackground = basics::VelocyPackHelper::getBooleanValue(
         info, StaticStrings::IndexInBackground, false);
-    if (buildIdx->type() != Index::TRI_IDX_TYPE_VECTOR_INDEX &&
-        buildIdx->type() != Index::TRI_IDX_TYPE_VECTOR_GRAPH_INDEX) {
+    if (!Index::isVectorIndexType(buildIdx->type())) {
       if (inBackground) {
         {
           RECURSIVE_WRITE_LOCKER(_indexesLock, _indexesLockWriteOwner);

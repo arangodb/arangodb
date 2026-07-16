@@ -447,8 +447,8 @@ struct VectorIndexFactory : public DefaultIndexFactory {
   IVectorIndexProvider const& _vectorIndexProvider;
 };
 
-// PoC skeleton for a graph-based vector index. Reuses the same feature gate as
-// the regular vector index but takes no `params`.
+// PoC skeleton for a graph-based vector index. Always enabled, no feature
+// gate (for now).
 struct VectorGraphIndexFactory : public DefaultIndexFactory {
   explicit VectorGraphIndexFactory(
       application_features::ApplicationServer& server, Index::IndexType type,
