@@ -61,9 +61,9 @@ function KeyGeneratorSuite() {
       let success = false;
       for (let i = 0; i < 10; ++i) {
         try {
-          arango.reconnect(coord, cn, '', '');
-          const res = arango.GET_RAW(url);
-          if (res.code === 200) {
+          if (coord.toThisInstance(() => {
+            return arango.GET_RAW(url);
+          }).code  === 200) {
             success = true;
             break;
           }
@@ -73,7 +73,7 @@ function KeyGeneratorSuite() {
         require("internal").sleep(0.5);
       }
       if (!success) {
-        throw "Database or collection did not show up on coordinator " + coord + " in time";
+        throw "Database or collection did not show up on coordinator " + coord.name + " in time";
       }
     }
   }
