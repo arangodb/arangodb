@@ -1650,9 +1650,7 @@ function dealing_with_the_logger_Suite () {
       assertTrue(doc.parsedBody["state"]["running"]);
       let fromTick = doc.parsedBody["state"]["lastLogTick"];
 
-      
       let cid = db._create("UnitTestsReplication", { waitForSync: true });
-      db._useDatabase("_system");
 
       sleep(5);
 
@@ -1702,7 +1700,7 @@ function dealing_with_the_logger_Suite () {
 
         body = body.slice(position + 1, body.length);
       }
-
+      db._useDatabase("_system");
     },
 
     test_fetches_some_collection_operations_from_the_follow_log_2: function() {
