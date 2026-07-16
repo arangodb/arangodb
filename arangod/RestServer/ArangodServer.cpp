@@ -145,6 +145,7 @@ void ArangodServer::addFeatures(int* ret) {
   addFeature<LanguageCheckFeature>();
   addFeature<TimeZoneFeature>();
   addFeature<LockfileFeature>();
+  addFeature<LoggerFeature>(true);
   addFeature<MaintenanceFeature>(&clusterFeature);
   auto& networkFeature =
       addFeature<NetworkFeature>(metrics, network::ConnectionPool::Config{});
@@ -263,10 +264,6 @@ void ArangodServer::addFeaturesWithOptionProvider() {
   auto logBufferOptions =
       _optionProviders.getOptions<LogBufferOptionsProvider>();
   addFeature<LogBufferFeature>(metrics, std::move(logBufferOptions));
-
-  // Add LoggerFeature
-  auto loggerOptions = _optionProviders.getOptions<LoggerOptionsProvider>();
-  addFeature<LoggerFeature>(true, std::move(loggerOptions));
 
   // Add RocksDBIndexCacheRefillFeature
   auto rocksdbCacheRefillOptions =

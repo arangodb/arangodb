@@ -77,6 +77,7 @@ void ArangoBackupServer::addFeatures() {
   addFeature<GreetingsFeaturePhase>(std::true_type{});
   auto& client = addFeature<HttpEndpointProvider, ClientFeature>(false);
   addFeature<VersionFeature>();
+  addFeature<LoggerFeature>(false);
   addFeature<ConfigFeature>(_binaryName);
   addFeature<OptionsCheckFeature>();
   addFeature<ShellColorsFeature>();
@@ -89,8 +90,6 @@ void ArangoBackupServer::addFeatures() {
 void ArangoBackupServer::addFeaturesWithOptionProvider() {
   addFeature<FileSystemFeature>(
       _optionProviders.getOptions<FileSystemOptionsProvider>());
-  addFeature<LoggerFeature>(
-      false, _optionProviders.getOptions<LoggerOptionsProvider>());
   addFeature<RandomFeature>(
       _optionProviders.getOptions<RandomOptionsProvider>());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE

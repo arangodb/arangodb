@@ -27,12 +27,11 @@
 
 namespace arangodb {
 
-struct LoggerOptionsProvider
-    : OptionsProviderImpl<LoggerOptionsProvider, LoggerOptions> {
-  void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
-                          LoggerOptions& options);
-  void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
-                           LoggerOptions& options);
+struct LoggerOptionsProvider : OptionsProvider<LoggerOptions> {
+  void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
+                      LoggerOptions& options) override;
+  void validateOptions(std::shared_ptr<options::ProgramOptions> opts,
+                       LoggerOptions& options) override;
 };
 
 }  // namespace arangodb

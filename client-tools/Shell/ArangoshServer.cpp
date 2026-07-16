@@ -95,6 +95,7 @@ void ArangoshServer::addFeatures() {
   addFeature<ShellConsoleFeature>();
   addFeature<HttpEndpointProvider, ClientFeature>(true);
   addFeature<VersionFeature>();
+  addFeature<LoggerFeature>(false);
   addFeature<ConfigFeature>(_binaryName);
   addFeature<OptionsCheckFeature>();
   addFeature<ShellColorsFeature>();
@@ -118,8 +119,6 @@ void ArangoshServer::addFeaturesWithOptionProvider() {
       _optionProviders.getOptions<ProcessEnvironmentOptionsProvider>());
 #endif
 
-  addFeature<LoggerFeature>(
-      false, _optionProviders.getOptions<LoggerOptionsProvider>());
   addFeature<FileSystemFeature>(
       _optionProviders.getOptions<FileSystemOptionsProvider>());
   addFeature<RandomFeature>(
