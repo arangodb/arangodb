@@ -390,9 +390,18 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
           },
           [&](p::DropCollection const& collection) -> Result {
             // Dropping a collection requires RW access to the database
-            // (container principle).
-            return check(
+            // (container principle) as well as to the collection itself.
+            auto r = check(
                 p::UseDatabase{collection.db, DatabaseAccessLevel::Write});
+            if (r.fail()) {
+              return {TRI_ERROR_FORBIDDEN, r.errorMessage()};
+            }
+            r = check(p::UseCollection{collection.db, collection.name,
+                                       CollectionAccessLevel::WriteMeta});
+            if (r.fail()) {
+              return {TRI_ERROR_FORBIDDEN, r.errorMessage()};
+            }
+            return {};
           },
           [&](p::SeeView const& view) -> Result {
             // Database RO access is the only prerequisite and has already been
@@ -492,23 +501,24 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
             // collections.
             if (auto r =
                     check(p::UseDatabase{graph.db, DatabaseAccessLevel::Write});
-                !r.ok()) {
+                r.ok()) {
               return r;
             }
+            // No write access to database, so we need to check the collections
             for (auto const& coll : graph.collectionNamesToCreate) {
               if (auto r = check(p::CreateCollection{graph.db, coll});
-                  !r.ok()) {
+                  r.fail()) {
                 return r;
               }
             }
             for (auto const& coll : graph.collectionNamesToRead) {
               if (auto r = check(p::UseCollection{graph.db, coll,
                                                   CollectionAccessLevel::Read});
-                  !r.ok()) {
+                  r.fail()) {
                 return r;
               }
             }
-            return {};
+            return {TRI_ERROR_ARANGO_READ_ONLY, "Cannot write to database."};
           },
           [&](p::DropGraph const& graph) -> Result {
             // Dropping a graph requires RW access to the database (to write
