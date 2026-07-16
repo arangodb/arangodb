@@ -55,7 +55,8 @@ if (versionHas('asan') || versionHas('tsan')) {
 
 class persistenceToolkit extends trs.runLocalInArangoshRunner {
   constructor(firstRunOptions, secondRunOptions, serverOptions, clientAuth, dumpOptions, restoreOptions, which, afterServerStart, rtaArgs, restartServer) {
-    super(firstRunOptions, which, serverOptions, tr.sutFilters.checkUsers);
+    super(firstRunOptions, which + firstRunOptions.suffix, serverOptions, tr.sutFilters.checkUsers);
+    this.which = which + firstRunOptions.suffix;
     this.serverOptions = serverOptions;
     this.firstRunOptions = firstRunOptions;
     this.secondRunOptions = secondRunOptions;
@@ -81,7 +82,6 @@ class persistenceToolkit extends trs.runLocalInArangoshRunner {
     this.rtaDisabledTests = [];
     this.rtaDisabledTestsFull = [];
     this.rtaNegFilter = "";
-    this.which = which;
     this.results = {failed: 0};
     this.dumpConfig = false;
     this.restoreConfig = false;
