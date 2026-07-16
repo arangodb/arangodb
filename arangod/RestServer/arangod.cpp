@@ -59,7 +59,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
 
     int ret{EXIT_FAILURE};
     ArangodServer server{options, SBIN_DIRECTORY, name, crashDumpManager,
-                         dataSourceRegistry};
+                         dataSourceRegistry, &ret};
     ServerState state{server};
 
     server.addReporter(
@@ -74,7 +74,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
          },
          {}});
 
-    server.addFeatures(&ret);
+    server.addFeatures();
 
     try {
       server.run(argc, argv);

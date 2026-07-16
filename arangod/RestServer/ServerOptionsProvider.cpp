@@ -25,11 +25,15 @@
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 
+#include "Basics/application-exit.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+
 namespace arangodb {
 
 using namespace arangodb::options;
 
-void ServerOptionsProvider::declareOptions(
+void ServerOptionsProvider::declareOptionsImpl(
     std::shared_ptr<options::ProgramOptions> options,
     ServerFeatureOptions& opts) {
   options
@@ -106,6 +110,28 @@ another mode.)");
       "--wal.throttle-wait",
       "maximum wait time per operation when write-throttled (in milliseconds)",
       true);
+}
+
+void ServerOptionsProvider::validateOptionsImpl(
+    std::shared_ptr<ProgramOptions> /*options*/, ServerFeatureOptions& opts) {
+  int count = 0;
+
+  if (opts.console) {
+    opts.operationMode = OperationMode::MODE_CONSOLE;
+    ++count;
+  }
+
+  if (!opts.scripts.empty()) {
+    opts.operationMode = OperationMode::MODE_SCRIPT;
+    ++count;
+  }
+
+  if (1 < count) {
+    LOG_TOPIC("353cd", FATAL, arangodb::Logger::FIXME)
+        << "cannot combine '--console', '--javascript.unit-tests' and "
+        << "'--javascript.script'";
+    FATAL_ERROR_EXIT();
+  }
 }
 
 }  // namespace arangodb

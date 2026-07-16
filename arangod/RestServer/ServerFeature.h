@@ -52,7 +52,7 @@ class ServerFeature final : public application_features::ApplicationFeature {
   void beginShutdown() override final;
   bool isStopping() const { return _isStopping; }
 
-  OperationMode operationMode() const { return _operationMode; }
+  OperationMode operationMode() const { return _options.operationMode; }
 
   std::string operationModeString() const {
     return operationModeString(operationMode());
@@ -61,7 +61,7 @@ class ServerFeature final : public application_features::ApplicationFeature {
   std::vector<std::string> const& scripts() const { return _options.scripts; }
 
   bool isConsoleMode() const {
-    return (_operationMode == OperationMode::MODE_CONSOLE);
+    return (_options.operationMode == OperationMode::MODE_CONSOLE);
   }
 
  private:
@@ -70,7 +70,6 @@ class ServerFeature final : public application_features::ApplicationFeature {
   ServerFeatureOptions _options;
   bool _isStopping = false;
   int* _result;
-  OperationMode _operationMode;
 };
 
 }  // namespace arangodb
