@@ -25,6 +25,7 @@
 
 const fs = require('fs');
 const internal = require('internal');
+const path = require('path');
 
 //  first inst - tmp  --                 /tmp/xxx-arangosh/
 //  first inst - rootDir  --             /tmp/xxx-arangosh/permissions
@@ -49,6 +50,7 @@ if (getOptions === true) {
 
 
 const topLevelForbidden = fs.join(testFilesDir, 'forbidden');
+const topLevelAllowedHazardSubFiles = fs.join(testFilesDir, "bad_files_inside");
 const forbiddenZipFileName = fs.join(topLevelForbidden, 'forbidden.zip');
 const forbiddenJSFileName = fs.join(topLevelForbidden, 'forbidden.js');
 const topLevelForbiddenRecursive = fs.join(testFilesDir, 'forbidden_recursive');
@@ -92,6 +94,8 @@ const topLevelForbiddenCopyFile = fs.join(topLevelForbidden, 'forbidden_copy.txt
 const subLevelAllowedCopyFile = fs.join(subLevelAllowed, 'allowed_copy.txt');
 const subLevelForbiddenCopyFile = fs.join(subLevelForbidden, 'forbidden_json.txt');
 
+const relativePathZipFile = path.resolve(internal.pathForTesting('common'), 'test-data', 'permissions', 'zip-with-relative-paths.zip');
+
 const CSV = 'a,b\n1,2\n3,4\n';
 const CSVParsed = [['a', 'b'], ['1', '2'], ['3', '4']];
 const JSONText = '{"a": true, "b":false, "c": "abc"}\n{"a": true, "b":false, "c": "abc"}';
@@ -104,6 +108,7 @@ if (getOptions === true) {
   fs.makeDirectoryRecursive(topLevelAllowedRecursive);
   fs.makeDirectoryRecursive(topLevelForbiddenRecursive);
   fs.makeDirectoryRecursive(topLevelAllowedUnZip);
+  fs.makeDirectoryRecursive(topLevelAllowedHazardSubFiles);
   fs.write(topLevelAllowedFile, 'this file is allowed.\n');
   fs.write(topLevelForbiddenFile, 'forbidden fruits are tasty!\n');
   fs.write(subLevelAllowedFile, 'this file is allowed.\n');
@@ -121,6 +126,7 @@ if (getOptions === true) {
   try {
     fs.linkFile(topLevelForbiddenFile, intoTopLevelForbidden);
     fs.linkFile(topLevelAllowedFile, intoTopLevelAllowed);
+    fs.linkFile('/etc/passwd', fs.join(topLevelAllowedHazardSubFiles, 'passwd'));
   } catch (ex) {
     internal.print("unable to create symlinks" + ex);
   }
@@ -132,7 +138,6 @@ if (getOptions === true) {
   fs.write(topLevelAllowedReadJSONFile, JSONText);
   fs.write(topLevelForbiddenReadJSONFile, JSONText);
   fs.write(subLevelAllowedReadJSONFile, JSONText);
-
   return {
     'temp.path': subInstanceTemp,     // Adjust the temp-path to match our current temp path
     'javascript.files-allowlist': [
@@ -566,6 +571,15 @@ function testSuite() {
       assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum, 'Zipping of ' + zip + ' to ' + sn + ' wasn\'t forbidden: ' + err);
     }
   }
+
+  function tryZipFileForbiddenList(zip, sn, listOfFiles) {
+    try {
+      let rc = fs.zipFile(zip, sn, listOfFiles);
+      fail();
+    } catch (err) {
+      assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum, 'Zipping of ' + zip + ' to ' + sn + ' wasn\'t forbidden: '+ listOfFiles + ' ' + err);
+    }
+  }
   function tryZipFileAllowed(zip, sn) {
     let files = [];
     try {
@@ -581,7 +595,6 @@ function testSuite() {
     }
     tryExistsAllowed(zip, true);
   }
-
   function tryUnZipFileForbidden(zip, sn) {
     try {
       let rc = fs.unzipFile(zip, sn, undefined, true);
@@ -839,12 +852,24 @@ function testSuite() {
       tryZipFileForbidden(allowedZipFileName, '/etc/');
       tryZipFileForbidden(allowedZipFileName, topLevelForbidden);
 
+      tryZipFileForbiddenList(allowedZipFileName, topLevelAllowedHazardSubFiles, ['passwd']);
+
+      let prefixEscape = '';
+      for (let i = 0; i < topLevelAllowed.split('/').length - 1; i++) {
+        prefixEscape += "../";
+      }
+      tryZipFileForbiddenList(allowedZipFileName, topLevelAllowed, [prefixEscape + 'etc/passwd']);
+      fs.remove(allowedZipFileName);
       tryZipFileAllowed(allowedZipFileName, topLevelAllowed);
 
       tryUnZipFileForbidden('/etc/nothere.zip', topLevelAllowed);
       tryUnZipFileForbidden(allowedZipFileName, topLevelForbidden);
 
       tryUnZipFileAllowed(allowedZipFileName, topLevelAllowedUnZip);
+
+      // Should try to unzip into the toplevel allowed directory
+      // with a relative path
+      tryUnZipFileForbidden(relativePathZipFile, topLevelAllowed);
     },
     testEval : function() {
       tryJSParseFileForbidden(forbiddenJSFileName);
@@ -855,9 +880,7 @@ function testSuite() {
       // we can not forbid snippet evaluation.
       // Access is file access based for now.
       require("internal").parse(`print('hello world')`);
-    }
-
-
+    },
   };
 }
 jsunity.run(testSuite);

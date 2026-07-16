@@ -91,7 +91,7 @@ function resolveAppInfo (appInfo, refresh) {
     return buffer;
   }
   if (fs.isDirectory(appInfo)) {
-    const tempFile = fmu.zipDirectory(appInfo);
+    const tempFile = fs.zipDirectory(appInfo);
     const buffer = fs.readFileSync(tempFile);
     try {
       fs.removeDirectoryRecursive(tempFile);
