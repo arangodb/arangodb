@@ -222,7 +222,7 @@ class ExecContext {
                         AnalyzerAccessLevel level) const;
 
   /// @brief returns true if the user can be read
-  Result canReadUser(std::string_view user) const;
+  Result canReadUser(std::string_view userName) const;
 
   /// @brief returns true for each user which can be read
   // TODO Should this return a std::vector<Result>?
@@ -232,7 +232,7 @@ class ExecContext {
 
   /// @brief returns true if the user can be modified, note that everybody
   // can modify themselves (if only to change the password).
-  Result canWriteUser(std::string_view user) const;
+  Result canWriteUser(std::string_view userName) const;
 
   static std::shared_ptr<ExecContext const> set(
       std::shared_ptr<ExecContext const> ctx) {

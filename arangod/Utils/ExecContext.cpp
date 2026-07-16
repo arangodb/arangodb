@@ -438,19 +438,27 @@ Result ExecContext::canUseGraph(std::string_view db, std::string_view graph,
 }
 
 /// @brief returns true if the user can be read
-Result ExecContext::canReadUser(std::string_view user) const {
+Result ExecContext::canReadUser(std::string_view userName) const {
   using namespace auth::perms;
-  return can(ReadUser{.name{user}});
+  // We implement one exception here: A user can read itself:
+  if (userName == user()) {
+    return {};
+  }
+  return can(ReadUser{.name{userName}});
 }
 
 /// @brief returns true if the user can be modified, note that everybody
 /// can modify themselves (if only to change the password).
-Result ExecContext::canWriteUser(std::string_view user) const {
+Result ExecContext::canWriteUser(std::string_view userName) const {
   using namespace auth::perms;
   if (!isSuperuser() && ServerState::readOnly()) {
     return {TRI_ERROR_FORBIDDEN, "Server is in read-only mode."};
   }
-  return can(WriteUser{.name{user}});
+  // We implement one exception here: A user can write itself:
+  if (userName == user()) {
+    return {};
+  }
+  return can(WriteUser{.name{userName}});
 }
 
 /// @brief returns true for each user which can be read
