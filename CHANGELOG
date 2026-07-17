@@ -1,5 +1,8 @@
 3.12.10-devel (XXXX-XX-XX)
 --------------------------
+
+* Updated ArangoDB Starter to v0.19.24.
+
 * COR-613: Create Response Code Metrics
   arangodb_http_response_http_response_code_total{code="<response-code>"}
 
@@ -27,8 +30,6 @@
  - js-yaml to 4.2.0
 
 * Upgraded OpenSSL to 3.5.7.
-
-* Updated ArangoDB Starter to v0.19.23.
 
 * COR-607: Fix a problem that causes cluster queries involving a materialize node
   collection access that is used as a satellite to crash in maintainer mode,
