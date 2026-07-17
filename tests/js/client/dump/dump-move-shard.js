@@ -26,6 +26,7 @@
 
 let internal = require("internal");
 let jsunity = require("jsunity");
+let IM = global.instanceManager;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
