@@ -1,6 +1,9 @@
 3.12.10-devel (XXXX-XX-XX)
 --------------------------
 
+* Upgraded included rclone to v1.74.4 with go1.25.12 and non-vulnerable
+  dependencies.
+
 * Updated ArangoDB Starter to v0.19.24.
 
 * COR-613: Create Response Code Metrics
@@ -10,9 +13,6 @@
 
 * GitHub issue #22532: Fixed query editor content becoming hidden after resizing
   the editor pane in the web UI.
-
-* Upgraded included rclone to v1.74.3 with go1.25.11 and non-vulnerable
-  dependencies.
 
 * Add missing case to return 403 for error HTTP_UNAUTHORIZED.
 
