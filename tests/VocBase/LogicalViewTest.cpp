@@ -176,7 +176,7 @@ TEST_F(LogicalViewTest, test_auth) {
   auto viewJson = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"testViewType\" }");
 
-  // no ExecContext
+  // no ExecContext (implicitly superuser!)
   {
     TRI_vocbase_t vocbase(testDBInfo(server), engine);
     auto logicalView = vocbase.createView(viewJson->slice(), false);
