@@ -126,8 +126,7 @@ auto RestHandler::executeAsync() -> futures::Future<futures::Unit> {
     if (auto r = ExecContext::current().canUseAdminAction(
             auth::perms::AdminMonitoringInternal{});
         r.fail()) {
-      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                    r.errorMessage());
+      generateError(r);
       co_return;
     }
   }

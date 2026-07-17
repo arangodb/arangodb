@@ -52,16 +52,14 @@ auto RestLogHandler::executeAsync() -> futures::Future<futures::Unit> {
     if (auto r = ExecContext::current().canUseAdminAction(
             auth::perms::AdminReadReplicatedLog{});
         r.fail()) {
-      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                    r.errorMessage());
+      generateError(r);
       co_return;
     }
   } else {
     if (auto r = ExecContext::current().canUseAdminAction(
             auth::perms::AdminWriteReplicatedLog{});
         r.fail()) {
-      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                    r.errorMessage());
+      generateError(r);
       co_return;
     }
   }

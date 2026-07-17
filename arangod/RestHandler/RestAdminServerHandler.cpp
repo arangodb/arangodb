@@ -201,8 +201,7 @@ void RestAdminServerHandler::handleMode() {
     if (auto r = ExecContext::current().canUseAdminAction(
             auth::perms::AdminMaintenance{});
         r.fail()) {
-      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                    r.errorMessage());
+      generateError(r);
       return;
     }
 
@@ -331,8 +330,7 @@ void RestAdminServerHandler::handleApiCalls() {
     if (auto r = ExecContext::current().canUseAdminAction(
             auth::perms::AdminApiCalls{});
         r.fail()) {
-      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                    r.errorMessage());
+      generateError(r);
       return;
     }
   }
@@ -386,8 +384,7 @@ void RestAdminServerHandler::handleAqlRecordedQueries() {
     if (auto r = ExecContext::current().canUseAdminAction(
             auth::perms::AdminAqlQueries{});
         r.fail()) {
-      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                    r.errorMessage());
+      generateError(r);
       return;
     }
   }

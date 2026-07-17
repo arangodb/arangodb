@@ -371,11 +371,15 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
           },
           [&](p::CreateDatabase const& /*database*/) -> Result {
             // Creating a database requires RW access to the _system database.
-            return isAdmin();
+            return check(
+                auth::perms::UseDatabase{.name = StaticStrings::SystemDatabase,
+                                         .level = DatabaseAccessLevel::Write});
           },
           [&](p::DropDatabase const& /*database*/) -> Result {
             // Dropping a database requires RW access to the _system database.
-            return isAdmin();
+            return check(
+                auth::perms::UseDatabase{.name = StaticStrings::SystemDatabase,
+                                         .level = DatabaseAccessLevel::Write});
           },
           [&](p::SeeCollection const& /*collection*/) -> Result {
             // Database RO access is the only prerequisite and has already been
@@ -560,20 +564,29 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
           [&](p::ReadUser const& /*readUser*/) -> Result {
             // Reading any user record requires at least RW access to the
             // _system database.
-            return isAdmin();
+            return check(
+                auth::perms::UseDatabase{.name = StaticStrings::SystemDatabase,
+                                         .level = DatabaseAccessLevel::Write});
           },
           [&](p::WriteUser const& /*writeUser*/) -> Result {
             // Writing a user record requires RW access to the _system
             // database (equivalent to being an admin).
-            return isAdmin();
+            return check(
+                auth::perms::UseDatabase{.name = StaticStrings::SystemDatabase,
+                                         .level = DatabaseAccessLevel::Write});
           },
       },
       permission);
 }
 
 Result AuthMode::Classic::isAdmin() const {
-  return check(auth::perms::UseDatabase{.name = StaticStrings::SystemDatabase,
-                                        .level = DatabaseAccessLevel::Write});
+  auto r = check(auth::perms::UseDatabase{.name = StaticStrings::SystemDatabase,
+                                          .level = DatabaseAccessLevel::Write});
+  if (r.ok()) {
+    return {};
+  }
+  return {TRI_ERROR_FORBIDDEN,
+          "Missing RW permissions on _system database for admin purposes!"};
 }
 
 auto AuthMode::Rbac::username() const noexcept -> std::string_view {
