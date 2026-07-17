@@ -1994,3 +1994,194 @@ unchanged between branches.
    only for awareness in case any test asserts on `devel`'s specific (and
    likely accidental) rejection behaviour in that corner case.
 3. No action required for the `"admin"`-policy message-text change (cosmetic).
+
+
+## `RestCursorHandler` (`arangod/RestHandler/RestCursorHandler.cpp`)
+
+Mounted at `/_api/cursor` (prefix). Handles AQL query execution
+(`POST /_api/cursor[/json]`), cursor continuation
+(`PUT /_api/cursor/<id>`, and the legacy `POST /_api/cursor/<id>`), batch
+re-fetch (`POST /_api/cursor/<id>/<batch-id>`), and cursor disposal
+(`DELETE /_api/cursor/<id>`).
+
+### Overview: no in-handler authorization logic
+
+Just like `RestDocumentHandler`, `RestCursorHandler.cpp` itself contains
+**no authorization logic at all** — confirmed by diffing it against `devel`
+(`diff -u /tmp/devel_RestCursorHandler.cpp arangod/RestHandler/RestCursorHandler.cpp`):
+the only differences are an added `activities::Registry::
+ScopedCurrentlyExecutingActivity` guard (unrelated activity-tracking
+instrumentation) and some `#include`/comment churn. `RestCursorHandler.h`
+has no diff beyond a removed `@author` comment. All authorization happens
+in two shared, lower-level components that this handler calls into:
+
+1. **Collection-level permissions during query execution**, via
+   `RestVocbaseBaseHandler::createTransactionContext()` →
+   `AqlTransaction`/`transaction::Methods::addCollection()` →
+   `TransactionState::checkCollectionPermission()`
+   (`arangod/StorageEngine/TransactionState.cpp:713-754`) — the exact same
+   central gate already investigated in the `RestDocumentHandler` session.
+   `registerQueryOrCursor()` (`arangod/RestHandler/RestCursorHandler.cpp:192-193`)
+   always creates its transaction context with `AccessMode::Type::WRITE`
+   (comment: `"access mode can always be write on the coordinator"`) — but
+   this only controls what the *transaction* is opened as; the actual
+   per-collection access level checked for each collection referenced by
+   the query is determined from the AQL AST during planning
+   (`arangod/Aql/ExecutionPlan.cpp:194-247`, unchanged between branches) and
+   passed down via `aql::Collection::accessType()`
+   (`AqlTransaction::processCollection`,
+   `arangod/Aql/AqlTransaction.cpp:84-97`, itself unchanged apart from a
+   cosmetic namespace-wrapping refactor — confirmed by diff). This means:
+   - **Read-only AQL queries** request `AccessType::READ` per collection,
+     so they are unaffected by the previously-documented server-wide
+     read-only-mode regression (that regression only triggers for
+     `WriteData`-or-above requests).
+   - **AQL queries containing `INSERT`/`UPDATE`/`REMOVE`/`UPSERT`/
+     `REPLACE`** (or graph modifications) request `AccessType::WRITE` for
+     the affected collection(s), and therefore **do inherit** the
+     already-documented regression from the `RestDocumentHandler` session:
+     while the server is globally in read-only mode
+     (`ServerState::readOnly()`), `ExecContext::canUseCollection()`
+     (`arangod/Utils/ExecContext.cpp:223-231`) short-circuits to a generic
+     `TRI_ERROR_FORBIDDEN` ("Server is in read-only mode.") instead of the
+     more specific `TRI_ERROR_ARANGO_READ_ONLY` (1004) that `devel`'s
+     level-capping approach produces. Both map to HTTP 403, so this is the
+     same cosmetic-at-the-status-code-level/real-at-the-errorNum-level
+     divergence already tracked for `RestDocumentHandler` and
+     `RestCollectionHandler::truncate` — no new finding number is assigned
+     here, this is just confirmation that AQL write queries are also in
+     scope for that existing regression.
+   - EE's `IgnoreNoAccessAqlTransaction`/`skipInaccessibleCollections`
+     mechanism (`arangod/Aql/AqlTransaction.cpp:42-48`) is a
+     Coordinator-side-computed, opt-in mechanism unrelated to `Classic`
+     mode's own permission checks (the set of "inaccessible" collections is
+     computed and serialized by the Coordinator before the query ever
+     reaches this code); it is unchanged between branches and out of scope
+     for a `Classic`-mode-vs-`devel` comparison.
+
+2. **Cursor ownership**, via `CursorRepository` — this is where a genuine,
+   new finding was made (Finding 1 below).
+
+### Finding 1 (Regression): cursor-ownership check bypassed when authentication is disabled
+
+`CursorRepository.cpp` stores, alongside each cursor, the username of the
+identity that created it (`arangod/Utils/CursorRepository.cpp:139-145`,
+`addCursor()`: `auto user = ExecContext::current().user();`), and both
+`find()` (continuation/batch fetch) and `remove()` (deletion) gate every
+lookup through an `authorized()` predicate
+(`arangod/Utils/CursorRepository.cpp:223`, `:264`):
+
+`devel` (`/tmp/devel_CursorRepository.cpp:47-53`):
+```cpp
+bool authorized(std::pair<arangodb::Cursor*, std::string> const& cursor) {
+  auto const& exec = arangodb::ExecContext::current();
+  if (exec.isSuperuser()) {
+    return true;
+  }
+  return (cursor.second == exec.user());
+}
+```
+
+Current branch (`arangod/Utils/CursorRepository.cpp:46-52`):
+```cpp
+bool authorized(std::pair<arangodb::Cursor*, std::string> const& cursor) {
+  auto const& exec = arangodb::ExecContext::current();
+  if (exec.isSuperuserOrDisabled()) {
+    return true;
+  }
+  return (cursor.second == exec.user());
+}
+```
+
+The change from `isSuperuser()` to `isSuperuserOrDisabled()` looks like the
+same, already-established-safe pattern from `RestCompactHandler`/
+`RestAdminServerHandler` (`!isSuperuserOrDisabled()` ⟺ `isAuthEnabled() &&
+!isSuperuser()`) — but here the logic is used the *other way round*: as an
+early-`true` short-circuit rather than an early-rejection guard, and that
+changes what it actually does:
+
+- I traced the origin of both `cursor.second` (the stored owner, set at
+  `addCursor()` time) and `exec.user()` (the current caller, read at
+  `find()`/`remove()` time) all the way back to
+  `CommTask::checkAuthHeader()` (`arangod/GeneralServer/CommTask.cpp:868-937`,
+  confirmed **byte-for-byte unchanged** between branches by diff) and
+  `auth::TokenCache::checkAuthenticationBasic()`
+  (`arangod/Auth/TokenCache.cpp:140-202`, also unchanged). Crucially,
+  `AuthenticationFeature::prepare()`
+  (`arangod/GeneralServer/AuthenticationFeature.cpp:169-184`) constructs a
+  real `UserManager` on single servers/Coordinators **regardless of
+  whether `--server.authentication` is `true` or `false`** — only
+  `isActive()` (`:240-242`) is gated by the option. This means that even
+  with authentication fully disabled, if a client sends an `Authorization:
+  Basic <...>` header, `checkAuthenticationBasic()` still runs a *real*
+  credential check against the user database and sets `req.user()`
+  accordingly (to the validated username on success, or to the raw,
+  unvalidated username parsed from the header on failure) — this part of
+  the pipeline is identical in both branches.
+- Both branches' `ExecContext`/`VocbaseContext` construction for the
+  "authentication disabled" case use this same `req.user()` value
+  directly, without re-checking `req.authenticated()`: `devel`'s
+  `VocbaseContext::create()` (`/tmp/devel_VocbaseContext.cpp:78-92`) passes
+  `req.user()` into the constructor whenever `!auth->isActive()`
+  (yielding `ExecContext::Type::Default` whenever `req.user()` is
+  non-empty, `Type::Internal` only when it's empty); the current branch's
+  `ExecContext::create()` (`arangod/Utils/ExecContext.cpp:92-94`)
+  equivalently constructs `AuthMode::Disabled(req.user(), req)`. So **the
+  stored/compared usernames are populated identically in both branches** —
+  this is not where the divergence comes from.
+- The divergence is purely in the `authorized()` predicate itself. Given
+  two different (or absent-vs-present) client-supplied usernames while
+  `--server.authentication false`:
+  - `devel`: `exec.isSuperuser()` is `false` for any non-empty-username
+    `Type::Default` context (only a genuine JWT-superuser or the truly
+    anonymous/`Type::Internal` case with empty username short-circuits),
+    so the code falls through to the username-equality check. A cursor
+    created under username `"alice"` and later accessed under username
+    `"bob"` (e.g. two different HTTP clients that happen to send different
+    `Authorization: Basic` headers, or one client that sends a header and
+    another that sends none at all) is correctly **rejected** with `404
+    CURSOR_NOT_FOUND` (from `find()`) or a no-op `remove()` — exactly as it
+    would be if authentication were enabled.
+  - Current branch: `exec.isSuperuserOrDisabled()` is `true` for **every**
+    caller whenever authentication is disabled, completely bypassing the
+    username-equality check. **Any** caller can continue, re-fetch a batch
+    of, or delete **any other user's** streaming cursor while
+    `--server.authentication false`, regardless of what username (if any)
+    it supplies.
+
+This is a genuine behavioral regression, not merely cosmetic: the
+ALLOW/DENY decision itself changes for this specific combination of
+inputs. Its practical security impact is limited, though not zero — when
+authentication is fully disabled, `AuthMode::Disabled::check()` already
+grants blanket access to essentially everything (any user can read/write
+any document, list any database, etc.), so cross-user cursor access does
+not, by itself, expose data that wasn't already fully accessible via a
+fresh, equivalent query. The concrete, observable difference is narrower:
+loss of the (admittedly vestigial) per-"user"-label isolation of
+in-flight streaming-cursor *state* — e.g. one nominal user's script
+being able to accidentally or intentionally continue/dispose another
+nominal user's in-progress cursor purely by guessing/enumerating cursor
+IDs, something `devel` prevented via the username tag even with auth off.
+Given `--server.authentication false` is itself a deliberately
+insecure/testing-oriented configuration, this is a low-severity but
+genuine finding.
+
+### Summary for `RestCursorHandler`
+
+| Route | Verdict |
+|---|---|
+| `POST /_api/cursor[/json]` (create, read-only AQL) | Identical to `devel` — no in-handler auth logic; per-collection `Read`-level checks via the shared, unmodified `TransactionState::checkCollectionPermission()` path |
+| `POST /_api/cursor[/json]` (create, AQL with writes) | Identical to `devel`, **except** it inherits the previously-documented server-wide-read-only-mode `errorNum` divergence (`TRI_ERROR_ARANGO_READ_ONLY` vs. generic `TRI_ERROR_FORBIDDEN`) already tracked under `RestDocumentHandler` Finding 1 — not a new finding |
+| `PUT /_api/cursor/<id>`, `POST /_api/cursor/<id>[/<batch-id>]` (continuation/batch fetch) | **Regression** (Finding 1) when `--server.authentication false`: cursor-ownership check is bypassed for all callers |
+| `DELETE /_api/cursor/<id>` | Same regression (Finding 1) applies — any caller can delete any cursor when authentication is disabled |
+
+**Action items / recommendations:**
+1. **Fix Finding 1**: change `isSuperuserOrDisabled()` back to
+   `isSuperuser()` in `CursorRepository.cpp`'s anonymous `authorized()`
+   helper (`arangod/Utils/CursorRepository.cpp:48`), restoring the
+   username-equality fallback for the auth-disabled case. This is a
+   one-line, low-risk fix that exactly restores `devel`'s behavior.
+2. No action needed for the read-only-mode observation under
+   `POST /_api/cursor` — already covered by the existing action item
+   against `ExecContext::canUseCollection()`/`canUseDatabase()` recorded
+   under `RestDocumentHandler`.
