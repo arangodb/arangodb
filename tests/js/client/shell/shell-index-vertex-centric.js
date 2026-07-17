@@ -27,7 +27,6 @@ const jsunity = require("jsunity");
 const internal = require("internal");
 const errors = internal.errors;
 const cn = "UnitTestEdgeCollection";
-const testHelper = require("@arangodb/test-helper").Helper;
 const arangodb = require('@arangodb');
 
 ////////////////////////////////////////////////////////////////////////////////

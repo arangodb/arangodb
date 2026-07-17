@@ -28,7 +28,7 @@ var arangodb = require('@arangodb');
 var db = arangodb.db;
 var internal = require('internal');
 var wait = internal.wait;
-const waitForEstimatorSync = require('@arangodb/test-helper').waitForEstimatorSync;
+const { waitForEstimatorSync } = require('@arangodb/test-helper');
 
 function EdgeIndexSuite () {
   var vn = 'UnitTestsCollectionVertex';

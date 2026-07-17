@@ -30,12 +30,10 @@ var analyzers = require("@arangodb/analyzers");
 var ERRORS = require("@arangodb").errors;
 const isCluster = require("internal").isCluster();
 const isEnterprise = require("internal").isEnterprise();
-const {
-  triggerMetrics,
-} = require('@arangodb/test-helper');
 const { checkIndexMetrics } = require("@arangodb/test-helper-common");
 const tasks = require('@arangodb/tasks');
 const fs = require('fs');
+let IM = global.instanceManager;
 
 // define global collection which will be used across all testSuites. It will be dropped later
 const collection123 = db._create("collection123");
@@ -1776,7 +1774,7 @@ function IResearchFeatureDDLTestSuite1() {
       const types = ["arangosearch", "inverted"];
 
       if (isCluster) {
-        triggerMetrics();
+        IM.triggerMetrics();
       }
 
       // check link stats
@@ -1808,7 +1806,7 @@ function IResearchFeatureDDLTestSuite1() {
       assertEqual(3, result.length);
 
       if (isCluster) {
-        triggerMetrics();
+        IM.triggerMetrics();
       }
 
       // check link stats
@@ -1847,7 +1845,7 @@ function IResearchFeatureDDLTestSuite1() {
       assertEqual(3, res.length);
 
       if (isCluster) {
-        triggerMetrics();
+        IM.triggerMetrics();
       }
 
       // check link stats
@@ -1887,7 +1885,7 @@ function IResearchFeatureDDLTestSuite1() {
       syncIndex(4);
 
       if (isCluster) {
-        triggerMetrics();
+        IM.triggerMetrics();
       }
 
       // check link stats
@@ -1922,7 +1920,7 @@ function IResearchFeatureDDLTestSuite1() {
       syncIndex(0);
 
       if (isCluster) {
-        triggerMetrics();
+        IM.triggerMetrics();
       }
 
       // check link stats
