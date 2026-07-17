@@ -1555,3 +1555,217 @@ the "out of scope" classification from the previous session.
    any future caller that both (a) relies on `forceSuperuser()` and (b)
    makes a decision that distinguishes `RO` from `RW`. No such caller has
    been identified yet.
+
+## `RestWalAccessHandler` (`arangod/RestHandler/RestWalAccessHandler.cpp`)
+
+Mounted at `/_api/wal` (prefix; sub-routes `range`, `lastTick`, `tail`,
+`open-transactions`). This handler exposes the raw write-ahead-log to
+callers, primarily for replication tailing (leader/follower shard sync,
+`arangosync`, external backup/replication tools).
+
+### Single server vs. cluster
+
+`RestWalAccessHandler::execute()` (`arangod/RestHandler/RestWalAccessHandler.cpp:186-191`)
+starts with:
+```cpp
+if (ServerState::instance()->isCoordinator()) {
+  generateError(rest::ResponseCode::NOT_IMPLEMENTED,
+                TRI_ERROR_CLUSTER_UNSUPPORTED,
+                "'/_api/wal' is not yet supported in a cluster");
+  return RestStatus::DONE;
+}
+```
+This is **byte-for-byte identical** in both branches (confirmed via diff —
+it is untouched code). Consequently:
+- On a **Coordinator**, `/_api/wal/*` always fails with `501
+  NOT_IMPLEMENTED` before any authorization check runs at all — identical
+  behavior in both branches, and there is **no request forwarding** to a
+  DB-Server for this particular route (unlike, e.g., the `dump`
+  batch-management routes of `RestReplicationHandler`, which *do* support a
+  `DBserver` query-parameter forwarding mechanism — see the `DBserver`
+  forwarding notes in `OpenAPI/0-openapi.json:28202` and
+  `Documentation/path_permissions.md:1071-1076`, which explicitly marks
+  `/_api/wal/*` as "only DBServer/Single, not on coord").
+- On a **single server or a DB-Server**, execution falls through to the
+  same code, unconditionally — the handler makes no further distinction
+  between the two deployment modes. So everything below applies identically
+  to both.
+- **Cluster-internal replication traffic** (leader→follower shard
+  synchronization, `arangod/Cluster/SynchronizeShard.cpp:1722-1725`) reaches
+  a DB-Server's `/_api/wal/tail` directly (not via the Coordinator) and
+  authenticates using the server's own internal JWT secret
+  (`AuthenticationFeature::tokenCache().jwtToken()`), with **no
+  `preferred_username`/user field**. `ExecContext::create()`
+  (`arangod/Utils/ExecContext.cpp:82-90`) recognizes exactly this pattern
+  (`req.authenticated() && req.user().empty() && ... == JWT`) and
+  constructs an `AuthMode::Superuser` context for it — which trivially
+  passes every check in `AuthMode::Superuser::check()`
+  (`arangod/Auth/AuthMode.cpp:64-66`, unconditionally returns `{}`). This
+  part is unaffected by anything below, in both branches.
+
+### Finding 1 (Cosmetic): top-level admin gate
+
+`devel` (`devel:arangod/RestHandler/RestWalAccessHandler.cpp:193-196`):
+```cpp
+if (!_context.isAdminUser()) {
+  generateError(ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
+  return RestStatus::DONE;
+}
+```
+Current branch (`arangod/RestHandler/RestWalAccessHandler.cpp:193-198`):
+```cpp
+if (auto r = ExecContext::current().canUseAdminAction(
+        auth::perms::AdminWalAccess{});
+    r.fail()) {
+  generateError(r);
+  return RestStatus::DONE;
+}
+```
+`canUseAdminAction(AnyAdmin)` dispatches to `AuthMode::Classic::check()`'s
+`[&](p::AnyAdmin auto const&) { return isAdmin(); }` branch
+(`arangod/Auth/AuthMode.cpp:367`), and `isAdmin()` checks `UseDatabase{
+_system, Write}` (`arangod/Auth/AuthMode.cpp:574-577`) — the same "RW on
+`_system`" test as `devel`'s precomputed `_isAdminUser` flag (already
+established equivalent in the `RestMetricsHandler`/`RestAdminServerHandler`
+sessions). Same ALLOW/DENY decision. On failure, `devel` returns bare
+`TRI_ERROR_FORBIDDEN` with no message; the current branch returns the same
+`errorNum` (`TRI_ERROR_FORBIDDEN`, since `requestedApiVersion() == 0` for
+this classic route) but with an added message (e.g. `"insufficient
+database access level for '_system'"`). Cosmetic only.
+
+### Finding 2 (Regression): missing superuser escalation during `handleCommandTail`
+
+This is the significant finding for this handler. `devel`
+(`devel:arangod/RestHandler/RestWalAccessHandler.cpp:316`) contains, right
+before the actual WAL-tailing call:
+```cpp
+ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
+```
+Because `execute()` already required `_context.isAdminUser()` to be `true`
+to even reach `handleCommandTail()`, this condition is always `true` at
+this point — so `devel` **unconditionally escalates `ExecContext::CURRENT`
+to a full superuser** for the remainder of the tailing operation. The
+current branch's `handleCommandTail()`
+(`arangod/RestHandler/RestWalAccessHandler.cpp:274-412`) **does not contain
+this line at all** — it was dropped without replacement during the
+refactor.
+
+This matters because `wal->tail(...)` (`RocksDBWalAccess`, driven by
+`WalAccessContext`) filters every WAL marker through
+`WalAccessContext::shouldHandleCollection()`
+(`arangod/StorageEngine/WalAccess.cpp:53-69`), which — for every
+collection-scoped marker — calls `loadCollection(dbid, cid)`
+(`arangod/StorageEngine/WalAccess.cpp:87-101`). That, in turn, constructs a
+`CollectionGuard(vocbase, cid)` (`arangod/Utils/CollectionGuard.h:49-54`),
+whose constructor calls `vocbase->useCollection(cid, /*checkPermissions*/
+true)`, which flows into `Database::loadCollection(collection,
+checkPermissions=true)` (`arangod/VocBase/vocbase.cpp:387-403` in current
+branch, `devel:arangod/VocBase/vocbase.cpp:396-410` — **this file is
+identical in both branches**, confirmed by diff):
+```cpp
+if (checkPermissions) {
+  std::string const& dbName = _info.getName();
+  if (auto r = ExecContext::current().canUseCollection(
+          dbName, collection.name(), AccessLevel::Read);
+      !r.ok()) {
+    return r;
+  }
+}
+```
+This calls straight into `AuthMode::Classic::check()`'s `UseCollection`
+branch (`arangod/Auth/AuthMode.cpp:176-251`), which — unlike
+`DumpCollection`/`RestoreCollection`/`RestoreCreateIndex`/etc. in the very
+same function — has **no `isAdmin()` bypass**. It purely consults
+`UserManagerBase::collectionAuthLevel(user, db, coll, /*configured*/
+true)`, i.e. the caller's actual, specifically-granted permissions for that
+exact database/collection pair.
+
+Consequence:
+- In `devel`, because of the unconditional superuser escalation, **every**
+  collection in **every** database is visible during `/_api/wal/tail`
+  streaming to any user who passed the initial `isAdminUser()` gate,
+  regardless of that user's per-database/per-collection grants elsewhere.
+  This matches the documented design intent recorded in
+  `Documentation/path_permissions.md:1071-1076`, which lists all
+  `/_api/wal/*` routes as requiring `SUPER`-level access with an empty
+  "Changes to before RBAC" column (i.e. **no behavioral change was
+  intended** for this handler by the RBAC migration).
+- In the current branch, without the escalation, `ExecContext::current()`
+  inside `Database::loadCollection` is the **real, unescalated** admin
+  identity. An admin (RW on `_system`) who does **not** additionally hold
+  an explicit (or wildcard `*`) grant on a collection in some *other*
+  database will have `canUseCollection(..., Read)` **fail** for that
+  collection during tailing. Critically, this failure is **not
+  surfaced as an error** to the client: `WalAccessContext::loadCollection()`
+  swallows the resulting exception in a bare `catch (...) { // weglaecheln
+  }` (`arangod/StorageEngine/WalAccess.cpp:93-99`) and returns `nullptr`,
+  which causes `shouldHandleCollection()` to simply skip that marker. The
+  practical effect is **silent, partial data loss**: the tailing/dump
+  response is missing entries for collections the admin doesn't explicitly
+  have rights on, with no indication to the client that anything was
+  filtered.
+- Database-level markers (database create/drop) and view-level markers are
+  **not** affected by this regression: `shouldHandleDB()`
+  (`arangod/StorageEngine/WalAccess.cpp:33-35`) and the view lookup path
+  perform no permission check at all in either branch (`loadVocbase()` /
+  `vocbase->lookupView()` are auth-agnostic). Only *collection-scoped*
+  markers are impacted.
+- As noted above, **cluster-internal shard-replication traffic is
+  unaffected** by this regression, because it already authenticates as
+  `AuthMode::Superuser` via the internal JWT — the missing escalation is a
+  no-op for callers who are already superuser. The regression's practical
+  blast radius is therefore limited to **direct, named-user calls** to
+  `/_api/wal/tail` (e.g. an external backup/replication tool, or manual
+  administrative use) on a single server or directly against a DB-Server's
+  endpoint — on both of those deployment modes identically, since (as
+  established above) the handler code does not distinguish between them.
+
+This is best classified as an unintentional **Regression**: the project's
+own migration-tracking document (`Documentation/path_permissions.md`)
+explicitly records "no change" as the target for this route, and the
+codebase elsewhere (`ExecContext::canDumpCollection`,
+`arangod/Utils/ExecContext.h:169-174`) demonstrates the established
+convention for this exact "admin should see everything, even
+without per-collection grants, for infra/backup-style operations"
+use case — but that convention was never wired up to replace the
+deleted `ExecContextSuperuserScope` in this handler.
+
+### Finding 3 (Cosmetic): unrelated engine/feature-lookup refactor
+
+The remaining diff between branches is entirely non-authorization:
+- `RestWalAccessHandler` now caches `DatabaseFeature&` as a member
+  (`_databaseFeature`, set in the constructor) instead of looking it up via
+  `server().getFeature<DatabaseFeature>()` at each call site in
+  `handleCommandTail()`.
+- `StorageEngine& engine = _vocbase.engine();` replaces `server().getFeature<
+  EngineSelectorFeature>().engine()` in `execute()` — same underlying engine
+  instance, different accessor (same pattern already confirmed equivalent
+  for `RestAdminServerHandler`/`RestCompactHandler`).
+
+No behavioral impact.
+
+### Summary for `RestWalAccessHandler`
+
+| Route | Verdict |
+|---|---|
+| Any route, on a Coordinator | Identical to `devel`: unconditional `501 NOT_IMPLEMENTED`, no forwarding, no auth check reached |
+| `GET /_api/wal/range` | Identical to `devel` (top-level admin gate only, Finding 1 cosmetic) |
+| `GET /_api/wal/lastTick` | Identical to `devel` (Finding 1 cosmetic) |
+| `GET /_api/wal/open-transactions` | Identical to `devel` (Finding 1 cosmetic; no per-collection filtering in this deprecated route) |
+| `DELETE /_api/wal/tail`, `PUT /_api/wal/tail?trackOnly=true` | Identical to `devel` (client (un)registration only, no `wal->tail()` call, unaffected by Finding 2) |
+| `GET/PUT /_api/wal/tail` (actual tailing) | **Regression** (Finding 2): admins without explicit per-database/per-collection grants elsewhere now silently miss WAL entries for those collections; internal cluster shard-replication traffic is unaffected |
+
+**Action items / recommendations:**
+1. **Fix Finding 2**: reinstate an equivalent bypass for the duration of
+   `handleCommandTail()`'s `wal->tail(...)` call — either restore
+   `ExecContextSuperuserScope` (currently `[[deprecated]]`,
+   `arangod/Utils/ExecContext.h:272-287`, but still functionally correct),
+   or — preferably, to avoid the deprecated API — change
+   `Database::loadCollection()`'s permission check (or add an
+   admin/dump-style bypass reachable from `WalAccessContext::loadCollection()`)
+   to use the same "RW-on-`_system`-bypasses-everything" convention already
+   established for `canDumpCollection()`
+   (`arangod/Utils/ExecContext.h:169-174`), since `/_api/wal/tail` is
+   conceptually the same kind of infra/backup operation.
+2. No action required for Finding 1 (cosmetic) or Finding 3 (cosmetic,
+   unrelated refactor).
