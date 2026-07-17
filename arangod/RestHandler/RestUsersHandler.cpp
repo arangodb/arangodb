@@ -155,7 +155,7 @@ RestStatus RestUsersHandler::getRequest(auth::UserManager* um) {
     TRI_ASSERT(allowed.size() == userList.size());
     VPackBuilder usersResult;
     {
-      VPackArrayBuilder guard2(&usersResult);
+      VPackArrayBuilder guard(&usersResult);
       for (size_t i = 0; i < allowed.size(); ++i) {
         if (allowed[i]) {
           usersResult.add(usersArray.slice()[i]);

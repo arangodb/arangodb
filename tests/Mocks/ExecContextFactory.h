@@ -156,7 +156,7 @@ struct BorrowedExecContext {
 /// from a full server fixture).
 ///
 /// @param existingUserManager  The UserManager to delegate permission checks
-/// to.
+///                             to.
 /// @param username             Username stored in the Classic auth context.
 /// @param isRestApiHardened    Passed to Classic ctor. Defaults to false.
 ///
