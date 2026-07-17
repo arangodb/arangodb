@@ -1769,3 +1769,228 @@ No behavioral impact.
    conceptually the same kind of infra/backup operation.
 2. No action required for Finding 1 (cosmetic) or Finding 3 (cosmetic,
    unrelated refactor).
+
+
+## `RestOptions*` handler family
+
+This session covers all four `RestHandler`s built around program-options
+introspection, since three of them share a common base class and the fourth
+is its sibling:
+
+- `RestOptionsBaseHandler` (`arangod/RestHandler/RestOptionsBaseHandler.cpp`)
+  — abstract base, provides `checkAuthentication()`.
+- `RestOptionsHandler` (`arangod/RestHandler/RestOptionsHandler.cpp`) —
+  `GET /_admin/options` (full option values, including sensitive ones).
+- `RestOptionsDescriptionHandler`
+  (`arangod/RestHandler/RestOptionsDescriptionHandler.cpp`) —
+  `GET /_admin/options-description` (option metadata/schema).
+- `RestPublicOptionsHandler`
+  (`arangod/RestHandler/RestPublicOptionsHandler.cpp`) —
+  `GET /_admin/options-public` (filtered, non-sensitive option values;
+  always registered regardless of `--server.options-api` policy).
+
+`RestOptionsHandler` and `RestOptionsDescriptionHandler` are structurally
+trivial (method check, call `checkAuthentication()`, produce a
+`VPackBuilder`); all of their authorization logic lives in the shared
+`RestOptionsBaseHandler::checkAuthentication()`. `RestPublicOptionsHandler`
+does **not** call `checkAuthentication()` at all (by design, in both
+branches) since it's meant to be reachable regardless of the
+`--server.options-api` policy setting.
+
+Diffing all four `.cpp`/`.h` files against `devel` shows only comment-only
+changes (removal of `@author` lines, addition of `// Mounted at ...`
+annotations) plus the two functional diffs discussed below.
+
+### Background: the generic pre-handler gate applies here too
+
+As established in the `RestDatabaseHandler` session, **every** request (in
+both branches) passes through a generic, handler-independent authorization
+gate before the handler's `execute()`/`executeAsync()` ever runs, unless the
+handler overrides it. None of the four `RestOptions*` handlers override this
+gate (no `checkUserCanAccess()` override is declared in any of their
+headers), so the following applies uniformly to `/_admin/options`,
+`/_admin/options-description`, and `/_admin/options-public` alike, in both
+branches:
+
+- `devel`: `CommTask::canAccessPath()` (`/tmp/devel_CommTask.cpp:787-876`)
+  requires `req.authenticated()` and rejects if
+  `vc->databaseAuthLevel() == auth::Level::NONE` for the request's target
+  database — none of the path-based exceptions further down in that function
+  (`/`, `pathPrefixOpen`, `pathPrefixAdminAardvark`,
+  `/_admin/server/availability`, `/_api/cluster/endpoints`,
+  `pathPrefixApiUser`, `pathPrefixApiToken`) match any `/_admin/options*`
+  path, so none of them apply here.
+- Current branch: `RestHandler::checkUserCanAccess()`
+  (`arangod/GeneralServer/RestHandler.cpp:705-764`) requires
+  `request()->authenticated()` and rejects if
+  `ec->canUseDatabase(request()->databaseName(), DatabaseAccessLevel::Read).fail()`
+  — algebraically the same condition (`Read` requires `>= RO`, i.e. blocks
+  only `NONE`), and again none of its own exceptions (UNIX-socket bypass,
+  `authenticationSystemOnly()` Foxx-app bypass) apply to these three paths.
+
+In other words: **any request to any of these three routes must already be
+authenticated with at least `RO` access to its target database before the
+handler-specific code below is ever reached**, identically in both branches.
+This matters directly for Finding 1 below.
+
+### Finding 1 (Verified NOT a regression — dead-code removal):
+`RestPublicOptionsHandler`'s in-handler database-access check was deleted
+
+```diff
+   VPackBuilder builder =
+       server().options(options::ProgramOptions::defaultPublicOptionsFilter);
+```
+
+was, in `devel` (`/tmp/devel_RestPublicOptionsHandler.cpp:49-55`), preceded
+by:
+
+```cpp
+  // available to any user with at least read access to the database
+  if (ExecContext::isAuthEnabled() &&
+      !ExecContext::current().canUseDatabase(auth::Level::RO)) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                  "insufficient permissions");
+    co_return;
+  }
+```
+
+This check has been deleted outright in the current branch (with no
+replacement), and `#include "Utils/ExecContext.h"` is now an unused leftover
+include in the current file (minor code-quality nit, not a behavioural
+issue).
+
+At first glance this looks like a real regression: any authenticated user,
+regardless of their access level on the current database, would now be able
+to read `/_admin/options-public`. However, tracing the condition
+(`ExecContext::current().canUseDatabase(auth::Level::RO)`, i.e.
+`RO <= _databaseAuthLevel`, i.e. `_databaseAuthLevel != NONE`) shows it is
+**exactly** the same condition already enforced by the generic pre-handler
+gate described above (`vc->databaseAuthLevel() == auth::Level::NONE` in
+`devel` / `ec->canUseDatabase(db, Read).fail()` in the current branch) —
+which by construction has *already* run, and *already* rejected any request
+that would have failed this check, before `executeAsync()` is ever entered.
+Consequently, in `devel`, this code was **dead**: the `FORBIDDEN` branch
+could never be reached in practice, because `CommTask::canAccessPath()`
+would already have aborted the request with `401`/`TRI_ERROR_FORBIDDEN`
+beforehand for the exact same condition. Deleting it in the current branch
+removes dead code but changes no observable behaviour.
+
+This is fully consistent with `Documentation/path_permissions.md:828`, which
+documents `/_admin/options-public` as `AUTHEN` — per the legend at
+`Documentation/path_permissions.md:722-723`, `AUTHEN` already means "some
+existing user (or SUPERUSER) has to be authenticated... must have read
+access to the used database from `/_db/<dbname`" — i.e. exactly the generic
+gate's semantics — with an empty "Changes to before RBAC" column, confirming
+no behavioural change was intended or introduced.
+
+### Finding 2 (Narrow, verified — not a security regression): `checkAuthentication()`'s `"jwt"` policy check
+
+`RestOptionsBaseHandler::checkAuthentication()`
+(`arangod/RestHandler/RestOptionsBaseHandler.cpp:44-50`), which gates
+`/_admin/options` and `/_admin/options-description` when
+`--server.options-api=jwt`, changed from:
+
+```cpp
+// devel (/tmp/devel_RestOptionsBaseHandler.cpp:44-50)
+if (apiPolicy == "jwt") {
+  if (!ExecContext::current().isSuperuser()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                  "insufficient permissions");
+    return false;
+  }
+}
+```
+
+to:
+
+```cpp
+if (apiPolicy == "jwt") {
+  if (!ExecContext::current().isSuperuserOrDisabled()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                  "insufficient permissions");
+    return false;
+  }
+}
+```
+
+Unlike every previous occurrence of this `isSuperuser()` →
+`isSuperuserOrDisabled()` pattern seen in earlier sessions (`RestCompactHandler`,
+`RestAdminServerHandler`), `devel`'s condition here is **not** wrapped in an
+`ExecContext::isAuthEnabled() &&` guard — it is plain `!isSuperuser()`. That
+matters because `isSuperuser()` and `isSuperuserOrDisabled()` are *not*
+algebraically equivalent when authentication is globally disabled
+(`--server.authentication false`):
+
+- In `devel`, `VocbaseContext::create()` (`/tmp/devel_VocbaseContext.cpp:78-91`),
+  when `!auth->isActive()`, sets `ExecContext::Type::Internal` (→
+  `isSuperuser() == true`) **only if `req.user().empty()`**; if the incoming
+  request happens to carry a non-empty username (e.g. a client still sends
+  HTTP Basic credentials even though the server ignores them for
+  authentication purposes), the type is `Default` with `RW`/`RW` levels, so
+  `isSuperuser()` is `false` — and `checkAuthentication()` would incorrectly
+  reject the request with `403 FORBIDDEN` despite authentication being
+  completely disabled.
+- In the current branch, `ExecContext::create()`
+  (`arangod/Utils/ExecContext.cpp:92-94`) always constructs
+  `AuthMode::Disabled(req.user(), req)` when `!authenticationFeature.isActive()`,
+  **regardless of `req.user()`** — so `isSuperuserOrDisabled()` is
+  unconditionally `true` whenever auth is disabled, and the check always
+  passes.
+
+So there is a genuine, narrow behavioural difference: with
+`--server.authentication false` **and** `--server.options-api jwt` **and** a
+client that still supplies a non-empty username (e.g. stale Basic-Auth
+credentials, or a reverse proxy that always injects one), `devel` would
+reject the request with `403`, while the current branch allows it. This is
+the *opposite* of a security regression — the current branch is strictly
+*more permissive* in this one corner case, and arguably fixes what looks
+like an oversight in `devel` (nobody would reasonably expect
+`--server.authentication false` to still gate access based on an ignored
+username). In the much more common case — no credentials sent at all when
+auth is disabled — both branches behave identically (`req.user()` empty →
+`ALLOW` in both). When authentication *is* active, both conditions require
+the identity to be a genuine superuser (empty username, authenticated via
+JWT) and are equivalent.
+
+The `"admin"` policy check right below it
+(`arangod/RestHandler/RestOptionsBaseHandler.cpp:52-58`) was also refactored,
+from `apiPolicy == "admin" && !ExecContext::current().isAdminUser()` to
+`apiPolicy == "admin" && r.fail()` where
+`r = ExecContext::current().canUseAdminAction(auth::perms::AdminOptions{})`.
+Tracing this through `AuthMode::Classic::check()`
+(`arangod/Auth/AuthMode.cpp:367`: the generic `AnyAdmin` case dispatches to
+`isAdmin()`, which is `check(UseDatabase{_system, Write})` at
+`arangod/Auth/AuthMode.cpp:574-577`, using the "configured" (raw,
+readonly-mode-ignoring) auth level) shows this reduces to precisely the same
+"raw, configured `RW` on `_system`" test as `devel`'s
+`isAdminUser()`/`_isAdminUser` field computation
+(`/tmp/devel_ExecContext.cpp:105-109`, `/tmp/devel_VocbaseContext.cpp`) —
+**identical ALLOW/DENY decision** in every case, including under global
+read-only mode. The only observable difference is cosmetic: the error
+message changes from the hardcoded `"insufficient permissions"` to
+`r.errorMessage()` (`"insufficient database access level for '_system'"`);
+the error code (`TRI_ERROR_HTTP_FORBIDDEN`/403) is unchanged in both
+branches (unlike the analogous change in `RestAdminServerHandler`, which
+also changed the `errorNum`).
+
+The final check in `checkAuthentication()` — requiring
+`_request->databaseName() == StaticStrings::SystemDatabase` — is completely
+unchanged between branches.
+
+### Summary for `RestOptions*` handlers
+
+| Route | Verdict |
+|---|---|
+| `GET /_admin/options` | Identical to `devel` for the `"jwt"` policy in the normal (auth-enabled) case; narrow, more-permissive divergence only when auth is fully disabled *and* a stray username is present (Finding 2, not a security regression). `"admin"` policy: identical ALLOW/DENY, cosmetic message-text change only. `"disabled"` policy: route not even registered, identical in both branches. |
+| `GET /_admin/options-description` | Same as above (shares `checkAuthentication()`) |
+| `GET /_admin/options-public` | Identical to `devel` — the deleted in-handler check was provably dead code, fully subsumed by the generic pre-handler gate (Finding 1) |
+
+**Action items / recommendations:**
+1. No functional fix required for Finding 1; optionally remove the now-dead
+   `#include "Utils/ExecContext.h"` in
+   `arangod/RestHandler/RestPublicOptionsHandler.cpp` for cleanliness.
+2. No fix required for Finding 2 — the current branch's behaviour in the
+   auth-disabled edge case is arguably more correct than `devel`'s. Flagging
+   only for awareness in case any test asserts on `devel`'s specific (and
+   likely accidental) rejection behaviour in that corner case.
+3. No action required for the `"admin"`-policy message-text change (cosmetic).
