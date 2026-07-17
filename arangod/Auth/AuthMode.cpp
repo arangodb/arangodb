@@ -394,11 +394,17 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
             auto r = check(
                 p::UseDatabase{collection.db, DatabaseAccessLevel::Write});
             if (r.fail()) {
+              // Note that sometimes `r` here returns the code
+              // `TRI_ERROR_ARANGO_READ_ONLY`, but we **must** hand on
+              // `TRI_ERROR_FORBIDDEN` here for API compatibility!
               return {TRI_ERROR_FORBIDDEN, r.errorMessage()};
             }
             r = check(p::UseCollection{collection.db, collection.name,
                                        CollectionAccessLevel::WriteMeta});
             if (r.fail()) {
+              // Note that sometimes `r` here returns the code
+              // `TRI_ERROR_ARANGO_READ_ONLY`, but we **must** hand on
+              // `TRI_ERROR_FORBIDDEN` here for API compatibility!
               return {TRI_ERROR_FORBIDDEN, r.errorMessage()};
             }
             return {};
