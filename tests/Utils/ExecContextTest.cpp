@@ -52,10 +52,6 @@ TEST(ExecContextTest, basic_construction) {
   // deferred to the RBAC test suite.
 }
 
-// construction_with_jwt_and_roles and duplicate_roles_are_preserved are
-// omitted: hasJwtToken(), jwtToken(), and roles() do not exist on ExecContext
-// in the Classic auth path. These will be covered by future RBAC tests.
-
 // --- isSuperuser() predicate ---
 
 TEST(ExecContextTest, superuser_requires_superuser_authmode) {
