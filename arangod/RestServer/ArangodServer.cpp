@@ -233,6 +233,17 @@ void ArangodServer::addFeaturesWithOptionProvider() {
   auto& agency = getFeature<AgencyFeature>();
   auto& clusterFeature = getFeature<ClusterFeature>();
 
+  auto& sslServerOptions =
+      _optionProviders.getOptions<SslServerOptionsProvider>();
+#ifdef USE_ENTERPRISE
+  auto& sslServerEEOptions =
+      _optionProviders.getOptions<enterprise::SslServerEEOptionsProvider>();
+  addFeature<SslServerFeature, SslServerFeatureEE>(
+      std::move(sslServerOptions), std::move(sslServerEEOptions));
+#else
+  addFeature<SslServerFeature>(std::move(sslServerOptions));
+#endif
+
   // Add AuthenticationFeature
   auto authenticationOptions =
       _optionProviders.getOptions<AuthenticationOptionsProvider>();

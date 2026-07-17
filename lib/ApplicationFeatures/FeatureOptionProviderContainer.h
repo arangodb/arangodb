@@ -22,6 +22,7 @@
 
 #include "GeneralServer/AuthenticationOptionsProvider.h"
 #include "GeneralServer/GeneralServerOptionsProvider.h"
+#include "GeneralServer/SslServerOptionsProvider.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/DatabasePathOptionsProvider.h"
 #include "RestServer/DumpLimitsOptionsProvider.h"
@@ -33,6 +34,10 @@
 #include "RocksDBEngine/RocksDBIndexCacheRefillOptionsProvider.h"
 #include "RocksDBEngine/RocksDBOptionFeatureOptionsProvider.h"
 #include "RocksDBEngine/RocksDBEngineOptionsProvider.h"
+
+#ifdef USE_ENTERPRISE
+#include "Enterprise/Ssl/SslServerEEOptionsProvider.h"
+#endif
 
 #include <tuple>
 
@@ -48,13 +53,18 @@ class FeatureOptionProviderContainer final {
   }
 
  private:
-  std::tuple<AuthenticationOptionsProvider, DatabasePathOptionsProvider, DumpLimitsOptionsProvider,
-             EndpointOptionsProvider, FlushOptionsProvider,
-             fortune::FortuneOptionsProvider, GeneralServerOptionsProvider,
-             RocksDBEngineOptionsProvider,
+  std::tuple<AuthenticationOptionsProvider, DatabasePathOptionsProvider,
+             DumpLimitsOptionsProvider, EndpointOptionsProvider,
+             FlushOptionsProvider, fortune::FortuneOptionsProvider,
+             GeneralServerOptionsProvider, RocksDBEngineOptionsProvider,
              RocksDBIndexCacheRefillOptionsProvider,
              RocksDBOptionFeatureOptionsProvider, ServerOptionsProvider,
-             TemporaryStorageOptionsProvider>
+             SslServerOptionsProvider, TemporaryStorageOptionsProvider
+#ifdef USE_ENTERPRISE
+             ,
+             enterprise::SslServerEEOptionsProvider
+#endif
+             >
       _providers{};
 };
 }  // namespace arangodb::application_features

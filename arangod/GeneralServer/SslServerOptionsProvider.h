@@ -27,14 +27,14 @@
 
 namespace arangodb {
 
-struct SslServerOptionsProvider : OptionsProvider<SslServerOptions> {
-  SslServerOptionsProvider() = default;
+struct SslServerOptionsProvider
+    : OptionsProviderImpl<SslServerOptionsProvider, SslServerOptions> {
 
-  void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
-                      SslServerOptions& options) override;
+  void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                          SslServerOptions& options);
 
-  void validateOptions(std::shared_ptr<options::ProgramOptions> opts,
-                       SslServerOptions& options) override;
+  void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                           SslServerOptions& options);
 };
 
 }  // namespace arangodb
