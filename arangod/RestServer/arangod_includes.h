@@ -140,4 +140,5 @@
 #include "Enterprise/RClone/RCloneFeature.h"
 #include "Enterprise/Ssl/SslServerFeatureEE.h"
 #include "Enterprise/StorageEngine/HotBackupFeature.h"
+#include "Enterprise/VectorGraphIndex/VectorGraphIndexFeature.h"
 #endif
