@@ -2525,3 +2525,84 @@ ALLOW/DENY outcomes.
 changes — every route produces the same ALLOW/DENY decision as `devel`,
 confirming the user's expectation that "mostly admin operations" would be
 unproblematic.
+
+## `RestAgencyCallbacksHandler` (`arangod/Cluster/RestAgencyCallbacksHandler.cpp`)
+
+Mounted (prefix) at `/_api/agency/agency-callbacks`
+(`arangod/Cluster/ClusterFeature.h:95-97`), only registered when the cluster
+feature is enabled (`arangod/GeneralServer/GeneralServerFeature.cpp:743-749`),
+i.e. never on a genuine single server. It has no in-handler authorization
+logic whatsoever in either branch, and no handler-specific
+`checkUserCanAccess()` override
+(`arangod/Cluster/RestAgencyCallbacksHandler.h:36-53`), so the entire
+ALLOW/DENY decision for this route is made exclusively by the generic
+pre-handler gate already documented in earlier sessions (`CommTask::
+canAccessPath()` in `devel` / `RestHandler::checkUserCanAccess()` on this
+branch) — the same "background" mechanism previously traced in detail for
+the `RestOptions*` family and `RestClusterHandler`'s `endpoints` route.
+
+### Diff result: purely cosmetic
+
+```
+diff -u /tmp/devel_RestAgencyCallbacksHandler.cpp arangod/Cluster/RestAgencyCallbacksHandler.cpp
+diff -u /tmp/devel_RestAgencyCallbacksHandler.h   arangod/Cluster/RestAgencyCallbacksHandler.h
+```
+
+The only differences are a removed `@author` doxygen comment and an added
+one-line mount-point comment (`arangod/Cluster/RestAgencyCallbacksHandler.cpp:42-43`).
+The handler body (`arangod/Cluster/RestAgencyCallbacksHandler.cpp:44-88`) —
+suffix-count/method/body validation, `AgencyCallbackRegistry::getCallback()`
+lookup by numeric id, `cb->refetchAndUpdate()`, `404`/`202` response — is
+byte-for-byte identical between branches.
+
+### Authorization path: identical to `devel`
+
+Since the route has no `/_db/...` prefix, `CommTask::setDefault()` assigns
+it the default database `_system`
+(`arangod/GeneralServer/CommTask.cpp:76`) in both branches — same as every
+other un-prefixed admin path already investigated. With no path-based
+exception and no handler override, both branches therefore require the
+calling identity to hold at least `auth::Level::RO` on `_system` (or be a
+superuser, or have auth disabled) to reach the handler body at all; this is
+the exact same generic-gate condition proven equivalent between
+`CommTask::canAccessPath()` and `RestHandler::checkUserCanAccess()` in the
+`RestOptions*` session. No handler-specific privilege (e.g. admin) is
+required beyond that in either branch — any authenticated user with mere
+read access to `_system` can trigger a refetch of an arbitrary
+still-registered callback id.
+
+### Background note: the endpoint appears to be legacy/unreachable in practice (unrelated to auth, identical in both branches)
+
+While tracing who actually calls this endpoint (to determine which
+identity's permissions matter in practice), I found that
+`AgencyCallbackRegistry::getEndpointUrl()` — the only code in the tree that
+assembles a `<node-endpoint>/_api/agency/agency-callbacks/<id>` URL
+(`arangod/Cluster/AgencyCallbackRegistry.cpp:167-170`) — has **no callers
+anywhere** in either branch (`git grep getEndpointUrl` returns only its own
+declaration/definition on both `devel` and this branch). Callback delivery
+today is handled entirely locally by `AgencyCache`'s polling mechanism
+(`AgencyCallbackRegistry::registerCallback()` →
+`_clusterFeature.agencyCache().registerCallback(...)`,
+`arangod/Cluster/AgencyCallbackRegistry.cpp:69-110`), not by the agency
+pushing an HTTP notification to this route. This isn't a `Classic`-vs-RBAC
+difference — the dead code predates this branch — but it's worth recording
+because it means the authorization question above is largely academic
+under current architecture: nothing in the normal code paths of either
+branch is known to actually issue requests to this handler today (it may
+still be reachable by a hand-crafted request, by very old/mixed-version
+agents, or by code outside this repository, so the equivalence proof above
+still matters for defense in depth).
+
+### Summary for `RestAgencyCallbacksHandler`
+
+| Route / scenario | Verdict |
+|---|---|
+| Single server (any route) | N/A — handler not registered at all in either branch |
+| `POST /_api/agency/agency-callbacks/<id>`, authenticated with `RO`+ on `_system` | Identical to `devel` — generic gate passes, handler body byte-for-byte identical |
+| `POST /_api/agency/agency-callbacks/<id>`, authenticated but no access to `_system` | Identical to `devel` — generic gate rejects in both |
+| `POST /_api/agency/agency-callbacks/<id>`, auth disabled | Identical to `devel` — generic gate passes unconditionally in both |
+| Real-world reachability of this endpoint | Same in both branches — appears to be dead/legacy (push-URL builder unused), unrelated to auth |
+
+**Action items / recommendations:** None. No differences of any kind
+(functional or cosmetic) were found beyond comments; this is the second
+fully clean handler after `RestCompactHandler`.
