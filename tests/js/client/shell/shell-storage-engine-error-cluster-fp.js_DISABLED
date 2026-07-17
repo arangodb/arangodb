@@ -28,8 +28,6 @@ let internal = require('internal');
 let arangodb = require('@arangodb');
 let db = arangodb.db;
 let errors = arangodb.errors;
-let { reconnectRetry
-    } = require('@arangodb/test-helper');
 const primaryEndpoint = arango.getEndpoint();
 let { instanceRole } = require('@arangodb/testutils/instance');
 const IM = global.instanceManager;
@@ -38,19 +36,20 @@ function waitUntil(coordinator, targetStatus, id, timeout) {
   let tries = 0;
   try {
     while (++tries < timeout * 2) {
-      reconnectRetry(coordinator, "_system", "root", "");
-      let res = arango.GET_RAW('/_admin/cluster/health');
-      let health = res.parsedBody.Health;
-      let servers = Object.keys(health);
-      let ourServer = health[id];
-      if (ourServer.Status === targetStatus) {
-        return ourServer;
-      }
-      internal.sleep(0.5);
+      coordinator.toThisInstance(() => {
+        let res = arango.GET_RAW('/_admin/cluster/health');
+        let health = res.parsedBody.Health;
+        let servers = Object.keys(health);
+        let ourServer = health[id];
+        if (ourServer.Status === targetStatus) {
+          return ourServer;
+        }
+        internal.sleep(0.5);
+      });
     }
     return {};
   } finally {
-    reconnectRetry(primaryEndpoint, "_system", "root", "");
+    IM.reconnectMe();
   }
 }
 
@@ -82,7 +81,7 @@ function storageEngineErrorSuite() {
         assertEqual("BAD", result.Status);
       } finally {
         // remove failure point
-        IM.debugClearFailAt('', instanceRole.dbServer);
+        dbservers[0].debugClearFailAt();
         // wait until it is good again
         waitUntil(coordinators[0], "GOOD", dbservers[0].id, 30);
       }

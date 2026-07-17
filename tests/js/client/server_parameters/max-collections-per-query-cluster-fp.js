@@ -31,14 +31,16 @@ if (getOptions === true) {
 
 const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
+let { instanceRole } = require('@arangodb/testutils/instance');
 const db = arangodb.db;
 const errors = arangodb.errors;
-const { getCoordinators, getAgents } = require('@arangodb/test-helper');
 let IM = global.instanceManager;
 
 // In replication2, the shard distribution is handled by the supervision.
 // In replication1, the shard distribution is handled by the coordinator.
-const ep = db._properties().replicationVersion === "2" ? getAgents() : getCoordinators();
+const ep = db._properties().replicationVersion === "2" ?
+      IM.getInstancesRole(instanceRole.agent) :
+      IM.getInstancesRole(instanceRole.coordinator);
 
 function OptionsTestSuite () {
   const cn = "UnitTestsCollection";

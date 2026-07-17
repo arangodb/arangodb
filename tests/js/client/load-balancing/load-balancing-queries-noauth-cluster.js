@@ -32,22 +32,22 @@ const request = require("@arangodb/request");
 const url = require('url');
 const _ = require("lodash");
 const errors = require("internal").errors;
-const getCoordinatorEndpoints = require('@arangodb/test-helper').getCoordinatorEndpoints;
 
-const servers = getCoordinatorEndpoints();
+let { instanceRole } = require('@arangodb/testutils/instance');
+const IM = global.instanceManager;
 
 function QueriesSuite () {
   'use strict';
   let coordinators = [];
 
-  function sendRequest(method, endpoint, body, usePrimary, headers) {
+  function sendRequest(method, path, body, usePrimary, headers) {
     let res;
     const i = usePrimary ? 0 : 1;
     try {
       const envelope = {
         json: true,
         method,
-        url: `${coordinators[i]}${endpoint}`,
+        url: `${coordinators[i].url}${path}`,
         headers
       };
       if (method !== 'GET') {
@@ -55,7 +55,7 @@ function QueriesSuite () {
       }
       res = request(envelope);
     } catch(err) {
-      console.error(`Exception processing ${method} ${endpoint}`, err.stack);
+      console.error(`Exception processing ${method} ${path}`, err.stack);
       return {};
     }
 
@@ -75,7 +75,7 @@ function QueriesSuite () {
   
   return {
     setUp: function() {
-      coordinators = getCoordinatorEndpoints();
+      coordinators = IM.getInstancesRole(instanceRole.coordinator);
       if (coordinators.length < 2) {
         throw new Error('Expecting at least two coordinators');
       }
