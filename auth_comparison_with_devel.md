@@ -1137,3 +1137,105 @@ both branches):
    non-revealing string) so the "don't leak information about server
    internals here" comment is actually honored, matching `devel`'s
    behaviour exactly.
+
+## `RestCompactHandler` (`arangod/RestHandler/RestCompactHandler.cpp`)
+
+Mounted at `PUT /_admin/compact` (exact route, no suffixes). This is one of
+the simplest handlers examined so far: a single, hard-coded authorization
+check, a method-type check, then a direct call into
+`StorageEngine::compactAll()`.
+
+Diffing `arangod/RestHandler/RestCompactHandler.cpp` against
+`devel:arangod/RestHandler/RestCompactHandler.cpp` shows the *only*
+behaviourally relevant change is the authorization check itself; the rest
+of the diff is an unrelated internal refactor (the `StorageEngine&` is now
+cached as a constructor-initialized member, obtained via
+`DatabaseFeature::engine()`, instead of being looked up fresh via
+`server().getFeature<EngineSelectorFeature>().engine()` on every call —
+confirmed to return the exact same object, `arangod/RestServer/DatabaseFeature.h:191-194`).
+
+`devel` (`devel:arangod/RestHandler/RestCompactHandler.cpp:29-34`):
+
+```cpp
+RestStatus RestCompactHandler::execute() {
+  if (ExecContext::isAuthEnabled() && !ExecContext::current().isSuperuser()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
+                  "compaction is only allowed for superusers");
+    return RestStatus::DONE;
+  }
+```
+
+Current branch (`arangod/RestHandler/RestCompactHandler.cpp:45-50`):
+
+```cpp
+RestStatus RestCompactHandler::execute() {
+  if (!ExecContext::current().isSuperuserOrDisabled()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
+                  "compaction is only allowed for superusers");
+    return RestStatus::DONE;
+  }
+```
+
+These two conditions are **logically equivalent**, and I confirmed this by
+tracing both sides down to their primitive definitions rather than taking
+the naming similarity at face value:
+
+- `devel`'s reject condition is `isAuthEnabled() && !isSuperuser()`. If
+  auth is globally disabled (`isAuthEnabled() == false`), the `&&`
+  short-circuits to `false` (never reject); otherwise it rejects unless
+  `isSuperuser()`.
+- `devel`'s `ExecContext::isSuperuser()`
+  (`devel:arangod/Utils/ExecContext.h:85-88`) is
+  `isInternal() && systemAuthLevel()==RW && databaseAuthLevel()==RW` — note
+  this requires `Type::Internal`, which an ordinary HTTP request (even from
+  a fully-privileged admin user authenticated the normal way) never has
+  (`Type::Default`). In practice this is only ever `true` for: the static
+  `ExecContext::Superuser` singleton, or a request explicitly recognized as
+  a superuser JWT (empty `preferred_username`) at `ExecContext::create()`
+  time. A regular admin user (`RW` on `_system`, logged in with their own
+  username) does **not** satisfy `isSuperuser()` in `devel` — this handler
+  intentionally excludes even admins, matching its own error message
+  literally ("...only allowed for **superusers**", not "...admins").
+- Current branch's `ExecContext::isSuperuserOrDisabled()`
+  (`arangod/Utils/ExecContext.h:87-90`) is
+  `_authMode.isSuperuser() || _authMode.isDisabled()`.
+  `AuthMode::isSuperuser()` (`arangod/Auth/AuthMode.cpp:52-54`) is
+  `std::holds_alternative<Superuser>(authMode)`; the `Superuser` variant is
+  constructed at `ExecContext::create()` time under the *exact* same
+  condition as `devel`'s special-case (`req.authenticated() &&
+  req.user().empty() && ... == JWT`, `arangod/Utils/ExecContext.cpp:82-90`),
+  or via the static `ExecContext::Superuser` singleton / an explicit
+  `forceSuperuser()`/`ExecContextSuperuserScope` escalation. A regular
+  `Classic`-mode admin user is represented by `AuthMode::Classic`, for
+  which `isSuperuser()` is `false` — same exclusion as `devel`.
+  `AuthMode::isDisabled()` is `true` exactly when
+  `!authenticationFeature.isActive()` (`arangod/Utils/ExecContext.cpp:92-93`),
+  the same condition as `devel`'s `!isAuthEnabled()`.
+- So `!isSuperuserOrDisabled()` = `!isSuperuser() && !isDisabled()` =
+  (rewriting `isDisabled()` as `!isAuthEnabled()`) `!isSuperuser() &&
+  isAuthEnabled()` = `isAuthEnabled() && !isSuperuser()` — **identical** to
+  `devel`'s reject condition, term for term.
+
+I also checked that `/_admin/compact` is not among any of the path-based
+exceptions in either branch's pre-handler access-control layer (`devel`'s
+`CommTask::canAccessPath()` / the current branch's
+`RestHandler::checkUserCanAccess()`), so an unauthenticated request is
+rejected with `401` before this check is ever reached in both branches, and
+`RestCompactHandler` itself has no `checkUserCanAccess()` override — the
+comparison above is exhaustive.
+
+The subsequent method-type check (`PUT` only →
+`TRI_ERROR_HTTP_METHOD_NOT_ALLOWED` otherwise) and the call into
+`engine.compactAll(changeLevel, compactBottomMostLevel)` are byte-for-byte
+identical in both branches, including the exact error message text on
+failure.
+
+### Summary for `RestCompactHandler`
+
+| Route | Verdict |
+|---|---|
+| `PUT /_admin/compact` | **Identical to `devel`** — same reject condition (`isAuthEnabled() && !isSuperuser()`, restated but logically unchanged as `!isSuperuserOrDisabled()`), same error code/message, same method-type check, same underlying `compactAll()` call. No differences of any kind (not even cosmetic) found. |
+
+**Action items / recommendations:**
+None. This handler required no changes; it is a clean, faithful
+reformulation of the exact same authorization logic as `devel`.
