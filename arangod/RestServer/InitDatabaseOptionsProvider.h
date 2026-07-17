@@ -33,7 +33,7 @@ struct InitDatabaseOptionsProvider
   void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
                           InitDatabaseFeatureOptions& options);
   void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> /*opts*/,
-                           InitDatabaseFeatureOptions& /*options*/) {};
+                           InitDatabaseFeatureOptions& /*options*/){};
 };
 
 }  // namespace arangodb

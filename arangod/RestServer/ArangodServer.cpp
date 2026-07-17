@@ -138,7 +138,6 @@ void ArangodServer::addFeatures() {
   addFeature<FileSystemFeature>();
 #ifdef USE_V8
   addFeature<FoxxFeature>();
-  addFeature<FrontendFeature>();
 #endif
   addFeature<GreetingsFeature>();
   addFeature<LanguageCheckFeature>();
