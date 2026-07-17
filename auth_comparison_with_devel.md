@@ -396,3 +396,323 @@ latent risk / code-quality issue because:
    `getDatabaseNamesForUser` rather than relying on thread-local state, to
    remove the latent risk described in Finding 4 (low priority, no observed
    bug today).
+
+
+## `RestCollectionHandler` (`arangod/RestHandler/RestCollectionHandler.cpp`)
+
+Routes handled: `GET /_api/collection[/<name>[/checksum|figures|count|
+properties|revision|shards]]`, `POST /_api/collection`,
+`PUT /_api/collection/<name>/{load|unload|compact|responsibleShard|
+truncate|properties|rename|loadIndexesIntoMemory}`,
+`DELETE /_api/collection/<name>`.
+
+The handler file itself diffs only slightly from
+`devel:arangod/RestHandler/RestCollectionHandler.cpp` (907 vs. 872 lines);
+`RestCollectionHandler.h` is unchanged apart from a removed `@author`
+doc-comment. Authorization logic is a mix of a few checks written directly
+in the handler and checks delegated to `methods::Collections::{lookup,
+create,drop,updateProperties,rename,warmup,properties}`
+(`arangod/VocBase/Methods/Collections.cpp`), which in turn call into
+`ExecContext`/`AuthMode::Classic`. Two real behavioural differences were
+found (Findings 1 and 2 below); everything else that looked suspicious at
+first turned out to be an equivalent reformulation of the same `devel`
+logic (documented as Finding 4, for completeness/future reference).
+
+### Finding 1 (Regression): `GET /_api/collection` (top-level listing) uses `canSeeCollection`, which — unlike `devel`'s per-collection level check — always succeeds in `Classic` mode, leaking existence of collections that should be hidden
+
+`devel` (`devel:arangod/RestHandler/RestCollectionHandler.cpp:120-134`):
+
+```cpp
+for (auto const& collection : methods::Collections::getNotDeleted(_vocbase)) {
+  bool const canUse = ExecContext::current().canUseCollection(
+      collection->name(), auth::Level::RO);
+  if (canUse && (!excludeSystem || !collection->system())) {
+    ...
+  }
+}
+```
+
+Current branch (`arangod/RestHandler/RestCollectionHandler.cpp:118-134`):
+
+```cpp
+for (auto const& collection : methods::Collections::getNotDeleted(_vocbase)) {
+  bool const canSee =
+      ExecContext::current()
+          .canSeeCollection(_vocbase.name(), collection->name())
+          .ok();
+  if (canSee && (!excludeSystem || !collection->system())) {
+    ...
+  }
+}
+```
+
+`devel`'s `canUseCollection(name, RO)` resolves to
+`ExecContext::collectionAuthLevel()`
+(`devel:arangod/Utils/ExecContext.cpp:140-179`) →
+`auth::UserManager::collectionAuthLevel()`
+(`arangod/Auth/UserManagerBase.cpp:251-...`, unchanged between branches) →
+`auth::User::collectionAuthLevel()` (`arangod/Auth/User.cpp:728-748`,
+unchanged between branches), which computes the **actual, possibly
+collection-specific** access level: it consults `_collectionAccess`, a
+per-`(database, collection)` grant table that a `_system`/db admin can set
+independently of (and overriding, in either direction) the user's
+database-level grant (e.g. `grantCollection(user, db, coll, "none")` to
+hide one sensitive collection from a user who otherwise has `RW` on the
+whole database) — plus hard-coded special cases: `_users` is always
+`NONE` for everyone, `_queues` is always `RO`, `_frontend` is always `RW`.
+
+The current branch's `canSeeCollection(db, coll)` instead calls
+`can(SeeCollection{db, coll})`, whose `Classic`-mode implementation
+(`arangod/Auth/AuthMode.cpp:380-384`) is:
+
+```cpp
+[&](p::SeeCollection const& /*collection*/) -> Result {
+  // Database RO access is the only prerequisite and has already been
+  // checked; a collection is always visible if the database is.
+  return {};
+},
+```
+
+i.e. it **unconditionally returns success**, regardless of any
+per-collection grant. (The comment's premise — that database-level `RO`
+access was "already... checked" — only holds for the coarse, database-wide
+gate in `RestHandler::checkUserCanAccess()`
+(`arangod/GeneralServer/RestHandler.cpp:718-724`), which runs once per
+request before the handler's `handleCommandGet()` even starts; it says
+nothing about the specific collection being iterated over here.)
+
+Consequence: as long as a user has at least database-level `RO` access
+(required just to reach this route at all), `GET /_api/collection` (no
+suffix, the default `excludeSystem=false`) will now list **every**
+collection in the database — including:
+- Any collection the admin has explicitly set to `Level::NONE` for that
+  user via a specific grant, even though the user has `RW`/`RO` on the
+  database as a whole. In `devel` such a collection is filtered out of the
+  list entirely; in the current branch it appears (`id`, `name`, `status`,
+  `type` are all shown, though attempting to actually read/write it — via
+  `GET /_api/collection/<name>` or any data route — is still correctly
+  denied by `methods::Collections::lookup`, see Finding 4 below, since that
+  code path still uses the real, level-based `canUseCollection`, not
+  `canSeeCollection`).
+- The `_users` system collection, which `devel` **always** hides from this
+  listing (its `collectionAuthLevel` is hard-coded to `NONE` for everyone,
+  so `canUse(RO)` always fails for it, independent of `excludeSystem`). The
+  current branch will include `_users` in the listing whenever the caller
+  passes `excludeSystem=false` (the default!), since `system()` collections
+  are only excluded via the `excludeSystem` request parameter, not via the
+  (always-succeeding) `canSeeCollection` check.
+
+This is a genuine information-disclosure regression versus `devel`: the
+existence (id/name/type/status, not the contents) of collections that are
+supposed to be completely hidden from a given user is now revealed through
+the collection-listing endpoint in `Classic` mode.
+
+### Finding 2 (Regression): `DELETE /_api/collection/<name>` now returns `403 FORBIDDEN` instead of `404 NOT_FOUND` for a non-existent collection when the caller lacks write access
+
+`devel` (`devel:arangod/RestHandler/RestCollectionHandler.cpp:693-704`)
+performs the lookup **first**, with no separate, up-front permission check:
+
+```cpp
+std::shared_ptr<LogicalCollection> coll;
+Result res = methods::Collections::lookup(_vocbase, name, coll);
+if (res.fail()) {
+  events::DropCollection(_vocbase.name(), name, res.errorNumber());
+  generateError(res);
+  co_return;
+}
+...
+res = methods::Collections::drop(*coll, dropOptions);
+```
+
+`methods::Collections::lookup()` (identical logic in both branches,
+`arangod/VocBase/Methods/Collections.cpp:556-578` /
+`devel:arangod/VocBase/Methods/Collections.cpp:558-580`) checks
+**existence first**, and only checks `canUseCollection(..., Read)`
+*after* confirming the collection physically exists:
+
+```cpp
+auto coll = vocbase.lookupCollection(name);
+if (coll != nullptr) {
+  if (auto r = ExecContext::current().canUseCollection(
+          vocbase.name(), coll->name(), AccessLevel::Read); r.fail()) {
+    return r;                                    // FORBIDDEN
+  }
+  ...
+  return Result();
+}
+return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);   // <-- reached
+                                                           //     regardless
+                                                           //     of rights
+                                                           //     if not found
+```
+
+So in `devel`, requesting `DELETE` on a **non-existent** collection always
+yields `404 NOT_FOUND`, no matter what access level the caller has (`RW`,
+`RO`, or effectively none beyond what's needed to reach the handler); only
+for an *existing* collection does insufficient write access surface as
+`403 FORBIDDEN` (raised inside `Collections::drop()`, which independently
+re-checks `canUseDatabase(RW) && canUseCollection(RW)`,
+`devel:arangod/VocBase/Methods/Collections.cpp:1233-1245`).
+
+Current branch (`arangod/RestHandler/RestCollectionHandler.cpp:725-731`)
+adds a **new, up-front** permission check *before* calling `lookup()`:
+
+```cpp
+// Check if we are allowed to drop the collection:
+if (auto r = ExecContext::current().canDropCollection(_vocbase.name(), name);
+    r.fail()) {
+  events::DropCollection(_vocbase.name(), name, TRI_ERROR_FORBIDDEN);
+  generateError(r);
+  co_return;
+}
+
+std::shared_ptr<LogicalCollection> coll;
+Result res = methods::Collections::lookup(_vocbase, name, coll);
+```
+
+`canDropCollection()` (`arangod/Utils/ExecContext.cpp:214-221`) is a pure
+permission-level check — it has no notion of whether the named collection
+actually exists — requiring database-level `Write` and collection-level
+`WriteMeta`
+(`arangod/Auth/AuthMode.cpp:391-411`, container principle). Since this
+check now runs *before* any existence check, a caller who only has
+database-level `RO` (or no per-collection write grant) now gets
+`403 FORBIDDEN` for `DELETE /_api/collection/<anything>`, **including
+collection names that don't exist at all** — where `devel` would have
+returned `404 NOT_FOUND` uniformly for non-existent names regardless of the
+caller's permission level.
+
+Net effect for a read-only user attempting to delete a *non-existent*
+collection: `devel` → `404 NOT_FOUND`; current branch (`Classic` mode) →
+`403 FORBIDDEN`. For an *existing* collection the caller isn't allowed to
+drop, both branches agree on `403 FORBIDDEN` (only the message text
+differs, see Finding 4). Note also that `Collections::drop()` in the
+current branch performs the *exact same* `canDropCollection()` check again
+internally (`arangod/VocBase/Methods/Collections.cpp:1219-1230`) — so for
+requests that *do* pass the new up-front check, the permission is
+evaluated twice; harmless (idempotent), but redundant.
+
+### Finding 3 (New, gated, deliberate — not a `Classic`-mode regression): `WriteMeta` check for `PUT .../compact`
+
+`arangod/RestHandler/RestCollectionHandler.cpp:482-492` adds a permission
+check that doesn't exist in `devel` at all for the `compact` sub-action:
+
+```cpp
+// We only enforce WriteMeta access here if the API version is higher
+// than 0 for backwards compatibility:
+if (_request.get()->requestedApiVersion() > 0) {
+  if (auto r = ExecContext::current().canUseCollection(
+          _vocbase.name(), name, AccessLevel::WriteMeta);
+      r.fail()) {
+    generateError(r);
+    co_return;
+  }
+}
+```
+
+As with the equivalent finding for `RestDatabaseHandler` (Finding 3 above),
+this is explicitly gated behind `requestedApiVersion() > 0`, which is only
+non-zero for requests through the new `/_arango/v<N>/...` prefix — a
+feature absent from `devel` and orthogonal to the RBAC toggle. For the
+classic, unprefixed `/_api/collection/<name>/compact` route,
+`requestedApiVersion()` is always `0`, so this new check never fires and
+behaviour remains identical to `devel` (where `compact` previously required
+only the `Read` access already enforced by `methods::Collections::lookup`).
+
+### Finding 4 (Verified equivalent / Cosmetic — documented to avoid re-investigating): several call sites that *looked* different but aren't
+
+While diffing `arangod/VocBase/Methods/Collections.cpp` line-by-line
+against `devel:arangod/VocBase/Methods/Collections.cpp`, several functions
+appeared to check authorization differently, but were confirmed to produce
+the same ALLOW/DENY decisions in `Classic` mode as `devel`:
+
+- **`Collections::create`**: `devel` checks a single
+  `exec.canUseDatabase(vocbase.name(), auth::Level::RW)` for the whole
+  batch (`devel:...Collections.cpp:604-615`); the current branch instead
+  loops and calls `exec.canCreateCollection(vocbase.name(), col.name)` per
+  collection to be created (`arangod/VocBase/Methods/Collections.cpp:602-608`).
+  `AuthMode::Classic::check(CreateCollection)` (`arangod/Auth/AuthMode.cpp:385-390`)
+  is `return check(UseDatabase{db, Write})` — i.e. also purely a
+  database-level `RW` check, independent of the (not-yet-existing)
+  collection's name. Equivalent.
+- **`Collections::drop`**: `devel` checks
+  `canUseDatabase(RW) && canUseCollection(name, RW)` directly
+  (`devel:...Collections.cpp:1233-1245`); current calls
+  `canDropCollection(db, name)` (`arangod/VocBase/Methods/Collections.cpp:1219-1224`),
+  whose `Classic` implementation (`arangod/Auth/AuthMode.cpp:391-411`)
+  checks `UseDatabase{db, Write}` then `UseCollection{db, name, WriteMeta}`
+  (`WriteMeta`/`WriteData` both map to `auth::Level::RW`, so this is the
+  same pair of checks, just funneled through the permission-vocabulary
+  API. The error code is explicitly normalized to `TRI_ERROR_FORBIDDEN` in
+  both branches, discarding the more specific `TRI_ERROR_ARANGO_READ_ONLY`
+  that `check()` might otherwise produce, "for API compatibility" per an
+  explicit code comment.) Equivalent.
+- **`Collections::updateProperties`/`rename`**: `devel` checks
+  `canUseCollection(name, RW) && canUseDatabase(RW)` explicitly
+  (`devel:...Collections.cpp:1148-1150,1204-1206` roughly); current checks
+  only `canUseCollection(db, name, WriteMeta)`
+  (`arangod/VocBase/Methods/Collections.cpp:1023-1027`,
+  `arangod/VocBase/Methods/Collections.cpp:1141-1145`), but
+  `AuthMode::Classic::check(UseCollection)` has an explicit
+  "container principle" clause for `WriteMeta`
+  (`arangod/Auth/AuthMode.cpp:240-249`) that additionally requires
+  database-level `RW`. Equivalent.
+- **`Collections::properties`**: `devel` checks
+  `canUseCollection(name, RO) && (databaseAuthLevel() != NONE)`
+  (`devel:...Collections.cpp:1152-1157` roughly); current checks
+  `canUseDatabase(db, Read)` then `canUseCollection(db, name, Read)`
+  (`arangod/VocBase/Methods/Collections.cpp:1075-1084`). `RO`/not-`NONE`
+  and "`canUseDatabase(Read)`" both mean "at least `RO`" — equivalent, just
+  reordered (database check first instead of second).
+- **`Collections::warmup`**: both check `Read`-level collection access
+  only, unchanged.
+
+The only actual difference across all of the above is **error message
+text** in a few places (e.g. `Collections::lookup`'s `"No access to
+collection '<name>'"` in `devel` vs. `"insufficient collection access
+level for '<name>' in database '<db>'"` in the current branch,
+`arangod/VocBase/Methods/Collections.cpp:560-564` vs.
+`devel:...Collections.cpp:562-566`) — same `TRI_ERROR_FORBIDDEN` code in
+both cases, consistent with the "Cosmetic" category defined at the top of
+this document.
+
+One unrelated-to-`Classic`-mode change also observed in
+`Collections::create`: the guard for auto-granting the creating user `RW`
+access on their own newly-created collection changed from
+`!exec.isSuperuser()` (`devel`) to `!exec.isSuperuserOrDisabled()` (current,
+`arangod/VocBase/Methods/Collections.cpp:703`). Since `Classic` mode
+implies authentication is active (`isDisabled()` is only true for the
+separate, fully-auth-disabled mode, out of scope for this comparison, per
+the task description), `isSuperuserOrDisabled()` reduces to `isSuperuser()`
+under `Classic` mode — no observable difference for the mode under
+investigation here.
+
+### Summary for `RestCollectionHandler`
+
+| Route | Verdict |
+|---|---|
+| `GET /_api/collection` (list all) | **Regression** (Finding 1): `canSeeCollection` always succeeds in `Classic` mode, so per-collection deny grants and the hard-coded `_users` hiding rule from `devel` are no longer honored in the listing (existence-only leak; actual read/write remains correctly denied elsewhere) |
+| `GET /_api/collection/<name>[/...]` | Identical to `devel` (goes through `methods::Collections::lookup`, which still uses the real, level-based `canUseCollection`) |
+| `POST /_api/collection` (create) | Identical to `devel` (Finding 4) |
+| `PUT .../{load,unload,truncate,properties,rename,loadIndexesIntoMemory,responsibleShard}` | Identical to `devel` (Finding 4) |
+| `PUT .../compact` | Identical to `devel` for the classic route; a new `WriteMeta` check exists but is gated behind the unrelated API-versioning scheme (Finding 3) |
+| `DELETE /_api/collection/<name>` | **Regression** (Finding 2): returns `403 FORBIDDEN` instead of `404 NOT_FOUND` for a *non-existent* collection when the caller lacks write access, due to a new up-front `canDropCollection` check that runs before the existence check |
+
+**Action items / recommendations:**
+1. Fix Finding 1: either make `AuthMode::Classic::check(SeeCollection)`
+   perform the real, level-based check (mirroring
+   `auth::User::collectionAuthLevel`/the old `canUseCollection(RO)`
+   semantics) instead of unconditionally returning success, or have
+   `RestCollectionHandler::handleCommandGet()` call
+   `canUseCollection(db, name, AccessLevel::Read)` instead of
+   `canSeeCollection` for the top-level listing (as it still effectively
+   needs to, for parity with `devel`).
+2. Fix Finding 2: move the `canDropCollection` pre-check in
+   `RestCollectionHandler::handleCommandDelete()` to *after* the
+   `methods::Collections::lookup()` existence check (or drop the
+   redundant up-front check entirely and rely on the existing check inside
+   `methods::Collections::drop()`, as `devel` does), to restore `404`-before-`403`
+   precedence for non-existent collections.
+3. No action required for Finding 3 (deliberate, gated, unrelated to RBAC
+   toggle) or Finding 4 (already equivalent; documented to save
+   re-investigation effort in the future).
