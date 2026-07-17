@@ -2185,3 +2185,177 @@ genuine finding.
    `POST /_api/cursor` — already covered by the existing action item
    against `ExecContext::canUseCollection()`/`canUseDatabase()` recorded
    under `RestDocumentHandler`.
+
+
+## `RestAqlHandler` (`arangod/Aql/RestAqlHandler.cpp`)
+
+Mounted at `/_api/aql` (prefix). This is a **cluster-internal-only**
+handler: it implements the wire protocol a Coordinator uses to set up
+(`POST /_api/aql/setup`), drive (`PUT /_api/aql/<op>/<queryId>`), and tear
+down (`DELETE /_api/aql/finish/<queryId>`) the per-shard AQL execution
+snippets running on a DB-Server. It is never meant to be called by
+ordinary end-user clients, and is not listed at all in
+`Documentation/path_permissions.md` (unlike every other handler examined so
+far), confirming its purely-internal status in both branches.
+
+### Overview: no authorization logic in the handler at all
+
+`RestAqlHandler.cpp`/`.h` are, again, essentially **untouched** between
+branches — confirmed by diff
+(`diff -u /tmp/devel_RestAqlHandler.cpp arangod/Aql/RestAqlHandler.cpp`):
+the only differences are a moved `#include "VocBase/vocbase.h"`, one added
+comment (`// Mounted at /_api/aql (prefix)`), and `@author` comment
+removal in the header. There is no `ExecContext`/`AuthMode` reference
+anywhere in this file, nor in `arangod/Aql/ClusterQuery.cpp` or
+`arangod/Aql/QueryRegistry.cpp` (both confirmed unchanged between branches
+by diff, and neither references `ExecContext`/`auth::` at all in either
+branch). The handler does not override `checkUserCanAccess()` either
+(no such declaration in `arangod/Aql/RestAqlHandler.h`). So — exactly as
+the task framing anticipated — this handler relies **entirely** on the
+generic, handler-independent pre-execution gates.
+
+### Single server vs. cluster
+
+`executeAsync()` (`arangod/Aql/RestAqlHandler.cpp:460-466`) starts with:
+```cpp
+if (ServerState::instance()->isSingleServer()) {
+  generateError(rest::ResponseCode::NOT_IMPLEMENTED, ...
+                "this endpoint is only available in clusters");
+  co_return;
+}
+```
+identical in both branches. `setupClusterQuery()` additionally asserts/
+rejects (`arangod/Aql/RestAqlHandler.cpp:102-107`,
+`TRI_ERROR_CLUSTER_ONLY_ON_DBSERVER`) unless running on a DB-Server —
+also unchanged. So:
+- On a **single server**: always `501 NOT_IMPLEMENTED`, no auth check
+  reached, identical in both branches.
+- On a **Coordinator**: `POST /_api/aql/setup` is rejected with `405
+  METHOD_NOT_ALLOWED` (identical in both branches) — but only *after*
+  passing the generic pre-handler gates below, since a Coordinator is
+  user-facing and a normal authenticated user's request can reach this far
+  as long as they have at least `RO` on the target database (a low bar).
+  `useQuery()`/`handleFinishQuery()` have no server-role guard at all in
+  either branch, but harmlessly fail with `QUERY_NOT_FOUND` unless the
+  caller happens to know a live, cluster-internal numeric query-engine ID
+  — `QueryRegistry`'s id-based lookup has no per-user ownership concept in
+  either branch (confirmed identical by diff of `QueryRegistry.cpp`); this
+  predates and is orthogonal to the RBAC work, so it is not a regression.
+- On a **DB-Server**: this is the actual, intended use of the handler —
+  driven exclusively by Coordinator-to-DB-Server internal cluster traffic,
+  authenticated via the shared internal JWT secret.
+
+### Finding 1 (Code-quality / latent risk, not exploitable): different rejection path for a forged non-superuser JWT on a DB-Server
+
+This is the one genuine difference found, and it matches the "only
+Superuser checks, as before" expectation in spirit — both branches
+ultimately **reject** the scenario below, just via different code paths
+and with different HTTP status codes.
+
+Background: `AuthenticationFeature::prepare()`
+(`arangod/GeneralServer/AuthenticationFeature.cpp:169-184`) only
+constructs a `UserManager` on single-server/Coordinator roles; on
+DB-Servers (and Agents), `userManager()` is `nullptr`, confirmed identical
+in both branches (this file is part of the untouched core). The
+legitimate way to reach `/_api/aql` on a DB-Server is via the **internal
+superuser JWT** (empty `preferred_username`), which both branches
+recognize identically:
+- Current: `ExecContext::create()` (`arangod/Utils/ExecContext.cpp:82-90`)
+  detects `req.authenticated() && req.user().empty() && ... == JWT` and
+  constructs `AuthMode::Superuser`.
+- `devel`: `VocbaseContext::create()`
+  (`/tmp/devel_VocbaseContext.cpp:67-74`) detects the identical condition
+  and constructs `ExecContext::Type::Internal` with `RW`/`RW`.
+
+Both grant unconditional access via `AuthMode::Superuser::check()`
+(`arangod/Auth/AuthMode.cpp:64-66`, unconditional `{}`) / `isInternal()`
+(devel) respectively — **identical behavior** for the actual, intended
+cluster-internal traffic.
+
+The divergence only appears for a hypothetical forged request: a JWT that
+is *validly signed* with the correct shared cluster secret (so
+`req.authenticated() == true`) but carries a **non-empty** username claim
+(so it is *not* recognized as the superuser-JWT special case). On a
+DB-Server, since `userManager() == nullptr`:
+- Current branch: `ExecContext::create()`
+  (`arangod/Utils/ExecContext.cpp:96-102`) hits
+  `if (!req.authenticated() || userManager == nullptr) { return
+  AuthMode::Unauthenticated(req.user(), req); }` — this function **always**
+  returns a valid (non-null) `ExecContext`. Request processing continues
+  normally into `RestHandler::checkUserCanAccess()`
+  (`arangod/GeneralServer/RestHandler.cpp:705-763`), which calls
+  `ec->canUseDatabase(dbname, DatabaseAccessLevel::Read)`. This dispatches
+  to `AuthMode::Unauthenticated::check()`
+  (`arangod/Auth/AuthMode.cpp:607-618`), whose `UseDatabase` branch denies
+  anything above `None`, returning `{TRI_ERROR_FORBIDDEN, "not
+  authenticated"}`. `checkUserCanAccess()` then rejects with **`401
+  UNAUTHORIZED`, `"No read access to database."`** before the handler's
+  `execute()` ever runs.
+- `devel`: `VocbaseContext::create()`
+  (`/tmp/devel_VocbaseContext.cpp:107-112`) hits the equivalent branch:
+  ```cpp
+  auth::UserManager* um = auth->userManager();
+  if (um == nullptr) {
+    LOG_TOPIC(...) << "users are not supported on this server";
+    return nullptr;
+  }
+  ```
+  Returning `nullptr` here makes `resolveRequestContext()`
+  (`arangod/GeneralServer/CommTask.cpp:83-107`, this exact function is
+  unchanged between branches) return `false`. The caller
+  (`arangod/GeneralServer/CommTask.cpp:283-311`, also unchanged) then
+  re-derives an auth level from scratch for the sole purpose of picking an
+  error response: since `_auth->userManager() != nullptr && !req.user
+  ().empty()` is false (because `userManager()` is null), it takes the
+  `else` branch and sets `lvl = auth::Level::RW` — **not** `NONE` — so the
+  `lvl == NONE` early-rejection (which would produce `401 FORBIDDEN`) is
+  skipped, and the function falls through to the unconditional
+  `sendErrorResponse(NOT_FOUND, ..., TRI_ERROR_ARANGO_DATABASE_NOT_FOUND)`
+  a few lines further down. So `devel` responds with **`404 NOT_FOUND`,
+  `TRI_ERROR_ARANGO_DATABASE_NOT_FOUND`** for the exact same forged
+  request — a database-existence-masking response, not an
+  authentication-specific one.
+
+Both branches reject the request; **there is no privilege-escalation or
+access-control regression** — only the HTTP status code (`401` vs. `404`)
+and error code/message differ. I am not classifying this as a security
+regression for two reasons: (1) the ultimate ALLOW/DENY outcome is
+identical (deny), and (2) exploiting the difference requires already
+possessing the cluster's internal JWT secret — the same secret that would
+let an attacker trivially forge the *actual* superuser token (empty
+username) and bypass every check in both branches entirely, making the
+distinction moot in practice. It is recorded here as a **code-quality /
+latent-risk** observation because `ExecContext::create()`'s signature
+(`[[nodiscard]] static std::shared_ptr<ExecContext> create(...)`, never
+`nullptr`) has silently absorbed a case that `devel`'s
+`VocbaseContext::create()` treated as fatal/unrepresentable (returning
+`nullptr` with a warning log message), replacing it with a normal,
+"successfully denied" `Unauthenticated` context. This same effect (dead
+`!context` branch in `resolveRequestContext`'s caller,
+`arangod/GeneralServer/CommTask.cpp:285`) was already noted in passing
+during the very first (`RestDatabaseHandler`) session as a general
+architectural observation; this is the first handler where it was traced
+all the way through to a concrete, reachable (if inconsequential)
+behavioral difference.
+
+### Summary for `RestAqlHandler`
+
+| Route / scenario | Verdict |
+|---|---|
+| Any route, on a single server | Identical to `devel`: unconditional `501 NOT_IMPLEMENTED`, no auth check reached |
+| `POST /_api/aql/setup`, on a Coordinator | Identical to `devel`: `405 METHOD_NOT_ALLOWED`, reached identically via the generic per-database `RO` gate |
+| Any route, on a DB-Server, authenticated via the real internal superuser JWT (the actual, intended use) | Identical to `devel` — unconditional superuser access in both branches |
+| Any route, on a DB-Server, with a validly-signed but non-superuser (non-empty-username) JWT | Both branches **deny** the request (no regression); cosmetic-but-notable divergence in HTTP status/error code (`401 UNAUTHORIZED` current vs. `404 ARANGO_DATABASE_NOT_FOUND` `devel`) — Finding 1, not exploitable beyond what already having the JWT secret grants |
+| `PUT/DELETE /_api/aql/...` referencing a non-existent/foreign query-engine ID | Identical to `devel`: `404`/`NOT_FOUND`-class errors from `QueryRegistry`, no ownership concept in either branch (pre-existing, unrelated to RBAC) |
+
+**Action items / recommendations:**
+1. No functional fix required — both branches deny access in the
+   scenario described in Finding 1. Optionally, for consistency/defense in
+   depth, `ExecContext::create()` could special-case "authenticated,
+   non-empty username, but no `UserManager` available" to produce a
+   `404`-style outcome matching `devel`'s masking behavior, but this is
+   low priority given the precondition already implies possession of the
+   internal JWT secret.
+2. No other action items for this handler — it is otherwise a clean,
+   fully delegate-to-generic-gates handler with no distinct authorization
+   logic of its own, matching the task's expectation.
