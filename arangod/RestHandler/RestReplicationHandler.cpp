@@ -3251,8 +3251,7 @@ bool RestReplicationHandler::prepareCollectionForRevisionOperation(
   if (auto r = ExecContext::current().canUseCollection(
           _vocbase.name(), ctx.cname, AccessLevel::Read);
       r.fail()) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
-                  r.errorMessage());
+    generateError(r);
     return false;
   }
 
