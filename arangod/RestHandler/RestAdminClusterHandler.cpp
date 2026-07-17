@@ -366,7 +366,7 @@ auto RestAdminClusterHandler::executeAsync() -> futures::Future<futures::Unit> {
   // - "jwt-compat" = compatibility mode = same permissions as in 3.7 (default)
   // this is a convenient way to lock the entire /_admin/cluster API for users
   // w/o JWT.
-  if (!ExecContext::current().isSuperuser()) {
+  if (!ExecContext::current().isSuperuserOrDisabled()) {
     // no superuser... now check if the API policy is set to jwt-all or
     // jwt-write. in this case only requests with valid JWT will have access to
     // the operations (jwt-all = all operations require the JWT, jwt-write =
@@ -3047,7 +3047,7 @@ async<void> RestAdminClusterHandler::handleVPackSortMigration(
     std::string const& subCommand) {
   // First we do the authentication: We only allow superuser access, since
   // this is a critical migration operation:
-  if (!ExecContext::current().isSuperuser()) {
+  if (!ExecContext::current().isSuperuserOrDisabled()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
                   "only superusers may run vpack index migration");
     co_return;

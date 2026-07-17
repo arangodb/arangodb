@@ -700,7 +700,7 @@ Collections::create(         // create collection
   try {
     // in case of success we grant the creating user RW access
     auth::UserManager* um = AuthenticationFeature::instance()->userManager();
-    if (um != nullptr && !exec.isSuperuser() && !isRestore) {
+    if (um != nullptr && !exec.isSuperuserOrDisabled() && !isRestore) {
       // this should not fail, we can not get here without database RW access
       // however, there may be races for updating the users account, so we try
       // a few times in case of a conflict
@@ -1023,7 +1023,7 @@ futures::Future<Result> Collections::updateProperties(
   if (auto r = exec.canUseCollection(collection.vocbase().name(),
                                      collection.name(), AccessLevel::WriteMeta);
       r.fail()) {
-    co_return r;
+    co_return {TRI_ERROR_FORBIDDEN, r.errorMessage()};
   }
 
   if (ServerState::instance()->isCoordinator()) {

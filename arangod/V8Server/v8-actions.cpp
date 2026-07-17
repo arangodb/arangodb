@@ -398,7 +398,7 @@ v8::Handle<v8::Object> TRI_RequestCppToV8(v8::Isolate* isolate,
   // particular field was not used anywhere. Therefore we now simply
   // return if we are superuser or not.
   TRI_GET_GLOBAL_STRING(IsAdminUser);
-  if (ExecContext::current().isSuperuser()) {
+  if (ExecContext::current().isSuperuserOrDisabled()) {
     req->Set(context, IsAdminUser, v8::True(isolate)).FromMaybe(false);
   } else {
     req->Set(context, IsAdminUser, v8::False(isolate)).FromMaybe(false);

@@ -126,7 +126,7 @@ auto handlingOfExistingCollection(TRI_vocbase_t& vocbase,
                                   std::string const& name, bool dropExisting)
     -> futures::Future<ResultT<bool>> {
   ExecContextSuperuserScope escope(
-      ExecContext::current().isSuperuser() ||
+      ExecContext::current().isSuperuserOrDisabled() ||
       (ExecContext::current()
            .canUseAdminAction(auth::perms::AdminRestore{})
            .ok() &&
@@ -832,15 +832,10 @@ Result RestReplicationHandler::testPermissions() {
 
       if (!collectionName.empty()) {
         auto& exec = ExecContext::current();
-        if (exec.canUseAdminAction(auth::perms::AdminDump{}).fail() &&
-            exec.canUseCollection(_vocbase.name(), collectionName,
-                                  AccessLevel::Read)
-                .fail()) {
+        if (auto r = exec.canDumpCollection(_vocbase.name(), collectionName);
+            r.fail()) {
           // not enough rights
-          return Result(
-              TRI_ERROR_FORBIDDEN,
-              absl::StrCat("insufficient permissions to access collection '",
-                           collectionName, "'"));
+          return r;
         }
       } else {
         // not found, return 404
@@ -869,25 +864,18 @@ Result RestReplicationHandler::testPermissions() {
                 vocbase->lookupCollection(collectionName) == nullptr) {
               // 1.) re-create collection, means: overwrite=true (rw database)
               // OR 2.) not existing, new collection (rw database)
-              if (exec.canUseAdminAction(auth::perms::AdminRestore{}).fail() &&
-                  exec.canCreateCollection(dbName, collectionName).fail()) {
-                return Result(TRI_ERROR_FORBIDDEN,
-                              absl::StrCat("insufficient permissions to access "
-                                           "(create) collection '",
-                                           collectionName, "' in database '",
-                                           dbName, "'"));
+              if (auto r =
+                      exec.canRestoreCollection(dbName, collectionName, true);
+                  r.fail()) {
+                return r;
               }
             } else {
               // 3.) Existing collection (ro database, rw collection)
               // no overwrite. restoring into an existing collection
-              if (exec.canUseAdminAction(auth::perms::AdminRestore{}).fail() &&
-                  exec.canUseCollection(dbName, collectionName,
-                                        AccessLevel::WriteData)
-                      .fail()) {
-                return Result(TRI_ERROR_FORBIDDEN,
-                              absl::StrCat("insufficient permissions to access "
-                                           "(write data) collection '",
-                                           collectionName, "'"));
+              if (auto r =
+                      exec.canRestoreCollection(dbName, collectionName, false);
+                  r.fail()) {
+                return r;
               }
             }
           } else {
@@ -1362,11 +1350,16 @@ futures::Future<Result> RestReplicationHandler::processRestoreData(
   }
 #endif
 
-  ExecContextSuperuserScope escope(
-      ExecContext::current()
-          .canUseAdminAction(auth::perms::AdminRestore{})
-          .ok() &&
-      !ServerState::readOnly());
+  // Check permissions:
+  auto& exec = ExecContext::current();
+  if (auto r = exec.canRestoreWriteData(_vocbase.name(), colName); r.fail()) {
+    co_return r;
+  }
+
+  // Need to raise privileges here, or else writing to the _users collection
+  // or restoring analyzers or indeed writing to anything when we are Admin
+  // in Classic will not work!
+  ExecContextSuperuserScope escope;
 
   if (colName == StaticStrings::UsersCollection) {
     // We need to handle the _users in a special way
@@ -1905,6 +1898,12 @@ Result RestReplicationHandler::processRestoreIndexes(
     return {};
   }
 
+  // Check permissions:
+  auto& exec = ExecContext::current();
+  if (auto r = exec.canRestoreCreateIndex(_vocbase.name(), name); r.fail()) {
+    return r;
+  }
+
   std::shared_ptr<LogicalCollection> coll = _vocbase.lookupCollection(name);
   if (!coll) {
     return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
@@ -2035,10 +2034,8 @@ Result RestReplicationHandler::processRestoreIndexesCoordinator(
 
   // Check permissions:
   auto& exec = ExecContext::current();
-  if (exec.canUseAdminAction(auth::perms::AdminRestore{}).fail()) {
-    if (auto r = exec.canCreateIndex(_vocbase.name(), name); r.fail()) {
-      return r;
-    }
+  if (auto r = exec.canRestoreCreateIndex(_vocbase.name(), name); r.fail()) {
+    return r;
   }
 
   if (ignoreHiddenEnterpriseCollection(name, force)) {
@@ -2191,10 +2188,8 @@ void RestReplicationHandler::handleCommandRestoreView() {
         return;
       }
 
-      auto r1 = exec.canUseAdminAction(auth::perms::AdminRestore{});
-      auto r2 = exec.canDropView(_vocbase.name(), name);
-      if (r1.fail() && r2.fail()) {
-        generateError(r2);
+      if (auto r = exec.canRestoreDropView(_vocbase.name(), name); r.fail()) {
+        generateError(r);
         return;
       }
       auto res = view->drop();
@@ -2206,18 +2201,17 @@ void RestReplicationHandler::handleCommandRestoreView() {
     }
 
     // must create() since view was drop()ed
-    auto r1 = exec.canUseAdminAction(auth::perms::AdminRestore{});
-    // Extract linked collection names from the view description's "links"
-    // field.
-    std::vector<std::string> linkedCollections;
-    if (auto linksSlice = slice.get("links"); linksSlice.isObject()) {
-      for (auto const& pair : VPackObjectIterator(linksSlice)) {
-        linkedCollections.push_back(pair.key.copyString());
+    std::vector<std::string> linkedCollNames;
+    VPackSlice links = slice.get("links");
+    if (links.isObject()) {
+      for (auto const& p : VPackObjectIterator(links)) {
+        linkedCollNames.emplace_back(p.key.copyString());
       }
     }
-    auto r2 = exec.canCreateView(_vocbase.name(), name, linkedCollections);
-    if (r1.fail() && r2.fail()) {
-      generateError(r2);
+    if (auto r = exec.canRestoreCreateView(_vocbase.name(), name,
+                                           std::move(linkedCollNames));
+        r.fail()) {
+      generateError(r);
       return;
     }
     auto res = LogicalView::create(view, _vocbase, slice, true);
@@ -2598,7 +2592,8 @@ RestReplicationHandler::handleCommandAddFollower() {
 
   TransactionId readLockId = ExtractReadlockId(readLockIdSlice);
 
-  // referenceChecksum is the stringified number of documents in the collection
+  // referenceChecksum is the stringified number of documents in the
+  // collection
   ResultT<std::string> referenceChecksum =
       co_await computeCollectionChecksum(readLockId, col.get());
   if (!referenceChecksum.ok()) {
@@ -3348,7 +3343,8 @@ void RestReplicationHandler::handleCommandRevisionTreePendingUpdates() {
 ///           * ranges, VPackArray of VPackArray of revisions
 ///           * resume, optional, if response is chunked; revision resume
 ///                     point to specify on subsequent requests
-/////////////////////////////////////////////// ///////////////////////////////
+///////////////////////////////////////////////
+//////////////////////////////////
 
 void RestReplicationHandler::handleCommandRevisionRanges() {
   RevisionOperationContext ctx;

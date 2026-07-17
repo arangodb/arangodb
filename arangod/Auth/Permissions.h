@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -29,6 +28,7 @@
 #include <string>
 #include <string_view>
 #include <variant>
+#include <vector>
 
 namespace arangodb {
 
@@ -173,6 +173,53 @@ struct UseCollection {
   CollectionAccessLevel level;
 };
 
+// May the current identity dump (read out via arangodump) this collection?
+// Behaves like `UseCollection(Read)`, except that in the classic system it
+// is additionally granted to identities with RW access to the `_system`
+// database (i.e. "admins", equivalent to `Admin{AdminDump}`).
+struct DumpCollection {
+  std::string db;
+  std::string name;
+};
+
+// May the current identity restore (write via arangorestore) this
+// collection? Behaves like `UseCollection(WriteData)`, except that in the
+// classic system it is additionally granted to identities with RW access to
+// the `_system` database (i.e. "admins", equivalent to
+// `Admin{AdminRestore}`).
+// The flag `overwrite` indicates if we need to be able to drop and recreate
+// the collection!
+struct RestoreCollection {
+  std::string db;
+  std::string name;
+  bool overwrite;
+};
+
+// For the create index process during restore we need this:
+struct RestoreCreateIndex {
+  std::string db;
+  std::string collName;
+};
+
+// For the create view process during restore we need this:
+struct RestoreCreateView {
+  std::string db;
+  std::string viewName;
+  std::vector<std::string> linkedCollNames;
+};
+
+// For the drop view process during restore we need this:
+struct RestoreDropView {
+  std::string db;
+  std::string viewName;
+};
+
+// For the write data process during restore we need this:
+struct RestoreWriteData {
+  std::string db;
+  std::string collName;
+};
+
 // ---------------------------------------------------------------------------
 // Views
 // ---------------------------------------------------------------------------
@@ -185,13 +232,13 @@ struct SeeView {
 struct CreateView {
   std::string db;
   std::string name;
-  std::span<std::string> linkedCollections;
+  std::vector<std::string> linkedCollections;
 };
 
 struct ModifyView {
   std::string db;
   std::string name;
-  std::span<std::string> linkedCollections;
+  std::vector<std::string> linkedCollections;
 };
 
 struct RenameView {
@@ -284,6 +331,8 @@ using NonAdminList = meta::TypeList<
     SeeDatabase, CreateDatabase, DropDatabase, UseDatabase,
     // collection permissions
     SeeCollection, CreateCollection, DropCollection, UseCollection,
+    DumpCollection, RestoreCollection, RestoreCreateIndex, RestoreCreateView,
+    RestoreDropView, RestoreWriteData,
     // view permissions
     SeeView, CreateView, ModifyView, RenameView, DropView, UseView,
     // analyzer permissions

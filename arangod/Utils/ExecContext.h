@@ -84,9 +84,13 @@ class ExecContext {
   static ExecContext const& superuser();
   static std::shared_ptr<ExecContext const> superuserAsShared();
 
-  [[nodiscard]] bool isSuperuser() const noexcept {
+  [[nodiscard]] bool isSuperuserOrDisabled() const noexcept {
     // This will report `true` if authentication is disabled!
     return _authMode.isSuperuser() || _authMode.isDisabled();
+  }
+
+  [[nodiscard]] bool isSuperuser() const noexcept {
+    return _authMode.isSuperuser();
   }
 
   /// @brief tells you if this execution was canceled
@@ -162,14 +166,39 @@ class ExecContext {
   Result canUseCollection(std::string_view db, std::string_view coll,
                           CollectionAccessLevel level) const;
 
+  // May the current identity dump (via arangodump) this collection?
+  // Behaves like `canUseCollection(db, coll, CollectionAccessLevel::Read)`,
+  // except that in Classic Mode it is additionally granted to identities
+  // with RW access to the `_system` database (i.e. "admins", equivalent to
+  // `canUseAdminAction(rbac::Category::AdminDump{})`).
+  Result canDumpCollection(std::string_view db, std::string_view coll) const;
+
+  // May the current identity restore (via arangorestore) this collection?
+  // Behaves like
+  // `canUseCollection(db, coll, CollectionAccessLevel::WriteData)`, except
+  // that in Classic Mode it is additionally granted to identities with RW
+  // access to the `_system` database (i.e. "admins", equivalent to
+  // `canUseAdminAction(rbac::Category::AdminRestore{})`).
+  // The flag `overwrite` indicates if we need to drop and recreate the
+  // collection in the "overwrite" case.
+  Result canRestoreCollection(std::string_view db, std::string_view coll,
+                              bool overwrite) const;
+
+  Result canRestoreCreateIndex(std::string_view db,
+                               std::string_view coll) const;
+  Result canRestoreCreateView(std::string_view db, std::string_view viewName,
+                              std::vector<std::string> view) const;
+  Result canRestoreDropView(std::string_view db, std::string_view view) const;
+  Result canRestoreWriteData(std::string_view db, std::string_view coll) const;
+
   Result canCreateIndex(std::string_view db, std::string_view coll) const;
   Result canDropIndex(std::string_view db, std::string_view coll) const;
 
   Result canSeeView(std::string_view db, std::string_view view) const;
   Result canCreateView(std::string_view db, std::string_view view,
-                       std::span<std::string> linkedCollections) const;
+                       std::vector<std::string> const& linkedCollections) const;
   Result canModifyView(std::string_view db, std::string_view view,
-                       std::span<std::string> linkedCollections) const;
+                       std::vector<std::string> const& linkedCollections) const;
   Result canDropView(std::string_view db, std::string_view view) const;
   Result canUseView(std::string_view db, std::string_view view,
                     ViewAccessLevel level) const;
@@ -193,7 +222,7 @@ class ExecContext {
                         AnalyzerAccessLevel level) const;
 
   /// @brief returns true if the user can be read
-  Result canReadUser(std::string_view user) const;
+  Result canReadUser(std::string_view userName) const;
 
   /// @brief returns true for each user which can be read
   // TODO Should this return a std::vector<Result>?
@@ -203,7 +232,7 @@ class ExecContext {
 
   /// @brief returns true if the user can be modified, note that everybody
   // can modify themselves (if only to change the password).
-  Result canWriteUser(std::string_view user) const;
+  Result canWriteUser(std::string_view userName) const;
 
   static std::shared_ptr<ExecContext const> set(
       std::shared_ptr<ExecContext const> ctx) {

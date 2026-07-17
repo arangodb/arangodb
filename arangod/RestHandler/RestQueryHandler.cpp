@@ -94,7 +94,7 @@ RestStatus RestQueryHandler::execute() {
 }
 
 void RestQueryHandler::dumpQueryRegistry() {
-  if (!ExecContext::current().isSuperuser()) {
+  if (!ExecContext::current().isSuperuserOrDisabled()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
     return;
   }

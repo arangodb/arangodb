@@ -80,7 +80,7 @@ using namespace arangodb;
 namespace {
 bool authorized(std::string const& user) {
   auto const& exec = arangodb::ExecContext::current();
-  if (exec.isSuperuser()) {
+  if (exec.isSuperuserOrDisabled()) {
     return true;
   }
   return (user == exec.user());
@@ -1542,7 +1542,8 @@ void Manager::toVelocyPack(VPackBuilder& builder, std::string_view database,
       [this, &builder, &database, details](TransactionId tid,
                                            ManagedTrx const& trx) {
         bool authorized = isAuthorized(trx, database);
-        if (details && arangodb::ExecContext::current().isSuperuser()) {
+        if (details &&
+            arangodb::ExecContext::current().isSuperuserOrDisabled()) {
           authorized = true;
         }
         if (!authorized) {

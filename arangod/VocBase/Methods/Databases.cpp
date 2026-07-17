@@ -364,10 +364,6 @@ Result Databases::create(application_features::ApplicationServer& server,
       events::CreateDatabase(dbName, r, exec);
       return r;
     }
-    if (ServerState::readOnly() && !exec.isSuperuser()) {
-      return Result(TRI_ERROR_FORBIDDEN,
-                    std::string("server is in read-only mode"));
-    }
 
     bool extendedNames = server.getFeature<DatabaseFeature>().extendedNames();
 

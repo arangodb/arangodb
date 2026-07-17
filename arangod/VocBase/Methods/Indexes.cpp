@@ -490,14 +490,14 @@ futures::Future<arangodb::Result> Indexes::ensureIndex(
             exec.canCreateIndex(collection.vocbase().name(), collection.name());
         r.fail()) {
       ensureIndexResult = TRI_ERROR_FORBIDDEN;
-      co_return r;
+      co_return {TRI_ERROR_FORBIDDEN, r.errorMessage()};
     }
   } else {
     if (auto r = exec.canUseCollection(collection.vocbase().name(),
                                        collection.name(), AccessLevel::Read);
         r.fail()) {
       ensureIndexResult = TRI_ERROR_FORBIDDEN;
-      co_return r;
+      co_return {TRI_ERROR_FORBIDDEN, r.errorMessage()};
     }
   }
 

@@ -226,7 +226,7 @@ static void JS_Compact(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Local<v8::Context> context = isolate->GetCurrentContext();
 
   auto const& execContext = ExecContext::current();
-  if (!execContext.isSuperuser()) {
+  if (!execContext.isSuperuserOrDisabled()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
@@ -1357,7 +1357,7 @@ static void JS_QueryPlanCachePlans(
   auto filter = [&vocbase](aql::QueryPlanCache::Key const& key,
                            aql::QueryPlanCache::Value const& value) -> bool {
     auto const& execContext = ExecContext::current();
-    if (!execContext.isSuperuser()) {
+    if (!execContext.isSuperuserOrDisabled()) {
       // check if non-superusers have at least read permissions on all
       // collections/views used in the query
       for (auto const& dataSource : value.dataSources) {

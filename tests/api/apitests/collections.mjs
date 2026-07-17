@@ -215,7 +215,7 @@ export default [
   // Requires canCreateCollection → DB RW.
   {
     name: "Create collection (POST /_db/d/_api/collection)",
-    type: ["admin", "database"],
+    type: "all",
     method: "POST",
     path: "/_db/d/_api/collection",
     body: { name: "c_apitest" },
@@ -235,7 +235,7 @@ export default [
   // Requires canDropCollection → COLL RW.
   {
     name: "Drop collection (DELETE /_db/d/_api/collection/c_apitest)",
-    type: ["admin", "database"],
+    type: "all",
     method: "DELETE",
     path: "/_db/d/_api/collection/c_apitest",
     setup: async (ctx) => {

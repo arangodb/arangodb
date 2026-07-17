@@ -30,12 +30,13 @@
 
 #include "IResearch/RestHandlerMock.h"
 #include "IResearch/common.h"
+#include "Mocks/ExecContextFactory.h"
 #include "Mocks/LogLevels.h"
 #include "Mocks/Servers.h"
 #include "Mocks/StorageEngineMock.h"
 
 #include "Aql/QueryRegistry.h"
-#include "Auth/UserManagerMock.h"
+#include "Mocks/Auth/UserManagerTester.h"
 #include "Basics/VelocyPackHelper.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
@@ -103,17 +104,10 @@ class RestAnalyzerHandlerTest
   arangodb::iresearch::IResearchAnalyzerFeature& analyzers;
   arangodb::DatabaseFeature& dbFeature;
   arangodb::AuthenticationFeature& authFeature;
-  arangodb::auth::UserManager* userManager;
+  arangodb::auth::UserManagerTester* userManager;
 
-  struct ExecContext : public arangodb::ExecContext {
-    ExecContext()
-        : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                                arangodb::ExecContext::Type::Default, "", "",
-                                arangodb::auth::Level::NONE,
-                                arangodb::auth::Level::NONE, false) {}
-  };
-  std::shared_ptr<ExecContext> execContext;
-  arangodb::ExecContextScope execContextScope;  // (execContext);
+  arangodb::tests::mocks::BorrowedExecContext _execCtxBundle;
+  arangodb::ExecContextScope execContextScope;
   arangodb::auth::User _user{arangodb::auth::User::newUser("", "")};
 
   RestAnalyzerHandlerTest()
@@ -123,10 +117,11 @@ class RestAnalyzerHandlerTest
             server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>()),
         dbFeature(server.getFeature<arangodb::DatabaseFeature>()),
         authFeature(server.getFeature<arangodb::AuthenticationFeature>()),
-        userManager(authFeature.userManager()),
-        execContext(std::make_shared<ExecContext>()),
-        execContextScope(execContext) {
-    expectUserManagerCalls();
+        userManager(static_cast<arangodb::auth::UserManagerTester*>(
+            authFeature.userManager())),
+        _execCtxBundle(arangodb::tests::mocks::makeClassicExecContextFrom(
+            *userManager, "")),
+        execContextScope(_execCtxBundle.execContext) {
     grantOnDb(arangodb::StaticStrings::SystemDatabase,
               arangodb::auth::Level::RW);
 
@@ -209,6 +204,9 @@ class RestAnalyzerHandlerTest
     // for system collections User::collectionAuthLevel(...) returns database
     // auth::Level
     _user.grantDatabase(dbName, level);
+    arangodb::auth::UserMap userMap;
+    userMap.emplace("", _user);
+    userManager->setAuthInfo(userMap);
   }
 
   // Grant permissions on multiple DBs
@@ -216,48 +214,14 @@ class RestAnalyzerHandlerTest
   void grantOnDb(
       std::vector<std::pair<std::string const&,
                             arangodb::auth::Level const&>> const& grants) {
-    arangodb::auth::UserMap userMap;
     _user = arangodb::auth::User::newUser("", "");
 
     for (auto const& [dbName, level] : grants) {
       _user.grantDatabase(dbName, level);
     }
-  }
-
-  void expectUserManagerCalls() {
-    using namespace arangodb;
-    auto* authFeature = AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
-    auto* um =
-        dynamic_cast<testing::StrictMock<auth::UserManagerMock>*>(userManager);
-    EXPECT_NE(um, nullptr);
-
-    using namespace ::testing;
-    EXPECT_CALL(*um, databaseAuthLevel)
-        .Times(AtLeast(1))
-        .WillRepeatedly(WithArgs<0, 1>(
-            [this](std::string const& username, std::string_view dbname) {
-              EXPECT_EQ(username, _user.username());
-              return _user.databaseAuthLevel(dbname);
-            }));
-    EXPECT_CALL(*um, collectionAuthLevel)
-        .Times(AtLeast(1))
-        .WillRepeatedly(WithArgs<0, 1, 2>([this](std::string const& username,
-                                                 std::string_view dbname,
-                                                 std::string_view const cname) {
-          EXPECT_EQ(username, _user.username());
-          return _user.collectionAuthLevel(dbname, cname);
-        }));
-    EXPECT_CALL(*um, updateUser)
-        .Times(AtLeast(1))
-        .WillRepeatedly([this](std::string const& username,
-                               auth::UserManager::UserCallback&& cb,
-                               auth::UserManager::RetryOnConflict const) {
-          EXPECT_EQ(username, _user.username());
-          auto const r = cb(_user);
-          EXPECT_TRUE(r.ok());
-          return Result{};
-        });
+    arangodb::auth::UserMap userMap;
+    userMap.emplace("", _user);
+    userManager->setAuthInfo(userMap);
   }
 };
 

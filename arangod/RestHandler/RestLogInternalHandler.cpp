@@ -44,7 +44,7 @@ RestLogInternalHandler::~RestLogInternalHandler() = default;
 // in cluster mode)
 auto RestLogInternalHandler::executeAsync() -> futures::Future<futures::Unit> {
   // for now required admin access to the database
-  if (!ExecContext::current().isSuperuser()) {
+  if (!ExecContext::current().isSuperuserOrDisabled()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
     co_return;
   }

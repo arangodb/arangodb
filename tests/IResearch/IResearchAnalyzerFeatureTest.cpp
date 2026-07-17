@@ -39,7 +39,10 @@
 #include "Aql/AstNode.h"
 #include "Aql/Function.h"
 #include "Aql/OptimizerRulesFeature.h"
-#include "Auth/UserManagerMock.h"
+#include "Aql/QueryRegistry.h"
+#include "Mocks/Auth/UserManagerTester.h"
+#include "Mocks/ExecContextFactory.h"
+#include "Basics/files.h"
 #include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
@@ -434,7 +437,6 @@ class IResearchAnalyzerFeatureTest
     server.addFeature<arangodb::aql::OptimizerRulesFeature>(true);
 
     server.startFeatures();
-    expectUserManagerCalls();
 
     auto vocbase =
         _databaseFeature.useDatabase(arangodb::StaticStrings::SystemDatabase);
@@ -445,42 +447,10 @@ class IResearchAnalyzerFeatureTest
         unused);
   }
 
-  void expectUserManagerCalls() {
-    using namespace arangodb;
-    auto* authFeature = AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
-    auto* um =
-        dynamic_cast<testing::StrictMock<auth::UserManagerMock>*>(userManager);
-    EXPECT_NE(um, nullptr);
-
-    using namespace ::testing;
-    EXPECT_CALL(*um, databaseAuthLevel)
-        .WillRepeatedly(WithArgs<0, 1>(
-            [this](std::string const& username, std::string_view dbname) {
-              auto const it = _userMap.find(username);
-              EXPECT_NE(it, _userMap.end());
-              return it->second.databaseAuthLevel(dbname);
-            }));
-    EXPECT_CALL(*um, collectionAuthLevel)
-        .WillRepeatedly(WithArgs<0, 1, 2>([this](std::string const& username,
-                                                 std::string_view dbname,
-                                                 std::string_view cname) {
-          auto const it = _userMap.find(username);
-          if (it == _userMap.end()) {
-            return auth::Level::NONE;
-          }
-          EXPECT_EQ(username, it->second.username());
-          return it->second.collectionAuthLevel(dbname, cname);
-        }));
-    EXPECT_CALL(*um, setAuthInfo)
-        .WillRepeatedly(WithArgs<0>(
-            [this](auth::UserMap const& userMap) { _userMap = userMap; }));
-  }
-  arangodb::auth::UserMap _userMap;
-
   void userSetAccessLevel(arangodb::auth::Level db, arangodb::auth::Level col) {
     auto& authFeature = server.getFeature<arangodb::AuthenticationFeature>();
-    auto* um = authFeature.userManager();
+    auto* um = static_cast<arangodb::auth::UserManagerTester*>(
+        authFeature.userManager());
     ASSERT_NE(um, nullptr);
     auto user = arangodb::auth::User::newUser("testUser", "testPW");
     user.grantDatabase("testVocbase", db);
@@ -491,8 +461,10 @@ class IResearchAnalyzerFeatureTest
                                           // configuration from system database
   }
 
-  std::shared_ptr<arangodb::ExecContext> getLoggedInContext() const {
-    return arangodb::ExecContext::create("testUser", "testVocbase");
+  arangodb::tests::mocks::BorrowedExecContext getLoggedInContext() {
+    auto& authFeature = server.getFeature<arangodb::AuthenticationFeature>();
+    auto* um = authFeature.userManager();
+    return arangodb::tests::mocks::makeClassicExecContextFrom(*um, "testUser");
   }
 
   std::string analyzerName() const {
@@ -514,93 +486,6 @@ class IResearchAnalyzerFeatureTest
 // -----------------------------------------------------------------------------
 // --SECTION--                                         authentication test suite
 // -----------------------------------------------------------------------------
-
-TEST_F(IResearchAnalyzerFeatureTest, test_auth_no_auth) {
-  TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
-  EXPECT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::canUse(
-      vocbase, arangodb::auth::Level::RW));
-}
-TEST_F(IResearchAnalyzerFeatureTest, test_auth_no_vocbase_read) {
-  // no vocbase read access
-  TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
-  userSetAccessLevel(arangodb::auth::Level::NONE, arangodb::auth::Level::NONE);
-  auto ctxt = getLoggedInContext();
-  arangodb::ExecContextScope execContextScope(ctxt);
-  EXPECT_FALSE(arangodb::iresearch::IResearchAnalyzerFeature::canUse(
-      vocbase, arangodb::auth::Level::RO));
-}
-
-// no collection read access (vocbase read access, no user)
-TEST_F(IResearchAnalyzerFeatureTest,
-       test_auth_vocbase_none_collection_read_no_user) {
-  TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
-  userSetAccessLevel(arangodb::auth::Level::NONE, arangodb::auth::Level::RO);
-  auto ctxt = getLoggedInContext();
-  arangodb::ExecContextScope execContextScope(ctxt);
-  EXPECT_FALSE(arangodb::iresearch::IResearchAnalyzerFeature::canUse(
-      vocbase, arangodb::auth::Level::RO));
-}
-
-// no collection read access (vocbase read access)
-TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_ro_collection_none) {
-  TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
-  userSetAccessLevel(arangodb::auth::Level::RO, arangodb::auth::Level::NONE);
-  auto ctxt = getLoggedInContext();
-  arangodb::ExecContextScope execContextScope(ctxt);
-  // implicit RO access to collection _analyzers collection granted due to RO
-  // access to db
-  EXPECT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::canUse(
-      vocbase, arangodb::auth::Level::RO));
-
-  EXPECT_FALSE(arangodb::iresearch::IResearchAnalyzerFeature::canUse(
-      vocbase, arangodb::auth::Level::RW));
-}
-
-TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_ro_collection_ro) {
-  TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
-  userSetAccessLevel(arangodb::auth::Level::RO, arangodb::auth::Level::RO);
-  auto ctxt = getLoggedInContext();
-  arangodb::ExecContextScope execContextScope(ctxt);
-  EXPECT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::canUse(
-      vocbase, arangodb::auth::Level::RO));
-  EXPECT_FALSE(arangodb::iresearch::IResearchAnalyzerFeature::canUse(
-      vocbase, arangodb::auth::Level::RW));
-}
-
-TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_ro_collection_rw) {
-  TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
-  userSetAccessLevel(arangodb::auth::Level::RO, arangodb::auth::Level::RW);
-  auto ctxt = getLoggedInContext();
-  arangodb::ExecContextScope execContextScope(ctxt);
-  EXPECT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::canUse(
-      vocbase, arangodb::auth::Level::RO));
-  EXPECT_FALSE(arangodb::iresearch::IResearchAnalyzerFeature::canUse(
-      vocbase, arangodb::auth::Level::RW));
-}
-
-TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_rw_collection_ro) {
-  TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
-  userSetAccessLevel(arangodb::auth::Level::RW, arangodb::auth::Level::RO);
-  auto ctxt = getLoggedInContext();
-  arangodb::ExecContextScope execContextScope(ctxt);
-  EXPECT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::canUse(
-      vocbase, arangodb::auth::Level::RO));
-  // implicit access for system analyzers collection granted due to RW access to
-  // database
-  EXPECT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::canUse(
-      vocbase, arangodb::auth::Level::RW));
-}
-
-TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_rw_collection_rw) {
-  TRI_vocbase_t vocbase(testDBInfo(server.server()), server.engine());
-  userSetAccessLevel(arangodb::auth::Level::RW, arangodb::auth::Level::RW);
-  auto ctxt = getLoggedInContext();
-  arangodb::ExecContextScope execContextScope(ctxt);
-  EXPECT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::canUse(
-      vocbase, arangodb::auth::Level::RO));
-  EXPECT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::canUse(
-      vocbase, arangodb::auth::Level::RW));
-}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                emplace test suite

@@ -34,6 +34,7 @@
 #include "Transaction/Status.h"
 #include "Utils/ExecContext.h"
 #include "Utils/SingleCollectionTransaction.h"
+#include "Mocks/ExecContextFactory.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Parser.h>
@@ -606,18 +607,15 @@ TEST_F(TransactionManagerTest, permission_denied_readonly) {
   }
   ASSERT_NE(coll, nullptr);
 
-  struct ExecContext : public arangodb::ExecContext {
-    ExecContext()
-        : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                                arangodb::ExecContext::Type::Internal, "dummy",
-                                "testVocbase", arangodb::auth::Level::RO,
-                                arangodb::auth::Level::RO, false) {}
-  };
-  auto execContext = std::make_shared<ExecContext>();
-  arangodb::ExecContextScope execContextScope(execContext);
+  auto classicCtx = arangodb::tests::mocks::makeClassicExecContext(
+      "dummy", "testVocbase", arangodb::auth::Level::RO,
+      arangodb::auth::Level::RO);
+  arangodb::ExecContextScope execContextScope(classicCtx.execContext);
 
+  // Need to use collection name here, because in the UserManagerTester we
+  // cannot translate to name:
   auto json = arangodb::velocypack::Parser::fromJson(
-      "{ \"collections\":{\"read\": [\"42\"]}}");
+      "{ \"collections\":{\"read\": [\"testCollection\"]}}");
   Result res =
       mgr->ensureManagedTrx(vocbase, tid, json->slice(),
                             transaction::OperationOriginTestCase{}, false)
@@ -625,9 +623,11 @@ TEST_F(TransactionManagerTest, permission_denied_readonly) {
   EXPECT_TRUE(res.ok());
   ASSERT_TRUE(mgr->abortManagedTrx(tid, vocbase.name()).waitAndGet().ok());
 
+  // Need to use collection name here, because in the UserManagerTester we
+  // cannot translate to name:
   tid = TransactionId::createSingleServer();
   json = arangodb::velocypack::Parser::fromJson(
-      "{ \"collections\":{\"write\": [\"42\"]}}");
+      "{ \"collections\":{\"write\": [\"testCollection\"]}}");
   res = mgr->ensureManagedTrx(vocbase, tid, json->slice(),
                               transaction::OperationOriginTestCase{}, false)
             .waitAndGet();
@@ -643,18 +643,13 @@ TEST_F(TransactionManagerTest, permission_denied_forbidden) {
   }
   ASSERT_NE(coll, nullptr);
 
-  struct ExecContext : public arangodb::ExecContext {
-    ExecContext()
-        : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                                arangodb::ExecContext::Type::Internal, "dummy",
-                                "testVocbase", arangodb::auth::Level::NONE,
-                                arangodb::auth::Level::NONE, false) {}
-  };
-  auto execContext = std::make_shared<ExecContext>();
-  arangodb::ExecContextScope execContextScope(execContext);
+  auto classicCtx = arangodb::tests::mocks::makeClassicExecContext(
+      "dummy", "testVocbase", arangodb::auth::Level::NONE,
+      arangodb::auth::Level::NONE);
+  arangodb::ExecContextScope execContextScope(classicCtx.execContext);
 
   auto json = arangodb::velocypack::Parser::fromJson(
-      "{ \"collections\":{\"read\": [\"42\"]}}");
+      "{ \"collections\":{\"read\": [\"testCollection\"]}}");
   Result res =
       mgr->ensureManagedTrx(vocbase, tid, json->slice(),
                             transaction::OperationOriginTestCase{}, false)

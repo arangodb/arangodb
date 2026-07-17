@@ -24,25 +24,34 @@
 
 #include "Auth/UserManagerBase.h"
 
-#include "ApplicationFeatures/ApplicationFeature.h"
-#include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/Result.h"
+#include <functional>
 
-#include <thread>
+namespace arangodb::auth {
 
-namespace arangodb {
-namespace auth {
-
-class UserManagerImpl final : public UserManagerBase {
+/// @brief Test-only implementation of UserManagerBase that stores all user
+/// state purely in _userCache (no ApplicationServer / DB required).
+///
+/// This class is guarded by the build system — it is compiled only when
+/// ARANGODB_USE_GOOGLE_TESTS is defined.
+///
+/// Extra public methods (not on the UserManager interface):
+///   setAuthInfo(UserMap const&) — replaces _userCache; bumps _internalVersion
+///   internalVersion() const noexcept — read _internalVersion for assertions
+///   (both inherited from UserManagerBase)
+class UserManagerTester final : public UserManagerBase {
  public:
-  explicit UserManagerImpl(application_features::ApplicationServer&);
-  ~UserManagerImpl() override;
+  UserManagerTester() = default;
+  ~UserManagerTester() override = default;
 
-  void loadUserCacheAndStartUpdateThread() noexcept override;
+  // ---------- no-op lifecycle methods ----------------------------------------
 
-  static void triggerGlobalReload(application_features::ApplicationServer&);
-  void triggerGlobalReload() const override;
-  void triggerCacheRevalidation() override;
+  void loadUserCacheAndStartUpdateThread() noexcept override {}
+  void triggerGlobalReload() const override {}
+  void triggerCacheRevalidation() override {}
+  void shutdown() override {}
+
+  // ---------- pure-in-memory implementations ---------------------------------
+
   void createRootUser() override;
 
   velocypack::Builder allUsers() override;
@@ -60,30 +69,14 @@ class UserManagerImpl final : public UserManagerBase {
   Result removeUser(std::string const& user) override;
   Result removeAllUsers() override;
 
-  void shutdown() override;
+  // ---------- extra methods only on UserManagerTester ------------------------
 
- private:
-  // Load users and permissions from local database.
-  // Returns the version that was loaded and written to the _internalVersion.
-  // Will be 0 if the load failed for any reason.
-  uint64_t loadFromDB() noexcept;
+  /// @brief Replace the entire user cache. Bumps _internalVersion.
+  void setAuthInfo(UserMap const& userEntryMap);
 
-  // This function will throw if the thread was not yet started
-  // and the user-cache was not yet preloaded.
-  // Basically guards most of the functions from being called too early.
-  void checkIfUserDataIsAvailable() const override final;
-
-  // Translate a numeric collection ID to a name using DatabaseFeature.
-  std::string translateCollectionName(std::string_view dbname,
-                                      std::string_view coll) override;
-
-  // store or replace user object
-  Result storeUserInternal(User const& user, bool replace);
-
-  // underlying application server
-  application_features::ApplicationServer& _server;
-
-  std::jthread _userCacheUpdateThread;
+ protected:
+  // No thread / version check needed in tests.
+  void checkIfUserDataIsAvailable() const override {}
 };
-}  // namespace auth
-}  // namespace arangodb
+
+}  // namespace arangodb::auth

@@ -307,15 +307,9 @@ Result RestDumpHandler::validateRequest() {
       }
 
       if (!ServerState::instance()->isDBServer()) {
-        // make this version of dump compatible with the previous version of
-        // arangodump. the previous version assumed that as long as you are
-        // an admin user, you can dump every collection
-        ExecContextSuperuserScope escope(
-            ExecContext::current()
-                .canUseAdminAction(auth::perms::AdminDump{})
-                .ok());
-
-        // validate permissions for all participating shards
+        // We no longer check admin access here, since it is done in
+        // ExecContext::canDumpCollection for Classic mode, for RBAC
+        // we might want to do a different check.
         RocksDBDumpContextOptions opts;
         velocypack::deserializeUnsafe(body, opts);
 
@@ -332,8 +326,8 @@ Result RestDumpHandler::validateRequest() {
                   _clusterInfo.getCollectionNameForShard(maybeShardID.get());
             }
           }
-          if (auto r = ExecContext::current().canUseCollection(
-                  _request->databaseName(), collectionName, AccessLevel::Read);
+          if (auto r = ExecContext::current().canDumpCollection(
+                  _request->databaseName(), collectionName);
               !r.ok()) {
             return r;
           }

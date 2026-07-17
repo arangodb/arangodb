@@ -20,6 +20,7 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Basics/voc-errors.h"
 #ifndef USE_V8
 #error this file is not supposed to be used in builds with -DUSE_V8=Off
 #endif
@@ -37,8 +38,9 @@
 
 #include "ApplicationFeatures/HttpEndpointProvider.h"
 #include "Aql/QueryRegistry.h"
-#include "Auth/UserManagerMock.h"
+#include "Mocks/Auth/UserManagerTester.h"
 #include "Basics/StaticStrings.h"
+#include "Mocks/ExecContextFactory.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
@@ -128,76 +130,9 @@ class V8UsersTest
       : server(),
         system(server.getFeature<arangodb::SystemDatabaseFeature>().use()) {
     arangodb::tests::v8Init();  // on-time initialize V8
-    expectUserManagerCalls();
     auto& viewTypesFeature = server.getFeature<arangodb::ViewTypesFeature>();
     viewTypesFeature.emplace(TestView::typeInfo().second, viewFactory);
   }
-
-  void expectUserManagerCalls() {
-    using namespace arangodb;
-    auto* authFeature = AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
-    auto* um =
-        dynamic_cast<testing::StrictMock<auth::UserManagerMock>*>(userManager);
-    EXPECT_NE(um, nullptr);
-
-    using namespace ::testing;
-    EXPECT_CALL(*um, storeUser)
-        .Times(AtLeast(1))
-        .WillRepeatedly([this](bool const replace, std::string const& username,
-                               std::string const& pass, bool const active,
-                               velocypack::Slice const extras) {
-          auto user = auth::User::newUser(username, pass);
-          user.setActive(active);
-          if (extras.isObject() && !extras.isEmptyObject()) {
-            user.setUserData(VPackBuilder(extras));
-          }
-          const auto it = _userMap.find(username);
-          EXPECT_NE(replace, it == _userMap.end());
-          if (replace) {
-            it->second = user;
-          } else {
-            _userMap.emplace(username, user);
-          }
-          return Result{};
-        });
-    EXPECT_CALL(*um, accessUser)
-        .Times(AtLeast(1))
-        .WillRepeatedly([this](std::string const& username,
-                               auth::UserManager::ConstUserCallback&& cb) {
-          const auto it = _userMap.find(username);
-          EXPECT_NE(it, _userMap.end());
-          auto const r = cb(it->second);
-          EXPECT_TRUE(r.ok());
-          return Result{};
-        });
-    EXPECT_CALL(*um, updateUser)
-        .Times(AtLeast(1))
-        .WillRepeatedly([this](std::string const& username,
-                               auth::UserManager::UserCallback&& cb,
-                               auth::UserManager::RetryOnConflict const) {
-          const auto it = _userMap.find(username);
-          EXPECT_NE(it, _userMap.end());
-          auto const r = cb(it->second);
-          EXPECT_TRUE(r.ok());
-          return Result{};
-        });
-    EXPECT_CALL(*um, collectionAuthLevel)
-        .Times(AtLeast(1))
-        .WillRepeatedly(WithArgs<0, 1, 2>([this](std::string const& username,
-                                                 std::string_view dbname,
-                                                 std::string_view cname) {
-          auto const it = _userMap.find(username);
-          EXPECT_NE(it, _userMap.end());
-          EXPECT_EQ(username, it->second.username());
-          return it->second.collectionAuthLevel(dbname, cname);
-        }));
-    EXPECT_CALL(*um, setAuthInfo)
-        .Times(AtLeast(1))
-        .WillRepeatedly(WithArgs<0>(
-            [this](auth::UserMap const& userMap) { _userMap = userMap; }));
-  }
-  arangodb::auth::UserMap _userMap;
 };
 
 TEST_F(V8UsersTest, test_collection_auth) {
@@ -274,18 +209,13 @@ TEST_F(V8UsersTest, test_collection_auth) {
       TRI_V8_ASCII_STRING(isolate.get(), "*"),
   };
 
-  struct ExecContext : public arangodb::ExecContext {
-    ExecContext()
-        : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
-                                arangodb::ExecContext::Type::Default, userName,
-                                "", arangodb::auth::Level::RW,
-                                arangodb::auth::Level::NONE, true) {
-    }  // ExecContext::isAdminUser() == true
-  };
-  auto execContext = std::make_shared<ExecContext>();
-  arangodb::ExecContextScope execContextScope(execContext);
   auto* authFeature = arangodb::AuthenticationFeature::instance();
-  auto* userManager = authFeature->userManager();
+  auto* userManager = static_cast<arangodb::auth::UserManagerTester*>(
+      authFeature->userManager());
+  auto execCtxBundle = arangodb::tests::mocks::makeClassicExecContextFrom(
+      *userManager, userName);
+  auto execContext = execCtxBundle.execContext;
+  arangodb::ExecContextScope execContextScope(execContext);
 
   // test auth missing (grant)
   {
@@ -303,9 +233,11 @@ TEST_F(V8UsersTest, test_collection_auth) {
         });
     ASSERT_NE(nullptr, userPtr);
 
-    EXPECT_TRUE(
-        (arangodb::auth::Level::NONE ==
-         execContext->collectionAuthLevel(vocbase->name(), "testDataSource")));
+    EXPECT_TRUE(execContext
+                    ->canUseCollection(vocbase->name(), "testDataSource",
+                                       arangodb::CollectionAccessLevel::Read)
+                    .fail());
+
     arangodb::velocypack::Builder response;
     v8::TryCatch tryCatch(isolate.get());
     auto result = v8::Function::Cast(*fn_grantCollection)
@@ -322,9 +254,10 @@ TEST_F(V8UsersTest, test_collection_auth) {
                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND ==
                      ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum)
                                    .getNumber<int>()}));
-    EXPECT_TRUE(
-        (arangodb::auth::Level::NONE ==
-         execContext->collectionAuthLevel(vocbase->name(), "testDataSource")));
+    EXPECT_TRUE(execContext
+                    ->canUseCollection(vocbase->name(), "testDataSource",
+                                       arangodb::CollectionAccessLevel::Read)
+                    .fail());
   }
 
   // test auth missing (revoke)
@@ -342,15 +275,18 @@ TEST_F(V8UsersTest, test_collection_auth) {
           return arangodb::Result();
         });
     ASSERT_NE(nullptr, userPtr);
-    userPtr->grantCollection(
-        vocbase->name(), "testDataSource",
-        arangodb::auth::Level::RO);  // for missing collections
-                                     // User::collectionAuthLevel(...) returns
-                                     // database auth::Level
+    userPtr->grantCollection(vocbase->name(), "testDataSource",
+                             arangodb::auth::Level::RO);
 
+    EXPECT_TRUE(execContext
+                    ->canUseCollection(vocbase->name(), "testDataSource",
+                                       arangodb::CollectionAccessLevel::Read)
+                    .ok());
     EXPECT_TRUE(
-        (arangodb::auth::Level::RO ==
-         execContext->collectionAuthLevel(vocbase->name(), "testDataSource")));
+        execContext
+            ->canUseCollection(vocbase->name(), "testDataSource",
+                               arangodb::CollectionAccessLevel::WriteData)
+            .fail());
     arangodb::velocypack::Builder response;
     v8::TryCatch tryCatch(isolate.get());
     auto result = v8::Function::Cast(*fn_revokeCollection)
@@ -367,10 +303,15 @@ TEST_F(V8UsersTest, test_collection_auth) {
                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND ==
                      ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum)
                                    .getNumber<int>()}));
+    EXPECT_TRUE(execContext
+                    ->canUseCollection(vocbase->name(), "testDataSource",
+                                       arangodb::CollectionAccessLevel::Read)
+                    .ok());  // not modified from above
     EXPECT_TRUE(
-        (arangodb::auth::Level::RO ==
-         execContext->collectionAuthLevel(
-             vocbase->name(), "testDataSource")));  // not modified from above
+        execContext
+            ->canUseCollection(vocbase->name(), "testDataSource",
+                               arangodb::CollectionAccessLevel::WriteData)
+            .fail());  // not modified from above
   }
 
   // test auth collection (grant)
@@ -397,9 +338,11 @@ TEST_F(V8UsersTest, test_collection_auth) {
         });
     ASSERT_FALSE(!logicalCollection);
 
-    EXPECT_TRUE(
-        (arangodb::auth::Level::NONE ==
-         execContext->collectionAuthLevel(vocbase->name(), "testDataSource")));
+    EXPECT_TRUE(execContext
+                    ->canUseCollection(vocbase->name(), "testDataSource",
+                                       arangodb::CollectionAccessLevel::Read)
+                    .fail());
+    userPtr->grantDatabase("_system", arangodb::auth::Level::RW);
     arangodb::velocypack::Builder response;
     v8::TryCatch tryCatch(isolate.get());
     auto result = v8::Function::Cast(*fn_grantCollection)
@@ -409,9 +352,12 @@ TEST_F(V8UsersTest, test_collection_auth) {
     ASSERT_FALSE(result.IsEmpty());
     EXPECT_TRUE(result.ToLocalChecked()->IsUndefined());
     EXPECT_FALSE(tryCatch.HasCaught());
+    userPtr->grantDatabase("_system", arangodb::auth::Level::NONE);
     EXPECT_TRUE(
-        (arangodb::auth::Level::RW ==
-         execContext->collectionAuthLevel(vocbase->name(), "testDataSource")));
+        execContext
+            ->canUseCollection(vocbase->name(), "testDataSource",
+                               arangodb::CollectionAccessLevel::WriteData)
+            .ok());
   }
 
   // test auth collection (revoke)
@@ -431,11 +377,8 @@ TEST_F(V8UsersTest, test_collection_auth) {
           return arangodb::Result();
         });
     ASSERT_NE(nullptr, userPtr);
-    userPtr->grantCollection(
-        vocbase->name(), "testDataSource",
-        arangodb::auth::Level::RO);  // for missing collections
-                                     // User::collectionAuthLevel(...) returns
-                                     // database auth::Level
+    userPtr->grantCollection(vocbase->name(), "testDataSource",
+                             arangodb::auth::Level::RO);
     auto logicalCollection = std::shared_ptr<arangodb::LogicalCollection>(
         vocbase->createCollection(collectionJson->slice()).get(),
         [vocbase](arangodb::LogicalCollection* ptr) -> void {
@@ -443,21 +386,30 @@ TEST_F(V8UsersTest, test_collection_auth) {
         });
     ASSERT_FALSE(!logicalCollection);
 
+    EXPECT_TRUE(execContext
+                    ->canUseCollection(vocbase->name(), "testDataSource",
+                                       arangodb::CollectionAccessLevel::Read)
+                    .ok());
     EXPECT_TRUE(
-        (arangodb::auth::Level::RO ==
-         execContext->collectionAuthLevel(vocbase->name(), "testDataSource")));
+        execContext
+            ->canUseCollection(vocbase->name(), "testDataSource",
+                               arangodb::CollectionAccessLevel::WriteData)
+            .fail());
+    userPtr->grantDatabase("_system", arangodb::auth::Level::RW);
     arangodb::velocypack::Builder response;
     v8::TryCatch tryCatch(isolate.get());
     auto result = v8::Function::Cast(*fn_revokeCollection)
                       ->CallAsFunction(context, arangoUsers,
                                        static_cast<int>(revokeArgs.size()),
                                        revokeArgs.data());
+    userPtr->grantDatabase("_system", arangodb::auth::Level::NONE);
     EXPECT_FALSE(result.IsEmpty());
     EXPECT_TRUE(result.ToLocalChecked()->IsUndefined());
     EXPECT_FALSE(tryCatch.HasCaught());
-    EXPECT_TRUE(
-        (arangodb::auth::Level::UNDEFINED ==
-         execContext->collectionAuthLevel(vocbase->name(), "testDataSource")));
+    EXPECT_TRUE(execContext
+                    ->canUseCollection(vocbase->name(), "testDataSource",
+                                       arangodb::CollectionAccessLevel::Read)
+                    .fail());
   }
 
   // test auth view (grant)
@@ -484,15 +436,18 @@ TEST_F(V8UsersTest, test_collection_auth) {
         });
     ASSERT_FALSE(!logicalView);
 
-    EXPECT_TRUE(
-        (arangodb::auth::Level::NONE ==
-         execContext->collectionAuthLevel(vocbase->name(), "testDataSource")));
+    EXPECT_TRUE(execContext
+                    ->canUseView(vocbase->name(), "testDataSource",
+                                 arangodb::ViewAccessLevel::Read)
+                    .fail());
+    userPtr->grantDatabase("_system", arangodb::auth::Level::RW);
     arangodb::velocypack::Builder response;
     v8::TryCatch tryCatch(isolate.get());
     auto result = v8::Function::Cast(*fn_grantCollection)
                       ->CallAsFunction(context, arangoUsers,
                                        static_cast<int>(grantArgs.size()),
                                        grantArgs.data());
+    userPtr->grantDatabase("_system", arangodb::auth::Level::NONE);
     EXPECT_TRUE(result.IsEmpty());
     EXPECT_TRUE(tryCatch.HasCaught());
     TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
@@ -503,9 +458,10 @@ TEST_F(V8UsersTest, test_collection_auth) {
                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND ==
                      ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum)
                                    .getNumber<int>()}));
-    EXPECT_TRUE(
-        (arangodb::auth::Level::NONE ==
-         execContext->collectionAuthLevel(vocbase->name(), "testDataSource")));
+    EXPECT_TRUE(execContext
+                    ->canUseView(vocbase->name(), "testDataSource",
+                                 arangodb::ViewAccessLevel::Read)
+                    .fail());
   }
 
   // test auth view (revoke)
@@ -525,11 +481,8 @@ TEST_F(V8UsersTest, test_collection_auth) {
           return arangodb::Result();
         });
     ASSERT_NE(nullptr, userPtr);
-    userPtr->grantCollection(
-        vocbase->name(), "testDataSource",
-        arangodb::auth::Level::RO);  // for missing collections
-                                     // User::collectionAuthLevel(...) returns
-                                     // database auth::Level
+    userPtr->grantCollection(vocbase->name(), "testDataSource",
+                             arangodb::auth::Level::RO);
     auto logicalView = std::shared_ptr<arangodb::LogicalView>(
         vocbase->createView(viewJson->slice(), false).get(),
         [vocbase](arangodb::LogicalView* ptr) -> void {
@@ -537,15 +490,21 @@ TEST_F(V8UsersTest, test_collection_auth) {
         });
     ASSERT_FALSE(!logicalView);
 
-    EXPECT_TRUE(
-        (arangodb::auth::Level::RO ==
-         execContext->collectionAuthLevel(vocbase->name(), "testDataSource")));
+    // In Classic auth mode, views use database-level access. Since no
+    // database-level grant is set (only a collection-level grant), the view
+    // is not accessible before or after the (failed) revoke.
+    EXPECT_TRUE(execContext
+                    ->canUseView(vocbase->name(), "testDataSource",
+                                 arangodb::ViewAccessLevel::Read)
+                    .fail());
+    userPtr->grantDatabase("_system", arangodb::auth::Level::RW);
     arangodb::velocypack::Builder response;
     v8::TryCatch tryCatch(isolate.get());
     auto result = v8::Function::Cast(*fn_revokeCollection)
                       ->CallAsFunction(context, arangoUsers,
                                        static_cast<int>(revokeArgs.size()),
                                        revokeArgs.data());
+    userPtr->grantDatabase("_system", arangodb::auth::Level::NONE);
     EXPECT_TRUE(result.IsEmpty());
     EXPECT_TRUE(tryCatch.HasCaught());
     TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
@@ -556,10 +515,10 @@ TEST_F(V8UsersTest, test_collection_auth) {
                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND ==
                      ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum)
                                    .getNumber<int>()}));
-    EXPECT_TRUE(
-        (arangodb::auth::Level::RO ==
-         execContext->collectionAuthLevel(
-             vocbase->name(), "testDataSource")));  // not modified from above
+    EXPECT_TRUE(execContext
+                    ->canUseView(vocbase->name(), "testDataSource",
+                                 arangodb::ViewAccessLevel::Read)
+                    .fail());  // not modified from above
   }
 
   // test auth wildcard (grant)
@@ -586,9 +545,11 @@ TEST_F(V8UsersTest, test_collection_auth) {
         });
     ASSERT_FALSE(!logicalCollection);
 
-    EXPECT_TRUE(
-        (arangodb::auth::Level::NONE ==
-         execContext->collectionAuthLevel(vocbase->name(), "testDataSource")));
+    EXPECT_TRUE(execContext
+                    ->canUseCollection(vocbase->name(), "testDataSource",
+                                       arangodb::CollectionAccessLevel::Read)
+                    .fail());
+    userPtr->grantDatabase("_system", arangodb::auth::Level::RW);
     arangodb::velocypack::Builder response;
     v8::TryCatch tryCatch(isolate.get());
     auto result =
@@ -596,12 +557,15 @@ TEST_F(V8UsersTest, test_collection_auth) {
             ->CallAsFunction(context, arangoUsers,
                              static_cast<int>(grantWildcardArgs.size()),
                              grantWildcardArgs.data());
+    userPtr->grantDatabase("_system", arangodb::auth::Level::NONE);
     EXPECT_FALSE(result.IsEmpty());
     EXPECT_TRUE(result.ToLocalChecked()->IsUndefined());
     EXPECT_FALSE(tryCatch.HasCaught());
     EXPECT_TRUE(
-        (arangodb::auth::Level::RW ==
-         execContext->collectionAuthLevel(vocbase->name(), "testDataSource")));
+        execContext
+            ->canUseCollection(vocbase->name(), "testDataSource",
+                               arangodb::CollectionAccessLevel::WriteData)
+            .ok());
   }
 
   // test auth wildcard (revoke)
@@ -621,11 +585,8 @@ TEST_F(V8UsersTest, test_collection_auth) {
           return arangodb::Result();
         });
     ASSERT_NE(nullptr, userPtr);
-    userPtr->grantCollection(
-        vocbase->name(), "testDataSource",
-        arangodb::auth::Level::RO);  // for missing collections
-                                     // User::collectionAuthLevel(...) returns
-                                     // database auth::Level
+    userPtr->grantCollection(vocbase->name(), "testDataSource",
+                             arangodb::auth::Level::RO);
     auto logicalCollection = std::shared_ptr<arangodb::LogicalCollection>(
         vocbase->createCollection(collectionJson->slice()).get(),
         [vocbase](arangodb::LogicalCollection* ptr) -> void {
@@ -633,9 +594,16 @@ TEST_F(V8UsersTest, test_collection_auth) {
         });
     ASSERT_FALSE(!logicalCollection);
 
+    EXPECT_TRUE(execContext
+                    ->canUseCollection(vocbase->name(), "testDataSource",
+                                       arangodb::CollectionAccessLevel::Read)
+                    .ok());
     EXPECT_TRUE(
-        (arangodb::auth::Level::RO ==
-         execContext->collectionAuthLevel(vocbase->name(), "testDataSource")));
+        execContext
+            ->canUseCollection(vocbase->name(), "testDataSource",
+                               arangodb::CollectionAccessLevel::WriteData)
+            .fail());
+    userPtr->grantDatabase("_system", arangodb::auth::Level::RW);
     arangodb::velocypack::Builder response;
     v8::TryCatch tryCatch(isolate.get());
     auto result =
@@ -643,14 +611,20 @@ TEST_F(V8UsersTest, test_collection_auth) {
             ->CallAsFunction(context, arangoUsers,
                              static_cast<int>(revokeWildcardArgs.size()),
                              revokeWildcardArgs.data());
+    userPtr->grantDatabase("_system", arangodb::auth::Level::NONE);
     EXPECT_FALSE(result.IsEmpty());
     EXPECT_TRUE(result.ToLocalChecked()->IsUndefined());
     EXPECT_FALSE(tryCatch.HasCaught());
+    EXPECT_TRUE(execContext
+                    ->canUseCollection(vocbase->name(), "testDataSource",
+                                       arangodb::CollectionAccessLevel::Read)
+                    .ok());  // unchanged since revocation is only for
+                             // exactly matching collection names
     EXPECT_TRUE(
-        (arangodb::auth::Level::RO ==
-         execContext->collectionAuthLevel(
-             vocbase->name(),
-             "testDataSource")));  // unchanged since revocation is only for
-                                   // exactly matching collection names
+        execContext
+            ->canUseCollection(vocbase->name(), "testDataSource",
+                               arangodb::CollectionAccessLevel::WriteData)
+            .fail());  // unchanged since revocation is only for
+                       // exactly matching collection names
   }
 }

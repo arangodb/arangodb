@@ -3762,7 +3762,7 @@ Future<Result> Methods::commitInternal(MethodsApi api) noexcept try {
 
   if (!_state->isReadOnlyTransaction()) {
     auto const& exec = ExecContext::current();
-    bool cancelRW = ServerState::readOnly() && !exec.isSuperuser();
+    bool cancelRW = ServerState::readOnly() && !exec.isSuperuserOrDisabled();
     if (exec.isCanceled() || cancelRW) {
       co_return Result(TRI_ERROR_ARANGO_READ_ONLY,
                        "server is in read-only mode");

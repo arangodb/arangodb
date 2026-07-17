@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AuthMode.h"
@@ -31,6 +30,8 @@
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Rest/GeneralRequest.h"
+
+#include "absl/strings/str_cat.h"
 
 namespace arangodb {
 
@@ -95,20 +96,13 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
   //      to the server being in read-only mode. I think we should
   //      change that, it seems sensible to communicate that to the
   //      user.
-  auto const effectiveCollectionAuthLevel =
-      [this](std::string_view db, std::string_view collection) {
-        auto const storedLevel =
-            _userManager.collectionAuthLevel(username(), db, collection, true);
-        auto const maxLevel =
-            ServerState::readOnly() ? auth::Level::RO : auth::Level::RW;
-        return std::min(storedLevel, maxLevel);
-      };
+  auto const effectiveCollectionAuthLevel = [this](
+                                                std::string_view db,
+                                                std::string_view collection) {
+    return _userManager.collectionAuthLevel(username(), db, collection, true);
+  };
   auto const effectiveDatabaseAuthLevel = [this](std::string_view db) {
-    auto const storedLevel =
-        _userManager.databaseAuthLevel(username(), db, true);
-    auto const maxLevel =
-        ServerState::readOnly() ? auth::Level::RO : auth::Level::RW;
-    return std::min(storedLevel, maxLevel);
+    return _userManager.databaseAuthLevel(username(), db, true);
   };
   auto const accessLevelToAuthLevel = overload{
       [](CollectionAccessLevel level) {
@@ -226,10 +220,18 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
                               "' in database '" + collection.db + "'"};
                 }
               }
-              return {TRI_ERROR_FORBIDDEN,
-                      "insufficient collection access level for '" +
-                          collection.name + "' in database '" + collection.db +
-                          "'"};
+              if (requestedLevel == arangodb::auth::Level::RW &&
+                  effectiveLevel == arangodb::auth::Level::RO) {
+                return {TRI_ERROR_ARANGO_READ_ONLY,
+                        "read-only collection access level for '" +
+                            collection.name + "' in database '" +
+                            collection.db + "'"};
+              } else {
+                return {TRI_ERROR_FORBIDDEN,
+                        "insufficient collection access level for '" +
+                            collection.name + "' in database '" +
+                            collection.db + "'"};
+              }
             }
 
             // WriteMeta additionally requires RW access to the database
@@ -248,6 +250,81 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
 
             return {};
           },
+          [&](p::DumpCollection const& collection) -> Result {
+            // Behaves like UseCollection(Read), but is additionally granted
+            // to identities with RW access to the _system database (which
+            // corresponds to canUseAdminAction(AdminDump) with RBAC).
+            if (isAdmin().ok()) {
+              return {};
+            }
+            return check(p::UseCollection{collection.db, collection.name,
+                                          CollectionAccessLevel::Read});
+          },
+          [&](p::RestoreCollection const& collection) -> Result {
+            // Behaves like UseCollection(WriteData), but is additionally
+            // granted to identities with RW access to the _system database
+            // (which corresponds to canUseAdminAction(AdminRestore) with
+            // RBAC).
+            if (isAdmin().ok()) {
+              return {};
+            }
+            if (collection.overwrite) {
+              if (auto r =
+                      check(p::DropCollection(collection.db, collection.name));
+                  r.fail()) {
+                return r;
+              }
+              if (auto r = check(
+                      p::CreateCollection(collection.db, collection.name));
+                  r.fail()) {
+                return r;
+              }
+              return {};
+            }
+            return check(p::UseCollection{collection.db, collection.name,
+                                          CollectionAccessLevel::WriteData});
+          },
+          [&](p::RestoreCreateIndex const& idx) -> Result {
+            // Behaves like UseCollection(WriteMeta), but is additionally
+            // granted to identities with RW access to the _system database
+            // (which corresponds to canUseAdminAction(AdminRestore) with
+            // RBAC).
+            if (isAdmin().ok()) {
+              return {};
+            }
+            return check(p::UseCollection{idx.db, idx.collName,
+                                          CollectionAccessLevel::WriteMeta});
+          },
+          [&](p::RestoreCreateView const& view) -> Result {
+            // Behaves like CreateView, but is additionally granted to
+            // identities with RW access to the _system database (which
+            // corresponds to canUseAdminAction(AdminRestore) with RBAC).
+            if (isAdmin().ok()) {
+              return {};
+            }
+            return check(
+                p::CreateView{view.db, view.viewName, view.linkedCollNames});
+          },
+          [&](p::RestoreDropView const& view) -> Result {
+            // Behaves like DropView, but is additionally granted to
+            // identities with RW access to the _system database (which
+            // corresponds to canUseAdminAction(AdminRestore) with RBAC).
+            if (isAdmin().ok()) {
+              return {};
+            }
+            return check(p::DropView{view.db, view.viewName});
+          },
+          [&](p::RestoreWriteData const& data) -> Result {
+            // Behaves like UseCollection(WriteData), but is additionally
+            // granted to identities with RW access to the _system database
+            // (which corresponds to canUseAdminAction(AdminRestore) with
+            // RBAC).
+            if (isAdmin().ok()) {
+              return {};
+            }
+            return check(p::UseCollection{data.db, data.collName,
+                                          CollectionAccessLevel::WriteData});
+          },
           [&](p::UseView const& view) -> Result {
             // In the classic system views delegate to database-level access
             // (per-view collection-level auth is not used for views).
@@ -256,7 +333,8 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
 
             if (requestedLevel <= effectiveLevel) {
               return {};
-            } else if (effectiveLevel == auth::Level::NONE) {
+            } else if (_request.requestedApiVersion() > 0 &&
+                       effectiveLevel == auth::Level::NONE) {
               // No database access at all: report the view as not found.
               return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
                       "view not accessible: '" + view.name + "' in database '" +
@@ -312,14 +390,37 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
           },
           [&](p::DropCollection const& collection) -> Result {
             // Dropping a collection requires RW access to the database
-            // (container principle).
-            return check(
+            // (container principle) as well as to the collection itself.
+            auto r = check(
                 p::UseDatabase{collection.db, DatabaseAccessLevel::Write});
+            if (r.fail()) {
+              // Note that sometimes `r` here returns the code
+              // `TRI_ERROR_ARANGO_READ_ONLY`, but we **must** hand on
+              // `TRI_ERROR_FORBIDDEN` here for API compatibility!
+              return {TRI_ERROR_FORBIDDEN, r.errorMessage()};
+            }
+            r = check(p::UseCollection{collection.db, collection.name,
+                                       CollectionAccessLevel::WriteMeta});
+            if (r.fail()) {
+              // Note that sometimes `r` here returns the code
+              // `TRI_ERROR_ARANGO_READ_ONLY`, but we **must** hand on
+              // `TRI_ERROR_FORBIDDEN` here for API compatibility!
+              return {TRI_ERROR_FORBIDDEN, r.errorMessage()};
+            }
+            return {};
           },
-          [&](p::SeeView const& /*view*/) -> Result {
+          [&](p::SeeView const& view) -> Result {
             // Database RO access is the only prerequisite and has already been
             // checked; a view is always visible if the database is.
-            return {};
+            // Nevertheless, we test this here again, if only to make unit tests
+            // happy:
+            auto const effectiveLevel = effectiveDatabaseAuthLevel(view.db);
+            if (arangodb::auth::Level::RO <= effectiveLevel) {
+              return {};
+            }
+            return {TRI_ERROR_FORBIDDEN,
+                    "insufficient access level for view '" + view.name +
+                        "' in database '" + view.db + "'"};
           },
           [&](p::CreateView const& view) -> Result {
             // Creating a view requires RW access to the database.
@@ -333,7 +434,13 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
               if (auto r = check(p::UseCollection{view.db, coll,
                                                   CollectionAccessLevel::Read});
                   !r.ok()) {
-                return r;
+                return Result(
+                    TRI_ERROR_FORBIDDEN,
+                    absl::StrCat(
+                        "insufficient collection access to collection '", coll,
+                        "' to drop view '", view.name, "' in database '",
+                        view.db, "'"));
+                ;
               }
             }
             return {};
@@ -400,23 +507,24 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
             // collections.
             if (auto r =
                     check(p::UseDatabase{graph.db, DatabaseAccessLevel::Write});
-                !r.ok()) {
+                r.ok()) {
               return r;
             }
+            // No write access to database, so we need to check the collections
             for (auto const& coll : graph.collectionNamesToCreate) {
               if (auto r = check(p::CreateCollection{graph.db, coll});
-                  !r.ok()) {
+                  r.fail()) {
                 return r;
               }
             }
             for (auto const& coll : graph.collectionNamesToRead) {
               if (auto r = check(p::UseCollection{graph.db, coll,
                                                   CollectionAccessLevel::Read});
-                  !r.ok()) {
+                  r.fail()) {
                 return r;
               }
             }
-            return {};
+            return {TRI_ERROR_ARANGO_READ_ONLY, "Cannot write to database."};
           },
           [&](p::DropGraph const& graph) -> Result {
             // Dropping a graph requires RW access to the database (to write

@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -46,7 +45,8 @@ struct Category {
   struct WriteDatabase {  // [obsoleted] perms::UseDatabase(Write)
     std::string name;
   };
-  struct ReadCollection {  // [obsoleted] perms::SeeCollection/UseCollection(Read)
+  struct ReadCollection {  // [obsoleted]
+                           // perms::SeeCollection/UseCollection(Read)
     std::string database;
     std::string name;
   };
@@ -85,28 +85,28 @@ struct Category {
     std::string username;
   };
   // Admin actions without a resource:
-  struct AdminMoveShards {};         // [moved] perms::AdminMoveShards
-  struct AdminMonitoring {};         // [moved] perms::AdminMonitoring
-  struct AdminMonitoringInternal {}; // [moved] perms::AdminMonitoringInternal
-  struct AdminCompaction {};         // [unused] no perms:: pendant
-  struct AdminAuthReload {};         // [moved] perms::AdminAuthReload
-  struct AdminCrashHandler {};       // [moved] perms::AdminCrashHandler
-  struct AdminApiCalls {};           // [moved] perms::AdminApiCalls
-  struct AdminAqlQueries {};         // [moved] perms::AdminAqlQueries
-  struct AdminShutdown {};           // [moved] perms::AdminShutdown
-  struct AdminReadLogs {};           // [moved] perms::AdminReadLogs
-  struct AdminSetLogLevel {};        // [moved] perms::AdminSetLogLevel
-  struct AdminOptions {};            // [moved] perms::AdminOptions
-  struct AdminSupervisionState {};   // [moved] perms::AdminSupervisionState
-  struct AdminRemoveServer {};       // [moved] perms::AdminRemoveServer
-  struct AdminClusterInfo {};        // [moved] perms::AdminClusterInfo
-  struct AdminMaintenance {};        // [moved] perms::AdminMaintenance
-  struct AdminRebalance {};          // [moved] perms::AdminRebalance
-  struct AdminLicense {};            // [moved] perms::AdminLicense
-  struct AdminBackup {};             // [moved] perms::AdminBackup
-  struct AdminJobs {};               // [unused] no perms:: pendant
-  struct AdminReadReplicatedLog {};  // [moved] perms::AdminReadReplicatedLog
-  struct AdminWriteReplicatedLog {}; // [moved] perms::AdminWriteReplicatedLog
+  struct AdminMoveShards {};          // [moved] perms::AdminMoveShards
+  struct AdminMonitoring {};          // [moved] perms::AdminMonitoring
+  struct AdminMonitoringInternal {};  // [moved] perms::AdminMonitoringInternal
+  struct AdminCompaction {};          // [unused] no perms:: pendant
+  struct AdminAuthReload {};          // [moved] perms::AdminAuthReload
+  struct AdminCrashHandler {};        // [moved] perms::AdminCrashHandler
+  struct AdminApiCalls {};            // [moved] perms::AdminApiCalls
+  struct AdminAqlQueries {};          // [moved] perms::AdminAqlQueries
+  struct AdminShutdown {};            // [moved] perms::AdminShutdown
+  struct AdminReadLogs {};            // [moved] perms::AdminReadLogs
+  struct AdminSetLogLevel {};         // [moved] perms::AdminSetLogLevel
+  struct AdminOptions {};             // [moved] perms::AdminOptions
+  struct AdminSupervisionState {};    // [moved] perms::AdminSupervisionState
+  struct AdminRemoveServer {};        // [moved] perms::AdminRemoveServer
+  struct AdminClusterInfo {};         // [moved] perms::AdminClusterInfo
+  struct AdminMaintenance {};         // [moved] perms::AdminMaintenance
+  struct AdminRebalance {};           // [moved] perms::AdminRebalance
+  struct AdminLicense {};             // [moved] perms::AdminLicense
+  struct AdminBackup {};              // [moved] perms::AdminBackup
+  struct AdminJobs {};                // [unused] no perms:: pendant
+  struct AdminReadReplicatedLog {};   // [moved] perms::AdminReadReplicatedLog
+  struct AdminWriteReplicatedLog {};  // [moved] perms::AdminWriteReplicatedLog
   // Do we want this in RBAC, or just internally for Classic compatibility?
   struct AdminDump {};               // [moved] perms::AdminDump.
   struct AdminRestore {};            // [moved] perms::AdminRestore

@@ -26,11 +26,17 @@
 #include "Auth/User.h"
 
 #include "Basics/Result.h"
+#include "Basics/TransparentStringHash.h"
 
+#include <unordered_map>
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
 namespace arangodb::auth {
+
+using UserMap =
+    std::unordered_map<std::string, User, basics::TransparentStringHash,
+                       std::equal_to<>>;
 
 // TODO Take std::string_view instead of std::string const&
 

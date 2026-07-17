@@ -635,8 +635,7 @@ void Database::inventory(
       continue;
     }
 
-    if (exec.canUseCollection(dbName, collection->name(), AccessLevel::Read)
-            .fail()) {
+    if (exec.canSeeCollection(dbName, collection->name()).fail()) {
       continue;
     }
 

@@ -117,7 +117,7 @@ auto serializeOneServer(VPackBuilder& builder,
 // Mounted at /_admin/activities (prefix)
 auto RestHandler::executeAsync() -> futures::Future<futures::Unit> {
   if (_feature.isOnlySuperUserEnabled()) {
-    if (!ExecContext::current().isSuperuser()) {
+    if (!ExecContext::current().isSuperuserOrDisabled()) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                     "You need super user rights for activities operations");
       co_return;

@@ -54,6 +54,7 @@ add_library(arango_tests_basics OBJECT
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/PhysicalCollectionMock.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/StorageEngineMock.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/Servers.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/Auth/UserManagerTester.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/MockGraph.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/MockGraphProvider.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Basics/icu-helper.cpp
@@ -184,7 +185,8 @@ set(ARANGODB_TESTS_SOURCES
   Aql/WaitingExecutionBlockMock.cpp
   AsyncAgencyComm/AsyncAgencyCommTest.cpp
   Auth/RbacBackendTest.cpp
-  Auth/RbacIntegrationTest.cpp
+  # Disabled for now, since this needs docker and does not work in CI:
+  # Auth/RbacIntegrationTest.cpp
   Auth/RbacSerializationTest.cpp
   Auth/SmockerClient.cpp
   Auth/RbacServiceTest.cpp

@@ -60,7 +60,7 @@ using namespace arangodb::basics;
 namespace {
 bool authorized(Task const& task) {
   ExecContext const& exec = ExecContext::current();
-  if (exec.isSuperuser()) {
+  if (exec.isSuperuserOrDisabled()) {
     return true;
   }
 
@@ -339,7 +339,8 @@ std::function<void(bool cancelled)> Task::callbackFunction() {
 void Task::start() {
   {
     auto const& exec = ExecContext::current();
-    TRI_ASSERT(exec.isSuperuser() || _execContext->user() == exec.user());
+    TRI_ASSERT(exec.isSuperuserOrDisabled() ||
+               _execContext->user() == exec.user());
   }
 
   {
