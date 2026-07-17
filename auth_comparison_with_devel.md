@@ -2359,3 +2359,169 @@ behavioral difference.
 2. No other action items for this handler — it is otherwise a clean,
    fully delegate-to-generic-gates handler with no distinct authorization
    logic of its own, matching the task's expectation.
+
+## `RestClusterHandler` (`arangod/Cluster/RestClusterHandler.cpp`)
+
+Mounted as a prefix handler at `/_api/cluster`, **only when
+`ClusterFeature::isEnabled()`** (`arangod/GeneralServer/GeneralServerFeature.cpp:750-754`,
+identical registration in `devel`, `/tmp/devel_GeneralServerFeature.cpp:797-800`)
+— i.e. it does not exist at all on a single server, satisfying the
+single-server/cluster distinction trivially: there is nothing to compare on
+a single server, and on a cluster deployment this handler is registered
+identically on every role (Coordinator, DB-Server, Agent), with individual
+sub-routes internally restricting themselves to Coordinator-only via
+`ServerState::instance()->isCoordinator()` checks (`handleAgencyDump`,
+`handleCommandEndpoints`) — both unchanged between branches. Diffed
+against `devel` in full (`arangod/Cluster/RestClusterHandler.cpp:1-615`
+vs. `/tmp/devel_RestClusterHandler.cpp`); as the user predicted, this
+handler is "mostly admin operations" and turned out to be clean.
+
+**Result: fully equivalent to `devel` — no regressions found.** Three
+admin-style checks were refactored to the new permission vocabulary, one
+new handler-level `checkUserCanAccess()` override was added, and one
+unrelated bug fix (off-by-one) was found; all traced to identical
+ALLOW/DENY outcomes.
+
+- **Finding 1 (verified equivalent) — `cluster-info` subtree admin gate**
+  (`arangod/Cluster/RestClusterHandler.cpp:54-61`): `devel`'s
+  `!ExecContext::current().isAdminUser()` became
+  `ExecContext::current().canUseAdminAction(auth::perms::AdminClusterInfo{})`.
+  `AdminClusterInfo` is a member of the `AnyAdmin` concept
+  (`arangod/Auth/Permissions.h:97,111-118`), and `AuthMode::Classic::check()`
+  maps every `AnyAdmin` permission to `isAdmin()`
+  (`arangod/Auth/AuthMode.cpp:367`), i.e. `check(UseDatabase{_system, Write})`
+  (`arangod/Auth/AuthMode.cpp:574-577`) — exactly "raw, configured `RW` grant
+  on `_system`, ignoring read-only mode", which is precisely what `devel`'s
+  `isAdminUser()` reduces to (already proven algebraically equivalent in the
+  `RestMetricsHandler` session, `/tmp/devel_ExecContext.cpp:92-110`). This
+  gate protects the entire `cluster-info` sub-tree (`flush`,
+  `get_collection_info`, `get_collection_info_current`,
+  `get_responsible_servers`, `get_responsible_shard`,
+  `get_analyzers_revision`, `wait_for_plan_version`,
+  `get_max_number_of_shards`, `get_max_replication_factor`,
+  `get_min_replication_factor`) in both branches identically. The
+  `#ifndef ARANGODB_ENABLE_MAINTAINER_MODE` block immediately below it,
+  which further restricts `cluster-info/<subroute>` (everything except the
+  bare `cluster-info` dump) to `ExecContext::current().isSuperuser()` in
+  non-maintainer builds, is **byte-for-byte unchanged** between branches
+  (not part of the diff at all) — confirmed identical in both by inspection.
+
+- **Finding 2 (verified equivalent) — `handleAgencyDump`/`handleAgencyCache`
+  admin gate** (`arangod/Cluster/RestClusterHandler.cpp:155-161,175-181`):
+  `devel`'s hand-rolled check —
+  ```cpp
+  if (af->isActive() && !_request->user().empty()) {
+    auth::Level lvl = af->userManager() != nullptr
+        ? af->userManager()->databaseAuthLevel(_request->user(), "_system", true)
+        : auth::Level::RW;
+    if (lvl < auth::Level::RW) { /* FORBIDDEN */ }
+  }
+  ```
+  became `exec.canUseAdminAction(auth::perms::AdminReadAgency{})`, again an
+  `AnyAdmin` permission reducing to the same `isAdmin()` check as Finding 1.
+  I verified the two conditions under which `devel`'s manual check is
+  *skipped* (auth inactive → always allow; `_request->user().empty()` →
+  always allow) are exactly reproduced on the current side:
+  - Auth inactive → `ExecContext::create()` builds `AuthMode::Disabled`
+    (`arangod/Utils/ExecContext.cpp:92-93`), whose `check()` unconditionally
+    returns success (`arangod/Auth/AuthMode.cpp:659-661`) — matches.
+  - Empty username while authenticated via JWT → recognized as the
+    superuser special-case in **both** branches
+    (`arangod/Utils/ExecContext.cpp:83-90` current;
+    `/tmp/devel_VocbaseContext.cpp:67-68` `devel`, same condition
+    verbatim) — `AuthMode::Superuser::check()` unconditionally succeeds
+    (`arangod/Auth/AuthMode.cpp:64-66`) — matches.
+  - The remaining branch — `devel`'s `af->userManager() == nullptr` fallback
+    to a hardcoded `auth::Level::RW` (i.e., grant access even to a named,
+    non-superuser, authenticated user when no `UserManager` exists, which
+    only happens on DB-Servers/Agents) — looked like a possible divergence,
+    since the current branch's equivalent path (no `UserManager` →
+    `AuthMode::Unauthenticated`, `arangod/Utils/ExecContext.cpp:100-101`)
+    would instead **reject** such a caller
+    (`AuthMode::Unauthenticated::check()`'s catch-all branch,
+    `arangod/Auth/AuthMode.cpp:640-642`). However, I traced this down to
+    `auth::TokenCache::validateJwtBody()`
+    (`arangod/Auth/TokenCache.cpp:362-371`): a JWT carrying a non-empty
+    `preferred_username` claim is rejected outright
+    (`return auth::TokenCache::Entry::Unauthenticated();`) whenever
+    `_userManager == nullptr` — i.e. it is **impossible** to ever reach
+    request handling as an authenticated, non-empty-username caller on a
+    node without a `UserManager` in the first place; only `server_id`
+    (empty-username) tokens succeed there, and those are always the
+    superuser case already covered above. So `devel`'s
+    `af->userManager() == nullptr` branch is **unreachable dead code** in
+    `devel` too (this is the same "removing unreachable devel code changes
+    nothing observable" pattern already documented for `RestPublicOptionsHandler`
+    in the `RestOptions*` session) — not a regression.
+
+- **Finding 3 (verified equivalent, faithful gap-fill) — new
+  `checkUserCanAccess()` override for `/_api/cluster/endpoints`**
+  (`arangod/Cluster/RestClusterHandler.cpp:136-145`,
+  `arangod/Cluster/RestClusterHandler.h:38-39`, both new in this branch):
+  ```cpp
+  async<Result> RestClusterHandler::checkUserCanAccess() const {
+    auto const& suffixes = _request->suffixes();
+    if (_request->authenticated() && suffixes.size() == 1 &&
+        suffixes[0] == "endpoints") {
+      co_return Result{};
+    }
+    co_return co_await RestBaseHandler::checkUserCanAccess();
+  }
+  ```
+  This reproduces a path-based exception that lived in `devel`'s
+  `CommTask::canAccessPath()`:
+  ```cpp
+  } else if (userAuthenticated && path == "/_api/cluster/endpoints") {
+    // allow authenticated users to access cluster/endpoints
+    result = Flow::Continue;
+    // vc->forceReadOnly();
+  }
+  ```
+  (`/tmp/devel_CommTask.cpp:856-859`, only reached when the generic
+  per-database gate already failed, i.e. `vc->databaseAuthLevel() == NONE`).
+  This is the same architectural pattern already seen for
+  `/_admin/server/availability` in the `RestAdminServerHandler` session and
+  for `/_admin/options-public` in the `RestOptions*` session: `devel`'s
+  monolithic `CommTask::canAccessPath()` path-exception list has been
+  migrated, route by route, into individual handlers'
+  `checkUserCanAccess()` overrides. I compared the two conditions
+  term-for-term: `suffixes.size() == 1 && suffixes[0] == "endpoints"` is the
+  exact suffix-decomposition of an exact-match `path == "/_api/cluster/endpoints"`
+  for a handler mounted at the `/_api/cluster` prefix (no trailing segments
+  allowed in either), `_request->authenticated()` is the same
+  `userAuthenticated` flag, and — importantly — **neither** branch escalates
+  to superuser for this exception (`devel`'s commented-out
+  `vc->forceReadOnly()` confirms the level is deliberately left as-is; the
+  current override likewise just returns a bare success, leaving
+  `ExecContext` untouched). `handleCommandEndpoints()` itself performs no
+  further permission checks in either branch, only a
+  `ServerState::instance()->isCoordinator()` guard producing `501` on
+  non-Coordinators (unchanged). **Exact parity confirmed.**
+
+- **Finding 4 (unrelated, not an auth issue) — off-by-one bounds check
+  fixed**: `handleCI_getResponsibleShard`'s guard changed from
+  `suffixes.size() < 4` (`devel`) to `suffixes.size() < 5`
+  (`arangod/Cluster/RestClusterHandler.cpp:446`). The handler reads
+  `suffixes[2]`, `suffixes[3]`, **and `suffixes[4]`**
+  (`arangod/Cluster/RestClusterHandler.cpp:458-460`), so `devel`'s `< 4`
+  bound under-checked by one and could read one element past the
+  minimum guaranteed size when exactly 4 suffixes were supplied — a
+  latent out-of-bounds-read bug in `devel`, fixed (not introduced) on this
+  branch. Purely a robustness fix, unrelated to authorization; noted for
+  completeness since it appeared in the diff.
+
+### Summary for `RestClusterHandler`
+
+| Route / scenario | Verdict |
+|---|---|
+| Single server (any route) | N/A — handler not registered at all in either branch |
+| `GET /_api/cluster/cluster-info` and sub-routes, admin vs. non-admin, read-only mode on/off | Identical to `devel` (Finding 1) |
+| `GET /_api/cluster/agency-dump` (Coordinator only), `GET /_api/cluster/agency-cache` | Identical to `devel`, including the `UserManager == nullptr` edge case, proven unreachable in both (Finding 2) |
+| `GET /_api/cluster/endpoints`, authenticated but no DB access to current database | Identical to `devel` — bypasses the generic DB-access gate in both, no superuser escalation in either (Finding 3) |
+| `GET /_api/cluster/endpoints`, unauthenticated | Identical to `devel` — generic gate applies, request denied in both |
+| `POST /_api/cluster/cluster-info/get_responsible_shard/...` with exactly 4 suffixes | Both branches: current fixes a latent OOB-read bug present in `devel`; unrelated to auth (Finding 4) |
+
+**Action items / recommendations:** None. This handler requires no code
+changes — every route produces the same ALLOW/DENY decision as `devel`,
+confirming the user's expectation that "mostly admin operations" would be
+unproblematic.
