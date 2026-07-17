@@ -193,10 +193,9 @@ TEST_F(LogicalViewTest, test_auth) {
     auto classicCtx = arangodb::tests::mocks::makeClassicExecContext(
         "", "testVocbase", arangodb::auth::Level::NONE,
         arangodb::auth::Level::NONE);
-    arangodb::ExecContextScope execContextScope(classicCtx.execContext);
-    EXPECT_FALSE(arangodb::ExecContext::current()
-                     .canUseView(vocbase.name(), logicalView->name(),
-                                 arangodb::ViewAccessLevel::Read)
+    EXPECT_FALSE(classicCtx.execContext
+                     ->canUseView(vocbase.name(), logicalView->name(),
+                                  arangodb::ViewAccessLevel::Read)
                      .ok());
   }
 
@@ -207,14 +206,13 @@ TEST_F(LogicalViewTest, test_auth) {
     auto classicCtx = arangodb::tests::mocks::makeClassicExecContext(
         "", "testVocbase", arangodb::auth::Level::NONE,
         arangodb::auth::Level::RO);
-    arangodb::ExecContextScope execContextScope(classicCtx.execContext);
-    EXPECT_TRUE(arangodb::ExecContext::current()
-                    .canUseView(vocbase.name(), logicalView->name(),
-                                arangodb::ViewAccessLevel::Read)
+    EXPECT_TRUE(classicCtx.execContext
+                    ->canUseView(vocbase.name(), logicalView->name(),
+                                 arangodb::ViewAccessLevel::Read)
                     .ok());
-    EXPECT_FALSE(arangodb::ExecContext::current()
-                     .canUseView(vocbase.name(), logicalView->name(),
-                                 arangodb::ViewAccessLevel::Modify)
+    EXPECT_FALSE(classicCtx.execContext
+                     ->canUseView(vocbase.name(), logicalView->name(),
+                                  arangodb::ViewAccessLevel::Modify)
                      .ok());
   }
 
@@ -226,14 +224,13 @@ TEST_F(LogicalViewTest, test_auth) {
     auto classicCtx = arangodb::tests::mocks::makeClassicExecContext(
         "", "testVocbase", arangodb::auth::Level::NONE,
         arangodb::auth::Level::RW);
-    arangodb::ExecContextScope execContextScope(classicCtx.execContext);
-    EXPECT_TRUE(arangodb::ExecContext::current()
-                    .canUseView(vocbase.name(), logicalView->name(),
-                                arangodb::ViewAccessLevel::Read)
+    EXPECT_TRUE(classicCtx.execContext
+                    ->canUseView(vocbase.name(), logicalView->name(),
+                                 arangodb::ViewAccessLevel::Read)
                     .ok());
-    EXPECT_TRUE(arangodb::ExecContext::current()
-                    .canUseView(vocbase.name(), logicalView->name(),
-                                arangodb::ViewAccessLevel::Modify)
+    EXPECT_TRUE(classicCtx.execContext
+                    ->canUseView(vocbase.name(), logicalView->name(),
+                                 arangodb::ViewAccessLevel::Modify)
                     .ok());
   }
 }
