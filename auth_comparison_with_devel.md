@@ -32,7 +32,14 @@ Methodology used for each handler:
    ...).
 2. Fetch the corresponding code from `devel` (via `git show devel:<path>`)
    and diff it against the current branch, both for the handler itself and
-   for all helper/authorization code it depends on.
+   for all helper/authorization code it depends on. Note: the `enterprise/`
+   subdirectory is itself a full git checkout of the closed-source
+   Enterprise-Edition repository, with the same branch names
+   (`feature/cor-213-implement-rbac-authorization` and `devel`) — so any
+   EE-only counterpart of a handler (e.g. `*EE.cpp` files under
+   `enterprise/Enterprise/RestHandler/`) can and should be diffed the same
+   way via `git -C enterprise show devel:<path>`, rather than treated as
+   out of scope.
 3. Trace, for every code path/branch of the handler, the exact sequence of
    authorization checks in both branches and compare the resulting
    ALLOW/DENY decisions (and, secondarily, the error codes/messages) for
@@ -1239,3 +1246,312 @@ failure.
 **Action items / recommendations:**
 None. This handler required no changes; it is a clean, faithful
 reformulation of the exact same authorization logic as `devel`.
+
+## `RestAdminServerHandler` (`arangod/RestHandler/RestAdminServerHandler.cpp`)
+
+Mounted at `/_admin/server` (prefix), dispatching on a single suffix:
+`mode`, `id`, `role`, `availability`, `databaseDefaults`, `tls`, `jwt`,
+`encryption`, `api-calls`, `aql-queries`. Each sub-route has its own,
+independent authorization logic (or none beyond the generic
+"must be authenticated" gate). `arangod/RestHandler/RestAdminServerHandler.h`
+diffs only in a removed `@author` comment and two new cached members
+(`_engine`, `_apiRecordingFeature` — an unrelated internal refactor, same
+as seen in `RestCompactHandler`/`RestMetricsHandler`) plus the new
+`checkUserCanAccess()` override discussed in Finding 1.
+
+### Finding 1 (New, deliberate, verified equivalent): re-implementation of `devel`'s `/_admin/server/availability` "OPEN access" path exception
+
+This is the first handler encountered so far that plugs the gap flagged in
+this document's architectural background section ("not all of `devel`'s
+path-based exceptions were carried over into the generic
+`RestHandler::checkUserCanAccess()`") — and it turns out to have been
+addressed correctly, at the handler level.
+
+`devel` grants unauthenticated access to `/_admin/server/availability`
+centrally, in `CommTask::canAccessPath()`
+(`devel:arangod/GeneralServer/CommTask.cpp:848-852`):
+
+```cpp
+if (path == "/" || path.starts_with(::pathPrefixOpen) ||
+    path.starts_with(::pathPrefixAdminAardvark) ||
+    path == "/_admin/server/availability") {
+  // mop: these paths are always callable...
+  result = Flow::Continue;
+  vc->forceSuperuser();
+}
+```
+
+The current branch has no such path-based logic left in `CommTask`, but
+`RestAdminServerHandler` now overrides `checkUserCanAccess()`
+(`arangod/RestHandler/RestAdminServerHandler.cpp:82-92`) to reproduce
+exactly this exception, locally:
+
+```cpp
+async<Result> RestAdminServerHandler::checkUserCanAccess() const {
+  auto const& suffixes = _request->suffixes();
+  if (suffixes.size() == 1 && suffixes[0] == "availability") {
+    auto ec = _request->requestContext();
+    TRI_ASSERT(ec != nullptr);
+    ec->forceSuperuser();
+    co_return Result{};
+  }
+  co_return co_await RestBaseHandler::checkUserCanAccess();
+}
+```
+
+This matches `devel` in every relevant respect: it fires only for the
+exact, single-suffix `/_admin/server/availability` path (mirroring
+`devel`'s exact-string `path ==` comparison — a request to e.g.
+`/_admin/server/availability/x`, if such a suffix were ever accepted, would
+*not* match `suffixes.size() == 1`, falling through to the normal
+authenticated path in both branches), it returns success **unconditionally**
+regardless of whether the request carries valid credentials (matching
+`devel`'s `Flow::Continue` before any authentication check is performed),
+and it calls `forceSuperuser()` to upgrade the request's execution context
+so that the handler body — which performs no further authorization checks
+of its own — can run to completion. This is confirmed correct by the
+pre-existing test-suite comment
+(`tests/api/apitests/server.mjs:189-195`): "Auth: OPEN – no authentication
+required at all", with expected results `AU→200 or 503` for all identity
+columns including the fully-unauthenticated one.
+
+One latent (currently inconsequential) difference worth flagging for
+future sessions: `devel`'s `VocbaseContext::forceSuperuser()`
+(`devel:arangod/RestServer/VocbaseContext.cpp:136-146`) special-cases
+global read-only mode by degrading to `forceReadOnly()` (`Type::Internal`,
+`RO`/`RO` levels) instead of granting full `RW`/`RW` superuser, whereas the
+current branch's `ExecContext::forceSuperuser()`
+(`arangod/Utils/ExecContext.cpp:118-128`) unconditionally resets to full
+`AuthMode::Superuser` (which always answers every permission check with
+success, `arangod/Auth/AuthMode.cpp:64-66`) regardless of
+`ServerState::readOnly()`. For `/_admin/server/availability` specifically
+this makes no observable difference, because `handleAvailability()`
+performs no further authorization decision that could distinguish "full
+superuser" from "read-only superuser" — both simply let the handler run to
+completion and report the server's health/mode. It could matter for some
+other, not-yet-reviewed caller of `forceSuperuser()`/`ec->forceSuperuser()`
+that relies on the resulting context still being *read-only* rather than
+fully read-write after the call; worth keeping in mind for future sessions
+(no concrete instance of this mattering has been found yet).
+
+### Finding 2 (Cosmetic): `PUT /_admin/server/mode` — refactored admin check, same decision, different `errorNum`/message on failure
+
+`devel` (`devel:arangod/RestHandler/RestAdminServerHandler.cpp:191-206`)
+hand-rolls the admin check:
+
+```cpp
+AuthenticationFeature* af = AuthenticationFeature::instance();
+if (af->isActive() && !_request->user().empty()) {
+  auth::Level lvl;
+  if (af->userManager() != nullptr) {
+    lvl = af->userManager()->databaseAuthLevel(
+        _request->user(), StaticStrings::SystemDatabase, /*configured*/ true);
+  } else {
+    lvl = auth::Level::RW;
+  }
+  if (lvl < auth::Level::RW) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);  // no message, errorNum 11
+    return;
+  }
+}
+```
+
+Current branch (`arangod/RestHandler/RestAdminServerHandler.cpp:200-207`):
+
+```cpp
+if (auto r = ExecContext::current().canUseAdminAction(
+        auth::perms::AdminMaintenance{});
+    r.fail()) {
+  generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                r.errorMessage());  // errorNum 403, with message
+  return;
+}
+```
+
+I confirmed these produce the **same ALLOW/DENY decision** in every case:
+`devel`'s hand-rolled check reads
+`databaseAuthLevel(user, _system, /*configured=*/true)` directly — the
+raw, configured level, ignoring `ServerState::readOnly()` — and skips the
+check entirely when `!af->isActive()` (auth disabled) or `_request->user()`
+is empty (superuser JWT). `canUseAdminAction(AdminMaintenance{})` → `can()`
+→ `AuthMode::Classic::check()`'s generic `AnyAdmin` branch
+(`AdminMaintenance` is in the `AdminList`, `arangod/Auth/Permissions.h:98,111-118`)
+→ `isAdmin()` (`arangod/Auth/AuthMode.cpp:574-577`) → the very same
+`databaseAuthLevel(user, _system, /*configured=*/true)` call
+(`arangod/Auth/AuthMode.cpp:104-106`); the auth-disabled and superuser-JWT
+bypasses are likewise reproduced by `AuthMode::Disabled::check()`
+(always `{}`) and `AuthMode::Superuser::check()` (always `{}`)
+respectively. Since this goes through `canUseAdminAction()`, not one of the
+`ExecContext` wrapper methods with the read-only-mode short-circuit bug
+documented in the `RestDocumentHandler` section, it is also **not**
+affected by that regression — same as the `RestMetricsHandler` admin check.
+
+The only observable difference is in the failure response body:
+- `errorNum`: `TRI_ERROR_FORBIDDEN` (`11`, `devel`) vs.
+  `TRI_ERROR_HTTP_FORBIDDEN` (`403`, current branch) — note this is a
+  genuine numeric change in the JSON body's `errorNum` field, not merely a
+  message-wording change. However, unlike the `TRI_ERROR_ARANGO_READ_ONLY`
+  vs. `TRI_ERROR_FORBIDDEN` case found for `RestDocumentHandler` (Finding 1
+  there), neither `11` nor `403` carries any distinguishing semantic
+  meaning beyond "generic forbidden" (both error definitions literally say
+  `"forbidden"` in `lib/Basics/errors.dat:16,49`) — there is no
+  actionable distinction a client could reasonably make between them.
+  Classified as **Cosmetic** per this document's convention, but the exact
+  numeric change is called out explicitly here in case some test asserts
+  on it.
+- Message text: none (`devel`) vs.
+  `"insufficient database access level for '_system'"` (current,
+  `arangod/Auth/AuthMode.cpp:171-173`) — same pattern as the
+  `RestMetricsHandler` Finding 1 (mildly reveals that the admin gate is a
+  `_system`-database check, but not security-relevant).
+- HTTP status code is unchanged: `403` (`rest::ResponseCode::FORBIDDEN`) in
+  both branches, passed explicitly to `generateError()`.
+
+### Finding 3 (Verified equivalent): `PUT /_admin/server/tls` (reload) and the `onlySuperUser` branches of `api-calls`/`aql-queries` — `isSuperuser()` vs. `isSuperuserOrDisabled()`
+
+Same pattern already fully analyzed in the `RestCompactHandler` section
+above, appearing three more times in this handler:
+
+- `handleTLS()`, `POST` (`arangod/RestHandler/RestAdminServerHandler.cpp:279`
+  vs. `devel:...RestAdminServerHandler.cpp:279`): `devel`'s
+  `ExecContext::isAuthEnabled() && !ExecContext::current().isSuperuser()`
+  → current's `!ExecContext::current().isSuperuserOrDisabled()`.
+- `handleApiCalls()`/`handleAqlRecordedQueries()`, `onlySuperUser()` branch
+  (`arangod/RestHandler/RestAdminServerHandler.cpp:325,380`): `devel`'s
+  bare `!ExecContext::current().isSuperuser()` (**without** an
+  `isAuthEnabled()` guard this time) → current's
+  `!ExecContext::current().isSuperuserOrDisabled()`.
+
+As established for `RestCompactHandler`, `AuthMode::isSuperuser()` and
+`devel`'s `ExecContext::isSuperuser()` (`isInternal() && systemLevel==RW &&
+dbLevel==RW`, effectively "is this a genuine superuser-JWT/internal
+request") are constructed under identical conditions in both branches. The
+two call sites above that lack `devel`'s `isAuthEnabled()` guard are not a
+concern for the `Classic`-mode comparison in scope here: `AuthMode::Classic`
+is only ever selected when authentication is active in the first place
+(`arangod/Utils/ExecContext.cpp:92-110`), so within `Classic` mode
+`isDisabled()` is always `false` and `isSuperuserOrDisabled()` reduces to
+plain `isSuperuser()` — matching `devel`'s bare check exactly. (The
+auth-fully-disabled configuration is out of scope for this document, per
+the task description — see also the equivalent note in the
+`RestCollectionHandler` section.) Verified equivalent, no regression.
+
+### Finding 4 (Cosmetic): `api-calls`/`aql-queries`, non-`onlySuperUser` branch — `isAdminUser()` boolean replaced by `canUseAdminAction()` Result
+
+`devel` (`devel:arangod/RestHandler/RestAdminServerHandler.cpp:333-337,388-392`):
+
+```cpp
+if (!ExecContext::current().isAdminUser()) {
+  generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                "You need admin rights for recording API operations");
+  return;
+}
+```
+
+Current branch (`arangod/RestHandler/RestAdminServerHandler.cpp:331-337,386-392`):
+
+```cpp
+if (auto r = ExecContext::current().canUseAdminAction(
+        auth::perms::AdminApiCalls{} /* or AdminAqlQueries{} */);
+    r.fail()) {
+  generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                r.errorMessage());
+  return;
+}
+```
+
+`devel`'s `isAdminUser()` and the current branch's `canUseAdminAction()` →
+`isAdmin()` were already shown (Finding 2 above, and previously for
+`RestMetricsHandler`) to reduce to the exact same "raw, configured `RW` on
+`_system`" check. The only difference is, again, the message text (a fixed
+string in `devel` vs. `r.errorMessage()` = `"insufficient database access
+level for '_system'"` in the current branch) — the `errorNum`
+(`TRI_ERROR_HTTP_FORBIDDEN`, `403`) is identical in both branches this
+time (both already used it, unlike Finding 2's `mode` route). Purely
+cosmetic; no change in outcome.
+
+### Finding 5 (Revised — verified equivalent): Enterprise-only `handleJWTSecretsReload`/`handleEncryptionKeyRotation`
+
+**Correction to earlier session:** the `enterprise/` directory turns out to
+be a full checkout of the Enterprise-Edition repository (own git history,
+same branch names), so the EE implementations *can* be compared after all.
+`arangod/RestHandler/RestAdminServerHandler.cpp:299-307` provides only the
+Community-Edition stub (`404 NOT_FOUND`) when `USE_ENTERPRISE` is not
+defined — identical in both branches, not interesting on its own. The real
+logic lives in
+`enterprise/Enterprise/RestHandler/RestAdminServerHandlerEE.cpp`, compiled
+in instead of the stub when building the EE server.
+
+Diffing `enterprise/Enterprise/RestHandler/RestAdminServerHandlerEE.cpp`
+against `enterprise` repo's own `devel:Enterprise/RestHandler/RestAdminServerHandlerEE.cpp`
+shows exactly two authorization-relevant lines changed, both following the
+same pattern already proven equivalent for `RestCompactHandler` and
+`RestAdminServerHandler`'s `handleTLS()`/`api-calls`/`aql-queries` routes:
+
+`devel` (`POST /_admin/server/jwt` and `POST /_admin/server/encryption`,
+`enterprise/devel:Enterprise/RestHandler/RestAdminServerHandlerEE.cpp:96-97,148-149`):
+```cpp
+if (_request->requestType() == RequestType::POST &&
+    ExecContext::isAuthEnabled() && !ExecContext::current().isSuperuser()) {
+```
+
+Current branch (`enterprise/Enterprise/RestHandler/RestAdminServerHandlerEE.cpp:96-97,148-149`):
+```cpp
+auto const& execContext = ExecContext::current();
+if (_request->requestType() == RequestType::POST &&
+    !execContext.isSuperuserOrDisabled()) {
+```
+
+As established previously, `!isSuperuserOrDisabled()` ≡ `isAuthEnabled() &&
+!isSuperuser()` term-for-term (`isSuperuserOrDisabled()` =
+`isSuperuser() || isDisabled()`, and `isDisabled()` ≡ `!isAuthEnabled()`).
+So both the JWT-secrets-reload and encryption-key-rotation POST routes make
+the identical ALLOW/DENY decision as `devel` in `Classic` mode: only a
+superuser (or an auth-disabled deployment) may `POST`; any authenticated
+user (including a full admin) may still `GET` both routes to read hashes/
+metadata, exactly as in `devel`.
+
+The remaining diff hunks (`RestServer/DatabaseFeature.h` include instead of
+`StorageEngine/EngineSelectorFeature.h`, and
+`server().getFeature<DatabaseFeature>().engine()` instead of
+`server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>()` for
+`handleEncryptionKeyRotation()`) are the same unrelated engine-lookup
+refactor already seen and confirmed equivalent in `RestCompactHandler` and
+`RestAdminServerHandler.cpp`'s own constructor — both resolve to the same
+underlying `RocksDBEngine&`/`nullptr` outcome, just obtained via a
+different accessor.
+
+**Verdict: fully equivalent to `devel`, no regression.** This supersedes
+the "out of scope" classification from the previous session.
+
+### Summary for `RestAdminServerHandler`
+
+| Route | Verdict |
+|---|---|
+| `GET /_admin/server/mode` | Identical to `devel` (`AUTHEN`, no per-user check) |
+| `PUT /_admin/server/mode` | Same ALLOW/DENY decision as `devel`; `errorNum`/message differ on failure (Finding 2, cosmetic) |
+| `GET /_admin/server/id` | Identical to `devel` |
+| `GET /_admin/server/role` | Identical to `devel` |
+| `GET /_admin/server/availability` | Identical to `devel` — `devel`'s central, path-based "OPEN access" exception is faithfully reproduced via a new handler-level `checkUserCanAccess()` override (Finding 1) |
+| `GET /_admin/server/databaseDefaults` | Identical to `devel` (`AUTHEN`) |
+| `GET /_admin/server/tls` | Identical to `devel` (`AUTHEN`) |
+| `POST /_admin/server/tls` | Identical to `devel` (Finding 3) |
+| `GET/POST /_admin/server/jwt`, `/_admin/server/encryption` | Identical to `devel` — EE implementation verified equivalent (Finding 5) |
+| `GET /_admin/server/api-calls` | Identical to `devel` in both the `onlySuperUser` (Finding 3) and admin-check (Finding 4, cosmetic) modes |
+| `GET /_admin/server/aql-queries` | Same as `api-calls` (Findings 3, 4) |
+
+**Action items / recommendations:**
+1. No functional action required anywhere in this handler — every route
+   produces the same ALLOW/DENY decision as `devel`.
+2. Optional, low-priority, for message parity with `devel`: consider
+   omitting `r.errorMessage()` (Findings 2 and 4) if exact error-message
+   parity with `devel` is desired, and/or aligning the `mode` route's
+   `errorNum` back to `TRI_ERROR_FORBIDDEN` (Finding 2) for consistency
+   with the other routes in the same handler that already use
+   `TRI_ERROR_HTTP_FORBIDDEN`.
+3. Keep the `forceSuperuser()` read-only-mode nuance (Finding 1) in mind
+   for future sessions: the current branch's version is strictly more
+   permissive (`RW` instead of `devel`'s `RO`-during-global-read-only) in
+   any future caller that both (a) relies on `forceSuperuser()` and (b)
+   makes a decision that distinguishes `RO` from `RW`. No such caller has
+   been identified yet.
