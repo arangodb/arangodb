@@ -141,7 +141,6 @@ void ArangodServer::addFeatures() {
   addFeature<FrontendFeature>();
 #endif
   addFeature<GreetingsFeature>();
-  addFeature<InitDatabaseFeature>(kNonServerFeatures);
   addFeature<LanguageCheckFeature>();
   addFeature<LanguageFeature>();
   addFeature<TimeZoneFeature>();
@@ -222,6 +221,11 @@ void ArangodServer::addFeaturesWithOptionProvider() {
   auto& agency = getFeature<AgencyFeature>();
   auto& clusterFeature = getFeature<ClusterFeature>();
   auto& aqlFunctionFeature = getFeature<aql::AqlFunctionFeature>();
+
+  auto initDatabaseOptions =
+      _optionProviders.getOptions<InitDatabaseOptionsProvider>();
+  addFeature<InitDatabaseFeature>(kNonServerFeatures,
+                                  std::move(initDatabaseOptions));
 
   auto& sslServerOptions =
       _optionProviders.getOptions<SslServerOptionsProvider>();
