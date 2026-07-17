@@ -716,3 +716,243 @@ investigation here.
 3. No action required for Finding 3 (deliberate, gated, unrelated to RBAC
    toggle) or Finding 4 (already equivalent; documented to save
    re-investigation effort in the future).
+
+**Addendum (found while investigating `RestDocumentHandler`, see below):**
+the `PUT /_api/collection/<name>/truncate` route listed above as "Identical
+to `devel`" needs a caveat. `truncate` is executed through a real,
+write-mode transaction (`arangod/RestHandler/RestCollectionHandler.cpp:596-600`,
+`trx->truncateAsync(...)`), which is gated by the very same
+`TransactionState::checkCollectionPermission()` machinery discussed in
+Finding 1 of the `RestDocumentHandler` section below. It is therefore
+subject to that finding's read-only-mode regression as well (`load`,
+`unload`, `properties`, `rename`, `responsibleShard` do not open a
+write-mode transaction on the collection's data and remain unaffected).
+
+## `RestDocumentHandler` (`arangod/RestHandler/RestDocumentHandler.cpp`)
+
+`RestDocumentHandler` implements the classic document CRUD API:
+`POST/GET/HEAD/PUT/PATCH/DELETE /_api/document[/<collection>[/<key>]]`.
+Unlike `RestDatabaseHandler`/`RestCollectionHandler`, this handler contains
+essentially **no authorization logic of its own**. Every operation
+(`insertDocument`, `readSingleDocument`, `readManyDocuments`,
+`modifyDocument`, `removeDocument`) immediately calls
+`RestVocbaseBaseHandler::createTransaction()`
+(`arangod/RestHandler/RestVocbaseBaseHandler.cpp:487-601`) to obtain a
+`transaction::Methods`, then `co_await trx->beginAsync()`
+(e.g. `arangod/RestHandler/RestDocumentHandler.cpp:251,394,605,760,851`).
+All authorization for document access happens *inside* that shared
+transaction machinery — specifically when the collection is added to the
+transaction — not in `RestDocumentHandler.cpp` itself.
+
+Diffing `arangod/RestHandler/RestDocumentHandler.cpp` directly against
+`devel:arangod/RestHandler/RestDocumentHandler.cpp` confirms this: the
+*only* differences are (a) copyright year and a removed `@author` comment,
+(b) an added explanatory comment, (c) `OperationOptions opOptions(_context)`
+(`devel`) → `OperationOptions opOptions;` (current branch, `_context` member
+removed from `OperationOptions`, see below), and (d) a refactor of how the
+storage engine is looked up in `handleFillIndexCachesValue()`
+(`_vocbase.server().getFeature<EngineSelectorFeature>().engine()` in `devel`
+vs. `_vocbase.engine()` in the current branch) — an unrelated internal API
+simplification. None of these affect authorization.
+
+Regarding (c): `OperationOptions::context()` (`devel` only,
+`devel:arangod/Utils/OperationOptions.h:198`,`devel:arangod/Utils/OperationOptions.cpp:100-105`)
+falls back to `ExecContext::current()` whenever no explicit context was
+passed in, and a repository-wide search
+(`git grep -n "\.context()" devel`) shows the *only* call site that ever
+uses the explicitly-passed context is `Collections::create`
+(`devel:arangod/VocBase/Methods/Collections.cpp:604`, already covered in
+the `RestCollectionHandler` section above). Since `RestDocumentHandler`
+never calls `Collections::create`, passing vs. not passing `_context` here
+is a no-op: `ExecContext::current()` is always equal to `_context` for the
+plain, synchronous request-handling path examined throughout this
+document. Confirmed not a behavioural difference.
+
+Because the handler code itself is authorization-free, the real comparison
+has to trace the shared collection-locking path used by every document
+operation:
+`transaction::Methods::beginAsync()` → `TransactionState::useCollections()`/
+`addCollection()` (`arangod/StorageEngine/TransactionState.cpp:427-571`) →
+`TransactionState::checkCollectionPermission()`
+(`arangod/StorageEngine/TransactionState.cpp:713-754`). This is the code
+that actually decides, for every `INSERT`/`GET`/`PUT`/`PATCH`/`DELETE` on
+`/_api/document/...`, whether the requested collection access is granted.
+
+### Finding 1 (Regression): global read-only-mode short-circuit in `ExecContext::canUseCollection`/`canUseDatabase` reports the wrong error code (`FORBIDDEN` instead of `ARANGO_READ_ONLY`) for otherwise-permitted write requests
+
+Side-by-side comparison of `checkCollectionPermission`:
+
+`devel` (`devel:arangod/StorageEngine/TransactionState.cpp:724-768`):
+```cpp
+auto level = exec.collectionAuthLevel(_vocbase.name(), cname);
+if (level == auth::Level::NONE) {
+  return {TRI_ERROR_FORBIDDEN, ...};
+} else {
+  bool collectionWillWrite = AccessMode::isWriteOrExclusive(accessType);
+  if (level == auth::Level::RO && collectionWillWrite) {
+    return {TRI_ERROR_ARANGO_READ_ONLY, ...};   // note: specific code!
+  }
+}
+return {};
+```
+
+Current branch (`arangod/StorageEngine/TransactionState.cpp:713-754`):
+```cpp
+if (accessType == AccessMode::Type::READ) {
+  if (auto r = exec.canUseCollection(_vocbase.name(), cname, AccessLevel::Read); r.fail())
+    return {TRI_ERROR_FORBIDDEN, ...};
+  return {};
+}
+if (auto r = exec.canUseCollection(_vocbase.name(), cname, AccessLevel::WriteData); r.fail())
+  return r;   // <-- forwards whatever `r` says
+return {};
+```
+
+At first glance these look equivalent (and mostly are — see below), because
+`ExecContext::canUseCollection()` → `AuthMode::Classic::check(UseCollection)`
+(`arangod/Auth/AuthMode.cpp:176-251`) reproduces `devel`'s
+`RW`-requested-vs-`RO`-granted → `TRI_ERROR_ARANGO_READ_ONLY` distinction
+almost verbatim (`arangod/Auth/AuthMode.cpp:223-228`). **The divergence is
+specifically in how the two branches account for the server being
+globally in read-only mode** (`--server.read-only` / hot-backup /
+maintenance mode toggled via `ServerState::readOnly()`):
+
+- `devel` bakes the read-only-mode downgrade *into the level itself*,
+  inside `UserManagerImpl::collectionAuthLevel()`/`databaseAuthLevel()`
+  when called with `configured=false` (the default/normal way `devel`'s
+  `ExecContext::collectionAuthLevel()` always calls it,
+  `devel:arangod/Utils/ExecContext.cpp:140-179`, esp. line 178):
+  ```cpp
+  // devel:arangod/Auth/UserManagerImpl.cpp:1016-1021 (collectionAuthLevel)
+  // and analogously :978-982 (databaseAuthLevel)
+  if (!configured) {
+    if (level > Level::RO && ServerState::readOnly()) {
+      return Level::RO;               // RW silently capped to RO
+    }
+  }
+  ```
+  A configured `RW` grant is therefore *silently downgraded to `RO`*
+  whenever the server is read-only, **before** `checkCollectionPermission`
+  ever sees it. The subsequent `level == auth::Level::RO && collectionWillWrite`
+  branch then correctly reports the specific `TRI_ERROR_ARANGO_READ_ONLY` —
+  exactly the same code path/outcome as for a user who was only ever
+  granted plain `RO` on that collection.
+
+- The current branch instead added an *explicit, separate* short-circuit in
+  each of `ExecContext`'s write-capable wrapper methods, e.g.
+  `canUseCollection` (`arangod/Utils/ExecContext.cpp:223-231`):
+  ```cpp
+  Result ExecContext::canUseCollection(std::string_view db, std::string_view coll,
+                                       CollectionAccessLevel level) const {
+    if (!isSuperuser() && ServerState::readOnly() &&
+        level >= CollectionAccessLevel::WriteData) {
+      return {TRI_ERROR_FORBIDDEN, "Server is in read-only mode."};
+    }
+    return can(UseCollection{.db{db}, .name{coll}, .level = level});
+  }
+  ```
+  and analogously `canUseDatabase`, `canCreateCollection`,
+  `canDropCollection`, `canCreateDatabase`, `canDropDatabase`, `canCreateIndex`,
+  `canDropIndex`, `canUseView`, `canModifyView`, ... (all in
+  `arangod/Utils/ExecContext.cpp:173-437`). This check fires **unconditionally**
+  whenever the server is read-only and the requested level is `WriteData`
+  or higher — completely independent of whether the calling user's actual
+  configured collection permission is `RW`, `RO`, or even `NONE`. It always
+  returns the generic `TRI_ERROR_FORBIDDEN` (11), never
+  `TRI_ERROR_ARANGO_READ_ONLY` (1004).
+
+**Net, observable effect** for `INSERT`/`UPDATE`/`REPLACE`/`REMOVE` via
+`RestDocumentHandler` (and any other write transaction going through
+`TransactionState::checkCollectionPermission`, e.g. `RestCollectionHandler`'s
+`truncate`, see addendum above) while the server is globally in read-only
+mode, for a user who is *not* fully blocked (i.e. has at least `RO` access
+to the collection, which includes the overwhelmingly common case of a user
+who normally has full `RW` access):
+
+| | `devel` | current branch (`Classic`) |
+|---|---|---|
+| error code | `TRI_ERROR_ARANGO_READ_ONLY` (1004) | `TRI_ERROR_FORBIDDEN` (11) |
+| error message | `"read-only collection access level for '<name>' in database '<db>'"` | `"Server is in read-only mode."` |
+| HTTP status | 403 (`lib/Rest/GeneralResponse.cpp:383,387`) | 403 (`lib/Rest/GeneralResponse.cpp:381,387`) |
+
+The HTTP status code is unchanged (both `TRI_ERROR_ARANGO_READ_ONLY` and
+`TRI_ERROR_FORBIDDEN` map to `ResponseCode::FORBIDDEN`,
+`lib/Rest/GeneralResponse.cpp:381-387`), so this is **not** merely a
+message-text/cosmetic issue as classified for similar-looking findings in
+earlier sections of this document: the JSON response body's `errorNum`
+field genuinely changes from `1004` to `11`. `TRI_ERROR_ARANGO_READ_ONLY`
+is a semantically distinct, documented error code that client drivers,
+`arangosh`, cluster failover/retry logic and test suites can reasonably
+key off of to distinguish "temporarily read-only, perhaps retry against
+the leader/later" from a genuine, permanent, permission-based denial. This
+qualifies as a **Regression**.
+
+If the calling user has no access at all (`Level::NONE`) to the collection,
+both branches agree on plain `TRI_ERROR_FORBIDDEN` regardless of server
+read-only mode — no divergence in that sub-case (in `devel` the downgrade
+`if (level > Level::RO ...)` never applies to `NONE`; in the current branch
+the wrapper's short-circuit also yields `FORBIDDEN`, coincidentally the
+same code).
+
+Interestingly, the low-level, commit-time safety net that both branches
+also have is unaffected and still correct in the current branch — it is
+simply now unreachable for ordinary REST-triggered document writes:
+- `arangod/Transaction/Methods.cpp:3754-3771` (`Methods::commitInternal`):
+  `bool cancelRW = ServerState::readOnly() && !exec.isSuperuserOrDisabled(); ... return Result(TRI_ERROR_ARANGO_READ_ONLY, ...)`
+- `arangod/RocksDBEngine/Methods/RocksDBTrxBaseMethods.cpp:452-457`: same
+  pattern, same correct `TRI_ERROR_ARANGO_READ_ONLY`.
+
+Both are byte-for-byte equivalent to their `devel` counterparts
+(`devel:arangod/Transaction/Methods.cpp:3766-3769`,
+`devel:` the analogous RocksDB commit path) — but since
+`TransactionState::checkCollectionPermission()` now rejects the write
+*earlier*, during `addCollection()`/`beginAsync()`, execution never reaches
+this correct commit-time code in the scenario described above.
+
+This defect lives entirely in the shared `arangod/Utils/ExecContext.cpp`
+helpers, not in `RestDocumentHandler` itself, so it transitively affects
+every `RestHandler` that performs a plain, transaction-based collection
+write (confirmed here for `RestDocumentHandler` and, per the addendum
+above, `RestCollectionHandler`'s `truncate`). It was previously flagged as
+a "fragile invariant" in the `RestDatabaseHandler` section (Finding 4
+there) but had not yet been shown to actually change the reported error
+*code* — the handlers reviewed so far (`Databases::create/drop`,
+`Collections::create/drop/rename/updateProperties`) all happen to use
+hand-rolled, boolean-returning permission checks that hardcode
+`TRI_ERROR_FORBIDDEN` regardless of reason in *both* `devel` and the
+current branch, which masks this discrepancy. `RestDocumentHandler` is the
+first handler examined whose authorization path flows through the
+generic, `Result`-returning, level-comparison-based
+`TransactionState::checkCollectionPermission()`, which is where the
+discrepancy becomes externally observable.
+
+### Summary for `RestDocumentHandler`
+
+| Route | Verdict |
+|---|---|
+| `POST /_api/document[/<collection>]` (insert) | Identical to `devel`, **except** Finding 1 (server-wide read-only mode) |
+| `GET /_api/document/<collection>/<key>` (read single) | Identical to `devel` (read-only mode does not affect `Read`-level checks) |
+| `HEAD /_api/document/<collection>/<key>` (check existence) | Identical to `devel` |
+| `PUT /_api/document/<collection>[/<key>]` (replace) | Identical to `devel`, **except** Finding 1 |
+| `PUT /_api/document/<collection>?onlyget=true` (read many) | Identical to `devel` |
+| `PATCH /_api/document/<collection>[/<key>]` (update) | Identical to `devel`, **except** Finding 1 |
+| `DELETE /_api/document/<collection>[/<key>]` (remove) | Identical to `devel`, **except** Finding 1 |
+
+**Action items / recommendations:**
+1. Fix Finding 1: change `ExecContext::canUseCollection`/`canUseDatabase`
+   (and the analogous `canCreateCollection`/`canDropCollection`/
+   `canCreateIndex`/`canDropIndex`/`canCreateDatabase`/`canDropDatabase`/
+   `canUseView`/`canModifyView`/... helpers in `arangod/Utils/ExecContext.cpp`)
+   to mirror `devel`'s approach: only *cap* an effective `RW` grant down to
+   `RO` when `ServerState::readOnly()` is true (rather than
+   unconditionally returning a hardcoded `FORBIDDEN`), and let the normal,
+   already-correct `AuthMode::Classic::check(UseCollection)` level-comparison
+   logic (`arangod/Auth/AuthMode.cpp:223-228`) decide between
+   `TRI_ERROR_ARANGO_READ_ONLY` and `TRI_ERROR_FORBIDDEN` based on the
+   (possibly capped) effective level, exactly as `devel` does. This would
+   also make the now-unreachable commit-time safety net
+   (`arangod/Transaction/Methods.cpp:3765-3770`) reachable again as a
+   true last-resort fallback, restoring parity with `devel`.
+2. No action required for the rest of `RestDocumentHandler`: the handler
+   itself is authorization-free and behaves identically to `devel` in
+   every other respect checked.
