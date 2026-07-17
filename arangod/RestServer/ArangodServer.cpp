@@ -150,8 +150,6 @@ void ArangodServer::addFeatures() {
   addFeature<LoggerFeature>(true);
   addFeature<MaintenanceFeature>(&clusterFeature);
   addFeature<MaxMapCountFeature>();
-  auto& networkFeature =
-      addFeature<NetworkFeature>(metrics, network::ConnectionPool::Config{});
   addFeature<NonceFeature>();
   addFeature<OptionsCheckFeature>();
   addFeature<PrivilegeFeature>();
@@ -161,8 +159,7 @@ void ArangodServer::addFeatures() {
   addFeature<ReplicatedLogFeature>();
   addFeature<ReplicationMetricsFeature>(metrics);
   addFeature<ReplicationTimeoutFeature>();
-  auto& scheduler =
-      addFeature<SchedulerFeature>(metrics, sharedPRNGFeature.getPRNG());
+  addFeature<SchedulerFeature>(metrics, sharedPRNGFeature.getPRNG());
   addFeature<VectorIndexFeature>(database);
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   addFeature<ProcessEnvironmentFeature>(std::string{_binaryName});
@@ -189,7 +186,7 @@ void ArangodServer::addFeatures() {
   addFeature<UpgradeFeature>(_ret, kNonServerFeatures);
   addFeature<transaction::ManagerFeature>(metrics);
   addFeature<ViewTypesFeature>();
-  auto& aqlFunctionFeature = addFeature<aql::AqlFunctionFeature>();
+  addFeature<aql::AqlFunctionFeature>();
   addFeature<aql::OptimizerRulesFeature>();
   addFeature<aql::QueryInfoLoggerFeature>();
   addFeature<RocksDBRecoveryManager>(database, database);
@@ -210,15 +207,6 @@ void ArangodServer::addFeatures() {
 #else
   addFeature<SslServerFeature>();
 #endif
-  addFeature<iresearch::IResearchAnalyzerFeature>(
-      iresearch::IResearchAnalyzerFeature::Dependencies{
-          .databaseFeature = database,
-          .systemDatabase = systemDatabaseFeature,
-          .networkFeature = &networkFeature,
-          .clusterFeature = &clusterFeature,
-          .schedulerFeature = &scheduler,
-          .aqlFunctionFeature = &aqlFunctionFeature,
-      });
   addFeature<iresearch::IResearchFeature>(metrics);
   addFeature<ClusterEngine>(metrics);
 }
@@ -226,12 +214,14 @@ void ArangodServer::addFeatures() {
 void ArangodServer::addFeaturesWithOptionProvider() {
   auto& metrics = getFeature<metrics::MetricsFeature>();
   auto& database = getFeature<DatabaseFeature>();
+  auto& systemDatabaseFeature = getFeature<SystemDatabaseFeature>();
   auto& vectorIndex = getFeature<VectorIndexFeature>();
   auto& scheduler = getFeature<SchedulerFeature>();
   auto& rocksdbRecovery = getFeature<RocksDBRecoveryManager>();
   auto& cacheManager = getFeature<CacheManagerFeature>();
   auto& agency = getFeature<AgencyFeature>();
   auto& clusterFeature = getFeature<ClusterFeature>();
+  auto& aqlFunctionFeature = getFeature<aql::AqlFunctionFeature>();
 
   auto& sslServerOptions =
       _optionProviders.getOptions<SslServerOptionsProvider>();
@@ -253,6 +243,11 @@ void ArangodServer::addFeaturesWithOptionProvider() {
   auto generalServerOptions =
       _optionProviders.getOptions<GeneralServerOptionsProvider>();
   addFeature<GeneralServerFeature>(metrics, std::move(generalServerOptions));
+
+  // Add NetworkFeature
+  auto networkOptions = _optionProviders.getOptions<NetworkOptionsProvider>();
+  auto& networkFeature =
+      addFeature<NetworkFeature>(metrics, std::move(networkOptions));
 
   // Add EndpointFeature
   auto endpointOptions = _optionProviders.getOptions<EndpointOptionsProvider>();
@@ -316,6 +311,16 @@ void ArangodServer::addFeaturesWithOptionProvider() {
                  BlackHoleStateMachineFeature>();
   addFeature<
       replication2::replicated_state::document::DocumentStateMachineFeature>();
+
+  addFeature<iresearch::IResearchAnalyzerFeature>(
+      iresearch::IResearchAnalyzerFeature::Dependencies{
+          .databaseFeature = database,
+          .systemDatabase = systemDatabaseFeature,
+          .networkFeature = &networkFeature,
+          .clusterFeature = &clusterFeature,
+          .schedulerFeature = &scheduler,
+          .aqlFunctionFeature = &aqlFunctionFeature,
+      });
 }
 
 }  // namespace arangodb

@@ -23,6 +23,7 @@
 #include "GeneralServer/AuthenticationOptionsProvider.h"
 #include "GeneralServer/GeneralServerOptionsProvider.h"
 #include "GeneralServer/SslServerOptionsProvider.h"
+#include "Network/NetworkOptionsProvider.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/DatabasePathOptionsProvider.h"
 #include "RestServer/DumpLimitsOptionsProvider.h"
@@ -56,7 +57,8 @@ class FeatureOptionProviderContainer final {
   std::tuple<AuthenticationOptionsProvider, DatabasePathOptionsProvider,
              DumpLimitsOptionsProvider, EndpointOptionsProvider,
              FlushOptionsProvider, fortune::FortuneOptionsProvider,
-             GeneralServerOptionsProvider, RocksDBEngineOptionsProvider,
+             GeneralServerOptionsProvider, NetworkOptionsProvider,
+             RocksDBEngineOptionsProvider,
              RocksDBIndexCacheRefillOptionsProvider,
              RocksDBOptionFeatureOptionsProvider, ServerOptionsProvider,
              SslServerOptionsProvider, TemporaryStorageOptionsProvider
