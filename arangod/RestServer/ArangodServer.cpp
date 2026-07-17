@@ -199,9 +199,6 @@ void ArangodServer::addFeatures() {
   addFeature<RCloneFeature>();
   addFeature<HotBackupFeature>();
   addFeature<EncryptionFeature>();
-  addFeature<SslServerFeature, SslServerFeatureEE>();
-#else
-  addFeature<SslServerFeature>();
 #endif
   addFeature<iresearch::IResearchFeature>(metrics);
   addFeature<ClusterEngine>(metrics);

@@ -60,7 +60,7 @@ class ArangodServer : public application_features::ApplicationServer {
   std::shared_ptr<crash_handler::DumpManager> _dumpManager;
   std::shared_ptr<crash_handler::DataSourceRegistry> _dataSourceRegistry;
   application_features::FeatureOptionProviderContainer _optionProviders;
-  int* _ret; // pointer to return value (used by some features)
+  int* _ret;  // pointer to return value (used by some features)
 };
 
 }  // namespace arangodb
