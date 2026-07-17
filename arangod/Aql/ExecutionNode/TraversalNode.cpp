@@ -444,7 +444,6 @@ void TraversalNode::replaceAttributeAccess(
     _pruneVariables = std::move(variables);
   }
 
-  << " by " << replaceVariable->name;
   if (_condition && self != this) {
     _condition->replaceAttributeAccess(searchVariable, attribute,
                                        replaceVariable);
@@ -506,27 +505,50 @@ void TraversalNode::replaceAttributeAccess(
 
 /// @brief getVariablesUsedHere
 void TraversalNode::getVariablesUsedHere(VarSet& result) const {
-  if (_condition != nullptr && _condition->root() != nullptr) {
-    auto re = VarSet{};
-    Ast::getReferencedVariables(_condition->root(), re);
-    for (auto const& condVar : re) {
+  //  Gather all nodes together and get
+  //  their respective used variables
+  std::vector<const AstNode*> conditionNodes;
+  if (_condition && _condition->root()) {
+    conditionNodes.push_back(_condition->root());
+  }
+
+  //  Condition nodes
+  auto appendConditions = [&conditionNodes](const auto& conditionNode) {
+    conditionNodes.push_back(conditionNode);
+  };
+  std::for_each(_globalEdgeConditions.begin(), _globalEdgeConditions.end(),
+                appendConditions);
+  std::for_each(_globalVertexConditions.begin(), _globalVertexConditions.end(),
+                appendConditions);
+  std::for_each(_postFilterConditions.begin(), _postFilterConditions.end(),
+                appendConditions);
+
+  if (_fromCondition) {
+    conditionNodes.push_back(_fromCondition);
+  }
+
+  if (_toCondition) {
+    conditionNodes.push_back(_toCondition);
+  }
+
+  //  Expressions
+  if (_pruneExpression && _pruneExpression->node()) {
+    conditionNodes.push_back(_pruneExpression->node());
+  }
+
+  if (_postFilterExpression && _postFilterExpression->node()) {
+    conditionNodes.push_back(_postFilterExpression->node());
+  }
+
+  //  Process all condition nodes
+  for (const auto& conditionNode : conditionNodes) {
+    auto varSet = VarSet{};
+    Ast::getReferencedVariables(conditionNode, varSet);
+    for (auto const& condVar : varSet) {
       if (condVar != vertexOutVariable() && condVar != edgeOutVariable() &&
           condVar != pathOutVariable() && condVar != getTemporaryVariable()) {
         result.emplace(condVar);
       }
-    }
-  }
-  for (auto const& pruneVar : _pruneVariables) {
-    if (pruneVar != vertexOutVariable() && pruneVar != edgeOutVariable() &&
-        pruneVar != pathOutVariable()) {
-      result.emplace(pruneVar);
-    }
-  }
-
-  for (auto const& postVar : _postFilterVariables) {
-    if (postVar != vertexOutVariable() && postVar != edgeOutVariable() &&
-        postVar != pathOutVariable()) {
-      result.emplace(postVar);
     }
   }
 
@@ -1098,14 +1120,17 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
   std::vector<std::pair<Variable const*, RegisterId>> filterConditionVariables;
   filterConditionVariables.reserve(_conditionVariables.size());
 
-  for (auto const& it : _conditionVariables) {
-    if (it != _tmpObjVariable) {
-      auto idIt = varInfo.find(it->id);
-      TRI_ASSERT(idIt != varInfo.end());
-      filterConditionVariables.emplace_back(
-          std::make_pair(it, idIt->second.registerId));
-      inputRegisters.emplace(idIt->second.registerId);
-    }
+  VarSet usedVars;
+  getVariablesUsedHere(usedVars);
+
+  for (const auto* variable : usedVars) {
+    if (variable == _tmpObjVariable) continue;
+
+    auto itVarInfo = varInfo.find(variable->id);
+    TRI_ASSERT(itVarInfo != varInfo.end());
+    filterConditionVariables.emplace_back(
+        std::make_pair(variable, itVarInfo->second.registerId));
+    inputRegisters.emplace(itVarInfo->second.registerId);
   }
 
   auto registerInfos = createRegisterInfos(std::move(inputRegisters),
