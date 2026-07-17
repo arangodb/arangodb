@@ -311,13 +311,6 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
     return;
   }
 
-#if 0
-  ExecContextSuperuserScope escope(
-      ExecContext::current()
-          .canUseAdminAction(auth::perms::AdminWalAccess{})
-          .ok());
-#endif
-
   bool found = false;
   size_t chunkSize = 1024 * 1024;
   std::string const& value5 = _request->value("chunkSize", found);

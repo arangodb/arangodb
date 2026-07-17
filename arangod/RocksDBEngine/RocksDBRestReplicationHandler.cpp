@@ -254,13 +254,6 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
   bool includeSystem = _request->parsedValue("includeSystem", true);
   auto chunkSize = _request->parsedValue<uint64_t>("chunkSize", 1024 * 1024);
 
-#if 0
-  ExecContextSuperuserScope escope(
-      ExecContext::current()
-          .canUseAdminAction(auth::perms::AdminWalAccess{})
-          .ok());
-#endif
-
   // extract collection
   DataSourceId cid = DataSourceId::none();
   std::string const& value6 = _request->value("collection", found);
