@@ -651,8 +651,7 @@ async<void> RestAdminClusterHandler::handleRemoveServer() {
   if (auto r = ExecContext::current().canUseAdminAction(
           auth::perms::AdminRemoveServer{});
       r.fail()) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                  r.errorMessage());
+    generateError(r);
     co_return;
   }
 
@@ -696,8 +695,7 @@ void RestAdminClusterHandler::handleShardStatistics() {
   if (auto r = ExecContext::current().canUseAdminAction(
           auth::perms::AdminClusterInfo{});
       r.fail()) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                  r.errorMessage());
+    generateError(r);
     return;
   }
 
@@ -991,8 +989,7 @@ async<void> RestAdminClusterHandler::handleQueryJobStatus() {
   if (auto r = ExecContext::current().canUseAdminAction(
           auth::perms::AdminMoveShards{});
       r.fail()) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                  r.errorMessage());
+    generateError(r);
     co_return;
   }
 
@@ -1072,8 +1069,7 @@ async<void> RestAdminClusterHandler::handleCancelJob() {
   if (auto r = ExecContext::current().canUseAdminAction(
           auth::perms::AdminMoveShards{});
       r.fail()) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                  r.errorMessage());
+    generateError(r);
     co_return;
   }
 
@@ -1245,8 +1241,7 @@ async<void> RestAdminClusterHandler::handleSingleServerJob(
   if (auto r = ExecContext::current().canUseAdminAction(
           auth::perms::AdminMoveShards{});
       r.fail()) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                  r.errorMessage());
+    generateError(r);
     co_return;
   }
 
@@ -1416,8 +1411,7 @@ void RestAdminClusterHandler::handleShardDistribution() {
   if (auto r = ExecContext::current().canUseAdminAction(
           auth::perms::AdminClusterInfo{});
       r.fail()) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                  r.errorMessage());
+    generateError(r);
     return;
   }
 
@@ -1468,8 +1462,7 @@ void RestAdminClusterHandler::handleCollectionShardDistribution() {
   if (auto r = ExecContext::current().canUseAdminAction(
           auth::perms::AdminClusterInfo{});
       r.fail()) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                  r.errorMessage());
+    generateError(r);
     return;
   }
 
@@ -1856,8 +1849,7 @@ async<void> RestAdminClusterHandler::handleMaintenance() {
   if (auto r = ExecContext::current().canUseAdminAction(
           auth::perms::AdminMaintenance{});
       r.fail()) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                  r.errorMessage());
+    generateError(r);
     co_return;
   }
 
@@ -1891,8 +1883,7 @@ async<void> RestAdminClusterHandler::handleDBServerMaintenance(
   if (auto r = ExecContext::current().canUseAdminAction(
           auth::perms::AdminMaintenance{});
       r.fail()) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                  r.errorMessage());
+    generateError(r);
     co_return;
   }
 
@@ -1972,8 +1963,7 @@ async<void> RestAdminClusterHandler::handlePutNumberOfServers() {
   if (auto r = ExecContext::current().canUseAdminAction(
           auth::perms::AdminMaintenance{});
       r.fail()) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                  r.errorMessage());
+    generateError(r);
     co_return;
   }
 
@@ -2093,8 +2083,7 @@ async<void> RestAdminClusterHandler::handleNumberOfServers() {
     if (auto r = ExecContext::current().canUseHardenedAction(
             auth::perms::AdminMaintenance{});
         r.fail()) {
-      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                    r.errorMessage());
+      generateError(r);
       co_return;
     }
   }
@@ -2122,8 +2111,7 @@ async<void> RestAdminClusterHandler::handleUniqId() {
   if (auto r = ExecContext::current().canUseAdminAction(
           auth::perms::AdminMaintenance{});
       r.fail()) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                  r.errorMessage());
+    generateError(r);
     co_return;
   }
 
@@ -2545,8 +2533,7 @@ async<void> RestAdminClusterHandler::handleRebalanceShards() {
   ExecContext const& exec = ExecContext::current();
   if (auto r = exec.canUseAdminAction(auth::perms::AdminRebalance{});
       r.fail()) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                  r.errorMessage());
+    generateError(r);
     co_return;
   }
 
@@ -2877,8 +2864,7 @@ async<void> RestAdminClusterHandler::handleRebalance() {
   if (auto r = ExecContext::current().canUseAdminAction(
           auth::perms::AdminRebalance{});
       r.fail()) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                  r.errorMessage());
+    generateError(r);
     co_return;
   }
 

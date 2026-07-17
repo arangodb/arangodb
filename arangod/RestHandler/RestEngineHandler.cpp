@@ -72,8 +72,7 @@ void RestEngineHandler::handleGet() {
           auth::perms::AdminMonitoringInternal{});
       r.fail()) {
     // dont leak information about server internals here
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
-                  r.errorMessage());
+    generateError(r);
     return;
   }
 

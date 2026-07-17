@@ -55,8 +55,7 @@ RestStatus RestClusterHandler::execute() {
       if (auto r = ExecContext::current().canUseAdminAction(
               auth::perms::AdminClusterInfo{});
           r.fail()) {
-        generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                      r.errorMessage());
+        generateError(r);
         return RestStatus::DONE;
       }
       if (suffixes.size() == 1) {
@@ -155,8 +154,7 @@ void RestClusterHandler::handleAgencyDump() {
   auto const& exec = ExecContext::current();
   if (auto r = exec.canUseAdminAction(auth::perms::AdminReadAgency{});
       r.fail()) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                  r.errorMessage());
+    generateError(r);
     return;
   }
 
@@ -175,8 +173,7 @@ void RestClusterHandler::handleAgencyCache() {
   auto const& exec = ExecContext::current();
   if (auto r = exec.canUseAdminAction(auth::perms::AdminReadAgency{});
       r.fail()) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                  r.errorMessage());
+    generateError(r);
     return;
   }
 

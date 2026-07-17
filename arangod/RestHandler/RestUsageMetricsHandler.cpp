@@ -49,8 +49,7 @@ auto RestUsageMetricsHandler::executeAsync() -> futures::Future<futures::Unit> {
           auth::perms::AdminMonitoringInternal{});
       r.fail()) {
     // don't leak information about server internals here
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
-                  r.errorMessage());
+    generateError(r);
     co_return;
   }
 

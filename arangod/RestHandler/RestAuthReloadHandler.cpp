@@ -44,8 +44,7 @@ RestStatus RestAuthReloadHandler::execute() {
   if (auto r = ExecContext::current().canUseAdminAction(
           auth::perms::AdminAuthReload{});
       r.fail()) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                  r.errorMessage());
+    generateError(r);
     return RestStatus::DONE;
   }
 

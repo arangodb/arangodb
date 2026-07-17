@@ -44,8 +44,7 @@ futures::Future<futures::Unit> RestSupervisionStateHandler::executeAsync() {
   if (auto r = ExecContext::current().canUseAdminAction(
           auth::perms::AdminSupervisionState{});
       r.fail()) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                  r.errorMessage());
+    generateError(r);
     co_return;
   }
 
