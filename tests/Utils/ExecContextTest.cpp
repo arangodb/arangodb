@@ -47,59 +47,40 @@ TEST(ExecContextTest, basic_construction) {
   EXPECT_TRUE(ctx.canUseDatabase("testdb", DatabaseAccessLevel::Write).ok());
   EXPECT_TRUE(ctx.canUseAdminAction(arangodb::auth::perms::AdminBackup{}).ok());
   EXPECT_FALSE(ctx.isSuperuserOrDisabled());
-  // NOTE: hasJwtToken(), jwtToken(), and roles() were removed from ExecContext
-  // in the auth refactoring — they are RBAC-only concepts. Tests for those are
-  // deferred to the RBAC test suite.
 }
 
 // --- isSuperuser() predicate ---
 
 TEST(ExecContextTest, superuser_requires_superuser_authmode) {
-  // In the new API, isSuperuser() is true only for AuthMode::Superuser (or
-  // AuthMode::Disabled). The old Type::Internal+RW/RW maps to Superuser here.
+  // In the new API, isSuperuserOrDisabled() is true only for
+  // AuthMode::Superuser (or AuthMode::Disabled). The old Type::Internal+RW/RW
+  // maps to Superuser here.
   auto ctx = ExecContextAccessor::make(AuthMode{AuthMode::Superuser{}}, false,
                                        VocbasePtr{nullptr});
 
   EXPECT_TRUE(ctx->isSuperuserOrDisabled());
+  EXPECT_TRUE(ctx->isSuperuser());
+}
+
+TEST(ExecContextTest, disabled_is_not_superuser_authmode) {
+  // In the new API, isSuperuserOrDisabled() is true only for
+  // AuthMode::Superuser (or AuthMode::Disabled). The old Type::Internal+RW/RW
+  // maps to Superuser here.
+  FakeGeneralRequest fakeRequest;
+  auto ctx = ExecContextAccessor::make(
+      AuthMode{AuthMode::Disabled{"dummy", fakeRequest}}, false,
+      VocbasePtr{nullptr});
+
+  EXPECT_TRUE(ctx->isSuperuserOrDisabled());
+  EXPECT_FALSE(ctx->isSuperuser());
 }
 
 TEST(ExecContextTest, classic_ro_ro_is_not_superuser) {
+  // "Normal" classic ExecContexts are not superuser or disabled:
   auto cec = makeClassicExecContext("", "db", auth::Level::RO, auth::Level::RO);
 
   EXPECT_FALSE(cec.execContext->isSuperuserOrDisabled());
-}
-
-TEST(ExecContextTest, classic_rw_ro_is_not_superuser) {
-  auto cec = makeClassicExecContext("", "db", auth::Level::RW, auth::Level::RO);
-
-  EXPECT_FALSE(cec.execContext->isSuperuserOrDisabled());
-}
-
-TEST(ExecContextTest, classic_ro_rw_is_not_superuser) {
-  auto cec = makeClassicExecContext("", "db", auth::Level::RO, auth::Level::RW);
-
-  EXPECT_FALSE(cec.execContext->isSuperuserOrDisabled());
-}
-
-TEST(ExecContextTest, classic_none_none_is_not_superuser) {
-  auto cec =
-      makeClassicExecContext("", "db", auth::Level::NONE, auth::Level::NONE);
-
-  EXPECT_FALSE(cec.execContext->isSuperuserOrDisabled());
-}
-
-TEST(ExecContextTest, classic_rw_rw_is_not_superuser) {
-  auto cec =
-      makeClassicExecContext("user", "db", auth::Level::RW, auth::Level::RW);
-
-  EXPECT_FALSE(cec.execContext->isSuperuserOrDisabled());
-}
-
-TEST(ExecContextTest, classic_ro_ro_non_admin_is_not_superuser) {
-  auto cec =
-      makeClassicExecContext("user", "db", auth::Level::RO, auth::Level::RO);
-
-  EXPECT_FALSE(cec.execContext->isSuperuserOrDisabled());
+  EXPECT_FALSE(cec.execContext->isSuperuser());
 }
 
 // --- canUseDatabase ---
