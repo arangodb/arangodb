@@ -28,39 +28,27 @@ let jsunity = require('jsunity');
 let internal = require('internal');
 let arangodb = require('@arangodb');
 let db = arangodb.db;
-let { getEndpointsByType,
-      debugCanUseFailAt,
-      debugClearFailAt,
-      waitForShardsInSync
-    } = require('@arangodb/test-helper');
+let { waitForShardsInSync } = require('@arangodb/test-helper');
+let { instanceRole } = require('@arangodb/testutils/instance');
 
-    
-function getEndpointMap() {
-  const health = arango.GET("/_admin/cluster/health").Health;
-  const endpointMap = {};
-  for (let sid in health) {
-    endpointMap[health[sid].ShortName] = health[sid].Endpoint;
-  }
-  return endpointMap;
-}
+let IM = global.instanceManager;
 
 function createCollectionWithTwoShardsSameLeaderAndFollower(cn) {
   db._create(cn, {numberOfShards:2, replicationFactor:2});
   // Get dbserver names first:
-  const endpointMap = getEndpointMap();
   let plan = arango.GET("/_admin/cluster/shardDistribution").results[cn].Plan;
   let shards = Object.keys(plan);
   let coordinator = "Coordinator0001";
-  let leader = plan[shards[0]].leader;
-  let follower = plan[shards[0]].followers[0];
+  let leader = IM.getInstanceByID(plan[shards[0]].leader);
+  let follower = IM.getInstanceByID(plan[shards[0]].followers[0]);
   // Make leaders the same:
-  if (leader !== plan[shards[1]].leader) {
+  if (leader.id !== plan[shards[1]].leader) {
     let moveShardJob = {
       database: db._name(),
       collection: cn,
       shard: shards[1],
       fromServer: plan[shards[1]].leader,
-      toServer: leader,
+      toServer: leader.id,
       isLeader: true
     };
     let res = arango.POST("/_admin/cluster/moveShard", moveShardJob);
@@ -93,13 +81,13 @@ function createCollectionWithTwoShardsSameLeaderAndFollower(cn) {
     }
   }
   // Make followers the same:
-  if (follower !== plan[shards[1]].followers[0]) {
+  if (follower.id !== plan[shards[1]].followers[0]) {
     let moveShardJob = {
       database: db._name(),
       collection: cn,
       shard: shards[1],
       fromServer: plan[shards[1]].followers[0],
-      toServer: follower,
+      toServer: follower.id,
       isLeader: false
     };
     let res = arango.POST("/_admin/cluster/moveShard", moveShardJob);
@@ -116,19 +104,7 @@ function createCollectionWithTwoShardsSameLeaderAndFollower(cn) {
       internal.wait(1);
     }
   }
-  return { endpointMap, coordinator, leader, follower, shards };
-}
-
-function switchConnectionToCoordinator(collInfo) {
-  arango.reconnect(collInfo.endpointMap[collInfo.coordinator], db._name(), "root", "");
-}
-
-function switchConnectionToLeader(collInfo) {
-  arango.reconnect(collInfo.endpointMap[collInfo.leader], db._name(), "root", "");
-}
-
-function switchConnectionToFollower(collInfo) {
-  arango.reconnect(collInfo.endpointMap[collInfo.follower], db._name(), "root", "");
+  return { coordinator, leader, follower, shards };
 }
 
 function dropFollowersElCheapoSuite() {
@@ -136,20 +112,21 @@ function dropFollowersElCheapoSuite() {
   const cn = 'UnitTestsElCheapoDroppedFollowers';
   let collInfo = {};
 
-  const endpointMap = getEndpointMap();
-  const info = { endpointMap, coordinator: "Coordinator0001" };
-
   return {
+    setUpAll: function () {
+      IM.rememberConnection();
+    },
+
     setUp: function () {
-      switchConnectionToCoordinator(info);
-      getEndpointsByType("dbserver").forEach((ep) => debugClearFailAt(ep));
+      IM.reconnectMe();
+      IM.debugClearFailAt('', instanceRole.dbserver);
       db._drop(cn);
       collInfo = createCollectionWithTwoShardsSameLeaderAndFollower(cn);
     },
 
     tearDown: function () {
-      switchConnectionToCoordinator(info);
-      getEndpointsByType("dbserver").forEach((ep) => debugClearFailAt(ep));
+      IM.reconnectMe();
+      IM.debugClearFailAt('', instanceRole.dbserver);
       db._drop(cn);
     },
     
@@ -171,59 +148,60 @@ function dropFollowersElCheapoSuite() {
       // got some documents written with a high likelyhood
       // Now activate a failure point on the leader to make it drop a follower
       // with the next request:
-      switchConnectionToLeader(collInfo);
-      arango.PUT("/_admin/debug/failat/replicateOperationsDropFollower",{});
-      switchConnectionToCoordinator(collInfo);
+      collInfo.leader.toThisInstance(() => {
+        arango.PUT("/_admin/debug/failat/replicateOperationsDropFollower",{});
+      });
 
       arango.POST("/_api/document/" + cn, {_key:"F"},
                   {"x-arango-trx-id":trxid});
 
-      switchConnectionToLeader(collInfo);
-      arango.DELETE("/_admin/debug/failat/replicateOperationsDropFollower");
-      switchConnectionToCoordinator(collInfo);
+      collInfo.leader.debugClearFailAt("replicateOperationsDropFollower");
 
       let commitRes = arango.PUT(`/_api/transaction/${trxid}`, {});
       assertFalse(commitRes.error);
 
       // Now check that no subordinate transaction is still running on the
       // leader or follower:
-      switchConnectionToLeader(collInfo);
-      let trxsLeader = arango.GET("/_api/transaction");
-      assertTrue(trxsLeader.hasOwnProperty("transactions"));
-      let followerTrxId = String(Number(trxid) + 2);
-      let found = false;
-      for (let t of trxsLeader.transactions) {
-        if (t.id === followerTrxId) {
-          found = true;
+      let followerTrxId;
+      collInfo.leader.toThisInstance(() => {
+        let trxsLeader = arango.GET("/_api/transaction");
+        assertTrue(trxsLeader.hasOwnProperty("transactions"));
+        followerTrxId = String(Number(trxid) + 2);
+        let found = false;
+        for (let t of trxsLeader.transactions) {
+          if (t.id === followerTrxId) {
+            found = true;
+          }
         }
-      }
-      assertFalse(found);
-      switchConnectionToFollower(collInfo);
-      let trxsFollower = arango.GET("/_api/transaction");
-      assertTrue(trxsFollower.hasOwnProperty("transactions"));
-      for (let t of trxsFollower.transactions) {
-        if (t.id === followerTrxId) {
-          found = true;
+        assertFalse(found);
+      });
+      collInfo.follower.toThisInstance(() => {
+        let found = false;
+        let trxsFollower = arango.GET("/_api/transaction");
+        assertTrue(trxsFollower.hasOwnProperty("transactions"));
+        for (let t of trxsFollower.transactions) {
+          if (t.id === followerTrxId) {
+            found = true;
+          }
         }
-      }
-      assertFalse(found);
-
+        assertFalse(found);
+      });
+      
       // The above transaction should be entirely visible across the shards,
       // note that we need to check on the dbservers and not via the,
       // coordinator otherwise we do not see the follower information.
 
-      switchConnectionToCoordinator(collInfo);
       waitForShardsInSync(cn, 60, 1);
 
-      switchConnectionToLeader(collInfo);
-      let count = _.sumBy(collInfo.shards, s => db._collection(s).count());
-      assertEqual(21, count);
+      collInfo.leader.toThisInstance(() => {
+        let count = _.sumBy(collInfo.shards, s => db._collection(s).count());
+        assertEqual(21, count);
+      });
 
-      switchConnectionToFollower(collInfo);
-      count = _.sumBy(collInfo.shards, s => db._collection(s).count());
-      assertEqual(21, count);
-
-      switchConnectionToCoordinator(collInfo);
+      collInfo.follower.toThisInstance(() => {
+        let count = _.sumBy(collInfo.shards, s => db._collection(s).count());
+        assertEqual(21, count);
+      });
     },
     
     testDropFollowerThenFailCommit : function() {
@@ -244,9 +222,7 @@ function dropFollowersElCheapoSuite() {
       // got some documents written with a high likelyhood
       // Now activate a failure point on the leader to make it drop a follower
       // with the next request:
-      switchConnectionToLeader(collInfo);
-      arango.PUT("/_admin/debug/failat/replicateOperationsDropFollower",{});
-      switchConnectionToCoordinator(collInfo);
+      collInfo.leader.debugSetFailAt("replicateOperationsDropFollower");
 
       // And another 20, then both shards should be dropped:
       for (let i = 0; i < 20; ++i) {
@@ -254,52 +230,46 @@ function dropFollowersElCheapoSuite() {
                     {"x-arango-trx-id":trxid});
       }
 
-      switchConnectionToLeader(collInfo);
-      arango.DELETE("/_admin/debug/failat/replicateOperationsDropFollower");
-      switchConnectionToCoordinator(collInfo);
+      collInfo.leader.debugClearFailAt("replicateOperationsDropFollower");
 
       // Now fail the commit on the follower:
-      switchConnectionToFollower(collInfo);
-      arango.PUT("/_admin/debug/failat/TransactionCommitFail",{});
-      switchConnectionToCoordinator(collInfo);
+      collInfo.follower.debugSetFailAt("TransactionCommitFail");
 
       let commitRes = arango.PUT(`/_api/transaction/${trxid}`, {});
       assertFalse(commitRes.error);
 
-      switchConnectionToFollower(collInfo);
-      arango.DELETE("/_admin/debug/failat/TransactionCommitFail");
-      switchConnectionToCoordinator(collInfo);
+      collInfo.follower.debugClearFailAt("TransactionCommitFail");
 
       // Now check that no subordinate transaction is still running on the
       // leader or follower:
-      switchConnectionToLeader(collInfo);
-      let trxsLeader = arango.GET("/_api/transaction");
-      assertTrue(trxsLeader.hasOwnProperty("transactions"));
-      let followerTrxId = String(Number(trxid) + 2);
-      let found = trxsLeader.transactions.some(t => t.id === followerTrxId);
-      assertFalse(found);
-      switchConnectionToFollower(collInfo);
-      let trxsFollower = arango.GET("/_api/transaction");
-      assertTrue(trxsFollower.hasOwnProperty("transactions"));
-      found = trxsFollower.transactions.some(t => t.id === followerTrxId);
-      assertFalse(found);
-
+      let followerTrxId;
+      collInfo.leader.toThisInstance(() => {
+        let trxsLeader = arango.GET("/_api/transaction");
+        assertTrue(trxsLeader.hasOwnProperty("transactions"));
+        followerTrxId = String(Number(trxid) + 2);
+        let found = trxsLeader.transactions.some(t => t.id === followerTrxId);
+        assertFalse(found);
+      });
+      collInfo.follower.toThisInstance(() => {
+        let trxsFollower = arango.GET("/_api/transaction");
+        assertTrue(trxsFollower.hasOwnProperty("transactions"));
+        let found = trxsFollower.transactions.some(t => t.id === followerTrxId);
+        assertFalse(found);
+      });
       // The above transaction should be entirely visible across the shards,
       // note that we need to check on the dbservers and not via the,
       // coordinator otherwise we do not see the follower information.
 
-      switchConnectionToCoordinator(collInfo);
       waitForShardsInSync(cn, 60, 1);
 
-      switchConnectionToLeader(collInfo);
-      let count = _.sumBy(collInfo.shards, s => db._collection(s).count());
-      assertEqual(40, count);
-
-      switchConnectionToFollower(collInfo);
-      count = _.sumBy(collInfo.shards, s => db._collection(s).count());
-      assertEqual(40, count);
-
-      switchConnectionToCoordinator(collInfo);
+      collInfo.leader.toThisInstance(() => {
+        let count = _.sumBy(collInfo.shards, s => db._collection(s).count());
+        assertEqual(40, count);
+      });
+      collInfo.follower.toThisInstance(() => {
+        let count = _.sumBy(collInfo.shards, s => db._collection(s).count());
+        assertEqual(40, count);
+      });
     },
     
   };
@@ -310,21 +280,22 @@ function lockTimeoutSuite() {
   const cn = 'UnitTestsLockTimeout';
   let collInfo = {};
 
-  const endpointMap = getEndpointMap();
-  const info = { endpointMap, coordinator: "Coordinator0001" };
-
   return {
+    setUpAll: function () {
+      IM.rememberConnection();
+    },
+
     setUp: function () {
-      switchConnectionToCoordinator(info);
-      getEndpointsByType("dbserver").forEach((ep) => debugClearFailAt(ep));
+      IM.reconnectMe();
+      IM.debugClearFailAt('', instanceRole.dbserver);
       db._createDatabase(cn);
       db._useDatabase(cn);
       collInfo = createCollectionWithTwoShardsSameLeaderAndFollower(cn);
     },
 
     tearDown: function () {
-      switchConnectionToCoordinator(info);
-      getEndpointsByType("dbserver").forEach((ep) => debugClearFailAt(ep));
+      IM.reconnectMe();
+      IM.debugClearFailAt('', instanceRole.dbserver);
       db._useDatabase('_system');
       db._dropDatabase(cn);
     },
@@ -333,11 +304,8 @@ function lockTimeoutSuite() {
       // All we want to do is a single query and for that switch on some
       // assertions:
 
-      switchConnectionToLeader(collInfo);
-      arango.PUT("/_admin/debug/failat/assertLockTimeoutLow",{});
-      switchConnectionToFollower(collInfo);
-      arango.PUT("/_admin/debug/failat/assertLockTimeoutHigh",{});
-      switchConnectionToCoordinator(collInfo);
+      collInfo.leader.debugSetFailAt("assertLockTimeoutLow");
+      collInfo.follower.debugSetFailAt("assertLockTimeoutHigh");
 
       // we are not testing much inside this test here, except that the
       // DB servers don't run into the assertion failure in RocksDBMetaCollection

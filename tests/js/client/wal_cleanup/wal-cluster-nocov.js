@@ -1,5 +1,5 @@
 /* jshint globalstrict:true, strict:true, maxlen: 5000 */
-/* global */
+/* global print */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -31,14 +31,11 @@ const arangodb = require('@arangodb');
 const arango = arangodb.arango;
 const db = arangodb.db;
 let IM = global.instanceManager;
+let { instanceRole } = require('@arangodb/testutils/instance');
 
-const url = require('url');
 const _ = require("lodash");
 
 const {
-  getCoordinatorEndpoints,
-  getDBServerEndpoints,
-  getAgentEndpoints,
   versionHas
 } = require('@arangodb/test-helper');
 
@@ -89,12 +86,15 @@ function WalCleanupSuite () {
   };
 
   return {
+    setUpAll: function() {
+      IM.rememberConnection();
+    },
     setUp: function() {
-      arango.reconnect(IM.endpoint, "_system", "root", "");
+      IM.reconnectMe();
     },
 
     tearDown: function() {
-      arango.reconnect(IM.endpoint, "_system", "root", "");
+      IM.reconnectMe();
     },
 
     testAgent: function() {
@@ -120,18 +120,19 @@ function WalCleanupSuite () {
         }
       };
 
-      const agents = getAgentEndpoints();
+      const agents = IM.getInstancesRole(instanceRole.agent);
       assertTrue(agents.length > 0, "no agents found");
       const agent = agents[0];
-      require("console").warn("connecting to agent", agent);
-      arango.reconnect(agent, "_system", "root", "");
-      try {
-        db._drop(cn);
-        db._create(cn);
-        run(insertData, getRanges);
-      } finally {
-        db._drop(cn);
-      }
+      print("connecting to ", agent.name);
+      agent.toThisInstance(() => {
+        try {
+          db._drop(cn);
+          db._create(cn);
+          run(insertData, getRanges);
+        } finally {
+          db._drop(cn);
+        }
+      });
     },
     
     testDBServer: function() {
@@ -141,41 +142,44 @@ function WalCleanupSuite () {
         docs.push({ huge });
       }
         
-      const coordinators = getCoordinatorEndpoints();
+      const coordinators = IM.getInstancesRole(instanceRole.coordinator);
       assertTrue(coordinators.length > 0, "no coordinators found");
       const coordinator = coordinators[0];
       
-      const dbservers = getDBServerEndpoints();
+      const dbservers = IM.getInstancesRole(instanceRole.dbserver);
       assertTrue(dbservers.length > 0, "no dbservers found");
       const dbserver = dbservers[0];
         
-      require("console").warn("connecting to dbserver", dbserver);
+      require("console").warn("connecting to dbserver", dbserver.name);
       
       let insertData = function() {
-        arango.reconnect(coordinator, "_system", "root", "");
-        let c = db._collection(cn);
-        // require("console").warn("inserting more data");
-        for (let i = 0; i < 250; ++i) {
-          c.insert(docs);
-        }
+        coordinator.toThisInstance(() => {
+          let c = db._collection(cn);
+          // require("console").warn("inserting more data");
+          for (let i = 0; i < 250; ++i) {
+            c.insert(docs);
+          }
+        });
       };
       
       let getRanges = function() {
-        arango.reconnect(dbserver, "_system", "root", "", "haxman");
-        return require("@arangodb/replication").logger.tickRanges().filter(function(r) {
-          return r.status === 'collected';
-        }).map(function(r) {
-          return parseInt(r.datafile.replace(/^.*?(\d+)\.log$/, "$1"));
+        return dbserver.toThisInstance(() => {
+          return require("@arangodb/replication").logger.tickRanges().filter(function(r) {
+            return r.status === 'collected';
+          }).map(function(r) {
+            return parseInt(r.datafile.replace(/^.*?(\d+)\.log$/, "$1"));
+          });
         });
       };
 
       try {
-        arango.reconnect(coordinator, "_system", "root", "");
-        db._drop(cn);
-        db._create(cn, { numberOfShards: dbservers.length }); // we must make sure that we insert data to each db server
-        run(insertData, getRanges);
+        coordinator.toThisInstance(() => {
+          db._drop(cn);
+          db._create(cn, { numberOfShards: dbservers.length }); // we must make sure that we insert data to each db server
+          run(insertData, getRanges);
+        });
       } finally {
-        arango.reconnect(coordinator, "_system", "root", "");
+        IM.reconnectMe();
         db._drop(cn);
       }
     },
