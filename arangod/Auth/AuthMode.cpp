@@ -582,10 +582,7 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
 Result AuthMode::Classic::isAdmin() const {
   auto r = check(auth::perms::UseDatabase{.name = StaticStrings::SystemDatabase,
                                           .level = DatabaseAccessLevel::Write});
-  if (r.ok()) {
-    return {};
-  }
-  return {TRI_ERROR_FORBIDDEN,
+  return r.ok() ?  {} : {TRI_ERROR_FORBIDDEN,
           "Missing RW permissions on _system database for admin purposes!"};
 }
 
