@@ -582,10 +582,10 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
 Result AuthMode::Classic::isAdmin() const {
   auto r = check(auth::perms::UseDatabase{.name = StaticStrings::SystemDatabase,
                                           .level = DatabaseAccessLevel::Write});
-  return r.ok() ? {}
-                : {TRI_ERROR_FORBIDDEN,
-                   "Missing RW permissions on _system database for admin "
-                   "purposes!"};
+  return r.ok() ? Result{}
+                : Result{TRI_ERROR_FORBIDDEN,
+                         "Missing RW permissions on _system database for admin "
+                         "purposes!"};
 }
 
 auto AuthMode::Rbac::username() const noexcept -> std::string_view {
