@@ -447,8 +447,6 @@ void TraversalNode::replaceAttributeAccess(
   if (_condition && self != this) {
     _condition->replaceAttributeAccess(searchVariable, attribute,
                                        replaceVariable);
-    VPackBuilder b;
-    _condition->toVelocyPack(b, true);
   }
 
   if (_postFilterExpression != nullptr) {
@@ -505,51 +503,44 @@ void TraversalNode::replaceAttributeAccess(
 
 /// @brief getVariablesUsedHere
 void TraversalNode::getVariablesUsedHere(VarSet& result) const {
-  //  Gather all nodes together and get
-  //  their respective used variables
-  std::vector<const AstNode*> conditionNodes;
-  if (_condition && _condition->root()) {
-    conditionNodes.push_back(_condition->root());
-  }
-
-  //  Condition nodes
-  auto appendConditions = [&conditionNodes](const auto& conditionNode) {
-    conditionNodes.push_back(conditionNode);
-  };
-  std::for_each(_globalEdgeConditions.begin(), _globalEdgeConditions.end(),
-                appendConditions);
-  std::for_each(_globalVertexConditions.begin(), _globalVertexConditions.end(),
-                appendConditions);
-  std::for_each(_postFilterConditions.begin(), _postFilterConditions.end(),
-                appendConditions);
-
-  if (_fromCondition) {
-    conditionNodes.push_back(_fromCondition);
-  }
-
-  if (_toCondition) {
-    conditionNodes.push_back(_toCondition);
-  }
-
-  //  Expressions
-  if (_pruneExpression && _pruneExpression->node()) {
-    conditionNodes.push_back(_pruneExpression->node());
-  }
-
-  if (_postFilterExpression && _postFilterExpression->node()) {
-    conditionNodes.push_back(_postFilterExpression->node());
-  }
-
-  //  Process all condition nodes
-  for (const auto& conditionNode : conditionNodes) {
+  auto fetchVarsFromNode = [&](const AstNode* node) {
     auto varSet = VarSet{};
-    Ast::getReferencedVariables(conditionNode, varSet);
+    Ast::getReferencedVariables(node, varSet);
     for (auto const& condVar : varSet) {
       if (condVar != vertexOutVariable() && condVar != edgeOutVariable() &&
           condVar != pathOutVariable() && condVar != getTemporaryVariable()) {
         result.emplace(condVar);
       }
     }
+  };
+
+  if (_condition && _condition->root()) {
+    fetchVarsFromNode(_condition->root());
+  }
+
+  //  Condition nodes
+  std::for_each(_globalEdgeConditions.begin(), _globalEdgeConditions.end(),
+                fetchVarsFromNode);
+  std::for_each(_globalVertexConditions.begin(), _globalVertexConditions.end(),
+                fetchVarsFromNode);
+  std::for_each(_postFilterConditions.begin(), _postFilterConditions.end(),
+                fetchVarsFromNode);
+
+  if (_fromCondition) {
+    fetchVarsFromNode(_fromCondition);
+  }
+
+  if (_toCondition) {
+    fetchVarsFromNode(_toCondition);
+  }
+
+  //  Expressions
+  if (_pruneExpression && _pruneExpression->node()) {
+    fetchVarsFromNode(_pruneExpression->node());
+  }
+
+  if (_postFilterExpression && _postFilterExpression->node()) {
+    fetchVarsFromNode(_postFilterExpression->node());
   }
 
   if (usesInVariable()) {
@@ -1373,9 +1364,6 @@ void TraversalNode::setCondition(
   VarSet varsUsedByCondition;
 
   Ast::getReferencedVariables(condition->root(), varsUsedByCondition);
-
-  VPackBuilder b;
-  condition->toVelocyPack(b, true);
 
   for (auto const& oneVar : varsUsedByCondition) {
     if ((_vertexOutVariable == nullptr ||
