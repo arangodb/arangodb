@@ -265,6 +265,14 @@ void VectorIndexBuildManager::scanAndBuild(std::stop_token const& stopToken,
           reportIndexError(vocbase, *coll, vecIdx,
                            Result{TRI_ERROR_QUERY_VECTOR_INDEX_NOT_READY,
                                   std::move(belowThresholdMsg)});
+          // Propagate this shard's state to Current as promptly as a trained
+          // shard (see the success path): otherwise a mixed collection reports
+          // its ready shards long before this one's error, and readers observe
+          // an inconsistent snapshot. reportInCurrent skips the write once the
+          // state is already published, so this does not churn.
+          if (ServerState::instance()->isDBServer()) {
+            _maintenance.addDirty(vocbase.name());
+          }
           continue;
         }
 
