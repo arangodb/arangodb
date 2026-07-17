@@ -1116,24 +1116,23 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
         var cinfo = CI.getCollectionInfo(
             dbn, c[0].name());
         var shard = Object.keys(cinfo.shards)[0];
-        let result = IM.moveShard(dbn, c[0]._id, shard, fromServer, toServer, -1);
-        assertEqual(result.code, 202);
-        let id = result.parsedBody.id;
-        while (queryAgencyJob(result.parsedBody.id).status === "ToDo") { // wait for job to start
+        let id = IM.moveShard(dbn, c[0]._id, shard, fromServer, toServer, -1);
+        assertTrue(id !== false);
+        while (queryAgencyJob(id).status === "ToDo") { // wait for job to start
           wait(isCov ? 0.5 : 0.1);
         }
         assertTrue(maintenanceMode("on"));
-        assertEqual(queryAgencyJob(result.parsedBody.id).status, "Pending");
+        assertEqual(queryAgencyJob(id).status, "Pending");
         assertTrue(cancelAgencyJob(id));
         for (var j = 0; j < c.length; ++j) {
           c[j].drop();
         }
         c = [];
         assertTrue(maintenanceMode("off"));
-        while (queryAgencyJob(result.parsedBody.id).status === "Finish") { // wait for job to finish
+        while (queryAgencyJob(id).status === "Finish") { // wait for job to finish
           wait(isCov ? 2 : 0.1);
         }
-        var job = queryAgencyJob(result.parsedBody.id);
+        var job = queryAgencyJob(id);
         assertEqual(job.status, "Failed");
         assertEqual(job.abort);
         assertTrue(waitForSupervision());
