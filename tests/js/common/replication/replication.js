@@ -1,6 +1,6 @@
 /*jshint globalstrict:false, strict:false */
 /*global assertEqual, assertTrue, assertMatch, assertNotEqual
-  assertUndefined, assertFalse, fail, SYS_IS_V8_BUILD */
+  assertFalse, fail, SYS_IS_V8_BUILD */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
