@@ -30,6 +30,7 @@
 #include "RestServer/EndpointOptionsProvider.h"
 #include "RestServer/FlushOptionsProvider.h"
 #include "RestServer/FortuneOptionsProvider.h"
+#include "RestServer/FrontendOptionsProvider.h"
 #include "RestServer/ServerOptionsProvider.h"
 #include "RestServer/TemporaryStorageOptionsProvider.h"
 #include "RocksDBEngine/RocksDBIndexCacheRefillOptionsProvider.h"
@@ -38,6 +39,10 @@
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Ssl/SslServerEEOptionsProvider.h"
+#endif
+
+#ifdef USE_V8
+#include "RestServer/FrontendOptionsProvider.h"
 #endif
 
 #include <tuple>
@@ -65,6 +70,10 @@ class FeatureOptionProviderContainer final {
 #ifdef USE_ENTERPRISE
              ,
              enterprise::SslServerEEOptionsProvider
+#endif
+#ifdef USE_V8
+             ,
+             FrontendOptionsProvider
 #endif
              >
       _providers{};

@@ -234,6 +234,11 @@ void ArangodServer::addFeaturesWithOptionProvider() {
   addFeature<SslServerFeature>(std::move(sslServerOptions));
 #endif
 
+#ifdef USE_V8
+  auto frontendOptions = _optionProviders.getOptions<FrontendOptionsProvider>();
+  addFeature<FrontendFeature>(std::move(frontendOptions));
+#endif
+
   // Add AuthenticationFeature
   auto authenticationOptions =
       _optionProviders.getOptions<AuthenticationOptionsProvider>();
