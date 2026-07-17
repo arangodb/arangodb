@@ -46,6 +46,10 @@
 #include "RestServer/FrontendOptionsProvider.h"
 #endif
 
+#ifdef TRI_HAVE_GETRLIMIT
+#include "RestServer/FileDescriptorsOptionsProvider.h"
+#endif
+
 #include <tuple>
 
 namespace arangodb::application_features {
@@ -75,6 +79,10 @@ class FeatureOptionProviderContainer final {
 #ifdef USE_V8
              ,
              FrontendOptionsProvider
+#endif
+#ifdef TRI_HAVE_GETRLIMIT
+             ,
+             file_descriptors::FileDescriptorsOptionsProvider
 #endif
              >
       _providers{};

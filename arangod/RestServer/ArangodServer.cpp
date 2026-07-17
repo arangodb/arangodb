@@ -189,9 +189,6 @@ void ArangodServer::addFeatures() {
   addFeature<aql::OptimizerRulesFeature>();
   addFeature<aql::QueryInfoLoggerFeature>();
   addFeature<RocksDBRecoveryManager>(database, database);
-#ifdef TRI_HAVE_GETRLIMIT
-  addFeature<FileDescriptorsFeature>(metrics);
-#endif
 #ifdef ARANGODB_HAVE_FORK
   addFeature<DaemonFeature>();
   addFeature<SupervisorFeature>();
@@ -241,6 +238,14 @@ void ArangodServer::addFeaturesWithOptionProvider() {
 #ifdef USE_V8
   auto frontendOptions = _optionProviders.getOptions<FrontendOptionsProvider>();
   addFeature<FrontendFeature>(std::move(frontendOptions));
+#endif
+
+#ifdef TRI_HAVE_GETRLIMIT
+  auto fileDescriptorsOptions =
+      _optionProviders
+          .getOptions<file_descriptors::FileDescriptorsOptionsProvider>();
+  addFeature<FileDescriptorsFeature>(metrics,
+                                     std::move(fileDescriptorsOptions));
 #endif
 
   // Add AuthenticationFeature
