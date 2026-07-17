@@ -49,6 +49,7 @@ const AM = IM.agencyMgr;
 const numDocuments = 1000;
 
 const dbservers = IM.getInstancesRole(instanceRole.dbserver);
+var moveShardTimeout = (isCov)? 18000 : 600; // seconds
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -443,42 +444,6 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
   }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief move a single shard
-////////////////////////////////////////////////////////////////////////////////
-
-  function moveShard(database, collection, shard, fromServer, toServer, dontwait, expectedResult) {
-    var coord = IM.getInstancesRole(instanceRole.coordinator)[0];
-    var body = {
-      database,
-      collection,
-      shard,
-      fromServer: (typeof(fromServer) === "string") ? fromServer : fromServer.id,
-      toServer: (typeof(toServer) === "string") ? toServer : toServer.id
-    };
-    var result = coord.toThisInstance(() => {
-      return arango.POST_RAW("/_admin/cluster/moveShard", body);
-    });
-    if (result.code !== 202) {
-      print(
-          "Exception for POST /_admin/cluster/moveShard:", result.parsedBody);
-      return false;
-    }
-    print("moveShard job:", JSON.stringify(body));
-    print("result of request:", JSON.stringify(result.parsedBody));
-    if (dontwait) {
-      return result;
-    }
-    // Now wait until the job we triggered is finished:
-    var count = (isCov)? 18000 : 600; // seconds
-    return IM.waitForAgencyJob(
-      result.parsedBody.id,
-      count * 10,
-      "waiting for moveShard to complete",
-      expectedResult);
-  }
-
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief Set supervision mode
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -717,7 +682,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       var cinfo = CI.getCollectionInfo(
           dbn, c[0].name());
       var shard = Object.keys(cinfo.shards)[0];
-      assertTrue(moveShard(dbn, c[0]._id, shard, fromServer, toServer, false, "Finished"));
+      assertTrue(IM.moveShard(dbn, c[0]._id, shard, fromServer, toServer, moveShardTimeout));
       assertTrue(testServerEmpty(fromServer), false);
       assertTrue(waitForSupervision());
       checkCollectionContents();
@@ -735,7 +700,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       var cinfo = CI.getCollectionInfo(
           dbn, c[0].name());
       var shard = Object.keys(cinfo.shards)[0];
-      assertTrue(moveShard(dbn, c[0]._id, shard, fromServer, toServer, false, "Finished"));
+      assertTrue(IM.moveShard(dbn, c[0]._id, shard, fromServer, toServer, moveShardTimeout));
       assertTrue(testServerEmpty(fromServer), false);
       assertTrue(waitForSupervision());
       checkCollectionContents();
@@ -754,7 +719,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       var cinfo = CI.getCollectionInfo(
           dbn, c[1].name());
       var shard = Object.keys(cinfo.shards)[0];
-      assertTrue(moveShard(dbn, c[1]._id, shard, fromServer, toServer, false, "Finished"));
+      assertTrue(IM.moveShard(dbn, c[1]._id, shard, fromServer, toServer, moveShardTimeout));
       assertTrue(testServerEmpty(fromServer, false, 1, 1));
       assertTrue(waitForSupervision());
       checkCollectionContents();
@@ -773,7 +738,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       var cinfo = CI.getCollectionInfo(
           dbn, c[1].name());
       var shard = Object.keys(cinfo.shards)[0];
-      assertTrue(moveShard(dbn, c[1]._id, shard, fromServer, toServer, false, "Finished"));
+      assertTrue(IM.moveShard(dbn, c[1]._id, shard, fromServer, toServer, moveShardTimeout));
       assertTrue(testServerEmpty(fromServer, false, 1, 1));
       assertTrue(waitForSupervision());
       checkCollectionContents();
@@ -792,7 +757,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       var cinfo = CI.getCollectionInfo(
           dbn, c[1].name());
       var shard = Object.keys(cinfo.shards)[0];
-      assertTrue(moveShard(dbn, c[1]._id, shard, fromServer, toServer, false, "Finished"));
+      assertTrue(IM.moveShard(dbn, c[1]._id, shard, fromServer, toServer, moveShardTimeout));
       assertTrue(testServerEmpty(fromServer, false, 1, 1));
       assertTrue(waitForSupervision());
       checkCollectionContents();
@@ -811,7 +776,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       var cinfo = CI.getCollectionInfo(
           dbn, c[1].name());
       var shard = Object.keys(cinfo.shards)[0];
-      assertTrue(moveShard(dbn, c[1]._id, shard, fromServer, toServer, false, "Finished"));
+      assertTrue(IM.moveShard(dbn, c[1]._id, shard, fromServer, toServer, moveShardTimeout));
       assertTrue(testServerEmpty(fromServer, false, 1, 1));
       assertTrue(waitForSupervision());
       checkCollectionContents();
@@ -830,7 +795,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       var cinfo = CI.getCollectionInfo(
           dbn, c[1].name());
       var shard = Object.keys(cinfo.shards)[0];
-      assertTrue(moveShard(dbn, c[1]._id, shard, fromServer, toServer, false, "Finished"));
+      assertTrue(IM.moveShard(dbn, c[1]._id, shard, fromServer, toServer, moveShardTimeout));
       assertTrue(testServerNoLeader(fromServer, 1, 1));
       assertTrue(waitForSupervision());
       checkCollectionContents();
@@ -993,7 +958,8 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
           dbn, c[1].name());
       var shard = Object.keys(cinfo.shards)[0];
       assertTrue(maintenanceMode("on"));
-      assertTrue(moveShard(dbn, c[1]._id, shard, fromServer, toServer, true, "Finished"));
+      let ID = IM.moveShard(dbn, c[1]._id, shard, fromServer, toServer, -1);
+      assertTrue(ID !== false);
       var first = AM.call("transient", [["/arango/Supervision/State"]])[0].arango.Supervision.State, state;
       var waitUntil = new Date().getTime() + 30.0 * 1000;
       while (true) {
@@ -1042,14 +1008,15 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
         var cinfo = CI.getCollectionInfo(
             dbn, c[1].name());
         var shard = Object.keys(cinfo.shards)[0];
-        assertTrue(moveShard(dbn, c[1]._id, shard, fromServerID, toServer, false, "Finished"));
+        assertTrue(IM.moveShard(dbn, c[1]._id, shard, fromServerID, toServer, moveShardTimeout));
         assertTrue(waitForIncompleteMoveShard(dbn, c[1].name(), 3));
         wait(5);   // After 5 seconds the situation should be unchanged!
         assertTrue(waitForIncompleteMoveShard(dbn, c[1].name(), 3));
         // Now we know that the old follower is not in the plan but is in
         // failoverCandidates (and indeed in Current/servers). Let's now
         // try to move the shard back, this ought to be denied:
-        assertTrue(moveShard(dbn, c[1]._id, shard, toServer, fromServerID, false, "Failed"));
+        assertTrue(IM.moveShard(dbn, c[1]._id, shard, toServer, fromServerID,
+                                moveShardTimeout, undefined, undefined, "Failed"));
         IM.debugClearFailAt();
         // Now we should go back to only 3 servers in Current.
         assertTrue(waitForSynchronousReplication(dbn));
@@ -1080,13 +1047,12 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
           dbn, c[1].name());
       var shard = Object.keys(cinfo.shards)[0];
       assertTrue(maintenanceMode("on"));
-      let result = moveShard(dbn, c[1]._id, shard, fromServer, toServer, true, "Finished");
-      assertEqual(result.code, 202);
-      let id = result.parsedBody.id;
+      let id = IM.moveShard(dbn, c[1]._id, shard, fromServer, toServer, -1);
+      assertTrue(id !== false);
       assertTrue(cancelAgencyJob(id));
       assertTrue(maintenanceMode("off"));
       assertTrue(waitForSupervision());
-      var job = queryAgencyJob(result.parsedBody.id);
+      var job = queryAgencyJob(id);
       assertEqual(job.status, "Failed");
       assertEqual(job.abort);
       checkCollectionContents();
@@ -1115,17 +1081,15 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
         var cinfo = CI.getCollectionInfo(
             dbn, c[0].name());
         var shard = Object.keys(cinfo.shards)[0];
-        let result = moveShard(dbn, c[0]._id, shard, fromServer, toServer, true, "Finished");
-        assertEqual(result.code, 202);
-        let id = result.parsedBody.id;
-        while (queryAgencyJob(result.parsedBody.id).status === "ToDo") { // wait for job to start
+        let id = IM.moveShard(dbn, c[0]._id, shard, fromServer, toServer, -1);
+        while (queryAgencyJob(id).status === "ToDo") { // wait for job to start
           wait(isCov ? 1 : 0.1);
         }
         assertTrue(cancelAgencyJob(id));
-        while (queryAgencyJob(result.parsedBody.id).status === "Pending") { // wait for job to be killed
+        while (queryAgencyJob(id).status === "Pending") { // wait for job to be killed
           wait(isCov ? 1 : 0.1);
         }
-        var job = queryAgencyJob(result.parsedBody.id);
+        var job = queryAgencyJob(id);
         assertEqual(job.status, "Failed");
         assertEqual(job.abort);
         assertTrue(waitForSupervision());
@@ -1152,7 +1116,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
         var cinfo = CI.getCollectionInfo(
             dbn, c[0].name());
         var shard = Object.keys(cinfo.shards)[0];
-        let result = moveShard(dbn, c[0]._id, shard, fromServer, toServer, true, "Finished");
+        let result = IM.moveShard(dbn, c[0]._id, shard, fromServer, toServer, -1);
         assertEqual(result.code, 202);
         let id = result.parsedBody.id;
         while (queryAgencyJob(result.parsedBody.id).status === "ToDo") { // wait for job to start

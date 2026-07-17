@@ -43,31 +43,12 @@ function createCollectionWithTwoShardsSameLeaderAndFollower(cn) {
   let follower = IM.getInstanceByID(plan[shards[0]].followers[0]);
   // Make leaders the same:
   if (leader.id !== plan[shards[1]].leader) {
-    let moveShardJob = {
-      database: db._name(),
-      collection: cn,
-      shard: shards[1],
-      fromServer: plan[shards[1]].leader,
-      toServer: leader.id,
-      isLeader: true
-    };
-    let res = arango.POST("/_admin/cluster/moveShard", moveShardJob);
-    let start = internal.time();
-    while (true) {
-      if (internal.time() - start > 120) {
-        assertTrue(false, "timeout waiting for shards being in sync");
-        return;
-      }
-      let res2 = arango.GET(`/_admin/cluster/queryAgencyJob?id=${res.id}`);
-      if (res2.status === "Finished") {
-        break;
-      }
-      internal.wait(1);
-    }
+    IM.moveShard(db._name(), cn, shards[1], plan[shards[1]].leader, leader.id, 120, true);
+
     // Now we have to wait until the Plan has only one follower again, otherwise
     // the second moveShard operation can fail and thus the test would be
     // vulnerable to bad timing (as has been seen on Windows):
-    start = internal.time();
+    let start = internal.time();
     while (true) {
       if (internal.time() - start > 120) {
         assertTrue(false, "timeout waiting for shards being in sync");
@@ -82,27 +63,7 @@ function createCollectionWithTwoShardsSameLeaderAndFollower(cn) {
   }
   // Make followers the same:
   if (follower.id !== plan[shards[1]].followers[0]) {
-    let moveShardJob = {
-      database: db._name(),
-      collection: cn,
-      shard: shards[1],
-      fromServer: plan[shards[1]].followers[0],
-      toServer: follower.id,
-      isLeader: false
-    };
-    let res = arango.POST("/_admin/cluster/moveShard", moveShardJob);
-    let start = internal.time();
-    while (true) {
-      if (internal.time() - start > 120) {
-        assertTrue(false, "timeout waiting for shards being in sync");
-        return;
-      }
-      let res2 = arango.GET(`/_admin/cluster/queryAgencyJob?id=${res.id}`);
-      if (res2.status === "Finished") {
-        break;
-      }
-      internal.wait(1);
-    }
+    IM.moveShard(db._name(), cn, shards[1], plan[shards[1]].followers[0], follower.id, 120, false);
   }
   return { coordinator, leader, follower, shards };
 }
