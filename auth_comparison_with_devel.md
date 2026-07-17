@@ -956,3 +956,184 @@ discrepancy becomes externally observable.
 2. No action required for the rest of `RestDocumentHandler`: the handler
    itself is authorization-free and behaves identically to `devel` in
    every other respect checked.
+
+## `RestMetricsHandler` (`arangod/RestHandler/RestMetricsHandler.cpp`)
+
+Mounted at `GET /_admin/metrics[/v2]` (prefix route, `RestMetricsHandler.h:36-42`
+declares no path suffixes are parsed for authorization purposes). This handler
+returns the Prometheus/VelocyPack metrics payload and has exactly **one**
+authorization check, right at the top of `executeAsync()`; the remainder of
+the handler (parameter parsing, cluster redirection, metrics serialization)
+is unchanged between branches and irrelevant to authorization.
+
+Diffing `arangod/RestHandler/RestMetricsHandler.cpp` against
+`devel:arangod/RestHandler/RestMetricsHandler.cpp` confirms the auth check is
+the *only* behaviourally relevant change; everything else is either
+identical or an unrelated internal refactor (caching
+`metrics::ClusterMetricsFeature&` as a member instead of looking it up via
+`server().getFeature<...>()` at each call site).
+
+`devel` (`devel:arangod/RestHandler/RestMetricsHandler.cpp:91-98`):
+
+```cpp
+auto& security = server().getFeature<ServerSecurityFeature>();
+if (!security.canAccessHardenedApi()) {
+  // don't leak information about server internals here
+  generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
+  co_return;
+}
+```
+
+`ServerSecurityFeature::canAccessHardenedApi()`
+(`devel:arangod/GeneralServer/ServerSecurityFeature.cpp:94-106`):
+
+```cpp
+bool ServerSecurityFeature::canAccessHardenedApi() const noexcept {
+  bool allowAccess = !isRestApiHardened();
+  if (!allowAccess) {
+    ExecContext const& exec = ExecContext::current();
+    if (exec.isAdminUser()) {
+      allowAccess = true;
+    }
+  }
+  return allowAccess;
+}
+```
+
+Current branch (`arangod/RestHandler/RestMetricsHandler.cpp:94-101`):
+
+```cpp
+if (auto r = ExecContext::current().canUseHardenedAction(
+        auth::perms::AdminMonitoring{});
+    r.fail()) {
+  // don't leak information about server internals here
+  generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
+                r.errorMessage());
+  co_return;
+}
+```
+
+`ExecContext::canUseHardenedAction()` (`arangod/Utils/ExecContext.h:147-156`):
+
+```cpp
+Result canUseHardenedAction(auth::perms::AnyAdmin auto action) const {
+  if (!_isRestApiHardened) {
+    return {};
+  }
+  return can(std::move(action));
+}
+```
+
+I traced every branch of both implementations and they are **fully
+equivalent** in `Classic` mode:
+
+- **Hardened-off gate**: `devel`'s `!isRestApiHardened()` and the current
+  branch's `if (!_isRestApiHardened) return {};` both short-circuit to
+  "always allow" when `--server.harden` (default: `false`, same option
+  name/description/default in both branches,
+  `arangod/GeneralServer/ServerSecurityOptionsProvider.cpp:35-39` vs.
+  `devel:arangod/GeneralServer/ServerSecurityFeature.cpp:44-48`) is off.
+  `_isRestApiHardened` is captured once into `ExecContext` at creation time
+  from `securityFeature.isRestApiHardened()`
+  (`arangod/Utils/ExecContext.cpp:113-115`), i.e. the same underlying
+  option as `devel`'s `security.canAccessHardenedApi()` call reads live.
+- **Hardened-on gate — admin check**: `devel`'s `exec.isAdminUser()` is a
+  boolean **precomputed once** at `ExecContext::create()` time
+  (`devel:arangod/Utils/ExecContext.cpp:90-114`):
+  ```cpp
+  dbLvl = sysLvl = um->databaseAuthLevel(user, dbname, false);
+  if (dbname != StaticStrings::SystemDatabase)
+    sysLvl = um->databaseAuthLevel(user, StaticStrings::SystemDatabase, false);
+  isAdminUser = (sysLvl == auth::Level::RW);
+  if (!isAdminUser && ServerState::readOnly()) {
+    isAdminUser = um->databaseAuthLevel(user, StaticStrings::SystemDatabase,
+                                        true) == auth::Level::RW;
+  }
+  ```
+  I worked through all four combinations of {server read-only mode on/off}
+  × {raw configured `_system` level RW or not} and confirmed this
+  simplifies, in every case, to exactly:
+  `isAdminUser == (databaseAuthLevel(user, "_system", /*configured=*/true) == RW)`
+  — i.e. "does the user have a **raw, configured** `RW` grant on `_system`,
+  ignoring server-wide read-only mode entirely" (the two-step dance exists
+  only to make that true regardless of whether the server happens to be
+  read-only right now).
+  The current branch's `can(AdminMonitoring{})` →
+  `AuthMode::Classic::check()` dispatches `AdminMonitoring` (one of the
+  `auth::perms::AnyAdmin` alternatives, `arangod/Auth/Permissions.h:85,112,122`)
+  through the generic case (`arangod/Auth/AuthMode.cpp:366-367`):
+  ```cpp
+  [&](p::AnyAdmin auto const&) -> Result { return isAdmin(); },
+  ```
+  and `isAdmin()` (`arangod/Auth/AuthMode.cpp:574-577`) is
+  `check(UseDatabase{_system, Write})`, whose `UseDatabase` branch
+  (`arangod/Auth/AuthMode.cpp:157-174`) computes
+  `effectiveDatabaseAuthLevel(_system)` via
+  `_userManager.databaseAuthLevel(username(), _system, /*configured=*/true)`
+  (`arangod/Auth/AuthMode.cpp:104-106`) — **exactly** the same raw,
+  configured, read-only-mode-*ignoring* level check `devel` ultimately
+  reduces to. Crucially, this check is reached via `can()` directly, i.e.
+  it does **not** go through any of the `ExecContext` wrapper methods
+  (`canUseDatabase`, `canUseCollection`, ...) that were shown in the
+  `RestDocumentHandler` section (Finding 1 there) to have an extra,
+  unconditional `ServerState::readOnly()` short-circuit — so
+  `RestMetricsHandler` is **not** affected by that regression: admin
+  status for the hardened-API gate is correctly computed from the raw
+  grant in both branches, independent of read-only mode, exactly as
+  `devel` does.
+- **Auth-disabled case**: with authentication fully disabled, `devel`'s
+  `isAdminUser` defaults to `true` unconditionally
+  (`devel:arangod/Utils/ExecContext.cpp:92,110`, the whole
+  `af->isActive()` block is skipped). The current branch's
+  `AuthMode::Disabled::check()` (`arangod/Auth/AuthMode.cpp:659-661`)
+  likewise returns `{}` (success) for *any* permission unconditionally.
+  Same result: hardened mode is a no-op when auth is disabled, in both
+  branches.
+
+So, for every combination of {`--server.harden` on/off} × {admin/non-admin
+user} × {read-only mode on/off} × {auth enabled/disabled}, the **ALLOW/DENY
+decision of `RestMetricsHandler` in `Classic` mode is identical to
+`devel`**. This is also independently confirmed by the pre-existing
+expectation table in `tests/api/apitests/server.mjs:100-110`, which
+documents exactly this behaviour (`canUseHard(Monitoring)`:
+`--server.harden=false` → all authenticated users pass;
+`--server.harden=true` → only `RW` on `_system` passes).
+
+### Finding 1 (Cosmetic, but arguably undermines the code's own stated intent): error message text differs, in the hardened-and-denied case
+
+The only observable difference is the response body's error *message*
+(never the `errorNum`/HTTP status, which stay `TRI_ERROR_FORBIDDEN`/403 in
+both branches):
+
+- `devel` calls `generateError(FORBIDDEN, TRI_ERROR_FORBIDDEN)` with no
+  message argument at all, producing the generic, static "forbidden"
+  message — deliberately, per the adjacent comment "don't leak information
+  about server internals here".
+- The current branch keeps the identical comment, but then passes
+  `r.errorMessage()` as the third argument to `generateError`
+  (`arangod/RestHandler/RestMetricsHandler.cpp:98-99`). Since `isAdmin()`
+  fails via the `UseDatabase` branch of `AuthMode::Classic::check()`, that
+  message is `"insufficient database access level for '_system'"`
+  (`arangod/Auth/AuthMode.cpp:171-173`) — which mildly contradicts the very
+  comment sitting right above it, by revealing that the admin gate is
+  implemented as a check against the `_system` database specifically. This
+  is a minor internal-detail disclosure (not a security-relevant one — any
+  operator/reader of the documentation already knows "admin" means "`RW`
+  on `_system`" in `Classic` mode), not a change in the ALLOW/DENY outcome,
+  and is consistent with the "Cosmetic" category used throughout this
+  document.
+
+### Summary for `RestMetricsHandler`
+
+| Route | Verdict |
+|---|---|
+| `GET /_admin/metrics[/v2]` (all parameter combinations: `serverId`, `type`, `mode`) | Identical to `devel` in every combination of harden on/off, admin/non-admin, read-only mode, auth disabled checked; **not** affected by the read-only-mode `ExecContext` regression found for `RestDocumentHandler`, since the admin check bypasses those wrapper methods entirely. Only the exact wording of the `403` error message differs when `--server.harden=true` and access is denied (Finding 1, cosmetic) |
+
+**Action items / recommendations:**
+1. No functional action required. Optionally, for defense-in-depth /
+   message-parity with `devel` and the handler's own stated intent, drop
+   the `r.errorMessage()` argument from the `generateError(...)` call in
+   `RestMetricsHandler::executeAsync()` (or replace it with a fixed,
+   non-revealing string) so the "don't leak information about server
+   internals here" comment is actually honored, matching `devel`'s
+   behaviour exactly.
