@@ -62,10 +62,11 @@ function optimizerIndexOnlyPrimaryTestSuite () {
       queries.forEach(function(query) {
         let plan = db._createStatement({query: query, bindVars:  {}, options:  disableSingleDocOp}).explain().plan;
         let nodes = plan.nodes.filter(function(n) { return n.type === 'IndexNode'; });
-        assertEqual(1, nodes.length);
-        assertEqual(normalize([]), normalize(nodes[0].projections), query);
-        assertTrue(nodes[0].producesResult);
-        assertFalse(nodes[0].indexCoversProjections);
+        let msg = `${query} => ${nodes.length} ${JSON.stringify(nodes)}`;
+        assertEqual(1, nodes.length, msg);
+        assertEqual(normalize([]), normalize(nodes[0].projections), query, msg);
+        assertTrue(nodes[0].producesResult, msg);
+        assertFalse(nodes[0].indexCoversProjections, msg);
       });
     },
 
@@ -83,9 +84,10 @@ function optimizerIndexOnlyPrimaryTestSuite () {
       queries.forEach(function(query) { 
         let plan = db._createStatement({query: query[0], bindVars:  {}, options:  disableSingleDocOp}).explain().plan;
         let nodes = plan.nodes.filter(function(n) { return n.type === 'IndexNode'; });
-        assertEqual(1, nodes.length);
-        assertEqual(normalize(query[1]), normalize(nodes[0].projections), query);
-        assertFalse(nodes[0].indexCoversProjections);
+        let msg = `${query} => ${nodes.length} ${JSON.stringify(nodes)}`;
+        assertEqual(1, nodes.length, msg);
+        assertEqual(normalize(query[1]), normalize(nodes[0].projections), query, msg);
+        assertFalse(nodes[0].indexCoversProjections, msg);
       });
     },
     
@@ -150,10 +152,11 @@ function optimizerIndexOnlyEdgeTestSuite () {
       queries.forEach(function(query) {
         let plan = db._createStatement(query).explain().plan;
         let nodes = plan.nodes.filter(function(n) { return n.type === 'IndexNode'; });
-        assertEqual(1, nodes.length);
-        assertEqual(normalize([]), normalize(nodes[0].projections), query);
-        assertFalse(nodes[0].producesResult);
-        assertFalse(nodes[0].indexCoversProjections);
+        let msg = `${query} => ${nodes.length} ${JSON.stringify(nodes)}`;
+        assertEqual(1, nodes.length, msg);
+        assertEqual(normalize([]), normalize(nodes[0].projections), query, msg);
+        assertFalse(nodes[0].producesResult, msg);
+        assertFalse(nodes[0].indexCoversProjections, msg);
       });
 
       queries = [
@@ -169,10 +172,11 @@ function optimizerIndexOnlyEdgeTestSuite () {
       queries.forEach(function(query) {
         let plan = db._createStatement(query).explain().plan;
         let nodes = plan.nodes.filter(function(n) { return n.type === 'IndexNode'; });
-        assertEqual(1, nodes.length);
-        assertEqual(normalize([]), normalize(nodes[0].projections), query);
-        assertTrue(nodes[0].producesResult);
-        assertFalse(nodes[0].indexCoversProjections);
+        let msg = `${query} => ${nodes.length} ${JSON.stringify(nodes)}`;
+        assertEqual(1, nodes.length, msg);
+        assertEqual(normalize([]), normalize(nodes[0].projections), query, msg);
+        assertTrue(nodes[0].producesResult, msg);
+        assertFalse(nodes[0].indexCoversProjections, msg);
       });
     },
 
@@ -200,15 +204,16 @@ function optimizerIndexOnlyEdgeTestSuite () {
         let nodes = plan.nodes.filter(function (n) {
           return n.type === 'IndexNode' || n.type === "MaterializeNode";
         });
+        let msg = `${query} => ${nodes.length} ${idx} ${JSON.stringify(nodes)}`;
         if (expectLateMaterialize) {
-          assertEqual(2, nodes.length, idx);
-          assertEqual(normalize([]), normalize(nodes[0].projections), query);
-          assertEqual(normalize(projections), normalize(nodes[1].projections), query);
-          assertFalse(nodes[0].isLateMaterialize, idx);
+          assertEqual(2, nodes.length, msg);
+          assertEqual(normalize([]), normalize(nodes[0].projections), msg);
+          assertEqual(normalize(projections), normalize(nodes[1].projections), msg);
+          assertFalse(nodes[0].isLateMaterialize, msg);
         } else {
-          assertEqual(1, nodes.length, idx);
-          assertEqual(normalize(projections), normalize(nodes[0].projections), query);
-          assertFalse(nodes[0].indexCoversProjections, idx);
+          assertEqual(1, nodes.length, msg);
+          assertEqual(normalize(projections), normalize(nodes[0].projections), msg);
+          assertFalse(nodes[0].indexCoversProjections, msg);
         }
       });
     },
@@ -225,9 +230,10 @@ function optimizerIndexOnlyEdgeTestSuite () {
       queries.forEach(function(query) { 
         let plan = db._createStatement(query[0]).explain().plan;
         let nodes = plan.nodes.filter(function(n) { return n.type === 'IndexNode'; });
-        assertEqual(1, nodes.length);
-        assertEqual(normalize(query[1]), normalize(nodes[0].projections), query);
-        assertTrue(nodes[0].indexCoversProjections);
+        let msg = `${query} => ${nodes.length} ${JSON.stringify(nodes)}`;
+        assertEqual(1, nodes.length, msg);
+        assertEqual(normalize(query[1]), normalize(nodes[0].projections), msg);
+        assertTrue(nodes[0].indexCoversProjections, msg);
       });
     },
     
@@ -317,9 +323,10 @@ function optimizerIndexOnlyVPackTestSuite () {
       queries.forEach(function(query) {
         let plan = db._createStatement(query[0]).explain().plan;
         let nodes = plan.nodes.filter(function(n) { return n.type === 'EnumerateCollectionNode'; });
-        assertEqual(1, nodes.length);
-        assertEqual(normalize(query[1]), normalize(nodes[0].projections));
-        assertTrue(nodes[0].producesResult);
+        let msg = `${query} => ${nodes.length} ${JSON.stringify(nodes)}`;
+        assertEqual(1, nodes.length, msg);
+        assertEqual(normalize(query[1]), normalize(nodes[0].projections, msg));
+        assertTrue(nodes[0].producesResult, msg);
       });
     },
     
@@ -360,15 +367,16 @@ function optimizerIndexOnlyVPackTestSuite () {
         let nodes = plan.nodes.filter(function (n) {
           return n.type === 'IndexNode' || n.type === "MaterializeNode";
         });
+        let msg = `${query} => ${nodes.length} ${JSON.stringify(nodes)}`;
         if (expectLateMaterialized) {
-          assertEqual(2, nodes.length);
-          assertEqual([], normalize(nodes[0].projections));
-          assertEqual(normalize(query[1]), normalize(nodes[1].projections));
-          assertFalse(nodes[0].isLateMaterialize);
+          assertEqual(2, nodes.length, msg);
+          assertEqual([], normalize(nodes[0].projections), msg);
+          assertEqual(normalize(query[1]), normalize(nodes[1].projections), msg);
+          assertFalse(nodes[0].isLateMaterialize, msg);
         } else {
-          assertEqual(1, nodes.length);
-          assertEqual(normalize(query[1]), normalize(nodes[0].projections));
-          assertFalse(nodes[0].indexCoversFilterProjections);
+          assertEqual(1, nodes.length, msg);
+          assertEqual(normalize(query[1]), normalize(nodes[0].projections), msg);
+          assertFalse(nodes[0].indexCoversFilterProjections, msg);
         }
       });
     },
@@ -434,9 +442,10 @@ function optimizerIndexOnlyVPackTestSuite () {
       queries.forEach(function(query) {
         let plan = db._createStatement(query[0]).explain().plan;
         let nodes = plan.nodes.filter(function(n) { return n.type === 'IndexNode'; });
-        assertEqual(1, nodes.length);
-        assertEqual(normalize(query[1]), normalize(nodes[0].projections), query);
-        assertTrue(nodes[0].indexCoversProjections);
+        let msg = `${query} => ${nodes.length} ${JSON.stringify(nodes)}`;
+        assertEqual(1, nodes.length, msg);
+        assertEqual(normalize(query[1]), normalize(nodes[0].projections), query, msg);
+        assertTrue(nodes[0].indexCoversProjections, msg);
       });
     },
 
@@ -459,9 +468,10 @@ function optimizerIndexOnlyVPackTestSuite () {
       queries.forEach(function(query) {
         let plan = db._createStatement(query[0]).explain().plan;
         let nodes = plan.nodes.filter(function(n) { return n.type === 'IndexNode'; });
-        assertEqual(1, nodes.length);
-        assertEqual(normalize(query[1]), normalize(nodes[0].projections), query);
-        assertTrue(nodes[0].indexCoversProjections);
+        let msg = `${query} => ${nodes.length} ${JSON.stringify(nodes)}`;
+        assertEqual(1, nodes.length, msg);
+        assertEqual(normalize(query[1]), normalize(nodes[0].projections), query, msg);
+        assertTrue(nodes[0].indexCoversProjections, msg);
       });
     }
 
