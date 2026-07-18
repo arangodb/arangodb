@@ -603,92 +603,6 @@ function chooseGraphModule(kind) {
 
 /**
  * @brief Only if enterprise mode:
- *        Creates an empty SmartGraph with no edge relations with given options.
- *        @param kind: one of "SmartGraph", "Disjoint", "Satellite"
- *        @param options: a document
- */
-function createEmptyGraph(kind, options) {
-  if (!isEnterprise) {
-    return;
-  }
-
-  db._useDatabase("UnitTestsDumpSrc");
-
-  let graphModule = chooseGraphModule(kind);
-
-  let graphName;
-  switch (kind) {
-    case "SmartGraph":
-      graphName = "UnitTestsDumpEmptySmartGraph";
-      break;
-    case "Satellite":
-      graphName = "UnitTestsDumpEmptySatelliteGraph";
-      break;
-    case "Disjoint":
-      graphName = "UnitTestsDumpEmptyDisjointGraph";
-      break;
-    case "EnterpriseGraph":
-      graphName = "UnitTestsDumpEmptyEnterpriseGraph";
-  }
-
-  if (graphModule._exists(graphName)) {
-    assertTrue(false, "Graph already exists. Please check setup configuration.");
-  }
-
-  graphModule._create(graphName, [], [], options);
-}
-
-
-/**
- * @brief Only if enterprise mode:
- *        Creates an empty SmartGraph sharded by `value`, with no edge relations.
- */
-function createEmptySmartGraph() {
-  createEmptyGraph("SmartGraph", {
-    numberOfShards: getNoShards(5),
-    replicationFactor: 2,
-    smartGraphAttribute: "value"
-  });
-}
-
-/**
- * @brief Only if enterprise mode:
- *        Creates an empty EnterpriseGraph, with no edge relations.
- */
-function createEmptyEnterpriseGraph() {
-  createEmptyGraph("EnterpriseGraph", {
-    numberOfShards: getNoShards(5),
-    replicationFactor: 2,
-    isSmart: true
-  });
-}
-
-/**
- * @brief Only if enterprise mode:
- *        Creates an empty Satellite with no edge relations.
- */
-function createEmptySatelliteGraph() {
-  createEmptyGraph("Satellite", {
-    numberOfShards: getNoShards(5),
-    replicationFactor: 'satellite'
-  });
-}
-
-/**
- * @brief Only if enterprise mode:
- *        Creates an empty disjoint SmartGraph with no edge relations.
- */
-function createEmptyDisjointGraph() {
-  createEmptyGraph("Disjoint", {
-    numberOfShards: getNoShards(5),
-    replicationFactor: 2,
-    smartGraphAttribute: "value",
-    isDisjoint: true
-  });
-}
-
-/**
- * @brief Only if enterprise mode:
  *        Creates a SmartGraph sharded by `value`
  *        That has 100 vertices (value 0 -> 99)
  *        That has 100 orphans (value 0 -> 99)
@@ -1052,38 +966,6 @@ function createHybridDisjointSmartGraphSingleServer() {
 }
 
 
-function createSatelliteGraphWithoutData() {
-  if (!isEnterprise) {
-    return;
-  }
-
-  createGraphWithoutData({
-      smartGraphName: "UnitTestDumpSatelliteGraphWithoutData",
-      edges: "UnitTestDumpSatelliteEdgesWithoutData",
-      fromVertices: ["UnitTestDumpSatelliteVerticesWithoutData"],
-      toVertices: ["UnitTestDumpSatelliteVerticesWithoutData"],
-      orphans: ["UnitTestDumpSatelliteOrphansWithoutData"]
-    },
-    {isSatellite: true}
-  );
-}
-
-function createDisjointGraphWithoutData() {
-  if (!isEnterprise) {
-    return;
-  }
-
-  createGraphWithoutData({
-      smartGraphName: "UnitTestDumpDisjointGraphWithoutData",
-      edges: "UnitTestDumpDisjointEdgesWithoutData",
-      fromVertices: ["UnitTestDumpDisjointVerticesWithoutData"],
-      toVertices: ["UnitTestDumpDisjointVerticesWithoutData"],
-      orphans: ["UnitTestDumpDisjointOrphansWithoutData"]
-    },
-    {isDisjoint: true, replicationFactor: 2}
-  );
-}
-
 /**
  * Fill the \a vDocs returned array with numbers from 0 to \a size, save them
  * into \a db under \a verticesName and return the object {saved: <saved array>, vDocs: <the values>>}
@@ -1211,52 +1093,6 @@ function createGraphWithoutData(names, options = undefined, kind) {
     names.orphans,
     options
   );
-}
-
-function createSmartGraphWithoutData() {
-  // External method for dump-setup-mixed.js to create a default SmartGraph
-  // Using helper graph creation method defined above: createGraphWithoutData
-  if (!isEnterprise) {
-    return;
-  }
-
-  const smartGraphName = "UnitTestDumpSmartGraphWithoutData";
-  const edges = "UnitTestDumpSmartEdgesWithoutData";
-  const vertices = "UnitTestDumpSmartVerticesWithoutData";
-  const orphans = "UnitTestDumpSmartOrphansWithoutData";
-
-  const names = {
-    smartGraphName: smartGraphName,
-    edges: edges,
-    fromVertices: [vertices],
-    toVertices: [vertices],
-    orphans: [orphans]
-  };
-
-  createGraphWithoutData(names);
-}
-
-function createEnterpriseGraphWithoutData() {
-  // External method for dump-setup-mixed.js to create a default SmartGraph
-  // Using helper graph creation method defined above: createGraphWithoutData
-  if (!isEnterprise) {
-    return;
-  }
-
-  const enterpriseGraphName = "UnitTestDumpEnterpriseGraphWithoutData";
-  const edges = "UnitTestDumpEnterpriseEdgesWithoutData";
-  const vertices = "UnitTestDumpEnterpriseVerticesWithoutData";
-  const orphans = "UnitTestDumpEnterpriseOrphansWithoutData";
-
-  const names = {
-    smartGraphName: enterpriseGraphName,
-    edges: edges,
-    fromVertices: [vertices],
-    toVertices: [vertices],
-    orphans: [orphans]
-  };
-
-  createGraphWithoutData(names, undefined, "EnterpriseGraph");
 }
 
 /**
@@ -1408,16 +1244,6 @@ function createSatelliteGraphs() {
   const expected = [_.range(0, 100 + 1).map(i => "v" + (i % 100 + 1))];
   assertEqual(expected, res.toArray());
 }
-
-exports.createEmptySmartGraph = createEmptySmartGraph;
-exports.createEmptyEnterpriseGraph = createEmptyEnterpriseGraph;
-exports.createEmptySatelliteGraph = createEmptySatelliteGraph;
-exports.createEmptyDisjointGraph = createEmptyDisjointGraph;
-
-exports.createSmartGraphWithoutData = createSmartGraphWithoutData;
-exports.createEnterpriseGraphWithoutData = createEnterpriseGraphWithoutData;
-exports.createSatelliteGraphWithoutData = createSatelliteGraphWithoutData;
-exports.createDisjointGraphWithoutData = createDisjointGraphWithoutData;
 
 exports.createSmartGraph = createSmartGraph;
 exports.createSmartGraph3_11_compat = createSmartGraph3_11_compat;

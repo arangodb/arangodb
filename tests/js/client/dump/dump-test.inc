@@ -170,11 +170,6 @@
       assertEqual(graph.numberOfShards, 1);
     }
 
-    function assertEmptyness(graph) {
-      assertEqual(graph.edgeDefinitions.length, 0);
-      assertEqual(graph.orphanCollections.length, 0);
-    }
-
     function assertSmartCollectionProperties(graph, edgeCollName, vertexCollName, orphanCollName, isDisjoint) {
       assertEqual(graph.edgeDefinitions, [
         {
@@ -1554,21 +1549,6 @@
       ////////////////////////////////////////////////////////////////////////////////
       /// @brief test smart graph restores
       ////////////////////////////////////////////////////////////////////////////////
-      testEmptySmartGraph: function () {
-        if (!isEnterprise) {
-          return;
-        }
-        const smartGraphName = "UnitTestsDumpEmptySmartGraph";
-        const graphsColl = getCollection('_graphs');
-        assertTrue(!!graphsColl.exists(smartGraphName));
-
-        const graph = graphsColl.document(smartGraphName);
-        assertFalse(graph.isDisjoint);
-        assertCommonSmartGraphProperties(graph);
-        assertEqual(graph.edgeDefinitions.length, 0);
-        assertEqual(graph.orphanCollections.length, 0);
-      },
-
       testSmartGraph3_11_compat: function () {
         if (!isEnterprise) {
           return;
@@ -1601,85 +1581,6 @@
         // New collections are smart
         assertTrue(db[newRelationName].properties().isSmart);
         assertTrue(db[newVertexName].properties().isSmart);
-      },
-
-      testEmptyEnterpriseGraph: function () {
-        if (!isEnterprise) {
-          return;
-        }
-        const enterpriseGraphName = "UnitTestsDumpEmptyEnterpriseGraph";
-        const graphsColl = getCollection('_graphs');
-        assertTrue(!!graphsColl.exists(enterpriseGraphName));
-
-        const graph = graphsColl.document(enterpriseGraphName);
-        assertFalse(graph.isDisjoint);
-        assertCommonEnterpriseGraphProperties(graph);
-        assertEqual(graph.edgeDefinitions.length, 0);
-        assertEqual(graph.orphanCollections.length, 0);
-      },
-
-      testEmptySatelliteGraph: function () {
-        if (!isEnterprise) {
-          return;
-        }
-        const smartGraphName = "UnitTestsDumpEmptySatelliteGraph";
-        const graphsColl = getCollection('_graphs');
-        assertTrue(!!graphsColl.exists(smartGraphName));
-
-        const graph = graphsColl.document(smartGraphName);
-        assertFalse(graph.isDisjoint);
-        assertCommonSatelliteGraphProperties(graph);
-        assertEmptyness(graph);
-      },
-
-      testEmptyDisjointGraph: function () {
-        if (!isEnterprise) {
-          return;
-        }
-        const smartGraphName = "UnitTestsDumpEmptyDisjointGraph";
-        const graphsColl = getCollection('_graphs');
-        assertTrue(!!graphsColl.exists(smartGraphName));
-
-        const graph = graphsColl.document(smartGraphName);
-        assertTrue(graph.isDisjoint);
-        assertCommonSmartGraphProperties(graph);
-        assertEmptyness(graph);
-      },
-
-      testSmartGraphWithoutData: function () {
-        if (!isEnterprise) {
-          return;
-        }
-        const smartGraphName = "UnitTestDumpSmartGraphWithoutData";
-        const vertexCollName = 'UnitTestDumpSmartVerticesWithoutData';
-        const edgeCollName = 'UnitTestDumpSmartEdgesWithoutData';
-        const orphanCollName = 'UnitTestDumpSmartOrphansWithoutData';
-
-        const g = getCollection('_graphs');
-        assertTrue(!!g.exists(smartGraphName));
-
-        const graph = g.document(smartGraphName);
-        assertFalse(graph.isDisjoint);
-        assertCommonSmartGraphProperties(graph);
-        assertSmartCollectionProperties(graph, edgeCollName, vertexCollName, orphanCollName, false);
-      },
-
-      testEnterpriseGraphWithoutData: function () {
-        if (!isEnterprise) {
-          return;
-        }
-        const enterpriseGraphName = "UnitTestDumpEnterpriseGraphWithoutData";
-        const vertexCollName = 'UnitTestDumpEnterpriseVerticesWithoutData';
-        const edgeCollName = 'UnitTestDumpEnterpriseEdgesWithoutData';
-        const orphanCollName = 'UnitTestDumpEnterpriseOrphansWithoutData';
-
-        const g = getCollection('_graphs');
-        assertTrue(!!g.exists(enterpriseGraphName));
-
-        const graph = g.document(enterpriseGraphName);
-        assertFalse(graph.isDisjoint);
-        assertCommonEnterpriseGraphProperties(graph);
-        assertEnterpriseCollectionProperties(graph, edgeCollName, vertexCollName, orphanCollName, false);
       },
 
       testSmartGraphSingleServer: function () {

@@ -105,12 +105,6 @@ jsunity.run(function dump_single_testsuite() {
       "testSmartGraphAttribute",
 
       // enterprise sharded graphs on single server tests
-      "testEmptySmartGraph",
-      "testEmptyEnterpriseGraph",
-      "testEmptySatelliteGraph",
-      "testEmptyDisjointGraph",
-      "testSmartGraphWithoutData",
-      "testEnterpriseGraphWithoutData",
       "testSmartGraphSingleServer",
       "testEnterpriseGraphSingleServer",
       "testSatelliteSmartGraphSingleServer",

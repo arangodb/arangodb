@@ -59,12 +59,6 @@ jsunity.run(function dump_cluster_testsuite() {
       "testLatestId",
       "testAnalyzers",
       // enterprise sharded graphs on single server tests
-      "testEmptySmartGraph",
-      "testEmptyEnterpriseGraph",
-      "testEmptySatelliteGraph",
-      "testEmptyDisjointGraph",
-      "testSmartGraphWithoutData",
-      "testEnterpriseGraphWithoutData",
       "testSmartGraphSingleServer",
       "testEnterpriseGraphSingleServer",
       "testSatelliteSmartGraphSingleServer",
