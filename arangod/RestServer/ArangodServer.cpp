@@ -74,7 +74,7 @@ void ArangodServer::validateOptions() {
 void ArangodServer::addFeatures(int* ret) {
   // Adding the Phases - these must come first and in this order
   addFeature<AgencyFeaturePhase>();
-  auto& comm = addFeature<CommunicationFeaturePhase>();
+  addFeature<CommunicationFeaturePhase>();
   addFeature<AqlFeaturePhase>();
   addFeature<BasicFeaturePhaseServer>();
   addFeature<ClusterFeaturePhase>();
@@ -100,7 +100,6 @@ void ArangodServer::addFeatures(int* ret) {
   addFeature<metrics::ClusterMetricsFeature>();
   addFeature<VersionFeature>();
   addFeature<ActionFeature>();
-  addFeature<AgencyFeature>();
   addFeature<ApiRecordingFeature>(_dataSourceRegistry, metrics);
   addFeature<AqlFeature>();
   addFeature<async_registry::Feature>(_dataSourceRegistry);
@@ -115,27 +114,18 @@ void ArangodServer::addFeatures(int* ret) {
   auto& sharedPRNGFeature = addFeature<SharedPRNGFeature>();
   addFeature<CacheManagerFeature>(cacheOptions, sharedPRNGFeature.getPRNG());
   addFeature<CheckVersionFeature>(ret, kNonServerFeatures);
-  auto& clusterFeature = addFeature<ClusterFeature>(metrics);
   addFeature<CrashHandlerFeature>(_dumpManager);
   auto& database = addFeature<DatabaseFeature>();
-  auto& clusterUpgradeFeature = addFeature<ClusterUpgradeFeature>(database);
   addFeature<ConfigFeature>(std::string{_binaryName});
 #ifdef USE_V8
   addFeature<ConsoleFeature>();
-  auto& v8DealerFeature = addFeature<V8DealerFeature>(metrics);
+  addFeature<V8DealerFeature>(metrics);
   addFeature<V8PlatformFeature>();
   addFeature<V8SecurityFeature>(AllowListStrictness::STRICT);
 #endif
   addFeature<CpuUsageFeature>();
   addFeature<HttpEndpointProvider, EndpointFeature>();
   auto& systemDatabaseFeature = addFeature<SystemDatabaseFeature>();
-  addFeature<BootstrapFeature>(clusterFeature, database, &systemDatabaseFeature,
-                               &clusterUpgradeFeature
-#ifdef USE_V8
-                               ,
-                               &v8DealerFeature
-#endif
-  );
   addFeature<EnvironmentFeature>();
   addFeature<FileSystemFeature>();
 #ifdef USE_V8
@@ -151,19 +141,14 @@ void ArangodServer::addFeatures(int* ret) {
   addFeature<LockfileFeature>();
   addFeature<LogBufferFeature>(metrics);
   addFeature<LoggerFeature>(true);
-  addFeature<MaintenanceFeature>(&clusterFeature);
   addFeature<MaxMapCountFeature>();
   auto& networkFeature =
       addFeature<NetworkFeature>(metrics, network::ConnectionPool::Config{});
   addFeature<NonceFeature>();
   addFeature<OptionsCheckFeature>();
-  addFeature<PrivilegeFeature>();
   addFeature<QueryRegistryFeature>(metrics);
   addFeature<RandomFeature>();
-  addFeature<ReplicationFeature>(comm, metrics);
-  addFeature<ReplicatedLogFeature>();
   addFeature<ReplicationMetricsFeature>(metrics);
-  addFeature<ReplicationTimeoutFeature>();
   auto& scheduler =
       addFeature<SchedulerFeature>(metrics, sharedPRNGFeature.getPRNG());
   addFeature<VectorIndexFeature>(database);
@@ -187,11 +172,8 @@ void ArangodServer::addFeatures(int* ret) {
 #endif
   addFeature<SoftShutdownFeature>();
   addFeature<SslFeature>();
-  addFeature<StatisticsFeature>(metrics);
   addFeature<TempFeature>(std::string{_binaryName});
-  addFeature<TtlFeature>();
   addFeature<UpgradeFeature>(ret, kNonServerFeatures);
-  addFeature<transaction::ManagerFeature>(metrics);
   addFeature<ViewTypesFeature>();
   auto& aqlFunctionFeature = addFeature<aql::AqlFunctionFeature>();
   addFeature<aql::OptimizerRulesFeature>();
@@ -219,7 +201,8 @@ void ArangodServer::addFeatures(int* ret) {
           .databaseFeature = database,
           .systemDatabase = systemDatabaseFeature,
           .networkFeature = &networkFeature,
-          .clusterFeature = &clusterFeature,
+          .clusterFeature =
+              LazyApplicationFeatureReference<ClusterFeature>(*this),
           .schedulerFeature = &scheduler,
           .aqlFunctionFeature = &aqlFunctionFeature,
       });
@@ -234,8 +217,80 @@ void ArangodServer::addFeaturesWithOptionProvider() {
   auto& scheduler = getFeature<SchedulerFeature>();
   auto& rocksdbRecovery = getFeature<RocksDBRecoveryManager>();
   auto& cacheManager = getFeature<CacheManagerFeature>();
-  auto& agency = getFeature<AgencyFeature>();
-  auto& clusterFeature = getFeature<ClusterFeature>();
+  auto& systemDatabaseFeature = getFeature<SystemDatabaseFeature>();
+#ifdef USE_V8
+  auto& v8DealerFeature = getFeature<V8DealerFeature>();
+#endif
+
+  // Add AgencyFeature
+  auto agencyOptions = _optionProviders.getOptions<AgencyOptionsProvider>();
+  auto& agency = addFeature<AgencyFeature>(std::move(agencyOptions));
+
+  // Add ClusterFeature
+  auto clusterOptions = _optionProviders.getOptions<ClusterOptionsProvider>();
+  auto& clusterFeature =
+      addFeature<ClusterFeature>(metrics, std::move(clusterOptions));
+
+  // Add MaintenanceFeature
+  auto maintenanceOptions =
+      _optionProviders.getOptions<MaintenanceOptionsProvider>();
+  addFeature<MaintenanceFeature>(&clusterFeature,
+                                 std::move(maintenanceOptions));
+
+  // Add ClusterUpgradeFeature
+  // (must come after ClusterFeature: relies on ServerState's role already
+  // being set by ClusterFeature's constructor)
+  auto clusterUpgradeOptions =
+      _optionProviders.getOptions<upgrade::ClusterUpgradeOptionsProvider>();
+  auto& clusterUpgradeFeature = addFeature<ClusterUpgradeFeature>(
+      database, std::move(clusterUpgradeOptions));
+
+  // Add BootstrapFeature
+  auto bootstrapOptions =
+      _optionProviders.getOptions<bootstrap::BootstrapOptionsProvider>();
+  addFeature<BootstrapFeature>(clusterFeature, database, &systemDatabaseFeature,
+                               &clusterUpgradeFeature
+#ifdef USE_V8
+                               ,
+                               &v8DealerFeature
+#endif
+                               ,
+                               std::move(bootstrapOptions));
+
+  // Add ReplicationTimeoutFeature
+  auto replicationTimeoutOptions =
+      _optionProviders.getOptions<ReplicationTimeoutOptionsProvider>();
+  addFeature<ReplicationTimeoutFeature>(std::move(replicationTimeoutOptions));
+
+  // Add ReplicationFeature
+  auto& comm = getFeature<CommunicationFeaturePhase>();
+  auto replicationOptions =
+      _optionProviders.getOptions<ReplicationOptionsProvider>();
+  addFeature<ReplicationFeature>(comm, metrics, std::move(replicationOptions));
+
+  // Add ReplicatedLogFeature
+  auto replicatedLogOptions =
+      _optionProviders.getOptions<replication2::ReplicatedLogOptionsProvider>();
+  addFeature<ReplicatedLogFeature>(std::move(replicatedLogOptions));
+
+  // Add TtlFeature
+  auto ttlOptions = _optionProviders.getOptions<TtlOptionsProvider>();
+  addFeature<TtlFeature>(std::move(ttlOptions));
+
+  // Add StatisticsFeature
+  auto statisticsOptions =
+      _optionProviders.getOptions<statistics::StatisticsOptionsProvider>();
+  addFeature<StatisticsFeature>(metrics, std::move(statisticsOptions));
+
+  // Add transaction::ManagerFeature
+  auto managerOptions =
+      _optionProviders.getOptions<transaction::ManagerOptionsProvider>();
+  addFeature<transaction::ManagerFeature>(metrics, std::move(managerOptions));
+
+  // Add PrivilegeFeature
+  auto privilegeOptions =
+      _optionProviders.getOptions<PrivilegeOptionsProvider>();
+  addFeature<PrivilegeFeature>(std::move(privilegeOptions));
 
   // Add RocksDBIndexCacheRefillFeature
   auto rocksdbCacheRefillOptions =

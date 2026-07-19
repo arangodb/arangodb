@@ -20,15 +20,27 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+#include "Agency/AgencyOptionsProvider.h"
+#include "Cluster/ClusterOptionsProvider.h"
+#include "Cluster/ClusterUpgradeOptionsProvider.h"
+#include "Cluster/MaintenanceOptionsProvider.h"
+#include "Cluster/ReplicationTimeoutOptionsProvider.h"
 #include "ProgramOptions/ProgramOptions.h"
+#include "Replication/ReplicationOptionsProvider.h"
+#include "Replication2/ReplicatedLog/ReplicatedLogOptionsProvider.h"
+#include "RestServer/BootstrapOptionsProvider.h"
 #include "RestServer/DatabasePathOptionsProvider.h"
 #include "RestServer/DumpLimitsOptionsProvider.h"
 #include "RestServer/FlushOptionsProvider.h"
 #include "RestServer/FortuneOptionsProvider.h"
+#include "RestServer/PrivilegeOptionsProvider.h"
 #include "RestServer/TemporaryStorageOptionsProvider.h"
+#include "RestServer/TtlOptionsProvider.h"
+#include "RocksDBEngine/RocksDBEngineOptionsProvider.h"
 #include "RocksDBEngine/RocksDBIndexCacheRefillOptionsProvider.h"
 #include "RocksDBEngine/RocksDBOptionFeatureOptionsProvider.h"
-#include "RocksDBEngine/RocksDBEngineOptionsProvider.h"
+#include "Statistics/StatisticsOptionsProvider.h"
+#include "Transaction/ManagerOptionsProvider.h"
 
 #include <tuple>
 
@@ -45,10 +57,16 @@ class FeatureOptionProviderContainer final {
 
  private:
   std::tuple<
+      AgencyOptionsProvider, bootstrap::BootstrapOptionsProvider,
+      ClusterOptionsProvider, upgrade::ClusterUpgradeOptionsProvider,
       DatabasePathOptionsProvider, DumpLimitsOptionsProvider,
       FlushOptionsProvider, fortune::FortuneOptionsProvider,
+      MaintenanceOptionsProvider, replication2::ReplicatedLogOptionsProvider,
+      ReplicationOptionsProvider, ReplicationTimeoutOptionsProvider,
       RocksDBEngineOptionsProvider, RocksDBIndexCacheRefillOptionsProvider,
-      RocksDBOptionFeatureOptionsProvider, TemporaryStorageOptionsProvider>
+      RocksDBOptionFeatureOptionsProvider, PrivilegeOptionsProvider,
+      statistics::StatisticsOptionsProvider, TemporaryStorageOptionsProvider,
+      transaction::ManagerOptionsProvider, TtlOptionsProvider>
       _providers{};
 };
 }  // namespace arangodb::application_features
