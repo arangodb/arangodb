@@ -507,8 +507,11 @@ void TraversalNode::getVariablesUsedHere(VarSet& result) const {
     auto varSet = VarSet{};
     Ast::getReferencedVariables(node, varSet);
     for (auto const& condVar : varSet) {
-      if (condVar != vertexOutVariable() && condVar != edgeOutVariable() &&
-          condVar != pathOutVariable() && condVar != getTemporaryVariable()) {
+      if ((!vertexOutVariable() || condVar != vertexOutVariable()) &&
+          (!edgeOutVariable() || condVar != edgeOutVariable()) &&
+          (!pathOutVariable() || condVar != pathOutVariable()) &&
+          (getTemporaryVariable() && condVar != getTemporaryVariable()) &&
+          !_optimizedOutVariables.contains(condVar->id)) {
         result.emplace(condVar);
       }
     }
