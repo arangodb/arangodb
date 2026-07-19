@@ -27,12 +27,13 @@
 
 namespace arangodb {
 
-struct AgencyOptionsProvider : OptionsProvider<AgencyOptions> {
-  void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
-                      AgencyOptions& options) override;
+struct AgencyOptionsProvider
+    : OptionsProviderImpl<AgencyOptionsProvider, AgencyOptions> {
+  void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                          AgencyOptions& options);
 
-  void validateOptions(std::shared_ptr<options::ProgramOptions> opts,
-                       AgencyOptions& options) override;
+  void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                           AgencyOptions& options);
 };
 
 }  // namespace arangodb

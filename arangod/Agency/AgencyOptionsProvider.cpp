@@ -34,8 +34,8 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-void AgencyOptionsProvider::declareOptions(std::shared_ptr<ProgramOptions> opts,
-                                           AgencyOptions& options) {
+void AgencyOptionsProvider::declareOptionsImpl(
+    std::shared_ptr<ProgramOptions> opts, AgencyOptions& options) {
   opts->addSection("agency", "agency");
 
   opts->addOption("--agency.activate", "Activate the Agency.",
@@ -208,9 +208,13 @@ cluster deployments.)");
                       arangodb::options::Flags::OnAgent));
 }
 
-void AgencyOptionsProvider::validateOptions(
+void AgencyOptionsProvider::validateOptionsImpl(
     std::shared_ptr<ProgramOptions> opts, AgencyOptions& options) {
   auto const& result = opts->processingResult();
+
+  if (result.touched("agency.activate")) {
+    options.activatedTouched = true;
+  }
 
   if (result.touched("agency.size")) {
     if (options.size < 1) {

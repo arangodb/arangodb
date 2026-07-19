@@ -21,7 +21,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AgencyFeature.h"
-#include "AgencyOptionsProvider.h"
 
 #include "Actions/ActionFeature.h"
 #include "Agency/Agent.h"
@@ -68,27 +67,13 @@ AgencyFeature::AgencyFeature(ApplicationServer& server, AgencyOptions options)
 #else
   startsAfter<application_features::ServerFeaturePhase>();
 #endif
-}
 
-AgencyFeature::~AgencyFeature() = default;
-
-void AgencyFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  AgencyOptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
-
-void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
-  ProgramOptions::ProcessingResult const& result = options->processingResult();
-
-  if (!result.touched("agency.activate") || !_options.activated) {
+  if (!_options.activatedTouched || !_options.activated) {
     disable();
     return;
   }
 
   ServerState::instance()->setRole(ServerState::ROLE_AGENT);
-
-  AgencyOptionsProvider provider;
-  provider.validateOptions(options, _options);
 
   if (!_options.agencyMyAddress.empty()) {
     std::string const unified = Endpoint::unifiedForm(_options.agencyMyAddress);
@@ -126,7 +111,7 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
                        ActionFeature>();
 
 #ifdef USE_V8
-  if (!V8DealerFeature::javascriptRequestedViaOptions(options)) {
+  if (!V8DealerFeature::javascriptRequestedViaOptions(server().options())) {
     // specifying --console requires JavaScript, so we can only turn Javascript
     // off if not requested
 
@@ -137,10 +122,13 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 #endif
 }
 
+AgencyFeature::~AgencyFeature() = default;
+
 void AgencyFeature::prepare() {
   TRI_ASSERT(isEnabled());
 
-  // Available after validateOptions of ClusterFeature
+  // Available since ClusterFeature is constructed with already-validated
+  // options by this point.
   // Find the agency prefix:
   auto& feature = server().getFeature<ClusterFeature>();
   if (!feature.agencyPrefix().empty()) {
