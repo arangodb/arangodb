@@ -29,7 +29,7 @@ namespace arangodb::replication2 {
 
 using namespace arangodb::options;
 
-void ReplicatedLogOptionsProvider::declareOptions(
+void ReplicatedLogOptionsProvider::declareOptionsImpl(
     std::shared_ptr<ProgramOptions> opts,
     ReplicatedLogGlobalSettings& options) {
 #if defined(ARANGODB_ENABLE_MAINTAINER_MODE)

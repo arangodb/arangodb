@@ -33,9 +33,12 @@ class ProgramOptions;
 namespace arangodb::replication2 {
 
 struct ReplicatedLogOptionsProvider
-    : OptionsProvider<ReplicatedLogGlobalSettings> {
-  void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
-                      ReplicatedLogGlobalSettings& options) override;
+    : OptionsProviderImpl<ReplicatedLogOptionsProvider,
+                          ReplicatedLogGlobalSettings> {
+  void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                          ReplicatedLogGlobalSettings& options);
+  void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> /*opts*/,
+                           ReplicatedLogGlobalSettings& /*options*/) {}
 };
 
 }  // namespace arangodb::replication2
