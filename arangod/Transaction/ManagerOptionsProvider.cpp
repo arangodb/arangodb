@@ -29,7 +29,7 @@ namespace arangodb::transaction {
 
 using namespace arangodb::options;
 
-void ManagerOptionsProvider::declareOptions(
+void ManagerOptionsProvider::declareOptionsImpl(
     std::shared_ptr<ProgramOptions> options, ManagerFeatureOptions& opts) {
   options->addSection("transaction", "transactions");
 
