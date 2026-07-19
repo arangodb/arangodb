@@ -28,16 +28,18 @@ const {db, errors} = require('@arangodb');
 const lh = require('@arangodb/testutils/replicated-logs-helper');
 const rh = require('@arangodb/testutils/restart-helper');
 const dh = require("@arangodb/testutils/document-state-helper");
-const {getCtrlDBServers} = require('@arangodb/test-helper');
 const isEnterprise = require("internal").isEnterprise();
+let { instanceRole } = require('@arangodb/testutils/instance');
 
 const smartGraphs = isEnterprise ? require('@arangodb/smart-graph') : null;
 const eeGraphs = isEnterprise ? require('@arangodb/enterprise-graph') : null;
 
+const IM = global.instanceManager;
+
 const dbn = 'UnitTestsDatabase';
 
 const waitForServersToBeInCurrent = () => {
-  const dbServers = getCtrlDBServers();
+  const dbServers = IM.getInstancesRole(instanceRole.dbserver);
   lh.waitFor(function () {
     for (const server of dbServers) {
       if (!lh.isDBServerInCurrent(server.id)) {
@@ -84,7 +86,7 @@ const testSuite = (config) => {
   };
 
   const restartServers = () => {
-    const dbServers = getCtrlDBServers();
+    const dbServers = IM.getInstancesRole(instanceRole.dbserver);
 
     enableMaintenanceMode();
     rh.shutdownServers(dbServers);

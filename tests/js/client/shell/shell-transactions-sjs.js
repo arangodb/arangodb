@@ -28,7 +28,6 @@ const internal = require('internal');
 const arangodb = require('@arangodb');
 const db = arangodb.db;
 const testHelper = require('@arangodb/test-helper').helper;
-const {activateFailure} = require('@arangodb/test-helper');
 const isCluster = internal.isCluster();
 let IM = global.instanceManager;
 
@@ -83,7 +82,7 @@ function transactionFailuresSuite () {
     testCommitEmptyTransactionFailure : function () {
       c.insert({ _key: "foobar", value: "baz" });
       assertEqual(1, c.count());
-      activateFailure("TransactionCommitFail");
+      IM.debugSetFailAtNonAgency("TransactionCommitFail");
       try {
         db._executeTransaction({
           collections: {
@@ -110,7 +109,7 @@ function transactionFailuresSuite () {
       c.insert(docs);
       assertEqual(100, c.count());
       
-      activateFailure("TransactionCommitFail");
+      IM.debugSetFailAtNonAgency("TransactionCommitFail");
       try {
         db._executeTransaction({ 
           collections: {
@@ -140,7 +139,7 @@ function transactionFailuresSuite () {
     testCommitTransactionWithFailuresInsideFailure : function () {
       c.insert({ _key: "foobar", value: "baz" });
 
-      activateFailure("TransactionCommitFail");
+      IM.debugSetFailAtNonAgency("TransactionCommitFail");
       try {
         db._executeTransaction({ 
           collections: {

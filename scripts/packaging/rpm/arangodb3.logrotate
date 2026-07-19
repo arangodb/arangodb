@@ -1,0 +1,14 @@
+/var/log/arangodb3/arangod.log {
+     rotate 12
+     weekly
+     compress
+     delaycompress
+     create 640  arangodb arangodb
+     postrotate
+     if rpm -q --quiet systemd ; then
+       systemctl -q is-active arangodb3 && systemctl kill --signal=SIGHUP arangodb3 
+     else
+       /etc/init.d/arangodb3 reload-log > /dev/null
+     fi
+     endscript
+     }

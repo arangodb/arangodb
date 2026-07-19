@@ -30,12 +30,10 @@ const jsunity = require("jsunity");
 const base64Encode = require('internal').base64Encode;
 const db = require("internal").db;
 const request = require("@arangodb/request");
-const url = require('url');
 const userModule = require("@arangodb/users");
 const _ = require("lodash");
-const getCoordinatorEndpoints = require('@arangodb/test-helper').getCoordinatorEndpoints;
-
-const servers = getCoordinatorEndpoints();
+let { instanceRole } = require('@arangodb/testutils/instance');
+const IM = global.instanceManager;
 
 function CursorSyncAuthSuite () {
   'use strict';
@@ -52,7 +50,7 @@ function CursorSyncAuthSuite () {
   ];
   const baseCursorUrl = `/_api/cursor`;
 
-  function sendRequest(auth, method, endpoint, body, usePrimary) {
+  function sendRequest(auth, method, path, body, usePrimary) {
     let res;
     const i = usePrimary ? 0 : 1;
 
@@ -65,11 +63,11 @@ function CursorSyncAuthSuite () {
         },
         json: true,
         method,
-        url: `${coordinators[i]}${endpoint}`
+        url: `${coordinators[i].url}${path}`
       };
       res = request(envelope);
     } catch(err) {
-      console.error(`Exception processing ${method} ${endpoint}`, err.stack);
+      console.error(`Exception processing ${method} ${path}`, err.stack);
       return {};
     }
 
@@ -82,7 +80,7 @@ function CursorSyncAuthSuite () {
 
   return {
     setUp: function() {
-      coordinators = getCoordinatorEndpoints();
+      coordinators = IM.getInstancesRole(instanceRole.coordinator);
       if (coordinators.length < 2) {
         throw new Error('Expecting at least two coordinators');
       }
