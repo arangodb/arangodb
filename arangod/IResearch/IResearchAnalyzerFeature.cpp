@@ -1086,9 +1086,12 @@ IResearchAnalyzerFeature::Dependencies::fromServer(
       .networkFeature = server.hasFeature<NetworkFeature>()
                             ? &server.getFeature<NetworkFeature>()
                             : nullptr,
-      .clusterFeature = server.hasFeature<ClusterFeature>()
-                            ? &server.getFeature<ClusterFeature>()
-                            : nullptr,
+      .clusterFeature = LazyApplicationFeatureReference<ClusterFeature>(
+          [&server]() noexcept -> ClusterFeature* {
+            return server.hasFeature<ClusterFeature>()
+                       ? &server.getFeature<ClusterFeature>()
+                       : nullptr;
+          }),
       .schedulerFeature = server.hasFeature<SchedulerFeature>()
                               ? &server.getFeature<SchedulerFeature>()
                               : nullptr,
@@ -1101,7 +1104,7 @@ IResearchAnalyzerFeature::Dependencies::fromServer(
 IResearchAnalyzerFeature::IResearchAnalyzerFeature(
     application_features::ApplicationServer& server, Dependencies deps)
     : ApplicationFeature{server, *this},
-      _clusterFeature(deps.clusterFeature),
+      _lazyClusterFeatureRef(std::move(deps.clusterFeature)),
       _systemDatabase(deps.systemDatabase),
       _databaseFeature(deps.databaseFeature),
       _networkFeature(deps.networkFeature),
@@ -2474,6 +2477,8 @@ AnalyzersRevision::Ptr IResearchAnalyzerFeature::getAnalyzersRevision(
 }
 
 void IResearchAnalyzerFeature::prepare() {
+  _clusterFeature = std::move(_lazyClusterFeatureRef).get();
+
   if (!isEnabled()) {
     return;
   }
