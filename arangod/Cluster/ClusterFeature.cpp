@@ -21,7 +21,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ClusterFeature.h"
-#include "ClusterOptionsProvider.h"
 
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_io.hpp>
@@ -82,19 +81,10 @@ ClusterFeature::ClusterFeature(ApplicationServer& server,
   setOptional(true);
   startsAfter<application_features::CommunicationFeaturePhase>();
   startsAfter<application_features::DatabaseFeaturePhase>();
-}
 
-ClusterFeature::~ClusterFeature() { shutdown(); }
-
-void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  ClusterOptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
-
-void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
-  if (options->processingResult().touched(
+  if (server.options()->processingResult().touched(
           "cluster.disable-dispatcher-kickstarter") ||
-      options->processingResult().touched(
+      server.options()->processingResult().touched(
           "cluster.disable-dispatcher-frontend")) {
     LOG_TOPIC("33707", FATAL, arangodb::Logger::CLUSTER)
         << "The dispatcher feature isn't available anymore. Use "
@@ -103,9 +93,6 @@ void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
         << "details.";
     FATAL_ERROR_EXIT();
   }
-
-  ClusterOptionsProvider provider;
-  provider.validateOptions(options, _options);
 
   if (!_options.enableCluster) {
     ServerState::instance()->setRole(ServerState::ROLE_SINGLE);
@@ -172,6 +159,8 @@ void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     ServerState::instance()->setRole(_options.requestedRole);
   }
 }
+
+ClusterFeature::~ClusterFeature() { shutdown(); }
 
 void ClusterFeature::reportRole(arangodb::ServerState::RoleEnum role) {
   std::string roleString(ServerState::roleToString(role));

@@ -34,7 +34,7 @@ namespace arangodb {
 
 using namespace arangodb::options;
 
-void ClusterOptionsProvider::declareOptions(
+void ClusterOptionsProvider::declareOptionsImpl(
     std::shared_ptr<ProgramOptions> options, ClusterOptions& opts) {
   options->addSection("cluster", "cluster");
 
@@ -425,7 +425,7 @@ inconsistent.)")
       .setIntroducedIn(31204);
 }
 
-void ClusterOptionsProvider::validateOptions(
+void ClusterOptionsProvider::validateOptionsImpl(
     std::shared_ptr<ProgramOptions> opts, ClusterOptions& options) {
   if (options.forceOneShard) {
     options.maxNumberOfShards = 1;

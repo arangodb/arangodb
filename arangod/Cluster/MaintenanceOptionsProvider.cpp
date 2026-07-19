@@ -22,6 +22,7 @@
 
 #include "Cluster/MaintenanceOptionsProvider.h"
 
+#include "Basics/NumberOfCores.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -32,8 +33,14 @@ namespace arangodb {
 
 using namespace arangodb::options;
 
-void MaintenanceOptionsProvider::declareOptions(
+void MaintenanceOptionsProvider::declareOptionsImpl(
     std::shared_ptr<ProgramOptions> opts, MaintenanceOptions& options) {
+  // Initialize default values that depend on system state
+  options.maintenanceThreadsMax =
+      (std::max)(static_cast<uint32_t>(3),  // minThreadLimit
+                 static_cast<uint32_t>(NumberOfCores::getValue() / 4 + 1));
+  options.maintenanceThreadsSlowMax = options.maintenanceThreadsMax / 2;
+
   opts->addOption(
       "--server.maintenance-threads",
       "The maximum number of threads available for maintenance actions.",
@@ -96,7 +103,7 @@ void MaintenanceOptionsProvider::declareOptions(
           arangodb::options::Flags::Uncommon));
 }
 
-void MaintenanceOptionsProvider::validateOptions(
+void MaintenanceOptionsProvider::validateOptionsImpl(
     std::shared_ptr<ProgramOptions> opts, MaintenanceOptions& options) {
   // There must always be at least 3 maintenance threads.
   // The first one only does actions which are labelled "fast track".
