@@ -503,15 +503,19 @@ void TraversalNode::replaceAttributeAccess(
 
 /// @brief getVariablesUsedHere
 void TraversalNode::getVariablesUsedHere(VarSet& result) const {
+  auto validateVariable = [this](const aql::Variable* var) {
+    return ((!vertexOutVariable() || var != vertexOutVariable()) &&
+            (!edgeOutVariable() || var != edgeOutVariable()) &&
+            (!pathOutVariable() || var != pathOutVariable()) &&
+            (getTemporaryVariable() && var != getTemporaryVariable()) &&
+            !_optimizedOutVariables.contains(var->id));
+  };
+
   auto fetchVarsFromNode = [&](const AstNode* node) {
     auto varSet = VarSet{};
     Ast::getReferencedVariables(node, varSet);
     for (auto const& condVar : varSet) {
-      if ((!vertexOutVariable() || condVar != vertexOutVariable()) &&
-          (!edgeOutVariable() || condVar != edgeOutVariable()) &&
-          (!pathOutVariable() || condVar != pathOutVariable()) &&
-          (getTemporaryVariable() && condVar != getTemporaryVariable()) &&
-          !_optimizedOutVariables.contains(condVar->id)) {
+      if (validateVariable(condVar)) {
         result.emplace(condVar);
       }
     }
@@ -521,13 +525,26 @@ void TraversalNode::getVariablesUsedHere(VarSet& result) const {
     fetchVarsFromNode(_condition->root());
   }
 
-  //  Condition nodes
+  //  Global condition nodes
   std::for_each(_globalEdgeConditions.begin(), _globalEdgeConditions.end(),
                 fetchVarsFromNode);
   std::for_each(_globalVertexConditions.begin(), _globalVertexConditions.end(),
                 fetchVarsFromNode);
   std::for_each(_postFilterConditions.begin(), _postFilterConditions.end(),
                 fetchVarsFromNode);
+
+  //  Depth dependent conditions
+  std::for_each(_edgeConditions.begin(), _edgeConditions.end(),
+                [&](const auto& ec) {
+                  VarSet tVarSet;
+                  ec.second->getVariablesUsedHere(tVarSet);
+                  for (const auto& v : tVarSet) {
+                    if (validateVariable(v)) result.emplace(v);
+                  }
+                });
+
+  std::for_each(_vertexConditions.begin(), _vertexConditions.end(),
+                [&](const auto& vc) { fetchVarsFromNode(vc.second); });
 
   if (_fromCondition) {
     fetchVarsFromNode(_fromCondition);
