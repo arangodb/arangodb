@@ -147,8 +147,7 @@ void ArangodServer::addFeatures(int* ret) {
   addFeature<LockfileFeature>();
   addFeature<LoggerFeature>(true);
   addFeature<MaintenanceFeature>(&clusterFeature);
-  auto& networkFeature =
-      addFeature<NetworkFeature>(metrics, network::ConnectionPool::Config{});
+  addFeature<NetworkFeature>(metrics, network::ConnectionPool::Config{});
   addFeature<OptionsCheckFeature>();
   addFeature<PrivilegeFeature>();
   addFeature<QueryRegistryFeature>(metrics);
@@ -156,8 +155,7 @@ void ArangodServer::addFeatures(int* ret) {
   addFeature<ReplicatedLogFeature>();
   addFeature<ReplicationMetricsFeature>(metrics);
   addFeature<ReplicationTimeoutFeature>();
-  auto& scheduler =
-      addFeature<SchedulerFeature>(metrics, sharedPRNGFeature.getPRNG());
+  addFeature<SchedulerFeature>(metrics, sharedPRNGFeature.getPRNG());
   addFeature<VectorIndexFeature>(database);
 #ifdef USE_V8
   addFeature<ScriptFeature>(ret);
@@ -182,7 +180,7 @@ void ArangodServer::addFeatures(int* ret) {
   addFeature<UpgradeFeature>(ret, kNonServerFeatures);
   addFeature<transaction::ManagerFeature>(metrics);
   addFeature<ViewTypesFeature>();
-  auto& aqlFunctionFeature = addFeature<aql::AqlFunctionFeature>();
+  addFeature<aql::AqlFunctionFeature>();
   addFeature<aql::OptimizerRulesFeature>();
   addFeature<aql::QueryInfoLoggerFeature>();
   addFeature<RocksDBRecoveryManager>(database, database);
@@ -203,15 +201,7 @@ void ArangodServer::addFeatures(int* ret) {
 #else
   addFeature<SslServerFeature>();
 #endif
-  addFeature<iresearch::IResearchAnalyzerFeature>(
-      iresearch::IResearchAnalyzerFeature::Dependencies{
-          .databaseFeature = database,
-          .systemDatabase = systemDatabaseFeature,
-          .networkFeature = &networkFeature,
-          .clusterFeature = &clusterFeature,
-          .schedulerFeature = &scheduler,
-          .aqlFunctionFeature = &aqlFunctionFeature,
-      });
+
   addFeature<iresearch::IResearchFeature>(metrics);
   addFeature<ClusterEngine>(metrics);
 }
@@ -225,6 +215,9 @@ void ArangodServer::addFeaturesWithOptionProvider() {
   auto& cacheManager = getFeature<CacheManagerFeature>();
   auto& agency = getFeature<AgencyFeature>();
   auto& clusterFeature = getFeature<ClusterFeature>();
+  auto& systemDatabaseFeature = getFeature<SystemDatabaseFeature>();
+  auto& networkFeature = getFeature<NetworkFeature>();
+  auto& aqlFunctionFeature = getFeature<aql::AqlFunctionFeature>();
 
   // Add RandomFeature
   auto randomOptions = _optionProviders.getOptions<RandomOptionsProvider>();
@@ -313,6 +306,16 @@ void ArangodServer::addFeaturesWithOptionProvider() {
   auto fortuneOptions =
       _optionProviders.getOptions<fortune::FortuneOptionsProvider>();
   addFeature<FortuneFeature>(std::move(fortuneOptions));
+
+  addFeature<iresearch::IResearchAnalyzerFeature>(
+      iresearch::IResearchAnalyzerFeature::Dependencies{
+          .databaseFeature = database,
+          .systemDatabase = systemDatabaseFeature,
+          .networkFeature = &networkFeature,
+          .clusterFeature = &clusterFeature,
+          .schedulerFeature = &scheduler,
+          .aqlFunctionFeature = &aqlFunctionFeature,
+      });
 
   addFeature<replication2::replicated_state::ReplicatedStateAppFeature>();
   addFeature<replication2::replicated_state::black_hole::
