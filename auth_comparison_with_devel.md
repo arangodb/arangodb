@@ -3389,6 +3389,24 @@ branch has fixed. Per the task's methodology, these are documented as
 findings even though they are improvements rather than regressions, since
 they represent real behavioural divergence from `devel`.
 
+> **Correction (post-review):** the first pass of this analysis was made
+> against a local `devel` checkout that turned out to be stale (behind
+> `origin/devel`). After updating the local `devel` branch to the current
+> tip of `origin/devel` and re-diffing every file involved
+> (`RestReplicationHandler.{cpp,h}`, `RocksDBRestReplicationHandler.{cpp,h}`,
+> `RocksDBReplicationContext.cpp`, `ClusterRestReplicationHandler.{cpp,h}`),
+> **Finding 3 below (the `DBserver`-forwarding restriction) turned out to
+> already be present, byte-for-byte identical, in the up-to-date `devel`** —
+> it was fixed upstream in `devel` independently of, and prior to, this
+> branch's refactor, so it is **not** a divergence between the current
+> branch and `devel` after all. It has been struck accordingly (kept in the
+> document, marked as retracted, for an honest record). **Findings 1, 2, 4,
+> 5 and 6 were all re-verified line-by-line against the up-to-date `devel`
+> and are confirmed to still hold exactly as originally described** — in
+> particular, the headline **Finding 2 (missing `restore-indexes`/
+> `restore-view` permission checks in `devel`) is still a genuine, current
+> gap in `devel`**, not something already fixed upstream.
+
 Three files/classes are in play:
 
 - `RestReplicationHandler` (`arangod/RestHandler/RestReplicationHandler.cpp`)
@@ -3505,54 +3523,53 @@ and `_analyzers` always fall back to database-level access in
 `_system`-DB admin" are one and the same condition in Classic mode. No
 finding there.)
 
-### Finding 3 (Devel security gap, now fixed, and directly compounds Finding 2): unrestricted `DBserver`-parameter forwarding with stripped authorization header
+### ~~Finding 3~~ (RETRACTED — not a divergence; already fixed upstream in `devel`): unrestricted `DBserver`-parameter forwarding with stripped authorization header
 
-`RestReplicationHandler::forwardingTarget()`
-(`arangod/RestHandler/RestReplicationHandler.cpp:899-937`) implements a
-mechanism, used by `arangodump`/`arangorestore` on a coordinator, where a
-client can pass a `?DBserver=<id>` query parameter to have the *whole
-request* transparently forwarded to a specific DBServer — and, critically,
-**the caller's own `Authorization` header is stripped** before forwarding
-(`return std::make_pair(DBserver, true);`, the `true` meaning
-"remove header"), so the forwarded request executes on the target
-DBServer under cluster-internal, effectively superuser, trust.
+**This finding is retracted.** It was originally based on a stale local
+`devel` checkout. After updating `devel` to the current `origin/devel` tip,
+`RestReplicationHandler::isDBserverForwardingAllowed()` was found to
+already exist there, **byte-for-byte identical** to the current branch's
+version — confirmed via full-file diff of `RestReplicationHandler.cpp`
+between the stale and up-to-date `devel` snapshots, which shows this exact
+function (plus the `forwardingTarget()` call site and log message) being
+added as a `devel`-only commit, unrelated to the current branch. In other
+words: `origin/devel` fixed this gap on its own, independently of (and, by
+the look of the surrounding code/comments, probably around the same time
+as or before) the current branch's refactor. There is therefore **no
+behavioural difference between the current branch and `devel`** for
+`DBserver`-parameter forwarding — both restrict it identically to
+`dump`(GET)/`batch`, and both reject any other command carrying a
+`DBserver` parameter with `403 TRI_ERROR_FORBIDDEN`.
 
-In `devel`
-(`/tmp/devel_RestReplicationHandler.cpp:908-911` roughly, pre-refactor),
-this forwarding was applied **unconditionally to any command** carrying a
-non-empty `DBserver` parameter — there was no restriction on which
-sub-commands were eligible. Combined with Finding 2, this means a
-non-admin, low-privilege user in `devel` could call, e.g.,
-`PUT /_api/replication/restore-indexes?DBserver=DBServer0002` and have it
-forwarded, auth-header-stripped, straight to a DBServer's unguarded
-`processRestoreIndexes()` — running there with full cluster-internal trust,
-independent of whatever (already essentially absent, per Finding 2)
-permission check might otherwise apply. This combination is a
-significantly more severe version of the same underlying gap.
+The original write-up is preserved below, struck through in spirit, purely
+as a historical record of what the *stale* comparison incorrectly
+attributed to the current branch:
 
-The current branch adds `isDBserverForwardingAllowed()`
-(`arangod/RestHandler/RestReplicationHandler.cpp:939-955`):
-```cpp
-bool RestReplicationHandler::isDBserverForwardingAllowed() const {
-  ...
-  // The only replication commands that are legitimately invoked with a
-  // client-supplied 'DBserver' parameter are the ones used by arangodump:
-  //   - "dump"  (GET):           permissions checked in testPermissions()
-  //   - "batch" (POST/PUT/DEL):  batch/snapshot lifecycle management
-  return (command == Dump and method == rest::RequestType::GET) or
-         command == Batch;
-}
-```
-called from `forwardingTarget()`
-(`arangod/RestHandler/RestReplicationHandler.cpp:920-931`) and rejecting
-any other command carrying a `DBserver` parameter with `403
-TRI_ERROR_FORBIDDEN`. This closes the amplification vector: even if some
-future command were to reintroduce a Finding-2-style gap, it could no
-longer be combined with header-stripped forwarding to a DBServer. This
-restriction applies identically regardless of Classic vs. RBAC mode; it is
-recorded here as a security-relevant finding rather than a Classic-mode
-regression, consistent with how orthogonal read-only-mode hardening was
-noted for `RestAccessTokenHandler` (Finding 3) in an earlier session.
+<details>
+<summary>Original (incorrect) write-up, kept for the record</summary>
+
+`RestReplicationHandler::forwardingTarget()` implements a mechanism, used
+by `arangodump`/`arangorestore` on a coordinator, where a client can pass a
+`?DBserver=<id>` query parameter to have the *whole request* transparently
+forwarded to a specific DBServer — and, critically, **the caller's own
+`Authorization` header is stripped** before forwarding, so the forwarded
+request executes on the target DBServer under cluster-internal,
+effectively superuser, trust. It was (incorrectly) believed that a *stale*
+`devel` checkout applied this forwarding unconditionally to any command,
+and that only the current branch added the `dump`/`batch` restriction.
+Re-verification against an up-to-date `devel` showed this restriction was
+already present there too — this was never actually a difference between
+the two branches being compared; it only appeared to be one because of a
+stale reference checkout.
+
+</details>
+
+Note: Finding 2 (the actually-still-valid gap: `restore-indexes`/
+`restore-view` lacking any permission check in `devel`) is **not**
+amplified by this retraction in any new way — it remains exactly as
+severe as described there on its own; it just isn't compounded by an
+*additional*, unrestricted forwarding gap, since that part turned out to
+already be fixed in `devel`.
 
 ### Finding 4 (Correctness fix, stricter than `devel`): `restore-collection`'s "overwrite" path now also honours per-collection access overrides
 
@@ -3703,7 +3720,7 @@ characteristic, not a new divergence).
 | `PUT /_api/replication/restore-indexes` (single-server & coordinator) | **`devel` had no permission check at all** (real gap); current branch adds `canRestoreCreateIndex()` (Finding 2, security fix) |
 | `PUT /_api/replication/restore-view` | **`devel` had no permission check at all** (real gap); current branch adds `canRestoreDropView()`/`canRestoreCreateView()` (Finding 2, security fix) |
 | `restore-data` into `_users`/`_analyzers` | Not actually a gap in `devel`; both branches equivalent via system-collection auth-level fallback |
-| Any command + `?DBserver=<id>` (auth-header-stripped forwarding) | **`devel` allowed this for every command** (real gap, compounds Finding 2); current branch restricts it to `dump`/`batch` via `isDBserverForwardingAllowed()` (Finding 3, security fix) |
+| Any command + `?DBserver=<id>` (auth-header-stripped forwarding) | ~~Real gap, current branch fixes it~~ **RETRACTED**: up-to-date `devel` already restricts this to `dump`/`batch` identically via its own `isDBserverForwardingAllowed()`; no divergence (former Finding 3, now retracted — was based on a stale `devel` checkout) |
 | `PUT /_api/replication/restore-collection?overwrite=true` on an **existing** collection | Stricter than `devel`: now also enforces the target collection's own access override, not just database-level `RW` (Finding 4) |
 | `handleCommandClusterInventory()`, RocksDB `handleCommandDump()` | Verified equivalent to `devel` (Finding 5) |
 | `GET /_api/replication/inventory?collection=X` (single collection, non-global) | Narrow regression: Classic admin without direct DB access now sees empty result instead of full metadata; low real-world impact (Finding 6) |
@@ -3711,11 +3728,14 @@ characteristic, not a new divergence).
 | `ClusterRestReplicationHandler` | Purely cosmetic diff; no authorization code |
 
 **Action items / recommendations:**
-1. Findings 2 and 3 (the `restore-indexes`/`restore-view` gap and the
-   unrestricted `DBserver`-forwarding gap) look like they may already have
-   been the motivation for this refactor; no further action needed beyond
-   confirming they are intentional, deliberate fixes (they appear to be,
-   given the explanatory comments already present in the code).
+1. Finding 2 (the `restore-indexes`/`restore-view` gap) looks like it may
+   already have been the motivation for this refactor; no further action
+   needed beyond confirming it is an intentional, deliberate fix (it
+   appears to be, given the explanatory comments already present in the
+   code). Note: the `DBserver`-forwarding restriction (formerly Finding 3)
+   is **not** part of this branch's contribution — it was independently
+   fixed upstream in `devel` and is identical in both branches; see the
+   retraction note above.
 2. Finding 4 (stricter overwrite-restore semantics) and Finding 6 (narrow
    single-collection-inventory regression for non-superuser admins) are
    low-risk but worth a short mention in release notes / migration notes,
@@ -3723,3 +3743,16 @@ characteristic, not a new divergence).
    (knowingly or not) relied on the looser `devel` behaviour.
 3. No code changes are proposed as part of this analysis session, per the
    established methodology for this document.
+4. **Process note:** this session's initial pass used a local `devel`
+   checkout that was behind `origin/devel`; after updating it and
+   re-diffing all files, only Finding 3 needed retraction (see the
+   correction note at the top of this section) — Findings 1, 2, 4, 5 and 6
+   were all independently re-confirmed against the up-to-date `devel` and
+   remain valid as stated. As a spot-check, the other recently-analyzed
+   handlers in this document (`RestAnalyzerHandler`, `RestImportHandler`,
+   `RestUsageMetricsHandler`/`RestEngineHandler`/`RestSupportInfoHandler`,
+   `RestAqlFunctionsHandler`/`RestEndpointHandler`/`RestAccessTokenHandler`)
+   were also re-diffed against the up-to-date `devel`; their underlying
+   source files are either byte-for-byte unchanged or differ only in
+   already-accounted-for cosmetic ways, so no corrections were needed for
+   those sections.
