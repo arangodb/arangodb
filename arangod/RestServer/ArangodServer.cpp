@@ -145,7 +145,6 @@ void ArangodServer::addFeatures() {
 #ifdef USE_V8
   addFeature<ScriptFeature>(_ret);
 #endif
-  addFeature<ServerFeature>(_ret);
   addFeature<ServerIdFeature>();
   addFeature<ServerSecurityFeature>();
   addFeature<ShardingFeature>();
@@ -283,6 +282,10 @@ void ArangodServer::addFeaturesWithOptionProvider() {
   // Add FortuneFeature
   auto fortuneOptions = getOptions<fortune::FortuneOptionsProvider>();
   addFeature<FortuneFeature>(std::move(fortuneOptions));
+
+  // Add ServerFeature
+  auto serverOptions = getOptions<ServerOptionsProvider>();
+  addFeature<ServerFeature>(_ret, std::move(serverOptions));
 
   // Add CheckVersionFeature
   auto checkVersionOptions =
