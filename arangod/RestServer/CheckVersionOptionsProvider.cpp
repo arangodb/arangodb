@@ -35,7 +35,7 @@ namespace arangodb::check_version {
 
 using namespace arangodb::options;
 
-void CheckVersionOptionsProvider::declareOptions(
+void CheckVersionOptionsProvider::declareOptionsImpl(
     std::shared_ptr<ProgramOptions> options, CheckVersionFeatureOptions& opts) {
   options->addOldOption("check-version", "database.check-version");
   options->addOption(
