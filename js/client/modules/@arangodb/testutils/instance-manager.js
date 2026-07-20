@@ -785,12 +785,17 @@ class instanceManager {
     if (remainsFollower !== undefined) {
       body['remainsFollower'] = remainsFollower;
     }
+    // Now wait until the job we triggered is finished:
+    const msg = `moveShard in _db/${database}/${collection}/${shard} from ${fromServer.name}/${body.fromServer} to ${toServer.name}/${body.toServer}:`;
     let result = arango.POST_RAW("/_admin/cluster/moveShard", body);
+    if (result.code !== 202 ||
+        !result.hasOwnProperty('parsedBody') ||
+        !result.parsedBody.hasOwnProperty('id')) {
+      throw new Error(`IM.moveShard failed with ${result.code} - ${msg} ${JSON.stringify(result)}`);
+    }
     if (timeout < 0) {
       return result.parsedBody.id;
     }
-    // Now wait until the job we triggered is finished:
-    const msg = `moveShard in _db/${database}/${collection}/${shard} from ${fromServer.name}/${body.fromServer} to ${toServer.name}/${body.toServer}:`;
     if (this.waitForAgencyJob(
       result.parsedBody.id,
       timeout,
