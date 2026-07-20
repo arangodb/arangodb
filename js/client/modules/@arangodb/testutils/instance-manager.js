@@ -22,7 +22,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Wilfried Goesgens
 // //////////////////////////////////////////////////////////////////////////////
 
 /* Modules: */
@@ -373,6 +372,22 @@ class instanceManager {
     }
     return res.parsedBody === true;
   }
+  debugSetFailAtNonAgency(failurePoint) {
+    let count = 0;
+    this.rememberConnection();
+    this.arangods.forEach(arangod => {
+      if (!arangod.isAgent() && arangod.debugSetFailAt(failurePoint)) {
+        count += 1;
+      }
+    });
+    if (count === 0) {
+      let msg = "";
+      this.arangods.forEach(arangod => {msg += `\n Name => ${arangod.name}  ShortName => ${arangod.shortName} Role=> ${arangod.instanceRole} URL => ${arangod.url} Endpoint: => ${arangod.endpoint}`;});
+      throw new Error(`no server matched your conditions to set failurepoint ${failurePoint},${msg}`);
+    }
+    this.reconnectMe();
+  }
+  
   debugSetFailAt(failurePoint, role, urlIDOrShortName) {
     let count = 0;
     this.rememberConnection();

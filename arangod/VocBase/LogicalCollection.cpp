@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
-/// @author Daniel H. Larkin
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "LogicalCollection.h"

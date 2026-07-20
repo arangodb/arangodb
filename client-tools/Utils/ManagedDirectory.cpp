@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Cellar
-/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <sys/types.h>

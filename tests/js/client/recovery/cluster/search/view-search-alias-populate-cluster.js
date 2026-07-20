@@ -20,15 +20,13 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Andrey Abramov
-/// @author Copyright 2022, ArangoDB GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 var db = require('@arangodb').db;
 var internal = require('internal');
 var jsunity = require('jsunity');
 var analyzers = require("@arangodb/analyzers");
-const {getEndpointsByType, getRawMetric} = require("@arangodb/test-helper");
+let { instanceRole } = require('@arangodb/testutils/instance');
 
 if (runSetup === true) {
   'use strict';
@@ -140,10 +138,10 @@ function recoverySuite() {
       ];
 
       queries.forEach(q => assertEqual(expectedCount, db._query(q).toArray()[0]));
-      let coordinators = getEndpointsByType("coordinator");
+      let coordinators = global.instanceManager.getInstancesRole(instanceRole.coordinator);
       for (let i = 0; i < coordinators.length; i++) {
         let c = coordinators[i];
-        getRawMetric(c, '?mode=trigger_global runSetup');
+        c.getRawMetric('?mode=trigger_global runSetup');
       }
       let figures;
       for (let i = 0; i < 100; ++i) {

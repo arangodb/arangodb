@@ -8,8 +8,6 @@ fi
 AUTHENTICATION="true"
 
 # if command starts with an option, prepend arangod
-echo "PARAMETERS: "
-echo "$@"
 case "$1" in
     -*) set -- arangod "$@" ;;
     *) ;;
@@ -56,7 +54,7 @@ if [ "$1" = 'arangod' ]; then
             else
                 echo "WARNING: password file '$ARANGO_ROOT_PASSWORD_FILE' does not exist"
             fi
-	    fi
+	fi
         # Please note that the +x in the following line is for the case
         # that ARANGO_ROOT_PASSWORD is set but to an empty value, please
         # do not remove!
@@ -75,7 +73,7 @@ if [ "$1" = 'arangod' ]; then
 
         if [ ! -z "${ARANGO_ROOT_PASSWORD+x}" ]; then
             echo "Initializing root user...Hang on..."
-            ARANGODB_DEFAULT_ROOT_PASSWORD="$ARANGO_ROOT_PASSWORD" /usr/sbin/arango-init-database -c /tmp/arangod.conf $@ --log.level error --database.init-database true || true
+            ARANGODB_DEFAULT_ROOT_PASSWORD="$ARANGO_ROOT_PASSWORD" /usr/sbin/arango-init-database -c /tmp/arangod.conf --log.level error --database.init-database true || true
             export ARANGO_ROOT_PASSWORD
 
             if [ ! -z "${ARANGO_ROOT_PASSWORD}" ]; then
@@ -86,8 +84,7 @@ if [ "$1" = 'arangod' ]; then
         fi
 
         echo "Initializing database...Hang on..."
-        echo "PARAMETERS: "
-        echo "$@"
+
         $NUMACTL arangod "$@" --config /tmp/arangod.conf \
                 --server.endpoint tcp://127.0.0.1:$ARANGO_INIT_PORT \
                 --server.authentication false \

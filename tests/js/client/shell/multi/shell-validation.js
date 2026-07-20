@@ -21,7 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Jan Christoph Uhde
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");

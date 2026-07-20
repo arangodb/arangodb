@@ -21,16 +21,15 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Max Neunhoeffer
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require('jsunity');
 const {assertEqual, assertTrue, assertFalse, assertNotEqual} = jsunity.jsUnity.assertions;
 const arango = require('@arangodb').arango;
 const db = require('@arangodb').db;
-const AM = global.instanceManager.agencyMgr;
-
-let { getServersByType } = require('@arangodb/test-helper');
+const IM = global.instanceManager;
+const AM = IM.agencyMgr;
+let { instanceRole } = require('@arangodb/testutils/instance');
 
 const wait = require("internal").wait;
 
@@ -46,7 +45,7 @@ function indexCleanupSuite() {
   const maintenanceURL = "/_admin/cluster/maintenance";
 
   let getCoordinatorRebootId = function() {
-    let coords = getServersByType("coordinator");
+    let coords = IM.getInstancesRole(instanceRole.coordinator);
     coordinatorId = coords[0].id;
     let res = AM.call("read", [["/arango/Current/ServersKnown"]]);
     coordinatorRebootId = res[0].arango.Current.ServersKnown[coordinatorId].rebootId;

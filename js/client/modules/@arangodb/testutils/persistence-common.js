@@ -22,9 +22,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Max Neunhoeffer
-// / @author Wilfried Goesgens
-// / @author Copyright 2021, ArangoDB GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 const pu = require('@arangodb/testutils/process-utils');
@@ -58,7 +55,8 @@ if (versionHas('asan') || versionHas('tsan')) {
 
 class persistenceToolkit extends trs.runLocalInArangoshRunner {
   constructor(firstRunOptions, secondRunOptions, serverOptions, clientAuth, dumpOptions, restoreOptions, which, afterServerStart, rtaArgs, restartServer) {
-    super(firstRunOptions, which, serverOptions, tr.sutFilters.checkUsers);
+    super(firstRunOptions, which + firstRunOptions.suffix, serverOptions, tr.sutFilters.checkUsers);
+    this.which = which + firstRunOptions.suffix;
     this.serverOptions = serverOptions;
     this.firstRunOptions = firstRunOptions;
     this.secondRunOptions = secondRunOptions;
@@ -87,7 +85,6 @@ class persistenceToolkit extends trs.runLocalInArangoshRunner {
     this.rtaDisabledTests = [];
     this.rtaDisabledTestsFull = [];
     this.rtaNegFilter = "";
-    this.which = which;
     this.results = {failed: 0};
     this.dumpConfig = false;
     this.restoreConfig = false;
