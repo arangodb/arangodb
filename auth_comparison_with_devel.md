@@ -4891,3 +4891,235 @@ context. No code or behavior changed here.
 these three handlers reuses an authorization-refactor pattern already
 fully proven equivalent in a prior session of this document; no new
 regressions were found.
+
+## `RestSupervisionStateHandler`, `RestTransactionHandler` and `RestAdminClusterHandler`
+
+Mounted at `/_admin/supervisionState` (exact), `/_api/transaction` (prefix),
+and `/_admin/cluster` (prefix), respectively. The last one is by far the
+largest and most consequential of the three — as anticipated, it produced
+genuine, security-relevant findings in *both* directions.
+
+### `RestSupervisionStateHandler` — clean, one cosmetic diff
+
+`executeAsync()`'s sole gate,
+`isAdminUser()` → `canUseAdminAction(auth::perms::AdminSupervisionState{})`
+(`arangod/RestHandler/RestSupervisionStateHandler.cpp:44-50`), falls
+through to the generic `[&](p::AnyAdmin auto const&) -> Result { return
+isAdmin(); }` catch-all (`arangod/Auth/AuthMode.cpp:367`) — confirmed no
+dedicated `AdminSupervisionState` case exists in `AuthMode::Classic::check()`.
+Identical `_system` RW semantics to `devel`'s `isAdminUser()`. The rest of
+the diff is dead-`#include` cleanup only; `.h` is byte-for-byte identical.
+
+### `RestTransactionHandler` — no findings
+
+The main transaction lifecycle (`POST` begin, `PUT` commit, `DELETE` abort,
+`GET` status) has **no handler-local authorization code at all** (confirmed
+by grep); it relies entirely on `SingleCollectionTransaction`/
+`TransactionState::checkCollectionPermission()`, the same shared machinery
+already fully analyzed for `RestDocumentHandler` and `RestImportHandler` —
+including the previously-documented, cross-cutting read-only-mode
+`TRI_ERROR_FORBIDDEN`-vs-`TRI_ERROR_ARANGO_READ_ONLY` addendum, which
+applies here identically and is not repeated as a new finding.
+
+The only diff is in the maintainer-mode-only, explicitly-unofficial
+`GET/DELETE .../history` debug routes
+(`arangod/RestHandler/RestTransactionHandler.cpp:178,332`):
+```cpp
+// devel:
+auto auth = AuthenticationFeature::instance();
+if ((auth == nullptr || !auth->isActive()) ||
+    (auth->isActive() && ExecContext::current().isSuperuser())) { ... }
+// current:
+if (ExecContext::current().isSuperuserOrDisabled()) { ... }
+```
+This is the same `isSuperuser()`/auth-disabled-check → `isSuperuserOrDisabled()`
+collapse already proven equivalent multiple times in this document (e.g.
+`RestCompactHandler`, `RestAdminLogHandler`) — identical semantics within
+Classic mode; only differs when authentication is globally disabled
+(out of this document's scope). Verified equivalent, no new finding.
+
+### Finding 1 (Cosmetic, batch): `RestAdminClusterHandler` — widespread `isAdminUser()` → `canUseAdminAction(X)` migrations
+
+The top-level JWT-policy gate in `executeAsync()`
+(`arangod/RestHandler/RestAdminClusterHandler.cpp:366-395`) changed
+`isSuperuser()` → `isSuperuserOrDisabled()` — the standard, already-proven
+auth-disabled-widening pattern, out of Classic-mode scope.
+
+Beyond that, no fewer than **eleven** call sites across this handler
+migrated a bare `isAdminUser()` check to `canUseAdminAction(X)` for one of
+five different permission tags: `AdminRemoveServer` (`handleRemoveServer`),
+`AdminClusterInfo` (`handleShardStatistics`, `handleShardDistribution`,
+`handleCollectionShardDistribution`), `AdminMoveShards`
+(`handleQueryJobStatus`, `handleCancelJob`, `handleSingleServerJob`),
+`AdminMaintenance` (`handleMaintenance`, `handleDBServerMaintenance`,
+`handlePutNumberOfServers`, `handleUniqId`), and `AdminRebalance`
+(`handleRebalance`). I confirmed via `grep` on `arangod/Auth/AuthMode.cpp`
+that **none** of these five permission tags has a dedicated case in
+`AuthMode::Classic::check()` — all five fall through to the same generic
+`[&](p::AnyAdmin auto const&) -> Result { return isAdmin(); }` catch-all
+(`arangod/Auth/AuthMode.cpp:367`), which is exactly `devel`'s
+`isAdminUser()` test (`_system` RW). Purely a naming/clarity refactor in
+preparation for RBAC's fine-grained per-action permissions; zero behavioral
+difference in Classic mode across all eleven sites. Only the error-message
+text now varies (`r.errorMessage()` instead of the empty default), matching
+the pattern established for essentially every other handler in this
+document.
+
+### Finding 2 (Confirmed devel-side gap, now fixed): `handleRebalanceShards()` — database-scoped check widened to a proper admin check
+
+`devel` (`devel:arangod/RestHandler/RestAdminClusterHandler.cpp:2505-2510`):
+```cpp
+ExecContext const& exec = ExecContext::current();
+if (!exec.canUseDatabase(auth::Level::RW)) {
+  generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                "insufficient permissions");
+  co_return;
+}
+```
+Current branch (`arangod/RestHandler/RestAdminClusterHandler.cpp:2545-2551`):
+```cpp
+ExecContext const& exec = ExecContext::current();
+if (auto r = exec.canUseAdminAction(auth::perms::AdminRebalance{});
+    r.fail()) {
+  generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                r.errorMessage());
+  co_return;
+}
+```
+`devel`'s no-argument `canUseDatabase(auth::Level requested)` overload
+(`devel:arangod/Utils/ExecContext.h:123-125`) checks RW against
+`_databaseAuthLevel` — the auth level for **whichever database is in the
+request's URL path**, not necessarily `_system`. Since
+`RestAdminClusterHandler` is registered as an ordinary database-scoped
+prefix handler (`f.addPrefixHandler("/_admin/cluster", ...)`,
+`arangod/GeneralServer/GeneralServerFeature.cpp:818`), it is reachable via
+`/_db/<any-db>/_admin/cluster/rebalanceShards`. This means in `devel`, a
+completely non-admin user who merely holds ordinary `RW` access to their
+own personal, non-system database could trigger a genuine **cluster-wide**
+shard-rebalancing operation — a serious, confused-deputy-style privilege
+gap, since shard rebalancing affects the whole cluster's data placement,
+not just the caller's own database. The current branch's
+`canUseAdminAction(AdminRebalance{})` correctly requires `_system` RW
+(`isAdmin()`) regardless of which database is named in the URL, closing
+this gap. This is the second confirmed instance in this document (after
+`RestReplicationHandler`'s restore-indexes/restore-view finding) where the
+comparison uncovered a genuine, exploitable `devel`-side authorization gap
+that the current branch has fixed.
+
+Note `handleRebalance()` (`GET`/`PUT /_admin/cluster/rebalance[/execute]`,
+`arangod/RestHandler/RestAdminClusterHandler.cpp:2877-2883`) already used
+`isAdminUser()` in `devel` and is unaffected — only the sibling
+`handleRebalanceShards()` had the weaker, database-scoped check.
+
+### Finding 3 (Narrow regression, safer direction; same pattern as `RestCollectionHandler` Finding 5): `handleMoveShard()`'s collection-level fallback now also requires database `RW` (container principle)
+
+`devel` (`devel:arangod/RestHandler/RestAdminClusterHandler.cpp:803-808`):
+```cpp
+auto const& exec = ExecContext::current();
+bool canAccess = exec.isAdminUser() ||
+                 exec.collectionAuthLevel(ctx->database, ctx->collection) ==
+                     auth::Level::RW;
+```
+Current branch (`arangod/RestHandler/RestAdminClusterHandler.cpp:806-811`):
+```cpp
+auto const& exec = ExecContext::current();
+bool canAccess =
+    exec.canUseAdminAction(auth::perms::AdminMoveShards{}).ok() ||
+    exec.canUseCollection(ctx->database, ctx->collection,
+                          CollectionAccessLevel::WriteMeta)
+        .ok();
+```
+`devel`'s fallback branch was a bare per-collection check:
+`collectionAuthLevel(db, coll) == RW`, with no accompanying database-level
+requirement. The current branch's `canUseCollection(db, coll, WriteMeta)`
+routes through `AuthMode::Classic`'s `UseCollection` case, which for
+`CollectionAccessLevel::WriteMeta` carries an explicit container-principle
+clause (`arangod/Auth/AuthMode.cpp:236-247`): it additionally requires
+`effectiveDatabaseAuthLevel(db) >= RW`. This is the *exact same*
+transformation already documented as Finding 5 in the `RestCollectionHandler`
+section (`auth_comparison_with_devel.md:769-800`, for `recalculateCount`):
+a user granted a per-collection `RW` override on a specific shard's
+collection, but only database-level `RO` overall, could `handleMoveShard()`
+that collection's shard in `devel` but now gets `403 FORBIDDEN`. Narrow
+(requires an unusual grant combination) but real, in the stricter/safer
+direction — not a security concern, but a genuine behavioral change.
+
+### Finding 4 (Genuine regression, more permissive — security-relevant): `handleNumberOfServers()`'s `GET` path is no longer gated by `--server.harden`
+
+`devel` (`devel:arangod/RestHandler/RestAdminClusterHandler.cpp:2086-2097`):
+```cpp
+// GET requests are allowed for everyone, unless --server.harden is used.
+// in this case admin privileges are required.
+// PUT requests always require admin privileges
+ServerSecurityFeature& security = server().getFeature<ServerSecurityFeature>();
+bool const needsAdminPrivileges =
+    (request()->requestType() != rest::RequestType::GET ||
+     security.isRestApiHardened());
+if (needsAdminPrivileges && !ExecContext::current().isAdminUser()) {
+  generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
+  co_return;
+}
+```
+Current branch (`arangod/RestHandler/RestAdminClusterHandler.cpp:2089-2100`):
+```cpp
+// GET requests are allowed for everyone, PUT, too, unless
+// --server.harden is used. In this case admin privileges are
+// required. with RBAC, db:AdminMaintenance is needed for PUT
+if (request()->requestType() != rest::RequestType::GET) {
+  if (auto r = ExecContext::current().canUseHardenedAction(
+          auth::perms::AdminMaintenance{});
+      r.fail()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                  r.errorMessage());
+    co_return;
+  }
+}
+```
+The new gate only ever runs for non-`GET` requests — for `GET`, the `if`
+block is skipped entirely, so **no check of any kind is performed**,
+regardless of the `--server.harden` setting. This diverges from `devel` in
+exactly one case: when `--server.harden=true`, `devel` required `_system`
+RW (`isAdminUser()`) to `GET /_admin/cluster/numberOfServers`, but the
+current branch now allows **any authenticated user** to read the cluster's
+coordinator/DBServer counts — silently bypassing the hardening feature for
+this specific piece of server-internal information. (With the default
+`--server.harden=false`, both branches already allowed this for everyone,
+so this only manifests on hardened installations.)
+
+Note that `PUT` is **not** actually affected in practice, despite the
+entry-level gate now being conditional on hardening: `handlePutNumberOfServers()`
+itself (called from the `PUT` case) carries its own, unconditional
+`canUseAdminAction(auth::perms::AdminMaintenance{})` check
+(`arangod/RestHandler/RestAdminClusterHandler.cpp:1972-1978`, migrated
+1:1 from `devel`'s unconditional `isAdminUser()`), so `PUT` still always
+requires admin privileges in both branches, matching `devel`'s
+`needsAdminPrivileges` being unconditionally `true` for non-`GET` requests.
+Only the `GET` path's hardening protection was lost.
+
+### Summary
+
+| Route / check | Verdict |
+|---|---|
+| `GET /_admin/supervisionState` | Identical to `devel` (cosmetic renaming only) |
+| `POST/PUT/DELETE/GET /_api/transaction/*` (main lifecycle) | Identical to `devel` — no handler-local auth code; same read-only-mode addendum as `RestDocumentHandler`/`RestImportHandler` applies |
+| `GET/DELETE /_api/transaction/history` (maintainer-mode only) | Identical to `devel` (verified-equivalent `isSuperuserOrDisabled()` collapse) |
+| Eleven `isAdminUser()` → `canUseAdminAction(X)` sites in `RestAdminClusterHandler` | Identical to `devel` (Finding 1, all fall to the same `isAdmin()` catch-all) |
+| `POST /_admin/cluster/rebalanceShards` | **Fixed vs. `devel`**: now correctly requires `_system` admin instead of merely `RW` on whatever database happened to be in the URL (Finding 2 — closes a real, exploitable gap) |
+| `PUT /_admin/cluster/moveShard` (collection-level fallback) | **Stricter than `devel`** in one narrow grant configuration (Finding 3 — container-principle parity with `RestCollectionHandler` Finding 5) |
+| `GET /_admin/cluster/numberOfServers` with `--server.harden=true` | **More permissive than `devel`**: hardening no longer restricts this `GET` to admins (Finding 4) |
+| `PUT /_admin/cluster/numberOfServers` | Identical to `devel` — always requires admin via `handlePutNumberOfServers()`'s own unconditional check |
+
+**Action items / recommendations:**
+1. **Finding 4 is the actionable item from this session**: restore the
+   hardening protection for `GET /_admin/cluster/numberOfServers` by moving
+   (or duplicating) the `canUseHardenedAction(AdminMaintenance{})` check in
+   `handleNumberOfServers()` (`arangod/RestHandler/RestAdminClusterHandler.cpp:2089-2100`)
+   outside the `requestType() != GET` guard, so it also applies to `GET`
+   (mirroring `devel`'s `needsAdminPrivileges` formula, which OR'd in
+   `security.isRestApiHardened()` regardless of request type).
+2. Findings 2 and 3 require no action: Finding 2 is a confirmed fix of a
+   genuine `devel` privilege-escalation gap (recommend highlighting in
+   release notes as a security hardening); Finding 3 is a narrow,
+   safer-direction tightening consistent with an already-accepted pattern
+   elsewhere in the codebase (`RestCollectionHandler` Finding 5) and needs
+   no correction, only optional release-note awareness.
