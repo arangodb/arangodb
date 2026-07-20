@@ -31,7 +31,6 @@
 #include "RestServer/FlushOptionsProvider.h"
 #include "RestServer/FortuneOptionsProvider.h"
 #include "RestServer/FrontendOptionsProvider.h"
-#include "RestServer/InitDatabaseOptionsProvider.h"
 #include "RestServer/TemporaryStorageOptionsProvider.h"
 #include "RocksDBEngine/RocksDBIndexCacheRefillOptionsProvider.h"
 #include "RocksDBEngine/RocksDBOptionFeatureOptionsProvider.h"
@@ -66,8 +65,8 @@ class FeatureOptionProviderContainer final {
   std::tuple<AuthenticationOptionsProvider, DatabasePathOptionsProvider,
              DumpLimitsOptionsProvider, EndpointOptionsProvider,
              FlushOptionsProvider, fortune::FortuneOptionsProvider,
-             GeneralServerOptionsProvider, InitDatabaseOptionsProvider,
-             NetworkOptionsProvider, RocksDBEngineOptionsProvider,
+             GeneralServerOptionsProvider, NetworkOptionsProvider,
+             RocksDBEngineOptionsProvider,
              RocksDBIndexCacheRefillOptionsProvider,
              RocksDBOptionFeatureOptionsProvider, SslServerOptionsProvider,
              TemporaryStorageOptionsProvider
