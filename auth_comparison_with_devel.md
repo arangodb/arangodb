@@ -4674,3 +4674,102 @@ completeness since it was noticed during the review.
 
 **Action items / recommendations:** None. All three handlers are clean;
 no authorization logic exists in any of them in either branch.
+
+## `RestAdminDatabaseHandler`, `RestLogInternalHandler` and `RestAdminStatisticsHandler`
+
+Three more small handlers, mounted at `/_admin/database/target-version`
+(exact), `/_api/log-internal` (prefix, replication2 clusters only), and
+`/_admin/statistics` + `/_admin/statistics-description` (both exact),
+respectively.
+
+- **`RestAdminDatabaseHandler`** (`arangod/RestHandler/RestAdminDatabaseHandler.cpp:40-53`)
+  just reports the numeric server version. It has no authorization code
+  at all in either branch — confirmed by grep for
+  `ExecContext|canUse|auth::` — and no `checkUserCanAccess()` override, so
+  it relies solely on the shared base-`RestHandler` requirement of a valid
+  authenticated request, matching its documented `AUTHEN`-only access
+  level (`Documentation/path_permissions.md:790`). Diff vs. `devel` is a
+  single added comment (`arangod/RestHandler/RestAdminDatabaseHandler.cpp:39`);
+  `.h` is byte-for-byte identical.
+- **`RestAdminStatisticsHandler`** (`arangod/RestHandler/RestAdminStatisticsHandler.cpp:44-77`)
+  serves runtime server/HTTP statistics and their description. Diff vs.
+  `devel` is a single added comment plus one substantive change
+  (Finding 1 below); `.h` is byte-for-byte identical.
+- **`RestLogInternalHandler`** (`arangod/RestHandler/RestLogInternalHandler.cpp:43-74`)
+  is the internal replication2-log RPC endpoint (`append-entries`,
+  `update-snapshot-status`), reachable only between cluster members. Diff
+  vs. `devel` is a single added comment plus one substantive change
+  (Finding 2 below); `.h` is byte-for-byte identical.
+
+### Finding 1 (Cosmetic): `RestAdminStatisticsHandler` — `ServerSecurityFeature::canAccessHardenedApi()` → `canUseHardenedAction(AdminMonitoring{})`
+
+`devel` (`devel:arangod/RestHandler/RestAdminStatisticsHandler.cpp:50-58`):
+```cpp
+ServerSecurityFeature& security = server().getFeature<ServerSecurityFeature>();
+if (!security.canAccessHardenedApi()) {
+  // dont leak information about server internals here
+  generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
+  return RestStatus::DONE;
+}
+```
+Current branch (`arangod/RestHandler/RestAdminStatisticsHandler.cpp:53-60`):
+```cpp
+if (auto r = ExecContext::current().canUseHardenedAction(
+        auth::perms::AdminMonitoring{});
+    r.fail()) {
+  // dont leak information about server internals here
+  generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
+                r.errorMessage());
+  return RestStatus::DONE;
+}
+```
+This is the identical `ServerSecurityFeature::canAccessHardenedApi()` →
+`ExecContext::canUseHardenedAction()` migration already fully traced and
+proven equivalent for `RestMetricsHandler` (line 994-1063) and
+`RestUsageMetricsHandler`/`RestEngineHandler` (line 3245-3288) above —
+`AdminMonitoring` is the same plain `AnyAdmin`-category permission cited
+there (`arangod/Auth/Permissions.h:85,112`, alongside
+`AdminMonitoringInternal`), reducing in both branches to exactly
+`databaseAuthLevel(user, "_system") == RW`. Only the error message text
+changes (`devel`: bare `TRI_ERROR_FORBIDDEN`, no text; current: adds
+`r.errorMessage()`); HTTP status (`403`) and `errorNum` are identical.
+Purely cosmetic — no new reasoning required, the equivalence proof
+carries over verbatim for the third time.
+
+### Finding 2 (Cosmetic): `RestLogInternalHandler` — `isSuperuser()` → `isSuperuserOrDisabled()`
+
+`devel` (`devel:arangod/RestHandler/RestLogInternalHandler.cpp:46-49`):
+```cpp
+// for now required admin access to the database
+if (!ExecContext::current().isSuperuser()) {
+  generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
+  co_return;
+}
+```
+Current branch (`arangod/RestHandler/RestLogInternalHandler.cpp:47-50`)
+adds `OrDisabled`. This is the same `isSuperuser()` →
+`isSuperuserOrDisabled()` widening already established and proven
+equivalent-within-Classic-mode in the `RestCompactHandler`,
+`RestAdminServerHandler`, and `RestAuthReloadHandler`/`RestAdminLogHandler`
+sessions: the two predicates differ only when authentication is globally
+disabled (`--server.authentication false`), which is out of scope for
+this Classic-mode-focused comparison; whenever authentication is active,
+`isSuperuser()` and `isSuperuserOrDisabled()` return identically. No
+behavioral change for RBAC/Classic-mode callers.
+
+Note: this handler requires the caller to be a genuine **superuser**
+(cluster-internal JWT), not merely a `_system`-admin human user — stricter
+than the `isAdmin()`/`AnyAdmin` pattern seen in most other handlers in
+this document, and unchanged between branches in that respect.
+
+### Summary
+
+| Route | Verdict |
+|---|---|
+| `GET /_admin/database/target-version` | Identical to `devel` — no auth check in either branch, comment-only diff |
+| `POST /_api/log-internal/<id>/append-entries`, `.../update-snapshot-status` | Identical ALLOW/DENY to `devel` (Finding 2, cosmetic) |
+| `GET /_admin/statistics`, `/_admin/statistics-description` | Identical ALLOW/DENY to `devel` (Finding 1, cosmetic message-text only) |
+
+**Action items / recommendations:** None. Both substantive diffs reuse
+authorization-refactor patterns already fully proven equivalent in
+multiple earlier sessions; no new regressions were found.

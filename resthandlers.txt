@@ -34,9 +34,9 @@
 > ./arangod/RestHandler/RestUploadHandler.cpp
 > ./arangod/RestHandler/RestAccessTokenHandler.cpp
 > ./arangod/RestHandler/RestJobHandler.cpp
-./arangod/RestHandler/RestAdminDatabaseHandler.cpp
-./arangod/RestHandler/RestLogInternalHandler.cpp
-./arangod/RestHandler/RestAdminStatisticsHandler.cpp
+> ./arangod/RestHandler/RestAdminDatabaseHandler.cpp
+> ./arangod/RestHandler/RestLogInternalHandler.cpp
+> ./arangod/RestHandler/RestAdminStatisticsHandler.cpp
 ./arangod/RestHandler/RestVersionHandler.cpp
 > ./arangod/RestHandler/RestOptionsDescriptionHandler.cpp
 ./arangod/RestHandler/RestAdminDeploymentHandler.cpp
