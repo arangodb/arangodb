@@ -422,6 +422,27 @@ function aqlMatchStatementVariableLengthTestSuite() {
           }
         },
 
+        testMatchVarLenMultiTypePathVariable: function() {
+          // spec M1: path variable p combined with multiple edge types + range
+          const query = aql`WITH mvc
+                              FOR v IN mvc
+                                MATCH p = (v) -[ e:mec1|mec2 * 1..2 ]-> (w:mvc)
+                                RETURN p`;
+          const expected = [
+            "(mvc/v0) -[]-> (mvc/v1)",
+            "(mvc/v0) -[]-> (mvc/v2)",
+            "(mvc/v0) -[]-> (mvc/v1) -[]-> (mvc/v2)",
+            "(mvc/v0) -[]-> (mvc/v2) -[]-> (mvc/v3)",
+            "(mvc/v1) -[]-> (mvc/v2)",
+            "(mvc/v1) -[]-> (mvc/v2) -[]-> (mvc/v3)",
+            "(mvc/v2) -[]-> (mvc/v3)"
+          ];
+          expected.sort();
+          const result = db._query(query, {}, options).toArray().map(pathToString);
+          result.sort();
+          assertEqual(result, expected);
+        },
+
     };
 }
 
