@@ -8,6 +8,7 @@
 #include "RestServer/DumpLimitsOptionsProvider.h"
 #include "RestServer/FlushOptionsProvider.h"
 #include "RestServer/FortuneOptionsProvider.h"
+#include "RestServer/InitDatabaseOptionsProvider.h"
 #include "RestServer/LogBufferOptionsProvider.h"
 #include "RestServer/MaxMapCountOptionsProvider.h"
 #include "RestServer/NonceOptionsProvider.h"
@@ -22,8 +23,9 @@ using ArangodOptionProviders = CoreOptionProviders<
     check_version::CheckVersionOptionsProvider,
     crash_handler::CrashHandlerOptionsProvider, DatabasePathOptionsProvider,
     DumpLimitsOptionsProvider, FlushOptionsProvider,
-    fortune::FortuneOptionsProvider, LanguageOptionsProvider,
-    LogBufferOptionsProvider, MaxMapCountOptionsProvider, NonceOptionsProvider,
+    fortune::FortuneOptionsProvider, InitDatabaseOptionsProvider,
+    LanguageOptionsProvider, LogBufferOptionsProvider,
+    MaxMapCountOptionsProvider, NonceOptionsProvider,
     RocksDBEngineOptionsProvider, RocksDBIndexCacheRefillOptionsProvider,
     RocksDBOptionFeatureOptionsProvider, TemporaryStorageOptionsProvider>;
 }  // namespace arangodb
