@@ -4367,3 +4367,259 @@ comment, no authorization logic of its own, and its sole dependency
 unaffected.
 
 **Action items / recommendations:** None.
+
+## `RestAuthReloadHandler`, `RestDebugHandler`, `RestStatusHandler` and `RestAdminLogHandler`
+
+Four small, single-purpose admin handlers, mounted at `/_admin/auth/reload`
+(exact), `/_admin/debug` (prefix, only compiled in when
+`ARANGODB_ENABLE_FAILURE_TESTS` is defined), `/_admin/status` (exact), and
+`/_admin/log` (prefix), respectively.
+
+### `RestAuthReloadHandler` — Finding 1 (Cosmetic)
+
+`devel` (`devel:arangod/RestHandler/RestAuthReloadHandler.cpp:41-44`):
+
+```cpp
+RestStatus RestAuthReloadHandler::execute() {
+  if (!ExecContext::current().isAdminUser()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
+    return RestStatus::DONE;
+  }
+```
+
+Current branch (`arangod/RestHandler/RestAuthReloadHandler.cpp:43-50`):
+
+```cpp
+RestStatus RestAuthReloadHandler::execute() {
+  if (auto r = ExecContext::current().canUseAdminAction(
+          auth::perms::AdminAuthReload{});
+      r.fail()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                  r.errorMessage());
+    return RestStatus::DONE;
+  }
+```
+
+`canUseAdminAction(AdminAuthReload{})` dispatches through
+`AuthMode::Classic::check()`'s generic catch-all for any
+`auth::perms::AnyAdmin` alternative that has no dedicated `case`
+(`arangod/Auth/AuthMode.cpp:366-367`):
+
+```cpp
+// Classic admin action requires RW access to the _system database.
+[&](p::AnyAdmin auto const&) -> Result { return isAdmin(); },
+```
+
+`AdminAuthReload` has no dedicated branch anywhere in `AuthMode.cpp`
+(confirmed by grep), so it falls through to this generic case —
+`isAdmin()` is precisely `devel`'s `isAdminUser()` ("RW on `_system`"),
+already established as equivalent throughout this document (e.g.
+`RestAnalyzerHandler`, `RestWalAccessHandler` sessions). Same pattern,
+same verdict: **cosmetic only** — the `bool`→`Result` signature change
+only affects error-message wording (`r.errorMessage()` vs. the generic
+`TRI_ERROR_HTTP_FORBIDDEN` text); the ALLOW/DENY outcome and HTTP status
+(`403`) are unchanged. No behavioral difference in Classic mode.
+
+### `RestDebugHandler` and `RestStatusHandler` — Finding 2 (the headline result: devel had an unauthenticated-access gap during the STARTUP→MAINTENANCE boot window, now closed)
+
+Both handlers gained an identical new `checkUserCanAccess()` override
+(`arangod/RestHandler/RestDebugHandler.cpp:39-52`,
+`arangod/RestHandler/RestStatusHandler.cpp:90-103`):
+
+```cpp
+async<Result> RestDebugHandler::checkUserCanAccess() const {
+  // Note that this particular RestHandler might be called during startup (or
+  // in maintenance mode). The AuthenticationFeature might not yet be available
+  // for authorization, and must not be consulted.
+  if (auto const mode = ServerState::instance()->mode();
+      mode == ServerState::Mode::STARTUP ||
+      mode == ServerState::Mode::MAINTENANCE) {
+    co_return request()->authenticated()
+        ? Result{}
+        : Result{TRI_ERROR_HTTP_UNAUTHORIZED, "Not authenticated."};
+  }
+
+  co_return co_await RestBaseHandler::checkUserCanAccess();
+}
+```
+
+`RestVersionHandler` (`/_api/version`, `/_admin/version`) carries the
+*exact same* override, byte-for-byte
+(`arangod/RestHandler/RestVersionHandler.cpp:103-116`) — this is a
+deliberate, consistently-applied pattern across all three handlers that
+`CommTask`'s mode switch admits during boot
+(`arangod/GeneralServer/CommTask.cpp:212-274`, unchanged vs. `devel:arangod/GeneralServer/CommTask.cpp:206-269`
+byte-for-byte):
+
+```cpp
+case ServerState::Mode::STARTUP: {
+  if (!allowEarlyConnections || (_auth->isActive() && !req.authenticated())) {
+    ... return Flow::Abort;
+  }
+  // passed authentication!
+  if (path == "/_api/version" || path == "/_admin/version" ||
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+      path.starts_with("/_admin/debug/") ||
+#endif
+      path == "/_admin/status") {
+    return Flow::Continue;      // <-- Step 3/4 (context creation + permission
+  }                             //     check) never runs for these paths!
+  ...
+}
+case ServerState::Mode::MAINTENANCE: {
+  if (allowEarlyConnections &&
+      (path == "/_api/version" || path == "/_admin/version" ||
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+       path.starts_with("/_admin/debug/") ||
+#endif
+       path == "/_admin/status")) {
+    return Flow::Continue;      // <-- no authentication check at all here!
+  }
+  ...
+}
+```
+
+**Why this override exists at all (a necessary, correct compensating fix
+caused by an unrelated refactor, not a Classic/RBAC policy decision):** in
+`devel`, the permission check for every request (`CommTask::canAccessPath()`)
+lived entirely inline in `CommTask`, *after* the mode-switch above, so it
+was structurally skipped for these three paths during `STARTUP`/`MAINTENANCE`
+(the switch `return`s before ever reaching it) — `devel`'s
+`RestDebugHandler`/`RestStatusHandler`/`RestVersionHandler` had **no**
+per-request context at all during this window (`req.requestContext()` was
+never populated), and were never expected to consult one. In the current
+branch, this check was refactored out of `CommTask` into the virtual
+`RestHandler::checkUserCanAccess()`
+(`arangod/GeneralServer/RestHandler.cpp:705-763`), invoked unconditionally
+by `handleAuthorizationChecks()`
+(`arangod/GeneralServer/RestHandler.cpp:766-772`) from
+`runHandlerStateMachine()`
+(`arangod/GeneralServer/RestHandler.cpp:439`) — a call site that runs for
+*every* handler execution, `STARTUP`/`MAINTENANCE` included (both go
+through the same `handler->runHandler(...)` as normal requests; see
+`arangod/GeneralServer/CommTask.cpp:626-661`,
+`handleRequestStartup()`). Without this override, the base
+`checkUserCanAccess()` would call
+`ec->canUseDatabase(...)` on a null `request()->requestContext()`
+(`TRI_ASSERT(ec != nullptr)` at
+`arangod/GeneralServer/RestHandler.cpp:716`, or a null dereference in a
+release build) for exactly these three routes during this window — a
+crash bug that these three matching overrides deliberately avoid by
+short-circuiting on `authenticated()` alone, without ever touching `ec`.
+This is best classified as a **confirmed necessary fix, not a policy
+change**: the underlying internal-facing permission check
+(`canUseHardenedAction(AdminMonitoring{})` inside
+`RestStatusHandler::execute()`, `arangod/RestHandler/RestStatusHandler.cpp:70-77`)
+is a no-op in both branches during this window anyway, since
+`ExecContextScope scope(_request->requestContext())`
+(`arangod/GeneralServer/RestHandler.cpp:245`, unchanged vs. `devel`) sets
+the thread-local `ExecContext::CURRENT` to `nullptr` when the request
+context is null, and `ExecContext::current()`
+(`arangod/Utils/ExecContext.cpp:46-50`) falls back to the
+`Superuser` singleton whenever `CURRENT == nullptr` — so any in-handler
+check reached during this window trivially passes in *both* branches.
+
+**The one genuine, confirmed behavioral difference — and it favors the
+current branch:** for `ServerState::Mode::MAINTENANCE` specifically,
+`devel`'s early-`Continue` has **no authentication requirement at all**
+(unlike the `STARTUP` case, which does gate on
+`_auth->isActive() && !req.authenticated()`
+at `arangod/GeneralServer/CommTask.cpp:213-214`). Combined with the
+context-creation skip and the `Superuser` fallback described above, this
+means that in `devel`, during the `MAINTENANCE` phase every ArangoDB
+instance passes through on every single startup
+(entered unconditionally at
+`arangod/GeneralServer/GeneralServerFeature.cpp:418`, right after the
+handler factory is sealed, before the bootstrap/upgrade phase completes
+and the mode flips to `DEFAULT`), **`/_admin/status` and
+`/_admin/debug/*` (the latter only in failure-test builds) are reachable
+by a completely unauthenticated caller**, with every internal check
+resolving to the `Superuser` fallback. The current branch's override
+closes this: it requires `request()->authenticated()` to be `true` for
+both `STARTUP` and `MAINTENANCE`, uniformly. This is a narrow-window,
+low-severity gap in practice (typically leaks only version/health info
+via `/_admin/status`, since `canUseHardenedAction` defaults to allow when
+`--server.harden` is off anyway; `/_admin/debug/*` is compiled out of
+production builds by default), but it is a genuine, verifiable
+improvement over `devel`, not a regression.
+
+### `RestAdminLogHandler` — Finding 3 (Verified equivalent, reusing the established `isSuperuser()`/`isSuperuserOrDisabled()` precedent) and Finding 4 (Cosmetic)
+
+`verifyPermitted()` gained a `RequestType const type` parameter
+(`arangod/RestHandler/RestAdminLogHandler.h:62`,
+`arangod/RestHandler/RestAdminLogHandler.cpp:61`) and now branches three
+ways instead of two (`arangod/RestHandler/RestAdminLogHandler.cpp:61-93`):
+
+```cpp
+if (loggerFeature.onlySuperUser()) {
+  if (!ExecContext::current().isSuperuserOrDisabled()) {
+    return arangodb::Result(TRI_ERROR_HTTP_FORBIDDEN,
+                            "you need super user rights for log operations");
+  }
+} else {
+  if (type == RequestType::GET) {
+    if (auto r = ExecContext::current().canUseAdminAction(
+            auth::perms::AdminReadLogs{});
+        r.fail()) {
+      return r;
+    }
+  } else {
+    // Please note that this means that both `clearLogs` as well as
+    // setting logs levels is allowed by AdminSetLogLevel!
+    if (auto r = ExecContext::current().canUseAdminAction(
+            auth::perms::AdminSetLogLevel{});
+        r.fail()) {
+      return r;
+    }
+  }
+}
+```
+
+- **`--log.api-jwt-policy=jwt` branch** (`loggerFeature.onlySuperUser()`,
+  `lib/Logger/LoggerFeature.h:63`): `devel`'s bare
+  `!ExecContext::current().isSuperuser()`
+  (`devel:arangod/RestHandler/RestAdminLogHandler.cpp:72`) became
+  `!ExecContext::current().isSuperuserOrDisabled()`. This is the exact
+  same transformation already fully traced and verified equivalent in the
+  `RestCompactHandler` section (`auth_comparison_with_devel.md:1310-1370`)
+  and reconfirmed for `RestAdminServerHandler`
+  (`auth_comparison_with_devel.md:1556-1583`): within `AuthMode::Classic`
+  (the scope of this document), `isDisabled()` is always `false`
+  (`Classic` is only ever selected while authentication is active,
+  `arangod/Utils/ExecContext.cpp:92-110`), so
+  `isSuperuserOrDisabled()` reduces to plain `isSuperuser()`, term-for-term
+  identical to `devel`'s check. The fully-auth-disabled configuration
+  (where the two diverge) is explicitly out of scope per the task
+  description and the equivalent note already recorded in the
+  `RestCollectionHandler` and `RestAdminServerHandler` sessions.
+  **Verified equivalent, no regression.**
+- **Non-`onlySuperUser` branch, GET vs. write split**: `devel` used one
+  unconditional `!ExecContext::current().isAdminUser()` check for *all*
+  request types (`devel:arangod/RestHandler/RestAdminLogHandler.cpp:76`).
+  The current branch splits this into `AdminReadLogs` (`GET`) and
+  `AdminSetLogLevel` (`PUT`/`DELETE`, i.e. `clearLogs()` and setting log
+  levels — as the added comment explicitly flags). Neither permission has
+  a dedicated `case` in `AuthMode::Classic::check()` (confirmed by grep),
+  so both fall through to the same generic `AnyAdmin` catch-all
+  (`arangod/Auth/AuthMode.cpp:366-367`) and resolve to the identical
+  `isAdmin()` check `devel` used for both verbs. This split only matters
+  under RBAC (where `AdminReadLogs` and `AdminSetLogLevel` can be granted
+  independently); in Classic mode the two verbs remain equally gated as
+  before. **Cosmetic only, no behavioral difference.**
+
+### Summary
+
+| Route | Verdict |
+|---|---|
+| `POST /_admin/auth/reload` | Identical to `devel` (Finding 1, cosmetic) |
+| `GET/POST/... /_admin/debug/*` (only in failure-test builds) | **Fixes** an unauthenticated-access gap present in `devel` during the `STARTUP`/`MAINTENANCE` boot window (Finding 2) |
+| `GET /_admin/status` | Same as above (Finding 2) |
+| `GET /_admin/log`, `GET /_admin/log/level` | Identical to `devel` (Finding 3 verified-equivalent / Finding 4 cosmetic) |
+| `PUT /_admin/log/level`, `DELETE /_admin/log/entries` | Identical to `devel` (Finding 3 / Finding 4) |
+
+**Action items / recommendations:** None required — Finding 1, 3, and 4
+are confirmed no-ops, and Finding 2 is a fix, not a regression, already
+correctly and consistently implemented across all three affected handlers
+(`RestDebugHandler`, `RestStatusHandler`, `RestVersionHandler`). Worth
+noting for release notes as a security hardening item if such notes are
+being compiled for this refactor.
