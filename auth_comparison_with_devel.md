@@ -5617,3 +5617,114 @@ API-version scheme becomes the default: at that point, the single-
 server/DBServer branch of `collection()` and the `requestedApiVersion() ==
 0` path should receive the same `AccessLevel::Read` check for full
 coverage.
+
+## `RestQueryHandler`, `RestLogHandler`, `RestAdminExecuteHandler` and `RestSystemReportHandler`
+
+### `RestQueryHandler` (`arangod/RestHandler/RestQueryHandler.cpp`, mounted at `/_api/query` prefix)
+
+Handles AQL query introspection/management: `GET .../current`,
+`GET .../slow`, `GET .../properties`, `GET .../rules`, `GET .../registry`,
+`PUT .../properties`, `POST /_api/query` (parse), `DELETE .../<id>` (kill),
+`DELETE .../slow` (clear slow log).
+
+Only one of these sub-operations, `dumpQueryRegistry()`
+(`arangod/RestHandler/RestQueryHandler.cpp:96-100`), has any handler-local
+authorization check; all others (`readQuery()`, `replaceProperties()`,
+`killQuery()`, `deleteQuerySlow()`, `parseQuery()`,
+`handleAvailableOptimizerRules()`) rely solely on the shared base-handler
+database-level gate — unchanged in both branches, confirmed by grep.
+
+**Finding 1 (cosmetic, established pattern).** `dumpQueryRegistry()`'s guard
+changed from `!ExecContext::current().isSuperuser()` to
+`!ExecContext::current().isSuperuserOrDisabled()`
+(`arangod/RestHandler/RestQueryHandler.cpp:97`). This is the same widening
+already proven equivalent within the scope of Classic mode across several
+earlier sessions (`RestCompactHandler`, `RestAdminServerHandler`,
+`RestAuthReloadHandler`/`RestDebugHandler`/`RestStatusHandler`/`RestAdminLogHandler`,
+`RestAdminStatisticsHandler`/`RestLogInternalHandler`): the two predicates
+only diverge when authentication is globally disabled, which is out of
+this document's RBAC-vs-Classic-mode scope. No behavioral change for any
+authenticated Classic-mode request.
+
+### `RestLogHandler` (`arangod/RestHandler/RestLogHandler.cpp`, mounted at `/_api/log` prefix, only registered when replication2 is enabled in cluster mode)
+
+Manages replicated-log operations (status, head/tail/entries, compaction,
+etc. via `ReplicatedLogMethods`).
+
+**Finding 2 (cosmetic, established pattern).** `devel`'s single,
+verb-independent guard,
+
+```cpp
+if (!ExecContext::current().isAdminUser()) {
+  generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
+  co_return;
+}
+```
+
+was split by request type
+(`arangod/RestHandler/RestLogHandler.cpp:53-69`) into a `GET`-only branch
+requiring `auth::perms::AdminReadReplicatedLog{}` and a non-`GET` branch
+requiring `auth::perms::AdminWriteReplicatedLog{}`. Both permission tags
+are members of the `AnyAdmin` type list
+(`arangod/Auth/Permissions.h:102-103,111-118`), so `AuthMode::Classic`
+dispatches both through the exact same generic catch-all `isAdmin()` check
+(`_system` RW) that `devel`'s `isAdminUser()` already performed
+unconditionally for every verb. The split is purely a forward-looking
+scaffold for a future finer-grained RBAC policy (confirmed by the
+handler's own added comment, `arangod/RestHandler/RestLogHandler.h:34`:
+*"TODO Add (rbac) permission checks, or error-out for now"*) — in Classic
+mode, GET and non-GET require identical access today, exactly as in
+`devel`. No behavioral change.
+
+### `RestAdminExecuteHandler` (`arangod/RestHandler/RestAdminExecuteHandler.cpp`, mounted at `/_admin/execute`, requires V8)
+
+No authorization code in either branch (confirmed by grep) — this
+handler executes arbitrary JavaScript supplied in the request body and
+relies entirely on the shared base-handler database-level gate, matching
+`Documentation/path_permissions.md`'s documented access level for this
+well-known, inherently dangerous, opt-in-only (`--javascript.allow-admin-execute`)
+endpoint. Diff vs. `devel` is a single added comment
+(`arangod/RestHandler/RestAdminExecuteHandler.cpp:53`). No findings.
+
+### `RestSystemReportHandler` (`arangod/RestHandler/RestSystemReportHandler.cpp`, mounted at `/_admin/system-report`, exact)
+
+**Finding 3 (cosmetic, established pattern).** `devel`'s handler-local
+`isAdminUser()` helper —
+
+```cpp
+bool RestSystemReportHandler::isAdminUser() const {
+  if (!ExecContext::isAuthEnabled()) {
+    return true;
+  } else {
+    return ExecContext::current().isAdminUser();
+  }
+}
+```
+
+— together with the separate `ServerSecurityFeature::canAccessHardenedApi()`
+gate in `execute()`, was consolidated into a single
+`ExecContext::current().canUseHardenedAction(AdminMonitoringInternal{})`
+call (`arangod/RestHandler/RestSystemReportHandler.cpp:77-84`). This is
+the same `canUseHardenedAction()`/`AdminMonitoringInternal` migration
+already fully proven equivalent for `RestMetricsHandler`,
+`RestUsageMetricsHandler`/`RestEngineHandler`,
+`RestAdminStatisticsHandler`, and `RestVersionHandler` in earlier
+sessions — `--server.harden` semantics plus the generic `AnyAdmin`
+catch-all reproduce `devel`'s combined check exactly. The now-unused
+`isAdminUser()` declaration was correctly removed from the header
+alongside it. No behavioral change.
+
+### Summary
+
+| Route | Verdict |
+|---|---|
+| `GET/PUT/POST/DELETE /_api/query/*` (all sub-ops except `registry`) | Identical to `devel` — no auth code, unchanged base-handler gate |
+| `GET /_api/query/registry` | Superuser check confirmed equivalent (Finding 1) |
+| `/_api/log/*` (all verbs, replication2 clusters only) | Verb-split admin check confirmed equivalent — both GET and non-GET still resolve to the same `_system`-RW test as `devel` (Finding 2) |
+| `/_admin/execute` (POST) | Identical to `devel` — no auth code |
+| `GET /_admin/system-report` | Combined hardened-admin check confirmed equivalent (Finding 3) |
+
+**Action items / recommendations:** none. Every diff across all four
+handlers in this session reuses an authorization-refactor pattern already
+fully proven equivalent in a prior session of this document — no new
+regressions, no gaps, no action required.

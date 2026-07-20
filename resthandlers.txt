@@ -56,13 +56,13 @@
 > ./arangod/RestHandler/RestOptionsBaseHandler.cpp
 > ./arangod/RestHandler/RestCrashHandler.cpp
 > ./arangod/RestHandler/RestIndexHandler.cpp
-./arangod/RestHandler/RestQueryHandler.cpp
+> ./arangod/RestHandler/RestQueryHandler.cpp
 > ./arangod/RestHandler/RestOptionsHandler.cpp
-./arangod/RestHandler/RestLogHandler.cpp
+> ./arangod/RestHandler/RestLogHandler.cpp
 > ./arangod/RestHandler/RestDocumentHandler.cpp
-./arangod/RestHandler/RestAdminExecuteHandler.cpp
+> ./arangod/RestHandler/RestAdminExecuteHandler.cpp
 > ./arangod/RestHandler/RestCursorHandler.cpp
-./arangod/RestHandler/RestSystemReportHandler.cpp
+> ./arangod/RestHandler/RestSystemReportHandler.cpp
 > ./arangod/RestHandler/RestCollectionHandler.cpp
 ./arangod/RestHandler/RestQueryCacheHandler.cpp
 ./arangod/RestHandler/RestAuthHandler.cpp
