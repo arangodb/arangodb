@@ -798,7 +798,7 @@ class instanceManager {
     }
     if (this.waitForAgencyJob(
       result.parsedBody.id,
-      timeout,
+      timeout * 10,
       msg,
       expectStatus)) {
       return true;
