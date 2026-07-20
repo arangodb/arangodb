@@ -44,9 +44,9 @@
 > ./arangod/RestHandler/RestSupervisionStateHandler.cpp
 > ./arangod/RestHandler/RestTransactionHandler.cpp
 > ./arangod/RestHandler/RestAdminClusterHandler.cpp
-./arangod/RestHandler/RestTtlHandler.cpp
-./arangod/RestHandler/RestOpenApiHandler.cpp
-./arangod/RestHandler/RestViewHandler.cpp
+> ./arangod/RestHandler/RestTtlHandler.cpp
+> ./arangod/RestHandler/RestOpenApiHandler.cpp
+> ./arangod/RestHandler/RestViewHandler.cpp
 ./arangod/RestHandler/RestKeyGeneratorsHandler.cpp
 ./arangod/RestHandler/RestQueryPlanCacheHandler.cpp
 ./arangod/RestHandler/RestShutdownHandler.cpp

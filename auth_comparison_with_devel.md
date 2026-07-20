@@ -5123,3 +5123,144 @@ Only the `GET` path's hardening protection was lost.
    safer-direction tightening consistent with an already-accepted pattern
    elsewhere in the codebase (`RestCollectionHandler` Finding 5) and needs
    no correction, only optional release-note awareness.
+
+## `RestTtlHandler`, `RestOpenApiHandler` and `RestViewHandler`
+
+Mounted at `/_api/ttl` (prefix, `_system` database only), `/openapi.json`
+(exact, unauthenticated-reachable static spec), and `/_api/view` (prefix),
+respectively. The first two are trivial; `RestViewHandler`, as anticipated,
+turned out to be the most substantial finding of this session — the
+current branch appears to have finally closed a long-standing, explicitly
+acknowledged `devel` TODO around per-view/per-collection authorization.
+
+### `RestTtlHandler` — clean, one cosmetic diff
+
+No authorization code exists in this handler in either branch (confirmed
+by grep); it relies solely on the shared base-`RestVocbaseBaseHandler`
+database-level gate (`RO` for `GET`, `RW` for `PUT`, enforced generically
+via `checkUserCanAccess()`), plus its own `!_vocbase.isSystem()` guard
+(`arangod/RestHandler/RestTtlHandler.cpp:45-49`), unchanged from `devel`.
+The only diff is one added comment; `.h` is byte-for-byte identical.
+
+### `RestOpenApiHandler` — clean, one cosmetic diff
+
+Serves a static, compile-time-embedded OpenAPI spec with **no
+authorization code whatsoever** in either branch — matching its documented
+intent as a publicly reachable, unauthenticated discovery endpoint. Only
+diff is one added comment; `.h` is byte-for-byte identical.
+
+### Finding 1 (Confirmed equivalent): `getView()`, `deleteView()`, per-view listing filter, and rename — same database-level semantics as `devel`
+
+Four of `RestViewHandler`'s checks carry over `devel`'s semantics exactly,
+just renamed/relocated from the old free-standing `canUse()` helper /
+`LogicalView::canUse()` member into dedicated `ExecContext` methods:
+
+| Operation | `devel` | Current | Classic-mode semantics |
+|---|---|---|---|
+| `getView()` (`arangod/RestHandler/RestViewHandler.cpp:63-69`) | `view->canUse(RO)` | `canUseView(db, name, ViewAccessLevel::Read)` | Both reduce to `effectiveDatabaseAuthLevel(db) >= RO` — see below |
+| `deleteView()` (`:404-411`) | `view->canUse(RW)` | `canDropView(db, name)` | Both reduce to `effectiveDatabaseAuthLevel(db) >= RW` |
+| rename branch of `modifyView()` (`:306-311`) | `view->canUse(RW)` | `canRenameView(db, oldName, newName)` | Both reduce to `effectiveDatabaseAuthLevel(db) >= RW` |
+| per-view filter in `getViews()` (`:489-494`) | `view->canUse(RO)` | `canSeeView(db, name)` | Both reduce to `effectiveDatabaseAuthLevel(db) >= RO` |
+
+I confirmed `devel:arangod/VocBase/LogicalView.cpp:134-141`'s
+`LogicalView::canUse(level)` is a **pure database-level check** —
+`ExecContext::current().canUseDatabase(vocbase().name(), level)` — with an
+explicit comment stating "per-view authentication checks disabled as per
+[backlog#459]" (view-specific auth overrides were never actually
+evaluated). The current branch's `AuthMode::Classic` cases for `UseView`
+(`arangod/Auth/AuthMode.cpp:328-347`) and `SeeView`
+(`arangod/Auth/AuthMode.cpp:412-423`) preserve this exact limitation
+verbatim, with an explicit comment: "In the classic system views delegate
+to database-level access (per-view collection-level auth is not used for
+views)." `DropView` (`arangod/Auth/AuthMode.cpp:478-481`) and `RenameView`
+(`arangod/Auth/AuthMode.cpp:465-477`) likewise just check database `RW`.
+Verified byte-for-byte equivalent ALLOW/DENY outcomes in Classic mode for
+all four operations; only cosmetic differences (helper renaming, more
+specific error messages via `Result` instead of a fixed generic message).
+
+Also confirmed **no-op**, per the same reasoning already established for
+`RestGraphHandler`'s Finding 4: the top-level `canUse(RO, _vocbase)` gate
+that `devel` ran before enumerating views in `getViews()`
+(`devel:arangod/RestHandler/RestViewHandler.cpp:439-444`) was removed
+(replaced with a commented-out `// TODO check access right per view`
+block) — but this check is strictly redundant with the base
+`RestHandler::checkUserCanAccess()` gate that already requires database
+`RO` before any handler code runs at all, so its removal has zero
+observable effect.
+
+### Finding 2 (Genuine devel-side gap, now fixed — the headline result): `createView()` and `modifyView()` now require read access to every linked collection
+
+`devel` (`devel:arangod/RestHandler/RestViewHandler.cpp:198-204`, `createView()`):
+```cpp
+if (!canUse(auth::Level::RW, _vocbase)) {
+  generateError(
+      Result(TRI_ERROR_FORBIDDEN, "insufficient rights to create view"));
+  ...
+}
+```
+Current branch (`arangod/RestHandler/RestViewHandler.cpp:189-206`):
+```cpp
+auto const& execContext = ExecContext::current();
+std::vector<std::string> linkedCollections;
+if (auto linksSlice = body.get("links"); linksSlice.isObject()) {
+  for (auto const& pair : VPackObjectIterator(linksSlice)) {
+    linkedCollections.push_back(pair.key.copyString());
+  }
+}
+if (auto r = execContext.canCreateView(
+        _vocbase.name(), nameSlice.stringView(), linkedCollections);
+    !r.ok()) {
+  generateError(r);
+  ...
+}
+```
+`ExecContext::canCreateView()` (`arangod/Utils/ExecContext.cpp:314-323`)
+routes to `AuthMode::Classic`'s `CreateView` case
+(`arangod/Auth/AuthMode.cpp:425-447`), which — beyond the same database
+`RW` check `devel` already performed — **additionally requires `UseCollection(Read)`
+on every collection named in the request body's `links` object**
+(`arangod/Auth/AuthMode.cpp:433-444`). The exact same additional
+requirement was added to `modifyView()`'s non-rename branch via
+`canModifyView()` (`arangod/RestHandler/RestViewHandler.cpp:312-324` →
+`arangod/Auth/AuthMode.cpp:448-464`), checking read access to every
+collection in the (possibly partial, for `PATCH`) updated `links` object
+from the request body.
+
+This directly closes the gap left open by `devel`'s disabled per-view/
+per-collection check (see Finding 1): in `devel`, any user with database
+`RW` could create or update an ArangoSearch/search-alias view linking to
+**any** collection in the database — including one they had been
+explicitly denied access to via a per-collection override — since only
+the blanket database-level `RW` check applied. A search view built on
+such a collection would expose its indexed field values through view
+queries, bypassing the collection-level deny. The current branch closes
+this: creating/modifying a view that links to a collection the caller
+cannot read is now rejected with `403 FORBIDDEN`.
+
+This is a real, narrow-but-security-relevant behavioral change (it only
+manifests when a per-collection access override diverges from the
+database default — the same "unusual grant configuration" precondition
+seen in several other findings in this document), and — like
+`RestReplicationHandler`'s restore-indexes/restore-view finding and
+`RestAdminClusterHandler`'s `rebalanceShards` finding — is best understood
+as the current branch **fixing** a genuine, explicitly-acknowledged
+`devel` gap (the `backlog#459` TODO) rather than introducing a regression.
+
+### Summary
+
+| Route | Verdict |
+|---|---|
+| `GET/PUT /_api/ttl/properties`, `GET /_api/ttl/statistics` | Identical to `devel` — no auth code, base-handler gate only |
+| `GET /openapi.json` | Identical to `devel` — no auth code, intentionally public |
+| `GET /_api/view[/<name>[/properties]]` | Identical to `devel` (Finding 1) |
+| `DELETE /_api/view/<name>` | Identical to `devel` (Finding 1) |
+| `PUT /_api/view/<name>/rename` | Identical to `devel` (Finding 1) |
+| `POST /_api/view` (create) | **Fixed vs. `devel`**: now also requires read access to every linked collection (Finding 2) |
+| `PUT/PATCH /_api/view/<name>/properties` (modify) | **Fixed vs. `devel`**: same new linked-collection check (Finding 2) |
+
+**Action items / recommendations:** None required — Finding 2 is a
+deliberate, welcome closure of a long-standing, explicitly-documented
+`devel` authorization gap (`backlog#459`); worth a release note
+highlighting that view creation/modification now validates access to
+linked collections, since applications relying on the old (lax) behavior
+with explicitly-denied collections would need those denials revisited.
