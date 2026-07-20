@@ -1916,6 +1916,78 @@ No behavioral impact.
 2. No action required for Finding 1 (cosmetic) or Finding 3 (cosmetic,
    unrelated refactor).
 
+### Addendum: `RocksDBRestWalHandler` and `ClusterRestWalHandler`
+
+These two are **not** subclasses of `RestWalAccessHandler` — they are
+independent handlers (both extend `RestBaseHandler` directly) mounted at
+the completely different path `/_admin/wal` (prefix route, registered in
+`arangod/RocksDBEngine/RocksDBRestHandlers.cpp:44` for single-server/
+DBServer, and `arangod/ClusterEngine/ClusterRestHandlers.cpp:41` for the
+Coordinator). They expose four sub-operations:
+`transactions` (GET), `flush` (PUT), `properties` (GET/PUT), and
+`wait_for_estimator_sync` (PUT). Confirmed via
+`Documentation/path_permissions.md:857-866` (a design doc present only on
+this branch, added as new documentation — it does not exist on `devel` at
+all, `git show devel:Documentation/path_permissions.md` fails).
+
+Both `RocksDBRestWalHandler::execute()`
+(`arangod/RocksDBEngine/RocksDBRestWalHandler.cpp:46-101`) and
+`ClusterRestWalHandler::execute()`
+(`arangod/ClusterEngine/ClusterRestWalHandler.cpp:46-101`) are otherwise
+byte-for-byte identical to `devel` except for:
+
+1. Two added comments (`// Mounted at /_admin/wal ...`) — cosmetic.
+2. `ClusterRestWalHandler.cpp` drops an unused `#include
+   "Cluster/ServerState.h"` — cosmetic, confirmed via diff that
+   `ServerState` is not referenced anywhere in this file in either branch.
+3. The `wait_for_estimator_sync` admin gate, but **only** inside the
+   `#else` branch of `#ifndef ARANGODB_ENABLE_MAINTAINER_MODE` (i.e. only
+   reachable in maintainer builds) changed from:
+   ```cpp
+   if (!ExecContext::current().isAdminUser()) { ... }
+   ```
+   to:
+   ```cpp
+   if (auto r = ExecContext::current().canUseAdminAction(
+           auth::perms::AdminWalAccess{});
+       r.fail()) { ... }
+   ```
+   This is the **exact same `isAdminUser()` → `canUseAdminAction(AnyAdmin)`
+   pattern already analyzed and classified as cosmetic-only in Finding 1
+   above** — `canUseAdminAction(AnyAdmin)` dispatches to
+   `AuthMode::Classic::check()`'s `isAdmin()` branch
+   (`arangod/Auth/AuthMode.cpp:367`), which is the same "RW on `_system`"
+   test as `devel`'s `_isAdminUser` flag. Same ALLOW/DENY decision; only
+   the error message text differs. The `#ifndef
+   ARANGODB_ENABLE_MAINTAINER_MODE` branch (`!isSuperuser()` → full
+   superuser required) is untouched in both files, in both branches.
+4. `flushWalOnAllDBServers()`/`ClusterAdminOperations.cpp` (the function
+   backing both `flush()` implementations' cluster-wide fan-out) is
+   byte-for-byte identical between branches (confirmed via diff) and
+   performs cluster-internal RPCs to DB-Servers via the network pool —
+   the same superuser-JWT internal-authentication pattern already
+   established for `compactOnAllDBServers()`/`RestCompactHandler`. No new
+   finding.
+
+**The three remaining sub-routes — `transactions`, `flush`, and
+`properties` — have zero handler-local authorization code in either
+branch** (confirmed: no `ExecContext`/`canUse*`/`auth::` reference
+anywhere near these three functions in either `devel` or the current
+branch). This matches `Documentation/path_permissions.md:857-869`, which
+records their designed access level as merely `AUTHEN` (any authenticated
+user) rather than `SUPER`/`ADMIN` — i.e. this is **documented, intentional,
+unchanged-since-`devel` behavior**, not a divergence introduced by this
+branch. (Whether "any authenticated user can trigger a cluster-wide WAL
+flush or introspect running-transaction counts" is itself a *good* design
+choice is outside this document's stated scope, since it is identical in
+both branches.)
+
+**Conclusion:** no findings distinct from the parent `RestWalAccessHandler`
+session — the one behavioral change present (`wait_for_estimator_sync`'s
+gate) is the same already-classified-cosmetic `isAdminUser()` →
+`canUseAdminAction(AnyAdmin)` refactor pattern seen throughout this
+codebase. No action items.
+
 
 ## `RestOptions*` handler family
 
