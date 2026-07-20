@@ -153,6 +153,27 @@ function aqlMatchStatementTestSuite() {
             }
         },
 
+        testSelectEdgesWithThreeEdgeTypes: function () {
+            // union over 3 edge collections == sum of the individual counts (disjoint)
+            const q3 = "MATCH (v :vc) -[ e :ec|ec2|ec_loops ]-> (w :vc) RETURN e._id";
+            const three = db._query(q3, {}, options).toArray();
+            const nEc = db._query("MATCH (v :vc) -[ e :ec ]-> (w :vc) RETURN e", {}, options).toArray().length;
+            const nEc2 = db._query("MATCH (v :vc) -[ e :ec2 ]-> (w :vc) RETURN e", {}, options).toArray().length;
+            const nLoops = db._query("MATCH (v :vc) -[ e :ec_loops ]-> (w :vc) RETURN e", {}, options).toArray().length;
+            assertEqual(three.length, nEc + nEc2 + nLoops);
+            const prefixes = new Set(three.map((id) => id.split("/")[0]));
+            assertTrue(prefixes.has("ec") && prefixes.has("ec2") && prefixes.has("ec_loops"),
+                       JSON.stringify([...prefixes]));
+        },
+
+        testSelectAnyEdgesWithMultipleEdgeTypes: function () {
+            // any-direction multi-type union == sum of the individual any-direction counts
+            const union = db._query("MATCH (v :vc) -[ e :ec|ec2 ]- (w :vc) RETURN e", {}, options).toArray().length;
+            const nEc = db._query("MATCH (v :vc) -[ e :ec ]- (w :vc) RETURN e", {}, options).toArray().length;
+            const nEc2 = db._query("MATCH (v :vc) -[ e :ec2 ]- (w :vc) RETURN e", {}, options).toArray().length;
+            assertEqual(union, nEc + nEc2);
+        },
+
         testSelectInboundEdges: function () {
             const result = db._query("MATCH (v :vc) <-[ e :ec ]- (w :vc) RETURN [v, e, w]", {}, options).toArray();
             assertEqual(result.length, 50);
