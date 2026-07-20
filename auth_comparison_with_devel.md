@@ -410,7 +410,7 @@ latent risk / code-quality issue because:
 Routes handled: `GET /_api/collection[/<name>[/checksum|figures|count|
 properties|revision|shards]]`, `POST /_api/collection`,
 `PUT /_api/collection/<name>/{load|unload|compact|responsibleShard|
-truncate|properties|rename|loadIndexesIntoMemory}`,
+truncate|properties|rename|loadIndexesIntoMemory|recalculateCount}`,
 `DELETE /_api/collection/<name>`.
 
 The handler file itself diffs only slightly from
@@ -424,6 +424,24 @@ create,drop,updateProperties,rename,warmup,properties}`
 found (Findings 1 and 2 below); everything else that looked suspicious at
 first turned out to be an equivalent reformulation of the same `devel`
 logic (documented as Finding 4, for completeness/future reference).
+
+Like `RestReplicationHandler`, `RestCollectionHandler` is not used
+directly: `RestCollectionHandler::handleExtraCommandPut()`
+(`arangod/RestHandler/RestCollectionHandler.h:65-67`) is a pure-virtual
+extension point, and there are exactly two engine-/role-specific
+subclasses that each implement it for the single `recalculateCount`
+sub-command (the only `PUT` action not handled directly in the base
+class — see `arangod/RestHandler/RestCollectionHandler.cpp:695-707`):
+- `RocksDBRestCollectionHandler`
+  (`arangod/RocksDBEngine/RocksDBRestCollectionHandler.cpp`) — registered
+  for `/_api/collection` on single-server and DBServer
+  (`arangod/RocksDBEngine/RocksDBRestHandlers.cpp:38`).
+- `ClusterRestCollectionHandler`
+  (`arangod/ClusterEngine/ClusterRestCollectionHandler.cpp`) — registered
+  for `/_api/collection` on the coordinator
+  (`arangod/ClusterEngine/ClusterRestHandlers.cpp`).
+
+Both are analyzed below as Finding 5.
 
 ### Finding 1 (Regression): `GET /_api/collection` (top-level listing) uses `canSeeCollection`, which — unlike `devel`'s per-collection level check — always succeeds in `Classic` mode, leaking existence of collections that should be hidden
 
@@ -694,6 +712,121 @@ the task description), `isSuperuserOrDisabled()` reduces to `isSuperuser()`
 under `Classic` mode — no observable difference for the mode under
 investigation here.
 
+### Finding 5: the two `handleExtraCommandPut()` subclasses — `RocksDBRestCollectionHandler` and `ClusterRestCollectionHandler` (`PUT /_api/collection/<name>/recalculateCount`)
+
+**`ClusterRestCollectionHandler`** (`arangod/ClusterEngine/ClusterRestCollectionHandler.cpp`)
+is **byte-for-byte identical** to
+`devel:arangod/ClusterEngine/ClusterRestCollectionHandler.cpp` (empty
+diff, not even the usual `@author`-line cosmetic difference) — no finding,
+no divergence whatsoever. However, its content is worth stating plainly,
+since it is relevant to understanding the overall authorization picture:
+```cpp
+futures::Future<Result> ClusterRestCollectionHandler::handleExtraCommandPut(
+    std::shared_ptr<LogicalCollection> coll, std::string const& suffix,
+    velocypack::Builder& builder) {
+  if (suffix == "recalculateCount") {
+    Result res = recalculateCountsOnAllDBServers(
+        server().getFeature<ClusterFeature>(), _vocbase.name(), coll->name());
+    ...
+  }
+  return {TRI_ERROR_NOT_IMPLEMENTED};
+}
+```
+This performs **no permission check of any kind** before triggering a
+cluster-wide recount on every DBServer holding a shard of the collection.
+Since `RestCollectionHandler::handleCommandPut()`
+(`arangod/RestHandler/RestCollectionHandler.cpp:443-458`) only guarantees
+**Read**-level access via `methods::Collections::lookup()` before
+dispatching to `handleExtraCommandPut()` (as its own comment states: "All
+permission checks for reading the collection are done in the
+`methods::Collections::lookup` method... The checks for writing... are
+typically done here in the RestHandler" — but for `recalculateCount`,
+no such check exists at the `RestHandler` level, and none is added by
+`ClusterRestCollectionHandler` either), **any user with mere `RO` access
+to a collection can trigger `PUT .../recalculateCount` on the coordinator**
+and force a cluster-wide, potentially expensive, recount operation across
+all DBServers. This is a real, latent authorization gap — but since it is
+**identical, unchanged, in both `devel` and the current branch**, it is
+**not a divergence** within the scope of this document (which tracks
+current-branch-vs-`devel` behavioural differences under Classic mode) and
+is therefore not assigned its own regression/fix verdict; it is recorded
+here purely for completeness/awareness, since it was uncovered directly by
+this investigation and is easy to miss.
+
+**`RocksDBRestCollectionHandler`**
+(`arangod/RocksDBEngine/RocksDBRestCollectionHandler.cpp`), by contrast,
+**does** diverge from `devel`, and this is a genuine, newly-found
+regression (in the stricter/safer direction). `devel`
+(`devel:arangod/RocksDBEngine/RocksDBRestCollectionHandler.cpp:41-44`):
+```cpp
+if (!ExecContext::current().canUseCollection(coll->name(), auth::Level::RW)) {
+  co_return Result(TRI_ERROR_FORBIDDEN);
+}
+```
+Current branch (`arangod/RocksDBEngine/RocksDBRestCollectionHandler.cpp:42-46`):
+```cpp
+if (auto r = ExecContext::current().canUseCollection(
+        coll->vocbase().name(), coll->name(), AccessLevel::WriteMeta);
+    !r.ok()) {
+  co_return r;
+}
+```
+At first glance this looks like the same cosmetic `auth::Level::RW` →
+`AccessLevel::WriteMeta` / single-arg → two-arg `canUseCollection` API
+migration already proven equivalent multiple times in this document (e.g.
+Finding 4's `Collections::updateProperties`/`rename` case) — the single-arg
+overload is confirmed to simply forward to the two-arg one using the
+`ExecContext`'s own `_database`
+(`devel:arangod/Utils/ExecContext.h:136-139`), which is the same database
+as `coll->vocbase()` here, so that part is indeed a no-op change. **But
+this specific instance is *not* equivalent**, because
+`AuthMode::Classic::check(UseCollection{..., WriteMeta})`
+(`arangod/Auth/AuthMode.cpp:237-249`) has an additional "container
+principle" clause not present in the old check:
+```cpp
+// WriteMeta additionally requires RW access to the database
+// (container principle: modifying a collection's meta-data
+// requires write permission on the containing database).
+if (collection.level == CollectionAccessLevel::WriteMeta) {
+  auto const dbLevel = effectiveDatabaseAuthLevel(collection.db);
+  if (dbLevel < auth::Level::RW) {
+    return {TRI_ERROR_FORBIDDEN, ...};
+  }
+}
+```
+Unlike the `updateProperties`/`rename` case (where `devel`'s *old* code
+already performed an explicit, separate `canUseDatabase(RW)` check in
+addition to `canUseCollection(RW)` — so the new container-principle clause
+merely folds an already-present check into the permission-vocabulary API),
+`devel`'s old `recalculateCount` check was **only**
+`canUseCollection(name, RW)` — a purely collection-level check, with
+**no** accompanying database-level check. Since `auth::User::
+collectionAuthLevel()`/`effectiveCollectionAuthLevel()` can return `RW` for
+a specific collection via a per-`(database, collection)` grant override
+even when the user's database-level access is only `RO` (the same
+override mechanism documented in Finding 1 above), there is a concrete
+scenario where behaviour differs:
+
+- A user granted database-level `RO` on `db1`, but an explicit
+  per-collection override of `RW` on `db1/coll1` (e.g.
+  `grantCollection(user, "db1", "coll1", "rw")` while `grantDatabase(user,
+  "db1", "ro")`).
+- In `devel`: `canUseCollection("coll1", RW)` succeeds (the per-collection
+  override applies) → `PUT /_api/collection/coll1/recalculateCount`
+  **succeeds**.
+- In the current branch: the same per-collection check succeeds, but the
+  new container-principle clause additionally requires
+  `effectiveDatabaseAuthLevel("db1") >= RW`, which is `RO` here → **fails
+  with `403 FORBIDDEN`**.
+
+This is a narrow (requires a specific, somewhat unusual grant
+configuration — collection-level `RW` combined with database-level `RO`)
+but real behavioural regression, in the stricter/safer direction (denying
+something `devel` allowed), affecting only single-server and DBServer
+(`ClusterRestCollectionHandler`'s coordinator path is, as shown above,
+completely unaffected — and indeed unchanged — by this container-principle
+tightening, since it performs no check at all).
+
 ### Summary for `RestCollectionHandler`
 
 | Route | Verdict |
@@ -704,6 +837,8 @@ investigation here.
 | `PUT .../{load,unload,truncate,properties,rename,loadIndexesIntoMemory,responsibleShard}` | Identical to `devel` (Finding 4) |
 | `PUT .../compact` | Identical to `devel` for the classic route; a new `WriteMeta` check exists but is gated behind the unrelated API-versioning scheme (Finding 3) |
 | `DELETE /_api/collection/<name>` | **Regression** (Finding 2): returns `403 FORBIDDEN` instead of `404 NOT_FOUND` for a *non-existent* collection when the caller lacks write access, due to a new up-front `canDropCollection` check that runs before the existence check |
+| `PUT .../recalculateCount` (coordinator, `ClusterRestCollectionHandler`) | Identical to `devel` — byte-for-byte unchanged; **both** branches perform no permission check at all (Finding 5, not a divergence, recorded for awareness) |
+| `PUT .../recalculateCount` (single-server/DBServer, `RocksDBRestCollectionHandler`) | **Regression** (Finding 5, narrow, stricter/safer direction): a user with per-collection `RW` override but only database-level `RO` could recalculate in `devel`; now denied with `403 FORBIDDEN` due to the new `WriteMeta` container-principle check |
 
 **Action items / recommendations:**
 1. Fix Finding 1: either make `AuthMode::Classic::check(SeeCollection)`
@@ -723,6 +858,17 @@ investigation here.
 3. No action required for Finding 3 (deliberate, gated, unrelated to RBAC
    toggle) or Finding 4 (already equivalent; documented to save
    re-investigation effort in the future).
+4. Finding 5 (`recalculateCount`): the `RocksDBRestCollectionHandler`
+   narrowing is low-risk (an unusual grant combination) and arguably a
+   reasonable side-effect of standardizing on the `WriteMeta`
+   container-principle check elsewhere — worth a one-line release-note
+   mention rather than a code fix. Separately, and out of scope for a
+   current-branch-vs-`devel` fix (since it is unchanged in both): the
+   complete absence of any permission check in
+   `ClusterRestCollectionHandler::handleExtraCommandPut()` for
+   `recalculateCount` is worth flagging to the team as a pre-existing gap
+   worth closing in `devel` directly (e.g. by adding the same `WriteMeta`
+   check there), independent of this comparison exercise.
 
 **Addendum (found while investigating `RestDocumentHandler`, see below):**
 the `PUT /_api/collection/<name>/truncate` route listed above as "Identical
