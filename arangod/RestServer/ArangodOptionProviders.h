@@ -13,6 +13,7 @@
 #include "RestServer/MaxMapCountOptionsProvider.h"
 #include "RestServer/NonceOptionsProvider.h"
 #include "RestServer/TemporaryStorageOptionsProvider.h"
+#include "RestServer/UpgradeOptionsProvider.h"
 #include "RocksDBEngine/RocksDBIndexCacheRefillOptionsProvider.h"
 #include "RocksDBEngine/RocksDBOptionFeatureOptionsProvider.h"
 #include "RocksDBEngine/RocksDBEngineOptionsProvider.h"
@@ -27,5 +28,6 @@ using ArangodOptionProviders = CoreOptionProviders<
     LanguageOptionsProvider, LogBufferOptionsProvider,
     MaxMapCountOptionsProvider, NonceOptionsProvider,
     RocksDBEngineOptionsProvider, RocksDBIndexCacheRefillOptionsProvider,
-    RocksDBOptionFeatureOptionsProvider, TemporaryStorageOptionsProvider>;
+    RocksDBOptionFeatureOptionsProvider, TemporaryStorageOptionsProvider,
+    UpgradeOptionsProvider>;
 }  // namespace arangodb
