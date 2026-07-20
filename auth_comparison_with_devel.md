@@ -4623,3 +4623,54 @@ correctly and consistently implemented across all three affected handlers
 (`RestDebugHandler`, `RestStatusHandler`, `RestVersionHandler`). Worth
 noting for release notes as a security hardening item if such notes are
 being compiled for this refactor.
+
+## `RestAdminRoutingHandler`, `RestUploadHandler` and `RestJobHandler`
+
+Three more small handlers, mounted at `/_admin/routing` (prefix, requires
+V8), `/_api/upload` (prefix), and `/_api/job` + `/_admin/job` (both
+prefix), respectively.
+
+- **`RestAdminRoutingHandler`** (`arangod/RestHandler/RestAdminRoutingHandler.cpp`)
+  reloads the V8 routing table (`reload` sub-command only). Subclasses
+  `RestVocbaseBaseHandler`, has no `checkUserCanAccess()` override and no
+  `ExecContext`/`canUse*`/`auth::` references anywhere (confirmed by
+  grep). Diff vs. `devel` is a single added comment
+  (`arangod/RestHandler/RestAdminRoutingHandler.cpp:37`); `.h` is
+  byte-for-byte identical.
+- **`RestUploadHandler`** (`arangod/RestHandler/RestUploadHandler.cpp`)
+  writes the raw request body to a server-generated temp file (via
+  `TRI_GetTempName("uploads", ...)`, not attacker-controlled, so no path-
+  traversal concern) and returns its name; used internally by
+  arangoimport/UI as a staging step before a subsequent import call.
+  Subclasses `RestVocbaseBaseHandler`, likewise no authorization code and
+  no override. Diff vs. `devel` is a single added comment
+  (`arangod/RestHandler/RestUploadHandler.cpp:46`); `.h` identical.
+- **`RestJobHandler`** (`arangod/RestHandler/RestJobHandler.cpp`) manages
+  async job results (`getJob`/`putJob`/`deleteJob`, plus `forwardingTarget()`
+  for routing to the coordinator that owns the job). Subclasses
+  `RestBaseHandler` directly, no authorization code, no override. Diff vs.
+  `devel` is a single added comment
+  (`arangod/RestHandler/RestJobHandler.cpp:48`); `.h` and
+  `forwardingTarget()` byte-for-byte identical.
+
+All three therefore rely entirely on the shared, already-analyzed base
+`RestHandler::checkUserCanAccess()` gate (database-level `RO`, per the
+`RestDocumentHandler`/many other sessions) — no handler-specific
+divergence of any kind was found. Note: `RestJobHandler` returning another
+user's async job result to any caller with mere database `RO` access
+(job IDs are just sequential numeric ticks, no ownership check tying a
+job to the user who created it) is a pre-existing characteristic shared
+identically by `devel` and the current branch — not a regression, and out
+of scope for a devel-vs-current comparison, but flagged here for
+completeness since it was noticed during the review.
+
+### Summary
+
+| Route | Verdict |
+|---|---|
+| `POST /_admin/routing/reload` | Identical to `devel` — comment-only diff |
+| `POST /_api/upload` | Identical to `devel` — comment-only diff |
+| `GET/PUT/DELETE /_api/job/*`, `/_admin/job/*` | Identical to `devel` — comment-only diff |
+
+**Action items / recommendations:** None. All three handlers are clean;
+no authorization logic exists in any of them in either branch.

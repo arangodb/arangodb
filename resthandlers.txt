@@ -30,10 +30,10 @@
 > ./arangod/RestHandler/RestDebugHandler.cpp
 > ./arangod/RestHandler/RestStatusHandler.cpp
 > ./arangod/RestHandler/RestAdminLogHandler.cpp
-./arangod/RestHandler/RestAdminRoutingHandler.cpp
-./arangod/RestHandler/RestUploadHandler.cpp
+> ./arangod/RestHandler/RestAdminRoutingHandler.cpp
+> ./arangod/RestHandler/RestUploadHandler.cpp
 > ./arangod/RestHandler/RestAccessTokenHandler.cpp
-./arangod/RestHandler/RestJobHandler.cpp
+> ./arangod/RestHandler/RestJobHandler.cpp
 ./arangod/RestHandler/RestAdminDatabaseHandler.cpp
 ./arangod/RestHandler/RestLogInternalHandler.cpp
 ./arangod/RestHandler/RestAdminStatisticsHandler.cpp
@@ -79,7 +79,7 @@
 > ./arangod/ClusterEngine/ClusterRestReplicationHandler.cpp
 > ./arangod/ClusterEngine/ClusterRestCollectionHandler.cpp
 > ./arangod/ClusterEngine/ClusterRestWalHandler.cpp
-./arangod/ClusterEngine/ClusterRestHandlers.cpp
+- ./arangod/ClusterEngine/ClusterRestHandlers.cpp
 ./arangod/SystemMonitor/AsyncRegistry/RestHandler.cpp
 ./arangod/SystemMonitor/Activities/RestHandler.cpp
 ./enterprise/Enterprise/RestHandler/RestHotBackupHandler.cpp
