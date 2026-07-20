@@ -22,23 +22,28 @@
 
 #pragma once
 
-#include "ApplicationFeatures/OptionsProvider.h"
-#include "Replication2/ReplicatedLog/ReplicatedLogGlobalSettings.h"
-#include <memory>
-
-namespace arangodb::options {
-class ProgramOptions;
-}
+#include <cstddef>
 
 namespace arangodb::replication2 {
 
-struct ReplicatedLogOptionsProvider
-    : OptionsProviderImpl<ReplicatedLogOptionsProvider,
-                          ReplicatedLogGlobalSettings> {
-  void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
-                          ReplicatedLogGlobalSettings& options);
-  void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> /*opts*/,
-                           ReplicatedLogGlobalSettings& /*options*/) {}
+// These settings are initialised by the ReplicatedLogFeature based on command
+// line arguments
+struct ReplicatedLogGlobalSettings {
+ public:
+  static inline constexpr std::size_t defaultThresholdNetworkBatchSize{1024 *
+                                                                       1024};
+  static inline constexpr std::size_t minThresholdNetworkBatchSize{1024 * 1024};
+
+  static inline constexpr std::size_t defaultThresholdRocksDBWriteBatchSize{
+      1024 * 1024};
+  static inline constexpr std::size_t minThresholdRocksDBWriteBatchSize{1024 *
+                                                                        1024};
+  static inline constexpr std::size_t defaultThresholdLogCompaction{1000};
+
+  std::size_t _thresholdNetworkBatchSize{defaultThresholdNetworkBatchSize};
+  std::size_t _thresholdRocksDBWriteBatchSize{
+      defaultThresholdRocksDBWriteBatchSize};
+  std::size_t _thresholdLogCompaction{defaultThresholdLogCompaction};
 };
 
 }  // namespace arangodb::replication2
