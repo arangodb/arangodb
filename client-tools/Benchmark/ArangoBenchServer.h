@@ -31,7 +31,8 @@ namespace options {
 class ProgramOptions;
 }
 
-class ArangoBenchServer final : public OptionProvidingServer<ArangoBenchOptionProviders> {
+class ArangoBenchServer final
+    : public OptionProvidingServer<ArangoBenchOptionProviders> {
  public:
   ArangoBenchServer(std::shared_ptr<options::ProgramOptions> options,
                     char const* binaryPath, std::string binaryName, int* ret);

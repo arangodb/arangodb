@@ -31,7 +31,8 @@ namespace options {
 class ProgramOptions;
 }
 
-class ArangoVPackServer final : public OptionProvidingServer<ArangoVPackOptionProviders> {
+class ArangoVPackServer final
+    : public OptionProvidingServer<ArangoVPackOptionProviders> {
  public:
   ArangoVPackServer(std::shared_ptr<options::ProgramOptions> options,
                     char const* binaryPath, std::string binaryName, int* ret);
