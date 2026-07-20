@@ -1,6 +1,6 @@
 PROJECT(snowball C)
 
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.12)
 
 SET(SNOWBALL_VERSION_MAJOR 2)
 SET(SNOWBALL_VERSION_MINOR 2)
