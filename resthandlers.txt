@@ -51,11 +51,11 @@
 > ./arangod/RestHandler/RestQueryPlanCacheHandler.cpp
 > ./arangod/RestHandler/RestShutdownHandler.cpp
 > ./arangod/RestHandler/RestLicenseHandler.cpp
-./arangod/RestHandler/RestExplainHandler.cpp
-./arangod/RestHandler/RestAqlUserFunctionsHandler.cpp
+> ./arangod/RestHandler/RestExplainHandler.cpp
+> ./arangod/RestHandler/RestAqlUserFunctionsHandler.cpp
 > ./arangod/RestHandler/RestOptionsBaseHandler.cpp
-./arangod/RestHandler/RestCrashHandler.cpp
-./arangod/RestHandler/RestIndexHandler.cpp
+> ./arangod/RestHandler/RestCrashHandler.cpp
+> ./arangod/RestHandler/RestIndexHandler.cpp
 ./arangod/RestHandler/RestQueryHandler.cpp
 > ./arangod/RestHandler/RestOptionsHandler.cpp
 ./arangod/RestHandler/RestLogHandler.cpp

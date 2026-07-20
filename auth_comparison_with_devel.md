@@ -5456,3 +5456,164 @@ non-read-only-gated variant) instead of the generic
 `ExecContext::canUseDatabase(db, level)`, since invalidating an in-memory
 cache is not a persistent write and arguably should remain available
 during read-only-mode maintenance windows. No other action items.
+
+## `RestExplainHandler`, `RestAqlUserFunctionsHandler`, `RestCrashHandler` and `RestIndexHandler`
+
+### `RestExplainHandler` (`arangod/RestHandler/RestExplainHandler.cpp`)
+
+Diff vs. `devel` is a single added comment
+(`arangod/RestHandler/RestExplainHandler.cpp:41`, `// Mounted at
+/_api/explain (prefix)`); `.h` is byte-for-byte identical. No authorization
+code exists in this handler in either branch (confirmed by grep) — it
+relies entirely on the shared base-`RestHandler` database-level gate.
+
+No findings.
+
+### `RestAqlUserFunctionsHandler` (`arangod/RestHandler/RestAqlUserFunctionsHandler.cpp`)
+
+Diff vs. `devel` is a single added comment
+(`arangod/RestHandler/RestAqlUserFunctionsHandler.cpp:44`); `.h` is
+byte-for-byte identical. No authorization code in the handler itself; its
+delegate, `arangod/VocBase/Methods/AqlUserFunctions.cpp`, is also
+byte-for-byte identical between branches (full diff is empty).
+
+No findings.
+
+### `RestCrashHandler` (`arangod/RestHandler/RestCrashHandler.cpp`, mounted at `/_admin/crashes`)
+
+**Finding 1 (cosmetic).** `ExecContext::current().isAdminUser()` →
+`canUseAdminAction(AdminCrashHandler{})`
+(`arangod/RestHandler/RestCrashHandler.cpp:42-48`). `AdminCrashHandler` is
+part of `detail::AdminList`/`auth::perms::AnyAdmin`
+(`arangod/Auth/Permissions.h:88,113`, matching
+`Documentation/path_permissions.md:787-789`), so this dispatches to the
+same generic `isAdmin()` catch-all already proven equivalent throughout
+this document. Only the error message text changes (`r.errorMessage()`
+vs. the old hard-coded string); HTTP status (`403`) and `errorNum`
+(`TRI_ERROR_HTTP_FORBIDDEN`) are unchanged.
+
+**Finding 2 (genuine regression — real, admin-gated path-traversal exposure).**
+The handler-level `DumpManager::isValidCrashId(crashId)` check
+(`devel:arangod/RestHandler/RestCrashHandler.cpp:69-73`) was removed
+without replacement
+(`arangod/RestHandler/RestCrashHandler.cpp:64-79`). Tracing this further
+into `lib/CrashHandler/DumpManager.cpp` reveals this isn't merely
+redundant defense-in-depth being cleaned up: in `devel`,
+`DumpManager::getCrashContents()` and (implicitly, via the same pattern)
+`deleteCrash()` route through a private `resolveCrashDirectory()` helper
+that itself calls `isValidCrashId()` again
+(`/tmp/devel_DumpManager.cpp:51-58`, `87-93`) — a strict UUID-format check
+via `boost::uuids::string_generator` — so `devel` validates the crash ID
+as a well-formed UUID at **two independent layers** before ever
+constructing a filesystem path from client-supplied input.
+
+In the current branch, `lib/CrashHandler/DumpManager.cpp:67-106` builds
+`crashDir = _crashesDirectory / std::string(crashId)` **directly from the
+raw, unvalidated suffix** in both `getCrashContents()` (used by `GET
+/_admin/crashes/{id}`, which returns the contents of every regular file
+found under the resolved directory in the JSON response) and
+`deleteCrash()` (used by `DELETE /_admin/crashes/{id}`, which calls
+`std::filesystem::remove_all(crashDir, ec)`). Since `crashId` is taken
+verbatim from `_request->suffixes()[0]`
+(`arangod/RestHandler/RestCrashHandler.cpp:70`), a caller can supply a
+value such as `..` as the single path suffix — no URL-encoding of a slash
+is even required, since `..` is a single, ordinary path segment — causing
+`_crashesDirectory / ".."` to resolve one level up (e.g. to the server's
+data directory). This lets an admin-authorized-but-not-meant-to-have-
+filesystem-access caller read arbitrary regular files reachable via
+directory traversal from the crashes directory (via `GET`), or recursively
+delete arbitrary directories reachable the same way (via `DELETE`). This
+requires passing Finding 1's admin check first, so it is not a privilege
+escalation from anonymous access, but it is a genuine widening of what an
+"admin, crash-management-only" caller can do — from managing crash dumps
+to arbitrary filesystem read/delete with the arangod process's
+privileges. This is unrelated to the RBAC/Classic-mode toggle (it
+reproduces identically whether RBAC is on or off) but is a real,
+security-relevant regression worth fixing regardless.
+
+### `RestIndexHandler` (`arangod/RestHandler/RestIndexHandler.cpp`)
+
+Diff vs. `devel` is: one removed unused `#include`, one added comment, and
+two functional additions in `arangod/RestHandler/RestIndexHandler.cpp`;
+`.h` is byte-for-byte identical.
+
+**Finding 3 (new, gated, deliberate — partial/incomplete fix for a
+pre-existing, still-latent gap shared with `devel`).**
+`RestIndexHandler::collection()` (`arangod/RestHandler/RestIndexHandler.cpp:226-244`)
+gains a new branch, present only on the coordinator and only when
+`_request->requestedApiVersion() > 0`:
+
+```cpp
+if (ServerState::instance()->isCoordinator()) {
+  // Restrict access properly from API version 1 on:
+  if (_request->requestedApiVersion() > 0) {
+    if (auto r = ExecContext::current().canUseCollection(
+            _vocbase.name(), cName, AccessLevel::Read);
+        r.fail()) {
+      return nullptr;
+    }
+  }
+  return _clusterFeature.clusterInfo().getCollectionNT(_vocbase.name(), cName);
+}
+```
+
+As with the identically-shaped findings already documented for
+`RestDatabaseHandler` and `RestCollectionHandler`'s `compact` route
+(`auth_comparison_with_devel.md:274-297`, `620-645`),
+`requestedApiVersion()` defaults to `0` for the classic, unprefixed
+`/_api/index/...` routes used by every current driver and by `devel`
+entirely — so for all traffic seen today this branch never fires, and
+behaviour is byte-for-byte identical to `devel`. This is **not** a
+Classic-mode regression.
+
+However, tracing what this new, currently-dormant check is actually
+guarding against surfaces a genuine, still-open, `devel`-shared gap worth
+recording: `RestIndexHandler::getIndexes()` (list/get one or all indexes
+of a collection, `GET /_api/index[/{id}]`) calls
+`methods::Indexes::getAll()`/`getIndex()`
+(`arangod/VocBase/Methods/Indexes.cpp:205`, `146`) directly on the
+`LogicalCollection` object — with **no transaction**, and therefore
+without ever going through the `TransactionState::checkCollectionPermission()`
+machinery that gates ordinary document/CRUD access elsewhere in this
+document. Grepping `arangod/VocBase/Methods/Indexes.cpp` confirms neither
+`getAll()` nor `getIndex()` perform any `ExecContext`/`canUse*` check at
+all, in **either** branch (only `ensureIndex()` and the two `drop()`
+overloads do, at lines 487-501 and 753-799). This means: a caller with
+mere database-level `RO` — even one holding an explicit collection-level
+*deny* override on a specific collection — can list/inspect that
+collection's indexes via `/_api/index`, in `devel` and in the current
+branch alike, on **every** server role (the single-server/DBServer branch,
+`_vocbase.lookupCollection(cName)`, never gained any check at all — only
+the coordinator branch did, and only for `requestedApiVersion() > 0`).
+So the new check is a **narrow, incomplete, forward-looking** first step
+(coordinator-only, opt-in-only) toward closing a gap that continues to
+exist unconditionally today, on every role, in both branches.
+
+The unrelated `RestIndexHandler::syncCaches()` addition
+(`arangod/RestHandler/RestIndexHandler.cpp:1000-1007`, returning `501 NOT
+IMPLEMENTED` on the coordinator for `requestedApiVersion() > 0`) carries no
+authorization semantics — it is a plain feature-availability gate, not an
+access-control check — and is noted only for completeness.
+
+### Summary
+
+| Route | Verdict |
+|---|---|
+| `/_api/explain` (all methods) | Identical to `devel` — no auth code |
+| `/_api/aqlfunction` (all methods) | Identical to `devel` — no auth code, delegate unchanged |
+| `GET /_admin/crashes`, `GET/DELETE /_admin/crashes/{id}` | Admin check confirmed equivalent (Finding 1); **removed crash-ID validation reopens a real path-traversal exposure for an already-admin caller** (Finding 2) |
+| `GET /_api/index`, `GET /_api/index/{id}` | No auth-relevant change for `requestedApiVersion() == 0` (today's default, identical to `devel`); new coordinator+v1-only read check only partially/optionally closes a pre-existing, still-latent, `devel`-shared gap (Finding 3) |
+| `POST /_api/index`, `DELETE /_api/index/{id}` | Unaffected — always fully checked downstream via `Indexes::ensureIndex()`/`Indexes::drop()`, unchanged in both branches |
+
+**Action items / recommendations:** Finding 2 (`RestCrashHandler`) is the
+one item here that warrants prompt attention regardless of the RBAC
+comparison's scope — restore ID validation, ideally inside
+`DumpManager::getCrashContents()`/`deleteCrash()` themselves (as `devel`
+did via `resolveCrashDirectory()`/`isValidCrashId()`), not only in the
+REST handler, so every caller of the manager is protected. Finding 3
+(`RestIndexHandler`) needs no immediate action — it is intentionally
+gated and forward-looking — but is worth keeping in mind if/when the new
+API-version scheme becomes the default: at that point, the single-
+server/DBServer branch of `collection()` and the `requestedApiVersion() ==
+0` path should receive the same `AccessLevel::Read` check for full
+coverage.
