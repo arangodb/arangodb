@@ -3378,3 +3378,348 @@ parity with `devel` is desired, the read-only check should be removed from
 `ExecContext::canWriteUser()` (`arangod/Utils/ExecContext.cpp:454-456`),
 mirroring the fact that the underlying storage write already deliberately
 opts out of the read-only gate via `ExecContextSuperuserScope`.
+
+## `RestReplicationHandler` (+ `RocksDBRestReplicationHandler` / `ClusterRestReplicationHandler`)
+
+This is by far the most complex handler examined so far, and — unusually —
+the outcome is **not** "current branch regressed relative to `devel`", but
+the opposite: this session found that `devel` itself has (or had) a set of
+genuine, significant authorization gaps in this handler, which the current
+branch has fixed. Per the task's methodology, these are documented as
+findings even though they are improvements rather than regressions, since
+they represent real behavioural divergence from `devel`.
+
+Three files/classes are in play:
+
+- `RestReplicationHandler` (`arangod/RestHandler/RestReplicationHandler.cpp`)
+  — the shared base class, used directly on single servers and as the base
+  of the other two. Mounted at `/_api/replication` (prefix), dispatching
+  ~30 different sub-commands via the first path suffix.
+- `RocksDBRestReplicationHandler`
+  (`arangod/RocksDBEngine/RocksDBRestReplicationHandler.cpp`) — overrides
+  the storage-engine-specific commands (`batch`, `logger-follow`,
+  `inventory`, `keys/*`, `dump`, `revision-tree`) for single-server/DBServer.
+- `ClusterRestReplicationHandler`
+  (`arangod/ClusterEngine/ClusterRestReplicationHandler.cpp`) — the
+  coordinator override, which simply stubs out the same engine-specific
+  commands with `TRI_ERROR_NOT_IMPLEMENTED`
+  (`arangod/ClusterEngine/ClusterRestReplicationHandler.cpp:37-83`), since
+  coordinators have no local storage engine/WAL. This file's diff against
+  `devel` is **purely cosmetic** (`@author` line removed only) — no finding.
+
+### Finding 1 (Cosmetic, confirmed no-op): `testPermissions()` cleanup
+
+`Result RestReplicationHandler::testPermissions()`
+(`arangod/RestHandler/RestReplicationHandler.cpp:809-896`) had two changes
+relative to `devel`, both confirmed to be behaviourally inert:
+
+- The `if (!_request->authenticated()) return TRI_ERROR_NO_ERROR;` early
+  return at the top of `devel`'s version was removed. As already
+  established for other handlers, this is unreachable dead code: any
+  request that is not `authenticated()` is aborted by
+  `CommTask::canAccessPath()` before a handler is even created for any path
+  that isn't one of the small set of documented, hard-coded exceptions
+  (`/tmp/devel_CommTask.cpp:803`, `Flow result = userAuthenticated ?
+  Flow::Continue : Flow::Abort;`), and `/_api/replication/*` is not among
+  those exceptions. When authentication is disabled entirely,
+  `req.authenticated()` is unconditionally `true` (`Entry::Superuser()`,
+  `arangod/Auth/TokenCache.h:63`), so the check never fires either way.
+- `devel`'s outer condition also matched `command == Batch` and
+  `command == Inventory && GET`, but neither of those branches was ever
+  connected to any inner action — matching them changed nothing (dead,
+  vestigial conditions from an earlier version of the function). The
+  current branch dropped them; this is a no-op cleanup, not a behavioural
+  change.
+
+### Finding 2 (Devel security gap, now fixed): `restore-indexes` and `restore-view` had **no permission check at all** in `devel`
+
+This is the headline finding for this handler. In `devel`:
+
+- `testPermissions()` (`/tmp/devel_RestReplicationHandler.cpp:803-903`) only
+  ever validates four cases: `Batch` (a no-op match, see Finding 1),
+  `Inventory` GET (ditto), `Dump` GET, and `RestoreCollection` PUT. The
+  `RestoreIndexes` and `RestoreView` commands are **not mentioned at all**.
+- `RestReplicationHandler::processRestoreIndexes()`
+  (`/tmp/devel_RestReplicationHandler.cpp:1809-...`) and
+  `processRestoreIndexesCoordinator()` create indexes by calling
+  `physical->createIndex(idxDef, /*restore*/ true, created)` /
+  `ClusterIndexMethods::ensureIndexCoordinator(...)` **directly**, with no
+  `SingleCollectionTransaction` or other permission-checked code path in
+  between (unlike document writes, which go through
+  `TransactionState::checkCollectionPermission()`, see the
+  `RestDocumentHandler`/`RestImportHandler` sessions). The only
+  authorization-adjacent code present is
+  `ExecContextSuperuserScope escope(ExecContext::current().isSuperuser() ||
+  (ExecContext::current().isAdminUser() && !ServerState::readOnly()));`
+  (`/tmp/devel_RestReplicationHandler.cpp:1917-1919` old numbering) — but
+  this only *conditionally escalates admins to superuser*; for a
+  **non-admin**, the condition is `false`, no escalation happens, and
+  execution proceeds to `createIndex()` regardless, with **no rejection of
+  any kind**.
+- `RestReplicationHandler::handleCommandRestoreView()`
+  (`/tmp/devel_RestReplicationHandler.cpp:2085-2166`) is worse still: it
+  calls `view->drop()` and `LogicalView::create(...)` **unconditionally,
+  with zero authorization code whatsoever** — no check, no
+  superuser-escalation-if-admin pattern, nothing.
+- Net effect in `devel`: **any authenticated user with at least
+  database-level access other than `NONE`** (the only generic gate applied
+  before a handler is reached at all, `CommTask::canAccessPath()`,
+  `/tmp/devel_CommTask.cpp:803-810`) could call
+  `PUT /_api/replication/restore-indexes` or
+  `PUT /_api/replication/restore-view` on a database they only have `RO`
+  access to (or even no explicit collection/view grants at all beyond the
+  database default) and create/overwrite arbitrary indexes or views on any
+  collection in that database — a real privilege-escalation gap.
+
+The current branch fixes this with explicit checks added directly in the
+processing functions, for both the single-server/DBServer and coordinator
+variants:
+- `processRestoreIndexes()`:
+  `if (auto r = exec.canRestoreCreateIndex(_vocbase.name(), name); r.fail())
+  return r;` (`arangod/RestHandler/RestReplicationHandler.cpp:1901-1905`).
+- `processRestoreIndexesCoordinator()`: the same check
+  (`arangod/RestHandler/RestReplicationHandler.cpp:2035-2039`).
+- `processRestoreView()` (called from `handleCommandRestoreView()`): a
+  `canRestoreDropView()` check before dropping an existing view
+  (`arangod/RestHandler/RestReplicationHandler.cpp:2189-2192`) and a
+  `canRestoreCreateView()` check before creating the replacement
+  (`arangod/RestHandler/RestReplicationHandler.cpp:2208-2214`).
+
+All four new checks reduce, in Classic mode
+(`arangod/Auth/AuthMode.cpp:287-327`), to "is `_system`-DB admin, OR has
+the specific `WriteMeta`/`CreateView`/`DropView` access needed" — i.e.
+exactly the access level that should always have been required. This is a
+genuine, confirmed security fix relative to `devel`, not a regression.
+
+(By contrast, restoring data into the `_users`/`_analyzers` system
+collections, via `processRestoreData()`'s special-cased
+`processRestoreUsersBatch()`/`processRestoreCoordinatorAnalyzersBatch()`
+paths, was **not** actually a hole in `devel` despite the same
+"escalate-only-if-admin, no explicit check" pattern
+(`/tmp/devel_RestReplicationHandler.cpp:1317-1319`): both go through an AQL
+query / `IResearchAnalyzerFeature` write that is gated by the standard
+collection-permission machinery, and — as already established for
+`RestAnalyzerHandler` (Finding 3) — system collections such as `_users`
+and `_analyzers` always fall back to database-level access in
+`auth::User::collectionAuthLevel()`, so "has `RW` on `_users`" and "is
+`_system`-DB admin" are one and the same condition in Classic mode. No
+finding there.)
+
+### Finding 3 (Devel security gap, now fixed, and directly compounds Finding 2): unrestricted `DBserver`-parameter forwarding with stripped authorization header
+
+`RestReplicationHandler::forwardingTarget()`
+(`arangod/RestHandler/RestReplicationHandler.cpp:899-937`) implements a
+mechanism, used by `arangodump`/`arangorestore` on a coordinator, where a
+client can pass a `?DBserver=<id>` query parameter to have the *whole
+request* transparently forwarded to a specific DBServer — and, critically,
+**the caller's own `Authorization` header is stripped** before forwarding
+(`return std::make_pair(DBserver, true);`, the `true` meaning
+"remove header"), so the forwarded request executes on the target
+DBServer under cluster-internal, effectively superuser, trust.
+
+In `devel`
+(`/tmp/devel_RestReplicationHandler.cpp:908-911` roughly, pre-refactor),
+this forwarding was applied **unconditionally to any command** carrying a
+non-empty `DBserver` parameter — there was no restriction on which
+sub-commands were eligible. Combined with Finding 2, this means a
+non-admin, low-privilege user in `devel` could call, e.g.,
+`PUT /_api/replication/restore-indexes?DBserver=DBServer0002` and have it
+forwarded, auth-header-stripped, straight to a DBServer's unguarded
+`processRestoreIndexes()` — running there with full cluster-internal trust,
+independent of whatever (already essentially absent, per Finding 2)
+permission check might otherwise apply. This combination is a
+significantly more severe version of the same underlying gap.
+
+The current branch adds `isDBserverForwardingAllowed()`
+(`arangod/RestHandler/RestReplicationHandler.cpp:939-955`):
+```cpp
+bool RestReplicationHandler::isDBserverForwardingAllowed() const {
+  ...
+  // The only replication commands that are legitimately invoked with a
+  // client-supplied 'DBserver' parameter are the ones used by arangodump:
+  //   - "dump"  (GET):           permissions checked in testPermissions()
+  //   - "batch" (POST/PUT/DEL):  batch/snapshot lifecycle management
+  return (command == Dump and method == rest::RequestType::GET) or
+         command == Batch;
+}
+```
+called from `forwardingTarget()`
+(`arangod/RestHandler/RestReplicationHandler.cpp:920-931`) and rejecting
+any other command carrying a `DBserver` parameter with `403
+TRI_ERROR_FORBIDDEN`. This closes the amplification vector: even if some
+future command were to reintroduce a Finding-2-style gap, it could no
+longer be combined with header-stripped forwarding to a DBServer. This
+restriction applies identically regardless of Classic vs. RBAC mode; it is
+recorded here as a security-relevant finding rather than a Classic-mode
+regression, consistent with how orthogonal read-only-mode hardening was
+noted for `RestAccessTokenHandler` (Finding 3) in an earlier session.
+
+### Finding 4 (Correctness fix, stricter than `devel`): `restore-collection`'s "overwrite" path now also honours per-collection access overrides
+
+`devel`'s `testPermissions()` handled the three `RestoreCollection`
+sub-cases with two separate, coarse checks
+(`/tmp/devel_RestReplicationHandler.cpp:862-882` old numbering):
+```cpp
+if (overwriteCollection == "true" || not existing) {
+  // (1) recreate OR (2) new collection
+  if (!exec.isAdminUser() && !exec.canUseDatabase(dbName, auth::Level::RW))
+    return FORBIDDEN;
+} else {
+  // (3) existing collection, no overwrite
+  if (!exec.isAdminUser() && !exec.canUseCollection(collectionName, auth::Level::RW))
+    return FORBIDDEN;
+}
+```
+i.e. for sub-case (1) — actually overwriting an **existing** collection —
+`devel` checked **only database-level `RW`**, completely ignoring any
+collection-specific access override (`grantCollection(user, db, coll,
+"none")`, see the per-`(db,collection)` grant table documented in the
+`RestCollectionHandler` session, `auth_comparison_with_devel.md:457-465`).
+A user with database-wide `RW` but an explicit collection-level
+restriction on one particular collection could still drop-and-recreate
+that very collection via `restore-collection?overwrite=true`.
+
+The current branch's `canRestoreCollection(db, name, overwrite)`
+(`arangod/Utils/ExecContext.cpp:239-247`) maps, in Classic mode
+(`arangod/Auth/AuthMode.cpp:263-286`), the `overwrite == true` case to:
+```cpp
+if (isAdmin().ok()) return {};
+if (collection.overwrite) {
+  if (auto r = check(p::DropCollection(db, name)); r.fail()) return r;
+  if (auto r = check(p::CreateCollection(db, name)); r.fail()) return r;
+  return {};
+}
+```
+`DropCollection` (`arangod/Auth/AuthMode.cpp:391-...`) requires **both**
+database-level `RW` **and** collection-level `WriteMeta` on the specific
+collection. For a genuinely non-existing collection this makes no
+difference (there is no per-collection override to look up, so the
+effective level trivially falls back to the database level, matching
+`devel`). But for an **existing** collection being overwritten, the new
+code correctly enforces any collection-specific restriction that
+`devel` silently bypassed. This is a narrow, low-probability-of-being-hit
+but real behavioural change — stricter/more correct than `devel`, not a
+regression, and worth being aware of if any test or workflow relies on
+overwrite-via-restore bypassing a per-collection deny override.
+
+### Finding 5 (Verified equivalent): admin-bypass refactors in `handleCommandClusterInventory` and RocksDB `handleCommandDump`
+
+Two more spots replace `devel`'s "conditionally escalate to superuser via
+`ExecContextSuperuserScope`, then run an `!isAdminUser() && !canUse...`
+check" pattern with an explicit up-front `Result`-returning check, with no
+escalation for the check itself:
+
+- `handleCommandClusterInventory()`
+  (`arangod/RestHandler/RestReplicationHandler.cpp:1058-1065`):
+  ```cpp
+  if (exec.canUseAdminAction(auth::perms::AdminClusterInfo{}).fail() &&
+      exec.canUseCollection(dbName, c->name(), AccessLevel::Read).fail()) {
+    continue;  // skip collection
+  }
+  ```
+  is exactly `devel`'s `if (!exec.isAdminUser() &&
+  !exec.canUseCollection(...))` by De Morgan's law, since
+  `canUseAdminAction(AdminClusterInfo{})` reduces to `isAdmin()` in Classic
+  mode (`arangod/Auth/AuthMode.cpp:367`, the generic `AnyAdmin` case) —
+  identical to `devel`'s `isAdminUser()`. The rest of the function (view
+  enumeration in particular) never consulted `ExecContext` in either
+  branch, so removing the surrounding `ExecContextSuperuserScope` here has
+  no further effect. No finding.
+- RocksDB `handleCommandDump()`
+  (`arangod/RocksDBEngine/RocksDBRestReplicationHandler.cpp:736-744`):
+  ```cpp
+  if (auto r = ExecContext::current().canDumpCollection(_vocbase.name(), cname);
+      r.fail()) {
+    generateError(r);
+    return;
+  }
+  ExecContextSuperuserScope superUser;  // needed to actually read the data
+  ```
+  `canDumpCollection()` (`arangod/Utils/ExecContext.cpp:233-237` →
+  `arangod/Auth/AuthMode.cpp:253-261`) is `isAdmin() OR
+  UseCollection(Read)`, matching `devel`'s
+  `ExecContextSuperuserScope escope(isAdminUser()); if
+  (!canUseCollection(..., RO)) FORBIDDEN;` exactly (for a `devel` admin,
+  the pre-check escalation makes `canUseCollection` trivially pass; for a
+  non-admin, no escalation happens and the real check applies) — just
+  reordered (check first on the real identity, then escalate
+  unconditionally afterwards, needed for the actual read to succeed on a
+  single server). Verified equivalent, not a finding.
+
+### Finding 6 (Narrow, low-impact regression): RocksDB `handleCommandInventory`'s single-collection branch lost its admin bypass
+
+`devel`'s `RocksDBRestReplicationHandler::handleCommandInventory()`
+wrapped the entire non-global branch — both the "all collections" and the
+"single collection" (`ctx->getInventory(_vocbase, collection, builder)`)
+sub-cases — in `ExecContextSuperuserScope escope(exec.isAdminUser())`
+(`/tmp/devel_RocksDBRestReplicationHandler.cpp:427`). The current branch
+dropped this escalation entirely
+(`arangod/RocksDBEngine/RocksDBRestReplicationHandler.cpp:416-427`).
+
+This makes no difference for the "all collections" sub-case (`collection`
+empty): `RocksDBReplicationContext::getInventory(vocbase, includeSystem,
+includeFoxxQueues, global, result)`
+(`arangod/RocksDBEngine/RocksDBReplicationContext.cpp:363-461`) never
+consults `ExecContext` at all, in either branch — it always returns the
+full inventory of all collections regardless of caller identity (this is
+itself a latent, pre-existing characteristic shared identically by both
+branches, not a new difference, so not flagged as its own finding here).
+
+It does matter for the "single collection" sub-case (`collection`
+non-empty, used for DBServer shard synchronization): that overload,
+`RocksDBReplicationContext::getInventory(vocbase, collectionName, result)`
+(`arangod/RocksDBEngine/RocksDBReplicationContext.cpp:465-499`), explicitly
+checks `ExecContext::current().canUseCollection(vocbase.name(),
+collectionName, AccessLevel::Read)` and silently omits the collection's
+metadata (still returning an empty `"collections"` array, not an error) if
+the check fails. In `devel`, a Classic-mode admin without direct
+database-level access to the target database would still see full
+metadata (due to the escalation); in the current branch, they now see an
+empty result. In practice this branch is documented as being used "in the
+DB server case" for shard synchronization
+(`arangod/RocksDBEngine/RocksDBRestReplicationHandler.cpp:400-401`), which
+normally runs under an already-superuser, cluster-internal execution
+context — making this a low-impact, edge-case-only regression (it would
+only matter for a direct, external call to
+`GET /_api/replication/inventory?collection=X&batchId=...` by a Classic
+admin lacking specific access to that database).
+
+Similarly, `devel`'s `ExecContextSuperuserScope
+escope(ExecContext::current().isAdminUser());` in
+`handleCommandLoggerFollow()`
+(`/tmp/devel_RocksDBRestReplicationHandler.cpp:265`) was also removed with
+no replacement. This one is confirmed to be a pure no-op: `tailWal()`
+(`arangod/RocksDBEngine/RocksDBReplicationTailing.cpp`) never references
+`ExecContext` in either branch, so the escalation never affected its
+behaviour to begin with (this endpoint has no per-collection filtering of
+WAL entries at all, in either branch — again a latent, shared
+characteristic, not a new divergence).
+
+### Summary
+
+| Handler / Route | Verdict |
+|---|---|
+| `testPermissions()` dead-condition/early-return cleanup | Confirmed no-op (Finding 1) |
+| `PUT /_api/replication/restore-indexes` (single-server & coordinator) | **`devel` had no permission check at all** (real gap); current branch adds `canRestoreCreateIndex()` (Finding 2, security fix) |
+| `PUT /_api/replication/restore-view` | **`devel` had no permission check at all** (real gap); current branch adds `canRestoreDropView()`/`canRestoreCreateView()` (Finding 2, security fix) |
+| `restore-data` into `_users`/`_analyzers` | Not actually a gap in `devel`; both branches equivalent via system-collection auth-level fallback |
+| Any command + `?DBserver=<id>` (auth-header-stripped forwarding) | **`devel` allowed this for every command** (real gap, compounds Finding 2); current branch restricts it to `dump`/`batch` via `isDBserverForwardingAllowed()` (Finding 3, security fix) |
+| `PUT /_api/replication/restore-collection?overwrite=true` on an **existing** collection | Stricter than `devel`: now also enforces the target collection's own access override, not just database-level `RW` (Finding 4) |
+| `handleCommandClusterInventory()`, RocksDB `handleCommandDump()` | Verified equivalent to `devel` (Finding 5) |
+| `GET /_api/replication/inventory?collection=X` (single collection, non-global) | Narrow regression: Classic admin without direct DB access now sees empty result instead of full metadata; low real-world impact (Finding 6) |
+| `GET /_api/replication/logger-follow` | Confirmed no-op removal; endpoint has no per-collection auth filtering in either branch |
+| `ClusterRestReplicationHandler` | Purely cosmetic diff; no authorization code |
+
+**Action items / recommendations:**
+1. Findings 2 and 3 (the `restore-indexes`/`restore-view` gap and the
+   unrestricted `DBserver`-forwarding gap) look like they may already have
+   been the motivation for this refactor; no further action needed beyond
+   confirming they are intentional, deliberate fixes (they appear to be,
+   given the explanatory comments already present in the code).
+2. Finding 4 (stricter overwrite-restore semantics) and Finding 6 (narrow
+   single-collection-inventory regression for non-superuser admins) are
+   low-risk but worth a short mention in release notes / migration notes,
+   since they could theoretically break an existing workflow that
+   (knowingly or not) relied on the looser `devel` behaviour.
+3. No code changes are proposed as part of this analysis session, per the
+   established methodology for this document.
