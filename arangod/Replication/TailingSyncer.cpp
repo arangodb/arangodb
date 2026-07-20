@@ -74,33 +74,6 @@ constexpr std::string_view dataRef("data");
 constexpr std::string_view tickRef("tick");
 constexpr std::string_view dbRef("db");
 
-bool hasHeader(std::unique_ptr<httpclient::SimpleHttpResult> const& response,
-               std::string const& name) {
-  return response->hasHeaderField(name);
-}
-
-bool getBoolHeader(
-    std::unique_ptr<httpclient::SimpleHttpResult> const& response,
-    std::string const& name) {
-  bool found = false;
-  std::string header = response->getHeaderField(name, found);
-  if (found) {
-    return StringUtils::boolean(header);
-  }
-  return false;
-}
-
-uint64_t getUIntHeader(
-    std::unique_ptr<httpclient::SimpleHttpResult> const& response,
-    std::string const& name) {
-  bool found = false;
-  std::string header = response->getHeaderField(name, found);
-  if (found) {
-    return StringUtils::uint64(header);
-  }
-  return 0;
-}
-
 }  // namespace
 
 /// @brief base url of the replication API
