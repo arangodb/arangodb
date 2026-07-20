@@ -68,20 +68,20 @@
 > ./arangod/RestHandler/RestAuthHandler.cpp
 > ./arangod/RestHandler/RestEdgesHandler.cpp
 > ./arangod/RestHandler/RestUsersHandler.cpp
-./arangod/RestHandler/RestDocumentStateHandler.cpp
-./arangod/RestHandler/RestTasksHandler.cpp
-./arangod/RestHandler/RestTimeHandler.cpp
-./arangod/RestHandler/RestSimpleHandler.cpp
+> ./arangod/RestHandler/RestDocumentStateHandler.cpp
+> ./arangod/RestHandler/RestTasksHandler.cpp
+> ./arangod/RestHandler/RestTimeHandler.cpp
+> ./arangod/RestHandler/RestSimpleHandler.cpp
 - ./arangod/RestHandler/RestVocbaseBaseHandler.cpp
 > ./arangod/Agency/RestAgencyPrivHandler.cpp
 > ./arangod/Agency/RestAgencyHandler.cpp
-./arangod/Actions/RestActionHandler.cpp
+> ./arangod/Actions/RestActionHandler.cpp
 > ./arangod/ClusterEngine/ClusterRestReplicationHandler.cpp
 > ./arangod/ClusterEngine/ClusterRestCollectionHandler.cpp
 > ./arangod/ClusterEngine/ClusterRestWalHandler.cpp
 - ./arangod/ClusterEngine/ClusterRestHandlers.cpp
-./arangod/SystemMonitor/AsyncRegistry/RestHandler.cpp
-./arangod/SystemMonitor/Activities/RestHandler.cpp
-./enterprise/Enterprise/RestHandler/RestHotBackupHandler.cpp
-./enterprise/Enterprise/RestHandler/RestLicenseHandlerEE.cpp
-./enterprise/Enterprise/RestHandler/RestAdminServerHandlerEE.cpp
+> ./arangod/SystemMonitor/AsyncRegistry/RestHandler.cpp
+> ./arangod/SystemMonitor/Activities/RestHandler.cpp
+> ./enterprise/Enterprise/RestHandler/RestHotBackupHandler.cpp
+> ./enterprise/Enterprise/RestHandler/RestLicenseHandlerEE.cpp
+> ./enterprise/Enterprise/RestHandler/RestAdminServerHandlerEE.cpp

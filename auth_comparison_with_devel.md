@@ -6045,3 +6045,206 @@ with its self-bypass for the legitimate self-service routes). This is a
 real, exploitable privilege-escalation bug and should be prioritized ahead
 of the read-only-mode Finding 4, which — as with `RestAccessTokenHandler`
 — is a policy decision rather than a security defect.
+
+
+## `RestDocumentStateHandler`, `RestTasksHandler`, `RestTimeHandler`, `RestSimpleHandler`, `RestActionHandler`, `async_registry::RestHandler`, `activities::RestHandler`, `RestHotBackupHandler` (Enterprise)
+
+This session covers the remaining, previously-unanalyzed handlers,
+completing the full sweep described at the top of this document.
+
+### `RestDocumentStateHandler` (`arangod/RestHandler/RestDocumentStateHandler.cpp`)
+
+Mounted at `/_api/document-state` (prefix, only reachable when
+replication2 is enabled and the server is in cluster mode). Internal-only
+API for replication2 document-state snapshot transfer.
+
+**Finding 1 (cosmetic)**: `devel`'s single, verb-independent
+`ExecContext::current().isAdminUser()` check was split by verb
+(`arangod/RestHandler/RestDocumentStateHandler.cpp:74-90`) into
+`canUseAdminAction(AdminReadReplicatedLog{})` (GET) and
+`canUseAdminAction(AdminWriteReplicatedLog{})` (POST/DELETE). Both
+permission tags are members of the `AnyAdmin` catch-all
+(`arangod/Auth/Permissions.h:102-118`), which `AuthMode::Classic::check()`
+resolves via the same generic `isAdmin()` fallthrough already established
+for `RestLogHandler`'s identical split (this document's
+`RestQueryHandler`/`RestLogHandler`/`RestAdminExecuteHandler`/
+`RestSystemReportHandler` session). No behavioral difference in Classic
+mode today — confirmed to be, like that session, forward-looking RBAC
+scaffolding rather than an active policy change.
+
+### `RestTasksHandler` (`arangod/RestHandler/RestTasksHandler.cpp`)
+
+Mounted at `/_api/tasks` (prefix, requires the V8 subsystem). Registers,
+lists, and deletes periodic/one-off server-side V8 tasks. Notably, this
+handler is already flagged in `Documentation/path_permissions.md:1034-1036`
+with "NO FIX, tasks gone soon" — i.e. its imperfections are a known,
+accepted, pre-existing condition, not something introduced by this
+comparison.
+
+**Finding 2 (confirmed no-op, refactor only)**: three related changes,
+all traced to be behaviorally equivalent:
+
+1. `registerTask()`/`deleteTask()`'s permission check
+   (`arangod/RestHandler/RestTasksHandler.cpp:182-190,337-345`) changed
+   from a bare `exec.databaseAuthLevel() != auth::Level::RW` comparison to
+   `exec.canUseDatabase(_request->databaseName(), DatabaseAccessLevel::Write)`.
+   This *does* newly add the standard read-only-mode short-circuit found
+   in `ExecContext::canUseDatabase()` (`arangod/Utils/ExecContext.cpp:189-196`)
+   — see Finding 3 below for the one genuine consequence of this.
+2. The unused/dead `runAsUser` handling (`devel`'s `task->setUser(runAsUser)`
+   call and the `Task::_user` member/`setUser()` method it fed) was
+   removed. The code's own new comment
+   (`arangod/RestHandler/RestTasksHandler.cpp:221-226`) documents why this
+   is safe: the "run as a different user" option never actually worked in
+   `devel` either — `runAsUser` could only ever end up equal to
+   `exec.user()` (any mismatch triggered an immediate `403`), so
+   `task->setUser(runAsUser)` was always setting the task's owner to the
+   creator's own username, which is exactly what happens implicitly now.
+3. `Task` (`arangod/VocBase/Methods/Tasks.h/.cpp`) was refactored from
+   storing a bare `std::string _user` (re-resolved into a fresh
+   `ExecContext::create(_user, dbname)` on every periodic tick,
+   `/tmp/devel_Tasks.cpp:314-320`) to storing a full
+   `std::shared_ptr<ExecContext const> _execContext` snapshot captured at
+   creation time (`RestTasksHandler.cpp:293-298`;
+   `Tasks.cpp:304-307,341-343`). I verified this is **not** a
+   permission-freezing regression: `AuthMode::Classic::check()`
+   (`arangod/Auth/AuthMode.cpp:91-106`) always performs a **live** lookup
+   against the shared `auth::UserManager` singleton keyed by username
+   string (`_userManager.databaseAuthLevel(username(), db, true)`) — it
+   holds no cached grant data of its own. So calling
+   `_execContext->canUseDatabase(...)` on the captured snapshot object
+   produces exactly the same live, up-to-the-moment result as `devel`'s
+   pattern of constructing a brand-new `ExecContext` each tick; only the
+   superuser-vs-regular-user branch selection is now baked in at creation
+   time (matching `devel`'s equivalent `_user.empty()` branch, which was
+   also fixed at creation time). Confirmed no functional difference.
+
+**Finding 3 (narrow regression, safer direction, low risk)**: the
+read-only-mode gate newly bundled into `canUseDatabase()` (Finding 2,
+point 1) has two real, if minor, consequences that `devel` did not have:
+- `POST`/`PUT /_api/tasks[/{id}]` (registering a task) and
+  `DELETE /_api/tasks/{id}` (deleting a task) now fail with `403
+  TRI_ERROR_FORBIDDEN` while the server runs in `--server.read-only` mode,
+  even for a fully RW-permitted caller. `devel` allowed both — this is the
+  same recurring "helper bundles in a blanket read-only check" pattern
+  already documented for `RestQueryPlanCacheHandler` (Finding 2),
+  `RestUsersHandler` (Finding 4), and `RestAccessTokenHandler` (Finding 3),
+  applied here to a purely in-memory, non-persisted resource (a scheduled
+  V8 callback), so there is no storage-engine backstop making it a no-op.
+- More subtly, `Task::callbackFunction()`'s **periodic** re-check
+  (`arangod/VocBase/Methods/Tasks.cpp:304-307`) now also inherits this
+  gate. If the server enters `--server.read-only` mode *after* a periodic
+  task was already scheduled, the task will be silently unregistered on
+  its very next tick (since `canUseDatabase(..., Write)` now unconditionally
+  fails in read-only mode, regardless of the task owner's actual
+  permissions) — whereas in `devel` the periodic task kept running
+  (constrained only by the owner's actual database grant, exactly as
+  before). Arguably this is more correct behavior (a periodic
+  write-oriented task probably *should* pause during planned read-only
+  maintenance windows), but it is a genuine, previously-undocumented
+  behavioral change specific to this handler's background-task machinery,
+  distinct from the simple "REST call now rejected" pattern seen
+  elsewhere.
+
+`RestTasksHandler.h` has no diff versus `devel`.
+
+### `RestTimeHandler` and `RestSimpleHandler` — clean
+
+- **`RestTimeHandler`** (`arangod/RestHandler/RestTimeHandler.cpp`, mounted
+  at `/_admin/time`, exact) — no authorization code in either branch; diff
+  is a single added comment.
+- **`RestSimpleHandler`** (`arangod/RestHandler/RestSimpleHandler.cpp`,
+  mounted at `/_api/simple/lookup-by-keys` and
+  `/_api/simple/remove-by-keys`) — inherits from `RestCursorHandler` and
+  delegates entirely to `registerQueryOrCursor()`, the same entry point
+  fully analyzed in the `RestCursorHandler` session
+  (`auth_comparison_with_devel.md:2217-2408`). Diff is a single added
+  comment. Unlike `RestSimpleQueryHandler` (which only ever issues
+  read-only queries), `remove-by-keys` builds a `REMOVE`-based AQL query —
+  a genuine write — so it **does** fall under that session's
+  already-documented read-only-mode `errorNum` divergence (generic
+  `TRI_ERROR_FORBIDDEN` vs. `devel`'s `TRI_ERROR_ARANGO_READ_ONLY`, both
+  HTTP 403); this is an addendum confirming applicability, not a new
+  finding. Neither route ever looks up an existing cursor by ID, so the
+  `RestCursorHandler` Finding 1 (cursor-ownership bypass under disabled
+  authentication) does not apply here.
+
+### `RestActionHandler` (`arangod/Actions/RestActionHandler.cpp`)
+
+Mounted at `/` (prefix, catch-all for legacy/Foxx actions and the web UI).
+
+**Finding 4 (confirmed equivalent)**: a new `checkUserCanAccess()`
+override (`arangod/Actions/RestActionHandler.cpp:115-121`) unconditionally
+allows any request whose path starts with `/_admin/aardvark/`. This
+faithfully reproduces `devel`'s `CommTask`-level path exception
+(`/tmp/devel_CommTask.cpp:850`: `path.starts_with(pathPrefixAdminAardvark)`
+→ `Flow::Continue` + `forceSuperuser()`), and is the same
+relocated-from-`CommTask`-into-per-handler-override pattern already
+established for `RestAuthHandler`'s `/_open/` exemption and
+`RestAccessTokenHandler`'s `/_api/token/` exemption. No other diff besides
+one added comment.
+
+### `async_registry::RestHandler` and `activities::RestHandler` — cosmetic only
+
+- **`async_registry::RestHandler`**
+  (`arangod/SystemMonitor/AsyncRegistry/RestHandler.cpp:36-43`, mounted at
+  `/_admin/async-registry`) — `isAdminUser()` →
+  `canUseAdminAction(AdminMonitoringInternal{})`, the same
+  already-established `AnyAdmin`-catch-all-equivalent migration seen
+  repeatedly (`RestVersionHandler`, `RestSystemReportHandler`, etc.).
+- **`activities::RestHandler`**
+  (`arangod/SystemMonitor/Activities/RestHandler.cpp:118-133`, mounted at
+  `/_admin/activities`) — two changes, both already-established
+  equivalents: `isSuperuser()` → `isSuperuserOrDisabled()` (the
+  auth-disabled-only widening proven safe multiple times in this
+  document), and `isAdminUser()` →
+  `canUseAdminAction(AdminMonitoringInternal{})` (same as above).
+
+Both `.h` files have no diff versus `devel`.
+
+### `RestHotBackupHandler` (Enterprise, `enterprise/Enterprise/RestHandler/RestHotBackupHandler.cpp`)
+
+Mounted at `/_admin/backup` (prefix, Enterprise-only). Diffed directly
+against the enterprise submodule's own `devel` branch (not the community
+`devel`).
+
+**Finding 5 (confirmed equivalent)**:
+`verifyPermitted()` (`enterprise/Enterprise/RestHandler/RestHotBackupHandler.cpp:130-149`)
+carries the same two already-established equivalent migrations seen for
+every other superuser/admin-gated handler in this document:
+`isSuperuser()` → `isSuperuserOrDisabled()`, and `isAdminUser()` →
+`canUseAdminAction(AdminBackup{})` (`AdminBackup` confirmed to be a member
+of the `AnyAdmin` catch-all, `arangod/Auth/Permissions.h:101,116`). No
+other diff besides two added `@author` comment lines (moved, not removed)
+and one mounting comment.
+
+This handler was cross-checked against `RestAdminServerHandlerEE`
+(already fully covered at `auth_comparison_with_devel.md:1628-1644`) and
+`RestLicenseHandlerEE` (already covered at
+`auth_comparison_with_devel.md:5431`) — both confirmed to already be
+present in this document from prior sessions; no further action needed
+for either.
+
+### Summary
+
+| Handler / Route | Verdict |
+|---|---|
+| `GET`/`POST`/`DELETE /_api/document-state` | Cosmetic verb-split admin check (Finding 1) |
+| `POST`/`PUT /_api/tasks[/{id}]`, `DELETE /_api/tasks/{id}` | Confirmed-equivalent refactor (Finding 2); new read-only-mode rejection, both for the REST call and for already-running periodic tasks (Finding 3) |
+| `GET /_api/tasks`, `GET /_api/tasks/{id}` | Unchanged (`isSuperuser`/self-check untouched by this diff) |
+| `GET /_admin/time` | Clean, no auth code |
+| `PUT /_api/simple/lookup-by-keys` | Clean — delegates to already-analyzed `RestCursorHandler` read path |
+| `PUT /_api/simple/remove-by-keys` | Delegates to `RestCursorHandler`'s already-documented write-path read-only-mode divergence (addendum, not new) |
+| `/` (catch-all actions, incl. `/_admin/aardvark/*`) | Confirmed equivalent to `devel`'s `CommTask` path exception (Finding 4) |
+| `GET /_admin/async-registry`, `GET /_admin/activities` | Cosmetic `AnyAdmin`/`isSuperuserOrDisabled()` migrations, no behavioral change |
+| `POST /_admin/backup/*` (Enterprise) | Cosmetic, same established migrations (Finding 5) |
+
+**Action items / recommendations:** only Finding 3
+(`RestTasksHandler`'s read-only-mode interaction) merits a decision: if
+periodic V8 tasks pausing during `--server.read-only` mode is unintended,
+`Task::callbackFunction()`'s permission re-check
+(`arangod/VocBase/Methods/Tasks.cpp:304-307`) should bypass the
+read-only-mode component of `canUseDatabase()` while keeping the
+permission-level check itself. Given this handler's documented
+deprecation ("tasks gone soon"), this is low priority. No other action
+items from this session.
