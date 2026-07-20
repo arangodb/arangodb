@@ -15,8 +15,6 @@
     routes: {
       '': 'cluster',
       'dashboard': 'dashboard',
-      'replication': 'replication',
-      'replication/applier/:endpoint/:database': 'applier',
       'collections': 'collections',
       'analyzers': 'analyzers',
       'analyzers/:name': 'analyzers',
@@ -973,31 +971,6 @@
           });
         }
         this.dashboardView.render();
-      });
-    },
-
-    replication: function () {
-      this.checkUser();
-
-      this.init.then(() => {
-        if (!this.replicationView) {
-          // this.replicationView.remove();
-          this.replicationView = new window.ReplicationView({});
-        }
-        this.replicationView.render();
-      });
-    },
-
-    applier: function (endpoint, database) {
-      this.checkUser();
-
-      this.init.then(() => {
-        if (this.applierView === undefined) {
-          this.applierView = new window.ApplierView({});
-        }
-        this.applierView.endpoint = window.atob(endpoint);
-        this.applierView.database = window.atob(database);
-        this.applierView.render();
       });
     },
 

@@ -113,18 +113,6 @@ void ReplicationFeature::start() {
   } catch (...) {
     // :snake:
   }
-
-  LOG_TOPIC("1214b", DEBUG, Logger::REPLICATION)
-      << "checking global applier startup. autoStart: "
-      << _globalReplicationApplier->autoStart()
-      << ", hasState: " << _globalReplicationApplier->hasState();
-
-  if (_globalReplicationApplier->autoStart() &&
-      _globalReplicationApplier->hasState() &&
-      _options.replicationApplierAutoStart) {
-    _globalReplicationApplier->startTailing(/*initialTick*/ 0,
-                                            /*useTick*/ false);
-  }
 }
 
 void ReplicationFeature::beginShutdown() {
@@ -211,34 +199,6 @@ void ReplicationFeature::autoRepairRevisionTrees(bool value) noexcept {
   _options.autoRepairRevisionTrees = value;
 }
 #endif
-
-// start the replication applier for a single database
-void ReplicationFeature::startApplier(TRI_vocbase_t* vocbase) {
-  TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  TRI_ASSERT(vocbase->replicationApplier() != nullptr);
-
-  if (!ServerState::instance()->isClusterRole() &&
-      vocbase->replicationApplier()->autoStart()) {
-    if (!_options.replicationApplierAutoStart) {
-      LOG_TOPIC("c5378", INFO, arangodb::Logger::REPLICATION)
-          << "replication applier explicitly deactivated for database '"
-          << vocbase->name() << "'";
-    } else {
-      try {
-        vocbase->replicationApplier()->startTailing(/*initialTick*/ 0,
-                                                    /*useTick*/ false);
-      } catch (std::exception const& ex) {
-        LOG_TOPIC("2038f", WARN, arangodb::Logger::REPLICATION)
-            << "unable to start replication applier for database '"
-            << vocbase->name() << "': " << ex.what();
-      } catch (...) {
-        LOG_TOPIC("76ad6", WARN, arangodb::Logger::REPLICATION)
-            << "unable to start replication applier for database '"
-            << vocbase->name() << "'";
-      }
-    }
-  }
-}
 
 GlobalReplicationApplier* ReplicationFeature::globalReplicationApplier() const {
   TRI_ASSERT(_globalReplicationApplier != nullptr);

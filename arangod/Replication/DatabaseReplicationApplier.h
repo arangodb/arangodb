@@ -52,10 +52,6 @@ class DatabaseReplicationApplier final : public ReplicationApplier {
   /// @brief stop the applier and "forget" everything
   void forget() override;
 
-  /// @brief configure the replication applier
-  void reconfigure(
-      ReplicationApplierConfiguration const& configuration) override;
-
   /// @brief store the configuration for the applier
   void storeConfiguration(bool doSync) override;
 

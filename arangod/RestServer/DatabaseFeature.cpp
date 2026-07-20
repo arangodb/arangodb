@@ -582,22 +582,6 @@ void DatabaseFeature::recoveryDone() {
       THROW_ARANGO_EXCEPTION(result);
     }
   }
-
-  if (ServerState::instance()->isCoordinator()) {
-    return;
-  }
-
-  auto databases = _databases.load();
-
-  for (auto& p : *databases) {
-    TRI_vocbase_t* vocbase = p.second;
-    // iterate over all databases
-    TRI_ASSERT(vocbase != nullptr);
-
-    if (vocbase->replicationApplier() && _replicationFeature) {
-      _replicationFeature->startApplier(vocbase);
-    }
-  }
 }
 
 Result DatabaseFeature::registerPostRecoveryCallback(
@@ -697,10 +681,6 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info,
     }
 
     if (!_engine->inRecovery()) {
-      if (!ServerState::instance()->isCoordinator() && _replicationFeature) {
-        _replicationFeature->startApplier(vocbase.get());
-      }
-
       // increase reference counter
       bool result = vocbase->use();
       TRI_ASSERT(result);

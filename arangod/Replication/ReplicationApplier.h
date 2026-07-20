@@ -24,7 +24,6 @@
 
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
-#include "Basics/Thread.h"
 #include "Replication/ReplicationApplierConfiguration.h"
 #include "Replication/ReplicationApplierState.h"
 
@@ -69,21 +68,6 @@ class ReplicationApplier {
   /// @brief test if the replication applier is shutting down
   bool isShuttingDown() const;
 
-  /// @brief set the applier state to tailing
-  void markThreadTailing();
-
-  /// @brief set the applier state to stopped
-  void markThreadStopped();
-
-  /// @brief perform a complete replication dump and then tail continiously
-  void startReplication();
-
-  /// @brief switch to tailing mode, DO NOT USE EXTERNALLY
-  void continueTailing(TRI_voc_tick_t initialTick, bool useTick);
-
-  /// @brief start the replication applier in tailing
-  void startTailing(TRI_voc_tick_t initialTick, bool useTick);
-
   /// @brief stop the replication applier, resets the error message
   void stop();
 
@@ -97,10 +81,6 @@ class ReplicationApplier {
   /// applier is still active, and returns true. if the applier is not
   /// active anymore, returns false
   bool sleepIfStillActive(uint64_t sleepTime);
-
-  /// @brief configure the replication applier
-  virtual void reconfigure(
-      ReplicationApplierConfiguration const& configuration);
 
   /// @brief load the applier state from persistent storage
   bool loadState();
@@ -137,9 +117,6 @@ class ReplicationApplier {
   /// @brief block the replication applier from starting
   Result preventStart();
 
-  /// @brief whether or not autostart option was set
-  bool autoStart() const;
-
   /// @brief whether or not the applier has a state already
   bool hasState() const;
 
@@ -170,9 +147,6 @@ class ReplicationApplier {
   void setProgressNoLock(std::string const& msg);
 
  private:
-  /// Perform some common ops for startReplication / startTailing
-  void doStart(std::function<void()>&&, ReplicationApplierState::ActivityPhase);
-
   /// @brief stop the replication applier and join the apply thread
   void doStop(Result const& r, bool joinThread);
 
@@ -189,7 +163,6 @@ class ReplicationApplier {
 
   // used only for logging
   std::string _databaseName;
-  std::unique_ptr<Thread> _thread;
 };
 
 }  // namespace arangodb

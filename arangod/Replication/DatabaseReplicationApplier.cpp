@@ -69,19 +69,6 @@ bool DatabaseReplicationApplier::applies() const {
   return !ServerState::instance()->isCoordinator();
 }
 
-/// @brief configure the replication applier
-void DatabaseReplicationApplier::reconfigure(
-    ReplicationApplierConfiguration const& configuration) {
-  if (configuration._database.empty()) {
-    // no database
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION,
-        "no database configured");
-  }
-
-  ReplicationApplier::reconfigure(configuration);
-}
-
 /// @brief stop the applier and "forget" everything
 void DatabaseReplicationApplier::forget() {
   if (!applies()) {

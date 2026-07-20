@@ -69,9 +69,6 @@ class ReplicationFeature final
   /// @brief disable replication appliers
   void disableReplicationApplier();
 
-  /// @brief start the replication applier for a single database
-  void startApplier(Database* vocbase);
-
   /// @brief stop the replication applier for a single database
   void stopApplier(Database* vocbase);
 

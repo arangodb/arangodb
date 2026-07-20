@@ -57,11 +57,6 @@ class TailingSyncer : public Syncer {
 
   virtual ~TailingSyncer();
 
- public:
-  /// @brief run method, performs continuous synchronization
-  /// catches exceptions
-  Result run();
-
  protected:
   /// @brief decide based on _leaderInfo which api to use
   virtual std::string tailingBaseUrl(std::string const& command);
@@ -139,43 +134,12 @@ class TailingSyncer : public Syncer {
                   arangodb::velocypack::Builder& builder,
                   uint64_t& ignoreCount);
 
-  /// @brief perform a continuous sync with the leader
-  Result runContinuousSync();
-
   /// @brief save the current applier state
   virtual Result saveApplierState() = 0;
 
  private:
-  /// @brief get local replication applier state
-  void getLocalState();
-
-  /// @brief run method, performs continuous synchronization
-  /// internal method, may throw exceptions
-  arangodb::Result runInternal();
-
-  /// @brief fetch data for the continuous synchronization
-  /// @param fetchTick tick from which we want results
-  /// @param lastScannedTick tick which the server MAY start scanning from
-  /// @param firstRegularTick if we got openTransactions server will return the
-  ///                         only operations belonging to these for smaller
-  ///                         ticks
-  void fetchLeaderLog(std::shared_ptr<Syncer::JobSynchronizer> sharedStatus,
-                      TRI_voc_tick_t fetchTick, TRI_voc_tick_t lastScannedTick,
-                      TRI_voc_tick_t firstRegularTick);
-
-  /// @brief apply continuous synchronization data from a batch
-  arangodb::Result processLeaderLog(
-      std::shared_ptr<Syncer::JobSynchronizer> sharedStatus,
-      arangodb::velocypack::Builder& builder, TRI_voc_tick_t& fetchTick,
-      TRI_voc_tick_t& lastScannedTick, TRI_voc_tick_t firstRegularTick,
-      uint64_t& ignoreCount, bool& worked, bool& mustFetchBatch);
-
   arangodb::Result removeSingleDocument(arangodb::LogicalCollection* coll,
                                         std::string const& key);
-
-  arangodb::Result handleRequiredFromPresentFailure(TRI_voc_tick_t fromTick,
-                                                    TRI_voc_tick_t readTick,
-                                                    char const* type);
 
  protected:
   virtual bool skipMarker(arangodb::velocypack::Slice slice) = 0;
