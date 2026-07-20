@@ -28,22 +28,22 @@ std::tuple<ExecutorState, NoStats, AqlCall> GroupedSortExecutor::produceRows(
   AqlCall upstreamCall{};
 
   // fill with rest from before
-  while (!output.isFull() && _storageBackend.hasMore()) {
+  while (!output.isFull() && _storageBackend.hasMoreReadyOutputRows()) {
     _storageBackend.produceOutputRow(output);
   }
 
   while (!output.isFull()) {
     // return if group is finished or input is finished
     _storageBackend.consumeInputRange(inputRange);
-    if (!_storageBackend.hasMore()) {
+    if (!_storageBackend.hasMoreReadyOutputRows()) {
       return {inputRange.upstreamState(), NoStats{}, std::move(upstreamCall)};
     }
-    while (!output.isFull() && _storageBackend.hasMore()) {
+    while (!output.isFull() && _storageBackend.hasMoreReadyOutputRows()) {
       _storageBackend.produceOutputRow(output);
     }
   }
 
-  if (_storageBackend.hasMore()) {
+  if (_storageBackend.hasPendingGroupOrOutput()) {
     return {ExecutorState::HASMORE, NoStats{}, std::move(upstreamCall)};
   }
   return {inputRange.upstreamState(), NoStats{}, std::move(upstreamCall)};
@@ -55,7 +55,7 @@ GroupedSortExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
   AqlCall upstreamCall{};
 
   // fill with rest from before
-  while (call.needSkipMore() && _storageBackend.hasMore()) {
+  while (call.needSkipMore() && _storageBackend.hasMoreReadyOutputRows()) {
     _storageBackend.skipOutputRow();
     call.didSkip(1);
   }
@@ -63,17 +63,17 @@ GroupedSortExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
   while (call.needSkipMore()) {
     // return if group is finished or input is finished
     _storageBackend.consumeInputRange(inputRange);
-    if (!_storageBackend.hasMore()) {
+    if (!_storageBackend.hasMoreReadyOutputRows()) {
       return {inputRange.upstreamState(), NoStats{}, call.getSkipCount(),
               std::move(upstreamCall)};
     }
-    while (call.needSkipMore() && _storageBackend.hasMore()) {
+    while (call.needSkipMore() && _storageBackend.hasMoreReadyOutputRows()) {
       _storageBackend.skipOutputRow();
       call.didSkip(1);
     }
   }
 
-  if (_storageBackend.hasMore()) {
+  if (_storageBackend.hasPendingGroupOrOutput()) {
     return {ExecutorState::HASMORE, NoStats{}, call.getSkipCount(),
             std::move(upstreamCall)};
   }

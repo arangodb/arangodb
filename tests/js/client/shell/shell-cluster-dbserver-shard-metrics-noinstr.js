@@ -21,21 +21,20 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Jure Bajic
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
 const db = require("@arangodb").db;
 const internal = require("internal");
 const inst = require('@arangodb/testutils/instance');
-const { moveShard, eventuallyAssertMetricSum } = require("@arangodb/test-helper");
+const { eventuallyAssertMetricSum } = require("@arangodb/test-helper");
 let IM = global.instanceManager;
 
 const waitFactor = IM.options.isInstrumented ? 5 : 1;
 
 function ClusterDBServerShardMetricsTestSuite() {
   'use strict';
- 
+
   const dbName = "UnitTestShardMetricsDatabase";
   const collectionName = "UnitTestShardMetricsCollection";
 
@@ -161,7 +160,7 @@ function ClusterDBServerShardMetricsTestSuite() {
       const shardsNumMetricValue = getDBServerMetricSum(servers, shardsNumMetric);
       if (shardsNumMetricValue !== expectedShardsNum && expectedShardsNum !== null) {
         continue;
-      } 
+      }
 
       const shardsLeaderNumMetricValue = getDBServerMetricSum(servers, shardsLeaderNumMetric);
       if (shardsLeaderNumMetricValue !== expectedShardsLeaderNum && expectedShardsLeaderNum !== null) {
@@ -462,8 +461,8 @@ server.suspend();
       assertNotEqual(fromServer, toServer);
 
       // Move the shard (swap leader and follower) and wait for completion
-      const moveResult = moveShard(dbName, collectionName, shardId, 
-                                   fromServer, toServer, false);
+      const moveResult = IM.moveShard(dbName, collectionName, shardId,
+                                      fromServer, toServer);
       assertTrue(moveResult);
 
       // The metrics should remain the same
@@ -499,8 +498,8 @@ server.suspend();
       assertNotEqual(fromServer, toServer);
 
       // Move the shard (swap leader and follower) and wait for completion
-      const moveResult = moveShard(dbName, collectionName, shardId, 
-                                   fromServer, toServer, false);
+      const moveResult = IM.moveShard(dbName, collectionName, shardId,
+                                      fromServer, toServer);
       assertTrue(moveResult);
 
       // The metrics should remain the same
@@ -580,4 +579,3 @@ server.suspend();
 
 jsunity.run(ClusterDBServerShardMetricsTestSuite);
 return jsunity.done();
-

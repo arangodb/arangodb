@@ -21,7 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Jan Steemann
 // //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
@@ -33,10 +32,11 @@ const url = require('url');
 const _ = require("lodash");
 
 const cn = "UnitTestsQueries";
-      
+let IM = global.instanceManager;
+
 function TransactionCommitAbortOverwhelmSuite () {
   'use strict';
-    
+
   let testFunc = (cb) => {
     // create write transaction
     let trx = db._createTransaction({
@@ -50,20 +50,8 @@ function TransactionCommitAbortOverwhelmSuite () {
       const [shard, servers] = Object.entries(db.c.shards(true))[0];
 
       // trigger move shard
-      let body = {database: cn, collection: "c", shard, fromServer: servers[0], toServer: servers[1]};
-      let result = arango.POST("/_admin/cluster/moveShard", body);
-
-      assertFalse(result.error);
-      assertEqual(202, result.code);
-
-      while (true) {
-        const job = arango.GET(`/_admin/cluster/queryAgencyJob?id=${result.id}`);
-        if (job.error === false && job.status === "Pending") {
-          break;
-        }
-        require('internal').wait(0.5);
-      }
-
+      let jobID = IM.moveShard(cn, "c", shard, servers[0], servers[1], -1);
+      IM.waitForAgencyJob(jobID, 60, "move shard", "Pending");
       // create many small writes to e f and g
       const header = {"X-Arango-Async": "store"};
       for (let i = 0; i < 1000; i++) {
@@ -72,7 +60,7 @@ function TransactionCommitAbortOverwhelmSuite () {
         arango.POST(`/_api/document/g`, {}, header);
       }
 
-      result = cb(trx); 
+      let result = cb(trx);
       trx = null;
     } finally {
       if (trx !== null) {
@@ -80,19 +68,19 @@ function TransactionCommitAbortOverwhelmSuite () {
       }
     }
   };
-  
+
   return {
     setUp: function () {
       db._createDatabase(cn);
       db._useDatabase(cn);
-  
+
       db._create("c", {numberOfShards: 5, replicationFactor: 2});
       db._create("d", {distributeShardsLike: "c"});
       db._create("e", {distributeShardsLike: "c"});
       db._create("f", {distributeShardsLike: "c"});
       db._create("g", {distributeShardsLike: "c"});
     },
-    
+
     tearDown: function () {
       db._useDatabase('_system');
       db._dropDatabase(cn);
@@ -100,7 +88,7 @@ function TransactionCommitAbortOverwhelmSuite () {
 
     testManyBlockingTransactions : function () {
       const header = {"X-Arango-Async": "store"};
-      
+
       // start many exclusive trx. they will all block each other except
       // for one of the time that can operate.
       let ids = {};
@@ -149,7 +137,7 @@ function TransactionCommitAbortOverwhelmSuite () {
 
               assertFalse(commit.error, commit);
               assertEqual(200, commit.code, commit);
-              
+
               found = true;
             } else {
               // job not yet started
@@ -168,15 +156,15 @@ function TransactionCommitAbortOverwhelmSuite () {
         throw err;
       }
     },
-   
+
     testQueryNotBlockedForAlreadyStartedTransaction : function () {
       const header = {"X-Arango-Async": "store"};
-      
+
       // start an exclusive trx
       let trx = db._createTransaction({
         collections: { exclusive: "d" }
       });
-      
+
       try {
         for (let i = 0; i < 3000; i++) {
           // flood scheduler queue with requests that will block because of the exclusive trx
@@ -185,7 +173,7 @@ function TransactionCommitAbortOverwhelmSuite () {
 
         // run an AQL query in the transaction - this must make progress
         trx.query("FOR i IN 1..1000 INSERT {} INTO d");
-        
+
         trx.commit();
         trx = null;
 
@@ -208,12 +196,12 @@ function TransactionCommitAbortOverwhelmSuite () {
 
     testInsertNotBlockedForAlreadyStartedTransaction : function () {
       const header = {"X-Arango-Async": "store"};
-      
+
       // start an exclusive trx
       let trx = db._createTransaction({
         collections: { exclusive: "d" }
       });
-      
+
       try {
         for (let i = 0; i < 3000; i++) {
           // flood scheduler queue with requests that will block because of the exclusive trx
@@ -252,7 +240,7 @@ function TransactionCommitAbortOverwhelmSuite () {
         return result;
       });
     },
-    
+
     testAbortNotAffectedByOverwhelm : function () {
       testFunc((trx) => {
         let result = trx.abort();
@@ -260,7 +248,7 @@ function TransactionCommitAbortOverwhelmSuite () {
         return result;
       });
     },
-    
+
     testAqlNotAffectedByOverwhelm : function () {
       testFunc((trx) => {
         let result = trx.query("FOR i IN 1..1000 INSERT {} INTO d RETURN 1").toArray();
@@ -270,7 +258,6 @@ function TransactionCommitAbortOverwhelmSuite () {
         return result;
       });
     },
-    
   };
 }
 

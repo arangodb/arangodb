@@ -21,7 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Heiko Kernbach
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require('jsunity');

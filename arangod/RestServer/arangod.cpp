@@ -18,227 +18,29 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Metrics/MetricsFeature.h"
-#include "RestServer/arangod.h"
+#include "RestServer/ArangodServer.h"
 
+#include <cstring>
+#include <cstdlib>
 #include <filesystem>
-#include <type_traits>
+#include <iostream>
+#include <pthread.h>
+#include <unistd.h>
 
-// The list of includes for the features is defined in the following file -
-// please add new includes there!
+#include "Basics/ArangoGlobalContext.h"
+#include "Basics/directories.h"
+#include "Basics/application-exit.h"
+#include "Cluster/ServerState.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
 #include "RestServer/CrashHandlerFeature.h"
-#include "RestServer/arangod_includes.h"
-#include "V8/V8SecurityFeature.h"
+#include "RestServer/PrivilegeFeature.h"
+#include "RestServer/RestartAction.h"
+#include "ProgramOptions/ProgramOptions.h"
 
 using namespace arangodb;
-using namespace arangodb::application_features;
-
-static auto const kNonServerFeatures =
-    std::array{std::type_index(typeid(ActionFeature)),
-               std::type_index(typeid(AgencyFeature)),
-               std::type_index(typeid(ClusterFeature)),
-#ifdef ARANGODB_HAVE_FORK
-               std::type_index(typeid(SupervisorFeature)),
-               std::type_index(typeid(DaemonFeature)),
-#endif
-#ifdef USE_V8
-               std::type_index(typeid(FoxxFeature)),
-#endif
-               std::type_index(typeid(GeneralServerFeature)),
-               std::type_index(typeid(GreetingsFeature)),
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-               std::type_index(typeid(ProcessEnvironmentFeature)),
-#endif
-               std::type_index(typeid(HttpEndpointProvider)),
-               std::type_index(typeid(LogBufferFeature)),
-               std::type_index(typeid(ServerFeature)),
-               std::type_index(typeid(SslServerFeature)),
-               std::type_index(typeid(StatisticsFeature))};
-
-void ArangodServer::addFeatures(
-    int* ret, std::string_view binaryName,
-    std::shared_ptr<crash_handler::DumpManager> dumpManager,
-    std::shared_ptr<crash_handler::DataSourceRegistry> dataSourceRegistry) {
-  // Adding the Phases - these must come first and in this order
-  addFeature<AgencyFeaturePhase>();
-  auto& comm = addFeature<CommunicationFeaturePhase>();
-  addFeature<AqlFeaturePhase>();
-  addFeature<BasicFeaturePhaseServer>();
-  addFeature<ClusterFeaturePhase>();
-  addFeature<DatabaseFeaturePhase>();
-  addFeature<FinalFeaturePhase>();
-#ifdef USE_V8
-  addFeature<FoxxFeaturePhase>();
-#endif
-  addFeature<GreetingsFeaturePhase>(std::false_type{});
-  addFeature<ServerFeaturePhase>();
-#ifdef USE_V8
-  addFeature<V8FeaturePhase>();
-#endif
-
-  // Adding the features - order matters for dependency resolution
-  // metrics::MetricsFeature must go first
-  auto& metrics = addFeature<metrics::MetricsFeature>(
-      LazyApplicationFeatureReference<QueryRegistryFeature>(*this),
-      LazyApplicationFeatureReference<StatisticsFeature>(*this),
-      LazyApplicationFeatureReference<DatabaseFeature>(*this),
-      LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(*this),
-      LazyApplicationFeatureReference<ClusterFeature>(*this));
-  addFeature<metrics::ClusterMetricsFeature>();
-  addFeature<VersionFeature>();
-  addFeature<ActionFeature>();
-  auto& agency = addFeature<AgencyFeature>();
-  addFeature<ApiRecordingFeature>(dataSourceRegistry, metrics);
-  addFeature<AqlFeature>();
-  addFeature<async_registry::Feature>(dataSourceRegistry);
-  addFeature<activities::Feature>(dataSourceRegistry);
-  addFeature<AuthenticationFeature>();
-
-#ifdef TRI_HAVE_GETRLIMIT
-  addFeature<BumpFileDescriptorsFeature>("--server.descriptors-minimum");
-#endif
-  addFeature<CacheOptionsFeature>();
-  auto& cacheOptions = getFeature<CacheOptionsFeature>();
-  auto& sharedPRNGFeature = addFeature<SharedPRNGFeature>();
-  auto& cacheManager = addFeature<CacheManagerFeature>(
-      cacheOptions, sharedPRNGFeature.getPRNG());
-  addFeature<CheckVersionFeature>(ret, kNonServerFeatures);
-  auto& clusterFeature = addFeature<ClusterFeature>(metrics);
-  addFeature<CrashHandlerFeature>(dumpManager);
-  auto& database = addFeature<DatabaseFeature>();
-  auto& clusterUpgradeFeature = addFeature<ClusterUpgradeFeature>(database);
-  addFeature<ConfigFeature>(std::string{binaryName});
-#ifdef USE_V8
-  addFeature<ConsoleFeature>();
-  auto& v8DealerFeature = addFeature<V8DealerFeature>(metrics);
-  addFeature<V8PlatformFeature>();
-  addFeature<V8SecurityFeature>(AllowListStrictness::STRICT);
-#endif
-  addFeature<CpuUsageFeature>();
-  auto& databasePath = addFeature<DatabasePathFeature>();
-  auto& dumpLimits = addFeature<DumpLimitsFeature>();
-  addFeature<HttpEndpointProvider, EndpointFeature>();
-  auto& systemDatabaseFeature = addFeature<SystemDatabaseFeature>();
-  addFeature<BootstrapFeature>(clusterFeature, database, &systemDatabaseFeature,
-                               &clusterUpgradeFeature
-#ifdef USE_V8
-                               ,
-                               &v8DealerFeature
-#endif
-  );
-  addFeature<EnvironmentFeature>();
-  addFeature<FileSystemFeature>();
-  auto& flush = addFeature<FlushFeature>(metrics);
-  addFeature<FortuneFeature>();
-#ifdef USE_V8
-  addFeature<FoxxFeature>();
-  addFeature<FrontendFeature>();
-#endif
-  addFeature<GeneralServerFeature>(metrics);
-  addFeature<GreetingsFeature>();
-  addFeature<InitDatabaseFeature>(kNonServerFeatures);
-  addFeature<LanguageCheckFeature>();
-  addFeature<LanguageFeature>();
-  addFeature<TimeZoneFeature>();
-  addFeature<LockfileFeature>();
-  addFeature<LogBufferFeature>(metrics);
-  addFeature<LoggerFeature>(true);
-  addFeature<MaintenanceFeature>(&clusterFeature);
-  addFeature<MaxMapCountFeature>();
-  auto& networkFeature =
-      addFeature<NetworkFeature>(metrics, network::ConnectionPool::Config{});
-  addFeature<NonceFeature>();
-  addFeature<OptionsCheckFeature>();
-  addFeature<PrivilegeFeature>();
-  addFeature<QueryRegistryFeature>(metrics);
-  addFeature<RandomFeature>();
-  addFeature<ReplicationFeature>(comm, metrics);
-  addFeature<ReplicatedLogFeature>();
-  addFeature<ReplicationMetricsFeature>(metrics);
-  addFeature<ReplicationTimeoutFeature>();
-  auto& scheduler =
-      addFeature<SchedulerFeature>(metrics, sharedPRNGFeature.getPRNG());
-  auto& vectorIndex = addFeature<VectorIndexFeature>(database);
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  addFeature<ProcessEnvironmentFeature>(std::string{binaryName});
-#endif
-#ifdef USE_V8
-  addFeature<ScriptFeature>(ret);
-#endif
-  addFeature<ServerFeature>(ret);
-  addFeature<ServerIdFeature>();
-  addFeature<ServerSecurityFeature>();
-  addFeature<ShardingFeature>();
-  addFeature<ShellColorsFeature>();
-#ifdef USE_V8
-  addFeature<ShutdownFeature>(
-      std::array{std::type_index(typeid(ScriptFeature))});
-#else
-  addFeature<ShutdownFeature>(
-      std::array{std::type_index(typeid(AgencyFeaturePhase))});
-#endif
-  addFeature<SoftShutdownFeature>();
-  addFeature<SslFeature>();
-  addFeature<StatisticsFeature>(metrics);
-  addFeature<TempFeature>(std::string{binaryName});
-  addFeature<TemporaryStorageFeature>();
-  addFeature<TtlFeature>();
-  addFeature<UpgradeFeature>(ret, kNonServerFeatures);
-  addFeature<transaction::ManagerFeature>(metrics);
-  addFeature<ViewTypesFeature>();
-  auto& aqlFunctionFeature = addFeature<aql::AqlFunctionFeature>();
-  addFeature<aql::OptimizerRulesFeature>();
-  addFeature<aql::QueryInfoLoggerFeature>();
-  auto& rocksdbCacheRefill = addFeature<RocksDBIndexCacheRefillFeature>(
-      database, &clusterFeature, metrics);
-  auto& rocksdbOption = addFeature<RocksDBOptionFeature>(&agency);
-  auto& rocksdbRecovery =
-      addFeature<RocksDBRecoveryManager>(database, database);
-#ifdef TRI_HAVE_GETRLIMIT
-  addFeature<FileDescriptorsFeature>(metrics);
-#endif
-#ifdef ARANGODB_HAVE_FORK
-  addFeature<DaemonFeature>();
-  addFeature<SupervisorFeature>();
-#endif
-#ifdef USE_ENTERPRISE
-  addFeature<AuditFeature>();
-  addFeature<LicenseFeature>();
-  addFeature<RCloneFeature>();
-  addFeature<HotBackupFeature>();
-  addFeature<EncryptionFeature>();
-  addFeature<SslServerFeature, SslServerFeatureEE>();
-#else
-  addFeature<SslServerFeature>();
-#endif
-  addFeature<iresearch::IResearchAnalyzerFeature>(
-      iresearch::IResearchAnalyzerFeature::Dependencies{
-          .databaseFeature = database,
-          .systemDatabase = systemDatabaseFeature,
-          .networkFeature = &networkFeature,
-          .clusterFeature = &clusterFeature,
-          .schedulerFeature = &scheduler,
-          .aqlFunctionFeature = &aqlFunctionFeature,
-      });
-  addFeature<iresearch::IResearchFeature>(metrics);
-  addFeature<ClusterEngine>(metrics);
-
-  addFeature<RocksDBEngine>(
-      rocksdbOption, metrics, databasePath, vectorIndex, flush, dumpLimits,
-      replication2::EnableReplication2 ? &getFeature<ReplicatedLogFeature>()
-                                       : nullptr,
-      scheduler, rocksdbRecovery, database, rocksdbCacheRefill, cacheManager,
-      agency);
-
-  addFeature<replication2::replicated_state::ReplicatedStateAppFeature>();
-  addFeature<replication2::replicated_state::black_hole::
-                 BlackHoleStateMachineFeature>();
-  addFeature<
-      replication2::replicated_state::document::DocumentStateMachineFeature>();
-}
 
 static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
   try {
@@ -256,7 +58,8 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
         "For more information use:", SBIN_DIRECTORY);
 
     int ret{EXIT_FAILURE};
-    ArangodServer server{options, SBIN_DIRECTORY};
+    ArangodServer server{options, SBIN_DIRECTORY, name, crashDumpManager,
+                         dataSourceRegistry};
     ServerState state{server};
 
     server.addReporter(
@@ -271,7 +74,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
          },
          {}});
 
-    server.addFeatures(&ret, name, crashDumpManager, dataSourceRegistry);
+    server.addFeatures(&ret);
 
     try {
       server.run(argc, argv);

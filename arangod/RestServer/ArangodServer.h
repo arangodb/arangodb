@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -26,23 +25,40 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "ApplicationFeatures/ApplicationFeaturePhase.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/FeatureOptionProviderContainer.h"
 
 namespace arangodb {
 
 // ArangodServer - the main server class for arangod
 class ArangodServer : public application_features::ApplicationServer {
  public:
-  ArangodServer(std::shared_ptr<options::ProgramOptions> options,
-                char const* binaryPath)
-      : ApplicationServer(std::move(options), binaryPath) {}
+  ArangodServer(
+      std::shared_ptr<options::ProgramOptions> options, char const* binaryPath,
+      std::string_view binaryName,
+      std::shared_ptr<crash_handler::DumpManager> dumpManager,
+      std::shared_ptr<crash_handler::DataSourceRegistry> dataSourceRegistry)
+      : ApplicationServer(options, binaryPath),
+        _programOptions(options),
+        _binaryName(binaryName),
+        _dumpManager(dumpManager),
+        _dataSourceRegistry(dataSourceRegistry) {}
 
   // Adds all features to the server. Must be called before run().
   // @param ret pointer to return value (used by some features)
-  // @param binaryName name of the binary (used by some features)
-  void addFeatures(
-      int* ret, std::string_view binaryName,
-      std::shared_ptr<crash_handler::DumpManager> dumpManager,
-      std::shared_ptr<crash_handler::DataSourceRegistry> dataSourceRegistry);
+  void addFeatures(int* ret);
+
+ protected:
+  void collectOptions() final;
+  void validateOptions() final;
+  // Called by server::run() after collect & validate.
+  void addFeaturesWithOptionProvider() final;
+
+ private:
+  std::shared_ptr<options::ProgramOptions> _programOptions;
+  std::string_view _binaryName;
+  std::shared_ptr<crash_handler::DumpManager> _dumpManager;
+  std::shared_ptr<crash_handler::DataSourceRegistry> _dataSourceRegistry;
+  application_features::FeatureOptionProviderContainer _optionProviders;
 };
 
 }  // namespace arangodb
