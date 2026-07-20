@@ -4773,3 +4773,121 @@ this document, and unchanged between branches in that respect.
 **Action items / recommendations:** None. Both substantive diffs reuse
 authorization-refactor patterns already fully proven equivalent in
 multiple earlier sessions; no new regressions were found.
+
+## `RestVersionHandler`, `RestAdminDeploymentHandler` and `RestDumpHandler`
+
+Mounted at `/_api/version` + `/_admin/version` (both exact), `/_admin/deployment`
+(prefix, coordinator/single-server only), and `/_api/dump` (prefix,
+DBServer/single-server only), respectively.
+
+### `RestVersionHandler` — no new findings, both diffs already covered
+
+`RestVersionHandler` has two diffs vs. `devel`, and both were already
+fully analyzed in earlier sessions of this document:
+
+- Its `checkUserCanAccess()` override
+  (`arangod/RestHandler/RestVersionHandler.cpp:103-116`) is the *exact
+  same*, byte-for-byte `STARTUP`/`MAINTENANCE` compensating-fix override
+  already fully traced in the `RestAuthReloadHandler`/`RestDebugHandler`/
+  `RestStatusHandler`/`RestAdminLogHandler` session (`auth_comparison_with_devel.md:4446-4448,4488`)
+  — that session explicitly names `RestVersionHandler` as the third
+  handler carrying this override, with the full root-cause analysis
+  (necessary fix for a refactor-induced crash risk, plus the genuine
+  `devel`-side `MAINTENANCE`-mode unauthenticated-access gap it closes)
+  given there. No new reasoning needed.
+- Its `execute()` body's `ServerSecurityFeature::canAccessHardenedApi()` →
+  `ExecContext::canUseHardenedAction(AdminMonitoringInternal{})` change
+  (`arangod/RestHandler/RestVersionHandler.cpp:152-154`) is the identical
+  migration already proven equivalent for `RestMetricsHandler`,
+  `RestUsageMetricsHandler`/`RestEngineHandler`, and
+  `RestAdminStatisticsHandler` (Finding 1, above) — `AdminMonitoringInternal`
+  is the same plain `AnyAdmin`-category permission, reducing to
+  `databaseAuthLevel(user, "_system") == RW` in both branches. Note this
+  one has no observable difference at all (not even a message-text
+  change), since `allowInfo` is merely used to decide whether to include
+  extra version detail in a still-`200 OK` response, not to reject the
+  request.
+
+### `RestAdminDeploymentHandler` — clean, no findings
+
+No authorization code exists in this handler in either branch (confirmed
+by grep for `ExecContext|canUse|auth::`); it relies solely on the shared
+base-`RestVocbaseBaseHandler` database-level `RO` gate. The diff vs.
+`devel` is purely cosmetic: one added comment
+(`arangod/RestHandler/RestAdminDeploymentHandler.cpp:43`) and the removal
+of four now-unused `#include`s (`Basics/StaticStrings.h`,
+`GeneralServer/GeneralServerFeature.h`, `Logger/LogMacros.h`,
+`Logger/LoggerStream.h`, `Utils/ExecContext.h`) — dead-code cleanup with
+no functional effect; `.h` is byte-for-byte identical.
+
+### Finding 1 (Cosmetic): `RestDumpHandler::handleCommandDumpStart()` — `isAdminUser()` → `canUseAdminAction(AdminDump{}).ok()`
+
+`devel` (`devel:arangod/RestHandler/RestDumpHandler.cpp:166-168`):
+```cpp
+// adjust permissions in single server case, so that the behavior
+// is identical to non-parallel dumps
+ExecContextSuperuserScope escope(ExecContext::current().isAdminUser() &&
+                                 ServerState::instance()->isSingleServer());
+```
+Current branch (`arangod/RestHandler/RestDumpHandler.cpp:166-173`) renames
+this to `ExecContext::current().canUseAdminAction(auth::perms::AdminDump{}).ok()`.
+`AdminDump` has no dedicated case in `AuthMode::Classic::check()` and falls
+through to the generic `[&](p::AnyAdmin auto const&) -> Result { return
+isAdmin(); }` catch-all (`arangod/Auth/AuthMode.cpp:367`) — the identical
+`_system` RW test as `devel`'s `isAdminUser()`. Purely a naming/clarity
+improvement (the added `TODO` comment about what permission this *should*
+check is a forward-looking design question for RBAC, out of scope for
+this Classic-mode comparison); no behavioral difference.
+
+### Finding 2 (Verified equivalent): `RestDumpHandler::validateRequest()`'s per-shard check — same `canDumpCollection()` refactor already proven equivalent
+
+`devel` (`devel:arangod/RestHandler/RestDumpHandler.cpp:303-320`):
+```cpp
+// make this version of dump compatible with the previous version of
+// arangodump. the previous version assumed that as long as you are
+// an admin user, you can dump every collection
+ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
+// validate permissions for all participating shards
+...
+if (!ExecContext::current().canUseCollection(
+        _request->databaseName(), collectionName, auth::Level::RO)) {
+  return {TRI_ERROR_FORBIDDEN, ...};
+}
+```
+Current branch (`arangod/RestHandler/RestDumpHandler.cpp:309-334`) drops
+the escalation scope and instead calls
+`ExecContext::current().canDumpCollection(_request->databaseName(), collectionName)`
+per shard. This is the *exact same* `ExecContextSuperuserScope(isAdminUser());
+canUseCollection(RO)` → `canDumpCollection()` refactor already fully
+proven equivalent for `RocksDBRestReplicationHandler::handleCommandDump()`
+in the `RestReplicationHandler` session (`auth_comparison_with_devel.md:3863-3882`):
+`canDumpCollection()` (`arangod/Utils/ExecContext.cpp:233-237` →
+`arangod/Auth/AuthMode.cpp:253-261`) is `isAdmin() OR UseCollection(Read)`,
+which is exactly what the reordered `devel` logic computes (for an admin,
+the pre-check escalation makes the subsequent `canUseCollection` call
+trivially pass; for a non-admin, no escalation happens and the real
+per-collection `RO` check applies). Verified equivalent — same reasoning
+carries over verbatim, no new finding.
+
+The two added `// permission checked in DumpManager` comments in
+`execute()` (`arangod/RestHandler/RestDumpHandler.cpp:89,99`, covering the
+`DELETE .../<id>` and `POST .../next/<id>` routes) are purely descriptive
+— they document the pre-existing (and, per a direct diff check,
+byte-for-byte unchanged apart from one typo fix) ownership check inside
+`RocksDBDumpManager::find()`/`remove()`, which compares the requesting
+user (`getAuthorizedUser()`) against the user who created the dump
+context. No code or behavior changed here.
+
+### Summary
+
+| Route | Verdict |
+|---|---|
+| `GET /_api/version`, `/_admin/version` | Identical to `devel` — both diffs already fully covered in earlier sessions |
+| `GET/POST /_admin/deployment/id` | Identical to `devel` — no auth check in either branch, comment/include-cleanup only |
+| `POST /_api/dump/start` | Identical ALLOW/DENY to `devel` (Finding 1 cosmetic; Finding 2 verified equivalent) |
+| `POST /_api/dump/next/<id>`, `DELETE /_api/dump/<id>` | Identical to `devel` — ownership check in `RocksDBDumpManager` unchanged |
+
+**Action items / recommendations:** None. Every substantive diff across
+these three handlers reuses an authorization-refactor pattern already
+fully proven equivalent in a prior session of this document; no new
+regressions were found.
