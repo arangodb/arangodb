@@ -790,7 +790,7 @@ class instanceManager {
       return result.parsedBody.id;
     }
     // Now wait until the job we triggered is finished:
-    const msg = `moveShard in _db/${database}/${collection}/${shard} from ${fromServer.name} to ${toServer.name}:`;
+    const msg = `moveShard in _db/${database}/${collection}/${shard} from ${fromServer.name}/${body.fromServer} to ${toServer.name}/${body.toServer}:`;
     if (this.waitForAgencyJob(
       result.parsedBody.id,
       timeout,
