@@ -21,8 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Jan Steemann
-/// @author Copyright 2019, ArangoDB Inc, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 let jsunity = require('jsunity');
@@ -33,14 +31,11 @@ const arango = require("@arangodb").arango;
 const time = require("internal").time;
 const path = require('path');
 const FoxxManager = require('@arangodb/foxx/manager');
+let { instanceRole } = require('@arangodb/testutils/instance');
 const basePath = path.resolve(require("internal").pathForTesting('common'), 'test-data', 'apps', 'perdb1');
 
 let IM = global.instanceManager;
 const originalUser = arango.connectedUser();
-const {
-  getCtrlCoordinators,
-  getCtrlDBServers
-} = require('@arangodb/test-helper');
 
 function testSuite() {
   const jwtSecret = 'haxxmann';
@@ -120,11 +115,11 @@ function testSuite() {
      */
 
     testRequestFoxxAppWithoutSelfHeal : function() {
-      let dbServers = getCtrlDBServers();
+      let dbServers = IM.getInstancesRole(instanceRole.dbserver);
       // assume all db servers are reachable
       checkAvailability(dbServers, 200);
         
-      let coordinators = getCtrlCoordinators();
+      let coordinators = IM.getInstancesRole(instanceRole.coordinator);
       assertTrue(coordinators.length > 0);
       let coordinator = coordinators[0];
 
@@ -167,12 +162,12 @@ function testSuite() {
     },
     
     testRequestFoxxAppWithForcedSelfHeal : function() {
-      let dbServers = getCtrlDBServers();
+      let dbServers = IM.getInstancesRole(instanceRole.dbserver);
       // assume all db servers are reachable
       checkAvailability(dbServers, 200);
 
       // restart coordinator
-      let coordinators = getCtrlCoordinators();
+      let coordinators = IM.getInstancesRole(instanceRole.coordinator);
       assertTrue(coordinators.length > 0);
       let coordinator = coordinators[0];
       // shut down and restart coordinator.
@@ -203,12 +198,12 @@ function testSuite() {
     },
     
     testRequestFoxxAppWithSelfHealAtStartup : function() {
-      let dbServers = getCtrlDBServers();
+      let dbServers = IM.getInstancesRole(instanceRole.dbserver);
       // assume all db servers are reachable
       checkAvailability(dbServers, 200);
 
       // restart coordinator
-      let coordinators = getCtrlCoordinators();
+      let coordinators = IM.getInstancesRole(instanceRole.coordinator);
       assertTrue(coordinators.length > 0);
       let coordinator = coordinators[0];
 

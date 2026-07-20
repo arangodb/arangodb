@@ -20,7 +20,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Simon Grätzer
 // //////////////////////////////////////////////////////////////////////////////
 
 // tests for streaming transactions

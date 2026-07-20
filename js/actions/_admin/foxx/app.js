@@ -20,9 +20,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Dr. Frank Celler
-// / @author Copyright 2014-2016, ArangoDB GmbH, Cologne, Germany
-// / @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 const internal = require('internal');
@@ -94,7 +91,7 @@ function resolveAppInfo (appInfo, refresh) {
     return buffer;
   }
   if (fs.isDirectory(appInfo)) {
-    const tempFile = fmu.zipDirectory(appInfo);
+    const tempFile = fs.zipDirectory(appInfo);
     const buffer = fs.readFileSync(tempFile);
     try {
       fs.removeDirectoryRecursive(tempFile);

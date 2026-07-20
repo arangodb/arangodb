@@ -21,15 +21,13 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Michael Hackstein
-/// @author Copyright 2016, ArangoDB GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 const internal = require("internal");
 const db = require('internal').db;
 const jsunity = require("jsunity");
 const normalize = require("@arangodb/aql-helper").normalizeProjections;
-const {waitForEstimatorSync } = require('@arangodb/test-helper');
+const { waitForEstimatorSync } = require('@arangodb/test-helper');
 const errors = internal.errors;
 const analyzers = require("@arangodb/analyzers");
 const cn = 'UnitTestsIndexHints';

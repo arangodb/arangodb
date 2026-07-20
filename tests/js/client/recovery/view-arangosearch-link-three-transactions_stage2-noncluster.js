@@ -20,7 +20,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Andrei Lobov
 // //////////////////////////////////////////////////////////////////////////////
 
 const db = require('@arangodb').db;

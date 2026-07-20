@@ -19,8 +19,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Alexandru Petenchea
-/// @author Copyright 2024, ArangoDB Inc, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require('jsunity');
@@ -28,8 +26,9 @@ const {assertEqual, assertIdentical, fail} = jsunity.jsUnity.assertions;
 const {db, errors} = require('@arangodb');
 const console = require('console');
 const rh = require('@arangodb/testutils/restart-helper');
-const {getCtrlDBServers} = require('@arangodb/test-helper');
 const {sleep, time} = require('internal');
+let { instanceRole } = require('@arangodb/testutils/instance');
+const IM = global.instanceManager;
 
 const disableMaintenanceMode = function () {
   const response = arango.PUT('/_admin/cluster/maintenance', '"off"');
@@ -55,7 +54,7 @@ function testSuite() {
 
   return {
     setUp: function () {
-      dbServer = getCtrlDBServers()[0];
+      dbServer = IM.getInstancesRole(instanceRole.dbserver)[0];
     },
 
     tearDown: function () {

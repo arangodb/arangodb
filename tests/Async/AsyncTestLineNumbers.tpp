@@ -18,15 +18,12 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
-
-// This tests for specific line numbers, so be aware that you have to adapt the
-// lines numbers if you change the code inside the test.
 
 TEST(AsyncTest, source_location_in_registry_is_co_await_line) {
   {
     async_tests::NoWait wait;
+    constexpr int kCoReturnLine = __LINE__ + 5;
     auto fn = [&]() -> async<void> {
       auto void_fn = []() {};
       co_await wait;
@@ -39,13 +36,15 @@ TEST(AsyncTest, source_location_in_registry_is_co_await_line) {
     arangodb::async_registry::registry.for_node(
         [&](arangodb::async_registry::PromiseSnapshot promise) {
           count++;
-          EXPECT_EQ(promise.source_location.line, 34);
+          EXPECT_EQ(promise.source_location.line, kCoReturnLine);
         });
     EXPECT_EQ(count, 1);
   }
   arangodb::async_registry::get_thread_registry().garbage_collect();
   {
     async_tests::WaitSlot wait;
+    constexpr int kCoAwaitLine = __LINE__ + 4;
+    constexpr int kCoReturnLine = __LINE__ + 5;
     auto fn = [&]() -> async<void> {
       auto void_fn = []() {};
       co_await wait;
@@ -58,7 +57,7 @@ TEST(AsyncTest, source_location_in_registry_is_co_await_line) {
     arangodb::async_registry::registry.for_node(
         [&](arangodb::async_registry::PromiseSnapshot promise) {
           count++;
-          EXPECT_EQ(promise.source_location.line, 51);
+          EXPECT_EQ(promise.source_location.line, kCoAwaitLine);
         });
     EXPECT_EQ(count, 1);
     wait.resume();
@@ -67,13 +66,15 @@ TEST(AsyncTest, source_location_in_registry_is_co_await_line) {
     arangodb::async_registry::registry.for_node(
         [&](arangodb::async_registry::PromiseSnapshot promise) {
           count++;
-          EXPECT_EQ(promise.source_location.line, 53);
+          EXPECT_EQ(promise.source_location.line, kCoReturnLine);
         });
     EXPECT_EQ(count, 1);
   }
   arangodb::async_registry::get_thread_registry().garbage_collect();
   {
     async_tests::ConcurrentNoWait wait;
+    constexpr int kCoAwaitLine = __LINE__ + 4;
+    constexpr int kCoReturnLine = __LINE__ + 5;
     auto fn = [&]() -> async<void> {
       auto void_fn = []() {};
       co_await wait;
@@ -86,7 +87,7 @@ TEST(AsyncTest, source_location_in_registry_is_co_await_line) {
     arangodb::async_registry::registry.for_node(
         [&](arangodb::async_registry::PromiseSnapshot promise) {
           count++;
-          EXPECT_EQ(promise.source_location.line, 79);
+          EXPECT_EQ(promise.source_location.line, kCoAwaitLine);
         });
     EXPECT_EQ(count, 1);
     wait.await();
@@ -95,7 +96,7 @@ TEST(AsyncTest, source_location_in_registry_is_co_await_line) {
     arangodb::async_registry::registry.for_node(
         [&](arangodb::async_registry::PromiseSnapshot promise) {
           count++;
-          EXPECT_EQ(promise.source_location.line, 81);
+          EXPECT_EQ(promise.source_location.line, kCoReturnLine);
         });
     EXPECT_EQ(count, 1);
   }

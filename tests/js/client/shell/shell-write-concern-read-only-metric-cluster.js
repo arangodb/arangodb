@@ -21,7 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Jan Steemann
 // //////////////////////////////////////////////////////////////////////////////
 
 let jsunity = require("jsunity");
@@ -32,7 +31,7 @@ const inst = require('@arangodb/testutils/instance');
 let IM = global.instanceManager;
 
 const {
-  waitForShardsInSync, getUrlById, eventuallyAssertMetric, getAllMetric
+  waitForShardsInSync, eventuallyAssertMetric
 } = require('@arangodb/test-helper');
 
 const database = "WriteConcernReadOnlyMetricDatabase";
