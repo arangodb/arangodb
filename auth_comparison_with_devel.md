@@ -4035,3 +4035,276 @@ DBServers where the maintenance worker actually runs. It joins
 `RestCompactHandler`, `RestAqlFunctionsHandler`, `RestEndpointHandler`, and
 `RestImportHandler` as handlers with a clean bill of health in this
 comparison. No findings, no action items.
+
+## `RestGraphHandler` (`arangod/RestHandler/RestGraphHandler.cpp`)
+
+Mounted at `/_api/gharial` (prefix); implements the "General Graph" CRUD
+API (graph create/read/drop, edge-definition and orphan-collection
+management, vertex/edge CRUD scoped to a graph). `RestGraphHandler.h` is
+byte-for-byte identical to `devel`; `RestGraphHandler.cpp` itself contains
+**no authorization code whatsoever** (confirmed by grep for
+`ExecContext|canUse|canSee|canCreate|canDrop|auth::` — zero matches) and
+its diff against `devel` is trivial: one added comment
+(`// Mounted at /_api/gharial (prefix)`) and four call sites where
+`OperationOptions(_context)` became `OperationOptions()` — the same
+proven-no-op pattern already established for `RestDocumentHandler` and
+`RestImportHandler` (the only real consumer of that constructor argument,
+`Collections::create`, is never reached from a plain `OperationOptions`
+passed to `trx.update()`/`trx.document()` calls here).
+
+All authorization logic lives one layer down, in `GraphOperations.cpp` and
+`GraphManager.cpp` (the classes `RestGraphHandler` delegates every
+operation to), so this session focuses there. This turned out to be a
+substantial, genuine refactor — not merely cosmetic — with one confirmed
+narrow regression (Finding 3) that matches the user's expectation that
+"we might have introduced some changes intentionally."
+
+### Finding 1 (Confirmed no-op): removal of the `!ExecContext::isAuthEnabled()` early-return shortcut
+
+`devel`'s `GraphOperations::hasPermissionsFor()`
+(`devel:arangod/Graph/GraphOperations.cpp:1180-1185`),
+`GraphOperations::checkEdgeDefinitionPermissions` (analogous check at
+`devel:arangod/Graph/GraphOperations.cpp:1205-1210`), and
+`GraphManager::checkCreationRequirements()` /
+`GraphManager::checkDropRequirements()`
+(`devel:arangod/Graph/GraphManager.cpp:795-800,1069-1074`) all began with:
+```cpp
+if (!ExecContext::isAuthEnabled()) {
+  LOG_TOPIC(...) << "Permissions are turned off.";
+  return true; // or TRI_ERROR_NO_ERROR
+}
+```
+`ExecContext::isAuthEnabled()` (`devel:arangod/Utils/ExecContext.cpp:79-83`)
+simply returns `AuthenticationFeature::instance()->isActive()` — i.e. this
+shortcut only fires when authentication is switched off server-wide
+(`--server.authentication false`), a case that is out of scope for this
+Classic-mode-with-auth-enabled comparison. The whole `ExecContext::isAuthEnabled()`
+static method was removed in the current branch (confirmed absent from
+`arangod/Utils/ExecContext.h`), and these four call sites were simply
+deleted rather than replaced.
+
+This is a confirmed no-op, not a behavior change, even in the
+auth-disabled case: when authentication is inactive,
+`ExecContext::create()` (`arangod/Utils/ExecContext.cpp:72-110`) builds an
+`AuthMode::Disabled` context instead of `AuthMode::Classic`, and
+`AuthMode::Disabled::check()` (`arangod/Auth/AuthMode.cpp:659-661`)
+unconditionally returns `Result{}` (success) **for every permission**,
+with no exceptions. So whether the `isAuthEnabled()` bypass is checked
+explicitly beforehand or the request simply falls through to
+`canUseCollection()`/`canUseDatabase()`/`canUseGraph()` and hits
+`AuthMode::Disabled::check()` at the bottom, the outcome is identical:
+unconditional ALLOW. Purely a code-cleanup consequence of moving the
+"is auth disabled" special-casing from scattered call sites into the
+`AuthMode` variant hierarchy itself — a pattern already established for
+several previous handlers in this document (e.g. `RestCompactHandler`'s
+`isSuperuserOrDisabled()` findings).
+
+### Finding 2 (Confirmed equivalent, "fail-fast" refactor): new explicit `checkCanModifyGraphStructure()` guard in `GraphOperations.cpp`
+
+The current branch adds a new private helper
+(`arangod/Graph/GraphOperations.cpp:70-74`):
+```cpp
+Result GraphOperations::checkCanModifyGraphStructure() const {
+  auto& exec = ExecContext::current();
+  return exec.canUseGraph(_vocbase.name(), _graph.name(),
+                          GraphAccessLevel::Modify);
+}
+```
+and calls it as the very first statement in five structure-mutating
+functions that had **no permission check of their own** in `devel`:
+`eraseEdgeDefinition` (`arangod/Graph/GraphOperations.cpp:110`),
+`editEdgeDefinition` (`:250`), `addOrphanCollection` (`:342`),
+`eraseOrphanCollection` (`:499`), and `addEdgeDefinition` (`:571`). In
+`devel`, only two of these five had *any* explicit check at all —
+`eraseEdgeDefinition` and `eraseOrphanCollection`, and only conditionally,
+gating the collection-drop sub-case via `hasRWPermissionsFor()`
+(`devel:arangod/Graph/GraphOperations.cpp:109,468`, preserved unchanged in
+the current branch at `arangod/Graph/GraphOperations.cpp:121,494`).
+
+`canUseGraph(db, graph, GraphAccessLevel::Modify)`
+(`arangod/Utils/ExecContext.cpp:430-437`) resolves in `Classic` mode
+(`arangod/Auth/AuthMode.cpp:544-558`) to exactly
+`check(UseDatabase{db, DatabaseAccessLevel::Write})` — i.e. plain
+database-level RW, nothing more, nothing less.
+
+The reason this is a confirmed no-op rather than a new restriction: all
+five functions unconditionally end by writing the updated graph
+definition to the `_graphs` collection (either directly via
+`SingleCollectionTransaction`/`trx.update()`, e.g.
+`arangod/Graph/GraphOperations.cpp:100,144-150`, or via
+`GraphManager::storeGraph()`, `arangod/Graph/GraphOperations.cpp:610`).
+Since `_graphs` is a system collection, `User::collectionAuthLevel()`
+unconditionally resolves its auth level to the database's own level
+(established already in the `RestAnalyzerHandler` session for `_analyzers`
+— the same short-circuit applies to every collection name starting with
+`_`), so that final write **already required database-level RW** in
+`devel`, implicitly, via the ordinary transaction/collection-permission
+machinery — the exact same requirement the new explicit check now tests
+upfront. The only observable difference is *when* the rejection happens
+(before vs. after `checkEdgeCollectionAvailability()`/collection creation
+side effects), which only affects error-message/error-code ordering for
+an already-unauthorized caller — not the final ALLOW/DENY outcome. This
+matches the "fail fast for what was already implicitly enforced" pattern
+seen previously for `RestCollectionHandler`/`RestReplicationHandler`.
+
+### Finding 3 (Regression, more permissive): `GraphManager::createGraph()`'s permission check drops the per-collection read check when the caller already has database-level RW
+
+This is the headline finding — a genuine behavioral divergence, not a
+no-op, and the kind of change the user anticipated.
+
+`devel`'s inline permission logic inside `GraphManager::createGraph()`
+(`devel:arangod/Graph/GraphManager.cpp:819-878`, prior to being refactored
+out into `ExecContext::canCreateGraph()`) worked as follows:
+1. If the caller **lacks** database-level RW: check every edge/vertex
+   collection referenced by the graph — each must both already exist
+   *and* be individually readable
+   (`execContext.canUseCollection(col, auth::Level::RO)`); if any
+   collection is missing or unreadable, fail with `TRI_ERROR_FORBIDDEN`.
+   Otherwise (everything exists and is readable, but the `_graphs` write
+   itself is still impossible), fail with `TRI_ERROR_ARANGO_READ_ONLY`.
+   **Either way, lacking database RW always results in failure.**
+2. If the caller **has** database-level RW: *unconditionally* loop over
+   every edge/vertex collection again and require
+   `execContext.canUseCollection(col, auth::Level::RO)` on each one —
+   this second loop ran regardless of whether the collections already
+   existed, and regardless of the database-RW check having already
+   passed.
+
+Step 2 matters because, in the Classic permission model, a per-collection
+grant can be set *more restrictively* than the database default (e.g. a
+database-level `rw` default with an explicit `none`/`ro` override on one
+specific collection) — `User::collectionAuthLevel()` honors such
+overrides for ordinary (non-system) collections. So `devel` genuinely
+enforced: "you need database RW **and** individual read access to every
+collection the graph will reference, even ones you're not creating."
+
+The current branch's refactor moved this logic into
+`ExecContext::canCreateGraph()`
+(`arangod/Utils/ExecContext.cpp:406-419`) and the corresponding `Classic`
+case (`arangod/Auth/AuthMode.cpp:504-528`):
+```cpp
+[&](p::CreateGraph const& graph) -> Result {
+  if (auto r =
+          check(p::UseDatabase{graph.db, DatabaseAccessLevel::Write});
+      r.ok()) {
+    return r;                                   // <-- early success!
+  }
+  for (auto const& coll : graph.collectionNamesToCreate) {
+    if (auto r = check(p::CreateCollection{graph.db, coll}); r.fail()) {
+      return r;
+    }
+  }
+  for (auto const& coll : graph.collectionNamesToRead) {
+    if (auto r = check(p::UseCollection{graph.db, coll,
+                                        CollectionAccessLevel::Read});
+        r.fail()) {
+      return r;
+    }
+  }
+  return {TRI_ERROR_ARANGO_READ_ONLY, "Cannot write to database."};
+},
+```
+called from `GraphManager::createGraph()`
+(`arangod/Graph/GraphManager.cpp:844-852`), which now partitions the
+graph's collections into `collectionsToCreate` (don't yet exist) and
+`collectionsToRead` (already exist) before calling `canCreateGraph()`.
+
+The "no database RW" branch is a faithful, verified-equivalent
+reimplementation of `devel`'s step 1 (`CreateCollection`
+(`arangod/Auth/AuthMode.cpp:385-390`) itself requires database RW via the
+"container principle", so it always fails here too, matching `devel`'s
+unconditional rejection whenever a not-yet-existing collection is
+involved; the `collectionNamesToRead` loop reproduces `devel`'s per-
+collection RO check for existing collections one-for-one).
+
+**But the "has database RW" branch returns success immediately —
+`devel`'s step 2 (the unconditional per-collection RO re-check) has no
+counterpart at all.** Concretely: a user who holds database-level RW but
+has an explicit collection-level override denying (or merely not
+granting) access to some specific existing collection could **not**
+create a graph referencing that collection in `devel` (rejected with
+`FORBIDDEN` by the second loop), but **can** in the current branch (the
+database-RW check alone short-circuits to success, and
+`collectionNamesToRead` is never even inspected in this branch). This is
+a narrow but real widening of what's permitted — the opposite direction
+from most findings in this document, and squarely a case of "an
+intentional-looking refactor that quietly dropped a check", worth a
+deliberate decision rather than being dismissed as equivalent.
+
+`GraphManager::checkDropRequirements()` → `ExecContext::canDropGraph()`
+(`arangod/Utils/ExecContext.cpp:420-428`) →
+`AuthMode::Classic`'s `DropGraph` case
+(`arangod/Auth/AuthMode.cpp:529-543`) was checked for the same pattern and
+is **not** affected: it unconditionally requires database RW
+(`arangod/Auth/AuthMode.cpp:532-536`) *and* `DropCollection` permission
+(which itself layers database RW plus collection-level `WriteMeta`,
+`arangod/Auth/AuthMode.cpp:391-404`) on every collection actually being
+dropped — reproducing `devel`'s
+`devel:arangod/Graph/GraphManager.cpp:1091-1141` logic faithfully in both
+the "have DB RW" and "lack DB RW" cases (`devel`'s final pair of
+`canUseCollection(StaticStrings::GraphsCollection, RO/RW)` checks are
+exactly `canUseDatabase(RO)`/`canUseDatabase(RW)` in disguise, per the
+system-collection short-circuit rule).
+
+### Finding 4 (Confirmed no-op): new per-item `canSeeGraph()` visibility filter in `GraphManager::readGraphs()` / `lookupGraphByName()`
+
+`GraphManager::readGraphs()` (list graphs, backing `GET /_api/gharial`)
+gained a per-entry filter
+(`arangod/Graph/GraphManager.cpp:783-802`):
+```cpp
+for (auto const& g : VPackArrayIterator(graphsSlice)) {
+  ...
+  if (exec.canSeeGraph(ctx()->vocbase().name(), <name>).ok()) {
+    builder.add(g);
+  }
+}
+```
+that `devel` lacked entirely (`devel:arangod/Graph/GraphManager.cpp:749`
+just appended the whole `graphsSlice` unfiltered). Likewise,
+`GraphManager::lookupGraphByName()` (backing `GET /_api/gharial/<name>`,
+called from `arangod/RestHandler/RestGraphHandler.cpp:602`) gained an
+up-front `canSeeGraph()` guard (`arangod/Graph/GraphManager.cpp:304-309`)
+that `devel` also lacked.
+
+`canSeeGraph()` (`arangod/Utils/ExecContext.cpp:400-404`) resolves in
+`Classic` mode to `check(UseDatabase{db, DatabaseAccessLevel::Read})`
+(`arangod/Auth/AuthMode.cpp:499-503`) — plain database-level RO, with no
+per-graph or per-collection override capability (unlike collections,
+graphs have no independent ACL entity in the Classic permission model).
+Crucially, `RestHandler::checkUserCanAccess()`
+(`arangod/GeneralServer/RestHandler.cpp:705-724`) already unconditionally
+requires `DatabaseAccessLevel::Read` on the target database for **every**
+request before any handler-specific code runs at all — so any caller who
+can reach `RestGraphHandler` in the first place, by definition, already
+satisfies `canSeeGraph()` for every graph in that database. The new
+filter is an all-or-nothing gate that can never actually remove an
+individual entry in Classic mode; it only matters for RBAC mode (out of
+scope here). This is the same "list-filtering that's a confirmed no-op
+under Classic mode's database-level-only visibility model" pattern
+already documented for `RestAnalyzerHandler` (Finding 3) and
+`RestCollectionHandler`.
+
+### Summary
+
+| Operation | Verdict |
+|---|---|
+| `GET /_api/gharial` (list graphs) | Confirmed equivalent — new `canSeeGraph()` filter is a no-op under Classic mode (Finding 4). |
+| `GET /_api/gharial/<name>` (read graph) | Confirmed equivalent — new `canSeeGraph()` guard is a no-op under Classic mode (Finding 4). |
+| `POST /_api/gharial` (create graph) | **Regression (more permissive)** — a database-RW user with a denying per-collection override on an already-existing referenced collection is now allowed to create the graph, where `devel` would reject it (Finding 3). |
+| `DELETE /_api/gharial/<name>` (drop graph) | Confirmed equivalent — `canDropGraph()` reproduces `devel`'s combined database-RW + per-collection-drop logic faithfully. |
+| Edge-definition add/edit/remove, orphan-collection add/remove | Confirmed equivalent — new upfront `checkCanModifyGraphStructure()` check (database RW) merely fails fast on a requirement `devel` already enforced implicitly via the unconditional `_graphs` write (Finding 2). |
+| Vertex/edge CRUD within a graph (`getVertex`/`getEdge`/`create*`/`update*`/`replace*`/`remove*`) | Unaffected — these functions are untouched by the diff apart from the no-op `OperationOptions(_context)` → `OperationOptions()` change; they rely on `checkVertexCollectionAvailability()`/`checkEdgeCollectionAvailability()` plus the standard transaction-level collection-permission machinery already covered by the `RestDocumentHandler` session. |
+
+**Action items / recommendations:** Finding 3 is the one item worth a
+deliberate decision. Either (a) treat it as intentional — the
+`collectionNamesToRead` check was arguably redundant defense-in-depth
+that most deployments don't rely on (per-collection overrides *below* the
+database default are an unusual configuration) — and document it as a
+minor, accepted behavior change, or (b) restore parity with `devel` by
+adding an unconditional loop over `collectionNamesToRead` requiring
+`UseCollection{Read}` in the `CreateGraph` Classic-mode case
+(`arangod/Auth/AuthMode.cpp:504-528`), independent of whether the
+database-RW check already succeeded. Given this is a narrow permissiveness
+widening (not a lockout) and requires a specific, uncommon permission
+configuration to matter, it is low urgency but should not be dismissed as
+a pure refactor artifact.
