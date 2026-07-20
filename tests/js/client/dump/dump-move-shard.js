@@ -88,6 +88,7 @@ function dumpTestSuite () {
 
           let id = IM.moveShard(database, collection, shard, fromServer, toServer, -1);
           assertTrue(id !== false);
+          pending.push(id);
           i++;
         });
 
