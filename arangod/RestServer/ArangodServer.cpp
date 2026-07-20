@@ -100,7 +100,6 @@ void ArangodServer::addFeatures() {
   auto& cacheOptions = getFeature<CacheOptionsFeature>();
   auto& sharedPRNGFeature = addFeature<SharedPRNGFeature>();
   addFeature<CacheManagerFeature>(cacheOptions, sharedPRNGFeature.getPRNG());
-  addFeature<CheckVersionFeature>(_ret, kNonServerFeatures);
   auto& clusterFeature = addFeature<ClusterFeature>(metrics);
   auto& database = addFeature<DatabaseFeature>();
   auto& clusterUpgradeFeature = addFeature<ClusterUpgradeFeature>(database);
@@ -248,6 +247,12 @@ void ArangodServer::addFeaturesWithOptionProvider() {
       agency, getOptions<RocksDBEngineOptionsProvider>());
 
   addFeature<FortuneFeature>(getOptions<fortune::FortuneOptionsProvider>());
+
+  // Add CheckVersionFeature
+  auto checkVersionOptions =
+      getOptions<check_version::CheckVersionOptionsProvider>();
+  addFeature<CheckVersionFeature>(_ret, kNonServerFeatures,
+                                  std::move(checkVersionOptions));
 
   addFeature<iresearch::IResearchAnalyzerFeature>(
       iresearch::IResearchAnalyzerFeature::Dependencies{
