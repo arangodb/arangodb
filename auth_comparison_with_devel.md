@@ -5264,3 +5264,195 @@ deliberate, welcome closure of a long-standing, explicitly-documented
 highlighting that view creation/modification now validates access to
 linked collections, since applications relying on the old (lax) behavior
 with explicitly-denied collections would need those denials revisited.
+
+## `RestKeyGeneratorsHandler`, `RestQueryPlanCacheHandler`, `RestShutdownHandler` and `RestLicenseHandler`
+
+### `RestKeyGeneratorsHandler` (`arangod/RestHandler/RestKeyGeneratorsHandler.cpp`)
+
+Mounted at `GET /_api/key-generators` (prefix), it returns the static list
+of registered key generator names (`arangod/RestHandler/RestKeyGeneratorsHandler.cpp:38-61`).
+No authorization code exists in either branch (confirmed by grep); the
+diff vs. `devel` is a single added comment
+(`arangod/RestHandler/RestKeyGeneratorsHandler.cpp:37`). Relies solely on
+the shared base-`RestHandler` authentication requirement, matching its
+documented `AUTHEN`-only level (`Documentation/path_permissions.md:967`).
+No findings.
+
+### `RestQueryPlanCacheHandler` (`arangod/RestHandler/RestQueryPlanCacheHandler.cpp`)
+
+Mounted at `/_api/query-plan-cache` (prefix), with `GET` (`readPlans()`)
+listing cached query plans and `DELETE` (`clearCache()`) invalidating the
+whole cache for the current database.
+
+**Finding 1 (cosmetic).** `clearCache()`'s permission check
+(`arangod/RestHandler/RestQueryPlanCacheHandler.cpp:58-69`) changed from
+`devel`'s bare `bool ExecContext::canUseDatabase(auth::Level::RW)`
+(implicit current database, boolean return) to
+`Result ExecContext::canUseDatabase(_vocbase.name(), DatabaseAccessLevel::Write)`
+(explicit database, `Result` return). Since `_vocbase.name()` is always
+the same database the old implicit-current-database overload resolved
+against (`arangod/Utils/ExecContext.h:123-128`, devel), the permission
+semantics are identical — only the error message text changes (now
+includes `r.errorMessage()`).
+
+**Finding 2 (narrow regression, more restrictive — the one worth
+flagging).** The new `Result ExecContext::canUseDatabase(std::string_view db, DatabaseAccessLevel level)`
+overload (`arangod/Utils/ExecContext.cpp:189-197`) is not a pure
+permission check: it adds an unconditional
+`if (!isSuperuser() && ServerState::readOnly() && level >= DatabaseAccessLevel::Write) return {TRI_ERROR_FORBIDDEN, "Server is in read-only mode."}`
+guard before consulting the auth backend at all. `devel`'s plain
+`auth::Level`-based `canUseDatabase()` never performed any such
+server-read-only-mode check — it looked at stored permissions only.
+
+This matters here in a way it did not for the previously-documented
+read-only-mode findings (`RestDocumentHandler` Finding 1,
+`RestCollectionHandler`'s `truncate` addendum): in those cases the
+explicit handler-level check was provably redundant, because the actual
+write always went through `TransactionState`/the storage engine, which
+independently enforces the exact same read-only-mode rule
+(`arangod/Transaction/Methods.cpp:3763-3769`) — so removing or adding the
+early check never changed the final outcome. Here, `clearCache()`'s
+actual effect, `_vocbase.queryPlanCache().invalidateAll()`
+(`arangod/RestHandler/RestQueryPlanCacheHandler.cpp:71`), is a **pure
+in-memory, non-persistent maintenance operation** — it never touches the
+storage engine and was never subject to any read-only-mode check of its
+own, in either branch. So this is a genuine, standalone new restriction:
+an operator with legitimate database `RW` permissions could clear stale
+query plan cache entries in `devel` even while the server runs in
+`--server.read-only` mode (a plausible maintenance action, since it
+mutates no persistent data); in the current branch, the same request now
+fails with `403 FORBIDDEN "Server is in read-only mode."` before ever
+reaching the cache.
+
+This is narrow (only matters for servers in read-only mode) and strictly
+more restrictive (no security concern), but is a real, user-visible
+behavioral difference distinct from the "provably no-op" pattern
+established elsewhere in this document, so it is recorded as its own
+finding rather than folded into an existing addendum. Note also the
+pre-existing `// TODO Should this get a separate admin action/permission?`
+comment (`arangod/RestHandler/RestQueryPlanCacheHandler.cpp:59`), which
+mirrors `Documentation/path_permissions.md:985`'s own
+`needs an RBAC solution? FIXME` annotation — this is an acknowledged,
+pre-existing open design question in both branches, not something this
+comparison newly uncovered.
+
+**Finding 3 (confirmed equivalent).** `readPlans()`
+(`arangod/RestHandler/RestQueryPlanCacheHandler.cpp:82-105`) dropped
+`devel`'s explicit `canUseDatabase(auth::Level::RO)` upfront check. This
+is a no-op: the shared base `RestHandler::checkUserCanAccess()`
+(`arangod/GeneralServer/RestHandler.cpp:705-724`) already gates every
+request on database-level `RO` before any handler's `execute()` runs —
+the same established fact already relied upon for `RestGraphHandler`
+Finding 4 and `RestCursorHandler`.
+
+**Finding 4 (confirmed equivalent).** The per-cache-entry filter's
+condition changed from `devel`'s
+`ExecContext::isAuthEnabled() && !ExecContext::current().isSuperuser()`
+to `!context.isSuperuserOrDisabled()` — the same collapsed-condition
+refactor already proven equivalent multiple times in this document
+(`RestCompactHandler`, `RestAdminServerHandler`, `RestAuthReloadHandler`
+sessions): `isSuperuserOrDisabled()` returns `true` exactly when auth is
+disabled *or* the caller is a superuser, so negating it is identical to
+`devel`'s two-part condition. Similarly, `canUseCollection(name, RO)`
+(implicit current database) became
+`canUseCollection(databaseName, name, AccessLevel::Read).ok()` with
+`databaseName = _vocbase.name()` captured explicitly — the same database,
+so no behavioral change.
+
+### `RestShutdownHandler` (`arangod/RestHandler/RestShutdownHandler.cpp`)
+
+Mounted at `/_admin/shutdown` (prefix; `GET` for soft-shutdown status on
+coordinators, `DELETE` to trigger shutdown).
+
+**Finding 5 (confirmed equivalent).** `devel`'s inline permission check
+(manually reading `AuthenticationFeature::instance()` and
+`userManager()->databaseAuthLevel(user, "_system", true)`) was replaced
+by `ExecContext::current().canUseAdminAction(auth::perms::AdminShutdown{})`
+(`arangod/RestHandler/RestShutdownHandler.cpp:59-65`). `AdminShutdown` is
+part of `detail::AdminList` (`arangod/Auth/Permissions.h:114`), so it
+falls through the generic `[&](p::AnyAdmin auto const&) -> Result { return isAdmin(); }`
+catch-all (`arangod/Auth/AuthMode.cpp:367`), and
+`AuthMode::Classic::isAdmin()` (`arangod/Auth/AuthMode.cpp:574-577`) is
+defined as exactly `check(UseDatabase{"_system", Write})` —
+i.e. `databaseAuthLevel(user, "_system") >= RW`, the identical test
+`devel` performed by hand. Tracing every branch of `devel`'s condition
+confirms full equivalence:
+- **Auth disabled** (`!af->isActive()`): `devel` skips the check entirely
+  (allow). Current: `ExecContext::create()` selects `AuthMode::Disabled`
+  whenever `!authenticationFeature.isActive()`
+  (`arangod/Utils/ExecContext.cpp:90-92`), and
+  `AuthMode::Disabled::check()` unconditionally returns `{}`
+  (`arangod/Auth/AuthMode.cpp:659-661`) — same allow.
+- **Superuser JWT (empty `user()`)**: `devel` skips the check
+  (`!_request->user().empty()` is false, allow). Current:
+  `ExecContext::create()` detects `req.authenticated() && req.user().empty() && JWT`
+  and selects the dynamic `AuthMode::Superuser` context
+  (`arangod/Utils/ExecContext.cpp:82-89`), whose `check()` also
+  unconditionally returns `{}` (`arangod/Auth/AuthMode.cpp:64-66`) — same
+  allow.
+- **Regular authenticated user**: both branches require `_system` `RW`
+  — identical outcome.
+- **`userManager() == nullptr` with a non-empty authenticated user**
+  (the DBServer/Agent edge case `devel` specially fell back to
+  `lvl = auth::Level::RW`, i.e. unconditional allow): this exact scenario
+  was already investigated and proven **unreachable in practice** in an
+  earlier session of this document
+  (`auth_comparison_with_devel.md:2659-2666`) — `auth::TokenCache::validateJwtBody()`
+  returns `Entry::Unauthenticated()` whenever `_userManager == nullptr`
+  for any JWT that isn't the empty-username superuser token, so a
+  non-empty, authenticated user can never coexist with a null
+  `UserManager`. Since it cannot occur on either branch, this edge case
+  contributes no behavioral difference.
+
+No findings — full equivalence confirmed for every reachable case.
+
+### `RestLicenseHandler` (`arangod/RestHandler/RestLicenseHandler.cpp`, community build)
+
+**Finding 6 (cosmetic).** `ServerSecurityFeature::canAccessHardenedApi()`
+→ `ExecContext::current().canUseHardenedAction(AdminLicense{})`
+(`arangod/RestHandler/RestLicenseHandler.cpp:46-53`) is the same migration
+already fully proven equivalent multiple times in this document
+(`RestMetricsHandler`, `RestUsageMetricsHandler`/`RestEngineHandler`,
+`RestAdminStatisticsHandler`, `RestVersionHandler`). `AdminLicense` is
+also part of `detail::AdminList`, so it resolves through the same
+`isAdmin()` catch-all when the REST API is hardened, and is a no-op check
+(always allowed) when it is not — identical to `devel`'s
+`canAccessHardenedApi()` semantics. Only the error path changes (now
+includes `r.errorMessage()`, still generic enough to "not leak
+information about server internals").
+
+**Finding 7 (confirmed dead-code cleanup, zero impact).** `devel`'s
+`RestLicenseHandler::verifyPermitted()` (declared in the header, defined
+in the `.cpp` guarded by `#ifdef USE_ENTERPRISE`) was removed along with
+its header declaration. Grepping both branches confirms this method was
+never called anywhere in the community tree. Since the actual Enterprise
+build lives in a separate submodule (`enterprise/`, its own git
+repository with its own `devel` branch), I additionally checked
+`enterprise/Enterprise/RestHandler/RestLicenseHandlerEE.cpp` — which
+supplies the real `RestLicenseHandler::execute()` for Enterprise builds —
+directly in that repository. It confirms: (a) `verifyPermitted()` was
+never called there either (the only `verifyPermitted()` calls anywhere in
+the enterprise tree belong to the unrelated `RestHotBackupHandler`
+class); and (b) the Enterprise `execute()` independently underwent the
+exact same two refactors as the community file
+(`canAccessHardenedApi()` → `canUseHardenedAction(AdminLicense{})`, and
+`!isAuthEnabled() || isSuperuser()` → `isSuperuserOrDisabled()`),
+confirming consistency across both build variants. No behavioral impact.
+
+### Summary
+
+| Route | Verdict |
+|---|---|
+| `GET /_api/key-generators` | Identical to `devel` — no auth code, base-handler gate only |
+| `GET /_api/query-plan-cache` | Confirmed equivalent (Finding 3, Finding 4) |
+| `DELETE /_api/query-plan-cache` | **Regression (safer direction)**: now blocked while the server is in read-only mode, even though the operation is purely in-memory (Finding 2); signature/message-only cosmetic change otherwise (Finding 1) |
+| `GET/DELETE /_admin/shutdown` | Confirmed equivalent for every reachable case (Finding 5) |
+| `GET/PUT /_admin/license` (community + Enterprise) | Confirmed equivalent (Finding 6); dead-code cleanup only (Finding 7) |
+
+**Action items / recommendations:** Finding 2 is optional to address —
+consider whether `RestQueryPlanCacheHandler::clearCache()` should call the
+plain `canUseDatabase(auth::Level)`-style check (or a dedicated
+non-read-only-gated variant) instead of the generic
+`ExecContext::canUseDatabase(db, level)`, since invalidating an in-memory
+cache is not a persistent write and arguably should remain available
+during read-only-mode maintenance windows. No other action items.

@@ -47,10 +47,10 @@
 > ./arangod/RestHandler/RestTtlHandler.cpp
 > ./arangod/RestHandler/RestOpenApiHandler.cpp
 > ./arangod/RestHandler/RestViewHandler.cpp
-./arangod/RestHandler/RestKeyGeneratorsHandler.cpp
-./arangod/RestHandler/RestQueryPlanCacheHandler.cpp
-./arangod/RestHandler/RestShutdownHandler.cpp
-./arangod/RestHandler/RestLicenseHandler.cpp
+> ./arangod/RestHandler/RestKeyGeneratorsHandler.cpp
+> ./arangod/RestHandler/RestQueryPlanCacheHandler.cpp
+> ./arangod/RestHandler/RestShutdownHandler.cpp
+> ./arangod/RestHandler/RestLicenseHandler.cpp
 ./arangod/RestHandler/RestExplainHandler.cpp
 ./arangod/RestHandler/RestAqlUserFunctionsHandler.cpp
 > ./arangod/RestHandler/RestOptionsBaseHandler.cpp
