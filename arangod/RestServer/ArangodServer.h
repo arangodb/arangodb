@@ -36,12 +36,14 @@ class ArangodServer : public application_features::ApplicationServer {
       std::shared_ptr<options::ProgramOptions> options, char const* binaryPath,
       std::string_view binaryName,
       std::shared_ptr<crash_handler::DumpManager> dumpManager,
-      std::shared_ptr<crash_handler::DataSourceRegistry> dataSourceRegistry)
+      std::shared_ptr<crash_handler::DataSourceRegistry> dataSourceRegistry,
+      int* ret)
       : ApplicationServer(options, binaryPath),
         _programOptions(options),
         _binaryName(binaryName),
         _dumpManager(dumpManager),
-        _dataSourceRegistry(dataSourceRegistry) {}
+        _dataSourceRegistry(dataSourceRegistry),
+        _ret(ret) {}
 
   // Adds all features to the server. Must be called before run().
   // @param ret pointer to return value (used by some features)

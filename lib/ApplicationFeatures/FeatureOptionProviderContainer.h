@@ -32,7 +32,6 @@
 #include "RestServer/FortuneOptionsProvider.h"
 #include "RestServer/FrontendOptionsProvider.h"
 #include "RestServer/InitDatabaseOptionsProvider.h"
-#include "RestServer/ServerOptionsProvider.h"
 #include "RestServer/TemporaryStorageOptionsProvider.h"
 #include "RocksDBEngine/RocksDBIndexCacheRefillOptionsProvider.h"
 #include "RocksDBEngine/RocksDBOptionFeatureOptionsProvider.h"
@@ -64,15 +63,14 @@ class FeatureOptionProviderContainer final {
   }
 
  private:
-<<<<<<< HEAD
   std::tuple<AuthenticationOptionsProvider, DatabasePathOptionsProvider,
              DumpLimitsOptionsProvider, EndpointOptionsProvider,
              FlushOptionsProvider, fortune::FortuneOptionsProvider,
              GeneralServerOptionsProvider, InitDatabaseOptionsProvider,
              NetworkOptionsProvider, RocksDBEngineOptionsProvider,
              RocksDBIndexCacheRefillOptionsProvider,
-             RocksDBOptionFeatureOptionsProvider, ServerOptionsProvider,
-             SslServerOptionsProvider, TemporaryStorageOptionsProvider
+             RocksDBOptionFeatureOptionsProvider, SslServerOptionsProvider,
+             TemporaryStorageOptionsProvider
 #ifdef USE_ENTERPRISE
              ,
              enterprise::SslServerEEOptionsProvider
@@ -86,13 +84,6 @@ class FeatureOptionProviderContainer final {
              file_descriptors::FileDescriptorsOptionsProvider
 #endif
              >
-=======
-  std::tuple<
-      DatabasePathOptionsProvider, DumpLimitsOptionsProvider,
-      FlushOptionsProvider, fortune::FortuneOptionsProvider,
-      RocksDBEngineOptionsProvider, RocksDBIndexCacheRefillOptionsProvider,
-      RocksDBOptionFeatureOptionsProvider, TemporaryStorageOptionsProvider>
->>>>>>> parent of ba4c730f788 (Migrate ServerFeature)
       _providers{};
 };
 }  // namespace arangodb::application_features
