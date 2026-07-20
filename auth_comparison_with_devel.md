@@ -3002,3 +3002,157 @@ there with its own fix recommendation) and is otherwise a clean handler —
 the third one, after `RestCompactHandler` and `RestAgencyCallbacksHandler`,
 found to contain no handler-local authorization code or divergence of its
 own.
+
+## `RestUsageMetricsHandler`, `RestEngineHandler` and `RestSupportInfoHandler`
+
+Three small, monitoring/introspection-style handlers, covered together
+since each turns out to reuse an authorization pattern already fully
+proven equivalent in earlier sessions of this document — confirming the
+expectation that they would be low-risk.
+
+- `RestUsageMetricsHandler` (`arangod/RestHandler/RestUsageMetricsHandler.cpp`)
+  — mounted at `/_admin/usage-metrics` (prefix, `GET` only); exports
+  dynamic (per-shard) Prometheus metrics, with an optional
+  cluster-internal `serverId` redirection.
+- `RestEngineHandler` (`arangod/RestHandler/RestEngineHandler.cpp`) —
+  mounted at `/_api/engine` (prefix, `GET` only); `GET /_api/engine`
+  returns storage-engine capabilities (unauthenticated-safe, no
+  suffix-specific check), `GET /_api/engine/stats` returns storage-engine
+  statistics (hardened-gated).
+- `RestSupportInfoHandler` (`arangod/RestHandler/RestSupportInfoHandler.cpp`)
+  — mounted at `/_admin/support-info` (exact, `GET` only); returns a
+  deployment/version/host support-info bundle, gated by the
+  `--server.support-info-api` policy (`jwt`/`admin`/`public`/`disabled`).
+
+### Finding 1 (Cosmetic): `RestUsageMetricsHandler`/`RestEngineHandler` — `ServerSecurityFeature::canAccessHardenedApi()` → `canUseHardenedAction(AdminMonitoringInternal{})`
+
+Both handlers changed identically. `devel`
+(`devel:arangod/RestHandler/RestUsageMetricsHandler.cpp:47-56`,
+`devel:arangod/RestHandler/RestEngineHandler.cpp:71-78`):
+```cpp
+auto& security = server().getFeature<ServerSecurityFeature>();
+if (!security.canAccessHardenedApi()) {
+  // don't leak information about server internals here
+  generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
+  co_return; // or return;
+}
+```
+Current branch (`arangod/RestHandler/RestUsageMetricsHandler.cpp:48-55`,
+`arangod/RestHandler/RestEngineHandler.cpp:71-78`):
+```cpp
+if (auto r = ExecContext::current().canUseHardenedAction(
+        auth::perms::AdminMonitoringInternal{});
+    r.fail()) {
+  // don't leak information about server internals here
+  generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
+                r.errorMessage());
+  co_return; // or return;
+}
+```
+This is the exact same `ServerSecurityFeature::canAccessHardenedApi()` →
+`ExecContext::canUseHardenedAction()` migration already fully traced and
+proven equivalent for `RestMetricsHandler` above (line 994-1063): the
+"hardened-off" gate (`--server.harden`, default `false`) short-circuits to
+always-allow identically in both branches, and the "hardened-on" gate
+reduces, in both branches, to exactly `databaseAuthLevel(user, "_system",
+configured=true) == RW` (`devel`'s precomputed `isAdminUser()` vs. the
+current branch's `isAdmin()`/`AnyAdmin` dispatch in
+`AuthMode::Classic::check()`, `arangod/Auth/AuthMode.cpp:367,574-577`).
+`AdminMonitoringInternal` is one of the plain `AnyAdmin`-category
+permissions (`arangod/Auth/Permissions.h:86,112-118`, alongside
+`AdminMonitoring`/`AdminOptions`/`AdminApiCalls`/etc., all already shown to
+map to the same `isAdmin()` check), so no new reasoning is needed here —
+the equivalence proof carries over verbatim. The only observable
+difference is, again, the error message: `devel` returns bare
+`TRI_ERROR_FORBIDDEN` with no message text; the current branch adds
+`r.errorMessage()` (`"insufficient database access level for '_system'"`).
+The HTTP status (`403`) and `errorNum` (`TRI_ERROR_FORBIDDEN`) are
+identical in both branches. Purely cosmetic.
+
+Note that `RestEngineHandler`'s `GET /_api/engine` (no suffix,
+`getCapabilities()`) never reaches this check in either branch — only the
+`/stats` suffix (`getStats()`) is hardened-gated — and that branching logic
+(`arangod/RestHandler/RestEngineHandler.cpp:57-82`) is byte-for-byte
+identical to `devel` (`devel:arangod/RestHandler/RestEngineHandler.cpp:56-82`).
+
+### Finding 2 (Cosmetic, unrelated): `RestEngineHandler` — `EngineSelectorFeature` lookup replaced by cached `DatabaseFeature::engine()` reference
+
+```diff
+- StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
+- engine.getCapabilities(result);
++ _engine.getCapabilities(result);   // _engine cached in the constructor from
++                                     // server.getFeature<DatabaseFeature>().engine()
+```
+Same underlying `StorageEngine` singleton, just obtained once at
+construction time via `DatabaseFeature` instead of looked up per-call via
+`EngineSelectorFeature` — the identical internal-API simplification already
+seen for `RestDocumentHandler`/`RestAdminServerHandler`/`RestCompactHandler`
+in earlier sessions. No behavioral or authorization impact.
+
+### Finding 3 (Verified equivalent / narrow non-security divergence): `RestSupportInfoHandler`'s `apiPolicy` gate
+
+`RestSupportInfoHandler::execute()`
+(`arangod/RestHandler/RestSupportInfoHandler.cpp:43-73`) implements
+essentially the same three-way `"jwt"`/`"admin"`/`"public"` policy switch
+as `RestOptionsBaseHandler::checkAuthentication()`, already fully analyzed
+in the `RestOptions*` handler family session above (Finding 2, line
+1886-1978) — and the diff confirms the refactor is the very same
+transformation, applied to a near-identical code block:
+
+- `"jwt"` policy (`arangod/RestHandler/RestSupportInfoHandler.cpp:48-54`):
+  `devel`'s bare `!ExecContext::current().isSuperuser()`
+  (`devel:arangod/RestHandler/RestSupportInfoHandler.cpp:48-49`, **not**
+  guarded by `isAuthEnabled()`, exactly like the `RestOptions*` case) →
+  current's `!ExecContext::current().isSuperuserOrDisabled()`. By the same
+  reasoning already established for `RestOptions*` Finding 2: identical
+  ALLOW/DENY whenever authentication is active; a narrow, *more permissive*
+  (not a security regression) divergence exists only when
+  `--server.authentication false` **and** the client still supplies a
+  non-empty username, in which case `devel` would incorrectly reject with
+  `403` while the current branch allows it.
+- `"admin"` policy (`arangod/RestHandler/RestSupportInfoHandler.cpp:56-64`):
+  `devel`'s `apiPolicy == "admin" && !ExecContext::current().isAdminUser()`
+  (`devel:arangod/RestHandler/RestSupportInfoHandler.cpp:56`) → current's
+  `apiPolicy == "admin" && r.fail()` where `r =
+  ExecContext::current().canUseAdminAction(auth::perms::AdminMonitoring{})`.
+  `AdminMonitoring` is again a plain `AnyAdmin` permission, dispatching to
+  `isAdmin()` — identical ALLOW/DENY decision as `devel`'s `isAdminUser()`
+  in every case, cosmetic message-text change only (`"insufficient
+  permissions"` → `r.errorMessage()`); the `errorNum`
+  (`TRI_ERROR_HTTP_FORBIDDEN`/`403`) is unchanged in both branches, exactly
+  as for the `RestOptions*` `"admin"`-policy case.
+- `"public"` policy: no checks in either branch (both fall through to the
+  system-database-only restriction below).
+- The final `_request->databaseName() != StaticStrings::SystemDatabase`
+  restriction (`arangod/RestHandler/RestSupportInfoHandler.cpp:68-73`) is
+  byte-for-byte unchanged.
+
+The one remaining diff — `SupportInfoBuilder::buildInfoMessage(result,
+dbName, server, isLocal, false)` (`devel`, 5 args) →
+`SupportInfoBuilder::buildInfoMessage(result, dbName, server, isLocal)`
+(current, 4 args) — is not an authorization change: `devel`'s trailing
+`isTelemetricsReq` parameter defaults to `false`
+(`devel:arangod/Utils/SupportInfoBuilder.h:41`) and `RestSupportInfoHandler`
+always explicitly passed `false` anyway (only `RestTelemetricsHandler`
+would have passed `true`); the current branch's `SupportInfoBuilder`
+dropped the parameter entirely (`arangod/Utils/SupportInfoBuilder.h:41-44`,
+out of scope here — this affects `RestTelemetricsHandler`, not this
+handler). Since the value used by `RestSupportInfoHandler` was already
+`false` in both branches, this is a no-op for this specific handler.
+
+### Summary
+
+| Handler / Route | Verdict |
+|---|---|
+| `GET /_admin/usage-metrics` | Identical to `devel` (Finding 1, cosmetic message-text only) |
+| `GET /_api/engine` (capabilities) | Identical to `devel` — no auth check in either branch |
+| `GET /_api/engine/stats` | Identical to `devel` (Finding 1, cosmetic message-text only) |
+| `GET /_admin/support-info`, `"jwt"` policy | Identical to `devel` when auth is enabled; narrow, more-permissive-only divergence when auth is fully disabled and a stray username is supplied (same as `RestOptions*` Finding 2, not a security regression) |
+| `GET /_admin/support-info`, `"admin"` policy | Identical ALLOW/DENY to `devel`, cosmetic message-text change only |
+| `GET /_admin/support-info`, `"public"` policy | Identical to `devel` (no checks in either branch) |
+
+**Action items / recommendations:** None. All three handlers reuse
+authorization patterns already established as equivalent (or,
+for the one narrow divergence, already assessed as a safe, non-security
+change and not requiring a fix) in earlier sessions; no new regressions
+were found.
