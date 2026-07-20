@@ -2,6 +2,7 @@
 
 #include "ApplicationFeatures/CoreOptionProviders.h"
 #include "ApplicationFeatures/LanguageOptionsProvider.h"
+#include "RestServer/CheckVersionOptionsProvider.h"
 #include "RestServer/CrashHandlerOptionsProvider.h"
 #include "RestServer/DatabasePathOptionsProvider.h"
 #include "RestServer/DumpLimitsOptionsProvider.h"
@@ -18,6 +19,7 @@
 namespace arangodb {
 // arangod/RestServer/ArangodOptionProviders.h
 using ArangodOptionProviders = CoreOptionProviders<
+    check_version::CheckVersionOptionsProvider,
     crash_handler::CrashHandlerOptionsProvider, DatabasePathOptionsProvider,
     DumpLimitsOptionsProvider, FlushOptionsProvider,
     fortune::FortuneOptionsProvider, LanguageOptionsProvider,
