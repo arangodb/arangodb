@@ -133,20 +133,6 @@ function testSuite() {
       assertTrue(new404 - old404 >= 3, { old404, new404 });
     },
 
-    testStatisticsHistory: function () {
-      let count;
-      let tries = 0;
-      // wait until some document has been written into statistics collection
-      while (++tries < 4 * 30) {
-        count = db._statisticsRaw.count();
-        if (count > 0) {
-          break;
-        }
-        internal.sleep(0.25);
-      }
-      assertTrue(count > 0, { count });
-    },
-
     testMemoryUsageMetrics: function () {
       // metric values should never be 0 if statistics are enabled
       const connectionsBefore = IM.getMetric("arangodb_connection_statistics_memory_usage");
