@@ -716,16 +716,8 @@ auto RestReplicationHandler::executeAsync() -> futures::Future<futures::Unit> {
           goto BAD_CALL;
         }
       }
-    } else if (command == "applier-config" || command == "applier-start" ||
-               command == "applier-stop" || command == "applier-state" ||
-               command == "applier-state-all" || command == "make-follower" ||
-               command == "make-slave" /*deprecated*/) {
-      // the applier commands return a 404 because they have been removed
-      // instead of 400 like the others as in a malformed request
-      generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
-                    std::string("command '") + command + "' has been removed");
     } else {
-      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+      generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
                     std::string("invalid command '") + command + "'");
     }
 
