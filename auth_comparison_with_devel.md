@@ -5728,3 +5728,320 @@ alongside it. No behavioral change.
 handlers in this session reuses an authorization-refactor pattern already
 fully proven equivalent in a prior session of this document — no new
 regressions, no gaps, no action required.
+
+## `RestQueryCacheHandler`, `RestAuthHandler`, `RestUsersHandler` and `RestEdgesHandler`
+
+### `RestQueryCacheHandler` (`arangod/RestHandler/RestQueryCacheHandler.cpp`)
+
+Both `clearCache()` and `properties()` (its `PUT` counterpart) gained an
+identical, `requestedApiVersion() > 0`-gated block
+(`arangod/RestHandler/RestQueryCacheHandler.cpp:62-74,129-141`):
+
+```cpp
+if (_request->requestedApiVersion() > 0) {
+  if (!_vocbase.isSystem()) {
+    generateError(rest::ResponseCode::FORBIDDEN,
+                  TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
+    return;
+  }
+  if (auto r = ExecContext::current().canUseAdminAction(
+          auth::perms::AdminQueryCache{});
+      r.fail()) {
+    generateError(r);
+    return;
+  }
+}
+```
+
+This is the same, already-established `requestedApiVersion()`-gated
+scaffolding pattern seen for `RestDatabaseHandler`, `RestCollectionHandler`,
+and `RestIndexHandler`: since no client sends an API version greater than
+`0` today, this block is dead code in practice — a **no-op**, not a
+Classic-mode regression. `AdminQueryCache` is part of the generic
+`AnyAdmin` list (`arangod/Auth/Permissions.h:87,112`), so once opted-in
+clients do reach it, it will resolve to the same `_system`-RW test used
+throughout this document. The rest of the diff is a single added comment.
+
+### `RestAuthHandler` (`arangod/RestHandler/RestAuthHandler.cpp`)
+
+`devel`'s special-case handling of `/_open/auth` lived entirely in
+`CommTask::canAccessPath()`
+(`/tmp/devel_CommTask.cpp:849-855`, effectively unchanged from earlier
+sessions):
+
+```cpp
+if (path == "/" || path.starts_with(::pathPrefixOpen) ||
+    path.starts_with(::pathPrefixAdminAardvark) ||
+    path == "/_admin/server/availability") {
+  // mop: these paths are always callable...they will be able to check
+  // req.user when it could be validated
+  result = Flow::Continue;
+  vc->forceSuperuser();
+}
+```
+
+i.e. any request (even fully unauthenticated) to `/_open/*` is let through
+and the request's `ExecContext` is force-escalated to superuser — needed
+because this is precisely the login/token endpoint, which by definition
+must be reachable before the caller has a token. The current branch moves
+this into a handler-local override
+(`arangod/RestHandler/RestAuthHandler.cpp:204-209`):
+
+```cpp
+async<Result> RestAuthHandler::checkUserCanAccess() const {
+  auto ec = _request->requestContext();
+  TRI_ASSERT(ec != nullptr);
+  ec->forceSuperuser();
+  co_return Result{};
+}
+```
+
+Confirmed equivalent: unconditional success plus `forceSuperuser()`,
+exactly reproducing `devel`'s path-based exception (this handler is only
+ever mounted at `/_open/auth` and `/_open/auth/renew`, so the check is
+unconditionally correct here, unlike a generic path-prefix test). No
+behavioral difference; the rest of the diff is a single added comment and
+an added `#include`.
+
+### `RestUsersHandler` (`arangod/RestHandler/RestUsersHandler.cpp`)
+
+This handler is the substantial one this session, and the diff is large
+(managing users, their passwords, their per-database/per-collection
+access-level grants, and per-user config data at `/_api/user/*`). It
+carries over the same `pathPrefixApiUser` exception already covered for
+`RestAccessTokenHandler`'s `/_api/token/` prefix, but reimplements it as a
+handler-local `checkUserCanAccess()` override
+(`arangod/RestHandler/RestUsersHandler.cpp:111-121`):
+
+```cpp
+async<Result> RestUsersHandler::checkUserCanAccess() const {
+  constexpr std::string_view pathPrefixApiUser("/_api/user/");
+  auto const& path = _request->requestPath();
+  if (_request->authenticated() && path.starts_with(pathPrefixApiUser)) {
+    co_return Result{};
+  }
+  co_return co_await RestBaseHandler::checkUserCanAccess();
+}
+```
+
+#### Finding 1 (Confirmed equivalent): the `pathPrefixApiUser` override matches `devel`'s `CommTask` exception
+
+`devel`'s `CommTask::canAccessPath()`
+(`/tmp/devel_CommTask.cpp:860-868`) has:
+
+```cpp
+} else if (req.requestType() == RequestType::POST && !username.empty() &&
+           path.starts_with(std::string{::pathPrefixApiUser} + username +
+                            '/')) {
+  // simon: unauthorized users should be able to call
+  // `/_api/user/<name>` to check their passwords
+  result = Flow::Continue;
+  vc->forceReadOnly();
+} else if (userAuthenticated && path.starts_with(::pathPrefixApiUser)) {
+  result = Flow::Continue;
+}
+```
+
+The first clause (an unauthenticated credential-check POST) requires a
+trailing `/` immediately after the username in the path, so it never
+actually matches the real `POST /_api/user/{user}` credential-check route
+(whose path has no further segments) — it is dead code in `devel` too,
+both before and after this branch's refactor, and out of scope for this
+comparison. The second clause — `userAuthenticated &&
+path.starts_with(pathPrefixApiUser)` — is exactly what the new override
+reproduces (`_request->authenticated() && path.starts_with(...)`). Bare
+`/_api/user` (no trailing slash, i.e. the `list`/`create` routes) matches
+neither `devel`'s nor the current branch's prefix test, so both fall
+through to the ordinary database-level gate in both branches. No
+divergence.
+
+#### Finding 2 (Confirmed equivalent): listing and reading users
+
+`getRequest()`'s empty-suffix branch (list all users,
+`arangod/RestHandler/RestUsersHandler.cpp:138-165`) replaces `devel`'s
+`if (isAdminUser()) { ...all users... } else { 403 }` with:
+
+```cpp
+if (auto r = exec.canUseAdminAction(auth::perms::AdminReadUsers{});
+    r.fail()) {
+  generateError(r);
+  return RestStatus::DONE;
+}
+... build userList ...
+std::vector<bool> allowed = exec.canReadUsers(userList);
+... only include users where allowed[i] is true ...
+```
+
+`AdminReadUsers` is part of the generic `AnyAdmin` list
+(`arangod/Auth/Permissions.h:83,112`), reducing to the same `isAdmin()`
+(`_system` RW) test `devel` used — so a non-admin caller is rejected
+before the per-user filter ever runs, exactly like `devel`. For an admin
+caller, the per-user filter (`ExecContext::canReadUsers()`,
+`arangod/Utils/ExecContext.cpp:465-472`) evaluates `can(ReadUser{name})`
+for each entry, which (`arangod/Auth/AuthMode.cpp:560-563`) is again
+`isAdmin()` — already known `true` for this caller — so every user passes
+the filter and the full list is returned, identical to `devel`. This
+two-layer construction is forward-looking RBAC scaffolding (where the
+per-user filter will eventually matter); it is a no-op in Classic mode.
+
+The single-user `GET` route (`arangod/RestHandler/RestUsersHandler.cpp:166-179`)
+replaces `devel`'s `canAccessUser(user)` with `exec.canReadUser(user)`
+(`arangod/Utils/ExecContext.cpp:441-448`):
+
+```cpp
+Result ExecContext::canReadUser(std::string_view userName) const {
+  if (userName == user()) return {};
+  return can(ReadUser{.name{userName}});
+}
+```
+
+This is byte-for-byte the same self-or-admin logic as `devel`'s
+`canAccessUser()` (`/tmp/devel_RestBaseHandler.cpp:67-72`: `user ==
+_request->user()` **or** `isAdminUser()`), since `can(ReadUser{})` reduces
+to `isAdmin()` as shown above. Confirmed equivalent.
+
+#### Finding 3 (Regression, real and serious — privilege escalation): granting/revoking a user's own database or collection access level no longer requires admin rights
+
+This is the headline result of this session. `devel` had **two distinct**
+permission rules for user-management sub-operations:
+
+1. Editing your **own** basic account fields (password, `active` flag,
+   dashboard `config` blob) — allowed via the self-or-admin
+   `canAccessUser()` check, i.e. a normal user may always edit *their own*
+   record.
+2. Granting or revoking a **database or collection access-level override**
+   for a user (`PUT`/`DELETE /_api/user/{user}/database/{db}[/{coll}]`,
+   which sets/clears an explicit `auth::Level` for that user on that
+   database/collection) — required **strict, non-bypassable admin rights**
+   (`isAdminUser()`, i.e. `_system` RW), with **no self-exception**, even
+   though the URL's `{user}` could name the caller themselves. This is a
+   deliberately stricter rule: you can edit your own profile, but you
+   cannot change your own (or anyone else's) access-level grants unless
+   you are already an admin.
+
+The diff shows both `PUT` (`arangod/RestHandler/RestUsersHandler.cpp:410-422`)
+and `DELETE` (`arangod/RestHandler/RestUsersHandler.cpp:593-601`)
+collapsed rule 2 into the *same* `canWriteUser()` helper used for rule 1:
+
+```cpp
+// PUT /_api/user/{name}/database/{db}[/{coll}]  (grant access)
+if (auto r = exec.canWriteUser(name); r.fail()) {   // was: if (!isAdminUser())
+  generateError(r);
+  return RestStatus::DONE;
+}
+...
+VPackSlice grant = body.get("grant");
+auth::Level lvl = auth::convertToAuthLevel(grant);
+Result r = um->updateUser(name, [&](auth::User& entry) {
+  entry.grantDatabase(db, lvl);         // or entry.grantCollection(db, coll, lvl)
+  ...
+});
+```
+
+```cpp
+// DELETE /_api/user/{user}/database/{db}[/{coll}]  (revoke access)
+if (auto r = exec.canWriteUser(user); r.fail()) {   // was: if (!isAdminUser())
+  generateError(r);
+  return RestStatus::DONE;
+}
+```
+
+And `ExecContext::canWriteUser()` (`arangod/Utils/ExecContext.cpp:452-462`)
+**does** include the self-bypass:
+
+```cpp
+Result ExecContext::canWriteUser(std::string_view userName) const {
+  if (!isSuperuser() && ServerState::readOnly()) { ... }
+  if (userName == user()) {
+    return {};
+  }
+  return can(WriteUser{.name{userName}});
+}
+```
+
+Consequence: any authenticated, completely unprivileged user `alice` (with
+`NONE` access everywhere) can now issue
+
+```
+PUT /_api/user/alice/database/_system
+{ "grant": "rw" }
+```
+
+and, because `name == exec.user()` short-circuits to success **before**
+`can(WriteUser{...})`/`isAdmin()` is ever evaluated, the request succeeds
+and grants `alice` `RW` on the `_system` database — which is *exactly*
+this codebase's definition of "being an admin"
+(`AuthMode::Classic::isAdmin()`, `arangod/Auth/AuthMode.cpp:574-577`:
+`check(UseDatabase{"_system", Write})`). The very next request `alice`
+makes is evaluated as a full system administrator. This is a genuine,
+directly-exploitable **self privilege-escalation vulnerability**,
+independent of RBAC — every authenticated user can promote themselves to
+admin with a single API call. The symmetric `DELETE` path (self-revoke) is
+comparatively harmless (a user can only reduce their own access), but
+confirms the same underlying logic error.
+
+I found no compensating check elsewhere: `grantDatabase()`/`grantCollection()`
+(`arangod/Auth/User.cpp`) perform no validation against the caller's own
+existing privilege level, and the existing test suite
+(`tests/RestHandler/RestUsersHandlerTest.cpp`) does not exercise this grant
+route at all (its one test, `test_collection_auth`, only checks
+`canUseCollection()` given a pre-configured admin grant, never the
+`PUT`/`DELETE database` routes), so this was not caught by existing
+coverage.
+
+By contrast, the "config" (dashboard) sub-routes
+(`arangod/RestHandler/RestUsersHandler.cpp:471-474,638`) and the plain
+account-replace routes (`PUT`/`PATCH /_api/user/{user}`,
+`arangod/RestHandler/RestUsersHandler.cpp:398-401,534`) already used
+`canAccessUser()`/self-bypass in `devel` too — those are unchanged,
+intentional self-service operations and are **not** part of this finding.
+
+#### Finding 4 (Confirmed, addendum — already predicted): the `canWriteUser()` read-only-mode gate applies here too
+
+The `RestAccessTokenHandler` session (see above) predicted that
+`RestUsersHandler`, sharing the same `canReadUser`/`canWriteUser`
+primitives, would carry the identical new read-only-mode restriction. This
+is now confirmed: every write route in this handler (`POST`/`PUT`/`PATCH`/
+`DELETE`, including the create-user, replace-user, grant/revoke, and
+config routes) now rejects with `403 TRI_ERROR_FORBIDDEN` while the server
+runs `--server.read-only=true`, for **any** caller, including one editing
+their own record — a restriction `devel` never had (its checks,
+`isAdminUser()`/`canAccessUser()`, contain no read-only test), and, exactly
+as reasoned for `RestAccessTokenHandler`, the actual underlying write
+(`UserManagerImpl::storeUserInternal()`, reached via `updateUser()`/
+`storeUser()`) deliberately runs under a forced `ExecContextSuperuserScope`
+(`arangod/Auth/UserManagerImpl.cpp:377`), bypassing the storage engine's
+own read-only gate — so in `devel`, user/permission management continues
+to work even in read-only mode. This is the same, already-documented
+Finding 3 from the `RestAccessTokenHandler` section, now confirmed to
+apply identically here; it is not treated as a new, separate finding.
+
+### `RestEdgesHandler` (`arangod/RestHandler/RestEdgesHandler.cpp`)
+
+Clean — no authorization code in either branch; the diff is a single added
+comment (`// Mounted at /_api/edges (prefix)`). Edge traversal relies
+entirely on the standard collection-level transaction permission
+machinery already fully analyzed for `RestDocumentHandler`.
+
+### Summary
+
+| Handler / Route | Verdict |
+|---|---|
+| `PUT /_api/query-cache`, `POST /_api/query-cache/properties` | No-op `requestedApiVersion()`-gated scaffolding (unreachable today) |
+| `POST /_open/auth`, `/_open/auth/renew` | Confirmed equivalent to `devel`'s `forceSuperuser()` path exception (Finding 1) |
+| `GET /_api/user`, `GET /_api/user/{user}` | Confirmed equivalent — admin/self gate unchanged in effect (Finding 2) |
+| `PUT`/`PATCH /_api/user/{user}` (own profile), `*/config` routes | Unchanged, intentional self-service — not part of this session's findings |
+| `PUT`/`DELETE /_api/user/{user}/database/{db}[/{coll}]` | **Critical regression**: strict admin-only check weakened to self-bypassing `canWriteUser()` — any user can grant themselves arbitrary access, including full admin (Finding 3) |
+| All `POST`/`PUT`/`PATCH`/`DELETE /_api/user/*` routes, server in `--server.read-only` mode | **Regression** (safer direction): now rejected with `403`, `devel` allowed it (Finding 4, same root cause as `RestAccessTokenHandler` Finding 3) |
+| `/_api/edges/*` | Identical to `devel` — no auth code |
+
+**Action items / recommendations:** Finding 3 needs a prompt, deliberate
+fix — remove the self-bypass from the `WriteUser`/grant-revoke code path
+(e.g. have `RestUsersHandler`'s `PUT`/`DELETE .../database/...` branches
+call a strict `can(WriteUser{name})`/`isAdmin()`-only check instead of
+`exec.canWriteUser(name)`, restoring `devel`'s no-self-exception rule for
+this specific operation only, while continuing to use `canWriteUser()`
+with its self-bypass for the legitimate self-service routes). This is a
+real, exploitable privilege-escalation bug and should be prioritized ahead
+of the read-only-mode Finding 4, which — as with `RestAccessTokenHandler`
+— is a policy decision rather than a security defect.

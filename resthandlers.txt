@@ -64,15 +64,15 @@
 > ./arangod/RestHandler/RestCursorHandler.cpp
 > ./arangod/RestHandler/RestSystemReportHandler.cpp
 > ./arangod/RestHandler/RestCollectionHandler.cpp
-./arangod/RestHandler/RestQueryCacheHandler.cpp
-./arangod/RestHandler/RestAuthHandler.cpp
-./arangod/RestHandler/RestEdgesHandler.cpp
-./arangod/RestHandler/RestUsersHandler.cpp
+> ./arangod/RestHandler/RestQueryCacheHandler.cpp
+> ./arangod/RestHandler/RestAuthHandler.cpp
+> ./arangod/RestHandler/RestEdgesHandler.cpp
+> ./arangod/RestHandler/RestUsersHandler.cpp
 ./arangod/RestHandler/RestDocumentStateHandler.cpp
 ./arangod/RestHandler/RestTasksHandler.cpp
 ./arangod/RestHandler/RestTimeHandler.cpp
 ./arangod/RestHandler/RestSimpleHandler.cpp
-./arangod/RestHandler/RestVocbaseBaseHandler.cpp
+- ./arangod/RestHandler/RestVocbaseBaseHandler.cpp
 > ./arangod/Agency/RestAgencyPrivHandler.cpp
 > ./arangod/Agency/RestAgencyHandler.cpp
 ./arangod/Actions/RestActionHandler.cpp
