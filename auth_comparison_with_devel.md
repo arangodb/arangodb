@@ -3974,3 +3974,64 @@ characteristic, not a new divergence).
    source files are either byte-for-byte unchanged or differ only in
    already-accounted-for cosmetic ways, so no corrections were needed for
    those sections.
+
+## `MaintenanceRestHandler` (`arangod/Cluster/MaintenanceRestHandler.cpp`)
+
+Mounted at the exact path `/_admin/actions` (registered unconditionally for
+**every** server role — Coordinator, DBServer, single server, and Agent —
+in `arangod/GeneralServer/GeneralServerFeature.cpp:762-764`; there is no
+`ServerState::instance()->isDBServer()` guard around the registration
+itself, confirmed identical in both branches via diff). It exposes four
+operations, dispatched purely on HTTP verb in
+`MaintenanceRestHandler::execute()`
+(`arangod/Cluster/MaintenanceRestHandler.cpp:48-79`):
+- `GET` → `getAction()`: dumps the full maintenance action registry plus
+  pause/running status.
+- `POST` → `postAction()`: pauses (`{"execute": "pause", "duration": N}`)
+  or resumes (`{"execute": "proceed"}`) the maintenance feature.
+- `PUT` → `putAction()`: adds an arbitrary maintenance action to the
+  worklist (or executes it directly, depending on the parsed
+  `ActionDescription`).
+- `DELETE /_admin/actions/{id}` → `deleteAction()`: cancels/removes a
+  pending action.
+
+**Diff vs. `devel`:** a single added comment
+(`// Mounted at /_admin/actions (exact)`) — otherwise byte-for-byte
+identical in both the `.cpp` and `.h` files. The handler registration code
+in `GeneralServerFeature.cpp` is likewise unchanged.
+
+**No authorization code exists anywhere in this handler, in either
+branch** — confirmed by inspection: there is no `ExecContext`, `canUse*`,
+`auth::`, or `isAdminUser`/`isSuperuser` reference anywhere in
+`MaintenanceRestHandler.cpp`. Any authenticated user (in Classic mode: any
+user holding a valid, non-anonymous session — no specific database or
+collection grant is even consulted) can list, pause/resume, add, or delete
+cluster maintenance actions on whichever server the request happens to
+land on.
+
+Regarding the user's premise that this handler is "only active on
+DBServers": this is **half right**. The **registration is not
+role-gated** — the handler is reachable via HTTP on every role, and
+`MaintenanceFeature` itself is instantiated as an `ApplicationFeature` on
+all roles too. However, `MaintenanceFeature::start()`
+(`arangod/Cluster/MaintenanceFeature.cpp:281-289`) explicitly disables its
+background worker threads for single-server and Agent roles, and
+`arangod/Cluster/MaintenanceFeature.cpp:296-300` similarly skips thread
+startup on a Coordinator ("no need for maintenance on a coordinator") —
+so on those roles `getAction()` simply returns an always-empty registry,
+and `putAction()`/`postAction()` are effectively inert (no worker consumes
+the queued action; pausing/resuming a feature with no active workers has
+no observable effect). This matches
+`Documentation/path_permissions.md:748-751`, which records the intended
+access level as merely `AUTHEN` for all four routes, annotated "Only
+really relevant on DBServers" — i.e., the lack of both a role guard and an
+authorization check is **documented, pre-existing, unchanged-since-`devel`
+behavior**, not something introduced or altered by this branch.
+
+**Conclusion:** the user's assessment is correct in substance — this
+handler introduces **no new divergence** from `devel` (the code is
+identical modulo one comment), and its practical impact is confined to
+DBServers where the maintenance worker actually runs. It joins
+`RestCompactHandler`, `RestAqlFunctionsHandler`, `RestEndpointHandler`, and
+`RestImportHandler` as handlers with a clean bill of health in this
+comparison. No findings, no action items.
