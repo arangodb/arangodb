@@ -66,9 +66,9 @@ defmodule Toast.Diagnostics.Coredump.Discovery do
   def coredump_discovery_warning(dir) when not is_nil(dir), do: nil
 
   def coredump_discovery_warning(nil) do
-    case File.read("/proc/sys/kernel/core_pattern") do
-      {:ok, raw} -> diagnose_core_pattern(String.trim(raw))
-      _ -> nil
+    case read_core_pattern() do
+      {:ok, pattern} -> diagnose_core_pattern(pattern)
+      :error -> nil
     end
   end
 
@@ -77,7 +77,7 @@ defmodule Toast.Diagnostics.Coredump.Discovery do
   # if the configuration is likely to prevent coredump discovery.
   @spec diagnose_core_pattern(String.t()) :: String.t() | nil
   def diagnose_core_pattern(pattern) do
-    if String.starts_with?(pattern, "|") do
+    if piped?(pattern) do
       diagnose_piped_pattern(pattern)
     else
       diagnose_fs_pattern(pattern)
@@ -93,19 +93,8 @@ defmodule Toast.Diagnostics.Coredump.Discovery do
     end
   end
 
-  # kernel core_pattern specifiers per core(5) — %% is handled separately as an
-  # escape, %p is substituted with the PID during discovery (see
-  # cores_from_fs_pattern/2). Any here-unlisted letter would be left literal
-  # and could corrupt the expanded path.
-  @core_pattern_specifiers ~r/%[cdeEghiIpPstu]/
-
   defp diagnose_fs_pattern(pattern) do
-    dir =
-      pattern
-      |> String.replace("%%", "\x00")
-      |> String.replace(@core_pattern_specifiers, "*")
-      |> String.replace("\x00", "%")
-      |> Path.dirname()
+    dir = pattern |> expand_pattern(nil) |> Path.dirname()
 
     if dir != "." and not File.dir?(dir) do
       "Coredump target directory '#{dir}' does not exist. " <>
@@ -209,10 +198,27 @@ defmodule Toast.Diagnostics.Coredump.Discovery do
     end
   end
 
+  defp piped?(pattern), do: String.starts_with?(pattern, "|")
+
+  # kernel core_pattern specifiers per core(5) — %% is handled separately as an
+  # escape and %p is substituted explicitly in expand_pattern/2. Any here-unlisted
+  # letter would be left literal and could corrupt the expanded path.
+  @core_pattern_specifiers ~r/%[cdeEghiIpPstu]/
+
+  # Expands an fs core_pattern into a glob. %p becomes the PID (or "*" when nil,
+  # i.e. when diagnosing rather than searching); all other specifiers become "*".
+  defp expand_pattern(pattern, os_pid) do
+    pattern
+    |> String.replace("%%", "\x00")
+    |> String.replace("%p", to_string(os_pid || "*"))
+    |> String.replace(@core_pattern_specifiers, "*")
+    |> String.replace("\x00", "%")
+  end
+
   defp cores_from_pattern(_os_pid, :error), do: []
 
   defp cores_from_pattern(os_pid, {:ok, pattern}) do
-    if String.starts_with?(pattern, "|") do
+    if piped?(pattern) do
       cores_from_piped_handler(pattern, os_pid)
     else
       cores_from_fs_pattern(pattern, os_pid)
@@ -220,13 +226,7 @@ defmodule Toast.Diagnostics.Coredump.Discovery do
   end
 
   defp cores_from_fs_pattern(pattern, os_pid) do
-    expanded =
-      pattern
-      |> String.replace("%%", "\x00")
-      |> String.replace("%p", to_string(os_pid || "*"))
-      |> String.replace(@core_pattern_specifiers, "*")
-      |> String.replace("\x00", "%")
-
+    expanded = expand_pattern(pattern, os_pid)
     Logger.debug("Coredump: searching fs pattern #{expanded}")
 
     if String.contains?(expanded, "/") do
