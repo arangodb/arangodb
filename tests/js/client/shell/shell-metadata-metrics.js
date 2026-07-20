@@ -27,7 +27,6 @@ const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
 const db = arangodb.db;
 const { isCluster, sleep } = require('internal');
-const { moveShard } = require("@arangodb/test-helper");
 let { instanceRole } = require('@arangodb/testutils/instance');
 let IM = global.instanceManager;
 
@@ -75,12 +74,12 @@ function metadataMetricsSuite() {
           break;
         }
 
-        assertEqual(numDatabases, expectedDatabases, 
+        assertEqual(numDatabases, expectedDatabases,
                    `Number of databases found: ${numDatabases}, expected: ${expectedDatabases}`);
-        assertEqual(numCollections, expectedCollections, 
+        assertEqual(numCollections, expectedCollections,
                    `Number of collections found: ${numCollections}, expected: ${expectedCollections}`);
         if (isCluster()) {
-          assertEqual(numShards, expectedShards, 
+          assertEqual(numShards, expectedShards,
                    `Number of shards found: ${numShards}, expected: ${expectedShards}`);
         }
     });
@@ -98,7 +97,7 @@ function metadataMetricsSuite() {
 
     testMetricsSimple: function() {
       let endpoints;
-      
+
       if (isCluster()) {
         endpoints = IM.getInstancesRole(instanceRole.coordinator);
       } else {
@@ -220,12 +219,12 @@ function metadataMetricsSuite() {
       db._createDatabase(testDbName);
       db._useDatabase(testDbName);
       const col = db._create(testCollectionName, {numberOfShards: 3});
-      
+
       assertMetrics(endpoints, 2, 21, 23);
 
       // Get shard information - shards(true) returns server IDs
       const shards = col.shards(true);
-      
+
       const shardId = Object.keys(shards)[0];
       // leader
       const fromServer = shards[shardId][0];
@@ -234,8 +233,8 @@ function metadataMetricsSuite() {
       assertNotEqual(fromServer, toServer);
 
       // Move the shard (swap leader and follower) and wait for completion
-      const moveResult = moveShard(testDbName, testCollectionName, shardId, 
-                                   fromServer, toServer, false);
+      const moveResult = IM.moveShard(testDbName, testCollectionName, shardId, 
+                                      fromServer, toServer);
       assertTrue(moveResult);
       assertMetrics(endpoints, 2, 21, 23);
 
@@ -260,26 +259,26 @@ function metadataMetricsSuite() {
       db._createDatabase(testDbName);
       db._useDatabase(testDbName);
       const col = db._create(testCollectionName, {numberOfShards: 2});
-      
+
       assertMetrics(endpoints, 2, 21, 22);
 
       const health = arango.GET("/_admin/cluster/health");
       const allDbServers = Object.keys(health.Health).filter(s => s.startsWith('PRMR-'));
-      
+
       const shards = col.shards(true);
-      
+
       const shardId = Object.keys(shards)[0];
       const currentServers = shards[shardId]; // Array of servers holding this shard
       const fromServer = currentServers[0]; // Leader
-      
+
       // Find a DB server that doesn't currently hold this shard
       const toServer = allDbServers.find(server => !currentServers.includes(server));
       assertTrue(toServer);
       assertNotEqual(fromServer, toServer);
 
       // Move the shard to a new DB server and wait for completion
-      const moveResult = moveShard(testDbName, testCollectionName, shardId, 
-                                   fromServer, toServer, false);
+      const moveResult = IM.moveShard(testDbName, testCollectionName, shardId, 
+                                      fromServer, toServer);
       assertTrue(moveResult);
       assertMetrics(endpoints, 2, 21, 22);
 
