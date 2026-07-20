@@ -6248,3 +6248,102 @@ read-only-mode component of `canUseDatabase()` while keeping the
 permission-level check itself. Given this handler's documented
 deprecation ("tasks gone soon"), this is low priority. No other action
 items from this session.
+
+# Overall Summary
+
+This concludes the full handler-by-handler sweep. The sections below
+collect the results across all sessions into two views: which handlers
+are done and need no further attention, and which concrete items still
+need a decision or a code fix (cosmetic-only, dead-code, and
+"verified-equivalent" findings are omitted from both, since by
+definition they require no action).
+
+## Handlers confirmed to need no further work
+
+For every handler/route listed below, all differences found against
+`devel` were either non-existent, purely cosmetic (message text/error-code
+wording only, same ALLOW/DENY decision), confirmed no-ops, or — where a
+real behavioural difference existed — already assessed in its own section
+as not requiring any code change. No open action item remains for any of
+these:
+
+- `RestMetricsHandler`
+- `RestCompactHandler`
+- `RestAdminServerHandler` (incl. Enterprise-only `RestAdminServerHandlerEE`)
+- `RestOptions*` handler family (e.g. `RestPublicOptionsHandler`)
+- `RestAqlHandler`
+- `RestClusterHandler`
+- `RestAgencyCallbacksHandler`
+- `RestImportHandler`
+- `RestUsageMetricsHandler`
+- `RestEngineHandler`
+- `RestSupportInfoHandler`
+- `RestAqlFunctionsHandler`
+- `RestEndpointHandler`
+- `RestReplicationHandler`, `RocksDBRestReplicationHandler`,
+  `ClusterRestReplicationHandler` (see note below — real, low-risk
+  behavioural differences exist here, but the session concluded no code
+  change is warranted, only optional release-note mentions)
+- `MaintenanceRestHandler`
+- `RestSimpleQueryHandler`
+- `RestAuthReloadHandler`
+- `RestDebugHandler`
+- `RestStatusHandler`
+- `RestAdminLogHandler`
+- `RestAdminRoutingHandler`
+- `RestUploadHandler`
+- `RestJobHandler`
+- `RestAdminDatabaseHandler`
+- `RestLogInternalHandler`
+- `RestAdminStatisticsHandler`
+- `RestVersionHandler`
+- `RestAdminDeploymentHandler`
+- `RestDumpHandler`
+- `RestSupervisionStateHandler`
+- `RestTransactionHandler`
+- `RestTtlHandler`
+- `RestOpenApiHandler`
+- `RestViewHandler`
+- `RestKeyGeneratorsHandler`
+- `RestShutdownHandler`
+- `RestLicenseHandler` (incl. Enterprise-only `RestLicenseHandlerEE`)
+- `RestExplainHandler`
+- `RestAqlUserFunctionsHandler`
+- `RestIndexHandler` (its one new check is deliberately gated/dormant; no
+  immediate action needed)
+- `RestQueryHandler`
+- `RestLogHandler`
+- `RestAdminExecuteHandler`
+- `RestSystemReportHandler`
+- `RestQueryCacheHandler`
+- `RestAuthHandler`
+- `RestEdgesHandler`
+- `RestDocumentStateHandler`
+- `RestTimeHandler`
+- `RestSimpleHandler`
+- `RestActionHandler`
+- `async_registry::RestHandler`
+- `activities::RestHandler`
+- `RestHotBackupHandler` (Enterprise)
+
+## Urgent / outstanding items
+
+The table below lists every remaining finding across the whole document
+that still calls for either a concrete code fix or a deliberate policy
+decision. Purely cosmetic findings, confirmed no-ops, and findings whose
+own section already concluded "no action required" are excluded.
+
+| Severity | Type of issue | `RestHandler`(s) | What needs doing |
+|---|---|---|---|
+| **Critical** | Security vulnerability (privilege escalation, independent of RBAC) | `RestUsersHandler` | `PUT`/`DELETE /_api/user/{user}/database/{db}[/{coll}]` (grant/revoke access) now goes through the self-bypassing `ExecContext::canWriteUser()` (`arangod/Utils/ExecContext.cpp:452-462`) instead of `devel`'s strict, non-bypassable admin-only check. Any authenticated user can grant themselves `RW` on `_system` (`arangod/RestHandler/RestUsersHandler.cpp:410-422,593-601`) — i.e. become a full admin — with one API call. **Fix:** use a strict `can(WriteUser{name})`/admin-only check (no self-exception) for these two routes specifically; keep `canWriteUser()`'s self-bypass for the legitimate self-service routes (password/config). |
+| **Critical** | Security vulnerability (path traversal, independent of RBAC) | `RestCrashHandler` | The handler-level `DumpManager::isValidCrashId(crashId)` UUID check was removed with no replacement (`arangod/RestHandler/RestCrashHandler.cpp:64-79`); `lib/CrashHandler/DumpManager.cpp:67-106` now builds a filesystem path directly from the raw, client-supplied suffix in `getCrashContents()`/`deleteCrash()`. An already-admin-authorized caller can supply `..` to read/delete arbitrary files/directories outside the crashes directory. **Fix:** restore UUID validation inside `DumpManager` itself (not only in the REST layer), as `devel` did via `resolveCrashDirectory()`. |
+| **High** | Regression — missing admin bypass | `RestAnalyzerHandler` | `AuthMode::Classic::check()`'s `UseAnalyzer` branch (`arangod/Auth/AuthMode.cpp:348-365`) lacks the `isAdmin()` bypass that `devel`'s `IResearchAnalyzerFeature::canUse()` had. A `_system` admin without explicit access to a given database can no longer create/read/remove analyzers there. **Fix:** add `if (isAdmin().ok()) return {};` to that branch. |
+| **High** | Regression — missing superuser escalation | `RestWalAccessHandler` | `handleCommandTail()` (`arangod/RestHandler/RestWalAccessHandler.cpp:274`) lost the `ExecContextSuperuserScope` bypass `devel` wrapped around `wal->tail(...)`, so collection-loading permission checks reached during tailing can now fail where they previously didn't. **Fix:** reinstate an equivalent bypass (e.g. via `arangod/Utils/ExecContext.h:272-287`, or a `canDumpCollection()`-style admin bypass, `arangod/Utils/ExecContext.h:169-174`). |
+| **High** | Regression — missing authentication check | `RestDatabaseHandler` | `getDatabases()`'s `user` suffix route (`arangod/RestHandler/RestDatabaseHandler.cpp:68`) lost the explicit authentication check `devel` performed centrally in `CommTask::canAccessPath()` before this logic was moved into `RestHandler::checkUserCanAccess()`. **Fix:** restore an explicit authentication check for `GET /_api/database/user`. |
+| **High** | Regression — existence leak / wrong error code | `RestCollectionHandler` | (a) `GET /_api/collection` listing uses `canSeeCollection()` (`arangod/RestHandler/RestCollectionHandler.cpp:124`), which always succeeds in Classic mode, leaking the existence of collections a caller should not even see; (b) `DELETE /_api/collection/<name>` on a non-existent collection now returns `403` instead of `404` because the `canDropCollection()` pre-check (`arangod/RestHandler/RestCollectionHandler.cpp:726`) runs before the existence check. **Fix:** make `SeeCollection` a real level-based check (or call `canUseCollection(..., Read)` for the listing instead), and move the drop permission check to after the existence lookup. |
+| **High** | Regression — hardening bypass | `RestAdminClusterHandler` | `handleNumberOfServers()`'s admin/hardening gate (`arangod/RestHandler/RestAdminClusterHandler.cpp:2089-2100`) only runs for non-`GET` requests, so `GET /_admin/cluster/numberOfServers` is no longer gated by `--server.harden` — any authenticated user can now read cluster server counts on hardened installations. **Fix:** move the `canUseHardenedAction(AdminMaintenance{})` check outside the `requestType() != GET` guard. |
+| **Medium** | Regression — wrong error code (cross-cutting) | `RestDocumentHandler` (and everything sharing `ExecContext::canUseCollection`/`canUseDatabase`: `RestImportHandler`, `RestCollectionHandler`'s `truncate`, `RestSimpleHandler`'s `remove-by-keys`, `RestTransactionHandler`, `RestGraphHandler` writes, etc.) | `canUseCollection()` (`arangod/Utils/ExecContext.cpp:223`) and `canUseDatabase()` (`arangod/Utils/ExecContext.cpp:189`) unconditionally return `TRI_ERROR_FORBIDDEN` instead of `devel`'s `TRI_ERROR_ARANGO_READ_ONLY` for an otherwise-permitted write while `--server.read-only` is set. HTTP status (`403`) is unaffected, but `errorNum` differs, which could break clients/tests branching on it. **Fix:** have these helpers only *cap* an effective `RW` grant down to `RO` in read-only mode and let `AuthMode::Classic::check()`'s normal level comparison produce the correct error. |
+| **Medium** | Regression — more permissive | `RestGraphHandler` | `GraphManager::createGraph()`'s Classic-mode check (`arangod/Auth/AuthMode.cpp:504-528`) no longer re-checks per-collection read access once database-level `RW` is already confirmed. A caller holding an explicit deny override on a referenced, already-existing collection can now create a graph referencing it, where `devel` would reject it. **Needs a decision:** accept as intentional, or restore the unconditional `collectionNamesToRead` loop. |
+| **Medium** | Policy decision — read-only mode blocks operations `devel` allowed | `RestAccessTokenHandler`, `RestUsersHandler`, `RestQueryPlanCacheHandler`, `RestTasksHandler` | The new/refactored `canWriteUser()` (`arangod/Utils/ExecContext.cpp:452-462`) and generic `canUseDatabase()` (`arangod/Utils/ExecContext.cpp:189`) helpers bundle a read-only-mode gate that `devel`'s equivalent checks never had. As a result, token/user management (whose actual write runs under a forced superuser scope and bypasses the storage engine's own read-only check in `devel`), clearing the in-memory query-plan cache, and registering/running periodic V8 tasks are all now rejected during `--server.read-only` mode. **Needs one consistent, deliberate decision** across all four handlers: keep as intentional hardening, or exempt these non-persistent/superuser-backed operations from the read-only gate. |
+| **Low** | Narrow regression, safer direction (release-note only) | `RestCollectionHandler` (`RocksDBRestCollectionHandler`'s `recalculateCount`), `RestAdminClusterHandler` (`moveShard`'s collection-level fallback) | Both now additionally require database-level `RW` alongside the collection-level grant ("container principle"), so a narrow permission combination (collection-level `RW` override + database-level `RO`) that worked in `devel` now gets `403`. No fix proposed; worth a release-note mention only. |
+| **Low** | Narrow regression (release-note only) | `RestReplicationHandler` / `RocksDBRestReplicationHandler` | `restore-collection?overwrite=true` on an existing collection now also enforces that collection's own access override (stricter than `devel`); `handleCommandInventory()`'s single-collection branch lost an admin-bypass escalation (`devel`'s `ExecContextSuperuserScope`), relevant only to internal shard-sync callers. No fix proposed; release-note mention only. |
