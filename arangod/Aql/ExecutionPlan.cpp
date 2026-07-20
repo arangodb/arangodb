@@ -2406,24 +2406,20 @@ ExecutionNode* ExecutionPlan::fromNodeMatch(ExecutionNode* previous,
                                            property);
   };
 
+  // The grammar's pattern_edge_collection_list always wraps edge collections in
+  // a NODE_TYPE_ARRAY (even a single collection), so an edge label member is
+  // ALWAYS a non-empty array.
   auto const patternEdgeCollectionCount =
       [](AstNode const* edgeLabelMember) -> size_t {
-    if (edgeLabelMember == nullptr || edgeLabelMember->type == NODE_TYPE_NOP) {
-      return 0;
-    }
-    if (edgeLabelMember->type == NODE_TYPE_ARRAY) {
-      return edgeLabelMember->numMembers();
-    }
-    return 1;
+    TRI_ASSERT(edgeLabelMember != nullptr &&
+               edgeLabelMember->type == NODE_TYPE_ARRAY);
+    return edgeLabelMember->numMembers();
   };
 
   auto const getPatternEdgeCollection = [](AstNode const* edgeLabelMember,
                                            size_t index) -> AstNode const* {
-    if (edgeLabelMember->type == NODE_TYPE_ARRAY) {
-      return edgeLabelMember->getMember(index);
-    }
-    TRI_ASSERT(index == 0);
-    return edgeLabelMember;
+    TRI_ASSERT(edgeLabelMember->type == NODE_TYPE_ARRAY);
+    return edgeLabelMember->getMember(index);
   };
 
   auto const buildPatternEdgeCollectionList =
@@ -2475,45 +2471,39 @@ ExecutionNode* ExecutionPlan::fromNodeMatch(ExecutionNode* previous,
     return std::make_tuple(calc, filter);
   };
 
+  auto const enumerateCollectionWithFilter =
+      [&](Variable const* variable, AstNode const* collectionNameNode,
+          AstNode* properties, AstNode* whereExpr) {
+        auto collectionName = collectionNameNode->getString();
+        auto& collections = _ast->query().collections();
+        auto collection = collections.get(collectionName);
+        if (collection == nullptr) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+              TRI_ERROR_INTERNAL, "no collection for EnumerateCollection");
+        }
+        IndexHint hint(_ast->query(), _ast->createNodeNop(),
+                       IndexHint::FromCollectionOperation{});
+        auto enumCollection = createNode<EnumerateCollectionNode>(
+            this, nextId(), collection, variable, false, std::move(hint));
+        auto [firstNode, lastNode] =
+            createPropertiesFilter(variable, properties, whereExpr);
+        firstNode->addDependency(enumCollection);
+        return std::make_tuple(enumCollection, lastNode, variable);
+      };
+
   auto const createCollectionAccess = [&](AstNode const* member) {
     auto variable =
         static_cast<Variable const*>(member->getMember(0)->getData());
-    auto collectionName = member->getMember(1)->getString();
-    auto& collections = _ast->query().collections();
-    auto collection = collections.get(collectionName);
-    if (collection == nullptr) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "no collection for EnumerateCollection");
-    }
-    IndexHint hint(_ast->query(), _ast->createNodeNop(),
-                   IndexHint::FromCollectionOperation{});
-    auto enumCollection = createNode<EnumerateCollectionNode>(
-        this, nextId(), collection, variable, false, std::move(hint));
-    auto [firstNode, lastNode] = createPropertiesFilter(
-        variable, member->getMember(2), member->getMember(3));
-    firstNode->addDependency(enumCollection);
-    return std::make_tuple(enumCollection, lastNode, variable);
+    return enumerateCollectionWithFilter(variable, member->getMember(1),
+                                         member->getMember(2),
+                                         member->getMember(3));
   };
 
   auto const createPatternEdgeEnumerateAccess = [&](AstNode const* edge) {
     auto variable = static_cast<Variable const*>(edge->getMember(0)->getData());
-    auto const* collectionNode =
-        getPatternEdgeCollection(edge->getMember(1), 0);
-    auto collectionName = collectionNode->getString();
-    auto& collections = _ast->query().collections();
-    auto collection = collections.get(collectionName);
-    if (collection == nullptr) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "no collection for EnumerateCollection");
-    }
-    IndexHint hint(_ast->query(), _ast->createNodeNop(),
-                   IndexHint::FromCollectionOperation{});
-    auto enumCollection = createNode<EnumerateCollectionNode>(
-        this, nextId(), collection, variable, false, std::move(hint));
-    auto [firstNode, lastNode] = createPropertiesFilter(
-        variable, edge->getMember(2), edge->getMember(3));
-    firstNode->addDependency(enumCollection);
-    return std::make_tuple(enumCollection, lastNode, variable);
+    return enumerateCollectionWithFilter(
+        variable, getPatternEdgeCollection(edge->getMember(1), 0),
+        edge->getMember(2), edge->getMember(3));
   };
 
   auto const createVertexEdgeFilter = [&](Variable const* leftVertex,

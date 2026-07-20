@@ -1254,7 +1254,7 @@ pattern_edge_collection_name:
         $$ = parser->ast()->createNodeParameterDatasource(name);
     }
   ;
-  
+
 pattern_segment: pattern_edge pattern_node_pattern {
     auto node = parser->ast()->createPatternSegment($1, $2);
     parser->pushPatternNode(node);
