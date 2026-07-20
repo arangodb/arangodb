@@ -109,6 +109,23 @@ function recoverySuite () {
       const verifyResponse = arango.GET(crashesEndpoint);
       const verifyCrashes = verifyResponse.result || verifyResponse;
       assertEqual(0, verifyCrashes.length, 'Crash should be deleted');
+    },
+
+    testCrashDumpRejectsInvalidIds: function () {
+      ['.', '..', 'not-a-boost-uuid'].forEach((invalidCrashId) => {
+        const response = arango.GET(crashesEndpoint + '/' + invalidCrashId);
+        assertTrue(response.error,
+                   `Crash ID '${invalidCrashId}' should be rejected`);
+        assertEqual(400, response.code,
+                    `Crash ID '${invalidCrashId}' should return HTTP 400`);
+      });
+
+      const missingCrashId = '00000000-0000-4000-8000-000000000000';
+      const response = arango.GET(crashesEndpoint + '/' + missingCrashId);
+      assertTrue(response.error,
+                 `Missing crash ID '${missingCrashId}' should return an error`);
+      assertEqual(404, response.code,
+                  `Missing crash ID '${missingCrashId}' should return HTTP 404`);
     }
   };
 }

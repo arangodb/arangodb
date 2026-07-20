@@ -20,41 +20,31 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "GeneralServer/AuthenticationOptionsProvider.h"
-#include "GeneralServer/GeneralServerOptionsProvider.h"
-#include "GeneralServer/SslServerOptionsProvider.h"
-#include "Network/NetworkOptionsProvider.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "RestServer/DatabasePathOptionsProvider.h"
-#include "RestServer/DumpLimitsOptionsProvider.h"
-#include "RestServer/EndpointOptionsProvider.h"
-#include "RestServer/FlushOptionsProvider.h"
-#include "RestServer/FortuneOptionsProvider.h"
-#include "RestServer/FrontendOptionsProvider.h"
-#include "RestServer/TemporaryStorageOptionsProvider.h"
-#include "RocksDBEngine/RocksDBIndexCacheRefillOptionsProvider.h"
-#include "RocksDBEngine/RocksDBOptionFeatureOptionsProvider.h"
-#include "RocksDBEngine/RocksDBEngineOptionsProvider.h"
-
-#ifdef USE_ENTERPRISE
-#include "Enterprise/Ssl/SslServerEEOptionsProvider.h"
-#endif
-
-#ifdef USE_V8
-#include "RestServer/FrontendOptionsProvider.h"
-#endif
-
-#ifdef TRI_HAVE_GETRLIMIT
-#include "RestServer/FileDescriptorsOptionsProvider.h"
-#endif
 
 #include <tuple>
 
 namespace arangodb::application_features {
+
+template<class... Providers>
 class FeatureOptionProviderContainer final {
  public:
-  void declareOptions(std::shared_ptr<options::ProgramOptions> programOptions);
-  void validateOptions(std::shared_ptr<options::ProgramOptions> programOptions);
+  void declareOptions(std::shared_ptr<options::ProgramOptions> programOptions) {
+    std::apply(
+        [&](auto&... providers) {
+          (providers.declareOptions(programOptions), ...);
+        },
+        _providers);
+  }
+
+  void validateOptions(
+      std::shared_ptr<options::ProgramOptions> programOptions) {
+    std::apply(
+        [&](auto&... providers) {
+          (providers.validateOptions(programOptions), ...);
+        },
+        _providers);
+  }
 
   template<typename ProviderType>
   auto& getOptions() const {
@@ -62,27 +52,6 @@ class FeatureOptionProviderContainer final {
   }
 
  private:
-  std::tuple<AuthenticationOptionsProvider, DatabasePathOptionsProvider,
-             DumpLimitsOptionsProvider, EndpointOptionsProvider,
-             FlushOptionsProvider, fortune::FortuneOptionsProvider,
-             GeneralServerOptionsProvider, NetworkOptionsProvider,
-             RocksDBEngineOptionsProvider,
-             RocksDBIndexCacheRefillOptionsProvider,
-             RocksDBOptionFeatureOptionsProvider, SslServerOptionsProvider,
-             TemporaryStorageOptionsProvider
-#ifdef USE_ENTERPRISE
-             ,
-             enterprise::SslServerEEOptionsProvider
-#endif
-#ifdef USE_V8
-             ,
-             FrontendOptionsProvider
-#endif
-#ifdef TRI_HAVE_GETRLIMIT
-             ,
-             file_descriptors::FileDescriptorsOptionsProvider
-#endif
-             >
-      _providers{};
+  std::tuple<Providers...> _providers{};
 };
 }  // namespace arangodb::application_features

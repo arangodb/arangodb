@@ -29,10 +29,10 @@ const internal = require("internal");
 const db = require("internal").db;
 const time = internal.time;
 const wait = internal.wait;
-const {
-  getCtrlCoordinators,
-  versionHas
-} = require('@arangodb/test-helper');
+const { versionHas } = require('@arangodb/test-helper');
+let { instanceRole } = require('@arangodb/testutils/instance');
+const IM = global.instanceManager;
+
 function testSuite() {
   let cn = "UnitTestSoftShutdown";
 
@@ -51,7 +51,7 @@ function testSuite() {
       }
       collection.save(docs);
 
-      let coordinators = getCtrlCoordinators();
+      let coordinators = IM.getInstancesRole(instanceRole.coordinator);
       assertTrue(coordinators.length > 0, "expect coordinators.length > 0");
 
       // TODO: Pick a random coordinator?
