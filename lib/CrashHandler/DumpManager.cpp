@@ -39,22 +39,13 @@ DumpManager::DumpManager(std::shared_ptr<DataSourceRegistry> dataSourceRegistry)
     : _dataSourceRegistry(std::move(dataSourceRegistry)) {}
 
 bool DumpManager::isValidCrashId(std::string_view crashId) noexcept {
-  if (crashId.size() != 36) {
+  try {
+    boost::uuids::string_generator gen;
+    gen(crashId.begin(), crashId.end());
+    return true;
+  } catch (...) {
     return false;
   }
-
-  for (size_t idx = 0; idx < crashId.size(); ++idx) {
-    if (idx == 8 || idx == 13 || idx == 18 || idx == 23) {
-      if (crashId[idx] != '-') {
-        return false;
-      }
-    } else if (!((crashId[idx] >= '0' && crashId[idx] <= '9') ||
-                 (crashId[idx] >= 'a' && crashId[idx] <= 'f'))) {
-      return false;
-    }
-  }
-
-  return true;
 }
 
 std::optional<std::filesystem::path> DumpManager::resolveCrashDirectory(
