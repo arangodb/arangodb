@@ -58,24 +58,8 @@ using namespace arangodb::application_features;
 ArangoDumpServer::ArangoDumpServer(
     std::shared_ptr<options::ProgramOptions> options, char const* binaryPath,
     std::string binaryName, int* ret)
-    : ApplicationServer(options, binaryPath),
-      _programOptions(std::move(options)),
-      _binaryName(std::move(binaryName)),
-      _ret(ret) {}
-
-void ArangoDumpServer::collectOptions() {
-  LOG_TOPIC("c0d01", TRACE, Logger::STARTUP)
-      << "ArangoDumpServer::collectOptions";
-  ApplicationServer::collectOptions();
-  _optionProviders.declareOptions(_programOptions);
-}
-
-void ArangoDumpServer::validateOptions() {
-  LOG_TOPIC("c0d02", TRACE, Logger::STARTUP)
-      << "ArangoDumpServer::validateOptions";
-  ApplicationServer::validateOptions();
-  _optionProviders.validateOptions(_programOptions);
-}
+    : OptionProvidingServer<ArangoDumpOptionProviders>(
+          options, binaryPath, std::move(binaryName), ret) {}
 
 void ArangoDumpServer::addFeatures() {
   addFeature<BasicFeaturePhaseClient>();
@@ -100,14 +84,11 @@ void ArangoDumpServer::addFeatures() {
 }
 
 void ArangoDumpServer::addFeaturesWithOptionProvider() {
-  addFeature<FileSystemFeature>(
-      _optionProviders.getOptions<FileSystemOptionsProvider>());
-  addFeature<RandomFeature>(
-      _optionProviders.getOptions<RandomOptionsProvider>());
+  addFeature<FileSystemFeature>(getOptions<FileSystemOptionsProvider>());
+  addFeature<RandomFeature>(getOptions<RandomOptionsProvider>());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   addFeature<ProcessEnvironmentFeature>(
-      _binaryName,
-      _optionProviders.getOptions<ProcessEnvironmentOptionsProvider>());
+      _binaryName, getOptions<ProcessEnvironmentOptionsProvider>());
 #endif
 }
 

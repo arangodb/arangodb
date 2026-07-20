@@ -20,7 +20,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/OptionProvidingServer.h"
 #include "Benchmark/ArangoBenchOptionProviders.h"
 
 #include <memory>
@@ -31,7 +31,7 @@ namespace options {
 class ProgramOptions;
 }
 
-class ArangoBenchServer final : public application_features::ApplicationServer {
+class ArangoBenchServer final : public OptionProvidingServer<ArangoBenchOptionProviders> {
  public:
   ArangoBenchServer(std::shared_ptr<options::ProgramOptions> options,
                     char const* binaryPath, std::string binaryName, int* ret);
@@ -39,15 +39,7 @@ class ArangoBenchServer final : public application_features::ApplicationServer {
   void addFeatures();
 
  protected:
-  void collectOptions() final;
-  void validateOptions() final;
   void addFeaturesWithOptionProvider() final;
-
- private:
-  std::shared_ptr<options::ProgramOptions> _programOptions;
-  std::string _binaryName;
-  int* _ret;
-  ArangoBenchOptionProviders _optionProviders;
 };
 
 }  // namespace arangodb

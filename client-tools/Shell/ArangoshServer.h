@@ -20,7 +20,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/OptionProvidingServer.h"
 #include "Shell/ArangoshOptionProviders.h"
 
 #include <memory>
@@ -31,7 +31,8 @@ namespace options {
 class ProgramOptions;
 }
 
-class ArangoshServer final : public application_features::ApplicationServer {
+class ArangoshServer final
+    : public OptionProvidingServer<ArangoshOptionProviders> {
  public:
   ArangoshServer(std::shared_ptr<options::ProgramOptions> options,
                  char const* binaryPath, std::string binaryName, int* ret);
@@ -41,15 +42,7 @@ class ArangoshServer final : public application_features::ApplicationServer {
   void addFeatures();
 
  protected:
-  void collectOptions() final;
-  void validateOptions() final;
   void addFeaturesWithOptionProvider() final;
-
- private:
-  std::shared_ptr<options::ProgramOptions> _programOptions;
-  std::string _binaryName;
-  int* _ret;
-  ArangoshOptionProviders _optionProviders;
 };
 
 }  // namespace arangodb

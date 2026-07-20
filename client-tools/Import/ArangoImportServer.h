@@ -20,7 +20,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/OptionProvidingServer.h"
 #include "Import/ArangoImportOptionProviders.h"
 
 #include <memory>
@@ -32,7 +32,7 @@ class ProgramOptions;
 }
 
 class ArangoImportServer final
-    : public application_features::ApplicationServer {
+    : public OptionProvidingServer<ArangoImportOptionProviders> {
  public:
   ArangoImportServer(std::shared_ptr<options::ProgramOptions> options,
                      char const* binaryPath, std::string binaryName, int* ret);
@@ -40,15 +40,7 @@ class ArangoImportServer final
   void addFeatures();
 
  protected:
-  void collectOptions() final;
-  void validateOptions() final;
   void addFeaturesWithOptionProvider() final;
-
- private:
-  std::shared_ptr<options::ProgramOptions> _programOptions;
-  std::string _binaryName;
-  int* _ret;
-  ArangoImportOptionProviders _optionProviders;
 };
 
 }  // namespace arangodb

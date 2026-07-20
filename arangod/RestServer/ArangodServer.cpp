@@ -57,20 +57,7 @@ auto const kNonServerFeatures =
                std::type_index(typeid(StatisticsFeature))};
 }  // namespace
 
-void ArangodServer::collectOptions() {
-  LOG_TOPIC("0eac8", TRACE, Logger::STARTUP) << "ArangodServer::collectOptions";
-  ApplicationServer::collectOptions();
-  _optionProviders.declareOptions(_programOptions);
-}
-
-void ArangodServer::validateOptions() {
-  LOG_TOPIC("1ed28", TRACE, Logger::STARTUP)
-      << "ArangodServer::validateOptions";
-  ApplicationServer::validateOptions();
-  _optionProviders.validateOptions(_programOptions);
-}
-
-void ArangodServer::addFeatures(int* ret) {
+void ArangodServer::addFeatures() {
   // Adding the Phases - these must come first and in this order
   addFeature<AgencyFeaturePhase>();
   auto& comm = addFeature<CommunicationFeaturePhase>();
@@ -113,7 +100,7 @@ void ArangodServer::addFeatures(int* ret) {
   auto& cacheOptions = getFeature<CacheOptionsFeature>();
   auto& sharedPRNGFeature = addFeature<SharedPRNGFeature>();
   addFeature<CacheManagerFeature>(cacheOptions, sharedPRNGFeature.getPRNG());
-  addFeature<CheckVersionFeature>(ret, kNonServerFeatures);
+  addFeature<CheckVersionFeature>(_ret, kNonServerFeatures);
   auto& clusterFeature = addFeature<ClusterFeature>(metrics);
   auto& database = addFeature<DatabaseFeature>();
   auto& clusterUpgradeFeature = addFeature<ClusterUpgradeFeature>(database);
@@ -158,9 +145,9 @@ void ArangodServer::addFeatures(int* ret) {
   addFeature<SchedulerFeature>(metrics, sharedPRNGFeature.getPRNG());
   addFeature<VectorIndexFeature>(database);
 #ifdef USE_V8
-  addFeature<ScriptFeature>(ret);
+  addFeature<ScriptFeature>(_ret);
 #endif
-  addFeature<ServerFeature>(ret);
+  addFeature<ServerFeature>(_ret);
   addFeature<ServerIdFeature>();
   addFeature<ServerSecurityFeature>();
   addFeature<ShardingFeature>();
@@ -177,7 +164,7 @@ void ArangodServer::addFeatures(int* ret) {
   addFeature<StatisticsFeature>(metrics);
   addFeature<TempFeature>(std::string{_binaryName});
   addFeature<TtlFeature>();
-  addFeature<UpgradeFeature>(ret, kNonServerFeatures);
+  addFeature<UpgradeFeature>(_ret, kNonServerFeatures);
   addFeature<transaction::ManagerFeature>(metrics);
   addFeature<ViewTypesFeature>();
   addFeature<aql::AqlFunctionFeature>();
@@ -220,81 +207,75 @@ void ArangodServer::addFeaturesWithOptionProvider() {
   auto& aqlFunctionFeature = getFeature<aql::AqlFunctionFeature>();
 
   // Add RandomFeature
-  auto randomOptions = _optionProviders.getOptions<RandomOptionsProvider>();
+  auto randomOptions = getOptions<RandomOptionsProvider>();
   addFeature<RandomFeature>(std::move(randomOptions));
 
   // Add NonceFeature
-  auto nonceOptions = _optionProviders.getOptions<NonceOptionsProvider>();
+  auto nonceOptions = getOptions<NonceOptionsProvider>();
   addFeature<NonceFeature>(std::move(nonceOptions));
 
   // Add MaxMapCountFeature
-  auto maxMapCountOptions =
-      _optionProviders.getOptions<MaxMapCountOptionsProvider>();
+  auto maxMapCountOptions = getOptions<MaxMapCountOptionsProvider>();
   addFeature<MaxMapCountFeature>(std::move(maxMapCountOptions));
 
   // Add FileSystemFeature
-  auto fileSystemOptions =
-      _optionProviders.getOptions<FileSystemOptionsProvider>();
+  auto fileSystemOptions = getOptions<FileSystemOptionsProvider>();
   addFeature<FileSystemFeature>(std::move(fileSystemOptions));
 
   // Add LanguageFeature
-  auto languageOptions = _optionProviders.getOptions<LanguageOptionsProvider>();
+  auto languageOptions = getOptions<LanguageOptionsProvider>();
   addFeature<LanguageFeature>(std::move(languageOptions));
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   auto processEnvironmentOptions =
-      _optionProviders.getOptions<ProcessEnvironmentOptionsProvider>();
+      getOptions<ProcessEnvironmentOptionsProvider>();
   addFeature<ProcessEnvironmentFeature>(std::string{_binaryName},
                                         std::move(processEnvironmentOptions));
 #endif
 
   // Add CrashHandlerFeature
   auto crashHandlerOptions =
-      _optionProviders.getOptions<crash_handler::CrashHandlerOptionsProvider>();
+      getOptions<crash_handler::CrashHandlerOptionsProvider>();
   addFeature<CrashHandlerFeature>(_dumpManager, std::move(crashHandlerOptions));
 
   // Add LogBufferFeature
-  auto logBufferOptions =
-      _optionProviders.getOptions<LogBufferOptionsProvider>();
+  auto logBufferOptions = getOptions<LogBufferOptionsProvider>();
   addFeature<LogBufferFeature>(metrics, std::move(logBufferOptions));
 
   // Add RocksDBIndexCacheRefillFeature
   auto rocksdbCacheRefillOptions =
-      _optionProviders.getOptions<RocksDBIndexCacheRefillOptionsProvider>();
+      getOptions<RocksDBIndexCacheRefillOptionsProvider>();
   auto& rocksdbCacheRefill = addFeature<RocksDBIndexCacheRefillFeature>(
       database, &clusterFeature, metrics, std::move(rocksdbCacheRefillOptions));
 
   // Add RocksDBOptionFeature
   auto rocksdbOptionFeatureOptions =
-      _optionProviders.getOptions<RocksDBOptionFeatureOptionsProvider>();
+      getOptions<RocksDBOptionFeatureOptionsProvider>();
   auto& rocksdbOption = addFeature<RocksDBOptionFeature>(
       &agency, std::move(rocksdbOptionFeatureOptions));
 
   // Add DatabasePathFeature
-  auto databasePathOptions =
-      _optionProviders.getOptions<DatabasePathOptionsProvider>();
+  auto databasePathOptions = getOptions<DatabasePathOptionsProvider>();
   auto& databasePath =
       addFeature<DatabasePathFeature>(std::move(databasePathOptions));
 
   // Add TemporaryStorageFeature
-  auto temporaryStorageOptions =
-      _optionProviders.getOptions<TemporaryStorageOptionsProvider>();
+  auto temporaryStorageOptions = getOptions<TemporaryStorageOptionsProvider>();
   addFeature<TemporaryStorageFeature>(databasePath,
                                       std::move(temporaryStorageOptions));
 
   // Add DumpLimitsFeature
-  auto dumpLimitsOptions =
-      _optionProviders.getOptions<DumpLimitsOptionsProvider>();
+  auto dumpLimitsOptions = getOptions<DumpLimitsOptionsProvider>();
   auto& dumpLimits =
       addFeature<DumpLimitsFeature>(std::move(dumpLimitsOptions));
 
   // Add FlushFeature
-  auto flushOptions = _optionProviders.getOptions<FlushOptionsProvider>();
+  auto flushOptions = getOptions<FlushOptionsProvider>();
   auto& flush = addFeature<FlushFeature>(metrics, std::move(flushOptions));
 
   // Add RocksDBEngine
   RocksDBEngineOptions rocksDBEngineOptions =
-      _optionProviders.getOptions<RocksDBEngineOptionsProvider>();
+      getOptions<RocksDBEngineOptionsProvider>();
   addFeature<RocksDBEngine>(
       rocksdbOption, metrics, databasePath, vectorIndex, flush, dumpLimits,
       replication2::EnableReplication2 ? &getFeature<ReplicatedLogFeature>()
@@ -303,8 +284,7 @@ void ArangodServer::addFeaturesWithOptionProvider() {
       agency, rocksDBEngineOptions);
 
   // Add FortuneFeature
-  auto fortuneOptions =
-      _optionProviders.getOptions<fortune::FortuneOptionsProvider>();
+  auto fortuneOptions = getOptions<fortune::FortuneOptionsProvider>();
   addFeature<FortuneFeature>(std::move(fortuneOptions));
 
   addFeature<iresearch::IResearchAnalyzerFeature>(

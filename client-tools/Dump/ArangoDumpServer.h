@@ -20,7 +20,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/OptionProvidingServer.h"
 #include "Dump/ArangoDumpOptionProviders.h"
 
 #include <memory>
@@ -31,7 +31,8 @@ namespace options {
 class ProgramOptions;
 }
 
-class ArangoDumpServer final : public application_features::ApplicationServer {
+class ArangoDumpServer final
+    : public OptionProvidingServer<ArangoDumpOptionProviders> {
  public:
   ArangoDumpServer(std::shared_ptr<options::ProgramOptions> options,
                    char const* binaryPath, std::string binaryName, int* ret);
@@ -39,15 +40,7 @@ class ArangoDumpServer final : public application_features::ApplicationServer {
   void addFeatures();
 
  protected:
-  void collectOptions() final;
-  void validateOptions() final;
   void addFeaturesWithOptionProvider() final;
-
- private:
-  std::shared_ptr<options::ProgramOptions> _programOptions;
-  std::string _binaryName;
-  int* _ret;
-  ArangoDumpOptionProviders _optionProviders;
 };
 
 }  // namespace arangodb

@@ -64,24 +64,8 @@ using namespace arangodb::application_features;
 ArangoshServer::ArangoshServer(std::shared_ptr<options::ProgramOptions> options,
                                char const* binaryPath, std::string binaryName,
                                int* ret)
-    : ApplicationServer(options, binaryPath),
-      _programOptions(std::move(options)),
-      _binaryName(std::move(binaryName)),
-      _ret(ret) {}
-
-void ArangoshServer::collectOptions() {
-  LOG_TOPIC("c0a01", TRACE, Logger::STARTUP)
-      << "ArangoshServer::collectOptions";
-  ApplicationServer::collectOptions();
-  _optionProviders.declareOptions(_programOptions);
-}
-
-void ArangoshServer::validateOptions() {
-  LOG_TOPIC("c0a02", TRACE, Logger::STARTUP)
-      << "ArangoshServer::validateOptions";
-  ApplicationServer::validateOptions();
-  _optionProviders.validateOptions(_programOptions);
-}
+    : OptionProvidingServer<ArangoshOptionProviders>(
+          options, binaryPath, std::move(binaryName), ret) {}
 
 void ArangoshServer::addFeatures() {
   // Phases first
@@ -115,16 +99,12 @@ void ArangoshServer::addFeatures() {
 void ArangoshServer::addFeaturesWithOptionProvider() {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   addFeature<ProcessEnvironmentFeature>(
-      _binaryName,
-      _optionProviders.getOptions<ProcessEnvironmentOptionsProvider>());
+      _binaryName, getOptions<ProcessEnvironmentOptionsProvider>());
 #endif
 
-  addFeature<FileSystemFeature>(
-      _optionProviders.getOptions<FileSystemOptionsProvider>());
-  addFeature<RandomFeature>(
-      _optionProviders.getOptions<RandomOptionsProvider>());
-  addFeature<LanguageFeature>(
-      _optionProviders.getOptions<LanguageOptionsProvider>());
+  addFeature<FileSystemFeature>(getOptions<FileSystemOptionsProvider>());
+  addFeature<RandomFeature>(getOptions<RandomOptionsProvider>());
+  addFeature<LanguageFeature>(getOptions<LanguageOptionsProvider>());
 }
 
 }  // namespace arangodb
