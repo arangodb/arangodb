@@ -148,4 +148,10 @@ void EdgeConditionBuilder::replaceAttributeAccess(
   replace(_modCondition);
 }
 
+void EdgeConditionBuilder::getVariablesUsedHere(VarSet& result) const {
+  Ast::getReferencedVariables(_fromCondition, result);
+  Ast::getReferencedVariables(_toCondition, result);
+  Ast::getReferencedVariables(_modCondition, result);
+}
+
 }  // namespace arangodb::aql
