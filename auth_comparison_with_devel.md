@@ -3156,3 +3156,225 @@ authorization patterns already established as equivalent (or,
 for the one narrow divergence, already assessed as a safe, non-security
 change and not requiring a fix) in earlier sessions; no new regressions
 were found.
+
+## `RestAqlFunctionsHandler`, `RestEndpointHandler` and `RestAccessTokenHandler`
+
+Three more small handlers, covered together. The first two turned out to
+have zero authorization-relevant diff at all; the third
+(`RestAccessTokenHandler`) has several real, worthwhile findings.
+
+- `RestAqlFunctionsHandler` (`arangod/RestHandler/RestAqlFunctionsHandler.cpp`)
+  — mounted at `/_api/aql-builtin` (prefix, `GET` only); dumps the built-in
+  AQL function inventory. **No authorization code of any kind, in either
+  branch.** The diff against `devel` is purely cosmetic (`@author` line
+  removed, one comment added,
+  `arangod/RestHandler/RestAqlFunctionsHandler.cpp:37`). No finding.
+- `RestEndpointHandler` (`arangod/RestHandler/RestEndpointHandler.cpp`) —
+  mounted at `/_api/endpoint` (prefix, `GET` only); lists configured HTTP
+  endpoints, gated only by `!_vocbase.isSystem()` →
+  `TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE`
+  (`arangod/RestHandler/RestEndpointHandler.cpp:63-67`), byte-for-byte
+  identical to `devel`. Same cosmetic-only diff pattern (`@author` line,
+  one comment). No finding.
+- `RestAccessTokenHandler` (`arangod/RestHandler/RestAccessTokenHandler.cpp`)
+  — mounted at `/_api/token` (prefix); lets a user list/create/delete their
+  own (or, if admin, another user's) API access tokens. Unlike the two
+  handlers above, this one has real authorization-logic changes, detailed
+  below.
+
+### Finding 1 (Verified equivalent, faithful gap-fill, one benign edge case): new `checkUserCanAccess()` override reproduces devel's `/_api/token/` path exception
+
+`arangod/RestHandler/RestAccessTokenHandler.h:41-42` and
+`arangod/RestHandler/RestAccessTokenHandler.cpp:97-104` (both new in this
+branch):
+```cpp
+async<Result> RestAccessTokenHandler::checkUserCanAccess() const {
+  // This API only requires the user to be authenticated
+  if (request()->authenticated()) {
+    co_return Result{};
+  }
+  co_return Result{TRI_ERROR_HTTP_UNAUTHORIZED, "Not authenticated."};
+}
+```
+This reproduces the same `devel`-era `CommTask::canAccessPath()` path
+exception already documented for `RestClusterHandler`/`RestUsersHandler` in
+earlier sessions:
+```cpp
+constexpr std::string_view pathPrefixApiToken("/_api/token/");
+...
+} else if (userAuthenticated && path.starts_with(::pathPrefixApiToken)) {
+  result = Flow::Continue;
+}
+```
+(`/tmp/devel_CommTask.cpp:68,869-870`, only reached when the generic
+per-database gate already failed, i.e. `vc->databaseAuthLevel() == NONE` —
+exactly mirroring the architectural background section above). Neither
+branch escalates to superuser for this exception, matching exactly.
+
+Unlike the `RestUsersHandler`/`RestClusterHandler` overrides, which
+explicitly re-check the path prefix (`arangod/RestHandler/RestUsersHandler.cpp:111-121`,
+`.../RestClusterHandler.cpp:136-145`), this override skips the path check
+entirely and just tests `request()->authenticated()`. Since this handler is
+only ever reached for requests already routed to the `/_api/token` mount
+point, this makes no difference for any request carrying a `{user}` path
+segment (`suffixes.size() >= 1`, checked at
+`arangod/RestHandler/RestAccessTokenHandler.cpp:60-64`), because such a
+request's path always literally starts with `/_api/token/` — the condition
+`devel` checks is unconditionally true whenever a suffix is present. The
+only theoretical divergence is a **bare, suffix-less** authenticated
+request (`GET`/`POST`/`DELETE /_api/token`, no trailing segment) coming
+from a user who additionally has *no* access to the `_system` database
+(the only case where `devel`'s generic per-database gate doesn't already
+grant access on its own, forcing a fall-through to the path-exception
+list): `devel` would reject such a request with **`401
+TRI_ERROR_HTTP_UNAUTHORIZED`** at the framework level (path
+`"/_api/token"` does not start with `"/_api/token/"`, so the exception
+does not fire, and there is no other path-independent way in for this
+user), whereas the current branch's override returns success unconditionally
+for any authenticated caller, reaches `execute()`, and is rejected there
+with **`400 TRI_ERROR_HTTP_BAD_PARAMETER`** ("path parameter 'user' is
+missing", `arangod/RestHandler/RestAccessTokenHandler.cpp:60-64`). Both
+branches reject the request and return no data in either case — this is a
+change in error status/code for a degenerate, practically-unreachable
+request shape (no normal client ever omits the `{user}` segment), not a
+security-relevant divergence. **Cosmetic/benign**, flagged only for
+completeness.
+
+### Finding 2 (Verified equivalent): per-verb split of `devel`'s single `canAccessUser()` gate into `canReadUser()`/`canWriteUser()`
+
+`devel` (`/tmp/devel_RestAccessTokenHandler.cpp:66-70`) ran a single,
+verb-independent check before dispatching:
+```cpp
+if (!canAccessUser(user)) {
+  generateError(ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
+  return RestStatus::DONE;
+}
+auto const type = _request->requestType();
+switch (type) { ... }
+```
+with (`/tmp/devel_RestBaseHandler.cpp:67-72`):
+```cpp
+bool RestBaseHandler::canAccessUser(std::string const& user) const {
+  if (_request->authenticated() && user == _request->user()) {
+    return true;
+  }
+  return isAdminUser();
+}
+```
+The current branch instead calls a verb-specific check per case
+(`arangod/RestHandler/RestAccessTokenHandler.cpp:71-89`): `GET` →
+`exec.canReadUser(user)`, `POST`/`DELETE` → `exec.canWriteUser(user)`. Both
+(`arangod/Utils/ExecContext.cpp:441-462`) special-case "acting on oneself"
+first, exactly like `devel`'s `user == _request->user()` branch:
+```cpp
+Result ExecContext::canReadUser(std::string_view userName) const {
+  if (userName == user()) return {};
+  return can(ReadUser{.name{userName}});
+}
+Result ExecContext::canWriteUser(std::string_view userName) const {
+  if (!isSuperuser() && ServerState::readOnly()) {
+    return {TRI_ERROR_FORBIDDEN, "Server is in read-only mode."};
+  }
+  if (userName == user()) return {};
+  return can(WriteUser{.name{userName}});
+}
+```
+and, for any other target user, both `ReadUser`/`WriteUser` permissions
+reduce, in `AuthMode::Classic::check()`
+(`arangod/Auth/AuthMode.cpp:560-569`), to `isAdmin()`
+(`arangod/Auth/AuthMode.cpp:574-577`: `check(UseDatabase{"_system",
+Write})`) — precisely `devel`'s `isAdminUser()` semantics (RW access to
+`_system`). So for the "self" case and the "admin acting on another user"
+case, the ALLOW/DENY decision is exactly equivalent between branches for
+both the `GET` and `POST`/`DELETE` routes. The only substantive change is
+the read-only-mode gate added to `canWriteUser()`, discussed next as its
+own finding since it *is* a genuine behavioral difference, not merely a
+verb split.
+
+### Finding 3 (Regression, narrow but real and confirmed): `canWriteUser()`'s new read-only-mode gate actually changes behavior here, unlike the read-only-mode "duplicate guard" pattern seen elsewhere
+
+This is *not* another instance of the "harmless, redundant, pre-emptive
+read-only check" pattern already documented for other handlers (e.g.
+`RestAnalyzerHandler` Finding 4, `RestImportHandler`'s addendum): here the
+extra guard **does** change the observable outcome, because of how
+`RestAccessTokenHandler`'s underlying token storage write is implemented.
+
+- `POST`/`DELETE /_api/token/{user}` ultimately call
+  `auth::UserManagerBase::createAccessToken()`/`deleteAccessToken()`
+  (`arangod/Auth/UserManagerBase.cpp:296-315`), which both go through
+  `UserManagerImpl::updateUser()` and finish in
+  `UserManagerImpl::storeUserInternal()`
+  (`arangod/Auth/UserManagerImpl.cpp:362-...`), which explicitly says:
+  ```cpp
+  // we cannot set this execution context, otherwise the transaction
+  // will ask us again for permissions and we get a deadlock
+  ExecContextSuperuserScope scope;
+  ```
+  (`arangod/Auth/UserManagerImpl.cpp:377`) — i.e. the actual write to the
+  `_users` system collection is deliberately performed with the
+  `ExecContext` **forced to superuser** for the duration of the write
+  transaction.
+- The storage-engine-level read-only-mode enforcement that normally blocks
+  writes in `--server.read-only` mode
+  (`arangod/Transaction/Methods.cpp:3763-3769`,
+  `arangod/RocksDBEngine/Methods/RocksDBTrxBaseMethods.cpp:454`) is itself
+  gated by `!exec.isSuperuserOrDisabled()`:
+  ```cpp
+  bool cancelRW = ServerState::readOnly() && !exec.isSuperuserOrDisabled();
+  ```
+  Because of the `ExecContextSuperuserScope` above, this check evaluates to
+  `cancelRW == false` for the token write — meaning the storage layer does
+  **not** block it, in either branch (this code path is unchanged and
+  common to both).
+- Consequently, in `devel`, `canAccessUser()` has no read-only-mode check
+  of its own (see Finding 2), and the actual write bypasses the
+  storage-engine's read-only gate via the forced-superuser scope — so a
+  `POST`/`DELETE /_api/token/{user}` request **succeeds even while the
+  server is running with `--server.read-only=true`**, for both the "self"
+  and "admin acting on another user" cases.
+- In the current branch, `ExecContext::canWriteUser()`
+  (`arangod/Utils/ExecContext.cpp:452-462`) now checks
+  `!isSuperuser() && ServerState::readOnly()` **before** anything else,
+  evaluated against the *caller's own*, not-yet-superuser `ExecContext`
+  (`ExecContext::current()` at
+  `arangod/RestHandler/RestAccessTokenHandler.cpp:70,79,85`). For any
+  non-superuser caller (i.e. essentially all normal HTTP requests,
+  including the `_system` root user acting on themselves or on another
+  user), this now returns `{TRI_ERROR_FORBIDDEN, "Server is in read-only
+  mode."}` and the request is rejected with `generateError(r)`
+  (`arangod/RestHandler/RestAccessTokenHandler.cpp:79-82,85-88`) — **before**
+  ever reaching `um->createAccessToken()`/`deleteAccessToken()`.
+
+This is a genuine, confirmed new restriction: management of one's own (or,
+for admins, another user's) API access tokens — an operation that does not
+touch application data and was always available in `devel` regardless of
+`--server.read-only` — is now blocked while the server is in read-only
+mode. It is *safer* (more restrictive), not a security hole, but it is a
+real behavioral divergence that could break operational workflows (e.g. an
+admin trying to revoke a compromised token during a read-only maintenance
+window). `GET` (`canReadUser()`) is unaffected — no read-only check was
+added there, matching `devel`.
+
+### Summary
+
+| Handler / Route | Verdict |
+|---|---|
+| `GET /_api/aql-builtin` | Identical to `devel` — no auth check in either branch |
+| `GET /_api/endpoint` | Identical to `devel` — unchanged `isSystem()` guard |
+| `GET/POST/DELETE /_api/token/*`, framework-level gate | Verified equivalent to `devel`'s path-based exception (Finding 1); one benign edge-case status-code difference (401→400) for a degenerate, suffix-less request that is rejected either way |
+| `GET /_api/token/{user}` | Identical ALLOW/DENY to `devel` (Finding 2) |
+| `POST`/`DELETE /_api/token/{user}[/{id}]`, normal operation | Identical ALLOW/DENY to `devel` (Finding 2) |
+| `POST`/`DELETE /_api/token/{user}[/{id}]`, server in `--server.read-only` mode | **Regression**: `devel` allows it (bypasses read-only via forced-superuser write scope); current branch now rejects with `403 TRI_ERROR_FORBIDDEN` (Finding 3) |
+
+**Action items / recommendations:** Finding 3 is the one actionable item.
+If read-only mode is intended to block user/token management too, this is
+a deliberate and acceptable hardening — but it should be a conscious
+decision, and ideally applied consistently to `RestUsersHandler` as well
+(not analyzed in this session; `RestUsersHandler` also uses
+`canReadUser`/`canWriteUser`/`canReadUsers`, per
+`Documentation/path_permissions.md:1037-1114`, so it likely has the exact
+same new restriction — worth confirming in a future session). If, instead,
+parity with `devel` is desired, the read-only check should be removed from
+`ExecContext::canWriteUser()` (`arangod/Utils/ExecContext.cpp:454-456`),
+mirroring the fact that the underlying storage write already deliberately
+opts out of the read-only gate via `ExecContextSuperuserScope`.
