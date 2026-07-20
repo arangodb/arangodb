@@ -24,7 +24,7 @@
 > ./arangod/RestHandler/RestEngineHandler.cpp
 > ./arangod/RestHandler/RestSupportInfoHandler.cpp
 > ./arangod/RestHandler/RestGraphHandler.cpp
-./arangod/RestHandler/RestSimpleQueryHandler.cpp
+> ./arangod/RestHandler/RestSimpleQueryHandler.cpp
 > ./arangod/RestHandler/RestEndpointHandler.cpp
 ./arangod/RestHandler/RestAuthReloadHandler.cpp
 ./arangod/RestHandler/RestDebugHandler.cpp

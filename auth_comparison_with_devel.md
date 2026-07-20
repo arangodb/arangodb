@@ -4308,3 +4308,62 @@ database-RW check already succeeded. Given this is a narrow permissiveness
 widening (not a lockout) and requires a specific, uncommon permission
 configuration to matter, it is low urgency but should not be dismissed as
 a pure refactor artifact.
+
+## `RestSimpleQueryHandler` (`arangod/RestHandler/RestSimpleQueryHandler.cpp`)
+
+Mounted at `/_api/simple/all`, `/_api/simple/all-keys`, and
+`/_api/simple/by-example` (prefix); a thin, legacy convenience layer over
+the cursor API, subclassing `RestCursorHandler`. All three operations
+(`allDocuments()`, `allDocumentKeys()`, `byExample()`) do the same thing:
+parse the request body, build a corresponding AQL query string
+(`FOR doc IN @@collection ...`) plus bind variables, and hand it off to
+`registerQueryOrCursor()` — the exact same entry point used by
+`POST /_api/cursor`, already fully analyzed in the `RestCursorHandler`
+session (`auth_comparison_with_devel.md:2217-2408`).
+
+### Diff overview and authorization surface
+
+`RestSimpleQueryHandler.h` is byte-for-byte identical to `devel`.
+`RestSimpleQueryHandler.cpp` differs from `devel` by exactly one added
+comment (`// Mounted at /_api/simple/all, ...`,
+`arangod/RestHandler/RestSimpleQueryHandler.cpp:44-45`) — confirmed via
+`diff -u` showing a single three-line hunk. A grep for
+`ExecContext|canUse|canSee|auth::` across the file returns zero matches:
+this handler, like `RestDocumentHandler` and `RestCursorHandler` before
+it, contains **no authorization logic of its own**. The only
+collection-name handling here (`_vocbase.lookupCollection(collectionName)`
+in each of the three functions, e.g.
+`arangod/RestHandler/RestSimpleQueryHandler.cpp:93,184,300`) is a plain,
+unchanged, non-authorizing name-normalization lookup (resolving a numeric
+collection ID to its current name) — it existed identically in `devel`
+and performs no permission check.
+
+Since every request here is routed through `registerQueryOrCursor()` as a
+freshly-built read-only `FOR doc IN @@collection ...` AQL query (none of
+the three operations ever mutates data or accepts a raw AQL string from
+the caller — the query text is always one of the three fixed templates
+built in this file), the collection-level permission check that applies
+is unconditionally the `AccessType::READ` path already covered in the
+`RestCursorHandler` session: **not** subject to the server-wide
+read-only-mode regression tracked there (that regression is scoped to
+`WriteData`-or-above accesses only). The cursor-ownership regression
+documented as `RestCursorHandler` Finding 1 (`auth_comparison_with_devel.md:2283-2387`)
+does not apply either — these three endpoints only *create* new cursors
+via `registerQueryOrCursor()`; they never look up or delete an existing
+cursor by ID (that's exclusively `PUT`/`DELETE /_api/cursor/<id>`, not
+reachable through `/_api/simple/*`).
+
+### Summary
+
+No findings distinct from the already-documented `RestCursorHandler`
+session apply beyond what's noted above (and even those are narrowed to
+"not applicable" for this handler, since it only ever issues read-only
+queries and never touches cursor ownership). `RestSimpleQueryHandler`
+joins `RestCompactHandler`, `RestAqlFunctionsHandler`,
+`RestEndpointHandler`, `RestImportHandler`, and `MaintenanceRestHandler`
+as a handler with a clean bill of health — no code changes beyond a
+comment, no authorization logic of its own, and its sole dependency
+(`registerQueryOrCursor()`'s read-only-query path) was already verified
+unaffected.
+
+**Action items / recommendations:** None.
