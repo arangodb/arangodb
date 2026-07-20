@@ -162,7 +162,6 @@ void ArangodServer::addFeatures() {
   addFeature<StatisticsFeature>(metrics);
   addFeature<TempFeature>(std::string{_binaryName});
   addFeature<TtlFeature>();
-  addFeature<UpgradeFeature>(_ret, kNonServerFeatures);
   addFeature<transaction::ManagerFeature>(metrics);
   addFeature<ViewTypesFeature>();
   addFeature<aql::AqlFunctionFeature>();
@@ -257,6 +256,11 @@ void ArangodServer::addFeaturesWithOptionProvider() {
   auto initDatabaseOptions = getOptions<InitDatabaseOptionsProvider>();
   addFeature<InitDatabaseFeature>(kNonServerFeatures,
                                   std::move(initDatabaseOptions));
+
+  // Add UpgradeFeature
+  auto upgradeOptions = getOptions<UpgradeOptionsProvider>();
+  addFeature<UpgradeFeature>(_ret, kNonServerFeatures,
+                             std::move(upgradeOptions));
 
   addFeature<iresearch::IResearchAnalyzerFeature>(
       iresearch::IResearchAnalyzerFeature::Dependencies{
