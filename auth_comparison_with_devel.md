@@ -2913,3 +2913,92 @@ failure and error message differ. Cosmetic only.
    cosmetic/no-op today); Finding 3 is flagged for awareness only, in case
    `User::collectionAuthLevel()`'s system-collection exclusion is ever
    revisited.
+
+## `RestImportHandler` (`arangod/RestHandler/RestImportHandler.cpp`)
+
+Mounted at `/_api/import` (prefix, `POST` only). Implements bulk document
+import in three body formats (`type=documents`/`array`/`list`/`auto`
+via `createFromJson()`, raw VelocyPack via `createFromVPack()`, and
+headless CSV-style key/value lines via `createFromKeyValueList()`), all of
+which funnel into the shared `performImport()` (a batched
+`trx.insertAsync()`) and, when `overwrite=true` is given, a preceding
+`trx.truncateAsync()`. Like `RestDocumentHandler`, this handler contains
+**no authorization logic of its own at all** — no `ExecContext`/`canUse*`
+call appears anywhere in `RestImportHandler.cpp` (confirmed by grep: zero
+matches for `ExecContext|canUse|auth::`). Every operation constructs a
+`SingleCollectionTransaction` directly (`arangod/RestHandler/RestImportHandler.cpp:349-350,558-559,761-762`,
+`AccessMode::Type::WRITE`) and calls `co_await trx.beginAsync()`; all
+authorization happens inside that shared transaction machinery — the same
+`TransactionState::checkCollectionPermission()` path already fully
+analyzed in the `RestDocumentHandler` section above — not in this file.
+
+### Diff overview
+
+`RestImportHandler.h` is byte-for-byte identical apart from the removed
+`@author` line. `RestImportHandler.cpp` differs only in: (a) the removed
+`@author` line, (b) an added mount-point comment
+(`arangod/RestHandler/RestImportHandler.cpp:56`), and (c) three call sites
+where `OperationOptions truncateOpts(_context);`
+(`devel:arangod/RestHandler/RestImportHandler.cpp:378,790`) /
+`OperationOptions opOptions(_context);`
+(`devel:arangod/RestHandler/RestImportHandler.cpp:1096`) became
+`OperationOptions truncateOpts;` (`arangod/RestHandler/RestImportHandler.cpp:378,790`) /
+`OperationOptions opOptions;` (`arangod/RestHandler/RestImportHandler.cpp:1096`)
+— the exact same `_context`-member-removed-from-`OperationOptions` change
+already investigated for `RestDocumentHandler` (see there). Every other
+line of `createFromJson()`, `createFromVPack()`, `createFromKeyValueList()`,
+`handleSingleDocument()`, `performImport()`, and the CSV/VelocyPack parsing
+helpers is untouched.
+
+Regarding (c): as established in the `RestDocumentHandler` section, the
+only call site anywhere in `devel` that ever reads
+`OperationOptions::context()` — as opposed to falling back to
+`ExecContext::current()` — is `Collections::create`
+(`devel:arangod/VocBase/Methods/Collections.cpp:604`, re-confirmed here
+via `git grep -n "\.context()" devel` across the whole tree, ignoring
+unrelated 3rd-party/boost hits: the *only* production call site is that
+one line). `RestImportHandler` never calls `Collections::create` (it only
+ever operates on a pre-existing collection resolved by
+`trx.resolver()->getCollection(collectionName)` — there is no
+"auto-create collection" option anywhere in this handler, in either
+branch). So, exactly as for `RestDocumentHandler`, dropping the explicit
+`_context` argument is a confirmed no-op here: `ExecContext::current()` is
+always the same context object for the synchronous request-handling path.
+
+### Addendum: this handler is also subject to Finding 1 of `RestDocumentHandler` (read-only-mode error-code regression)
+
+All three import variants perform a real, write-mode transaction via
+`trx.insertAsync()` (through `performImport()`,
+`arangod/RestHandler/RestImportHandler.cpp:898-975`) and, when
+`overwrite=true`, additionally a `trx.truncateAsync()`
+(`arangod/RestHandler/RestImportHandler.cpp:377-382,586-591,789-794`)
+beforehand. Both operations are gated by the identical
+`TransactionState::checkCollectionPermission()` machinery already analyzed
+in Finding 1 of the `RestDocumentHandler` section above (line 788-935):
+while the server is globally in `--server.read-only` mode, a caller whose
+*configured* grant on the target collection is `RW` (i.e. the ordinary
+case for anyone actually allowed to import data) receives
+`TRI_ERROR_FORBIDDEN` (11) from the current branch instead of `devel`'s
+more specific `TRI_ERROR_ARANGO_READ_ONLY` (1004); the HTTP status code
+(`403`) is unchanged in both. This is not a new, `/_api/import`-specific
+defect — it is the same cross-cutting regression, reachable here through
+one more call site — so it is not counted as a separate finding, but is
+recorded for completeness (as was already done for `RestCollectionHandler`'s
+`truncate` route in the addendum to that section).
+
+### Summary for `RestImportHandler`
+
+| Route / scenario | Verdict |
+|---|---|
+| `POST /_api/import?type=documents\|array\|list\|auto` (JSON body) | Identical to `devel` (no authorization logic in the handler itself; gated entirely by the generic database-access gate plus `TransactionState::checkCollectionPermission()`) |
+| `POST /_api/import` (VelocyPack body) | Identical to `devel` |
+| `POST /_api/import` (headless CSV/key-value body) | Identical to `devel` |
+| Any of the above with `overwrite=true`, or any insert, while the server is in `--server.read-only` mode | Same cross-cutting regression as `RestDocumentHandler` Finding 1 (`TRI_ERROR_FORBIDDEN` instead of `TRI_ERROR_ARANGO_READ_ONLY`; same HTTP status) — not a new, handler-specific finding |
+| `OperationOptions(_context)` → `OperationOptions()` (3 call sites) | Confirmed no-op, same reasoning as `RestDocumentHandler` |
+
+**Action items / recommendations:** None specific to this handler. It
+inherits Finding 1 from the `RestDocumentHandler` section (already tracked
+there with its own fix recommendation) and is otherwise a clean handler —
+the third one, after `RestCompactHandler` and `RestAgencyCallbacksHandler`,
+found to contain no handler-local authorization code or divergence of its
+own.
