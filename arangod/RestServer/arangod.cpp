@@ -74,7 +74,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
          },
          {}});
 
-    server.addFeatures();
+    server.addFeatures(&ret);
 
     try {
       server.run(argc, argv);

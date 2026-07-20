@@ -71,7 +71,7 @@ void ArangodServer::validateOptions() {
   _optionProviders.validateOptions(_programOptions);
 }
 
-void ArangodServer::addFeatures() {
+void ArangodServer::addFeatures(int* ret) {
   // Adding the Phases - these must come first and in this order
   addFeature<AgencyFeaturePhase>();
   auto& comm = addFeature<CommunicationFeaturePhase>();
@@ -113,7 +113,7 @@ void ArangodServer::addFeatures() {
   auto& cacheOptions = getFeature<CacheOptionsFeature>();
   auto& sharedPRNGFeature = addFeature<SharedPRNGFeature>();
   addFeature<CacheManagerFeature>(cacheOptions, sharedPRNGFeature.getPRNG());
-  addFeature<CheckVersionFeature>(_ret, kNonServerFeatures);
+  addFeature<CheckVersionFeature>(ret, kNonServerFeatures);
   auto& clusterFeature = addFeature<ClusterFeature>(metrics);
   addFeature<CrashHandlerFeature>(_dumpManager);
   auto& database = addFeature<DatabaseFeature>();
@@ -163,8 +163,9 @@ void ArangodServer::addFeatures() {
   addFeature<ProcessEnvironmentFeature>(std::string{_binaryName});
 #endif
 #ifdef USE_V8
-  addFeature<ScriptFeature>(_ret);
+  addFeature<ScriptFeature>(ret);
 #endif
+  addFeature<ServerFeature>(ret);
   addFeature<ServerIdFeature>();
   addFeature<ServerSecurityFeature>();
   addFeature<ShardingFeature>();
@@ -181,7 +182,7 @@ void ArangodServer::addFeatures() {
   addFeature<StatisticsFeature>(metrics);
   addFeature<TempFeature>(std::string{_binaryName});
   addFeature<TtlFeature>();
-  addFeature<UpgradeFeature>(_ret, kNonServerFeatures);
+  addFeature<UpgradeFeature>(ret, kNonServerFeatures);
   addFeature<transaction::ManagerFeature>(metrics);
   addFeature<ViewTypesFeature>();
   addFeature<aql::AqlFunctionFeature>();
@@ -262,10 +263,6 @@ void ArangodServer::addFeaturesWithOptionProvider() {
   // Add EndpointFeature
   auto endpointOptions = _optionProviders.getOptions<EndpointOptionsProvider>();
   addFeature<HttpEndpointProvider, EndpointFeature>(std::move(endpointOptions));
-
-  // Add ServerFeature
-  auto serverOptions = _optionProviders.getOptions<ServerOptionsProvider>();
-  addFeature<ServerFeature>(_ret, std::move(serverOptions));
 
   // Add RocksDBIndexCacheRefillFeature
   auto rocksdbCacheRefillOptions =

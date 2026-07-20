@@ -64,6 +64,7 @@ class FeatureOptionProviderContainer final {
   }
 
  private:
+<<<<<<< HEAD
   std::tuple<AuthenticationOptionsProvider, DatabasePathOptionsProvider,
              DumpLimitsOptionsProvider, EndpointOptionsProvider,
              FlushOptionsProvider, fortune::FortuneOptionsProvider,
@@ -85,6 +86,13 @@ class FeatureOptionProviderContainer final {
              file_descriptors::FileDescriptorsOptionsProvider
 #endif
              >
+=======
+  std::tuple<
+      DatabasePathOptionsProvider, DumpLimitsOptionsProvider,
+      FlushOptionsProvider, fortune::FortuneOptionsProvider,
+      RocksDBEngineOptionsProvider, RocksDBIndexCacheRefillOptionsProvider,
+      RocksDBOptionFeatureOptionsProvider, TemporaryStorageOptionsProvider>
+>>>>>>> parent of ba4c730f788 (Migrate ServerFeature)
       _providers{};
 };
 }  // namespace arangodb::application_features

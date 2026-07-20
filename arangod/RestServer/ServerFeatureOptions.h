@@ -22,15 +22,12 @@
 
 #pragma once
 
-#include "GeneralServer/OperationMode.h"
-
 #include <string>
 #include <vector>
 
 namespace arangodb {
 
 struct ServerFeatureOptions {
-  OperationMode operationMode = OperationMode::MODE_SERVER;
   bool console = false;
   bool restServer = true;
   bool validateUtf8Strings = true;

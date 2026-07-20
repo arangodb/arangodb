@@ -62,16 +62,43 @@ ServerFeature::ServerFeature(ApplicationServer& server, int* res,
                              ServerFeatureOptions options)
     : ApplicationFeature{server, *this},
       _options(std::move(options)),
-      _result(res) {
+      _result(res),
+      _operationMode(OperationMode::MODE_SERVER) {
   setOptional(true);
   startsAfter<AqlFeaturePhase>();
   startsAfter<UpgradeFeature>();
+}
 
-  DatabaseFeature& db = server.getFeature<DatabaseFeature>();
+void ServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
+  ServerOptionsProvider provider;
+  provider.declareOptions(options, _options);
+}
 
-  if (_options.operationMode == OperationMode::MODE_SERVER &&
-      !_options.restServer && !db.upgrade() &&
-      !server.options()->processingResult().touched("rocksdb.verify-sst")) {
+void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
+  int count = 0;
+
+  if (_options.console) {
+    _operationMode = OperationMode::MODE_CONSOLE;
+    ++count;
+  }
+
+  if (!_options.scripts.empty()) {
+    _operationMode = OperationMode::MODE_SCRIPT;
+    ++count;
+  }
+
+  if (1 < count) {
+    LOG_TOPIC("353cd", FATAL, arangodb::Logger::FIXME)
+        << "cannot combine '--console', '--javascript.unit-tests' and "
+        << "'--javascript.script'";
+    FATAL_ERROR_EXIT();
+  }
+
+  DatabaseFeature& db = server().getFeature<DatabaseFeature>();
+
+  if (_operationMode == OperationMode::MODE_SERVER && !_options.restServer &&
+      !db.upgrade() &&
+      !options->processingResult().touched("rocksdb.verify-sst")) {
     LOG_TOPIC("8daab", FATAL, arangodb::Logger::FIXME)
         << "need at least '--console', '--javascript.unit-tests' or"
         << "'--javascript.script if rest-server is disabled";
@@ -80,10 +107,10 @@ ServerFeature::ServerFeature(ApplicationServer& server, int* res,
 
   bool supportsV8 = false;
 #ifdef USE_V8
-  V8DealerFeature& v8dealer = server.getFeature<V8DealerFeature>();
+  V8DealerFeature& v8dealer = server().getFeature<V8DealerFeature>();
 
   if (v8dealer.isEnabled()) {
-    if (_options.operationMode == OperationMode::MODE_SCRIPT) {
+    if (_operationMode == OperationMode::MODE_SCRIPT) {
       v8dealer.setMinimumExecutors(2);
     } else {
       v8dealer.setMinimumExecutors(1);
@@ -91,7 +118,7 @@ ServerFeature::ServerFeature(ApplicationServer& server, int* res,
     supportsV8 = true;
   }
 #endif
-  if (!supportsV8 && _options.operationMode != OperationMode::MODE_SERVER) {
+  if (!supportsV8 && _operationMode != OperationMode::MODE_SERVER) {
     LOG_TOPIC("a114b", FATAL, arangodb::Logger::FIXME)
         << "Options '--console', '--javascript.unit-tests'"
         << " or '--javascript.script' are not supported without V8";
@@ -100,37 +127,37 @@ ServerFeature::ServerFeature(ApplicationServer& server, int* res,
 
   auto disableDeamonAndSupervisor = [&]() {
 #ifdef ARANGODB_HAVE_FORK
-    server.disableFeatures<DaemonFeature>();
-    server.disableFeatures<SupervisorFeature>();
+    server().disableFeatures<DaemonFeature>();
+    server().disableFeatures<SupervisorFeature>();
 #endif
   };
 
   if (!_options.restServer) {
-    server.disableFeatures<HttpEndpointProvider, GeneralServerFeature,
-                           SslServerFeature, StatisticsFeature>();
+    server()
+        .disableFeatures<HttpEndpointProvider, GeneralServerFeature,
+                         SslServerFeature, StatisticsFeature>();
     disableDeamonAndSupervisor();
 
-    if (!server.options()->processingResult().touched(
-            "replication.auto-start")) {
+    if (!options->processingResult().touched("replication.auto-start")) {
       // turn off replication applier when we do not have a rest server
       // but only if the config option is not explicitly set (the recovery
       // test want the applier to be enabled for testing it)
       ReplicationFeature& replicationFeature =
-          server.getFeature<ReplicationFeature>();
+          server().getFeature<ReplicationFeature>();
       replicationFeature.disableReplicationApplier();
     }
   }
 
 #ifdef USE_V8
-  if (_options.operationMode == OperationMode::MODE_CONSOLE) {
+  if (_operationMode == OperationMode::MODE_CONSOLE) {
     disableDeamonAndSupervisor();
     v8dealer.setMinimumExecutors(2);
   }
 #endif
 
-  if (_options.operationMode == OperationMode::MODE_SERVER ||
-      _options.operationMode == OperationMode::MODE_CONSOLE) {
-    server.getFeature<ShutdownFeature>().disable();
+  if (_operationMode == OperationMode::MODE_SERVER ||
+      _operationMode == OperationMode::MODE_CONSOLE) {
+    server().getFeature<ShutdownFeature>().disable();
   }
 }
 
@@ -145,7 +172,7 @@ void ServerFeature::start() {
 
   *_result = EXIT_SUCCESS;
 
-  switch (_options.operationMode) {
+  switch (_operationMode) {
     case OperationMode::MODE_SCRIPT:
     case OperationMode::MODE_CONSOLE:
       break;
