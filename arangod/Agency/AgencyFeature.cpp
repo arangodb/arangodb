@@ -102,22 +102,20 @@ AgencyFeature::AgencyFeature(ApplicationServer& server, AgencyOptions options)
   // - ArangoSearch: not needed by agency
   // - IResearchAnalyzer: analyzers are not needed by agency
   // - Action/Script/FoxxQueues/Frontend: Foxx and JavaScript APIs
-  server()
-      .disableFeatures<iresearch::IResearchFeature,
-                       iresearch::IResearchAnalyzerFeature,
+  server.disableFeatures<iresearch::IResearchFeature,
+                         iresearch::IResearchAnalyzerFeature,
 #ifdef USE_V8
-                       FoxxFeature, FrontendFeature,
+                         FoxxFeature, FrontendFeature,
 #endif
-                       ActionFeature>();
+                         ActionFeature>();
 
 #ifdef USE_V8
-  if (!V8DealerFeature::javascriptRequestedViaOptions(server().options())) {
+  if (!V8DealerFeature::javascriptRequestedViaOptions(server.options())) {
     // specifying --console requires JavaScript, so we can only turn Javascript
     // off if not requested
 
     // console mode inactive. so we can turn off V8
-    server()
-        .disableFeatures<ScriptFeature, V8PlatformFeature, V8DealerFeature>();
+    server.disableFeatures<ScriptFeature, V8PlatformFeature, V8DealerFeature>();
   }
 #endif
 }
