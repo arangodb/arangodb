@@ -43,7 +43,7 @@ class OptionProvidingServer : public application_features::ApplicationServer {
     ApplicationServer::validateOptions();
     _optionProviders.validateOptions(options());
   }
-  
+
   template<class ProviderType>
   auto const& getOptions() const {
     return _optionProviders.template getOptions<ProviderType>();
