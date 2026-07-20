@@ -2606,3 +2606,310 @@ still matters for defense in depth).
 **Action items / recommendations:** None. No differences of any kind
 (functional or cosmetic) were found beyond comments; this is the second
 fully clean handler after `RestCompactHandler`.
+
+## `RestAnalyzerHandler` (`arangod/RestHandler/RestAnalyzerHandler.cpp`)
+
+Mounted at `/_api/analyzer` (prefix). `GET` with no suffix lists all
+analyzers visible from the current database plus the system database
+(plus built-in static analyzers); `GET /<name>` fetches a single analyzer;
+`POST` (no suffix) creates an analyzer; `DELETE /<name>[?force=true]`
+removes one. All four operations ultimately funnel through
+`IResearchAnalyzerFeature::canUse()`
+(`arangod/IResearch/IResearchAnalyzerFeature.cpp:1149-1178`, devel:
+`devel:arangod/IResearch/IResearchAnalyzerFeature.cpp:1155-1177`), the only
+authorization-relevant function in that file (confirmed by grepping the
+whole file for `canUse|ExecContext|auth::Level` — no other function
+touches authorization; `emplace()`/`remove()` trust the caller
+completely).
+
+### Diff overview
+
+`RestAnalyzerHandler.h` is byte-for-byte identical apart from the removed
+`@author` doxygen lines. `RestAnalyzerHandler.cpp` differs only in the four
+call sites of `IResearchAnalyzerFeature::canUse()` (bool → `Result`, see
+Finding 1) and in the listing gate of `getAnalyzers()` (see Finding 2);
+`createAnalyzer()`, `execute()`, `getAnalyzer()` (aside from its `canUse`
+call), and `removeAnalyzer()` are otherwise unchanged. The permission-name
+normalization/validation helpers they call into —
+`splitAnalyzerName()`, `normalize()`, `extractVocbaseName()`, and, most
+importantly, `analyzerReachableFromDb()`
+(`arangod/IResearch/IResearchAnalyzerFeature.cpp:2354-2372`, byte-for-byte
+identical to `devel:arangod/IResearch/IResearchAnalyzerFeature.cpp:2370-2388`)
+— are untouched. `analyzerReachableFromDb()` is what actually restricts
+*which* database an analyzer name may refer to relative to the database
+the request was sent to (`_vocbase.name()`):
+- `createAnalyzer`/`removeAnalyzer` (non-getter mode): the analyzer's
+  db-prefix must either be absent (implicitly the current database) or
+  exactly equal to the current database — i.e. **you can only
+  create/remove analyzers in the database the request targets**, never in
+  some unrelated third database, regardless of privilege level.
+- `getAnalyzer` (getter mode, `forGetters=true`): additionally allows a
+  `_system`-prefixed name to be read from any database (a deliberate
+  cross-db read exception for the system database only).
+
+This restriction is identical in both branches and bounds the practical
+impact of Finding 2 below.
+
+### Finding 1 (Cosmetic): `bool` → `Result` return type of `canUse()`
+
+`devel` (e.g. `devel:arangod/RestHandler/RestAnalyzerHandler.cpp:169`):
+```cpp
+if (!IResearchAnalyzerFeature::canUse(name, auth::Level::RW)) {
+  generateError(arangodb::rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
+                std::string("insufficient rights while creating analyzer: ") +
+                    body.toString());
+  return;
+}
+```
+Current branch (`arangod/RestHandler/RestAnalyzerHandler.cpp:168-173`):
+```cpp
+if (auto r =
+        IResearchAnalyzerFeature::canUse(name, AnalyzerAccessLevel::Modify);
+    r.fail()) {
+  generateError(r);
+  return;
+}
+```
+Same pattern applies to `getAnalyzer()`
+(`arangod/RestHandler/RestAnalyzerHandler.cpp:285-290` vs.
+`devel:arangod/RestHandler/RestAnalyzerHandler.cpp:285-290`) and
+`removeAnalyzer()` (`arangod/RestHandler/RestAnalyzerHandler.cpp:402-407`
+vs. `devel:arangod/RestHandler/RestAnalyzerHandler.cpp:386-391`). In all
+three call sites, denial still maps to `TRI_ERROR_FORBIDDEN` / HTTP `403`
+in `Classic` mode: `canUse()` → `ExecContext::canUseAnalyzer()`
+(`arangod/Utils/ExecContext.cpp:389-397`) → `can(UseAnalyzer{...})` →
+`AuthMode::Classic::check()`'s `UseAnalyzer` branch
+(`arangod/Auth/AuthMode.cpp:348-365`) → `check(UseDatabase{...})`
+(`arangod/Auth/AuthMode.cpp:157-174`), whose failure branch (since
+`requestedApiVersion() == 0` for this classic route, so the "report as not
+found" masking added for the new API version never triggers here) always
+returns `{TRI_ERROR_FORBIDDEN, "insufficient database access level for
+'<db>'"}`. Only the error message text changes (from e.g. `"insufficient
+rights while creating analyzer: {...body...}"` to `"insufficient database
+access level for '<db>'"`); the HTTP status code and `errorNum` are
+unchanged. Purely cosmetic.
+
+### Finding 2 (Regression): missing "admin bypass" in `IResearchAnalyzerFeature::canUse(name, level)` — affects create / get-single / remove
+
+This is the significant finding for this handler. `devel`'s `canUse()`
+(`devel:arangod/IResearch/IResearchAnalyzerFeature.cpp:1155-1177`):
+```cpp
+bool IResearchAnalyzerFeature::canUse(std::string_view name,
+                                      auth::Level const& level) {
+  auto& ctx = ExecContext::current();
+
+  if (ctx.isAdminUser()) {
+    return true;  // authentication not enabled
+  }
+
+  auto& staticAnalyzers = getStaticAnalyzers();
+  if (staticAnalyzers.contains(irs::hashed_string_view{name})) {
+    return true;  // special case for singleton static analyzers
+  }
+
+  auto split = splitAnalyzerName(name);
+  auto const vocbaseName = static_cast<std::string>(split.first);
+  return irs::IsNull(split.first)
+         || (ctx.canUseDatabase(vocbaseName, level)
+             && ctx.canUseCollection(
+                    vocbaseName, arangodb::StaticStrings::AnalyzersCollection,
+                    level));
+}
+```
+Current branch (`arangod/IResearch/IResearchAnalyzerFeature.cpp:1149-1178`):
+```cpp
+Result IResearchAnalyzerFeature::canUse(std::string_view name,
+                                        AnalyzerAccessLevel const& level) {
+  auto& staticAnalyzers = getStaticAnalyzers();
+  if (staticAnalyzers.contains(irs::hashed_string_view{name})) {
+    return {};  // special case for singleton static analyzers
+  }
+
+  auto split = splitAnalyzerName(name);
+  ...
+  auto& ctx = ExecContext::current();
+  auto const vocbaseName = static_cast<std::string>(split.first);
+  return ctx.canUseAnalyzer(vocbaseName, static_cast<std::string>(split.second),
+                            level);
+}
+```
+There is **no `isAdminUser()`/`isAdmin()` bypass anywhere in the current
+call chain**: `ExecContext::canUseAnalyzer()`
+(`arangod/Utils/ExecContext.cpp:389-397`) forwards straight into
+`can(UseAnalyzer{...})`, and `AuthMode::Classic::check()`'s `UseAnalyzer`
+branch (`arangod/Auth/AuthMode.cpp:348-365`) computes a required
+`DatabaseAccessLevel` from `analyzer.level` and calls `check(UseDatabase{
+analyzer.db, dbLevel})` with **no preceding `if (isAdmin().ok()) return
+{};`** — unlike numerous sibling branches in the very same function
+(`RestoreCollection`, `RestoreCreateIndex`, `RestoreCreateView`,
+`RestoreDropView`, `RestoreWriteData`, `CreateDatabase`, `DropDatabase`,
+`WriteUser`, `AnyAdmin`, all of which do have exactly this
+`if (isAdmin().ok()) return {};` bypass, see e.g.
+`arangod/Auth/AuthMode.cpp:257,268,292,302,312,322,374,378,563,367`).
+`isAdmin()` (`arangod/Auth/AuthMode.cpp:574-577`) is
+`check(UseDatabase{_system, Write})`, which was already proven equivalent
+to `devel`'s precomputed `ctx.isAdminUser()` flag in the
+`RestMetricsHandler`/`RestAdminServerHandler` sessions above (line
+1047-1063): `isAdminUser() == (databaseAuthLevel(user, "_system",
+configured=true) == RW)`.
+
+**Consequence:** in `devel`, an admin (any identity holding `RW` on
+`_system`) can create, read, or remove **any** analyzer reachable through
+`analyzerReachableFromDb()` (i.e. one belonging to the database the
+request targets, or — for reads only — the system database), *regardless
+of that admin's actual configured access level on that specific target
+database*. For example, an admin with `RW` on `_system` but explicitly
+`NONE`/no grant at all on database `foo` could, in `devel`, still `POST
+/_db/foo/_api/analyzer` to create an analyzer there, or `DELETE
+/_db/foo/_api/analyzer/<name>` to remove one, or `GET
+/_db/foo/_api/analyzer/<name>` to read one. In the current branch, that
+same admin is now **denied** (`403 FORBIDDEN`, "insufficient database
+access level for 'foo'") unless they separately hold `RW`
+(create/remove)/`RO` (read) on `foo` itself. This is a genuine behavioral
+divergence from `devel` triggerable through normal REST API usage, so it
+is classified as a **Regression** per the methodology above — even though,
+unlike most other regressions found in this investigation, this one goes
+in the *safer* direction (current branch is *more* restrictive than
+`devel`, not less). It could nonetheless break existing deployments/scripts
+that rely on the `devel` convention (used consistently elsewhere for
+restore/admin-style operations, see the bypass list above) that a `_system`
+admin has implicit, unconditional analyzer-management rights over every
+database.
+
+Two sub-cases worth calling out explicitly:
+- The listing endpoint `GET /_api/analyzer` (no suffix) is **not** affected
+  by this particular finding — see Finding 3, it uses a different, already
+  bypass-free gate in both branches.
+- Because of `analyzerReachableFromDb()`'s restriction (see "Diff
+  overview" above), the blast radius is narrower than, say, the
+  `RestWalAccessHandler` regression: an admin can only be locked out of
+  managing analyzers in (a) the database the request itself targets, or
+  (b) (for reads only) the system database — never some unrelated third
+  database, since the analyzer name syntax itself makes that unreachable
+  in both branches.
+
+### Finding 3 (Code-quality / latent risk, proven currently equivalent): listing gate no longer calls `canUseCollection(..., AnalyzersCollection, ...)`
+
+`devel`'s `getAnalyzers()` gates access to a database's analyzers via
+`canUse(vocbase, level)` → `canUseVocbase()`
+(`devel:arangod/IResearch/IResearchAnalyzerFeature.cpp:1139-1148`):
+```cpp
+bool IResearchAnalyzerFeature::canUseVocbase(std::string_view vocbaseName,
+                                             auth::Level const& level) {
+  auto& ctx = ExecContext::current();
+  return ctx.canUseDatabase(nameStr, level) &&
+         ctx.canUseCollection(nameStr, StaticStrings::AnalyzersCollection,
+                              level);
+}
+```
+called as `IResearchAnalyzerFeature::canUse(_vocbase, auth::Level::RO)` /
+`canUse(*sysVocbase, auth::Level::RO)`
+(`devel:arangod/RestHandler/RestAnalyzerHandler.cpp:333,345`). The current
+branch removed both the `canUse(TRI_vocbase_t const&, auth::Level)` and
+`canUseVocbase()` overloads entirely (only the single-name overload
+remains, `arangod/IResearch/IResearchAnalyzerFeature.h:313`) and inlined
+just the database-level half of the check directly in the handler
+(`arangod/RestHandler/RestAnalyzerHandler.cpp:344-346,358-361`):
+```cpp
+if (execContext
+        .canUseDatabase(_vocbase.name(), arangodb::DatabaseAccessLevel::Read)
+        .ok()) {
+  analyzers.visit(visitor, &_vocbase, ...);
+}
+```
+i.e. the `canUseCollection(..., AnalyzersCollection, ...)` half was
+dropped. This looks like a narrowing at first glance, but it is provably a
+no-op: `auth::User::collectionAuthLevel()`
+(`arangod/Auth/User.cpp:728-748`, unchanged between branches) special-cases
+*every* collection name starting with `_` (`isSystem` branch, line 736) to
+skip the per-collection `_collectionAccess` grant table entirely — the
+table lookup only happens in the non-system `else` branch
+(`arangod/Auth/User.cpp:750-...`). Since `_analyzers` is not one of the
+three hard-coded exceptions (`_users` → `NONE`, `_queues` → `RO`,
+`_frontend` → `RW`, `arangod/Auth/User.cpp:739-746`), it always falls
+through to `return databaseAuthLevel(dbname);` — i.e.
+`collectionAuthLevel(db, "_analyzers", level)` is **always identical** to
+`databaseAuthLevel(db)` compared against `level`, in both branches, and no
+administrator can override this via a per-collection grant on
+`_analyzers` (the code path to honor such a grant is unreachable for any
+system-collection name). Consequently `canUseVocbase(db, level) ==
+canUseDatabase(db, level)` always holds, and the current branch's inlined
+check is behaviorally identical to `devel`'s `canUse(vocbase, level)` in
+every case — today. This is recorded as a **code-quality / latent-risk**
+item rather than a "clean" equivalence, however, because the
+equivalence depends on an implementation detail elsewhere
+(`User::collectionAuthLevel()`'s blanket exclusion of system-collection
+names from the per-collection grant table) that is not enforced by any
+invariant local to this handler; if that exclusion is ever narrowed
+(e.g. system collections other than the three hard-coded ones become
+independently grantable), the listing gate would silently start
+diverging from a hypothetical `canUseCollection`-based check without any
+compile-time or handler-level signal.
+
+The per-analyzer filter added to the listing's visitor callback
+(`arangod/RestHandler/RestAnalyzerHandler.cpp:324-330`,
+`execContext.canSeeAnalyzer(split.first, split.second)`) is likewise a
+no-op in practice: `canSeeAnalyzer()` maps to `AuthMode::Classic::check()`'s
+`SeeAnalyzer` branch (`arangod/Auth/AuthMode.cpp:482-488`), which itself
+just re-checks `UseDatabase{analyzer.db, Read}` — but `split.first` for
+every analyzer actually visited by this loop is either `_vocbase.name()`
+or `sysVocbase->name()`, both of which were already gated by the identical
+`canUseDatabase(..., Read)` check one level up (lines 344-346, 358-361)
+before `analyzers.visit()` was even called. `devel` has no equivalent
+per-analyzer filter at all in its visitor
+(`devel:arangod/RestHandler/RestAnalyzerHandler.cpp:317-323`) and doesn't
+need one, for the same reason. No behavioral difference in either
+direction.
+
+### Finding 4 (Cosmetic): early read-only-mode short-circuit added to `canUseAnalyzer()`
+
+`ExecContext::canUseAnalyzer()` (`arangod/Utils/ExecContext.cpp:389-397`):
+```cpp
+Result ExecContext::canUseAnalyzer(std::string_view db, std::string_view analyzer,
+                                   AnalyzerAccessLevel level) const {
+  if (!isSuperuser() && ServerState::readOnly() &&
+      level == AnalyzerAccessLevel::Modify) {
+    return {TRI_ERROR_FORBIDDEN, "Server is in read-only mode."};
+  }
+  return can(UseAnalyzer{.db{db}, .name{analyzer}, .level = level});
+}
+```
+`devel`'s `IResearchAnalyzerFeature.cpp` has no equivalent
+`ServerState::readOnly()`/`isSuperuser()` check anywhere (confirmed by
+grep — no matches in the whole file). This does not constitute a new
+restriction in practice: any actual write to the `_analyzers` system
+collection still has to go through the normal RocksDB
+transaction/storage-engine layer (`arangod/Transaction/Methods.cpp`,
+`arangod/RocksDBEngine/Methods/RocksDBTrxBaseMethods.cpp`), which already
+enforces `--server.read-only` independently of this handler in both
+branches. The current branch's addition merely fails fast, earlier and
+with a clearer message ("Server is in read-only mode.") instead of letting
+the request reach the storage layer and fail there with a more generic
+error. Both branches ultimately deny the write; only the exact point of
+failure and error message differ. Cosmetic only.
+
+### Summary for `RestAnalyzerHandler`
+
+| Route / scenario | Verdict |
+|---|---|
+| `GET /_api/analyzer` (list) | Identical to `devel` (Finding 3: inlined/dropped `canUseCollection` half and the added per-analyzer `canSeeAnalyzer` filter are both no-ops given current `User::collectionAuthLevel()` semantics) |
+| `GET /_api/analyzer/<name>`, `POST /_api/analyzer`, `DELETE /_api/analyzer/<name>` — non-admin caller with correct database-level access | Identical to `devel` (Finding 1: error message wording only, on denial) |
+| `GET /_api/analyzer/<name>`, `POST /_api/analyzer`, `DELETE /_api/analyzer/<name>` — admin (`RW` on `_system`) without explicit access to the analyzer's own target database | **Regression** (Finding 2): `devel` allows this via the `isAdminUser()` bypass; current branch denies with `403 FORBIDDEN` |
+| `POST`/`DELETE` while server is in `--server.read-only` mode | Identical end result (write denied) in both branches; current branch just fails earlier/clearer (Finding 4, cosmetic) |
+
+**Action items / recommendations:**
+1. **Fix Finding 2**: add an `if (isAdmin().ok()) return {}; ` bypass to
+   `AuthMode::Classic::check()`'s `UseAnalyzer` branch
+   (`arangod/Auth/AuthMode.cpp:348-365`), matching the convention already
+   used by `RestoreCollection`/`RestoreCreateIndex`/`RestoreCreateView`/
+   `RestoreDropView`/`RestoreWriteData`/`CreateDatabase`/`DropDatabase`/
+   `WriteUser`/`AnyAdmin` in the same function, and mirroring `devel`'s
+   `ctx.isAdminUser()` short-circuit at the top of
+   `IResearchAnalyzerFeature::canUse()`. This is a purely `Classic`-mode
+   fix (adding it to `AuthMode::Classic::check()` rather than to
+   `IResearchAnalyzerFeature::canUse()` itself) and does not affect the
+   new RBAC mode.
+2. No action required for Finding 1, Finding 3, or Finding 4 (all
+   cosmetic/no-op today); Finding 3 is flagged for awareness only, in case
+   `User::collectionAuthLevel()`'s system-collection exclusion is ever
+   revisited.
