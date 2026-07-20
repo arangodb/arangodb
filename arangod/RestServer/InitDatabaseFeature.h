@@ -49,8 +49,6 @@ class InitDatabaseFeature final
   InitDatabaseFeatureOptions _options;
 
  public:
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
 
  private:

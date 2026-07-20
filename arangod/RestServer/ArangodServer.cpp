@@ -127,7 +127,6 @@ void ArangodServer::addFeatures() {
 #endif
   addFeature<GeneralServerFeature>(metrics);
   addFeature<GreetingsFeature>();
-  addFeature<InitDatabaseFeature>(kNonServerFeatures);
   addFeature<LanguageCheckFeature>();
   addFeature<TimeZoneFeature>();
   addFeature<LockfileFeature>();
@@ -291,6 +290,11 @@ void ArangodServer::addFeaturesWithOptionProvider() {
       getOptions<check_version::CheckVersionOptionsProvider>();
   addFeature<CheckVersionFeature>(_ret, kNonServerFeatures,
                                   std::move(checkVersionOptions));
+
+  // Add InitDatabaseFeature
+  auto initDatabaseOptions = getOptions<InitDatabaseOptionsProvider>();
+  addFeature<InitDatabaseFeature>(kNonServerFeatures,
+                                  std::move(initDatabaseOptions));
 
   addFeature<iresearch::IResearchAnalyzerFeature>(
       iresearch::IResearchAnalyzerFeature::Dependencies{
