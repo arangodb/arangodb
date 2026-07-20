@@ -298,9 +298,10 @@ function aqlMatchStatementVariableLengthTestSuite() {
         },
 
         testCollectionBindParameterUsesNonexistentCollection : function () {
-          try{
-            const result = db._query("MATCH (v :@@vc) RETURN COUNT(v)",{ "@vc": "someOtherCollection" },
-            options).toArray();
+          try {
+            db._query("MATCH (v :@@vc) RETURN COUNT(v)", { "@vc": "someOtherCollection" },
+                      options).toArray();
+            fail();
           } catch (err) {
             assertEqual(err.errorNum, errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
           }
