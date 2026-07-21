@@ -29,7 +29,7 @@ namespace arangodb {
 
 using namespace arangodb::options;
 
-void LanguageOptionsProvider::declareOptions(
+void LanguageOptionsProvider::declareOptionsImpl(
     std::shared_ptr<options::ProgramOptions> options,
     LanguageFeatureOptions& opts) {
   options

@@ -20,38 +20,17 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/signals.h"
-#include "Basics/directories.h"
-
-#include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/CommunicationFeaturePhase.h"
-#include "ApplicationFeatures/ConfigFeature.h"
-#include "ApplicationFeatures/FileSystemFeature.h"
-#include "ApplicationFeatures/GreetingsFeaturePhase.h"
-#include "ApplicationFeatures/ProcessEnvironmentFeature.h"
-#include "ApplicationFeatures/OptionsCheckFeature.h"
-#include "ApplicationFeatures/ShellColorsFeature.h"
-#include "ApplicationFeatures/ShutdownFeature.h"
-#include "ApplicationFeatures/TempFeature.h"
-#include "ApplicationFeatures/VersionFeature.h"
 #include "Basics/ArangoGlobalContext.h"
-#include "FeaturePhases/BasicFeaturePhaseClient.h"
-#include "Import/ImportFeature.h"
+#include "Basics/directories.h"
+#include "Basics/signals.h"
+#include "Import/ArangoImportServer.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
-#include "Logger/LoggerFeature.h"
 #include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "Random/RandomFeature.h"
 #include "Shell/ClientFeature.h"
-#include "Ssl/SslFeature.h"
-
-#ifdef USE_ENTERPRISE
-#include "Enterprise/Encryption/EncryptionFeature.h"
-#endif
 
 using namespace arangodb;
-using namespace arangodb::application_features;
 
 int main(int argc, char* argv[]) {
   TRI_GET_ARGV(argc, argv);
@@ -60,37 +39,14 @@ int main(int argc, char* argv[]) {
     arangodb::signals::maskAllSignalsClient();
     context.installHup();
 
-    std::shared_ptr<options::ProgramOptions> options(
-        new options::ProgramOptions(
-            argv[0], "Usage: arangoimport [<options>]",
-            "For more information use:", BIN_DIRECTORY));
+    auto options = std::make_shared<options::ProgramOptions>(
+        argv[0], "Usage: arangoimport [<options>]",
+        "For more information use:", BIN_DIRECTORY);
 
     int ret = EXIT_SUCCESS;
-    application_features::ApplicationServer server(options, BIN_DIRECTORY);
-
-    // Add features in order
-    server.addFeature<BasicFeaturePhaseClient>();
-    server.addFeature<CommunicationFeaturePhase>();
-    server.addFeature<GreetingsFeaturePhase>(std::true_type{});
-    server.addFeature<VersionFeature>();
-    server.addFeature<HttpEndpointProvider, ClientFeature>(false);
-    server.addFeature<ConfigFeature>(context.binaryName());
-    server.addFeature<FileSystemFeature>();
-    server.addFeature<LoggerFeature>(false);
-    server.addFeature<OptionsCheckFeature>();
-    server.addFeature<RandomFeature>();
-    server.addFeature<ShellColorsFeature>();
-    server.addFeature<ShutdownFeature>(
-        std::array{std::type_index(typeid(ImportFeature))});
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    server.addFeature<ProcessEnvironmentFeature>(context.binaryName());
-#endif
-    server.addFeature<SslFeature>();
-    server.addFeature<TempFeature>(context.binaryName());
-#ifdef USE_ENTERPRISE
-    server.addFeature<EncryptionFeature>();
-#endif
-    server.addFeature<ImportFeature>(&ret);
+    ArangoImportServer server(options, BIN_DIRECTORY, context.binaryName(),
+                              &ret);
+    server.addFeatures();
 
     try {
       server.run(argc, argv);
