@@ -251,7 +251,7 @@ TEST_F(V8UsersTest, test_collection_auth) {
     EXPECT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                  slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
-                 TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND ==
+                 TRI_ERROR_FORBIDDEN ==
                      ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum)
                                    .getNumber<int>()}));
     EXPECT_TRUE(execContext
@@ -300,7 +300,7 @@ TEST_F(V8UsersTest, test_collection_auth) {
     EXPECT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                  slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
-                 TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND ==
+                 TRI_ERROR_FORBIDDEN ==
                      ErrorCode{slice.get(arangodb::StaticStrings::ErrorNum)
                                    .getNumber<int>()}));
     EXPECT_TRUE(execContext
