@@ -21,16 +21,17 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Jan Steemann
 // //////////////////////////////////////////////////////////////////////////////
 
 let jsunity = require("jsunity");
 let arangodb = require("@arangodb");
 let internal = require("internal");
 let db = arangodb.db;
+const inst = require('@arangodb/testutils/instance');
+let IM = global.instanceManager;
 
 const {
-  waitForShardsInSync, getUrlById, eventuallyAssertMetric, getAllMetric
+  waitForShardsInSync, eventuallyAssertMetric
 } = require('@arangodb/test-helper');
 
 const database = "WriteConcernReadOnlyMetricDatabase";
@@ -46,7 +47,7 @@ function WriteConcernReadOnlyMetricSuite() {
     },
 
     tearDown: function () {
-      global.instanceManager.debugClearFailAt();
+      IM.debugClearFailAt();
       db._useDatabase("_system");
       try {
         db._dropDatabase(database);
@@ -56,85 +57,91 @@ function WriteConcernReadOnlyMetricSuite() {
 
     testCheckMetric: function () {
       const c = db._create("c", {numberOfShards: 1, replicationFactor: 2, writeConcern: 2});
-      const [shard, [leader, follower]] = Object.entries(c.shards(true))[0];
+      const [shard, [leaderID, followerID]] = Object.entries(c.shards(true))[0];
+      let leader = IM.getInstanceByID(leaderID);
+      let follower = IM.getInstanceByID(followerID);
 
       // this should work
       c.insert({});
       waitForShardsInSync(c.name());
 
       // query metric, it should be zero
-      eventuallyAssertMetric(getUrlById(leader), metricName, (v) => v === 0, `expected ${metricName} to be 0`);
+      eventuallyAssertMetric(leader, metricName, (v) => v === 0, `expected ${metricName} to be 0`);
 
       // suspend the follower
-      global.instanceManager.debugSetFailAt("LogicalCollection::insert", '', follower);
-      global.instanceManager.debugSetFailAt("SynchronizeShard::disable", '', follower);
+      follower.debugSetFailAt("LogicalCollection::insert");
+      follower.debugSetFailAt("SynchronizeShard::disable");
 
       // trigger a follower drop
       c.insert({});
 
       // one shard does not have enough in sync follower
-      eventuallyAssertMetric(getUrlById(leader), metricName, (v) => v === 1, `expected ${metricName} to be 1`);
+      eventuallyAssertMetric(leader, metricName, (v) => v === 1, `expected ${metricName} to be 1`);
 
-      global.instanceManager.debugClearFailAt();
+      IM.debugClearFailAt();
       waitForShardsInSync(c.name());
 
-      eventuallyAssertMetric(getUrlById(leader), metricName, (v) => v === 0, `expected ${metricName} to be 0 after sync`);
+      eventuallyAssertMetric(leader, metricName, (v) => v === 0, `expected ${metricName} to be 0 after sync`);
 
       // now drop the database. we expect the metric to be gone
       db._useDatabase("_system");
       db._dropDatabase(database);
 
-      eventuallyAssertMetric(getUrlById(leader), metricName, (v) => v === 0, `expected ${metricName} to be 0 after drop`);
+      eventuallyAssertMetric(leader, metricName, (v) => v === 0, `expected ${metricName} to be 0 after drop`);
     },
 
     testMetricAfterCollectionDrop: function () {
       const c = db._create("c", {numberOfShards: 1, replicationFactor: 2, writeConcern: 2});
-      const [shard, [leader, follower]] = Object.entries(c.shards(true))[0];
+      const [shard, [leaderID, followerID]] = Object.entries(c.shards(true))[0];
+      let leader = IM.getInstanceByID(leaderID);
+      let follower = IM.getInstanceByID(followerID);
 
       // this should work
       c.insert({});
       waitForShardsInSync(c.name());
 
       // query metric, it should be zero
-      eventuallyAssertMetric(getUrlById(leader), metricName, (v) => v === 0, `expected ${metricName} to be 0`);
+      eventuallyAssertMetric(leader, metricName, (v) => v === 0, `expected ${metricName} to be 0`);
 
       // suspend the follower
-      global.instanceManager.debugSetFailAt("LogicalCollection::insert", '', follower);
-      global.instanceManager.debugSetFailAt("SynchronizeShard::disable", '', follower);
+      follower.debugSetFailAt("LogicalCollection::insert");
+      follower.debugSetFailAt("SynchronizeShard::disable");
 
       // trigger a follower drop
       c.insert({});
 
       // one shard does not have enough in sync follower
-      eventuallyAssertMetric(getUrlById(leader), metricName, (v) => v === 1, `expected ${metricName} to be 1`);
+      eventuallyAssertMetric(leader, metricName, (v) => v === 1, `expected ${metricName} to be 1`);
 
       // Lets drop the collection and see if the metric changes
       db._drop(c.name());
 
-      eventuallyAssertMetric(getUrlById(leader), metricName, (v) => v === 0, `expected ${metricName} to be 0 after drop`);
+      eventuallyAssertMetric(leader, metricName, (v) => v === 0, `expected ${metricName} to be 0 after drop`);
     },
 
     testCheckMetricChangeWriteConcern: function () {
 
       const c = db._create("c", {numberOfShards: 1, replicationFactor: 2, writeConcern: 2});
-      const [shard, [leader, follower]] = Object.entries(c.shards(true))[0];
+      const [shard, [leaderID, followerID]] = Object.entries(c.shards(true))[0];
+      let leader = IM.getInstanceByID(leaderID);
+      let follower = IM.getInstanceByID(followerID);
 
       // this should work
       c.insert({});
       waitForShardsInSync(c.name());
 
       // query metric, it should be zero
-      eventuallyAssertMetric(getUrlById(leader), metricName, (v) => v === 0, `expected ${metricName} to be 0`);
+      eventuallyAssertMetric(leader, metricName, (v) => v === 0, `expected ${metricName} to be 0`);
 
       // suspend the follower
-      global.instanceManager.debugSetFailAt("LogicalCollection::insert", '', follower);
-      global.instanceManager.debugSetFailAt("SynchronizeShard::disable", '', follower);
+      follower.debugSetFailAt("LogicalCollection::insert");
+      follower.debugSetFailAt("SynchronizeShard::disable");
 
       // trigger a follower drop
       c.insert({});
 
       // one shard does not have enough in sync follower
-      eventuallyAssertMetric(getUrlById(leader), metricName, (v) => v === 1, `expected ${metricName} to be 1`);
+      eventuallyAssertMetric(leader, metricName, (v) => v === 1, `expected ${metricName} to be 1`);
 
       // change write concern
       c.properties({writeConcern: 1});
@@ -158,16 +165,16 @@ function WriteConcernReadOnlyMetricSuite() {
         internal.wait(0.5);
       }
 
-      eventuallyAssertMetric(getUrlById(leader), metricName, (v) => v === 0, `expected ${metricName} to be 0 after write concern change`);
+      eventuallyAssertMetric(leader, metricName, (v) => v === 0, `expected ${metricName} to be 0 after write concern change`);
 
-      global.instanceManager.debugClearFailAt();
+      IM.debugClearFailAt();
       waitForShardsInSync(c.name());
 
       // now drop the database. we expect the metric to be gone
       db._useDatabase("_system");
       db._dropDatabase(database);
 
-      eventuallyAssertMetric(getUrlById(leader), metricName, (v) => v === 0, `expected ${metricName} to be 0 after database drop`);
+      eventuallyAssertMetric(leader, metricName, (v) => v === 0, `expected ${metricName} to be 0 after database drop`);
     },
   };
 }

@@ -18,16 +18,14 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef USE_V8
 #error this file is not supposed to be used in builds with -DUSE_V8=Off
 #endif
 
-#include "Basics/StringUtils.h"
-#include "Basics/conversions.h"
 #include "Logger/LogMacros.h"
+#include "V8/v8-utils.h"
 #include "V8/v8-conv.h"
 #include "V8Server/v8-externals.h"
 #include "V8Server/v8-vocbaseprivate.h"

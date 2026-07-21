@@ -18,12 +18,7 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
-/// @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
-
-#include <queue>
-#include <thread>
 
 #include "gtest/gtest.h"
 
@@ -39,23 +34,18 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/CollectionInfoCurrent.h"
-#include "Futures/Utilities.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Metrics/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "Sharding/ShardDistributionReporter.h"
-#include "SimpleHttpClient/SimpleHttpResult.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/ticks.h"
 #include "Cluster/ClusterFeature.h"
 #include "Metrics/ClusterMetricsFeature.h"
 #include "Statistics/StatisticsFeature.h"
-#include "RestServer/arangod.h"
 #include "RestServer/QueryRegistryFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::cluster;
-using namespace arangodb::httpclient;
 
 static const VPackBuilder testDatabaseBuilder = dbArgsBuilder("testVocbase");
 static const VPackSlice testDatabaseArgs = testDatabaseBuilder.slice();
@@ -131,7 +121,7 @@ class ShardDistributionReporterTest
       public arangodb::tests::LogSuppressor<arangodb::Logger::CLUSTER,
                                             arangodb::LogLevel::FATAL> {
  protected:
-  arangodb::ArangodServer server;
+  arangodb::application_features::ApplicationServer server;
   StorageEngineMock engine;
   std::vector<
       std::pair<arangodb::application_features::ApplicationFeature&, bool>>

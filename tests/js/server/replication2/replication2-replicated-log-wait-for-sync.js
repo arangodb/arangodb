@@ -22,15 +22,14 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Alexandru Petenchea
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require('jsunity');
 const arangodb = require("@arangodb");
 const db = arangodb.db;
-const helper = require('@arangodb/test-helper');
 const lh = require("@arangodb/testutils/replicated-logs-helper");
 const lp = require("@arangodb/testutils/replicated-logs-predicates");
+let IM = global.instanceManager;
 
 const database = "replication2_wait_for_sync_test_db";
 
@@ -46,18 +45,12 @@ const replicatedLogSyncIndexSuiteReplication2 = function () {
     return res;
   };
 
-  const clearAllFailurePoints = () => {
-    for (const server of lh.dbservers) {
-      helper.debugClearFailAt(lh.getServerUrl(server));
-    }
-  };
-
   return {
     setUpAll,
     tearDownAll,
     setUp,
     tearDown: tearDownAnd(() => {
-      clearAllFailurePoints();
+      IM.debugClearFailAt();
     }),
 
     testSyncIndexWaitForSyncTrue: function () {
@@ -127,7 +120,7 @@ const replicatedLogSyncIndexSuiteReplication2 = function () {
 
       // One of the followers no longer updates the syncIndex.
       // Therefore, the lowestIndexToKeep should no longer increase.
-      helper.debugSetFailAt(lh.getServerUrl(followers[0]), "AsyncLogWriteBatcher::syncIndexDisabled");
+      IM.debugSetFailAt("AsyncLogWriteBatcher::syncIndexDisabled", "", lh.getServerUrl(followers[0]));
 
       status = log.status();
       const fixedFollowerSyncIndex = status.participants[followers[0]].response.local.syncIndex;
@@ -172,7 +165,7 @@ const replicatedLogSyncIndexSuiteReplication2 = function () {
         `syncCommitIndex should be ${fixedFollowerSyncIndex} for ${leader}, status: ${JSON.stringify(status)}`);
 
       // Resume syncIndex updates for the affected follower.
-      helper.debugClearFailAt(lh.getServerUrl(followers[0]));
+      IM.debugClearFailAt("", "", lh.getServerUrl(followers[0]));
 
       // Wait for lowestIndexToKeep to be updated, an indication that data has been synced.
       lh.waitFor(() => {

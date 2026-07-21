@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
-/// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "V8ClientConnection.h"
@@ -40,7 +38,6 @@
 #include "Shell/RequestFuzzer.h"
 #endif
 #include "Shell/ShellConsoleFeature.h"
-#include "Shell/ShellFeature.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "Ssl/SslInterface.h"
 #include "Ssl/ssl-helper.h"
@@ -842,6 +839,17 @@ void V8ClientConnection::disconnectHandle(
   }
 }
 
+void V8ClientConnection::flushConnectionCache(
+    v8::Isolate* isolate, v8::FunctionCallbackInfo<v8::Value> const& args,
+    std::string const& handle) {
+  std::lock_guard<std::recursive_mutex> guard(_lock);
+  _connectionCache.clear();
+  _connectionBuilderCache.clear();
+  _connection.reset();
+  _currentConnectionId.erase();
+  TRI_V8_RETURN_TRUE();
+}
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 void V8ClientConnection::reconnectWithNewPassword(std::string const& password) {
   _client.setPassword(password);
@@ -960,7 +968,7 @@ static void ClientConnection_ConstructorCallback(
   v8::Local<v8::External> wrap = v8::Local<v8::External>::Cast(args.Data());
   ClientFeature* client = static_cast<ClientFeature*>(wrap->Value());
 
-  TRI_GET_SERVER_GLOBALS(application_features::ApplicationServer);
+  TRI_GET_GLOBALS();
 
   auto v8connection =
       std::make_unique<V8ClientConnection>(v8g->server(), *client);
@@ -1222,7 +1230,7 @@ static void ClientConnection_connectHandle(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief ClientConnection method "connectHandle"
+/// @brief ClientConnection method "disconnectHandle"
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ClientConnection_disconnectHandle(
@@ -1236,16 +1244,44 @@ static void ClientConnection_disconnectHandle(
 
   if (v8connection == nullptr) {
     TRI_V8_THROW_EXCEPTION_INTERNAL(
-        "connectHandle() must be invoked on an arango connection object "
+        "disconnectHandle() must be invoked on an arango connection object "
         "instance.");
   }
   // check params
   if (args.Length() != 1 || !args[0]->IsString()) {
-    TRI_V8_THROW_EXCEPTION_USAGE("connectHandle(<handleString>)");
+    TRI_V8_THROW_EXCEPTION_USAGE("disconnectHandle(<handleString>)");
   }
 
   auto handle = TRI_ObjectToString(isolate, args[0]);
   v8connection->disconnectHandle(isolate, args, handle);
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ClientConnection method "flushConnectionCache"
+////////////////////////////////////////////////////////////////////////////////
+
+static void ClientConnection_flushConnectionCache(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
+
+  V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
+      args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
+
+  if (v8connection == nullptr) {
+    TRI_V8_THROW_EXCEPTION_INTERNAL(
+        "flushConnectionCache() must be invoked on an arango connection object "
+        "instance.");
+  }
+  // check params
+  if (args.Length() != 0) {
+    TRI_V8_THROW_EXCEPTION_USAGE("flushConnectionCache()");
+  }
+
+  auto handle = TRI_ObjectToString(isolate, args[0]);
+  v8connection->flushConnectionCache(isolate, args, handle);
   TRI_V8_TRY_CATCH_END
 }
 
@@ -1568,146 +1604,6 @@ static void ClientConnection_httpPostRaw(
   ClientConnection_httpPostAny(args, true);
 }
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief ClientConnection method "startTelemetrics"
-////////////////////////////////////////////////////////////////////////////////
-
-static void ClientConnection_startTelemetrics(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-  if (isExecutionDeadlineReached(isolate)) {
-    return;
-  }
-
-  // get the connection
-  V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
-      args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
-
-  if (v8connection == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL(
-        "startTelemetrics() must be invoked on an arango connection object "
-        "instance.");
-  }
-
-  auto& shellFeature = v8connection->server().getFeature<ShellFeature>();
-
-  shellFeature.startTelemetrics();
-
-  TRI_V8_RETURN_TRUE();
-
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief ClientConnection method "restartTelemetrics"
-////////////////////////////////////////////////////////////////////////////////
-
-static void ClientConnection_restartTelemetrics(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-  if (isExecutionDeadlineReached(isolate)) {
-    return;
-  }
-
-  // get the connection
-  V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
-      args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
-
-  if (v8connection == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL(
-        "restartTelemetrics() must be invoked on an arango connection object "
-        "instance.");
-  }
-
-  auto& shellFeature = v8connection->server().getFeature<ShellFeature>();
-
-  shellFeature.restartTelemetrics();
-
-  TRI_V8_RETURN_TRUE();
-
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief ClientConnection method "sendTelemetricsToEndpointTestRedirect"
-////////////////////////////////////////////////////////////////////////////////
-
-static void ClientConnection_sendTelemetricsToEndpoint(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-  if (isExecutionDeadlineReached(isolate)) {
-    return;
-  }
-
-  // get the connection
-  V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
-      args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
-  if (v8connection == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL(
-        "sendTelemetricsToEndpoint() must be invoked on an arango "
-        "connection object "
-        "instance.");
-  }
-
-  if (args.Length() != 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("sendTelemetricsToEndpoint(<url>)");
-  }
-
-  auto& shellFeature = v8connection->server().getFeature<ShellFeature>();
-
-  std::string url = TRI_ObjectToString(isolate, args[0]);
-  auto builder = shellFeature.sendTelemetricsToEndpoint(url);
-
-  if (builder.isEmpty()) {
-    TRI_V8_RETURN_UNDEFINED();
-  }
-
-  TRI_V8_RETURN(TRI_VPackToV8(isolate, builder.slice()));
-
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief ClientConnection method "getTelemetricsInfo"
-////////////////////////////////////////////////////////////////////////////////
-
-static void ClientConnection_getTelemetricsInfo(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-  if (isExecutionDeadlineReached(isolate)) {
-    return;
-  }
-
-  // get the connection
-  V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
-      args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
-
-  if (v8connection == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL(
-        "getTelemetricsInfo() must be invoked on an arango connection object "
-        "instance.");
-  }
-
-  auto& shellFeature = v8connection->server().getFeature<ShellFeature>();
-
-  VPackBuilder builder;
-  shellFeature.getTelemetricsInfo(builder);
-  if (builder.isEmpty()) {
-    TRI_V8_RETURN_UNDEFINED();
-  }
-
-  TRI_V8_RETURN(TRI_VPackToV8(isolate, builder.slice()));
-
-  TRI_V8_TRY_CATCH_END
-}
-#endif
-
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ClientConnection method "fuzzRequests"
@@ -1859,38 +1755,6 @@ static void ClientConnection_httpFuzzRequests(
   builder.close();
 
   TRI_V8_RETURN(TRI_VPackToV8(isolate, builder.slice()));
-
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief ClientConnection method
-/// "disableAutomaticallySendTelemetricsToEndpoint"
-////////////////////////////////////////////////////////////////////////////////
-static void ClientConnection_disableAutomaticallySendTelemetricsToEndpoint(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-  if (isExecutionDeadlineReached(isolate)) {
-    return;
-  }
-
-  // get the connection
-  V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
-      args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
-
-  if (v8connection == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL(
-        "disableAutomaticallySendTelemetricsToEndpoint() must be invoked on an "
-        "arango connection object "
-        "instance.");
-  }
-
-  auto& shellFeature = v8connection->server().getFeature<ShellFeature>();
-
-  shellFeature.disableAutomaticallySendTelemetricsToEndpoint();
-
-  TRI_V8_RETURN_TRUE();
 
   TRI_V8_TRY_CATCH_END
 }
@@ -3576,28 +3440,6 @@ void V8ClientConnection::initServer(v8::Isolate* isolate,
   connection_proto->Set(
       isolate, "fuzzRequests",
       v8::FunctionTemplate::New(isolate, ClientConnection_httpFuzzRequests));
-  connection_proto->Set(
-      isolate, "disableAutomaticallySendTelemetricsToEndpoint",
-      v8::FunctionTemplate::New(
-          isolate,
-          ClientConnection_disableAutomaticallySendTelemetricsToEndpoint));
-#endif
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  connection_proto->Set(
-      isolate, "getTelemetricsInfo",
-      v8::FunctionTemplate::New(isolate, ClientConnection_getTelemetricsInfo));
-
-  connection_proto->Set(
-      isolate, "startTelemetrics",
-      v8::FunctionTemplate::New(isolate, ClientConnection_startTelemetrics));
-  connection_proto->Set(
-      isolate, "restartTelemetrics",
-      v8::FunctionTemplate::New(isolate, ClientConnection_restartTelemetrics));
-  connection_proto->Set(
-      isolate, "sendTelemetricsToEndpoint",
-      v8::FunctionTemplate::New(isolate,
-                                ClientConnection_sendTelemetricsToEndpoint));
 #endif
 
   connection_proto->Set(isolate, "getEndpoint",
@@ -3640,6 +3482,11 @@ void V8ClientConnection::initServer(v8::Isolate* isolate,
   connection_proto->Set(
       isolate, "disconnectHandle",
       v8::FunctionTemplate::New(isolate, ClientConnection_disconnectHandle,
+                                v8client));
+
+  connection_proto->Set(
+      isolate, "flushConnectionCache",
+      v8::FunctionTemplate::New(isolate, ClientConnection_flushConnectionCache,
                                 v8client));
 
   connection_proto->Set(isolate, "connectedUser",

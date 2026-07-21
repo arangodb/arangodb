@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -26,21 +25,22 @@
 #include "StorageEngine/TransactionState.h"
 #include "VocBase/Identifiers/TransactionId.h"
 
-struct TRI_vocbase_t;
-
 namespace arangodb {
+struct Database;
 class Result;
 
 namespace transaction {
 struct Options;
-}
+class Manager;
+}  // namespace transaction
 
 /// @brief transaction type
 class ClusterTransactionState final : public TransactionState {
  public:
-  ClusterTransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
+  ClusterTransactionState(Database& database, TransactionId tid,
                           transaction::Options const& options,
-                          transaction::OperationOrigin operationOrigin);
+                          transaction::OperationOrigin operationOrigin,
+                          transaction::Manager& manager);
   ~ClusterTransactionState();
 
   [[nodiscard]] bool ensureSnapshot() override { return false; }
@@ -85,6 +85,8 @@ class ClusterTransactionState final : public TransactionState {
       DataSourceId cid, AccessMode::Type accessType) override;
 
  private:
+  /// @brief transaction manager this transaction registers with when it begins
+  transaction::Manager& _manager;
   uint64_t _numIntermediateCommits;
 };
 

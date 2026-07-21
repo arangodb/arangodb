@@ -21,32 +21,24 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Lars Maier
 // //////////////////////////////////////////////////////////////////////////////
 
 let jsunity = require('jsunity');
 const arangodb = require('@arangodb');
 const db = arangodb.db;
-const {getDBServers} = require('@arangodb/test-helper');
 const internal = require('internal');
 const database = "cluster_rebalance_db";
 
 const wait = require("internal").wait;
+let { instanceRole } = require('@arangodb/testutils/instance');
+const IM = global.instanceManager;
 
 function resignServer(server) {
   let res = arango.POST_RAW("/_admin/cluster/resignLeadership", {server});
   assertEqual(202, res.code);
   const id = res.parsedBody.id;
 
-  let count = 10;
-  while (--count >= 0) {
-    require("internal").wait(5.0, false);
-    res = arango.GET_RAW("/_admin/cluster/queryAgencyJob?id=" + id);
-    if (res.code === 200 && res.parsedBody.status === "Finished") {
-      return;
-    }
-  }
-  assertTrue(false, `We failed to resign a leader in 50s. We cannot reliably test rebalancing of shards now.`);
+  IM.waitForAgencyJob(id, 50*10, `resign leadership of ${server} We cannot reliably test rebalancing of shards now.`);
 }
 
 function getRebalancePlan(moveLeaders, moveFollowers, leaderChanges, excludeSystemCollections) {
@@ -81,7 +73,7 @@ function clusterRebalanceSuite() {
       }
 
       // resign one server
-      resignServer(getDBServers()[0].id);
+      resignServer(IM.getInstancesRole(instanceRole.dbserver)[0].id);
     },
 
     tearDownAll: function () {
@@ -211,7 +203,7 @@ function clusterRebalanceOtherOptionsSuite() {
 
 
     testCalcRebalanceStopServer: function () {
-      const dbServers = global.instanceManager.arangods.filter(arangod => arangod.instanceRole === "dbserver");
+      const dbServers = IM.getInstancesRole(instanceRole.dbserver);
       assertNotEqual(dbServers.length, 0);
       for (let i = 0; i < dbServers.length; ++i) {
         const dbServer = dbServers[i];
@@ -393,27 +385,7 @@ function clusterRebalanceWithMovesToMakeSuite() {
             if (leader === toServer) {
               return;
             }
-            let moveShardJob = {
-              database: database,
-              collection: cn,
-              shard: shardName,
-              fromServer: leader,
-              toServer: toServer,
-              isLeader: true,
-              remainsFollower: false
-            };
-            const result = arango.POST("/_admin/cluster/moveShard", moveShardJob);
-            assertEqual(result.code, 202);
-            while (true) {
-              if (internal.time() >= end) {
-                assertFalse(true, "test timed out");
-              }
-              let res2 = arango.GET(`/_admin/cluster/queryAgencyJob?id=${result.id}`);
-              if (res2.status === "Finished") {
-                break;
-              }
-              internal.wait(0.5);
-            }
+            IM.moveShard(database, cn, shardName, leader, toServer, 300, true, false);
           });
           const plan2 = arango.GET("/_admin/cluster/shardDistribution").results[cn].Plan;
           Object.entries(plan2).forEach((shardInfo) => {

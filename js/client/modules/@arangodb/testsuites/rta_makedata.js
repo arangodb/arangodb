@@ -22,7 +22,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Wilfried Goesgens
 // //////////////////////////////////////////////////////////////////////////////
 
 const functionsDocumentation = {
@@ -251,8 +250,7 @@ function makeDataWrapper (options) {
       res[whichRTA] = rc;
       if (!rc.status) {
         this.continueTesting = false;
-        let rx = new RegExp(/\\n/g);
-        res[whichRTA].message += file + ':\n' + fs.read(logFile).replace(rx, '\n');
+        res[whichRTA].message += file + ':\n' + ct.run.readRtaErrorLog(logFile);
         res.status = false;
         res.failed += 1;
       } else {

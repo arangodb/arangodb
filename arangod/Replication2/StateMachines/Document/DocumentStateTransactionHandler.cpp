@@ -18,13 +18,10 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Alexandru Petenchea
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Replication2/StateMachines/Document/DocumentStateTransactionHandler.h"
 
-#include "Basics/application-exit.h"
-#include "Basics/voc-errors.h"
 #include "Logger/LogContextKeys.h"
 #include "Replication2/StateMachines/Document/DocumentStateHandlersFactory.h"
 #include "Replication2/StateMachines/Document/DocumentStateShardHandler.h"
@@ -34,7 +31,7 @@
 namespace arangodb::replication2::replicated_state::document {
 
 DocumentStateTransactionHandler::DocumentStateTransactionHandler(
-    GlobalLogIdentifier gid, TRI_vocbase_t* vocbase,
+    GlobalLogIdentifier gid, Database* vocbase,
     std::shared_ptr<IDocumentStateHandlersFactory> factory,
     std::shared_ptr<IDocumentStateShardHandler> shardHandler)
     : _gid(std::move(gid)),

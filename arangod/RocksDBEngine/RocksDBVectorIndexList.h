@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jure Bajic
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -31,6 +30,7 @@
 #include "RocksDBIndex.h"
 #include "RocksDBValue.h"
 #include "RocksDBEngine/RocksDBIndex.h"
+#include "RocksDBEngine/RocksDBKey.h"
 
 #include <faiss/IndexIVFFlat.h>
 #include <faiss/MetricType.h>

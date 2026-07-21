@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -30,8 +29,6 @@
 #include "V8/v8-globals.h"
 
 #include <v8.h>
-
-struct TRI_vocbase_t;
 
 void TRI_InitV8Views(      // init views
     TRI_v8_global_t& v8g,  // V8 globals

@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ExecutionPlan.h"
@@ -76,6 +75,7 @@
 #include "RestServer/QueryRegistryFeature.h"
 #include "Utils/OperationOptions.h"
 #include "VocBase/AccessMode.h"
+#include "VocBase/vocbase.h"
 
 #include <absl/strings/str_cat.h>
 #include <absl/strings/str_join.h>

@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -29,8 +28,12 @@
 
 #include <v8.h>
 
-struct TRI_vocbase_t;
 struct TRI_v8_global_t;
 
-void TRI_InitV8Users(v8::Handle<v8::Context> context, TRI_vocbase_t* vocbase,
-                     TRI_v8_global_t* v8g, v8::Isolate* isolate);
+namespace arangodb {
+struct Database;
+}
+
+void TRI_InitV8Users(v8::Handle<v8::Context> context,
+                     arangodb::Database* vocbase, TRI_v8_global_t* v8g,
+                     v8::Isolate* isolate);

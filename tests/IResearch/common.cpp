@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Agency/AgencyComm.h"

@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Wilfried Goesgens
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -44,7 +43,6 @@ class ProcessEnvironmentFeature final
   ProcessEnvironmentFeature(application_features::ApplicationServer& server,
                             std::string const& appname);
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
 
  private:
