@@ -22,8 +22,8 @@
 #pragma once
 
 #include "Activities/ActivityHandle.h"
-#include "Activities/Activity.h"
 #include "Activities/ActivityId.h"
+#include "Activities/CurrentlyExecuting.h"
 #include "Activities/IRegistryMetrics.h"
 #include "Containers/Concurrent/metrics.h"
 
@@ -38,24 +38,6 @@
 #include <memory>
 
 namespace arangodb::activities {
-
-/**
-   Structure for the currently executing activity
-
-   It adds the current thread to the activity-thread-list at construction and
-   removes the thread on destruction.
- */
-struct CurrentlyExecuting {
-  ActivityHandle activity;
-  std::list<containers::SharedPtr<basics::ThreadInfo>>::iterator _position;
-  CurrentlyExecuting(ActivityHandle handle);
-  ~CurrentlyExecuting();
-  CurrentlyExecuting(CurrentlyExecuting&& other) noexcept;
-  auto operator=(CurrentlyExecuting&& other) noexcept -> CurrentlyExecuting&;
-  CurrentlyExecuting(CurrentlyExecuting const& other) noexcept = delete;
-  auto operator=(CurrentlyExecuting const& other) noexcept
-      -> CurrentlyExecuting& = delete;
-};
 
 struct Registry {
   explicit Registry() = default;

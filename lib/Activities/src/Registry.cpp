@@ -29,31 +29,6 @@
 
 namespace arangodb::activities {
 
-CurrentlyExecuting::CurrentlyExecuting(ActivityHandle handle)
-    : activity{std::move(handle)} {
-  if (activity != nullptr) {
-    _position = activity->addCurrentThread();
-  }
-}
-
-CurrentlyExecuting::~CurrentlyExecuting() {
-  if (activity != nullptr) {
-    activity->removeThread(_position);
-  }
-};
-
-CurrentlyExecuting::CurrentlyExecuting(CurrentlyExecuting&& other) noexcept
-    : activity{std::move(other.activity)}, _position{other._position} {
-  other.activity = nullptr;
-}
-
-auto CurrentlyExecuting::operator=(CurrentlyExecuting&& other) noexcept
-    -> CurrentlyExecuting& {
-  std::swap(activity, other.activity);
-  std::swap(_position, other._position);
-  return *this;
-}
-
 auto Registry::increment_total_nodes() -> void {
   if (_metrics != nullptr) {
     _metrics->increment_total_nodes();

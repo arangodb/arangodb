@@ -31,9 +31,6 @@
 #include "Inspection/Transformers.h"
 #include "Inspection/VPackSaveInspector.h"
 
-#include "Basics/Guarded.h"
-#include "thread.h"
-
 namespace arangodb::activities {
 
 template<typename F, typename Data>
