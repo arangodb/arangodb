@@ -245,25 +245,17 @@ void ArangodServer::addFeaturesWithOptionProvider() {
 
   addFeature<FortuneFeature>(getOptions<fortune::FortuneOptionsProvider>());
 
-  // Add ServerFeature
-  auto serverOptions = getOptions<ServerOptionsProvider>();
-  addFeature<ServerFeature>(_ret, std::move(serverOptions));
+  addFeature<ServerFeature>(_ret, getOptions<ServerOptionsProvider>());
 
-  // Add CheckVersionFeature
-  auto checkVersionOptions =
-      getOptions<check_version::CheckVersionOptionsProvider>();
-  addFeature<CheckVersionFeature>(_ret, kNonServerFeatures,
-                                  std::move(checkVersionOptions));
+  addFeature<CheckVersionFeature>(
+      _ret, kNonServerFeatures,
+      getOptions<check_version::CheckVersionOptionsProvider>());
 
-  // Add InitDatabaseFeature
-  auto initDatabaseOptions = getOptions<InitDatabaseOptionsProvider>();
   addFeature<InitDatabaseFeature>(kNonServerFeatures,
-                                  std::move(initDatabaseOptions));
+                                  getOptions<InitDatabaseOptionsProvider>());
 
-  // Add UpgradeFeature
-  auto upgradeOptions = getOptions<UpgradeOptionsProvider>();
   addFeature<UpgradeFeature>(_ret, kNonServerFeatures,
-                             std::move(upgradeOptions));
+                             getOptions<UpgradeOptionsProvider>());
 
   addFeature<iresearch::IResearchAnalyzerFeature>(
       iresearch::IResearchAnalyzerFeature::Dependencies{
