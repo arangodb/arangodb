@@ -36,9 +36,12 @@
 #include "gtest/gtest.h"
 
 #include <functional>
+#include <string>
 #include <string_view>
+#include <vector>
 
 #include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 
 using namespace arangodb;
@@ -470,6 +473,56 @@ TEST_F(AstNodeTest, constantObjectWithSpliceCanMaterializeToVPack) {
   EXPECT_EQ(1, slice.get("a").getInt());
   EXPECT_EQ(2, slice.get("b").getInt());
   EXPECT_EQ(3, slice.get("c").getInt());
+}
+
+// Regression: serializing a constant object literal must preserve the original
+// member (insertion) order. Iterating a hash map to produce the output would
+// scramble the order non-deterministically.
+TEST_F(AstNodeTest, toVelocyPackValuePreservesObjectMemberOrder) {
+  // keys are intentionally not in alphabetical order
+  AstNode const* objectNode =
+      parseReturnExpression(_server, "RETURN { b: 1, a: 2, d: 3, c: 4 }");
+  ASSERT_NE(nullptr, objectNode);
+  ASSERT_EQ(NODE_TYPE_OBJECT, objectNode->type);
+  EXPECT_TRUE(objectNode->isConstant());
+
+  VPackBuilder builder;
+  objectNode->toVelocyPackValue(builder);
+  VPackSlice slice = builder.slice();
+  ASSERT_TRUE(slice.isObject());
+
+  std::vector<std::string> keys;
+  std::vector<int64_t> values;
+  for (auto it : VPackObjectIterator(slice, /*useSequentialIteration*/ true)) {
+    keys.emplace_back(it.key.copyString());
+    values.emplace_back(it.value.getInt());
+  }
+  EXPECT_EQ((std::vector<std::string>{"b", "a", "d", "c"}), keys);
+  EXPECT_EQ((std::vector<int64_t>{1, 2, 3, 4}), values);
+}
+
+// Regression: duplicate constant keys must fold with last-value-wins, while the
+// surviving entry keeps the position of the key's first occurrence.
+TEST_F(AstNodeTest, toVelocyPackValueDuplicateKeysLastWinsPreservesOrder) {
+  AstNode const* objectNode =
+      parseReturnExpression(_server, "RETURN { a: 1, b: 2, a: 3 }");
+  ASSERT_NE(nullptr, objectNode);
+  ASSERT_EQ(NODE_TYPE_OBJECT, objectNode->type);
+  EXPECT_TRUE(objectNode->isConstant());
+
+  VPackBuilder builder;
+  objectNode->toVelocyPackValue(builder);
+  VPackSlice slice = builder.slice();
+  ASSERT_TRUE(slice.isObject());
+
+  std::vector<std::string> keys;
+  std::vector<int64_t> values;
+  for (auto it : VPackObjectIterator(slice, /*useSequentialIteration*/ true)) {
+    keys.emplace_back(it.key.copyString());
+    values.emplace_back(it.value.getInt());
+  }
+  EXPECT_EQ((std::vector<std::string>{"a", "b"}), keys);
+  EXPECT_EQ((std::vector<int64_t>{3, 2}), values);
 }
 
 TEST_F(AstNodeTest, objectWithInlineNullSpliceIsNotConstant) {

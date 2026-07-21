@@ -1405,20 +1405,34 @@ void AstNode::toVelocyPackValue(VPackBuilder& builder) const {
     }
 
     if (checkUniqueness) {
-      containers::FlatHashMap<std::string_view, AstNode const*> keys;
-      keys.reserve(n);
+      // Deduplicate keys while preserving the original member order. For
+      // duplicate keys the last occurrence wins (matching the runtime object
+      // construction in Expression::executeSimpleExpressionObject), but the
+      // surviving entry keeps the position of the key's first occurrence.
+      // NOTE: we must not iterate a hash map here to produce the output, as
+      // hash map iteration order does not match insertion order and is not
+      // stable across map instances, which would change the observable
+      // attribute order of the resulting object.
+      containers::FlatHashMap<std::string_view, size_t> keyToIndex;
+      std::vector<AstNode const*> elements;
+      keyToIndex.reserve(n);
+      elements.reserve(n);
 
       for (size_t i = 0; i < n; ++i) {
         auto member = getMemberUnchecked(i);
         if (member != nullptr && member->type == NODE_TYPE_OBJECT_ELEMENT) {
-          keys[member->getStringView()] = member;
+          auto [it, inserted] =
+              keyToIndex.emplace(member->getStringView(), elements.size());
+          if (inserted) {
+            elements.emplace_back(member);
+          } else {
+            elements[it->second] = member;
+          }
         }
       }
 
-      for (auto const& it : keys) {
-        AstNode const* member = it.second;
-
-        builder.add(VPackValue(it.first));
+      for (AstNode const* member : elements) {
+        builder.add(VPackValue(member->getStringView()));
         member->getMember(0)->toVelocyPackValue(builder);
       }
 

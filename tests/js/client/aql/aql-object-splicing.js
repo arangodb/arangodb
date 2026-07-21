@@ -323,6 +323,66 @@ function objectSplicingSuite () {
     testFunctionObjectSpliceNotFlattened: function () {
       let query = `FOR i IN 1..10 RETURN { ...NOOPT({ a: i }), b: 2 }`;
       assertNotFoldedObjectSplice(query);
+    },
+
+    // Regression: constant folding of an object literal must preserve the
+    // original member order. TO_LIST/TO_ARRAY iterates object values in stored
+    // (insertion) order, so a scrambled fold would change the observable order.
+    testConstantObjectFoldingPreservesAttributeOrder: function () {
+      let query = `RETURN TO_LIST({ "a": null, "b": -63, "c": [ 1, 2 ], "d": { "a": "b" } })`;
+      assertEqual([[null, -63, [1, 2], { a: "b" }]],
+        db._query(query).toArray());
+    },
+
+    testConstantObjectFoldingPreservesUnsortedAttributeOrder: function () {
+      // keys are intentionally not in alphabetical order
+      let query = `RETURN TO_LIST({ b: 1, a: 2, d: 3, c: 4 })`;
+      assertEqual([[1, 2, 3, 4]], db._query(query).toArray());
+    },
+
+    // Regression: duplicate constant keys must fold with last-value-wins while
+    // keeping the position of the key's first occurrence.
+    testDuplicateKeyFoldingPreservesOrderLastWins: function () {
+      let query = `RETURN TO_LIST({ a: 1, b: 2, a: 3 })`;
+      assertEqual([[3, 2]], db._query(query).toArray());
+    },
+
+    testDuplicateKeyFoldingLastWinsValue: function () {
+      let query = `RETURN { a: 1, b: 2, a: 3 }.a`;
+      assertEqual([3], db._query(query).toArray());
+    },
+
+    // Regression: constant object splice folding must preserve attribute order.
+    testConstantObjectSpliceFoldingPreservesAttributeOrder: function () {
+      let query = `LET o = { m: 1, n: 2 } RETURN TO_LIST({ z: 0, ...o, w: 3 })`;
+      assertEqual([[0, 1, 2, 3]], db._query(query).toArray());
+    },
+
+    // Regression: the folded (optimized) result must be identical to the
+    // non-folded runtime result. This mirrors the optimizer rule test that
+    // compares the query with the "remove-unnecessary-calculations" rule
+    // disabled vs enabled, but is order sensitive here on purpose.
+    testConstantFoldingMatchesRuntimeAcrossOptimizer: function () {
+      const paramDisabled = { optimizer: { rules: [
+        "+all", "-remove-unnecessary-calculations",
+        "-remove-unnecessary-calculations-2" ] } };
+      const paramEnabled = { optimizer: { rules: [
+        "-all", "+remove-unnecessary-calculations",
+        "+remove-unnecessary-calculations-2" ] } };
+
+      let queries = [
+        `LET a = { "a": null, "b": -63, "c": [ 1, 2 ], "d": { "a": "b" } } RETURN TO_LIST(a)`,
+        `LET a = { b: 1, a: 2, d: 3, c: 4 } RETURN TO_LIST(a)`,
+        `LET a = { a: 1, b: 2, a: 3 } RETURN TO_LIST(a)`,
+        `LET o = { m: 1, n: 2 } LET a = { z: 0, ...o, w: 3 } RETURN TO_LIST(a)`,
+        `RETURN JSON_STRINGIFY({ b: 1, a: 2, d: 3, c: 4 })`,
+      ];
+
+      queries.forEach(function (query) {
+        let resultDisabled = db._query(query, {}, paramDisabled).toArray();
+        let resultEnabled = db._query(query, {}, paramEnabled).toArray();
+        assertEqual(resultDisabled, resultEnabled, query);
+      });
     }
   };
 }
