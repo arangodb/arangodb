@@ -66,9 +66,6 @@ class ReplicationFeature final
   /// @brief return a pointer to the global replication applier
   GlobalReplicationApplier* globalReplicationApplier() const;
 
-  /// @brief disable replication appliers
-  void disableReplicationApplier();
-
   /// @brief stop the replication applier for a single database
   void stopApplier(Database* vocbase);
 

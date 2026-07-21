@@ -63,7 +63,6 @@ class ReplicationApplierConfiguration {
   uint64_t _maxPacketSize;
   uint32_t _sslProtocol;
   bool _skipCreateDrop;  /// shards/indexes/views are created by schmutz++
-  bool _autoStart;       /// start applier after server start
   bool _adaptivePolling;
   bool _autoResync;  /// resync completely if we miss updates
   bool _includeSystem;
@@ -93,11 +92,6 @@ class ReplicationApplierConfiguration {
 
   /// @brief validate the configuration. will throw if the config is invalid
   void validate() const;
-
-  /// @brief get a VelocyPack representation
-  /// expects builder to be in an open Object state
-  void toVelocyPack(arangodb::velocypack::Builder&, bool includePassword,
-                    bool includeJwt) const;
 
   void setClientInfo(std::string&& clientInfo) {
     _clientInfoString = std::move(clientInfo);

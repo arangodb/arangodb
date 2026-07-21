@@ -205,10 +205,6 @@ GlobalReplicationApplier* ReplicationFeature::globalReplicationApplier() const {
   return _globalReplicationApplier.get();
 }
 
-void ReplicationFeature::disableReplicationApplier() {
-  _options.replicationApplierAutoStart = false;
-}
-
 // stop the replication applier for a single database
 void ReplicationFeature::stopApplier(TRI_vocbase_t* vocbase) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());

@@ -40,7 +40,7 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "Replication/ReplicationFeature.h"
+#include "RestServer/ServerOptionsProvider.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Statistics/StatisticsFeature.h"
@@ -110,16 +110,6 @@ void ServerFeature::prepare() {
         .disableFeatures<HttpEndpointProvider, GeneralServerFeature,
                          SslServerFeature, StatisticsFeature>();
     disableDeamonAndSupervisor();
-
-    if (!server().options()->processingResult().touched(
-            "replication.auto-start")) {
-      // turn off replication applier when we do not have a rest server
-      // but only if the config option is not explicitly set (the recovery
-      // test want the applier to be enabled for testing it)
-      ReplicationFeature& replicationFeature =
-          server().getFeature<ReplicationFeature>();
-      replicationFeature.disableReplicationApplier();
-    }
   }
 
 #ifdef USE_V8
