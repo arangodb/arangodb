@@ -63,7 +63,6 @@ void ArangoBenchServer::addFeatures() {
   addFeature<GreetingsFeaturePhase>(std::true_type{});
   addFeature<HttpEndpointProvider, ClientFeature>(
       false, std::numeric_limits<size_t>::max());
-  addFeature<VersionFeature>();
   addFeature<LoggerFeature>(false);
   addFeature<ConfigFeature>(_binaryName);
   addFeature<OptionsCheckFeature>();
@@ -76,6 +75,7 @@ void ArangoBenchServer::addFeatures() {
 }
 
 void ArangoBenchServer::addFeaturesWithOptionProvider() {
+  addFeature<VersionFeature>(getOptions<VersionOptionsProvider>());
   addFeature<FileSystemFeature>(getOptions<FileSystemOptionsProvider>());
   addFeature<RandomFeature>(getOptions<RandomOptionsProvider>());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE

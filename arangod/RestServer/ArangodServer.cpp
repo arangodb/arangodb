@@ -84,7 +84,6 @@ void ArangodServer::addFeatures() {
       LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(*this),
       LazyApplicationFeatureReference<ClusterFeature>(*this));
   addFeature<metrics::ClusterMetricsFeature>();
-  addFeature<VersionFeature>();
   addFeature<ActionFeature>();
   addFeature<AgencyFeature>();
   addFeature<ApiRecordingFeature>(_dataSourceRegistry, metrics);
@@ -202,6 +201,7 @@ void ArangodServer::addFeaturesWithOptionProvider() {
   auto& networkFeature = getFeature<NetworkFeature>();
   auto& aqlFunctionFeature = getFeature<aql::AqlFunctionFeature>();
 
+  addFeature<VersionFeature>(getOptions<VersionOptionsProvider>());
   addFeature<RandomFeature>(getOptions<RandomOptionsProvider>());
   addFeature<NonceFeature>(getOptions<NonceOptionsProvider>());
   addFeature<MaxMapCountFeature>(getOptions<MaxMapCountOptionsProvider>());

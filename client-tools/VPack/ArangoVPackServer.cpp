@@ -55,7 +55,6 @@ ArangoVPackServer::ArangoVPackServer(
 void ArangoVPackServer::addFeatures() {
   addFeature<BasicFeaturePhaseClient>();
   addFeature<GreetingsFeaturePhase>(std::true_type{});
-  addFeature<VersionFeature>();
   addFeature<LoggerFeature>(false);
   addFeature<ConfigFeature>(_binaryName, "none");
   addFeature<OptionsCheckFeature>();
@@ -66,6 +65,7 @@ void ArangoVPackServer::addFeatures() {
 }
 
 void ArangoVPackServer::addFeaturesWithOptionProvider() {
+  addFeature<VersionFeature>(getOptions<VersionOptionsProvider>());
   addFeature<FileSystemFeature>(getOptions<FileSystemOptionsProvider>());
   addFeature<RandomFeature>(getOptions<RandomOptionsProvider>());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
