@@ -1092,9 +1092,10 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
         while (queryAgencyJob(id).status === "Pending") { // wait for job to be killed
           wait(isCov ? 1 : 0.1);
         }
+
         var job = queryAgencyJob(id);
         assertEqual(job.status, "Failed");
-        assertEqual(job.abort);
+        assertTrue(job.abort);
         assertTrue(waitForSupervision());
         checkCollectionContents(otherNumDocuments);
       }
@@ -1137,7 +1138,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
         }
         var job = queryAgencyJob(id);
         assertEqual(job.status, "Failed");
-        assertEqual(job.abort);
+        assertTrue(job.abort);
         assertTrue(waitForSupervision());
         checkCollectionContents(otherNumDocuments);
       }
@@ -1209,7 +1210,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
         }
         var job = queryAgencyJob(id);
         assertEqual(job.status, "Failed");
-        assertEqual(job.abort);
+        assertTrue(job.abort);
         assertTrue(waitForSupervision());
         checkCollectionContents(otherNumDocuments);
       }
