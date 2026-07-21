@@ -32,7 +32,6 @@ const jsunity = require('jsunity');
 const errors = require('@arangodb').errors;
 const internal = require('internal');
 const isCluster = internal.isCluster();
-const { getEndpointsByType } = require('@arangodb/test-helper');
 let IM = global.instanceManager;
 let { instanceRole } = require('@arangodb/testutils/instance');
 

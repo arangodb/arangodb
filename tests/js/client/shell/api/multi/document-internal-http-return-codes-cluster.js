@@ -28,7 +28,6 @@ const {assertTrue, assertEqual} = jsunity.jsUnity.assertions;
 const reconnectRetry = require('@arangodb/replication-common').reconnectRetry;
 const db = require('@arangodb').db;
 const arango = require('@arangodb').arango;
-let { getEndpointById } = require('@arangodb/test-helper');
 let IM = global.instanceManager;
 
 function leaderTestSuite () {
@@ -47,8 +46,8 @@ function leaderTestSuite () {
       assertEqual(Object.entries(shards).length, 1);
       for (const [shardId, servers] of Object.entries(shards)) {
         // Pick the leader of the first shard, and connect to it
-        let leader = getEndpointById(servers[0]);
-        reconnectRetry(leader, "_system", "root", "");
+        let leader = IM.getInstanceByID(servers[0]);
+        leader.connect();
 
         // Memorize the shardName for network connection
         shardName = shardId;
@@ -121,8 +120,8 @@ function followerTestSuite () {
       assertEqual(Object.entries(shards).length, 1);
       for (const [shardId, servers] of Object.entries(shards)) {
         // Pick the leader of the first shard, and connect to it
-        let follower = getEndpointById(servers[1]);
-        reconnectRetry(follower, "_system", "root", "");
+        let follower = IM.getInstanceByID(servers[1]);
+        follower.connect();
 
         // Memorize the shardName for network connection
         shardName = shardId;

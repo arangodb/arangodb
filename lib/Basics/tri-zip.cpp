@@ -369,7 +369,8 @@ ErrorCode TRI_ZipFile(
     }
 
     if (!isAllowedAccess(fullfile)) {
-      return TRI_ERROR_FORBIDDEN;
+      res = TRI_ERROR_FORBIDDEN;
+      break;
     }
 
     zip_fileinfo zi;
@@ -511,6 +512,7 @@ ErrorCode TRI_UnzipFile(
   }
 
   if (!isAllowedAccess(filename)) {
+    TRI_Free(buffer);
     return TRI_ERROR_FORBIDDEN;
   }
 

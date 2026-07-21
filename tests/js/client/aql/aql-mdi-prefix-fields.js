@@ -23,9 +23,7 @@
 'use strict';
 
 const jsunity = require("jsunity");
-const arangodb = require("@arangodb");
-const db = arangodb.db;
-const aql = arangodb.aql;
+const { db, aql } = require("@arangodb");
 const {assertTrue, assertFalse, assertEqual, assertNotEqual} = jsunity.jsUnity.assertions;
 const _ = require("lodash");
 const normalize = require("@arangodb/aql-helper").normalizeProjections;
