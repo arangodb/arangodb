@@ -49,9 +49,6 @@ class DatabaseReplicationApplier final : public ReplicationApplier {
   /// @brief execute the check condition
   bool applies() const override;
 
-  /// @brief stop the applier and "forget" everything
-  void forget() override;
-
   /// @brief store the configuration for the applier
   void storeConfiguration(bool doSync) override;
 

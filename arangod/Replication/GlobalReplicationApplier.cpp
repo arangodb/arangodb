@@ -50,17 +50,6 @@ GlobalReplicationApplier::~GlobalReplicationApplier() {
   }
 }
 
-/// @brief stop the applier and "forget" everything
-void GlobalReplicationApplier::forget() {
-  stopAndJoin();
-
-  removeState();
-
-  _engine.removeReplicationApplierConfiguration();
-  WRITE_LOCKER(writeLocker, _statusLock);
-  _configuration.reset();
-}
-
 /// @brief store the configuration for the applier
 void GlobalReplicationApplier::storeConfiguration(bool doSync) {
   VPackBuilder builder;

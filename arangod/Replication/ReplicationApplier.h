@@ -56,18 +56,6 @@ class ReplicationApplier {
   /// @brief execute the check condition
   virtual bool applies() const = 0;
 
-  /// @brief stop the applier and "forget" everything
-  virtual void forget() = 0;
-
-  /// @brief test if the replication applier is running
-  bool isActive() const;
-
-  /// @brief test if the repication applier is performing initial sync
-  bool isInitializing() const;
-
-  /// @brief test if the replication applier is shutting down
-  bool isShuttingDown() const;
-
   /// @brief stop the replication applier, resets the error message
   void stop();
 
@@ -76,11 +64,6 @@ class ReplicationApplier {
 
   /// @brief stop the replication applier and join the apply thread
   void stopAndJoin();
-
-  /// @brief sleeps for the specific number of microseconds if the
-  /// applier is still active, and returns true. if the applier is not
-  /// active anymore, returns false
-  bool sleepIfStillActive(uint64_t sleepTime);
 
   /// @brief load the applier state from persistent storage
   bool loadState();

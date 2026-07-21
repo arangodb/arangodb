@@ -45,24 +45,6 @@ ReplicationApplier::ReplicationApplier(
   setProgress(std::string("applier initially created for ") + _databaseName);
 }
 
-/// @brief test if the replication applier is running
-bool ReplicationApplier::isActive() const {
-  READ_LOCKER_EVENTUAL(readLocker, _statusLock);
-  return _state.isActive();
-}
-
-/// @brief test if the repication applier is performing initial sync
-bool ReplicationApplier::isInitializing() const {
-  READ_LOCKER_EVENTUAL(readLocker, _statusLock);
-  return _state.isInitializing();
-}
-
-/// @brief test if the replication applier is shutting down
-bool ReplicationApplier::isShuttingDown() const {
-  READ_LOCKER_EVENTUAL(readLocker, _statusLock);
-  return _state.isShuttingDown();
-}
-
 /// @brief block the replication applier from starting
 Result ReplicationApplier::preventStart() {
   WRITE_LOCKER_EVENTUAL(writeLocker, _statusLock);
@@ -115,28 +97,6 @@ void ReplicationApplier::stop() { doStop(Result(), false); }
 
 /// @brief stop the replication applier and join the apply thread
 void ReplicationApplier::stopAndJoin() { doStop(Result(), true); }
-
-/// @brief sleeps for the specific number of microseconds if the
-/// applier is still active, and returns true. if the applier is not
-/// active anymore, returns false
-bool ReplicationApplier::sleepIfStillActive(uint64_t sleepTime) {
-  while (sleepTime > 0) {
-    if (!isActive()) {
-      // already terminated
-      return false;
-    }
-
-    // now sleep
-    uint64_t sleepChunk = 250 * 1000;
-    if (sleepChunk > sleepTime) {
-      sleepChunk = sleepTime;
-    }
-    std::this_thread::sleep_for(std::chrono::microseconds(sleepChunk));
-    sleepTime -= sleepChunk;
-  }
-
-  return isActive();
-}
 
 void ReplicationApplier::removeState() {
   if (!applies()) {

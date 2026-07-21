@@ -69,22 +69,6 @@ bool DatabaseReplicationApplier::applies() const {
   return !ServerState::instance()->isCoordinator();
 }
 
-/// @brief stop the applier and "forget" everything
-void DatabaseReplicationApplier::forget() {
-  if (!applies()) {
-    // unsupported
-    return;
-  }
-  // TODO: move to ReplicationApplier
-
-  stopAndJoin();
-
-  removeState();
-
-  _vocbase.engine().removeReplicationApplierConfiguration(_vocbase);
-  _configuration.reset();
-}
-
 /// @brief factory function for creating a database-specific replication applier
 /*static*/ DatabaseReplicationApplier* DatabaseReplicationApplier::create(
     TRI_vocbase_t& vocbase) {
