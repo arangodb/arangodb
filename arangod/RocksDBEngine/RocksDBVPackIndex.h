@@ -163,22 +163,42 @@ class RocksDBVPackIndex : public RocksDBIndex {
 
   void buildEmptySearchValues(velocypack::Builder& result) const;
 
-  // build new search values. this can also be called from the
-  // VPackIndexIterator
-  void buildSearchValues(ResourceMonitor& monitor, transaction::Methods* trx,
+  // build new search values; returns false if the lookup cannot produce
+  // any results (the contents of `searchValues` must not be used then)
+  bool buildSearchValues(ResourceMonitor& monitor, transaction::Methods* trx,
                          aql::AstNode const* node,
                          aql::Variable const* reference,
                          IndexIteratorOptions const& opts,
                          velocypack::Builder& searchValues,
                          RocksDBVPackIndexSearchValueFormat& format) const;
 
-  void buildSearchValuesInner(ResourceMonitor& monitor,
+  bool buildSearchValuesInner(ResourceMonitor& monitor,
                               transaction::Methods* trx,
                               aql::AstNode const* node,
                               aql::Variable const* reference,
                               IndexIteratorOptions const& opts,
                               velocypack::Builder& searchValues,
                               RocksDBVPackIndexSearchValueFormat& format) const;
+
+  // whether the condition is a lookup on `_id` matched against an indexed
+  // `_key` field, so that the lookup values need translation
+  bool isIdLookupOnKeyField(
+      size_t fieldIndex,
+      std::vector<basics::AttributeName> const& accessPath) const;
+
+  // add an `_id` lookup value translated into a `_key` lookup value;
+  // returns false (adding nothing) if the value cannot refer to a
+  // document of this collection
+  bool tryAddIdLookupValue(transaction::Methods* trx, aql::AstNode const* value,
+                           velocypack::Builder& searchValues) const;
+
+  // add the lookup value for an equality condition, translating `_id`
+  // values into `_key` values where needed; returns false if the lookup
+  // cannot produce any results
+  bool addEqualityLookupValue(
+      transaction::Methods* trx, size_t fieldIndex,
+      std::vector<basics::AttributeName> const& accessPath,
+      aql::AstNode const* value, velocypack::Builder& searchValues) const;
 
  protected:
   Result insert(transaction::Methods& trx, RocksDBMethods* methods,
