@@ -76,9 +76,16 @@ enum AstPropertyFlag : AstPropertiesFlagsType {
   NON_CONST_PARAMETERS = 0x00000001  // Parameters are considered non-const
 };
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+struct AstObjectSpliceFoldingTestHelper;
+#endif
+
 /// @brief the AST
 class Ast {
   friend class Condition;
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  friend struct AstObjectSpliceFoldingTestHelper;
+#endif
 
  public:
   Ast(Ast const&) = delete;

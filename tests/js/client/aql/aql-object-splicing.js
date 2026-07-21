@@ -229,6 +229,22 @@ function objectSplicingSuite () {
       assertFoldedConstantObject(query, {foo: 2, bar: 2, baz: 3});
     },
 
+    testEmptyConstantObjectSpliceFolding: function () {
+      assertFoldedConstantObject(`LET o = {} RETURN { ...o, x: 1 }`, {x: 1});
+    },
+
+    testEmptyInlineObjectLiteralSpliceFolding: function () {
+      assertFoldedConstantObject(`RETURN { ...{}, x: 1 }`, {x: 1});
+    },
+
+    testInlineConstantSpliceLaterKeyWins: function () {
+      assertFoldedConstantObject(`RETURN { ...{ a: 1 }, a: 99 }`, {a: 99});
+    },
+
+    testInlineConstantSpliceOverridesEarlierKey: function () {
+      assertFoldedConstantObject(`RETURN { a: 1, ...{ a: 2 } }`, {a: 2});
+    },
+
     testMultipleConstantObjectSpliceFolding: function () {
       let query = `LET a = { u: 1 } LET b = { v: 2 } RETURN { ...a, ...b, w: 3 }`;
       assertFoldedConstantObject(query, {u: 1, v: 2, w: 3});

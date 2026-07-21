@@ -28,6 +28,7 @@
 #include "Aql/Query.h"
 #include "Aql/QueryString.h"
 #include "Aql/StandaloneCalculation.h"
+#include "Containers/SmallVector.h"
 #include "Logger/LogMacros.h"
 #include "Mocks/Servers.h"
 #include "Transaction/OperationOrigin.h"
@@ -42,6 +43,22 @@
 
 using namespace arangodb;
 using namespace arangodb::aql;
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+namespace arangodb::aql {
+struct AstObjectSpliceFoldingTestHelper {
+  static bool appendObjectElementsFromConstantObject(
+      Ast* ast, AstNode const* source,
+      containers::SmallVector<AstNode*, 8>& out) {
+    return ast->appendObjectElementsFromConstantObject(source, out);
+  }
+
+  static AstNode* foldConstantObjectSplices(Ast* ast, AstNode* node) {
+    return ast->foldConstantObjectSplices(node);
+  }
+};
+}  // namespace arangodb::aql
+#endif
 
 namespace {
 
@@ -211,6 +228,27 @@ bool objectHasObjectSplice(AstNode const* object) {
   return false;
 }
 
+/// @brief Build an object that still reports isConstant() because the constant
+/// flags were cached before a calculated key was appended. This models a
+/// mid-fold failure inside appendObjectElementsFromConstantObject(): some
+/// OBJECT_ELEMENT members are appended successfully, then folding fails.
+AstNode* makePoisonedConstantObject(Ast* ast) {
+  AstNode* obj = ast->createNodeObject();
+  obj->addMember(ast->createNodeObjectElement("a", ast->createNodeValueInt(1)));
+  obj->addMember(ast->createNodeObjectElement("b", ast->createNodeValueInt(2)));
+  EXPECT_TRUE(obj->isConstant());
+
+  // Keep the cached DETERMINED_CONSTANT/VALUE_CONSTANT flags while mutating
+  // the member list so isConstant() still returns true.
+  TEMPORARILY_UNLOCK_NODE(obj);
+  obj->addMember(ast->createNodeCalculatedObjectElement(
+      ast->createNodeValueString("dyn", 3),
+      ast->createNodeValueString("x", 1)));
+  EXPECT_TRUE(obj->isConstant());
+  EXPECT_EQ(3, obj->numMembers());
+  return obj;
+}
+
 TEST_F(AstNodeTest, constantLetObjectSpliceIsFoldedDuringOptimization) {
   AstNode const* objectNode = parseAndOptimizeReturnExpression(
       _server, "LET x = {foo:1, bar:2, baz:3} RETURN {...x, foo:2}");
@@ -340,6 +378,26 @@ TEST_F(AstNodeTest, constantObjectSpliceOverwritePrecedenceIsFolded) {
   EXPECT_TRUE(objectNode->isConstant());
   expectObjectInt(objectNode, "a", 1);
   expectObjectInt(objectNode, "b", 3);
+}
+
+TEST_F(AstNodeTest, inlineConstantSpliceLaterKeyWinsDuringOptimization) {
+  AstNode const* objectNode = parseAndOptimizeReturnExpression(
+      _server, "RETURN { ...{ a: 1 }, a: 99 }");
+  ASSERT_NE(nullptr, objectNode);
+  EXPECT_TRUE(objectNode->isConstant());
+  EXPECT_FALSE(objectHasObjectSplice(objectNode));
+  ASSERT_EQ(1, objectNode->numMembers());
+  expectObjectInt(objectNode, "a", 99);
+}
+
+TEST_F(AstNodeTest, inlineConstantSpliceOverridesEarlierKeyDuringOptimization) {
+  AstNode const* objectNode =
+      parseAndOptimizeReturnExpression(_server, "RETURN { a: 1, ...{ a: 2 } }");
+  ASSERT_NE(nullptr, objectNode);
+  EXPECT_TRUE(objectNode->isConstant());
+  EXPECT_FALSE(objectHasObjectSplice(objectNode));
+  ASSERT_EQ(1, objectNode->numMembers());
+  expectObjectInt(objectNode, "a", 2);
 }
 
 TEST_F(AstNodeTest, nestedConstantObjectSpliceIsFoldedDuringOptimization) {
@@ -509,6 +567,111 @@ TEST_F(AstNodeTest, complexObjectWithSpliceAndCalculatedKeyIsNotConstant) {
   expectObjectInt(xyObject, "x", 10);
   expectObjectInt(xyObject, "y", 20);
   expectObjectInt(cObject, "z", 30);
+}
+
+TEST_F(AstNodeTest, emptyConstantObjectSpliceIsFoldedDuringOptimization) {
+  AstNode const* objectNode = parseAndOptimizeReturnExpression(
+      _server, "LET o = {} RETURN { ...o, x: 1 }");
+  ASSERT_NE(nullptr, objectNode);
+  ASSERT_EQ(NODE_TYPE_OBJECT, objectNode->type);
+  EXPECT_TRUE(objectNode->isConstant());
+  EXPECT_FALSE(objectHasObjectSplice(objectNode));
+  ASSERT_EQ(1, objectNode->numMembers());
+  expectObjectInt(objectNode, "x", 1);
+}
+
+TEST_F(AstNodeTest, emptyInlineObjectLiteralSpliceIsFoldedDuringOptimization) {
+  AstNode const* objectNode =
+      parseAndOptimizeReturnExpression(_server, "RETURN { ...{}, x: 1 }");
+  ASSERT_NE(nullptr, objectNode);
+  ASSERT_EQ(NODE_TYPE_OBJECT, objectNode->type);
+  EXPECT_TRUE(objectNode->isConstant());
+  EXPECT_FALSE(objectHasObjectSplice(objectNode));
+  ASSERT_EQ(1, objectNode->numMembers());
+  expectObjectInt(objectNode, "x", 1);
+}
+
+TEST_F(AstNodeTest, appendObjectElementsFromConstantObjectRollsBackOnFailure) {
+  AstNode* poisoned = makePoisonedConstantObject(_ast);
+
+  containers::SmallVector<AstNode*, 8> out;
+  out.push_back(
+      _ast->createNodeObjectElement("sentinel", _ast->createNodeValueInt(0)));
+  size_t const sizeBefore = out.size();
+
+  EXPECT_FALSE(
+      AstObjectSpliceFoldingTestHelper::appendObjectElementsFromConstantObject(
+          _ast, poisoned, out));
+  // The helper intentionally does not roll back partial appends.
+  // The caller is responsible for restoring the original state.
+  EXPECT_GT(out.size(), sizeBefore);
+
+  out.resize(sizeBefore);
+  ASSERT_EQ(1, out.size());
+  EXPECT_EQ(NODE_TYPE_OBJECT_ELEMENT, out[0]->type);
+  EXPECT_EQ("sentinel", out[0]->getStringView());
+}
+
+TEST_F(AstNodeTest, foldConstantObjectSplicesRollsBackOnMidFoldFailure) {
+  AstNode* poisoned = makePoisonedConstantObject(_ast);
+
+  AstNode* outer = _ast->createNodeObject();
+  outer->addMember(
+      _ast->createNodeObjectElement("before", _ast->createNodeValueInt(7)));
+  AstNode* splice = _ast->createNodeObjectSplice(poisoned);
+  outer->addMember(splice);
+  outer->addMember(
+      _ast->createNodeObjectElement("keep", _ast->createNodeValueInt(99)));
+
+  ASSERT_EQ(3, outer->numMembers());
+  EXPECT_TRUE(objectHasObjectSplice(outer));
+
+  AstNode* folded =
+      AstObjectSpliceFoldingTestHelper::foldConstantObjectSplices(_ast, outer);
+  ASSERT_EQ(outer, folded);
+  ASSERT_EQ(3, folded->numMembers());
+  EXPECT_TRUE(objectHasObjectSplice(folded));
+
+  // Existing members around the failed splice must be untouched, and no
+  // partial members (a/b) from the poisoned object may leak into the parent.
+  expectObjectInt(folded, "before", 7);
+  expectObjectInt(folded, "keep", 99);
+  EXPECT_EQ(nullptr, getObjectElement(folded, "a"));
+  EXPECT_EQ(nullptr, getObjectElement(folded, "b"));
+
+  EXPECT_EQ(NODE_TYPE_OBJECT_SPLICE, folded->getMember(1)->type);
+  EXPECT_EQ(splice, folded->getMember(1));
+  EXPECT_EQ(poisoned, folded->getMember(1)->getMember(0));
+}
+
+TEST_F(AstNodeTest, foldConstantObjectSplicesRollsBackOnNestedMidFoldFailure) {
+  AstNode* nestedPoisoned = makePoisonedConstantObject(_ast);
+
+  AstNode* source = _ast->createNodeObject();
+  source->addMember(
+      _ast->createNodeObjectElement("ok", _ast->createNodeValueInt(1)));
+  source->addMember(_ast->createNodeObjectSplice(nestedPoisoned));
+  // Nested splice reports constant via cached flags on nestedPoisoned.
+  EXPECT_TRUE(source->isConstant());
+
+  AstNode* outer = _ast->createNodeObject();
+  AstNode* splice = _ast->createNodeObjectSplice(source);
+  outer->addMember(splice);
+  outer->addMember(
+      _ast->createNodeObjectElement("tail", _ast->createNodeValueInt(5)));
+
+  AstNode* folded =
+      AstObjectSpliceFoldingTestHelper::foldConstantObjectSplices(_ast, outer);
+  ASSERT_EQ(outer, folded);
+  ASSERT_EQ(2, folded->numMembers());
+  EXPECT_TRUE(objectHasObjectSplice(folded));
+
+  // Partial append of "ok"/"a"/"b" must not remain after rollback.
+  EXPECT_EQ(nullptr, getObjectElement(folded, "ok"));
+  EXPECT_EQ(nullptr, getObjectElement(folded, "a"));
+  EXPECT_EQ(nullptr, getObjectElement(folded, "b"));
+  expectObjectInt(folded, "tail", 5);
+  EXPECT_EQ(splice, folded->getMember(0));
 }
 
 TEST_F(AstNodeTest, toVelocyPackNull) {
