@@ -986,7 +986,9 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
     if (!isLocalUrl && !v8security.isAllowedToConnectToUrl(isolate, url)) {
       TRI_V8_THROW_EXCEPTION_MESSAGE(
-          TRI_ERROR_FORBIDDEN, "not allowed to connect to this URL: " + url);
+          TRI_ERROR_FORBIDDEN,
+          "while connecting to " + inputUrl +
+              " not allowed to connect to this URL: " + url);
     }
 
     std::unique_ptr<Endpoint> ep(Endpoint::clientFactory(endpoint));
