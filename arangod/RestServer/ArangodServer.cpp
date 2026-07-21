@@ -191,7 +191,8 @@ void ArangodServer::addFeaturesWithOptionProvider() {
 
 #ifdef USE_ENTERPRISE
   addFeature<SslServerFeature, SslServerFeatureEE>(
-      getOptions<SslServerOptionsProvider>(), getOptions<enterprise::SslServerEEOptionsProvider>());
+      getOptions<SslServerOptionsProvider>(),
+      getOptions<enterprise::SslServerEEOptionsProvider>());
 #else
   addFeature<SslServerFeature>(getOptions<SslServerOptionsProvider>());
 #endif
@@ -201,18 +202,23 @@ void ArangodServer::addFeaturesWithOptionProvider() {
 #endif
 
 #ifdef TRI_HAVE_GETRLIMIT
-  addFeature<FileDescriptorsFeature>(metrics, getOptions<file_descriptors::FileDescriptorsOptionsProvider>());
+  addFeature<FileDescriptorsFeature>(
+      metrics, getOptions<file_descriptors::FileDescriptorsOptionsProvider>());
 #endif
 
-  addFeature<AuthenticationFeature>(getOptions<AuthenticationOptionsProvider>());
-  addFeature<GeneralServerFeature>(metrics, getOptions<GeneralServerOptionsProvider>());
+  addFeature<AuthenticationFeature>(
+      getOptions<AuthenticationOptionsProvider>());
+  addFeature<GeneralServerFeature>(metrics,
+                                   getOptions<GeneralServerOptionsProvider>());
   auto& networkFeature =
       addFeature<NetworkFeature>(metrics, getOptions<NetworkOptionsProvider>());
-  addFeature<HttpEndpointProvider, EndpointFeature>(getOptions<EndpointOptionsProvider>());
+  addFeature<HttpEndpointProvider, EndpointFeature>(
+      getOptions<EndpointOptionsProvider>());
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  addFeature<ProcessEnvironmentFeature>(std::string{_binaryName},
-                                        getOptions<ProcessEnvironmentOptionsProvider>());
+  addFeature<ProcessEnvironmentFeature>(
+      std::string{_binaryName},
+      getOptions<ProcessEnvironmentOptionsProvider>());
 #endif
 
   addFeature<RandomFeature>(getOptions<RandomOptionsProvider>());
