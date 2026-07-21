@@ -1,0 +1,27 @@
+#pragma once
+
+#include "ApplicationFeatures/CoreOptionProviders.h"
+#include "ApplicationFeatures/LanguageOptionsProvider.h"
+#include "RestServer/CrashHandlerOptionsProvider.h"
+#include "RestServer/DatabasePathOptionsProvider.h"
+#include "RestServer/DumpLimitsOptionsProvider.h"
+#include "RestServer/FlushOptionsProvider.h"
+#include "RestServer/FortuneOptionsProvider.h"
+#include "RestServer/LogBufferOptionsProvider.h"
+#include "RestServer/MaxMapCountOptionsProvider.h"
+#include "RestServer/NonceOptionsProvider.h"
+#include "RestServer/TemporaryStorageOptionsProvider.h"
+#include "RocksDBEngine/RocksDBIndexCacheRefillOptionsProvider.h"
+#include "RocksDBEngine/RocksDBOptionFeatureOptionsProvider.h"
+#include "RocksDBEngine/RocksDBEngineOptionsProvider.h"
+
+namespace arangodb {
+// arangod/RestServer/ArangodOptionProviders.h
+using ArangodOptionProviders = CoreOptionProviders<
+    crash_handler::CrashHandlerOptionsProvider, DatabasePathOptionsProvider,
+    DumpLimitsOptionsProvider, FlushOptionsProvider,
+    fortune::FortuneOptionsProvider, LanguageOptionsProvider,
+    LogBufferOptionsProvider, MaxMapCountOptionsProvider, NonceOptionsProvider,
+    RocksDBEngineOptionsProvider, RocksDBIndexCacheRefillOptionsProvider,
+    RocksDBOptionFeatureOptionsProvider, TemporaryStorageOptionsProvider>;
+}  // namespace arangodb

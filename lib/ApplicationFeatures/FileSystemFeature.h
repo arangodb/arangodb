@@ -42,7 +42,6 @@ class FileSystemFeature final
                              FileSystemFeatureOptions options);
   explicit FileSystemFeature(application_features::ApplicationServer& server);
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
 
  private:
