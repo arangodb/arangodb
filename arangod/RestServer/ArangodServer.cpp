@@ -206,86 +206,48 @@ void ArangodServer::addFeaturesWithOptionProvider() {
   auto& networkFeature = getFeature<NetworkFeature>();
   auto& aqlFunctionFeature = getFeature<aql::AqlFunctionFeature>();
 
-  // Add RandomFeature
-  auto randomOptions = getOptions<RandomOptionsProvider>();
-  addFeature<RandomFeature>(std::move(randomOptions));
-
-  // Add NonceFeature
-  auto nonceOptions = getOptions<NonceOptionsProvider>();
-  addFeature<NonceFeature>(std::move(nonceOptions));
-
-  // Add MaxMapCountFeature
-  auto maxMapCountOptions = getOptions<MaxMapCountOptionsProvider>();
-  addFeature<MaxMapCountFeature>(std::move(maxMapCountOptions));
-
-  // Add FileSystemFeature
-  auto fileSystemOptions = getOptions<FileSystemOptionsProvider>();
-  addFeature<FileSystemFeature>(std::move(fileSystemOptions));
-
-  // Add LanguageFeature
-  auto languageOptions = getOptions<LanguageOptionsProvider>();
-  addFeature<LanguageFeature>(std::move(languageOptions));
+  addFeature<RandomFeature>(getOptions<RandomOptionsProvider>());
+  addFeature<NonceFeature>(getOptions<NonceOptionsProvider>());
+  addFeature<MaxMapCountFeature>(getOptions<MaxMapCountOptionsProvider>());
+  addFeature<FileSystemFeature>(getOptions<FileSystemOptionsProvider>());
+  addFeature<LanguageFeature>(getOptions<LanguageOptionsProvider>());
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  auto processEnvironmentOptions =
-      getOptions<ProcessEnvironmentOptionsProvider>();
-  addFeature<ProcessEnvironmentFeature>(std::string{_binaryName},
-                                        std::move(processEnvironmentOptions));
+  addFeature<ProcessEnvironmentFeature>(
+      std::string{_binaryName},
+      getOptions<ProcessEnvironmentOptionsProvider>());
 #endif
+  addFeature<CrashHandlerFeature>(
+      _dumpManager, getOptions<crash_handler::CrashHandlerOptionsProvider>());
+  addFeature<LogBufferFeature>(metrics, getOptions<LogBufferOptionsProvider>());
 
-  // Add CrashHandlerFeature
-  auto crashHandlerOptions =
-      getOptions<crash_handler::CrashHandlerOptionsProvider>();
-  addFeature<CrashHandlerFeature>(_dumpManager, std::move(crashHandlerOptions));
-
-  // Add LogBufferFeature
-  auto logBufferOptions = getOptions<LogBufferOptionsProvider>();
-  addFeature<LogBufferFeature>(metrics, std::move(logBufferOptions));
-
-  // Add RocksDBIndexCacheRefillFeature
-  auto rocksdbCacheRefillOptions =
-      getOptions<RocksDBIndexCacheRefillOptionsProvider>();
   auto& rocksdbCacheRefill = addFeature<RocksDBIndexCacheRefillFeature>(
-      database, &clusterFeature, metrics, std::move(rocksdbCacheRefillOptions));
+      database, &clusterFeature, metrics,
+      getOptions<RocksDBIndexCacheRefillOptionsProvider>());
 
-  // Add RocksDBOptionFeature
-  auto rocksdbOptionFeatureOptions =
-      getOptions<RocksDBOptionFeatureOptionsProvider>();
   auto& rocksdbOption = addFeature<RocksDBOptionFeature>(
-      &agency, std::move(rocksdbOptionFeatureOptions));
+      &agency, getOptions<RocksDBOptionFeatureOptionsProvider>());
 
-  // Add DatabasePathFeature
-  auto databasePathOptions = getOptions<DatabasePathOptionsProvider>();
-  auto& databasePath =
-      addFeature<DatabasePathFeature>(std::move(databasePathOptions));
+  auto& databasePath = addFeature<DatabasePathFeature>(
+      getOptions<DatabasePathOptionsProvider>());
 
-  // Add TemporaryStorageFeature
-  auto temporaryStorageOptions = getOptions<TemporaryStorageOptionsProvider>();
-  addFeature<TemporaryStorageFeature>(databasePath,
-                                      std::move(temporaryStorageOptions));
+  addFeature<TemporaryStorageFeature>(
+      databasePath, getOptions<TemporaryStorageOptionsProvider>());
 
-  // Add DumpLimitsFeature
-  auto dumpLimitsOptions = getOptions<DumpLimitsOptionsProvider>();
   auto& dumpLimits =
-      addFeature<DumpLimitsFeature>(std::move(dumpLimitsOptions));
+      addFeature<DumpLimitsFeature>(getOptions<DumpLimitsOptionsProvider>());
 
-  // Add FlushFeature
-  auto flushOptions = getOptions<FlushOptionsProvider>();
-  auto& flush = addFeature<FlushFeature>(metrics, std::move(flushOptions));
+  auto& flush =
+      addFeature<FlushFeature>(metrics, getOptions<FlushOptionsProvider>());
 
-  // Add RocksDBEngine
-  RocksDBEngineOptions rocksDBEngineOptions =
-      getOptions<RocksDBEngineOptionsProvider>();
   addFeature<RocksDBEngine>(
       rocksdbOption, metrics, databasePath, vectorIndex, flush, dumpLimits,
       replication2::EnableReplication2 ? &getFeature<ReplicatedLogFeature>()
                                        : nullptr,
       scheduler, rocksdbRecovery, database, rocksdbCacheRefill, cacheManager,
-      agency, rocksDBEngineOptions);
+      agency, getOptions<RocksDBEngineOptionsProvider>());
 
-  // Add FortuneFeature
-  auto fortuneOptions = getOptions<fortune::FortuneOptionsProvider>();
-  addFeature<FortuneFeature>(std::move(fortuneOptions));
+  addFeature<FortuneFeature>(getOptions<fortune::FortuneOptionsProvider>());
 
   addFeature<iresearch::IResearchAnalyzerFeature>(
       iresearch::IResearchAnalyzerFeature::Dependencies{
