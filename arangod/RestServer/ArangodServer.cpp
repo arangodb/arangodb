@@ -189,50 +189,30 @@ void ArangodServer::addFeaturesWithOptionProvider() {
   auto& systemDatabaseFeature = getFeature<SystemDatabaseFeature>();
   auto& aqlFunctionFeature = getFeature<aql::AqlFunctionFeature>();
 
-  auto sslServerOptions = getOptions<SslServerOptionsProvider>();
 #ifdef USE_ENTERPRISE
-  auto& sslServerEEOptions =
-      getOptions<enterprise::SslServerEEOptionsProvider>();
   addFeature<SslServerFeature, SslServerFeatureEE>(
-      std::move(sslServerOptions), std::move(sslServerEEOptions));
+      getOptions<SslServerOptionsProvider>(), getOptions<enterprise::SslServerEEOptionsProvider>());
 #else
-  addFeature<SslServerFeature>(std::move(sslServerOptions));
+  addFeature<SslServerFeature>(getOptions<SslServerOptionsProvider>());
 #endif
 
 #ifdef USE_V8
-  auto frontendOptions = getOptions<FrontendOptionsProvider>();
-  addFeature<FrontendFeature>(std::move(frontendOptions));
+  addFeature<FrontendFeature>(getOptions<FrontendOptionsProvider>());
 #endif
 
 #ifdef TRI_HAVE_GETRLIMIT
-  auto fileDescriptorsOptions =
-      getOptions<file_descriptors::FileDescriptorsOptionsProvider>();
-  addFeature<FileDescriptorsFeature>(metrics,
-                                     std::move(fileDescriptorsOptions));
+  addFeature<FileDescriptorsFeature>(metrics, getOptions<file_descriptors::FileDescriptorsOptionsProvider>());
 #endif
 
-  // Add AuthenticationFeature
-  auto authenticationOptions = getOptions<AuthenticationOptionsProvider>();
-  addFeature<AuthenticationFeature>(std::move(authenticationOptions));
-
-  // Add GeneralServerFeature
-  auto generalServerOptions = getOptions<GeneralServerOptionsProvider>();
-  addFeature<GeneralServerFeature>(metrics, std::move(generalServerOptions));
-
-  // Add NetworkFeature
-  auto networkOptions = getOptions<NetworkOptionsProvider>();
+  addFeature<AuthenticationFeature>(getOptions<AuthenticationOptionsProvider>());
+  addFeature<GeneralServerFeature>(metrics, getOptions<GeneralServerOptionsProvider>());
   auto& networkFeature =
-      addFeature<NetworkFeature>(metrics, std::move(networkOptions));
-
-  // Add EndpointFeature
-  auto endpointOptions = getOptions<EndpointOptionsProvider>();
-  addFeature<HttpEndpointProvider, EndpointFeature>(std::move(endpointOptions));
+      addFeature<NetworkFeature>(metrics, getOptions<NetworkOptionsProvider>());
+  addFeature<HttpEndpointProvider, EndpointFeature>(getOptions<EndpointOptionsProvider>());
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  auto processEnvironmentOptions =
-      getOptions<ProcessEnvironmentOptionsProvider>();
   addFeature<ProcessEnvironmentFeature>(std::string{_binaryName},
-                                        std::move(processEnvironmentOptions));
+                                        getOptions<ProcessEnvironmentOptionsProvider>());
 #endif
 
   addFeature<RandomFeature>(getOptions<RandomOptionsProvider>());
