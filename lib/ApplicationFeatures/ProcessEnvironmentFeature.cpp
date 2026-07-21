@@ -48,12 +48,6 @@ ProcessEnvironmentFeature::ProcessEnvironmentFeature(
   startsAfter<application_features::GreetingsFeaturePhase>();
 }
 
-void ProcessEnvironmentFeature::collectOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  ProcessEnvironmentOptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
-
 void ProcessEnvironmentFeature::prepare() {
   if (_options.dumpEnv) {
     if (environ == nullptr) {

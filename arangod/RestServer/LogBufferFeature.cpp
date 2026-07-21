@@ -207,12 +207,6 @@ LogBufferFeature::LogBufferFeature(
   });
 }
 
-void LogBufferFeature::collectOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  LogBufferOptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
-
 void LogBufferFeature::prepare() {
   TRI_ASSERT(_inMemoryAppender == nullptr);
 
