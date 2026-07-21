@@ -87,6 +87,9 @@ class EdgeConditionBuilder {
                               std::span<std::string_view> attribute,
                               Variable const* replaceVariable);
 
+  /// @brief getVariablesUsedHere
+  void getVariablesUsedHere(VarSet& result) const;
+
   // Add a condition on the edges that is not related to
   // the direction e.g. `label == foo`
   void addConditionPart(AstNode const*);

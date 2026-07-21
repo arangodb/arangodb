@@ -205,6 +205,8 @@ class CircleCIGenerator(OutputGenerator):
 
         if build_config.architecture == Architecture.AARCH64:
             preset += "-arm"
+        else:
+            preset += "-x86_64"
 
         preset += build_config.build_variant.get_suffix()
 
@@ -245,7 +247,7 @@ class CircleCIGenerator(OutputGenerator):
                     ResourceSize.XXLARGE, build_config.architecture
                 ),
                 "name": f"build-non-maintainer-{build_config.architecture.value}",
-                "preset": "enterprise-pr-non-maintainer",
+                "preset": "enterprise-pr-non-maintainer-x86_64",
                 "enterprise": True,
                 "arch": "x64",
                 "publish-artifacts": False,

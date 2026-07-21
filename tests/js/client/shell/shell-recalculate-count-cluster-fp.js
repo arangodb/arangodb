@@ -27,10 +27,6 @@ let jsunity = require("jsunity");
 let arangodb = require("@arangodb");
 let internal = require("internal");
 let db = arangodb.db;
-let { getEndpointById,
-      getEndpointsByType,
-      reconnectRetry
-    } = require('@arangodb/test-helper');
 let { instanceRole } = require('@arangodb/testutils/instance');
 let IM = global.instanceManager;
 

@@ -25,6 +25,8 @@
 #include <cstdint>
 #include <string>
 #include <vector>
+#include <filesystem>
+#include <functional>
 
 #include "ErrorCode.h"
 
@@ -34,14 +36,16 @@ ErrorCode TRI_Adler32(char const* filename, uint32_t& checksum);
 /// @brief zips a file
 ////////////////////////////////////////////////////////////////////////////////
 
-ErrorCode TRI_ZipFile(char const* filename, char const* dir,
-                      std::vector<std::string> const& files,
-                      char const* password);
+ErrorCode TRI_ZipFile(
+    char const* filename, char const* dir,
+    std::vector<std::string> const& files, char const* password,
+    std::function<bool(std::filesystem::path path)> isAllowedAccess);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unzips a file
 ////////////////////////////////////////////////////////////////////////////////
 
-ErrorCode TRI_UnzipFile(char const* filename, char const* outPath,
-                        bool skipPaths, bool overwrite, char const* password,
-                        std::string& errorMessage);
+ErrorCode TRI_UnzipFile(
+    char const* filename, char const* outPath, bool skipPaths, bool overwrite,
+    char const* password, std::string& errorMessage,
+    std::function<bool(std::filesystem::path)> isAllowedAccess);

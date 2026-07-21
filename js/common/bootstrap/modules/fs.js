@@ -508,6 +508,59 @@ global.DEFINE_MODULE('fs', (function () {
   }
 
   exports.escapePath = function (s) { return s.replace(/\\/g,'\\\\'); };
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief Joins the last two diretories to one subdir, removes the unwanted original
+  // //////////////////////////////////////////////////////////////////////////////
+  exports.joinLastPath = function (tempPath) {
+    var pathParts = tempPath.split(exports.pathSeparator).reverse();
+    var individual = pathParts.shift();
+
+    // we already have a directory which would be shared amongst tasks.
+    // since we don't want that we remove it here.
+    var voidDir = pathParts.slice().reverse().join(exports.pathSeparator);
+    if (exports.isDirectory(voidDir)) {
+      exports.removeDirectoryRecursive(voidDir);
+    }
+
+    var base = pathParts.shift();
+    pathParts.unshift(base + '-' + individual);
+    var rc = pathParts.reverse().join(exports.pathSeparator);
+
+    return rc;
+  };
+
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief creates a zip archive of a Foxx app. Returns the absolute path
+  // //////////////////////////////////////////////////////////////////////////////
+  exports.zipDirectory = function (directory, zipFilename) {
+    if (!exports.isDirectory(directory)) {
+      throw new Error(directory + ' is not a directory.');
+    }
+    if (!zipFilename) {
+      zipFilename = exports.joinLastPath((exports.getTempFile('bundles', false)));
+    }
+
+    var tree = exports.listTree(directory);
+    var files = [];
+    var i;
+    var filename;
+
+    for (i = 0; i < tree.length; i++) {
+      filename = exports.join(directory, tree[i]);
+
+      if (exports.isFile(filename)) {
+        files.push(tree[i]);
+      }
+    }
+    if (files.length === 0) {
+      throw new Error("Directory '" + String(directory) + "' is empty");
+    }
+    // sort files to be sure they are always in same order within the zip file
+    // independent of the OS and file system
+    files.sort();
+    exports.zipFile(zipFilename, directory, files);
+    return zipFilename;
+  };
 
   return exports;
 }()));
