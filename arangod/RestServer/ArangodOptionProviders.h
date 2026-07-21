@@ -13,7 +13,6 @@
 #include "RestServer/EndpointOptionsProvider.h"
 #include "RestServer/FlushOptionsProvider.h"
 #include "RestServer/FortuneOptionsProvider.h"
-#include "RestServer/FrontendOptionsProvider.h"
 #include "RestServer/InitDatabaseOptionsProvider.h"
 #include "RestServer/LogBufferOptionsProvider.h"
 #include "RestServer/MaxMapCountOptionsProvider.h"

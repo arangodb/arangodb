@@ -26,8 +26,8 @@
 
 namespace arangodb {
 
-NetworkOptions::NetworkOptions() 
- : NetworkOptions(network::ConnectionPool::Config{}) {}
+NetworkOptions::NetworkOptions()
+    : NetworkOptions(network::ConnectionPool::Config{}) {}
 
 NetworkOptions::NetworkOptions(network::ConnectionPool::Config const& config) {
   maxOpenConnections = config.maxOpenConnections;

@@ -189,8 +189,7 @@ void ArangodServer::addFeaturesWithOptionProvider() {
   auto& clusterFeature = getFeature<ClusterFeature>();
   auto& aqlFunctionFeature = getFeature<aql::AqlFunctionFeature>();
 
-  auto& sslServerOptions =
-      getOptions<SslServerOptionsProvider>();
+  auto sslServerOptions = getOptions<SslServerOptionsProvider>();
 #ifdef USE_ENTERPRISE
   auto& sslServerEEOptions =
       getOptions<enterprise::SslServerEEOptionsProvider>();
@@ -213,13 +212,11 @@ void ArangodServer::addFeaturesWithOptionProvider() {
 #endif
 
   // Add AuthenticationFeature
-  auto authenticationOptions =
-      getOptions<AuthenticationOptionsProvider>();
+  auto authenticationOptions = getOptions<AuthenticationOptionsProvider>();
   addFeature<AuthenticationFeature>(std::move(authenticationOptions));
 
   // Add GeneralServerFeature
-  auto generalServerOptions =
-      getOptions<GeneralServerOptionsProvider>();
+  auto generalServerOptions = getOptions<GeneralServerOptionsProvider>();
   addFeature<GeneralServerFeature>(metrics, std::move(generalServerOptions));
 
   // Add NetworkFeature
@@ -347,16 +344,6 @@ void ArangodServer::addFeaturesWithOptionProvider() {
                  BlackHoleStateMachineFeature>();
   addFeature<
       replication2::replicated_state::document::DocumentStateMachineFeature>();
-
-  addFeature<iresearch::IResearchAnalyzerFeature>(
-      iresearch::IResearchAnalyzerFeature::Dependencies{
-          .databaseFeature = database,
-          .systemDatabase = systemDatabaseFeature,
-          .networkFeature = &networkFeature,
-          .clusterFeature = &clusterFeature,
-          .schedulerFeature = &scheduler,
-          .aqlFunctionFeature = &aqlFunctionFeature,
-      });
 }
 
 }  // namespace arangodb
