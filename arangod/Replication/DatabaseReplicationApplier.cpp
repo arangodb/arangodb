@@ -101,29 +101,6 @@ ReplicationApplierConfiguration DatabaseReplicationApplier::loadConfiguration(
       vocbase.server(), builder.slice(), vocbase.name());
 }
 
-/// @brief store the configuration for the applier
-void DatabaseReplicationApplier::storeConfiguration(bool doSync) {
-  if (!applies()) {
-    return;
-  }
-
-  VPackBuilder builder;
-  builder.openObject();
-  _configuration.toVelocyPack(builder, true, true);
-  builder.close();
-
-  LOG_TOPIC("3407a", DEBUG, Logger::REPLICATION)
-      << "storing applier configuration " << builder.slice().toJson() << " for "
-      << _databaseName;
-
-  auto res = _vocbase.engine().saveReplicationApplierConfiguration(
-      _vocbase, builder.slice(), doSync);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
-}
-
 std::string DatabaseReplicationApplier::getStateFilename() const {
   std::string const path = _vocbase.engine().databasePath();
   if (path.empty()) {

@@ -63,9 +63,6 @@ class ReplicationApplier {
   /// returns whether a previous state was found
   bool loadStateNoLock();
 
-  /// @brief store the configuration for the applier
-  virtual void storeConfiguration(bool doSync) = 0;
-
   /// @brief store the applier state in persistent storage
   void persistState(bool doSync);
   Result persistStateResult(bool doSync);

@@ -347,12 +347,6 @@ class StorageEngine : public application_features::ApplicationFeature {
   virtual arangodb::velocypack::Builder getReplicationApplierConfiguration(
       ErrorCode&) = 0;
 
-  virtual ErrorCode saveReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
-                                                        velocypack::Slice slice,
-                                                        bool doSync) = 0;
-  virtual ErrorCode saveReplicationApplierConfiguration(velocypack::Slice slice,
-                                                        bool doSync) = 0;
-
   virtual Result handleSyncKeys(DatabaseInitialSyncer& syncer,
                                 LogicalCollection& col,
                                 std::string const& keysId) = 0;

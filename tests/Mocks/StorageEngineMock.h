@@ -199,11 +199,6 @@ class StorageEngineMock : private StorageEngineMockBase,
   arangodb::Result renameCollection(
       TRI_vocbase_t& vocbase, arangodb::LogicalCollection const& collection,
       std::string const& oldName) override;
-  ErrorCode saveReplicationApplierConfiguration(
-      TRI_vocbase_t& vocbase, arangodb::velocypack::Slice slice,
-      bool doSync) override;
-  ErrorCode saveReplicationApplierConfiguration(arangodb::velocypack::Slice,
-                                                bool) override;
   std::string versionFilename(TRI_voc_tick_t) const override;
   void waitForEstimatorSync() override;
   arangodb::WalAccess const* walAccess() const override;

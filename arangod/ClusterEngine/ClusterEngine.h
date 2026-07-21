@@ -104,15 +104,6 @@ class ClusterEngine final : public StorageEngine {
       TRI_vocbase_t& vocbase, ErrorCode& status) override;
   velocypack::Builder getReplicationApplierConfiguration(
       ErrorCode& status) override;
-  ErrorCode saveReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
-                                                velocypack::Slice slice,
-                                                bool doSync) override {
-    return TRI_ERROR_NOT_IMPLEMENTED;
-  }
-  ErrorCode saveReplicationApplierConfiguration(
-      arangodb::velocypack::Slice slice, bool doSync) override {
-    return TRI_ERROR_NOT_IMPLEMENTED;
-  }
   Result handleSyncKeys(DatabaseInitialSyncer& syncer, LogicalCollection& col,
                         std::string const& keysId) override {
     return {TRI_ERROR_NOT_IMPLEMENTED};

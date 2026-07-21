@@ -1305,38 +1305,6 @@ VPackBuilder RocksDBEngine::getReplicationApplierConfiguration(
   return builder;
 }
 
-ErrorCode RocksDBEngine::saveReplicationApplierConfiguration(
-    TRI_vocbase_t& vocbase, velocypack::Slice slice, bool doSync) {
-  RocksDBKey key;
-
-  key.constructReplicationApplierConfig(vocbase.id());
-
-  return saveReplicationApplierConfiguration(key, slice, doSync);
-}
-
-ErrorCode RocksDBEngine::saveReplicationApplierConfiguration(
-    velocypack::Slice slice, bool doSync) {
-  RocksDBKey key;
-  key.constructReplicationApplierConfig(databaseIdForGlobalApplier);
-  return saveReplicationApplierConfiguration(key, slice, doSync);
-}
-
-ErrorCode RocksDBEngine::saveReplicationApplierConfiguration(
-    RocksDBKey const& key, velocypack::Slice slice, bool doSync) {
-  auto value = RocksDBValue::ReplicationApplierConfig(slice);
-
-  auto status = rocksutils::convertStatus(
-      _db->Put(rocksdb::WriteOptions(),
-               RocksDBColumnFamilyManager::get(
-                   RocksDBColumnFamilyManager::Family::Definitions),
-               key.string(), value.string()));
-  if (!status.ok()) {
-    return status.errorNumber();
-  }
-
-  return TRI_ERROR_NO_ERROR;
-}
-
 // database, collection and index management
 // -----------------------------------------
 

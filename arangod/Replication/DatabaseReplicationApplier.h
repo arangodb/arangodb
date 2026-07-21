@@ -49,9 +49,6 @@ class DatabaseReplicationApplier final : public ReplicationApplier {
   /// @brief execute the check condition
   bool applies() const override;
 
-  /// @brief store the configuration for the applier
-  void storeConfiguration(bool doSync) override;
-
   /// @brief factory function for creating a database-specific replication
   /// applier
   static DatabaseReplicationApplier* create(Database& vocbase);

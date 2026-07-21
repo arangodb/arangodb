@@ -47,9 +47,6 @@ class GlobalReplicationApplier final : public ReplicationApplier {
   /// @brief execute the check condition
   bool applies() const override { return true; }
 
-  /// @brief store the configuration for the applier
-  void storeConfiguration(bool doSync) override;
-
   /// @brief load a persisted configuration for the applier
   static ReplicationApplierConfiguration loadConfiguration(
       application_features::ApplicationServer& server, StorageEngine& engine);

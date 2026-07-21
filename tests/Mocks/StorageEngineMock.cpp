@@ -467,18 +467,6 @@ arangodb::Result StorageEngineMock::renameCollection(
   return arangodb::Result(TRI_ERROR_INTERNAL);
 }
 
-ErrorCode StorageEngineMock::saveReplicationApplierConfiguration(
-    TRI_vocbase_t& vocbase, arangodb::velocypack::Slice slice, bool doSync) {
-  TRI_ASSERT(false);
-  return TRI_ERROR_NO_ERROR;
-}
-
-ErrorCode StorageEngineMock::saveReplicationApplierConfiguration(
-    arangodb::velocypack::Slice, bool) {
-  TRI_ASSERT(false);
-  return TRI_ERROR_NO_ERROR;
-}
-
 std::string StorageEngineMock::versionFilename(TRI_voc_tick_t) const {
   return versionFilenameResult;
 }

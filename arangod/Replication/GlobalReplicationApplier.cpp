@@ -48,25 +48,6 @@ GlobalReplicationApplier::~GlobalReplicationApplier() {
   }
 }
 
-/// @brief store the configuration for the applier
-void GlobalReplicationApplier::storeConfiguration(bool doSync) {
-  VPackBuilder builder;
-  builder.openObject();
-  _configuration.toVelocyPack(builder, true, true);
-  builder.close();
-
-  LOG_TOPIC("f270b", DEBUG, Logger::REPLICATION)
-      << "storing applier configuration " << builder.slice().toJson() << " for "
-      << _databaseName;
-
-  auto res =
-      _engine.saveReplicationApplierConfiguration(builder.slice(), doSync);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
-}
-
 /// @brief load a persisted configuration for the applier
 ReplicationApplierConfiguration GlobalReplicationApplier::loadConfiguration(
     application_features::ApplicationServer& server, StorageEngine& engine) {
