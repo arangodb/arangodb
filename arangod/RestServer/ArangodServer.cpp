@@ -215,12 +215,6 @@ void ArangodServer::addFeaturesWithOptionProvider() {
   addFeature<HttpEndpointProvider, EndpointFeature>(
       getOptions<EndpointOptionsProvider>());
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  addFeature<ProcessEnvironmentFeature>(
-      std::string{_binaryName},
-      getOptions<ProcessEnvironmentOptionsProvider>());
-#endif
-
   addFeature<RandomFeature>(getOptions<RandomOptionsProvider>());
   addFeature<NonceFeature>(getOptions<NonceOptionsProvider>());
   addFeature<MaxMapCountFeature>(getOptions<MaxMapCountOptionsProvider>());
