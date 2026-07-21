@@ -344,8 +344,9 @@ NetworkFeature::NetworkFeature(application_features::ApplicationServer& server,
 
   // cross-feature default: derive idle TTL from GeneralServerFeature's
   // keep-alive timeout when not explicitly set by the user
-  if (!server.options()->processingResult().touched(
-          "--network.idle-connection-ttl") &&
+  auto opts = server.options();
+  if (opts &&
+      !opts->processingResult().touched("--network.idle-connection-ttl") &&
       server.hasFeature<GeneralServerFeature>()) {
     auto& gs = server.getFeature<GeneralServerFeature>();
     _options.idleTtlMilli = uint64_t(gs.keepAliveTimeout() * 1000 / 2);
