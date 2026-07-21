@@ -28,9 +28,6 @@ let internal = require('internal');
 let arangodb = require('@arangodb');
 let db = arangodb.db;
 let errors = arangodb.errors;
-let { getEndpointById,
-      getEndpointsByType,
-    } = require('@arangodb/test-helper');
 let { instanceRole } = require('@arangodb/testutils/instance');
 let IM = global.instanceManager;
 

@@ -23,8 +23,8 @@
 #include "CrashHandler/DumpManager.h"
 
 #include <filesystem>
-#include <queue>
 #include <fstream>
+#include <queue>
 #include <sstream>
 
 #include <boost/uuid/uuid.hpp>
@@ -37,6 +37,25 @@ namespace arangodb::crash_handler {
 
 DumpManager::DumpManager(std::shared_ptr<DataSourceRegistry> dataSourceRegistry)
     : _dataSourceRegistry(std::move(dataSourceRegistry)) {}
+
+bool DumpManager::isValidCrashId(std::string_view crashId) noexcept {
+  try {
+    boost::uuids::string_generator gen;
+    gen(crashId.begin(), crashId.end());
+    return true;
+  } catch (...) {
+    return false;
+  }
+}
+
+std::optional<std::filesystem::path> DumpManager::resolveCrashDirectory(
+    std::string_view crashId) const {
+  if (_crashesDirectory.empty() || !isValidCrashId(crashId)) {
+    return std::nullopt;
+  }
+
+  return _crashesDirectory / std::string(crashId);
+}
 
 void DumpManager::setCrashesDirectory(
     std::filesystem::path const& crashesDirectory) {
@@ -57,8 +76,9 @@ std::vector<std::string> DumpManager::listCrashes() const {
 
   for (auto const& entry :
        std::filesystem::directory_iterator(_crashesDirectory)) {
-    if (entry.is_directory()) {
-      crashes.push_back(entry.path().filename().string());
+    auto const crashId = entry.path().filename().string();
+    if (entry.is_directory() && isValidCrashId(crashId)) {
+      crashes.push_back(crashId);
     }
   }
   return crashes;
@@ -66,16 +86,16 @@ std::vector<std::string> DumpManager::listCrashes() const {
 
 std::unordered_map<std::string, std::string> DumpManager::getCrashContents(
     std::string_view crashId) const {
-  if (_crashesDirectory.empty()) {
+  auto const crashDir = resolveCrashDirectory(crashId);
+  if (!crashDir.has_value()) {
     return {};
   }
 
   std::unordered_map<std::string, std::string> contents;
-  auto const crashDir = _crashesDirectory / std::string(crashId);
-  if (!std::filesystem::is_directory(crashDir)) {
+  if (!std::filesystem::is_directory(*crashDir)) {
     return contents;
   }
-  for (auto const& entry : std::filesystem::directory_iterator(crashDir)) {
+  for (auto const& entry : std::filesystem::directory_iterator(*crashDir)) {
     if (entry.is_regular_file()) {
       try {
         std::ifstream file(entry.path(), std::ios::binary);
@@ -93,15 +113,15 @@ std::unordered_map<std::string, std::string> DumpManager::getCrashContents(
 }
 
 bool DumpManager::deleteCrash(std::string_view crashId) {
-  if (_crashesDirectory.empty()) {
+  auto const crashDir = resolveCrashDirectory(crashId);
+  if (!crashDir.has_value()) {
     return false;
   }
-  auto const crashDir = _crashesDirectory / std::string(crashId);
-  if (!std::filesystem::is_directory(crashDir)) {
+  if (!std::filesystem::is_directory(*crashDir)) {
     return false;
   }
   std::error_code ec;
-  std::filesystem::remove_all(crashDir, ec);
+  std::filesystem::remove_all(*crashDir, ec);
   return !ec;
 }
 

@@ -21,7 +21,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require('jsunity');
-const serverHelper = require('@arangodb/test-helper');
 const {errors} = require('internal');
 const IM = global.instanceManager;
 const AM = IM.agencyMgr;

@@ -26,10 +26,8 @@
 const _ = require('lodash');
 let jsunity = require('jsunity');
 let internal = require('internal');
-let arangodb = require('@arangodb');
+let { db } = require('@arangodb');
 const isEnterprise = require("internal").isEnterprise();
-let fs = require('fs');
-let db = arangodb.db;
 let { versionHas } = require('@arangodb/test-helper');
 
 const isInstr = versionHas('asan') || versionHas('tsan') || versionHas('coverage');
@@ -44,7 +42,6 @@ const { expect } = require('chai');
 const toArgv = require('internal').toArgv;
 
 
-let { debugResetRaceControl } = require('@arangodb/test-helper');
 let { instanceRole } = require('@arangodb/testutils/instance');
 let IM = global.instanceManager;
 

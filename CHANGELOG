@@ -1,5 +1,15 @@
 3.12.10-devel (XXXX-XX-XX)
 --------------------------
+
+* COR-759: AQL unary plus/minus on bind parameters silently return incorrect values
+  AQL: Fixed an issue where queries using unary operators (+ and -) with bind parameters could cause the server to terminate unexpectedly. These queries are now handled correctly and return the expected results.
+  
+
+* Upgraded included rclone to v1.74.4 with go1.25.12 and non-vulnerable
+  dependencies.
+
+* Updated ArangoDB Starter to v0.19.24.
+
 * COR-613: Create Response Code Metrics
   arangodb_http_response_http_response_code_total{code="<response-code>"}
 
@@ -7,9 +17,6 @@
 
 * GitHub issue #22532: Fixed query editor content becoming hidden after resizing
   the editor pane in the web UI.
-
-* Upgraded included rclone to v1.74.3 with go1.25.11 and non-vulnerable
-  dependencies.
 
 * Add missing case to return 403 for error HTTP_UNAUTHORIZED.
 
@@ -27,8 +34,6 @@
  - js-yaml to 4.2.0
 
 * Upgraded OpenSSL to 3.5.7.
-
-* Updated ArangoDB Starter to v0.19.23.
 
 * COR-607: Fix a problem that causes cluster queries involving a materialize node
   collection access that is used as a satellite to crash in maintainer mode,

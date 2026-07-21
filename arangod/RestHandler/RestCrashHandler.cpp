@@ -68,6 +68,12 @@ futures::Future<futures::Unit> RestCrashHandler::executeAsync() {
     // /_admin/crashes/{id}
     auto const& crashId = suffixes[0];
 
+    if (!DumpManager::isValidCrashId(crashId)) {
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+                    "invalid crash ID");
+      co_return;
+    }
+
     if (_request->requestType() == rest::RequestType::GET) {
       handleGetCrash(dumpManager, crashId);
     } else if (_request->requestType() == rest::RequestType::DELETE_REQ) {

@@ -23,13 +23,12 @@
 // /
 // //////////////////////////////////////////////////////////////////////////////
 
+const wait = require("internal").wait;
 const jsunity = require('jsunity');
+let { instanceRole } = require('@arangodb/testutils/instance');
 const IM = global.instanceManager;
 const AM = IM.agencyMgr;
 
-let { getServersByType, isEnterprise } = require('@arangodb/test-helper');
-
-const wait = require("internal").wait;
 
 function collectionCleanupSuite() {
   'use strict';
@@ -41,7 +40,7 @@ function collectionCleanupSuite() {
   const maintenanceURL = "/_admin/cluster/maintenance";
 
   let getCoordinatorRebootId = function() {
-    let coords = getServersByType("coordinator");
+    let coords = IM.getInstancesRole(instanceRole.coordinator);
     coordinatorId = coords[0].id;
     let res = AM.call("read", [["/arango/Current/ServersKnown"]]);
     coordinatorRebootId = res[0].arango.Current.ServersKnown[coordinatorId].rebootId;
@@ -176,10 +175,6 @@ function collectionCleanupSuite() {
       // The supervision should cleanup a broken smart edge collection
       // along with its shadow collections when the coordinator dies.
       // This test only runs in enterprise edition.
-
-      if (!isEnterprise()) {
-        return; // skip test in community edition
-      }
 
       getCoordinatorRebootId();
 
