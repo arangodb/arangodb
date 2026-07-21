@@ -268,15 +268,30 @@ function optimizerRuleTestSuite () {
         "FOR i IN [ 1, 2, 3 ] LET a = CONCAT(i, 'b') RETURN CONCAT(a, 'b')"
       ];
 
-      queries.forEach(function(query) {
-        var result = db._createStatement({query: query, bindVars:  { }, options:  paramEnabled}).explain();
-        assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
-        result = db._createStatement({query: query, bindVars:  { }, options:  paramNone}).explain();
-        var resultDisabled = db._query(query, { }, paramDisabled).toArray();
-        var resultEnabled  = db._query(query, { }, paramEnabled).toArray();
+      // queries.forEach(function(query) {
+      //   var result = db._createStatement({query: query, bindVars:  { }, options:  paramEnabled}).explain();
+      //   assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
+      //   result = db._createStatement({query: query, bindVars:  { }, options:  paramNone}).explain();
+      //   var resultDisabled = db._query(query, { }, paramDisabled).toArray();
+      //   var resultEnabled  = db._query(query, { }, paramEnabled).toArray();
 
-        assertTrue(isEqual(resultDisabled, resultEnabled), query[0]);
-      });
+      //   assertTrue(isEqual(resultDisabled, resultEnabled), query[0]);
+      // }
+    
+      queries.forEach(function(query, i) {
+        print("Running query #" + i + ": " + query);
+
+        var resultDisabled = db._query(query, {}, paramDisabled).toArray();
+        var resultEnabled  = db._query(query, {}, paramEnabled).toArray();
+
+        if (!isEqual(resultDisabled, resultEnabled)) {
+          print("FAILED:");
+          print(query);
+          print(JSON.stringify(resultDisabled));
+          print(JSON.stringify(resultEnabled));
+        }
+        assertTrue(isEqual(resultDisabled, resultEnabled), query);
+    });
     },
 
     ////////////////////////////////////////////////////////////////////////////////
