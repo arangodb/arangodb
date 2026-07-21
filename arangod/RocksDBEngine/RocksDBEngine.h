@@ -263,9 +263,6 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
       TRI_vocbase_t& vocbase, ErrorCode& status) override;
   velocypack::Builder getReplicationApplierConfiguration(
       ErrorCode& status) override;
-  ErrorCode removeReplicationApplierConfiguration(
-      TRI_vocbase_t& vocbase) override;
-  ErrorCode removeReplicationApplierConfiguration() override;
   ErrorCode saveReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
                                                 velocypack::Slice slice,
                                                 bool doSync) override;
@@ -575,7 +572,6 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   void waitForCompactionJobsToFinish();
   velocypack::Builder getReplicationApplierConfiguration(RocksDBKey const& key,
                                                          ErrorCode& status);
-  ErrorCode removeReplicationApplierConfiguration(RocksDBKey const& key);
   ErrorCode saveReplicationApplierConfiguration(RocksDBKey const& key,
                                                 velocypack::Slice slice,
                                                 bool doSync);

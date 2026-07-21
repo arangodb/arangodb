@@ -1305,35 +1305,6 @@ VPackBuilder RocksDBEngine::getReplicationApplierConfiguration(
   return builder;
 }
 
-ErrorCode RocksDBEngine::removeReplicationApplierConfiguration(
-    TRI_vocbase_t& vocbase) {
-  RocksDBKey key;
-
-  key.constructReplicationApplierConfig(vocbase.id());
-
-  return removeReplicationApplierConfiguration(key);
-}
-
-ErrorCode RocksDBEngine::removeReplicationApplierConfiguration() {
-  RocksDBKey key;
-  key.constructReplicationApplierConfig(databaseIdForGlobalApplier);
-  return removeReplicationApplierConfiguration(key);
-}
-
-ErrorCode RocksDBEngine::removeReplicationApplierConfiguration(
-    RocksDBKey const& key) {
-  auto status = rocksutils::convertStatus(
-      _db->Delete(rocksdb::WriteOptions(),
-                  RocksDBColumnFamilyManager::get(
-                      RocksDBColumnFamilyManager::Family::Definitions),
-                  key.string()));
-  if (!status.ok()) {
-    return status.errorNumber();
-  }
-
-  return TRI_ERROR_NO_ERROR;
-}
-
 ErrorCode RocksDBEngine::saveReplicationApplierConfiguration(
     TRI_vocbase_t& vocbase, velocypack::Slice slice, bool doSync) {
   RocksDBKey key;

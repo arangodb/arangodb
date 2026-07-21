@@ -460,17 +460,6 @@ void StorageEngineMock::releaseTick(TRI_voc_tick_t tick) {
   _releasedTick = tick;
 }
 
-ErrorCode StorageEngineMock::removeReplicationApplierConfiguration(
-    TRI_vocbase_t& vocbase) {
-  TRI_ASSERT(false);
-  return TRI_ERROR_NO_ERROR;
-}
-
-ErrorCode StorageEngineMock::removeReplicationApplierConfiguration() {
-  TRI_ASSERT(false);
-  return TRI_ERROR_NO_ERROR;
-}
-
 arangodb::Result StorageEngineMock::renameCollection(
     TRI_vocbase_t& vocbase, arangodb::LogicalCollection const& collection,
     std::string const& oldName) {
