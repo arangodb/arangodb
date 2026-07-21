@@ -98,6 +98,51 @@ std::tuple<size_t, size_t, double, double> analyzeConditions(
 
 }  // namespace
 
+namespace {
+
+// whether an access to `_id` can be answered by index field `i`, which
+// must be a single-attribute `_key` field; the lookup values are then
+// translated via Index::extractKeyFromIdLookupValue. the primary index
+// accepts all operators (legacy behavior); persistent indexes are
+// restricted to == and IN, as range comparisons on `_id` must not be
+// mapped onto `_key` ordering.
+bool idLookupSupportedViaKeyField(
+    Index const* idx, size_t i,
+    std::vector<basics::AttributeName> const& attribute,
+    aql::AstNode const* op) {
+  if (attribute.size() != 1 || attribute[0].shouldExpand ||
+      attribute[0].name != StaticStrings::IdString) {
+    return false;
+  }
+  if (idx->fields()[i].size() != 1 || idx->isAttributeExpanded(i) ||
+      idx->fields()[i][0].name != StaticStrings::KeyString) {
+    return false;
+  }
+  switch (idx->type()) {
+    case Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX:
+      return true;
+    case Index::IndexType::TRI_IDX_TYPE_PERSISTENT_INDEX:
+      return op->type == aql::NODE_TYPE_OPERATOR_BINARY_EQ ||
+             op->type == aql::NODE_TYPE_OPERATOR_BINARY_IN;
+    default:
+      return false;
+  }
+}
+
+// same, for any field of the index
+bool idLookupSupportedViaKeyField(
+    Index const* idx, std::vector<basics::AttributeName> const& attribute,
+    aql::AstNode const* op) {
+  for (size_t i = 0; i < idx->fields().size(); ++i) {
+    if (idLookupSupportedViaKeyField(idx, i, attribute, op)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+}  // namespace
+
 bool SortedIndexAttributeMatcher::accessFitsIndex(
     arangodb::Index const* idx,            // index
     arangodb::aql::AstNode const* access,  // attribute access
@@ -158,7 +203,8 @@ bool SortedIndexAttributeMatcher::accessFitsIndex(
         attributeData.first == reference &&
         !arangodb::basics::TRI_AttributeNamesHaveExpansion(
             attributeData.second) &&
-        idx->attributeMatches(attributeData.second, isPrimaryIndex)) {
+        (idx->attributeMatches(attributeData.second, isPrimaryIndex) ||
+         ::idLookupSupportedViaKeyField(idx, attributeData.second, op))) {
       // doc.value IN 'value'
       // can use this index
     } else if (other->isAttributeAccessForVariable(attributeData) &&
@@ -189,11 +235,9 @@ bool SortedIndexAttributeMatcher::accessFitsIndex(
     bool match = arangodb::basics::AttributeName::isIdentical(idx->fields()[i],
                                                               fieldNames, true);
 
-    // make exception for primary index as we do not need to match "_key, _id"
-    // but can go directly for "_id"
-    if (!match && isPrimaryIndex && i == 0 &&
-        fieldNames[i].name == StaticStrings::IdString) {
-      match = true;
+    // an access to `_id` also matches an index field that is `_key`
+    if (!match) {
+      match = ::idLookupSupportedViaKeyField(idx, i, fieldNames, op);
     }
 
     if (match) {

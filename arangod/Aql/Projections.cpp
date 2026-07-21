@@ -476,8 +476,6 @@ void Projections::toVelocyPackFromIndexCompactArray(
 
   for (size_t k = 0; k < _projections.size(); k++) {
     auto& it = _projections[k];
-    // _id cannot be part of a user-defined index
-    TRI_ASSERT(it.type != AttributeNamePath::Type::IdAttribute);
 
     // we will get a Slice with an array of index values. now we need
     // to look up the array values from the correct positions to
