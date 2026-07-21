@@ -68,7 +68,7 @@ AgencyFeature::AgencyFeature(ApplicationServer& server, AgencyOptions options)
   startsAfter<application_features::ServerFeaturePhase>();
 #endif
 
-  if (!_options.activatedTouched || !_options.activated) {
+  if (!_options.activated) {
     disable();
     return;
   }

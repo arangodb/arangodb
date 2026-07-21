@@ -212,10 +212,6 @@ void AgencyOptionsProvider::validateOptionsImpl(
     std::shared_ptr<ProgramOptions> opts, AgencyOptions& options) {
   auto const& result = opts->processingResult();
 
-  if (result.touched("agency.activate")) {
-    options.activatedTouched = true;
-  }
-
   if (result.touched("agency.size")) {
     if (options.size < 1) {
       LOG_TOPIC("98510", FATAL, Logger::AGENCY)
