@@ -30,11 +30,10 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
-struct TRI_vocbase_t;
-
 namespace arangodb {
+struct Database;
 class VocbaseContext;
-}
+}  // namespace arangodb
 
 struct GeneralRequestMock : public arangodb::GeneralRequest {
   int64_t _contentLength;
@@ -42,9 +41,10 @@ struct GeneralRequestMock : public arangodb::GeneralRequest {
       _context;  // VocbaseContext required for use with RestVocbaseBaseHandler
   arangodb::velocypack::Builder _payload;  // request body
 
-  GeneralRequestMock(TRI_vocbase_t& vocbase);
+  GeneralRequestMock(arangodb::Database& vocbase);
   ~GeneralRequestMock();
-  static auto generate(TRI_vocbase_t& vocbase, arangodb::rest::RequestType type,
+  static auto generate(arangodb::Database& vocbase,
+                       arangodb::rest::RequestType type,
                        std::vector<std::string> suffixes, VPackBuilder payload)
       -> std::unique_ptr<GeneralRequestMock>;
   using arangodb::GeneralRequest::addSuffix;

@@ -435,7 +435,7 @@ const impTodos = [{
   create: undefined
 }];
 
-class importRunner extends trs.runInArangoshRunner {
+class importRunner extends trs.runLocalInArangoshRunner {
   constructor(options, testname, ...optionalArgs) {
     super(options, testname, ...optionalArgs);
     this.info = "runImport";

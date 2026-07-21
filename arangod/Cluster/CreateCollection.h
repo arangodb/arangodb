@@ -26,16 +26,12 @@
 
 #include "ActionBase.h"
 #include "ActionDescription.h"
-#include "Cluster/ClusterTypes.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "VocBase/voc-types.h"
 
-#include <chrono>
-
-struct TRI_vocbase_t;
-
 namespace arangodb {
 
+struct Database;
 struct ShardID;
 
 namespace replication2::agency {
@@ -59,10 +55,10 @@ class CreateCollection : public ActionBase, public ShardDefinition {
       false;  // indicate that `setState` shall not increment the version
 
   static Result createCollectionReplication2(
-      TRI_vocbase_t& vocbase, replication2::LogId logId, ShardID const& shard,
+      Database& database, replication2::LogId logId, ShardID const& shard,
       TRI_col_type_e collectionType, velocypack::SharedSlice properties);
 
-  static Result createCollectionReplication1(TRI_vocbase_t& vocbase,
+  static Result createCollectionReplication1(Database& database,
                                              ShardID const& shard,
                                              TRI_col_type_e collectionType,
                                              VPackSlice properties,

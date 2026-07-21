@@ -21,6 +21,7 @@
 /// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Metrics/MetricsFeature.h"
 #include "Server.h"
 
 #include <chrono>
@@ -211,7 +212,6 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
       std::array{std::type_index(typeid(AgencyFeaturePhase))});
   _server.addFeature<SoftShutdownFeature>();
   _server.addFeature<SslFeature>();
-  _server.addFeature<StorageEngineFeature>();
   _server.addFeature<SystemDatabaseFeature>();
   _server.addFeature<TempFeature>(name);
   _server.addFeature<TemporaryStorageFeature>();
@@ -227,7 +227,8 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
   _server.addFeature<RocksDBOptionFeature>(
       _server.hasFeature<AgencyFeature>() ? &_server.getFeature<AgencyFeature>()
                                           : nullptr);
-  auto& rocksdbRecovery = _server.addFeature<RocksDBRecoveryManager>();
+  auto& rocksdbRecovery =
+      _server.addFeature<RocksDBRecoveryManager>(database, database);
 #ifdef TRI_HAVE_GETRLIMIT
   _server.addFeature<FileDescriptorsFeature>(metrics);
 #endif
@@ -243,7 +244,6 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
 #endif
   _server.addFeature<RocksDBEngine>(
       _optionsProvider, metrics, databasePath, vectorIndex, flush, dumpLimits,
-      scheduler,
       replication2::EnableReplication2
           ? &_server.getFeature<ReplicatedLogFeature>()
           : nullptr,

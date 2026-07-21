@@ -30,11 +30,11 @@
 #include <vector>
 
 struct GeneralRequestMock;
-struct TRI_vocbase_t;
 
 namespace arangodb {
 
 class AgencyCache;
+struct Database;
 
 namespace fuerte {
 inline namespace v1 {
@@ -47,9 +47,9 @@ namespace tests {
 
 class PreparedRequestResponse {
  public:
-  PreparedRequestResponse(TRI_vocbase_t& vocbase);
+  PreparedRequestResponse(Database& vocbase);
 
-  void setRequestType(arangodb::rest::RequestType type);
+  void setRequestType(rest::RequestType type);
   void addSuffix(std::string suffix);
   void addRestSuffix(std::string suffix);
   void addBody(VPackSlice slice);
@@ -63,7 +63,7 @@ class PreparedRequestResponse {
   std::unique_ptr<fuerte::Response> generateResponse() const;
 
  private:
-  TRI_vocbase_t& _vocbase;
+  Database& _vocbase;
   std::string _dbName;
   arangodb::rest::RequestType _type;
   std::vector<std::string> _suffixes;

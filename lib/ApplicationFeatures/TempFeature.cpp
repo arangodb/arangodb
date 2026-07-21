@@ -22,6 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ApplicationFeatures/TempFeature.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/TempOptionsProvider.h"
 #include "Basics/files.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -29,6 +31,19 @@
 using namespace arangodb::options;
 
 namespace arangodb {
+
+TempFeature::TempFeature(application_features::ApplicationServer& server,
+                         std::string const& appname)
+    : TempFeature(server, appname, TempFeatureOptions{}) {}
+
+TempFeature::TempFeature(application_features::ApplicationServer& server,
+                         std::string const& appname, TempFeatureOptions options)
+    : ApplicationFeature{server, *this},
+      _options(std::move(options)),
+      _appname(appname) {
+  setOptional(false);
+  startsAfter<application_features::GreetingsFeaturePhase>();
+}
 
 void TempFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   TempOptionsProvider provider;

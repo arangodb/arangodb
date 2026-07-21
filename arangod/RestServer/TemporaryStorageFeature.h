@@ -75,6 +75,9 @@ class TemporaryStorageFeature
   }
 
   explicit TemporaryStorageFeature(
+      application_features::ApplicationServer& server,
+      TemporaryStorageFeatureOptions options);
+  explicit TemporaryStorageFeature(
       application_features::ApplicationServer& server);
   ~TemporaryStorageFeature();
 

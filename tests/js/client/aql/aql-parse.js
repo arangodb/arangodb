@@ -102,6 +102,39 @@ function ahuacatlParseTestSuite () {
     assertEqual(count, quantifier.subNodes[0].value);
   }
 
+  function assertArrayRegexParse (query, negate) {
+    let result = db._parse(query).ast;
+
+    assertEqual("root", result[0].type);
+    result = result[0].subNodes;
+
+    assertEqual("return", result[0].type);
+    result = result[0].subNodes;
+
+    assertEqual("expansion", result[0].type);
+    assertTrue(result[0].booleanize);
+    assertEqual("array filter", result[0].subNodes[2].type);
+    assertEqual("quantifier", result[0].subNodes[2].subNodes[0].type);
+
+    let filter = result[0].subNodes[2].subNodes[1];
+    if (negate) {
+      assertEqual("unary not", filter.type);
+      filter = filter.subNodes[0];
+    }
+    assertEqual("function call", filter.type);
+    assertEqual("REGEX_TEST", filter.name);
+  }
+
+  function assertAtLeastRegexParse (query, count, negate) {
+    assertArrayRegexParse(query, negate);
+
+    let result = db._parse(query).ast;
+    let quantifier = result[0].subNodes[0].subNodes[0].subNodes[2].subNodes[0];
+
+    assertEqual("at least", quantifier.quantifier);
+    assertEqual(count, quantifier.subNodes[0].value);
+  }
+
   return {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -890,6 +923,82 @@ function ahuacatlParseTestSuite () {
       walk(parsed.ast);
       assertTrue(foundLikeCall);
       assertFalse(foundArrayLikeExpansion);
+    },
+
+    testArrayAnyRegexMatch : function() {
+      assertArrayRegexParse('RETURN ["foo", "bar"] ANY =~ "^ba"', false);
+    },
+
+    testArrayAnyRegexNonMatch : function() {
+      assertArrayRegexParse('RETURN ["foo", "bar"] ANY !~ "^ba"', true);
+    },
+
+    testArrayAllRegexMatch : function() {
+      assertArrayRegexParse('RETURN ["bar", "baz"] ALL =~ "^ba"', false);
+    },
+
+    testArrayNoneRegexMatch : function() {
+      assertArrayRegexParse('RETURN ["foo"] NONE =~ "^ba"', false);
+    },
+
+    testArrayAllRegexNonMatch : function() {
+      assertArrayRegexParse('RETURN ["bar", "baz"] ALL !~ "^ba"', true);
+    },
+
+    testArrayNoneRegexNonMatch : function() {
+      assertArrayRegexParse('RETURN ["bar", "baz"] NONE !~ "^ba"', true);
+    },
+
+    testArrayAtLeastRegexMatch : function() {
+      assertAtLeastRegexParse('RETURN ["bar", "baz", "foo"] AT LEAST(2) =~ "^ba"', 2, false);
+    },
+
+    testArrayAtLeastRegexNonMatch : function() {
+      assertAtLeastRegexParse('RETURN ["bar", "baz", "foo"] AT LEAST(2) !~ "^x"', 2, true);
+    },
+
+    testNotArrayAllRegexNonMatchParse : function() {
+      let result = db._parse('RETURN NOT ["abcde", "bar"] ALL !~ "^.{5}$"').ast;
+      assertEqual("root", result[0].type);
+      result = result[0].subNodes[0].subNodes;
+      assertEqual("unary not", result[0].type);
+      assertEqual("expansion", result[0].subNodes[0].type);
+      assertTrue(result[0].subNodes[0].booleanize);
+    },
+
+    testArrayRegexMissingPatternParse : function() {
+      assertParseError(errors.ERROR_QUERY_PARSE.code, 'RETURN ["foo"] ANY =~');
+    },
+
+    testArrayAtLeastEmptyCountRegexParse : function() {
+      assertParseError(errors.ERROR_QUERY_PARSE.code, 'RETURN ["foo"] AT LEAST() =~ "x.*"');
+    },
+
+    testAnyRegexMatchOpenParenIsRegexTestFunction : function() {
+      // ANY =~ must not tokenize when followed by REGEX_TEST function call via ==.
+      let parsed = db._parse('RETURN ["a"] ANY == REGEX_TEST("x", "y")');
+      assertTrue(parsed.parsed);
+
+      let foundRegexTestCall = false;
+      let foundArrayRegexExpansion = false;
+
+      let walk = (nodes) => {
+        nodes.forEach((node) => {
+          if (node.type === 'function call' && node.name === 'REGEX_TEST') {
+            foundRegexTestCall = true;
+          }
+          if (node.type === 'expansion' && node.booleanize) {
+            foundArrayRegexExpansion = true;
+          }
+          if (node.subNodes) {
+            walk(node.subNodes);
+          }
+        });
+      };
+
+      walk(parsed.ast);
+      assertTrue(foundRegexTestCall);
+      assertFalse(foundArrayRegexExpansion);
     },
 
     testNotMatches : function() {

@@ -136,7 +136,7 @@ function makeDataWrapper(options) {
           lastAppliedContinuousTick = followerState.state.lastAppliedContinuousTick;
 
           if (compareTicks(followerState.state.lastAppliedContinuousTick, state.lastLogTick) >= 0 ||
-              compareTicks(followerState.state.lastProcessedContinuousTick, state.lastLogTick) >= 0) {
+            compareTicks(followerState.state.lastProcessedContinuousTick, state.lastLogTick) >= 0) {
             print("follower has caught up. state.lastLogTick:", state.lastLogTick, "followerState.lastAppliedContinuousTick:", followerState.state.lastAppliedContinuousTick, "followerState.lastProcessedContinuousTick:", followerState.state.lastProcessedContinuousTick);
             break;
           }
@@ -148,7 +148,7 @@ function makeDataWrapper(options) {
           if (count > 120) {
             print(`${CYAN}${Date()}giving up to wait - maybe its good anyways?${RESET}`);
             return;
-          }            
+          }
         }
       });
       print(`${CYAN}${Date()} wait done!${RESET}`);
@@ -238,7 +238,7 @@ function makeDataWrapper(options) {
     runMakeData(moreargv, file, whichRTA, count, testCount, launch, res) {
       let logFile = fs.join(fs.getTempPath(), `rta_out_${count}_${launch}.log`);
       require('internal').env.INSTANCEINFO = JSON.stringify(this.instanceManager.getStructure());
-      let rc = ct.run.rtaMakedata(this.options, this.instanceManager, testCount, messages[count-1], logFile, moreargv);
+      let rc = ct.run.rtaMakedata(this.options, this.instanceManager, testCount, messages[count - 1], logFile, moreargv);
       res[whichRTA] = rc;
       if (!rc.status) {
         this.continueTesting = false;
@@ -267,7 +267,7 @@ function makeDataWrapper(options) {
           'duration': 0.0
         };
       }
-      let res = {'total':0, 'duration':0.0, 'status':true, message: '', 'failed': 0};
+      let res = { 'total': 0, 'duration': 0.0, 'status': true, message: '', 'failed': 0 };
       let count = 0;
       let counters = { nonAgenciesCount: 1 };
       [
@@ -279,7 +279,7 @@ function makeDataWrapper(options) {
         let moreargv = [];
         count += 1;
         let whichRTA = `rta_${testCases[testCount]}_${count}`;
-        res[whichRTA] = { 'status': true, 'message': ''};
+        res[whichRTA] = { 'status': true, 'message': '' };
         if (this.options.cluster) {
           if (count === 2) {
             let rc = ct.run.rtaWaitShardsInSync(this.options, this.instanceManager);
@@ -305,12 +305,12 @@ function makeDataWrapper(options) {
                 pu.switchBinarySet(1);
               }
               this.instanceManager.upgradeCycleInstance(false, {
-                dbserverBefore: function() {
+                dbserverBefore: function () {
                 },
-                dbserverAfter: function() {
+                dbserverAfter: function () {
                 }
               });
-            } catch(e) {
+            } catch (e) {
               res.status = false;
               res.failed += 1;
               res[whichRTA] = {
@@ -357,6 +357,8 @@ function makeDataWrapper(options) {
           this.waitForReplState();
           if (count === 2) {
             this.createDump();
+            this.restoreDump();
+            this.waitForReplState();
           } else if (count === 3) {
             try {
               if (this.options.oldSource !== undefined) {
@@ -365,7 +367,7 @@ function makeDataWrapper(options) {
               }
               let me = this;
               this.instanceManager.upgradeCycleInstance(false, {
-                singleOneDone: function() {
+                singleOneDone: function () {
                   me.waitForReplState();
                 }
               });
@@ -422,7 +424,6 @@ function makeDataWrapper(options) {
     }
   }
   let localOptions = Object.assign({}, options, tu.testServerAuthInfo);
-
   if (localOptions.oldSource !== undefined) {
     localOptions.skipServerJS = false;
   }

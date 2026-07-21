@@ -33,6 +33,7 @@
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
+#include "RestServer/ServerOptionsProvider.h"
 #include "Scheduler/SchedulerFeature.h"
 
 using namespace arangodb::application_features;
@@ -41,32 +42,21 @@ using namespace arangodb::options;
 namespace arangodb {
 
 ServerFeature::ServerFeature(ApplicationServer& server, int* res)
-    : ApplicationFeature{server, *this}, _result(res) {
+    : ServerFeature(server, res, ServerFeatureOptions{}) {}
+
+ServerFeature::ServerFeature(ApplicationServer& server, int* res,
+                             ServerFeatureOptions options)
+    : ApplicationFeature{server, *this},
+      _options(std::move(options)),
+      _result(res) {
   setOptional(true);
   startsAfter<AqlFeaturePhase>();
   startsAfter<UpgradeFeature>();
 }
 
 void ServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("server", "server features");
-
-  options->addObsoleteOption(
-      "--server.rest-server",
-      "Has no effect; the REST API is always available except during "
-      "database upgrade, initialization, and version check.",
-      true);
-  options->addObsoleteOption(
-      "--no-server",
-      "Has no effect; use --database.auto-upgrade, --database.check-version, "
-      "or --database.init-database as appropriate.",
-      false);
-
-  options->addOption(
-      "--server.validate-utf8-strings",
-      "Perform UTF-8 string validation for incoming JSON and VelocyPack "
-      "data.",
-      new BooleanParameter(&_options.validateUtf8Strings),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
+  ServerOptionsProvider provider;
+  provider.declareOptions(options, _options);
 }
 
 void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {

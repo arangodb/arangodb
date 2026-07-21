@@ -208,6 +208,10 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
   // insert/update/replace operation
   bool const _forceCacheRefill;
 
+  // edge cache compression config — read once at construction, never changes
+  std::size_t const _minValueSizeForEdgeCompression;
+  std::uint32_t const _accelerationFactorForEdgeCompression;
+
   // fixed size buffer to estimate the selectivity of the index.
   // on insertion of a document we have to insert it into the estimator,
   // on removal we have to remove it in the estimator as well.

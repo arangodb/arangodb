@@ -24,6 +24,7 @@
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "Shell/V8ShellFeatureOptions.h"
 
 #include <libplatform/libplatform.h>
 #include <v8.h>
@@ -40,6 +41,8 @@ class V8ShellFeature final : public application_features::ApplicationFeature {
   static constexpr std::string_view name() noexcept { return "V8Shell"; }
 
   V8ShellFeature(application_features::ApplicationServer& server,
+                 std::string const& name, V8ShellFeatureOptions options);
+  V8ShellFeature(application_features::ApplicationServer& server,
                  std::string const& name);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
@@ -49,19 +52,14 @@ class V8ShellFeature final : public application_features::ApplicationFeature {
   void unprepare() override final;
   void stop() override final;
 
-  std::string const& startupDirectory() const { return _startupDirectory; }
+  std::string const& startupDirectory() const {
+    return _options.startupDirectory;
+  }
 
  private:
-  std::string _startupDirectory;
+  V8ShellFeatureOptions _options;
   std::string _nodeModulesDirectory;
-  std::string _clientModule;
-  std::string _copyDirectory;
-  std::vector<std::string> _moduleDirectories;
-  bool _currentModuleDirectory;
-  bool _copyInstallation;
   bool _removeCopyInstallation;
-  uint64_t _gcInterval;
-  uint32_t _executionDeadline;
 
  public:
   ErrorCode runShell(std::vector<std::string> const& positionals);

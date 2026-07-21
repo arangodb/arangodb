@@ -25,7 +25,6 @@
 #include "ResignShardLeadership.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/MaintenanceFeature.h"
@@ -39,8 +38,8 @@
 #include "Utils/DatabaseGuard.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Databases.h"
+#include "VocBase/vocbase.h"
 
 #include <velocypack/Compare.h>
 #include <velocypack/Iterator.h>

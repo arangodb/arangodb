@@ -115,6 +115,22 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
+LanguageFeature::LanguageFeature(
+    application_features::ApplicationServer& server)
+    : LanguageFeature(server, LanguageFeatureOptions{}) {}
+
+LanguageFeature::LanguageFeature(
+    application_features::ApplicationServer& server,
+    LanguageFeatureOptions options)
+    : application_features::ApplicationFeature{server, *this},
+      _options(std::move(options)),
+      _binaryPath(server.getBinaryPath()),
+      _locale(),
+      _langType(basics::LanguageType::INVALID) {
+  setOptional(false);
+  startsAfter<application_features::GreetingsFeaturePhase>();
+}
+
 LanguageFeature::~LanguageFeature() = default;
 
 void LanguageFeature::collectOptions(

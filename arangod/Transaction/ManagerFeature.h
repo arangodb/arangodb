@@ -34,7 +34,7 @@
 #include <mutex>
 
 namespace arangodb::metrics {
-class MetricsFeature;
+struct IRegistry;
 }  // namespace arangodb::metrics
 
 namespace arangodb::transaction {
@@ -47,7 +47,10 @@ class ManagerFeature final : public application_features::ApplicationFeature {
   }
 
   ManagerFeature(application_features::ApplicationServer& server,
-                 metrics::MetricsFeature& metrics);
+                 metrics::IRegistry& metricsRegistry,
+                 ManagerFeatureOptions options);
+  ManagerFeature(application_features::ApplicationServer& server,
+                 metrics::IRegistry& metricsRegistry);
   ~ManagerFeature();
 
   void collectOptions(

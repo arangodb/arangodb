@@ -26,17 +26,12 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
-#include "Basics/conversions.h"
-#include "Basics/tri-strings.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
-#include "Logger/LogContextKeys.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
-#include "Logger/LogStructuredParamsAllowList.h"
-#include "Meta/conversion.h"
 #include "Rest/CommonDefines.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Helpers.h"
@@ -47,6 +42,7 @@
 #include "Transaction/SmartContext.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/SingleCollectionTransaction.h"
+#include "VocBase/vocbase.h"
 
 #include <absl/strings/str_cat.h>
 

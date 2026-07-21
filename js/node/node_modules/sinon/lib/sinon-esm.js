@@ -1,5 +1,7 @@
-"use strict";
+'use strict';
 
-const sinon = require("./sinon.js");
+var sinon = require('./sinon.js');
+
+
 
 module.exports = sinon;

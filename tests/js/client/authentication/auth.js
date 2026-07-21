@@ -51,8 +51,11 @@ function AuthSuite() {
   return {
 
     // set up
+    setUpAll: function() {
+      IM.rememberConnection();
+    },
     setUp: function () {
-      arango.reconnect(arango.getEndpoint(), '_system', "root", "");
+      IM.reconnectMe();
 
       try {
         users.remove(user);
@@ -61,6 +64,9 @@ function AuthSuite() {
     },
 
     // tear down
+    tearDownAll: function() {
+      IM.reconnectMe();
+    },
     tearDown: function () {
       // our test temporarily disables access to the user collection,
       // so our request to clear the failure points must be authenticated

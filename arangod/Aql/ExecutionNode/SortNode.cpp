@@ -37,11 +37,9 @@
 #include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/SortRegister.h"
-#include "Aql/WalkerWorker.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Inspection/JsonPrintInspector.h"
-#include "Logger/LogMacros.h"
 #include "RestServer/TemporaryStorageFeature.h"
+#include "VocBase/vocbase.h"
 
 using namespace arangodb::basics;
 using namespace arangodb::aql;

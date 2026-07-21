@@ -37,7 +37,6 @@
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Indexes/Index.h"
 #include "Logger/LogMacros.h"
-#include "Metrics/MetricsFeature.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
@@ -223,11 +222,10 @@ void SupportInfoBuilder::buildInfoMessage(VPackBuilder& result,
   VPackBuilder hostInfo;
 
   auto& environment = server.getFeature<EnvironmentFeature>();
-  auto& metrics = server.getFeature<metrics::MetricsFeature>();
   auto& fileDescriptors = server.getFeature<FileDescriptorsFeature>();
   auto& cpuUsage = server.getFeature<CpuUsageFeature>();
   auto& databaseFeature = server.getFeature<DatabaseFeature>();
-  buildHostInfo(hostInfo, environment, metrics, fileDescriptors, cpuUsage,
+  buildHostInfo(hostInfo, environment, fileDescriptors, cpuUsage,
                 databaseFeature, isTelemetricsReq);
 
   std::string timeString;
@@ -440,7 +438,6 @@ void SupportInfoBuilder::buildInfoMessage(VPackBuilder& result,
 
 void SupportInfoBuilder::buildHostInfo(VPackBuilder& result,
                                        EnvironmentFeature const& environment,
-                                       metrics::MetricsFeature& metrics,
                                        FileDescriptorsFeature& fileDescriptors,
                                        CpuUsageFeature& cpuUsage,
                                        DatabaseFeature& databaseFeature,
@@ -518,7 +515,8 @@ void SupportInfoBuilder::buildHostInfo(VPackBuilder& result,
   result.close();  // number of cores
 
   result.add(keys["processStats"], VPackValue(VPackValueType::Object));
-  result.add(keys["processUptime"], VPackValue(metrics.uptime()));
+  result.add(keys["processUptime"],
+             VPackValue(metrics::MetricsFeature::serverUptime()));
 
   ProcessInfo info = TRI_ProcessInfoSelf();
   result.add(keys["nThreads"], VPackValue(info._numberThreads));
@@ -673,10 +671,10 @@ void SupportInfoBuilder::buildDbServerDataStoredInfo(
 
             auto flags = Index::makeFlags(Index::Serialize::Estimates,
                                           Index::Serialize::Figures);
-            static constexpr std::array<std::string_view, 14> idxTypes = {
-                "edge",       "geo",     "fulltext", "inverted",
-                "persistent", "ttl",     "mdi",      "mdi-prefixed",
-                "iresearch",  "primary", "vector",   "unknown"};
+            static constexpr auto idxTypes = std::to_array<std::string_view>(
+                {"edge", "geo", "fulltext", "inverted", "persistent", "ttl",
+                 "mdi", "mdi-prefixed", "iresearch", "primary", "vector",
+                 "unknown"});
             for (auto const& type : idxTypes) {
               idxTypesToAmounts.try_emplace(type, 0);
             }
