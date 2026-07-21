@@ -87,11 +87,7 @@ function aqlMatchStatementVariableLengthTestSuite() {
               db.ecbp.save({_from: `vcbp/v${i}`, _to: `vcbp/v${i+1}`});
             }
 
-            // Isolated dataset for multiple-edge-type (COR-419) tests. Kept
-            // separate from ec1 so expected results are small and hand-checked.
-            // mec1 is a chain v0->v1->v2->v3; mec2 adds ONE shortcut v0->v2 that
-            // exists only in mec2, so `mec1|mec2` is a provable union and a
-            // 2-hop path v0->v2->v3 mixes an mec2 edge with an mec1 edge.
+            // Isolated dataset for multiple-edge-type tests.
             db._create("mvc");
             for (let i = 0; i < 4; i++) {
               db.mvc.save({_key: `v${i}`});
@@ -325,10 +321,9 @@ function aqlMatchStatementVariableLengthTestSuite() {
           assertEqual(result, expected);
         },
 
-        // ---- COR-419: multiple edge types combined with variable length ----
+        // Multiple edge types combined with variable length
         testMatchVarLenMultiTypeOutbound: function() {
-          // e is a PATH object (COR-372); the v0->v2* paths only exist via mec2,
-          // proving the union. 7 directed paths of length 1..2.
+          // e is a PATH object
           const query = aql`WITH mvc
                               FOR v IN mvc
                                 MATCH (v) -[ e:mec1|mec2 * 1..2 ]-> (w:mvc)
@@ -350,7 +345,7 @@ function aqlMatchStatementVariableLengthTestSuite() {
         },
 
         testMatchVarLenMultiTypeMixedCollectionPath: function() {
-          // the unique 2-hop path v0->v2->v3 must use an mec2 edge then an mec1 edge
+          // unique 2-hop path v0->v2->v3 must use an mec2 edge then an mec1 edge
           const query = aql`WITH mvc
                               FOR v IN ["mvc/v0"]
                                 MATCH (v) -[ e:mec1|mec2 * 2..2 ]-> (w:mvc)
@@ -365,7 +360,6 @@ function aqlMatchStatementVariableLengthTestSuite() {
         },
 
         testMatchVarLenMultiTypeInbound: function() {
-          // same 7 directed paths, enumerated from their end vertex
           const query = aql`WITH mvc
                               FOR v IN mvc
                                 MATCH (v) <-[ e:mec1|mec2 * 1..2 ]- (w:mvc)
@@ -375,8 +369,6 @@ function aqlMatchStatementVariableLengthTestSuite() {
         },
 
         testMatchVarLenMultiTypeAny: function() {
-          // any-direction traverses both ways; assert it runs, is non-empty, and
-          // the union holds (at least one path uses an mec2 edge)
           const query = aql`WITH mvc
                               FOR v IN mvc
                                 MATCH (v) -[ e:mec1|mec2 * 1..2 ]- (w:mvc)
@@ -389,7 +381,6 @@ function aqlMatchStatementVariableLengthTestSuite() {
         },
 
         testMatchVarLenMultiTypeBindParams: function() {
-          // @@-bind-param edge collections combined with a range; same 7 paths
           const query = "MATCH (v :mvc) -[ e :@@ec1 | @@ec2 * 1..2 ]-> (w :mvc) RETURN [v, e, w]";
           const expected = [
             "(mvc/v0) -[]-> (mvc/v1)",
@@ -408,8 +399,7 @@ function aqlMatchStatementVariableLengthTestSuite() {
         },
 
         testMatchVarLenMultiTypeSeamIsPath: function() {
-          // COR-372 seam: explicit *1..1 still binds e to a PATH object (not an edge
-          // doc), unlike bare fixed -[e:mec1|mec2]-> tested in aql-match-statement.js
+          // explicit *1..1 still binds e to a PATH object (not an edge doc)
           const query = aql`WITH mvc
                               FOR v IN mvc
                                 MATCH (v) -[ e:mec1|mec2 * 1..1 ]-> (w:mvc)
@@ -423,7 +413,6 @@ function aqlMatchStatementVariableLengthTestSuite() {
         },
 
         testMatchVarLenMultiTypePathVariable: function() {
-          // spec M1: path variable p combined with multiple edge types + range
           const query = aql`WITH mvc
                               FOR v IN mvc
                                 MATCH p = (v) -[ e:mec1|mec2 * 1..2 ]-> (w:mvc)
