@@ -69,7 +69,6 @@ void ArangoRestoreServer::addFeatures() {
   auto& client = addFeature<HttpEndpointProvider, ClientFeature>(
       true, std::numeric_limits<size_t>::max());
   addFeature<LoggerFeature>(false);
-  addFeature<ConfigFeature>(_binaryName);
   addFeature<OptionsCheckFeature>();
   addFeature<ShellColorsFeature>();
   addFeature<ShutdownFeature>(
@@ -87,6 +86,7 @@ void ArangoRestoreServer::addFeatures() {
 
 void ArangoRestoreServer::addFeaturesWithOptionProvider() {
   addFeature<VersionFeature>(getOptions<VersionOptionsProvider>());
+  addFeature<ConfigFeature>(_binaryName, getOptions<ConfigOptionsProvider>());
   addFeature<FileSystemFeature>(getOptions<FileSystemOptionsProvider>());
   addFeature<RandomFeature>(getOptions<RandomOptionsProvider>());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE

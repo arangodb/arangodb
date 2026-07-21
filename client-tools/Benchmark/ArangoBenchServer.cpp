@@ -64,7 +64,6 @@ void ArangoBenchServer::addFeatures() {
   addFeature<HttpEndpointProvider, ClientFeature>(
       false, std::numeric_limits<size_t>::max());
   addFeature<LoggerFeature>(false);
-  addFeature<ConfigFeature>(_binaryName);
   addFeature<OptionsCheckFeature>();
   addFeature<ShellColorsFeature>();
   addFeature<ShutdownFeature>(
@@ -76,6 +75,7 @@ void ArangoBenchServer::addFeatures() {
 
 void ArangoBenchServer::addFeaturesWithOptionProvider() {
   addFeature<VersionFeature>(getOptions<VersionOptionsProvider>());
+  addFeature<ConfigFeature>(_binaryName, getOptions<ConfigOptionsProvider>());
   addFeature<FileSystemFeature>(getOptions<FileSystemOptionsProvider>());
   addFeature<RandomFeature>(getOptions<RandomOptionsProvider>());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE

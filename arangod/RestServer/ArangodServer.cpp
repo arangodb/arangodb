@@ -102,7 +102,6 @@ void ArangodServer::addFeatures() {
   auto& clusterFeature = addFeature<ClusterFeature>(metrics);
   auto& database = addFeature<DatabaseFeature>();
   auto& clusterUpgradeFeature = addFeature<ClusterUpgradeFeature>(database);
-  addFeature<ConfigFeature>(std::string{_binaryName});
 #ifdef USE_V8
   addFeature<ConsoleFeature>();
   auto& v8DealerFeature = addFeature<V8DealerFeature>(metrics);
@@ -202,6 +201,7 @@ void ArangodServer::addFeaturesWithOptionProvider() {
   auto& aqlFunctionFeature = getFeature<aql::AqlFunctionFeature>();
 
   addFeature<VersionFeature>(getOptions<VersionOptionsProvider>());
+  addFeature<ConfigFeature>(_binaryName, getOptions<ConfigOptionsProvider>());
   addFeature<RandomFeature>(getOptions<RandomOptionsProvider>());
   addFeature<NonceFeature>(getOptions<NonceOptionsProvider>());
   addFeature<MaxMapCountFeature>(getOptions<MaxMapCountOptionsProvider>());

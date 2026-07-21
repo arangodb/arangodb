@@ -45,22 +45,20 @@ class ConfigFeature final : public application_features::ApplicationFeature {
   static constexpr std::string_view name() noexcept { return "Config"; }
 
   ConfigFeature(application_features::ApplicationServer& server,
-                std::string const& progname, std::string const& configFilename,
-                ConfigFeatureOptions options);
+                std::string const& progname, ConfigFeatureOptions options);
   ConfigFeature(application_features::ApplicationServer& server,
                 std::string const& progname,
                 std::string const& configFilename = "");
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  // Config file loading is done by ConfigOptionsProvider::loadConfiguration
+  // (via loadConfigAndEarlyLoggerOptions). Kept as a no-op so the generic
+  // feature loadOptions loop remains valid for LoggerFeature.
   void loadOptions(std::shared_ptr<options::ProgramOptions>,
                    char const* binaryPath) override final;
 
   void prepare() override final;
 
  private:
-  void loadConfigFile(std::shared_ptr<options::ProgramOptions>,
-                      std::string const& progname, char const* binaryPath);
-
   VersionFeature* _version;
   ConfigFeatureOptions _options;
 };

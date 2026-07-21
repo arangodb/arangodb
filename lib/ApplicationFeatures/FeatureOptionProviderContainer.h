@@ -47,8 +47,18 @@ class FeatureOptionProviderContainer final {
   }
 
   template<typename ProviderType>
-  auto& getOptions() const {
+  auto& getOptions() {
     return std::get<ProviderType>(_providers).options();
+  }
+
+  template<typename ProviderType>
+  auto const& getOptions() const {
+    return std::get<ProviderType>(_providers).options();
+  }
+
+  template<typename ProviderType>
+  ProviderType& getProvider() {
+    return std::get<ProviderType>(_providers);
   }
 
  private:

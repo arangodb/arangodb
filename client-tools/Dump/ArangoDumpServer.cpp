@@ -68,7 +68,6 @@ void ArangoDumpServer::addFeatures() {
   auto& client = addFeature<HttpEndpointProvider, ClientFeature>(
       true, std::numeric_limits<size_t>::max());
   addFeature<LoggerFeature>(false);
-  addFeature<ConfigFeature>(_binaryName);
   addFeature<OptionsCheckFeature>();
   addFeature<ShellColorsFeature>();
   addFeature<ShutdownFeature>(std::array{std::type_index(typeid(DumpFeature))});
@@ -84,6 +83,7 @@ void ArangoDumpServer::addFeatures() {
 
 void ArangoDumpServer::addFeaturesWithOptionProvider() {
   addFeature<VersionFeature>(getOptions<VersionOptionsProvider>());
+  addFeature<ConfigFeature>(_binaryName, getOptions<ConfigOptionsProvider>());
   addFeature<FileSystemFeature>(getOptions<FileSystemOptionsProvider>());
   addFeature<RandomFeature>(getOptions<RandomOptionsProvider>());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE

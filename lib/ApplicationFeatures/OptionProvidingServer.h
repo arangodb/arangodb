@@ -19,7 +19,11 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
+
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/ConfigOptionsProvider.h"
+#include "ApplicationFeatures/CoreOptionProviders.h"
+#include "ApplicationFeatures/VersionOptionsProvider.h"
 
 namespace arangodb {
 
@@ -44,9 +48,31 @@ class OptionProvidingServer : public application_features::ApplicationServer {
     _optionProviders.validateOptions(options());
   }
 
+  // After CLI parse: keep feature loadOptions (Logger early levels), then load
+  // .conf via ConfigOptionsProvider. Requires Providers to include
+  // ConfigOptionsProvider and VersionOptionsProvider (true for CoreOptionProviders).
+  void loadAdditionalOptions() override {
+    ApplicationServer::loadAdditionalOptions();
+    auto const& versionOptions = getOptions<VersionOptionsProvider>();
+    loadConfigAndEarlyLoggerOptions(
+        getProvider<ConfigOptionsProvider>(),
+        versionOptions.printVersion || versionOptions.printVersionJson,
+        options(), getBinaryPath(), _binaryName);
+  }
+
+  template<class ProviderType>
+  auto& getOptions() {
+    return _optionProviders.template getOptions<ProviderType>();
+  }
+
   template<class ProviderType>
   auto const& getOptions() const {
     return _optionProviders.template getOptions<ProviderType>();
+  }
+
+  template<class ProviderType>
+  ProviderType& getProvider() {
+    return _optionProviders.template getProvider<ProviderType>();
   }
 
   std::string _binaryName;
