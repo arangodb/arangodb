@@ -2025,13 +2025,6 @@ AstNode* Ast::createPatternEdge(AstNode const* outVariable,
                                 bool isOutbound) {
   auto node = createNode(NODE_TYPE_PATTERN_EDGE);
   node->addMember(outVariable ? outVariable : createNodeValueNull());
-  // NOTE: ExecutionPlan::fromNodeMatch (patternEdgeCollectionCount /
-  // getPatternEdgeCollection) asserts this label member is a non-empty
-  // NODE_TYPE_ARRAY. The grammar's sole call site
-  // (pattern_edge_collection_list) always passes such an array, so the
-  // createNodeValueNull() fallback below is currently unreachable for MATCH
-  // edges; a future caller passing a null or non-array label would trip that
-  // assert (a no-op in release builds).
   node->addMember(label ? label : createNodeValueNull());
   node->addMember(properties ? properties : createNodeNop());
   node->addMember(filterExpression ? filterExpression : createNodeNop());
