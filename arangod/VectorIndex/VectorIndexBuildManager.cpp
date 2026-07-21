@@ -231,6 +231,22 @@ void VectorIndexBuildManager::scanAndBuild(std::stop_token const& stopToken,
 
     auto const collections = vocbase.collections(false);
     for (auto const& coll : collections) {
+      // Diagnostic: getReadyIndexes() below hides indexes that report
+      // inProgress(); a vector index stuck inProgress would be invisible to the
+      // build loop and never trained. Surface those explicitly.
+      for (auto const& idx : coll->getPhysical()->getAllIndexes()) {
+        if (idx->type() == Index::TRI_IDX_TYPE_VECTOR_INDEX &&
+            idx->inProgress()) {
+          auto const& vecIdx = static_cast<RocksDBVectorIndex&>(*idx);
+          LOG_TOPIC("e175b", INFO, Logger::ENGINES) << std::format(
+              "[shard={}, index={}] Vector index is inProgress and therefore "
+              "excluded from the build scan; will not be trained until it "
+              "leaves the inProgress state. trainingState={}.",
+              vecIdx.collection().name(), vecIdx.id().id(),
+              trainingStateToString(vecIdx.trainingState()));
+        }
+      }
+
       auto const indexes = coll->getPhysical()->getReadyIndexes();
       for (auto const& idx : indexes) {
         if (idx->type() != Index::TRI_IDX_TYPE_VECTOR_INDEX) {
@@ -245,6 +261,11 @@ void VectorIndexBuildManager::scanAndBuild(std::stop_token const& stopToken,
         if (vecIdx.trainingState() != VectorIndexTrainingState::kUnusable) {
           // kTraining or kIngesting — build in progress, keep waiters
           // pending until it finishes.
+          LOG_TOPIC("e177b", INFO, Logger::ENGINES) << std::format(
+              "[shard={}, index={}] Vector index build already in progress "
+              "(trainingState={}); not starting a new build this scan.",
+              vecIdx.collection().name(), vecIdx.id().id(),
+              trainingStateToString(vecIdx.trainingState()));
           continue;
         }
 
@@ -256,6 +277,11 @@ void VectorIndexBuildManager::scanAndBuild(std::stop_token const& stopToken,
         auto const numDocs = rcoll->meta().numberDocuments();
         if (numDocs < vecIdx.trainingThreshold()) {
           skippedWaiters.insert(vecIdx.id().id());
+          LOG_TOPIC("e174b", INFO, Logger::ENGINES) << std::format(
+              "[shard={}, index={}] Vector index below training threshold: "
+              "meta().numberDocuments()={}, threshold={}. Skipping this scan.",
+              vecIdx.collection().name(), vecIdx.id().id(), numDocs,
+              vecIdx.trainingThreshold());
           auto belowThresholdMsg = std::format(
               "not enough training data for vector "
               "index, need at least {} documents "
