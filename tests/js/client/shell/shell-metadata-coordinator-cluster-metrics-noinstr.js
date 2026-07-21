@@ -26,7 +26,7 @@ const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
 const db = arangodb.db;
 const inst = require('@arangodb/testutils/instance');
-const { moveShard, eventuallyAssertMetric } = require("@arangodb/test-helper");
+const { eventuallyAssertMetric } = require("@arangodb/test-helper");
 let IM = global.instanceManager;
 
 function metadataCoordinatorMetricsSuite() {
@@ -319,8 +319,8 @@ function metadataCoordinatorMetricsSuite() {
       assertNotEqual(fromServerId, toServerId);
 
       // Move the shard (swap leader and follower) and wait for completion
-      const moveResult = moveShard(testDbName, testCollectionName, shardId,
-        fromServerId, toServerId, false);
+      const moveResult = IM.moveShard(testDbName, testCollectionName, shardId,
+                                      fromServerId, toServerId);
       assertTrue(moveResult);
 
       assertAllShardMetrics(coordinators[0], expectedLeaderShards, expectedTotalShards,

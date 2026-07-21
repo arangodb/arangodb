@@ -744,7 +744,7 @@ class instanceManager {
 
     while (true) {
       if (count > timeout) {
-        throw new Error(`FAILED to ${jobMessage} TIMEOUT`);
+        throw new Error(`FAILED to ${jobMessage} after TIMEOUT ${timeout} - ${jobStatus}`);
       }
       sleep(0.1);
       jobStatus = arango.GET_RAW('/_admin/cluster/queryAgencyJob?id=' + jobId);
@@ -790,23 +790,39 @@ class instanceManager {
     }
   }
 
-  moveShard(database, collection, shard, fromServer, toServer) {
+  moveShard(database, collection, shard, fromServer, toServer, timeout=600, isLeader=undefined, remainsFollower=undefined, expectStatus='Finished') {
     let body = {
       database,
       collection,
       shard,
-      'fromServer': fromServer.id,
-      'toServer': toServer.id
+      'fromServer': (typeof(fromServer) === "string") ? fromServer : fromServer.id,
+      'toServer': (typeof(toServer) === "string") ? toServer: toServer.id
     };
-    let result = arango.POST_RAW("/_admin/cluster/moveShard", body);
-    // Now wait until the job we triggered is finished:
-    var count = 600;   // seconds
-
-    if (this.waitForAgencyJob(
-      result.parsedBody.id, 600,
-      `moveShard in _db/${database}/${collection}/${shard} from ${fromServer.name} to ${toServer.name}:`)) {
-      return;
+    if (isLeader !== undefined) {
+      body['isLeader'] = isLeader;
     }
+    if (remainsFollower !== undefined) {
+      body['remainsFollower'] = remainsFollower;
+    }
+    // Now wait until the job we triggered is finished:
+    const msg = `moveShard in _db/${database}/${collection}/${shard} from ${fromServer.name}/${body.fromServer} to ${toServer.name}/${body.toServer}:`;
+    let result = arango.POST_RAW("/_admin/cluster/moveShard", body);
+    if (result.code !== 202 ||
+        !result.hasOwnProperty('parsedBody') ||
+        !result.parsedBody.hasOwnProperty('id')) {
+      throw new Error(`IM.moveShard failed with ${result.code} - ${msg} ${JSON.stringify(result)}`);
+    }
+    if (timeout < 0) {
+      return result.parsedBody.id;
+    }
+    if (this.waitForAgencyJob(
+      result.parsedBody.id,
+      timeout * 10,
+      msg,
+      expectStatus)) {
+      return true;
+    }
+    return false;
   }
 
   // //////////////////////////////////////////////////////////////////////////////

@@ -41,28 +41,14 @@ function KeyGeneratorSuite() {
   let cn = 'UnitTestsCollection';
   let coordinators = [];
 
-  function sendRequest(method, db, path, body, headers, usePrimary) {
-    let res;
-    const i = usePrimary ? 0 : 1;
-    try {
-      return coordinators[i].toThisInstance(() => {
-        return arango[method](path, body, headers);
-      });
-    } catch (err) {
-      console.error(`Exception processing ${method} ${path}`, err.stack);
-      return {};
-    }
-    return res;
-  }
-
-  function waitForCoordinatorsToBeReady(name) {
-    const url = "/_db/" + cn + "/_api/collection/" + name;
+ function waitForCoordinatorsToBeReady(name) {
+    const path = "/_db/" + cn + "/_api/collection/" + name;
     for (let coord of coordinators) {
       let success = false;
       for (let i = 0; i < 10; ++i) {
         try {
           if (coord.toThisInstance(() => {
-            return arango.GET_RAW(url);
+            return arango.GET_RAW(path);
           }).code  === 200) {
             success = true;
             break;
@@ -80,7 +66,7 @@ function KeyGeneratorSuite() {
 
   function generateCollectionAndTest(name) {
     let lastKey = null;
-    let url = "/_db/" + cn + "/_api/document/" + name;
+    let path = "/_db/" + cn + "/_api/document/" + name;
     let keyOptions = {};
     let increment = 1;
     if (Number(name[name.length - 1]) === 1) {
@@ -98,11 +84,13 @@ function KeyGeneratorSuite() {
     assertNotEqual("", db[name].properties().distributeShardsLike);
 
     for (let i = 0; i < 10000; ++i) {
-      let result = sendRequest('POST_RAW', cn, url, /*payload*/ {}, {}, i % 2 === 0);
-      assertEqual(result.code, 202, JSON.stringify(result));
-      let key = result.parsedBody._key;
-      assertTrue(Number(key) === Number(lastKey) + increment || lastKey === null, {key, lastKey});
-      lastKey = key;
+      coordinators[i % 2].toThisInstance(() => {
+        let result = arango.POST_RAW(path, {});
+        assertEqual(result.code, 202, JSON.stringify(result));
+        let key = result.parsedBody._key;
+        assertTrue(Number(key) === Number(lastKey) + increment || lastKey === null, {key, lastKey});
+        lastKey = key;
+      });
     }
   }
 
@@ -126,14 +114,16 @@ function KeyGeneratorSuite() {
 
       try {
         let lastKey = null;
-        let url = "/_api/document/" + cn;
+        let path = "/_api/document/" + cn;
         // send documents to both coordinators
         for (let i = 0; i < 10000; ++i) {
-          let result = sendRequest('POST_RAW', '_system', url, /*payload*/ {}, {}, i % 2 === 0);
-          assertEqual(result.code, 202);
-          let key = result.parsedBody._key;
-          assertTrue(key > lastKey || lastKey === null, {key, lastKey});
-          lastKey = key;
+          coordinators[i % 2].toThisInstance(() => {
+            let result = arango.POST_RAW(path, {});
+            assertEqual(result.code, 202);
+            let key = result.parsedBody._key;
+            assertTrue(key > lastKey || lastKey === null, {key, lastKey});
+            lastKey = key;
+          });
         }
       } finally {
         db._drop(cn);
@@ -158,14 +148,16 @@ function KeyGeneratorSuite() {
         assertNotEqual("", db[cn].properties().distributeShardsLike);
 
         let lastKey = null;
-        let url = "/_db/" + cn + "/_api/document/" + cn;
+        let path = "/_db/" + cn + "/_api/document/" + cn;
         // send documents to both coordinators
         for (let i = 0; i < 10000; ++i) {
-          let result = sendRequest('POST_RAW', cn, url, /*payload*/ {}, {}, i % 2 === 0);
-          assertEqual(result.code, 202);
-          let key = result.parsedBody._key;
-          assertTrue(key > lastKey || lastKey === null, {key, lastKey});
-          lastKey = key;
+          coordinators[i % 2].toThisInstance(() => {
+            let result = arango.POST_RAW(path, {});
+            assertEqual(result.code, 202);
+            let key = result.parsedBody._key;
+            assertTrue(key > lastKey || lastKey === null, {key, lastKey});
+            lastKey = key;
+          });
         }
       } finally {
         db._useDatabase("_system");

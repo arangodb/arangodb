@@ -27,7 +27,6 @@ const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
 const db = arangodb.db;
 const { isCluster, sleep } = require('internal');
-const { moveShard } = require("@arangodb/test-helper");
 let { instanceRole } = require('@arangodb/testutils/instance');
 let IM = global.instanceManager;
 
@@ -39,55 +38,55 @@ function metadataMetricsSuite() {
   const numberOfCollectionsMetric = "arangodb_metadata_number_of_collections";
   const numberOfShardsMetric = "arangodb_metadata_number_of_shards";
 
-  let assertMetrics = function(endpoints, expectedDatabases, expectedCollections, expectedShards) {
-    const retries = isCluster()? 3 : 1;
+  let assertMetrics = function (endpoints, expectedDatabases, expectedCollections, expectedShards) {
+    const retries = isCluster() ? 3 : 1;
 
     endpoints.forEach((ep) => {
-        let numDatabases = ep.getMetric(numberOfDatabasesMetric);
-        let numCollections = ep.getMetric(numberOfCollectionsMetric);
-        let numShards = 0;
+      let numDatabases = ep.getMetric(numberOfDatabasesMetric);
+      let numCollections = ep.getMetric(numberOfCollectionsMetric);
+      let numShards = 0;
+      if (isCluster()) {
+        numShards = ep.getMetric(numberOfShardsMetric);
+      }
+      for (let i = 0; i < retries; ++i) {
+        if (isCluster()) {
+          sleep(1);
+        }
+
+        numDatabases = ep.getMetric(numberOfDatabasesMetric);
+        if (numDatabases !== expectedDatabases) {
+          continue;
+        }
+
+        numCollections = ep.getMetric(numberOfCollectionsMetric);
+        if (numCollections !== expectedCollections) {
+          continue;
+        }
+
         if (isCluster()) {
           numShards = ep.getMetric(numberOfShardsMetric);
-        }
-        for (let i = 0; i < retries; ++i) {
-          if (isCluster()) {
-            sleep(1);
-          }
-
-          numDatabases = ep.getMetric(numberOfDatabasesMetric);
-          if (numDatabases !== expectedDatabases) {
+          if (numShards !== expectedShards) {
             continue;
           }
-
-          numCollections = ep.getMetric(numberOfCollectionsMetric);
-          if (numCollections !== expectedCollections) {
-            continue;
-          }
-
-          if (isCluster()) {
-            numShards = ep.getMetric(numberOfShardsMetric);
-            if (numShards !== expectedShards) {
-              continue;
-            }
-          }
-
-          // All metrics match, break early
-          break;
         }
 
-        assertEqual(numDatabases, expectedDatabases, 
-                   `Number of databases found: ${numDatabases}, expected: ${expectedDatabases}`);
-        assertEqual(numCollections, expectedCollections, 
-                   `Number of collections found: ${numCollections}, expected: ${expectedCollections}`);
-        if (isCluster()) {
-          assertEqual(numShards, expectedShards, 
-                   `Number of shards found: ${numShards}, expected: ${expectedShards}`);
-        }
+        // All metrics match, break early
+        break;
+      }
+
+      assertEqual(numDatabases, expectedDatabases,
+        `Number of databases found: ${numDatabases}, expected: ${expectedDatabases}`);
+      assertEqual(numCollections, expectedCollections,
+        `Number of collections found: ${numCollections}, expected: ${expectedCollections}`);
+      if (isCluster()) {
+        assertEqual(numShards, expectedShards,
+          `Number of shards found: ${numShards}, expected: ${expectedShards}`);
+      }
     });
   };
 
   return {
-    tearDown: function() {
+    tearDown: function () {
       try {
         db._useDatabase("_system");
         db._dropDatabase(testDbName);
@@ -96,9 +95,9 @@ function metadataMetricsSuite() {
       }
     },
 
-    testMetricsSimple: function() {
+    testMetricsSimple: function () {
       let endpoints;
-      
+
       if (isCluster()) {
         endpoints = IM.getInstancesRole(instanceRole.coordinator);
       } else {
@@ -109,7 +108,7 @@ function metadataMetricsSuite() {
       assertMetrics(endpoints, 1, 3, 3);
     },
 
-    testMetricsChangeWithCreatingAndDroppingDatabase: function() {
+    testMetricsChangeWithCreatingAndDroppingDatabase: function () {
       let endpoints;
       if (isCluster()) {
         endpoints = IM.getInstancesRole(instanceRole.coordinator);
@@ -127,7 +126,7 @@ function metadataMetricsSuite() {
       assertMetrics(endpoints, 1, 3, 3);
     },
 
-    testMetricsChangeWithCreatingAndDroppingCollection: function() {
+    testMetricsChangeWithCreatingAndDroppingCollection: function () {
       let endpoints;
       if (isCluster()) {
         endpoints = IM.getInstancesRole(instanceRole.coordinator);
@@ -138,7 +137,7 @@ function metadataMetricsSuite() {
 
       db._createDatabase(testDbName);
       db._useDatabase(testDbName);
-      db._create(testCollectionName, {numberOfShards: 3});
+      db._create(testCollectionName, { numberOfShards: 3 });
       assertMetrics(endpoints, 2, 6, 8);
 
       db._drop(testCollectionName);
@@ -149,7 +148,7 @@ function metadataMetricsSuite() {
       assertMetrics(endpoints, 1, 3, 3);
     },
 
-    testMetricsChangeWithCreatingAndDroppingCollectionWithReplication: function() {
+    testMetricsChangeWithCreatingAndDroppingCollectionWithReplication: function () {
       let endpoints;
       if (isCluster()) {
         endpoints = IM.getInstancesRole(instanceRole.coordinator);
@@ -160,7 +159,7 @@ function metadataMetricsSuite() {
 
       db._createDatabase(testDbName);
       db._useDatabase(testDbName);
-      db._create(testCollectionName, {numberOfShards: 5, replicationFactor: 3});
+      db._create(testCollectionName, { numberOfShards: 5, replicationFactor: 3 });
       assertMetrics(endpoints, 2, 6, 10);
 
       db._drop(testCollectionName);
@@ -171,7 +170,7 @@ function metadataMetricsSuite() {
       assertMetrics(endpoints, 1, 3, 3);
     },
 
-    testMetricsWithSingleShardDatabase: function() {
+    testMetricsWithSingleShardDatabase: function () {
       let endpoints;
       if (isCluster()) {
         endpoints = IM.getInstancesRole(instanceRole.coordinator);
@@ -180,9 +179,9 @@ function metadataMetricsSuite() {
       }
       assertTrue(endpoints.length > 0);
 
-      db._createDatabase(testDbName, {sharding: "single"});
+      db._createDatabase(testDbName, { sharding: "single" });
       db._useDatabase(testDbName);
-      db._create(testCollectionName, {numberOfShards: 1});
+      db._create(testCollectionName, { numberOfShards: 1 });
       assertMetrics(endpoints, 2, 6, 6);
 
       db._drop(testCollectionName);
@@ -193,7 +192,7 @@ function metadataMetricsSuite() {
       assertMetrics(endpoints, 1, 3, 3);
     },
 
-    testMetricsWithSatelliteCollection: function() {
+    testMetricsWithSatelliteCollection: function () {
       let endpoints;
       if (isCluster()) {
         endpoints = IM.getInstancesRole(instanceRole.coordinator);
@@ -204,11 +203,11 @@ function metadataMetricsSuite() {
 
       db._createDatabase(testDbName);
       db._useDatabase(testDbName);
-      db._create(testCollectionName, {replicationFactor: "satellite"});
+      db._create(testCollectionName, { replicationFactor: "satellite" });
       assertMetrics(endpoints, 2, 6, 6);
     },
 
-    testMetricsSwitchLeaderFollower: function() {
+    testMetricsSwitchLeaderFollower: function () {
       if (!isCluster()) {
         // Shard movement only makes sense in cluster mode
         return;
@@ -219,13 +218,13 @@ function metadataMetricsSuite() {
 
       db._createDatabase(testDbName);
       db._useDatabase(testDbName);
-      const col = db._create(testCollectionName, {numberOfShards: 3});
-      
+      const col = db._create(testCollectionName, { numberOfShards: 3 });
+
       assertMetrics(endpoints, 2, 6, 8);
 
       // Get shard information - shards(true) returns server IDs
       const shards = col.shards(true);
-      
+
       const shardId = Object.keys(shards)[0];
       // leader
       const fromServer = shards[shardId][0];
@@ -234,8 +233,8 @@ function metadataMetricsSuite() {
       assertNotEqual(fromServer, toServer);
 
       // Move the shard (swap leader and follower) and wait for completion
-      const moveResult = moveShard(testDbName, testCollectionName, shardId, 
-                                   fromServer, toServer, false);
+      const moveResult = IM.moveShard(testDbName, testCollectionName, shardId,
+        fromServer, toServer);
       assertTrue(moveResult);
       assertMetrics(endpoints, 2, 6, 8);
 
@@ -248,7 +247,7 @@ function metadataMetricsSuite() {
       assertMetrics(endpoints, 1, 3, 3);
     },
 
-    testMetricsMoveToNewServer: function() {
+    testMetricsMoveToNewServer: function () {
       if (!isCluster()) {
         // Shard movement only makes sense in cluster mode
         return;
@@ -259,27 +258,27 @@ function metadataMetricsSuite() {
 
       db._createDatabase(testDbName);
       db._useDatabase(testDbName);
-      const col = db._create(testCollectionName, {numberOfShards: 2});
-      
+      const col = db._create(testCollectionName, { numberOfShards: 2 });
+
       assertMetrics(endpoints, 2, 6, 7);
 
       const health = arango.GET("/_admin/cluster/health");
       const allDbServers = Object.keys(health.Health).filter(s => s.startsWith('PRMR-'));
-      
+
       const shards = col.shards(true);
-      
+
       const shardId = Object.keys(shards)[0];
       const currentServers = shards[shardId]; // Array of servers holding this shard
       const fromServer = currentServers[0]; // Leader
-      
+
       // Find a DB server that doesn't currently hold this shard
       const toServer = allDbServers.find(server => !currentServers.includes(server));
       assertTrue(toServer);
       assertNotEqual(fromServer, toServer);
 
       // Move the shard to a new DB server and wait for completion
-      const moveResult = moveShard(testDbName, testCollectionName, shardId, 
-                                   fromServer, toServer, false);
+      const moveResult = IM.moveShard(testDbName, testCollectionName, shardId,
+        fromServer, toServer);
       assertTrue(moveResult);
       assertMetrics(endpoints, 2, 6, 7);
 
