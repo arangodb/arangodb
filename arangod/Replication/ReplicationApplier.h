@@ -30,10 +30,6 @@
 namespace arangodb {
 class TailingSyncer;
 
-namespace velocypack {
-class Builder;
-}
-
 /// @brief replication applier interface
 class ReplicationApplier {
   friend class TailingSyncer;
@@ -47,8 +43,6 @@ class ReplicationApplier {
   ReplicationApplier(ReplicationApplier const&) = delete;
   ReplicationApplier& operator=(ReplicationApplier const&) = delete;
 
-  std::string const& databaseName() const { return _databaseName; }
-
   /// @brief whether or not the applier is the global one
   virtual bool isGlobal() const = 0;
 
@@ -57,9 +51,6 @@ class ReplicationApplier {
 
   /// @brief stop the replication applier, resets the error message
   void stop();
-
-  /// @brief stop the replication applier
-  void stop(Result const& r);
 
   /// @brief stop the replication applier and join the apply thread
   void stopAndJoin();
@@ -75,26 +66,9 @@ class ReplicationApplier {
   /// @brief store the configuration for the applier
   virtual void storeConfiguration(bool doSync) = 0;
 
-  /// @brief remove the replication application state file
-  void removeState();
-
   /// @brief store the applier state in persistent storage
   void persistState(bool doSync);
   Result persistStateResult(bool doSync);
-
-  Result resetState(bool reducedSet = false);
-
-  /// @brief store the current applier state in the passed vpack builder
-  void toVelocyPack(arangodb::velocypack::Builder& result) const;
-
-  /// @brief return the current configuration
-  ReplicationApplierConfiguration configuration() const;
-
-  /// @brief return the current endpoint
-  std::string endpoint() const;
-
-  /// @brief return last persisted tick
-  TRI_voc_tick_t lastTick() const;
 
   /// @brief block the replication applier from starting
   Result preventStart();
@@ -108,11 +82,6 @@ class ReplicationApplier {
   /// @brief unblock the replication applier from starting
   void allowStart();
 
-  /// @brief register an applier error
-  void setError(arangodb::Result const&);
-
-  Result lastError() const;
-
   /// @brief set the progress
   void setProgress(char const* msg);
   void setProgress(std::string const& msg);
@@ -120,8 +89,6 @@ class ReplicationApplier {
  protected:
   virtual std::string getStateFilename() const = 0;
 
-  /// @brief register an applier error
-  void setErrorNoLock(arangodb::Result const&);
   void setProgressNoLock(std::string const& msg);
 
  private:

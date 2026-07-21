@@ -32,8 +32,6 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "Replication/common-defines.h"
-#include "Rest/Version.h"
-#include "RestServer/ServerIdFeature.h"
 
 using namespace arangodb;
 namespace StringUtils = arangodb::basics::StringUtils;
@@ -48,11 +46,6 @@ ReplicationApplier::ReplicationApplier(
 /// @brief block the replication applier from starting
 Result ReplicationApplier::preventStart() {
   WRITE_LOCKER_EVENTUAL(writeLocker, _statusLock);
-
-  if (_state.isTailing()) {
-    // already running
-    return Result(TRI_ERROR_REPLICATION_RUNNING);
-  }
 
   if (_state._preventStart) {
     // someone else requested start prevention
@@ -90,77 +83,11 @@ bool ReplicationApplier::stopInitialSynchronization() const {
   return _state._stopInitialSynchronization;
 }
 
-/// @brief stop the replication applier
-void ReplicationApplier::stop(Result const& r) { doStop(r, false); }
-
+/// @brief stop the replication applier, resets the error message
 void ReplicationApplier::stop() { doStop(Result(), false); }
 
 /// @brief stop the replication applier and join the apply thread
 void ReplicationApplier::stopAndJoin() { doStop(Result(), true); }
-
-void ReplicationApplier::removeState() {
-  if (!applies()) {
-    return;
-  }
-
-  std::string const filename = getStateFilename();
-  if (filename.empty()) {
-    // will happen during testing and for coordinator engine
-    return;
-  }
-
-  WRITE_LOCKER_EVENTUAL(writeLocker, _statusLock);
-  _state.reset(false);
-
-  if (TRI_ExistsFile(filename.c_str())) {
-    LOG_TOPIC("87a61", TRACE, Logger::REPLICATION)
-        << "removing replication state file '" << filename << "' for "
-        << _databaseName;
-    auto res = TRI_UnlinkFile(filename.c_str());
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          res, std::string("unable to remove replication state file '") +
-                   filename + "'");
-    }
-  }
-}
-
-Result ReplicationApplier::resetState(bool reducedSet) {
-  // make sure the both vars below match your needs
-  static const bool resetPhase = false;
-  static const bool doSync = false;
-
-  if (!applies()) {
-    return Result{};
-  }
-  std::string const filename = getStateFilename();
-
-  WRITE_LOCKER_EVENTUAL(writeLocker, _statusLock);
-  _state.reset(resetPhase, reducedSet);
-
-  if (!filename.empty() && TRI_ExistsFile(filename.c_str())) {
-    LOG_TOPIC("2914f", TRACE, Logger::REPLICATION)
-        << "removing replication state file '" << filename << "' for "
-        << _databaseName;
-    auto res = TRI_UnlinkFile(filename.c_str());
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      return Result{res,
-                    std::string("unable to remove replication state file '") +
-                        filename + "'"};
-    }
-  }
-
-  LOG_TOPIC("87584", DEBUG, Logger::REPLICATION)
-      << "stopped replication applier for database '" << _databaseName
-      << "' with lastProcessedContinuousTick: "
-      << _state._lastProcessedContinuousTick
-      << ", lastAppliedContinuousTick: " << _state._lastAppliedContinuousTick
-      << ", safeResumeTick: " << _state._safeResumeTick;
-
-  return persistStateResult(doSync);
-}
 
 /// @brief load the applier state from persistent storage
 bool ReplicationApplier::loadState() {
@@ -294,70 +221,6 @@ Result ReplicationApplier::persistStateResult(bool doSync) {
   return rv;
 }
 
-/// @brief store the current applier state in the passed vpack builder
-void ReplicationApplier::toVelocyPack(
-    arangodb::velocypack::Builder& result) const {
-  TRI_ASSERT(!result.isClosed());
-
-  ReplicationApplierConfiguration configuration(_configuration._server);
-  ReplicationApplierState state;
-
-  {
-    // copy current config and state under the lock
-    READ_LOCKER_EVENTUAL(readLocker, _statusLock);
-    configuration = _configuration;
-    state = _state;
-  }
-
-  // add state
-  result.add(VPackValue("state"));
-  state.toVelocyPack(result, true);
-
-  // add server info
-  result.add("server", VPackValue(VPackValueType::Object));
-  result.add("version", VPackValue(ARANGODB_VERSION));
-  result.add("serverId",
-             VPackValue(std::to_string(ServerIdFeature::getId().id())));
-  result.close();  // server
-
-  if (!configuration._endpoint.empty()) {
-    result.add("endpoint", VPackValue(configuration._endpoint));
-  }
-  if (!configuration._database.empty()) {
-    result.add("database", VPackValue(configuration._database));
-  }
-}
-
-/// @brief return the current configuration
-ReplicationApplierConfiguration ReplicationApplier::configuration() const {
-  READ_LOCKER_EVENTUAL(readLocker, _statusLock);
-  return _configuration;
-}
-
-/// @brief return the current configuration
-std::string ReplicationApplier::endpoint() const {
-  READ_LOCKER_EVENTUAL(readLocker, _statusLock);
-  return _configuration._endpoint;
-}
-
-/// @brief return last persisted tick
-TRI_voc_tick_t ReplicationApplier::lastTick() const {
-  READ_LOCKER_EVENTUAL(readLocker, _statusLock);
-  return std::max(_state._lastAppliedContinuousTick,
-                  _state._lastProcessedContinuousTick);
-}
-
-/// @brief register an applier error
-void ReplicationApplier::setError(arangodb::Result const& r) {
-  WRITE_LOCKER_EVENTUAL(writeLocker, _statusLock);
-  setErrorNoLock(r);
-}
-
-Result ReplicationApplier::lastError() const {
-  READ_LOCKER_EVENTUAL(writeLocker, _statusLock);
-  return Result(_state._lastError.code, _state._lastError.message);
-}
-
 /// @brief set the progress
 void ReplicationApplier::setProgress(char const* msg) {
   return setProgress(std::string(msg));
@@ -366,18 +229,6 @@ void ReplicationApplier::setProgress(char const* msg) {
 void ReplicationApplier::setProgress(std::string const& msg) {
   WRITE_LOCKER_EVENTUAL(writeLocker, _statusLock);
   setProgressNoLock(msg);
-}
-
-/// @brief register an applier error
-void ReplicationApplier::setErrorNoLock(arangodb::Result const& rr) {
-  // log error message
-  if (rr.isNot(TRI_ERROR_REPLICATION_APPLIER_STOPPED)) {
-    LOG_TOPIC("ab64e", ERR, Logger::REPLICATION)
-        << "replication applier error for " << _databaseName << ": "
-        << rr.errorMessage();
-  }
-
-  _state.setError(rr.errorNumber(), rr.errorMessage());
 }
 
 void ReplicationApplier::setProgressNoLock(std::string const& msg) {
@@ -399,38 +250,14 @@ void ReplicationApplier::doStop(Result const& r, bool joinThread) {
   // always stop initial synchronization
   _state._stopInitialSynchronization = true;
 
-  if (!_state.isActive() && !joinThread) {
-    // not active
-    return;
-  }
-
-  if (_state.isShuttingDown() && !joinThread) {
-    // somebody else is shutting us down
+  if (!joinThread) {
     return;
   }
 
   LOG_TOPIC("73c1a", DEBUG, Logger::REPLICATION)
       << "requesting replication applier stop for " << _databaseName;
 
-  if (_state.isActive()) {
-    _state._phase = ReplicationApplierState::ActivityPhase::SHUTDOWN;
-  }
   _state.setError(r.errorNumber(), r.errorMessage());
-
-  if (joinThread) {
-    auto start = std::chrono::steady_clock::now();
-    while (_state.isShuttingDown()) {
-      writeLocker.unlock();
-      std::this_thread::sleep_for(std::chrono::milliseconds(50));
-      if (std::chrono::steady_clock::now() - start > std::chrono::minutes(3)) {
-        LOG_TOPIC("0b9c8", ERR, Logger::REPLICATION)
-            << "replication applier is not stopping";
-        TRI_ASSERT(false);
-        start = std::chrono::steady_clock::now();
-      }
-      writeLocker.lock();
-    }
-  }
 }
 
 /// @brief read a tick value from a VelocyPack struct
