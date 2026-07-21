@@ -4408,9 +4408,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
       {.databaseFeature = dbFeature,
        .systemDatabase = sysDatabase,
        .networkFeature = nullptr,
-       .clusterFeature =
-           arangodb::LazyApplicationFeatureReference<arangodb::ClusterFeature>(
-               nullptr),
+       .clusterFeature = nullptr,
        .schedulerFeature = nullptr,
        .aqlFunctionFeature = nullptr});
 
@@ -4760,9 +4758,7 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_toVelocyPack) {
       {.databaseFeature = dbFeature,
        .systemDatabase = sysDatabase,
        .networkFeature = nullptr,
-       .clusterFeature =
-           arangodb::LazyApplicationFeatureReference<arangodb::ClusterFeature>(
-               nullptr),
+       .clusterFeature = nullptr,
        .schedulerFeature = nullptr,
        .aqlFunctionFeature = nullptr});
   auto cleanup =
@@ -4916,9 +4912,7 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_vpack_create) {
       {.databaseFeature = dbFeature,
        .systemDatabase = sysDatabase,
        .networkFeature = nullptr,
-       .clusterFeature =
-           arangodb::LazyApplicationFeatureReference<arangodb::ClusterFeature>(
-               nullptr),
+       .clusterFeature = nullptr,
        .schedulerFeature = nullptr,
        .aqlFunctionFeature = nullptr});
   auto cleanup =

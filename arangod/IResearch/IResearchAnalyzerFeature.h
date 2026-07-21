@@ -38,7 +38,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
-#include "ApplicationFeatures/LazyApplicationFeatureReference.h"
 #include "Auth/Common.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
@@ -293,7 +292,7 @@ class IResearchAnalyzerFeature final
     DatabaseFeature& databaseFeature;
     SystemDatabaseFeature& systemDatabase;
     NetworkFeature* networkFeature;
-    LazyApplicationFeatureReference<ClusterFeature> clusterFeature;
+    ClusterFeature* clusterFeature;
     SchedulerFeature* schedulerFeature;
     aql::AqlFunctionFeature* aqlFunctionFeature;
 
@@ -609,8 +608,7 @@ class IResearchAnalyzerFeature final
   std::function<void(bool)> _gcfunc;
   std::mutex _workItemMutex;
   Scheduler::WorkHandle _workItem;
-  LazyApplicationFeatureReference<ClusterFeature> _lazyClusterFeatureRef;
-  ClusterFeature* _clusterFeature = nullptr;
+  ClusterFeature* _clusterFeature;
   SystemDatabaseFeature& _systemDatabase;
   DatabaseFeature& _databaseFeature;
   NetworkFeature* _networkFeature;

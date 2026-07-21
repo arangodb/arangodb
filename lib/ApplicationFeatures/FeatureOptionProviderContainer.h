@@ -20,35 +20,31 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "Agency/AgencyOptionsProvider.h"
-#include "Cluster/ClusterOptionsProvider.h"
-#include "Cluster/ClusterUpgradeOptionsProvider.h"
-#include "Cluster/MaintenanceOptionsProvider.h"
-#include "Cluster/ReplicationTimeoutOptionsProvider.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "Replication/ReplicationOptionsProvider.h"
-#include "Replication2/ReplicatedLog/ReplicatedLogOptionsProvider.h"
-#include "RestServer/BootstrapOptionsProvider.h"
-#include "RestServer/DatabasePathOptionsProvider.h"
-#include "RestServer/DumpLimitsOptionsProvider.h"
-#include "RestServer/FlushOptionsProvider.h"
-#include "RestServer/FortuneOptionsProvider.h"
-#include "RestServer/PrivilegeOptionsProvider.h"
-#include "RestServer/TemporaryStorageOptionsProvider.h"
-#include "RestServer/TtlOptionsProvider.h"
-#include "RocksDBEngine/RocksDBEngineOptionsProvider.h"
-#include "RocksDBEngine/RocksDBIndexCacheRefillOptionsProvider.h"
-#include "RocksDBEngine/RocksDBOptionFeatureOptionsProvider.h"
-#include "Statistics/StatisticsOptionsProvider.h"
-#include "Transaction/ManagerOptionsProvider.h"
 
 #include <tuple>
 
 namespace arangodb::application_features {
+
+template<class... Providers>
 class FeatureOptionProviderContainer final {
  public:
-  void declareOptions(std::shared_ptr<options::ProgramOptions> programOptions);
-  void validateOptions(std::shared_ptr<options::ProgramOptions> programOptions);
+  void declareOptions(std::shared_ptr<options::ProgramOptions> programOptions) {
+    std::apply(
+        [&](auto&... providers) {
+          (providers.declareOptions(programOptions), ...);
+        },
+        _providers);
+  }
+
+  void validateOptions(
+      std::shared_ptr<options::ProgramOptions> programOptions) {
+    std::apply(
+        [&](auto&... providers) {
+          (providers.validateOptions(programOptions), ...);
+        },
+        _providers);
+  }
 
   template<typename ProviderType>
   auto& getOptions() const {
@@ -56,17 +52,6 @@ class FeatureOptionProviderContainer final {
   }
 
  private:
-  std::tuple<
-      AgencyOptionsProvider, bootstrap::BootstrapOptionsProvider,
-      ClusterOptionsProvider, upgrade::ClusterUpgradeOptionsProvider,
-      DatabasePathOptionsProvider, DumpLimitsOptionsProvider,
-      FlushOptionsProvider, fortune::FortuneOptionsProvider,
-      MaintenanceOptionsProvider, replication2::ReplicatedLogOptionsProvider,
-      ReplicationOptionsProvider, ReplicationTimeoutOptionsProvider,
-      RocksDBEngineOptionsProvider, RocksDBIndexCacheRefillOptionsProvider,
-      RocksDBOptionFeatureOptionsProvider, PrivilegeOptionsProvider,
-      statistics::StatisticsOptionsProvider, TemporaryStorageOptionsProvider,
-      transaction::ManagerOptionsProvider, TtlOptionsProvider>
-      _providers{};
+  std::tuple<Providers...> _providers{};
 };
 }  // namespace arangodb::application_features
