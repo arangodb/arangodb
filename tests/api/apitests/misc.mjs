@@ -570,7 +570,7 @@ export default [
 
   // ── /_api/token ──────────────────────────────────────────────────────────
   // Handler: RestAccessTokenHandler
-  // Auth: canReadUser(user) for GET; canWriteUser(user) for POST/DELETE.
+  // Auth: canReadUser(user) for GET; canModifyUserProfile(user) for POST/DELETE.
   // In classic mode: isSuperuser || user==self || RW on _system.
   // Tests use "root" as the target user (always exists).
 

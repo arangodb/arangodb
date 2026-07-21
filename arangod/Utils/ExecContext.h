@@ -230,9 +230,20 @@ class ExecContext {
   // users. All we need is the bool.
   std::vector<bool> canReadUsers(std::span<std::string_view> users) const;
 
-  /// @brief returns true if the user can be modified, note that everybody
-  // can modify themselves (if only to change the password).
-  Result canWriteUser(std::string_view userName) const;
+  /// @brief returns true if the given user may be created.
+  Result canCreateUser(std::string_view userName) const;
+
+  /// @brief returns true if the given user may be dropped.
+  Result canDropUser(std::string_view userName) const;
+
+  /// @brief returns true if the given user's own profile (password, active
+  /// flag, config blob) may be modified. Note that everybody can modify
+  /// their own profile (if only to change the password).
+  Result canModifyUserProfile(std::string_view userName) const;
+
+  /// @brief returns true if the given user's permissions on databases and
+  /// collections may be granted/revoked.
+  Result canGrantUserPermissions(std::string_view userName) const;
 
   static std::shared_ptr<ExecContext const> set(
       std::shared_ptr<ExecContext const> ctx) {

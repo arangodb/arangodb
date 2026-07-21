@@ -264,8 +264,11 @@ return a `Result`, so that a decline can return the actual reason
  - `canUseGraph(std::string_view db, std::string_view graph, GraphAccessLevel const level) -> Result`
  
  - `canReadUser(std::string_view user) -> Result`
- - `canWriteUser(std::string_view user) -> Result`
  - `canReadUsers(std::span<std::string_view const> -> std::vector<bool>`
+ - `canCreateUser(std::string_view user) -> Result`
+ - `canDropUser(std::string_view user) -> Result`
+ - `canModifyUserProfile(std::string_view user) -> Result`
+ - `canGrantUserPermissions(std::string_view user) -> Result`
 
  - `isSuperuser() -> bool`
 
@@ -472,15 +475,28 @@ central implementation of these methods.
   
  - `canReadUser(std::string_view user) -> Result`
 
-   check RO access in system database
-  
- - `canWriteUser(std::string_view user) -> Result`
-
-   check RW access in system database
+  check RO access in system database
   
  - `canReadUsers(std::span<std::string_view const> -> std::vector<bool>`
 
-   check RO access in system database
+  check RO access in system database
+  
+ - `canCreateUser(std::string_view user) -> Result`
+
+  check RW access in system database
+  
+ - `canDropUser(std::string_view user) -> Result`
+
+  check RW access in system database
+  
+ - `canModifyUserProfile(std::string_view user) -> Result`
+
+  check RW access in system database (note: everybody may modify their own
+  profile)
+  
+ - `canGrantUserPermissions(std::string_view user) -> Result`
+
+  check RW access in system database
   
 - `isSuperuser() -> bool`
 
@@ -664,15 +680,27 @@ central implementation of these methods.
 
  - `canReadUser(std::string_view user) -> Result`
 
-   check RBAC action `db:ReadUser`
-  
- - `canWriteUser(std::string_view user) -> Result`
-
-   check RBAC action `db:WriteUser`
+  check RBAC action `db:ReadUser`
   
  - `canReadUsers(std::span<std::string_view const> -> std::vector<bool>`
 
-   check RBAC action `db:ReadUser`
+  check RBAC action `db:ReadUser`
+  
+ - `canCreateUser(std::string_view user) -> Result`
+
+  check RBAC action `db:CreateUser`
+  
+ - `canDropUser(std::string_view user) -> Result`
+
+  check RBAC action `db:DropUser`
+  
+ - `canModifyUserProfile(std::string_view user) -> Result`
+
+  check RBAC action `db:ModifyUserProfile`
+  
+ - `canGrantUserPermissions(std::string_view user) -> Result`
+
+  check RBAC action `db:GrantUserPermissions`
   
 - `isSuperuser() -> bool`
 
@@ -1035,29 +1063,29 @@ SA/SW/LEG    - API is switchable between SA (superuser needed for everything), S
 | X  |    | -  | PUT    | `/_api/tasks/{id}`                                           | RestTasksHandler           | canUseDb(Write)                          | DB RW                               | (V8 required)                            | NO FIX, tasks gone soon|
 | X  |    | X  | DELETE | `/_api/tasks/{id}`                                           | RestTasksHandler           | canUseDb(Write)                          | DB RW                               | (V8 required)                            | NO FIX, tasks gone soon|
 | X  |    | X  | GET    | `/_api/token/{user}`                                         | RestAccessTokenHandler     | canReadUser                              | canReadUser                         |                                          |                        |
-| X  |    | X  | POST   | `/_api/token/{user}`                                         | RestAccessTokenHandler     | canWriteUser                             | canWriteUser                        |                                          |                        |
-| X  |    | X  | DELETE | `/_api/token/{user}/{id}`                                    | RestAccessTokenHandler     | canWriteUser                             | canWriteUser                        |                                          |                        |
+| X  |    | X  | POST   | `/_api/token/{user}`                                         | RestAccessTokenHandler     | canModifyUserProfile                     | canModifyUserProfile                |                                          |                        |
+| X  |    | X  | DELETE | `/_api/token/{user}/{id}`                                    | RestAccessTokenHandler     | canModifyUserProfile                     | canModifyUserProfile                |                                          |                        |
 | X  |    | X  | GET    | `/_api/ttl/properties`                                       | RestTtlHandler             | _system                                  | AUTHEN, _system                     |                                          |                        |
 | X  |    | X  | GET    | `/_api/ttl/statistics`                                       | RestTtlHandler             | _system                                  | AUTHEN, _system                     |                                          |                        |
 | X  |    | X  | PUT    | `/_api/ttl/properties`                                       | RestTtlHandler             | _system                                  | AUTHEN, _system                     |                                          |                        |
 | X  |    | X  | POST   | `/_api/upload`                                               | RestUploadHandler          | -                                        | AUTHEN                              | Gone in 4.0                              | NO FIX                 |
 | X  |    | X  | GET    | `/_api/user`                                                 | RestUsersHandler           | canReadUsers(list)                       | AUTHEN, see only canReadUser(u)     |                                          |                        |
-| X  |    | X  | POST   | `/_api/user`                                                 | RestUsersHandler           | canWriteUser(u)                          | canWriteUser(u)                     |                                          |                        |
+| X  |    | X  | POST   | `/_api/user`                                                 | RestUsersHandler           | canCreateUser(u)                         | canCreateUser(u)                    |                                          |                        |
 | X  |    | X  | POST   | `/_api/user/{user}`                                          | RestUsersHandler           | -                                        | AUTHEN, just check credentials      |                                          |                        |
 | X  |    | X  | GET    | `/_api/user/{user}`                                          | RestUsersHandler           | canReadUser(u)                           | canReadUser(u)                      |                                          |                        |
 | X  |    | X  | GET    | `/_api/user/{user}/config`                                   | RestUsersHandler           | canReadUser(u)                           | canReadUser(u)                      |                                          |                        |
 | X  |    | X  | GET    | `/_api/user/{user}/database`                                 | RestUsersHandler           | canReadUser(u)                           | canReadUser(u)                      |                                          |                        |
 | X  |    | X  | GET    | `/_api/user/{user}/database/{db}`                            | RestUsersHandler           | canReadUser(u)                           | canReadUser(u)                      |                                          |                        |
 | X  |    | X  | GET    | `/_api/user/{user}/database/{db}/{coll}`                     | RestUsersHandler           | canReadUser(u)                           | canReadUser(u)                      |                                          |                        |
-| X  |    | X  | PUT    | `/_api/user/{user}`                                          | RestUsersHandler           | canWriteUser(u)                          | canWriteUser(u)                     |                                          |                        |
-| X  |    | X  | PUT    | `/_api/user/{user}/database/{db}`                            | RestUsersHandler           | canWriteUser(u)                          | canWriteUser(u)                     |                                          |                        |
-| X  |    | X  | PUT    | `/_api/user/{user}/database/{db}/{coll}`                     | RestUsersHandler           | canWriteUser(u)                          | canWriteUser(u)                     |                                          |                        |
-| X  |    | X  | PUT    | `/_api/user/{user}/config/{key}`                             | RestUsersHandler           | canWriteUser(u)                          | canWriteUser(u)                     |                                          |                        |
-| X  |    | X  | PATCH  | `/_api/user/{user}`                                          | RestUsersHandler           | canWriteUser(u)                          | canWriteUser(u)                     |                                          |                        |
-| X  |    | X  | DELETE | `/_api/user/{user}`                                          | RestUsersHandler           | canWriteUser(u)                          | canWriteUser(u)                     |                                          |                        |
-| X  |    | X  | DELETE | `/_api/user/{user}/config/{key}`                             | RestUsersHandler           | canWriteUser(u)                          | canWriteUser(u)                     |                                          |                        |
-| X  |    | X  | DELETE | `/_api/user/{user}/database/{db}`                            | RestUsersHandler           | canWriteUser(u)                          | canWriteUser(u)                     |                                          |                        |
-| X  |    | X  | DELETE | `/_api/user/{user}/database/{db}/{coll}`                     | RestUsersHandler           | canWriteUser(u)                          | canWriteUser(u)                     |                                          |                        |
+| X  |    | X  | PUT    | `/_api/user/{user}`                                          | RestUsersHandler           | canModifyUserProfile(u)                  | canModifyUserProfile(u)             |                                          |                        |
+| X  |    | X  | PUT    | `/_api/user/{user}/database/{db}`                            | RestUsersHandler           | canGrantUserPermissions(u)               | canGrantUserPermissions(u)          |                                          |                        |
+| X  |    | X  | PUT    | `/_api/user/{user}/database/{db}/{coll}`                     | RestUsersHandler           | canGrantUserPermissions(u)               | canGrantUserPermissions(u)          |                                          |                        |
+| X  |    | X  | PUT    | `/_api/user/{user}/config/{key}`                             | RestUsersHandler           | canModifyUserProfile(u)                  | canModifyUserProfile(u)             |                                          |                        |
+| X  |    | X  | PATCH  | `/_api/user/{user}`                                          | RestUsersHandler           | canModifyUserProfile(u)                  | canModifyUserProfile(u)             |                                          |                        |
+| X  |    | X  | DELETE | `/_api/user/{user}`                                          | RestUsersHandler           | canDropUser(u)                           | canDropUser(u)                      |                                          |                        |
+| X  |    | X  | DELETE | `/_api/user/{user}/config/{key}`                             | RestUsersHandler           | canModifyUserProfile(u)                  | canModifyUserProfile(u)             |                                          |                        |
+| X  |    | X  | DELETE | `/_api/user/{user}/database/{db}`                            | RestUsersHandler           | canGrantUserPermissions(u)               | canGrantUserPermissions(u)          |                                          |                        |
+| X  |    | X  | DELETE | `/_api/user/{user}/database/{db}/{coll}`                     | RestUsersHandler           | canGrantUserPermissions(u)               | canGrantUserPermissions(u)          |                                          |                        |
 | X  |    | X  | GET    | `/_api/version`                                              | RestVersionHandler         | canUseHard(MonitoringInt) for details    | AUTHEN, details (2)                 |                                          |                        |
 | X  |    | X  | GET    | `/_api/view`                                                 | RestViewHandler            | only see those with canSeeView           | canSeeView                          |                                          |                        |
 | X  |    | X  | POST   | `/_api/view`                                                 | RestViewHandler            | canCreateView                            | canCreateView                       |                                          |                        |
@@ -1105,18 +1133,18 @@ SA/SW/LEG    - API is switchable between SA (superuser needed for everything), S
 | X  |    |    | JS     | `JS_At`                                                      | v8-replicated-logs.cpp     | canUseAdmin(ReadReplicatedLog)           | AdminReadReplicatedLog              |                                          |                        |
 | X  |    |    | JS     | `JS_Release`                                                 | v8-replicated-logs.cpp     | canUseAdmin(WriteReplicatedLog)          | AdminWriteReplicatedLog             |                                          |                        |
 | X  |    |    | JS     | `JS_Compact`                                                 | v8-replicated-logs.cpp     | canUseAdmin(WriteReplicatedLog)          | AdminWriteReplicatedLog             |                                          |                        |
-| X  |    |    | JS     | `JS_RemoveUser`                                              | v8-users.cpp               | canWriteUser()                           | canWriteUser                        |                                          |                        |
+| X  |    |    | JS     | `JS_RemoveUser`                                              | v8-users.cpp               | canDropUser()                            | canDropUser                         |                                          |                        |
 | X  |    |    | JS     | `JS_ReloadAuthData`                                          | v8-users.cpp               | canUseAdmin(AuthReload)                  | AdminAuthReload                     |                                          |                        |
-| X  |    |    | JS     | `JS_GrantDatabase`                                           | v8-users.cpp               | canWriteUser()                           | canWriteUser                        |                                          |                        |
-| X  |    |    | JS     | `JS_RevokeDatabase`                                          | v8-users.cpp               | canWriteUser()                           | canWriteUser                        |                                          |                        |
-| X  |    |    | JS     | `JS_GrantCollection`                                         | v8-users.cpp               | canWriteUser()                           | canWriteUser                        |                                          |                        |
-| X  |    |    | JS     | `JS_RevokeCollection`                                        | v8-users.cpp               | canWriteUser()                           | canWriteUser                        |                                          |                        |
-| X  |    |    | JS     | `StoreUser`                                                  | v8-users.cpp               | canWriteUser()                           | canWriteUser                        |                                          |                        |
-| X  |    |    | JS     | `JS_UpdateUser`                                              | v8-users.cpp               | canWriteUser()                           | canWriteUser                        |                                          |                        |
+| X  |    |    | JS     | `JS_GrantDatabase`                                           | v8-users.cpp               | canGrantUserPermissions()                | canGrantUserPermissions             |                                          |                        |
+| X  |    |    | JS     | `JS_RevokeDatabase`                                          | v8-users.cpp               | canGrantUserPermissions()                | canGrantUserPermissions             |                                          |                        |
+| X  |    |    | JS     | `JS_GrantCollection`                                         | v8-users.cpp               | canGrantUserPermissions()                | canGrantUserPermissions             |                                          |                        |
+| X  |    |    | JS     | `JS_RevokeCollection`                                        | v8-users.cpp               | canGrantUserPermissions()                | canGrantUserPermissions             |                                          |                        |
+| X  |    |    | JS     | `StoreUser`                                                  | v8-users.cpp               | canCreateUser()/canModifyUserProfile()   | canCreateUser/canModifyUserProfile  |                                          |                        |
+| X  |    |    | JS     | `JS_UpdateUser`                                              | v8-users.cpp               | canModifyUserProfile()                   | canModifyUserProfile                |                                          |                        |
 | X  |    |    | JS     | `JS_GetUser`                                                 | v8-users.cpp               | canReadUser()                            | canReadUser                         |                                          |                        |
-| X  |    |    | JS     | `JS_UpdateConfigData`                                        | v8-users.cpp               | canWriteUser()                           | canWriteUser                        |                                          |                        |
+| X  |    |    | JS     | `JS_UpdateConfigData`                                        | v8-users.cpp               | canModifyUserProfile()                   | canModifyUserProfile                |                                          |                        |
 | X  |    |    | JS     | `JS_GetConfigData`                                           | v8-users.cpp               | canReaduser()                            | canReadUser                         |                                          |                        |
-| X  |    |    | CPP    | `Databases::grantCurrentUser` (creation of database)         | Databases.Cpp              | canWriteUser()                           | canWriteUser                        |                                          |                        |
+| X  |    |    | CPP    | `Databases::grantCurrentUser` (creation of database)         | Databases.Cpp              | canGrantUserPermissions()                | canGrantUserPermissions             |                                          |                        |
 | X  |    |    | JS     | `JS_GetGraphKeys`                                            | v8-general-graph.cpp       | canSeeGraph                              | canSeeGraph, list only visible      |                                          |                        |
 
 

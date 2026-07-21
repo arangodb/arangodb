@@ -568,9 +568,35 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
                 auth::perms::UseDatabase{.name = StaticStrings::SystemDatabase,
                                          .level = DatabaseAccessLevel::Write});
           },
-          [&](p::WriteUser const& /*writeUser*/) -> Result {
-            // Writing a user record requires RW access to the _system
-            // database (equivalent to being an admin).
+          [&](p::CreateUser const& /*createUser*/) -> Result {
+            // Creating a user requires RW access to the _system database
+            // (equivalent to being an admin).
+            return check(
+                auth::perms::UseDatabase{.name = StaticStrings::SystemDatabase,
+                                         .level = DatabaseAccessLevel::Write});
+          },
+          [&](p::DropUser const& /*dropUser*/) -> Result {
+            // Dropping a user requires RW access to the _system database
+            // (equivalent to being an admin).
+            return check(
+                auth::perms::UseDatabase{.name = StaticStrings::SystemDatabase,
+                                         .level = DatabaseAccessLevel::Write});
+          },
+          [&](p::ModifyUserProfile const& /*modifyUserProfile*/) -> Result {
+            // Modifying a user's own profile (password, active flag, config
+            // blob) requires RW access to the _system database (equivalent
+            // to being an admin). Note that the self-exception is already
+            // handled by ExecContext::canModifyUserProfile before this is
+            // ever reached.
+            return check(
+                auth::perms::UseDatabase{.name = StaticStrings::SystemDatabase,
+                                         .level = DatabaseAccessLevel::Write});
+          },
+          [&](p::GrantUserPermissions const& /*grantUserPermissions*/)
+              -> Result {
+            // Granting/revoking a user's permissions on databases and
+            // collections requires RW access to the _system database
+            // (equivalent to being an admin).
             return check(
                 auth::perms::UseDatabase{.name = StaticStrings::SystemDatabase,
                                          .level = DatabaseAccessLevel::Write});
