@@ -221,14 +221,14 @@ void ArangodServer::addFeaturesWithOptionProvider() {
       database, getOptions<upgrade::ClusterUpgradeOptionsProvider>());
 
   // Add BootstrapFeature
-  addFeature<BootstrapFeature>(clusterFeature, database, &systemDatabaseFeature,
-                               &clusterUpgradeFeature
+  addFeature<BootstrapFeature>(
+      clusterFeature, database, &systemDatabaseFeature, &clusterUpgradeFeature
 #ifdef USE_V8
-                               ,
-                               &v8DealerFeature
+      ,
+      &v8DealerFeature
 #endif
-                               ,
-                               getOptions<bootstrap::BootstrapOptionsProvider>());
+      ,
+      getOptions<bootstrap::BootstrapOptionsProvider>());
 
   // Add ReplicationTimeoutFeature
   addFeature<ReplicationTimeoutFeature>(

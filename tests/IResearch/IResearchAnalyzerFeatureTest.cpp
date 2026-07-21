@@ -4404,13 +4404,12 @@ TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
 #endif
   newServer.addFeature<arangodb::AqlFeature>();
   arangodb::iresearch::IResearchAnalyzerFeature feature(
-      newServer,
-      {.databaseFeature = dbFeature,
-       .systemDatabase = sysDatabase,
-       .networkFeature = nullptr,
-       .clusterFeature = nullptr,
-       .schedulerFeature = nullptr,
-       .aqlFunctionFeature = nullptr});
+      newServer, {.databaseFeature = dbFeature,
+                  .systemDatabase = sysDatabase,
+                  .networkFeature = nullptr,
+                  .clusterFeature = nullptr,
+                  .schedulerFeature = nullptr,
+                  .aqlFunctionFeature = nullptr});
 
   dbFeature.prepare();
 
@@ -4754,13 +4753,12 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_toVelocyPack) {
 #endif
   newServer.addFeature<arangodb::AqlFeature>();
   arangodb::iresearch::IResearchAnalyzerFeature feature(
-      newServer,
-      {.databaseFeature = dbFeature,
-       .systemDatabase = sysDatabase,
-       .networkFeature = nullptr,
-       .clusterFeature = nullptr,
-       .schedulerFeature = nullptr,
-       .aqlFunctionFeature = nullptr});
+      newServer, {.databaseFeature = dbFeature,
+                  .systemDatabase = sysDatabase,
+                  .networkFeature = nullptr,
+                  .clusterFeature = nullptr,
+                  .schedulerFeature = nullptr,
+                  .aqlFunctionFeature = nullptr});
   auto cleanup =
       arangodb::scopeGuard([&dbFeature]() noexcept { dbFeature.unprepare(); });
 
@@ -4908,13 +4906,12 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_vpack_create) {
 #endif
   newServer.addFeature<arangodb::AqlFeature>();
   arangodb::iresearch::IResearchAnalyzerFeature feature(
-      newServer,
-      {.databaseFeature = dbFeature,
-       .systemDatabase = sysDatabase,
-       .networkFeature = nullptr,
-       .clusterFeature = nullptr,
-       .schedulerFeature = nullptr,
-       .aqlFunctionFeature = nullptr});
+      newServer, {.databaseFeature = dbFeature,
+                  .systemDatabase = sysDatabase,
+                  .networkFeature = nullptr,
+                  .clusterFeature = nullptr,
+                  .schedulerFeature = nullptr,
+                  .aqlFunctionFeature = nullptr});
   auto cleanup =
       arangodb::scopeGuard([&dbFeature]() noexcept { dbFeature.unprepare(); });
 
