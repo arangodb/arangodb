@@ -28,6 +28,8 @@
 #include "ApplicationFeatures/FileSystemOptionsProvider.h"
 #include "ApplicationFeatures/ProcessEnvironmentOptionsProvider.h"
 #include "ApplicationFeatures/VersionOptionsProvider.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerOptionsProvider.h"
 #include "Random/RandomOptionsProvider.h"
 
 namespace arangodb {
@@ -41,7 +43,7 @@ template<class... Extras>
 using CoreOptionProviders =
     application_features::FeatureOptionProviderContainer<
         ConfigOptionsProvider, FileSystemOptionsProvider,
-        VersionOptionsProvider,
+        LoggerOptionsProvider, VersionOptionsProvider,
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
         ProcessEnvironmentOptionsProvider,
 #endif
@@ -50,10 +52,11 @@ using CoreOptionProviders =
 // Thin wrapper: today Config only; later insert Logger::setLogLevel *before*
 // Config so early log levels apply during config load.
 inline void loadConfigAndEarlyLoggerOptions(
+    LoggerOptionsProvider& loggerProvider,
     ConfigOptionsProvider& configProvider, bool versionRequested,
     std::shared_ptr<options::ProgramOptions> const& programOptions,
     char const* binaryPath, std::string const& binaryName) {
-  // TODO(logger): Logger::setLogLevel(loggerOpts.levels);
+  Logger::setLogLevel(loggerProvider.options().levels);
   configProvider.loadConfiguration(programOptions, binaryPath, binaryName,
                                    versionRequested);
 }

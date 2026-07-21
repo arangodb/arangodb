@@ -128,7 +128,6 @@ void ArangodServer::addFeatures() {
   addFeature<LanguageCheckFeature>();
   addFeature<TimeZoneFeature>();
   addFeature<LockfileFeature>();
-  addFeature<LoggerFeature>(true);
   addFeature<MaintenanceFeature>(&clusterFeature);
   addFeature<NetworkFeature>(metrics, network::ConnectionPool::Config{});
   addFeature<OptionsCheckFeature>();
@@ -201,6 +200,7 @@ void ArangodServer::addFeaturesWithOptionProvider() {
   auto& aqlFunctionFeature = getFeature<aql::AqlFunctionFeature>();
 
   addFeature<VersionFeature>(getOptions<VersionOptionsProvider>());
+  addFeature<LoggerFeature>(true, getOptions<LoggerOptionsProvider>());
   addFeature<ConfigFeature>(_binaryName, getOptions<ConfigOptionsProvider>());
   addFeature<RandomFeature>(getOptions<RandomOptionsProvider>());
   addFeature<NonceFeature>(getOptions<NonceOptionsProvider>());

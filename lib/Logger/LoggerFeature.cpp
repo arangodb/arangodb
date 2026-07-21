@@ -21,7 +21,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "LoggerFeature.h"
-#include "Logger/LoggerOptionsProvider.h"
 
 #include "Basics/operating-system.h"
 
@@ -57,11 +56,16 @@ void LogHackWriter(std::string_view msg) { LOG_DEVEL << msg; }
 namespace arangodb {
 
 LoggerFeature::LoggerFeature(application_features::ApplicationServer& server,
-                             bool threaded)
-    : LoggerFeature(server, typeid(LoggerFeature), threaded, LoggerOptions{}) {
+                             bool threaded, LoggerOptions options)
+    : LoggerFeature(server, typeid(LoggerFeature), threaded,
+                    std::move(options)) {
   startsAfter<ShellColorsFeature>();
   startsAfter<VersionFeature>();
 }
+
+LoggerFeature::LoggerFeature(application_features::ApplicationServer& server,
+                             bool threaded)
+    : LoggerFeature(server, threaded, LoggerOptions{}) {}
 
 LoggerFeature::LoggerFeature(application_features::ApplicationServer& server,
                              std::type_index registration, bool threaded,
@@ -79,21 +83,9 @@ LoggerFeature::LoggerFeature(application_features::ApplicationServer& server,
 
 LoggerFeature::~LoggerFeature() { Logger::shutdown(); }
 
-void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  LoggerOptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
-
 void LoggerFeature::loadOptions(std::shared_ptr<options::ProgramOptions>,
                                 char const* binaryPath) {
-  // for debugging purpose, we set the log levels NOW
-  // this might be overwritten latter
-  Logger::setLogLevel(_options.levels);
-}
-
-void LoggerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
-  LoggerOptionsProvider provider;
-  provider.validateOptions(options, _options);
+  /* no-op */
 }
 
 void LoggerFeature::prepare() {
