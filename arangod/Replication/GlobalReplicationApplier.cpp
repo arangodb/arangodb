@@ -28,8 +28,6 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
-#include "Replication/GlobalInitialSyncer.h"
-#include "Replication/GlobalTailingSyncer.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "StorageEngine/StorageEngine.h"
 
@@ -85,17 +83,6 @@ ReplicationApplierConfiguration GlobalReplicationApplier::loadConfiguration(
 
   return ReplicationApplierConfiguration::fromVelocyPack(
       server, builder.slice(), std::string());
-}
-
-std::shared_ptr<InitialSyncer> GlobalReplicationApplier::buildInitialSyncer()
-    const {
-  return arangodb::GlobalInitialSyncer::create(_configuration);
-}
-
-std::shared_ptr<TailingSyncer> GlobalReplicationApplier::buildTailingSyncer(
-    TRI_voc_tick_t initialTick, bool useTick) const {
-  return arangodb::GlobalTailingSyncer::create(_configuration, initialTick,
-                                               useTick);
 }
 
 std::string GlobalReplicationApplier::getStateFilename() const {

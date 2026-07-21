@@ -20,21 +20,17 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "DatabaseReplicationApplier.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
-#include "Basics/Thread.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
-#include "Replication/DatabaseInitialSyncer.h"
-#include "Replication/DatabaseTailingSyncer.h"
 #include "StorageEngine/StorageEngine.h"
 #include "VocBase/vocbase.h"
 
@@ -126,17 +122,6 @@ void DatabaseReplicationApplier::storeConfiguration(bool doSync) {
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
   }
-}
-
-std::shared_ptr<InitialSyncer> DatabaseReplicationApplier::buildInitialSyncer()
-    const {
-  return arangodb::DatabaseInitialSyncer::create(_vocbase, _configuration);
-}
-
-std::shared_ptr<TailingSyncer> DatabaseReplicationApplier::buildTailingSyncer(
-    TRI_voc_tick_t initialTick, bool useTick) const {
-  return arangodb::DatabaseTailingSyncer::create(_vocbase, _configuration,
-                                                 initialTick, useTick);
 }
 
 std::string DatabaseReplicationApplier::getStateFilename() const {

@@ -28,7 +28,6 @@
 #include "Replication/ReplicationApplierState.h"
 
 namespace arangodb {
-class InitialSyncer;
 class TailingSyncer;
 
 namespace velocypack {
@@ -117,10 +116,6 @@ class ReplicationApplier {
   /// @brief set the progress
   void setProgress(char const* msg);
   void setProgress(std::string const& msg);
-
-  virtual std::shared_ptr<InitialSyncer> buildInitialSyncer() const = 0;
-  virtual std::shared_ptr<TailingSyncer> buildTailingSyncer(
-      TRI_voc_tick_t initialTick, bool useTick) const = 0;
 
  protected:
   virtual std::string getStateFilename() const = 0;

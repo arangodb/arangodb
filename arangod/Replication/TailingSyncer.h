@@ -147,16 +147,6 @@ class TailingSyncer : public Syncer {
   /// @brief pointer to the applier
   ReplicationApplier* _applier;
 
-  /// @brief whether or not the replication state file has been written at least
-  /// once with non-empty values. this is required in situations when the
-  /// replication applier is manually started and the leader has absolutely no
-  /// new data to provide, and the follower gets shut down. in that case, the
-  /// state file would never have been written with the initial start tick, so
-  /// the start tick would be lost. re-starting the follower and the replication
-  /// applier with the ticks from the file would then result in a "no start tick
-  /// provided" error
-  bool _hasWrittenState;
-
   /// @brief initial tick for continuous synchronization
   TRI_voc_tick_t _initialTick;
 
@@ -165,13 +155,6 @@ class TailingSyncer : public Syncer {
 
   /// @brief database list with modified _analyzers collection
   std::set<Database*> _analyzersModified;
-
-  /// @brief use the initial tick
-  bool _useTick;
-
-  /// @brief whether or not the specified from tick must be present when
-  /// fetching data from a leader
-  bool _requireFromPresent;
 
   /// @brief ignore rename, create and drop operations for collections
   bool _ignoreRenameCreateDrop;

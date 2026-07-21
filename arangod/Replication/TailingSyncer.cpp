@@ -85,11 +85,8 @@ TailingSyncer::TailingSyncer(
     TRI_voc_tick_t initialTick, bool useTick)
     : Syncer(configuration),
       _applier(applier),
-      _hasWrittenState(false),
       _initialTick(initialTick),
       _usersModified(false),
-      _useTick(useTick),
-      _requireFromPresent(configuration._requireFromPresent),
       _ignoreRenameCreateDrop(false),
       _ignoreDatabaseMarkers(true),
       _stats(_state.applier._server
