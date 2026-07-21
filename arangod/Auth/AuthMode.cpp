@@ -38,6 +38,14 @@
 
 namespace arangodb {
 
+namespace {
+auto failureMessage(auto const& request, std::string_view reason)
+    -> std::string {
+  return std::format("Failed to {}. {}", auth::perms::describe(request),
+                     reason);
+}
+}  // namespace
+
 auto AuthMode::getIAuth() -> AuthMode::IAuth& {
   return std::visit([](auto&& authMode) -> IAuth& { return authMode; },
                     authMode);
@@ -145,10 +153,6 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
         }
         ADB_PROD_CRASH();
       },
-  };
-
-  auto const failureMessage = [](auto const& request, std::string_view reason) {
-    return std::format("Failed to {}. {}", p::describe(request), reason);
   };
 
   return std::visit(
@@ -999,15 +1003,14 @@ auto AuthMode::Unauthenticated::request() const noexcept
 
 auto AuthMode::Unauthenticated::check(auth::Permission permission) const
     -> Result {
-  namespace p = auth::perms;
-
   return std::visit(
       overload{
           // An unauthenticated identity has no permissions at all. Since the
           // perms API only ever asks about access that is actually required
           // (there is no "None" level anymore), every question is denied.
-          [](auto const&) -> Result {
-            return {TRI_ERROR_FORBIDDEN, "not authenticated"};
+          [](auto const& perm) -> Result {
+            return {TRI_ERROR_FORBIDDEN,
+                    failureMessage(perm, "Not authenticated.")};
           },
       },
       permission);
