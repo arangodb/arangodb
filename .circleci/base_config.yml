@@ -738,11 +738,48 @@ jobs:
                   ubsan_arangodb_suppressions.txt
                   lsan_arangodb_suppressions.txt
 
-  create-docker-image:
+  # Builds one architecture's Alpine-based image locally and saves it to a
+  # workspace tarball. No registry auth here - pushing (and the ECR login)
+  # happens once both architectures are available together, in
+  # push-docker-manifest. CircleCI workflows can't depend on jobs in
+  # another workflow, so both architectures live in the same
+  # "docker-images" workflow and hand off through the workspace.
+  build-docker-image:
     parameters:
       resource-class:
         type: string
       arch:
+        type: string
+      output:
+        type: string
+    docker:
+      - image: cimg/base:current
+    resource_class: << parameters.resource-class >>
+    steps:
+      - setup_remote_docker:
+          docker_layer_caching: true
+      - attach_workspace:
+          at: .
+      - run:
+          name: Build Docker Image
+          command: |
+            cd scripts/docker/deploy
+            mkdir install
+            tar -xzf ../../../install.tar.gz -C install
+            docker build --platform linux/<< parameters.arch >> --build-arg arch=<< parameters.arch >> -t arangodb/enterprise-test:local-<< parameters.arch >> --file deploy-alpine.dockerfile .
+            docker save -o /tmp/<< parameters.output >> arangodb/enterprise-test:local-<< parameters.arch >>
+      - persist_to_workspace:
+          root: /tmp
+          paths:
+            - << parameters.output >>
+
+  # Loads both architectures' locally-built images, pushes each as an
+  # arch-suffixed tag, then creates and pushes a multi-arch manifest under
+  # the bare tag (the community commit short SHA). ECR only, using the
+  # same OIDC role assumption as before - no stored credentials/context.
+  push-docker-manifest:
+    parameters:
+      resource-class:
         type: string
       tag:
         type: string
@@ -757,16 +794,30 @@ jobs:
       - setup_remote_docker:
           docker_layer_caching: true
       - attach_workspace:
-          at: .
+          at: /tmp/workspace
       - run:
-          name: Create Docker Image
+          name: Push multi-arch Docker manifest
           command: |
-            cd scripts/docker/deploy
-            mkdir install
-            tar -xzf ../../../install.tar.gz -C install
-            docker build --platform linux/<< parameters.arch >> --build-arg arch=<< parameters.arch >> -t << parameters.tag >> --file deploy-alpine.dockerfile .
-            echo "Pushing image << parameters.tag >>"
-            docker push << parameters.tag >>
+            docker load -i /tmp/workspace/docker-amd64.tar
+            docker load -i /tmp/workspace/docker-arm64.tar
+
+            IMAGE="public.ecr.aws/b0b8h2r4/arangodb/enterprise-test"
+
+            set -x
+            retry() { "$@" || { sleep 5; "$@"; } || { sleep 15; "$@"; } || { sleep 30; "$@"; }; }
+
+            declare -A LOCAL_TAG=( [amd64]="arangodb/enterprise-test:local-amd64" [arm64]="arangodb/enterprise-test:local-arm64" )
+            declare -A TAG_ARCH=( [amd64]="amd64" [arm64]="arm64v8" )
+
+            for ARCH in amd64 arm64; do
+              docker tag "${LOCAL_TAG[$ARCH]}" "${IMAGE}:<< parameters.tag >>-${TAG_ARCH[$ARCH]}"
+              retry docker push "${IMAGE}:<< parameters.tag >>-${TAG_ARCH[$ARCH]}"
+            done
+            docker manifest rm "${IMAGE}:<< parameters.tag >>" 2>/dev/null || true
+            retry docker manifest create "${IMAGE}:<< parameters.tag >>" \
+              --amend "${IMAGE}:<< parameters.tag >>-amd64" \
+              --amend "${IMAGE}:<< parameters.tag >>-arm64v8"
+            retry docker manifest push --purge "${IMAGE}:<< parameters.tag >>"
 
   run-linux-tests:
     parameters:

@@ -147,7 +147,7 @@ class TestCreateBuildJob:
         assert "compile-linux" in job
         params = job["compile-linux"]
         assert params["name"] == "build-x64"
-        assert params["preset"] == "enterprise-pr-x86_64"
+        assert params["preset"] == "pr-x86_64"
         assert params["enterprise"] is True
         assert params["arch"] == "x64"
         assert params["resource-class"] == "arangodb/2xlarge-amd64"
@@ -165,7 +165,69 @@ class TestCreateBuildJob:
 
         params = job["compile-linux"]
         assert params["name"] == "build-x64-tsan"
-        assert params["preset"] == "enterprise-pr-x86_64-tsan"
+        assert params["preset"] == "pr-x86_64-tsan"
+
+    def test_create_build_job_no_v8_x64(self):
+        """arangod-without-v8 selects the dedicated no-v8 preset."""
+        config = GeneratorConfig(filter_criteria=FilterCriteria(v8=False))
+        gen = CircleCIGenerator(config, base_config={})
+        build_config = BuildConfig(architecture=Architecture.X64)
+
+        job = gen._create_build_job(build_config)
+
+        assert job["compile-linux"]["preset"] == "pr-x86_64-no-v8"
+
+    def test_create_build_job_no_v8_arm(self):
+        """arangod-without-v8 selects the ARM no-v8 preset."""
+        config = GeneratorConfig(filter_criteria=FilterCriteria(v8=False))
+        gen = CircleCIGenerator(config, base_config={})
+        build_config = BuildConfig(architecture=Architecture.AARCH64)
+
+        job = gen._create_build_job(build_config)
+
+        assert job["compile-linux"]["preset"] == "pr-arm-no-v8"
+
+    def test_create_build_job_no_v8_with_tsan(self):
+        """arangod-without-v8 combined with TSAN selects the tsan-no-v8 preset."""
+        config = GeneratorConfig(filter_criteria=FilterCriteria(v8=False))
+        gen = CircleCIGenerator(config, base_config={})
+        build_config = BuildConfig(
+            architecture=Architecture.X64,
+            build_variant=BuildVariant.TSAN,
+        )
+
+        job = gen._create_build_job(build_config)
+
+        assert job["compile-linux"]["preset"] == "pr-x86_64-tsan-no-v8"
+
+    def test_create_build_job_no_v8_with_alubsan_arm(self):
+        """arangod-without-v8 combined with ALUBSAN on ARM selects the
+        alubsan-no-v8 ARM preset."""
+        config = GeneratorConfig(filter_criteria=FilterCriteria(v8=False))
+        gen = CircleCIGenerator(config, base_config={})
+        build_config = BuildConfig(
+            architecture=Architecture.AARCH64,
+            build_variant=BuildVariant.ALUBSAN,
+        )
+
+        job = gen._create_build_job(build_config)
+
+        assert job["compile-linux"]["preset"] == "pr-arm-alubsan-no-v8"
+
+    def test_create_build_job_no_v8_does_not_apply_to_coverage(self):
+        """No pr-*-coverage preset exists at all (coverage is developer/CLI
+        only), so no-v8 can't combine with it either; it keeps using
+        whatever preset name coverage would otherwise produce."""
+        config = GeneratorConfig(filter_criteria=FilterCriteria(v8=False))
+        gen = CircleCIGenerator(config, base_config={})
+        build_config = BuildConfig(
+            architecture=Architecture.X64,
+            build_variant=BuildVariant.COVERAGE,
+        )
+
+        job = gen._create_build_job(build_config)
+
+        assert job["compile-linux"]["preset"] == "pr-x86_64-coverage"
 
     def test_create_frontend_build_job(self):
         """Test creating frontend build job."""
@@ -189,11 +251,38 @@ class TestCreateBuildJob:
 
         assert job["build-frontend"]["name"] == "build-x64-alubsan-frontend"
 
+    def test_create_non_maintainer_build_job_x64(self):
+        """x64 non-maintainer smoke build uses the x86_64 preset/arch."""
+        gen = self.create_generator()
+        build_config = BuildConfig(architecture=Architecture.X64)
 
-class TestDockerImageJob:
-    """Test docker image job creation."""
+        job = gen._create_non_maintainer_build_job(build_config)
 
-    def create_generator(self, env_vars=None, test_date=None):
+        params = job["compile-linux"]
+        assert params["name"] == "build-non-maintainer-x64"
+        assert params["preset"] == "pr-non-maintainer-x86_64"
+        assert params["arch"] == "x64"
+        assert "s3-prefix" not in params
+
+    def test_create_non_maintainer_build_job_aarch64(self):
+        """Regression: the aarch64 non-maintainer smoke build must use the
+        ARM preset/arch, not silently fall back to x86_64."""
+        gen = self.create_generator()
+        build_config = BuildConfig(architecture=Architecture.AARCH64)
+
+        job = gen._create_non_maintainer_build_job(build_config)
+
+        params = job["compile-linux"]
+        assert params["name"] == "build-non-maintainer-aarch64"
+        assert params["preset"] == "pr-non-maintainer-arm"
+        assert params["arch"] == "aarch64"
+        assert params["s3-prefix"] == "aarch64"
+
+
+class TestDockerImagesWorkflow:
+    """Test the dedicated multi-arch docker-images workflow."""
+
+    def create_generator(self, env_vars=None):
         """Helper to create generator with test environment."""
         config = GeneratorConfig(
             filter_criteria=FilterCriteria(),
@@ -202,61 +291,129 @@ class TestDockerImageJob:
         env_getter = lambda k, default: (
             env_vars.get(k, default) if env_vars else default
         )
-        date_provider = lambda: test_date if test_date else date.today()
-        return CircleCIGenerator(
-            config, base_config={}, env_getter=env_getter, date_provider=date_provider
-        )
+        return CircleCIGenerator(config, base_config={}, env_getter=env_getter)
 
-    def test_docker_image_tag_generation(self):
-        """Test docker image tag generation."""
-        env_vars = {
-            "CIRCLE_BRANCH": "feature/test-branch",
-            "CIRCLE_SHA1": "abc1234567890",
-        }
-        test_date = date(2025, 1, 15)
-        gen = self.create_generator(env_vars, test_date)
+    def test_docker_compile_job_x64(self):
+        """x64 docker compile uses the maintainer x86_64 preset, tests/artifacts skipped."""
+        gen = self.create_generator()
         build_config = BuildConfig(architecture=Architecture.X64)
 
-        workflow = {"jobs": []}
-        gen._add_docker_image_job(workflow, build_config, ["build-job"])
+        job = gen._create_docker_compile_job(build_config)
 
-        job = workflow["jobs"][0]["create-docker-image"]
-        expected_tag = "public.ecr.aws/b0b8h2r4/enterprise-preview:2025-01-15-test-branch-abc1234-amd64"
-        assert job["tag"] == expected_tag
+        params = job["compile-linux"]
+        assert params["name"] == "build-x64-for-docker-image"
+        assert params["preset"] == "pr-x86_64"
+        assert params["arch"] == "x64"
+        assert params["build-tests"] is False
+        assert params["publish-artifacts"] is False
+        assert "s3-prefix" not in params
 
-    def test_docker_image_branch_cleanup(self):
-        """Test branch name cleanup (removes prefix)."""
-        env_vars = {
-            "CIRCLE_BRANCH": "pr/123/my-feature",
-            "CIRCLE_SHA1": "deadbeef",
-        }
-        test_date = date(2025, 1, 15)
-        gen = self.create_generator(env_vars, test_date)
-        build_config = BuildConfig(architecture=Architecture.X64)
-
-        workflow = {"jobs": []}
-        gen._add_docker_image_job(workflow, build_config, ["build-job"])
-
-        job = workflow["jobs"][0]["create-docker-image"]
-        # Should extract "my-feature" from "pr/123/my-feature"
-        assert "my-feature" in job["tag"]
-        assert "pr/123/" not in job["tag"]
-
-    def test_docker_image_aarch64_architecture(self):
-        """Test ARM64 architecture in docker tag."""
-        env_vars = {
-            "CIRCLE_BRANCH": "main",
-            "CIRCLE_SHA1": "abc1234",
-        }
-        gen = self.create_generator(env_vars, date(2025, 1, 15))
+    def test_docker_compile_job_aarch64(self):
+        """aarch64 docker compile uses the maintainer ARM preset."""
+        gen = self.create_generator()
         build_config = BuildConfig(architecture=Architecture.AARCH64)
 
-        workflow = {"jobs": []}
-        gen._add_docker_image_job(workflow, build_config, ["build-job"])
+        job = gen._create_docker_compile_job(build_config)
 
-        job = workflow["jobs"][0]["create-docker-image"]
-        assert job["arch"] == "arm64"
-        assert "arm64" in job["tag"]
+        params = job["compile-linux"]
+        assert params["name"] == "build-aarch64-for-docker-image"
+        assert params["preset"] == "pr-arm"
+        assert params["arch"] == "aarch64"
+        assert params["s3-prefix"] == "aarch64"
+
+    def test_docker_build_job(self):
+        """Per-arch image job saves locally and requires its compile job."""
+        gen = self.create_generator()
+        build_config = BuildConfig(architecture=Architecture.X64)
+
+        job = gen._create_docker_build_job(
+            build_config, "amd64", "docker-amd64.tar", ["build-x64-for-docker-image"]
+        )
+
+        params = job["build-docker-image"]
+        assert params["name"] == "build-x64-docker-image"
+        assert params["arch"] == "amd64"
+        assert params["output"] == "docker-amd64.tar"
+        assert params["requires"] == ["build-x64-for-docker-image"]
+
+    def test_docker_manifest_job_uses_given_tag_and_no_context(self):
+        """The manifest job pushes to ECR only (no context/stored secrets)."""
+        gen = self.create_generator()
+
+        job = gen._create_docker_manifest_job(
+            "abc1234", ["build-x64-docker-image", "build-aarch64-docker-image"]
+        )
+
+        params = job["push-docker-manifest"]
+        assert params["name"] == "push-docker-manifest"
+        assert params["tag"] == "abc1234"
+        assert "context" not in params
+        assert params["requires"] == [
+            "build-x64-docker-image",
+            "build-aarch64-docker-image",
+        ]
+
+    def test_add_docker_images_workflow_structure(self):
+        """The workflow chains compile -> build-image for both architectures,
+        then a single manifest job requiring both image jobs."""
+        gen = self.create_generator({"CIRCLE_SHA1": "deadbee123456"})
+
+        workflows = {}
+        gen._add_docker_images_workflow(workflows)
+
+        assert "docker-images" in workflows
+        jobs = workflows["docker-images"]["jobs"]
+        job_types_and_names = [
+            (job_type, params["name"])
+            for job in jobs
+            for job_type, params in job.items()
+        ]
+
+        assert job_types_and_names == [
+            ("compile-linux", "build-x64-for-docker-image"),
+            ("build-docker-image", "build-x64-docker-image"),
+            ("compile-linux", "build-aarch64-for-docker-image"),
+            ("build-docker-image", "build-aarch64-docker-image"),
+            ("push-docker-manifest", "push-docker-manifest"),
+        ]
+
+        manifest_params = jobs[-1]["push-docker-manifest"]
+        # Community commit short SHA, not a date/branch composite tag.
+        assert manifest_params["tag"] == "deadbee"
+        assert manifest_params["requires"] == [
+            "build-x64-docker-image",
+            "build-aarch64-docker-image",
+        ]
+
+    def test_generate_adds_docker_images_workflow_alongside_pr_workflows(self):
+        """generate() adds docker-images without removing/altering the
+        normal per-architecture pr workflows, and the old single-arch
+        per-workflow docker job is gone from them."""
+        config = GeneratorConfig(
+            filter_criteria=FilterCriteria(),
+            circleci=CircleCIConfig(create_docker_images=True, test_image="default"),
+            build_variants=[BuildVariant.NORMAL],
+        )
+        gen = CircleCIGenerator(
+            config,
+            base_config={"workflows": {}},
+            env_getter=lambda k, default: default,
+        )
+
+        result = gen.generate([])
+
+        assert "docker-images" in result["workflows"]
+        assert "x64-pr" in result["workflows"]
+        assert "aarch64-pr" in result["workflows"]
+
+        for wf_name in ("x64-pr", "aarch64-pr"):
+            job_types = {
+                job_type
+                for job in result["workflows"][wf_name]["jobs"]
+                for job_type in job
+            }
+            assert "create-docker-image" not in job_types
+            assert "build-docker-image" not in job_types
 
 
 class TestGenerateMethod:
