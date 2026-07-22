@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -34,7 +33,7 @@ class ByNestedFilter;
 
 struct Match {
   constexpr explicit Match(doc_id_t value) noexcept
-    : Match{value, doc_limits::eof()} {}
+      : Match{value, doc_limits::eof()} {}
 
   constexpr Match(doc_id_t min, doc_id_t max) noexcept : Min(min), Max(max) {}
 
@@ -79,13 +78,13 @@ struct ByNestedOptions {
 
     return match.index() == rhs.match.index() &&
            std::visit(
-             [&]<typename T>(const T& v) noexcept -> bool {
-               if constexpr (std::is_same_v<T, Match>) {
-                 return v == std::get<T>(rhs.match);
-               }
-               return true;
-             },
-             match) &&
+               [&]<typename T>(const T& v) noexcept -> bool {
+                 if constexpr (std::is_same_v<T, Match>) {
+                   return v == std::get<T>(rhs.match);
+                 }
+                 return true;
+               },
+               match) &&
            merge_type == rhs.merge_type && equal(child.get(), rhs.child.get());
   }
 };

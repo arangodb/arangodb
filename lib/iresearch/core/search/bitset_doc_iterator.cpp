@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "bitset_doc_iterator.hpp"
@@ -29,15 +28,15 @@ namespace irs {
 
 bitset_doc_iterator::bitset_doc_iterator(const word_t* begin,
                                          const word_t* end) noexcept
-  : cost_(math::popcount(begin, end)),
-    doc_(cost_.estimate() ? doc_limits::invalid() : doc_limits::eof()),
-    begin_(begin),
-    end_(end) {
+    : cost_(math::popcount(begin, end)),
+      doc_(cost_.estimate() ? doc_limits::invalid() : doc_limits::eof()),
+      begin_(begin),
+      end_(end) {
   reset();
 }
 
 attribute* bitset_doc_iterator::get_mutable(
-  irs::type_info::type_id id) noexcept {
+    irs::type_info::type_id id) noexcept {
   if (type<document>::id() == id) {
     return &doc_;
   }

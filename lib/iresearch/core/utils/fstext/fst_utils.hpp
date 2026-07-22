@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -65,7 +64,7 @@ struct EmptyWeight {
 
   constexpr ReverseWeight Reverse() const noexcept { return *this; }
   constexpr EmptyWeight Quantize(
-    [[maybe_unused]] float delta = kDelta) const noexcept {
+      [[maybe_unused]] float delta = kDelta) const noexcept {
     return {};
   }
   constexpr operator Weight() const noexcept { return Weight::One(); }
@@ -105,15 +104,15 @@ struct ILabelArc {
   constexpr ILabelArc() = default;
 
   constexpr ILabelArc(Label ilabel, StateId nextstate)
-    : ilabel(ilabel), nextstate(nextstate) {}
+      : ilabel(ilabel), nextstate(nextstate) {}
 
   // satisfy openfst API
   constexpr ILabelArc(Label ilabel, Label, Weight, StateId nextstate)
-    : ilabel(ilabel), nextstate(nextstate) {}
+      : ilabel(ilabel), nextstate(nextstate) {}
 
   // satisfy openfst API
   constexpr ILabelArc(Label ilabel, Label, StateId nextstate)
-    : ilabel(ilabel), nextstate(nextstate) {}
+      : ilabel(ilabel), nextstate(nextstate) {}
 };
 
 template<typename L>
@@ -131,7 +130,7 @@ inline void swap(L& lhs, EmptyLabel<L>& /*rhs*/) noexcept {
 template<typename L>
 struct std::hash<typename ::fst::fstext::EmptyLabel<L>> {
   constexpr size_t operator()(
-    typename ::fst::fstext::EmptyLabel<L>) const noexcept {
+      typename ::fst::fstext::EmptyLabel<L>) const noexcept {
     return 0;
   }
 };

@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -53,7 +52,7 @@ struct bytes_io<T, sizeof(uint8_t)> {
   static T vread(InputIterator& in, std::input_iterator_tag) {
     // read direct same as writen in vwrite(...)
     return read(
-      in, typename std::iterator_traits<InputIterator>::iterator_category());
+        in, typename std::iterator_traits<InputIterator>::iterator_category());
   }
 
   template<typename OutputIterator>
@@ -99,7 +98,7 @@ struct bytes_io<T, sizeof(uint16_t)> {
   static T vread(InputIterator& in, std::input_iterator_tag) {
     // read direct same as writen in vwrite(...)
     return read(
-      in, typename std::iterator_traits<InputIterator>::iterator_category());
+        in, typename std::iterator_traits<InputIterator>::iterator_category());
   }
 
   template<typename OutputIterator>
@@ -247,7 +246,7 @@ struct bytes_io<T, sizeof(uint32_t)> {
   template<typename InputIterator>
   static int32_t zvread(InputIterator& in, std::input_iterator_tag) {
     return irs::zig_zag_decode32(vread(
-      in, typename std::iterator_traits<InputIterator>::iterator_category()));
+        in, typename std::iterator_traits<InputIterator>::iterator_category()));
   }
 
   template<typename OutputIterator>
@@ -419,7 +418,7 @@ struct bytes_io<T, sizeof(uint64_t)> {
   template<typename InputIterator>
   static int64_t zvread(InputIterator& in, std::input_iterator_tag) {
     return zig_zag_decode64(vread(
-      in, typename std::iterator_traits<InputIterator>::iterator_category()));
+        in, typename std::iterator_traits<InputIterator>::iterator_category()));
   }
 
   template<typename OutputIterator>
@@ -451,7 +450,7 @@ inline void vskip(Iterator& in) {
 template<typename T, typename Iterator>
 inline T read(Iterator& in) {
   return bytes_io<T, sizeof(T)>::read(
-    in, typename std::iterator_traits<Iterator>::iterator_category());
+      in, typename std::iterator_traits<Iterator>::iterator_category());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -462,7 +461,7 @@ inline T read(Iterator& in) {
 template<typename T, typename Iterator>
 inline T vread(Iterator& in) {
   return bytes_io<T, sizeof(T)>::vread(
-    in, typename std::iterator_traits<Iterator>::iterator_category());
+      in, typename std::iterator_traits<Iterator>::iterator_category());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -473,7 +472,7 @@ inline T vread(Iterator& in) {
 template<typename T, typename Iterator>
 inline T zvread(Iterator& in) {
   return bytes_io<T, sizeof(T)>::zvread(
-    in, typename std::iterator_traits<Iterator>::iterator_category());
+      in, typename std::iterator_traits<Iterator>::iterator_category());
 }
 
 // -----------------------------------------------------------------------------

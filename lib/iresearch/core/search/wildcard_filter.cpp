@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "wildcard_filter.hpp"
@@ -81,45 +80,45 @@ auto ExecuteWildcard(bstring& buf, bytes_view term, Term&& t, Prefix&& p,
 field_visitor by_wildcard::visitor(bytes_view term) {
   bstring buf;
   return ExecuteWildcard(
-    buf, term,
-    [](bytes_view term) -> field_visitor {
-      // must copy term as it may point to temporary string
-      return [term = bstring(term)](const SubReader& segment,
-                                    const term_reader& field,
-                                    filter_visitor& visitor) {
-        by_term::visit(segment, field, term, visitor);
-      };
-    },
-    [](bytes_view term) -> field_visitor {
-      // must copy term as it may point to temporary string
-      return [term = bstring(term)](const SubReader& segment,
-                                    const term_reader& field,
-                                    filter_visitor& visitor) {
-        by_prefix::visit(segment, field, term, visitor);
-      };
-    },
-    [](bytes_view term) -> field_visitor {
-      struct AutomatonContext : util::noncopyable {
-        explicit AutomatonContext(bytes_view term)
-          : acceptor{FromWildcard(term)},
-            matcher{MakeAutomatonMatcher(acceptor)} {}
+      buf, term,
+      [](bytes_view term) -> field_visitor {
+        // must copy term as it may point to temporary string
+        return [term = bstring(term)](const SubReader& segment,
+                                      const term_reader& field,
+                                      filter_visitor& visitor) {
+          by_term::visit(segment, field, term, visitor);
+        };
+      },
+      [](bytes_view term) -> field_visitor {
+        // must copy term as it may point to temporary string
+        return [term = bstring(term)](const SubReader& segment,
+                                      const term_reader& field,
+                                      filter_visitor& visitor) {
+          by_prefix::visit(segment, field, term, visitor);
+        };
+      },
+      [](bytes_view term) -> field_visitor {
+        struct AutomatonContext : util::noncopyable {
+          explicit AutomatonContext(bytes_view term)
+              : acceptor{FromWildcard(term)},
+                matcher{MakeAutomatonMatcher(acceptor)} {}
 
-        automaton acceptor;
-        automaton_table_matcher matcher;
-      };
+          automaton acceptor;
+          automaton_table_matcher matcher;
+        };
 
-      auto ctx = std::make_shared<AutomatonContext>(term);
+        auto ctx = std::make_shared<AutomatonContext>(term);
 
-      if (!Validate(ctx->acceptor)) {
-        return [](const SubReader&, const term_reader&, filter_visitor&) {};
-      }
+        if (!Validate(ctx->acceptor)) {
+          return [](const SubReader&, const term_reader&, filter_visitor&) {};
+        }
 
-      return [ctx = std::move(ctx)](const SubReader& segment,
-                                    const term_reader& field,
-                                    filter_visitor& visitor) mutable {
-        return irs::Visit(segment, field, ctx->matcher, visitor);
-      };
-    });
+        return [ctx = std::move(ctx)](const SubReader& segment,
+                                      const term_reader& field,
+                                      filter_visitor& visitor) mutable {
+          return irs::Visit(segment, field, ctx->matcher, visitor);
+        };
+      });
 }
 
 filter::prepared::ptr by_wildcard::prepare(const PrepareContext& ctx,
@@ -128,17 +127,17 @@ filter::prepared::ptr by_wildcard::prepare(const PrepareContext& ctx,
                                            size_t scored_terms_limit) {
   bstring buf;
   return ExecuteWildcard(
-    buf, term,
-    [&](bytes_view term) -> prepared::ptr {
-      return by_term::prepare(ctx, field, term);
-    },
-    [&, scored_terms_limit](bytes_view term) -> prepared::ptr {
-      return by_prefix::prepare(ctx, field, term, scored_terms_limit);
-    },
-    [&, scored_terms_limit](bytes_view term) -> prepared::ptr {
-      return PrepareAutomatonFilter(ctx, field, FromWildcard(term),
-                                    scored_terms_limit);
-    });
+      buf, term,
+      [&](bytes_view term) -> prepared::ptr {
+        return by_term::prepare(ctx, field, term);
+      },
+      [&, scored_terms_limit](bytes_view term) -> prepared::ptr {
+        return by_prefix::prepare(ctx, field, term, scored_terms_limit);
+      },
+      [&, scored_terms_limit](bytes_view term) -> prepared::ptr {
+        return PrepareAutomatonFilter(ctx, field, FromWildcard(term),
+                                      scored_terms_limit);
+      });
 }
 
 }  // namespace irs

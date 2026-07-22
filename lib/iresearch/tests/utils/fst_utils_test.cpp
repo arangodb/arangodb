@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "tests_shared.hpp"
@@ -28,36 +27,35 @@
 TEST(fst_table_matcher_test, static_const) {
   static_assert(fst::MATCH_INPUT ==
                 fst::TableMatcher<
-                  fst::fsa::Automaton<fst::fsa::BooleanWeight>>::MATCH_TYPE);
-  static_assert(fst::kNoIEpsilons | fst::kIDeterministic |
-                fst::kAcceptor ==
-                  fst::TableMatcher<
                     fst::fsa::Automaton<fst::fsa::BooleanWeight>>::MATCH_TYPE);
+  static_assert(
+      fst::kNoIEpsilons | fst::kIDeterministic |
+      fst::kAcceptor ==
+          fst::TableMatcher<
+              fst::fsa::Automaton<fst::fsa::BooleanWeight>>::MATCH_TYPE);
   static_assert(fst::MATCH_OUTPUT ==
                 fst::TableMatcher<fst::fsa::Automaton<fst::fsa::BooleanWeight>,
                                   256, false>::MATCH_TYPE);
   static_assert(
-    fst::kNoOEpsilons | fst::kODeterministic |
-    fst::kAcceptor ==
-      fst::TableMatcher<fst::fsa::Automaton<fst::fsa::BooleanWeight>, 256,
-                        false>::MATCH_TYPE);
+      fst::kNoOEpsilons | fst::kODeterministic |
+      fst::kAcceptor ==
+          fst::TableMatcher<fst::fsa::Automaton<fst::fsa::BooleanWeight>, 256,
+                            false>::MATCH_TYPE);
+  static_assert(std::is_same<fst::fsa::Automaton<fst::fsa::BooleanWeight>,
+                             fst::TableMatcher<fst::fsa::Automaton<
+                                 fst::fsa::BooleanWeight>>::FST>::value);
+  static_assert(std::is_same<fst::fsa::Transition<fst::fsa::BooleanWeight>,
+                             fst::TableMatcher<fst::fsa::Automaton<
+                                 fst::fsa::BooleanWeight>>::Arc>::value);
   static_assert(
-    std::is_same<fst::fsa::Automaton<fst::fsa::BooleanWeight>,
-                 fst::TableMatcher<
-                   fst::fsa::Automaton<fst::fsa::BooleanWeight>>::FST>::value);
+      std::is_same<int64_t, fst::TableMatcher<fst::fsa::Automaton<
+                                fst::fsa::BooleanWeight>>::Label>::value);
   static_assert(
-    std::is_same<fst::fsa::Transition<fst::fsa::BooleanWeight>,
-                 fst::TableMatcher<
-                   fst::fsa::Automaton<fst::fsa::BooleanWeight>>::Arc>::value);
-  static_assert(
-    std::is_same<int64_t, fst::TableMatcher<fst::fsa::Automaton<
-                            fst::fsa::BooleanWeight>>::Label>::value);
-  static_assert(
-    std::is_same<int32_t, fst::TableMatcher<fst::fsa::Automaton<
-                            fst::fsa::BooleanWeight>>::StateId>::value);
+      std::is_same<int32_t, fst::TableMatcher<fst::fsa::Automaton<
+                                fst::fsa::BooleanWeight>>::StateId>::value);
   static_assert(std::is_same<fst::fsa::BooleanWeight,
                              fst::TableMatcher<fst::fsa::Automaton<
-                               fst::fsa::BooleanWeight>>::Weight>::value);
+                                 fst::fsa::BooleanWeight>>::Weight>::value);
 }
 
 TEST(fst_table_matcher_test, test_properties) {

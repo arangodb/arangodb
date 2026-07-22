@@ -17,8 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "tests_param.hpp"
@@ -57,7 +55,7 @@ std::string to_string(dir_generator_f generator) {
 }
 
 std::shared_ptr<irs::directory> memory_directory(
-  const test_base* /*test*/, irs::directory_attributes attrs) {
+    const test_base* /*test*/, irs::directory_attributes attrs) {
   return std::make_shared<irs::memory_directory>(std::move(attrs));
 }
 
@@ -67,13 +65,13 @@ std::shared_ptr<irs::directory> fs_directory(const test_base* test,
 }
 
 std::shared_ptr<irs::directory> mmap_directory(
-  const test_base* test, irs::directory_attributes attrs) {
+    const test_base* test, irs::directory_attributes attrs) {
   return MakePhysicalDirectory<irs::MMapDirectory>(test, std::move(attrs));
 }
 
 #ifdef IRESEARCH_URING
 std::shared_ptr<irs::directory> async_directory(
-  const test_base* test, irs::directory_attributes attrs) {
+    const test_base* test, irs::directory_attributes attrs) {
   return MakePhysicalDirectory<irs::AsyncDirectory>(test, std::move(attrs));
 }
 #endif

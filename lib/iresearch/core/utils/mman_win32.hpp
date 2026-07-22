@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -47,7 +46,7 @@ typedef uint32_t OffsetType;
 #define MAP_ANONYMOUS 0x20
 #define MAP_ANON MAP_ANONYMOUS
 
-#define MAP_FAILED ((void *)-1)
+#define MAP_FAILED ((void*)-1)
 
 // Flags for msync
 #define MS_ASYNC 1
@@ -56,22 +55,22 @@ typedef uint32_t OffsetType;
 
 extern "C" {
 
-void *mmap(void *addr, size_t len, int prot, int flags, int fildes,
+void* mmap(void* addr, size_t len, int prot, int flags, int fildes,
            OffsetType off);
-int munmap(void *addr, size_t len);
-int mprotect(void *addr, size_t len, int prot);
+int munmap(void* addr, size_t len);
+int mprotect(void* addr, size_t len, int prot);
 
 // Note: under windows all flushes are achieved synchronously, however
 // under windows, there is no guarentee that the underlying disk hardware
 // cache has physically written to disk.
 // FlushFileBuffers ensures file written to disk
-int msync(void *addr, size_t len, int flags);
+int msync(void* addr, size_t len, int flags);
 
-int mlock(const void *addr, size_t len);
-int munlock(const void *addr, size_t len);
+int mlock(const void* addr, size_t len);
+int munlock(const void* addr, size_t len);
 
 // not available on windows, just stubbed
-int madvise(void *addr, size_t length, int advice);
+int madvise(void* addr, size_t length, int advice);
 }
 
 #endif  // (_MSC_VER)

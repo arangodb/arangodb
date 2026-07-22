@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "multiterm_query.hpp"
@@ -36,13 +35,13 @@ using namespace irs;
 class lazy_bitset_iterator : public bitset_doc_iterator {
  public:
   lazy_bitset_iterator(
-    const SubReader& segment, const term_reader& field,
-    std::span<const MultiTermState::UnscoredTermState> states,
-    cost::cost_t estimation) noexcept
-    : bitset_doc_iterator(estimation),
-      field_(&field),
-      segment_(&segment),
-      states_(states) {
+      const SubReader& segment, const term_reader& field,
+      std::span<const MultiTermState::UnscoredTermState> states,
+      cost::cost_t estimation) noexcept
+      : bitset_doc_iterator(estimation),
+        field_(&field),
+        segment_(&segment),
+        states_(states) {
     IRS_ASSERT(!states_.empty());
   }
 
@@ -74,7 +73,7 @@ bool lazy_bitset_iterator::refill(const word_t** begin, const word_t** end) {
 
   auto provider = [begin = states_.begin(),
                    end =
-                     states_.end()]() mutable noexcept -> const seek_cookie* {
+                       states_.end()]() mutable noexcept -> const seek_cookie* {
     if (begin != end) {
       auto* cookie = begin->get();
       // cppcheck-suppress unreadVariable
@@ -162,22 +161,22 @@ doc_iterator::ptr MultiTermQuery::execute(const ExecutionContext& ctx) const {
   if (has_unscored_terms) {
     IRS_ASSERT(it != std::end(itrs));
     *it = {memory::make_managed<::lazy_bitset_iterator>(
-      segment, *state->reader, state->unscored_terms,
-      state->unscored_states_estimation)};
+        segment, *state->reader, state->unscored_terms,
+        state->unscored_states_estimation)};
     ++it;
   }
 
   itrs.erase(it, std::end(itrs));
 
   return ResoveMergeType(
-    merge_type_, ord.buckets().size(),
-    [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
-      using disjunction_t = min_match_iterator<doc_iterator::ptr, A>;
+      merge_type_, ord.buckets().size(),
+      [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
+        using disjunction_t = min_match_iterator<doc_iterator::ptr, A>;
 
-      return MakeWeakDisjunction<disjunction_t>({}, std::move(itrs), min_match_,
-                                                std::move(aggregator),
-                                                state->estimation());
-    });
+        return MakeWeakDisjunction<disjunction_t>(
+            {}, std::move(itrs), min_match_, std::move(aggregator),
+            state->estimation());
+      });
 }
 
 }  // namespace irs

@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "index/norm.hpp"
@@ -59,7 +58,7 @@ class Analyzer : public irs::analysis::TypedAnalyzer<Analyzer> {
   bool next() final {
     if (i_ < count_) {
       std::get<irs::term_attribute>(attrs_).value =
-        irs::ViewCast<irs::byte_type>(value_);
+          irs::ViewCast<irs::byte_type>(value_);
       auto& offset = std::get<irs::offset>(attrs_);
       offset.start = 0;
       offset.end = static_cast<uint32_t>(value_.size());
@@ -80,7 +79,7 @@ class Analyzer : public irs::analysis::TypedAnalyzer<Analyzer> {
 class NormField final : public tests::ifield {
  public:
   NormField(std::string name, std::string value, size_t count)
-    : name_{std::move(name)}, value_{std::move(value)}, analyzer_{count} {}
+      : name_{std::move(name)}, value_{std::move(value)}, analyzer_{count} {}
 
   std::string_view name() const final { return name_; }
 
@@ -176,8 +175,8 @@ TEST(Norm2HeaderTest, ResetByValue) {
 
 TEST(Norm2HeaderTest, ReadInvalid) {
   ASSERT_FALSE(irs::Norm2Header::Read(irs::bytes_view{}).has_value());
-  ASSERT_FALSE(
-    irs::Norm2Header::Read(irs::kEmptyStringView<irs::byte_type>).has_value());
+  ASSERT_FALSE(irs::Norm2Header::Read(irs::kEmptyStringView<irs::byte_type>)
+                   .has_value());
 
   // Invalid size
   {
@@ -289,13 +288,14 @@ class Norm2TestCase : public tests::index_test_base {
     return [](irs::type_info::type_id id) {
       if (irs::type<irs::Norm2>::id() == id) {
         return std::make_pair(
-          irs::ColumnInfo{irs::type<irs::compression::none>::get(), {}, false},
-          &irs::Norm2::MakeWriter);
+            irs::ColumnInfo{
+                irs::type<irs::compression::none>::get(), {}, false},
+            &irs::Norm2::MakeWriter);
       }
 
       return std::make_pair(
-        irs::ColumnInfo{irs::type<irs::compression::none>::get(), {}, false},
-        irs::FeatureWriterFactory{});
+          irs::ColumnInfo{irs::type<irs::compression::none>::get(), {}, false},
+          irs::FeatureWriterFactory{});
     };
   }
 
@@ -307,25 +307,25 @@ class Norm2TestCase : public tests::index_test_base {
                                   irs::IndexFeatures::FREQ |
                                   irs::IndexFeatures::POS);
     index_test_base::assert_index(
-      irs::IndexFeatures::NONE | irs::IndexFeatures::FREQ |
-      irs::IndexFeatures::POS | irs::IndexFeatures::OFFS);
+        irs::IndexFeatures::NONE | irs::IndexFeatures::FREQ |
+        irs::IndexFeatures::POS | irs::IndexFeatures::OFFS);
     index_test_base::assert_index(
-      irs::IndexFeatures::NONE | irs::IndexFeatures::FREQ |
-      irs::IndexFeatures::POS | irs::IndexFeatures::PAY);
+        irs::IndexFeatures::NONE | irs::IndexFeatures::FREQ |
+        irs::IndexFeatures::POS | irs::IndexFeatures::PAY);
     index_test_base::assert_index(irs::IndexFeatures::ALL);
     index_test_base::assert_columnstore();
   }
 
   template<typename T>
   void AssertNormColumn(
-    const irs::SubReader& segment, std::string_view name,
-    const std::vector<std::pair<irs::doc_id_t, uint32_t>>& expected_values);
+      const irs::SubReader& segment, std::string_view name,
+      const std::vector<std::pair<irs::doc_id_t, uint32_t>>& expected_values);
 };
 
 template<typename T>
 void Norm2TestCase::AssertNormColumn(
-  const irs::SubReader& segment, std::string_view name,
-  const std::vector<std::pair<irs::doc_id_t, uint32_t>>& expected_docs) {
+    const irs::SubReader& segment, std::string_view name,
+    const std::vector<std::pair<irs::doc_id_t, uint32_t>>& expected_docs) {
   static_assert(std::is_same_v<T, uint8_t> || std::is_same_v<T, uint16_t> ||
                 std::is_same_v<T, uint32_t>);
 
@@ -345,12 +345,12 @@ void Norm2TestCase::AssertNormColumn(
   ASSERT_TRUE(irs::IsNull(column->name()));
 
   const auto min = std::min_element(
-    std::begin(expected_docs), std::end(expected_docs),
-    [](auto& lhs, auto& rhs) { return lhs.second < rhs.second; });
+      std::begin(expected_docs), std::end(expected_docs),
+      [](auto& lhs, auto& rhs) { return lhs.second < rhs.second; });
   ASSERT_NE(std::end(expected_docs), min);
   const auto max = std::max_element(
-    std::begin(expected_docs), std::end(expected_docs),
-    [](auto& lhs, auto& rhs) { return lhs.second < rhs.second; });
+      std::begin(expected_docs), std::end(expected_docs),
+      [](auto& lhs, auto& rhs) { return lhs.second < rhs.second; });
   ASSERT_NE(std::end(expected_docs), max);
   ASSERT_LE(*min, *max);
   AssertNorm2Header(column->payload(), sizeof(T), min->second, max->second);
@@ -394,32 +394,32 @@ void Norm2TestCase::AssertNormColumn(
 
 TEST_P(Norm2TestCase, CheckNorms) {
   constexpr frozen::map<frozen::string, uint32_t, 4> kSeedMapping{
-    {"name", uint32_t{1}},
-    {"same", uint32_t{1} << 8},
-    {"duplicated", uint32_t{1} << 15},
-    {"prefix", uint32_t{1} << 14}};
+      {"name", uint32_t{1}},
+      {"same", uint32_t{1} << 8},
+      {"duplicated", uint32_t{1} << 15},
+      {"prefix", uint32_t{1} << 14}};
 
   tests::json_doc_generator gen(
-    resource("simple_sequential.json"),
-    [count = size_t{0}, &kSeedMapping](
-      tests::document& doc, const std::string& name,
-      const tests::json_doc_generator::json_value& data) mutable {
-      if (data.is_string()) {
-        const bool is_name = (name == "name");
-        count += static_cast<size_t>(is_name);
+      resource("simple_sequential.json"),
+      [count = size_t{0}, &kSeedMapping](
+          tests::document& doc, const std::string& name,
+          const tests::json_doc_generator::json_value& data) mutable {
+        if (data.is_string()) {
+          const bool is_name = (name == "name");
+          count += static_cast<size_t>(is_name);
 
-        const auto it = kSeedMapping.find(frozen::string{name});
-        ASSERT_NE(kSeedMapping.end(), it);
+          const auto it = kSeedMapping.find(frozen::string{name});
+          ASSERT_NE(kSeedMapping.end(), it);
 
-        auto field =
-          std::make_shared<NormField>(name, data.str, count * it->second);
-        doc.insert(field);
+          auto field =
+              std::make_shared<NormField>(name, data.str, count * it->second);
+          doc.insert(field);
 
-        if (is_name) {
-          doc.sorted = field;
+          if (is_name) {
+            doc.sorted = field;
+          }
         }
-      }
-    });
+      });
 
   auto* doc0 = gen.next();  // name == 'A'
   auto* doc1 = gen.next();  // name == 'B'
@@ -478,8 +478,8 @@ TEST_P(Norm2TestCase, CheckNorms) {
     ASSERT_NE(kSeedMapping.end(), it);
     const uint32_t seed{it->second};
     AssertNormColumn<uint32_t>(
-      segment, {kName.data(), kName.size()},
-      {{1, seed}, {2, seed * 2}, {3, seed * 3}, {4, seed * 4}});
+        segment, {kName.data(), kName.size()},
+        {{1, seed}, {2, seed * 2}, {3, seed * 3}, {4, seed * 4}});
   }
 
   {
@@ -488,8 +488,8 @@ TEST_P(Norm2TestCase, CheckNorms) {
     ASSERT_NE(kSeedMapping.end(), it);
     const uint32_t seed{it->second};
     AssertNormColumn<uint32_t>(
-      segment, {kName.data(), kName.size()},
-      {{1, seed}, {2, seed * 2}, {3, seed * 3}, {4, seed * 4}});
+        segment, {kName.data(), kName.size()},
+        {{1, seed}, {2, seed * 2}, {3, seed * 3}, {4, seed * 4}});
   }
 
   {
@@ -504,32 +504,32 @@ TEST_P(Norm2TestCase, CheckNorms) {
 
 TEST_P(Norm2TestCase, CheckNormsConsolidation) {
   constexpr frozen::map<frozen::string, uint32_t, 4> kSeedMapping{
-    {"name", uint32_t{1}},
-    {"same", uint32_t{1} << 5},
-    {"duplicated", uint32_t{1} << 12},
-    {"prefix", uint32_t{1} << 14}};
+      {"name", uint32_t{1}},
+      {"same", uint32_t{1} << 5},
+      {"duplicated", uint32_t{1} << 12},
+      {"prefix", uint32_t{1} << 14}};
 
   tests::json_doc_generator gen(
-    resource("simple_sequential.json"),
-    [count = size_t{0}, &kSeedMapping](
-      tests::document& doc, const std::string& name,
-      const tests::json_doc_generator::json_value& data) mutable {
-      if (data.is_string()) {
-        const bool is_name = (name == "name");
-        count += static_cast<size_t>(is_name);
+      resource("simple_sequential.json"),
+      [count = size_t{0}, &kSeedMapping](
+          tests::document& doc, const std::string& name,
+          const tests::json_doc_generator::json_value& data) mutable {
+        if (data.is_string()) {
+          const bool is_name = (name == "name");
+          count += static_cast<size_t>(is_name);
 
-        const auto it = kSeedMapping.find(frozen::string{name});
-        ASSERT_NE(kSeedMapping.end(), it);
+          const auto it = kSeedMapping.find(frozen::string{name});
+          ASSERT_NE(kSeedMapping.end(), it);
 
-        auto field =
-          std::make_shared<NormField>(name, data.str, count * it->second);
-        doc.insert(field);
+          auto field =
+              std::make_shared<NormField>(name, data.str, count * it->second);
+          doc.insert(field);
 
-        if (is_name) {
-          doc.sorted = field;
+          if (is_name) {
+            doc.sorted = field;
+          }
         }
-      }
-    });
+      });
 
   auto* doc0 = gen.next();  // name == 'A'
   auto* doc1 = gen.next();  // name == 'B'
@@ -609,8 +609,8 @@ TEST_P(Norm2TestCase, CheckNormsConsolidation) {
       ASSERT_NE(kSeedMapping.end(), it);
       const uint32_t seed{it->second};
       AssertNormColumn<uint32_t>(
-        segment, {kName.data(), kName.size()},
-        {{1, seed}, {2, seed * 2}, {3, seed * 3}, {4, seed * 4}});
+          segment, {kName.data(), kName.size()},
+          {{1, seed}, {2, seed * 2}, {3, seed * 3}, {4, seed * 4}});
     }
 
     {
@@ -619,8 +619,8 @@ TEST_P(Norm2TestCase, CheckNormsConsolidation) {
       ASSERT_NE(kSeedMapping.end(), it);
       const uint32_t seed{it->second};
       AssertNormColumn<uint32_t>(
-        segment, {kName.data(), kName.size()},
-        {{1, seed}, {2, seed * 2}, {3, seed * 3}, {4, seed * 4}});
+          segment, {kName.data(), kName.size()},
+          {{1, seed}, {2, seed * 2}, {3, seed * 3}, {4, seed * 4}});
     }
 
     {
@@ -676,7 +676,7 @@ TEST_P(Norm2TestCase, CheckNormsConsolidation) {
   {
     const irs::index_utils::ConsolidateCount consolidate_all;
     ASSERT_TRUE(
-      writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
+        writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
     writer->Commit();
     AssertSnapshotEquality(*writer);
 
@@ -720,8 +720,8 @@ TEST_P(Norm2TestCase, CheckNormsConsolidation) {
       ASSERT_NE(kSeedMapping.end(), it);
       const uint32_t seed{it->second};
       AssertNormColumn<uint16_t>(
-        segment, {kName.data(), kName.size()},
-        {{1, seed}, {2, seed * 2}, {3, seed * 3}, {5, seed * 5}});
+          segment, {kName.data(), kName.size()},
+          {{1, seed}, {2, seed * 2}, {3, seed * 3}, {5, seed * 5}});
     }
 
     {
@@ -767,32 +767,32 @@ TEST_P(Norm2TestCase, CheckNormsConsolidation) {
 
 TEST_P(Norm2TestCase, CheckNormsConsolidationWithRemovals) {
   constexpr frozen::map<frozen::string, uint32_t, 4> kSeedMapping{
-    {"name", uint32_t{1}},
-    {"same", uint32_t{1} << 5},
-    {"duplicated", uint32_t{1} << 12},
-    {"prefix", uint32_t{1} << 14}};
+      {"name", uint32_t{1}},
+      {"same", uint32_t{1} << 5},
+      {"duplicated", uint32_t{1} << 12},
+      {"prefix", uint32_t{1} << 14}};
 
   tests::json_doc_generator gen(
-    resource("simple_sequential.json"),
-    [count = size_t{0}, &kSeedMapping](
-      tests::document& doc, const std::string& name,
-      const tests::json_doc_generator::json_value& data) mutable {
-      if (data.is_string()) {
-        const bool is_name = (name == "name");
-        count += static_cast<size_t>(is_name);
+      resource("simple_sequential.json"),
+      [count = size_t{0}, &kSeedMapping](
+          tests::document& doc, const std::string& name,
+          const tests::json_doc_generator::json_value& data) mutable {
+        if (data.is_string()) {
+          const bool is_name = (name == "name");
+          count += static_cast<size_t>(is_name);
 
-        const auto it = kSeedMapping.find(frozen::string{name});
-        ASSERT_NE(kSeedMapping.end(), it);
+          const auto it = kSeedMapping.find(frozen::string{name});
+          ASSERT_NE(kSeedMapping.end(), it);
 
-        auto field =
-          std::make_shared<NormField>(name, data.str, count * it->second);
-        doc.insert(field);
+          auto field =
+              std::make_shared<NormField>(name, data.str, count * it->second);
+          doc.insert(field);
 
-        if (is_name) {
-          doc.sorted = field;
+          if (is_name) {
+            doc.sorted = field;
+          }
         }
-      }
-    });
+      });
 
   auto* doc0 = gen.next();  // name == 'A'
   auto* doc1 = gen.next();  // name == 'B'
@@ -872,8 +872,8 @@ TEST_P(Norm2TestCase, CheckNormsConsolidationWithRemovals) {
       ASSERT_NE(kSeedMapping.end(), it);
       const uint32_t seed{it->second};
       AssertNormColumn<uint32_t>(
-        segment, {kName.data(), kName.size()},
-        {{1, seed}, {2, seed * 2}, {3, seed * 3}, {4, seed * 4}});
+          segment, {kName.data(), kName.size()},
+          {{1, seed}, {2, seed * 2}, {3, seed * 3}, {4, seed * 4}});
     }
 
     {
@@ -882,8 +882,8 @@ TEST_P(Norm2TestCase, CheckNormsConsolidationWithRemovals) {
       ASSERT_NE(kSeedMapping.end(), it);
       const uint32_t seed{it->second};
       AssertNormColumn<uint32_t>(
-        segment, {kName.data(), kName.size()},
-        {{1, seed}, {2, seed * 2}, {3, seed * 3}, {4, seed * 4}});
+          segment, {kName.data(), kName.size()},
+          {{1, seed}, {2, seed * 2}, {3, seed * 3}, {4, seed * 4}});
     }
 
     {
@@ -947,7 +947,7 @@ TEST_P(Norm2TestCase, CheckNormsConsolidationWithRemovals) {
   {
     const irs::index_utils::ConsolidateCount consolidate_all;
     ASSERT_TRUE(
-      writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
+        writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
     writer->Commit();
     AssertSnapshotEquality(*writer);
 
@@ -990,8 +990,8 @@ TEST_P(Norm2TestCase, CheckNormsConsolidationWithRemovals) {
       ASSERT_NE(kSeedMapping.end(), it);
       const uint32_t seed{it->second};
       AssertNormColumn<uint16_t>(
-        segment, {kName.data(), kName.size()},
-        {{1, seed}, {2, seed * 2}, {3, seed * 3}, {4, seed * 5}});
+          segment, {kName.data(), kName.size()},
+          {{1, seed}, {2, seed * 2}, {3, seed * 3}, {4, seed * 5}});
     }
 
     {
@@ -1041,7 +1041,7 @@ TEST_P(Norm2TestCase, CheckNormsConsolidationWithRemovals) {
   {
     const irs::index_utils::ConsolidateCount consolidate_all;
     ASSERT_TRUE(
-      writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
+        writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
     writer->Commit();
     AssertSnapshotEquality(*writer);
   }
@@ -1061,8 +1061,8 @@ TEST_P(Norm2TestCase, CheckNormsConsolidationWithRemovals) {
       ASSERT_NE(kSeedMapping.end(), it);
       const uint32_t seed{it->second};
       AssertNormColumn<uint16_t>(
-        segment, {kName.data(), kName.size()},
-        {{1, seed}, {2, seed * 2}, {3, seed * 3}, {4, seed * 5}, {7, seed}});
+          segment, {kName.data(), kName.size()},
+          {{1, seed}, {2, seed * 2}, {3, seed * 3}, {4, seed * 5}, {7, seed}});
     }
 
     {
@@ -1110,10 +1110,10 @@ TEST_P(Norm2TestCase, CheckNormsConsolidationWithRemovals) {
 // expansion
 #ifdef IRESEARCH_SSE2
 const auto kNorm2TestCaseValues = ::testing::Values(
-  tests::format_info{"1_4", "1_0"}, tests::format_info{"1_4simd", "1_0"});
+    tests::format_info{"1_4", "1_0"}, tests::format_info{"1_4simd", "1_0"});
 #else
 const auto kNorm2TestCaseValues =
-  ::testing::Values(tests::format_info{"1_4", "1_0"});
+    ::testing::Values(tests::format_info{"1_4", "1_0"});
 #endif
 
 static constexpr auto kTestDirs = tests::getDirectories<tests::kTypesDefault>();

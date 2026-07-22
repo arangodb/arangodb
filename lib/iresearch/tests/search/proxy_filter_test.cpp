@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "search/proxy_filter.hpp"
@@ -37,9 +36,9 @@ using namespace irs;
 class doclist_test_iterator : public doc_iterator, private util::noncopyable {
  public:
   doclist_test_iterator(const std::vector<doc_id_t>& documents)
-    : begin_(documents.begin()),
-      end_(documents.end()),
-      cost_(documents.size()) {
+      : begin_(documents.begin()),
+        end_(documents.end()),
+        cost_(documents.size()) {
     reset();
   }
 
@@ -95,7 +94,7 @@ class doclist_test_iterator : public doc_iterator, private util::noncopyable {
 class doclist_test_query : public filter::prepared {
  public:
   doclist_test_query(const std::vector<doc_id_t>& documents, score_t)
-    : documents_(documents) {}
+      : documents_(documents) {}
 
   doc_iterator::ptr execute(const ExecutionContext&) const final {
     ++executes_;
@@ -180,19 +179,19 @@ class proxy_filter_test_case : public ::testing::TestWithParam<size_t> {
       proxy_filter proxy;
       if (i == 0) {
         auto res =
-          proxy.set_filter<doclist_test_filter>(irs::IResourceManager::kNoop);
+            proxy.set_filter<doclist_test_filter>(irs::IResourceManager::kNoop);
         cache = res.second;
         res.first.set_expected(expected);
       } else {
         proxy.set_cache(cache);
       }
       auto prepared_proxy = proxy.prepare({
-        .index = index_,
-        .memory = prepare_counter,
+          .index = index_,
+          .memory = prepare_counter,
       });
       auto docs = prepared_proxy->execute({
-        .segment = index_[0],
-        .memory = execute_counter,
+          .segment = index_[0],
+          .memory = execute_counter,
       });
       auto costs = irs::get<irs::cost>(*docs);
       EXPECT_TRUE(costs);
@@ -273,11 +272,12 @@ class proxy_filter_real_filter : public tests::FilterTestCaseBase {
     auto writer = open_writer(irs::OM_CREATE);
 
     std::vector<doc_generator_base::ptr> gens;
+    gens.emplace_back(
+        new tests::json_doc_generator(resource("simple_sequential.json"),
+                                      &tests::generic_json_field_factory));
     gens.emplace_back(new tests::json_doc_generator(
-      resource("simple_sequential.json"), &tests::generic_json_field_factory));
-    gens.emplace_back(new tests::json_doc_generator(
-      resource("simple_sequential_common_prefix.json"),
-      &tests::generic_json_field_factory));
+        resource("simple_sequential_common_prefix.json"),
+        &tests::generic_json_field_factory));
     add_segments(*writer, gens);
   }
 };
@@ -289,7 +289,7 @@ TEST_P(proxy_filter_real_filter, with_terms_filter) {
   auto [q, cache] = proxy.set_filter<by_term>(irs::IResourceManager::kNoop);
   *q.mutable_field() = "name";
   q.mutable_options()->term =
-    irs::ViewCast<irs::byte_type>(std::string_view("A"));
+      irs::ViewCast<irs::byte_type>(std::string_view("A"));
   CheckQuery(proxy, Docs{1, 33}, rdr);
 }
 
@@ -301,22 +301,23 @@ TEST_P(proxy_filter_real_filter, with_disjunction_filter) {
   auto& q = root.add<by_term>();
   *q.mutable_field() = "name";
   q.mutable_options()->term =
-    irs::ViewCast<irs::byte_type>(std::string_view("A"));
+      irs::ViewCast<irs::byte_type>(std::string_view("A"));
   auto& q1 = root.add<by_term>();
   *q1.mutable_field() = "name";
   q1.mutable_options()->term =
-    irs::ViewCast<irs::byte_type>(std::string_view("B"));
+      irs::ViewCast<irs::byte_type>(std::string_view("B"));
   CheckQuery(proxy, Docs{1, 2, 33, 34}, rdr);
 }
 
 static constexpr auto kTestDirs = tests::getDirectories<tests::kTypesDefault>();
 
 INSTANTIATE_TEST_SUITE_P(
-  proxy_filter_real_filter, proxy_filter_real_filter,
-  ::testing::Combine(::testing::ValuesIn(kTestDirs),
-                     ::testing::Values(tests::format_info{"1_0"},
-                                       tests::format_info{"1_1", "1_0"},
-                                       tests::format_info{"1_2", "1_0"},
-                                       tests::format_info{"1_3", "1_0"},
-                                       tests::format_info{"1_4", "1_4simd"})));
+    proxy_filter_real_filter, proxy_filter_real_filter,
+    ::testing::Combine(::testing::ValuesIn(kTestDirs),
+                       ::testing::Values(tests::format_info{"1_0"},
+                                         tests::format_info{"1_1", "1_0"},
+                                         tests::format_info{"1_2", "1_0"},
+                                         tests::format_info{"1_3", "1_0"},
+                                         tests::format_info{"1_4",
+                                                            "1_4simd"})));
 }  // namespace

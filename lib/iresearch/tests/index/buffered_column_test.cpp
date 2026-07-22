@@ -17,8 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "index/buffered_column.hpp"
@@ -155,9 +153,9 @@ void AssertIteratorCornerCases(const irs::BufferedColumn& column,
     } else {
       ASSERT_FALSE(it.next());
     }
-    ASSERT_EQ(
-      expected_values.empty() ? irs::doc_limits::eof() : expected_values.size(),
-      it.seek(expected_values.size()));
+    ASSERT_EQ(expected_values.empty() ? irs::doc_limits::eof()
+                                      : expected_values.size(),
+              it.seek(expected_values.size()));
     ASSERT_FALSE(it.next());
   }
 
@@ -198,13 +196,13 @@ void AssertIteratorCornerCases(const irs::BufferedColumn& column,
 }
 
 void AssertIteratorBackwardsNextStateless(
-  const irs::BufferedColumn& column,
-  std::span<const uint32_t> expected_values) {
+    const irs::BufferedColumn& column,
+    std::span<const uint32_t> expected_values) {
   for (auto expected_value = expected_values.rbegin(),
             end = expected_values.rend();
        expected_value != end; ++expected_value) {
     auto expected_doc =
-      static_cast<irs::doc_id_t>(std::distance(expected_value, end));
+        static_cast<irs::doc_id_t>(std::distance(expected_value, end));
     irs::BufferedColumnIterator it{column.Index(), column.Data()};
     ASSERT_FALSE(irs::doc_limits::valid(it.value()));
     ASSERT_EQ(expected_doc, it.seek(expected_doc));
@@ -228,15 +226,15 @@ void AssertIteratorBackwardsNextStateless(
 }
 
 void AssertIteratorBackwardsNextStateful(
-  const irs::BufferedColumn& column,
-  std::span<const uint32_t> expected_values) {
+    const irs::BufferedColumn& column,
+    std::span<const uint32_t> expected_values) {
   irs::BufferedColumnIterator it{column.Index(), column.Data()};
 
   for (auto expected_value = expected_values.rbegin(),
             end = expected_values.rend();
        expected_value != end; ++expected_value) {
     auto expected_doc =
-      static_cast<irs::doc_id_t>(std::distance(expected_value, end));
+        static_cast<irs::doc_id_t>(std::distance(expected_value, end));
     ASSERT_EQ(expected_doc, it.seek(expected_doc));
 
     for (auto expected_it = expected_values.begin() + expected_doc;
@@ -272,14 +270,14 @@ const Comparator kLess;
 }  // namespace
 
 struct BufferedColumnTestCase
-  : public virtual test_param_base<std::string_view> {
+    : public virtual test_param_base<std::string_view> {
   bool supports_columnstore_headers() const noexcept {
     // old formats don't support columnstore headers
     constexpr std::string_view kOldFormats[]{"1_0", "1_1", "1_2", "1_3",
                                              "1_3simd"};
 
     const auto it =
-      std::find(std::begin(kOldFormats), std::end(kOldFormats), GetParam());
+        std::find(std::begin(kOldFormats), std::end(kOldFormats), GetParam());
     return std::end(kOldFormats) == it;
   }
 };
@@ -324,19 +322,19 @@ TEST_P(BufferedColumnTestCase, FlushEmpty) {
   // write sorted column
   {
     auto writer =
-      codec->get_columnstore_writer(false, *memory.options.transactions);
+        codec->get_columnstore_writer(false, *memory.options.transactions);
     ASSERT_NE(nullptr, writer);
 
     writer->prepare(dir, segment);
 
     std::tie(order, column_id) = col.Flush(
-      *writer,
-      [](auto&) {
-        // Must not be called
-        EXPECT_TRUE(false);
-        return std::string_view{};
-      },
-      0, kLess);
+        *writer,
+        [](auto&) {
+          // Must not be called
+          EXPECT_TRUE(false);
+          return std::string_view{};
+        },
+        0, kLess);
     ASSERT_TRUE(col.Empty());
     ASSERT_EQ(0, col.Size());
     ASSERT_TRUE(col.Empty());
@@ -346,7 +344,7 @@ TEST_P(BufferedColumnTestCase, FlushEmpty) {
     ASSERT_FALSE(irs::field_limits::valid(column_id));
 
     const irs::flush_state state{
-      .dir = &dir, .name = segment.name, .doc_count = 0};
+        .dir = &dir, .name = segment.name, .doc_count = 0};
 
     ASSERT_FALSE(writer->commit(state));  // nothing to commit
   }
@@ -361,12 +359,12 @@ TEST_P(BufferedColumnTestCase, FlushEmpty) {
 
 TEST_P(BufferedColumnTestCase, InsertDuplicates) {
   constexpr uint32_t values[] = {
-    19, 45, 27, 1,  73, 98, 46, 48, 38,  20, 60, 91, 61, 80, 44,  53, 88,
-    75, 63, 39, 68, 20, 11, 78, 21, 100, 87, 8,  9,  63, 41, 35,  82, 69,
-    56, 49, 6,  46, 59, 19, 16, 58, 15,  21, 46, 23, 99, 78, 18,  89, 77,
-    7,  2,  15, 97, 10, 5,  75, 13, 7,   77, 12, 15, 70, 95, 42,  29, 26,
-    81, 82, 74, 53, 84, 13, 95, 84, 51,  9,  19, 18, 21, 82, 22,  91, 70,
-    68, 14, 73, 30, 70, 38, 85, 98, 79,  75, 38, 79, 85, 85, 100, 91};
+      19, 45, 27, 1,  73, 98, 46, 48, 38,  20, 60, 91, 61, 80, 44,  53, 88,
+      75, 63, 39, 68, 20, 11, 78, 21, 100, 87, 8,  9,  63, 41, 35,  82, 69,
+      56, 49, 6,  46, 59, 19, 16, 58, 15,  21, 46, 23, 99, 78, 18,  89, 77,
+      7,  2,  15, 97, 10, 5,  75, 13, 7,   77, 12, 15, 70, 95, 42,  29, 26,
+      81, 82, 74, 53, 84, 13, 95, 84, 51,  9,  19, 18, 21, 82, 22,  91, 70,
+      68, 14, 73, 30, 70, 38, 85, 98, 79,  75, 38, 79, 85, 85, 100, 91};
 
   irs::SegmentMeta segment;
   segment.name = "123";
@@ -381,14 +379,14 @@ TEST_P(BufferedColumnTestCase, InsertDuplicates) {
   // write sorted column
   {
     auto writer =
-      codec->get_columnstore_writer(false, *memory.options.transactions);
+        codec->get_columnstore_writer(false, *memory.options.transactions);
     ASSERT_NE(nullptr, writer);
 
     writer->prepare(dir, segment);
 
     irs::BufferedColumn col(
-      {irs::type<irs::compression::none>::get(), {}, true},
-      memory.cached_columns);
+        {irs::type<irs::compression::none>::get(), {}, true},
+        memory.cached_columns);
     ASSERT_TRUE(col.Empty());
     ASSERT_EQ(0, col.Size());
     ASSERT_EQ(0, col.MemoryActive());
@@ -420,13 +418,13 @@ TEST_P(BufferedColumnTestCase, InsertDuplicates) {
 #endif
 
     std::tie(order, column_id) = col.Flush(
-      *writer,
-      [](irs::bstring&) {
-        // must not be called
-        EXPECT_TRUE(false);
-        return std::string_view{};
-      },
-      std::size(values), kLess);
+        *writer,
+        [](irs::bstring&) {
+          // must not be called
+          EXPECT_TRUE(false);
+          return std::string_view{};
+        },
+        std::size(values), kLess);
     ASSERT_TRUE(col.Empty());
     ASSERT_EQ(0, col.Size());
     ASSERT_TRUE(col.Empty());
@@ -436,7 +434,7 @@ TEST_P(BufferedColumnTestCase, InsertDuplicates) {
     ASSERT_FALSE(irs::field_limits::valid(column_id));
 
     const irs::flush_state state{
-      .dir = &dir, .name = segment.name, .doc_count = std::size(values)};
+        .dir = &dir, .name = segment.name, .doc_count = std::size(values)};
 
     ASSERT_FALSE(writer->commit(state));
   }
@@ -451,12 +449,12 @@ TEST_P(BufferedColumnTestCase, InsertDuplicates) {
 
 TEST_P(BufferedColumnTestCase, Sort) {
   constexpr uint32_t values[] = {
-    19, 45, 27, 1,  73, 98, 46, 48, 38,  20, 60, 91, 61, 80, 44,  53, 88,
-    75, 63, 39, 68, 20, 11, 78, 21, 100, 87, 8,  9,  63, 41, 35,  82, 69,
-    56, 49, 6,  46, 59, 19, 16, 58, 15,  21, 46, 23, 99, 78, 18,  89, 77,
-    7,  2,  15, 97, 10, 5,  75, 13, 7,   77, 12, 15, 70, 95, 42,  29, 26,
-    81, 82, 74, 53, 84, 13, 95, 84, 51,  9,  19, 18, 21, 82, 22,  91, 70,
-    68, 14, 73, 30, 70, 38, 85, 98, 79,  75, 38, 79, 85, 85, 100, 91};
+      19, 45, 27, 1,  73, 98, 46, 48, 38,  20, 60, 91, 61, 80, 44,  53, 88,
+      75, 63, 39, 68, 20, 11, 78, 21, 100, 87, 8,  9,  63, 41, 35,  82, 69,
+      56, 49, 6,  46, 59, 19, 16, 58, 15,  21, 46, 23, 99, 78, 18,  89, 77,
+      7,  2,  15, 97, 10, 5,  75, 13, 7,   77, 12, 15, 70, 95, 42,  29, 26,
+      81, 82, 74, 53, 84, 13, 95, 84, 51,  9,  19, 18, 21, 82, 22,  91, 70,
+      68, 14, 73, 30, 70, 38, 85, 98, 79,  75, 38, 79, 85, 85, 100, 91};
 
   irs::SegmentMeta segment;
   segment.name = "123";
@@ -501,13 +499,13 @@ TEST_P(BufferedColumnTestCase, Sort) {
     ASSERT_GE(col.MemoryReserved(), 0);
     ASSERT_GE(memory.cached_columns.counter_, col.MemoryReserved());
     std::tie(order, column_id) = col.Flush(
-      *writer,
-      [](irs::bstring& out) {
-        EXPECT_TRUE(out.empty());
-        out += 42;
-        return std::string_view{};
-      },
-      std::size(values), kLess);
+        *writer,
+        [](irs::bstring& out) {
+          EXPECT_TRUE(out.empty());
+          out += 42;
+          return std::string_view{};
+        },
+        std::size(values), kLess);
     ASSERT_FALSE(col.Empty());
 
     AssertIterator(col, values);
@@ -524,7 +522,7 @@ TEST_P(BufferedColumnTestCase, Sort) {
     AssertIterator(col, {});
 
     const irs::flush_state state{
-      .dir = &dir, .name = segment.name, .doc_count = std::size(values)};
+        .dir = &dir, .name = segment.name, .doc_count = std::size(values)};
 
     ASSERT_TRUE(writer->commit(state));
   }
@@ -541,7 +539,7 @@ TEST_P(BufferedColumnTestCase, Sort) {
     }
 
     ASSERT_TRUE(
-      std::is_sorted(std::begin(values_by_order), std::end(values_by_order)));
+        std::is_sorted(std::begin(values_by_order), std::end(values_by_order)));
   }
 
   // read sorted column

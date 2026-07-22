@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -49,10 +48,10 @@ class fst_states_map : private util::noncopyable {
                           const push_state state_emplace = {},
                           const hasher& hash_function = {},
                           const state_equal& state_eq = {})
-    : hasher_{hash_function},
-      state_eq_{state_eq},
-      push_state_{state_emplace},
-      states_(capacity, NoStateId) {}
+      : hasher_{hash_function},
+        state_eq_{state_eq},
+        push_state_{state_emplace},
+        states_(capacity, NoStateId) {}
 
   state_id insert(const state_type& s, fst_type& fst) {
     const size_t mask = states_.size() - 1;

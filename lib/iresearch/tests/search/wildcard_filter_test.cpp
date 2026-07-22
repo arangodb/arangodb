@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "search/wildcard_filter.hpp"
@@ -75,8 +74,8 @@ TEST(by_wildcard_test, boost) {
     irs::by_wildcard q = make_filter("field", "bar*");
 
     auto prepared = q.prepare({
-      .index = irs::SubReader::empty(),
-      .memory = counter,
+        .index = irs::SubReader::empty(),
+        .memory = counter,
     });
     ASSERT_EQ(irs::kNoBoost, prepared->boost());
   }
@@ -92,8 +91,8 @@ TEST(by_wildcard_test, boost) {
     q.boost(boost);
 
     auto prepared = q.prepare({
-      .index = irs::SubReader::empty(),
-      .memory = counter,
+        .index = irs::SubReader::empty(),
+        .memory = counter,
     });
     ASSERT_EQ(boost, prepared->boost());
   }
@@ -113,15 +112,15 @@ TEST(by_wildcard_test, test_type_of_prepared_query) {
   // term query
   {
     auto lhs = make_filter<irs::by_term>("foo", "bar")
-                 .prepare({
-                   .index = irs::SubReader::empty(),
-                   .memory = counter,
-                 });
+                   .prepare({
+                       .index = irs::SubReader::empty(),
+                       .memory = counter,
+                   });
     auto rhs = make_filter("foo", "bar")
-                 .prepare({
-                   .index = irs::SubReader::empty(),
-                   .memory = counter,
-                 });
+                   .prepare({
+                       .index = irs::SubReader::empty(),
+                       .memory = counter,
+                   });
     ASSERT_EQ(typeid(*lhs), typeid(*rhs));
   }
   EXPECT_EQ(counter.current, 0);
@@ -131,12 +130,12 @@ TEST(by_wildcard_test, test_type_of_prepared_query) {
   // term query
   {
     auto lhs = make_filter<irs::by_term>("foo", "").prepare({
-      .index = irs::SubReader::empty(),
-      .memory = counter,
+        .index = irs::SubReader::empty(),
+        .memory = counter,
     });
     auto rhs = make_filter("foo", "").prepare({
-      .index = irs::SubReader::empty(),
-      .memory = counter,
+        .index = irs::SubReader::empty(),
+        .memory = counter,
     });
     ASSERT_EQ(typeid(*lhs), typeid(*rhs));
   }
@@ -147,15 +146,15 @@ TEST(by_wildcard_test, test_type_of_prepared_query) {
   // term query
   {
     auto lhs = make_filter<irs::by_term>("foo", "foo%")
-                 .prepare({
-                   .index = irs::SubReader::empty(),
-                   .memory = counter,
-                 });
+                   .prepare({
+                       .index = irs::SubReader::empty(),
+                       .memory = counter,
+                   });
     auto rhs = make_filter("foo", "foo\\%")
-                 .prepare({
-                   .index = irs::SubReader::empty(),
-                   .memory = counter,
-                 });
+                   .prepare({
+                       .index = irs::SubReader::empty(),
+                       .memory = counter,
+                   });
     ASSERT_EQ(typeid(*lhs), typeid(*rhs));
   }
   EXPECT_EQ(counter.current, 0);
@@ -165,15 +164,15 @@ TEST(by_wildcard_test, test_type_of_prepared_query) {
   // prefix query
   {
     auto lhs = make_filter<irs::by_prefix>("foo", "bar")
-                 .prepare({
-                   .index = irs::SubReader::empty(),
-                   .memory = counter,
-                 });
+                   .prepare({
+                       .index = irs::SubReader::empty(),
+                       .memory = counter,
+                   });
     auto rhs = make_filter("foo", "bar%")
-                 .prepare({
-                   .index = irs::SubReader::empty(),
-                   .memory = counter,
-                 });
+                   .prepare({
+                       .index = irs::SubReader::empty(),
+                       .memory = counter,
+                   });
     ASSERT_EQ(typeid(*lhs), typeid(*rhs));
   }
   EXPECT_EQ(counter.current, 0);
@@ -183,15 +182,15 @@ TEST(by_wildcard_test, test_type_of_prepared_query) {
   // prefix query
   {
     auto lhs = make_filter<irs::by_prefix>("foo", "bar")
-                 .prepare({
-                   .index = irs::SubReader::empty(),
-                   .memory = counter,
-                 });
+                   .prepare({
+                       .index = irs::SubReader::empty(),
+                       .memory = counter,
+                   });
     auto rhs = make_filter("foo", "bar%%")
-                 .prepare({
-                   .index = irs::SubReader::empty(),
-                   .memory = counter,
-                 });
+                   .prepare({
+                       .index = irs::SubReader::empty(),
+                       .memory = counter,
+                   });
     ASSERT_EQ(typeid(*lhs), typeid(*rhs));
   }
   EXPECT_EQ(counter.current, 0);
@@ -201,15 +200,15 @@ TEST(by_wildcard_test, test_type_of_prepared_query) {
   // term query
   {
     auto lhs = make_filter<irs::by_term>("foo", "bar%")
-                 .prepare({
-                   .index = irs::SubReader::empty(),
-                   .memory = counter,
-                 });
+                   .prepare({
+                       .index = irs::SubReader::empty(),
+                       .memory = counter,
+                   });
     auto rhs = make_filter("foo", "bar\\%")
-                 .prepare({
-                   .index = irs::SubReader::empty(),
-                   .memory = counter,
-                 });
+                   .prepare({
+                       .index = irs::SubReader::empty(),
+                       .memory = counter,
+                   });
     ASSERT_EQ(typeid(*lhs), typeid(*rhs));
   }
   EXPECT_EQ(counter.current, 0);
@@ -219,14 +218,14 @@ TEST(by_wildcard_test, test_type_of_prepared_query) {
   // all query
   {
     auto lhs = make_filter<irs::by_prefix>("foo", "").prepare({
-      .index = irs::SubReader::empty(),
-      .memory = counter,
+        .index = irs::SubReader::empty(),
+        .memory = counter,
     });
     auto rhs = make_filter("foo", "%")
-                 .prepare({
-                   .index = irs::SubReader::empty(),
-                   .memory = counter,
-                 });
+                   .prepare({
+                       .index = irs::SubReader::empty(),
+                       .memory = counter,
+                   });
     ASSERT_EQ(typeid(*lhs), typeid(*rhs));
   }
   EXPECT_EQ(counter.current, 0);
@@ -236,14 +235,14 @@ TEST(by_wildcard_test, test_type_of_prepared_query) {
   // all query
   {
     auto lhs = make_filter<irs::by_prefix>("foo", "").prepare({
-      .index = irs::SubReader::empty(),
-      .memory = counter,
+        .index = irs::SubReader::empty(),
+        .memory = counter,
     });
     auto rhs = make_filter("foo", "%%")
-                 .prepare({
-                   .index = irs::SubReader::empty(),
-                   .memory = counter,
-                 });
+                   .prepare({
+                       .index = irs::SubReader::empty(),
+                       .memory = counter,
+                   });
     ASSERT_EQ(typeid(*lhs), typeid(*rhs));
   }
   EXPECT_EQ(counter.current, 0);
@@ -253,15 +252,15 @@ TEST(by_wildcard_test, test_type_of_prepared_query) {
   // term query
   {
     auto lhs = make_filter<irs::by_term>("foo", "%")
-                 .prepare({
-                   .index = irs::SubReader::empty(),
-                   .memory = counter,
-                 });
+                   .prepare({
+                       .index = irs::SubReader::empty(),
+                       .memory = counter,
+                   });
     auto rhs = make_filter("foo", "\\%")
-                 .prepare({
-                   .index = irs::SubReader::empty(),
-                   .memory = counter,
-                 });
+                   .prepare({
+                       .index = irs::SubReader::empty(),
+                       .memory = counter,
+                   });
     ASSERT_EQ(typeid(*lhs), typeid(*rhs));
   }
   EXPECT_EQ(counter.current, 0);
@@ -298,25 +297,25 @@ TEST_P(wildcard_filter_test_case, simple_sequential_order) {
     size_t finish_count = 0;
 
     std::array<irs::Scorer::ptr, 1> order{
-      std::make_unique<tests::sort::custom_sort>()};
+        std::make_unique<tests::sort::custom_sort>()};
     auto& scorer = static_cast<tests::sort::custom_sort&>(*order.front());
 
     scorer.collector_collect_field = [&collect_field_count](
-                                       const irs::SubReader&,
-                                       const irs::term_reader&) -> void {
+                                         const irs::SubReader&,
+                                         const irs::term_reader&) -> void {
       ++collect_field_count;
     };
     scorer.collector_collect_term =
-      [&collect_term_count](const irs::SubReader&, const irs::term_reader&,
-                            const irs::attribute_provider&) -> void {
+        [&collect_term_count](const irs::SubReader&, const irs::term_reader&,
+                              const irs::attribute_provider&) -> void {
       ++collect_term_count;
     };
     scorer.collectors_collect_ =
-      [&finish_count](irs::byte_type*, const irs::FieldCollector*,
-                      const irs::TermCollector*) -> void { ++finish_count; };
+        [&finish_count](irs::byte_type*, const irs::FieldCollector*,
+                        const irs::TermCollector*) -> void { ++finish_count; };
     scorer.prepare_field_collector_ = [&scorer]() -> irs::FieldCollector::ptr {
       return std::make_unique<tests::sort::custom_sort::field_collector>(
-        scorer);
+          scorer);
     };
     scorer.prepare_term_collector_ = [&scorer]() -> irs::TermCollector::ptr {
       return std::make_unique<tests::sort::custom_sort::term_collector>(scorer);
@@ -334,7 +333,7 @@ TEST_P(wildcard_filter_test_case, simple_sequential_order) {
     Costs costs{docs.size()};
 
     std::array<irs::Scorer::ptr, 1> order{
-      std::make_unique<tests::sort::frequency_sort>()};
+        std::make_unique<tests::sort::frequency_sort>()};
 
     CheckQuery(make_filter("prefix", "%"), order, docs, rdr);
   }
@@ -345,7 +344,7 @@ TEST_P(wildcard_filter_test_case, simple_sequential_order) {
     Costs costs{docs.size()};
 
     std::array<irs::Scorer::ptr, 1> order{
-      std::make_unique<tests::sort::frequency_sort>()};
+        std::make_unique<tests::sort::frequency_sort>()};
 
     CheckQuery(make_filter("prefix", "a%"), order, docs, rdr);
   }
@@ -566,7 +565,7 @@ TEST_P(wildcard_filter_test_case, visit) {
     ASSERT_EQ(1, visitor.prepare_calls_counter());
     ASSERT_EQ(1, visitor.visit_calls_counter());
     ASSERT_EQ((std::vector<std::pair<std::string_view, irs::score_t>>{
-                {"abc", irs::kNoBoost},
+                  {"abc", irs::kNoBoost},
               }),
               visitor.term_refs<char>());
 
@@ -582,12 +581,12 @@ TEST_P(wildcard_filter_test_case, visit) {
     ASSERT_EQ(1, visitor.prepare_calls_counter());
     ASSERT_EQ(6, visitor.visit_calls_counter());
     ASSERT_EQ((std::vector<std::pair<std::string_view, irs::score_t>>{
-                {"abc", irs::kNoBoost},
-                {"abcd", irs::kNoBoost},
-                {"abcde", irs::kNoBoost},
-                {"abcdrer", irs::kNoBoost},
-                {"abcy", irs::kNoBoost},
-                {"abde", irs::kNoBoost}}),
+                  {"abc", irs::kNoBoost},
+                  {"abcd", irs::kNoBoost},
+                  {"abcde", irs::kNoBoost},
+                  {"abcdrer", irs::kNoBoost},
+                  {"abcy", irs::kNoBoost},
+                  {"abde", irs::kNoBoost}}),
               visitor.term_refs<char>());
 
     visitor.reset();
@@ -602,11 +601,11 @@ TEST_P(wildcard_filter_test_case, visit) {
     ASSERT_EQ(1, visitor.prepare_calls_counter());
     ASSERT_EQ(5, visitor.visit_calls_counter());
     ASSERT_EQ((std::vector<std::pair<std::string_view, irs::score_t>>{
-                {"abc", irs::kNoBoost},
-                {"abcd", irs::kNoBoost},
-                {"abcde", irs::kNoBoost},
-                {"abcdrer", irs::kNoBoost},
-                {"abcy", irs::kNoBoost},
+                  {"abc", irs::kNoBoost},
+                  {"abcd", irs::kNoBoost},
+                  {"abcde", irs::kNoBoost},
+                  {"abcdrer", irs::kNoBoost},
+                  {"abcy", irs::kNoBoost},
               }),
               visitor.term_refs<char>());
 
@@ -617,10 +616,10 @@ TEST_P(wildcard_filter_test_case, visit) {
 static constexpr auto kTestDirs = tests::getDirectories<tests::kTypesDefault>();
 
 INSTANTIATE_TEST_SUITE_P(
-  wildcard_filter_test, wildcard_filter_test_case,
-  ::testing::Combine(::testing::ValuesIn(kTestDirs),
-                     ::testing::Values(tests::format_info{"1_0"},
-                                       tests::format_info{"1_1", "1_0"},
-                                       tests::format_info{"1_2", "1_0"},
-                                       tests::format_info{"1_3", "1_0"})),
-  wildcard_filter_test_case::to_string);
+    wildcard_filter_test, wildcard_filter_test_case,
+    ::testing::Combine(::testing::ValuesIn(kTestDirs),
+                       ::testing::Values(tests::format_info{"1_0"},
+                                         tests::format_info{"1_1", "1_0"},
+                                         tests::format_info{"1_2", "1_0"},
+                                         tests::format_info{"1_3", "1_0"})),
+    wildcard_filter_test_case::to_string);

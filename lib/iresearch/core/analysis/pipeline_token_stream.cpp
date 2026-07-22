@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "pipeline_token_stream.hpp"
@@ -44,12 +43,12 @@ using options_normalize_t = std::vector<std::pair<std::string, std::string>>;
 template<typename T>
 bool parse_vpack_options(const VPackSlice slice, T& options) {
   if constexpr (std::is_same_v<
-                  T, irs::analysis::pipeline_token_stream::options_t>) {
+                    T, irs::analysis::pipeline_token_stream::options_t>) {
     IRS_ASSERT(options.empty());
   }
   if (!slice.isObject()) {
     IRS_LOG_ERROR(
-      "Not a VPack object passed while constructing pipeline_token_stream ");
+        "Not a VPack object passed while constructing pipeline_token_stream ");
     return false;
   }
 
@@ -65,96 +64,97 @@ bool parse_vpack_options(const VPackSlice slice, T& options) {
               type = type_attr_slice.stringView();
             } else {
               IRS_LOG_ERROR(
-                absl::StrCat("Failed to read '", TYPE_PARAM_NAME,
-                             "' attribute of '", PIPELINE_PARAM_NAME,
-                             "' member as string while constructing "
-                             "pipeline_token_stream from VPack arguments"));
+                  absl::StrCat("Failed to read '", TYPE_PARAM_NAME,
+                               "' attribute of '", PIPELINE_PARAM_NAME,
+                               "' member as string while constructing "
+                               "pipeline_token_stream from VPack arguments"));
               return false;
             }
           } else {
-            IRS_LOG_ERROR(
-              absl::StrCat("Failed to get '", TYPE_PARAM_NAME,
-                           "' attribute of '", PIPELINE_PARAM_NAME,
-                           "' member while constructing pipeline_token_stream "
-                           "from VPack arguments"));
+            IRS_LOG_ERROR(absl::StrCat(
+                "Failed to get '", TYPE_PARAM_NAME, "' attribute of '",
+                PIPELINE_PARAM_NAME,
+                "' member while constructing pipeline_token_stream "
+                "from VPack arguments"));
             return false;
           }
           if (auto properties_attr_slice = pipe.get(PROPERTIES_PARAM_NAME);
               !properties_attr_slice.isNone()) {
-            if constexpr (std::is_same_v<
-                            T,
-                            irs::analysis::pipeline_token_stream::options_t>) {
+            if constexpr (std::is_same_v<T,
+                                         irs::analysis::pipeline_token_stream::
+                                             options_t>) {
               auto analyzer = irs::analysis::analyzers::get(
-                type, irs::type<irs::text_format::vpack>::get(),
-                {properties_attr_slice.startAs<char>(),
-                 properties_attr_slice.byteSize()});
+                  type, irs::type<irs::text_format::vpack>::get(),
+                  {properties_attr_slice.startAs<char>(),
+                   properties_attr_slice.byteSize()});
 
               // fallback to json format if vpack isn't available
               if (!analyzer) {
                 analyzer = irs::analysis::analyzers::get(
-                  type, irs::type<irs::text_format::json>::get(),
-                  irs::slice_to_string(properties_attr_slice));
+                    type, irs::type<irs::text_format::json>::get(),
+                    irs::slice_to_string(properties_attr_slice));
               }
 
               if (analyzer) {
                 options.push_back(std::move(analyzer));
               } else {
                 IRS_LOG_ERROR(
-                  absl::StrCat("Failed to create pipeline member of type '",
-                               type, "' with properties '",
-                               irs::slice_to_string(properties_attr_slice),
-                               "' while constructing pipeline_token_stream "
-                               "from VPack arguments"));
+                    absl::StrCat("Failed to create pipeline member of type '",
+                                 type, "' with properties '",
+                                 irs::slice_to_string(properties_attr_slice),
+                                 "' while constructing pipeline_token_stream "
+                                 "from VPack arguments"));
                 return false;
               }
             } else {
               std::string normalized;
               if (irs::analysis::analyzers::normalize(
-                    normalized, type, irs::type<irs::text_format::vpack>::get(),
-                    {properties_attr_slice.startAs<char>(),
-                     properties_attr_slice.byteSize()})) {
+                      normalized, type,
+                      irs::type<irs::text_format::vpack>::get(),
+                      {properties_attr_slice.startAs<char>(),
+                       properties_attr_slice.byteSize()})) {
                 options.emplace_back(std::piecewise_construct,
                                      std::forward_as_tuple(type),
                                      std::forward_as_tuple(normalized));
 
                 // fallback to json format if vpack isn't available
               } else if (irs::analysis::analyzers::normalize(
-                           normalized, type,
-                           irs::type<irs::text_format::json>::get(),
-                           irs::slice_to_string(properties_attr_slice))) {
+                             normalized, type,
+                             irs::type<irs::text_format::json>::get(),
+                             irs::slice_to_string(properties_attr_slice))) {
                 // in options we'll store vpack as string
-                auto vpack =
-                  VPackParser::fromJson(normalized.c_str(), normalized.size());
+                auto vpack = VPackParser::fromJson(normalized.c_str(),
+                                                   normalized.size());
                 std::string normalized_vpack_str;
                 normalized_vpack_str.assign(vpack->slice().startAs<char>(),
                                             vpack->slice().byteSize());
                 options.emplace_back(
-                  std::piecewise_construct, std::forward_as_tuple(type),
-                  std::forward_as_tuple(vpack->slice().startAs<char>(),
-                                        vpack->slice().byteSize()));
+                    std::piecewise_construct, std::forward_as_tuple(type),
+                    std::forward_as_tuple(vpack->slice().startAs<char>(),
+                                          vpack->slice().byteSize()));
               } else {
-                IRS_LOG_ERROR(
-                  absl::StrCat("Failed to normalize pipeline member of type '",
-                               type, "' with properties '",
-                               irs::slice_to_string(properties_attr_slice),
-                               "' while constructing pipeline_token_stream "
-                               "from VPack arguments"));
+                IRS_LOG_ERROR(absl::StrCat(
+                    "Failed to normalize pipeline member of type '", type,
+                    "' with properties '",
+                    irs::slice_to_string(properties_attr_slice),
+                    "' while constructing pipeline_token_stream "
+                    "from VPack arguments"));
                 return false;
               }
             }
           } else {
-            IRS_LOG_ERROR(
-              absl::StrCat("Failed to get '", PROPERTIES_PARAM_NAME,
-                           "' attribute of '", PIPELINE_PARAM_NAME,
-                           "' member while constructing pipeline_token_stream "
-                           "from VPack arguments"));
+            IRS_LOG_ERROR(absl::StrCat(
+                "Failed to get '", PROPERTIES_PARAM_NAME, "' attribute of '",
+                PIPELINE_PARAM_NAME,
+                "' member while constructing pipeline_token_stream "
+                "from VPack arguments"));
             return false;
           }
         } else {
           IRS_LOG_ERROR(
-            absl::StrCat("Failed to read '", PIPELINE_PARAM_NAME,
-                         "' member as object while constructing "
-                         "pipeline_token_stream from VPack arguments"));
+              absl::StrCat("Failed to read '", PIPELINE_PARAM_NAME,
+                           "' member as object while constructing "
+                           "pipeline_token_stream from VPack arguments"));
           return false;
         }
       }
@@ -171,7 +171,7 @@ bool parse_vpack_options(const VPackSlice slice, T& options) {
   }
   if (options.empty()) {
     IRS_LOG_ERROR(
-      "Empty pipeline found while constructing pipeline_token_stream");
+        "Empty pipeline found while constructing pipeline_token_stream");
     return false;
   }
   return true;
@@ -189,7 +189,7 @@ bool normalize_vpack_config(const VPackSlice slice, VPackBuilder* builder) {
           {
             builder->add(TYPE_PARAM_NAME, VPackValue(analyzer.first));
             VPackSlice sub_slice(
-              reinterpret_cast<const uint8_t*>(analyzer.second.c_str()));
+                reinterpret_cast<const uint8_t*>(analyzer.second.c_str()));
             builder->add(PROPERTIES_PARAM_NAME, sub_slice);
           }
         }
@@ -220,7 +220,7 @@ irs::analysis::analyzer::ptr make_vpack(const VPackSlice slice) {
   irs::analysis::pipeline_token_stream::options_t options;
   if (parse_vpack_options(slice, options)) {
     return std::make_unique<irs::analysis::pipeline_token_stream>(
-      std::move(options));
+        std::move(options));
   } else {
     return nullptr;
   }
@@ -241,11 +241,11 @@ irs::analysis::analyzer::ptr make_json(std::string_view args) {
     return make_vpack(vpack->slice());
   } catch (const VPackException& ex) {
     IRS_LOG_ERROR(
-      absl::StrCat("Caught error '", ex.what(),
-                   "' while constructing pipeline_token_stream from JSON"));
+        absl::StrCat("Caught error '", ex.what(),
+                     "' while constructing pipeline_token_stream from JSON"));
   } catch (...) {
     IRS_LOG_ERROR(
-      "Caught error while constructing pipeline_token_stream from JSON");
+        "Caught error while constructing pipeline_token_stream from JSON");
   }
   return nullptr;
 }
@@ -264,11 +264,11 @@ bool normalize_json_config(std::string_view args, std::string& definition) {
     }
   } catch (const VPackException& ex) {
     IRS_LOG_ERROR(
-      absl::StrCat("Caught error '", ex.what(),
-                   "' while normalizing pipeline_token_stream from JSON"));
+        absl::StrCat("Caught error '", ex.what(),
+                     "' while normalizing pipeline_token_stream from JSON"));
   } catch (...) {
     IRS_LOG_ERROR(
-      "Caught error while normalizing pipeline_token_stream from JSON");
+        "Caught error while normalizing pipeline_token_stream from JSON");
   }
   return false;
 }
@@ -280,7 +280,7 @@ REGISTER_ANALYZER_VPACK(irs::analysis::pipeline_token_stream, make_vpack,
                         normalize_vpack_config);
 
 irs::payload* find_payload(
-  std::span<const irs::analysis::analyzer::ptr> pipeline) {
+    std::span<const irs::analysis::analyzer::ptr> pipeline) {
   for (auto it = pipeline.rbegin(); it != pipeline.rend(); ++it) {
     auto payload = irs::get_mutable<irs::payload>(it->get());
     if (payload) {
@@ -303,13 +303,13 @@ namespace irs {
 namespace analysis {
 
 pipeline_token_stream::pipeline_token_stream(
-  pipeline_token_stream::options_t&& options)
-  : attrs_{{},
-           options.empty()
-             ? nullptr
-             : irs::get_mutable<term_attribute>(options.back().get()),
-           all_have_offset(options) ? &offs_ : attribute_ptr<offset>{},
-           find_payload(options)} {
+    pipeline_token_stream::options_t&& options)
+    : attrs_{{},
+             options.empty()
+                 ? nullptr
+                 : irs::get_mutable<term_attribute>(options.back().get()),
+             all_have_offset(options) ? &offs_ : attribute_ptr<offset>{},
+             find_payload(options)} {
   const auto track_offset = irs::get<offset>(*this) != nullptr;
   pipeline_.reserve(options.size());
   for (auto& p : options) {
@@ -367,8 +367,8 @@ bool pipeline_token_stream::next() {
       ++current_;
       // check do we need to do step forward due to rollback to 0.
       step_for_rollback |=
-        top_holds_position && current_->pos != 0 &&
-        current_->pos != std::numeric_limits<uint32_t>::max();
+          top_holds_position && current_->pos != 0 &&
+          current_->pos != std::numeric_limits<uint32_t>::max();
       if (!current_->reset(prev_start, prev_end,
                            irs::ViewCast<char>(prev_term))) {
         return false;
@@ -414,20 +414,20 @@ void pipeline_token_stream::init() {
 }
 
 pipeline_token_stream::sub_analyzer_t::sub_analyzer_t(
-  irs::analysis::analyzer::ptr a, bool track_offset)
-  : term(irs::get<irs::term_attribute>(*a)),
-    inc(irs::get<irs::increment>(*a)),
-    offs(track_offset ? irs::get<irs::offset>(*a) : &NO_OFFSET),
-    analyzer(std::move(a)) {
+    irs::analysis::analyzer::ptr a, bool track_offset)
+    : term(irs::get<irs::term_attribute>(*a)),
+      inc(irs::get<irs::increment>(*a)),
+      offs(track_offset ? irs::get<irs::offset>(*a) : &NO_OFFSET),
+      analyzer(std::move(a)) {
   IRS_ASSERT(inc);
   IRS_ASSERT(term);
 }
 
 pipeline_token_stream::sub_analyzer_t::sub_analyzer_t()
-  : term(nullptr),
-    inc(nullptr),
-    offs(nullptr),
-    analyzer(std::make_unique<empty_analyzer>()) {}
+    : term(nullptr),
+      inc(nullptr),
+      offs(nullptr),
+      analyzer(std::make_unique<empty_analyzer>()) {}
 
 }  // namespace analysis
 }  // namespace irs

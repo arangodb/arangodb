@@ -17,8 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "search/bitset_doc_iterator.hpp"
@@ -160,9 +158,9 @@ TEST(bitset_iterator_test, next) {
   {
     // set bits
     irs::bitset::word_t data[]{
-      irs::bitset::word_t(0),
-      ~irs::bitset::word_t(UINT64_C(0x8000000000000000)),
-      irs::bitset::word_t(UINT64_C(0x8000000000000000))};
+        irs::bitset::word_t(0),
+        ~irs::bitset::word_t(UINT64_C(0x8000000000000000)),
+        irs::bitset::word_t(UINT64_C(0x8000000000000000))};
 
     irs::bitset_doc_iterator it(std::begin(data), std::end(data));
     auto* doc = irs::get<irs::document>(it);
@@ -196,8 +194,9 @@ TEST(bitset_iterator_test, next) {
 
     // set bits
     irs::bitset::word_t data[]{
-      irs::bitset::word_t(0), irs::bitset::word_t(UINT64_C(0x420200A020440480)),
-      irs::bitset::word_t(0)};
+        irs::bitset::word_t(0),
+        irs::bitset::word_t(UINT64_C(0x420200A020440480)),
+        irs::bitset::word_t(0)};
 
     bs.memset(data);
 
@@ -232,8 +231,8 @@ TEST(bitset_iterator_test, next) {
 
     // set bits
     irs::bitset::word_t data[]{
-      irs::bitset::word_t(0), irs::bitset::word_t(0),
-      irs::bitset::word_t(UINT64_C(0x200000000000000))};
+        irs::bitset::word_t(0), irs::bitset::word_t(0),
+        irs::bitset::word_t(UINT64_C(0x200000000000000))};
 
     bs.memset(data);
 
@@ -524,9 +523,9 @@ TEST(bitset_iterator_test, seek) {
 
     // set bits
     irs::bitset::word_t data[]{
-      irs::bitset::word_t(0),
-      ~irs::bitset::word_t(UINT64_C(0x8000000000000000)),
-      irs::bitset::word_t(0)};
+        irs::bitset::word_t(0),
+        ~irs::bitset::word_t(UINT64_C(0x8000000000000000)),
+        irs::bitset::word_t(0)};
 
     bs.memset(data);
 
@@ -536,13 +535,13 @@ TEST(bitset_iterator_test, seek) {
     ASSERT_TRUE(bool(doc));
 
     std::vector<std::pair<irs::doc_id_t, irs::doc_id_t>> seeks{
-      {64, 43},
-      {64, 43},
-      {64, 64},
-      {68, 68},
-      {78, 78},
-      {irs::doc_limits::eof(), 128},
-      {irs::doc_limits::eof(), irs::doc_limits::eof()}};
+        {64, 43},
+        {64, 43},
+        {64, 64},
+        {68, 68},
+        {78, 78},
+        {irs::doc_limits::eof(), 128},
+        {irs::doc_limits::eof(), irs::doc_limits::eof()}};
 
     for (auto& seek : seeks) {
       ASSERT_EQ(seek.first, it.seek(seek.second));
@@ -558,8 +557,9 @@ TEST(bitset_iterator_test, seek) {
 
     // set bits
     irs::bitset::word_t data[]{
-      irs::bitset::word_t(0), irs::bitset::word_t(UINT64_C(0x420200A020440480)),
-      irs::bitset::word_t(0)};
+        irs::bitset::word_t(0),
+        irs::bitset::word_t(UINT64_C(0x420200A020440480)),
+        irs::bitset::word_t(0)};
 
     bs.memset(data);
 
@@ -569,11 +569,11 @@ TEST(bitset_iterator_test, seek) {
     ASSERT_TRUE(bool(doc));
 
     std::vector<std::pair<irs::doc_id_t, irs::doc_id_t>> seeks{
-      {71, 70},
-      {74, 72},
-      {126, 125},
-      {irs::doc_limits::eof(), 128},
-      {irs::doc_limits::eof(), irs::doc_limits::eof()}};
+        {71, 70},
+        {74, 72},
+        {126, 125},
+        {irs::doc_limits::eof(), 128},
+        {irs::doc_limits::eof(), irs::doc_limits::eof()}};
 
     for (auto& seek : seeks) {
       ASSERT_EQ(seek.first, it.seek(seek.second));
@@ -589,8 +589,9 @@ TEST(bitset_iterator_test, seek) {
 
     // set bits
     irs::bitset::word_t data[]{
-      irs::bitset::word_t(0), irs::bitset::word_t(UINT64_C(0x420200A020440480)),
-      irs::bitset::word_t(UINT64_C(0x4440000000000000))};
+        irs::bitset::word_t(0),
+        irs::bitset::word_t(UINT64_C(0x420200A020440480)),
+        irs::bitset::word_t(UINT64_C(0x4440000000000000))};
 
     bs.memset(data);
 
@@ -600,7 +601,7 @@ TEST(bitset_iterator_test, seek) {
     ASSERT_TRUE(bool(doc));
 
     std::vector<std::pair<irs::doc_id_t, irs::doc_id_t>> seeks{
-      {irs::doc_limits::eof(), 187}};
+        {irs::doc_limits::eof(), 187}};
 
     for (auto& seek : seeks) {
       ASSERT_EQ(seek.first, it.seek(seek.second));
@@ -616,8 +617,9 @@ TEST(bitset_iterator_test, seek) {
 
     // set bits
     irs::bitset::word_t data[]{
-      irs::bitset::word_t(0), irs::bitset::word_t(UINT64_C(0x420200A020440480)),
-      irs::bitset::word_t(UINT64_C(0x4440000000000000))};
+        irs::bitset::word_t(0),
+        irs::bitset::word_t(UINT64_C(0x420200A020440480)),
+        irs::bitset::word_t(UINT64_C(0x4440000000000000))};
     bs.memset(data);
 
     irs::bitset_doc_iterator it(bs.begin(), bs.end());
@@ -626,7 +628,7 @@ TEST(bitset_iterator_test, seek) {
     ASSERT_TRUE(bool(doc));
 
     std::vector<std::pair<irs::doc_id_t, irs::doc_id_t>> seeks{
-      {186, 186}, {irs::doc_limits::eof(), 187}};
+        {186, 186}, {irs::doc_limits::eof(), 187}};
 
     for (auto& seek : seeks) {
       ASSERT_EQ(seek.first, it.seek(seek.second));
@@ -642,8 +644,9 @@ TEST(bitset_iterator_test, seek) {
 
     // set bits
     irs::bitset::word_t data[]{
-      irs::bitset::word_t(0), irs::bitset::word_t(UINT64_C(0x420200A020440480)),
-      irs::bitset::word_t(UINT64_C(0x4440000000000000))};
+        irs::bitset::word_t(0),
+        irs::bitset::word_t(UINT64_C(0x420200A020440480)),
+        irs::bitset::word_t(UINT64_C(0x4440000000000000))};
 
     bs.memset(data);
 
@@ -667,8 +670,8 @@ TEST(bitset_iterator_test, seek) {
 
     // set bits
     irs::bitset::word_t data[]{
-      irs::bitset::word_t(0), irs::bitset::word_t(0),
-      irs::bitset::word_t(UINT64_C(0x200000000000000))};
+        irs::bitset::word_t(0), irs::bitset::word_t(0),
+        irs::bitset::word_t(UINT64_C(0x200000000000000))};
 
     bs.memset(data);
 
@@ -843,8 +846,9 @@ TEST(bitset_iterator_test, seek_next) {
 
     // set bits
     irs::bitset::word_t data[]{
-      irs::bitset::word_t(0), irs::bitset::word_t(UINT64_C(0x420200A020440480)),
-      irs::bitset::word_t(UINT64_C(0x4440000000000000))};
+        irs::bitset::word_t(0),
+        irs::bitset::word_t(UINT64_C(0x420200A020440480)),
+        irs::bitset::word_t(UINT64_C(0x4440000000000000))};
 
     bs.memset(data);
 

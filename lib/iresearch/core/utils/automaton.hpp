@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -68,11 +67,11 @@ class BooleanWeight {
   constexpr BooleanWeight() noexcept = default;
   // cppcheck-suppress noExplicitConstructor
   constexpr BooleanWeight(bool v, PayloadType payload = 0) noexcept
-    : v_(static_cast<PayloadType>(v)), p_(payload) {}
+      : v_(static_cast<PayloadType>(v)), p_(payload) {}
 
   constexpr bool Member() const noexcept { return kInvalid != v_; }
   constexpr BooleanWeight Quantize(
-    [[maybe_unused]] float delta = kDelta) const noexcept {
+      [[maybe_unused]] float delta = kDelta) const noexcept {
     return {};
   }
   std::istream& Read(std::istream& strm) noexcept {
@@ -105,31 +104,31 @@ class BooleanWeight {
   friend constexpr BooleanWeight Plus(const BooleanWeight& lhs,
                                       const BooleanWeight& rhs) noexcept {
     return {
-      static_cast<bool>(static_cast<unsigned>(static_cast<bool>(lhs.Hash())) |
-                        static_cast<unsigned>(static_cast<bool>(rhs.Hash()))),
-      static_cast<PayloadType>(lhs.Payload() | rhs.Payload())};
+        static_cast<bool>(static_cast<unsigned>(static_cast<bool>(lhs.Hash())) |
+                          static_cast<unsigned>(static_cast<bool>(rhs.Hash()))),
+        static_cast<PayloadType>(lhs.Payload() | rhs.Payload())};
   }
   friend constexpr BooleanWeight Times(const BooleanWeight& lhs,
                                        const BooleanWeight& rhs) noexcept {
     return {
-      static_cast<bool>(static_cast<unsigned>(static_cast<bool>(lhs.Hash())) &
-                        static_cast<unsigned>(static_cast<bool>(rhs.Hash()))),
-      static_cast<PayloadType>(lhs.Payload() & rhs.Payload())};
+        static_cast<bool>(static_cast<unsigned>(static_cast<bool>(lhs.Hash())) &
+                          static_cast<unsigned>(static_cast<bool>(rhs.Hash()))),
+        static_cast<PayloadType>(lhs.Payload() & rhs.Payload())};
   }
   friend constexpr BooleanWeight Divide(
-    [[maybe_unused]] const BooleanWeight& lhs,
-    [[maybe_unused]] const BooleanWeight& rhs,
-    [[maybe_unused]] DivideType type) noexcept {
+      [[maybe_unused]] const BooleanWeight& lhs,
+      [[maybe_unused]] const BooleanWeight& rhs,
+      [[maybe_unused]] DivideType type) noexcept {
     return NoWeight();
   }
   friend constexpr BooleanWeight Divide(
-    [[maybe_unused]] const BooleanWeight& lhs,
-    [[maybe_unused]] const BooleanWeight& rhs) noexcept {
+      [[maybe_unused]] const BooleanWeight& lhs,
+      [[maybe_unused]] const BooleanWeight& rhs) noexcept {
     return NoWeight();
   }
   friend constexpr BooleanWeight DivideLeft(
-    [[maybe_unused]] const BooleanWeight& lhs,
-    [[maybe_unused]] const BooleanWeight& rhs) noexcept {
+      [[maybe_unused]] const BooleanWeight& lhs,
+      [[maybe_unused]] const BooleanWeight& rhs) noexcept {
     return NoWeight();
   }
 
@@ -161,7 +160,7 @@ class BooleanWeight {
 struct RangeLabelLE {
   constexpr RangeLabelLE(int64_t ilabel) noexcept : ilabel{ilabel} {}
   constexpr explicit RangeLabelLE(uint16_t min, uint16_t max) noexcept
-    : max{max}, min{min}, not_epsion{0xFFFF'FFFFU} {}
+      : max{max}, min{min}, not_epsion{0xFFFF'FFFFU} {}
 
   union {
     int64_t ilabel;
@@ -176,7 +175,7 @@ struct RangeLabelLE {
 struct RangeLabelBE {
   constexpr RangeLabelBE(int64_t ilabel) noexcept : ilabel{ilabel} {}
   constexpr explicit RangeLabelBE(uint16_t min, uint16_t max) noexcept
-    : not_epsion{0xFFFF'FFFFU}, min{min}, max{max} {}
+      : not_epsion{0xFFFF'FFFFU}, min{min}, max{max} {}
 
   union {
     int64_t ilabel;
@@ -189,7 +188,7 @@ struct RangeLabelBE {
 };
 
 using RangeLabelType =
-  std::conditional_t<irs::is_big_endian(), RangeLabelBE, RangeLabelLE>;
+    std::conditional_t<irs::is_big_endian(), RangeLabelBE, RangeLabelLE>;
 
 // We inherit from annonymous union to be OpenFST compliant.
 struct RangeLabel : RangeLabelType {
@@ -232,19 +231,19 @@ struct Transition : RangeLabel {
   constexpr Transition() = default;
 
   constexpr Transition(RangeLabel ilabel, StateId nextstate)
-    : RangeLabel{ilabel}, nextstate(nextstate) {}
+      : RangeLabel{ilabel}, nextstate(nextstate) {}
 
   constexpr Transition(Label ilabel, StateId nextstate)
-    : RangeLabel{ilabel}, nextstate{nextstate} {}
+      : RangeLabel{ilabel}, nextstate{nextstate} {}
 
   // satisfy openfst API
   constexpr Transition(Label ilabel, Label /*unused*/, Weight /*unused*/,
                        StateId nextstate)
-    : RangeLabel{ilabel}, nextstate{nextstate} {}
+      : RangeLabel{ilabel}, nextstate{nextstate} {}
 
   // satisfy openfst API
   constexpr Transition(Label ilabel, Label /*unused*/, StateId nextstate)
-    : RangeLabel{ilabel}, nextstate{nextstate} {}
+      : RangeLabel{ilabel}, nextstate{nextstate} {}
 };
 
 }  // namespace fsa
@@ -264,8 +263,8 @@ std::uint64_t ComputeProperties(const Fst<fsa::Transition<W>>& fst,
   // need a DFS here, since we otherwise would like to avoid a DFS since its
   // stack could grow large.
   constexpr std::uint64_t kDfsProps =
-    kCyclic | kAcyclic | kInitialCyclic | kInitialAcyclic | kAccessible |
-    kNotAccessible | kCoAccessible | kNotCoAccessible;
+      kCyclic | kAcyclic | kInitialCyclic | kInitialAcyclic | kAccessible |
+      kNotAccessible | kCoAccessible | kNotCoAccessible;
   std::vector<StateId> scc;
   if (mask & (kDfsProps | kWeightedCycles | kUnweightedCycles)) {
     SccVisitor<Arc> scc_visitor(&scc, nullptr, nullptr, &comp_props);

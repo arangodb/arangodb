@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -38,7 +37,7 @@ class crc32c {
 
   IRS_FORCE_INLINE void process_bytes(const void* data, size_t size) noexcept {
     value_ = absl::ExtendCrc32c(
-      value_, std::string_view{static_cast<const char*>(data), size}, 0);
+        value_, std::string_view{static_cast<const char*>(data), size}, 0);
   }
 
   IRS_FORCE_INLINE void process_block(const void* begin,

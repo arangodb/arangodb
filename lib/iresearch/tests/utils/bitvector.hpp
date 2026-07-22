@@ -17,8 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -38,7 +36,7 @@ class bitvector final {
   explicit bitvector(size_t bits) : size_{bits} { resize(bits); }
   bitvector(const bitvector& other) { *this = other; }
   bitvector(bitvector&& other) noexcept
-    : set_{std::move(other.set_)}, size_{std::exchange(other.size_, 0)} {}
+      : set_{std::move(other.set_)}, size_{std::exchange(other.size_, 0)} {}
 
   bool operator==(const bitvector& rhs) const noexcept {
     if (this->size() != rhs.size()) {
@@ -99,8 +97,8 @@ class bitvector final {
     IRS_ASSERT(last_word < set_.words() && last_word < other.set_.words());
     *(data + last_word) &= (*(other.data() + last_word) & mask);
     std::memset(
-      data + last_word + 1, 0,
-      (set_.words() - last_word - 1) * sizeof(word_t));  // unset tail words
+        data + last_word + 1, 0,
+        (set_.words() - last_word - 1) * sizeof(word_t));  // unset tail words
 
     return *this;
   }
@@ -234,7 +232,7 @@ class bitvector final {
 
   void resize(size_t bits, bool preserve_capacity = false) {
     const auto words =
-      bitset::word(bits) + 1;  // +1 for count instead of offset
+        bitset::word(bits) + 1;  // +1 for count instead of offset
 
     size_ = bits;
 
@@ -246,8 +244,8 @@ class bitvector final {
 
     if (preserve_capacity) {
       std::memset(
-        const_cast<word_t*>(begin()) + words, 0,
-        (set_.words() - words) * sizeof(word_t));  // clear trailing words
+          const_cast<word_t*>(begin()) + words, 0,
+          (set_.words() - words) * sizeof(word_t));  // clear trailing words
     } else if (words < set_.words()) {
       auto set = bitset(words * bits_required<word_t>());
 
@@ -261,8 +259,8 @@ class bitvector final {
     if (last_word_bits) {
       auto* last_word = begin() + words - 1;
       const auto mask =
-        ~(~word_t(0)
-          << last_word_bits);  // set all bits up to and including max bit
+          ~(~word_t(0)
+            << last_word_bits);  // set all bits up to and including max bit
 
       const_cast<word_t&>(*last_word) &= mask;  // keep only bits up to max bit
     }

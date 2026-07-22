@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "utils/automaton_utils.hpp"
@@ -108,7 +107,7 @@ void Utf8TransitionsBuilder::Insert(automaton& a, const byte_type* label,
   IRS_ASSERT(size < 5);
 
   const size_t prefix =
-    1 + CommonPrefixLength(last_.data(), last_.size(), label, size);
+      1 + CommonPrefixLength(last_.data(), last_.size(), label, size);
   Minimize(a, prefix);  // minimize suffix
 
   // add current word suffix
@@ -168,8 +167,8 @@ void Utf8TransitionsBuilder::Finish(automaton& a, automaton::StateId from) {
   a.ReserveArcs(from, root.arcs.size());
 
   auto add_arcs = [&a, from, arc = root.arcs.begin(), end = root.arcs.end()](
-                    uint32_t min, uint32_t max,
-                    automaton::StateId rho_state) mutable {
+                      uint32_t min, uint32_t max,
+                      automaton::StateId rho_state) mutable {
     IRS_ASSERT(min < max);
 
     for (; arc != end && arc->max <= max; ++arc) {
@@ -214,17 +213,17 @@ filter::prepared::ptr PrepareAutomatonFilter(const PrepareContext& ctx,
 
   if (fst::kError == matcher.Properties(0)) {
     IRS_LOG_ERROR(
-      absl::StrCat("Expected deterministic, epsilon-free acceptor, got the "
-                   "following properties ",
-                   matcher.GetFst().Properties(
-                     automaton_table_matcher::FST_PROPERTIES, false)));
+        absl::StrCat("Expected deterministic, epsilon-free acceptor, got the "
+                     "following properties ",
+                     matcher.GetFst().Properties(
+                         automaton_table_matcher::FST_PROPERTIES, false)));
 
     return filter::prepared::empty();
   }
 
   // object for collecting order stats
   limited_sample_collector<term_frequency> collector(
-    ctx.scorers.empty() ? 0 : scored_terms_limit);
+      ctx.scorers.empty() ? 0 : scored_terms_limit);
   MultiTermQuery::States states{ctx.memory, ctx.index.size()};
   multiterm_visitor mtv{collector, states};
 

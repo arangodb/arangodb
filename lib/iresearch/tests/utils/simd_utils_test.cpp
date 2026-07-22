@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "utils/simd_utils.hpp"
@@ -38,7 +37,7 @@ TEST(simd_utils_test, delta32) {
       HWY_ALIGN uint32_t encoded[1024];
       std::memcpy(encoded, values, sizeof values);
       irs::simd::delta_encode<std::size(encoded), true, uint32_t, 0>(
-        encoded, encoded[0] - 1);
+          encoded, encoded[0] - 1);
       ASSERT_TRUE(std::all_of(std::begin(encoded), std::end(encoded),
                               [](auto v) { return 1 == v; }));
     }
@@ -49,7 +48,7 @@ TEST(simd_utils_test, delta32) {
       HWY_ALIGN uint32_t encoded[1024];
       std::memcpy(encoded, values, sizeof values);
       irs::simd::delta_encode<std::size(encoded), true, uint32_t, 1>(
-        encoded, encoded[0] - 1);
+          encoded, encoded[0] - 1);
       ASSERT_TRUE(std::all_of(std::begin(encoded), std::end(encoded),
                               [](auto v) { return 1 == v; }));
     }
@@ -66,7 +65,7 @@ TEST(simd_utils_test, delta32) {
       HWY_ALIGN uint32_t encoded[1024];
       std::memcpy(encoded, values, sizeof values);
       irs::simd::delta_encode<std::size(encoded), true, uint32_t, 0>(
-        encoded, encoded[0] - 1);
+          encoded, encoded[0] - 1);
 
       ASSERT_TRUE(std::all_of(std::begin(encoded),
                               std::begin(encoded) + std::size(values) / 2,
@@ -84,7 +83,7 @@ TEST(simd_utils_test, delta32) {
       HWY_ALIGN uint32_t encoded[1024];
       std::memcpy(encoded, values, sizeof values);
       irs::simd::delta_encode<std::size(encoded), true, uint32_t, 1>(
-        encoded, encoded[0] - 1);
+          encoded, encoded[0] - 1);
       ASSERT_TRUE(std::all_of(std::begin(encoded),
                               std::begin(encoded) + std::size(values) / 2,
                               [](auto v) { return 1 == v; }));
@@ -135,17 +134,17 @@ TEST(simd_utils_test, all_equal) {
   HWY_ALIGN uint32_t values[BLOCK_SIZE * 2];
   std::fill(std::begin(values), std::end(values), 42);
   ASSERT_TRUE(
-    irs::simd::all_equal<true>(std::begin(values), std::size(values)));
+      irs::simd::all_equal<true>(std::begin(values), std::size(values)));
   ASSERT_TRUE(
-    irs::simd::all_equal<true>(std::begin(values), std::size(values) - 1));
+      irs::simd::all_equal<true>(std::begin(values), std::size(values) - 1));
   ASSERT_TRUE(irs::simd::all_equal<true>(std::begin(values), 31));
   ASSERT_TRUE(irs::simd::all_equal<true>(std::begin(values), 33));
 
   values[0] = 0;
   ASSERT_FALSE(
-    irs::simd::all_equal<true>(std::begin(values), std::size(values)));
+      irs::simd::all_equal<true>(std::begin(values), std::size(values)));
   ASSERT_FALSE(
-    irs::simd::all_equal<true>(std::begin(values), std::size(values) - 1));
+      irs::simd::all_equal<true>(std::begin(values), std::size(values) - 1));
   ASSERT_FALSE(irs::simd::all_equal<true>(std::begin(values), 31));
   ASSERT_FALSE(irs::simd::all_equal<true>(std::begin(values), 33));
 
@@ -160,9 +159,9 @@ TEST(simd_utils_test, all_equal) {
     }
   }
   ASSERT_FALSE(
-    irs::simd::all_equal<true>(std::begin(values), std::size(values)));
+      irs::simd::all_equal<true>(std::begin(values), std::size(values)));
   ASSERT_FALSE(
-    irs::simd::all_equal<true>(std::begin(values), std::size(values) - 1));
+      irs::simd::all_equal<true>(std::begin(values), std::size(values) - 1));
   ASSERT_FALSE(irs::simd::all_equal<true>(std::begin(values), 31));
   ASSERT_FALSE(irs::simd::all_equal<true>(std::begin(values), 33));
 }

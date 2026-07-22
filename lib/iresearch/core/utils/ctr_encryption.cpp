@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ctr_encryption.hpp"
@@ -50,7 +49,7 @@ class ctr_cipher_stream : public encryption::stream {
  public:
   explicit ctr_cipher_stream(const cipher& cipher, bytes_view iv,
                              uint64_t counter_base) noexcept
-    : cipher_(&cipher), iv_(iv), counter_base_(counter_base) {}
+      : cipher_(&cipher), iv_(iv), counter_base_(counter_base) {}
 
   size_t block_size() const noexcept final { return cipher_->block_size(); }
 
@@ -182,8 +181,8 @@ bool ctr_encryption::create_header(std::string_view filename,
 
   if (!block_size) {
     IRS_LOG_ERROR(absl::StrCat(
-      "failed to initialize encryption header with block of size 0, path '",
-      filename, "'"));
+        "failed to initialize encryption header with block of size 0, path '",
+        filename, "'"));
 
     return false;
   }
@@ -192,23 +191,23 @@ bool ctr_encryption::create_header(std::string_view filename,
 
   if (header_length < MIN_HEADER_LENGTH) {
     IRS_LOG_ERROR(absl::StrCat(
-      "failed to initialize encryption header of size ", header_length,
-      ", need at least ", MIN_HEADER_LENGTH, ", path '", filename, "'"));
+        "failed to initialize encryption header of size ", header_length,
+        ", need at least ", MIN_HEADER_LENGTH, ", path '", filename, "'"));
 
     return false;
   }
 
   if (header_length < 2 * block_size) {
     IRS_LOG_ERROR(absl::StrCat(
-      "failed to initialize encryption header of size ", header_length,
-      ", need at least ", 2 * block_size, ", path '", filename, "'"));
+        "failed to initialize encryption header of size ", header_length,
+        ", need at least ", 2 * block_size, ", path '", filename, "'"));
 
     return false;
   }
 
   const auto duration = std::chrono::system_clock::now().time_since_epoch();
   const auto millis =
-    std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
+      std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
   ::srand(uint32_t(millis));
 
   std::for_each(header, header + header_length, [](byte_type& b) {
@@ -225,7 +224,7 @@ bool ctr_encryption::create_header(std::string_view filename,
   if (!stream.encrypt(0, header + 2 * block_size,
                       header_length - 2 * block_size)) {
     IRS_LOG_ERROR(
-      absl::StrCat("failed to encrypt header, path '", filename, "'"));
+        absl::StrCat("failed to encrypt header, path '", filename, "'"));
 
     return false;
   }
@@ -241,8 +240,8 @@ encryption::stream::ptr ctr_encryption::create_stream(std::string_view filename,
 
   if (!block_size) {
     IRS_LOG_ERROR(absl::StrCat(
-      "failed to instantiate encryption stream with block of size 0, path '",
-      filename, "'"));
+        "failed to instantiate encryption stream with block of size 0, path '",
+        filename, "'"));
 
     return nullptr;
   }
@@ -251,18 +250,18 @@ encryption::stream::ptr ctr_encryption::create_stream(std::string_view filename,
 
   if (header_length < MIN_HEADER_LENGTH) {
     IRS_LOG_ERROR(absl::StrCat(
-      "failed to instantiate encryption stream with header of size ",
-      header_length, ", need at least ", MIN_HEADER_LENGTH, ", path '",
-      filename, "'"));
+        "failed to instantiate encryption stream with header of size ",
+        header_length, ", need at least ", MIN_HEADER_LENGTH, ", path '",
+        filename, "'"));
 
     return nullptr;
   }
 
   if (header_length < 2 * block_size) {
     IRS_LOG_ERROR(absl::StrCat(
-      "failed to instantiate encryption stream with header of size ",
-      header_length, ", need at least ", 2 * block_size, ", path '", filename,
-      "'"));
+        "failed to instantiate encryption stream with header of size ",
+        header_length, ", need at least ", 2 * block_size, ", path '", filename,
+        "'"));
 
     return nullptr;
   }
@@ -277,15 +276,15 @@ encryption::stream::ptr ctr_encryption::create_stream(std::string_view filename,
   if (!stream.decrypt(0, header + 2 * block_size,
                       header_length - 2 * block_size)) {
     IRS_LOG_ERROR(
-      absl::StrCat("failed to decrypt encryption header for instantiation of "
-                   "encryption stream, path '",
-                   filename, "'"));
+        absl::StrCat("failed to decrypt encryption header for instantiation of "
+                     "encryption stream, path '",
+                     filename, "'"));
 
     return nullptr;
   }
 
   return std::make_unique<ctr_cipher_stream>(
-    *cipher_, bytes_view(iv.data(), block_size), base_counter);
+      *cipher_, bytes_view(iv.data(), block_size), base_counter);
 }
 
 }  // namespace irs

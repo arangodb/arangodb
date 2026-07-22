@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -40,18 +39,18 @@ class SegmentReaderImpl final : public SubReader {
 
  public:
   SegmentReaderImpl(PrivateTag, IResourceManager& rm) noexcept
-    : docs_mask_{{rm}} {}
+      : docs_mask_{{rm}} {}
 
   static std::shared_ptr<const SegmentReaderImpl> Open(
-    const directory& dir, const SegmentMeta& meta,
-    const IndexReaderOptions& options);
+      const directory& dir, const SegmentMeta& meta,
+      const IndexReaderOptions& options);
 
   std::shared_ptr<const SegmentReaderImpl> ReopenColumnStore(
-    const directory& dir, const SegmentMeta& meta,
-    const IndexReaderOptions& options) const;
+      const directory& dir, const SegmentMeta& meta,
+      const IndexReaderOptions& options) const;
   std::shared_ptr<const SegmentReaderImpl> ReopenDocsMask(
-    const directory& dir, const SegmentMeta& meta,
-    DocumentMask&& docs_mask) const;
+      const directory& dir, const SegmentMeta& meta,
+      DocumentMask&& docs_mask) const;
 
   uint64_t CountMappedMemory() const final;
 
@@ -82,9 +81,9 @@ class SegmentReaderImpl final : public SubReader {
               DocumentMask&& docs_mask) noexcept;
 
   using NamedColumns =
-    absl::flat_hash_map<std::string_view, const irs::column_reader*>;
+      absl::flat_hash_map<std::string_view, const irs::column_reader*>;
   using SortedNamedColumns =
-    std::vector<std::reference_wrapper<const irs::column_reader>>;
+      std::vector<std::reference_wrapper<const irs::column_reader>>;
 
   struct ColumnData {
     columnstore_reader::ptr columnstore_reader_;

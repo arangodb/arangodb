@@ -21,8 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Jan Steemann
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
@@ -489,7 +487,72 @@ function projectionsPlansTestSuite () {
         assertEqual(query[4], nodes[0].strategy, query);
       });
     },
-    
+
+    testPersistentIdFromCoveredKey : function () {
+      // single-attribute `_id` and `_key` are interchangeable for covering
+      // purposes: a projection on `_id` can be satisfied by a covered `_key`
+      // value (indexed field or stored value), and a projection on `_key`
+      // can be satisfied by a covered `_id` entry (which physically stores
+      // the key value)
+      c.ensureIndex({ type: "persistent", fields: ["value1", "_key"], name: "value1_key" });
+      c.ensureIndex({ type: "persistent", fields: ["value3"], storedValues: ["_key"], name: "value3_sv_key" });
+      c.ensureIndex({ type: "persistent", fields: ["value2"], storedValues: ["_id"], name: "value2_sv_id" });
+      let queries = [
+        [`FOR doc IN ${cn} FILTER doc.value1 == 93 RETURN doc._id`, 'value1_key', ['_id'], true, "covering" ],
+        [`FOR doc IN ${cn} FILTER doc.value1 == 93 RETURN [doc._id, doc._key]`, 'value1_key', ['_id', '_key'], true, "covering" ],
+        [`FOR doc IN ${cn} FILTER doc.value1 == 93 RETURN [doc._id, doc.value1]`, 'value1_key', ['_id', 'value1'], true, "covering" ],
+        [`FOR doc IN ${cn} FILTER doc.value3 == 93 RETURN doc._id`, 'value3_sv_key', ['_id'], true, "covering" ],
+        [`FOR doc IN ${cn} FILTER doc.value2 == 'test93' RETURN doc._key`, 'value2_sv_id', ['_key'], true, "covering" ],
+        [`FOR doc IN ${cn} FILTER doc.value2 == 'test93' RETURN doc._id`, 'value2_sv_id', ['_id'], true, "covering" ],
+      ];
+
+      queries.forEach(function([query, indexName, projections, indexCoversProjections, strategy]) {
+        let plan = db._createStatement({query: query, options: { optimizer: { rules: ["-optimize-cluster-single-document-operations"] } }}).explain().plan;
+        let nodes = plan.nodes.filter(function(node) { return node.type === 'IndexNode'; });
+        assertEqual(1, nodes.length, query);
+        assertEqual(1, nodes[0].indexes.length, query);
+        assertEqual(indexName, nodes[0].indexes[0].name, query);
+        assertEqual(normalize(projections), normalize(nodes[0].projections), query);
+        assertEqual(indexCoversProjections, nodes[0].indexCoversProjections, query);
+        assertEqual(strategy, nodes[0].strategy, query);
+      });
+
+      // the rebuilt `_id` values must equal the real ones
+      assertEqual([ cn + "/test93" ],
+                  db._query(`FOR doc IN ${cn} FILTER doc.value1 == 93 RETURN doc._id`).toArray());
+      assertEqual([ cn + "/test93" ],
+                  db._query(`FOR doc IN ${cn} FILTER doc.value3 == 93 RETURN doc._id`).toArray());
+      assertEqual([ [ cn + "/test93", "test93", 93 ] ],
+                  db._query(`FOR doc IN ${cn} FILTER doc.value1 == 93 RETURN [doc._id, doc._key, doc.value1]`).toArray());
+      // `_key` projection served from a covered `_id` entry (stores the key)
+      assertEqual([ "test93" ],
+                  db._query(`FOR doc IN ${cn} FILTER doc.value2 == 'test93' RETURN doc._key`).toArray());
+      assertEqual([ cn + "/test93" ],
+                  db._query(`FOR doc IN ${cn} FILTER doc.value2 == 'test93' RETURN doc._id`).toArray());
+    },
+
+    testPersistentIdLookupOnKeyField : function () {
+      // lookups on `_id` can be answered by a persistent index with a
+      // `_key` field, analogous to the primary index. values that refer to
+      // other collections or are not valid document ids match nothing.
+      c.ensureIndex({ type: "persistent", fields: ["_key"], storedValues: ["value1"], name: "key_sv_value1" });
+      let query = `FOR doc IN ${cn} OPTIONS { indexHint: "key_sv_value1", forceIndexHint: true } FILTER doc._id IN @ids RETURN doc.value1`;
+      let ids = [ cn + "/test93", cn + "/test94", "otherCollection/test93", "not-an-id", null, 42 ];
+
+      let plan = db._createStatement({query, bindVars: { ids }, options: { optimizer: { rules: ["-optimize-cluster-single-document-operations"] } }}).explain().plan;
+      let nodes = plan.nodes.filter(function(node) { return node.type === 'IndexNode'; });
+      assertEqual(1, nodes.length, query);
+      assertEqual('key_sv_value1', nodes[0].indexes[0].name, query);
+      assertEqual(true, nodes[0].indexCoversProjections, query);
+
+      assertEqual([ 93, 94 ], db._query(query, { ids }).toArray().sort());
+
+      // equality lookup through the same index
+      let eqQuery = `FOR doc IN ${cn} OPTIONS { indexHint: "key_sv_value1", forceIndexHint: true } FILTER doc._id == @id RETURN doc.value1`;
+      assertEqual([ 93 ], db._query(eqQuery, { id: cn + "/test93" }).toArray());
+      assertEqual([ ], db._query(eqQuery, { id: "otherCollection/test93" }).toArray());
+    },
+
     testMaterialize : function () {
       if (!IM.debugCanUseFailAt()) {
         // cant execute this test as failure points are not available here

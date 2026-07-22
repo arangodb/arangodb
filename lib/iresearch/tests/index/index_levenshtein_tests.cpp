@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <utf8/core.h>
@@ -35,7 +34,7 @@ class levenshtein_automaton_index_test_case : public tests::index_test_base {
                     const irs::bytes_view& prefix,
                     const irs::bytes_view& target) {
     auto acceptor =
-      irs::make_levenshtein_automaton(description, prefix, target);
+        irs::make_levenshtein_automaton(description, prefix, target);
     irs::automaton_table_matcher matcher(acceptor, true);
 
     irs::SmallVector<uint32_t, 16> target_chars;
@@ -60,19 +59,19 @@ class levenshtein_automaton_index_test_case : public tests::index_test_base {
 
           irs::SmallVector<uint32_t, 16> expected_chars;
           if (!irs::utf8_utils::ToUTF32<true>(
-                expected_term, std::back_inserter(expected_chars))) {
+                  expected_term, std::back_inserter(expected_chars))) {
             continue;
           }
 
           auto edit_distance =
-            irs::edit_distance(expected_chars.data(), expected_chars.size(),
-                               target_chars.data(), target_chars.size());
+              irs::edit_distance(expected_chars.data(), expected_chars.size(),
+                                 target_chars.data(), target_chars.size());
           if (edit_distance > description.max_distance()) {
             continue;
           }
 
           const auto pos =
-            utf8::find_invalid(expected_term.begin(), expected_term.end());
+              utf8::find_invalid(expected_term.begin(), expected_term.end());
           if (pos != expected_term.end()) {
             // invalid utf8 sequence
             continue;
@@ -97,9 +96,9 @@ class levenshtein_automaton_index_test_case : public tests::index_test_base {
 
 TEST_P(levenshtein_automaton_index_test_case, test_lev_automaton) {
   const irs::parametric_description DESCRIPTIONS[]{
-    irs::make_parametric_description(1, false),
-    irs::make_parametric_description(2, false),
-    irs::make_parametric_description(3, false),
+      irs::make_parametric_description(1, false),
+      irs::make_parametric_description(2, false),
+      irs::make_parametric_description(3, false),
   };
 
   constexpr std::string_view TARGETS[]{"atlas",     "bloom",    "burden", "del",
@@ -128,8 +127,8 @@ TEST_P(levenshtein_automaton_index_test_case, test_lev_automaton) {
 }
 
 INSTANTIATE_TEST_SUITE_P(
-  levenshtein_automaton_index_test, levenshtein_automaton_index_test_case,
-  ::testing::Combine(
-    ::testing::Values(&tests::directory<&tests::memory_directory>),
-    ::testing::Values(tests::format_info{"1_2", "1_0"})),
-  levenshtein_automaton_index_test_case::to_string);
+    levenshtein_automaton_index_test, levenshtein_automaton_index_test_case,
+    ::testing::Combine(
+        ::testing::Values(&tests::directory<&tests::memory_directory>),
+        ::testing::Values(tests::format_info{"1_2", "1_0"})),
+    levenshtein_automaton_index_test_case::to_string);

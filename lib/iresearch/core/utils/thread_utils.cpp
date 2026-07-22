@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "thread_utils.hpp"
@@ -40,7 +39,7 @@ bool set_thread_name(const thread_name_t name) noexcept {
 }
 
 bool get_thread_name(
-  irs::basic_string<std::remove_pointer_t<thread_name_t>>& name) {
+    irs::basic_string<std::remove_pointer_t<thread_name_t>>& name) {
   name.resize(MAX_THREAD_NAME_LENGTH, 0);
   if (0 == prctl(PR_GET_NAME, const_cast<char*>(name.data()), 0, 0, 0)) {
     name.resize(std::strlen(name.c_str()));
@@ -77,9 +76,9 @@ void init_thread_name_api() {
       auto kernel32 = LoadLibraryW(L"KERNEL32.DLL");
       if (kernel32) {
         get_thread_description = reinterpret_cast<name_get_ptr>(
-          GetProcAddress(kernel32, "GetThreadDescription"));
+            GetProcAddress(kernel32, "GetThreadDescription"));
         set_thread_description = reinterpret_cast<name_set_ptr>(
-          GetProcAddress(kernel32, "SetThreadDescription"));
+            GetProcAddress(kernel32, "SetThreadDescription"));
       }
       if (!get_thread_description) {
         get_thread_description = get_thread_description_noop;
@@ -104,7 +103,7 @@ bool set_thread_name(const thread_name_t name) noexcept {
 }
 
 bool get_thread_name(
-  irs::basic_string<std::remove_pointer_t<thread_name_t>>& name) {
+    irs::basic_string<std::remove_pointer_t<thread_name_t>>& name) {
   init_thread_name_api();
   std::unique_ptr<void, local_deleter> guard;
   thread_name_t tmp;
@@ -134,7 +133,7 @@ bool set_thread_name(const thread_name_t name) noexcept {
 }
 
 bool get_thread_name(
-  irs::basic_string<std::remove_pointer_t<thread_name_t>>& name) {
+    irs::basic_string<std::remove_pointer_t<thread_name_t>>& name) {
   name.resize(MAX_THREAD_NAME_LENGTH, 0);
   if (0 == pthread_getname_np(pthread_self(), const_cast<char*>(name.data()),
                               name.size())) {

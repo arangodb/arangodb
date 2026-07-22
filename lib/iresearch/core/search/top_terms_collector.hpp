@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -40,7 +39,7 @@ struct top_term {
 
   template<typename U = key_type>
   top_term(const bytes_view& term, U&& key)
-    : term(term.data(), term.size()), key(std::forward<U>(key)) {}
+      : term(term.data(), term.size()), key(std::forward<U>(key)) {}
 
   template<typename CollectorState>
   void emplace(const CollectorState& /*state*/) {
@@ -74,7 +73,7 @@ struct top_term_state : top_term<T> {
   struct segment_state {
     segment_state(const SubReader& segment, const term_reader& field,
                   uint32_t docs_count) noexcept
-      : segment(&segment), field(&field), docs_count(docs_count) {}
+        : segment(&segment), field(&field), docs_count(docs_count) {}
 
     const SubReader* segment;
     const term_reader* field;
@@ -84,7 +83,7 @@ struct top_term_state : top_term<T> {
 
   template<typename U = T>
   top_term_state(const bytes_view& term, U&& key)
-    : top_term<T>(term, std::forward<U>(key)) {}
+      : top_term<T>(term, std::forward<U>(key)) {}
 
   template<typename CollectorState>
   void emplace(const CollectorState& state) {
@@ -130,7 +129,7 @@ class top_terms_collector : private util::noncopyable {
   // We disallow 0 size collectors for consistency since we're not
   // interested in this use case and don't want to burden "collect(...)"
   explicit top_terms_collector(size_t size, const Comparer& comp = {})
-    : comparer_{comp}, size_{std::max(size_t(1), size)} {
+      : comparer_{comp}, size_{std::max(size_t(1), size)} {
     heap_.reserve(size);
     terms_.reserve(size);  // ensure all iterators remain valid
   }

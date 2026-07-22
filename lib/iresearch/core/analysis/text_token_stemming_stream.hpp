@@ -17,8 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -64,8 +62,8 @@ class stemming_token_stream final : public TypedAnalyzer<stemming_token_stream>,
 
  private:
   using attributes =
-    std::tuple<increment, offset,
-               term_attribute>;  // token value with evaluated quotes
+      std::tuple<increment, offset,
+                 term_attribute>;  // token value with evaluated quotes
 
   attributes attrs_;
   options_t options_;

@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <numeric>
@@ -68,15 +67,16 @@ TEST(compression_test, registration) {
 
   static size_t calls_count;
   irs::compression::compression_registrar initial(
-    type,
-    [](const irs::compression::options&) -> irs::compression::compressor::ptr {
-      ++calls_count;
-      return irs::memory::make_managed<dummy_compressor>();
-    },
-    []() -> irs::compression::decompressor::ptr {
-      ++calls_count;
-      return irs::memory::make_managed<dummy_decompressor>();
-    });
+      type,
+      [](const irs::compression::options&)
+          -> irs::compression::compressor::ptr {
+        ++calls_count;
+        return irs::memory::make_managed<dummy_compressor>();
+      },
+      []() -> irs::compression::decompressor::ptr {
+        ++calls_count;
+        return irs::memory::make_managed<dummy_decompressor>();
+      });
   ASSERT_TRUE(initial);  // registered
 
   // check registered
@@ -94,11 +94,10 @@ TEST(compression_test, registration) {
   }
 
   irs::compression::compression_registrar duplicate(
-    type,
-    [](const irs::compression::options&) -> irs::compression::compressor::ptr {
-      return nullptr;
-    },
-    []() -> irs::compression::decompressor::ptr { return nullptr; });
+      type,
+      [](const irs::compression::options&)
+          -> irs::compression::compressor::ptr { return nullptr; },
+      []() -> irs::compression::decompressor::ptr { return nullptr; });
   ASSERT_FALSE(duplicate);  // not registered
 
   // check registered
@@ -152,7 +151,7 @@ TEST(compression_test, lz4) {
               bytes_view(data_buf));
 
     const auto compressed =
-      compressor.compress(&data_buf[0], data_buf.size(), compression_buf);
+        compressor.compress(&data_buf[0], data_buf.size(), compression_buf);
     ASSERT_EQ(compressed,
               bytes_view(compression_buf.c_str(), compressed.size()));
 
@@ -163,9 +162,9 @@ TEST(compression_test, lz4) {
 
     bstring decompression_buf(data_buf.size(),
                               0);  // ensure we have enough space in buffer
-    const auto decompressed =
-      decompressor.decompress(&compression_buf[0], compressed.size(),
-                              &decompression_buf[0], decompression_buf.size());
+    const auto decompressed = decompressor.decompress(
+        &compression_buf[0], compressed.size(), &decompression_buf[0],
+        decompression_buf.size());
 
     ASSERT_EQ(data_buf, decompression_buf);
     ASSERT_EQ(data_buf, decompressed);
@@ -200,15 +199,15 @@ TEST(compression_test, delta) {
               bytes_view(data_buf));
 
     const auto compressed =
-      compressor.compress(&data_buf[0], data_buf.size(), compression_buf);
+        compressor.compress(&data_buf[0], data_buf.size(), compression_buf);
     ASSERT_EQ(compressed,
               bytes_view(compression_buf.c_str(), compressed.size()));
 
     bstring decompression_buf(data_buf.size(),
                               0);  // ensure we have enough space in buffer
-    const auto decompressed =
-      decompressor.decompress(&compression_buf[0], compressed.size(),
-                              &decompression_buf[0], decompression_buf.size());
+    const auto decompressed = decompressor.decompress(
+        &compression_buf[0], compressed.size(), &decompression_buf[0],
+        decompression_buf.size());
 
     ASSERT_EQ(bytes_view(reinterpret_cast<const byte_type*>(data.data()),
                          data.size() * sizeof(size_t)),

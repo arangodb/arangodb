@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "lz4compression.hpp"
@@ -70,7 +69,7 @@ lz4stream_decode lz4_make_stream_decode() {
 bytes_view lz4::lz4compressor::compress(byte_type* src, size_t size,
                                         bstring& out) {
   IRS_ASSERT(size <= static_cast<unsigned>(
-                       std::numeric_limits<int>::max()));  // LZ4 API uses int
+                         std::numeric_limits<int>::max()));  // LZ4 API uses int
   const auto src_size = static_cast<int>(size);
 
   // Ensure we have enough space to store compressed data,
@@ -82,7 +81,7 @@ bytes_view lz4::lz4compressor::compress(byte_type* src, size_t size,
   auto* buf = reinterpret_cast<char*>(out.data());
   const auto buf_size = static_cast<int>(out.size());
   const auto lz4_size =
-    LZ4_compress_fast(src_data, buf, src_size, buf_size, acceleration_);
+      LZ4_compress_fast(src_data, buf, src_size, buf_size, acceleration_);
 
   if (IRS_UNLIKELY(lz4_size < 0)) {
     throw index_error{"While compressing, error: LZ4 returned negative size"};
@@ -97,14 +96,14 @@ bytes_view lz4::lz4decompressor::decompress(const byte_type* src,
                                             size_t dst_size) {
   IRS_ASSERT(src_size <=
              static_cast<unsigned>(
-               std::numeric_limits<int>::max()));  // LZ4 API uses int
+                 std::numeric_limits<int>::max()));  // LZ4 API uses int
 
   const auto lz4_size = LZ4_decompress_safe(
-    reinterpret_cast<const char*>(src), reinterpret_cast<char*>(dst),
-    static_cast<int>(src_size),  // LZ4 API uses int
-    static_cast<int>(std::min(
-      dst_size, static_cast<size_t>(
-                  std::numeric_limits<int>::max())))  // LZ4 API uses int
+      reinterpret_cast<const char*>(src), reinterpret_cast<char*>(dst),
+      static_cast<int>(src_size),  // LZ4 API uses int
+      static_cast<int>(std::min(
+          dst_size, static_cast<size_t>(
+                        std::numeric_limits<int>::max())))  // LZ4 API uses int
   );
 
   if (IRS_UNLIKELY(lz4_size < 0)) {

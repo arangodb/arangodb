@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "async_directory.hpp"
@@ -50,7 +49,7 @@ std::unique_ptr<byte_type, BufferDeleter> allocate() {
   }
 
   return std::unique_ptr<byte_type, BufferDeleter>{
-    static_cast<byte_type*>(mem)};
+      static_cast<byte_type*>(mem)};
 }
 
 class SegregatedBuffer {
@@ -117,14 +116,14 @@ void URing::submit() {
   const int ret = io_uring_submit(&ring);
   if (ret < 0) {
     throw io_error{
-      absl::StrCat("failed to submit write request, error ", -ret)};
+        absl::StrCat("failed to submit write request, error ", -ret)};
   }
 }
 
 bool URing::deque(bool wait, uint64_t* data) {
   io_uring_cqe* cqe = nullptr;
   const int ret =
-    wait ? io_uring_wait_cqe(&ring, &cqe) : io_uring_peek_cqe(&ring, &cqe);
+      wait ? io_uring_wait_cqe(&ring, &cqe) : io_uring_peek_cqe(&ring, &cqe);
 
   if (ret < 0) {
     if (ret != -EAGAIN) {
@@ -137,7 +136,7 @@ bool URing::deque(bool wait, uint64_t* data) {
   IRS_ASSERT(cqe != nullptr);
   if (cqe->res < 0) {
     throw io_error{
-      absl::StrCat("Async i/o operation failed, error ", -cqe->res)};
+        absl::StrCat("Async i/o operation failed, error ", -cqe->res)};
   }
 
   *data = cqe->user_data;
@@ -289,9 +288,9 @@ class AsyncIndexOutput final : public index_output {
   using node_type = concurrent_stack<byte_type*>::node_type;
 
   AsyncIndexOutput(AsyncFilePtr&& async, file_utils::handle_t&& handle) noexcept
-    : async_{std::move(async)},
-      handle_{std::move(handle)},
-      buf_{async_->get_buffer()} {
+      : async_{std::move(async)},
+        handle_{std::move(handle)},
+        buf_{async_->get_buffer()} {
     reset(buf_->value);
   }
 
@@ -324,12 +323,12 @@ index_output::ptr AsyncIndexOutput::open(const path_char_t* name,
   }
 
   file_utils::handle_t handle(
-    file_utils::open(name, file_utils::OpenMode::Write, IR_FADVICE_NORMAL));
+      file_utils::open(name, file_utils::OpenMode::Write, IR_FADVICE_NORMAL));
 
   if (nullptr == handle) {
     IRS_LOG_ERROR(
-      absl::StrCat("Failed to open output file, error: ", GET_ERROR(),
-                   ", path: ", file_utils::ToStr(name)));
+        absl::StrCat("Failed to open output file, error: ", GET_ERROR(),
+                     ", path: ", file_utils::ToStr(name)));
 
     return nullptr;
   }
@@ -471,10 +470,10 @@ AsyncDirectory::AsyncDirectory(std::filesystem::path dir,
                                const ResourceManagementOptions& rm,
                                size_t pool_size, size_t queue_size,
                                unsigned flags)
-  : MMapDirectory{std::move(dir), std::move(attrs), rm},
-    async_pool_{pool_size},
-    queue_size_{queue_size},
-    flags_{flags} {}
+    : MMapDirectory{std::move(dir), std::move(attrs), rm},
+      async_pool_{pool_size},
+      queue_size_{queue_size},
+      flags_{flags} {}
 
 index_output::ptr AsyncDirectory::create(std::string_view name) noexcept {
   std::filesystem::path path;

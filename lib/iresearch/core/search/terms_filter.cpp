@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "terms_filter.hpp"
@@ -61,7 +60,7 @@ template<typename Collector>
 class terms_visitor {
  public:
   explicit terms_visitor(Collector& collector) noexcept
-    : collector_(collector) {}
+      : collector_(collector) {}
 
   void prepare(const SubReader& segment, const term_reader& field,
                const seek_term_iterator& terms) {
@@ -159,8 +158,8 @@ filter::prepared::ptr by_terms::prepare(const PrepareContext& ctx) const {
   }
   if (ctx.scorers.empty()) {
     return MakeAllDocsFilter(kNoBoost)->prepare({
-      .index = ctx.index,
-      .memory = ctx.memory,
+        .index = ctx.index,
+        .memory = ctx.memory,
     });
   }
   Or disj;
@@ -173,10 +172,10 @@ filter::prepared::ptr by_terms::prepare(const PrepareContext& ctx) const {
   *terms.mutable_options() = options();
   terms.mutable_options()->min_match = 1;
   return disj.prepare({
-    .index = ctx.index,
-    .memory = ctx.memory,
-    .scorers = ctx.scorers,
-    .ctx = ctx.ctx,
+      .index = ctx.index,
+      .memory = ctx.memory,
+      .scorers = ctx.scorers,
+      .ctx = ctx.ctx,
   });
 }
 

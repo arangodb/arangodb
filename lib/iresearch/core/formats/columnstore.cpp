@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "columnstore.hpp"
@@ -147,7 +146,7 @@ ColumnProperty write_compact(index_output& out, bstring& encode_buf,
   // compressor can only handle size of int32_t, so can use the negative flag as
   // a compression flag
   const bytes_view compressed =
-    compressor.compress(data.data(), data.size(), encode_buf);
+      compressor.compress(data.data(), data.size(), encode_buf);
 
   if (is_good_compression_ratio(data.size(), compressed.size())) {
     IRS_ASSERT(compressed.size() <=
@@ -164,7 +163,7 @@ ColumnProperty write_compact(index_output& out, bstring& encode_buf,
     IRS_ASSERT(data.size() <=
                static_cast<uint32_t>(std::numeric_limits<int32_t>::max()));
     irs::write_zvint(
-      out, int32_t(0) - int32_t(data.size()));  // -ve to mark uncompressed
+        out, int32_t(0) - int32_t(data.size()));  // -ve to mark uncompressed
     if (cipher) {
       cipher->encrypt(out.file_pointer(), data.data(), data.size());
     }
@@ -187,11 +186,11 @@ void read_compact(irs::index_input& in, irs::encryption::stream* cipher,
 
   // -ve to mark uncompressed
   if (size < 0) {
-    decode_buf.resize(
-      buf_size);  // Ensure that we have enough space to store decompressed data
+    decode_buf.resize(buf_size);  // Ensure that we have enough space to store
+                                  // decompressed data
 
     [[maybe_unused]] const auto read =
-      in.read_bytes(decode_buf.data(), buf_size);
+        in.read_bytes(decode_buf.data(), buf_size);
     IRS_ASSERT(read == buf_size);
 
     if (cipher) {
@@ -204,16 +203,16 @@ void read_compact(irs::index_input& in, irs::encryption::stream* cipher,
 
   if (IRS_UNLIKELY(!decompressor)) {
     throw irs::index_error{
-      absl::StrCat("While reading compact, error: can't decompress "
-                   "block of size ",
-                   size, " without decompressor")};
+        absl::StrCat("While reading compact, error: can't decompress "
+                     "block of size ",
+                     size, " without decompressor")};
   }
 
   // Try direct buffer access
   const byte_type* buf =
-    cipher ? nullptr
-           : in.read_buffer(buf_size + bytes_io<uint64_t>::const_max_vsize,
-                            BufferHint::NORMAL);
+      cipher ? nullptr
+             : in.read_buffer(buf_size + bytes_io<uint64_t>::const_max_vsize,
+                              BufferHint::NORMAL);
 
   uint64_t buff_size = 0;
   if (buf) {
@@ -223,7 +222,7 @@ void read_compact(irs::index_input& in, irs::encryption::stream* cipher,
     encode_buf.resize(buf_size);
 
     [[maybe_unused]] const auto read =
-      in.read_bytes(encode_buf.data(), buf_size);
+        in.read_bytes(encode_buf.data(), buf_size);
     IRS_ASSERT(read == buf_size);
 
     if (cipher) {
@@ -239,7 +238,7 @@ void read_compact(irs::index_input& in, irs::encryption::stream* cipher,
   decode_buf.resize(buff_size + MAX_DATA_BLOCK_SIZE);
 
   const auto decoded = decompressor->decompress(
-    buf, buf_size, decode_buf.data(), decode_buf.size());
+      buf, buf_size, decode_buf.data(), decode_buf.size());
 
   if (IsNull(decoded)) {
     throw irs::index_error("error while reading compact");
@@ -291,7 +290,7 @@ void meta_writer::prepare(directory& dir, std::string_view segment) {
       IRS_ASSERT(out_cipher_ && out_cipher_->block_size());
 
       const auto blocks_in_buffer = math::div_ceil64(
-        DEFAULT_ENCRYPTION_BUFFER_SIZE, out_cipher_->block_size());
+          DEFAULT_ENCRYPTION_BUFFER_SIZE, out_cipher_->block_size());
 
       out_ = index_output::make<encrypted_output>(std::move(out_), *out_cipher_,
                                                   blocks_in_buffer);
@@ -344,7 +343,7 @@ bool meta_reader::prepare(const directory& dir, const SegmentMeta& meta,
 
   if (!dir.exists(exists, filename)) {
     throw io_error{
-      absl::StrCat("Failed to check existence of file, path: ", filename)};
+        absl::StrCat("Failed to check existence of file, path: ", filename)};
   }
 
   if (!exists) {
@@ -380,7 +379,7 @@ bool meta_reader::prepare(const directory& dir, const SegmentMeta& meta,
 
   if (max_id >= std::numeric_limits<size_t>::max()) {
     throw index_error{
-      absl::StrCat("Invalid max column id: ", max_id, ", path: ", filename)};
+        absl::StrCat("Invalid max column id: ", max_id, ", path: ", filename)};
   }
 
   format_utils::check_footer(*in_, checksum);
@@ -388,9 +387,9 @@ bool meta_reader::prepare(const directory& dir, const SegmentMeta& meta,
   in_->seek(0);
 
   const ColumnMetaVersion version{
-    format_utils::check_header(*in_, meta_writer::FORMAT_NAME,
-                               static_cast<int32_t>(ColumnMetaVersion::MIN),
-                               static_cast<int32_t>(ColumnMetaVersion::MAX))};
+      format_utils::check_header(*in_, meta_writer::FORMAT_NAME,
+                                 static_cast<int32_t>(ColumnMetaVersion::MIN),
+                                 static_cast<int32_t>(ColumnMetaVersion::MAX))};
 
   if (version > ColumnMetaVersion::MIN) {
     encryption* enc = dir.attributes().encryption();
@@ -399,7 +398,7 @@ bool meta_reader::prepare(const directory& dir, const SegmentMeta& meta,
       IRS_ASSERT(in_cipher_ && in_cipher_->block_size());
 
       const auto blocks_in_buffer = math::div_ceil64(
-        DEFAULT_ENCRYPTION_BUFFER_SIZE, in_cipher_->block_size());
+          DEFAULT_ENCRYPTION_BUFFER_SIZE, in_cipher_->block_size());
 
       in_ = std::make_unique<encrypted_input>(std::move(in_), *in_cipher_,
                                               blocks_in_buffer, kFooterLength);
@@ -502,12 +501,12 @@ class index_block {
       IRS_ASSERT(std::is_sorted(keys_, key_));
       const auto stats = encode::avg::encode(keys_, key_);
       const auto bits = encode::avg::write_block(
-        [&](const uint32_t* IRS_RESTRICT decoded,
-            uint32_t* IRS_RESTRICT encoded, uint32_t bits) {
-          format_traits::pack32(decoded, encoded, block_size, bits);
-        },
-        out, stats.first, stats.second, keys_, block_size,
-        reinterpret_cast<uint32_t*>(buf));
+          [&](const uint32_t* IRS_RESTRICT decoded,
+              uint32_t* IRS_RESTRICT encoded, uint32_t bits) {
+            format_traits::pack32(decoded, encoded, block_size, bits);
+          },
+          out, stats.first, stats.second, keys_, block_size,
+          reinterpret_cast<uint32_t*>(buf));
 
       if (1 == stats.second && 0 == keys_[0] && bitpack::rl(bits)) {
         props |= CP_DENSE;
@@ -524,8 +523,8 @@ class index_block {
       IRS_ASSERT(std::is_sorted(offsets_, offset_));
       const auto stats = encode::avg::encode(offsets_, offset_);
       const auto bits = encode::avg::write_block(
-        &format_traits::pack64, out, std::get<0>(stats), std::get<1>(stats),
-        offsets_, block_size, buf);
+          &format_traits::pack64, out, std::get<0>(stats), std::get<1>(stats),
+          offsets_, block_size, buf);
 
       if (0 == offsets_[0] && bitpack::rl(bits)) {
         props |= CP_FIXED;
@@ -564,13 +563,13 @@ class writer final : public irs::columnstore_writer {
   static constexpr std::string_view FORMAT_EXT = "cs";
 
   explicit writer(Version version, ColumnMetaVersion meta_version) noexcept
-    : meta_writer_{meta_version},
-      buf_(2 * MAX_DATA_BLOCK_SIZE, 0),
-      dir_(nullptr),
-      version_(version) {
+      : meta_writer_{meta_version},
+        buf_(2 * MAX_DATA_BLOCK_SIZE, 0),
+        dir_(nullptr),
+        version_(version) {
     static_assert(
-      2 * MAX_DATA_BLOCK_SIZE >= INDEX_BLOCK_SIZE * sizeof(uint64_t),
-      "buffer is not big enough");
+        2 * MAX_DATA_BLOCK_SIZE >= INDEX_BLOCK_SIZE * sizeof(uint64_t),
+        "buffer is not big enough");
 
     IRS_ASSERT(version >= Version::MIN && version <= Version::MAX);
   }
@@ -589,14 +588,14 @@ class writer final : public irs::columnstore_writer {
                     columnstore_writer::column_finalizer_f&& finalizer,
                     compression::compressor::ptr compressor,
                     encryption::stream* cipher)
-      : ctx_(&ctx),
-        comp_type_(type),
-        comp_(std::move(compressor)),
-        finalizer_{std::move(finalizer)},
-        cipher_(cipher),
-        id_(id),
-        blocks_index_(IResourceManager::kNoop),
-        block_buf_(2 * MAX_DATA_BLOCK_SIZE, 0) {
+        : ctx_(&ctx),
+          comp_type_(type),
+          comp_(std::move(compressor)),
+          finalizer_{std::move(finalizer)},
+          cipher_(cipher),
+          id_(id),
+          blocks_index_(IResourceManager::kNoop),
+          block_buf_(2 * MAX_DATA_BLOCK_SIZE, 0) {
       IRS_ASSERT(comp_);   // ensured by `push_column'
       block_buf_.clear();  // reset size to '0'
     }
@@ -704,8 +703,8 @@ class writer final : public irs::columnstore_writer {
       // - there are no gaps between blocks
       // - all data blocks have the same length
       column_props_ &= ColumnProperty{
-        1 == (block_index_.min_key() - max_) &&
-        (!doc_limits::valid(max_) || prev_block_size_ == block_buf_.size())};
+          1 == (block_index_.min_key() - max_) &&
+          (!doc_limits::valid(max_) || prev_block_size_ == block_buf_.size())};
 
       // update max element
       max_ = block_index_.max_key();
@@ -734,7 +733,7 @@ class writer final : public irs::columnstore_writer {
       // otherwise it would violate format layout
       auto block_props = block_index_.flush(out, buf);
       block_props |=
-        write_compact(out, ctx_->buf_, cipher_, *comp_, block_buf_);
+          write_compact(out, ctx_->buf_, cipher_, *comp_, block_buf_);
 
       prev_block_size_ = block_buf_.size();
       length_ += prev_block_size_;
@@ -761,21 +760,21 @@ class writer final : public irs::columnstore_writer {
     uint64_t length_{};  // size of all data blocks in the column
     uint64_t prev_block_size_{};
     index_block<INDEX_BLOCK_SIZE>
-      block_index_;  // current block index (per document key/offset)
+        block_index_;  // current block index (per document key/offset)
     index_block<INDEX_BLOCK_SIZE>
-      column_index_;              // column block index (per block key/offset)
+        column_index_;            // column block index (per block key/offset)
     memory_output blocks_index_;  // blocks index
     bstring block_buf_;           // data buffer
     ColumnProperty blocks_props_{
-      CP_DENSE | CP_FIXED | CP_MASK};  // aggregated column blocks properties
+        CP_DENSE | CP_FIXED | CP_MASK};  // aggregated column blocks properties
     ColumnProperty column_props_{
-      CP_DENSE};                  // aggregated column block index properties
+        CP_DENSE};                // aggregated column block index properties
     uint32_t avg_block_count_{};  // average number of items per block (tail
                                   // block is not taken into account since it
                                   // may skew distribution)
-    uint32_t
-      avg_block_size_{};  // average size of the block (tail block is not taken
-                          // into account since it may skew distribution)
+    uint32_t avg_block_size_{};  // average size of the block (tail block is not
+                                 // taken into account since it may skew
+                                 // distribution)
     doc_id_t max_{doc_limits::invalid()};  // max key (among flushed blocks)
     std::string_view name_;
   };
@@ -813,7 +812,7 @@ void writer::prepare(directory& dir, const SegmentMeta& meta) {
     auto* enc = dir.attributes().encryption();
 
     const auto encrypt =
-      irs::encrypt(filename, *data_out, enc, enc_header, data_out_cipher);
+        irs::encrypt(filename, *data_out, enc, enc_header, data_out_cipher);
     IRS_ASSERT(!encrypt || (data_out_cipher && data_out_cipher->block_size()));
     IRS_IGNORE(encrypt);
   }
@@ -848,8 +847,8 @@ columnstore_writer::column_t writer::push_column(const ColumnInfo& info,
 
   const auto id = columns_.size();
   auto& column =
-    columns_.emplace_back(*this, id, info.compression, std::move(finalizer),
-                          std::move(compressor), cipher);
+      columns_.emplace_back(*this, id, info.compression, std::move(finalizer),
+                            std::move(compressor), cipher);
 
   return {id, column};
 }
@@ -955,8 +954,8 @@ template<typename Block, typename Allocator>
 struct block_cache_traits {
   typedef Block block_t;
   typedef
-    typename std::allocator_traits<Allocator>::template rebind_alloc<block_t>
-      allocator_t;
+      typename std::allocator_traits<Allocator>::template rebind_alloc<block_t>
+          allocator_t;
   typedef block_cache<Block, allocator_t> cache_t;
 };
 
@@ -976,8 +975,8 @@ class sparse_block : util::noncopyable {
    public:
     bool seek(doc_id_t doc) noexcept {
       next_ = std::lower_bound(
-        begin_, end_, doc,
-        [](const ref& lhs, doc_id_t rhs) { return lhs.key < rhs; });
+          begin_, end_, doc,
+          [](const ref& lhs, doc_id_t rhs) { return lhs.key < rhs; });
 
       return next();
     }
@@ -1017,10 +1016,10 @@ class sparse_block : util::noncopyable {
       data_ = &block.data_;
 
       IRS_ASSERT(std::is_sorted(
-        begin_, end_,
-        [](const sparse_block::ref& lhs, const sparse_block::ref& rhs) {
-          return lhs.key < rhs.key;
-        }));
+          begin_, end_,
+          [](const sparse_block::ref& lhs, const sparse_block::ref& rhs) {
+            return lhs.key < rhs.key;
+          }));
     }
 
     bool operator==(const sparse_block& rhs) const noexcept {
@@ -1048,19 +1047,19 @@ class sparse_block : util::noncopyable {
 
     // read keys
     encode::avg::visit_block_packed_tail(
-      in, size, reinterpret_cast<uint32_t*>(buf.data()),
-      [begin](uint32_t key) mutable {
-        begin->key = key;
-        ++begin;
-      });
+        in, size, reinterpret_cast<uint32_t*>(buf.data()),
+        [begin](uint32_t key) mutable {
+          begin->key = key;
+          ++begin;
+        });
 
     // read offsets
     encode::avg::visit_block_packed_tail(
-      in, size, reinterpret_cast<uint64_t*>(buf.data()),
-      [begin](uint64_t offset) mutable {
-        begin->offset = offset;
-        ++begin;
-      });
+        in, size, reinterpret_cast<uint64_t*>(buf.data()),
+        [begin](uint64_t offset) mutable {
+          begin->offset = offset;
+          ++begin;
+        });
 
     // read data
     read_compact(in, cipher, decomp, buf, data_);
@@ -1163,19 +1162,19 @@ class dense_block : util::noncopyable {
     uint32_t avg;
     if (!encode::avg::read_block_rl32(in, base_, avg) || 1 != avg) {
       throw index_error{
-        absl::StrCat("Invalid RL encoding in 'dense_block', base_key=", base_,
-                     " avg_delta=", avg)};
+          absl::StrCat("Invalid RL encoding in 'dense_block', base_key=", base_,
+                       " avg_delta=", avg)};
     }
 
     // read data offsets
     auto begin = std::begin(index_);
 
     encode::avg::visit_block_packed_tail(
-      in, size, reinterpret_cast<uint64_t*>(buf.data()),
-      [begin](uint64_t offset) mutable {
-        *begin = static_cast<uint32_t>(offset);
-        ++begin;
-      });
+        in, size, reinterpret_cast<uint64_t*>(buf.data()),
+        [begin](uint64_t offset) mutable {
+          *begin = static_cast<uint32_t>(offset);
+          ++begin;
+        });
 
     // read data
     read_compact(in, cipher, decomp, buf, data_);
@@ -1225,9 +1224,9 @@ class dense_fixed_offset_block : util::noncopyable {
       const auto offset = (value_ - value_min_) * avg_length_;
 
       IRS_ASSERT(payload_ != &kDummy);
-      *payload_ =
-        bytes_view(data_.data() + offset,
-                   value_ == value_back_ ? data_.size() - offset : avg_length_);
+      *payload_ = bytes_view(data_.data() + offset, value_ == value_back_
+                                                        ? data_.size() - offset
+                                                        : avg_length_);
 
       return true;
     }
@@ -1274,22 +1273,22 @@ class dense_fixed_offset_block : util::noncopyable {
 
     if (!size_) {
       throw index_error(
-        "Empty 'dense_fixed_offset_block' found in columnstore");
+          "Empty 'dense_fixed_offset_block' found in columnstore");
     }
 
     // dense block must be encoded with RL encoding, avg must be equal to 1
     uint32_t avg;
     if (!encode::avg::read_block_rl32(in, base_key_, avg) || 1 != avg) {
       throw index_error{absl::StrCat(
-        "Invalid RL encoding in 'dense_fixed_offset_block', base_key=",
-        base_key_, "avg_delta=", avg)};
+          "Invalid RL encoding in 'dense_fixed_offset_block', base_key=",
+          base_key_, "avg_delta=", avg)};
     }
 
     // fixed length block must be encoded with RL encoding
     if (!encode::avg::read_block_rl32(in, base_offset_, avg_length_)) {
       throw index_error{absl::StrCat(
-        "Invalid RL encoding in 'dense_fixed_offset_block', base_offset=",
-        base_key_, "avg_length=", avg_length_)};
+          "Invalid RL encoding in 'dense_fixed_offset_block', base_offset=",
+          base_key_, "avg_length=", avg_length_)};
     }
 
     // read data
@@ -1366,8 +1365,8 @@ class sparse_mask_block : util::noncopyable {
     auto begin = std::begin(keys_);
 
     encode::avg::visit_block_packed_tail(
-      in, size_, reinterpret_cast<uint32_t*>(buf.data()),
-      [begin](uint32_t key) mutable { *begin++ = key; });
+        in, size_, reinterpret_cast<uint32_t*>(buf.data()),
+        [begin](uint32_t key) mutable { *begin++ = key; });
 
     // mask block has no data, so all offsets should be equal to 0
     if (!encode::avg::check_block_rl64(in, 0)) {
@@ -1440,7 +1439,7 @@ class dense_mask_block {
   };
 
   dense_mask_block() noexcept
-    : min_(doc_limits::invalid()), max_(doc_limits::invalid()) {}
+      : min_(doc_limits::invalid()), max_(doc_limits::invalid()) {}
 
   void load(index_input& in, compression::decompressor* /*decomp*/,
             encryption::stream* /*cipher*/, bstring& /*buf*/) {
@@ -1454,9 +1453,9 @@ class dense_mask_block {
     uint32_t avg;
     if (!encode::avg::read_block_rl32(in, min_, avg) || 1 != avg) {
       throw index_error{
-        absl::StrCat("Invalid RL encoding in 'dense_mask_block', "
-                     "base_key=",
-                     min_, " avg_delta=", avg)};
+          absl::StrCat("Invalid RL encoding in 'dense_mask_block', "
+                       "base_key=",
+                       min_, " avg_delta=", avg)};
     }
 
     // mask block has no data, so all offsets should be equal to 0
@@ -1474,11 +1473,11 @@ class dense_mask_block {
 
 template<typename Allocator = std::allocator<sparse_block>>
 class read_context
-  : public block_cache_traits<sparse_block, Allocator>::cache_t,
-    public block_cache_traits<dense_block, Allocator>::cache_t,
-    public block_cache_traits<dense_fixed_offset_block, Allocator>::cache_t,
-    public block_cache_traits<sparse_mask_block, Allocator>::cache_t,
-    public block_cache_traits<dense_mask_block, Allocator>::cache_t {
+    : public block_cache_traits<sparse_block, Allocator>::cache_t,
+      public block_cache_traits<dense_block, Allocator>::cache_t,
+      public block_cache_traits<dense_fixed_offset_block, Allocator>::cache_t,
+      public block_cache_traits<sparse_mask_block, Allocator>::cache_t,
+      public block_cache_traits<dense_mask_block, Allocator>::cache_t {
  public:
   using ptr = std::shared_ptr<read_context>;
 
@@ -1497,24 +1496,24 @@ class read_context
 
   read_context(index_input::ptr&& in, encryption::stream* cipher,
                const Allocator& alloc = Allocator())
-    : block_cache_traits<sparse_block, Allocator>::cache_t(
-        typename block_cache_traits<sparse_block, Allocator>::allocator_t(
-          alloc)),
-      block_cache_traits<dense_block, Allocator>::cache_t(
-        typename block_cache_traits<dense_block, Allocator>::allocator_t(
-          alloc)),
-      block_cache_traits<dense_fixed_offset_block, Allocator>::cache_t(
-        typename block_cache_traits<dense_fixed_offset_block,
-                                    Allocator>::allocator_t(alloc)),
-      block_cache_traits<sparse_mask_block, Allocator>::cache_t(
-        typename block_cache_traits<sparse_mask_block, Allocator>::allocator_t(
-          alloc)),
-      block_cache_traits<dense_mask_block, Allocator>::cache_t(
-        typename block_cache_traits<dense_mask_block, Allocator>::allocator_t(
-          alloc)),
-      buf_(INDEX_BLOCK_SIZE * sizeof(uint32_t), 0),
-      stream_(std::move(in)),
-      cipher_(cipher) {}
+      : block_cache_traits<sparse_block, Allocator>::cache_t(
+            typename block_cache_traits<sparse_block, Allocator>::allocator_t(
+                alloc)),
+        block_cache_traits<dense_block, Allocator>::cache_t(
+            typename block_cache_traits<dense_block, Allocator>::allocator_t(
+                alloc)),
+        block_cache_traits<dense_fixed_offset_block, Allocator>::cache_t(
+            typename block_cache_traits<dense_fixed_offset_block,
+                                        Allocator>::allocator_t(alloc)),
+        block_cache_traits<sparse_mask_block, Allocator>::cache_t(
+            typename block_cache_traits<sparse_mask_block,
+                                        Allocator>::allocator_t(alloc)),
+        block_cache_traits<dense_mask_block, Allocator>::cache_t(
+            typename block_cache_traits<dense_mask_block,
+                                        Allocator>::allocator_t(alloc)),
+        buf_(INDEX_BLOCK_SIZE * sizeof(uint32_t), 0),
+        stream_(std::move(in)),
+        cipher_(cipher) {}
 
   template<typename Block, typename... Args>
   Block& emplace_back(uint64_t offset, compression::decompressor* decomp,
@@ -1561,7 +1560,7 @@ typedef read_context<> read_context_t;
 class context_provider : private util::noncopyable {
  public:
   explicit context_provider(size_t max_pool_size)
-    : pool_(std::max(size_t(1), max_pool_size)) {}
+      : pool_(std::max(size_t(1), max_pool_size)) {}
 
   void prepare(index_input::ptr&& stream,
                encryption::stream::ptr&& cipher) noexcept {
@@ -1597,7 +1596,7 @@ const typename BlockRef::block_t& load_block(const context_provider& ctxs,
 
     // load block
     const auto& block =
-      ctx->template emplace_back<block_t>(ref.offset, decomp, decrypt);
+        ctx->template emplace_back<block_t>(ref.offset, decomp, decrypt);
 
     // mark block as loaded
     if (ref.pblock.compare_exchange_strong(cached, &block)) {
@@ -1618,8 +1617,8 @@ const typename BlockRef::block_t& load_block(const context_provider& ctxs,
 // nullptr otherwise
 template<typename BlockRef>
 const typename BlockRef::block_t& load_block(
-  const context_provider& ctxs, compression::decompressor* decomp, bool decrypt,
-  const BlockRef& ref, typename BlockRef::block_t& block) {
+    const context_provider& ctxs, compression::decompressor* decomp,
+    bool decrypt, const BlockRef& ref, typename BlockRef::block_t& block) {
   const auto* cached = ref.pblock.load();
 
   if (!cached) {
@@ -1642,7 +1641,7 @@ class column : public irs::column_reader, private util::noncopyable {
   using ptr = std::unique_ptr<column>;
 
   explicit column(field_id id, ColumnProperty props) noexcept
-    : id_{id}, encrypted_(0 != (props & CP_COLUMN_ENCRYPT)) {}
+      : id_{id}, encrypted_(0 != (props & CP_COLUMN_ENCRYPT)) {}
 
   field_id id() const final { return id_; }
 
@@ -1707,11 +1706,11 @@ class column_iterator : public irs::doc_iterator {
   explicit column_iterator(const column_t& column,
                            const typename column_t::block_ref* begin,
                            const typename column_t::block_ref* end, bool cache)
-    : begin_(begin),
-      seek_origin_(begin),
-      end_(end),
-      column_(&column),
-      cache_(cache) {
+      : begin_(begin),
+        seek_origin_(begin),
+        end_(end),
+        column_(&column),
+        cache_(cache) {
     std::get<cost>(attrs_).reset(column.size());
   }
 
@@ -1771,10 +1770,10 @@ class column_iterator : public irs::doc_iterator {
 
     try {
       const auto& cached =
-        cache_ ? load_block(*column_->ctxs_, column_->decompressor(),
-                            column_->encrypted(), *begin_)
-               : load_block(*column_->ctxs_, column_->decompressor(),
-                            column_->encrypted(), *begin_, cached_block_);
+          cache_ ? load_block(*column_->ctxs_, column_->decompressor(),
+                              column_->encrypted(), *begin_)
+                 : load_block(*column_->ctxs_, column_->decompressor(),
+                              column_->encrypted(), *begin_, cached_block_);
 
       if (block_ != cached || &cached == &cached_block_) {
         block_.reset(cached, payload);
@@ -1823,14 +1822,14 @@ class sparse_column final : public column {
   }
 
   sparse_column(const context_provider& ctxs, field_id id, ColumnProperty props)
-    : column(id, props), ctxs_(&ctxs) {}
+      : column(id, props), ctxs_(&ctxs) {}
 
   void read(data_input& in, uint64_t* buf,
             compression::decompressor::ptr decomp) final {
     column::read(in, buf, std::move(decomp));  // read common header
 
     uint32_t blocks_count =
-      in.read_vint();  // total number of column index blocks
+        in.read_vint();  // total number of column index blocks
 
     std::vector<block_ref> refs(blocks_count + 1);  // +1 for upper bound
 
@@ -1890,9 +1889,9 @@ class sparse_column final : public column {
     }
 
     return memory::make_managed<iterator_t>(
-      *this, refs_.data(),
-      refs_.data() + refs_.size() - 1,  // -1 for upper bound
-      ColumnHint::kConsolidation != (hint & ColumnHint::kConsolidation));
+        *this, refs_.data(),
+        refs_.data() + refs_.size() - 1,  // -1 for upper bound
+        ColumnHint::kConsolidation != (hint & ColumnHint::kConsolidation));
   }
 
  private:
@@ -1904,10 +1903,10 @@ class sparse_column final : public column {
     block_ref() = default;
 
     block_ref(block_ref&& other) noexcept
-      : key(std::move(other.key)),
-        offset(std::move(other.offset)),
-        pblock{other.pblock.exchange(
-          nullptr)} {  // no std::move(...) for std::atomic<...>
+        : key(std::move(other.key)),
+          offset(std::move(other.offset)),
+          pblock{other.pblock.exchange(
+              nullptr)} {  // no std::move(...) for std::atomic<...>
     }
 
     doc_id_t key;                                // min key in a block
@@ -1925,12 +1924,12 @@ class sparse_column final : public column {
       return begin;
     }
 
-    const auto rbegin =
-      irstd::make_reverse_iterator(refs_.data() + refs_.size());  // upper bound
+    const auto rbegin = irstd::make_reverse_iterator(
+        refs_.data() + refs_.size());  // upper bound
     const auto rend = irstd::make_reverse_iterator(begin);
     const auto it = std::lower_bound(
-      rbegin, rend, key,
-      [](const block_ref& lhs, doc_id_t rhs) { return lhs.key > rhs; });
+        rbegin, rend, key,
+        [](const block_ref& lhs, doc_id_t rhs) { return lhs.key > rhs; });
 
     if (it == rend) {
       return &*rbegin;
@@ -1947,8 +1946,8 @@ class sparse_column final : public column {
     const auto rbegin = refs_.rbegin();  // upper bound
     const auto rend = refs_.rend();
     const auto it = std::lower_bound(
-      rbegin, rend, key,
-      [](const block_ref& lhs, doc_id_t rhs) { return lhs.key > rhs; });
+        rbegin, rend, key,
+        [](const block_ref& lhs, doc_id_t rhs) { return lhs.key > rhs; });
 
     if (it == rend) {
       return refs_.end() - 1;  // -1 for upper bound
@@ -1977,14 +1976,14 @@ class dense_fixed_offset_column final : public column {
 
   dense_fixed_offset_column(const context_provider& ctxs, field_id id,
                             ColumnProperty prop)
-    : column(id, prop), ctxs_(&ctxs) {}
+      : column(id, prop), ctxs_(&ctxs) {}
 
   void read(data_input& in, uint64_t* buf,
             compression::decompressor::ptr decomp) final {
     column::read(in, buf, std::move(decomp));  // read common header
 
     size_t blocks_count =
-      in.read_vint();  // total number of column index blocks
+        in.read_vint();  // total number of column index blocks
 
     std::vector<block_ref> refs(blocks_count);
 
@@ -1992,7 +1991,7 @@ class dense_fixed_offset_column final : public column {
     while (blocks_count >= INDEX_BLOCK_SIZE) {
       if (!encode::avg::check_block_rl32(in, this->avg_block_count())) {
         throw index_error(
-          "Invalid RL encoding in 'dense_fixed_offset_column' (keys)");
+            "Invalid RL encoding in 'dense_fixed_offset_column' (keys)");
       }
 
       encode::avg::visit_block_packed(in, INDEX_BLOCK_SIZE, buf,
@@ -2008,12 +2007,12 @@ class dense_fixed_offset_column final : public column {
     // tail block
     if (blocks_count) {
       const auto avg_block_count = blocks_count > 1
-                                     ? this->avg_block_count()
-                                     : 0U;  // in this case avg == 0
+                                       ? this->avg_block_count()
+                                       : 0U;  // in this case avg == 0
 
       if (!encode::avg::check_block_rl32(in, avg_block_count)) {
         throw index_error(
-          "Invalid RL encoding in 'dense_fixed_offset_column' (keys)");
+            "Invalid RL encoding in 'dense_fixed_offset_column' (keys)");
       }
 
       encode::avg::visit_block_packed_tail(in, blocks_count, buf,
@@ -2037,8 +2036,8 @@ class dense_fixed_offset_column final : public column {
     }
 
     return memory::make_managed<iterator_t>(
-      *this, refs_.data(), refs_.data() + refs_.size(),
-      ColumnHint::kConsolidation != (hint & ColumnHint::kConsolidation));
+        *this, refs_.data(), refs_.data() + refs_.size(),
+        ColumnHint::kConsolidation != (hint & ColumnHint::kConsolidation));
   }
 
  private:
@@ -2050,9 +2049,9 @@ class dense_fixed_offset_column final : public column {
     block_ref() = default;
 
     block_ref(block_ref&& other) noexcept
-      : offset(std::move(other.offset)),
-        pblock{other.pblock.exchange(
-          nullptr)} {  // no std::move(...) for std::atomic<...>
+        : offset(std::move(other.offset)),
+          pblock{other.pblock.exchange(
+              nullptr)} {  // no std::move(...) for std::atomic<...>
     }
 
     uint64_t offset;  // need to store base offset since blocks may not be
@@ -2065,7 +2064,7 @@ class dense_fixed_offset_column final : public column {
   const block_ref* find_block(const block_ref* begin, const block_ref* end,
                               doc_id_t key) const noexcept {
     const auto min =
-      min_ + this->avg_block_count() * std::distance(refs_.data(), begin);
+        min_ + this->avg_block_count() * std::distance(refs_.data(), begin);
 
     if (key < min) {
       return begin;
@@ -2112,7 +2111,7 @@ class dense_fixed_offset_column<dense_mask_block> final : public column {
   }
 
   explicit dense_fixed_offset_column(field_id id, ColumnProperty prop) noexcept
-    : column(id, prop) {}
+      : column(id, prop) {}
 
   void read(data_input& in, uint64_t* buf,
             compression::decompressor::ptr decomp) final {
@@ -2123,13 +2122,13 @@ class dense_fixed_offset_column<dense_mask_block> final : public column {
     column::read(in, buf, std::move(decomp));  // read common header
 
     uint32_t blocks_count =
-      in.read_vint();  // total number of column index blocks
+        in.read_vint();  // total number of column index blocks
 
     while (blocks_count >= INDEX_BLOCK_SIZE) {
       if (!encode::avg::check_block_rl32(in, this->avg_block_count())) {
         throw index_error(
-          "Invalid RL encoding in "
-          "'dense_fixed_offset_column<dense_mask_block>' (keys)");
+            "Invalid RL encoding in "
+            "'dense_fixed_offset_column<dense_mask_block>' (keys)");
       }
 
       // skip offsets, they point to "garbage" data
@@ -2142,13 +2141,13 @@ class dense_fixed_offset_column<dense_mask_block> final : public column {
     // tail block
     if (blocks_count) {
       const auto avg_block_count = blocks_count > 1
-                                     ? this->avg_block_count()
-                                     : 0;  // in this case avg == 0
+                                       ? this->avg_block_count()
+                                       : 0;  // in this case avg == 0
 
       if (!encode::avg::check_block_rl32(in, avg_block_count)) {
         throw index_error(
-          "Invalid RL encoding in "
-          "'dense_fixed_offset_column<dense_mask_block>' (keys)");
+            "Invalid RL encoding in "
+            "'dense_fixed_offset_column<dense_mask_block>' (keys)");
       }
 
       // skip offsets, they point to "garbage" data
@@ -2168,7 +2167,7 @@ class dense_fixed_offset_column<dense_mask_block> final : public column {
 
    public:
     explicit column_iterator(const column_t& column) noexcept
-      : min_(1 + column.min_), max_(column.max()) {
+        : min_(1 + column.min_), max_(column.max()) {
       std::get<cost>(attrs_).reset(column.size());
     }
 
@@ -2223,7 +2222,7 @@ class dense_fixed_offset_column<dense_mask_block> final : public column {
 };
 
 irs::doc_iterator::ptr dense_fixed_offset_column<dense_mask_block>::iterator(
-  ColumnHint) const {
+    ColumnHint) const {
   return empty() ? irs::doc_iterator::empty()
                  : memory::make_managed<column_iterator>(*this);
 }
@@ -2234,33 +2233,37 @@ irs::doc_iterator::ptr dense_fixed_offset_column<dense_mask_block>::iterator(
 
 typedef std::function<column::ptr(const context_provider& ctxs, field_id id,
                                   ColumnProperty prop)>
-  column_factory_f;
+    column_factory_f;
 //     Column      |          Blocks
 const column_factory_f COLUMN_FACTORIES[]{
-  // CP_COLUMN_DENSE | CP_MASK CP_FIXED CP_DENSE
-  &sparse_column<sparse_block>::make,  //       0         |    0        0 0
-  &sparse_column<dense_block>::make,   //       0         |    0        0 1
-  &sparse_column<sparse_block>::make,  //       0         |    0        1 0
-  &sparse_column<dense_fixed_offset_block>::make,  //       0         |    0 1 1
-  nullptr,
-  /* invalid properties, should never happen */  //       0         |    1 0 0
-  nullptr,
-  /* invalid properties, should never happen */  //       0         |    1 0 1
-  &sparse_column<sparse_mask_block>::make,  //       0         |    1        1 0
-  &sparse_column<dense_mask_block>::make,   //       0         |    1        1 1
+    // CP_COLUMN_DENSE | CP_MASK CP_FIXED CP_DENSE
+    &sparse_column<sparse_block>::make,  //       0         |    0        0 0
+    &sparse_column<dense_block>::make,   //       0         |    0        0 1
+    &sparse_column<sparse_block>::make,  //       0         |    0        1 0
+    &sparse_column<dense_fixed_offset_block>::make,  //       0         |    0 1
+                                                     //       1
+    nullptr,
+    /* invalid properties, should never happen */  //       0         |    1 0 0
+    nullptr,
+    /* invalid properties, should never happen */  //       0         |    1 0 1
+    &sparse_column<sparse_mask_block>::make,  //       0         |    1        1
+                                              //       0
+    &sparse_column<dense_mask_block>::make,   //       0         |    1        1
+                                              //       1
 
-  &sparse_column<sparse_block>::make,  //       1         |    0        0 0
-  &sparse_column<dense_block>::make,   //       1         |    0        0 1
-  &sparse_column<sparse_block>::make,  //       1         |    0        1 0
-  &dense_fixed_offset_column<dense_fixed_offset_block>::make,  //       1 |    0
-                                                               //       1 1
-  nullptr,
-  /* invalid properties, should never happen */  //       1         |    1 0 0
-  nullptr,
-  /* invalid properties, should never happen */  //       1         |    1 0 1
-  &sparse_column<sparse_mask_block>::make,  //       1         |    1        1 0
-  &dense_fixed_offset_column<dense_mask_block>::make  //       1         |    1
-                                                      //       1        1
+    &sparse_column<sparse_block>::make,  //       1         |    0        0 0
+    &sparse_column<dense_block>::make,   //       1         |    0        0 1
+    &sparse_column<sparse_block>::make,  //       1         |    0        1 0
+    &dense_fixed_offset_column<dense_fixed_offset_block>::make,  //       1 | 0
+                                                                 //       1 1
+    nullptr,
+    /* invalid properties, should never happen */  //       1         |    1 0 0
+    nullptr,
+    /* invalid properties, should never happen */  //       1         |    1 0 1
+    &sparse_column<sparse_mask_block>::make,  //       1         |    1        1
+                                              //       0
+    &dense_fixed_offset_column<dense_mask_block>::make  //       1         | 1
+                                                        //       1        1
 };
 
 //////////////////////////////////////////////////////////////////////////////
@@ -2337,7 +2340,7 @@ bool reader::prepare(const directory& dir, const SegmentMeta& meta,
 
   if (!dir.exists(exists, filename)) {
     throw io_error{
-      absl::StrCat("Failed to check existence of file, path: ", filename)};
+        absl::StrCat("Failed to check existence of file, path: ", filename)};
   }
 
   if (!exists) {
@@ -2354,7 +2357,7 @@ bool reader::prepare(const directory& dir, const SegmentMeta& meta,
 
   // check header
   const auto version = format_utils::check_header(
-    *stream, writer::FORMAT_NAME, writer::FORMAT_MIN, writer::FORMAT_MAX);
+      *stream, writer::FORMAT_NAME, writer::FORMAT_MIN, writer::FORMAT_MAX);
 
   encryption::stream::ptr cipher;
 
@@ -2381,7 +2384,7 @@ bool reader::prepare(const directory& dir, const SegmentMeta& meta,
 
   if (count >= field_limits::invalid()) {
     throw index_error{
-      absl::StrCat("Too many columns in the columnstore (", count, ")")};
+        absl::StrCat("Too many columns in the columnstore (", count, ")")};
   }
 
   uint64_t buf[INDEX_BLOCK_SIZE];  // temporary buffer for bit packing
@@ -2394,8 +2397,8 @@ bool reader::prepare(const directory& dir, const SegmentMeta& meta,
 
     if (factory_id >= std::size(COLUMN_FACTORIES)) {
       throw index_error{absl::StrCat(
-        "Failed to load column id=", i,
-        ", got invalid properties=", static_cast<uint32_t>(props))};
+          "Failed to load column id=", i,
+          ", got invalid properties=", static_cast<uint32_t>(props))};
     }
 
     // create column
@@ -2403,11 +2406,11 @@ bool reader::prepare(const directory& dir, const SegmentMeta& meta,
 
     if (!factory) {
       static_assert(
-        std::is_same_v<std::underlying_type_t<ColumnProperty>, uint32_t>);
+          std::is_same_v<std::underlying_type_t<ColumnProperty>, uint32_t>);
 
-      throw index_error{
-        absl::StrCat("Failed to open column id=", static_cast<uint32_t>(props),
-                     ", properties=", i)};
+      throw index_error{absl::StrCat(
+          "Failed to open column id=", static_cast<uint32_t>(props),
+          ", properties=", i)};
     }
 
     column::ptr column = factory(*this, i, props);
@@ -2435,7 +2438,7 @@ bool reader::prepare(const directory& dir, const SegmentMeta& meta,
       // we don't support encryption and custom
       // compression for 'FORMAT_MIN' version
       decomp =
-        compression::get_decompressor(irs::type<compression::lz4>::get());
+          compression::get_decompressor(irs::type<compression::lz4>::get());
       IRS_ASSERT(decomp);
     }
 
@@ -2474,8 +2477,8 @@ bool reader::visit(const column_visitor_f& visitor) const {
 
 const irs::column_reader* reader::column(field_id field) const {
   return field >= columns_.size()
-           ? nullptr  // can't find column with the specified identifier
-           : columns_[field].get();
+             ? nullptr  // can't find column with the specified identifier
+             : columns_[field].get();
 }
 
 irs::columnstore_writer::ptr make_writer(Version version,

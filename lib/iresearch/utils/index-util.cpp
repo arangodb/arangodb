@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <functional>
@@ -31,7 +29,8 @@
 #include <absl/container/flat_hash_map.h>
 
 using handlers_t =
-  absl::flat_hash_map<std::string, std::function<int(int argc, char* argv[])>>;
+    absl::flat_hash_map<std::string,
+                        std::function<int(int argc, char* argv[])>>;
 
 bool init_handlers(handlers_t& handlers) {
   handlers.emplace("dump", &dump);

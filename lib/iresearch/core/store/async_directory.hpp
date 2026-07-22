@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -47,10 +46,10 @@ using AsyncFilePtr = AsyncFilePool::ptr;
 class AsyncDirectory final : public MMapDirectory {
  public:
   explicit AsyncDirectory(
-    std::filesystem::path dir,
-    directory_attributes attrs = directory_attributes{},
-    const ResourceManagementOptions& rm = ResourceManagementOptions::kDefault,
-    size_t pool_size = 16, size_t queue_size = 1024, unsigned flags = 0);
+      std::filesystem::path dir,
+      directory_attributes attrs = directory_attributes{},
+      const ResourceManagementOptions& rm = ResourceManagementOptions::kDefault,
+      size_t pool_size = 16, size_t queue_size = 1024, unsigned flags = 0);
 
   index_output::ptr create(std::string_view name) noexcept final;
   bool sync(std::span<const std::string_view> names) noexcept final;

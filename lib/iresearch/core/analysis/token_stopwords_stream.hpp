@@ -17,8 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -36,8 +34,8 @@ namespace analysis {
 // An analyzer capable of masking the input, treated as a single token,
 // if it is present in the configured list
 class token_stopwords_stream final
-  : public TypedAnalyzer<token_stopwords_stream>,
-    private util::noncopyable {
+    : public TypedAnalyzer<token_stopwords_stream>,
+      private util::noncopyable {
  public:
   using stopwords_set = absl::flat_hash_set<std::string>;
 
@@ -54,8 +52,8 @@ class token_stopwords_stream final
 
  private:
   using attributes =
-    std::tuple<increment, offset,
-               term_attribute>;  // token value with evaluated quotes
+      std::tuple<increment, offset,
+                 term_attribute>;  // token value with evaluated quotes
 
   stopwords_set stopwords_;
   attributes attrs_;

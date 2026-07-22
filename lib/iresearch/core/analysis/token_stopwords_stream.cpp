@@ -17,8 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "token_stopwords_stream.hpp"
@@ -35,45 +33,45 @@
 namespace {
 
 constexpr char HEX_DECODE_MAP[256] = {
-  16, 16, 16, 16, 16, 16, 16, 16,
-  16, 16, 16, 16, 16, 16, 16, 16,  // ASCII 0 - 15
-  16, 16, 16, 16, 16, 16, 16, 16,
-  16, 16, 16, 16, 16, 16, 16, 16,  // ASCII 16 - 31
-  16, 16, 16, 16, 16, 16, 16, 16,
-  16, 16, 16, 16, 16, 16, 16, 16,  // ASCII 32 - 47
-  00, 1,  2,  3,  4,  5,  6,  7,
-  8,  9,  16, 16, 16, 16, 16, 16,  // ASCII 48 - 63
-  16, 10, 11, 12, 13, 14, 15, 16,
-  16, 16, 16, 16, 16, 16, 16, 16,  // ASCII 64 - 79
-  16, 16, 16, 16, 16, 16, 16, 16,
-  16, 16, 16, 16, 16, 16, 16, 16,  // ASCII 80 - 95
-  16, 10, 11, 12, 13, 14, 15, 16,
-  16, 16, 16, 16, 16, 16, 16, 16,  // ASCII 96 - 111
-  16, 16, 16, 16, 16, 16, 16, 16,
-  16, 16, 16, 16, 16, 16, 16, 16,  // ASCII 112 - 127
-  16, 16, 16, 16, 16, 16, 16, 16,
-  16, 16, 16, 16, 16, 16, 16, 16,  // ASCII 128 - 143
-  16, 16, 16, 16, 16, 16, 16, 16,
-  16, 16, 16, 16, 16, 16, 16, 16,  // ASCII 144 - 159
-  16, 16, 16, 16, 16, 16, 16, 16,
-  16, 16, 16, 16, 16, 16, 16, 16,  // ASCII 160 - 175
-  16, 16, 16, 16, 16, 16, 16, 16,
-  16, 16, 16, 16, 16, 16, 16, 16,  // ASCII 176 - 191
-  16, 16, 16, 16, 16, 16, 16, 16,
-  16, 16, 16, 16, 16, 16, 16, 16,  // ASCII 192 - 207
-  16, 16, 16, 16, 16, 16, 16, 16,
-  16, 16, 16, 16, 16, 16, 16, 16,  // ASCII 208 - 223
-  16, 16, 16, 16, 16, 16, 16, 16,
-  16, 16, 16, 16, 16, 16, 16, 16,  // ASCII 224 - 239
-  16, 16, 16, 16, 16, 16, 16, 16,
-  16, 16, 16, 16, 16, 16, 16, 16,  // ASCII 240 - 255
+    16, 16, 16, 16, 16, 16, 16, 16,
+    16, 16, 16, 16, 16, 16, 16, 16,  // ASCII 0 - 15
+    16, 16, 16, 16, 16, 16, 16, 16,
+    16, 16, 16, 16, 16, 16, 16, 16,  // ASCII 16 - 31
+    16, 16, 16, 16, 16, 16, 16, 16,
+    16, 16, 16, 16, 16, 16, 16, 16,  // ASCII 32 - 47
+    00, 1,  2,  3,  4,  5,  6,  7,
+    8,  9,  16, 16, 16, 16, 16, 16,  // ASCII 48 - 63
+    16, 10, 11, 12, 13, 14, 15, 16,
+    16, 16, 16, 16, 16, 16, 16, 16,  // ASCII 64 - 79
+    16, 16, 16, 16, 16, 16, 16, 16,
+    16, 16, 16, 16, 16, 16, 16, 16,  // ASCII 80 - 95
+    16, 10, 11, 12, 13, 14, 15, 16,
+    16, 16, 16, 16, 16, 16, 16, 16,  // ASCII 96 - 111
+    16, 16, 16, 16, 16, 16, 16, 16,
+    16, 16, 16, 16, 16, 16, 16, 16,  // ASCII 112 - 127
+    16, 16, 16, 16, 16, 16, 16, 16,
+    16, 16, 16, 16, 16, 16, 16, 16,  // ASCII 128 - 143
+    16, 16, 16, 16, 16, 16, 16, 16,
+    16, 16, 16, 16, 16, 16, 16, 16,  // ASCII 144 - 159
+    16, 16, 16, 16, 16, 16, 16, 16,
+    16, 16, 16, 16, 16, 16, 16, 16,  // ASCII 160 - 175
+    16, 16, 16, 16, 16, 16, 16, 16,
+    16, 16, 16, 16, 16, 16, 16, 16,  // ASCII 176 - 191
+    16, 16, 16, 16, 16, 16, 16, 16,
+    16, 16, 16, 16, 16, 16, 16, 16,  // ASCII 192 - 207
+    16, 16, 16, 16, 16, 16, 16, 16,
+    16, 16, 16, 16, 16, 16, 16, 16,  // ASCII 208 - 223
+    16, 16, 16, 16, 16, 16, 16, 16,
+    16, 16, 16, 16, 16, 16, 16, 16,  // ASCII 224 - 239
+    16, 16, 16, 16, 16, 16, 16, 16,
+    16, 16, 16, 16, 16, 16, 16, 16,  // ASCII 240 - 255
 };
 
 bool hex_decode(std::string& buf, std::string_view value) {
   if (value.length() & 1) {
     IRS_LOG_WARN(absl::StrCat(
-      "Invalid size for hex-encoded value while HEX decoding masked token: ",
-      value));
+        "Invalid size for hex-encoded value while HEX decoding masked token: ",
+        value));
 
     return false;
   }
@@ -86,7 +84,7 @@ bool hex_decode(std::string& buf, std::string_view value) {
 
     if (hi >= 16 || lo >= 16) {
       IRS_LOG_WARN(absl::StrCat(
-        "Invalid character while HEX decoding masked token: ", value));
+          "Invalid character while HEX decoding masked token: ", value));
       return false;
     }
 
@@ -104,8 +102,8 @@ irs::analysis::analyzer::ptr construct(const VPackArrayIterator& mask,
   for (auto itr = mask.begin(); itr.valid(); ++itr, ++offset) {
     if (!(*itr).isString()) {
       IRS_LOG_WARN(absl::StrCat(
-        "Non-string value in 'mask' at offset '", offset,
-        "' while constructing token_stopwords_stream from VPack arguments"));
+          "Non-string value in 'mask' at offset '", offset,
+          "' while constructing token_stopwords_stream from VPack arguments"));
 
       return nullptr;
     }
@@ -121,7 +119,7 @@ irs::analysis::analyzer::ptr construct(const VPackArrayIterator& mask,
     }
   }
   return std::make_unique<irs::analysis::token_stopwords_stream>(
-    std::move(tokens));
+      std::move(tokens));
 }
 
 constexpr std::string_view STOPWORDS_PARAM_NAME{"stopwords"};
@@ -141,9 +139,9 @@ irs::analysis::analyzer::ptr make_vpack(const VPackSlice slice) {
       auto hex_slice = slice.get(HEX_PARAM_NAME);
       if (!hex_slice.isBool() && !hex_slice.isNone()) {
         IRS_LOG_ERROR(
-          absl::StrCat("Invalid vpack while constructing "
-                       "token_stopwords_stream from VPack arguments. ",
-                       HEX_PARAM_NAME, " value should be boolean."));
+            absl::StrCat("Invalid vpack while constructing "
+                         "token_stopwords_stream from VPack arguments. ",
+                         HEX_PARAM_NAME, " value should be boolean."));
         return nullptr;
       }
       bool hex = hex_slice.isBool() ? hex_slice.getBoolean() : false;
@@ -152,16 +150,16 @@ irs::analysis::analyzer::ptr make_vpack(const VPackSlice slice) {
         return construct(VPackArrayIterator(mask_slice), hex);
       } else {
         IRS_LOG_ERROR(
-          absl::StrCat("Invalid vpack while constructing "
-                       "token_stopwords_stream from VPack arguments. ",
-                       STOPWORDS_PARAM_NAME, " value should be array."));
+            absl::StrCat("Invalid vpack while constructing "
+                         "token_stopwords_stream from VPack arguments. ",
+                         STOPWORDS_PARAM_NAME, " value should be array."));
         return nullptr;
       }
     }
     default: {
       IRS_LOG_ERROR(
-        "Invalid vpack while constructing token_stopwords_stream from VPack "
-        "arguments. Array or Object was expected.");
+          "Invalid vpack while constructing token_stopwords_stream from VPack "
+          "arguments. Array or Object was expected.");
     }
   }
   return nullptr;
@@ -176,18 +174,18 @@ irs::analysis::analyzer::ptr make_json(std::string_view args) {
   try {
     if (irs::IsNull(args)) {
       IRS_LOG_ERROR(
-        "Null arguments while constructing token_stopwords_stream ");
+          "Null arguments while constructing token_stopwords_stream ");
       return nullptr;
     }
     auto vpack = VPackParser::fromJson(args.data());
     return make_vpack(vpack->slice());
   } catch (const VPackException& ex) {
     IRS_LOG_ERROR(
-      absl::StrCat("Caught error '", ex.what(),
-                   "' while constructing token_stopwords_stream from JSON"));
+        absl::StrCat("Caught error '", ex.what(),
+                     "' while constructing token_stopwords_stream from JSON"));
   } catch (...) {
     IRS_LOG_ERROR(
-      "Caught error while constructing token_stopwords_stream from JSON");
+        "Caught error while constructing token_stopwords_stream from JSON");
   }
   return nullptr;
 }
@@ -205,10 +203,10 @@ bool normalize_vpack_config(const VPackSlice slice, VPackBuilder* builder) {
     case VPackValueType::Object: {
       auto hex_slice = slice.get(HEX_PARAM_NAME);
       if (!hex_slice.isBool() && !hex_slice.isNone()) {
-        IRS_LOG_ERROR(
-          absl::StrCat("Invalid vpack while normalizing token_stopwords_stream "
-                       "from VPack arguments. ",
-                       HEX_PARAM_NAME, " value should be boolean."));
+        IRS_LOG_ERROR(absl::StrCat(
+            "Invalid vpack while normalizing token_stopwords_stream "
+            "from VPack arguments. ",
+            HEX_PARAM_NAME, " value should be boolean."));
         return false;
       }
       bool hex = hex_slice.isBool() ? hex_slice.getBoolean() : false;
@@ -221,16 +219,16 @@ bool normalize_vpack_config(const VPackSlice slice, VPackBuilder* builder) {
         return true;
       } else {
         IRS_LOG_ERROR(
-          absl::StrCat("Invalid vpack while constructing "
-                       "token_stopwords_stream from VPack arguments. ",
-                       STOPWORDS_PARAM_NAME, " value should be array."));
+            absl::StrCat("Invalid vpack while constructing "
+                         "token_stopwords_stream from VPack arguments. ",
+                         STOPWORDS_PARAM_NAME, " value should be array."));
         return false;
       }
     }
     default: {
       IRS_LOG_ERROR(
-        "Invalid vpack while normalizing token_stopwords_stream from VPack "
-        "arguments. Array or Object was expected.");
+          "Invalid vpack while normalizing token_stopwords_stream from VPack "
+          "arguments. Array or Object was expected.");
     }
   }
   return false;
@@ -260,11 +258,11 @@ bool normalize_json_config(std::string_view args, std::string& definition) {
     }
   } catch (const VPackException& ex) {
     IRS_LOG_ERROR(
-      absl::StrCat("Caught error '", ex.what(),
-                   "' while normalizing token_stopwords_stream from JSON"));
+        absl::StrCat("Caught error '", ex.what(),
+                     "' while normalizing token_stopwords_stream from JSON"));
   } catch (...) {
     IRS_LOG_ERROR(
-      "Caught error while normalizing token_stopwords_stream from JSON");
+        "Caught error while normalizing token_stopwords_stream from JSON");
   }
   return false;
 }
@@ -280,8 +278,8 @@ namespace irs {
 namespace analysis {
 
 token_stopwords_stream::token_stopwords_stream(
-  token_stopwords_stream::stopwords_set&& stopwords)
-  : stopwords_(std::move(stopwords)), term_eof_(true) {}
+    token_stopwords_stream::stopwords_set&& stopwords)
+    : stopwords_(std::move(stopwords)), term_eof_(true) {}
 
 void token_stopwords_stream::init() {
   REGISTER_ANALYZER_VPACK(irs::analysis::token_stopwords_stream, make_vpack,

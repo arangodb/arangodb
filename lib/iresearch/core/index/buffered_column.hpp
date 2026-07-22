@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -35,7 +34,7 @@ class Comparer;
 struct BufferedValue {
   BufferedValue() = default;
   BufferedValue(doc_id_t key, size_t begin, size_t size) noexcept
-    : key{key}, begin{begin}, size{size} {}
+      : key{key}, begin{begin}, size{size} {}
 
   doc_id_t key{};
   size_t begin{};
@@ -48,7 +47,7 @@ class BufferedColumn final : public column_output, private util::noncopyable {
   using Buffer = irs::basic_string<irs::byte_type,
                                    irs::ManagedTypedAllocator<irs::byte_type>>;
   explicit BufferedColumn(const ColumnInfo& info, IResourceManager& rm)
-    : data_buf_{{rm}}, index_{{rm}}, info_{info} {}
+      : data_buf_{{rm}}, index_{{rm}}, info_{info} {}
 
   void Prepare(doc_id_t key) final {
     IRS_ASSERT(key >= pending_key_);
@@ -95,10 +94,10 @@ class BufferedColumn final : public column_output, private util::noncopyable {
   // 1st - doc map (old->new), empty -> already sorted
   // 2nd - flushed column identifier
   std::pair<DocMap, field_id> Flush(
-    columnstore_writer& writer,
-    columnstore_writer::column_finalizer_f header_writer,
-    doc_id_t docs_count,  // total number of docs in segment
-    const Comparer& compare);
+      columnstore_writer& writer,
+      columnstore_writer::column_finalizer_f header_writer,
+      doc_id_t docs_count,  // total number of docs in segment
+      const Comparer& compare);
 
   field_id Flush(columnstore_writer& writer,
                  columnstore_writer::column_finalizer_f header_writer,

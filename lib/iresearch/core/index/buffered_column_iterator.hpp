@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -33,10 +32,10 @@ class BufferedColumnIterator : public doc_iterator {
  public:
   BufferedColumnIterator(std::span<const BufferedValue> values,
                          bytes_view data) noexcept
-    : begin_{values.data()},
-      next_{begin_},
-      end_{begin_ + values.size()},
-      data_{data} {
+      : begin_{values.data()},
+        next_{begin_},
+        end_{begin_ + values.size()},
+        data_{data} {
     std::get<cost>(attrs_).reset(values.size());
   }
 
@@ -57,10 +56,10 @@ class BufferedColumnIterator : public doc_iterator {
 
     if (IRS_UNLIKELY(curr < begin_ || end_ <= curr || curr->key != target)) {
       curr = std::lower_bound(
-        begin_, end_, target,
-        [](const BufferedValue& value, doc_id_t target) noexcept {
-          return value.key < target;
-        });
+          begin_, end_, target,
+          [](const BufferedValue& value, doc_id_t target) noexcept {
+            return value.key < target;
+          });
     }
 
     next_ = curr;

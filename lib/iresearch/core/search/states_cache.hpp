@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -41,7 +40,7 @@ class StatesCache : private util::noncopyable {
   using state_type = State;
 
   explicit StatesCache(IResourceManager& memory, size_t size)
-    : states_{Alloc{memory}} {
+      : states_{Alloc{memory}} {
     states_.reserve(size);
   }
 
@@ -50,7 +49,7 @@ class StatesCache : private util::noncopyable {
 
   state_type& insert(const SubReader& segment) {
     auto result =
-      states_.emplace(&segment, states_.get_allocator().ResourceManager());
+        states_.emplace(&segment, states_.get_allocator().ResourceManager());
     return result.first->second;
   }
 
@@ -68,12 +67,12 @@ class StatesCache : private util::noncopyable {
 
  private:
   using Alloc =
-    ManagedTypedAllocator<std::pair<const SubReader* const, state_type>>;
+      ManagedTypedAllocator<std::pair<const SubReader* const, state_type>>;
 
   using StatesMap = absl::flat_hash_map<
-    const SubReader*, state_type,
-    absl::container_internal::hash_default_hash<const SubReader*>,
-    absl::container_internal::hash_default_eq<const SubReader*>, Alloc>;
+      const SubReader*, state_type,
+      absl::container_internal::hash_default_hash<const SubReader*>,
+      absl::container_internal::hash_default_eq<const SubReader*>, Alloc>;
 
   // FIXME use vector instead?
   StatesMap states_;

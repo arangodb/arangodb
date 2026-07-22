@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -32,18 +31,18 @@ class mmap_handle;
 
 class MMapDirectory : public FSDirectory {
  public:
-  explicit MMapDirectory(
-    std::filesystem::path dir,
-    directory_attributes attrs = directory_attributes{},
-    const ResourceManagementOptions& rm = ResourceManagementOptions::kDefault);
+  explicit MMapDirectory(std::filesystem::path dir,
+                         directory_attributes attrs = directory_attributes{},
+                         const ResourceManagementOptions& rm =
+                             ResourceManagementOptions::kDefault);
 
   index_input::ptr open(std::string_view name,
                         IOAdvice advice) const noexcept override;
 };
 
 class CachingMMapDirectory
-  : public CachingDirectoryBase<MMapDirectory,
-                                std::shared_ptr<mmap_utils::mmap_handle>> {
+    : public CachingDirectoryBase<MMapDirectory,
+                                  std::shared_ptr<mmap_utils::mmap_handle>> {
  public:
   using CachingDirectoryBase::CachingDirectoryBase;
 

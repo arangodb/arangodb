@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -39,7 +38,7 @@ class WandWriterImpl final : public WandWriter {
 
  public:
   WandWriterImpl(const Scorer& scorer, size_t max_levels)
-    : levels_{max_levels + 1}, producer_{scorer} {
+      : levels_{max_levels + 1}, producer_{scorer} {
     IRS_ASSERT(max_levels != 0);
   }
 
@@ -117,8 +116,8 @@ struct WandScorer<true> {
 
   bool Prepare(const ColumnProvider& reader, const feature_map_t& features,
                const attribute_provider& attrs) {
-    func_ =
-      scorer_.prepare_scorer(reader, features, stats_.data(), attrs, kNoBoost);
+    func_ = scorer_.prepare_scorer(reader, features, stats_.data(), attrs,
+                                   kNoBoost);
     return !func_.IsDefault();
   }
 
@@ -157,14 +156,14 @@ class FreqNormProducer {
   static constexpr bool kMaxFreq = kMinNorm || (Tag & kWandTagMaxFreq) != 0;
 
   static constexpr bool kNorm =
-    kDivNorm || kMinNorm || (Tag & kWandTagNorm) != 0;
+      kDivNorm || kMinNorm || (Tag & kWandTagNorm) != 0;
 
  public:
   struct Entry {
     IRS_NO_UNIQUE_ADDRESS utils::Need<kMaxScore, score_t> score{0.f};
     uint32_t freq{1};
     IRS_NO_UNIQUE_ADDRESS utils::Need<kNorm, uint32_t> norm{
-      std::numeric_limits<uint32_t>::max()};
+        std::numeric_limits<uint32_t>::max()};
   };
 
   static void Produce(const Entry& from, Entry& to) noexcept {
@@ -295,7 +294,7 @@ class FreqNormProducer {
  private:
   const irs::frequency* freq_{};
   IRS_NO_UNIQUE_ADDRESS utils::Need<kNorm, fu2::unique_function<uint32_t()>>
-    norm_{};
+      norm_{};
   IRS_NO_UNIQUE_ADDRESS WandScorer<kMaxScore> scorer_;
 };
 

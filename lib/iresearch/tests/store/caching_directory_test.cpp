@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 // clang-format off
@@ -35,7 +34,7 @@ class DirectoryProxy : public Impl {
  public:
   template<typename... Args>
   explicit DirectoryProxy(Args&&... args) noexcept
-    : Impl{std::forward<Args>(args)...} {}
+      : Impl{std::forward<Args>(args)...} {}
 
   bool exists(bool& result, std::string_view name) const noexcept override {
     EXPECT_TRUE(expect_call_);
@@ -67,12 +66,12 @@ struct IsProxy<DirectoryProxy<Impl>> : std::true_type {};
 
 template<typename Impl>
 class CachingDirectory
-  : public irs::CachingDirectoryBase<Impl, irs::index_input::ptr> {
+    : public irs::CachingDirectoryBase<Impl, irs::index_input::ptr> {
  public:
   template<typename... Args>
   explicit CachingDirectory(Args&&... args)
-    : irs::CachingDirectoryBase<Impl, irs::index_input::ptr>{
-        std::forward<Args>(args)...} {}
+      : irs::CachingDirectoryBase<Impl, irs::index_input::ptr>{
+            std::forward<Args>(args)...} {}
 
   bool length(uint64_t& result, std::string_view name) const noexcept final {
     if (this->cache_.Visit(name, [&](auto& stream) noexcept {
@@ -118,7 +117,7 @@ class CachingDirectoryTestCase : public test_base {
   void SetUp() final {
     test_base::SetUp();
     dir_ = std::static_pointer_cast<Directory>(MakePhysicalDirectory<Directory>(
-      this, irs::directory_attributes{}, size_t{1}));
+        this, irs::directory_attributes{}, size_t{1}));
   }
 
   void TearDown() final {
@@ -143,7 +142,7 @@ class CachingDirectoryTestCase : public test_base {
 template<typename Directory>
 template<typename IsCached>
 void CachingDirectoryTestCase<Directory>::TestCachingImpl(
-  IsCached&& is_cached) {
+    IsCached&& is_cached) {
   auto& dir = GetDirectory();
 
   auto create_file = [&](std::string_view name, irs::byte_type b) {
@@ -248,7 +247,7 @@ void CachingDirectoryTestCase<Directory>::TestCachingImpl(
 }
 
 using CachingDirectoryTest = CachingDirectoryTestCase<
-  CachingDirectory<DirectoryProxy<irs::MMapDirectory>>>;
+    CachingDirectory<DirectoryProxy<irs::MMapDirectory>>>;
 
 TEST_F(CachingDirectoryTest, TestCaching) {
   TestCachingImpl([&](std::string_view name) -> bool {
@@ -262,7 +261,7 @@ TEST_F(CachingDirectoryTest, TestCaching) {
 }
 
 using CachingMMapDirectoryTest =
-  CachingDirectoryTestCase<irs::CachingMMapDirectory>;
+    CachingDirectoryTestCase<irs::CachingMMapDirectory>;
 
 TEST_F(CachingMMapDirectoryTest, TestCaching) {
   TestCachingImpl([&](std::string_view name) -> bool {
@@ -276,7 +275,7 @@ TEST_F(CachingMMapDirectoryTest, TestCaching) {
 }
 
 using CachingFSDirectoryTest =
-  CachingDirectoryTestCase<irs::CachingFSDirectory>;
+    CachingDirectoryTestCase<irs::CachingFSDirectory>;
 
 TEST_F(CachingFSDirectoryTest, TestCaching) {
   TestCachingImpl([&](std::string_view name) -> bool {

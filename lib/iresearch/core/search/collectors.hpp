@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -50,12 +49,12 @@ class collector_wrapper {
   ~collector_wrapper() { reset(nullptr); }
 
   explicit collector_wrapper(pointer collector) noexcept
-    : collector_(!collector ? &Wrapper::noop() : collector) {
+      : collector_(!collector ? &Wrapper::noop() : collector) {
     IRS_ASSERT(collector_);
   }
 
   collector_wrapper(collector_wrapper&& rhs) noexcept
-    : collector_(std::move(rhs.collector_)) {
+      : collector_(std::move(rhs.collector_)) {
     rhs.collector_.reset(&Wrapper::noop());
     IRS_ASSERT(collector_);
   }
@@ -100,7 +99,7 @@ class collectors_base {
   using iterator_type = typename std::vector<Collector>::const_iterator;
 
   explicit collectors_base(size_t size, const Scorers& order)
-    : collectors_(size), buckets_{order.buckets()} {}
+      : collectors_(size), buckets_{order.buckets()} {}
 
   collectors_base(collectors_base&&) = default;
   collectors_base& operator=(collectors_base&&) = default;
@@ -140,7 +139,7 @@ class collectors_base {
 // Wrapper around FieldCollector which guarantees collector
 // is not nullptr
 class field_collector_wrapper
-  : public collector_wrapper<field_collector_wrapper, FieldCollector> {
+    : public collector_wrapper<field_collector_wrapper, FieldCollector> {
  public:
   using collector_type = FieldCollector;
   using base_type = collector_wrapper<field_collector_wrapper, collector_type>;
@@ -151,7 +150,7 @@ class field_collector_wrapper
   field_collector_wrapper(field_collector_wrapper&&) = default;
   field_collector_wrapper& operator=(field_collector_wrapper&&) = default;
   explicit field_collector_wrapper(collector_type::ptr&& collector) noexcept
-    : base_type(collector.release()) {}
+      : base_type(collector.release()) {}
   field_collector_wrapper& operator=(collector_type::ptr&& collector) noexcept {
     base_type::operator=(collector.release());
     return *this;
@@ -195,7 +194,7 @@ static_assert(std::is_nothrow_move_assignable_v<field_collectors>);
 // Wrapper around TermCollector which guarantees collector
 // is not nullptr
 class term_collector_wrapper
-  : public collector_wrapper<term_collector_wrapper, TermCollector> {
+    : public collector_wrapper<term_collector_wrapper, TermCollector> {
  public:
   using collector_type = TermCollector;
   using base_type = collector_wrapper<term_collector_wrapper, collector_type>;
@@ -206,7 +205,7 @@ class term_collector_wrapper
   term_collector_wrapper(term_collector_wrapper&&) = default;
   term_collector_wrapper& operator=(term_collector_wrapper&&) = default;
   explicit term_collector_wrapper(collector_type::ptr&& collector) noexcept
-    : base_type(collector.release()) {}
+      : base_type(collector.release()) {}
   term_collector_wrapper& operator=(collector_type::ptr&& collector) noexcept {
     base_type::operator=(collector.release());
     return *this;

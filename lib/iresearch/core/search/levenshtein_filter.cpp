@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "levenshtein_filter.hpp"
@@ -80,7 +79,7 @@ template<typename StatesType>
 struct aggregated_stats_visitor : util::noncopyable {
   aggregated_stats_visitor(StatesType& states,
                            const term_collectors& term_stats) noexcept
-    : term_stats(term_stats), states(states) {}
+      : term_stats(term_stats), states(states) {}
 
   void operator()(const irs::SubReader& segment, const irs::term_reader& field,
                   uint32_t docs_count) const {
@@ -107,12 +106,12 @@ struct aggregated_stats_visitor : util::noncopyable {
 };
 
 class top_terms_collector
-  : public irs::top_terms_collector<top_term_state<score_t>> {
+    : public irs::top_terms_collector<top_term_state<score_t>> {
  public:
   using base_type = irs::top_terms_collector<top_term_state<score_t>>;
 
   top_terms_collector(size_t size, field_collectors& field_stats)
-    : base_type(size), field_stats_(field_stats) {}
+      : base_type(size), field_stats_(field_stats) {}
 
   void prepare(const SubReader& segment, const term_reader& field,
                const seek_term_iterator& terms) {
@@ -156,9 +155,9 @@ void VisitImpl(const SubReader& segment, const term_reader& reader,
       terms->read();
 
       const auto utf8_value_size =
-        static_cast<uint32_t>(utf8_utils::Length(terms->value()));
+          static_cast<uint32_t>(utf8_utils::Length(terms->value()));
       const auto boost =
-        similarity(*distance, std::min(utf8_value_size, utf8_target_size));
+          similarity(*distance, std::min(utf8_value_size, utf8_target_size));
 
       visitor.visit(boost);
     } while (terms->next());
@@ -177,8 +176,8 @@ bool collect_terms(const IndexReader& index, std::string_view field,
 
   auto matcher = MakeAutomatonMatcher(acceptor);
   const auto utf8_term_size =
-    std::max(1U, static_cast<uint32_t>(utf8_utils::Length(prefix) +
-                                       utf8_utils::Length(term)));
+      std::max(1U, static_cast<uint32_t>(utf8_utils::Length(prefix) +
+                                         utf8_utils::Length(term)));
   const uint8_t max_distance = d.max_distance() + 1;
 
   for (auto& segment : index) {
@@ -192,8 +191,8 @@ bool collect_terms(const IndexReader& index, std::string_view field,
 }
 
 filter::prepared::ptr prepare_levenshtein_filter(
-  const PrepareContext& ctx, std::string_view field, bytes_view prefix,
-  bytes_view term, size_t terms_limit, const parametric_description& d) {
+    const PrepareContext& ctx, std::string_view field, bytes_view prefix,
+    bytes_view term, size_t terms_limit, const parametric_description& d) {
   field_collectors field_stats{ctx.scorers};
   term_collectors term_stats{ctx.scorers, 1};
   MultiTermQuery::States states{ctx.memory, ctx.index.size()};
@@ -220,7 +219,7 @@ filter::prepared::ptr prepare_levenshtein_filter(
   }
 
   MultiTermQuery::Stats stats(
-    1, MultiTermQuery::Stats::allocator_type{ctx.memory});
+      1, MultiTermQuery::Stats::allocator_type{ctx.memory});
   stats.back().resize(ctx.scorers.stats_size(), 0);
   auto* stats_buf = stats[0].data();
   term_stats.finish(stats_buf, 0, field_stats, ctx.index);
@@ -233,77 +232,77 @@ filter::prepared::ptr prepare_levenshtein_filter(
 }  // namespace
 
 field_visitor by_edit_distance::visitor(
-  const by_edit_distance_all_options& opts) {
+    const by_edit_distance_all_options& opts) {
   return executeLevenshtein(
-    opts.max_distance, opts.provider, opts.with_transpositions, opts.prefix,
-    opts.term,
-    []() -> field_visitor {
-      return [](const SubReader&, const term_reader&, filter_visitor&) {};
-    },
-    [&opts]() -> field_visitor {
-      // must copy term as it may point to temporary string
-      return [target = opts.prefix + opts.term](const SubReader& segment,
-                                                const term_reader& field,
-                                                filter_visitor& visitor) {
-        return by_term::visit(segment, field, target, visitor);
-      };
-    },
-    [](const parametric_description& d, const bytes_view prefix,
-       const bytes_view term) -> field_visitor {
-      struct automaton_context : util::noncopyable {
-        automaton_context(const parametric_description& d, bytes_view prefix,
-                          bytes_view term)
-          : acceptor(make_levenshtein_automaton(d, prefix, term)),
-            matcher(MakeAutomatonMatcher(acceptor)) {}
-
-        automaton acceptor;
-        automaton_table_matcher matcher;
-      };
-
-      auto ctx = std::make_shared<automaton_context>(d, prefix, term);
-
-      if (!Validate(ctx->acceptor)) {
+      opts.max_distance, opts.provider, opts.with_transpositions, opts.prefix,
+      opts.term,
+      []() -> field_visitor {
         return [](const SubReader&, const term_reader&, filter_visitor&) {};
-      }
+      },
+      [&opts]() -> field_visitor {
+        // must copy term as it may point to temporary string
+        return [target = opts.prefix + opts.term](const SubReader& segment,
+                                                  const term_reader& field,
+                                                  filter_visitor& visitor) {
+          return by_term::visit(segment, field, target, visitor);
+        };
+      },
+      [](const parametric_description& d, const bytes_view prefix,
+         const bytes_view term) -> field_visitor {
+        struct automaton_context : util::noncopyable {
+          automaton_context(const parametric_description& d, bytes_view prefix,
+                            bytes_view term)
+              : acceptor(make_levenshtein_automaton(d, prefix, term)),
+                matcher(MakeAutomatonMatcher(acceptor)) {}
 
-      const auto utf8_term_size =
-        std::max(1U, static_cast<uint32_t>(utf8_utils::Length(prefix) +
-                                           utf8_utils::Length(term)));
-      const uint8_t max_distance = d.max_distance() + 1;
+          automaton acceptor;
+          automaton_table_matcher matcher;
+        };
 
-      return [ctx = std::move(ctx), utf8_term_size, max_distance](
-               const SubReader& segment, const term_reader& field,
-               filter_visitor& visitor) mutable {
-        return VisitImpl(segment, field, max_distance, utf8_term_size,
-                         ctx->matcher, visitor);
-      };
-    });
+        auto ctx = std::make_shared<automaton_context>(d, prefix, term);
+
+        if (!Validate(ctx->acceptor)) {
+          return [](const SubReader&, const term_reader&, filter_visitor&) {};
+        }
+
+        const auto utf8_term_size =
+            std::max(1U, static_cast<uint32_t>(utf8_utils::Length(prefix) +
+                                               utf8_utils::Length(term)));
+        const uint8_t max_distance = d.max_distance() + 1;
+
+        return [ctx = std::move(ctx), utf8_term_size, max_distance](
+                   const SubReader& segment, const term_reader& field,
+                   filter_visitor& visitor) mutable {
+          return VisitImpl(segment, field, max_distance, utf8_term_size,
+                           ctx->matcher, visitor);
+        };
+      });
 }
 
 filter::prepared::ptr by_edit_distance::prepare(
-  const PrepareContext& ctx, std::string_view field, bytes_view term,
-  size_t scored_terms_limit, uint8_t max_distance, options_type::pdp_f provider,
-  bool with_transpositions, bytes_view prefix) {
+    const PrepareContext& ctx, std::string_view field, bytes_view term,
+    size_t scored_terms_limit, uint8_t max_distance,
+    options_type::pdp_f provider, bool with_transpositions, bytes_view prefix) {
   return executeLevenshtein(
-    max_distance, provider, with_transpositions, prefix, term,
-    []() -> prepared::ptr { return prepared::empty(); },
-    [&]() -> prepared::ptr {
-      if (!prefix.empty() && !term.empty()) {
-        bstring target;
-        target.reserve(prefix.size() + term.size());
-        target += prefix;
-        target += term;
-        return by_term::prepare(ctx, field, target);
-      }
+      max_distance, provider, with_transpositions, prefix, term,
+      []() -> prepared::ptr { return prepared::empty(); },
+      [&]() -> prepared::ptr {
+        if (!prefix.empty() && !term.empty()) {
+          bstring target;
+          target.reserve(prefix.size() + term.size());
+          target += prefix;
+          target += term;
+          return by_term::prepare(ctx, field, target);
+        }
 
-      return by_term::prepare(ctx, field, prefix.empty() ? term : prefix);
-    },
-    [&, scored_terms_limit](const parametric_description& d,
-                            const bytes_view prefix,
-                            const bytes_view term) -> prepared::ptr {
-      return prepare_levenshtein_filter(ctx, field, prefix, term,
-                                        scored_terms_limit, d);
-    });
+        return by_term::prepare(ctx, field, prefix.empty() ? term : prefix);
+      },
+      [&, scored_terms_limit](const parametric_description& d,
+                              const bytes_view prefix,
+                              const bytes_view term) -> prepared::ptr {
+        return prepare_levenshtein_filter(ctx, field, prefix, term,
+                                          scored_terms_limit, d);
+      });
 }
 
 }  // namespace irs

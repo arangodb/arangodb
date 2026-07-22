@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -43,7 +42,10 @@ class bitset_doc_iterator : public doc_iterator, private util::noncopyable {
 
  protected:
   explicit bitset_doc_iterator(cost::cost_t cost) noexcept
-    : cost_(cost), doc_(doc_limits::invalid()), begin_(nullptr), end_(nullptr) {
+      : cost_(cost),
+        doc_(doc_limits::invalid()),
+        begin_(nullptr),
+        end_(nullptr) {
     reset();
   }
 
@@ -56,8 +58,8 @@ class bitset_doc_iterator : public doc_iterator, private util::noncopyable {
   void reset() noexcept {
     next_ = begin_;
     word_ = 0;
-    base_ =
-      doc_limits::invalid() - bits_required<word_t>();  // before the first word
+    base_ = doc_limits::invalid() -
+            bits_required<word_t>();  // before the first word
     IRS_ASSERT(begin_ <= end_);
   }
 

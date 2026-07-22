@@ -17,8 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Alex Geenen
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "analysis/classification_stream.hpp"
@@ -32,13 +30,13 @@ namespace {
 std::string_view EXPECTED_MODEL;
 
 irs::analysis::classification_stream::model_ptr null_provider(
-  std::string_view model) {
+    std::string_view model) {
   EXPECT_EQ(EXPECTED_MODEL, model);
   return nullptr;
 }
 
 irs::analysis::classification_stream::model_ptr throwing_provider(
-  std::string_view model) {
+    std::string_view model) {
   EXPECT_EQ(EXPECTED_MODEL, model);
   throw std::exception();
 }
@@ -61,7 +59,7 @@ TEST(classification_stream_test, test_load) {
     std::string_view data{"baking"};
     auto input_json = "{\"model_location\": \"" + model_loc + "\"}";
     auto stream = irs::analysis::analyzers::get(
-      "classification", irs::type<irs::text_format::json>::get(), input_json);
+        "classification", irs::type<irs::text_format::json>::get(), input_json);
 
     ASSERT_NE(nullptr, stream);
     ASSERT_FALSE(stream->next());
@@ -92,7 +90,7 @@ TEST(classification_stream_test, test_load) {
 #endif
     auto input_json = "{\"model_location\": \"" + model_loc + "\"}";
     auto stream = irs::analysis::analyzers::get(
-      "classification", irs::type<irs::text_format::json>::get(), input_json);
+        "classification", irs::type<irs::text_format::json>::get(), input_json);
 
     ASSERT_NE(nullptr, stream);
     ASSERT_FALSE(stream->next());
@@ -127,7 +125,7 @@ TEST(classification_stream_test, test_load) {
   // Multi line input
   {
     constexpr std::string_view data{
-      "Which baking dish is best to bake\na banana bread ?"};
+        "Which baking dish is best to bake\na banana bread ?"};
 
 #ifdef WIN32
     auto model_loc = test_base::resource("model_cooking.bin").generic_string();
@@ -136,7 +134,7 @@ TEST(classification_stream_test, test_load) {
 #endif
     auto input_json = "{\"model_location\": \"" + model_loc + "\"}";
     auto stream = irs::analysis::analyzers::get(
-      "classification", irs::type<irs::text_format::json>::get(), input_json);
+        "classification", irs::type<irs::text_format::json>::get(), input_json);
 
     ASSERT_NE(nullptr, stream);
     ASSERT_FALSE(stream->next());
@@ -160,7 +158,7 @@ TEST(classification_stream_test, test_load) {
   // top 2 labels
   {
     constexpr std::string_view data{
-      "Which baking dish is best to bake a banana bread ?"};
+        "Which baking dish is best to bake a banana bread ?"};
 
 #ifdef WIN32
     auto model_loc = test_base::resource("model_cooking.bin").generic_string();
@@ -168,9 +166,9 @@ TEST(classification_stream_test, test_load) {
     auto model_loc = test_base::resource("model_cooking.bin").string();
 #endif
     auto input_json =
-      "{\"model_location\": \"" + model_loc + "\", \"top_k\": 2}";
+        "{\"model_location\": \"" + model_loc + "\", \"top_k\": 2}";
     auto stream = irs::analysis::analyzers::get(
-      "classification", irs::type<irs::text_format::json>::get(), input_json);
+        "classification", irs::type<irs::text_format::json>::get(), input_json);
 
     ASSERT_NE(nullptr, stream);
     ASSERT_FALSE(stream->next());
@@ -206,76 +204,76 @@ TEST(classification_stream_test, test_load) {
 #endif
 
     ASSERT_EQ(nullptr, irs::analysis::analyzers::get(
-                         "classification",
-                         irs::type<irs::text_format::json>::get(), R"([])"));
+                           "classification",
+                           irs::type<irs::text_format::json>::get(), R"([])"));
     ASSERT_EQ(nullptr,
               irs::analysis::analyzers::get(
-                "classification", irs::type<irs::text_format::json>::get(),
-                R"({"model_location": "invalid_localtion" })"));
+                  "classification", irs::type<irs::text_format::json>::get(),
+                  R"({"model_location": "invalid_localtion" })"));
     ASSERT_EQ(nullptr,
               irs::analysis::analyzers::get(
-                "classification", irs::type<irs::text_format::json>::get(),
-                R"({"model_location": bool })"));
+                  "classification", irs::type<irs::text_format::json>::get(),
+                  R"({"model_location": bool })"));
     ASSERT_EQ(nullptr,
               irs::analysis::analyzers::get(
-                "classification", irs::type<irs::text_format::json>::get(),
-                R"({"model_location": {} })"));
+                  "classification", irs::type<irs::text_format::json>::get(),
+                  R"({"model_location": {} })"));
     ASSERT_EQ(nullptr,
               irs::analysis::analyzers::get(
-                "classification", irs::type<irs::text_format::json>::get(),
-                R"({"model_location": 42 })"));
+                  "classification", irs::type<irs::text_format::json>::get(),
+                  R"({"model_location": 42 })"));
     ASSERT_EQ(
-      nullptr,
-      irs::analysis::analyzers::get(
-        "classification", irs::type<irs::text_format::json>::get(),
-        "{\"model_location\": \"" + model_loc + "\", \"top_k\": false}"));
-    ASSERT_EQ(
-      nullptr,
-      irs::analysis::analyzers::get(
-        "classification", irs::type<irs::text_format::json>::get(),
-        "{\"model_location\": \"" + model_loc + "\", \"top_k\": 2147483648}"));
+        nullptr,
+        irs::analysis::analyzers::get(
+            "classification", irs::type<irs::text_format::json>::get(),
+            "{\"model_location\": \"" + model_loc + "\", \"top_k\": false}"));
     ASSERT_EQ(nullptr,
               irs::analysis::analyzers::get(
-                "classification", irs::type<irs::text_format::json>::get(),
-                "{\"model_location\": \"" + model_loc +
-                  "\", \"top_k\": 42, \"threshold\": 1.1}"));
+                  "classification", irs::type<irs::text_format::json>::get(),
+                  "{\"model_location\": \"" + model_loc +
+                      "\", \"top_k\": 2147483648}"));
     ASSERT_EQ(nullptr,
               irs::analysis::analyzers::get(
-                "classification", irs::type<irs::text_format::json>::get(),
-                "{\"model_location\": \"" + model_loc +
-                  "\", \"top_k\": 42, \"threshold\": -0.1}"));
+                  "classification", irs::type<irs::text_format::json>::get(),
+                  "{\"model_location\": \"" + model_loc +
+                      "\", \"top_k\": 42, \"threshold\": 1.1}"));
     ASSERT_EQ(nullptr,
               irs::analysis::analyzers::get(
-                "classification", irs::type<irs::text_format::json>::get(),
-                "{\"model_location\": \"" + model_loc +
-                  "\", \"top_k\": 42, \"threshold\": false}"));
+                  "classification", irs::type<irs::text_format::json>::get(),
+                  "{\"model_location\": \"" + model_loc +
+                      "\", \"top_k\": 42, \"threshold\": -0.1}"));
+    ASSERT_EQ(nullptr,
+              irs::analysis::analyzers::get(
+                  "classification", irs::type<irs::text_format::json>::get(),
+                  "{\"model_location\": \"" + model_loc +
+                      "\", \"top_k\": 42, \"threshold\": false}"));
   }
 }
 
 TEST(classification_stream_test, test_custom_provider) {
 #ifdef WIN32
   const auto model_loc =
-    test_base::resource("model_cooking.bin").generic_string();
+      test_base::resource("model_cooking.bin").generic_string();
 #else
   const auto model_loc = test_base::resource("model_cooking.bin").string();
 #endif
   EXPECTED_MODEL = model_loc;
 
   const auto input_json =
-    "{\"model_location\": \"" + model_loc + "\", \"top_k\": 2}";
+      "{\"model_location\": \"" + model_loc + "\", \"top_k\": 2}";
 
   ASSERT_EQ(nullptr, irs::analysis::classification_stream::set_model_provider(
-                       &::null_provider));
+                         &::null_provider));
   ASSERT_EQ(nullptr, irs::analysis::analyzers::get(
-                       "classification",
-                       irs::type<irs::text_format::json>::get(), input_json));
+                         "classification",
+                         irs::type<irs::text_format::json>::get(), input_json));
 
   ASSERT_EQ(&::null_provider,
             irs::analysis::classification_stream::set_model_provider(
-              &::throwing_provider));
+                &::throwing_provider));
   ASSERT_EQ(nullptr, irs::analysis::analyzers::get(
-                       "classification",
-                       irs::type<irs::text_format::json>::get(), input_json));
+                         "classification",
+                         irs::type<irs::text_format::json>::get(), input_json));
 
   ASSERT_EQ(&::throwing_provider,
             irs::analysis::classification_stream::set_model_provider(nullptr));
@@ -290,13 +288,13 @@ TEST(classification_stream_test, test_make_config_json) {
     auto model_loc = test_base::resource("model_cooking.bin").string();
 #endif
     std::string config =
-      "{\"model_location\": \"" + model_loc + "\", \"not_valid\": false}";
+        "{\"model_location\": \"" + model_loc + "\", \"not_valid\": false}";
     std::string expected_conf = "{\"model_location\": \"" + model_loc +
                                 "\", \"top_k\": 1, \"threshold\": 0.0}";
     std::string actual;
     ASSERT_TRUE(irs::analysis::analyzers::normalize(
-      actual, "classification", irs::type<irs::text_format::json>::get(),
-      config));
+        actual, "classification", irs::type<irs::text_format::json>::get(),
+        config));
     ASSERT_EQ(VPackParser::fromJson(expected_conf)->toString(), actual);
   }
 
@@ -308,13 +306,13 @@ TEST(classification_stream_test, test_make_config_json) {
     auto model_loc = test_base::resource("model_cooking.bin").string();
 #endif
     std::string config =
-      "{\"model_location\": \"" + model_loc + "\", \"top_k\": 2}";
+        "{\"model_location\": \"" + model_loc + "\", \"top_k\": 2}";
     std::string expected_conf = "{\"model_location\": \"" + model_loc +
                                 "\", \"top_k\": 2, \"threshold\": 0.0}";
     std::string actual;
     ASSERT_TRUE(irs::analysis::analyzers::normalize(
-      actual, "classification", irs::type<irs::text_format::json>::get(),
-      config));
+        actual, "classification", irs::type<irs::text_format::json>::get(),
+        config));
     ASSERT_EQ(VPackParser::fromJson(expected_conf)->toString(), actual);
   }
 
@@ -326,13 +324,13 @@ TEST(classification_stream_test, test_make_config_json) {
     auto model_loc = test_base::resource("model_cooking.bin").string();
 #endif
     std::string config =
-      "{\"model_location\": \"" + model_loc + "\", \"threshold\": 0.1}";
+        "{\"model_location\": \"" + model_loc + "\", \"threshold\": 0.1}";
     std::string expected_conf = "{\"model_location\": \"" + model_loc +
                                 "\", \"top_k\": 1, \"threshold\": 0.1}";
     std::string actual;
     ASSERT_TRUE(irs::analysis::analyzers::normalize(
-      actual, "classification", irs::type<irs::text_format::json>::get(),
-      config));
+        actual, "classification", irs::type<irs::text_format::json>::get(),
+        config));
     ASSERT_EQ(VPackParser::fromJson(expected_conf)->toString(), actual);
   }
 
@@ -349,8 +347,8 @@ TEST(classification_stream_test, test_make_config_json) {
                                 "\", \"top_k\": 2, \"threshold\": 0.1}";
     std::string actual;
     ASSERT_TRUE(irs::analysis::analyzers::normalize(
-      actual, "classification", irs::type<irs::text_format::json>::get(),
-      config));
+        actual, "classification", irs::type<irs::text_format::json>::get(),
+        config));
     ASSERT_EQ(VPackParser::fromJson(expected_conf)->toString(), actual);
   }
 
@@ -362,7 +360,7 @@ TEST(classification_stream_test, test_make_config_json) {
     auto model_loc = test_base::resource("model_cooking.bin").string();
 #endif
     std::string config =
-      "{\"model_location\":\"" + model_loc + "\", \"not_valid\": false}";
+        "{\"model_location\":\"" + model_loc + "\", \"not_valid\": false}";
     auto expected_conf = "{\"model_location\": \"" + model_loc +
                          "\", \"top_k\": 1, \"threshold\": 0.0}";
     auto in_vpack = VPackParser::fromJson(config);
@@ -371,8 +369,8 @@ TEST(classification_stream_test, test_make_config_json) {
                   in_vpack->slice().byteSize());
     std::string out_str;
     ASSERT_TRUE(irs::analysis::analyzers::normalize(
-      out_str, "classification", irs::type<irs::text_format::vpack>::get(),
-      in_str));
+        out_str, "classification", irs::type<irs::text_format::vpack>::get(),
+        in_str));
     VPackSlice out_slice(reinterpret_cast<const uint8_t*>(out_str.c_str()));
     ASSERT_EQ(VPackParser::fromJson(expected_conf)->toString(),
               out_slice.toString());
@@ -388,30 +386,30 @@ TEST(classification_stream_test, test_make_config_json) {
 #endif
 
     ASSERT_FALSE(irs::analysis::analyzers::normalize(
-      out, "classification", irs::type<irs::text_format::json>::get(),
-      R"([])"));
+        out, "classification", irs::type<irs::text_format::json>::get(),
+        R"([])"));
     ASSERT_FALSE(irs::analysis::analyzers::normalize(
-      out, "classification", irs::type<irs::text_format::json>::get(),
-      R"({"model_location": bool })"));
+        out, "classification", irs::type<irs::text_format::json>::get(),
+        R"({"model_location": bool })"));
     ASSERT_FALSE(irs::analysis::analyzers::normalize(
-      out, "classification", irs::type<irs::text_format::json>::get(),
-      R"({"model_location": {} })"));
+        out, "classification", irs::type<irs::text_format::json>::get(),
+        R"({"model_location": {} })"));
     ASSERT_FALSE(irs::analysis::analyzers::normalize(
-      out, "classification", irs::type<irs::text_format::json>::get(),
-      R"({"model_location": 42 })"));
+        out, "classification", irs::type<irs::text_format::json>::get(),
+        R"({"model_location": 42 })"));
     ASSERT_FALSE(irs::analysis::analyzers::normalize(
-      out, "classification", irs::type<irs::text_format::json>::get(),
-      "{\"model_location\": \"" + model_loc + "\", \"top_k\": false}"));
+        out, "classification", irs::type<irs::text_format::json>::get(),
+        "{\"model_location\": \"" + model_loc + "\", \"top_k\": false}"));
     ASSERT_FALSE(irs::analysis::analyzers::normalize(
-      out, "classification", irs::type<irs::text_format::json>::get(),
-      "{\"model_location\": \"" + model_loc +
-        "\", \"top_k\": 42, \"threshold\": 25}"));
+        out, "classification", irs::type<irs::text_format::json>::get(),
+        "{\"model_location\": \"" + model_loc +
+            "\", \"top_k\": 42, \"threshold\": 25}"));
     ASSERT_FALSE(irs::analysis::analyzers::normalize(
-      out, "classification", irs::type<irs::text_format::json>::get(),
-      "{\"model_location\": \"" + model_loc +
-        "\", \"top_k\": 42, \"threshold\": false}"));
+        out, "classification", irs::type<irs::text_format::json>::get(),
+        "{\"model_location\": \"" + model_loc +
+            "\", \"top_k\": 42, \"threshold\": false}"));
     ASSERT_FALSE(irs::analysis::analyzers::normalize(
-      out, "classification", irs::type<irs::text_format::json>::get(),
-      "{\"model_location\": \"" + model_loc + "\", \"top_k\": 2147483648}"));
+        out, "classification", irs::type<irs::text_format::json>::get(),
+        "{\"model_location\": \"" + model_loc + "\", \"top_k\": 2147483648}"));
   }
 }

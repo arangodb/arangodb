@@ -17,8 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -74,7 +72,7 @@ class PYRESEARCH_API term_iterator {
 
   bool next() { return it_->next(); }
   doc_iterator postings(const std::vector<std::string>& features =
-                          std::vector<std::string>()) const;
+                            std::vector<std::string>()) const;
   bool seek(irs::string_ref term) {
     return it_->seek(irs::ref_cast<irs::byte_type>(term));
   }
@@ -92,7 +90,7 @@ class PYRESEARCH_API term_iterator {
   friend class field_reader;
 
   term_iterator(irs::seek_term_iterator::ptr&& it) SWIG_noexcept
-    : it_(irs::memory::make_shared(std::move(it))) {}
+      : it_(irs::memory::make_shared(std::move(it))) {}
 
   std::shared_ptr<irs::seek_term_iterator> it_;
 };
@@ -132,7 +130,7 @@ class PYRESEARCH_API column_iterator {
   friend class segment_reader;
 
   column_iterator(irs::column_iterator::ptr&& it) SWIG_noexcept
-    : it_(it.release(), std::move(it.get_deleter())) {}
+      : it_(it.release(), std::move(it.get_deleter())) {}
 
   std::shared_ptr<irs::column_iterator> it_;
 };
@@ -156,7 +154,7 @@ class PYRESEARCH_API column_reader {
   friend class segment_reader;
 
   column_reader(const irs::columnstore_reader::column_reader* reader)
-    SWIG_noexcept : reader_(reader) {}
+      SWIG_noexcept : reader_(reader) {}
 
   const irs::columnstore_reader::column_reader* reader_;
 };
@@ -225,7 +223,7 @@ class PYRESEARCH_API field_iterator {
   friend class segment_reader;
 
   field_iterator(irs::field_iterator::ptr&& it) SWIG_noexcept
-    : it_(it.release(), std::move(it.get_deleter())) {}
+      : it_(it.release(), std::move(it.get_deleter())) {}
 
   std::shared_ptr<irs::field_iterator> it_;
 };
@@ -260,7 +258,7 @@ class PYRESEARCH_API segment_reader {
   friend class segment_iterator;
 
   segment_reader(irs::sub_reader::ptr reader) SWIG_noexcept
-    : reader_(std::move(reader)) {}
+      : reader_(std::move(reader)) {}
 
   irs::sub_reader::ptr reader_;
 };
@@ -288,8 +286,8 @@ class PYRESEARCH_API segment_iterator {
   typedef std::vector<const irs::sub_reader*>::const_iterator iterator_t;
 
   segment_iterator(iterator_t begin, iterator_t end) SWIG_noexcept
-    : begin_(begin),
-      end_(end) {}
+      : begin_(begin),
+        end_(end) {}
 
   iterator_t begin_;
   iterator_t end_;

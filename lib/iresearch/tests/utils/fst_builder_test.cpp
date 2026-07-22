@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 // clang-format off
@@ -60,13 +59,13 @@ struct fst_stats : irs::fst_stats {
 };
 
 using fst_byte_builder =
-  irs::fst_builder<irs::byte_type, irs::vector_byte_fst, fst_stats>;
+    irs::fst_builder<irs::byte_type, irs::vector_byte_fst, fst_stats>;
 
 // reads input data to build fst
 // first - prefix
 // second - payload
 std::vector<std::pair<irs::bstring, irs::bstring>> read_fst_input(
-  const std::filesystem::path& filename) {
+    const std::filesystem::path& filename) {
   auto read_size = [](std::istream& stream) {
     size_t size;
     stream.read(reinterpret_cast<char*>(&size), sizeof(size_t));
@@ -140,7 +139,7 @@ void assert_fst_read_write(const std::string& resource) {
   SimpleMemoryAccounter immutable_fst_memory;
   irs::memory_index_input in(out.file);
   std::unique_ptr<irs::immutable_byte_fst> read_fst(
-    irs::immutable_byte_fst::Read(in, immutable_fst_memory));
+      irs::immutable_byte_fst::Read(in, immutable_fst_memory));
   ASSERT_EQ(out.file.length(), in.file_pointer());
   ASSERT_GT(immutable_fst_memory.counter_, 0);
   ASSERT_NE(nullptr, read_fst);
@@ -171,7 +170,7 @@ void assert_fst_read_write(const std::string& resource) {
   {
     using sorted_matcher_t = fst::SortedMatcher<irs::immutable_byte_fst>;
     using matcher_t =
-      fst::explicit_matcher<sorted_matcher_t>;  // avoid implicit loops
+        fst::explicit_matcher<sorted_matcher_t>;  // avoid implicit loops
 
     ASSERT_EQ(fst::kILabelSorted, fst.Properties(fst::kILabelSorted, true));
     ASSERT_TRUE(fst.Final(fst_byte_builder::final).Empty());
@@ -210,11 +209,11 @@ TEST(fst_builder_test, build_fst) {
   ASSERT_FALSE(expected_data.empty());
 
   ASSERT_TRUE(
-    std::is_sorted(expected_data.begin(), expected_data.end(),
-                   [](const std::pair<irs::bstring, irs::bstring>& lhs,
-                      const std::pair<irs::bstring, irs::bstring>& rhs) {
-                     return lhs.first < rhs.first;
-                   }));
+      std::is_sorted(expected_data.begin(), expected_data.end(),
+                     [](const std::pair<irs::bstring, irs::bstring>& lhs,
+                        const std::pair<irs::bstring, irs::bstring>& rhs) {
+                       return lhs.first < rhs.first;
+                     }));
 
   SimpleMemoryAccounter memory;
   {
@@ -252,7 +251,7 @@ TEST(fst_builder_test, build_fst) {
     {
       typedef fst::SortedMatcher<irs::vector_byte_fst> sorted_matcher_t;
       typedef fst::explicit_matcher<sorted_matcher_t>
-        matcher_t;  // avoid implicit loops
+          matcher_t;  // avoid implicit loops
 
       ASSERT_EQ(fst::kILabelSorted, fst.Properties(fst::kILabelSorted, true));
       ASSERT_TRUE(fst.Final(fst_byte_builder::final).Empty());
@@ -288,14 +287,14 @@ TEST(fst_builder_test, build_fst_bug) {
     return irs::bstring{irs::ViewCast<irs::byte_type>(str)};
   };
   expected_data = {
-    {make("5"), make("12")},
-    {make("56"), make("1234")},
-    {make("567"), make("12312")},
+      {make("5"), make("12")},
+      {make("56"), make("1234")},
+      {make("567"), make("12312")},
   };
   ASSERT_FALSE(expected_data.empty());
   ASSERT_TRUE(std::is_sorted(
-    expected_data.begin(), expected_data.end(),
-    [](const auto& lhs, const auto& rhs) { return lhs.first < rhs.first; }));
+      expected_data.begin(), expected_data.end(),
+      [](const auto& lhs, const auto& rhs) { return lhs.first < rhs.first; }));
 
   irs::vector_byte_fst fst{{irs::IResourceManager::kNoop}};
   fst_stats stats;
@@ -331,17 +330,17 @@ TEST(fst_builder_test, build_fst_bug) {
   {
     typedef fst::SortedMatcher<irs::vector_byte_fst> sorted_matcher_t;
     typedef fst::explicit_matcher<sorted_matcher_t>
-      matcher_t;  // avoid implicit loops
+        matcher_t;  // avoid implicit loops
 
     ASSERT_EQ(fst::kILabelSorted, fst.Properties(fst::kILabelSorted, true));
     ASSERT_TRUE(fst.Final(fst_byte_builder::final).Empty());
     irs::bstring expected_arcs[6] = {
-      make("12"), make("12"), make("3"), make("12"), make("3"), make("12"),
+        make("12"), make("12"), make("3"), make("12"), make("3"), make("12"),
     };
     irs::bstring expected_final[3] = {
-      make(""),
-      make("4"),
-      make(""),
+        make(""),
+        make("4"),
+        make(""),
     };
     auto* expected_arcs_it = &expected_arcs[0];
     auto* expected_final_it = &expected_final[0];

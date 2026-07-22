@@ -17,8 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "pyresearch.hpp"
@@ -61,12 +59,12 @@ index_reader index_reader::open(const char* path) {
   auto index = irs::directory_reader::open(*dir);
 
   return std::shared_ptr<const irs::index_reader>(
-    static_cast<irs::index_reader::ptr>(index).get(),
-    [dir, index](const irs::index_reader*) {});
+      static_cast<irs::index_reader::ptr>(index).get(),
+      [dir, index](const irs::index_reader*) {});
 }
 
 index_reader::index_reader(std::shared_ptr<const irs::index_reader> reader)
-  : reader_(std::move(reader)) {
+    : reader_(std::move(reader)) {
   assert(reader_);
   segments_.reserve(reader_->size());
 
@@ -79,11 +77,11 @@ segment_reader index_reader::segment(size_t i) const {
   auto* segment = segments_.at(i);
 
   return std::shared_ptr<const irs::sub_reader>(
-    std::shared_ptr<const irs::sub_reader>(), segment);
+      std::shared_ptr<const irs::sub_reader>(), segment);
 }
 
 doc_iterator term_iterator::postings(
-  const std::vector<std::string>& features /*= std::vector<std::string>()*/
+    const std::vector<std::string>& features /*= std::vector<std::string>()*/
 ) const {
   return it_->postings(to_flags(features));
 }

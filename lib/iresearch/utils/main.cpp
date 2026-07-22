@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <cstdlib>
@@ -61,7 +59,8 @@
 #include <absl/container/flat_hash_map.h>
 
 using handlers_t =
-  absl::flat_hash_map<std::string, std::function<int(int argc, char* argv[])>>;
+    absl::flat_hash_map<std::string,
+                        std::function<int(int argc, char* argv[])>>;
 
 bool init_handlers(handlers_t&);
 
@@ -107,13 +106,13 @@ int main(int argc, char* argv[]) {
   irs::Finally output_stats = []() noexcept {
     std::vector<std::tuple<std::string, size_t, size_t>> output;
     irs::timer_utils::visit(
-      [&](const std::string& key, size_t count, size_t time_us) -> bool {
-        if (count == 0) {
+        [&](const std::string& key, size_t count, size_t time_us) -> bool {
+          if (count == 0) {
+            return true;
+          }
+          output.emplace_back(key, count, time_us);
           return true;
-        }
-        output.emplace_back(key, count, time_us);
-        return true;
-      });
+        });
     std::sort(output.begin(), output.end());
     for (auto& [key, count, time_us] : output) {
       std::cout << key << " calls:" << count << ", time: " << time_us

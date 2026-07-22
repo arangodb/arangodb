@@ -31,6 +31,35 @@
 
 namespace arangodb {
 
+inline constexpr std::string_view kCompressionTypeSnappy = "snappy";
+inline constexpr std::string_view kCompressionTypeLZ4 = "lz4";
+inline constexpr std::string_view kCompressionTypeLZ4HC = "lz4hc";
+inline constexpr std::string_view kCompressionTypeNone = "none";
+inline constexpr std::string_view kBlockCacheTypeLRU = "lru";
+inline constexpr std::string_view kBlockCacheTypeHyperClock = "hyper-clock";
+inline constexpr std::string_view kChecksumTypeCRC32C = "crc32c";
+inline constexpr std::string_view kChecksumTypeXXHash = "xxHash";
+inline constexpr std::string_view kChecksumTypeXXHash64 = "xxHash64";
+inline constexpr std::string_view kChecksumTypeXXH3 = "XXH3";
+inline constexpr std::string_view kCompactionStyleLevel = "level";
+inline constexpr std::string_view kCompactionStyleUniversal = "universal";
+inline constexpr std::string_view kCompactionStyleFifo = "fifo";
+inline constexpr std::string_view kCompactionStyleNone = "none";
+
+// minimum size of a block cache shard. we want to at least store
+// that much data in each shard (rationale: a data block read from
+// disk must fit into the block cache if the block cache's strict
+// capacity limit is set. otherwise the block cache will fail reads
+// with Status::Incomplete() or Status::MemoryLimit()).
+inline constexpr uint64_t kMinBlockCacheShardSize = 128ULL * 1024 * 1024;
+
+// Compute a safe default for min_write_buffer_number_to_merge, starting from
+// RocksDB's own default and increasing if resources permit.
+uint64_t defaultMinWriteBufferNumberToMerge(uint64_t rocksdbDefault,
+                                            uint64_t totalSize,
+                                            uint64_t sizePerBuffer,
+                                            uint64_t maxBuffers);
+
 // This name combination is a combination of already existing, and thus
 // conflicting, classnames and the purpose of the feature that is being
 // extracted here, thats why it leads to this double "Option" and the redundant
@@ -120,6 +149,8 @@ struct RocksDBOptionFeatureOptions {
   bool ioUringEnabled = true;
   std::array<uint64_t, RocksDBColumnFamilyManager::numberOfColumnFamilies>
       maxWriteBufferNumberCf{};
+
+  RocksDBOptionFeatureOptions();
 };
 
 }  // namespace arangodb

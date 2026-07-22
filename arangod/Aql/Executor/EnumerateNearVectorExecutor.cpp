@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jure Bajic
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "EnumerateNearVectorExecutor.h"
@@ -92,8 +91,8 @@ RocksDBVectorIndex const* EnumerateNearVectorsExecutor::resolveVectorIndex(
   return unwrapIndex<RocksDBVectorIndex>(index);
 }
 
-vector::VectorGraphIndex const*
-EnumerateNearVectorsExecutor::resolveGraphIndex(Infos const& infos) {
+vector::VectorGraphIndex const* EnumerateNearVectorsExecutor::resolveGraphIndex(
+    Infos const& infos) {
   auto const* index = infos.index.get();
   if (index->type() != Index::TRI_IDX_TYPE_VECTOR_GRAPH_INDEX) {
     return nullptr;

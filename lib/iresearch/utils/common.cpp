@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "common.hpp"
@@ -39,20 +37,20 @@ namespace {
 using factory_f = irs::directory::ptr (*)(std::string_view);
 
 constexpr auto kFactories =
-  frozen::make_unordered_map<frozen::string, factory_f>({
+    frozen::make_unordered_map<frozen::string, factory_f>({
 #ifdef IRESEARCH_URING
-    {"async",
-     [](std::string_view path) -> irs::directory::ptr {
-       return std::make_unique<irs::AsyncDirectory>(path);
-     }},
+        {"async",
+         [](std::string_view path) -> irs::directory::ptr {
+           return std::make_unique<irs::AsyncDirectory>(path);
+         }},
 #endif
-    {"mmap",
-     [](std::string_view path) -> irs::directory::ptr {
-       return std::make_unique<irs::MMapDirectory>(path);
-     }},
-    {"fs", [](std::string_view path) -> irs::directory::ptr {
-       return std::make_unique<irs::FSDirectory>(path);
-     }}});
+        {"mmap",
+         [](std::string_view path) -> irs::directory::ptr {
+           return std::make_unique<irs::MMapDirectory>(path);
+         }},
+        {"fs", [](std::string_view path) -> irs::directory::ptr {
+           return std::make_unique<irs::FSDirectory>(path);
+         }}});
 
 }  // namespace
 

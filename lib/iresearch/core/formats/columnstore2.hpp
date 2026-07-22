@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -79,17 +78,16 @@ class column final : public irs::column_output {
  private:
   friend class writer;
 
-public:
+ public:
   class address_table {
    public:
-    address_table(ManagedTypedAllocator<uint64_t> alloc) : offsets_(alloc) { }
+    address_table(ManagedTypedAllocator<uint64_t> alloc) : offsets_(alloc) {}
 
     ~address_table() = default;
 
     bool back(uint64_t& backValue) const noexcept {
       IRS_ASSERT(!offsets_.empty() && current_pos_ > 0);
-      if (offsets_.empty() || 0 == current_pos_)
-        return false;
+      if (offsets_.empty() || 0 == current_pos_) return false;
 
       backValue = offsets_[current_pos_ - 1];
       return true;
@@ -102,10 +100,10 @@ public:
     bool push_back(uint64_t offset) noexcept {
       IRS_ASSERT(current_pos_ < column::kBlockSize);
 
-      if (!(current_pos_ < column::kBlockSize))
-        return false;
+      if (!(current_pos_ < column::kBlockSize)) return false;
 
-      if (offsets_.size() <= static_cast<decltype(offsets_)::size_type>(current_pos_))
+      if (offsets_.size() <=
+          static_cast<decltype(offsets_)::size_type>(current_pos_))
         offsets_.resize(current_pos_ * 2 + 1);
 
       offsets_[current_pos_++] = offset;
@@ -114,23 +112,19 @@ public:
 
     bool pop_back() {
       IRS_ASSERT(!offsets_.empty() && current_pos_ > 0);
-      if (offsets_.empty() || 0 == current_pos_)
-        return false;
+      if (offsets_.empty() || 0 == current_pos_) return false;
 
       --current_pos_;
       return true;
     }
 
-    uint32_t size() const noexcept {
-      return current_pos_;
-    }
+    uint32_t size() const noexcept { return current_pos_; }
 
     //  Allocates more space if required.
     //  Doesn't shrink if max_elem < size.
     bool grow_size(uint32_t max_elems) {
       IRS_ASSERT(max_elems <= column::kBlockSize);
-      if (!(max_elems <= column::kBlockSize))
-        return false;
+      if (!(max_elems <= column::kBlockSize)) return false;
 
       if (max_elems > static_cast<uint32_t>(offsets_.size()))
         offsets_.resize(max_elems);
@@ -156,10 +150,10 @@ public:
 
    private:
     std::vector<uint64_t, ManagedTypedAllocator<uint64_t>> offsets_;
-    uint32_t current_pos_ { 0 };
+    uint32_t current_pos_{0};
   };
 
-private:
+ private:
   void Prepare(doc_id_t key) final;
 
   bool empty() const noexcept { return addr_table_.empty() && !docs_count_; }
@@ -212,9 +206,9 @@ private:
 class writer final : public columnstore_writer {
  public:
   static constexpr std::string_view kDataFormatName =
-    "iresearch_11_columnstore_data";
+      "iresearch_11_columnstore_data";
   static constexpr std::string_view kIndexFormatName =
-    "iresearch_11_columnstore_index";
+      "iresearch_11_columnstore_index";
   static constexpr std::string_view kDataFormatExt = "csd";
   static constexpr std::string_view kIndexFormatExt = "csi";
 
@@ -232,7 +226,7 @@ class writer final : public columnstore_writer {
   directory* dir_;
   std::string data_filename_;
   std::deque<column, ManagedTypedAllocator<column>>
-    columns_;  // pointers remain valid
+      columns_;  // pointers remain valid
   std::vector<column*> sorted_columns_;
   index_output::ptr data_out_;
   encryption::stream::ptr data_cipher_;
@@ -305,8 +299,8 @@ class reader final : public columnstore_reader {
 
   const column_reader* column(field_id field) const final {
     return field >= columns_.size()
-             ? nullptr  // can't find column with the specified identifier
-             : columns_[field];
+               ? nullptr  // can't find column with the specified identifier
+               : columns_[field];
   }
 
   bool visit(const column_visitor_f& visitor) const final;

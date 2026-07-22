@@ -17,8 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <climits>
@@ -46,8 +44,8 @@ class utf8_path_tests : public test_base {
     cwd_ = std::filesystem::current_path();
     irs::file_utils::mkdir(test_dir().c_str(), false);  // ensure path exists
     irs::file_utils::set_cwd(
-      test_dir()
-        .c_str());  // ensure all files/directories created in a valid place
+        test_dir()
+            .c_str());  // ensure all files/directories created in a valid place
   }
 
   virtual void TearDown() {
@@ -128,7 +126,7 @@ TEST_F(utf8_path_tests, current) {
     wchar_t buf[_MAX_PATH];
     irs::basic_string<wchar_t> current_dir(_wgetcwd(buf, _MAX_PATH));
     irs::basic_string<wchar_t> prefix(
-      L"\\\\?\\");  // prepended by chdir() and returned by win32
+        L"\\\\?\\");  // prepended by chdir() and returned by win32
 #else
     char buf[PATH_MAX];
     irs::basic_string<char> current_dir(getcwd(buf, PATH_MAX));
@@ -226,16 +224,16 @@ TEST_F(utf8_path_tests, path) {
   auto pwd_utf8 = std::filesystem::current_path().u8string();
   auto file1_abs_native = (std::filesystem::current_path() /= file1).native();
   auto file1f_abs_native = ((std::filesystem::current_path() += "/") += file1)
-                             .native();  // abs file1 with forward slash
+                               .native();  // abs file1 with forward slash
   auto file1n_abs_native =
-    ((std::filesystem::current_path() += native_path_sep) += file1)
-      .native();  // abs file1 with native slash
+      ((std::filesystem::current_path() += native_path_sep) += file1)
+          .native();  // abs file1 with native slash
   auto file1_abs_utf8 = (std::filesystem::current_path() /= file1).u8string();
   auto file1f_abs_utf8 = ((std::filesystem::current_path() += "/") += file1)
-                           .u8string();  // abs file1 with forward slash
+                             .u8string();  // abs file1 with forward slash
   auto file1n_abs_utf8 =
-    ((std::filesystem::current_path() += native_path_sep) += file1)
-      .u8string();  // abs file1 with native slash
+      ((std::filesystem::current_path() += native_path_sep) += file1)
+          .u8string();  // abs file1 with native slash
   auto file2_abs_native = (std::filesystem::current_path() /= file2).native();
   auto file2_abs_utf8 = (std::filesystem::current_path() /= file2).u8string();
   auto dir_abs_native = (std::filesystem::current_path() /= dir1).native();
@@ -568,7 +566,7 @@ TEST_F(utf8_path_tests, directory) {
     ASSERT_TRUE(irs::file_utils::byte_size(tmpUint, path2.c_str()));
 
     ASSERT_TRUE(
-      irs::file_utils::remove(path1.c_str()));  // recursive remove successful
+        irs::file_utils::remove(path1.c_str()));  // recursive remove successful
 
     ASSERT_TRUE(irs::file_utils::exists(tmpBool, path1.c_str()) && !tmpBool);
     ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool, path1.c_str()) &&
@@ -587,7 +585,7 @@ TEST_F(utf8_path_tests, directory) {
     ASSERT_FALSE(irs::file_utils::byte_size(tmpUint, path2.c_str()));
 
     ASSERT_FALSE(
-      irs::file_utils::remove(path2.c_str()));  // path already removed
+        irs::file_utils::remove(path2.c_str()));  // path already removed
   }
 
   // recursive path creation (relative)
@@ -636,7 +634,7 @@ TEST_F(utf8_path_tests, directory) {
     ASSERT_TRUE(irs::file_utils::byte_size(tmpUint, path2.c_str()));
 
     ASSERT_TRUE(
-      irs::file_utils::remove(path1.c_str()));  // recursive remove successful
+        irs::file_utils::remove(path1.c_str()));  // recursive remove successful
 
     ASSERT_TRUE(irs::file_utils::exists(tmpBool, path1.c_str()) && !tmpBool);
     ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool, path1.c_str()) &&
@@ -655,7 +653,7 @@ TEST_F(utf8_path_tests, directory) {
     ASSERT_FALSE(irs::file_utils::byte_size(tmpUint, path2.c_str()));
 
     ASSERT_FALSE(
-      irs::file_utils::remove(path2.c_str()));  // path already removed
+        irs::file_utils::remove(path2.c_str()));  // path already removed
   }
 
   // recursive path creation failure
@@ -697,7 +695,7 @@ TEST_F(utf8_path_tests, directory) {
     ASSERT_FALSE(irs::file_utils::mkdir(path2.c_str(), true));
 
     ASSERT_TRUE(
-      irs::file_utils::remove(path1.c_str()));  // file remove successful
+        irs::file_utils::remove(path1.c_str()));  // file remove successful
     ASSERT_TRUE(irs::file_utils::exists(tmpBool, path1.c_str()) && !tmpBool);
     ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool, path1.c_str()) &&
                 !tmpBool);
@@ -711,7 +709,7 @@ TEST_F(utf8_path_tests, directory) {
   {
     std::string directory1("deleteme1");
     std::string directory2(
-      "deleteme2/deleteme3");  // explicitly use '/' and not native
+        "deleteme2/deleteme3");  // explicitly use '/' and not native
     auto path1 = std::filesystem::current_path();
     auto path2 = std::filesystem::current_path();
 
@@ -754,7 +752,7 @@ TEST_F(utf8_path_tests, directory) {
     ASSERT_TRUE(irs::file_utils::byte_size(tmpUint, path2.c_str()));
 
     ASSERT_TRUE(
-      irs::file_utils::remove(path1.c_str()));  // recursive remove successful
+        irs::file_utils::remove(path1.c_str()));  // recursive remove successful
 
     ASSERT_TRUE(irs::file_utils::exists(tmpBool, path1.c_str()) && !tmpBool);
     ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool, path1.c_str()) &&
@@ -773,14 +771,14 @@ TEST_F(utf8_path_tests, directory) {
     ASSERT_FALSE(irs::file_utils::byte_size(tmpUint, path2.c_str()));
 
     ASSERT_FALSE(
-      irs::file_utils::remove(path2.c_str()));  // path already removed
+        irs::file_utils::remove(path2.c_str()));  // path already removed
   }
 
   // recursive multi-level path creation (relative)
   {
     std::string directory1("deleteme1");
     std::string directory2(
-      "deleteme2/deleteme3");  // explicitly use '/' and not native
+        "deleteme2/deleteme3");  // explicitly use '/' and not native
     std::filesystem::path path1;
     std::filesystem::path path2;
 
@@ -823,7 +821,7 @@ TEST_F(utf8_path_tests, directory) {
     ASSERT_TRUE(irs::file_utils::byte_size(tmpUint, path2.c_str()));
 
     ASSERT_TRUE(
-      irs::file_utils::remove(path1.c_str()));  // recursive remove successful
+        irs::file_utils::remove(path1.c_str()));  // recursive remove successful
 
     ASSERT_TRUE(irs::file_utils::exists(tmpBool, path1.c_str()) && !tmpBool);
     ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool, path1.c_str()) &&
@@ -842,7 +840,7 @@ TEST_F(utf8_path_tests, directory) {
     ASSERT_FALSE(irs::file_utils::byte_size(tmpUint, path2.c_str()));
 
     ASSERT_FALSE(
-      irs::file_utils::remove(path2.c_str()));  // path already removed
+        irs::file_utils::remove(path2.c_str()));  // path already removed
   }
 
   // recursive path creation with concurrency (full path exists)
@@ -855,15 +853,15 @@ TEST_F(utf8_path_tests, directory) {
     path2 /= directory1;
 
     EXPECT_TRUE(irs::file_utils::mkdir(path1.c_str(), true));
-    EXPECT_FALSE(
-      irs::file_utils::mkdir(path2.c_str(), true));  // directory already exists
+    EXPECT_FALSE(irs::file_utils::mkdir(path2.c_str(),
+                                        true));  // directory already exists
     EXPECT_TRUE(irs::file_utils::mkdir(
-      path2.c_str(),
-      false));  // directory exists, but creation is not mandatory
+        path2.c_str(),
+        false));  // directory exists, but creation is not mandatory
 
     ASSERT_TRUE(irs::file_utils::remove(path1.c_str()));
     ASSERT_FALSE(
-      irs::file_utils::remove(path2.c_str()));  // path already removed
+        irs::file_utils::remove(path2.c_str()));  // path already removed
   }
   // recursive path creation with concurrency (only last sement added)
   {
@@ -878,11 +876,11 @@ TEST_F(utf8_path_tests, directory) {
 
     ASSERT_TRUE(irs::file_utils::mkdir(path1.c_str(), true));
     ASSERT_TRUE(
-      irs::file_utils::mkdir(path2.c_str(), true));  // last segment created
+        irs::file_utils::mkdir(path2.c_str(), true));  // last segment created
 
     ASSERT_TRUE(irs::file_utils::remove(path1.c_str()));
     ASSERT_FALSE(
-      irs::file_utils::remove(path2.c_str()));  // path already removed
+        irs::file_utils::remove(path2.c_str()));  // path already removed
   }
   // race condition test inside path tree building
   {
@@ -897,7 +895,7 @@ TEST_F(utf8_path_tests, directory) {
 
     for (size_t j = 0; j < 3; ++j) {
       irs::file_utils::remove(
-        pathRoot.c_str());  // make sure full path tree building always needed
+          pathRoot.c_str());  // make sure full path tree building always needed
 
       const auto thread_count = 20;
       std::vector<int> results(thread_count, false);
@@ -911,22 +909,22 @@ TEST_F(utf8_path_tests, directory) {
       for (size_t i = 0; i < thread_count; ++i) {
         auto& result = results[i];
         pool.emplace_back(
-          std::thread([&result, &directory1, &directory2, i, &mutex, &ready_cv,
-                       &readyCount, &ready]() {
-            std::filesystem::path path;
-            path /= directory1;
-            std::ostringstream ss;
-            ss << directory2 << i;
-            path /= ss.str();
+            std::thread([&result, &directory1, &directory2, i, &mutex,
+                         &ready_cv, &readyCount, &ready]() {
+              std::filesystem::path path;
+              path /= directory1;
+              std::ostringstream ss;
+              ss << directory2 << i;
+              path /= ss.str();
 
-            std::unique_lock<std::mutex> lk(mutex);
-            ++readyCount;
-            while (!ready) {
-              ready_cv.wait(lk);
-            }
-            lk.unlock();
-            result = irs::file_utils::mkdir(path.c_str(), true) ? 1 : 0;
-          }));
+              std::unique_lock<std::mutex> lk(mutex);
+              ++readyCount;
+              while (!ready) {
+                ready_cv.wait(lk);
+              }
+              lk.unlock();
+              result = irs::file_utils::mkdir(path.c_str(), true) ? 1 : 0;
+            }));
       }
 
       while (true) {
@@ -963,9 +961,9 @@ void validate_move(bool src_abs, bool dst_abs) {
     std::string src("deleteme.src");
     std::string dst("deleteme.dst0");
     std::filesystem::path src_path =
-      src_abs ? std::filesystem::current_path() : std::filesystem::path();
+        src_abs ? std::filesystem::current_path() : std::filesystem::path();
     std::filesystem::path dst_path =
-      dst_abs ? std::filesystem::current_path() : std::filesystem::path();
+        dst_abs ? std::filesystem::current_path() : std::filesystem::path();
 
     src_path /= src;
     dst_path /= dst;
@@ -1011,9 +1009,9 @@ void validate_move(bool src_abs, bool dst_abs) {
     std::string src("deleteme.src");
     std::string dst("deleteme.dst1");
     std::filesystem::path src_path =
-      src_abs ? std::filesystem::current_path() : std::filesystem::path();
+        src_abs ? std::filesystem::current_path() : std::filesystem::path();
     std::filesystem::path dst_path =
-      dst_abs ? std::filesystem::current_path() : std::filesystem::path();
+        dst_abs ? std::filesystem::current_path() : std::filesystem::path();
 
     src_path /= src;
     dst_path /= dst;
@@ -1063,9 +1061,9 @@ void validate_move(bool src_abs, bool dst_abs) {
     std::string src("deleteme.src");
     std::string dst("deleteme.dst2");
     std::filesystem::path src_path =
-      src_abs ? std::filesystem::current_path() : std::filesystem::path();
+        src_abs ? std::filesystem::current_path() : std::filesystem::path();
     std::filesystem::path dst_path =
-      dst_abs ? std::filesystem::current_path() : std::filesystem::path();
+        dst_abs ? std::filesystem::current_path() : std::filesystem::path();
 
     src_path /= src;
     dst_path /= dst;
@@ -1113,9 +1111,9 @@ void validate_move(bool src_abs, bool dst_abs) {
     std::string src("deleteme.src");
     std::string dst("deleteme.dst3");
     std::filesystem::path src_path =
-      src_abs ? std::filesystem::current_path() : std::filesystem::path();
+        src_abs ? std::filesystem::current_path() : std::filesystem::path();
     std::filesystem::path dst_path =
-      dst_abs ? std::filesystem::current_path() : std::filesystem::path();
+        dst_abs ? std::filesystem::current_path() : std::filesystem::path();
 
     src_path /= src;
     dst_path /= dst;
@@ -1170,9 +1168,9 @@ void validate_move(bool src_abs, bool dst_abs) {
     std::string src("deleteme.src");
     std::string dst("deleteme.dst4");
     std::filesystem::path src_path =
-      src_abs ? std::filesystem::current_path() : std::filesystem::path();
+        src_abs ? std::filesystem::current_path() : std::filesystem::path();
     std::filesystem::path dst_path =
-      dst_abs ? std::filesystem::current_path() : std::filesystem::path();
+        dst_abs ? std::filesystem::current_path() : std::filesystem::path();
 
     src_path /= src;
     dst_path /= dst;
@@ -1222,9 +1220,9 @@ void validate_move(bool src_abs, bool dst_abs) {
     std::string src("deleteme.src5");
     std::string dst("deleteme.dst5");
     std::filesystem::path src_path =
-      src_abs ? std::filesystem::current_path() : std::filesystem::path();
+        src_abs ? std::filesystem::current_path() : std::filesystem::path();
     std::filesystem::path dst_path =
-      dst_abs ? std::filesystem::current_path() : std::filesystem::path();
+        dst_abs ? std::filesystem::current_path() : std::filesystem::path();
 
     src_path /= src;
     dst_path /= dst;
@@ -1274,11 +1272,11 @@ void validate_move(bool src_abs, bool dst_abs) {
     std::string src("deleteme.src6");
     std::string dst("deleteme.dst6");
     std::filesystem::path src_path =
-      src_abs ? std::filesystem::current_path() : std::filesystem::path();
+        src_abs ? std::filesystem::current_path() : std::filesystem::path();
     std::filesystem::path dst_path =
-      dst_abs ? std::filesystem::current_path() : std::filesystem::path();
+        dst_abs ? std::filesystem::current_path() : std::filesystem::path();
     std::filesystem::path dst_path_expected =
-      dst_abs ? std::filesystem::current_path() : std::filesystem::path();
+        dst_abs ? std::filesystem::current_path() : std::filesystem::path();
 
     src_path /= src;
     dst_path /= dst;
@@ -1301,14 +1299,14 @@ void validate_move(bool src_abs, bool dst_abs) {
     ASSERT_TRUE(irs::file_utils::exists(tmpBool, dst_path_expected.c_str()) &&
                 !tmpBool);
     ASSERT_TRUE(
-      irs::file_utils::exists_directory(tmpBool, dst_path_expected.c_str()) &&
-      !tmpBool);
+        irs::file_utils::exists_directory(tmpBool, dst_path_expected.c_str()) &&
+        !tmpBool);
     ASSERT_TRUE(
-      irs::file_utils::exists_file(tmpBool, dst_path_expected.c_str()) &&
-      !tmpBool);
+        irs::file_utils::exists_file(tmpBool, dst_path_expected.c_str()) &&
+        !tmpBool);
     ASSERT_FALSE(irs::file_utils::mtime(tmpTime, dst_path_expected.c_str()));
     ASSERT_FALSE(
-      irs::file_utils::byte_size(tmpUint, dst_path_expected.c_str()));
+        irs::file_utils::byte_size(tmpUint, dst_path_expected.c_str()));
 
 #ifdef _WIN32
     // Boost fails to rename on win32
@@ -1327,14 +1325,14 @@ void validate_move(bool src_abs, bool dst_abs) {
     ASSERT_TRUE(irs::file_utils::exists(tmpBool, dst_path_expected.c_str()) &&
                 !tmpBool);
     ASSERT_TRUE(
-      irs::file_utils::exists_directory(tmpBool, dst_path_expected.c_str()) &&
-      !tmpBool);
+        irs::file_utils::exists_directory(tmpBool, dst_path_expected.c_str()) &&
+        !tmpBool);
     ASSERT_TRUE(
-      irs::file_utils::exists_file(tmpBool, dst_path_expected.c_str()) &&
-      !tmpBool);
+        irs::file_utils::exists_file(tmpBool, dst_path_expected.c_str()) &&
+        !tmpBool);
     ASSERT_FALSE(irs::file_utils::mtime(tmpTime, dst_path_expected.c_str()));
     ASSERT_FALSE(
-      irs::file_utils::byte_size(tmpUint, dst_path_expected.c_str()));
+        irs::file_utils::byte_size(tmpUint, dst_path_expected.c_str()));
 #endif
   }
 
@@ -1344,9 +1342,9 @@ void validate_move(bool src_abs, bool dst_abs) {
     std::string src("deleteme.src7");
     std::string dst("deleteme.dst7");
     std::filesystem::path src_path =
-      src_abs ? std::filesystem::current_path() : std::filesystem::path();
+        src_abs ? std::filesystem::current_path() : std::filesystem::path();
     std::filesystem::path dst_path =
-      dst_abs ? std::filesystem::current_path() : std::filesystem::path();
+        dst_abs ? std::filesystem::current_path() : std::filesystem::path();
 
     src_path /= src;
     dst_path /= dst;
@@ -1398,9 +1396,9 @@ void validate_move(bool src_abs, bool dst_abs) {
     std::string src("deleteme.src8");
     std::string dst("deleteme.dst8");
     std::filesystem::path src_path =
-      src_abs ? std::filesystem::current_path() : std::filesystem::path();
+        src_abs ? std::filesystem::current_path() : std::filesystem::path();
     std::filesystem::path dst_path =
-      dst_abs ? std::filesystem::current_path() : std::filesystem::path();
+        dst_abs ? std::filesystem::current_path() : std::filesystem::path();
     std::string dst_data("data");
 
     src_path /= src;
@@ -1470,13 +1468,13 @@ void validate_move(bool src_abs, bool dst_abs) {
     std::string src("deleteme.src9");
     std::string dst("deleteme.dst9");
     std::filesystem::path src_path =
-      src_abs ? std::filesystem::current_path() : std::filesystem::path();
+        src_abs ? std::filesystem::current_path() : std::filesystem::path();
     std::filesystem::path dst_path =
-      dst_abs ? std::filesystem::current_path() : std::filesystem::path();
+        dst_abs ? std::filesystem::current_path() : std::filesystem::path();
     std::filesystem::path src_path_expected =
-      src_abs ? std::filesystem::current_path() : std::filesystem::path();
+        src_abs ? std::filesystem::current_path() : std::filesystem::path();
     std::filesystem::path dst_path_expected =
-      dst_abs ? std::filesystem::current_path() : std::filesystem::path();
+        dst_abs ? std::filesystem::current_path() : std::filesystem::path();
 
     src_path /= src;
     dst_path /= dst;
@@ -1496,11 +1494,11 @@ void validate_move(bool src_abs, bool dst_abs) {
     ASSERT_TRUE(irs::file_utils::exists(tmpBool, src_path_expected.c_str()) &&
                 tmpBool);
     ASSERT_TRUE(
-      irs::file_utils::exists_directory(tmpBool, src_path_expected.c_str()) &&
-      tmpBool);
+        irs::file_utils::exists_directory(tmpBool, src_path_expected.c_str()) &&
+        tmpBool);
     ASSERT_TRUE(
-      irs::file_utils::exists_file(tmpBool, src_path_expected.c_str()) &&
-      !tmpBool);
+        irs::file_utils::exists_file(tmpBool, src_path_expected.c_str()) &&
+        !tmpBool);
     ASSERT_TRUE(irs::file_utils::mtime(tmpTime, src_path_expected.c_str()) &&
                 tmpTime > 0);
     ASSERT_TRUE(irs::file_utils::byte_size(tmpUint, src_path_expected.c_str()));
@@ -1508,14 +1506,14 @@ void validate_move(bool src_abs, bool dst_abs) {
     ASSERT_TRUE(irs::file_utils::exists(tmpBool, dst_path_expected.c_str()) &&
                 !tmpBool);
     ASSERT_TRUE(
-      irs::file_utils::exists_directory(tmpBool, dst_path_expected.c_str()) &&
-      !tmpBool);
+        irs::file_utils::exists_directory(tmpBool, dst_path_expected.c_str()) &&
+        !tmpBool);
     ASSERT_TRUE(
-      irs::file_utils::exists_file(tmpBool, dst_path_expected.c_str()) &&
-      !tmpBool);
+        irs::file_utils::exists_file(tmpBool, dst_path_expected.c_str()) &&
+        !tmpBool);
     ASSERT_FALSE(irs::file_utils::mtime(tmpTime, dst_path_expected.c_str()));
     ASSERT_FALSE(
-      irs::file_utils::byte_size(tmpUint, dst_path_expected.c_str()));
+        irs::file_utils::byte_size(tmpUint, dst_path_expected.c_str()));
 
 #ifdef _WIN32
     ASSERT_FALSE(irs::file_utils::move(src_path.c_str(), dst_path.c_str()));
@@ -1526,23 +1524,23 @@ void validate_move(bool src_abs, bool dst_abs) {
     ASSERT_TRUE(irs::file_utils::exists(tmpBool, src_path_expected.c_str()) &&
                 !tmpBool);
     ASSERT_TRUE(
-      irs::file_utils::exists_directory(tmpBool, src_path_expected.c_str()) &&
-      !tmpBool);
+        irs::file_utils::exists_directory(tmpBool, src_path_expected.c_str()) &&
+        !tmpBool);
     ASSERT_TRUE(
-      irs::file_utils::exists_file(tmpBool, src_path_expected.c_str()) &&
-      !tmpBool);
+        irs::file_utils::exists_file(tmpBool, src_path_expected.c_str()) &&
+        !tmpBool);
     ASSERT_FALSE(irs::file_utils::mtime(tmpTime, src_path_expected.c_str()));
     ASSERT_FALSE(
-      irs::file_utils::byte_size(tmpUint, src_path_expected.c_str()));
+        irs::file_utils::byte_size(tmpUint, src_path_expected.c_str()));
 
     ASSERT_TRUE(irs::file_utils::exists(tmpBool, dst_path_expected.c_str()) &&
                 tmpBool);
     ASSERT_TRUE(
-      irs::file_utils::exists_directory(tmpBool, dst_path_expected.c_str()) &&
-      tmpBool);
+        irs::file_utils::exists_directory(tmpBool, dst_path_expected.c_str()) &&
+        tmpBool);
     ASSERT_TRUE(
-      irs::file_utils::exists_file(tmpBool, dst_path_expected.c_str()) &&
-      !tmpBool);
+        irs::file_utils::exists_file(tmpBool, dst_path_expected.c_str()) &&
+        !tmpBool);
     ASSERT_TRUE(irs::file_utils::mtime(tmpTime, dst_path_expected.c_str()) &&
                 tmpTime > 0);
     ASSERT_TRUE(irs::file_utils::byte_size(tmpUint, dst_path_expected.c_str()));
@@ -1556,9 +1554,9 @@ void validate_move(bool src_abs, bool dst_abs) {
     std::string src("deleteme.srcA");
     std::string dst("deleteme.dstA");
     std::filesystem::path src_path =
-      src_abs ? std::filesystem::current_path() : std::filesystem::path();
+        src_abs ? std::filesystem::current_path() : std::filesystem::path();
     std::filesystem::path dst_path =
-      dst_abs ? std::filesystem::current_path() : std::filesystem::path();
+        dst_abs ? std::filesystem::current_path() : std::filesystem::path();
 
     src_path /= src;
     dst_path /= dst;
@@ -1616,11 +1614,11 @@ void validate_move(bool src_abs, bool dst_abs) {
     std::string src("deleteme.srcB");
     std::string dst("deleteme.dstB");
     std::filesystem::path src_path =
-      src_abs ? std::filesystem::current_path() : std::filesystem::path();
+        src_abs ? std::filesystem::current_path() : std::filesystem::path();
     std::filesystem::path dst_path =
-      dst_abs ? std::filesystem::current_path() : std::filesystem::path();
+        dst_abs ? std::filesystem::current_path() : std::filesystem::path();
     std::filesystem::path dst_path_expected =
-      dst_abs ? std::filesystem::current_path() : std::filesystem::path();
+        dst_abs ? std::filesystem::current_path() : std::filesystem::path();
 
     src_path /= src;
     dst_path /= dst;
@@ -1649,14 +1647,14 @@ void validate_move(bool src_abs, bool dst_abs) {
     ASSERT_TRUE(irs::file_utils::exists(tmpBool, dst_path_expected.c_str()) &&
                 !tmpBool);
     ASSERT_TRUE(
-      irs::file_utils::exists_directory(tmpBool, dst_path_expected.c_str()) &&
-      !tmpBool);
+        irs::file_utils::exists_directory(tmpBool, dst_path_expected.c_str()) &&
+        !tmpBool);
     ASSERT_TRUE(
-      irs::file_utils::exists_file(tmpBool, dst_path_expected.c_str()) &&
-      !tmpBool);
+        irs::file_utils::exists_file(tmpBool, dst_path_expected.c_str()) &&
+        !tmpBool);
     ASSERT_FALSE(irs::file_utils::mtime(tmpTime, dst_path_expected.c_str()));
     ASSERT_FALSE(
-      irs::file_utils::byte_size(tmpUint, dst_path_expected.c_str()));
+        irs::file_utils::byte_size(tmpUint, dst_path_expected.c_str()));
 
     ASSERT_FALSE(irs::file_utils::move(src_path.c_str(), dst_path.c_str()));
 
@@ -1673,14 +1671,14 @@ void validate_move(bool src_abs, bool dst_abs) {
     ASSERT_TRUE(irs::file_utils::exists(tmpBool, dst_path_expected.c_str()) &&
                 !tmpBool);
     ASSERT_TRUE(
-      irs::file_utils::exists_directory(tmpBool, dst_path_expected.c_str()) &&
-      !tmpBool);
+        irs::file_utils::exists_directory(tmpBool, dst_path_expected.c_str()) &&
+        !tmpBool);
     ASSERT_TRUE(
-      irs::file_utils::exists_file(tmpBool, dst_path_expected.c_str()) &&
-      !tmpBool);
+        irs::file_utils::exists_file(tmpBool, dst_path_expected.c_str()) &&
+        !tmpBool);
     ASSERT_FALSE(irs::file_utils::mtime(tmpTime, dst_path_expected.c_str()));
     ASSERT_FALSE(
-      irs::file_utils::byte_size(tmpUint, dst_path_expected.c_str()));
+        irs::file_utils::byte_size(tmpUint, dst_path_expected.c_str()));
   }
 
   // file -> directory/non-existent
@@ -1690,9 +1688,9 @@ void validate_move(bool src_abs, bool dst_abs) {
     std::string src("deleteme.srcC");
     std::string dst("deleteme.dstC");
     std::filesystem::path src_path =
-      src_abs ? std::filesystem::current_path() : std::filesystem::path();
+        src_abs ? std::filesystem::current_path() : std::filesystem::path();
     std::filesystem::path dst_path =
-      dst_abs ? std::filesystem::current_path() : std::filesystem::path();
+        dst_abs ? std::filesystem::current_path() : std::filesystem::path();
 
     src_path /= src;
     dst_path /= dst;
@@ -1753,9 +1751,9 @@ void validate_move(bool src_abs, bool dst_abs) {
     std::string src("deleteme.srcD");
     std::string dst("deleteme.dstD");
     std::filesystem::path src_path =
-      src_abs ? std::filesystem::current_path() : std::filesystem::path();
+        src_abs ? std::filesystem::current_path() : std::filesystem::path();
     std::filesystem::path dst_path =
-      dst_abs ? std::filesystem::current_path() : std::filesystem::path();
+        dst_abs ? std::filesystem::current_path() : std::filesystem::path();
 
     src_path /= src;
     dst_path /= dst;
@@ -1824,9 +1822,9 @@ void validate_move(bool src_abs, bool dst_abs) {
     std::string src("deleteme.srcE");
     std::string dst("deleteme.dstE");
     std::filesystem::path src_path =
-      src_abs ? std::filesystem::current_path() : std::filesystem::path();
+        src_abs ? std::filesystem::current_path() : std::filesystem::path();
     std::filesystem::path dst_path =
-      dst_abs ? std::filesystem::current_path() : std::filesystem::path();
+        dst_abs ? std::filesystem::current_path() : std::filesystem::path();
 
     src_path /= src;
     dst_path /= dst;

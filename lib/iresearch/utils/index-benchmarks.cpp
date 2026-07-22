@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <functional>
@@ -41,7 +39,8 @@
 namespace {
 
 using handlers_t =
-  absl::flat_hash_map<std::string, std::function<int(int argc, char* argv[])>>;
+    absl::flat_hash_map<std::string,
+                        std::function<int(int argc, char* argv[])>>;
 
 void init_analyzers() {
   ::irs::analysis::delimited_token_stream::init();

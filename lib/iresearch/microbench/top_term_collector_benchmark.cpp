@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <benchmark/benchmark.h>
@@ -52,7 +51,7 @@ class seek_term_iterator : public irs::seek_term_iterator {
   using iterator_type = const std::tuple<irs::bytes_view, term_meta, T>*;
 
   seek_term_iterator(iterator_type begin, size_t count)
-    : begin_(begin), end_(begin + count), cookie_ptr_(begin) {}
+      : begin_(begin), end_(begin + count), cookie_ptr_(begin) {}
 
   irs::SeekResult seek_ge(irs::bytes_view) final {
     return irs::SeekResult::NOT_FOUND;
@@ -115,7 +114,7 @@ class seek_term_iterator : public irs::seek_term_iterator {
 
 struct SubReader final : irs::SubReader {
   explicit SubReader(size_t num_docs)
-    : info{.docs_count = num_docs, .live_docs_count = num_docs} {}
+      : info{.docs_count = num_docs, .live_docs_count = num_docs} {}
 
   uint64_t CountMappedMemory() const final { return 0; }
 
@@ -161,11 +160,11 @@ void BM_top_term_collector(benchmark::State& state) {
   SubReader segment(100);
 
   std::vector<std::tuple<irs::bytes_view, term_meta, int>> terms(
-    state.range(0));
+      state.range(0));
   for (auto& term : terms) {
     auto& key = std::get<2>(term) = ::rand();
     std::get<0>(term) = irs::bytes_view(
-      reinterpret_cast<const irs::byte_type*>(&key), sizeof(key));
+        reinterpret_cast<const irs::byte_type*>(&key), sizeof(key));
   }
 
   for (auto _ : state) {

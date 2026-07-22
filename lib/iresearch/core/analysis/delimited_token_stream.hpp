@@ -17,8 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -35,8 +33,8 @@ namespace analysis {
 ///        RFC4180 (without starting new records on newlines)
 ////////////////////////////////////////////////////////////////////////////////
 class delimited_token_stream final
-  : public TypedAnalyzer<delimited_token_stream>,
-    private util::noncopyable {
+    : public TypedAnalyzer<delimited_token_stream>,
+      private util::noncopyable {
  public:
   static constexpr std::string_view type_name() noexcept { return "delimiter"; }
   static void init();  // for trigering registration in a static build

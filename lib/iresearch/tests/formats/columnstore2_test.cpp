@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "formats/columnstore2.hpp"
@@ -31,8 +30,8 @@ using namespace irs::columnstore2;
 static TestResourceManager kDummy;
 
 class columnstore2_test_case
-  : public virtual tests::directory_test_case_base<
-      irs::ColumnHint, irs::columnstore2::Version, bool> {
+    : public virtual tests::directory_test_case_base<
+          irs::ColumnHint, irs::columnstore2::Version, bool> {
  public:
   static std::string to_string(const testing::TestParamInfo<ParamType>& info) {
     auto [factory, hint, version, buffered] = info.param;
@@ -73,7 +72,7 @@ class columnstore2_test_case
   }
 
   irs::columnstore_reader::options reader_options(
-    TestResourceManager& mng = kDummy) {
+      TestResourceManager& mng = kDummy) {
     irs::columnstore_reader::options options{.resource_manager{mng.options}};
     options.warmup_column = [this](const irs::column_reader&) {
       return this->buffered();
@@ -152,8 +151,8 @@ TEST_P(columnstore2_test_case, empty_columnstore) {
   meta.name = "test";
 
   irs::flush_state state{
-    .name = meta.name,
-    .doc_count = kMax,
+      .name = meta.name,
+      .doc_count = kMax,
   };
 
   auto finalizer = [](auto&) {
@@ -195,8 +194,8 @@ TEST_P(columnstore2_test_case, empty_column) {
   meta.name = "test";
 
   irs::flush_state state{
-    .name = meta.name,
-    .doc_count = kMax,
+      .name = meta.name,
+      .doc_count = kMax,
   };
   TestResourceManager memory;
   {
@@ -204,23 +203,23 @@ TEST_P(columnstore2_test_case, empty_column) {
                                      consolidation());
     writer.prepare(dir(), meta);
     [[maybe_unused]] auto [id0, handle0] =
-      writer.push_column(column_info(), [](irs::bstring& out) {
-        EXPECT_TRUE(out.empty());
-        out += 1;
-        return "foobar";
-      });
+        writer.push_column(column_info(), [](irs::bstring& out) {
+          EXPECT_TRUE(out.empty());
+          out += 1;
+          return "foobar";
+        });
     [[maybe_unused]] auto [id1, handle1] =
-      writer.push_column(column_info(), [](irs::bstring& out) {
-        EXPECT_TRUE(out.empty());
-        out += 2;
-        return std::string_view{};
-      });
+        writer.push_column(column_info(), [](irs::bstring& out) {
+          EXPECT_TRUE(out.empty());
+          out += 2;
+          return std::string_view{};
+        });
     [[maybe_unused]] auto [id2, handle2] =
-      writer.push_column(column_info(), [](auto&) {
-        // Must no be called
-        EXPECT_TRUE(false);
-        return std::string_view{};
-      });
+        writer.push_column(column_info(), [](auto&) {
+          // Must no be called
+          EXPECT_TRUE(false);
+          return std::string_view{};
+        });
     handle1(42).write_byte(42);
     const auto pinned = memory.transactions.counter_;
     ASSERT_GT(pinned, 0);
@@ -309,8 +308,8 @@ TEST_P(columnstore2_test_case, sparse_mask_column) {
   meta.name = "test";
 
   irs::flush_state state{
-    .name = meta.name,
-    .doc_count = kMax,
+      .name = meta.name,
+      .doc_count = kMax,
   };
   TestResourceManager memory;
   {
@@ -319,11 +318,11 @@ TEST_P(columnstore2_test_case, sparse_mask_column) {
     writer.prepare(dir(), meta);
 
     auto [id, column] =
-      writer.push_column(column_info(), [](irs::bstring& out) {
-        EXPECT_TRUE(out.empty());
-        out += 42;
-        return std::string_view{};
-      });
+        writer.push_column(column_info(), [](irs::bstring& out) {
+          EXPECT_TRUE(out.empty());
+          out += 42;
+          return std::string_view{};
+        });
     ASSERT_GT(memory.transactions.counter_, 0);
     for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= kMax; doc += 2) {
       column(doc);
@@ -459,8 +458,8 @@ TEST_P(columnstore2_test_case, sparse_column_m) {
   const bool has_encryption = bool(dir().attributes().encryption());
 
   irs::flush_state state{
-    .name = meta.name,
-    .doc_count = MAX,
+      .name = meta.name,
+      .doc_count = MAX,
   };
   TestResourceManager mem;
   {
@@ -469,12 +468,12 @@ TEST_P(columnstore2_test_case, sparse_column_m) {
     writer.prepare(dir(), meta);
 
     auto [id, column] = writer.push_column(
-      {irs::type<irs::compression::none>::get(), {}, has_encryption},
-      [](irs::bstring& out) {
-        EXPECT_TRUE(out.empty());
-        out += 42;
-        return "foobaz";
-      });
+        {irs::type<irs::compression::none>::get(), {}, has_encryption},
+        [](irs::bstring& out) {
+          EXPECT_TRUE(out.empty());
+          out += 42;
+          return "foobaz";
+        });
     ASSERT_GT(mem.transactions.counter_, 0);
     for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= MAX; doc += 2) {
       auto& stream = column(doc);
@@ -504,8 +503,8 @@ TEST_P(columnstore2_test_case, sparse_column_m) {
     ASSERT_EQ(irs::doc_limits::min(), header->min);
     ASSERT_EQ(ColumnType::kSparse, header->type);
     ASSERT_EQ(
-      has_encryption ? ColumnProperty::kEncrypt : ColumnProperty::kNormal,
-      header->props);
+        has_encryption ? ColumnProperty::kEncrypt : ColumnProperty::kNormal,
+        header->props);
   }
   ASSERT_EQ(0, mem.cached_columns.counter_);
   ASSERT_EQ(0, mem.readers.counter_);
@@ -518,8 +517,8 @@ TEST_P(columnstore2_test_case, sparse_column_mr) {
   const bool has_encryption = bool(dir().attributes().encryption());
 
   irs::flush_state state{
-    .name = meta.name,
-    .doc_count = MAX,
+      .name = meta.name,
+      .doc_count = MAX,
   };
 
   TestResourceManager memory;
@@ -529,12 +528,12 @@ TEST_P(columnstore2_test_case, sparse_column_mr) {
     writer.prepare(dir(), meta);
 
     auto [id, column] = writer.push_column(
-      {irs::type<irs::compression::none>::get(), {}, has_encryption},
-      [](irs::bstring& out) {
-        EXPECT_TRUE(out.empty());
-        out += 42;
-        return "foobaz";
-      });
+        {irs::type<irs::compression::none>::get(), {}, has_encryption},
+        [](irs::bstring& out) {
+          EXPECT_TRUE(out.empty());
+          out += 42;
+          return "foobaz";
+        });
 
     for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= MAX; doc += 2) {
       auto& stream = column(doc);
@@ -566,8 +565,8 @@ TEST_P(columnstore2_test_case, sparse_column_mr) {
     ASSERT_EQ(irs::doc_limits::min(), header->min);
     ASSERT_EQ(ColumnType::kSparse, header->type);
     ASSERT_EQ(
-      has_encryption ? ColumnProperty::kEncrypt : ColumnProperty::kNormal,
-      header->props);
+        has_encryption ? ColumnProperty::kEncrypt : ColumnProperty::kNormal,
+        header->props);
   }
   // should not be a deallocation
   if (this->buffered()) {
@@ -584,8 +583,8 @@ TEST_P(columnstore2_test_case, sparse_column) {
   meta.name = "test";
 
   irs::flush_state state{
-    .name = meta.name,
-    .doc_count = kMax,
+      .name = meta.name,
+      .doc_count = kMax,
   };
 
   {
@@ -594,11 +593,11 @@ TEST_P(columnstore2_test_case, sparse_column) {
     writer.prepare(dir(), meta);
 
     auto [id, column] =
-      writer.push_column(column_info(), [](irs::bstring& out) {
-        EXPECT_TRUE(out.empty());
-        out += 42;
-        return "foobaz";
-      });
+        writer.push_column(column_info(), [](irs::bstring& out) {
+          EXPECT_TRUE(out.empty());
+          out += 42;
+          return "foobaz";
+        });
 
     for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= kMax; doc += 2) {
       auto& stream = column(doc);
@@ -803,8 +802,8 @@ TEST_P(columnstore2_test_case, sparse_column_gap) {
   meta.name = "test";
 
   irs::flush_state state{
-    .name = meta.name,
-    .doc_count = kMax,
+      .name = meta.name,
+      .doc_count = kMax,
   };
   TestResourceManager memory;
   {
@@ -813,11 +812,11 @@ TEST_P(columnstore2_test_case, sparse_column_gap) {
     writer.prepare(dir(), meta);
 
     auto [id, column] =
-      writer.push_column(column_info(), [](irs::bstring& out) {
-        EXPECT_TRUE(out.empty());
-        out += 42;
-        return "foobarbaz";
-      });
+        writer.push_column(column_info(), [](irs::bstring& out) {
+          EXPECT_TRUE(out.empty());
+          out += 42;
+          return "foobarbaz";
+        });
 
     auto write_payload = [](irs::doc_id_t doc, irs::data_output& stream) {
       if (doc <= kGapBegin || doc > (kGapBegin + kBlockSize)) {
@@ -840,7 +839,7 @@ TEST_P(columnstore2_test_case, sparse_column_gap) {
           (doc <= kGapBegin || doc > (kGapBegin + kBlockSize))) {
         ASSERT_EQ(sizeof doc, payload.size());
         const irs::doc_id_t actual_doc =
-          *reinterpret_cast<const irs::doc_id_t*>(payload.data());
+            *reinterpret_cast<const irs::doc_id_t*>(payload.data());
         ASSERT_EQ(doc, actual_doc);
       } else {
         ASSERT_TRUE(payload.empty());
@@ -985,8 +984,8 @@ TEST_P(columnstore2_test_case, sparse_column_tail_block) {
   meta.name = "test";
 
   irs::flush_state state{
-    .name = meta.name,
-    .doc_count = kMax,
+      .name = meta.name,
+      .doc_count = kMax,
   };
 
   {
@@ -1004,11 +1003,11 @@ TEST_P(columnstore2_test_case, sparse_column_tail_block) {
     writer.prepare(dir(), meta);
 
     auto [id, column] =
-      writer.push_column(column_info(), [](irs::bstring& out) {
-        EXPECT_TRUE(out.empty());
-        out += 42;
-        return std::string_view{};
-      });
+        writer.push_column(column_info(), [](irs::bstring& out) {
+          EXPECT_TRUE(out.empty());
+          out += 42;
+          return std::string_view{};
+        });
 
     for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= kMax; ++doc) {
       write_payload(doc, column(doc));
@@ -1053,13 +1052,13 @@ TEST_P(columnstore2_test_case, sparse_column_tail_block) {
       if (doc > kTailBegin) {
         ASSERT_EQ(2 * sizeof doc, payload.size());
         const irs::doc_id_t* actual_doc =
-          reinterpret_cast<const irs::doc_id_t*>(payload.data());
+            reinterpret_cast<const irs::doc_id_t*>(payload.data());
         ASSERT_EQ(doc, actual_doc[0]);
         ASSERT_EQ(doc, actual_doc[1]);
       } else {
         ASSERT_EQ(sizeof doc, payload.size());
         const irs::doc_id_t actual_doc =
-          *reinterpret_cast<const irs::doc_id_t*>(payload.data());
+            *reinterpret_cast<const irs::doc_id_t*>(payload.data());
         ASSERT_EQ(doc, actual_doc);
       }
     };
@@ -1171,8 +1170,8 @@ TEST_P(columnstore2_test_case, sparse_column_tail_block_last_value) {
   meta.name = "test";
 
   irs::flush_state state{
-    .name = meta.name,
-    .doc_count = kMax,
+      .name = meta.name,
+      .doc_count = kMax,
   };
 
   {
@@ -1188,11 +1187,11 @@ TEST_P(columnstore2_test_case, sparse_column_tail_block_last_value) {
     writer.prepare(dir(), meta);
 
     auto [id, column] =
-      writer.push_column(column_info(), [](irs::bstring& out) {
-        EXPECT_TRUE(out.empty());
-        out += 42;
-        return std::string_view{};
-      });
+        writer.push_column(column_info(), [](irs::bstring& out) {
+          EXPECT_TRUE(out.empty());
+          out += 42;
+          return std::string_view{};
+        });
 
     for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= kMax; ++doc) {
       write_payload(doc, column(doc));
@@ -1238,13 +1237,13 @@ TEST_P(columnstore2_test_case, sparse_column_tail_block_last_value) {
       if (doc > kTailBegin) {
         ASSERT_EQ(1 + sizeof doc, payload.size());
         const irs::doc_id_t actual_doc =
-          *reinterpret_cast<const irs::doc_id_t*>(payload.data());
+            *reinterpret_cast<const irs::doc_id_t*>(payload.data());
         ASSERT_EQ(doc, actual_doc);
         ASSERT_EQ(42, payload[sizeof doc]);
       } else {
         ASSERT_EQ(sizeof doc, payload.size());
         const irs::doc_id_t actual_doc =
-          *reinterpret_cast<const irs::doc_id_t*>(payload.data());
+            *reinterpret_cast<const irs::doc_id_t*>(payload.data());
         ASSERT_EQ(doc, actual_doc);
       }
     };
@@ -1358,8 +1357,8 @@ TEST_P(columnstore2_test_case, sparse_column_full_blocks) {
   meta.name = "test";
 
   irs::flush_state state{
-    .name = meta.name,
-    .doc_count = kMax,
+      .name = meta.name,
+      .doc_count = kMax,
   };
 
   constexpr std::string_view kValue{"aaaaaaaaaaaaaaaaaaaaaaaaaaa"};
@@ -1380,11 +1379,11 @@ TEST_P(columnstore2_test_case, sparse_column_full_blocks) {
     writer.prepare(dir(), meta);
 
     auto [id, column] =
-      writer.push_column(column_info(), [](irs::bstring& out) {
-        EXPECT_TRUE(out.empty());
-        out += 42;
-        return std::string_view{};
-      });
+        writer.push_column(column_info(), [](irs::bstring& out) {
+          EXPECT_TRUE(out.empty());
+          out += 42;
+          return std::string_view{};
+        });
 
     for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= kMax; ++doc) {
       write_payload(doc, column(doc));
@@ -1547,8 +1546,8 @@ TEST_P(columnstore2_test_case, sparse_column_full_blocks_all_equal) {
   meta.name = "test";
 
   irs::flush_state state{
-    .name = meta.name,
-    .doc_count = kMax,
+      .name = meta.name,
+      .doc_count = kMax,
   };
 
   constexpr std::string_view kValue{"aaaaaaaaaaaaaaaaaaaaaaaaaaa"};
@@ -1569,11 +1568,11 @@ TEST_P(columnstore2_test_case, sparse_column_full_blocks_all_equal) {
     writer.prepare(dir(), meta);
 
     auto [id, column] =
-      writer.push_column(column_info(), [](irs::bstring& out) {
-        EXPECT_TRUE(out.empty());
-        out += 42;
-        return std::string_view{};
-      });
+        writer.push_column(column_info(), [](irs::bstring& out) {
+          EXPECT_TRUE(out.empty());
+          out += 42;
+          return std::string_view{};
+        });
 
     for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= kMax; ++doc) {
       write_payload(doc, column(doc));
@@ -1733,8 +1732,8 @@ TEST_P(columnstore2_test_case, dense_mask_column) {
   meta.name = "test";
 
   irs::flush_state state{
-    .name = meta.name,
-    .doc_count = kMax,
+      .name = meta.name,
+      .doc_count = kMax,
   };
 
   {
@@ -1743,11 +1742,11 @@ TEST_P(columnstore2_test_case, dense_mask_column) {
     writer.prepare(dir(), meta);
 
     auto [id, column] =
-      writer.push_column(column_info(), [](irs::bstring& out) {
-        EXPECT_TRUE(out.empty());
-        out += 42;
-        return "foobar";
-      });
+        writer.push_column(column_info(), [](irs::bstring& out) {
+          EXPECT_TRUE(out.empty());
+          out += 42;
+          return "foobar";
+        });
 
     for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= kMax; ++doc) {
       column(doc);
@@ -1891,8 +1890,8 @@ TEST_P(columnstore2_test_case, dense_column) {
   meta.name = "test";
 
   irs::flush_state state{
-    .name = meta.name,
-    .doc_count = kMax,
+      .name = meta.name,
+      .doc_count = kMax,
   };
 
   {
@@ -1901,11 +1900,11 @@ TEST_P(columnstore2_test_case, dense_column) {
     writer.prepare(dir(), meta);
 
     auto [id, column] =
-      writer.push_column(column_info(), [](irs::bstring& out) {
-        EXPECT_TRUE(out.empty());
-        out += 42;
-        return "foobar";
-      });
+        writer.push_column(column_info(), [](irs::bstring& out) {
+          EXPECT_TRUE(out.empty());
+          out += 42;
+          return "foobar";
+        });
 
     for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= kMax; ++doc) {
       auto& stream = column(doc);
@@ -2096,8 +2095,8 @@ TEST_P(columnstore2_test_case, dense_column_range) {
   meta.name = "test";
 
   irs::flush_state state{
-    .name = meta.name,
-    .doc_count = kMax,
+      .name = meta.name,
+      .doc_count = kMax,
   };
 
   {
@@ -2106,11 +2105,11 @@ TEST_P(columnstore2_test_case, dense_column_range) {
     writer.prepare(dir(), meta);
 
     auto [id, column] =
-      writer.push_column(column_info(), [](irs::bstring& out) {
-        EXPECT_TRUE(out.empty());
-        out += 42;
-        return std::string_view{};
-      });
+        writer.push_column(column_info(), [](irs::bstring& out) {
+          EXPECT_TRUE(out.empty());
+          out += 42;
+          return std::string_view{};
+        });
 
     for (irs::doc_id_t doc = kMin; doc <= kMax; ++doc) {
       auto& stream = column(doc);
@@ -2319,8 +2318,8 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column_m) {
   const bool has_encryption = bool(dir().attributes().encryption());
 
   irs::flush_state state{
-    .name = meta.name,
-    .doc_count = MAX,
+      .name = meta.name,
+      .doc_count = MAX,
   };
   TestResourceManager mem;
 
@@ -2331,12 +2330,12 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column_m) {
 
     {
       auto [id, column] = writer.push_column(
-        {irs::type<irs::compression::none>::get(), {}, has_encryption},
-        [](irs::bstring& out) {
-          EXPECT_TRUE(out.empty());
-          out += 42;
-          return std::string_view{};
-        });
+          {irs::type<irs::compression::none>::get(), {}, has_encryption},
+          [](irs::bstring& out) {
+            EXPECT_TRUE(out.empty());
+            out += 42;
+            return std::string_view{};
+          });
 
       for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= MAX; ++doc) {
         auto& stream = column(doc);
@@ -2347,12 +2346,12 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column_m) {
 
     {
       auto [id, column] = writer.push_column(
-        {irs::type<irs::compression::none>::get(), {}, has_encryption},
-        [](irs::bstring& out) {
-          EXPECT_TRUE(out.empty());
-          out += 43;
-          return std::string_view{};
-        });
+          {irs::type<irs::compression::none>::get(), {}, has_encryption},
+          [](irs::bstring& out) {
+            EXPECT_TRUE(out.empty());
+            out += 43;
+            return std::string_view{};
+          });
 
       for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= MAX; ++doc) {
         auto& stream = column(doc);
@@ -2380,8 +2379,8 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column_m) {
     ASSERT_EQ(consolidation() ? ColumnType::kDenseFixed : ColumnType::kFixed,
               header->type);
     ASSERT_EQ(has_encryption
-                ? (ColumnProperty::kEncrypt | ColumnProperty::kNoName)
-                : ColumnProperty::kNoName,
+                  ? (ColumnProperty::kEncrypt | ColumnProperty::kNoName)
+                  : ColumnProperty::kNoName,
               header->props);
   }
   ASSERT_EQ(0, mem.cached_columns.counter_);
@@ -2396,8 +2395,8 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column_mr) {
   const bool has_encryption = bool(dir().attributes().encryption());
 
   irs::flush_state state{
-    .name = meta.name,
-    .doc_count = MAX,
+      .name = meta.name,
+      .doc_count = MAX,
   };
   TestResourceManager mem;
   mem.cached_columns.result_ = false;
@@ -2408,12 +2407,12 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column_mr) {
 
     {
       auto [id, column] = writer.push_column(
-        {irs::type<irs::compression::none>::get(), {}, has_encryption},
-        [](irs::bstring& out) {
-          EXPECT_TRUE(out.empty());
-          out += 42;
-          return std::string_view{};
-        });
+          {irs::type<irs::compression::none>::get(), {}, has_encryption},
+          [](irs::bstring& out) {
+            EXPECT_TRUE(out.empty());
+            out += 42;
+            return std::string_view{};
+          });
 
       for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= MAX; ++doc) {
         auto& stream = column(doc);
@@ -2424,12 +2423,12 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column_mr) {
 
     {
       auto [id, column] = writer.push_column(
-        {irs::type<irs::compression::none>::get(), {}, has_encryption},
-        [](irs::bstring& out) {
-          EXPECT_TRUE(out.empty());
-          out += 43;
-          return std::string_view{};
-        });
+          {irs::type<irs::compression::none>::get(), {}, has_encryption},
+          [](irs::bstring& out) {
+            EXPECT_TRUE(out.empty());
+            out += 43;
+            return std::string_view{};
+          });
 
       for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= MAX; ++doc) {
         auto& stream = column(doc);
@@ -2458,8 +2457,8 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column_mr) {
     ASSERT_EQ(consolidation() ? ColumnType::kDenseFixed : ColumnType::kFixed,
               header->type);
     ASSERT_EQ(has_encryption
-                ? (ColumnProperty::kEncrypt | ColumnProperty::kNoName)
-                : ColumnProperty::kNoName,
+                  ? (ColumnProperty::kEncrypt | ColumnProperty::kNoName)
+                  : ColumnProperty::kNoName,
               header->props);
   }
   // should not be a deallocation
@@ -2476,8 +2475,8 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column) {
   meta.name = "test";
 
   irs::flush_state state{
-    .name = meta.name,
-    .doc_count = kMax,
+      .name = meta.name,
+      .doc_count = kMax,
   };
 
   {
@@ -2487,11 +2486,11 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column) {
 
     {
       auto [id, column] =
-        writer.push_column(column_info(), [](irs::bstring& out) {
-          EXPECT_TRUE(out.empty());
-          out += 42;
-          return std::string_view{};
-        });
+          writer.push_column(column_info(), [](irs::bstring& out) {
+            EXPECT_TRUE(out.empty());
+            out += 42;
+            return std::string_view{};
+          });
 
       for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= kMax; ++doc) {
         auto& stream = column(doc);
@@ -2502,11 +2501,11 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column) {
 
     {
       auto [id, column] =
-        writer.push_column(column_info(), [](irs::bstring& out) {
-          EXPECT_TRUE(out.empty());
-          out += 43;
-          return std::string_view{};
-        });
+          writer.push_column(column_info(), [](irs::bstring& out) {
+            EXPECT_TRUE(out.empty());
+            out += 43;
+            return std::string_view{};
+          });
 
       for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= kMax; ++doc) {
         auto& stream = column(doc);
@@ -2528,7 +2527,7 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column) {
         if (has_payload()) {
           ASSERT_EQ(sizeof doc, payload.value.size());
           const irs::doc_id_t actual_doc =
-            *reinterpret_cast<const irs::doc_id_t*>(payload.value.data());
+              *reinterpret_cast<const irs::doc_id_t*>(payload.value.data());
           EXPECT_EQ(doc, actual_doc);
         } else {
           ASSERT_TRUE(payload.value.empty());
@@ -2792,8 +2791,8 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column_empty_tail) {
   meta.name = "test";
 
   irs::flush_state state{
-    .name = meta.name,
-    .doc_count = kMax,
+      .name = meta.name,
+      .doc_count = kMax,
   };
 
   {
@@ -2803,11 +2802,11 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column_empty_tail) {
 
     {
       auto [id, column] =
-        writer.push_column(column_info(), [](irs::bstring& out) {
-          EXPECT_TRUE(out.empty());
-          out += 42;
-          return std::string_view{};
-        });
+          writer.push_column(column_info(), [](irs::bstring& out) {
+            EXPECT_TRUE(out.empty());
+            out += 42;
+            return std::string_view{};
+          });
 
       for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= kMax; ++doc) {
         auto& stream = column(doc);
@@ -2819,11 +2818,11 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column_empty_tail) {
     {
       // empty column has to be removed
       [[maybe_unused]] auto [id, column] =
-        writer.push_column(column_info(), [](auto&) {
-          // Must not be called
-          EXPECT_FALSE(true);
-          return std::string_view{};
-        });
+          writer.push_column(column_info(), [](auto&) {
+            // Must not be called
+            EXPECT_FALSE(true);
+            return std::string_view{};
+          });
     }
 
     ASSERT_TRUE(writer.commit(state));
@@ -2840,7 +2839,7 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column_empty_tail) {
         if (has_payload()) {
           ASSERT_EQ(sizeof doc, payload.value.size());
           const irs::doc_id_t actual_doc =
-            *reinterpret_cast<const irs::doc_id_t*>(payload.value.data());
+              *reinterpret_cast<const irs::doc_id_t*>(payload.value.data());
           EXPECT_EQ(doc, actual_doc);
         } else {
           ASSERT_TRUE(payload.value.empty());
@@ -2975,8 +2974,8 @@ TEST_P(columnstore2_test_case, empty_columns) {
   meta.name = "test";
 
   irs::flush_state state{
-    .name = meta.name,
-    .doc_count = kMax,
+      .name = meta.name,
+      .doc_count = kMax,
   };
 
   {
@@ -2987,21 +2986,21 @@ TEST_P(columnstore2_test_case, empty_columns) {
     {
       // empty column must be removed
       [[maybe_unused]] auto [id, column] =
-        writer.push_column(column_info(), [](auto&) {
-          // Must not be called
-          EXPECT_FALSE(true);
-          return std::string_view{};
-        });
+          writer.push_column(column_info(), [](auto&) {
+            // Must not be called
+            EXPECT_FALSE(true);
+            return std::string_view{};
+          });
     }
 
     {
       // empty column must be removed
       [[maybe_unused]] auto [id, column] =
-        writer.push_column(column_info(), [](auto&) {
-          // Must not be called
-          EXPECT_FALSE(true);
-          return std::string_view{};
-        });
+          writer.push_column(column_info(), [](auto&) {
+            // Must not be called
+            EXPECT_FALSE(true);
+            return std::string_view{};
+          });
     }
 
     ASSERT_FALSE(writer.commit(state));
@@ -3017,15 +3016,15 @@ TEST_P(columnstore2_test_case, empty_columns) {
 }
 
 static constexpr auto kTestDirs =
-  tests::getDirectories<tests::kTypesDefault | tests::kTypesRot13_16>();
+    tests::getDirectories<tests::kTypesDefault | tests::kTypesRot13_16>();
 
 INSTANTIATE_TEST_SUITE_P(
-  columnstore2_test, columnstore2_test_case,
-  ::testing::Combine(::testing::ValuesIn(kTestDirs),
-                     ::testing::Values(irs::ColumnHint::kNormal,
-                                       irs::ColumnHint::kConsolidation,
-                                       irs::ColumnHint::kMask,
-                                       irs::ColumnHint::kPrevDoc),
-                     ::testing::Values(irs::columnstore2::Version::kMin),
-                     ::testing::Values(true, false)),
-  &columnstore2_test_case::to_string);
+    columnstore2_test, columnstore2_test_case,
+    ::testing::Combine(::testing::ValuesIn(kTestDirs),
+                       ::testing::Values(irs::ColumnHint::kNormal,
+                                         irs::ColumnHint::kConsolidation,
+                                         irs::ColumnHint::kMask,
+                                         irs::ColumnHint::kPrevDoc),
+                       ::testing::Values(irs::columnstore2::Version::kMin),
+                       ::testing::Values(true, false)),
+    &columnstore2_test_case::to_string);

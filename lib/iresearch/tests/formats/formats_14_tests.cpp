@@ -15,7 +15,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "formats_test_case_base.hpp"
@@ -38,7 +37,7 @@ TEST_P(format_14_test_case, write_zero_block_encryption) {
   // replace encryption
   ASSERT_NE(nullptr, dir().attributes().encryption());
   dir().attributes() =
-    irs::directory_attributes{std::make_unique<tests::rot13_encryption>(0)};
+      irs::directory_attributes{std::make_unique<tests::rot13_encryption>(0)};
 
   auto writer = irs::IndexWriter::Make(dir(), codec(), irs::OM_CREATE);
   ASSERT_NE(nullptr, writer);
@@ -49,15 +48,15 @@ TEST_P(format_14_test_case, write_zero_block_encryption) {
 }
 
 static constexpr auto kTestDirsWithEncryption =
-  tests::getDirectories<tests::kTypesRot13_16 | tests::kTypesRot13_7>();
+    tests::getDirectories<tests::kTypesRot13_16 | tests::kTypesRot13_7>();
 static const auto kDirectoriesWithEncryption =
-  ::testing::ValuesIn(kTestDirsWithEncryption);
+    ::testing::ValuesIn(kTestDirsWithEncryption);
 
 static constexpr auto kTestDirs = tests::getDirectories<tests::kTypesDefault>();
 static const auto kDirectories = ::testing::ValuesIn(kTestDirs);
 
 static const auto kFormats = ::testing::Values(
-  tests::format_info{"1_4", "1_0"}, tests::format_info{"1_4simd", "1_0"});
+    tests::format_info{"1_4", "1_0"}, tests::format_info{"1_4simd", "1_0"});
 
 // 1.4 specific tests
 INSTANTIATE_TEST_SUITE_P(format_14_test, format_14_test_case,

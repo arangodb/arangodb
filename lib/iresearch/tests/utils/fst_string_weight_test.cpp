@@ -17,8 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "utils/fstext/fst_string_weight.hpp"
@@ -405,8 +403,8 @@ TEST(fst_byte_weight_test, plus) {
     const fst::StringLeftWeight<irs::byte_type> prefix_weight(prefix.begin(),
                                                               prefix.end());
     ASSERT_EQ(
-      prefix_weight,
-      fst::Plus(lhs_weight, fst::StringLeftWeight<irs::byte_type>::Zero()));
+        prefix_weight,
+        fst::Plus(lhs_weight, fst::StringLeftWeight<irs::byte_type>::Zero()));
   }
 
   // Zero() + weight
@@ -419,8 +417,8 @@ TEST(fst_byte_weight_test, plus) {
     const fst::StringLeftWeight<irs::byte_type> prefix_weight(prefix.begin(),
                                                               prefix.end());
     ASSERT_EQ(
-      prefix_weight,
-      fst::Plus(fst::StringLeftWeight<irs::byte_type>::Zero(), rhs_weight));
+        prefix_weight,
+        fst::Plus(fst::StringLeftWeight<irs::byte_type>::Zero(), rhs_weight));
   }
 
   // weight + NoWeight()
@@ -432,9 +430,9 @@ TEST(fst_byte_weight_test, plus) {
                                                            lhs.end());
     const fst::StringLeftWeight<irs::byte_type> prefix_weight(prefix.begin(),
                                                               prefix.end());
-    ASSERT_EQ(
-      prefix_weight,
-      fst::Plus(lhs_weight, fst::StringLeftWeight<irs::byte_type>::NoWeight()));
+    ASSERT_EQ(prefix_weight,
+              fst::Plus(lhs_weight,
+                        fst::StringLeftWeight<irs::byte_type>::NoWeight()));
   }
 
   // NoWeight() + weight
@@ -446,9 +444,9 @@ TEST(fst_byte_weight_test, plus) {
                                                            rhs.end());
     const fst::StringLeftWeight<irs::byte_type> prefix_weight(prefix.begin(),
                                                               prefix.end());
-    ASSERT_EQ(
-      prefix_weight,
-      fst::Plus(fst::StringLeftWeight<irs::byte_type>::NoWeight(), rhs_weight));
+    ASSERT_EQ(prefix_weight,
+              fst::Plus(fst::StringLeftWeight<irs::byte_type>::NoWeight(),
+                        rhs_weight));
   }
 
   // weight + One()
@@ -461,8 +459,8 @@ TEST(fst_byte_weight_test, plus) {
     const fst::StringLeftWeight<irs::byte_type> prefix_weight(prefix.begin(),
                                                               prefix.end());
     ASSERT_EQ(
-      prefix_weight,
-      fst::Plus(lhs_weight, fst::StringLeftWeight<irs::byte_type>::One()));
+        prefix_weight,
+        fst::Plus(lhs_weight, fst::StringLeftWeight<irs::byte_type>::One()));
   }
 
   // One() + weight
@@ -475,8 +473,8 @@ TEST(fst_byte_weight_test, plus) {
     const fst::StringLeftWeight<irs::byte_type> prefix_weight(prefix.begin(),
                                                               prefix.end());
     ASSERT_EQ(
-      prefix_weight,
-      fst::Plus(fst::StringLeftWeight<irs::byte_type>::One(), rhs_weight));
+        prefix_weight,
+        fst::Plus(fst::StringLeftWeight<irs::byte_type>::One(), rhs_weight));
   }
 }
 
@@ -518,8 +516,8 @@ TEST(fst_byte_weight_test, times) {
     const fst::StringLeftWeight<irs::byte_type> lhs_weight(lhs.begin(),
                                                            lhs.end());
     ASSERT_EQ(
-      lhs_weight,
-      fst::Times(lhs_weight, fst::StringLeftWeight<irs::byte_type>::Zero()));
+        lhs_weight,
+        fst::Times(lhs_weight, fst::StringLeftWeight<irs::byte_type>::Zero()));
   }
 
   // Zero() * weight
@@ -529,8 +527,8 @@ TEST(fst_byte_weight_test, times) {
     const fst::StringLeftWeight<irs::byte_type> rhs_weight(rhs.begin(),
                                                            rhs.end());
     ASSERT_EQ(
-      rhs_weight,
-      fst::Times(fst::StringLeftWeight<irs::byte_type>::Zero(), rhs_weight));
+        rhs_weight,
+        fst::Times(fst::StringLeftWeight<irs::byte_type>::Zero(), rhs_weight));
   }
 
   // weight * NoWeight()
@@ -562,8 +560,8 @@ TEST(fst_byte_weight_test, times) {
     const fst::StringLeftWeight<irs::byte_type> lhs_weight(lhs.begin(),
                                                            lhs.end());
     ASSERT_EQ(
-      lhs_weight,
-      fst::Times(lhs_weight, fst::StringLeftWeight<irs::byte_type>::One()));
+        lhs_weight,
+        fst::Times(lhs_weight, fst::StringLeftWeight<irs::byte_type>::One()));
   }
 
   // One() * weight
@@ -573,8 +571,8 @@ TEST(fst_byte_weight_test, times) {
     const fst::StringLeftWeight<irs::byte_type> rhs_weight(rhs.begin(),
                                                            rhs.end());
     ASSERT_EQ(
-      rhs_weight,
-      fst::Times(fst::StringLeftWeight<irs::byte_type>::One(), rhs_weight));
+        rhs_weight,
+        fst::Times(fst::StringLeftWeight<irs::byte_type>::One(), rhs_weight));
   }
 }
 
@@ -618,9 +616,9 @@ TEST(fst_byte_weight_test, divide) {
     const fst::StringLeftWeight<irs::byte_type> lhs_weight(lhs.begin(),
                                                            lhs.end());
     ASSERT_EQ(
-      lhs_weight,
-      fst::Divide(lhs_weight, fst::StringLeftWeight<irs::byte_type>::Zero(),
-                  fst::DIVIDE_LEFT));
+        lhs_weight,
+        fst::Divide(lhs_weight, fst::StringLeftWeight<irs::byte_type>::Zero(),
+                    fst::DIVIDE_LEFT));
   }
 
   // Zero() / weight
@@ -643,10 +641,10 @@ TEST(fst_byte_weight_test, divide) {
 
     const fst::StringLeftWeight<irs::byte_type> lhs_weight(lhs.begin(),
                                                            lhs.end());
-    ASSERT_EQ(
-      lhs_weight,
-      fst::Divide(lhs_weight, fst::StringLeftWeight<irs::byte_type>::NoWeight(),
-                  fst::DIVIDE_LEFT));
+    ASSERT_EQ(lhs_weight,
+              fst::Divide(lhs_weight,
+                          fst::StringLeftWeight<irs::byte_type>::NoWeight(),
+                          fst::DIVIDE_LEFT));
   }
 
   // NoWeight() / weight
@@ -673,9 +671,9 @@ TEST(fst_byte_weight_test, divide) {
     const fst::StringLeftWeight<irs::byte_type> result_weight(result.begin(),
                                                               result.end());
     ASSERT_EQ(
-      result_weight,
-      fst::Divide(lhs_weight, fst::StringLeftWeight<irs::byte_type>::One(),
-                  fst::DIVIDE_LEFT));
+        result_weight,
+        fst::Divide(lhs_weight, fst::StringLeftWeight<irs::byte_type>::One(),
+                    fst::DIVIDE_LEFT));
   }
 
   // One() / weight

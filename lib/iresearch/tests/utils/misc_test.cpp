@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "utils/misc.hpp"
@@ -26,7 +25,7 @@
 
 TEST(misc_test, cached_func_contexpr) {
   constexpr auto cached_func =
-    irs::cache_func<uint32_t, 3>(0, [](uint32_t v) { return v + 1; });
+      irs::cache_func<uint32_t, 3>(0, [](uint32_t v) { return v + 1; });
   static_assert(3 == cached_func.size());
   static_assert(1 == cached_func.get<false>(0));
   static_assert(2 == cached_func.get<true>(1));

@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -51,7 +50,7 @@ namespace detail {
 
 template<size_t I, typename Tuple>
 constexpr attribute_ptr<attribute> get_mutable_helper(
-  Tuple& t, type_info::type_id id) noexcept {
+    Tuple& t, type_info::type_id id) noexcept {
   if (type<std::tuple_element_t<I, Tuple>>::id() == id) {
     return std::get<I>(t);
   }

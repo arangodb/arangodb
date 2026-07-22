@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "sparse_bitmap.hpp"
@@ -60,11 +59,11 @@ enum AccessType : uint32_t {
 
 constexpr size_t kDenseBlockIndexBlockSize = 512;
 constexpr size_t kDenseBlockIndexNumBlocks =
-  sparse_bitmap_writer::kBlockSize / kDenseBlockIndexBlockSize;
+    sparse_bitmap_writer::kBlockSize / kDenseBlockIndexBlockSize;
 constexpr size_t kDenseIndexBlockSizeInBytes =
-  kDenseBlockIndexNumBlocks * sizeof(uint16_t);
+    kDenseBlockIndexNumBlocks * sizeof(uint16_t);
 constexpr uint32_t kDenseBlockIndexWordsPerBlock =
-  kDenseBlockIndexBlockSize / bits_required<size_t>();
+    kDenseBlockIndexBlockSize / bits_required<size_t>();
 
 template<size_t N>
 void write_block_index(irs::index_output& out, size_t (&bits)[N]) {
@@ -222,7 +221,7 @@ struct container_iterator<BT_DENSE, false> {
     IRS_ASSERT(target_word_idx >= ctx.word_idx);
 
     if (ctx.index.u16data && uint32_t(target_word_idx - ctx.word_idx) >=
-                               kDenseBlockIndexWordsPerBlock) {
+                                 kDenseBlockIndexWordsPerBlock) {
       const size_t index_block = target_block / kDenseBlockIndexBlockSize;
 
       uint16_t popcnt;
@@ -320,7 +319,7 @@ struct container_iterator<BT_DENSE, false> {
         const doc_id_t offset = std::countr_zero(ctx.word);
 
         std::get<document>(self->attrs_).value =
-          self->block_ + ctx.word_idx * bits_required<size_t>() + offset;
+            self->block_ + ctx.word_idx * bits_required<size_t>() + offset;
         auto& index = std::get<value_index>(self->attrs_).value;
         index = ctx.popcnt;
         ctx.popcnt += std::popcount(ctx.word);
@@ -338,7 +337,7 @@ struct container_iterator<BT_DENSE, true> {
   template<AccessType Access>
   static bool seek(sparse_bitmap_iterator* self, doc_id_t target) {
     const auto res =
-      container_iterator<BT_DENSE, false>::seek<Access>(self, target);
+        container_iterator<BT_DENSE, false>::seek<Access>(self, target);
 
     if (std::get<value_index>(self->attrs_).value != self->index_) {
       self->seek_func_ = &container_iterator<BT_DENSE, false>::seek<Access>;
@@ -432,22 +431,22 @@ bool sparse_bitmap_iterator::initial_seek(sparse_bitmap_iterator* self,
 
 // cppcheck-suppress uninitMemberVarPrivate
 sparse_bitmap_iterator::sparse_bitmap_iterator(Ptr&& in, const options& opts)
-  : in_{std::move(in)},
-    seek_func_{&sparse_bitmap_iterator::initial_seek},
-    block_index_{opts.blocks},
-    cont_begin_{in_->file_pointer()},
-    origin_{cont_begin_},
-    use_block_index_{opts.use_block_index},
-    prev_doc_written_{opts.version >= SparseBitmapVersion::kPrevDoc},
-    track_prev_doc_{prev_doc_written_ && opts.track_prev_doc} {
+    : in_{std::move(in)},
+      seek_func_{&sparse_bitmap_iterator::initial_seek},
+      block_index_{opts.blocks},
+      cont_begin_{in_->file_pointer()},
+      origin_{cont_begin_},
+      use_block_index_{opts.use_block_index},
+      prev_doc_written_{opts.version >= SparseBitmapVersion::kPrevDoc},
+      track_prev_doc_{prev_doc_written_ && opts.track_prev_doc} {
   IRS_ASSERT(in_);
 
   if (track_prev_doc_) {
     std::get<prev_doc>(attrs_).reset(
-      [](const void* ctx) noexcept {
-        return *static_cast<const doc_id_t*>(ctx);
-      },
-      &prev_);
+        [](const void* ctx) noexcept {
+          return *static_cast<const doc_id_t*>(ctx);
+        },
+        &prev_);
   }
 }
 
@@ -470,10 +469,10 @@ void sparse_bitmap_iterator::read_block_header() {
 
   if (track_prev_doc_) {
     std::get<prev_doc>(attrs_).reset(
-      [](const void* ctx) noexcept {
-        return *static_cast<const doc_id_t*>(ctx);
-      },
-      &prev_);
+        [](const void* ctx) noexcept {
+          return *static_cast<const doc_id_t*>(ctx);
+        },
+        &prev_);
   }
 
   if (popcnt == sparse_bitmap_writer::kBlockSize) {
@@ -491,18 +490,18 @@ void sparse_bitmap_iterator::read_block_header() {
     seek_func_ = GetSeekFunc<BT_SPARSE>(ctx_.u8data, track_prev_doc_);
   } else {
     constexpr size_t block_size =
-      sparse_bitmap_writer::kBlockSize / bits_required<byte_type>();
+        sparse_bitmap_writer::kBlockSize / bits_required<byte_type>();
 
     ctx_.dense.word_idx = -1;
     ctx_.dense.popcnt = index_;
     if (use_block_index_) {
       ctx_.dense.index.u8data =
-        in_->read_buffer(kDenseIndexBlockSizeInBytes, BufferHint::PERSISTENT);
+          in_->read_buffer(kDenseIndexBlockSizeInBytes, BufferHint::PERSISTENT);
 
       if (!ctx_.dense.index.u8data) {
         if (!block_index_data_) {
           block_index_data_ =
-            std::make_unique<byte_type[]>(kDenseIndexBlockSizeInBytes);
+              std::make_unique<byte_type[]>(kDenseIndexBlockSizeInBytes);
         }
 
         ctx_.dense.index.u8data = block_index_data_.get();
@@ -529,7 +528,7 @@ void sparse_bitmap_iterator::seek_to_block(doc_id_t target) {
     if (target_block >=
         (block_ / sparse_bitmap_writer::kBlockSize + kBlockScanThreshold)) {
       const auto offset =
-        std::min(size_t{target_block}, block_index_.size() - 1);
+          std::min(size_t{target_block}, block_index_.size() - 1);
       const auto& block = block_index_[offset];
 
       index_max_ = block.index;

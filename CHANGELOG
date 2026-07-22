@@ -1,5 +1,15 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
+
+* Upgraded included rclone to v1.74.4 with go1.25.12 and non-vulnerable
+  dependencies.
+
+* Updated ArangoDB Starter to v0.20.0-preview-13.
+
+* Removed the deprecated `hash` and `skiplist` index types from the index
+  aliases reported by the `GET /_api/engine` endpoint, as they can no longer
+  be created.
+
 * COR-679: Added AQL array `ALL`/`ANY`/`NONE`/`AT LEAST` support for the `=~` and
   `!~` regex operators, e.g. `["foo", "bar"] ANY =~ "^ba"` and
   `["foo1", "bar2", "baz3baz"] AT LEAST(2) =~ "\\w\\d$"`.
@@ -7,9 +17,6 @@
 * COR-707 - CONTAINS(): Raise a warning for non-string inputs.
   Improved validation for the AQL CONTAINS() function. When either argument is not a string, 
   CONTAINS() now emits a warning and returns null, aligning its behavior with the documented specification. This helps users identify unsupported input types and detect potential query issues more easily.
-
-* Upgraded included rclone to v1.74.3 with go1.25.11 and non-vulnerable
-  dependencies.
 
 * COR-564: Allow sub-attribute as weightAttribute for traversal.
   
@@ -52,8 +59,6 @@
 
 * COR-572: BugFix - Resolved unintended warnings raised by eager evaluation in 
   the ternary operator during traversal and optimization.
-
-* Updated ArangoDB Starter to v0.20.0-preview-12.
 
 * COR-522: Use Distribute on repeated smart edge join.
 
@@ -399,11 +404,22 @@
 3.12.10-devel (XXXX-XX-XX)
 --------------------------
 
+* COR-759: AQL unary plus/minus on bind parameters silently return incorrect values
+  AQL: Fixed an issue where queries using unary operators (+ and -) with bind parameters could cause the server to terminate unexpectedly. These queries are now handled correctly and return the expected results.
+  
+
+* Upgraded included rclone to v1.74.4 with go1.25.12 and non-vulnerable
+  dependencies.
+
+* Updated ArangoDB Starter to v0.19.24.
+
+* COR-613: Create Response Code Metrics
+  arangodb_http_response_http_response_code_total{code="<response-code>"}
+
+* COR-728: Removed the telemetrics API and the arangosh telemetrics client.
+
 * GitHub issue #22532: Fixed query editor content becoming hidden after resizing
   the editor pane in the web UI.
-
-* Upgraded included rclone to v1.74.3 with go1.25.11 and non-vulnerable
-  dependencies.
 
 * Add missing case to return 403 for error HTTP_UNAUTHORIZED.
 
@@ -421,8 +437,6 @@
  - js-yaml to 4.2.0
 
 * Upgraded OpenSSL to 3.5.7.
-
-* Updated ArangoDB Starter to v0.19.23.
 
 * COR-607: Fix a problem that causes cluster queries involving a materialize node
   collection access that is used as a satellite to crash in maintainer mode,

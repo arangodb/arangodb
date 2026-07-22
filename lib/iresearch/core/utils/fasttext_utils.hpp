@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -44,8 +43,8 @@ class ImmutableFastText : public FastText {
   }
 
   std::vector<std::pair<real, std::string>> getNN(
-    const DenseMatrix& wordVectors, const Vector& queryVec, int32_t k,
-    const std::set<std::string>& banSet) const {
+      const DenseMatrix& wordVectors, const Vector& queryVec, int32_t k,
+      const std::set<std::string>& banSet) const {
     return FastText::getNN(wordVectors, queryVec, k, banSet);
   }
 };

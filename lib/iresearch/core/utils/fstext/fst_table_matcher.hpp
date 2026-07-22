@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -49,8 +48,8 @@ std::vector<typename F::Arc::Label> getStartLabels(const F& fst) {
         fsa::RangeLabel range{MatchInput ? arc.ilabel : arc.olabel};
         IRS_ASSERT(range.min <= std::numeric_limits<uint8_t>::max());
         IRS_ASSERT(range.max <= std::numeric_limits<uint8_t>::max());
-        range.max +=
-          decltype(range.max)(range.max < std::numeric_limits<uint8_t>::max());
+        range.max += decltype(range.max)(range.max <
+                                         std::numeric_limits<uint8_t>::max());
 
         irs::set_bit(bits[range.min / irs::bits_required<size_t>()],
                      range.min % irs::bits_required<size_t>());
@@ -91,8 +90,8 @@ std::vector<typename F::Arc::Label> getStartLabels(const F& fst) {
         fsa::RangeLabel range{MatchInput ? arc.ilabel : arc.olabel};
         IRS_ASSERT(range.min <= std::numeric_limits<uint16_t>::max());
         IRS_ASSERT(range.max <= std::numeric_limits<uint16_t>::max());
-        range.max +=
-          decltype(range.max)(range.max < std::numeric_limits<uint16_t>::max());
+        range.max += decltype(range.max)(range.max <
+                                         std::numeric_limits<uint16_t>::max());
 
         labels.emplace(range.min);
         labels.emplace(range.max);
@@ -106,7 +105,7 @@ template<typename F,              // automaton
          size_t CacheSize = 256,  // size of a table for cached label offsets
          bool MatchInput = true,  // label to match
          bool ByteLabel =
-           false  // byte automaton is defined over alphabet {0..256, Rho}
+             false  // byte automaton is defined over alphabet {0..256, Rho}
          >
 class TableMatcher final : public MatcherBase<typename F::Arc> {
  public:
@@ -120,21 +119,22 @@ class TableMatcher final : public MatcherBase<typename F::Arc> {
   using MatcherBase<Arc>::Properties;
 
   static constexpr fst::MatchType MATCH_TYPE =
-    MatchInput ? fst::MATCH_INPUT : fst::MATCH_OUTPUT;
+      MatchInput ? fst::MATCH_INPUT : fst::MATCH_OUTPUT;
 
   // expected FST properties
   static constexpr auto FST_PROPERTIES =
-    (MATCH_TYPE == MATCH_INPUT ? kILabelSorted : kOLabelSorted) |
-    (MATCH_TYPE == MATCH_INPUT ? kIDeterministic : kODeterministic) | kAcceptor;
+      (MATCH_TYPE == MATCH_INPUT ? kILabelSorted : kOLabelSorted) |
+      (MATCH_TYPE == MATCH_INPUT ? kIDeterministic : kODeterministic) |
+      kAcceptor;
 
   explicit TableMatcher(const FST& fst, bool test_props)
-    : start_labels_(fst::getStartLabels<F, MatchInput, ByteLabel>(fst)),
-      num_labels_(start_labels_.size()),
-      transitions_(fst.NumStates() * num_labels_, kNoStateId),
-      arc_(kNoLabel, kNoLabel, Weight::NoWeight(), kNoStateId),
-      fst_(&fst),
-      error_(test_props &&
-             (fst.Properties(FST_PROPERTIES, true) != FST_PROPERTIES)) {
+      : start_labels_(fst::getStartLabels<F, MatchInput, ByteLabel>(fst)),
+        num_labels_(start_labels_.size()),
+        transitions_(fst.NumStates() * num_labels_, kNoStateId),
+        arc_(kNoLabel, kNoLabel, Weight::NoWeight(), kNoStateId),
+        fst_(&fst),
+        error_(test_props &&
+               (fst.Properties(FST_PROPERTIES, true) != FST_PROPERTIES)) {
     IRS_ASSERT(!start_labels_.empty());
 
     if (error_) {
@@ -169,7 +169,7 @@ class TableMatcher final : public MatcherBase<typename F::Arc> {
         IRS_ASSERT(label != start_labels_.end());
 
         auto* label_transitions =
-          state_transitions + std::distance(start_labels_.begin(), label);
+            state_transitions + std::distance(start_labels_.begin(), label);
         for (; label != start_labels_.end() && range.max >= *label; ++label) {
           *label_transitions++ = arc->nextstate;
         }
@@ -205,10 +205,10 @@ class TableMatcher final : public MatcherBase<typename F::Arc> {
     }
 
     constexpr const auto true_prop =
-      (MATCH_TYPE == MATCH_INPUT) ? kILabelSorted : kOLabelSorted;
+        (MATCH_TYPE == MATCH_INPUT) ? kILabelSorted : kOLabelSorted;
 
     constexpr const auto false_prop =
-      (MATCH_TYPE == MATCH_INPUT) ? kNotILabelSorted : kNotOLabelSorted;
+        (MATCH_TYPE == MATCH_INPUT) ? kNotILabelSorted : kNotOLabelSorted;
 
     const auto props = fst_->Properties(true_prop | false_prop, test);
 
@@ -230,8 +230,8 @@ class TableMatcher final : public MatcherBase<typename F::Arc> {
       label_offset = cached_label_offsets_[size_t(label)];
     } else {
       label_offset = (size_t(label) < std::size(cached_label_offsets_)
-                        ? cached_label_offsets_[size_t(label)]
-                        : find_label_offset(label));
+                          ? cached_label_offsets_[size_t(label)]
+                          : find_label_offset(label));
     }
 
     IRS_ASSERT(label_offset < num_labels_);
@@ -255,8 +255,8 @@ class TableMatcher final : public MatcherBase<typename F::Arc> {
       label_offset = cached_label_offsets_[size_t(label)];
     } else {
       label_offset = (size_t(label) < std::size(cached_label_offsets_)
-                        ? cached_label_offsets_[size_t(label)]
-                        : find_label_offset(label));
+                          ? cached_label_offsets_[size_t(label)]
+                          : find_label_offset(label));
     }
 
     state_ = state_begin_ + label_offset;
@@ -289,7 +289,7 @@ class TableMatcher final : public MatcherBase<typename F::Arc> {
       if (*state_ != kNoLabel) {
         IRS_ASSERT(state_ > state_begin_ && state_ < state_end_);
         const auto label =
-          start_labels_[size_t(std::distance(state_begin_, state_))];
+            start_labels_[size_t(std::distance(state_begin_, state_))];
         if constexpr (MATCH_TYPE == MATCH_INPUT) {
           arc_.ilabel = label;
         } else {
@@ -325,7 +325,7 @@ class TableMatcher final : public MatcherBase<typename F::Arc> {
 
   size_t find_label_offset(Label label) const noexcept {
     const auto it = std::lower_bound(
-      start_labels_.rbegin(), start_labels_.rend(), label, std::greater<>());
+        start_labels_.rbegin(), start_labels_.rend(), label, std::greater<>());
 
     IRS_ASSERT(it != start_labels_.rend());  // we cover the whole range
     IRS_ASSERT(start_labels_.rbegin() <= it);

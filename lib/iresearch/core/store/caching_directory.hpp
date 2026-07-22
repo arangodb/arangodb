@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -117,7 +116,7 @@ class CachingDirectoryBase : public Impl {
 
   template<typename... Args>
   explicit CachingDirectoryBase(size_t max_count, Args&&... args)
-    : Impl{std::forward<Args>(args)...}, cache_{max_count} {}
+      : Impl{std::forward<Args>(args)...}, cache_{max_count} {}
 
   bool remove(std::string_view name) noexcept final {
 #ifdef _MSC_VER

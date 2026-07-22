@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -45,14 +44,14 @@ class PhraseQuery : public filter::prepared {
 
   // Returns features required for phrase filter
   static constexpr IndexFeatures kRequiredFeatures =
-    IndexFeatures::FREQ | IndexFeatures::POS;
+      IndexFeatures::FREQ | IndexFeatures::POS;
 
   PhraseQuery(states_t&& states, positions_t&& positions, bstring&& stats,
               score_t boost) noexcept
-    : states_{std::move(states)},
-      positions_{std::move(positions)},
-      stats_{std::move(stats)},
-      boost_{boost} {}
+      : states_{std::move(states)},
+        positions_{std::move(positions)},
+        stats_{std::move(stats)},
+        boost_{boost} {}
 
   void visit(const SubReader& segment, PreparedStateVisitor& visitor,
              score_t boost) const final {
@@ -78,8 +77,8 @@ class FixedPhraseQuery : public PhraseQuery<FixedPhraseState> {
  public:
   FixedPhraseQuery(states_t&& states, positions_t&& positions, bstring&& stats,
                    score_t boost) noexcept
-    : PhraseQuery{std::move(states), std::move(positions), std::move(stats),
-                  boost} {}
+      : PhraseQuery{std::move(states), std::move(positions), std::move(stats),
+                    boost} {}
 
   doc_iterator::ptr execute(const ExecutionContext& ctx) const final;
 
@@ -90,8 +89,8 @@ class VariadicPhraseQuery : public PhraseQuery<VariadicPhraseState> {
  public:
   VariadicPhraseQuery(states_t&& states, positions_t&& positions,
                       bstring&& stats, score_t boost) noexcept
-    : PhraseQuery{std::move(states), std::move(positions), std::move(stats),
-                  boost} {}
+      : PhraseQuery{std::move(states), std::move(positions), std::move(stats),
+                    boost} {}
 
   doc_iterator::ptr execute(const ExecutionContext& ctx) const final;
 

@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #if defined(_MSC_VER)
@@ -80,7 +78,7 @@ int convert(const std::string& in, const std::string& out,
 
   auto reader = irs::DirectoryReader(*in_dir);
   auto writer =
-    irs::IndexWriter::Make(*out_dir, codec, irs::OM_CREATE | irs::OM_APPEND);
+      irs::IndexWriter::Make(*out_dir, codec, irs::OM_CREATE | irs::OM_APPEND);
 
   writer->Import(*reader);
   writer->Commit();
@@ -107,8 +105,8 @@ int convert(const cmdline::parser& args) {
 
   const auto& out_format = args.get<std::string>(OUT_FORMAT);
 
-  const auto dir_type =
-    args.exist(DIR_TYPE) ? args.get<std::string>(DIR_TYPE) : std::string("fs");
+  const auto dir_type = args.exist(DIR_TYPE) ? args.get<std::string>(DIR_TYPE)
+                                             : std::string("fs");
 
   // init formats
   irs::formats::init();

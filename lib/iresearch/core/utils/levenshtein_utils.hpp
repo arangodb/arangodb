@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -57,10 +56,10 @@ inline size_t edit_distance(const T* lhs, size_t lhs_size, const T* rhs,
     next[0] = j;
     for (size_t i = 1; i <= lhs_size; ++i) {
       next[i] = std::min({
-        next[i - 1] + 1,  // deletion
-        current[i] + 1,   // insertion
-        current[i - 1] +
-          (lhs[i - 1] == rhs[j - 1] ? 0 : SubstCost)  // substitution
+          next[i - 1] + 1,  // deletion
+          current[i] + 1,   // insertion
+          current[i - 1] +
+              (lhs[i - 1] == rhs[j - 1] ? 0 : SubstCost)  // substitution
       });
     }
     std::swap(next, current);

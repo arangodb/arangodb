@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -46,7 +45,7 @@ struct ValueRefHash {
 
   template<typename Char>
   size_t operator()(
-    const hashed_basic_string_view<Char>& value) const noexcept {
+      const hashed_basic_string_view<Char>& value) const noexcept {
     return value.hash();
   }
 };

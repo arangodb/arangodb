@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "wildcard_utils.hpp"
@@ -141,7 +140,8 @@ automaton FromWildcard(bytes_view expr) {
 #ifdef IRESEARCH_DEBUG
   // ensure nfa is sorted
   static constexpr auto kExpectedNfaProperties =
-    fst::kILabelSorted | fst::kOLabelSorted | fst::kAcceptor | fst::kUnweighted;
+      fst::kILabelSorted | fst::kOLabelSorted | fst::kAcceptor |
+      fst::kUnweighted;
 
   IRS_ASSERT(kExpectedNfaProperties ==
              nfa.Properties(kExpectedNfaProperties, true));
@@ -159,7 +159,7 @@ automaton FromWildcard(bytes_view expr) {
 #ifdef IRESEARCH_DEBUG
   // ensure resulting automaton is sorted and deterministic
   static constexpr auto kExpectedDfaProperties =
-    kExpectedNfaProperties | fst::kIDeterministic;
+      kExpectedNfaProperties | fst::kIDeterministic;
 
   IRS_ASSERT(kExpectedDfaProperties ==
              dfa.Properties(kExpectedDfaProperties, true));

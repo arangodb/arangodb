@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #if defined(_MSC_VER)
@@ -88,29 +87,29 @@ DWORD file_protection(int prot) noexcept {
 
 }  // namespace
 
-void *mmap(void * /*addr*/, size_t len, int prot, int flags, int fd,
+void* mmap(void* /*addr*/, size_t len, int prot, int flags, int fd,
            OffsetType off) {
   const OffsetType maxSize = off + static_cast<OffsetType>(len);
 
   const DWORD dwFileOffsetLow =
-    (sizeof(OffsetType) <= sizeof(DWORD))
-      ? static_cast<DWORD>(off)
-      : static_cast<DWORD>(off & UINT32_C(0xFFFFFFFF));
+      (sizeof(OffsetType) <= sizeof(DWORD))
+          ? static_cast<DWORD>(off)
+          : static_cast<DWORD>(off & UINT32_C(0xFFFFFFFF));
 
   const DWORD dwFileOffsetHigh =
-    (sizeof(OffsetType) <= sizeof(DWORD))
-      ? static_cast<DWORD>(0)
-      : static_cast<DWORD>((off >> 32) & UINT32_C(0xFFFFFFFF));
+      (sizeof(OffsetType) <= sizeof(DWORD))
+          ? static_cast<DWORD>(0)
+          : static_cast<DWORD>((off >> 32) & UINT32_C(0xFFFFFFFF));
 
   const DWORD dwMaxSizeLow =
-    (sizeof(OffsetType) <= sizeof(DWORD))
-      ? static_cast<DWORD>(maxSize)
-      : static_cast<DWORD>(maxSize & UINT32_C(0xFFFFFFFF));
+      (sizeof(OffsetType) <= sizeof(DWORD))
+          ? static_cast<DWORD>(maxSize)
+          : static_cast<DWORD>(maxSize & UINT32_C(0xFFFFFFFF));
 
   const DWORD dwMaxSizeHigh =
-    (sizeof(OffsetType) <= sizeof(DWORD))
-      ? static_cast<DWORD>(0)
-      : static_cast<DWORD>((maxSize >> 32) & UINT32_C(0xFFFFFFFF));
+      (sizeof(OffsetType) <= sizeof(DWORD))
+          ? static_cast<DWORD>(0)
+          : static_cast<DWORD>((maxSize >> 32) & UINT32_C(0xFFFFFFFF));
 
   const DWORD protect = page_protection(prot);
 
@@ -132,15 +131,15 @@ void *mmap(void * /*addr*/, size_t len, int prot, int flags, int fd,
     return MAP_FAILED;
   }
 
-  HANDLE mapping =
-    CreateFileMapping(handle, NULL, protect, dwMaxSizeHigh, dwMaxSizeLow, NULL);
+  HANDLE mapping = CreateFileMapping(handle, NULL, protect, dwMaxSizeHigh,
+                                     dwMaxSizeLow, NULL);
 
   if (NULL == mapping) {
     errno = GetLastError();
     return MAP_FAILED;
   }
 
-  void *map = MapViewOfFile(mapping, desiredAccess, dwFileOffsetHigh,
+  void* map = MapViewOfFile(mapping, desiredAccess, dwFileOffsetHigh,
                             dwFileOffsetLow, len);
 
   // According to
@@ -161,7 +160,7 @@ void *mmap(void * /*addr*/, size_t len, int prot, int flags, int fd,
   return map;
 }
 
-int munmap(void *addr, size_t) {
+int munmap(void* addr, size_t) {
   if (UnmapViewOfFile(addr)) {
     return 0;
   }
@@ -171,7 +170,7 @@ int munmap(void *addr, size_t) {
   return -1;
 }
 
-int mprotect(void *addr, size_t len, int prot) {
+int mprotect(void* addr, size_t len, int prot) {
   DWORD newProtect = page_protection(prot);
   DWORD oldProtect = 0;
 
@@ -184,7 +183,7 @@ int mprotect(void *addr, size_t len, int prot) {
   return -1;
 }
 
-int msync(void *addr, size_t len, int /*flags*/) {
+int msync(void* addr, size_t len, int /*flags*/) {
   if (FlushViewOfFile(addr, len)) {
     return 0;
   }
@@ -194,7 +193,7 @@ int msync(void *addr, size_t len, int /*flags*/) {
   return -1;
 }
 
-int mlock(const void *addr, size_t len) {
+int mlock(const void* addr, size_t len) {
   if (VirtualLock(LPVOID(addr), len)) {
     return 0;
   }
@@ -204,7 +203,7 @@ int mlock(const void *addr, size_t len) {
   return -1;
 }
 
-int munlock(const void *addr, size_t len) {
+int munlock(const void* addr, size_t len) {
   if (VirtualUnlock(LPVOID(addr), len)) {
     return 0;
   }
@@ -214,6 +213,6 @@ int munlock(const void *addr, size_t len) {
   return -1;
 }
 
-int madvise(void *, size_t, int) { return 0; }
+int madvise(void*, size_t, int) { return 0; }
 
 #endif  // defined(_MSC_VER)

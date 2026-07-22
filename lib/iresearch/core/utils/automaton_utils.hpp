@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -82,7 +81,7 @@ template<typename Char>
 inline automaton::Weight Accept(const automaton& a,
                                 basic_string_view<Char> target) {
   using Matcher =
-    fst::SortedRangeExplicitMatcher<automaton, fst::MatchType::MATCH_INPUT>;
+      fst::SortedRangeExplicitMatcher<automaton, fst::MatchType::MATCH_INPUT>;
 
   Matcher matcher{&a};
   return Match(matcher, target);
@@ -91,7 +90,7 @@ inline automaton::Weight Accept(const automaton& a,
 class AutomatonTermIterator : public seek_term_iterator {
  public:
   AutomatonTermIterator(const automaton& a, seek_term_iterator::ptr&& it)
-    : a_(&a), matcher_(a_), it_(std::move(it)) {
+      : a_(&a), matcher_(a_), it_(std::move(it)) {
     IRS_ASSERT(it_);
     const auto* term = irs::get<term_attribute>(*it_);
     IRS_ASSERT(term);
@@ -213,10 +212,10 @@ class Utf8TransitionsBuilder {
 
   struct Arc : public RangeLabel, private util::noncopyable {
     Arc(automaton::Arc::Label label, State* target) noexcept
-      : RangeLabel{label}, target{target} {}
+        : RangeLabel{label}, target{target} {}
 
     Arc(automaton::Arc::Label label, automaton::StateId target) noexcept
-      : RangeLabel{label}, id{target} {}
+        : RangeLabel{label}, id{target} {}
 
     bool operator==(const automaton::Arc& rhs) const noexcept {
       return ilabel == rhs.ilabel && id == rhs.nextstate;
@@ -321,7 +320,7 @@ class Utf8TransitionsBuilder {
   class StateEmplace {
    public:
     explicit StateEmplace(const automaton::Weight& weight) noexcept
-      : weight_(&weight) {}
+        : weight_(&weight) {}
 
     automaton::StateId operator()(const State& s, automaton& fst) const {
       auto id = s.id;
@@ -343,8 +342,8 @@ class Utf8TransitionsBuilder {
   };
 
   using AutomatonStatesMap =
-    fst_states_map<automaton, State, StateEmplace, StateHash, StateEqual,
-                   fst::kNoStateId>;
+      fst_states_map<automaton, State, StateEmplace, StateHash, StateEqual,
+                     fst::kNoStateId>;
 
   void Minimize(automaton& a, size_t prefix);
 
@@ -371,9 +370,9 @@ inline bool Validate(const automaton& a,
     return true;
   }
   IRS_LOG_ERROR(absl::StrCat(
-    "Expected deterministic, epsilon-free acceptor, got the following "
-    "properties ",
-    a.Properties(automaton_table_matcher::FST_PROPERTIES, false)));
+      "Expected deterministic, epsilon-free acceptor, got the following "
+      "properties ",
+      a.Properties(automaton_table_matcher::FST_PROPERTIES, false)));
   return false;
 }
 

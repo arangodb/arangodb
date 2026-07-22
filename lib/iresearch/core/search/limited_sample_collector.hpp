@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -49,7 +48,7 @@ class limited_sample_collector : private util::noncopyable {
 
   explicit limited_sample_collector(size_t scored_terms_limit,
                                     const comparer_type& comparer = {})
-    : comparer_{comparer}, scored_terms_limit_{scored_terms_limit} {
+      : comparer_{comparer}, scored_terms_limit_{scored_terms_limit} {
     scored_states_.reserve(scored_terms_limit);
     scored_states_heap_.reserve(scored_terms_limit);
   }
@@ -136,8 +135,8 @@ class limited_sample_collector : private util::noncopyable {
 
       // find the stats for the current term
       const auto res =
-        term_stats.try_emplace(hashed_bytes_view{scored_state.term}, index,
-                               field, order, stats_offset);
+          term_stats.try_emplace(hashed_bytes_view{scored_state.term}, index,
+                                 field, order, stats_offset);
 
       auto& stats_entry = res.first->second;
 
@@ -146,8 +145,8 @@ class limited_sample_collector : private util::noncopyable {
                                      *scored_state.cookie);
 
       scored_state.state->scored_states.emplace_back(
-        std::move(scored_state.cookie), stats_entry.stats_offset,
-        static_cast<score_t>(scored_state.key));
+          std::move(scored_state.cookie), stats_entry.stats_offset,
+          static_cast<score_t>(scored_state.key));
 
       // update estimation for scored state
       scored_state.state->scored_states_estimation += scored_state.docs_count;
@@ -169,15 +168,15 @@ class limited_sample_collector : private util::noncopyable {
   struct stats_state {
     explicit stats_state(const IndexReader& index, const term_reader& field,
                          const Scorers& order, uint32_t& state_offset)
-      : field_stats(order),
-        term_stats(order, 1) {  // 1 term per bstring because a range is
-                                // treated as a disjunction
+        : field_stats(order),
+          term_stats(order, 1) {  // 1 term per bstring because a range is
+                                  // treated as a disjunction
 
       // once per every 'state' collect field statistics over the entire index
       for (auto& segment : index) {
         // FIXME
         field_stats.collect(
-          segment, field);  // collect field statistics once per segment
+            segment, field);  // collect field statistics once per segment
       }
 
       stats_offset = state_offset++;
@@ -199,12 +198,12 @@ class limited_sample_collector : private util::noncopyable {
   // A representation of a term cookie with its associated range_state
   struct scored_term_state {
     scored_term_state(const Key& key, const collector_state& state)
-      : key(key),
-        cookie(state.terms->cookie()),
-        state(state.state),
-        segment(state.segment),
-        term(state.terms->value()),
-        docs_count(*state.docs_count) {
+        : key(key),
+          cookie(state.terms->cookie()),
+          state(state.state),
+          segment(state.segment),
+          term(state.terms->value()),
+          docs_count(*state.docs_count) {
       IRS_ASSERT(this->cookie);
     }
 
@@ -263,7 +262,7 @@ class multiterm_visitor {
  public:
   multiterm_visitor(limited_sample_collector<term_frequency>& collector,
                     States& states)
-    : collector_(collector), states_(states) {}
+      : collector_(collector), states_(states) {}
 
   void prepare(const SubReader& segment, const term_reader& reader,
                const seek_term_iterator& terms) {

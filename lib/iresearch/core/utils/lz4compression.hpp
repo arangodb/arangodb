@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -57,12 +56,12 @@ struct lz4 {
   class lz4compressor : public compression::compressor {
    public:
     explicit lz4compressor(int acceleration = 0) noexcept
-      : acceleration_(acceleration) {}
+        : acceleration_(acceleration) {}
 
     int acceleration() const noexcept { return acceleration_; }
 
     bytes_view compress(byte_type* src, size_t size, bstring& out) final
-      IRS_ATTRIBUTE_NONNULL(2);
+        IRS_ATTRIBUTE_NONNULL(2);
 
    private:
     const int acceleration_{0};  // 0 - default acceleration

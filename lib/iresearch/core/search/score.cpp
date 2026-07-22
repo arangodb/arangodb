@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "score.hpp"
@@ -46,8 +45,8 @@ ScoreFunctions PrepareScorers(std::span<const ScorerBucket> buckets,
     }
 
     auto scorer =
-      bucket.prepare_scorer(segment, field.meta().features,
-                            stats_buf + entry.stats_offset, doc, boost);
+        bucket.prepare_scorer(segment, field.meta().features,
+                              stats_buf + entry.stats_offset, doc, boost);
 
     scorers.emplace_back(std::move(scorer));
   }
@@ -66,48 +65,48 @@ static ScoreFunction CompileScorers(ScoreFunction&& wand,
     case 1: {
       struct Ctx final : score_ctx {
         Ctx(ScoreFunction&& wand, ScoreFunction&& tail) noexcept
-          : wand{std::move(wand)}, tail{std::move(tail)} {}
+            : wand{std::move(wand)}, tail{std::move(tail)} {}
 
         ScoreFunction wand;
         ScoreFunction tail;
       };
 
       return ScoreFunction::Make<Ctx>(
-        [](score_ctx* ctx, score_t* res) noexcept {
-          auto* scorers_ctx = static_cast<Ctx*>(ctx);
-          IRS_ASSERT(res != nullptr);
-          scorers_ctx->wand.Score(res);
-          scorers_ctx->tail.Score(res + 1);
-        },
-        [](score_ctx* ctx, score_t arg) noexcept {
-          auto* scorers_ctx = static_cast<Ctx*>(ctx);
-          scorers_ctx->wand.Min(arg);
-        },
-        std::move(wand), std::move(tail.front()));
+          [](score_ctx* ctx, score_t* res) noexcept {
+            auto* scorers_ctx = static_cast<Ctx*>(ctx);
+            IRS_ASSERT(res != nullptr);
+            scorers_ctx->wand.Score(res);
+            scorers_ctx->tail.Score(res + 1);
+          },
+          [](score_ctx* ctx, score_t arg) noexcept {
+            auto* scorers_ctx = static_cast<Ctx*>(ctx);
+            scorers_ctx->wand.Min(arg);
+          },
+          std::move(wand), std::move(tail.front()));
     }
     default: {
       struct Ctx final : score_ctx {
         explicit Ctx(ScoreFunction&& wand, ScoreFunctions&& tail) noexcept
-          : wand{std::move(wand)}, tail{std::move(tail)} {}
+            : wand{std::move(wand)}, tail{std::move(tail)} {}
 
         ScoreFunction wand;
         ScoreFunctions tail;
       };
 
       return ScoreFunction::Make<Ctx>(
-        [](score_ctx* ctx, score_t* res) noexcept {
-          auto* scorers_ctx = static_cast<Ctx*>(ctx);
-          IRS_ASSERT(res != nullptr);
-          scorers_ctx->wand(res);
-          for (auto& other : scorers_ctx->tail) {
-            other.Score(++res);
-          }
-        },
-        [](score_ctx* ctx, score_t arg) noexcept {
-          auto* scorers_ctx = static_cast<Ctx*>(ctx);
-          scorers_ctx->wand.Min(arg);
-        },
-        std::move(wand), std::move(tail));
+          [](score_ctx* ctx, score_t* res) noexcept {
+            auto* scorers_ctx = static_cast<Ctx*>(ctx);
+            IRS_ASSERT(res != nullptr);
+            scorers_ctx->wand(res);
+            for (auto& other : scorers_ctx->tail) {
+              other.Score(++res);
+            }
+          },
+          [](score_ctx* ctx, score_t arg) noexcept {
+            auto* scorers_ctx = static_cast<Ctx*>(ctx);
+            scorers_ctx->wand.Min(arg);
+          },
+          std::move(wand), std::move(tail));
     }
   }
 }
@@ -125,38 +124,38 @@ ScoreFunction CompileScorers(ScoreFunctions&& scorers) {
     case 2: {
       struct Ctx final : score_ctx {
         Ctx(ScoreFunction&& func0, ScoreFunction&& func1) noexcept
-          : func0{std::move(func0)}, func1{std::move(func1)} {}
+            : func0{std::move(func0)}, func1{std::move(func1)} {}
 
         ScoreFunction func0;
         ScoreFunction func1;
       };
 
       return ScoreFunction::Make<Ctx>(
-        [](score_ctx* ctx, score_t* res) noexcept {
-          IRS_ASSERT(res != nullptr);
-          auto* scorers_ctx = static_cast<Ctx*>(ctx);
-          scorers_ctx->func0(res);
-          scorers_ctx->func1(res + 1);
-        },
-        ScoreFunction::DefaultMin, std::move(scorers.front()),
-        std::move(scorers.back()));
+          [](score_ctx* ctx, score_t* res) noexcept {
+            IRS_ASSERT(res != nullptr);
+            auto* scorers_ctx = static_cast<Ctx*>(ctx);
+            scorers_ctx->func0(res);
+            scorers_ctx->func1(res + 1);
+          },
+          ScoreFunction::DefaultMin, std::move(scorers.front()),
+          std::move(scorers.back()));
     }
     default: {
       struct Ctx final : score_ctx {
         explicit Ctx(ScoreFunctions&& scorers) noexcept
-          : scorers{std::move(scorers)} {}
+            : scorers{std::move(scorers)} {}
 
         ScoreFunctions scorers;
       };
 
       return ScoreFunction::Make<Ctx>(
-        [](score_ctx* ctx, score_t* res) noexcept {
-          auto& scorers = static_cast<Ctx*>(ctx)->scorers;
-          for (auto& scorer : scorers) {
-            scorer(res++);
-          }
-        },
-        ScoreFunction::DefaultMin, std::move(scorers));
+          [](score_ctx* ctx, score_t* res) noexcept {
+            auto& scorers = static_cast<Ctx*>(ctx)->scorers;
+            for (auto& scorer : scorers) {
+              scorer(res++);
+            }
+          },
+          ScoreFunction::DefaultMin, std::move(scorers));
     }
   }
 }
@@ -181,12 +180,12 @@ void CompileScore(irs::score& score, std::span<const ScorerBucket> buckets,
     // wanderator could have score upper bounds.
     if (score.max.tail == std::numeric_limits<score_t>::max()) {
       score.max.leaf = score.max.tail =
-        scorers.empty() ? 0.f : scorers.front().Max();
+          scorers.empty() ? 0.f : scorers.front().Max();
     }
     score = CompileScorers(std::move(scorers));
   } else if (buckets.size() > 1) {
     auto scorers =
-      PrepareScorers(buckets.subspan(1), segment, field, stats, doc, boost);
+        PrepareScorers(buckets.subspan(1), segment, field, stats, doc, boost);
     score = CompileScorers(std::move(score), std::move(scorers));
     IRS_ASSERT(score.max.tail != std::numeric_limits<score_t>::max());
   }

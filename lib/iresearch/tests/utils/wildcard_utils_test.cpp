@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "utils/wildcard_utils.hpp"
@@ -30,8 +29,8 @@ class wildcard_utils_test : public test_base {
  protected:
   static void assert_properties(const irs::automaton& a) {
     constexpr auto EXPECTED_PROPERTIES =
-      fst::kILabelSorted | fst::kOLabelSorted | fst::kIDeterministic |
-      fst::kAcceptor | fst::kUnweighted;
+        fst::kILabelSorted | fst::kOLabelSorted | fst::kIDeterministic |
+        fst::kAcceptor | fst::kUnweighted;
 
     EXPECT_EQ(EXPECTED_PROPERTIES, a.Properties(EXPECTED_PROPERTIES, true));
   }
@@ -43,13 +42,13 @@ TEST_F(wildcard_utils_test, same_start) {
     assert_properties(a);
 
     bool r = irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("р")));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("р")));
     EXPECT_TRUE(r);
     r = irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("с")));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("с")));
     EXPECT_FALSE(r);
     r = irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("ё")));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("ё")));
     EXPECT_FALSE(r);
   }
   {
@@ -57,13 +56,13 @@ TEST_F(wildcard_utils_test, same_start) {
     assert_properties(a);
 
     bool r = irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("ара")));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("ара")));
     EXPECT_TRUE(r);
     r = irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("аса")));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("аса")));
     EXPECT_FALSE(r);
     r = irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("аёа")));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("аёа")));
     EXPECT_FALSE(r);
   }
 }
@@ -74,13 +73,13 @@ TEST_F(wildcard_utils_test, same_end) {
     assert_properties(a);
 
     bool r = irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("ѿ")));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("ѿ")));
     EXPECT_TRUE(r);
     r = irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("с")));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("с")));
     EXPECT_FALSE(r);
     r = irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("ё")));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("ё")));
     EXPECT_FALSE(r);
   }
   {
@@ -88,13 +87,13 @@ TEST_F(wildcard_utils_test, same_end) {
     assert_properties(a);
 
     bool r = irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("аѿа")));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("аѿа")));
     EXPECT_TRUE(r);
     r = irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("аса")));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("аса")));
     EXPECT_FALSE(r);
     r = irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("аёа")));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("аёа")));
     EXPECT_FALSE(r);
   }
 }
@@ -105,7 +104,7 @@ TEST_F(wildcard_utils_test, match_wildcard) {
     assert_properties(a);
 
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("corrction"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("corrction"))));
   }
 
   {
@@ -113,7 +112,7 @@ TEST_F(wildcard_utils_test, match_wildcard) {
     assert_properties(a);
 
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("corrction"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("corrction"))));
   }
 
   {
@@ -121,7 +120,7 @@ TEST_F(wildcard_utils_test, match_wildcard) {
     assert_properties(a);
 
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("bcebcebce"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("bcebcebce"))));
   }
 
   {
@@ -129,7 +128,7 @@ TEST_F(wildcard_utils_test, match_wildcard) {
     assert_properties(a);
 
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("bcebcebcd"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("bcebcebcd"))));
   }
 
   {
@@ -137,9 +136,9 @@ TEST_F(wildcard_utils_test, match_wildcard) {
     assert_properties(a);
 
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("bcebcebced"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("bcebcebced"))));
     EXPECT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("bcebcebbced"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("bcebcebbced"))));
   }
 
   {
@@ -147,9 +146,9 @@ TEST_F(wildcard_utils_test, match_wildcard) {
     assert_properties(a);
 
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("bcebcebce"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("bcebcebce"))));
     EXPECT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("bcebcebbce"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("bcebcebbce"))));
   }
 
   {
@@ -157,7 +156,7 @@ TEST_F(wildcard_utils_test, match_wildcard) {
     assert_properties(a);
 
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("corrction"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("corrction"))));
   }
 
   {
@@ -165,7 +164,7 @@ TEST_F(wildcard_utils_test, match_wildcard) {
     assert_properties(a);
 
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("arrrc"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("arrrc"))));
   }
 
   {
@@ -173,7 +172,7 @@ TEST_F(wildcard_utils_test, match_wildcard) {
     assert_properties(a);
 
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("arrrc"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("arrrc"))));
   }
 
   {
@@ -181,15 +180,15 @@ TEST_F(wildcard_utils_test, match_wildcard) {
     assert_properties(a);
 
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("correc"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("correc"))));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("corerc"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("corerc"))));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("correrction"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("correrction"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("corrrc"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("corrrc"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("correction"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("correction"))));
   }
 
   {
@@ -197,7 +196,7 @@ TEST_F(wildcard_utils_test, match_wildcard) {
     assert_properties(a);
 
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("correction"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("correction"))));
   }
 
   // mixed from wikipedia
@@ -206,8 +205,8 @@ TEST_F(wildcard_utils_test, match_wildcard) {
     assert_properties(a);
 
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(
-           std::string_view("Error detection and correction"))));
+        a, irs::ViewCast<irs::byte_type>(
+               std::string_view("Error detection and correction"))));
     //^      ^ ^
   }
 
@@ -216,13 +215,13 @@ TEST_F(wildcard_utils_test, match_wildcard) {
     assert_properties(a);
 
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("abceabc"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("abceabc"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("abcebbcecbc"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("abcebbcecbc"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("abceabcbcebbc"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("abceabcbcebbc"))));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("abcebcebc"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("abcebcebc"))));
   }
 
   {
@@ -230,15 +229,15 @@ TEST_F(wildcard_utils_test, match_wildcard) {
     assert_properties(a);
 
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("abcbbc"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("abcbbc"))));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("abcbcbcc"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("abcbcbcc"))));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("abcbcbcb"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("abcbcbcb"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("abcbbbc"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("abcbbbc"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("abcbcbc"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("abcbcbc"))));
   }
 
   {
@@ -246,15 +245,15 @@ TEST_F(wildcard_utils_test, match_wildcard) {
     assert_properties(a);
 
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("abcbbc"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("abcbbc"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("abcbbc"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("abcbbc"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("abcabc"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("abcabc"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("abccbc"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("abccbc"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("abcbcbcbccbc"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("abcbcbcbccbc"))));
   }
 
   {
@@ -262,13 +261,13 @@ TEST_F(wildcard_utils_test, match_wildcard) {
     assert_properties(a);
 
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("abab"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("abab"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("abbb"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("abbb"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("abbbb"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("abbbb"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("abbabbbbbbb"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("abbabbbbbbb"))));
   }
 
   {
@@ -276,17 +275,17 @@ TEST_F(wildcard_utils_test, match_wildcard) {
     assert_properties(a);
 
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("abcab"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("abcab"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("abbbb"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("abbbb"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("abbbbb"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("abbbbb"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("abbbbbb"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("abbbbbb"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("abbccbbbcbbbbbb"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("abbccbbbcbbbbbb"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("abbabbbbbbb"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("abbabbbbbbb"))));
   }
 
   {
@@ -294,13 +293,13 @@ TEST_F(wildcard_utils_test, match_wildcard) {
     assert_properties(a);
 
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("abcabcebcebce"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("abcabcebcebce"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("abbccbcebbbbce"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("abbccbcebbbbce"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("abbccbcebcebce"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("abbccbcebcebce"))));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("abbccbcebcebbce"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("abbccbcebcebbce"))));
   }
 
   {
@@ -308,7 +307,8 @@ TEST_F(wildcard_utils_test, match_wildcard) {
     assert_properties(a);
 
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("abceabcdbcebcebce"))));
+        a,
+        irs::ViewCast<irs::byte_type>(std::string_view("abceabcdbcebcebce"))));
   }
 
   {
@@ -316,17 +316,17 @@ TEST_F(wildcard_utils_test, match_wildcard) {
     assert_properties(a);
 
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("abcabbbcab"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("abcabbbcab"))));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("abbbb"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("abbbb"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("abbbbb"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("abbbbb"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("abbbbbb"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("abbbbbb"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("abbccbbbcbbbbbb"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("abbccbbbcbbbbbb"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("abbabbbbbbb"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("abbabbbbbbb"))));
   }
 
   {
@@ -334,8 +334,8 @@ TEST_F(wildcard_utils_test, match_wildcard) {
     assert_properties(a);
 
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a,
-      irs::ViewCast<irs::byte_type>(std::string_view("abcebcebcebcebcebcb"))));
+        a, irs::ViewCast<irs::byte_type>(
+               std::string_view("abcebcebcebcebcebcb"))));
   }
 
   {
@@ -343,14 +343,15 @@ TEST_F(wildcard_utils_test, match_wildcard) {
     assert_properties(a);
 
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("a__bab"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("a__bab"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("afasfdwerfwefbbb"))));
+        a,
+        irs::ViewCast<irs::byte_type>(std::string_view("afasfdwerfwefbbb"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(
-           std::string_view("abbbbbbbbbbbbbbbbbbbb"))));
+        a, irs::ViewCast<irs::byte_type>(
+               std::string_view("abbbbbbbbbbbbbbbbbbbb"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("abbabbbbbbb"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("abbabbbbbbb"))));
   }
 
   {
@@ -358,14 +359,15 @@ TEST_F(wildcard_utils_test, match_wildcard) {
     assert_properties(a);
 
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("a__bab"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("a__bab"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("afasfdwerfwefbbb"))));
+        a,
+        irs::ViewCast<irs::byte_type>(std::string_view("afasfdwerfwefbbb"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(
-           std::string_view("abbbbbbbbbbbbbbbbbbbb"))));
+        a, irs::ViewCast<irs::byte_type>(
+               std::string_view("abbbbbbbbbbbbbbbbbbbb"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("abbabbbbbbb"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("abbabbbbbbb"))));
   }
 
   {
@@ -373,7 +375,8 @@ TEST_F(wildcard_utils_test, match_wildcard) {
     assert_properties(a);
 
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("a__bcedefadefbabb"))));
+        a,
+        irs::ViewCast<irs::byte_type>(std::string_view("a__bcedefadefbabb"))));
   }
 
   // mixed
@@ -382,24 +385,24 @@ TEST_F(wildcard_utils_test, match_wildcard) {
     assert_properties(a);
 
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
     ASSERT_FALSE(irs::Accept<char>(a, std::string_view{}));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("aabce1dbce1b"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("aabce1dbce1b"))));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("aabce1dbce11b"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("aabce1dbce11b"))));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("abce1bb"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("abce1bb"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("abceabce1b"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("abceabce1b"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("abcebce1b"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("abcebce1b"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("azbce1b"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("azbce1b"))));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("azbce1db"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("azbce1db"))));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("azbce11b"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("azbce11b"))));
   }
 
   // mixed
@@ -407,22 +410,22 @@ TEST_F(wildcard_utils_test, match_wildcard) {
     auto a = irs::FromWildcard("a%bce_d");
     assert_properties(a);
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
     ASSERT_FALSE(irs::Accept<char>(a, std::string_view{}));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("aabce1dbce1d"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("aabce1dbce1d"))));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("aabce1dbce11d"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("aabce1dbce11d"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("abceabce1d"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("abceabce1d"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("abcebce1d"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("abcebce1d"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("azbce1d"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("azbce1d"))));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("azbce1d1"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("azbce1d1"))));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("azbce11d"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("azbce11d"))));
   }
 
   // check automaton structure
@@ -469,10 +472,10 @@ TEST_F(wildcard_utils_test, match_wildcard) {
     auto a = irs::FromWildcard(std::string_view{});
     assert_properties(a);
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
     ASSERT_TRUE(irs::Accept<char>(a, std::string_view{}));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("a"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("a"))));
   }
 
   // empty string
@@ -480,12 +483,12 @@ TEST_F(wildcard_utils_test, match_wildcard) {
     auto a = irs::FromWildcard(std::string_view{""});
     assert_properties(a);
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
     ASSERT_TRUE(irs::Accept<char>(a, std::string_view{}));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("a"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("a"))));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("\xE2\x9E\x96"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("\xE2\x9E\x96"))));
   }
 
   // any or empty string
@@ -494,18 +497,19 @@ TEST_F(wildcard_utils_test, match_wildcard) {
 
     assert_properties(a);
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
     ASSERT_TRUE(irs::Accept<char>(a, std::string_view{}));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("a"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("a"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("abc"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("abc"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("\xD0\xBF"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("\xD0\xBF"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("\xE2\x9E\x96"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("\xE2\x9E\x96"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("\xF0\x9F\x98\x81"))));
+        a,
+        irs::ViewCast<irs::byte_type>(std::string_view("\xF0\x9F\x98\x81"))));
   }
 
   // any or empty string
@@ -513,27 +517,29 @@ TEST_F(wildcard_utils_test, match_wildcard) {
     auto a = irs::FromWildcard("%%");
     assert_properties(a);
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
     ASSERT_TRUE(irs::Accept<char>(a, std::string_view{}));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("a"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("a"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("aa"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("aa"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("azbce1d"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("azbce1d"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("azbce1d1"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("azbce1d1"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("azbce11d"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("azbce11d"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("\xE2\x9E\x96"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("\xE2\x9E\x96"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("\xF0\x9F\x98\x81"))));
+        a,
+        irs::ViewCast<irs::byte_type>(std::string_view("\xF0\x9F\x98\x81"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("a\xF0\x9F\x98\x81"))));
+        a,
+        irs::ViewCast<irs::byte_type>(std::string_view("a\xF0\x9F\x98\x81"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(
-           std::string_view("\xF0\x9F\x98\x81\xF0\x9F\x98\x81"))));
+        a, irs::ViewCast<irs::byte_type>(
+               std::string_view("\xF0\x9F\x98\x81\xF0\x9F\x98\x81"))));
   }
 
   // any char
@@ -541,23 +547,25 @@ TEST_F(wildcard_utils_test, match_wildcard) {
     auto a = irs::FromWildcard("_");
     assert_properties(a);
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
     ASSERT_FALSE(irs::Accept<char>(a, std::string_view{}));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("a"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("a"))));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("abc"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("abc"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("\xD0\xBF"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("\xD0\xBF"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("\xE2\x9E\x96"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("\xE2\x9E\x96"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("\xF0\x9F\x98\x81"))));
+        a,
+        irs::ViewCast<irs::byte_type>(std::string_view("\xF0\x9F\x98\x81"))));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("a\xF0\x9F\x98\x81"))));
+        a,
+        irs::ViewCast<irs::byte_type>(std::string_view("a\xF0\x9F\x98\x81"))));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(
-           std::string_view("\xF0\x9F\x98\x81\xF0\x9F\x98\x81"))));
+        a, irs::ViewCast<irs::byte_type>(
+               std::string_view("\xF0\x9F\x98\x81\xF0\x9F\x98\x81"))));
   }
 
   // two any chars
@@ -565,35 +573,35 @@ TEST_F(wildcard_utils_test, match_wildcard) {
     auto a = irs::FromWildcard("__");
     assert_properties(a);
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
     ASSERT_FALSE(irs::Accept<char>(a, std::string_view{}));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("a"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("a"))));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("\xE2\x9E\x96"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("\xE2\x9E\x96"))));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(
-           std::string_view("a\xE2\x9E\x96\xD0\xBF"))));
+        a, irs::ViewCast<irs::byte_type>(
+               std::string_view("a\xE2\x9E\x96\xD0\xBF"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a,
-      irs::ViewCast<irs::byte_type>(std::string_view("\xE2\x9E\x96\xD0\xBF"))));
+        a, irs::ViewCast<irs::byte_type>(
+               std::string_view("\xE2\x9E\x96\xD0\xBF"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(
-           std::string_view("\xE2\x9E\x96\xE2\x9E\x96"))));
+        a, irs::ViewCast<irs::byte_type>(
+               std::string_view("\xE2\x9E\x96\xE2\x9E\x96"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(
-           std::string_view("\xF0\x9F\x98\x81\xF0\x9F\x98\x81"))));
+        a, irs::ViewCast<irs::byte_type>(
+               std::string_view("\xF0\x9F\x98\x81\xF0\x9F\x98\x81"))));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(
-           std::string_view("a\xF0\x9F\x98\x81\xF0\x9F\x98\x81"))));
+        a, irs::ViewCast<irs::byte_type>(
+               std::string_view("a\xF0\x9F\x98\x81\xF0\x9F\x98\x81"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("ba"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("ba"))));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("azbce1d"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("azbce1d"))));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("azbce1d1"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("azbce1d1"))));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("azbce11d"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("azbce11d"))));
   }
 
   // any char (suffix)
@@ -601,19 +609,20 @@ TEST_F(wildcard_utils_test, match_wildcard) {
     auto a = irs::FromWildcard("a_");
     assert_properties(a);
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
     ASSERT_FALSE(irs::Accept<char>(a, std::string_view{}));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("a_"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("a_"))));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("a"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("a"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("ab"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("ab"))));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(
-           std::string_view("a\xF0\x9F\x98\x81\xF0\x9F\x98\x81"))));
+        a, irs::ViewCast<irs::byte_type>(
+               std::string_view("a\xF0\x9F\x98\x81\xF0\x9F\x98\x81"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("a\xF0\x9F\x98\x81"))));
+        a,
+        irs::ViewCast<irs::byte_type>(std::string_view("a\xF0\x9F\x98\x81"))));
   }
 
   // any char (prefix)
@@ -621,24 +630,25 @@ TEST_F(wildcard_utils_test, match_wildcard) {
     auto a = irs::FromWildcard("_a");
     assert_properties(a);
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
     ASSERT_FALSE(irs::Accept<char>(a, std::string_view{}));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("_a"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("_a"))));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("a"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("a"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("aa"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("aa"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("ba"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("ba"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a,
-      irs::ViewCast<irs::byte_type>(std::string_view("\xF0\x9F\x98\x81\x61"))));
+        a, irs::ViewCast<irs::byte_type>(
+               std::string_view("\xF0\x9F\x98\x81\x61"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("\xE2\x9E\x96\x61"))));
+        a,
+        irs::ViewCast<irs::byte_type>(std::string_view("\xE2\x9E\x96\x61"))));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view(
-           "\xE2\xFF\xFF\x61"))));  // don't accept invalid utf8 sequence
+        a, irs::ViewCast<irs::byte_type>(std::string_view(
+               "\xE2\xFF\xFF\x61"))));  // don't accept invalid utf8 sequence
   }
 
   // escaped '_'
@@ -646,14 +656,14 @@ TEST_F(wildcard_utils_test, match_wildcard) {
     auto a = irs::FromWildcard("\\_a");
     assert_properties(a);
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
     ASSERT_FALSE(irs::Accept<char>(a, std::string_view{}));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("_a"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("_a"))));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("a"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("a"))));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("ba"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("ba"))));
   }
 
   // escaped '\'
@@ -661,16 +671,16 @@ TEST_F(wildcard_utils_test, match_wildcard) {
     auto a = irs::FromWildcard("\\\\\\_a");
     assert_properties(a);
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
     ASSERT_FALSE(irs::Accept<char>(a, std::string_view{}));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("\\_a"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("\\_a"))));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("a"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("a"))));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("\\_\xE2\x9E\x96"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("\\_\xE2\x9E\x96"))));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("ba"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("ba"))));
   }
 
   // '\0'
@@ -679,18 +689,18 @@ TEST_F(wildcard_utils_test, match_wildcard) {
     auto a = irs::FromWildcard(kNull);
     assert_properties(a);
     EXPECT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
     EXPECT_FALSE(irs::Accept<char>(a, std::string_view{}));
     EXPECT_TRUE(
-      irs::Accept<irs::byte_type>(a, irs::ViewCast<irs::byte_type>(kNull)));
+        irs::Accept<irs::byte_type>(a, irs::ViewCast<irs::byte_type>(kNull)));
     EXPECT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("a\0", 2))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("a\0", 2))));
     EXPECT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("\0a", 2))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("\0a", 2))));
     EXPECT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("a\0a", 3))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("a\0a", 3))));
     EXPECT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("aa", 2))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("aa", 2))));
   }
 
   // escaped 'a'
@@ -698,14 +708,14 @@ TEST_F(wildcard_utils_test, match_wildcard) {
     auto a = irs::FromWildcard("\\a");
     assert_properties(a);
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
     ASSERT_FALSE(irs::Accept<char>(a, std::string_view{}));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("\\a"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("\\a"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("a"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("a"))));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("\\\\a"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("\\\\a"))));
   }
 
   // nonterminated '\'
@@ -713,14 +723,14 @@ TEST_F(wildcard_utils_test, match_wildcard) {
     auto a = irs::FromWildcard("a\\");
     assert_properties(a);
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
     ASSERT_FALSE(irs::Accept<char>(a, std::string_view{}));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("a\\"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("a\\"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("a"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("a"))));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("ba"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("ba"))));
   }
 
   // escaped '%'
@@ -728,14 +738,14 @@ TEST_F(wildcard_utils_test, match_wildcard) {
     auto a = irs::FromWildcard("\\\\\\%a");
     assert_properties(a);
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
     ASSERT_FALSE(irs::Accept<char>(a, std::string_view{}));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("\\%a"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("\\%a"))));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("a"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("a"))));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("ba"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("ba"))));
   }
 
   // prefix
@@ -743,25 +753,25 @@ TEST_F(wildcard_utils_test, match_wildcard) {
     auto a = irs::FromWildcard("foo%");
     assert_properties(a);
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
     ASSERT_FALSE(irs::Accept<char>(a, std::string_view{}));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("foo"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("foo"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("foobar"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("foobar"))));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("foa"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("foa"))));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("foabar"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("foabar"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(
-           std::string_view("foo\xE2\x9E\x96\xE2\x9E\x96"))));
+        a, irs::ViewCast<irs::byte_type>(
+               std::string_view("foo\xE2\x9E\x96\xE2\x9E\x96"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(
-           std::string_view("foo\xF0\x9F\x98\x81\xE2\x9E\x96\xE2\x9E\x96"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view(
+               "foo\xF0\x9F\x98\x81\xE2\x9E\x96\xE2\x9E\x96"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view(
-           "foo\xD0\xBF\xF0\x9F\x98\x81\xE2\x9E\x96\xE2\x9E\x96"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view(
+               "foo\xD0\xBF\xF0\x9F\x98\x81\xE2\x9E\x96\xE2\x9E\x96"))));
   }
 
   // prefix
@@ -769,27 +779,27 @@ TEST_F(wildcard_utils_test, match_wildcard) {
     auto a = irs::FromWildcard("foo\\%");
     assert_properties(a);
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
     ASSERT_FALSE(irs::Accept<char>(a, std::string_view{}));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("foo"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("foo"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("foo%"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("foo%"))));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("foobar"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("foobar"))));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("foa"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("foa"))));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("foabar"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("foabar"))));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(
-           std::string_view("foo\xE2\x9E\x96\xE2\x9E\x96"))));
+        a, irs::ViewCast<irs::byte_type>(
+               std::string_view("foo\xE2\x9E\x96\xE2\x9E\x96"))));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(
-           std::string_view("foo\xF0\x9F\x98\x81\xE2\x9E\x96\xE2\x9E\x96"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view(
+               "foo\xF0\x9F\x98\x81\xE2\x9E\x96\xE2\x9E\x96"))));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view(
-           "foo\xD0\xBF\xF0\x9F\x98\x81\xE2\x9E\x96\xE2\x9E\x96"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view(
+               "foo\xD0\xBF\xF0\x9F\x98\x81\xE2\x9E\x96\xE2\x9E\x96"))));
   }
 
   // mixed
@@ -797,38 +807,38 @@ TEST_F(wildcard_utils_test, match_wildcard) {
     auto a = irs::FromWildcard("a%foo");
     assert_properties(a);
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
     ASSERT_FALSE(irs::Accept<char>(a, std::string_view{}));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("affoo"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("affoo"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("aaafofoo"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("aaafofoo"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("aaafafoo"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("aaafafoo"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("aaafaffoo"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("aaafaffoo"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("aaafoofoo"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("aaafoofoo"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("aaafooffffoo"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("aaafooffffoo"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("aaafooofoo"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("aaafooofoo"))));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("abcdfo"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("abcdfo"))));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("abcdfo"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("abcdfo"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(
-           std::string_view("aaaaaaaaaaaaaaaaaafoo"))));
+        a, irs::ViewCast<irs::byte_type>(
+               std::string_view("aaaaaaaaaaaaaaaaaafoo"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a,
-      irs::ViewCast<irs::byte_type>(std::string_view("aaaaaaaaaaaaaaabfoo"))));
+        a, irs::ViewCast<irs::byte_type>(
+               std::string_view("aaaaaaaaaaaaaaabfoo"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(
-           std::string_view("aaaaaaaaaaaaa\x66\x6F\x6F"))));
+        a, irs::ViewCast<irs::byte_type>(
+               std::string_view("aaaaaaaaaaaaa\x66\x6F\x6F"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(
-           std::string_view("aaaaaaaaaaaaa\x66\x6F\x6F"))));
+        a, irs::ViewCast<irs::byte_type>(
+               std::string_view("aaaaaaaaaaaaa\x66\x6F\x6F"))));
   }
 
   // mixed
@@ -836,14 +846,15 @@ TEST_F(wildcard_utils_test, match_wildcard) {
     auto a = irs::FromWildcard("a%foo%boo");
     assert_properties(a);
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
     ASSERT_FALSE(irs::Accept<char>(a, std::string_view{}));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("afooboo"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("afooboo"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("afoofoobooboo"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("afoofoobooboo"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("afoofooboofooboo"))));
+        a,
+        irs::ViewCast<irs::byte_type>(std::string_view("afoofooboofooboo"))));
   }
 
   // suffix
@@ -851,38 +862,39 @@ TEST_F(wildcard_utils_test, match_wildcard) {
     auto a = irs::FromWildcard("%foo");
     assert_properties(a);
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
     ASSERT_FALSE(irs::Accept<char>(a, std::string_view{}));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("foo"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("foo"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("fofoo"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("fofoo"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("foofoo"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("foofoo"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("fooofoo"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("fooofoo"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("ffoo"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("ffoo"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("fffoo"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("fffoo"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("bfoo"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("bfoo"))));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("foa"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("foa"))));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("bfoa"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("bfoa"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(
-           std::string_view("\xE2\x9E\x96\xE2\x9E\x96\x66\x6F\x6F"))));
+        a, irs::ViewCast<irs::byte_type>(
+               std::string_view("\xE2\x9E\x96\xE2\x9E\x96\x66\x6F\x6F"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(
-           std::string_view("\xE2\x9E\x96\xE2\x9E\x96\x66\x66\x6F\x6F"))));
+        a, irs::ViewCast<irs::byte_type>(
+               std::string_view("\xE2\x9E\x96\xE2\x9E\x96\x66\x66\x6F\x6F"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view(
-           "\xF0\x9F\x98\x81\xE2\x9E\x96\xE2\x9E\x96\x66\x6F\x6F"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view(
+               "\xF0\x9F\x98\x81\xE2\x9E\x96\xE2\x9E\x96\x66\x6F\x6F"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view(
-           "\xD0\xBF\xF0\x9F\x98\x81\xE2\x9E\x96\xE2\x9E\x96\x66\x6F\x6F"))));
+        a,
+        irs::ViewCast<irs::byte_type>(std::string_view(
+            "\xD0\xBF\xF0\x9F\x98\x81\xE2\x9E\x96\xE2\x9E\x96\x66\x6F\x6F"))));
   }
 
   // prefix
@@ -890,16 +902,16 @@ TEST_F(wildcard_utils_test, match_wildcard) {
     auto a = irs::FromWildcard("v%%");
     assert_properties(a);
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
     ASSERT_FALSE(irs::Accept<char>(a, std::string_view{}));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("vcc"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("vcc"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("vccc"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("vccc"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("vczc"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("vczc"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("vczczvccccc"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("vczczvccccc"))));
   }
 
   // suffix
@@ -907,30 +919,30 @@ TEST_F(wildcard_utils_test, match_wildcard) {
     auto a = irs::FromWildcard("%ffoo");
     assert_properties(a);
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
     ASSERT_FALSE(irs::Accept<char>(a, std::string_view{}));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("ffoo"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("ffoo"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("ffooffoo"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("ffooffoo"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("fffoo"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("fffoo"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("bffoo"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("bffoo"))));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("ffob"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("ffob"))));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("bfoa"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("bfoa"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(
-           std::string_view("\xE2\x9E\x96\xE2\x9E\x96\x66\x66\x6F\x6F"))));
+        a, irs::ViewCast<irs::byte_type>(
+               std::string_view("\xE2\x9E\x96\xE2\x9E\x96\x66\x66\x6F\x6F"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view(
-           "\xF0\x9F\x98\x81\xE2\x9E\x96\xE2\x9E\x96\x66\x66\x6F\x6F"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view(
+               "\xF0\x9F\x98\x81\xE2\x9E\x96\xE2\x9E\x96\x66\x66\x6F\x6F"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a,
-      irs::ViewCast<irs::byte_type>(std::string_view(
-        "\xD0\xBF\xF0\x9F\x98\x81\xE2\x9E\x96\xE2\x9E\x96\x66\x66\x6F\x6F"))));
+        a, irs::ViewCast<irs::byte_type>(
+               std::string_view("\xD0\xBF\xF0\x9F\x98\x81\xE2\x9E\x96\xE2\x9E"
+                                "\x96\x66\x66\x6F\x6F"))));
   }
 
   // mixed
@@ -938,27 +950,28 @@ TEST_F(wildcard_utils_test, match_wildcard) {
     auto a = irs::FromWildcard("a%a");
     assert_properties(a);
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
     ASSERT_FALSE(irs::Accept<char>(a, std::string_view{}));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("aa"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("aa"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("aaa"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("aaa"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("abcdfsa"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("abcdfsa"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("abcdfsa"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("abcdfsa"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a,
-      irs::ViewCast<irs::byte_type>(std::string_view("aaaaaaaaaaaaaaaaaa"))));
+        a,
+        irs::ViewCast<irs::byte_type>(std::string_view("aaaaaaaaaaaaaaaaaa"))));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("aaaaaaaaaaaaaaab"))));
+        a,
+        irs::ViewCast<irs::byte_type>(std::string_view("aaaaaaaaaaaaaaab"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(
-           std::string_view("aaaaaaaaaaaaa\xE2\x9E\x96\x61"))));
+        a, irs::ViewCast<irs::byte_type>(
+               std::string_view("aaaaaaaaaaaaa\xE2\x9E\x96\x61"))));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(
-           std::string_view("aaaaaaaaaaaaa\xE2\x9E\x61"))));
+        a, irs::ViewCast<irs::byte_type>(
+               std::string_view("aaaaaaaaaaaaa\xE2\x9E\x61"))));
   }
 
   // mixed
@@ -966,49 +979,51 @@ TEST_F(wildcard_utils_test, match_wildcard) {
     auto a = irs::FromWildcard("_%a_%_a_%");
     assert_properties(a);
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
     ASSERT_FALSE(irs::Accept<char>(a, std::string_view{}));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("baaaab"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("baaaab"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a,
-      irs::ViewCast<irs::byte_type>(std::string_view("aaaaaaaaaaaaaaaaaa"))));
+        a,
+        irs::ViewCast<irs::byte_type>(std::string_view("aaaaaaaaaaaaaaaaaa"))));
   }
 
   // mixed, invalid UTF8-sequence
   {
-    auto a =
-      irs::FromWildcard("\x5F\x25\xE2\x9E\x61\x5F\x25\x5F\xE2\x9E\x61\x5F\x25");
+    auto a = irs::FromWildcard(
+        "\x5F\x25\xE2\x9E\x61\x5F\x25\x5F\xE2\x9E\x61\x5F\x25");
     assert_properties(a);
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
     ASSERT_FALSE(irs::Accept<char>(a, std::string_view{}));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(
-           std::string_view("\x98\xE2\x9E\x61\x97\x97\xE2\x9E\x61\x98"))));
+        a, irs::ViewCast<irs::byte_type>(
+               std::string_view("\x98\xE2\x9E\x61\x97\x97\xE2\x9E\x61\x98"))));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view(
-           "\xE2\x9E\x61\xE2\x9E\x61\xE2\x9E\x61\xE2\x9E\x61\xE2\x9E\x61\xE2"
-           "\x9E\x61\xE2\x9E\x61\xE2\x9E\x61"))));
+        a,
+        irs::ViewCast<irs::byte_type>(std::string_view(
+            "\xE2\x9E\x61\xE2\x9E\x61\xE2\x9E\x61\xE2\x9E\x61\xE2\x9E\x61\xE2"
+            "\x9E\x61\xE2\x9E\x61\xE2\x9E\x61"))));
   }
 
   // mixed
   {
-    auto a =
-      irs::FromWildcard("\x5F\x25\xE2\x9E\x9E\x5F\x25\x5F\xE2\x9E\x9E\x5F\x25");
+    auto a = irs::FromWildcard(
+        "\x5F\x25\xE2\x9E\x9E\x5F\x25\x5F\xE2\x9E\x9E\x5F\x25");
     assert_properties(a);
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
     ASSERT_FALSE(irs::Accept<char>(a, std::string_view{}));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view(
-           "\xE2\x9E\x9E\xE2\x9E\x9E\xE2\x9E\x9E\xE2\x9E\x9E\xE2\x9E\x9E\xE2"
-           "\x9E\x9E\xE2\x9E\x9E\xE2\x9E\x9E"))));
+        a,
+        irs::ViewCast<irs::byte_type>(std::string_view(
+            "\xE2\x9E\x9E\xE2\x9E\x9E\xE2\x9E\x9E\xE2\x9E\x9E\xE2\x9E\x9E\xE2"
+            "\x9E\x9E\xE2\x9E\x9E\xE2\x9E\x9E"))));
 
     // invalid UTF8-sequence
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(
-           std::string_view("\x98\xE2\x9E\x9E\x97\x97\xE2\x9E\x9E\x98"))));
+        a, irs::ViewCast<irs::byte_type>(
+               std::string_view("\x98\xE2\x9E\x9E\x97\x97\xE2\x9E\x9E\x98"))));
   }
 
   // mixed, invalid UTF8-sequence
@@ -1016,34 +1031,34 @@ TEST_F(wildcard_utils_test, match_wildcard) {
     auto a = irs::FromWildcard("\xE2\x9E\x61\x25\xE2\x9E\x61");
     assert_properties(a);
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
     ASSERT_FALSE(irs::Accept<char>(a, std::string_view{}));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(
-           std::string_view("\xE2\x9E\x61\xE2\x9E\x61"))));
+        a, irs::ViewCast<irs::byte_type>(
+               std::string_view("\xE2\x9E\x61\xE2\x9E\x61"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(
-           std::string_view("\xE2\x9E\x61\x61\xE2\x9E\x61"))));
+        a, irs::ViewCast<irs::byte_type>(
+               std::string_view("\xE2\x9E\x61\x61\xE2\x9E\x61"))));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(
-           std::string_view("\xE2\x9E\x61\x9E\x61\xE2\x9E\x61"))));
+        a, irs::ViewCast<irs::byte_type>(
+               std::string_view("\xE2\x9E\x61\x9E\x61\xE2\x9E\x61"))));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(
-           std::string_view("\xE2\x9E\x61\x9E\x61\xE2\x9E\xE2\x9E\x61"))));
+        a, irs::ViewCast<irs::byte_type>(
+               std::string_view("\xE2\x9E\x61\x9E\x61\xE2\x9E\xE2\x9E\x61"))));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(
-           std::string_view("\xE2\x9E\x61\xE2\x9E\x61\xE2\x9E\x61"))));
+        a, irs::ViewCast<irs::byte_type>(
+               std::string_view("\xE2\x9E\x61\xE2\x9E\x61\xE2\x9E\x61"))));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view(
-           "\xE2\x9E\x61\xE2\x9E\x61\xE2\x9E\x61\xE2\x9E\x61"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view(
+               "\xE2\x9E\x61\xE2\x9E\x61\xE2\x9E\x61\xE2\x9E\x61"))));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(
-           std::string_view("\xE2\x9E\x61\xE2\x9E\x61\xE2\x9E\x61\xE2\x9E\x61"
-                            "\xE2\x9E\x61\xE2\x9E\x61\xE2\x9E\x61"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view(
+               "\xE2\x9E\x61\xE2\x9E\x61\xE2\x9E\x61\xE2\x9E\x61"
+               "\xE2\x9E\x61\xE2\x9E\x61\xE2\x9E\x61"))));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(
-           std::string_view("\xE2\x9E\x61\xE2\x9E\x61\xE2\x9E\x61\xE2\x9E\x61"
-                            "\xE2\x9E\x61\xE2\x9E\x61\xE2\x9E\x61\x61"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view(
+               "\xE2\x9E\x61\xE2\x9E\x61\xE2\x9E\x61\xE2\x9E\x61"
+               "\xE2\x9E\x61\xE2\x9E\x61\xE2\x9E\x61\x61"))));
   }
 
   // mixed
@@ -1051,36 +1066,36 @@ TEST_F(wildcard_utils_test, match_wildcard) {
     auto a = irs::FromWildcard("\xE2\x9E\x9E\x25\xE2\x9E\x9E");
     assert_properties(a);
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
     ASSERT_FALSE(irs::Accept<char>(a, std::string_view{}));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(
-           std::string_view("\xE2\x9E\x9E\xE2\x9E\x9E"))));
+        a, irs::ViewCast<irs::byte_type>(
+               std::string_view("\xE2\x9E\x9E\xE2\x9E\x9E"))));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(
-           std::string_view("\xE2\x9E\x9E\x9E\x9E\xE2\x9E\xE2\x9E\x9E"))));
+        a, irs::ViewCast<irs::byte_type>(
+               std::string_view("\xE2\x9E\x9E\x9E\x9E\xE2\x9E\xE2\x9E\x9E"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(
-           std::string_view("\xE2\x9E\x9E\xE2\x9E\x9E\xE2\x9E\x9E"))));
+        a, irs::ViewCast<irs::byte_type>(
+               std::string_view("\xE2\x9E\x9E\xE2\x9E\x9E\xE2\x9E\x9E"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view(
-           "\xE2\x9E\x9E\xE2\x9E\x9E\xE2\x9E\x9E\xE2\x9E\x9E"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view(
+               "\xE2\x9E\x9E\xE2\x9E\x9E\xE2\x9E\x9E\xE2\x9E\x9E"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(
-           std::string_view("\xE2\x9E\x9E\xE2\x9E\x9E\xE2\x9E\x9E\xE2\x9E\x9E"
-                            "\xE2\x9E\x9E\xE2\x9E\x9E\xE2\x9E\x9E"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view(
+               "\xE2\x9E\x9E\xE2\x9E\x9E\xE2\x9E\x9E\xE2\x9E\x9E"
+               "\xE2\x9E\x9E\xE2\x9E\x9E\xE2\x9E\x9E"))));
 
     // invalid UTF8 sequence
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(
-           std::string_view("\xE2\x9E\x9E\x9E\xE2\x9E\x9E"))));
+        a, irs::ViewCast<irs::byte_type>(
+               std::string_view("\xE2\x9E\x9E\x9E\xE2\x9E\x9E"))));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(
-           std::string_view("\xE2\x9E\x9E\x9E\x9E\xE2\x9E\x9E"))));
+        a, irs::ViewCast<irs::byte_type>(
+               std::string_view("\xE2\x9E\x9E\x9E\x9E\xE2\x9E\x9E"))));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(
-           std::string_view("\xE2\x9E\x9E\xE2\x9E\x9E\xE2\x9E\x9E\xE2\x9E\x9E"
-                            "\xE2\x9E\x9E\xE2\x9E\x9E\xE2\x9E\x9E\x9E"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view(
+               "\xE2\x9E\x9E\xE2\x9E\x9E\xE2\x9E\x9E\xE2\x9E\x9E"
+               "\xE2\x9E\x9E\xE2\x9E\x9E\xE2\x9E\x9E\x9E"))));
   }
 
   // mixed
@@ -1088,42 +1103,43 @@ TEST_F(wildcard_utils_test, match_wildcard) {
     auto a = irs::FromWildcard("a%bce_d");
     assert_properties(a);
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
     ASSERT_FALSE(irs::Accept<char>(a, std::string_view{}));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("aabce1dbce1d"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("aabce1dbce1d"))));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("aabce1dbce11d"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("aabce1dbce11d"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("abceabce1d"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("abceabce1d"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("abcebce1d"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("abcebce1d"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("azbce1d"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("azbce1d"))));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("azbce1d1"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("azbce1d1"))));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("azbce11d"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("azbce11d"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("azbce\xD0\xBF\x64"))));
+        a,
+        irs::ViewCast<irs::byte_type>(std::string_view("azbce\xD0\xBF\x64"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(
-           std::string_view("azbce\xE2\x9E\x96\x64"))));
+        a, irs::ViewCast<irs::byte_type>(
+               std::string_view("azbce\xE2\x9E\x96\x64"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(
-           std::string_view("azbce\xF0\x9F\x98\x81\x64"))));
+        a, irs::ViewCast<irs::byte_type>(
+               std::string_view("azbce\xF0\x9F\x98\x81\x64"))));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(
-           std::string_view("azbce\xE2\x9E\x96\xF0\x9F\x98\x81\x64"))));
+        a, irs::ViewCast<irs::byte_type>(
+               std::string_view("azbce\xE2\x9E\x96\xF0\x9F\x98\x81\x64"))));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(
-           std::string_view("azbce\xD0\xBF\xD0\xBF\x64"))));
+        a, irs::ViewCast<irs::byte_type>(
+               std::string_view("azbce\xD0\xBF\xD0\xBF\x64"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(
-           std::string_view("az\xD0\xBF\xD0\xBF\x62\x63\x65\xD0\xBF\x64"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view(
+               "az\xD0\xBF\xD0\xBF\x62\x63\x65\xD0\xBF\x64"))));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view(
-           "az\xD0\xBF\xD0\xBF\x62\x63\x65\xD0\xBF\x64\x64"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view(
+               "az\xD0\xBF\xD0\xBF\x62\x63\x65\xD0\xBF\x64\x64"))));
   }
 
   // mixed
@@ -1131,17 +1147,18 @@ TEST_F(wildcard_utils_test, match_wildcard) {
     auto a = irs::FromWildcard("b%d%a");
     assert_properties(a);
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
     ASSERT_FALSE(irs::Accept<char>(a, std::string_view{}));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("azbce1d"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("azbce1d"))));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("azbce1d1"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("azbce1d1"))));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("azbce11d"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("azbce11d"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view(
-           "\x62\x61\x7A\xD0\xBF\xD0\xBF\x62\x63\x64\xD0\xBF\x64\x64\x61"))));
+        a,
+        irs::ViewCast<irs::byte_type>(std::string_view(
+            "\x62\x61\x7A\xD0\xBF\xD0\xBF\x62\x63\x64\xD0\xBF\x64\x64\x61"))));
   }
 
   // mixed
@@ -1149,14 +1166,14 @@ TEST_F(wildcard_utils_test, match_wildcard) {
     auto a = irs::FromWildcard("a%b%d");
     assert_properties(a);
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
     ASSERT_FALSE(irs::Accept<char>(a, std::string_view{}));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("azbce1d"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("azbce1d"))));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("azbce1d1"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("azbce1d1"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("azbce11d"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("azbce11d"))));
   }
 
   // mixed
@@ -1164,16 +1181,16 @@ TEST_F(wildcard_utils_test, match_wildcard) {
     auto a = irs::FromWildcard("a%b%db");
     assert_properties(a);
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
     ASSERT_FALSE(irs::Accept<char>(a, std::string_view{}));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("azbce1d"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("azbce1d"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("azbce1db"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("azbce1db"))));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("azbce1d1"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("azbce1d1"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("azbce11db"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("azbce11db"))));
   }
 
   // mixed
@@ -1181,18 +1198,18 @@ TEST_F(wildcard_utils_test, match_wildcard) {
     auto a = irs::FromWildcard("%_");
     assert_properties(a);
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
     ASSERT_FALSE(irs::Accept<char>(a, std::string_view{}));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("a"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("a"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("aa"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("aa"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("azbce1d"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("azbce1d"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("azbce1d1"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("azbce1d1"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("azbce11d"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("azbce11d"))));
   }
 
   // mixed, terminal "\\"
@@ -1200,20 +1217,20 @@ TEST_F(wildcard_utils_test, match_wildcard) {
     auto a = irs::FromWildcard("%\\\\");
     assert_properties(a);
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
     ASSERT_FALSE(irs::Accept<char>(a, std::string_view{}));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("\\"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("\\"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("a\\"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("a\\"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("aa\\"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("aa\\"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("azbce1\\"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("azbce1\\"))));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("azbce1\\1"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("azbce1\\1"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("1azbce11\\"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("1azbce11\\"))));
   }
 
   // mixed, terminal "\\"
@@ -1221,20 +1238,20 @@ TEST_F(wildcard_utils_test, match_wildcard) {
     auto a = irs::FromWildcard("%_\\\\");
     assert_properties(a);
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
     ASSERT_FALSE(irs::Accept<char>(a, std::string_view{}));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("\\"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("\\"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("a\\"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("a\\"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("aa\\"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("aa\\"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("azbce1\\"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("azbce1\\"))));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("azbce1\\1"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("azbce1\\1"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("1azbce11\\"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("1azbce11\\"))));
   }
 
   // mixed, non-terminated "\\"
@@ -1242,20 +1259,20 @@ TEST_F(wildcard_utils_test, match_wildcard) {
     auto a = irs::FromWildcard("%\\");
     assert_properties(a);
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
     ASSERT_TRUE(irs::Accept<char>(a, std::string_view{}));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("\\"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("\\"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("a\\"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("a\\"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("aa\\"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("aa\\"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("azbce1\\"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("azbce1\\"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("azbce1\\1"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("azbce1\\1"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("1azbce11\\"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("1azbce11\\"))));
   }
 
   // mixed, non-terminated "\\"
@@ -1263,20 +1280,20 @@ TEST_F(wildcard_utils_test, match_wildcard) {
     auto a = irs::FromWildcard("%_\\");
     assert_properties(a);
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
     ASSERT_FALSE(irs::Accept<char>(a, std::string_view{}));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("\\"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("\\"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("a\\"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("a\\"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("aa\\"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("aa\\"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("azbce1\\"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("azbce1\\"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("azbce1\\1"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("azbce1\\1"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("1azbce11\\"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("1azbce11\\"))));
   }
 
   // mixed
@@ -1284,20 +1301,20 @@ TEST_F(wildcard_utils_test, match_wildcard) {
     auto a = irs::FromWildcard("%_d");
     assert_properties(a);
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
     ASSERT_FALSE(irs::Accept<char>(a, std::string_view{}));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("d"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("d"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("ad"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("ad"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("aad"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("aad"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("azbce1d"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("azbce1d"))));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("azbce1d1"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("azbce1d1"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("1azbce11d"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("1azbce11d"))));
   }
 
   // mixed
@@ -1305,44 +1322,46 @@ TEST_F(wildcard_utils_test, match_wildcard) {
     auto a = irs::FromWildcard("%_%_%d");
     assert_properties(a);
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
     ASSERT_FALSE(irs::Accept<char>(a, std::string_view{}));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("ad"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("ad"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("add"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("add"))));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("add1"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("add1"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("abd"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("abd"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("ddd"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("ddd"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("aad"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("aad"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("azbce1d"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("azbce1d"))));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("azbce1d1"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("azbce1d1"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("1azbce11d"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("1azbce11d"))));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("\xE2\x9E\x96\x64"))));
+        a,
+        irs::ViewCast<irs::byte_type>(std::string_view("\xE2\x9E\x96\x64"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(
-           std::string_view("\xE2\x9E\x96\x64\x64\x64"))));
+        a, irs::ViewCast<irs::byte_type>(
+               std::string_view("\xE2\x9E\x96\x64\x64\x64"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("a\xE2\x9E\x96\x64"))));
+        a,
+        irs::ViewCast<irs::byte_type>(std::string_view("a\xE2\x9E\x96\x64"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(
-           std::string_view("e\xF0\x9F\x98\x81\x64"))));
+        a, irs::ViewCast<irs::byte_type>(
+               std::string_view("e\xF0\x9F\x98\x81\x64"))));
 
     // invalid UTF8 sequence
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(
-           std::string_view("xE2\x9E\x96\xF0\x9F\x98\x81\x64"))));
+        a, irs::ViewCast<irs::byte_type>(
+               std::string_view("xE2\x9E\x96\xF0\x9F\x98\x81\x64"))));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a,
-      irs::ViewCast<irs::byte_type>(std::string_view("xD0\xBF\xD0\xBF\x64"))));
+        a, irs::ViewCast<irs::byte_type>(
+               std::string_view("xD0\xBF\xD0\xBF\x64"))));
   }
 
   // mixed
@@ -1350,43 +1369,44 @@ TEST_F(wildcard_utils_test, match_wildcard) {
     auto a = irs::FromWildcard("%_%_%d%");
     assert_properties(a);
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
     ASSERT_FALSE(irs::Accept<char>(a, std::string_view{}));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("ad"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("ad"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("add"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("add"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("add1"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("add1"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("abd"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("abd"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("ddd"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("ddd"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("aad"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("aad"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("azbce1d"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("azbce1d"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("azbce1d1"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("azbce1d1"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("1azbce11d"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("1azbce11d"))));
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("\xE2\x9E\x96\x64"))));
+        a,
+        irs::ViewCast<irs::byte_type>(std::string_view("\xE2\x9E\x96\x64"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a,
-      irs::ViewCast<irs::byte_type>(std::string_view("\xE2\x9E\x96\x64\x64"))));
+        a, irs::ViewCast<irs::byte_type>(
+               std::string_view("\xE2\x9E\x96\x64\x64"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(
-           std::string_view("azbce\xE2\x9E\x96\x64"))));
+        a, irs::ViewCast<irs::byte_type>(
+               std::string_view("azbce\xE2\x9E\x96\x64"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(
-           std::string_view("azbce\xF0\x9F\x98\x81\x64"))));
+        a, irs::ViewCast<irs::byte_type>(
+               std::string_view("azbce\xF0\x9F\x98\x81\x64"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(
-           std::string_view("azbce\xE2\x9E\x96\xF0\x9F\x98\x81\x64\xD0\xBF"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view(
+               "azbce\xE2\x9E\x96\xF0\x9F\x98\x81\x64\xD0\xBF"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(
-           std::string_view("azbce\xD0\xBF\xD0\xBF\x64\xD0\xBF"))));
+        a, irs::ViewCast<irs::byte_type>(
+               std::string_view("azbce\xD0\xBF\xD0\xBF\x64\xD0\xBF"))));
   }
 
   // mixed
@@ -1394,18 +1414,18 @@ TEST_F(wildcard_utils_test, match_wildcard) {
     auto a = irs::FromWildcard("%%_");
     assert_properties(a);
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
     ASSERT_FALSE(irs::Accept<char>(a, std::string_view{}));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("a"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("a"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("aa"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("aa"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("azbce1d"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("azbce1d"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("azbce1d1"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("azbce1d1"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("azbce11d"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("azbce11d"))));
   }
 
   // mixed
@@ -1413,18 +1433,18 @@ TEST_F(wildcard_utils_test, match_wildcard) {
     auto a = irs::FromWildcard("_%");
     assert_properties(a);
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
     ASSERT_FALSE(irs::Accept<char>(a, std::string_view{}));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("a"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("a"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("aa"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("aa"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("azbce1d"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("azbce1d"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("azbce1d1"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("azbce1d1"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("azbce11d"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("azbce11d"))));
   }
 
   // mixed
@@ -1432,17 +1452,17 @@ TEST_F(wildcard_utils_test, match_wildcard) {
     auto a = irs::FromWildcard("a%_b");
     assert_properties(a);
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("ababab"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("ababab"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("abababbbb"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("abababbbb"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("ababbbbb"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("ababbbbb"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("abbbbbb"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("abbbbbb"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("abb"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("abb"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("aab"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("aab"))));
   }
 
   // mixed
@@ -1450,19 +1470,19 @@ TEST_F(wildcard_utils_test, match_wildcard) {
     auto a = irs::FromWildcard("a%_b%");
     assert_properties(a);
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("abababc"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("abababc"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("abababcababab"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("abababcababab"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("abababbbbc"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("abababbbbc"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("ababbbbbc"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("ababbbbbc"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("abbbbbbc"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("abbbbbbc"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("abbc"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("abbc"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("aabc"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("aabc"))));
   }
 
   // mixed
@@ -1470,16 +1490,16 @@ TEST_F(wildcard_utils_test, match_wildcard) {
     auto a = irs::FromWildcard("v%%c");
     assert_properties(a);
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
     ASSERT_FALSE(irs::Accept<char>(a, std::string_view{}));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("vcc"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("vcc"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("vccc"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("vccc"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("vczc"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("vczc"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("vczczvccccc"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("vczczvccccc"))));
   }
 
   // mixed
@@ -1487,16 +1507,16 @@ TEST_F(wildcard_utils_test, match_wildcard) {
     auto a = irs::FromWildcard("v%c");
     assert_properties(a);
     ASSERT_FALSE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view(""))));
     ASSERT_FALSE(irs::Accept<char>(a, std::string_view{}));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("vcc"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("vcc"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("vccc"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("vccc"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("vczc"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("vczc"))));
     ASSERT_TRUE(irs::Accept<irs::byte_type>(
-      a, irs::ViewCast<irs::byte_type>(std::string_view("vczczvccccc"))));
+        a, irs::ViewCast<irs::byte_type>(std::string_view("vczczvccccc"))));
   }
 
   // invalid UTF-8 sequence
@@ -1508,86 +1528,86 @@ TEST_F(wildcard_utils_test, match_wildcard) {
 TEST_F(wildcard_utils_test, wildcard_type) {
   ASSERT_EQ(irs::WildcardType::kTerm,
             irs::ComputeWildcardType(irs::ViewCast<irs::byte_type>(
-              std::string_view("\xD0"))));  // invalid UTF-8 sequence
+                std::string_view("\xD0"))));  // invalid UTF-8 sequence
   ASSERT_EQ(irs::WildcardType::kTerm,
             irs::ComputeWildcardType(
-              irs::ViewCast<irs::byte_type>(std::string_view("foo"))));
+                irs::ViewCast<irs::byte_type>(std::string_view("foo"))));
   ASSERT_EQ(irs::WildcardType::kTerm,
             irs::ComputeWildcardType(
-              irs::ViewCast<irs::byte_type>(std::string_view("\xD0\xE2"))));
+                irs::ViewCast<irs::byte_type>(std::string_view("\xD0\xE2"))));
   ASSERT_EQ(irs::WildcardType::kTermEscaped,
             irs::ComputeWildcardType(
-              irs::ViewCast<irs::byte_type>(std::string_view("\\foo"))));
+                irs::ViewCast<irs::byte_type>(std::string_view("\\foo"))));
   ASSERT_EQ(irs::WildcardType::kTermEscaped,
             irs::ComputeWildcardType(
-              irs::ViewCast<irs::byte_type>(std::string_view("\\%foo"))));
+                irs::ViewCast<irs::byte_type>(std::string_view("\\%foo"))));
   ASSERT_EQ(irs::WildcardType::kTerm,
             irs::ComputeWildcardType(
-              irs::ViewCast<irs::byte_type>(std::string_view("\foo"))));
+                irs::ViewCast<irs::byte_type>(std::string_view("\foo"))));
   ASSERT_EQ(irs::WildcardType::kPrefix,
             irs::ComputeWildcardType(
-              irs::ViewCast<irs::byte_type>(std::string_view("foo%"))));
+                irs::ViewCast<irs::byte_type>(std::string_view("foo%"))));
   ASSERT_EQ(irs::WildcardType::kPrefixEscaped,
             irs::ComputeWildcardType(irs::ViewCast<irs::byte_type>(
-              std::string_view("\\\\\\\\\\\\%"))));
+                std::string_view("\\\\\\\\\\\\%"))));
   ASSERT_EQ(irs::WildcardType::kTermEscaped,
-            irs::ComputeWildcardType(
-              irs::ViewCast<irs::byte_type>(std::string_view("\\\\\\\\\\%"))));
+            irs::ComputeWildcardType(irs::ViewCast<irs::byte_type>(
+                std::string_view("\\\\\\\\\\%"))));
   ASSERT_EQ(irs::WildcardType::kPrefix,
             irs::ComputeWildcardType(
-              irs::ViewCast<irs::byte_type>(std::string_view("foo%%"))));
+                irs::ViewCast<irs::byte_type>(std::string_view("foo%%"))));
   ASSERT_EQ(irs::WildcardType::kPrefix,
-            irs::ComputeWildcardType(
-              irs::ViewCast<irs::byte_type>(std::string_view("\xD0\xE2\x25"))));
+            irs::ComputeWildcardType(irs::ViewCast<irs::byte_type>(
+                std::string_view("\xD0\xE2\x25"))));
   ASSERT_EQ(irs::WildcardType::kTerm,
             irs::ComputeWildcardType(
-              irs::ViewCast<irs::byte_type>(std::string_view("\xD0\x25"))));
+                irs::ViewCast<irs::byte_type>(std::string_view("\xD0\x25"))));
   ASSERT_EQ(irs::WildcardType::kPrefix,
             irs::ComputeWildcardType(irs::ViewCast<irs::byte_type>(
-              std::string_view("\xD0\xE2\x25\x25"))));
+                std::string_view("\xD0\xE2\x25\x25"))));
   ASSERT_EQ(irs::WildcardType::kWildcard,
             irs::ComputeWildcardType(irs::ViewCast<irs::byte_type>(
-              std::string_view("\x25\xD0\xE2\x25\x25"))));
+                std::string_view("\x25\xD0\xE2\x25\x25"))));
   ASSERT_EQ(irs::WildcardType::kWildcard,
             irs::ComputeWildcardType(
-              irs::ViewCast<irs::byte_type>(std::string_view("foo%_"))));
+                irs::ViewCast<irs::byte_type>(std::string_view("foo%_"))));
   ASSERT_EQ(irs::WildcardType::kWildcard,
             irs::ComputeWildcardType(
-              irs::ViewCast<irs::byte_type>(std::string_view("foo%\\"))));
+                irs::ViewCast<irs::byte_type>(std::string_view("foo%\\"))));
   ASSERT_EQ(irs::WildcardType::kWildcard,
             irs::ComputeWildcardType(
-              irs::ViewCast<irs::byte_type>(std::string_view("fo%o\\%"))));
+                irs::ViewCast<irs::byte_type>(std::string_view("fo%o\\%"))));
   ASSERT_EQ(irs::WildcardType::kWildcard,
             irs::ComputeWildcardType(
-              irs::ViewCast<irs::byte_type>(std::string_view("foo_%"))));
+                irs::ViewCast<irs::byte_type>(std::string_view("foo_%"))));
   ASSERT_EQ(irs::WildcardType::kPrefixEscaped,
             irs::ComputeWildcardType(
-              irs::ViewCast<irs::byte_type>(std::string_view("foo\\_%"))));
+                irs::ViewCast<irs::byte_type>(std::string_view("foo\\_%"))));
   ASSERT_EQ(irs::WildcardType::kWildcard,
             irs::ComputeWildcardType(
-              irs::ViewCast<irs::byte_type>(std::string_view("foo__"))));
+                irs::ViewCast<irs::byte_type>(std::string_view("foo__"))));
   ASSERT_EQ(irs::WildcardType::kPrefixEscaped,
             irs::ComputeWildcardType(
-              irs::ViewCast<irs::byte_type>(std::string_view("foo\\%%"))));
+                irs::ViewCast<irs::byte_type>(std::string_view("foo\\%%"))));
   ASSERT_EQ(irs::WildcardType::kPrefixEscaped,
             irs::ComputeWildcardType(
-              irs::ViewCast<irs::byte_type>(std::string_view("foo\\%%%"))));
+                irs::ViewCast<irs::byte_type>(std::string_view("foo\\%%%"))));
   ASSERT_EQ(irs::WildcardType::kTermEscaped,
             irs::ComputeWildcardType(
-              irs::ViewCast<irs::byte_type>(std::string_view("foo\\%\\%"))));
+                irs::ViewCast<irs::byte_type>(std::string_view("foo\\%\\%"))));
   ASSERT_EQ(irs::WildcardType::kPrefix,
             irs::ComputeWildcardType(
-              irs::ViewCast<irs::byte_type>(std::string_view("%"))));
+                irs::ViewCast<irs::byte_type>(std::string_view("%"))));
   ASSERT_EQ(irs::WildcardType::kPrefix,
             irs::ComputeWildcardType(
-              irs::ViewCast<irs::byte_type>(std::string_view("%%"))));
+                irs::ViewCast<irs::byte_type>(std::string_view("%%"))));
   ASSERT_EQ(irs::WildcardType::kWildcard,
             irs::ComputeWildcardType(
-              irs::ViewCast<irs::byte_type>(std::string_view("%c%"))));
+                irs::ViewCast<irs::byte_type>(std::string_view("%c%"))));
   ASSERT_EQ(irs::WildcardType::kWildcard,
             irs::ComputeWildcardType(
-              irs::ViewCast<irs::byte_type>(std::string_view("%%c%"))));
+                irs::ViewCast<irs::byte_type>(std::string_view("%%c%"))));
   ASSERT_EQ(irs::WildcardType::kWildcard,
             irs::ComputeWildcardType(
-              irs::ViewCast<irs::byte_type>(std::string_view("%c%%"))));
+                irs::ViewCast<irs::byte_type>(std::string_view("%c%%"))));
 }

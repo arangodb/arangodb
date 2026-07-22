@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -46,18 +45,18 @@ class ngram_token_stream_base : public TypedAnalyzer<ngram_token_stream_base>,
     Options() noexcept = default;
     Options(size_t min, size_t max, bool original,
             InputType stream_type = InputType::Binary) noexcept
-      : min_gram{min},
-        max_gram{max},
-        preserve_original{original},
-        stream_bytes_type{stream_type} {}
+        : min_gram{min},
+          max_gram{max},
+          preserve_original{original},
+          stream_bytes_type{stream_type} {}
     Options(size_t min, size_t max, bool original, InputType stream_type,
             irs::bytes_view start, irs::bytes_view end)
-      : min_gram{min},
-        max_gram{max},
-        preserve_original{original},
-        stream_bytes_type{stream_type},
-        start_marker{start},
-        end_marker{end} {}
+        : min_gram{min},
+          max_gram{max},
+          preserve_original{original},
+          stream_bytes_type{stream_type},
+          start_marker{start},
+          end_marker{end} {}
 
     size_t min_gram{0};
     size_t max_gram{0};
@@ -134,6 +133,6 @@ class ngram_token_stream : public ngram_token_stream_base {
 // use ngram_token_stream_base type for ancestors
 template<analysis::ngram_token_stream_base::InputType StreamType>
 struct type<analysis::ngram_token_stream<StreamType>>
-  : type<analysis::ngram_token_stream_base> {};
+    : type<analysis::ngram_token_stream_base> {};
 
 }  // namespace irs

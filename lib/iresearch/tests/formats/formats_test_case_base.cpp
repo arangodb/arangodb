@@ -17,8 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "formats_test_case_base.hpp"
@@ -79,7 +77,7 @@ bool VisitFiles(const irs::IndexMeta& meta, Visitor&& visitor) {
 namespace tests {
 
 irs::columnstore_writer::column_finalizer_f column_finalizer(
-  uint32_t value, std::string_view name = std::string_view{}) {
+    uint32_t value, std::string_view name = std::string_view{}) {
   return [value, name](irs::bstring& out) {
     EXPECT_TRUE(out.empty());
     out.resize(sizeof(value));
@@ -153,8 +151,8 @@ void format_test_case::AssertFrequencyAndPositions(irs::doc_iterator& expected,
 }
 
 void format_test_case::AssertNoDirectoryArtifacts(
-  const irs::directory& dir, const irs::format& codec,
-  const std::unordered_set<std::string>& expect_additional /* ={} */) {
+    const irs::directory& dir, const irs::format& codec,
+    const std::unordered_set<std::string>& expect_additional /* ={} */) {
   std::vector<std::string> dir_files;
   auto visitor = [&dir_files](std::string_view file) {
     // ignore lock file present in fs_directory
@@ -490,7 +488,7 @@ TEST_P(format_test_case, fields_seek_ge) {
   class numeric_field_generator : public tests::doc_generator_base {
    public:
     numeric_field_generator(size_t begin, size_t end, size_t step)
-      : value_(begin), begin_(begin), end_(end), step_(step) {
+        : value_(begin), begin_(begin), end_(end), step_(step) {
       field_ = std::make_shared<granular_double_field>();
       field_->name("field");
       doc_.indexed.push_back(field_);
@@ -570,10 +568,11 @@ TEST_P(format_test_case, fields_seek_ge) {
       ASSERT_TRUE(stream.next());
       ASSERT_EQ(irs::SeekResult::NOT_FOUND, it->seek_ge(term->value));
 
-      auto expected_it =
-        std::lower_bound(all_terms.begin(), all_terms.end(), term->value,
-                         [](const irs::bstring& lhs,
-                            const irs::bytes_view& rhs) { return lhs < rhs; });
+      auto expected_it = std::lower_bound(
+          all_terms.begin(), all_terms.end(), term->value,
+          [](const irs::bstring& lhs, const irs::bytes_view& rhs) {
+            return lhs < rhs;
+          });
       ASSERT_NE(all_terms.end(), expected_it);
 
       while (expected_it != all_terms.end()) {
@@ -589,12 +588,12 @@ TEST_P(format_test_case, fields_seek_ge) {
   // seek to non-existent term in the middle
   {
     const std::vector<std::vector<irs::byte_type>> terms{
-      {207},
-      {208},
-      {208, 191},
-      {208, 192, 81},
-      {192, 192, 187, 86, 0},
-      {192, 192, 187, 88, 0}};
+        {207},
+        {208},
+        {208, 191},
+        {208, 192, 81},
+        {192, 192, 187, 86, 0},
+        {192, 192, 187, 88, 0}};
 
     auto it = field->iterator(irs::SeekMode::NORMAL);
 
@@ -603,10 +602,11 @@ TEST_P(format_test_case, fields_seek_ge) {
 
       ASSERT_EQ(irs::SeekResult::NOT_FOUND, it->seek_ge(target));
 
-      auto expected_it =
-        std::lower_bound(all_terms.begin(), all_terms.end(), target,
-                         [](const irs::bstring& lhs,
-                            const irs::bytes_view& rhs) { return lhs < rhs; });
+      auto expected_it = std::lower_bound(
+          all_terms.begin(), all_terms.end(), target,
+          [](const irs::bstring& lhs, const irs::bytes_view& rhs) {
+            return lhs < rhs;
+          });
       ASSERT_NE(all_terms.end(), expected_it);
 
       while (expected_it != all_terms.end()) {
@@ -624,10 +624,10 @@ TEST_P(format_test_case, fields_seek_ge) {
     const irs::byte_type term[]{209, 191};
     const irs::bytes_view target(term, sizeof term);
     const std::vector<std::vector<irs::byte_type>> terms{
-      {209},
-      {208, 193},
-      {208, 192, 188},
-      {208, 192, 188},
+        {209},
+        {208, 193},
+        {208, 192, 188},
+        {208, 192, 188},
     };
 
     auto it = field->iterator(irs::SeekMode::NORMAL);
@@ -757,17 +757,17 @@ TEST_P(format_test_case, fields_read_write) {
   unsorted_terms_t unsorted_terms;
 
   tests::json_doc_generator gen(
-    resource("fst_prefixes.json"),
-    [&sorted_terms, &unsorted_terms](
-      tests::document& doc, const std::string& name,
-      const tests::json_doc_generator::json_value& data) {
-      doc.insert(std::make_shared<tests::string_field>(name, data.str));
+      resource("fst_prefixes.json"),
+      [&sorted_terms, &unsorted_terms](
+          tests::document& doc, const std::string& name,
+          const tests::json_doc_generator::json_value& data) {
+        doc.insert(std::make_shared<tests::string_field>(name, data.str));
 
-      auto ref = irs::ViewCast<irs::byte_type>(
-        (doc.indexed.end() - 1).as<tests::string_field>().value());
-      sorted_terms.emplace(ref);
-      unsorted_terms.emplace_back(ref);
-    });
+        auto ref = irs::ViewCast<irs::byte_type>(
+            (doc.indexed.end() - 1).as<tests::string_field>().value());
+        sorted_terms.emplace(ref);
+        unsorted_terms.emplace_back(ref);
+      });
 
   // define field
   irs::field_meta field;
@@ -782,23 +782,23 @@ TEST_P(format_test_case, fields_read_write) {
   // write fields
   {
     irs::flush_state state{
-      .dir = &dir(),
-      .features = &features,
-      .name = "segment_name",
-      .doc_count = 100,
-      .index_features = field.index_features,
+        .dir = &dir(),
+        .features = &features,
+        .name = "segment_name",
+        .doc_count = 100,
+        .index_features = field.index_features,
     };
 
     // should use sorted terms on write
     terms<sorted_terms_t::iterator> terms(sorted_terms.begin(),
                                           sorted_terms.end());
     tests::MockTermReader term_reader{
-      terms, irs::field_meta{field.name, field.index_features},
-      (sorted_terms.empty() ? irs::bytes_view{} : *sorted_terms.begin()),
-      (sorted_terms.empty() ? irs::bytes_view{} : *sorted_terms.rbegin())};
+        terms, irs::field_meta{field.name, field.index_features},
+        (sorted_terms.empty() ? irs::bytes_view{} : *sorted_terms.begin()),
+        (sorted_terms.empty() ? irs::bytes_view{} : *sorted_terms.rbegin())};
 
     auto writer =
-      codec()->get_field_writer(false, irs::IResourceManager::kNoop);
+        codec()->get_field_writer(false, irs::IResourceManager::kNoop);
     writer->prepare(state);
     writer->write(term_reader, field.features);
     writer->end();
@@ -919,10 +919,10 @@ TEST_P(format_test_case, fields_read_write) {
     // ensure term is not invalidated during consequent unsuccessful seeks
     {
       constexpr std::pair<std::string_view, std::string_view> TERMS[]{
-        {"abcabamet", "abcabamet"},
-        {"abcabrit", "abcabsit"},
-        {"abcabzit", "abcabsit"},
-        {"abcabelit", "abcabelit"}};
+          {"abcabamet", "abcabamet"},
+          {"abcabrit", "abcabsit"},
+          {"abcabzit", "abcabsit"},
+          {"abcabelit", "abcabelit"}};
 
       auto term = term_reader->iterator(irs::SeekMode::NORMAL);
       for (const auto& [seek_term, expected_term] : TERMS) {
@@ -978,7 +978,7 @@ TEST_P(format_test_case, fields_read_write) {
     {
       auto seek_term = irs::ViewCast<irs::byte_type>(std::string_view("abaN"));
       auto seek_result =
-        irs::ViewCast<irs::byte_type>(std::string_view("ababInteger"));
+          irs::ViewCast<irs::byte_type>(std::string_view("ababInteger"));
 
       /* seek exactly to term */
       {
@@ -1093,7 +1093,7 @@ TEST_P(format_test_case, segment_meta_read_write) {
      public:
       segment_meta_corrupting_directory(irs::directory& dir,
                                         irs::SegmentMeta& meta)
-        : dir_(dir), meta_(meta) {}
+          : dir_(dir), meta_(meta) {}
 
       using directory::attributes;
 
@@ -1192,12 +1192,12 @@ TEST_P(format_test_case, columns_rw_sparse_column_dense_block) {
 
   size_t column_id;
   const irs::bytes_view payload(
-    irs::ViewCast<irs::byte_type>(std::string_view("abcd")));
+      irs::ViewCast<irs::byte_type>(std::string_view("abcd")));
 
   // write docs
   {
     auto writer =
-      codec()->get_columnstore_writer(false, irs::IResourceManager::kNoop);
+        codec()->get_columnstore_writer(false, irs::IResourceManager::kNoop);
     writer->prepare(dir(), seg);
     auto column = writer->push_column(lz4_column_info(), column_finalizer(42));
     column_id = column.id;
@@ -1218,9 +1218,9 @@ TEST_P(format_test_case, columns_rw_sparse_column_dense_block) {
     }
 
     irs::flush_state state{
-      .dir = &dir(),
-      .name = seg.name,
-      .doc_count = id - 1,
+        .dir = &dir(),
+        .name = seg.name,
+        .doc_count = id - 1,
     };
 
     ASSERT_TRUE(writer->commit(state));
@@ -1263,7 +1263,7 @@ TEST_P(format_test_case, columns_rw_dense_mask) {
   // write docs
   {
     auto writer =
-      codec()->get_columnstore_writer(false, irs::IResourceManager::kNoop);
+        codec()->get_columnstore_writer(false, irs::IResourceManager::kNoop);
     writer->prepare(dir(), seg);
     auto column = writer->push_column(lz4_column_info(), column_finalizer(42));
     column_id = column.id;
@@ -1275,9 +1275,9 @@ TEST_P(format_test_case, columns_rw_dense_mask) {
     }
 
     irs::flush_state state{
-      .dir = &dir(),
-      .name = seg.name,
-      .doc_count = MAX_DOC,
+        .dir = &dir(),
+        .name = seg.name,
+        .doc_count = MAX_DOC,
     };
 
     ASSERT_TRUE(writer->commit(state));
@@ -1312,7 +1312,7 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
   // write bit mask into the column without actual data
   {
     auto writer =
-      codec()->get_columnstore_writer(false, irs::IResourceManager::kNoop);
+        codec()->get_columnstore_writer(false, irs::IResourceManager::kNoop);
     writer->prepare(dir(), segment);
 
     auto column = writer->push_column(lz4_column_info(), column_finalizer(42));
@@ -1333,9 +1333,9 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
     // value
 
     irs::flush_state state{
-      .dir = &dir(),
-      .name = segment.name,
-      .doc_count = segment.docs_count,
+        .dir = &dir(),
+        .name = segment.name,
+        .doc_count = segment.docs_count,
     };
 
     ASSERT_TRUE(writer->commit(state));
@@ -1388,15 +1388,15 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
       }
 
       std::vector<std::pair<irs::doc_id_t, irs::doc_id_t>> expected_values = {
-        {1, 2},
-        {2, 2},
-        {3, 4},
-        {4, 4},
-        {5, 8},
-        {9, 9},
-        {10, irs::doc_limits::eof()},
-        {6, irs::doc_limits::eof()},
-        {10, irs::doc_limits::eof()}};
+          {1, 2},
+          {2, 2},
+          {3, 4},
+          {4, 4},
+          {5, 8},
+          {9, 9},
+          {10, irs::doc_limits::eof()},
+          {6, irs::doc_limits::eof()},
+          {10, irs::doc_limits::eof()}};
 
       for (auto& pair : expected_values) {
         const auto value_to_find = pair.first;
@@ -1587,20 +1587,20 @@ TEST_P(format_test_case, columns_rw_empty) {
   // add columns
   {
     auto writer =
-      codec()->get_columnstore_writer(false, irs::IResourceManager::kNoop);
+        codec()->get_columnstore_writer(false, irs::IResourceManager::kNoop);
     writer->prepare(dir(), meta0);
 
     column0_id =
-      writer->push_column(lz4_column_info(), column_finalizer(42)).id;
+        writer->push_column(lz4_column_info(), column_finalizer(42)).id;
     ASSERT_EQ(0, column0_id);
     column1_id =
-      writer->push_column(lz4_column_info(), column_finalizer(43)).id;
+        writer->push_column(lz4_column_info(), column_finalizer(43)).id;
     ASSERT_EQ(1, column1_id);
 
     irs::flush_state state{
-      .dir = &dir(),
-      .name = meta0.name,
-      .doc_count = meta0.docs_count,
+        .dir = &dir(),
+        .name = meta0.name,
+        .doc_count = meta0.docs_count,
     };
 
     ASSERT_FALSE(writer->commit(state));  // flush empty columns
@@ -1651,7 +1651,7 @@ TEST_P(format_test_case, columns_rw_same_col_empty_repeat) {
   // write documents
   {
     auto writer =
-      codec()->get_columnstore_writer(false, irs::IResourceManager::kNoop);
+        codec()->get_columnstore_writer(false, irs::IResourceManager::kNoop);
     irs::doc_id_t id = 0;
     writer->prepare(dir(), seg);
 
@@ -1679,9 +1679,9 @@ TEST_P(format_test_case, columns_rw_same_col_empty_repeat) {
     }
 
     irs::flush_state state{
-      .dir = &dir(),
-      .name = seg.name,
-      .doc_count = seg.docs_count,
+        .dir = &dir(),
+        .name = seg.name,
+        .doc_count = seg.docs_count,
     };
 
     ASSERT_TRUE(writer->commit(state));
@@ -1747,7 +1747,7 @@ TEST_P(format_test_case, columns_rw_big_document) {
   // write big document
   {
     auto writer =
-      codec()->get_columnstore_writer(false, irs::IResourceManager::kNoop);
+        codec()->get_columnstore_writer(false, irs::IResourceManager::kNoop);
     writer->prepare(dir(), segment);
 
     auto column = writer->push_column(lz4_column_info(), column_finalizer(42));
@@ -1770,9 +1770,9 @@ TEST_P(format_test_case, columns_rw_big_document) {
     }
 
     irs::flush_state state{
-      .dir = &dir(),
-      .name = segment.name,
-      .doc_count = segment.docs_count,
+        .dir = &dir(),
+        .name = segment.name,
+        .doc_count = segment.docs_count,
     };
 
     ASSERT_TRUE(writer->commit(state));
@@ -1915,7 +1915,7 @@ TEST_P(format_test_case, columns_rw_writer_reuse) {
   // write documents
   {
     auto writer =
-      codec()->get_columnstore_writer(false, irs::IResourceManager::kNoop);
+        codec()->get_columnstore_writer(false, irs::IResourceManager::kNoop);
 
     // write 1st segment
     irs::doc_id_t id = 0;
@@ -1939,9 +1939,9 @@ TEST_P(format_test_case, columns_rw_writer_reuse) {
 
     {
       irs::flush_state state{
-        .dir = &dir(),
-        .name = seg_1.name,
-        .doc_count = seg_1.docs_count,
+          .dir = &dir(),
+          .name = seg_1.name,
+          .doc_count = seg_1.docs_count,
       };
 
       ASSERT_TRUE(writer->commit(state));
@@ -1971,9 +1971,9 @@ TEST_P(format_test_case, columns_rw_writer_reuse) {
 
     {
       irs::flush_state state{
-        .dir = &dir(),
-        .name = seg_2.name,
-        .doc_count = seg_2.docs_count,
+          .dir = &dir(),
+          .name = seg_2.name,
+          .doc_count = seg_2.docs_count,
       };
 
       ASSERT_TRUE(writer->commit(state));
@@ -2001,9 +2001,9 @@ TEST_P(format_test_case, columns_rw_writer_reuse) {
 
     {
       irs::flush_state state{
-        .dir = &dir(),
-        .name = seg_3.name,
-        .doc_count = seg_3.docs_count,
+          .dir = &dir(),
+          .name = seg_3.name,
+          .doc_count = seg_3.docs_count,
       };
 
       ASSERT_TRUE(writer->commit(state));
@@ -2073,8 +2073,8 @@ TEST_P(format_test_case, columns_rw_writer_reuse) {
                   irs::to_string<std::string_view>(id_payload_2->value.data()));
         ASSERT_EQ(i, name_values_2->seek(i));
         ASSERT_EQ(
-          doc->stored.get<tests::string_field>(1).value(),
-          irs::to_string<std::string_view>(name_payload_2->value.data()));
+            doc->stored.get<tests::string_field>(1).value(),
+            irs::to_string<std::string_view>(name_payload_2->value.data()));
       }
     }
 
@@ -2116,13 +2116,13 @@ TEST_P(format_test_case, columns_rw_typed) {
     enum class Type { String, Binary, Double };
 
     Value(const std::string_view& name, const std::string_view& value)
-      : name(name), value(value), type(Type::String) {}
+        : name(name), value(value), type(Type::String) {}
 
     Value(const std::string_view& name, const irs::bytes_view& value)
-      : name(name), value(value), type(Type::Binary) {}
+        : name(name), value(value), type(Type::Binary) {}
 
     Value(const std::string_view& name, double_t value)
-      : name(name), value(value), type(Type::Double) {}
+        : name(name), value(value), type(Type::Double) {}
 
     std::string_view name;
     struct Rep {
@@ -2140,46 +2140,46 @@ TEST_P(format_test_case, columns_rw_typed) {
 
   std::deque<Value> values;
   tests::json_doc_generator gen(
-    resource("simple_sequential_33.json"),
-    [&values](tests::document& doc, const std::string& name,
-              const tests::json_doc_generator::json_value& data) {
-      if (data.is_string()) {
-        doc.insert(std::make_shared<string_field>(name, data.str));
+      resource("simple_sequential_33.json"),
+      [&values](tests::document& doc, const std::string& name,
+                const tests::json_doc_generator::json_value& data) {
+        if (data.is_string()) {
+          doc.insert(std::make_shared<string_field>(name, data.str));
 
-        auto& field = (doc.indexed.end() - 1).as<string_field>();
-        values.emplace_back(field.name(), field.value());
-      } else if (data.is_null()) {
-        doc.insert(std::make_shared<tests::binary_field>());
-        auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
-        field.name(name);
-        field.value(
-          irs::ViewCast<irs::byte_type>(irs::null_token_stream::value_null()));
-        values.emplace_back(field.name(), field.value());
-      } else if (data.is_bool() && data.b) {
-        doc.insert(std::make_shared<tests::binary_field>());
-        auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
-        field.name(name);
-        field.value(irs::ViewCast<irs::byte_type>(
-          irs::boolean_token_stream::value_true()));
-        values.emplace_back(field.name(), field.value());
-      } else if (data.is_bool() && !data.b) {
-        doc.insert(std::make_shared<tests::binary_field>());
-        auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
-        field.name(name);
-        field.value(irs::ViewCast<irs::byte_type>(
-          irs::boolean_token_stream::value_true()));
-        values.emplace_back(field.name(), field.value());
-      } else if (data.is_number()) {
-        const double dValue = data.as_number<double_t>();
+          auto& field = (doc.indexed.end() - 1).as<string_field>();
+          values.emplace_back(field.name(), field.value());
+        } else if (data.is_null()) {
+          doc.insert(std::make_shared<tests::binary_field>());
+          auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
+          field.name(name);
+          field.value(irs::ViewCast<irs::byte_type>(
+              irs::null_token_stream::value_null()));
+          values.emplace_back(field.name(), field.value());
+        } else if (data.is_bool() && data.b) {
+          doc.insert(std::make_shared<tests::binary_field>());
+          auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
+          field.name(name);
+          field.value(irs::ViewCast<irs::byte_type>(
+              irs::boolean_token_stream::value_true()));
+          values.emplace_back(field.name(), field.value());
+        } else if (data.is_bool() && !data.b) {
+          doc.insert(std::make_shared<tests::binary_field>());
+          auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
+          field.name(name);
+          field.value(irs::ViewCast<irs::byte_type>(
+              irs::boolean_token_stream::value_true()));
+          values.emplace_back(field.name(), field.value());
+        } else if (data.is_number()) {
+          const double dValue = data.as_number<double_t>();
 
-        // 'value' can be interpreted as a double
-        doc.insert(std::make_shared<tests::double_field>());
-        auto& field = (doc.indexed.end() - 1).as<tests::double_field>();
-        field.name(name);
-        field.value(dValue);
-        values.emplace_back(field.name(), field.value());
-      }
-    });
+          // 'value' can be interpreted as a double
+          doc.insert(std::make_shared<tests::double_field>());
+          auto& field = (doc.indexed.end() - 1).as<tests::double_field>();
+          field.name(name);
+          field.value(dValue);
+          values.emplace_back(field.name(), field.value());
+        }
+      });
 
   irs::SegmentMeta meta;
   meta.name = "_1";
@@ -2191,7 +2191,7 @@ TEST_P(format_test_case, columns_rw_typed) {
   // write stored documents
   {
     auto writer =
-      codec()->get_columnstore_writer(false, irs::IResourceManager::kNoop);
+        codec()->get_columnstore_writer(false, irs::IResourceManager::kNoop);
     writer->prepare(dir(), meta);
 
     irs::doc_id_t id = 0;
@@ -2214,9 +2214,9 @@ TEST_P(format_test_case, columns_rw_typed) {
     }
 
     irs::flush_state state{
-      .dir = &dir(),
-      .name = meta.name,
-      .doc_count = meta.docs_count,
+        .dir = &dir(),
+        .name = meta.name,
+        .doc_count = meta.docs_count,
     };
 
     ASSERT_TRUE(writer->commit(state));
@@ -2240,9 +2240,9 @@ TEST_P(format_test_case, columns_rw_typed) {
       for (size_t size = doc->stored.size(); size; --size) {
         auto& expected_field = values[value_id++];
         const std::string name(expected_field.name);
-        const auto res =
-          readers.emplace(std::piecewise_construct, std::forward_as_tuple(name),
-                          std::forward_as_tuple());
+        const auto res = readers.emplace(std::piecewise_construct,
+                                         std::forward_as_tuple(name),
+                                         std::forward_as_tuple());
 
         if (res.second) {
           auto column = reader->column(columns.at(name).id);
@@ -2295,9 +2295,9 @@ TEST_P(format_test_case, columns_rw_typed) {
       for (size_t size = doc->stored.size(); size; --size) {
         auto& expected_field = values[value_id++];
         const std::string name(expected_field.name);
-        const auto res =
-          readers.emplace(std::piecewise_construct, std::forward_as_tuple(name),
-                          std::forward_as_tuple());
+        const auto res = readers.emplace(std::piecewise_construct,
+                                         std::forward_as_tuple(name),
+                                         std::forward_as_tuple());
 
         if (res.second) {
           auto column = reader->column(columns.at(name).id);
@@ -2369,9 +2369,9 @@ TEST_P(format_test_case, columns_rw_typed) {
       for (size_t size = doc->stored.size(); size; --size) {
         auto& expected_field = values[value_id++];
         const std::string name(expected_field.name);
-        const auto res =
-          readers.emplace(std::piecewise_construct, std::forward_as_tuple(name),
-                          std::forward_as_tuple());
+        const auto res = readers.emplace(std::piecewise_construct,
+                                         std::forward_as_tuple(name),
+                                         std::forward_as_tuple());
 
         if (res.second) {
           auto column = reader->column(columns.at(name).id);
@@ -2444,12 +2444,12 @@ TEST_P(format_test_case, columns_issue700) {
 
   {
     auto writer =
-      codec()->get_columnstore_writer(false, irs::IResourceManager::kNoop);
+        codec()->get_columnstore_writer(false, irs::IResourceManager::kNoop);
     ASSERT_NE(nullptr, writer);
     writer->prepare(dir(), meta);
 
     auto dense_fixed_offset_column =
-      writer->push_column(none_column_info(), column_finalizer(42));
+        writer->push_column(none_column_info(), column_finalizer(42));
 
     ASSERT_EQ(0, dense_fixed_offset_column.id);
 
@@ -2462,9 +2462,9 @@ TEST_P(format_test_case, columns_issue700) {
     }
 
     irs::flush_state state{
-      .dir = &dir(),
-      .name = meta.name,
-      .doc_count = meta.docs_count,
+        .dir = &dir(),
+        .name = meta.name,
+        .doc_count = meta.docs_count,
     };
 
     ASSERT_TRUE(writer->commit(state));
@@ -2503,12 +2503,12 @@ TEST_P(format_test_case, columns_rw_sparse_dense_offset_column_border_case) {
 
   // write columns values
   auto writer =
-    codec()->get_columnstore_writer(false, irs::IResourceManager::kNoop);
+      codec()->get_columnstore_writer(false, irs::IResourceManager::kNoop);
   writer->prepare(dir(), meta0);
 
   auto dense_fixed_offset_column = writer->push_column(lz4_column_info(), {});
   auto sparse_fixed_offset_column =
-    writer->push_column(lz4_column_info(), column_finalizer(42));
+      writer->push_column(lz4_column_info(), column_finalizer(42));
 
   {
     irs::doc_id_t doc = irs::doc_limits::min();
@@ -2537,9 +2537,9 @@ TEST_P(format_test_case, columns_rw_sparse_dense_offset_column_border_case) {
     }
 
     irs::flush_state state{
-      .dir = &dir(),
-      .name = meta0.name,
-      .doc_count = meta0.docs_count,
+        .dir = &dir(),
+        .name = meta0.name,
+        .doc_count = meta0.docs_count,
     };
 
     ASSERT_TRUE(writer->commit(state));
@@ -2555,8 +2555,8 @@ TEST_P(format_test_case, columns_rw_sparse_dense_offset_column_border_case) {
     ASSERT_NE(nullptr, column);
 
     std::vector<std::pair<irs::doc_id_t, irs::bytes_view>> expected_values{
-      {irs::doc_limits::min(), irs::bytes_view{}},
-      {irs::doc_limits::min() + 1, keys_ref},
+        {irs::doc_limits::min(), irs::bytes_view{}},
+        {irs::doc_limits::min() + 1, keys_ref},
     };
 
     // check iterator
@@ -2577,21 +2577,21 @@ TEST_P(format_test_case, columns_rw_sparse_dense_offset_column_border_case) {
     {
       auto expected_value = expected_values.begin();
 
-      const auto res =
-        visit(*column, [&expected_value](irs::doc_id_t actual_doc,
-                                         const irs::bytes_view& actual_value) {
-          if (expected_value->first != actual_doc) {
-            return false;
-          }
+      const auto res = visit(
+          *column, [&expected_value](irs::doc_id_t actual_doc,
+                                     const irs::bytes_view& actual_value) {
+            if (expected_value->first != actual_doc) {
+              return false;
+            }
 
-          if (expected_value->second != actual_value) {
-            return false;
-          }
+            if (expected_value->second != actual_value) {
+              return false;
+            }
 
-          ++expected_value;
+            ++expected_value;
 
-          return true;
-        });
+            return true;
+          });
 
       ASSERT_TRUE(res);
 
@@ -2608,8 +2608,8 @@ TEST_P(format_test_case, columns_rw_sparse_dense_offset_column_border_case) {
     ASSERT_NE(nullptr, column);
 
     std::vector<std::pair<irs::doc_id_t, irs::bytes_view>> expected_values{
-      {irs::doc_limits::min(), irs::bytes_view{}},
-      {irs::doc_limits::min() + 3, keys_ref},
+        {irs::doc_limits::min(), irs::bytes_view{}},
+        {irs::doc_limits::min() + 3, keys_ref},
     };
 
     // check iterator
@@ -2631,20 +2631,20 @@ TEST_P(format_test_case, columns_rw_sparse_dense_offset_column_border_case) {
       auto expected_value = expected_values.begin();
 
       ASSERT_TRUE(
-        visit(*column, [&expected_value](irs::doc_id_t actual_doc,
-                                         irs::bytes_view actual_value) {
-          if (expected_value->first != actual_doc) {
-            return false;
-          }
+          visit(*column, [&expected_value](irs::doc_id_t actual_doc,
+                                           irs::bytes_view actual_value) {
+            if (expected_value->first != actual_doc) {
+              return false;
+            }
 
-          if (expected_value->second != actual_value) {
-            return false;
-          }
+            if (expected_value->second != actual_value) {
+              return false;
+            }
 
-          ++expected_value;
+            ++expected_value;
 
-          return true;
-        }));
+            return true;
+          }));
 
       ASSERT_EQ(expected_values.end(), expected_value);
     }
@@ -2687,7 +2687,7 @@ TEST_P(format_test_case, columns_rw) {
 
   // write columns values
   auto writer =
-    codec()->get_columnstore_writer(false, irs::IResourceManager::kNoop);
+      codec()->get_columnstore_writer(false, irs::IResourceManager::kNoop);
 
   // write _1 segment
   {
@@ -2701,8 +2701,8 @@ TEST_P(format_test_case, columns_rw) {
     segment0_field1_id = field1.id;
     auto& field1_writer = field1.out;
     ASSERT_EQ(1, segment0_field1_id);
-    auto empty_field =
-      writer->push_column(lz4_column_info(), {});  // gap between filled columns
+    auto empty_field = writer->push_column(lz4_column_info(),
+                                           {});  // gap between filled columns
     segment0_empty_column_id = empty_field.id;
     ASSERT_EQ(2, segment0_empty_column_id);
     auto field2 = writer->push_column(lz4_column_info(), {});
@@ -2788,9 +2788,9 @@ TEST_P(format_test_case, columns_rw) {
     }
 
     irs::flush_state state{
-      .dir = &dir(),
-      .name = meta0.name,
-      .doc_count = meta0.docs_count,
+        .dir = &dir(),
+        .name = meta0.name,
+        .doc_count = meta0.docs_count,
     };
 
     ASSERT_TRUE(writer->commit(state));
@@ -2853,9 +2853,9 @@ TEST_P(format_test_case, columns_rw) {
     }
 
     irs::flush_state state{
-      .dir = &dir(),
-      .name = meta1.name,
-      .doc_count = meta1.docs_count,
+        .dir = &dir(),
+        .name = meta1.name,
+        .doc_count = meta1.docs_count,
     };
 
     ASSERT_TRUE(writer->commit(state));
@@ -2886,12 +2886,12 @@ TEST_P(format_test_case, columns_rw) {
     // visit field0 values (not cached)
     {
       std::unordered_map<std::string_view, irs::doc_id_t> expected_values = {
-        {"field0_doc0", 1}, {"field0_doc2", 2}, {"field0_doc33", 33}};
+          {"field0_doc0", 1}, {"field0_doc2", 2}, {"field0_doc33", 33}};
 
       auto visitor = [&expected_values](irs::doc_id_t doc,
                                         irs::bytes_view value) {
         const auto actual_value =
-          irs::to_string<std::string_view>(value.data());
+            irs::to_string<std::string_view>(value.data());
 
         auto it = expected_values.find(actual_value);
         if (it == expected_values.end()) {
@@ -2917,7 +2917,7 @@ TEST_P(format_test_case, columns_rw) {
     // partailly visit field0 values (not cached)
     {
       std::unordered_map<std::string_view, irs::doc_id_t> expected_values = {
-        {"field0_doc0", 1}, {"field0_doc2", 2}, {"field0_doc33", 33}};
+          {"field0_doc0", 1}, {"field0_doc2", 2}, {"field0_doc33", 33}};
 
       size_t calls_count = 0;
       auto visitor = [&expected_values, &calls_count](irs::doc_id_t doc,
@@ -2995,7 +2995,7 @@ TEST_P(format_test_case, columns_rw) {
     // visit field0 values (cached)
     {
       std::unordered_map<std::string_view, irs::doc_id_t> expected_values = {
-        {"field0_doc0", 1}, {"field0_doc2", 2}, {"field0_doc33", 33}};
+          {"field0_doc0", 1}, {"field0_doc2", 2}, {"field0_doc33", 33}};
 
       auto visitor = [&expected_values](irs::doc_id_t doc,
                                         const irs::bytes_view& in) {
@@ -3035,13 +3035,13 @@ TEST_P(format_test_case, columns_rw) {
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       std::vector<std::pair<std::string_view, irs::doc_id_t>> expected_values =
-        {{"field0_doc0", 1}, {"field0_doc2", 2}, {"field0_doc33", 33}};
+          {{"field0_doc0", 1}, {"field0_doc2", 2}, {"field0_doc33", 33}};
 
       size_t i = 0;
       for (; it->next(); ++i) {
         const auto& expected_value = expected_values[i];
         const auto actual_str_value =
-          irs::to_string<std::string_view>(payload->value.data());
+            irs::to_string<std::string_view>(payload->value.data());
 
         ASSERT_EQ(expected_value.second, it->value());
         ASSERT_EQ(expected_value.first, actual_str_value);
@@ -3066,11 +3066,11 @@ TEST_P(format_test_case, columns_rw) {
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       std::vector<
-        std::pair<std::string_view, std::pair<irs::doc_id_t, irs::doc_id_t>>>
-        expected_values = {{"field0_doc0", {0, 1}},
-                           {"field0_doc2", {2, 2}},
-                           {"field0_doc33", {22, 33}},
-                           {"field0_doc33", {33, 33}}};
+          std::pair<std::string_view, std::pair<irs::doc_id_t, irs::doc_id_t>>>
+          expected_values = {{"field0_doc0", {0, 1}},
+                             {"field0_doc2", {2, 2}},
+                             {"field0_doc33", {22, 33}},
+                             {"field0_doc33", {33, 33}}};
 
       for (auto& expected : expected_values) {
         const auto expected_doc = expected.second.second;
@@ -3099,8 +3099,8 @@ TEST_P(format_test_case, columns_rw) {
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       std::vector<std::pair<std::vector<std::string_view>, irs::doc_id_t>>
-        expected_values = {{{"field1_doc0", "field1_doc0_1"}, 1},
-                           {{"field1_doc12_1", "field1_doc12_2"}, 12}};
+          expected_values = {{{"field1_doc0", "field1_doc0_1"}, 1},
+                             {{"field1_doc12_1", "field1_doc12_2"}, 12}};
 
       size_t i = 0;
       for (; it->next(); ++i) {
@@ -3108,11 +3108,11 @@ TEST_P(format_test_case, columns_rw) {
 
         std::vector<std::string_view> actual_str_values;
         actual_str_values.push_back(
-          irs::to_string<std::string_view>(payload->value.data()));
+            irs::to_string<std::string_view>(payload->value.data()));
         actual_str_values.push_back(irs::to_string<std::string_view>(
-          reinterpret_cast<const irs::byte_type*>(
-            actual_str_values.back().data() +
-            actual_str_values.back().size())));
+            reinterpret_cast<const irs::byte_type*>(
+                actual_str_values.back().data() +
+                actual_str_values.back().size())));
 
         ASSERT_EQ(expected_value.second, it->value());
         ASSERT_EQ(expected_value.first, actual_str_values);
@@ -3137,10 +3137,10 @@ TEST_P(format_test_case, columns_rw) {
 
       std::vector<std::pair<std::vector<std::string_view>,
                             std::pair<irs::doc_id_t, irs::doc_id_t>>>
-        expected_values = {{{"field1_doc0", "field1_doc0_1"}, {0, 1}},
-                           {{"field1_doc12_1", "field1_doc12_2"}, {1, 12}},
-                           {{"field1_doc12_1", "field1_doc12_2"}, {3, 12}},
-                           {{"field1_doc12_1", "field1_doc12_2"}, {12, 12}}};
+          expected_values = {{{"field1_doc0", "field1_doc0_1"}, {0, 1}},
+                             {{"field1_doc12_1", "field1_doc12_2"}, {1, 12}},
+                             {{"field1_doc12_1", "field1_doc12_2"}, {3, 12}},
+                             {{"field1_doc12_1", "field1_doc12_2"}, {12, 12}}};
 
       for (auto& expected : expected_values) {
         const auto expected_doc = expected.second.second;
@@ -3150,11 +3150,11 @@ TEST_P(format_test_case, columns_rw) {
 
         std::vector<std::string_view> actual_str_values;
         actual_str_values.push_back(
-          irs::to_string<std::string_view>(payload->value.data()));
+            irs::to_string<std::string_view>(payload->value.data()));
         actual_str_values.push_back(irs::to_string<std::string_view>(
-          reinterpret_cast<const irs::byte_type*>(
-            actual_str_values.back().data() +
-            actual_str_values.back().size())));
+            reinterpret_cast<const irs::byte_type*>(
+                actual_str_values.back().data() +
+                actual_str_values.back().size())));
 
         ASSERT_EQ(expected_value, actual_str_values);
       }
@@ -3228,7 +3228,7 @@ TEST_P(format_test_case, columns_rw) {
     // visit field2 values (field after an the field)
     {
       std::unordered_map<std::string_view, irs::doc_id_t> expected_values = {
-        {"field2_doc1", 1},
+          {"field2_doc1", 1},
       };
 
       auto visitor = [&expected_values](irs::doc_id_t doc,
@@ -3269,13 +3269,13 @@ TEST_P(format_test_case, columns_rw) {
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       std::vector<std::pair<std::string_view, irs::doc_id_t>> expected_values =
-        {{"field2_doc1", 1}};
+          {{"field2_doc1", 1}};
 
       size_t i = 0;
       for (; it->next(); ++i) {
         const auto& expected_value = expected_values[i];
         const auto actual_str_value =
-          irs::to_string<std::string_view>(payload->value.data());
+            irs::to_string<std::string_view>(payload->value.data());
 
         ASSERT_EQ(expected_value.second, it->value());
         ASSERT_EQ(expected_value.first, actual_str_value);
@@ -3300,8 +3300,8 @@ TEST_P(format_test_case, columns_rw) {
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       std::vector<
-        std::pair<std::string_view, std::pair<irs::doc_id_t, irs::doc_id_t>>>
-        expected_values = {{"field2_doc1", {1, 1}}};
+          std::pair<std::string_view, std::pair<irs::doc_id_t, irs::doc_id_t>>>
+          expected_values = {{"field2_doc1", {1, 1}}};
 
       for (auto& expected : expected_values) {
         const auto expected_doc = expected.second.second;
@@ -3309,7 +3309,7 @@ TEST_P(format_test_case, columns_rw) {
 
         ASSERT_EQ(expected_doc, it->seek(expected_doc));
         const auto actual_str_value =
-          irs::to_string<std::string_view>(payload->value.data());
+            irs::to_string<std::string_view>(payload->value.data());
         ASSERT_EQ(expected_value, actual_str_value);
       }
 
@@ -3340,13 +3340,13 @@ TEST_P(format_test_case, columns_rw) {
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       std::vector<std::pair<std::string_view, irs::doc_id_t>> expected_values =
-        {{"segment_2_field1_doc0", 1}, {"segment_2_field1_doc12", 12}};
+          {{"segment_2_field1_doc0", 1}, {"segment_2_field1_doc12", 12}};
 
       size_t i = 0;
       for (; it->next(); ++i) {
         const auto& expected_value = expected_values[i];
         const auto actual_str_value =
-          irs::to_string<std::string_view>(payload->value.data());
+            irs::to_string<std::string_view>(payload->value.data());
 
         ASSERT_EQ(expected_value.second, it->value());
         ASSERT_EQ(expected_value.first, actual_str_value);
@@ -3371,9 +3371,9 @@ TEST_P(format_test_case, columns_rw) {
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       std::vector<
-        std::pair<std::string_view, std::pair<irs::doc_id_t, irs::doc_id_t>>>
-        expected_values = {{"segment_2_field1_doc0", {0, 1}},
-                           {"segment_2_field1_doc12", {12, 12}}};
+          std::pair<std::string_view, std::pair<irs::doc_id_t, irs::doc_id_t>>>
+          expected_values = {{"segment_2_field1_doc0", {0, 1}},
+                             {"segment_2_field1_doc12", {12, 12}}};
 
       for (auto& expected : expected_values) {
         const auto expected_doc = expected.second.second;
@@ -3381,7 +3381,7 @@ TEST_P(format_test_case, columns_rw) {
 
         ASSERT_EQ(expected_doc, it->seek(expected_doc));
         const auto actual_str_value =
-          irs::to_string<std::string_view>(payload->value.data());
+            irs::to_string<std::string_view>(payload->value.data());
         ASSERT_EQ(expected_value, actual_str_value);
       }
 
@@ -3422,13 +3422,13 @@ TEST_P(format_test_case, columns_rw) {
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       std::vector<std::pair<std::string_view, irs::doc_id_t>> expected_values =
-        {{"segment_2_field1_doc0", 1}, {"segment_2_field1_doc12", 12}};
+          {{"segment_2_field1_doc0", 1}, {"segment_2_field1_doc12", 12}};
 
       size_t i = 0;
       for (; it->next(); ++i) {
         const auto& expected_value = expected_values[i];
         const auto actual_str_value =
-          irs::to_string<std::string_view>(payload->value.data());
+            irs::to_string<std::string_view>(payload->value.data());
 
         ASSERT_EQ(expected_value.second, it->value());
         ASSERT_EQ(expected_value.first, actual_str_value);
@@ -3575,18 +3575,18 @@ TEST_P(format_test_case_with_encryption,
   // write meta
   {
     auto writer =
-      codec()->get_columnstore_writer(false, irs::IResourceManager::kNoop);
+        codec()->get_columnstore_writer(false, irs::IResourceManager::kNoop);
     irs::SegmentMeta meta1;
 
     const irs::ColumnInfo info{
-      irs::type<irs::compression::none>::get(), {}, true};
+        irs::type<irs::compression::none>::get(), {}, true};
 
     // write segment _1
     writer->prepare(dir(), meta);
 
     {
       auto [id, handle] =
-        writer->push_column(info, [](auto&) { return std::string_view{}; });
+          writer->push_column(info, [](auto&) { return std::string_view{}; });
       handle(1).write_byte(1);
       handle(2).write_byte(2);
       handle(3).write_byte(3);
@@ -3595,12 +3595,12 @@ TEST_P(format_test_case_with_encryption,
     const std::set<irs::type_info::type_id> features;
 
     irs::flush_state state{
-      .dir = &dir(),
-      .docmap = nullptr,
-      .features = &features,
-      .name = meta.name,
-      .doc_count = 3,
-      .index_features = irs::IndexFeatures::NONE,
+        .dir = &dir(),
+        .docmap = nullptr,
+        .features = &features,
+        .name = meta.name,
+        .doc_count = 3,
+        .index_features = irs::IndexFeatures::NONE,
     };
 
     writer->commit(state);
@@ -3616,7 +3616,7 @@ TEST_P(format_test_case_with_encryption,
 
   // can't open encrypted index with wrong encryption
   dir().attributes() =
-    irs::directory_attributes{std::make_unique<tests::rot13_encryption>(6)};
+      irs::directory_attributes{std::make_unique<tests::rot13_encryption>(6)};
   ASSERT_THROW(reader->prepare(dir(), meta), irs::index_error);
 }
 
@@ -3647,7 +3647,7 @@ TEST_P(format_test_case_with_encryption, read_zero_block_encryption) {
 
   // replace encryption
   dir().attributes() =
-    irs::directory_attributes{std::make_unique<tests::rot13_encryption>(6)};
+      irs::directory_attributes{std::make_unique<tests::rot13_encryption>(6)};
 
   // can't open encrypted index without encryption
   ASSERT_THROW(irs::DirectoryReader{dir()}, irs::index_error);
@@ -3665,17 +3665,17 @@ TEST_P(format_test_case_with_encryption, fields_read_write_wrong_encryption) {
   unsorted_terms_t unsorted_terms;
 
   tests::json_doc_generator gen(
-    resource("fst_prefixes.json"),
-    [&sorted_terms, &unsorted_terms](
-      tests::document& doc, const std::string& name,
-      const tests::json_doc_generator::json_value& data) {
-      doc.insert(std::make_shared<tests::string_field>(name, data.str));
+      resource("fst_prefixes.json"),
+      [&sorted_terms, &unsorted_terms](
+          tests::document& doc, const std::string& name,
+          const tests::json_doc_generator::json_value& data) {
+        doc.insert(std::make_shared<tests::string_field>(name, data.str));
 
-      auto ref = irs::ViewCast<irs::byte_type>(
-        (doc.indexed.end() - 1).as<tests::string_field>().value());
-      sorted_terms.emplace(ref);
-      unsorted_terms.emplace_back(ref);
-    });
+        auto ref = irs::ViewCast<irs::byte_type>(
+            (doc.indexed.end() - 1).as<tests::string_field>().value());
+        sorted_terms.emplace(ref);
+        unsorted_terms.emplace_back(ref);
+      });
 
   // define field
   irs::field_meta field;
@@ -3689,22 +3689,22 @@ TEST_P(format_test_case_with_encryption, fields_read_write_wrong_encryption) {
     const irs::feature_set_t features{irs::type<irs::Norm>::id()};
 
     irs::flush_state state{
-      .dir = &dir(),
-      .features = &features,
-      .name = "segment_name",
-      .doc_count = 100,
+        .dir = &dir(),
+        .features = &features,
+        .name = "segment_name",
+        .doc_count = 100,
     };
 
     // should use sorted terms on write
     tests::format_test_case::terms<sorted_terms_t::iterator> terms(
-      sorted_terms.begin(), sorted_terms.end());
+        sorted_terms.begin(), sorted_terms.end());
     tests::MockTermReader term_reader{
-      terms, irs::field_meta{field.name, field.index_features},
-      (sorted_terms.empty() ? irs::bytes_view{} : *sorted_terms.begin()),
-      (sorted_terms.empty() ? irs::bytes_view{} : *sorted_terms.rbegin())};
+        terms, irs::field_meta{field.name, field.index_features},
+        (sorted_terms.empty() ? irs::bytes_view{} : *sorted_terms.begin()),
+        (sorted_terms.empty() ? irs::bytes_view{} : *sorted_terms.rbegin())};
 
     auto writer =
-      codec()->get_field_writer(false, irs::IResourceManager::kNoop);
+        codec()->get_field_writer(false, irs::IResourceManager::kNoop);
     ASSERT_NE(nullptr, writer);
     writer->prepare(state);
     writer->write(term_reader, field.features);
@@ -3725,7 +3725,7 @@ TEST_P(format_test_case_with_encryption, fields_read_write_wrong_encryption) {
 
   // can't open encrypted index with wrong encryption
   dir().attributes() =
-    irs::directory_attributes{std::make_unique<tests::rot13_encryption>(6)};
+      irs::directory_attributes{std::make_unique<tests::rot13_encryption>(6)};
   ASSERT_THROW(reader->prepare(irs::ReaderState{.dir = &dir(), .meta = &meta}),
                irs::index_error);
 }
@@ -3755,7 +3755,7 @@ TEST_P(format_test_case_with_encryption, open_ecnrypted_with_wrong_encryption) {
 
   // can't open encrypted index with wrong encryption
   dir().attributes() =
-    irs::directory_attributes{std::make_unique<tests::rot13_encryption>(6)};
+      irs::directory_attributes{std::make_unique<tests::rot13_encryption>(6)};
   ASSERT_THROW(irs::DirectoryReader{dir()}, irs::index_error);
 }
 
@@ -3815,7 +3815,7 @@ TEST_P(format_test_case_with_encryption, open_non_ecnrypted_with_encrypted) {
 
   // add cipher
   dir().attributes() =
-    irs::directory_attributes{std::make_unique<tests::rot13_encryption>(7)};
+      irs::directory_attributes{std::make_unique<tests::rot13_encryption>(7)};
 
   // check index
   auto index = irs::DirectoryReader(dir());
@@ -3849,7 +3849,7 @@ TEST_P(format_test_case_with_encryption, open_non_ecnrypted_with_encrypted) {
          docsItr->next();) {
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ(1, expectedName.erase(irs::to_string<std::string_view>(
-                     actual_value->value.data())));
+                       actual_value->value.data())));
     }
 
     ASSERT_TRUE(expectedName.empty());

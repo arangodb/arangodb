@@ -17,8 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Alex Geenen
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "nearest_neighbors_stream.hpp"
@@ -47,10 +45,10 @@ bool parse_vpack_options(const VPackSlice slice,
   if (VPackValueType::Object == slice.type()) {
     auto model_location_slice = slice.get(MODEL_LOCATION_PARAM_NAME);
     if (!model_location_slice.isString()) {
-      IRS_LOG_ERROR(
-        absl::StrCat("Invalid vpack while ", action,
-                     " nearest_neighbors_stream from VPack arguments. ",
-                     MODEL_LOCATION_PARAM_NAME, " value should be a string."));
+      IRS_LOG_ERROR(absl::StrCat(
+          "Invalid vpack while ", action,
+          " nearest_neighbors_stream from VPack arguments. ",
+          MODEL_LOCATION_PARAM_NAME, " value should be a string."));
       return false;
     }
     options.model_location = model_location_slice.stringView();
@@ -58,17 +56,17 @@ bool parse_vpack_options(const VPackSlice slice,
     if (!top_k_slice.isNone()) {
       if (!top_k_slice.isNumber()) {
         IRS_LOG_ERROR(
-          absl::StrCat("Invalid vpack while ", action,
-                       " nearest_neighbors_stream from VPack arguments. ",
-                       TOP_K_PARAM_NAME, " value should be an integer."));
+            absl::StrCat("Invalid vpack while ", action,
+                         " nearest_neighbors_stream from VPack arguments. ",
+                         TOP_K_PARAM_NAME, " value should be an integer."));
         return false;
       }
       const auto top_k = top_k_slice.getNumber<size_t>();
       if (top_k > static_cast<uint32_t>(std::numeric_limits<int32_t>::max())) {
         IRS_LOG_ERROR(
-          absl::StrCat("Invalid value provided while ", action,
-                       " nearest_neighbors_stream from VPack arguments. ",
-                       TOP_K_PARAM_NAME, " value should be an int32_t."));
+            absl::StrCat("Invalid value provided while ", action,
+                         " nearest_neighbors_stream from VPack arguments. ",
+                         TOP_K_PARAM_NAME, " value should be an int32_t."));
         return false;
       }
       options.top_k = static_cast<uint32_t>(top_k);
@@ -78,8 +76,8 @@ bool parse_vpack_options(const VPackSlice slice,
   }
 
   IRS_LOG_ERROR(absl::StrCat(
-    "Invalid vpack while ", action,
-    " nearest_neighbors_stream from VPack arguments. Object was expected."));
+      "Invalid vpack while ", action,
+      " nearest_neighbors_stream from VPack arguments. Object was expected."));
 
   return false;
 }
@@ -130,18 +128,18 @@ analyzer::ptr make_json(std::string_view args) {
   try {
     if (irs::IsNull(args)) {
       IRS_LOG_ERROR(
-        "Null arguments while constructing nearest_neighbors_stream ");
+          "Null arguments while constructing nearest_neighbors_stream ");
       return nullptr;
     }
     auto vpack = VPackParser::fromJson(args.data());
     return make_vpack(vpack->slice());
   } catch (const VPackException& ex) {
-    IRS_LOG_ERROR(
-      absl::StrCat("Caught error '", ex.what(),
-                   "' while constructing nearest_neighbors_stream from JSON"));
+    IRS_LOG_ERROR(absl::StrCat(
+        "Caught error '", ex.what(),
+        "' while constructing nearest_neighbors_stream from JSON"));
   } catch (...) {
     IRS_LOG_ERROR(
-      "Caught error while constructing nearest_neighbors_stream from JSON");
+        "Caught error while constructing nearest_neighbors_stream from JSON");
   }
   return nullptr;
 }
@@ -178,7 +176,7 @@ bool normalize_json_config(std::string_view args, std::string& definition) {
   try {
     if (irs::IsNull(args)) {
       IRS_LOG_ERROR(
-        "Null arguments while normalizing nearest_neighbors_stream ");
+          "Null arguments while normalizing nearest_neighbors_stream ");
       return false;
     }
     auto vpack = VPackParser::fromJson(args.data());
@@ -189,11 +187,11 @@ bool normalize_json_config(std::string_view args, std::string& definition) {
     }
   } catch (const VPackException& ex) {
     IRS_LOG_ERROR(
-      absl::StrCat("Caught error '", ex.what(),
-                   "' while normalizing nearest_neighbors_stream from JSON"));
+        absl::StrCat("Caught error '", ex.what(),
+                     "' while normalizing nearest_neighbors_stream from JSON"));
   } catch (...) {
     IRS_LOG_ERROR(
-      "Caught error while normalizing nearest_neighbors_stream from JSON");
+        "Caught error while normalizing nearest_neighbors_stream from JSON");
   }
   return false;
 }
@@ -214,17 +212,17 @@ void nearest_neighbors_stream::init() {
 
 nearest_neighbors_stream::model_provider_f
 nearest_neighbors_stream::set_model_provider(
-  model_provider_f provider) noexcept {
+    model_provider_f provider) noexcept {
   return MODEL_PROVIDER.exchange(provider, std::memory_order_relaxed);
 }
 
 nearest_neighbors_stream::nearest_neighbors_stream(const options& options,
                                                    model_ptr model) noexcept
-  : model_{std::move(model)},
-    neighbors_it_{neighbors_.end()},
-    n_tokens_{0},
-    current_token_ind_{0},
-    top_k_{options.top_k} {
+    : model_{std::move(model)},
+      neighbors_it_{neighbors_.end()},
+      n_tokens_{0},
+      current_token_ind_{0},
+      top_k_{options.top_k} {
   IRS_ASSERT(model_);
 
   model_dict_ = model_->getDictionary();
@@ -237,15 +235,15 @@ bool nearest_neighbors_stream::next() {
       return false;
     }
     neighbors_ = model_->getNN(
-      model_dict_->getWord(line_token_ids_[current_token_ind_]), top_k_);
+        model_dict_->getWord(line_token_ids_[current_token_ind_]), top_k_);
     neighbors_it_ = neighbors_.begin();
     ++current_token_ind_;
   }
 
   auto& term = std::get<term_attribute>(attrs_);
   term.value = {
-    reinterpret_cast<const byte_type*>(neighbors_it_->second.c_str()),
-    neighbors_it_->second.size()};
+      reinterpret_cast<const byte_type*>(neighbors_it_->second.c_str()),
+      neighbors_it_->second.size()};
 
   auto& inc = std::get<increment>(attrs_);
   inc.value = uint32_t(neighbors_it_ == neighbors_.begin());

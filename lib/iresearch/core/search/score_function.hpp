@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -72,18 +71,18 @@ class ScoreFunction : util::noncopyable {
   template<typename T, typename... Args>
   static auto Make(score_f score, min_f min, Args&&... args) {
     return ScoreFunction{
-      new T{std::forward<Args>(args)...}, score, min,
-      [](score_ctx* ctx) noexcept { delete static_cast<T*>(ctx); }};
+        new T{std::forward<Args>(args)...}, score, min,
+        [](score_ctx* ctx) noexcept { delete static_cast<T*>(ctx); }};
   }
 
   ScoreFunction() noexcept = default;
   ScoreFunction(score_ctx& ctx, score_f score, min_f min = DefaultMin) noexcept
-    : ScoreFunction{&ctx, score, min, Noop} {}
+      : ScoreFunction{&ctx, score, min, Noop} {}
   ScoreFunction(ScoreFunction&& rhs) noexcept
-    : ScoreFunction{std::exchange(rhs.ctx_, nullptr),
-                    std::exchange(rhs.score_, DefaultScore),
-                    std::exchange(rhs.min_, DefaultMin),
-                    std::exchange(rhs.deleter_, Noop)} {}
+      : ScoreFunction{std::exchange(rhs.ctx_, nullptr),
+                      std::exchange(rhs.score_, DefaultScore),
+                      std::exchange(rhs.min_, DefaultMin),
+                      std::exchange(rhs.deleter_, Noop)} {}
   ScoreFunction& operator=(ScoreFunction&& rhs) noexcept {
     if (IRS_LIKELY(this != &rhs)) {
       std::swap(ctx_, rhs.ctx_);
@@ -133,7 +132,7 @@ class ScoreFunction : util::noncopyable {
  private:
   ScoreFunction(score_ctx* ctx, score_f score, min_f min,
                 deleter_f deleter) noexcept
-    : ctx_{ctx}, score_{score}, min_{min}, deleter_{deleter} {}
+      : ctx_{ctx}, score_{score}, min_{min}, deleter_{deleter} {}
 
   score_ctx* ctx_{nullptr};
   score_f score_{DefaultScore};

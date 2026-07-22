@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "collation_token_stream.hpp"
@@ -45,8 +44,8 @@ bool locale_from_slice(VPackSlice slice,
                        IRESEARCH_ICU_NAMESPACE::Locale& locale) {
   if (!slice.isString()) {
     IRS_LOG_WARN(absl::StrCat(
-      "Non-string value in '", LOCALE_PARAM_NAME,
-      "' while constructing collation_token_stream from VPack arguments"));
+        "Non-string value in '", LOCALE_PARAM_NAME,
+        "' while constructing collation_token_stream from VPack arguments"));
 
     return false;
   }
@@ -54,12 +53,12 @@ bool locale_from_slice(VPackSlice slice,
   const auto locale_name = slice.copyString();
 
   locale =
-    IRESEARCH_ICU_NAMESPACE::Locale::createCanonical(locale_name.c_str());
+      IRESEARCH_ICU_NAMESPACE::Locale::createCanonical(locale_name.c_str());
 
   if (locale.isBogus()) {
     IRS_LOG_WARN(absl::StrCat(
-      "Failed to instantiate locale from the supplied string '", locale_name,
-      "' while constructing collation_token_stream from VPack arguments"));
+        "Failed to instantiate locale from the supplied string '", locale_name,
+        "' while constructing collation_token_stream from VPack arguments"));
 
     return false;
   }
@@ -67,7 +66,7 @@ bool locale_from_slice(VPackSlice slice,
   // validate creation of IRESEARCH_ICU_NAMESPACE::Collator
   auto err = UErrorCode::U_ZERO_ERROR;
   std::unique_ptr<IRESEARCH_ICU_NAMESPACE::Collator> collator{
-    IRESEARCH_ICU_NAMESPACE::Collator::createInstance(locale, err)};
+      IRESEARCH_ICU_NAMESPACE::Collator::createInstance(locale, err)};
 
   if (!collator) {
     IRS_LOG_WARN(absl::StrCat("Can't instantiate icu::Collator from locale: ",
@@ -77,10 +76,10 @@ bool locale_from_slice(VPackSlice slice,
 
   // print warn message
   if (err != UErrorCode::U_ZERO_ERROR) {
-    IRS_LOG(
-      U_FAILURE(err) ? log::Level::kWarn : log::Level::kTrace,
-      absl::StrCat("Failure while instantiation of icu::Collator from locale: ",
-                   locale_name, ", ", u_errorName(err)));
+    IRS_LOG(U_FAILURE(err) ? log::Level::kWarn : log::Level::kTrace,
+            absl::StrCat(
+                "Failure while instantiation of icu::Collator from locale: ",
+                locale_name, ", ", u_errorName(err)));
   }
 
   return U_SUCCESS(err);
@@ -98,8 +97,8 @@ bool parse_vpack_options(const VPackSlice slice,
 
     if (locale_slice.isNone()) {
       IRS_LOG_ERROR(absl::StrCat(
-        "Missing '", LOCALE_PARAM_NAME,
-        "' while constructing collation_token_stream from VPack arguments"));
+          "Missing '", LOCALE_PARAM_NAME,
+          "' while constructing collation_token_stream from VPack arguments"));
 
       return false;
     }
@@ -107,12 +106,12 @@ bool parse_vpack_options(const VPackSlice slice,
     return locale_from_slice(locale_slice, options.locale);
   } catch (const VPackException& ex) {
     IRS_LOG_ERROR(
-      absl::StrCat("Caught error '", ex.what(),
-                   "' while constructing collation_token_stream from VPack"));
+        absl::StrCat("Caught error '", ex.what(),
+                     "' while constructing collation_token_stream from VPack"));
   } catch (...) {
     IRS_LOG_ERROR(
-      "Caught error while constructing collation_token_stream from "
-      "VPack arguments");
+        "Caught error while constructing collation_token_stream from "
+        "VPack arguments");
   }
   return false;
 }
@@ -125,7 +124,7 @@ analysis::analyzer::ptr make_vpack(const VPackSlice slice) {
   analysis::collation_token_stream::options_t options;
   if (parse_vpack_options(slice, options)) {
     return std::make_unique<analysis::collation_token_stream>(
-      std::move(options));
+        std::move(options));
   } else {
     return nullptr;
   }
@@ -141,8 +140,8 @@ analysis::analyzer::ptr make_vpack(std::string_view args) {
 /// @param definition string for storing json document with config
 ///////////////////////////////////////////////////////////////////////////////
 bool make_vpack_config(
-  const analysis::collation_token_stream::options_t& options,
-  VPackBuilder* builder) {
+    const analysis::collation_token_stream::options_t& options,
+    VPackBuilder* builder) {
   VPackObjectBuilder object{builder};
 
   const auto locale_name = options.locale.getName();
@@ -179,11 +178,11 @@ analysis::analyzer::ptr make_json(std::string_view args) {
     return make_vpack(vpack->slice());
   } catch (const VPackException& ex) {
     IRS_LOG_ERROR(
-      absl::StrCat("Caught error '", ex.what(),
-                   "' while constructing collation_token_stream from JSON"));
+        absl::StrCat("Caught error '", ex.what(),
+                     "' while constructing collation_token_stream from JSON"));
   } catch (...) {
     IRS_LOG_ERROR(
-      "Caught error while constructing collation_token_stream from JSON");
+        "Caught error while constructing collation_token_stream from JSON");
   }
   return nullptr;
 }
@@ -202,11 +201,11 @@ bool normalize_json_config(std::string_view args, std::string& definition) {
     }
   } catch (const VPackException& ex) {
     IRS_LOG_ERROR(
-      absl::StrCat("Caught error '", ex.what(),
-                   "' while normalizing collation_token_stream from JSON"));
+        absl::StrCat("Caught error '", ex.what(),
+                     "' while normalizing collation_token_stream from JSON"));
   } catch (...) {
     IRS_LOG_ERROR(
-      "Caught error while normalizing collation_token_stream from JSON");
+        "Caught error while normalizing collation_token_stream from JSON");
   }
   return false;
 }
@@ -239,18 +238,18 @@ void collation_token_stream::init() {
 }
 
 void collation_token_stream::state_deleter_t::operator()(
-  state_t* p) const noexcept {
+    state_t* p) const noexcept {
   delete p;
 }
 
 collation_token_stream::collation_token_stream(const options_t& options)
-  : state_{new state_t(options)}, term_eof_{true} {}
+    : state_{new state_t(options)}, term_eof_{true} {}
 
 bool collation_token_stream::reset(std::string_view data) {
   if (!state_->collator) {
     auto err = UErrorCode::U_ZERO_ERROR;
     state_->collator.reset(IRESEARCH_ICU_NAMESPACE::Collator::createInstance(
-      state_->options.locale, err));
+        state_->options.locale, err));
 
     if (!U_SUCCESS(err) || !state_->collator) {
       state_->collator.reset();
@@ -265,16 +264,16 @@ bool collation_token_stream::reset(std::string_view data) {
   }
 
   const IRESEARCH_ICU_NAMESPACE::UnicodeString icu_token =
-    IRESEARCH_ICU_NAMESPACE::UnicodeString::fromUTF8(
-      IRESEARCH_ICU_NAMESPACE::StringPiece(data.data(),
-                                           static_cast<int32_t>(data.size())));
+      IRESEARCH_ICU_NAMESPACE::UnicodeString::fromUTF8(
+          IRESEARCH_ICU_NAMESPACE::StringPiece(
+              data.data(), static_cast<int32_t>(data.size())));
 
   byte_type raw_term_buf[MAX_TOKEN_SIZE];
   static_assert(sizeof raw_term_buf == sizeof state_->term_buf);
 
   auto buf = state_->options.forceUtf8 ? raw_term_buf : state_->term_buf;
   int32_t term_size =
-    state_->collator->getSortKey(icu_token, buf, sizeof raw_term_buf);
+      state_->collator->getSortKey(icu_token, buf, sizeof raw_term_buf);
 
   // https://unicode-org.github.io/icu-docs/apidoc/released/icu4c/classicu_1_1Collator.html
   // according to ICU docs sort keys are always zero-terminated,
@@ -284,9 +283,9 @@ bool collation_token_stream::reset(std::string_view data) {
   IRS_ASSERT(0 == buf[term_size]);
   if (term_size > static_cast<int32_t>(sizeof raw_term_buf)) {
     IRS_LOG_ERROR(
-      absl::StrCat("Collated token is ", term_size,
-                   " bytes length which exceeds maximum allowed length of ",
-                   static_cast<int32_t>(sizeof raw_term_buf), " bytes"));
+        absl::StrCat("Collated token is ", term_size,
+                     " bytes length which exceeds maximum allowed length of ",
+                     static_cast<int32_t>(sizeof raw_term_buf), " bytes"));
     return false;
   }
   size_t termBufIdx = static_cast<size_t>(term_size);

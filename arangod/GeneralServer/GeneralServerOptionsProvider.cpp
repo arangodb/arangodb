@@ -35,38 +35,15 @@ using namespace arangodb::options;
 
 void GeneralServerOptionsProvider::declareOptions(
     std::shared_ptr<ProgramOptions> opts, GeneralServerOptions& options) {
-  opts->addOption("--server.telemetrics-api",
-                  "Whether to enable the telemetrics API.",
-                  new BooleanParameter(&options.enableTelemetrics),
-                  arangodb::options::makeFlags(
-                      arangodb::options::Flags::Uncommon,
-                      arangodb::options::Flags::DefaultNoComponents,
-                      arangodb::options::Flags::OnCoordinator,
-                      arangodb::options::Flags::OnDBServer,
-                      arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(31100);
-
-  opts->addOption(
-          "--server.telemetrics-api-max-requests",
-          "The maximum number of requests from arangosh that the "
-          "telemetrics API responds to without rate-limiting.",
-          new UInt64Parameter(&options.telemetricsMaxRequestsPerInterval),
-          arangodb::options::makeFlags(
-              arangodb::options::Flags::Uncommon,
-              arangodb::options::Flags::DefaultNoComponents,
-              arangodb::options::Flags::OnCoordinator,
-              arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(31100)
-      .setLongDescription(R"(This option limits requests from the arangosh to
-the telemetrics API, but not any other requests to the API.
-
-Requests to the telemetrics API are counted for every 2 hour interval, and then
-reset. This means after a period of at most 2 hours, the telemetrics API
-becomes usable again.
-
-The purpose of this option is to keep a deployment from being overwhelmed by
-too many telemetrics requests issued by arangosh instances that are used for
-batch processing.)");
+  // options were removed in 3.12.10 as part of removing the telemetrics API
+  // entirely.
+  opts->addObsoleteOption("--server.telemetrics-api",
+                          "Whether to enable the telemetrics API.", true);
+  opts->addObsoleteOption(
+      "--server.telemetrics-api-max-requests",
+      "The maximum number of requests from arangosh that the "
+      "telemetrics API responds to without rate-limiting.",
+      true);
 
   opts->addOption(
       "--server.io-threads", "The number of threads used to handle I/O.",
@@ -74,8 +51,7 @@ batch processing.)");
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic));
 
   opts->addOption("--server.support-info-api",
-                  "The policy for exposing the support info and also the "
-                  "telemetrics API.",
+                  "The policy for exposing the support info API.",
                   new DiscreteValuesParameter<StringParameter>(
                       &options.supportInfoApiPolicy,
                       std::unordered_set<std::string>{"disabled", "jwt",

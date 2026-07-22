@@ -17,8 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Alex Geenen
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -41,7 +39,7 @@ class classification_stream final : public TypedAnalyzer<classification_stream>,
   using model_provider_f = model_ptr (*)(std::string_view);
 
   static model_provider_f set_model_provider(
-    model_provider_f provider) noexcept;
+      model_provider_f provider) noexcept;
 
   struct Options {
     std::string model_location;

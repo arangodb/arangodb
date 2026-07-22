@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "utils/utf8_utils.hpp"
@@ -30,7 +29,7 @@ TEST(utf8_utils_test, test) {
   // ascii sequence
   {
     const irs::bytes_view str =
-      irs::ViewCast<irs::byte_type>(std::string_view("abcd"));
+        irs::ViewCast<irs::byte_type>(std::string_view("abcd"));
     const std::vector<uint32_t> expected = {0x0061, 0x0062, 0x0063, 0x0064};
 
     {
@@ -79,8 +78,8 @@ TEST(utf8_utils_test, test) {
 
     {
       std::vector<uint32_t> actual;
-      ASSERT_TRUE(
-        irs::utf8_utils::ToUTF32<true>(str, irs::irstd::back_emplacer(actual)));
+      ASSERT_TRUE(irs::utf8_utils::ToUTF32<true>(
+          str, irs::irstd::back_emplacer(actual)));
       ASSERT_EQ(expected, actual);
     }
   }
@@ -88,7 +87,7 @@ TEST(utf8_utils_test, test) {
   // 2-bytes sequence
   {
     const irs::bytes_view str = irs::ViewCast<irs::byte_type>(
-      std::string_view("\xD0\xBF\xD1\x80\xD0\xB8\xD0\xB2\xD0\xB5\xD1\x82"));
+        std::string_view("\xD0\xBF\xD1\x80\xD0\xB8\xD0\xB2\xD0\xB5\xD1\x82"));
     const std::vector<uint32_t> expected = {0x043F, 0x0440, 0x0438,
                                             0x0432, 0x0435, 0x0442};
 
@@ -138,8 +137,8 @@ TEST(utf8_utils_test, test) {
 
     {
       std::vector<uint32_t> actual;
-      ASSERT_TRUE(
-        irs::utf8_utils::ToUTF32<true>(str, irs::irstd::back_emplacer(actual)));
+      ASSERT_TRUE(irs::utf8_utils::ToUTF32<true>(
+          str, irs::irstd::back_emplacer(actual)));
       ASSERT_EQ(expected, actual);
     }
 
@@ -156,10 +155,10 @@ TEST(utf8_utils_test, test) {
   // 3-bytes sequence
   {
     const irs::bytes_view str = irs::ViewCast<irs::byte_type>(
-      std::string_view("\xE2\x9E\x96\xE2\x9D\xA4"));
+        std::string_view("\xE2\x9E\x96\xE2\x9D\xA4"));
     const std::vector<uint32_t> expected = {
-      0x2796,  // heavy minus sign
-      0x2764   // heavy black heart
+        0x2796,  // heavy minus sign
+        0x2764   // heavy black heart
     };
 
     {
@@ -208,8 +207,8 @@ TEST(utf8_utils_test, test) {
 
     {
       std::vector<uint32_t> actual;
-      ASSERT_TRUE(
-        irs::utf8_utils::ToUTF32<true>(str, irs::irstd::back_emplacer(actual)));
+      ASSERT_TRUE(irs::utf8_utils::ToUTF32<true>(
+          str, irs::irstd::back_emplacer(actual)));
       ASSERT_EQ(expected, actual);
     }
   }
@@ -217,10 +216,10 @@ TEST(utf8_utils_test, test) {
   // 4-bytes sequence
   {
     const irs::bytes_view str = irs::ViewCast<irs::byte_type>(
-      std::string_view("\xF0\x9F\x98\x81\xF0\x9F\x98\x82"));
+        std::string_view("\xF0\x9F\x98\x81\xF0\x9F\x98\x82"));
     const std::vector<uint32_t> expected = {
-      0x1F601,  // grinning face with smiling eyes
-      0x1F602,  // face with tears of joy
+        0x1F601,  // grinning face with smiling eyes
+        0x1F602,  // face with tears of joy
     };
 
     {
@@ -269,8 +268,8 @@ TEST(utf8_utils_test, test) {
 
     {
       std::vector<uint32_t> actual;
-      ASSERT_TRUE(
-        irs::utf8_utils::ToUTF32<true>(str, irs::irstd::back_emplacer(actual)));
+      ASSERT_TRUE(irs::utf8_utils::ToUTF32<true>(
+          str, irs::irstd::back_emplacer(actual)));
       ASSERT_EQ(expected, actual);
     }
   }
@@ -292,7 +291,7 @@ TEST(utf8_utils_test, find) {
   // 1-byte sequence
   {
     const irs::bytes_view str =
-      irs::ViewCast<irs::byte_type>(std::string_view("abcd"));
+        irs::ViewCast<irs::byte_type>(std::string_view("abcd"));
     const std::vector<uint32_t> expected = {0x0061, 0x0062, 0x0063, 0x0064};
 
     ASSERT_EQ(expected.size(), irs::utf8_utils::Length(str));
@@ -308,7 +307,7 @@ TEST(utf8_utils_test, find) {
   // 2-byte sequence
   {
     const irs::bytes_view str = irs::ViewCast<irs::byte_type>(
-      std::string_view("\xD0\xBF\xD1\x80\xD0\xB8\xD0\xB2\xD0\xB5\xD1\x82"));
+        std::string_view("\xD0\xBF\xD1\x80\xD0\xB8\xD0\xB2\xD0\xB5\xD1\x82"));
     const std::vector<uint32_t> expected = {0x043F, 0x0440, 0x0438,
                                             0x0432, 0x0435, 0x0442};
 
@@ -325,10 +324,10 @@ TEST(utf8_utils_test, find) {
   // 3-byte sequence
   {
     const irs::bytes_view str = irs::ViewCast<irs::byte_type>(
-      std::string_view("\xE2\x9E\x96\xE2\x9D\xA4"));
+        std::string_view("\xE2\x9E\x96\xE2\x9D\xA4"));
     const std::vector<uint32_t> expected = {
-      0x2796,  // heavy minus sign
-      0x2764   // heavy black heart
+        0x2796,  // heavy minus sign
+        0x2764   // heavy black heart
     };
 
     ASSERT_EQ(expected.size(), irs::utf8_utils::Length(str));
@@ -344,10 +343,10 @@ TEST(utf8_utils_test, find) {
   // 4-byte sequence
   {
     const irs::bytes_view str = irs::ViewCast<irs::byte_type>(
-      std::string_view("\xF0\x9F\x98\x81\xF0\x9F\x98\x82"));
+        std::string_view("\xF0\x9F\x98\x81\xF0\x9F\x98\x82"));
     const std::vector<uint32_t> expected = {
-      0x1F601,  // grinning face with smiling eyes
-      0x1F602,  // face with tears of joy
+        0x1F601,  // grinning face with smiling eyes
+        0x1F602,  // face with tears of joy
     };
 
     ASSERT_EQ(expected.size(), irs::utf8_utils::Length(str));

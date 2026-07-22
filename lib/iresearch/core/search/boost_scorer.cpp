@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "boost_scorer.hpp"
@@ -32,7 +31,7 @@ Scorer::ptr make_json(std::string_view /*args*/) {
 struct volatile_boost_score_ctx final : score_ctx {
   volatile_boost_score_ctx(const filter_boost* volatile_boost,
                            score_t boost) noexcept
-    : boost{boost}, volatile_boost{volatile_boost} {
+      : boost{boost}, volatile_boost{volatile_boost} {
     IRS_ASSERT(volatile_boost);
   }
 
@@ -53,11 +52,11 @@ ScoreFunction BoostScore::prepare_scorer(const ColumnProvider& /*segment*/,
   }
 
   return ScoreFunction::Make<volatile_boost_score_ctx>(
-    [](score_ctx* ctx, score_t* res) noexcept {
-      auto& state = *static_cast<volatile_boost_score_ctx*>(ctx);
-      *res = state.volatile_boost->value * state.boost;
-    },
-    ScoreFunction::DefaultMin, volatile_boost, boost);
+      [](score_ctx* ctx, score_t* res) noexcept {
+        auto& state = *static_cast<volatile_boost_score_ctx*>(ctx);
+        *res = state.volatile_boost->value * state.boost;
+      },
+      ScoreFunction::DefaultMin, volatile_boost, boost);
 }
 
 void BoostScore::init() { REGISTER_SCORER_JSON(BoostScore, make_json); }

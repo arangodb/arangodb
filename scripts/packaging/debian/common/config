@@ -1,0 +1,79 @@
+#!/bin/sh
+set -e
+
+action="$1"
+version="$2"
+
+# source debconf stuff
+. /usr/share/debconf/confmodule
+
+db_version 2.0
+
+db_capb backup
+
+DO_CONFIGURE=no
+
+if test -n "$version"; then
+    # do we want to reconfigure?
+    short_version="$(echo "$version" | sed -e 's/[^0-9]//g' -e 's/ubuntu//')"
+    if test "$short_version" -lt 127 -o "$action" = reconfigure; then
+        DO_CONFIGURE=yes
+    fi
+else
+    # are we in first install?
+    if test "$action" = "configure"; then
+        DO_CONFIGURE=yes
+    fi
+fi
+
+#do the actual configure
+if test "$DO_CONFIGURE" = "yes"; then
+    STATE=1
+    LASTSTATE=4
+    while test "$STATE" -ne 0 -a \
+               "$STATE" -le "$LASTSTATE" ; do
+
+        case "$STATE" in
+            1)
+                db_input high @EDITION@/password || true
+                db_go
+                db_get @EDITION@/password
+                ROOT_PW="$RET"
+            ;;
+            2)
+                db_input high @EDITION@/password_again || true
+                db_go
+                db_get @EDITION@/password_again
+                if [ "$ROOT_PW" = "$RET" ]; then
+                    ROOT_PW=""
+                else
+                    db_input critical @EDITION@/password_mismatch
+                    STATE=$((STATE - 2))
+                    db_set @EDITION@/password_again ""
+                fi
+            ;;
+            3)
+                db_input high @EDITION@/upgrade || true
+            ;;
+            4)
+                db_get @EDITION@/upgrade
+                if [ "$RET" = "true" ]; then
+                    db_input high @EDITION@/backup || true
+                    db_go
+                else
+                    db_set @EDITION@/backup "false"
+                fi
+            ;;
+
+        esac
+
+        if db_go; then
+            STATE=$((STATE + 1))
+        else
+            STATE=$((STATE - 1))
+        fi
+
+    done # STATE LOOP
+fi # DO_CONFIGURE
+
+exit 0

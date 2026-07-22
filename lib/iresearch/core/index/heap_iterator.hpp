@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -37,7 +36,7 @@ class ExternalMergeIterator {
  public:
   template<typename... Args>
   explicit ExternalMergeIterator(Args&&... args)
-    : ctx_{std::forward<Args>(args)...} {}
+      : ctx_{std::forward<Args>(args)...} {}
 
   bool Initilized() const noexcept { return !tree_.empty(); }
 

@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -48,7 +47,7 @@ enum class SparseBitmapVersion {
 
 struct SparseBitmapWriterOptions {
   explicit SparseBitmapWriterOptions(SparseBitmapVersion version) noexcept
-    : track_prev_doc{version >= SparseBitmapVersion::kPrevDoc} {}
+      : track_prev_doc{version >= SparseBitmapVersion::kPrevDoc} {}
 
   // Track previous document
   bool track_prev_doc;
@@ -69,9 +68,9 @@ class sparse_bitmap_writer {
   };
 
   explicit sparse_bitmap_writer(
-    index_output& out,
-    SparseBitmapVersion version) noexcept(noexcept(out.file_pointer()))
-    : out_{&out}, origin_{out.file_pointer()}, opts_{version} {}
+      index_output& out,
+      SparseBitmapVersion version) noexcept(noexcept(out.file_pointer()))
+      : out_{&out}, origin_{out.file_pointer()}, opts_{version} {}
 
   void push_back(doc_id_t value) {
     static_assert(math::is_power2(kBlockSize));
@@ -111,8 +110,8 @@ class sparse_bitmap_writer {
 
  private:
   void flush(uint32_t next_block) {
-    const uint32_t popcnt =
-      static_cast<uint32_t>(math::popcount(std::begin(bits_), std::end(bits_)));
+    const uint32_t popcnt = static_cast<uint32_t>(
+        math::popcount(std::begin(bits_), std::end(bits_)));
     if (popcnt) {
       add_block(next_block);
       do_flush(popcnt);
@@ -191,19 +190,19 @@ class sparse_bitmap_iterator : public resettable_doc_iterator {
   };
 
   sparse_bitmap_iterator(index_input::ptr&& in, const options& opts)
-    : sparse_bitmap_iterator{Ptr{in.release(), &Delete}, opts} {}
+      : sparse_bitmap_iterator{Ptr{in.release(), &Delete}, opts} {}
   sparse_bitmap_iterator(index_input* in, const options& opts)
-    : sparse_bitmap_iterator{Ptr{in, &Noop}, opts} {}
+      : sparse_bitmap_iterator{Ptr{in, &Noop}, opts} {}
 
   template<typename Cost>
   sparse_bitmap_iterator(index_input::ptr&& in, const options& opts, Cost&& est)
-    : sparse_bitmap_iterator{std::move(in), opts} {
+      : sparse_bitmap_iterator{std::move(in), opts} {
     std::get<cost>(attrs_).reset(std::forward<Cost>(est));
   }
 
   template<typename Cost>
   sparse_bitmap_iterator(index_input* in, const options& opts, Cost&& est)
-    : sparse_bitmap_iterator{in, opts} {
+      : sparse_bitmap_iterator{in, opts} {
     std::get<cost>(attrs_).reset(std::forward<Cost>(est));
   }
 

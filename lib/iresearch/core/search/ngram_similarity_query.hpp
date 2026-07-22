@@ -17,8 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrei Abramov
-/// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -37,14 +35,14 @@ class NGramSimilarityQuery : public filter::prepared {
  public:
   // returns set of features required for filter
   static constexpr IndexFeatures kRequiredFeatures =
-    IndexFeatures::FREQ | IndexFeatures::POS;
+      IndexFeatures::FREQ | IndexFeatures::POS;
 
   NGramSimilarityQuery(size_t min_match_count, NGramStates&& states,
                        bstring&& stats, score_t boost = kNoBoost)
-    : min_match_count_{min_match_count},
-      states_{std::move(states)},
-      stats_{std::move(stats)},
-      boost_{boost} {}
+      : min_match_count_{min_match_count},
+        states_{std::move(states)},
+        stats_{std::move(stats)},
+        boost_{boost} {}
 
   doc_iterator::ptr execute(const ExecutionContext& ctx) const final;
 

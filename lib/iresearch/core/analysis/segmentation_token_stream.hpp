@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -31,8 +30,8 @@
 namespace irs {
 namespace analysis {
 class segmentation_token_stream final
-  : public TypedAnalyzer<segmentation_token_stream>,
-    private util::noncopyable {
+    : public TypedAnalyzer<segmentation_token_stream>,
+      private util::noncopyable {
  public:
   static constexpr std::string_view type_name() noexcept {
     return "segmentation";
@@ -70,7 +69,7 @@ class segmentation_token_stream final
   std::unique_ptr<state_t, state_deleter_t> state_;
   options_t options_;
   std::string
-    term_buf_;  // buffer for value if value cannot be referenced directly
+      term_buf_;  // buffer for value if value cannot be referenced directly
   attributes attrs_;
 };
 }  // namespace analysis

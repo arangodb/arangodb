@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -35,7 +34,7 @@ class all_terms_collector : util::noncopyable {
  public:
   all_terms_collector(States& states, field_collectors& field_stats,
                       term_collectors& term_stats) noexcept
-    : states_(states), field_stats_(field_stats), term_stats_(term_stats) {}
+      : states_(states), field_stats_(field_stats), term_stats_(term_stats) {}
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief prepare collector for terms collecting

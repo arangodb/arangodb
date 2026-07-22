@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "all_filter.hpp"
@@ -30,7 +29,7 @@ namespace irs {
 class all_query : public filter::prepared {
  public:
   explicit all_query(bstring&& stats, score_t boost)
-    : stats_{std::move(stats)}, boost_{boost} {}
+      : stats_{std::move(stats)}, boost_{boost} {}
 
   doc_iterator::ptr execute(const ExecutionContext& ctx) const final {
     auto& rdr = ctx.segment;

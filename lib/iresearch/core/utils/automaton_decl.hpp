@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -47,7 +46,7 @@ struct Transition;
 
 template<typename W>
 using AutomatonState =
-  VectorState<Transition<W>, std::allocator<Transition<W>>>;
+    VectorState<Transition<W>, std::allocator<Transition<W>>>;
 
 template<typename W>
 using Automaton = VectorFst<Transition<W>, AutomatonState<W>>;

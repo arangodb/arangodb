@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "encryption.hpp"
@@ -48,7 +47,7 @@ bool encrypt(std::string_view filename, index_output& out, encryption* enc,
 
   if (!enc->create_header(filename, header.data())) {
     throw index_error{absl::StrCat(
-      "failed to initialize encryption header, path '", filename, "'")};
+        "failed to initialize encryption header, path '", filename, "'")};
   }
 
   // header is encrypted here
@@ -58,13 +57,13 @@ bool encrypt(std::string_view filename, index_output& out, encryption* enc,
 
   if (!cipher) {
     throw index_error{absl::StrCat(
-      "Failed to instantiate encryption stream, path '", filename, "'")};
+        "Failed to instantiate encryption stream, path '", filename, "'")};
   }
 
   if (!cipher->block_size()) {
     throw index_error{absl::StrCat(
-      "Failed to instantiate encryption stream with block of size 0, path '",
-      filename, "'")};
+        "Failed to instantiate encryption stream with block of size 0, path '",
+        filename, "'")};
   }
 
   // header is decrypted here, write checksum
@@ -86,30 +85,30 @@ bool decrypt(std::string_view filename, index_input& in, encryption* enc,
 
   if (!enc) {
     throw index_error{absl::StrCat(
-      "Failed to open encrypted file without cipher, path '", filename, "'")};
+        "Failed to open encrypted file without cipher, path '", filename, "'")};
   }
 
   if (header.size() != enc->header_length()) {
-    throw index_error{
-      absl::StrCat("failed to open encrypted file, expect encryption header of "
-                   "size ",
-                   enc->header_length(), ", got ", header.size(), ", path '",
-                   filename, "'")};
+    throw index_error{absl::StrCat(
+        "failed to open encrypted file, expect encryption header of "
+        "size ",
+        enc->header_length(), ", got ", header.size(), ", path '", filename,
+        "'")};
   }
 
   cipher = enc->create_stream(filename, header.data());
 
   if (!cipher) {
     throw index_error{
-      absl::StrCat("Failed to open encrypted file, path '", filename, "'")};
+        absl::StrCat("Failed to open encrypted file, path '", filename, "'")};
   }
 
   const auto block_size = cipher->block_size();
 
   if (!block_size) {
-    throw index_error{
-      absl::StrCat("Invalid block size 0 specified for encrypted file, path '",
-                   filename, "'")};
+    throw index_error{absl::StrCat(
+        "Invalid block size 0 specified for encrypted file, path '", filename,
+        "'")};
   }
 
   // header is decrypted here, check checksum
@@ -118,7 +117,7 @@ bool decrypt(std::string_view filename, index_input& in, encryption* enc,
 
   if (crc.checksum() != in.read_vlong()) {
     throw index_error{
-      absl::StrCat("Invalid ecryption header, path '", filename, "'")};
+        absl::StrCat("Invalid ecryption header, path '", filename, "'")};
   }
 
   return true;
@@ -127,20 +126,20 @@ bool decrypt(std::string_view filename, index_input& in, encryption* enc,
 encrypted_output::encrypted_output(index_output& out,
                                    encryption::stream& cipher,
                                    size_t num_buffers)
-  : out_(&out),
-    cipher_(&cipher),
-    buf_size_(cipher.block_size() * std::max(size_t(1), num_buffers)),
-    buf_(std::make_unique<byte_type[]>(buf_size_)),
-    start_(0),
-    pos_(buf_.get()),
-    end_(pos_ + buf_size_) {
+    : out_(&out),
+      cipher_(&cipher),
+      buf_size_(cipher.block_size() * std::max(size_t(1), num_buffers)),
+      buf_(std::make_unique<byte_type[]>(buf_size_)),
+      start_(0),
+      pos_(buf_.get()),
+      end_(pos_ + buf_size_) {
   IRS_ASSERT(buf_size_);
 }
 
 encrypted_output::encrypted_output(index_output::ptr&& out,
                                    encryption::stream& cipher,
                                    size_t num_buffers)
-  : encrypted_output(*out, cipher, num_buffers) {
+    : encrypted_output(*out, cipher, num_buffers) {
   managed_out_ = std::move(out);
 }
 
@@ -253,12 +252,12 @@ size_t encrypted_output::CloseImpl() {
 
 encrypted_input::encrypted_input(index_input& in, encryption::stream& cipher,
                                  size_t num_buffers, size_t padding /* = 0*/)
-  : buf_size_(cipher.block_size() * std::max(size_t(1), num_buffers)),
-    buf_(std::make_unique<byte_type[]>(buf_size_)),
-    in_(&in),
-    cipher_(&cipher),
-    start_(in_->file_pointer()),
-    length_(in_->length() - start_ - padding) {
+    : buf_size_(cipher.block_size() * std::max(size_t(1), num_buffers)),
+      buf_(std::make_unique<byte_type[]>(buf_size_)),
+      in_(&in),
+      cipher_(&cipher),
+      start_(in_->file_pointer()),
+      length_(in_->length() - start_ - padding) {
   IRS_ASSERT(cipher.block_size() && buf_size_);
   IRS_ASSERT(in_ && in_->length() >= in_->file_pointer() + padding);
   buffered_index_input::reset(buf_.get(), buf_size_, 0);
@@ -267,19 +266,19 @@ encrypted_input::encrypted_input(index_input& in, encryption::stream& cipher,
 encrypted_input::encrypted_input(index_input::ptr&& in,
                                  encryption::stream& cipher, size_t num_buffers,
                                  size_t padding /* = 0*/)
-  : encrypted_input(*in, cipher, num_buffers, padding) {
+    : encrypted_input(*in, cipher, num_buffers, padding) {
   managed_in_ = std::move(in);
 }
 
 encrypted_input::encrypted_input(const encrypted_input& rhs,
                                  index_input::ptr&& in) noexcept
-  : buf_size_(rhs.buf_size_),
-    buf_(std::make_unique<byte_type[]>(buf_size_)),
-    managed_in_(std::move(in)),
-    in_(managed_in_.get()),
-    cipher_(rhs.cipher_),
-    start_(rhs.start_),
-    length_(rhs.length_) {
+    : buf_size_(rhs.buf_size_),
+      buf_(std::make_unique<byte_type[]>(buf_size_)),
+      managed_in_(std::move(in)),
+      in_(managed_in_.get()),
+      cipher_(rhs.cipher_),
+      start_(rhs.start_),
+      length_(rhs.length_) {
   IRS_ASSERT(cipher_->block_size());
   buffered_index_input::reset(buf_.get(), buf_size_, rhs.file_pointer());
 }
@@ -312,7 +311,7 @@ index_input::ptr encrypted_input::dup() const {
 
   if (!dup) {
     throw io_error{
-      absl::StrCat("Failed to duplicate input file, error: ", errno)};
+        absl::StrCat("Failed to duplicate input file, error: ", errno)};
   }
 
   return index_input::ptr{new encrypted_input{*this, std::move(dup)}};

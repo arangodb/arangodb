@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -75,7 +74,7 @@ class StringRefWeight : public StringRefWeightTraits<Label> {
   StringRefWeight(StringRefWeight&&) = default;
 
   explicit StringRefWeight(irs::basic_string_view<Label> rhs) noexcept
-    : str_{rhs} {}
+      : str_{rhs} {}
 
   StringRefWeight& operator=(StringRefWeight&&) = default;
   StringRefWeight& operator=(const StringRefWeight&) = default;

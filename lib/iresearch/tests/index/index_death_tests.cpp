@@ -17,8 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "formats/formats.hpp"
@@ -60,7 +58,7 @@ class failing_directory : public tests::directory_mock {
    public:
     explicit failing_index_input(index_input::ptr&& impl, std::string_view name,
                                  const failing_directory& dir)
-      : impl_(std::move(impl)), dir_(&dir), name_(name) {}
+        : impl_(std::move(impl)), dir_(&dir), name_(name) {}
     const irs::byte_type* read_buffer(size_t offset, size_t size,
                                       irs::BufferHint hint) final {
       return impl_->read_buffer(offset, size, hint);
@@ -115,7 +113,7 @@ class failing_directory : public tests::directory_mock {
 
  public:
   explicit failing_directory(irs::directory& impl) noexcept
-    : tests::directory_mock(impl) {}
+      : tests::directory_mock(impl) {}
 
   bool register_failure(Failure type, const std::string& name) {
     return failures_.emplace(name, type).second;
@@ -169,7 +167,7 @@ class failing_directory : public tests::directory_mock {
     }
 
     return std::make_unique<failing_index_input>(
-      tests::directory_mock::open(name, advice), name, *this);
+        tests::directory_mock::open(name, advice), name, *this);
   }
   bool remove(std::string_view name) noexcept final {
     if (should_fail(Failure::REMOVE, name)) {
@@ -226,20 +224,20 @@ class failing_directory : public tests::directory_mock {
 irs::FeatureInfoProvider default_feature_info() {
   return [](irs::type_info::type_id) {
     return std::make_pair(
-      irs::ColumnInfo{.compression = irs::type<irs::compression::none>::get(),
-                      .options = {},
-                      .encryption = true,
-                      .track_prev_doc = false},
-      irs::FeatureWriterFactory{});
+        irs::ColumnInfo{.compression = irs::type<irs::compression::none>::get(),
+                        .options = {},
+                        .encryption = true,
+                        .track_prev_doc = false},
+        irs::FeatureWriterFactory{});
   };
 }
 
 void open_reader(
-  std::string_view format,
-  std::function<void(failing_directory& dir)> failure_registerer) {
+    std::string_view format,
+    std::function<void(failing_directory& dir)> failure_registerer) {
   constexpr irs::IndexFeatures all_features =
-    irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
-    irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
+      irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
+      irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
 
   tests::json_doc_generator gen(test_base::resource("simple_sequential.json"),
                                 &tests::payloaded_json_field_factory);
@@ -310,11 +308,11 @@ void open_reader(
   ASSERT_TRUE(docsItr->next());
   ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
   ASSERT_EQ("A", irs::to_string<std::string_view>(
-                   actual_value->value.data()));  // 'name' value in doc3
+                     actual_value->value.data()));  // 'name' value in doc3
   ASSERT_TRUE(docsItr->next());
   ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
   ASSERT_EQ("B", irs::to_string<std::string_view>(
-                   actual_value->value.data()));  // 'name' value in doc3
+                     actual_value->value.data()));  // 'name' value in doc3
   ASSERT_FALSE(docsItr->next());
 
   // validate live docs
@@ -329,13 +327,13 @@ void open_reader(
 
 TEST(index_death_test_formats_10, index_meta_write_fail_1st_phase) {
   tests::json_doc_generator gen(
-    test_base::resource("simple_sequential.json"),
-    [](tests::document& doc, const std::string& name,
-       const tests::json_doc_generator::json_value& data) {
-      if (data.is_string()) {
-        doc.insert(std::make_shared<tests::string_field>(name, data.str));
-      }
-    });
+      test_base::resource("simple_sequential.json"),
+      [](tests::document& doc, const std::string& name,
+         const tests::json_doc_generator::json_value& data) {
+        if (data.is_string()) {
+          doc.insert(std::make_shared<tests::string_field>(name, data.str));
+        }
+      });
   const auto* doc1 = gen.next();
 
   auto codec = irs::formats::get("1_0");
@@ -345,11 +343,11 @@ TEST(index_death_test_formats_10, index_meta_write_fail_1st_phase) {
     irs::memory_directory impl;
     failing_directory dir(impl);
     dir.register_failure(
-      failing_directory::Failure::CREATE,
-      "pending_segments_1");  // fail first phase of transaction
+        failing_directory::Failure::CREATE,
+        "pending_segments_1");  // fail first phase of transaction
     dir.register_failure(
-      failing_directory::Failure::SYNC,
-      "pending_segments_1");  // fail first phase of transaction
+        failing_directory::Failure::SYNC,
+        "pending_segments_1");  // fail first phase of transaction
 
     // write index
     auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE);
@@ -377,17 +375,17 @@ TEST(index_death_test_formats_10, index_meta_write_fail_1st_phase) {
 
   {
     constexpr irs::IndexFeatures all_features =
-      irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
-      irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
+        irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
+        irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
 
     irs::memory_directory impl;
     failing_directory dir(impl);
     dir.register_failure(
-      failing_directory::Failure::CREATE,
-      "pending_segments_1");  // fail first phase of transaction
+        failing_directory::Failure::CREATE,
+        "pending_segments_1");  // fail first phase of transaction
     dir.register_failure(
-      failing_directory::Failure::SYNC,
-      "pending_segments_1");  // fail first phase of transaction
+        failing_directory::Failure::SYNC,
+        "pending_segments_1");  // fail first phase of transaction
 
     // write index
     auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE);
@@ -438,20 +436,20 @@ TEST(index_death_test_formats_10, index_meta_write_fail_1st_phase) {
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
     ASSERT_EQ("A", irs::to_string<std::string_view>(
-                     actual_value->value.data()));  // 'name' value in doc3
+                       actual_value->value.data()));  // 'name' value in doc3
     ASSERT_FALSE(docsItr->next());
   }
 }
 
 TEST(index_death_test_formats_10, index_commit_fail_sync_1st_phase) {
   tests::json_doc_generator gen(
-    test_base::resource("simple_sequential.json"),
-    [](tests::document& doc, const std::string& name,
-       const tests::json_doc_generator::json_value& data) {
-      if (data.is_string()) {
-        doc.insert(std::make_shared<tests::string_field>(name, data.str));
-      }
-    });
+      test_base::resource("simple_sequential.json"),
+      [](tests::document& doc, const std::string& name,
+         const tests::json_doc_generator::json_value& data) {
+        if (data.is_string()) {
+          doc.insert(std::make_shared<tests::string_field>(name, data.str));
+        }
+      });
   const auto* doc1 = gen.next();
 
   auto codec = irs::formats::get("1_0");
@@ -501,8 +499,8 @@ TEST(index_death_test_formats_10, index_commit_fail_sync_1st_phase) {
 
   {
     constexpr irs::IndexFeatures all_features =
-      irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
-      irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
+        irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
+        irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
 
     irs::memory_directory impl;
     failing_directory dir(impl);
@@ -580,20 +578,20 @@ TEST(index_death_test_formats_10, index_commit_fail_sync_1st_phase) {
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
     ASSERT_EQ("A", irs::to_string<std::string_view>(
-                     actual_value->value.data()));  // 'name' value in doc3
+                       actual_value->value.data()));  // 'name' value in doc3
     ASSERT_FALSE(docsItr->next());
   }
 }
 
 TEST(index_death_test_formats_10, index_meta_write_failure_2nd_phase) {
   tests::json_doc_generator gen(
-    test_base::resource("simple_sequential.json"),
-    [](tests::document& doc, const std::string& name,
-       const tests::json_doc_generator::json_value& data) {
-      if (data.is_string()) {
-        doc.insert(std::make_shared<tests::string_field>(name, data.str));
-      }
-    });
+      test_base::resource("simple_sequential.json"),
+      [](tests::document& doc, const std::string& name,
+         const tests::json_doc_generator::json_value& data) {
+        if (data.is_string()) {
+          doc.insert(std::make_shared<tests::string_field>(name, data.str));
+        }
+      });
   const auto* doc1 = gen.next();
 
   auto codec = irs::formats::get("1_0");
@@ -633,14 +631,14 @@ TEST(index_death_test_formats_10, index_meta_write_failure_2nd_phase) {
 
   {
     constexpr irs::IndexFeatures all_features =
-      irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
-      irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
+        irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
+        irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
 
     irs::memory_directory impl;
     failing_directory dir(impl);
     dir.register_failure(
-      failing_directory::Failure::RENAME,
-      "pending_segments_1");  // fail second phase of transaction
+        failing_directory::Failure::RENAME,
+        "pending_segments_1");  // fail second phase of transaction
 
     // write index
     auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE);
@@ -693,7 +691,7 @@ TEST(index_death_test_formats_10, index_meta_write_failure_2nd_phase) {
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
     ASSERT_EQ("A", irs::to_string<std::string_view>(
-                     actual_value->value.data()));  // 'name' value in doc3
+                       actual_value->value.data()));  // 'name' value in doc3
     ASSERT_FALSE(docsItr->next());
   }
 }
@@ -739,8 +737,8 @@ TEST(index_death_test_formats_10,
 
   {
     constexpr irs::IndexFeatures all_features =
-      irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
-      irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
+        irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
+        irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
 
     irs::memory_directory impl;
     failing_directory dir(impl);
@@ -795,14 +793,14 @@ TEST(index_death_test_formats_10,
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
     ASSERT_EQ("A", irs::to_string<std::string_view>(
-                     actual_value->value.data()));  // 'name' value in doc3
+                       actual_value->value.data()));  // 'name' value in doc3
     ASSERT_FALSE(docsItr->next());
   }
 
   {
     constexpr irs::IndexFeatures all_features =
-      irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
-      irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
+        irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
+        irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
 
     irs::memory_directory impl;
     failing_directory dir(impl);
@@ -860,14 +858,14 @@ TEST(index_death_test_formats_10,
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
     ASSERT_EQ("A", irs::to_string<std::string_view>(
-                     actual_value->value.data()));  // 'name' value in doc3
+                       actual_value->value.data()));  // 'name' value in doc3
     ASSERT_FALSE(docsItr->next());
   }
 
   {
     constexpr irs::IndexFeatures all_features =
-      irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
-      irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
+        irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
+        irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
 
     irs::memory_directory impl;
     failing_directory dir(impl);
@@ -934,7 +932,7 @@ TEST(index_death_test_formats_10,
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("A", irs::to_string<std::string_view>(
-                       actual_value->value.data()));  // 'name' value in doc3
+                         actual_value->value.data()));  // 'name' value in doc3
       ASSERT_FALSE(docsItr->next());
     }
 
@@ -957,7 +955,7 @@ TEST(index_death_test_formats_10,
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("B", irs::to_string<std::string_view>(
-                       actual_value->value.data()));  // 'name' value in doc3
+                         actual_value->value.data()));  // 'name' value in doc3
       ASSERT_FALSE(docsItr->next());
     }
   }
@@ -1025,8 +1023,8 @@ TEST(index_death_test_formats_10,
 
   {
     constexpr irs::IndexFeatures all_features =
-      irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
-      irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
+        irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
+        irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
 
     irs::memory_directory impl;
     failing_directory dir(impl);
@@ -1101,7 +1099,7 @@ TEST(index_death_test_formats_10,
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
     ASSERT_EQ("A", irs::to_string<std::string_view>(
-                     actual_value->value.data()));  // 'name' value in doc3
+                       actual_value->value.data()));  // 'name' value in doc3
     ASSERT_FALSE(docsItr->next());
   }
 }
@@ -1171,8 +1169,8 @@ TEST(index_death_test_formats_10,
 
   {
     constexpr irs::IndexFeatures all_features =
-      irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
-      irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
+        irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
+        irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
 
     irs::memory_directory impl;
     failing_directory dir(impl);
@@ -1252,7 +1250,7 @@ TEST(index_death_test_formats_10,
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
     ASSERT_EQ("A", irs::to_string<std::string_view>(
-                     actual_value->value.data()));  // 'name' value in doc3
+                       actual_value->value.data()));  // 'name' value in doc3
     ASSERT_FALSE(docsItr->next());
   }
 }
@@ -1260,13 +1258,13 @@ TEST(index_death_test_formats_10,
 TEST(index_death_test_formats_10,
      segment_meta_creation_failure_1st_phase_flush) {
   tests::json_doc_generator gen(
-    test_base::resource("simple_sequential.json"),
-    [](tests::document& doc, const std::string& name,
-       const tests::json_doc_generator::json_value& data) {
-      if (data.is_string()) {
-        doc.insert(std::make_shared<tests::string_field>(name, data.str));
-      }
-    });
+      test_base::resource("simple_sequential.json"),
+      [](tests::document& doc, const std::string& name,
+         const tests::json_doc_generator::json_value& data) {
+        if (data.is_string()) {
+          doc.insert(std::make_shared<tests::string_field>(name, data.str));
+        }
+      });
   const auto* doc1 = gen.next();
 
   auto codec = irs::formats::get("1_0");
@@ -1312,8 +1310,8 @@ TEST(index_death_test_formats_10,
 
   {
     constexpr irs::IndexFeatures all_features =
-      irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
-      irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
+        irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
+        irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
 
     irs::memory_directory impl;
     failing_directory dir(impl);
@@ -1378,7 +1376,7 @@ TEST(index_death_test_formats_10,
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
     ASSERT_EQ("A", irs::to_string<std::string_view>(
-                     actual_value->value.data()));  // 'name' value in doc3
+                       actual_value->value.data()));  // 'name' value in doc3
     ASSERT_FALSE(docsItr->next());
   }
 }
@@ -1386,13 +1384,13 @@ TEST(index_death_test_formats_10,
 TEST(index_death_test_formats_10,
      segment_meta_write_fail_immediate_consolidation) {
   tests::json_doc_generator gen(
-    test_base::resource("simple_sequential.json"),
-    [](tests::document& doc, const std::string& name,
-       const tests::json_doc_generator::json_value& data) {
-      if (data.is_string()) {
-        doc.insert(std::make_shared<tests::string_field>(name, data.str));
-      }
-    });
+      test_base::resource("simple_sequential.json"),
+      [](tests::document& doc, const std::string& name,
+         const tests::json_doc_generator::json_value& data) {
+        if (data.is_string()) {
+          doc.insert(std::make_shared<tests::string_field>(name, data.str));
+        }
+      });
   const auto* doc1 = gen.next();
   const auto* doc2 = gen.next();
 
@@ -1401,8 +1399,8 @@ TEST(index_death_test_formats_10,
 
   {
     constexpr irs::IndexFeatures all_features =
-      irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
-      irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
+        irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
+        irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
 
     irs::memory_directory impl;
     failing_directory dir(impl);
@@ -1427,23 +1425,23 @@ TEST(index_death_test_formats_10,
 
     // register failures
     dir.register_failure(
-      failing_directory::Failure::CREATE,
-      "_3.0.sm");  // fail at segment meta creation on consolidation
+        failing_directory::Failure::CREATE,
+        "_3.0.sm");  // fail at segment meta creation on consolidation
     dir.register_failure(
-      failing_directory::Failure::SYNC,
-      "_4.0.sm");  // fail at segment meta synchronization on consolidation
+        failing_directory::Failure::SYNC,
+        "_4.0.sm");  // fail at segment meta synchronization on consolidation
 
     const irs::index_utils::ConsolidateCount consolidate_all;
 
     // segment meta creation failure
     ASSERT_THROW(
-      writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)),
-      irs::io_error);
+        writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)),
+        irs::io_error);
     ASSERT_FALSE(writer->Begin());  // nothing to flush
 
     // segment meta synchronization failure
     ASSERT_TRUE(
-      writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
+        writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
     ASSERT_THROW(writer->Begin(), irs::io_error);
     ASSERT_FALSE(writer->Begin());  // nothing to flush
 
@@ -1481,7 +1479,7 @@ TEST(index_death_test_formats_10,
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("A", irs::to_string<std::string_view>(
-                       actual_value->value.data()));  // 'name' value in doc3
+                         actual_value->value.data()));  // 'name' value in doc3
       ASSERT_FALSE(docsItr->next());
     }
 
@@ -1504,7 +1502,7 @@ TEST(index_death_test_formats_10,
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("B", irs::to_string<std::string_view>(
-                       actual_value->value.data()));  // 'name' value in doc3
+                         actual_value->value.data()));  // 'name' value in doc3
       ASSERT_FALSE(docsItr->next());
     }
   }
@@ -1513,13 +1511,13 @@ TEST(index_death_test_formats_10,
 TEST(index_death_test_formats_10,
      segment_meta_write_fail_deffered_consolidation) {
   tests::json_doc_generator gen(
-    test_base::resource("simple_sequential.json"),
-    [](tests::document& doc, const std::string& name,
-       const tests::json_doc_generator::json_value& data) {
-      if (data.is_string()) {
-        doc.insert(std::make_shared<tests::string_field>(name, data.str));
-      }
-    });
+      test_base::resource("simple_sequential.json"),
+      [](tests::document& doc, const std::string& name,
+         const tests::json_doc_generator::json_value& data) {
+        if (data.is_string()) {
+          doc.insert(std::make_shared<tests::string_field>(name, data.str));
+        }
+      });
   const auto* doc1 = gen.next();
   const auto* doc2 = gen.next();
   const auto* doc3 = gen.next();
@@ -1530,8 +1528,8 @@ TEST(index_death_test_formats_10,
 
   {
     constexpr irs::IndexFeatures all_features =
-      irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
-      irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
+        irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
+        irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
 
     irs::memory_directory impl;
     failing_directory dir(impl);
@@ -1556,11 +1554,11 @@ TEST(index_death_test_formats_10,
 
     // register failures
     dir.register_failure(
-      failing_directory::Failure::CREATE,
-      "_4.0.sm");  // fail at segment meta creation on consolidation
+        failing_directory::Failure::CREATE,
+        "_4.0.sm");  // fail at segment meta creation on consolidation
     dir.register_failure(
-      failing_directory::Failure::SYNC,
-      "_6.0.sm");  // fail at segment meta synchronization on consolidation
+        failing_directory::Failure::SYNC,
+        "_6.0.sm");  // fail at segment meta synchronization on consolidation
 
     const irs::index_utils::ConsolidateCount consolidate_all;
 
@@ -1569,26 +1567,26 @@ TEST(index_death_test_formats_10,
                        doc3->stored.begin(), doc3->stored.end()));
     ASSERT_TRUE(writer->Begin());  // start transaction
     ASSERT_TRUE(writer->Consolidate(irs::index_utils::MakePolicy(
-      consolidate_all)));            // register pending consolidation
+        consolidate_all)));          // register pending consolidation
     ASSERT_FALSE(writer->Commit());  // commit started transaction
     tests::AssertSnapshotEquality(writer->GetSnapshot(),
                                   irs::DirectoryReader(dir));
     ASSERT_THROW(
-      writer->Begin(),
-      irs::io_error);  // start transaction to commit pending consolidation
+        writer->Begin(),
+        irs::io_error);  // start transaction to commit pending consolidation
 
     // segment meta synchronization failure
     ASSERT_TRUE(insert(*writer, doc4->indexed.begin(), doc4->indexed.end(),
                        doc4->stored.begin(), doc4->stored.end()));
     ASSERT_TRUE(writer->Begin());  // start transaction
     ASSERT_TRUE(writer->Consolidate(irs::index_utils::MakePolicy(
-      consolidate_all)));            // register pending consolidation
+        consolidate_all)));          // register pending consolidation
     ASSERT_FALSE(writer->Commit());  // commit started transaction
     tests::AssertSnapshotEquality(writer->GetSnapshot(),
                                   irs::DirectoryReader(dir));
     ASSERT_THROW(
-      writer->Begin(),
-      irs::io_error);  // start transaction to commit pending consolidation
+        writer->Begin(),
+        irs::io_error);  // start transaction to commit pending consolidation
 
     // check data
     auto reader = irs::DirectoryReader(dir);
@@ -1628,7 +1626,7 @@ TEST(index_death_test_formats_10,
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("A", irs::to_string<std::string_view>(
-                       actual_value->value.data()));  // 'name' value in doc3
+                         actual_value->value.data()));  // 'name' value in doc3
       ASSERT_FALSE(docsItr->next());
     }
 
@@ -1651,7 +1649,7 @@ TEST(index_death_test_formats_10,
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("B", irs::to_string<std::string_view>(
-                       actual_value->value.data()));  // 'name' value in doc3
+                         actual_value->value.data()));  // 'name' value in doc3
       ASSERT_FALSE(docsItr->next());
     }
 
@@ -1674,7 +1672,7 @@ TEST(index_death_test_formats_10,
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("C", irs::to_string<std::string_view>(
-                       actual_value->value.data()));  // 'name' value in doc3
+                         actual_value->value.data()));  // 'name' value in doc3
       ASSERT_FALSE(docsItr->next());
     }
 
@@ -1697,7 +1695,7 @@ TEST(index_death_test_formats_10,
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("D", irs::to_string<std::string_view>(
-                       actual_value->value.data()));  // 'name' value in doc3
+                         actual_value->value.data()));  // 'name' value in doc3
       ASSERT_FALSE(docsItr->next());
     }
   }
@@ -1706,13 +1704,13 @@ TEST(index_death_test_formats_10,
 TEST(index_death_test_formats_10,
      segment_meta_write_fail_long_running_consolidation) {
   tests::json_doc_generator gen(
-    test_base::resource("simple_sequential.json"),
-    [](tests::document& doc, const std::string& name,
-       const tests::json_doc_generator::json_value& data) {
-      if (data.is_string()) {
-        doc.insert(std::make_shared<tests::string_field>(name, data.str));
-      }
-    });
+      test_base::resource("simple_sequential.json"),
+      [](tests::document& doc, const std::string& name,
+         const tests::json_doc_generator::json_value& data) {
+        if (data.is_string()) {
+          doc.insert(std::make_shared<tests::string_field>(name, data.str));
+        }
+      });
   const auto* doc1 = gen.next();
   const auto* doc2 = gen.next();
   const auto* doc3 = gen.next();
@@ -1723,8 +1721,8 @@ TEST(index_death_test_formats_10,
   // segment meta creation failure
   {
     constexpr irs::IndexFeatures all_features =
-      irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
-      irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
+        irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
+        irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
 
     irs::memory_directory impl;
     failing_directory failing_dir(impl);
@@ -1750,17 +1748,17 @@ TEST(index_death_test_formats_10,
 
     // register failures
     failing_dir.register_failure(
-      failing_directory::Failure::CREATE,
-      "_3.0.sm");  // fail at segment meta creation on consolidation
+        failing_directory::Failure::CREATE,
+        "_3.0.sm");  // fail at segment meta creation on consolidation
 
     dir.intermediate_commits_lock
-      .lock();  // acquire directory lock, and block consolidation
+        .lock();  // acquire directory lock, and block consolidation
 
     std::thread consolidation_thread([&writer]() {
       const irs::index_utils::ConsolidateCount consolidate_all;
       ASSERT_THROW(
-        writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)),
-        irs::io_error);  // consolidate
+          writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)),
+          irs::io_error);  // consolidate
     });
 
     dir.wait_for_blocker();
@@ -1811,7 +1809,7 @@ TEST(index_death_test_formats_10,
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("A", irs::to_string<std::string_view>(
-                       actual_value->value.data()));  // 'name' value in doc3
+                         actual_value->value.data()));  // 'name' value in doc3
       ASSERT_FALSE(docsItr->next());
     }
 
@@ -1834,7 +1832,7 @@ TEST(index_death_test_formats_10,
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("B", irs::to_string<std::string_view>(
-                       actual_value->value.data()));  // 'name' value in doc3
+                         actual_value->value.data()));  // 'name' value in doc3
       ASSERT_FALSE(docsItr->next());
     }
 
@@ -1857,7 +1855,7 @@ TEST(index_death_test_formats_10,
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("C", irs::to_string<std::string_view>(
-                       actual_value->value.data()));  // 'name' value in doc3
+                         actual_value->value.data()));  // 'name' value in doc3
       ASSERT_FALSE(docsItr->next());
     }
   }
@@ -1865,8 +1863,8 @@ TEST(index_death_test_formats_10,
   // segment meta synchonization failure
   {
     constexpr irs::IndexFeatures all_features =
-      irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
-      irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
+        irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
+        irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
 
     irs::memory_directory impl;
     failing_directory failing_dir(impl);
@@ -1892,16 +1890,16 @@ TEST(index_death_test_formats_10,
 
     // register failures
     failing_dir.register_failure(
-      failing_directory::Failure::SYNC,
-      "_3.0.sm");  // fail at segment meta synchronization on consolidation
+        failing_directory::Failure::SYNC,
+        "_3.0.sm");  // fail at segment meta synchronization on consolidation
 
     dir.intermediate_commits_lock
-      .lock();  // acquire directory lock, and block consolidation
+        .lock();  // acquire directory lock, and block consolidation
 
     std::thread consolidation_thread([&writer]() {
       const irs::index_utils::ConsolidateCount consolidate_all;
       ASSERT_TRUE(writer->Consolidate(
-        irs::index_utils::MakePolicy(consolidate_all)));  // consolidate
+          irs::index_utils::MakePolicy(consolidate_all)));  // consolidate
     });
 
     dir.wait_for_blocker();
@@ -1955,7 +1953,7 @@ TEST(index_death_test_formats_10,
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("A", irs::to_string<std::string_view>(
-                       actual_value->value.data()));  // 'name' value in doc3
+                         actual_value->value.data()));  // 'name' value in doc3
       ASSERT_FALSE(docsItr->next());
     }
 
@@ -1978,7 +1976,7 @@ TEST(index_death_test_formats_10,
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("B", irs::to_string<std::string_view>(
-                       actual_value->value.data()));  // 'name' value in doc3
+                         actual_value->value.data()));  // 'name' value in doc3
       ASSERT_FALSE(docsItr->next());
     }
 
@@ -2001,7 +1999,7 @@ TEST(index_death_test_formats_10,
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("C", irs::to_string<std::string_view>(
-                       actual_value->value.data()));  // 'name' value in doc3
+                         actual_value->value.data()));  // 'name' value in doc3
       ASSERT_FALSE(docsItr->next());
     }
   }
@@ -2018,8 +2016,8 @@ TEST(index_death_test_formats_10, segment_components_write_fail_consolidation) {
 
   {
     constexpr irs::IndexFeatures all_features =
-      irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
-      irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
+        irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
+        irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
 
     irs::memory_directory impl;
     failing_directory dir(impl);
@@ -2060,8 +2058,8 @@ TEST(index_death_test_formats_10, segment_components_write_fail_consolidation) {
 
     while (!dir.no_failures()) {
       ASSERT_THROW(
-        writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)),
-        irs::io_error);
+          writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)),
+          irs::io_error);
       ASSERT_FALSE(writer->Begin());  // nothing to flush
     }
 
@@ -2099,7 +2097,7 @@ TEST(index_death_test_formats_10, segment_components_write_fail_consolidation) {
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("A", irs::to_string<std::string_view>(
-                       actual_value->value.data()));  // 'name' value in doc3
+                         actual_value->value.data()));  // 'name' value in doc3
       ASSERT_FALSE(docsItr->next());
     }
 
@@ -2122,7 +2120,7 @@ TEST(index_death_test_formats_10, segment_components_write_fail_consolidation) {
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("B", irs::to_string<std::string_view>(
-                       actual_value->value.data()));  // 'name' value in doc3
+                         actual_value->value.data()));  // 'name' value in doc3
       ASSERT_FALSE(docsItr->next());
     }
   }
@@ -2139,8 +2137,8 @@ TEST(index_death_test_formats_10, segment_components_sync_fail_consolidation) {
 
   {
     constexpr irs::IndexFeatures all_features =
-      irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
-      irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
+        irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
+        irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
 
     irs::memory_directory impl;
     failing_directory dir(impl);
@@ -2181,7 +2179,7 @@ TEST(index_death_test_formats_10, segment_components_sync_fail_consolidation) {
 
     while (!dir.no_failures()) {
       ASSERT_TRUE(
-        writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
+          writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
       ASSERT_THROW(writer->Begin(), irs::io_error);  // nothing to flush
       ASSERT_FALSE(writer->Begin());
     }
@@ -2220,7 +2218,7 @@ TEST(index_death_test_formats_10, segment_components_sync_fail_consolidation) {
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("A", irs::to_string<std::string_view>(
-                       actual_value->value.data()));  // 'name' value in doc3
+                         actual_value->value.data()));  // 'name' value in doc3
       ASSERT_FALSE(docsItr->next());
     }
 
@@ -2243,7 +2241,7 @@ TEST(index_death_test_formats_10, segment_components_sync_fail_consolidation) {
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("B", irs::to_string<std::string_view>(
-                       actual_value->value.data()));  // 'name' value in doc3
+                         actual_value->value.data()));  // 'name' value in doc3
       ASSERT_FALSE(docsItr->next());
     }
   }
@@ -2251,8 +2249,8 @@ TEST(index_death_test_formats_10, segment_components_sync_fail_consolidation) {
 
 TEST(index_death_test_formats_10, segment_components_fail_import) {
   constexpr irs::IndexFeatures all_features =
-    irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
-    irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
+      irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
+      irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
 
   tests::json_doc_generator gen(test_base::resource("simple_sequential.json"),
                                 &tests::payloaded_json_field_factory);
@@ -2407,7 +2405,7 @@ TEST(index_death_test_formats_10, segment_components_fail_import) {
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("A", irs::to_string<std::string_view>(
-                       actual_value->value.data()));  // 'name' value in doc3
+                         actual_value->value.data()));  // 'name' value in doc3
       ASSERT_FALSE(docsItr->next());
     }
   }
@@ -2539,7 +2537,7 @@ TEST(index_death_test_formats_10, segment_components_fail_import) {
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("A", irs::to_string<std::string_view>(
-                       actual_value->value.data()));  // 'name' value in doc3
+                         actual_value->value.data()));  // 'name' value in doc3
       ASSERT_FALSE(docsItr->next());
     }
   }
@@ -2548,8 +2546,8 @@ TEST(index_death_test_formats_10, segment_components_fail_import) {
 TEST(index_death_test_formats_10,
      segment_components_creation_fail_implicit_segment_flush) {
   constexpr irs::IndexFeatures all_features =
-    irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
-    irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
+      irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
+      irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
 
   tests::json_doc_generator gen(test_base::resource("simple_sequential.json"),
                                 &tests::payloaded_json_field_factory);
@@ -2712,7 +2710,7 @@ TEST(index_death_test_formats_10,
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
     ASSERT_EQ("C", irs::to_string<std::string_view>(
-                     actual_value->value.data()));  // 'name' value in doc3
+                       actual_value->value.data()));  // 'name' value in doc3
     ASSERT_FALSE(docsItr->next());
   }
 }
@@ -2720,8 +2718,8 @@ TEST(index_death_test_formats_10,
 TEST(index_death_test_formats_10,
      columnstore_creation_fail_implicit_segment_flush) {
   constexpr irs::IndexFeatures all_features =
-    irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
-    irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
+      irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
+      irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
 
   tests::json_doc_generator gen(test_base::resource("simple_sequential.json"),
                                 &tests::payloaded_json_field_factory);
@@ -2795,7 +2793,7 @@ TEST(index_death_test_formats_10,
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
     ASSERT_EQ("A", irs::to_string<std::string_view>(
-                     actual_value->value.data()));  // 'name' value in doc3
+                       actual_value->value.data()));  // 'name' value in doc3
     ASSERT_FALSE(docsItr->next());
   }
 }
@@ -2803,8 +2801,8 @@ TEST(index_death_test_formats_10,
 TEST(index_death_test_formats_14,
      columnstore_creation_fail_implicit_segment_flush) {
   constexpr irs::IndexFeatures all_features =
-    irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
-    irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
+      irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
+      irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
 
   tests::json_doc_generator gen(test_base::resource("simple_sequential.json"),
                                 &tests::payloaded_json_field_factory);
@@ -2901,7 +2899,7 @@ TEST(index_death_test_formats_14,
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
     ASSERT_EQ("A", irs::to_string<std::string_view>(
-                     actual_value->value.data()));  // 'name' value in doc3
+                       actual_value->value.data()));  // 'name' value in doc3
     ASSERT_FALSE(docsItr->next());
   }
 }
@@ -3031,8 +3029,8 @@ TEST(index_death_test_formats_14, fails_in_consolidate_with_removals) {
   ASSERT_NE(nullptr, codec);
 
   constexpr irs::IndexFeatures all_features =
-    irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
-    irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
+      irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
+      irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
 
   {
     irs::memory_directory impl;
@@ -3122,7 +3120,7 @@ TEST(index_death_test_formats_14, fails_in_consolidate_with_removals) {
     const irs::index_utils::ConsolidateCount consolidate_all;
 
     ASSERT_TRUE(
-      writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
+        writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
     ASSERT_TRUE(writer->Commit());
     tests::AssertSnapshotEquality(writer->GetSnapshot(),
                                   irs::DirectoryReader(dir));
@@ -3178,12 +3176,12 @@ TEST(index_death_test_formats_14, fails_in_consolidate_with_removals) {
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
     ASSERT_EQ("A", irs::to_string<std::string_view>(
-                     actual_value->value.data()));  // 'name' value in doc1
+                       actual_value->value.data()));  // 'name' value in doc1
     ASSERT_TRUE(docsItr->next());
     ASSERT_TRUE(values->next());
     actual_value = irs::get<irs::payload>(*values);
     ASSERT_EQ("B", irs::to_string<std::string_view>(
-                     actual_value->value.data()));  // 'name' value in doc2
+                       actual_value->value.data()));  // 'name' value in doc2
     ASSERT_FALSE(docsItr->next());
   }
 }
@@ -3193,8 +3191,8 @@ TEST(index_death_test_formats_14, fails_in_exists) {
                                 &tests::payloaded_json_field_factory);
 
   constexpr irs::IndexFeatures all_features =
-    irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
-    irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
+      irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
+      irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
 
   const auto* doc1 = gen.next();
   const auto* doc2 = gen.next();
@@ -3246,7 +3244,7 @@ TEST(index_death_test_formats_14, fails_in_exists) {
     const irs::index_utils::ConsolidateCount consolidate_all;
 
     ASSERT_TRUE(
-      writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
+        writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
     ASSERT_TRUE(writer->Commit());
     tests::AssertSnapshotEquality(writer->GetSnapshot(),
                                   irs::DirectoryReader(dir));
@@ -3287,35 +3285,35 @@ TEST(index_death_test_formats_14, fails_in_exists) {
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
     ASSERT_EQ("A", irs::to_string<std::string_view>(
-                     actual_value->value.data()));  // 'name' value in doc1
+                       actual_value->value.data()));  // 'name' value in doc1
     ASSERT_TRUE(docsItr->next());
     ASSERT_TRUE(values->next());
     actual_value = irs::get<irs::payload>(*values);
     ASSERT_EQ("B", irs::to_string<std::string_view>(
-                     actual_value->value.data()));  // 'name' value in doc2
+                       actual_value->value.data()));  // 'name' value in doc2
     ASSERT_TRUE(docsItr->next());
     ASSERT_TRUE(values->next());
     actual_value = irs::get<irs::payload>(*values);
     ASSERT_EQ("C", irs::to_string<std::string_view>(
-                     actual_value->value.data()));  // 'name' value in doc3
+                       actual_value->value.data()));  // 'name' value in doc3
     ASSERT_TRUE(docsItr->next());
     ASSERT_TRUE(values->next());
     actual_value = irs::get<irs::payload>(*values);
     ASSERT_EQ("D", irs::to_string<std::string_view>(
-                     actual_value->value.data()));  // 'name' value in doc4
+                       actual_value->value.data()));  // 'name' value in doc4
     ASSERT_FALSE(docsItr->next());
   }
 }
 
 TEST(index_death_test_formats_14, fails_in_length) {
   tests::json_doc_generator gen(
-    test_base::resource("simple_sequential.json"),
-    [](tests::document& doc, const std::string& name,
-       const tests::json_doc_generator::json_value& data) {
-      if (data.is_string()) {
-        doc.insert(std::make_shared<tests::string_field>(name, data.str));
-      }
-    });
+      test_base::resource("simple_sequential.json"),
+      [](tests::document& doc, const std::string& name,
+         const tests::json_doc_generator::json_value& data) {
+        if (data.is_string()) {
+          doc.insert(std::make_shared<tests::string_field>(name, data.str));
+        }
+      });
   const auto* doc1 = gen.next();
   const auto* doc2 = gen.next();
   const auto* doc3 = gen.next();
@@ -3326,8 +3324,8 @@ TEST(index_death_test_formats_14, fails_in_length) {
 
   {
     constexpr irs::IndexFeatures all_features =
-      irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
-      irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
+        irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
+        irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
 
     irs::memory_directory impl;
     failing_directory dir(impl);
@@ -3435,7 +3433,7 @@ TEST(index_death_test_formats_14, fails_in_length) {
 
     const auto num_failures_before = dir.num_failures();
     ASSERT_TRUE(
-      writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
+        writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
     ASSERT_EQ(num_failures_before, dir.num_failures());
 
     irs::directory_cleaner::clean(dir);
@@ -3480,22 +3478,22 @@ TEST(index_death_test_formats_14, fails_in_length) {
       ASSERT_TRUE(docsItr->next());
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ("A", irs::to_string<std::string_view>(
-                       actual_value->value.data()));  // 'name' value in doc1
+                         actual_value->value.data()));  // 'name' value in doc1
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values->next());
       actual_value = irs::get<irs::payload>(*values);
       ASSERT_EQ("B", irs::to_string<std::string_view>(
-                       actual_value->value.data()));  // 'name' value in doc2
+                         actual_value->value.data()));  // 'name' value in doc2
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values->next());
       actual_value = irs::get<irs::payload>(*values);
       ASSERT_EQ("C", irs::to_string<std::string_view>(
-                       actual_value->value.data()));  // 'name' value in doc3
+                         actual_value->value.data()));  // 'name' value in doc3
       ASSERT_TRUE(docsItr->next());
       ASSERT_TRUE(values->next());
       actual_value = irs::get<irs::payload>(*values);
       ASSERT_EQ("D", irs::to_string<std::string_view>(
-                       actual_value->value.data()));  // 'name' value in doc4
+                         actual_value->value.data()));  // 'name' value in doc4
       ASSERT_FALSE(docsItr->next());
     }
   }
@@ -3557,8 +3555,8 @@ TEST(index_death_test_formats_14, open_reader) {
 
 TEST(index_death_test_formats_10, columnstore_reopen_fail) {
   constexpr irs::IndexFeatures all_features =
-    irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
-    irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
+      irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
+      irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
 
   tests::json_doc_generator gen(test_base::resource("simple_sequential.json"),
                                 &tests::payloaded_json_field_factory);
@@ -3652,8 +3650,8 @@ TEST(index_death_test_formats_10, columnstore_reopen_fail) {
 
 TEST(index_death_test_formats_14, columnstore_reopen_fail) {
   constexpr irs::IndexFeatures all_features =
-    irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
-    irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
+      irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
+      irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
 
   tests::json_doc_generator gen(test_base::resource("simple_sequential.json"),
                                 &tests::payloaded_json_field_factory);
@@ -3739,11 +3737,11 @@ TEST(index_death_test_formats_14, columnstore_reopen_fail) {
   ASSERT_EQ(docsItr->value(),
             values->seek(docsItr->value()));  // successful attempt
   ASSERT_EQ("A", irs::to_string<std::string_view>(
-                   actual_value->value.data()));  // 'name' value in doc3
+                     actual_value->value.data()));  // 'name' value in doc3
   ASSERT_TRUE(docsItr->next());
   ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
   ASSERT_EQ("B", irs::to_string<std::string_view>(
-                   actual_value->value.data()));  // 'name' value in doc3
+                     actual_value->value.data()));  // 'name' value in doc3
   ASSERT_FALSE(docsItr->next());
 
   // validate live docs
@@ -3756,8 +3754,8 @@ TEST(index_death_test_formats_14, columnstore_reopen_fail) {
 
 TEST(index_death_test_formats_14, fails_in_dup) {
   constexpr irs::IndexFeatures all_features =
-    irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
-    irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
+      irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
+      irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
 
   tests::json_doc_generator gen(test_base::resource("simple_sequential.json"),
                                 &tests::payloaded_json_field_factory);
@@ -3867,11 +3865,11 @@ TEST(index_death_test_formats_14, fails_in_dup) {
 
 TEST(index_death_test_formats_10, postings_reopen_fail) {
   constexpr irs::IndexFeatures all_features =
-    irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
-    irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
+      irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
+      irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
 
   constexpr irs::IndexFeatures positions =
-    irs::IndexFeatures::FREQ | irs::IndexFeatures::POS;
+      irs::IndexFeatures::FREQ | irs::IndexFeatures::POS;
 
   constexpr irs::IndexFeatures positions_offsets = irs::IndexFeatures::FREQ |
                                                    irs::IndexFeatures::POS |
@@ -3943,7 +3941,7 @@ TEST(index_death_test_formats_10, postings_reopen_fail) {
   {
     dir.register_failure(failing_directory::Failure::REOPEN, "_1.tm");
     auto termItr =
-      terms->iterator(irs::SeekMode::NORMAL);  // successful attempt
+        terms->iterator(irs::SeekMode::NORMAL);  // successful attempt
     ASSERT_NE(nullptr, termItr);
     ASSERT_THROW(termItr->next(), irs::io_error);
   }
@@ -3952,7 +3950,7 @@ TEST(index_death_test_formats_10, postings_reopen_fail) {
   {
     dir.register_failure(failing_directory::Failure::REOPEN_NULL, "_1.tm");
     auto termItr =
-      terms->iterator(irs::SeekMode::NORMAL);  // successful attempt
+        terms->iterator(irs::SeekMode::NORMAL);  // successful attempt
     ASSERT_NE(nullptr, termItr);
     ASSERT_THROW(termItr->next(), irs::io_error);
   }

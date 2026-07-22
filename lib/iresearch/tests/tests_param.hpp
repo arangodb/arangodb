@@ -17,8 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -41,15 +39,15 @@ namespace tests {
 class rot13_encryption final : public irs::ctr_encryption {
  public:
   static std::shared_ptr<rot13_encryption> make(
-    size_t block_size, size_t header_length = DEFAULT_HEADER_LENGTH) {
+      size_t block_size, size_t header_length = DEFAULT_HEADER_LENGTH) {
     return std::make_shared<rot13_encryption>(block_size, header_length);
   }
 
   explicit rot13_encryption(
-    size_t block_size, size_t header_length = DEFAULT_HEADER_LENGTH) noexcept
-    : irs::ctr_encryption(cipher_),
-      cipher_(block_size),
-      header_length_(header_length) {}
+      size_t block_size, size_t header_length = DEFAULT_HEADER_LENGTH) noexcept
+      : irs::ctr_encryption(cipher_),
+        cipher_(block_size),
+        header_length_(header_length) {}
 
   size_t header_length() noexcept final { return header_length_; }
 
@@ -57,7 +55,7 @@ class rot13_encryption final : public irs::ctr_encryption {
   class rot13_cipher final : public irs::cipher {
    public:
     explicit rot13_cipher(size_t block_size) noexcept
-      : block_size_(block_size) {}
+        : block_size_(block_size) {}
 
     size_t block_size() const noexcept final { return block_size_; }
 
@@ -85,7 +83,7 @@ class rot13_encryption final : public irs::ctr_encryption {
 
 template<typename Impl, typename... Args>
 std::shared_ptr<irs::directory> MakePhysicalDirectory(
-  const test_base* test, irs::directory_attributes attrs, Args&&... args) {
+    const test_base* test, irs::directory_attributes attrs, Args&&... args) {
   if (test) {
     const auto dir_path = test->test_dir() / "index";
     std::filesystem::create_directories(dir_path);
@@ -104,24 +102,24 @@ std::shared_ptr<irs::directory> MakePhysicalDirectory(
 }
 
 std::shared_ptr<irs::directory> memory_directory(
-  const test_base*, irs::directory_attributes attrs);
+    const test_base*, irs::directory_attributes attrs);
 std::shared_ptr<irs::directory> fs_directory(const test_base*,
                                              irs::directory_attributes attrs);
 std::shared_ptr<irs::directory> mmap_directory(const test_base*,
                                                irs::directory_attributes attrs);
 #ifdef IRESEARCH_URING
 std::shared_ptr<irs::directory> async_directory(
-  const test_base*, irs::directory_attributes attrs);
+    const test_base*, irs::directory_attributes attrs);
 #endif
 
 using dir_generator_f = std::shared_ptr<irs::directory> (*)(
-  const test_base*, irs::directory_attributes);
+    const test_base*, irs::directory_attributes);
 
 std::string to_string(dir_generator_f generator);
 
 template<dir_generator_f DirectoryGenerator>
 std::pair<std::shared_ptr<irs::directory>, std::string> directory(
-  const test_base* ctx) {
+    const test_base* ctx) {
   auto dir = DirectoryGenerator(ctx, irs::directory_attributes{});
 
   return std::make_pair(dir, to_string(DirectoryGenerator));
@@ -129,17 +127,17 @@ std::pair<std::shared_ptr<irs::directory>, std::string> directory(
 
 template<dir_generator_f DirectoryGenerator, size_t BlockSize>
 std::pair<std::shared_ptr<irs::directory>, std::string> rot13_directory(
-  const test_base* ctx) {
+    const test_base* ctx) {
   auto dir = DirectoryGenerator(
-    ctx,
-    irs::directory_attributes{std::make_unique<rot13_encryption>(BlockSize)});
+      ctx,
+      irs::directory_attributes{std::make_unique<rot13_encryption>(BlockSize)});
 
   return std::make_pair(dir, to_string(DirectoryGenerator) + "_cipher_rot13_" +
-                               std::to_string(BlockSize));
+                                 std::to_string(BlockSize));
 }
 
-using dir_param_f =
-  std::pair<std::shared_ptr<irs::directory>, std::string> (*)(const test_base*);
+using dir_param_f = std::pair<std::shared_ptr<irs::directory>, std::string> (*)(
+    const test_base*);
 
 enum Types : uint64_t {
   kTypesDefault = 1 << 0,
@@ -195,7 +193,7 @@ constexpr auto getDirectories() {
 
 template<typename... Args>
 class directory_test_case_base
-  : public virtual test_param_base<std::tuple<tests::dir_param_f, Args...>> {
+    : public virtual test_param_base<std::tuple<tests::dir_param_f, Args...>> {
  public:
   using ParamType = std::tuple<tests::dir_param_f, Args...>;
 
@@ -208,7 +206,7 @@ class directory_test_case_base
     test_base::SetUp();
 
     auto& p =
-      test_param_base<std::tuple<tests::dir_param_f, Args...>>::GetParam();
+        test_param_base<std::tuple<tests::dir_param_f, Args...>>::GetParam();
 
     auto* factory = std::get<0>(p);
     ASSERT_NE(nullptr, factory);

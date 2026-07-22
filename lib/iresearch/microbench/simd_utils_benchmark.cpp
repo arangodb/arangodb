@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <benchmark/benchmark.h>
@@ -334,7 +333,7 @@ void BM_all_equal32_simd_unaligned(benchmark::State& state) {
 
   for (auto _ : state) {
     auto res =
-      irs::simd::all_equal<false>(std::begin(values), std::size(values));
+        irs::simd::all_equal<false>(std::begin(values), std::size(values));
     benchmark::DoNotOptimize(res);
   }
 }
@@ -361,7 +360,7 @@ void BM_all_equal32_small_simd_unaligned(benchmark::State& state) {
 
   for (auto _ : state) {
     auto res =
-      irs::simd::all_equal<false>(std::begin(values), std::size(values));
+        irs::simd::all_equal<false>(std::begin(values), std::size(values));
     benchmark::DoNotOptimize(res);
   }
 }
@@ -392,7 +391,7 @@ void BM_all_equal64_simd_unaligned(benchmark::State& state) {
 
   for (auto _ : state) {
     auto res =
-      irs::simd::all_equal<false>(std::begin(values), std::size(values));
+        irs::simd::all_equal<false>(std::begin(values), std::size(values));
     benchmark::DoNotOptimize(res);
   }
 }
@@ -419,7 +418,7 @@ void BM_all_equal64_small_simd_unaligned(benchmark::State& state) {
 
   for (auto _ : state) {
     auto res =
-      irs::simd::all_equal<false>(std::begin(values), std::size(values));
+        irs::simd::all_equal<false>(std::begin(values), std::size(values));
     benchmark::DoNotOptimize(res);
   }
 }

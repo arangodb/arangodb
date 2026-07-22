@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "store/mmap_directory.hpp"
@@ -51,8 +50,8 @@ inline int GetPosixMadvice(IOAdvice advice) {
   }
 
   IRS_LOG_ERROR(
-    absl::StrCat("madvice '", static_cast<uint32_t>(advice),
-                 "' is not valid (RANDOM|SEQUENTIAL), fallback to NORMAL"));
+      absl::StrCat("madvice '", static_cast<uint32_t>(advice),
+                   "' is not valid (RANDOM|SEQUENTIAL), fallback to NORMAL"));
 
   return IR_MADVICE_NORMAL;
 }
@@ -110,7 +109,7 @@ size_t BytesInCache(uint8_t* addr, size_t length) {
   static const size_t kPageSize = sysconf(_SC_PAGESIZE);
   IRS_ASSERT(reinterpret_cast<uintptr_t>(addr) % kPageSize == 0);
   std::vector<uint8_t> pages(
-    std::min(8 * kPageSize, (length + kPageSize - 1) / kPageSize), 0);
+      std::min(8 * kPageSize, (length + kPageSize - 1) / kPageSize), 0);
   size_t bytes = 0;
   auto count = [&](uint8_t* data, size_t bytes_size, size_t pages_size) {
     mincore(static_cast<void*>(data), bytes_size, pages.data());
@@ -143,7 +142,7 @@ size_t BytesInCache(uint8_t* addr, size_t length) {
 class MMapIndexInput final : public bytes_view_input {
  public:
   explicit MMapIndexInput(std::shared_ptr<mmap_handle>&& handle) noexcept
-    : handle_{std::move(handle)} {
+      : handle_{std::move(handle)} {
     if (IRS_LIKELY(handle_ && handle_->size())) {
       IRS_ASSERT(handle_->addr() != MAP_FAILED);
       const auto* begin = reinterpret_cast<byte_type*>(handle_->addr());
@@ -166,7 +165,7 @@ class MMapIndexInput final : public bytes_view_input {
   }
 
   MMapIndexInput(const MMapIndexInput& rhs) noexcept
-    : bytes_view_input{rhs}, handle_{rhs.handle_} {}
+      : bytes_view_input{rhs}, handle_{rhs.handle_} {}
 
   ptr dup() const final { return std::make_unique<MMapIndexInput>(*this); }
 
@@ -183,7 +182,7 @@ class MMapIndexInput final : public bytes_view_input {
 MMapDirectory::MMapDirectory(std::filesystem::path path,
                              directory_attributes attrs,
                              const ResourceManagementOptions& rm)
-  : FSDirectory{std::move(path), std::move(attrs), rm} {}
+    : FSDirectory{std::move(path), std::move(attrs), rm} {}
 
 index_input::ptr MMapDirectory::open(std::string_view name,
                                      IOAdvice advice) const noexcept {
@@ -191,8 +190,8 @@ index_input::ptr MMapDirectory::open(std::string_view name,
     return FSDirectory::open(name, advice);
   }
 
-  auto handle =
-    OpenHandle(directory(), name, advice, *resource_manager_.file_descriptors);
+  auto handle = OpenHandle(directory(), name, advice,
+                           *resource_manager_.file_descriptors);
 
   if (!handle) {
     return nullptr;
@@ -244,8 +243,8 @@ index_input::ptr CachingMMapDirectory::open(std::string_view name,
     return make_stream(std::move(handle));
   }
 
-  handle =
-    OpenHandle(directory(), name, advice, *resource_manager_.file_descriptors);
+  handle = OpenHandle(directory(), name, advice,
+                      *resource_manager_.file_descriptors);
   if (handle) {
     cache_.Put(name, [&]() noexcept { return handle; });
 

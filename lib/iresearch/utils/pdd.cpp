@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <functional>
@@ -43,7 +42,8 @@
 #include <absl/container/flat_hash_map.h>
 
 using handlers_t =
-  absl::flat_hash_map<std::string, std::function<int(int argc, char* argv[])>>;
+    absl::flat_hash_map<std::string,
+                        std::function<int(int argc, char* argv[])>>;
 
 int dump(int argc, char* argv[]);
 
@@ -64,7 +64,7 @@ int dump(irs::byte_type distance, bool with_transpositions, size_t line_length,
   auto& out = std::cout;
 
   const auto d =
-    irs::make_parametric_description(distance, with_transpositions);
+      irs::make_parametric_description(distance, with_transpositions);
 
   if (!d) {
     return 1;
@@ -137,7 +137,7 @@ int dump(const cmdline::parser& args) {
   }
 
   const irs::compression::options opts{
-    irs::compression::options::Hint::COMPRESSION};
+      irs::compression::options::Hint::COMPRESSION};
   auto compressor = irs::compression::get_compressor(compression, opts);
 
   return dump(static_cast<irs::byte_type>(distance), with_transpositions,

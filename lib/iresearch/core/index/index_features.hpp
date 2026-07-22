@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -77,11 +76,11 @@ struct FeatureWriter : memory::Managed {
 };
 
 using FeatureWriterFactory =
-  FeatureWriter::ptr (*)(std::span<const bytes_view>);
+    FeatureWriter::ptr (*)(std::span<const bytes_view>);
 
 using FeatureInfoProvider =
-  std::function<std::pair<ColumnInfo, FeatureWriterFactory>(
-    type_info::type_id)>;
+    std::function<std::pair<ColumnInfo, FeatureWriterFactory>(
+        type_info::type_id)>;
 
 using feature_map_t = std::map<type_info::type_id, field_id>;
 using feature_set_t = std::set<type_info::type_id>;

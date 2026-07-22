@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -29,12 +28,12 @@
 #include "noncopyable.hpp"
 #include "type_id.hpp"
 
-#define REGISTER_COMPRESSION__(compression_name, compressor_factory,         \
-                               decompressor_factory, line, source)           \
-  static irs::compression::compression_registrar                             \
-    compression_registrar##_##line(::irs::type<compression_name>::get(),     \
-                                   compressor_factory, decompressor_factory, \
-                                   source)
+#define REGISTER_COMPRESSION__(compression_name, compressor_factory,           \
+                               decompressor_factory, line, source)             \
+  static irs::compression::compression_registrar                               \
+      compression_registrar##_##line(::irs::type<compression_name>::get(),     \
+                                     compressor_factory, decompressor_factory, \
+                                     source)
 #define REGISTER_COMPRESSION_EXPANDER__(compression_name, compressor_factory, \
                                         decompressor_factory, file, line)     \
   REGISTER_COMPRESSION__(compression_name, compressor_factory,                \
@@ -110,7 +109,7 @@ struct decompressor : memory::Managed {
 };
 
 typedef irs::compression::compressor::ptr (*compressor_factory_f)(
-  const options&);
+    const options&);
 typedef irs::compression::decompressor::ptr (*decompressor_factory_f)();
 
 class compression_registrar {

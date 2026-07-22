@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "search/terms_filter.hpp"
@@ -30,15 +29,15 @@
 namespace {
 
 irs::by_terms make_filter(
-  const std::string_view& field,
-  const std::vector<std::pair<std::string_view, irs::score_t>>& terms,
-  size_t min_match = 1) {
+    const std::string_view& field,
+    const std::vector<std::pair<std::string_view, irs::score_t>>& terms,
+    size_t min_match = 1) {
   irs::by_terms q;
   *q.mutable_field() = field;
   q.mutable_options()->min_match = min_match;
   for (auto& term : terms) {
     q.mutable_options()->terms.emplace(
-      irs::ViewCast<irs::byte_type>(term.first), term.second);
+        irs::ViewCast<irs::byte_type>(term.first), term.second);
   }
   return q;
 }
@@ -60,17 +59,17 @@ TEST(by_terms_test, ctor) {
 
 TEST(by_terms_test, equal) {
   const irs::by_terms q0 =
-    make_filter("field", {{"bar", 0.5f}, {"baz", 0.25f}});
+      make_filter("field", {{"bar", 0.5f}, {"baz", 0.25f}});
   const irs::by_terms q1 =
-    make_filter("field", {{"bar", 0.5f}, {"baz", 0.25f}});
+      make_filter("field", {{"bar", 0.5f}, {"baz", 0.25f}});
   ASSERT_EQ(q0, q1);
 
   const irs::by_terms q2 =
-    make_filter("field1", {{"bar", 0.5f}, {"baz", 0.25f}});
+      make_filter("field1", {{"bar", 0.5f}, {"baz", 0.25f}});
   ASSERT_NE(q0, q2);
 
   const irs::by_terms q3 =
-    make_filter("field", {{"bar1", 0.5f}, {"baz", 0.25f}});
+      make_filter("field", {{"bar1", 0.5f}, {"baz", 0.25f}});
   ASSERT_NE(q0, q3);
 
   const irs::by_terms q4 = make_filter("field", {{"bar", 0.5f}, {"baz", 0.5f}});
@@ -91,8 +90,8 @@ TEST_P(terms_filter_test_case, boost) {
     irs::by_terms q = make_filter("field", {{"bar", 0.5f}, {"baz", 0.25f}});
 
     auto prepared = q.prepare({
-      .index = irs::SubReader::empty(),
-      .memory = counter,
+        .index = irs::SubReader::empty(),
+        .memory = counter,
     });
     ASSERT_EQ(irs::kNoBoost, prepared->boost());
   }
@@ -108,8 +107,8 @@ TEST_P(terms_filter_test_case, boost) {
     q.boost(boost);
 
     auto prepared = q.prepare({
-      .index = irs::SubReader::empty(),
-      .memory = counter,
+        .index = irs::SubReader::empty(),
+        .memory = counter,
     });
     ASSERT_EQ(irs::kNoBoost,
               prepared->boost());  // no boost because index is empty
@@ -130,12 +129,12 @@ TEST_P(terms_filter_test_case, boost) {
     irs::score_t boost = 1.5f;
 
     irs::by_terms q =
-      make_filter("duplicated", {{"abcd", 0.5f}, {"vczc", 0.25f}});
+        make_filter("duplicated", {{"abcd", 0.5f}, {"vczc", 0.25f}});
     q.boost(boost);
 
     auto prepared = q.prepare({
-      .index = *rdr,
-      .memory = counter,
+        .index = *rdr,
+        .memory = counter,
     });
     ASSERT_EQ(boost, prepared->boost());
   }
@@ -168,29 +167,29 @@ TEST_P(terms_filter_test_case, simple_sequential_order) {
     auto* scorer = static_cast<tests::sort::custom_sort*>(impl.get());
 
     scorer->collector_collect_field = [&collect_field_count](
-                                        const irs::SubReader&,
-                                        const irs::term_reader&) -> void {
+                                          const irs::SubReader&,
+                                          const irs::term_reader&) -> void {
       ++collect_field_count;
     };
     scorer->collector_collect_term =
-      [&collect_term_count](const irs::SubReader&, const irs::term_reader&,
-                            const irs::attribute_provider&) -> void {
+        [&collect_term_count](const irs::SubReader&, const irs::term_reader&,
+                              const irs::attribute_provider&) -> void {
       ++collect_term_count;
     };
     scorer->collectors_collect_ =
-      [&finish_count](irs::byte_type*, const irs::FieldCollector*,
-                      const irs::TermCollector*) -> void { ++finish_count; };
+        [&finish_count](irs::byte_type*, const irs::FieldCollector*,
+                        const irs::TermCollector*) -> void { ++finish_count; };
     scorer->prepare_field_collector_ = [&scorer]() -> irs::FieldCollector::ptr {
       return std::make_unique<tests::sort::custom_sort::field_collector>(
-        *scorer);
+          *scorer);
     };
     scorer->prepare_term_collector_ = [&scorer]() -> irs::TermCollector::ptr {
       return std::make_unique<tests::sort::custom_sort::term_collector>(
-        *scorer);
+          *scorer);
     };
 
     const auto filter = make_filter(
-      "prefix", {{"abcd", 1.f}, {"abcd", 1.f}, {"abc", 1.f}, {"abcy", 1.f}});
+        "prefix", {{"abcd", 1.f}, {"abcd", 1.f}, {"abc", 1.f}, {"abcy", 1.f}});
 
     CheckQuery(filter, std::span{&impl, 1}, docs, rdr);
     ASSERT_EQ(1, collect_field_count);  // 1 fields in 1 segment
@@ -203,7 +202,7 @@ TEST_P(terms_filter_test_case, simple_sequential_order) {
     const Docs docs{21, 31, 32, 1};
     const Costs costs{docs.size()};
     const auto filter = make_filter(
-      "prefix", {{"abcd", 0.5f}, {"abcd", 1.f}, {"abc", 1.f}, {"abcy", 1.f}});
+        "prefix", {{"abcd", 0.5f}, {"abcd", 1.f}, {"abc", 1.f}, {"abcy", 1.f}});
 
     irs::Scorer::ptr impl{std::make_unique<irs::BoostScore>()};
     CheckQuery(filter, std::span{&impl, 1}, docs, rdr, true, true);
@@ -215,8 +214,8 @@ TEST_P(terms_filter_test_case, simple_sequential_order) {
     const Costs costs{docs.size()};
 
     const auto filter = make_filter(
-      "prefix",
-      {{"abcd", -1.f}, {"abcd", 0.5f}, {"abc", 0.65}, {"abcy", 0.5f}});
+        "prefix",
+        {{"abcd", -1.f}, {"abcd", 0.5f}, {"abc", 0.65}, {"abcy", 0.5f}});
 
     irs::Scorer::ptr impl{std::make_unique<irs::BoostScore>()};
     CheckQuery(filter, std::span{&impl, 1}, docs, rdr, true, true);
@@ -267,8 +266,8 @@ TEST_P(terms_filter_test_case, simple_sequential) {
     ASSERT_EQ(1, visitor.prepare_calls_counter());
     ASSERT_EQ(1, visitor.visit_calls_counter());
     ASSERT_EQ(
-      (std::vector<std::pair<std::string_view, irs::score_t>>{{"xyz", 1.f}}),
-      visitor.term_refs<char>());
+        (std::vector<std::pair<std::string_view, irs::score_t>>{{"xyz", 1.f}}),
+        visitor.term_refs<char>());
   }
 
   // match all
@@ -296,7 +295,7 @@ TEST_P(terms_filter_test_case, simple_sequential) {
     std::iota(std::begin(result), std::end(result), irs::doc_limits::min());
     Costs costs{result.size()};
     const auto filter =
-      make_filter("same", {{"xyz", 1.f}, {"invalid_term", 0.5f}});
+        make_filter("same", {{"xyz", 1.f}, {"invalid_term", 0.5f}});
     CheckQuery(filter, result, costs, rdr);
 
     // test visit
@@ -307,8 +306,8 @@ TEST_P(terms_filter_test_case, simple_sequential) {
     ASSERT_EQ(1, visitor.prepare_calls_counter());
     ASSERT_EQ(1, visitor.visit_calls_counter());
     ASSERT_EQ(
-      (std::vector<std::pair<std::string_view, irs::score_t>>{{"xyz", 1.f}}),
-      visitor.term_refs<char>());
+        (std::vector<std::pair<std::string_view, irs::score_t>>{{"xyz", 1.f}}),
+        visitor.term_refs<char>());
   }
 
   // match something
@@ -316,7 +315,7 @@ TEST_P(terms_filter_test_case, simple_sequential) {
     const Docs result{1, 21, 31, 32};
     const Costs costs{result.size()};
     const auto filter =
-      make_filter("prefix", {{"abcd", 1.f}, {"abc", 0.5f}, {"abcy", 0.5f}});
+        make_filter("prefix", {{"abcd", 1.f}, {"abc", 0.5f}, {"abcy", 0.5f}});
     CheckQuery(filter, result, costs, rdr);
 
     // test visit
@@ -327,7 +326,7 @@ TEST_P(terms_filter_test_case, simple_sequential) {
     ASSERT_EQ(1, visitor.prepare_calls_counter());
     ASSERT_EQ(3, visitor.visit_calls_counter());
     ASSERT_EQ((std::vector<std::pair<std::string_view, irs::score_t>>{
-                {"abc", 0.5f}, {"abcd", 1.f}, {"abcy", 0.5f}}),
+                  {"abc", 0.5f}, {"abcd", 1.f}, {"abcy", 0.5f}}),
               visitor.term_refs<char>());
   }
 
@@ -336,7 +335,8 @@ TEST_P(terms_filter_test_case, simple_sequential) {
     const Docs result{1, 21, 31, 32};
     const Costs costs{result.size()};
     const auto filter = make_filter(
-      "prefix", {{"abcd", 1.f}, {"abcd", 0.f}, {"abc", 0.5f}, {"abcy", 0.5f}});
+        "prefix",
+        {{"abcd", 1.f}, {"abcd", 0.f}, {"abc", 0.5f}, {"abcy", 0.5f}});
     CheckQuery(filter, result, costs, rdr);
 
     // test visit
@@ -347,7 +347,7 @@ TEST_P(terms_filter_test_case, simple_sequential) {
     ASSERT_EQ(1, visitor.prepare_calls_counter());
     ASSERT_EQ(3, visitor.visit_calls_counter());
     ASSERT_EQ((std::vector<std::pair<std::string_view, irs::score_t>>{
-                {"abc", 0.5f}, {"abcd", 1.f}, {"abcy", 0.5f}}),
+                  {"abc", 0.5f}, {"abcd", 1.f}, {"abcy", 0.5f}}),
               visitor.term_refs<char>());
   }
 
@@ -356,8 +356,8 @@ TEST_P(terms_filter_test_case, simple_sequential) {
     const Docs result{1, 21, 31, 32};
     const Costs costs{result.size()};
     const auto filter = make_filter(
-      "prefix",
-      {{"abcd", 1.f}, {"invalid_term", 0.f}, {"abc", 0.5f}, {"abcy", 0.5f}});
+        "prefix",
+        {{"abcd", 1.f}, {"invalid_term", 0.f}, {"abc", 0.5f}, {"abcy", 0.5f}});
     CheckQuery(filter, result, costs, rdr);
 
     // test visit
@@ -368,7 +368,7 @@ TEST_P(terms_filter_test_case, simple_sequential) {
     ASSERT_EQ(1, visitor.prepare_calls_counter());
     ASSERT_EQ(3, visitor.visit_calls_counter());
     ASSERT_EQ((std::vector<std::pair<std::string_view, irs::score_t>>{
-                {"abc", 0.5f}, {"abcd", 1.f}, {"abcy", 0.5f}}),
+                  {"abc", 0.5f}, {"abcd", 1.f}, {"abcy", 0.5f}}),
               visitor.term_refs<char>());
   }
 }
@@ -406,13 +406,13 @@ TEST_P(terms_filter_test_case, min_match) {
     tests::empty_filter_visitor visitor;
     const auto* reader = segment.field("Fields");
     ASSERT_NE(nullptr, reader);
-    const auto filter =
-      make_filter("Fields", {{"BusinessEntityID", 1.f}, {"StartDate", 1.f}}, 1);
+    const auto filter = make_filter(
+        "Fields", {{"BusinessEntityID", 1.f}, {"StartDate", 1.f}}, 1);
     irs::by_terms::visit(segment, *reader, filter.options().terms, visitor);
     ASSERT_EQ(1, visitor.prepare_calls_counter());
     ASSERT_EQ(2, visitor.visit_calls_counter());
     ASSERT_EQ((std::vector<std::pair<std::string_view, irs::score_t>>{
-                {"BusinessEntityID", 1.f}, {"StartDate", 1.f}}),
+                  {"BusinessEntityID", 1.f}, {"StartDate", 1.f}}),
               visitor.term_refs<char>());
   }
 
@@ -420,17 +420,8 @@ TEST_P(terms_filter_test_case, min_match) {
     const Docs result{4,  5,  6,  7,  19, 20, 21, 22, 25, 27, 28, 29,
                       30, 34, 38, 46, 52, 53, 57, 62, 65, 69, 70};
     const Costs costs{25, 0, 0, 0};
-    const auto filter =
-      make_filter("Fields", {{"BusinessEntityID", 1.f}, {"StartDate", 1.f}}, 1);
-    CheckQuery(filter, result, costs, rdr);
-  }
-
-  {
-    const Docs result{21, 57};
-    // FIXME(gnusi): fix estimation, it's not accurate
-    const Costs costs{7, 0, 0, 0};
-    const auto filter =
-      make_filter("Fields", {{"BusinessEntityID", 1.f}, {"StartDate", 1.f}}, 2);
+    const auto filter = make_filter(
+        "Fields", {{"BusinessEntityID", 1.f}, {"StartDate", 1.f}}, 1);
     CheckQuery(filter, result, costs, rdr);
   }
 
@@ -439,17 +430,26 @@ TEST_P(terms_filter_test_case, min_match) {
     // FIXME(gnusi): fix estimation, it's not accurate
     const Costs costs{7, 0, 0, 0};
     const auto filter = make_filter(
-      "Fields",
-      {{"BusinessEntityID", 1.f}, {"StartDate", 1.f}, {"InvalidValue", 1.f}},
-      2);
+        "Fields", {{"BusinessEntityID", 1.f}, {"StartDate", 1.f}}, 2);
+    CheckQuery(filter, result, costs, rdr);
+  }
+
+  {
+    const Docs result{21, 57};
+    // FIXME(gnusi): fix estimation, it's not accurate
+    const Costs costs{7, 0, 0, 0};
+    const auto filter = make_filter(
+        "Fields",
+        {{"BusinessEntityID", 1.f}, {"StartDate", 1.f}, {"InvalidValue", 1.f}},
+        2);
     CheckQuery(filter, result, costs, rdr);
   }
 
   {
     const Docs result{};
     const Costs costs{0, 0, 0, 0};
-    const auto filter =
-      make_filter("Fields", {{"BusinessEntityID", 1.f}, {"StartDate", 1.f}}, 3);
+    const auto filter = make_filter(
+        "Fields", {{"BusinessEntityID", 1.f}, {"StartDate", 1.f}}, 3);
     CheckQuery(filter, result, costs, rdr);
   }
 
@@ -490,33 +490,33 @@ TEST_P(terms_filter_test_case, min_match) {
     auto* scorer = static_cast<tests::sort::custom_sort*>(impl.get());
 
     scorer->collector_collect_field = [&collect_field_count](
-                                        const irs::SubReader&,
-                                        const irs::term_reader&) -> void {
+                                          const irs::SubReader&,
+                                          const irs::term_reader&) -> void {
       ++collect_field_count;
     };
     scorer->collector_collect_term =
-      [&collect_term_count](const irs::SubReader&, const irs::term_reader&,
-                            const irs::attribute_provider&) -> void {
+        [&collect_term_count](const irs::SubReader&, const irs::term_reader&,
+                              const irs::attribute_provider&) -> void {
       ++collect_term_count;
     };
     scorer->collectors_collect_ =
-      [&finish_count](irs::byte_type*, const irs::FieldCollector*,
-                      const irs::TermCollector*) -> void { ++finish_count; };
+        [&finish_count](irs::byte_type*, const irs::FieldCollector*,
+                        const irs::TermCollector*) -> void { ++finish_count; };
     scorer->prepare_field_collector_ = [&scorer]() -> irs::FieldCollector::ptr {
       return std::make_unique<tests::sort::custom_sort::field_collector>(
-        *scorer);
+          *scorer);
     };
     scorer->prepare_term_collector_ = [&scorer]() -> irs::TermCollector::ptr {
       return std::make_unique<tests::sort::custom_sort::term_collector>(
-        *scorer);
+          *scorer);
     };
     scorer->prepare_scorer_ =
-      [](const irs::ColumnProvider&, const irs::feature_map_t&,
-         const irs::byte_type*, const irs::attribute_provider& attrs,
-         irs::score_t boost) -> irs::ScoreFunction {
+        [](const irs::ColumnProvider&, const irs::feature_map_t&,
+           const irs::byte_type*, const irs::attribute_provider& attrs,
+           irs::score_t boost) -> irs::ScoreFunction {
       struct ScoreCtx final : public irs::score_ctx {
         ScoreCtx(const irs::document* doc, irs::score_t boost) noexcept
-          : doc{doc}, boost{boost} {}
+            : doc{doc}, boost{boost} {}
         const irs::document* doc;
         irs::score_t boost;
       };
@@ -525,15 +525,15 @@ TEST_P(terms_filter_test_case, min_match) {
       EXPECT_NE(nullptr, doc);
 
       return irs::ScoreFunction::Make<ScoreCtx>(
-        [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
-          auto* state = static_cast<ScoreCtx*>(ctx);
-          *res = static_cast<irs::score_t>(state->doc->value) * state->boost;
-        },
-        irs::ScoreFunction::DefaultMin, doc, boost);
+          [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
+            auto* state = static_cast<ScoreCtx*>(ctx);
+            *res = static_cast<irs::score_t>(state->doc->value) * state->boost;
+          },
+          irs::ScoreFunction::DefaultMin, doc, boost);
     };
 
-    const auto filter =
-      make_filter("Fields", {{"BusinessEntityID", 1.f}, {"StartDate", 1.f}}, 0);
+    const auto filter = make_filter(
+        "Fields", {{"BusinessEntityID", 1.f}, {"StartDate", 1.f}}, 0);
 
     CheckQuery(filter, std::span{&impl, 1}, result, rdr[0]);
     ASSERT_EQ(1, collect_field_count);  // 1 fields in 1 segment
@@ -545,10 +545,10 @@ TEST_P(terms_filter_test_case, min_match) {
 static constexpr auto kTestDirs = tests::getDirectories<tests::kTypesDefault>();
 
 INSTANTIATE_TEST_SUITE_P(
-  terms_filter_test, terms_filter_test_case,
-  ::testing::Combine(::testing::ValuesIn(kTestDirs),
-                     ::testing::Values(tests::format_info{"1_0"},
-                                       tests::format_info{"1_1", "1_0"},
-                                       tests::format_info{"1_2", "1_0"},
-                                       tests::format_info{"1_3", "1_0"})),
-  terms_filter_test_case::to_string);
+    terms_filter_test, terms_filter_test_case,
+    ::testing::Combine(::testing::ValuesIn(kTestDirs),
+                       ::testing::Values(tests::format_info{"1_0"},
+                                         tests::format_info{"1_1", "1_0"},
+                                         tests::format_info{"1_2", "1_0"},
+                                         tests::format_info{"1_3", "1_0"})),
+    terms_filter_test_case::to_string);

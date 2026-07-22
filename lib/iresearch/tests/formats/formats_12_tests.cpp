@@ -17,8 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <unordered_set>
@@ -89,7 +87,7 @@ TEST_P(format_12_test_case, open_10_with_12) {
          docsItr->next();) {
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ(1, expectedName.erase(irs::to_string<std::string_view>(
-                     actual_value->value.data())));
+                       actual_value->value.data())));
     }
 
     ASSERT_TRUE(expectedName.empty());
@@ -163,7 +161,7 @@ TEST_P(format_12_test_case, formats_10_12) {
          docsItr->next();) {
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ(1, expectedName.erase(irs::to_string<std::string_view>(
-                     actual_value->value.data())));
+                       actual_value->value.data())));
     }
 
     ASSERT_TRUE(expectedName.empty());
@@ -194,7 +192,7 @@ TEST_P(format_12_test_case, formats_10_12) {
          docsItr->next();) {
       ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
       ASSERT_EQ(1, expectedName.erase(irs::to_string<std::string_view>(
-                     actual_value->value.data())));
+                       actual_value->value.data())));
     }
 
     ASSERT_TRUE(expectedName.empty());
@@ -210,7 +208,7 @@ TEST_P(format_12_test_case, write_zero_block_encryption) {
   // replace encryption
   ASSERT_NE(nullptr, dir().attributes().encryption());
   dir().attributes() =
-    irs::directory_attributes{std::make_unique<tests::rot13_encryption>(0)};
+      irs::directory_attributes{std::make_unique<tests::rot13_encryption>(0)};
 
   auto writer = irs::IndexWriter::Make(dir(), codec(), irs::OM_CREATE);
   ASSERT_NE(nullptr, writer);
@@ -221,10 +219,10 @@ TEST_P(format_12_test_case, write_zero_block_encryption) {
 }
 
 static constexpr auto kTestDirs =
-  tests::getDirectories<tests::kTypesRot13_16 | tests::kTypesRot13_7>();
+    tests::getDirectories<tests::kTypesRot13_16 | tests::kTypesRot13_7>();
 static const auto kTestValues =
-  ::testing::Combine(::testing::ValuesIn(kTestDirs),
-                     ::testing::Values(tests::format_info{"1_2", "1_0"}));
+    ::testing::Combine(::testing::ValuesIn(kTestDirs),
+                       ::testing::Values(tests::format_info{"1_2", "1_0"}));
 
 // 1.2 specific tests
 INSTANTIATE_TEST_SUITE_P(format_12_test, format_12_test_case, kTestValues,

@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -42,10 +41,10 @@ struct by_terms_options {
     search_term() = default;
 
     explicit search_term(bstring&& term, score_t boost = kNoBoost) noexcept
-      : term(std::move(term)), boost(boost) {}
+        : term(std::move(term)), boost(boost) {}
 
     explicit search_term(bytes_view term, score_t boost = kNoBoost)
-      : term(term.data(), term.size()), boost(boost) {}
+        : term(term.data(), term.size()), boost(boost) {}
 
     bool operator==(const search_term& rhs) const noexcept {
       return term == rhs.term && boost == rhs.boost;

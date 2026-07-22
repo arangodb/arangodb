@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -55,7 +54,7 @@ class ImmutableFstImpl : public internal::FstImpl<A> {
   static constexpr const char kTypePrefix[] = "immutable";
   static constexpr size_t kMaxArcs = 1 + std::numeric_limits<uint8_t>::max();
   static constexpr size_t kMaxStateWeight =
-    std::numeric_limits<size_t>::max() >> 1;
+      std::numeric_limits<size_t>::max() >> 1;
 
   ImmutableFstImpl() : narcs_(0), nstates_(0), start_(kNoStateId) {
     SetType(std::string(kTypePrefix) + "<" + Arc::Type() + ">");
@@ -134,7 +133,7 @@ class ImmutableFstImpl : public internal::FstImpl<A> {
 
 template<typename Arc>
 std::shared_ptr<ImmutableFstImpl<Arc>> ImmutableFstImpl<Arc>::Read(
-  irs::data_input& stream, irs::IResourceManager& rm) {
+    irs::data_input& stream, irs::IResourceManager& rm) {
   auto impl = std::make_shared<ImmutableFstImpl<Arc>>();
 
   // read header
@@ -219,7 +218,7 @@ class ImmutableFst : public ImplToExpandedFst<ImmutableFstImpl<A>> {
 
   explicit ImmutableFst(const ImmutableFst<A>& fst,
                         [[maybe_unused]] bool safe = false)
-    : ImplToExpandedFst<Impl>(fst) {}
+      : ImplToExpandedFst<Impl>(fst) {}
 
   // Gets a copy of this ConstFst. See Fst<>::Copy() for further doc.
   ImmutableFst<A>* Copy(bool safe = false) const final {
@@ -256,7 +255,7 @@ class ImmutableFst : public ImplToExpandedFst<ImmutableFstImpl<A>> {
 
  private:
   explicit ImmutableFst(std::shared_ptr<Impl> impl)
-    : ImplToExpandedFst<Impl>(impl) {}
+      : ImplToExpandedFst<Impl>(impl) {}
 
   using ImplToExpandedFst<ImmutableFstImpl<A>>::Write;
 
@@ -274,7 +273,7 @@ bool ImmutableFst<A>::Write(const FST& fst, irs::data_output& stream,
   IRS_ASSERT(impl);
 
   const auto properties =
-    fst.Properties(kCopyProperties, true) | Impl::kStaticProperties;
+      fst.Properties(kCopyProperties, true) | Impl::kStaticProperties;
 
   // write header
   stream.write_byte(static_cast<irs::byte_type>(Impl::Version::MIN));
@@ -345,7 +344,7 @@ class StateIterator<fstext::ImmutableFst<Arc>> {
   using StateId = typename Arc::StateId;
 
   explicit StateIterator(const fstext::ImmutableFst<Arc>& fst)
-    : nstates_(fst.GetImpl()->NumStates()), s_(0) {}
+      : nstates_(fst.GetImpl()->NumStates()), s_(0) {}
 
   bool Done() const noexcept { return s_ >= nstates_; }
 
@@ -368,9 +367,9 @@ class ArcIterator<fstext::ImmutableFst<Arc>> {
   using StateId = typename Arc::StateId;
 
   ArcIterator(const fstext::ImmutableFst<Arc>& fst, StateId s)
-    : arcs_(fst.GetImpl()->Arcs(s)),
-      begin_(arcs_),
-      end_(arcs_ + fst.GetImpl()->NumArcs(s)) {}
+      : arcs_(fst.GetImpl()->Arcs(s)),
+        begin_(arcs_),
+        end_(arcs_ + fst.GetImpl()->NumArcs(s)) {}
 
   bool Done() const noexcept { return begin_ >= end_; }
 

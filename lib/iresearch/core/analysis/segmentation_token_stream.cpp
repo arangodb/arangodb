@@ -17,8 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "segmentation_token_stream.hpp"
@@ -45,31 +43,32 @@ constexpr std::string_view kCaseConvertParamName{"case"};
 constexpr std::string_view kBreakParamName{"break"};
 
 constexpr frozen::unordered_map<
-  std::string_view,
-  analysis::segmentation_token_stream::options_t::case_convert_t, 3>
-  kCaseConvertMap = {
-    {"lower",
-     analysis::segmentation_token_stream::options_t::case_convert_t::LOWER},
-    {"none",
-     analysis::segmentation_token_stream::options_t::case_convert_t::NONE},
-    {"upper",
-     analysis::segmentation_token_stream::options_t::case_convert_t::UPPER},
+    std::string_view,
+    analysis::segmentation_token_stream::options_t::case_convert_t, 3>
+    kCaseConvertMap = {
+        {"lower",
+         analysis::segmentation_token_stream::options_t::case_convert_t::LOWER},
+        {"none",
+         analysis::segmentation_token_stream::options_t::case_convert_t::NONE},
+        {"upper",
+         analysis::segmentation_token_stream::options_t::case_convert_t::UPPER},
 };
 
 constexpr frozen::unordered_map<
-  std::string_view,
-  analysis::segmentation_token_stream::options_t::word_break_t, 3>
-  kBreakConvertMap = {
-    {"all", analysis::segmentation_token_stream::options_t::word_break_t::ALL},
-    {"alpha",
-     analysis::segmentation_token_stream::options_t::word_break_t::ALPHA},
-    {"graphic",
-     analysis::segmentation_token_stream::options_t::word_break_t::GRAPHIC},
+    std::string_view,
+    analysis::segmentation_token_stream::options_t::word_break_t, 3>
+    kBreakConvertMap = {
+        {"all",
+         analysis::segmentation_token_stream::options_t::word_break_t::ALL},
+        {"alpha",
+         analysis::segmentation_token_stream::options_t::word_break_t::ALPHA},
+        {"graphic",
+         analysis::segmentation_token_stream::options_t::word_break_t::GRAPHIC},
 };
 
 bool parse_vpack_options(
-  const VPackSlice slice,
-  analysis::segmentation_token_stream::options_t& options) {
+    const VPackSlice slice,
+    analysis::segmentation_token_stream::options_t& options) {
   if (!slice.isObject()) {
     IRS_LOG_ERROR("Slice for segmentation_token_stream is not an object");
     return false;
@@ -78,19 +77,19 @@ bool parse_vpack_options(
       !case_convert_slice.isNone()) {
     if (!case_convert_slice.isString()) {
       IRS_LOG_WARN(
-        absl::StrCat("Invalid type '", kCaseConvertParamName,
-                     "' (string expected) for segmentation_token_stream from "
-                     "VPack arguments"));
+          absl::StrCat("Invalid type '", kCaseConvertParamName,
+                       "' (string expected) for segmentation_token_stream from "
+                       "VPack arguments"));
       return false;
     }
     auto case_convert = case_convert_slice.stringView();
     auto itr = kCaseConvertMap.find(
-      std::string_view(case_convert.data(), case_convert.size()));
+        std::string_view(case_convert.data(), case_convert.size()));
 
     if (itr == kCaseConvertMap.end()) {
       IRS_LOG_WARN(
-        absl::StrCat("Invalid value in '", kCaseConvertParamName,
-                     "' for segmentation_token_stream from VPack arguments"));
+          absl::StrCat("Invalid value in '", kCaseConvertParamName,
+                       "' for segmentation_token_stream from VPack arguments"));
       return false;
     }
     options.case_convert = itr->second;
@@ -99,19 +98,19 @@ bool parse_vpack_options(
       !break_type_slice.isNone()) {
     if (!break_type_slice.isString()) {
       IRS_LOG_WARN(
-        absl::StrCat("Invalid type '", kBreakParamName,
-                     "' (string expected) for segmentation_token_stream from "
-                     "VPack arguments"));
+          absl::StrCat("Invalid type '", kBreakParamName,
+                       "' (string expected) for segmentation_token_stream from "
+                       "VPack arguments"));
       return false;
     }
     auto break_type = break_type_slice.stringView();
     auto itr = kBreakConvertMap.find(
-      std::string_view(break_type.data(), break_type.size()));
+        std::string_view(break_type.data(), break_type.size()));
 
     if (itr == kBreakConvertMap.end()) {
       IRS_LOG_WARN(
-        absl::StrCat("Invalid value in '", kBreakParamName,
-                     "' for segmentation_token_stream from VPack arguments"));
+          absl::StrCat("Invalid value in '", kBreakParamName,
+                       "' for segmentation_token_stream from VPack arguments"));
       return false;
     }
     options.word_break = itr->second;
@@ -120,38 +119,39 @@ bool parse_vpack_options(
 }
 
 bool make_vpack_config(
-  const analysis::segmentation_token_stream::options_t& options,
-  VPackBuilder* builder) {
+    const analysis::segmentation_token_stream::options_t& options,
+    VPackBuilder* builder) {
   VPackObjectBuilder object(builder);
   {
     auto it = std::find_if(kCaseConvertMap.begin(), kCaseConvertMap.end(),
                            [v = options.case_convert](
-                             const decltype(kCaseConvertMap)::value_type& m) {
+                               const decltype(kCaseConvertMap)::value_type& m) {
                              return m.second == v;
                            });
     if (it != kCaseConvertMap.end()) {
       builder->add(kCaseConvertParamName, VPackValue(it->first));
     } else {
       IRS_LOG_WARN(absl::StrCat(
-        "Invalid value in '", kCaseConvertParamName,
-        "' for normalizing segmentation_token_stream from Value is: ",
-        options.case_convert));
+          "Invalid value in '", kCaseConvertParamName,
+          "' for normalizing segmentation_token_stream from Value is: ",
+          options.case_convert));
       return false;
     }
   }
   {
-    auto it = std::find_if(kBreakConvertMap.begin(), kBreakConvertMap.end(),
-                           [v = options.word_break](
-                             const decltype(kBreakConvertMap)::value_type& m) {
-                             return m.second == v;
-                           });
+    auto it =
+        std::find_if(kBreakConvertMap.begin(), kBreakConvertMap.end(),
+                     [v = options.word_break](
+                         const decltype(kBreakConvertMap)::value_type& m) {
+                       return m.second == v;
+                     });
     if (it != kBreakConvertMap.end()) {
       builder->add(kBreakParamName, VPackValue(it->first));
     } else {
       IRS_LOG_WARN(absl::StrCat(
-        "Invalid value in '", kBreakParamName,
-        "' for normalizing segmentation_token_stream from Value is: ",
-        options.word_break));
+          "Invalid value in '", kBreakParamName,
+          "' for normalizing segmentation_token_stream from Value is: ",
+          options.word_break));
       return false;
     }
   }
@@ -170,15 +170,15 @@ analysis::analyzer::ptr make_vpack(const VPackSlice slice) {
       return nullptr;
     }
     return std::make_unique<analysis::segmentation_token_stream>(
-      std::move(options));
+        std::move(options));
   } catch (const VPackException& ex) {
     IRS_LOG_ERROR(absl::StrCat(
-      "Caught error '", ex.what(),
-      "' while constructing segmentation_token_stream from VPack arguments"));
+        "Caught error '", ex.what(),
+        "' while constructing segmentation_token_stream from VPack arguments"));
   } catch (...) {
     IRS_LOG_ERROR(
-      "Caught error while constructing segmentation_token_stream from VPack "
-      "arguments");
+        "Caught error while constructing segmentation_token_stream from VPack "
+        "arguments");
   }
   return nullptr;
 }
@@ -199,12 +199,12 @@ bool normalize_vpack_config(const VPackSlice slice,
     }
   } catch (const VPackException& ex) {
     IRS_LOG_ERROR(absl::StrCat(
-      "Caught error '", ex.what(),
-      "' while normalizing segmentation_token_stream from VPack arguments"));
+        "Caught error '", ex.what(),
+        "' while normalizing segmentation_token_stream from VPack arguments"));
   } catch (...) {
     IRS_LOG_ERROR(
-      "Caught error while normalizing segmentation_token_stream from VPack "
-      "arguments");
+        "Caught error while normalizing segmentation_token_stream from VPack "
+        "arguments");
   }
   return false;
 }
@@ -223,18 +223,18 @@ analysis::analyzer::ptr make_json(std::string_view args) {
   try {
     if (IsNull(args)) {
       IRS_LOG_ERROR(
-        "Null arguments while constructing segmentation_token_stream");
+          "Null arguments while constructing segmentation_token_stream");
       return nullptr;
     }
     auto vpack = VPackParser::fromJson(args.data(), args.size());
     return make_vpack(vpack->slice());
   } catch (const VPackException& ex) {
-    IRS_LOG_ERROR(
-      absl::StrCat("Caught error '", ex.what(),
-                   "' while constructing segmentation_token_stream from JSON"));
+    IRS_LOG_ERROR(absl::StrCat(
+        "Caught error '", ex.what(),
+        "' while constructing segmentation_token_stream from JSON"));
   } catch (...) {
     IRS_LOG_ERROR(
-      "Caught error while constructing segmentation_token_stream from JSON");
+        "Caught error while constructing segmentation_token_stream from JSON");
   }
   return nullptr;
 }
@@ -243,7 +243,7 @@ bool normalize_json_config(std::string_view args, std::string& definition) {
   try {
     if (IsNull(args)) {
       IRS_LOG_ERROR(
-        "Null arguments while normalizing segmentation_token_stream");
+          "Null arguments while normalizing segmentation_token_stream");
       return false;
     }
     auto vpack = VPackParser::fromJson(args.data(), args.size());
@@ -253,18 +253,18 @@ bool normalize_json_config(std::string_view args, std::string& definition) {
       return !definition.empty();
     }
   } catch (const VPackException& ex) {
-    IRS_LOG_ERROR(
-      absl::StrCat("Caught error '", ex.what(),
-                   "' while normalizing segmentation_token_stream from JSON"));
+    IRS_LOG_ERROR(absl::StrCat(
+        "Caught error '", ex.what(),
+        "' while normalizing segmentation_token_stream from JSON"));
   } catch (...) {
     IRS_LOG_ERROR(
-      "Caught error while normalizing segmentation_token_stream from JSON");
+        "Caught error while normalizing segmentation_token_stream from JSON");
   }
   return false;
 }
 
 using word_break_t =
-  analysis::segmentation_token_stream::options_t::word_break_t;
+    analysis::segmentation_token_stream::options_t::word_break_t;
 
 template<typename Iterator>
 bool accept_token(Iterator begin, Iterator end, word_break_t wb) {
@@ -284,8 +284,8 @@ namespace irs::analysis {
 
 using namespace boost::text;
 
-using data_t =
-  decltype(as_graphemes(std::string_view{}.begin(), std::string_view{}.end()));
+using data_t = decltype(as_graphemes(std::string_view{}.begin(),
+                                     std::string_view{}.end()));
 using iterator_t = decltype(next_word_break(data_t{}, data_t{}.begin()));
 
 struct segmentation_token_stream::state_t {
@@ -295,7 +295,7 @@ struct segmentation_token_stream::state_t {
 };
 
 void segmentation_token_stream::state_deleter_t::operator()(
-  state_t* p) const noexcept {
+    state_t* p) const noexcept {
   delete p;
 }
 
@@ -312,8 +312,8 @@ void segmentation_token_stream::init() {
 }
 
 segmentation_token_stream::segmentation_token_stream(
-  segmentation_token_stream::options_t&& options)
-  : state_{new state_t()}, options_{options} {}
+    segmentation_token_stream::options_t&& options)
+    : state_{new state_t()}, options_{options} {}
 
 bool segmentation_token_stream::next() {
   while (true) {
@@ -324,7 +324,7 @@ bool segmentation_token_stream::next() {
     const auto end = gr_end.base();
 
     const auto length =
-      static_cast<size_t>(std::distance(begin.base(), end.base()));
+        static_cast<size_t>(std::distance(begin.base(), end.base()));
 
     if (length == 0) {  // eof
       return false;

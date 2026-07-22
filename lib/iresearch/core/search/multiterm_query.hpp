@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -37,11 +36,11 @@ class MultiTermQuery : public filter::prepared {
 
   explicit MultiTermQuery(States&& states, Stats&& stats, score_t boost,
                           ScoreMergeType merge_type, size_t min_match)
-    : states_{std::move(states)},
-      stats_{std::move(stats)},
-      boost_{boost},
-      merge_type_{merge_type},
-      min_match_{min_match} {}
+      : states_{std::move(states)},
+        stats_{std::move(stats)},
+        boost_{boost},
+        merge_type_{merge_type},
+        min_match_{min_match} {}
 
   doc_iterator::ptr execute(const ExecutionContext& ctx) const final;
 

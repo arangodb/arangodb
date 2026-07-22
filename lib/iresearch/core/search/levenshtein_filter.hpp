@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -91,7 +90,7 @@ struct by_edit_distance_options : by_edit_distance_all_options {
 /// @brief user-side levenstein filter
 ////////////////////////////////////////////////////////////////////////////////
 class by_edit_distance final
-  : public FilterWithField<by_edit_distance_options> {
+    : public FilterWithField<by_edit_distance_options> {
  public:
   static prepared::ptr prepare(const PrepareContext& ctx,
                                std::string_view field, bytes_view term,

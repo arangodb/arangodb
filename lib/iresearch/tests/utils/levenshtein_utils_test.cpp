@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "utils/levenshtein_utils.hpp"
@@ -34,10 +33,10 @@ using namespace std::literals;
 namespace {
 
 void assert_description(
-  const irs::parametric_description& description, const irs::bytes_view& prefix,
-  const irs::bytes_view& term,
-  const std::vector<std::tuple<irs::bytes_view, size_t, size_t, size_t>>&
-    candidates) {
+    const irs::parametric_description& description,
+    const irs::bytes_view& prefix, const irs::bytes_view& term,
+    const std::vector<std::tuple<irs::bytes_view, size_t, size_t, size_t>>&
+        candidates) {
   auto a = irs::make_levenshtein_automaton(description, prefix, term);
 
   irs::bstring target(prefix.data(), prefix.size());
@@ -69,7 +68,7 @@ void assert_description(
     const irs::basic_string_view<uint32_t> utf8_target_ref(utf8_target.data(),
                                                            utf8_target.size());
     const irs::basic_string_view<uint32_t> utf8_candidate_ref(
-      utf8_candidate.data(), utf8_candidate.size());
+        utf8_candidate.data(), utf8_candidate.size());
 
     ASSERT_EQ(expected_distance_precise,
               irs::edit_distance(utf8_candidate_ref, utf8_target_ref));
@@ -105,9 +104,10 @@ void assert_description(
 }
 
 void assert_description(
-  const irs::parametric_description& description, const irs::bytes_view& target,
-  const std::vector<std::tuple<irs::bytes_view, size_t, size_t, size_t>>&
-    candidates) {
+    const irs::parametric_description& description,
+    const irs::bytes_view& target,
+    const std::vector<std::tuple<irs::bytes_view, size_t, size_t, size_t>>&
+        candidates) {
   return assert_description(description, irs::kEmptyStringView<irs::byte_type>,
                             target, candidates);
 }
@@ -133,9 +133,9 @@ TEST(levenshtein_utils_test, test_distance) {
     const std::string_view rhs = "abcd";
 
     ASSERT_EQ(
-      2, irs::edit_distance(lhs.data(), lhs.size(), rhs.data(), rhs.size()));
+        2, irs::edit_distance(lhs.data(), lhs.size(), rhs.data(), rhs.size()));
     ASSERT_EQ(
-      2, irs::edit_distance(rhs.data(), rhs.size(), lhs.data(), lhs.size()));
+        2, irs::edit_distance(rhs.data(), rhs.size(), lhs.data(), lhs.size()));
   }
 
   {
@@ -143,9 +143,9 @@ TEST(levenshtein_utils_test, test_distance) {
     const std::string_view rhs = "relevant";
 
     ASSERT_EQ(
-      3, irs::edit_distance(lhs.data(), lhs.size(), rhs.data(), rhs.size()));
+        3, irs::edit_distance(lhs.data(), lhs.size(), rhs.data(), rhs.size()));
     ASSERT_EQ(
-      3, irs::edit_distance(rhs.data(), rhs.size(), lhs.data(), lhs.size()));
+        3, irs::edit_distance(rhs.data(), rhs.size(), lhs.data(), lhs.size()));
   }
 
   {
@@ -169,9 +169,9 @@ TEST(levenshtein_utils_test, test_distance) {
     const std::string_view rhs = "aec";
 
     ASSERT_EQ(
-      3, irs::edit_distance(lhs.data(), lhs.size(), rhs.data(), rhs.size()));
+        3, irs::edit_distance(lhs.data(), lhs.size(), rhs.data(), rhs.size()));
     ASSERT_EQ(
-      3, irs::edit_distance(rhs.data(), rhs.size(), lhs.data(), lhs.size()));
+        3, irs::edit_distance(rhs.data(), rhs.size(), lhs.data(), lhs.size()));
   }
 
   {
@@ -179,9 +179,9 @@ TEST(levenshtein_utils_test, test_distance) {
     const std::string_view rhs = "";
 
     ASSERT_EQ(
-      0, irs::edit_distance(lhs.data(), lhs.size(), rhs.data(), rhs.size()));
+        0, irs::edit_distance(lhs.data(), lhs.size(), rhs.data(), rhs.size()));
     ASSERT_EQ(
-      0, irs::edit_distance(rhs.data(), rhs.size(), lhs.data(), lhs.size()));
+        0, irs::edit_distance(rhs.data(), rhs.size(), lhs.data(), lhs.size()));
   }
 
   {
@@ -189,15 +189,15 @@ TEST(levenshtein_utils_test, test_distance) {
     const std::string_view rhs;
 
     ASSERT_EQ(
-      0, irs::edit_distance(lhs.data(), lhs.size(), rhs.data(), rhs.size()));
+        0, irs::edit_distance(lhs.data(), lhs.size(), rhs.data(), rhs.size()));
     ASSERT_EQ(
-      0, irs::edit_distance(rhs.data(), rhs.size(), lhs.data(), lhs.size()));
+        0, irs::edit_distance(rhs.data(), rhs.size(), lhs.data(), lhs.size()));
   }
 }
 
 TEST(levenshtein_utils_test, test_static_const) {
   ASSERT_EQ(31, decltype(irs::parametric_description::MAX_DISTANCE)(
-                  irs::parametric_description::MAX_DISTANCE));
+                    irs::parametric_description::MAX_DISTANCE));
 }
 
 TEST(levenshtein_utils_test, test_description_0) {
@@ -236,26 +236,26 @@ TEST(levenshtein_utils_test, test_description_0) {
     assert_read_write(description);
 
     assert_description(
-      description, irs::ViewCast<irs::byte_type>("alphabet"sv),
-      {
-        {irs::ViewCast<irs::byte_type>("alphabet"sv), 0, 0, 0},
-        {irs::ViewCast<irs::byte_type>("alphabez"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("alphaet"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("alhpaebt"sv), 1, 1, 4},
-        {irs::ViewCast<irs::byte_type>("alphaebt"sv), 1, 1, 2},
-        {irs::ViewCast<irs::byte_type>("alphabezz"sv), 1, 1, 2},
-        {irs::ViewCast<irs::byte_type>("alphazez"sv), 1, 1, 2},
-        {irs::ViewCast<irs::byte_type>("lphazez"sv), 1, 1, 3},
-        {irs::ViewCast<irs::byte_type>(
-           "\x61\x6c\x70\x68\xD1\xFE\x62\x65\x74"sv),
-         1, 1, 1},
-        {irs::ViewCast<irs::byte_type>(
-           "\xF0\x9F\x98\x81\x6c\x70\x68\xD1\xFE\x62\x65\x74"sv),
-         1, 1, 2},
-        {irs::ViewCast<irs::byte_type>(
-           "\x61\x6c\x70\xE2\xFF\xFF\xD1\xFE\x62\x65\x74"sv),
-         1, 1, 2},
-      });
+        description, irs::ViewCast<irs::byte_type>("alphabet"sv),
+        {
+            {irs::ViewCast<irs::byte_type>("alphabet"sv), 0, 0, 0},
+            {irs::ViewCast<irs::byte_type>("alphabez"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("alphaet"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("alhpaebt"sv), 1, 1, 4},
+            {irs::ViewCast<irs::byte_type>("alphaebt"sv), 1, 1, 2},
+            {irs::ViewCast<irs::byte_type>("alphabezz"sv), 1, 1, 2},
+            {irs::ViewCast<irs::byte_type>("alphazez"sv), 1, 1, 2},
+            {irs::ViewCast<irs::byte_type>("lphazez"sv), 1, 1, 3},
+            {irs::ViewCast<irs::byte_type>(
+                 "\x61\x6c\x70\x68\xD1\xFE\x62\x65\x74"sv),
+             1, 1, 1},
+            {irs::ViewCast<irs::byte_type>(
+                 "\xF0\x9F\x98\x81\x6c\x70\x68\xD1\xFE\x62\x65\x74"sv),
+             1, 1, 2},
+            {irs::ViewCast<irs::byte_type>(
+                 "\x61\x6c\x70\xE2\xFF\xFF\xD1\xFE\x62\x65\x74"sv),
+             1, 1, 2},
+        });
   }
 
   // no transpositions with prefix
@@ -273,17 +273,17 @@ TEST(levenshtein_utils_test, test_description_0) {
     assert_read_write(description);
 
     assert_description(
-      description, irs::ViewCast<irs::byte_type>("alpha"sv),
-      irs::ViewCast<irs::byte_type>("bet"sv),
-      {
-        {irs::ViewCast<irs::byte_type>("alphabet"sv), 0, 0, 0},
-        {irs::ViewCast<irs::byte_type>("alphabez"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("alphaet"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("alhpaebt"sv), 1, 1, 4},
-        {irs::ViewCast<irs::byte_type>("alphaebt"sv), 1, 1, 2},
-        {irs::ViewCast<irs::byte_type>("alphabezz"sv), 1, 1, 2},
-        {irs::ViewCast<irs::byte_type>("alphazez"sv), 1, 1, 2},
-      });
+        description, irs::ViewCast<irs::byte_type>("alpha"sv),
+        irs::ViewCast<irs::byte_type>("bet"sv),
+        {
+            {irs::ViewCast<irs::byte_type>("alphabet"sv), 0, 0, 0},
+            {irs::ViewCast<irs::byte_type>("alphabez"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("alphaet"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("alhpaebt"sv), 1, 1, 4},
+            {irs::ViewCast<irs::byte_type>("alphaebt"sv), 1, 1, 2},
+            {irs::ViewCast<irs::byte_type>("alphabezz"sv), 1, 1, 2},
+            {irs::ViewCast<irs::byte_type>("alphazez"sv), 1, 1, 2},
+        });
   }
 
   // transpositions
@@ -301,17 +301,17 @@ TEST(levenshtein_utils_test, test_description_0) {
     assert_read_write(description);
 
     assert_description(
-      description, irs::ViewCast<irs::byte_type>("alphabet"sv),
-      {
-        {irs::ViewCast<irs::byte_type>("alphabet"sv), 0, 0, 0},
-        {irs::ViewCast<irs::byte_type>("alphabez"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("alphaet"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("alhpaebt"sv), 1, 1, 4},
-        {irs::ViewCast<irs::byte_type>("alphaebt"sv), 1, 1, 2},
-        {irs::ViewCast<irs::byte_type>("alphabezz"sv), 1, 1, 2},
-        {irs::ViewCast<irs::byte_type>("alphazez"sv), 1, 1, 2},
-        {irs::ViewCast<irs::byte_type>("lphazez"sv), 1, 1, 3},
-      });
+        description, irs::ViewCast<irs::byte_type>("alphabet"sv),
+        {
+            {irs::ViewCast<irs::byte_type>("alphabet"sv), 0, 0, 0},
+            {irs::ViewCast<irs::byte_type>("alphabez"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("alphaet"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("alhpaebt"sv), 1, 1, 4},
+            {irs::ViewCast<irs::byte_type>("alphaebt"sv), 1, 1, 2},
+            {irs::ViewCast<irs::byte_type>("alphabezz"sv), 1, 1, 2},
+            {irs::ViewCast<irs::byte_type>("alphazez"sv), 1, 1, 2},
+            {irs::ViewCast<irs::byte_type>("lphazez"sv), 1, 1, 3},
+        });
   }
 
   // transpositions with prefix
@@ -329,17 +329,17 @@ TEST(levenshtein_utils_test, test_description_0) {
     assert_read_write(description);
 
     assert_description(
-      description, irs::ViewCast<irs::byte_type>("al"sv),
-      irs::ViewCast<irs::byte_type>("phabet"sv),
-      {
-        {irs::ViewCast<irs::byte_type>("alphabet"sv), 0, 0, 0},
-        {irs::ViewCast<irs::byte_type>("alphabez"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("alphaet"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("alhpaebt"sv), 1, 1, 4},
-        {irs::ViewCast<irs::byte_type>("alphaebt"sv), 1, 1, 2},
-        {irs::ViewCast<irs::byte_type>("alphabezz"sv), 1, 1, 2},
-        {irs::ViewCast<irs::byte_type>("alphazez"sv), 1, 1, 2},
-      });
+        description, irs::ViewCast<irs::byte_type>("al"sv),
+        irs::ViewCast<irs::byte_type>("phabet"sv),
+        {
+            {irs::ViewCast<irs::byte_type>("alphabet"sv), 0, 0, 0},
+            {irs::ViewCast<irs::byte_type>("alphabez"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("alphaet"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("alhpaebt"sv), 1, 1, 4},
+            {irs::ViewCast<irs::byte_type>("alphaebt"sv), 1, 1, 2},
+            {irs::ViewCast<irs::byte_type>("alphabezz"sv), 1, 1, 2},
+            {irs::ViewCast<irs::byte_type>("alphazez"sv), 1, 1, 2},
+        });
   }
 }
 
@@ -491,202 +491,228 @@ TEST(levenshtein_utils_test, test_description_1) {
     assert_read_write(description);
 
     assert_description(
-      description, irs::ViewCast<irs::byte_type>("a"sv),
-      {
-        {irs::kEmptyStringView<irs::byte_type>, 1, 1, 1},
-        // 1-byte sequence
-        {irs::ViewCast<irs::byte_type>("a"sv), 0, 0, 0},
-        {irs::ViewCast<irs::byte_type>("b"sv), 1, 1, 1},
-        // 2-byte sequence
-        {irs::ViewCast<irs::byte_type>("\xD1\x83"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("\xD1\x83\xD1\x83"sv), 2, 2, 2},
-        // incomplete 2-byte utf8 char - treat symbol as non-existent
-        {irs::ViewCast<irs::byte_type>("\xD1"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("\xD1\x83\xD1"sv), 1, 1, 1},
-        // 3-byte sequence
-        {irs::ViewCast<irs::byte_type>("\xE2\x9E\x96"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("\xE2\x9E\x96\xE2\x9E\xE2"sv), 2, 2, 2},
-        // incomplete 3-byte utf8 char - treat symbol as non-existent
-        {irs::ViewCast<irs::byte_type>("\xE2\x9E"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("\xE2\x9E\x96\xE2"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("\xE2\x9E\x96\xE2\x9E"sv), 1, 1, 1},
-        // 4-byte sequence
-        {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xE2\x9E\x96"sv), 2, 2,
-         2},
-        {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xF0\x9F\x98\x81"sv), 2,
-         2, 2},
-        // incomplete 4-byte utf8 char - treat symbol as non-existent
-        {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xF0"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xF0\x9F"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xF0\x9F\x98"sv), 1, 1,
-         1},
-      });
+        description, irs::ViewCast<irs::byte_type>("a"sv),
+        {
+            {irs::kEmptyStringView<irs::byte_type>, 1, 1, 1},
+            // 1-byte sequence
+            {irs::ViewCast<irs::byte_type>("a"sv), 0, 0, 0},
+            {irs::ViewCast<irs::byte_type>("b"sv), 1, 1, 1},
+            // 2-byte sequence
+            {irs::ViewCast<irs::byte_type>("\xD1\x83"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("\xD1\x83\xD1\x83"sv), 2, 2, 2},
+            // incomplete 2-byte utf8 char - treat symbol as non-existent
+            {irs::ViewCast<irs::byte_type>("\xD1"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("\xD1\x83\xD1"sv), 1, 1, 1},
+            // 3-byte sequence
+            {irs::ViewCast<irs::byte_type>("\xE2\x9E\x96"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("\xE2\x9E\x96\xE2\x9E\xE2"sv), 2, 2,
+             2},
+            // incomplete 3-byte utf8 char - treat symbol as non-existent
+            {irs::ViewCast<irs::byte_type>("\xE2\x9E"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("\xE2\x9E\x96\xE2"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("\xE2\x9E\x96\xE2\x9E"sv), 1, 1, 1},
+            // 4-byte sequence
+            {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xE2\x9E\x96"sv), 2,
+             2, 2},
+            {irs::ViewCast<irs::byte_type>(
+                 "\xF0\x9F\x98\x81\xF0\x9F\x98\x81"sv),
+             2, 2, 2},
+            // incomplete 4-byte utf8 char - treat symbol as non-existent
+            {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xF0"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xF0\x9F"sv), 1, 1,
+             1},
+            {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xF0\x9F\x98"sv), 1,
+             1, 1},
+        });
 
     assert_description(
-      description, irs::ViewCast<irs::byte_type>("\xD1\x83"sv),
-      {
-        {irs::kEmptyStringView<irs::byte_type>, 1, 1, 1},
-        // 1-byte sequence
-        {irs::ViewCast<irs::byte_type>("a"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("b"sv), 1, 1, 1},
-        // 2-byte sequence
-        {irs::ViewCast<irs::byte_type>("\xD1\x83"sv), 0, 0, 0},
-        {irs::ViewCast<irs::byte_type>("\xD1\x83\xD1\x83"sv), 1, 1, 1},
-        // incomplete 2-byte utf8 char - treat symbol as non-existent
-        {irs::ViewCast<irs::byte_type>("\xD1"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("\xD1\x83\xD1"sv), 0, 0, 0},
-        // 3-byte sequence
-        {irs::ViewCast<irs::byte_type>("\xE2\x9E\x96"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("\xE2\x9E\x96\xE2\x9E\x9E"sv), 2, 2, 2},
-        // incomplete 3-byte utf8 char - treat symbol as non-existent
-        {irs::ViewCast<irs::byte_type>("\xE2\x9E"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("\xE2\x9E\x96\xE2"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("\xE2\x9E\x96\xE2\x9E"sv), 1, 1, 1},
-        // 4-byte sequence
-        {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xE2\x9E\x96"sv), 2, 2,
-         2},
-        {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xF0\x9F\x98\x81"sv), 2,
-         2, 2},
-        // incomplete 4-byte utf8 char - treat symbol as non-existent
-        {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xF0"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xF0\x9F"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xF0\x9F\x98"sv), 1, 1,
-         1},
-      });
+        description, irs::ViewCast<irs::byte_type>("\xD1\x83"sv),
+        {
+            {irs::kEmptyStringView<irs::byte_type>, 1, 1, 1},
+            // 1-byte sequence
+            {irs::ViewCast<irs::byte_type>("a"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("b"sv), 1, 1, 1},
+            // 2-byte sequence
+            {irs::ViewCast<irs::byte_type>("\xD1\x83"sv), 0, 0, 0},
+            {irs::ViewCast<irs::byte_type>("\xD1\x83\xD1\x83"sv), 1, 1, 1},
+            // incomplete 2-byte utf8 char - treat symbol as non-existent
+            {irs::ViewCast<irs::byte_type>("\xD1"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("\xD1\x83\xD1"sv), 0, 0, 0},
+            // 3-byte sequence
+            {irs::ViewCast<irs::byte_type>("\xE2\x9E\x96"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("\xE2\x9E\x96\xE2\x9E\x9E"sv), 2, 2,
+             2},
+            // incomplete 3-byte utf8 char - treat symbol as non-existent
+            {irs::ViewCast<irs::byte_type>("\xE2\x9E"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("\xE2\x9E\x96\xE2"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("\xE2\x9E\x96\xE2\x9E"sv), 1, 1, 1},
+            // 4-byte sequence
+            {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xE2\x9E\x96"sv), 2,
+             2, 2},
+            {irs::ViewCast<irs::byte_type>(
+                 "\xF0\x9F\x98\x81\xF0\x9F\x98\x81"sv),
+             2, 2, 2},
+            // incomplete 4-byte utf8 char - treat symbol as non-existent
+            {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xF0"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xF0\x9F"sv), 1, 1,
+             1},
+            {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xF0\x9F\x98"sv), 1,
+             1, 1},
+        });
 
     assert_description(
-      description, irs::ViewCast<irs::byte_type>("\xE2\x9E\x96"sv),
-      {
-        {irs::kEmptyStringView<irs::byte_type>, 1, 1, 1},
-        // 1-byte sequence
-        {irs::ViewCast<irs::byte_type>("a"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("b"sv), 1, 1, 1},
-        // 2-byte sequence
-        {irs::ViewCast<irs::byte_type>("\xD1\x83"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("\xD1\x83\xD1\x83"sv), 2, 2, 2},
-        // incomplete 2-byte utf8 char - treat symbol as non-existent
-        {irs::ViewCast<irs::byte_type>("\xD1"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("\xD1\x83\xD1"sv), 1, 1, 1},
-        // invalid 2-byte utf8 char - not accepted by automaton
-        {irs::ViewCast<irs::byte_type>("\xD1\xFF"sv), 1, 2, 1},
-        // 3-byte sequence
-        {irs::ViewCast<irs::byte_type>("\xE2\x9E\x96"sv), 0, 0, 0},
-        {irs::ViewCast<irs::byte_type>("\xE2\x9E\x96\xE2\x9E\x9E"sv), 1, 1, 1},
-        // incomplete 3-byte utf8 char - treat symbol as non-existent
-        {irs::ViewCast<irs::byte_type>("\xE2\x9E"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("\xE2\x9E\x96\xE2"sv), 0, 0, 0},
-        {irs::ViewCast<irs::byte_type>("\xE2\x9E\x96\xE2\x9E"sv), 0, 0, 0},
-        // 4-byte sequence
-        {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xE2\x9E\x96"sv), 1, 1,
-         1},
-        {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xF0\x9F\x98\x81"sv), 2,
-         2, 2},
-        // incomplete 4-byte utf8 char - treat symbol as non-existent
-        {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xF0"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xF0\x9F"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xF0\x9F\x98"sv), 1, 1,
-         1},
-      });
+        description, irs::ViewCast<irs::byte_type>("\xE2\x9E\x96"sv),
+        {
+            {irs::kEmptyStringView<irs::byte_type>, 1, 1, 1},
+            // 1-byte sequence
+            {irs::ViewCast<irs::byte_type>("a"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("b"sv), 1, 1, 1},
+            // 2-byte sequence
+            {irs::ViewCast<irs::byte_type>("\xD1\x83"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("\xD1\x83\xD1\x83"sv), 2, 2, 2},
+            // incomplete 2-byte utf8 char - treat symbol as non-existent
+            {irs::ViewCast<irs::byte_type>("\xD1"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("\xD1\x83\xD1"sv), 1, 1, 1},
+            // invalid 2-byte utf8 char - not accepted by automaton
+            {irs::ViewCast<irs::byte_type>("\xD1\xFF"sv), 1, 2, 1},
+            // 3-byte sequence
+            {irs::ViewCast<irs::byte_type>("\xE2\x9E\x96"sv), 0, 0, 0},
+            {irs::ViewCast<irs::byte_type>("\xE2\x9E\x96\xE2\x9E\x9E"sv), 1, 1,
+             1},
+            // incomplete 3-byte utf8 char - treat symbol as non-existent
+            {irs::ViewCast<irs::byte_type>("\xE2\x9E"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("\xE2\x9E\x96\xE2"sv), 0, 0, 0},
+            {irs::ViewCast<irs::byte_type>("\xE2\x9E\x96\xE2\x9E"sv), 0, 0, 0},
+            // 4-byte sequence
+            {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xE2\x9E\x96"sv), 1,
+             1, 1},
+            {irs::ViewCast<irs::byte_type>(
+                 "\xF0\x9F\x98\x81\xF0\x9F\x98\x81"sv),
+             2, 2, 2},
+            // incomplete 4-byte utf8 char - treat symbol as non-existent
+            {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xF0"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xF0\x9F"sv), 1, 1,
+             1},
+            {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xF0\x9F\x98"sv), 1,
+             1, 1},
+        });
 
     assert_description(
-      description, irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81"sv),
-      {
-        {irs::kEmptyStringView<irs::byte_type>, 1, 1, 1},
-        // 1-byte sequence
-        {irs::ViewCast<irs::byte_type>("a"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("b"sv), 1, 1, 1},
-        // 2-byte sequence
-        {irs::ViewCast<irs::byte_type>("\xD1\x83"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("\xD1\x83\xD1\x83"sv), 2, 2, 2},
-        // incomplete 2-byte utf8 char - treat symbol as non-existent
-        {irs::ViewCast<irs::byte_type>("\xD1"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("\xD1\x83\xD1"sv), 1, 1, 1},
-        // 3-byte sequence
-        {irs::ViewCast<irs::byte_type>("\xE2\x9E\x96"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("\xE2\x9E\x96\xE2\x9E\xE2"sv), 2, 2, 2},
-        // incomplete 3-byte utf8 char - treat symbol as non-existent
-        {irs::ViewCast<irs::byte_type>("\xE2\x9E"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("\xE2\x9E\x96\xE2"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("\xE2\x9E\x96\xE2\x9E"sv), 1, 1, 1},
-        // 4-byte sequence
-        {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81"sv), 0, 0, 0},
-        {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xE2\x9E\x96"sv), 1, 1,
-         1},
-        {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xF0\x9F\x98\x81"sv), 1,
-         1, 1},
-        // incomplete 4-byte utf8 char - treat symbol as non-existent
-        {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xF0"sv), 0, 0, 0},
-        {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xF0\x9F"sv), 0, 0, 0},
-        {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xF0\x9F\x98"sv), 0, 0,
-         0},
-      });
+        description, irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81"sv),
+        {
+            {irs::kEmptyStringView<irs::byte_type>, 1, 1, 1},
+            // 1-byte sequence
+            {irs::ViewCast<irs::byte_type>("a"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("b"sv), 1, 1, 1},
+            // 2-byte sequence
+            {irs::ViewCast<irs::byte_type>("\xD1\x83"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("\xD1\x83\xD1\x83"sv), 2, 2, 2},
+            // incomplete 2-byte utf8 char - treat symbol as non-existent
+            {irs::ViewCast<irs::byte_type>("\xD1"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("\xD1\x83\xD1"sv), 1, 1, 1},
+            // 3-byte sequence
+            {irs::ViewCast<irs::byte_type>("\xE2\x9E\x96"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("\xE2\x9E\x96\xE2\x9E\xE2"sv), 2, 2,
+             2},
+            // incomplete 3-byte utf8 char - treat symbol as non-existent
+            {irs::ViewCast<irs::byte_type>("\xE2\x9E"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("\xE2\x9E\x96\xE2"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("\xE2\x9E\x96\xE2\x9E"sv), 1, 1, 1},
+            // 4-byte sequence
+            {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81"sv), 0, 0, 0},
+            {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xE2\x9E\x96"sv), 1,
+             1, 1},
+            {irs::ViewCast<irs::byte_type>(
+                 "\xF0\x9F\x98\x81\xF0\x9F\x98\x81"sv),
+             1, 1, 1},
+            // incomplete 4-byte utf8 char - treat symbol as non-existent
+            {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xF0"sv), 0, 0, 0},
+            {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xF0\x9F"sv), 0, 0,
+             0},
+            {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xF0\x9F\x98"sv), 0,
+             0, 0},
+        });
 
     assert_description(
-      description, irs::ViewCast<irs::byte_type>("alphabet"sv),
-      {
-        {irs::ViewCast<irs::byte_type>("alphabet"sv), 0, 0, 0},
-        {irs::ViewCast<irs::byte_type>("alphaet"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("alphaebt"sv), 2, 2, 2},
-        {irs::ViewCast<irs::byte_type>("alphabezz"sv), 2, 2, 2},
-        {irs::ViewCast<irs::byte_type>("alphazez"sv), 2, 2, 2},
-      });
-
-    // with prefix
-    assert_description(
-      description, irs::ViewCast<irs::byte_type>("alpha"sv),
-      irs::ViewCast<irs::byte_type>("bet"sv),
-      {
-        {irs::ViewCast<irs::byte_type>("alphabet"sv), 0, 0, 0},
-        {irs::ViewCast<irs::byte_type>("alphaet"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("alphaebt"sv), 2, 2, 2},
-        {irs::ViewCast<irs::byte_type>("alphabezz"sv), 2, 2, 2},
-        {irs::ViewCast<irs::byte_type>("alphazez"sv), 2, 2, 2},
-      });
-
-    assert_description(
-      description, irs::ViewCast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9"sv),
-      {
-        {irs::ViewCast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9"sv), 0, 0, 0},
-        {irs::ViewCast<irs::byte_type>("\xD1\x85\xD1\x84\xD0\xB9"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("\xD1\x85\xF0\x9F\x98\x82\xD0\xB9"sv), 1,
-         1, 1},
-        {irs::ViewCast<irs::byte_type>("\xD0\xBF\xD1\x83\xD0\xB9"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB0"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("\xD1\x85\xD1\x83\xD1\xB9"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("\xD1\x85\xD1\x83\xF0\xB9\xB9\xB9"sv), 1,
-         1, 1},
-        {irs::ViewCast<irs::byte_type>(
-           "\xD1\x85\xD1\x83\xD0\xB9\xD0\xBD\xD1\x8F"sv),
-         2, 2, 2},
-        {irs::ViewCast<irs::byte_type>(
-           "\xD0\xBF\xD1\x83\xD0\xB9\xD0\xBD\xD1\x8F"sv),
-         2, 2, 3},
-      });
+        description, irs::ViewCast<irs::byte_type>("alphabet"sv),
+        {
+            {irs::ViewCast<irs::byte_type>("alphabet"sv), 0, 0, 0},
+            {irs::ViewCast<irs::byte_type>("alphaet"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("alphaebt"sv), 2, 2, 2},
+            {irs::ViewCast<irs::byte_type>("alphabezz"sv), 2, 2, 2},
+            {irs::ViewCast<irs::byte_type>("alphazez"sv), 2, 2, 2},
+        });
 
     // with prefix
     assert_description(
-      description, irs::ViewCast<irs::byte_type>("\xD1\x85"sv),
-      irs::ViewCast<irs::byte_type>("\xD1\x83\xD0\xB9"sv),
-      {
-        {irs::ViewCast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9"sv), 0, 0, 0},
-        {irs::ViewCast<irs::byte_type>("\xD1\x85\xD1\x84\xD0\xB9"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("\xD1\x85\xF0\x9F\x98\x82\xD0\xB9"sv), 1,
-         1, 1},
-        {irs::ViewCast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB0"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("\xD1\x85\xD1\x83\xD1\xB9"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("\xD1\x85\xD1\x83\xF0\xB9\xB9\xB9"sv), 1,
-         1, 1},
-        {irs::ViewCast<irs::byte_type>(
-           "\xD1\x85\xD1\x83\xD0\xB9\xD0\xBD\xD1\x8F"sv),
-         2, 2, 2},
-      });
+        description, irs::ViewCast<irs::byte_type>("alpha"sv),
+        irs::ViewCast<irs::byte_type>("bet"sv),
+        {
+            {irs::ViewCast<irs::byte_type>("alphabet"sv), 0, 0, 0},
+            {irs::ViewCast<irs::byte_type>("alphaet"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("alphaebt"sv), 2, 2, 2},
+            {irs::ViewCast<irs::byte_type>("alphabezz"sv), 2, 2, 2},
+            {irs::ViewCast<irs::byte_type>("alphazez"sv), 2, 2, 2},
+        });
+
+    assert_description(
+        description,
+        irs::ViewCast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9"sv),
+        {
+            {irs::ViewCast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9"sv), 0, 0,
+             0},
+            {irs::ViewCast<irs::byte_type>("\xD1\x85\xD1\x84\xD0\xB9"sv), 1, 1,
+             1},
+            {irs::ViewCast<irs::byte_type>(
+                 "\xD1\x85\xF0\x9F\x98\x82\xD0\xB9"sv),
+             1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("\xD0\xBF\xD1\x83\xD0\xB9"sv), 1, 1,
+             1},
+            {irs::ViewCast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB0"sv), 1, 1,
+             1},
+            {irs::ViewCast<irs::byte_type>("\xD1\x85\xD1\x83\xD1\xB9"sv), 1, 1,
+             1},
+            {irs::ViewCast<irs::byte_type>(
+                 "\xD1\x85\xD1\x83\xF0\xB9\xB9\xB9"sv),
+             1, 1, 1},
+            {irs::ViewCast<irs::byte_type>(
+                 "\xD1\x85\xD1\x83\xD0\xB9\xD0\xBD\xD1\x8F"sv),
+             2, 2, 2},
+            {irs::ViewCast<irs::byte_type>(
+                 "\xD0\xBF\xD1\x83\xD0\xB9\xD0\xBD\xD1\x8F"sv),
+             2, 2, 3},
+        });
+
+    // with prefix
+    assert_description(
+        description, irs::ViewCast<irs::byte_type>("\xD1\x85"sv),
+        irs::ViewCast<irs::byte_type>("\xD1\x83\xD0\xB9"sv),
+        {
+            {irs::ViewCast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9"sv), 0, 0,
+             0},
+            {irs::ViewCast<irs::byte_type>("\xD1\x85\xD1\x84\xD0\xB9"sv), 1, 1,
+             1},
+            {irs::ViewCast<irs::byte_type>(
+                 "\xD1\x85\xF0\x9F\x98\x82\xD0\xB9"sv),
+             1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB0"sv), 1, 1,
+             1},
+            {irs::ViewCast<irs::byte_type>("\xD1\x85\xD1\x83\xD1\xB9"sv), 1, 1,
+             1},
+            {irs::ViewCast<irs::byte_type>(
+                 "\xD1\x85\xD1\x83\xF0\xB9\xB9\xB9"sv),
+             1, 1, 1},
+            {irs::ViewCast<irs::byte_type>(
+                 "\xD1\x85\xD1\x83\xD0\xB9\xD0\xBD\xD1\x8F"sv),
+             2, 2, 2},
+        });
   }
 
   // transpositions
@@ -702,190 +728,207 @@ TEST(levenshtein_utils_test, test_description_1) {
     assert_read_write(description);
 
     assert_description(
-      description, irs::ViewCast<irs::byte_type>("alphabet"sv),
-      {
-        {irs::ViewCast<irs::byte_type>("alphabet"sv), 0, 0, 0},
-        {irs::ViewCast<irs::byte_type>("alphabez"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("alphaet"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("alphaebt"sv), 1, 1, 2},
-        {irs::ViewCast<irs::byte_type>("alphabezz"sv), 2, 2, 2},
-        {irs::ViewCast<irs::byte_type>("alphazez"sv), 2, 2, 2},
-      });
+        description, irs::ViewCast<irs::byte_type>("alphabet"sv),
+        {
+            {irs::ViewCast<irs::byte_type>("alphabet"sv), 0, 0, 0},
+            {irs::ViewCast<irs::byte_type>("alphabez"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("alphaet"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("alphaebt"sv), 1, 1, 2},
+            {irs::ViewCast<irs::byte_type>("alphabezz"sv), 2, 2, 2},
+            {irs::ViewCast<irs::byte_type>("alphazez"sv), 2, 2, 2},
+        });
 
     // with prefix
     assert_description(
-      description, irs::ViewCast<irs::byte_type>("alph"sv),
-      irs::ViewCast<irs::byte_type>("abet"sv),
-      {
-        {irs::ViewCast<irs::byte_type>("alphabet"sv), 0, 0, 0},
-        {irs::ViewCast<irs::byte_type>("alphabez"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("alphaet"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("alphaebt"sv), 1, 1, 2},
-        {irs::ViewCast<irs::byte_type>("alphabezz"sv), 2, 2, 2},
-        {irs::ViewCast<irs::byte_type>("alphazez"sv), 2, 2, 2},
-      });
+        description, irs::ViewCast<irs::byte_type>("alph"sv),
+        irs::ViewCast<irs::byte_type>("abet"sv),
+        {
+            {irs::ViewCast<irs::byte_type>("alphabet"sv), 0, 0, 0},
+            {irs::ViewCast<irs::byte_type>("alphabez"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("alphaet"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("alphaebt"sv), 1, 1, 2},
+            {irs::ViewCast<irs::byte_type>("alphabezz"sv), 2, 2, 2},
+            {irs::ViewCast<irs::byte_type>("alphazez"sv), 2, 2, 2},
+        });
 
     assert_description(
-      description, irs::ViewCast<irs::byte_type>("a"sv),
-      {
-        {irs::kEmptyStringView<irs::byte_type>, 1, 1, 1},
-        // 1-byte sequence
-        {irs::ViewCast<irs::byte_type>("a"sv), 0, 0, 0},
-        {irs::ViewCast<irs::byte_type>("b"sv), 1, 1, 1},
-        // 2-byte sequence
-        {irs::ViewCast<irs::byte_type>("\xD1\x83"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("\xD1\x83\xD1\x83"sv), 2, 2, 2},
-        // incomplete 2-byte utf8 char - treat symbol as non-existent
-        {irs::ViewCast<irs::byte_type>("\xD1"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("\xD1\x83\xD1"sv), 1, 1, 1},
-        // 3-byte sequence
-        {irs::ViewCast<irs::byte_type>("\xE2\x9E\x96"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("\xE2\x9E\x96\xE2\x9E\xE2"sv), 2, 2, 2},
-        // incomplete 3-byte utf8 char - treat symbol as non-existent
-        {irs::ViewCast<irs::byte_type>("\xE2\x9E"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("\xE2\x9E\x96\xE2"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("\xE2\x9E\x96\xE2\x9E"sv), 1, 1, 1},
-        // 4-byte sequence
-        {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xE2\x9E\x96"sv), 2, 2,
-         2},
-        {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xF0\x9F\x98\x81"sv), 2,
-         2, 2},
-        // incomplete 4-byte utf8 char - treat symbol as non-existent
-        {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xF0"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xF0\x9F"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xF0\x9F\x98"sv), 1, 1,
-         1},
-      });
+        description, irs::ViewCast<irs::byte_type>("a"sv),
+        {
+            {irs::kEmptyStringView<irs::byte_type>, 1, 1, 1},
+            // 1-byte sequence
+            {irs::ViewCast<irs::byte_type>("a"sv), 0, 0, 0},
+            {irs::ViewCast<irs::byte_type>("b"sv), 1, 1, 1},
+            // 2-byte sequence
+            {irs::ViewCast<irs::byte_type>("\xD1\x83"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("\xD1\x83\xD1\x83"sv), 2, 2, 2},
+            // incomplete 2-byte utf8 char - treat symbol as non-existent
+            {irs::ViewCast<irs::byte_type>("\xD1"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("\xD1\x83\xD1"sv), 1, 1, 1},
+            // 3-byte sequence
+            {irs::ViewCast<irs::byte_type>("\xE2\x9E\x96"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("\xE2\x9E\x96\xE2\x9E\xE2"sv), 2, 2,
+             2},
+            // incomplete 3-byte utf8 char - treat symbol as non-existent
+            {irs::ViewCast<irs::byte_type>("\xE2\x9E"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("\xE2\x9E\x96\xE2"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("\xE2\x9E\x96\xE2\x9E"sv), 1, 1, 1},
+            // 4-byte sequence
+            {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xE2\x9E\x96"sv), 2,
+             2, 2},
+            {irs::ViewCast<irs::byte_type>(
+                 "\xF0\x9F\x98\x81\xF0\x9F\x98\x81"sv),
+             2, 2, 2},
+            // incomplete 4-byte utf8 char - treat symbol as non-existent
+            {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xF0"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xF0\x9F"sv), 1, 1,
+             1},
+            {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xF0\x9F\x98"sv), 1,
+             1, 1},
+        });
 
     assert_description(
-      description, irs::ViewCast<irs::byte_type>("\xD1\x83"sv),
-      {
-        {irs::kEmptyStringView<irs::byte_type>, 1, 1, 1},
-        // 1-byte sequence
-        {irs::ViewCast<irs::byte_type>("a"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("b"sv), 1, 1, 1},
-        // 2-byte sequence
-        {irs::ViewCast<irs::byte_type>("\xD1\x83"sv), 0, 0, 0},
-        {irs::ViewCast<irs::byte_type>("\xD1\x83\xD1\x83"sv), 1, 1, 1},
-        // incomplete 2-byte utf8 char - treat symbol as non-existent
-        {irs::ViewCast<irs::byte_type>("\xD1"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("\xD1\x83\xD1"sv), 0, 0, 0},
-        // 3-byte sequence
-        {irs::ViewCast<irs::byte_type>("\xE2\x9E\x96"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("\xE2\x9E\x96\xE2\x9E\xE2"sv), 2, 2, 2},
-        // incomplete 3-byte utf8 char - treat symbol as non-existent
-        {irs::ViewCast<irs::byte_type>("\xE2\x9E"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("\xE2\x9E\x96\xE2"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("\xE2\x9E\x96\xE2\x9E"sv), 1, 1, 1},
-        // 4-byte sequence
-        {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xE2\x9E\x96"sv), 2, 2,
-         2},
-        {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xF0\x9F\x98\x81"sv), 2,
-         2, 2},
-        // incomplete 4-byte utf8 char - treat symbol as non-existent
-        {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xF0"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xF0\x9F"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xF0\x9F\x98"sv), 1, 1,
-         1},
-      });
+        description, irs::ViewCast<irs::byte_type>("\xD1\x83"sv),
+        {
+            {irs::kEmptyStringView<irs::byte_type>, 1, 1, 1},
+            // 1-byte sequence
+            {irs::ViewCast<irs::byte_type>("a"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("b"sv), 1, 1, 1},
+            // 2-byte sequence
+            {irs::ViewCast<irs::byte_type>("\xD1\x83"sv), 0, 0, 0},
+            {irs::ViewCast<irs::byte_type>("\xD1\x83\xD1\x83"sv), 1, 1, 1},
+            // incomplete 2-byte utf8 char - treat symbol as non-existent
+            {irs::ViewCast<irs::byte_type>("\xD1"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("\xD1\x83\xD1"sv), 0, 0, 0},
+            // 3-byte sequence
+            {irs::ViewCast<irs::byte_type>("\xE2\x9E\x96"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("\xE2\x9E\x96\xE2\x9E\xE2"sv), 2, 2,
+             2},
+            // incomplete 3-byte utf8 char - treat symbol as non-existent
+            {irs::ViewCast<irs::byte_type>("\xE2\x9E"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("\xE2\x9E\x96\xE2"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("\xE2\x9E\x96\xE2\x9E"sv), 1, 1, 1},
+            // 4-byte sequence
+            {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xE2\x9E\x96"sv), 2,
+             2, 2},
+            {irs::ViewCast<irs::byte_type>(
+                 "\xF0\x9F\x98\x81\xF0\x9F\x98\x81"sv),
+             2, 2, 2},
+            // incomplete 4-byte utf8 char - treat symbol as non-existent
+            {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xF0"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xF0\x9F"sv), 1, 1,
+             1},
+            {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xF0\x9F\x98"sv), 1,
+             1, 1},
+        });
 
     assert_description(
-      description, irs::ViewCast<irs::byte_type>("\xE2\x9E\x96"sv),
-      {
-        {irs::kEmptyStringView<irs::byte_type>, 1, 1, 1},
-        // 1-byte sequence
-        {irs::ViewCast<irs::byte_type>("a"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("b"sv), 1, 1, 1},
-        // 2-byte sequence
-        {irs::ViewCast<irs::byte_type>("\xD1\x83"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("\xD1\x83\xD1\x83"sv), 2, 2, 2},
-        // incomplete 2-byte utf8 char - treat symbol as non-existent
-        {irs::ViewCast<irs::byte_type>("\xD1"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("\xD1\x83\xD1"sv), 1, 1, 1},
-        // 3-byte sequence
-        {irs::ViewCast<irs::byte_type>("\xE2\x9E\x96"sv), 0, 0, 0},
-        {irs::ViewCast<irs::byte_type>("\xE2\x9E\x96\xE2\x9E\x9E"sv), 1, 1, 1},
-        // not accepted by automaton due to invalid utf8 characters
-        {irs::ViewCast<irs::byte_type>("\xE2\x9E\x96\xE2\x9E\xE2"sv), 1, 2, 1},
-        // incomplete 3-byte utf8 char - treat symbol as non-existent
-        {irs::ViewCast<irs::byte_type>("\xE2\x9E"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("\xE2\x9E\x96\xE2"sv), 0, 0, 0},
-        {irs::ViewCast<irs::byte_type>("\xE2\x9E\x96\xE2\x9E"sv), 0, 0, 0},
-        // 4-byte sequence
-        {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xE2\x9E\x96"sv), 1, 1,
-         1},
-        {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xF0\x9F\x98\x81"sv), 2,
-         2, 2},
-        // incomplete 4-byte utf8 char - treat symbol as non-existent
-        {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xF0"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xF0\x9F"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xF0\x9F\x98"sv), 1, 1,
-         1},
-      });
+        description, irs::ViewCast<irs::byte_type>("\xE2\x9E\x96"sv),
+        {
+            {irs::kEmptyStringView<irs::byte_type>, 1, 1, 1},
+            // 1-byte sequence
+            {irs::ViewCast<irs::byte_type>("a"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("b"sv), 1, 1, 1},
+            // 2-byte sequence
+            {irs::ViewCast<irs::byte_type>("\xD1\x83"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("\xD1\x83\xD1\x83"sv), 2, 2, 2},
+            // incomplete 2-byte utf8 char - treat symbol as non-existent
+            {irs::ViewCast<irs::byte_type>("\xD1"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("\xD1\x83\xD1"sv), 1, 1, 1},
+            // 3-byte sequence
+            {irs::ViewCast<irs::byte_type>("\xE2\x9E\x96"sv), 0, 0, 0},
+            {irs::ViewCast<irs::byte_type>("\xE2\x9E\x96\xE2\x9E\x9E"sv), 1, 1,
+             1},
+            // not accepted by automaton due to invalid utf8 characters
+            {irs::ViewCast<irs::byte_type>("\xE2\x9E\x96\xE2\x9E\xE2"sv), 1, 2,
+             1},
+            // incomplete 3-byte utf8 char - treat symbol as non-existent
+            {irs::ViewCast<irs::byte_type>("\xE2\x9E"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("\xE2\x9E\x96\xE2"sv), 0, 0, 0},
+            {irs::ViewCast<irs::byte_type>("\xE2\x9E\x96\xE2\x9E"sv), 0, 0, 0},
+            // 4-byte sequence
+            {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xE2\x9E\x96"sv), 1,
+             1, 1},
+            {irs::ViewCast<irs::byte_type>(
+                 "\xF0\x9F\x98\x81\xF0\x9F\x98\x81"sv),
+             2, 2, 2},
+            // incomplete 4-byte utf8 char - treat symbol as non-existent
+            {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xF0"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xF0\x9F"sv), 1, 1,
+             1},
+            {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xF0\x9F\x98"sv), 1,
+             1, 1},
+        });
 
     assert_description(
-      description, irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81"sv),
-      {
-        {irs::kEmptyStringView<irs::byte_type>, 1, 1, 1},
-        // 1-byte sequence
-        {irs::ViewCast<irs::byte_type>("a"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("b"sv), 1, 1, 1},
-        // 2-byte sequence
-        {irs::ViewCast<irs::byte_type>("\xD1\x83"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("\xD1\x83\xD1\x83"sv), 2, 2, 2},
-        // incomplete 2-byte utf8 char - treat symbol as non-existent
-        {irs::ViewCast<irs::byte_type>("\xD1"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("\xD1\x83\xD1"sv), 1, 1, 1},
-        // 3-byte sequence
-        {irs::ViewCast<irs::byte_type>("\xE2\x9E\x96"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("\xE2\x9E\x96\xE2\x9E\xE2"sv), 2, 2, 2},
-        // incomplete 3-byte utf8 char - treat symbol as non-existent
-        {irs::ViewCast<irs::byte_type>("\xE2\x9E"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("\xE2\x9E\x96\xE2"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("\xE2\x9E\x96\xE2\x9E"sv), 1, 1, 1},
-        // 4-byte sequence
-        {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81"sv), 0, 0, 0},
-        {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xE2\x9E\x96"sv), 1, 1,
-         1},
-        {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xF0\x9F\x98\x81"sv), 1,
-         1, 1},
-        // incomplete 4-byte utf8 char - treat symbol as non-existent
-        {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xF0"sv), 0, 0, 0},
-        {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xF0\x9F"sv), 0, 0, 0},
-        {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xF0\x9F\x98"sv), 0, 0,
-         0},
-      });
+        description, irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81"sv),
+        {
+            {irs::kEmptyStringView<irs::byte_type>, 1, 1, 1},
+            // 1-byte sequence
+            {irs::ViewCast<irs::byte_type>("a"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("b"sv), 1, 1, 1},
+            // 2-byte sequence
+            {irs::ViewCast<irs::byte_type>("\xD1\x83"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("\xD1\x83\xD1\x83"sv), 2, 2, 2},
+            // incomplete 2-byte utf8 char - treat symbol as non-existent
+            {irs::ViewCast<irs::byte_type>("\xD1"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("\xD1\x83\xD1"sv), 1, 1, 1},
+            // 3-byte sequence
+            {irs::ViewCast<irs::byte_type>("\xE2\x9E\x96"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("\xE2\x9E\x96\xE2\x9E\xE2"sv), 2, 2,
+             2},
+            // incomplete 3-byte utf8 char - treat symbol as non-existent
+            {irs::ViewCast<irs::byte_type>("\xE2\x9E"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("\xE2\x9E\x96\xE2"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("\xE2\x9E\x96\xE2\x9E"sv), 1, 1, 1},
+            // 4-byte sequence
+            {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81"sv), 0, 0, 0},
+            {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xE2\x9E\x96"sv), 1,
+             1, 1},
+            {irs::ViewCast<irs::byte_type>(
+                 "\xF0\x9F\x98\x81\xF0\x9F\x98\x81"sv),
+             1, 1, 1},
+            // incomplete 4-byte utf8 char - treat symbol as non-existent
+            {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xF0"sv), 0, 0, 0},
+            {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xF0\x9F"sv), 0, 0,
+             0},
+            {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xF0\x9F\x98"sv), 0,
+             0, 0},
+        });
 
     assert_description(
-      description, irs::ViewCast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9"sv),
-      {
-        {irs::ViewCast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9"sv), 0, 0, 0},
-        {irs::ViewCast<irs::byte_type>("\xD0\xBF\xD1\x83\xD0\xB9"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>(
-           "\xD1\x85\xD1\x83\xD0\xB9\xD0\xBD\xD1\x8F"sv),
-         2, 2, 2},
-        {irs::ViewCast<irs::byte_type>(
-           "\xD0\xBF\xD1\x83\xD0\xB9\xD0\xBD\xD1\x8F"sv),
-         2, 2, 3},
-      });
+        description,
+        irs::ViewCast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9"sv),
+        {
+            {irs::ViewCast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9"sv), 0, 0,
+             0},
+            {irs::ViewCast<irs::byte_type>("\xD0\xBF\xD1\x83\xD0\xB9"sv), 1, 1,
+             1},
+            {irs::ViewCast<irs::byte_type>(
+                 "\xD1\x85\xD1\x83\xD0\xB9\xD0\xBD\xD1\x8F"sv),
+             2, 2, 2},
+            {irs::ViewCast<irs::byte_type>(
+                 "\xD0\xBF\xD1\x83\xD0\xB9\xD0\xBD\xD1\x8F"sv),
+             2, 2, 3},
+        });
 
     // with prefix
     assert_description(
-      description, irs::ViewCast<irs::byte_type>("\xD1\x85"sv),
-      irs::ViewCast<irs::byte_type>("\xD1\x83\xD0\xB9"sv),
-      {
-        {irs::ViewCast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9"sv), 0, 0, 0},
-        {irs::ViewCast<irs::byte_type>(
-           "\xD1\x85\xD1\x83\xD0\xB9\xD0\xBD\xD1\x8F"sv),
-         2, 2, 2},
-      });
+        description, irs::ViewCast<irs::byte_type>("\xD1\x85"sv),
+        irs::ViewCast<irs::byte_type>("\xD1\x83\xD0\xB9"sv),
+        {
+            {irs::ViewCast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9"sv), 0, 0,
+             0},
+            {irs::ViewCast<irs::byte_type>(
+                 "\xD1\x85\xD1\x83\xD0\xB9\xD0\xBD\xD1\x8F"sv),
+             2, 2, 2},
+        });
   }
 }
 
@@ -902,127 +945,135 @@ TEST(levenshtein_utils_test, test_description_2) {
     assert_read_write(description);
 
     assert_description(
-      description, irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81"sv),
-      {
-        {irs::kEmptyStringView<irs::byte_type>, 1, 1, 1},
-        // 1-byte sequence
-        {irs::ViewCast<irs::byte_type>("a"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("b"sv), 1, 1, 1},
-        // 2-byte sequence
-        {irs::ViewCast<irs::byte_type>("\xD1\x83"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("\xD1\x83\xD1\x83"sv), 2, 2, 2},
-        // incomplete 2-byte utf8 char - treat symbol as non-existent
-        {irs::ViewCast<irs::byte_type>("\xD1"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("\xD1\x83\xD1"sv), 1, 1, 1},
-        // 3-byte sequence
-        {irs::ViewCast<irs::byte_type>("\xE2\x9E\x96"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("\xE2\x9E\x96\xE2\x9E\x9E"sv), 2, 2, 2},
-        // not accepted by automaton due to invalid utf8 characters
-        {irs::ViewCast<irs::byte_type>("\xE2\x9E\x96\xE2\x9E\xE2"sv), 2, 3, 2},
-        // incomplete 3-byte utf8 char - treat symbol as non-existent
-        {irs::ViewCast<irs::byte_type>("\xE2\x9E"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("\xE2\x9E\x96\xE2"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("\xE2\x9E\x96\xE2\x9E"sv), 1, 1, 1},
-        // 4-byte sequence
-        {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81"sv), 0, 0, 0},
-        {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xE2\x9E\x96"sv), 1, 1,
-         1},
-        {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xF0\x9F\x98\x81"sv), 1,
-         1, 1},
-        // incomplete 4-byte utf8 char - treat symbol as non-existent
-        {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xF0"sv), 0, 0, 0},
-        {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xF0\x9F"sv), 0, 0, 0},
-        {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xF0\x9F\x98"sv), 0, 0,
-         0},
-      });
+        description, irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81"sv),
+        {
+            {irs::kEmptyStringView<irs::byte_type>, 1, 1, 1},
+            // 1-byte sequence
+            {irs::ViewCast<irs::byte_type>("a"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("b"sv), 1, 1, 1},
+            // 2-byte sequence
+            {irs::ViewCast<irs::byte_type>("\xD1\x83"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("\xD1\x83\xD1\x83"sv), 2, 2, 2},
+            // incomplete 2-byte utf8 char - treat symbol as non-existent
+            {irs::ViewCast<irs::byte_type>("\xD1"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("\xD1\x83\xD1"sv), 1, 1, 1},
+            // 3-byte sequence
+            {irs::ViewCast<irs::byte_type>("\xE2\x9E\x96"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("\xE2\x9E\x96\xE2\x9E\x9E"sv), 2, 2,
+             2},
+            // not accepted by automaton due to invalid utf8 characters
+            {irs::ViewCast<irs::byte_type>("\xE2\x9E\x96\xE2\x9E\xE2"sv), 2, 3,
+             2},
+            // incomplete 3-byte utf8 char - treat symbol as non-existent
+            {irs::ViewCast<irs::byte_type>("\xE2\x9E"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("\xE2\x9E\x96\xE2"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("\xE2\x9E\x96\xE2\x9E"sv), 1, 1, 1},
+            // 4-byte sequence
+            {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81"sv), 0, 0, 0},
+            {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xE2\x9E\x96"sv), 1,
+             1, 1},
+            {irs::ViewCast<irs::byte_type>(
+                 "\xF0\x9F\x98\x81\xF0\x9F\x98\x81"sv),
+             1, 1, 1},
+            // incomplete 4-byte utf8 char - treat symbol as non-existent
+            {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xF0"sv), 0, 0, 0},
+            {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xF0\x9F"sv), 0, 0,
+             0},
+            {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xF0\x9F\x98"sv), 0,
+             0, 0},
+        });
 
     assert_description(
-      description, irs::ViewCast<irs::byte_type>("alphabet"sv),
-      {
-        {irs::ViewCast<irs::byte_type>("alphabet"sv), 0, 0, 0},
-        {irs::ViewCast<irs::byte_type>("alphabez"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("alphaet"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("alhpaebt"sv), 3, 3, 4},
-        {irs::ViewCast<irs::byte_type>("alphaebt"sv), 2, 2, 2},
-        {irs::ViewCast<irs::byte_type>("alphabezz"sv), 2, 2, 2},
-        {irs::ViewCast<irs::byte_type>("alphazez"sv), 2, 2, 2},
-        {irs::ViewCast<irs::byte_type>("lphazez"sv), 3, 3, 3},
-        {irs::ViewCast<irs::byte_type>(
-           "\x61\x6c\x70\x68\xD1\x96\x62\x65\x74"sv),
-         1, 1, 1},
-        // not accepted by automaton due to invalid utf8 characters
-        {irs::ViewCast<irs::byte_type>(
-           "\x61\x6c\x70\x68\xD1\xFE\x62\x65\x74"sv),
-         1, 3, 1},
-        {irs::ViewCast<irs::byte_type>(
-           "\xF0\x9F\x98\x81\x6c\x70\x68\xD1\x96\x62\x65\x74"sv),
-         2, 2, 2},
-        // not accepted by automaton due to invalid utf8 characters
-        {irs::ViewCast<irs::byte_type>(
-           "\xF0\x9F\x98\x81\x6c\x70\x68\xD1\xFE\x62\x65\x74"sv),
-         2, 3, 2},
-        // not accepted by automaton due to invalid utf8 characters
-        {irs::ViewCast<irs::byte_type>(
-           "\x61\x6c\x70\xE2\xFF\xFF\xD1\xFE\x62\x65\x74"sv),
-         2, 3, 2},
-        {irs::ViewCast<irs::byte_type>(
-           "\x61\x6c\x70\xD1\x95\x70\xD1\x96\x62\x65\x74"sv),
-         3, 3, 3},
-      });
-
-    // with prefix
-    assert_description(
-      description, irs::ViewCast<irs::byte_type>("a"sv),
-      irs::ViewCast<irs::byte_type>("lphabet"sv),
-      {
-        {irs::ViewCast<irs::byte_type>("alphabet"sv), 0, 0, 0},
-        {irs::ViewCast<irs::byte_type>("alphabez"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("alphaet"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("alhpaebt"sv), 3, 3, 4},
-        {irs::ViewCast<irs::byte_type>("alphaebt"sv), 2, 2, 2},
-        {irs::ViewCast<irs::byte_type>("alphabezz"sv), 2, 2, 2},
-        {irs::ViewCast<irs::byte_type>("alphazez"sv), 2, 2, 2},
-        {irs::ViewCast<irs::byte_type>(
-           "\x61\x6c\x70\x68\xD1\x96\x62\x65\x74"sv),
-         1, 1, 1},
-        // not accepted by automaton due to invalid utf8 characters
-        {irs::ViewCast<irs::byte_type>(
-           "\x61\x6c\x70\x68\xD1\xFE\x62\x65\x74"sv),
-         1, 3, 1},
-        // not accepted by automaton due to invalid utf8 characters
-        // not accepted by automaton due to invalid utf8 characters
-        {irs::ViewCast<irs::byte_type>(
-           "\x61\x6c\x70\xE2\xFF\xFF\xD1\xFE\x62\x65\x74"sv),
-         2, 3, 2},
-        {irs::ViewCast<irs::byte_type>(
-           "\x61\x6c\x70\xD1\x95\x70\xD1\x96\x62\x65\x74"sv),
-         3, 3, 3},
-      });
-
-    assert_description(
-      description, irs::ViewCast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9"sv),
-      {
-        {irs::ViewCast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9"sv), 0, 0, 0},
-        {irs::ViewCast<irs::byte_type>("\xD0\xBF\xD1\x83\xD0\xB9"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>(
-           "\xD1\x85\xD1\x83\xD0\xB9\xD0\xBD\xD1\x8F"sv),
-         2, 2, 2},
-        {irs::ViewCast<irs::byte_type>(
-           "\xD0\xBF\xD1\x83\xD0\xB9\xD0\xBD\xD1\x8F"sv),
-         3, 3, 3},
-      });
+        description, irs::ViewCast<irs::byte_type>("alphabet"sv),
+        {
+            {irs::ViewCast<irs::byte_type>("alphabet"sv), 0, 0, 0},
+            {irs::ViewCast<irs::byte_type>("alphabez"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("alphaet"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("alhpaebt"sv), 3, 3, 4},
+            {irs::ViewCast<irs::byte_type>("alphaebt"sv), 2, 2, 2},
+            {irs::ViewCast<irs::byte_type>("alphabezz"sv), 2, 2, 2},
+            {irs::ViewCast<irs::byte_type>("alphazez"sv), 2, 2, 2},
+            {irs::ViewCast<irs::byte_type>("lphazez"sv), 3, 3, 3},
+            {irs::ViewCast<irs::byte_type>(
+                 "\x61\x6c\x70\x68\xD1\x96\x62\x65\x74"sv),
+             1, 1, 1},
+            // not accepted by automaton due to invalid utf8 characters
+            {irs::ViewCast<irs::byte_type>(
+                 "\x61\x6c\x70\x68\xD1\xFE\x62\x65\x74"sv),
+             1, 3, 1},
+            {irs::ViewCast<irs::byte_type>(
+                 "\xF0\x9F\x98\x81\x6c\x70\x68\xD1\x96\x62\x65\x74"sv),
+             2, 2, 2},
+            // not accepted by automaton due to invalid utf8 characters
+            {irs::ViewCast<irs::byte_type>(
+                 "\xF0\x9F\x98\x81\x6c\x70\x68\xD1\xFE\x62\x65\x74"sv),
+             2, 3, 2},
+            // not accepted by automaton due to invalid utf8 characters
+            {irs::ViewCast<irs::byte_type>(
+                 "\x61\x6c\x70\xE2\xFF\xFF\xD1\xFE\x62\x65\x74"sv),
+             2, 3, 2},
+            {irs::ViewCast<irs::byte_type>(
+                 "\x61\x6c\x70\xD1\x95\x70\xD1\x96\x62\x65\x74"sv),
+             3, 3, 3},
+        });
 
     // with prefix
     assert_description(
-      description, irs::ViewCast<irs::byte_type>("\xD1\x85"sv),
-      irs::ViewCast<irs::byte_type>("\xD1\x83\xD0\xB9"sv),
-      {
-        {irs::ViewCast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9"sv), 0, 0, 0},
-        {irs::ViewCast<irs::byte_type>(
-           "\xD1\x85\xD1\x83\xD0\xB9\xD0\xBD\xD1\x8F"sv),
-         2, 2, 2},
-      });
+        description, irs::ViewCast<irs::byte_type>("a"sv),
+        irs::ViewCast<irs::byte_type>("lphabet"sv),
+        {
+            {irs::ViewCast<irs::byte_type>("alphabet"sv), 0, 0, 0},
+            {irs::ViewCast<irs::byte_type>("alphabez"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("alphaet"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("alhpaebt"sv), 3, 3, 4},
+            {irs::ViewCast<irs::byte_type>("alphaebt"sv), 2, 2, 2},
+            {irs::ViewCast<irs::byte_type>("alphabezz"sv), 2, 2, 2},
+            {irs::ViewCast<irs::byte_type>("alphazez"sv), 2, 2, 2},
+            {irs::ViewCast<irs::byte_type>(
+                 "\x61\x6c\x70\x68\xD1\x96\x62\x65\x74"sv),
+             1, 1, 1},
+            // not accepted by automaton due to invalid utf8 characters
+            {irs::ViewCast<irs::byte_type>(
+                 "\x61\x6c\x70\x68\xD1\xFE\x62\x65\x74"sv),
+             1, 3, 1},
+            // not accepted by automaton due to invalid utf8 characters
+            // not accepted by automaton due to invalid utf8 characters
+            {irs::ViewCast<irs::byte_type>(
+                 "\x61\x6c\x70\xE2\xFF\xFF\xD1\xFE\x62\x65\x74"sv),
+             2, 3, 2},
+            {irs::ViewCast<irs::byte_type>(
+                 "\x61\x6c\x70\xD1\x95\x70\xD1\x96\x62\x65\x74"sv),
+             3, 3, 3},
+        });
+
+    assert_description(
+        description,
+        irs::ViewCast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9"sv),
+        {
+            {irs::ViewCast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9"sv), 0, 0,
+             0},
+            {irs::ViewCast<irs::byte_type>("\xD0\xBF\xD1\x83\xD0\xB9"sv), 1, 1,
+             1},
+            {irs::ViewCast<irs::byte_type>(
+                 "\xD1\x85\xD1\x83\xD0\xB9\xD0\xBD\xD1\x8F"sv),
+             2, 2, 2},
+            {irs::ViewCast<irs::byte_type>(
+                 "\xD0\xBF\xD1\x83\xD0\xB9\xD0\xBD\xD1\x8F"sv),
+             3, 3, 3},
+        });
+
+    // with prefix
+    assert_description(
+        description, irs::ViewCast<irs::byte_type>("\xD1\x85"sv),
+        irs::ViewCast<irs::byte_type>("\xD1\x83\xD0\xB9"sv),
+        {
+            {irs::ViewCast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9"sv), 0, 0,
+             0},
+            {irs::ViewCast<irs::byte_type>(
+                 "\xD1\x85\xD1\x83\xD0\xB9\xD0\xBD\xD1\x8F"sv),
+             2, 2, 2},
+        });
   }
 
   // transpositions
@@ -1037,89 +1088,97 @@ TEST(levenshtein_utils_test, test_description_2) {
     assert_read_write(description);
 
     assert_description(
-      description, irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81"sv),
-      {
-        {irs::kEmptyStringView<irs::byte_type>, 1, 1, 1},
-        // 1-byte sequence
-        {irs::ViewCast<irs::byte_type>("a"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("b"sv), 1, 1, 1},
-        // 2-byte sequence
-        {irs::ViewCast<irs::byte_type>("\xD1\x83"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("\xD1\x83\xD1\x83"sv), 2, 2, 2},
-        // incomplete 2-byte utf8 char - treat symbol as non-existent
-        {irs::ViewCast<irs::byte_type>("\xD1"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("\xD1\x83\xD1"sv), 1, 1, 1},
-        // 3-byte sequence
-        {irs::ViewCast<irs::byte_type>("\xE2\x9E\x96"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("\xE2\x9E\x96\xE2\x9E\x96"sv), 2, 2, 2},
-        // not accepted by automaton due to invalid utf8 characters
-        {irs::ViewCast<irs::byte_type>("\xE2\x9E\x96\xE2\x9E\xE2"sv), 2, 3, 2},
-        // incomplete 3-byte utf8 char - treat symbol as non-existent
-        {irs::ViewCast<irs::byte_type>("\xE2\x9E"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("\xE2\x9E\x96\xE2"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("\xE2\x9E\x96\xE2\x9E"sv), 1, 1, 1},
-        // 4-byte sequence
-        {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81"sv), 0, 0, 0},
-        {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xE2\x9E\x96"sv), 1, 1,
-         1},
-        {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xF0\x9F\x98\x81"sv), 1,
-         1, 1},
-        // incomplete 4-byte utf8 char - treat symbol as non-existent
-        {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xF0"sv), 0, 0, 0},
-        {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xF0\x9F"sv), 0, 0, 0},
-        {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xF0\x9F\x98"sv), 0, 0,
-         0},
-      });
+        description, irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81"sv),
+        {
+            {irs::kEmptyStringView<irs::byte_type>, 1, 1, 1},
+            // 1-byte sequence
+            {irs::ViewCast<irs::byte_type>("a"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("b"sv), 1, 1, 1},
+            // 2-byte sequence
+            {irs::ViewCast<irs::byte_type>("\xD1\x83"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("\xD1\x83\xD1\x83"sv), 2, 2, 2},
+            // incomplete 2-byte utf8 char - treat symbol as non-existent
+            {irs::ViewCast<irs::byte_type>("\xD1"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("\xD1\x83\xD1"sv), 1, 1, 1},
+            // 3-byte sequence
+            {irs::ViewCast<irs::byte_type>("\xE2\x9E\x96"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("\xE2\x9E\x96\xE2\x9E\x96"sv), 2, 2,
+             2},
+            // not accepted by automaton due to invalid utf8 characters
+            {irs::ViewCast<irs::byte_type>("\xE2\x9E\x96\xE2\x9E\xE2"sv), 2, 3,
+             2},
+            // incomplete 3-byte utf8 char - treat symbol as non-existent
+            {irs::ViewCast<irs::byte_type>("\xE2\x9E"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("\xE2\x9E\x96\xE2"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("\xE2\x9E\x96\xE2\x9E"sv), 1, 1, 1},
+            // 4-byte sequence
+            {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81"sv), 0, 0, 0},
+            {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xE2\x9E\x96"sv), 1,
+             1, 1},
+            {irs::ViewCast<irs::byte_type>(
+                 "\xF0\x9F\x98\x81\xF0\x9F\x98\x81"sv),
+             1, 1, 1},
+            // incomplete 4-byte utf8 char - treat symbol as non-existent
+            {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xF0"sv), 0, 0, 0},
+            {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xF0\x9F"sv), 0, 0,
+             0},
+            {irs::ViewCast<irs::byte_type>("\xF0\x9F\x98\x81\xF0\x9F\x98"sv), 0,
+             0, 0},
+        });
 
     // with prefix
     assert_description(
-      description, irs::ViewCast<irs::byte_type>("alp"sv),
-      irs::ViewCast<irs::byte_type>("habet"sv),
-      {
-        {irs::ViewCast<irs::byte_type>("alphabet"sv), 0, 0, 0},
-        {irs::ViewCast<irs::byte_type>("alphabez"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("alphaet"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("alphaebt"sv), 1, 1, 2},
-        {irs::ViewCast<irs::byte_type>("alphabezz"sv), 2, 2, 2},
-        {irs::ViewCast<irs::byte_type>("alphazez"sv), 2, 2, 2},
-      });
+        description, irs::ViewCast<irs::byte_type>("alp"sv),
+        irs::ViewCast<irs::byte_type>("habet"sv),
+        {
+            {irs::ViewCast<irs::byte_type>("alphabet"sv), 0, 0, 0},
+            {irs::ViewCast<irs::byte_type>("alphabez"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("alphaet"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("alphaebt"sv), 1, 1, 2},
+            {irs::ViewCast<irs::byte_type>("alphabezz"sv), 2, 2, 2},
+            {irs::ViewCast<irs::byte_type>("alphazez"sv), 2, 2, 2},
+        });
 
     assert_description(
-      description, irs::ViewCast<irs::byte_type>("alphabet"sv),
-      {
-        {irs::ViewCast<irs::byte_type>("alphabet"sv), 0, 0, 0},
-        {irs::ViewCast<irs::byte_type>("alphabez"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("alphaet"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("alhpaebt"sv), 2, 2, 4},
-        {irs::ViewCast<irs::byte_type>("alphaebt"sv), 1, 1, 2},
-        {irs::ViewCast<irs::byte_type>("alphabezz"sv), 2, 2, 2},
-        {irs::ViewCast<irs::byte_type>("alphazez"sv), 2, 2, 2},
-        {irs::ViewCast<irs::byte_type>("lphazez"sv), 3, 3, 3},
-      });
+        description, irs::ViewCast<irs::byte_type>("alphabet"sv),
+        {
+            {irs::ViewCast<irs::byte_type>("alphabet"sv), 0, 0, 0},
+            {irs::ViewCast<irs::byte_type>("alphabez"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("alphaet"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("alhpaebt"sv), 2, 2, 4},
+            {irs::ViewCast<irs::byte_type>("alphaebt"sv), 1, 1, 2},
+            {irs::ViewCast<irs::byte_type>("alphabezz"sv), 2, 2, 2},
+            {irs::ViewCast<irs::byte_type>("alphazez"sv), 2, 2, 2},
+            {irs::ViewCast<irs::byte_type>("lphazez"sv), 3, 3, 3},
+        });
 
     assert_description(
-      description, irs::ViewCast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9"sv),
-      {
-        {irs::ViewCast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9"sv), 0, 0, 0},
-        {irs::ViewCast<irs::byte_type>("\xD0\xBF\xD1\x83\xD0\xB9"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>(
-           "\xD1\x85\xD1\x83\xD0\xB9\xD0\xBD\xD1\x8F"sv),
-         2, 2, 2},
-        {irs::ViewCast<irs::byte_type>(
-           "\xD0\xBF\xD1\x83\xD0\xB9\xD0\xBD\xD1\x8F"sv),
-         3, 3, 3},
-      });
+        description,
+        irs::ViewCast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9"sv),
+        {
+            {irs::ViewCast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9"sv), 0, 0,
+             0},
+            {irs::ViewCast<irs::byte_type>("\xD0\xBF\xD1\x83\xD0\xB9"sv), 1, 1,
+             1},
+            {irs::ViewCast<irs::byte_type>(
+                 "\xD1\x85\xD1\x83\xD0\xB9\xD0\xBD\xD1\x8F"sv),
+             2, 2, 2},
+            {irs::ViewCast<irs::byte_type>(
+                 "\xD0\xBF\xD1\x83\xD0\xB9\xD0\xBD\xD1\x8F"sv),
+             3, 3, 3},
+        });
 
     assert_description(
-      description, irs::ViewCast<irs::byte_type>("\xD1\x85"sv),
-      irs::ViewCast<irs::byte_type>("\xD1\x83\xD0\xB9"sv),
-      {
-        {irs::ViewCast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9"sv), 0, 0, 0},
-        {irs::ViewCast<irs::byte_type>(
-           "\xD1\x85\xD1\x83\xD0\xB9\xD0\xBD\xD1\x8F"sv),
-         2, 2, 2},
-      });
+        description, irs::ViewCast<irs::byte_type>("\xD1\x85"sv),
+        irs::ViewCast<irs::byte_type>("\xD1\x83\xD0\xB9"sv),
+        {
+            {irs::ViewCast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9"sv), 0, 0,
+             0},
+            {irs::ViewCast<irs::byte_type>(
+                 "\xD1\x85\xD1\x83\xD0\xB9\xD0\xBD\xD1\x8F"sv),
+             2, 2, 2},
+        });
   }
 }
 
@@ -1135,93 +1194,97 @@ TEST(levenshtein_utils_test, test_description_3) {
     assert_read_write(description);
 
     assert_description(
-      description, irs::ViewCast<irs::byte_type>("alphabet"sv),
-      {
-        {irs::ViewCast<irs::byte_type>("alphabet"sv), 0, 0, 0},
-        {irs::ViewCast<irs::byte_type>("alphabez"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("alphaet"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("alhpaebt"sv), 4, 4, 4},
-        {irs::ViewCast<irs::byte_type>("alhpeabt"sv), 3, 3, 3},
-        {irs::ViewCast<irs::byte_type>("laphaebt"sv), 4, 4, 4},
-        {irs::ViewCast<irs::byte_type>("alphaebt"sv), 2, 2, 2},
-        {irs::ViewCast<irs::byte_type>("alphabezz"sv), 2, 2, 2},
-        {irs::ViewCast<irs::byte_type>("alphazez"sv), 2, 2, 2},
-        {irs::ViewCast<irs::byte_type>("lphazez"sv), 3, 3, 3},
-      });
+        description, irs::ViewCast<irs::byte_type>("alphabet"sv),
+        {
+            {irs::ViewCast<irs::byte_type>("alphabet"sv), 0, 0, 0},
+            {irs::ViewCast<irs::byte_type>("alphabez"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("alphaet"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("alhpaebt"sv), 4, 4, 4},
+            {irs::ViewCast<irs::byte_type>("alhpeabt"sv), 3, 3, 3},
+            {irs::ViewCast<irs::byte_type>("laphaebt"sv), 4, 4, 4},
+            {irs::ViewCast<irs::byte_type>("alphaebt"sv), 2, 2, 2},
+            {irs::ViewCast<irs::byte_type>("alphabezz"sv), 2, 2, 2},
+            {irs::ViewCast<irs::byte_type>("alphazez"sv), 2, 2, 2},
+            {irs::ViewCast<irs::byte_type>("lphazez"sv), 3, 3, 3},
+        });
 
     // with prefix
     assert_description(
-      description, irs::ViewCast<irs::byte_type>("a"sv),
-      irs::ViewCast<irs::byte_type>("lphabet"sv),
-      {
-        {irs::ViewCast<irs::byte_type>("alphabet"sv), 0, 0, 0},
-        {irs::ViewCast<irs::byte_type>("alphabez"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("alphaet"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("alhpaebt"sv), 4, 4, 4},
-        {irs::ViewCast<irs::byte_type>("alhpeabt"sv), 3, 3, 3},
-        {irs::ViewCast<irs::byte_type>("alphaebt"sv), 2, 2, 2},
-        {irs::ViewCast<irs::byte_type>("alphabezz"sv), 2, 2, 2},
-        {irs::ViewCast<irs::byte_type>("alphazez"sv), 2, 2, 2},
-      });
+        description, irs::ViewCast<irs::byte_type>("a"sv),
+        irs::ViewCast<irs::byte_type>("lphabet"sv),
+        {
+            {irs::ViewCast<irs::byte_type>("alphabet"sv), 0, 0, 0},
+            {irs::ViewCast<irs::byte_type>("alphabez"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("alphaet"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("alhpaebt"sv), 4, 4, 4},
+            {irs::ViewCast<irs::byte_type>("alhpeabt"sv), 3, 3, 3},
+            {irs::ViewCast<irs::byte_type>("alphaebt"sv), 2, 2, 2},
+            {irs::ViewCast<irs::byte_type>("alphabezz"sv), 2, 2, 2},
+            {irs::ViewCast<irs::byte_type>("alphazez"sv), 2, 2, 2},
+        });
 
     assert_description(
-      description, irs::ViewCast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9"sv),
-      {
-        {irs::ViewCast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9"sv), 0, 0, 0},
-        {irs::ViewCast<irs::byte_type>("\xD0\xBF\xD1\x83\xD0\xB9"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>(
-           "\xD1\x85\xD1\x83\xD0\xB9\xD0\xBD\xD1\x8F"sv),
-         2, 2, 2},
-        {irs::ViewCast<irs::byte_type>(
-           "\xD0\xBF\xD1\x83\xD0\xB9\xD0\xBD\xD1\x8F"sv),
-         3, 3, 3},
-      });
+        description,
+        irs::ViewCast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9"sv),
+        {
+            {irs::ViewCast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9"sv), 0, 0,
+             0},
+            {irs::ViewCast<irs::byte_type>("\xD0\xBF\xD1\x83\xD0\xB9"sv), 1, 1,
+             1},
+            {irs::ViewCast<irs::byte_type>(
+                 "\xD1\x85\xD1\x83\xD0\xB9\xD0\xBD\xD1\x8F"sv),
+             2, 2, 2},
+            {irs::ViewCast<irs::byte_type>(
+                 "\xD0\xBF\xD1\x83\xD0\xB9\xD0\xBD\xD1\x8F"sv),
+             3, 3, 3},
+        });
 
     // "aec" vs "abc"
-    ASSERT_EQ(
-      1, irs::edit_distance(description, irs::ViewCast<irs::byte_type>("aec"sv),
-                            irs::ViewCast<irs::byte_type>("abc"sv)));
-    ASSERT_EQ(
-      1, irs::edit_distance(description, irs::ViewCast<irs::byte_type>("abc"sv),
-                            irs::ViewCast<irs::byte_type>("aec"sv)));
+    ASSERT_EQ(1, irs::edit_distance(description,
+                                    irs::ViewCast<irs::byte_type>("aec"sv),
+                                    irs::ViewCast<irs::byte_type>("abc"sv)));
+    ASSERT_EQ(1, irs::edit_distance(description,
+                                    irs::ViewCast<irs::byte_type>("abc"sv),
+                                    irs::ViewCast<irs::byte_type>("aec"sv)));
     // "aec" vs "ac"
-    ASSERT_EQ(
-      1, irs::edit_distance(description, irs::ViewCast<irs::byte_type>("aec"sv),
-                            irs::ViewCast<irs::byte_type>("ac"sv)));
-    ASSERT_EQ(
-      1, irs::edit_distance(description, irs::ViewCast<irs::byte_type>("ac"sv),
-                            irs::ViewCast<irs::byte_type>("aec"sv)));
+    ASSERT_EQ(1, irs::edit_distance(description,
+                                    irs::ViewCast<irs::byte_type>("aec"sv),
+                                    irs::ViewCast<irs::byte_type>("ac"sv)));
+    ASSERT_EQ(1, irs::edit_distance(description,
+                                    irs::ViewCast<irs::byte_type>("ac"sv),
+                                    irs::ViewCast<irs::byte_type>("aec"sv)));
     // "aec" vs "zaec"
-    ASSERT_EQ(
-      1, irs::edit_distance(description, irs::ViewCast<irs::byte_type>("aec"sv),
-                            irs::ViewCast<irs::byte_type>("zaec"sv)));
+    ASSERT_EQ(1, irs::edit_distance(description,
+                                    irs::ViewCast<irs::byte_type>("aec"sv),
+                                    irs::ViewCast<irs::byte_type>("zaec"sv)));
     ASSERT_EQ(1, irs::edit_distance(description,
                                     irs::ViewCast<irs::byte_type>("zaec"sv),
                                     irs::ViewCast<irs::byte_type>("aec"sv)));
     // "aec" vs "abcd"
-    ASSERT_EQ(
-      2, irs::edit_distance(description, irs::ViewCast<irs::byte_type>("aec"sv),
-                            irs::ViewCast<irs::byte_type>("abcd"sv)));
+    ASSERT_EQ(2, irs::edit_distance(description,
+                                    irs::ViewCast<irs::byte_type>("aec"sv),
+                                    irs::ViewCast<irs::byte_type>("abcd"sv)));
     ASSERT_EQ(2, irs::edit_distance(description,
                                     irs::ViewCast<irs::byte_type>("abcd"sv),
                                     irs::ViewCast<irs::byte_type>("aec"sv)));
     // "aec" vs "abcdz"
-    ASSERT_EQ(
-      3, irs::edit_distance(description, irs::ViewCast<irs::byte_type>("aec"sv),
-                            irs::ViewCast<irs::byte_type>("abcdz"sv)));
+    ASSERT_EQ(3, irs::edit_distance(description,
+                                    irs::ViewCast<irs::byte_type>("aec"sv),
+                                    irs::ViewCast<irs::byte_type>("abcdz"sv)));
     ASSERT_EQ(3, irs::edit_distance(description,
                                     irs::ViewCast<irs::byte_type>("abcdz"sv),
                                     irs::ViewCast<irs::byte_type>("aec"sv)));
     // "aec" vs "abcdefasdfasdf", can differentiate distances up to
     // 'desc.max_distance'
     ASSERT_EQ(
-      description.max_distance() + 1,
-      irs::edit_distance(description, irs::ViewCast<irs::byte_type>("aec"sv),
-                         irs::ViewCast<irs::byte_type>("abcdefasdfasdf"sv)));
-    ASSERT_EQ(description.max_distance() + 1,
-              irs::edit_distance(
-                description, irs::ViewCast<irs::byte_type>("abcdefasdfasdf"sv),
-                irs::ViewCast<irs::byte_type>("aec"sv)));
+        description.max_distance() + 1,
+        irs::edit_distance(description, irs::ViewCast<irs::byte_type>("aec"sv),
+                           irs::ViewCast<irs::byte_type>("abcdefasdfasdf"sv)));
+    ASSERT_EQ(
+        description.max_distance() + 1,
+        irs::edit_distance(description,
+                           irs::ViewCast<irs::byte_type>("abcdefasdfasdf"sv),
+                           irs::ViewCast<irs::byte_type>("aec"sv)));
   }
 
   // transpositions
@@ -1235,33 +1298,36 @@ TEST(levenshtein_utils_test, test_description_3) {
     assert_read_write(description);
 
     assert_description(
-      description, irs::ViewCast<irs::byte_type>("alphabet"sv),
-      {
-        {irs::ViewCast<irs::byte_type>("alphabet"sv), 0, 0, 0},
-        {irs::ViewCast<irs::byte_type>("alphabez"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("alphaet"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("alhpaebt"sv), 2, 2, 4},
-        {irs::ViewCast<irs::byte_type>("alhpeabt"sv), 3, 3, 3},
-        {irs::ViewCast<irs::byte_type>("laphaebt"sv), 2, 2, 4},
-        {irs::ViewCast<irs::byte_type>("alphaebt"sv), 1, 1, 2},
-        {irs::ViewCast<irs::byte_type>("alphabezz"sv), 2, 2, 2},
-        {irs::ViewCast<irs::byte_type>("alphazez"sv), 2, 2, 2},
-        {irs::ViewCast<irs::byte_type>("lphazez"sv), 3, 3, 3},
-        {irs::ViewCast<irs::byte_type>("lpzazez"sv), 4, 4, 4},
-      });
+        description, irs::ViewCast<irs::byte_type>("alphabet"sv),
+        {
+            {irs::ViewCast<irs::byte_type>("alphabet"sv), 0, 0, 0},
+            {irs::ViewCast<irs::byte_type>("alphabez"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("alphaet"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("alhpaebt"sv), 2, 2, 4},
+            {irs::ViewCast<irs::byte_type>("alhpeabt"sv), 3, 3, 3},
+            {irs::ViewCast<irs::byte_type>("laphaebt"sv), 2, 2, 4},
+            {irs::ViewCast<irs::byte_type>("alphaebt"sv), 1, 1, 2},
+            {irs::ViewCast<irs::byte_type>("alphabezz"sv), 2, 2, 2},
+            {irs::ViewCast<irs::byte_type>("alphazez"sv), 2, 2, 2},
+            {irs::ViewCast<irs::byte_type>("lphazez"sv), 3, 3, 3},
+            {irs::ViewCast<irs::byte_type>("lpzazez"sv), 4, 4, 4},
+        });
 
     assert_description(
-      description, irs::ViewCast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9"sv),
-      {
-        {irs::ViewCast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9"sv), 0, 0, 0},
-        {irs::ViewCast<irs::byte_type>("\xD0\xBF\xD1\x83\xD0\xB9"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>(
-           "\xD1\x85\xD1\x83\xD0\xB9\xD0\xBD\xD1\x8F"sv),
-         2, 2, 2},
-        {irs::ViewCast<irs::byte_type>(
-           "\xD0\xBF\xD1\x83\xD0\xB9\xD0\xBD\xD1\x8F"sv),
-         3, 3, 3},
-      });
+        description,
+        irs::ViewCast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9"sv),
+        {
+            {irs::ViewCast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9"sv), 0, 0,
+             0},
+            {irs::ViewCast<irs::byte_type>("\xD0\xBF\xD1\x83\xD0\xB9"sv), 1, 1,
+             1},
+            {irs::ViewCast<irs::byte_type>(
+                 "\xD1\x85\xD1\x83\xD0\xB9\xD0\xBD\xD1\x8F"sv),
+             2, 2, 2},
+            {irs::ViewCast<irs::byte_type>(
+                 "\xD0\xBF\xD1\x83\xD0\xB9\xD0\xBD\xD1\x8F"sv),
+             3, 3, 3},
+        });
   }
 }
 
@@ -1278,61 +1344,65 @@ TEST(levenshtein_utils_test, test_description_4) {
     assert_read_write(description);
 
     assert_description(
-      description, irs::ViewCast<irs::byte_type>("alphabet"sv),
-      {
-        {irs::ViewCast<irs::byte_type>("alphabet"sv), 0, 0, 0},
-        {irs::ViewCast<irs::byte_type>("alphabez"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("alphaet"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("alhpaebt"sv), 4, 4, 4},
-        {irs::ViewCast<irs::byte_type>("alhpeabt"sv), 3, 3, 3},
-        {irs::ViewCast<irs::byte_type>("laphaebt"sv), 4, 4, 4},
-        {irs::ViewCast<irs::byte_type>("alphaebt"sv), 2, 2, 2},
-        {irs::ViewCast<irs::byte_type>("alphabezz"sv), 2, 2, 2},
-        {irs::ViewCast<irs::byte_type>("alphazez"sv), 2, 2, 2},
-        {irs::ViewCast<irs::byte_type>("lphazez"sv), 3, 3, 3},
-        {irs::ViewCast<irs::byte_type>("phazez"sv), 4, 4, 4},
-        {irs::ViewCast<irs::byte_type>("phzez"sv), 5, 5, 5},
-        {irs::ViewCast<irs::byte_type>("hzez"sv), 5, 5, 6},
-      });
+        description, irs::ViewCast<irs::byte_type>("alphabet"sv),
+        {
+            {irs::ViewCast<irs::byte_type>("alphabet"sv), 0, 0, 0},
+            {irs::ViewCast<irs::byte_type>("alphabez"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("alphaet"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("alhpaebt"sv), 4, 4, 4},
+            {irs::ViewCast<irs::byte_type>("alhpeabt"sv), 3, 3, 3},
+            {irs::ViewCast<irs::byte_type>("laphaebt"sv), 4, 4, 4},
+            {irs::ViewCast<irs::byte_type>("alphaebt"sv), 2, 2, 2},
+            {irs::ViewCast<irs::byte_type>("alphabezz"sv), 2, 2, 2},
+            {irs::ViewCast<irs::byte_type>("alphazez"sv), 2, 2, 2},
+            {irs::ViewCast<irs::byte_type>("lphazez"sv), 3, 3, 3},
+            {irs::ViewCast<irs::byte_type>("phazez"sv), 4, 4, 4},
+            {irs::ViewCast<irs::byte_type>("phzez"sv), 5, 5, 5},
+            {irs::ViewCast<irs::byte_type>("hzez"sv), 5, 5, 6},
+        });
 
     // with prefix
     assert_description(
-      description, irs::ViewCast<irs::byte_type>("al"sv),
-      irs::ViewCast<irs::byte_type>("phabet"sv),
-      {
-        {irs::ViewCast<irs::byte_type>("alphabet"sv), 0, 0, 0},
-        {irs::ViewCast<irs::byte_type>("alphabez"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("alphaet"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>("alhpaebt"sv), 4, 4, 4},
-        {irs::ViewCast<irs::byte_type>("alhpeabt"sv), 3, 3, 3},
-        {irs::ViewCast<irs::byte_type>("alphaebt"sv), 2, 2, 2},
-        {irs::ViewCast<irs::byte_type>("alphabezz"sv), 2, 2, 2},
-        {irs::ViewCast<irs::byte_type>("alphazez"sv), 2, 2, 2},
-      });
+        description, irs::ViewCast<irs::byte_type>("al"sv),
+        irs::ViewCast<irs::byte_type>("phabet"sv),
+        {
+            {irs::ViewCast<irs::byte_type>("alphabet"sv), 0, 0, 0},
+            {irs::ViewCast<irs::byte_type>("alphabez"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("alphaet"sv), 1, 1, 1},
+            {irs::ViewCast<irs::byte_type>("alhpaebt"sv), 4, 4, 4},
+            {irs::ViewCast<irs::byte_type>("alhpeabt"sv), 3, 3, 3},
+            {irs::ViewCast<irs::byte_type>("alphaebt"sv), 2, 2, 2},
+            {irs::ViewCast<irs::byte_type>("alphabezz"sv), 2, 2, 2},
+            {irs::ViewCast<irs::byte_type>("alphazez"sv), 2, 2, 2},
+        });
 
     assert_description(
-      description, irs::ViewCast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9"sv),
-      {
-        {irs::ViewCast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9"sv), 0, 0, 0},
-        {irs::ViewCast<irs::byte_type>("\xD0\xBF\xD1\x83\xD0\xB9"sv), 1, 1, 1},
-        {irs::ViewCast<irs::byte_type>(
-           "\xD1\x85\xD1\x83\xD0\xB9\xD0\xBD\xD1\x8F"sv),
-         2, 2, 2},
-        {irs::ViewCast<irs::byte_type>(
-           "\xD0\xBF\xD1\x83\xD0\xB9\xD0\xBD\xD1\x8F"sv),
-         3, 3, 3},
-      });
+        description,
+        irs::ViewCast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9"sv),
+        {
+            {irs::ViewCast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9"sv), 0, 0,
+             0},
+            {irs::ViewCast<irs::byte_type>("\xD0\xBF\xD1\x83\xD0\xB9"sv), 1, 1,
+             1},
+            {irs::ViewCast<irs::byte_type>(
+                 "\xD1\x85\xD1\x83\xD0\xB9\xD0\xBD\xD1\x8F"sv),
+             2, 2, 2},
+            {irs::ViewCast<irs::byte_type>(
+                 "\xD0\xBF\xD1\x83\xD0\xB9\xD0\xBD\xD1\x8F"sv),
+             3, 3, 3},
+        });
 
     // with prefix
     assert_description(
-      description, irs::ViewCast<irs::byte_type>("\xD1\x85"sv),
-      irs::ViewCast<irs::byte_type>("\xD1\x83\xD0\xB9"sv),
-      {
-        {irs::ViewCast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9"sv), 0, 0, 0},
-        {irs::ViewCast<irs::byte_type>(
-           "\xD1\x85\xD1\x83\xD0\xB9\xD0\xBD\xD1\x8F"sv),
-         2, 2, 2},
-      });
+        description, irs::ViewCast<irs::byte_type>("\xD1\x85"sv),
+        irs::ViewCast<irs::byte_type>("\xD1\x83\xD0\xB9"sv),
+        {
+            {irs::ViewCast<irs::byte_type>("\xD1\x85\xD1\x83\xD0\xB9"sv), 0, 0,
+             0},
+            {irs::ViewCast<irs::byte_type>(
+                 "\xD1\x85\xD1\x83\xD0\xB9\xD0\xBD\xD1\x8F"sv),
+             2, 2, 2},
+        });
   }
 
   // Commented out since it takes ~10 min to pass
@@ -1375,7 +1445,7 @@ TEST(levenshtein_utils_test, test_description_invalid) {
   // no transpositions
   {
     auto description = irs::make_parametric_description(
-      irs::parametric_description::MAX_DISTANCE + 1, false);
+        irs::parametric_description::MAX_DISTANCE + 1, false);
     ASSERT_FALSE(bool(description));
     ASSERT_EQ(0, description.size());
     ASSERT_EQ(0, description.chi_size());
@@ -1388,7 +1458,7 @@ TEST(levenshtein_utils_test, test_description_invalid) {
   // transpositions
   {
     auto description = irs::make_parametric_description(
-      irs::parametric_description::MAX_DISTANCE + 1, true);
+        irs::parametric_description::MAX_DISTANCE + 1, true);
     ASSERT_FALSE(bool(description));
     ASSERT_EQ(0, description.size());
     ASSERT_EQ(0, description.chi_size());

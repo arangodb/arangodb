@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -29,11 +28,11 @@ template<typename Allocator, typename Manager>
 class ManagedAllocator : private Allocator {
  public:
   using difference_type =
-    typename std::allocator_traits<Allocator>::difference_type;
+      typename std::allocator_traits<Allocator>::difference_type;
   using propagate_on_container_move_assignment = typename std::allocator_traits<
-    Allocator>::propagate_on_container_move_assignment;
+      Allocator>::propagate_on_container_move_assignment;
   using propagate_on_container_copy_assignment = typename std::allocator_traits<
-    Allocator>::propagate_on_container_copy_assignment;
+      Allocator>::propagate_on_container_copy_assignment;
   using propagate_on_container_swap = std::true_type;
   // Note: If swap would be needed this code should do the trick.
   // But beware of UB in case of non equal allocators.
@@ -44,26 +43,26 @@ class ManagedAllocator : private Allocator {
 
   template<typename... Args>
   ManagedAllocator(Manager& rm, Args&&... args) noexcept(
-    std::is_nothrow_constructible_v<Allocator, Args&&...>)
-    : Allocator(std::forward<Args>(args)...), rm_(&rm) {}
+      std::is_nothrow_constructible_v<Allocator, Args&&...>)
+      : Allocator(std::forward<Args>(args)...), rm_(&rm) {}
 
   ManagedAllocator(ManagedAllocator&& other) noexcept(
-    std::is_nothrow_move_constructible_v<Allocator>)
-    : Allocator(std::move(other)), rm_(&other.ResourceManager()) {}
+      std::is_nothrow_move_constructible_v<Allocator>)
+      : Allocator(std::move(other)), rm_(&other.ResourceManager()) {}
 
   ManagedAllocator(const ManagedAllocator& other) noexcept(
-    std::is_nothrow_copy_constructible_v<Allocator>)
-    : Allocator(other), rm_(&other.ResourceManager()) {}
+      std::is_nothrow_copy_constructible_v<Allocator>)
+      : Allocator(other), rm_(&other.ResourceManager()) {}
 
   ManagedAllocator& operator=(ManagedAllocator&& other) noexcept(
-    std::is_nothrow_move_assignable_v<Allocator>) {
+      std::is_nothrow_move_assignable_v<Allocator>) {
     static_cast<Allocator&>(*this) = std::move(other);
     rm_ = &other.ResourceManager();
     return *this;
   }
 
   ManagedAllocator& operator=(const ManagedAllocator& other) noexcept(
-    std::is_nothrow_copy_assignable_v<Allocator>) {
+      std::is_nothrow_copy_assignable_v<Allocator>) {
     static_cast<Allocator&>(*this) = other;
     rm_ = &other.ResourceManager();
     return *this;
@@ -71,8 +70,8 @@ class ManagedAllocator : private Allocator {
 
   template<typename A>
   ManagedAllocator(const ManagedAllocator<A, Manager>& other) noexcept(
-    std::is_nothrow_copy_constructible_v<Allocator>)
-    : Allocator(other.RawAllocator()), rm_(&other.ResourceManager()) {}
+      std::is_nothrow_copy_constructible_v<Allocator>)
+      : Allocator(other.RawAllocator()), rm_(&other.ResourceManager()) {}
 
   value_type* allocate(size_type n) {
     rm_->Increase(sizeof(value_type) * n);

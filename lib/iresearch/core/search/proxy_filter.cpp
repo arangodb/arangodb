@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "proxy_filter.hpp"
@@ -40,7 +39,7 @@ class lazy_filter_bitset : private util::noncopyable {
 
   lazy_filter_bitset(const ExecutionContext& ctx,
                      const filter::prepared& filter)
-    : manager_{ctx.memory} {
+      : manager_{ctx.memory} {
     const size_t bits = ctx.segment.docs_count() + doc_limits::min();
     words_ = bitset::bits_to_words(bits);
 
@@ -109,7 +108,7 @@ class lazy_filter_bitset_iterator : public doc_iterator,
                                     private util::noncopyable {
  public:
   explicit lazy_filter_bitset_iterator(lazy_filter_bitset& bitset) noexcept
-    : bitset_(bitset), cost_(bitset_.get_cost()) {
+      : bitset_(bitset), cost_(bitset_.get_cost()) {
     reset();
   }
 
@@ -136,7 +135,7 @@ class lazy_filter_bitset_iterator : public doc_iterator,
     word_idx_ = target / bits_required<lazy_filter_bitset::word_t>();
     if (bitset_.get(word_idx_, &word_)) {
       const doc_id_t bit_idx =
-        target % bits_required<lazy_filter_bitset::word_t>();
+          target % bits_required<lazy_filter_bitset::word_t>();
       base_ = word_idx_ * bits_required<lazy_filter_bitset::word_t>();
       word_ >>= bit_idx;
       doc_.value = base_ - 1 + bit_idx;
@@ -179,19 +178,19 @@ class lazy_filter_bitset_iterator : public doc_iterator,
 
 struct proxy_query_cache {
   proxy_query_cache(IResourceManager& memory, filter::ptr&& ptr) noexcept
-    : real_filter_{std::move(ptr)}, readers_{Alloc{memory}} {}
+      : real_filter_{std::move(ptr)}, readers_{Alloc{memory}} {}
 
   using Alloc = ManagedTypedAllocator<
-    std::pair<const SubReader* const, std::unique_ptr<lazy_filter_bitset>>>;
+      std::pair<const SubReader* const, std::unique_ptr<lazy_filter_bitset>>>;
 
   filter::ptr real_filter_;
   filter::prepared::ptr real_filter_prepared_;
   absl::Mutex readers_lock_;
   absl::flat_hash_map<
-    const SubReader*, std::unique_ptr<lazy_filter_bitset>,
-    absl::container_internal::hash_default_hash<const SubReader*>,
-    absl::container_internal::hash_default_eq<const SubReader*>, Alloc>
-    readers_;
+      const SubReader*, std::unique_ptr<lazy_filter_bitset>,
+      absl::container_internal::hash_default_hash<const SubReader*>,
+      absl::container_internal::hash_default_eq<const SubReader*>, Alloc>
+      readers_;
 };
 
 class proxy_query : public filter::prepared {
@@ -212,7 +211,7 @@ class proxy_query : public filter::prepared {
     }();
     if (!cache_bitset) {
       auto bitset = std::make_unique<lazy_filter_bitset>(
-        ctx, *cache_->real_filter_prepared_);
+          ctx, *cache_->real_filter_prepared_);
       cache_bitset = bitset.get();
       absl::WriterMutexLock lock{&cache_->readers_lock_};
       IRS_ASSERT(!cache_->readers_.contains(&ctx.segment));

@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -29,7 +28,7 @@ namespace irs {
 template<typename DocIterator = doc_iterator::ptr>
 struct CostAdapter : ScoreAdapter<DocIterator> {
   explicit CostAdapter(DocIterator&& it) noexcept
-    : ScoreAdapter<DocIterator>{std::move(it)} {
+      : ScoreAdapter<DocIterator>{std::move(it)} {
     // TODO(MBkkt) 0 instead of kMax?
     est = cost::extract(*this->it, cost::kMax);
   }
@@ -61,10 +60,10 @@ class MinMatchDisjunction : public doc_iterator,
  public:
   MinMatchDisjunction(CostAdapters&& itrs, size_t min_match_count,
                       Merger&& merger = {})
-    : Merger{std::move(merger)},
-      itrs_{std::move(itrs)},
-      min_match_count_{std::clamp(min_match_count, size_t{1}, itrs_.size())},
-      lead_{itrs_.size()} {
+      : Merger{std::move(merger)},
+        itrs_{std::move(itrs)},
+        min_match_count_{std::clamp(min_match_count, size_t{1}, itrs_.size())},
+        lead_{itrs_.size()} {
     IRS_ASSERT(!itrs_.empty());
     IRS_ASSERT(min_match_count_ >= 1 && min_match_count_ <= itrs_.size());
 
@@ -113,9 +112,10 @@ class MinMatchDisjunction : public doc_iterator,
 
       // make step for all head iterators less or equal current doc (doc_)
       while (Top().value() <= doc_value) {
-        const bool exhausted = Top().value() == doc_value
-                                 ? !Top()->next()
-                                 : doc_limits::eof(Top()->seek(doc_value + 1));
+        const bool exhausted =
+            Top().value() == doc_value
+                ? !Top()->next()
+                : doc_limits::eof(Top()->seek(doc_value + 1));
 
         if (exhausted && !RemoveTop()) {
           doc_value = doc_limits::eof();

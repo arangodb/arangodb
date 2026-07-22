@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -237,7 +236,7 @@ enum class ScoreMergeType {
 
 struct ScorerBucket {
   ScorerBucket(const Scorer& bucket, size_t stats_offset) noexcept
-    : bucket{&bucket}, stats_offset{stats_offset} {}
+      : bucket{&bucket}, stats_offset{stats_offset} {}
 
   const Scorer* bucket;  // prepared score
   size_t stats_offset;   // offset in stats buffer
@@ -339,8 +338,8 @@ struct ScoreBuffer<kBufferRuntimeSize> {
 
  public:
   explicit ScoreBuffer(size_t size) noexcept
-    : buf_{memory::allocate_unique<score_t[]>(std::allocator<score_t>{}, size,
-                                              memory::allocate_only)} {
+      : buf_{memory::allocate_unique<score_t[]>(std::allocator<score_t>{}, size,
+                                                memory::allocate_only)} {
     IRS_ASSERT(size);
   }
 
@@ -480,14 +479,14 @@ class ScorerBase : public Scorer {
   void get_features(feature_set_t&) const override {}
 
   IRS_FORCE_INLINE static const StatsType* stats_cast(
-    const byte_type* buf) noexcept {
+      const byte_type* buf) noexcept {
     IRS_ASSERT(buf);
     return reinterpret_cast<const StatsType*>(buf);
   }
 
   IRS_FORCE_INLINE static StatsType* stats_cast(byte_type* buf) noexcept {
     return const_cast<StatsType*>(
-      stats_cast(const_cast<const byte_type*>(buf)));
+        stats_cast(const_cast<const byte_type*>(buf)));
   }
 
   // Returns number of bytes and alignment required to store stats

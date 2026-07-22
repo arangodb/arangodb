@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -42,8 +41,8 @@ namespace analysis {
 /// @note expects UTF-8 encoded input
 ////////////////////////////////////////////////////////////////////////////////
 class collation_token_stream final
-  : public TypedAnalyzer<collation_token_stream>,
-    private util::noncopyable {
+    : public TypedAnalyzer<collation_token_stream>,
+      private util::noncopyable {
  public:
   struct options_t {
     IRESEARCH_ICU_NAMESPACE::Locale locale;
@@ -74,8 +73,8 @@ class collation_token_stream final
   };
 
   using attributes =
-    std::tuple<increment, offset,
-               term_attribute>;  // token value with evaluated quotes
+      std::tuple<increment, offset,
+                 term_attribute>;  // token value with evaluated quotes
 
   attributes attrs_;
   std::unique_ptr<state_t, state_deleter_t> state_;

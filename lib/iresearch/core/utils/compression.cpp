@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "compression.hpp"
@@ -34,8 +33,8 @@ namespace {
 struct value {
   explicit value(compressor_factory_f compressor_factory = nullptr,
                  decompressor_factory_f decompressor_factory = nullptr)
-    : compressor_factory_(compressor_factory),
-      decompressor_factory_(decompressor_factory) {}
+      : compressor_factory_(compressor_factory),
+        decompressor_factory_(decompressor_factory) {}
 
   bool empty() const noexcept {
     return compressor_factory_ == nullptr || decompressor_factory_ == nullptr;
@@ -53,8 +52,8 @@ struct value {
 constexpr std::string_view kFileNamePrefix("libcompression-");
 
 class compression_register
-  : public tagged_generic_register<std::string_view, value, std::string_view,
-                                   compression_register> {
+    : public tagged_generic_register<std::string_view, value, std::string_view,
+                                     compression_register> {
  protected:
   std::string key_to_filename(const key_type& key) const final {
     std::string filename(kFileNamePrefix.size() + key.size(), 0);
@@ -82,43 +81,43 @@ identity_compressor kIdentityCompressor;
 }  // namespace
 
 compression_registrar::compression_registrar(
-  const type_info& type, compressor_factory_f compressor_factory,
-  decompressor_factory_f decompressor_factory,
-  const char* source /*= nullptr*/) {
+    const type_info& type, compressor_factory_f compressor_factory,
+    decompressor_factory_f decompressor_factory,
+    const char* source /*= nullptr*/) {
   const auto source_ref =
-    source != nullptr ? std::string_view{source} : std::string_view{};
+      source != nullptr ? std::string_view{source} : std::string_view{};
   const auto new_entry = value(compressor_factory, decompressor_factory);
 
   auto entry = compression_register::instance().set(
-    type.name(), new_entry, IsNull(source_ref) ? nullptr : &source_ref);
+      type.name(), new_entry, IsNull(source_ref) ? nullptr : &source_ref);
 
   registered_ = entry.second;
 
   if (!registered_ && new_entry != entry.first) {
     const auto* registered_source =
-      compression_register::instance().tag(type.name());
+        compression_register::instance().tag(type.name());
 
     if (source != nullptr && registered_source != nullptr) {
       IRS_LOG_WARN(
-        absl::StrCat("type name collision detected while registering "
-                     "compression, ignoring: type '",
-                     type.name(), "' from ", source_ref, ", previously from ",
-                     *registered_source));
+          absl::StrCat("type name collision detected while registering "
+                       "compression, ignoring: type '",
+                       type.name(), "' from ", source_ref, ", previously from ",
+                       *registered_source));
     } else if (source != nullptr) {
       IRS_LOG_WARN(
-        absl::StrCat("type name collision detected while registering "
-                     "compression, ignoring: type '",
-                     type.name(), "' from ", source_ref));
+          absl::StrCat("type name collision detected while registering "
+                       "compression, ignoring: type '",
+                       type.name(), "' from ", source_ref));
     } else if (registered_source != nullptr) {
       IRS_LOG_WARN(
-        absl::StrCat("type name collision detected while registering "
-                     "compression, ignoring: type '",
-                     type.name(), "' previously from ", *registered_source));
+          absl::StrCat("type name collision detected while registering "
+                       "compression, ignoring: type '",
+                       type.name(), "' previously from ", *registered_source));
     } else {
       IRS_LOG_WARN(
-        absl::StrCat("type name collision detected while registering "
-                     "compression, ignoring: type '",
-                     type.name(), "'"));
+          absl::StrCat("type name collision detected while registering "
+                       "compression, ignoring: type '",
+                       type.name(), "'"));
     }
   }
 }
@@ -131,14 +130,14 @@ compressor::ptr get_compressor(std::string_view name, const options& opts,
                                bool load_library /*= true*/) noexcept {
   try {
     auto* factory = compression_register::instance()
-                      .get(name, load_library)
-                      .compressor_factory_;
+                        .get(name, load_library)
+                        .compressor_factory_;
 
     return factory != nullptr ? factory(opts) : nullptr;
   } catch (...) {
     IRS_LOG_ERROR(
-      "Caught exception while getting an analyzer instance");  // cppcheck-suppress
-                                                               // syntaxError
+        "Caught exception while getting an analyzer instance");  // cppcheck-suppress
+                                                                 // syntaxError
   }
 
   return nullptr;
@@ -148,8 +147,8 @@ decompressor::ptr get_decompressor(std::string_view name,
                                    bool load_library /*= true*/) noexcept {
   try {
     auto* factory = compression_register::instance()
-                      .get(name, load_library)
-                      .decompressor_factory_;
+                        .get(name, load_library)
+                        .decompressor_factory_;
 
     return factory != nullptr ? factory() : nullptr;
   } catch (...) {
@@ -171,7 +170,7 @@ void load_all(std::string_view path) {
 
 bool visit(const std::function<bool(std::string_view)>& visitor) {
   const compression_register::visitor_t wrapper =
-    [&visitor](std::string_view key) -> bool { return visitor(key); };
+      [&visitor](std::string_view key) -> bool { return visitor(key); };
 
   return compression_register::instance().visit(wrapper);
 }

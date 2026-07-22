@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -34,7 +33,7 @@ struct MultiTermState {
   struct ScoredTermState {
     ScoredTermState(seek_cookie::ptr&& cookie, uint32_t stat_offset,
                     score_t boost = kNoBoost) noexcept
-      : cookie{std::move(cookie)}, stat_offset{stat_offset}, boost{boost} {}
+        : cookie{std::move(cookie)}, stat_offset{stat_offset}, boost{boost} {}
 
     seek_cookie::ptr cookie;
     uint32_t stat_offset{};
@@ -42,7 +41,7 @@ struct MultiTermState {
   };
 
   explicit MultiTermState(IResourceManager& memory) noexcept
-    : scored_states{{memory}}, unscored_terms{{memory}} {}
+      : scored_states{{memory}}, unscored_terms{{memory}} {}
 
   using UnscoredTermState = seek_cookie::ptr;
 

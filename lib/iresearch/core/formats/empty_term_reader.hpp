@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -31,14 +30,14 @@ namespace irs {
 class empty_term_reader final : public irs::term_reader {
  public:
   constexpr explicit empty_term_reader(uint64_t docs_count) noexcept
-    : docs_count_{docs_count} {}
+      : docs_count_{docs_count} {}
 
   seek_term_iterator::ptr iterator(SeekMode) const noexcept final {
     return seek_term_iterator::empty();
   }
 
   seek_term_iterator::ptr iterator(
-    automaton_table_matcher&) const noexcept final {
+      automaton_table_matcher&) const noexcept final {
     return seek_term_iterator::empty();
   }
 

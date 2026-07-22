@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -42,6 +41,6 @@ namespace irs {
 bool set_thread_name(const thread_name_t name) noexcept;
 
 bool get_thread_name(
-  irs::basic_string<std::remove_pointer_t<thread_name_t>>& name);
+    irs::basic_string<std::remove_pointer_t<thread_name_t>>& name);
 
 }  // namespace irs

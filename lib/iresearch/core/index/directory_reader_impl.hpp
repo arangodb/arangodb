@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -31,14 +30,14 @@
 namespace irs {
 
 class DirectoryReaderImpl final
-  : public CompositeReaderImpl<std::vector<SegmentReader>> {
+    : public CompositeReaderImpl<std::vector<SegmentReader>> {
  public:
   // open a new directory reader
   // if codec == nullptr then use the latest file for all known codecs
   // if cached != nullptr then try to reuse its segments
   static std::shared_ptr<const DirectoryReaderImpl> Open(
-    const directory& dir, const IndexReaderOptions& opts, format::ptr codec,
-    const std::shared_ptr<const DirectoryReaderImpl>& cached);
+      const directory& dir, const IndexReaderOptions& opts, format::ptr codec,
+      const std::shared_ptr<const DirectoryReaderImpl>& cached);
 
   DirectoryReaderImpl(const directory& dir, format::ptr codec,
                       const IndexReaderOptions& opts, DirectoryMeta&& meta,

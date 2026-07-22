@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -47,7 +46,7 @@ struct by_ngram_similarity_options {
 };
 
 class by_ngram_similarity
-  : public FilterWithField<by_ngram_similarity_options> {
+    : public FilterWithField<by_ngram_similarity_options> {
  public:
   static prepared::ptr Prepare(const PrepareContext& ctx,
                                std::string_view field_name,

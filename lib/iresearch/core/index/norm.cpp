@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "norm.hpp"
@@ -133,8 +132,8 @@ std::optional<Norm2Header> Norm2Header::Read(bytes_view payload) noexcept {
   const byte_type num_bytes = *p++;
   if (IRS_UNLIKELY(!CheckNumBytes(num_bytes))) {
     IRS_LOG_ERROR(
-      absl::StrCat("Malformed 'norm2' header, invalid number of bytes: ",
-                   static_cast<uint32_t>(num_bytes)));
+        absl::StrCat("Malformed 'norm2' header, invalid number of bytes: ",
+                     static_cast<uint32_t>(num_bytes)));
     return std::nullopt;
   }
 

@@ -17,8 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "bitvector.hpp"
@@ -2396,7 +2394,7 @@ TEST(bitvector_tests, memset) {
   {
     const irs::bitset::index_t words = 2;
     const irs::bitset::index_t size =
-      2 * irs::bits_required<irs::bitset::word_t>();
+        2 * irs::bits_required<irs::bitset::word_t>();
 
     irs::bitvector bv(size);
     ASSERT_FALSE(bv.empty());

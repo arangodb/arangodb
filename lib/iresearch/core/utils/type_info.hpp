@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -79,7 +78,7 @@ class type_info {
   friend struct type;
 
   constexpr type_info(type_id id, std::string_view name) noexcept
-    : id_(id), name_(name) {}
+      : id_(id), name_(name) {}
 
   type_id id_;
   std::string_view name_;

@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "tests_shared.hpp"
@@ -30,7 +29,7 @@
 
 TEST(boolean_weight_test, static_const) {
   ASSERT_EQ(fst::kLeftSemiring | fst::kRightSemiring | fst::kCommutative |
-              fst::kIdempotent | fst::kPath,
+                fst::kIdempotent | fst::kPath,
             fst::fsa::BooleanWeight::Properties());
   ASSERT_EQ("boolean", fst::fsa::BooleanWeight::Type());
 }
@@ -237,16 +236,17 @@ TEST(boolean_weight_test, create) {
     ASSERT_NE(fst::fsa::BooleanWeight(false), weight);
     ASSERT_NE(fst::fsa::BooleanWeight(false, 2), weight);
     ASSERT_NE(
-      fst::fsa::BooleanWeight(
-        false,
-        std::numeric_limits<fst::fsa::BooleanWeight::PayloadType>::max()),
-      weight);
+        fst::fsa::BooleanWeight(
+            false,
+            std::numeric_limits<fst::fsa::BooleanWeight::PayloadType>::max()),
+        weight);
     ASSERT_EQ(fst::fsa::BooleanWeight(true), weight);
     ASSERT_EQ(fst::fsa::BooleanWeight(true, 1), weight);
     ASSERT_EQ(
-      fst::fsa::BooleanWeight(
-        true, std::numeric_limits<fst::fsa::BooleanWeight::PayloadType>::max()),
-      weight);
+        fst::fsa::BooleanWeight(
+            true,
+            std::numeric_limits<fst::fsa::BooleanWeight::PayloadType>::max()),
+        weight);
     ASSERT_EQ(fst::fsa::BooleanWeight::NoWeight(), weight.Quantize());
     ASSERT_NE(weight, weight.Quantize());
     ASSERT_EQ(weight, weight.Reverse());
@@ -282,14 +282,14 @@ TEST(boolean_weight_test, divide) {
   using namespace fst::fsa;
 
   ASSERT_EQ(
-    BooleanWeight::NoWeight(),
-    Divide(BooleanWeight(true, 31), BooleanWeight(true, 11), DIVIDE_LEFT));
+      BooleanWeight::NoWeight(),
+      Divide(BooleanWeight(true, 31), BooleanWeight(true, 11), DIVIDE_LEFT));
   ASSERT_EQ(
-    BooleanWeight::NoWeight(),
-    Divide(BooleanWeight(true, 31), BooleanWeight(true, 11), DIVIDE_RIGHT));
+      BooleanWeight::NoWeight(),
+      Divide(BooleanWeight(true, 31), BooleanWeight(true, 11), DIVIDE_RIGHT));
   ASSERT_EQ(
-    BooleanWeight::NoWeight(),
-    Divide(BooleanWeight(true, 31), BooleanWeight(true, 11), DIVIDE_ANY));
+      BooleanWeight::NoWeight(),
+      Divide(BooleanWeight(true, 31), BooleanWeight(true, 11), DIVIDE_ANY));
   ASSERT_EQ(BooleanWeight::NoWeight(),
             Divide(BooleanWeight::One(), BooleanWeight::Zero(), DIVIDE_LEFT));
   ASSERT_EQ(BooleanWeight::NoWeight(),
@@ -315,41 +315,41 @@ TEST(boolean_weight_test, divide) {
   ASSERT_EQ(BooleanWeight::NoWeight(),
             Divide(BooleanWeight::One(), BooleanWeight::One(), DIVIDE_ANY));
   ASSERT_EQ(
-    BooleanWeight::NoWeight(),
-    Divide(BooleanWeight::One(), BooleanWeight::NoWeight(), DIVIDE_LEFT));
+      BooleanWeight::NoWeight(),
+      Divide(BooleanWeight::One(), BooleanWeight::NoWeight(), DIVIDE_LEFT));
   ASSERT_EQ(
-    BooleanWeight::NoWeight(),
-    Divide(BooleanWeight::One(), BooleanWeight::NoWeight(), DIVIDE_RIGHT));
+      BooleanWeight::NoWeight(),
+      Divide(BooleanWeight::One(), BooleanWeight::NoWeight(), DIVIDE_RIGHT));
   ASSERT_EQ(
-    BooleanWeight::NoWeight(),
-    Divide(BooleanWeight::One(), BooleanWeight::NoWeight(), DIVIDE_ANY));
+      BooleanWeight::NoWeight(),
+      Divide(BooleanWeight::One(), BooleanWeight::NoWeight(), DIVIDE_ANY));
   ASSERT_EQ(
-    BooleanWeight::NoWeight(),
-    Divide(BooleanWeight::NoWeight(), BooleanWeight::One(), DIVIDE_LEFT));
+      BooleanWeight::NoWeight(),
+      Divide(BooleanWeight::NoWeight(), BooleanWeight::One(), DIVIDE_LEFT));
   ASSERT_EQ(
-    BooleanWeight::NoWeight(),
-    Divide(BooleanWeight::NoWeight(), BooleanWeight::One(), DIVIDE_RIGHT));
+      BooleanWeight::NoWeight(),
+      Divide(BooleanWeight::NoWeight(), BooleanWeight::One(), DIVIDE_RIGHT));
   ASSERT_EQ(
-    BooleanWeight::NoWeight(),
-    Divide(BooleanWeight::NoWeight(), BooleanWeight::One(), DIVIDE_ANY));
+      BooleanWeight::NoWeight(),
+      Divide(BooleanWeight::NoWeight(), BooleanWeight::One(), DIVIDE_ANY));
+  ASSERT_EQ(BooleanWeight::NoWeight(),
+            Divide(BooleanWeight::NoWeight(), BooleanWeight::NoWeight(),
+                   DIVIDE_LEFT));
+  ASSERT_EQ(BooleanWeight::NoWeight(),
+            Divide(BooleanWeight::NoWeight(), BooleanWeight::NoWeight(),
+                   DIVIDE_RIGHT));
   ASSERT_EQ(
-    BooleanWeight::NoWeight(),
-    Divide(BooleanWeight::NoWeight(), BooleanWeight::NoWeight(), DIVIDE_LEFT));
+      BooleanWeight::NoWeight(),
+      Divide(BooleanWeight::NoWeight(), BooleanWeight::NoWeight(), DIVIDE_ANY));
   ASSERT_EQ(
-    BooleanWeight::NoWeight(),
-    Divide(BooleanWeight::NoWeight(), BooleanWeight::NoWeight(), DIVIDE_RIGHT));
+      BooleanWeight::NoWeight(),
+      Divide(BooleanWeight::NoWeight(), BooleanWeight::One(), DIVIDE_LEFT));
   ASSERT_EQ(
-    BooleanWeight::NoWeight(),
-    Divide(BooleanWeight::NoWeight(), BooleanWeight::NoWeight(), DIVIDE_ANY));
+      BooleanWeight::NoWeight(),
+      Divide(BooleanWeight::NoWeight(), BooleanWeight::One(), DIVIDE_RIGHT));
   ASSERT_EQ(
-    BooleanWeight::NoWeight(),
-    Divide(BooleanWeight::NoWeight(), BooleanWeight::One(), DIVIDE_LEFT));
-  ASSERT_EQ(
-    BooleanWeight::NoWeight(),
-    Divide(BooleanWeight::NoWeight(), BooleanWeight::One(), DIVIDE_RIGHT));
-  ASSERT_EQ(
-    BooleanWeight::NoWeight(),
-    Divide(BooleanWeight::NoWeight(), BooleanWeight::One(), DIVIDE_ANY));
+      BooleanWeight::NoWeight(),
+      Divide(BooleanWeight::NoWeight(), BooleanWeight::One(), DIVIDE_ANY));
 }
 
 TEST(boolean_weight_test, times) {
@@ -404,8 +404,8 @@ class automaton_test_base : public test_base {
  protected:
   static void assert_properties(const irs::automaton& a) {
     constexpr auto EXPECTED_PROPERTIES =
-      fst::kILabelSorted | fst::kOLabelSorted | fst::kIDeterministic |
-      fst::kAcceptor | fst::kUnweighted;
+        fst::kILabelSorted | fst::kOLabelSorted | fst::kIDeterministic |
+        fst::kAcceptor | fst::kUnweighted;
 
     ASSERT_EQ(EXPECTED_PROPERTIES, a.Properties(EXPECTED_PROPERTIES, true));
   }
@@ -414,16 +414,16 @@ class automaton_test_base : public test_base {
                          irs::automaton::Arc::Label expected_label,
                          irs::automaton::StateId expected_target) {
     ASSERT_EQ(expected_label, actual_arc.ilabel)
-      << actual_arc.min << " " << actual_arc.max;
+        << actual_arc.min << " " << actual_arc.max;
     ASSERT_EQ(expected_label, actual_arc.olabel);
     ASSERT_EQ(expected_target, actual_arc.nextstate);
     ASSERT_EQ(fst::fsa::BooleanWeight::One(), actual_arc.weight);
   }
 
   static void assert_state(
-    const irs::automaton& a, const irs::automaton::StateId state,
-    const std::vector<std::pair<irs::automaton::Arc::Label,
-                                irs::automaton::StateId>>& expected_arcs) {
+      const irs::automaton& a, const irs::automaton::StateId state,
+      const std::vector<std::pair<irs::automaton::Arc::Label,
+                                  irs::automaton::StateId>>& expected_arcs) {
     fst::ArcIteratorData<irs::automaton::Arc> actual_arcs;
     a.InitArcIterator(state, &actual_arcs);
     if (expected_arcs.size() != actual_arcs.narcs) {
@@ -438,10 +438,10 @@ class automaton_test_base : public test_base {
   };
 
   static void assert_automaton(
-    const irs::automaton& a,
-    const std::vector<std::vector<
-      std::pair<irs::automaton::Arc::Label, irs::automaton::StateId>>>&
-      expected_automaton) {
+      const irs::automaton& a,
+      const std::vector<std::vector<
+          std::pair<irs::automaton::Arc::Label, irs::automaton::StateId>>>&
+          expected_automaton) {
     ASSERT_EQ(expected_automaton.size(), a.NumStates());
     irs::automaton::StateId state = 0;
     for (auto& expected_arcs : expected_automaton) {
@@ -553,7 +553,7 @@ TEST_F(utf8_transitions_builder_test, empty_arc) {
     auto finish = a.AddState();
 
     std::vector<std::pair<irs::bytes_view, irs::automaton::StateId>> arcs{
-      {irs::kEmptyStringView<irs::byte_type>, finish}};
+        {irs::kEmptyStringView<irs::byte_type>, finish}};
     builder.Insert(a, start, fst::kNoStateId, arcs.begin(), arcs.end());
 
     assert_properties(a);
@@ -584,7 +584,7 @@ TEST_F(utf8_transitions_builder_test, empty_arc) {
     auto intermediate2 = a.NumStates() + 2;
 
     std::vector<std::pair<irs::bytes_view, irs::automaton::StateId>> arcs{
-      {irs::kEmptyStringView<irs::byte_type>, finish}};
+        {irs::kEmptyStringView<irs::byte_type>, finish}};
     builder.Insert(a, start, finish, arcs.begin(), arcs.end());
 
     assert_properties(a);
@@ -740,9 +740,9 @@ TEST_F(utf8_transitions_builder_test, single_byte_sequence) {
         ASSERT_LT(min, 128);
         if (min < expected_arc->first[0]) {
           assert_arc(
-            *actual_arc,
-            irs::RangeLabel::From(min, uint32_t(expected_arc->first[0]) - 1),
-            actual_arc->nextstate);
+              *actual_arc,
+              irs::RangeLabel::From(min, uint32_t(expected_arc->first[0]) - 1),
+              actual_arc->nextstate);
           ++actual_arc;
         }
         assert_arc(*actual_arc, irs::RangeLabel::From(expected_arc->first[0]),
@@ -833,38 +833,44 @@ TEST_F(utf8_transitions_builder_test, multi_byte_sequence) {
     arcs.emplace_back(irs::ViewCast<irs::byte_type>(std::string_view("b")),
                       finish1);
     arcs.emplace_back(
-      irs::ViewCast<irs::byte_type>(std::string_view("\xF5\x85\x97\x86")),
-      finish1);
+        irs::ViewCast<irs::byte_type>(std::string_view("\xF5\x85\x97\x86")),
+        finish1);
     arcs.emplace_back(
-      irs::ViewCast<irs::byte_type>(std::string_view("\xFE\x85\x97\x86")),
-      finish1);
+        irs::ViewCast<irs::byte_type>(std::string_view("\xFE\x85\x97\x86")),
+        finish1);
     arcs.emplace_back(
-      irs::ViewCast<irs::byte_type>(std::string_view("\xFF\x85\x97\x86")),
-      finish1);
+        irs::ViewCast<irs::byte_type>(std::string_view("\xFF\x85\x97\x86")),
+        finish1);
     arcs.emplace_back(
-      irs::ViewCast<irs::byte_type>(std::string_view("\xFF\x85\x97\x86")),
-      finish1);
+        irs::ViewCast<irs::byte_type>(std::string_view("\xFF\x85\x97\x86")),
+        finish1);
     arcs.emplace_back(
-      irs::ViewCast<irs::byte_type>(std::string_view("\xFF\x85\x97\x96")),
-      finish1);
+        irs::ViewCast<irs::byte_type>(std::string_view("\xFF\x85\x97\x96")),
+        finish1);
     arcs.emplace_back(
-      irs::ViewCast<irs::byte_type>(std::string_view("\xD1\x90")), finish0);
+        irs::ViewCast<irs::byte_type>(std::string_view("\xD1\x90")), finish0);
     arcs.emplace_back(
-      irs::ViewCast<irs::byte_type>(std::string_view("\xD1\x86")), finish0);
+        irs::ViewCast<irs::byte_type>(std::string_view("\xD1\x86")), finish0);
     arcs.emplace_back(irs::ViewCast<irs::byte_type>(std::string_view("b")),
                       finish1);
     arcs.emplace_back(
-      irs::ViewCast<irs::byte_type>(std::string_view("\xE2\x85\x96")), finish1);
+        irs::ViewCast<irs::byte_type>(std::string_view("\xE2\x85\x96")),
+        finish1);
     arcs.emplace_back(
-      irs::ViewCast<irs::byte_type>(std::string_view("\xE2\x9E\x96")), finish1);
+        irs::ViewCast<irs::byte_type>(std::string_view("\xE2\x9E\x96")),
+        finish1);
     arcs.emplace_back(
-      irs::ViewCast<irs::byte_type>(std::string_view("\xE2\x9E\x96")), finish1);
+        irs::ViewCast<irs::byte_type>(std::string_view("\xE2\x9E\x96")),
+        finish1);
     arcs.emplace_back(
-      irs::ViewCast<irs::byte_type>(std::string_view("\xE2\x9E\x97")), finish1);
+        irs::ViewCast<irs::byte_type>(std::string_view("\xE2\x9E\x97")),
+        finish1);
     arcs.emplace_back(
-      irs::ViewCast<irs::byte_type>(std::string_view("\xE3\x9E\x97")), finish1);
+        irs::ViewCast<irs::byte_type>(std::string_view("\xE3\x9E\x97")),
+        finish1);
     arcs.emplace_back(
-      irs::ViewCast<irs::byte_type>(std::string_view("\xE3\x85\x97")), finish1);
+        irs::ViewCast<irs::byte_type>(std::string_view("\xE3\x85\x97")),
+        finish1);
     std::sort(arcs.begin(), arcs.end());
 
     builder.Insert(a, start, fst::kNoStateId, arcs.begin(), arcs.end());
@@ -872,39 +878,39 @@ TEST_F(utf8_transitions_builder_test, multi_byte_sequence) {
     assert_properties(a);
 
     std::vector<std::vector<
-      std::pair<irs::automaton::Arc::Label, irs::automaton::StateId>>>
-      expected_automaton{
-        {{irs::RangeLabel::From(48), 1},
-         {irs::RangeLabel::From(55), 2},
-         {irs::RangeLabel::From(85), 1},
-         {irs::RangeLabel::From(97), 1},
-         {irs::RangeLabel::From(98), 2},
-         {irs::RangeLabel::From(209), 3},
-         {irs::RangeLabel::From(226), 6},
-         {irs::RangeLabel::From(227), 8},
-         {irs::RangeLabel::From(245), 11},
-         {irs::RangeLabel::From(254), 11},
-         {irs::RangeLabel::From(255), 14}},
-        {},
-        {},
-        {{irs::RangeLabel::From(134), 1},    //
-         {irs::RangeLabel::From(144), 1}},   //
-        {{irs::RangeLabel::From(150), 2}},   //
-        {{irs::RangeLabel::From(150), 2},    //
-         {irs::RangeLabel::From(151), 2}},   //
-        {{irs::RangeLabel::From(133), 4},    //
-         {irs::RangeLabel::From(158), 5}},   //
-        {{irs::RangeLabel::From(151), 2}},   //
-        {{irs::RangeLabel::From(133), 7},    //
-         {irs::RangeLabel::From(158), 7}},   //
-        {{irs::RangeLabel::From(134), 2}},   //
-        {{irs::RangeLabel::From(151), 9}},   //
-        {{irs::RangeLabel::From(133), 10}},  //
-        {{irs::RangeLabel::From(134), 2},    //
-         {irs::RangeLabel::From(150), 2}},   //
-        {{irs::RangeLabel::From(151), 12}},  //
-        {{irs::RangeLabel::From(133), 13}},  //
-      };
+        std::pair<irs::automaton::Arc::Label, irs::automaton::StateId>>>
+        expected_automaton{
+            {{irs::RangeLabel::From(48), 1},
+             {irs::RangeLabel::From(55), 2},
+             {irs::RangeLabel::From(85), 1},
+             {irs::RangeLabel::From(97), 1},
+             {irs::RangeLabel::From(98), 2},
+             {irs::RangeLabel::From(209), 3},
+             {irs::RangeLabel::From(226), 6},
+             {irs::RangeLabel::From(227), 8},
+             {irs::RangeLabel::From(245), 11},
+             {irs::RangeLabel::From(254), 11},
+             {irs::RangeLabel::From(255), 14}},
+            {},
+            {},
+            {{irs::RangeLabel::From(134), 1},    //
+             {irs::RangeLabel::From(144), 1}},   //
+            {{irs::RangeLabel::From(150), 2}},   //
+            {{irs::RangeLabel::From(150), 2},    //
+             {irs::RangeLabel::From(151), 2}},   //
+            {{irs::RangeLabel::From(133), 4},    //
+             {irs::RangeLabel::From(158), 5}},   //
+            {{irs::RangeLabel::From(151), 2}},   //
+            {{irs::RangeLabel::From(133), 7},    //
+             {irs::RangeLabel::From(158), 7}},   //
+            {{irs::RangeLabel::From(134), 2}},   //
+            {{irs::RangeLabel::From(151), 9}},   //
+            {{irs::RangeLabel::From(133), 10}},  //
+            {{irs::RangeLabel::From(134), 2},    //
+             {irs::RangeLabel::From(150), 2}},   //
+            {{irs::RangeLabel::From(151), 12}},  //
+            {{irs::RangeLabel::From(133), 13}},  //
+        };
 
     assert_automaton(a, expected_automaton);
   }
@@ -934,38 +940,44 @@ TEST_F(utf8_transitions_builder_test, multi_byte_sequence_default_state) {
     arcs.emplace_back(irs::ViewCast<irs::byte_type>(std::string_view("b")),
                       finish1);
     arcs.emplace_back(
-      irs::ViewCast<irs::byte_type>(std::string_view("\xF5\x85\x97\x86")),
-      finish1);
+        irs::ViewCast<irs::byte_type>(std::string_view("\xF5\x85\x97\x86")),
+        finish1);
     arcs.emplace_back(
-      irs::ViewCast<irs::byte_type>(std::string_view("\xFE\x85\x97\x86")),
-      finish1);
+        irs::ViewCast<irs::byte_type>(std::string_view("\xFE\x85\x97\x86")),
+        finish1);
     arcs.emplace_back(
-      irs::ViewCast<irs::byte_type>(std::string_view("\xFF\x85\x97\x86")),
-      finish1);
+        irs::ViewCast<irs::byte_type>(std::string_view("\xFF\x85\x97\x86")),
+        finish1);
     arcs.emplace_back(
-      irs::ViewCast<irs::byte_type>(std::string_view("\xFF\x85\x97\x86")),
-      finish1);
+        irs::ViewCast<irs::byte_type>(std::string_view("\xFF\x85\x97\x86")),
+        finish1);
     arcs.emplace_back(
-      irs::ViewCast<irs::byte_type>(std::string_view("\xFF\x85\x97\x96")),
-      finish1);
+        irs::ViewCast<irs::byte_type>(std::string_view("\xFF\x85\x97\x96")),
+        finish1);
     arcs.emplace_back(
-      irs::ViewCast<irs::byte_type>(std::string_view("\xD1\x90")), finish0);
+        irs::ViewCast<irs::byte_type>(std::string_view("\xD1\x90")), finish0);
     arcs.emplace_back(
-      irs::ViewCast<irs::byte_type>(std::string_view("\xD1\x86")), finish0);
+        irs::ViewCast<irs::byte_type>(std::string_view("\xD1\x86")), finish0);
     arcs.emplace_back(irs::ViewCast<irs::byte_type>(std::string_view("b")),
                       finish1);
     arcs.emplace_back(
-      irs::ViewCast<irs::byte_type>(std::string_view("\xE2\x85\x96")), finish1);
+        irs::ViewCast<irs::byte_type>(std::string_view("\xE2\x85\x96")),
+        finish1);
     arcs.emplace_back(
-      irs::ViewCast<irs::byte_type>(std::string_view("\xE2\x9E\x96")), finish1);
+        irs::ViewCast<irs::byte_type>(std::string_view("\xE2\x9E\x96")),
+        finish1);
     arcs.emplace_back(
-      irs::ViewCast<irs::byte_type>(std::string_view("\xE2\x9E\x96")), finish1);
+        irs::ViewCast<irs::byte_type>(std::string_view("\xE2\x9E\x96")),
+        finish1);
     arcs.emplace_back(
-      irs::ViewCast<irs::byte_type>(std::string_view("\xE2\x9E\x97")), finish1);
+        irs::ViewCast<irs::byte_type>(std::string_view("\xE2\x9E\x97")),
+        finish1);
     arcs.emplace_back(
-      irs::ViewCast<irs::byte_type>(std::string_view("\xE3\x9E\x97")), finish1);
+        irs::ViewCast<irs::byte_type>(std::string_view("\xE3\x9E\x97")),
+        finish1);
     arcs.emplace_back(
-      irs::ViewCast<irs::byte_type>(std::string_view("\xE3\x85\x97")), finish1);
+        irs::ViewCast<irs::byte_type>(std::string_view("\xE3\x85\x97")),
+        finish1);
     std::sort(arcs.begin(), arcs.end());
 
     builder.Insert(a, start, rho, arcs.begin(), arcs.end());
@@ -973,90 +985,90 @@ TEST_F(utf8_transitions_builder_test, multi_byte_sequence_default_state) {
     assert_properties(a);
 
     std::vector<std::vector<
-      std::pair<irs::automaton::Arc::Label, irs::automaton::StateId>>>
-      expected_automaton{
-        {
-          {irs::RangeLabel::From(0, 47), 3},
-          {irs::RangeLabel::From(48, 48), 1},
-          {irs::RangeLabel::From(49, 54), 3},
-          {irs::RangeLabel::From(55, 55), 2},
-          {irs::RangeLabel::From(56, 84), 3},
-          {irs::RangeLabel::From(85, 85), 1},
-          {irs::RangeLabel::From(86, 96), 3},
-          {irs::RangeLabel::From(97, 97), 1},
-          {irs::RangeLabel::From(98, 98), 2},
-          {irs::RangeLabel::From(99, 127), 3},
-          {irs::RangeLabel::From(194, 208), 4},
-          {irs::RangeLabel::From(209, 209), 7},
-          {irs::RangeLabel::From(210, 223), 4},
-          {irs::RangeLabel::From(224, 225), 5},
-          {irs::RangeLabel::From(226, 226), 10},
-          {irs::RangeLabel::From(227, 227), 12},
-          {irs::RangeLabel::From(228, 239), 5},
-          {irs::RangeLabel::From(240, 244), 6},
-        },
-        {},
-        {},
-        {},
-        {{irs::RangeLabel::From(128, 191), 3}},
-        {{irs::RangeLabel::From(128, 191), 4}},
-        {{irs::RangeLabel::From(128, 191), 5}},
-        {
-          {irs::RangeLabel::From(128, 133), 3},
-          {irs::RangeLabel::From(134, 134), 1},
-          {irs::RangeLabel::From(135, 143), 3},
-          {irs::RangeLabel::From(144, 144), 1},
-          {irs::RangeLabel::From(145, 191), 3},
-        },
-        {
-          {irs::RangeLabel::From(128, 149), 3},
-          {irs::RangeLabel::From(150, 150), 2},
-          {irs::RangeLabel::From(151, 191), 3},
-        },
-        {
-          {irs::RangeLabel::From(128, 149), 3},
-          {irs::RangeLabel::From(150, 150), 2},
-          {irs::RangeLabel::From(151, 151), 2},
-          {irs::RangeLabel::From(152, 191), 3},
-        },
-        {{irs::RangeLabel::From(128, 132), 4},
-         {irs::RangeLabel::From(133, 133), 8},
-         {irs::RangeLabel::From(134, 157), 4},
-         {irs::RangeLabel::From(158, 158), 9},
-         {irs::RangeLabel::From(159, 191), 4}},
-        {{irs::RangeLabel::From(128, 150), 3},
-         {irs::RangeLabel::From(151, 151), 2},
-         {irs::RangeLabel::From(152, 191), 3}},
-        {{irs::RangeLabel::From(128, 132), 4},
-         {irs::RangeLabel::From(133, 133), 11},
-         {irs::RangeLabel::From(134, 157), 4},
-         {irs::RangeLabel::From(158, 158), 11},
-         {irs::RangeLabel::From(159, 191), 4}},
-        {{irs::RangeLabel::From(128, 133), 3},
-         {irs::RangeLabel::From(134, 134), 2},
-         {irs::RangeLabel::From(135, 191), 3}},
-        {{irs::RangeLabel::From(128, 150), 4},
-         {irs::RangeLabel::From(151, 151), 13},
-         {irs::RangeLabel::From(152, 191), 4}},
-        {{irs::RangeLabel::From(128, 132), 5},
-         {irs::RangeLabel::From(133, 133), 14},
-         {irs::RangeLabel::From(134, 191), 5}},
-        {
-          {irs::RangeLabel::From(128, 133), 3},
-          {irs::RangeLabel::From(134, 134), 2},
-          {irs::RangeLabel::From(135, 149), 3},
-          {irs::RangeLabel::From(150, 150), 2},
-          {irs::RangeLabel::From(151, 191), 3},
-        },
-        {{irs::RangeLabel::From(128, 150), 4},
-         {irs::RangeLabel::From(151, 151), 16},
-         {irs::RangeLabel::From(152, 191), 4}},
-        {
-          {irs::RangeLabel::From(128, 132), 5},
-          {irs::RangeLabel::From(133, 133), 17},
-          {irs::RangeLabel::From(134, 191), 5},
-        },
-      };
+        std::pair<irs::automaton::Arc::Label, irs::automaton::StateId>>>
+        expected_automaton{
+            {
+                {irs::RangeLabel::From(0, 47), 3},
+                {irs::RangeLabel::From(48, 48), 1},
+                {irs::RangeLabel::From(49, 54), 3},
+                {irs::RangeLabel::From(55, 55), 2},
+                {irs::RangeLabel::From(56, 84), 3},
+                {irs::RangeLabel::From(85, 85), 1},
+                {irs::RangeLabel::From(86, 96), 3},
+                {irs::RangeLabel::From(97, 97), 1},
+                {irs::RangeLabel::From(98, 98), 2},
+                {irs::RangeLabel::From(99, 127), 3},
+                {irs::RangeLabel::From(194, 208), 4},
+                {irs::RangeLabel::From(209, 209), 7},
+                {irs::RangeLabel::From(210, 223), 4},
+                {irs::RangeLabel::From(224, 225), 5},
+                {irs::RangeLabel::From(226, 226), 10},
+                {irs::RangeLabel::From(227, 227), 12},
+                {irs::RangeLabel::From(228, 239), 5},
+                {irs::RangeLabel::From(240, 244), 6},
+            },
+            {},
+            {},
+            {},
+            {{irs::RangeLabel::From(128, 191), 3}},
+            {{irs::RangeLabel::From(128, 191), 4}},
+            {{irs::RangeLabel::From(128, 191), 5}},
+            {
+                {irs::RangeLabel::From(128, 133), 3},
+                {irs::RangeLabel::From(134, 134), 1},
+                {irs::RangeLabel::From(135, 143), 3},
+                {irs::RangeLabel::From(144, 144), 1},
+                {irs::RangeLabel::From(145, 191), 3},
+            },
+            {
+                {irs::RangeLabel::From(128, 149), 3},
+                {irs::RangeLabel::From(150, 150), 2},
+                {irs::RangeLabel::From(151, 191), 3},
+            },
+            {
+                {irs::RangeLabel::From(128, 149), 3},
+                {irs::RangeLabel::From(150, 150), 2},
+                {irs::RangeLabel::From(151, 151), 2},
+                {irs::RangeLabel::From(152, 191), 3},
+            },
+            {{irs::RangeLabel::From(128, 132), 4},
+             {irs::RangeLabel::From(133, 133), 8},
+             {irs::RangeLabel::From(134, 157), 4},
+             {irs::RangeLabel::From(158, 158), 9},
+             {irs::RangeLabel::From(159, 191), 4}},
+            {{irs::RangeLabel::From(128, 150), 3},
+             {irs::RangeLabel::From(151, 151), 2},
+             {irs::RangeLabel::From(152, 191), 3}},
+            {{irs::RangeLabel::From(128, 132), 4},
+             {irs::RangeLabel::From(133, 133), 11},
+             {irs::RangeLabel::From(134, 157), 4},
+             {irs::RangeLabel::From(158, 158), 11},
+             {irs::RangeLabel::From(159, 191), 4}},
+            {{irs::RangeLabel::From(128, 133), 3},
+             {irs::RangeLabel::From(134, 134), 2},
+             {irs::RangeLabel::From(135, 191), 3}},
+            {{irs::RangeLabel::From(128, 150), 4},
+             {irs::RangeLabel::From(151, 151), 13},
+             {irs::RangeLabel::From(152, 191), 4}},
+            {{irs::RangeLabel::From(128, 132), 5},
+             {irs::RangeLabel::From(133, 133), 14},
+             {irs::RangeLabel::From(134, 191), 5}},
+            {
+                {irs::RangeLabel::From(128, 133), 3},
+                {irs::RangeLabel::From(134, 134), 2},
+                {irs::RangeLabel::From(135, 149), 3},
+                {irs::RangeLabel::From(150, 150), 2},
+                {irs::RangeLabel::From(151, 191), 3},
+            },
+            {{irs::RangeLabel::From(128, 150), 4},
+             {irs::RangeLabel::From(151, 151), 16},
+             {irs::RangeLabel::From(152, 191), 4}},
+            {
+                {irs::RangeLabel::From(128, 132), 5},
+                {irs::RangeLabel::From(133, 133), 17},
+                {irs::RangeLabel::From(134, 191), 5},
+            },
+        };
 
     assert_automaton(a, expected_automaton);
   }
@@ -1681,23 +1693,23 @@ TEST_F(utf8_emplace_arc_test, emplace_arc_rho_arc) {
   }
 
   ASSERT_FALSE(
-    irs::Accept<irs::byte_type>(a, irs::kEmptyStringView<irs::byte_type>));
+      irs::Accept<irs::byte_type>(a, irs::kEmptyStringView<irs::byte_type>));
   ASSERT_TRUE(irs::Accept<irs::byte_type>(
-    a, irs::ViewCast<irs::byte_type>(std::string_view("a"))));
+      a, irs::ViewCast<irs::byte_type>(std::string_view("a"))));
   ASSERT_TRUE(irs::Accept<irs::byte_type>(
-    a, irs::ViewCast<irs::byte_type>(std::string_view("\xD0\xBF"))));
+      a, irs::ViewCast<irs::byte_type>(std::string_view("\xD0\xBF"))));
   ASSERT_TRUE(irs::Accept<irs::byte_type>(
-    a, irs::ViewCast<irs::byte_type>(std::string_view("\xE2\x9E\x96"))));
+      a, irs::ViewCast<irs::byte_type>(std::string_view("\xE2\x9E\x96"))));
   ASSERT_TRUE(irs::Accept<irs::byte_type>(
-    a, irs::ViewCast<irs::byte_type>(std::string_view("\xF0\x9F\x98\x81"))));
+      a, irs::ViewCast<irs::byte_type>(std::string_view("\xF0\x9F\x98\x81"))));
   ASSERT_FALSE(irs::Accept<irs::byte_type>(
-    a, irs::ViewCast<irs::byte_type>(std::string_view("\xD0\xBF\xD0\xBF"))));
+      a, irs::ViewCast<irs::byte_type>(std::string_view("\xD0\xBF\xD0\xBF"))));
   ASSERT_FALSE(irs::Accept<irs::byte_type>(
-    a,
-    irs::ViewCast<irs::byte_type>(std::string_view("\xE2\x9E\x96\xD0\xBF"))));
+      a,
+      irs::ViewCast<irs::byte_type>(std::string_view("\xE2\x9E\x96\xD0\xBF"))));
   ASSERT_FALSE(irs::Accept<irs::byte_type>(
-    a, irs::ViewCast<irs::byte_type>(
-         std::string_view("\xF0\x9F\x98\x81\xD0\xBF"))));
+      a, irs::ViewCast<irs::byte_type>(
+             std::string_view("\xF0\x9F\x98\x81\xD0\xBF"))));
 }
 
 TEST_F(utf8_emplace_arc_test, add_or_expand) {

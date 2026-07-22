@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -49,29 +48,29 @@ class SortedRangeExplicitMatcher final : public MatcherBase<typename F::Arc> {
   // Labels >= binary_label will be searched for by binary search;
   // o.w. linear search is used.
   // This doesn't copy the FST.
-  SortedRangeExplicitMatcher(const FST *fst, Label binary_label = 1)
-    : fst_(*fst), binary_label_(binary_label), error_(false) {}
+  SortedRangeExplicitMatcher(const FST* fst, Label binary_label = 1)
+      : fst_(*fst), binary_label_(binary_label), error_(false) {}
 
   // This makes a copy of the FST.
-  SortedRangeExplicitMatcher(const SortedRangeExplicitMatcher<FST> &matcher,
+  SortedRangeExplicitMatcher(const SortedRangeExplicitMatcher<FST>& matcher,
                              bool safe = false)
-    : owned_fst_(matcher.fst_.Copy(safe)),
-      fst_(*owned_fst_),
-      binary_label_(matcher.binary_label_),
-      error_(matcher.error_) {}
+      : owned_fst_(matcher.fst_.Copy(safe)),
+        fst_(*owned_fst_),
+        binary_label_(matcher.binary_label_),
+        error_(matcher.error_) {}
 
   ~SortedRangeExplicitMatcher() final { Destroy(aiter_, &aiter_pool_); }
 
-  SortedRangeExplicitMatcher<FST> *Copy(bool safe = false) const final {
+  SortedRangeExplicitMatcher<FST>* Copy(bool safe = false) const final {
     return new SortedRangeExplicitMatcher<FST>(*this, safe);
   }
 
   fst::MatchType Type(bool test) const final {
     if constexpr (MatchType == MATCH_NONE) return MatchType;
     const auto true_prop =
-      MatchType == MATCH_INPUT ? kILabelSorted : kOLabelSorted;
+        MatchType == MATCH_INPUT ? kILabelSorted : kOLabelSorted;
     const auto false_prop =
-      MatchType == MATCH_INPUT ? kNotILabelSorted : kNotOLabelSorted;
+        MatchType == MATCH_INPUT ? kNotILabelSorted : kNotOLabelSorted;
     const auto props = fst_.Properties(true_prop | false_prop, test);
     if (props & true_prop) {
       return MatchType;
@@ -127,12 +126,12 @@ class SortedRangeExplicitMatcher final : public MatcherBase<typename F::Arc> {
     if (aiter_->Done()) return true;
     if (!exact_match_) return false;
     aiter_->SetFlags(
-      MatchType == MATCH_INPUT ? kArcILabelValue : kArcOLabelValue,
-      kArcValueFlags);
+        MatchType == MATCH_INPUT ? kArcILabelValue : kArcOLabelValue,
+        kArcValueFlags);
     return GetLabel() != match_label_;
   }
 
-  const Arc &Value() const final {
+  const Arc& Value() const final {
     aiter_->SetFlags(kArcValueFlags, kArcValueFlags);
     return aiter_->Value();
   }
@@ -143,7 +142,7 @@ class SortedRangeExplicitMatcher final : public MatcherBase<typename F::Arc> {
 
   ssize_t Priority(StateId s) final { return MatcherBase<Arc>::Priority(s); }
 
-  const FST &GetFst() const final { return fst_; }
+  const FST& GetFst() const final { return fst_; }
 
   std::uint64_t Properties(std::uint64_t inprops) const final {
     return inprops | (error_ ? kError : 0);
@@ -153,7 +152,7 @@ class SortedRangeExplicitMatcher final : public MatcherBase<typename F::Arc> {
 
  private:
   constexpr Label GetLabel() const noexcept {
-    const auto &arc = aiter_->Value();
+    const auto& arc = aiter_->Value();
 
     if constexpr (MatchType == MATCH_INPUT) {
       return arc.ilabel;
@@ -167,9 +166,9 @@ class SortedRangeExplicitMatcher final : public MatcherBase<typename F::Arc> {
   bool Search();
 
   std::unique_ptr<const FST> owned_fst_;  // FST ptr if owned.
-  const FST &fst_;                        // FST for matching.
+  const FST& fst_;                        // FST for matching.
   StateId state_{kNoStateId};             // Matcher state.
-  ArcIterator<FST> *aiter_{};             // Iterator for current state.
+  ArcIterator<FST>* aiter_{};             // Iterator for current state.
   Label binary_label_;                    // Least label for binary search.
   Label match_label_{kNoLabel};           // Current label to be matched.
   size_t narcs_{0};                       // Current state arc count.

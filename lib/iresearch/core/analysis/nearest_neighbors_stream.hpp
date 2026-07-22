@@ -17,8 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Alex Geenen
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -36,14 +34,14 @@ namespace irs {
 namespace analysis {
 
 class nearest_neighbors_stream final
-  : public TypedAnalyzer<nearest_neighbors_stream>,
-    private util::noncopyable {
+    : public TypedAnalyzer<nearest_neighbors_stream>,
+      private util::noncopyable {
  public:
   using model_ptr = std::shared_ptr<const fasttext::ImmutableFastText>;
   using model_provider_f = model_ptr (*)(std::string_view);
 
   static model_provider_f set_model_provider(
-    model_provider_f provider) noexcept;
+      model_provider_f provider) noexcept;
 
   struct options {
     std::string model_location;

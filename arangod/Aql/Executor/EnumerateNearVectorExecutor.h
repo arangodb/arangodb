@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jure Bajic
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -136,8 +135,7 @@ class EnumerateNearVectorsExecutor {
   // RocksDBBuilderIndex during construction). Exactly one of the two returns
   // non-nullptr, depending on the index type.
   static RocksDBVectorIndex const* resolveVectorIndex(Infos const& infos);
-  static vector::VectorGraphIndex const* resolveGraphIndex(
-      Infos const& infos);
+  static vector::VectorGraphIndex const* resolveGraphIndex(Infos const& infos);
 
   Infos const& _infos;
   transaction::Methods _trx;

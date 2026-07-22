@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Alexey Bakharew
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -31,8 +30,8 @@ namespace irs {
 
 // return slice as string
 inline std::string slice_to_string(
-  const VPackSlice slice,
-  const VPackOptions* options = &VPackOptions::Defaults) noexcept {
+    const VPackSlice slice,
+    const VPackOptions* options = &VPackOptions::Defaults) noexcept {
   std::string str;
   try {
     str = slice.toString(options);

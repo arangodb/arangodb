@@ -17,8 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "delimited_token_stream.hpp"
@@ -62,8 +60,8 @@ irs::bytes_view eval_term(irs::bstring& buf, irs::bytes_view data) {
   }
 
   return start != 1 && start == data.size()
-           ? irs::bytes_view(buf)
-           : data;  // return identity for mismatched quotes
+             ? irs::bytes_view(buf)
+             : data;  // return identity for mismatched quotes
 }
 
 size_t find_delimiter(irs::bytes_view data, irs::bytes_view delim) {
@@ -104,7 +102,7 @@ constexpr std::string_view DELIMITER_PARAM_NAME{"delimiter"};
 bool parse_vpack_options(const VPackSlice slice, std::string& delimiter) {
   if (!slice.isObject() && !slice.isString()) {
     IRS_LOG_ERROR(
-      "Slice for delimited_token_stream is not an object or string");
+        "Slice for delimited_token_stream is not an object or string");
     return false;
   }
 
@@ -116,10 +114,10 @@ bool parse_vpack_options(const VPackSlice slice, std::string& delimiter) {
       if (auto delim_type_slice = slice.get(DELIMITER_PARAM_NAME);
           !delim_type_slice.isNone()) {
         if (!delim_type_slice.isString()) {
-          IRS_LOG_WARN(
-            absl::StrCat("Invalid type '", DELIMITER_PARAM_NAME,
-                         "' (string expected) for delimited_token_stream from "
-                         "VPack arguments"));
+          IRS_LOG_WARN(absl::StrCat(
+              "Invalid type '", DELIMITER_PARAM_NAME,
+              "' (string expected) for delimited_token_stream from "
+              "VPack arguments"));
           return false;
         }
         delimiter = delim_type_slice.stringView();
@@ -131,8 +129,8 @@ bool parse_vpack_options(const VPackSlice slice, std::string& delimiter) {
   }
 
   IRS_LOG_ERROR(absl::StrCat(
-    "Missing '", DELIMITER_PARAM_NAME,
-    "' while constructing delimited_token_stream from VPack arguments"));
+      "Missing '", DELIMITER_PARAM_NAME,
+      "' while constructing delimited_token_stream from VPack arguments"));
 
   return false;
 }
@@ -201,11 +199,11 @@ irs::analysis::analyzer::ptr make_json(std::string_view args) {
     return make_vpack(vpack->slice());
   } catch (const VPackException& ex) {
     IRS_LOG_ERROR(
-      absl::StrCat("Caught error '", ex.what(),
-                   "' while constructing delimited_token_stream from JSON"));
+        absl::StrCat("Caught error '", ex.what(),
+                     "' while constructing delimited_token_stream from JSON"));
   } catch (...) {
     IRS_LOG_ERROR(
-      "Caught error while constructing delimited_token_stream from JSON");
+        "Caught error while constructing delimited_token_stream from JSON");
   }
   return nullptr;
 }
@@ -224,11 +222,11 @@ bool normalize_json_config(std::string_view args, std::string& definition) {
     }
   } catch (const VPackException& ex) {
     IRS_LOG_ERROR(
-      absl::StrCat("Caught error '", ex.what(),
-                   "' while normalizing delimited_token_stream from JSON"));
+        absl::StrCat("Caught error '", ex.what(),
+                     "' while normalizing delimited_token_stream from JSON"));
   } catch (...) {
     IRS_LOG_ERROR(
-      "Caught error while normalizing delimited_token_stream from JSON");
+        "Caught error while normalizing delimited_token_stream from JSON");
   }
   return false;
 }
@@ -259,7 +257,7 @@ namespace irs {
 namespace analysis {
 
 delimited_token_stream::delimited_token_stream(std::string_view delimiter)
-  : delim_(ViewCast<byte_type>(delimiter)) {
+    : delim_(ViewCast<byte_type>(delimiter)) {
   if (!irs::IsNull(delim_)) {
     delim_buf_ = delim_;  // keep a local copy of the delimiter
     delim_ = delim_buf_;  // update the delimter to point at the local copy
@@ -289,8 +287,8 @@ bool delimited_token_stream::next() {
   auto size = find_delimiter(data_, delim_);
   auto next = std::max(size_t(1), size + delim_.size());
   auto start =
-    offset.end + uint32_t(delim_.size());  // value is allowed to overflow, will
-                                           // only produce invalid result
+      offset.end + uint32_t(delim_.size());  // value is allowed to overflow,
+                                             // will only produce invalid result
   auto end = start + size;
 
   if (std::numeric_limits<uint32_t>::max() < end) {
@@ -302,11 +300,11 @@ bool delimited_token_stream::next() {
   offset.start = start;
   offset.end = uint32_t(end);
   term.value = irs::IsNull(delim_)
-                 ? bytes_view{data_.data(), size}
-                 : eval_term(term_buf_, bytes_view(data_.data(), size));
+                   ? bytes_view{data_.data(), size}
+                   : eval_term(term_buf_, bytes_view(data_.data(), size));
   data_ = size >= data_.size()
-            ? bytes_view{}
-            : bytes_view{data_.data() + next, data_.size() - next};
+              ? bytes_view{}
+              : bytes_view{data_.data() + next, data_.size() - next};
 
   return true;
 }
@@ -317,7 +315,8 @@ bool delimited_token_stream::reset(std::string_view data) {
   auto& offset = std::get<irs::offset>(attrs_);
   offset.start = 0;
   offset.end =
-    0 - uint32_t(delim_.size());  // counterpart to computation in next() above
+      0 -
+      uint32_t(delim_.size());  // counterpart to computation in next() above
 
   return true;
 }

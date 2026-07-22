@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -28,9 +27,8 @@
 #include "shared.hpp"
 #include "utils/managed_allocator.hpp"
 
-namespace arangodb::iresearch
-{
-  class IResearchFeature;
+namespace arangodb::iresearch {
+class IResearchFeature;
 };
 
 namespace irs {
@@ -77,14 +75,13 @@ struct ResourceManagementOptions {
 //  Memory manager for IResearch.
 //  This is a singleton class
 struct IResearchMemoryManager : public IResourceManager {
-protected:
+ protected:
   IResearchMemoryManager() = default;
 
-public:
+ public:
   virtual ~IResearchMemoryManager() = default;
 
   virtual void Increase([[maybe_unused]] size_t value) override {
-
     IRS_ASSERT(this != &kForbidden);
     IRS_ASSERT(value >= 0);
 
@@ -100,8 +97,8 @@ public:
         if (IRS_UNLIKELY(next > _memoryLimit.load(std::memory_order_relaxed))) {
           throw std::bad_alloc();
         }
-      } while (!_current.compare_exchange_weak(
-        cur, next, std::memory_order_relaxed));
+      } while (!_current.compare_exchange_weak(cur, next,
+                                               std::memory_order_relaxed));
     }
   }
 
@@ -117,25 +114,22 @@ public:
     _memoryLimit.store(memoryLimit);
   }
 
-  size_t getCurrentUsage() {
-    return _current.load(std::memory_order_relaxed);
-  }
+  size_t getCurrentUsage() { return _current.load(std::memory_order_relaxed); }
 
-private:
+ private:
   //  This limit should be set exclusively by IResearchFeature.
   //  During IResearchFeature::validateOptions() this limit is set to a
   //  percentage of either the total available physical memory or the value
   //  of ARANGODB_OVERRIDE_DETECTED_TOTAL_MEMORY envvar if specified.
-  std::atomic<size_t> _memoryLimit = { 0 };
-  std::atomic<size_t> _current = { 0 };
+  std::atomic<size_t> _memoryLimit = {0};
+  std::atomic<size_t> _current = {0};
 
   //  Singleton
   static inline std::shared_ptr<IResearchMemoryManager> _instance;
 
-public:
+ public:
   static std::shared_ptr<IResearchMemoryManager> GetInstance() {
-    if (!_instance.get())
-      _instance.reset(new IResearchMemoryManager());
+    if (!_instance.get()) _instance.reset(new IResearchMemoryManager());
 
     return _instance;
   }
@@ -143,16 +137,16 @@ public:
 
 template<typename T>
 struct ManagedTypedAllocator
-  : ManagedAllocator<std::allocator<T>, IResourceManager> {
+    : ManagedAllocator<std::allocator<T>, IResourceManager> {
   using Base = ManagedAllocator<std::allocator<T>, IResourceManager>;
   explicit ManagedTypedAllocator()
-    : Base(
+      : Base(
 #if !defined(_MSC_VER) && defined(IRESEARCH_DEBUG)
-        IResourceManager::kForbidden
+            IResourceManager::kForbidden
 #else
-        *IResearchMemoryManager::GetInstance()
+            *IResearchMemoryManager::GetInstance()
 #endif
-      ) {
+        ) {
   }
   using Base::Base;
 };

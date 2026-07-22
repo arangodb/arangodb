@@ -15,7 +15,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <limits>
@@ -45,23 +44,23 @@ struct FreqScorer : irs::ScorerBase<void> {
   }
 
   irs::ScoreFunction prepare_scorer(
-    const irs::ColumnProvider&,
-    const std::map<irs::type_info::type_id, irs::field_id>&,
-    const irs::byte_type*, const irs::attribute_provider& attrs,
-    irs::score_t) const final {
+      const irs::ColumnProvider&,
+      const std::map<irs::type_info::type_id, irs::field_id>&,
+      const irs::byte_type*, const irs::attribute_provider& attrs,
+      irs::score_t) const final {
     auto* freq = irs::get<irs::frequency>(attrs);
     EXPECT_NE(nullptr, freq);
 
     return irs::ScoreFunction{
-      reinterpret_cast<irs::score_ctx&>(const_cast<irs::frequency&>(*freq)),
-      [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
-        *res = reinterpret_cast<irs::frequency*>(ctx)->value;
-      }};
+        reinterpret_cast<irs::score_ctx&>(const_cast<irs::frequency&>(*freq)),
+        [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
+          *res = reinterpret_cast<irs::frequency*>(ctx)->value;
+        }};
   }
 
   irs::WandWriter::ptr prepare_wand_writer(size_t max_levels) const {
     return std::make_unique<irs::FreqNormWriter<irs::kWandTagMaxScore>>(
-      *this, max_levels);
+        *this, max_levels);
   }
 
   irs::WandSource::ptr prepare_wand_source() const {
@@ -73,10 +72,10 @@ class FreqThresholdDocIterator : public irs::doc_iterator {
  public:
   FreqThresholdDocIterator(irs::doc_iterator& impl, uint32_t threshold,
                            bool is_strict)
-    : impl_{&impl},
-      freq_{irs::get<irs::frequency>(impl)},
-      threshold_{threshold},
-      is_strict_{is_strict} {}
+      : impl_{&impl},
+        freq_{irs::get<irs::frequency>(impl)},
+        threshold_{threshold},
+        is_strict_{is_strict} {}
 
   irs::attribute* get_mutable(irs::type_info::type_id id) final {
     return impl_->get_mutable(id);
@@ -151,8 +150,8 @@ class SkipList {
 
     auto& [_, data] = skip_list_[level];
     auto it = std::lower_bound(
-      std::begin(data), std::end(data), Step{doc, 0.f},
-      [](const auto& lhs, const auto& rhs) { return lhs.key < rhs.key; });
+        std::begin(data), std::end(data), Step{doc, 0.f},
+        [](const auto& lhs, const auto& rhs) { return lhs.key < rhs.key; });
 
     EXPECT_NE(it, std::end(data));
     return it->freq;
@@ -160,11 +159,11 @@ class SkipList {
 
  private:
   explicit SkipList(std::vector<Level>&& skip_list)
-    : skip_list_{std::move(skip_list)} {
+      : skip_list_{std::move(skip_list)} {
     for (auto& [_, level] : skip_list) {
       EXPECT_TRUE(std::is_sorted(
-        std::begin(level), std::end(level),
-        [](const auto& lhs, const auto& rhs) { return lhs.key < rhs.key; }));
+          std::begin(level), std::end(level),
+          [](const auto& lhs, const auto& rhs) { return lhs.key < rhs.key; }));
     }
   }
 
@@ -174,14 +173,14 @@ class SkipList {
 SkipList SkipList::Make(irs::doc_iterator& it, irs::doc_id_t skip_0,
                         irs::doc_id_t skip_n, irs::doc_id_t count) {
   size_t num_levels =
-    skip_0 < count ? 1 + irs::math::log(count / skip_0, skip_n) : 0;
+      skip_0 < count ? 1 + irs::math::log(count / skip_0, skip_n) : 0;
   EXPECT_GT(num_levels, 0);
 
   std::vector<Level> skip_list;
   skip_list.reserve(num_levels);
 
   auto step = static_cast<irs::doc_id_t>(
-    skip_0 * static_cast<size_t>(std::pow(skip_n, num_levels - 1)));
+      skip_0 * static_cast<size_t>(std::pow(skip_n, num_levels - 1)));
 
   for (; num_levels; --num_levels) {
     skip_list.emplace_back(Level{step, std::vector{Step{0U, 0.f}}});
@@ -241,7 +240,7 @@ class Format15TestCase : public tests::format_test_case {
   static constexpr auto kNone = irs::IndexFeatures::NONE;
   static constexpr auto kFreq = irs::IndexFeatures::FREQ;
   static constexpr auto kPos =
-    irs::IndexFeatures::FREQ | irs::IndexFeatures::POS;
+      irs::IndexFeatures::FREQ | irs::IndexFeatures::POS;
   static constexpr auto kOffs = irs::IndexFeatures::FREQ |
                                 irs::IndexFeatures::POS |
                                 irs::IndexFeatures::OFFS;
@@ -249,8 +248,8 @@ class Format15TestCase : public tests::format_test_case {
                                irs::IndexFeatures::POS |
                                irs::IndexFeatures::PAY;
   static constexpr auto kAll =
-    irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
-    irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
+      irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
+      irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
 
   using Doc = std::pair<irs::doc_id_t, uint32_t>;
   using Docs = std::vector<Doc>;
@@ -259,8 +258,8 @@ class Format15TestCase : public tests::format_test_case {
   Docs GenerateDocs(size_t count, float_t mean, float_t dev, size_t step);
 
   std::pair<irs::version10::term_meta, irs::postings_reader::ptr> WriteReadMeta(
-    irs::directory& dir, DocsView docs, irs::ScorersView scorers,
-    irs::IndexFeatures features);
+      irs::directory& dir, DocsView docs, irs::ScorersView scorers,
+      irs::IndexFeatures features);
 
   void AssertWanderator(irs::doc_iterator::ptr& actual,
                         irs::IndexFeatures features, DocsView docs);
@@ -306,7 +305,7 @@ Format15TestCase::WriteReadMeta(irs::directory& dir, DocsView docs,
   // and set it proper count of scorers as it currently expect only one.
   EXPECT_EQ(scorers.size(), 1);
   auto codec =
-    std::dynamic_pointer_cast<const irs::version10::format>(get_codec());
+      std::dynamic_pointer_cast<const irs::version10::format>(get_codec());
   EXPECT_NE(nullptr, codec);
   auto writer = codec->get_postings_writer(false, irs::IResourceManager::kNoop);
   EXPECT_NE(nullptr, writer);
@@ -391,19 +390,20 @@ void Format15TestCase::AssertWanderator(irs::doc_iterator::ptr& actual,
 }
 
 irs::doc_iterator::ptr Format15TestCase::GetWanderator(
-  irs::postings_reader& reader, irs::Scorer& scorer,
-  irs::IndexFeatures field_features, irs::IndexFeatures features,
-  const irs::term_meta& meta, uint32_t threshold, bool strict) {
+    irs::postings_reader& reader, irs::Scorer& scorer,
+    irs::IndexFeatures field_features, irs::IndexFeatures features,
+    const irs::term_meta& meta, uint32_t threshold, bool strict) {
   const irs::WanderatorOptions options{
-    .factory = [&](const irs::attribute_provider& attrs) {
-      return scorer.prepare_scorer(EmptyColumnProvider{}, irs::feature_map_t{},
-                                   nullptr, attrs, irs::kNoBoost);
-    }};
+      .factory = [&](const irs::attribute_provider& attrs) {
+        return scorer.prepare_scorer(EmptyColumnProvider{},
+                                     irs::feature_map_t{}, nullptr, attrs,
+                                     irs::kNoBoost);
+      }};
 
   const bool iterator_has_freq =
-    irs::IndexFeatures::NONE != (features & irs::IndexFeatures::FREQ);
+      irs::IndexFeatures::NONE != (features & irs::IndexFeatures::FREQ);
   const bool field_has_freq =
-    irs::IndexFeatures::NONE != (field_features & irs::IndexFeatures::FREQ);
+      irs::IndexFeatures::NONE != (field_features & irs::IndexFeatures::FREQ);
   irs::WandContext ctx{};
   irs::WandInfo info{};
   EXPECT_EQ((field_features & features), features);
@@ -417,7 +417,7 @@ irs::doc_iterator::ptr Format15TestCase::GetWanderator(
   }
 
   auto actual =
-    reader.wanderator(field_features, features, meta, options, ctx, info);
+      reader.wanderator(field_features, features, meta, options, ctx, info);
   EXPECT_NE(nullptr, actual);
 
   auto* score = irs::get_mutable<irs::score>(actual.get());
@@ -556,20 +556,20 @@ Format15TestCase::Docs Format15TestCase::GenerateDocs(size_t count,
   std::vector<std::pair<irs::doc_id_t, uint32_t>> docs;
   docs.reserve(count);
   std::generate_n(
-    std::back_inserter(docs), count,
-    [i = (irs::doc_limits::min)(), gen = std::mt19937{},
-     distr = std::normal_distribution<float_t>{mean, dev}, step]() mutable {
-      const irs::doc_id_t doc = i;
-      const auto freq = static_cast<uint32_t>(std::roundf(distr(gen)));
-      i += step;
+      std::back_inserter(docs), count,
+      [i = (irs::doc_limits::min)(), gen = std::mt19937{},
+       distr = std::normal_distribution<float_t>{mean, dev}, step]() mutable {
+        const irs::doc_id_t doc = i;
+        const auto freq = static_cast<uint32_t>(std::roundf(distr(gen)));
+        i += step;
 
-      return std::make_pair(doc, freq);
-    });
+        return std::make_pair(doc, freq);
+      });
 
   auto check_docs = [](const auto& docs) {
     return std::is_sorted(
-             std::begin(docs), std::end(docs),
-             [](auto& lhs, auto& rhs) { return lhs.first < rhs.first; }) &&
+               std::begin(docs), std::end(docs),
+               [](auto& lhs, auto& rhs) { return lhs.first < rhs.first; }) &&
            std::all_of(std::begin(docs), std::end(docs), [](auto& v) {
              return static_cast<int32_t>(v.second) > 0;
            });
@@ -587,8 +587,8 @@ void Format15TestCase::AssertCornerCases(irs::postings_reader& reader,
                                          bool strict) {
   // next + seek to eof
   {
-    auto it =
-      GetWanderator(reader, scorer, field_features, features, meta, 0, strict);
+    auto it = GetWanderator(reader, scorer, field_features, features, meta, 0,
+                            strict);
     ASSERT_FALSE(irs::doc_limits::valid(it->value()));
     ASSERT_TRUE(it->next());
     ASSERT_EQ(docs.front().first, it->value());
@@ -597,8 +597,8 @@ void Format15TestCase::AssertCornerCases(irs::postings_reader& reader,
 
   // Seek to irs::doc_limits::invalid()
   {
-    auto it =
-      GetWanderator(reader, scorer, field_features, features, meta, 0, strict);
+    auto it = GetWanderator(reader, scorer, field_features, features, meta, 0,
+                            strict);
     ASSERT_FALSE(irs::doc_limits::valid(it->value()));
     ASSERT_FALSE(irs::doc_limits::valid(it->seek(irs::doc_limits::invalid())));
     ASSERT_TRUE(it->next());
@@ -607,8 +607,8 @@ void Format15TestCase::AssertCornerCases(irs::postings_reader& reader,
 
   // Seek to irs::doc_limits::eof()
   {
-    auto it =
-      GetWanderator(reader, scorer, field_features, features, meta, 0, strict);
+    auto it = GetWanderator(reader, scorer, field_features, features, meta, 0,
+                            strict);
     ASSERT_FALSE(irs::doc_limits::valid(it->value()));
     ASSERT_TRUE(irs::doc_limits::eof(it->seek(irs::doc_limits::eof())));
     ASSERT_FALSE(it->next());
@@ -626,7 +626,7 @@ void Format15TestCase::AssertPostings(DocsView docs,
   auto dir = get_directory(*this);
   ASSERT_NE(nullptr, dir);
   auto [meta, reader] =
-    WriteReadMeta(*dir, docs, std::span{&scorer_ptr, 1}, field_features);
+      WriteReadMeta(*dir, docs, std::span{&scorer_ptr, 1}, field_features);
   ASSERT_NE(nullptr, reader);
 
   AssertCornerCases(*reader, scorer, docs, field_features, features, meta,
@@ -675,14 +675,14 @@ void Format15TestCase::AssertPostings(DocsView docs, uint32_t threshold) {
 }
 
 static const auto kTestFormats = ::testing::Values(
-  tests::format_info{"1_5", "1_0"}, tests::format_info{"1_5simd", "1_0"});
+    tests::format_info{"1_5", "1_0"}, tests::format_info{"1_5simd", "1_0"});
 
 static constexpr auto kTestDirs =
-  tests::getDirectories<tests::kTypesDefault | tests::kTypesRot13_16 |
-                        tests::kTypesRot13_7>();
+    tests::getDirectories<tests::kTypesDefault | tests::kTypesRot13_16 |
+                          tests::kTypesRot13_7>();
 
 static const auto kTestValues =
-  ::testing::Combine(::testing::ValuesIn(kTestDirs), kTestFormats);
+    ::testing::Combine(::testing::ValuesIn(kTestDirs), kTestFormats);
 
 // Generic tests
 using tests::format_test_case;
@@ -764,10 +764,10 @@ TEST_P(Format15TestCase, VeryLongPostingsThreshold0) {
 }
 
 static constexpr auto kTestDirs15 =
-  tests::getDirectories<tests::kTypesDefault>();
+    tests::getDirectories<tests::kTypesDefault>();
 
 static const auto kTestValues15 =
-  ::testing::Combine(::testing::ValuesIn(kTestDirs15), kTestFormats);
+    ::testing::Combine(::testing::ValuesIn(kTestDirs15), kTestFormats);
 
 INSTANTIATE_TEST_SUITE_P(Format15Test, Format15TestCase, kTestValues15,
                          Format15TestCase::to_string);

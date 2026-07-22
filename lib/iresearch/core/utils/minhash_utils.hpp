@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -38,8 +37,8 @@ class MinHash {
   // threshold.
   static constexpr size_t MaxSize(double_t err) noexcept {
     return err > 0. && err < 1.
-             ? math::ceil64(1. / (err * err))
-             : (err < 1. ? std::numeric_limits<size_t>::max() : 0);
+               ? math::ceil64(1. / (err * err))
+               : (err < 1. ? std::numeric_limits<size_t>::max() : 0);
   }
 
   // Returns expected probabilistic error according
@@ -50,7 +49,7 @@ class MinHash {
   }
 
   explicit MinHash(size_t size)
-    : max_size_{std::max(size, size_t{1})}, left_{max_size_} {
+      : max_size_{std::max(size, size_t{1})}, left_{max_size_} {
     min_hashes_.reserve(left_);
 
     // +1 because we insert a new hash
@@ -95,15 +94,15 @@ class MinHash {
   // `rhs` members are meant to be unique.
   double Jaccard(std::span<const uint64_t> rhs) const noexcept {
     const auto intersect =
-      std::accumulate(std::begin(rhs), std::end(rhs), uint64_t{0},
-                      [&](uint64_t acc, uint64_t hash_value) noexcept {
-                        return acc + uint64_t{dedup_.contains(hash_value)};
-                      });
+        std::accumulate(std::begin(rhs), std::end(rhs), uint64_t{0},
+                        [&](uint64_t acc, uint64_t hash_value) noexcept {
+                          return acc + uint64_t{dedup_.contains(hash_value)};
+                        });
     const auto cardinality = Size() + rhs.size() - intersect;
 
-    return cardinality
-             ? static_cast<double>(intersect) / static_cast<double>(cardinality)
-             : 1.0;
+    return cardinality ? static_cast<double>(intersect) /
+                             static_cast<double>(cardinality)
+                       : 1.0;
   }
 
   // Return Jaccard coefficient of 2 MinHash signatures.

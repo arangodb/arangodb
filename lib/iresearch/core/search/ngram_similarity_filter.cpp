@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ngram_similarity_filter.hpp"
@@ -33,9 +32,9 @@
 namespace irs {
 
 filter::prepared::ptr by_ngram_similarity::Prepare(
-  const PrepareContext& ctx, std::string_view field_name,
-  const std::vector<irs::bstring>& ngrams, float_t threshold,
-  bool allow_phrase) {
+    const PrepareContext& ctx, std::string_view field_name,
+    const std::vector<irs::bstring>& ngrams, float_t threshold,
+    bool allow_phrase) {
   if (ngrams.empty() || field_name.empty()) {
     // empty field or terms or invalid threshold
     return prepared::empty();
@@ -44,9 +43,9 @@ filter::prepared::ptr by_ngram_similarity::Prepare(
 
   threshold = std::clamp(threshold, 0.f, 1.f);
   const auto min_match_count =
-    std::clamp(static_cast<size_t>(
-                 std::ceil(static_cast<float_t>(terms_count) * threshold)),
-               size_t{1}, terms_count);
+      std::clamp(static_cast<size_t>(
+                     std::ceil(static_cast<float_t>(terms_count) * threshold)),
+                 size_t{1}, terms_count);
   if (ctx.scorers.empty() && 1 == min_match_count) {
     irs::by_terms_options options;
     for (const auto& term : ngrams) {
@@ -132,8 +131,8 @@ filter::prepared::ptr by_ngram_similarity::Prepare(
   }
 
   return memory::make_tracked<NGramSimilarityQuery>(
-    ctx.memory, min_match_count, std::move(query_states), std::move(stats),
-    ctx.boost);
+      ctx.memory, min_match_count, std::move(query_states), std::move(stats),
+      ctx.boost);
 }
 
 }  // namespace irs

@@ -17,8 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "index/comparer.hpp"
@@ -70,36 +68,36 @@ auto MakeByTerm(std::string_view name, std::string_view value) {
 class SortedEuroparlDocTemplate : public tests::europarl_doc_template {
  public:
   explicit SortedEuroparlDocTemplate(
-    std::string field, std::vector<irs::type_info::type_id> field_features)
-    : field_{std::move(field)}, field_features_{std::move(field_features)} {}
+      std::string field, std::vector<irs::type_info::type_id> field_features)
+      : field_{std::move(field)}, field_features_{std::move(field_features)} {}
 
   void init() final {
     indexed.push_back(std::make_shared<tests::string_field>(
-      "title", irs::IndexFeatures::ALL, field_features_));
+        "title", irs::IndexFeatures::ALL, field_features_));
     indexed.push_back(
-      std::make_shared<text_ref_field>("title_anl", false, field_features_));
+        std::make_shared<text_ref_field>("title_anl", false, field_features_));
+    indexed.push_back(std::make_shared<text_ref_field>("title_anl_pay", true,
+                                                       field_features_));
     indexed.push_back(
-      std::make_shared<text_ref_field>("title_anl_pay", true, field_features_));
-    indexed.push_back(
-      std::make_shared<text_ref_field>("body_anl", false, field_features_));
-    indexed.push_back(
-      std::make_shared<text_ref_field>("body_anl_pay", true, field_features_));
+        std::make_shared<text_ref_field>("body_anl", false, field_features_));
+    indexed.push_back(std::make_shared<text_ref_field>("body_anl_pay", true,
+                                                       field_features_));
     {
       insert(std::make_shared<tests::long_field>());
       auto& field = static_cast<tests::long_field&>(indexed.back());
       field.name("date");
     }
     insert(std::make_shared<tests::string_field>(
-      "datestr", irs::IndexFeatures::ALL, field_features_));
+        "datestr", irs::IndexFeatures::ALL, field_features_));
     insert(std::make_shared<tests::string_field>(
-      "body", irs::IndexFeatures::ALL, field_features_));
+        "body", irs::IndexFeatures::ALL, field_features_));
     {
       insert(std::make_shared<tests::int_field>());
       auto& field = static_cast<tests::int_field&>(indexed.back());
       field.name("id");
     }
     insert(std::make_shared<tests::string_field>(
-      "idstr", irs::IndexFeatures::ALL, field_features_));
+        "idstr", irs::IndexFeatures::ALL, field_features_));
 
     auto fields = indexed.find(field_);
 
@@ -174,7 +172,7 @@ struct CustomFeature {
 
   struct writer : irs::FeatureWriter {
     explicit writer(std::span<const irs::bytes_view> headers) noexcept
-      : hdr{{}} {
+        : hdr{{}} {
       if (!headers.empty()) {
         init_header.emplace(headers);
       }
@@ -214,7 +212,7 @@ struct CustomFeature {
   };
 
   static irs::FeatureWriter::ptr make_writer(
-    std::span<const irs::bytes_view> payload) {
+      std::span<const irs::bytes_view> payload) {
     return irs::memory::make_managed<writer>(payload);
   }
 };
@@ -237,61 +235,62 @@ class SortedIndexTestCase : public tests::index_test_base {
     return [this](irs::type_info::type_id id) {
       if (id == irs::type<irs::Norm>::id()) {
         return std::make_pair(
-          irs::ColumnInfo{irs::type<irs::compression::lz4>::get(), {}, false},
-          &irs::Norm::MakeWriter);
+            irs::ColumnInfo{irs::type<irs::compression::lz4>::get(), {}, false},
+            &irs::Norm::MakeWriter);
       }
 
       if (supports_pluggable_features()) {
         if (irs::type<irs::Norm2>::id() == id) {
           return std::make_pair(
-            irs::ColumnInfo{
-              irs::type<irs::compression::none>::get(), {}, false},
-            &irs::Norm2::MakeWriter);
+              irs::ColumnInfo{
+                  irs::type<irs::compression::none>::get(), {}, false},
+              &irs::Norm2::MakeWriter);
         } else if (irs::type<CustomFeature>::id() == id) {
           return std::make_pair(
-            irs::ColumnInfo{
-              irs::type<irs::compression::none>::get(), {}, false},
-            &CustomFeature::make_writer);
+              irs::ColumnInfo{
+                  irs::type<irs::compression::none>::get(), {}, false},
+              &CustomFeature::make_writer);
         }
       }
 
       return std::make_pair(
-        irs::ColumnInfo{irs::type<irs::compression::none>::get(), {}, false},
-        irs::FeatureWriterFactory{});
+          irs::ColumnInfo{irs::type<irs::compression::none>::get(), {}, false},
+          irs::FeatureWriterFactory{});
     };
   }
 
   std::vector<irs::type_info::type_id> field_features() {
     return supports_pluggable_features()
-             ? std::vector<
-                 irs::type_info::type_id>{irs::type<irs::Norm>::id(),
-                                          irs::type<irs::Norm2>::id(),
-                                          irs::type<CustomFeature>::id()}
-             : std::vector<irs::type_info::type_id>{irs::type<irs::Norm>::id()};
+               ? std::vector<
+                     irs::type_info::type_id>{irs::type<irs::Norm>::id(),
+                                              irs::type<irs::Norm2>::id(),
+                                              irs::type<CustomFeature>::id()}
+               : std::vector<irs::type_info::type_id>{
+                     irs::type<irs::Norm>::id()};
   }
 
   void assert_index(size_t skip = 0,
                     irs::automaton_table_matcher* matcher = nullptr) const {
     index_test_base::assert_index(irs::IndexFeatures::NONE, skip, matcher);
     index_test_base::assert_index(
-      irs::IndexFeatures::NONE | irs::IndexFeatures::FREQ, skip, matcher);
+        irs::IndexFeatures::NONE | irs::IndexFeatures::FREQ, skip, matcher);
     index_test_base::assert_index(irs::IndexFeatures::NONE |
-                                    irs::IndexFeatures::FREQ |
-                                    irs::IndexFeatures::POS,
+                                      irs::IndexFeatures::FREQ |
+                                      irs::IndexFeatures::POS,
                                   skip, matcher);
     index_test_base::assert_index(
-      irs::IndexFeatures::NONE | irs::IndexFeatures::FREQ |
-        irs::IndexFeatures::POS | irs::IndexFeatures::OFFS,
-      skip, matcher);
+        irs::IndexFeatures::NONE | irs::IndexFeatures::FREQ |
+            irs::IndexFeatures::POS | irs::IndexFeatures::OFFS,
+        skip, matcher);
     index_test_base::assert_index(
-      irs::IndexFeatures::NONE | irs::IndexFeatures::FREQ |
-        irs::IndexFeatures::POS | irs::IndexFeatures::PAY,
-      skip, matcher);
+        irs::IndexFeatures::NONE | irs::IndexFeatures::FREQ |
+            irs::IndexFeatures::POS | irs::IndexFeatures::PAY,
+        skip, matcher);
     index_test_base::assert_index(
-      irs::IndexFeatures::NONE | irs::IndexFeatures::FREQ |
-        irs::IndexFeatures::POS | irs::IndexFeatures::OFFS |
-        irs::IndexFeatures::PAY,
-      skip, matcher);
+        irs::IndexFeatures::NONE | irs::IndexFeatures::FREQ |
+            irs::IndexFeatures::POS | irs::IndexFeatures::OFFS |
+            irs::IndexFeatures::PAY,
+        skip, matcher);
     index_test_base::assert_columnstore();
   }
 
@@ -360,26 +359,27 @@ TEST_P(SortedIndexTestCase, simple_sequential) {
 
   // Build index
   tests::json_doc_generator gen(
-    resource("simple_sequential.json"),
-    [&sorted_column, this](tests::document& doc, const std::string& name,
-                           const tests::json_doc_generator::json_value& data) {
-      if (data.is_string()) {
-        auto field = std::make_shared<tests::string_field>(
-          name, data.str, irs::IndexFeatures::ALL, field_features());
+      resource("simple_sequential.json"),
+      [&sorted_column, this](
+          tests::document& doc, const std::string& name,
+          const tests::json_doc_generator::json_value& data) {
+        if (data.is_string()) {
+          auto field = std::make_shared<tests::string_field>(
+              name, data.str, irs::IndexFeatures::ALL, field_features());
 
-        doc.insert(field);
+          doc.insert(field);
 
-        if (name == sorted_column) {
-          doc.sorted = field;
+          if (name == sorted_column) {
+            doc.sorted = field;
+          }
+        } else if (data.is_number()) {
+          auto field = std::make_shared<tests::long_field>();
+          field->name(name);
+          field->value(data.ui);
+
+          doc.insert(field);
         }
-      } else if (data.is_number()) {
-        auto field = std::make_shared<tests::long_field>();
-        field->name(name);
-        field->value(data.ui);
-
-        doc.insert(field);
-      }
-    });
+      });
 
   StringComparer compare;
 
@@ -536,15 +536,15 @@ TEST_P(SortedIndexTestCase, reader_components) {
   StringComparer comparer;
 
   tests::json_doc_generator gen{
-    resource("simple_sequential.json"),
-    [](tests::document& doc, const std::string& name,
-       const tests::json_doc_generator::json_value& data) {
-      if (name == "name") {
-        auto field = std::make_shared<tests::string_field>(name, data.str);
-        doc.insert(field);
-        doc.sorted = field;
-      }
-    }};
+      resource("simple_sequential.json"),
+      [](tests::document& doc, const std::string& name,
+         const tests::json_doc_generator::json_value& data) {
+        if (name == "name") {
+          auto field = std::make_shared<tests::string_field>(name, data.str);
+          doc.insert(field);
+          doc.sorted = field;
+        }
+      }};
 
   const tests::document* doc1 = gen.next();
   const tests::document* doc2 = gen.next();
@@ -573,14 +573,14 @@ TEST_P(SortedIndexTestCase, reader_components) {
 
   auto default_reader = irs::DirectoryReader(dir(), codec());
   auto no_cs_mask_reader = irs::DirectoryReader(
-    dir(), codec(),
-    irs::IndexReaderOptions{.columnstore = false, .doc_mask = false});
+      dir(), codec(),
+      irs::IndexReaderOptions{.columnstore = false, .doc_mask = false});
   auto no_index_reader = irs::DirectoryReader(
-    dir(), codec(), irs::IndexReaderOptions{.index = false});
+      dir(), codec(), irs::IndexReaderOptions{.index = false});
   auto empty_index_reader = irs::DirectoryReader(
-    dir(), codec(),
-    irs::IndexReaderOptions{
-      .index = false, .columnstore = false, .doc_mask = false});
+      dir(), codec(),
+      irs::IndexReaderOptions{
+          .index = false, .columnstore = false, .doc_mask = false});
 
   check_reader(default_reader, 2, true, true);
   check_reader(no_cs_mask_reader, 2, false, true);
@@ -607,26 +607,27 @@ TEST_P(SortedIndexTestCase, simple_sequential_consolidate) {
 
   // Build index
   tests::json_doc_generator gen(
-    resource("simple_sequential.json"),
-    [&sorted_column, this](tests::document& doc, const std::string& name,
-                           const tests::json_doc_generator::json_value& data) {
-      if (data.is_string()) {
-        auto field = std::make_shared<tests::string_field>(
-          name, data.str, irs::IndexFeatures::ALL, field_features());
+      resource("simple_sequential.json"),
+      [&sorted_column, this](
+          tests::document& doc, const std::string& name,
+          const tests::json_doc_generator::json_value& data) {
+        if (data.is_string()) {
+          auto field = std::make_shared<tests::string_field>(
+              name, data.str, irs::IndexFeatures::ALL, field_features());
 
-        doc.insert(field);
+          doc.insert(field);
 
-        if (name == sorted_column) {
-          doc.sorted = field;
+          if (name == sorted_column) {
+            doc.sorted = field;
+          }
+        } else if (data.is_number()) {
+          auto field = std::make_shared<tests::long_field>();
+          field->name(name);
+          field->value(data.i64);
+
+          doc.insert(field);
         }
-      } else if (data.is_number()) {
-        auto field = std::make_shared<tests::long_field>();
-        field->name(name);
-        field->value(data.i64);
-
-        doc.insert(field);
-      }
-    });
+      });
 
   constexpr std::pair<size_t, size_t> segment_offsets[]{{0, 15}, {15, 17}};
 
@@ -697,7 +698,7 @@ TEST_P(SortedIndexTestCase, simple_sequential_consolidate) {
         ASSERT_TRUE(sorted_column.payload().empty());
 
         auto sorted_column_it =
-          sorted_column.iterator(irs::ColumnHint::kNormal);
+            sorted_column.iterator(irs::ColumnHint::kNormal);
         ASSERT_NE(nullptr, sorted_column_it);
 
         auto* payload = irs::get<irs::payload>(*sorted_column_it);
@@ -810,7 +811,7 @@ TEST_P(SortedIndexTestCase, simple_sequential_consolidate) {
   {
     irs::index_utils::ConsolidateCount consolidate_all;
     ASSERT_TRUE(
-      writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
+        writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
     writer->Commit();
     AssertSnapshotEquality(*writer);
 
@@ -974,27 +975,28 @@ TEST_P(SortedIndexTestCase, simple_sequential_already_sorted) {
 
   // Build index
   tests::json_doc_generator gen(
-    resource("simple_sequential.json"),
-    [&sorted_column, this](tests::document& doc, const std::string& name,
-                           const tests::json_doc_generator::json_value& data) {
-      if (data.is_string()) {
-        auto field = std::make_shared<tests::string_field>(
-          name, data.str, irs::IndexFeatures::ALL, field_features());
+      resource("simple_sequential.json"),
+      [&sorted_column, this](
+          tests::document& doc, const std::string& name,
+          const tests::json_doc_generator::json_value& data) {
+        if (data.is_string()) {
+          auto field = std::make_shared<tests::string_field>(
+              name, data.str, irs::IndexFeatures::ALL, field_features());
 
-        doc.insert(field);
+          doc.insert(field);
 
-      } else if (data.is_number()) {
-        auto field = std::make_shared<tests::long_field>();
-        field->name(name);
-        field->value(data.i64);
+        } else if (data.is_number()) {
+          auto field = std::make_shared<tests::long_field>();
+          field->name(name);
+          field->value(data.i64);
 
-        doc.insert(field);
+          doc.insert(field);
 
-        if (name == sorted_column) {
-          doc.sorted = field;
+          if (name == sorted_column) {
+            doc.sorted = field;
+          }
         }
-      }
-    });
+      });
 
   LongComparer comparer;
   irs::IndexWriterOptions opts;
@@ -1247,20 +1249,20 @@ TEST_P(SortedIndexTestCase, multi_valued_sorting_field) {
 
 TEST_P(SortedIndexTestCase, check_document_order_after_consolidation_dense) {
   tests::json_doc_generator gen(
-    resource("simple_sequential.json"),
-    [this](tests::document& doc, const std::string& name,
-           const tests::json_doc_generator::json_value& data) {
-      if (data.is_string()) {
-        auto field = std::make_shared<tests::string_field>(
-          name, data.str, irs::IndexFeatures::ALL, field_features());
+      resource("simple_sequential.json"),
+      [this](tests::document& doc, const std::string& name,
+             const tests::json_doc_generator::json_value& data) {
+        if (data.is_string()) {
+          auto field = std::make_shared<tests::string_field>(
+              name, data.str, irs::IndexFeatures::ALL, field_features());
 
-        doc.insert(field);
+          doc.insert(field);
 
-        if (name == "name") {
-          doc.sorted = field;
+          if (name == "name") {
+            doc.sorted = field;
+          }
         }
-      }
-    });
+      });
 
   auto* doc0 = gen.next();  // name == 'A'
   auto* doc1 = gen.next();  // name == 'B'
@@ -1373,7 +1375,7 @@ TEST_P(SortedIndexTestCase, check_document_order_after_consolidation_dense) {
   {
     irs::index_utils::ConsolidateCount consolidate_all;
     ASSERT_TRUE(
-      writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
+        writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
     writer->Commit();
     AssertSnapshotEquality(*writer);
   }
@@ -1449,20 +1451,20 @@ TEST_P(SortedIndexTestCase, check_document_order_after_consolidation_dense) {
 TEST_P(SortedIndexTestCase,
        check_document_order_after_consolidation_dense_with_removals) {
   tests::json_doc_generator gen(
-    resource("simple_sequential.json"),
-    [this](tests::document& doc, const std::string& name,
-           const tests::json_doc_generator::json_value& data) {
-      if (data.is_string()) {
-        auto field = std::make_shared<tests::string_field>(
-          name, data.str, irs::IndexFeatures::ALL, field_features());
+      resource("simple_sequential.json"),
+      [this](tests::document& doc, const std::string& name,
+             const tests::json_doc_generator::json_value& data) {
+        if (data.is_string()) {
+          auto field = std::make_shared<tests::string_field>(
+              name, data.str, irs::IndexFeatures::ALL, field_features());
 
-        doc.insert(field);
+          doc.insert(field);
 
-        if (name == "name") {
-          doc.sorted = field;
+          if (name == "name") {
+            doc.sorted = field;
+          }
         }
-      }
-    });
+      });
 
   auto* doc0 = gen.next();  // name == 'A'
   auto* doc1 = gen.next();  // name == 'B'
@@ -1661,7 +1663,7 @@ TEST_P(SortedIndexTestCase,
   {
     irs::index_utils::ConsolidateCount consolidate_all;
     ASSERT_TRUE(
-      writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
+        writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
     writer->Commit();
     AssertSnapshotEquality(*writer);
   }
@@ -1731,15 +1733,15 @@ TEST_P(SortedIndexTestCase,
 
 TEST_P(SortedIndexTestCase, doc_removal_same_key_within_trx) {
   tests::json_doc_generator gen(
-    resource("simple_sequential.json"),
-    [](tests::document& doc, std::string_view name,
-       const tests::json_doc_generator::json_value& data) {
-      if (name == "name" && data.is_string()) {
-        auto field = std::make_shared<tests::string_field>(name, data.str);
-        doc.sorted = field;
-        doc.insert(field);
-      }
-    });
+      resource("simple_sequential.json"),
+      [](tests::document& doc, std::string_view name,
+         const tests::json_doc_generator::json_value& data) {
+        if (name == "name" && data.is_string()) {
+          auto field = std::make_shared<tests::string_field>(name, data.str);
+          doc.sorted = field;
+          doc.insert(field);
+        }
+      });
 
   const tests::document* doc1 = gen.next();
   const tests::document* doc2 = gen.next();
@@ -1811,15 +1813,15 @@ bool Insert(irs::IndexWriter::Transaction& ctx, const tests::document* d) {
 
 TEST_P(SortedIndexTestCase, doc_removal_same_key_within_trx_flush) {
   tests::json_doc_generator gen(
-    resource("simple_sequential.json"),
-    [](tests::document& doc, std::string_view name,
-       const tests::json_doc_generator::json_value& data) {
-      if (name == "name" && data.is_string()) {
-        auto field = std::make_shared<tests::string_field>(name, data.str);
-        doc.sorted = field;
-        doc.insert(field);
-      }
-    });
+      resource("simple_sequential.json"),
+      [](tests::document& doc, std::string_view name,
+         const tests::json_doc_generator::json_value& data) {
+        if (name == "name" && data.is_string()) {
+          auto field = std::make_shared<tests::string_field>(name, data.str);
+          doc.sorted = field;
+          doc.insert(field);
+        }
+      });
 
   const tests::document* doc1 = gen.next();
   const tests::document* doc2 = gen.next();
@@ -1899,20 +1901,20 @@ TEST_P(SortedIndexTestCase, doc_removal_same_key_within_trx_flush) {
 TEST_P(SortedIndexTestCase,
        check_document_order_after_consolidation_sparse_already_sorted) {
   tests::json_doc_generator gen(
-    resource("simple_sequential.json"),
-    [this](tests::document& doc, const std::string& name,
-           const tests::json_doc_generator::json_value& data) {
-      if (data.is_string()) {
-        auto field = std::make_shared<tests::string_field>(
-          name, data.str, irs::IndexFeatures::ALL, field_features());
+      resource("simple_sequential.json"),
+      [this](tests::document& doc, const std::string& name,
+             const tests::json_doc_generator::json_value& data) {
+        if (data.is_string()) {
+          auto field = std::make_shared<tests::string_field>(
+              name, data.str, irs::IndexFeatures::ALL, field_features());
 
-        doc.insert(field);
+          doc.insert(field);
 
-        if (name == "name") {
-          doc.sorted = field;
+          if (name == "name") {
+            doc.sorted = field;
+          }
         }
-      }
-    });
+      });
 
   auto* doc0 = gen.next();  // name == 'A'
   auto* doc1 = gen.next();  // name == 'B'
@@ -2023,7 +2025,7 @@ TEST_P(SortedIndexTestCase,
   {
     irs::index_utils::ConsolidateCount consolidate_all;
     ASSERT_TRUE(
-      writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
+        writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
     writer->Commit();
     AssertSnapshotEquality(*writer);
   }
@@ -2098,20 +2100,20 @@ TEST_P(SortedIndexTestCase,
 
 TEST_P(SortedIndexTestCase, check_document_order_after_consolidation_sparse) {
   tests::json_doc_generator gen(
-    resource("simple_sequential.json"),
-    [this](tests::document& doc, const std::string& name,
-           const tests::json_doc_generator::json_value& data) {
-      if (data.is_string()) {
-        auto field = std::make_shared<tests::string_field>(
-          name, data.str, irs::IndexFeatures::ALL, field_features());
+      resource("simple_sequential.json"),
+      [this](tests::document& doc, const std::string& name,
+             const tests::json_doc_generator::json_value& data) {
+        if (data.is_string()) {
+          auto field = std::make_shared<tests::string_field>(
+              name, data.str, irs::IndexFeatures::ALL, field_features());
 
-        doc.insert(field);
+          doc.insert(field);
 
-        if (name == "name") {
-          doc.sorted = field;
+          if (name == "name") {
+            doc.sorted = field;
+          }
         }
-      }
-    });
+      });
 
   auto* doc0 = gen.next();  // name == 'A'
   auto* doc1 = gen.next();  // name == 'B'
@@ -2242,7 +2244,7 @@ TEST_P(SortedIndexTestCase, check_document_order_after_consolidation_sparse) {
   {
     irs::index_utils::ConsolidateCount consolidate_all;
     ASSERT_TRUE(
-      writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
+        writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
     writer->Commit();
     AssertSnapshotEquality(*writer);
   }
@@ -2335,20 +2337,20 @@ TEST_P(SortedIndexTestCase, check_document_order_after_consolidation_sparse) {
 TEST_P(SortedIndexTestCase,
        check_document_order_after_consolidation_sparse_with_removals) {
   tests::json_doc_generator gen(
-    resource("simple_sequential.json"),
-    [this](tests::document& doc, const std::string& name,
-           const tests::json_doc_generator::json_value& data) {
-      if (data.is_string()) {
-        auto field = std::make_shared<tests::string_field>(
-          name, data.str, irs::IndexFeatures::ALL, field_features());
+      resource("simple_sequential.json"),
+      [this](tests::document& doc, const std::string& name,
+             const tests::json_doc_generator::json_value& data) {
+        if (data.is_string()) {
+          auto field = std::make_shared<tests::string_field>(
+              name, data.str, irs::IndexFeatures::ALL, field_features());
 
-        doc.insert(field);
+          doc.insert(field);
 
-        if (name == "name") {
-          doc.sorted = field;
+          if (name == "name") {
+            doc.sorted = field;
+          }
         }
-      }
-    });
+      });
 
   auto* doc0 = gen.next();  // name == 'A'
   auto* doc1 = gen.next();  // name == 'B'
@@ -2491,7 +2493,7 @@ TEST_P(SortedIndexTestCase,
   {
     irs::index_utils::ConsolidateCount consolidate_all;
     ASSERT_TRUE(
-      writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
+        writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
     ASSERT_TRUE(writer->Commit());
     AssertSnapshotEquality(*writer);
   }
@@ -2570,23 +2572,23 @@ TEST_P(SortedIndexTestCase,
   constexpr std::string_view kName = "name";
 
   tests::json_doc_generator gen(
-    resource("simple_sequential.json"),
-    [&](tests::document& doc, const std::string& name,
-        const tests::json_doc_generator::json_value& data) {
-      if (data.is_string()) {
-        auto field = std::make_shared<tests::string_field>(
-          name, data.str, irs::IndexFeatures::ALL, field_features());
+      resource("simple_sequential.json"),
+      [&](tests::document& doc, const std::string& name,
+          const tests::json_doc_generator::json_value& data) {
+        if (data.is_string()) {
+          auto field = std::make_shared<tests::string_field>(
+              name, data.str, irs::IndexFeatures::ALL, field_features());
 
-        doc.insert(field);
+          doc.insert(field);
 
-        if (name == kName) {
-          doc.sorted = field;
+          if (name == kName) {
+            doc.sorted = field;
+          }
         }
-      }
-    });
+      });
 
   using DocAndFilter =
-    std::pair<const tests::document*, std::unique_ptr<irs::by_term>>;
+      std::pair<const tests::document*, std::unique_ptr<irs::by_term>>;
   constexpr size_t kCount = 14;
   std::array<DocAndFilter, kCount> docs;
   for (auto& [doc, filter] : docs) {
@@ -2660,18 +2662,18 @@ TEST_P(SortedIndexTestCase,
       ASSERT_TRUE(values->next());
       ASSERT_EQ(3, values->value());
       ASSERT_EQ(
-        irs::ViewCast<char>(irs::bytes_view{docs[13].second->options().term}),
-        irs::to_string<std::string_view>(actual_value->value.data()));
+          irs::ViewCast<char>(irs::bytes_view{docs[13].second->options().term}),
+          irs::to_string<std::string_view>(actual_value->value.data()));
       ASSERT_TRUE(values->next());
       ASSERT_EQ(7, values->value());
       ASSERT_EQ(
-        irs::ViewCast<char>(irs::bytes_view{docs[3].second->options().term}),
-        irs::to_string<std::string_view>(actual_value->value.data()));
+          irs::ViewCast<char>(irs::bytes_view{docs[3].second->options().term}),
+          irs::to_string<std::string_view>(actual_value->value.data()));
       ASSERT_TRUE(values->next());
       ASSERT_EQ(13, values->value());
       ASSERT_EQ(
-        irs::ViewCast<char>(irs::bytes_view{docs[1].second->options().term}),
-        irs::to_string<std::string_view>(actual_value->value.data()));
+          irs::ViewCast<char>(irs::bytes_view{docs[1].second->options().term}),
+          irs::to_string<std::string_view>(actual_value->value.data()));
       ASSERT_FALSE(values->next());
 
       // Check pluggable features
@@ -2700,23 +2702,23 @@ TEST_P(SortedIndexTestCase,
       ASSERT_TRUE(values->next());
       ASSERT_EQ(9, values->value());
       ASSERT_EQ(
-        irs::ViewCast<char>(irs::bytes_view{docs[11].second->options().term}),
-        irs::to_string<std::string_view>(actual_value->value.data()));
+          irs::ViewCast<char>(irs::bytes_view{docs[11].second->options().term}),
+          irs::to_string<std::string_view>(actual_value->value.data()));
       ASSERT_TRUE(values->next());
       ASSERT_EQ(10, values->value());
       ASSERT_EQ(
-        irs::ViewCast<char>(irs::bytes_view{docs[9].second->options().term}),
-        irs::to_string<std::string_view>(actual_value->value.data()));
+          irs::ViewCast<char>(irs::bytes_view{docs[9].second->options().term}),
+          irs::to_string<std::string_view>(actual_value->value.data()));
       ASSERT_TRUE(values->next());
       ASSERT_EQ(12, values->value());
       ASSERT_EQ(
-        irs::ViewCast<char>(irs::bytes_view{docs[7].second->options().term}),
-        irs::to_string<std::string_view>(actual_value->value.data()));
+          irs::ViewCast<char>(irs::bytes_view{docs[7].second->options().term}),
+          irs::to_string<std::string_view>(actual_value->value.data()));
       ASSERT_TRUE(values->next());
       ASSERT_EQ(20, values->value());
       ASSERT_EQ(
-        irs::ViewCast<char>(irs::bytes_view{docs[5].second->options().term}),
-        irs::to_string<std::string_view>(actual_value->value.data()));
+          irs::ViewCast<char>(irs::bytes_view{docs[5].second->options().term}),
+          irs::to_string<std::string_view>(actual_value->value.data()));
       ASSERT_FALSE(values->next());
 
       // Check pluggable features
@@ -2732,7 +2734,7 @@ TEST_P(SortedIndexTestCase,
   {
     irs::index_utils::ConsolidateCount consolidate_all;
     ASSERT_TRUE(
-      writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
+        writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
     ASSERT_TRUE(writer->Commit());
     AssertSnapshotEquality(*writer);
   }
@@ -2760,23 +2762,23 @@ TEST_P(SortedIndexTestCase,
       ASSERT_TRUE(values->next());
       ASSERT_EQ(3, values->value());
       ASSERT_EQ(
-        irs::ViewCast<char>(irs::bytes_view{docs[13].second->options().term}),
-        irs::to_string<std::string_view>(actual_value->value.data()));
+          irs::ViewCast<char>(irs::bytes_view{docs[13].second->options().term}),
+          irs::to_string<std::string_view>(actual_value->value.data()));
       ASSERT_TRUE(values->next());
       ASSERT_EQ(12, values->value());
       ASSERT_EQ(
-        irs::ViewCast<char>(irs::bytes_view{docs[11].second->options().term}),
-        irs::to_string<std::string_view>(actual_value->value.data()));
+          irs::ViewCast<char>(irs::bytes_view{docs[11].second->options().term}),
+          irs::to_string<std::string_view>(actual_value->value.data()));
       ASSERT_TRUE(values->next());
       ASSERT_EQ(14, values->value());
       ASSERT_EQ(
-        irs::ViewCast<char>(irs::bytes_view{docs[7].second->options().term}),
-        irs::to_string<std::string_view>(actual_value->value.data()));
+          irs::ViewCast<char>(irs::bytes_view{docs[7].second->options().term}),
+          irs::to_string<std::string_view>(actual_value->value.data()));
       ASSERT_TRUE(values->next());
       ASSERT_EQ(20, values->value());
       ASSERT_EQ(
-        irs::ViewCast<char>(irs::bytes_view{docs[1].second->options().term}),
-        irs::to_string<std::string_view>(actual_value->value.data()));
+          irs::ViewCast<char>(irs::bytes_view{docs[1].second->options().term}),
+          irs::to_string<std::string_view>(actual_value->value.data()));
       ASSERT_FALSE(values->next());
 
       // Check pluggable features
@@ -2811,15 +2813,15 @@ TEST_P(SortedIndexTestCase,
 // expansion
 #ifdef IRESEARCH_SSE2
 const auto kSortedIndexTestCaseValues = ::testing::Values(
-  tests::format_info{"1_1", "1_0"}, tests::format_info{"1_2", "1_0"},
-  tests::format_info{"1_3", "1_0"}, tests::format_info{"1_4", "1_0"},
-  tests::format_info{"1_5", "1_0"}, tests::format_info{"1_3simd", "1_0"},
-  tests::format_info{"1_4simd", "1_0"}, tests::format_info{"1_5simd", "1_0"});
+    tests::format_info{"1_1", "1_0"}, tests::format_info{"1_2", "1_0"},
+    tests::format_info{"1_3", "1_0"}, tests::format_info{"1_4", "1_0"},
+    tests::format_info{"1_5", "1_0"}, tests::format_info{"1_3simd", "1_0"},
+    tests::format_info{"1_4simd", "1_0"}, tests::format_info{"1_5simd", "1_0"});
 #else
 const auto kSortedIndexTestCaseValues = ::testing::Values(
-  tests::format_info{"1_1", "1_0"}, tests::format_info{"1_2", "1_0"},
-  tests::format_info{"1_3", "1_0"}, tests::format_info{"1_4", "1_0"},
-  tests::format_info{"1_5", "1_0"});
+    tests::format_info{"1_1", "1_0"}, tests::format_info{"1_2", "1_0"},
+    tests::format_info{"1_3", "1_0"}, tests::format_info{"1_4", "1_0"},
+    tests::format_info{"1_5", "1_0"});
 #endif
 
 static constexpr auto kTestDirs = tests::getDirectories<tests::kTypesDefault>();
@@ -2836,15 +2838,15 @@ TEST_P(SortedIndexStressTestCase, doc_removal_same_key_within_trx) {
   GTEST_SKIP();  // too long for our CI
 #endif
   tests::json_doc_generator gen(
-    resource("simple_sequential.json"),
-    [](tests::document& doc, std::string_view name,
-       const tests::json_doc_generator::json_value& data) {
-      if (name == "name" && data.is_string()) {
-        auto field = std::make_shared<tests::string_field>(name, data.str);
-        doc.sorted = field;
-        doc.insert(field);
-      }
-    });
+      resource("simple_sequential.json"),
+      [](tests::document& doc, std::string_view name,
+         const tests::json_doc_generator::json_value& data) {
+        if (name == "name" && data.is_string()) {
+          auto field = std::make_shared<tests::string_field>(name, data.str);
+          doc.sorted = field;
+          doc.insert(field);
+        }
+      });
 
   static constexpr size_t kLen = 5;
   std::array<std::pair<size_t, const tests::document*>, kLen> insert_docs;
@@ -2852,11 +2854,11 @@ TEST_P(SortedIndexStressTestCase, doc_removal_same_key_within_trx) {
     insert_docs[i] = {i, gen.next()};
   }
   std::array<std::pair<size_t, std::unique_ptr<irs::by_term>>, kLen>
-    remove_docs;
+      remove_docs;
   for (size_t i = 0; i < kLen; ++i) {
     remove_docs[i] = {i, MakeByTerm("name", static_cast<tests::string_field&>(
-                                              *insert_docs[i].second->sorted)
-                                              .value())};
+                                                *insert_docs[i].second->sorted)
+                                                .value())};
   }
   std::array<bool, kLen> in_store;
   std::array<char, kLen> results{'A', 'B', 'C', 'D', 'E'};
@@ -2881,13 +2883,13 @@ TEST_P(SortedIndexStressTestCase, doc_removal_same_key_within_trx) {
             auto ctx = writer->GetBatch();
             auto doc = ctx.Insert();
             ASSERT_TRUE(doc.Insert<irs::Action::STORE_SORTED>(
-              *insert_docs[i].second->sorted));
+                *insert_docs[i].second->sorted));
             ASSERT_TRUE(doc.Insert<irs::Action::INDEX>(
-              insert_docs[i].second->indexed.begin(),
-              insert_docs[i].second->indexed.end()));
+                insert_docs[i].second->indexed.begin(),
+                insert_docs[i].second->indexed.end()));
             ASSERT_TRUE(doc.Insert<irs::Action::STORE>(
-              insert_docs[i].second->stored.begin(),
-              insert_docs[i].second->stored.end()));
+                insert_docs[i].second->stored.begin(),
+                insert_docs[i].second->stored.end()));
             if (((reset >> i) & 1U) == 1U) {
               ctx.Reset();
             } else {
@@ -2936,7 +2938,7 @@ TEST_P(SortedIndexStressTestCase, doc_removal_same_key_within_trx) {
           ASSERT_TRUE(docs->next());
           ASSERT_EQ(docs->value(), values->seek(docs->value()));
           ASSERT_EQ(results[i - 1], irs::to_string<std::string_view>(
-                                      actual_value->value.data())[0]);
+                                        actual_value->value.data())[0]);
         }
         ASSERT_FALSE(docs->next());
       } while (std::next_permutation(remove_docs.begin(), remove_docs.end()));
@@ -2946,15 +2948,15 @@ TEST_P(SortedIndexStressTestCase, doc_removal_same_key_within_trx) {
 
 TEST_P(SortedIndexStressTestCase, commit_on_tick) {
   tests::json_doc_generator gen(
-    resource("simple_sequential.json"),
-    [](tests::document& doc, std::string_view name,
-       const tests::json_doc_generator::json_value& data) {
-      if (name == "name" && data.is_string()) {
-        auto field = std::make_shared<tests::string_field>(name, data.str);
-        doc.sorted = field;
-        doc.insert(field);
-      }
-    });
+      resource("simple_sequential.json"),
+      [](tests::document& doc, std::string_view name,
+         const tests::json_doc_generator::json_value& data) {
+        if (name == "name" && data.is_string()) {
+          auto field = std::make_shared<tests::string_field>(name, data.str);
+          doc.sorted = field;
+          doc.insert(field);
+        }
+      });
 
   static constexpr size_t kLen = 8;
   std::array<std::pair<size_t, const tests::document*>, kLen> insert_docs;
@@ -2983,13 +2985,13 @@ TEST_P(SortedIndexStressTestCase, commit_on_tick) {
           {
             auto doc = ctx.Insert();
             ASSERT_TRUE(doc.Insert<irs::Action::STORE_SORTED>(
-              *insert_docs[i].second->sorted));
+                *insert_docs[i].second->sorted));
             ASSERT_TRUE(doc.Insert<irs::Action::INDEX>(
-              insert_docs[i].second->indexed.begin(),
-              insert_docs[i].second->indexed.end()));
+                insert_docs[i].second->indexed.begin(),
+                insert_docs[i].second->indexed.end()));
             ASSERT_TRUE(doc.Insert<irs::Action::STORE>(
-              insert_docs[i].second->stored.begin(),
-              insert_docs[i].second->stored.end()));
+                insert_docs[i].second->stored.begin(),
+                insert_docs[i].second->stored.end()));
           }
           if (((reset >> i) & 1U) == 1U) {
             ctx.Abort();
@@ -3054,7 +3056,7 @@ TEST_P(SortedIndexStressTestCase, commit_on_tick) {
         ASSERT_TRUE(docs->next());
         ASSERT_EQ(docs->value(), values->seek(docs->value()));
         EXPECT_EQ(results[i - 1], irs::to_string<std::string_view>(
-                                    actual_value->value.data())[0]);
+                                      actual_value->value.data())[0]);
       }
       ASSERT_FALSE(docs->next());
     }
@@ -3063,26 +3065,26 @@ TEST_P(SortedIndexStressTestCase, commit_on_tick) {
 
 TEST_P(SortedIndexStressTestCase, split_empty_commit) {
   tests::json_doc_generator gen(
-    resource("simple_sequential.json"),
-    [](tests::document& doc, std::string_view name,
-       const tests::json_doc_generator::json_value& data) {
-      if (name == "name" && data.is_string()) {
-        auto field = std::make_shared<tests::string_field>(name, data.str);
-        doc.sorted = field;
-        doc.insert(field);
-      }
-    });
+      resource("simple_sequential.json"),
+      [](tests::document& doc, std::string_view name,
+         const tests::json_doc_generator::json_value& data) {
+        if (name == "name" && data.is_string()) {
+          auto field = std::make_shared<tests::string_field>(name, data.str);
+          doc.sorted = field;
+          doc.insert(field);
+        }
+      });
   static constexpr size_t kLen = 8;
   std::array<std::pair<size_t, const tests::document*>, kLen> insert_docs;
   for (size_t i = 0; i < kLen; ++i) {
     insert_docs[i] = {i, gen.next()};
   }
   std::array<std::pair<size_t, std::unique_ptr<irs::by_term>>, kLen>
-    remove_docs;
+      remove_docs;
   for (size_t i = 0; i < kLen; ++i) {
     remove_docs[i] = {i, MakeByTerm("name", static_cast<tests::string_field&>(
-                                              *insert_docs[i].second->sorted)
-                                              .value())};
+                                                *insert_docs[i].second->sorted)
+                                                .value())};
   }
 
   StringComparer compare;
@@ -3094,13 +3096,13 @@ TEST_P(SortedIndexStressTestCase, split_empty_commit) {
   auto insert_doc = [&](size_t i) {
     auto doc = segment1.Insert();
     ASSERT_TRUE(
-      doc.Insert<irs::Action::STORE_SORTED>(*insert_docs[i].second->sorted));
+        doc.Insert<irs::Action::STORE_SORTED>(*insert_docs[i].second->sorted));
     ASSERT_TRUE(
-      doc.Insert<irs::Action::INDEX>(insert_docs[i].second->indexed.begin(),
-                                     insert_docs[i].second->indexed.end()));
+        doc.Insert<irs::Action::INDEX>(insert_docs[i].second->indexed.begin(),
+                                       insert_docs[i].second->indexed.end()));
     ASSERT_TRUE(
-      doc.Insert<irs::Action::STORE>(insert_docs[i].second->stored.begin(),
-                                     insert_docs[i].second->stored.end()));
+        doc.Insert<irs::Action::STORE>(insert_docs[i].second->stored.begin(),
+                                       insert_docs[i].second->stored.end()));
   };
   auto remove_doc = [&](size_t i) { segment1.Remove(*remove_docs[i].second); };
   insert_doc(0);
@@ -3127,26 +3129,26 @@ TEST_P(SortedIndexStressTestCase, split_empty_commit) {
 
 TEST_P(SortedIndexStressTestCase, remove_tick) {
   tests::json_doc_generator gen(
-    resource("simple_sequential.json"),
-    [](tests::document& doc, std::string_view name,
-       const tests::json_doc_generator::json_value& data) {
-      if (name == "name" && data.is_string()) {
-        auto field = std::make_shared<tests::string_field>(name, data.str);
-        doc.sorted = field;
-        doc.insert(field);
-      }
-    });
+      resource("simple_sequential.json"),
+      [](tests::document& doc, std::string_view name,
+         const tests::json_doc_generator::json_value& data) {
+        if (name == "name" && data.is_string()) {
+          auto field = std::make_shared<tests::string_field>(name, data.str);
+          doc.sorted = field;
+          doc.insert(field);
+        }
+      });
   static constexpr size_t kLen = 8;
   std::array<std::pair<size_t, const tests::document*>, kLen> insert_docs;
   for (size_t i = 0; i < kLen; ++i) {
     insert_docs[i] = {i, gen.next()};
   }
   std::array<std::pair<size_t, std::unique_ptr<irs::by_term>>, kLen>
-    remove_docs;
+      remove_docs;
   for (size_t i = 0; i < kLen; ++i) {
     remove_docs[i] = {i, MakeByTerm("name", static_cast<tests::string_field&>(
-                                              *insert_docs[i].second->sorted)
-                                              .value())};
+                                                *insert_docs[i].second->sorted)
+                                                .value())};
   }
 
   StringComparer compare;
@@ -3158,13 +3160,13 @@ TEST_P(SortedIndexStressTestCase, remove_tick) {
   auto insert_doc = [&](size_t i) {
     auto doc = segment1.Insert();
     ASSERT_TRUE(
-      doc.Insert<irs::Action::STORE_SORTED>(*insert_docs[i].second->sorted));
+        doc.Insert<irs::Action::STORE_SORTED>(*insert_docs[i].second->sorted));
     ASSERT_TRUE(
-      doc.Insert<irs::Action::INDEX>(insert_docs[i].second->indexed.begin(),
-                                     insert_docs[i].second->indexed.end()));
+        doc.Insert<irs::Action::INDEX>(insert_docs[i].second->indexed.begin(),
+                                       insert_docs[i].second->indexed.end()));
     ASSERT_TRUE(
-      doc.Insert<irs::Action::STORE>(insert_docs[i].second->stored.begin(),
-                                     insert_docs[i].second->stored.end()));
+        doc.Insert<irs::Action::STORE>(insert_docs[i].second->stored.begin(),
+                                       insert_docs[i].second->stored.end()));
   };
   auto remove_doc = [&](size_t i) { segment1.Remove(*remove_docs[i].second); };
   insert_doc(0);
@@ -3189,10 +3191,10 @@ TEST_P(SortedIndexStressTestCase, remove_tick) {
 }
 
 INSTANTIATE_TEST_SUITE_P(
-  SortedIndexStressTest, SortedIndexStressTestCase,
-  ::testing::Combine(
-    ::testing::Values(&tests::directory<&tests::memory_directory>),
-    ::testing::Values(tests::format_info{"1_5", "1_0"})),
-  SortedIndexStressTestCase::to_string);
+    SortedIndexStressTest, SortedIndexStressTestCase,
+    ::testing::Combine(
+        ::testing::Values(&tests::directory<&tests::memory_directory>),
+        ::testing::Values(tests::format_info{"1_5", "1_0"})),
+    SortedIndexStressTestCase::to_string);
 
 }  // namespace

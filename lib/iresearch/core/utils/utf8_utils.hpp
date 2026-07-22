@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -38,11 +37,11 @@ inline constexpr uint8_t kMaxCharSize = 4;
 
 // TODO(MBkkt) Find out is alignas specified correct and really align this data
 alignas(16 * 4) inline constexpr uint8_t kNextTable[16 * 4] = {
-  // 1  2  3  4  5  6  7  8  9  A  B  C  D  E  F
-  0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,  // C
-  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,  // D
-  2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,  // E
-  3, 3, 3, 3, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  // F
+    // 1  2  3  4  5  6  7  8  9  A  B  C  D  E  F
+    0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,  // C
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,  // D
+    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,  // E
+    3, 3, 3, 3, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  // F
 };
 
 inline constexpr uint8_t kNextTableBegin = 0xC0;
@@ -51,7 +50,7 @@ inline constexpr uint8_t kNextTableBegin = 0xC0;
 inline constexpr uint32_t kInvalidChar32 = 0xFFFF;
 
 IRS_FORCE_INLINE constexpr const byte_type* Next(
-  const byte_type* it, const byte_type* end) noexcept {
+    const byte_type* it, const byte_type* end) noexcept {
   IRS_ASSERT(it);
   IRS_ASSERT(end);
   IRS_ASSERT(it < end);

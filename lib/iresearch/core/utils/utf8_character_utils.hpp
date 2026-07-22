@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -34,7 +33,7 @@ constexpr bool CharIsWhiteSpace(uint32_t c) noexcept {
 
 constexpr uint16_t CharGeneralCategory(uint32_t c) noexcept {
   const auto it = frozen::bits::lower_bound<kGeneralCategoryTable.size()>(
-    kGeneralCategoryTable.begin(), c, kGeneralCategoryTable.key_comp());
+      kGeneralCategoryTable.begin(), c, kGeneralCategoryTable.key_comp());
 
   if (it != kGeneralCategoryTable.begin() && it->first != c) {
     return std::prev(it)->second;

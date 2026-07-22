@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "collectors.hpp"
@@ -54,7 +53,7 @@ field_collector_wrapper::noop() noexcept {
 }
 
 field_collectors::field_collectors(const Scorers& order)
-  : collectors_base<field_collector_wrapper>(order.buckets().size(), order) {
+    : collectors_base<field_collector_wrapper>(order.buckets().size(), order) {
   auto collectors = collectors_.begin();
   for (auto& bucket : order.buckets()) {
     *collectors = bucket.bucket->prepare_field_collector();
@@ -93,8 +92,8 @@ void field_collectors::finish(byte_type* stats_buf) const {
     IRS_ASSERT(sort.bucket);  // ensured by order::prepare
 
     sort.bucket->collect(
-      stats_buf + sort.stats_offset,  // where stats for bucket start
-      collectors_[i].get(), nullptr);
+        stats_buf + sort.stats_offset,  // where stats for bucket start
+        collectors_[i].get(), nullptr);
   }
 }
 
@@ -104,8 +103,8 @@ term_collector_wrapper::noop() noexcept {
 }
 
 term_collectors::term_collectors(const Scorers& buckets, size_t size)
-  : collectors_base<term_collector_wrapper>(buckets.buckets().size() * size,
-                                            buckets) {
+    : collectors_base<term_collector_wrapper>(buckets.buckets().size() * size,
+                                              buckets) {
   // add term collectors from each bucket
   // layout order [t0.b0, t0.b1, ... t0.bN, t1.b0, t1.b1 ... tM.BN]
   auto begin = collectors_.begin();
@@ -149,8 +148,8 @@ void term_collectors::collect(const SubReader& segment,
       for (size_t i = 0; i < count; ++i) {
         const auto idx = term_offset_count + i;
         IRS_ASSERT(
-          idx <
-          collectors_.size());  // enforced by allocation in the constructor
+            idx <
+            collectors_.size());  // enforced by allocation in the constructor
         IRS_ASSERT(collectors_[idx]);  // enforced by wrapper
 
         collectors_[idx]->collect(segment, field, attrs);
@@ -171,17 +170,17 @@ size_t term_collectors::push_back() {
       const auto term_offset = collectors_.size();
       IRS_ASSERT(buckets_.front().bucket);  // ensured by order::prepare
       collectors_.emplace_back(
-        buckets_.front().bucket->prepare_term_collector());
+          buckets_.front().bucket->prepare_term_collector());
       return term_offset;
     }
     case 2: {
       const auto term_offset = collectors_.size() / 2;
       IRS_ASSERT(buckets_.front().bucket);  // ensured by order::prepare
       collectors_.emplace_back(
-        buckets_.front().bucket->prepare_term_collector());
+          buckets_.front().bucket->prepare_term_collector());
       IRS_ASSERT(buckets_.back().bucket);  // ensured by order::prepare
       collectors_.emplace_back(
-        buckets_.back().bucket->prepare_term_collector());
+          buckets_.back().bucket->prepare_term_collector());
       return term_offset;
     }
     default: {
@@ -208,8 +207,8 @@ void term_collectors::finish(byte_type* stats_buf, size_t term_idx,
       IRS_ASSERT(field_collectors.front());
       IRS_ASSERT(buckets_.front().bucket);
       buckets_.front().bucket->collect(
-        stats_buf + buckets_.front().stats_offset, field_collectors.front(),
-        collectors_[term_idx].get());
+          stats_buf + buckets_.front().stats_offset, field_collectors.front(),
+          collectors_[term_idx].get());
     } break;
     case 2: {
       term_idx *= bucket_count;
@@ -217,8 +216,8 @@ void term_collectors::finish(byte_type* stats_buf, size_t term_idx,
       IRS_ASSERT(field_collectors.front());
       IRS_ASSERT(buckets_.front().bucket);
       buckets_.front().bucket->collect(
-        stats_buf + buckets_.front().stats_offset, field_collectors.front(),
-        collectors_[term_idx].get());
+          stats_buf + buckets_.front().stats_offset, field_collectors.front(),
+          collectors_[term_idx].get());
 
       IRS_ASSERT(field_collectors.back());
       IRS_ASSERT(buckets_.back().bucket);

@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "search/top_terms_collector.hpp"
@@ -78,7 +77,7 @@ struct sort : irs::Scorer {
 
   struct term_collector final : irs::TermCollector {
     uint64_t docs_with_term =
-      0;  // number of documents containing the matched term
+        0;  // number of documents containing the matched term
 
     void collect(const irs::SubReader&, const irs::term_reader&,
                  const irs::attribute_provider& term_attrs) final {
@@ -114,10 +113,10 @@ struct sort : irs::Scorer {
   }
 
   irs::ScoreFunction prepare_scorer(
-    const irs::ColumnProvider& /*segment*/, const irs::feature_map_t& /*field*/,
-    const irs::byte_type* /*stats*/,
-    const irs::attribute_provider& /*doc_attrs*/,
-    irs::score_t /*boost*/) const final {
+      const irs::ColumnProvider& /*segment*/,
+      const irs::feature_map_t& /*field*/, const irs::byte_type* /*stats*/,
+      const irs::attribute_provider& /*doc_attrs*/,
+      irs::score_t /*boost*/) const final {
     return irs::ScoreFunction::Default(1);
   }
 
@@ -129,7 +128,7 @@ class seek_term_iterator : public irs::seek_term_iterator {
   typedef const std::pair<std::string_view, term_meta>* iterator_type;
 
   seek_term_iterator(iterator_type begin, iterator_type end)
-    : begin_(begin), end_(end), cookie_ptr_(begin) {}
+      : begin_(begin), end_(end), cookie_ptr_(begin) {}
 
   irs::SeekResult seek_ge(irs::bytes_view) final {
     return irs::SeekResult::NOT_FOUND;
@@ -254,7 +253,7 @@ struct state_visitor {
 
   void operator()(irs::seek_cookie::ptr& cookie) const {
     auto* cookie_impl =
-      static_cast<const ::seek_term_iterator::seek_ptr*>(cookie.get());
+        static_cast<const ::seek_term_iterator::seek_ptr*>(cookie.get());
 
     ASSERT_EQ(*expected_cookie, cookie_impl->ptr);
 
@@ -262,7 +261,7 @@ struct state_visitor {
   }
 
   mutable decltype(state::segment_state::cookies)::const_iterator
-    expected_cookie;
+      expected_cookie;
   const struct state& expected_state;
 };
 
@@ -270,16 +269,16 @@ struct state_visitor {
 
 TEST(top_terms_collector_test, test_top_k) {
   using collector_type =
-    irs::top_terms_collector<irs::top_term_state<irs::byte_type>>;
+      irs::top_terms_collector<irs::top_term_state<irs::byte_type>>;
   collector_type collector(5);
 
   // segment 0
   irs::empty_term_reader term_reader0(42);
   sub_reader segment0(100);
   const std::pair<std::string_view, term_meta> TERMS0[]{
-    {"F", {1, 1}}, {"G", {2, 2}},   {"H", {3, 3}},  {"B", {3, 3}},
-    {"C", {3, 3}}, {"A", {3, 3}},   {"H", {2, 2}},  {"D", {5, 5}},
-    {"E", {5, 5}}, {"I", {15, 15}}, {"J", {5, 25}}, {"K", {15, 35}},
+      {"F", {1, 1}}, {"G", {2, 2}},   {"H", {3, 3}},  {"B", {3, 3}},
+      {"C", {3, 3}}, {"A", {3, 3}},   {"H", {2, 2}},  {"D", {5, 5}},
+      {"E", {5, 5}}, {"I", {15, 15}}, {"J", {5, 25}}, {"K", {15, 35}},
   };
 
   {
@@ -295,8 +294,8 @@ TEST(top_terms_collector_test, test_top_k) {
   irs::empty_term_reader term_reader1(42);
   sub_reader segment1(100);
   const std::pair<std::string_view, term_meta> TERMS1[]{
-    {"F", {1, 1}}, {"G", {2, 2}}, {"H", {3, 3}},   {"B", {3, 3}},
-    {"C", {3, 3}}, {"A", {3, 3}}, {"K", {15, 35}},
+      {"F", {1, 1}}, {"G", {2, 2}}, {"H", {3, 3}},   {"B", {3, 3}},
+      {"C", {3, 3}}, {"A", {3, 3}}, {"K", {15, 35}},
   };
 
   {
@@ -309,15 +308,15 @@ TEST(top_terms_collector_test, test_top_k) {
   }
 
   std::map<char, state> expected_states{
-    {'J', {{{&segment0, {&term_reader0, 5, {TERMS0 + 10}}}}}},
-    {'K',
-     {{{&segment0, {&term_reader0, 15, {TERMS0 + 11}}},
-       {&segment1, {&term_reader1, 15, {TERMS1 + 6}}}}}},
-    {'I', {{{&segment0, {&term_reader0, 15, {TERMS0 + 9}}}}}},
-    {'H',
-     {{{&segment0, {&term_reader0, 5, {TERMS0 + 2, TERMS0 + 6}}},
-       {&segment1, {&term_reader1, 3, {TERMS1 + 2}}}}}},
-    {'G', {{{&segment0, {&term_reader0, 2, {TERMS0 + 1}}}}}},
+      {'J', {{{&segment0, {&term_reader0, 5, {TERMS0 + 10}}}}}},
+      {'K',
+       {{{&segment0, {&term_reader0, 15, {TERMS0 + 11}}},
+         {&segment1, {&term_reader1, 15, {TERMS1 + 6}}}}}},
+      {'I', {{{&segment0, {&term_reader0, 15, {TERMS0 + 9}}}}}},
+      {'H',
+       {{{&segment0, {&term_reader0, 5, {TERMS0 + 2, TERMS0 + 6}}},
+         {&segment1, {&term_reader1, 3, {TERMS1 + 2}}}}}},
+      {'G', {{{&segment0, {&term_reader0, 2, {TERMS0 + 1}}}}}},
   };
 
   auto visitor = [&expected_states](collector_type::state_type& state) {
@@ -336,16 +335,16 @@ TEST(top_terms_collector_test, test_top_k) {
 
 TEST(top_terms_collector_test, test_top_0) {
   using collector_type =
-    irs::top_terms_collector<irs::top_term_state<irs::byte_type>>;
+      irs::top_terms_collector<irs::top_term_state<irs::byte_type>>;
   collector_type collector(0);  // same as collector(1)
 
   // segment 0
   irs::empty_term_reader term_reader0(42);
   sub_reader segment0(100);
   const std::pair<std::string_view, term_meta> TERMS0[]{
-    {"F", {1, 1}}, {"G", {2, 2}},   {"H", {3, 3}},  {"B", {3, 3}},
-    {"C", {3, 3}}, {"A", {3, 3}},   {"H", {2, 2}},  {"D", {5, 5}},
-    {"E", {5, 5}}, {"I", {15, 15}}, {"J", {5, 25}}, {"K", {15, 35}},
+      {"F", {1, 1}}, {"G", {2, 2}},   {"H", {3, 3}},  {"B", {3, 3}},
+      {"C", {3, 3}}, {"A", {3, 3}},   {"H", {2, 2}},  {"D", {5, 5}},
+      {"E", {5, 5}}, {"I", {15, 15}}, {"J", {5, 25}}, {"K", {15, 35}},
   };
 
   {
@@ -361,8 +360,8 @@ TEST(top_terms_collector_test, test_top_0) {
   irs::empty_term_reader term_reader1(42);
   sub_reader segment1(100);
   const std::pair<std::string_view, term_meta> TERMS1[]{
-    {"F", {1, 1}}, {"G", {2, 2}}, {"H", {3, 3}},   {"B", {3, 3}},
-    {"C", {3, 3}}, {"A", {3, 3}}, {"K", {15, 35}},
+      {"F", {1, 1}}, {"G", {2, 2}}, {"H", {3, 3}},   {"B", {3, 3}},
+      {"C", {3, 3}}, {"A", {3, 3}}, {"K", {15, 35}},
   };
 
   {
@@ -375,9 +374,9 @@ TEST(top_terms_collector_test, test_top_0) {
   }
 
   std::map<char, state> expected_states{
-    {'K',
-     {{{&segment0, {&term_reader0, 15, {TERMS0 + 11}}},
-       {&segment1, {&term_reader1, 15, {TERMS1 + 6}}}}}},
+      {'K',
+       {{{&segment0, {&term_reader0, 15, {TERMS0 + 11}}},
+         {&segment1, {&term_reader1, 15, {TERMS1 + 6}}}}}},
   };
 
   auto visitor = [&expected_states](collector_type::state_type& state) {

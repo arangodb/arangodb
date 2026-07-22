@@ -17,8 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -43,16 +41,16 @@ namespace analysis {
 /// @note expects UTF-8 encoded input
 ////////////////////////////////////////////////////////////////////////////////
 class normalizing_token_stream final
-  : public TypedAnalyzer<normalizing_token_stream>,
-    private util::noncopyable {
+    : public TypedAnalyzer<normalizing_token_stream>,
+      private util::noncopyable {
  public:
   enum case_convert_t { LOWER, NONE, UPPER };
 
   struct options_t {
     IRESEARCH_ICU_NAMESPACE::Locale locale;
     case_convert_t case_convert{
-      case_convert_t::NONE};  // no extra normalization
-    bool accent{true};        // no extra normalization
+        case_convert_t::NONE};  // no extra normalization
+    bool accent{true};          // no extra normalization
 
     options_t() : locale{"C"} { locale.setToBogus(); }
   };

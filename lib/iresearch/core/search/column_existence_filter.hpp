@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -45,7 +44,7 @@ struct by_column_existence_options {
 
 // User-side column existence filter
 class by_column_existence final
-  : public FilterWithField<by_column_existence_options> {
+    : public FilterWithField<by_column_existence_options> {
  public:
   prepared::ptr prepare(const PrepareContext& ctx) const final;
 };

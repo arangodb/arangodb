@@ -17,8 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "analysis/token_stopwords_stream.hpp"
@@ -105,19 +103,19 @@ TEST(token_stopwords_stream_tests, test_load) {
       ASSERT_FALSE(stream->next());
     };
     auto stream = irs::analysis::analyzers::get(
-      "stopwords", irs::type<irs::text_format::json>::get(),
-      "[ \"abc\", \"646566\", \"6D6e6F\" ]");
+        "stopwords", irs::type<irs::text_format::json>::get(),
+        "[ \"abc\", \"646566\", \"6D6e6F\" ]");
     testFunc(data0, data1, stream.get());
 
     // check with another order of mask
     auto stream2 = irs::analysis::analyzers::get(
-      "stopwords", irs::type<irs::text_format::json>::get(),
-      "[ \"6D6e6F\", \"abc\", \"646566\" ]");
+        "stopwords", irs::type<irs::text_format::json>::get(),
+        "[ \"6D6e6F\", \"abc\", \"646566\" ]");
     testFunc(data0, data1, stream2.get());
 
     auto streamFromJsonObjest = irs::analysis::analyzers::get(
-      "stopwords", irs::type<irs::text_format::json>::get(),
-      "{\"stopwords\":[ \"abc\", \"646566\", \"6D6e6F\" ]}");
+        "stopwords", irs::type<irs::text_format::json>::get(),
+        "{\"stopwords\":[ \"abc\", \"646566\", \"6D6e6F\" ]}");
     testFunc(data0, data1, streamFromJsonObjest.get());
   }
 
@@ -144,66 +142,74 @@ TEST(token_stopwords_stream_tests, test_load) {
       ASSERT_FALSE(stream->next());
     };
     auto streamFromJsonObjest = irs::analysis::analyzers::get(
-      "stopwords", irs::type<irs::text_format::json>::get(),
-      "{\"stopwords\":[ \"616263\", \"6D6e6F\" ], \"hex\":true}");
+        "stopwords", irs::type<irs::text_format::json>::get(),
+        "{\"stopwords\":[ \"616263\", \"6D6e6F\" ], \"hex\":true}");
     ASSERT_TRUE(streamFromJsonObjest);
     testFunc(data0, data1, streamFromJsonObjest.get());
   }
 
   // load jSON invalid
   {
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get(
-                         "stopwords", irs::type<irs::text_format::json>::get(),
-                         std::string_view{}));
     ASSERT_EQ(nullptr,
               irs::analysis::analyzers::get(
-                "stopwords", irs::type<irs::text_format::json>::get(), "1"));
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get(
-                         "stopwords", irs::type<irs::text_format::json>::get(),
-                         "\"abc\""));
+                  "stopwords", irs::type<irs::text_format::json>::get(),
+                  std::string_view{}));
     ASSERT_EQ(nullptr,
               irs::analysis::analyzers::get(
-                "stopwords", irs::type<irs::text_format::json>::get(), "{}"));
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get(
-                         "stopwords", irs::type<irs::text_format::json>::get(),
-                         "{\"stopwords\":1}"));
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get(
-                         "stopwords", irs::type<irs::text_format::json>::get(),
-                         "{\"stopwords\":1, \"hex\":\"text\"}"));
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get(
-                         "stopwords", irs::type<irs::text_format::json>::get(),
-                         "{\"stopwords\":[\"aa\", \"bb\"], \"hex\":1}"));
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get(
-                         "stopwords", irs::type<irs::text_format::json>::get(),
-                         "{\"stopwords\":[\"1aa\", \"bb\"], \"hex\":true}"));
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get(
-                         "stopwords", irs::type<irs::text_format::json>::get(),
-                         "{\"stopwords\":[\"aaia\", \"bb\"], \"hex\":true}"));
+                  "stopwords", irs::type<irs::text_format::json>::get(), "1"));
+    ASSERT_EQ(
+        nullptr,
+        irs::analysis::analyzers::get(
+            "stopwords", irs::type<irs::text_format::json>::get(), "\"abc\""));
+    ASSERT_EQ(nullptr,
+              irs::analysis::analyzers::get(
+                  "stopwords", irs::type<irs::text_format::json>::get(), "{}"));
+    ASSERT_EQ(nullptr,
+              irs::analysis::analyzers::get(
+                  "stopwords", irs::type<irs::text_format::json>::get(),
+                  "{\"stopwords\":1}"));
+    ASSERT_EQ(nullptr,
+              irs::analysis::analyzers::get(
+                  "stopwords", irs::type<irs::text_format::json>::get(),
+                  "{\"stopwords\":1, \"hex\":\"text\"}"));
+    ASSERT_EQ(nullptr,
+              irs::analysis::analyzers::get(
+                  "stopwords", irs::type<irs::text_format::json>::get(),
+                  "{\"stopwords\":[\"aa\", \"bb\"], \"hex\":1}"));
+    ASSERT_EQ(nullptr,
+              irs::analysis::analyzers::get(
+                  "stopwords", irs::type<irs::text_format::json>::get(),
+                  "{\"stopwords\":[\"1aa\", \"bb\"], \"hex\":true}"));
+    ASSERT_EQ(nullptr,
+              irs::analysis::analyzers::get(
+                  "stopwords", irs::type<irs::text_format::json>::get(),
+                  "{\"stopwords\":[\"aaia\", \"bb\"], \"hex\":true}"));
   }
 }
 
 TEST(token_stopwords_stream_tests, normalize_invalid) {
   std::string actual;
   ASSERT_FALSE(irs::analysis::analyzers::normalize(
-    actual, "stopwords", irs::type<irs::text_format::json>::get(),
-    std::string_view{}));
+      actual, "stopwords", irs::type<irs::text_format::json>::get(),
+      std::string_view{}));
   ASSERT_FALSE(irs::analysis::analyzers::normalize(
-    actual, "stopwords", irs::type<irs::text_format::json>::get(), "1"));
+      actual, "stopwords", irs::type<irs::text_format::json>::get(), "1"));
   ASSERT_FALSE(irs::analysis::analyzers::normalize(
-    actual, "stopwords", irs::type<irs::text_format::json>::get(), "\"abc\""));
+      actual, "stopwords", irs::type<irs::text_format::json>::get(),
+      "\"abc\""));
   ASSERT_FALSE(irs::analysis::analyzers::normalize(
-    actual, "stopwords", irs::type<irs::text_format::json>::get(),
-    "{\"case\":1}"));
+      actual, "stopwords", irs::type<irs::text_format::json>::get(),
+      "{\"case\":1}"));
   ASSERT_FALSE(irs::analysis::analyzers::normalize(
-    actual, "stopwords", irs::type<irs::text_format::json>::get(),
-    "{\"stopwords\":[\"aa\", \"bb\"], \"hex\":1}"));
+      actual, "stopwords", irs::type<irs::text_format::json>::get(),
+      "{\"stopwords\":[\"aa\", \"bb\"], \"hex\":1}"));
 }
 
 TEST(token_stopwords_stream_tests, normalize_valid_array) {
   std::string actual;
   ASSERT_TRUE(irs::analysis::analyzers::normalize(
-    actual, "stopwords", irs::type<irs::text_format::json>::get(),
-    "[\"QWRT\", \"qwrt\"]"));
+      actual, "stopwords", irs::type<irs::text_format::json>::get(),
+      "[\"QWRT\", \"qwrt\"]"));
   ASSERT_EQ(actual,
             "{\n  \"hex\" : false,\n  \"stopwords\" : [\n    \"QWRT\",\n    "
             "\"qwrt\"\n  ]\n}");
@@ -213,8 +219,8 @@ TEST(token_stopwords_stream_tests, normalize_valid_object) {
   {
     std::string actual;
     ASSERT_TRUE(irs::analysis::analyzers::normalize(
-      actual, "stopwords", irs::type<irs::text_format::json>::get(),
-      "{\"stopwords\":[\"QWRT\", \"qwrt\"]}"));
+        actual, "stopwords", irs::type<irs::text_format::json>::get(),
+        "{\"stopwords\":[\"QWRT\", \"qwrt\"]}"));
     ASSERT_EQ(actual,
               "{\n  \"hex\" : false,\n  \"stopwords\" : [\n    \"QWRT\",\n    "
               "\"qwrt\"\n  ]\n}");
@@ -229,20 +235,21 @@ TEST(token_stopwords_stream_tests, normalize_valid_object) {
                   in_vpack->slice().byteSize());
     std::string out_str;
     ASSERT_TRUE(irs::analysis::analyzers::normalize(
-      out_str, "stopwords", irs::type<irs::text_format::vpack>::get(), in_str));
+        out_str, "stopwords", irs::type<irs::text_format::vpack>::get(),
+        in_str));
     VPackSlice out_slice(reinterpret_cast<const uint8_t*>(out_str.c_str()));
     ASSERT_EQ(
-      "{\n  \"hex\" : false,\n  \"stopwords\" : [\n    \"QWRT\",\n    "
-      "\"qwrt\"\n  ]\n}",
-      out_slice.toString());
+        "{\n  \"hex\" : false,\n  \"stopwords\" : [\n    \"QWRT\",\n    "
+        "\"qwrt\"\n  ]\n}",
+        out_slice.toString());
   }
 }
 
 TEST(token_stopwords_stream_tests, normalize_valid_object_unknown) {
   std::string actual;
   ASSERT_TRUE(irs::analysis::analyzers::normalize(
-    actual, "stopwords", irs::type<irs::text_format::json>::get(),
-    "{\"stopwords\":[\"QWRT\", \"qwrt\"], \"unknown_field\":1}"));
+      actual, "stopwords", irs::type<irs::text_format::json>::get(),
+      "{\"stopwords\":[\"QWRT\", \"qwrt\"], \"unknown_field\":1}"));
   ASSERT_EQ(actual,
             "{\n  \"hex\" : false,\n  \"stopwords\" : [\n    \"QWRT\",\n    "
             "\"qwrt\"\n  ]\n}");
@@ -251,8 +258,8 @@ TEST(token_stopwords_stream_tests, normalize_valid_object_unknown) {
 TEST(token_stopwords_stream_tests, normalize_valid_object_hex) {
   std::string actual;
   ASSERT_TRUE(irs::analysis::analyzers::normalize(
-    actual, "stopwords", irs::type<irs::text_format::json>::get(),
-    "{\"stopwords\":[\"01aB\", \"02Cd\"], \"hex\": true}"));
+      actual, "stopwords", irs::type<irs::text_format::json>::get(),
+      "{\"stopwords\":[\"01aB\", \"02Cd\"], \"hex\": true}"));
   ASSERT_EQ(actual,
             "{\n  \"hex\" : true,\n  \"stopwords\" : [\n    \"01aB\",\n    "
             "\"02Cd\"\n  ]\n}");
@@ -261,8 +268,8 @@ TEST(token_stopwords_stream_tests, normalize_valid_object_hex) {
 TEST(token_stopwords_stream_tests, normalize_valid_object_nohex) {
   std::string actual;
   ASSERT_TRUE(irs::analysis::analyzers::normalize(
-    actual, "stopwords", irs::type<irs::text_format::json>::get(),
-    "{\"stopwords\":[\"01aB\", \"02Cd\"], \"hex\": false}"));
+      actual, "stopwords", irs::type<irs::text_format::json>::get(),
+      "{\"stopwords\":[\"01aB\", \"02Cd\"], \"hex\": false}"));
   ASSERT_EQ(actual,
             "{\n  \"hex\" : false,\n  \"stopwords\" : [\n    \"01aB\",\n    "
             "\"02Cd\"\n  ]\n}");

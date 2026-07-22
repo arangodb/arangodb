@@ -17,8 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Alex Geenen
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "classification_stream.hpp"
@@ -48,10 +46,10 @@ bool parse_vpack_options(const VPackSlice slice,
   if (VPackValueType::Object == slice.type()) {
     auto model_location_slice = slice.get(MODEL_LOCATION_PARAM_NAME);
     if (!model_location_slice.isString()) {
-      IRS_LOG_ERROR(
-        absl::StrCat("Invalid vpack while ", action,
-                     " classification_stream from VPack arguments. ",
-                     MODEL_LOCATION_PARAM_NAME, " value should be a string."));
+      IRS_LOG_ERROR(absl::StrCat(
+          "Invalid vpack while ", action,
+          " classification_stream from VPack arguments. ",
+          MODEL_LOCATION_PARAM_NAME, " value should be a string."));
       return false;
     }
     options.model_location = model_location_slice.stringView();
@@ -59,18 +57,18 @@ bool parse_vpack_options(const VPackSlice slice,
     if (!top_k_slice.isNone()) {
       if (!top_k_slice.isNumber()) {
         IRS_LOG_ERROR(
-          absl::StrCat("Invalid vpack while ", action,
-                       " classification_stream from VPack arguments. ",
-                       TOP_K_PARAM_NAME, " value should be an integer."));
+            absl::StrCat("Invalid vpack while ", action,
+                         " classification_stream from VPack arguments. ",
+                         TOP_K_PARAM_NAME, " value should be an integer."));
         return false;
       }
       const auto top_k = top_k_slice.getNumber<size_t>();
 
       if (top_k > static_cast<uint32_t>(std::numeric_limits<int32_t>::max())) {
         IRS_LOG_ERROR(
-          absl::StrCat("Invalid value provided while ", action,
-                       " classification_stream from VPack arguments. ",
-                       TOP_K_PARAM_NAME, " value should be an int32_t."));
+            absl::StrCat("Invalid value provided while ", action,
+                         " classification_stream from VPack arguments. ",
+                         TOP_K_PARAM_NAME, " value should be an int32_t."));
         return false;
       }
 
@@ -81,17 +79,17 @@ bool parse_vpack_options(const VPackSlice slice,
     if (!threshold_slice.isNone()) {
       if (!threshold_slice.isNumber()) {
         IRS_LOG_ERROR(
-          absl::StrCat("Invalid vpack while ", action,
-                       " classification_stream from VPack arguments. ",
-                       THRESHOLD_PARAM_NAME, " value should be a double."));
+            absl::StrCat("Invalid vpack while ", action,
+                         " classification_stream from VPack arguments. ",
+                         THRESHOLD_PARAM_NAME, " value should be a double."));
         return false;
       }
       const auto threshold = threshold_slice.getNumber<double>();
       if (threshold < 0.0 || threshold > 1.0) {
         IRS_LOG_ERROR(absl::StrCat(
-          "Invalid value provided while ", action,
-          " classification_stream from VPack arguments. ", TOP_K_PARAM_NAME,
-          " value should be between 0.0 and 1.0 (inclusive)."));
+            "Invalid value provided while ", action,
+            " classification_stream from VPack arguments. ", TOP_K_PARAM_NAME,
+            " value should be between 0.0 and 1.0 (inclusive)."));
         return false;
       }
       options.threshold = threshold;
@@ -100,8 +98,8 @@ bool parse_vpack_options(const VPackSlice slice,
   }
 
   IRS_LOG_ERROR(absl::StrCat(
-    "Invalid vpack while ", action,
-    " classification_stream from VPack arguments. Object was expected."));
+      "Invalid vpack while ", action,
+      " classification_stream from VPack arguments. Object was expected."));
 
   return false;
 }
@@ -122,12 +120,12 @@ analyzer::ptr construct(const classification_stream::Options& options) {
     }
   } catch (const std::exception& e) {
     IRS_LOG_ERROR(
-      absl::StrCat("Failed to load fasttext classification model from: ",
-                   options.model_location, ", error: ", e.what()));
+        absl::StrCat("Failed to load fasttext classification model from: ",
+                     options.model_location, ", error: ", e.what()));
   } catch (...) {
     IRS_LOG_ERROR(
-      absl::StrCat("Failed to load fasttext classification model from: ",
-                   options.model_location));
+        absl::StrCat("Failed to load fasttext classification model from: ",
+                     options.model_location));
   }
 
   if (!model) {
@@ -160,11 +158,11 @@ analyzer::ptr make_json(std::string_view args) {
     return make_vpack(vpack->slice());
   } catch (const VPackException& ex) {
     IRS_LOG_ERROR(
-      absl::StrCat("Caught error '", ex.what(),
-                   "' while constructing classification_stream from JSON"));
+        absl::StrCat("Caught error '", ex.what(),
+                     "' while constructing classification_stream from JSON"));
   } catch (...) {
     IRS_LOG_ERROR(
-      "Caught error while constructing classification_stream from JSON");
+        "Caught error while constructing classification_stream from JSON");
   }
   return nullptr;
 }
@@ -212,11 +210,11 @@ bool normalize_json_config(std::string_view args, std::string& definition) {
     }
   } catch (const VPackException& ex) {
     IRS_LOG_ERROR(
-      absl::StrCat("Caught error '", ex.what(),
-                   "' while normalizing classification_stream from JSON"));
+        absl::StrCat("Caught error '", ex.what(),
+                     "' while normalizing classification_stream from JSON"));
   } catch (...) {
     IRS_LOG_ERROR(
-      "Caught error while normalizing classification_stream from JSON");
+        "Caught error while normalizing classification_stream from JSON");
   }
   return false;
 }
@@ -245,10 +243,10 @@ classification_stream::set_model_provider(model_provider_f provider) noexcept {
 
 classification_stream::classification_stream(const Options& options,
                                              model_ptr model) noexcept
-  : model_{std::move(model)},
-    predictions_it_{predictions_.end()},
-    threshold_{options.threshold},
-    top_k_{options.top_k} {
+    : model_{std::move(model)},
+      predictions_it_{predictions_.end()},
+      threshold_{options.threshold},
+      top_k_{options.top_k} {
   IRS_ASSERT(model_);
 }
 
@@ -259,8 +257,8 @@ bool classification_stream::next() {
 
   auto& term = std::get<term_attribute>(attrs_);
   term.value = {
-    reinterpret_cast<const byte_type*>(predictions_it_->second.c_str()),
-    predictions_it_->second.size()};
+      reinterpret_cast<const byte_type*>(predictions_it_->second.c_str()),
+      predictions_it_->second.size()};
 
   auto& inc = std::get<increment>(attrs_);
   inc.value = uint32_t(predictions_it_ == predictions_.begin());

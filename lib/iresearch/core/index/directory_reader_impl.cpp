@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "directory_reader_impl.hpp"
@@ -93,14 +92,14 @@ index_file_refs::ref_t LoadNewestIndexMeta(IndexMeta& meta,
 
       return ref;
     } catch (const std::exception& e) {
-      IRS_LOG_ERROR(
-        absl::StrCat("Caught exception while reading index meta with codec ''",
-                     codec->type()().name(), "', error '", e.what(), "'"));
+      IRS_LOG_ERROR(absl::StrCat(
+          "Caught exception while reading index meta with codec ''",
+          codec->type()().name(), "', error '", e.what(), "'"));
       return nullptr;
     } catch (...) {
-      IRS_LOG_ERROR(
-        absl::StrCat("Caught exception while reading index meta with codec ''",
-                     codec->type()().name(), "'"));
+      IRS_LOG_ERROR(absl::StrCat(
+          "Caught exception while reading index meta with codec ''",
+          codec->type()().name(), "'"));
 
       return nullptr;
     }
@@ -172,8 +171,8 @@ index_file_refs::ref_t LoadNewestIndexMeta(IndexMeta& meta,
     return newest.ref;
   } catch (const std::exception& e) {
     IRS_LOG_ERROR(absl::StrCat(
-      "Caught exception while loading the newest index meta, error '", e.what(),
-      "'"));
+        "Caught exception while loading the newest index meta, error '",
+        e.what(), "'"));
   } catch (...) {
     IRS_LOG_ERROR("Caught exception while loading the newest index meta");
   }
@@ -189,26 +188,26 @@ DirectoryReaderImpl::DirectoryReaderImpl(const directory& dir,
                                          const IndexReaderOptions& opts,
                                          DirectoryMeta&& meta,
                                          ReadersType&& readers)
-  : DirectoryReaderImpl{Init{dir, meta},  dir,
-                        std::move(codec), opts,
-                        std::move(meta),  std::move(readers)} {}
+    : DirectoryReaderImpl{Init{dir, meta},  dir,
+                          std::move(codec), opts,
+                          std::move(meta),  std::move(readers)} {}
 
 DirectoryReaderImpl::DirectoryReaderImpl(Init&& init, const directory& dir,
                                          format::ptr&& codec,
                                          const IndexReaderOptions& opts,
                                          DirectoryMeta&& meta,
                                          ReadersType&& readers)
-  : CompositeReaderImpl{std::move(readers), init.live_docs_count,
-                        init.docs_count},
-    dir_{dir},
-    codec_{std::move(codec)},
-    file_refs_{std::move(init.file_refs)},
-    meta_{std::move(meta)},
-    opts_{opts} {}
+    : CompositeReaderImpl{std::move(readers), init.live_docs_count,
+                          init.docs_count},
+      dir_{dir},
+      codec_{std::move(codec)},
+      file_refs_{std::move(init.file_refs)},
+      meta_{std::move(meta)},
+      opts_{opts} {}
 
 std::shared_ptr<const DirectoryReaderImpl> DirectoryReaderImpl::Open(
-  const directory& dir, const IndexReaderOptions& opts, format::ptr codec,
-  const std::shared_ptr<const DirectoryReaderImpl>& cached) {
+    const directory& dir, const IndexReaderOptions& opts, format::ptr codec,
+    const std::shared_ptr<const DirectoryReaderImpl>& cached) {
   IndexMeta index_meta;
   auto meta_file_ref = LoadNewestIndexMeta(index_meta, dir, codec);
 
@@ -269,10 +268,10 @@ std::shared_ptr<const DirectoryReaderImpl> DirectoryReaderImpl::Open(
   }
 
   return std::make_shared<DirectoryReaderImpl>(
-    dir, std::move(codec), opts,
-    DirectoryMeta{.filename = *meta_file_ref,
-                  .index_meta = std::move(index_meta)},
-    std::move(readers));
+      dir, std::move(codec), opts,
+      DirectoryMeta{.filename = *meta_file_ref,
+                    .index_meta = std::move(index_meta)},
+      std::move(readers));
 }
 
 }  // namespace irs

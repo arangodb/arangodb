@@ -17,8 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <array>
@@ -39,21 +37,22 @@ class segment_writer_tests : public test_base {
   static irs::ColumnInfoProvider default_column_info() {
     return [](const std::string_view&) {
       return irs::ColumnInfo{
-        .compression = irs::type<irs::compression::lz4>::get(),
-        .options = {},
-        .encryption = true,
-        .track_prev_doc = false};
+          .compression = irs::type<irs::compression::lz4>::get(),
+          .options = {},
+          .encryption = true,
+          .track_prev_doc = false};
     };
   }
 
   static irs::FeatureInfoProvider default_feature_info() {
     return [](irs::type_info::type_id) {
       return std::make_pair(
-        irs::ColumnInfo{.compression = irs::type<irs::compression::lz4>::get(),
-                        .options = {},
-                        .encryption = true,
-                        .track_prev_doc = false},
-        irs::FeatureWriterFactory{});
+          irs::ColumnInfo{
+              .compression = irs::type<irs::compression::lz4>::get(),
+              .options = {},
+              .encryption = true,
+              .track_prev_doc = false},
+          irs::FeatureWriterFactory{});
     };
   }
 
@@ -111,8 +110,8 @@ TEST_F(segment_writer_tests, invalid_actions) {
     writer->begin(ctx);
     ASSERT_TRUE(writer->valid());
     ASSERT_FALSE(
-      writer->insert<irs::Action(int(irs::Action::STORE) |
-                                 int(irs::Action::STORE_SORTED))>(field));
+        writer->insert<irs::Action(int(irs::Action::STORE) |
+                                   int(irs::Action::STORE_SORTED))>(field));
     ASSERT_FALSE(writer->valid());
     writer->commit();
   }
@@ -122,10 +121,9 @@ TEST_F(segment_writer_tests, invalid_actions) {
     irs::segment_writer::DocContext ctx;
     writer->begin(ctx);
     ASSERT_TRUE(writer->valid());
-    ASSERT_FALSE(
-      writer
-        ->insert<irs::Action(int(irs::Action::INDEX) | int(irs::Action::STORE) |
-                             int(irs::Action::STORE_SORTED))>(field));
+    ASSERT_FALSE(writer->insert<irs::Action(
+                     int(irs::Action::INDEX) | int(irs::Action::STORE) |
+                     int(irs::Action::STORE_SORTED))>(field));
     ASSERT_FALSE(writer->valid());
     writer->commit();
   }
@@ -169,10 +167,10 @@ TEST_F(segment_writer_tests, memory_sorted_vs_unsorted) {
   irs::memory_directory dir;
 
   const irs::SegmentWriterOptions options_with_comparer{
-    .column_info = column_info,
-    .feature_info = feature_info,
-    .scorers_features = {},
-    .comparator = &compare};
+      .column_info = column_info,
+      .feature_info = feature_info,
+      .scorers_features = {},
+      .comparator = &compare};
   auto writer_sorted = irs::segment_writer::make(dir, options_with_comparer);
   ASSERT_EQ(0, writer_sorted->memory_active());
 
@@ -233,8 +231,9 @@ TEST_F(segment_writer_tests, insert_sorted_without_comparator) {
 
   decltype(default_column_info()) column_info = [](const std::string_view&) {
     return irs::ColumnInfo{
-      irs::type<irs::compression::lz4>::get(),
-      irs::compression::options(irs::compression::options::Hint::SPEED), true};
+        irs::type<irs::compression::lz4>::get(),
+        irs::compression::options(irs::compression::options::Hint::SPEED),
+        true};
   };
   auto feature_info = default_feature_info();
   const irs::SegmentWriterOptions options{.column_info = column_info,
@@ -566,7 +565,8 @@ void reorder(std::span<const tests::document*> docs,
 }
 
 std::vector<irs::segment_writer::DocContext> reorder(
-  std::span<irs::segment_writer::DocContext> ctxs, const irs::DocMap& docmap) {
+    std::span<irs::segment_writer::DocContext> ctxs,
+    const irs::DocMap& docmap) {
   std::vector<irs::segment_writer::DocContext> new_ctxs;
   new_ctxs.resize(ctxs.size());
   for (size_t i = 0, size = ctxs.size(); i < size; ++i) {
@@ -574,7 +574,7 @@ std::vector<irs::segment_writer::DocContext> reorder(
       new_ctxs[i] = ctxs[i];
     } else {
       new_ctxs[docmap[i + irs::doc_limits::min()] - irs::doc_limits::min()] =
-        ctxs[i];
+          ctxs[i];
     }
   }
   return new_ctxs;
@@ -582,15 +582,15 @@ std::vector<irs::segment_writer::DocContext> reorder(
 
 TEST_F(segment_writer_tests, reorder) {
   tests::json_doc_generator gen(
-    resource("simple_sequential.json"),
-    [](tests::document& doc, std::string_view name,
-       const tests::json_doc_generator::json_value& data) {
-      if (name == "name" && data.is_string()) {
-        auto field = std::make_shared<tests::string_field>(name, data.str);
-        doc.sorted = field;
-        doc.insert(field);
-      }
-    });
+      resource("simple_sequential.json"),
+      [](tests::document& doc, std::string_view name,
+         const tests::json_doc_generator::json_value& data) {
+        if (name == "name" && data.is_string()) {
+          auto field = std::make_shared<tests::string_field>(name, data.str);
+          doc.sorted = field;
+          doc.insert(field);
+        }
+      });
   static constexpr size_t kLen = 5;
   std::array<const tests::document*, kLen> docs;
   std::array<irs::segment_writer::DocContext, kLen> ctxs;
@@ -600,11 +600,11 @@ TEST_F(segment_writer_tests, reorder) {
   }
   const std::vector<size_t> expected{0, 1, 2, 3, 4};
   auto cases = std::array<std::vector<size_t>, 5>{
-    std::vector<size_t>{0, 1, 2, 3, 4},  // no reorder
-    std::vector<size_t>{2, 3, 1, 4, 0},  // single cycle
-    std::vector<size_t>{3, 0, 4, 1, 2},  // two intersected cycles
-    std::vector<size_t>{4, 0, 3, 2, 1},  // two nested cycles
-    std::vector<size_t>{2, 0, 1, 4, 3},  // two not intersected cycles
+      std::vector<size_t>{0, 1, 2, 3, 4},  // no reorder
+      std::vector<size_t>{2, 3, 1, 4, 0},  // single cycle
+      std::vector<size_t>{3, 0, 4, 1, 2},  // two intersected cycles
+      std::vector<size_t>{4, 0, 3, 2, 1},  // two nested cycles
+      std::vector<size_t>{2, 0, 1, 4, 3},  // two not intersected cycles
   };
 
   for (auto& order : cases) {

@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "buffered_column.hpp"
@@ -92,8 +91,9 @@ bool BufferedColumn::FlushSparsePrimary(DocMap& docmap, column_output& writer,
 }
 
 std::pair<DocMap, field_id> BufferedColumn::Flush(
-  columnstore_writer& writer, columnstore_writer::column_finalizer_f finalizer,
-  doc_id_t docs_count, const Comparer& compare) {
+    columnstore_writer& writer,
+    columnstore_writer::column_finalizer_f finalizer, doc_id_t docs_count,
+    const Comparer& compare) {
   IRS_ASSERT(index_.size() <= docs_count);
   IRS_ASSERT(index_.empty() || index_.back().key <= docs_count);
 
@@ -105,7 +105,7 @@ std::pair<DocMap, field_id> BufferedColumn::Flush(
 
   DocMap docmap{index_.get_allocator()};
   auto [column_id, column_writer] =
-    writer.push_column(info_, std::move(finalizer));
+      writer.push_column(info_, std::move(finalizer));
 
   if (!FlushSparsePrimary(docmap, column_writer, docs_count, compare)) {
     FlushAlreadySorted(column_writer);
@@ -182,7 +182,7 @@ field_id BufferedColumn::Flush(columnstore_writer& writer,
   }
 
   auto [column_id, column_writer] =
-    writer.push_column(info_, std::move(finalizer));
+      writer.push_column(info_, std::move(finalizer));
 
   if (docmap.empty()) {
     FlushAlreadySorted(column_writer);

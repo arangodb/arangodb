@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -49,8 +48,8 @@ class proxy_filter final : public filter {
                                          Args&&... args) {
     static_assert(std::is_base_of_v<filter, Base>);
     static_assert(std::is_base_of_v<Base, Impl>);
-    auto& real =
-      cache_filter(memory, std::make_unique<Impl>(std::forward<Args>(args)...));
+    auto& real = cache_filter(
+        memory, std::make_unique<Impl>(std::forward<Args>(args)...));
     return {DownCast<Base>(real), cache_};
   }
 

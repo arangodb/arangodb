@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -36,8 +35,8 @@ struct field_reader;
 struct column_reader;
 
 using ColumnWarmupCallback =
-  std::function<bool(const SegmentMeta& meta, const field_reader& fields,
-                     const column_reader& column)>;
+    std::function<bool(const SegmentMeta& meta, const field_reader& fields,
+                       const column_reader& column)>;
 
 // Scorers allowed to be used in conjunction with wanderator.
 using ScorersView = std::span<const Scorer* const>;
@@ -61,7 +60,7 @@ struct IndexReaderOptions {
   ColumnWarmupCallback warmup_columns;
 
   ResourceManagementOptions resource_manager{
-    ResourceManagementOptions::kDefault};
+      ResourceManagementOptions::kDefault};
 
   // A list of wand scorers.
   ScorersView scorers;

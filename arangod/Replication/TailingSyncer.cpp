@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
-/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "TailingSyncer.h"

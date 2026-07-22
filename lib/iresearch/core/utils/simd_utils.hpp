@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -149,28 +148,28 @@ bool all_equal(const T* begin, size_t size) noexcept {
 }
 
 IRS_FORCE_INLINE Vec<HWY_FULL(uint32_t)> zig_zag_encode(
-  Vec<HWY_FULL(int32_t)> v) noexcept {
+    Vec<HWY_FULL(int32_t)> v) noexcept {
   constexpr HWY_FULL(uint32_t) simd_tag;
   const auto uv = BitCast(simd_tag, v);
   return ((uv >> Set(simd_tag, 31)) ^ (uv << Set(simd_tag, 1)));
 }
 
 IRS_FORCE_INLINE Vec<HWY_FULL(int32_t)> zig_zag_decode(
-  Vec<HWY_FULL(uint32_t)> uv) noexcept {
+    Vec<HWY_FULL(uint32_t)> uv) noexcept {
   constexpr HWY_FULL(int32_t) simd_tag;
   const auto v = BitCast(simd_tag, uv);
   return ((v >> Set(simd_tag, 1)) ^ (Zero(simd_tag) - (v & Set(simd_tag, 1))));
 }
 
 IRS_FORCE_INLINE Vec<HWY_FULL(uint64_t)> zig_zag_encode(
-  Vec<HWY_FULL(int64_t)> v) noexcept {
+    Vec<HWY_FULL(int64_t)> v) noexcept {
   constexpr HWY_FULL(uint64_t) simd_tag;
   const auto uv = BitCast(simd_tag, v);
   return ((uv >> Set(simd_tag, 63)) ^ (uv << Set(simd_tag, 1)));
 }
 
 IRS_FORCE_INLINE Vec<HWY_FULL(int64_t)> zig_zag_decode(
-  Vec<HWY_FULL(uint64_t)> uv) noexcept {
+    Vec<HWY_FULL(uint64_t)> uv) noexcept {
   constexpr HWY_FULL(int64_t) simd_tag;
   const auto v = BitCast(simd_tag, uv);
   return ((v >> Set(simd_tag, 1)) ^ (Zero(simd_tag) - (v & Set(simd_tag, 1))));
@@ -268,8 +267,8 @@ std::pair<T, T> avg_encode(T* begin) noexcept {
   const unsigned_type base = *begin;
 
   const signed_type avg = static_cast<signed_type>(
-    static_cast<float_type>(begin[Length - 1] - begin[0]) /
-    std::max(size_t(1), Length - 1));
+      static_cast<float_type>(begin[Length - 1] - begin[0]) /
+      std::max(size_t(1), Length - 1));
 
   auto vbase = Iota(simd_tag, 0) * Set(simd_tag, avg) + Set(simd_tag, base);
   const auto vavg = Set(simd_tag, avg) * Set(simd_tag, Step);
@@ -277,9 +276,10 @@ std::pair<T, T> avg_encode(T* begin) noexcept {
   for (size_t i = 0; i < Length; i += Unroll * Step) {
     auto* p = begin + i;
     for (size_t j = 0; j < Unroll; j++) {
-      const auto v = simd_helper::load(
-                       simd_tag, reinterpret_cast<signed_type*>(p + j * Step)) -
-                     vbase;
+      const auto v =
+          simd_helper::load(simd_tag,
+                            reinterpret_cast<signed_type*>(p + j * Step)) -
+          vbase;
       simd_helper::store(zig_zag_encode(v), simd_unsigned_tag, p + j * Step);
       vbase += vavg;
     }

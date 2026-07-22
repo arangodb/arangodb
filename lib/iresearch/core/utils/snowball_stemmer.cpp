@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Alexey Bakharew
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "utils/snowball_stemmer.hpp"
@@ -32,7 +31,7 @@ void stemmer_deleter::operator()(sb_stemmer* p) const noexcept {
 
 stemmer_ptr make_stemmer_ptr(const char* algorithm, const char* charenc) {
   return std::unique_ptr<sb_stemmer, stemmer_deleter>{
-    sb_stemmer_new(algorithm, charenc)};
+      sb_stemmer_new(algorithm, charenc)};
 }
 
 }  // namespace irs

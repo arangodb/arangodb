@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "minhash_token_stream.hpp"
@@ -124,7 +123,7 @@ static uint64_t HashLen17to32(const char* s, size_t len) {
 // Return a 16-byte hash for 48 bytes.  Quick and dirty.
 // Callers do best to use "random-looking" values for a and b.
 static std::pair<uint64_t, uint64_t> WeakHashLen32WithSeeds(
-  uint64_t w, uint64_t x, uint64_t y, uint64_t z, uint64_t a, uint64_t b) {
+    uint64_t w, uint64_t x, uint64_t y, uint64_t z, uint64_t a, uint64_t b) {
   a += w;
   b = Rotate(b + a + z, 21);
   uint64_t c = a;
@@ -181,9 +180,9 @@ uint64_t CityHash64(const char* s, size_t len) {
   uint64_t y = Fetch64(s + len - 16) + Fetch64(s + len - 56);
   uint64_t z = HashLen16(Fetch64(s + len - 48) + len, Fetch64(s + len - 24));
   std::pair<uint64_t, uint64_t> v =
-    WeakHashLen32WithSeeds(s + len - 64, len, z);
+      WeakHashLen32WithSeeds(s + len - 64, len, z);
   std::pair<uint64_t, uint64_t> w =
-    WeakHashLen32WithSeeds(s + len - 32, y + k1, x);
+      WeakHashLen32WithSeeds(s + len - 32, y + k1, x);
   x = x * k1 + Fetch64(s);
 
   // Decrease len to the nearest multiple of 64, and operate on 64-byte chunks.
@@ -211,7 +210,7 @@ namespace {
 using namespace arangodb;
 
 constexpr std::string_view kParseError =
-  ", failed to parse options for MinHashTokenStream";
+    ", failed to parse options for MinHashTokenStream";
 constexpr offset kEmptyOffset;
 
 constexpr uint32_t kMinHashes = 1;
@@ -222,7 +221,7 @@ bool ParseNumHashes(velocypack::Slice input, uint32_t& num_hashes) {
   input = input.get(kNumHashes);
   if (!input.isNumber<uint32_t>()) {
     IRS_LOG_ERROR(absl::StrCat(
-      kNumHashes, " attribute must be positive integer", kParseError));
+        kNumHashes, " attribute must be positive integer", kParseError));
     return false;
   }
   num_hashes = input.getNumber<uint32_t>();
@@ -347,7 +346,7 @@ void MinHashTokenStream::init() {
 }
 
 MinHashTokenStream::MinHashTokenStream(Options&& opts)
-  : opts_{std::move(opts)}, minhash_{opts.num_hashes} {
+    : opts_{std::move(opts)}, minhash_{opts.num_hashes} {
   if (!opts_.analyzer) {
     // Fallback to default implementation
     opts_.analyzer = std::make_unique<string_token_stream>();
@@ -362,7 +361,7 @@ MinHashTokenStream::MinHashTokenStream(Options&& opts)
   offset_ = irs::get<offset>(*opts_.analyzer);
 
   std::get<term_attribute>(attrs_).value = {
-    reinterpret_cast<const byte_type*>(buf_.data()), buf_.size()};
+      reinterpret_cast<const byte_type*>(buf_.data()), buf_.size()};
 }
 
 bool MinHashTokenStream::next() {
@@ -373,9 +372,9 @@ bool MinHashTokenStream::next() {
   const auto value = absl::little_endian::FromHost(*begin_);
 
   [[maybe_unused]] const size_t length =
-    absl::strings_internal::Base64EscapeInternal(
-      reinterpret_cast<const uint8_t*>(&value), sizeof value, buf_.data(),
-      buf_.size(), absl::strings_internal::kBase64Chars, false);
+      absl::strings_internal::Base64EscapeInternal(
+          reinterpret_cast<const uint8_t*>(&value), sizeof value, buf_.data(),
+          buf_.size(), absl::strings_internal::kBase64Chars, false);
   IRS_ASSERT(length == buf_.size());
 
   std::get<increment>(attrs_).value = std::exchange(next_inc_.value, 0);

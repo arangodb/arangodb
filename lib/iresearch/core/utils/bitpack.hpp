@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -169,7 +168,7 @@ IRS_FORCE_INLINE void read_block_impl32(UnpackFunc&& unpack, data_input& in,
     }
 
     [[maybe_unused]] const auto read =
-      in.read_bytes(reinterpret_cast<byte_type*>(encoded), required);
+        in.read_bytes(reinterpret_cast<byte_type*>(encoded), required);
     IRS_ASSERT(read == required);
 
     unpack(decoded, encoded, bits);

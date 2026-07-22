@@ -17,7 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "column_existence_filter.hpp"
@@ -31,7 +30,7 @@ namespace {
 class column_existence_query : public filter::prepared {
  public:
   column_existence_query(std::string_view field, bstring&& stats, score_t boost)
-    : field_{field}, stats_{std::move(stats)}, boost_{boost} {}
+      : field_{field}, stats_{std::move(stats)}, boost_{boost} {}
 
   doc_iterator::ptr execute(const ExecutionContext& ctx) const override {
     const auto& segment = ctx.segment;
@@ -80,8 +79,8 @@ class column_prefix_existence_query : public column_existence_query {
  public:
   column_prefix_existence_query(std::string_view prefix, bstring&& stats,
                                 const ColumnAcceptor& acceptor, score_t boost)
-    : column_existence_query{prefix, std::move(stats), boost},
-      acceptor_{acceptor} {
+      : column_existence_query{prefix, std::move(stats), boost},
+        acceptor_{acceptor} {
     IRS_ASSERT(acceptor_);
   }
 
@@ -115,13 +114,13 @@ class column_prefix_existence_query : public column_existence_query {
     }
 
     return ResoveMergeType(
-      ScoreMergeType::kSum, ord.buckets().size(),
-      [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
-        using disjunction_t =
-          irs::disjunction_iterator<irs::doc_iterator::ptr, A>;
-        return irs::MakeDisjunction<disjunction_t>(ctx.wand, std::move(itrs),
-                                                   std::move(aggregator));
-      });
+        ScoreMergeType::kSum, ord.buckets().size(),
+        [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
+          using disjunction_t =
+              irs::disjunction_iterator<irs::doc_iterator::ptr, A>;
+          return irs::MakeDisjunction<disjunction_t>(ctx.wand, std::move(itrs),
+                                                     std::move(aggregator));
+        });
   }
 
  private:
@@ -131,7 +130,7 @@ class column_prefix_existence_query : public column_existence_query {
 }  // namespace
 
 filter::prepared::ptr by_column_existence::prepare(
-  const PrepareContext& ctx) const {
+    const PrepareContext& ctx) const {
   // skip field-level/term-level statistics because there are no explicit
   // fields/terms, but still collect index-level statistics
   // i.e. all fields and terms implicitly match
@@ -144,11 +143,11 @@ filter::prepared::ptr by_column_existence::prepare(
 
   auto& acceptor = options().acceptor;
 
-  return acceptor
-           ? memory::make_tracked<column_prefix_existence_query>(
-               ctx.memory, field(), std::move(stats), acceptor, filter_boost)
-           : memory::make_tracked<column_existence_query>(
-               ctx.memory, field(), std::move(stats), filter_boost);
+  return acceptor ? memory::make_tracked<column_prefix_existence_query>(
+                        ctx.memory, field(), std::move(stats), acceptor,
+                        filter_boost)
+                  : memory::make_tracked<column_existence_query>(
+                        ctx.memory, field(), std::move(stats), filter_boost);
 }
 
 }  // namespace irs
