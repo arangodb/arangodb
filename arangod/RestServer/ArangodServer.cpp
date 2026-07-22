@@ -87,7 +87,6 @@ void ArangodServer::addFeatures() {
   addFeature<ActionFeature>();
   addFeature<AgencyFeature>();
   addFeature<AqlFeature>();
-  addFeature<activities::Feature>(_dataSourceRegistry);
 
 #ifdef TRI_HAVE_GETRLIMIT
   addFeature<BumpFileDescriptorsFeature>("--server.descriptors-minimum");
@@ -194,6 +193,8 @@ void ArangodServer::addFeaturesWithOptionProvider() {
                           getOptions<TempOptionsProvider>());
   addFeature<ApiRecordingFeature>(_dataSourceRegistry, metrics,
                                   getOptions<ApiRecordingOptionsProvider>());
+  addFeature<activities::Feature>(_dataSourceRegistry,
+                                  getOptions<activities::OptionsProvider>());
   addFeature<async_registry::Feature>(
       _dataSourceRegistry, getOptions<async_registry::OptionsProvider>());
 

@@ -27,6 +27,7 @@
 #include "RocksDBEngine/RocksDBIndexCacheRefillOptionsProvider.h"
 #include "RocksDBEngine/RocksDBOptionFeatureOptionsProvider.h"
 #include "RocksDBEngine/RocksDBEngineOptionsProvider.h"
+#include "SystemMonitor/Activities/OptionsProvider.h"
 #include "SystemMonitor/AsyncRegistry/OptionsProvider.h"
 
 #ifdef USE_ENTERPRISE
@@ -49,8 +50,9 @@
 namespace arangodb {
 
 using ArangodOptionProviders = CoreOptionProviders<
-    ApiRecordingOptionsProvider, async_registry::OptionsProvider,
-    AuthenticationOptionsProvider, check_version::CheckVersionOptionsProvider,
+    activities::OptionsProvider, ApiRecordingOptionsProvider,
+    async_registry::OptionsProvider, AuthenticationOptionsProvider,
+    check_version::CheckVersionOptionsProvider,
     crash_handler::CrashHandlerOptionsProvider, DatabasePathOptionsProvider,
     DumpLimitsOptionsProvider, EndpointOptionsProvider, FlushOptionsProvider,
     fortune::FortuneOptionsProvider, GeneralServerOptionsProvider,
