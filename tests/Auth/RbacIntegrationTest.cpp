@@ -174,7 +174,7 @@ TEST_F(RbacIntegrationTest, ServiceCheck_Allow) {
 
   std::vector<rbac::ActionResource> queries{
       {rbac::Action::Read, rbac::resources::Database{.name = "mydb"}}};
-  auto result = service->check("test.jwt.token", queries);
+  auto result = service->check({"test.jwt.token"}, queries);
 
   ASSERT_TRUE(result.ok()) << result.errorMessage();
 
@@ -198,7 +198,7 @@ TEST_F(RbacIntegrationTest, ServiceCheck_Deny) {
 
   std::vector<rbac::ActionResource> queries{
       {rbac::Action::Read, rbac::resources::Database{.name = "mydb"}}};
-  auto result = service->check("test.jwt.token", queries);
+  auto result = service->check({"test.jwt.token"}, queries);
 
   EXPECT_EQ(result.errorNumber(), TRI_ERROR_FORBIDDEN);
 }
@@ -216,7 +216,7 @@ TEST_F(RbacIntegrationTest, ServiceCheck_BatchUsesNewVocabulary) {
        rbac::resources::Collection{.db = "mydb", .name = "c1"}},
       {rbac::Action::Read,
        rbac::resources::Collection{.db = "mydb", .name = "c2"}}};
-  auto result = service->check("test.jwt.token", queries);
+  auto result = service->check({"test.jwt.token"}, queries);
 
   ASSERT_TRUE(result.ok()) << result.errorMessage();
 

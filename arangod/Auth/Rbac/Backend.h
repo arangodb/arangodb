@@ -22,6 +22,7 @@
 
 #pragma once
 
+#include "Auth/Rbac/Actions.h"
 #include "Basics/ResultT.h"
 #include "Futures/Future.h"
 #include "Transaction/MethodsApi.h"
@@ -51,9 +52,6 @@ struct Backend {
   };
   struct RequestItems {
     std::vector<RequestItem> items;
-  };
-  struct JwtToken {
-    std::string jwtToken;
   };
 
   // Batched token evaluation, in both an asynchronous and a synchronous form.

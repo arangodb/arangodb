@@ -727,7 +727,7 @@ auto AuthMode::Rbac::check(auth::Permission permission) const -> Result {
   // span over a stack-local pair and needs no allocation; only the composite
   // permissions (create/modify view, create/drop graph) build a small vector.
   auto checkAll = [&](std::span<rbac::ActionResource const> queries) -> Result {
-    return _rbacService.check(_jwtToken, queries);
+    return _rbacService.check(rbac::JwtToken{_jwtToken}, queries);
   };
   auto checkOne = [&](rbac::Action action, rbac::Resource resource) -> Result {
     rbac::ActionResource query{action, std::move(resource)};

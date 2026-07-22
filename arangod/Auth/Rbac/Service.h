@@ -26,14 +26,11 @@
 #include "Basics/Result.h"
 
 #include <span>
-#include <string_view>
 
 namespace arangodb::rbac {
 
 struct Service {
   virtual ~Service() = default;
-
-  using Token = std::string_view;
 
   // Ask a batch of authorization questions for a single token at once. A real
   // implementation performs a single network round-trip, so callers that need
@@ -43,7 +40,7 @@ struct Service {
   //
   // Virtual so that tests (in particular the RBAC auth-mode tests) can inject a
   // mock Service. The base implementation fails closed; see Service.cpp.
-  virtual auto check(Token token,
+  virtual auto check(JwtToken const& token,
                      std::span<ActionResource const> queries) noexcept
       -> Result;
 };

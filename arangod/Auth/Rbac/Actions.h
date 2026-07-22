@@ -117,4 +117,11 @@ struct ActionResource {
   Resource resource;
 };
 
+// The JWT that identifies the caller of an authorization request. Owns its
+// string so it can be held across a network round-trip (including the
+// asynchronous path).
+struct JwtToken {
+  std::string jwtToken;
+};
+
 }  // namespace arangodb::rbac

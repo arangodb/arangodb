@@ -118,11 +118,11 @@ TEST(RbacBackendTest, evaluateTokenMany_sendsCorrectRequestAndParsesResponse) {
   };
   auto testee = rbac::BackendImpl{sendRequestMock, "http://localhost:8080"};
 
-  auto result = testee
-                    .evaluateTokenMany(
-                        rbac::Backend::JwtToken{.jwtToken = "my.jwt.token"},
-                        rbac::Backend::RequestItems{})
-                    .waitAndGet();
+  auto result =
+      testee
+          .evaluateTokenMany(rbac::JwtToken{.jwtToken = "my.jwt.token"},
+                             rbac::Backend::RequestItems{})
+          .waitAndGet();
 
   ASSERT_TRUE(result.ok());
   EXPECT_EQ(result.get().effect, rbac::Backend::Effect::Allow);
@@ -139,11 +139,10 @@ TEST(RbacBackendTest, evaluateTokenMany_returnsErrorOnNonOkHttpStatus) {
   auto testee =
       rbac::BackendImpl{std::move(sendRequestMock), "http://localhost:8080"};
 
-  auto result =
-      testee
-          .evaluateTokenMany(rbac::Backend::JwtToken{.jwtToken = "bad.token"},
-                             rbac::Backend::RequestItems{})
-          .waitAndGet();
+  auto result = testee
+                    .evaluateTokenMany(rbac::JwtToken{.jwtToken = "bad.token"},
+                                       rbac::Backend::RequestItems{})
+                    .waitAndGet();
 
   EXPECT_FALSE(result.ok());
 }
@@ -161,9 +160,9 @@ TEST(RbacBackendTest, evaluateTokenManySync_setsSkipSchedulerAndReturnsResult) {
   };
   auto testee = rbac::BackendImpl{sendRequestMock, "http://localhost:8080"};
 
-  auto result = testee.evaluateTokenManySync(
-      rbac::Backend::JwtToken{.jwtToken = "my.jwt.token"},
-      rbac::Backend::RequestItems{});
+  auto result =
+      testee.evaluateTokenManySync(rbac::JwtToken{.jwtToken = "my.jwt.token"},
+                                   rbac::Backend::RequestItems{});
 
   EXPECT_TRUE(result.ok());
 }

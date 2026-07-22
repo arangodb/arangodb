@@ -91,7 +91,8 @@ struct MockService : rbac::Service {
   int checkCalls = 0;          // number of check() invocations
   Result answer{};             // returned from every check(); {} == ok
 
-  auto check(Token /*token*/, std::span<rbac::ActionResource const> qs) noexcept
+  auto check(rbac::JwtToken const& /*token*/,
+             std::span<rbac::ActionResource const> qs) noexcept
       -> Result override {
     ++checkCalls;
     for (auto const& q : qs) {
