@@ -161,10 +161,6 @@ void ArangodServer::addFeaturesWithOptionProvider() {
   addFeature<SslServerFeature>(getOptions<SslServerOptionsProvider>());
 #endif
 
-#ifdef USE_V8
-  addFeature<FrontendFeature>(getOptions<FrontendOptionsProvider>());
-#endif
-
 #ifdef TRI_HAVE_GETRLIMIT
   addFeature<FileDescriptorsFeature>(
       metrics, getOptions<file_descriptors::FileDescriptorsOptionsProvider>());
@@ -180,8 +176,7 @@ void ArangodServer::addFeaturesWithOptionProvider() {
       getOptions<EndpointOptionsProvider>());
 
   addFeature<RandomFeature>(getOptions<RandomOptionsProvider>());
-  addFeature<NonceFeature>(getOptions<NonceOptionsProvider>());
-  addFeature<MaxMapCountFeature>(getOptions<MaxMapCountOptionsProvider>());
+  addFeature<MaxMapCountFeature>();
   addFeature<FileSystemFeature>(getOptions<FileSystemOptionsProvider>());
   addFeature<LanguageFeature>(getOptions<LanguageOptionsProvider>());
 
@@ -210,8 +205,7 @@ void ArangodServer::addFeaturesWithOptionProvider() {
   auto& dumpLimits =
       addFeature<DumpLimitsFeature>(getOptions<DumpLimitsOptionsProvider>());
 
-  auto& flush =
-      addFeature<FlushFeature>(metrics, getOptions<FlushOptionsProvider>());
+  auto& flush = addFeature<FlushFeature>(metrics);
 
   addFeature<RocksDBEngine>(
       rocksdbOption, metrics, databasePath, vectorIndex, flush, dumpLimits,

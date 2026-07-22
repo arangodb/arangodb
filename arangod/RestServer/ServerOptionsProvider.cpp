@@ -22,9 +22,6 @@
 
 #include "ServerOptionsProvider.h"
 
-#include "Basics/application-exit.h"
-#include "Logger/LogMacros.h"
-#include "Logger/Logger.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 
@@ -49,29 +46,6 @@ void ServerOptionsProvider::declareOptionsImpl(
       "data.",
       new BooleanParameter(&opts.validateUtf8Strings),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
-}
-
-void ServerOptionsProvider::validateOptionsImpl(
-    std::shared_ptr<options::ProgramOptions> /*options*/,
-    ServerFeatureOptions& opts) {
-  int count = 0;
-
-  if (opts.console) {
-    opts.operationMode = OperationMode::MODE_CONSOLE;
-    ++count;
-  }
-
-  if (!opts.scripts.empty()) {
-    opts.operationMode = OperationMode::MODE_SCRIPT;
-    ++count;
-  }
-
-  if (1 < count) {
-    LOG_TOPIC("353cd", FATAL, arangodb::Logger::FIXME)
-        << "cannot combine '--console', '--javascript.unit-tests' and "
-        << "'--javascript.script'";
-    FATAL_ERROR_EXIT();
-  }
 }
 
 }  // namespace arangodb
