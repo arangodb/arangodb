@@ -270,12 +270,7 @@ void DatabaseManagerThread::run() {
 
 DatabaseFeature::DatabaseFeature(
     application_features::ApplicationServer& server)
-    : DatabaseFeature(server, DatabaseFeatureOptions{}) {}
-
-DatabaseFeature::DatabaseFeature(
-    application_features::ApplicationServer& server,
-    DatabaseFeatureOptions options)
-    : ApplicationFeature{server, *this}, _options(std::move(options)) {
+    : ApplicationFeature{server, *this} {
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseServer>();
 
@@ -291,12 +286,13 @@ DatabaseFeature::~DatabaseFeature() = default;
 
 void DatabaseFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
-  DatabaseOptionsProvider provider;
-  provider.declareOptions(options, _options);
+  _optionsProvider.declareOptions(options);
 }
 
 void DatabaseFeature::validateOptions(
     std::shared_ptr<options::ProgramOptions> options) {
+  _optionsProvider.validateOptions(options);
+
   // check the misuse of startup options
   if (_checkVersion && _upgrade) {
     LOG_TOPIC("a25b0", FATAL, Logger::FIXME)
@@ -357,7 +353,7 @@ void DatabaseFeature::start() {
   if ((ServerState::instance()->isDBServer() ||
        ServerState::instance()->isSingleServer() ||
        ServerState::instance()->isAgent()) &&
-      _options.performIOHeartbeat) {
+      _optionsProvider.options().performIOHeartbeat) {
     _ioHeartbeatThread = std::make_unique<IOHeartbeatThread>(
         server().getFeature<metrics::MetricsFeature>(),
         server().getFeature<DatabasePathFeature>());
