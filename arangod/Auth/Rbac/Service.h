@@ -53,8 +53,8 @@ struct Service {
   auto may(User user, Category::Any const& category) noexcept
       -> async<ResultT<bool>>;
 
-  [[deprecated("Use the asynchronous counterpart instead")]] auto maySync(
-      User user, Category::Any const& category) noexcept -> ResultT<bool>;
+  auto maySync(User user, Category::Any const& category) noexcept
+      -> ResultT<bool>;
 
   // TODO We might want to change the return type in a way that it reports
   //      which permission(s) are missing, in order to give a proper error
@@ -62,8 +62,7 @@ struct Service {
   auto mayAll(User user, std::vector<Category::Any> categories) noexcept
       -> async<ResultT<bool>>;
 
-  [[deprecated("Use the asynchronous counterpart instead")]] auto mayAllSync(
-      User user, std::vector<Category::Any> categories) noexcept
+  auto mayAllSync(User user, std::vector<Category::Any> categories) noexcept
       -> ResultT<bool>;
 
   using Token = std::string_view;

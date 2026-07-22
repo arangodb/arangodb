@@ -212,9 +212,6 @@ TEST(RbacBackendTest, evaluateTokenMany_returnsErrorOnNonOkHttpStatus) {
   EXPECT_FALSE(result.ok());
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-
 TEST(RbacBackendTest, evaluateManySync_setsSkipSchedulerAndReturnsResult) {
   auto responseJson = buildAllowResponseJson();
 
@@ -254,5 +251,3 @@ TEST(RbacBackendTest, evaluateTokenManySync_setsSkipSchedulerAndReturnsResult) {
 
   EXPECT_TRUE(result.ok());
 }
-
-#pragma GCC diagnostic pop
