@@ -464,8 +464,7 @@ class Ast {
                              AstNode const* properties,
                              AstNode const* filterExpression,
                              AstNode const* rangeExpression, bool isInbound,
-                             bool isOutbound,
-                             AstNode const* projections = nullptr);
+                             bool isOutbound);
   AstNode* createPatternNodePattern(AstNode const* outVariable,
                                     AstNode const* labels,
                                     AstNode const* properties,
