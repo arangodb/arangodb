@@ -82,4 +82,47 @@ defmodule VectorGraph.CreateDropGraphIndexTest do
                params: @params
              )
   end
+
+  test "maxDegree and alpha default when omitted", %{client: client, collection: coll} do
+    assert {:ok, index} =
+             Client.Index.ensure(client, coll, :"vector-graph", ["vector"],
+               name: "vg_idx",
+               params: @params
+             )
+
+    assert index["params"]["maxDegree"] == 64
+    assert_in_delta index["params"]["alpha"], 1.2, 0.0001
+  end
+
+  test "custom maxDegree and alpha round-trip", %{client: client, collection: coll} do
+    assert {:ok, index} =
+             Client.Index.ensure(client, coll, :"vector-graph", ["vector"],
+               name: "vg_idx",
+               params: Map.merge(@params, %{"maxDegree" => 32, "alpha" => 1.5})
+             )
+
+    assert index["params"]["maxDegree"] == 32
+    assert_in_delta index["params"]["alpha"], 1.5, 0.0001
+  end
+
+  test "maxDegree must not exceed the on-disk degree bound", %{client: client, collection: coll} do
+    assert {:error, %{status: 400}} =
+             Client.Index.ensure(client, coll, :"vector-graph", ["vector"],
+               params: Map.merge(@params, %{"maxDegree" => 65})
+             )
+  end
+
+  test "maxDegree must be greater than zero", %{client: client, collection: coll} do
+    assert {:error, %{status: 400}} =
+             Client.Index.ensure(client, coll, :"vector-graph", ["vector"],
+               params: Map.merge(@params, %{"maxDegree" => 0})
+             )
+  end
+
+  test "alpha must be at least 1.0", %{client: client, collection: coll} do
+    assert {:error, %{status: 400}} =
+             Client.Index.ensure(client, coll, :"vector-graph", ["vector"],
+               params: Map.merge(@params, %{"alpha" => 0.5})
+             )
+  end
 end
