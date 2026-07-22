@@ -37,10 +37,9 @@ if (getOptions === true) {
     ],
     'javascript.endpoints-allowlist' : [
       'ssl://arango.ai:443',
-      '@server.endpoint@',
     ],
     'javascript.endpoints-denylist' : [
-      '.*://.*:[0-9]+/test-redirect/redirectloop/7'
+      '.*://.*:[0-9]+/test-redirect/redirectloop/3'
     ]
   };
 }
@@ -64,9 +63,7 @@ function getFirstOfState(state, coll) {
 
   const query = "FOR x IN @@name FILTER x.state IN @state RETURN x";
   let bind = {"@name": coll, "state" : state };
-  let ret = db._query(query, bind).toArray()[0];
-  print(ret)
-  return ret
+  return db._query(query, bind).toArray()[0];
 }
 
 function waitForState(state, coll, time = 10) {
@@ -178,8 +175,7 @@ function testSuite() {
     },
 
     testDownloadRedirect : function() {
-      print(IM.url)
-      assertFailing(`require("internal").download("${IM.url}${mountPoint}/redirectloop/0", redirects=10);`);
+      assertFailing(`require("@arangodb/request").get({url: "${IM.url}${mountPoint}/redirectloop/0", maxRedirects: 5, followRedirects: true });`);
     },
   };
 }
