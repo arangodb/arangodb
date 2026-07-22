@@ -49,14 +49,15 @@ version: 2.1
 #                       images always fails regardless. One job per item so
 #                       every item still gets scanned when another fails;
 #                       publish-nightly requires them all. Reports: one
-#                       <package>.trivy.{json,log} pair per package file,
+#                       <package>.trivy.{json,log} pair plus one SBOM pair
+#                       (<package>.sbom.{cdx,spdx}.json) per package file,
 #                       published next to it like the ClamAV reports (the
 #                       format+arch is scanned in one pass, then the JSON is
-#                       split per package); one pair per Docker image, named
-#                       after the pushed per-arch image ref and published
-#                       into the Docker/ directory. The .log tables are
-#                       ASCII-only (box-drawing chars mapped), so they render
-#                       correctly whatever charset a viewer assumes.
+#                       split per package); the same four files per Docker
+#                       image, named after the pushed per-arch image ref and
+#                       published into the Docker/ directory. The .log tables
+#                       are ASCII-only (box-drawing chars mapped), so they
+#                       render correctly whatever charset a viewer assumes.
 #   sign-packages       detached GPG signatures (.asc) for every package and
 #                       objectfiles archive [sign-packages]; keys come from a
 #                       sparse checkout of the private arangodb-helper/
@@ -420,6 +421,12 @@ commands:
               HIGH)     GATE="HIGH,CRITICAL" ;;
               CRITICAL) GATE="CRITICAL" ;;
               ALL)      GATE="UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL" ;;
+              # The pipeline-parameter enum rejects unknown values at
+              # trigger time already; this keeps a future enum addition
+              # without a branch here from silently degrading to
+              # report-only (an unset GATE reads as NONE below).
+              *)        echo "ERROR: unhandled security-check-fail-level" >&2
+                        exit 1 ;;
             esac
             if [ -z "${GATE}" ]; then
               echo "security-check-fail-level=NONE: report-only, not gating"
@@ -437,6 +444,16 @@ commands:
               '[.Results[]? | (.Vulnerabilities[]?, .Secrets[]?)
                 | select(.Severity as $s | ($gate | split(",")) | index($s))] | length' \
               /tmp/trivy-results.json)
+            # COUNT must be one plain integer. Anything else — e.g. jq
+            # emitting one count per document of a concatenated-JSON file,
+            # where the schema check above only keys on the last one —
+            # would make the -gt test below error out, which an if treats
+            # as false: the gate would pass. Fail instead.
+            case "${COUNT}" in
+              ''|*[!0-9]*)
+                echo "ERROR: unexpected findings count '${COUNT}' — refusing to gate on this report" >&2
+                exit 1 ;;
+            esac
             echo "Findings at or above << pipeline.parameters.security-check-fail-level >>: ${COUNT}"
             if [ "${COUNT}" -gt 0 ]; then
               echo "Blocking the publish (full report of all severities in the job artifacts)."
@@ -1019,7 +1036,8 @@ jobs:
             # pass (one Trivy DB load); here its JSON is split into one report
             # per package — the extraction directories are named exactly after
             # the package files — so every published package gets its own
-            # <package>.trivy.{json,log} right next to it. The table (.log)
+            # <package>.trivy.{json,log} and <package>.sbom.{cdx,spdx}.json
+            # right next to it. The table (.log)
             # is rendered with the trivy binary the scan step installed and
             # left on PATH via BASH_ENV; box-drawing characters are mapped to
             # ASCII so the report stays readable no matter what charset a
@@ -1034,41 +1052,110 @@ jobs:
             OUT=/tmp/nightly/trivy-reports/<< parameters.arch >>
             mkdir -p "${OUT}"
             cd /tmp/scan-root
+            STAGE_FAILED=0
             for d in */; do
               PKG="${d%/}"
+              # Two slices per package: Results whose Target is a path
+              # under the package's extraction dir (gobinary, secrets — one
+              # Result per file), plus the package's share of AGGREGATED
+              # language Results — rootfs mode reports installed language
+              # ecosystems under a single pathless Target (e.g. all
+              # node_modules as "Node.js"), with the per-file attribution
+              # only in each entry's PkgPath/FilePath. Without the second
+              # slice every JS finding and component would silently vanish
+              # from the per-package reports and SBOMs (fs mode's lockfile
+              # Results were path-targeted, so the first slice alone used
+              # to suffice). Aggregates left empty for this package are
+              # dropped; the completeness check after the loop asserts
+              # nothing was lost overall.
               jq --arg p "${PKG}" \
                 '.ArtifactName = $p
-                 | .Results = [.Results[]?
-                     | select(.Target == $p or (.Target | startswith($p + "/")))]' \
+                 | .Results = ([.Results[]?
+                     | select(.Target == $p or (.Target | startswith($p + "/")))]
+                   + [.Results[]?
+                     | select((.Target | contains("/")) | not)
+                     | .Vulnerabilities =
+                         [.Vulnerabilities[]? | select((.PkgPath // "") | startswith($p + "/"))]
+                     | .Packages =
+                         [.Packages[]? | select((.FilePath // "") | startswith($p + "/"))]
+                     | select((.Vulnerabilities | length) + (.Packages | length) > 0)])' \
                 /tmp/trivy-results.json > "${OUT}/${PKG}.trivy.json"
-              trivy convert --format table --output /tmp/pkg-table.txt \
-                "${OUT}/${PKG}.trivy.json" 2>/dev/null || : > /tmp/pkg-table.txt
-              to_ascii /tmp/pkg-table.txt > "${OUT}/${PKG}.trivy.log"
-              if ! [ -s "${OUT}/${PKG}.trivy.log" ]; then
-                echo "No findings (all severities scanned, secret scanning included)." \
+              # A failed table render must not masquerade as a clean one
+              # (the empty-file fallback below writes "No findings"), so it
+              # writes a loud marker instead and fails the step at the end,
+              # after every package was attempted.
+              if ERR=$(trivy convert --format table --output /tmp/pkg-table.txt \
+                         "${OUT}/${PKG}.trivy.json" 2>&1); then
+                to_ascii /tmp/pkg-table.txt > "${OUT}/${PKG}.trivy.log"
+                if ! [ -s "${OUT}/${PKG}.trivy.log" ]; then
+                  echo "No findings (all severities scanned, secret scanning included)." \
+                    > "${OUT}/${PKG}.trivy.log"
+                fi
+              else
+                echo "WARNING: table render failed for ${PKG}: ${ERR}" >&2
+                echo "ERROR: table render failed — see ${PKG}.trivy.json for the findings." \
                   > "${OUT}/${PKG}.trivy.log"
+                STAGE_FAILED=1
               fi
               # Per-package SBOMs from the same filtered report — same
-              # mechanism as the .log table, no extra scan. Both
-              # NTIA-recognized formats are published: CycloneDX
-              # (<package>.sbom.cdx.json — the CANONICAL one; ".cdx.json"
-              # is the CycloneDX-recognized file pattern) and SPDX
-              # (<package>.sbom.spdx.json — ISO/IEC 5962, what compliance
-              # questionnaires ask for), rendered from the SAME report so
-              # they cannot drift. Written into ${OUT}, so the existing
-              # workspace persist + publish-nightly wholesale copy publish
-              # them next to the package with zero publish-job changes.
-              # Rendering is best-effort with a LOUD warning: a missing
-              # SBOM must never cost us the reports or the gate.
+              # mechanism as the .log table, no extra scan. Both major
+              # standard formats are published: CycloneDX
+              # (<package>.sbom.cdx.json — the canonical one, and the only
+              # one of the two that embeds the vulnerability findings) and
+              # SPDX 2.3 (<package>.sbom.spdx.json — component inventory
+              # only; the vulnerability data lives in the .trivy.{json,log}
+              # next to it), rendered from the SAME report so they cannot
+              # drift. Written into ${OUT}, so the existing workspace
+              # persist + publish-nightly wholesale copy publish them next
+              # to the package with zero publish-job changes. A package
+              # with no Go/JS payload legitimately renders a valid empty
+              # inventory (the C/C++ components join in a later increment).
+              # A render failure warns per file — so every package is still
+              # attempted — and the deliverable check below then fails the
+              # step: the SBOMs are published deliverables, and a nightly
+              # must not publish without them.
               for SBOM in "cyclonedx:cdx" "spdx-json:spdx"; do
-                if ! trivy convert --format "${SBOM%%:*}" \
+                if ! ERR=$(trivy convert --format "${SBOM%%:*}" \
                        --output "${OUT}/${PKG}.sbom.${SBOM##*:}.json" \
-                       "${OUT}/${PKG}.trivy.json" 2>/dev/null; then
-                  echo "WARNING: ${SBOM%%:*} SBOM render failed for ${PKG} — continuing without it" >&2
+                       "${OUT}/${PKG}.trivy.json" 2>&1); then
+                  echo "WARNING: ${SBOM%%:*} SBOM render failed for ${PKG}: ${ERR}" >&2
+                  STAGE_FAILED=1
                 fi
               done
             done
+            # Split-completeness check: the per-package reports must
+            # jointly account for every finding and every inventory entry
+            # of the combined scan — exactly the invariant the fs→rootfs
+            # switch would otherwise have broken silently for aggregated
+            # targets. A mismatch (content lost by the split, or
+            # double-counted) fails the job instead of publishing
+            # incomplete reports and SBOMs; the combined report stays
+            # available in the job artifacts (orb upload) for debugging.
+            SCAN_FINDINGS=$(jq '[.Results[]? | (.Vulnerabilities[]?, .Secrets[]?)] | length' /tmp/trivy-results.json)
+            SCAN_PACKAGES=$(jq '[.Results[]?.Packages[]?] | length' /tmp/trivy-results.json)
+            SPLIT_FINDINGS=$(jq -s '[.[].Results[]? | (.Vulnerabilities[]?, .Secrets[]?)] | length' "${OUT}"/*.trivy.json)
+            SPLIT_PACKAGES=$(jq -s '[.[].Results[]?.Packages[]?] | length' "${OUT}"/*.trivy.json)
+            if [ "${SCAN_FINDINGS}" != "${SPLIT_FINDINGS}" ] || [ "${SCAN_PACKAGES}" != "${SPLIT_PACKAGES}" ]; then
+              echo "ERROR: per-package split lost or duplicated content:" >&2
+              echo "  findings ${SPLIT_FINDINGS}/${SCAN_FINDINGS}, inventory entries ${SPLIT_PACKAGES}/${SCAN_PACKAGES} (split/combined)" >&2
+              echo "Combined-report targets:" >&2
+              jq -r '.Results[]?.Target' /tmp/trivy-results.json | sort -u >&2
+              exit 1
+            fi
+            # Deliverable check: each package must have staged all four
+            # files, and the SBOMs must be structurally valid.
+            for j in "${OUT}"/*.trivy.json; do
+              B="${j%.trivy.json}"
+              jq -e '.bomFormat == "CycloneDX"' "${B}.sbom.cdx.json" >/dev/null 2>&1 \
+                || { echo "ERROR: missing or invalid CycloneDX SBOM for $(basename "${B}")" >&2; STAGE_FAILED=1; }
+              jq -e '.spdxVersion' "${B}.sbom.spdx.json" >/dev/null 2>&1 \
+                || { echo "ERROR: missing or invalid SPDX SBOM for $(basename "${B}")" >&2; STAGE_FAILED=1; }
+            done
             ls -la "${OUT}"
+            if [ "${STAGE_FAILED}" != "0" ]; then
+              echo "ERROR: one or more published deliverables could not be staged (see errors above)" >&2
+              exit 1
+            fi
       - persist_to_workspace:
           root: /tmp/nightly
           paths:
@@ -1115,10 +1202,12 @@ jobs:
           ignore-unfixed: false
           exit-on-eol: "1"
           store-junit-results: true
-          # CycloneDX SBOM of the image, rendered from the same scan. The
-          # final name needs the dynamic VERSION, so it is written to a
-          # fixed path and renamed in the staging step below (orb
-          # parameters are static).
+          # Setting sbom-output makes the scan run with --list-all-pkgs so
+          # the JSON report carries the FULL package inventory. The
+          # published SBOMs are NOT this file: they are rendered in the
+          # staging step below from the report with the ArtifactName
+          # rewritten to the pushed image ref (this orb-rendered file would
+          # name the internal scan re-tag as its subject).
           sbom-output: /tmp/trivy-sbom.cdx.json
       # Staged and persisted before the gate so the full report reaches the
       # workspace even when the gate fails (publish is blocked then anyway).
@@ -1150,35 +1239,72 @@ jobs:
               amd64) TAG_ARCH="amd64" ;;
               arm64) TAG_ARCH="arm64v8" ;;
             esac
+            IMAGE_REF="arangodb/enterprise-preview:${VERSION}${SUFFIX}-${TAG_ARCH}"
             NAME="arangodb_enterprise-preview_${VERSION}${SUFFIX}-${TAG_ARCH}"
             OUT=/tmp/nightly/trivy-reports/docker
             mkdir -p "${OUT}"
-            cp /tmp/trivy-results.json "${OUT}/${NAME}.trivy.json"
-            to_ascii /tmp/trivy-results.txt > "${OUT}/${NAME}.trivy.log"
-            if ! [ -s "${OUT}/${NAME}.trivy.log" ]; then
-              echo "No findings (all severities scanned, secret scanning included)." \
+            STAGE_FAILED=0
+            # The scan ran against the static nightly-security-scan re-tag,
+            # so the raw report self-identifies as that internal tag — in
+            # ArtifactName, RepoTags and the OS Result's Target header.
+            # Everything published must name the pushed image ref instead —
+            # it becomes the SBOMs' subject component (an NTIA minimum
+            # element: primary component name + version) as well as the
+            # report's and the table's artifact headers — so the report is
+            # rewritten once here and every published file derives from the
+            # rewrite. The gate below keeps reading the orb's untouched
+            # /tmp/trivy-results.json.
+            jq --arg ref "${IMAGE_REF}" \
+              '.ArtifactName as $old
+               | .ArtifactName = $ref
+               | .Metadata.RepoTags = [$ref]
+               | .Results = [(.Results // [])[]
+                   | .Target |= (if startswith($old) then $ref + .[($old | length):] else . end)]' \
+              /tmp/trivy-results.json > /tmp/trivy-results-named.json
+            cp /tmp/trivy-results-named.json "${OUT}/${NAME}.trivy.json"
+            # A failed table render must not masquerade as a clean one (the
+            # empty-file fallback below writes "No findings"), so it writes
+            # a loud marker instead and fails the step at the end.
+            if ERR=$(trivy convert --format table --output /tmp/img-table.txt \
+                       /tmp/trivy-results-named.json 2>&1); then
+              to_ascii /tmp/img-table.txt > "${OUT}/${NAME}.trivy.log"
+              if ! [ -s "${OUT}/${NAME}.trivy.log" ]; then
+                echo "No findings (all severities scanned, secret scanning included)." \
+                  > "${OUT}/${NAME}.trivy.log"
+              fi
+            else
+              echo "WARNING: table render failed: ${ERR}" >&2
+              echo "ERROR: table render failed — see ${NAME}.trivy.json for the findings." \
                 > "${OUT}/${NAME}.trivy.log"
+              STAGE_FAILED=1
             fi
             # The SBOMs join the report pair in ${OUT} under the published
             # naming convention — CycloneDX (<image>.sbom.cdx.json, the
-            # CANONICAL format, rendered by the orb from the scan) and
-            # SPDX (<image>.sbom.spdx.json, ISO/IEC 5962, converted here
-            # from the SAME report): trivy-reports/docker is copied
-            # wholesale into the published Docker/ directory by
-            # publish-nightly, so no publish-job changes are needed.
-            # Guarded: the orb treats an SBOM render failure as warn-only
-            # (the scan, report and gate are all unaffected), so a bare cp
-            # here would turn a missing SBOM into a hard step failure that
-            # also loses the reports from the workspace and skips the gate.
-            if [ -s /tmp/trivy-sbom.cdx.json ]; then
-              cp /tmp/trivy-sbom.cdx.json "${OUT}/${NAME}.sbom.cdx.json"
-            else
-              echo "WARNING: no SBOM was rendered — continuing without it" >&2
-            fi
-            if ! trivy convert --format spdx-json \
-                   --output "${OUT}/${NAME}.sbom.spdx.json" \
-                   /tmp/trivy-results.json 2>/dev/null; then
-              echo "WARNING: spdx-json SBOM render failed — continuing without it" >&2
+            # canonical one, and the only one of the two that embeds the
+            # vulnerability findings) and SPDX 2.3 (<image>.sbom.spdx.json
+            # — component inventory only), both converted here from the
+            # rewritten report so subject and content cannot drift:
+            # trivy-reports/docker is copied wholesale into the published
+            # Docker/ directory by publish-nightly, so no publish-job
+            # changes are needed. A render failure warns, and the
+            # deliverable check below then fails the step: the SBOMs are
+            # published deliverables, and a nightly must not publish
+            # without them.
+            for SBOM in "cyclonedx:cdx" "spdx-json:spdx"; do
+              if ! ERR=$(trivy convert --format "${SBOM%%:*}" \
+                     --output "${OUT}/${NAME}.sbom.${SBOM##*:}.json" \
+                     /tmp/trivy-results-named.json 2>&1); then
+                echo "WARNING: ${SBOM%%:*} SBOM render failed: ${ERR}" >&2
+                STAGE_FAILED=1
+              fi
+            done
+            jq -e '.bomFormat == "CycloneDX"' "${OUT}/${NAME}.sbom.cdx.json" >/dev/null 2>&1 \
+              || { echo "ERROR: missing or invalid CycloneDX SBOM" >&2; STAGE_FAILED=1; }
+            jq -e '.spdxVersion' "${OUT}/${NAME}.sbom.spdx.json" >/dev/null 2>&1 \
+              || { echo "ERROR: missing or invalid SPDX SBOM" >&2; STAGE_FAILED=1; }
+            if [ "${STAGE_FAILED}" != "0" ]; then
+              echo "ERROR: one or more published deliverables could not be staged (see errors above)" >&2
+              exit 1
             fi
       - persist_to_workspace:
           root: /tmp/nightly
@@ -1346,10 +1472,11 @@ jobs:
                     cp /tmp/nightly/clamav-reports/${src}/${arch}/*.clamav "${STAGE}/${GCS_ARCH[$arch]}/"
                   fi
                 done
-                # Per-package Trivy reports (<package>.trivy.{json,log}) land
-                # next to the packages they cover; the Docker image scan
-                # reports live under trivy-reports/docker and are published
-                # into the Docker/ directory after the commit step instead
+                # Per-package Trivy reports and SBOMs (<package>.trivy.
+                # {json,log}, <package>.sbom.{cdx,spdx}.json) land next to
+                # the packages they cover; the Docker image scan files live
+                # under trivy-reports/docker and are published into the
+                # Docker/ directory after the commit step instead
                 if [ -d "/tmp/nightly/trivy-reports/${arch}" ]; then
                   cp /tmp/nightly/trivy-reports/${arch}/* "${STAGE}/${GCS_ARCH[$arch]}/"
                 fi
@@ -1362,8 +1489,8 @@ jobs:
             # written once and shared: it goes into the published
             # arangodb3e-<VERSION>.txt here and into the combined
             # nightly-publish-report.txt in the final report step.
-            # Supplemental files (.asc, .clamav, .trivy.*) are published too
-            # but not listed (excluded by the globs).
+            # Supplemental files (.asc, .clamav, .trivy.*, .sbom.*) are
+            # published too but not listed (excluded by the globs).
             VERSION="$(cat /tmp/nightly/nightly-version.txt)"
             SECTION=/tmp/package-publish-section.txt
             {
@@ -1388,6 +1515,9 @@ jobs:
               echo "Version:   ${VERSION}"
               echo "Published: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
               echo "Workflow:  ${CIRCLE_WORKFLOW_ID}"
+              # Audit trail: the gate level is picked per run, so each
+              # publish records the level it passed.
+              echo "Sec. gate: << pipeline.parameters.security-check-fail-level >> (findings at or above this level block a publish; NONE = report-only)"
               echo
               cat "${SECTION}"
             } > "${STAGE}/arangodb3e-${VERSION}.txt"
@@ -1613,9 +1743,10 @@ jobs:
             # enterprise-preview:<VERSION>[-<distro>] with / and : mapped to
             # _ — carrying that image's slice of nightly-publish-report.txt:
             # the dated per-arch pushes and the multi-arch manifest tags,
-            # each with digests. The per-arch Trivy scan reports
-            # (<image>-<amd64|arm64v8>.trivy.{json,log}) are published next
-            # to it. Everything lands in <major.minor>/Docker/ (and in the
+            # each with digests. The per-arch Trivy scan reports and SBOMs
+            # (<image>-<amd64|arm64v8>.trivy.{json,log} and
+            # .sbom.{cdx,spdx}.json) are published next to it. Everything
+            # lands in <major.minor>/Docker/ (and in the
             # devel mirror when this nightly is the devel one) — after the
             # commit step, because the manifest digests only exist then.
             # Created even when skipping, so the store_artifacts step below
@@ -1647,6 +1778,7 @@ jobs:
                 echo "Base:      ${DISTRO}"
                 echo "Published: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
                 echo "Workflow:  ${CIRCLE_WORKFLOW_ID}"
+                echo "Sec. gate: << pipeline.parameters.security-check-fail-level >> (findings at or above this level block a publish; NONE = report-only)"
                 echo
                 echo "Dated per-arch tags (stage phase):"
                 cat "/tmp/docker-stage-${DISTRO}.txt"
@@ -1683,7 +1815,8 @@ jobs:
             # written by the stage step, which is also published standalone
             # as <major.minor>/Linux/arangodb3e-<VERSION>.txt — and the Docker
             # refs collected by the stage/commit steps. Supplemental files
-            # (.asc, .clamav, .trivy.*) are published too but not listed.
+            # (.asc, .clamav, .trivy.*, .sbom.*) are published too but not
+            # listed.
             REPORT=/tmp/nightly-publish-report.txt
             VERSION="$(cat /tmp/nightly/nightly-version.txt)"
             {
@@ -1692,6 +1825,7 @@ jobs:
               echo "Version:   ${VERSION}"
               echo "Published: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
               echo "Workflow:  ${CIRCLE_WORKFLOW_ID}"
+              echo "Sec. gate: << pipeline.parameters.security-check-fail-level >> (findings at or above this level block a publish; NONE = report-only)"
             } > "${REPORT}"
 
             if [ -s /tmp/package-publish-section.txt ]; then
