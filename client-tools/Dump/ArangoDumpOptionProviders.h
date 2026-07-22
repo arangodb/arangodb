@@ -21,12 +21,7 @@
 #pragma once
 
 #include "ApplicationFeatures/CoreOptionProviders.h"
-#include "ApplicationFeatures/BumpFileDescriptorsOptionsProvider.h"
 
 namespace arangodb {
-using ArangoDumpOptionProviders = CoreOptionProviders<
-#ifdef TRI_HAVE_GETRLIMIT
-    BumpFileDescriptorsOptionsProvider
-#endif
-    >;
+using ArangoDumpOptionProviders = CoreOptionProviders<>;
 }  // namespace arangodb

@@ -1,6 +1,5 @@
 #pragma once
 
-#include "ApplicationFeatures/BumpFileDescriptorsOptionsProvider.h"
 #include "ApplicationFeatures/CoreOptionProviders.h"
 #include "ApplicationFeatures/LanguageOptionsProvider.h"
 #include "ApplicationFeatures/TempOptionsProvider.h"
@@ -32,11 +31,7 @@ using ArangodOptionProviders = CoreOptionProviders<
     MaxMapCountOptionsProvider, NonceOptionsProvider,
     RocksDBEngineOptionsProvider, RocksDBIndexCacheRefillOptionsProvider,
     RocksDBOptionFeatureOptionsProvider, ServerOptionsProvider,
-    TempOptionsProvider, TemporaryStorageOptionsProvider, UpgradeOptionsProvider
-#ifdef TRI_HAVE_GETRLIMIT
-    ,
-    BumpFileDescriptorsOptionsProvider
-#endif
-    >;
+    TempOptionsProvider, TemporaryStorageOptionsProvider,
+    UpgradeOptionsProvider>;
 
 }  // namespace arangodb

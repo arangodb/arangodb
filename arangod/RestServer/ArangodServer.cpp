@@ -92,6 +92,9 @@ void ArangodServer::addFeatures() {
   addFeature<activities::Feature>(_dataSourceRegistry);
   addFeature<AuthenticationFeature>();
 
+#ifdef TRI_HAVE_GETRLIMIT
+  addFeature<BumpFileDescriptorsFeature>("--server.descriptors-minimum");
+#endif
   addFeature<CacheOptionsFeature>();
   auto& cacheOptions = getFeature<CacheOptionsFeature>();
   auto& sharedPRNGFeature = addFeature<SharedPRNGFeature>();
@@ -210,12 +213,6 @@ void ArangodServer::addFeaturesWithOptionProvider() {
   addFeature<ProcessEnvironmentFeature>(
       std::string{_binaryName},
       getOptions<ProcessEnvironmentOptionsProvider>());
-#endif
-
-#ifdef TRI_HAVE_GETRLIMIT
-  addFeature<BumpFileDescriptorsFeature>(
-      "--server.descriptors-minimum",
-      getOptions<BumpFileDescriptorsOptionsProvider>());
 #endif
   addFeature<CrashHandlerFeature>(
       _dumpManager, getOptions<crash_handler::CrashHandlerOptionsProvider>());

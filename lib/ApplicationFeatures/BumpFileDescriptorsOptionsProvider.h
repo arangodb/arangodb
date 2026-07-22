@@ -27,23 +27,21 @@
 
 #include <string>
 
+namespace arangodb::options {
+class ProgramOptions;
+}
+
 namespace arangodb {
 
 struct BumpFileDescriptorsOptionsProvider
-    : OptionsProviderImpl<BumpFileDescriptorsOptionsProvider,
-                          BumpFileDescriptorsFeatureOptions> {
-  BumpFileDescriptorsOptionsProvider() = default;
+    : OptionsProvider<BumpFileDescriptorsFeatureOptions> {
   explicit BumpFileDescriptorsOptionsProvider(std::string optionName);
 
-  void setOptionName(std::string optionName) {
-    _optionName = std::move(optionName);
-  }
+  void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
+                      BumpFileDescriptorsFeatureOptions& options) override;
 
-  void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
-                          BumpFileDescriptorsFeatureOptions& options);
-
-  void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
-                           BumpFileDescriptorsFeatureOptions& options);
+  void validateOptions(std::shared_ptr<options::ProgramOptions> opts,
+                       BumpFileDescriptorsFeatureOptions& options) override;
 
  private:
   std::string _optionName;
