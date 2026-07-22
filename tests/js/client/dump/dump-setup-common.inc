@@ -214,66 +214,6 @@ function createComputedValues() {
     c.insert(docs);
 }
 
-function createAutoIncKeyGen() {
-  db._useDatabase("UnitTestsDumpSrc");
-  let c = db._create("UnitTestsDumpKeygen", {
-    keyOptions: {
-      type: "autoincrement",
-      allowUserKeys: false,
-      offset: 7,
-      increment: 42
-    }
-  });
-  let docs = [];
-  for (let i = 0; i < 1000; ++i) {
-    docs.push({value: i, more: {value: [i, i]}});
-  }
-  c.save(docs);
-  let d = c.save({});
-  c.save({}); // create another one inbetween...
-  c.remove(d);
-}
-
-function createPaddedKeyGen() {
-  db._useDatabase("UnitTestsDumpSrc");
-
-  let c = db._create("UnitTestsDumpKeygenPadded", {
-    keyOptions: {
-      type: "padded",
-      allowUserKeys: false
-    },
-    numberOfShards: getNoShards(2)
-  });
-
-  let docs = [];
-  for (let i = 0; i < 1000; ++i) {
-    docs.push({value: i, more: {value: [i, i]}});
-  }
-  c.save(docs);
-  let d = c.save({});
-  c.save({}); // create another one inbetween...
-  c.remove(d);
-}
-
-function createUUIDKeyGen() {
-  db._useDatabase("UnitTestsDumpSrc");
-  let c = db._create("UnitTestsDumpKeygenUuid", {
-    keyOptions: {
-      type: "uuid",
-      allowUserKeys: false
-    },
-    numberOfShards: getNoShards(2)
-  });
-  let docs = [];
-  for (let i = 0; i < 1000; ++i) {
-    docs.push({value: i});
-  }
-  c.save(docs);
-  let d = c.save({});
-  c.save({}); // create another one inbetween...
-  c.remove(d);
-}
-
 function createStrings() {
   db._useDatabase("UnitTestsDumpSrc");
 
@@ -1268,9 +1208,6 @@ exports.createModifyCollection = createModifyCollection;
 exports.createExtendedName = createExtendedName;
 exports.createMultiShard = createMultiShard;
 exports.createComputedValues = createComputedValues;
-exports.createAutoIncKeyGen = createAutoIncKeyGen;
-exports.createPaddedKeyGen = createPaddedKeyGen;
-exports.createUUIDKeyGen = createUUIDKeyGen;
 exports.createStrings = createStrings;
 exports.createTransactional = createTransactional;
 exports.createPersistent = createPersistent;

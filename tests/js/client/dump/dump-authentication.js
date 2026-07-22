@@ -48,8 +48,6 @@ jsunity.run(function dump_single_testsuite() {
       "testRemoved",
       "testIndexes",
       "testTruncated",
-      "testKeygenPadded",
-      "testKeygenUuid",
       "testStrings",
       "testTransactionCommit",
       "testTransactionUpdate",
