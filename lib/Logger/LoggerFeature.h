@@ -51,8 +51,6 @@ class LoggerFeature final : public application_features::ApplicationFeature {
 
   ~LoggerFeature();
 
-  void loadOptions(std::shared_ptr<options::ProgramOptions>,
-                   char const* binaryPath) override final;
   void prepare() override final;
   void unprepare() override final;
 

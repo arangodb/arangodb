@@ -83,11 +83,6 @@ LoggerFeature::LoggerFeature(application_features::ApplicationServer& server,
 
 LoggerFeature::~LoggerFeature() { Logger::shutdown(); }
 
-void LoggerFeature::loadOptions(std::shared_ptr<options::ProgramOptions>,
-                                char const* binaryPath) {
-  /* no-op */
-}
-
 void LoggerFeature::prepare() {
   // set maximum length for each log entry
   Logger::defaultLogGroup().maxLogEntryLength(

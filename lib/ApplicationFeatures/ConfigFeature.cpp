@@ -65,12 +65,6 @@ ConfigFeature::ConfigFeature(application_features::ApplicationServer& server,
   startsAfter<ShellColorsFeature>();
 }
 
-void ConfigFeature::loadOptions(std::shared_ptr<ProgramOptions> /*options*/,
-                                char const* /*binaryPath*/) {
-  // no-op: .conf loading lives in ConfigOptionsProvider::loadConfiguration,
-  // invoked from loadConfigAndEarlyLoggerOptions() after CLI parse.
-}
-
 void ConfigFeature::prepare() {
 #ifdef __linux__
 #ifdef __GLIBC__

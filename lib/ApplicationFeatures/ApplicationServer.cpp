@@ -871,17 +871,6 @@ void ApplicationServer::reportFeatureProgress(State state,
   }
 }
 
-void ApplicationServer::loadAdditionalOptions() {
-  for (auto it = _orderedFeatures.begin(); it != _orderedFeatures.end(); ++it) {
-    ApplicationFeature& feature = (*it).get();
-    if (feature.isEnabled()) {
-      LOG_TOPIC("5c642", TRACE, Logger::STARTUP)
-          << feature.name() << "::loadOptions";
-      feature.loadOptions(_options, _binaryPath);
-    }
-  }
-}
-
 std::string_view ApplicationServer::stringifyState() const {
   return stringifyState(_state.load(std::memory_order_acquire));
 }

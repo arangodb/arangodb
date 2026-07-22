@@ -50,12 +50,6 @@ class ConfigFeature final : public application_features::ApplicationFeature {
                 std::string const& progname,
                 std::string const& configFilename = "");
 
-  // Config file loading is done by ConfigOptionsProvider::loadConfiguration
-  // (via loadConfigAndEarlyLoggerOptions). Kept as a no-op so the generic
-  // feature loadOptions loop remains valid for LoggerFeature.
-  void loadOptions(std::shared_ptr<options::ProgramOptions>,
-                   char const* binaryPath) override final;
-
   void prepare() override final;
 
  private:

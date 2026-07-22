@@ -42,15 +42,13 @@ class ProgramOptions;
 template<class... Extras>
 using CoreOptionProviders =
     application_features::FeatureOptionProviderContainer<
-        ConfigOptionsProvider, FileSystemOptionsProvider,
-        LoggerOptionsProvider, VersionOptionsProvider,
+        ConfigOptionsProvider, FileSystemOptionsProvider, LoggerOptionsProvider,
+        VersionOptionsProvider,
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
         ProcessEnvironmentOptionsProvider,
 #endif
         RandomOptionsProvider, Extras...>;
 
-// Thin wrapper: today Config only; later insert Logger::setLogLevel *before*
-// Config so early log levels apply during config load.
 inline void loadConfigAndEarlyLoggerOptions(
     LoggerOptionsProvider& loggerProvider,
     ConfigOptionsProvider& configProvider, bool versionRequested,

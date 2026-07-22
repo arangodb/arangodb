@@ -48,12 +48,9 @@ class OptionProvidingServer : public application_features::ApplicationServer {
     _optionProviders.validateOptions(options());
   }
 
-  // After CLI parse: keep feature loadOptions (Logger early levels), then load
-  // .conf via ConfigOptionsProvider. Requires Providers to include
-  // ConfigOptionsProvider and VersionOptionsProvider (true for
-  // CoreOptionProviders).
+  // After CLI parse: load early logger options via LoggerOptionsProvider, and
+  // load .conf via ConfigOptionsProvider.
   void loadAdditionalOptions() override {
-    ApplicationServer::loadAdditionalOptions();
     auto const& versionOptions = getOptions<VersionOptionsProvider>();
     loadConfigAndEarlyLoggerOptions(
         getProvider<LoggerOptionsProvider>(),
