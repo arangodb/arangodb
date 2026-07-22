@@ -158,7 +158,6 @@ void ArangodServer::addFeatures() {
   addFeature<aql::QueryInfoLoggerFeature>();
   addFeature<RocksDBRecoveryManager>(database, database);
 #ifdef ARANGODB_HAVE_FORK
-  addFeature<DaemonFeature>();
   addFeature<SupervisorFeature>();
 #endif
 #ifdef USE_ENTERPRISE
@@ -223,6 +222,10 @@ void ArangodServer::addFeaturesWithOptionProvider() {
   addFeature<LanguageFeature>(getOptions<LanguageOptionsProvider>());
   addFeature<ServerSecurityFeature>(
       getOptions<security::ServerSecurityOptionsProvider>());
+
+#ifdef ARANGODB_HAVE_FORK
+  addFeature<DaemonFeature>(getOptions<DaemonOptionsProvider>());
+#endif
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   addFeature<ProcessEnvironmentFeature>(

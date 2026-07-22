@@ -10,6 +10,7 @@
 #include "Network/NetworkOptionsProvider.h"
 #include "RestServer/CheckVersionOptionsProvider.h"
 #include "RestServer/CrashHandlerOptionsProvider.h"
+#include "RestServer/DaemonOptionsProvider.h"
 #include "RestServer/DatabasePathOptionsProvider.h"
 #include "RestServer/DumpLimitsOptionsProvider.h"
 #include "RestServer/EndpointOptionsProvider.h"
@@ -38,6 +39,10 @@
 #include "RestServer/FileDescriptorsOptionsProvider.h"
 #endif
 
+#ifdef ARANGODB_HAVE_FORK
+#include "RestServer/DaemonOptionsProvider.h"
+#endif
+
 namespace arangodb {
 
 using ArangodOptionProviders = CoreOptionProviders<
@@ -49,7 +54,8 @@ using ArangodOptionProviders = CoreOptionProviders<
     LogBufferOptionsProvider, MaxMapCountOptionsProvider,
     NetworkOptionsProvider, NonceOptionsProvider, RocksDBEngineOptionsProvider,
     RocksDBIndexCacheRefillOptionsProvider, RocksDBOptionFeatureOptionsProvider,
-    ServerOptionsProvider, security::ServerSecurityOptionsProvider,SslServerOptionsProvider,
+    ServerOptionsProvider, security::ServerSecurityOptionsProvider,
+    SslServerOptionsProvider, TempOptionsProvider,
     TemporaryStorageOptionsProvider, UpgradeOptionsProvider
 #ifdef USE_ENTERPRISE
     ,
@@ -62,6 +68,10 @@ using ArangodOptionProviders = CoreOptionProviders<
 #ifdef TRI_HAVE_GETRLIMIT
     ,
     file_descriptors::FileDescriptorsOptionsProvider
+#endif
+#ifdef ARANGODB_HAVE_FORK
+    ,
+    DaemonOptionsProvider
 #endif
     >;
 }  // namespace arangodb
