@@ -22,14 +22,27 @@
 
 #pragma once
 
+#include "Basics/NumberOfCores.h"
+
+#include <algorithm>
 #include <cstdint>
 #include <string>
 
 namespace arangodb {
 
 struct SchedulerFeatureOptions {
+  /// @brief return the default number of threads to use (upper bound)
+  static uint64_t getDefaultMaxThreads() noexcept {
+    // use two times the number of hardware threads as the default
+    // but only if higher than 64. otherwise use a default minimum value of 32
+    return (std::max)(static_cast<uint64_t>(32),
+                      static_cast<uint64_t>(NumberOfCores::getValue()) * 2);
+  }
+
+  SchedulerFeatureOptions() : nrMaximalThreads(getDefaultMaxThreads()) {}
+
   uint64_t nrMinimalThreads = 4;
-  uint64_t nrMaximalThreads = 0;
+  uint64_t nrMaximalThreads;  // computed in constructor
   uint64_t queueSize = 4096;
   uint64_t fifo1Size = 4096;
   uint64_t fifo2Size = 4096;

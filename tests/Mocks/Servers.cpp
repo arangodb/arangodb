@@ -309,13 +309,6 @@ void MockServer::startFeatures() {
     _server.getFeature<DatabaseFeature>().setEngineTesting(_engine.get());
   }
 
-  if (_server.hasFeature<SchedulerFeature>()) {
-    auto& sched = _server.getFeature<SchedulerFeature>();
-    // Needed to set nrMaximalThreads
-    sched.validateOptions(
-        std::make_shared<options::ProgramOptions>("", "", "", nullptr));
-  }
-
   for (ApplicationFeature& f : orderedFeatures) {
     auto info = _features.find(&f);
     if (info != _features.end()) {
