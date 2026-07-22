@@ -1048,20 +1048,25 @@ jobs:
                 echo "No findings (all severities scanned, secret scanning included)." \
                   > "${OUT}/${PKG}.trivy.log"
               fi
-              # Per-package CycloneDX SBOM from the same filtered report —
-              # same mechanism as the .log table, no extra scan. Written
-              # into ${OUT} under the published report-naming convention
-              # (<package>.sbom.cdx.json — ".cdx.json" is the CycloneDX-recognized
-              # file pattern), so the existing workspace persist +
-              # publish-nightly wholesale copy publish it next to the
-              # package with zero publish-job changes. Rendering is
-              # best-effort with a LOUD warning: a missing SBOM must never
-              # cost us the reports or the gate.
-              if ! trivy convert --format cyclonedx \
-                     --output "${OUT}/${PKG}.sbom.cdx.json" \
-                     "${OUT}/${PKG}.trivy.json" 2>/dev/null; then
-                echo "WARNING: SBOM render failed for ${PKG} — continuing without it" >&2
-              fi
+              # Per-package SBOMs from the same filtered report — same
+              # mechanism as the .log table, no extra scan. Both
+              # NTIA-recognized formats are published: CycloneDX
+              # (<package>.sbom.cdx.json — the CANONICAL one; ".cdx.json"
+              # is the CycloneDX-recognized file pattern) and SPDX
+              # (<package>.sbom.spdx.json — ISO/IEC 5962, what compliance
+              # questionnaires ask for), rendered from the SAME report so
+              # they cannot drift. Written into ${OUT}, so the existing
+              # workspace persist + publish-nightly wholesale copy publish
+              # them next to the package with zero publish-job changes.
+              # Rendering is best-effort with a LOUD warning: a missing
+              # SBOM must never cost us the reports or the gate.
+              for SBOM in "cyclonedx:cdx" "spdx-json:spdx"; do
+                if ! trivy convert --format "${SBOM%%:*}" \
+                       --output "${OUT}/${PKG}.sbom.${SBOM##*:}.json" \
+                       "${OUT}/${PKG}.trivy.json" 2>/dev/null; then
+                  echo "WARNING: ${SBOM%%:*} SBOM render failed for ${PKG} — continuing without it" >&2
+                fi
+              done
             done
             ls -la "${OUT}"
       - persist_to_workspace:
@@ -1154,9 +1159,12 @@ jobs:
               echo "No findings (all severities scanned, secret scanning included)." \
                 > "${OUT}/${NAME}.trivy.log"
             fi
-            # The SBOM joins the report pair in ${OUT} under the published
-            # naming convention (<image>.sbom.cdx.json): trivy-reports/docker
-            # is copied wholesale into the published Docker/ directory by
+            # The SBOMs join the report pair in ${OUT} under the published
+            # naming convention — CycloneDX (<image>.sbom.cdx.json, the
+            # CANONICAL format, rendered by the orb from the scan) and
+            # SPDX (<image>.sbom.spdx.json, ISO/IEC 5962, converted here
+            # from the SAME report): trivy-reports/docker is copied
+            # wholesale into the published Docker/ directory by
             # publish-nightly, so no publish-job changes are needed.
             # Guarded: the orb treats an SBOM render failure as warn-only
             # (the scan, report and gate are all unaffected), so a bare cp
@@ -1166,6 +1174,11 @@ jobs:
               cp /tmp/trivy-sbom.cdx.json "${OUT}/${NAME}.sbom.cdx.json"
             else
               echo "WARNING: no SBOM was rendered — continuing without it" >&2
+            fi
+            if ! trivy convert --format spdx-json \
+                   --output "${OUT}/${NAME}.sbom.spdx.json" \
+                   /tmp/trivy-results.json 2>/dev/null; then
+              echo "WARNING: spdx-json SBOM render failed — continuing without it" >&2
             fi
       - persist_to_workspace:
           root: /tmp/nightly
