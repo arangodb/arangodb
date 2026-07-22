@@ -733,11 +733,8 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string url = inputUrl;
   std::vector<std::string> endpoints;
 
-  bool isLocalUrl = false;
-
   if (url.starts_with('/')) {
     // check if we are a server
-    isLocalUrl = true;
     endpoints = v8g->_endpoints.httpEndpoints();
 
     // a relative url. now make this an absolute URL if possible
@@ -984,7 +981,7 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
         << "downloading file. endpoint: " << endpoint
         << ", relative URL: " << url;
 
-    if (!isLocalUrl && !v8security.isAllowedToConnectToUrl(isolate, url)) {
+    if (!v8security.isAllowedToConnectToUrl(isolate, url)) {
       TRI_V8_THROW_EXCEPTION_MESSAGE(
           TRI_ERROR_FORBIDDEN,
           "while connecting to " + inputUrl +
@@ -1072,10 +1069,6 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
         numRedirects++;
 
-        isLocalUrl = false;
-        if (url.starts_with('/')) {
-          isLocalUrl = true;
-        }
         if (url.starts_with("http:") || url.starts_with("https:")) {
           lastEndpoint = basics::StringUtils::getEndpointFromUrl(url);
         }
