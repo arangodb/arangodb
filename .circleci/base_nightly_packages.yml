@@ -39,7 +39,7 @@ version: 2.1
 #                       Docker images are NOT ClamAV-scanned
 #   security-check-*    Trivy scan of every published item [security-check]:
 #                       one job per package format+arch (contents extracted,
-#                       then fs-scanned) and per Docker image (image scan).
+#                       then rootfs-scanned) and per Docker image (image scan).
 #                       The reports always cover ALL severities (unfixed CVEs
 #                       included, secret scanning on); whether a job fails —
 #                       and with it the publish — is decided separately by
@@ -142,7 +142,7 @@ version: 2.1
 orbs:
   aws-cli: circleci/aws-cli@4.1.1
   aws-ecr: circleci/aws-ecr@9.0.1
-  trivy-scan: arangodb/trivy-scan@0.2
+  trivy-scan: arangodb/trivy-scan@1.0
 
 parameters:
   enterprise-branch:
@@ -424,6 +424,14 @@ commands:
             if [ -z "${GATE}" ]; then
               echo "security-check-fail-level=NONE: report-only, not gating"
               exit 0
+            fi
+            # A missing or malformed report must never gate as zero
+            # findings — jq counts 0 matches over the wrong JSON just as
+            # happily — so the report shape is checked before counting
+            # and anything unexpected fails the job.
+            if ! jq -e '.SchemaVersion == 2' /tmp/trivy-results.json >/dev/null; then
+              echo "ERROR: /tmp/trivy-results.json is not a Trivy schema-2 report — refusing to gate on it (fail-open guard)"
+              exit 1
             fi
             COUNT=$(jq --arg gate "${GATE}" \
               '[.Results[]? | (.Vulnerabilities[]?, .Secrets[]?)
@@ -923,7 +931,9 @@ jobs:
   security-check-package:
     # Trivy does not look inside .deb/.rpm/.tar.gz files, so the packages of
     # one format+arch are extracted first and the extracted contents are
-    # fs-scanned (CVEs in bundled dependencies + committed secrets).
+    # rootfs-scanned (CVEs in bundled dependencies INCLUDING compiled Go
+    # binaries — fs mode reads lockfiles only and misses them — plus
+    # committed secrets).
     parameters:
       target:
         type: enum
@@ -932,7 +942,8 @@ jobs:
         type: string
     docker:
       - image: << pipeline.parameters.build-docker-image >>
-    # medium suffices: the fs scan parses package metadata/lockfiles and
+    # medium suffices: the rootfs scan reads package metadata and the
+    # build info embedded in Go binaries (no decompilation) and
     # secret-scans only small text files; extraction is I/O-bound.
     resource_class: medium
     working_directory: /root/project
@@ -986,12 +997,18 @@ jobs:
       # Report-only over ALL severities; gate-trivy-findings below decides
       # whether the job (and with it the publish) fails.
       - trivy-scan/scan:
-          scan-type: fs
+          scan-type: rootfs
           scan-path: /tmp/scan-root
           severity: "CRITICAL,HIGH,MEDIUM,LOW,UNKNOWN"
           fail-on-findings: false
           ignore-unfixed: false
           store-junit-results: true
+          # sbom-output makes the scan run with --list-all-pkgs so the JSON
+          # report carries the FULL package inventory (not only vulnerable
+          # ones); the PER-PACKAGE SBOMs below are rendered from that
+          # report. The combined file itself is not stored — per-package is
+          # the deliverable shape.
+          sbom-output: /tmp/<< parameters.target >>-<< parameters.arch >>.sbom.cdx.json
       # Staged and persisted before the gate so the full reports reach the
       # workspace even when the gate fails (publish is blocked then anyway).
       - run:
@@ -1015,7 +1032,7 @@ jobs:
                   -e 's/└/+/g' -e 's/┴/+/g' -e 's/┘/+/g' "$1"
             }
             OUT=/tmp/nightly/trivy-reports/<< parameters.arch >>
-            mkdir -p "${OUT}"
+            mkdir -p "${OUT}" /tmp/sbom-artifacts
             cd /tmp/scan-root
             for d in */; do
               PKG="${d%/}"
@@ -1031,12 +1048,30 @@ jobs:
                 echo "No findings (all severities scanned, secret scanning included)." \
                   > "${OUT}/${PKG}.trivy.log"
               fi
+              # Per-package CycloneDX SBOM from the same filtered report —
+              # same mechanism as the .log table, no extra scan. Rendering
+              # is best-effort with a LOUD warning: SBOMs are job artifacts
+              # only for now, not a publish requirement, and must never
+              # cost us the reports or the gate.
+              if ! trivy convert --format cyclonedx \
+                     --output "/tmp/sbom-artifacts/${PKG}.sbom.cdx.json" \
+                     "${OUT}/${PKG}.trivy.json" 2>/dev/null; then
+                echo "WARNING: SBOM render failed for ${PKG} — continuing without it" >&2
+              fi
             done
-            ls -la "${OUT}"
+            ls -la "${OUT}" /tmp/sbom-artifacts
       - persist_to_workspace:
           root: /tmp/nightly
           paths:
             - trivy-reports/<< parameters.arch >>
+      # Per-package SBOMs, stored before the gate like the reports, and as
+      # job artifacts only: everything under trivy-reports/ in the
+      # workspace is copied wholesale into the published package tree by
+      # publish-nightly, and publishing SBOMs to download.arangodb.com is
+      # a separate decision.
+      - store_artifacts:
+          path: /tmp/sbom-artifacts
+          destination: reports/sbom
       - gate-trivy-findings
 
   security-check-docker-image:
@@ -1079,6 +1114,11 @@ jobs:
           ignore-unfixed: false
           exit-on-eol: "1"
           store-junit-results: true
+          # CycloneDX SBOM of the image, rendered from the same scan. The
+          # final name needs the dynamic VERSION, so it is written to a
+          # fixed path and renamed in the staging step below (orb
+          # parameters are static).
+          sbom-output: /tmp/trivy-sbom.cdx.json
       # Staged and persisted before the gate so the full report reaches the
       # workspace even when the gate fails (publish is blocked then anyway).
       - run:
@@ -1118,10 +1158,31 @@ jobs:
               echo "No findings (all severities scanned, secret scanning included)." \
                 > "${OUT}/${NAME}.trivy.log"
             fi
+            # The SBOM is named like the report pair but staged outside
+            # /tmp/nightly: trivy-reports/docker is copied wholesale into
+            # the published Docker/ directory, and whether SBOMs belong on
+            # download.arangodb.com is a separate decision — job artifact
+            # only for now. Guarded: the orb treats an SBOM render failure
+            # as warn-only (the scan, report and gate are all unaffected),
+            # so a bare cp here would turn a missing nicety into a hard
+            # step failure that also loses the reports from the workspace
+            # and skips the gate. Flip to a hard [ -s ] check if SBOMs
+            # become a published deliverable.
+            mkdir -p /tmp/sbom-artifacts
+            if [ -s /tmp/trivy-sbom.cdx.json ]; then
+              cp /tmp/trivy-sbom.cdx.json "/tmp/sbom-artifacts/${NAME}.sbom.cdx.json"
+            else
+              echo "WARNING: no SBOM was rendered — continuing without it" >&2
+            fi
       - persist_to_workspace:
           root: /tmp/nightly
           paths:
             - trivy-reports/docker
+      # Stored before the gate like the reports (job artifact only, see
+      # above).
+      - store_artifacts:
+          path: /tmp/sbom-artifacts
+          destination: reports/sbom
       - gate-trivy-findings
 
   # ── GPG signing ──────────────────────────────────────────────────────────────
