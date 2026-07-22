@@ -42,6 +42,12 @@ struct CacheOptions {
             : (256 << 20);
   }
 
+  // constructs with all defaults except for an explicit cache size override,
+  // e.g. for tests that need a small, deterministic cache size
+  explicit CacheOptions(std::uint64_t cacheSizeOverride) : CacheOptions() {
+    cacheSize = cacheSizeOverride;
+  }
+
   // lower fill ratio for a hash table. if a hash table's load factor is
   // less than this ratio, it is subject to shrinking
   double idealLowerFillRatio = 0.08;
