@@ -41,6 +41,7 @@
 
 #ifdef ARANGODB_HAVE_FORK
 #include "RestServer/DaemonOptionsProvider.h"
+#include "RestServer/SupervisorOptionsProvider.h"
 #endif
 
 namespace arangodb {
@@ -71,7 +72,7 @@ using ArangodOptionProviders = CoreOptionProviders<
 #endif
 #ifdef ARANGODB_HAVE_FORK
     ,
-    DaemonOptionsProvider
+    DaemonOptionsProvider, SupervisorOptionsProvider
 #endif
     >;
 }  // namespace arangodb

@@ -157,9 +157,6 @@ void ArangodServer::addFeatures() {
   addFeature<aql::OptimizerRulesFeature>();
   addFeature<aql::QueryInfoLoggerFeature>();
   addFeature<RocksDBRecoveryManager>(database, database);
-#ifdef ARANGODB_HAVE_FORK
-  addFeature<SupervisorFeature>();
-#endif
 #ifdef USE_ENTERPRISE
   addFeature<AuditFeature>();
   addFeature<LicenseFeature>();
@@ -169,6 +166,15 @@ void ArangodServer::addFeatures() {
 #endif
   addFeature<iresearch::IResearchFeature>(metrics);
   addFeature<ClusterEngine>(metrics);
+}
+
+void ArangodServer::validateOptions() {
+#ifdef ARANGODB_HAVE_FORK
+  if (getProvider<SupervisorOptionsProvider>().options().supervisor) {
+    getProvider<DaemonOptionsProvider>().options().daemon = true;
+  }
+#endif
+  OptionProvidingServer::validateOptions();
 }
 
 void ArangodServer::addFeaturesWithOptionProvider() {
@@ -225,6 +231,7 @@ void ArangodServer::addFeaturesWithOptionProvider() {
 
 #ifdef ARANGODB_HAVE_FORK
   addFeature<DaemonFeature>(getOptions<DaemonOptionsProvider>());
+  addFeature<SupervisorFeature>(getOptions<SupervisorOptionsProvider>());
 #endif
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
