@@ -22,12 +22,26 @@
 
 #pragma once
 
+#include "Basics/PhysicalMemory.h"
+
 #include <cstddef>
 #include <cstdint>
 
 namespace arangodb {
 
 struct CacheOptions {
+  CacheOptions() {
+    // if there is less than 4 GiB of RAM in the system, default to 256 MiB.
+    // otherwise, default to (system RAM size - 2 GiB) * 0.25.
+    cacheSize =
+        (PhysicalMemory::getValue() >= (static_cast<std::uint64_t>(4) << 30))
+            ? static_cast<std::uint64_t>(
+                  (PhysicalMemory::getValue() -
+                   (static_cast<std::uint64_t>(2) << 30)) *
+                  0.25)
+            : (256 << 20);
+  }
+
   // lower fill ratio for a hash table. if a hash table's load factor is
   // less than this ratio, it is subject to shrinking
   double idealLowerFillRatio = 0.08;
@@ -39,8 +53,8 @@ struct CacheOptions {
   // lz4-internal acceleration factor for compression.
   // values > 1 could mean slower compression, but faster decompression
   std::uint32_t accelerationFactorForEdgeCompression = 1;
-  // cache size will be set dynamically later based on available RAM
-  std::uint64_t cacheSize = 0;
+  // computed in constructor, based on available RAM
+  std::uint64_t cacheSize;
   std::uint64_t rebalancingInterval = 2'000'000ULL;  // 2s
   // maximum memory usage for spare hash tables kept around by the cache.
   std::uint64_t maxSpareAllocation = 67'108'864ULL;  // 64MB

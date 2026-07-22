@@ -22,7 +22,6 @@
 
 #include "Cache/CacheFeatureOptionsProvider.h"
 
-#include "Basics/PhysicalMemory.h"
 #include "Basics/application-exit.h"
 #include "Cache/Manager.h"
 #include "Logger/LogMacros.h"
@@ -41,16 +40,6 @@ constexpr std::uint64_t minRebalancingInterval = 500 * 1000;
 
 void CacheFeatureOptionsProvider::declareOptionsImpl(
     std::shared_ptr<ProgramOptions> opts, CacheOptions& options) {
-  // Initialize default values that depend on system state
-  options.cacheSize =
-      (PhysicalMemory::getValue() >= (static_cast<std::uint64_t>(4) << 30))
-          ? static_cast<std::uint64_t>((PhysicalMemory::getValue() -
-                                        (static_cast<std::uint64_t>(2) << 30)) *
-                                       0.25)
-          : (256 << 20);
-  // currently there is no way to turn stats off
-  options.enableWindowedStats = true;
-
   opts->addSection("cache", "in-memory hash cache");
 
   opts->addOption("--cache.size",
