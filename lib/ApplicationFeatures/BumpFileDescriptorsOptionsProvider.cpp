@@ -39,7 +39,7 @@ BumpFileDescriptorsOptionsProvider::BumpFileDescriptorsOptionsProvider(
     std::string optionName)
     : _optionName(std::move(optionName)) {}
 
-void BumpFileDescriptorsOptionsProvider::declareOptions(
+void BumpFileDescriptorsOptionsProvider::declareOptionsImpl(
     std::shared_ptr<ProgramOptions> options,
     BumpFileDescriptorsFeatureOptions& opts) {
   options
@@ -52,7 +52,7 @@ void BumpFileDescriptorsOptionsProvider::declareOptions(
       .setIntroducedIn(31200);
 }
 
-void BumpFileDescriptorsOptionsProvider::validateOptions(
+void BumpFileDescriptorsOptionsProvider::validateOptionsImpl(
     std::shared_ptr<ProgramOptions> /*options*/,
     BumpFileDescriptorsFeatureOptions& opts) {
   if (opts.descriptorsMinimum > 0 &&

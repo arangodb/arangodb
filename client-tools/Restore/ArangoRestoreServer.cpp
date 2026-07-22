@@ -73,9 +73,6 @@ void ArangoRestoreServer::addFeatures() {
   addFeature<ShutdownFeature>(
       std::array{std::type_index(typeid(RestoreFeature))});
   addFeature<SslFeature>();
-#ifdef TRI_HAVE_GETRLIMIT
-  addFeature<BumpFileDescriptorsFeature>("--descriptors-minimum");
-#endif
 #ifdef USE_ENTERPRISE
   addFeature<EncryptionFeature>();
 #endif
@@ -92,6 +89,11 @@ void ArangoRestoreServer::addFeaturesWithOptionProvider() {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   addFeature<ProcessEnvironmentFeature>(
       _binaryName, getOptions<ProcessEnvironmentOptionsProvider>());
+#endif
+#ifdef TRI_HAVE_GETRLIMIT
+  addFeature<BumpFileDescriptorsFeature>(
+      "--descriptors-minimum",
+      getOptions<BumpFileDescriptorsOptionsProvider>());
 #endif
 }
 

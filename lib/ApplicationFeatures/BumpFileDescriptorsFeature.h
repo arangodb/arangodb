@@ -51,8 +51,6 @@ class BumpFileDescriptorsFeature
   BumpFileDescriptorsFeature(application_features::ApplicationServer& server,
                              std::string optionName);
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
 
  private:

@@ -71,9 +71,6 @@ void ArangoDumpServer::addFeatures() {
   addFeature<ShellColorsFeature>();
   addFeature<ShutdownFeature>(std::array{std::type_index(typeid(DumpFeature))});
   addFeature<SslFeature>();
-#ifdef TRI_HAVE_GETRLIMIT
-  addFeature<BumpFileDescriptorsFeature>("--descriptors-minimum");
-#endif
 #ifdef USE_ENTERPRISE
   addFeature<EncryptionFeature>();
 #endif
@@ -89,6 +86,11 @@ void ArangoDumpServer::addFeaturesWithOptionProvider() {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   addFeature<ProcessEnvironmentFeature>(
       _binaryName, getOptions<ProcessEnvironmentOptionsProvider>());
+#endif
+#ifdef TRI_HAVE_GETRLIMIT
+  addFeature<BumpFileDescriptorsFeature>(
+      "--descriptors-minimum",
+      getOptions<BumpFileDescriptorsOptionsProvider>());
 #endif
 }
 

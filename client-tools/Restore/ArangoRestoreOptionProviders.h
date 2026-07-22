@@ -20,9 +20,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+#include "ApplicationFeatures/BumpFileDescriptorsOptionsProvider.h"
 #include "ApplicationFeatures/CoreOptionProviders.h"
 #include "ApplicationFeatures/TempOptionsProvider.h"
 
 namespace arangodb {
-using ArangoRestoreOptionProviders = CoreOptionProviders<TempOptionsProvider>;
+using ArangoRestoreOptionProviders = CoreOptionProviders<
+#ifdef TRI_HAVE_GETRLIMIT
+    BumpFileDescriptorsOptionsProvider,
+#endif
+    TempOptionsProvider>;
 }  // namespace arangodb

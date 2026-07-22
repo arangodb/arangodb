@@ -62,18 +62,6 @@ BumpFileDescriptorsFeature::BumpFileDescriptorsFeature(
   startsAfter<LoggerFeature>();
 }
 
-void BumpFileDescriptorsFeature::collectOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  BumpFileDescriptorsOptionsProvider provider(_optionName);
-  provider.declareOptions(options, _options);
-}
-
-void BumpFileDescriptorsFeature::validateOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  BumpFileDescriptorsOptionsProvider provider(_optionName);
-  provider.validateOptions(options, _options);
-}
-
 void BumpFileDescriptorsFeature::prepare() {
   if (Result res = FileDescriptors::adjustTo(
           static_cast<FileDescriptors::ValueType>(_options.descriptorsMinimum));
