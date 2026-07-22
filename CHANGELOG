@@ -1,5 +1,13 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
+* COR-740: AQL `MATCH` relationship patterns now support the optional `KEEP`
+  clause for inline edge projections.
+  Example: `MATCH (u:users)-[e:follows KEEP since]->(v:users) RETURN e` binds
+  `e` to `{ "_id", "_from", "_to", "since" }` instead of the full edge document.
+  System attributes `_id`, `_from`, and `_to` are always retained on projected
+  edges. The `MATCH` statement remains experimental (`matchStatement:
+  "experimental"`).
+
 * COR-572: BugFix - Resolved unintended warnings raised by eager evaluation in 
   the ternary operator during traversal and optimization.
 
