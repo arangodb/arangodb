@@ -72,17 +72,6 @@ SslServerFeature::SslServerFeature(
   setOptional(true);
 }
 
-void SslServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  SslServerOptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
-
-void SslServerFeature::validateOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  SslServerOptionsProvider provider;
-  provider.validateOptions(options, _options);
-}
-
 void SslServerFeature::prepare() {
   LOG_TOPIC("afcd3", INFO, arangodb::Logger::SSL)
       << "using SSL options: " << stringifySslOptions(_options.sslOptions);
