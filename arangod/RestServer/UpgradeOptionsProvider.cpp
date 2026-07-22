@@ -96,7 +96,14 @@ The server will exit with an error code if the compaction fails.)");
 void UpgradeOptionsProvider::validateOptionsImpl(
     std::shared_ptr<options::ProgramOptions> opts,
     UpgradeFeatureOptions& options) {
-  // Env var is another way to force auto-upgrade (hotbackup restore path).
+  // The following environment variable is another way to run a database
+  // upgrade. If the environment variable is set, the system does a database
+  // upgrade and then restarts itself without the environment variable.
+  // This is used in hotbackup if a restore to a backup happens which is from
+  // an older database version. The restore process sets the environment
+  // variable at runtime and then does a restore. After the restart (with
+  // the old data) the database upgrade is run and another restart is
+  // happening afterwards with the environment variable being cleared.
   char* upgrade = getenv(StaticStrings::UpgradeEnvName.c_str());
   if (upgrade != nullptr) {
     options.upgrade = true;
