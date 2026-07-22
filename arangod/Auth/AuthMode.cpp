@@ -39,10 +39,210 @@
 namespace arangodb {
 
 namespace {
+auto joinQuoted(std::span<std::string const> names) -> std::string {
+  std::string result;
+  for (auto const& name : names) {
+    if (!result.empty()) {
+      result += ", ";
+    }
+    result += std::format("'{}'", name);
+  }
+  return result;
+}
+auto describe(auth::perms::UseDatabase const& perm) -> std::string {
+  return std::format("use database '{}' with access level '{}'", perm.name,
+                     to_string(perm.level));
+}
+auto describe(auth::perms::UseCollection const& perm) -> std::string {
+  return std::format(
+      "use collection '{}' in database '{}' with access level '{}'", perm.name,
+      perm.db, to_string(perm.level));
+}
+auto describe(auth::perms::UseView const& perm) -> std::string {
+  return std::format("use view '{}' in database '{}' with access level '{}'",
+                     perm.name, perm.db, to_string(perm.level));
+}
+auto describe(auth::perms::SeeView const& perm) -> std::string {
+  return std::format("see view '{}' in database '{}'", perm.name, perm.db);
+}
+auto describe(auth::perms::CreateView const& perm) -> std::string {
+  return std::format(
+      "create view '{}' in database '{}' with linked collections [{}]",
+      perm.name, perm.db, joinQuoted(perm.linkedCollections));
+}
+auto describe(auth::perms::RenameView const& perm) -> std::string {
+  return std::format("rename view '{}' to '{}' in database '{}'", perm.oldName,
+                     perm.newName, perm.db);
+}
+auto describe(auth::perms::UseAnalyzer const& perm) -> std::string {
+  return std::format(
+      "use analyzer '{}' in database '{}' with access level '{}'", perm.name,
+      perm.db, to_string(perm.level));
+}
+auto describe(auth::perms::CreateGraph const& perm) -> std::string {
+  return std::format(
+      "create graph '{}' in database '{}' with collections to create [{}] and "
+      "collections to read [{}]",
+      perm.name, perm.db, joinQuoted(perm.collectionNamesToCreate),
+      joinQuoted(perm.collectionNamesToRead));
+}
+// Admin permissions carry no resource, so each maps to a fixed phrase naming
+// the administrative action it guards.
+auto describe(auth::perms::AnyAdmin auto const& admin) -> std::string {
+  namespace p = auth::perms;
+  using T = std::remove_cvref_t<decltype(admin)>;
+  if constexpr (std::is_same_v<T, p::AdminReadUsers>) {
+    return "list all users (as admin)";
+  } else if constexpr (std::is_same_v<T, p::AdminMoveShards>) {
+    return "move shards (as admin)";
+  } else if constexpr (std::is_same_v<T, p::AdminMonitoring>) {
+    return "access monitoring data (as admin)";
+  } else if constexpr (std::is_same_v<T, p::AdminMonitoringInternal>) {
+    return "access internal monitoring data (as admin)";
+  } else if constexpr (std::is_same_v<T, p::AdminAuthReload>) {
+    return "reload authentication data (as admin)";
+  } else if constexpr (std::is_same_v<T, p::AdminCrashHandler>) {
+    return "access the crash handler (as admin)";
+  } else if constexpr (std::is_same_v<T, p::AdminApiCalls>) {
+    return "access API call statistics (as admin)";
+  } else if constexpr (std::is_same_v<T, p::AdminAqlQueries>) {
+    return "manage AQL queries (as admin)";
+  } else if constexpr (std::is_same_v<T, p::AdminShutdown>) {
+    return "shut down the server (as admin)";
+  } else if constexpr (std::is_same_v<T, p::AdminReadLogs>) {
+    return "read the server logs (as admin)";
+  } else if constexpr (std::is_same_v<T, p::AdminSetLogLevel>) {
+    return "set the log level (as admin)";
+  } else if constexpr (std::is_same_v<T, p::AdminOptions>) {
+    return "access server options (as admin)";
+  } else if constexpr (std::is_same_v<T, p::AdminSupervisionState>) {
+    return "access the supervision state (as admin)";
+  } else if constexpr (std::is_same_v<T, p::AdminRemoveServer>) {
+    return "remove a server (as admin)";
+  } else if constexpr (std::is_same_v<T, p::AdminClusterInfo>) {
+    return "access cluster information (as admin)";
+  } else if constexpr (std::is_same_v<T, p::AdminMaintenance>) {
+    return "manage maintenance mode (as admin)";
+  } else if constexpr (std::is_same_v<T, p::AdminRebalance>) {
+    return "rebalance the cluster (as admin)";
+  } else if constexpr (std::is_same_v<T, p::AdminLicense>) {
+    return "manage the license (as admin)";
+  } else if constexpr (std::is_same_v<T, p::AdminBackup>) {
+    return "manage backups (as admin)";
+  } else if constexpr (std::is_same_v<T, p::AdminReadReplicatedLog>) {
+    return "read a replicated log (as admin)";
+  } else if constexpr (std::is_same_v<T, p::AdminWriteReplicatedLog>) {
+    return "write a replicated log (as admin)";
+  } else if constexpr (std::is_same_v<T, p::AdminDump>) {
+    return "dump data (as admin)";
+  } else if constexpr (std::is_same_v<T, p::AdminRestore>) {
+    return "restore data (as admin)";
+  } else if constexpr (std::is_same_v<T, p::AdminWalAccess>) {
+    return "access the write-ahead log (as admin)";
+  } else if constexpr (std::is_same_v<T, p::AdminReadAgency>) {
+    return "read the agency (as admin)";
+  } else if constexpr (std::is_same_v<T, p::AdminQueryCache>) {
+    return "manage the query cache (as admin)";
+  } else {
+    static_assert(sizeof(T) == 0, "unmapped admin permission");
+  }
+}
+auto describe(auth::perms::SeeDatabase const& perm) -> std::string {
+  return std::format("see database '{}'", perm.name);
+}
+auto describe(auth::perms::CreateDatabase const& perm) -> std::string {
+  return std::format("create database '{}'", perm.name);
+}
+auto describe(auth::perms::DropDatabase const& perm) -> std::string {
+  return std::format("drop database '{}'", perm.name);
+}
+auto describe(auth::perms::SeeCollection const& perm) -> std::string {
+  return std::format("see collection '{}' in database '{}'", perm.name,
+                     perm.db);
+}
+auto describe(auth::perms::CreateCollection const& perm) -> std::string {
+  return std::format("create collection '{}' in database '{}'", perm.name,
+                     perm.db);
+}
+auto describe(auth::perms::DropCollection const& perm) -> std::string {
+  return std::format("drop collection '{}' in database '{}'", perm.name,
+                     perm.db);
+}
+auto describe(auth::perms::DumpCollection const& perm) -> std::string {
+  return std::format("dump collection '{}' in database '{}'", perm.name,
+                     perm.db);
+}
+auto describe(auth::perms::RestoreCollection const& perm) -> std::string {
+  return std::format("restore collection '{}' in database '{}' {} overwrite",
+                     perm.name, perm.db, perm.overwrite ? "with" : "without");
+}
+auto describe(auth::perms::RestoreCreateIndex const& perm) -> std::string {
+  return std::format(
+      "create index during restore on collection '{}' in database '{}'",
+      perm.collName, perm.db);
+}
+auto describe(auth::perms::RestoreCreateView const& perm) -> std::string {
+  return std::format(
+      "create view '{}' during restore in database '{}' with linked "
+      "collections [{}]",
+      perm.viewName, perm.db, joinQuoted(perm.linkedCollNames));
+}
+auto describe(auth::perms::RestoreDropView const& perm) -> std::string {
+  return std::format("drop view '{}' during restore in database '{}'",
+                     perm.viewName, perm.db);
+}
+auto describe(auth::perms::RestoreWriteData const& perm) -> std::string {
+  return std::format(
+      "write data during restore to collection '{}' in database '{}'",
+      perm.collName, perm.db);
+}
+auto describe(auth::perms::ModifyView const& perm) -> std::string {
+  return std::format(
+      "modify view '{}' in database '{}' with linked collections [{}]",
+      perm.name, perm.db, joinQuoted(perm.linkedCollections));
+}
+auto describe(auth::perms::DropView const& perm) -> std::string {
+  return std::format("drop view '{}' in database '{}'", perm.name, perm.db);
+}
+auto describe(auth::perms::SeeAnalyzer const& perm) -> std::string {
+  return std::format("see analyzer '{}' in database '{}'", perm.name, perm.db);
+}
+auto describe(auth::perms::CreateAnalyzer const& perm) -> std::string {
+  return std::format("create analyzer '{}' in database '{}'", perm.name,
+                     perm.db);
+}
+auto describe(auth::perms::DropAnalyzer const& perm) -> std::string {
+  return std::format("drop analyzer '{}' in database '{}'", perm.name, perm.db);
+}
+auto describe(auth::perms::SeeGraph const& perm) -> std::string {
+  return std::format("see graph '{}' in database '{}'", perm.name, perm.db);
+}
+auto describe(auth::perms::DropGraph const& perm) -> std::string {
+  return std::format("drop graph '{}' in database '{}' with collections [{}]",
+                     perm.name, perm.db, joinQuoted(perm.collectionNames));
+}
+auto describe(auth::perms::UseGraph const& perm) -> std::string {
+  return std::format("use graph '{}' in database '{}' with access level '{}'",
+                     perm.name, perm.db, to_string(perm.level));
+}
+auto describe(auth::perms::ReadUser const& perm) -> std::string {
+  return std::format("read user '{}'", perm.name);
+}
+auto describe(auth::perms::CreateUser const& perm) -> std::string {
+  return std::format("create user '{}'", perm.name);
+}
+auto describe(auth::perms::DropUser const& perm) -> std::string {
+  return std::format("drop user '{}'", perm.name);
+}
+auto describe(auth::perms::ModifyUserProfile const& perm) -> std::string {
+  return std::format("modify profile of user '{}'", perm.name);
+}
+auto describe(auth::perms::GrantUserPermissions const& perm) -> std::string {
+  return std::format("grant permissions to user '{}'", perm.name);
+}
 auto failureMessage(auto const& request, std::string_view reason)
     -> std::string {
-  return std::format("Failed to {}. {}", auth::perms::describe(request),
-                     reason);
+  return std::format("Failed to {}. {}", describe(request), reason);
 }
 auto accessLevelMismatchReason(std::string_view subject,
                                std::string_view resource, auth::Level required,
@@ -50,7 +250,7 @@ auto accessLevelMismatchReason(std::string_view subject,
   return std::format(
       "{} requires {} authentication level '{}' but it has only level "
       "'{}'.",
-      resource, auth::convertFromAuthLevel(required),
+      subject, resource, auth::convertFromAuthLevel(required),
       auth::convertFromAuthLevel(actual));
 }
 }  // namespace
