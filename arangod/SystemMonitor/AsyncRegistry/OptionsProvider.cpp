@@ -29,8 +29,8 @@ namespace arangodb::async_registry {
 
 using namespace arangodb::options;
 
-void OptionsProvider::declareOptions(std::shared_ptr<ProgramOptions> opts,
-                                     FeatureOptions& options) {
+void OptionsProvider::declareOptionsImpl(std::shared_ptr<ProgramOptions> opts,
+                                         FeatureOptions& options) {
   opts->addSection("async-registry", "Options for the async-registry");
 
   opts->addOption(

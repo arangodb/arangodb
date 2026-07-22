@@ -87,7 +87,6 @@ void ArangodServer::addFeatures() {
   addFeature<ActionFeature>();
   addFeature<AgencyFeature>();
   addFeature<AqlFeature>();
-  addFeature<async_registry::Feature>(_dataSourceRegistry);
   addFeature<activities::Feature>(_dataSourceRegistry);
 
 #ifdef TRI_HAVE_GETRLIMIT
@@ -195,6 +194,8 @@ void ArangodServer::addFeaturesWithOptionProvider() {
                           getOptions<TempOptionsProvider>());
   addFeature<ApiRecordingFeature>(_dataSourceRegistry, metrics,
                                   getOptions<ApiRecordingOptionsProvider>());
+  addFeature<async_registry::Feature>(
+      _dataSourceRegistry, getOptions<async_registry::OptionsProvider>());
 
 #ifdef USE_ENTERPRISE
   addFeature<SslServerFeature, SslServerFeatureEE>(
