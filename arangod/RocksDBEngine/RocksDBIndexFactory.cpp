@@ -460,7 +460,7 @@ struct VectorGraphIndexFactory : public DefaultIndexFactory {
       arangodb::LogicalCollection& collection,
       arangodb::velocypack::Slice definition, IndexId id,
       bool /*isClusterConstructor*/) const override {
-    return std::make_shared<vector_graph::VectorGraphIndex>(id, collection,
+    return std::make_shared<vector::VectorGraphIndex>(id, collection,
                                                             definition);
   }
 

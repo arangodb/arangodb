@@ -92,13 +92,13 @@ RocksDBVectorIndex const* EnumerateNearVectorsExecutor::resolveVectorIndex(
   return unwrapIndex<RocksDBVectorIndex>(index);
 }
 
-vector_graph::VectorGraphIndex const*
+vector::VectorGraphIndex const*
 EnumerateNearVectorsExecutor::resolveGraphIndex(Infos const& infos) {
   auto const* index = infos.index.get();
   if (index->type() != Index::TRI_IDX_TYPE_VECTOR_GRAPH_INDEX) {
     return nullptr;
   }
-  return unwrapIndex<vector_graph::VectorGraphIndex>(index);
+  return unwrapIndex<vector::VectorGraphIndex>(index);
 }
 
 void EnumerateNearVectorsExecutor::writeProjectionsFromDocument(

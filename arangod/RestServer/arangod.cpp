@@ -172,7 +172,7 @@ void ArangodServer::addFeatures(
   addFeature<RCloneFeature>();
   addFeature<HotBackupFeature>();
   addFeature<EncryptionFeature>();
-  addFeature<vector_graph::VectorGraphIndexFeature>();
+  addFeature<vector::VectorGraphIndexFeature>();
   addFeature<SslServerFeature, SslServerFeatureEE>();
 #else
   addFeature<SslServerFeature>();

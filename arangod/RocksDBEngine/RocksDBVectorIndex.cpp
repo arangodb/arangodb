@@ -273,7 +273,7 @@ bool RocksDBVectorIndex::getNormalizedVectorFromDocument(
     return false;
   }
   auto dim = vec.size();
-  if (_definition.metric == vector::SimilarityMetric::kCosine) {
+  if (_definition.metric == vector::Metric::kCosine) {
     faiss::fvec_renorm_L2(dim, 1, vec.data());
   }
   return true;
@@ -354,9 +354,8 @@ RocksDBVectorIndex::bruteForceSearch(
   auto* trx = ctx.trx;
   // auto const& projectionMode = config.strategy.projection;
 
-  bool const isDescending =
-      _definition.metric == vector::SimilarityMetric::kCosine ||
-      _definition.metric == vector::SimilarityMetric::kInnerProduct;
+  bool const isDescending = _definition.metric == vector::Metric::kCosine ||
+                            _definition.metric == vector::Metric::kInnerProduct;
 
   vector::Labels labels(topK, -1);
   vector::Distances distances(topK);
@@ -435,7 +434,7 @@ RocksDBVectorIndex::bruteForceSearch(
   }
 
   // L2: fvec_L2sqr returns squared distances, take sqrt
-  if (_definition.metric == vector::SimilarityMetric::kL2) {
+  if (_definition.metric == vector::Metric::kL2) {
     std::ranges::transform(distances, distances.begin(),
                            [](float d) { return std::sqrt(d); });
   }
@@ -456,7 +455,7 @@ vector::SearchResult RocksDBVectorIndex::readBatch(
       << config.topK << ", dimension: " << _definition.dimension
       << ", inputs size: " << inputs.size();
 
-  if (_definition.metric == vector::SimilarityMetric::kCosine) {
+  if (_definition.metric == vector::Metric::kCosine) {
     faiss::fvec_renorm_L2(_definition.dimension, 1, inputs.data());
   }
 
@@ -504,7 +503,7 @@ vector::SearchResult RocksDBVectorIndex::readBatch(
 
   // faiss returns squared distances for L2, square them so they are returned in
   // normal form
-  if (_definition.metric == vector::SimilarityMetric::kL2) {
+  if (_definition.metric == vector::Metric::kL2) {
     std::ranges::transform(result.distances, result.distances.begin(),
                            [](auto const& elem) { return std::sqrt(elem); });
   }
@@ -625,7 +624,7 @@ ResultT<std::vector<float>> RocksDBVectorIndex::preModificationCheck(
     return {};
   }
 
-  if (_definition.metric == vector::SimilarityMetric::kCosine) {
+  if (_definition.metric == vector::Metric::kCosine) {
     faiss::fvec_renorm_L2(_definition.dimension, 1, input.data());
   }
 

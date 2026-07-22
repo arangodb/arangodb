@@ -48,14 +48,13 @@ class LogicalCollection;
 
 namespace vector {
 
-inline faiss::MetricType metricToFaissMetric(
-    SimilarityMetric const metric) noexcept {
+inline faiss::MetricType metricToFaissMetric(Metric const metric) noexcept {
   switch (metric) {
-    case SimilarityMetric::kL2:
+    case Metric::kL2:
       return faiss::MetricType::METRIC_L2;
-    case SimilarityMetric::kCosine:
+    case Metric::kCosine:
       return faiss::MetricType::METRIC_INNER_PRODUCT;
-    case SimilarityMetric::kInnerProduct:
+    case Metric::kInnerProduct:
       return faiss::METRIC_INNER_PRODUCT;
   }
 }

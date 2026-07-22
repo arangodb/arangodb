@@ -36,6 +36,7 @@
 #include "Basics/overload.h"
 #include "Inspection/Status.h"
 #include "Inspection/Types.h"
+#include "VectorIndex/VectorIndexUtils.h"
 
 namespace arangodb::vector {
 
@@ -45,20 +46,6 @@ static constexpr std::uint64_t kdefaultNProbe{1};
 // Matches autofaiss's points_per_cluster default; lower than FAISS's
 // own max_points_per_centroid (256) to keep training memory in check.
 static constexpr std::uint64_t kdefaultNumberOfDocsPerCentroid{100};
-
-/// @brief Similarity metrics for vector index.
-enum class SimilarityMetric : std::uint8_t {
-  kL2,
-  kCosine,
-  kInnerProduct,
-};
-
-template<class Inspector>
-inline auto inspect(Inspector& f, SimilarityMetric& x) {
-  return f.enumeration(x).values(
-      SimilarityMetric::kL2, "l2", SimilarityMetric::kCosine, "cosine",
-      SimilarityMetric::kInnerProduct, "innerProduct");
-}
 
 struct TrainedData {
   std::vector<std::uint8_t> codeData;
@@ -264,7 +251,7 @@ inline std::string resolveFactoryString(std::string factoryString,
 
 struct UserVectorIndexDefinition {
   std::uint64_t dimension;
-  SimilarityMetric metric;
+  Metric metric;
   NListsParameter nLists;
   std::uint64_t trainingIterations;
 

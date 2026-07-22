@@ -37,11 +37,11 @@ inline bool checkFunctionNameMatchesIndexMetric(
     std::string_view functionName,
     vector::UserVectorIndexDefinition const& definition) {
   switch (definition.metric) {
-    case vector::SimilarityMetric::kL2:
+    case vector::Metric::kL2:
       return functionName == "APPROX_NEAR_L2";
-    case vector::SimilarityMetric::kCosine:
+    case vector::Metric::kCosine:
       return functionName == "APPROX_NEAR_COSINE";
-    case vector::SimilarityMetric::kInnerProduct:
+    case vector::Metric::kInnerProduct:
       return functionName == "APPROX_NEAR_INNER_PRODUCT";
   }
   return false;
@@ -50,10 +50,10 @@ inline bool checkFunctionNameMatchesIndexMetric(
 inline bool checkAscendingMatchesMetric(
     std::shared_ptr<Index> const& vectorIndex, bool ascending) {
   switch (vectorIndex->getVectorIndexDefinition().metric) {
-    case vector::SimilarityMetric::kL2:
+    case vector::Metric::kL2:
       return ascending;
-    case vector::SimilarityMetric::kCosine:
-    case vector::SimilarityMetric::kInnerProduct:
+    case vector::Metric::kCosine:
+    case vector::Metric::kInnerProduct:
       return !ascending;
   }
   // Not possible we handle all cases

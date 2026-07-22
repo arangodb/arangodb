@@ -164,11 +164,11 @@ std::shared_ptr<faiss::IndexIVF> VectorIndexTrainer::createFaissIndex(
   } else {
     auto quantizer = std::invoke([&]() -> std::unique_ptr<faiss::Index> {
       switch (def.metric) {
-        case SimilarityMetric::kL2:
+        case Metric::kL2:
           return std::make_unique<faiss::IndexFlatL2>(def.dimension);
-        case SimilarityMetric::kCosine:
+        case Metric::kCosine:
           return std::make_unique<faiss::IndexFlatIP>(def.dimension);
-        case SimilarityMetric::kInnerProduct:
+        case Metric::kInnerProduct:
           return std::make_unique<faiss::IndexFlatIP>(def.dimension);
       }
     });
@@ -294,7 +294,7 @@ VectorIndexTrainer::collectTrainingDataset(rocksdb::Iterator& it,
 
   auto trainingData = std::move(sampler).release();
   std::size_t const finalCount = trainingData.size() / def.dimension;
-  if (def.metric == SimilarityMetric::kCosine) {
+  if (def.metric == Metric::kCosine) {
     faiss::fvec_renorm_L2(def.dimension, finalCount, trainingData.data());
   }
 
@@ -527,7 +527,7 @@ Result ingestVectors(RocksDBVectorIndex& index, rocksdb::DB* rootDB,
 
         documentIterator->Next();
         if (batch->docIds.size() == documentPerBatch) {
-          if (definition.metric == SimilarityMetric::kCosine) {
+          if (definition.metric == Metric::kCosine) {
             faiss::fvec_renorm_L2(dim, batch->docIds.size(),
                                   batch->vectors.data());
           }
@@ -543,7 +543,7 @@ Result ingestVectors(RocksDBVectorIndex& index, rocksdb::DB* rootDB,
       }
 
       if (batch && !batch->docIds.empty()) {
-        if (definition.metric == SimilarityMetric::kCosine) {
+        if (definition.metric == Metric::kCosine) {
           faiss::fvec_renorm_L2(dim, batch->docIds.size(),
                                 batch->vectors.data());
         }

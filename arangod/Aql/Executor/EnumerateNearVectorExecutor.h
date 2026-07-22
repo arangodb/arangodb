@@ -45,7 +45,7 @@ namespace arangodb {
 class RocksDBVectorIndex;
 }
 
-namespace arangodb::vector_graph {
+namespace arangodb::vector {
 class VectorGraphIndex;
 }
 
@@ -136,14 +136,14 @@ class EnumerateNearVectorsExecutor {
   // RocksDBBuilderIndex during construction). Exactly one of the two returns
   // non-nullptr, depending on the index type.
   static RocksDBVectorIndex const* resolveVectorIndex(Infos const& infos);
-  static vector_graph::VectorGraphIndex const* resolveGraphIndex(
+  static vector::VectorGraphIndex const* resolveGraphIndex(
       Infos const& infos);
 
   Infos const& _infos;
   transaction::Methods _trx;
   aql::Collection const* _collection;
   RocksDBVectorIndex const* _vectorIndex;
-  vector_graph::VectorGraphIndex const* _graphIndex;
+  vector::VectorGraphIndex const* _graphIndex;
 
   InputAqlItemRow _inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
   std::vector<float> _inputRowConverted;

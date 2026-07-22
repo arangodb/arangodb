@@ -210,7 +210,7 @@ bool IndexTypeFactory::equal(Index::IndexType type, velocypack::Slice lhs,
     }
   } else if (Index::IndexType::TRI_IDX_TYPE_VECTOR_GRAPH_INDEX == type) {
     // check if the parameters (dimension, metric) are the same
-    if (!vectorParamsEqual<vector_graph::Definition>(lhs, rhs)) {
+    if (!vectorParamsEqual<vector::Definition>(lhs, rhs)) {
       return false;
     }
   }
@@ -993,7 +993,7 @@ Result IndexFactory::enhanceJsonIndexVectorGraph(
     return {TRI_ERROR_BAD_PARAMETER, "Vector graph index cannot be unique"};
   }
 
-  vector_graph::Definition params;
+  vector::Definition params;
   if (auto const status =
           velocypack::deserializeWithStatus(definition.get("params"), params);
       !status.ok()) {

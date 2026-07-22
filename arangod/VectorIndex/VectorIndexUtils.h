@@ -25,13 +25,28 @@
 
 #include "Basics/AttributeNameParser.h"
 #include "Basics/Result.h"
+#include "Inspection/Types.h"
 
 #include <velocypack/Slice.h>
 
 #include <cstddef>
+#include <cstdint>
 #include <vector>
 
 namespace arangodb::vector {
+
+// Distance metric shared by the IVF vector index and the vector-graph index.
+enum class Metric : std::uint8_t {
+  kL2,
+  kCosine,
+  kInnerProduct,
+};
+
+template<class Inspector>
+inline auto inspect(Inspector& f, Metric& x) {
+  return f.enumeration(x).values(Metric::kL2, "l2", Metric::kCosine, "cosine",
+                                 Metric::kInnerProduct, "innerProduct");
+}
 
 // Reads the vector stored under the index's first attribute path from `doc` and
 // appends its components to `output`. Fails if the field is absent, is not an
