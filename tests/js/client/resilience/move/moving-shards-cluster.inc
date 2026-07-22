@@ -32,7 +32,6 @@ const _ = require("lodash");
 const internal = require("internal");
 const {errors, wait} = internal;
 const supervisionState = require("@arangodb/testutils/cluster-test-helper").supervisionState;
-const queryAgencyJob = require("@arangodb/testutils/cluster-test-helper").queryAgencyJob;
 const CI = require('@arangodb/cluster-info');
 const { deriveTestSuite, versionHas } = require('@arangodb/test-helper-common');
 const isCov = versionHas('coverage');
@@ -50,6 +49,10 @@ const numDocuments = 1000;
 
 const dbservers = IM.getInstancesRole(instanceRole.dbserver);
 var moveShardTimeout = (isCov)? 18000 : 600; // seconds
+
+function queryAgencyJob(id) {
+  return  arango.GET(`/_admin/cluster/queryAgencyJob?id=${id}`);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -1054,7 +1057,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       assertTrue(waitForSupervision());
       var job = queryAgencyJob(id);
       assertEqual(job.status, "Failed");
-      assertEqual(job.abort);
+      assertTrue(job.abort);
       checkCollectionContents();
     },
 
@@ -1089,9 +1092,10 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
         while (queryAgencyJob(id).status === "Pending") { // wait for job to be killed
           wait(isCov ? 1 : 0.1);
         }
+
         var job = queryAgencyJob(id);
         assertEqual(job.status, "Failed");
-        assertEqual(job.abort);
+        assertTrue(job.abort);
         assertTrue(waitForSupervision());
         checkCollectionContents(otherNumDocuments);
       }
@@ -1134,7 +1138,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
         }
         var job = queryAgencyJob(id);
         assertEqual(job.status, "Failed");
-        assertEqual(job.abort);
+        assertTrue(job.abort);
         assertTrue(waitForSupervision());
         checkCollectionContents(otherNumDocuments);
       }
@@ -1162,12 +1166,12 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       let id = result.parsedBody.id;
       assertTrue(cancelAgencyJob(id));
       assertTrue(maintenanceMode("off"));
-      while (queryAgencyJob(result.parsedBody.id).status === "ToDo") { // wait for job to be killed
+      while (queryAgencyJob(id).status === "ToDo") { // wait for job to be killed
         wait(isCov ? 2 : 0.1);
       }
-      var job = queryAgencyJob(result.parsedBody.id);
+      var job = queryAgencyJob(id);
       assertEqual(job.status, "Failed");
-      assertEqual(job.abort);
+      assertTrue(job.abort);
       assertTrue(waitForSupervision());
       checkCollectionContents();
     },
@@ -1197,16 +1201,16 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
         let result = cleanOutServer(fromServer, true);
         assertEqual(result.code, 202);
         let id = result.parsedBody.id;
-        while (queryAgencyJob(result.parsedBody.id).status === "ToDo") { // wait for job to start
+        while (queryAgencyJob(id).status === "ToDo") { // wait for job to start
           wait(isCov ? 2 : 0.1);
         }
         assertTrue(cancelAgencyJob(id));
-        while (queryAgencyJob(result.parsedBody.id).status === "Pending") { // wait for job to be killed
+        while (queryAgencyJob(id).status === "Pending") { // wait for job to be killed
           wait(isCov ? 2 : 0.1);
         }
-        var job = queryAgencyJob(result.parsedBody.id);
+        var job = queryAgencyJob(id);
         assertEqual(job.status, "Failed");
-        assertEqual(job.abort);
+        assertTrue(job.abort);
         assertTrue(waitForSupervision());
         checkCollectionContents(otherNumDocuments);
       }

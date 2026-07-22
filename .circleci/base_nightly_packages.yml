@@ -540,6 +540,12 @@ jobs:
           root: /tmp/nightly
           paths:
             - "*"
+      - store_artifacts:
+          path: /tmp/nightly/sourceInfo.log
+          destination: sourceInfo.log
+      - store_artifacts:
+          path: /tmp/nightly/sourceInfo.json
+          destination: sourceInfo.json
 
   # ── Static compilation ──────────────────────────────────────────────────────
   compile-nightly:
