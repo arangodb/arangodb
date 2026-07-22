@@ -22,6 +22,7 @@
 
 #pragma once
 
+#include <map>
 #include <memory>
 #include <shared_mutex>
 #include <string>
