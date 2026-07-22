@@ -44,6 +44,15 @@ auto failureMessage(auto const& request, std::string_view reason)
   return std::format("Failed to {}. {}", auth::perms::describe(request),
                      reason);
 }
+auto accessLevelMismatchReason(std::string_view subject,
+                               std::string_view resource, auth::Level required,
+                               auth::Level actual) -> std::string {
+  return std::format(
+      "{} requires {} authentication level '{}' but it has only level "
+      "'{}'.",
+      resource, auth::convertFromAuthLevel(required),
+      auth::convertFromAuthLevel(actual));
+}
 }  // namespace
 
 auto AuthMode::getIAuth() -> AuthMode::IAuth& {
@@ -173,7 +182,9 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
             } else {
               return {TRI_ERROR_FORBIDDEN,
                       failureMessage(database,
-                                     "Insufficient database access level.")};
+                                     accessLevelMismatchReason(
+                                         "Request", "database", requestedLevel,
+                                         effectiveLevel))};
             }
           },
           [&](p::UseCollection const& collection) -> Result {
@@ -189,17 +200,33 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
                 if (requestedLevel == auth::Level::NONE) {
                   return {};
                 }
-                return {TRI_ERROR_FORBIDDEN,
-                        failureMessage(collection, "Access is restricted.")};
+                return {
+                    TRI_ERROR_FORBIDDEN,
+                    failureMessage(
+                        collection,
+                        std::format(
+                            "Request requires collection authentication "
+                            "level '{}' but {} collection can only be "
+                            "accessed with level '{}'",
+                            auth::convertFromAuthLevel(requestedLevel),
+                            StaticStrings::UsersCollection,
+                            auth::convertFromAuthLevel(auth::Level::NONE)))};
               }
               // _queues: read-only for everyone.
               if (collection.name == StaticStrings::QueuesCollection) {
                 if (requestedLevel <= auth::Level::RO) {
                   return {};
                 }
-                return {
-                    TRI_ERROR_FORBIDDEN,
-                    failureMessage(collection, "Write access is restricted.")};
+                return {TRI_ERROR_FORBIDDEN,
+                        failureMessage(
+                            collection,
+                            std::format(
+                                "Request requires collection authentication "
+                                "level '{}' but {} collection can only be "
+                                "accessed with at least level '{}'",
+                                auth::convertFromAuthLevel(requestedLevel),
+                                StaticStrings::QueuesCollection,
+                                auth::convertFromAuthLevel(auth::Level::RO)))};
               }
               // _frontend: full access for everyone.
               if (collection.name == StaticStrings::FrontendCollection) {
@@ -225,12 +252,16 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
               if (requestedLevel == arangodb::auth::Level::RW &&
                   effectiveLevel == arangodb::auth::Level::RO) {
                 return {TRI_ERROR_ARANGO_READ_ONLY,
-                        failureMessage(collection, "Collection is read-only.")};
+                        failureMessage(collection,
+                                       accessLevelMismatchReason(
+                                           "Request", "collection",
+                                           requestedLevel, effectiveLevel))};
               } else {
                 return {TRI_ERROR_FORBIDDEN,
                         failureMessage(collection,
-                                       "Insufficient collection access "
-                                       "level.")};
+                                       accessLevelMismatchReason(
+                                           "Request", "collection",
+                                           requestedLevel, effectiveLevel))};
               }
             }
 
@@ -241,9 +272,12 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
               auto const dbLevel = effectiveDatabaseAuthLevel(collection.db);
               if (dbLevel < auth::Level::RW) {
                 return {TRI_ERROR_FORBIDDEN,
-                        failureMessage(collection,
-                                       "Insufficient database access level for "
-                                       "write-meta operation.")};
+                        failureMessage(
+                            collection,
+                            accessLevelMismatchReason(
+                                std::format("Collection access level '{}'",
+                                            to_string(collection.level)),
+                                "database", auth::Level::RW, dbLevel))};
               }
             }
 
@@ -339,8 +373,11 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
                       "view not accessible: '" + view.name + "' in database '" +
                           view.db + "'"};
             } else {
-              return {TRI_ERROR_FORBIDDEN,
-                      failureMessage(view, "Insufficient access level.")};
+              return {
+                  TRI_ERROR_FORBIDDEN,
+                  failureMessage(view, accessLevelMismatchReason(
+                                           "Request", "view", requestedLevel,
+                                           effectiveLevel))};
             }
           },
           [&](p::UseAnalyzer const& analyzer) -> Result {
@@ -412,26 +449,28 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
               return {};
             }
             return {TRI_ERROR_FORBIDDEN,
-                    failureMessage(view, "Insufficient access level.")};
+                    failureMessage(view, accessLevelMismatchReason(
+                                             "View", "database",
+                                             auth::Level::RO, effectiveLevel))};
           },
           [&](p::CreateView const& view) -> Result {
             // Creating a view requires RW access to the database.
             if (auto r =
                     check(p::UseDatabase{view.db, DatabaseAccessLevel::Write});
-                !r.ok()) {
+                r.fail()) {
               return r;
             }
             // Also check read access to all linked collections.
             for (auto const& coll : view.linkedCollections) {
               if (auto r = check(p::UseCollection{view.db, coll,
                                                   CollectionAccessLevel::Read});
-                  !r.ok()) {
+                  r.fail()) {
                 return Result(
                     TRI_ERROR_FORBIDDEN,
                     failureMessage(view,
                                    std::format("Insufficient access to linked "
-                                               "collection '{}'.",
-                                               coll)));
+                                               "collection '{}': {}",
+                                               coll, r.errorMessage())));
               }
             }
             return {};
@@ -596,12 +635,10 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
 Result AuthMode::Classic::isAdmin() const {
   auto r = check(auth::perms::UseDatabase{.name = StaticStrings::SystemDatabase,
                                           .level = DatabaseAccessLevel::Write});
-  return r.ok()
-             ? Result{}
-             : Result{
-                   TRI_ERROR_FORBIDDEN,
-                   "Failed admin-permission check. Missing RW permissions on "
-                   "'_system' database."};
+  return r.ok() ? Result{}
+                : Result{TRI_ERROR_FORBIDDEN,
+                         std::format("Failed admin-permission check: {}",
+                                     r.errorMessage())};
 }
 
 auto AuthMode::Rbac::username() const noexcept -> std::string_view {
