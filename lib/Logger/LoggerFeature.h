@@ -45,7 +45,8 @@ class LoggerFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() { return "Logger"; }
 
-  LoggerFeature(application_features::ApplicationServer& server, LoggerOptions options);
+  LoggerFeature(application_features::ApplicationServer& server,
+                LoggerOptions options);
   LoggerFeature(application_features::ApplicationServer& server, bool threaded);
 
   ~LoggerFeature();
