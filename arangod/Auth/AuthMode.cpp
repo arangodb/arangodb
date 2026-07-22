@@ -910,12 +910,65 @@ auto AuthMode::Rbac::check(auth::Permission permission) const -> Result {
             }
             return {};
           },
+          // -- Dump / Restore --------------------------------------------
+          // These mirror the classic delegations, minus the classic-only
+          // "_system RW" admin bypass -- under RBAC that access is granted
+          // through roles rather than a hard-coded exception.
+          [&](p::DumpCollection const& collection) -> Result {
+            // Dumping reads collection data.
+            return check(p::UseCollection{collection.db, collection.name,
+                                          CollectionAccessLevel::Read});
+          },
+          [&](p::RestoreCollection const& collection) -> Result {
+            // Restoring writes collection data; with `overwrite` the
+            // collection is dropped and recreated first.
+            if (collection.overwrite) {
+              if (auto r =
+                      check(p::DropCollection{collection.db, collection.name});
+                  !r.ok()) {
+                return r;
+              }
+              return check(
+                  p::CreateCollection{collection.db, collection.name});
+            }
+            return check(p::UseCollection{collection.db, collection.name,
+                                          CollectionAccessLevel::WriteData});
+          },
+          [&](p::RestoreCreateIndex const& idx) -> Result {
+            return check(p::UseCollection{idx.db, idx.collName,
+                                          CollectionAccessLevel::WriteMeta});
+          },
+          [&](p::RestoreCreateView const& view) -> Result {
+            return check(
+                p::CreateView{view.db, view.viewName, view.linkedCollNames});
+          },
+          [&](p::RestoreDropView const& view) -> Result {
+            return check(p::DropView{view.db, view.viewName});
+          },
+          [&](p::RestoreWriteData const& data) -> Result {
+            return check(p::UseCollection{data.db, data.collName,
+                                          CollectionAccessLevel::WriteData});
+          },
           // -- Users -----------------------------------------------------
+          // Each user operation maps to the identically-scoped action on the
+          // db:user:<name> resource.
           [&](p::ReadUser const& user) -> Result {
             return _rbacService.check(_jwtToken, rbac::Action::Read,
                                       rbac::resources::User{user.name});
           },
-          [&](p::WriteUser const& user) -> Result {
+          [&](p::CreateUser const& user) -> Result {
+            return _rbacService.check(_jwtToken, rbac::Action::Create,
+                                      rbac::resources::User{user.name});
+          },
+          [&](p::DropUser const& user) -> Result {
+            return _rbacService.check(_jwtToken, rbac::Action::Drop,
+                                      rbac::resources::User{user.name});
+          },
+          [&](p::ModifyUserProfile const& user) -> Result {
+            return _rbacService.check(_jwtToken, rbac::Action::WriteMeta,
+                                      rbac::resources::User{user.name});
+          },
+          [&](p::GrantUserPermissions const& user) -> Result {
             return _rbacService.check(_jwtToken, rbac::Action::WriteMeta,
                                       rbac::resources::User{user.name});
           },

@@ -358,9 +358,72 @@ TEST_F(RbacAuthModeTest, ReadUser) {
   expectSingle(rbac::Action::Read, "user:alice");
 }
 
-TEST_F(RbacAuthModeTest, WriteUser) {
-  check(p::WriteUser{.name = "alice"});
+TEST_F(RbacAuthModeTest, CreateUser) {
+  check(p::CreateUser{.name = "alice"});
+  expectSingle(rbac::Action::Create, "user:alice");
+}
+
+TEST_F(RbacAuthModeTest, DropUser) {
+  check(p::DropUser{.name = "alice"});
+  expectSingle(rbac::Action::Drop, "user:alice");
+}
+
+TEST_F(RbacAuthModeTest, ModifyUserProfile) {
+  check(p::ModifyUserProfile{.name = "alice"});
   expectSingle(rbac::Action::WriteMeta, "user:alice");
+}
+
+TEST_F(RbacAuthModeTest, GrantUserPermissions) {
+  check(p::GrantUserPermissions{.name = "alice"});
+  expectSingle(rbac::Action::WriteMeta, "user:alice");
+}
+
+// ---------------------------------------------------------------------------
+// Dump / Restore (delegate to the collection/view permissions)
+// ---------------------------------------------------------------------------
+
+TEST_F(RbacAuthModeTest, DumpCollection) {
+  check(p::DumpCollection{.db = "mydb", .name = "c"});
+  expectSingle(rbac::Action::Read, "collection:mydb:c");
+}
+
+TEST_F(RbacAuthModeTest, RestoreWriteData) {
+  check(p::RestoreWriteData{.db = "mydb", .collName = "c"});
+  expectSingle(rbac::Action::WriteData, "collection:mydb:c");
+}
+
+TEST_F(RbacAuthModeTest, RestoreCreateIndex) {
+  check(p::RestoreCreateIndex{.db = "mydb", .collName = "c"});
+  expectSingle(rbac::Action::WriteMeta, "collection:mydb:c");
+}
+
+TEST_F(RbacAuthModeTest, RestoreDropView) {
+  check(p::RestoreDropView{.db = "mydb", .viewName = "v"});
+  expectSingle(rbac::Action::Drop, "view:mydb:v");
+}
+
+TEST_F(RbacAuthModeTest, RestoreCollectionWithoutOverwriteWritesData) {
+  check(p::RestoreCollection{.db = "mydb", .name = "c", .overwrite = false});
+  expectSingle(rbac::Action::WriteData, "collection:mydb:c");
+}
+
+TEST_F(RbacAuthModeTest, RestoreCollectionWithOverwriteDropsThenCreates) {
+  check(p::RestoreCollection{.db = "mydb", .name = "c", .overwrite = true});
+  ASSERT_EQ(svc.queries.size(), 2u);
+  EXPECT_EQ(svc.queries[0].action, rbac::Action::Drop);
+  EXPECT_EQ(svc.queries[0].resource, "collection:mydb:c");
+  EXPECT_EQ(svc.queries[1].action, rbac::Action::Create);
+  EXPECT_EQ(svc.queries[1].resource, "collection:mydb:c");
+}
+
+TEST_F(RbacAuthModeTest, RestoreCreateViewChecksViewThenLinkedCollections) {
+  check(p::RestoreCreateView{
+      .db = "mydb", .viewName = "v", .linkedCollNames = {"c1"}});
+  ASSERT_EQ(svc.queries.size(), 2u);
+  EXPECT_EQ(svc.queries[0].action, rbac::Action::Create);
+  EXPECT_EQ(svc.queries[0].resource, "view:mydb:v");
+  EXPECT_EQ(svc.queries[1].action, rbac::Action::Read);
+  EXPECT_EQ(svc.queries[1].resource, "collection:mydb:c1");
 }
 
 // ---------------------------------------------------------------------------
