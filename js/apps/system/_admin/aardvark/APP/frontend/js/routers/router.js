@@ -57,7 +57,6 @@
       'node/:name': 'node',
       'nodeInfo/:id': 'nodeInfo',
       'logs': 'logger',
-      'helpus': 'helpUs',
       'views': 'views',
       'view/:name': 'views',
       'graph/:name': 'graph',
@@ -927,17 +926,6 @@
           userConfig: this.userConfig
         });
         this.graphSettingsView.render();
-      });
-    },
-
-    helpUs: function () {
-      this.checkUser();
-
-      this.init.then(() => {
-        if (!this.testView) {
-          this.helpUsView = new window.HelpUsView({});
-        }
-        this.helpUsView.render();
       });
     },
 
