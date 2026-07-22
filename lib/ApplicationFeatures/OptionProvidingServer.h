@@ -44,13 +44,15 @@ class OptionProvidingServer : public application_features::ApplicationServer {
   }
 
   void validateOptions() override {
-    // Validate provider-owned options *before* features. Providers own the
-    // command options (e.g. --version / --version-json) that must print and
-    // exit early. If features validated first, a feature such as
-    // V8DealerFeature could abort (FATAL "no javascript.startup-directory")
-    // before --version had a chance to short-circuit. This mirrors the
-    // pre-migration behavior where VersionFeature validated early in the
-    // feature dependency order.
+    // This inverted order (provider.validateOptions() ->
+    // feature.validateOptions()) is intentional. For example,
+    // VersionOptionsProvider.validateOptions() has to be called before
+    // V8DealerFeature.validateOptions() to ensure `--version` command is
+    // printed and the server exits early. Otherwise,
+    // V8DealerFeature.validateOptions() will abort (FATAL "no
+    // javascript.startup-directory").
+    // TODO: Find the right declaration order in the tuple of providers (at
+    // least VersionOptionsProvider comes before V8DealerOptionsProvider).
     _optionProviders.validateOptions(options());
     ApplicationServer::validateOptions();
   }

@@ -81,6 +81,9 @@ UpgradeFeature::UpgradeFeature(
   }
   LOG_TOPIC("23525", INFO, arangodb::Logger::FIXME)
       << "executing upgrade procedure: disabling server features";
+
+  // if we run the upgrade, we need to disable a few features that may get
+  // in the way...
   if (ServerState::instance()->isCoordinator()) {
 #ifdef ARANGODB_HAVE_FORK
     server.forceDisableFeatures<DaemonFeature>();

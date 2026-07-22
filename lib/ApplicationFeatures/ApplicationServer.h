@@ -374,7 +374,7 @@ class ApplicationServer {
   void reportServerProgress(State);
   void reportFeatureProgress(State, std::string_view);
 
-  virtual void loadAdditionalOptions(){}
+  virtual void loadAdditionalOptions() {}
 
  protected:
   // application features
