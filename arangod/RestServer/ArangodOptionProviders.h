@@ -2,6 +2,7 @@
 
 #include "ApplicationFeatures/CoreOptionProviders.h"
 #include "ApplicationFeatures/LanguageOptionsProvider.h"
+#include "ApplicationFeatures/TempOptionsProvider.h"
 #include "RestServer/CheckVersionOptionsProvider.h"
 #include "RestServer/CrashHandlerOptionsProvider.h"
 #include "RestServer/DatabasePathOptionsProvider.h"
@@ -20,7 +21,7 @@
 #include "RocksDBEngine/RocksDBEngineOptionsProvider.h"
 
 namespace arangodb {
-// arangod/RestServer/ArangodOptionProviders.h
+
 using ArangodOptionProviders = CoreOptionProviders<
     check_version::CheckVersionOptionsProvider,
     crash_handler::CrashHandlerOptionsProvider, DatabasePathOptionsProvider,
@@ -30,5 +31,7 @@ using ArangodOptionProviders = CoreOptionProviders<
     MaxMapCountOptionsProvider, NonceOptionsProvider,
     RocksDBEngineOptionsProvider, RocksDBIndexCacheRefillOptionsProvider,
     RocksDBOptionFeatureOptionsProvider, ServerOptionsProvider,
-    TemporaryStorageOptionsProvider, UpgradeOptionsProvider>;
+    TempOptionsProvider, TemporaryStorageOptionsProvider,
+    UpgradeOptionsProvider>;
+
 }  // namespace arangodb

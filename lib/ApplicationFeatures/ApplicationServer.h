@@ -346,7 +346,7 @@ class ApplicationServer {
   virtual void validateOptions();
 
   // adds the features that receive their options as a c-tor dependency.
-  virtual void addFeaturesWithOptionProvider() {};
+  virtual void addFeaturesWithOptionProvider(){};
 
   // allows process control
   void daemonize();
@@ -374,7 +374,7 @@ class ApplicationServer {
   void reportServerProgress(State);
   void reportFeatureProgress(State, std::string_view);
 
-  virtual void loadAdditionalOptions() { /* no-op virtual */ }
+  virtual void loadAdditionalOptions(){}
 
  protected:
   // application features

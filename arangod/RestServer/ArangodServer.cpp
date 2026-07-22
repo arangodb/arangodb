@@ -156,7 +156,6 @@ void ArangodServer::addFeatures() {
   addFeature<SoftShutdownFeature>();
   addFeature<SslFeature>();
   addFeature<StatisticsFeature>(metrics);
-  addFeature<TempFeature>(std::string{_binaryName});
   addFeature<TtlFeature>();
   addFeature<transaction::ManagerFeature>(metrics);
   addFeature<ViewTypesFeature>();
@@ -202,6 +201,8 @@ void ArangodServer::addFeaturesWithOptionProvider() {
   addFeature<VersionFeature>(getOptions<VersionOptionsProvider>());
   addFeature<LoggerFeature>(true, getOptions<LoggerOptionsProvider>());
   addFeature<ConfigFeature>(_binaryName, getOptions<ConfigOptionsProvider>());
+  addFeature<TempFeature>(std::string{_binaryName},
+                          getOptions<TempOptionsProvider>());
   addFeature<RandomFeature>(getOptions<RandomOptionsProvider>());
   addFeature<NonceFeature>(getOptions<NonceOptionsProvider>());
   addFeature<MaxMapCountFeature>(getOptions<MaxMapCountOptionsProvider>());
