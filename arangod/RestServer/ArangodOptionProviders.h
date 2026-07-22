@@ -8,6 +8,7 @@
 #include "GeneralServer/GeneralServerOptionsProvider.h"
 #include "GeneralServer/SslServerOptionsProvider.h"
 #include "Network/NetworkOptionsProvider.h"
+#include "RestServer/ApiRecordingOptionsProvider.h"
 #include "RestServer/CheckVersionOptionsProvider.h"
 #include "RestServer/CrashHandlerOptionsProvider.h"
 #include "RestServer/DaemonOptionsProvider.h"
@@ -47,7 +48,8 @@
 namespace arangodb {
 
 using ArangodOptionProviders = CoreOptionProviders<
-    AuthenticationOptionsProvider, check_version::CheckVersionOptionsProvider,
+    AuthenticationOptionsProvider, ApiRecordingOptionsProvider,
+    check_version::CheckVersionOptionsProvider,
     crash_handler::CrashHandlerOptionsProvider, DatabasePathOptionsProvider,
     DumpLimitsOptionsProvider, EndpointOptionsProvider, FlushOptionsProvider,
     fortune::FortuneOptionsProvider, GeneralServerOptionsProvider,

@@ -86,7 +86,6 @@ void ArangodServer::addFeatures() {
   addFeature<metrics::ClusterMetricsFeature>();
   addFeature<ActionFeature>();
   addFeature<AgencyFeature>();
-  addFeature<ApiRecordingFeature>(_dataSourceRegistry, metrics);
   addFeature<AqlFeature>();
   addFeature<async_registry::Feature>(_dataSourceRegistry);
   addFeature<activities::Feature>(_dataSourceRegistry);
@@ -194,6 +193,8 @@ void ArangodServer::addFeaturesWithOptionProvider() {
   addFeature<ConfigFeature>(_binaryName, getOptions<ConfigOptionsProvider>());
   addFeature<TempFeature>(std::string{_binaryName},
                           getOptions<TempOptionsProvider>());
+  addFeature<ApiRecordingFeature>(_dataSourceRegistry, metrics,
+                                  getOptions<ApiRecordingOptionsProvider>());
 
 #ifdef USE_ENTERPRISE
   addFeature<SslServerFeature, SslServerFeatureEE>(
