@@ -31,51 +31,11 @@ auto Backend::evaluateTokenMany(Backend::JwtToken const& jwtToken,
                                transaction::MethodsApi::Asynchronous);
 }
 
-auto Backend::evaluateMany(Backend::PlainUser const& user,
-                           Backend::RequestItems const& items)
-    -> futures::Future<ResultT<EvaluateResponseMany>> {
-  return evaluateManyImpl(user, items, transaction::MethodsApi::Asynchronous);
-}
-
-auto Backend::evaluateToken(Backend::JwtToken const& jwtToken,
-                            Backend::RequestItem const& item)
-    -> futures::Future<ResultT<EvaluateResponse>> {
-  return evaluateTokenImpl(jwtToken, item,
-                           transaction::MethodsApi::Asynchronous);
-}
-
-auto Backend::evaluate(Backend::PlainUser const& user,
-                       Backend::RequestItem const& item)
-    -> futures::Future<ResultT<EvaluateResponse>> {
-  return evaluateImpl(user, item, transaction::MethodsApi::Asynchronous);
-}
-
 auto Backend::evaluateTokenManySync(Backend::JwtToken const& jwtToken,
                                     Backend::RequestItems const& items)
     -> ResultT<EvaluateResponseMany> {
   return evaluateTokenManyImpl(jwtToken, items,
                                transaction::MethodsApi::Synchronous)
-      .waitAndGet();
-}
-
-auto Backend::evaluateManySync(Backend::PlainUser const& user,
-                               Backend::RequestItems const& items)
-    -> ResultT<EvaluateResponseMany> {
-  return evaluateManyImpl(user, items, transaction::MethodsApi::Synchronous)
-      .waitAndGet();
-}
-
-auto Backend::evaluateTokenSync(Backend::JwtToken const& jwtToken,
-                                Backend::RequestItem const& item)
-    -> ResultT<EvaluateResponse> {
-  return evaluateTokenImpl(jwtToken, item, transaction::MethodsApi::Synchronous)
-      .waitAndGet();
-}
-
-auto Backend::evaluateSync(Backend::PlainUser const& user,
-                           Backend::RequestItem const& item)
-    -> ResultT<EvaluateResponse> {
-  return evaluateImpl(user, item, transaction::MethodsApi::Synchronous)
       .waitAndGet();
 }
 

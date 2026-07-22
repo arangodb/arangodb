@@ -22,48 +22,16 @@
 
 #pragma once
 
-#include "Async/async.h"
 #include "Auth/Rbac/Actions.h"
-#include "Basics/ResultT.h"
+#include "Basics/Result.h"
 
 #include <span>
-#include <string>
-#include <variant>
-#include <vector>
+#include <string_view>
 
 namespace arangodb::rbac {
 
 struct Service {
   virtual ~Service() = default;
-
-  struct User {
-    std::string jwtToken;
-  };
-
-  struct AuthorizationQuery {
-    std::string action;
-    std::string resource;
-  };
-
-  // Translates a Category into the corresponding authorization query.
-  // Currently each Category maps to exactly one AuthorizationQuery.
-  static auto toAuthorizationQueries(Category::Any const& category)
-      -> std::vector<AuthorizationQuery>;
-
-  auto may(User user, Category::Any const& category) noexcept
-      -> async<ResultT<bool>>;
-
-  auto maySync(User user, Category::Any const& category) noexcept
-      -> ResultT<bool>;
-
-  // TODO We might want to change the return type in a way that it reports
-  //      which permission(s) are missing, in order to give a proper error
-  //      message to the user.
-  auto mayAll(User user, std::vector<Category::Any> categories) noexcept
-      -> async<ResultT<bool>>;
-
-  auto mayAllSync(User user, std::vector<Category::Any> categories) noexcept
-      -> ResultT<bool>;
 
   using Token = std::string_view;
 
@@ -78,14 +46,6 @@ struct Service {
   virtual auto check(Token token,
                      std::span<ActionResource const> queries) noexcept
       -> Result;
-
- private:
-  virtual auto mayImpl(User user,
-                       std::vector<AuthorizationQuery> queries) noexcept
-      -> async<ResultT<bool>> = 0;
-  virtual auto maySyncImpl(User user,
-                           std::vector<AuthorizationQuery> queries) noexcept
-      -> ResultT<bool> = 0;
 };
 
 }  // namespace arangodb::rbac
