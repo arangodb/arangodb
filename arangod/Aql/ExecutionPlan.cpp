@@ -2444,27 +2444,42 @@ ExecutionNode* ExecutionPlan::fromNodeMatch(ExecutionNode* previous,
     auto variable =
         static_cast<Variable const*>(member->getMember(0)->getData());
 
-    auto projections = member->getMember(4);
+    // Vertices store projections at member 4 and edges store them at member 6
+    // (appended after direction/range by createPatternEdge).
+    AstNode const* projections = nullptr;
+    bool const isEdge = member->type == NODE_TYPE_PATTERN_EDGE;
+    if (isEdge) {
+      ADB_PROD_ASSERT(member->numMembers() > 6)
+          << "pattern edge missing projection member";
+      projections = member->getMember(6);
+    } else {
+      projections = member->getMember(4);
+    }
 
     if (projections->type != NODE_TYPE_NOP) {
       auto* root = _ast->createNodeObject();
 
       auto* ref = _ast->createNodeReference(fullDocumentVar);
 
-      auto* attrAccess = _ast->createNodeAttributeAccess(  //
-          ref,                                             //
-          "_id");                                          //
-      auto* elt = _ast->createNodeObjectElement("_id", attrAccess);
-      root->addMember(elt);
+      auto addProjectedAttribute = [&](std::string_view path) {
+        auto* attrAccess = _ast->createNodeAttributeAccess(ref, path);
+        auto* elt = _ast->createNodeObjectElement(path, attrAccess);
+        root->addMember(elt);
+      };
+
+      // Implicit system attributes required for graph topology.
+      addProjectedAttribute("_id");
+      if (isEdge) {
+        addProjectedAttribute("_from");
+        addProjectedAttribute("_to");
+      }
 
       for (auto i = size_t{0}; i < projections->numMembers(); ++i) {
         auto path = projections->getMemberUnchecked(i)->getStringView();
-        auto* attrAccess = _ast->createNodeAttributeAccess(  //
-            ref,                                             //
-            path);                                           //
-
-        auto* elt = _ast->createNodeObjectElement(path, attrAccess);
-        root->addMember(elt);
+        if (path == "_id" || (isEdge && (path == "_from" || path == "_to"))) {
+          continue;
+        }
+        addProjectedAttribute(path);
       }
       auto* calc = createNode<CalculationNode>(
           this, nextId(), std::make_unique<Expression>(_ast, root), variable);
@@ -2764,21 +2779,27 @@ ExecutionNode* ExecutionPlan::fromNodeMatch(ExecutionNode* previous,
           en->addDependency(previous);
           previous = en = lastNodeFilter;
 
+          auto edgeProjection =
+              createPatternProjection(edge, fullEdgeDocumentVariable);
+          projections.push_back(edgeProjection);
+
           Variable const* rightVertexVar;
-          auto vertexDestinationVariable =
-              static_cast<Variable const*>(node->getMember(0)->getData());
+          Variable const* vertexDestinationVariable = nullptr;
 
           if (node->type == NODE_TYPE_REFERENCE) {
             // todo: possibly replace?
             rightVertexVar = static_cast<Variable*>(node->getData());
+            vertexDestinationVariable = rightVertexVar;
           } else {
             ADB_PROD_ASSERT(node->type == NODE_TYPE_PATTERN_NODE_PATTERN)
                 << member->type;
 
+            vertexDestinationVariable =
+                static_cast<Variable const*>(node->getMember(0)->getData());
             auto fullVertexDocumentVariable =
                 _ast->variables()->createTemporaryVariable();
-            variableSubstitutions.emplace(fullVertexDocumentVariable->id,
-                                          vertexDestinationVariable);
+            variableSubstitutions.emplace(vertexDestinationVariable->id,
+                                          fullVertexDocumentVariable);
 
             std::tie(en, lastNodeFilter, rightVertexVar) =
                 createCollectionAccess(node, fullVertexDocumentVariable,
@@ -2798,7 +2819,8 @@ ExecutionNode* ExecutionPlan::fromNodeMatch(ExecutionNode* previous,
           previous = en = lastNode;
           prevVar = rightVertexVar;
 
-          pathEdges.push_back(_ast->createNodeReference(edgeVar));
+          pathEdges.push_back(
+              _ast->createNodeReference(edgeDestinationVariable));
 
           pathVertices.push_back(
               _ast->createNodeReference(vertexDestinationVariable));
