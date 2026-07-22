@@ -27,6 +27,7 @@
 #include "Mocks/StorageEngineMock.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "ProgramOptions/ProgramOptions.h"
 #include "Cluster/ClusterFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/Logger.h"
@@ -61,7 +62,11 @@ class FlushFeatureTest
       std::pair<arangodb::application_features::ApplicationFeature&, bool>>
       features;
 
-  FlushFeatureTest() : server(nullptr, nullptr), engine(server) {
+  FlushFeatureTest()
+      : server(std::make_shared<arangodb::options::ProgramOptions>("", "", "",
+                                                                   nullptr),
+               nullptr),
+        engine(server) {
     auto& metrics = server.addFeature<arangodb::metrics::MetricsFeature>(
         arangodb::LazyApplicationFeatureReference<
             arangodb::QueryRegistryFeature>(server),
