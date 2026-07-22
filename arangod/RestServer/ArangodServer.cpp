@@ -139,7 +139,6 @@ void ArangodServer::addFeatures() {
   addFeature<ReplicatedLogFeature>();
   addFeature<ReplicationMetricsFeature>(metrics);
   addFeature<ReplicationTimeoutFeature>();
-  addFeature<VectorIndexFeature>(database);
 #ifdef USE_V8
   addFeature<ScriptFeature>(_ret);
 #endif
@@ -160,7 +159,6 @@ void ArangodServer::addFeatures() {
   addFeature<StatisticsFeature>(metrics);
   addFeature<TempFeature>(std::string{_binaryName});
   addFeature<TtlFeature>();
-  addFeature<UpgradeFeature>(_ret, kNonServerFeatures);
   addFeature<transaction::ManagerFeature>(metrics);
   addFeature<ViewTypesFeature>();
   addFeature<aql::AqlFunctionFeature>();
@@ -192,7 +190,6 @@ void ArangodServer::addFeatures() {
 void ArangodServer::addFeaturesWithOptionProvider() {
   auto& metrics = getFeature<metrics::MetricsFeature>();
   auto& database = getFeature<DatabaseFeature>();
-  auto& vectorIndex = getFeature<VectorIndexFeature>();
   auto& rocksdbRecovery = getFeature<RocksDBRecoveryManager>();
   auto& agency = getFeature<AgencyFeature>();
   auto& clusterFeature = getFeature<ClusterFeature>();
@@ -200,6 +197,10 @@ void ArangodServer::addFeaturesWithOptionProvider() {
   auto& networkFeature = getFeature<NetworkFeature>();
   auto& aqlFunctionFeature = getFeature<aql::AqlFunctionFeature>();
   auto& sharedPRNGFeature = getFeature<SharedPRNGFeature>();
+
+  // Add VectorIndexFeature
+  auto& vectorIndex = addFeature<VectorIndexFeature>(
+      database, getOptions<vector_index::VectorIndexOptionsProvider>());
 
   addFeature<RandomFeature>(getOptions<RandomOptionsProvider>());
   addFeature<NonceFeature>(getOptions<NonceOptionsProvider>());
@@ -260,6 +261,10 @@ void ArangodServer::addFeaturesWithOptionProvider() {
       agency, getOptions<RocksDBEngineOptionsProvider>());
 
   addFeature<FortuneFeature>(getOptions<fortune::FortuneOptionsProvider>());
+
+  // Add UpgradeFeature
+  addFeature<UpgradeFeature>(_ret, kNonServerFeatures,
+                             getOptions<UpgradeOptionsProvider>());
 
   addFeature<iresearch::IResearchAnalyzerFeature>(
       iresearch::IResearchAnalyzerFeature::Dependencies{

@@ -22,6 +22,10 @@
 
 #include "UpgradeOptionsProvider.h"
 
+#include "Basics/application-exit.h"
+#include "Basics/exitcodes.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 
@@ -29,7 +33,7 @@ namespace arangodb {
 
 using namespace arangodb::options;
 
-void UpgradeOptionsProvider::declareOptions(
+void UpgradeOptionsProvider::declareOptionsImpl(
     std::shared_ptr<options::ProgramOptions> options,
     UpgradeFeatureOptions& opts) {
   options->addOldOption("upgrade", "database.auto-upgrade");
@@ -77,6 +81,24 @@ changeLevel and compactBottomMostLevel options enabled, which can help
 optimize the database files after an upgrade.
 
 The server will exit with an error code if the compaction fails.)");
+}
+
+void UpgradeOptionsProvider::validateOptionsImpl(
+    std::shared_ptr<options::ProgramOptions> /*opts*/,
+    UpgradeFeatureOptions& options) {
+  if (options.upgrade && !options.upgradeCheck) {
+    LOG_TOPIC("47698", FATAL, arangodb::Logger::FIXME)
+        << "cannot specify both '--database.auto-upgrade true' and "
+           "'--database.upgrade-check false'";
+    FATAL_ERROR_EXIT_CODE(TRI_EXIT_INVALID_OPTION_VALUE);
+  }
+
+  if (options.upgradeFullCompaction && !options.upgrade) {
+    LOG_TOPIC("47699", FATAL, arangodb::Logger::ENGINES)
+        << "cannot specify '--database.auto-upgrade-full-compaction true' "
+           "without '--database.auto-upgrade true'";
+    FATAL_ERROR_EXIT_CODE(TRI_EXIT_INVALID_OPTION_VALUE);
+  }
 }
 
 }  // namespace arangodb

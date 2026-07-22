@@ -31,9 +31,12 @@ class ProgramOptions;
 
 namespace arangodb {
 
-struct UpgradeOptionsProvider : OptionsProvider<UpgradeFeatureOptions> {
-  void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
-                      UpgradeFeatureOptions& options) override;
+struct UpgradeOptionsProvider
+    : OptionsProviderImpl<UpgradeOptionsProvider, UpgradeFeatureOptions> {
+  void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                          UpgradeFeatureOptions& options);
+  void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                           UpgradeFeatureOptions& options);
 };
 
 }  // namespace arangodb

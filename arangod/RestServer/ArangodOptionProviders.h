@@ -17,6 +17,8 @@
 #include "RocksDBEngine/RocksDBOptionFeatureOptionsProvider.h"
 #include "RocksDBEngine/RocksDBEngineOptionsProvider.h"
 #include "Scheduler/SchedulerOptionsProvider.h"
+#include "RestServer/UpgradeOptionsProvider.h"
+#include "VectorIndex/VectorIndexOptionsProvider.h"
 
 namespace arangodb {
 // arangod/RestServer/ArangodOptionProviders.h
@@ -28,5 +30,6 @@ using ArangodOptionProviders = CoreOptionProviders<
     LogBufferOptionsProvider, MaxMapCountOptionsProvider, NonceOptionsProvider,
     RocksDBEngineOptionsProvider, RocksDBIndexCacheRefillOptionsProvider,
     RocksDBOptionFeatureOptionsProvider, SchedulerOptionsProvider,
-    TemporaryStorageOptionsProvider>;
+    TemporaryStorageOptionsProvider, UpgradeOptionsProvider,
+    vector_index::VectorIndexOptionsProvider>;
 }  // namespace arangodb
