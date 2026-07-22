@@ -29,7 +29,7 @@ namespace arangodb {
 
 using namespace arangodb::options;
 
-void FoxxOptionsProvider::declareOptions(
+void FoxxOptionsProvider::declareOptionsImpl(
     std::shared_ptr<options::ProgramOptions> options,
     FoxxFeatureOptions& opts) {
   options->addSection("foxx", "Foxx services");
@@ -117,7 +117,7 @@ services will automatically be disabled as well. This is the same as manually
 setting the startup option `--foxx.api false`.)");
 }
 
-void FoxxOptionsProvider::validateOptions(
+void FoxxOptionsProvider::validateOptionsImpl(
     std::shared_ptr<options::ProgramOptions> /*opts*/,
     FoxxFeatureOptions& options) {
   if (options.queuesPollInterval < 0.1) {

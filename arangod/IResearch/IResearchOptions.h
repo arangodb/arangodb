@@ -47,6 +47,7 @@ struct IResearchOptions {
   uint32_t defaultParallelism = 1;
 
 #ifdef USE_ENTERPRISE
+  uint64_t columnCacheLimit{0};
   bool columnsCacheOnlyLeader = false;
 #endif
 };

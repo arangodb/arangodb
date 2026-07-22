@@ -29,7 +29,7 @@ namespace arangodb {
 
 using namespace arangodb::options;
 
-void V8SecurityOptionsProvider::declareOptions(
+void V8SecurityOptionsProvider::declareOptionsImpl(
     std::shared_ptr<options::ProgramOptions> options,
     V8SecurityFeatureOptions& opts) {
   options->addSection("javascript", "JavaScript engine and execution");

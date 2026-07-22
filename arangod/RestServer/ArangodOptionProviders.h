@@ -2,9 +2,12 @@
 
 #include "ApplicationFeatures/CoreOptionProviders.h"
 #include "ApplicationFeatures/LanguageOptionsProvider.h"
+#include "Aql/OptimizerRulesOptionsProvider.h"
+#include "Aql/QueryInfoLoggerOptionsProvider.h"
 #include "GeneralServer/AuthenticationOptionsProvider.h"
 #include "GeneralServer/GeneralServerOptionsProvider.h"
 #include "GeneralServer/SslServerOptionsProvider.h"
+#include "IResearch/IResearchOptionsProvider.h"
 #include "Network/NetworkOptionsProvider.h"
 #include "RestServer/CheckVersionOptionsProvider.h"
 #include "RestServer/CrashHandlerOptionsProvider.h"
@@ -17,12 +20,16 @@
 #include "RestServer/LogBufferOptionsProvider.h"
 #include "RestServer/MaxMapCountOptionsProvider.h"
 #include "RestServer/NonceOptionsProvider.h"
+#include "RestServer/QueryRegistryOptionsProvider.h"
 #include "RestServer/ServerOptionsProvider.h"
 #include "RestServer/TemporaryStorageOptionsProvider.h"
 #include "RestServer/UpgradeOptionsProvider.h"
+#include "RocksDBEngine/RocksDBEngineOptionsProvider.h"
 #include "RocksDBEngine/RocksDBIndexCacheRefillOptionsProvider.h"
 #include "RocksDBEngine/RocksDBOptionFeatureOptionsProvider.h"
-#include "RocksDBEngine/RocksDBEngineOptionsProvider.h"
+#include "V8/V8PlatformOptionsProvider.h"
+#include "V8/V8SecurityOptionsProvider.h"
+#include "V8Server/FoxxOptionsProvider.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Audit/AuditOptionsProvider.h"
@@ -47,13 +54,17 @@ using ArangodOptionProviders = CoreOptionProviders<
     AuthenticationOptionsProvider, check_version::CheckVersionOptionsProvider,
     crash_handler::CrashHandlerOptionsProvider, DatabasePathOptionsProvider,
     DumpLimitsOptionsProvider, EndpointOptionsProvider, FlushOptionsProvider,
-    fortune::FortuneOptionsProvider, GeneralServerOptionsProvider,
-    InitDatabaseOptionsProvider, LanguageOptionsProvider,
+    fortune::FortuneOptionsProvider, FoxxOptionsProvider,
+    GeneralServerOptionsProvider, InitDatabaseOptionsProvider,
+    iresearch::IResearchOptionsProvider, LanguageOptionsProvider,
     LogBufferOptionsProvider, MaxMapCountOptionsProvider,
-    NetworkOptionsProvider, NonceOptionsProvider, RocksDBEngineOptionsProvider,
+    NetworkOptionsProvider, NonceOptionsProvider,
+    aql::OptimizerRulesOptionsProvider, aql::QueryInfoLoggerOptionsProvider,
+    QueryRegistryOptionsProvider, RocksDBEngineOptionsProvider,
     RocksDBIndexCacheRefillOptionsProvider, RocksDBOptionFeatureOptionsProvider,
     ServerOptionsProvider, SslServerOptionsProvider,
-    TemporaryStorageOptionsProvider, UpgradeOptionsProvider
+    TemporaryStorageOptionsProvider, UpgradeOptionsProvider,
+    V8PlatformOptionsProvider, V8SecurityOptionsProvider
 #ifdef USE_ENTERPRISE
     ,
     AuditOptionsProvider, LicenseOptionsProvider, RCloneOptionsProvider,

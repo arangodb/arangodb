@@ -113,12 +113,10 @@ class IResearchFeature final : public application_features::ApplicationFeature {
   explicit IResearchFeature(application_features::ApplicationServer& server,
                             metrics::IRegistry& metricsRegistry);
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) final;
   void prepare() final;
   void start() final;
   void stop() final;
   void unprepare() final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) final;
 
   auto& getSearchPool() noexcept { return _searchExecutionPool; }
   //////////////////////////////////////////////////////////////////////////////
