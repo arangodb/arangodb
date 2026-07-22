@@ -42,12 +42,6 @@ ServerSecurityFeature::ServerSecurityFeature(
   startsAfter<application_features::GreetingsFeaturePhase>();
 }
 
-void ServerSecurityFeature::collectOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  arangodb::security::ServerSecurityOptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
-
 void ServerSecurityFeature::disableFoxxApi() noexcept {
   _options.enableFoxxApi = false;
 }

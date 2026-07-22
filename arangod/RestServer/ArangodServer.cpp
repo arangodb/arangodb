@@ -143,7 +143,6 @@ void ArangodServer::addFeatures() {
   addFeature<ScriptFeature>(_ret);
 #endif
   addFeature<ServerIdFeature>();
-  addFeature<ServerSecurityFeature>();
   addFeature<ShardingFeature>();
   addFeature<ShellColorsFeature>();
 #ifdef USE_V8
@@ -208,6 +207,8 @@ void ArangodServer::addFeaturesWithOptionProvider() {
   addFeature<MaxMapCountFeature>(getOptions<MaxMapCountOptionsProvider>());
   addFeature<FileSystemFeature>(getOptions<FileSystemOptionsProvider>());
   addFeature<LanguageFeature>(getOptions<LanguageOptionsProvider>());
+  addFeature<ServerSecurityFeature>(
+      getOptions<security::ServerSecurityOptionsProvider>());
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   addFeature<ProcessEnvironmentFeature>(
