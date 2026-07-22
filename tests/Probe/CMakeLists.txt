@@ -1,5 +1,5 @@
-# Optional link-smoke tests for the split arangoserver archives.
-# Not needed for sibling-dependency analysis (use nm on the .a files).
+# Optional linker tests for the split arangoserver archives.
+# Not needed for sibling subdir dependency analysis.
 # Build explicitly, e.g.: make probe_actions
 # Safe to delete this file when the probes are no longer useful.
 
