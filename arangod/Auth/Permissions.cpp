@@ -27,8 +27,6 @@ namespace arangodb {
 
 auto to_string(CollectionAccessLevel level) -> std::string_view {
   switch (level) {
-    case CollectionAccessLevel::None:
-      return "none";
     case CollectionAccessLevel::Read:
       return "read";
     case CollectionAccessLevel::WriteData:
@@ -41,46 +39,42 @@ auto to_string(CollectionAccessLevel level) -> std::string_view {
 
 auto to_string(DatabaseAccessLevel level) -> std::string_view {
   switch (level) {
-    case DatabaseAccessLevel::None:
-      return "none";
     case DatabaseAccessLevel::Read:
       return "read";
     case DatabaseAccessLevel::Write:
       return "write";
   }
+  ADB_PROD_CRASH();
 }
 
 auto to_string(ViewAccessLevel level) -> std::string_view {
   switch (level) {
-    case ViewAccessLevel::None:
-      return "none";
     case ViewAccessLevel::Read:
       return "read";
     case ViewAccessLevel::Modify:
       return "modify";
   }
+  ADB_PROD_CRASH();
 }
 
 auto to_string(AnalyzerAccessLevel level) -> std::string_view {
   switch (level) {
-    case AnalyzerAccessLevel::None:
-      return "none";
     case AnalyzerAccessLevel::Read:
       return "read";
     case AnalyzerAccessLevel::Modify:
       return "modify";
   }
+  ADB_PROD_CRASH();
 }
 
 auto to_string(GraphAccessLevel level) -> std::string_view {
   switch (level) {
-    case GraphAccessLevel::None:
-      return "none";
     case GraphAccessLevel::Read:
       return "read";
     case GraphAccessLevel::Modify:
       return "modify";
   }
+  ADB_PROD_CRASH();
 }
 
 }  // namespace arangodb

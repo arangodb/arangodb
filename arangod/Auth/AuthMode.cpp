@@ -29,9 +29,12 @@
 #include "Basics/voc-errors.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
+#include "Rbac/Service.h"
 #include "Rest/GeneralRequest.h"
 
 #include "absl/strings/str_cat.h"
+
+#include <type_traits>
 
 namespace arangodb {
 
@@ -107,8 +110,6 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
   auto const accessLevelToAuthLevel = overload{
       [](CollectionAccessLevel level) {
         switch (level) {
-          case CollectionAccessLevel::None:
-            return auth::Level::NONE;
           case CollectionAccessLevel::Read:
             return auth::Level::RO;
           case CollectionAccessLevel::WriteData:
@@ -119,8 +120,6 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
       },
       [](ViewAccessLevel level) {
         switch (level) {
-          case ViewAccessLevel::None:
-            return auth::Level::NONE;
           case ViewAccessLevel::Read:
             return auth::Level::RO;
           case ViewAccessLevel::Modify:
@@ -130,8 +129,6 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
       },
       [](AnalyzerAccessLevel level) {
         switch (level) {
-          case AnalyzerAccessLevel::None:
-            return auth::Level::NONE;
           case AnalyzerAccessLevel::Read:
             return auth::Level::RO;
           case AnalyzerAccessLevel::Modify:
@@ -141,8 +138,6 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
       },
       [](DatabaseAccessLevel level) {
         switch (level) {
-          case DatabaseAccessLevel::None:
-            return auth::Level::NONE;
           case DatabaseAccessLevel::Read:
             return auth::Level::RO;
           case DatabaseAccessLevel::Write:
@@ -348,19 +343,10 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
           [&](p::UseAnalyzer const& analyzer) -> Result {
             // Without RBAC, database access is the only prerequisite for
             // using an analyzer. Reading analyzers requires RO database
-            // access; creating or dropping analyzers requires RW.
-            DatabaseAccessLevel dbLevel;
-            switch (analyzer.level) {
-              case AnalyzerAccessLevel::Modify:
-                dbLevel = DatabaseAccessLevel::Write;
-                break;
-              case AnalyzerAccessLevel::Read:
-                dbLevel = DatabaseAccessLevel::Read;
-                break;
-              case AnalyzerAccessLevel::None:
-                dbLevel = DatabaseAccessLevel::None;
-                break;
-            }
+            // access; modifying analyzers requires RW.
+            auto const dbLevel = analyzer.level == AnalyzerAccessLevel::Modify
+                                     ? DatabaseAccessLevel::Write
+                                     : DatabaseAccessLevel::Read;
             return check(p::UseDatabase{analyzer.db, dbLevel});
           },
           // Classic admin action requires RW access to the _system database.
@@ -550,8 +536,6 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
             // access (the _graphs collection is a system collection that is
             // read/write-accessible together with the whole database).
             switch (graph.level) {
-              case GraphAccessLevel::None:
-                return {};
               case GraphAccessLevel::Read:
                 return check(
                     p::UseDatabase{graph.db, DatabaseAccessLevel::Read});
@@ -619,9 +603,324 @@ auto AuthMode::Rbac::username() const noexcept -> std::string_view {
 }
 
 auto AuthMode::Rbac::check(auth::Permission permission) const -> Result {
-  std::abort();  // TODO implement
-  // NOTE Remember to handle "supportsRbac" flag for collections; we will need
-  // access to the collection somehow!
+  namespace p = auth::perms;
+
+  auto databaseAccessModeToAction =
+      [](DatabaseAccessLevel level) -> rbac::Action {
+    switch (level) {
+      case DatabaseAccessLevel::Read:
+        return rbac::Action::Read;
+      case DatabaseAccessLevel::Write:
+        return rbac::Action::WriteMeta;
+    }
+    ADB_PROD_CRASH();
+  };
+
+  auto collectionAccessModeToAction =
+      [](CollectionAccessLevel level) -> rbac::Action {
+    switch (level) {
+      case CollectionAccessLevel::Read:
+        return rbac::Action::Read;
+      case CollectionAccessLevel::WriteData:
+        return rbac::Action::WriteData;
+      case CollectionAccessLevel::WriteMeta:
+        return rbac::Action::WriteMeta;
+    }
+    ADB_PROD_CRASH();
+  };
+
+  auto viewAccessModeToAction = [](ViewAccessLevel level) -> rbac::Action {
+    switch (level) {
+      case ViewAccessLevel::Read:
+        return rbac::Action::Read;
+      case ViewAccessLevel::Modify:
+        return rbac::Action::WriteMeta;
+    }
+    ADB_PROD_CRASH();
+  };
+
+  auto analyzerAccessModeToAction =
+      [](AnalyzerAccessLevel level) -> rbac::Action {
+    switch (level) {
+      case AnalyzerAccessLevel::Read:
+        return rbac::Action::Read;
+      case AnalyzerAccessLevel::Modify:
+        return rbac::Action::WriteMeta;
+    }
+    ADB_PROD_CRASH();
+  };
+
+  auto graphAccessModeToAction = [](GraphAccessLevel level) -> rbac::Action {
+    switch (level) {
+      case GraphAccessLevel::Read:
+        return rbac::Action::Read;
+      case GraphAccessLevel::Modify:
+        return rbac::Action::WriteMeta;
+    }
+    ADB_PROD_CRASH();
+  };
+
+  // Every admin permission maps 1:1 onto its identically-named rbac::Action
+  // and carries no resource. This mirrors the classic side, where all admin
+  // actions collapse into a single `AnyAdmin` handler.
+  // Note: p::AdminReadUsers is deliberately absent here; it has no
+  // rbac::Action counterpart and is handled separately below.
+  auto adminAction = []<typename T>(T const&) -> rbac::Action {
+    if constexpr (std::is_same_v<T, p::AdminMoveShards>) {
+      return rbac::Action::AdminMoveShards;
+    } else if constexpr (std::is_same_v<T, p::AdminMonitoring>) {
+      return rbac::Action::AdminMonitoring;
+    } else if constexpr (std::is_same_v<T, p::AdminMonitoringInternal>) {
+      return rbac::Action::AdminMonitoringInternal;
+    } else if constexpr (std::is_same_v<T, p::AdminAuthReload>) {
+      return rbac::Action::AdminAuthReload;
+    } else if constexpr (std::is_same_v<T, p::AdminCrashHandler>) {
+      return rbac::Action::AdminCrashHandler;
+    } else if constexpr (std::is_same_v<T, p::AdminApiCalls>) {
+      return rbac::Action::AdminApiCalls;
+    } else if constexpr (std::is_same_v<T, p::AdminAqlQueries>) {
+      return rbac::Action::AdminAqlQueries;
+    } else if constexpr (std::is_same_v<T, p::AdminShutdown>) {
+      return rbac::Action::AdminShutdown;
+    } else if constexpr (std::is_same_v<T, p::AdminReadLogs>) {
+      return rbac::Action::AdminReadLogs;
+    } else if constexpr (std::is_same_v<T, p::AdminSetLogLevel>) {
+      return rbac::Action::AdminSetLogLevel;
+    } else if constexpr (std::is_same_v<T, p::AdminOptions>) {
+      return rbac::Action::AdminOptions;
+    } else if constexpr (std::is_same_v<T, p::AdminSupervisionState>) {
+      return rbac::Action::AdminSupervisionState;
+    } else if constexpr (std::is_same_v<T, p::AdminRemoveServer>) {
+      return rbac::Action::AdminRemoveServer;
+    } else if constexpr (std::is_same_v<T, p::AdminClusterInfo>) {
+      return rbac::Action::AdminClusterInfo;
+    } else if constexpr (std::is_same_v<T, p::AdminMaintenance>) {
+      return rbac::Action::AdminMaintenance;
+    } else if constexpr (std::is_same_v<T, p::AdminRebalance>) {
+      return rbac::Action::AdminRebalance;
+    } else if constexpr (std::is_same_v<T, p::AdminLicense>) {
+      return rbac::Action::AdminLicense;
+    } else if constexpr (std::is_same_v<T, p::AdminBackup>) {
+      return rbac::Action::AdminBackup;
+    } else if constexpr (std::is_same_v<T, p::AdminReadReplicatedLog>) {
+      return rbac::Action::AdminReadReplicatedLog;
+    } else if constexpr (std::is_same_v<T, p::AdminWriteReplicatedLog>) {
+      return rbac::Action::AdminWriteReplicatedLog;
+    } else if constexpr (std::is_same_v<T, p::AdminDump>) {
+      return rbac::Action::AdminDump;
+    } else if constexpr (std::is_same_v<T, p::AdminRestore>) {
+      return rbac::Action::AdminRestore;
+    } else if constexpr (std::is_same_v<T, p::AdminWalAccess>) {
+      return rbac::Action::AdminWalAccess;
+    } else if constexpr (std::is_same_v<T, p::AdminReadAgency>) {
+      return rbac::Action::AdminReadAgency;
+    } else if constexpr (std::is_same_v<T, p::AdminQueryCache>) {
+      return rbac::Action::AdminQueryCache;
+    } else {
+      static_assert(sizeof(T) == 0, "unmapped admin permission");
+    }
+  };
+
+  return std::visit(
+      overload{
+          // -- Admin actions ---------------------------------------------
+          [&](p::AdminReadUsers const&) -> Result {
+            // TODO(COR-213): AdminReadUsers (the coarse gate on listing all
+            //   users) has no rbac::Action or resource counterpart yet, and
+            //   there is no way to express "all users" as a resource. The
+            //   intended mapping is still to be decided with the team; until
+            //   then we fail closed rather than silently granting access.
+            return {TRI_ERROR_NOT_IMPLEMENTED,
+                    "RBAC authorization for listing all users is not yet "
+                    "implemented"};
+          },
+          [&](p::AnyAdmin auto const& admin) -> Result {
+            return _rbacService.check(_jwtToken, adminAction(admin),
+                                      rbac::resources::NoResource{});
+          },
+          // -- Databases -------------------------------------------------
+          [&](p::UseDatabase const& database) -> Result {
+            return _rbacService.check(
+                _jwtToken, databaseAccessModeToAction(database.level),
+                rbac::resources::Database{database.name});
+          },
+          [&](p::SeeDatabase const& database) -> Result {
+            return _rbacService.check(_jwtToken, rbac::Action::Read,
+                                      rbac::resources::Database{database.name});
+          },
+          [&](p::CreateDatabase const& database) -> Result {
+            return _rbacService.check(_jwtToken, rbac::Action::Create,
+                                      rbac::resources::Database{database.name});
+          },
+          [&](p::DropDatabase const& database) -> Result {
+            return _rbacService.check(_jwtToken, rbac::Action::Drop,
+                                      rbac::resources::Database{database.name});
+          },
+          // -- Collections -----------------------------------------------
+          [&](p::UseCollection const& collection) -> Result {
+            return _rbacService.check(
+                _jwtToken, collectionAccessModeToAction(collection.level),
+                rbac::resources::Collection{collection.db, collection.name});
+          },
+          [&](p::SeeCollection const& collection) -> Result {
+            return _rbacService.check(
+                _jwtToken, rbac::Action::Read,
+                rbac::resources::Collection{collection.db, collection.name});
+          },
+          [&](p::CreateCollection const& collection) -> Result {
+            return _rbacService.check(
+                _jwtToken, rbac::Action::Create,
+                rbac::resources::Collection{collection.db, collection.name});
+          },
+          [&](p::DropCollection const& collection) -> Result {
+            return _rbacService.check(
+                _jwtToken, rbac::Action::Drop,
+                rbac::resources::Collection{collection.db, collection.name});
+          },
+          // -- Views -----------------------------------------------------
+          [&](p::UseView const& view) -> Result {
+            return _rbacService.check(_jwtToken,
+                                      viewAccessModeToAction(view.level),
+                                      rbac::resources::View{view.db, view.name});
+          },
+          [&](p::SeeView const& view) -> Result {
+            return _rbacService.check(_jwtToken, rbac::Action::Read,
+                                      rbac::resources::View{view.db, view.name});
+          },
+          [&](p::CreateView const& view) -> Result {
+            if (auto r = _rbacService.check(
+                    _jwtToken, rbac::Action::Create,
+                    rbac::resources::View{view.db, view.name});
+                !r.ok()) {
+              return r;
+            }
+            // Creating a view additionally requires read access to every
+            // linked collection (mirrors the classic behaviour).
+            for (auto const& coll : view.linkedCollections) {
+              if (auto r = check(p::UseCollection{view.db, coll,
+                                                  CollectionAccessLevel::Read});
+                  !r.ok()) {
+                return r;
+              }
+            }
+            return {};
+          },
+          [&](p::ModifyView const& view) -> Result {
+            if (auto r = _rbacService.check(
+                    _jwtToken, rbac::Action::WriteMeta,
+                    rbac::resources::View{view.db, view.name});
+                !r.ok()) {
+              return r;
+            }
+            // Modifying a view additionally requires read access to every
+            // newly linked collection.
+            for (auto const& coll : view.linkedCollections) {
+              if (auto r = check(p::UseCollection{view.db, coll,
+                                                  CollectionAccessLevel::Read});
+                  !r.ok()) {
+                return r;
+              }
+            }
+            return {};
+          },
+          [&](p::RenameView const& view) -> Result {
+            if (view.oldName == view.newName) {
+              return {TRI_ERROR_BAD_PARAMETER,
+                      "new view name must be different from old view name"};
+            }
+            // Renaming modifies the existing (old) view.
+            return _rbacService.check(
+                _jwtToken, rbac::Action::WriteMeta,
+                rbac::resources::View{view.db, view.oldName});
+          },
+          [&](p::DropView const& view) -> Result {
+            return _rbacService.check(_jwtToken, rbac::Action::Drop,
+                                      rbac::resources::View{view.db, view.name});
+          },
+          // -- Analyzers -------------------------------------------------
+          [&](p::UseAnalyzer const& analyzer) -> Result {
+            return _rbacService.check(
+                _jwtToken, analyzerAccessModeToAction(analyzer.level),
+                rbac::resources::Analyzer{analyzer.db, analyzer.name});
+          },
+          [&](p::SeeAnalyzer const& analyzer) -> Result {
+            return _rbacService.check(
+                _jwtToken, rbac::Action::Read,
+                rbac::resources::Analyzer{analyzer.db, analyzer.name});
+          },
+          [&](p::CreateAnalyzer const& analyzer) -> Result {
+            return _rbacService.check(
+                _jwtToken, rbac::Action::Create,
+                rbac::resources::Analyzer{analyzer.db, analyzer.name});
+          },
+          [&](p::DropAnalyzer const& analyzer) -> Result {
+            return _rbacService.check(
+                _jwtToken, rbac::Action::Drop,
+                rbac::resources::Analyzer{analyzer.db, analyzer.name});
+          },
+          // -- Graphs ----------------------------------------------------
+          [&](p::UseGraph const& graph) -> Result {
+            return _rbacService.check(_jwtToken,
+                                      graphAccessModeToAction(graph.level),
+                                      rbac::resources::Graph{graph.db, graph.name});
+          },
+          [&](p::SeeGraph const& graph) -> Result {
+            return _rbacService.check(
+                _jwtToken, rbac::Action::Read,
+                rbac::resources::Graph{graph.db, graph.name});
+          },
+          [&](p::CreateGraph const& graph) -> Result {
+            if (auto r = _rbacService.check(
+                    _jwtToken, rbac::Action::Create,
+                    rbac::resources::Graph{graph.db, graph.name});
+                !r.ok()) {
+              return r;
+            }
+            // Creating a graph additionally requires the ability to create
+            // any collections it introduces and to read the ones it links
+            // (mirrors the classic behaviour).
+            for (auto const& coll : graph.collectionNamesToCreate) {
+              if (auto r = check(p::CreateCollection{graph.db, coll});
+                  !r.ok()) {
+                return r;
+              }
+            }
+            for (auto const& coll : graph.collectionNamesToRead) {
+              if (auto r = check(p::UseCollection{graph.db, coll,
+                                                  CollectionAccessLevel::Read});
+                  !r.ok()) {
+                return r;
+              }
+            }
+            return {};
+          },
+          [&](p::DropGraph const& graph) -> Result {
+            if (auto r = _rbacService.check(
+                    _jwtToken, rbac::Action::Drop,
+                    rbac::resources::Graph{graph.db, graph.name});
+                !r.ok()) {
+              return r;
+            }
+            // Dropping a graph additionally requires the ability to drop the
+            // listed collections.
+            for (auto const& coll : graph.collectionNames) {
+              if (auto r = check(p::DropCollection{graph.db, coll}); !r.ok()) {
+                return r;
+              }
+            }
+            return {};
+          },
+          // -- Users -----------------------------------------------------
+          [&](p::ReadUser const& user) -> Result {
+            return _rbacService.check(_jwtToken, rbac::Action::Read,
+                                      rbac::resources::User{user.name});
+          },
+          [&](p::WriteUser const& user) -> Result {
+            return _rbacService.check(_jwtToken, rbac::Action::WriteMeta,
+                                      rbac::resources::User{user.name});
+          },
+      },
+      permission);
 }
 
 auto AuthMode::Rbac::request() const noexcept
@@ -648,33 +947,9 @@ auto AuthMode::Unauthenticated::check(auth::Permission permission) const
 
   return std::visit(
       overload{
-          // Level-based checks: allow if the requested level is "None",
-          // otherwise deny (not authenticated).
-          [](p::UseDatabase const& perm) -> Result {
-            if (perm.level <= DatabaseAccessLevel::None) {
-              return {};
-            }
-            return {TRI_ERROR_FORBIDDEN, "not authenticated"};
-          },
-          [](p::UseCollection const& perm) -> Result {
-            if (perm.level <= CollectionAccessLevel::None) {
-              return {};
-            }
-            return {TRI_ERROR_FORBIDDEN, "not authenticated"};
-          },
-          [](p::UseView const& perm) -> Result {
-            if (perm.level <= ViewAccessLevel::None) {
-              return {};
-            }
-            return {TRI_ERROR_FORBIDDEN, "not authenticated"};
-          },
-          [](p::UseAnalyzer const& perm) -> Result {
-            if (perm.level <= AnalyzerAccessLevel::None) {
-              return {};
-            }
-            return {TRI_ERROR_FORBIDDEN, "not authenticated"};
-          },
-          // Everything else: no authentication → no permissions.
+          // An unauthenticated identity has no permissions at all. Since the
+          // perms API only ever asks about access that is actually required
+          // (there is no "None" level anymore), every question is denied.
           [](auto const&) -> Result {
             return {TRI_ERROR_FORBIDDEN, "not authenticated"};
           },
