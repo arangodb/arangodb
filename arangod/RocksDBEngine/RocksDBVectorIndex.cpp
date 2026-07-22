@@ -50,6 +50,7 @@
 #include "RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "Transaction/Helpers.h"
+#include "VectorIndex/VectorIndexUtils.h"
 #include <velocypack/Builder.h>
 #include <velocypack/SharedSlice.h>
 #include <velocypack/Slice.h>

@@ -23,7 +23,6 @@
 
 #pragma once
 
-#include "Basics/AttributeNameParser.h"
 #include "Basics/ResourceUsage.h"
 #include "Basics/Result.h"
 #include "Basics/ResultT.h"
@@ -59,11 +58,6 @@ namespace arangodb::vector {
 class VectorIndexTrainingSampler;
 
 TrainedData serializeIndex(faiss::IndexIVF const& index);
-
-Result readDocumentVectorData(
-    velocypack::Slice doc,
-    std::vector<std::vector<basics::AttributeName>> const& fields,
-    std::size_t dimension, std::vector<float>& output);
 
 struct BoundedDocumentIterator {
   RocksDBKeyBounds bounds;

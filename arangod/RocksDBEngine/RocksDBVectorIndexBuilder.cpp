@@ -60,6 +60,7 @@
 #include "RocksDBEngine/RocksDBVectorIndexList.h"
 #include "Transaction/Helpers.h"
 #include "VectorIndex/VectorIndexTrainingSampler.h"
+#include "VectorIndex/VectorIndexUtils.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <rocksdb/db.h>
@@ -87,57 +88,6 @@ bool hasVectorField(
     return !rocksutils::accessDocumentPath(doc, fields[0]).isNone();
   } catch (velocypack::Exception const&) {
     return false;
-  }
-}
-
-Result readDocumentVectorData(
-    velocypack::Slice doc,
-    std::vector<std::vector<basics::AttributeName>> const& fields,
-    std::size_t dimension, std::vector<float>& output) {
-  TRI_ASSERT(fields.size() >= 1);
-
-  try {
-    VPackSlice value = rocksutils::accessDocumentPath(doc, fields[0]);
-
-    // this fails if index is not sparse
-    if (value.isNone()) {
-      return {TRI_ERROR_BAD_PARAMETER,
-              std::format("vector field not present in document {}",
-                          transaction::helpers::extractKeyFromDocument(doc))};
-    }
-
-    if (!value.isArray()) {
-      return {TRI_ERROR_TYPE_ERROR,
-              std::format("array expected for vector attribute for document {}",
-                          transaction::helpers::extractKeyFromDocument(doc))};
-    }
-
-    if (value.length() != dimension) {
-      return {TRI_ERROR_TYPE_ERROR,
-              std::format("provided vector is not of matching dimension for "
-                          "document {}, index dimension: {}, document "
-                          "dimension: {}",
-                          transaction::helpers::extractKeyFromDocument(doc),
-                          dimension, value.length())};
-    }
-
-    // We don't make assumptions here if output contains one or more vectors
-    for (auto const d : VPackArrayIterator(value)) {
-      if (not d.isNumber<double>()) {
-        return {
-            TRI_ERROR_TYPE_ERROR,
-            std::format("vector contains data not representable as double for "
-                        "document {}",
-                        transaction::helpers::extractKeyFromDocument(doc))};
-      }
-      output.push_back(d.getNumericValue<double>());
-    }
-
-    return {};
-  } catch (velocypack::Exception const& e) {
-    return {TRI_ERROR_TYPE_ERROR,
-            std::format("deserialization error when accessing a document: {}",
-                        e.what())};
   }
 }
 
