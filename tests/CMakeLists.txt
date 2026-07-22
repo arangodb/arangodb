@@ -351,7 +351,7 @@ target_link_libraries(arangodbtests
 )
 
 if (USE_ENTERPRISE)
-  target_link_libraries(arangodbtests arango_rclone)
+  target_link_libraries(arangodbtests arango_rclone arango_tests_vector_graph_index)
 endif ()
 
 add_dependencies(arangodbtests iculegacy_build)
