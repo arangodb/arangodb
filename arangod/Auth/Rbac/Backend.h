@@ -95,17 +95,13 @@ struct Backend {
       -> futures::Future<ResultT<EvaluateResponse>>;
 
   // public API, synchronous versions
-  [[deprecated("Use the asynchronous counterpart instead")]] auto
-  evaluateTokenManySync(JwtToken const&, RequestItems const&)
+  auto evaluateTokenManySync(JwtToken const&, RequestItems const&)
       -> ResultT<EvaluateResponseMany>;
-  [[deprecated("Use the asynchronous counterpart instead")]] auto
-  evaluateManySync(PlainUser const&, RequestItems const&)
+  auto evaluateManySync(PlainUser const&, RequestItems const&)
       -> ResultT<EvaluateResponseMany>;
-  [[deprecated("Use the asynchronous counterpart instead")]] auto
-  evaluateTokenSync(JwtToken const& jwtToken, RequestItem const& item)
+  auto evaluateTokenSync(JwtToken const& jwtToken, RequestItem const& item)
       -> ResultT<EvaluateResponse>;
-  [[deprecated("Use the asynchronous counterpart instead")]] auto evaluateSync(
-      PlainUser const& user, RequestItem const& item)
+  auto evaluateSync(PlainUser const& user, RequestItem const& item)
       -> ResultT<EvaluateResponse>;
 
  protected:

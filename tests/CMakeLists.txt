@@ -443,3 +443,68 @@ add_subdirectory(VocBase/Properties)
 add_subdirectory(SystemMonitor)
 add_subdirectory(InternalRestHandler)
 add_subdirectory(Scheduler)
+
+# ---------------------------------------------------------------------------
+# Standalone RBAC tests.
+#
+# This binary deliberately does NOT depend on the shared test-support object
+# libraries (arango_tests_*, Mocks/Servers.cpp, ...), which are currently mid
+# refactor and do not build. It links only production libraries plus
+# gtest/gmock, so we can develop and run the RBAC auth-mode tests in isolation.
+# Once the shared mocks build again, these sources can also be folded into the
+# main arangodbtests target.
+# ---------------------------------------------------------------------------
+# RbacIntegrationTest drives a real Smocker HTTP server. When SMOCKER_HOST is
+# unset it auto-starts one via `docker run ghcr.io/smocker-dev/smocker`; if
+# Docker is unavailable the suite fails with instructions (it does not hang) and
+# can be skipped with --gtest_filter=-RbacIntegrationTest.*.
+add_executable(arango_rbac_tests
+  ${CMAKE_CURRENT_SOURCE_DIR}/Auth/RbacAuthModeTest.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/Auth/RbacServiceTest.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/Auth/RbacServiceImplTest.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/Auth/RbacBackendTest.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/Auth/RbacSerializationTest.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/Auth/RbacIntegrationTest.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/Auth/SmockerClient.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/Auth/RbacTestsMain.cpp)
+
+target_include_directories(arango_rbac_tests PRIVATE
+  ${PROJECT_SOURCE_DIR}/arangod/
+  ${PROJECT_SOURCE_DIR}/lib/
+  ${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}
+  ${CMAKE_CURRENT_SOURCE_DIR})
+
+target_link_libraries(arango_rbac_tests
+  arango
+  arango_agency
+  arango_cluster_engine
+  arango_rocksdb
+  arangoserver
+  arango_restore
+  clienttools_utils
+  fuerte
+  rocksdb
+  snappy
+  gtest
+  gmock
+  boost_boost
+  velocypack_utils)
+
+if (USE_V8)
+  target_link_libraries(arango_rbac_tests arango_v8server)
+endif ()
+
+if (USE_ENTERPRISE)
+  target_link_libraries(arango_rbac_tests arango_rclone)
+endif ()
+
+add_dependencies(arango_rbac_tests iculegacy_build)
+
+if (USE_JEMALLOC)
+  target_link_libraries(arango_rbac_tests jemalloc)
+  if (USE_JEMALLOC_PROF AND USE_LIBUNWIND)
+    target_link_libraries(arango_rbac_tests ${LIBUNWIND_LIB})
+  endif ()
+endif ()
+
+add_test(NAME arango_rbac_tests COMMAND arango_rbac_tests)

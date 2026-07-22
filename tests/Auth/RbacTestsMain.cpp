@@ -17,31 +17,25 @@
 /// limitations under the License.
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+// Entry point for the standalone RBAC test binary. These tests mock the RBAC
+// Service/Backend and never spin up a server, so almost no global ArangoDB
+// setup is required. The one exception is the async registry: constructing a
+// coroutine future (the mock backend uses `co_return`) registers a promise
+// with the async registry, whose `get_metrics()` spins until metrics have been
+// set once. Initialise it (to nullptr) exactly as tests/main.cpp does.
 
-#include "Auth/Rbac/Backend.h"
-#include "Auth/Rbac/Service.h"
+#include "gtest/gtest.h"
 
-#include <memory>
+#include "Activities/RegistryGlobalVariable.h"
+#include "Async/Registry/registry_variable.h"
 
-namespace arangodb::rbac {
+int main(int argc, char** argv) {
+  ::testing::InitGoogleTest(&argc, argv);
 
-struct ServiceImpl : Service {
-  explicit ServiceImpl(std::unique_ptr<Backend> backend);
+  arangodb::async_registry::registry.set_metrics(nullptr);
+  arangodb::activities::registry.setMetrics(nullptr);
 
-  auto check(Token token, std::span<ActionResource const> queries) noexcept
-      -> Result override;
-
- private:
-  auto mayImpl(User user, std::vector<AuthorizationQuery> queries) noexcept
-      -> async<ResultT<bool>> override;
-  auto maySyncImpl(User user, std::vector<AuthorizationQuery> queries) noexcept
-      -> ResultT<bool> override;
-
-  std::unique_ptr<Backend> _backend;
-};
-
-}  // namespace arangodb::rbac
+  return RUN_ALL_TESTS();
+}

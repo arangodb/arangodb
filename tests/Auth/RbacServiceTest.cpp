@@ -50,9 +50,6 @@ struct MockService : rbac::Service {
 
 }  // namespace
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-
 TEST(RbacServiceTest, ReadDatabase) {
   MockService svc;
   svc.maySync({}, Cat::ReadDatabase{.name = "mydb"});
@@ -144,5 +141,3 @@ TEST(RbacServiceTest, mayAllSync_empty_queries) {
   svc.mayAllSync({}, {});
   EXPECT_TRUE(svc.lastQueries.empty());
 }
-
-#pragma GCC diagnostic pop

@@ -22,6 +22,12 @@
 
 #include "ServiceImpl.h"
 
+#include "Assertions/ProdAssert.h"
+#include "Basics/overload.h"
+#include "Basics/voc-errors.h"
+
+#include <format>
+
 namespace arangodb::rbac {
 
 namespace {
@@ -34,6 +40,114 @@ auto flattenQueries(std::vector<Service::AuthorizationQuery> const& queries)
         .action = q.action, .resource = q.resource, .attributeValues = {}});
   }
   return items;
+}
+
+// The wire string the external RBAC service expects for an action: "db:" plus
+// the action name. Resource actions and admin actions share the same prefix.
+auto actionToWireString(Action action) -> std::string_view {
+  switch (action) {
+    case Action::Create:
+      return "db:Create";
+    case Action::Drop:
+      return "db:Drop";
+    case Action::Read:
+      return "db:Read";
+    case Action::WriteMeta:
+      return "db:WriteMeta";
+    case Action::WriteData:
+      return "db:WriteData";
+    case Action::UseApiVersion:
+      return "db:UseApiVersion";
+    case Action::AdminMoveShards:
+      return "db:AdminMoveShards";
+    case Action::AdminMonitoring:
+      return "db:AdminMonitoring";
+    case Action::AdminMonitoringInternal:
+      return "db:AdminMonitoringInternal";
+    case Action::AdminCompaction:
+      return "db:AdminCompaction";
+    case Action::AdminAuthReload:
+      return "db:AdminAuthReload";
+    case Action::AdminCrashHandler:
+      return "db:AdminCrashHandler";
+    case Action::AdminApiCalls:
+      return "db:AdminApiCalls";
+    case Action::AdminAqlQueries:
+      return "db:AdminAqlQueries";
+    case Action::AdminShutdown:
+      return "db:AdminShutdown";
+    case Action::AdminReadLogs:
+      return "db:AdminReadLogs";
+    case Action::AdminSetLogLevel:
+      return "db:AdminSetLogLevel";
+    case Action::AdminOptions:
+      return "db:AdminOptions";
+    case Action::AdminSupervisionState:
+      return "db:AdminSupervisionState";
+    case Action::AdminRemoveServer:
+      return "db:AdminRemoveServer";
+    case Action::AdminClusterInfo:
+      return "db:AdminClusterInfo";
+    case Action::AdminMaintenance:
+      return "db:AdminMaintenance";
+    case Action::AdminRebalance:
+      return "db:AdminRebalance";
+    case Action::AdminLicense:
+      return "db:AdminLicense";
+    case Action::AdminBackup:
+      return "db:AdminBackup";
+    case Action::AdminJobs:
+      return "db:AdminJobs";
+    case Action::AdminReadReplicatedLog:
+      return "db:AdminReadReplicatedLog";
+    case Action::AdminWriteReplicatedLog:
+      return "db:AdminWriteReplicatedLog";
+    case Action::AdminDump:
+      return "db:AdminDump";
+    case Action::AdminRestore:
+      return "db:AdminRestore";
+    case Action::AdminWalAccess:
+      return "db:AdminWalAccess";
+    case Action::AdminReadAgency:
+      return "db:AdminReadAgency";
+    case Action::AdminReadOnlyMode:
+      return "db:AdminReadOnlyMode";
+    case Action::AdminReadAqlFunctions:
+      return "db:AdminReadAqlFunctions";
+    case Action::AdminWriteAqlFunctions:
+      return "db:AdminWriteAqlFunctions";
+    case Action::AdminQueryCache:
+      return "db:AdminQueryCache";
+  }
+  ADB_PROD_CRASH();
+}
+
+// The wire string the external RBAC service expects for a resource. Admin
+// actions carry no resource, which is represented as the empty string.
+auto resourceToWireString(Resource const& resource) -> std::string {
+  return std::visit(
+      overload{
+          [](resources::NoResource const&) { return std::string{}; },
+          [](resources::Database const& r) {
+            return std::format("db:database:{}", r.name);
+          },
+          [](resources::Collection const& r) {
+            return std::format("db:collection:{}:{}", r.db, r.name);
+          },
+          [](resources::View const& r) {
+            return std::format("db:view:{}:{}", r.db, r.name);
+          },
+          [](resources::Analyzer const& r) {
+            return std::format("db:analyzer:{}:{}", r.db, r.name);
+          },
+          [](resources::Graph const& r) {
+            return std::format("db:graph:{}:{}", r.db, r.name);
+          },
+          [](resources::User const& r) {
+            return std::format("db:user:{}", r.name);
+          },
+      },
+      resource);
 }
 
 }  // namespace
@@ -63,6 +177,41 @@ auto ServiceImpl::maySyncImpl(User user,
     return result.result();
   }
   return result.get().effect == Backend::Effect::Allow;
+}
+
+auto ServiceImpl::check(Token token,
+                        std::span<ActionResource const> queries) noexcept
+    -> Result {
+  // An empty batch asks nothing, so it is trivially permitted; short-circuit to
+  // avoid a needless network round-trip.
+  if (queries.empty()) {
+    return {};
+  }
+
+  Backend::RequestItems items;
+  items.items.reserve(queries.size());
+  for (auto const& query : queries) {
+    items.items.push_back(Backend::RequestItem{
+        .action = std::string{actionToWireString(query.action)},
+        .resource = resourceToWireString(query.resource),
+        .attributeValues = {}});
+  }
+
+  // Service::check (and the whole IAuth::check chain) is synchronous for now,
+  // so we use the synchronous backend call directly.
+  auto result = _backend->evaluateTokenManySync(
+      Backend::JwtToken{.jwtToken = std::string{token}}, items);
+
+  if (!result.ok()) {
+    // Transport or parsing error: propagate it verbatim.
+    return result.result();
+  }
+  auto const& response = result.get();
+  if (response.effect == Backend::Effect::Allow) {
+    return {};
+  }
+  return {TRI_ERROR_FORBIDDEN, response.message.empty() ? "insufficient permissions"
+                                                        : response.message};
 }
 
 }  // namespace arangodb::rbac

@@ -35,6 +35,7 @@
 
 #include <cstdlib>
 #include <format>
+#include <vector>
 
 using namespace arangodb;
 
@@ -176,9 +177,6 @@ struct RbacIntegrationTest : ::testing::Test {
 
   std::unique_ptr<network::ConnectionPool> _pool;
 };
-
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 
 // =============================================================================
 // maySync
@@ -327,4 +325,75 @@ TEST_F(RbacIntegrationTest, ServiceMayAllSync_HttpServerError) {
   EXPECT_FALSE(result.ok());
 }
 
-#pragma GCC diagnostic pop
+// =============================================================================
+// check() — the ActionResource path. Verifies the new "db:<Action>" +
+// typed-resource wire vocabulary is what actually goes over the wire, and that
+// the aggregate effect maps to a Result.
+// =============================================================================
+
+TEST_F(RbacIntegrationTest, ServiceCheck_Allow) {
+  _smocker->addMock(kEvaluateTokenManyPath, 200, buildAllowResponse(1));
+  auto service = makeService();
+
+  std::vector<rbac::ActionResource> queries{
+      {rbac::Action::Read, rbac::resources::Database{.name = "mydb"}}};
+  auto result = service->check("test.jwt.token", queries);
+
+  ASSERT_TRUE(result.ok()) << result.errorMessage();
+
+  auto history = _smocker->getHistory();
+  ASSERT_EQ(history.size(), 1u);
+  EXPECT_EQ(history[0].method, "POST");
+  EXPECT_EQ(history[0].path, kEvaluateTokenManyPath);
+  EXPECT_EQ(normalizeJson(history[0].body), normalizeJson(R"({
+    "token": "test.jwt.token",
+    "items": [{
+      "action": "db:Read",
+      "resource": "db:database:mydb",
+      "context": {"parameters": {"attribute": {"values": []}}}
+    }]
+  })"));
+}
+
+TEST_F(RbacIntegrationTest, ServiceCheck_Deny) {
+  _smocker->addMock(kEvaluateTokenManyPath, 200, buildDenyResponse(1));
+  auto service = makeService();
+
+  std::vector<rbac::ActionResource> queries{
+      {rbac::Action::Read, rbac::resources::Database{.name = "mydb"}}};
+  auto result = service->check("test.jwt.token", queries);
+
+  EXPECT_EQ(result.errorNumber(), TRI_ERROR_FORBIDDEN);
+}
+
+TEST_F(RbacIntegrationTest, ServiceCheck_BatchUsesNewVocabulary) {
+  _smocker->addMock(kEvaluateTokenManyPath, 200, buildAllowResponse(3));
+  auto service = makeService();
+
+  // A composite permission (create graph + child collections) sent as one
+  // batch, exercising the graph/collection resource strings and Create/Read
+  // actions of the new vocabulary.
+  std::vector<rbac::ActionResource> queries{
+      {rbac::Action::Create, rbac::resources::Graph{.db = "mydb", .name = "g"}},
+      {rbac::Action::Create,
+       rbac::resources::Collection{.db = "mydb", .name = "c1"}},
+      {rbac::Action::Read,
+       rbac::resources::Collection{.db = "mydb", .name = "c2"}}};
+  auto result = service->check("test.jwt.token", queries);
+
+  ASSERT_TRUE(result.ok()) << result.errorMessage();
+
+  auto history = _smocker->getHistory();
+  ASSERT_EQ(history.size(), 1u);
+  EXPECT_EQ(normalizeJson(history[0].body), normalizeJson(R"({
+    "token": "test.jwt.token",
+    "items": [
+      {"action": "db:Create", "resource": "db:graph:mydb:g",
+       "context": {"parameters": {"attribute": {"values": []}}}},
+      {"action": "db:Create", "resource": "db:collection:mydb:c1",
+       "context": {"parameters": {"attribute": {"values": []}}}},
+      {"action": "db:Read", "resource": "db:collection:mydb:c2",
+       "context": {"parameters": {"attribute": {"values": []}}}}
+    ]
+  })"));
+}
