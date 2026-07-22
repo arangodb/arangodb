@@ -25,6 +25,7 @@
 
 #include "Basics/debugging.h"
 #include "Basics/voc-errors.h"
+#include "Inspection/Format.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "Transaction/Helpers.h"
 
