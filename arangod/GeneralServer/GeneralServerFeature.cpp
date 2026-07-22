@@ -202,6 +202,12 @@ GeneralServerFeature::GeneralServerFeature(
   startsAfter<UpgradeFeature>();
 
   initResponseCodeCounters();
+
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  for (auto const& it : _options.failurePoints) {
+    TRI_AddFailurePointDebugging(it);
+  }
+#endif
 }
 
 void GeneralServerFeature::initResponseCodeCounters() {
@@ -343,24 +349,6 @@ void GeneralServerFeature::countHttpResponseCode(
   } catch (...) {
     // must not throw from this noexcept function
   }
-}
-
-void GeneralServerFeature::collectOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  GeneralServerOptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
-
-void GeneralServerFeature::validateOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  GeneralServerOptionsProvider provider;
-  provider.validateOptions(options, _options);
-
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
-  for (auto const& it : _options.failurePoints) {
-    TRI_AddFailurePointDebugging(it);
-  }
-#endif
 }
 
 void GeneralServerFeature::prepare() {

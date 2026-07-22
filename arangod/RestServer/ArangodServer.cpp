@@ -90,7 +90,6 @@ void ArangodServer::addFeatures() {
   addFeature<AqlFeature>();
   addFeature<async_registry::Feature>(_dataSourceRegistry);
   addFeature<activities::Feature>(_dataSourceRegistry);
-  addFeature<AuthenticationFeature>();
 
 #ifdef TRI_HAVE_GETRLIMIT
   addFeature<BumpFileDescriptorsFeature>("--server.descriptors-minimum");
@@ -109,7 +108,6 @@ void ArangodServer::addFeatures() {
   addFeature<V8SecurityFeature>(AllowListStrictness::STRICT);
 #endif
   addFeature<CpuUsageFeature>();
-  addFeature<HttpEndpointProvider, EndpointFeature>();
   auto& systemDatabaseFeature = addFeature<SystemDatabaseFeature>();
   addFeature<BootstrapFeature>(clusterFeature, database, &systemDatabaseFeature,
                                &clusterUpgradeFeature
@@ -121,15 +119,12 @@ void ArangodServer::addFeatures() {
   addFeature<EnvironmentFeature>();
 #ifdef USE_V8
   addFeature<FoxxFeature>();
-  addFeature<FrontendFeature>();
 #endif
-  addFeature<GeneralServerFeature>(metrics);
   addFeature<GreetingsFeature>();
   addFeature<LanguageCheckFeature>();
   addFeature<TimeZoneFeature>();
   addFeature<LockfileFeature>();
   addFeature<MaintenanceFeature>(&clusterFeature);
-  addFeature<NetworkFeature>(metrics, network::ConnectionPool::Config{});
   addFeature<OptionsCheckFeature>();
   addFeature<PrivilegeFeature>();
   addFeature<QueryRegistryFeature>(metrics);
@@ -162,9 +157,6 @@ void ArangodServer::addFeatures() {
   addFeature<aql::OptimizerRulesFeature>();
   addFeature<aql::QueryInfoLoggerFeature>();
   addFeature<RocksDBRecoveryManager>(database, database);
-#ifdef TRI_HAVE_GETRLIMIT
-  addFeature<FileDescriptorsFeature>(metrics);
-#endif
 #ifdef ARANGODB_HAVE_FORK
   addFeature<DaemonFeature>();
   addFeature<SupervisorFeature>();
@@ -175,11 +167,7 @@ void ArangodServer::addFeatures() {
   addFeature<RCloneFeature>();
   addFeature<HotBackupFeature>();
   addFeature<EncryptionFeature>();
-  addFeature<SslServerFeature, SslServerFeatureEE>();
-#else
-  addFeature<SslServerFeature>();
 #endif
-
   addFeature<iresearch::IResearchFeature>(metrics);
   addFeature<ClusterEngine>(metrics);
 }
@@ -194,7 +182,6 @@ void ArangodServer::addFeaturesWithOptionProvider() {
   auto& agency = getFeature<AgencyFeature>();
   auto& clusterFeature = getFeature<ClusterFeature>();
   auto& systemDatabaseFeature = getFeature<SystemDatabaseFeature>();
-  auto& networkFeature = getFeature<NetworkFeature>();
   auto& aqlFunctionFeature = getFeature<aql::AqlFunctionFeature>();
 
   addFeature<VersionFeature>(getOptions<VersionOptionsProvider>());
@@ -202,6 +189,33 @@ void ArangodServer::addFeaturesWithOptionProvider() {
   addFeature<ConfigFeature>(_binaryName, getOptions<ConfigOptionsProvider>());
   addFeature<TempFeature>(std::string{_binaryName},
                           getOptions<TempOptionsProvider>());
+
+#ifdef USE_ENTERPRISE
+  addFeature<SslServerFeature, SslServerFeatureEE>(
+      getOptions<SslServerOptionsProvider>(),
+      getOptions<enterprise::SslServerEEOptionsProvider>());
+#else
+  addFeature<SslServerFeature>(getOptions<SslServerOptionsProvider>());
+#endif
+
+#ifdef USE_V8
+  addFeature<FrontendFeature>(getOptions<FrontendOptionsProvider>());
+#endif
+
+#ifdef TRI_HAVE_GETRLIMIT
+  addFeature<FileDescriptorsFeature>(
+      metrics, getOptions<file_descriptors::FileDescriptorsOptionsProvider>());
+#endif
+
+  addFeature<AuthenticationFeature>(
+      getOptions<AuthenticationOptionsProvider>());
+  addFeature<GeneralServerFeature>(metrics,
+                                   getOptions<GeneralServerOptionsProvider>());
+  auto& networkFeature =
+      addFeature<NetworkFeature>(metrics, getOptions<NetworkOptionsProvider>());
+  addFeature<HttpEndpointProvider, EndpointFeature>(
+      getOptions<EndpointOptionsProvider>());
+
   addFeature<RandomFeature>(getOptions<RandomOptionsProvider>());
   addFeature<NonceFeature>(getOptions<NonceOptionsProvider>());
   addFeature<MaxMapCountFeature>(getOptions<MaxMapCountOptionsProvider>());
