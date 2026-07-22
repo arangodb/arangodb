@@ -29,6 +29,10 @@
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 
+#ifdef USE_ENTERPRISE
+#include "Enterprise/RocksDBEngine/RocksDBEngineEEOptionsProvider.h"
+#endif
+
 namespace arangodb {
 
 using namespace arangodb::options;
@@ -37,7 +41,7 @@ namespace {
 constexpr uint64_t minSyncInterval = 5;
 }
 
-void RocksDBEngineOptionsProvider::declareOptions(
+void RocksDBEngineOptionsProvider::declareOptionsImpl(
     std::shared_ptr<ProgramOptions> opts, RocksDBEngineOptions& options) {
   opts->addObsoleteOption("--server.storage-engine", "The storage engine type",
                           true);
@@ -47,7 +51,8 @@ void RocksDBEngineOptionsProvider::declareOptions(
           "--rocksdb.minimum-disk-free-percent",
           "The minimum percentage of free disk space for considering the "
           "server healthy in health checks (0 = disable the check).",
-          new DoubleParameter(&options.requiredDiskFreePercentage, /*base*/ 1.0,
+          new DoubleParameter(&options.requiredDiskFreePercentage,
+                              /*base*/ 1.0,
                               /*minValue*/ 0.0, /*maxValue*/ 1.0),
           arangodb::options::makeFlags(
               arangodb::options::Flags::DefaultNoComponents,
@@ -401,9 +406,13 @@ additional metrics via the `GET /_admin/metrics/v2` endpoint:
 - `arangodb_collection_truncates_replication_total`
 - `arangodb_collection_truncate_time`
 )");
+#ifdef USE_ENTERPRISE
+  enterprise::RocksDBEngineEEOptionsProvider::declareOptions(opts,
+                                                             options.eeOptions);
+#endif
 }
 
-void RocksDBEngineOptionsProvider::validateOptions(
+void RocksDBEngineOptionsProvider::validateOptionsImpl(
     std::shared_ptr<ProgramOptions> opts, RocksDBEngineOptions& options) {
   if (options.throttleScalingFactor == 0) {
     options.throttleScalingFactor = 1;
@@ -445,6 +454,10 @@ void RocksDBEngineOptionsProvider::validateOptions(
            "--rocksdb.wal-file-timeout-initial. "
         << "Replication clients might have trouble to get in sync";
   }
+#ifdef USE_ENTERPRISE
+  enterprise::RocksDBEngineEEOptionsProvider::validateOptions(
+      opts, options.eeOptions);
+#endif
 }
 
 }  // namespace arangodb

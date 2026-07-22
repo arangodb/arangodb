@@ -21,22 +21,15 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Jan Steemann
-/// @author Copyright 2019, ArangoDB Inc, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 let jsunity = require('jsunity');
 const _ = require('lodash');
-const pu = require('@arangodb/testutils/process-utils');
 const crypto = require('@arangodb/crypto');
 const request = require("@arangodb/request");
 const { time, sleep } = require("internal");
+let { instanceRole } = require('@arangodb/testutils/instance');
 let IM = global.instanceManager;
-
-const {
-  getCtrlCoordinators,
-  getCtrlDBServers
-} = require('@arangodb/test-helper');
 
 function testSuite() {
   const jwtSecret = 'haxxmann';
@@ -83,7 +76,7 @@ function testSuite() {
   return {
     tearDownAll : function() {
       // Need to restart without authentication for other tests to succeed:
-      let coordinators = getCtrlCoordinators();
+      let coordinators = IM.getInstancesRole(instanceRole.coordinator);
       let coordinator = coordinators[0];
       coordinator.exitStatus = null;
       coordinator.shutdownArangod(false);
@@ -100,7 +93,7 @@ function testSuite() {
     },
 
     testRestartCoordinatorNormal : function() {
-      let coordinators = getCtrlCoordinators();
+      let coordinators = IM.getInstancesRole(instanceRole.coordinator);
       assertTrue(coordinators.length > 0);
       let coordinator = coordinators[0];
       coordinator.shutdownArangod(false);
@@ -117,11 +110,11 @@ function testSuite() {
     },
     
     testRestartCoordinatorNoDBServersNoAuthentication : function() {
-      let dbServers = getCtrlDBServers();
+      let dbServers = IM.getInstancesRole(instanceRole.dbserver);
       // assume all db servers are reachable
       checkAvailability(dbServers, 200);
 
-      let coordinators = getCtrlCoordinators();
+      let coordinators = IM.getInstancesRole(instanceRole.coordinator);
       assertTrue(coordinators.length > 0);
       let coordinator = coordinators[0];
 
@@ -158,11 +151,11 @@ function testSuite() {
     },
     
     testRestartCoordinatorNoDBServersAuthenticationWrongUser : function() {
-      let dbServers = getCtrlDBServers();
+      let dbServers = IM.getInstancesRole(instanceRole.dbserver);
       // assume all db servers are reachable
       checkAvailability(dbServers, 200);
 
-      let coordinators = getCtrlCoordinators();
+      let coordinators = IM.getInstancesRole(instanceRole.coordinator);
       assertTrue(coordinators.length > 0);
       let coordinator = coordinators[0];
 
@@ -199,11 +192,11 @@ function testSuite() {
     },
     
     testRestartCoordinatorNoDBServersAuthenticationRootUser : function() {
-      let dbServers = getCtrlDBServers();
+      let dbServers = IM.getInstancesRole(instanceRole.dbserver);
       // assume all db servers are reachable
       checkAvailability(dbServers, 200);
 
-      let coordinators = getCtrlCoordinators();
+      let coordinators = IM.getInstancesRole(instanceRole.coordinator);
       assertTrue(coordinators.length > 0);
       let coordinator = coordinators[0];
 

@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -87,6 +86,9 @@ class EdgeConditionBuilder {
   void replaceAttributeAccess(Ast* ast, Variable const* searchVariable,
                               std::span<std::string_view> attribute,
                               Variable const* replaceVariable);
+
+  /// @brief getVariablesUsedHere
+  void getVariablesUsedHere(VarSet& result) const;
 
   // Add a condition on the edges that is not related to
   // the direction e.g. `label == foo`

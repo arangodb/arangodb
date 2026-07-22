@@ -22,19 +22,13 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Jan Steemann
 // //////////////////////////////////////////////////////////////////////////////
 const _ = require('lodash');
 let jsunity = require('jsunity');
 let internal = require('internal');
-let arangodb = require('@arangodb');
-let request = require("@arangodb/request");
+let { db } = require('@arangodb');
 const isEnterprise = require("internal").isEnterprise();
-let fs = require('fs');
-let pu = require('@arangodb/testutils/process-utils');
-let db = arangodb.db;
-
-let { getEndpointsByType, versionHas } = require('@arangodb/test-helper');
+let { versionHas } = require('@arangodb/test-helper');
 
 const isInstr = versionHas('asan') || versionHas('tsan') || versionHas('coverage');
 const {
@@ -48,8 +42,6 @@ const { expect } = require('chai');
 const toArgv = require('internal').toArgv;
 
 
-const getMetric = require('@arangodb/test-helper').getMetricSingle;
-let { debugResetRaceControl } = require('@arangodb/test-helper');
 let { instanceRole } = require('@arangodb/testutils/instance');
 let IM = global.instanceManager;
 
@@ -63,8 +55,6 @@ const endpointToURL = (endpoint) => {
   }
   return 'http' + endpoint.substr(pos);
 };
-
-const arangosh = pu.ARANGOSH_BIN;
 
 const debug = function (text) {
   console.warn(text);
@@ -428,11 +418,11 @@ function GenericAqlSetupPathSuite(type) {
       if (sWrites) {
         numWriters++;
       }
-      const seqLocksBefore = getMetric("arangodb_collection_lock_sequential_mode");
+      const seqLocksBefore = IM.getMetric("arangodb_collection_lock_sequential_mode");
       // run both queries in parallel
       singleRun(tests);
 
-      const seqLocksAfter = getMetric("arangodb_collection_lock_sequential_mode");
+      const seqLocksAfter = IM.getMetric("arangodb_collection_lock_sequential_mode");
       const expectsSequentialLock = () => {
         if (!fWrites || !sWrites) {
           // Both transactions need to write
@@ -551,8 +541,10 @@ function GenericAqlSetupPathSuite(type) {
 
       // set log level for transaction topic to trace on all db servers
       // this is for debugging purposes only to understand why these tests regularly fail in CI and eventually be removed again
-      getEndpointsByType("dbserver").forEach((ep) => {
-        request({ method: "PUT", url: ep + "/_admin/log/level", body: { trx: "trace", }, json: true });
+      IM.getInstancesRole(instanceRole.dbserver).forEach((dbServer) => {
+        dbServer.toThisInstance(() => {
+          arango.PUT_RAW("/_admin/log/level", { trx: "trace", });
+        });
       });
     },
 
@@ -593,10 +585,11 @@ function GenericAqlSetupPathSuite(type) {
       db._drop(cn);
 
       // reset log level for transaction topic to warn on all db servers
-      getEndpointsByType("dbserver").forEach((ep) => {
-        request({ method: "PUT", url: ep + "/_admin/log/level", body: { trx: "warn", }, json: true });
+      IM.getInstancesRole(instanceRole.dbserver).forEach((dbServer) => {
+        dbServer.toThisInstance(() => {
+          arango.PUT_RAW("/_admin/log/level", { trx: "warn", });
+        });
       });
-
     }
   };
 

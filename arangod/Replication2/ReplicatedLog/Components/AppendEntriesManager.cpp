@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 #include "AppendEntriesManager.h"
 #include "Replication2/ReplicatedLog/NetworkMessages.h"

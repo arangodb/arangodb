@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andreas Streichardt <andreas@arangodb.com>
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AuthenticationFeature.h"

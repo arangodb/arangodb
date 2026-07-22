@@ -21,18 +21,13 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Jure Bajic
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
-const db = require("@arangodb").db;
+const { db, aql, errors } = require("@arangodb");
 const internal = require("internal");
-const getMetricSingle = require("@arangodb/test-helper").getMetricSingle;
-const arangodb = require("@arangodb");
-const aql = arangodb.aql;
-const ERRORS = arangodb.errors;
 let IM = global.instanceManager;
-const {sleep, arango} = require('internal');
+const { sleep, arango } = require('internal');
 
 function QueryMetricsTestSuite() {
 
@@ -42,7 +37,7 @@ function QueryMetricsTestSuite() {
     },
 
     testMetricAqlCurrentQueryWithoutRunningQueries: function () {
-      let aqlCurrentQueryMetric = getMetricSingle("arangodb_aql_current_query");
+      let aqlCurrentQueryMetric = IM.getMetric("arangodb_aql_current_query");
       assertEqual(aqlCurrentQueryMetric, 0);
 
       for (let i = 0; i < 1000; ++i) {
@@ -51,39 +46,41 @@ function QueryMetricsTestSuite() {
         db._query(query);
       }
 
-      aqlCurrentQueryMetric = getMetricSingle("arangodb_aql_current_query");
+      aqlCurrentQueryMetric = IM.getMetric("arangodb_aql_current_query");
       assertEqual(aqlCurrentQueryMetric, 0);
     },
 
-    testFailingQuery : function () {
-      let st = db._createStatement({ query : "for i in" });
+    testFailingQuery: function () {
+      let st = db._createStatement({ query: "for i in" });
 
       try {
         st.parse();
         fail();
       } catch (e) {
-        assertEqual(ERRORS.ERROR_QUERY_PARSE.code, e.errorNum);
+        assertEqual(errors.ERROR_QUERY_PARSE.code, e.errorNum);
       }
 
-      let aqlCurrentQueryMetric = getMetricSingle("arangodb_aql_current_query");
+      let aqlCurrentQueryMetric = IM.getMetric("arangodb_aql_current_query");
       assertEqual(aqlCurrentQueryMetric, 0);
     },
 
     testMetricAqlCurrentQueryWithStreamingQueries: function () {
-      let aqlCurrentQueryMetric = getMetricSingle("arangodb_aql_current_query");
+      let aqlCurrentQueryMetric = IM.getMetric("arangodb_aql_current_query");
       assertEqual(aqlCurrentQueryMetric, 0);
 
       let queries = [];
       for (let i = 0; i < 100; ++i) {
-        let stmt = db._createStatement({ query: "FOR i IN 1..100 RETURN i",
-                                       options: { stream: true },
-                                       batchSize: 2});
+        let stmt = db._createStatement({
+          query: "FOR i IN 1..100 RETURN i",
+          options: { stream: true },
+          batchSize: 2
+        });
         queries.push(stmt.execute());
       }
-      aqlCurrentQueryMetric = getMetricSingle("arangodb_aql_current_query");
+      aqlCurrentQueryMetric = IM.getMetric("arangodb_aql_current_query");
       assertEqual(aqlCurrentQueryMetric, 100);
 
-      queries.forEach(function(cursor) {
+      queries.forEach(function (cursor) {
         for (let i = 1; i <= 100; ++i) {
           assertEqual(i, cursor.next());
           assertEqual(i !== 100, cursor.hasNext());
@@ -91,12 +88,12 @@ function QueryMetricsTestSuite() {
         assertFalse(cursor.hasNext());
       });
 
-      aqlCurrentQueryMetric = getMetricSingle("arangodb_aql_current_query");
+      aqlCurrentQueryMetric = IM.getMetric("arangodb_aql_current_query");
       assertEqual(aqlCurrentQueryMetric, 0);
     },
 
     testMetricAqlCurrentQueryFailurePoint: function () {
-      let aqlCurrentQueryMetric = getMetricSingle("arangodb_aql_current_query");
+      let aqlCurrentQueryMetric = IM.getMetric("arangodb_aql_current_query");
       assertEqual(aqlCurrentQueryMetric, 0);
 
       try {
@@ -106,7 +103,7 @@ function QueryMetricsTestSuite() {
         let cursorsIds = [];
         // Launch queries
         for (let i = 0; i < numberOfRunningQueries; ++i) {
-          let res = arango.POST_RAW("/_api/cursor", JSON.stringify(data), {"x-arango-async": "store"});
+          let res = arango.POST_RAW("/_api/cursor", JSON.stringify(data), { "x-arango-async": "store" });
           assertTrue(res.headers.hasOwnProperty("x-arango-async-id"));
           cursorsIds.push(res.headers["x-arango-async-id"]);
         }
@@ -115,7 +112,7 @@ function QueryMetricsTestSuite() {
         const maxIterations = 100; // 10 seconds with 0.1s sleep
         let iterations = 0;
         while (iterations < maxIterations) {
-          aqlCurrentQueryMetric = getMetricSingle("arangodb_aql_current_query");
+          aqlCurrentQueryMetric = IM.getMetric("arangodb_aql_current_query");
           if (aqlCurrentQueryMetric >= numberOfRunningQueries) {
             break;
           }
@@ -125,8 +122,8 @@ function QueryMetricsTestSuite() {
 
         IM.debugRemoveFailAt("Query::delayingExecutionPhase");
         // Some other background queries might be executing
-        assertTrue(aqlCurrentQueryMetric >= numberOfRunningQueries, 
-                   `Expected at least ${numberOfRunningQueries} running queries, but got ${aqlCurrentQueryMetric} after 10s timeout`);
+        assertTrue(aqlCurrentQueryMetric >= numberOfRunningQueries,
+          `Expected at least ${numberOfRunningQueries} running queries, but got ${aqlCurrentQueryMetric} after 10s timeout`);
 
         // Make sure that the queries are cleaned
         for (let i = 0; i < numberOfRunningQueries; ++i) {
@@ -136,7 +133,7 @@ function QueryMetricsTestSuite() {
         iterations = 0;
         // The metrics should eventually reach 0
         while (iterations < maxIterations) {
-          aqlCurrentQueryMetric = getMetricSingle("arangodb_aql_current_query");
+          aqlCurrentQueryMetric = IM.getMetric("arangodb_aql_current_query");
           if (aqlCurrentQueryMetric === 0) {
             break;
           }

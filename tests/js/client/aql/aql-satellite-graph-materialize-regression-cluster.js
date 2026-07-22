@@ -27,6 +27,7 @@
 const jsunity = require("jsunity");
 const {aql, db, errors} = require("@arangodb");
 const internal = require("internal");
+let IM = global.instanceManager;
 
 function aqlSatelliteMaterializeRegressionTestSuite() {
   const database = "UnitTestsSatelliteMaterializeRegression";
@@ -65,34 +66,7 @@ function aqlSatelliteMaterializeRegressionTestSuite() {
         // Schedule MoveShard operation
         internal.print("moving shards: ");
         let servers = getResponsibleServers(c1);
-        const moveShardParam = {
-          database: database,
-          collection: cn1,
-          shard: c1.shards()[0],
-          fromServer: servers[0],
-          toServer: servers[1]
-        };
-        internal.print(JSON.stringify(moveShardParam));
-        const moveShardResult = arango.POST(`/_admin/cluster/moveShard`,
-                                          moveShardParam);
-        const moveShardId = moveShardResult.id;
-        internal.print(`move: ${JSON.stringify(moveShardResult)}`);
-        assertEqual(moveShardResult.code, 202);
-
-        let moveShardFinished = false;
-        let maxWait = 30; // 30 seconds timeout
-        while (maxWait > 0) {
-          const jobStatus = arango.GET(`/_admin/cluster/queryAgencyJob?id=${moveShardId}`);
-          internal.print(JSON.stringify(jobStatus));
-          if (jobStatus.status === "Finished") {
-            moveShardFinished = true;
-            break;
-          }
-          internal.wait(1);
-          internal.print("waiting for shards to move");
-          maxWait--;
-        }
-        assertTrue(moveShardFinished);
+        assertTrue(IM.moveShard(database, cn1, c1.shards()[0], servers[0], servers[1], 30));
       }
 
       assertNotEqual(getLeader(c1), getLeader(c2),
