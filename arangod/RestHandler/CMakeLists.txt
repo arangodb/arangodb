@@ -132,13 +132,3 @@ target_include_directories(arango_rest_handler PRIVATE
   "${CMAKE_CURRENT_BINARY_DIR}")
 
 add_dependencies(arango_rest_handler openapi-hex-files)
-
-add_executable(probe_rest_handler
-  ${PROJECT_SOURCE_DIR}/tests/Probe/probe_main.cpp)
-
-target_link_options(probe_rest_handler PRIVATE
-  "-Wl,--whole-archive"
-  "$<TARGET_FILE:arango_rest_handler>"
-  "-Wl,--no-whole-archive")
-
-target_link_libraries(probe_rest_handler PRIVATE arango_rest_handler)

@@ -15,13 +15,3 @@ target_link_libraries(arango_statistics
 target_include_directories(arango_statistics PRIVATE
   "${PROJECT_SOURCE_DIR}/arangod"
   "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
-
-add_executable(probe_statistics
-  ${PROJECT_SOURCE_DIR}/tests/Probe/probe_main.cpp)
-
-target_link_options(probe_statistics PRIVATE
-  "-Wl,--whole-archive"
-  "$<TARGET_FILE:arango_statistics>"
-  "-Wl,--no-whole-archive")
-
-target_link_libraries(probe_statistics PRIVATE arango_statistics)

@@ -86,13 +86,3 @@ target_link_libraries(arango_rest_server
 target_include_directories(arango_rest_server PRIVATE
   "${PROJECT_SOURCE_DIR}/arangod"
   "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
-
-add_executable(probe_rest_server
-  ${PROJECT_SOURCE_DIR}/tests/Probe/probe_main.cpp)
-
-target_link_options(probe_rest_server PRIVATE
-  "-Wl,--whole-archive"
-  "$<TARGET_FILE:arango_rest_server>"
-  "-Wl,--no-whole-archive")
-
-target_link_libraries(probe_rest_server PRIVATE arango_rest_server)

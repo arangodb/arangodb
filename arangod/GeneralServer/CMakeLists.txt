@@ -31,13 +31,3 @@ target_link_libraries(arango_general_server
 target_include_directories(arango_general_server PRIVATE
   "${PROJECT_SOURCE_DIR}/arangod"
   "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
-
-add_executable(probe_general_server
-  ${PROJECT_SOURCE_DIR}/tests/Probe/probe_main.cpp)
-
-target_link_options(probe_general_server PRIVATE
-  "-Wl,--whole-archive"
-  "$<TARGET_FILE:arango_general_server>"
-  "-Wl,--no-whole-archive")
-
-target_link_libraries(probe_general_server PRIVATE arango_general_server)

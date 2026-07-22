@@ -22,13 +22,3 @@ target_link_libraries(arango_feature_phases
 target_include_directories(arango_feature_phases PRIVATE
   "${PROJECT_SOURCE_DIR}/arangod"
   "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
-
-add_executable(probe_feature_phases
-  ${PROJECT_SOURCE_DIR}/tests/Probe/probe_main.cpp)
-
-target_link_options(probe_feature_phases PRIVATE
-  "-Wl,--whole-archive"
-  "$<TARGET_FILE:arango_feature_phases>"
-  "-Wl,--no-whole-archive")
-
-target_link_libraries(probe_feature_phases PRIVATE arango_feature_phases)

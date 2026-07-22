@@ -27,13 +27,3 @@ target_link_libraries(arango_transaction
 target_include_directories(arango_transaction PRIVATE
   "${PROJECT_SOURCE_DIR}/arangod"
   "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
-
-add_executable(probe_transaction
-  ${PROJECT_SOURCE_DIR}/tests/Probe/probe_main.cpp)
-
-target_link_options(probe_transaction PRIVATE
-  "-Wl,--whole-archive"
-  "$<TARGET_FILE:arango_transaction>"
-  "-Wl,--no-whole-archive")
-
-target_link_libraries(probe_transaction PRIVATE arango_transaction)

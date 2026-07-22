@@ -74,13 +74,3 @@ target_link_libraries(arango_cluster
 target_include_directories(arango_cluster PRIVATE
   "${PROJECT_SOURCE_DIR}/arangod"
   "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
-
-add_executable(probe_cluster
-  ${PROJECT_SOURCE_DIR}/tests/Probe/probe_main.cpp)
-
-target_link_options(probe_cluster PRIVATE
-  "-Wl,--whole-archive"
-  "$<TARGET_FILE:arango_cluster>"
-  "-Wl,--no-whole-archive")
-
-target_link_libraries(probe_cluster PRIVATE arango_cluster)
