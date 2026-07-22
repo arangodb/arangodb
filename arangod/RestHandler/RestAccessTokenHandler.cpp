@@ -76,13 +76,13 @@ RestStatus RestAccessTokenHandler::execute() {
       }
       return showAccessTokens(um, user);
     case RequestType::POST:
-      if (auto r = exec.canWriteUser(user); !r.ok()) {
+      if (auto r = exec.canModifyUserProfile(user); !r.ok()) {
         generateError(r);
         return RestStatus::DONE;
       }
       return createAccessToken(um, user);
     case RequestType::DELETE_REQ:
-      if (auto r = exec.canWriteUser(user); !r.ok()) {
+      if (auto r = exec.canModifyUserProfile(user); !r.ok()) {
         generateError(r);
         return RestStatus::DONE;
       }

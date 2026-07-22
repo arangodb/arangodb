@@ -7,14 +7,20 @@
 //
 // Auth model (without RBAC)
 // ──────────────────────────
-//   canReadUser(u)   → requires RO access to the _system database
-//   canWriteUser(u)  → requires RW access to the _system database
-//   AUTHEN           → any authenticated user (no further check)
+//   canReadUser(u)             → requires RO access to the _system database
+//   canCreateUser(u)           → requires RW access to the _system database
+//   canDropUser(u)             → requires RW access to the _system database
+//   canModifyUserProfile(u)    → requires RW access to the _system database
+//   canGrantUserPermissions(u) → requires RW access to the _system database
+//   AUTHEN                     → any authenticated user (no further check)
 //
 // Expected patterns for the admin user matrix:
-//   canReadUser  → AU:403, AN:403, AR:403, AW:200, superuser:200
-//   canWriteUser → AU:403, AN:403, AR:403, AW:200, superuser:200
-//   AUTHEN       → AU:403, AN:403, AR:403, AW:200, superuser:200
+//   canReadUser              → AU:403, AN:403, AR:403, AW:200, superuser:200
+//   canCreateUser            → AU:403, AN:403, AR:403, AW:200, superuser:200
+//   canDropUser              → AU:403, AN:403, AR:403, AW:200, superuser:200
+//   canModifyUserProfile     → AU:403, AN:403, AR:403, AW:200, superuser:200
+//   canGrantUserPermissions  → AU:403, AN:403, AR:403, AW:200, superuser:200
+//   AUTHEN                   → AU:403, AN:403, AR:403, AW:200, superuser:200
 //
 // Resources created per-test in setup / cleaned up in teardown:
 //   testuser  – a temporary user (user="testuser", passwd="testpasswd")
@@ -74,7 +80,7 @@ export default [
   // ── POST /_api/user ───────────────────────────────────────────────────────
   {
     // POST /_api/user
-    // Auth: canWriteUser(u) → RW on _system.
+    // Auth: canCreateUser(u) → RW on _system.
     // Creates user "testuser".
     // setup:    delete testuser if it already exists.
     // teardown: delete testuser regardless of whether the test succeeded.
@@ -221,7 +227,7 @@ export default [
   // ── PUT /_api/user/{user} (full replace) ──────────────────────────────────
   {
     // PUT /_api/user/testuser
-    // Auth: canWriteUser(u) → RW on _system.
+    // Auth: canModifyUserProfile(u) → RW on _system.
     // Replaces the "testuser" record (password change is a common use-case).
     // setup:    create testuser.
     // teardown: delete testuser.
@@ -242,7 +248,7 @@ export default [
   // ── PATCH /_api/user/{user} (partial update) ──────────────────────────────
   {
     // PATCH /_api/user/testuser
-    // Auth: canWriteUser(u) → RW on _system.
+    // Auth: canModifyUserProfile(u) → RW on _system.
     // Partially updates the "testuser" record (e.g. active flag).
     // setup:    create testuser.
     // teardown: delete testuser.
@@ -263,7 +269,7 @@ export default [
   // ── PUT /_api/user/{user}/config/{key} ────────────────────────────────────
   {
     // PUT /_api/user/testuser/config/testkey
-    // Auth: canWriteUser(u) → RW on _system.
+    // Auth: canModifyUserProfile(u) → RW on _system.
     // Stores a JSON value under the configuration key "testkey" for "testuser".
     // setup:    create testuser.
     // teardown: delete testuser (which removes all associated config entries).
@@ -284,7 +290,7 @@ export default [
   // ── PUT /_api/user/{user}/database/{db} ───────────────────────────────────
   {
     // PUT /_api/user/testuser/database/d2
-    // Auth: canWriteUser(u) → RW on _system.
+    // Auth: canGrantUserPermissions(u) → RW on _system.
     // Grants "testuser" the specified access level on database "d2".
     // setup:    create testuser and database d2.
     // teardown: delete testuser and drop d2.
@@ -307,7 +313,7 @@ export default [
   // ── PUT /_api/user/{user}/database/{db}/{coll} ────────────────────────────
   {
     // PUT /_api/user/testuser/database/d2/c2
-    // Auth: canWriteUser(u) → RW on _system.
+    // Auth: canGrantUserPermissions(u) → RW on _system.
     // Grants "testuser" the specified access level on collection "c2" in "d2".
     // setup:    create testuser, database d2, and collection c2 inside d2.
     // teardown: delete testuser and drop d2 (which also removes c2).
@@ -331,7 +337,7 @@ export default [
   // ── DELETE /_api/user/{user} ──────────────────────────────────────────────
   {
     // DELETE /_api/user/testuser
-    // Auth: canWriteUser(u) → RW on _system.
+    // Auth: canDropUser(u) → RW on _system.
     // Deletes the "testuser" account entirely.
     // setup:    create testuser so there is something to delete.
     // teardown: attempt deletion again (idempotent — 404 is fine) to ensure
@@ -352,7 +358,7 @@ export default [
   // ── DELETE /_api/user/{user}/config/{key} ─────────────────────────────────
   {
     // DELETE /_api/user/testuser/config/testkey
-    // Auth: canWriteUser(u) → RW on _system.
+    // Auth: canModifyUserProfile(u) → RW on _system.
     // Removes the configuration entry "testkey" from "testuser".
     // setup:    create testuser and store the config key so there is something
     //           to delete.
@@ -376,7 +382,7 @@ export default [
   // ── DELETE /_api/user/{user}/database/{db} ────────────────────────────────
   {
     // DELETE /_api/user/testuser/database/d2
-    // Auth: canWriteUser(u) → RW on _system.
+    // Auth: canGrantUserPermissions(u) → RW on _system.
     // Revokes all database-level permissions "testuser" has on "d2".
     // setup:    create testuser, database d2, and grant testuser ro access on d2
     //           so there is a permission to revoke.
@@ -402,7 +408,7 @@ export default [
   // ── DELETE /_api/user/{user}/database/{db}/{coll} ─────────────────────────
   {
     // DELETE /_api/user/testuser/database/d2/c2
-    // Auth: canWriteUser(u) → RW on _system.
+    // Auth: canGrantUserPermissions(u) → RW on _system.
     // Revokes all collection-level permissions "testuser" has on "c2" in "d2".
     // setup:    create testuser, database d2, collection c2 in d2, and grant
     //           testuser ro access on c2 so there is a permission to revoke.

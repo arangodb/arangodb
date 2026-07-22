@@ -99,8 +99,14 @@ void StoreUser(v8::FunctionCallbackInfo<v8::Value> const& args, bool replace) {
   }
   std::string username = TRI_ObjectToString(isolate, args[0]);
   auto const& exec = ExecContext::current();
-  if (auto r = exec.canWriteUser(username); !r.ok()) {
-    TRI_V8_THROW_EXCEPTION(r);
+  if (replace) {
+    if (auto r = exec.canModifyUserProfile(username); !r.ok()) {
+      TRI_V8_THROW_EXCEPTION(r);
+    }
+  } else {
+    if (auto r = exec.canCreateUser(username); !r.ok()) {
+      TRI_V8_THROW_EXCEPTION(r);
+    }
   }
   std::string pass = args.Length() > 1 && args[1]->IsString()
                          ? TRI_ObjectToString(isolate, args[1])
@@ -152,7 +158,7 @@ static void JS_UpdateUser(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
   std::string username = TRI_ObjectToString(isolate, args[0]);
   auto const& exec = ExecContext::current();
-  if (auto r = exec.canWriteUser(username); !r.ok()) {
+  if (auto r = exec.canModifyUserProfile(username); !r.ok()) {
     TRI_V8_THROW_EXCEPTION(r);
   }
 
@@ -194,7 +200,7 @@ static void JS_RemoveUser(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
   std::string user = TRI_ObjectToString(isolate, args[0]);
   auto const& exec = ExecContext::current();
-  if (auto r = exec.canWriteUser(user); !r.ok()) {
+  if (auto r = exec.canDropUser(user); !r.ok()) {
     TRI_V8_THROW_EXCEPTION(r);
   }
 
@@ -271,7 +277,7 @@ static void JS_GrantDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
   std::string username = TRI_ObjectToString(isolate, args[0]);
   auto const& exec = ExecContext::current();
-  if (auto r = exec.canWriteUser(username); !r.ok()) {
+  if (auto r = exec.canGrantUserPermissions(username); !r.ok()) {
     TRI_V8_THROW_EXCEPTION(r);
   }
 
@@ -310,7 +316,7 @@ static void JS_RevokeDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
   std::string username = TRI_ObjectToString(isolate, args[0]);
   auto const& exec = ExecContext::current();
-  if (auto r = exec.canWriteUser(username); !r.ok()) {
+  if (auto r = exec.canGrantUserPermissions(username); !r.ok()) {
     TRI_V8_THROW_EXCEPTION(r);
   }
 
@@ -348,7 +354,7 @@ static void JS_GrantCollection(
 
   std::string username = TRI_ObjectToString(isolate, args[0]);
   auto const& exec = ExecContext::current();
-  if (auto r = exec.canWriteUser(username); !r.ok()) {
+  if (auto r = exec.canGrantUserPermissions(username); !r.ok()) {
     TRI_V8_THROW_EXCEPTION(r);
   }
 
@@ -405,7 +411,7 @@ static void JS_RevokeCollection(
 
   std::string username = TRI_ObjectToString(isolate, args[0]);
   auto const& exec = ExecContext::current();
-  if (auto r = exec.canWriteUser(username); !r.ok()) {
+  if (auto r = exec.canGrantUserPermissions(username); !r.ok()) {
     TRI_V8_THROW_EXCEPTION(r);
   }
 
@@ -453,7 +459,7 @@ static void JS_UpdateConfigData(
   }
   std::string username = TRI_ObjectToString(isolate, args[0]);
   auto const& exec = ExecContext::current();
-  if (auto r = exec.canWriteUser(username); !r.ok()) {
+  if (auto r = exec.canModifyUserProfile(username); !r.ok()) {
     TRI_V8_THROW_EXCEPTION(r);
   }
 

@@ -350,7 +350,7 @@ RestStatus RestUsersHandler::postRequest(auth::UserManager* um) {
     VPackSlice s = body.get("user");
     std::string user = s.isString() ? s.copyString() : "";
     auto& exec = ExecContext::current();
-    if (auto r = exec.canWriteUser(user); r.ok()) {
+    if (auto r = exec.canCreateUser(user); r.ok()) {
       // create user
       if (auto r = StoreUser(um, 0, user, body); r.ok()) {
         VPackBuilder doc = um->serializeUser(user);
@@ -395,7 +395,7 @@ RestStatus RestUsersHandler::putRequest(auth::UserManager* um) {
   if (suffixes.size() == 1) {
     // replace existing user
     std::string const& user = suffixes[0];
-    if (auto r = exec.canWriteUser(user); r.fail()) {
+    if (auto r = exec.canModifyUserProfile(user); r.fail()) {
       generateError(r);
       return RestStatus::DONE;
     }
@@ -416,7 +416,7 @@ RestStatus RestUsersHandler::putRequest(auth::UserManager* um) {
       std::string const& db = suffixes[2];
       std::string coll = suffixes.size() == 4 ? suffixes[3] : "";
 
-      if (auto r = exec.canWriteUser(name); r.fail()) {
+      if (auto r = exec.canGrantUserPermissions(name); r.fail()) {
         generateError(r);
         return RestStatus::DONE;
       }
@@ -468,7 +468,7 @@ RestStatus RestUsersHandler::putRequest(auth::UserManager* um) {
       }
     } else if (suffixes[1] == "config") {
       // update internal config data, used in the admin dashboard
-      if (auto r = exec.canWriteUser(name); r.fail()) {
+      if (auto r = exec.canModifyUserProfile(name); r.fail()) {
         generateError(r);
         return RestStatus::DONE;
       }
@@ -531,7 +531,7 @@ RestStatus RestUsersHandler::patchRequest(auth::UserManager* um) {
   auto& exec = ExecContext::current();
   if (suffixes.size() == 1) {
     std::string const& user = suffixes[0];
-    if (auto r = exec.canWriteUser(user); r.ok()) {
+    if (auto r = exec.canModifyUserProfile(user); r.ok()) {
       // update a user
       if (auto r = StoreUser(um, 2, user, body); r.ok()) {
         VPackBuilder doc = um->serializeUser(user);
@@ -554,7 +554,7 @@ RestStatus RestUsersHandler::deleteRequest(auth::UserManager* um) {
   auto& exec = ExecContext::current();
   if (suffixes.size() == 1) {
     std::string const& user = suffixes[0];
-    if (auto r = exec.canWriteUser(user); r.fail()) {
+    if (auto r = exec.canDropUser(user); r.fail()) {
       generateError(r);
       return RestStatus::DONE;
     }
@@ -571,21 +571,25 @@ RestStatus RestUsersHandler::deleteRequest(auth::UserManager* um) {
     }
   } else if (suffixes.size() == 2) {
     std::string const& user = suffixes[0];
-    if (suffixes[1] == "config" && exec.canWriteUser(user).ok()) {
-      Result r = um->updateUser(
-          user,
-          [&](auth::User& u) {
-            u.setConfigData(VPackBuilder());
-            return TRI_ERROR_NO_ERROR;
-          },
-          auth::UserManager::RetryOnConflict::No);
-      if (r.ok()) {
-        resetResponse(ResponseCode::OK);
+    if (suffixes[1] == "config") {
+      if (auto r2 = exec.canModifyUserProfile(user); r2.ok()) {
+        Result r = um->updateUser(
+            user,
+            [&](auth::User& u) {
+              u.setConfigData(VPackBuilder());
+              return TRI_ERROR_NO_ERROR;
+            },
+            auth::UserManager::RetryOnConflict::No);
+        if (r.ok()) {
+          resetResponse(ResponseCode::OK);
+        } else {
+          generateError(r);
+        }
       } else {
-        generateError(r);
+        generateError(r2);
       }
     } else {
-      generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER);
+      generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
     }
   } else if (suffixes.size() == 3 || suffixes.size() == 4) {
     std::string const& user = suffixes[0];
@@ -595,7 +599,7 @@ RestStatus RestUsersHandler::deleteRequest(auth::UserManager* um) {
       std::string const& db = suffixes[2];
       std::string coll = suffixes.size() == 4 ? suffixes[3] : "";
 
-      if (auto r = exec.canWriteUser(user); r.fail()) {
+      if (auto r = exec.canGrantUserPermissions(user); r.fail()) {
         generateError(r);
         return RestStatus::DONE;
       }
@@ -635,7 +639,7 @@ RestStatus RestUsersHandler::deleteRequest(auth::UserManager* um) {
       }
     } else if (suffixes[1] == "config") {
       // remove internal config data, used in the WebUI
-      if (auto r1 = exec.canWriteUser(user); r1.ok()) {
+      if (auto r1 = exec.canModifyUserProfile(user); r1.ok()) {
         std::string const& key = suffixes[2];
         Result r = um->updateUser(
             user,

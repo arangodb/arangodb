@@ -447,18 +447,47 @@ Result ExecContext::canReadUser(std::string_view userName) const {
   return can(ReadUser{.name{userName}});
 }
 
-/// @brief returns true if the user can be modified, note that everybody
-/// can modify themselves (if only to change the password).
-Result ExecContext::canWriteUser(std::string_view userName) const {
+/// @brief returns true if the given user may be created.
+Result ExecContext::canCreateUser(std::string_view userName) const {
   using namespace auth::perms;
   if (!isSuperuser() && ServerState::readOnly()) {
     return {TRI_ERROR_FORBIDDEN, "Server is in read-only mode."};
   }
-  // We implement one exception here: A user can write itself:
+  return can(CreateUser{.name{userName}});
+}
+
+/// @brief returns true if the given user may be dropped.
+Result ExecContext::canDropUser(std::string_view userName) const {
+  using namespace auth::perms;
+  if (!isSuperuser() && ServerState::readOnly()) {
+    return {TRI_ERROR_FORBIDDEN, "Server is in read-only mode."};
+  }
+  return can(DropUser{.name{userName}});
+}
+
+/// @brief returns true if the given user's own profile (password, active
+/// flag, config blob) may be modified. Note that everybody can modify
+/// their own profile (if only to change the password).
+Result ExecContext::canModifyUserProfile(std::string_view userName) const {
+  using namespace auth::perms;
+  if (!isSuperuser() && ServerState::readOnly()) {
+    return {TRI_ERROR_FORBIDDEN, "Server is in read-only mode."};
+  }
+  // We implement one exception here: A user can modify their own profile:
   if (userName == user()) {
     return {};
   }
-  return can(WriteUser{.name{userName}});
+  return can(ModifyUserProfile{.name{userName}});
+}
+
+/// @brief returns true if the given user's permissions on databases and
+/// collections may be granted/revoked.
+Result ExecContext::canGrantUserPermissions(std::string_view userName) const {
+  using namespace auth::perms;
+  if (!isSuperuser() && ServerState::readOnly()) {
+    return {TRI_ERROR_FORBIDDEN, "Server is in read-only mode."};
+  }
+  return can(GrantUserPermissions{.name{userName}});
 }
 
 /// @brief returns true for each user which can be read

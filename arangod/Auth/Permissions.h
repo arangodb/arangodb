@@ -319,7 +319,24 @@ struct ReadUser {
   std::string name;
 };
 
-struct WriteUser {
+// Create a new user record.
+struct CreateUser {
+  std::string name;
+};
+
+// Drop (remove) an existing user record.
+struct DropUser {
+  std::string name;
+};
+
+// Modify a user's own profile data: password, active flag, config blob.
+// Note that (with Classic auth) everybody may modify their own profile.
+struct ModifyUserProfile {
+  std::string name;
+};
+
+// Grant or revoke a user's permissions on databases and collections.
+struct GrantUserPermissions {
   std::string name;
 };
 
@@ -340,7 +357,7 @@ using NonAdminList = meta::TypeList<
     // graph permissions
     SeeGraph, CreateGraph, DropGraph, UseGraph,
     // user permissions
-    ReadUser, WriteUser>;
+    ReadUser, CreateUser, DropUser, ModifyUserProfile, GrantUserPermissions>;
 
 using CompleteList = meta::detail::Union<AdminList, NonAdminList>::type;
 }  // namespace detail
