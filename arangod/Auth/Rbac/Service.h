@@ -26,6 +26,7 @@
 #include "Auth/Rbac/Actions.h"
 #include "Basics/ResultT.h"
 
+#include <span>
 #include <string>
 #include <variant>
 #include <vector>
@@ -67,11 +68,17 @@ struct Service {
 
   using Token = std::string_view;
 
-  // Ask a single authorization question. Virtual so that tests (in particular
-  // the upcoming RBAC auth-mode tests) can inject a mock Service. The base
-  // implementation fails closed; see Service.cpp.
-  virtual auto check(Token token, Action action,
-                     Resource const& resource) noexcept -> Result;
+  // Ask a batch of authorization questions for a single token at once. A real
+  // implementation performs a single network round-trip, so callers that need
+  // several (action, resource) pairs for one logical permission should pass
+  // them together rather than calling check() repeatedly. Returns ok iff every
+  // pair is permitted; otherwise the first/aggregated denial.
+  //
+  // Virtual so that tests (in particular the RBAC auth-mode tests) can inject a
+  // mock Service. The base implementation fails closed; see Service.cpp.
+  virtual auto check(Token token,
+                     std::span<ActionResource const> queries) noexcept
+      -> Result;
 
  private:
   virtual auto mayImpl(User user,

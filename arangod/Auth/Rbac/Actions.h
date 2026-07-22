@@ -117,6 +117,14 @@ using Resource =
                  resources::Collection, resources::View, resources::Analyzer,
                  resources::Graph, resources::User>;
 
+// A single authorization question: may the token perform `action` on
+// `resource`? A permission check may consist of several of these, which are
+// evaluated together (see Service::check).
+struct ActionResource {
+  Action action;
+  Resource resource;
+};
+
 struct Category {
   // Disposition of each struct with respect to the common `auth::perms`
   // vocabulary (see Auth/Permissions.h) is noted inline:

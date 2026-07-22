@@ -208,13 +208,16 @@ auto Service::toAuthorizationQueries(Category::Any const& category)
       category);
 }
 
-auto Service::check(Token /*token*/, Action /*action*/,
-                    Resource const& /*resource*/) noexcept -> Result {
-  // TODO(COR-213): translate (action, resource) into the authorization-service
-  //   query vocabulary (e.g. "db:Read" + "db:collection:<db>:<name>") and
-  //   evaluate it through the backend, analogous to may()/toAuthorization
-  //   Queries(). Until that real implementation lands, this base method fails
-  //   closed. The upcoming RBAC auth-mode tests override it with a mock.
+auto Service::check(Token /*token*/,
+                    std::span<ActionResource const> /*queries*/) noexcept
+    -> Result {
+  // TODO(COR-213): translate each (action, resource) pair into the
+  //   authorization-service query vocabulary (e.g. "db:Read" +
+  //   "db:collection:<db>:<name>"), evaluate them together in a single backend
+  //   round-trip (analogous to mayAll()/toAuthorizationQueries()), and allow
+  //   only if all pairs are permitted. Until that real implementation lands,
+  //   this base method fails closed. The RBAC auth-mode tests override it with
+  //   a mock.
   return {TRI_ERROR_NOT_IMPLEMENTED,
           "RBAC authorization service check is not yet implemented"};
 }

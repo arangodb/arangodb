@@ -721,6 +721,19 @@ auto AuthMode::Rbac::check(auth::Permission permission) const -> Result {
     }
   };
 
+  // Each permission maps to one or more (action, resource) pairs, all of which
+  // must be permitted. They are evaluated together in a single Service::check()
+  // call (one network round-trip). The common single-pair case is passed as a
+  // span over a stack-local pair and needs no allocation; only the composite
+  // permissions (create/modify view, create/drop graph) build a small vector.
+  auto checkAll = [&](std::span<rbac::ActionResource const> queries) -> Result {
+    return _rbacService.check(_jwtToken, queries);
+  };
+  auto checkOne = [&](rbac::Action action, rbac::Resource resource) -> Result {
+    rbac::ActionResource query{action, std::move(resource)};
+    return checkAll(std::span<rbac::ActionResource const>{&query, 1});
+  };
+
   return std::visit(
       overload{
           // -- Admin actions ---------------------------------------------
@@ -735,93 +748,80 @@ auto AuthMode::Rbac::check(auth::Permission permission) const -> Result {
                     "implemented"};
           },
           [&](p::AnyAdmin auto const& admin) -> Result {
-            return _rbacService.check(_jwtToken, adminAction(admin),
-                                      rbac::resources::NoResource{});
+            return checkOne(adminAction(admin), rbac::resources::NoResource{});
           },
           // -- Databases -------------------------------------------------
           [&](p::UseDatabase const& database) -> Result {
-            return _rbacService.check(
-                _jwtToken, databaseAccessModeToAction(database.level),
-                rbac::resources::Database{database.name});
+            return checkOne(databaseAccessModeToAction(database.level),
+                            rbac::resources::Database{database.name});
           },
           [&](p::SeeDatabase const& database) -> Result {
-            return _rbacService.check(_jwtToken, rbac::Action::Read,
-                                      rbac::resources::Database{database.name});
+            return checkOne(rbac::Action::Read,
+                            rbac::resources::Database{database.name});
           },
           [&](p::CreateDatabase const& database) -> Result {
-            return _rbacService.check(_jwtToken, rbac::Action::Create,
-                                      rbac::resources::Database{database.name});
+            return checkOne(rbac::Action::Create,
+                            rbac::resources::Database{database.name});
           },
           [&](p::DropDatabase const& database) -> Result {
-            return _rbacService.check(_jwtToken, rbac::Action::Drop,
-                                      rbac::resources::Database{database.name});
+            return checkOne(rbac::Action::Drop,
+                            rbac::resources::Database{database.name});
           },
           // -- Collections -----------------------------------------------
           [&](p::UseCollection const& collection) -> Result {
-            return _rbacService.check(
-                _jwtToken, collectionAccessModeToAction(collection.level),
+            return checkOne(
+                collectionAccessModeToAction(collection.level),
                 rbac::resources::Collection{collection.db, collection.name});
           },
           [&](p::SeeCollection const& collection) -> Result {
-            return _rbacService.check(
-                _jwtToken, rbac::Action::Read,
+            return checkOne(
+                rbac::Action::Read,
                 rbac::resources::Collection{collection.db, collection.name});
           },
           [&](p::CreateCollection const& collection) -> Result {
-            return _rbacService.check(
-                _jwtToken, rbac::Action::Create,
+            return checkOne(
+                rbac::Action::Create,
                 rbac::resources::Collection{collection.db, collection.name});
           },
           [&](p::DropCollection const& collection) -> Result {
-            return _rbacService.check(
-                _jwtToken, rbac::Action::Drop,
+            return checkOne(
+                rbac::Action::Drop,
                 rbac::resources::Collection{collection.db, collection.name});
           },
           // -- Views -----------------------------------------------------
           [&](p::UseView const& view) -> Result {
-            return _rbacService.check(_jwtToken,
-                                      viewAccessModeToAction(view.level),
-                                      rbac::resources::View{view.db, view.name});
+            return checkOne(viewAccessModeToAction(view.level),
+                            rbac::resources::View{view.db, view.name});
           },
           [&](p::SeeView const& view) -> Result {
-            return _rbacService.check(_jwtToken, rbac::Action::Read,
-                                      rbac::resources::View{view.db, view.name});
+            return checkOne(rbac::Action::Read,
+                            rbac::resources::View{view.db, view.name});
           },
           [&](p::CreateView const& view) -> Result {
-            if (auto r = _rbacService.check(
-                    _jwtToken, rbac::Action::Create,
-                    rbac::resources::View{view.db, view.name});
-                !r.ok()) {
-              return r;
-            }
             // Creating a view additionally requires read access to every
             // linked collection (mirrors the classic behaviour).
+            std::vector<rbac::ActionResource> queries;
+            queries.reserve(1 + view.linkedCollections.size());
+            queries.push_back({rbac::Action::Create,
+                               rbac::resources::View{view.db, view.name}});
             for (auto const& coll : view.linkedCollections) {
-              if (auto r = check(p::UseCollection{view.db, coll,
-                                                  CollectionAccessLevel::Read});
-                  !r.ok()) {
-                return r;
-              }
+              queries.push_back({rbac::Action::Read,
+                                 rbac::resources::Collection{view.db, coll}});
             }
-            return {};
+            return checkAll(queries);
           },
           [&](p::ModifyView const& view) -> Result {
-            if (auto r = _rbacService.check(
-                    _jwtToken, rbac::Action::WriteMeta,
-                    rbac::resources::View{view.db, view.name});
-                !r.ok()) {
-              return r;
-            }
             // Modifying a view additionally requires read access to every
             // newly linked collection.
+            std::vector<rbac::ActionResource> queries;
+            queries.reserve(1 + view.linkedCollections.size());
+            queries.push_back({rbac::Action::WriteMeta,
+                               rbac::resources::View{view.db, view.name}});
             for (auto const& coll : view.linkedCollections) {
-              if (auto r = check(p::UseCollection{view.db, coll,
-                                                  CollectionAccessLevel::Read});
-                  !r.ok()) {
-                return r;
-              }
+              queries.push_back({rbac::Action::Read,
+                                 rbac::resources::Collection{view.db, coll}});
             }
-            return {};
+            return checkAll(queries);
           },
           [&](p::RenameView const& view) -> Result {
             if (view.oldName == view.newName) {
@@ -829,86 +829,74 @@ auto AuthMode::Rbac::check(auth::Permission permission) const -> Result {
                       "new view name must be different from old view name"};
             }
             // Renaming modifies the existing (old) view.
-            return _rbacService.check(
-                _jwtToken, rbac::Action::WriteMeta,
-                rbac::resources::View{view.db, view.oldName});
+            return checkOne(rbac::Action::WriteMeta,
+                            rbac::resources::View{view.db, view.oldName});
           },
           [&](p::DropView const& view) -> Result {
-            return _rbacService.check(_jwtToken, rbac::Action::Drop,
-                                      rbac::resources::View{view.db, view.name});
+            return checkOne(rbac::Action::Drop,
+                            rbac::resources::View{view.db, view.name});
           },
           // -- Analyzers -------------------------------------------------
           [&](p::UseAnalyzer const& analyzer) -> Result {
-            return _rbacService.check(
-                _jwtToken, analyzerAccessModeToAction(analyzer.level),
+            return checkOne(
+                analyzerAccessModeToAction(analyzer.level),
                 rbac::resources::Analyzer{analyzer.db, analyzer.name});
           },
           [&](p::SeeAnalyzer const& analyzer) -> Result {
-            return _rbacService.check(
-                _jwtToken, rbac::Action::Read,
+            return checkOne(
+                rbac::Action::Read,
                 rbac::resources::Analyzer{analyzer.db, analyzer.name});
           },
           [&](p::CreateAnalyzer const& analyzer) -> Result {
-            return _rbacService.check(
-                _jwtToken, rbac::Action::Create,
+            return checkOne(
+                rbac::Action::Create,
                 rbac::resources::Analyzer{analyzer.db, analyzer.name});
           },
           [&](p::DropAnalyzer const& analyzer) -> Result {
-            return _rbacService.check(
-                _jwtToken, rbac::Action::Drop,
+            return checkOne(
+                rbac::Action::Drop,
                 rbac::resources::Analyzer{analyzer.db, analyzer.name});
           },
           // -- Graphs ----------------------------------------------------
           [&](p::UseGraph const& graph) -> Result {
-            return _rbacService.check(_jwtToken,
-                                      graphAccessModeToAction(graph.level),
-                                      rbac::resources::Graph{graph.db, graph.name});
+            return checkOne(graphAccessModeToAction(graph.level),
+                            rbac::resources::Graph{graph.db, graph.name});
           },
           [&](p::SeeGraph const& graph) -> Result {
-            return _rbacService.check(
-                _jwtToken, rbac::Action::Read,
-                rbac::resources::Graph{graph.db, graph.name});
+            return checkOne(rbac::Action::Read,
+                            rbac::resources::Graph{graph.db, graph.name});
           },
           [&](p::CreateGraph const& graph) -> Result {
-            if (auto r = _rbacService.check(
-                    _jwtToken, rbac::Action::Create,
-                    rbac::resources::Graph{graph.db, graph.name});
-                !r.ok()) {
-              return r;
-            }
-            // Creating a graph additionally requires the ability to create
-            // any collections it introduces and to read the ones it links
-            // (mirrors the classic behaviour).
+            // Creating a graph additionally requires the ability to create any
+            // collections it introduces and to read the ones it links (mirrors
+            // the classic behaviour).
+            std::vector<rbac::ActionResource> queries;
+            queries.reserve(1 + graph.collectionNamesToCreate.size() +
+                            graph.collectionNamesToRead.size());
+            queries.push_back({rbac::Action::Create,
+                               rbac::resources::Graph{graph.db, graph.name}});
             for (auto const& coll : graph.collectionNamesToCreate) {
-              if (auto r = check(p::CreateCollection{graph.db, coll});
-                  !r.ok()) {
-                return r;
-              }
+              queries.push_back({rbac::Action::Create,
+                                 rbac::resources::Collection{graph.db, coll}});
             }
             for (auto const& coll : graph.collectionNamesToRead) {
-              if (auto r = check(p::UseCollection{graph.db, coll,
-                                                  CollectionAccessLevel::Read});
-                  !r.ok()) {
-                return r;
-              }
+              queries.push_back({rbac::Action::Read,
+                                 rbac::resources::Collection{graph.db, coll}});
             }
-            return {};
+            return checkAll(queries);
           },
           [&](p::DropGraph const& graph) -> Result {
-            if (auto r = _rbacService.check(
-                    _jwtToken, rbac::Action::Drop,
-                    rbac::resources::Graph{graph.db, graph.name});
-                !r.ok()) {
-              return r;
-            }
             // Dropping a graph additionally requires the ability to drop the
             // listed collections.
+            std::vector<rbac::ActionResource> queries;
+            queries.reserve(1 + graph.collectionNames.size());
+            queries.push_back({rbac::Action::Drop,
+                               rbac::resources::Graph{graph.db, graph.name}});
             for (auto const& coll : graph.collectionNames) {
-              if (auto r = check(p::DropCollection{graph.db, coll}); !r.ok()) {
-                return r;
-              }
+              queries.push_back({rbac::Action::Drop,
+                                 rbac::resources::Collection{graph.db, coll}});
             }
-            return {};
+            return checkAll(queries);
           },
           // -- Dump / Restore --------------------------------------------
           // These mirror the classic delegations, minus the classic-only
@@ -953,24 +941,24 @@ auto AuthMode::Rbac::check(auth::Permission permission) const -> Result {
           // Each user operation maps to the identically-scoped action on the
           // db:user:<name> resource.
           [&](p::ReadUser const& user) -> Result {
-            return _rbacService.check(_jwtToken, rbac::Action::Read,
-                                      rbac::resources::User{user.name});
+            return checkOne(rbac::Action::Read,
+                            rbac::resources::User{user.name});
           },
           [&](p::CreateUser const& user) -> Result {
-            return _rbacService.check(_jwtToken, rbac::Action::Create,
-                                      rbac::resources::User{user.name});
+            return checkOne(rbac::Action::Create,
+                            rbac::resources::User{user.name});
           },
           [&](p::DropUser const& user) -> Result {
-            return _rbacService.check(_jwtToken, rbac::Action::Drop,
-                                      rbac::resources::User{user.name});
+            return checkOne(rbac::Action::Drop,
+                            rbac::resources::User{user.name});
           },
           [&](p::ModifyUserProfile const& user) -> Result {
-            return _rbacService.check(_jwtToken, rbac::Action::WriteMeta,
-                                      rbac::resources::User{user.name});
+            return checkOne(rbac::Action::WriteMeta,
+                            rbac::resources::User{user.name});
           },
           [&](p::GrantUserPermissions const& user) -> Result {
-            return _rbacService.check(_jwtToken, rbac::Action::WriteMeta,
-                                      rbac::resources::User{user.name});
+            return checkOne(rbac::Action::WriteMeta,
+                            rbac::resources::User{user.name});
           },
       },
       permission);
