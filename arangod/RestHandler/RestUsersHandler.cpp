@@ -571,21 +571,25 @@ RestStatus RestUsersHandler::deleteRequest(auth::UserManager* um) {
     }
   } else if (suffixes.size() == 2) {
     std::string const& user = suffixes[0];
-    if (suffixes[1] == "config" && exec.canModifyUserProfile(user).ok()) {
-      Result r = um->updateUser(
-          user,
-          [&](auth::User& u) {
-            u.setConfigData(VPackBuilder());
-            return TRI_ERROR_NO_ERROR;
-          },
-          auth::UserManager::RetryOnConflict::No);
-      if (r.ok()) {
-        resetResponse(ResponseCode::OK);
+    if (suffixes[1] == "config") {
+      if (auto r2 = exec.canModifyUserProfile(user); r2.ok()) {
+        Result r = um->updateUser(
+            user,
+            [&](auth::User& u) {
+              u.setConfigData(VPackBuilder());
+              return TRI_ERROR_NO_ERROR;
+            },
+            auth::UserManager::RetryOnConflict::No);
+        if (r.ok()) {
+          resetResponse(ResponseCode::OK);
+        } else {
+          generateError(r);
+        }
       } else {
-        generateError(r);
+        generateError(r2);
       }
     } else {
-      generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER);
+      generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
     }
   } else if (suffixes.size() == 3 || suffixes.size() == 4) {
     std::string const& user = suffixes[0];
