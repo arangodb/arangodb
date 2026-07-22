@@ -110,7 +110,7 @@ void ArangodServer::addFeatures() {
 #endif
   addFeature<CpuUsageFeature>();
   addFeature<HttpEndpointProvider, EndpointFeature>();
-  auto& systemDatabaseFeature = addFeature<SystemDatabaseFeature>();
+  addFeature<SystemDatabaseFeature>();
   addFeature<EnvironmentFeature>();
 #ifdef USE_V8
   addFeature<FoxxFeature>();
