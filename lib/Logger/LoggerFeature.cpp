@@ -56,16 +56,21 @@ void LogHackWriter(std::string_view msg) { LOG_DEVEL << msg; }
 namespace arangodb {
 
 LoggerFeature::LoggerFeature(application_features::ApplicationServer& server,
-                             bool threaded, LoggerOptions options)
-    : LoggerFeature(server, typeid(LoggerFeature), threaded,
-                    std::move(options)) {
+                             LoggerOptions options)
+    : ApplicationFeature(server, *this),
+      _options(std::move(options)),
+      _threaded(_options.threaded) {
   startsAfter<ShellColorsFeature>();
   startsAfter<VersionFeature>();
+  setOptional(false);
 }
 
 LoggerFeature::LoggerFeature(application_features::ApplicationServer& server,
                              bool threaded)
-    : LoggerFeature(server, threaded, LoggerOptions{}) {}
+    : LoggerFeature(server, LoggerOptions{}) {
+  _options.threaded = threaded;
+  _threaded = threaded;
+}
 
 LoggerFeature::LoggerFeature(application_features::ApplicationServer& server,
                              std::type_index registration, bool threaded,

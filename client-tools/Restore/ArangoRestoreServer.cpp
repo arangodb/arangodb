@@ -84,7 +84,7 @@ void ArangoRestoreServer::addFeatures() {
 
 void ArangoRestoreServer::addFeaturesWithOptionProvider() {
   addFeature<VersionFeature>(getOptions<VersionOptionsProvider>());
-  addFeature<LoggerFeature>(false, getOptions<LoggerOptionsProvider>());
+  addFeature<LoggerFeature>(getOptions<LoggerOptionsProvider>());
   addFeature<ConfigFeature>(_binaryName, getOptions<ConfigOptionsProvider>());
   addFeature<TempFeature>(_binaryName, getOptions<TempOptionsProvider>());
   addFeature<FileSystemFeature>(getOptions<FileSystemOptionsProvider>());

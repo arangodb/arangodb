@@ -66,7 +66,7 @@ void ArangoVPackServer::addFeatures() {
 
 void ArangoVPackServer::addFeaturesWithOptionProvider() {
   addFeature<VersionFeature>(getOptions<VersionOptionsProvider>());
-  addFeature<LoggerFeature>(false, getOptions<LoggerOptionsProvider>());
+  addFeature<LoggerFeature>(getOptions<LoggerOptionsProvider>());
   addFeature<ConfigFeature>(_binaryName, getOptions<ConfigOptionsProvider>());
   addFeature<FileSystemFeature>(getOptions<FileSystemOptionsProvider>());
   addFeature<RandomFeature>(getOptions<RandomOptionsProvider>());
