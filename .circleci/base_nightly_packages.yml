@@ -1051,13 +1051,14 @@ jobs:
               # Per-package CycloneDX SBOM from the same filtered report —
               # same mechanism as the .log table, no extra scan. Written
               # into ${OUT} under the published report-naming convention
-              # (<package>.sbom.json), so the existing workspace persist +
+              # (<package>.sbom.cdx.json — ".cdx.json" is the CycloneDX-recognized
+              # file pattern), so the existing workspace persist +
               # publish-nightly wholesale copy publish it next to the
               # package with zero publish-job changes. Rendering is
               # best-effort with a LOUD warning: a missing SBOM must never
               # cost us the reports or the gate.
               if ! trivy convert --format cyclonedx \
-                     --output "${OUT}/${PKG}.sbom.json" \
+                     --output "${OUT}/${PKG}.sbom.cdx.json" \
                      "${OUT}/${PKG}.trivy.json" 2>/dev/null; then
                 echo "WARNING: SBOM render failed for ${PKG} — continuing without it" >&2
               fi
@@ -1154,7 +1155,7 @@ jobs:
                 > "${OUT}/${NAME}.trivy.log"
             fi
             # The SBOM joins the report pair in ${OUT} under the published
-            # naming convention (<image>.sbom.json): trivy-reports/docker
+            # naming convention (<image>.sbom.cdx.json): trivy-reports/docker
             # is copied wholesale into the published Docker/ directory by
             # publish-nightly, so no publish-job changes are needed.
             # Guarded: the orb treats an SBOM render failure as warn-only
@@ -1162,7 +1163,7 @@ jobs:
             # here would turn a missing SBOM into a hard step failure that
             # also loses the reports from the workspace and skips the gate.
             if [ -s /tmp/trivy-sbom.cdx.json ]; then
-              cp /tmp/trivy-sbom.cdx.json "${OUT}/${NAME}.sbom.json"
+              cp /tmp/trivy-sbom.cdx.json "${OUT}/${NAME}.sbom.cdx.json"
             else
               echo "WARNING: no SBOM was rendered — continuing without it" >&2
             fi
