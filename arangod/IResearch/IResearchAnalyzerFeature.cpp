@@ -1089,12 +1089,9 @@ IResearchAnalyzerFeature::Dependencies::fromServer(
       .clusterFeature = server.hasFeature<ClusterFeature>()
                             ? &server.getFeature<ClusterFeature>()
                             : nullptr,
-      .schedulerFeature = LazyApplicationFeatureReference<SchedulerFeature>(
-          [&server]() noexcept -> SchedulerFeature* {
-            return server.hasFeature<SchedulerFeature>()
-                       ? &server.getFeature<SchedulerFeature>()
-                       : nullptr;
-          }),
+      .schedulerFeature = server.hasFeature<SchedulerFeature>()
+                              ? &server.getFeature<SchedulerFeature>()
+                              : nullptr,
       .aqlFunctionFeature = server.hasFeature<aql::AqlFunctionFeature>()
                                 ? &server.getFeature<aql::AqlFunctionFeature>()
                                 : nullptr,
@@ -1108,7 +1105,7 @@ IResearchAnalyzerFeature::IResearchAnalyzerFeature(
       _systemDatabase(deps.systemDatabase),
       _databaseFeature(deps.databaseFeature),
       _networkFeature(deps.networkFeature),
-      _lazySchedulerFeatureRef(std::move(deps.schedulerFeature)),
+      _schedulerFeature(deps.schedulerFeature),
       _aqlFunctionFeature(deps.aqlFunctionFeature) {
   setOptional(true);
 #ifdef USE_V8
@@ -2477,8 +2474,6 @@ AnalyzersRevision::Ptr IResearchAnalyzerFeature::getAnalyzersRevision(
 }
 
 void IResearchAnalyzerFeature::prepare() {
-  _schedulerFeature = std::move(_lazySchedulerFeatureRef).get();
-
   if (!isEnabled()) {
     return;
   }

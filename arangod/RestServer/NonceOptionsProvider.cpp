@@ -26,7 +26,7 @@
 
 namespace arangodb {
 
-void NonceOptionsProvider::declareOptions(
+void NonceOptionsProvider::declareOptionsImpl(
     std::shared_ptr<options::ProgramOptions> options,
     NonceFeatureOptions& /*opts*/) {
   options->addSection("nonce", "nonces", "", true, true);

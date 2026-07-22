@@ -4408,8 +4408,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
                   .systemDatabase = sysDatabase,
                   .networkFeature = nullptr,
                   .clusterFeature = nullptr,
-                  .schedulerFeature = arangodb::LazyApplicationFeatureReference<
-                      arangodb::SchedulerFeature>(nullptr),
+                  .schedulerFeature = nullptr,
                   .aqlFunctionFeature = nullptr});
 
   dbFeature.prepare();
@@ -4758,8 +4757,7 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_toVelocyPack) {
                   .systemDatabase = sysDatabase,
                   .networkFeature = nullptr,
                   .clusterFeature = nullptr,
-                  .schedulerFeature = arangodb::LazyApplicationFeatureReference<
-                      arangodb::SchedulerFeature>(nullptr),
+                  .schedulerFeature = nullptr,
                   .aqlFunctionFeature = nullptr});
   auto cleanup =
       arangodb::scopeGuard([&dbFeature]() noexcept { dbFeature.unprepare(); });
@@ -4912,8 +4910,7 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_vpack_create) {
                   .systemDatabase = sysDatabase,
                   .networkFeature = nullptr,
                   .clusterFeature = nullptr,
-                  .schedulerFeature = arangodb::LazyApplicationFeatureReference<
-                      arangodb::SchedulerFeature>(nullptr),
+                  .schedulerFeature = nullptr,
                   .aqlFunctionFeature = nullptr});
   auto cleanup =
       arangodb::scopeGuard([&dbFeature]() noexcept { dbFeature.unprepare(); });

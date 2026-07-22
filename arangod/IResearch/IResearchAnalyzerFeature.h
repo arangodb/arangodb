@@ -38,7 +38,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
-#include "ApplicationFeatures/LazyApplicationFeatureReference.h"
 #include "Auth/Common.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
@@ -294,7 +293,7 @@ class IResearchAnalyzerFeature final
     SystemDatabaseFeature& systemDatabase;
     NetworkFeature* networkFeature;
     ClusterFeature* clusterFeature;
-    LazyApplicationFeatureReference<SchedulerFeature> schedulerFeature;
+    SchedulerFeature* schedulerFeature;
     aql::AqlFunctionFeature* aqlFunctionFeature;
 
     static Dependencies fromServer(
@@ -613,8 +612,7 @@ class IResearchAnalyzerFeature final
   SystemDatabaseFeature& _systemDatabase;
   DatabaseFeature& _databaseFeature;
   NetworkFeature* _networkFeature;
-  LazyApplicationFeatureReference<SchedulerFeature> _lazySchedulerFeatureRef;
-  SchedulerFeature* _schedulerFeature = nullptr;
+  SchedulerFeature* _schedulerFeature;
   aql::AqlFunctionFeature* _aqlFunctionFeature;
 };
 
