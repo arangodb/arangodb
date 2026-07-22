@@ -44,8 +44,15 @@ class OptionProvidingServer : public application_features::ApplicationServer {
   }
 
   void validateOptions() override {
-    ApplicationServer::validateOptions();
+    // Validate provider-owned options *before* features. Providers own the
+    // command options (e.g. --version / --version-json) that must print and
+    // exit early. If features validated first, a feature such as
+    // V8DealerFeature could abort (FATAL "no javascript.startup-directory")
+    // before --version had a chance to short-circuit. This mirrors the
+    // pre-migration behavior where VersionFeature validated early in the
+    // feature dependency order.
     _optionProviders.validateOptions(options());
+    ApplicationServer::validateOptions();
   }
 
   // After CLI parse: load early logger options via LoggerOptionsProvider, and
