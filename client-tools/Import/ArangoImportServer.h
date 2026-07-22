@@ -17,23 +17,30 @@
 /// limitations under the License.
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
 ////////////////////////////////////////////////////////////////////////////////
-
 #pragma once
 
-#include "ApplicationFeatures/OptionsProvider.h"
-#include "RestServer/FrontendFeatureOptions.h"
+#include "ApplicationFeatures/OptionProvidingServer.h"
+#include "Import/ArangoImportOptionProviders.h"
 
-namespace arangodb::options {
+#include <memory>
+#include <string>
+
+namespace arangodb {
+namespace options {
 class ProgramOptions;
 }
 
-namespace arangodb {
+class ArangoImportServer final
+    : public OptionProvidingServer<ArangoImportOptionProviders> {
+ public:
+  ArangoImportServer(std::shared_ptr<options::ProgramOptions> options,
+                     char const* binaryPath, std::string binaryName, int* ret);
 
-struct FrontendOptionsProvider : OptionsProvider<FrontendFeatureOptions> {
-  void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
-                      FrontendFeatureOptions& options) override;
+  void addFeatures();
+
+ protected:
+  void addFeaturesWithOptionProvider() final;
 };
 
 }  // namespace arangodb

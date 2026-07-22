@@ -249,10 +249,6 @@ exports.getCompleteMetricsValues = function (name) {
   }
 };
 
-function queryAgencyJob(id) {
-  return arango.GET(`/_admin/cluster/queryAgencyJob?id=${id}`);
-}
-
 const debug = function (text) {
   console.warn(text);
 };

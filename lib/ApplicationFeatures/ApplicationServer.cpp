@@ -151,6 +151,7 @@ void ApplicationServer::disableFeatures(std::span<const std::type_index> types,
                                         bool force) {
   for (std::type_index type : types) {
     auto it = _features.find(type);
+    TRI_ASSERT(it != _features.end());
     if (it != _features.end()) {
       TRI_ASSERT(it->second != nullptr);
       if (force) {

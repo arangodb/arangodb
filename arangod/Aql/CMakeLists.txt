@@ -61,7 +61,6 @@ add_library(arango_aql STATIC
   InputAqlItemRow.cpp
   InsertModifier.cpp
   LateMaterializedExpressionContext.cpp
-  LazyConditions.cpp
   LimitStats.cpp
   ModificationExecutorFlags.h
   ModificationOptions.cpp

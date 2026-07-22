@@ -81,18 +81,6 @@ FileDescriptorsFeature::FileDescriptorsFeature(
   startsAfter<EnvironmentFeature>();
 }
 
-void FileDescriptorsFeature::collectOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  arangodb::file_descriptors::FileDescriptorsOptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
-
-void FileDescriptorsFeature::validateOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  arangodb::file_descriptors::FileDescriptorsOptionsProvider provider;
-  provider.validateOptions(options, _options);
-}
-
 void FileDescriptorsFeature::prepare() {
   FileDescriptors current;
   if (Result res = FileDescriptors::load(current); res.fail()) {

@@ -17,33 +17,11 @@
 /// limitations under the License.
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
 ////////////////////////////////////////////////////////////////////////////////
+#pragma once
 
-#include "FrontendOptionsProvider.h"
-
-#include "ProgramOptions/Parameters.h"
-#include "ProgramOptions/ProgramOptions.h"
+#include "ApplicationFeatures/CoreOptionProviders.h"
 
 namespace arangodb {
-
-using namespace arangodb::options;
-
-void FrontendOptionsProvider::declareOptions(
-    std::shared_ptr<ProgramOptions> options, FrontendFeatureOptions& opts) {
-  options->addSection("web-interface", "browser-based frontend");
-
-  options->addOldOption("frontend.version-check",
-                        "web-interface.version-check");
-
-  options->addOption("--web-interface.version-check",
-                     "Alert the user if new versions are available.",
-                     new BooleanParameter(&opts.versionCheck),
-                     arangodb::options::makeFlags(
-                         arangodb::options::Flags::DefaultNoComponents,
-                         arangodb::options::Flags::OnCoordinator,
-                         arangodb::options::Flags::OnSingle,
-                         arangodb::options::Flags::Uncommon));
-}
-
+using ArangoRestoreOptionProviders = CoreOptionProviders<>;
 }  // namespace arangodb

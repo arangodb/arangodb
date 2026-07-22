@@ -116,25 +116,6 @@ AuthenticationFeature::AuthenticationFeature(
       _authCache(nullptr) {
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseServer>();
-}
-
-AuthenticationFeature::~AuthenticationFeature() = default;
-
-void AuthenticationFeature::collectOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  AuthenticationOptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
-
-void AuthenticationFeature::validateOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  if (!_options.jwtSecretKeyfileProgramOption.empty() &&
-      !_options.jwtSecretFolderProgramOption.empty()) {
-    LOG_TOPIC("d3515", FATAL, Logger::STARTUP)
-        << "please specify either '--server.jwt-"
-           "secret-keyfile' or '--server.jwt-secret-folder' but not both.";
-    FATAL_ERROR_EXIT();
-  }
 
   if (!_options.jwtSecretKeyfileProgramOption.empty() ||
       !_options.jwtSecretFolderProgramOption.empty()) {
@@ -144,21 +125,9 @@ void AuthenticationFeature::validateOptions(
       FATAL_ERROR_EXIT();
     }
   }
-  if (!_options.jwtSecretProgramOption.empty()) {
-    // Only check length for non-PEM (HS256) secrets
-    // ES256 keys in PEM format can be longer
-    if (!_options.jwtSecretIsES256 &&
-        _options.jwtSecretProgramOption.length() > kMaxSecretLength) {
-      LOG_TOPIC("9abfc", FATAL, arangodb::Logger::STARTUP)
-          << "Given JWT secret too long. Max length is " << kMaxSecretLength
-          << " have " << _options.jwtSecretProgramOption.length();
-      FATAL_ERROR_EXIT();
-    }
-  }
-
-  AuthenticationOptionsProvider provider;
-  provider.validateOptions(options, _options);
 }
+
+AuthenticationFeature::~AuthenticationFeature() = default;
 
 void AuthenticationFeature::prepare() {
   TRI_ASSERT(isEnabled());
@@ -185,7 +154,7 @@ void AuthenticationFeature::prepare() {
     LOG_TOPIC("43396", INFO, Logger::AUTHENTICATION)
         << "Jwt secret not specified, generating...";
     uint16_t m = 254;
-    for (size_t i = 0; i < kMaxSecretLength; i++) {
+    for (size_t i = 0; i < AuthenticationOptions::kMaxSecretLength; i++) {
       _options.jwtSecretProgramOption +=
           static_cast<char>(1 + RandomGenerator::interval(m));
     }
@@ -316,7 +285,8 @@ Result AuthenticationFeature::loadJwtSecretKeyfile() {
       // Non-PEM format, must be HS256
       _options.jwtSecretIsES256 = false;
       // Check length limit for HS256 secrets
-      if (_options.jwtSecretProgramOption.length() > kMaxSecretLength) {
+      if (_options.jwtSecretProgramOption.length() >
+          AuthenticationOptions::kMaxSecretLength) {
         return Result(TRI_ERROR_BAD_PARAMETER,
                       "Given JWT secret too long. Max length is 64");
       }
@@ -401,7 +371,8 @@ Result AuthenticationFeature::loadJwtSecretFolder() try {
   }
 
   const std::string msg = "Given JWT secret too long. Max length is 64";
-  if (!isES256 && activeSecret.length() > kMaxSecretLength) {
+  if (!isES256 &&
+      activeSecret.length() > AuthenticationOptions::kMaxSecretLength) {
     return Result(TRI_ERROR_BAD_PARAMETER, msg);
   }
 
@@ -447,7 +418,7 @@ Result AuthenticationFeature::loadJwtSecretFolder() try {
       }
 
       // For non-PEM (HS256) secrets, check the length limit
-      if (secret.length() > kMaxSecretLength) {
+      if (secret.length() > AuthenticationOptions::kMaxSecretLength) {
         return Result(TRI_ERROR_BAD_PARAMETER, msg);
       }
 

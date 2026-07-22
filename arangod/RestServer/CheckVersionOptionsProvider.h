@@ -32,18 +32,15 @@ namespace arangodb::application_features {
 class ApplicationServer;
 }
 
-namespace arangodb::options {
-class ProgramOptions;
-}
-
 namespace arangodb::check_version {
 
 struct CheckVersionOptionsProvider
-    : OptionsProvider<CheckVersionFeatureOptions> {
-  CheckVersionOptionsProvider() = default;
-
-  void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
-                      CheckVersionFeatureOptions& options) override;
+    : OptionsProviderImpl<CheckVersionOptionsProvider,
+                          CheckVersionFeatureOptions> {
+  void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                          CheckVersionFeatureOptions& options);
+  void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> /*opts*/,
+                           CheckVersionFeatureOptions& /*options*/){};
 };
 
 }  // namespace arangodb::check_version

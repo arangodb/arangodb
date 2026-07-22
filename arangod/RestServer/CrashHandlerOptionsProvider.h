@@ -26,18 +26,17 @@
 #include "CrashHandlerFeatureOptions.h"
 #include <memory>
 
-namespace arangodb::options {
-class ProgramOptions;
-}
-
 namespace arangodb::crash_handler {
 
 struct CrashHandlerOptionsProvider
-    : OptionsProvider<CrashHandlerFeatureOptions> {
+    : OptionsProviderImpl<CrashHandlerOptionsProvider,
+                          CrashHandlerFeatureOptions> {
   CrashHandlerOptionsProvider() = default;
 
-  void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
-                      CrashHandlerFeatureOptions& options) override;
+  void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                          CrashHandlerFeatureOptions& options);
+  void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> /*opts*/,
+                           CrashHandlerFeatureOptions& /*options*/){};
 };
 
 }  // namespace arangodb::crash_handler
