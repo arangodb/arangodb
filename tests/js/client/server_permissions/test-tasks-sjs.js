@@ -23,6 +23,8 @@
 // /
 // //////////////////////////////////////////////////////////////////////////////
 
+const mountPoint = '/test-redirect';
+
 
 if (getOptions === true) {
   return {
@@ -34,15 +36,24 @@ if (getOptions === true) {
       '^$'
     ],
     'javascript.endpoints-allowlist' : [
-      'ssl://arango.ai:443'
+      'ssl://arango.ai:443',
+      '@server.endpoint@',
     ],
+    'javascript.endpoints-denylist' : [
+      '.*://.*:[0-9]+/test-redirect/redirectloop/7'
+    ]
   };
 }
 
 const jsunity = require('jsunity');
+const FoxxManager = require('@arangodb/foxx/manager');
 
 const internal = require('internal');
+const fs = require('fs');
 const db = internal.db;
+const basePath = fs.makeAbsolute(fs.join(internal.pathForTesting('common'), 'test-data', 'apps'));
+const foxxApp = fs.join(basePath, 'redirect');
+let IM = global.instanceManager;
 
 // HELPER FUNCTIONS
 //get first document in collection that has one of the given states
@@ -53,7 +64,9 @@ function getFirstOfState(state, coll) {
 
   const query = "FOR x IN @@name FILTER x.state IN @state RETURN x";
   let bind = {"@name": coll, "state" : state };
-  return db._query(query, bind).toArray()[0];
+  let ret = db._query(query, bind).toArray()[0];
+  print(ret)
+  return ret
 }
 
 function waitForState(state, coll, time = 10) {
@@ -123,9 +136,12 @@ function testSuite() {
       try {
         tasks.unregister(taskName);
       } catch (err) {}
+      FoxxManager.uninstall(mountPoint, { force: true });
+      FoxxManager.install(foxxApp, mountPoint);
     },
 
     tearDown: function() {
+      FoxxManager.uninstall(mountPoint, { force: true });
       try {
         tasks.unregister(taskName);
       } catch (err) {}
@@ -159,6 +175,11 @@ function testSuite() {
 
     testDownload : function() {
       assertFailing(`require("internal").download("https://heise:443/foo/bar");`);
+    },
+
+    testDownloadRedirect : function() {
+      print(IM.url)
+      assertFailing(`require("internal").download("${IM.url}${mountPoint}/redirectloop/0", redirects=10);`);
     },
   };
 }
