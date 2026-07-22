@@ -125,6 +125,20 @@ AuthenticationFeature::AuthenticationFeature(
       FATAL_ERROR_EXIT();
     }
   }
+
+  if (!_options.jwtSecretProgramOption.empty()) {
+    // Only check length for non-PEM (HS256) secrets
+    // ES256 keys in PEM format can be longer
+    if (!_options.jwtSecretIsES256 &&
+        _options.jwtSecretProgramOption.length() >
+            AuthenticationOptions::kMaxSecretLength) {
+      LOG_TOPIC("9abfc", FATAL, arangodb::Logger::STARTUP)
+          << "Given JWT secret too long. Max length is "
+          << AuthenticationOptions::kMaxSecretLength << " have "
+          << _options.jwtSecretProgramOption.length();
+      FATAL_ERROR_EXIT();
+    }
+  }
 }
 
 AuthenticationFeature::~AuthenticationFeature() = default;
