@@ -29,14 +29,11 @@ using namespace arangodb;
 using namespace arangodb::tests;
 
 TEST_F(StorageEngineDocumentTest, InsertAndReadDocument) {
-  LOG_DEVEL << "starting rocksdb test";
   ASSERT_TRUE(insert(keyed("key1", 1).slice()).ok());
-  LOG_DEVEL << "insert finished";
 
   auto readRes = read("key1");
   ASSERT_TRUE(readRes.ok()) << readRes.errorMessage();
   EXPECT_EQ(readRes.slice().get("value").getInt(), 1);
-  LOG_DEVEL << "test finished";
 }
 
 TEST_F(StorageEngineDocumentTest, UpdateDocument) {

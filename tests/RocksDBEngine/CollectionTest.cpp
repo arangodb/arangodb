@@ -58,6 +58,6 @@ TEST_F(StorageEngineDataTest, CreatedCollectionIsListedInInventory) {
                 std::to_string(collection->id().id()));
     }
   }
-  EXPECT_TRUE(found) << "created collection not reported by "
-                        "getCollectionsAndIndexes()";
+  EXPECT_TRUE(found)
+      << "created collection not reported by getCollectionsAndIndexes()";
 }
