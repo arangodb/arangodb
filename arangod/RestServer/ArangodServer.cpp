@@ -217,9 +217,9 @@ void ArangodServer::addFeaturesWithOptionProvider() {
   addFeature<LogBufferFeature>(metrics, getOptions<LogBufferOptionsProvider>());
 
   // Add SchedulerFeature
-  auto& scheduler = addFeature<SchedulerFeature>(
-      metrics, sharedPRNGFeature.getPRNG(),
-      getOptions<SchedulerOptionsProvider>());
+  auto& scheduler =
+      addFeature<SchedulerFeature>(metrics, sharedPRNGFeature.getPRNG(),
+                                   getOptions<SchedulerOptionsProvider>());
 
   // Add ClusterMetricsFeature
   addFeature<metrics::ClusterMetricsFeature>(
