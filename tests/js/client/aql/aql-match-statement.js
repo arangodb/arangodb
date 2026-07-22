@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertTrue, print, fail */
+/*global assertEqual, assertTrue, assertFalse, print, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
@@ -178,20 +178,20 @@ function aqlMatchStatementTestSuite() {
         },
 
         testSelectVerticesWithKeep: function () {
-            const result = db._query("MATCH (v :vc KEEP i) RETURN v", {}, options).toArray();
+            const result = db._query("MATCH (v :vc RETURN i) RETURN v", {}, options).toArray();
             assertEqual(result.length, 100);
 
             for (const v of result) {
                 assertTrue(v.hasOwnProperty("_id"));
                 assertTrue(v.hasOwnProperty("i"));
-                assertTrue(!v.hasOwnProperty("j"));
-                assertTrue(!v.hasOwnProperty("_key"));
+                assertFalse(v.hasOwnProperty("j"));
+                assertFalse(v.hasOwnProperty("_key"));
             }
         },
 
         testSelectEdgesWithKeep: function () {
             const result = db._query(
-                "MATCH (u :vc)-[e :ec KEEP i]->(v :vc) RETURN e",
+                "MATCH (u :vc)-[e :ec RETURN i]->(v :vc) RETURN e",
                 {},
                 options
             ).toArray();
@@ -202,15 +202,15 @@ function aqlMatchStatementTestSuite() {
                 assertTrue(e.hasOwnProperty("_from"));
                 assertTrue(e.hasOwnProperty("_to"));
                 assertTrue(e.hasOwnProperty("i"));
-                assertTrue(!e.hasOwnProperty("j"));
-                assertTrue(!e.hasOwnProperty("_key"));
+                assertFalse(e.hasOwnProperty("j"));
+                assertFalse(e.hasOwnProperty("_key"));
             }
         },
 
         testSelectEdgesWithKeepAndWhere: function () {
             // WHERE may access attributes that are not kept on the bound variable.
             const result = db._query(
-                "MATCH (u :vc)-[e :ec WHERE e.j == 0 KEEP i]->(v :vc) RETURN e",
+                "MATCH (u :vc)-[e :ec WHERE e.j == 0 RETURN i]->(v :vc) RETURN e",
                 {},
                 options
             ).toArray();
@@ -221,13 +221,13 @@ function aqlMatchStatementTestSuite() {
                 assertTrue(e.hasOwnProperty("_from"));
                 assertTrue(e.hasOwnProperty("_to"));
                 assertTrue(e.hasOwnProperty("i"));
-                assertTrue(!e.hasOwnProperty("j"));
+                assertFalse(e.hasOwnProperty("j"));
             }
         },
 
         testMatchPathVariableWithEdgeKeep: function () {
             const result = db._query(
-                "MATCH p = (v :vc) -[ e :ec KEEP i ]-> (w :vc) RETURN p",
+                "MATCH p = (v :vc) -[ e :ec RETURN i ]-> (w :vc) RETURN p",
                 {},
                 options
             ).toArray();
@@ -239,7 +239,7 @@ function aqlMatchStatementTestSuite() {
                 assertEqual(edges[0]._from, vertices[0]._id);
                 assertEqual(edges[0]._to, vertices[1]._id);
                 assertTrue(edges[0].hasOwnProperty("i"));
-                assertTrue(!edges[0].hasOwnProperty("j"));
+                assertFalse(edges[0].hasOwnProperty("j"));
             }
         },
 

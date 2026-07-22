@@ -487,7 +487,6 @@ AstNode* transformOutputVariables(Parser* parser, AstNode const* names) {
 %token T_IN "IN keyword"
 %token T_WITH "WITH keyword"
 %token T_INTO "INTO keyword"
-%token T_KEEP "KEEP keyword"
 %token T_AGGREGATE "AGGREGATE keyword"
 
 %token T_GRAPH "GRAPH keyword"
@@ -1150,7 +1149,7 @@ pattern_projection_list:
 
 %type <node> pattern_maybe_projection;
 pattern_maybe_projection:
-    T_KEEP {
+    T_RETURN {
       auto node = parser->ast()->createNodeArray();
       parser->pushStack(node);
     } pattern_projection_list {
@@ -1637,7 +1636,12 @@ variable_list:
   ;
 
 keep:
-    T_KEEP {
+    T_STRING {
+      std::string_view operation($1.value, $1.length);
+      if (!::caseInsensitiveEqual(operation, "KEEP")) {
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'KEEP'", operation, yylloc.first_line, yylloc.first_column);
+      }
+
       auto node = parser->ast()->createNodeArray();
       parser->pushStack(node);
     } variable_list {

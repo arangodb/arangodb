@@ -148,10 +148,6 @@ class Parser;
   return T_INTO;
 }
 
-(?i:KEEP) {
-  return T_KEEP;
-}
-
 (?i:WITH) {
   yylval->strval.value = yyextra->ast()->resources().registerString(yytext, yyleng);
   yylval->strval.length = yyleng;
