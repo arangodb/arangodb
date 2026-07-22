@@ -29,7 +29,7 @@ namespace arangodb::metrics {
 
 using namespace arangodb::options;
 
-void MetricsOptionsProvider::declareOptions(
+void MetricsOptionsProvider::declareOptionsImpl(
     std::shared_ptr<ProgramOptions> opts, MetricsOptions& options) {
   opts->addOption(
       "--server.export-metrics-api", "Whether to enable the metrics API.",
@@ -75,7 +75,7 @@ Note that enabling shard usage metrics can produce a lot of metrics if there
 are many shards and/or users in the system.)");
 }
 
-void MetricsOptionsProvider::validateOptions(
+void MetricsOptionsProvider::validateOptionsImpl(
     std::shared_ptr<ProgramOptions> opts, MetricsOptions& options) {
   if (options.usageTrackingModeString == "enabled-per-shard") {
     options.usageTrackingMode = UsageTrackingMode::kEnabledPerShard;

@@ -32,11 +32,13 @@ class ProgramOptions;
 
 namespace arangodb::metrics {
 
-struct ClusterMetricsOptionsProvider : OptionsProvider<ClusterMetricsOptions> {
-  ClusterMetricsOptionsProvider() = default;
-
-  void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
-                      ClusterMetricsOptions& options) override;
+struct ClusterMetricsOptionsProvider
+    : OptionsProviderImpl<ClusterMetricsOptionsProvider,
+                          ClusterMetricsOptions> {
+  void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                          ClusterMetricsOptions& options);
+  void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> /*opts*/,
+                           ClusterMetricsOptions& /*options*/) {}
 };
 
 }  // namespace arangodb::metrics

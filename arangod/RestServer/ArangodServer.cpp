@@ -97,7 +97,6 @@ void ArangodServer::addFeatures(int* ret) {
       LazyApplicationFeatureReference<DatabaseFeature>(*this),
       LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(*this),
       LazyApplicationFeatureReference<ClusterFeature>(*this));
-  addFeature<metrics::ClusterMetricsFeature>();
   addFeature<VersionFeature>();
   addFeature<ActionFeature>();
   addFeature<AgencyFeature>();
@@ -110,10 +109,7 @@ void ArangodServer::addFeatures(int* ret) {
 #ifdef TRI_HAVE_GETRLIMIT
   addFeature<BumpFileDescriptorsFeature>("--server.descriptors-minimum");
 #endif
-  addFeature<CacheOptionsFeature>();
-  auto& cacheOptions = getFeature<CacheOptionsFeature>();
-  auto& sharedPRNGFeature = addFeature<SharedPRNGFeature>();
-  addFeature<CacheManagerFeature>(cacheOptions, sharedPRNGFeature.getPRNG());
+  addFeature<SharedPRNGFeature>();
   addFeature<CheckVersionFeature>(ret, kNonServerFeatures);
   auto& clusterFeature = addFeature<ClusterFeature>(metrics);
   addFeature<CrashHandlerFeature>(_dumpManager);
@@ -164,8 +160,6 @@ void ArangodServer::addFeatures(int* ret) {
   addFeature<ReplicatedLogFeature>();
   addFeature<ReplicationMetricsFeature>(metrics);
   addFeature<ReplicationTimeoutFeature>();
-  auto& scheduler =
-      addFeature<SchedulerFeature>(metrics, sharedPRNGFeature.getPRNG());
   addFeature<VectorIndexFeature>(database);
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   addFeature<ProcessEnvironmentFeature>(std::string{_binaryName});
@@ -220,7 +214,8 @@ void ArangodServer::addFeatures(int* ret) {
           .systemDatabase = systemDatabaseFeature,
           .networkFeature = &networkFeature,
           .clusterFeature = &clusterFeature,
-          .schedulerFeature = &scheduler,
+          .schedulerFeature =
+              LazyApplicationFeatureReference<SchedulerFeature>(*this),
           .aqlFunctionFeature = &aqlFunctionFeature,
       });
   addFeature<iresearch::IResearchFeature>(metrics);
@@ -231,11 +226,31 @@ void ArangodServer::addFeaturesWithOptionProvider() {
   auto& metrics = getFeature<metrics::MetricsFeature>();
   auto& database = getFeature<DatabaseFeature>();
   auto& vectorIndex = getFeature<VectorIndexFeature>();
-  auto& scheduler = getFeature<SchedulerFeature>();
   auto& rocksdbRecovery = getFeature<RocksDBRecoveryManager>();
-  auto& cacheManager = getFeature<CacheManagerFeature>();
   auto& agency = getFeature<AgencyFeature>();
   auto& clusterFeature = getFeature<ClusterFeature>();
+  auto& sharedPRNGFeature = getFeature<SharedPRNGFeature>();
+
+  // Add SchedulerFeature
+  auto schedulerOptions =
+      _optionProviders.getOptions<SchedulerOptionsProvider>();
+  auto& scheduler = addFeature<SchedulerFeature>(
+      metrics, sharedPRNGFeature.getPRNG(), std::move(schedulerOptions));
+
+  // Add ClusterMetricsFeature
+  auto clusterMetricsOptions =
+      _optionProviders.getOptions<metrics::ClusterMetricsOptionsProvider>();
+  addFeature<metrics::ClusterMetricsFeature>(std::move(clusterMetricsOptions));
+
+  // Add CacheOptionsFeature
+  auto cacheOptions =
+      _optionProviders.getOptions<CacheFeatureOptionsProvider>();
+  auto& cacheOptionsFeature =
+      addFeature<CacheOptionsFeature>(std::move(cacheOptions));
+
+  // Add CacheManagerFeature
+  auto& cacheManager = addFeature<CacheManagerFeature>(
+      cacheOptionsFeature, sharedPRNGFeature.getPRNG());
 
   // Add RocksDBIndexCacheRefillFeature
   auto rocksdbCacheRefillOptions =

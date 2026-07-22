@@ -55,29 +55,12 @@ MetricsFeature::MetricsFeature(
     LazyApplicationFeatureReference<ClusterMetricsFeature>
         lazyClusterMetricsFeatureRef,
     LazyApplicationFeatureReference<ClusterFeature> lazyClusterFeatureRef)
-    : MetricsFeature(server, std::move(lazyQueryRegistryFeatureRef),
-                     std::move(lazyStatisticsFeatureRef),
-                     std::move(lazyDatabaseFeatureRef),
-                     std::move(lazyClusterMetricsFeatureRef),
-                     std::move(lazyClusterFeatureRef), MetricsOptions{}) {}
-
-MetricsFeature::MetricsFeature(
-    application_features::ApplicationServer& server,
-    LazyApplicationFeatureReference<QueryRegistryFeature>
-        lazyQueryRegistryFeatureRef,
-    LazyApplicationFeatureReference<StatisticsFeature> lazyStatisticsFeatureRef,
-    LazyApplicationFeatureReference<DatabaseFeature> lazyDatabaseFeatureRef,
-    LazyApplicationFeatureReference<ClusterMetricsFeature>
-        lazyClusterMetricsFeatureRef,
-    LazyApplicationFeatureReference<ClusterFeature> lazyClusterFeatureRef,
-    MetricsOptions options)
     : ApplicationFeature{server, *this},
       _lazyQueryRegistryFeatureRef(std::move(lazyQueryRegistryFeatureRef)),
       _lazyStatisticsFeatureRef(std::move(lazyStatisticsFeatureRef)),
       _lazyDatabaseFeatureRef(std::move(lazyDatabaseFeatureRef)),
       _lazyClusterMetricsFeatureRef(std::move(lazyClusterMetricsFeatureRef)),
-      _lazyClusterFeatureRef(std::move(lazyClusterFeatureRef)),
-      _options(std::move(options)) {
+      _lazyClusterFeatureRef(std::move(lazyClusterFeatureRef)) {
   setOptional(false);
   startsAfter<LoggerFeature>();
   startsBefore<application_features::GreetingsFeaturePhase>();
@@ -95,8 +78,7 @@ MetricsFeature::MetricsFeature(
 
 void MetricsFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
-  metrics::MetricsOptionsProvider provider;
-  provider.declareOptions(options, _options);
+  _optionsProvider.declareOptions(options);
 }
 
 std::shared_ptr<Metric> MetricsFeature::doAdd(Builder& builder) {
@@ -161,21 +143,22 @@ bool MetricsFeature::remove(Metric const& m) {
   return _registry.erase(key) != 0;
 }
 
-bool MetricsFeature::exportAPI() const noexcept { return _options.exportAPI; }
+bool MetricsFeature::exportAPI() const noexcept {
+  return _optionsProvider.options().exportAPI;
+}
 
 bool MetricsFeature::ensureWhitespace() const noexcept {
-  return _options.ensureWhitespace;
+  return _optionsProvider.options().ensureWhitespace;
 }
 
 MetricsFeature::UsageTrackingMode MetricsFeature::usageTrackingMode()
     const noexcept {
-  return _options.usageTrackingMode;
+  return _optionsProvider.options().usageTrackingMode;
 }
 
 void MetricsFeature::validateOptions(
     std::shared_ptr<options::ProgramOptions> options) {
-  metrics::MetricsOptionsProvider provider;
-  provider.validateOptions(options, _options);
+  _optionsProvider.validateOptions(options);
 }
 
 void MetricsFeature::toPrometheus(std::string& result,
@@ -213,12 +196,14 @@ void MetricsFeature::toPrometheus(std::string& result,
         last = curr;
         Metric::addInfo(result, curr, i.second->help(), i.second->type());
       }
-      i.second->toPrometheus(result, _globals, _options.ensureWhitespace);
+      i.second->toPrometheus(result, _globals,
+                             _optionsProvider.options().ensureWhitespace);
     }
     for (auto const& [_, batch] : _batch) {
       TRI_ASSERT(batch);
       // TODO(MBkkt) merge vector::reserve's between IBatch::toPrometheus
-      batch->toPrometheus(result, _globals, _options.ensureWhitespace);
+      batch->toPrometheus(result, _globals,
+                          _optionsProvider.options().ensureWhitespace);
     }
   }
 
@@ -226,24 +211,27 @@ void MetricsFeature::toPrometheus(std::string& result,
     // StatisticsFeature only provides standard metrics
     auto time = std::chrono::duration<double, std::milli>(
         std::chrono::system_clock::now().time_since_epoch());
-    _statisticsFeature->toPrometheus(result, time.count(), _globals,
-                                     _options.ensureWhitespace);
+    _statisticsFeature->toPrometheus(
+        result, time.count(), _globals,
+        _optionsProvider.options().ensureWhitespace);
 
     // Storage engine only provides standard metrics
     auto& es = _databaseFeature->engine();
     if (es.typeName() == RocksDBEngine::kEngineName) {
-      es.toPrometheus(result, _globals, _options.ensureWhitespace);
+      es.toPrometheus(result, _globals,
+                      _optionsProvider.options().ensureWhitespace);
     }
 
     // ClusterMetricsFeature only provides standard metrics
     if (hasGlobals && _clusterMetricsFeature->isEnabled() &&
         mode != CollectMode::Local) {
-      _clusterMetricsFeature->toPrometheus(result, _globals,
-                                           _options.ensureWhitespace);
+      _clusterMetricsFeature->toPrometheus(
+          result, _globals, _optionsProvider.options().ensureWhitespace);
     }
 
     // agency node metrics only provide standard metrics
-    consensus::Node::toPrometheus(result, _globals, _options.ensureWhitespace);
+    consensus::Node::toPrometheus(result, _globals,
+                                  _optionsProvider.options().ensureWhitespace);
   }
 }
 

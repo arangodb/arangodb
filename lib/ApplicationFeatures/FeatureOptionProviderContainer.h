@@ -20,6 +20,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+#include "Cache/CacheFeatureOptionsProvider.h"
+#include "Metrics/ClusterMetricsOptionsProvider.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/DatabasePathOptionsProvider.h"
 #include "RestServer/DumpLimitsOptionsProvider.h"
@@ -29,6 +31,7 @@
 #include "RocksDBEngine/RocksDBIndexCacheRefillOptionsProvider.h"
 #include "RocksDBEngine/RocksDBOptionFeatureOptionsProvider.h"
 #include "RocksDBEngine/RocksDBEngineOptionsProvider.h"
+#include "Scheduler/SchedulerOptionsProvider.h"
 
 #include <tuple>
 
@@ -45,10 +48,12 @@ class FeatureOptionProviderContainer final {
 
  private:
   std::tuple<
+      CacheFeatureOptionsProvider, metrics::ClusterMetricsOptionsProvider,
       DatabasePathOptionsProvider, DumpLimitsOptionsProvider,
       FlushOptionsProvider, fortune::FortuneOptionsProvider,
       RocksDBEngineOptionsProvider, RocksDBIndexCacheRefillOptionsProvider,
-      RocksDBOptionFeatureOptionsProvider, TemporaryStorageOptionsProvider>
+      RocksDBOptionFeatureOptionsProvider, SchedulerOptionsProvider,
+      TemporaryStorageOptionsProvider>
       _providers{};
 };
 }  // namespace arangodb::application_features

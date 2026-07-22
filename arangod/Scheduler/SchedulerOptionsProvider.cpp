@@ -45,7 +45,7 @@ size_t defaultNumberOfThreads() {
 }
 }  // namespace
 
-void SchedulerOptionsProvider::declareOptions(
+void SchedulerOptionsProvider::declareOptionsImpl(
     std::shared_ptr<options::ProgramOptions> options,
     SchedulerFeatureOptions& opts) {
   options
@@ -196,7 +196,7 @@ return HTTP 503 instead of HTTP 200 when their availability API is probed.)");
   options->addOldOption("scheduler.threads", "server.maximal-threads");
 }
 
-void SchedulerOptionsProvider::validateOptions(
+void SchedulerOptionsProvider::validateOptionsImpl(
     std::shared_ptr<options::ProgramOptions> options,
     SchedulerFeatureOptions& opts) {
   auto const N = NumberOfCores::getValue();

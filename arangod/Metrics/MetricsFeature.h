@@ -33,7 +33,7 @@
 #include "Metrics/IRegistry.h"
 #include "Metrics/Metric.h"
 #include "Metrics/MetricKey.h"
-#include "Metrics/MetricsOptions.h"
+#include "Metrics/MetricsOptionsProvider.h"
 #include "Metrics/MetricsParts.h"
 #include "ProgramOptions/ProgramOptions.h"
 
@@ -58,17 +58,6 @@ class MetricsFeature final : public application_features::ApplicationFeature,
 
   static constexpr std::string_view name() noexcept { return "Metrics"; }
 
-  MetricsFeature(
-      application_features::ApplicationServer& server,
-      LazyApplicationFeatureReference<QueryRegistryFeature>
-          lazyQueryRegistryFeatureRef,
-      LazyApplicationFeatureReference<StatisticsFeature>
-          lazyStatisticsFeatureRef,
-      LazyApplicationFeatureReference<DatabaseFeature> lazyDatabaseFeatureRef,
-      LazyApplicationFeatureReference<ClusterMetricsFeature>
-          lazyClusterMetricsFeatureRef,
-      LazyApplicationFeatureReference<ClusterFeature> lazyClusterFeatureRef,
-      MetricsOptions options);
   explicit MetricsFeature(
       application_features::ApplicationServer& server,
       LazyApplicationFeatureReference<QueryRegistryFeature>
@@ -166,7 +155,7 @@ class MetricsFeature final : public application_features::ApplicationFeature,
   mutable bool hasShortname = false;
   mutable bool hasRole = false;
 
-  MetricsOptions _options;
+  MetricsOptionsProvider _optionsProvider;
 
   static double _serverStartTime;
 };

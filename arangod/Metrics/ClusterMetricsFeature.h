@@ -33,7 +33,6 @@
 #include "Metrics/CollectMode.h"
 #include "Metrics/MetricKey.h"
 #include "Metrics/Parse.h"
-#include "ProgramOptions/ProgramOptions.h"
 #include "Scheduler/Scheduler.h"
 
 namespace arangodb::metrics {
@@ -87,8 +86,6 @@ class ClusterMetricsFeature final
   explicit ClusterMetricsFeature(
       application_features::ApplicationServer& server);
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions> options) final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions> options) final;
   void start() final;
   void beginShutdown() final;
   void stop() final;

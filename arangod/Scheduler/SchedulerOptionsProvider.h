@@ -31,12 +31,13 @@ class ProgramOptions;
 
 namespace arangodb {
 
-struct SchedulerOptionsProvider : OptionsProvider<SchedulerFeatureOptions> {
-  void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
-                      SchedulerFeatureOptions& options) override;
+struct SchedulerOptionsProvider
+    : OptionsProviderImpl<SchedulerOptionsProvider, SchedulerFeatureOptions> {
+  void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                          SchedulerFeatureOptions& options);
 
-  void validateOptions(std::shared_ptr<options::ProgramOptions> opts,
-                       SchedulerFeatureOptions& options) override;
+  void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                           SchedulerFeatureOptions& options);
 };
 
 }  // namespace arangodb
