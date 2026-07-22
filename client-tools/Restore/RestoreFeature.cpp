@@ -1834,6 +1834,11 @@ arangodb::Result RestoreFeature::RestoreMainJob::restoreIndexes(
     if (options.progress) {
       LOG_TOPIC("d88c6", INFO, Logger::RESTORE)
           << "# Creating indexes for collection '" << collectionName << "'...";
+      LOG_TOPIC("d0092", INFO, Logger::RESTORE)
+          << "# collection '" << collectionName << "' "
+          << (doVectorIndexes ? "vector" : "non-vector")
+          << " index pass recreating: "
+          << rewrittenParameters.get("indexes").toJson();
     }
 
     result = sendRestoreIndexes(client, rewrittenParameters);

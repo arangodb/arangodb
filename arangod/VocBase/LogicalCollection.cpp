@@ -652,16 +652,25 @@ void LogicalCollection::toVelocyPackForInventory(VPackBuilder& result) const {
   result.add(VPackValue(StaticStrings::Indexes));
   getPhysical()->getIndexesVPack(
       result,
-      [](arangodb::Index const* idx, decltype(Index::makeFlags())& flags) {
+      [this](arangodb::Index const* idx, decltype(Index::makeFlags())& flags) {
         // we have to exclude the primary and edge index for dump / restore
+        bool included;
         switch (idx->type()) {
           case Index::TRI_IDX_TYPE_PRIMARY_INDEX:
           case Index::TRI_IDX_TYPE_EDGE_INDEX:
-            return false;
+            included = false;
+            break;
           default:
             flags = Index::makeFlags(Index::Serialize::Inventory);
-            return !idx->isHidden();
+            included = !idx->isHidden();
         }
+        LOG_TOPIC("d0090", INFO, Logger::ENGINES)
+            << "DUMP-INVENTORY collection='" << name()
+            << "' index id=" << idx->id().id() << " name='" << idx->name()
+            << "' type=" << idx->typeName() << " isHidden=" << idx->isHidden()
+            << " inProgress=" << idx->inProgress() << " -> "
+            << (included ? "INCLUDED" : "EXCLUDED");
+        return included;
       });
   result.add("parameters", VPackValue(VPackValueType::Object));
   toVelocyPackIgnore(

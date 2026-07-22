@@ -613,6 +613,12 @@ Result DumpFeature::DumpCollectionJob::run(
     LOG_TOPIC("a9ec1", INFO, arangodb::Logger::DUMP)
         << "# Dumping " << types << " of collection '" << collectionName
         << "'...";
+    VPackSlice dumpedIndexes = collectionInfo.get("indexes");
+    LOG_TOPIC("d0091", INFO, arangodb::Logger::DUMP)
+        << "# collection '" << collectionName
+        << "' structure received from server carries indexes: "
+        << (dumpedIndexes.isArray() ? dumpedIndexes.toJson()
+                                    : std::string("<none>"));
   }
 
   // prep hex string of collection name
