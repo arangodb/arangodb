@@ -220,9 +220,9 @@ void ArangodServer::addFeaturesWithOptionProvider() {
   addFeature<LogBufferFeature>(metrics, getOptions<LogBufferOptionsProvider>());
 
 #ifdef USE_V8
+  addFeature<V8PlatformFeature>(getOptions<V8PlatformOptionsProvider>());
   addFeature<V8SecurityFeature>(AllowListStrictness::STRICT,
                                 getOptions<V8SecurityOptionsProvider>());
-  addFeature<V8PlatformFeature>(getOptions<V8PlatformOptionsProvider>());
   addFeature<FoxxFeature>(getOptions<FoxxOptionsProvider>());
 #endif
 

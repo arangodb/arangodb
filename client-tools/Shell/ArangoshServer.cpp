@@ -85,10 +85,8 @@ void ArangoshServer::addFeatures() {
   addFeature<SslFeature>();
   addFeature<V8ShellFeaturePhase>();
   addFeature<ShellFeature>(_ret);
-  addFeature<V8PlatformFeature>();
 
   auto& v8ShellFeature = addFeature<V8ShellFeature>(_binaryName);
-  addFeature<V8SecurityFeature>(AllowListStrictness::NONSTRICT);
   addFeature<ProcessMonitoringFeature>(v8ShellFeature);
   addFeature<TempFeature>(_binaryName);
 }
@@ -98,6 +96,10 @@ void ArangoshServer::addFeaturesWithOptionProvider() {
   addFeature<ProcessEnvironmentFeature>(
       _binaryName, getOptions<ProcessEnvironmentOptionsProvider>());
 #endif
+
+  addFeature<V8PlatformFeature>(getOptions<V8PlatformOptionsProvider>());
+  addFeature<V8SecurityFeature>(AllowListStrictness::NONSTRICT,
+                                getOptions<V8SecurityOptionsProvider>());
 
   addFeature<FileSystemFeature>(getOptions<FileSystemOptionsProvider>());
   addFeature<RandomFeature>(getOptions<RandomOptionsProvider>());
