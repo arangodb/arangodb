@@ -27,17 +27,16 @@
 
 namespace arangodb::iresearch {
 
-struct IResearchOptionsProvider
-    : OptionsProviderImpl<IResearchOptionsProvider, IResearchOptions> {
+struct IResearchOptionsProvider : OptionsProvider<IResearchOptions> {
   static const std::string SKIP_RECOVERY;
   static const std::string CACHE_LIMIT;
   static const std::string CACHE_ONLY_LEADER;
 
-  void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
-                          IResearchOptions& options);
+  void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
+                      IResearchOptions& options) override;
 
-  void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
-                           IResearchOptions& options);
+  void validateOptions(std::shared_ptr<options::ProgramOptions> opts,
+                       IResearchOptions& options) override;
 };
 
 }  // namespace arangodb::iresearch

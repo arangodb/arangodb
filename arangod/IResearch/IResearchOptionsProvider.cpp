@@ -72,7 +72,7 @@ const std::string IResearchOptionsProvider::CACHE_LIMIT{
 const std::string IResearchOptionsProvider::CACHE_ONLY_LEADER{
     "--arangosearch.columns-cache-only-leader"};
 
-void IResearchOptionsProvider::declareOptionsImpl(
+void IResearchOptionsProvider::declareOptions(
     std::shared_ptr<options::ProgramOptions> options, IResearchOptions& opts) {
   options->addSection("arangosearch", "ArangoSearch feature");
 
@@ -212,30 +212,9 @@ but the returned data may be incomplete.)");
                                             options::Flags::OnSingle))
       .setIntroducedIn(3'11'06)
       .setIntroducedIn(3'12'00);
-
-#ifdef USE_ENTERPRISE
-  options
-      ->addOption(CACHE_LIMIT,
-                  "The limit (in bytes) for ArangoSearch columns cache "
-                  "(0 = no caching).",
-                  new options::UInt64Parameter(&opts.columnCacheLimit),
-                  options::makeDefaultFlags(options::Flags::DefaultNoComponents,
-                                            options::Flags::OnSingle,
-                                            options::Flags::OnDBServer,
-                                            options::Flags::Enterprise))
-      .setIntroducedIn(3'09'05);
-  options
-      ->addOption(CACHE_ONLY_LEADER,
-                  "Cache ArangoSearch columns only for leader shards.",
-                  new options::BooleanParameter(&opts.columnsCacheOnlyLeader),
-                  options::makeDefaultFlags(options::Flags::DefaultNoComponents,
-                                            options::Flags::OnDBServer,
-                                            options::Flags::Enterprise))
-      .setIntroducedIn(3'10'06);
-#endif
 }
 
-void IResearchOptionsProvider::validateOptionsImpl(
+void IResearchOptionsProvider::validateOptions(
     std::shared_ptr<options::ProgramOptions> options, IResearchOptions& opts) {
   // validate all entries in skipRecoveryItems for formal correctness
   auto checkFormat = [](auto const& item) {

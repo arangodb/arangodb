@@ -851,11 +851,42 @@ IResearchFeature::IResearchFeature(
 #endif
   startsAfter<IResearchAnalyzerFeature>();
   startsAfter<aql::AqlFunctionFeature>();
+}
+
+void IResearchFeature::collectOptions(
+    std::shared_ptr<options::ProgramOptions> options) {
+  IResearchOptionsProvider provider;
+  provider.declareOptions(options, _options);
+
 #ifdef USE_ENTERPRISE
   auto& manager =
       basics::downCast<LimitedResourceManager>(_columnsCacheMemoryUsed);
-  manager.limit = _options.columnCacheLimit;
+  options
+      ->addOption(IResearchOptionsProvider::CACHE_LIMIT,
+                  "The limit (in bytes) for ArangoSearch columns cache "
+                  "(0 = no caching).",
+                  new options::UInt64Parameter(&manager.limit),
+                  options::makeDefaultFlags(options::Flags::DefaultNoComponents,
+                                            options::Flags::OnSingle,
+                                            options::Flags::OnDBServer,
+                                            options::Flags::Enterprise))
+      .setIntroducedIn(3'09'05);
+  options
+      ->addOption(
+          IResearchOptionsProvider::CACHE_ONLY_LEADER,
+          "Cache ArangoSearch columns only for leader shards.",
+          new options::BooleanParameter(&_options.columnsCacheOnlyLeader),
+          options::makeDefaultFlags(options::Flags::DefaultNoComponents,
+                                    options::Flags::OnDBServer,
+                                    options::Flags::Enterprise))
+      .setIntroducedIn(3'10'06);
 #endif
+}
+
+void IResearchFeature::validateOptions(
+    std::shared_ptr<options::ProgramOptions> options) {
+  IResearchOptionsProvider provider;
+  provider.validateOptions(options, _options);
 }
 
 void IResearchFeature::prepare() {

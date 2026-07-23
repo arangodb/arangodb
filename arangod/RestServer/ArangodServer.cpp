@@ -158,6 +158,7 @@ void ArangodServer::addFeatures() {
   addFeature<DaemonFeature>();
   addFeature<SupervisorFeature>();
 #endif
+  addFeature<iresearch::IResearchFeature>(metrics);
   addFeature<ClusterEngine>(metrics);
 }
 
@@ -225,9 +226,6 @@ void ArangodServer::addFeaturesWithOptionProvider() {
                                 getOptions<V8SecurityOptionsProvider>());
   addFeature<FoxxFeature>(getOptions<FoxxOptionsProvider>());
 #endif
-
-  addFeature<iresearch::IResearchFeature>(
-      metrics, getOptions<iresearch::IResearchOptionsProvider>());
 
   addFeature<aql::OptimizerRulesFeature>(
       getOptions<aql::OptimizerRulesOptionsProvider>());

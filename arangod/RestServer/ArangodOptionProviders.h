@@ -7,7 +7,6 @@
 #include "GeneralServer/AuthenticationOptionsProvider.h"
 #include "GeneralServer/GeneralServerOptionsProvider.h"
 #include "GeneralServer/SslServerOptionsProvider.h"
-#include "IResearch/IResearchOptionsProvider.h"
 #include "Network/NetworkOptionsProvider.h"
 #include "RestServer/CheckVersionOptionsProvider.h"
 #include "RestServer/CrashHandlerOptionsProvider.h"
@@ -56,9 +55,8 @@ using ArangodOptionProviders = CoreOptionProviders<
     DumpLimitsOptionsProvider, EndpointOptionsProvider, FlushOptionsProvider,
     fortune::FortuneOptionsProvider, FoxxOptionsProvider,
     GeneralServerOptionsProvider, InitDatabaseOptionsProvider,
-    iresearch::IResearchOptionsProvider, LanguageOptionsProvider,
-    LogBufferOptionsProvider, MaxMapCountOptionsProvider,
-    NetworkOptionsProvider, NonceOptionsProvider,
+    LanguageOptionsProvider, LogBufferOptionsProvider,
+    MaxMapCountOptionsProvider, NetworkOptionsProvider, NonceOptionsProvider,
     aql::OptimizerRulesOptionsProvider, aql::QueryInfoLoggerOptionsProvider,
     QueryRegistryOptionsProvider, RocksDBEngineOptionsProvider,
     RocksDBIndexCacheRefillOptionsProvider, RocksDBOptionFeatureOptionsProvider,
