@@ -230,8 +230,10 @@ commands:
     # Only compile-nightly needs the real source tree (sparse: false). All
     # other jobs work on the install tree / workspace and need just the
     # support files, so they default to a sparse blob-filtered checkout of
-    # scripts/ + CMakeLists.txt + VERSIONS + LICENSE — a few MB instead of
-    # the full tree.
+    # .circleci/ + scripts/ + CMakeLists.txt + VERSIONS + LICENSE — a few
+    # MB instead of the full tree. .circleci/ is needed by prepare-nightly
+    # (validates and stages trivy-gate-waivers.json) and by publish-nightly
+    # (records the active waiver count in the publish reports).
     parameters:
       destination:
         type: string
@@ -250,7 +252,7 @@ commands:
             git init
             git remote add origin https://github.com/arangodb/arangodb.git
             if [ "<< parameters.sparse >>" = "true" ]; then
-              git sparse-checkout set --no-cone /scripts/ /CMakeLists.txt /VERSIONS /LICENSE
+              git sparse-checkout set --no-cone /.circleci/ /scripts/ /CMakeLists.txt /VERSIONS /LICENSE
               git fetch --depth 1 --filter=blob:none origin << pipeline.git.revision >>
             else
               git fetch --depth 1 origin << pipeline.git.revision >>
