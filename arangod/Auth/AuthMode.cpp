@@ -620,8 +620,6 @@ auto AuthMode::Rbac::username() const noexcept -> std::string_view {
 
 auto AuthMode::Rbac::check(auth::Permission permission) const -> Result {
   std::abort();  // TODO implement
-  // NOTE Remember to handle "supportsRbac" flag for collections; we will need
-  // access to the collection somehow!
 }
 
 auto AuthMode::Rbac::request() const noexcept
