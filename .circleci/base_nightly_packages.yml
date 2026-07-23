@@ -43,10 +43,23 @@ version: 2.1
 #                       The reports always cover ALL severities (unfixed CVEs
 #                       included, secret scanning on); whether a job fails —
 #                       and with it the publish — is decided separately by
-#                       [security-check-fail-level] (default HIGH: HIGH and
+#                       [security-check-fail-level] (default HIGH — the
+#                       industry standard for published artifacts: HIGH and
 #                       CRITICAL findings block; NONE = report-only; ALL =
 #                       any finding, incl. UNKNOWN). The EOL base-OS check on
-#                       images always fails regardless. One job per item so
+#                       images always fails regardless. Waivers (time-boxed,
+#                       signed off): .circleci/trivy-gate-waivers.json —
+#                       entries {id, package (optional), expires YYYY-MM-DD,
+#                       reason, approved-by}; a vulnerability finding
+#                       matching an unexpired entry does not count toward
+#                       the gate. Expiry is end-of-day and capped at 90 days
+#                       out (validated in prepare-nightly, which stages the
+#                       file into the workspace); expired entries block
+#                       again and warn. Secret findings are never waivable
+#                       here (dev-fixture allowlists belong in a trivy
+#                       secret config, by path). Published reports and SBOMs
+#                       always keep ALL findings — waivers change gating
+#                       only, never what is reported. One job per item so
 #                       every item still gets scanned when another fails;
 #                       publish-nightly requires them all. Reports: one
 #                       <package>.trivy.{json,log} pair plus one SBOM pair
@@ -202,7 +215,7 @@ parameters:
     type: enum
     enum: ["NONE", "LOW", "MEDIUM", "HIGH", "CRITICAL", "ALL"]
     default: "HIGH"
-    description: "Minimum Trivy finding severity that fails the security-check jobs (findings at or above this level block the publish). The stored reports always contain ALL severities. NONE = report-only, never fail; ALL = fail on any finding incl. UNKNOWN severity. The EOL base-OS check on Docker images fails regardless of this level."
+    description: "Minimum Trivy finding severity that fails the security-check jobs (findings at or above this level block the publish). The HIGH default is the industry standard for published artifacts; time-boxed signed-off exceptions belong in .circleci/trivy-gate-waivers.json, not in a lowered gate. The stored reports always contain ALL severities. NONE = report-only, never fail; ALL = fail on any finding incl. UNKNOWN severity. The EOL base-OS check on Docker images fails regardless of this level."
 
 commands:
   checkout-arangodb:
@@ -408,8 +421,12 @@ commands:
     # one severity filter, so the scans run report-only over ALL severities
     # (fail-on-findings: false) and this gate decides separately, from the
     # JSON report, whether the job fails: only findings (vulnerabilities and
-    # secrets) at or above security-check-fail-level do. This way the
-    # published trivy report is always complete, however lax the gate is.
+    # secrets) at or above security-check-fail-level do — minus
+    # vulnerabilities covered by an unexpired entry in
+    # .circleci/trivy-gate-waivers.json (staged into the workspace by
+    # prepare-nightly, which validated it). Waivers change gating only:
+    # the published trivy report is always complete, however lax the gate
+    # is, and secrets are never waivable here.
     steps:
       - run:
           name: Gate on findings at or above << pipeline.parameters.security-check-fail-level >>
@@ -428,6 +445,10 @@ commands:
               *)        echo "ERROR: unhandled security-check-fail-level" >&2
                         exit 1 ;;
             esac
+            case "<< pipeline.parameters.security-check-fail-level >>" in
+              NONE|CRITICAL)
+                echo "NOTICE: gate level << pipeline.parameters.security-check-fail-level >> is below the industry standard (HIGH). Exceptions belong in .circleci/trivy-gate-waivers.json; the published reports record this level." ;;
+            esac
             if [ -z "${GATE}" ]; then
               echo "security-check-fail-level=NONE: report-only, not gating"
               exit 0
@@ -440,10 +461,46 @@ commands:
               echo "ERROR: /tmp/trivy-results.json is not a Trivy schema-2 report — refusing to gate on it (fail-open guard)"
               exit 1
             fi
-            COUNT=$(jq --arg gate "${GATE}" \
-              '[.Results[]? | (.Vulnerabilities[]?, .Secrets[]?)
-                | select(.Severity as $s | ($gate | split(",")) | index($s))] | length' \
-              /tmp/trivy-results.json)
+            # Waivers: staged (pre-validated) by prepare-nightly. A missing
+            # file gates on raw findings — stricter, never laxer; an
+            # unparseable one fails the job.
+            TODAY=$(date -u +%F)
+            WFILE=/tmp/nightly/trivy-gate-waivers.json
+            if [ ! -f "${WFILE}" ]; then
+              echo "NOTE: no waiver file in the workspace — gating on raw findings"
+              printf '{"waivers":[]}' > /tmp/gate-waivers-empty.json
+              WFILE=/tmp/gate-waivers-empty.json
+            fi
+            if ! jq -e '.waivers | type == "array"' "${WFILE}" >/dev/null; then
+              echo "ERROR: ${WFILE} is not a valid waiver file — refusing to gate" >&2
+              exit 1
+            fi
+            # A vulnerability is waived iff an unexpired entry matches its
+            # VulnerabilityID (and its PkgName, when the entry is
+            # package-scoped). Secrets are never waived. Every applied
+            # waiver is logged so the job output shows exactly what was
+            # excused, by whom, and until when.
+            jq -r --arg gate "${GATE}" --arg today "${TODAY}" --slurpfile w "${WFILE}" '
+              ([$w[0].waivers[]? | select(.expires >= $today)]) as $active
+              | [.Results[]? | .Vulnerabilities[]?
+                  | select(.Severity as $s | ($gate | split(",")) | index($s))
+                  | . as $v
+                  | ($active[] | select(.id == $v.VulnerabilityID
+                      and ((.package // $v.PkgName) == $v.PkgName))) as $m
+                  | "WAIVED: \($v.VulnerabilityID) (\($v.PkgName), \($v.Severity)) until \($m.expires) — \($m.reason) [approved by \($m."approved-by")]"
+                ] | unique | .[]' /tmp/trivy-results.json
+            COUNT=$(jq --arg gate "${GATE}" --arg today "${TODAY}" --slurpfile w "${WFILE}" '
+              ([$w[0].waivers[]? | select(.expires >= $today)]) as $active
+              | [.Results[]?
+                  | (.Vulnerabilities[]?
+                      | select(. as $v
+                          | [$active[] | select(.id == $v.VulnerabilityID
+                              and ((.package // $v.PkgName) == $v.PkgName))]
+                          | length == 0)),
+                    .Secrets[]?
+                ]
+              | [.[] | select(.Severity as $s | ($gate | split(",")) | index($s))]
+              | length' /tmp/trivy-results.json)
             # COUNT must be one plain integer. Anything else — e.g. jq
             # emitting one count per document of a concatenated-JSON file,
             # where the schema check above only keys on the last one —
@@ -454,9 +511,9 @@ commands:
                 echo "ERROR: unexpected findings count '${COUNT}' — refusing to gate on this report" >&2
                 exit 1 ;;
             esac
-            echo "Findings at or above << pipeline.parameters.security-check-fail-level >>: ${COUNT}"
+            echo "Findings at or above << pipeline.parameters.security-check-fail-level >> (unwaived): ${COUNT}"
             if [ "${COUNT}" -gt 0 ]; then
-              echo "Blocking the publish (full report of all severities in the job artifacts)."
+              echo "Blocking the publish (full report of all severities in the job artifacts). Fix the dependency or add a time-boxed, signed-off entry to .circleci/trivy-gate-waivers.json."
               exit 1
             fi
 
@@ -561,6 +618,49 @@ jobs:
               setup_source_info "Rclone" "golang-${RCLONE_GO}_${ARANGODB_VERSION_MAJOR_MINOR}_v${RCLONE_VERSION}"
             fi
             cat /tmp/nightly/sourceInfo.log
+      - run:
+          name: Validate and stage security-gate waivers
+          command: |
+            set -eu
+            cd /home/circleci/project
+            W=.circleci/trivy-gate-waivers.json
+            # The waiver file is the ONLY sanctioned exception path for the
+            # security gates (time-boxed, signed off) — validated here,
+            # once, before anything expensive runs, then staged into the
+            # workspace for the (checkout-less) security-check jobs. A
+            # missing or malformed file fails the pipeline: silently
+            # gating without (or with broken) waivers is config drift.
+            if [ ! -f "${W}" ]; then
+              echo "ERROR: ${W} is missing from the checkout" >&2
+              exit 1
+            fi
+            TODAY=$(date -u +%F)
+            CAP=$(date -u -d "today + 90 days" +%F 2>/dev/null || date -u -v+90d +%F)
+            # Structural validation: every entry needs a non-empty id,
+            # reason and approved-by, an ISO expiry date no more than 90
+            # days out (time-boxed means time-boxed), and — if present —
+            # a non-empty package scope.
+            if ! jq -e --arg cap "${CAP}" '
+                 (.waivers | type == "array")
+                 and ([.waivers[] | select(
+                       ((.id? // "") | type == "string" and length > 0)
+                       and ((.expires? // "") | test("^[0-9]{4}-[0-9]{2}-[0-9]{2}$"))
+                       and (.expires <= $cap)
+                       and ((.reason? // "") | type == "string" and length > 0)
+                       and ((."approved-by"? // "") | type == "string" and length > 0)
+                       and (if has("package") then (.package | type == "string" and length > 0) else true end)
+                     )] | length) == (.waivers | length)' "${W}" >/dev/null; then
+              echo "ERROR: ${W} failed validation — every waiver needs id, reason, approved-by, and an expires date (YYYY-MM-DD) at most 90 days out (${CAP}); package, when given, must be non-empty" >&2
+              jq . "${W}" >&2 || cat "${W}" >&2
+              exit 1
+            fi
+            # Expired entries are dead weight (the finding blocks again
+            # regardless) — warn so they get cleaned up.
+            jq -r --arg today "${TODAY}" '.waivers[] | select(.expires < $today)
+              | "WARNING: expired waiver \(.id) (expired \(.expires)) — the finding blocks again; remove the entry"' "${W}" >&2
+            ACTIVE=$(jq -r --arg today "${TODAY}" '[.waivers[] | select(.expires >= $today)] | length' "${W}")
+            echo "Waiver file OK: ${ACTIVE} active waiver(s)"
+            cp "${W}" /tmp/nightly/trivy-gate-waivers.json
       - persist_to_workspace:
           root: /tmp/nightly
           paths:
@@ -1533,9 +1633,9 @@ jobs:
               echo "Version:   ${VERSION}"
               echo "Published: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
               echo "Workflow:  ${CIRCLE_WORKFLOW_ID}"
-              # Audit trail: the gate level is picked per run, so each
-              # publish records the level it passed.
-              echo "Sec. gate: << pipeline.parameters.security-check-fail-level >> (findings at or above this level block a publish; NONE = report-only)"
+              # Audit trail: the gate level is picked per run and waivers
+              # change per commit, so each publish records both.
+              echo "Sec. gate: << pipeline.parameters.security-check-fail-level >> (findings at or above this level block a publish unless waived; NONE = report-only; active waivers: $(jq -r --arg today "$(date -u +%F)" '[.waivers[]? | select(.expires >= $today)] | length' /home/circleci/project/.circleci/trivy-gate-waivers.json 2>/dev/null || echo "?") — see .circleci/trivy-gate-waivers.json)"
               echo
               cat "${SECTION}"
             } > "${STAGE}/arangodb3e-${VERSION}.txt"
@@ -1796,7 +1896,7 @@ jobs:
                 echo "Base:      ${DISTRO}"
                 echo "Published: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
                 echo "Workflow:  ${CIRCLE_WORKFLOW_ID}"
-                echo "Sec. gate: << pipeline.parameters.security-check-fail-level >> (findings at or above this level block a publish; NONE = report-only)"
+                echo "Sec. gate: << pipeline.parameters.security-check-fail-level >> (findings at or above this level block a publish unless waived; NONE = report-only; active waivers: $(jq -r --arg today "$(date -u +%F)" '[.waivers[]? | select(.expires >= $today)] | length' /home/circleci/project/.circleci/trivy-gate-waivers.json 2>/dev/null || echo "?") — see .circleci/trivy-gate-waivers.json)"
                 echo
                 echo "Dated per-arch tags (stage phase):"
                 cat "/tmp/docker-stage-${DISTRO}.txt"
@@ -1843,7 +1943,7 @@ jobs:
               echo "Version:   ${VERSION}"
               echo "Published: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
               echo "Workflow:  ${CIRCLE_WORKFLOW_ID}"
-              echo "Sec. gate: << pipeline.parameters.security-check-fail-level >> (findings at or above this level block a publish; NONE = report-only)"
+              echo "Sec. gate: << pipeline.parameters.security-check-fail-level >> (findings at or above this level block a publish unless waived; NONE = report-only; active waivers: $(jq -r --arg today "$(date -u +%F)" '[.waivers[]? | select(.expires >= $today)] | length' /home/circleci/project/.circleci/trivy-gate-waivers.json 2>/dev/null || echo "?") — see .circleci/trivy-gate-waivers.json)"
             } > "${REPORT}"
 
             if [ -s /tmp/package-publish-section.txt ]; then
