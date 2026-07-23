@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Actions/ActionOptionsProvider.h"
 #include "ApplicationFeatures/CoreOptionProviders.h"
 #include "ApplicationFeatures/LanguageOptionsProvider.h"
 #include "Aql/OptimizerRulesOptionsProvider.h"
@@ -50,7 +51,8 @@
 namespace arangodb {
 // arangod/RestServer/ArangodOptionProviders.h
 using ArangodOptionProviders = CoreOptionProviders<
-    AuthenticationOptionsProvider, check_version::CheckVersionOptionsProvider,
+    ActionOptionsProvider, AuthenticationOptionsProvider,
+    check_version::CheckVersionOptionsProvider,
     crash_handler::CrashHandlerOptionsProvider, DatabasePathOptionsProvider,
     DumpLimitsOptionsProvider, EndpointOptionsProvider, FlushOptionsProvider,
     fortune::FortuneOptionsProvider, FoxxOptionsProvider,

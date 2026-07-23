@@ -38,7 +38,6 @@ class ActionFeature final : public application_features::ApplicationFeature {
                          ActionFeatureOptions options);
   explicit ActionFeature(application_features::ApplicationServer& server);
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void unprepare() override final;
 
   bool allowUseDatabase() const;

@@ -85,7 +85,6 @@ void ArangodServer::addFeatures() {
       LazyApplicationFeatureReference<ClusterFeature>(*this));
   addFeature<metrics::ClusterMetricsFeature>();
   addFeature<VersionFeature>();
-  addFeature<ActionFeature>();
   addFeature<AgencyFeature>();
   addFeature<ApiRecordingFeature>(_dataSourceRegistry, metrics);
   addFeature<AqlFeature>();
@@ -173,6 +172,8 @@ void ArangodServer::addFeaturesWithOptionProvider() {
   auto& clusterFeature = getFeature<ClusterFeature>();
   auto& systemDatabaseFeature = getFeature<SystemDatabaseFeature>();
   auto& aqlFunctionFeature = getFeature<aql::AqlFunctionFeature>();
+
+  addFeature<ActionFeature>(getOptions<ActionOptionsProvider>());
 
 #ifdef USE_ENTERPRISE
   addFeature<AuditFeature>(getOptions<AuditOptionsProvider>());
