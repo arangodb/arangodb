@@ -25,6 +25,8 @@
 // is mocked: it records every question it is asked and returns a programmed
 // answer, so these tests never talk to a real authorization backend.
 
+#include "ExecContextFactory.h"
+
 #include "gtest/gtest.h"
 
 #include <span>
@@ -108,21 +110,11 @@ struct MockService : rbac::Service {
   }
 };
 
-// Minimal concrete GeneralRequest so we can construct an AuthMode::Rbac. Its
-// contents are irrelevant: Rbac::check never touches the request.
-struct StubRequest : GeneralRequest {
-  StubRequest() : GeneralRequest(ConnectionInfo{}, /*mid*/ 0) {}
-  size_t contentLength() const noexcept override { return 0; }
-  std::string_view rawPayload() const override { return {}; }
-  velocypack::Slice payload(bool /*strictValidation*/) override { return {}; }
-  void setDefaultContentType() noexcept override {}
-};
-
 // Fixture bundling a mock service, a stub request and the Rbac auth mode under
 // test.
 struct RbacAuthModeTest : ::testing::Test {
   MockService svc;
-  StubRequest req;
+  tests::mocks::FakeGeneralRequest req;
   AuthMode::Rbac rbac{svc, "myuser", "mytoken", req};
 
   // Discarding wrapper around rbac.check(). IAuth::check is [[nodiscard]], so
