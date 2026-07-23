@@ -21,7 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Simon Grätzer
 // //////////////////////////////////////////////////////////////////////////////
 
 const RED = require('internal').COLORS.COLOR_RED;

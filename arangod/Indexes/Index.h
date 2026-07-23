@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -36,6 +35,7 @@
 #include <cstdint>
 #include <iosfwd>
 #include <memory>
+#include <optional>
 #include <string_view>
 #include <vector>
 
@@ -211,6 +211,13 @@ class Index {
   /// the function may modify the projections by setting the
   /// coveringIndexPosition value in it.
   virtual bool covers(aql::Projections& projections) const;
+
+  /// @brief translates an `_id` lookup value into a `_key` lookup value,
+  /// returning std::nullopt if the value cannot refer to a document of
+  /// `collection`
+  static std::optional<std::string_view> extractKeyFromIdLookupValue(
+      transaction::Methods& trx, LogicalCollection const& collection,
+      std::string_view id);
 
   virtual size_t numFieldsToConsiderInIndexSelection() const noexcept {
     return _fields.size();

@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
-/// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "SubqueryEndExecutor.h"

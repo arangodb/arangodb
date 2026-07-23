@@ -526,6 +526,12 @@ AstNode* transformOutputVariables(Parser* parser, AstNode const* names) {
 %token T_ANY_NOT_LIKE "any not like operator"
 %token T_ALL_NOT_LIKE "all not like operator"
 %token T_NONE_NOT_LIKE "none not like operator"
+%token T_ANY_REGEX_MATCH "any regex match operator"
+%token T_ALL_REGEX_MATCH "all regex match operator"
+%token T_NONE_REGEX_MATCH "none regex match operator"
+%token T_ANY_REGEX_NON_MATCH "any regex non match operator"
+%token T_ALL_REGEX_NON_MATCH "all regex non match operator"
+%token T_NONE_REGEX_NON_MATCH "none regex non match operator"
 %token T_REGEX_MATCH "~= operator"
 %token T_REGEX_NON_MATCH "~! operator"
 
@@ -584,16 +590,23 @@ AstNode* transformOutputVariables(Parser* parser, AstNode const* names) {
 %nonassoc T_INTO
 %left T_OR
 %left T_AND
-%nonassoc T_OUTBOUND T_INBOUND T_ANY T_ALL T_NONE 
+/* Bare ANY/ALL/NONE stay with graph direction tokens so
+   FOR ... IN ANY / arr ALL == x keep working. Composite
+   ANY/ALL/NONE LIKE|=~|!~ tokens are below UNEGATION so
+   NOT arr ALL !~ / NOT arr ANY =~ bind as intended. */
+%nonassoc T_OUTBOUND T_INBOUND T_ANY T_ALL T_NONE
 %left T_AT_LEAST
 %left T_EQ T_NE T_LIKE T_REGEX_MATCH T_REGEX_NON_MATCH
-%left T_IN T_NOT T_NOT_IN T_NOT_LIKE T_ANY_LIKE T_ALL_LIKE T_NONE_LIKE
-%left T_ANY_NOT_LIKE T_ALL_NOT_LIKE T_NONE_NOT_LIKE
+%left T_IN T_NOT T_NOT_IN T_NOT_LIKE
 %left T_LT T_GT T_LE T_GE
 %left T_RANGE
 %left T_PLUS T_MINUS
 %left T_TIMES T_DIV T_MOD
 %right UMINUS UPLUS UNEGATION
+%left T_ANY_LIKE T_ALL_LIKE T_NONE_LIKE
+%left T_ANY_NOT_LIKE T_ALL_NOT_LIKE T_NONE_NOT_LIKE
+%left T_ANY_REGEX_MATCH T_ALL_REGEX_MATCH T_NONE_REGEX_MATCH
+%left T_ANY_REGEX_NON_MATCH T_ALL_REGEX_NON_MATCH T_NONE_REGEX_NON_MATCH
 %left FUNCCALL
 %left REFERENCE
 %left INDEXED
@@ -2272,6 +2285,38 @@ operator_binary:
   | expression T_AT_LEAST T_OPEN expression T_CLOSE T_NOT_LIKE expression {
       AstNode* quantifier = parser->ast()->createNodeQuantifier(Quantifier::Type::kAtLeast, $4);
       $$ = parser->ast()->createNodeArrayLikeOperator($1, $7, quantifier, true);
+    }
+  | expression T_ANY_REGEX_MATCH expression {
+      $$ = parser->ast()->createNodeArrayRegexOperator(
+          $1, $3, parser->ast()->createNodeQuantifier(Quantifier::Type::kAny), false);
+    }
+  | expression T_ALL_REGEX_MATCH expression {
+      $$ = parser->ast()->createNodeArrayRegexOperator(
+          $1, $3, parser->ast()->createNodeQuantifier(Quantifier::Type::kAll), false);
+    }
+  | expression T_NONE_REGEX_MATCH expression {
+      $$ = parser->ast()->createNodeArrayRegexOperator(
+          $1, $3, parser->ast()->createNodeQuantifier(Quantifier::Type::kNone), false);
+    }
+  | expression T_ANY_REGEX_NON_MATCH expression {
+      $$ = parser->ast()->createNodeArrayRegexOperator(
+          $1, $3, parser->ast()->createNodeQuantifier(Quantifier::Type::kAny), true);
+    }
+  | expression T_ALL_REGEX_NON_MATCH expression {
+      $$ = parser->ast()->createNodeArrayRegexOperator(
+          $1, $3, parser->ast()->createNodeQuantifier(Quantifier::Type::kAll), true);
+    }
+  | expression T_NONE_REGEX_NON_MATCH expression {
+      $$ = parser->ast()->createNodeArrayRegexOperator(
+          $1, $3, parser->ast()->createNodeQuantifier(Quantifier::Type::kNone), true);
+    }
+  | expression T_AT_LEAST T_OPEN expression T_CLOSE T_REGEX_MATCH expression {
+      AstNode* quantifier = parser->ast()->createNodeQuantifier(Quantifier::Type::kAtLeast, $4);
+      $$ = parser->ast()->createNodeArrayRegexOperator($1, $7, quantifier, false);
+    }
+  | expression T_AT_LEAST T_OPEN expression T_CLOSE T_REGEX_NON_MATCH expression {
+      AstNode* quantifier = parser->ast()->createNodeQuantifier(Quantifier::Type::kAtLeast, $4);
+      $$ = parser->ast()->createNodeArrayRegexOperator($1, $7, quantifier, true);
     }
   ;
 

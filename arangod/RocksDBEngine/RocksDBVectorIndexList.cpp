@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jure Bajic
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBVectorIndexList.h"

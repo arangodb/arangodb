@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "gtest/gtest.h"
@@ -35,12 +33,11 @@
 #include "velocypack/Iterator.h"
 #include "velocypack/Parser.h"
 #include "Basics/VelocyPackHelper.h"
-#include "RestServer/arangod.h"
 #include "RestServer/DatabaseFeature.h"
 
 class IResearchViewMetaTest : public ::testing::Test {
  protected:
-  arangodb::ArangodServer server;
+  arangodb::application_features::ApplicationServer server;
   StorageEngineMock engine;
 
   IResearchViewMetaTest() : server(nullptr, nullptr), engine(server) {

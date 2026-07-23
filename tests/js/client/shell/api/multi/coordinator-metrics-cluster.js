@@ -21,16 +21,17 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Valery Mironov
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
-const {getEndpointsByType, getRawMetric, getAllMetric} = require("@arangodb/test-helper");
 const { checkIndexMetrics } = require("@arangodb/test-helper-common");
 const parsePrometheusTextFormat = require("parse-prometheus-text-format");
 const _ = require("lodash");
 const isEnterprise = require("internal").isEnterprise();
+let { instanceRole } = require('@arangodb/testutils/instance');
+
+const IM = global.instanceManager;
 
 const db = arangodb.db;
 
@@ -111,7 +112,7 @@ function checkCoordinators(coordinators, mode) {
   for (let i = 1; i < coordinators.length; i++) {
     let c = coordinators[i];
     checkIndexMetrics(function() {
-      let txt = getAllMetric(c, mode);
+      let txt = c.getAllMetric(mode);
       checkRawMetrics(txt, false);
     });
   }
@@ -243,63 +244,63 @@ function CoordinatorMetricsTestSuite() {
     /// @brief CoordinatorMetricsTestSuite tests
     ////////////////////////////////////////////////////////////////////////////////
     testMetricsParameterValidation: function () {
-      let coordinators = getEndpointsByType("coordinator");
-      let dbservers = getEndpointsByType("dbserver");
+      let coordinators = IM.getInstancesRole(instanceRole.coordinator);
+      let dbservers = IM.getInstancesRole(instanceRole.dbserver);
       let servers = [coordinators, dbservers];
       for (let j = 0; j < servers.length; j++) {
         for (let i = 0; i < servers[j].length; i++) {
           let server = servers[j][i];
-          let res = getRawMetric(server, '?mode=invalid');
+          let res = server.getRawMetric('?mode=invalid');
           assertEqual(res.code, 400);
         }
         for (let i = 0; i < servers[j].length; i++) {
           let server = servers[j][i];
-          let res = getRawMetric(server, '?type=invalid');
+          let res = server.getRawMetric('?type=invalid');
           assertEqual(res.code, 400);
         }
         for (let i = 0; i < servers[j].length; i++) {
           let server = servers[j][i];
-          let res = getRawMetric(server, '?type=invalid&mode=invalid');
+          let res = server.getRawMetric('?type=invalid&mode=invalid');
           assertEqual(res.code, 400);
         }
       }
       for (let i = 0; i < coordinators.length; i++) {
         let server = coordinators[i];
-        let res = getRawMetric(server, '?serverId=invalid');
+        let res = server.getRawMetric('?serverId=invalid');
         assertEqual(res.code, 404);
       }
       for (let i = 0; i < coordinators.length; i++) {
         let server = coordinators[i];
-        let res = getRawMetric(server, '?serverId=invalid&mode=invalid');
+        let res = server.getRawMetric('?serverId=invalid&mode=invalid');
         assertEqual(res.code, 400);
       }
       for (let i = 0; i < coordinators.length; i++) {
         let server = coordinators[i];
-        let res = getRawMetric(server, '?serverId=invalid&type=invalid');
+        let res = server.getRawMetric('?serverId=invalid&type=invalid');
         assertEqual(res.code, 400);
       }
       for (let i = 0; i < coordinators.length; i++) {
         let server = coordinators[i];
-        let res = getRawMetric(server, '?serverId=invalid&type=invalid&mode=invalid');
+        let res = server.getRawMetric('?serverId=invalid&type=invalid&mode=invalid');
         assertEqual(res.code, 400);
       }
     },
 
     testMetricsLocalMode: function () {
-      let coordinators = getEndpointsByType("coordinator");
+      let coordinators = IM.getInstancesRole(instanceRole.coordinator);
       for (let i = 0; i < coordinators.length; i++) {
         let coordinator = coordinators[i];
-        let res = getRawMetric(coordinator, '?mode=local');
+        let res = coordinator.getRawMetric('?mode=local');
         assertEqual(res.code, 200);
       }
     },
 
     testIResearchJsonMetrics: function () {
-      let dbservers = getEndpointsByType("dbserver");
+      let dbservers = IM.getInstancesRole(instanceRole.dbserver);
       let metrics = {};
       for (let i = 0; i < dbservers.length; i++) {
         let dbserver = dbservers[i];
-        let txt = getAllMetric(dbserver, '?type=db_json');
+        let txt = dbserver.getAllMetric('?type=db_json');
         let json = VPACK_TO_V8(txt);
         for (let j = 0; j < json.length; j += 3) {
           let name = json[j];
@@ -344,12 +345,12 @@ function CoordinatorMetricsTestSuite() {
     },
 
     testIResearchMetricStatsForce: function () {
-      let coordinators = getEndpointsByType("coordinator");
+      let coordinators = IM.getInstancesRole(instanceRole.coordinator);
       let c = coordinators[0];
       cleanupClusterWideMetrics();
-      getAllMetric(c, '?mode=write_global'); // write something not valid
+      c.getAllMetric('?mode=write_global'); // write something not valid
       createClusterWideMetrics();
-      let txt = getAllMetric(c, '?mode=write_global');
+      let txt = c.getAllMetric('?mode=write_global');
       checkRawMetrics(txt, false);
       checkCoordinators(coordinators, '?mode=read_global');
       require("internal").sleep(1);
@@ -357,12 +358,12 @@ function CoordinatorMetricsTestSuite() {
     },
 
     testIResearchMetricStats: function () {
-      let coordinators = getEndpointsByType("coordinator");
+      let coordinators = IM.getInstancesRole(instanceRole.coordinator);
       cleanupClusterWideMetrics();
       let c = coordinators[0];
-      getAllMetric(c, '?mode=write_global'); // write something not valid
+      c.getAllMetric('?mode=write_global'); // write something not valid
       createClusterWideMetrics();
-      let txt = getAllMetric(c, '?mode=write_global');
+      let txt = c.getAllMetric('?mode=write_global');
       checkRawMetrics(txt, false);
       checkCoordinators(coordinators, '?mode=trigger_global');
       require("internal").sleep(1);
@@ -370,12 +371,14 @@ function CoordinatorMetricsTestSuite() {
     },
 
     testIResearchMetricStatsSleep: function () {
-      let coordinators = getEndpointsByType("coordinator");
+      let coordinators = IM.getInstancesRole(instanceRole.coordinator);
       cleanupClusterWideMetrics();
       let c = coordinators[0];
-      getAllMetric(c, '?mode=write_global'); // write something not valid
+      try {
+        c.getAllMetric(c, '?mode=write_global'); // write something not valid
+      } catch {}
       createClusterWideMetrics();
-      getAllMetric(c, '?mode=trigger_global');
+      c.getAllMetric('?mode=trigger_global');
       require("internal").sleep(1);
       checkCoordinators(coordinators, '?mode=trigger_global');
       require("internal").sleep(1);
@@ -386,8 +389,8 @@ function CoordinatorMetricsTestSuite() {
       let type = ['?e0=e0', '?type=invalid', '?type=db_json', '?type=cd_json', '?type=last'];
       let mode = ['&e1=e1', '&mode=invalid', '&mode=local', '&mode=trigger_global', '&mode=read_global', '&mode=write_global'];
       let serverId = ['&e2=e2', '&serverId=invalid'];
-      let coordinators = getEndpointsByType("coordinator");
-      let dbservers = getEndpointsByType("dbserver");
+      let coordinators = IM.getInstancesRole(instanceRole.coordinator);
+      let dbservers = IM.getInstancesRole(instanceRole.dbserver);
       let servers = [coordinators, dbservers];
       let f = (a, b) => [].concat(...a.map(a => b.map(b => [].concat(a, b))));
       let cartesian = (a, b, ...c) => b ? cartesian(f(a, b), ...c) : a;
@@ -398,7 +401,7 @@ function CoordinatorMetricsTestSuite() {
         for (let j = 0; j < servers.length; j++) {
           for (let i = 0; i < servers[j].length; i++) {
             let server = servers[j][i];
-            let res = getRawMetric(server, param);
+            let res = server.getRawMetric(param);
             // require('internal').print(res.errorMessage);
           }
         }

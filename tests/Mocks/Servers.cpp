@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Servers.h"
@@ -208,7 +207,8 @@ static void SetupAqlPhase(MockServer& server) {
   auto& metrics = server.getFeature<metrics::MetricsFeature>();
   server.addFeature<application_features::AqlFeaturePhase>(false);
   server.addFeature<QueryRegistryFeature>(false, metrics);
-  server.addFeature<TemporaryStorageFeature>(false);
+  auto& dbPath = server.getFeature<DatabasePathFeature>();
+  server.addFeature<TemporaryStorageFeature>(false, dbPath);
   server.addFeature<aql::AqlFunctionFeature>(true);
   server.addFeature<aql::OptimizerRulesFeature>(true);
   server.addFeature<aql::QueryInfoLoggerFeature>(true);
@@ -255,7 +255,9 @@ MockServer::~MockServer() {
   ServerState::instance()->setRebootId(_oldRebootId);
 }
 
-ArangodServer& MockServer::server() { return _server; }
+application_features::ApplicationServer& MockServer::server() {
+  return _server;
+}
 
 void MockServer::init() {
   _oldApplicationServerState = _server.state();

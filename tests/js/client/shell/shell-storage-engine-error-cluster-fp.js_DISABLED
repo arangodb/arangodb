@@ -28,32 +28,28 @@ let internal = require('internal');
 let arangodb = require('@arangodb');
 let db = arangodb.db;
 let errors = arangodb.errors;
-let { getEndpointById,
-      getCoordinators,
-      getDBServers,
-      getServersByType,
-      reconnectRetry
-    } = require('@arangodb/test-helper');
 const primaryEndpoint = arango.getEndpoint();
 let { instanceRole } = require('@arangodb/testutils/instance');
+const IM = global.instanceManager;
 
 function waitUntil(coordinator, targetStatus, id, timeout) {
   let tries = 0;
   try {
     while (++tries < timeout * 2) {
-      reconnectRetry(coordinator, "_system", "root", "");
-      let res = arango.GET_RAW('/_admin/cluster/health');
-      let health = res.parsedBody.Health;
-      let servers = Object.keys(health);
-      let ourServer = health[id];
-      if (ourServer.Status === targetStatus) {
-        return ourServer;
-      }
-      internal.sleep(0.5);
+      coordinator.toThisInstance(() => {
+        let res = arango.GET_RAW('/_admin/cluster/health');
+        let health = res.parsedBody.Health;
+        let servers = Object.keys(health);
+        let ourServer = health[id];
+        if (ourServer.Status === targetStatus) {
+          return ourServer;
+        }
+        internal.sleep(0.5);
+      });
     }
     return {};
   } finally {
-    reconnectRetry(primaryEndpoint, "_system", "root", "");
+    IM.reconnectMe();
   }
 }
 
@@ -62,8 +58,8 @@ function storageEngineErrorSuite() {
 
   return {
     testStorageEngineError: function () {
-      let coordinators = getCoordinators();
-      let dbservers = getDBServers();
+      let coordinators = IM.getInstancesRole(instanceRole.coordinator);
+      let dbservers = IM.getInstancesRole(instanceRole.dbserver);
       assertTrue(dbservers.length > 0);
 
       let res = arango.GET_RAW('/_admin/cluster/health');
@@ -78,14 +74,14 @@ function storageEngineErrorSuite() {
       });
     
       // set failure point that triggers a storage engine error
-      global.instanceManager.debugSetFailAt("RocksDBEngine::healthCheck", '', dbservers[0].shortName);
+      dbservers[0].debugSetFailAt("RocksDBEngine::healthCheck");
       try {
         // wait until the DB server went into status BAD
         let result = waitUntil(coordinators[0], "BAD", dbservers[0].id, 20);
         assertEqual("BAD", result.Status);
       } finally {
         // remove failure point
-        global.instanceManager.debugClearFailAt('', instanceRole.dbServer);
+        dbservers[0].debugClearFailAt();
         // wait until it is good again
         waitUntil(coordinators[0], "GOOD", dbservers[0].id, 30);
       }

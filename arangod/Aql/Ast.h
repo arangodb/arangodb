@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -361,6 +360,12 @@ class Ast {
   AstNode* createNodeArrayLikeOperator(AstNode const* lhs,
                                        AstNode const* pattern,
                                        AstNode const* quantifier, bool negate);
+
+  /// @brief create an AST node for array ALL|ANY|NONE|AT LEAST =~/!~
+  /// expressions
+  AstNode* createNodeArrayRegexOperator(AstNode const* lhs,
+                                        AstNode const* pattern,
+                                        AstNode const* quantifier, bool negate);
 
   /// @brief create an AST expansion node
   AstNode* createNodeExpansion(int64_t, AstNode const*, AstNode const*,

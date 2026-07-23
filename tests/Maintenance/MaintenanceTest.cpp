@@ -18,9 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
-/// @author Matthew Von-Maszewski
-/// @author Copyright 2017-2018, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/SharedPRNG.h"
@@ -67,7 +64,6 @@
 #include <velocypack/Iterator.h>
 
 #include <iostream>
-#include <iterator>
 #include <memory>
 #include <random>
 
@@ -140,7 +136,7 @@ class SharedMaintenanceTest : public ::testing::Test {
   NodePtr originalPlan;
   NodePtr supervision;
   NodePtr current;
-  ArangodServer server;
+  application_features::ApplicationServer server;
   StorageEngineMock engine;
 
   // map <shortId, UUID>
@@ -516,7 +512,7 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
   int _dummy;
   std::shared_ptr<options::ProgramOptions> po;
   basics::SharedPRNG sharedPRNG;
-  ArangodServer as;
+  application_features::ApplicationServer as;
   containers::FlatHashSet<DatabaseID> makeDirty;
   MaintenanceFeature::errors_t errors;
 

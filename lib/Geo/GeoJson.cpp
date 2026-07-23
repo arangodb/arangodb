@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Heiko Kernbach
-/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Geo/GeoJson.h"

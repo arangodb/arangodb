@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "v8-utils.h"
@@ -1871,9 +1870,15 @@ static void JS_UnzipFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
         std::string("not allowed to modify files in this path: ") + outPath);
   }
 
+  auto validatePath = [&v8security,
+                       &isolate](std::filesystem::path path) -> bool {
+    return v8security.isAllowedToAccessPath(isolate, path.string(),
+                                            FSAccessType::WRITE);
+  };
+
   std::string errMsg;
   auto res = TRI_UnzipFile(filename.c_str(), outPath.c_str(), skipPaths,
-                           overwrite, p, errMsg);
+                           overwrite, p, errMsg, validatePath);
 
   if (res == TRI_ERROR_NO_ERROR) {
     TRI_V8_RETURN_TRUE();
@@ -1924,13 +1929,8 @@ static void JS_ZipFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
     v8::Handle<v8::Value> file =
         files->Get(context, i).FromMaybe(v8::Handle<v8::Value>());
     if (file->IsString()) {
-      if (!v8security.isAllowedToAccessPath(isolate, filename,
-                                            FSAccessType::READ)) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_FORBIDDEN,
-            std::string("not allowed to read files in this path: ") + filename);
-      }
-      filenames.emplace_back(TRI_ObjectToString(isolate, file));
+      auto const fileToAdd = TRI_ObjectToString(isolate, file);
+      filenames.emplace_back(fileToAdd);
     } else {
       res = TRI_ERROR_BAD_PARAMETER;
       break;
@@ -1956,7 +1956,11 @@ static void JS_ZipFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
         std::string("not allowed to modify files in this path: ") + filename);
   }
 
-  res = TRI_ZipFile(filename.c_str(), dir.c_str(), filenames, p);
+  res = TRI_ZipFile(filename.c_str(), dir.c_str(), filenames, p,
+                    [&v8security, isolate](std::filesystem::path path) {
+                      return v8security.isAllowedToAccessPath(
+                          isolate, path, FSAccessType::READ);
+                    });
 
   if (res == TRI_ERROR_NO_ERROR) {
     TRI_V8_RETURN_TRUE();
@@ -2563,21 +2567,6 @@ static void JS_CopyRecursive(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string source = TRI_ObjectToString(isolate, args[0]);
   std::string destination = TRI_ObjectToString(isolate, args[1]);
 
-  bool const sourceIsDirectory = TRI_IsDirectory(source.c_str());
-  bool const destinationIsDirectory = TRI_IsDirectory(destination.c_str());
-
-  if (sourceIsDirectory && destinationIsDirectory) {
-    // source is a directory, destination is a directory. this is unsupported
-    TRI_V8_THROW_EXCEPTION_PARAMETER(
-        "cannot copy source directory into destination directory");
-  }
-
-  if (TRI_IsRegularFile(source.c_str()) && destinationIsDirectory) {
-    // source is a file, destination is a directory. this is unsupported
-    TRI_V8_THROW_EXCEPTION_PARAMETER(
-        "cannot copy source file into destination directory");
-  }
-
   TRI_GET_GLOBALS();
   V8SecurityFeature& v8security = v8g->_v8security;
 
@@ -2593,6 +2582,21 @@ static void JS_CopyRecursive(v8::FunctionCallbackInfo<v8::Value> const& args) {
         TRI_ERROR_FORBIDDEN,
         std::string("not allowed to modify files in this path: ") +
             destination);
+  }
+
+  bool const sourceIsDirectory = TRI_IsDirectory(source.c_str());
+  bool const destinationIsDirectory = TRI_IsDirectory(destination.c_str());
+
+  if (sourceIsDirectory && destinationIsDirectory) {
+    // source is a directory, destination is a directory. this is unsupported
+    TRI_V8_THROW_EXCEPTION_PARAMETER(
+        "cannot copy source directory into destination directory");
+  }
+
+  if (TRI_IsRegularFile(source.c_str()) && destinationIsDirectory) {
+    // source is a file, destination is a directory. this is unsupported
+    TRI_V8_THROW_EXCEPTION_PARAMETER(
+        "cannot copy source file into destination directory");
   }
 
   std::string systemErrorStr;

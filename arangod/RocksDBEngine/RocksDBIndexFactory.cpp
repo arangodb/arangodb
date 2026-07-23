@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -563,13 +562,11 @@ RocksDBIndexFactory::RocksDBIndexFactory(
           iresearchInvertedIndexFactory);
 }
 
-/// @brief index name aliases (e.g. "persistent" => "hash", "skiplist" =>
-/// "hash") used to display storage engine capabilities
+/// @brief index name aliases (e.g. "zkd" => "mdi") used to display storage
+/// engine capabilities
 std::vector<std::pair<std::string_view, std::string_view>>
 RocksDBIndexFactory::indexAliases() const {
   return {
-      {"hash", "persistent"},
-      {"skiplist", "persistent"},
       {"zkd", "mdi"},
   };
 }

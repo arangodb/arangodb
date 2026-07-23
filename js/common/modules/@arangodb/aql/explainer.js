@@ -1016,6 +1016,16 @@ function processQuery(query, explain, planIndex) {
     return node;
   };
 
+  const formatQuantifier = function (quantifierNode) {
+    if (quantifierNode.type !== 'quantifier') {
+      return buildExpression(quantifierNode) + ' ';
+    }
+    if (quantifierNode.quantifier === 'at least') {
+      return keyword('AT LEAST') + '(' + buildExpression(quantifierNode.subNodes[0]) + ') ';
+    }
+    return keyword(quantifierNode.quantifier.toUpperCase()) + ' ';
+  };
+
   const buildExpression = function (node) {
     // replace "raw" value with proper subNodes
     node = checkRawData(node);
@@ -1028,8 +1038,8 @@ function processQuery(query, explain, planIndex) {
       const lhs = buildExpression(node.subNodes[0]);
       const rhs = buildExpression(node.subNodes[1]);
       if (node.subNodes.length === 3) {
-        // array operator node... prepend "all" | "any" | "none" to node type
-        name = keyword(node.subNodes[2].quantifier.toUpperCase()) + ' ' + name;
+        // array operator node... prepend "all" | "any" | "none" | "at least(n)"
+        name = formatQuantifier(node.subNodes[2]) + name;
       }
       if (node.sorted) {
         return lhs + ' ' + name + ' ' + annotation('/* sorted */') + ' ' + rhs;
@@ -1051,7 +1061,13 @@ function processQuery(query, explain, planIndex) {
           if (Array.isArray(ref)) {
             let out = buildExpression(ref[1]) + '[' + (new Array(ref[0] + 1).join(c));
             if (ref[2].type !== 'no-op') {
-              out += ' ' + keyword('FILTER') + ' ' + buildExpression(ref[2]);
+              if (ref[2].type === 'array filter') {
+                // [? <quantifier> FILTER <expression>]
+                out += ' ' + buildExpression(ref[2]);
+              } else {
+                // pre-3.10: [? FILTER <expression>]
+                out += ' ' + keyword('FILTER') + ' ' + buildExpression(ref[2]);
+              }
             }
             if (ref[3].type !== 'no-op') {
               out += ' ' + keyword('LIMIT ') + ' ' + buildExpression(ref[3]);
@@ -1111,7 +1127,10 @@ function processQuery(query, explain, planIndex) {
       case 'no-op':
         return '';
       case 'quantifier':
-        return node.quantifier.toUpperCase();
+        if (node.quantifier === 'at least') {
+          return keyword('AT LEAST') + '(' + buildExpression(node.subNodes[0]) + ')';
+        }
+        return keyword(node.quantifier.toUpperCase());
       case 'expand':
       case 'expansion':
         if (node.subNodes.length > 2) {
@@ -1122,8 +1141,15 @@ function processQuery(query, explain, planIndex) {
           references[node.subNodes[0].subNodes[0].name] = node.subNodes[0].subNodes[1];
         }
         return buildExpression(node.subNodes[1]);
-      case 'array filter':
-        return buildExpression(node.subNodes[0]) + " " + buildExpression(node.subNodes[1]);
+      case 'array filter': {
+        let out = '';
+        const quantifier = node.subNodes[0];
+        if (quantifier.type !== 'no-op') {
+          out += formatQuantifier(quantifier);
+        }
+        out += keyword('FILTER') + ' ' + buildExpression(node.subNodes[1]);
+        return out;
+      }
       case 'user function call':
         return func(node.name) + '(' + ((node.subNodes && node.subNodes[0].subNodes) || []).map(buildExpression).join(', ') + ')' + '   ' + annotation('/* user-defined function */');
       case 'function call':

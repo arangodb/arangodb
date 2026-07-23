@@ -27,9 +27,6 @@ global.DEFINE_MODULE('internal', (function () {
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Dr. Frank Celler
-// / @author Copyright 2018, ArangoDB GmbH, Cologne, Germany
-// / @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
   // //////////////////////////////////////////////////////////////////////////////

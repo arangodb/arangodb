@@ -25,16 +25,15 @@
 #include "ApplicationFeatures/OptionsProvider.h"
 #include "RestServer/TemporaryStorageFeatureOptions.h"
 
-namespace arangodb::options {
-class ProgramOptions;
-}
-
 namespace arangodb {
 
 struct TemporaryStorageOptionsProvider
-    : OptionsProvider<TemporaryStorageFeatureOptions> {
-  void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
-                      TemporaryStorageFeatureOptions& options) override;
+    : OptionsProviderImpl<TemporaryStorageOptionsProvider,
+                          TemporaryStorageFeatureOptions> {
+  void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                          TemporaryStorageFeatureOptions& options);
+  void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                           TemporaryStorageFeatureOptions& options) {}
 };
 
 }  // namespace arangodb
