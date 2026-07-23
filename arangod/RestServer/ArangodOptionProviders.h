@@ -26,6 +26,7 @@
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Audit/AuditOptionsProvider.h"
+#include "Enterprise/RClone/RCloneOptionsProvider.h"
 #include "Enterprise/Ssl/SslServerEEOptionsProvider.h"
 #endif
 
@@ -52,8 +53,7 @@ using ArangodOptionProviders = CoreOptionProviders<
     TemporaryStorageOptionsProvider, UpgradeOptionsProvider
 #ifdef USE_ENTERPRISE
     ,
-    enterprise::AuditOptionsProvider,
-    enterprise::SslServerEEOptionsProvider
+    AuditOptionsProvider, RCloneOptionsProvider, SslServerEEOptionsProvider
 #endif
 #ifdef USE_V8
     ,
