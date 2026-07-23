@@ -460,8 +460,40 @@ std::unique_ptr<graph::BaseOptions> createPathsQueryOptions(
 
         TRI_ASSERT(value->isConstant());
 
-        if (name == "weightAttribute" && value->isStringValue()) {
-          options->setWeightAttribute(value->getString());
+        if (name == "weightAttribute") {
+          if (value->isStringValue()) {
+            std::string attribute = value->getString();
+            if (!attribute.empty()) {
+              options->setWeightAttribute({std::move(attribute)});
+            }
+          } else if (value->type == NODE_TYPE_ARRAY) {
+            std::vector<std::string> weightAttribute;
+            weightAttribute.reserve(value->numMembers());
+            bool valid = true;
+            size_t members = value->numMembers();
+            for (size_t j = 0; j < members; ++j) {
+              auto member = value->getMemberUnchecked(j);
+              if (member == nullptr || !member->isStringValue()) {
+                valid = false;
+                break;
+              }
+              weightAttribute.emplace_back(member->getString());
+            }
+            if (valid) {
+              options->setWeightAttribute(std::move(weightAttribute));
+            } else {
+              ExecutionPlan::invalidOptionAttribute(
+                  ast->query(),
+                  "'weightAttribute' must be either a string or an array of "
+                  "strings",
+                  arangodb::graph::PathType::toString(type), name);
+            }
+          } else {
+            ExecutionPlan::invalidOptionAttribute(
+                ast->query(),
+                "Invalid use of the OPTIONS attribute 'weightAttribute'.",
+                arangodb::graph::PathType::toString(type), name);
+          }
         } else if (name == "defaultWeight" && value->isNumericValue()) {
           options->setDefaultWeight(value->getDoubleValue());
         } else if (name == StaticStrings::IndexHintOptionForce) {

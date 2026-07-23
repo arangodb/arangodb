@@ -27,10 +27,15 @@
 #include "Cluster/ClusterMethods.h"
 #include "Graph/Cursors/DBServerEdgeCursor.h"
 #include "Graph/Cursors/DBServerIndexCursor.h"
+#include "Graph/WeightAttributeHelper.h"
 #include "Indexes/Index.h"
 #include "Transaction/Helpers.h"
 
 #include <velocypack/Iterator.h>
+
+#include <cmath>
+#include <limits>
+#include <memory>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -40,7 +45,7 @@ using VPackHelper = arangodb::basics::VelocyPackHelper;
 
 ShortestPathOptions::ShortestPathOptions(aql::QueryContext& query)
     : BaseOptions(query), _minDepth(1), _maxDepth(1) {
-  setWeightAttribute("");
+  setWeightAttribute({});
   setDefaultWeight(1);
   setAlgorithm("");
 }
@@ -58,8 +63,7 @@ ShortestPathOptions::ShortestPathOptions(aql::QueryContext& query,
   _minDepth = VPackHelper::getNumericValue<uint64_t>(info, "minDepth", 1);
   _maxDepth = VPackHelper::getNumericValue<uint64_t>(info, "maxDepth", 1);
 
-  setWeightAttribute(
-      VelocyPackHelper::getStringValue(info, "weightAttribute", ""));
+  setWeightAttribute(parseWeightAttribute(info));
   setDefaultWeight(
       VelocyPackHelper::getNumericValue<double>(info, "defaultWeight", 1));
   setProduceVertices(
@@ -81,8 +85,7 @@ ShortestPathOptions::ShortestPathOptions(aql::QueryContext& query,
   _minDepth = VPackHelper::getNumericValue<uint64_t>(info, "minDepth", 1);
   _maxDepth = VPackHelper::getNumericValue<uint64_t>(info, "maxDepth", 1);
 
-  setWeightAttribute(
-      VelocyPackHelper::getStringValue(info, "weightAttribute", ""));
+  setWeightAttribute(parseWeightAttribute(info));
   setDefaultWeight(
       VelocyPackHelper::getNumericValue<double>(info, "defaultWeight", 1));
   setProduceVertices(
@@ -121,7 +124,7 @@ void ShortestPathOptions::buildEngineInfo(VPackBuilder& result) const {
   injectEngineInfo(result);
   result.add("type", VPackValue("shortestPath"));
   result.add("defaultWeight", VPackValue(getDefaultWeight()));
-  result.add("weightAttribute", VPackValue(getWeightAttribute()));
+  addWeightAttribute(result, getWeightAttribute());
   result.add(VPackValue("reverseLookupInfos"));
   result.openArray();
   for (auto const& it : _reverseLookupInfos) {
@@ -142,7 +145,7 @@ void ShortestPathOptions::toVelocyPack(VPackBuilder& builder) const {
   toVelocyPackBase(builder);
   builder.add("minDepth", VPackValue(_minDepth));
   builder.add("maxDepth", VPackValue(_maxDepth));
-  builder.add("weightAttribute", VPackValue(getWeightAttribute()));
+  addWeightAttribute(builder, getWeightAttribute());
   builder.add("defaultWeight", VPackValue(getDefaultWeight()));
   builder.add("produceVertices", VPackValue(produceVertices()));
   builder.add("type", VPackValue("shortestPath"));
@@ -187,9 +190,7 @@ void ShortestPathOptions::addReverseLookupInfo(
 
 double ShortestPathOptions::weightEdge(VPackSlice edge) const {
   TRI_ASSERT(useWeight());
-  const auto weight =
-      arangodb::basics::VelocyPackHelper::getNumericValue<double>(
-          edge, _weightAttribute.c_str(), _defaultWeight);
+  const auto weight = getEdgeWeight(edge, _weightAttribute, _defaultWeight);
   if (weight < 0.) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT);
   }
@@ -224,7 +225,8 @@ auto ShortestPathOptions::setDefaultWeight(double weight) -> void {
   _defaultWeight = weight;
 }
 
-auto ShortestPathOptions::setWeightAttribute(std::string attribute) -> void {
+auto ShortestPathOptions::setWeightAttribute(
+    std::vector<std::string> attribute) -> void {
   _weightAttribute = std::move(attribute);
 }
 
@@ -233,7 +235,8 @@ auto ShortestPathOptions::getDefaultWeight() const -> double {
   return _defaultWeight;
 }
 
-auto ShortestPathOptions::getWeightAttribute() const& -> std::string {
+auto ShortestPathOptions::getWeightAttribute() const&
+    -> std::vector<std::string> const& {
   return _weightAttribute;
 }
 

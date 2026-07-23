@@ -1,6 +1,17 @@
 4.0.0 (XXXX-XX-XX)
 ------------------
 
+* COR-677: Modern WeightAttribute for kShortestPaths and ShortestPaths
+  Allow sub-attribute as weightAttribute for SHORTEST_PATH and
+  K_SHORTEST_PATHS (same semantics as COR-564 for weighted traversals).
+
+  The `weightAttribute` option for shortest-path queries now accepts nested
+  attribute paths. For an edge document like `{ "Data": { "Weight": 3 } }`:
+  `OPTIONS { weightAttribute: ["Data", "Weight"] }`
+
+  A `.` character is still interpreted as a literal top-level attribute name:
+  `OPTIONS { weightAttribute: "Data.Weight" }`
+
 * Upgraded included rclone to v1.74.4 with go1.25.12 and non-vulnerable
   dependencies.
 
