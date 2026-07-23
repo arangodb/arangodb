@@ -916,8 +916,7 @@ auto AuthMode::Rbac::check(auth::Permission permission) const -> Result {
                   !r.ok()) {
                 return r;
               }
-              return check(
-                  p::CreateCollection{collection.db, collection.name});
+              return check(p::CreateCollection{collection.db, collection.name});
             }
             return check(p::UseCollection{collection.db, collection.name,
                                           CollectionAccessLevel::WriteData});

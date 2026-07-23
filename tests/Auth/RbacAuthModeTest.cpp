@@ -50,35 +50,34 @@ namespace {
 // resource's string_views point into the perms:: struct that only lives for the
 // duration of the check() call.
 std::string resourceStr(rbac::Resource const& resource) {
-  return std::visit(
-      overload{
-          [](rbac::resources::NoResource const&) {
-            return std::string{"<none>"};
-          },
-          [](rbac::resources::Database const& r) {
-            return std::string{"database:"} + std::string{r.name};
-          },
-          [](rbac::resources::Collection const& r) {
-            return std::string{"collection:"} + std::string{r.db} + ":" +
-                   std::string{r.name};
-          },
-          [](rbac::resources::View const& r) {
-            return std::string{"view:"} + std::string{r.db} + ":" +
-                   std::string{r.name};
-          },
-          [](rbac::resources::Analyzer const& r) {
-            return std::string{"analyzer:"} + std::string{r.db} + ":" +
-                   std::string{r.name};
-          },
-          [](rbac::resources::Graph const& r) {
-            return std::string{"graph:"} + std::string{r.db} + ":" +
-                   std::string{r.name};
-          },
-          [](rbac::resources::User const& r) {
-            return std::string{"user:"} + std::string{r.name};
-          },
-      },
-      resource);
+  return std::visit(overload{
+                        [](rbac::resources::NoResource const&) {
+                          return std::string{"<none>"};
+                        },
+                        [](rbac::resources::Database const& r) {
+                          return std::string{"database:"} + std::string{r.name};
+                        },
+                        [](rbac::resources::Collection const& r) {
+                          return std::string{"collection:"} +
+                                 std::string{r.db} + ":" + std::string{r.name};
+                        },
+                        [](rbac::resources::View const& r) {
+                          return std::string{"view:"} + std::string{r.db} +
+                                 ":" + std::string{r.name};
+                        },
+                        [](rbac::resources::Analyzer const& r) {
+                          return std::string{"analyzer:"} + std::string{r.db} +
+                                 ":" + std::string{r.name};
+                        },
+                        [](rbac::resources::Graph const& r) {
+                          return std::string{"graph:"} + std::string{r.db} +
+                                 ":" + std::string{r.name};
+                        },
+                        [](rbac::resources::User const& r) {
+                          return std::string{"user:"} + std::string{r.name};
+                        },
+                    },
+                    resource);
 }
 
 // A Service that records every check() it receives and answers with a
@@ -93,8 +92,7 @@ struct MockService : rbac::Service {
   int checkCalls = 0;          // number of check() invocations
   Result answer{};             // returned from every check(); {} == ok
 
-  auto check(Token /*token*/,
-             std::span<rbac::ActionResource const> qs) noexcept
+  auto check(Token /*token*/, std::span<rbac::ActionResource const> qs) noexcept
       -> Result override {
     ++checkCalls;
     for (auto const& q : qs) {
@@ -169,8 +167,7 @@ TEST_F(RbacAuthModeTest, UseDatabaseRead) {
 }
 
 TEST_F(RbacAuthModeTest, UseDatabaseWrite) {
-  check(
-      p::UseDatabase{.name = "mydb", .level = DatabaseAccessLevel::Write});
+  check(p::UseDatabase{.name = "mydb", .level = DatabaseAccessLevel::Write});
   expectSingle(rbac::Action::WriteMeta, "database:mydb");
 }
 
@@ -239,7 +236,7 @@ TEST_F(RbacAuthModeTest, UseViewModify) {
 TEST_F(RbacAuthModeTest, CreateViewChecksViewThenLinkedCollections) {
   std::vector<std::string> links{"c1", "c2"};
   EXPECT_TRUE(check(p::CreateView{
-                             .db = "mydb", .name = "v", .linkedCollections = links})
+                        .db = "mydb", .name = "v", .linkedCollections = links})
                   .ok());
   EXPECT_EQ(svc.checkCalls, 1);  // view + linked collections in one batch
   ASSERT_EQ(svc.queries.size(), 3u);
@@ -268,8 +265,7 @@ TEST_F(RbacAuthModeTest, RenameViewChecksOldName) {
 }
 
 TEST_F(RbacAuthModeTest, RenameViewToSameNameIsBadParameterAndAsksNothing) {
-  auto r =
-      check(p::RenameView{.db = "mydb", .oldName = "v", .newName = "v"});
+  auto r = check(p::RenameView{.db = "mydb", .oldName = "v", .newName = "v"});
   EXPECT_EQ(r.errorNumber(), TRI_ERROR_BAD_PARAMETER);
   EXPECT_TRUE(svc.queries.empty());
 }
@@ -321,8 +317,8 @@ TEST_F(RbacAuthModeTest, UseGraphRead) {
 }
 
 TEST_F(RbacAuthModeTest, UseGraphModify) {
-  check(
-      p::UseGraph{.db = "mydb", .name = "g", .level = GraphAccessLevel::Modify});
+  check(p::UseGraph{
+      .db = "mydb", .name = "g", .level = GraphAccessLevel::Modify});
   expectSingle(rbac::Action::WriteMeta, "graph:mydb:g");
 }
 
@@ -330,9 +326,9 @@ TEST_F(RbacAuthModeTest, CreateGraphChecksGraphThenChildCollections) {
   std::vector<std::string> toCreate{"cc"};
   std::vector<std::string> toRead{"cr"};
   check(p::CreateGraph{.db = "mydb",
-                            .name = "g",
-                            .collectionNamesToCreate = toCreate,
-                            .collectionNamesToRead = toRead});
+                       .name = "g",
+                       .collectionNamesToCreate = toCreate,
+                       .collectionNamesToRead = toRead});
   EXPECT_EQ(svc.checkCalls, 1);  // graph + child collections in one batch
   ASSERT_EQ(svc.queries.size(), 3u);
   EXPECT_EQ(svc.queries[0].action, rbac::Action::Create);
@@ -345,8 +341,7 @@ TEST_F(RbacAuthModeTest, CreateGraphChecksGraphThenChildCollections) {
 
 TEST_F(RbacAuthModeTest, DropGraphChecksGraphThenListedCollections) {
   std::vector<std::string> colls{"c1", "c2"};
-  check(
-      p::DropGraph{.db = "mydb", .name = "g", .collectionNames = colls});
+  check(p::DropGraph{.db = "mydb", .name = "g", .collectionNames = colls});
   EXPECT_EQ(svc.checkCalls, 1);  // graph + listed collections in one batch
   ASSERT_EQ(svc.queries.size(), 3u);
   EXPECT_EQ(svc.queries[0].action, rbac::Action::Drop);
