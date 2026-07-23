@@ -142,7 +142,7 @@ version: 2.1
 orbs:
   aws-cli: circleci/aws-cli@4.1.1
   aws-ecr: circleci/aws-ecr@9.0.1
-  trivy-scan: arangodb/trivy-scan@0.1.1
+  trivy-scan: arangodb/trivy-scan@0.2
 
 parameters:
   enterprise-branch:
@@ -540,6 +540,12 @@ jobs:
           root: /tmp/nightly
           paths:
             - "*"
+      - store_artifacts:
+          path: /tmp/nightly/sourceInfo.log
+          destination: sourceInfo.log
+      - store_artifacts:
+          path: /tmp/nightly/sourceInfo.json
+          destination: sourceInfo.json
 
   # ── Static compilation ──────────────────────────────────────────────────────
   compile-nightly:

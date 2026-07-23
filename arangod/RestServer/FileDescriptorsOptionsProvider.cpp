@@ -31,7 +31,7 @@ namespace arangodb::file_descriptors {
 
 using namespace arangodb::options;
 
-void FileDescriptorsOptionsProvider::declareOptions(
+void FileDescriptorsOptionsProvider::declareOptionsImpl(
     std::shared_ptr<ProgramOptions> options,
     FileDescriptorsFeatureOptions& opts) {
   options
@@ -44,7 +44,7 @@ void FileDescriptorsOptionsProvider::declareOptions(
       .setIntroducedIn(31100);
 }
 
-void FileDescriptorsOptionsProvider::validateOptions(
+void FileDescriptorsOptionsProvider::validateOptionsImpl(
     std::shared_ptr<ProgramOptions> /*options*/,
     FileDescriptorsFeatureOptions& opts) {
   constexpr uint64_t lowerBound = 10000;

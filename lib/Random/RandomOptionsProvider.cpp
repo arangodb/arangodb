@@ -29,7 +29,7 @@ namespace arangodb {
 
 using namespace arangodb::options;
 
-void RandomOptionsProvider::declareOptions(
+void RandomOptionsProvider::declareOptionsImpl(
     std::shared_ptr<ProgramOptions> options, RandomFeatureOptions& opts) {
   options->addSection("random", "random generator");
 
