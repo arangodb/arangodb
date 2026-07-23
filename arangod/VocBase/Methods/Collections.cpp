@@ -1023,7 +1023,12 @@ futures::Future<Result> Collections::updateProperties(
   if (auto r = exec.canUseCollection(collection.vocbase().name(),
                                      collection.name(), AccessLevel::WriteMeta);
       r.fail()) {
-    co_return {TRI_ERROR_FORBIDDEN, r.errorMessage()};
+    if (exec.requestedApiVersion() > 0) {
+      co_return r;
+    } else {
+      // Backwards compatibility!
+      co_return {TRI_ERROR_FORBIDDEN, r.errorMessage()};
+    }
   }
 
   if (ServerState::instance()->isCoordinator()) {
