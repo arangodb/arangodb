@@ -2408,22 +2408,15 @@ ExecutionNode* ExecutionPlan::fromNodeMatch(ExecutionNode* previous,
 
   auto const patternEdgeCollectionCount =
       [](AstNode const* edgeLabelMember) -> size_t {
-    if (edgeLabelMember == nullptr || edgeLabelMember->type == NODE_TYPE_NOP) {
-      return 0;
-    }
-    if (edgeLabelMember->type == NODE_TYPE_ARRAY) {
-      return edgeLabelMember->numMembers();
-    }
-    return 1;
+    TRI_ASSERT(edgeLabelMember != nullptr &&
+               edgeLabelMember->type == NODE_TYPE_ARRAY);
+    return edgeLabelMember->numMembers();
   };
 
   auto const getPatternEdgeCollection = [](AstNode const* edgeLabelMember,
                                            size_t index) -> AstNode const* {
-    if (edgeLabelMember->type == NODE_TYPE_ARRAY) {
-      return edgeLabelMember->getMember(index);
-    }
-    TRI_ASSERT(index == 0);
-    return edgeLabelMember;
+    TRI_ASSERT(edgeLabelMember->type == NODE_TYPE_ARRAY);
+    return edgeLabelMember->getMember(index);
   };
 
   auto const buildPatternEdgeCollectionList =
