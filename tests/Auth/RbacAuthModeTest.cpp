@@ -100,6 +100,7 @@ struct MockService : rbac::Service {
     for (auto const& q : qs) {
       queries.push_back({q.action, resourceStr(q.resource)});
     }
+
     return answer;
   }
 
