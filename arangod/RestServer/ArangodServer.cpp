@@ -155,7 +155,6 @@ void ArangodServer::addFeatures() {
   addFeature<EncryptionFeature>();
 #endif
   addFeature<iresearch::IResearchFeature>(metrics);
-  addFeature<ClusterEngine>(metrics);
 }
 
 void ArangodServer::addFeaturesWithOptionProvider() {
@@ -218,6 +217,10 @@ void ArangodServer::addFeaturesWithOptionProvider() {
   // Add ClusterFeature
   auto& clusterFeature =
       addFeature<ClusterFeature>(metrics, getOptions<ClusterOptionsProvider>());
+
+  // Add ClusterEngine
+  // (must come after ClusterFeature: its ctor eagerly reads ClusterFeature)
+  addFeature<ClusterEngine>(metrics);
 
   // Add MaintenanceFeature
   addFeature<MaintenanceFeature>(&clusterFeature,
