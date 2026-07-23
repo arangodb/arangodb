@@ -32,15 +32,11 @@ namespace arangodb::rbac {
 struct ServiceImpl : Service {
   explicit ServiceImpl(std::unique_ptr<Backend> backend);
 
-  auto check(Token token, std::span<ActionResource const> queries) noexcept
+  auto check(JwtToken const& token,
+             std::span<ActionResource const> queries) noexcept
       -> Result override;
 
  private:
-  auto mayImpl(User user, std::vector<AuthorizationQuery> queries) noexcept
-      -> async<ResultT<bool>> override;
-  auto maySyncImpl(User user, std::vector<AuthorizationQuery> queries) noexcept
-      -> ResultT<bool> override;
-
   std::unique_ptr<Backend> _backend;
 };
 

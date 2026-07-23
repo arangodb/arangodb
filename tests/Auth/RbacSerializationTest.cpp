@@ -87,24 +87,6 @@ TEST(RbacSerializationTest, RequestItem) {
   })");
 }
 
-TEST(RbacSerializationTest, EvaluateManyRequest) {
-  auto req = rbac::EvaluateManyRequest{
-      .user = "alice",
-      .roles = {"admin", "reader"},
-      .items = {rbac::Backend::RequestItem{.action = "db:ReadDatabase",
-                                           .resource = "db:database:d",
-                                           .attributeValues = {}}}};
-  expectEqualsJson(req, R"({
-    "user": "alice",
-    "roles": ["admin", "reader"],
-    "items": [{
-      "action": "db:ReadDatabase",
-      "resource": "db:database:d",
-      "context": { "parameters": { "attribute": { "values": [] } } }
-    }]
-  })");
-}
-
 TEST(RbacSerializationTest, EvaluateTokenManyRequest) {
   auto req = rbac::EvaluateTokenManyRequest{
       .token = "eyJhbGciOiJFUzI1NiJ9.payload.sig", .items = {}};

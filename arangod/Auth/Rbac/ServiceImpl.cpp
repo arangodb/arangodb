@@ -32,16 +32,6 @@ namespace arangodb::rbac {
 
 namespace {
 
-auto flattenQueries(std::vector<Service::AuthorizationQuery> const& queries)
-    -> Backend::RequestItems {
-  Backend::RequestItems items;
-  for (auto const& q : queries) {
-    items.items.push_back(Backend::RequestItem{
-        .action = q.action, .resource = q.resource, .attributeValues = {}});
-  }
-  return items;
-}
-
 // The wire string the external RBAC service expects for an action: "db:" plus
 // the action name. Resource actions and admin actions share the same prefix.
 auto actionToWireString(Action action) -> std::string_view {
@@ -155,31 +145,7 @@ auto resourceToWireString(Resource const& resource) -> std::string {
 ServiceImpl::ServiceImpl(std::unique_ptr<Backend> backend)
     : _backend(std::move(backend)) {}
 
-auto ServiceImpl::mayImpl(User user,
-                          std::vector<AuthorizationQuery> queries) noexcept
-    -> async<ResultT<bool>> {
-  auto items = flattenQueries(queries);
-  auto result = co_await _backend->evaluateTokenMany(
-      Backend::JwtToken{.jwtToken = std::move(user.jwtToken)}, items);
-  if (!result.ok()) {
-    co_return result.result();
-  }
-  co_return result.get().effect == Backend::Effect::Allow;
-}
-
-auto ServiceImpl::maySyncImpl(User user,
-                              std::vector<AuthorizationQuery> queries) noexcept
-    -> ResultT<bool> {
-  auto items = flattenQueries(queries);
-  auto result = _backend->evaluateTokenManySync(
-      Backend::JwtToken{.jwtToken = std::move(user.jwtToken)}, items);
-  if (!result.ok()) {
-    return result.result();
-  }
-  return result.get().effect == Backend::Effect::Allow;
-}
-
-auto ServiceImpl::check(Token token,
+auto ServiceImpl::check(JwtToken const& token,
                         std::span<ActionResource const> queries) noexcept
     -> Result {
   // An empty batch asks nothing, so it is trivially permitted; short-circuit to
@@ -199,8 +165,7 @@ auto ServiceImpl::check(Token token,
 
   // Service::check (and the whole IAuth::check chain) is synchronous for now,
   // so we use the synchronous backend call directly.
-  auto result = _backend->evaluateTokenManySync(
-      Backend::JwtToken{.jwtToken = std::string{token}}, items);
+  auto result = _backend->evaluateTokenManySync(token, items);
 
   if (!result.ok()) {
     // Transport or parsing error: propagate it verbatim.
@@ -210,8 +175,9 @@ auto ServiceImpl::check(Token token,
   if (response.effect == Backend::Effect::Allow) {
     return {};
   }
-  return {TRI_ERROR_FORBIDDEN, response.message.empty() ? "insufficient permissions"
-                                                        : response.message};
+  return {TRI_ERROR_FORBIDDEN, response.message.empty()
+                                   ? "insufficient permissions"
+                                   : response.message};
 }
 
 }  // namespace arangodb::rbac

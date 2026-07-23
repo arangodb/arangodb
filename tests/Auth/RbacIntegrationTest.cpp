@@ -91,22 +91,6 @@ auto buildDenyResponse(std::size_t numItems) -> std::string {
       R"({{"effect":"Deny","message":"access denied","items":[{}]}})", items);
 }
 
-auto buildMixedResponse(std::initializer_list<std::string_view> effects)
-    -> std::string {
-  std::string items;
-  bool anyDeny = false;
-  bool first = true;
-  for (auto effect : effects) {
-    if (!first) items += ",";
-    first = false;
-    items += std::format(R"({{"effect":"{}","message":""}})", effect);
-    if (effect == "Deny") anyDeny = true;
-  }
-  auto overallEffect = anyDeny ? "Deny" : "Allow";
-  return std::format(R"({{"effect":"{}","message":"","items":[{}]}})",
-                     overallEffect, items);
-}
-
 }  // namespace
 
 struct RbacIntegrationTest : ::testing::Test {
@@ -179,153 +163,6 @@ struct RbacIntegrationTest : ::testing::Test {
 };
 
 // =============================================================================
-// maySync
-// =============================================================================
-
-TEST_F(RbacIntegrationTest, ServiceMaySync_Allow) {
-  _smocker->addMock(kEvaluateTokenManyPath, 200, buildAllowResponse(1));
-  auto service = makeService();
-
-  auto result =
-      service->maySync(rbac::Service::User{.jwtToken = "test.jwt.token"},
-                       rbac::Category::ReadDatabase{.name = "mydb"});
-
-  ASSERT_TRUE(result.ok()) << result.result().errorMessage();
-  EXPECT_TRUE(result.get());
-
-  auto history = _smocker->getHistory();
-  ASSERT_EQ(history.size(), 1u);
-  EXPECT_EQ(history[0].method, "POST");
-  EXPECT_EQ(history[0].path, kEvaluateTokenManyPath);
-  EXPECT_EQ(normalizeJson(history[0].body), normalizeJson(R"({
-    "token": "test.jwt.token",
-    "items": [{
-      "action": "db:ReadDatabase",
-      "resource": "db:database:mydb",
-      "context": {"parameters": {"attribute": {"values": []}}}
-    }]
-  })"));
-}
-
-TEST_F(RbacIntegrationTest, ServiceMaySync_Deny) {
-  _smocker->addMock(kEvaluateTokenManyPath, 200, buildDenyResponse(1));
-  auto service = makeService();
-
-  auto result =
-      service->maySync(rbac::Service::User{.jwtToken = "test.jwt.token"},
-                       rbac::Category::ReadDatabase{.name = "mydb"});
-
-  ASSERT_TRUE(result.ok()) << result.result().errorMessage();
-  EXPECT_FALSE(result.get());
-}
-
-TEST_F(RbacIntegrationTest, ServiceMaySync_HttpServerError) {
-  _smocker->addMock(kEvaluateTokenManyPath, 500, R"({"error":"internal"})");
-  auto service = makeService();
-
-  auto result =
-      service->maySync(rbac::Service::User{.jwtToken = "test.jwt.token"},
-                       rbac::Category::ReadDatabase{.name = "mydb"});
-
-  EXPECT_FALSE(result.ok());
-}
-
-TEST_F(RbacIntegrationTest, ServiceMaySync_MalformedResponse) {
-  _smocker->addMock(kEvaluateTokenManyPath, 200, "invalid json {{{");
-  auto service = makeService();
-
-  auto result =
-      service->maySync(rbac::Service::User{.jwtToken = "test.jwt.token"},
-                       rbac::Category::ReadDatabase{.name = "mydb"});
-
-  EXPECT_FALSE(result.ok());
-}
-
-// =============================================================================
-// mayAllSync
-// =============================================================================
-
-TEST_F(RbacIntegrationTest, ServiceMayAllSync_AllAllow) {
-  _smocker->addMock(kEvaluateTokenManyPath, 200, buildAllowResponse(3));
-  auto service = makeService();
-
-  auto result =
-      service->mayAllSync(rbac::Service::User{.jwtToken = "test.jwt.token"},
-                          {
-                              rbac::Category::ReadDatabase{.name = "db1"},
-                              rbac::Category::WriteDatabase{.name = "db2"},
-                              rbac::Category::ReadDatabase{.name = "db3"},
-                          });
-
-  ASSERT_TRUE(result.ok()) << result.result().errorMessage();
-  EXPECT_TRUE(result.get());
-
-  auto history = _smocker->getHistory();
-  ASSERT_EQ(history.size(), 1u);
-  EXPECT_EQ(history[0].method, "POST");
-  EXPECT_EQ(history[0].path, kEvaluateTokenManyPath);
-  EXPECT_EQ(normalizeJson(history[0].body), normalizeJson(R"({
-    "token": "test.jwt.token",
-    "items": [
-      {"action": "db:ReadDatabase", "resource": "db:database:db1",
-       "context": {"parameters": {"attribute": {"values": []}}}},
-      {"action": "db:WriteDatabase", "resource": "db:database:db2",
-       "context": {"parameters": {"attribute": {"values": []}}}},
-      {"action": "db:ReadDatabase", "resource": "db:database:db3",
-       "context": {"parameters": {"attribute": {"values": []}}}}
-    ]
-  })"));
-}
-
-TEST_F(RbacIntegrationTest, ServiceMayAllSync_AllDeny) {
-  _smocker->addMock(kEvaluateTokenManyPath, 200, buildDenyResponse(3));
-  auto service = makeService();
-
-  auto result =
-      service->mayAllSync(rbac::Service::User{.jwtToken = "test.jwt.token"},
-                          {
-                              rbac::Category::ReadDatabase{.name = "db1"},
-                              rbac::Category::WriteDatabase{.name = "db2"},
-                              rbac::Category::ReadDatabase{.name = "db3"},
-                          });
-
-  ASSERT_TRUE(result.ok()) << result.result().errorMessage();
-  EXPECT_FALSE(result.get());
-}
-
-TEST_F(RbacIntegrationTest, ServiceMayAllSync_OneDenied) {
-  _smocker->addMock(kEvaluateTokenManyPath, 200,
-                    buildMixedResponse({"Allow", "Deny", "Allow"}));
-  auto service = makeService();
-
-  auto result =
-      service->mayAllSync(rbac::Service::User{.jwtToken = "test.jwt.token"},
-                          {
-                              rbac::Category::ReadDatabase{.name = "db1"},
-                              rbac::Category::WriteDatabase{.name = "db2"},
-                              rbac::Category::ReadDatabase{.name = "db3"},
-                          });
-
-  ASSERT_TRUE(result.ok()) << result.result().errorMessage();
-  EXPECT_FALSE(result.get());
-}
-
-TEST_F(RbacIntegrationTest, ServiceMayAllSync_HttpServerError) {
-  _smocker->addMock(kEvaluateTokenManyPath, 500, R"({"error":"internal"})");
-  auto service = makeService();
-
-  auto result =
-      service->mayAllSync(rbac::Service::User{.jwtToken = "test.jwt.token"},
-                          {
-                              rbac::Category::ReadDatabase{.name = "db1"},
-                              rbac::Category::WriteDatabase{.name = "db2"},
-                              rbac::Category::ReadDatabase{.name = "db3"},
-                          });
-
-  EXPECT_FALSE(result.ok());
-}
-
-// =============================================================================
 // check() — the ActionResource path. Verifies the new "db:<Action>" +
 // typed-resource wire vocabulary is what actually goes over the wire, and that
 // the aggregate effect maps to a Result.
@@ -337,7 +174,7 @@ TEST_F(RbacIntegrationTest, ServiceCheck_Allow) {
 
   std::vector<rbac::ActionResource> queries{
       {rbac::Action::Read, rbac::resources::Database{.name = "mydb"}}};
-  auto result = service->check("test.jwt.token", queries);
+  auto result = service->check({"test.jwt.token"}, queries);
 
   ASSERT_TRUE(result.ok()) << result.errorMessage();
 
@@ -361,7 +198,7 @@ TEST_F(RbacIntegrationTest, ServiceCheck_Deny) {
 
   std::vector<rbac::ActionResource> queries{
       {rbac::Action::Read, rbac::resources::Database{.name = "mydb"}}};
-  auto result = service->check("test.jwt.token", queries);
+  auto result = service->check({"test.jwt.token"}, queries);
 
   EXPECT_EQ(result.errorNumber(), TRI_ERROR_FORBIDDEN);
 }
@@ -379,7 +216,7 @@ TEST_F(RbacIntegrationTest, ServiceCheck_BatchUsesNewVocabulary) {
        rbac::resources::Collection{.db = "mydb", .name = "c1"}},
       {rbac::Action::Read,
        rbac::resources::Collection{.db = "mydb", .name = "c2"}}};
-  auto result = service->check("test.jwt.token", queries);
+  auto result = service->check({"test.jwt.token"}, queries);
 
   ASSERT_TRUE(result.ok()) << result.errorMessage();
 

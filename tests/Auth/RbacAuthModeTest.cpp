@@ -33,7 +33,6 @@
 #include <string>
 #include <vector>
 
-#include "Async/async.h"
 #include "Auth/AuthMode.h"
 #include "Auth/Permissions.h"
 #include "Auth/Rbac/Service.h"
@@ -94,7 +93,8 @@ struct MockService : rbac::Service {
   int checkCalls = 0;          // number of check() invocations
   Result answer{};             // returned from every check(); {} == ok
 
-  auto check(Token /*token*/, std::span<rbac::ActionResource const> qs) noexcept
+  auto check(rbac::JwtToken const& /*token*/,
+             std::span<rbac::ActionResource const> qs) noexcept
       -> Result override {
     ++checkCalls;
     for (auto const& q : qs) {
@@ -102,16 +102,6 @@ struct MockService : rbac::Service {
     }
 
     return answer;
-  }
-
-  // The async batch interface is not exercised by these tests; stub it out.
-  auto mayImpl(User, std::vector<AuthorizationQuery>) noexcept
-      -> async<ResultT<bool>> override {
-    co_return ResultT<bool>{true};
-  }
-  auto maySyncImpl(User, std::vector<AuthorizationQuery>) noexcept
-      -> ResultT<bool> override {
-    return {true};
   }
 };
 
