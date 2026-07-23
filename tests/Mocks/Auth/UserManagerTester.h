@@ -34,10 +34,8 @@ namespace arangodb::auth {
 /// This class is guarded by the build system — it is compiled only when
 /// ARANGODB_USE_GOOGLE_TESTS is defined.
 ///
-/// Extra public methods (not on the UserManager interface):
+/// Extra public method (not on the UserManager interface):
 ///   setAuthInfo(UserMap const&) — replaces _userCache; bumps _internalVersion
-///   internalVersion() const noexcept — read _internalVersion for assertions
-///   (both inherited from UserManagerBase)
 class UserManagerTester final : public UserManagerBase {
  public:
   UserManagerTester() = default;
