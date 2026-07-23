@@ -406,6 +406,10 @@ class Parser;
   return T_OR;
 }
 
+"|" {
+  return T_PIPE;
+}
+
 "+" {
   return T_PLUS;
 }

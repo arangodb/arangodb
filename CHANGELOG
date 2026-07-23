@@ -14,8 +14,10 @@
   `!~` regex operators, e.g. `["foo", "bar"] ANY =~ "^ba"` and
   `["foo1", "bar2", "baz3baz"] AT LEAST(2) =~ "\\w\\d$"`.
 
+* COR-419: Allow multiple edge type in relation.
+
 * COR-707 - CONTAINS(): Raise a warning for non-string inputs.
-  Improved validation for the AQL CONTAINS() function. When either argument is not a string, 
+  Improved validation for the AQL CONTAINS() function. When either argument is not a string,
   CONTAINS() now emits a warning and returns null, aligning its behavior with the documented specification. This helps users identify unsupported input types and detect potential query issues more easily.
 
 * COR-564: Allow sub-attribute as weightAttribute for traversal.
