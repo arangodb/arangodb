@@ -212,6 +212,7 @@ struct AuthMode {
   [[nodiscard]] bool isRbac() const noexcept;
   [[nodiscard]] bool isSuperuser() const noexcept;
   [[nodiscard]] bool isDisabled() const noexcept;
+  [[nodiscard]] bool isUnauthenticated() const noexcept;
 
   template<typename T, typename... Args>
   void reset(Args&&... args) {

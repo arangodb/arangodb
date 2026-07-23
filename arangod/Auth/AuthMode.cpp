@@ -60,6 +60,10 @@ bool AuthMode::isDisabled() const noexcept {
   return std::holds_alternative<Disabled>(authMode);
 }
 
+bool AuthMode::isUnauthenticated() const noexcept {
+  return std::holds_alternative<Unauthenticated>(authMode);
+}
+
 auto AuthMode::Superuser::username() const noexcept -> std::string_view {
   return "";
 }
