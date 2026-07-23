@@ -225,8 +225,8 @@ auto ShortestPathOptions::setDefaultWeight(double weight) -> void {
   _defaultWeight = weight;
 }
 
-auto ShortestPathOptions::setWeightAttribute(
-    std::vector<std::string> attribute) -> void {
+auto ShortestPathOptions::setWeightAttribute(std::vector<std::string> attribute)
+    -> void {
   _weightAttribute = std::move(attribute);
 }
 
@@ -235,8 +235,8 @@ auto ShortestPathOptions::getDefaultWeight() const -> double {
   return _defaultWeight;
 }
 
-auto ShortestPathOptions::getWeightAttribute() const&
-    -> std::vector<std::string> const& {
+auto ShortestPathOptions::getWeightAttribute()
+    const& -> std::vector<std::string> const& {
   return _weightAttribute;
 }
 
