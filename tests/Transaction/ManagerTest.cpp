@@ -612,8 +612,6 @@ TEST_F(TransactionManagerTest, permission_denied_readonly) {
       arangodb::auth::Level::RO);
   arangodb::ExecContextScope execContextScope(classicCtx.execContext);
 
-  // Need to use collection name here, because in the UserManagerTester we
-  // cannot translate to name:
   auto json = arangodb::velocypack::Parser::fromJson(
       "{ \"collections\":{\"read\": [\"testCollection\"]}}");
   Result res =
