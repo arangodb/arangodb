@@ -1174,9 +1174,6 @@ TEST_F(RestViewHandlerTest, test_auth) {
 
       auto status = handler.execute();
       EXPECT_EQ(arangodb::RestStatus::DONE, status);
-      // Before RBAC, the handler itself would check the database access.
-      // This is now done generically before, and therefore the following
-      // test will go through:
       EXPECT_EQ(arangodb::rest::ResponseCode::OK, responce.responseCode());
       auto slice = responce._payload.slice();
       EXPECT_TRUE(slice.isObject());
