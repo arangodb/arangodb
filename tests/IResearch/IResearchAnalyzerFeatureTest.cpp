@@ -35,6 +35,7 @@
 
 #include "Agency/AsyncAgencyComm.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
+#include "ProgramOptions/ProgramOptions.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/AstNode.h"
 #include "Aql/Function.h"
@@ -2667,8 +2668,10 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
     // required features cannot use the existing server since its features
     // already have some state
 
-    arangodb::application_features::ApplicationServer newServer(nullptr,
-                                                                nullptr);
+    arangodb::application_features::ApplicationServer newServer(
+        std::make_shared<arangodb::options::ProgramOptions>("", "", "",
+                                                            nullptr),
+        nullptr);
     auto& metrics = newServer.addFeature<arangodb::metrics::MetricsFeature>(
         arangodb::LazyApplicationFeatureReference<
             arangodb::QueryRegistryFeature>(nullptr),
@@ -2681,6 +2684,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
         arangodb::LazyApplicationFeatureReference<arangodb::ClusterFeature>(
             newServer));
     auto& cluster = newServer.addFeature<arangodb::ClusterFeature>(metrics);
+    // ClusterFeature's ctor just reset our role back to SINGLE, restore it
+    arangodb::ServerState::instance()->setRole(
+        arangodb::ServerState::ROLE_DBSERVER);
     auto& networkFeature = newServer.addFeature<arangodb::NetworkFeature>(
         metrics,
         arangodb::network::ConnectionPool::Config{
@@ -2769,8 +2775,10 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
       arangodb::ServerState::instance()->setRole(beforeRole);
     };
 
-    arangodb::application_features::ApplicationServer newServer(nullptr,
-                                                                nullptr);
+    arangodb::application_features::ApplicationServer newServer(
+        std::make_shared<arangodb::options::ProgramOptions>("", "", "",
+                                                            nullptr),
+        nullptr);
     auto& auth = newServer.addFeature<arangodb::AuthenticationFeature>();
     auto& metrics = newServer.addFeature<arangodb::metrics::MetricsFeature>(
         arangodb::LazyApplicationFeatureReference<
@@ -2784,6 +2792,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
         arangodb::LazyApplicationFeatureReference<arangodb::ClusterFeature>(
             newServer));
     auto& cluster = newServer.addFeature<arangodb::ClusterFeature>(metrics);
+    // ClusterFeature's ctor just reset our role back to SINGLE, restore it
+    arangodb::ServerState::instance()->setRole(
+        arangodb::ServerState::ROLE_DBSERVER);
     auto& networkFeature = newServer.addFeature<arangodb::NetworkFeature>(
         metrics,
         arangodb::network::ConnectionPool::Config{
@@ -3298,7 +3309,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
   // create a new instance of an ApplicationServer and fill it with the required
   // features cannot use the existing server since its features already have
   // some state
-  arangodb::application_features::ApplicationServer newServer(nullptr, nullptr);
+  arangodb::application_features::ApplicationServer newServer(
+      std::make_shared<arangodb::options::ProgramOptions>("", "", "", nullptr),
+      nullptr);
   StorageEngineMock engine(newServer);
   auto& dbfeature = newServer.addFeature<arangodb::DatabaseFeature>();
   dbfeature.setEngineTesting(&engine);
@@ -4382,7 +4395,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
     }
   };
 
-  arangodb::application_features::ApplicationServer newServer(nullptr, nullptr);
+  arangodb::application_features::ApplicationServer newServer(
+      std::make_shared<arangodb::options::ProgramOptions>("", "", "", nullptr),
+      nullptr);
   auto& dbFeature = newServer.addFeature<arangodb::DatabaseFeature>();
   StorageEngineMock engine(newServer);
   dbFeature.setEngineTesting(&engine);
@@ -4730,7 +4745,9 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_toVelocyPack) {
   // create a new instance of an ApplicationServer and fill it with the required
   // features cannot use the existing server since its features already have
   // some state
-  arangodb::application_features::ApplicationServer newServer(nullptr, nullptr);
+  arangodb::application_features::ApplicationServer newServer(
+      std::make_shared<arangodb::options::ProgramOptions>("", "", "", nullptr),
+      nullptr);
   auto& dbFeature = newServer.addFeature<arangodb::DatabaseFeature>();
   StorageEngineMock engine(newServer);
   dbFeature.setEngineTesting(&engine);
@@ -4883,7 +4900,9 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_vpack_create) {
   // create a new instance of an ApplicationServer and fill it with the required
   // features cannot use the existing server since its features already have
   // some state
-  arangodb::application_features::ApplicationServer newServer(nullptr, nullptr);
+  arangodb::application_features::ApplicationServer newServer(
+      std::make_shared<arangodb::options::ProgramOptions>("", "", "", nullptr),
+      nullptr);
   auto& dbFeature = newServer.addFeature<arangodb::DatabaseFeature>();
   StorageEngineMock engine(newServer);
   dbFeature.setEngineTesting(&engine);
