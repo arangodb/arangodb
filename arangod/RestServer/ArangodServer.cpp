@@ -130,6 +130,7 @@ void ArangodServer::addFeatures() {
   addFeature<LoggerFeature>(true);
   addFeature<OptionsCheckFeature>();
   addFeature<QueryRegistryFeature>(metrics);
+  addFeature<ReplicationMetricsFeature>(metrics);
   addFeature<SchedulerFeature>(metrics, sharedPRNGFeature.getPRNG());
   addFeature<VectorIndexFeature>(database);
 #ifdef USE_V8
