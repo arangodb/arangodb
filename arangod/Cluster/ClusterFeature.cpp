@@ -95,7 +95,6 @@ ClusterFeature::ClusterFeature(ApplicationServer& server,
   }
 
   if (!_options.enableCluster) {
-    ServerState::instance()->setRole(ServerState::ROLE_SINGLE);
     ServerState::instance()->findHost("localhost");
     return;
   }
@@ -156,8 +155,32 @@ ClusterFeature::ClusterFeature(ApplicationServer& server,
              "DBSERVER, PRIMARY, COORDINATOR";
       FATAL_ERROR_EXIT();
     }
-    ServerState::instance()->setRole(_options.requestedRole);
   }
+}
+
+ServerState::RoleEnum ClusterFeature::resolveRole(
+    ClusterOptions const& options) {
+  if (!options.enableCluster) {
+    return ServerState::ROLE_SINGLE;
+  }
+
+  if (!options.myRole.empty()) {
+    auto requestedRole = ServerState::stringToRole(options.myRole);
+
+    std::vector<ServerState::RoleEnum> const disallowedRoles = {
+        ServerState::ROLE_AGENT, ServerState::ROLE_UNDEFINED};
+
+    if (std::find(disallowedRoles.begin(), disallowedRoles.end(),
+                  requestedRole) != disallowedRoles.end()) {
+      LOG_TOPIC("6d4b1", FATAL, arangodb::Logger::CLUSTER)
+          << "Invalid role provided for `--cluster.my-role`. Possible values: "
+             "DBSERVER, PRIMARY, COORDINATOR";
+      FATAL_ERROR_EXIT();
+    }
+    return requestedRole;
+  }
+
+  return ServerState::ROLE_UNDEFINED;
 }
 
 ClusterFeature::~ClusterFeature() { shutdown(); }

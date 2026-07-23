@@ -24,6 +24,7 @@
 
 #include "Agency/AgencyOptions.h"
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "Cluster/ServerState.h"
 #include "RocksDBEngine/ISortingPolicy.h"
 
 namespace arangodb {
@@ -40,6 +41,9 @@ class AgencyFeature : public application_features::ApplicationFeature,
                          AgencyOptions options);
   explicit AgencyFeature(application_features::ApplicationServer& server);
   ~AgencyFeature();
+
+  // works out the role from AgencyOptions alone, doesn't touch ServerState
+  static ServerState::RoleEnum resolveRole(AgencyOptions const& options);
 
   void prepare() override final;
   void start() override final;

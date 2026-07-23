@@ -57,6 +57,17 @@ auto const kNonServerFeatures =
                std::type_index(typeid(StatisticsFeature))};
 }  // namespace
 
+void ArangodServer::afterOptionProvidersValidated() {
+  auto role = ClusterFeature::resolveRole(getOptions<ClusterOptionsProvider>());
+  auto agencyRole =
+      AgencyFeature::resolveRole(getOptions<AgencyOptionsProvider>());
+  if (agencyRole != ServerState::ROLE_UNDEFINED) {
+    // being an agent always wins over whatever the cluster options say
+    role = agencyRole;
+  }
+  ServerState::instance()->setRole(role);
+}
+
 void ArangodServer::addFeatures() {
   // Adding the Phases - these must come first and in this order
   addFeature<AgencyFeaturePhase>();

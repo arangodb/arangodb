@@ -40,9 +40,15 @@ class OptionProvidingServer : public application_features::ApplicationServer {
   }
 
   void validateOptions() override {
-    ApplicationServer::validateOptions();
     _optionProviders.validateOptions(options());
+    // hook for concrete servers to act on now-resolved provider options
+    // (e.g. ServerState role resolution) before still-unmigrated features'
+    // own validateOptions() overrides run below and might depend on it
+    afterOptionProvidersValidated();
+    ApplicationServer::validateOptions();
   }
+
+  virtual void afterOptionProvidersValidated() {}
 
   template<class ProviderType>
   auto const& getOptions() const {
