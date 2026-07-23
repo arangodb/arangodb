@@ -22,6 +22,7 @@
 #include "Service.h"
 
 #include "Basics/overload.h"
+#include "Basics/voc-errors.h"
 
 #include <format>
 #include <iterator>
@@ -205,6 +206,17 @@ auto Service::toAuthorizationQueries(Category::Any const& category)
           },
       },
       category);
+}
+
+auto Service::check(Token /*token*/, Action /*action*/,
+                    Resource const& /*resource*/) noexcept -> Result {
+  // TODO(COR-213): translate (action, resource) into the authorization-service
+  //   query vocabulary (e.g. "db:Read" + "db:collection:<db>:<name>") and
+  //   evaluate it through the backend, analogous to may()/toAuthorization
+  //   Queries(). Until that real implementation lands, this base method fails
+  //   closed. The upcoming RBAC auth-mode tests override it with a mock.
+  return {TRI_ERROR_NOT_IMPLEMENTED,
+          "RBAC authorization service check is not yet implemented"};
 }
 
 auto Service::may(User user, Category::Any const& category) noexcept

@@ -36,13 +36,17 @@ namespace arangodb {
 // already referenced from many call sites unqualified. They belong here
 // side-by-side with the permission vocabulary because `auth::perms::UseX`
 // takes one of these as its level.
-enum class CollectionAccessLevel { None = 0, Read, WriteData, WriteMeta };
+// Note: these ladders intentionally have no `None` level. The perms API only
+// ever asks about access that is actually required; "no access" is expressed
+// by not asking at all. (The UserManager's stored levels are a separate enum,
+// `auth::Level`, which does have NONE.)
+enum class CollectionAccessLevel { Read, WriteData, WriteMeta };
 // TODO We call ::Write for DB, but ::Modify for View and Analyzer.
 //      Should we keep it consistent?
-enum class DatabaseAccessLevel { None = 0, Read, Write };
-enum class ViewAccessLevel { None = 0, Read, Modify };
-enum class AnalyzerAccessLevel { None = 0, Read, Modify };
-enum class GraphAccessLevel { None = 0, Read, Modify };
+enum class DatabaseAccessLevel { Read, Write };
+enum class ViewAccessLevel { Read, Modify };
+enum class AnalyzerAccessLevel { Read, Modify };
+enum class GraphAccessLevel { Read, Modify };
 
 using AccessLevel = CollectionAccessLevel;
 
