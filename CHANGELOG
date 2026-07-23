@@ -1,6 +1,11 @@
 3.12.10-devel (XXXX-XX-XX)
 --------------------------
 
+* Updated node modules:
+ - brace-expansion to 5.0.7
+ - fast-uri to 3.1.4
+ - js-yaml to 4.3.0
+
 * Upgraded included rclone to v1.74.4 with go1.25.12 and non-vulnerable
   dependencies.
 
