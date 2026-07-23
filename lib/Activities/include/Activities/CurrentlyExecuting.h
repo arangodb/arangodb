@@ -31,8 +31,6 @@ namespace arangodb::activities {
    removes the thread on destruction.
  */
 struct CurrentlyExecuting {
-  ActivityHandle activity;
-  std::list<containers::SharedPtr<basics::ThreadInfo>>::iterator _position;
   CurrentlyExecuting(ActivityHandle handle);
   ~CurrentlyExecuting();
   CurrentlyExecuting(CurrentlyExecuting&& other) noexcept;
@@ -40,6 +38,10 @@ struct CurrentlyExecuting {
   CurrentlyExecuting(CurrentlyExecuting const& other) noexcept = delete;
   auto operator=(CurrentlyExecuting const& other) noexcept
       -> CurrentlyExecuting& = delete;
+  ActivityHandle activity;
+
+ private:
+  Activity::ThreadListIterator _position;
 };
 
 }  // namespace arangodb::activities

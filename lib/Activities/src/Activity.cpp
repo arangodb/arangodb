@@ -19,14 +19,14 @@ auto Activity::threads() const noexcept -> std::vector<basics::ThreadInfo> {
   return out;
 }
 
-auto Activity::addCurrentThread() -> ThreadList::iterator {
+auto Activity::addCurrentThread() -> ThreadListIterator {
   return _threads.doUnderLock([](auto& threads) {
     threads.push_back({basics::ThreadInfo::current()});
     return std::prev(threads.end());
   });
 }
 
-auto Activity::removeThread(ThreadList::iterator it) -> void {
+auto Activity::removeThread(ThreadListIterator it) -> void {
   _threads.doUnderLock([it](auto& threads) { threads.erase(it); });
 }
 

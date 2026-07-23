@@ -41,6 +41,7 @@ namespace arangodb::activities {
 
 struct Activity : std::enable_shared_from_this<Activity> {
   using ThreadList = std::list<containers::SharedPtr<basics::ThreadInfo>>;
+  using ThreadListIterator = ThreadList::iterator;
   Activity(ActivityId id, ActivityHandle parent, ActivityType type)
       : _id(std::move(id)),
         _parent(std::move(parent)),
@@ -54,8 +55,8 @@ struct Activity : std::enable_shared_from_this<Activity> {
   auto type() const noexcept -> ActivityType { return _type; }
   auto created() const noexcept -> ActivityCreated { return _created; }
   auto threads() const noexcept -> std::vector<basics::ThreadInfo>;
-  auto addCurrentThread() -> ThreadList::iterator;
-  auto removeThread(ThreadList::iterator it) -> void;
+  auto addCurrentThread() -> ThreadListIterator;
+  auto removeThread(ThreadListIterator it) -> void;
 
   virtual auto snapshot(velocypack::Builder& builder) -> inspection::Status = 0;
 
