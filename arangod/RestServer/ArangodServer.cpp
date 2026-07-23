@@ -168,7 +168,6 @@ void ArangodServer::addFeatures() {
 #endif
 #ifdef USE_ENTERPRISE
   addFeature<LicenseFeature>();
-  addFeature<HotBackupFeature>();
   addFeature<EncryptionFeature>();
 #endif
   addFeature<iresearch::IResearchFeature>(metrics);
@@ -190,6 +189,7 @@ void ArangodServer::addFeaturesWithOptionProvider() {
 #ifdef USE_ENTERPRISE
   addFeature<AuditFeature>(getOptions<AuditOptionsProvider>());
   addFeature<RCloneFeature>(getOptions<RCloneOptionsProvider>());
+  addFeature<HotBackupFeature>(getOptions<HotBackupOptionsProvider>());
   addFeature<SslServerFeature, SslServerFeatureEE>(
       getOptions<SslServerOptionsProvider>(),
       getOptions<SslServerEEOptionsProvider>());
