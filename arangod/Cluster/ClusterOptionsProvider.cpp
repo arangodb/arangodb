@@ -23,12 +23,16 @@
 #include "ClusterOptionsProvider.h"
 
 #include "Basics/application-exit.h"
+#include "Cluster/ServerState.h"
+#include "Endpoint/Endpoint.h"
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 
+#include <algorithm>
 #include <limits>
+#include <vector>
 
 namespace arangodb {
 
@@ -427,6 +431,17 @@ inconsistent.)")
 
 void ClusterOptionsProvider::validateOptionsImpl(
     std::shared_ptr<ProgramOptions> opts, ClusterOptions& options) {
+  if (opts->processingResult().touched(
+          "cluster.disable-dispatcher-kickstarter") ||
+      opts->processingResult().touched("cluster.disable-dispatcher-frontend")) {
+    LOG_TOPIC("33707", FATAL, arangodb::Logger::CLUSTER)
+        << "The dispatcher feature isn't available anymore. Use "
+        << "ArangoDB Starter for this now! See "
+        << "https://github.com/arangodb-helper/arangodb/ for more "
+        << "details.";
+    FATAL_ERROR_EXIT();
+  }
+
   if (options.forceOneShard) {
     options.maxNumberOfShards = 1;
   }
@@ -483,6 +498,56 @@ void ClusterOptionsProvider::validateOptionsImpl(
         << "configured value for `--cluster.connectivity-check-interval` is "
            "too low and was automatically adjusted to minimum value "
         << minConnectivityCheckInterval;
+  }
+
+  if (!options.enableCluster) {
+    return;
+  }
+
+  // validate --cluster.agency-endpoint
+  if (options.agencyEndpoints.empty()) {
+    LOG_TOPIC("d283a", FATAL, Logger::CLUSTER)
+        << "must at least specify one endpoint in --cluster.agency-endpoint";
+    FATAL_ERROR_EXIT();
+  }
+
+  // validate --cluster.my-address
+  if (options.myEndpoint.empty()) {
+    LOG_TOPIC("c1532", FATAL, arangodb::Logger::CLUSTER)
+        << "unable to determine internal address for server '"
+        << ServerState::instance()->getId()
+        << "'. Please specify --cluster.my-address or configure the "
+           "address for this server in the agency.";
+    FATAL_ERROR_EXIT();
+  }
+
+  if (Endpoint::unifiedForm(options.myEndpoint).empty()) {
+    LOG_TOPIC("41256", FATAL, arangodb::Logger::CLUSTER)
+        << "invalid endpoint '" << options.myEndpoint
+        << "' specified for --cluster.my-address";
+    FATAL_ERROR_EXIT();
+  }
+  if (!options.myAdvertisedEndpoint.empty() &&
+      Endpoint::unifiedForm(options.myAdvertisedEndpoint).empty()) {
+    LOG_TOPIC("ece6a", FATAL, arangodb::Logger::CLUSTER)
+        << "invalid endpoint '" << options.myAdvertisedEndpoint
+        << "' specified for --cluster.my-advertised-endpoint";
+    FATAL_ERROR_EXIT();
+  }
+
+  if (!options.myRole.empty()) {
+    options.requestedRole = ServerState::stringToRole(options.myRole);
+
+    std::vector<ServerState::RoleEnum> const disallowedRoles = {
+        ServerState::ROLE_AGENT, ServerState::ROLE_UNDEFINED};
+
+    if (std::find(disallowedRoles.begin(), disallowedRoles.end(),
+                  options.requestedRole) != disallowedRoles.end()) {
+      LOG_TOPIC("198c3", FATAL, arangodb::Logger::CLUSTER)
+          << "Invalid role provided for `--cluster.my-role`. Possible values: "
+             "DBSERVER, PRIMARY, COORDINATOR";
+      FATAL_ERROR_EXIT();
+    }
   }
 }
 

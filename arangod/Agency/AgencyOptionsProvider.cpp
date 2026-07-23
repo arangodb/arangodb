@@ -23,6 +23,7 @@
 #include "AgencyOptionsProvider.h"
 
 #include "Basics/application-exit.h"
+#include "Endpoint/Endpoint.h"
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
 #include "ProgramOptions/Parameters.h"
@@ -263,6 +264,14 @@ void AgencyOptionsProvider::validateOptionsImpl(
 
   if (result.touched("agency.supervision")) {
     options.supervisionTouched = true;
+  }
+
+  if (!options.agencyMyAddress.empty() &&
+      Endpoint::unifiedForm(options.agencyMyAddress).empty()) {
+    LOG_TOPIC("4faa0", FATAL, Logger::AGENCY)
+        << "invalid endpoint '" << options.agencyMyAddress
+        << "' specified for --agency.my-address";
+    FATAL_ERROR_EXIT();
   }
 }
 

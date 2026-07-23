@@ -582,9 +582,6 @@ MockClusterServer::MockClusterServer(bool useAgencyMockPool,
   // Add features
   SetupAqlPhase(*this);
 
-  // ClusterFeature's ctor just reset our role back to SINGLE, restore it
-  ServerState::instance()->setRole(newRole);
-
   _server.getFeature<ClusterFeature>().allocateMembers();
 
   addFeature<UpgradeFeature>(false, &_dummy,

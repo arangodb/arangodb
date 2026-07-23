@@ -82,52 +82,9 @@ ClusterFeature::ClusterFeature(ApplicationServer& server,
   startsAfter<application_features::CommunicationFeaturePhase>();
   startsAfter<application_features::DatabaseFeaturePhase>();
 
-  if (server.options()->processingResult().touched(
-          "cluster.disable-dispatcher-kickstarter") ||
-      server.options()->processingResult().touched(
-          "cluster.disable-dispatcher-frontend")) {
-    LOG_TOPIC("33707", FATAL, arangodb::Logger::CLUSTER)
-        << "The dispatcher feature isn't available anymore. Use "
-        << "ArangoDB Starter for this now! See "
-        << "https://github.com/arangodb-helper/arangodb/ for more "
-        << "details.";
-    FATAL_ERROR_EXIT();
-  }
-
   if (!_options.enableCluster) {
     ServerState::instance()->findHost("localhost");
     return;
-  }
-
-  // validate --cluster.agency-endpoint
-  if (_options.agencyEndpoints.empty()) {
-    LOG_TOPIC("d283a", FATAL, Logger::CLUSTER)
-        << "must at least specify one endpoint in --cluster.agency-endpoint";
-    FATAL_ERROR_EXIT();
-  }
-
-  // validate --cluster.my-address
-  if (_options.myEndpoint.empty()) {
-    LOG_TOPIC("c1532", FATAL, arangodb::Logger::CLUSTER)
-        << "unable to determine internal address for server '"
-        << ServerState::instance()->getId()
-        << "'. Please specify --cluster.my-address or configure the "
-           "address for this server in the agency.";
-    FATAL_ERROR_EXIT();
-  }
-
-  if (Endpoint::unifiedForm(_options.myEndpoint).empty()) {
-    LOG_TOPIC("41256", FATAL, arangodb::Logger::CLUSTER)
-        << "invalid endpoint '" << _options.myEndpoint
-        << "' specified for --cluster.my-address";
-    FATAL_ERROR_EXIT();
-  }
-  if (!_options.myAdvertisedEndpoint.empty() &&
-      Endpoint::unifiedForm(_options.myAdvertisedEndpoint).empty()) {
-    LOG_TOPIC("ece6a", FATAL, arangodb::Logger::CLUSTER)
-        << "invalid endpoint '" << _options.myAdvertisedEndpoint
-        << "' specified for --cluster.my-advertised-endpoint";
-    FATAL_ERROR_EXIT();
   }
 
   std::string fallback = _options.myEndpoint;
@@ -141,21 +98,6 @@ ClusterFeature::ClusterFeature(ApplicationServer& server,
   }
   auto ss = ServerState::instance();
   ss->findHost(fallback);
-
-  if (!_options.myRole.empty()) {
-    _options.requestedRole = ServerState::stringToRole(_options.myRole);
-
-    std::vector<arangodb::ServerState::RoleEnum> const disallowedRoles = {
-        ServerState::ROLE_AGENT, ServerState::ROLE_UNDEFINED};
-
-    if (std::find(disallowedRoles.begin(), disallowedRoles.end(),
-                  _options.requestedRole) != disallowedRoles.end()) {
-      LOG_TOPIC("198c3", FATAL, arangodb::Logger::CLUSTER)
-          << "Invalid role provided for `--cluster.my-role`. Possible values: "
-             "DBSERVER, PRIMARY, COORDINATOR";
-      FATAL_ERROR_EXIT();
-    }
-  }
 }
 
 ServerState::RoleEnum ClusterFeature::resolveRole(
@@ -163,23 +105,10 @@ ServerState::RoleEnum ClusterFeature::resolveRole(
   if (!options.enableCluster) {
     return ServerState::ROLE_SINGLE;
   }
-
   if (!options.myRole.empty()) {
-    auto requestedRole = ServerState::stringToRole(options.myRole);
-
-    std::vector<ServerState::RoleEnum> const disallowedRoles = {
-        ServerState::ROLE_AGENT, ServerState::ROLE_UNDEFINED};
-
-    if (std::find(disallowedRoles.begin(), disallowedRoles.end(),
-                  requestedRole) != disallowedRoles.end()) {
-      LOG_TOPIC("6d4b1", FATAL, arangodb::Logger::CLUSTER)
-          << "Invalid role provided for `--cluster.my-role`. Possible values: "
-             "DBSERVER, PRIMARY, COORDINATOR";
-      FATAL_ERROR_EXIT();
-    }
-    return requestedRole;
+    // already resolved and validated by ClusterOptionsProvider
+    return options.requestedRole;
   }
-
   return ServerState::ROLE_UNDEFINED;
 }
 

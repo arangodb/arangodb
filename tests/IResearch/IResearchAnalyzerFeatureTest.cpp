@@ -2684,9 +2684,6 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
         arangodb::LazyApplicationFeatureReference<arangodb::ClusterFeature>(
             newServer));
     auto& cluster = newServer.addFeature<arangodb::ClusterFeature>(metrics);
-    // ClusterFeature's ctor just reset our role back to SINGLE, restore it
-    arangodb::ServerState::instance()->setRole(
-        arangodb::ServerState::ROLE_DBSERVER);
     auto& networkFeature = newServer.addFeature<arangodb::NetworkFeature>(
         metrics,
         arangodb::network::ConnectionPool::Config{
@@ -2792,9 +2789,6 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
         arangodb::LazyApplicationFeatureReference<arangodb::ClusterFeature>(
             newServer));
     auto& cluster = newServer.addFeature<arangodb::ClusterFeature>(metrics);
-    // ClusterFeature's ctor just reset our role back to SINGLE, restore it
-    arangodb::ServerState::instance()->setRole(
-        arangodb::ServerState::ROLE_DBSERVER);
     auto& networkFeature = newServer.addFeature<arangodb::NetworkFeature>(
         metrics,
         arangodb::network::ConnectionPool::Config{

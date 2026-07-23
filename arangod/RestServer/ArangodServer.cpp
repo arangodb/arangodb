@@ -239,8 +239,6 @@ void ArangodServer::addFeaturesWithOptionProvider() {
                                  getOptions<MaintenanceOptionsProvider>());
 
   // Add ClusterUpgradeFeature
-  // (must come after ClusterFeature: relies on ServerState's role already
-  // being set by ClusterFeature's constructor)
   auto& clusterUpgradeFeature = addFeature<ClusterUpgradeFeature>(
       database, getOptions<upgrade::ClusterUpgradeOptionsProvider>());
 

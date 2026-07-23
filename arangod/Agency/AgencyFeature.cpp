@@ -76,13 +76,6 @@ AgencyFeature::AgencyFeature(ApplicationServer& server, AgencyOptions options)
   if (!_options.agencyMyAddress.empty()) {
     std::string const unified = Endpoint::unifiedForm(_options.agencyMyAddress);
 
-    if (unified.empty()) {
-      LOG_TOPIC("4faa0", FATAL, Logger::AGENCY)
-          << "invalid endpoint '" << _options.agencyMyAddress
-          << "' specified for --agency.my-address";
-      FATAL_ERROR_EXIT();
-    }
-
     std::string fallback = unified;
     auto pos = fallback.find("://");
     if (pos != std::string::npos) {

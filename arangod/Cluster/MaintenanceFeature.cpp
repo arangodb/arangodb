@@ -174,10 +174,11 @@ MaintenanceFeature::MaintenanceFeature(ApplicationServer& server,
   // the number of threads will be adjusted later. it's just that we want to
   // initialize all members properly
 
-  // this feature has to know the role of this server in its `start` method. The
-  // role is determined by `ClusterFeature`'s constructor, hence the
-  // following line of code is not required. For philosophical reasons we added
-  // it to the ClusterPhase and let it start after `Cluster`.
+  // this feature has to know the role of this server in its `start` method.
+  // the role is resolved by ArangodServer::afterOptionProvidersValidated()
+  // before any feature gets constructed, so the following line isn't
+  // actually required for that. For philosophical reasons we added it to
+  // the ClusterPhase and let it start after `Cluster`.
   startsAfter<ClusterFeature>();
   startsAfter<metrics::MetricsFeature>();
 
