@@ -2728,23 +2728,34 @@ ExecutionNode* ExecutionPlan::fromNodeMatch(ExecutionNode* previous,
         // FOR <outvariable> IN <collection>
         //  FILTER <outvariable>.property1 == xxx && ....
         ExecutionNode* lastNode;
-        auto fullDocumentVariable =
-            _ast->variables()->createTemporaryVariable();
         auto destinationVariable =
             static_cast<Variable const*>(member->getMember(0)->getData());
 
-        variableSubstitutions.emplace(destinationVariable->id,
-                                      fullDocumentVariable);
+        // Without an inline projection we enumerate directly into the
+        // user-facing variable (as the non-projection lowering does), so that
+        // downstream rules and outputs observe the expected variable. With a
+        // projection we enumerate into a temporary full-document variable and
+        // copy the projected attributes into the user variable.
+        bool const hasProjection = member->getMember(4)->type != NODE_TYPE_NOP;
+        Variable const* enumOutputVariable =
+            hasProjection ? _ast->variables()->createTemporaryVariable()
+                          : destinationVariable;
+        if (hasProjection) {
+          variableSubstitutions.emplace(destinationVariable->id,
+                                        enumOutputVariable);
+        }
 
         std::tie(en, lastNode, prevVar) = createCollectionAccess(
-            member, fullDocumentVariable, variableSubstitutions);
+            member, enumOutputVariable, variableSubstitutions);
         en->addDependency(previous);
         previous = en = lastNode;
 
         pathVertices.push_back(_ast->createNodeReference(destinationVariable));
 
-        auto projection = createPatternProjection(member, prevVar);
-        projections.push_back(projection);
+        if (hasProjection) {
+          auto projection = createPatternProjection(member, prevVar);
+          projections.push_back(projection);
+        }
       } else if (member->type == NODE_TYPE_PATTERN_PATH_VARIABLE) {
         pathVariable = static_cast<Variable const*>(member->getData());
       } else if (member->type == NODE_TYPE_REFERENCE) {
@@ -2766,22 +2777,34 @@ ExecutionNode* ExecutionPlan::fromNodeMatch(ExecutionNode* previous,
           ExecutionNode* lastNodeFilter;
           Variable const* edgeVar;
 
-          auto fullEdgeDocumentVariable =
-              _ast->variables()->createTemporaryVariable();
           auto edgeDestinationVariable =
               static_cast<Variable const*>(edge->getMember(0)->getData());
-          variableSubstitutions.emplace(edgeDestinationVariable->id,
-                                        fullEdgeDocumentVariable);
+
+          // Same reasoning as for vertices: only introduce a temporary
+          // full-document variable plus a projection copy when an inline
+          // projection is actually requested. Otherwise enumerate straight
+          // into the user-facing edge variable.
+          bool const edgeHasProjection =
+              edge->getMember(6)->type != NODE_TYPE_NOP;
+          Variable const* edgeEnumOutputVariable =
+              edgeHasProjection ? _ast->variables()->createTemporaryVariable()
+                                : edgeDestinationVariable;
+          if (edgeHasProjection) {
+            variableSubstitutions.emplace(edgeDestinationVariable->id,
+                                          edgeEnumOutputVariable);
+          }
 
           std::tie(en, lastNodeFilter, edgeVar) = createCollectionAccess(
-              edge, fullEdgeDocumentVariable, variableSubstitutions);
+              edge, edgeEnumOutputVariable, variableSubstitutions);
 
           en->addDependency(previous);
           previous = en = lastNodeFilter;
 
-          auto edgeProjection =
-              createPatternProjection(edge, fullEdgeDocumentVariable);
-          projections.push_back(edgeProjection);
+          if (edgeHasProjection) {
+            auto edgeProjection =
+                createPatternProjection(edge, edgeEnumOutputVariable);
+            projections.push_back(edgeProjection);
+          }
 
           Variable const* rightVertexVar;
           Variable const* vertexDestinationVariable = nullptr;
@@ -2796,18 +2819,27 @@ ExecutionNode* ExecutionPlan::fromNodeMatch(ExecutionNode* previous,
 
             vertexDestinationVariable =
                 static_cast<Variable const*>(node->getMember(0)->getData());
-            auto fullVertexDocumentVariable =
-                _ast->variables()->createTemporaryVariable();
-            variableSubstitutions.emplace(vertexDestinationVariable->id,
-                                          fullVertexDocumentVariable);
+
+            bool const vertexHasProjection =
+                node->getMember(4)->type != NODE_TYPE_NOP;
+            Variable const* vertexEnumOutputVariable =
+                vertexHasProjection
+                    ? _ast->variables()->createTemporaryVariable()
+                    : vertexDestinationVariable;
+            if (vertexHasProjection) {
+              variableSubstitutions.emplace(vertexDestinationVariable->id,
+                                            vertexEnumOutputVariable);
+            }
 
             std::tie(en, lastNodeFilter, rightVertexVar) =
-                createCollectionAccess(node, fullVertexDocumentVariable,
+                createCollectionAccess(node, vertexEnumOutputVariable,
                                        variableSubstitutions);
             en->addDependency(previous);
 
-            auto projection = createPatternProjection(node, rightVertexVar);
-            projections.push_back(projection);
+            if (vertexHasProjection) {
+              auto projection = createPatternProjection(node, rightVertexVar);
+              projections.push_back(projection);
+            }
 
             previous = en = lastNodeFilter;
           }
