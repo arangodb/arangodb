@@ -342,6 +342,8 @@ class ApplicationServer {
   // parse options
   void parseOptions(int argc, char* argv[]);
 
+  virtual void processOptions() {}
+
   // allows features to cross-validate their program options
   virtual void validateOptions();
 

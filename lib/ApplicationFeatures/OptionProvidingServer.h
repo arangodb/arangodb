@@ -43,6 +43,11 @@ class OptionProvidingServer : public application_features::ApplicationServer {
     _optionProviders.declareOptions(options());
   }
 
+  void processOptions() override {
+    ApplicationServer::processOptions();
+    _optionProviders.processOptions(options());
+  }
+
   void validateOptions() override {
     // This inverted order (provider.validateOptions() ->
     // feature.validateOptions()) is intentional. For example,

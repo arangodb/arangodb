@@ -54,7 +54,7 @@ Summary:        A scalable graph database system to drive value from connected d
 License:        Business Source License 1.1
 Group:          Productivity/Databases/Servers
 Conflicts:      arangodb3, arangodb3-client, arangodb3e-client
-Url:            https://www.arango.ai
+Url:            https://arango.ai
 Vendor:         ArangoDB
 
 %debug_package
@@ -209,7 +209,7 @@ fi
 cp /usr/share/arangodb3/arangodb3.logrotate %{_sysconfdir}/logrotate.d/arangodb3
 
 echo "
-ArangoDB 3 (https://www.arango.ai)
+ArangoDB 3 (https://arango.ai)
   A scalable graph database system to drive value from connected data, faster.
   Native graphs, an integrated search engine, and JSON support, via a single
   query language. ArangoDB runs on-prem, in the cloud - anywhere.
