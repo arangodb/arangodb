@@ -39,9 +39,6 @@ struct BackendImpl : Backend {
   auto evaluateTokenManyImpl(JwtToken const& token, RequestItems const& items,
                              transaction::MethodsApi api)
       -> futures::Future<ResultT<EvaluateResponseMany>> override;
-  auto evaluateManyImpl(PlainUser const& user, RequestItems const& items,
-                        transaction::MethodsApi api)
-      -> futures::Future<ResultT<EvaluateResponseMany>> override;
 
  protected:
   auto sendRequest(arangodb::fuerte::RestVerb type, std::string path,
@@ -142,19 +139,6 @@ auto inspect(Inspector& f, Backend::EvaluateResponseMany& v) {
       f.field("effect", v.effect).transformWith(EffectTransformer{}),
       f.field("message", v.message).fallback(std::string{}),
       f.field("items", v.items));
-}
-
-// Request body for POST /_integration/authorization/v1/evaluate-many
-struct EvaluateManyRequest {
-  std::string user;
-  std::vector<std::string> roles;
-  std::vector<Backend::RequestItem> items;
-};
-
-template<class Inspector>
-auto inspect(Inspector& f, EvaluateManyRequest& v) {
-  return f.object(v).fields(f.field("user", v.user), f.field("roles", v.roles),
-                            f.field("items", v.items));
 }
 
 // Request body for POST /_integration/authorization/v1/evaluate-token-many

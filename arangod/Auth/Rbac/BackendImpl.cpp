@@ -144,30 +144,6 @@ auto BackendImpl::evaluateTokenManyImpl(JwtToken const& token,
       response.response().payloadAsStringView());
 }
 
-auto BackendImpl::evaluateManyImpl(PlainUser const& user,
-                                   RequestItems const& items,
-                                   transaction::MethodsApi api)
-    -> futures::Future<ResultT<EvaluateResponseMany>> {
-  auto requestBody = EvaluateManyRequest{
-      .user = user.username,
-      .roles = user.roles,
-      .items = items.items,
-  };
-
-  auto bodyResult = buildJsonBody(requestBody);
-
-  auto response = co_await sendRequest(
-      fuerte::RestVerb::Post, "/_integration/authorization/v1/evaluate-many",
-      bodyResult, api);
-
-  if (auto result = response.combinedResult(); result.fail()) {
-    co_return result;
-  }
-
-  co_return parseEvaluateResponseMany(
-      response.response().payloadAsStringView());
-}
-
 auto BackendImpl::sendRequest(arangodb::fuerte::RestVerb verb, std::string path,
                               std::string_view payload,
                               transaction::MethodsApi api)
