@@ -40,6 +40,8 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "ProgramOptions/ProgramOptions.h"
+#include "RestServer/UpgradeOptionsProvider.h"
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/BootstrapFeature.h"
 #include "RestServer/DatabaseFeature.h"
@@ -54,11 +56,6 @@ using namespace arangodb::basics;
 using namespace arangodb::options;
 
 namespace arangodb {
-
-static int upgradeRestart() {
-  unsetenv(StaticStrings::UpgradeEnvName.c_str());
-  return 0;
-}
 
 UpgradeFeature::UpgradeFeature(
     ApplicationServer& server, int* result,
@@ -77,64 +74,33 @@ UpgradeFeature::UpgradeFeature(
   setOptional(false);
   startsAfter<AqlFeaturePhase>();
 
-  // The following environment variable is another way to run a database
-  // upgrade. If the environment variable is set, the system does a database
-  // upgrade and then restarts itself without the environment variable.
-  // This is used in hotbackup if a restore to a backup happens which is from
-  // an older database version. The restore process sets the environment
-  // variable at runtime and then does a restore. After the restart (with
-  // the old data) the database upgrade is run and another restart is
-  // happening afterwards with the environment variable being cleared.
-  char* upgrade = getenv(StaticStrings::UpgradeEnvName.c_str());
-  if (upgrade != nullptr) {
-    _options.upgrade = true;
-    restartAction = new std::function<int()>();
-    *restartAction = upgradeRestart;
-    LOG_TOPIC("fdeae", INFO, Logger::STARTUP)
-        << "Detected environment variable " << StaticStrings::UpgradeEnvName
-        << " with value " << upgrade
-        << " will perform database auto-upgrade and immediately restart.";
-  }
-
   if (!_options.upgrade) {
     LOG_TOPIC("ed226", TRACE, arangodb::Logger::FIXME)
         << "executing upgrade check: not disabling server features";
     return;
   }
-
   LOG_TOPIC("23525", INFO, arangodb::Logger::FIXME)
       << "executing upgrade procedure: disabling server features";
 
   // if we run the upgrade, we need to disable a few features that may get
   // in the way...
   if (ServerState::instance()->isCoordinator()) {
-    auto disableDaemonAndSupervisor = [&]() {
 #ifdef ARANGODB_HAVE_FORK
-      server.forceDisableFeatures<DaemonFeature>();
-      server.forceDisableFeatures<SupervisorFeature>();
+    server.forceDisableFeatures<DaemonFeature>();
+    server.forceDisableFeatures<SupervisorFeature>();
 #endif
-    };
-
     std::array greetingsFeature{std::type_index(typeid(GreetingsFeature))};
     server.forceDisableFeatures(greetingsFeature);
-    disableDaemonAndSupervisor();
   } else {
     server.forceDisableFeatures(_nonServerFeatures);
     std::array bootstrapFeatures{std::type_index(typeid(BootstrapFeature)),
                                  std::type_index(typeid(HttpEndpointProvider))};
     server.forceDisableFeatures(bootstrapFeatures);
   }
-
-  ReplicationFeature& replicationFeature =
-      server.getFeature<ReplicationFeature>();
-  replicationFeature.disableReplicationApplier();
-
-  DatabaseFeature& database = server.getFeature<DatabaseFeature>();
-  database.enableUpgrade();
-
+  server.getFeature<ReplicationFeature>().disableReplicationApplier();
+  server.getFeature<DatabaseFeature>().enableUpgrade();
 #ifdef USE_ENTERPRISE
-  HotBackupFeature& hotBackupFeature = server.getFeature<HotBackupFeature>();
-  hotBackupFeature.forceDisable();
+  server.getFeature<HotBackupFeature>().forceDisable();
 #endif
 }
 

@@ -25,10 +25,6 @@
 #include "ApplicationFeatures/OptionsProvider.h"
 #include "RestServer/UpgradeFeatureOptions.h"
 
-namespace arangodb::options {
-class ProgramOptions;
-}
-
 namespace arangodb {
 
 struct UpgradeOptionsProvider
