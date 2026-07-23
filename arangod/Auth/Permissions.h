@@ -366,6 +366,47 @@ using NonAdminList = meta::TypeList<
 using CompleteList = meta::detail::Union<AdminList, NonAdminList>::type;
 }  // namespace detail
 
+// ---------------------------------------------------------------------------
+// Human-readable action phrases
+// ---------------------------------------------------------------------------
+
+// `describe(perm)` renders the requested action as a natural-language phrase.
+auto describe(SeeDatabase const& perm) -> std::string;
+auto describe(CreateDatabase const& perm) -> std::string;
+auto describe(DropDatabase const& perm) -> std::string;
+auto describe(UseDatabase const& perm) -> std::string;
+
+auto describe(SeeCollection const& perm) -> std::string;
+auto describe(CreateCollection const& perm) -> std::string;
+auto describe(DropCollection const& perm) -> std::string;
+auto describe(UseCollection const& perm) -> std::string;
+auto describe(DumpCollection const& perm) -> std::string;
+auto describe(RestoreCollection const& perm) -> std::string;
+auto describe(RestoreCreateIndex const& perm) -> std::string;
+auto describe(RestoreCreateView const& perm) -> std::string;
+auto describe(RestoreDropView const& perm) -> std::string;
+auto describe(RestoreWriteData const& perm) -> std::string;
+
+auto describe(SeeView const& perm) -> std::string;
+auto describe(CreateView const& perm) -> std::string;
+auto describe(ModifyView const& perm) -> std::string;
+auto describe(RenameView const& perm) -> std::string;
+auto describe(DropView const& perm) -> std::string;
+auto describe(UseView const& perm) -> std::string;
+
+auto describe(SeeAnalyzer const& perm) -> std::string;
+auto describe(CreateAnalyzer const& perm) -> std::string;
+auto describe(DropAnalyzer const& perm) -> std::string;
+auto describe(UseAnalyzer const& perm) -> std::string;
+
+auto describe(SeeGraph const& perm) -> std::string;
+auto describe(CreateGraph const& perm) -> std::string;
+auto describe(DropGraph const& perm) -> std::string;
+auto describe(UseGraph const& perm) -> std::string;
+
+auto describe(ReadUser const& perm) -> std::string;
+auto describe(WriteUser const& perm) -> std::string;
+
 }  // namespace perms
 
 // Closed sum of every authorization question `IAuth` can be asked. Useful

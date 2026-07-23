@@ -32,7 +32,7 @@
 #include "Rbac/Service.h"
 #include "Rest/GeneralRequest.h"
 
-#include "absl/strings/str_cat.h"
+#include <format>
 
 #include <type_traits>
 
@@ -147,6 +147,10 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
       },
   };
 
+  auto const failureMessage = [](auto const& request, std::string_view reason) {
+    return std::format("Failed to {}. {}", p::describe(request), reason);
+  };
+
   return std::visit(
       overload{
           [&](p::UseDatabase const& database) -> Result {
@@ -164,8 +168,8 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
                       "database not accessible: '" + database.name + "'"};
             } else {
               return {TRI_ERROR_FORBIDDEN,
-                      "insufficient database access level for '" +
-                          database.name + "'"};
+                      failureMessage(database,
+                                     "Insufficient database access level.")};
             }
           },
           [&](p::UseCollection const& collection) -> Result {
@@ -182,17 +186,16 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
                   return {};
                 }
                 return {TRI_ERROR_FORBIDDEN,
-                        std::format("access to {} is restricted",
-                                    StaticStrings::UsersCollection)};
+                        failureMessage(collection, "Access is restricted.")};
               }
               // _queues: read-only for everyone.
               if (collection.name == StaticStrings::QueuesCollection) {
                 if (requestedLevel <= auth::Level::RO) {
                   return {};
                 }
-                return {TRI_ERROR_FORBIDDEN,
-                        std::format("write access to {} is restricted",
-                                    StaticStrings::QueuesCollection)};
+                return {
+                    TRI_ERROR_FORBIDDEN,
+                    failureMessage(collection, "Write access is restricted.")};
               }
               // _frontend: full access for everyone.
               if (collection.name == StaticStrings::FrontendCollection) {
@@ -218,14 +221,12 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
               if (requestedLevel == arangodb::auth::Level::RW &&
                   effectiveLevel == arangodb::auth::Level::RO) {
                 return {TRI_ERROR_ARANGO_READ_ONLY,
-                        "read-only collection access level for '" +
-                            collection.name + "' in database '" +
-                            collection.db + "'"};
+                        failureMessage(collection, "Collection is read-only.")};
               } else {
                 return {TRI_ERROR_FORBIDDEN,
-                        "insufficient collection access level for '" +
-                            collection.name + "' in database '" +
-                            collection.db + "'"};
+                        failureMessage(collection,
+                                       "Insufficient collection access "
+                                       "level.")};
               }
             }
 
@@ -236,10 +237,9 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
               auto const dbLevel = effectiveDatabaseAuthLevel(collection.db);
               if (dbLevel < auth::Level::RW) {
                 return {TRI_ERROR_FORBIDDEN,
-                        "insufficient database access level for write-meta "
-                        "operation on collection '" +
-                            collection.name + "' in database '" +
-                            collection.db + "'"};
+                        failureMessage(collection,
+                                       "Insufficient database access level for "
+                                       "write-meta operation.")};
               }
             }
 
@@ -336,8 +336,7 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
                           view.db + "'"};
             } else {
               return {TRI_ERROR_FORBIDDEN,
-                      "insufficient access level for view '" + view.name +
-                          "' in database '" + view.db + "'"};
+                      failureMessage(view, "Insufficient access level.")};
             }
           },
           [&](p::UseAnalyzer const& analyzer) -> Result {
@@ -409,8 +408,7 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
               return {};
             }
             return {TRI_ERROR_FORBIDDEN,
-                    "insufficient access level for view '" + view.name +
-                        "' in database '" + view.db + "'"};
+                    failureMessage(view, "Insufficient access level.")};
           },
           [&](p::CreateView const& view) -> Result {
             // Creating a view requires RW access to the database.
@@ -426,11 +424,10 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
                   !r.ok()) {
                 return Result(
                     TRI_ERROR_FORBIDDEN,
-                    absl::StrCat(
-                        "insufficient collection access to collection '", coll,
-                        "' to drop view '", view.name, "' in database '",
-                        view.db, "'"));
-                ;
+                    failureMessage(view,
+                                   std::format("Insufficient access to linked "
+                                               "collection '{}'.",
+                                               coll)));
               }
             }
             return {};
@@ -455,7 +452,9 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
           [&](p::RenameView const& view) -> Result {
             if (view.oldName == view.newName) {
               return {TRI_ERROR_BAD_PARAMETER,
-                      "new view name must be different from old view name"};
+                      failureMessage(view,
+                                     "New view name must be different from old "
+                                     "view name.")};
             }
             // Renaming a view requires RW access to the database.
             if (auto r =
@@ -514,7 +513,8 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
                 return r;
               }
             }
-            return {TRI_ERROR_ARANGO_READ_ONLY, "Cannot write to database."};
+            return {TRI_ERROR_ARANGO_READ_ONLY,
+                    failureMessage(graph, "Cannot write to database.")};
           },
           [&](p::DropGraph const& graph) -> Result {
             // Dropping a graph requires RW access to the database (to write
@@ -592,10 +592,12 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
 Result AuthMode::Classic::isAdmin() const {
   auto r = check(auth::perms::UseDatabase{.name = StaticStrings::SystemDatabase,
                                           .level = DatabaseAccessLevel::Write});
-  return r.ok() ? Result{}
-                : Result{TRI_ERROR_FORBIDDEN,
-                         "Missing RW permissions on _system database for admin "
-                         "purposes!"};
+  return r.ok()
+             ? Result{}
+             : Result{
+                   TRI_ERROR_FORBIDDEN,
+                   "Failed admin-permission check. Missing RW permissions on "
+                   "'_system' database."};
 }
 
 auto AuthMode::Rbac::username() const noexcept -> std::string_view {
