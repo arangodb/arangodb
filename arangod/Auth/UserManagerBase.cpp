@@ -75,7 +75,6 @@ void UserManagerBase::setGlobalVersion(uint64_t const version) noexcept {
       return;
     }
   }
-  // we were not able to update the _globalVersion
 }
 
 /// @brief used for caching
