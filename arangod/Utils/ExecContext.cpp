@@ -102,8 +102,7 @@ ExecContext::ExecContext(ConstructorToken, AuthMode authMode,
     }
 
     if (auto* rbacService = rbacFeature.service(); rbacService != nullptr) {
-      return AuthMode::Rbac(authenticationFeature, *rbacService, req.user(),
-                            req.jwtToken(), req);
+      return AuthMode::Rbac(*rbacService, req.user(), req.jwtToken(), req);
     }
 
     ADB_PROD_ASSERT(userManager != nullptr);

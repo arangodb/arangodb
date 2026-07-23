@@ -65,6 +65,14 @@ struct Service {
       User user, std::vector<Category::Any> categories) noexcept
       -> ResultT<bool>;
 
+  using Token = std::string_view;
+
+  // Ask a single authorization question. Virtual so that tests (in particular
+  // the upcoming RBAC auth-mode tests) can inject a mock Service. The base
+  // implementation fails closed; see Service.cpp.
+  virtual auto check(Token token, Action action,
+                     Resource const& resource) noexcept -> Result;
+
  private:
   virtual auto mayImpl(User user,
                        std::vector<AuthorizationQuery> queries) noexcept

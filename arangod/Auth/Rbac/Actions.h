@@ -27,6 +27,96 @@
 
 namespace arangodb::rbac {
 
+enum class Action {
+
+  /* Resource Actions */
+  Create,
+  Drop,
+  Read,
+  WriteMeta,
+  WriteData,
+  UseApiVersion,
+
+  /* Admin Actions */
+  AdminMoveShards = 100,
+  AdminMonitoring,
+  AdminMonitoringInternal,
+  AdminCompaction,
+  AdminAuthReload,
+  AdminCrashHandler,
+  AdminApiCalls,
+  AdminAqlQueries,
+  AdminShutdown,
+  AdminReadLogs,
+  AdminSetLogLevel,
+  AdminOptions,
+  AdminSupervisionState,
+  AdminRemoveServer,
+  AdminClusterInfo,
+  AdminMaintenance,
+  AdminRebalance,
+  AdminLicense,
+  AdminBackup,
+  AdminJobs,
+  AdminReadReplicatedLog,
+  AdminWriteReplicatedLog,
+  AdminDump,
+  AdminRestore,
+  AdminWalAccess,
+  AdminReadAgency,
+  AdminReadOnlyMode,
+  AdminReadAqlFunctions,
+  AdminWriteAqlFunctions,
+  AdminQueryCache,
+};
+
+static inline bool isAdminAction(Action action) {
+  return action >= static_cast<Action>(100);
+}
+
+namespace resources {
+
+struct NoResource {};
+
+struct Database {
+  std::string_view name;
+};
+
+struct Collection {
+  std::string_view db;
+  std::string_view name;
+};
+
+struct View {
+  std::string_view db;
+  std::string_view name;
+};
+
+struct Analyzer {
+  std::string_view db;
+  std::string_view name;
+};
+
+struct Graph {
+  std::string_view db;
+  std::string_view name;
+};
+
+struct User {
+  std::string_view name;
+};
+
+struct ApiVersion {
+  // TODO
+};
+
+}  // namespace resources
+
+using Resource =
+    std::variant<resources::NoResource, resources::Database,
+                 resources::Collection, resources::View, resources::Analyzer,
+                 resources::Graph, resources::User>;
+
 struct Category {
   // Disposition of each struct with respect to the common `auth::perms`
   // vocabulary (see Auth/Permissions.h) is noted inline:

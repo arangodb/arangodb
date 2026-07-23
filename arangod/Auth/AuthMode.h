@@ -33,7 +33,6 @@ namespace arangodb::auth {
 class UserManager;
 }
 namespace arangodb {
-class AuthenticationFeature;
 class GeneralRequest;
 namespace rbac {
 struct Service;
@@ -120,17 +119,14 @@ struct AuthMode {
 
   // Role-based access control, based on an external authorization service.
   struct Rbac : IAuth {
-    AuthenticationFeature& _authenticationFeature;
     rbac::Service& _rbacService;
     std::string const _username;
     std::string const _jwtToken;
     GeneralRequest& _request;
 
-    Rbac(AuthenticationFeature& authenticationFeature,
-         rbac::Service& rbacService, std::string username, std::string jwtToken,
+    Rbac(rbac::Service& rbacService, std::string username, std::string jwtToken,
          GeneralRequest& req)
-        : _authenticationFeature(authenticationFeature),
-          _rbacService(rbacService),
+        : _rbacService(rbacService),
           _username(std::move(username)),
           _jwtToken(std::move(jwtToken)),
           _request(req) {}
