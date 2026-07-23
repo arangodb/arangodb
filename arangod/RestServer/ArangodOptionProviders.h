@@ -25,6 +25,7 @@
 #include "RocksDBEngine/RocksDBEngineOptionsProvider.h"
 
 #ifdef USE_ENTERPRISE
+#include "Enterprise/Audit/AuditOptionsProvider.h"
 #include "Enterprise/Ssl/SslServerEEOptionsProvider.h"
 #endif
 
@@ -51,6 +52,7 @@ using ArangodOptionProviders = CoreOptionProviders<
     TemporaryStorageOptionsProvider, UpgradeOptionsProvider
 #ifdef USE_ENTERPRISE
     ,
+    enterprise::AuditOptionsProvider,
     enterprise::SslServerEEOptionsProvider
 #endif
 #ifdef USE_V8

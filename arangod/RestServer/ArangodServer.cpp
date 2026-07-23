@@ -167,7 +167,6 @@ void ArangodServer::addFeatures() {
   addFeature<SupervisorFeature>();
 #endif
 #ifdef USE_ENTERPRISE
-  addFeature<AuditFeature>();
   addFeature<LicenseFeature>();
   addFeature<RCloneFeature>();
   addFeature<HotBackupFeature>();
@@ -190,6 +189,7 @@ void ArangodServer::addFeaturesWithOptionProvider() {
   auto& aqlFunctionFeature = getFeature<aql::AqlFunctionFeature>();
 
 #ifdef USE_ENTERPRISE
+  addFeature<AuditFeature>(getOptions<enterprise::AuditOptionsProvider>());
   addFeature<SslServerFeature, SslServerFeatureEE>(
       getOptions<SslServerOptionsProvider>(),
       getOptions<enterprise::SslServerEEOptionsProvider>());
