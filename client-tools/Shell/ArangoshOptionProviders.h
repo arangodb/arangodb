@@ -22,7 +22,14 @@
 
 #include "ApplicationFeatures/CoreOptionProviders.h"
 #include "ApplicationFeatures/LanguageOptionsProvider.h"
+#ifdef USE_ENTERPRISE
+#include "Enterprise/Encryption/EncryptionOptionsProvider.h"
+#endif
 
 namespace arangodb {
-using ArangoshOptionProviders = CoreOptionProviders<LanguageOptionsProvider>;
+using ArangoshOptionProviders = CoreOptionProviders<LanguageOptionsProvider,
+#ifdef USE_ENTERPRISE
+                                                    EncryptionOptionsProvider
+#endif
+                                                    >;
 }  // namespace arangodb

@@ -74,9 +74,6 @@ void ArangoImportServer::addFeatures() {
       std::array{std::type_index(typeid(ImportFeature))});
   addFeature<SslFeature>();
   addFeature<TempFeature>(_binaryName);
-#ifdef USE_ENTERPRISE
-  addFeature<EncryptionFeature>();
-#endif
   addFeature<ImportFeature>(_ret);
 }
 
@@ -86,6 +83,9 @@ void ArangoImportServer::addFeaturesWithOptionProvider() {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   addFeature<ProcessEnvironmentFeature>(
       _binaryName, getOptions<ProcessEnvironmentOptionsProvider>());
+#endif
+#ifdef USE_ENTERPRISE
+  addFeature<EncryptionFeature>(getOptions<EncryptionOptionsProvider>());
 #endif
 }
 
