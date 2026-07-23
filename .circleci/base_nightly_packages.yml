@@ -436,7 +436,7 @@ commands:
             # findings — jq counts 0 matches over the wrong JSON just as
             # happily — so the report shape is checked before counting
             # and anything unexpected fails the job.
-            if ! jq -e '.SchemaVersion == 2' /tmp/trivy-results.json >/dev/null; then
+            if ! jq -e '(.SchemaVersion == 2) and ((.Results // []) | type == "array")' /tmp/trivy-results.json >/dev/null; then
               echo "ERROR: /tmp/trivy-results.json is not a Trivy schema-2 report — refusing to gate on it (fail-open guard)"
               exit 1
             fi
@@ -1047,7 +1047,11 @@ jobs:
               sed -e 's/─/-/g' -e 's/│/|/g' \
                   -e 's/┌/+/g' -e 's/┬/+/g' -e 's/┐/+/g' \
                   -e 's/├/+/g' -e 's/┼/+/g' -e 's/┤/+/g' \
-                  -e 's/└/+/g' -e 's/┴/+/g' -e 's/┘/+/g' "$1"
+                  -e 's/└/+/g' -e 's/┴/+/g' -e 's/┘/+/g' \
+                  -e 's/═/=/g' -e 's/║/|/g' \
+                  -e 's/╔/+/g' -e 's/╦/+/g' -e 's/╗/+/g' \
+                  -e 's/╠/+/g' -e 's/╬/+/g' -e 's/╣/+/g' \
+                  -e 's/╚/+/g' -e 's/╩/+/g' -e 's/╝/+/g' "$1"
             }
             OUT=/tmp/nightly/trivy-reports/<< parameters.arch >>
             mkdir -p "${OUT}"
@@ -1078,6 +1082,11 @@ jobs:
                          [.Vulnerabilities[]? | select((.PkgPath // "") | startswith($p + "/"))]
                      | .Packages =
                          [.Packages[]? | select((.FilePath // "") | startswith($p + "/"))]
+                     # Secrets never appear on aggregate Results (always
+                     # path-targeted Class secret) — dropped so that if
+                     # they ever did, the completeness check would fail
+                     # loudly instead of misattributing them.
+                     | .Secrets = []
                      | select((.Vulnerabilities | length) + (.Packages | length) > 0)])' \
                 /tmp/trivy-results.json > "${OUT}/${PKG}.trivy.json"
               # A failed table render must not masquerade as a clean one
@@ -1227,7 +1236,11 @@ jobs:
               sed -e 's/─/-/g' -e 's/│/|/g' \
                   -e 's/┌/+/g' -e 's/┬/+/g' -e 's/┐/+/g' \
                   -e 's/├/+/g' -e 's/┼/+/g' -e 's/┤/+/g' \
-                  -e 's/└/+/g' -e 's/┴/+/g' -e 's/┘/+/g' "$1"
+                  -e 's/└/+/g' -e 's/┴/+/g' -e 's/┘/+/g' \
+                  -e 's/═/=/g' -e 's/║/|/g' \
+                  -e 's/╔/+/g' -e 's/╦/+/g' -e 's/╗/+/g' \
+                  -e 's/╠/+/g' -e 's/╬/+/g' -e 's/╣/+/g' \
+                  -e 's/╚/+/g' -e 's/╩/+/g' -e 's/╝/+/g' "$1"
             }
             VERSION="$(cat /tmp/nightly/nightly-version.txt)"
             if [ "<< parameters.distro >>" = "alpine" ]; then
@@ -1258,6 +1271,11 @@ jobs:
               '.ArtifactName as $old
                | .ArtifactName = $ref
                | .Metadata.RepoTags = [$ref]
+               # Reference flows into the CycloneDX subject properties and
+               # the SPDX annotations; RepoDigests would name the loaded
+               # tar image (the pushed digest does not exist yet).
+               | .Metadata.Reference = $ref
+               | .Metadata.RepoDigests = []
                | .Results = [(.Results // [])[]
                    | .Target |= (if startswith($old) then $ref + .[($old | length):] else . end)]' \
               /tmp/trivy-results.json > /tmp/trivy-results-named.json
