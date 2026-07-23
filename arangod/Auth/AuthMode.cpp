@@ -779,13 +779,14 @@ auto AuthMode::Rbac::check(auth::Permission permission) const -> Result {
           },
           // -- Views -----------------------------------------------------
           [&](p::UseView const& view) -> Result {
-            return _rbacService.check(_jwtToken,
-                                      viewAccessModeToAction(view.level),
-                                      rbac::resources::View{view.db, view.name});
+            return _rbacService.check(
+                _jwtToken, viewAccessModeToAction(view.level),
+                rbac::resources::View{view.db, view.name});
           },
           [&](p::SeeView const& view) -> Result {
-            return _rbacService.check(_jwtToken, rbac::Action::Read,
-                                      rbac::resources::View{view.db, view.name});
+            return _rbacService.check(
+                _jwtToken, rbac::Action::Read,
+                rbac::resources::View{view.db, view.name});
           },
           [&](p::CreateView const& view) -> Result {
             if (auto r = _rbacService.check(
@@ -834,8 +835,9 @@ auto AuthMode::Rbac::check(auth::Permission permission) const -> Result {
                 rbac::resources::View{view.db, view.oldName});
           },
           [&](p::DropView const& view) -> Result {
-            return _rbacService.check(_jwtToken, rbac::Action::Drop,
-                                      rbac::resources::View{view.db, view.name});
+            return _rbacService.check(
+                _jwtToken, rbac::Action::Drop,
+                rbac::resources::View{view.db, view.name});
           },
           // -- Analyzers -------------------------------------------------
           [&](p::UseAnalyzer const& analyzer) -> Result {
@@ -860,9 +862,9 @@ auto AuthMode::Rbac::check(auth::Permission permission) const -> Result {
           },
           // -- Graphs ----------------------------------------------------
           [&](p::UseGraph const& graph) -> Result {
-            return _rbacService.check(_jwtToken,
-                                      graphAccessModeToAction(graph.level),
-                                      rbac::resources::Graph{graph.db, graph.name});
+            return _rbacService.check(
+                _jwtToken, graphAccessModeToAction(graph.level),
+                rbac::resources::Graph{graph.db, graph.name});
           },
           [&](p::SeeGraph const& graph) -> Result {
             return _rbacService.check(
@@ -928,8 +930,7 @@ auto AuthMode::Rbac::check(auth::Permission permission) const -> Result {
                   !r.ok()) {
                 return r;
               }
-              return check(
-                  p::CreateCollection{collection.db, collection.name});
+              return check(p::CreateCollection{collection.db, collection.name});
             }
             return check(p::UseCollection{collection.db, collection.name,
                                           CollectionAccessLevel::WriteData});
