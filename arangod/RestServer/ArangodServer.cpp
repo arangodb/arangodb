@@ -173,6 +173,7 @@ void ArangodServer::addFeatures(int* ret) {
   addFeature<HotBackupFeature>();
   addFeature<EncryptionFeature>();
   addFeature<SslServerFeature, SslServerFeatureEE>();
+  addFeature<vector::VectorGraphIndexFeature>();
 #else
   addFeature<SslServerFeature>();
 #endif
