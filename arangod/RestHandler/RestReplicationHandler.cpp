@@ -58,7 +58,6 @@
 #include "Replication/ReplicationApplierConfiguration.h"
 #include "Replication/ReplicationClients.h"
 #include "Replication/ReplicationFeature.h"
-#include "Rest/ApiVersion.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/ServerIdFeature.h"
 #include "VectorIndex/VectorIndexFeature.h"
@@ -717,10 +716,6 @@ auto RestReplicationHandler::executeAsync() -> futures::Future<futures::Unit> {
           goto BAD_CALL;
         }
       }
-    } else if (_request->requestedApiVersion() ==
-               api_version::defaultApiVersion) {
-      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                    std::string("invalid command '") + command + "'");
     } else {
       generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
                     std::string("invalid command '") + command + "'");
@@ -825,6 +820,7 @@ Result RestReplicationHandler::testPermissions() {
               return Result(TRI_ERROR_HTTP_BAD_PARAMETER,
                             "empty collection name");
             }
+
           } else {
             return Result(TRI_ERROR_HTTP_BAD_PARAMETER,
                           "invalid collection name type");
