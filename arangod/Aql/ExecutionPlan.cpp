@@ -2437,6 +2437,30 @@ ExecutionNode* ExecutionPlan::fromNodeMatch(ExecutionNode* previous,
                                            property);
   };
 
+  auto const patternEdgeCollectionCount =
+      [](AstNode const* edgeLabelMember) -> size_t {
+    TRI_ASSERT(edgeLabelMember != nullptr &&
+               edgeLabelMember->type == NODE_TYPE_ARRAY);
+    return edgeLabelMember->numMembers();
+  };
+
+  auto const getPatternEdgeCollection = [](AstNode const* edgeLabelMember,
+                                           size_t index) -> AstNode const* {
+    TRI_ASSERT(edgeLabelMember->type == NODE_TYPE_ARRAY);
+    return edgeLabelMember->getMember(index);
+  };
+
+  auto const buildPatternEdgeCollectionList =
+      [&](AstNode const* edgeLabelMember) {
+        auto* edgeCollectionList = _ast->createNodeArray();
+        size_t const n = patternEdgeCollectionCount(edgeLabelMember);
+        for (size_t i = 0; i < n; ++i) {
+          edgeCollectionList->addMember(
+              getPatternEdgeCollection(edgeLabelMember, i));
+        }
+        return edgeCollectionList;
+      };
+
   auto const createPropertiesFilter = [&](Variable const* variable,
                                           AstNode* properties,
                                           AstNode* additionalExpression) {
@@ -2495,6 +2519,27 @@ ExecutionNode* ExecutionPlan::fromNodeMatch(ExecutionNode* previous,
     return std::make_tuple(enumCollection, lastNode, variable);
   };
 
+  auto const createPatternEdgeEnumerateAccess = [&](AstNode const* edge) {
+    auto variable = static_cast<Variable const*>(edge->getMember(0)->getData());
+    auto const* collectionNode =
+        getPatternEdgeCollection(edge->getMember(1), 0);
+    auto collectionName = collectionNode->getString();
+    auto& collections = _ast->query().collections();
+    auto collection = collections.get(collectionName);
+    if (collection == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "no collection for EnumerateCollection");
+    }
+    IndexHint hint(_ast->query(), _ast->createNodeNop(),
+                   IndexHint::FromCollectionOperation{});
+    auto enumCollection = createNode<EnumerateCollectionNode>(
+        this, nextId(), collection, variable, false, std::move(hint));
+    auto [firstNode, lastNode] = createPropertiesFilter(
+        variable, edge->getMember(2), edge->getMember(3));
+    firstNode->addDependency(enumCollection);
+    return std::make_tuple(enumCollection, lastNode, variable);
+  };
+
   auto const createVertexEdgeFilter = [&](Variable const* leftVertex,
                                           Variable const* edge,
                                           Variable const* rightVertex,
@@ -2549,13 +2594,18 @@ ExecutionNode* ExecutionPlan::fromNodeMatch(ExecutionNode* previous,
       -> std::tuple<ExecutionNode*, ExecutionNode*, Variable const*> {
     auto const* patternEdgeOutputVariable =
         static_cast<Variable const*>(edge->getMember(0)->getData());
-    auto const* patternEdgeCollectionName = edge->getMember(1);
+    auto const* patternEdgeCollections = edge->getMember(1);
 
     aql::QueryContext& query = _ast->query();
     auto options = std::make_unique<traverser::TraverserOptions>(query);
     auto range = edge->getMember(5);
-    options->minDepth = range->getMember(0)->getIntValue();
-    options->maxDepth = range->getMember(1)->getIntValue();
+    if (range->type == NODE_TYPE_NOP) {
+      options->minDepth = 1;
+      options->maxDepth = 1;
+    } else {
+      options->minDepth = range->getMember(0)->getIntValue();
+      options->maxDepth = range->getMember(1)->getIntValue();
+    }
 
     auto dirNode = _ast->createNodeValueInt(std::invoke(
         [](int64_t d) {
@@ -2575,8 +2625,8 @@ ExecutionNode* ExecutionPlan::fromNodeMatch(ExecutionNode* previous,
 
     auto* startNode = _ast->createNodeReference(startNodeVar);
 
-    auto* edgeCollectionList = _ast->createNodeArray();
-    edgeCollectionList->addMember(patternEdgeCollectionName);
+    auto* edgeCollectionList =
+        buildPatternEdgeCollectionList(patternEdgeCollections);
     auto* graphNode = _ast->createNodeCollectionList(edgeCollectionList,
                                                      _ast->query().resolver());
 
@@ -2590,14 +2640,22 @@ ExecutionNode* ExecutionPlan::fromNodeMatch(ExecutionNode* previous,
                                   nullptr, /* prune expression */          //
                                   std::move(options));
 
-    traversal->setPathOutput(
-        patternEdgeOutputVariable); /* note that it is intentional to
-                                    output the path segment that is
-                                    output by the traversal into the
-                                    edge variable in the pattern; see
-                                    transformations below */
-    auto traversalEdgeOutputVar = _ast->variables()->createTemporaryVariable();
-    traversal->setEdgeOutput(traversalEdgeOutputVar);
+    bool const fixedDepth = range->type == NODE_TYPE_NOP;
+    if (fixedDepth) {
+      // fixed-depth multi-edge patterns use a 1..1 traversal over all listed
+      // edge collections and expose the edge document in the pattern variable
+      traversal->setEdgeOutput(patternEdgeOutputVariable);
+    } else {
+      traversal->setPathOutput(
+          patternEdgeOutputVariable); /* note that it is intentional to
+                                      output the path segment that is
+                                      output by the traversal into the
+                                      edge variable in the pattern; see
+                                      transformations below */
+      auto traversalEdgeOutputVar =
+          _ast->variables()->createTemporaryVariable();
+      traversal->setEdgeOutput(traversalEdgeOutputVar);
+    }
 
     switch (node->type) {
       case NODE_TYPE_REFERENCE: {
@@ -2745,10 +2803,33 @@ ExecutionNode* ExecutionPlan::fromNodeMatch(ExecutionNode* previous,
         auto node = member->getMember(1);
         ADB_PROD_ASSERT(prevVar != nullptr);
 
-        if (edge->getMember(5)->type == NODE_TYPE_NOP) {
+        if (edge->getMember(5)->type == NODE_TYPE_NOP &&
+            patternEdgeCollectionCount(edge->getMember(1)) > 1) {
+          auto [firstNode, lastNode, rightVertexVar] =
+              createTraversalForPattern(prevVar, edge, node);
+
+          firstNode->addDependency(previous);
+          previous = en = lastNode;
+
+          auto const* edgeVar =
+              static_cast<Variable const*>(edge->getMember(0)->getData());
+          if (edge->getMember(2)->type != NODE_TYPE_NOP ||
+              edge->getMember(3)->type != NODE_TYPE_NOP) {
+            auto [propCalc, propFilter] = createPropertiesFilter(
+                edgeVar, edge->getMember(2), edge->getMember(3));
+            propCalc->addDependency(previous);
+            previous = en = propFilter;
+          }
+
+          prevVar = rightVertexVar;
+
+          pathEdges.push_back(_ast->createNodeReference(edgeVar));
+          pathVertices.push_back(_ast->createNodeReference(prevVar));
+        } else if (edge->getMember(5)->type == NODE_TYPE_NOP) {
           ExecutionNode* lastNodeFilter;
           Variable const* edgeVar;
-          std::tie(en, lastNodeFilter, edgeVar) = createCollectionAccess(edge);
+          std::tie(en, lastNodeFilter, edgeVar) =
+              createPatternEdgeEnumerateAccess(edge);
           en->addDependency(previous);
           previous = en = lastNodeFilter;
 
