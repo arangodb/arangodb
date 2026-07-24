@@ -51,8 +51,8 @@ void VersionOptionsProvider::declareOptionsImpl(
       .setIntroducedIn(30900);
 }
 
-void VersionOptionsProvider::validateOptionsImpl(
-    std::shared_ptr<ProgramOptions> options, VersionFeatureOptions& opts) {
+void VersionOptionsProvider::processOptionsImpl(
+    std::shared_ptr<ProgramOptions> /*options*/, VersionFeatureOptions& opts) {
   if (opts.printVersionJson) {
     VPackBuilder builder;
     {
