@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Alexandru Petenchea
-/// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once

@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Julia Puget
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -34,7 +33,6 @@ class FileDescriptorsFeature;
 
 namespace velocypack {
 class Builder;
-class Slice;
 }  // namespace velocypack
 
 class SupportInfoBuilder {
@@ -43,22 +41,14 @@ class SupportInfoBuilder {
   static void buildInfoMessage(velocypack::Builder& result,
                                std::string const& dbName,
                                application_features::ApplicationServer& server,
-                               bool isLocal, bool isTemeletricsReq = false);
-  static void buildDbServerDataStoredInfo(
-      velocypack::Builder& result,
-      application_features::ApplicationServer& server);
+                               bool isLocal);
 
  private:
-  static void addDatabaseInfo(velocypack::Builder& result,
-                              velocypack::Slice infoSlice,
-                              application_features::ApplicationServer& server);
   static void buildHostInfo(velocypack::Builder& result,
                             EnvironmentFeature const& environment,
                             FileDescriptorsFeature& fileDescriptors,
                             CpuUsageFeature& cpuUsage,
-                            DatabaseFeature& databaseFeature,
-                            bool isTelemetricsReq);
-  static void normalizeKeyForTelemetrics(std::string& key);
+                            DatabaseFeature& databaseFeature);
 };
 
 }  // namespace arangodb

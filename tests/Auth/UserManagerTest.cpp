@@ -18,25 +18,18 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andreas Streichardt
-/// @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "gmock/gmock-matchers.h"
 #include "gtest/gtest.h"
 
-#include "fakeit.hpp"
-
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryRegistry.h"
-#include "Auth/Handler.h"
 #include "Auth/User.h"
 #include "Auth/UserManagerImpl.h"
 #include "Cluster/ServerState.h"
-#include "RestServer/arangod.h"
 #include "RestServer/DatabaseFeature.h"
 
-using namespace fakeit;
 using namespace arangodb;
 using namespace arangodb::aql;
 
@@ -50,7 +43,7 @@ class TestQueryRegistry : public QueryRegistry {
 
 class UserManagerTest : public ::testing::Test {
  protected:
-  ArangodServer server;
+  arangodb::application_features::ApplicationServer server;
   TestQueryRegistry queryRegistry;
   ServerState* state;
   auth::UserManagerImpl um;

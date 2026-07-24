@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 5000 */
-/* global describe, beforeEach, afterEach, it, before,  */
+/* global arango, describe, beforeEach, afterEach, it, before,  */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -22,13 +22,13 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Michael Hackstein
 // //////////////////////////////////////////////////////////////////////////////
 
 const {expect} = require('chai');
-const request = require("@arangodb/request");
 const internal = require("internal");
 const db = internal.db;
+let { instanceRole } = require('@arangodb/testutils/instance');
+let IM = global.instanceManager;
 
 
 const expectOneBucketChanged = (actual, old) => {
@@ -327,11 +327,6 @@ class SupervisionWatcher extends Watcher {
 
 
 describe('_admin/metrics', () => {
-  let servers;
-
-  before(() => {
-    servers = global.instanceManager.getTypeToUrlsMap();
-  });
 
   const extractKeyAndLabel = (key) => {
     const start = key.indexOf('{');
@@ -374,15 +369,11 @@ describe('_admin/metrics', () => {
     };
 
     const loadMetrics = (role, idx) =>  {
-      const url = `${servers.get(role)[idx]}/_admin/metrics`;
-
-      const res = request({
-        json: true,
-        method: 'GET',
-        url
+      return IM.getInstancesRole(role)[idx].toThisInstance(() => {
+        const res = arango.GET_RAW('/_admin/metrics');
+        expect(res.code).to.equal(200);
+        return prometheusToJson(res.body);
       });
-      expect(res.statusCode).to.equal(200);
-      return prometheusToJson(res.body);
     };
 
     const joinMetrics = (lhs, rhs) => {
@@ -402,7 +393,7 @@ describe('_admin/metrics', () => {
     };
 
     const loadAllMetrics = (role) => {
-      return servers.get(role).map((_, i) => loadMetrics(role, i)).reduce(joinMetrics, {});
+      return IM.getInstancesRole(role).map((_, i) => loadMetrics(role, i)).reduce(joinMetrics, {});
      };
 
     // Polls metrics every pollInterval seconds until the predicate returns true or maxWaitTime is exceeded
@@ -439,23 +430,23 @@ describe('_admin/metrics', () => {
     };
 
     const runTest = (action, watchers) => {
-      const coordBefore = loadAllMetrics("coordinator");
+      const coordBefore = loadAllMetrics(instanceRole.coordinator);
       watchers.forEach(w => {w.beforeCoordinator(coordBefore);});
 
-      const dbBefore = loadAllMetrics("dbserver");
+      const dbBefore = loadAllMetrics(instanceRole.dbserver);
       watchers.forEach(w => {w.beforeDBServer(dbBefore);});
 
-      const agentsBefore = loadAllMetrics("agent");
+      const agentsBefore = loadAllMetrics(instanceRole.agent);
       watchers.forEach(w => {w.beforeAgent(agentsBefore);});
 
       action();
-      const coordAfter = loadAllMetrics("coordinator");
+      const coordAfter = loadAllMetrics(instanceRole.coordinator);
       watchers.forEach(w => {w.afterCoordinator(coordAfter);});
 
-      const dbAfter = loadAllMetrics("dbserver");
+      const dbAfter = loadAllMetrics(instanceRole.dbserver);
       watchers.forEach(w => {w.afterDBServer(dbAfter);});
 
-      const agentsAfter = loadAllMetrics("agent");
+      const agentsAfter = loadAllMetrics(instanceRole.agent);
       watchers.forEach(w => {w.afterAgent(agentsAfter);});
     };
 

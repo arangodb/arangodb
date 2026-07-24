@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestAdminLogHandler.h"

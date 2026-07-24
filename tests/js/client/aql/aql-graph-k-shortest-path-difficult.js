@@ -21,7 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Max Neunhöffer
 // ///////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");

@@ -22,7 +22,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Julia Puget
 // //////////////////////////////////////////////////////////////////////////////
 
 const functionsDocumentation = {

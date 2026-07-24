@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Ast.h"
@@ -3588,6 +3587,18 @@ AstNode* Ast::optimizeUnaryOperatorArithmetic(AstNode* node) {
   AstNode const* operand = unaryOp.getOperand();
   if (!operand->isConstant()) {
     // operand is dynamic, cannot statically optimize it
+    return node;
+  }
+
+  // Bind parameters report as constant (their eventual values are constant),
+  // but at parse time they are still NODE_TYPE_PARAMETER and cannot be cast
+  // via castToNumber() yet. This function is also invoked from the parser
+  // (grammar.y) before bind parameters are injected, so we must only fold
+  // operands that castToNumber() can handle without unresolved parameters.
+  // ATTRIBUTE_ACCESS is excluded here too: e.g. +@doc.attr is constant but
+  // still parameter-backed until bind injection.
+  if (operand->type != NODE_TYPE_VALUE && operand->type != NODE_TYPE_ARRAY &&
+      operand->type != NODE_TYPE_OBJECT) {
     return node;
   }
 

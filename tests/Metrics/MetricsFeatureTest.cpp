@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
-/// @author Copyright 2017-2018, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "gtest/gtest.h"
@@ -28,8 +26,6 @@
 #include "Metrics/Metric.h"
 #include "Metrics/MetricsFeature.h"
 #include "MetricsFeatureTest.h"
-#include "RestServer/arangod.h"
-#include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 
 using namespace arangodb;
@@ -37,7 +33,7 @@ using namespace arangodb;
 std::shared_ptr<arangodb::options::ProgramOptions> opts =
     std::make_shared<arangodb::options::ProgramOptions>(
         "metrics_feature_test", std::string(), std::string(), "path");
-ArangodServer server = ArangodServer(opts, nullptr);
+application_features::ApplicationServer server(opts, nullptr);
 metrics::MetricsFeature feature = metrics::MetricsFeature(
     server, LazyApplicationFeatureReference<QueryRegistryFeature>(server),
     LazyApplicationFeatureReference<DatabaseFeature>(nullptr),

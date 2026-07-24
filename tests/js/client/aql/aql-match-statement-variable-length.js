@@ -86,6 +86,18 @@ function aqlMatchStatementVariableLengthTestSuite() {
             for (let i = 0; i < 3; i++) {
               db.ecbp.save({_from: `vcbp/v${i}`, _to: `vcbp/v${i+1}`});
             }
+
+            // Isolated dataset for multiple-edge-type tests.
+            db._create("mvc");
+            for (let i = 0; i < 4; i++) {
+              db.mvc.save({_key: `v${i}`});
+            }
+            db._createEdgeCollection("mec1");
+            db.mec1.save({_from: "mvc/v0", _to: "mvc/v1"});
+            db.mec1.save({_from: "mvc/v1", _to: "mvc/v2"});
+            db.mec1.save({_from: "mvc/v2", _to: "mvc/v3"});
+            db._createEdgeCollection("mec2");
+            db.mec2.save({_from: "mvc/v0", _to: "mvc/v2"});
        },
 
         tearDownAll: function () {
@@ -282,9 +294,10 @@ function aqlMatchStatementVariableLengthTestSuite() {
         },
 
         testCollectionBindParameterUsesNonexistentCollection : function () {
-          try{
-            const result = db._query("MATCH (v :@@vc) RETURN COUNT(v)",{ "@vc": "someOtherCollection" },
-            options).toArray();
+          try {
+            db._query("MATCH (v :@@vc) RETURN COUNT(v)", { "@vc": "someOtherCollection" },
+                      options).toArray();
+            fail();
           } catch (err) {
             assertEqual(err.errorNum, errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
           }
@@ -306,7 +319,118 @@ function aqlMatchStatementVariableLengthTestSuite() {
             .map((x) => pathToString(x[1]));
           result.sort();
           assertEqual(result, expected);
-        }
+        },
+
+        // Multiple edge types combined with variable length
+        testMatchVarLenMultiTypeOutbound: function() {
+          // e is a PATH object
+          const query = aql`WITH mvc
+                              FOR v IN mvc
+                                MATCH (v) -[ e:mec1|mec2 * 1..2 ]-> (w:mvc)
+                                RETURN [v, e, w]`;
+          const expected = [
+            "(mvc/v0) -[]-> (mvc/v1)",
+            "(mvc/v0) -[]-> (mvc/v2)",
+            "(mvc/v0) -[]-> (mvc/v1) -[]-> (mvc/v2)",
+            "(mvc/v0) -[]-> (mvc/v2) -[]-> (mvc/v3)",
+            "(mvc/v1) -[]-> (mvc/v2)",
+            "(mvc/v1) -[]-> (mvc/v2) -[]-> (mvc/v3)",
+            "(mvc/v2) -[]-> (mvc/v3)"
+          ];
+          expected.sort();
+          const result = db._query(query, {}, options)
+            .toArray().map((x) => pathToString(x[1]));
+          result.sort();
+          assertEqual(result, expected);
+        },
+
+        testMatchVarLenMultiTypeMixedCollectionPath: function() {
+          // unique 2-hop path v0->v2->v3 must use an mec2 edge then an mec1 edge
+          const query = aql`WITH mvc
+                              FOR v IN ["mvc/v0"]
+                                MATCH (v) -[ e:mec1|mec2 * 2..2 ]-> (w:mvc)
+                                FILTER w._id == "mvc/v3"
+                                RETURN e.edges[*]._id`;
+          const result = db._query(query, {}, options).toArray();
+          assertEqual(result.length, 1);
+          const edgeIds = result[0];
+          assertEqual(edgeIds.length, 2);
+          assertTrue(edgeIds[0].startsWith("mec2/"), edgeIds[0]);
+          assertTrue(edgeIds[1].startsWith("mec1/"), edgeIds[1]);
+        },
+
+        testMatchVarLenMultiTypeInbound: function() {
+          const query = aql`WITH mvc
+                              FOR v IN mvc
+                                MATCH (v) <-[ e:mec1|mec2 * 1..2 ]- (w:mvc)
+                                RETURN 1`;
+          const result = db._query(query, {}, options).toArray();
+          assertEqual(result.length, 7);
+        },
+
+        testMatchVarLenMultiTypeAny: function() {
+          const query = aql`WITH mvc
+                              FOR v IN mvc
+                                MATCH (v) -[ e:mec1|mec2 * 1..2 ]- (w:mvc)
+                                RETURN e.edges[*]._id`;
+          const result = db._query(query, {}, options).toArray();
+          assertTrue(result.length > 0);
+          const usesMec2 = result.some(
+            (edgeIds) => edgeIds.some((id) => id.startsWith("mec2/")));
+          assertTrue(usesMec2, "expected at least one path to use an mec2 edge");
+        },
+
+        testMatchVarLenMultiTypeBindParams: function() {
+          const query = "MATCH (v :mvc) -[ e :@@ec1 | @@ec2 * 1..2 ]-> (w :mvc) RETURN [v, e, w]";
+          const expected = [
+            "(mvc/v0) -[]-> (mvc/v1)",
+            "(mvc/v0) -[]-> (mvc/v2)",
+            "(mvc/v0) -[]-> (mvc/v1) -[]-> (mvc/v2)",
+            "(mvc/v0) -[]-> (mvc/v2) -[]-> (mvc/v3)",
+            "(mvc/v1) -[]-> (mvc/v2)",
+            "(mvc/v1) -[]-> (mvc/v2) -[]-> (mvc/v3)",
+            "(mvc/v2) -[]-> (mvc/v3)"
+          ];
+          expected.sort();
+          const result = db._query(query, {"@ec1": "mec1", "@ec2": "mec2"}, options)
+            .toArray().map((x) => pathToString(x[1]));
+          result.sort();
+          assertEqual(result, expected);
+        },
+
+        testMatchVarLenMultiTypeSeamIsPath: function() {
+          // explicit *1..1 still binds e to a PATH object (not an edge doc)
+          const query = aql`WITH mvc
+                              FOR v IN mvc
+                                MATCH (v) -[ e:mec1|mec2 * 1..1 ]-> (w:mvc)
+                                RETURN e`;
+          const result = db._query(query, {}, options).toArray();
+          assertEqual(result.length, 4); // v0->v1, v1->v2, v2->v3 (mec1) + v0->v2 (mec2)
+          for (const e of result) {
+            assertTrue(e.hasOwnProperty("edges") && e.hasOwnProperty("vertices"),
+                       JSON.stringify(e));
+          }
+        },
+
+        testMatchVarLenMultiTypePathVariable: function() {
+          const query = aql`WITH mvc
+                              FOR v IN mvc
+                                MATCH p = (v) -[ e:mec1|mec2 * 1..2 ]-> (w:mvc)
+                                RETURN p`;
+          const expected = [
+            "(mvc/v0) -[]-> (mvc/v1)",
+            "(mvc/v0) -[]-> (mvc/v2)",
+            "(mvc/v0) -[]-> (mvc/v1) -[]-> (mvc/v2)",
+            "(mvc/v0) -[]-> (mvc/v2) -[]-> (mvc/v3)",
+            "(mvc/v1) -[]-> (mvc/v2)",
+            "(mvc/v1) -[]-> (mvc/v2) -[]-> (mvc/v3)",
+            "(mvc/v2) -[]-> (mvc/v3)"
+          ];
+          expected.sort();
+          const result = db._query(query, {}, options).toArray().map(pathToString);
+          result.sort();
+          assertEqual(result, expected);
+        },
 
     };
 }

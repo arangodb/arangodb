@@ -17,8 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrei Abramov
-/// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ngram_similarity_query.hpp"
