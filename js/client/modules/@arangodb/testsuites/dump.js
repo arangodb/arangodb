@@ -92,6 +92,7 @@ function dump_backend_two_instances (firstRunOptions, secondRunOptions,
     if (firstRunOptions.hasOwnProperty("multipleDumps") && firstRunOptions.multipleDumps) {
       if (!PTK.runSetupSuite(setupFile) ||
           !PTK.runRtaMakedata() ||
+          !PTK.runRtaWaitData() ||
           !PTK.dumpFrom('_system', true) ||
           !PTK.dumpFrom('UnitTestsDumpSrc', true) ||
           !PTK.dumpFromRta() ||
@@ -111,6 +112,7 @@ function dump_backend_two_instances (firstRunOptions, secondRunOptions,
     } else {
       if (!PTK.runSetupSuite(setupFile) ||
           !PTK.runRtaMakedata() ||
+          !PTK.runRtaWaitData() ||
           !PTK.dumpSrc() ||
           !PTK.dumpFromRta() ||
           !PTK.dumpFrom('_system', false) ||
