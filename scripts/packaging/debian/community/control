@@ -15,7 +15,7 @@ Description: a scalable graph database system to drive value from connected data
  Copyright: 2012-2013 by triAGENS GmbH
  Copyright: 2014-@CURRENT_YEAR@ by ArangoDB GmbH
  ArangoDB Software
- www.arangodb.com
+ https://arango.ai
 
 Package: arangodb3-client
 Architecture: @ARCHITECTURE@
@@ -29,7 +29,7 @@ Description: stand-alone shell
  Copyright: 2012-2013 by triAGENS GmbH
  Copyright: 2014-@CURRENT_YEAR@ by ArangoDB GmbH
  ArangoDB Software
- www.arangodb.com
+ https://arango.ai
 
 Package: arangodb3-dbg
 Architecture: @ARCHITECTURE@
