@@ -91,7 +91,6 @@ void ArangodServer::addFeatures() {
   addFeature<AqlFeature>();
   addFeature<async_registry::Feature>(_dataSourceRegistry);
   addFeature<activities::Feature>(_dataSourceRegistry);
-  auto& authenticationFeature = addFeature<AuthenticationFeature>();
 
 #ifdef TRI_HAVE_GETRLIMIT
   addFeature<BumpFileDescriptorsFeature>("--server.descriptors-minimum");
@@ -129,10 +128,6 @@ void ArangodServer::addFeatures() {
   addFeature<LockfileFeature>();
   addFeature<LoggerFeature>(true);
   addFeature<MaintenanceFeature>(&clusterFeature);
-  addFeature<MaxMapCountFeature>();
-  addFeature<NetworkFeature>(metrics, network::ConnectionPool::Config{});
-  addFeature<RbacFeature>(authenticationFeature);
-  addFeature<NonceFeature>();
   addFeature<OptionsCheckFeature>();
   addFeature<PrivilegeFeature>();
   addFeature<QueryRegistryFeature>(metrics);
@@ -209,8 +204,9 @@ void ArangodServer::addFeaturesWithOptionProvider() {
       metrics, getOptions<file_descriptors::FileDescriptorsOptionsProvider>());
 #endif
 
-  addFeature<AuthenticationFeature>(
+  auto& authentication = addFeature<AuthenticationFeature>(
       getOptions<AuthenticationOptionsProvider>());
+  addFeature<RbacFeature>(authentication);
   addFeature<GeneralServerFeature>(metrics,
                                    getOptions<GeneralServerOptionsProvider>());
   auto& networkFeature =
