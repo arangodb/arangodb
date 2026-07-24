@@ -34,9 +34,10 @@ parameters:
   dont-cancel-pipelines:
     type: boolean
     default: false
-  create-docker-images:
-    type: boolean
-    default: false
+  create-test-docker-images:
+    type: enum
+    enum: [none, alpine, deb]
+    default: none
   rebuild-test-docker-images:
     type: boolean
     default: false
@@ -538,32 +539,23 @@ jobs:
       - image: << pipeline.parameters.build-docker-image >>
     resource_class: arangodb/large-amd64
     steps:
+      - checkout-arangodb:
+          with-submodules: false
+          destination: "/root/project"
       - run:
+          name: Build frontend
           command: |
-            echo "building frontend"
-      - when:
-          # if we're building a docker image, the regular build does the frontend.
-          condition:
-            not:
-              << pipeline.parameters.create-docker-images >>
-          steps:
-            - checkout-arangodb:
-                with-submodules: false
-                destination: "/root/project"
-            - run:
-                name: Build frontend
-                command: |
-                  cd js/apps/system/_admin/aardvark/APP/react
-                  tar -xJf /node_modules.tar.xz
-                  yarn install
-                  yarn build
-            - persist_to_workspace:
-                root: .
-                paths: js/apps/system/_admin/aardvark/APP/react/build
-            - persist_workspace_to_s3:
-                root: .
-                paths: js/apps/system/_admin/aardvark/APP/react/build
-                archive: frontend.tar.gz
+            cd js/apps/system/_admin/aardvark/APP/react
+            tar -xJf /node_modules.tar.xz
+            yarn install
+            yarn build
+      - persist_to_workspace:
+          root: .
+          paths: js/apps/system/_admin/aardvark/APP/react/build
+      - persist_workspace_to_s3:
+          root: .
+          paths: js/apps/system/_admin/aardvark/APP/react/build
+          archive: frontend.tar.gz
 
   compile-linux:
     parameters:
@@ -580,6 +572,12 @@ jobs:
       publish-artifacts:
         type: boolean
         default: true
+      # Fetch aux binaries and produce install-<arch>.tar.gz plus the
+      # per-arch docker build context for Docker image creation. Set only
+      # by the docker-images workflow's compile jobs.
+      create-install-package:
+        type: boolean
+        default: false
       resource-class:
         type: string
       s3-prefix:
@@ -643,14 +641,11 @@ jobs:
             echo "Building targets: $TARGETS"
             cmake --build --preset << parameters.preset >> --parallel 16 --target $TARGETS
       - when:
-          condition: << pipeline.parameters.create-docker-images >>
+          condition: << parameters.create-install-package >>
           steps:
             - fetch-aux-binaries:
                 arch: << parameters.arch >>
                 repo-path: .
-      - when:
-          condition: << pipeline.parameters.create-docker-images >>
-          steps:
             - run:
                 name: Create install package
                 command: |
@@ -663,11 +658,21 @@ jobs:
                   fi
                   strip ./install/usr/bin/arango*
                   strip ./install/usr/sbin/arangod
-                  tar -czf install.tar.gz -C install ./
+                  tar -czf install-<< parameters.arch >>.tar.gz -C install ./
+                  cp -a scripts/docker/deploy docker-context-<< parameters.arch >>
+            # Everything persisted here must be arch-specific: the x64 and
+            # aarch64 compile jobs run concurrently, and concurrent jobs
+            # persisting the same workspace path cause a workspace layer
+            # conflict on attach. The docker build context (dockerfile,
+            # setup.sh, entrypoint.sh) is copied per arch for the same
+            # reason - each build-docker-image job requires only its own
+            # arch's compile job, so it cannot rely on the other arch's
+            # workspace layer being present.
             - persist_to_workspace:
                 root: .
                 paths:
-                  - install.tar.gz
+                  - install-<< parameters.arch >>.tar.gz
+                  - docker-context-<< parameters.arch >>
       - run:
           name: Size leaderboard
           command: |
@@ -748,7 +753,18 @@ jobs:
     parameters:
       resource-class:
         type: string
+      # Image base: selects deploy-<distro>.dockerfile (alpine | deb)
+      distro:
+        type: enum
+        enum: [alpine, deb]
+      # Docker platform architecture (amd64 | arm64), used for --platform
+      # and the image's arch build-arg
       arch:
+        type: string
+      # Compile-side architecture (x64 | aarch64): selects the arch-specific
+      # install tarball and docker build context persisted by the matching
+      # compile-linux job
+      build-arch:
         type: string
       output:
         type: string
@@ -763,10 +779,10 @@ jobs:
       - run:
           name: Build Docker Image
           command: |
-            cd scripts/docker/deploy
+            cd docker-context-<< parameters.build-arch >>
             mkdir install
-            tar -xzf ../../../install.tar.gz -C install
-            docker build --platform linux/<< parameters.arch >> --build-arg arch=<< parameters.arch >> -t arangodb/enterprise-test:local-<< parameters.arch >> --file deploy-alpine.dockerfile .
+            tar -xzf ../install-<< parameters.build-arch >>.tar.gz -C install
+            docker build --platform linux/<< parameters.arch >> --build-arg arch=<< parameters.arch >> -t arangodb/enterprise-test:local-<< parameters.arch >> --file deploy-<< parameters.distro >>.dockerfile .
             docker save -o /tmp/<< parameters.output >> arangodb/enterprise-test:local-<< parameters.arch >>
       - persist_to_workspace:
           root: /tmp

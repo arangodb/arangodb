@@ -122,7 +122,7 @@ class CircleCIGenerator(OutputGenerator):
                 )
                 self._add_workflow(circleci_config["workflows"], all_jobs, build_config)
 
-        if self.config.circleci.create_docker_images:
+        if self.config.circleci.create_test_docker_images != "none":
             self._add_docker_images_workflow(circleci_config["workflows"])
 
         return circleci_config
@@ -191,7 +191,7 @@ class CircleCIGenerator(OutputGenerator):
         # Add non-maintainer build for x64 (non-instrumented builds only)
         if (
             not build_config.build_variant.is_instrumented
-            and not self.config.circleci.create_docker_images
+            and self.config.circleci.create_test_docker_images == "none"
         ):
             non_maintainer_job = self._create_non_maintainer_build_job(build_config)
             workflow["jobs"].append(non_maintainer_job)
@@ -207,16 +207,16 @@ class CircleCIGenerator(OutputGenerator):
         preset = "pr"
 
         if build_config.architecture == Architecture.AARCH64:
-            preset += "-arm"
+            preset += "-arm64"
         else:
-            preset += "-x86_64"
+            preset += "-x64"
 
         preset += build_config.build_variant.get_suffix()
 
-        # No pr-*-coverage preset exists at all (coverage is a developer-only,
-        # CLI-only variant), so there's nothing to combine no-v8 with there;
-        # it keeps using the normal preset and gets USE_V8 forced off via the
-        # Configure step's command-line override.
+        # Coverage has plain pr-*-coverage presets but no -no-v8 combos
+        # (coverage is a rare, CLI-only variant); when combined with
+        # arangod-without-v8 it keeps the coverage preset and gets USE_V8
+        # forced off via the Configure step's command-line override.
         if (
             not self.config.filter_criteria.v8
             and not build_config.build_variant.is_coverage
@@ -254,9 +254,9 @@ class CircleCIGenerator(OutputGenerator):
     ) -> Dict[str, Any]:
         """Create non-maintainer build job for faster CI feedback."""
         preset = (
-            "pr-non-maintainer-arm"
+            "pr-non-maintainer-arm64"
             if build_config.architecture == Architecture.AARCH64
-            else "pr-non-maintainer-x86_64"
+            else "pr-non-maintainer-x64"
         )
         params = {
             "context": ["sccache-aws-bucket"],
@@ -299,7 +299,12 @@ class CircleCIGenerator(OutputGenerator):
         """
         Add a dedicated workflow that builds and publishes a multi-arch
         arangodb/enterprise-test Docker image to public ECR (maintainer-mode,
-        Alpine only).
+        Alpine- or Debian-based per create-test-docker-images).
+
+        Tagging follows the nightly-packages convention: the tag is the
+        community commit short SHA, Alpine is the suffix-less default, and
+        Debian-based images carry an extra -deb suffix before the per-arch
+        suffix (<sha>[-deb][-amd64|-arm64v8], manifest <sha>[-deb]).
 
         This has to be a separate workflow rather than a job tacked onto the
         per-architecture pr workflows: creating a multi-arch manifest needs
@@ -311,7 +316,10 @@ class CircleCIGenerator(OutputGenerator):
         workflow: Dict[str, Any] = {"jobs": []}
         workflows["docker-images"] = workflow
 
+        distro = self.config.circleci.create_test_docker_images
         tag = self.env_getter("CIRCLE_SHA1", "unknown-sha1")[:7]
+        if distro != "alpine":
+            tag += f"-{distro}"
 
         image_job_names = []
         for architecture, docker_arch, output in self._DOCKER_IMAGE_ARCHES:
@@ -324,7 +332,7 @@ class CircleCIGenerator(OutputGenerator):
             compile_job_name = compile_job["compile-linux"]["name"]
 
             image_job = self._create_docker_build_job(
-                build_config, docker_arch, output, [compile_job_name]
+                build_config, distro, docker_arch, output, [compile_job_name]
             )
             workflow["jobs"].append(image_job)
             image_job_names.append(image_job["build-docker-image"]["name"])
@@ -336,7 +344,7 @@ class CircleCIGenerator(OutputGenerator):
     def _create_docker_compile_job(self, build_config: BuildConfig) -> Dict[str, Any]:
         """Create the maintainer-mode compile job producing install.tar.gz for a Docker image."""
         preset = (
-            "pr-arm" if build_config.architecture == Architecture.AARCH64 else "pr-x86_64"
+            "pr-arm64" if build_config.architecture == Architecture.AARCH64 else "pr-x64"
         )
 
         params = {
@@ -350,6 +358,7 @@ class CircleCIGenerator(OutputGenerator):
             "arch": build_config.architecture.value,
             "publish-artifacts": False,
             "build-tests": False,
+            "create-install-package": True,
         }
 
         if build_config.architecture == Architecture.AARCH64:
@@ -360,6 +369,7 @@ class CircleCIGenerator(OutputGenerator):
     def _create_docker_build_job(
         self,
         build_config: BuildConfig,
+        distro: str,
         docker_arch: str,
         output: str,
         requires: List[str],
@@ -371,7 +381,9 @@ class CircleCIGenerator(OutputGenerator):
                 "resource-class": self.sizer.get_resource_class(
                     ResourceSize.CIRCLECI_LARGE, build_config.architecture
                 ),
+                "distro": distro,
                 "arch": docker_arch,
+                "build-arch": build_config.architecture.value,
                 "output": output,
                 "requires": requires,
             }

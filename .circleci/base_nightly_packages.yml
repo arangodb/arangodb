@@ -22,7 +22,7 @@ version: 2.1
 #                       sourceInfo.log/sourceInfo.json (the nightly date and
 #                       the enterprise commit are pipeline parameters,
 #                       resolved once by the setup job)
-#   compile-nightly     static release build via the "nightly-{x86_64,arm}" CMake
+#   compile-nightly     static release build via the "nightly-package-{x64,arm64}" CMake
 #                       preset + make install + starter/rclone download;
 #                       the install tree is shared with all packaging jobs
 #   build-*-package     one job per package format and architecture, all
@@ -687,13 +687,13 @@ jobs:
     # Static release build for packaging and Docker images, plus the
     # Starter and rclone downloads. Binaries are built unstripped; stripping
     # happens later, during packaging (client tools only).
-    # All build options live in the "nightly-{x86_64,arm}" CMake presets;
+    # All build options live in the "nightly-package-{x64,arm64}" CMake presets;
     # only toolchain/image specific paths are passed on the command line.
     parameters:
       arch:
         type: string        # amd64 | arm64
       preset:
-        type: string        # nightly-package-x86_64 | nightly-package-arm
+        type: string        # nightly-package-x64 | nightly-package-arm64
       resource-class:
         type: string
     docker:
@@ -2079,11 +2079,11 @@ workflows:
       - prepare-nightly:
           name: prepare-nightly
 
-      # ── x86_64 enterprise ───────────────────────────────────────────────────
+      # ── x64 enterprise ───────────────────────────────────────────────────
       - compile-nightly:
           name: compile-enterprise-amd64
           arch: amd64
-          preset: nightly-package-x86_64
+          preset: nightly-package-x64
           resource-class: arangodb/xlarge-amd64
           context: [ sccache-aws-bucket ]
           requires: [prepare-nightly]
@@ -2129,7 +2129,7 @@ workflows:
       - compile-nightly:
           name: compile-enterprise-arm64
           arch: arm64
-          preset: nightly-package-arm
+          preset: nightly-package-arm64
           resource-class: arangodb/xlarge-arm64
           context: [ sccache-aws-bucket ]
           requires: [prepare-nightly]

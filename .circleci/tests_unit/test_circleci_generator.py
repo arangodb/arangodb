@@ -147,7 +147,7 @@ class TestCreateBuildJob:
         assert "compile-linux" in job
         params = job["compile-linux"]
         assert params["name"] == "build-x64"
-        assert params["preset"] == "pr-x86_64"
+        assert params["preset"] == "pr-x64"
         assert params["enterprise"] is True
         assert params["arch"] == "x64"
         assert params["resource-class"] == "arangodb/2xlarge-amd64"
@@ -165,7 +165,7 @@ class TestCreateBuildJob:
 
         params = job["compile-linux"]
         assert params["name"] == "build-x64-tsan"
-        assert params["preset"] == "pr-x86_64-tsan"
+        assert params["preset"] == "pr-x64-tsan"
 
     def test_create_build_job_no_v8_x64(self):
         """arangod-without-v8 selects the dedicated no-v8 preset."""
@@ -175,7 +175,7 @@ class TestCreateBuildJob:
 
         job = gen._create_build_job(build_config)
 
-        assert job["compile-linux"]["preset"] == "pr-x86_64-no-v8"
+        assert job["compile-linux"]["preset"] == "pr-x64-no-v8"
 
     def test_create_build_job_no_v8_arm(self):
         """arangod-without-v8 selects the ARM no-v8 preset."""
@@ -185,7 +185,7 @@ class TestCreateBuildJob:
 
         job = gen._create_build_job(build_config)
 
-        assert job["compile-linux"]["preset"] == "pr-arm-no-v8"
+        assert job["compile-linux"]["preset"] == "pr-arm64-no-v8"
 
     def test_create_build_job_no_v8_with_tsan(self):
         """arangod-without-v8 combined with TSAN selects the tsan-no-v8 preset."""
@@ -198,7 +198,7 @@ class TestCreateBuildJob:
 
         job = gen._create_build_job(build_config)
 
-        assert job["compile-linux"]["preset"] == "pr-x86_64-tsan-no-v8"
+        assert job["compile-linux"]["preset"] == "pr-x64-tsan-no-v8"
 
     def test_create_build_job_no_v8_with_alubsan_arm(self):
         """arangod-without-v8 combined with ALUBSAN on ARM selects the
@@ -212,12 +212,26 @@ class TestCreateBuildJob:
 
         job = gen._create_build_job(build_config)
 
-        assert job["compile-linux"]["preset"] == "pr-arm-alubsan-no-v8"
+        assert job["compile-linux"]["preset"] == "pr-arm64-alubsan-no-v8"
+
+    def test_create_build_job_coverage(self):
+        """Coverage builds use the dedicated pr-*-coverage presets."""
+        gen = self.create_generator()
+        build_config = BuildConfig(
+            architecture=Architecture.AARCH64,
+            build_variant=BuildVariant.COVERAGE,
+        )
+
+        job = gen._create_build_job(build_config)
+
+        params = job["compile-linux"]
+        assert params["name"] == "build-aarch64-coverage"
+        assert params["preset"] == "pr-arm64-coverage"
 
     def test_create_build_job_no_v8_does_not_apply_to_coverage(self):
-        """No pr-*-coverage preset exists at all (coverage is developer/CLI
-        only), so no-v8 can't combine with it either; it keeps using
-        whatever preset name coverage would otherwise produce."""
+        """Coverage has no -no-v8 preset combos (rare, CLI-only variant);
+        combined with arangod-without-v8 it keeps the plain coverage preset
+        (V8 is forced off via the Configure step's command-line override)."""
         config = GeneratorConfig(filter_criteria=FilterCriteria(v8=False))
         gen = CircleCIGenerator(config, base_config={})
         build_config = BuildConfig(
@@ -227,7 +241,7 @@ class TestCreateBuildJob:
 
         job = gen._create_build_job(build_config)
 
-        assert job["compile-linux"]["preset"] == "pr-x86_64-coverage"
+        assert job["compile-linux"]["preset"] == "pr-x64-coverage"
 
     def test_create_frontend_build_job(self):
         """Test creating frontend build job."""
@@ -252,7 +266,7 @@ class TestCreateBuildJob:
         assert job["build-frontend"]["name"] == "build-x64-alubsan-frontend"
 
     def test_create_non_maintainer_build_job_x64(self):
-        """x64 non-maintainer smoke build uses the x86_64 preset/arch."""
+        """x64 non-maintainer smoke build uses the x64 preset/arch."""
         gen = self.create_generator()
         build_config = BuildConfig(architecture=Architecture.X64)
 
@@ -260,13 +274,13 @@ class TestCreateBuildJob:
 
         params = job["compile-linux"]
         assert params["name"] == "build-non-maintainer-x64"
-        assert params["preset"] == "pr-non-maintainer-x86_64"
+        assert params["preset"] == "pr-non-maintainer-x64"
         assert params["arch"] == "x64"
         assert "s3-prefix" not in params
 
     def test_create_non_maintainer_build_job_aarch64(self):
         """Regression: the aarch64 non-maintainer smoke build must use the
-        ARM preset/arch, not silently fall back to x86_64."""
+        ARM preset/arch, not silently fall back to x64."""
         gen = self.create_generator()
         build_config = BuildConfig(architecture=Architecture.AARCH64)
 
@@ -274,7 +288,7 @@ class TestCreateBuildJob:
 
         params = job["compile-linux"]
         assert params["name"] == "build-non-maintainer-aarch64"
-        assert params["preset"] == "pr-non-maintainer-arm"
+        assert params["preset"] == "pr-non-maintainer-arm64"
         assert params["arch"] == "aarch64"
         assert params["s3-prefix"] == "aarch64"
 
@@ -282,11 +296,13 @@ class TestCreateBuildJob:
 class TestDockerImagesWorkflow:
     """Test the dedicated multi-arch docker-images workflow."""
 
-    def create_generator(self, env_vars=None):
+    def create_generator(self, env_vars=None, distro="alpine"):
         """Helper to create generator with test environment."""
         config = GeneratorConfig(
             filter_criteria=FilterCriteria(),
-            circleci=CircleCIConfig(create_docker_images=True, test_image="default"),
+            circleci=CircleCIConfig(
+                create_test_docker_images=distro, test_image="default"
+            ),
         )
         env_getter = lambda k, default: (
             env_vars.get(k, default) if env_vars else default
@@ -294,7 +310,7 @@ class TestDockerImagesWorkflow:
         return CircleCIGenerator(config, base_config={}, env_getter=env_getter)
 
     def test_docker_compile_job_x64(self):
-        """x64 docker compile uses the maintainer x86_64 preset, tests/artifacts skipped."""
+        """x64 docker compile uses the maintainer x64 preset, tests/artifacts skipped."""
         gen = self.create_generator()
         build_config = BuildConfig(architecture=Architecture.X64)
 
@@ -302,10 +318,11 @@ class TestDockerImagesWorkflow:
 
         params = job["compile-linux"]
         assert params["name"] == "build-x64-for-docker-image"
-        assert params["preset"] == "pr-x86_64"
+        assert params["preset"] == "pr-x64"
         assert params["arch"] == "x64"
         assert params["build-tests"] is False
         assert params["publish-artifacts"] is False
+        assert params["create-install-package"] is True
         assert "s3-prefix" not in params
 
     def test_docker_compile_job_aarch64(self):
@@ -317,9 +334,10 @@ class TestDockerImagesWorkflow:
 
         params = job["compile-linux"]
         assert params["name"] == "build-aarch64-for-docker-image"
-        assert params["preset"] == "pr-arm"
+        assert params["preset"] == "pr-arm64"
         assert params["arch"] == "aarch64"
         assert params["s3-prefix"] == "aarch64"
+        assert params["create-install-package"] is True
 
     def test_docker_build_job(self):
         """Per-arch image job saves locally and requires its compile job."""
@@ -327,12 +345,18 @@ class TestDockerImagesWorkflow:
         build_config = BuildConfig(architecture=Architecture.X64)
 
         job = gen._create_docker_build_job(
-            build_config, "amd64", "docker-amd64.tar", ["build-x64-for-docker-image"]
+            build_config,
+            "alpine",
+            "amd64",
+            "docker-amd64.tar",
+            ["build-x64-for-docker-image"],
         )
 
         params = job["build-docker-image"]
         assert params["name"] == "build-x64-docker-image"
+        assert params["distro"] == "alpine"
         assert params["arch"] == "amd64"
+        assert params["build-arch"] == "x64"
         assert params["output"] == "docker-amd64.tar"
         assert params["requires"] == ["build-x64-for-docker-image"]
 
@@ -378,12 +402,31 @@ class TestDockerImagesWorkflow:
         ]
 
         manifest_params = jobs[-1]["push-docker-manifest"]
-        # Community commit short SHA, not a date/branch composite tag.
+        # Community commit short SHA, not a date/branch composite tag;
+        # Alpine is the suffix-less default.
         assert manifest_params["tag"] == "deadbee"
         assert manifest_params["requires"] == [
             "build-x64-docker-image",
             "build-aarch64-docker-image",
         ]
+
+        for job in jobs:
+            if "build-docker-image" in job:
+                assert job["build-docker-image"]["distro"] == "alpine"
+
+    def test_add_docker_images_workflow_deb_suffix(self):
+        """Debian-based images follow the nightly tagging convention:
+        an extra -deb suffix between the SHA tag and the arch suffix."""
+        gen = self.create_generator({"CIRCLE_SHA1": "deadbee123456"}, distro="deb")
+
+        workflows = {}
+        gen._add_docker_images_workflow(workflows)
+
+        jobs = workflows["docker-images"]["jobs"]
+        assert jobs[-1]["push-docker-manifest"]["tag"] == "deadbee-deb"
+        for job in jobs:
+            if "build-docker-image" in job:
+                assert job["build-docker-image"]["distro"] == "deb"
 
     def test_generate_adds_docker_images_workflow_alongside_pr_workflows(self):
         """generate() adds docker-images without removing/altering the
@@ -391,7 +434,7 @@ class TestDockerImagesWorkflow:
         per-workflow docker job is gone from them."""
         config = GeneratorConfig(
             filter_criteria=FilterCriteria(),
-            circleci=CircleCIConfig(create_docker_images=True, test_image="default"),
+            circleci=CircleCIConfig(create_test_docker_images="alpine", test_image="default"),
             build_variants=[BuildVariant.NORMAL],
         )
         gen = CircleCIGenerator(
