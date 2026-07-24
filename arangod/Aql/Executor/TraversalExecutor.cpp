@@ -297,6 +297,9 @@ auto TraversalExecutorInfos::parseTraversalEnumeratorSingleServer(
       order, uniqueVertices, uniqueEdges, query, std::move(baseProviderOptions),
       std::move(pathValidatorOptions), std::move(enumeratorOptions));
 
+  _traversalEnumerator =
+      arangodb::graph::experimental::SingleServerTraversalEnumerator(options);
+
   TRI_ASSERT(_traversalEnumerator != nullptr);
 }
 
