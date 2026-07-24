@@ -638,7 +638,7 @@ async<void> RestCollectionHandler::handleCommandPut() {
         StaticStrings::ReplicationFactor,
         StaticStrings::MinReplicationFactor,  // deprecated
         StaticStrings::WriteConcern,         StaticStrings::ComputedValues,
-        StaticStrings::CacheEnabled,         StaticStrings::SupportsRBAC};
+        StaticStrings::CacheEnabled};
     VPackBuilder props = VPackCollection::keep(body, keep);
 
     OperationOptions options;

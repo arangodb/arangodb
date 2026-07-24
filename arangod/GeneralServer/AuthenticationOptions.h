@@ -30,6 +30,8 @@ namespace arangodb {
 // TODO Should be renamed to AuthOptions, as it contains both authentication and
 //      authorization options.
 struct AuthenticationOptions {
+  static constexpr size_t kMaxSecretLength = 64;
+
   bool authenticationUnixSockets = true;
   bool authenticationSystemOnly = true;
   bool active = true;
