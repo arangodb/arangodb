@@ -77,7 +77,7 @@ TEST(ExecContextTest, disabled_is_not_superuser_authmode) {
 
 TEST(ExecContextTest, classic_ro_ro_is_not_superuser) {
   // "Normal" classic ExecContexts are not superuser or disabled:
-  auto cec = makeClassicExecContext("", "db", auth::Level::RO, auth::Level::RO);
+  auto cec = makeClassicExecContext("", "db", auth::Level::RW, auth::Level::RW);
 
   EXPECT_FALSE(cec.execContext->isSuperuserOrDisabled());
   EXPECT_FALSE(cec.execContext->isSuperuser());
@@ -125,6 +125,7 @@ TEST(ExecContextTest, superuser_singleton) {
   auto const& su = ExecContext::superuser();
 
   EXPECT_TRUE(su.isSuperuserOrDisabled());
+  EXPECT_TRUE(su.isSuperuser());
 }
 
 TEST(ExecContextTest, superuser_as_shared_returns_same_object) {
@@ -142,6 +143,7 @@ TEST(ExecContextTest, current_returns_superuser_when_no_context_set) {
   auto old = ExecContext::set(nullptr);
 
   EXPECT_TRUE(ExecContext::current().isSuperuserOrDisabled());
+  EXPECT_TRUE(ExecContext::current().isSuperuser());
   EXPECT_EQ(ExecContext::currentAsShared(), nullptr);
 
   ExecContext::set(old);
@@ -210,6 +212,7 @@ TEST(ExecContextTest, superuser_scope_sets_and_restores) {
     {
       ExecContextSuperuserScope su;
       EXPECT_TRUE(ExecContext::current().isSuperuserOrDisabled());
+      EXPECT_TRUE(ExecContext::current().isSuperuser());
     }
     EXPECT_EQ(ExecContext::current().user(), "regular");
   }
@@ -229,6 +232,7 @@ TEST(ExecContextTest, superuser_scope_false_is_noop) {
       ExecContextSuperuserScope noop(false);
       EXPECT_EQ(ExecContext::current().user(), "regular");
       EXPECT_FALSE(ExecContext::current().isSuperuserOrDisabled());
+      EXPECT_FALSE(ExecContext::current().isSuperuser());
     }
     EXPECT_EQ(ExecContext::current().user(), "regular");
   }

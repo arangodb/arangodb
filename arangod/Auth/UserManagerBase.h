@@ -25,10 +25,16 @@
 #include "Auth/UserManager.h"
 
 #include "Basics/ReadWriteLock.h"
+#include "Basics/TransparentStringHash.h"
 
 #include <atomic>
+#include <unordered_map>
 
 namespace arangodb::auth {
+
+using UserMap =
+    std::unordered_map<std::string, User, basics::TransparentStringHash,
+                       std::equal_to<>>;
 
 /// @brief Abstract intermediate class that owns the in-memory user cache and
 /// provides concrete, read-only implementations of the UserManager interface.

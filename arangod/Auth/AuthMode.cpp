@@ -30,6 +30,7 @@
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Rbac/Service.h"
+#include "Rest/ApiVersion.h"
 #include "Rest/GeneralRequest.h"
 
 #include "absl/strings/str_cat.h"
@@ -58,6 +59,17 @@ bool AuthMode::isSuperuser() const noexcept {
 
 bool AuthMode::isDisabled() const noexcept {
   return std::holds_alternative<Disabled>(authMode);
+}
+
+bool AuthMode::isUnauthenticated() const noexcept {
+  return std::holds_alternative<Unauthenticated>(authMode);
+}
+
+uint32_t AuthMode::requestedApiVersion() const noexcept {
+  if (auto req = getIAuth().request(); req.has_value()) {
+    return req->get().requestedApiVersion();
+  }
+  return api_version::defaultApiVersion;
 }
 
 auto AuthMode::Superuser::username() const noexcept -> std::string_view {
@@ -386,31 +398,33 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
             if (r.fail()) {
               // Note that sometimes `r` here returns the code
               // `TRI_ERROR_ARANGO_READ_ONLY`, but we **must** hand on
-              // `TRI_ERROR_FORBIDDEN` here for API compatibility!
-              return {TRI_ERROR_FORBIDDEN, r.errorMessage()};
+              // `TRI_ERROR_FORBIDDEN` here for API compatibility for the
+              // API version 0!
+              if (_request.requestedApiVersion() == 0) {
+                return {TRI_ERROR_FORBIDDEN, r.errorMessage()};
+              } else {
+                return r;
+              }
             }
             r = check(p::UseCollection{collection.db, collection.name,
                                        CollectionAccessLevel::WriteMeta});
             if (r.fail()) {
               // Note that sometimes `r` here returns the code
               // `TRI_ERROR_ARANGO_READ_ONLY`, but we **must** hand on
-              // `TRI_ERROR_FORBIDDEN` here for API compatibility!
-              return {TRI_ERROR_FORBIDDEN, r.errorMessage()};
+              // `TRI_ERROR_FORBIDDEN` here for API compatibility for
+              // the API Version 0!
+              if (_request.requestedApiVersion() == 0) {
+                return {TRI_ERROR_FORBIDDEN, r.errorMessage()};
+              } else {
+                return r;
+              }
             }
             return {};
           },
           [&](p::SeeView const& view) -> Result {
             // Database RO access is the only prerequisite and has already been
             // checked; a view is always visible if the database is.
-            // Nevertheless, we test this here again, if only to make unit tests
-            // happy:
-            auto const effectiveLevel = effectiveDatabaseAuthLevel(view.db);
-            if (arangodb::auth::Level::RO <= effectiveLevel) {
-              return {};
-            }
-            return {TRI_ERROR_FORBIDDEN,
-                    "insufficient access level for view '" + view.name +
-                        "' in database '" + view.db + "'"};
+            return {};
           },
           [&](p::CreateView const& view) -> Result {
             // Creating a view requires RW access to the database.
