@@ -130,8 +130,7 @@ void ArangodServer::addFeatures() {
   addFeature<LoggerFeature>(true);
   addFeature<MaintenanceFeature>(&clusterFeature);
   addFeature<MaxMapCountFeature>();
-  auto& networkFeature =
-      addFeature<NetworkFeature>(metrics, network::ConnectionPool::Config{});
+  addFeature<NetworkFeature>(metrics, network::ConnectionPool::Config{});
   addFeature<RbacFeature>(authenticationFeature);
   addFeature<NonceFeature>();
   addFeature<OptionsCheckFeature>();
