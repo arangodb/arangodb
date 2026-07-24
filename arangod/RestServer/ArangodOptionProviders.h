@@ -31,7 +31,12 @@
 #include "SystemMonitor/AsyncRegistry/OptionsProvider.h"
 
 #ifdef USE_ENTERPRISE
+#include "Enterprise/Audit/AuditOptionsProvider.h"
+#include "Enterprise/Encryption/EncryptionOptionsProvider.h"
+#include "Enterprise/License/LicenseOptionsProvider.h"
+#include "Enterprise/RClone/RCloneOptionsProvider.h"
 #include "Enterprise/Ssl/SslServerEEOptionsProvider.h"
+#include "Enterprise/StorageEngine/HotBackupOptionsProvider.h"
 #endif
 
 #ifdef USE_V8
@@ -65,7 +70,9 @@ using ArangodOptionProviders = CoreOptionProviders<
     TemporaryStorageOptionsProvider, UpgradeOptionsProvider
 #ifdef USE_ENTERPRISE
     ,
-    enterprise::SslServerEEOptionsProvider
+    AuditOptionsProvider, LicenseOptionsProvider, RCloneOptionsProvider,
+    HotBackupOptionsProvider, EncryptionOptionsProvider,
+    SslServerEEOptionsProvider
 #endif
 #ifdef USE_V8
     ,

@@ -73,9 +73,6 @@ void ArangoshServer::addFeatures() {
   addFeature<CommunicationFeaturePhase>();
   addFeature<GreetingsFeaturePhase>(std::true_type{});
 
-#ifdef USE_ENTERPRISE
-  addFeature<EncryptionFeature>();
-#endif
   addFeature<ShellConsoleFeature>();
   addFeature<HttpEndpointProvider, ClientFeature>(true);
   addFeature<OptionsCheckFeature>();
@@ -105,6 +102,9 @@ void ArangoshServer::addFeaturesWithOptionProvider() {
   addFeature<FileSystemFeature>(getOptions<FileSystemOptionsProvider>());
   addFeature<RandomFeature>(getOptions<RandomOptionsProvider>());
   addFeature<LanguageFeature>(getOptions<LanguageOptionsProvider>());
+#ifdef USE_ENTERPRISE
+  addFeature<EncryptionFeature>(getOptions<EncryptionOptionsProvider>());
+#endif
 }
 
 }  // namespace arangodb

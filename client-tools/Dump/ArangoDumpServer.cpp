@@ -74,9 +74,6 @@ void ArangoDumpServer::addFeatures() {
 #ifdef TRI_HAVE_GETRLIMIT
   addFeature<BumpFileDescriptorsFeature>("--descriptors-minimum");
 #endif
-#ifdef USE_ENTERPRISE
-  addFeature<EncryptionFeature>();
-#endif
   addFeature<DumpFeature>(client, *_ret);
 }
 
@@ -89,6 +86,9 @@ void ArangoDumpServer::addFeaturesWithOptionProvider() {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   addFeature<ProcessEnvironmentFeature>(
       _binaryName, getOptions<ProcessEnvironmentOptionsProvider>());
+#endif
+#ifdef USE_ENTERPRISE
+  addFeature<EncryptionFeature>(getOptions<EncryptionOptionsProvider>());
 #endif
 }
 

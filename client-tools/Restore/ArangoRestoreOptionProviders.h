@@ -22,7 +22,16 @@
 
 #include "ApplicationFeatures/CoreOptionProviders.h"
 #include "ApplicationFeatures/TempOptionsProvider.h"
+#ifdef USE_ENTERPRISE
+#include "Enterprise/Encryption/EncryptionOptionsProvider.h"
+#endif
 
 namespace arangodb {
-using ArangoRestoreOptionProviders = CoreOptionProviders<TempOptionsProvider>;
+using ArangoRestoreOptionProviders =
+    CoreOptionProviders<TempOptionsProvider
+#ifdef USE_ENTERPRISE
+                        ,
+                        EncryptionOptionsProvider
+#endif
+                        >;
 }  // namespace arangodb

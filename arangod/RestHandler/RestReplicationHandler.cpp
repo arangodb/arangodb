@@ -429,13 +429,7 @@ std::string const RestReplicationHandler::RestoreIndexes = "restore-indexes";
 std::string const RestReplicationHandler::RestoreData = "restore-data";
 std::string const RestReplicationHandler::RestoreView = "restore-view";
 std::string const RestReplicationHandler::Sync = "sync";
-std::string const RestReplicationHandler::MakeFollower = "make-follower";
 std::string const RestReplicationHandler::ServerId = "server-id";
-std::string const RestReplicationHandler::ApplierConfig = "applier-config";
-std::string const RestReplicationHandler::ApplierStart = "applier-start";
-std::string const RestReplicationHandler::ApplierStop = "applier-stop";
-std::string const RestReplicationHandler::ApplierState = "applier-state";
-std::string const RestReplicationHandler::ApplierStateAll = "applier-state-all";
 std::string const RestReplicationHandler::ClusterInventory = "clusterInventory";
 std::string const RestReplicationHandler::AddFollower = "addFollower";
 std::string const RestReplicationHandler::RemoveFollower = "removeFollower";
@@ -660,65 +654,11 @@ auto RestReplicationHandler::executeAsync() -> futures::Future<futures::Unit> {
       }
 
       handleCommandSync();
-    } else if (command == MakeFollower ||
-               command == "make-slave" /*deprecated*/) {
-      if (type != rest::RequestType::PUT) {
-        goto BAD_CALL;
-      }
-
-      if (isCoordinatorError()) {
-        co_return;
-      }
-
-      handleCommandMakeFollower();
     } else if (command == ServerId) {
       if (type != rest::RequestType::GET) {
         goto BAD_CALL;
       }
       handleCommandServerId();
-    } else if (command == ApplierConfig) {
-      if (type == rest::RequestType::GET) {
-        handleCommandApplierGetConfig();
-      } else {
-        if (type != rest::RequestType::PUT) {
-          goto BAD_CALL;
-        }
-        handleCommandApplierSetConfig();
-      }
-    } else if (command == ApplierStart) {
-      if (type != rest::RequestType::PUT) {
-        goto BAD_CALL;
-      }
-
-      if (isCoordinatorError()) {
-        co_return;
-      }
-
-      handleCommandApplierStart();
-    } else if (command == ApplierStop) {
-      if (type != rest::RequestType::PUT) {
-        goto BAD_CALL;
-      }
-
-      if (isCoordinatorError()) {
-        co_return;
-      }
-
-      handleCommandApplierStop();
-    } else if (command == ApplierState) {
-      if (type == rest::RequestType::DELETE_REQ) {
-        handleCommandApplierDeleteState();
-      } else {
-        if (type != rest::RequestType::GET) {
-          goto BAD_CALL;
-        }
-        handleCommandApplierGetState();
-      }
-    } else if (command == ApplierStateAll) {
-      if (type != rest::RequestType::GET) {
-        goto BAD_CALL;
-      }
-      handleCommandApplierGetStateAll();
     } else if (command == ClusterInventory) {
       if (type != rest::RequestType::GET) {
         goto BAD_CALL;
@@ -777,7 +717,7 @@ auto RestReplicationHandler::executeAsync() -> futures::Future<futures::Unit> {
         }
       }
     } else {
-      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+      generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
                     std::string("invalid command '") + command + "'");
     }
 
@@ -880,6 +820,7 @@ Result RestReplicationHandler::testPermissions() {
               return Result(TRI_ERROR_HTTP_BAD_PARAMETER,
                             "empty collection name");
             }
+
           } else {
             return Result(TRI_ERROR_HTTP_BAD_PARAMETER,
                           "invalid collection name type");
@@ -954,55 +895,70 @@ bool RestReplicationHandler::isDBserverForwardingAllowed() const {
          command == Batch;
 }
 
-void RestReplicationHandler::handleCommandMakeFollower() {
-  bool isGlobal = false;
+void RestReplicationHandler::handleCommandSync() {
+  bool isGlobal;
   ReplicationApplier* applier = getApplier(isGlobal);
   if (applier == nullptr) {
     return;
   }
 
   bool success = false;
-  VPackSlice body = this->parseVPackBody(success);
+  VPackSlice const body = this->parseVPackBody(success);
   if (!success) {
     // error already created
     return;
   }
 
-  std::string databaseName;
-
-  if (!isGlobal) {
-    databaseName = _vocbase.name();
+  std::string const endpoint =
+      VelocyPackHelper::getStringValue(body, "endpoint", "");
+  if (endpoint.empty()) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "<endpoint> must be a valid endpoint");
+    return;
   }
 
-  ReplicationApplierConfiguration configuration =
-      ReplicationApplierConfiguration::fromVelocyPack(_vocbase.server(), body,
-                                                      databaseName);
-  configuration._skipCreateDrop = false;
+  std::string dbname = isGlobal ? "" : _vocbase.name();
+  auto config = ReplicationApplierConfiguration::fromVelocyPack(
+      _vocbase.server(), body, dbname);
 
   // will throw if invalid
-  configuration.validate();
+  config.validate();
 
-  // allow access to _users if appropriate
-  ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
+  std::shared_ptr<InitialSyncer> syncer;
 
-  // forget about any existing replication applier configuration
-  applier->forget();
-  applier->reconfigure(configuration);
-  applier->startReplication();
-
-  while (applier->isInitializing()) {  // wait for initial sync
-    std::this_thread::sleep_for(std::chrono::milliseconds(50));
-    if (_vocbase.server().isStopping()) {
-      generateError(Result(TRI_ERROR_SHUTTING_DOWN));
-      return;
-    }
+  if (isGlobal) {
+    syncer = GlobalInitialSyncer::create(config);
+  } else {
+    syncer = DatabaseInitialSyncer::create(_vocbase, config);
   }
-  // applier->startTailing(lastLogTick, true, barrierId);
 
+  Result r = syncer->run(config._incremental);
+
+  if (r.fail()) {
+    LOG_TOPIC("c4818", ERR, Logger::REPLICATION)
+        << "failed to sync: " << r.errorMessage();
+    generateError(r);
+    return;
+  }
+
+  // FIXME: change response for databases
   VPackBuilder result;
-  result.openObject();
-  applier->toVelocyPack(result);
-  result.close();
+  result.add(VPackValue(VPackValueType::Object));
+  result.add("collections", VPackValue(VPackValueType::Array));
+  for (auto const& it : syncer->getProcessedCollections()) {
+    std::string const cidString = StringUtils::itoa(it.first.id());
+    // Insert a collection
+    result.add(VPackValue(VPackValueType::Object));
+    result.add("id", VPackValue(cidString));
+    result.add("name", VPackValue(it.second));
+    result.close();  // one collection
+  }
+  result.close();  // collections
+
+  auto tickString = std::to_string(syncer->getLastLogTick());
+  result.add("lastLogTick", VPackValue(tickString));
+
+  result.close();  // base
   generateResult(rest::ResponseCode::OK, result.slice());
 }
 
@@ -2209,215 +2165,6 @@ void RestReplicationHandler::handleCommandServerId() {
   result.add("serverId", VPackValue(serverId));
   result.close();
   generateResult(rest::ResponseCode::OK, result.slice());
-}
-
-void RestReplicationHandler::handleCommandSync() {
-  bool isGlobal;
-  ReplicationApplier* applier = getApplier(isGlobal);
-  if (applier == nullptr) {
-    return;
-  }
-
-  bool success = false;
-  VPackSlice const body = this->parseVPackBody(success);
-  if (!success) {
-    // error already created
-    return;
-  }
-
-  std::string const endpoint =
-      VelocyPackHelper::getStringValue(body, "endpoint", "");
-  if (endpoint.empty()) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "<endpoint> must be a valid endpoint");
-    return;
-  }
-
-  std::string dbname = isGlobal ? "" : _vocbase.name();
-  auto config = ReplicationApplierConfiguration::fromVelocyPack(
-      _vocbase.server(), body, dbname);
-
-  // will throw if invalid
-  config.validate();
-
-  std::shared_ptr<InitialSyncer> syncer;
-
-  if (isGlobal) {
-    syncer = GlobalInitialSyncer::create(config);
-  } else {
-    syncer = DatabaseInitialSyncer::create(_vocbase, config);
-  }
-
-  Result r = syncer->run(config._incremental);
-
-  if (r.fail()) {
-    LOG_TOPIC("c4818", ERR, Logger::REPLICATION)
-        << "failed to sync: " << r.errorMessage();
-    generateError(r);
-    return;
-  }
-
-  // FIXME: change response for databases
-  VPackBuilder result;
-  result.add(VPackValue(VPackValueType::Object));
-  result.add("collections", VPackValue(VPackValueType::Array));
-  for (auto const& it : syncer->getProcessedCollections()) {
-    std::string const cidString = StringUtils::itoa(it.first.id());
-    // Insert a collection
-    result.add(VPackValue(VPackValueType::Object));
-    result.add("id", VPackValue(cidString));
-    result.add("name", VPackValue(it.second));
-    result.close();  // one collection
-  }
-  result.close();  // collections
-
-  auto tickString = std::to_string(syncer->getLastLogTick());
-  result.add("lastLogTick", VPackValue(tickString));
-
-  result.close();  // base
-  generateResult(rest::ResponseCode::OK, result.slice());
-}
-
-void RestReplicationHandler::handleCommandApplierGetConfig() {
-  bool isGlobal;
-  ReplicationApplier* applier = getApplier(isGlobal);
-  if (applier == nullptr) {
-    return;
-  }
-
-  auto configuration = applier->configuration();
-  VPackBuilder builder;
-  builder.openObject();
-  configuration.toVelocyPack(builder, false, false);
-  builder.close();
-
-  generateResult(rest::ResponseCode::OK, builder.slice());
-}
-
-void RestReplicationHandler::handleCommandApplierSetConfig() {
-  bool isGlobal;
-  ReplicationApplier* applier = getApplier(isGlobal);
-  if (applier == nullptr) {
-    return;
-  }
-
-  bool success = false;
-  VPackSlice const body = this->parseVPackBody(success);
-  if (!success) {
-    // error already created
-    return;
-  }
-
-  std::string databaseName;
-
-  if (!isGlobal) {
-    databaseName = _vocbase.name();
-  }
-
-  auto config = ReplicationApplierConfiguration::fromVelocyPack(
-      applier->configuration(), body, databaseName);
-  // will throw if invalid
-  config.validate();
-
-  applier->reconfigure(config);
-  handleCommandApplierGetConfig();
-}
-
-void RestReplicationHandler::handleCommandApplierStart() {
-  bool isGlobal;
-  ReplicationApplier* applier = getApplier(isGlobal);
-  if (applier == nullptr) {
-    return;
-  }
-
-  bool found;
-  std::string const& value1 = _request->value("from", found);
-
-  TRI_voc_tick_t initialTick = 0;
-  bool useTick = false;
-
-  if (found) {
-    // query parameter "from" specified
-    initialTick = static_cast<TRI_voc_tick_t>(StringUtils::uint64(value1));
-    useTick = true;
-  }
-
-  applier->startTailing(initialTick, useTick);
-  handleCommandApplierGetState();
-}
-
-void RestReplicationHandler::handleCommandApplierStop() {
-  bool isGlobal;
-  ReplicationApplier* applier = getApplier(isGlobal);
-  if (applier == nullptr) {
-    return;
-  }
-
-  applier->stopAndJoin();
-  handleCommandApplierGetState();
-}
-
-void RestReplicationHandler::handleCommandApplierGetState() {
-  bool isGlobal;
-  ReplicationApplier* applier = getApplier(isGlobal);
-  if (applier == nullptr) {
-    return;
-  }
-
-  VPackBuilder builder;
-  builder.openObject();
-  applier->toVelocyPack(builder);
-  builder.close();
-  generateResult(rest::ResponseCode::OK, builder.slice());
-}
-
-void RestReplicationHandler::handleCommandApplierGetStateAll() {
-  if (_request->databaseName() != StaticStrings::SystemDatabase) {
-    generateError(
-        rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
-        "global inventory can only be fetched from within _system database");
-    return;
-  }
-  DatabaseFeature& databaseFeature = _databaseFeature;
-
-  VPackBuilder builder;
-  builder.openObject();
-  for (auto& name : databaseFeature.getDatabaseNames()) {
-    auto vocbase = databaseFeature.useDatabase(name);
-
-    if (vocbase == nullptr) {
-      continue;
-    }
-
-    ReplicationApplier* applier = vocbase->replicationApplier();
-
-    if (applier == nullptr) {
-      continue;
-    }
-
-    builder.add(name, VPackValue(VPackValueType::Object));
-    applier->toVelocyPack(builder);
-    builder.close();
-  }
-  builder.close();
-
-  generateResult(rest::ResponseCode::OK, builder.slice());
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief delete the state of the replication applier
-////////////////////////////////////////////////////////////////////////////////
-
-void RestReplicationHandler::handleCommandApplierDeleteState() {
-  bool isGlobal;
-  ReplicationApplier* applier = getApplier(isGlobal);
-  if (applier == nullptr) {
-    return;
-  }
-
-  applier->forget();
-
-  handleCommandApplierGetState();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

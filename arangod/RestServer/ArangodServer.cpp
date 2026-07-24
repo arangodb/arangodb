@@ -154,13 +154,6 @@ void ArangodServer::addFeatures() {
   addFeature<aql::OptimizerRulesFeature>();
   addFeature<aql::QueryInfoLoggerFeature>();
   addFeature<RocksDBRecoveryManager>(database, database);
-#ifdef USE_ENTERPRISE
-  addFeature<AuditFeature>();
-  addFeature<LicenseFeature>();
-  addFeature<RCloneFeature>();
-  addFeature<HotBackupFeature>();
-  addFeature<EncryptionFeature>();
-#endif
   addFeature<iresearch::IResearchFeature>(metrics);
   addFeature<ClusterEngine>(metrics);
 }
@@ -199,9 +192,14 @@ void ArangodServer::addFeaturesWithOptionProvider() {
       _dataSourceRegistry, getOptions<async_registry::OptionsProvider>());
 
 #ifdef USE_ENTERPRISE
+  addFeature<AuditFeature>(getOptions<AuditOptionsProvider>());
+  addFeature<LicenseFeature>(getOptions<LicenseOptionsProvider>());
+  addFeature<RCloneFeature>(getOptions<RCloneOptionsProvider>());
+  addFeature<HotBackupFeature>(getOptions<HotBackupOptionsProvider>());
+  addFeature<EncryptionFeature>(getOptions<EncryptionOptionsProvider>());
   addFeature<SslServerFeature, SslServerFeatureEE>(
       getOptions<SslServerOptionsProvider>(),
-      getOptions<enterprise::SslServerEEOptionsProvider>());
+      getOptions<SslServerEEOptionsProvider>());
 #else
   addFeature<SslServerFeature>(getOptions<SslServerOptionsProvider>());
 #endif

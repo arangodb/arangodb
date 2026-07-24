@@ -31,8 +31,8 @@ template<class Provider>
 concept HasProcessOptions =
     requires(Provider& provider,
              std::shared_ptr<options::ProgramOptions> programOptions) {
-  {provider.processOptions(programOptions,
-                           std::declval<typename Provider::Options&>())};
+  provider.processOptionsImpl(programOptions,
+                              std::declval<typename Provider::Options&>());
 };
 }  // namespace
 
@@ -75,10 +75,12 @@ class FeatureOptionProviderContainer final {
   }
 
  private:
+  template<class Provider>
   void processProviderOptions(
-      std::shared_ptr<options::ProgramOptions> programOptions, auto& provider) {
-    if constexpr (HasProcessOptions<decltype(provider)>) {
-      provider.processOptions(programOptions, getOptions<decltype(provider)>());
+      std::shared_ptr<options::ProgramOptions> programOptions,
+      Provider& provider) {
+    if constexpr (HasProcessOptions<Provider>) {
+      provider.processOptions(programOptions);
     }
   }
   std::tuple<Providers...> _providers{};

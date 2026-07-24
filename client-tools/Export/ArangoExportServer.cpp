@@ -70,9 +70,6 @@ void ArangoExportServer::addFeatures() {
   addFeature<ShutdownFeature>(
       std::array{std::type_index(typeid(ExportFeature))});
   addFeature<SslFeature>();
-#ifdef USE_ENTERPRISE
-  addFeature<EncryptionFeature>();
-#endif
   addFeature<ExportFeature>(_ret);
 }
 
@@ -86,6 +83,9 @@ void ArangoExportServer::addFeaturesWithOptionProvider() {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   addFeature<ProcessEnvironmentFeature>(
       _binaryName, getOptions<ProcessEnvironmentOptionsProvider>());
+#endif
+#ifdef USE_ENTERPRISE
+  addFeature<EncryptionFeature>(getOptions<EncryptionOptionsProvider>());
 #endif
 }
 
