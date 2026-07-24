@@ -344,9 +344,14 @@ class CircleCIGenerator(OutputGenerator):
         )
 
     def _create_docker_compile_job(self, build_config: BuildConfig) -> Dict[str, Any]:
-        """Create the maintainer-mode compile job producing install.tar.gz for a Docker image."""
+        """Create the maintainer-mode compile job producing the install
+        package for a Docker image. Uses the dedicated test-docker-image
+        presets: unlike the pr presets (IPO disabled for developer build
+        turnaround), the published test image keeps IPO on x64."""
         preset = (
-            "pr-arm64" if build_config.architecture == Architecture.AARCH64 else "pr-x64"
+            "test-docker-image-arm64"
+            if build_config.architecture == Architecture.AARCH64
+            else "test-docker-image-x64"
         )
 
         params = {

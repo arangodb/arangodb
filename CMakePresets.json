@@ -105,7 +105,8 @@
         "CMAKE_C_FLAGS": "-fno-stack-protector",
         "CMAKE_CXX_FLAGS": "-fno-stack-protector",
         "CMAKE_EXE_LINKER_FLAGS": "-Wl,--build-id=sha1 -fuse-ld=lld",
-        "USE_STRICT_OPENSSL_VERSION": "On"
+        "USE_STRICT_OPENSSL_VERSION": "On",
+        "USE_IPO": "Off"
       }
     },
     {
@@ -239,6 +240,26 @@
         "pr-arm64"
       ],
       "displayName": "Build ArangoDB Enterprise Edition (Coverage Build) - ARM64"
+    },
+    {
+      "name": "test-docker-image-x64",
+      "inherits": [
+        "pr-x64"
+      ],
+      "cacheVariables": {
+        "USE_IPO": "On"
+      },
+      "displayName": "Test Docker image build (Enterprise, Maintainer Mode, IPO) - x64"
+    },
+    {
+      "name": "test-docker-image-arm64",
+      "inherits": [
+        "pr-arm64"
+      ],
+      "cacheVariables": {
+        "USE_IPO": "Off"
+      },
+      "displayName": "Test Docker image build (Enterprise, Maintainer Mode) - ARM64"
     },
     {
       "hidden": true,
@@ -421,6 +442,14 @@
     {
       "name": "pr-arm64-coverage",
       "configurePreset": "pr-arm64-coverage"
+    },
+    {
+      "name": "test-docker-image-x64",
+      "configurePreset": "test-docker-image-x64"
+    },
+    {
+      "name": "test-docker-image-arm64",
+      "configurePreset": "test-docker-image-arm64"
     },
     {
       "name": "nightly-package-x64",

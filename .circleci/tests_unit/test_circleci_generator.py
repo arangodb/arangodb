@@ -318,7 +318,7 @@ class TestDockerImagesWorkflow:
 
         params = job["compile-linux"]
         assert params["name"] == "build-x64-for-docker-image"
-        assert params["preset"] == "pr-x64"
+        assert params["preset"] == "test-docker-image-x64"
         assert params["arch"] == "x64"
         assert params["build-tests"] is False
         assert params["publish-artifacts"] is False
@@ -334,7 +334,7 @@ class TestDockerImagesWorkflow:
 
         params = job["compile-linux"]
         assert params["name"] == "build-aarch64-for-docker-image"
-        assert params["preset"] == "pr-arm64"
+        assert params["preset"] == "test-docker-image-arm64"
         assert params["arch"] == "aarch64"
         assert params["s3-prefix"] == "aarch64"
         assert params["create-install-package"] is True
