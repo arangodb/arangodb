@@ -425,8 +425,6 @@ void ApplicationServer::parseOptions(int argc, char* argv[]) {
     exit(EXIT_SUCCESS);
   }
 
-  loadAdditionalOptions();
-
   if (_dumpOptions) {
     auto builder = _options->toVelocyPack(
         false, true, [](std::string const&) { return true; });

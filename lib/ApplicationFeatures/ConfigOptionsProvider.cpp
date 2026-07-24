@@ -83,7 +83,7 @@ void ConfigOptionsProvider::processOptionsImpl(
   char const* binaryPath = progOpts->binaryPath();
   auto const& result = progOpts->processingResult();
   bool const versionRequested =
-      result.touched("version") || result.touched("verson-json");
+      result.touched("version") || result.touched("version-json");
 
   if (configOpts.progname.empty() && ArangoGlobalContext::CONTEXT != nullptr) {
     configOpts.progname = ArangoGlobalContext::CONTEXT->binaryName();
@@ -91,10 +91,6 @@ void ConfigOptionsProvider::processOptionsImpl(
 
   for (auto const& def : configOpts.defines) {
     options::DefineEnvironment(def);
-  }
-
-  if (configOpts.progname.empty()) {
-    configOpts.progname = std::string{progOpts->progname()};
   }
 
   if (StringUtils::tolower(configOpts.file) == "none") {

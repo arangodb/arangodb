@@ -533,6 +533,11 @@ full, log entries are written synchronously until the queue has space again.)");
   opts->addObsoleteOption("log.facility", "", true);
 }
 
+void LoggerOptionsProvider::processOptionsImpl(
+    std::shared_ptr<ProgramOptions> /*progOpts*/, LoggerOptions& options) {
+  Logger::setLogLevel(options.levels);
+}
+
 void LoggerOptionsProvider::validateOptionsImpl(
     std::shared_ptr<ProgramOptions> opts, LoggerOptions& options) {
   if (opts->processingResult().touched("log.file")) {

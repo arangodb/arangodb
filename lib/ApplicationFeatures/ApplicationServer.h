@@ -376,8 +376,6 @@ class ApplicationServer {
   void reportServerProgress(State);
   void reportFeatureProgress(State, std::string_view);
 
-  virtual void loadAdditionalOptions() {}
-
  protected:
   // application features
   std::unordered_map<std::type_index, std::unique_ptr<ApplicationFeature>>

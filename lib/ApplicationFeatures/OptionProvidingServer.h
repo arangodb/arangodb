@@ -62,17 +62,6 @@ class OptionProvidingServer : public application_features::ApplicationServer {
     ApplicationServer::validateOptions();
   }
 
-  // After CLI parse: load early logger options via LoggerOptionsProvider, and
-  // load .conf via ConfigOptionsProvider.
-  void loadAdditionalOptions() override {
-    auto const& versionOptions = getOptions<VersionOptionsProvider>();
-    loadConfigAndEarlyLoggerOptions(
-        getProvider<LoggerOptionsProvider>(),
-        getProvider<ConfigOptionsProvider>(),
-        versionOptions.printVersion || versionOptions.printVersionJson,
-        options(), getBinaryPath(), _binaryName);
-  }
-
   template<class ProviderType>
   auto& getOptions() {
     return _optionProviders.template getOptions<ProviderType>();
