@@ -22,44 +22,13 @@
 
 #pragma once
 
-#include <cstdint>
 #include <string>
-#include <vector>
 
 namespace arangodb {
 
-struct LoggerOptions {
-  std::vector<std::string> output;
-  std::vector<std::string> levels;
-  std::string prefix;
-  std::string hostname;
-  std::string file;
-  std::string fileMode;
-  std::string fileGroup;
-  std::string timeFormatString;
-  std::vector<std::string> structuredLogParams;
-  uint32_t maxEntryLength = 128U * 1048576U;
-  uint32_t maxQueuedLogMessages = 16384;
-  bool useJson = false;
-  bool useLocalTime = false;
-  bool useColor = true;
-  bool useControlEscaped = true;
-  bool useUnicodeEscaped = false;
-  bool lineNumber = false;
-  bool shortenFilenames = true;
-  bool processId = true;
-  bool threadId = true;
-  bool threadName = false;
-  bool performance = false;
-  bool keepLogRotate = false;
-  bool foregroundTty = false;
-  bool forceDirect = false;
-  bool useMicrotime = false;
-  bool showIds = true;
-  bool showRole = false;
-  bool logRequestParameters = true;
-
-  LoggerOptions();
+struct LogApiOptions {
+  std::string apiSwitch = "true";
+  bool apiEnabled = true;
 };
 
 }  // namespace arangodb

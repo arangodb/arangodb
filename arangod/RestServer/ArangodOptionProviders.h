@@ -17,6 +17,7 @@
 #include "RestServer/FlushOptionsProvider.h"
 #include "RestServer/FortuneOptionsProvider.h"
 #include "RestServer/InitDatabaseOptionsProvider.h"
+#include "RestServer/LogApiOptionsProvider.h"
 #include "RestServer/LogBufferOptionsProvider.h"
 #include "RestServer/MaxMapCountOptionsProvider.h"
 #include "RestServer/NonceOptionsProvider.h"
@@ -59,7 +60,7 @@ using ArangodOptionProviders = CoreOptionProviders<
     crash_handler::CrashHandlerOptionsProvider, DatabasePathOptionsProvider,
     DumpLimitsOptionsProvider, EndpointOptionsProvider, FlushOptionsProvider,
     fortune::FortuneOptionsProvider, GeneralServerOptionsProvider,
-    InitDatabaseOptionsProvider, LanguageOptionsProvider,
+    InitDatabaseOptionsProvider, LanguageOptionsProvider, LogApiOptionsProvider,
     LogBufferOptionsProvider, MaxMapCountOptionsProvider,
     NetworkOptionsProvider, NonceOptionsProvider, RocksDBEngineOptionsProvider,
     RocksDBIndexCacheRefillOptionsProvider, RocksDBOptionFeatureOptionsProvider,

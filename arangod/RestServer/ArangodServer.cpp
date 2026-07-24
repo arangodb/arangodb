@@ -171,7 +171,8 @@ void ArangodServer::addFeaturesWithOptionProvider() {
   auto& aqlFunctionFeature = getFeature<aql::AqlFunctionFeature>();
 
   addFeature<VersionFeature>(getOptions<VersionOptionsProvider>());
-  addFeature<LoggerFeature>(getOptions<LoggerOptionsProvider>());
+  addFeature<LoggerFeature>(true, getOptions<LoggerOptionsProvider>(),
+                            getOptions<LogApiOptionsProvider>());
   addFeature<ConfigFeature>(_binaryName, getOptions<ConfigOptionsProvider>());
   addFeature<TempFeature>(std::string{_binaryName},
                           getOptions<TempOptionsProvider>());

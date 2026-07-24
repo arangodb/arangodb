@@ -29,20 +29,9 @@
 #endif
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/FileUtils.h"
-#include "Basics/NumberUtils.h"
-#include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
-#include "Basics/application-exit.h"
-#include "Basics/error.h"
-#include "Basics/voc-errors.h"
-#include "Logger/LogAppenderFile.h"
-#include "Logger/LogMacros.h"
 #include "Logger/LogTimeFormat.h"
 #include "Logger/Logger.h"
-#include "ProgramOptions/Option.h"
-#include "ProgramOptions/Parameters.h"
-#include "ProgramOptions/ProgramOptions.h"
 
 using namespace arangodb::basics;
 using namespace arangodb::options;
@@ -56,10 +45,12 @@ void LogHackWriter(std::string_view msg) { LOG_DEVEL << msg; }
 namespace arangodb {
 
 LoggerFeature::LoggerFeature(application_features::ApplicationServer& server,
-                             LoggerOptions options)
+                             bool threaded, LoggerOptions loggerOpts,
+                             LogApiOptions logApiOpts)
     : ApplicationFeature(server, *this),
-      _options(std::move(options)),
-      _threaded(_options.threaded) {
+      _loggerOpts(std::move(loggerOpts)),
+      _logApiOpts(std::move(logApiOpts)),
+      _threaded(threaded) {
   startsAfter<ShellColorsFeature>();
   startsAfter<VersionFeature>();
   setOptional(false);
@@ -67,18 +58,15 @@ LoggerFeature::LoggerFeature(application_features::ApplicationServer& server,
 
 LoggerFeature::LoggerFeature(application_features::ApplicationServer& server,
                              bool threaded)
-    : LoggerFeature(server, LoggerOptions{}) {
-  _options.threaded = threaded;
-  _threaded = threaded;
-}
+    : LoggerFeature(server, threaded, LoggerOptions{}, LogApiOptions{}) {}
 
 LoggerFeature::LoggerFeature(application_features::ApplicationServer& server,
                              std::type_index registration, bool threaded,
-                             LoggerOptions options)
+                             LoggerOptions loggerOpts)
     : ApplicationFeature(server, registration, name()),
-      _options(std::move(options)),
+      _loggerOpts(std::move(loggerOpts)),
+      _logApiOpts(LogApiOptions{}),
       _threaded(threaded) {
-  _options.threaded = threaded;
   // note: we use the _threaded option to determine whether we are arangod
   // (_threaded = true) or one of the client tools (_threaded = false). in
   // the latter case we disable some options for the Logger, which only make
@@ -91,31 +79,31 @@ LoggerFeature::~LoggerFeature() { Logger::shutdown(); }
 void LoggerFeature::prepare() {
   // set maximum length for each log entry
   Logger::defaultLogGroup().maxLogEntryLength(
-      std::max<uint32_t>(256, _options.maxEntryLength));
+      std::max<uint32_t>(256, _loggerOpts.maxEntryLength));
 
-  Logger::setLogLevel(_options.levels);
-  Logger::setLogStructuredParamsOnServerStart(_options.structuredLogParams);
-  Logger::setShowIds(_options.showIds);
-  Logger::setShowRole(_options.showRole);
-  Logger::setUseColor(_options.useColor);
+  Logger::setLogLevel(_loggerOpts.levels);
+  Logger::setLogStructuredParamsOnServerStart(_loggerOpts.structuredLogParams);
+  Logger::setShowIds(_loggerOpts.showIds);
+  Logger::setShowRole(_loggerOpts.showRole);
+  Logger::setUseColor(_loggerOpts.useColor);
   Logger::setTimeFormat(
-      LogTimeFormats::formatFromName(_options.timeFormatString));
-  Logger::setUseControlEscaped(_options.useControlEscaped);
-  Logger::setUseUnicodeEscaped(_options.useUnicodeEscaped);
+      LogTimeFormats::formatFromName(_loggerOpts.timeFormatString));
+  Logger::setUseControlEscaped(_loggerOpts.useControlEscaped);
+  Logger::setUseUnicodeEscaped(_loggerOpts.useUnicodeEscaped);
   Logger::setEscaping();
-  Logger::setShowLineNumber(_options.lineNumber);
-  Logger::setShortenFilenames(_options.shortenFilenames);
-  Logger::setShowProcessIdentifier(_options.processId);
-  Logger::setShowThreadIdentifier(_options.threadId);
-  Logger::setShowThreadName(_options.threadName);
-  Logger::setOutputPrefix(_options.prefix);
-  Logger::setHostname(_options.hostname);
-  Logger::setKeepLogrotate(_options.keepLogRotate);
-  Logger::setLogRequestParameters(_options.logRequestParameters);
-  Logger::setUseJson(_options.useJson);
+  Logger::setShowLineNumber(_loggerOpts.lineNumber);
+  Logger::setShortenFilenames(_loggerOpts.shortenFilenames);
+  Logger::setShowProcessIdentifier(_loggerOpts.processId);
+  Logger::setShowThreadIdentifier(_loggerOpts.threadId);
+  Logger::setShowThreadName(_loggerOpts.threadName);
+  Logger::setOutputPrefix(_loggerOpts.prefix);
+  Logger::setHostname(_loggerOpts.hostname);
+  Logger::setKeepLogrotate(_loggerOpts.keepLogRotate);
+  Logger::setLogRequestParameters(_loggerOpts.logRequestParameters);
+  Logger::setUseJson(_loggerOpts.useJson);
 
   bool shouldLogToStd = false;
-  for (auto const& definition : _options.output) {
+  for (auto const& definition : _loggerOpts.output) {
     if (_supervisor && definition.starts_with("file://")) {
       Logger::addAppender(Logger::defaultLogGroup(),
                           definition + ".supervisor");
@@ -133,14 +121,14 @@ void LoggerFeature::prepare() {
   // std(err/out). If the double log line is still desired it is still possible
   // to do it via chain arguments:
   // `--log.output=+ --log.output=-`
-  if (_options.foregroundTty && !shouldLogToStd) {
+  if (_loggerOpts.foregroundTty && !shouldLogToStd) {
     Logger::addAppender(Logger::defaultLogGroup(), "-");
   }
 
-  if (_options.forceDirect || _supervisor) {
-    Logger::initialize(false, _options.maxQueuedLogMessages);
+  if (_loggerOpts.forceDirect || _supervisor) {
+    Logger::initialize(false, _loggerOpts.maxQueuedLogMessages);
   } else {
-    Logger::initialize(_threaded, _options.maxQueuedLogMessages);
+    Logger::initialize(_threaded, _loggerOpts.maxQueuedLogMessages);
   }
 }
 

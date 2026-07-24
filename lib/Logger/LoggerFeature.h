@@ -27,6 +27,7 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "ApplicationFeatures/VersionFeature.h"
+#include "Logger/LogApiOptions.h"
 #include "Logger/LoggerOptions.h"
 #include <velocypack/Builder.h>
 
@@ -45,8 +46,8 @@ class LoggerFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() { return "Logger"; }
 
-  LoggerFeature(application_features::ApplicationServer& server,
-                LoggerOptions options);
+  LoggerFeature(application_features::ApplicationServer& server, bool threaded,
+                LoggerOptions loggerOpts, LogApiOptions logApiOpts = {});
   LoggerFeature(application_features::ApplicationServer& server, bool threaded);
 
   ~LoggerFeature();
@@ -57,15 +58,16 @@ class LoggerFeature final : public application_features::ApplicationFeature {
   void disableThreaded() noexcept { _threaded = false; }
   void setSupervisor(bool supervisor) noexcept { _supervisor = supervisor; }
 
-  bool isAPIEnabled() const noexcept { return _options.apiEnabled; }
-  bool onlySuperUser() const noexcept { return _options.apiSwitch == "jwt"; }
+  bool isAPIEnabled() const noexcept { return _logApiOpts.apiEnabled; }
+  bool onlySuperUser() const noexcept { return _logApiOpts.apiSwitch == "jwt"; }
 
  private:
   LoggerFeature(application_features::ApplicationServer& server,
                 std::type_index registration, bool threaded,
-                LoggerOptions options);
+                LoggerOptions loggerOpts);
 
-  LoggerOptions _options;
+  LoggerOptions _loggerOpts;
+  LogApiOptions _logApiOpts;
   bool _supervisor = false;
   bool _threaded = false;
 };

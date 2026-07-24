@@ -362,28 +362,6 @@ contains a single character with the server's role. The roles are:
       "The mode to use for a new log file. The umask is applied as well.",
       new StringParameter(&options.fileMode));
 
-  if (options.threaded) {
-    opts->addOption("--log.api-enabled",
-                    "Whether the log API is enabled (true) or not (false), or "
-                    "only enabled for the superuser (jwt).",
-                    new StringParameter(&options.apiSwitch))
-        .setLongDescription(R"(Credentials are not written to log files.
-Nevertheless, some logged data might be sensitive depending on the context of
-the deployment. For example, if request logging is switched on, user requests
-and corresponding data might end up in log files. Therefore, a certain care
-with log files is recommended.
-
-Since the database server offers an API to control logging and query logging
-data, this API has to be secured properly. By default, the API is accessible
-for admin users (administrative access to the `_system` database).
-However, you can restrict it further to the superuser or disable it altogether:
-
- - `true`: The `/_admin/log` API is accessible for admin users.
- - `jwt`: The `/_admin/log` API is accessible for the superuser only
-   (authentication with JWT superuser token and empty username).
- - `false`: The `/_admin/log` API is not accessible at all.)");
-  }
-
   opts->addOption("--log.use-json-format",
                   "Use JSON as output format for logging.",
                   new BooleanParameter(&options.useJson))
@@ -480,13 +458,12 @@ If you set this option to `auto`, the hostname is automatically determined.)");
                       arangodb::options::Flags::Uncommon))
       .setDeprecatedIn(30500);
 
-  if (options.threaded) {
-    opts->addOption("--log.keep-logrotate",
-                    "Keep the old log file after receiving a SIGHUP.",
-                    new BooleanParameter(&options.keepLogRotate),
-                    arangodb::options::makeDefaultFlags(
-                        arangodb::options::Flags::Uncommon));
-  }
+  // Doesn't need to be conditional because it is always used by client-tools    
+  opts->addOption("--log.keep-logrotate",
+                  "Keep the old log file after receiving a SIGHUP.",
+                  new BooleanParameter(&options.keepLogRotate),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::Uncommon));
 
   opts->addOption(
       "--log.foreground-tty", "Also log to TTY if backgrounded.",
@@ -571,18 +548,6 @@ void LoggerOptionsProvider::validateOptionsImpl(
   } else if (opts->processingResult().touched("log.use-microtime")) {
     options.timeFormatString = "timestamp-micros";
     LogTimeFormats::formatFromName(options.timeFormatString);
-  }
-
-  if (options.apiSwitch == "true" || options.apiSwitch == "on" ||
-      options.apiSwitch == "On") {
-    options.apiEnabled = true;
-    options.apiSwitch = "true";
-  } else if (options.apiSwitch == "jwt" || options.apiSwitch == "JWT") {
-    options.apiEnabled = true;
-    options.apiSwitch = "jwt";
-  } else {
-    options.apiEnabled = false;
-    options.apiSwitch = "false";
   }
 
   if (!options.fileMode.empty()) {

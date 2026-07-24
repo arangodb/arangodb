@@ -162,6 +162,7 @@ add_library(arangoserver STATIC
   RestServer/InitDatabaseOptionsProvider.cpp
   RestServer/LanguageCheckFeature.cpp
   RestServer/LockfileFeature.cpp
+  RestServer/LogApiOptionsProvider.cpp
   RestServer/LogBufferFeature.cpp
   RestServer/LogBufferOptionsProvider.cpp
   RestServer/MaxMapCountFeature.cpp
