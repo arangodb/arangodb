@@ -158,15 +158,6 @@ void ArangodServer::addFeatures() {
   addFeature<ClusterEngine>(metrics);
 }
 
-void ArangodServer::validateOptions() {
-#ifdef ARANGODB_HAVE_FORK
-  if (getProvider<SupervisorOptionsProvider>().options().supervisor) {
-    getProvider<DaemonOptionsProvider>().options().daemon = true;
-  }
-#endif
-  OptionProvidingServer::validateOptions();
-}
-
 void ArangodServer::addFeaturesWithOptionProvider() {
   auto& metrics = getFeature<metrics::MetricsFeature>();
   auto& database = getFeature<DatabaseFeature>();
@@ -231,8 +222,10 @@ void ArangodServer::addFeaturesWithOptionProvider() {
       getOptions<security::ServerSecurityOptionsProvider>());
 
 #ifdef ARANGODB_HAVE_FORK
-  addFeature<DaemonFeature>(getOptions<DaemonOptionsProvider>());
-  addFeature<SupervisorFeature>(getOptions<SupervisorOptionsProvider>());
+  addFeature<DaemonFeature>(
+      getOptions<DaemonSupervisorOptionsProvider>().daemonOpts);
+  addFeature<SupervisorFeature>(
+      getOptions<DaemonSupervisorOptionsProvider>().supervisorOpts);
 #endif
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE

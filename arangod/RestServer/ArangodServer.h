@@ -49,7 +49,6 @@ class ArangodServer : public OptionProvidingServer<ArangodOptionProviders> {
   void addFeatures();
 
  protected:
-  void validateOptions() override final;
   // Called by server::run() after collect & validate.
   void addFeaturesWithOptionProvider() final;
 

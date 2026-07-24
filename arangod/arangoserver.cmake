@@ -139,7 +139,7 @@ add_library(arangoserver STATIC
   RestServer/CrashHandlerOptionsProvider.cpp
   RestServer/CpuUsageFeature.cpp
   RestServer/DaemonFeature.cpp
-  RestServer/DaemonOptionsProvider.cpp
+  RestServer/DaemonSupervisorOptionsProvider.cpp
   RestServer/DatabaseFeature.cpp
   RestServer/DatabaseOptionsProvider.cpp
   RestServer/DatabasePathFeature.cpp
@@ -181,7 +181,6 @@ add_library(arangoserver STATIC
   RestServer/SharedPRNGFeature.cpp
   RestServer/SoftShutdownFeature.cpp
   RestServer/SupervisorFeature.cpp
-  RestServer/SupervisorOptionsProvider.cpp
   RestServer/SystemDatabaseFeature.cpp
   RestServer/TemporaryStorageFeature.cpp
   RestServer/TemporaryStorageOptionsProvider.cpp

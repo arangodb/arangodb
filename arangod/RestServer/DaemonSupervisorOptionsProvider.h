@@ -23,16 +23,24 @@
 #pragma once
 
 #include "ApplicationFeatures/OptionsProvider.h"
-#include "SupervisorFeatureOptions.h"
+#include "RestServer/DaemonFeatureOptions.h"
+#include "RestServer/SupervisorFeatureOptions.h"
 
 namespace arangodb {
 
-struct SupervisorOptionsProvider
-    : OptionsProviderImpl<SupervisorOptionsProvider, SupervisorFeatureOptions> {
-  void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> options,
-                          SupervisorFeatureOptions& opts);
-  void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> /*options*/,
-                           SupervisorFeatureOptions& /*opts*/){};
+struct ForkOptions {
+  DaemonFeatureOptions daemonOpts;
+  SupervisorFeatureOptions supervisorOpts;
+};
+
+struct DaemonSupervisorOptionsProvider
+    : OptionsProviderImpl<DaemonSupervisorOptionsProvider, ForkOptions> {
+  void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> prgOpts,
+                          ForkOptions& forkOpts);
+  void processOptionsImpl(std::shared_ptr<options::ProgramOptions> prgOpts,
+                          ForkOptions& forkOpts);
+  void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> prgOpts,
+                           ForkOptions& forkOpts);
 };
 
 }  // namespace arangodb
