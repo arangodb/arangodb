@@ -19,13 +19,29 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 ////////////////////////////////////////////////////////////////////////////////
+#pragma once
 
-#include "Activities/RegistryGlobalVariable.h"
+#include "Activities/Activity.h"
 
 namespace arangodb::activities {
+/**
+   Structure for the currently executing activity
 
-Registry registry;
-thread_local CurrentlyExecuting Registry::_currentlyExecutingActivity{nullptr};
+   It adds the current thread to the activity-thread-list at construction and
+   removes the thread on destruction.
+ */
+struct CurrentlyExecuting {
+  CurrentlyExecuting(ActivityHandle handle);
+  ~CurrentlyExecuting();
+  CurrentlyExecuting(CurrentlyExecuting&& other) noexcept;
+  auto operator=(CurrentlyExecuting&& other) noexcept -> CurrentlyExecuting&;
+  CurrentlyExecuting(CurrentlyExecuting const& other) noexcept = delete;
+  auto operator=(CurrentlyExecuting const& other) noexcept
+      -> CurrentlyExecuting& = delete;
+  ActivityHandle activity;
 
-const ActivityHandle Root{nullptr};
+ private:
+  Activity::ThreadListIterator _position;
+};
+
 }  // namespace arangodb::activities
