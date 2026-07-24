@@ -1,3 +1,11 @@
+3.12.9.5 (XXXX-XX-XX)
+---------------------
+
+* Updated node modules:
+ - brace-expansion to 5.0.7
+ - fast-uri to 3.1.4
+ - js-yaml to 4.3.0
+
 3.12.9.4 (2026-06-24)
 ---------------------
 
