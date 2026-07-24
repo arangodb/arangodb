@@ -380,7 +380,9 @@ class TestDockerImagesWorkflow:
     def test_add_docker_images_workflow_structure(self):
         """The workflow chains compile -> build-image for both architectures,
         then a single manifest job requiring both image jobs."""
-        gen = self.create_generator({"CIRCLE_SHA1": "deadbee123456"})
+        gen = self.create_generator(
+            {"CIRCLE_SHA1": "deadbee123456", "ENTERPRISE_COMMIT": "cafe42abcdef"}
+        )
 
         workflows = {}
         gen._add_docker_images_workflow(workflows)
@@ -402,9 +404,9 @@ class TestDockerImagesWorkflow:
         ]
 
         manifest_params = jobs[-1]["push-docker-manifest"]
-        # Community commit short SHA, not a date/branch composite tag;
-        # Alpine is the suffix-less default.
-        assert manifest_params["tag"] == "deadbee"
+        # <community sha7>_<enterprise sha7>, not a date/branch composite
+        # tag; Alpine is the suffix-less default.
+        assert manifest_params["tag"] == "deadbee_cafe42a"
         assert manifest_params["requires"] == [
             "build-x64-docker-image",
             "build-aarch64-docker-image",
@@ -417,13 +419,16 @@ class TestDockerImagesWorkflow:
     def test_add_docker_images_workflow_deb_suffix(self):
         """Debian-based images follow the nightly tagging convention:
         an extra -deb suffix between the SHA tag and the arch suffix."""
-        gen = self.create_generator({"CIRCLE_SHA1": "deadbee123456"}, distro="deb")
+        gen = self.create_generator(
+            {"CIRCLE_SHA1": "deadbee123456", "ENTERPRISE_COMMIT": "cafe42abcdef"},
+            distro="deb",
+        )
 
         workflows = {}
         gen._add_docker_images_workflow(workflows)
 
         jobs = workflows["docker-images"]["jobs"]
-        assert jobs[-1]["push-docker-manifest"]["tag"] == "deadbee-deb"
+        assert jobs[-1]["push-docker-manifest"]["tag"] == "deadbee_cafe42a-deb"
         for job in jobs:
             if "build-docker-image" in job:
                 assert job["build-docker-image"]["distro"] == "deb"

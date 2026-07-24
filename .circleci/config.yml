@@ -226,6 +226,10 @@ jobs:
             echo "Using enterprise branch $ENTERPRISE_BRANCH (sha $ENTERPRISE_COMMIT)"
             printf '{"enterprise-commit":"%s"}\n' "$ENTERPRISE_COMMIT" > parameters.json
             cat parameters.json
+            # Exported for the config generator (test docker image tags are
+            # <community sha7>_<enterprise sha7>); shell vars don't survive
+            # across steps.
+            echo "export ENTERPRISE_COMMIT=${ENTERPRISE_COMMIT}" >> "$BASH_ENV"
 
       - run:
           name: Install dependencies

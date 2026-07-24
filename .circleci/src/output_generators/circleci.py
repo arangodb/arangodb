@@ -298,10 +298,11 @@ class CircleCIGenerator(OutputGenerator):
         arangodb/enterprise-test Docker image to public ECR (maintainer-mode,
         Alpine- or Debian-based per create-test-docker-images).
 
-        Tagging follows the nightly-packages convention: the tag is the
-        community commit short SHA, Alpine is the suffix-less default, and
-        Debian-based images carry an extra -deb suffix before the per-arch
-        suffix (<sha>[-deb][-amd64|-arm64v8], manifest <sha>[-deb]).
+        Tagging follows the nightly-packages convention: the tag is
+        <community sha7>_<enterprise sha7>, Alpine is the suffix-less
+        default, and Debian-based images carry an extra -deb suffix before
+        the per-arch suffix (<tag>[-deb][-amd64|-arm64v8], manifest
+        <tag>[-deb]).
 
         This has to be a separate workflow rather than a job tacked onto the
         per-architecture pr workflows: creating a multi-arch manifest needs
@@ -314,7 +315,11 @@ class CircleCIGenerator(OutputGenerator):
         workflows["docker-images"] = workflow
 
         distro = self.config.circleci.create_test_docker_images
-        tag = self.env_getter("CIRCLE_SHA1", "unknown-sha1")[:7]
+        # ENTERPRISE_COMMIT is exported by the setup pipeline's "Determine
+        # enterprise branch" step (config.yml).
+        community = (self.env_getter("CIRCLE_SHA1", "") or "unknown-sha1")[:7]
+        enterprise = (self.env_getter("ENTERPRISE_COMMIT", "") or "unknown-sha1")[:7]
+        tag = f"{community}_{enterprise}"
         if distro != "alpine":
             tag += f"-{distro}"
 
