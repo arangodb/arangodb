@@ -20,15 +20,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include <memory>
-#include <string>
-
 #include "ApplicationFeatures/ConfigOptionsProvider.h"
 #include "ApplicationFeatures/FeatureOptionProviderContainer.h"
 #include "ApplicationFeatures/FileSystemOptionsProvider.h"
 #include "ApplicationFeatures/ProcessEnvironmentOptionsProvider.h"
 #include "ApplicationFeatures/VersionOptionsProvider.h"
-#include "Logger/Logger.h"
 #include "Logger/LoggerOptionsProvider.h"
 #include "Random/RandomOptionsProvider.h"
 
@@ -44,8 +40,7 @@ using CoreOptionProviders =
     application_features::FeatureOptionProviderContainer<
         // LoggerOptionsProvider must come before ConfigOptionsProvider so that
         // its processOptions() applies the CLI log levels before the config
-        // file is parsed. That way, diagnostics emitted while loading the
-        // config file honor a CLI-provided `--log.level`.
+        // file is parsed.
         LoggerOptionsProvider, ConfigOptionsProvider, FileSystemOptionsProvider,
         VersionOptionsProvider,
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE

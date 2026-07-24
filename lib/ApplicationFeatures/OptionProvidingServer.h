@@ -49,22 +49,8 @@ class OptionProvidingServer : public application_features::ApplicationServer {
   }
 
   void validateOptions() override {
-    // This inverted order (provider.validateOptions() ->
-    // feature.validateOptions()) is intentional. For example,
-    // VersionOptionsProvider.validateOptions() has to be called before
-    // V8DealerFeature.validateOptions() to ensure `--version` command is
-    // printed and the server exits early. Otherwise,
-    // V8DealerFeature.validateOptions() will abort (FATAL "no
-    // javascript.startup-directory").
-    // TODO: Find the right declaration order in the tuple of providers (at
-    // least VersionOptionsProvider comes before V8DealerOptionsProvider).
-    _optionProviders.validateOptions(options());
     ApplicationServer::validateOptions();
-  }
-
-  template<class ProviderType>
-  auto& getOptions() {
-    return _optionProviders.template getOptions<ProviderType>();
+    _optionProviders.validateOptions(options());
   }
 
   template<class ProviderType>

@@ -34,7 +34,7 @@ struct VersionOptionsProvider
   void processOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
                           VersionFeatureOptions& options);
   void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> /*opts*/,
-                           VersionFeatureOptions& /*options*/){}
+                           VersionFeatureOptions& /*options*/) {}
 };
 
 }  // namespace arangodb
