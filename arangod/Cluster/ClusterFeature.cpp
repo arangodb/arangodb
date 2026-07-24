@@ -100,18 +100,6 @@ ClusterFeature::ClusterFeature(ApplicationServer& server,
   ss->findHost(fallback);
 }
 
-ServerState::RoleEnum ClusterFeature::resolveRole(
-    ClusterOptions const& options) {
-  if (!options.enableCluster) {
-    return ServerState::ROLE_SINGLE;
-  }
-  if (!options.myRole.empty()) {
-    // already resolved and validated by ClusterOptionsProvider
-    return options.requestedRole;
-  }
-  return ServerState::ROLE_UNDEFINED;
-}
-
 ClusterFeature::~ClusterFeature() { shutdown(); }
 
 void ClusterFeature::reportRole(arangodb::ServerState::RoleEnum role) {

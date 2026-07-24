@@ -64,9 +64,6 @@ class ClusterFeature : public application_features::ApplicationFeature {
                           metrics::IRegistry& metricsRegistry);
   ~ClusterFeature();
 
-  // works out the role from ClusterOptions alone, doesn't touch ServerState
-  static ServerState::RoleEnum resolveRole(ClusterOptions const& options);
-
   void prepare() override final;
   void start() override final;
   void stop() override final;

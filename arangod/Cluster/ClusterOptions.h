@@ -31,6 +31,18 @@
 namespace arangodb {
 
 struct ClusterOptions {
+  // works out the role from these options alone, doesn't touch ServerState
+  ServerState::RoleEnum resolveRole() const {
+    if (!enableCluster) {
+      return ServerState::ROLE_SINGLE;
+    }
+    if (!myRole.empty()) {
+      // already resolved and validated by ClusterOptionsProvider
+      return requestedRole;
+    }
+    return ServerState::ROLE_UNDEFINED;
+  }
+
   std::vector<std::string> agencyEndpoints;
   std::string agencyPrefix;
   std::string myRole;

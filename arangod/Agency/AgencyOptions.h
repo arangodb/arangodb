@@ -26,9 +26,19 @@
 #include <string>
 #include <vector>
 
+#include "Cluster/ServerState.h"
+
 namespace arangodb {
 
 struct AgencyOptions {
+  // works out the role from these options alone, doesn't touch ServerState
+  ServerState::RoleEnum resolveRole() const {
+    if (!activated) {
+      return ServerState::ROLE_UNDEFINED;
+    }
+    return ServerState::ROLE_AGENT;
+  }
+
   bool activated = false;
   uint64_t size = 1;
   uint64_t poolSize = 1;

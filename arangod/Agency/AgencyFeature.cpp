@@ -113,13 +113,6 @@ AgencyFeature::AgencyFeature(ApplicationServer& server, AgencyOptions options)
 
 AgencyFeature::~AgencyFeature() = default;
 
-ServerState::RoleEnum AgencyFeature::resolveRole(AgencyOptions const& options) {
-  if (!options.activated) {
-    return ServerState::ROLE_UNDEFINED;
-  }
-  return ServerState::ROLE_AGENT;
-}
-
 void AgencyFeature::prepare() {
   TRI_ASSERT(isEnabled());
 

@@ -58,9 +58,8 @@ auto const kNonServerFeatures =
 }  // namespace
 
 void ArangodServer::afterOptionProvidersValidated() {
-  auto role = ClusterFeature::resolveRole(getOptions<ClusterOptionsProvider>());
-  auto agencyRole =
-      AgencyFeature::resolveRole(getOptions<AgencyOptionsProvider>());
+  auto role = getOptions<ClusterOptionsProvider>().resolveRole();
+  auto agencyRole = getOptions<AgencyOptionsProvider>().resolveRole();
   if (agencyRole != ServerState::ROLE_UNDEFINED) {
     // being an agent always wins over whatever the cluster options say
     role = agencyRole;
