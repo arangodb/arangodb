@@ -92,6 +92,10 @@ version: 2.1
 #                       arangodb_enterprise-preview_<VERSION>[-<distro>].txt
 #                       publish report per image (pushed refs + digests) with
 #                       the per-arch Trivy reports next to it.
+#                       [pr-run] degrades this job to a dry run: staging is
+#                       uploaded and verified, then discarded; no Docker
+#                       pushes, no promotion, no index upload — the workflow
+#                       itself runs as nightly-packages-pr.
 #
 # Skipping semantics: jobs disabled via pipeline parameters are removed from
 # the generated workflow by generate_nightly_packages_config.py (together with their
@@ -216,14 +220,20 @@ parameters:
     enum: ["NONE", "LOW", "MEDIUM", "HIGH", "CRITICAL", "ALL"]
     default: "HIGH"
     description: "Minimum Trivy finding severity that fails the security-check jobs (findings at or above this level block the publish). The HIGH default is the industry standard for published artifacts; time-boxed signed-off exceptions belong in .circleci/trivy-gate-waivers.json, not in a lowered gate. The stored reports always contain ALL severities. NONE = report-only, never fail; ALL = fail on any finding incl. UNKNOWN severity. The EOL base-OS check on Docker images fails regardless of this level."
+  pr-run:
+    type: boolean
+    default: false
+    description: "TEST run for a GitHub PR — NOT a real nightly. The generator renames the workflow to nightly-packages-pr; every selected job runs, but publish-nightly degrades to a dry run: packages are staged to GCS and the staging tree is verified, then discarded instead of promoted; Docker images are loaded and tagged but never pushed; no manifests, no live Docker/ reports, no index upload. The reports are still produced and stored as job artifacts."
 
 commands:
   checkout-arangodb:
     # Only compile-nightly needs the real source tree (sparse: false). All
     # other jobs work on the install tree / workspace and need just the
     # support files, so they default to a sparse blob-filtered checkout of
-    # scripts/ + CMakeLists.txt + VERSIONS + LICENSE — a few MB instead of
-    # the full tree.
+    # .circleci/ + scripts/ + CMakeLists.txt + VERSIONS + LICENSE — a few
+    # MB instead of the full tree. .circleci/ is needed by prepare-nightly
+    # (validates and stages trivy-gate-waivers.json) and by publish-nightly
+    # (records the active waiver count in the publish reports).
     parameters:
       destination:
         type: string
@@ -242,7 +252,7 @@ commands:
             git init
             git remote add origin https://github.com/arangodb/arangodb.git
             if [ "<< parameters.sparse >>" = "true" ]; then
-              git sparse-checkout set --no-cone /scripts/ /CMakeLists.txt /VERSIONS /LICENSE
+              git sparse-checkout set --no-cone /.circleci/ /scripts/ /CMakeLists.txt /VERSIONS /LICENSE
               git fetch --depth 1 --filter=blob:none origin << pipeline.git.revision >>
             else
               git fetch --depth 1 origin << pipeline.git.revision >>
@@ -1539,6 +1549,17 @@ jobs:
     # the cause and "Rerun from Failed" to republish cleanly. Leftover
     # staging data is cleaned up on success; abandoned staging dirs should be
     # covered by a bucket lifecycle rule on the *-staging prefix.
+    #
+    # pr-run pipelines run this job as a DRY RUN that still exercises as
+    # much of the real path as possible without publishing anything: the
+    # stage phase runs for real (staging is invisible by design — this
+    # genuinely tests GCS auth, the rsync calls and the layout), the commit
+    # phase verifies the staging tree with the same guard a real run uses
+    # and then deletes it instead of promoting; Docker images are loaded
+    # and tagged but never logged in or pushed, so no manifests either; the
+    # Docker/ reports and the regenerated index stay job artifacts instead
+    # of being uploaded. All reports carry a PR TEST RUN marker.
+    #
     # Needs the coredb-nightly-packages context (GCLOUD_SERVICE_KEY_BASE64, DOCKER_USER,
     # DOCKER_PASS).
     docker:
@@ -1665,6 +1686,9 @@ jobs:
           command: |
             # The pushed refs (incl. digests) are collected across this and
             # the commit step into a publish report stored as a job artifact.
+            # A pr-run still loads and tags the images (validating the
+            # workspace artifacts) but never logs in or pushes.
+            PR_RUN="<< pipeline.parameters.pr-run >>"
             REPORT=/tmp/docker-publish-report.txt
             # Alpine is the suffix-less default image; Ubuntu images
             # carry -deb between version and arch.
@@ -1687,13 +1711,21 @@ jobs:
             IMAGE="arangodb/enterprise-preview"
             REG_PREFIXES=("docker.io/")
 
-            echo "${DOCKER_PASS}" | docker login -u "${DOCKER_USER}" --password-stdin
+            if [ "${PR_RUN}" = "true" ]; then
+              echo "pr-run: skipping registry logins, nothing will be pushed"
+            else
+              echo "${DOCKER_PASS}" | docker login -u "${DOCKER_USER}" --password-stdin
+            fi
             if [ "<< pipeline.parameters.push-images-to-gcr-also >>" = "true" ]; then
-              if [ -z "${GCLOUD_SERVICE_KEY_BASE64:-}" ]; then
-                echo "GCLOUD_SERVICE_KEY_BASE64 is empty; set it in the coredb-nightly-packages context (base64 -w0 of the service-account JSON)"
-                exit 1
+              if [ "${PR_RUN}" != "true" ]; then
+                if [ -z "${GCLOUD_SERVICE_KEY_BASE64:-}" ]; then
+                  echo "GCLOUD_SERVICE_KEY_BASE64 is empty; set it in the coredb-nightly-packages context (base64 -w0 of the service-account JSON)"
+                  exit 1
+                fi
+                echo "${GCLOUD_SERVICE_KEY_BASE64}" | base64 -d | docker login -u _json_key --password-stdin https://gcr.io
               fi
-              echo "${GCLOUD_SERVICE_KEY_BASE64}" | base64 -d | docker login -u _json_key --password-stdin https://gcr.io
+              # kept in a pr-run too, so the dry-run report lists every ref
+              # a real run would push
               REG_PREFIXES+=("${NIGHTLY_GCR_PREFIX:-gcr.io/gcr-for-testing/}")
             fi
 
@@ -1706,6 +1738,9 @@ jobs:
               echo "Distros:    ${DISTROS[*]}"
               echo "Registries: ${REG_PREFIXES[*]}"
               echo "Workflow:   ${CIRCLE_WORKFLOW_ID}"
+              if [ "${PR_RUN}" = "true" ]; then
+                echo "Mode:       PR TEST RUN (dry run - nothing was pushed)"
+              fi
               echo
               echo "Dated per-arch tags (stage phase):"
             } > "${REPORT}"
@@ -1730,7 +1765,11 @@ jobs:
                 REPO="${REG_PREFIX}${IMAGE}"
                 for TAG_ARCH in amd64 arm64v8; do
                   docker tag "${IMAGE}:${VERSION}${SUFFIX}-${TAG_ARCH}" "${REPO}:${VERSION}${SUFFIX}-${TAG_ARCH}"
-                  DIGEST="$(retry docker push "${REPO}:${VERSION}${SUFFIX}-${TAG_ARCH}" | sed -n 's/.*digest: \(sha256:[0-9a-f]*\).*/\1/p' | tail -1)"
+                  if [ "${PR_RUN}" = "true" ]; then
+                    DIGEST="pr-run: not pushed"
+                  else
+                    DIGEST="$(retry docker push "${REPO}:${VERSION}${SUFFIX}-${TAG_ARCH}" | sed -n 's/.*digest: \(sha256:[0-9a-f]*\).*/\1/p' | tail -1)"
+                  fi
                   LINE="  ${REPO}:${VERSION}${SUFFIX}-${TAG_ARCH} (${DIGEST})"
                   echo "${LINE}" >> "${REPORT}"
                   echo "${LINE}" >> "${FRAG}"
@@ -1747,8 +1786,12 @@ jobs:
             # release can be partially visible down to seconds. If it still
             # fails halfway, fix the cause and "Rerun from Failed" - every
             # operation is idempotent, so the job republishes cleanly.
+            # A pr-run stops at the commit point: the staging tree is
+            # verified with the same guard a real run uses and then deleted,
+            # nothing is promoted and no manifests are pushed.
             retry() { "$@" || { sleep 5; "$@"; } || { sleep 15; "$@"; } || { sleep 30; "$@"; }; }
 
+            PR_RUN="<< pipeline.parameters.pr-run >>"
             PACKAGES_SELECTED=true
             if [ "<< pipeline.parameters.build-debian-packages >>" = "false" ] && \
                [ "<< pipeline.parameters.build-rpm-packages >>" = "false" ] && \
@@ -1775,37 +1818,54 @@ jobs:
                 fi
               done
 
-              # Promote the whole <major.minor> tree with delete semantics:
-              # afterwards the live directory contains EXACTLY this one
-              # nightly — older dated packages, legacy platform dirs from the
-              # NAS era and stale index.html files are all removed (the
-              # index is regenerated in the next step). Both arches are
-              # always staged together, so nothing legitimate is deleted.
-              # The Docker/ directory is excluded: it is owned by the
-              # "Publish per-image Docker reports" step (which needs the
-              # manifest digests from this step, so it runs after it) and it
-              # must survive packages-only runs.
-              retry gsutil -m rsync -d -r -x "^Docker/" \
-                "${STAGE_GCS}/${PACKAGES}" \
-                "${DST}/${PACKAGES}"
+              if [ "${PR_RUN}" = "true" ]; then
+                echo "pr-run: staging tree verified; skipping promotion to the live nightly tree and the devel mirror"
+              else
+                # Promote the whole <major.minor> tree with delete semantics:
+                # afterwards the live directory contains EXACTLY this one
+                # nightly — older dated packages, legacy platform dirs from the
+                # NAS era and stale index.html files are all removed (the
+                # index is regenerated in the next step). Both arches are
+                # always staged together, so nothing legitimate is deleted.
+                # The Docker/ directory is excluded: it is owned by the
+                # "Publish per-image Docker reports" step (which needs the
+                # manifest digests from this step, so it runs after it) and it
+                # must survive packages-only runs.
+                retry gsutil -m rsync -d -r -x "^Docker/" \
+                  "${STAGE_GCS}/${PACKAGES}" \
+                  "${DST}/${PACKAGES}"
 
-              # nightly/devel points at the current devel tree. The old NAS
-              # used a filesystem symlink; GCS has no symlinks, so the
-              # pipeline maintains a server-side mirror instead (updated only
-              # when the published tree IS the devel tree). index.html files
-              # are excluded both ways: the regeneration step creates and
-              # owns devel's own index. Docker/ is excluded for the same
-              # reason: the "Publish per-image Docker reports" step below
-              # writes it into both trees itself.
-              if grep -qx "devel-nightly" /tmp/nightly/rolling-tags.txt; then
-                retry gsutil -m rsync -d -r -x "(^|/)index\.html$|^Docker/" \
-                  "${DST}/${PACKAGES}" "${DST}/devel"
+                # nightly/devel points at the current devel tree. The old NAS
+                # used a filesystem symlink; GCS has no symlinks, so the
+                # pipeline maintains a server-side mirror instead (updated only
+                # when the published tree IS the devel tree). index.html files
+                # are excluded both ways: the regeneration step creates and
+                # owns devel's own index. Docker/ is excluded for the same
+                # reason: the "Publish per-image Docker reports" step below
+                # writes it into both trees itself.
+                if grep -qx "devel-nightly" /tmp/nightly/rolling-tags.txt; then
+                  retry gsutil -m rsync -d -r -x "(^|/)index\.html$|^Docker/" \
+                    "${DST}/${PACKAGES}" "${DST}/devel"
+                fi
               fi
             fi
 
             DISTROS=()
             if [ "<< pipeline.parameters.build-alpine-images >>" = "true" ]; then DISTROS+=("alpine"); fi
             if [ "<< pipeline.parameters.build-deb-images >>" = "true" ]; then DISTROS+=("deb"); fi
+            if [ "${PR_RUN}" = "true" ] && [ ${#DISTROS[@]} -gt 0 ]; then
+              # dry run: the dated per-arch tags were never pushed, so there
+              # is nothing to assemble manifests from. Write the report
+              # placeholders (the per-image reports step cats the per-distro
+              # fragments) and skip the manifest block below.
+              REPORT=/tmp/docker-publish-report.txt
+              printf '\nMulti-arch manifest tags (what users pull):\n' >> "${REPORT}"
+              echo "  (pr-run: not created - the dated per-arch tags were never pushed)" >> "${REPORT}"
+              for DISTRO in "${DISTROS[@]}"; do
+                echo "  (pr-run: manifests not created)" > "/tmp/docker-commit-${DISTRO}.txt"
+              done
+              DISTROS=()
+            fi
             if [ ${#DISTROS[@]} -gt 0 ]; then
               set -x
               VERSION="$(cat /tmp/nightly/nightly-version.txt)"
@@ -1851,7 +1911,8 @@ jobs:
             if [ "${PACKAGES_SELECTED}" = "true" ]; then
               # Best-effort cleanup; abandoned staging dirs (from runs that
               # never reached this point) should be reaped by a bucket
-              # lifecycle rule on the *-staging prefix.
+              # lifecycle rule on the *-staging prefix. In a pr-run this
+              # doubles as the discard of the dry run.
               gsutil -m rm -r "${STAGE_GCS}" || true
             fi
       - run:
@@ -1868,7 +1929,9 @@ jobs:
             # devel mirror when this nightly is the devel one) — after the
             # commit step, because the manifest digests only exist then.
             # Created even when skipping, so the store_artifacts step below
-            # always has a path to store.
+            # always has a path to store. In a pr-run the reports are
+            # generated (and stored as artifacts) but not uploaded to GCS.
+            PR_RUN="<< pipeline.parameters.pr-run >>"
             OUT=/tmp/docker-reports
             mkdir -p "${OUT}"
 
@@ -1896,6 +1959,9 @@ jobs:
                 echo "Base:      ${DISTRO}"
                 echo "Published: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
                 echo "Workflow:  ${CIRCLE_WORKFLOW_ID}"
+                if [ "${PR_RUN}" = "true" ]; then
+                  echo "Mode:      PR TEST RUN (dry run - image was NOT published)"
+                fi
                 echo "Sec. gate: << pipeline.parameters.security-check-fail-level >> (findings at or above this level block a publish unless waived; NONE = report-only; active waivers: $(jq -r --arg today "$(date -u +%F)" '[.waivers[]? | select(.expires >= $today)] | length' /home/circleci/project/.circleci/trivy-gate-waivers.json 2>/dev/null || echo "?") — see .circleci/trivy-gate-waivers.json)"
                 echo
                 echo "Dated per-arch tags (stage phase):"
@@ -1915,12 +1981,16 @@ jobs:
             ls -la "${OUT}"
 
             retry() { "$@" || { sleep 5; "$@"; } || { sleep 15; "$@"; } || { sleep 30; "$@"; }; }
-            # Delete semantics within Docker/ only: afterwards it contains
-            # exactly this run's reports (the promote/mirror rsyncs in the
-            # commit step exclude Docker/, so this step is its sole owner).
-            retry gsutil -m rsync -d "${OUT}" "${DST}/${PACKAGES}/Docker"
-            if grep -qx "devel-nightly" /tmp/nightly/rolling-tags.txt; then
-              retry gsutil -m rsync -d "${OUT}" "${DST}/devel/Docker"
+            if [ "${PR_RUN}" = "true" ]; then
+              echo "pr-run: Docker reports kept as job artifacts only, not uploaded to ${DST}/${PACKAGES}/Docker"
+            else
+              # Delete semantics within Docker/ only: afterwards it contains
+              # exactly this run's reports (the promote/mirror rsyncs in the
+              # commit step exclude Docker/, so this step is its sole owner).
+              retry gsutil -m rsync -d "${OUT}" "${DST}/${PACKAGES}/Docker"
+              if grep -qx "devel-nightly" /tmp/nightly/rolling-tags.txt; then
+                retry gsutil -m rsync -d "${OUT}" "${DST}/devel/Docker"
+              fi
             fi
       - store_artifacts:
           path: /tmp/docker-reports
@@ -1935,6 +2005,7 @@ jobs:
             # refs collected by the stage/commit steps. Supplemental files
             # (.asc, .clamav, .trivy.*, .sbom.*) are published too but not
             # listed.
+            PR_RUN="<< pipeline.parameters.pr-run >>"
             REPORT=/tmp/nightly-publish-report.txt
             VERSION="$(cat /tmp/nightly/nightly-version.txt)"
             {
@@ -1943,6 +2014,9 @@ jobs:
               echo "Version:   ${VERSION}"
               echo "Published: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
               echo "Workflow:  ${CIRCLE_WORKFLOW_ID}"
+              if [ "${PR_RUN}" = "true" ]; then
+                echo "Mode:      PR TEST RUN - dry run, NOTHING was actually published"
+              fi
               echo "Sec. gate: << pipeline.parameters.security-check-fail-level >> (findings at or above this level block a publish unless waived; NONE = report-only; active waivers: $(jq -r --arg today "$(date -u +%F)" '[.waivers[]? | select(.expires >= $today)] | length' /home/circleci/project/.circleci/trivy-gate-waivers.json 2>/dev/null || echo "?") — see .circleci/trivy-gate-waivers.json)"
             } > "${REPORT}"
 
@@ -1965,6 +2039,9 @@ jobs:
             # The Docker/ report directory is part of the indexed tree, so
             # the index is regenerated whenever anything was published to
             # GCS — packages or Docker image reports.
+            # Created unconditionally so the store_artifacts step below
+            # always has a path to store.
+            mkdir -p /tmp/nightly-index
             if [ "<< pipeline.parameters.build-debian-packages >>" = "false" ] && \
                [ "<< pipeline.parameters.build-rpm-packages >>" = "false" ] && \
                [ "<< pipeline.parameters.build-tarballs >>" = "false" ] && \
@@ -1983,8 +2060,18 @@ jobs:
               --prefix "/${DST##*/}" \
               --listing /tmp/nightly-listing.txt \
               --out /tmp/nightly-index
+            if [ "<< pipeline.parameters.pr-run >>" = "true" ]; then
+              # a pr-run published nothing, so the live index is still
+              # correct; generating it above smoke-tests the listing and the
+              # generator, and the result stays a job artifact
+              echo "pr-run: index generated for inspection only, not uploaded"
+              exit 0
+            fi
             cd /tmp/nightly-index
             gsutil -m cp -r ./* "${DST}/"
+      - store_artifacts:
+          path: /tmp/nightly-index
+          destination: reports/nightly-index
 
 workflows:
   nightly-packages:

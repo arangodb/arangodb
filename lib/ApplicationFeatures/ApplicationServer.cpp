@@ -189,6 +189,8 @@ void ApplicationServer::run(int argc, char* argv[]) {
   // seal the options
   _options->seal();
 
+  processOptions();
+
   // validate options of all features
   _state.store(State::IN_VALIDATE_OPTIONS, std::memory_order_release);
   reportServerProgress(State::IN_VALIDATE_OPTIONS);

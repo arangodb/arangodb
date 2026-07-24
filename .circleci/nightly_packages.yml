@@ -18,6 +18,11 @@ version: 2.1
 #
 # The workflow itself (jobs, publishing semantics, required contexts) is
 # documented in base_nightly_packages.yml.
+#
+# pr-run=true turns the whole pipeline into a PR test: the workflows run as
+# setup-nightly-packages-pr / nightly-packages-pr, publish-nightly becomes a
+# dry run (see base_nightly_packages.yml), and cancel-redundant-pipelines
+# only cancels other pr-run pipelines on the branch.
 
 setup: true
 
@@ -74,6 +79,10 @@ parameters:
     enum: ["NONE", "LOW", "MEDIUM", "HIGH", "CRITICAL", "ALL"]
     default: "HIGH"
     description: "Minimum Trivy finding severity that fails the security-check jobs (findings at or above this level block the publish). The stored reports always contain ALL severities. NONE = report-only, never fail; ALL = fail on any finding incl. UNKNOWN severity. The EOL base-OS check on Docker images fails regardless of this level."
+  pr-run:
+    type: boolean
+    default: false
+    description: "TEST run for a GitHub PR — NOT a real nightly. The pipeline runs under the names setup-nightly-packages-pr/nightly-packages-pr and executes every job selected by the other parameters, including publish-nightly, but the publish degrades to a dry run: packages are staged to GCS and verified, then discarded; nothing is promoted to the live nightly tree, no Docker tags or manifests are pushed, no download index is uploaded. Redundant-pipeline cancellation only targets other pr-run pipelines on the branch, never a real nightly-packages run."
 
 jobs:
   cancel-redundant-pipelines:
@@ -88,11 +97,16 @@ jobs:
               echo "Branch is a release branch or devel, not cancelling any pipelines"
               exit 0
             fi
+            PR_RUN="<< pipeline.parameters.pr-run >>"
             CURRENT_PIPELINE_NUM=$(curl -s --header "Circle-Token: $CIRCLECI_TOKEN" \
               "https://circleci.com/api/v2/workflow/${CIRCLE_WORKFLOW_ID}" | jq -r '.pipeline_number')
-            echo "Current pipeline: #${CURRENT_PIPELINE_NUM}"
+            echo "Current pipeline: #${CURRENT_PIPELINE_NUM} (pr-run: ${PR_RUN})"
             # Cancel older API-triggered pipelines on this branch (infrastructure + nightly),
             # leaving commit-triggered testing pipelines untouched.
+            # A pr-run pipeline is a TEST riding alongside the real thing: it
+            # only ever cancels other pr-run pipelines (recognized by their
+            # *-pr workflow names), never a real nightly-packages or
+            # infrastructure run on the same branch.
             PIPE_IDS=$(curl -s --header "Circle-Token: $CIRCLECI_TOKEN" \
               "https://circleci.com/api/v2/project/gh/arangodb/arangodb/pipeline?branch=$CIRCLE_BRANCH" | \
               jq -r --argjson N "$CURRENT_PIPELINE_NUM" \
@@ -101,8 +115,15 @@ jobs:
             for PIPE_ID in $PIPE_IDS; do
               curl -s --header "Circle-Token: $CIRCLECI_TOKEN" \
                 "https://circleci.com/api/v2/pipeline/${PIPE_ID}/workflow" | \
-                jq -r '.items[]|select(.status == "on_hold" or .status == "running")|.id' >> WF_to_cancel.txt
+                jq -r '.items[]|select(.status == "on_hold" or .status == "running")|[.id,.name]|@tsv' >> WF_candidates.txt
             done
+            touch WF_candidates.txt
+            if [ "$PR_RUN" = "true" ]; then
+              awk -F'\t' '$2 == "nightly-packages-pr" || $2 == "setup-nightly-packages-pr" {print $1}' \
+                WF_candidates.txt > WF_to_cancel.txt
+            else
+              cut -f1 WF_candidates.txt > WF_to_cancel.txt
+            fi
             if [ -s WF_to_cancel.txt ]; then
               echo "Cancelling the following workflow(s):"
               cat WF_to_cancel.txt
@@ -183,6 +204,7 @@ jobs:
               --sign-packages "<< pipeline.parameters.sign-packages >>" \
               --scan-viruses "<< pipeline.parameters.scan-viruses >>" \
               --security-check "<< pipeline.parameters.security-check >>" \
+              --pr-run "<< pipeline.parameters.pr-run >>" \
               -o nightly_packages_continuation_config.yml
       # Only the SETUP-COMPUTED parameters (enterprise-commit and
       # nightly-date, declared solely in the base config) are passed to the
@@ -196,9 +218,18 @@ jobs:
           parameters: parameters.json
 
 workflows:
+  # Same two jobs either way; the split exists only so a pr-run pipeline is
+  # recognizable by workflow name from the very first job — in the CircleCI
+  # UI, in GitHub PR checks, and by cancel-redundant-pipelines (which
+  # matches these names to decide what it may cancel).
   setup-nightly-packages:
-    jobs:
+    when:
+      not: << pipeline.parameters.pr-run >>
+    jobs: &setup-jobs
       - cancel-redundant-pipelines:
           context: [ circleci-token ]
       - generate-nightly-packages-config:
           requires: [cancel-redundant-pipelines]
+  setup-nightly-packages-pr:
+    when: << pipeline.parameters.pr-run >>
+    jobs: *setup-jobs
