@@ -25,12 +25,10 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/application-exit.h"
 #include "FeaturePhases/AqlFeaturePhase.h"
-#include "RestServer/EndpointOptionsProvider.h"
 #include "RestServer/ServerFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
-#include "ProgramOptions/ProgramOptions.h"
 
 using namespace arangodb::basics;
 using namespace arangodb::options;
@@ -48,16 +46,6 @@ EndpointFeature::EndpointFeature(ApplicationServer& server,
   startsAfter<application_features::AqlFeaturePhase>();
 
   startsAfter<ServerFeature>();
-}
-
-void EndpointFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  EndpointOptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
-
-void EndpointFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
-  EndpointOptionsProvider provider;
-  provider.validateOptions(options, _options);
 }
 
 void EndpointFeature::prepare() {

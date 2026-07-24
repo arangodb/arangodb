@@ -36,8 +36,6 @@ class MaxMapCountFeature final
                               MaxMapCountFeatureOptions options);
   explicit MaxMapCountFeature(application_features::ApplicationServer& server);
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-
   static bool needsChecking() { return true; }
 
   static uint64_t actualMaxMappings();
