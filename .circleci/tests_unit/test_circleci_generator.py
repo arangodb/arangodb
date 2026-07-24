@@ -458,6 +458,17 @@ class TestDockerImagesWorkflow:
             assert "create-docker-image" not in job_types
             assert "build-docker-image" not in job_types
 
+            # The non-maintainer smoke builds run regardless of whether a
+            # test docker image is being created (the docker-images
+            # workflow has its own dedicated maintainer-mode compile jobs).
+            job_names = {
+                params["name"]
+                for job in result["workflows"][wf_name]["jobs"]
+                for params in job.values()
+            }
+            arch = "x64" if wf_name == "x64-pr" else "aarch64"
+            assert f"build-non-maintainer-{arch}" in job_names
+
 
 class TestGenerateMethod:
     """Test the main generate() method."""

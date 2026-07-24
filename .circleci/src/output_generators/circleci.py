@@ -188,11 +188,8 @@ class CircleCIGenerator(OutputGenerator):
         workflow["jobs"].append(build_job)
         workflow["jobs"].append(frontend_job)
 
-        # Add non-maintainer build for x64 (non-instrumented builds only)
-        if (
-            not build_config.build_variant.is_instrumented
-            and self.config.circleci.create_test_docker_images == "none"
-        ):
+        # Add non-maintainer smoke build (non-instrumented builds only)
+        if not build_config.build_variant.is_instrumented:
             non_maintainer_job = self._create_non_maintainer_build_job(build_config)
             workflow["jobs"].append(non_maintainer_job)
 
