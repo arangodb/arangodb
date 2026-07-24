@@ -31,6 +31,7 @@
 
 #include <chrono>
 #include <cstdint>
+#include <memory>
 #include <mutex>
 #include <stop_token>
 #include <thread>
@@ -40,6 +41,7 @@
 namespace arangodb {
 struct Database;
 class DatabaseFeature;
+class Index;
 class LogicalCollection;
 class MaintenanceFeature;
 class RocksDBVectorIndex;
@@ -86,6 +88,17 @@ class VectorIndexBuildManager {
 
   void scanAndBuild(std::stop_token const& stopToken,
                     FailedBuildsMap& failedBuilds);
+
+  // Builds one eligible index and reports the outcome (waiters, backoff,
+  // published state).
+  void buildIndex(Database const& vocbase, LogicalCollection const& coll,
+                  std::shared_ptr<Index> const& idx, std::uint64_t numDocs,
+                  std::uint64_t unusableIndexesCount,
+                  std::stop_token const& stopToken,
+                  FailedBuildsMap& failedBuilds);
+
+  // Nudges the DBServer to republish Current promptly. No-op off a DBServer.
+  void markDatabaseDirty(std::string const& database);
 
   void fulfillWaiters(IndexId indexId, Result const& result);
 
