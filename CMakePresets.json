@@ -371,6 +371,10 @@
       "configurePreset": "pr-non-maintainer-x64"
     },
     {
+      "name": "pr-non-maintainer-arm64",
+      "configurePreset": "pr-non-maintainer-arm64"
+    },
+    {
       "name": "pr-x64-tsan",
       "configurePreset": "pr-x64-tsan"
     },
