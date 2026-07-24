@@ -35,7 +35,7 @@ namespace arangodb {
 
 using namespace arangodb::options;
 
-void SslServerOptionsProvider::declareOptions(
+void SslServerOptionsProvider::declareOptionsImpl(
     std::shared_ptr<ProgramOptions> options, SslServerOptions& opts) {
   options->addOldOption("server.cafile", "ssl.cafile");
   options->addOldOption("server.keyfile", "ssl.keyfile");
@@ -207,7 +207,7 @@ http://www.openssl.org/docs/ssl/SSL_CTX_set_options.html))");
                      new BooleanParameter(&opts.preferHttp11InAlpn));
 }
 
-void SslServerOptionsProvider::validateOptions(
+void SslServerOptionsProvider::validateOptionsImpl(
     std::shared_ptr<ProgramOptions> options, SslServerOptions& opts) {
   // check for SSLv2
   if (opts.sslProtocol == SslProtocol::SSL_V2) {

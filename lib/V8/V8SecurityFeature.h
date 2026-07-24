@@ -98,13 +98,10 @@ class V8SecurityFeature final
   bool shouldExposeEnvironmentVariable(v8::Isolate* isolate,
                                        std::string const& name) const;
 
-  /// @brief tests if the IP address or domain/host name given should be
-  /// accessible via the JS_Download (internal.download) function in JavaScript
-  /// actions the endpoint is passed in via protocol (e.g. tcp://, ssl://,
-  /// unix://) and port number (if applicable)
-  bool isAllowedToConnectToEndpoint(v8::Isolate* isolate,
-                                    std::string const& endpoint,
-                                    std::string const& url) const;
+  /// @brief tests if the given URL should be accessible via the JS_Download
+  // (internal.download) function in JavaScript actions
+  bool isAllowedToConnectToUrl(v8::Isolate* isolate,
+                               std::string const& url) const;
 
   /// @brief tests if the path (or path component) shall be accessible for the
   /// calling JavaScript code

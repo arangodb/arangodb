@@ -39,24 +39,38 @@ version: 2.1
 #                       Docker images are NOT ClamAV-scanned
 #   security-check-*    Trivy scan of every published item [security-check]:
 #                       one job per package format+arch (contents extracted,
-#                       then fs-scanned) and per Docker image (image scan).
+#                       then rootfs-scanned) and per Docker image (image scan).
 #                       The reports always cover ALL severities (unfixed CVEs
 #                       included, secret scanning on); whether a job fails —
 #                       and with it the publish — is decided separately by
-#                       [security-check-fail-level] (default HIGH: HIGH and
+#                       [security-check-fail-level] (default HIGH — the
+#                       industry standard for published artifacts: HIGH and
 #                       CRITICAL findings block; NONE = report-only; ALL =
 #                       any finding, incl. UNKNOWN). The EOL base-OS check on
-#                       images always fails regardless. One job per item so
+#                       images always fails regardless. Waivers (time-boxed,
+#                       signed off): .circleci/trivy-gate-waivers.json —
+#                       entries {id, package (optional), expires YYYY-MM-DD,
+#                       reason, approved-by}; a vulnerability finding
+#                       matching an unexpired entry does not count toward
+#                       the gate. Expiry is end-of-day and capped at 90 days
+#                       out (validated in prepare-nightly, which stages the
+#                       file into the workspace); expired entries block
+#                       again and warn. Secret findings are never waivable
+#                       here (dev-fixture allowlists belong in a trivy
+#                       secret config, by path). Published reports and SBOMs
+#                       always keep ALL findings — waivers change gating
+#                       only, never what is reported. One job per item so
 #                       every item still gets scanned when another fails;
 #                       publish-nightly requires them all. Reports: one
-#                       <package>.trivy.{json,log} pair per package file,
+#                       <package>.trivy.{json,log} pair plus one SBOM pair
+#                       (<package>.sbom.{cdx,spdx}.json) per package file,
 #                       published next to it like the ClamAV reports (the
 #                       format+arch is scanned in one pass, then the JSON is
-#                       split per package); one pair per Docker image, named
-#                       after the pushed per-arch image ref and published
-#                       into the Docker/ directory. The .log tables are
-#                       ASCII-only (box-drawing chars mapped), so they render
-#                       correctly whatever charset a viewer assumes.
+#                       split per package); the same four files per Docker
+#                       image, named after the pushed per-arch image ref and
+#                       published into the Docker/ directory. The .log tables
+#                       are ASCII-only (box-drawing chars mapped), so they
+#                       render correctly whatever charset a viewer assumes.
 #   sign-packages       detached GPG signatures (.asc) for every package and
 #                       objectfiles archive [sign-packages]; keys come from a
 #                       sparse checkout of the private arangodb-helper/
@@ -78,6 +92,10 @@ version: 2.1
 #                       arangodb_enterprise-preview_<VERSION>[-<distro>].txt
 #                       publish report per image (pushed refs + digests) with
 #                       the per-arch Trivy reports next to it.
+#                       [pr-run] degrades this job to a dry run: staging is
+#                       uploaded and verified, then discarded; no Docker
+#                       pushes, no promotion, no index upload — the workflow
+#                       itself runs as nightly-packages-pr.
 #
 # Skipping semantics: jobs disabled via pipeline parameters are removed from
 # the generated workflow by generate_nightly_packages_config.py (together with their
@@ -142,7 +160,7 @@ version: 2.1
 orbs:
   aws-cli: circleci/aws-cli@4.1.1
   aws-ecr: circleci/aws-ecr@9.0.1
-  trivy-scan: arangodb/trivy-scan@0.1.1
+  trivy-scan: arangodb/trivy-scan@1.0
 
 parameters:
   enterprise-branch:
@@ -201,15 +219,21 @@ parameters:
     type: enum
     enum: ["NONE", "LOW", "MEDIUM", "HIGH", "CRITICAL", "ALL"]
     default: "HIGH"
-    description: "Minimum Trivy finding severity that fails the security-check jobs (findings at or above this level block the publish). The stored reports always contain ALL severities. NONE = report-only, never fail; ALL = fail on any finding incl. UNKNOWN severity. The EOL base-OS check on Docker images fails regardless of this level."
+    description: "Minimum Trivy finding severity that fails the security-check jobs (findings at or above this level block the publish). The HIGH default is the industry standard for published artifacts; time-boxed signed-off exceptions belong in .circleci/trivy-gate-waivers.json, not in a lowered gate. The stored reports always contain ALL severities. NONE = report-only, never fail; ALL = fail on any finding incl. UNKNOWN severity. The EOL base-OS check on Docker images fails regardless of this level."
+  pr-run:
+    type: boolean
+    default: false
+    description: "TEST run for a GitHub PR — NOT a real nightly. The generator renames the workflow to nightly-packages-pr; every selected job runs, but publish-nightly degrades to a dry run: packages are staged to GCS and the staging tree is verified, then discarded instead of promoted; Docker images are loaded and tagged but never pushed; no manifests, no live Docker/ reports, no index upload. The reports are still produced and stored as job artifacts."
 
 commands:
   checkout-arangodb:
     # Only compile-nightly needs the real source tree (sparse: false). All
     # other jobs work on the install tree / workspace and need just the
     # support files, so they default to a sparse blob-filtered checkout of
-    # scripts/ + CMakeLists.txt + VERSIONS + LICENSE — a few MB instead of
-    # the full tree.
+    # .circleci/ + scripts/ + CMakeLists.txt + VERSIONS + LICENSE — a few
+    # MB instead of the full tree. .circleci/ is needed by prepare-nightly
+    # (validates and stages trivy-gate-waivers.json) and by publish-nightly
+    # (records the active waiver count in the publish reports).
     parameters:
       destination:
         type: string
@@ -228,7 +252,7 @@ commands:
             git init
             git remote add origin https://github.com/arangodb/arangodb.git
             if [ "<< parameters.sparse >>" = "true" ]; then
-              git sparse-checkout set --no-cone /scripts/ /CMakeLists.txt /VERSIONS /LICENSE
+              git sparse-checkout set --no-cone /.circleci/ /scripts/ /CMakeLists.txt /VERSIONS /LICENSE
               git fetch --depth 1 --filter=blob:none origin << pipeline.git.revision >>
             else
               git fetch --depth 1 origin << pipeline.git.revision >>
@@ -407,8 +431,12 @@ commands:
     # one severity filter, so the scans run report-only over ALL severities
     # (fail-on-findings: false) and this gate decides separately, from the
     # JSON report, whether the job fails: only findings (vulnerabilities and
-    # secrets) at or above security-check-fail-level do. This way the
-    # published trivy report is always complete, however lax the gate is.
+    # secrets) at or above security-check-fail-level do — minus
+    # vulnerabilities covered by an unexpired entry in
+    # .circleci/trivy-gate-waivers.json (staged into the workspace by
+    # prepare-nightly, which validated it). Waivers change gating only:
+    # the published trivy report is always complete, however lax the gate
+    # is, and secrets are never waivable here.
     steps:
       - run:
           name: Gate on findings at or above << pipeline.parameters.security-check-fail-level >>
@@ -420,18 +448,82 @@ commands:
               HIGH)     GATE="HIGH,CRITICAL" ;;
               CRITICAL) GATE="CRITICAL" ;;
               ALL)      GATE="UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL" ;;
+              # The pipeline-parameter enum rejects unknown values at
+              # trigger time already; this keeps a future enum addition
+              # without a branch here from silently degrading to
+              # report-only (an unset GATE reads as NONE below).
+              *)        echo "ERROR: unhandled security-check-fail-level" >&2
+                        exit 1 ;;
+            esac
+            case "<< pipeline.parameters.security-check-fail-level >>" in
+              NONE|CRITICAL)
+                echo "NOTICE: gate level << pipeline.parameters.security-check-fail-level >> is below the industry standard (HIGH). Exceptions belong in .circleci/trivy-gate-waivers.json; the published reports record this level." ;;
             esac
             if [ -z "${GATE}" ]; then
               echo "security-check-fail-level=NONE: report-only, not gating"
               exit 0
             fi
-            COUNT=$(jq --arg gate "${GATE}" \
-              '[.Results[]? | (.Vulnerabilities[]?, .Secrets[]?)
-                | select(.Severity as $s | ($gate | split(",")) | index($s))] | length' \
-              /tmp/trivy-results.json)
-            echo "Findings at or above << pipeline.parameters.security-check-fail-level >>: ${COUNT}"
+            # A missing or malformed report must never gate as zero
+            # findings — jq counts 0 matches over the wrong JSON just as
+            # happily — so the report shape is checked before counting
+            # and anything unexpected fails the job.
+            if ! jq -e '(.SchemaVersion == 2) and ((.Results // []) | type == "array")' /tmp/trivy-results.json >/dev/null; then
+              echo "ERROR: /tmp/trivy-results.json is not a Trivy schema-2 report — refusing to gate on it (fail-open guard)"
+              exit 1
+            fi
+            # Waivers: staged (pre-validated) by prepare-nightly. A missing
+            # file gates on raw findings — stricter, never laxer; an
+            # unparseable one fails the job.
+            TODAY=$(date -u +%F)
+            WFILE=/tmp/nightly/trivy-gate-waivers.json
+            if [ ! -f "${WFILE}" ]; then
+              echo "NOTE: no waiver file in the workspace — gating on raw findings"
+              printf '{"waivers":[]}' > /tmp/gate-waivers-empty.json
+              WFILE=/tmp/gate-waivers-empty.json
+            fi
+            if ! jq -e '.waivers | type == "array"' "${WFILE}" >/dev/null; then
+              echo "ERROR: ${WFILE} is not a valid waiver file — refusing to gate" >&2
+              exit 1
+            fi
+            # A vulnerability is waived iff an unexpired entry matches its
+            # VulnerabilityID (and its PkgName, when the entry is
+            # package-scoped). Secrets are never waived. Every applied
+            # waiver is logged so the job output shows exactly what was
+            # excused, by whom, and until when.
+            jq -r --arg gate "${GATE}" --arg today "${TODAY}" --slurpfile w "${WFILE}" '
+              ([$w[0].waivers[]? | select(.expires >= $today)]) as $active
+              | [.Results[]? | .Vulnerabilities[]?
+                  | select(.Severity as $s | ($gate | split(",")) | index($s))
+                  | . as $v
+                  | ($active[] | select(.id == $v.VulnerabilityID
+                      and ((.package // $v.PkgName) == $v.PkgName))) as $m
+                  | "WAIVED: \($v.VulnerabilityID) (\($v.PkgName), \($v.Severity)) until \($m.expires) — \($m.reason) [approved by \($m."approved-by")]"
+                ] | unique | .[]' /tmp/trivy-results.json
+            COUNT=$(jq --arg gate "${GATE}" --arg today "${TODAY}" --slurpfile w "${WFILE}" '
+              ([$w[0].waivers[]? | select(.expires >= $today)]) as $active
+              | [.Results[]?
+                  | (.Vulnerabilities[]?
+                      | select(. as $v
+                          | [$active[] | select(.id == $v.VulnerabilityID
+                              and ((.package // $v.PkgName) == $v.PkgName))]
+                          | length == 0)),
+                    .Secrets[]?
+                ]
+              | [.[] | select(.Severity as $s | ($gate | split(",")) | index($s))]
+              | length' /tmp/trivy-results.json)
+            # COUNT must be one plain integer. Anything else — e.g. jq
+            # emitting one count per document of a concatenated-JSON file,
+            # where the schema check above only keys on the last one —
+            # would make the -gt test below error out, which an if treats
+            # as false: the gate would pass. Fail instead.
+            case "${COUNT}" in
+              ''|*[!0-9]*)
+                echo "ERROR: unexpected findings count '${COUNT}' — refusing to gate on this report" >&2
+                exit 1 ;;
+            esac
+            echo "Findings at or above << pipeline.parameters.security-check-fail-level >> (unwaived): ${COUNT}"
             if [ "${COUNT}" -gt 0 ]; then
-              echo "Blocking the publish (full report of all severities in the job artifacts)."
+              echo "Blocking the publish (full report of all severities in the job artifacts). Fix the dependency or add a time-boxed, signed-off entry to .circleci/trivy-gate-waivers.json."
               exit 1
             fi
 
@@ -536,6 +628,49 @@ jobs:
               setup_source_info "Rclone" "golang-${RCLONE_GO}_${ARANGODB_VERSION_MAJOR_MINOR}_v${RCLONE_VERSION}"
             fi
             cat /tmp/nightly/sourceInfo.log
+      - run:
+          name: Validate and stage security-gate waivers
+          command: |
+            set -eu
+            cd /home/circleci/project
+            W=.circleci/trivy-gate-waivers.json
+            # The waiver file is the ONLY sanctioned exception path for the
+            # security gates (time-boxed, signed off) — validated here,
+            # once, before anything expensive runs, then staged into the
+            # workspace for the (checkout-less) security-check jobs. A
+            # missing or malformed file fails the pipeline: silently
+            # gating without (or with broken) waivers is config drift.
+            if [ ! -f "${W}" ]; then
+              echo "ERROR: ${W} is missing from the checkout" >&2
+              exit 1
+            fi
+            TODAY=$(date -u +%F)
+            CAP=$(date -u -d "today + 90 days" +%F 2>/dev/null || date -u -v+90d +%F)
+            # Structural validation: every entry needs a non-empty id,
+            # reason and approved-by, an ISO expiry date no more than 90
+            # days out (time-boxed means time-boxed), and — if present —
+            # a non-empty package scope.
+            if ! jq -e --arg cap "${CAP}" '
+                 (.waivers | type == "array")
+                 and ([.waivers[] | select(
+                       ((.id? // "") | type == "string" and length > 0)
+                       and ((.expires? // "") | test("^[0-9]{4}-[0-9]{2}-[0-9]{2}$"))
+                       and (.expires <= $cap)
+                       and ((.reason? // "") | type == "string" and length > 0)
+                       and ((."approved-by"? // "") | type == "string" and length > 0)
+                       and (if has("package") then (.package | type == "string" and length > 0) else true end)
+                     )] | length) == (.waivers | length)' "${W}" >/dev/null; then
+              echo "ERROR: ${W} failed validation — every waiver needs id, reason, approved-by, and an expires date (YYYY-MM-DD) at most 90 days out (${CAP}); package, when given, must be non-empty" >&2
+              jq . "${W}" >&2 || cat "${W}" >&2
+              exit 1
+            fi
+            # Expired entries are dead weight (the finding blocks again
+            # regardless) — warn so they get cleaned up.
+            jq -r --arg today "${TODAY}" '.waivers[] | select(.expires < $today)
+              | "WARNING: expired waiver \(.id) (expired \(.expires)) — the finding blocks again; remove the entry"' "${W}" >&2
+            ACTIVE=$(jq -r --arg today "${TODAY}" '[.waivers[] | select(.expires >= $today)] | length' "${W}")
+            echo "Waiver file OK: ${ACTIVE} active waiver(s)"
+            cp "${W}" /tmp/nightly/trivy-gate-waivers.json
       - persist_to_workspace:
           root: /tmp/nightly
           paths:
@@ -923,7 +1058,9 @@ jobs:
   security-check-package:
     # Trivy does not look inside .deb/.rpm/.tar.gz files, so the packages of
     # one format+arch are extracted first and the extracted contents are
-    # fs-scanned (CVEs in bundled dependencies + committed secrets).
+    # rootfs-scanned (CVEs in bundled dependencies INCLUDING compiled Go
+    # binaries — fs mode reads lockfiles only and misses them — plus
+    # committed secrets).
     parameters:
       target:
         type: enum
@@ -932,7 +1069,8 @@ jobs:
         type: string
     docker:
       - image: << pipeline.parameters.build-docker-image >>
-    # medium suffices: the fs scan parses package metadata/lockfiles and
+    # medium suffices: the rootfs scan reads package metadata and the
+    # build info embedded in Go binaries (no decompilation) and
     # secret-scans only small text files; extraction is I/O-bound.
     resource_class: medium
     working_directory: /root/project
@@ -986,12 +1124,18 @@ jobs:
       # Report-only over ALL severities; gate-trivy-findings below decides
       # whether the job (and with it the publish) fails.
       - trivy-scan/scan:
-          scan-type: fs
+          scan-type: rootfs
           scan-path: /tmp/scan-root
           severity: "CRITICAL,HIGH,MEDIUM,LOW,UNKNOWN"
           fail-on-findings: false
           ignore-unfixed: false
           store-junit-results: true
+          # sbom-output makes the scan run with --list-all-pkgs so the JSON
+          # report carries the FULL package inventory (not only vulnerable
+          # ones); the PER-PACKAGE SBOMs below are rendered from that
+          # report. The combined file itself is not stored — per-package is
+          # the deliverable shape.
+          sbom-output: /tmp/<< parameters.target >>-<< parameters.arch >>.sbom.cdx.json
       # Staged and persisted before the gate so the full reports reach the
       # workspace even when the gate fails (publish is blocked then anyway).
       - run:
@@ -1002,7 +1146,8 @@ jobs:
             # pass (one Trivy DB load); here its JSON is split into one report
             # per package — the extraction directories are named exactly after
             # the package files — so every published package gets its own
-            # <package>.trivy.{json,log} right next to it. The table (.log)
+            # <package>.trivy.{json,log} and <package>.sbom.{cdx,spdx}.json
+            # right next to it. The table (.log)
             # is rendered with the trivy binary the scan step installed and
             # left on PATH via BASH_ENV; box-drawing characters are mapped to
             # ASCII so the report stays readable no matter what charset a
@@ -1012,27 +1157,124 @@ jobs:
               sed -e 's/─/-/g' -e 's/│/|/g' \
                   -e 's/┌/+/g' -e 's/┬/+/g' -e 's/┐/+/g' \
                   -e 's/├/+/g' -e 's/┼/+/g' -e 's/┤/+/g' \
-                  -e 's/└/+/g' -e 's/┴/+/g' -e 's/┘/+/g' "$1"
+                  -e 's/└/+/g' -e 's/┴/+/g' -e 's/┘/+/g' \
+                  -e 's/═/=/g' -e 's/║/|/g' \
+                  -e 's/╔/+/g' -e 's/╦/+/g' -e 's/╗/+/g' \
+                  -e 's/╠/+/g' -e 's/╬/+/g' -e 's/╣/+/g' \
+                  -e 's/╚/+/g' -e 's/╩/+/g' -e 's/╝/+/g' "$1"
             }
             OUT=/tmp/nightly/trivy-reports/<< parameters.arch >>
             mkdir -p "${OUT}"
             cd /tmp/scan-root
+            STAGE_FAILED=0
             for d in */; do
               PKG="${d%/}"
+              # Two slices per package: Results whose Target is a path
+              # under the package's extraction dir (gobinary, secrets — one
+              # Result per file), plus the package's share of AGGREGATED
+              # language Results — rootfs mode reports installed language
+              # ecosystems under a single pathless Target (e.g. all
+              # node_modules as "Node.js"), with the per-file attribution
+              # only in each entry's PkgPath/FilePath. Without the second
+              # slice every JS finding and component would silently vanish
+              # from the per-package reports and SBOMs (fs mode's lockfile
+              # Results were path-targeted, so the first slice alone used
+              # to suffice). Aggregates left empty for this package are
+              # dropped; the completeness check after the loop asserts
+              # nothing was lost overall.
               jq --arg p "${PKG}" \
                 '.ArtifactName = $p
-                 | .Results = [.Results[]?
-                     | select(.Target == $p or (.Target | startswith($p + "/")))]' \
+                 | .Results = ([.Results[]?
+                     | select(.Target == $p or (.Target | startswith($p + "/")))]
+                   + [.Results[]?
+                     | select((.Target | contains("/")) | not)
+                     | .Vulnerabilities =
+                         [.Vulnerabilities[]? | select((.PkgPath // "") | startswith($p + "/"))]
+                     | .Packages =
+                         [.Packages[]? | select((.FilePath // "") | startswith($p + "/"))]
+                     # Secrets never appear on aggregate Results (always
+                     # path-targeted Class secret) — dropped so that if
+                     # they ever did, the completeness check would fail
+                     # loudly instead of misattributing them.
+                     | .Secrets = []
+                     | select((.Vulnerabilities | length) + (.Packages | length) > 0)])' \
                 /tmp/trivy-results.json > "${OUT}/${PKG}.trivy.json"
-              trivy convert --format table --output /tmp/pkg-table.txt \
-                "${OUT}/${PKG}.trivy.json" 2>/dev/null || : > /tmp/pkg-table.txt
-              to_ascii /tmp/pkg-table.txt > "${OUT}/${PKG}.trivy.log"
-              if ! [ -s "${OUT}/${PKG}.trivy.log" ]; then
-                echo "No findings (all severities scanned, secret scanning included)." \
+              # A failed table render must not masquerade as a clean one
+              # (the empty-file fallback below writes "No findings"), so it
+              # writes a loud marker instead and fails the step at the end,
+              # after every package was attempted.
+              if ERR=$(trivy convert --format table --output /tmp/pkg-table.txt \
+                         "${OUT}/${PKG}.trivy.json" 2>&1); then
+                to_ascii /tmp/pkg-table.txt > "${OUT}/${PKG}.trivy.log"
+                if ! [ -s "${OUT}/${PKG}.trivy.log" ]; then
+                  echo "No findings (all severities scanned, secret scanning included)." \
+                    > "${OUT}/${PKG}.trivy.log"
+                fi
+              else
+                echo "WARNING: table render failed for ${PKG}: ${ERR}" >&2
+                echo "ERROR: table render failed — see ${PKG}.trivy.json for the findings." \
                   > "${OUT}/${PKG}.trivy.log"
+                STAGE_FAILED=1
               fi
+              # Per-package SBOMs from the same filtered report — same
+              # mechanism as the .log table, no extra scan. Both major
+              # standard formats are published: CycloneDX
+              # (<package>.sbom.cdx.json — the canonical one, and the only
+              # one of the two that embeds the vulnerability findings) and
+              # SPDX 2.3 (<package>.sbom.spdx.json — component inventory
+              # only; the vulnerability data lives in the .trivy.{json,log}
+              # next to it), rendered from the SAME report so they cannot
+              # drift. Written into ${OUT}, so the existing workspace
+              # persist + publish-nightly wholesale copy publish them next
+              # to the package with zero publish-job changes. A package
+              # with no Go/JS payload legitimately renders a valid empty
+              # inventory (the C/C++ components join in a later increment).
+              # A render failure warns per file — so every package is still
+              # attempted — and the deliverable check below then fails the
+              # step: the SBOMs are published deliverables, and a nightly
+              # must not publish without them.
+              for SBOM in "cyclonedx:cdx" "spdx-json:spdx"; do
+                if ! ERR=$(trivy convert --format "${SBOM%%:*}" \
+                       --output "${OUT}/${PKG}.sbom.${SBOM##*:}.json" \
+                       "${OUT}/${PKG}.trivy.json" 2>&1); then
+                  echo "WARNING: ${SBOM%%:*} SBOM render failed for ${PKG}: ${ERR}" >&2
+                  STAGE_FAILED=1
+                fi
+              done
+            done
+            # Split-completeness check: the per-package reports must
+            # jointly account for every finding and every inventory entry
+            # of the combined scan — exactly the invariant the fs→rootfs
+            # switch would otherwise have broken silently for aggregated
+            # targets. A mismatch (content lost by the split, or
+            # double-counted) fails the job instead of publishing
+            # incomplete reports and SBOMs; the combined report stays
+            # available in the job artifacts (orb upload) for debugging.
+            SCAN_FINDINGS=$(jq '[.Results[]? | (.Vulnerabilities[]?, .Secrets[]?)] | length' /tmp/trivy-results.json)
+            SCAN_PACKAGES=$(jq '[.Results[]?.Packages[]?] | length' /tmp/trivy-results.json)
+            SPLIT_FINDINGS=$(jq -s '[.[].Results[]? | (.Vulnerabilities[]?, .Secrets[]?)] | length' "${OUT}"/*.trivy.json)
+            SPLIT_PACKAGES=$(jq -s '[.[].Results[]?.Packages[]?] | length' "${OUT}"/*.trivy.json)
+            if [ "${SCAN_FINDINGS}" != "${SPLIT_FINDINGS}" ] || [ "${SCAN_PACKAGES}" != "${SPLIT_PACKAGES}" ]; then
+              echo "ERROR: per-package split lost or duplicated content:" >&2
+              echo "  findings ${SPLIT_FINDINGS}/${SCAN_FINDINGS}, inventory entries ${SPLIT_PACKAGES}/${SCAN_PACKAGES} (split/combined)" >&2
+              echo "Combined-report targets:" >&2
+              jq -r '.Results[]?.Target' /tmp/trivy-results.json | sort -u >&2
+              exit 1
+            fi
+            # Deliverable check: each package must have staged all four
+            # files, and the SBOMs must be structurally valid.
+            for j in "${OUT}"/*.trivy.json; do
+              B="${j%.trivy.json}"
+              jq -e '.bomFormat == "CycloneDX"' "${B}.sbom.cdx.json" >/dev/null 2>&1 \
+                || { echo "ERROR: missing or invalid CycloneDX SBOM for $(basename "${B}")" >&2; STAGE_FAILED=1; }
+              jq -e '.spdxVersion' "${B}.sbom.spdx.json" >/dev/null 2>&1 \
+                || { echo "ERROR: missing or invalid SPDX SBOM for $(basename "${B}")" >&2; STAGE_FAILED=1; }
             done
             ls -la "${OUT}"
+            if [ "${STAGE_FAILED}" != "0" ]; then
+              echo "ERROR: one or more published deliverables could not be staged (see errors above)" >&2
+              exit 1
+            fi
       - persist_to_workspace:
           root: /tmp/nightly
           paths:
@@ -1079,6 +1321,13 @@ jobs:
           ignore-unfixed: false
           exit-on-eol: "1"
           store-junit-results: true
+          # Setting sbom-output makes the scan run with --list-all-pkgs so
+          # the JSON report carries the FULL package inventory. The
+          # published SBOMs are NOT this file: they are rendered in the
+          # staging step below from the report with the ArtifactName
+          # rewritten to the pushed image ref (this orb-rendered file would
+          # name the internal scan re-tag as its subject).
+          sbom-output: /tmp/trivy-sbom.cdx.json
       # Staged and persisted before the gate so the full report reaches the
       # workspace even when the gate fails (publish is blocked then anyway).
       - run:
@@ -1097,7 +1346,11 @@ jobs:
               sed -e 's/─/-/g' -e 's/│/|/g' \
                   -e 's/┌/+/g' -e 's/┬/+/g' -e 's/┐/+/g' \
                   -e 's/├/+/g' -e 's/┼/+/g' -e 's/┤/+/g' \
-                  -e 's/└/+/g' -e 's/┴/+/g' -e 's/┘/+/g' "$1"
+                  -e 's/└/+/g' -e 's/┴/+/g' -e 's/┘/+/g' \
+                  -e 's/═/=/g' -e 's/║/|/g' \
+                  -e 's/╔/+/g' -e 's/╦/+/g' -e 's/╗/+/g' \
+                  -e 's/╠/+/g' -e 's/╬/+/g' -e 's/╣/+/g' \
+                  -e 's/╚/+/g' -e 's/╩/+/g' -e 's/╝/+/g' "$1"
             }
             VERSION="$(cat /tmp/nightly/nightly-version.txt)"
             if [ "<< parameters.distro >>" = "alpine" ]; then
@@ -1109,14 +1362,77 @@ jobs:
               amd64) TAG_ARCH="amd64" ;;
               arm64) TAG_ARCH="arm64v8" ;;
             esac
+            IMAGE_REF="arangodb/enterprise-preview:${VERSION}${SUFFIX}-${TAG_ARCH}"
             NAME="arangodb_enterprise-preview_${VERSION}${SUFFIX}-${TAG_ARCH}"
             OUT=/tmp/nightly/trivy-reports/docker
             mkdir -p "${OUT}"
-            cp /tmp/trivy-results.json "${OUT}/${NAME}.trivy.json"
-            to_ascii /tmp/trivy-results.txt > "${OUT}/${NAME}.trivy.log"
-            if ! [ -s "${OUT}/${NAME}.trivy.log" ]; then
-              echo "No findings (all severities scanned, secret scanning included)." \
+            STAGE_FAILED=0
+            # The scan ran against the static nightly-security-scan re-tag,
+            # so the raw report self-identifies as that internal tag — in
+            # ArtifactName, RepoTags and the OS Result's Target header.
+            # Everything published must name the pushed image ref instead —
+            # it becomes the SBOMs' subject component (an NTIA minimum
+            # element: primary component name + version) as well as the
+            # report's and the table's artifact headers — so the report is
+            # rewritten once here and every published file derives from the
+            # rewrite. The gate below keeps reading the orb's untouched
+            # /tmp/trivy-results.json.
+            jq --arg ref "${IMAGE_REF}" \
+              '.ArtifactName as $old
+               | .ArtifactName = $ref
+               | .Metadata.RepoTags = [$ref]
+               # Reference flows into the CycloneDX subject properties and
+               # the SPDX annotations; RepoDigests would name the loaded
+               # tar image (the pushed digest does not exist yet).
+               | .Metadata.Reference = $ref
+               | .Metadata.RepoDigests = []
+               | .Results = [(.Results // [])[]
+                   | .Target |= (if startswith($old) then $ref + .[($old | length):] else . end)]' \
+              /tmp/trivy-results.json > /tmp/trivy-results-named.json
+            cp /tmp/trivy-results-named.json "${OUT}/${NAME}.trivy.json"
+            # A failed table render must not masquerade as a clean one (the
+            # empty-file fallback below writes "No findings"), so it writes
+            # a loud marker instead and fails the step at the end.
+            if ERR=$(trivy convert --format table --output /tmp/img-table.txt \
+                       /tmp/trivy-results-named.json 2>&1); then
+              to_ascii /tmp/img-table.txt > "${OUT}/${NAME}.trivy.log"
+              if ! [ -s "${OUT}/${NAME}.trivy.log" ]; then
+                echo "No findings (all severities scanned, secret scanning included)." \
+                  > "${OUT}/${NAME}.trivy.log"
+              fi
+            else
+              echo "WARNING: table render failed: ${ERR}" >&2
+              echo "ERROR: table render failed — see ${NAME}.trivy.json for the findings." \
                 > "${OUT}/${NAME}.trivy.log"
+              STAGE_FAILED=1
+            fi
+            # The SBOMs join the report pair in ${OUT} under the published
+            # naming convention — CycloneDX (<image>.sbom.cdx.json, the
+            # canonical one, and the only one of the two that embeds the
+            # vulnerability findings) and SPDX 2.3 (<image>.sbom.spdx.json
+            # — component inventory only), both converted here from the
+            # rewritten report so subject and content cannot drift:
+            # trivy-reports/docker is copied wholesale into the published
+            # Docker/ directory by publish-nightly, so no publish-job
+            # changes are needed. A render failure warns, and the
+            # deliverable check below then fails the step: the SBOMs are
+            # published deliverables, and a nightly must not publish
+            # without them.
+            for SBOM in "cyclonedx:cdx" "spdx-json:spdx"; do
+              if ! ERR=$(trivy convert --format "${SBOM%%:*}" \
+                     --output "${OUT}/${NAME}.sbom.${SBOM##*:}.json" \
+                     /tmp/trivy-results-named.json 2>&1); then
+                echo "WARNING: ${SBOM%%:*} SBOM render failed: ${ERR}" >&2
+                STAGE_FAILED=1
+              fi
+            done
+            jq -e '.bomFormat == "CycloneDX"' "${OUT}/${NAME}.sbom.cdx.json" >/dev/null 2>&1 \
+              || { echo "ERROR: missing or invalid CycloneDX SBOM" >&2; STAGE_FAILED=1; }
+            jq -e '.spdxVersion' "${OUT}/${NAME}.sbom.spdx.json" >/dev/null 2>&1 \
+              || { echo "ERROR: missing or invalid SPDX SBOM" >&2; STAGE_FAILED=1; }
+            if [ "${STAGE_FAILED}" != "0" ]; then
+              echo "ERROR: one or more published deliverables could not be staged (see errors above)" >&2
+              exit 1
             fi
       - persist_to_workspace:
           root: /tmp/nightly
@@ -1233,6 +1549,17 @@ jobs:
     # the cause and "Rerun from Failed" to republish cleanly. Leftover
     # staging data is cleaned up on success; abandoned staging dirs should be
     # covered by a bucket lifecycle rule on the *-staging prefix.
+    #
+    # pr-run pipelines run this job as a DRY RUN that still exercises as
+    # much of the real path as possible without publishing anything: the
+    # stage phase runs for real (staging is invisible by design — this
+    # genuinely tests GCS auth, the rsync calls and the layout), the commit
+    # phase verifies the staging tree with the same guard a real run uses
+    # and then deletes it instead of promoting; Docker images are loaded
+    # and tagged but never logged in or pushed, so no manifests either; the
+    # Docker/ reports and the regenerated index stay job artifacts instead
+    # of being uploaded. All reports carry a PR TEST RUN marker.
+    #
     # Needs the coredb-nightly-packages context (GCLOUD_SERVICE_KEY_BASE64, DOCKER_USER,
     # DOCKER_PASS).
     docker:
@@ -1284,10 +1611,11 @@ jobs:
                     cp /tmp/nightly/clamav-reports/${src}/${arch}/*.clamav "${STAGE}/${GCS_ARCH[$arch]}/"
                   fi
                 done
-                # Per-package Trivy reports (<package>.trivy.{json,log}) land
-                # next to the packages they cover; the Docker image scan
-                # reports live under trivy-reports/docker and are published
-                # into the Docker/ directory after the commit step instead
+                # Per-package Trivy reports and SBOMs (<package>.trivy.
+                # {json,log}, <package>.sbom.{cdx,spdx}.json) land next to
+                # the packages they cover; the Docker image scan files live
+                # under trivy-reports/docker and are published into the
+                # Docker/ directory after the commit step instead
                 if [ -d "/tmp/nightly/trivy-reports/${arch}" ]; then
                   cp /tmp/nightly/trivy-reports/${arch}/* "${STAGE}/${GCS_ARCH[$arch]}/"
                 fi
@@ -1300,8 +1628,8 @@ jobs:
             # written once and shared: it goes into the published
             # arangodb3e-<VERSION>.txt here and into the combined
             # nightly-publish-report.txt in the final report step.
-            # Supplemental files (.asc, .clamav, .trivy.*) are published too
-            # but not listed (excluded by the globs).
+            # Supplemental files (.asc, .clamav, .trivy.*, .sbom.*) are
+            # published too but not listed (excluded by the globs).
             VERSION="$(cat /tmp/nightly/nightly-version.txt)"
             SECTION=/tmp/package-publish-section.txt
             {
@@ -1326,6 +1654,9 @@ jobs:
               echo "Version:   ${VERSION}"
               echo "Published: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
               echo "Workflow:  ${CIRCLE_WORKFLOW_ID}"
+              # Audit trail: the gate level is picked per run and waivers
+              # change per commit, so each publish records both.
+              echo "Sec. gate: << pipeline.parameters.security-check-fail-level >> (findings at or above this level block a publish unless waived; NONE = report-only; active waivers: $(jq -r --arg today "$(date -u +%F)" '[.waivers[]? | select(.expires >= $today)] | length' /home/circleci/project/.circleci/trivy-gate-waivers.json 2>/dev/null || echo "?") — see .circleci/trivy-gate-waivers.json)"
               echo
               cat "${SECTION}"
             } > "${STAGE}/arangodb3e-${VERSION}.txt"
@@ -1355,6 +1686,9 @@ jobs:
           command: |
             # The pushed refs (incl. digests) are collected across this and
             # the commit step into a publish report stored as a job artifact.
+            # A pr-run still loads and tags the images (validating the
+            # workspace artifacts) but never logs in or pushes.
+            PR_RUN="<< pipeline.parameters.pr-run >>"
             REPORT=/tmp/docker-publish-report.txt
             # Alpine is the suffix-less default image; Ubuntu images
             # carry -deb between version and arch.
@@ -1377,13 +1711,21 @@ jobs:
             IMAGE="arangodb/enterprise-preview"
             REG_PREFIXES=("docker.io/")
 
-            echo "${DOCKER_PASS}" | docker login -u "${DOCKER_USER}" --password-stdin
+            if [ "${PR_RUN}" = "true" ]; then
+              echo "pr-run: skipping registry logins, nothing will be pushed"
+            else
+              echo "${DOCKER_PASS}" | docker login -u "${DOCKER_USER}" --password-stdin
+            fi
             if [ "<< pipeline.parameters.push-images-to-gcr-also >>" = "true" ]; then
-              if [ -z "${GCLOUD_SERVICE_KEY_BASE64:-}" ]; then
-                echo "GCLOUD_SERVICE_KEY_BASE64 is empty; set it in the coredb-nightly-packages context (base64 -w0 of the service-account JSON)"
-                exit 1
+              if [ "${PR_RUN}" != "true" ]; then
+                if [ -z "${GCLOUD_SERVICE_KEY_BASE64:-}" ]; then
+                  echo "GCLOUD_SERVICE_KEY_BASE64 is empty; set it in the coredb-nightly-packages context (base64 -w0 of the service-account JSON)"
+                  exit 1
+                fi
+                echo "${GCLOUD_SERVICE_KEY_BASE64}" | base64 -d | docker login -u _json_key --password-stdin https://gcr.io
               fi
-              echo "${GCLOUD_SERVICE_KEY_BASE64}" | base64 -d | docker login -u _json_key --password-stdin https://gcr.io
+              # kept in a pr-run too, so the dry-run report lists every ref
+              # a real run would push
               REG_PREFIXES+=("${NIGHTLY_GCR_PREFIX:-gcr.io/gcr-for-testing/}")
             fi
 
@@ -1396,6 +1738,9 @@ jobs:
               echo "Distros:    ${DISTROS[*]}"
               echo "Registries: ${REG_PREFIXES[*]}"
               echo "Workflow:   ${CIRCLE_WORKFLOW_ID}"
+              if [ "${PR_RUN}" = "true" ]; then
+                echo "Mode:       PR TEST RUN (dry run - nothing was pushed)"
+              fi
               echo
               echo "Dated per-arch tags (stage phase):"
             } > "${REPORT}"
@@ -1420,7 +1765,11 @@ jobs:
                 REPO="${REG_PREFIX}${IMAGE}"
                 for TAG_ARCH in amd64 arm64v8; do
                   docker tag "${IMAGE}:${VERSION}${SUFFIX}-${TAG_ARCH}" "${REPO}:${VERSION}${SUFFIX}-${TAG_ARCH}"
-                  DIGEST="$(retry docker push "${REPO}:${VERSION}${SUFFIX}-${TAG_ARCH}" | sed -n 's/.*digest: \(sha256:[0-9a-f]*\).*/\1/p' | tail -1)"
+                  if [ "${PR_RUN}" = "true" ]; then
+                    DIGEST="pr-run: not pushed"
+                  else
+                    DIGEST="$(retry docker push "${REPO}:${VERSION}${SUFFIX}-${TAG_ARCH}" | sed -n 's/.*digest: \(sha256:[0-9a-f]*\).*/\1/p' | tail -1)"
+                  fi
                   LINE="  ${REPO}:${VERSION}${SUFFIX}-${TAG_ARCH} (${DIGEST})"
                   echo "${LINE}" >> "${REPORT}"
                   echo "${LINE}" >> "${FRAG}"
@@ -1437,8 +1786,12 @@ jobs:
             # release can be partially visible down to seconds. If it still
             # fails halfway, fix the cause and "Rerun from Failed" - every
             # operation is idempotent, so the job republishes cleanly.
+            # A pr-run stops at the commit point: the staging tree is
+            # verified with the same guard a real run uses and then deleted,
+            # nothing is promoted and no manifests are pushed.
             retry() { "$@" || { sleep 5; "$@"; } || { sleep 15; "$@"; } || { sleep 30; "$@"; }; }
 
+            PR_RUN="<< pipeline.parameters.pr-run >>"
             PACKAGES_SELECTED=true
             if [ "<< pipeline.parameters.build-debian-packages >>" = "false" ] && \
                [ "<< pipeline.parameters.build-rpm-packages >>" = "false" ] && \
@@ -1465,37 +1818,54 @@ jobs:
                 fi
               done
 
-              # Promote the whole <major.minor> tree with delete semantics:
-              # afterwards the live directory contains EXACTLY this one
-              # nightly — older dated packages, legacy platform dirs from the
-              # NAS era and stale index.html files are all removed (the
-              # index is regenerated in the next step). Both arches are
-              # always staged together, so nothing legitimate is deleted.
-              # The Docker/ directory is excluded: it is owned by the
-              # "Publish per-image Docker reports" step (which needs the
-              # manifest digests from this step, so it runs after it) and it
-              # must survive packages-only runs.
-              retry gsutil -m rsync -d -r -x "^Docker/" \
-                "${STAGE_GCS}/${PACKAGES}" \
-                "${DST}/${PACKAGES}"
+              if [ "${PR_RUN}" = "true" ]; then
+                echo "pr-run: staging tree verified; skipping promotion to the live nightly tree and the devel mirror"
+              else
+                # Promote the whole <major.minor> tree with delete semantics:
+                # afterwards the live directory contains EXACTLY this one
+                # nightly — older dated packages, legacy platform dirs from the
+                # NAS era and stale index.html files are all removed (the
+                # index is regenerated in the next step). Both arches are
+                # always staged together, so nothing legitimate is deleted.
+                # The Docker/ directory is excluded: it is owned by the
+                # "Publish per-image Docker reports" step (which needs the
+                # manifest digests from this step, so it runs after it) and it
+                # must survive packages-only runs.
+                retry gsutil -m rsync -d -r -x "^Docker/" \
+                  "${STAGE_GCS}/${PACKAGES}" \
+                  "${DST}/${PACKAGES}"
 
-              # nightly/devel points at the current devel tree. The old NAS
-              # used a filesystem symlink; GCS has no symlinks, so the
-              # pipeline maintains a server-side mirror instead (updated only
-              # when the published tree IS the devel tree). index.html files
-              # are excluded both ways: the regeneration step creates and
-              # owns devel's own index. Docker/ is excluded for the same
-              # reason: the "Publish per-image Docker reports" step below
-              # writes it into both trees itself.
-              if grep -qx "devel-nightly" /tmp/nightly/rolling-tags.txt; then
-                retry gsutil -m rsync -d -r -x "(^|/)index\.html$|^Docker/" \
-                  "${DST}/${PACKAGES}" "${DST}/devel"
+                # nightly/devel points at the current devel tree. The old NAS
+                # used a filesystem symlink; GCS has no symlinks, so the
+                # pipeline maintains a server-side mirror instead (updated only
+                # when the published tree IS the devel tree). index.html files
+                # are excluded both ways: the regeneration step creates and
+                # owns devel's own index. Docker/ is excluded for the same
+                # reason: the "Publish per-image Docker reports" step below
+                # writes it into both trees itself.
+                if grep -qx "devel-nightly" /tmp/nightly/rolling-tags.txt; then
+                  retry gsutil -m rsync -d -r -x "(^|/)index\.html$|^Docker/" \
+                    "${DST}/${PACKAGES}" "${DST}/devel"
+                fi
               fi
             fi
 
             DISTROS=()
             if [ "<< pipeline.parameters.build-alpine-images >>" = "true" ]; then DISTROS+=("alpine"); fi
             if [ "<< pipeline.parameters.build-deb-images >>" = "true" ]; then DISTROS+=("deb"); fi
+            if [ "${PR_RUN}" = "true" ] && [ ${#DISTROS[@]} -gt 0 ]; then
+              # dry run: the dated per-arch tags were never pushed, so there
+              # is nothing to assemble manifests from. Write the report
+              # placeholders (the per-image reports step cats the per-distro
+              # fragments) and skip the manifest block below.
+              REPORT=/tmp/docker-publish-report.txt
+              printf '\nMulti-arch manifest tags (what users pull):\n' >> "${REPORT}"
+              echo "  (pr-run: not created - the dated per-arch tags were never pushed)" >> "${REPORT}"
+              for DISTRO in "${DISTROS[@]}"; do
+                echo "  (pr-run: manifests not created)" > "/tmp/docker-commit-${DISTRO}.txt"
+              done
+              DISTROS=()
+            fi
             if [ ${#DISTROS[@]} -gt 0 ]; then
               set -x
               VERSION="$(cat /tmp/nightly/nightly-version.txt)"
@@ -1541,7 +1911,8 @@ jobs:
             if [ "${PACKAGES_SELECTED}" = "true" ]; then
               # Best-effort cleanup; abandoned staging dirs (from runs that
               # never reached this point) should be reaped by a bucket
-              # lifecycle rule on the *-staging prefix.
+              # lifecycle rule on the *-staging prefix. In a pr-run this
+              # doubles as the discard of the dry run.
               gsutil -m rm -r "${STAGE_GCS}" || true
             fi
       - run:
@@ -1551,13 +1922,16 @@ jobs:
             # enterprise-preview:<VERSION>[-<distro>] with / and : mapped to
             # _ — carrying that image's slice of nightly-publish-report.txt:
             # the dated per-arch pushes and the multi-arch manifest tags,
-            # each with digests. The per-arch Trivy scan reports
-            # (<image>-<amd64|arm64v8>.trivy.{json,log}) are published next
-            # to it. Everything lands in <major.minor>/Docker/ (and in the
+            # each with digests. The per-arch Trivy scan reports and SBOMs
+            # (<image>-<amd64|arm64v8>.trivy.{json,log} and
+            # .sbom.{cdx,spdx}.json) are published next to it. Everything
+            # lands in <major.minor>/Docker/ (and in the
             # devel mirror when this nightly is the devel one) — after the
             # commit step, because the manifest digests only exist then.
             # Created even when skipping, so the store_artifacts step below
-            # always has a path to store.
+            # always has a path to store. In a pr-run the reports are
+            # generated (and stored as artifacts) but not uploaded to GCS.
+            PR_RUN="<< pipeline.parameters.pr-run >>"
             OUT=/tmp/docker-reports
             mkdir -p "${OUT}"
 
@@ -1585,6 +1959,10 @@ jobs:
                 echo "Base:      ${DISTRO}"
                 echo "Published: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
                 echo "Workflow:  ${CIRCLE_WORKFLOW_ID}"
+                if [ "${PR_RUN}" = "true" ]; then
+                  echo "Mode:      PR TEST RUN (dry run - image was NOT published)"
+                fi
+                echo "Sec. gate: << pipeline.parameters.security-check-fail-level >> (findings at or above this level block a publish unless waived; NONE = report-only; active waivers: $(jq -r --arg today "$(date -u +%F)" '[.waivers[]? | select(.expires >= $today)] | length' /home/circleci/project/.circleci/trivy-gate-waivers.json 2>/dev/null || echo "?") — see .circleci/trivy-gate-waivers.json)"
                 echo
                 echo "Dated per-arch tags (stage phase):"
                 cat "/tmp/docker-stage-${DISTRO}.txt"
@@ -1603,12 +1981,16 @@ jobs:
             ls -la "${OUT}"
 
             retry() { "$@" || { sleep 5; "$@"; } || { sleep 15; "$@"; } || { sleep 30; "$@"; }; }
-            # Delete semantics within Docker/ only: afterwards it contains
-            # exactly this run's reports (the promote/mirror rsyncs in the
-            # commit step exclude Docker/, so this step is its sole owner).
-            retry gsutil -m rsync -d "${OUT}" "${DST}/${PACKAGES}/Docker"
-            if grep -qx "devel-nightly" /tmp/nightly/rolling-tags.txt; then
-              retry gsutil -m rsync -d "${OUT}" "${DST}/devel/Docker"
+            if [ "${PR_RUN}" = "true" ]; then
+              echo "pr-run: Docker reports kept as job artifacts only, not uploaded to ${DST}/${PACKAGES}/Docker"
+            else
+              # Delete semantics within Docker/ only: afterwards it contains
+              # exactly this run's reports (the promote/mirror rsyncs in the
+              # commit step exclude Docker/, so this step is its sole owner).
+              retry gsutil -m rsync -d "${OUT}" "${DST}/${PACKAGES}/Docker"
+              if grep -qx "devel-nightly" /tmp/nightly/rolling-tags.txt; then
+                retry gsutil -m rsync -d "${OUT}" "${DST}/devel/Docker"
+              fi
             fi
       - store_artifacts:
           path: /tmp/docker-reports
@@ -1621,7 +2003,9 @@ jobs:
             # written by the stage step, which is also published standalone
             # as <major.minor>/Linux/arangodb3e-<VERSION>.txt — and the Docker
             # refs collected by the stage/commit steps. Supplemental files
-            # (.asc, .clamav, .trivy.*) are published too but not listed.
+            # (.asc, .clamav, .trivy.*, .sbom.*) are published too but not
+            # listed.
+            PR_RUN="<< pipeline.parameters.pr-run >>"
             REPORT=/tmp/nightly-publish-report.txt
             VERSION="$(cat /tmp/nightly/nightly-version.txt)"
             {
@@ -1630,6 +2014,10 @@ jobs:
               echo "Version:   ${VERSION}"
               echo "Published: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
               echo "Workflow:  ${CIRCLE_WORKFLOW_ID}"
+              if [ "${PR_RUN}" = "true" ]; then
+                echo "Mode:      PR TEST RUN - dry run, NOTHING was actually published"
+              fi
+              echo "Sec. gate: << pipeline.parameters.security-check-fail-level >> (findings at or above this level block a publish unless waived; NONE = report-only; active waivers: $(jq -r --arg today "$(date -u +%F)" '[.waivers[]? | select(.expires >= $today)] | length' /home/circleci/project/.circleci/trivy-gate-waivers.json 2>/dev/null || echo "?") — see .circleci/trivy-gate-waivers.json)"
             } > "${REPORT}"
 
             if [ -s /tmp/package-publish-section.txt ]; then
@@ -1651,6 +2039,9 @@ jobs:
             # The Docker/ report directory is part of the indexed tree, so
             # the index is regenerated whenever anything was published to
             # GCS — packages or Docker image reports.
+            # Created unconditionally so the store_artifacts step below
+            # always has a path to store.
+            mkdir -p /tmp/nightly-index
             if [ "<< pipeline.parameters.build-debian-packages >>" = "false" ] && \
                [ "<< pipeline.parameters.build-rpm-packages >>" = "false" ] && \
                [ "<< pipeline.parameters.build-tarballs >>" = "false" ] && \
@@ -1669,8 +2060,18 @@ jobs:
               --prefix "/${DST##*/}" \
               --listing /tmp/nightly-listing.txt \
               --out /tmp/nightly-index
+            if [ "<< pipeline.parameters.pr-run >>" = "true" ]; then
+              # a pr-run published nothing, so the live index is still
+              # correct; generating it above smoke-tests the listing and the
+              # generator, and the result stays a job artifact
+              echo "pr-run: index generated for inspection only, not uploaded"
+              exit 0
+            fi
             cd /tmp/nightly-index
             gsutil -m cp -r ./* "${DST}/"
+      - store_artifacts:
+          path: /tmp/nightly-index
+          destination: reports/nightly-index
 
 workflows:
   nightly-packages:
