@@ -1090,7 +1090,7 @@ static void ClientConnection_reconnect(
 
   V8SecurityFeature& v8security =
       v8connection->server().getFeature<V8SecurityFeature>();
-  if (!v8security.isAllowedToConnectToEndpoint(isolate, endpoint, endpoint)) {
+  if (!v8security.isAllowedToConnectToUrl(isolate, endpoint)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
         TRI_ERROR_FORBIDDEN,
         absl::StrCat("not allowed to connect to this endpoint", endpoint));
