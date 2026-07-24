@@ -28,7 +28,7 @@ function resolveYamlFloat (data) {
     return false
   }
 
-  if (Number.isFinite(parseFloat(data, 10))) {
+  if (isFinite(parseFloat(data, 10))) {
     return true
   }
 
