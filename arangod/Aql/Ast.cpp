@@ -4198,8 +4198,9 @@ AstNode* Ast::optimizeFor(AstNode* node) {
 }
 
 void Ast::clearObjectOptimizationFlags(AstNode* node) {
-  TRI_ASSERT(node != nullptr);
-  TRI_ASSERT(node->type == NODE_TYPE_OBJECT);
+  if (node == nullptr || node->type != NODE_TYPE_OBJECT) {
+    return;
+  }
 
   node->removeFlag(DETERMINED_CONSTANT);
   node->removeFlag(VALUE_CONSTANT);
@@ -4212,25 +4213,21 @@ void Ast::flattenObjectLiteralMemberValues(AstNode* node) {
   for (size_t i = 0; i < n; ++i) {
     AstNode* member = node->getMemberUnchecked(i);
 
+    size_t valueIndex;
     if (member->type == NODE_TYPE_OBJECT_ELEMENT) {
-      AstNode* value = member->getMemberUnchecked(0);
-      if (value != nullptr && value->type == NODE_TYPE_OBJECT) {
-        AstNode* flattened = flattenObjectLiteralSplices(value);
-        if (flattened != value) {
-          TEMPORARILY_UNLOCK_NODE(member);
-          member->changeMember(0, flattened);
-        }
-      }
+      valueIndex = 0;
     } else if (member->type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT) {
-      AstNode* value = member->getMemberUnchecked(1);
-      if (value != nullptr && value->type == NODE_TYPE_OBJECT) {
-        AstNode* flattened = flattenObjectLiteralSplices(value);
-        if (flattened != value) {
-          TEMPORARILY_UNLOCK_NODE(member);
-          member->changeMember(1, flattened);
-        }
-      }
+      valueIndex = 1;
+    } else {
+      continue;
     }
+
+    AstNode* value = member->getMemberUnchecked(valueIndex);
+    if (value == nullptr || value->type != NODE_TYPE_OBJECT) {
+      continue;
+    }
+
+    flattenObjectLiteralSplices(value);
   }
 }
 
@@ -4253,7 +4250,7 @@ AstNode* Ast::flattenObjectLiteralSplices(AstNode* node) {
   for (size_t i = 0; i < n; ++i) {
     AstNode* member = node->getMemberUnchecked(i);
 
-    if (member->type == NODE_TYPE_OBJECT_SPLICE) {
+    if (member != nullptr && member->type == NODE_TYPE_OBJECT_SPLICE) {
       AstNode* source = member->getMemberUnchecked(0);
       if (source == nullptr || source->type != NODE_TYPE_OBJECT) {
         newMembers.push_back(member);

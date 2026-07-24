@@ -1200,7 +1200,7 @@ AqlValue::AqlValue(int64_t low, int64_t high) {
 
 AqlValue AqlValue::fromOwnedMallocSlice(uint8_t* data, size_t length) {
   TRI_ASSERT(data != nullptr);
-  TRI_ASSERT(length > sizeof(AqlValue));
+  TRI_ASSERT(length > sizeof(_data.inlineSliceMeta.slice));
   AqlValue result;
   result.setManagedSliceData(MemoryOriginType::Malloc,
                              static_cast<velocypack::ValueLength>(length));
