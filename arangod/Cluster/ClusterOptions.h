@@ -31,14 +31,17 @@
 namespace arangodb {
 
 struct ClusterOptions {
-  // works out the role from these options alone, doesn't touch ServerState
+  // works out the role from these options alone, doesn't touch ServerState.
+  // runs during the processOptions phase, before ClusterOptionsProvider's own
+  // validateOptionsImpl, so this parses myRole itself rather than relying on
+  // requestedRole (which validateOptionsImpl still fills in, for its own
+  // FATAL check on disallowed roles).
   ServerState::RoleEnum resolveRole() const {
     if (!enableCluster) {
       return ServerState::ROLE_SINGLE;
     }
     if (!myRole.empty()) {
-      // already resolved and validated by ClusterOptionsProvider
-      return requestedRole;
+      return ServerState::stringToRole(myRole);
     }
     return ServerState::ROLE_UNDEFINED;
   }

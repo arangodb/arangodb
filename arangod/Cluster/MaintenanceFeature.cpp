@@ -175,7 +175,7 @@ MaintenanceFeature::MaintenanceFeature(ApplicationServer& server,
   // initialize all members properly
 
   // this feature has to know the role of this server in its `start` method.
-  // the role is resolved by ArangodServer::afterOptionProvidersValidated()
+  // the role is resolved by ArangodServer::processOptions()
   // before any feature gets constructed, so the following line isn't
   // actually required for that. For philosophical reasons we added it to
   // the ClusterPhase and let it start after `Cluster`.

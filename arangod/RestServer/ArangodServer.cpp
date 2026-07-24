@@ -57,7 +57,8 @@ auto const kNonServerFeatures =
                std::type_index(typeid(StatisticsFeature))};
 }  // namespace
 
-void ArangodServer::afterOptionProvidersValidated() {
+void ArangodServer::processOptions() {
+  OptionProvidingServer<ArangodOptionProviders>::processOptions();
   auto role = getOptions<ClusterOptionsProvider>().resolveRole();
   auto agencyRole = getOptions<AgencyOptionsProvider>().resolveRole();
   if (agencyRole != ServerState::ROLE_UNDEFINED) {

@@ -52,7 +52,7 @@ class ArangodServer : public OptionProvidingServer<ArangodOptionProviders> {
 
   // resolves ServerState's role from Agency/Cluster options before any
   // still-unmigrated feature's own validateOptions() gets a chance to read it
-  void afterOptionProvidersValidated() final;
+  void processOptions() final;
 
  private:
   std::shared_ptr<crash_handler::DumpManager> _dumpManager;
