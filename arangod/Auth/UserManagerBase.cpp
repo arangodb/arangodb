@@ -266,7 +266,7 @@ Level UserManagerBase::collectionAuthLevel(std::string_view user,
   }
 
   TRI_ASSERT(!coll.empty());
-  Level level;
+  Level level = Level::UNDEFINED;
   if (coll[0] >= '0' && coll[0] <= '9') {
     std::string tmpColl = translateCollectionName(dbname, coll);
     level = it->second.collectionAuthLevel(dbname, tmpColl);

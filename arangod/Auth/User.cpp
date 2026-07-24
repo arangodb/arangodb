@@ -706,6 +706,7 @@ auth::Level auth::User::configuredCollectionAuthLevel(
 }
 
 auth::Level auth::User::databaseAuthLevel(std::string_view dbname) const {
+  // Will not return Level::UNDEFINED!
   auth::Level lvl = configuredDBAuthLevel(dbname);
   if (lvl == auth::Level::UNDEFINED && dbname != "*") {
     // take best from wildcard or _system
@@ -725,6 +726,7 @@ auth::Level auth::User::databaseAuthLevel(std::string_view dbname) const {
 }
 
 /// Find the access level for a collection. Will automatically try to fall back
+/// Must not return Level::UNDEFINED!
 auth::Level auth::User::collectionAuthLevel(std::string_view dbname,
                                             std::string_view cname) const {
   if (cname.empty() || (dbname == "*" && cname != "*")) {
@@ -756,14 +758,14 @@ auth::Level auth::User::collectionAuthLevel(std::string_view dbname,
       // Second try to find a specific grant
       auto pair = it->second._collectionAccess.find(cname);
       if (pair != it->second._collectionAccess.end()) {
-        return pair->second;  // found specific collection grant
+        return std::max(pair->second, lvl);  // found specific collection grant
       } else if (cname == "*") {
         // skip special rules for wildcard
         return auth::Level::NONE;
       }
 
       // Fallback step 1.
-      lvl = it->second._databaseAuthLevel;
+      lvl = std::max(it->second._databaseAuthLevel, lvl);
       pair = it->second._collectionAccess.find("*");
       if (pair != it->second._collectionAccess.end()) {
         // found wildcard collection grant, take better default
