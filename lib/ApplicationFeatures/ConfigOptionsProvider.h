@@ -38,12 +38,10 @@ struct ConfigOptionsProvider
     : OptionsProviderImpl<ConfigOptionsProvider, ConfigFeatureOptions> {
   void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
                           ConfigFeatureOptions& options);
+  void processOptionsImpl(std::shared_ptr<options::ProgramOptions> progOpts,
+                          ConfigFeatureOptions& configOpts);
   void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> /*opts*/,
                            ConfigFeatureOptions& /*options*/) {}
-
-  void loadConfiguration(
-      std::shared_ptr<options::ProgramOptions> programOptions,
-      char const* binaryPath, std::string_view progname, bool versionRequested);
 };
 
 }  // namespace arangodb

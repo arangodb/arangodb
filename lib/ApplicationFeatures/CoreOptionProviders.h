@@ -55,8 +55,6 @@ inline void loadConfigAndEarlyLoggerOptions(
     std::shared_ptr<options::ProgramOptions> const& programOptions,
     char const* binaryPath, std::string const& binaryName) {
   Logger::setLogLevel(loggerProvider.options().levels);
-  configProvider.loadConfiguration(programOptions, binaryPath, binaryName,
-                                   versionRequested);
 }
 
 }  // namespace arangodb

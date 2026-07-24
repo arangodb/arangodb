@@ -77,40 +77,47 @@ void ConfigOptionsProvider::declareOptionsImpl(
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 }
 
-void ConfigOptionsProvider::loadConfiguration(
-    std::shared_ptr<options::ProgramOptions> programOptions,
-    char const* binaryPath, std::string_view progname, bool versionRequested) {
-  auto& opts = options();
+void ConfigOptionsProvider::processOptionsImpl(
+    std::shared_ptr<options::ProgramOptions> progOpts,
+    ConfigFeatureOptions& configOpts) {
+  char const* binaryPath = progOpts->binaryPath();
+  auto const& result = progOpts->processingResult();
+  bool const versionRequested =
+      result.touched("version") || result.touched("verson-json");
 
-  if (opts.progname.empty()) {
-    opts.progname = std::string{progname};
+  if (configOpts.progname.empty() && ArangoGlobalContext::CONTEXT != nullptr) {
+    configOpts.progname = ArangoGlobalContext::CONTEXT->binaryName();
   }
 
-  for (auto const& def : opts.defines) {
+  for (auto const& def : configOpts.defines) {
     options::DefineEnvironment(def);
   }
 
-  if (StringUtils::tolower(opts.file) == "none") {
+  if (configOpts.progname.empty()) {
+    configOpts.progname = std::string{progOpts->progname()};
+  }
+
+  if (StringUtils::tolower(configOpts.file) == "none") {
     LOG_TOPIC("6cb22", DEBUG, Logger::CONFIG) << "using no config file at all";
-  } else if (!opts.file.empty()) {
+  } else if (!configOpts.file.empty()) {
     // always prefer an explicitly given config file
     std::error_code existsEc;
-    if (!std::filesystem::exists(opts.file, existsEc)) {
+    if (!std::filesystem::exists(configOpts.file, existsEc)) {
       if (existsEc) {
         LOG_TOPIC("f21fa", FATAL, Logger::CONFIG)
-            << "error checking config file '" << opts.file
+            << "error checking config file '" << configOpts.file
             << "': " << existsEc.message();
         FATAL_ERROR_EXIT_CODE(TRI_EXIT_CONFIG_NOT_FOUND);
       } else {
         LOG_TOPIC("f21f9", FATAL, Logger::CONFIG)
-            << "cannot read config file '" << opts.file << "'";
+            << "cannot read config file '" << configOpts.file << "'";
         FATAL_ERROR_EXIT_CODE(TRI_EXIT_CONFIG_NOT_FOUND);
       }
     }
 
-    auto local = opts.file + ".local";
+    auto local = configOpts.file + ".local";
 
-    IniFileParser parser(programOptions.get());
+    IniFileParser parser(progOpts.get());
 
     std::error_code pathEc;
     if (std::filesystem::is_regular_file(local, pathEc)) {
@@ -118,17 +125,15 @@ void ConfigOptionsProvider::loadConfiguration(
           << "loading override '" << local << "'";
 
       if (!parser.parse(local, true)) {
-        FATAL_ERROR_EXIT_CODE(
-            programOptions->processingResult().exitCodeOrFailure());
+        FATAL_ERROR_EXIT_CODE(progOpts->processingResult().exitCodeOrFailure());
       }
     }
 
     LOG_TOPIC("637c7", DEBUG, Logger::CONFIG)
-        << "using user supplied config file '" << opts.file << "'";
+        << "using user supplied config file '" << configOpts.file << "'";
 
-    if (!parser.parse(opts.file, true)) {
-      FATAL_ERROR_EXIT_CODE(
-          programOptions->processingResult().exitCodeOrFailure());
+    if (!parser.parse(configOpts.file, true)) {
+      FATAL_ERROR_EXIT_CODE(progOpts->processingResult().exitCodeOrFailure());
     }
   } else {
     // clang-format off
@@ -145,8 +150,8 @@ void ConfigOptionsProvider::loadConfiguration(
     bool const fatal = !versionRequested;
 
     auto context = ArangoGlobalContext::CONTEXT;
-    std::string basename = opts.progname;
-    bool checkArangoImp = (opts.progname == "arangoimport");
+    std::string basename = configOpts.progname;
+    bool checkArangoImp = (configOpts.progname == "arangoimport");
 
     if (!basename.ends_with(".conf")) {
       basename += ".conf";
@@ -223,7 +228,7 @@ void ConfigOptionsProvider::loadConfiguration(
           << "cannot find any config file";
     }
 
-    IniFileParser parser(programOptions.get());
+    IniFileParser parser(progOpts.get());
     std::string local = filename + ".local";
 
     LOG_TOPIC("f6420", TRACE, Logger::CONFIG)
@@ -235,8 +240,7 @@ void ConfigOptionsProvider::loadConfiguration(
           << "loading override '" << local << "'";
 
       if (!parser.parse(local, true)) {
-        FATAL_ERROR_EXIT_CODE(
-            programOptions->processingResult().exitCodeOrFailure());
+        FATAL_ERROR_EXIT_CODE(progOpts->processingResult().exitCodeOrFailure());
       }
     } else {
       LOG_TOPIC("d601e", TRACE, Logger::CONFIG) << "no override file found";
@@ -255,19 +259,17 @@ void ConfigOptionsProvider::loadConfiguration(
           locationMsg += "'" + FileUtils::buildFilename(it, basename) + "'";
         }
         locationMsg += ")";
-        programOptions->failNotice(
+        progOpts->failNotice(
             TRI_EXIT_CONFIG_NOT_FOUND,
             "cannot find configuration file\n\n" + locationMsg);
-        FATAL_ERROR_EXIT_CODE(
-            programOptions->processingResult().exitCodeOrFailure());
+        FATAL_ERROR_EXIT_CODE(progOpts->processingResult().exitCodeOrFailure());
       }
     } else if (!parser.parse(filename, true)) {
-      FATAL_ERROR_EXIT_CODE(
-          programOptions->processingResult().exitCodeOrFailure());
+      FATAL_ERROR_EXIT_CODE(progOpts->processingResult().exitCodeOrFailure());
     }
   }
 
-  if (opts.checkConfiguration) {
+  if (configOpts.checkConfiguration) {
     exit(EXIT_SUCCESS);
   }
 }
