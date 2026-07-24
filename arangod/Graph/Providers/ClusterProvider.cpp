@@ -26,6 +26,7 @@
 #include "Aql/ExecutionBlock.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/QueryContext.h"
+#include "Aql/QueryWarnings.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
@@ -94,11 +95,13 @@ ClusterProviderStep::FetchedType getFetchedType(bool vertexFetched,
 
 template<class StepImpl>
 ClusterProvider<StepImpl>::ClusterProvider(
-    arangodb::aql::QueryContext& queryContext, ClusterBaseProviderOptions opts,
-    arangodb::ResourceMonitor& resourceMonitor)
+    arangodb::aql::QueryContext& queryContext,
+    arangodb::aql::QueryWarnings* warningRegistry,
+    ClusterBaseProviderOptions opts, arangodb::ResourceMonitor& resourceMonitor)
     : _trx(std::make_unique<arangodb::transaction::Methods>(
           queryContext.newTrxContext())),
       _query(&queryContext),
+      _warningRegistry(warningRegistry),
       _resourceMonitor(&resourceMonitor),
       _opts(std::move(opts)),
       _stats{} {}
@@ -260,8 +263,8 @@ void ClusterProvider<StepImpl>::fetchVerticesFromEngines(
     if (!_opts.getCache()->isVertexCached(vertexId)) {
       // if we end up here. We were not able to cache the requested vertex
       // (e.g. it does not exist)
-      _query->warnings().registerWarning(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND,
-                                         vertexId.toString());
+      _warningRegistry->registerWarning(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND,
+                                        vertexId.toString());
       _opts.getCache()->cacheVertex(vertexId, VPackSlice::nullSlice());
     }
     result.emplace_back(looseEnd);

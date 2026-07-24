@@ -22,6 +22,7 @@
 
 #pragma once
 
+#include "Aql/QueryWarnings.h"
 #include "Graph/EdgeDocumentToken.h"
 #include "Graph/Providers/BaseProviderOptions.h"
 #include "Graph/Providers/BaseStep.h"
@@ -47,7 +48,8 @@ class Future;
 
 namespace aql {
 class QueryContext;
-}
+class QueryWarnings;
+}  // namespace aql
 
 namespace velocypack {
 class Builder;
@@ -72,6 +74,7 @@ class ClusterProvider {
 
  public:
   ClusterProvider(arangodb::aql::QueryContext& queryContext,
+                  arangodb::aql::QueryWarnings* warningRegistry,
                   ClusterBaseProviderOptions opts,
                   arangodb::ResourceMonitor& resourceMonitor);
   ClusterProvider(ClusterProvider const&) = delete;
@@ -139,6 +142,7 @@ class ClusterProvider {
   std::unique_ptr<arangodb::transaction::Methods> _trx;
 
   arangodb::aql::QueryContext* _query;
+  arangodb::aql::QueryWarnings* _warningRegistry;
 
   arangodb::ResourceMonitor* _resourceMonitor;
 

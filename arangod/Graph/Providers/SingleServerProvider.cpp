@@ -24,6 +24,7 @@
 
 #include "Aql/ExecutionBlock.h"
 #include "Aql/QueryContext.h"
+#include "Aql/QueryWarnings.h"
 #include "Aql/TraversalStats.h"
 #include "Futures/Future.h"
 #include "Futures/Utilities.h"
@@ -80,6 +81,7 @@ void SingleServerProvider<Step>::addEdgeToLookupMap(
 template<class Step>
 SingleServerProvider<Step>::SingleServerProvider(
     arangodb::aql::QueryContext& queryContext,
+    arangodb::aql::QueryWarnings* warningRegistry,
     SingleServerBaseProviderOptions opts,
     arangodb::ResourceMonitor& resourceMonitor)
     : _monitor(resourceMonitor),
@@ -88,7 +90,7 @@ SingleServerProvider<Step>::SingleServerProvider(
       _opts(std::move(opts)),
       _stats(std::make_unique<aql::TraversalStats>()),
       _cache(resourceMonitor),
-      _vertexLookup(_trx.get(), &queryContext, _opts.getVertexProjections(),
+      _vertexLookup(_trx.get(), warningRegistry, _opts.getVertexProjections(),
                     _opts.collectionToShardMap(), _stats,
                     ServerState::instance()->isSingleServer() &&
                         !queryContext.vocbase()

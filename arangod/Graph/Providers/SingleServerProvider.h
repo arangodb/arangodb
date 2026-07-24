@@ -72,7 +72,9 @@ class SingleServerProvider {
   using Step = StepType;
   using NeighbourCursor = SingleServerNeighbourCursor<Step>;
 
-  SingleServerProvider(arangodb::aql::QueryContext& queryContext, Options opts,
+  SingleServerProvider(arangodb::aql::QueryContext& queryContext,
+                       arangodb::aql::QueryWarnings* warningRegistry,
+                       Options opts,
                        arangodb::ResourceMonitor& resourceMonitor);
   SingleServerProvider(SingleServerProvider const&) = delete;
   SingleServerProvider(SingleServerProvider&&) = default;

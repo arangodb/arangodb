@@ -2,6 +2,7 @@
 
 #include <velocypack/HashedStringRef.h>
 #include "Aql/Projections.h"
+#include "Aql/QueryWarnings.h"
 #include "Basics/MemoryTypes/MemoryTypes.h"
 #include "velocypack/Builder.h"
 #include "Indexes/IndexIterator.h"
@@ -12,13 +13,13 @@ namespace arangodb::graph {
 
 struct VertexLookup {
   explicit VertexLookup(
-      transaction::Methods* trx, aql::QueryContext* queryCtx,
+      transaction::Methods* trx, aql::QueryWarnings* warningRegistry,
       aql::Projections const& projections,
       MonitoredCollectionToShardMap const& collectionToShardMap,
       std::shared_ptr<aql::TraversalStats> stats,
       bool allowImplicitVertexCollections, bool produceVertices)
       : _trx(std::move(trx)),
-        _queryCtx(queryCtx),
+        _warningRegistry(warningRegistry),
         _projections(projections),
         _collectionToShardMap(collectionToShardMap),
         _stats(std::move(stats)),
@@ -47,7 +48,7 @@ struct VertexLookup {
 
  private:
   transaction::Methods* _trx;
-  aql::QueryContext* _queryCtx;
+  aql::QueryWarnings* _warningRegistry;
   aql::Projections const& _projections;
   MonitoredCollectionToShardMap const& _collectionToShardMap;
   std::shared_ptr<aql::TraversalStats> _stats;

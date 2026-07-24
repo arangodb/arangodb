@@ -139,8 +139,8 @@ auto VertexLookup::appendVertex(velocypack::HashedStringRef id,
 
   // Register a warning. It is okay though but helps the user
   std::string msg = "vertex '" + id.toString() + "' not found";
-  _queryCtx->warnings().registerWarning(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND,
-                                        msg.c_str());
+  _warningRegistry->registerWarning(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND,
+                                    msg.c_str());
   // This is expected, we may have dangling edges. Interpret as NULL
   return false;
 }

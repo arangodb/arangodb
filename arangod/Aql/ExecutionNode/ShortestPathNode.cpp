@@ -341,9 +341,11 @@ std::unique_ptr<ExecutionBlock> ShortestPathNode::makeExecutionBlockImpl(
     ExecutionEngine& engine, InputVertex sourceInput, InputVertex targetInput,
     RegisterInfos registerInfos) const {
   auto shortestPathFinder = std::make_unique<ShortestPath>(
-      Provider{opts->query(), std::move(forwardProviderOptions),
+      Provider{opts->query(), &opts->query().warnings(),
+               std::move(forwardProviderOptions),
                opts->query().resourceMonitor()},
-      Provider{opts->query(), std::move(backwardProviderOptions),
+      Provider{opts->query(), &opts->query().warnings(),
+               std::move(backwardProviderOptions),
                opts->query().resourceMonitor()},
       std::move(enumeratorOptions), std::move(validatorOptions),
       opts->query().resourceMonitor());

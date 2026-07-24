@@ -42,7 +42,8 @@ using namespace arangodb::graph;
       BaseEnumeratorType<ProviderType, VertexUniqueness, EdgeUniqueness>>( \
       typename BaseEnumeratorType<                                         \
           ProviderType, VertexUniqueness,                                  \
-          EdgeUniqueness>::Provider(query, std::move(baseProviderOptions), \
+          EdgeUniqueness>::Provider(query, &query.warnings(),              \
+                                    std::move(baseProviderOptions),        \
                                     query.resourceMonitor()),              \
       std::move(enumeratorOptions), std::move(pathValidatorOptions),       \
       query.resourceMonitor());
@@ -115,7 +116,7 @@ auto TraversalEnumerator::createEnumerator(
       ProviderName::Options && baseProviderOptions,                    \
       arangodb::graph::PathValidatorOptions && pathValidatorOptions,   \
       arangodb::graph::OneSidedEnumeratorOptions && enumeratorOptions) \
-      ->std::unique_ptr<TraversalEnumerator>;
+      -> std::unique_ptr<TraversalEnumerator>;
 
 INSTANTIATE_FACTORY(
     arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>)
