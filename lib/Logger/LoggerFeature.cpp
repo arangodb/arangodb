@@ -46,10 +46,10 @@ namespace arangodb {
 
 LoggerFeature::LoggerFeature(application_features::ApplicationServer& server,
                              bool threaded, LoggerOptions loggerOpts,
-                             LogApiOptions logApiOpts)
+                             ServerLoggerOptions serverLoggerOpts)
     : ApplicationFeature(server, *this),
       _loggerOpts(std::move(loggerOpts)),
-      _logApiOpts(std::move(logApiOpts)),
+      _serverLoggerOpts(std::move(serverLoggerOpts)),
       _threaded(threaded) {
   startsAfter<ShellColorsFeature>();
   startsAfter<VersionFeature>();
@@ -58,14 +58,14 @@ LoggerFeature::LoggerFeature(application_features::ApplicationServer& server,
 
 LoggerFeature::LoggerFeature(application_features::ApplicationServer& server,
                              bool threaded)
-    : LoggerFeature(server, threaded, LoggerOptions{}, LogApiOptions{}) {}
+    : LoggerFeature(server, threaded, LoggerOptions{}, ServerLoggerOptions{}) {}
 
 LoggerFeature::LoggerFeature(application_features::ApplicationServer& server,
                              std::type_index registration, bool threaded,
                              LoggerOptions loggerOpts)
     : ApplicationFeature(server, registration, name()),
       _loggerOpts(std::move(loggerOpts)),
-      _logApiOpts(LogApiOptions{}),
+      _serverLoggerOpts(ServerLoggerOptions{}),
       _threaded(threaded) {
   // note: we use the _threaded option to determine whether we are arangod
   // (_threaded = true) or one of the client tools (_threaded = false). in
@@ -98,7 +98,7 @@ void LoggerFeature::prepare() {
   Logger::setShowThreadName(_loggerOpts.threadName);
   Logger::setOutputPrefix(_loggerOpts.prefix);
   Logger::setHostname(_loggerOpts.hostname);
-  Logger::setKeepLogrotate(_loggerOpts.keepLogRotate);
+  Logger::setKeepLogrotate(_serverLoggerOpts.keepLogRotate);
   Logger::setLogRequestParameters(_loggerOpts.logRequestParameters);
   Logger::setUseJson(_loggerOpts.useJson);
 

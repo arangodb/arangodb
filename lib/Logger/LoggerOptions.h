@@ -51,7 +51,6 @@ struct LoggerOptions {
   bool threadId = true;
   bool threadName = false;
   bool performance = false;
-  bool keepLogRotate = false;
   bool foregroundTty = false;
   bool forceDirect = false;
   bool useMicrotime = false;

@@ -172,7 +172,7 @@ void ArangodServer::addFeaturesWithOptionProvider() {
 
   addFeature<VersionFeature>(getOptions<VersionOptionsProvider>());
   addFeature<LoggerFeature>(true, getOptions<LoggerOptionsProvider>(),
-                            getOptions<LogApiOptionsProvider>());
+                            getOptions<ServerLoggerOptionsProvider>());
   addFeature<ConfigFeature>(_binaryName, getOptions<ConfigOptionsProvider>());
   addFeature<TempFeature>(std::string{_binaryName},
                           getOptions<TempOptionsProvider>());

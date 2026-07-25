@@ -20,21 +20,21 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "LogApiOptionsProvider.h"
+#include "ServerLoggerOptionsProvider.h"
 
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 
 namespace arangodb {
 
-void LogApiOptionsProvider::declareOptionsImpl(
+void ServerLoggerOptionsProvider::declareOptionsImpl(
     std::shared_ptr<options::ProgramOptions> prgOpts,
-    LogApiOptions& logApiOpts) {
+    ServerLoggerOptions& serverLoggerOpts) {
   prgOpts
       ->addOption("--log.api-enabled",
                   "Whether the log API is enabled (true) or not (false), or "
                   "only enabled for the superuser (jwt).",
-                  new options::StringParameter(&logApiOpts.apiSwitch))
+                  new options::StringParameter(&serverLoggerOpts.apiSwitch))
       .setLongDescription(R"(Credentials are not written to log files.
         Nevertheless, some logged data might be sensitive depending on the context of
         the deployment. For example, if request logging is switched on, user requests
@@ -50,21 +50,28 @@ void LogApiOptionsProvider::declareOptionsImpl(
          - `jwt`: The `/_admin/log` API is accessible for the superuser only
            (authentication with JWT superuser token and empty username).
          - `false`: The `/_admin/log` API is not accessible at all.)");
+
+  prgOpts->addOption(
+      "--log.keep-logrotate", "Keep the old log file after receiving a SIGHUP.",
+      new options::BooleanParameter(&serverLoggerOpts.keepLogRotate),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 }
 
-void LogApiOptionsProvider::validateOptionsImpl(
+void ServerLoggerOptionsProvider::validateOptionsImpl(
     std::shared_ptr<options::ProgramOptions> /*prgOpts*/,
-    LogApiOptions& logApiOpts) {
-  if (logApiOpts.apiSwitch == "true" || logApiOpts.apiSwitch == "on" ||
-      logApiOpts.apiSwitch == "On") {
-    logApiOpts.apiEnabled = true;
-    logApiOpts.apiSwitch = "true";
-  } else if (logApiOpts.apiSwitch == "jwt" || logApiOpts.apiSwitch == "JWT") {
-    logApiOpts.apiEnabled = true;
-    logApiOpts.apiSwitch = "jwt";
+    ServerLoggerOptions& serverLoggerOpts) {
+  if (serverLoggerOpts.apiSwitch == "true" ||
+      serverLoggerOpts.apiSwitch == "on" ||
+      serverLoggerOpts.apiSwitch == "On") {
+    serverLoggerOpts.apiEnabled = true;
+    serverLoggerOpts.apiSwitch = "true";
+  } else if (serverLoggerOpts.apiSwitch == "jwt" ||
+             serverLoggerOpts.apiSwitch == "JWT") {
+    serverLoggerOpts.apiEnabled = true;
+    serverLoggerOpts.apiSwitch = "jwt";
   } else {
-    logApiOpts.apiEnabled = false;
-    logApiOpts.apiSwitch = "false";
+    serverLoggerOpts.apiEnabled = false;
+    serverLoggerOpts.apiSwitch = "false";
   }
 }
 

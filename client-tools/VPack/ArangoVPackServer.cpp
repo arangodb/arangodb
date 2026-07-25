@@ -51,7 +51,7 @@ ArangoVPackServer::ArangoVPackServer(
     std::string binaryName, int* ret)
     : OptionProvidingServer<ArangoVPackOptionProviders>(
           options, binaryPath, std::move(binaryName), ret) {
-  getProvider<ConfigOptionsProvider>().options().file = "none";
+  getProvider<ConfigOptionsProvider>().setDefaultConfigFile("none");
 }
 
 void ArangoVPackServer::addFeatures() {

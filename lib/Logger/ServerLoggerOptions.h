@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2025 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -22,17 +22,14 @@
 
 #pragma once
 
-#include "ApplicationFeatures/OptionsProvider.h"
-#include "Logger/LogApiOptions.h"
+#include <string>
 
 namespace arangodb {
 
-struct LogApiOptionsProvider
-    : OptionsProviderImpl<LogApiOptionsProvider, LogApiOptions> {
-  void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> prgOpts,
-                          LogApiOptions& logApiOpts);
-  void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> prgOpts,
-                           LogApiOptions& logApiOpts);
+struct ServerLoggerOptions {
+  std::string apiSwitch = "true";
+  bool apiEnabled = true;
+  bool keepLogRotate = false;
 };
 
 }  // namespace arangodb

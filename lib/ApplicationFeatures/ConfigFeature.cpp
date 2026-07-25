@@ -87,12 +87,6 @@ void ConfigFeature::prepare() {
   // configuration. There is an opt-out for this in form of the configuration
   // option --honor-nsswitch. Use this only if you are running on a system
   // without glibc installed, or with glibc version 2.39.0.
-  //
-  // Note: until ConfigFeature is constructed with
-  // getOptions<ConfigOptionsProvider>(), _options.honorNsswitch is only the
-  // ctor default (false), not the CLI/config value. The provider owns the live
-  // option; wire that up when moving construction to
-  // addFeaturesWithOptionProvider.
   if (!_options.honorNsswitch) {
     __nss_configure_lookup("hosts", "files dns");
     __nss_configure_lookup("passwd", "files");

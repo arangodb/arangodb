@@ -19,11 +19,7 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
-
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/ConfigOptionsProvider.h"
-#include "ApplicationFeatures/CoreOptionProviders.h"
-#include "ApplicationFeatures/VersionOptionsProvider.h"
 
 namespace arangodb {
 

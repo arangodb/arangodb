@@ -17,10 +17,10 @@
 #include "RestServer/FlushOptionsProvider.h"
 #include "RestServer/FortuneOptionsProvider.h"
 #include "RestServer/InitDatabaseOptionsProvider.h"
-#include "RestServer/LogApiOptionsProvider.h"
 #include "RestServer/LogBufferOptionsProvider.h"
 #include "RestServer/MaxMapCountOptionsProvider.h"
 #include "RestServer/NonceOptionsProvider.h"
+#include "RestServer/ServerLoggerOptionsProvider.h"
 #include "RestServer/ServerOptionsProvider.h"
 #include "RestServer/TemporaryStorageOptionsProvider.h"
 #include "RestServer/UpgradeOptionsProvider.h"
@@ -60,13 +60,13 @@ using ArangodOptionProviders = CoreOptionProviders<
     crash_handler::CrashHandlerOptionsProvider, DatabasePathOptionsProvider,
     DumpLimitsOptionsProvider, EndpointOptionsProvider, FlushOptionsProvider,
     fortune::FortuneOptionsProvider, GeneralServerOptionsProvider,
-    InitDatabaseOptionsProvider, LanguageOptionsProvider, LogApiOptionsProvider,
+    InitDatabaseOptionsProvider, LanguageOptionsProvider,
     LogBufferOptionsProvider, MaxMapCountOptionsProvider,
     NetworkOptionsProvider, NonceOptionsProvider, RocksDBEngineOptionsProvider,
     RocksDBIndexCacheRefillOptionsProvider, RocksDBOptionFeatureOptionsProvider,
-    ServerOptionsProvider, security::ServerSecurityOptionsProvider,
-    SslServerOptionsProvider, TempOptionsProvider,
-    TemporaryStorageOptionsProvider, UpgradeOptionsProvider
+    ServerLoggerOptionsProvider, ServerOptionsProvider,
+    security::ServerSecurityOptionsProvider, SslServerOptionsProvider,
+    TempOptionsProvider, TemporaryStorageOptionsProvider, UpgradeOptionsProvider
 #ifdef USE_ENTERPRISE
     ,
     AuditOptionsProvider, LicenseOptionsProvider, RCloneOptionsProvider,

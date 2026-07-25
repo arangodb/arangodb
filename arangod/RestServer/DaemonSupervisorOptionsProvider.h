@@ -26,6 +26,8 @@
 #include "RestServer/DaemonFeatureOptions.h"
 #include "RestServer/SupervisorFeatureOptions.h"
 
+// DaemonOptionsProvider and SupervisorOptionsProvider are combined because
+// they need to share `SupervisorFeatureOptions::supervisor` option
 namespace arangodb {
 
 struct ForkOptions {
