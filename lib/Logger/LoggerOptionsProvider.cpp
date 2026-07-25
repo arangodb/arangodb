@@ -458,12 +458,11 @@ If you set this option to `auto`, the hostname is automatically determined.)");
                       arangodb::options::Flags::Uncommon))
       .setDeprecatedIn(30500);
 
-  // Doesn't need to be conditional because it is always used by client-tools    
-  opts->addOption("--log.keep-logrotate",
-                  "Keep the old log file after receiving a SIGHUP.",
-                  new BooleanParameter(&options.keepLogRotate),
-                  arangodb::options::makeDefaultFlags(
-                      arangodb::options::Flags::Uncommon));
+  // Doesn't need to be conditional because it is always used by client-tools
+  opts->addOption(
+      "--log.keep-logrotate", "Keep the old log file after receiving a SIGHUP.",
+      new BooleanParameter(&options.keepLogRotate),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   opts->addOption(
       "--log.foreground-tty", "Also log to TTY if backgrounded.",
