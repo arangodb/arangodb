@@ -41,7 +41,7 @@ struct ConfigOptionsProvider
   void processOptionsImpl(std::shared_ptr<options::ProgramOptions> progOpts,
                           ConfigFeatureOptions& configOpts);
   void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> /*opts*/,
-                           ConfigFeatureOptions& /*options*/){}
+                           ConfigFeatureOptions& /*options*/) {}
 
   void setDefaultConfigFile(std::string file) {
     _defaultFile = std::move(file);
