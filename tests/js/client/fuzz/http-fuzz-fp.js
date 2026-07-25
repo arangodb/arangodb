@@ -158,7 +158,7 @@ function httpRequestsFuzzerTestSuite() {
         throw("http_fuzz: failed to create testdatas:\n" + fs.read(logFile).replace(rx, '\n'));
       }
 
-      let rc = ct.run.rtaMakedata(IM.options, IM, 2, messages[1], logFile, moreargv);
+      rc = ct.run.rtaMakedata(IM.options, IM, 2, messages[1], logFile, moreargv);
       if (!rc.status) {
         let rx = new RegExp(/\\n/g);
         throw("http_fuzz: failed to wait for testdatas:\n" + fs.read(logFile).replace(rx, '\n'));
