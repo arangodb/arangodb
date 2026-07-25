@@ -47,9 +47,7 @@ const setup = require(base);
   setup.createFoxx();
   setup.createAnalyzers();
 
-  // those two are related to each other as createSmartArangoSearch depends on createSmartGraph
   setup.createSmartGraph();
-  setup.createSmartArangoSearch();
 
   setup.createSmartGraph3_11_compat();
 

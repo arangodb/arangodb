@@ -45,7 +45,6 @@ const setup = require(base);
   setup.createInvertedIndex();
   setup.createSmartGraph();
   setup.createSmartGraph3_11_compat();
-  setup.createSmartArangoSearch();
   setup.createSatelliteCollections();
   setup.createSatelliteGraphs();
   setup.createReplicationFactors();

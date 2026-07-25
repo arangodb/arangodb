@@ -860,11 +860,9 @@
       testAnalyzers: function () {
         /*
          * createAnalyzers() creates -> "customInCreateAnalyzers" (CE && EE)
-         * createSmartArangoSearch() creates -> "smartCustom" (EE)
          * createView() creates -> customInCreateView (CE && EE)
          *
-         * => EE will lead to a total of 3x created analyzers
-         * => CE will lead to a total of 2x created analyzers
+         * => both CE and EE lead to a total of 2x created custom analyzers
          */
         let createdAnalyzersInSrc = [
           {
@@ -875,12 +873,6 @@
             delimiter: ","
           }
         ];
-        if (isEnterprise) {
-          createdAnalyzersInSrc.push({
-            name: "smartCustom",
-            delimiter: "smart"
-          });
-        }
 
         let verifyAnalyzer = (analyzerName, delimiter) => {
           let analyzer = analyzers.analyzer(analyzerName);
@@ -893,10 +885,8 @@
         };
 
         assertNotEqual(null, getCollection("_analyzers"));
-        assertEqual((isEnterprise) ?
-            7 : // plus 1 for a SmartGraph in Enterprise
-            6,  // only 1 stored custom analyzers
-          db._analyzers.count());
+        // 4 analyzers from createInvertedIndex + customInCreateView + customInCreateAnalyzers
+        assertEqual(6, db._analyzers.count());
 
         _.each(createdAnalyzersInSrc, (analyzerObject) => {
           verifyAnalyzer(analyzerObject.name, analyzerObject.delimiter);
@@ -1334,62 +1324,6 @@
           assertEqual(orphans, eProp.distributeShardsLike);
           assertEqual(orphans, vProp.distributeShardsLike);
         }
-      },
-
-      testViewOnSmartEdgeCollection: function () {
-        try {
-          db._createView("check", "arangosearch", {});
-        } catch (err) {
-        }
-
-        let views = db._views();
-        if (views.length === 0) {
-          return; // arangosearch views are not supported
-        }
-
-        let view = db._view("UnitTestsDumpSmartView");
-        assertNotEqual(null, view);
-        let props = view.properties();
-        assertEqual("UnitTestsDumpSmartView", view.name());
-        assertTrue(props.hasOwnProperty("links"));
-        assertEqual(Object.keys(props.links).length, 3); // virtual collecion + 2 system collections
-
-        // UnitTestDumpSmartEdges
-        assertTrue(props.links.hasOwnProperty("UnitTestDumpSmartEdges"));
-        assertTrue(props.links.UnitTestDumpSmartEdges.hasOwnProperty("includeAllFields"));
-        assertTrue(props.links.UnitTestDumpSmartEdges.includeAllFields);
-        assertTrue(props.links.UnitTestDumpSmartEdges.hasOwnProperty("fields"));
-        assertEqual(Object.keys(props.links.UnitTestDumpSmartEdges.fields).length, 1);
-        assertTrue(props.links.UnitTestDumpSmartEdges.fields.text.analyzers.length, 2);
-        assertTrue("text_en", props.links.UnitTestDumpSmartEdges.fields.text.analyzers[0]);
-        assertTrue("UnitTestsDumpView::smartCustom", props.links.UnitTestDumpSmartEdges.fields.text.analyzers[1]);
-
-        // _to_UnitTestDumpSmartEdges
-        assertFalse(props.links.hasOwnProperty("_to_UnitTestDumpSmartEdges"));
-
-        // _from_UnitTestDumpSmartEdges
-        assertTrue(props.links.hasOwnProperty("_from_UnitTestDumpSmartEdges"));
-        assertTrue(props.links._from_UnitTestDumpSmartEdges.hasOwnProperty("includeAllFields"));
-        assertTrue(props.links._from_UnitTestDumpSmartEdges.includeAllFields);
-        assertTrue(props.links._from_UnitTestDumpSmartEdges.hasOwnProperty("fields"));
-        assertEqual(Object.keys(props.links._from_UnitTestDumpSmartEdges.fields).length, 1);
-        assertTrue(props.links._from_UnitTestDumpSmartEdges.fields.text.analyzers.length, 2);
-        assertTrue("text_en", props.links._from_UnitTestDumpSmartEdges.fields.text.analyzers[0]);
-        assertTrue("UnitTestsDumpView::smartCustom", props.links._from_UnitTestDumpSmartEdges.fields.text.analyzers[1]);
-
-        // _local_UnitTestDumpSmartEdges
-        assertTrue(props.links.hasOwnProperty("_local_UnitTestDumpSmartEdges"));
-        assertTrue(props.links._local_UnitTestDumpSmartEdges.hasOwnProperty("includeAllFields"));
-        assertTrue(props.links._local_UnitTestDumpSmartEdges.includeAllFields);
-        assertTrue(props.links._local_UnitTestDumpSmartEdges.hasOwnProperty("fields"));
-        assertEqual(Object.keys(props.links._local_UnitTestDumpSmartEdges.fields).length, 1);
-        assertTrue(props.links._local_UnitTestDumpSmartEdges.fields.text.analyzers.length, 2);
-        assertTrue("text_en", props.links._local_UnitTestDumpSmartEdges.fields.text.analyzers[0]);
-        assertTrue("UnitTestsDumpView::smartCustom", props.links._local_UnitTestDumpSmartEdges.fields.text.analyzers[1]);
-        assertEqual(props.consolidationIntervalMsec, 0);
-        assertEqual(props.cleanupIntervalStep, 456);
-        assertTrue(Math.abs(props.consolidationPolicy.threshold - 0.3) < 0.001);
-        assertEqual(props.consolidationPolicy.type, "bytes_accum");
       },
 
       ////////////////////////////////////////////////////////////////////////////////

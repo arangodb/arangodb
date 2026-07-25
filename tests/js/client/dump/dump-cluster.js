@@ -54,7 +54,6 @@ jsunity.run(function dump_cluster_testsuite() {
       "testAqlGraphQueryOutbound",
       "testAqlGraphQueryAny",
       "testSmartGraphSharding",
-      "testViewOnSmartEdgeCollection",
       "testSmartGraphAttribute",
       "testLatestId",
       "testAnalyzers",

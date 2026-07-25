@@ -1035,42 +1035,6 @@ function createGraphWithoutData(names, options = undefined, kind) {
   );
 }
 
-/**
- * @brief Only if enterprise mode:
- *        Creates an arangosearch over smart edge collection
- */
-function createSmartArangoSearch() {
-  db._useDatabase("UnitTestsDumpSrc");
-  if (!isEnterprise) {
-    return;
-  }
-
-  db._dropView("UnitTestsDumpSmartView");
-
-  let analyzers = require("@arangodb/analyzers");
-  const countBefore = db["_analyzers"].count();
-  analyzers.save("smartCustom", "delimiter", {delimiter: "smart"}, ["frequency"]);
-  assertEqual(db["_analyzers"].count(), countBefore + 1);
-
-  db._createView("UnitTestsDumpSmartView", "arangosearch", {
-    // choose non default values to check if they are correctly dumped and imported
-    cleanupIntervalStep: 456,
-    consolidationPolicy: {
-      threshold: 0.3,
-      type: "bytes_accum"
-    },
-    consolidationIntervalMsec: 0,
-    links: {
-      "UnitTestDumpSmartEdges": {
-        includeAllFields: true,
-        fields: {
-          text: {analyzers: ["text_en", "smartCustom"]}
-        }
-      }
-    }
-  });
-}
-
 function assertCollectionsAreNew(collectionNames) {
   for (let existingCollection of db._collections()) {
     const existingCollectionName = existingCollection.name();
@@ -1195,7 +1159,6 @@ exports.createDisjointGraphSingleServer = createDisjointGraphSingleServer;
 exports.createHybridSmartGraphSingleServer = createHybridSmartGraphSingleServer;
 exports.createHybridDisjointSmartGraphSingleServer = createHybridDisjointSmartGraphSingleServer;
 
-exports.createSmartArangoSearch = createSmartArangoSearch;
 exports.createSatelliteCollections = createSatelliteCollections;
 exports.createSatelliteGraphs = createSatelliteGraphs;
 
