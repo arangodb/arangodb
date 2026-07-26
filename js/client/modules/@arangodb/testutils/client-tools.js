@@ -741,9 +741,10 @@ function rtaMakedata(options, instanceManager, writeReadClean, msg, logFile, mor
     'log.file': logFile,
     'log.level': ['warning', 'httpclient=debug', 'V8=debug'],
     'javascript.execute': [
-        fs.join(options.rtasource, 'test_data', 'makedata.js'),
-        fs.join(options.rtasource, 'test_data', 'checkdata.js'),
-        fs.join(options.rtasource, 'test_data', 'cleardata.js')
+      fs.join(options.rtasource, 'test_data', 'makedata.js'),
+      fs.join(options.rtasource, 'test_data', 'checkdata.js'),
+      fs.join(options.rtasource, 'test_data', 'waitdata.js'),
+      fs.join(options.rtasource, 'test_data', 'cleardata.js')
     ][writeReadClean],
     'server.force-json': options.forceJson,
   });
