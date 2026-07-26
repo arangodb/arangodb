@@ -1084,7 +1084,7 @@ License Id: -
 #### brace-expansion
 
 * Name: brace-expansion
-* Version: 5.0.7
+* Version: 5.0.8
 * Project Home: <https://github.com/juliangruber/brace-expansion>
 * License: <https://raw.githubusercontent.com/juliangruber/brace-expansion/main/LICENSE>
 * License Name: MIT License
