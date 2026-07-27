@@ -60,16 +60,14 @@ void ArangoBackupServer::addFeatures() {
   addFeature<CommunicationFeaturePhase>();
   addFeature<GreetingsFeaturePhase>(std::true_type{});
   auto& client = addFeature<HttpEndpointProvider, ClientFeature>(false);
+  // TODO: COR-788: Migrate ConfigFeature
+  addFeature<ConfigFeature>(_binaryName);
   addFeature<OptionsCheckFeature>();
   addFeature<ShellColorsFeature>();
   addFeature<ShutdownFeature>(
       std::array{std::type_index(typeid(BackupFeature))});
   addFeature<SslFeature>();
   addFeature<BackupFeature>(client, *_ret);
-
-  // ConfigFeature must be registered before parseOptions()/loadOptions()
-  // so collectOptions/loadOptions can run.
-  addFeature<ConfigFeature>(_binaryName);
 }
 
 void ArangoBackupServer::addFeaturesWithOptionProvider() {

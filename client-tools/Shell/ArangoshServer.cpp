@@ -75,6 +75,8 @@ void ArangoshServer::addFeatures() {
 
   addFeature<ShellConsoleFeature>();
   addFeature<HttpEndpointProvider, ClientFeature>(true);
+  // TODO: COR-788: Migrate ConfigFeature
+  addFeature<ConfigFeature>(_binaryName);
   addFeature<OptionsCheckFeature>();
   addFeature<ShellColorsFeature>();
   addFeature<ShutdownFeature>(
@@ -87,9 +89,6 @@ void ArangoshServer::addFeatures() {
   auto& v8ShellFeature = addFeature<V8ShellFeature>(_binaryName);
   addFeature<V8SecurityFeature>(AllowListStrictness::NONSTRICT);
   addFeature<ProcessMonitoringFeature>(v8ShellFeature);
-  // ConfigFeature must be registered before parseOptions()/loadOptions()
-  // so collectOptions/loadOptions can run.
-  addFeature<ConfigFeature>(_binaryName);
 }
 
 void ArangoshServer::addFeaturesWithOptionProvider() {

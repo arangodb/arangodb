@@ -68,6 +68,8 @@ void ArangoRestoreServer::addFeatures() {
   addFeature<GreetingsFeaturePhase>(std::true_type{});
   auto& client = addFeature<HttpEndpointProvider, ClientFeature>(
       true, std::numeric_limits<size_t>::max());
+  // TODO: COR-788: Migrate ConfigFeature
+  addFeature<ConfigFeature>(_binaryName);
   addFeature<OptionsCheckFeature>();
   addFeature<ShellColorsFeature>();
   addFeature<ShutdownFeature>(
@@ -77,9 +79,6 @@ void ArangoRestoreServer::addFeatures() {
   addFeature<BumpFileDescriptorsFeature>("--descriptors-minimum");
 #endif
   addFeature<RestoreFeature>(client, *_ret);
-  // ConfigFeature must be registered before parseOptions()/loadOptions()
-  // so collectOptions/loadOptions can run.
-  addFeature<ConfigFeature>(_binaryName);
 }
 
 void ArangoRestoreServer::addFeaturesWithOptionProvider() {

@@ -55,14 +55,13 @@ ArangoVPackServer::ArangoVPackServer(
 void ArangoVPackServer::addFeatures() {
   addFeature<BasicFeaturePhaseClient>();
   addFeature<GreetingsFeaturePhase>(std::true_type{});
+  // TODO: COR-788: Migrate ConfigFeature
+  addFeature<ConfigFeature>(_binaryName);
   addFeature<OptionsCheckFeature>();
   addFeature<ShellColorsFeature>();
   addFeature<ShutdownFeature>(
       std::array{std::type_index(typeid(VPackFeature))});
   addFeature<VPackFeature>(_ret);
-  // ConfigFeature must be registered before parseOptions()/loadOptions()
-  // so collectOptions/loadOptions can run.
-  addFeature<ConfigFeature>(_binaryName, "none");
 }
 
 void ArangoVPackServer::addFeaturesWithOptionProvider() {

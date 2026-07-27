@@ -65,15 +65,14 @@ void ArangoImportServer::addFeatures() {
   addFeature<CommunicationFeaturePhase>();
   addFeature<GreetingsFeaturePhase>(std::true_type{});
   addFeature<HttpEndpointProvider, ClientFeature>(false);
+  // TODO: COR-788: Migrate ConfigFeature
+  addFeature<ConfigFeature>(_binaryName);
   addFeature<OptionsCheckFeature>();
   addFeature<ShellColorsFeature>();
   addFeature<ShutdownFeature>(
       std::array{std::type_index(typeid(ImportFeature))});
   addFeature<SslFeature>();
   addFeature<ImportFeature>(_ret);
-  // ConfigFeature must be registered before parseOptions()/loadOptions()
-  // so collectOptions/loadOptions can run.
-  addFeature<ConfigFeature>(_binaryName);
 }
 
 void ArangoImportServer::addFeaturesWithOptionProvider() {

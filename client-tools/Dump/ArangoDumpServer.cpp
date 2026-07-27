@@ -67,6 +67,8 @@ void ArangoDumpServer::addFeatures() {
   addFeature<GreetingsFeaturePhase>(std::true_type{});
   auto& client = addFeature<HttpEndpointProvider, ClientFeature>(
       true, std::numeric_limits<size_t>::max());
+  // TODO: COR-788: Migrate ConfigFeature
+  addFeature<ConfigFeature>(_binaryName);
   addFeature<OptionsCheckFeature>();
   addFeature<ShellColorsFeature>();
   addFeature<ShutdownFeature>(std::array{std::type_index(typeid(DumpFeature))});
@@ -75,9 +77,6 @@ void ArangoDumpServer::addFeatures() {
   addFeature<BumpFileDescriptorsFeature>("--descriptors-minimum");
 #endif
   addFeature<DumpFeature>(client, *_ret);
-  // ConfigFeature must be registered before parseOptions()/loadOptions()
-  // so collectOptions/loadOptions can run.
-  addFeature<ConfigFeature>(_binaryName);
 }
 
 void ArangoDumpServer::addFeaturesWithOptionProvider() {

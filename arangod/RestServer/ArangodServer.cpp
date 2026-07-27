@@ -98,6 +98,8 @@ void ArangodServer::addFeatures() {
   auto& clusterFeature = addFeature<ClusterFeature>(metrics);
   auto& database = addFeature<DatabaseFeature>();
   auto& clusterUpgradeFeature = addFeature<ClusterUpgradeFeature>(database);
+  // TODO: COR-788: Migrate ConfigFeature
+  addFeature<ConfigFeature>(_binaryName);
 #ifdef USE_V8
   addFeature<ConsoleFeature>();
   auto& v8DealerFeature = addFeature<V8DealerFeature>(metrics);
@@ -156,19 +158,15 @@ void ArangodServer::addFeatures() {
   addFeature<RocksDBRecoveryManager>(database, database);
   addFeature<iresearch::IResearchFeature>(metrics);
   addFeature<ClusterEngine>(metrics);
-
-  // ConfigFeature must be registered before parseOptions()/loadOptions()
-  // so collectOptions/loadOptions can run.
-  addFeature<ConfigFeature>(_binaryName);
 }
 
-void ArangodServer::validateOptions() {
+void ArangodServer::processOptions() {
 #ifdef ARANGODB_HAVE_FORK
   if (getOptions<SupervisorOptionsProvider>().supervisor) {
     getProvider<DaemonOptionsProvider>().setDaemon();
   }
 #endif
-  OptionProvidingServer::validateOptions();
+  OptionProvidingServer::processOptions();
 }
 
 void ArangodServer::addFeaturesWithOptionProvider() {
