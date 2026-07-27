@@ -809,15 +809,9 @@ futures::Future<Result> RestIndexHandler::awaitAndRefreshVectorIndex(
     std::shared_ptr<LogicalCollection> const& coll, VPackSlice body,
     velocypack::Builder& response) {
   bool const inBackground = body.get("inBackground").isTrue();
-  bool const isVector = response.slice().get("type").isString() &&
-                        response.slice().get("type").stringView() ==
-                            StaticStrings::IndexNameVector;
-  LOG_TOPIC("d0093", INFO, Logger::ENGINES)
-      << "CREATE-VECTOR-INDEX awaitAndRefresh: collection='" << coll->name()
-      << "' isVector=" << isVector << " inBackground=" << inBackground << " -> "
-      << ((inBackground || !isVector) ? "NOT waiting (returns now)"
-                                      : "waiting until ready");
-  if (inBackground || !isVector) {
+  if (inBackground || !response.slice().get("type").isString() ||
+      response.slice().get("type").stringView() !=
+          StaticStrings::IndexNameVector) {
     co_return Result{};
   }
 

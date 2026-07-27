@@ -251,7 +251,7 @@ void VectorIndexBuildManager::scanAndBuild(std::stop_token const& stopToken,
           case VectorIndexTrainingState::kTraining:
           case VectorIndexTrainingState::kIngesting:
             // kTraining or kIngesting: keep waiters pending until it finishes.
-            LOG_TOPIC("e177b", INFO, Logger::ENGINES) << std::format(
+            LOG_TOPIC("e177b", DEBUG, Logger::ENGINES) << std::format(
                 "[shard={}, index={}] Vector index build already in progress "
                 "(trainingState={}); not starting a new build this scan.",
                 vecIdx.collection().name(), vecIdx.id().id(),
