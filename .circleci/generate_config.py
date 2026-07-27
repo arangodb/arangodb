@@ -153,7 +153,7 @@ def create_generator_config(
     gtest: bool,
     full: bool,
     replication_two: bool,
-    create_docker_images: bool,
+    create_test_docker_images: str,
     validate_only: bool,
     test_suite: str,
 ) -> GeneratorConfig:
@@ -204,7 +204,7 @@ def create_generator_config(
 
     # Create CircleCI-specific config
     circleci_config = CircleCIConfig(
-        create_docker_images=create_docker_images,
+        create_test_docker_images=create_test_docker_images,
         test_image=test_image,
     )
 
@@ -288,9 +288,11 @@ def create_generator_config(
     help="Enable replication version 2 tests",
 )
 @click.option(
-    "--create-docker-images",
-    is_flag=True,
-    help="Create docker images from build results",
+    "--create-test-docker-images",
+    type=click.Choice(["none", "alpine", "deb"]),
+    default="none",
+    help="Build and publish a multi-arch arangodb/enterprise-test Docker "
+    "image (Alpine- or Debian-based) to public ECR from the build results",
 )
 @click.option(
     "--validate-only",
@@ -317,7 +319,7 @@ def main(
     gtest: bool,
     full: bool,
     replication_two: bool,
-    create_docker_images: bool,
+    create_test_docker_images: str,
     validate_only: bool,
     test_suite: str,
 ):
@@ -351,7 +353,7 @@ def main(
             gtest=gtest,
             full=full,
             replication_two=replication_two,
-            create_docker_images=create_docker_images,
+            create_test_docker_images=create_test_docker_images,
             validate_only=validate_only,
             test_suite=test_suite,
         )

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -17,19 +17,31 @@
 /// limitations under the License.
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "ApplicationFeatures/CoreOptionProviders.h"
-#include "ApplicationFeatures/LanguageOptionsProvider.h"
-#ifdef USE_ENTERPRISE
-#include "Enterprise/Encryption/EncryptionOptionsProvider.h"
-#endif
+#include "Activities/Activity.h"
 
-namespace arangodb {
-using ArangoshOptionProviders = CoreOptionProviders<LanguageOptionsProvider,
-#ifdef USE_ENTERPRISE
-                                                    EncryptionOptionsProvider
-#endif
-                                                    >;
-}  // namespace arangodb
+namespace arangodb::activities {
+/**
+   Structure for the currently executing activity
+
+   It adds the current thread to the activity-thread-list at construction and
+   removes the thread on destruction.
+ */
+struct CurrentlyExecuting {
+  CurrentlyExecuting(ActivityHandle handle);
+  ~CurrentlyExecuting();
+  CurrentlyExecuting(CurrentlyExecuting&& other) noexcept;
+  auto operator=(CurrentlyExecuting&& other) noexcept -> CurrentlyExecuting&;
+  CurrentlyExecuting(CurrentlyExecuting const& other) noexcept = delete;
+  auto operator=(CurrentlyExecuting const& other) noexcept
+      -> CurrentlyExecuting& = delete;
+  ActivityHandle activity;
+
+ private:
+  Activity::ThreadListIterator _position;
+};
+
+}  // namespace arangodb::activities
