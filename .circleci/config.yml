@@ -50,10 +50,17 @@ parameters:
     type: string
     default: ""
     description: "filter to be executed testuite names for containing this string"
-  create-docker-images:
-    type: boolean
-    default: false
-    description: "Whether to create docker images with the build artifacts"
+  create-test-docker-images:
+    type: enum
+    enum: [none, alpine, deb]
+    default: none
+    description: "Build and publish a multi-arch (amd64 + arm64) test Docker image
+      of the Enterprise Edition from this commit's build results. Selects the image
+      base: 'alpine' or 'deb' (Debian-based); 'none' disables. The image is pushed
+      to public ECR as public.ecr.aws/b0b8h2r4/arangodb/enterprise-test, tagged with
+      the community commit short SHA; Debian-based images get an extra -deb suffix
+      (<sha>[-deb] multi-arch manifest, <sha>[-deb]-amd64 / <sha>[-deb]-arm64v8
+      per-arch tags)."
   extra_args:
     type: string
     default: ""
@@ -176,7 +183,7 @@ jobs:
             echo "arangod-without-v8: << pipeline.parameters.arangod-without-v8 >>"
             echo "config-definitions: << pipeline.parameters.config-definitions >>"
             echo "config-definitions-branches: << pipeline.parameters.config-definitions-branches >>"
-            echo "create-docker-images: << pipeline.parameters.create-docker-images >>"
+            echo "create-test-docker-images: << pipeline.parameters.create-test-docker-images >>"
             echo "extra_args: << pipeline.parameters.extra_args >>"
             echo "arangosh_args: << pipeline.parameters.arangosh_args >>"
             echo "test-docker-images: << pipeline.parameters.test-docker-image >>"
@@ -219,6 +226,10 @@ jobs:
             echo "Using enterprise branch $ENTERPRISE_BRANCH (sha $ENTERPRISE_COMMIT)"
             printf '{"enterprise-commit":"%s"}\n' "$ENTERPRISE_COMMIT" > parameters.json
             cat parameters.json
+            # Exported for the config generator (test docker image tags are
+            # <community sha7>_<enterprise sha7>); shell vars don't survive
+            # across steps.
+            echo "export ENTERPRISE_COMMIT=${ENTERPRISE_COMMIT}" >> "$BASH_ENV"
 
       - run:
           name: Install dependencies
@@ -242,7 +253,7 @@ jobs:
               --test-image "<< pipeline.parameters.test-docker-image >>" \
               <<# pipeline.parameters.arangod-without-v8 >> --arangod-without-v8  <</ pipeline.parameters.arangod-without-v8 >>\
               <<# pipeline.parameters.full >> --full <</ pipeline.parameters.full >> \
-              <<# pipeline.parameters.create-docker-images >> --create-docker-images <</ pipeline.parameters.create-docker-images >> \
+              --create-test-docker-images << pipeline.parameters.create-test-docker-images >> \
               <<# pipeline.parameters.replication-two >> -rt <</ pipeline.parameters.replication-two >> \
               --driver-branch-overrides "<<parameters.config-definitions-branches>>" \
               --test-suite "<<pipeline.parameters.filter-testsuite>>" \

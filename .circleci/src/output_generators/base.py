@@ -26,7 +26,8 @@ class TestExecutionConfig:
 class CircleCIConfig:
     """CircleCI-specific configuration."""
 
-    create_docker_images: bool = False
+    # Test Docker image to build and publish: "none", "alpine" or "deb"
+    create_test_docker_images: str = "none"
     test_image: str = ""
 
 
