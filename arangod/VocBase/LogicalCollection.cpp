@@ -659,6 +659,7 @@ void LogicalCollection::toVelocyPackForInventory(VPackBuilder& result) const {
           case Index::TRI_IDX_TYPE_EDGE_INDEX:
             return false;
           default:
+            flags = Index::makeFlags(Index::Serialize::Inventory);
             return !idx->isHidden();
         }
       });
