@@ -101,9 +101,6 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
 
   bool fatal = true;
 
-  // VersionFeature may not exist yet (it is added in
-  // addFeaturesWithOptionProvider, after loadOptions). Prefer the already
-  // parsed CLI result for deciding whether a missing config is fatal.
   auto const& result = options->processingResult();
   if (result.touched("version") || result.touched("version-json")) {
     fatal = false;
