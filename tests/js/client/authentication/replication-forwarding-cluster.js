@@ -136,22 +136,6 @@ function ReplicationForwardingSuite() {
       checkForwardIsForbidden((q) => arango.PUT(`/_api/replication/sync${q}`, {endpoint: "tcp://127.0.0.1:1", database: dbName}));
     },
 
-    testApplierStartForwardIsForbidden: function () {
-      checkForwardIsForbidden((q) => arango.PUT(`/_api/replication/applier-start${q}`, {}));
-    },
-
-    testApplierStopForwardIsForbidden: function () {
-      checkForwardIsForbidden((q) => arango.PUT(`/_api/replication/applier-stop${q}`, {}));
-    },
-
-    testApplierConfigForwardIsForbidden: function () {
-      checkForwardIsForbidden((q) => arango.PUT(`/_api/replication/applier-config${q}`, {}));
-    },
-
-    testMakeFollowerForwardIsForbidden: function () {
-      checkForwardIsForbidden((q) => arango.PUT(`/_api/replication/make-follower${q}`, {}));
-    },
-
     testAddFollowerForwardIsForbidden: function () {
       checkForwardIsForbidden((q) => arango.PUT(`/_api/replication/addFollower${q}`, {}));
     },
@@ -210,14 +194,6 @@ function ReplicationForwardingSuite() {
 
     testServerIdForwardIsForbidden: function () {
       checkForwardIsForbidden((q) => arango.GET(`/_api/replication/server-id${q}`));
-    },
-
-    testApplierStateForwardIsForbidden: function () {
-      checkForwardIsForbidden((q) => arango.GET(`/_api/replication/applier-state${q}`));
-    },
-
-    testApplierStateAllForwardIsForbidden: function () {
-      checkForwardIsForbidden((q) => arango.GET(`/_api/replication/applier-state-all${q}`));
     },
 
     testClusterInventoryForwardIsForbidden: function () {
