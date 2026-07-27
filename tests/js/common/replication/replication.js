@@ -26,7 +26,6 @@
 
 var jsunity = require("jsunity");
 var arangodb = require("@arangodb");
-var errors = arangodb.errors;
 var db = arangodb.db;
 var internal = require("internal");
 var replication = require("@arangodb/replication");
