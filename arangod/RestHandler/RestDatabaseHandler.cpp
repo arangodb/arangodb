@@ -83,9 +83,15 @@ RestStatus RestDatabaseHandler::getDatabases() {
         names = methods::Databases::list(server(), std::string());
       }
     } else if (suffixes[0] == "user") {
-      // When we get here, we are either authenticated or authentication
-      // is disabled, so no need to check further.
-      names = methods::Databases::list(server(), _request->user());
+      // When we get here, we usually are either authenticated or authentication
+      // is disabled, so no need to check further. However, in the case of a
+      // Unix domain socket and if --server.authentication-unix-sockets=false
+      // we can get here with an unauthenticated request, so let's check anyway:
+      if (!_request->authenticated() && !ExecContext::current().isDisabled()) {
+        res.reset(TRI_ERROR_FORBIDDEN);
+      } else {
+        names = methods::Databases::list(server(), _request->user());
+      }
     }
 
     // return database names in sorted order
