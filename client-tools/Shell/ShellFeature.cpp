@@ -21,7 +21,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ShellFeature.h"
-#include "Shell/ShellOptionsProvider.h"
 
 #include "Basics/debugging.h"
 #include "FeaturePhases/V8ShellFeaturePhase.h"
@@ -50,23 +49,12 @@ ShellFeature::ShellFeature(application_features::ApplicationServer& server,
       _runMode(RunMode::INTERACTIVE) {
   setOptional(false);
   startsAfter<application_features::V8ShellFeaturePhase>();
-}
 
-ShellFeature::~ShellFeature() = default;
-
-void ShellFeature::collectOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  ShellOptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
-
-void ShellFeature::validateOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  _positionals = options->processingResult()._positionals;
+  _positionals = server.options()->processingResult()._positionals;
 
   ClientFeature& client =
-      server().getFeature<HttpEndpointProvider, ClientFeature>();
-  ShellConsoleFeature& console = server().getFeature<ShellConsoleFeature>();
+      server.getFeature<HttpEndpointProvider, ClientFeature>();
+  ShellConsoleFeature& console = server.getFeature<ShellConsoleFeature>();
 
   if (client.endpoint() == "none") {
     client.disable();
@@ -112,6 +100,8 @@ void ShellFeature::validateOptions(
   }
 #endif
 }
+
+ShellFeature::~ShellFeature() = default;
 
 void ShellFeature::start() {
   *_result = EXIT_SUCCESS;

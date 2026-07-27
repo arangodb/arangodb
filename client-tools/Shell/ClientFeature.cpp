@@ -21,7 +21,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ClientFeature.h"
-#include "Shell/ClientOptionsProvider.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
@@ -62,6 +61,13 @@ namespace arangodb {
 ClientFeature::ClientFeature(ApplicationServer& server, bool allowJwtSecret,
                              size_t maxNumEndpoints, double connectionTimeout,
                              double requestTimeout)
+    : ClientFeature{server,          allowJwtSecret,    ClientFeatureOptions{},
+                    maxNumEndpoints, connectionTimeout, requestTimeout} {}
+
+ClientFeature::ClientFeature(ApplicationServer& server, bool allowJwtSecret,
+                             ClientFeatureOptions options,
+                             size_t maxNumEndpoints, double connectionTimeout,
+                             double requestTimeout)
     : ClientFeature{server,
                     server.getFeature<CommunicationFeaturePhase>(),
                     typeid(HttpEndpointProvider),
@@ -69,7 +75,7 @@ ClientFeature::ClientFeature(ApplicationServer& server, bool allowJwtSecret,
                     maxNumEndpoints,
                     connectionTimeout,
                     requestTimeout,
-                    ClientFeatureOptions{}} {
+                    options} {
   if (server.hasFeature<ShellConsoleFeature>()) {
     _console = &server.getFeature<ShellConsoleFeature>();
   }
@@ -98,16 +104,6 @@ ClientFeature::ClientFeature(
   _options.sslProtocol = TLS_V12;
   _options.allowJwtSecret = allowJwtSecret;
   setOptional(true);
-}
-
-void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  ClientOptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
-
-void ClientFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
-  ClientOptionsProvider provider;
-  provider.validateOptions(options, _options);
 
   if (auto res = DatabaseNameValidator::validateName(true, true,
                                                      _options.databaseName);

@@ -39,7 +39,6 @@
 #include "Basics/application-exit.h"
 #include "Basics/files.h"
 #include "Basics/system-functions.h"
-#include "Dump/DumpOptionsProvider.h"
 #include "FeaturePhases/BasicFeaturePhaseClient.h"
 #include "Logger/LogMacros.h"
 #include "Logger/LogTimeFormat.h"
@@ -786,18 +785,6 @@ DumpFeature::DumpFeature(application_features::ApplicationServer& server,
   _options.threadCount =
       std::max(uint32_t(_options.threadCount),
                static_cast<uint32_t>(NumberOfCores::getValue()));
-}
-
-void DumpFeature::collectOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  DumpOptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
-
-void DumpFeature::validateOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  DumpOptionsProvider provider;
-  provider.validateOptions(options, _options);
 }
 
 // dump data from cluster via a coordinator

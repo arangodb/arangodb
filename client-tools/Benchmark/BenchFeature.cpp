@@ -26,7 +26,6 @@
 #include <velocypack/Slice.h>
 
 #include "BenchFeature.h"
-#include "BenchOptionsProvider.h"
 
 #include <ctime>
 #include <fstream>
@@ -95,16 +94,6 @@ BenchFeature::BenchFeature(application_features::ApplicationServer& server,
   EdgeCrudTest::registerTestcase();
   PersistentIndexTest::registerTestcase();
   VersionTest::registerTestcase();
-}
-
-void BenchFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  BenchOptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
-
-void BenchFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
-  BenchOptionsProvider provider;
-  provider.validateOptions(options, _options);
 
   if (!_options.customQueryBindVars.empty()) {
     try {

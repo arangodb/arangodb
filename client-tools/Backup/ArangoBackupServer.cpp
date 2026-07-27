@@ -59,13 +59,11 @@ void ArangoBackupServer::addFeatures() {
   addFeature<BasicFeaturePhaseClient>();
   addFeature<CommunicationFeaturePhase>();
   addFeature<GreetingsFeaturePhase>(std::true_type{});
-  auto& client = addFeature<HttpEndpointProvider, ClientFeature>(false);
   addFeature<OptionsCheckFeature>();
   addFeature<ShellColorsFeature>();
   addFeature<ShutdownFeature>(
       std::array{std::type_index(typeid(BackupFeature))});
   addFeature<SslFeature>();
-  addFeature<BackupFeature>(client, *_ret);
 }
 
 void ArangoBackupServer::addFeaturesWithOptionProvider() {
@@ -78,6 +76,9 @@ void ArangoBackupServer::addFeaturesWithOptionProvider() {
   addFeature<ProcessEnvironmentFeature>(
       _binaryName, getOptions<ProcessEnvironmentOptionsProvider>());
 #endif
+  auto& client = addFeature<HttpEndpointProvider, ClientFeature>(
+      false, getOptions<ClientOptionsProvider>());
+  addFeature<BackupFeature>(client, *_ret, getOptions<BackupOptionsProvider>());
 }
 
 }  // namespace arangodb

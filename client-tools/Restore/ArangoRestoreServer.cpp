@@ -66,14 +66,11 @@ void ArangoRestoreServer::addFeatures() {
   addFeature<BasicFeaturePhaseClient>();
   addFeature<CommunicationFeaturePhase>();
   addFeature<GreetingsFeaturePhase>(std::true_type{});
-  auto& client = addFeature<HttpEndpointProvider, ClientFeature>(
-      true, std::numeric_limits<size_t>::max());
   addFeature<OptionsCheckFeature>();
   addFeature<ShellColorsFeature>();
   addFeature<ShutdownFeature>(
       std::array{std::type_index(typeid(RestoreFeature))});
   addFeature<SslFeature>();
-  addFeature<RestoreFeature>(client, *_ret);
 }
 
 void ArangoRestoreServer::addFeaturesWithOptionProvider() {
@@ -94,6 +91,11 @@ void ArangoRestoreServer::addFeaturesWithOptionProvider() {
   addFeature<BumpFileDescriptorsFeature>(
       getOptions<ClientBumpFileDescriptorsOptionsProvider>());
 #endif
+  auto& client = addFeature<HttpEndpointProvider, ClientFeature>(
+      true, getOptions<ClientOptionsProvider>(),
+      std::numeric_limits<size_t>::max());
+  addFeature<RestoreFeature>(client, *_ret,
+                             getOptions<RestoreOptionsProvider>());
 }
 
 }  // namespace arangodb

@@ -21,7 +21,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestoreFeature.h"
-#include "Restore/RestoreOptionsProvider.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/BumpFileDescriptorsFeature.h"
@@ -1934,18 +1933,6 @@ RestoreFeature::RestoreFeature(application_features::ApplicationServer& server,
   _options.threadCount =
       std::max(uint32_t(_options.threadCount),
                static_cast<uint32_t>(NumberOfCores::getValue()));
-}
-
-void RestoreFeature::collectOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  RestoreOptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
-
-void RestoreFeature::validateOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  RestoreOptionsProvider provider;
-  provider.validateOptions(options, _options);
 }
 
 void RestoreFeature::prepare() {

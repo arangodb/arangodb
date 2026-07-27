@@ -73,15 +73,12 @@ void ArangoshServer::addFeatures() {
   addFeature<CommunicationFeaturePhase>();
   addFeature<GreetingsFeaturePhase>(std::true_type{});
 
-  addFeature<ShellConsoleFeature>();
-  addFeature<HttpEndpointProvider, ClientFeature>(true);
   addFeature<OptionsCheckFeature>();
   addFeature<ShellColorsFeature>();
   addFeature<ShutdownFeature>(
       std::array{std::type_index(typeid(ShellFeature))});
   addFeature<SslFeature>();
   addFeature<V8ShellFeaturePhase>();
-  addFeature<ShellFeature>(_ret);
   addFeature<V8ShellFeature>(_binaryName);
 }
 
@@ -107,6 +104,11 @@ void ArangoshServer::addFeaturesWithOptionProvider() {
 #ifdef USE_ENTERPRISE
   addFeature<EncryptionFeature>(getOptions<EncryptionOptionsProvider>());
 #endif
+  addFeature<HttpEndpointProvider, ClientFeature>(
+      true, getOptions<ClientOptionsProvider>());
+
+  addFeature<ShellFeature>(_ret, getOptions<ShellOptionsProvider>());
+  addFeature<ShellConsoleFeature>(getOptions<ShellConsoleOptionsProvider>());
 }
 
 }  // namespace arangodb
