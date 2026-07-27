@@ -11,6 +11,7 @@
 #include "RestServer/ApiRecordingOptionsProvider.h"
 #include "RestServer/CheckVersionOptionsProvider.h"
 #include "RestServer/CrashHandlerOptionsProvider.h"
+#include "RestServer/DaemonOptionsProvider.h"
 #include "RestServer/DatabasePathOptionsProvider.h"
 #include "RestServer/DumpLimitsOptionsProvider.h"
 #include "RestServer/EndpointOptionsProvider.h"
@@ -48,7 +49,8 @@
 #endif
 
 #ifdef ARANGODB_HAVE_FORK
-#include "RestServer/DaemonSupervisorOptionsProvider.h"
+#include "RestServer/DaemonOptionsProvider.h"
+#include "RestServer/SupervisorOptionsProvider.h"
 #endif
 
 namespace arangodb {
@@ -83,7 +85,7 @@ using ArangodOptionProviders = CoreOptionProviders<
 #endif
 #ifdef ARANGODB_HAVE_FORK
     ,
-    DaemonSupervisorOptionsProvider
+    DaemonOptionsProvider, SupervisorOptionsProvider
 #endif
     >;
 }  // namespace arangodb

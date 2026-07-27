@@ -20,7 +20,7 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "DaemonSupervisorOptionsProvider.h"
+#include "DaemonOptionsProvider.h"
 
 #include <filesystem>
 
@@ -34,55 +34,34 @@ namespace arangodb {
 
 using namespace arangodb::options;
 
-void DaemonSupervisorOptionsProvider::declareOptionsImpl(
-    std::shared_ptr<ProgramOptions> prgOpts, ForkOptions& forkOpts) {
-  // Daemon options
-  prgOpts->addOption(
+void DaemonOptionsProvider::declareOptionsImpl(
+    std::shared_ptr<ProgramOptions> options, DaemonFeatureOptions& opts) {
+  options->addOption(
       "--daemon",
       "Start the server as a daemon (background process). Requires --pid-file "
       "to be set.",
-      new BooleanParameter(&forkOpts.daemonOpts.daemon),
+      new BooleanParameter(&opts.daemon),
       arangodb::options::makeFlags(arangodb::options::Flags::Uncommon));
 
-  prgOpts->addOption(
+  options->addOption(
       "--pid-file",
       "The name of the process ID file to use if the server runs as a daemon.",
-      new StringParameter(&forkOpts.daemonOpts.pidFile),
+      new StringParameter(&opts.pidFile),
       arangodb::options::makeFlags(arangodb::options::Flags::Uncommon));
 
-  prgOpts->addOption(
+  options->addOption(
       "--working-directory", "The working directory in daemon mode.",
-      new StringParameter(&forkOpts.daemonOpts.workingDirectory),
+      new StringParameter(&opts.workingDirectory),
       arangodb::options::makeFlags(arangodb::options::Flags::Uncommon));
-
-  // Supervisor options
-  prgOpts
-      ->addOption(
-          "--supervisor",
-          "Start the server in supervisor mode. Requires --pid-file to be set.",
-          new BooleanParameter(&forkOpts.supervisorOpts.supervisor),
-          makeDefaultFlags(Flags::Uncommon))
-      .setLongDescription(R"(Runs an arangod process as supervisor with another
-arangod process as child, which acts as the server. In the event that the server
-unexpectedly terminates due to an internal error, the supervisor automatically
-restarts the server. Enabling this option implies that the server runs as a
-daemon.)");
 }
 
-void DaemonSupervisorOptionsProvider::processOptionsImpl(
-    std::shared_ptr<ProgramOptions> prgOpts, ForkOptions& forkOpts) {
-  if (forkOpts.supervisorOpts.supervisor) {
-    forkOpts.daemonOpts.daemon = true;
-  }
-}
-
-void DaemonSupervisorOptionsProvider::validateOptionsImpl(
-    std::shared_ptr<ProgramOptions> prgOpts, ForkOptions& forkOpts) {
-  if (!forkOpts.daemonOpts.daemon) {
+void DaemonOptionsProvider::validateOptionsImpl(
+    std::shared_ptr<ProgramOptions> /*options*/, DaemonFeatureOptions& opts) {
+  if (!opts.daemon) {
     return;
   }
 
-  if (forkOpts.daemonOpts.pidFile.empty()) {
+  if (opts.pidFile.empty()) {
     LOG_TOPIC("9d6ba", FATAL, arangodb::Logger::FIXME)
         << "need --pid-file in --daemon mode";
     FATAL_ERROR_EXIT();
@@ -90,14 +69,12 @@ void DaemonSupervisorOptionsProvider::validateOptionsImpl(
 
   // make the pid filename absolute
   std::string absoluteFile =
-      std::filesystem::absolute(
-          std::filesystem::path(forkOpts.daemonOpts.pidFile))
-          .string();
+      std::filesystem::absolute(std::filesystem::path(opts.pidFile)).string();
 
   if (!absoluteFile.empty()) {
-    forkOpts.daemonOpts.pidFile = absoluteFile;
+    opts.pidFile = absoluteFile;
     LOG_TOPIC("79662", DEBUG, arangodb::Logger::FIXME)
-        << "using absolute pid file '" << forkOpts.daemonOpts.pidFile << "'";
+        << "using absolute pid file '" << opts.pidFile << "'";
   } else {
     LOG_TOPIC("24de9", FATAL, arangodb::Logger::FIXME)
         << "cannot determine absolute path";

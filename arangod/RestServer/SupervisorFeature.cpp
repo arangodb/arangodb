@@ -39,6 +39,7 @@
 #include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/DaemonFeature.h"
+#include "RestServer/SupervisorOptionsProvider.h"
 
 #ifdef TRI_HAVE_SYS_PRCTL_H
 #include <sys/prctl.h>

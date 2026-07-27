@@ -43,6 +43,8 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "ProgramOptions/ProgramOptions.h"
+#include "RestServer/DaemonOptionsProvider.h"
 
 #ifdef TRI_HAVE_SIGNAL_H
 #include <signal.h>
