@@ -392,6 +392,10 @@ class StorageEngine : public application_features::ApplicationFeature {
   TransactionStatistics& transactionStatistics() noexcept;
   TransactionStatistics const& transactionStatistics() const noexcept;
 
+#if USE_ENTERPRISE
+  virtual bool isEncryptionEnabled() const { return false; }
+#endif
+
  protected:
   void initTransactionStatistics(metrics::IRegistry& metrics);
 
