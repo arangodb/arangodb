@@ -44,9 +44,6 @@ struct ConfigOptionsProvider
   void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> /*opts*/,
                            ConfigFeatureOptions& /*options*/) {}
 
-  // Overrides the config file used when --configuration is not given. Must be
-  // called before declareOptions(), which binds `file` as that option's
-  // default. Pass "none" to skip config file lookup entirely.
   void setDefaultConfigFile(std::string file) {
     options().file = std::move(file);
   }

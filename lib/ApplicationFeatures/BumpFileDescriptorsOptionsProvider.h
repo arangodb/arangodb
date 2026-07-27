@@ -42,8 +42,6 @@ struct BumpFileDescriptorsOptionsProvider
   void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> prgOpts,
                            BumpFileDescriptorsFeatureOptions& bfdOpts);
 
-  // Must be called before declareOptions(), since the name is what the option
-  // gets registered under.
   void setOptionName(std::string optionName) {
     options().optionName = std::move(optionName);
   }
