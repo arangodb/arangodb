@@ -731,13 +731,9 @@ async<void> RestCollectionHandler::handleCommandDelete() {
   }
   TRI_ASSERT(coll);
 
-  // Check if we are allowed to drop the collection:
-  if (auto r = ExecContext::current().canDropCollection(_vocbase.name(), name);
-      r.fail()) {
-    events::DropCollection(_vocbase.name(), name, TRI_ERROR_FORBIDDEN);
-    generateError(r);
-    co_return;
-  }
+  // We do not check for permission here, since `methods::Collections::drop`
+  // does so anyway and that has to do it because it is called from other
+  // places, too.
 
   {
     VPackObjectBuilder obj(&_builder, true);
