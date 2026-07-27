@@ -22,6 +22,7 @@
 
 #include "BumpFileDescriptorsOptionsProvider.h"
 
+#include "Assertions/ProdAssert.h"
 #include "Basics/FileDescriptors.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -33,33 +34,30 @@
 
 namespace arangodb {
 
-using namespace arangodb::options;
-
-BumpFileDescriptorsOptionsProvider::BumpFileDescriptorsOptionsProvider(
-    std::string optionName)
-    : _optionName(std::move(optionName)) {}
-
-void BumpFileDescriptorsOptionsProvider::declareOptions(
-    std::shared_ptr<ProgramOptions> options,
-    BumpFileDescriptorsFeatureOptions& opts) {
-  options
+void BumpFileDescriptorsOptionsProvider::declareOptionsImpl(
+    std::shared_ptr<options::ProgramOptions> prgOpts,
+    BumpFileDescriptorsFeatureOptions& bfdOpts) {
+  // An empty name would silently register an unreachable option.
+  ADB_PROD_ASSERT(!bfdOpts.optionName.empty())
+      << "setOptionName() must be called before options are declared";
+  prgOpts
       ->addOption(
-          _optionName,
+          bfdOpts.optionName,
           "The minimum number of file descriptors needed to start (0 = no "
           "minimum)",
-          new UInt64Parameter(&opts.descriptorsMinimum),
+          new options::UInt64Parameter(&bfdOpts.descriptorsMinimum),
           arangodb::options::makeFlags())
       .setIntroducedIn(31200);
 }
 
-void BumpFileDescriptorsOptionsProvider::validateOptions(
-    std::shared_ptr<ProgramOptions> /*options*/,
-    BumpFileDescriptorsFeatureOptions& opts) {
-  if (opts.descriptorsMinimum > 0 &&
-      (opts.descriptorsMinimum < FileDescriptors::requiredMinimum ||
-       opts.descriptorsMinimum > FileDescriptors::maximumValue)) {
+void BumpFileDescriptorsOptionsProvider::validateOptionsImpl(
+    std::shared_ptr<options::ProgramOptions> /*prgOpts*/,
+    BumpFileDescriptorsFeatureOptions& bfdOpts) {
+  if (bfdOpts.descriptorsMinimum > 0 &&
+      (bfdOpts.descriptorsMinimum < FileDescriptors::requiredMinimum ||
+       bfdOpts.descriptorsMinimum > FileDescriptors::maximumValue)) {
     LOG_TOPIC("7e15c", FATAL, Logger::STARTUP)
-        << "invalid value for " << _optionName << ". must be between "
+        << "invalid value for " << bfdOpts.optionName << ". must be between "
         << FileDescriptors::requiredMinimum << " and "
         << FileDescriptors::maximumValue;
     FATAL_ERROR_EXIT();

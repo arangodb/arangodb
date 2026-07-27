@@ -54,6 +54,7 @@
 #endif
 
 #ifdef TRI_HAVE_GETRLIMIT
+#include "ApplicationFeatures/BumpFileDescriptorsOptionsProvider.h"
 #include "RestServer/FileDescriptorsOptionsProvider.h"
 #endif
 
@@ -94,7 +95,8 @@ using ArangodOptionProviders = CoreOptionProviders<
 #endif
 #ifdef TRI_HAVE_GETRLIMIT
     ,
-    file_descriptors::FileDescriptorsOptionsProvider
+    file_descriptors::FileDescriptorsOptionsProvider,
+    BumpFileDescriptorsOptionsProvider
 #endif
 #ifdef ARANGODB_HAVE_FORK
     ,

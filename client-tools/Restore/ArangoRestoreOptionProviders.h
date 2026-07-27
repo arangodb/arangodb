@@ -25,6 +25,9 @@
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Encryption/EncryptionOptionsProvider.h"
 #endif
+#ifdef TRI_HAVE_GETRLIMIT
+#include "ApplicationFeatures/BumpFileDescriptorsOptionsProvider.h"
+#endif
 
 namespace arangodb {
 using ArangoRestoreOptionProviders =
@@ -32,6 +35,10 @@ using ArangoRestoreOptionProviders =
 #ifdef USE_ENTERPRISE
                         ,
                         EncryptionOptionsProvider
+#endif
+#ifdef TRI_HAVE_GETRLIMIT
+                        ,
+                        BumpFileDescriptorsOptionsProvider
 #endif
                         >;
 }  // namespace arangodb

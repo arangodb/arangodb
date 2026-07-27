@@ -40,7 +40,12 @@ class ArangodServer : public OptionProvidingServer<ArangodOptionProviders> {
       : OptionProvidingServer<ArangodOptionProviders>(
             options, binaryPath, std::move(binaryName), ret),
         _dumpManager(dumpManager),
-        _dataSourceRegistry(dataSourceRegistry) {}
+        _dataSourceRegistry(dataSourceRegistry) {
+#ifdef TRI_HAVE_GETRLIMIT
+    getProvider<BumpFileDescriptorsOptionsProvider>().setOptionName(
+        "--server.descriptors-minimum");
+#endif
+  }
 
   // Adds all features to the server. Must be called before run().
   // @param ret pointer to return value (used by some features)

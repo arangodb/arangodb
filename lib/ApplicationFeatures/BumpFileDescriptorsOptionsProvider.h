@@ -34,17 +34,19 @@ class ProgramOptions;
 namespace arangodb {
 
 struct BumpFileDescriptorsOptionsProvider
-    : OptionsProvider<BumpFileDescriptorsFeatureOptions> {
-  explicit BumpFileDescriptorsOptionsProvider(std::string optionName);
+    : OptionsProviderImpl<BumpFileDescriptorsOptionsProvider,
+                          BumpFileDescriptorsFeatureOptions> {
+  void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> prgOpts,
+                          BumpFileDescriptorsFeatureOptions& bfdOpts);
 
-  void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
-                      BumpFileDescriptorsFeatureOptions& options) override;
+  void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> prgOpts,
+                           BumpFileDescriptorsFeatureOptions& bfdOpts);
 
-  void validateOptions(std::shared_ptr<options::ProgramOptions> opts,
-                       BumpFileDescriptorsFeatureOptions& options) override;
-
- private:
-  std::string _optionName;
+  // Must be called before declareOptions(), since the name is what the option
+  // gets registered under.
+  void setOptionName(std::string optionName) {
+    options().optionName = std::move(optionName);
+  }
 };
 
 }  // namespace arangodb

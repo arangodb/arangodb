@@ -48,9 +48,6 @@ using namespace arangodb::options;
 void ConfigOptionsProvider::declareOptionsImpl(
     std::shared_ptr<options::ProgramOptions> options,
     ConfigFeatureOptions& opts) {
-  if (!_defaultFile.empty()) {
-    opts.file = _defaultFile;
-  }
   options->addOption("--configuration,-c",
                      "The configuration file or \"none\".",
                      new StringParameter(&opts.file));

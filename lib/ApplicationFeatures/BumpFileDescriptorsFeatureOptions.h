@@ -23,11 +23,18 @@
 #pragma once
 
 #include <cstdint>
+#include <string>
 
 namespace arangodb {
 
 struct BumpFileDescriptorsFeatureOptions {
   uint64_t descriptorsMinimum;
+  // Name of the startup option bound to `descriptorsMinimum`. It differs per
+  // binary (`--server.descriptors-minimum` for arangod, `--descriptors-minimum`
+  // for the client tools), so it has to be set via
+  // BumpFileDescriptorsOptionsProvider::setOptionName() before options are
+  // declared.
+  std::string optionName;
 
   BumpFileDescriptorsFeatureOptions();
 };

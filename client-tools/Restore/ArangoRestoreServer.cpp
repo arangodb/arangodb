@@ -60,7 +60,12 @@ ArangoRestoreServer::ArangoRestoreServer(
     std::shared_ptr<options::ProgramOptions> options, char const* binaryPath,
     std::string binaryName, int* ret)
     : OptionProvidingServer<ArangoRestoreOptionProviders>(
-          options, binaryPath, std::move(binaryName), ret) {}
+          options, binaryPath, std::move(binaryName), ret) {
+#ifdef TRI_HAVE_GETRLIMIT
+  getProvider<BumpFileDescriptorsOptionsProvider>().setOptionName(
+      "--descriptors-minimum");
+#endif
+}
 
 void ArangoRestoreServer::addFeatures() {
   addFeature<BasicFeaturePhaseClient>();
@@ -73,9 +78,6 @@ void ArangoRestoreServer::addFeatures() {
   addFeature<ShutdownFeature>(
       std::array{std::type_index(typeid(RestoreFeature))});
   addFeature<SslFeature>();
-#ifdef TRI_HAVE_GETRLIMIT
-  addFeature<BumpFileDescriptorsFeature>("--descriptors-minimum");
-#endif
   addFeature<RestoreFeature>(client, *_ret);
 }
 
@@ -92,6 +94,10 @@ void ArangoRestoreServer::addFeaturesWithOptionProvider() {
 #endif
 #ifdef USE_ENTERPRISE
   addFeature<EncryptionFeature>(getOptions<EncryptionOptionsProvider>());
+#endif
+#ifdef TRI_HAVE_GETRLIMIT
+  addFeature<BumpFileDescriptorsFeature>(
+      getOptions<BumpFileDescriptorsOptionsProvider>());
 #endif
 }
 

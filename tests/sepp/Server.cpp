@@ -167,8 +167,7 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
   _server.addFeature<AuthenticationFeature>();
   _server.addFeature<BootstrapFeature>();
 #ifdef TRI_HAVE_GETRLIMIT
-  _server.addFeature<BumpFileDescriptorsFeature>(
-      "--server.descriptors-minimum");
+  _server.addFeature<BumpFileDescriptorsFeature>();
 #endif
   _server.addFeature<CacheOptionsFeature>();
   auto& cacheManager =
