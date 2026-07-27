@@ -101,7 +101,6 @@ ClientFeature::ClientFeature(
   _options.databaseName = StaticStrings::SystemDatabase;
   _options.connectionTimeout = connectionTimeout;
   _options.requestTimeout = requestTimeout;
-  _options.sslProtocol = TLS_V12;
   _options.allowJwtSecret = allowJwtSecret;
   setOptional(true);
 

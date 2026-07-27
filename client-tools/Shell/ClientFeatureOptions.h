@@ -22,6 +22,8 @@
 
 #pragma once
 
+#include "Ssl/ssl-helper.h"
+
 #include <cstddef>
 #include <cstdint>
 #include <string>
@@ -41,7 +43,7 @@ struct ClientFeatureOptions {
   double jwtRenewalThreshold = 300.0;
   uint64_t maxPacketSize = 1024 * 1024 * 1024;
   uint64_t compressRequestThreshold = 0;
-  uint64_t sslProtocol;
+  uint64_t sslProtocol{TLS_V12};
   bool authentication = true;
   bool askJwtSecret = false;
   bool forceJson = false;
