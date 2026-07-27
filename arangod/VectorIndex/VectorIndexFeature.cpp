@@ -33,6 +33,8 @@
 #include "ProgramOptions/Parameters.h"
 #include "Scheduler/SchedulerFeature.h"
 
+#include <chrono>
+
 namespace arangodb {
 
 VectorIndexFeature::VectorIndexFeature(
@@ -78,10 +80,11 @@ void VectorIndexFeature::start() {
     return;
   }
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-  _buildManager.emplace(_databaseFeature,
-                        server().getFeature<MaintenanceFeature>(),
-                        server().getFeature<metrics::MetricsFeature>(),
-                        *SchedulerFeature::SCHEDULER);
+  _buildManager.emplace(
+      _databaseFeature, server().getFeature<MaintenanceFeature>(),
+      server().getFeature<metrics::MetricsFeature>(),
+      *SchedulerFeature::SCHEDULER,
+      std::chrono::duration<double>(_options.buildRetryBackoffSecs));
   _buildManager->start();
 }
 
