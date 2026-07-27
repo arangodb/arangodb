@@ -40,6 +40,7 @@ target_link_libraries(arangodbtests_rocksdb
   arango_rocksdb
   arango_metrics_base
   arango_vocbase
+  velocypack_utils
   gtest)
 
 add_test(NAME arangodbtests_rocksdb
