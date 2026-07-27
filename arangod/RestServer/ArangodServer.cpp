@@ -160,8 +160,8 @@ void ArangodServer::addFeatures() {
 
 void ArangodServer::validateOptions() {
 #ifdef ARANGODB_HAVE_FORK
-  if (getProvider<SupervisorOptionsProvider>().options().supervisor) {
-    getProvider<DaemonOptionsProvider>().options().daemon = true;
+  if (getOptions<SupervisorOptionsProvider>().supervisor) {
+    getProvider<DaemonOptionsProvider>().setDaemon();
   }
 #endif
   OptionProvidingServer::validateOptions();
