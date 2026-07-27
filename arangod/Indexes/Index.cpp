@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Index.h"
@@ -30,12 +29,18 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/datetime.h"
+#include "Cluster/ServerState.h"
 #include "Containers/HashSet.h"
 #include "IResearch/IResearchCommon.h"
 #include "StorageEngine/StorageEngine.h"
+#include "Transaction/Methods.h"
 #include "Utilities/NameValidator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
+
+#ifdef USE_ENTERPRISE
+#include "Enterprise/VocBase/VirtualClusterSmartEdgeCollection.h"
+#endif
 
 #include <date/date.h>
 #include <velocypack/Iterator.h>
@@ -981,9 +986,32 @@ bool Index::covers(aql::Projections& projections) const {
   auto const& covered = coveredFields();
 
   for (size_t i = 0; i < n; ++i) {
+    // top-level `_id` and `_key` are interchangeable for covering purposes:
+    // covered `_id` entries physically store the key value (cf.
+    // transaction::extractAttributeValues), and the covering producers in
+    // Projections.cpp rebuild `_id` projections from a covered key value
+    // via makeIdFromParts
+    bool const isKeyOrIdProjection =
+        projections[i].type == aql::AttributeNamePath::Type::IdAttribute ||
+        projections[i].type == aql::AttributeNamePath::Type::KeyAttribute;
+    TRI_ASSERT(!isKeyOrIdProjection || projections[i].path.size() == 1);
+
     bool found = false;
     for (size_t j = 0; j < covered.size(); ++j) {
       auto const& field = covered[j];
+
+      if (isKeyOrIdProjection) {
+        if (field.size() == 1 && !field[0].shouldExpand &&
+            (field[0].name == StaticStrings::KeyString ||
+             field[0].name == StaticStrings::IdString)) {
+          projections[i].coveringIndexPosition = static_cast<uint16_t>(j);
+          projections[i].coveringIndexCutoff = 1;
+          found = true;
+          break;
+        }
+        continue;
+      }
+
       size_t k = 0;
       for (auto const& part : field) {
         if (part.shouldExpand) {
@@ -1016,6 +1044,61 @@ bool Index::covers(aql::Projections& projections) const {
   }
 
   return true;
+}
+
+std::optional<std::string_view> Index::extractKeyFromIdLookupValue(
+    transaction::Methods& trx, LogicalCollection const& collection,
+    std::string_view id) {
+  char const* key = nullptr;
+  size_t outLength = 0;
+  std::shared_ptr<LogicalCollection> resolved;
+  Result res = trx.resolveId(id.data(), id.size(), resolved, key, outLength);
+
+  if (!res.ok()) {
+    return std::nullopt;
+  }
+
+  TRI_ASSERT(resolved != nullptr);
+  TRI_ASSERT(key != nullptr);
+
+  if (!ServerState::instance()->isRunningInCluster()) {
+    if (resolved->id() != collection.id()) {
+      // the id value is syntactically correct, but refers to a different
+      // collection, using local collection id
+      return std::nullopt;
+    }
+    return std::string_view(key, outLength);
+  }
+
+#ifdef USE_ENTERPRISE
+  if (resolved->isSmart() && resolved->type() == TRI_COL_TYPE_EDGE) {
+    auto c =
+        dynamic_cast<VirtualClusterSmartEdgeCollection const*>(resolved.get());
+    if (c == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "unable to cast smart edge collection");
+    }
+
+    if (!c->isDisjoint() && (collection.planId() != c->getLocalCid() &&
+                             collection.planId() != c->getFromCid() &&
+                             collection.planId() != c->getToCid())) {
+      // invalid planId
+      return std::nullopt;
+    } else if (c->isDisjoint() && collection.planId() != c->getLocalCid()) {
+      // invalid planId
+      return std::nullopt;
+    }
+    return std::string_view(key, outLength);
+  }
+#endif
+
+  if (resolved->planId() != collection.planId()) {
+    // the id value is syntactically correct, but refers to a different
+    // collection, using cluster collection id
+    return std::nullopt;
+  }
+
+  return std::string_view(key, outLength);
 }
 
 bool Index::canWarmup() const noexcept { return false; }

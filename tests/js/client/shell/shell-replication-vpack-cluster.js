@@ -21,7 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Max Neunhöffer
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require('jsunity');
@@ -133,28 +132,8 @@ function replicationSuite() {
       };
 
       checkKeys();
-
       const [shard, servers] = Object.entries(c.shards(true))[0];
-      // trigger move shard to change leadership:
-      let body = {database: "_system", collection: cn, shard, 
-                  fromServer: servers[0]  , toServer: servers[1]};
-      let result = arango.POST("/_admin/cluster/moveShard", body);
-      assertFalse(result.error);
-      assertEqual(202, result.code);
-
-      let done = false;
-      for (let i = 0; i < 120; ++i) {
-        const job = arango.GET(`/_admin/cluster/queryAgencyJob?id=${result.id}`);
-        print("Waiting for moveShard job to finish:", job.status);
-        if (job.error === false && job.status === "Finished") {
-          done = true;
-          break;
-        }
-        require('internal').wait(0.5);
-      }
-      if (!done) {
-        throw new Error("moveShard did not finish in time");
-      }
+      IM.moveShard("_system", cn, shard, servers[0], servers[1], 120);
 
       checkKeys();
     }

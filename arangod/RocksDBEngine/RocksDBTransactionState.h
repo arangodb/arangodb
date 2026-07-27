@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -50,6 +49,10 @@ class LogicalCollection;
 class LogicalDataSource;
 class RocksDBTransactionMethods;
 
+namespace transaction {
+class Manager;
+}  // namespace transaction
+
 /// @brief transaction type
 class RocksDBTransactionState : public TransactionState {
   friend class RocksDBTrxBaseMethods;
@@ -57,7 +60,8 @@ class RocksDBTransactionState : public TransactionState {
  public:
   RocksDBTransactionState(Database& vocbase, TransactionId tid,
                           transaction::Options const& options,
-                          transaction::OperationOrigin operationOrigin);
+                          transaction::OperationOrigin operationOrigin,
+                          transaction::Manager& manager);
   ~RocksDBTransactionState() override;
 
   /// @brief begin a transaction
@@ -143,6 +147,9 @@ class RocksDBTransactionState : public TransactionState {
 
   /// @brief delete transaction, snapshot and cache trx
   void cleanupTransaction() noexcept;
+
+  /// @brief transaction manager this transaction registers with when it begins
+  transaction::Manager& _manager;
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   std::atomic<uint32_t> _users{0};

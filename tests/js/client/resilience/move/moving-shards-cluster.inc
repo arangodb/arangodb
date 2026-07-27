@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertTrue, assertEqual, ArangoAgency, ArangoClusterInfo, GLOBAL */
+/*global assertTrue, assertEqual, ArangoAgency, ArangoClusterInfo, GLOBAL, arango, print */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -22,8 +22,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Max Neunhoeffer
-/// @author Copyright 2016, ArangoDB GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
@@ -36,16 +34,11 @@ const {errors, wait} = internal;
 const supervisionState = require("@arangodb/testutils/cluster-test-helper").supervisionState;
 const queryAgencyJob = require("@arangodb/testutils/cluster-test-helper").queryAgencyJob;
 const CI = require('@arangodb/cluster-info');
-const {getServersByType, deriveTestSuite, getUrlById, versionHas } = require('@arangodb/test-helper-common');
+const { deriveTestSuite, versionHas } = require('@arangodb/test-helper-common');
 const isCov = versionHas('coverage');
-const request = require('@arangodb/request');
 const helper = require("@arangodb/testutils/replicated-logs-helper");
 const lpreds = require("@arangodb/testutils/replicated-logs-predicates");
 const {
-  getDBServers,
-  getAgents,
-  getEndpointById,
-  getCoordinators,
   findCollectionServers
 } = require('@arangodb/test-helper');
 const { instanceRole } = require("@arangodb/testutils/instance");
@@ -55,7 +48,8 @@ const AM = IM.agencyMgr;
 // in the `useData` case, use this many documents:
 const numDocuments = 1000;
 
-const dbservers = getDBServers().map(arangod => arangod.id);
+const dbservers = IM.getInstancesRole(instanceRole.dbserver);
+var moveShardTimeout = (isCov)? 18000 : 600; // seconds
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -76,7 +70,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
 ////////////////////////////////////////////////////////////////////////////////
 
   function waitForSynchronousReplication(database) {
-    console.info("Waiting for synchronous replication to settle...");
+    print("Waiting for synchronous replication to settle...");
     CI.flush();
     for (var i = 0; i < c.length; ++i) {
       var cinfo = CI.getCollectionInfo(
@@ -95,7 +89,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
           // This also checks that there are as many failoverCandidates
           // as there are followers in sync. This should eventually be
           // reached.
-          console.info("Replication up and running!");
+          print("Replication up and running!");
           break;
         }
         wait(isCov ? 1.5 : 0.5);
@@ -114,7 +108,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
 ////////////////////////////////////////////////////////////////////////////////
 
   function waitForIncompleteMoveShard(database, collection, replFactor) {
-    console.info("Waiting for incomplete move shard to settle...");
+    print("Waiting for incomplete move shard to settle...");
     CI.flush();
     var cinfo = CI.getCollectionInfo(database, collection);
     var shards = Object.keys(cinfo.shards);
@@ -130,7 +124,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
         // This also checks that there are as many failoverCandidates
         // as there are followers in sync. This should eventually be
         // reached.
-        console.info("Incomplete moveShard completed!");
+        print("Incomplete moveShard completed!");
         break;
       }
       wait(isCov ? 1.5 : 0.5);
@@ -147,27 +141,16 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
 ////////////////////////////////////////////////////////////////////////////////
 
   function getCleanedOutServers() {
-    var coordEndpoint =
-        getCoordinators()[0];
-
-    var request = require("@arangodb/request");
-    var url = coordEndpoint.url;
-
-
-    var res;
-    try {
-      var envelope =
-          {method: "GET", url: url + "/_admin/cluster/numberOfServers"};
-      res = request(envelope);
-    } catch (err) {
-      console.error(
-          "Exception for GET /_admin/cluster/cleanOutServer:", err.stack);
+    var coord = IM.getInstancesRole(instanceRole.coordinator)[0];
+    var result = coord.toThisInstance(() => {
+      return arango.GET_RAW("/_admin/cluster/numberOfServers");
+    });
+    if (result.code !== 200) {
+      print(
+          "Error for GET /_admin/cluster/cleanOutServer:", result.parsedBody);
       return {cleanedServers: []};
     }
-    if (res.statusCode !== 200) {
-      return {cleanedServers: []};
-    }
-    var body = res.body;
+    var body = result.parsedBody;
     if (typeof body === "string") {
       try {
         body = JSON.parse(body);
@@ -186,28 +169,17 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
 ////////////////////////////////////////////////////////////////////////////////
 
   function displayAgencyInformation() {
-    var coordEndpoint =
-        getCoordinators()[0];
-    var request = require("@arangodb/request");
-    var url = coordEndpoint.url;
-
-    var res;
-    try {
-      var envelope = {method: "GET", url: url + "/_api/cluster/agency-dump"};
-      res = request(envelope);
-    } catch (err) {
-      console.error(
-          "Exception for GET /_api/cluster/agency-dump:", err.stack);
+    var coord = IM.getInstancesRole(instanceRole.coordinator)[0];
+    var result = coord.toThisInstance(() => {
+      return arango.GET_RAW("/_api/cluster/agency-dump");
+    });
+    if (result.code !== 200) {
       return;
     }
-    if (res.statusCode !== 200) {
-      return;
-    }
-    var body = res.body;
-    console.error("Agency state after disaster:", body);
+    print("Agency state after disaster:", result.parsedBody);
   }
 
-  function testServerNoLeader(id, fromCollNr, toCollNr) {
+  function testServerNoLeader(dbServer, fromCollNr, toCollNr) {
     if (fromCollNr === undefined) {
       fromCollNr = 0;
     }
@@ -217,7 +189,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
     for (var i = fromCollNr; i <= toCollNr; ++i) {
       CI.flush();
       var servers = findCollectionServers(dbn, c[i].name(), replVersion);
-      if (servers.indexOf(id) === 0 && servers.length !== 1) {
+      if (servers.indexOf(dbServer.id) === 0 && servers.length !== 1) {
         return false;
       }
 
@@ -232,7 +204,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
                     dbn, c[i].name(), s).servers);
         // quick hack here, if the list of servers has length one, we map it to -1
         // thus the check below will not return false in the case replFact === 1
-        var idxs = collInfoCurr.map(l => (l.length > 1) ? l.indexOf(id) : -1);
+        var idxs = collInfoCurr.map(l => (l.length > 1) ? l.indexOf(dbServer.id) : -1);
         for (var j = 0; j < idxs.length; j++) {
           if (idxs[j] === 0) {
             return false;
@@ -270,7 +242,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
 /// @brief test whether or not a server is clean
 ////////////////////////////////////////////////////////////////////////////////
 
-  function testServerEmpty(id, checkList, fromCollNr, toCollNr) {
+  function testServerEmpty(cleanoutServer, checkList, fromCollNr, toCollNr) {
     if (fromCollNr === undefined) {
       fromCollNr = 0;
     }
@@ -279,8 +251,16 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
     }
     var count = (isCov)? 12000 : 600;
     var ok = false;
-
-    console.info("Waiting for server " + id + " to be cleaned out ...");
+    let searchID;
+    let cleanoutCount;
+    if (typeof(cleanoutServer) === 'number') {
+      cleanoutCount = cleanoutServer;
+    } else if (typeof(cleanoutServer) === 'string') {
+      searchID = cleanoutServer;
+    } else {
+      searchID = cleanoutServer.id;
+    }
+    print(`Waiting for ${cleanoutCount} server(s) ${searchID} to be cleaned out ...`);
 
     if (checkList) {
 
@@ -288,19 +268,23 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       var obj;
       while (--count > 0) {
         obj = getCleanedOutServers();
-        if (obj.cleanedServers.indexOf(id) >= 0) {
+        if (!searchID) {
+          if (obj.cleanedServers.length === cleanoutCount) {
+            ok = true;
+            print(`Success: ${cleanoutCount} reached with ${obj}`);
+            break;
+          }
+        } else if (obj.cleanedServers.indexOf(searchID) >= 0) {
           ok = true;
-          console.info(
-              "Success: Server " + id + " cleaned out after " + (600 - count) + " seconds");
+          print("Success: Server " + searchID + " cleaned out after " + (600 - count) + " seconds");
           break;
         }
         wait(isCov ? 1.5 : 1.0);
       }
 
       if (!ok) {
-        console.info(
-            "Failed: Server " + id + " was not cleaned out. List of cleaned servers: ["
-            + obj.cleanedServers + "]");
+        print("Failed: Server " + searchID + " was not cleaned out. List of cleaned servers: ["
+              + obj.cleanedServers + "]");
         displayAgencyInformation();
       }
 
@@ -312,7 +296,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
           wait(isCov ? 1.5 : 1.0);
           CI.flush();
           var servers = findCollectionServers(dbn, c[i].name(), replVersion);
-          if (servers.indexOf(id) === -1) {
+          if (servers.indexOf(searchID) === -1) {
             // Now check current as well:
             /*var collInfo =
                 CI.getCollectionInfo(dbn, c[i].name());
@@ -321,7 +305,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
                 Object.keys(shards).map(
                   s => CI.getCollectionInfoCurrent(
                     dbn, c[i].name(), s).servers);
-            var idxs = collInfoCurr.map(l => l.indexOf(id));
+            var idxs = collInfoCurr.map(l => l.indexOf(cleanoutServer.id));
             ok = true;
             for (var j = 0; j < idxs.length; j++) {
               if (idxs[j] !== -1) {
@@ -351,48 +335,28 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
 ////////////////////////////////////////////////////////////////////////////////
 
   function cleanOutServer(id, dontwait = false) {
-    var coordEndpoint =
-        getCoordinators()[0];
-    var request = require("@arangodb/request");
-    var url = coordEndpoint.url;
-    var body = {"server": id};
-    var result;
-    try {
-      result = request({
-        method: "POST",
-        url: url + "/_admin/cluster/cleanOutServer",
-        body: JSON.stringify(body)
-      });
-    } catch (err) {
-      console.error(
-          "Exception for POST /_admin/cluster/cleanOutServer:", err.stack);
+    var coord = IM.getInstancesRole(instanceRole.coordinator)[0];
+    const body = {"server": id};
+    print("cleanOutServer job:", JSON.stringify(body));
+    var result = coord.toThisInstance(() => {
+      return arango.POST_RAW("/_admin/cluster/cleanOutServer", body);
+    });
+    if (result.code !== 202) {
+      print(
+          "Exception for POST /_admin/cluster/cleanOutServer:", result.parsedBody);
       return false;
     }
-    console.info("cleanOutServer job:", JSON.stringify(body));
-    console.info("result of request:", JSON.stringify(result.json));
+    print("result of request:", JSON.stringify(result.parsedBody));
     if (dontwait) {
       return result;
     }
     // Now wait until the job we triggered is finished:
     var count = (isCov)? 24000 : 1200; // seconds
-    while (true) {
-      var job = queryAgencyJob(result.json.id);
-      console.info("Status of cleanOutServer job:", job.status);
-      if (job.error === false) {
-        if (job.status === "Finished") {
-          return result;
-        } else if (job.status === "Failed") {
-          return false;
-        }
-      }
-      if (count-- < 0) {
-        console.error(
-            "Timeout in waiting for cleanOutServer to complete: "
-            + JSON.stringify(body));
-        return false;
-      }
-      wait(isCov ? 1.5 : 1.0);
-    }
+    return IM.waitForAgencyJob(
+      result.parsedBody.id,
+      count * 10,
+      "waiting for cleanOutServer to complete",
+      "Finished");
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -400,41 +364,25 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
 ////////////////////////////////////////////////////////////////////////////////
 
   function resignLeadership(id, undoMoves = false) {
-    var coordEndpoint =
-        getCoordinators()[0];
-    var request = require("@arangodb/request");
-    var url = coordEndpoint.url;
+    assertTrue(id !== undefined);
+    var coord = IM.getInstancesRole(instanceRole.coordinator)[0];
     var body = {"server": id, undoMoves};
-    var result;
-    try {
-      result = request({
-        method: "POST",
-        url: url + "/_admin/cluster/resignLeadership",
-        body: JSON.stringify(body)
-      });
-    } catch (err) {
-      console.error(
-          "Exception for POST /_admin/cluster/resignLeadership:", err.stack);
+    var result = coord.toThisInstance(() => {
+      return arango.POST_RAW("/_admin/cluster/resignLeadership", body);
+    });
+    if (result.code !== 202) {
+      print("Error for POST /_admin/cluster/numberOfServers:", result.parsedBody);
       return false;
     }
-    console.info("resignLeadership job:", JSON.stringify(body));
-    console.info("result of request:", JSON.stringify(result.json));
+
+    print("resignLeadership job:", JSON.stringify(body));
+    print("result of request:", JSON.stringify(result));
     // Now wait until the job we triggered is finished:
     var count = (isCov)? 24000 : 1200; // seconds
-    while (true) {
-      var job = queryAgencyJob(result.json.id);
-      console.info("Status of resignLeadership job:", job.status);
-      if (job.error === false && job.status === "Finished") {
-        return result;
-      }
-      if (count-- < 0) {
-        console.error(
-            "Timeout in waiting for resignLeadership to complete: "
-            + JSON.stringify(body));
-        return false;
-      }
-      wait(isCov ? 1.5 : 1.0);
-    }
+    return IM.waitForAgencyJob(
+      result.parsedBody.id,
+      count * 10,
+      "waiting for resignLeadership to complete");
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -442,24 +390,16 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
 ////////////////////////////////////////////////////////////////////////////////
 
   function shrinkCluster(toNum) {
-    var coordEndpoint =
-        getCoordinators()[0];
-    var request = require("@arangodb/request");
-    var url = coordEndpoint.url;
-    var body = {"numberOfDBServers": toNum};
-    let res = {};
-    try {
-      res = request({
-        method: "PUT",
-        url: url + "/_admin/cluster/numberOfServers",
-        body: JSON.stringify(body)
-      });
-    } catch (err) {
-      console.error(
-          "Exception for PUT /_admin/cluster/numberOfServers:", err.stack);
+    var coord = IM.getInstancesRole(instanceRole.coordinator)[0];
+    return coord.toThisInstance(() => {
+      var body = {"numberOfDBServers": toNum};
+      let result = arango.PUT_RAW("/_admin/cluster/numberOfServers", body);
+      if (result.code === 200) {
+        return true;
+      }
+      print("Error for PUT /_admin/cluster/numberOfServers:", result.parsedBody);
       return false;
-    }
-    return res.hasOwnProperty("statusCode") && res.statusCode === 200;
+    });
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -467,117 +407,58 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
 ////////////////////////////////////////////////////////////////////////////////
 
   function resetCleanedOutServers() {
-    var coordEndpoint =
-        getCoordinators()[0];
-    var request = require("@arangodb/request");
-    var url = coordEndpoint.url;
+    var coord = IM.getInstancesRole(instanceRole.coordinator)[0];
     var numberOfDBServers = dbservers.length;
-    var body = {"cleanedServers": [], "numberOfDBServers": numberOfDBServers};
-    try {
-      var res = request({
-        method: "PUT",
-        url: url + "/_admin/cluster/numberOfServers",
-        body: JSON.stringify(body)
-      });
-      // To ensure that all our favourite Coordinator0001 has actually
-      // updated its agencyCache to reflect the newly empty CleanedServers
-      // list, we ask him to create a collection with replicationFactor
-      // numberOfDBServers. If this works, we can get rid of the collection
-      // again and all is well. If it does not work, we have to wait a bit
-      // longer:
-      var maxCount = (isCov)? 1200 : 120;
-      for (var count = 0; count < maxCount; ++count) {
-        try {
-          var c = db._create("collectionProbe", {replicationFactor: numberOfDBServers});
-          c.drop();
-          return res;
-        } catch (err2) {
-          if (err2.errorNum !== errors.ERROR_CLUSTER_INSUFFICIENT_DBSERVERS.code) {
-            console.error("Got unexpected error from collection probe: ", err2.stack);
-            return false;
-          }
+    var result = coord.toThisInstance(() => {
+      var body = {"cleanedServers": [], "numberOfDBServers": numberOfDBServers};
+      return arango.PUT_RAW("/_admin/cluster/numberOfServers", body);
+    });
+    if (result.code !== 200) {
+      print(
+        "Exception for PUT /_admin/cluster/numberOfServers:", result.parsedBody);
+      return false;
+    }
+    // To ensure that all our favourite Coordinator0001 has actually
+    // updated its agencyCache to reflect the newly empty CleanedServers
+    // list, we ask him to create a collection with replicationFactor
+    // numberOfDBServers. If this works, we can get rid of the collection
+    // again and all is well. If it does not work, we have to wait a bit
+    // longer:
+    var maxCount = (isCov)? 1200 : 120;
+    for (var count = 0; count < maxCount; ++count) {
+      try {
+        var c = db._create("collectionProbe", {replicationFactor: numberOfDBServers});
+        c.drop();
+        return result.parsedBody;
+      } catch (err2) {
+        if (err2.errorNum !== errors.ERROR_CLUSTER_INSUFFICIENT_DBSERVERS.code) {
+          print("Got unexpected error from collection probe: ", err2.stack);
+          return false;
         }
-        console.log("Collection probe unsuccessful for replicationFactor=", numberOfDBServers, " count=", count);
-        wait(isCov ? 1.5 : 0.5);
       }
-      console.error("Could not successfully create collection probe for 60s, giving up!");
-      return false;
-    } catch (err) {
-      console.error(
-          "Exception for PUT /_admin/cluster/numberOfServers:", err.stack);
-      return false;
+      print("Collection probe unsuccessful for replicationFactor=", numberOfDBServers, " count=", count);
+      wait(isCov ? 1.5 : 0.5);
     }
+    print("Could not successfully create collection probe for 60s, giving up!");
+    return false;
   }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief move a single shard
-////////////////////////////////////////////////////////////////////////////////
-
-  function moveShard(database, collection, shard, fromServer, toServer, dontwait, expectedResult) {
-    var coordEndpoint =
-        getCoordinators()[0];
-    var request = require("@arangodb/request");
-    var url = coordEndpoint.url;
-    var body = {database, collection, shard, fromServer, toServer};
-    var result;
-    try {
-      result = request({
-        method: "POST",
-        url: url + "/_admin/cluster/moveShard",
-        body: JSON.stringify(body)
-      });
-    } catch (err) {
-      console.error(
-          "Exception for PUT /_admin/cluster/moveShard:", err.stack);
-      return false;
-    }
-    console.info("moveShard job:", JSON.stringify(body));
-    console.info("result of request:", JSON.stringify(result.json));
-    if (dontwait) {
-      return result;
-    }
-    // Now wait until the job we triggered is finished:
-    var count = (isCov)? 12000 : 600; // seconds
-    while (true) {
-      var job = queryAgencyJob(result.json.id);
-      console.info("Status of moveShard job:", job.status);
-      if (job.error === false && job.status === expectedResult) {
-        return result;
-      }
-      if (count-- < 0) {
-        console.error(
-            "Timeout in waiting for moveShard to complete: "
-            + JSON.stringify(body));
-        return false;
-      }
-      wait(isCov ? 1.5 : 1.0);
-    }
-  }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Set supervision mode
 ////////////////////////////////////////////////////////////////////////////////
 
   function maintenanceMode(mode) {
-    console.log("Switching supervision maintenance " + mode);
-    var coordEndpoint =
-        getCoordinators()[0];
-    var request = require("@arangodb/request");
-    var url = coordEndpoint.url;
-    var req;
-    try {
-      req = request({
-        method: "PUT",
-        url: url + "/_admin/cluster/maintenance",
-        body: JSON.stringify(mode)
-      });
-    } catch (err) {
-      console.error(
-          "Exception for PUT /_admin/cluster/maintenance:", err.stack);
+    print("Switching supervision maintenance " + mode);
+    var coord = IM.getInstancesRole(instanceRole.coordinator)[0];
+    var result = coord.toThisInstance(() => {
+      return arango.PUT_RAW("/_admin/cluster/maintenance", JSON.stringify(mode));
+    });
+    if (result.code !== 200) {
+      print(
+          "Exception for PUT /_admin/cluster/maintenance:", result.parsedBody);
       return false;
     }
-    console.log("Supervision maintenance is " + mode);
+    print("Supervision maintenance is " + mode);
     return true;
   }
 
@@ -587,38 +468,25 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
 ////////////////////////////////////////////////////////////////////////////////
 
   function cancelAgencyJob(id) {
-    console.log("Killing job " + id);
-    var coordEndpoint =
-        getCoordinators()[0];
-    var request = require("@arangodb/request");
-    var url = coordEndpoint.url;
-    var req;
+    print("Killing job " + id);
+    var coord = IM.getInstancesRole(instanceRole.coordinator)[0];
     for (let i = 0; i < 10; i++) {
-      try {
-        req = request({
-          method: "POST",
-          url: url + "/_admin/cluster/cancelAgencyJob",
-          body: JSON.stringify({id: id})
-        });
-      } catch (err) {
-        console.error(
-            "Exception for POS /_admin/cluster/cancelAgencyJob:" + {id: id}, err.stack);
-        return false;
-      }
+      var result = coord.toThisInstance(() => {
+        return arango.POST_RAW("/_admin/cluster/cancelAgencyJob", {id: id});
+      });
 
-      const result = JSON.parse(req.body);
-      if (result.error === false) {
+      if (result.parsedBody.error === false) {
         return true;
       } else if (result.code !== 404) {
-        console.error("Failed to cancel job " + id + ": " + JSON.stringify(result));
+        print("Failed to cancel job " + id + ": " + JSON.stringify(result));
         return false;
       } else {
-        console.log("Job not yet detected by coordinator");
+        print("Job not yet detected by coordinator");
       }
 
       wait(isCov ? 1.5 : 1.0);
     }
-    console.error("Failed to cancel job" + id + ", job not visible to coordinator.");
+    print("Failed to cancel job" + id + ", job not visible to coordinator.");
     return false;
   }
 
@@ -630,7 +498,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
   function createSomeCollections(n, nrShards, replFactor, useData, otherNumDocuments = 0) {
     assertEqual('boolean', typeof useData);
     var systemCollServers = findCollectionServers(dbn, "_graphs", replVersion);
-    console.info("System collections use servers:", systemCollServers);
+    print("System collections use servers:", systemCollServers);
     for (var i = 0; i < n; ++i) {
       ++count;
       while (true) {
@@ -649,16 +517,16 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
         }
 
         var servers = findCollectionServers(dbn, name, replVersion);
-        console.info("Test collection uses servers:", servers);
+        print("Test collection uses servers:", servers);
         if (_.intersection(systemCollServers, servers).length === 0) {
           c.push(coll);
           break;
         }
-        console.info("Need to recreate collection to avoid system collection servers.");
+        print("Need to recreate collection to avoid system collection servers.");
         c.push(coll);
         waitForSynchronousReplication(dbn);
         c.pop();
-        console.info("Synchronous replication has settled, now dropping again.");
+        print("Synchronous replication has settled, now dropping again.");
       }
     }
   }
@@ -684,12 +552,10 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
 /// @brief find server not on a list
 ////////////////////////////////////////////////////////////////////////////////
 
-  function findServerNotOnList(list) {
-    var count = 0;
-    while (list.indexOf(dbservers[count]) >= 0) {
-      count += 1;
-    }
-    return dbservers[count];
+  function findServerNotOnList(idList) {
+    return dbservers.filter(arangod => {
+      return idList.indexOf(arangod.id) < 0;
+    })[0];
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -706,10 +572,10 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
         return true;
       }
       if (state.error) {
-        console.warn("Waiting for supervision jobs to finish:",
+        print("Waiting for supervision jobs to finish:",
             "Currently no agency communication possible.");
       } else {
-        console.info("Waiting for supervision jobs to finish:",
+        print("Waiting for supervision jobs to finish:",
             "ToDo jobs:", Object.keys(state.ToDo).length,
             "Pending jobs:", Object.keys(state.Pending).length);
       }
@@ -763,6 +629,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       }
       c = [];
       resetCleanedOutServers();
+      IM.debugClearFailAt();
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -777,7 +644,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
 
           return;
         }
-        console.log("Waiting for 5 dbservers to be present:", JSON.stringify(dbservers));
+        print("Waiting for 5 dbservers to be present:", JSON.stringify(dbservers));
         wait(isCov ? 1.5 : 1.0);
       }
       assertTrue(false, "Timeout waiting for 5 dbservers.");
@@ -792,13 +659,13 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       var _dbservers = _.clone(dbservers);
       _dbservers.sort();
       assertTrue(shrinkCluster(4));
-      assertTrue(testServerEmpty(_dbservers[4], true));
+      assertTrue(testServerEmpty(1, true));
       assertTrue(waitForSupervision());
       assertTrue(shrinkCluster(3));
-      assertTrue(testServerEmpty(_dbservers[3], true));
+      assertTrue(testServerEmpty(2, true));
       assertTrue(waitForSupervision());
       assertTrue(shrinkCluster(2));
-      assertTrue(testServerEmpty(_dbservers[2], true));
+      assertTrue(testServerEmpty(3, true));
       assertTrue(waitForSupervision());
       checkCollectionContents();
     },
@@ -815,7 +682,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       var cinfo = CI.getCollectionInfo(
           dbn, c[0].name());
       var shard = Object.keys(cinfo.shards)[0];
-      assertTrue(moveShard(dbn, c[0]._id, shard, fromServer, toServer, false, "Finished"));
+      assertTrue(IM.moveShard(dbn, c[0]._id, shard, fromServer, toServer, moveShardTimeout));
       assertTrue(testServerEmpty(fromServer), false);
       assertTrue(waitForSupervision());
       checkCollectionContents();
@@ -833,7 +700,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       var cinfo = CI.getCollectionInfo(
           dbn, c[0].name());
       var shard = Object.keys(cinfo.shards)[0];
-      assertTrue(moveShard(dbn, c[0]._id, shard, fromServer, toServer, false, "Finished"));
+      assertTrue(IM.moveShard(dbn, c[0]._id, shard, fromServer, toServer, moveShardTimeout));
       assertTrue(testServerEmpty(fromServer), false);
       assertTrue(waitForSupervision());
       checkCollectionContents();
@@ -852,7 +719,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       var cinfo = CI.getCollectionInfo(
           dbn, c[1].name());
       var shard = Object.keys(cinfo.shards)[0];
-      assertTrue(moveShard(dbn, c[1]._id, shard, fromServer, toServer, false, "Finished"));
+      assertTrue(IM.moveShard(dbn, c[1]._id, shard, fromServer, toServer, moveShardTimeout));
       assertTrue(testServerEmpty(fromServer, false, 1, 1));
       assertTrue(waitForSupervision());
       checkCollectionContents();
@@ -871,7 +738,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       var cinfo = CI.getCollectionInfo(
           dbn, c[1].name());
       var shard = Object.keys(cinfo.shards)[0];
-      assertTrue(moveShard(dbn, c[1]._id, shard, fromServer, toServer, false, "Finished"));
+      assertTrue(IM.moveShard(dbn, c[1]._id, shard, fromServer, toServer, moveShardTimeout));
       assertTrue(testServerEmpty(fromServer, false, 1, 1));
       assertTrue(waitForSupervision());
       checkCollectionContents();
@@ -890,7 +757,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       var cinfo = CI.getCollectionInfo(
           dbn, c[1].name());
       var shard = Object.keys(cinfo.shards)[0];
-      assertTrue(moveShard(dbn, c[1]._id, shard, fromServer, toServer, false, "Finished"));
+      assertTrue(IM.moveShard(dbn, c[1]._id, shard, fromServer, toServer, moveShardTimeout));
       assertTrue(testServerEmpty(fromServer, false, 1, 1));
       assertTrue(waitForSupervision());
       checkCollectionContents();
@@ -909,7 +776,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       var cinfo = CI.getCollectionInfo(
           dbn, c[1].name());
       var shard = Object.keys(cinfo.shards)[0];
-      assertTrue(moveShard(dbn, c[1]._id, shard, fromServer, toServer, false, "Finished"));
+      assertTrue(IM.moveShard(dbn, c[1]._id, shard, fromServer, toServer, moveShardTimeout));
       assertTrue(testServerEmpty(fromServer, false, 1, 1));
       assertTrue(waitForSupervision());
       checkCollectionContents();
@@ -928,7 +795,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       var cinfo = CI.getCollectionInfo(
           dbn, c[1].name());
       var shard = Object.keys(cinfo.shards)[0];
-      assertTrue(moveShard(dbn, c[1]._id, shard, fromServer, toServer, false, "Finished"));
+      assertTrue(IM.moveShard(dbn, c[1]._id, shard, fromServer, toServer, moveShardTimeout));
       assertTrue(testServerNoLeader(fromServer, 1, 1));
       assertTrue(waitForSupervision());
       checkCollectionContents();
@@ -1091,7 +958,8 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
           dbn, c[1].name());
       var shard = Object.keys(cinfo.shards)[0];
       assertTrue(maintenanceMode("on"));
-      assertTrue(moveShard(dbn, c[1]._id, shard, fromServer, toServer, true, "Finished"));
+      let ID = IM.moveShard(dbn, c[1]._id, shard, fromServer, toServer, -1);
+      assertTrue(ID !== false);
       var first = AM.call("transient", [["/arango/Supervision/State"]])[0].arango.Supervision.State, state;
       var waitUntil = new Date().getTime() + 30.0 * 1000;
       while (true) {
@@ -1116,42 +984,43 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
 
     testMoveShardFromFollowerRepl3_failoverCands: function () {
       if (!IM.debugCanUseFailAt()) {
-        console.log("Skipping test for failoverCandidates because failure points are not compiled in!");
+        print("Skipping test for failoverCandidates because failure points are not compiled in!");
         return;
       }
       if (replVersion === "2") {
-        console.log("Skipping failure point test for replication 2, because there is no such failure point");
+        print("Skipping failure point test for replication 2, because there is no such failure point");
         return;
       }
       createSomeCollections(1, 1, 3, useData);
       assertTrue(waitForSynchronousReplication(dbn));
       var servers = findCollectionServers(dbn, c[1].name(), replVersion);
-      var leader = servers[0];
-      var fromServer = servers[1];
-      var leaderUrl = getUrlById(leader);
+      var leaderID = servers[0];
+      var leader = IM.getInstanceByID(leaderID);
+      var fromServerID = servers[1];
       // Switch off something in the maintenance on the leader to detect
       // followers which are not in Plan. This means that the moveShard
       // below will leave the old server in Current/servers and
       // Current/failoverCandidates.
       try {
-        IM.debugSetFailAt("Maintenance::doNotRemoveUnPlannedFollowers", instanceRole.dbServer, leaderUrl);
+        leader.debugSetFailAt("Maintenance::doNotRemoveUnPlannedFollowers");
 
         var toServer = findServerNotOnList(servers);
         var cinfo = CI.getCollectionInfo(
             dbn, c[1].name());
         var shard = Object.keys(cinfo.shards)[0];
-        assertTrue(moveShard(dbn, c[1]._id, shard, fromServer, toServer, false, "Finished"));
+        assertTrue(IM.moveShard(dbn, c[1]._id, shard, fromServerID, toServer, moveShardTimeout));
         assertTrue(waitForIncompleteMoveShard(dbn, c[1].name(), 3));
         wait(5);   // After 5 seconds the situation should be unchanged!
         assertTrue(waitForIncompleteMoveShard(dbn, c[1].name(), 3));
         // Now we know that the old follower is not in the plan but is in
         // failoverCandidates (and indeed in Current/servers). Let's now
         // try to move the shard back, this ought to be denied:
-        assertTrue(moveShard(dbn, c[1]._id, shard, toServer, fromServer, false, "Failed"));
+        assertTrue(IM.moveShard(dbn, c[1]._id, shard, toServer, fromServerID,
+                                moveShardTimeout, undefined, undefined, "Failed"));
         IM.debugClearFailAt();
         // Now we should go back to only 3 servers in Current.
         assertTrue(waitForSynchronousReplication(dbn));
-        assertTrue(testServerEmpty(fromServer, false, 1, 1));
+        assertTrue(testServerEmpty(fromServerID, false, 1, 1));
         assertTrue(waitForSupervision());
         checkCollectionContents();
       } catch (err) {
@@ -1166,7 +1035,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
 
     testCancelToDoMoveShard: function () {
       if (replVersion === "2") {
-        console.log("Skipping cancel test for replication 2, because move shards are not cancellable.");
+        print("Skipping cancel test for replication 2, because move shards are not cancellable.");
         return;
       }
       createSomeCollections(1, 1, 3, useData);
@@ -1178,13 +1047,12 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
           dbn, c[1].name());
       var shard = Object.keys(cinfo.shards)[0];
       assertTrue(maintenanceMode("on"));
-      let result = moveShard(dbn, c[1]._id, shard, fromServer, toServer, true, "Finished");
-      assertEqual(result.statusCode, 202);
-      let id = JSON.parse(result.body).id;
+      let id = IM.moveShard(dbn, c[1]._id, shard, fromServer, toServer, -1);
+      assertTrue(id !== false);
       assertTrue(cancelAgencyJob(id));
       assertTrue(maintenanceMode("off"));
       assertTrue(waitForSupervision());
-      var job = queryAgencyJob(result.json.id);
+      var job = queryAgencyJob(id);
       assertEqual(job.status, "Failed");
       assertEqual(job.abort);
       checkCollectionContents();
@@ -1196,7 +1064,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
 
     testCancelPendingMoveShard: function () {
       if (replVersion === "2") {
-        console.log("Skipping cancel test for replication 2, because move shards are not cancellable.");
+        print("Skipping cancel test for replication 2, because move shards are not cancellable.");
         return;
       }
       if (useData) {
@@ -1213,17 +1081,15 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
         var cinfo = CI.getCollectionInfo(
             dbn, c[0].name());
         var shard = Object.keys(cinfo.shards)[0];
-        let result = moveShard(dbn, c[0]._id, shard, fromServer, toServer, true, "Finished");
-        assertEqual(result.statusCode, 202);
-        let id = JSON.parse(result.body).id;
-        while (queryAgencyJob(result.json.id).status === "ToDo") { // wait for job to start
+        let id = IM.moveShard(dbn, c[0]._id, shard, fromServer, toServer, -1);
+        while (queryAgencyJob(id).status === "ToDo") { // wait for job to start
           wait(isCov ? 1 : 0.1);
         }
         assertTrue(cancelAgencyJob(id));
-        while (queryAgencyJob(result.json.id).status === "Pending") { // wait for job to be killed
+        while (queryAgencyJob(id).status === "Pending") { // wait for job to be killed
           wait(isCov ? 1 : 0.1);
         }
-        var job = queryAgencyJob(result.json.id);
+        var job = queryAgencyJob(id);
         assertEqual(job.status, "Failed");
         assertEqual(job.abort);
         assertTrue(waitForSupervision());
@@ -1233,7 +1099,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
 
     testCancelPendingMoveShardDropCollection: function () {
       if (replVersion === "2") {
-        console.log("Skipping cancel test for replication 2, because move shards are not cancellable.");
+        print("Skipping cancel test for replication 2, because move shards are not cancellable.");
         return;
       }
       if (useData) {
@@ -1250,24 +1116,23 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
         var cinfo = CI.getCollectionInfo(
             dbn, c[0].name());
         var shard = Object.keys(cinfo.shards)[0];
-        let result = moveShard(dbn, c[0]._id, shard, fromServer, toServer, true, "Finished");
-        assertEqual(result.statusCode, 202);
-        let id = JSON.parse(result.body).id;
-        while (queryAgencyJob(result.json.id).status === "ToDo") { // wait for job to start
+        let id = IM.moveShard(dbn, c[0]._id, shard, fromServer, toServer, -1);
+        assertTrue(id !== false);
+        while (queryAgencyJob(id).status === "ToDo") { // wait for job to start
           wait(isCov ? 0.5 : 0.1);
         }
         assertTrue(maintenanceMode("on"));
-        assertEqual(queryAgencyJob(result.json.id).status, "Pending");
+        assertEqual(queryAgencyJob(id).status, "Pending");
         assertTrue(cancelAgencyJob(id));
         for (var j = 0; j < c.length; ++j) {
           c[j].drop();
         }
         c = [];
         assertTrue(maintenanceMode("off"));
-        while (queryAgencyJob(result.json.id).status === "Finish") { // wait for job to finish
+        while (queryAgencyJob(id).status === "Finish") { // wait for job to finish
           wait(isCov ? 2 : 0.1);
         }
-        var job = queryAgencyJob(result.json.id);
+        var job = queryAgencyJob(id);
         assertEqual(job.status, "Failed");
         assertEqual(job.abort);
         assertTrue(waitForSupervision());
@@ -1281,7 +1146,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
 
     testCancelToDoCleanOutServer: function () {
       if (replVersion === "2") {
-        console.log("Skipping cancel test for replication 2, because move shards are not cancellable.");
+        print("Skipping cancel test for replication 2, because move shards are not cancellable.");
         return;
       }
       createSomeCollections(1, 1, 3, useData);
@@ -1293,14 +1158,14 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       var shard = Object.keys(cinfo.shards)[0];
       assertTrue(maintenanceMode("on"));
       let result = cleanOutServer(servers[0], true);
-      assertEqual(result.statusCode, 202);
-      let id = JSON.parse(result.body).id;
+      assertEqual(result.code, 202);
+      let id = result.parsedBody.id;
       assertTrue(cancelAgencyJob(id));
       assertTrue(maintenanceMode("off"));
-      while (queryAgencyJob(result.json.id).status === "ToDo") { // wait for job to be killed
+      while (queryAgencyJob(result.parsedBody.id).status === "ToDo") { // wait for job to be killed
         wait(isCov ? 2 : 0.1);
       }
-      var job = queryAgencyJob(result.json.id);
+      var job = queryAgencyJob(result.parsedBody.id);
       assertEqual(job.status, "Failed");
       assertEqual(job.abort);
       assertTrue(waitForSupervision());
@@ -1313,7 +1178,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
 
     testCancelPendingCleanOutServer: function () {
       if (replVersion === "2") {
-        console.log("Skipping cancel test for replication 2, because move shards are not cancellable.");
+        print("Skipping cancel test for replication 2, because move shards are not cancellable.");
         return;
       }
       if (useData) {
@@ -1330,16 +1195,16 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
             dbn, c[0].name());
         var shard = Object.keys(cinfo.shards)[0];
         let result = cleanOutServer(fromServer, true);
-        assertEqual(result.statusCode, 202);
-        let id = JSON.parse(result.body).id;
-        while (queryAgencyJob(result.json.id).status === "ToDo") { // wait for job to start
+        assertEqual(result.code, 202);
+        let id = result.parsedBody.id;
+        while (queryAgencyJob(result.parsedBody.id).status === "ToDo") { // wait for job to start
           wait(isCov ? 2 : 0.1);
         }
         assertTrue(cancelAgencyJob(id));
-        while (queryAgencyJob(result.json.id).status === "Pending") { // wait for job to be killed
+        while (queryAgencyJob(result.parsedBody.id).status === "Pending") { // wait for job to be killed
           wait(isCov ? 2 : 0.1);
         }
-        var job = queryAgencyJob(result.json.id);
+        var job = queryAgencyJob(result.parsedBody.id);
         assertEqual(job.status, "Failed");
         assertEqual(job.abort);
         assertTrue(waitForSupervision());

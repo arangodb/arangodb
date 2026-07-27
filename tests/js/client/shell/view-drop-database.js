@@ -21,8 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Valery Mironov
-/// @author Max Neunhoeffer
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");

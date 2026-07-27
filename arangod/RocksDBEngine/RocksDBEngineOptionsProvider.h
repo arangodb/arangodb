@@ -27,11 +27,12 @@
 
 namespace arangodb {
 
-struct RocksDBEngineOptionsProvider : OptionsProvider<RocksDBEngineOptions> {
-  void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
-                      RocksDBEngineOptions& options) override;
-  void validateOptions(std::shared_ptr<options::ProgramOptions> opts,
-                       RocksDBEngineOptions& options) override;
+struct RocksDBEngineOptionsProvider
+    : OptionsProviderImpl<RocksDBEngineOptionsProvider, RocksDBEngineOptions> {
+  void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                          RocksDBEngineOptions& options);
+  void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                           RocksDBEngineOptions& options);
 };
 
 }  // namespace arangodb
