@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -28,14 +27,13 @@
 #include "Replication/ReplicationOptions.h"
 #include "SimpleHttpClient/ConnectionCache.h"
 
-struct TRI_vocbase_t;
-
 namespace arangodb {
 namespace application_features {
 class ApplicationServer;
 class CommunicationFeaturePhase;
 }  // namespace application_features
 
+struct Database;
 class GeneralResponse;
 class GlobalReplicationApplier;
 
@@ -72,10 +70,10 @@ class ReplicationFeature final
   void disableReplicationApplier();
 
   /// @brief start the replication applier for a single database
-  void startApplier(TRI_vocbase_t* vocbase);
+  void startApplier(Database* vocbase);
 
   /// @brief stop the replication applier for a single database
-  void stopApplier(TRI_vocbase_t* vocbase);
+  void stopApplier(Database* vocbase);
 
   /// @brief returns the connect timeout for replication requests
   double connectTimeout() const;

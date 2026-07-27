@@ -4,8 +4,30 @@
 * Fixed a bug in the JavaScript API causing `allowImplicit` and
   `skipFastLockRound` to not be forwarded to the server for Stream Transactions.
 
-* Upgraded included rclone to v1.74.3 with go1.25.11 and non-vulnerable
+* Updated node modules:
+ - brace-expansion to 5.0.8
+
+* Updated node modules:
+ - fast-uri to 3.1.4
+ - js-yaml to 4.3.0
+
+* Upgraded included rclone to v1.74.4 with go1.25.12 and non-vulnerable
   dependencies.
+
+* COR-759: AQL unary plus/minus on bind parameters silently return incorrect
+  values. AQL: Fixed an issue where queries using unary operators (+ and -) with
+  bind parameters could cause the server to terminate unexpectedly.
+  These queries are now handled correctly and return the expected results.
+
+* Updated ArangoDB Starter to v0.19.24.
+
+* COR-613: Create Response Code Metrics
+  arangodb_http_response_http_response_code_total{code="<response-code>"}
+
+* COR-728: Removed the telemetrics API and the arangosh telemetrics client.
+
+* GitHub issue #22532: Fixed query editor content becoming hidden after resizing
+  the editor pane in the web UI.
 
 * Add missing case to return 403 for error HTTP_UNAUTHORIZED.
 
@@ -19,12 +41,8 @@
 
 * Updated node modules:
  - qs to 6.15.2
- - brace-expansion to 5.0.6
- - js-yaml to 4.2.0
 
 * Upgraded OpenSSL to 3.5.7.
-
-* Updated ArangoDB Starter to v0.19.23.
 
 * COR-607: Fix a problem that causes cluster queries involving a materialize node
   collection access that is used as a satellite to crash in maintainer mode,
@@ -83,9 +101,6 @@
 * Updated node modules:
  - lodash to 4.18.0
  - minimatch to 3.1.4
- - js-yaml to 3.14.2
- - qs to 6.14.2
- - brace-expansion to 1.1.13
  - ajv to 8.18.0
  - @xmldom/xmldom@0.8.13
 

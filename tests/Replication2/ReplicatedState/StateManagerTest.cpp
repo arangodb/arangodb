@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
 // Must be included early to avoid
@@ -30,6 +29,7 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
+#include "Mocks/FakeRegistry.h"
 #include "Replication2/Mocks/FakeAsyncExecutor.h"
 #include "Replication2/Mocks/FakeFollowerFactory.h"
 #include "Replication2/Mocks/FakeReplicatedState.h"
@@ -37,14 +37,13 @@
 #include "Replication2/Mocks/LeaderCommunicatorMock.h"
 #include "Replication2/Mocks/MockVocbase.h"
 #include "Replication2/Mocks/ParticipantsFactoryMock.h"
-#include "Replication2/Mocks/ReplicatedLogMetricsMock.h"
-#include "Replication2/Mocks/ReplicatedStateMetricsMock.h"
 #include "Replication2/Mocks/SchedulerMocks.h"
 #include "Replication2/Mocks/StorageEngineMethodsMock.h"
 #include "Mocks/Servers.h"
 
 #include "Replication2/ReplicatedLog/DefaultRebootIdCache.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
+#include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
 #include "Replication2/ReplicatedState/ReplicatedState.h"
 #include "Replication2/ReplicatedState/ReplicatedStateImpl.tpp"
 #include "Replication2/IScheduler.h"
@@ -109,12 +108,12 @@ struct StateManagerTest : testing::Test {
               12, gid.id, executor, LogRange{});
   storage::IStorageEngineMethods* methodsPtr =
       storageContext->getMethods().release();
-  std::shared_ptr<test::ReplicatedLogMetricsMock> logMetricsMock =
-      std::make_shared<test::ReplicatedLogMetricsMock>();
-  std::shared_ptr<replication2::tests::ReplicatedStateMetricsMock>
-      stateMetricsMock =
-          std::make_shared<replication2::tests::ReplicatedStateMetricsMock>(
-              "foo");
+  metrics::FakeRegistry fakeRegistry;
+  std::shared_ptr<replicated_log::ReplicatedLogMetrics> logMetricsMock =
+      std::make_shared<replicated_log::ReplicatedLogMetrics>(fakeRegistry);
+  std::shared_ptr<replicated_state::ReplicatedStateMetrics> stateMetricsMock =
+      std::make_shared<replicated_state::ReplicatedStateMetrics>(fakeRegistry,
+                                                                 "foo");
   std::shared_ptr<ReplicatedLogGlobalSettings> optionsMock =
       std::make_shared<ReplicatedLogGlobalSettings>();
   LoggerContext loggerContext = LoggerContext(Logger::REPLICATION2);

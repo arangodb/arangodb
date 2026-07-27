@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -53,13 +51,12 @@
 #include "Scheduler/Scheduler.h"
 #include "Transaction/OperationOrigin.h"
 
-struct TRI_vocbase_t;
-
 namespace arangodb {
 namespace application_features {
 class ApplicationServer;
 }
 class ClusterFeature;
+struct Database;
 class DatabaseFeature;
 class NetworkFeature;
 class SchedulerFeature;
@@ -236,7 +233,7 @@ class AnalyzerPool : private irs::util::noncopyable {
 
   // definition to be stored/shown in a link definition
   void toVelocyPack(velocypack::Builder& builder,
-                    TRI_vocbase_t const* vocbase = nullptr);
+                    Database const* vocbase = nullptr);
 
  private:
   // required for calling AnalyzerPool::init(...) and AnalyzerPool::setKey(...)
@@ -312,7 +309,7 @@ class IResearchAnalyzerFeature final
   /// @param level access level
   /// @return analyzers in the specified vocbase are granted 'level' access
   //////////////////////////////////////////////////////////////////////////////
-  static bool canUse(TRI_vocbase_t const& vocbase, auth::Level const& level);
+  static bool canUse(Database const& vocbase, auth::Level const& level);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief check permissions for analyzer usage from vocbase by name
@@ -442,7 +439,7 @@ class IResearchAnalyzerFeature final
   /// @return OK or first failure
   /// @note should not be used while inRecovery()
   //////////////////////////////////////////////////////////////////////////////
-  Result bulkEmplace(TRI_vocbase_t& vocbase, VPackSlice const dumpedAnalyzers,
+  Result bulkEmplace(Database& vocbase, VPackSlice const dumpedAnalyzers,
                      transaction::OperationOrigin operationOrigin);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -451,7 +448,7 @@ class IResearchAnalyzerFeature final
   /// @return operation result
   /// @note should not be used while inRecovery()
   //////////////////////////////////////////////////////////////////////////////
-  Result removeAllAnalyzers(TRI_vocbase_t& vocbase,
+  Result removeAllAnalyzers(Database& vocbase,
                             transaction::OperationOrigin operationOrigin);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -481,8 +478,7 @@ class IResearchAnalyzerFeature final
   /// @param onlyCached check only locally cached analyzers
   /// @return analyzer with the specified name or nullptr
   //////////////////////////////////////////////////////////////////////////////
-  AnalyzerPool::ptr get(std::string_view name,
-                        TRI_vocbase_t const& activeVocbase,
+  AnalyzerPool::ptr get(std::string_view name, Database const& activeVocbase,
                         QueryAnalyzerRevisions const& revision,
                         transaction::OperationOrigin operationOrigin,
                         bool onlyCached = false) const;
@@ -504,14 +500,14 @@ class IResearchAnalyzerFeature final
   bool visit(
       std::function<bool(AnalyzerPool::ptr const&)> const& visitor) const;
   bool visit(std::function<bool(AnalyzerPool::ptr const&)> const& visitor,
-             TRI_vocbase_t const* vocbase,
+             Database const* vocbase,
              transaction::OperationOrigin operationOrigin) const;
 
   ///////////////////////////////////////////////////////////////////////////////
   /// @brief removes analyzers for specified database from cache
   /// @param vocbase  database to invalidate analyzers
   ///////////////////////////////////////////////////////////////////////////////
-  void invalidate(const TRI_vocbase_t& vocbase,
+  void invalidate(const Database& vocbase,
                   transaction::OperationOrigin operationOrigin);
 
   ///////////////////////////////////////////////////////////////////////////////
@@ -521,7 +517,7 @@ class IResearchAnalyzerFeature final
   /// @return revision number. always 0 for single server and before plan is
   /// loaded
   ///////////////////////////////////////////////////////////////////////////////
-  AnalyzersRevision::Ptr getAnalyzersRevision(const TRI_vocbase_t& vocbase,
+  AnalyzersRevision::Ptr getAnalyzersRevision(const Database& vocbase,
                                               bool forceLoadPlan = false) const;
 
   ///////////////////////////////////////////////////////////////////////////////

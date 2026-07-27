@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
 // test setup
@@ -77,8 +76,7 @@ GraphTestSetup::GraphTestSetup() : server(nullptr, nullptr), engine(server) {
           server.getFeature<arangodb::metrics::MetricsFeature>()),
       false);  // must be first
   system = std::make_unique<TRI_vocbase_t>(
-      systemDBInfo(server), engine,
-      server.getFeature<DatabaseFeature>().versionTracker(), true);
+      systemDBInfo(server), engine, server.getFeature<DatabaseFeature>());
   features.emplace_back(
       server.addFeature<arangodb::SystemDatabaseFeature>(system.get()),
       false);  // required for IResearchAnalyzerFeature

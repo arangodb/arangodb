@@ -18,12 +18,9 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
-/// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBEngine.h"
-#include "RocksDBEngine/RocksDBEngineOptionsProvider.h"
 
 #include <filesystem>
 
@@ -109,7 +106,8 @@
 #include "RocksDBEngine/RocksDBValue.h"
 #include "RocksDBEngine/RocksDBWalAccess.h"
 #include "RocksDBEngine/SimpleRocksDBTransactionState.h"
-#include "Scheduler/SchedulerFeature.h"
+#include "Scheduler/ISchedulerProvider.h"
+#include "Scheduler/Scheduler.h"
 #include "Transaction/Context.h"
 #include "Transaction/Manager.h"
 #include "Transaction/Options.h"
@@ -261,15 +259,17 @@ RocksDBEngine::RocksDBEngine(
     IVectorIndexProvider const& vectorIndexProvider,
     IFlushControl& flushControl, IDumpLimitsProvider const& dumpLimitsProvider,
     replication2::IReplicatedLogProvider* replicatedLogProvider,
+    ISchedulerProvider const& schedulerProvider,
     RocksDBRecoveryManager const& rocksDbRecoveryManager,
     IDatabaseProvider& databaseProvider, IIndexCacheRefill& indexCacheRefill,
     ICacheManagerProvider& cacheManagerProvider,
     ISortingPolicy const& sortingPolicy)
     : RocksDBEngine(server, optionsProvider, metrics, databasePathProvider,
                     vectorIndexProvider, flushControl, dumpLimitsProvider,
-                    replicatedLogProvider, rocksDbRecoveryManager,
-                    databaseProvider, indexCacheRefill, cacheManagerProvider,
-                    sortingPolicy, RocksDBEngineOptions{}) {}
+                    replicatedLogProvider, schedulerProvider,
+                    rocksDbRecoveryManager, databaseProvider, indexCacheRefill,
+                    cacheManagerProvider, sortingPolicy,
+                    RocksDBEngineOptions{}) {}
 
 RocksDBEngine::RocksDBEngine(
     application_features::ApplicationServer& server,
@@ -278,20 +278,22 @@ RocksDBEngine::RocksDBEngine(
     IVectorIndexProvider const& vectorIndexProvider,
     IFlushControl& flushControl, IDumpLimitsProvider const& dumpLimitsProvider,
     replication2::IReplicatedLogProvider* replicatedLogProvider,
+    ISchedulerProvider const& schedulerProvider,
     RocksDBRecoveryManager const& rocksDbRecoveryManager,
     IDatabaseProvider& databaseProvider, IIndexCacheRefill& indexCacheRefill,
     ICacheManagerProvider& cacheManagerProvider,
     ISortingPolicy const& sortingPolicy, RocksDBEngineOptions options)
     : StorageEngine(
           server, kEngineName, name(), typeid(RocksDBEngine),
-          std::make_unique<RocksDBIndexFactory>(server, vectorIndexProvider)),
+          std::make_unique<RocksDBIndexFactory>(server, vectorIndexProvider),
+          databaseProvider),
       _databasePathProvider(databasePathProvider),
       _vectorIndexProvider(vectorIndexProvider),
       _flushControl(flushControl),
       _dumpLimitsProvider(dumpLimitsProvider),
       _replicatedLogProvider(replicatedLogProvider),
+      _schedulerProvider(schedulerProvider),
       _rocksDbRecoveryManager(rocksDbRecoveryManager),
-      _databaseProvider(databaseProvider),
       _indexCacheRefill(indexCacheRefill),
       _cacheManagerProvider(cacheManagerProvider),
       _sortingPolicy(sortingPolicy),
@@ -348,6 +350,10 @@ RocksDBEngine::RocksDBEngine(
   startsAfter<RocksDBOptionFeature>();
   startsAfter<LanguageFeature>();
   startsAfter<LanguageCheckFeature>();
+
+  transaction::Options::setLimits(_options.maxTransactionSize,
+                                  _options.intermediateCommitSize,
+                                  _options.intermediateCommitCount);
 }
 
 RocksDBEngine::~RocksDBEngine() {
@@ -431,31 +437,6 @@ void RocksDBEngine::flushOpenFilesIfRequired() {
 
 // inherited from ApplicationFeature
 // ---------------------------------
-
-// add the storage engine's specific options to the global list of options
-void RocksDBEngine::collectOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  RocksDBEngineOptionsProvider provider;
-  provider.declareOptions(options, _options);
-
-#ifdef USE_ENTERPRISE
-  collectEnterpriseOptions(options);
-#endif
-}
-
-void RocksDBEngine::validateOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  transaction::Options::setLimits(_options.maxTransactionSize,
-                                  _options.intermediateCommitSize,
-                                  _options.intermediateCommitCount);
-#ifdef USE_ENTERPRISE
-  validateEnterpriseOptions(options);
-#endif
-
-  RocksDBEngineOptionsProvider provider;
-  provider.validateOptions(options, _options);
-}
-
 // preparation phase for storage engine. can be used for internal setup.
 // the storage engine must not start any threads here or write any files
 void RocksDBEngine::prepare() {
@@ -847,12 +828,10 @@ void RocksDBEngine::start() {
                  RocksDBColumnFamilyManager::Family::Definitions)
                  ->GetID() == 0);
 
-  if (server().options()) {
-    // will crash the process if version does not match
-    arangodb::rocksdbStartupVersionCheck(*server().options(), _databaseProvider,
-                                         _db, dbExisted,
-                                         _options.forceLittleEndianKeys);
-  }
+  // will crash the process if version does not match
+  arangodb::rocksdbStartupVersionCheck(server().options(), _databaseProvider,
+                                       _db, dbExisted,
+                                       _options.forceLittleEndianKeys);
 
   _dbExisted = dbExisted;
 
@@ -899,7 +878,7 @@ void RocksDBEngine::start() {
 
   struct SchedulerExecutor
       : replication2::storage::rocksdb::AsyncLogWriteBatcher::IAsyncExecutor {
-    SchedulerExecutor() : _scheduler(arangodb::SchedulerFeature::SCHEDULER) {}
+    explicit SchedulerExecutor(Scheduler* scheduler) : _scheduler(scheduler) {}
 
     void operator()(fu2::unique_function<void() noexcept> func) override {
       _scheduler->queue(RequestLane::CLUSTER_INTERNAL, std::move(func));
@@ -919,7 +898,8 @@ void RocksDBEngine::start() {
         std::make_shared<replication2::storage::rocksdb::AsyncLogWriteBatcher>(
             RocksDBColumnFamilyManager::get(
                 RocksDBColumnFamilyManager::Family::ReplicatedLogs),
-            _db->GetRootDB(), std::make_shared<SchedulerExecutor>(),
+            _db->GetRootDB(),
+            std::make_shared<SchedulerExecutor>(_schedulerProvider.scheduler()),
             _replicatedLogProvider->options(), _logMetrics);
     _logPersistor = logPersistor;
 
@@ -1066,23 +1046,19 @@ bool RocksDBEngine::hasBackgroundError() const {
   return _errorListener != nullptr && _errorListener->called();
 }
 
-std::unique_ptr<transaction::Manager> RocksDBEngine::createTransactionManager(
-    transaction::ManagerFeature& feature) {
-  return std::make_unique<transaction::Manager>(feature);
-}
-
 std::shared_ptr<TransactionState> RocksDBEngine::createTransactionState(
     TRI_vocbase_t& vocbase, TransactionId tid,
     transaction::Options const& options, transaction::OperationOrigin trxType) {
+  auto& manager = transactionManager();
   if (vocbase.replicationVersion() == replication::Version::TWO &&
       (tid.isLeaderTransactionId() || tid.isLegacyTransactionId()) &&
       ServerState::instance()->isRunningInCluster() &&
       !options.allowDirtyReads && options.requiresReplication) {
     return std::make_shared<ReplicatedRocksDBTransactionState>(
-        vocbase, tid, options, trxType);
+        vocbase, tid, options, trxType, manager);
   }
   return std::make_shared<SimpleRocksDBTransactionState>(vocbase, tid, options,
-                                                         trxType);
+                                                         trxType, manager);
 }
 
 void RocksDBEngine::addParametersForNewCollection(VPackBuilder& builder,
@@ -1483,7 +1459,7 @@ void RocksDBEngine::scheduleTreeRebuild(TRI_voc_tick_t database,
 }
 
 void RocksDBEngine::processTreeRebuilds() {
-  Scheduler* scheduler = arangodb::SchedulerFeature::SCHEDULER;
+  Scheduler* scheduler = _schedulerProvider.scheduler();
   if (scheduler == nullptr) {
     return;
   }
@@ -1609,7 +1585,7 @@ void RocksDBEngine::compactRange(RocksDBKeyBounds bounds) {
 }
 
 void RocksDBEngine::processCompactions() {
-  Scheduler* scheduler = arangodb::SchedulerFeature::SCHEDULER;
+  Scheduler* scheduler = _schedulerProvider.scheduler();
   if (scheduler == nullptr) {
     return;
   }

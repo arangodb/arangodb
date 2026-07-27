@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -338,13 +337,18 @@ class ApplicationServer {
 
   // collects the program options from all features,
   // without validating them
-  void collectOptions();
+  virtual void collectOptions();
 
   // parse options
   void parseOptions(int argc, char* argv[]);
 
+  virtual void processOptions() {}
+
   // allows features to cross-validate their program options
-  void validateOptions();
+  virtual void validateOptions();
+
+  // adds the features that receive their options as a c-tor dependency.
+  virtual void addFeaturesWithOptionProvider(){};
 
   // allows process control
   void daemonize();

@@ -20,7 +20,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Alan Plum
 // //////////////////////////////////////////////////////////////////////////////
 
 var _ = require('lodash'),

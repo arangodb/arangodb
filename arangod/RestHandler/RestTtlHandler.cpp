@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestTtlHandler.h"
@@ -28,6 +27,7 @@
 #include "Cluster/ServerState.h"
 #include "RestServer/TtlFeature.h"
 #include "VocBase/Methods/Ttl.h"
+#include "VocBase/vocbase.h"
 
 #include <velocypack/Builder.h>
 

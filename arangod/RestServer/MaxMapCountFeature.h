@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -36,8 +35,6 @@ class MaxMapCountFeature final
   explicit MaxMapCountFeature(application_features::ApplicationServer& server,
                               MaxMapCountFeatureOptions options);
   explicit MaxMapCountFeature(application_features::ApplicationServer& server);
-
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
 
   static bool needsChecking() { return true; }
 

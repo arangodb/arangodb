@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
@@ -40,7 +39,7 @@ VPackBuilder serialize(
 class Feature final : public application_features::ApplicationFeature,
                       public crash_handler::CrashHandlerDataSource {
  private:
-  static auto create_metrics(arangodb::metrics::MetricsFeature& metrics_feature)
+  static auto create_metrics(arangodb::metrics::IRegistry& registry)
       -> std::shared_ptr<RegistryMetrics>;
 
  public:

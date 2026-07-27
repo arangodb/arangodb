@@ -22,7 +22,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Max Neunhoeffer
 // //////////////////////////////////////////////////////////////////////////////
 
 const functionsDocumentation = {
@@ -62,7 +61,7 @@ const testPaths = {
   'shell_client_multi': [ tu.pathForTesting('common/shell/multi'), tu.pathForTesting('client/shell/multi')],
   'shell_server_only': [ tu.pathForTesting('server/shell') ],
   'shell_client_aql': [ tu.pathForTesting('client/aql'), tu.pathForTesting('common/aql') ],
-  'shell_client_aql_large': [ tu.pathForTesting('client/aql/large')],
+  'shell_client_aql_large': [ tu.pathForTesting('client/aql/large'), tu.pathForTesting('common/aql/large')],
   'shell_client_aql_vector': [ tu.pathForTesting('client/aql/vector') ],
   'shell_client_transaction': [ tu.pathForTesting('client/shell/transaction')],
   'shell_client_replication2_recovery': [ tu.pathForTesting('client/shell/transaction/replication2_recovery')],
@@ -232,7 +231,7 @@ function shellServerOnly (options) {
   }
 
   const name = 'shell_server_only';
-  let testCases = tu.scanTestPaths(testPaths[name].shell_server_only, options);
+  let testCases = tu.scanTestPaths(testPaths[name], options);
 
   testCases = tu.splitBuckets(options, testCases);
 

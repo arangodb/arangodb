@@ -20,7 +20,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Simon Grätzer
 // //////////////////////////////////////////////////////////////////////////////
 
 // tests for streaming transactions
@@ -38,14 +37,14 @@ const internal = require('internal');
 const arango = internal.arango;
 const arangodb = require('@arangodb');
 const db = arangodb.db;
-const testHelper = require('@arangodb/test-helper').helper;
-const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
+const {
+  helper,
+  deriveTestSuite
+} = require('@arangodb/test-helper');
 const analyzers = require('@arangodb/analyzers');
 const ArangoTransaction = require('@arangodb/arango-transaction').ArangoTransaction;
 const isCluster = internal.isCluster();
 const isReplication2Enabled = internal.db._version(true).details['replication2-enabled'] === 'true';
-const IM = global.instanceManager;
-const AM = IM.agencyMgr;
 
 const compareStringIds = function (l, r) {
   'use strict';
@@ -2519,7 +2518,7 @@ function transactionRollbackSuite (dbParams) {
 
       assertEqual(0, c1.count());
 
-      testHelper.waitUnload(c1);
+      helper.waitUnload(c1);
 
       assertEqual(0, c1.count());
     },
@@ -3925,8 +3924,8 @@ function transactionCrossCollectionSuite (dbParams) {
       assertEqual(0, c1.count());
       assertEqual(0, c2.count());
 
-      testHelper.waitUnload(c1);
-      testHelper.waitUnload(c2);
+      helper.waitUnload(c1);
+      helper.waitUnload(c2);
 
       assertEqual(0, c1.count());
       assertEqual(0, c2.count());
@@ -3974,8 +3973,8 @@ function transactionCrossCollectionSuite (dbParams) {
       assertEqual(9, c1.count());
       assertEqual(9, c2.count());
 
-      testHelper.waitUnload(c1);
-      testHelper.waitUnload(c2);
+      helper.waitUnload(c1);
+      helper.waitUnload(c2);
 
       assertEqual(9, c1.count());
       assertEqual(9, c2.count());
@@ -4027,8 +4026,8 @@ function transactionCrossCollectionSuite (dbParams) {
 
       c1.unload();
       c2.unload();
-      testHelper.waitUnload(c1);
-      testHelper.waitUnload(c2);
+      helper.waitUnload(c1);
+      helper.waitUnload(c2);
 
       assertEqual(1, c1.count());
       assertEqual(1, c2.count());
@@ -4076,7 +4075,7 @@ function transactionCrossCollectionSuite (dbParams) {
 
       assertEqual(10, c1.count());
 
-      testHelper.waitUnload(c1);
+      helper.waitUnload(c1);
 
       assertEqual(10, c1.count());
     },
@@ -4536,9 +4535,10 @@ function transactionTTLStreamSuite (dbParams) {
     // //////////////////////////////////////////////////////////////////////////////
 
     testAbortIdleTrx: function () {
-      global.instanceManager.debugSetFailAt("lowStreamingIdleTimeout");
-
       try {
+        // must use global, since we run this test several times,
+        // else subsequent runs may see the old IM being cached.
+        global.instanceManager.debugSetFailAt("lowStreamingIdleTimeout");
         let trx = db._createTransaction({
           collections: { write: cn }
         });
@@ -4558,9 +4558,7 @@ function transactionTTLStreamSuite (dbParams) {
           fail(); // should not be reached
         }
       } finally {
-        try {
-          global.instanceManager.debugRemoveFailAt("lowStreamingIdleTimeout");
-        } catch (err) {}
+        global.instanceManager.debugRemoveFailAt("lowStreamingIdleTimeout");
       }
     }
   };
@@ -5626,7 +5624,7 @@ function transactionIndexSuite(dbParams) {
 
       if (db._properties().replicationVersion === "2") {
         const dh = require('@arangodb/testutils/document-state-helper');
-        const {logs: [logHandle]} = AM.getCollectionShardsAndLogs(db, db[cn]);
+        const {logs: [logHandle]} = global.instanceManager.agencyMgr.getCollectionShardsAndLogs(db, db[cn]);
         const log = logHandle.tail(100);
         const ops = log
             .filter(entry => entry.hasOwnProperty('payload'))

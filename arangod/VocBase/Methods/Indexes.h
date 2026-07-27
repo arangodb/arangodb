@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -29,13 +28,10 @@
 #include "Basics/Result.h"
 #include "Futures/Future.h"
 #include "Indexes/Index.h"
-#include "Transaction/Hints.h"
+#include "Replication2/ReplicatedLog/LogCommon.h"
 #include "VocBase/Identifiers/IndexId.h"
-#include "VocBase/voc-types.h"
 
 #include <function2.hpp>
-
-struct TRI_vocbase_t;
 
 namespace arangodb {
 namespace futures {

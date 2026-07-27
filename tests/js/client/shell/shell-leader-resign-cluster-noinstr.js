@@ -27,7 +27,6 @@ let arangodb = require('@arangodb');
 let internal = require('internal');
 let _ = require('lodash');
 let db = arangodb.db;
-let { getMetric, getEndpointById } = require('@arangodb/test-helper');
 const IM = GLOBAL.instanceManager;
 const AM = IM.agencyMgr;
 
@@ -56,14 +55,14 @@ function LeaderResignSuite() {
       const shardId = Object.keys(shards)[0];
 
       const expectedShards = shards[shardId];
-      const leader = getEndpointById(expectedShards[0]);
+      const leader = IM.getInstanceByID(expectedShards[0]);
 
 //      curl http://localhost:4001/_api/agency/write -d '[[{"/arango/Plan/Collections/_system/10043/shards/s10044":["_PRMR-434a57f2-199d-4289-be95-3ee6a2ec1ea2","PRMR-549e4fee-775f-4d8e-940c-afc3b4e5a7a9","PRMR-faa38bf9-5a6d-4e07-81be-ad59f8523ed9"], "/arango/Plan/Version":{"op":"increment"}}]]'; echo
       const planKey = `/arango/Plan/Collections/_system/${c._id}/shards/${shardId}`;
       let planValue = AM.call("read", [[planKey]])[0].arango.Plan.Collections._system[c._id].shards[shardId];
       assertEqual(expectedShards, planValue);
       
-      let droppedFollowersBefore = getMetric(leader, "arangodb_dropped_followers_total");
+      let droppedFollowersBefore = leader.getMetric("arangodb_dropped_followers_total");
       
       // make leader resign
       let body = {"/arango/Plan/Version":{op:"increment"}};
@@ -87,7 +86,7 @@ function LeaderResignSuite() {
       c.insert({});
       
       // no followers must have been dropped by the insert
-      let droppedFollowersAfter = getMetric(leader, "arangodb_dropped_followers_total");
+      let droppedFollowersAfter = leader.getMetric("arangodb_dropped_followers_total");
       assertEqual(droppedFollowersBefore, droppedFollowersAfter);
     },
       

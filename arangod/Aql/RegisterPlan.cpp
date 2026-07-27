@@ -18,10 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Max Neunhoeffer
-/// @author Michael Hackstein
-/// @author Tobias Gödderz
-/// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RegisterPlan.h"

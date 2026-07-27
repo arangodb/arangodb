@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "StatisticsFeature.h"
@@ -570,10 +569,9 @@ RequestFigures UserRequestFigures;
 // --SECTION--                                                  StatisticsThread
 // -----------------------------------------------------------------------------
 
-class StatisticsThread final : public ServerThread {
+class StatisticsThread final : public Thread {
  public:
-  explicit StatisticsThread(Server& server)
-      : ServerThread(server, "Statistics") {}
+  explicit StatisticsThread() : Thread("Statistics") {}
   ~StatisticsThread() { shutdown(); }
 
  public:
@@ -625,19 +623,19 @@ class StatisticsThread final : public ServerThread {
 
 StatisticsFeature::StatisticsFeature(
     application_features::ApplicationServer& server,
-    metrics::MetricsFeature& metrics)
-    : StatisticsFeature(server, metrics, StatisticsFeatureOptions{}) {}
+    metrics::IRegistry& registry)
+    : StatisticsFeature(server, registry, StatisticsFeatureOptions{}) {}
 
 StatisticsFeature::StatisticsFeature(
     application_features::ApplicationServer& server,
-    metrics::MetricsFeature& metrics, StatisticsFeatureOptions options)
+    metrics::IRegistry& registry, StatisticsFeatureOptions options)
     : application_features::ApplicationFeature{server, *this},
       _options(std::move(options)),
       _descriptions(server),
       _requestStatisticsMemoryUsage{
-          metrics.add(arangodb_request_statistics_memory_usage{})},
+          registry.add(arangodb_request_statistics_memory_usage{})},
       _connectionStatisticsMemoryUsage{
-          metrics.add(arangodb_connection_statistics_memory_usage{})} {
+          registry.add(arangodb_connection_statistics_memory_usage{})} {
   setOptional(true);
   startsAfter<AqlFeaturePhase>();
   startsAfter<NetworkFeature>();
@@ -733,7 +731,7 @@ void StatisticsFeature::start() {
   // don't start the thread when we are running an upgrade
   auto& databaseFeature = server().getFeature<arangodb::DatabaseFeature>();
   if (!databaseFeature.upgrade()) {
-    _statisticsThread = std::make_unique<StatisticsThread>(server());
+    _statisticsThread = std::make_unique<StatisticsThread>();
 
     if (!_statisticsThread->start()) {
       LOG_TOPIC("46b0c", FATAL, arangodb::Logger::STATISTICS)

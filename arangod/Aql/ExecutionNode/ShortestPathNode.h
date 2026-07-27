@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -54,10 +53,9 @@ class ShortestPathNode : public virtual GraphNode {
   ShortestPathNode(ExecutionPlan& plan, ShortestPathNode const& node);
 
  public:
-  ShortestPathNode(ExecutionPlan* plan, ExecutionNodeId id,
-                   TRI_vocbase_t* vocbase, AstNode const* direction,
-                   AstNode const* start, AstNode const* target,
-                   AstNode const* graph,
+  ShortestPathNode(ExecutionPlan* plan, ExecutionNodeId id, Database* vocbase,
+                   AstNode const* direction, AstNode const* start,
+                   AstNode const* target, AstNode const* graph,
                    std::unique_ptr<graph::BaseOptions> options);
 
   ShortestPathNode(ExecutionPlan* plan, velocypack::Slice base);
@@ -65,16 +63,18 @@ class ShortestPathNode : public virtual GraphNode {
   ~ShortestPathNode();
 
   /// @brief Internal constructor to clone the node.
-  ShortestPathNode(
-      ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
-      std::vector<Collection*> const& edgeColls,
-      std::vector<Collection*> const& vertexColls,
-      TRI_edge_direction_e defaultDirection,
-      std::vector<TRI_edge_direction_e> const& directions,
-      Variable const* inStartVariable, std::string const& startVertexId,
-      Variable const* inTargetVariable, std::string const& targetVertexId,
-      std::unique_ptr<graph::BaseOptions> options, graph::Graph const* graph,
-      Variable const* distributeVariable);
+  ShortestPathNode(ExecutionPlan* plan, ExecutionNodeId id, Database* vocbase,
+                   std::vector<Collection*> const& edgeColls,
+                   std::vector<Collection*> const& vertexColls,
+                   TRI_edge_direction_e defaultDirection,
+                   std::vector<TRI_edge_direction_e> const& directions,
+                   Variable const* inStartVariable,
+                   std::string const& startVertexId,
+                   Variable const* inTargetVariable,
+                   std::string const& targetVertexId,
+                   std::unique_ptr<graph::BaseOptions> options,
+                   graph::Graph const* graph,
+                   Variable const* distributeVariable);
 
   /// @brief return the type of the node
   NodeType getType() const override final { return SHORTEST_PATH; }

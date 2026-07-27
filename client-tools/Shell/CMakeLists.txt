@@ -20,9 +20,9 @@ target_include_directories(arango_shell PRIVATE ${CMAKE_SOURCE_DIR}/client-tools
 add_executable(${BIN_ARANGOSH}
   ${ProductVersionFiles_arangosh}
 
+  ArangoshServer.cpp
   ShellFeature.cpp
   ShellOptionsProvider.cpp
-  TelemetricsHandler.cpp
   V8ClientConnection.cpp
   V8ShellFeature.cpp
   V8ShellOptionsProvider.cpp

@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IResearchViewNode.h"
@@ -2173,7 +2171,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
   bool const heapsort = !_heapSort.empty();
   bool const emitSearchDoc = executorInfos.searchDocIdRegId().isValid();
 #ifdef USE_ENTERPRISE
-  bool const encrypted = _vocbase.engine<RocksDBEngine>().isEncryptionEnabled();
+  bool const encrypted = _vocbase.engine().isEncryptionEnabled();
 #endif
 
   auto const executorIdx =

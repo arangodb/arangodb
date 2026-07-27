@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -83,6 +82,3 @@ struct hash<std::vector<arangodb::velocypack::Slice>> {
 };
 
 }  // namespace std
-
-/// @brief databases list structure
-struct TRI_vocbase_t;

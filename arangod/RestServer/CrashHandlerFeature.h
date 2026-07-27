@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jure Bajic
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -46,8 +45,6 @@ class CrashHandlerFeature final
   explicit CrashHandlerFeature(
       application_features::ApplicationServer& server,
       std::shared_ptr<crash_handler::DumpManager> dumpManager);
-
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
 
   /// @brief returns true if crash dump logging is enabled
   bool isEnabled() const noexcept { return _options.enabled; }

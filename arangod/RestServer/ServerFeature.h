@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -46,14 +45,12 @@ class ServerFeature final : public application_features::ApplicationFeature {
                 ServerFeatureOptions options);
   ServerFeature(application_features::ApplicationServer& server, int* result);
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
   void start() override final;
   void beginShutdown() override final;
   bool isStopping() const { return _isStopping; }
 
-  OperationMode operationMode() const { return _operationMode; }
+  OperationMode operationMode() const { return _options.operationMode; }
 
   std::string operationModeString() const {
     return operationModeString(operationMode());
@@ -62,7 +59,7 @@ class ServerFeature final : public application_features::ApplicationFeature {
   std::vector<std::string> const& scripts() const { return _options.scripts; }
 
   bool isConsoleMode() const {
-    return (_operationMode == OperationMode::MODE_CONSOLE);
+    return (operationMode() == OperationMode::MODE_CONSOLE);
   }
 
  private:
@@ -71,7 +68,6 @@ class ServerFeature final : public application_features::ApplicationFeature {
   ServerFeatureOptions _options;
   bool _isStopping = false;
   int* _result;
-  OperationMode _operationMode;
 };
 
 }  // namespace arangodb

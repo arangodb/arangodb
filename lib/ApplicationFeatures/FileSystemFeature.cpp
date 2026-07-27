@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "FileSystemFeature.h"
@@ -42,12 +41,6 @@ FileSystemFeature::FileSystemFeature(
     : ApplicationFeature{server, *this}, _options(std::move(options)) {
   setOptional(false);
   startsAfter<LoggerFeature>();
-}
-
-void FileSystemFeature::collectOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  FileSystemOptionsProvider provider;
-  provider.declareOptions(options, _options);
 }
 
 void FileSystemFeature::prepare() { TRI_SetCanUseSplice(_options.useSplice); }

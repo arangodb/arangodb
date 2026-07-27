@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
-/// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -97,9 +95,6 @@ class Thread {
   static TRI_pid_t currentKernelThreadId();
 
  public:
-  [[deprecated("server argument is no longer needed")]] Thread(
-      application_features::ApplicationServer&, std::string const& name,
-      bool deleteOnExit = false, std::uint32_t terminationTimeout = INFINITE);
   Thread(std::string const& name, bool deleteOnExit = false,
          std::uint32_t terminationTimeout = INFINITE);
   virtual ~Thread();
@@ -208,8 +203,7 @@ class ServerThread : public Thread {
   ServerThread(Server& server, std::string const& name,
                bool deleteOnExit = false,
                std::uint32_t terminationTimeout = INFINITE)
-      : Thread{server, name, deleteOnExit, terminationTimeout},
-        _server(server) {}
+      : Thread{name, deleteOnExit, terminationTimeout}, _server(server) {}
 
   Server& server() noexcept { return _server; }
 

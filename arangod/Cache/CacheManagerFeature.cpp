@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "CacheManagerFeature.h"
@@ -97,7 +96,7 @@ void CacheManagerFeature::start() {
       std::make_unique<Manager>(_sharedPRNG, std::move(postFn), _options);
 
   _rebalancer = std::make_unique<CacheRebalancerThread>(
-      server(), _manager.get(), _options.rebalancingInterval);
+      _manager.get(), _options.rebalancingInterval);
   if (!_rebalancer->start()) {
     LOG_TOPIC("13895", FATAL, Logger::STARTUP)
         << "cache manager startup failed";

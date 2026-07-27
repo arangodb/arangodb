@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -32,9 +31,8 @@
 #include <string>
 #include <string_view>
 
-struct TRI_vocbase_t;
-
 namespace arangodb {
+struct Database;
 class DatabaseInitialSyncer;
 class DatabaseReplicationApplier;
 
@@ -42,17 +40,16 @@ class DatabaseTailingSyncer : public TailingSyncer {
  private:
   // constructor is private, as DatabaseTailingSyncer uses shared_from_this()
   // and we must ensure that it is only created via make_shared.
-  DatabaseTailingSyncer(TRI_vocbase_t& vocbase,
+  DatabaseTailingSyncer(Database& vocbase,
                         ReplicationApplierConfiguration const& configuration,
                         TRI_voc_tick_t initialTick, bool useTick);
 
  public:
   static std::shared_ptr<DatabaseTailingSyncer> create(
-      TRI_vocbase_t& vocbase,
-      ReplicationApplierConfiguration const& configuration,
+      Database& vocbase, ReplicationApplierConfiguration const& configuration,
       TRI_voc_tick_t initialTick, bool useTick);
 
-  TRI_vocbase_t* resolveVocbase(velocypack::Slice /*slice*/) override {
+  Database* resolveVocbase(velocypack::Slice /*slice*/) override {
     return _vocbase;
   }
 
@@ -100,7 +97,7 @@ class DatabaseTailingSyncer : public TailingSyncer {
   /// @brief save the current applier state
   Result saveApplierState() override;
 
-  TRI_vocbase_t* vocbase() const {
+  Database* vocbase() const {
     TRI_ASSERT(vocbases().size() == 1);
     return &(vocbases().begin()->second.database());
   }
@@ -114,7 +111,7 @@ class DatabaseTailingSyncer : public TailingSyncer {
                      TRI_voc_tick_t fromTick, TRI_voc_tick_t lastScannedTick);
 
   /// @brief vocbase to use for this run
-  TRI_vocbase_t* _vocbase;
+  Database* _vocbase;
 
   /// @brief translation between globallyUniqueId and collection name
   std::unordered_map<std::string, std::string> _translations;

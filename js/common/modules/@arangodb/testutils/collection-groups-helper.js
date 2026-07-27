@@ -21,8 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Alexandru Petenchea
-/// @author Lars Maier
 // //////////////////////////////////////////////////////////////////////////////
 
 const lh = require("@arangodb/testutils/replicated-logs-helper");

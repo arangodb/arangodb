@@ -18,12 +18,12 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Julia Puget
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "RestServer/IDatabasePathProvider.h"
 #include "RestServer/TemporaryStorageFeatureOptions.h"
 #include "RocksDBEngine/SortedRowsStorageBackendRocksDB.h"
 
@@ -76,14 +76,13 @@ class TemporaryStorageFeature
 
   explicit TemporaryStorageFeature(
       application_features::ApplicationServer& server,
+      IDatabasePathProvider& databasePathProvider,
       TemporaryStorageFeatureOptions options);
   explicit TemporaryStorageFeature(
-      application_features::ApplicationServer& server);
+      application_features::ApplicationServer& server,
+      IDatabasePathProvider& databasePathProvider);
   ~TemporaryStorageFeature();
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(
-      std::shared_ptr<options::ProgramOptions> options) override final;
   void prepare() override final;
   void start() override final;
   void stop() override final;
@@ -110,6 +109,8 @@ class TemporaryStorageFeature
 
   // whether or not we have cleaned up our temp directory already
   bool _cleanedUpDirectory;
+
+  IDatabasePathProvider& _databasePathProvider;
 };
 
 }  // namespace arangodb
