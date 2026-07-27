@@ -387,10 +387,11 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
                 auth::perms::UseDatabase{.name = StaticStrings::SystemDatabase,
                                          .level = DatabaseAccessLevel::Write});
           },
-          [&](p::SeeCollection const& /*collection*/) -> Result {
-            // Database RO access is the only prerequisite and has already been
-            // checked; a collection is always visible if the database is.
-            return {};
+          [&](p::SeeCollection const& collection) -> Result {
+            // In Classic, seeing a collection is possible if and only one
+            // can read it:
+            return check(p::UseCollection{collection.db, collection.name,
+                                          CollectionAccessLevel::Read});
           },
           [&](p::CreateCollection const& collection) -> Result {
             // Creating a collection requires RW access to the database
