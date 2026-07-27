@@ -20,6 +20,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+#include "ApplicationFeatures/ConfigOptionsProvider.h"
 #include "ApplicationFeatures/FeatureOptionProviderContainer.h"
 #include "ApplicationFeatures/FileSystemOptionsProvider.h"
 #include "ApplicationFeatures/ProcessEnvironmentOptionsProvider.h"
@@ -28,13 +29,19 @@
 #include "Random/RandomOptionsProvider.h"
 
 namespace arangodb {
+namespace options {
+class ProgramOptions;
+}
 
 // OptionProvider set shared by all client-tool binaries. Individual
 // binaries can extend it with additional providers via `Extras...`.
 template<class... Extras>
 using CoreOptionProviders =
     application_features::FeatureOptionProviderContainer<
-        LoggerOptionsProvider, FileSystemOptionsProvider,
+        // LoggerOptionsProvider must come before ConfigOptionsProvider so that
+        // its processOptions() applies the CLI log levels before the config
+        // file is parsed.
+        LoggerOptionsProvider, ConfigOptionsProvider, FileSystemOptionsProvider,
         VersionOptionsProvider,
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
         ProcessEnvironmentOptionsProvider,

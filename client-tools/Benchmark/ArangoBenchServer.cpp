@@ -63,8 +63,6 @@ void ArangoBenchServer::addFeatures() {
   addFeature<GreetingsFeaturePhase>(std::true_type{});
   addFeature<HttpEndpointProvider, ClientFeature>(
       false, std::numeric_limits<size_t>::max());
-  // TODO: COR-788: Migrate ConfigFeature
-  addFeature<ConfigFeature>(_binaryName);
   addFeature<OptionsCheckFeature>();
   addFeature<ShellColorsFeature>();
   addFeature<ShutdownFeature>(
@@ -76,6 +74,7 @@ void ArangoBenchServer::addFeatures() {
 void ArangoBenchServer::addFeaturesWithOptionProvider() {
   addFeature<VersionFeature>(getOptions<VersionOptionsProvider>());
   addFeature<LoggerFeature>(false, getOptions<LoggerOptionsProvider>());
+  addFeature<ConfigFeature>(_binaryName, getOptions<ConfigOptionsProvider>());
   addFeature<TempFeature>(_binaryName, getOptions<TempOptionsProvider>());
   addFeature<FileSystemFeature>(getOptions<FileSystemOptionsProvider>());
   addFeature<RandomFeature>(getOptions<RandomOptionsProvider>());

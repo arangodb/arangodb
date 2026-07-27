@@ -22,6 +22,9 @@
 
 #pragma once
 
+#include <memory>
+#include <string_view>
+
 #include "ApplicationFeatures/OptionsProvider.h"
 #include "ApplicationFeatures/ConfigFeatureOptions.h"
 
@@ -31,9 +34,21 @@ class ProgramOptions;
 
 namespace arangodb {
 
-struct ConfigOptionsProvider : OptionsProvider<ConfigFeatureOptions> {
-  void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
-                      ConfigFeatureOptions& options) override;
+struct ConfigOptionsProvider
+    : OptionsProviderImpl<ConfigOptionsProvider, ConfigFeatureOptions> {
+  void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                          ConfigFeatureOptions& options);
+  void processOptionsImpl(std::shared_ptr<options::ProgramOptions> progOpts,
+                          ConfigFeatureOptions& configOpts);
+  void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> /*opts*/,
+                           ConfigFeatureOptions& /*options*/) {}
+
+  void setDefaultConfigFile(std::string file) {
+    _defaultFile = std::move(file);
+  }
+
+ private:
+  std::string _defaultFile;
 };
 
 }  // namespace arangodb

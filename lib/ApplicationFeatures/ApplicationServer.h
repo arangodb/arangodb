@@ -57,11 +57,14 @@ namespace application_features {
 // to feature is enabled or disabled. There is no defined order in
 // which the features are traversed.
 //
-// `loadOptions`
+// `processOptions`
 //
-// Allows a feature to load more options from somewhere. This method
-// will only be called for enabled features. There is no defined
-// order in which the features are traversed.
+// Runs after the command line has been parsed but before any
+// `validateOptions`. Option providers that define `processOptionsImpl` are
+// invoked here, in the order they are listed in the provider container. This
+// is where options that pull in further options are handled, such as
+// `ConfigOptionsProvider` reading the configuration file, and where options
+// that short-circuit startup act, such as `--version`.
 //
 // `validateOptions`
 //
