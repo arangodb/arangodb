@@ -1,7 +1,11 @@
 3.12.10-devel (XXXX-XX-XX)
 --------------------------
 * BTS-2400: Added the `--vector-index-build-retry-backoff` startup option (seconds) to
-  configure the vector index build retry backoff (default: 60).
+  configure the vector index build retry backoff (default: 60). Additionally, a
+  DBServer now marks the database dirty when a vector index build reports or
+  clears its training error, waking the maintenance loop so the index's
+  ready/error state is republished to the agency's `Current` promptly instead of
+  waiting for the next maintenance cycle.
 
 * Updated node modules:
  - brace-expansion to 5.0.7
