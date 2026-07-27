@@ -59,12 +59,10 @@ namespace application_features {
 //
 // `processOptions`
 //
-// Runs after the command line has been parsed but before any
-// `validateOptions`. Option providers that define `processOptionsImpl` are
-// invoked here, in the order they are listed in the provider container. This
-// is where options that pull in further options are handled, such as
-// `ConfigOptionsProvider` reading the configuration file, and where options
-// that short-circuit startup act, such as `--version`.
+// Runs after the command line has been parsed but before `validateOptions`.
+// Option providers that define `processOptionsImpl` are called here, in the
+// order they are listed in the provider container. This is where options
+// that pull in further options are handled.
 //
 // `validateOptions`
 //
@@ -351,7 +349,7 @@ class ApplicationServer {
   virtual void validateOptions();
 
   // adds the features that receive their options as a c-tor dependency.
-  virtual void addFeaturesWithOptionProvider(){};
+  virtual void addFeaturesWithOptionProvider() {};
 
   // allows process control
   void daemonize();

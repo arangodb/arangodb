@@ -22,8 +22,6 @@
 
 #pragma once
 
-#include <memory>
-
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/ShellColorsFeature.h"
@@ -31,9 +29,6 @@
 #include "ApplicationFeatures/ConfigFeatureOptions.h"
 
 namespace arangodb {
-namespace options {
-class ProgramOptions;
-}
 
 class LoggerFeature;
 class ShellColorsFeature;
@@ -42,11 +37,8 @@ class ConfigFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Config"; }
 
-  ConfigFeature(application_features::ApplicationServer& server,
-                std::string const& progname, ConfigFeatureOptions options);
-  ConfigFeature(application_features::ApplicationServer& server,
-                std::string const& progname,
-                std::string const& configFilename = "");
+  explicit ConfigFeature(application_features::ApplicationServer& server,
+                         ConfigFeatureOptions options = {});
 
   void prepare() override final;
 

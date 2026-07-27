@@ -177,7 +177,7 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
   auto& clusterFeature = _server.addFeature<ClusterFeature>(metrics);
   auto& database = _server.addFeature<DatabaseFeature>();
   _server.addFeature<ClusterUpgradeFeature>(database);
-  _server.addFeature<ConfigFeature>(name);
+  _server.addFeature<ConfigFeature>();
 #ifdef USE_V8
   _server.addFeature<ConsoleFeature>();
 #endif

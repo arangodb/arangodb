@@ -31,6 +31,7 @@
 #include "Basics/application-exit.h"
 #include "Basics/directories.h"
 #include "Basics/exitcodes.h"
+#include "Basics/files.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -87,10 +88,6 @@ void ConfigOptionsProvider::processOptionsImpl(
   auto const& result = progOpts->processingResult();
   bool const versionRequested =
       result.touched("version") || result.touched("version-json");
-
-  if (configOpts.progname.empty() && ArangoGlobalContext::CONTEXT != nullptr) {
-    configOpts.progname = ArangoGlobalContext::CONTEXT->binaryName();
-  }
 
   for (auto const& def : configOpts.defines) {
     options::DefineEnvironment(def);
@@ -149,8 +146,12 @@ void ConfigOptionsProvider::processOptionsImpl(
     bool const fatal = !versionRequested;
 
     auto context = ArangoGlobalContext::CONTEXT;
-    std::string basename = configOpts.progname;
-    bool checkArangoImp = (configOpts.progname == "arangoimport");
+    // the config file is looked up as <binary name>.conf
+    std::string const progname =
+        context != nullptr ? context->binaryName()
+                           : TRI_BinaryName(progOpts->progname().c_str());
+    std::string basename = progname;
+    bool checkArangoImp = (progname == "arangoimport");
 
     if (!basename.ends_with(".conf")) {
       basename += ".conf";

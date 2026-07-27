@@ -23,7 +23,6 @@
 #include "ApplicationFeatures/ConfigFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ProgramOptions/ProgramOptions.h"
 
 #ifdef __linux__
 #ifdef __GLIBC__
@@ -31,28 +30,12 @@
 #endif
 #endif
 
-using namespace arangodb::options;
-
 namespace arangodb {
 
 ConfigFeature::ConfigFeature(application_features::ApplicationServer& server,
-                             std::string const& progname,
-                             std::string const& configFilename)
-    : ConfigFeature(server, progname, [&] {
-        ConfigFeatureOptions opts{};
-        opts.file = configFilename;
-        return opts;
-      }()) {}
-
-ConfigFeature::ConfigFeature(application_features::ApplicationServer& server,
-                             std::string const& progname,
                              ConfigFeatureOptions options)
     : application_features::ApplicationFeature{server, *this},
       _options(std::move(options)) {
-  if (_options.progname.empty()) {
-    _options.progname = progname;
-  }
-
   setOptional(false);
   startsAfter<LoggerFeature>();
   startsAfter<ShellColorsFeature>();
