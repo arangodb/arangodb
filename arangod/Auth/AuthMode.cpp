@@ -356,6 +356,14 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
             // Without RBAC, database access is the only prerequisite for
             // using an analyzer. Reading analyzers requires RO database
             // access; modifying analyzers requires RW.
+            // The only exception is "Admin" (for backwards compatibility),
+            // which means that RW access to _system grants all analyzer
+            // permissions:
+            if (auto r = check(p::UseDatabase(StaticStrings::SystemDatabase,
+                                              DatabaseAccessLevel::Write));
+                r.ok()) {
+              return {};
+            }
             auto const dbLevel = analyzer.level == AnalyzerAccessLevel::Modify
                                      ? DatabaseAccessLevel::Write
                                      : DatabaseAccessLevel::Read;
@@ -486,17 +494,41 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
           [&](p::SeeAnalyzer const& analyzer) -> Result {
             // Database RO access is the only prerequisite and has already been
             // checked; an analyzer is always visible if the database is.
-            // For the sake of readabilty, we perform the check:
+            // For the sake of readabilty, we perform the check here.
+            // The only exception is "Admin" (for backwards compatibility),
+            // which means that RW access to _system grants all analyzer
+            // permissions:
+            if (auto r = check(p::UseDatabase(StaticStrings::SystemDatabase,
+                                              DatabaseAccessLevel::Write));
+                r.ok()) {
+              return {};
+            }
             return check(
                 p::UseDatabase{analyzer.db, DatabaseAccessLevel::Read});
           },
           [&](p::CreateAnalyzer const& analyzer) -> Result {
             // Creating an analyzer requires RW access to the database.
+            // The only exception is "Admin" (for backwards compatibility),
+            // which means that RW access to _system grants all analyzer
+            // permissions:
+            if (auto r = check(p::UseDatabase(StaticStrings::SystemDatabase,
+                                              DatabaseAccessLevel::Write));
+                r.ok()) {
+              return {};
+            }
             return check(
                 p::UseDatabase{analyzer.db, DatabaseAccessLevel::Write});
           },
           [&](p::DropAnalyzer const& analyzer) -> Result {
             // Dropping an analyzer requires RW access to the database.
+            // The only exception is "Admin" (for backwards compatibility),
+            // which means that RW access to _system grants all analyzer
+            // permissions:
+            if (auto r = check(p::UseDatabase(StaticStrings::SystemDatabase,
+                                              DatabaseAccessLevel::Write));
+                r.ok()) {
+              return {};
+            }
             return check(
                 p::UseDatabase{analyzer.db, DatabaseAccessLevel::Write});
           },
