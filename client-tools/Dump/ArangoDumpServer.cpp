@@ -75,12 +75,14 @@ void ArangoDumpServer::addFeatures() {
   addFeature<BumpFileDescriptorsFeature>("--descriptors-minimum");
 #endif
   addFeature<DumpFeature>(client, *_ret);
+  // ConfigFeature must be registered before parseOptions()/loadOptions()
+  // so collectOptions/loadOptions can run.
+  addFeature<ConfigFeature>(_binaryName);
 }
 
 void ArangoDumpServer::addFeaturesWithOptionProvider() {
   addFeature<VersionFeature>(getOptions<VersionOptionsProvider>());
   addFeature<LoggerFeature>(false, getOptions<LoggerOptionsProvider>());
-  addFeature<ConfigFeature>(_binaryName, getOptions<ConfigOptionsProvider>());
   addFeature<FileSystemFeature>(getOptions<FileSystemOptionsProvider>());
   addFeature<RandomFeature>(getOptions<RandomOptionsProvider>());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE

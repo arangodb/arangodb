@@ -156,6 +156,10 @@ void ArangodServer::addFeatures() {
   addFeature<RocksDBRecoveryManager>(database, database);
   addFeature<iresearch::IResearchFeature>(metrics);
   addFeature<ClusterEngine>(metrics);
+
+  // ConfigFeature must be registered before parseOptions()/loadOptions()
+  // so collectOptions/loadOptions can run.
+  addFeature<ConfigFeature>(_binaryName);
 }
 
 void ArangodServer::validateOptions() {
@@ -182,7 +186,6 @@ void ArangodServer::addFeaturesWithOptionProvider() {
   addFeature<VersionFeature>(getOptions<VersionOptionsProvider>());
   addFeature<LoggerFeature>(true, getOptions<LoggerOptionsProvider>(),
                             getOptions<ServerLoggerOptionsProvider>());
-  addFeature<ConfigFeature>(_binaryName, getOptions<ConfigOptionsProvider>());
   addFeature<TempFeature>(std::string{_binaryName},
                           getOptions<TempOptionsProvider>());
   addFeature<ApiRecordingFeature>(_dataSourceRegistry, metrics,

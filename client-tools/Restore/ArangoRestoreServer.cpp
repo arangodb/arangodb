@@ -77,12 +77,14 @@ void ArangoRestoreServer::addFeatures() {
   addFeature<BumpFileDescriptorsFeature>("--descriptors-minimum");
 #endif
   addFeature<RestoreFeature>(client, *_ret);
+  // ConfigFeature must be registered before parseOptions()/loadOptions()
+  // so collectOptions/loadOptions can run.
+  addFeature<ConfigFeature>(_binaryName);
 }
 
 void ArangoRestoreServer::addFeaturesWithOptionProvider() {
   addFeature<VersionFeature>(getOptions<VersionOptionsProvider>());
   addFeature<LoggerFeature>(false, getOptions<LoggerOptionsProvider>());
-  addFeature<ConfigFeature>(_binaryName, getOptions<ConfigOptionsProvider>());
   addFeature<TempFeature>(_binaryName, getOptions<TempOptionsProvider>());
   addFeature<FileSystemFeature>(getOptions<FileSystemOptionsProvider>());
   addFeature<RandomFeature>(getOptions<RandomOptionsProvider>());
