@@ -132,10 +132,6 @@ function ReplicationForwardingSuite() {
       checkForwardIsForbidden((q) => arango.PUT(`/_api/replication/restore-view${q}`, {}));
     },
 
-    testSyncForwardIsForbidden: function () {
-      checkForwardIsForbidden((q) => arango.PUT(`/_api/replication/sync${q}`, {endpoint: "tcp://127.0.0.1:1", database: dbName}));
-    },
-
     testAddFollowerForwardIsForbidden: function () {
       checkForwardIsForbidden((q) => arango.PUT(`/_api/replication/addFollower${q}`, {}));
     },

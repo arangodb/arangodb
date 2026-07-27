@@ -51,11 +51,6 @@
 #include "Metrics/Counter.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
-#include "Replication/DatabaseInitialSyncer.h"
-#include "Replication/DatabaseReplicationApplier.h"
-#include "Replication/GlobalInitialSyncer.h"
-#include "Replication/GlobalReplicationApplier.h"
-#include "Replication/ReplicationApplierConfiguration.h"
 #include "Replication/ReplicationClients.h"
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
@@ -428,7 +423,6 @@ std::string const RestReplicationHandler::RestoreCollection =
 std::string const RestReplicationHandler::RestoreIndexes = "restore-indexes";
 std::string const RestReplicationHandler::RestoreData = "restore-data";
 std::string const RestReplicationHandler::RestoreView = "restore-view";
-std::string const RestReplicationHandler::Sync = "sync";
 std::string const RestReplicationHandler::ServerId = "server-id";
 std::string const RestReplicationHandler::ClusterInventory = "clusterInventory";
 std::string const RestReplicationHandler::AddFollower = "addFollower";
@@ -644,16 +638,6 @@ auto RestReplicationHandler::executeAsync() -> futures::Future<futures::Unit> {
       }
 
       handleCommandRestoreView();
-    } else if (command == Sync) {
-      if (type != rest::RequestType::PUT) {
-        goto BAD_CALL;
-      }
-
-      if (isCoordinatorError()) {
-        co_return;
-      }
-
-      handleCommandSync();
     } else if (command == ServerId) {
       if (type != rest::RequestType::GET) {
         goto BAD_CALL;
@@ -893,73 +877,6 @@ bool RestReplicationHandler::isDBserverForwardingAllowed() const {
   // authorization stripped; see forwardingTarget().
   return (command == Dump and method == rest::RequestType::GET) or
          command == Batch;
-}
-
-void RestReplicationHandler::handleCommandSync() {
-  bool isGlobal;
-  ReplicationApplier* applier = getApplier(isGlobal);
-  if (applier == nullptr) {
-    return;
-  }
-
-  bool success = false;
-  VPackSlice const body = this->parseVPackBody(success);
-  if (!success) {
-    // error already created
-    return;
-  }
-
-  std::string const endpoint =
-      VelocyPackHelper::getStringValue(body, "endpoint", "");
-  if (endpoint.empty()) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "<endpoint> must be a valid endpoint");
-    return;
-  }
-
-  std::string dbname = isGlobal ? "" : _vocbase.name();
-  auto config = ReplicationApplierConfiguration::fromVelocyPack(
-      _vocbase.server(), body, dbname);
-
-  // will throw if invalid
-  config.validate();
-
-  std::shared_ptr<InitialSyncer> syncer;
-
-  if (isGlobal) {
-    syncer = GlobalInitialSyncer::create(config);
-  } else {
-    syncer = DatabaseInitialSyncer::create(_vocbase, config);
-  }
-
-  Result r = syncer->run(config._incremental);
-
-  if (r.fail()) {
-    LOG_TOPIC("c4818", ERR, Logger::REPLICATION)
-        << "failed to sync: " << r.errorMessage();
-    generateError(r);
-    return;
-  }
-
-  // FIXME: change response for databases
-  VPackBuilder result;
-  result.add(VPackValue(VPackValueType::Object));
-  result.add("collections", VPackValue(VPackValueType::Array));
-  for (auto const& it : syncer->getProcessedCollections()) {
-    std::string const cidString = StringUtils::itoa(it.first.id());
-    // Insert a collection
-    result.add(VPackValue(VPackValueType::Object));
-    result.add("id", VPackValue(cidString));
-    result.add("name", VPackValue(it.second));
-    result.close();  // one collection
-  }
-  result.close();  // collections
-
-  auto tickString = std::to_string(syncer->getLastLogTick());
-  result.add("lastLogTick", VPackValue(tickString));
-
-  result.close();  // base
-  generateResult(rest::ResponseCode::OK, result.slice());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3318,24 +3235,6 @@ uint64_t RestReplicationHandler::determineChunkSize() const {
   }
 
   return chunkSize;
-}
-
-ReplicationApplier* RestReplicationHandler::getApplier(bool& global) {
-  global = _request->parsedValue("global", false);
-
-  if (global && _request->databaseName() != StaticStrings::SystemDatabase) {
-    generateError(
-        rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
-        "global inventory can only be created from within _system database");
-    return nullptr;
-  }
-
-  if (global) {
-    auto& replicationFeature = _replicationFeature;
-    return replicationFeature.globalReplicationApplier();
-  } else {
-    return _vocbase.replicationApplier();
-  }
 }
 
 namespace {

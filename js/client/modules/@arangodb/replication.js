@@ -77,99 +77,6 @@ logger.lastLogTick = function (firstTick, lastTick) {
 };
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief helper function for fetching the result of an async job
-// //////////////////////////////////////////////////////////////////////////////
-
-var waitForResult = function (config, id) {
-  const db = internal.db;
-
-  let sleepTime = 0.05;
-
-  internal.sleep(sleepTime);
-  var iterations = 0;
-
-  while (true) {
-    const jobResult = db._connection.PUT('/_api/job/' + encodeURIComponent(id), '');
-    try {
-      arangosh.checkRequestResult(jobResult);
-    } catch (err) {
-      throw err;
-    }
-
-    if (jobResult.code !== 204) {
-      return jobResult;
-    }
-
-    ++iterations;
-    if (iterations > 6) {
-      internal.sleep(sleepTime);
-    } else {
-      internal.sleep(sleepTime);
-    }
-
-  }
-};
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief performs a one-time synchronization with a remote endpoint
-// //////////////////////////////////////////////////////////////////////////////
-
-var sync = function (global, config) {
-  var url;
-  if (global) {
-    url = '/_db/_system/_api/replication/sync?global=true';
-  } else {
-    url = '/_api/replication/sync';
-  }
-  const headers = {
-    'X-Arango-Async': 'store'
-  };
-
-  const requestResult = internal.db._connection.PUT_RAW(url, config || {}, headers);
-  arangosh.checkRequestResult(requestResult);
-
-  if (config.async) {
-    return requestResult.headers['x-arango-async-id'];
-  }
-
-  return waitForResult(config, requestResult.headers['x-arango-async-id']);
-};
-
-var syncDatabase = function (config) { return sync(false, config); };
-var syncGlobal = function (config) { return sync(true, config); };
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief performs a one-time synchronization with a remote endpoint, for
-// / a single collection
-// //////////////////////////////////////////////////////////////////////////////
-
-var syncCollection = function (collection, config) {
-  config = config || {};
-  config.restrictType = 'include';
-  config.restrictCollections = [collection];
-  config.includeSystem = true;
-
-  return sync(false, config);
-};
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief queries the sync result status
-// //////////////////////////////////////////////////////////////////////////////
-
-var getSyncResult = function (id) {
-  var db = internal.db;
-
-  var requestResult = db._connection.PUT_RAW('/_api/job/' + encodeURIComponent(id), '');
-  arangosh.checkRequestResult(requestResult);
-
-  if (requestResult.headers.hasOwnProperty('x-arango-async-id')) {
-    return JSON.parse(requestResult.body);
-  }
-
-  return false;
-};
-
-// //////////////////////////////////////////////////////////////////////////////
 // / @brief fetches a server's id
 // //////////////////////////////////////////////////////////////////////////////
 
@@ -184,9 +91,5 @@ var serverId = function () {
 };
 
 exports.logger = logger;
-exports.sync = syncDatabase;
-exports.syncGlobal = syncGlobal;
-exports.syncCollection = syncCollection;
-exports.getSyncResult = getSyncResult;
 exports.serverId = serverId;
 exports.compareTicks = rpc.compareTicks;

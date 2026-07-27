@@ -328,11 +328,6 @@
     exports.forgetStateReplicationApplier = global.REPLICATION_APPLIER_FORGET;
   }
 
-  if (global.REPLICATION_SYNCHRONIZE) {
-    // TODO: remove this export from the internal module
-    exports.synchronizeReplication = global.REPLICATION_SYNCHRONIZE;
-  }
-
   if (global.REPLICATION_SERVER_ID) {
     exports.serverId = global.REPLICATION_SERVER_ID;
     delete global.REPLICATION_SERVER_ID;

@@ -38,7 +38,6 @@ class ClusterInfo;
 class CollectionNameResolver;
 class DatabaseFeature;
 class LogicalCollection;
-class ReplicationApplier;
 class ReplicationFeature;
 class SingleCollectionTransaction;
 
@@ -86,7 +85,6 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   static std::string const RestoreIndexes;
   static std::string const RestoreData;
   static std::string const RestoreView;
-  static std::string const Sync;
   static std::string const ServerId;
   static std::string const ClusterInventory;
   static std::string const AddFollower;
@@ -146,12 +144,6 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   void handleCommandRestoreView();
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief handle a sync command
-  //////////////////////////////////////////////////////////////////////////////
-
-  void handleCommandSync();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief handle a server-id command
@@ -284,11 +276,6 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   uint64_t determineChunkSize() const;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Get correct replication applier, based on global paramerter
-  //////////////////////////////////////////////////////////////////////////////
-  ReplicationApplier* getApplier(bool& global);
 
  protected:
   struct RevisionOperationContext {
