@@ -80,7 +80,8 @@ RestStatus RestDatabaseHandler::getDatabases() {
       if (!_vocbase.isSystem()) {
         res.reset(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
       } else {
-        names = methods::Databases::list(server(), std::string());
+        names =
+            methods::Databases::list(server(), /* onlyCurrentUser = */ false);
       }
     } else if (suffixes[0] == "user") {
       // When we get here, we usually are either authenticated or authentication
@@ -90,7 +91,8 @@ RestStatus RestDatabaseHandler::getDatabases() {
       if (!_request->authenticated() && !ExecContext::current().isDisabled()) {
         res.reset(TRI_ERROR_FORBIDDEN);
       } else {
-        names = methods::Databases::list(server(), _request->user());
+        names =
+            methods::Databases::list(server(), /* onlyCurrentUser = */ true);
       }
     }
 

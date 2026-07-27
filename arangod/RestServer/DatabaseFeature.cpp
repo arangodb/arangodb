@@ -908,8 +908,7 @@ std::vector<std::string> DatabaseFeature::getDatabaseNames() {
   return names;
 }
 
-std::vector<std::string> DatabaseFeature::getDatabaseNamesForUser(
-    std::string const& username) {
+std::vector<std::string> DatabaseFeature::getDatabaseNamesForCurrentUser() {
   std::vector<std::string> names;
 
   auto& exec = ExecContext::current();
