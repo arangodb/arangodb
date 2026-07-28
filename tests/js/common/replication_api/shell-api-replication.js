@@ -38,14 +38,6 @@ let api = "/_api/replication";
 ////////////////////////////////////////////////////////////////////////////////;
 function dealing_with_the_loggerSuite () {
   return {
-    setUp: function() {
-      db._drop("UnitTestsReplication");
-    },
-
-    tearDown: function() {
-      db._drop("UnitTestsReplication");
-    },
-
     ////////////////////////////////////////////////////////////////////////////////;
     // state;
     ////////////////////////////////////////////////////////////////////////////////;
@@ -832,18 +824,6 @@ function dealing_with_the_initial_dump_interfaceSuite () {
 ////////////////////////////////////////////////////////////////////////////////;
 function dealing_with_the_logger_Suite () {
   return {
-    setUp: function() {
-      db._drop("UnitTestsReplication");
-      let res = db._createDatabase("UnitTestDB");;
-      assertTrue(res);
-    },
-
-    tearDown: function() {
-      let res = db._dropDatabase("UnitTestDB");;
-      assertTrue(res);
-      db._drop("UnitTestsReplication");
-    },
-
     ////////////////////////////////////////////////////////////////////////////////;
     // state;
     ////////////////////////////////////////////////////////////////////////////////;

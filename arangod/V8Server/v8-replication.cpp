@@ -25,7 +25,6 @@
 #endif
 
 #include "v8-replication.h"
-#include "Basics/StringUtils.h"
 #include "Cluster/ClusterFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
