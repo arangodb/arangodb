@@ -38,7 +38,7 @@ namespace arangodb {
 
 using namespace arangodb::options;
 
-void QueryRegistryOptionsProvider::declareOptions(
+void QueryRegistryOptionsProvider::declareOptionsImpl(
     std::shared_ptr<options::ProgramOptions> options,
     QueryRegistryFeatureOptions& opts) {
   options->addSection("query", "AQL queries");
@@ -600,7 +600,7 @@ lookups.)");
       .setIntroducedIn(31200);
 }
 
-void QueryRegistryOptionsProvider::validateOptions(
+void QueryRegistryOptionsProvider::validateOptionsImpl(
     std::shared_ptr<options::ProgramOptions> /*options*/,
     QueryRegistryFeatureOptions& opts) {
   if (opts.queryGlobalMemoryLimit > 0 &&

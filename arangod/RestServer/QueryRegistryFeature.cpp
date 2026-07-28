@@ -35,7 +35,6 @@
 #include "Logger/LoggerStream.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "RestServer/QueryRegistryOptionsProvider.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/HistogramBuilder.h"
@@ -135,20 +134,6 @@ QueryRegistryFeature::QueryRegistryFeature(ApplicationServer& server,
   _options.queryCacheMaxResultsSize = properties.maxResultsSize;
   _options.queryCacheMaxEntrySize = properties.maxEntrySize;
   _options.queryCacheIncludeSystem = properties.includeSystem;
-}
-
-QueryRegistryFeature::~QueryRegistryFeature() = default;
-
-void QueryRegistryFeature::collectOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  QueryRegistryOptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
-
-void QueryRegistryFeature::validateOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  QueryRegistryOptionsProvider provider;
-  provider.validateOptions(options, _options);
 
   aql::QueryOptions::defaultMemoryLimit = _options.queryMemoryLimit;
   aql::QueryOptions::defaultMaxNumberOfPlans = _options.maxQueryPlans;
@@ -162,6 +147,8 @@ void QueryRegistryFeature::validateOptions(
   aql::QueryOptions::allowMemoryLimitOverride =
       _options.queryMemoryLimitOverride;
 }
+
+QueryRegistryFeature::~QueryRegistryFeature() = default;
 
 void QueryRegistryFeature::prepare() {
   // set the global memory limit
