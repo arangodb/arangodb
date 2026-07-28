@@ -7,6 +7,9 @@
   ready/error state is republished to the agency's `Current` promptly instead of
   waiting for the next maintenance cycle.
 
+* Fixed a bug in the JavaScript API causing `allowImplicit` and
+  `skipFastLockRound` to not be forwarded to the server for Stream Transactions.
+
 * Updated node modules:
  - brace-expansion to 5.0.8
 
