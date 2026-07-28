@@ -42,31 +42,7 @@ logger.state = function () {
 };
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief return the tick ranges that can be provided by the replication logger
-// //////////////////////////////////////////////////////////////////////////////
-
-logger.tickRanges = function () {
-  var db = internal.db;
-
-  var requestResult = db._connection.GET('/_api/replication/logger-tick-ranges');
-  arangosh.checkRequestResult(requestResult);
-
-  return requestResult;
-};
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief return the first tick that can be provided by the replication logger
-// //////////////////////////////////////////////////////////////////////////////
-
-logger.firstTick = function () {
-  var requestResult = internal.db._connection.GET('/_api/replication/logger-first-tick');
-  arangosh.checkRequestResult(requestResult);
-
-  return requestResult.firstTick;
-};
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief return the first tick that can be provided by the replication logger
+// / @brief return the last log tick
 // //////////////////////////////////////////////////////////////////////////////
 
 logger.lastLogTick = function (firstTick, lastTick) {
@@ -76,20 +52,5 @@ logger.lastLogTick = function (firstTick, lastTick) {
   return requestResult;
 };
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief fetches a server's id
-// //////////////////////////////////////////////////////////////////////////////
-
-var serverId = function () {
-  var db = internal.db;
-
-  var requestResult = db._connection.GET('/_api/replication/server-id');
-
-  arangosh.checkRequestResult(requestResult);
-
-  return requestResult.serverId;
-};
-
 exports.logger = logger;
-exports.serverId = serverId;
 exports.compareTicks = rpc.compareTicks;

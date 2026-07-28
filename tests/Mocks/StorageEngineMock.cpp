@@ -269,11 +269,6 @@ StorageEngineMock::createPhysicalCollection(
   return std::make_unique<PhysicalCollectionMock>(collection);
 }
 
-arangodb::Result StorageEngineMock::createTickRanges(VPackBuilder&) {
-  TRI_ASSERT(false);
-  return arangodb::Result(TRI_ERROR_NOT_IMPLEMENTED);
-}
-
 std::shared_ptr<arangodb::TransactionState>
 StorageEngineMock::createTransactionState(
     TRI_vocbase_t& vocbase, arangodb::TransactionId tid,
@@ -332,11 +327,6 @@ arangodb::Result StorageEngineMock::dropView(
   views.erase(std::make_pair(vocbase.id(), view.id()));
 
   return arangodb::Result(TRI_ERROR_NO_ERROR);  // assume mock view dropped OK
-}
-
-arangodb::Result StorageEngineMock::firstTick(uint64_t&) {
-  TRI_ASSERT(false);
-  return arangodb::Result(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 void StorageEngineMock::getCollectionInfo(TRI_vocbase_t& vocbase,

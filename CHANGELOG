@@ -1,11 +1,24 @@
 3.12.10-devel (XXXX-XX-XX)
 --------------------------
 
-* COR-726/COR-787: Removed the deprecated replication applier's REST API
-  (starting/stopping/configuring/querying the applier, and
-  PUT /_api/replication/sync), along with the arangosh client methods that
-  used them. Single-server-to-single-server replication is no longer
-  supported.
+* COR-726/COR-787: Removed the deprecated replication applier's REST API,
+  along with the arangosh client methods that used them.
+  Single-server-to-single-server replication is no longer supported.
+  Removed endpoints:
+  - `GET/PUT /_api/replication/applier-config`
+  - `PUT /_api/replication/applier-start`
+  - `PUT /_api/replication/applier-stop`
+  - `GET/DELETE /_api/replication/applier-state`
+  - `GET /_api/replication/applier-state-all`
+  - `PUT /_api/replication/make-follower`
+  - `PUT /_api/replication/sync`
+  - `GET /_api/replication/logger-follow`
+  - `GET /_api/replication/logger-first-tick`
+  - `GET /_api/replication/logger-tick-ranges`
+  - `GET /_api/replication/server-id`
+
+* COR-784: Missing Variable in Collect Query
+  Fixed an issue where certain invalid COLLECT statements could trigger an internal query planning error instead of reporting a user-facing query validation error.
 
 * BTS-2400: Added the `--vector-index-build-retry-backoff` startup option (seconds) to
   configure the vector index build retry backoff (default: 60). Additionally, a
@@ -13,6 +26,9 @@
   clears its training error, waking the maintenance loop so the index's
   ready/error state is republished to the agency's `Current` promptly instead of
   waiting for the next maintenance cycle.
+
+* Fixed a bug in the JavaScript API causing `allowImplicit` and
+  `skipFastLockRound` to not be forwarded to the server for Stream Transactions.
 
 * Updated node modules:
  - brace-expansion to 5.0.8

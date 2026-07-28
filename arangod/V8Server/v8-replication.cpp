@@ -25,13 +25,11 @@
 #endif
 
 #include "v8-replication.h"
-#include "Basics/StringUtils.h"
 #include "Cluster/ClusterFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/ServerIdFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/OperationOrigin.h"
 #include "Transaction/V8Context.h"
@@ -80,56 +78,6 @@ static void JS_StateLoggerReplication(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get the tick ranges that can be provided by the replication logger
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_TickRangesLoggerReplication(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-  v8::Handle<v8::Array> result;
-
-  VPackBuilder builder;
-  TRI_GET_GLOBALS();
-  StorageEngine& engine = v8g->server().getFeature<DatabaseFeature>().engine();
-  Result res = engine.createTickRanges(builder);
-  if (res.fail()) {
-    TRI_V8_THROW_EXCEPTION(res);
-  }
-
-  v8::Handle<v8::Value> resultValue = TRI_VPackToV8(isolate, builder.slice());
-  result = v8::Handle<v8::Array>::Cast(resultValue);
-
-  TRI_V8_RETURN(result);
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the first tick that can be provided by the replication logger
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_FirstTickLoggerReplication(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  TRI_voc_tick_t tick = UINT64_MAX;
-  TRI_GET_GLOBALS();
-  StorageEngine& engine = v8g->server().getFeature<DatabaseFeature>().engine();
-  Result res = engine.firstTick(tick);
-  if (res.fail()) {
-    TRI_V8_THROW_EXCEPTION(res);
-  }
-
-  if (tick == UINT64_MAX) {
-    TRI_V8_RETURN(v8::Null(isolate));
-  }
-
-  TRI_V8_RETURN(TRI_V8UInt64String<TRI_voc_tick_t>(isolate, tick));
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief get the last WAL entries
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -173,20 +121,6 @@ static void JS_LastLoggerReplication(
   TRI_V8_TRY_CATCH_END
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the server's id
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_ServerIdReplication(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  std::string const serverId = StringUtils::itoa(ServerIdFeature::getId().id());
-  TRI_V8_RETURN_STD_STRING(serverId);
-  TRI_V8_TRY_CATCH_END
-}
-
 void TRI_InitV8Replication(v8::Isolate* isolate,
                            v8::Handle<v8::Context> context,
                            TRI_vocbase_t* vocbase, size_t threadNumber,
@@ -200,15 +134,4 @@ void TRI_InitV8Replication(v8::Isolate* isolate,
   TRI_AddGlobalFunctionVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "REPLICATION_LOGGER_LAST"),
       JS_LastLoggerReplication, true);
-  TRI_AddGlobalFunctionVocbase(
-      isolate, TRI_V8_ASCII_STRING(isolate, "REPLICATION_LOGGER_TICK_RANGES"),
-      JS_TickRangesLoggerReplication, true);
-  TRI_AddGlobalFunctionVocbase(
-      isolate, TRI_V8_ASCII_STRING(isolate, "REPLICATION_LOGGER_FIRST_TICK"),
-      JS_FirstTickLoggerReplication, true);
-
-  // other functions
-  TRI_AddGlobalFunctionVocbase(
-      isolate, TRI_V8_ASCII_STRING(isolate, "REPLICATION_SERVER_ID"),
-      JS_ServerIdReplication, true);
 }

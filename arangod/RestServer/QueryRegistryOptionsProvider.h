@@ -32,12 +32,13 @@ class ProgramOptions;
 namespace arangodb {
 
 struct QueryRegistryOptionsProvider
-    : OptionsProvider<QueryRegistryFeatureOptions> {
-  void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
-                      QueryRegistryFeatureOptions& options) override;
+    : OptionsProviderImpl<QueryRegistryOptionsProvider,
+                          QueryRegistryFeatureOptions> {
+  void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                          QueryRegistryFeatureOptions& options);
 
-  void validateOptions(std::shared_ptr<options::ProgramOptions> opts,
-                       QueryRegistryFeatureOptions& options) override;
+  void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                           QueryRegistryFeatureOptions& options);
 };
 
 }  // namespace arangodb
