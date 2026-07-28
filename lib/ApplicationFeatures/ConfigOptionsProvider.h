@@ -45,7 +45,7 @@ struct ConfigOptionsProvider
                            ConfigFeatureOptions& /*options*/) {}
 
   void setDefaultConfigFile(std::string file) {
-    options().file = std::move(file);
+    mutableOptions().file = std::move(file);
   }
 };
 

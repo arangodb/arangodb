@@ -59,12 +59,7 @@ ArangoDumpServer::ArangoDumpServer(
     std::shared_ptr<options::ProgramOptions> options, char const* binaryPath,
     std::string binaryName, int* ret)
     : OptionProvidingServer<ArangoDumpOptionProviders>(
-          options, binaryPath, std::move(binaryName), ret) {
-#ifdef TRI_HAVE_GETRLIMIT
-  getProvider<BumpFileDescriptorsOptionsProvider>().setOptionName(
-      "--descriptors-minimum");
-#endif
-}
+          options, binaryPath, std::move(binaryName), ret) {}
 
 void ArangoDumpServer::addFeatures() {
   addFeature<BasicFeaturePhaseClient>();
@@ -94,7 +89,7 @@ void ArangoDumpServer::addFeaturesWithOptionProvider() {
 #endif
 #ifdef TRI_HAVE_GETRLIMIT
   addFeature<BumpFileDescriptorsFeature>(
-      getOptions<BumpFileDescriptorsOptionsProvider>());
+      getOptions<ClientBumpFileDescriptorsOptionsProvider>());
 #endif
 }
 

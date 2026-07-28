@@ -96,7 +96,7 @@ using ArangodOptionProviders = CoreOptionProviders<
 #ifdef TRI_HAVE_GETRLIMIT
     ,
     file_descriptors::FileDescriptorsOptionsProvider,
-    BumpFileDescriptorsOptionsProvider
+    ServerBumpFileDescriptorsOptionsProvider
 #endif
 #ifdef ARANGODB_HAVE_FORK
     ,

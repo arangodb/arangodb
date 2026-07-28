@@ -206,7 +206,7 @@ void ArangodServer::addFeaturesWithOptionProvider() {
   addFeature<FileDescriptorsFeature>(
       metrics, getOptions<file_descriptors::FileDescriptorsOptionsProvider>());
   addFeature<BumpFileDescriptorsFeature>(
-      getOptions<BumpFileDescriptorsOptionsProvider>());
+      getOptions<ServerBumpFileDescriptorsOptionsProvider>());
 #endif  // TRI_HAVE_GETRLIMIT
 
   addFeature<AuthenticationFeature>(

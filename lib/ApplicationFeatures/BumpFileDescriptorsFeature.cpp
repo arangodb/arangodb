@@ -80,7 +80,8 @@ void BumpFileDescriptorsFeature::prepare() {
         "file-descriptors (nofiles) soft limit is too low, currently ",
         FileDescriptors::stringify(current.soft), ". please raise to at least ",
         required, " (e.g. via ulimit -n ", required,
-        ") or adjust the value of the startup option ", _options.optionName);
+        ") or adjust the value of the startup option for the minimum number of "
+        "file descriptors");
     if (_options.descriptorsMinimum == 0) {
       LOG_TOPIC("a33ba", WARN, Logger::SYSCALL) << message;
     } else {

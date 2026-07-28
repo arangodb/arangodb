@@ -22,7 +22,6 @@
 
 #include "BumpFileDescriptorsOptionsProvider.h"
 
-#include "Assertions/ProdAssert.h"
 #include "Basics/FileDescriptors.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -37,12 +36,9 @@ namespace arangodb {
 void BumpFileDescriptorsOptionsProvider::declareOptionsImpl(
     std::shared_ptr<options::ProgramOptions> prgOpts,
     BumpFileDescriptorsFeatureOptions& bfdOpts) {
-  // An empty name would silently register an unreachable option.
-  ADB_PROD_ASSERT(!bfdOpts.optionName.empty())
-      << "setOptionName() must be called before options are declared";
   prgOpts
       ->addOption(
-          bfdOpts.optionName,
+          _optionName,
           "The minimum number of file descriptors needed to start (0 = no "
           "minimum)",
           new options::UInt64Parameter(&bfdOpts.descriptorsMinimum),
@@ -57,7 +53,7 @@ void BumpFileDescriptorsOptionsProvider::validateOptionsImpl(
       (bfdOpts.descriptorsMinimum < FileDescriptors::requiredMinimum ||
        bfdOpts.descriptorsMinimum > FileDescriptors::maximumValue)) {
     LOG_TOPIC("7e15c", FATAL, Logger::STARTUP)
-        << "invalid value for " << bfdOpts.optionName << ". must be between "
+        << "invalid value for " << _optionName << ". must be between "
         << FileDescriptors::requiredMinimum << " and "
         << FileDescriptors::maximumValue;
     FATAL_ERROR_EXIT();

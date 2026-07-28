@@ -35,7 +35,7 @@ using ArangoDumpOptionProviders = CoreOptionProviders<
 #endif
 #ifdef TRI_HAVE_GETRLIMIT
     ,
-    BumpFileDescriptorsOptionsProvider
+    ClientBumpFileDescriptorsOptionsProvider
 #endif
     >;
 }  // namespace arangodb
