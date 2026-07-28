@@ -41,8 +41,6 @@
 #include "Logger/Logger.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
-#include "Replication/DatabaseReplicationApplier.h"
-#include "Replication/GlobalReplicationApplier.h"
 #include "Replication/ReplicationFeature.h"
 #include "Replication/utilities.h"
 #include "Rest/CommonDefines.h"
@@ -510,37 +508,6 @@ Result fetchRevisions(NetworkFeature& netFeature, transaction::Methods& trx,
 
 }  // namespace
 
-/// @brief helper struct to prevent multiple starts of the replication
-/// in the same database. used for single-server replication only.
-struct MultiStartPreventer {
-  MultiStartPreventer(MultiStartPreventer const&) = delete;
-  MultiStartPreventer& operator=(MultiStartPreventer const&) = delete;
-
-  MultiStartPreventer(TRI_vocbase_t& vocbase, bool preventStart)
-      : vocbase(vocbase), preventedStart(false) {
-    if (preventStart) {
-      TRI_ASSERT(!ServerState::instance()->isClusterRole());
-
-      auto res = vocbase.replicationApplier()->preventStart();
-      if (res.fail()) {
-        THROW_ARANGO_EXCEPTION(res);
-      }
-      preventedStart = true;
-    }
-  }
-
-  ~MultiStartPreventer() {
-    if (preventedStart) {
-      // reallow starting
-      TRI_ASSERT(!ServerState::instance()->isClusterRole());
-      vocbase.replicationApplier()->allowStart();
-    }
-  }
-
-  TRI_vocbase_t& vocbase;
-  bool preventedStart;
-};
-
 DatabaseInitialSyncer::Configuration::Configuration(
     ReplicationApplierConfiguration const& a, replutils::BatchInfo& bat,
     replutils::Connection& c, bool f, replutils::LeaderInfo& l,
@@ -567,7 +534,6 @@ DatabaseInitialSyncer::DatabaseInitialSyncer(
               false,          _state.leader, _progress,
               _state,         vocbase},
       _lastCancellationCheck(std::chrono::steady_clock::now()),
-      _isClusterRole(ServerState::instance()->isClusterRole()),
       _quickKeysNumDocsLimit(
           vocbase.server().getFeature<ReplicationFeature>().quickKeysLimit()) {
   _state.vocbases.try_emplace(vocbase.name(), vocbase);
@@ -609,9 +575,6 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental,
   double const startTime = TRI_microtime();
 
   try {
-    bool const preventMultiStart = !_isClusterRole;
-    MultiStartPreventer p(vocbase(), preventMultiStart);
-
     setAborted(false);
 
     _config.progress.set("fetching leader state");
@@ -725,21 +688,8 @@ Result DatabaseInitialSyncer::getInventory(VPackBuilder& builder) {
 
 /// @brief check whether the initial synchronization should be aborted
 bool DatabaseInitialSyncer::isAborted() const {
-  if (vocbase().server().isStopping() ||
-      (vocbase().replicationApplier() != nullptr &&
-       vocbase().replicationApplier()->stopInitialSynchronization())) {
+  if (vocbase().server().isStopping()) {
     return true;
-  }
-
-  if (_state.isChildSyncer) {
-    // this syncer is used as a child syncer of the GlobalInitialSyncer.
-    // now check if parent was aborted
-    ReplicationFeature& replication =
-        vocbase().server().getFeature<ReplicationFeature>();
-    GlobalReplicationApplier* applier = replication.globalReplicationApplier();
-    if (applier != nullptr && applier->stopInitialSynchronization()) {
-      return true;
-    }
   }
 
   if (_checkCancellation) {
@@ -771,14 +721,6 @@ void DatabaseInitialSyncer::setProgress(std::string const& msg) {
     LOG_TOPIC("c6f5f", INFO, Logger::REPLICATION) << msg;
   } else {
     LOG_TOPIC("d15ed", DEBUG, Logger::REPLICATION) << msg;
-  }
-
-  if (!_isClusterRole) {
-    auto* applier = _config.vocbase.replicationApplier();
-
-    if (applier != nullptr) {
-      applier->setProgress(msg);
-    }
   }
 }
 

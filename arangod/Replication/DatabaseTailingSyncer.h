@@ -22,7 +22,6 @@
 
 #pragma once
 
-#include "Replication/DatabaseReplicationApplier.h"
 #include "Replication/ReplicationApplierConfiguration.h"
 #include "Replication/utilities.h"
 #include "TailingSyncer.h"
@@ -34,7 +33,6 @@
 namespace arangodb {
 struct Database;
 class DatabaseInitialSyncer;
-class DatabaseReplicationApplier;
 
 class DatabaseTailingSyncer : public TailingSyncer {
  private:
@@ -51,11 +49,6 @@ class DatabaseTailingSyncer : public TailingSyncer {
 
   Database* resolveVocbase(velocypack::Slice /*slice*/) override {
     return _vocbase;
-  }
-
-  /// @brief return the syncer's replication applier
-  DatabaseReplicationApplier* applier() const {
-    return static_cast<DatabaseReplicationApplier*>(_applier);
   }
 
   /// @brief finalize the synchronization of a collection by tailing the WAL
@@ -93,9 +86,6 @@ class DatabaseTailingSyncer : public TailingSyncer {
                                        double timeout, bool hard,
                                        TRI_voc_tick_t& until, bool& didTimeout,
                                        std::string const& context);
-
-  /// @brief save the current applier state
-  Result saveApplierState() override;
 
   Database* vocbase() const {
     TRI_ASSERT(vocbases().size() == 1);

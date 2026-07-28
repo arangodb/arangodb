@@ -24,7 +24,6 @@
 #include "Replication/ReplicationOptionsProvider.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
-#include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Logger/LogMacros.h"
@@ -35,14 +34,11 @@
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/IRegistry.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "Replication/DatabaseReplicationApplier.h"
-#include "Replication/GlobalReplicationApplier.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/ServerIdFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBRecoveryManager.h"
-#include "VocBase/vocbase.h"
 
 using namespace arangodb::application_features;
 using namespace arangodb::options;
@@ -103,46 +99,6 @@ void ReplicationFeature::prepare() {
   }
 }
 
-void ReplicationFeature::start() {
-  auto& engine = server().getFeature<DatabaseFeature>().engine();
-  _globalReplicationApplier =
-      std::make_unique<GlobalReplicationApplier>(server(), engine);
-
-  try {
-    _globalReplicationApplier->loadState();
-  } catch (...) {
-    // :snake:
-  }
-}
-
-void ReplicationFeature::beginShutdown() {
-  try {
-    if (_globalReplicationApplier != nullptr) {
-      _globalReplicationApplier->stop();
-    }
-  } catch (...) {
-    // ignore any error
-  }
-}
-
-void ReplicationFeature::stop() {
-  try {
-    if (_globalReplicationApplier != nullptr) {
-      _globalReplicationApplier->stop();
-      _globalReplicationApplier->stopAndJoin();
-    }
-  } catch (...) {
-    // ignore any error
-  }
-}
-
-void ReplicationFeature::unprepare() {
-  if (_globalReplicationApplier != nullptr) {
-    _globalReplicationApplier->stopAndJoin();
-  }
-  _globalReplicationApplier.reset();
-}
-
 httpclient::ConnectionCache& ReplicationFeature::connectionCache() {
   return _connectionCache;
 }
@@ -199,21 +155,6 @@ void ReplicationFeature::autoRepairRevisionTrees(bool value) noexcept {
   _options.autoRepairRevisionTrees = value;
 }
 #endif
-
-GlobalReplicationApplier* ReplicationFeature::globalReplicationApplier() const {
-  TRI_ASSERT(_globalReplicationApplier != nullptr);
-  return _globalReplicationApplier.get();
-}
-
-// stop the replication applier for a single database
-void ReplicationFeature::stopApplier(TRI_vocbase_t* vocbase) {
-  TRI_ASSERT(!ServerState::instance()->isCoordinator());
-
-  if (!ServerState::instance()->isClusterRole() &&
-      vocbase->replicationApplier() != nullptr) {
-    vocbase->replicationApplier()->stopAndJoin();
-  }
-}
 
 /// @brief returns the connect timeout for replication requests
 double ReplicationFeature::connectTimeout() const {

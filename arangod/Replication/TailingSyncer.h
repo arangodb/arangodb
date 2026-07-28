@@ -32,7 +32,6 @@
 namespace arangodb {
 struct Database;
 class InitialSyncer;
-class ReplicationApplier;
 class ReplicationTransaction;
 
 namespace httpclient {
@@ -51,8 +50,7 @@ struct ApplyStats {
 
 class TailingSyncer : public Syncer {
  public:
-  TailingSyncer(ReplicationApplier* applier,
-                ReplicationApplierConfiguration const&,
+  TailingSyncer(ReplicationApplierConfiguration const&,
                 TRI_voc_tick_t initialTick, bool useTick);
 
   virtual ~TailingSyncer();
@@ -134,18 +132,12 @@ class TailingSyncer : public Syncer {
                   arangodb::velocypack::Builder& builder,
                   uint64_t& ignoreCount);
 
-  /// @brief save the current applier state
-  virtual Result saveApplierState() = 0;
-
  private:
   arangodb::Result removeSingleDocument(arangodb::LogicalCollection* coll,
                                         std::string const& key);
 
  protected:
   virtual bool skipMarker(arangodb::velocypack::Slice slice) = 0;
-
-  /// @brief pointer to the applier
-  ReplicationApplier* _applier;
 
   /// @brief initial tick for continuous synchronization
   TRI_voc_tick_t _initialTick;

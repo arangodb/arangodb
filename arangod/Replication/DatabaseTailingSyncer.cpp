@@ -31,7 +31,6 @@
 #include "Basics/system-functions.h"
 #include "Logger/Logger.h"
 #include "Replication/DatabaseInitialSyncer.h"
-#include "Replication/DatabaseReplicationApplier.h"
 #include "Replication/ReplicationMetricsFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
@@ -61,8 +60,7 @@ DatabaseTailingSyncer::DatabaseTailingSyncer(
     TRI_vocbase_t& vocbase,
     ReplicationApplierConfiguration const& configuration,
     TRI_voc_tick_t initialTick, bool useTick)
-    : TailingSyncer(vocbase.replicationApplier(), configuration, initialTick,
-                    useTick),
+    : TailingSyncer(configuration, initialTick, useTick),
       _vocbase(&vocbase),
       _toTick(0),
       _lastCancellationCheck(std::chrono::steady_clock::now()),
@@ -89,15 +87,6 @@ std::shared_ptr<DatabaseTailingSyncer> DatabaseTailingSyncer::create(
 
   return std::make_shared<Enabler>(vocbase, configuration, initialTick,
                                    useTick);
-}
-
-/// @brief save the current applier state
-Result DatabaseTailingSyncer::saveApplierState() {
-  auto rv = _applier->persistStateResult(false);
-  if (rv.fail()) {
-    THROW_ARANGO_EXCEPTION(rv);
-  }
-  return rv;
 }
 
 Result DatabaseTailingSyncer::syncCollectionCatchup(

@@ -48,7 +48,6 @@
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
 #include "Replication/DatabaseInitialSyncer.h"
-#include "Replication/DatabaseReplicationApplier.h"
 #include "Replication/DatabaseTailingSyncer.h"
 #include "Replication/ReplicationApplierConfiguration.h"
 #include "Replication/ReplicationFeature.h"

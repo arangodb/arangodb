@@ -100,10 +100,6 @@ class ClusterEngine final : public StorageEngine {
 
   void cleanupReplicationContexts() override {}
 
-  velocypack::Builder getReplicationApplierConfiguration(
-      TRI_vocbase_t& vocbase, ErrorCode& status) override;
-  velocypack::Builder getReplicationApplierConfiguration(
-      ErrorCode& status) override;
   Result handleSyncKeys(DatabaseInitialSyncer& syncer, LogicalCollection& col,
                         std::string const& keysId) override {
     return {TRI_ERROR_NOT_IMPLEMENTED};

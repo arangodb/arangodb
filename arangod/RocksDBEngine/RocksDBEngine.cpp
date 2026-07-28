@@ -203,8 +203,6 @@ DECLARE_COUNTER(
 // global flag to cancel all compactions. will be flipped to true on shutdown
 static std::atomic<bool> cancelCompactions{false};
 
-static constexpr uint64_t databaseIdForGlobalApplier = 0;
-
 // handles for recovery helpers
 std::vector<std::shared_ptr<RocksDBRecoveryHelper>>
     RocksDBEngine::_recoveryHelpers;
@@ -1267,42 +1265,6 @@ void RocksDBEngine::cleanupReplicationContexts() {
   if (_replicationManager != nullptr) {
     _replicationManager->dropAll();
   }
-}
-
-VPackBuilder RocksDBEngine::getReplicationApplierConfiguration(
-    TRI_vocbase_t& vocbase, ErrorCode& status) {
-  RocksDBKey key;
-
-  key.constructReplicationApplierConfig(vocbase.id());
-
-  return getReplicationApplierConfiguration(key, status);
-}
-
-VPackBuilder RocksDBEngine::getReplicationApplierConfiguration(
-    ErrorCode& status) {
-  RocksDBKey key;
-  key.constructReplicationApplierConfig(databaseIdForGlobalApplier);
-  return getReplicationApplierConfiguration(key, status);
-}
-
-VPackBuilder RocksDBEngine::getReplicationApplierConfiguration(
-    RocksDBKey const& key, ErrorCode& status) {
-  rocksdb::PinnableSlice value;
-
-  auto opts = rocksdb::ReadOptions();
-  auto s = _db->Get(opts,
-                    RocksDBColumnFamilyManager::get(
-                        RocksDBColumnFamilyManager::Family::Definitions),
-                    key.string(), &value);
-  if (!s.ok()) {
-    status = TRI_ERROR_FILE_NOT_FOUND;
-    return arangodb::velocypack::Builder();
-  }
-
-  status = TRI_ERROR_NO_ERROR;
-  VPackBuilder builder;
-  builder.add(RocksDBValue::data(value));
-  return builder;
 }
 
 // database, collection and index management

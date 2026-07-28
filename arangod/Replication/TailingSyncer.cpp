@@ -38,7 +38,6 @@
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
 #include "Replication/InitialSyncer.h"
-#include "Replication/ReplicationApplier.h"
 #include "Replication/ReplicationTransaction.h"
 #include "Rest/HttpRequest.h"
 #include "RestServer/DatabaseFeature.h"
@@ -80,11 +79,9 @@ constexpr std::string_view dbRef("db");
 std::string const TailingSyncer::WalAccessUrl = "/_api/wal";
 
 TailingSyncer::TailingSyncer(
-    ReplicationApplier* applier,
     ReplicationApplierConfiguration const& configuration,
     TRI_voc_tick_t initialTick, bool useTick)
     : Syncer(configuration),
-      _applier(applier),
       _initialTick(initialTick),
       _usersModified(false),
       _ignoreRenameCreateDrop(false),
@@ -96,7 +93,6 @@ TailingSyncer::TailingSyncer(
 TailingSyncer::~TailingSyncer() { abortOngoingTransactions(); }
 
 /// @brief decide based on _state.leader which api to use
-///        GlobalTailingSyncer should overwrite this probably
 std::string TailingSyncer::tailingBaseUrl(std::string const& cc) {
   return absl::StrCat(TailingSyncer::WalAccessUrl, "/", cc, "?");
 }
@@ -108,7 +104,6 @@ void TailingSyncer::setProgress(std::string const& msg) {
   } else {
     LOG_TOPIC("452fc", DEBUG, Logger::REPLICATION) << msg;
   }
-  _applier->setProgress(msg);
 }
 
 /// @brief abort all ongoing transactions
@@ -1219,28 +1214,6 @@ Result TailingSyncer::applyLog(SimpleHttpResult* response,
             << "ignoring replication error for database '"
             << _state.databaseName << "': " << errorMsg;
       }
-    }
-
-    // update tick value
-    WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
-
-    if (markerTick > firstRegularTick &&
-        markerTick > _applier->_state._lastProcessedContinuousTick) {
-      TRI_ASSERT(markerTick > 0);
-      _applier->_state._lastProcessedContinuousTick = markerTick;
-    }
-
-    if (_applier->_state._lastProcessedContinuousTick >
-        _applier->_state._lastAppliedContinuousTick) {
-      _applier->_state._lastAppliedContinuousTick =
-          _applier->_state._lastProcessedContinuousTick;
-    }
-
-    if (skipped) {
-      ++_applier->_state._totalSkippedOperations;
-    } else if (_ongoingTransactions.empty()) {
-      _applier->_state._safeResumeTick =
-          _applier->_state._lastProcessedContinuousTick;
     }
   }
 

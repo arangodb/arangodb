@@ -281,8 +281,6 @@ class DatabaseInitialSyncer : public InitialSyncer {
   // point in time when we last executed the _checkCancellation callback
   mutable std::chrono::steady_clock::time_point _lastCancellationCheck;
 
-  /// @brief whether or not we are a coordinator/dbserver
-  bool const _isClusterRole;
   uint64_t _quickKeysNumDocsLimit;
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS

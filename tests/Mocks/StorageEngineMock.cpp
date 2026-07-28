@@ -383,25 +383,6 @@ void StorageEngineMock::cleanupReplicationContexts() {
   // nothing to do here
 }
 
-arangodb::velocypack::Builder
-StorageEngineMock::getReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
-                                                      ErrorCode& result) {
-  before();
-  result =
-      TRI_ERROR_FILE_NOT_FOUND;  // assume no ReplicationApplierConfiguration
-                                 // for vocbase
-
-  return arangodb::velocypack::Builder();
-}
-
-arangodb::velocypack::Builder
-StorageEngineMock::getReplicationApplierConfiguration(ErrorCode& status) {
-  before();
-  status = TRI_ERROR_FILE_NOT_FOUND;
-
-  return arangodb::velocypack::Builder();
-}
-
 ErrorCode StorageEngineMock::getViews(TRI_vocbase_t& vocbase,
                                       arangodb::velocypack::Builder& result) {
   result.openArray();
