@@ -213,7 +213,6 @@ const detectGeo = ({
   isTable: boolean;
 } => {
   let validGeojsonCount = 0;
-  let isGeo = false;
   let isTable = false;
   // makes a map like {type: 1, coordinates: 2} across all resultItems
   const attributeCountMap = {} as {
@@ -280,11 +279,7 @@ const detectGeo = ({
     }
   });
 
-  if (result.length === validGeojsonCount) {
-    isGeo = true;
-  } else {
-    isGeo = false;
-  }
+  const isGeo = result.length === validGeojsonCount;
   return {
     isGeo,
     isTable

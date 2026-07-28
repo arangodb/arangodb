@@ -51,11 +51,17 @@ module.exports = tseslint.config(
     },
   },
 
-  // React Hooks correctness rules (rules-of-hooks / exhaustive-deps) for all React sources.
+  // React Hooks correctness rules for all React sources. Pinned to the two classic rules
+  // rather than eslint-plugin-react-hooks v7's expanded "recommended" set (16 rules,
+  // incl. the new React-Compiler-based checks) — adopting those is a separate decision
+  // that surfaces ~20 pre-existing violations to triage.
   {
     files: ["src/**/*.{ts,tsx,js,jsx}"],
     plugins: { "react-hooks": reactHooks },
-    rules: reactHooks.configs.recommended.rules,
+    rules: {
+      "react-hooks/rules-of-hooks": "error",
+      "react-hooks/exhaustive-deps": "warn",
+    },
   },
 
   // Declaration-merging files legitimately restate a third-party interface's generic
