@@ -169,7 +169,6 @@ module.exports = (_webpackEnv, argv) => {
       fallback: {
         path: require.resolve("path-browserify"),
         querystring: require.resolve("querystring-es3"),
-        url: require.resolve("url/"),
       },
     },
     module: {
@@ -290,12 +289,12 @@ module.exports = (_webpackEnv, argv) => {
       historyApiFallback: { disableDotRule: true },
       static: { directory: resolveApp("public") },
       // Reuse the existing proxy/redirect rules from src/setupProxy.js. Registering them
-      // before webpack-dev-server's own middleware (as CRA did) ensures the /_db/** proxy
-      // and the "/" redirect run first, while the excluded aardvark/index.html falls
-      // through to historyApiFallback. (onBeforeSetupMiddleware is deprecated in wds v4
-      // but still supported; revisit if upgrading to wds v5's setupMiddlewares.)
-      onBeforeSetupMiddleware: (devServer) => {
+      // on devServer.app before returning the middleware array runs the /_db/** proxy and
+      // the "/" redirect first, while the excluded aardvark/index.html falls through to
+      // historyApiFallback. (setupMiddlewares replaced onBeforeSetupMiddleware in wds v5.)
+      setupMiddlewares: (middlewares, devServer) => {
         require("./src/setupProxy")(devServer.app);
+        return middlewares;
       },
     },
     performance: false,
