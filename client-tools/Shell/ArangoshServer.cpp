@@ -104,12 +104,13 @@ void ArangoshServer::addFeaturesWithOptionProvider() {
 #ifdef USE_ENTERPRISE
   addFeature<EncryptionFeature>(getOptions<EncryptionOptionsProvider>());
 #endif
-  addFeature<HttpEndpointProvider, ClientFeature>(
+  auto& client = addFeature<HttpEndpointProvider, ClientFeature>(
       true, getOptions<ClientOptionsProvider>());
 
   auto& console = addFeature<ShellConsoleFeature>(
       getOptions<ShellConsoleOptionsProvider>());
-  addFeature<ShellFeature>(_ret, console, getOptions<ShellOptionsProvider>());
+  addFeature<ShellFeature>(_ret, client, console,
+                           getOptions<ShellOptionsProvider>());
 }
 
 }  // namespace arangodb

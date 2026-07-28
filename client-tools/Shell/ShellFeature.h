@@ -36,9 +36,10 @@ class ShellFeature final : public application_features::ApplicationFeature {
   static constexpr std::string_view name() noexcept { return "Shell"; }
 
   ShellFeature(application_features::ApplicationServer& server, int* result,
-               ShellConsoleFeature& console, ShellFeatureOptions options);
+               ClientFeature& client, ShellConsoleFeature& console,
+               ShellFeatureOptions options);
   ShellFeature(application_features::ApplicationServer& server, int* result,
-               ShellConsoleFeature& console);
+               ClientFeature& client, ShellConsoleFeature& console);
 
   ~ShellFeature() override;
 

@@ -37,11 +37,13 @@ using namespace arangodb::options;
 namespace arangodb {
 
 ShellFeature::ShellFeature(application_features::ApplicationServer& server,
-                           int* result, ShellConsoleFeature& console)
-    : ShellFeature(server, result, console, ShellFeatureOptions{}) {}
+                           int* result, ClientFeature& client,
+                           ShellConsoleFeature& console)
+    : ShellFeature(server, result, client, console, ShellFeatureOptions{}) {}
 
 ShellFeature::ShellFeature(application_features::ApplicationServer& server,
-                           int* result, ShellConsoleFeature& console,
+                           int* result, ClientFeature& client,
+                           ShellConsoleFeature& console,
                            ShellFeatureOptions options)
     : ApplicationFeature(server, *this),
       _options(std::move(options)),
@@ -51,9 +53,6 @@ ShellFeature::ShellFeature(application_features::ApplicationServer& server,
   startsAfter<application_features::V8ShellFeaturePhase>();
 
   _positionals = server.options()->processingResult()._positionals;
-
-  ClientFeature& client =
-      server.getFeature<HttpEndpointProvider, ClientFeature>();
 
   if (client.endpoint() == "none") {
     client.disable();
