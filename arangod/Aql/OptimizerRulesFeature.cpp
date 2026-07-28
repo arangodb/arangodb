@@ -932,7 +932,7 @@ filtering by using `storedValues`. This rule is only enabled by the
 
   registerRule("materialize-for-enumerate-near", materializeForEnumerateNear,
                OptimizerRule::materializeForEnumerateNearRule,
-               OptimizerRule::makeFlags(),
+               OptimizerRule::makeFlags(OptimizerRule::Flags::Hidden),
                R"(Choose how each EnumerateNearVectorNode emits its document.
 If the vector index storedValues cover the downstream projections, or if a
 pushed-down filter already loaded the document, the vector node produces the
