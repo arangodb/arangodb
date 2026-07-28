@@ -547,11 +547,6 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
             // Creating a graph requires RW access to the database (to write
             // to _graphs), plus the ability to create/read any linked
             // collections.
-            if (auto r =
-                    check(p::UseDatabase{graph.db, DatabaseAccessLevel::Write});
-                r.ok()) {
-              return r;
-            }
             // No write access to database, so we need to check the collections
             for (auto const& coll : graph.collectionNamesToCreate) {
               if (auto r = check(p::CreateCollection{graph.db, coll});
@@ -565,6 +560,11 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
                   r.fail()) {
                 return r;
               }
+            }
+            if (auto r =
+                    check(p::UseDatabase{graph.db, DatabaseAccessLevel::Write});
+                r.ok()) {
+              return {};
             }
             return {TRI_ERROR_ARANGO_READ_ONLY, "Cannot write to database."};
           },
