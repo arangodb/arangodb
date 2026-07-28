@@ -33,15 +33,14 @@ void V8SecurityOptionsProvider::declareOptions(
     std::shared_ptr<options::ProgramOptions> options,
     V8SecurityFeatureOptions& opts) {
   options->addSection("javascript", "JavaScript engine and execution");
-  options->addOption(
-      "--javascript.allow-port-testing",
-      "Allow the testing of ports from within JavaScript.",
-      new BooleanParameter(&opts.allowPortTesting),
-      arangodb::options::makeFlags(
-          arangodb::options::Flags::DefaultNoComponents,
-          arangodb::options::Flags::OnCoordinator,
-          arangodb::options::Flags::OnSingle,
-          arangodb::options::Flags::Uncommon));
+  options->addOption("--javascript.allow-port-testing",
+                     "Allow the testing of ports from within JavaScript.",
+                     new BooleanParameter(&opts.allowPortTesting),
+                     arangodb::options::makeFlags(
+                         arangodb::options::Flags::DefaultNoComponents,
+                         arangodb::options::Flags::OnCoordinator,
+                         arangodb::options::Flags::OnSingle,
+                         arangodb::options::Flags::Uncommon));
 
   options->addOption(
       "--javascript.allow-external-process-control",
