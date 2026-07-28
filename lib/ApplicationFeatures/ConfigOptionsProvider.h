@@ -43,10 +43,6 @@ struct ConfigOptionsProvider
                           ConfigFeatureOptions& configOpts);
   void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> /*opts*/,
                            ConfigFeatureOptions& /*options*/) {}
-
-  void setDefaultConfigFile(std::string file) {
-    mutableOptions().file = std::move(file);
-  }
 };
 
 }  // namespace arangodb

@@ -50,9 +50,7 @@ ArangoVPackServer::ArangoVPackServer(
     std::shared_ptr<options::ProgramOptions> options, char const* binaryPath,
     std::string binaryName, int* ret)
     : OptionProvidingServer<ArangoVPackOptionProviders>(
-          options, binaryPath, std::move(binaryName), ret) {
-  getProvider<ConfigOptionsProvider>().setDefaultConfigFile("none");
-}
+          options, binaryPath, std::move(binaryName), ret) {}
 
 void ArangoVPackServer::addFeatures() {
   addFeature<BasicFeaturePhaseClient>();
@@ -67,7 +65,6 @@ void ArangoVPackServer::addFeatures() {
 void ArangoVPackServer::addFeaturesWithOptionProvider() {
   addFeature<VersionFeature>(getOptions<VersionOptionsProvider>());
   addFeature<LoggerFeature>(false, getOptions<LoggerOptionsProvider>());
-  addFeature<ConfigFeature>(getOptions<ConfigOptionsProvider>());
   addFeature<FileSystemFeature>(getOptions<FileSystemOptionsProvider>());
   addFeature<RandomFeature>(getOptions<RandomOptionsProvider>());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
