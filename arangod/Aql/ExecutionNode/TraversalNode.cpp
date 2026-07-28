@@ -516,7 +516,7 @@ void TraversalNode::getConditionVariables(VarSet& result) const {
     return ((!vertexOutVariable() || var != vertexOutVariable()) &&
             (!edgeOutVariable() || var != edgeOutVariable()) &&
             (!pathOutVariable() || var != pathOutVariable()) &&
-            (getTemporaryVariable() && var != getTemporaryVariable()) &&
+            (!getTemporaryVariable() || var != getTemporaryVariable()) &&
             !_optimizedOutVariables.contains(var->id));
   };
 
