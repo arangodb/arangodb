@@ -36,7 +36,7 @@ class CircleCIGenerator(OutputGenerator):
     # ========================================================================
 
     # Job-specific bucket overrides
-    BUCKET_OVERRIDES = {}
+    BUCKET_OVERRIDES: Dict[str, int] = {}
 
     # Job-specific size overrides (applied conditionally)
     # shell_client_aql: Nightly single-server runs need more memory due to
