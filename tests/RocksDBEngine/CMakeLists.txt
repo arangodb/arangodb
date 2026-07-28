@@ -3,6 +3,7 @@
 # including it here too would duplicate the symbols. The standalone executable
 # below compiles it directly instead.
 add_library(arango_tests_rocksdb_engine OBJECT
+  StorageEngineFixture.cpp
   RocksDBEngineTest.cpp
   DatabaseTest.cpp
   CollectionTest.cpp

@@ -54,8 +54,8 @@ DECLARE_COUNTER(arangodb_storage_engine_test_transactions_expired_total,
 // deliberately thin: they only use what the engine already exposes.
 class StorageEngineDataTest : public StorageEngineFixture {
  protected:
-  void SetUp() override {
-    StorageEngineFixture::SetUp();
+  static void SetUpTestSuite() {
+    StorageEngineFixture::SetUpTestSuite();
     // Minting a collection's GUID reads the global server id, which is normally
     // populated by the ServerIdFeature at startup. That feature is not part of
     // this setup, so we seed the id directly. The value must be large enough
@@ -65,32 +65,33 @@ class StorageEngineDataTest : public StorageEngineFixture {
     // Building a LogicalCollection constructs a ShardingInfo, which resolves
     // its sharding strategy through the ShardingFeature. Register it on our own
     // server and run prepare() so the strategy factories are available.
-    _server.addFeature<ShardingFeature>().prepare();
+    _suite->server.addFeature<ShardingFeature>().prepare();
 
     // Transactions resolve their manager through engine().transactionManager(),
     // which is only valid once the manager has been created. In production the
     // ManagerFeature does this at startup; here we create it directly (the
     // engine holds only a weak reference, so we keep it alive as a member).
-    _transactionManager = engine().createTransactionManager(
+    _transactionManager = _suite->engine.createTransactionManager(
         transaction::ManagerFeatureOptions{},
-        _metricsRegistry.add(
+        _suite->metricsRegistry.add(
             arangodb_storage_engine_test_transactions_expired_total{}));
   }
 
-  std::shared_ptr<transaction::Manager> _transactionManager;
+  static std::shared_ptr<transaction::Manager> _transactionManager;
 
   // Build an in-memory Database object. We construct the database directly
   // with the fixture's injected database provider rather than going through
   // engine().openDatabase(): the direct path keeps the test in full control of
   // the collaborators.
   std::unique_ptr<Database> makeDatabase(std::string_view name, uint64_t id) {
-    CreateDatabaseInfo info{_server, ExecContext::superuser()};
+    CreateDatabaseInfo info{_suite->server, ExecContext::superuser()};
     // Name validation still reaches into the DatabaseFeature (extendedNames()),
     // which is not available here. Disable it (gap 2 in the gap report).
     info.validateNames(false);
     auto res = info.load(name, id);
     EXPECT_TRUE(res.ok()) << res.errorMessage();
-    return std::make_unique<Database>(std::move(info), engine(), _dbProvider);
+    return std::make_unique<Database>(std::move(info), engine(),
+                                      _suite->dbProvider);
   }
 
   // Persist the create-database marker so the database is discoverable through

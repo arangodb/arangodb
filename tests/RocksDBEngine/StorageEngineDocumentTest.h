@@ -58,9 +58,13 @@ namespace arangodb::tests {
 class StorageEngineDocumentTest : public StorageEngineDataTest {
  protected:
   void SetUp() override {
-    StorageEngineDataTest::SetUp();
     _database = makeDatabase("testDatabase", 42);
     _collection = makeCollection(*_database, "testCollection");
+  }
+
+  void TearDown() override {
+    _collection.reset();
+    _database.reset();
   }
 
   static VPackString keyed(std::string_view key, int value) {
