@@ -29,7 +29,6 @@
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Shell/ClientFeature.h"
-#include "Shell/ShellConsoleFeature.h"
 #include "Shell/V8ShellFeature.h"
 
 using namespace arangodb::basics;
@@ -38,11 +37,12 @@ using namespace arangodb::options;
 namespace arangodb {
 
 ShellFeature::ShellFeature(application_features::ApplicationServer& server,
-                           int* result)
-    : ShellFeature(server, result, ShellFeatureOptions{}) {}
+                           int* result, ShellConsoleFeature& console)
+    : ShellFeature(server, result, console, ShellFeatureOptions{}) {}
 
 ShellFeature::ShellFeature(application_features::ApplicationServer& server,
-                           int* result, ShellFeatureOptions options)
+                           int* result, ShellConsoleFeature& console,
+                           ShellFeatureOptions options)
     : ApplicationFeature(server, *this),
       _options(std::move(options)),
       _result(result),
@@ -54,7 +54,6 @@ ShellFeature::ShellFeature(application_features::ApplicationServer& server,
 
   ClientFeature& client =
       server.getFeature<HttpEndpointProvider, ClientFeature>();
-  ShellConsoleFeature& console = server.getFeature<ShellConsoleFeature>();
 
   if (client.endpoint() == "none") {
     client.disable();

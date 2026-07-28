@@ -107,8 +107,9 @@ void ArangoshServer::addFeaturesWithOptionProvider() {
   addFeature<HttpEndpointProvider, ClientFeature>(
       true, getOptions<ClientOptionsProvider>());
 
-  addFeature<ShellFeature>(_ret, getOptions<ShellOptionsProvider>());
-  addFeature<ShellConsoleFeature>(getOptions<ShellConsoleOptionsProvider>());
+  auto& console = addFeature<ShellConsoleFeature>(
+      getOptions<ShellConsoleOptionsProvider>());
+  addFeature<ShellFeature>(_ret, console, getOptions<ShellOptionsProvider>());
 }
 
 }  // namespace arangodb
