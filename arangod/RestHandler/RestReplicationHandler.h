@@ -73,10 +73,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   /// @brief list of available commands
   //////////////////////////////////////////////////////////////////////////////
   static std::string const LoggerState;
-  static std::string const LoggerTickRanges;
-  static std::string const LoggerFirstTick;
   static std::string const LoggerLast;
-  static std::string const LoggerFollow;
   static std::string const Batch;
   static std::string const Inventory;
   static std::string const Keys;
@@ -85,7 +82,6 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   static std::string const RestoreIndexes;
   static std::string const RestoreData;
   static std::string const RestoreView;
-  static std::string const ServerId;
   static std::string const ClusterInventory;
   static std::string const AddFollower;
   static std::string const RemoveFollower;
@@ -146,12 +142,6 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   void handleCommandRestoreView();
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief handle a server-id command
-  //////////////////////////////////////////////////////////////////////////////
-
-  void handleCommandServerId();
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief add a follower of a shard to the list of followers
   //////////////////////////////////////////////////////////////////////////////
 
@@ -199,35 +189,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
 
   void handleCommandLoggerState();
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief return the first tick available in a logfile
-  /// @route GET logger-first-tick
-  /// @caller js/client/modules/@arangodb/replication.js
-  /// @response VPackObject with minTick of LogfileManager->ranges()
-  //////////////////////////////////////////////////////////////////////////////
-
-  void handleCommandLoggerFirstTick();
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief return the first tick available in a logfile
-  /// @route GET logger-first-tick
-  /// @caller js/client/modules/@arangodb/replication.js
-  /// @response VPackObject with minTick of LogfileManager->ranges()
-  //////////////////////////////////////////////////////////////////////////////
-
   void handleCommandLoggerLast();
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief return the available logfile range
-  /// @route GET logger-tick-ranges
-  /// @caller js/client/modules/@arangodb/replication.js
-  /// @response VPackArray, containing info about each datafile
-  ///           * filename
-  ///           * status
-  ///           * tickMin - tickMax
-  //////////////////////////////////////////////////////////////////////////////
-
-  void handleCommandLoggerTickRanges();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief rebuild the revision tree for a given collection, if allowed
@@ -418,12 +380,6 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   /// SECTION:
   /// Functions to be implemented by specialization
   //////////////////////////////////////////////////////////////////////////////
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief handle a follow command for the replication log
-  //////////////////////////////////////////////////////////////////////////////
-
-  virtual void handleCommandLoggerFollow() = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief handle the command to determine the transactions that were open

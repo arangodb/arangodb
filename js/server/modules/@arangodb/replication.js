@@ -35,16 +35,6 @@ logger.state = function () {
   return internal.getStateReplicationLogger();
 };
 
-// / @brief return the tick ranges provided by the replication logger
-logger.tickRanges = function () {
-  return internal.tickRangesReplicationLogger();
-};
-
-// / @brief return the first tick that can be provided by the replication logger
-logger.firstTick = function () {
-  return internal.firstTickReplicationLogger();
-};
-
 // / @brief starts the replication applier
 applier.start = function (initialTick, barrierId) {
   if (initialTick === undefined) {
@@ -106,13 +96,7 @@ globalApplier.failoverEnabled = function () {
   return GLOBAL_REPLICATION_APPLIER_FAILOVER_ENABLED();
 };
 
-// / @brief returns the server's id
-function serverId () {
-  return internal.serverId();
-}
-
 exports.logger = logger;
 exports.applier = applier;
 exports.globalApplier = globalApplier;
-exports.serverId = serverId;
 exports.compareTicks = rpc.compareTicks;
