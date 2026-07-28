@@ -41,8 +41,6 @@ class FoxxFeature final : public application_features::ApplicationFeature {
               FoxxFeatureOptions options);
   explicit FoxxFeature(application_features::ApplicationServer& server);
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
 
   // return poll interval for foxx queues. returns a negative number if
