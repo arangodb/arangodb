@@ -176,13 +176,23 @@ auto BackendImpl::evaluateTokenManyImpl(JwtToken const& token,
 
   auto bodyResult = buildJsonBody(requestBody);
 
+  LOG_DEVEL << "[RBAC-TRACE] BackendImpl: sending POST to endpoint='"
+            << _authorizationEndpoint
+            << "' path=/_integration/authorization/v1/evaluate-token-many body="
+            << bodyResult;
+
   auto response = co_await sendRequest(
       fuerte::RestVerb::Post,
       "/_integration/authorization/v1/evaluate-token-many", bodyResult, api);
 
   if (auto result = response.combinedResult(); result.fail()) {
+    LOG_DEVEL << "[RBAC-TRACE] BackendImpl: transport/combinedResult FAILED: "
+              << result.errorNumber() << " " << result.errorMessage();
     co_return result;
   }
+
+  LOG_DEVEL << "[RBAC-TRACE] BackendImpl: got response payload="
+            << response.response().payloadAsStringView();
 
   co_return parseEvaluateResponseMany(
       response.response().payloadAsStringView());
