@@ -290,7 +290,6 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(
 
   setAborted(false);
 
-  TRI_ASSERT(!_state.isChildSyncer);
   TRI_ASSERT(!_state.leader.endpoint.empty());
 
   Result r;
@@ -300,8 +299,7 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(
     // normally
     TRI_ASSERT(false);
 
-    r = _state.leader.getState(_state.connection,
-                               /*_state.isChildSyncer*/ false, context.c_str());
+    r = _state.leader.getState(_state.connection, context.c_str());
     if (r.fail()) {
       return r;
     }

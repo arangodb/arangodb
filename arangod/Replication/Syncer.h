@@ -172,9 +172,6 @@ class Syncer : public std::enable_shared_from_this<Syncer> {
     /// @brief database name
     std::string databaseName{};
 
-    /// Is this syncer allowed to handle its own batch
-    bool isChildSyncer{false};
-
     /// @brief leaderId, this is used in the cluster to the unique ID of the
     /// source server (the shard leader in this case). We need this information
     /// to apply the changes locally to a shard, which is configured as a

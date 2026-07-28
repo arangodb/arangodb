@@ -144,8 +144,7 @@ struct LeaderInfo {
   uint64_t version() const;
 
   /// @brief get leader state
-  Result getState(Connection& connection, bool isChildSyncer,
-                  char const* context);
+  Result getState(Connection& connection, char const* context);
 };
 
 struct BatchInfo {

@@ -3,7 +3,6 @@ add_library(arango_replication STATIC
   DatabaseTailingSyncer.cpp
   InitialSyncer.cpp
   ReplicationApplierConfiguration.cpp
-  ReplicationApplierState.cpp
   ReplicationClients.cpp
   ReplicationFeature.cpp
   ReplicationMetricsFeature.cpp

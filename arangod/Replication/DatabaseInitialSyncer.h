@@ -88,11 +88,9 @@ class DatabaseInitialSyncer : public InitialSyncer {
     Database& vocbase;
 
     explicit Configuration(ReplicationApplierConfiguration const&,
-                           replutils::BatchInfo&, replutils::Connection&, bool,
+                           replutils::BatchInfo&, replutils::Connection&,
                            replutils::LeaderInfo&, replutils::ProgressInfo&,
                            SyncerState& state, Database&);
-
-    bool isChild() const noexcept;  // TODO worker safety
   };
 
   /// @brief run method, performs a full synchronization
@@ -136,18 +134,6 @@ class DatabaseInitialSyncer : public InitialSyncer {
   /// @brief check whether the initial synchronization should be aborted
   // TODO worker-safety
   bool isAborted() const override;
-
-  /// @brief insert the batch ID for use in globalinitialsyncer
-  // TODO worker safety
-  void useAsChildSyncer(replutils::LeaderInfo const& info,
-                        SyncerId const syncerId, uint64_t batchId,
-                        double batchUpdateTime) {
-    _state.syncerId = syncerId;
-    _state.isChildSyncer = true;
-    _state.leader = info;
-    _config.batch.id = batchId;
-    _config.batch.updateTime = batchUpdateTime;
-  }
 
   /// @brief last time the batch was extended or created
   /// The batch prevents compaction in mmfiles and keeps a snapshot

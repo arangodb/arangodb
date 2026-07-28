@@ -510,7 +510,7 @@ Result fetchRevisions(NetworkFeature& netFeature, transaction::Methods& trx,
 
 DatabaseInitialSyncer::Configuration::Configuration(
     ReplicationApplierConfiguration const& a, replutils::BatchInfo& bat,
-    replutils::Connection& c, bool f, replutils::LeaderInfo& l,
+    replutils::Connection& c, replutils::LeaderInfo& l,
     replutils::ProgressInfo& p, SyncerState& s, TRI_vocbase_t& v)
     : applier{a},
       batch{bat},
@@ -520,19 +520,15 @@ DatabaseInitialSyncer::Configuration::Configuration(
       state{s},
       vocbase{v} {}
 
-bool DatabaseInitialSyncer::Configuration::isChild() const noexcept {
-  return state.isChildSyncer;
-}
-
 DatabaseInitialSyncer::DatabaseInitialSyncer(
     TRI_vocbase_t& vocbase,
     ReplicationApplierConfiguration const& configuration)
     : InitialSyncer(
           configuration,
           [this](std::string const& msg) -> void { setProgress(msg); }),
-      _config{_state.applier, _batch,        _state.connection,
-              false,          _state.leader, _progress,
-              _state,         vocbase},
+      _config{_state.applier, _batch,    _state.connection,
+              _state.leader,  _progress, _state,
+              vocbase},
       _lastCancellationCheck(std::chrono::steady_clock::now()),
       _quickKeysNumDocsLimit(
           vocbase.server().getFeature<ReplicationFeature>().quickKeysLimit()) {
@@ -583,42 +579,39 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental,
         << "client: getting leader state to dump " << vocbase().name();
 
     Result r;
-    if (!_config.isChild()) {
-      // enable patching of collection count for ShardSynchronization Job
-      std::string patchCount;
-      if (_config.applier._skipCreateDrop &&
-          _config.applier._restrictType ==
-              ReplicationApplierConfiguration::RestrictType::Include &&
-          _config.applier._restrictCollections.size() == 1) {
-        patchCount = *_config.applier._restrictCollections.begin();
-      }
-
-      // with a 3.8 leader, this call combines fetching the leader state with
-      // starting the batch. this saves us one request per shard. a 3.7 leader
-      // will does not return the leader state together with this call, so we
-      // need to be prepared for not yet getting it here
-      r = batchStart(context, patchCount);
-
-      if (r.ok() && !_config.leader.serverId.isSet()) {
-        // a 3.7 leader, which does not return leader state when stating a
-        // batch. so we need to fetch the leader state in addition
-        r = _config.leader.getState(_config.connection, _config.isChild(),
-                                    context);
-      }
-
-      if (r.fail()) {
-        return r;
-      }
-
-      TRI_ASSERT(!_config.leader.endpoint.empty());
-      TRI_ASSERT(_config.leader.serverId.isSet());
-      TRI_ASSERT(_config.leader.majorVersion != 0);
-
-      LOG_TOPIC("6fd2b", DEBUG, Logger::REPLICATION)
-          << "client: got leader state";
-
-      startRecurringBatchExtension();
+    // enable patching of collection count for ShardSynchronization Job
+    std::string patchCount;
+    if (_config.applier._skipCreateDrop &&
+        _config.applier._restrictType ==
+            ReplicationApplierConfiguration::RestrictType::Include &&
+        _config.applier._restrictCollections.size() == 1) {
+      patchCount = *_config.applier._restrictCollections.begin();
     }
+
+    // with a 3.8 leader, this call combines fetching the leader state with
+    // starting the batch. this saves us one request per shard. a 3.7 leader
+    // will does not return the leader state together with this call, so we
+    // need to be prepared for not yet getting it here
+    r = batchStart(context, patchCount);
+
+    if (r.ok() && !_config.leader.serverId.isSet()) {
+      // a 3.7 leader, which does not return leader state when stating a
+      // batch. so we need to fetch the leader state in addition
+      r = _config.leader.getState(_config.connection, context);
+    }
+
+    if (r.fail()) {
+      return r;
+    }
+
+    TRI_ASSERT(!_config.leader.endpoint.empty());
+    TRI_ASSERT(_config.leader.serverId.isSet());
+    TRI_ASSERT(_config.leader.majorVersion != 0);
+
+    LOG_TOPIC("6fd2b", DEBUG, Logger::REPLICATION)
+        << "client: got leader state";
+
+    startRecurringBatchExtension();
 
     VPackSlice collections, views;
     if (dbInventory.isObject()) {
@@ -935,9 +928,7 @@ void DatabaseInitialSyncer::fetchDumpChunk(
     std::string const typeString =
         (coll->type() == TRI_COL_TYPE_EDGE ? "edge" : "document");
 
-    if (!_config.isChild()) {
-      batchExtend();
-    }
+    batchExtend();
 
     // assemble URL to call
     std::string url =
@@ -1017,7 +1008,7 @@ Result DatabaseInitialSyncer::fetchCollectionDump(LogicalCollection* coll,
       "&includeSystem=", (_config.applier._includeSystem ? "true" : "false"),
       "&useEnvelope=false&serverId=", _state.localServerIdString);
 
-  if (ServerState::instance()->isDBServer() && !_config.isChild() &&
+  if (ServerState::instance()->isDBServer() &&
       _config.applier._skipCreateDrop &&
       _config.applier._restrictType ==
           ReplicationApplierConfiguration::RestrictType::Include &&
@@ -1237,9 +1228,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(
     TRI_voc_tick_t maxTick) {
   using basics::StringUtils::urlEncode;
 
-  if (!_config.isChild()) {
-    batchExtend();
-  }
+  batchExtend();
 
   ReplicationMetricsFeature::InitialSyncStats stats(
       coll->vocbase().server().getFeature<ReplicationMetricsFeature>(), true);
@@ -1307,9 +1296,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(
     headers = replutils::createHeaders();
 
     while (true) {
-      if (!_config.isChild()) {
-        batchExtend();
-      }
+      batchExtend();
 
       std::string const jobUrl = "/_api/job/" + jobId;
       _config.connection.lease([&](httpclient::SimpleHttpClient* client) {
@@ -1537,9 +1524,7 @@ void DatabaseInitialSyncer::fetchRevisionsChunk(
     std::string const typeString =
         (coll->type() == TRI_COL_TYPE_EDGE ? "edge" : "document");
 
-    if (!_config.isChild()) {
-      batchExtend();
-    }
+    batchExtend();
 
     using basics::StringUtils::urlEncode;
 
@@ -1610,9 +1595,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
 
   double const startTime = TRI_microtime();
 
-  if (!_config.isChild()) {
-    batchExtend();
-  }
+  batchExtend();
 
   std::unique_ptr<containers::RevisionTree> treeLeader;
   std::string const baseUrl = absl::StrCat(replutils::ReplicationUrl, "/",
@@ -2223,9 +2206,7 @@ Result DatabaseInitialSyncer::handleCollection(velocypack::Slice parameters,
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE);
   }
 
-  if (!_config.isChild()) {
-    batchExtend();
-  }
+  batchExtend();
 
   std::string const leaderName =
       basics::VelocyPackHelper::getStringValue(parameters, "name", "");
@@ -2455,9 +2436,7 @@ Result DatabaseInitialSyncer::handleCollection(velocypack::Slice parameters,
     TRI_ASSERT(indexes.isArray());
     VPackValueLength const numIdx = indexes.length();
     if (numIdx > 0) {
-      if (!_config.isChild()) {
-        batchExtend();
-      }
+      batchExtend();
 
       _config.progress.set(
           absl::StrCat("creating ", numIdx, " index(es) for ", collectionMsg));
@@ -2508,7 +2487,7 @@ Result DatabaseInitialSyncer::fetchInventory(VPackBuilder& builder) {
   // use an optimization here for shard synchronization: only fetch the
   // inventory including a single shard. this can greatly reduce the size of
   // the response.
-  if (ServerState::instance()->isDBServer() && !_config.isChild() &&
+  if (ServerState::instance()->isDBServer() &&
       _config.applier._skipCreateDrop &&
       _config.applier._restrictType ==
           ReplicationApplierConfiguration::RestrictType::Include &&
@@ -2527,9 +2506,7 @@ Result DatabaseInitialSyncer::fetchInventory(VPackBuilder& builder) {
   });
 
   if (replutils::hasFailed(response.get())) {
-    if (!_config.isChild()) {
-      batchFinish();
-    }
+    batchFinish();
     return replutils::buildHttpError(response.get(), url, _config.connection);
   }
 

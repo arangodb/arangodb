@@ -268,7 +268,6 @@ Result BatchInfo::start(replutils::Connection& connection,
                         replutils::ProgressInfo& progress,
                         replutils::LeaderInfo& leader, SyncerId const& syncerId,
                         char const* context, std::string const& patchCount) {
-  // TODO make sure all callers verify not child syncer
   if (!connection.valid()) {
     return {TRI_ERROR_INTERNAL};
   }
@@ -475,14 +474,7 @@ uint64_t LeaderInfo::version() const {
 
 /// @brief get leader state
 Result LeaderInfo::getState(replutils::Connection& connection,
-                            bool isChildSyncer, char const* context) {
-  if (isChildSyncer) {
-    TRI_ASSERT(endpoint.empty());
-    TRI_ASSERT(serverId.isSet());
-    TRI_ASSERT(majorVersion != 0);
-    return Result();
-  }
-
+                            char const* context) {
   std::string const url =
       ReplicationUrl + "/logger-state?serverId=" + connection.localServerId();
 
