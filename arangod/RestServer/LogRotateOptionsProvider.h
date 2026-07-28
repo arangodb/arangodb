@@ -32,7 +32,7 @@ struct LogRotateOptionsProvider
   void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> prgOpts,
                           LogRotateOptions& logRotateOpts);
   void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> /*prgOpts*/,
-                           LogRotateOptions& /*logRotateOpts*/){}
+                           LogRotateOptions& /*logRotateOpts*/) {}
 };
 
 }  // namespace arangodb

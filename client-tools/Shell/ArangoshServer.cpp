@@ -84,6 +84,7 @@ void ArangoshServer::addFeatures() {
   addFeature<SslFeature>();
   addFeature<V8ShellFeaturePhase>();
   addFeature<ShellFeature>(_ret);
+  addFeature<V8ShellFeature>(_binaryName);
 }
 
 void ArangoshServer::addFeaturesWithOptionProvider() {
