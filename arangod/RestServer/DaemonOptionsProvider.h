@@ -34,7 +34,7 @@ struct DaemonOptionsProvider
   void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
                            DaemonFeatureOptions& options);
 
-  void setDaemon() { options().daemon = true; }
+  void setDaemon() { mutableOptions().daemon = true; }
 };
 
 }  // namespace arangodb

@@ -206,7 +206,7 @@ TEST_F(ArangoLanguageFeatureTest, testResetLanguageDefault) {
 
   langOpProvider.validateOptions(server.server().options());
   auto& langFeature = server.addFeatureUntracked<arangodb::LanguageFeature>(
-      std::as_const(langOpProvider).options());
+      langOpProvider.options());
 
   langFeature.prepare();
   {
@@ -243,7 +243,7 @@ TEST_F(ArangoLanguageFeatureTest, testResetLanguageIcu) {
 
   langOpProvider.validateOptions(server.server().options());
   auto& langFeature = server.addFeatureUntracked<arangodb::LanguageFeature>(
-      std::as_const(langOpProvider).options());
+      langOpProvider.options());
 
   langFeature.prepare();
   {
@@ -291,7 +291,7 @@ TEST_F(ArangoLanguageFeatureTest, testBothArgumentsSpecifiedLangCheckTrue) {
 
   langOpProvider.validateOptions(server.server().options());
   auto& langFeature = server.addFeatureUntracked<arangodb::LanguageFeature>(
-      std::as_const(langOpProvider).options());
+      langOpProvider.options());
 
   // Simulate server launch
   EXPECT_DEATH(langFeature.prepare(), "");
@@ -321,7 +321,7 @@ TEST_F(ArangoLanguageFeatureTest, testBothArgumentsSpecifiedLangCheckFalse) {
 
   langOpProvider.validateOptions(server.server().options());
   auto& langFeature = server.addFeatureUntracked<arangodb::LanguageFeature>(
-      std::as_const(langOpProvider).options());
+      langOpProvider.options());
 
   // Simulate server launch
   EXPECT_DEATH(langFeature.prepare(), "");
@@ -351,7 +351,7 @@ TEST_F(ArangoLanguageFeatureTest, testDefaultLangCheckTrue) {
 
   langOpProvider.validateOptions(server.server().options());
   auto& langFeature = server.addFeatureUntracked<arangodb::LanguageFeature>(
-      std::as_const(langOpProvider).options());
+      langOpProvider.options());
   auto& langCheckFeature =
       server.addFeatureUntracked<arangodb::LanguageCheckFeature>();
 
@@ -449,7 +449,7 @@ TEST_F(ArangoLanguageFeatureTest, testDefaultLangCheckFalse) {
 
   langOpProvider.validateOptions(server.server().options());
   auto& langFeature = server.addFeatureUntracked<arangodb::LanguageFeature>(
-      std::as_const(langOpProvider).options());
+      langOpProvider.options());
   auto& langCheckFeature =
       server.addFeatureUntracked<arangodb::LanguageCheckFeature>();
 
@@ -550,7 +550,7 @@ TEST_F(ArangoLanguageFeatureTest, testEmptyLangCheckTrue) {
 
   langOpProvider.validateOptions(server.server().options());
   auto& langFeature = server.addFeatureUntracked<arangodb::LanguageFeature>(
-      std::as_const(langOpProvider).options());
+      langOpProvider.options());
   auto& langCheckFeature =
       server.addFeatureUntracked<arangodb::LanguageCheckFeature>();
 
@@ -652,7 +652,7 @@ TEST_F(ArangoLanguageFeatureTest, testEmptyLangCheckFalse) {
 
   langOpProvider.validateOptions(server.server().options());
   auto& langFeature = server.addFeatureUntracked<arangodb::LanguageFeature>(
-      std::as_const(langOpProvider).options());
+      langOpProvider.options());
   auto& langCheckFeature =
       server.addFeatureUntracked<arangodb::LanguageCheckFeature>();
 
@@ -751,7 +751,7 @@ TEST_F(ArangoLanguageFeatureTest, testIcuLangCheckTrue) {
 
   langOpProvider.validateOptions(server.server().options());
   auto& langFeature = server.addFeatureUntracked<arangodb::LanguageFeature>(
-      std::as_const(langOpProvider).options());
+      langOpProvider.options());
   auto& langCheckFeature =
       server.addFeatureUntracked<arangodb::LanguageCheckFeature>();
 
@@ -848,7 +848,7 @@ TEST_F(ArangoLanguageFeatureTest, testIcuLangCheckFalse) {
 
   langOpProvider.validateOptions(server.server().options());
   auto& langFeature = server.addFeatureUntracked<arangodb::LanguageFeature>(
-      std::as_const(langOpProvider).options());
+      langOpProvider.options());
   auto& langCheckFeature =
       server.addFeatureUntracked<arangodb::LanguageCheckFeature>();
 
@@ -944,7 +944,7 @@ TEST_F(ArangoLanguageFeatureTest, testIcuWithVariantLangCheckTrue) {
 
   langOpProvider.validateOptions(server.server().options());
   auto& langFeature = server.addFeatureUntracked<arangodb::LanguageFeature>(
-      std::as_const(langOpProvider).options());
+      langOpProvider.options());
   auto& langCheckFeature =
       server.addFeatureUntracked<arangodb::LanguageCheckFeature>();
 
@@ -1041,7 +1041,7 @@ TEST_F(ArangoLanguageFeatureTest, testIcuWithCollationLangCheckTrue) {
 
   langOpProvider.validateOptions(server.server().options());
   auto& langFeature = server.addFeatureUntracked<arangodb::LanguageFeature>(
-      std::as_const(langOpProvider).options());
+      langOpProvider.options());
   auto& langCheckFeature =
       server.addFeatureUntracked<arangodb::LanguageCheckFeature>();
 
@@ -1139,7 +1139,7 @@ TEST_F(ArangoLanguageFeatureTest, testIcuCountry1WithCollationLangCheckTrue) {
 
   langOpProvider.validateOptions(server.server().options());
   auto& langFeature = server.addFeatureUntracked<arangodb::LanguageFeature>(
-      std::as_const(langOpProvider).options());
+      langOpProvider.options());
   auto& langCheckFeature =
       server.addFeatureUntracked<arangodb::LanguageCheckFeature>();
 
@@ -1238,7 +1238,7 @@ TEST_F(ArangoLanguageFeatureTest, testIcuCountry2WithCollationLangCheckTrue) {
 
   langOpProvider.validateOptions(server.server().options());
   auto& langFeature = server.addFeatureUntracked<arangodb::LanguageFeature>(
-      std::as_const(langOpProvider).options());
+      langOpProvider.options());
   auto& langCheckFeature =
       server.addFeatureUntracked<arangodb::LanguageCheckFeature>();
 
@@ -1336,7 +1336,7 @@ TEST_F(ArangoLanguageFeatureTest, testIcuCountry3WithCollationLangCheckTrue) {
 
   langOpProvider.validateOptions(server.server().options());
   auto& langFeature = server.addFeatureUntracked<arangodb::LanguageFeature>(
-      std::as_const(langOpProvider).options());
+      langOpProvider.options());
   auto& langCheckFeature =
       server.addFeatureUntracked<arangodb::LanguageCheckFeature>();
 
@@ -1435,7 +1435,7 @@ TEST_F(ArangoLanguageFeatureTest, testDefaultWithCollationLangCheckTrue) {
 
   langOpProvider.validateOptions(server.server().options());
   auto& langFeature = server.addFeatureUntracked<arangodb::LanguageFeature>(
-      std::as_const(langOpProvider).options());
+      langOpProvider.options());
   auto& langCheckFeature =
       server.addFeatureUntracked<arangodb::LanguageCheckFeature>();
 
@@ -1539,7 +1539,7 @@ TEST_F(ArangoLanguageFeatureTest,
 
   langOpProvider.validateOptions(server.server().options());
   auto& langFeature = server.addFeatureUntracked<arangodb::LanguageFeature>(
-      std::as_const(langOpProvider).options());
+      langOpProvider.options());
   auto& langCheckFeature =
       server.addFeatureUntracked<arangodb::LanguageCheckFeature>();
 
@@ -1645,7 +1645,7 @@ TEST_F(ArangoLanguageFeatureTest, testIcuWithWrongCollationLangCheckTrue) {
 
   langOpProvider.validateOptions(server.server().options());
   auto& langFeature = server.addFeatureUntracked<arangodb::LanguageFeature>(
-      std::as_const(langOpProvider).options());
+      langOpProvider.options());
   auto& langCheckFeature =
       server.addFeatureUntracked<arangodb::LanguageCheckFeature>();
 
@@ -1751,7 +1751,7 @@ TEST_F(ArangoLanguageFeatureTest, testDefaultWithWrongCollationLangCheckTrue) {
 
   langOpProvider.validateOptions(server.server().options());
   auto& langFeature = server.addFeatureUntracked<arangodb::LanguageFeature>(
-      std::as_const(langOpProvider).options());
+      langOpProvider.options());
   auto& langCheckFeature =
       server.addFeatureUntracked<arangodb::LanguageCheckFeature>();
 

@@ -42,7 +42,7 @@ struct OptionsProviderImpl {
   [[nodiscard]] OptionsT const& options() const noexcept { return _options; }
 
  protected:
-  [[nodiscard]] OptionsT& options() noexcept { return _options; }
+  [[nodiscard]] OptionsT& mutableOptions() noexcept { return _options; }
 
  private:
   OptionsT _options;

@@ -153,7 +153,8 @@ ProgramOptions::ProgramOptions(char const* progname, std::string const& usage,
 }
 
 std::string ProgramOptions::progname() const { return _progname; }
-char const* ProgramOptions::binaryPath() const noexcept { return _binaryPath; }
+
+
 
 // sets a value translator
 void ProgramOptions::setTranslator(
