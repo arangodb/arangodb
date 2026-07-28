@@ -63,12 +63,9 @@
   "scripts": {
     "start": "webpack serve --mode development",
     "build": "webpack --mode production",
-    "lint": "eslint",
+    "lint": "eslint src",
     "postinstall": "patch-package",
     "local-add-ui": "yalc add @arangodb/ui && yarn install"
-  },
-  "eslintConfig": {
-    "extends": "react-app"
   },
   "browserslist": [
     ">0.2%",
@@ -81,6 +78,7 @@
     "@babel/preset-env": "^7.29.7",
     "@babel/preset-react": "^7.29.7",
     "@babel/preset-typescript": "^7.29.7",
+    "@eslint/js": "9.15.0",
     "@pmmmwh/react-refresh-webpack-plugin": "^0.5.17",
     "@types/backbone": "^1.4.15",
     "@types/crypto-js": "^4.1.1",
@@ -107,9 +105,11 @@
     "css-minimizer-webpack-plugin": "^3.4.1",
     "dotenv": "^10.0.0",
     "dotenv-expand": "^5.1.0",
-    "eslint": "^8.57.1",
-    "eslint-config-react-app": "^7.0.1",
+    "eslint": "9.15.0",
+    "eslint-plugin-react": "^7.37.2",
+    "eslint-plugin-react-hooks": "5.0.0",
     "fork-ts-checker-webpack-plugin": "^6.5.3",
+    "globals": "^15.12.0",
     "html-loader": "^4.2.0",
     "html-webpack-plugin": "^5.6.3",
     "http-proxy-middleware": "^2.0.9",
@@ -126,6 +126,7 @@
     "sass-loader": "^12.6.0",
     "style-loader": "^3.3.4",
     "typescript": "^4.9.5",
+    "typescript-eslint": "8.15.0",
     "underscore-template-loader": "^1.2.0",
     "url": "^0.11.0",
     "webpack": "^5.109.0",
