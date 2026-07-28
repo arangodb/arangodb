@@ -389,7 +389,12 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
           },
           [&](p::SeeCollection const& collection) -> Result {
             // In Classic, seeing a collection is possible if and only one
-            // can read it:
+            // can read it. However, there is no rule without exception: An
+            // Admin user must be able to run arangodump and thus must be
+            // able to see all collections:
+            if (auto r = isAdmin(); r.ok()) {
+              return {};
+            }
             return check(p::UseCollection{collection.db, collection.name,
                                           CollectionAccessLevel::Read});
           },
