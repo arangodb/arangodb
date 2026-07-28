@@ -21,7 +21,8 @@
 #pragma once
 
 #include "ApplicationFeatures/CoreOptionProviders.h"
+#include "ApplicationFeatures/ConfigOptionsProvider.h"
 
 namespace arangodb {
-using ArangoBackupOptionProviders = CoreOptionProviders<>;
+using ArangoBackupOptionProviders = CoreOptionProviders<ConfigOptionsProvider>;
 }  // namespace arangodb

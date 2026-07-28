@@ -37,11 +37,11 @@ namespace arangodb {
 struct BumpFileDescriptorsOptionsProvider
     : OptionsProviderImpl<BumpFileDescriptorsOptionsProvider,
                           BumpFileDescriptorsFeatureOptions> {
-  void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> prgOpts,
-                          BumpFileDescriptorsFeatureOptions& bfdOpts);
+  void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                          BumpFileDescriptorsFeatureOptions& options);
 
-  void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> prgOpts,
-                           BumpFileDescriptorsFeatureOptions& bfdOpts);
+  void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                           BumpFileDescriptorsFeatureOptions& options);
 
  protected:
   explicit BumpFileDescriptorsOptionsProvider(std::string optionName)

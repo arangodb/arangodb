@@ -57,6 +57,12 @@ namespace application_features {
 // to feature is enabled or disabled. There is no defined order in
 // which the features are traversed.
 //
+// `parseOptions`
+//
+// Parses the command line options. This method will be called regardless of whether
+// the feature is enabled or disabled. There is no defined order in
+// which the features are traversed.
+//
 // `processOptions`
 //
 // Runs after the command line has been parsed but before `validateOptions`.
