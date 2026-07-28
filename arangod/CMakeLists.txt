@@ -106,16 +106,20 @@ install_config(arango-init-database)
 get_target_property(IRESEARCH_INCLUDE
   iresearch-static INCLUDE_DIRECTORIES)
 
+# arangoserver aggregates the per-subdir arango_<X> archives declared below.
+# It has no direct sources of its own; SystemMonitor subdirs still add sources
+# to it via target_sources(), so the target must exist before those subdirs
+# are processed.
 include(arangoserver.cmake)
-# Ensure OpenAPI files are generated before building arangoserver
-add_dependencies(arangoserver openapi-hex-files)
-# Add binary directory to include path so generated files can be found
-target_include_directories(arangoserver PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/RestHandler)
+add_subdirectory(Actions)
 add_subdirectory(Agency)
 add_subdirectory(Aql)
+add_subdirectory(Auth)
 add_subdirectory(Cache)
 add_subdirectory(Cluster)
 add_subdirectory(ClusterEngine)
+add_subdirectory(FeaturePhases)
+add_subdirectory(GeneralServer)
 add_subdirectory(Graph)
 add_subdirectory(Indexes)
 add_subdirectory(IResearch)
@@ -126,12 +130,16 @@ add_subdirectory(Replication2)
 add_subdirectory(RestHandler)
 add_subdirectory(RestServer)
 add_subdirectory(RocksDBEngine)
+add_subdirectory(Sharding)
 add_subdirectory(StorageEngine)
 add_subdirectory(SystemMonitor)
+add_subdirectory(Transaction)
 add_subdirectory(Utils)
 if (USE_V8)
   add_subdirectory(V8Server)
 endif()
+add_subdirectory(VectorIndex)
 add_subdirectory(VocBase)
 add_subdirectory(Zkd)
 add_subdirectory(Scheduler)
+add_subdirectory(Statistics)
