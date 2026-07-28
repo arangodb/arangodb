@@ -503,6 +503,15 @@ void TraversalNode::replaceAttributeAccess(
 
 /// @brief getVariablesUsedHere
 void TraversalNode::getVariablesUsedHere(VarSet& result) const {
+  getConditionVariables(result);
+
+  if (usesInVariable()) {
+    result.emplace(_inVariable);
+  }
+}
+
+/// @brief getConditionVariables
+void TraversalNode::getConditionVariables(VarSet& result) const {
   auto validateVariable = [this](const aql::Variable* var) {
     return ((!vertexOutVariable() || var != vertexOutVariable()) &&
             (!edgeOutVariable() || var != edgeOutVariable()) &&
@@ -561,10 +570,6 @@ void TraversalNode::getVariablesUsedHere(VarSet& result) const {
 
   if (_postFilterExpression && _postFilterExpression->node()) {
     fetchVarsFromNode(_postFilterExpression->node());
-  }
-
-  if (usesInVariable()) {
-    result.emplace(_inVariable);
   }
 }
 
@@ -1128,13 +1133,13 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
   }
 
   // Optimized condition
+  VarSet conditionVars;
+  getConditionVariables(conditionVars);
+
   std::vector<std::pair<Variable const*, RegisterId>> filterConditionVariables;
-  filterConditionVariables.reserve(_conditionVariables.size());
+  filterConditionVariables.reserve(conditionVars.size());
 
-  VarSet usedVars;
-  getVariablesUsedHere(usedVars);
-
-  for (const auto* variable : usedVars) {
+  for (const auto* variable : conditionVars) {
     if (variable == _tmpObjVariable) continue;
 
     auto itVarInfo = varInfo.find(variable->id);
