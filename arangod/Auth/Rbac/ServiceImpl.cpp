@@ -25,6 +25,7 @@
 #include "Assertions/ProdAssert.h"
 #include "Basics/overload.h"
 #include "Basics/voc-errors.h"
+#include "Logger/LogMacros.h"
 
 #include <format>
 
@@ -108,8 +109,6 @@ auto actionToWireString(Action action) -> std::string_view {
       return "db:AdminWriteAqlFunctions";
     case Action::AdminQueryCache:
       return "db:AdminQueryCache";
-    case Action::AdminReadUsers:
-      return "db:AdminReadUsers";
   }
   ADB_PROD_CRASH();
 }
@@ -138,9 +137,6 @@ auto resourceToWireString(Resource const& resource) -> std::string {
           [](resources::User const& r) {
             return std::format("db:user:{}", r.name);
           },
-          [](resources::ApiVersion const& r) {
-            return std::format("db:apiversion:v{}", r.version);
-          },
       },
       resource);
 }
@@ -151,7 +147,11 @@ ServiceImpl::ServiceImpl(std::unique_ptr<Backend> backend)
     : _backend(std::move(backend)) {}
 
 auto ServiceImpl::check(JwtToken const& token,
-                        std::span<ActionResource const> queries) -> Result {
+                        std::span<ActionResource const> queries) noexcept
+    -> Result {
+  LOG_DEVEL << "[RBAC-TRACE] ServiceImpl::check called with " << queries.size()
+            << " queries";
+
   // An empty batch asks nothing, so it is trivially permitted; short-circuit to
   // avoid a needless network round-trip.
   if (queries.empty()) {
@@ -169,14 +169,21 @@ auto ServiceImpl::check(JwtToken const& token,
 
   // Service::check (and the whole IAuth::check chain) is synchronous for now,
   // so we use the synchronous backend call directly.
+  LOG_DEVEL << "[RBAC-TRACE] ServiceImpl::check calling backend "
+               "evaluateTokenManySync";
   auto result = _backend->evaluateTokenManySync(token, items);
+  LOG_DEVEL << "[RBAC-TRACE] ServiceImpl::check backend returned ok="
+            << result.ok()
+            << " msg=" << (result.ok() ? "" : result.errorMessage());
 
   if (!result.ok()) {
-    // transport or parse errors must be exceptions, the Result
-    // return value must reflect allow or deny.
-    THROW_ARANGO_EXCEPTION(std::move(result).result());
+    // Transport or parsing error: propagate it verbatim.
+    return result.result();
   }
   auto const& response = result.get();
+  LOG_DEVEL << "[RBAC-TRACE] ServiceImpl::check effect="
+            << (response.effect == Backend::Effect::Allow ? "Allow" : "Deny")
+            << " msg=" << response.message;
   if (response.effect == Backend::Effect::Allow) {
     return {};
   }
