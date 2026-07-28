@@ -4078,7 +4078,47 @@ function transactionCrossCollectionSuite (dbParams) {
       helper.waitUnload(c1);
 
       assertEqual(10, c1.count());
-    }
+    },
+
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test: check whether allowImplicit: false is forwarded
+    // //////////////////////////////////////////////////////////////////////////////
+
+    testAllowImplicitFalse: function () {
+      c1 = db._create(cn1);
+      c2 = db._create(cn2);
+
+      c1.save({ _key: 'a' });
+      c2.save({ _key: 'b' });
+
+      let obj = {
+        collections: {
+          read: [ cn1 ]
+        },
+        allowImplicit: false
+      };
+
+      let trx = db._createTransaction(obj);
+
+      try {
+        let tc1 = trx.collection(c1.name());
+        let docA = tc1.document('a');
+      } catch (err) {
+        trx.abort(); // release locks before failing, otherwise tearDown's drop hangs
+        fail("Reading from registered collection failed with: " + JSON.stringify(err));
+      }
+
+      try {
+        let tc2 = trx.collection(c2.name());
+        let docB = tc2.document('b');
+        fail("Reading from unregistered collection succeeded unexpectedly");
+      } catch (err) {
+        if (err.errorNum === undefined) throw err;
+        assertEqual(internal.errors.ERROR_TRANSACTION_UNREGISTERED_COLLECTION.code, err.errorNum);
+      } finally {
+        trx.abort();
+      }
+    },
 
   };
 }
