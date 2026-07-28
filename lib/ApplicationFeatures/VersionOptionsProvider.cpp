@@ -53,6 +53,7 @@ void VersionOptionsProvider::declareOptionsImpl(
 
 void VersionOptionsProvider::processOptionsImpl(
     std::shared_ptr<ProgramOptions> /*options*/, VersionFeatureOptions& opts) {
+  // TODO (COR-790): Move this print-version logic out of VersionFeature
   if (opts.printVersionJson) {
     VPackBuilder builder;
     {

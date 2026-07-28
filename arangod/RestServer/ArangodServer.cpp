@@ -19,6 +19,7 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Logger/Logger.h"
 #include "Metrics/MetricsFeature.h"
 #include "RestServer/ArangodServer.h"
 
@@ -166,6 +167,9 @@ void ArangodServer::processOptions() {
     getProvider<DaemonOptionsProvider>().setDaemon();
   }
 #endif
+  Logger::setKeepLogrotate(
+      getOptions<LogRotateOptionsProvider>().keepLogRotate);
+
   OptionProvidingServer::processOptions();
 }
 
@@ -183,7 +187,7 @@ void ArangodServer::addFeaturesWithOptionProvider() {
 
   addFeature<VersionFeature>(getOptions<VersionOptionsProvider>());
   addFeature<LoggerFeature>(true, getOptions<LoggerOptionsProvider>(),
-                            getOptions<ServerLoggerOptionsProvider>());
+                            getOptions<LogApiOptionsProvider>());
   addFeature<TempFeature>(std::string{_binaryName},
                           getOptions<TempOptionsProvider>());
   addFeature<ApiRecordingFeature>(_dataSourceRegistry, metrics,

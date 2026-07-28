@@ -23,16 +23,16 @@
 #pragma once
 
 #include "ApplicationFeatures/OptionsProvider.h"
-#include "Logger/ServerLoggerOptions.h"
+#include "Logger/LogApiOptions.h"
 
 namespace arangodb {
 
-struct ServerLoggerOptionsProvider
-    : OptionsProviderImpl<ServerLoggerOptionsProvider, ServerLoggerOptions> {
+struct LogApiOptionsProvider
+    : OptionsProviderImpl<LogApiOptionsProvider, LogApiOptions> {
   void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> prgOpts,
-                          ServerLoggerOptions& serverLoggerOpts);
+                          LogApiOptions& apiOpts);
   void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> prgOpts,
-                           ServerLoggerOptions& serverLoggerOpts);
+                           LogApiOptions& apiOpts);
 };
 
 }  // namespace arangodb

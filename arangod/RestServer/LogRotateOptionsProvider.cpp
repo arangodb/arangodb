@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2025 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -20,16 +20,20 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#include "LogRotateOptionsProvider.h"
 
-#include <string>
+#include "ProgramOptions/Parameters.h"
+#include "ProgramOptions/ProgramOptions.h"
 
 namespace arangodb {
 
-struct ServerLoggerOptions {
-  std::string apiSwitch = "true";
-  bool apiEnabled = true;
-  bool keepLogRotate = false;
-};
+void LogRotateOptionsProvider::declareOptionsImpl(
+    std::shared_ptr<options::ProgramOptions> prgOpts,
+    LogRotateOptions& logRotateOpts) {
+  prgOpts->addOption(
+      "--log.keep-logrotate", "Keep the old log file after receiving a SIGHUP.",
+      new options::BooleanParameter(&logRotateOpts.keepLogRotate),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
+}
 
 }  // namespace arangodb
