@@ -55,8 +55,8 @@ TEST(ExecContextTest, superuser_requires_superuser_authmode) {
   // In the new API, isSuperuserOrDisabled() is true only for
   // AuthMode::Superuser (or AuthMode::Disabled). The old Type::Internal+RW/RW
   // maps to Superuser here.
-  auto ctx = ExecContextAccessor::make(AuthMode{AuthMode::Superuser{}}, false,
-                                       VocbasePtr{nullptr});
+  auto ctx = createSharedExecContext(AuthMode{AuthMode::Superuser{}}, false,
+                                     VocbasePtr{nullptr});
 
   EXPECT_TRUE(ctx->isSuperuserOrDisabled());
   EXPECT_TRUE(ctx->isSuperuser());
@@ -67,7 +67,7 @@ TEST(ExecContextTest, disabled_is_not_superuser_authmode) {
   // AuthMode::Superuser (or AuthMode::Disabled). The old Type::Internal+RW/RW
   // maps to Superuser here.
   FakeGeneralRequest fakeRequest;
-  auto ctx = ExecContextAccessor::make(
+  auto ctx = createSharedExecContext(
       AuthMode{AuthMode::Disabled{"dummy", fakeRequest}}, false,
       VocbasePtr{nullptr});
 
@@ -88,8 +88,8 @@ TEST(ExecContextTest, classic_rw_rw_is_not_superuser) {
 TEST(ExecContextTest, canUseDatabase_superuser_grants_all_databases) {
   // AuthMode::Superuser grants access to any database at any level (the old
   // Type::Internal+WriteMeta/WriteMeta behaviour maps to this).
-  auto ctx = ExecContextAccessor::make(AuthMode{AuthMode::Superuser{}}, false,
-                                       VocbasePtr{nullptr});
+  auto ctx = createSharedExecContext(AuthMode{AuthMode::Superuser{}}, false,
+                                     VocbasePtr{nullptr});
 
   EXPECT_TRUE(ctx->canUseDatabase("anydb", DatabaseAccessLevel::Write).ok());
   EXPECT_TRUE(ctx->canUseDatabase("anotherdb", DatabaseAccessLevel::Read).ok());
