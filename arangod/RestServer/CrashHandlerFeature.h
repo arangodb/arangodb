@@ -46,8 +46,6 @@ class CrashHandlerFeature final
       application_features::ApplicationServer& server,
       std::shared_ptr<crash_handler::DumpManager> dumpManager);
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-
   /// @brief returns true if crash dump logging is enabled
   bool isEnabled() const noexcept { return _options.enabled; }
 

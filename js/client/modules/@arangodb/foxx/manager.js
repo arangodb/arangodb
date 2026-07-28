@@ -224,7 +224,7 @@ var moveAppToServer = function (serviceInfo) {
   var filePath;
   var shouldDelete = false;
   if (fs.isDirectory(serviceInfo)) {
-    filePath = utils.zipDirectory(serviceInfo);
+    filePath = fs.zipDirectory(serviceInfo);
     shouldDelete = true;
   }
   if (fs.isFile(serviceInfo)) {

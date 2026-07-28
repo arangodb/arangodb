@@ -57,12 +57,6 @@ void CrashHandlerFeature::start() {
   }
 }
 
-void CrashHandlerFeature::collectOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  arangodb::crash_handler::CrashHandlerOptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
-
 std::shared_ptr<crash_handler::DumpManager>
 CrashHandlerFeature::getDumpManager() const {
   return _dumpManager;

@@ -25,8 +25,6 @@
 const internal = require('internal');
 const jsunity = require('jsunity');
 const arangodb = require('@arangodb');
-const testHelper = require('@arangodb/test-helper');
-const deriveTestSuite = testHelper.deriveTestSuite;
 const db = arangodb.db;
 
 const cn = 'UnitTestsIterators';

@@ -33,10 +33,6 @@
   const _ = require("lodash");
   const wait = require("internal").wait;
   const CI = require('@arangodb/cluster-info');
-  const {
-    getEndpointById,
-    getDBServers
-  } = require("@arangodb/test-helper");
   let cn = "UnitTestSyncRep";
   let c;
   let cinfo;

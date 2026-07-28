@@ -733,11 +733,8 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string url = inputUrl;
   std::vector<std::string> endpoints;
 
-  bool isLocalUrl = false;
-
   if (url.starts_with('/')) {
     // check if we are a server
-    isLocalUrl = true;
     endpoints = v8g->_endpoints.httpEndpoints();
 
     // a relative url. now make this an absolute URL if possible
@@ -984,11 +981,11 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
         << "downloading file. endpoint: " << endpoint
         << ", relative URL: " << url;
 
-    if (!isLocalUrl &&
-        !v8security.isAllowedToConnectToEndpoint(isolate, endpoint, inputUrl)) {
+    if (!v8security.isAllowedToConnectToUrl(isolate, url)) {
       TRI_V8_THROW_EXCEPTION_MESSAGE(
           TRI_ERROR_FORBIDDEN,
-          "not allowed to connect to this URL: " + inputUrl);
+          "while connecting to " + inputUrl +
+              " not allowed to connect to this URL: " + url);
     }
 
     std::unique_ptr<Endpoint> ep(Endpoint::clientFactory(endpoint));
@@ -1072,10 +1069,6 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
         numRedirects++;
 
-        isLocalUrl = false;
-        if (url.starts_with('/')) {
-          isLocalUrl = true;
-        }
         if (url.starts_with("http:") || url.starts_with("https:")) {
           lastEndpoint = basics::StringUtils::getEndpointFromUrl(url);
         }
@@ -1882,9 +1875,15 @@ static void JS_UnzipFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
         std::string("not allowed to modify files in this path: ") + outPath);
   }
 
+  auto validatePath = [&v8security,
+                       &isolate](std::filesystem::path path) -> bool {
+    return v8security.isAllowedToAccessPath(isolate, path.string(),
+                                            FSAccessType::WRITE);
+  };
+
   std::string errMsg;
   auto res = TRI_UnzipFile(filename.c_str(), outPath.c_str(), skipPaths,
-                           overwrite, p, errMsg);
+                           overwrite, p, errMsg, validatePath);
 
   if (res == TRI_ERROR_NO_ERROR) {
     TRI_V8_RETURN_TRUE();
@@ -1935,13 +1934,8 @@ static void JS_ZipFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
     v8::Handle<v8::Value> file =
         files->Get(context, i).FromMaybe(v8::Handle<v8::Value>());
     if (file->IsString()) {
-      if (!v8security.isAllowedToAccessPath(isolate, filename,
-                                            FSAccessType::READ)) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_FORBIDDEN,
-            std::string("not allowed to read files in this path: ") + filename);
-      }
-      filenames.emplace_back(TRI_ObjectToString(isolate, file));
+      auto const fileToAdd = TRI_ObjectToString(isolate, file);
+      filenames.emplace_back(fileToAdd);
     } else {
       res = TRI_ERROR_BAD_PARAMETER;
       break;
@@ -1967,7 +1961,11 @@ static void JS_ZipFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
         std::string("not allowed to modify files in this path: ") + filename);
   }
 
-  res = TRI_ZipFile(filename.c_str(), dir.c_str(), filenames, p);
+  res = TRI_ZipFile(filename.c_str(), dir.c_str(), filenames, p,
+                    [&v8security, isolate](std::filesystem::path path) {
+                      return v8security.isAllowedToAccessPath(
+                          isolate, path, FSAccessType::READ);
+                    });
 
   if (res == TRI_ERROR_NO_ERROR) {
     TRI_V8_RETURN_TRUE();

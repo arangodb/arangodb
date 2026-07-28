@@ -12,6 +12,7 @@ target_link_libraries(arangoimport_utils
 
 add_executable(${BIN_ARANGOIMPORT}
   ${ProductVersionFiles_arangoimport}
+  ArangoImportServer.cpp
   ImportFeature.cpp
   ImportOptionsProvider.cpp
   arangoimport.cpp
