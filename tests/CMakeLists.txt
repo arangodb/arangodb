@@ -187,7 +187,7 @@ set(ARANGODB_TESTS_SOURCES
   Auth/RbacAuthModeTest.cpp
   Auth/RbacBackendTest.cpp
   # Disabled for now, since this needs docker and does not work in CI:
-  # Auth/RbacIntegrationTest.cpp
+  Auth/RbacIntegrationTest.cpp
   Auth/RbacSerializationTest.cpp
   Auth/SmockerClient.cpp
   Auth/RbacServiceImplTest.cpp
