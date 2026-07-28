@@ -33,20 +33,19 @@ void V8SecurityOptionsProvider::declareOptions(
     std::shared_ptr<options::ProgramOptions> options,
     V8SecurityFeatureOptions& opts) {
   options->addSection("javascript", "JavaScript engine and execution");
-  options->addOption(
-      "--javascript.allow-port-testing",
-      "Allow the testing of ports from within JavaScript actions.",
-      new BooleanParameter(&opts.allowPortTesting),
-      arangodb::options::makeFlags(
-          arangodb::options::Flags::DefaultNoComponents,
-          arangodb::options::Flags::OnCoordinator,
-          arangodb::options::Flags::OnSingle,
-          arangodb::options::Flags::Uncommon));
+  options->addOption("--javascript.allow-port-testing",
+                     "Allow the testing of ports from within JavaScript.",
+                     new BooleanParameter(&opts.allowPortTesting),
+                     arangodb::options::makeFlags(
+                         arangodb::options::Flags::DefaultNoComponents,
+                         arangodb::options::Flags::OnCoordinator,
+                         arangodb::options::Flags::OnSingle,
+                         arangodb::options::Flags::Uncommon));
 
   options->addOption(
       "--javascript.allow-external-process-control",
       "Allow the execution and control of external processes from "
-      "within JavaScript actions.",
+      "within JavaScript.",
       new BooleanParameter(&opts.allowProcessControl),
       arangodb::options::makeFlags(
           arangodb::options::Flags::DefaultNoComponents,
@@ -65,8 +64,8 @@ void V8SecurityOptionsProvider::declareOptions(
 
   options->addOption(
       "--javascript.startup-options-allowlist",
-      "Startup options whose names match this regular "
-      "expression are allowed and exposed to JavaScript.",
+      "Startup options whose names match this regular expression are allowed "
+      "and exposed to JavaScript contexts.",
       new VectorParameter<StringParameter>(&opts.startupOptionsAllowList),
       arangodb::options::makeFlags(
           arangodb::options::Flags::DefaultNoComponents,
@@ -75,9 +74,8 @@ void V8SecurityOptionsProvider::declareOptions(
 
   options->addOption(
       "--javascript.startup-options-denylist",
-      "Startup options whose names match this regular "
-      "expression are not exposed (if not in the allowlist) to "
-      "JavaScript actions.",
+      "Startup options whose names match this regular expression are not "
+      "exposed to JavaScript contexts (overriding the allowlist).",
       new VectorParameter<StringParameter>(&opts.startupOptionsDenyList),
       arangodb::options::makeFlags(
           arangodb::options::Flags::DefaultNoComponents,
@@ -86,7 +84,8 @@ void V8SecurityOptionsProvider::declareOptions(
 
   options->addOption(
       "--javascript.environment-variables-allowlist",
-      "Environment variables that are accessible in JavaScript.",
+      "Environment variables whose name match this regular expression are "
+      "accessible in JavaScript contexts.",
       new VectorParameter<StringParameter>(&opts.environmentVariablesAllowList),
       arangodb::options::makeFlags(
           arangodb::options::Flags::DefaultNoComponents,
@@ -95,8 +94,8 @@ void V8SecurityOptionsProvider::declareOptions(
 
   options->addOption(
       "--javascript.environment-variables-denylist",
-      "Environment variables that are inaccessible in "
-      "JavaScript (if not in the allowlist).",
+      "Environment variables whose name match this regular expression are "
+      "inaccessible in JavaScript (overriding the allowlist).",
       new VectorParameter<StringParameter>(&opts.environmentVariablesDenyList),
       arangodb::options::makeFlags(
           arangodb::options::Flags::DefaultNoComponents,
@@ -105,8 +104,8 @@ void V8SecurityOptionsProvider::declareOptions(
 
   options->addOption(
       "--javascript.endpoints-allowlist",
-      "Endpoints that can be connected to via the "
-      "`@arangodb/request` module in JavaScript actions.",
+      "URLs that match this regular expression can be connected to via the "
+      "`@arangodb/request` module in JavaScript contexts.",
       new VectorParameter<StringParameter>(&opts.endpointsAllowList),
       arangodb::options::makeFlags(
           arangodb::options::Flags::DefaultNoComponents,
@@ -115,9 +114,9 @@ void V8SecurityOptionsProvider::declareOptions(
 
   options->addOption(
       "--javascript.endpoints-denylist",
-      "Endpoints that cannot be connected to via the "
-      "`@arangodb/request` module in JavaScript actions "
-      "(if not in the allowlist).",
+      "URLs that match this regular expression cannot be connected to via the "
+      "`@arangodb/request` module in JavaScript contexts (overriding the "
+      "allowlist).",
       new VectorParameter<StringParameter>(&opts.endpointsDenyList),
       arangodb::options::makeFlags(
           arangodb::options::Flags::DefaultNoComponents,
@@ -125,22 +124,23 @@ void V8SecurityOptionsProvider::declareOptions(
           arangodb::options::Flags::OnSingle));
 
   options->addOption("--javascript.files-allowlist",
-                     "Filesystem paths that are accessible from within "
-                     "JavaScript actions.",
+                     "Filesystem paths that match this regular expression are "
+                     "accessible in JavaScript contexts.",
                      new VectorParameter<StringParameter>(&opts.filesAllowList),
                      arangodb::options::makeFlags(
                          arangodb::options::Flags::DefaultNoComponents,
                          arangodb::options::Flags::OnCoordinator,
                          arangodb::options::Flags::OnSingle));
 
-  options->addOption("--javascript.files-denylist",
-                     "Filesystem paths that are inaccessible from within "
-                     "JavaScript actions.",
-                     new VectorParameter<StringParameter>(&opts.filesDenyList),
-                     arangodb::options::makeFlags(
-                         arangodb::options::Flags::DefaultNoComponents,
-                         arangodb::options::Flags::OnCoordinator,
-                         arangodb::options::Flags::OnSingle));
+  options->addOption(
+      "--javascript.files-denylist",
+      "Filesystem paths that match this regular expression are inaccessible in "
+      "JavaScript contexts (overriding the allowlist).",
+      new VectorParameter<StringParameter>(&opts.filesDenyList),
+      arangodb::options::makeFlags(
+          arangodb::options::Flags::DefaultNoComponents,
+          arangodb::options::Flags::OnCoordinator,
+          arangodb::options::Flags::OnSingle));
 
   options->addOldOption("--javascript.startup-options-whitelist",
                         "--javascript.startup-options-allowlist");
