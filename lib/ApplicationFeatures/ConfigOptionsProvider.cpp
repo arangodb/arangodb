@@ -42,6 +42,80 @@
 
 namespace arangodb {
 
+namespace {
+
+bool checkConfigFile(std::string const& name) {
+  LOG_TOPIC("393e7", TRACE, Logger::CONFIG)
+      << "checking config file '" << name << "'";
+
+  std::error_code existsEc;
+  if (std::filesystem::exists(name, existsEc)) {
+    LOG_TOPIC("e6bd8", DEBUG, Logger::CONFIG)
+        << "found config file '" << name << "'";
+    return true;
+  }
+  if (existsEc) {
+    // An error occurred while checking the file
+    LOG_TOPIC("e6bd9", ERR, Logger::CONFIG)
+        << "error checking config file '" << name
+        << "': " << existsEc.message();
+  } else {
+    // File simply does not exist
+    LOG_TOPIC("e6bda", DEBUG, Logger::CONFIG)
+        << "config file '" << name << "' does not exist";
+  }
+  return false;
+}
+
+std::string findConfigFile(std::string const& basename,
+                           std::vector<std::string> const& locations,
+                           bool checkArangoImp) {
+  std::string filename;
+  for (auto const& location : locations) {
+    auto name = basics::FileUtils::buildFilename(location, basename);
+    if (checkConfigFile(name)) {
+      return name;
+    }
+
+    if (checkArangoImp) {
+      name = basics::FileUtils::buildFilename(location, "arangoimp.conf");
+      if (checkConfigFile(name)) {
+        return name;
+      }
+    }
+  }
+  return {};
+}
+
+void parseConfigFile(std::string const& filename,
+                     std::shared_ptr<options::ProgramOptions> progOpts) {
+  std::string local = filename + ".local";
+  options::IniFileParser parser(progOpts.get());
+
+  LOG_TOPIC("f6420", TRACE, Logger::CONFIG)
+      << "checking override '" << local << "'";
+
+  std::error_code pathEc;
+  if (std::filesystem::is_regular_file(local, pathEc)) {
+    LOG_TOPIC("3d2d0", DEBUG, Logger::CONFIG)
+        << "loading override '" << local << "'";
+
+    if (!parser.parse(local, true)) {
+      FATAL_ERROR_EXIT_CODE(progOpts->processingResult().exitCodeOrFailure());
+    }
+  } else {
+    LOG_TOPIC("d601e", TRACE, Logger::CONFIG) << "no override file found";
+  }
+
+  LOG_TOPIC("02398", DEBUG, Logger::CONFIG) << "loading '" << filename << "'";
+
+  if (!parser.parse(filename, true)) {
+    FATAL_ERROR_EXIT_CODE(progOpts->processingResult().exitCodeOrFailure());
+  }
+}
+
+}  // namespace
+
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
@@ -107,10 +181,6 @@ void ConfigOptionsProvider::loadConfigFile(
     return;
   }
 
-  auto const& result = progOpts->processingResult();
-  bool const versionRequested =
-      result.touched("version") || result.touched("version-json");
-
   // always prefer an explicitly given config file
   if (!configOpts.file.empty()) {
     std::error_code existsEc;
@@ -129,41 +199,20 @@ void ConfigOptionsProvider::loadConfigFile(
       }
     }
 
-    auto local = configOpts.file + ".local";
-
-    IniFileParser parser(progOpts.get());
-
-    std::error_code pathEc;
-    if (std::filesystem::is_regular_file(local, pathEc)) {
-      LOG_TOPIC("9b20a", DEBUG, Logger::CONFIG)
-          << "loading override '" << local << "'";
-
-      if (!parser.parse(local, true)) {
-        FATAL_ERROR_EXIT_CODE(progOpts->processingResult().exitCodeOrFailure());
-      }
-    }
-
-    LOG_TOPIC("637c7", DEBUG, Logger::CONFIG)
-        << "using user supplied config file '" << configOpts.file << "'";
-
-    if (!parser.parse(configOpts.file, true)) {
-      FATAL_ERROR_EXIT_CODE(progOpts->processingResult().exitCodeOrFailure());
-    }
-
+    parseConfigFile(configOpts.file, progOpts);
     return;
   }
 
-  // clang-format off
-  //
   // check the following location in this order:
-  //
   //   ./etc/relative/<PRGNAME>.conf
   //   <PRGNAME>.conf
   //   ${HOME}/.arangodb/<PRGNAME>.conf
   //   /etc/arangodb/<PRGNAME>.conf
   //
-  // clang-format on
 
+  auto const& result = progOpts->processingResult();
+  bool const versionRequested =
+      result.touched("version") || result.touched("version-json");
   bool const fatal = !versionRequested;
 
   auto context = ArangoGlobalContext::CONTEXT;
@@ -185,11 +234,11 @@ void ConfigOptionsProvider::loadConfigFile(
   if (context != nullptr) {
     auto root = context->runRoot();
     // will resolve to ./build/etc/arangodb3/ in maintainer builds
-    auto location = FileUtils::buildFilename(root, _SYSCONFDIR_);
 
     LOG_TOPIC("f39d1", TRACE, Logger::CONFIG)
         << "checking root location '" << root << "'";
 
+    auto location = FileUtils::buildFilename(root, _SYSCONFDIR_);
     locations.emplace_back(location);
   }
 
@@ -201,98 +250,28 @@ void ConfigOptionsProvider::loadConfigFile(
       FileUtils::buildFilename(FileUtils::homeDirectory(), ".arangodb"));
   locations.emplace_back(FileUtils::configDirectory(binaryPath));
 
-  std::string filename;
-
-  for (auto const& location : locations) {
-    auto name = FileUtils::buildFilename(location, basename);
-    LOG_TOPIC("393e7", TRACE, Logger::CONFIG)
-        << "checking config file '" << name << "'";
-
-    std::error_code existsEc;
-    if (std::filesystem::exists(name, existsEc)) {
-      LOG_TOPIC("e6bd8", DEBUG, Logger::CONFIG)
-          << "found config file '" << name << "'";
-      filename = name;
-      break;
-    } else if (existsEc) {
-      // An error occurred while checking the file
-      LOG_TOPIC("e6bd9", ERR, Logger::CONFIG)
-          << "error checking config file '" << name
-          << "': " << existsEc.message();
-    } else {
-      // File simply does not exist
-      LOG_TOPIC("e6bda", DEBUG, Logger::CONFIG)
-          << "config file '" << name << "' does not exist";
-    }
-
-    if (checkArangoImp) {
-      name = FileUtils::buildFilename(location, "arangoimp.conf");
-      LOG_TOPIC("b629e", TRACE, Logger::CONFIG)
-          << "checking config file '" << name << "'";
-      if (std::filesystem::exists(name, existsEc)) {
-        LOG_TOPIC("fc54e", DEBUG, Logger::CONFIG)
-            << "found config file '" << name << "'";
-        filename = name;
-        break;
-      } else if (existsEc) {
-        // An error occurred while checking the file
-        LOG_TOPIC("fc54f", ERR, Logger::CONFIG)
-            << "error checking config file '" << name
-            << "': " << existsEc.message();
-      } else {
-        // File simply does not exist
-        LOG_TOPIC("fc550", DEBUG, Logger::CONFIG)
-            << "config file '" << name << "' does not exist";
-      }
-    }
-  }
-
+  std::string filename = findConfigFile(basename, locations, checkArangoImp);
   if (filename.empty()) {
     LOG_TOPIC("f4964", DEBUG, Logger::CONFIG) << "cannot find any config file";
-  }
-
-  IniFileParser parser(progOpts.get());
-  std::string local = filename + ".local";
-
-  LOG_TOPIC("f6420", TRACE, Logger::CONFIG)
-      << "checking override '" << local << "'";
-
-  std::error_code pathEc;
-  if (std::filesystem::is_regular_file(local, pathEc)) {
-    LOG_TOPIC("3d2d0", DEBUG, Logger::CONFIG)
-        << "loading override '" << local << "'";
-
-    if (!parser.parse(local, true)) {
-      FATAL_ERROR_EXIT_CODE(progOpts->processingResult().exitCodeOrFailure());
-    }
-  } else {
-    LOG_TOPIC("d601e", TRACE, Logger::CONFIG) << "no override file found";
-  }
-
-  LOG_TOPIC("02398", DEBUG, Logger::CONFIG) << "loading '" << filename << "'";
-
-  if (filename.empty()) {
     if (fatal) {
-      size_t i = 0;
-      std::string locationMsg = "(tried locations: ";
+      std::string locationMsg;
       for (auto const& it : locations) {
-        if (i++ > 0) {
+        if (!locationMsg.empty()) {
           locationMsg += ", ";
         }
         locationMsg += "'" + FileUtils::buildFilename(it, basename) + "'";
       }
-      locationMsg += ")";
+      locationMsg = "(tried locations: " + locationMsg + ")";
       progOpts->failNotice(TRI_EXIT_CONFIG_NOT_FOUND,
                            "cannot find configuration file\n\n" + locationMsg);
       FATAL_ERROR_EXIT_CODE(progOpts->processingResult().exitCodeOrFailure());
-    } else {
-      return;
     }
+    return;
   }
 
-  if (!parser.parse(filename, true)) {
-    FATAL_ERROR_EXIT_CODE(progOpts->processingResult().exitCodeOrFailure());
-  }
+  LOG_TOPIC("fc54e", DEBUG, Logger::CONFIG)
+      << "found config file '" << filename << "'";
+  parseConfigFile(filename, progOpts);
 }
 
 }  // namespace arangodb
