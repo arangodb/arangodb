@@ -75,14 +75,7 @@ ClientFeature::ClientFeature(ApplicationServer& server, bool allowJwtSecret,
                     maxNumEndpoints,
                     connectionTimeout,
                     requestTimeout,
-                    options} {
-  if (server.hasFeature<ShellConsoleFeature>()) {
-    _console = &server.getFeature<ShellConsoleFeature>();
-  }
-
-  startsAfter<CommunicationFeaturePhase>();
-  startsAfter<GreetingsFeaturePhase>();
-}
+                    std::move(options)} {}
 
 ClientFeature::ClientFeature(
     ApplicationServer& server, CommunicationFeaturePhase& comm,
@@ -92,7 +85,6 @@ ClientFeature::ClientFeature(
     : HttpEndpointProvider(server, registration, name()),
       _options(std::move(options)),
       _comm{comm},
-      _console{},
       _retries(DEFAULT_RETRIES),
       _warn(false),
       _warnConnect(true) {
@@ -103,6 +95,13 @@ ClientFeature::ClientFeature(
   _options.requestTimeout = requestTimeout;
   _options.allowJwtSecret = allowJwtSecret;
   setOptional(true);
+  // TODO(listunov): is this optional ?
+  if (server.hasFeature<ShellConsoleFeature>()) {
+    _console = &server.getFeature<ShellConsoleFeature>();
+  }
+
+  startsAfter<CommunicationFeaturePhase>();
+  startsAfter<GreetingsFeaturePhase>();
 
   if (auto res = DatabaseNameValidator::validateName(true, true,
                                                      _options.databaseName);
