@@ -38,6 +38,10 @@ using namespace arangodb::options;
 void BumpFileDescriptorsOptionsProvider::declareOptionsImpl(
     std::shared_ptr<ProgramOptions> options,
     BumpFileDescriptorsFeatureOptions& opts) {
+  ADB_PROD_ASSERT(!opts.optionName.empty())
+      << "BumpFileDescriptors optionName must be set before options are "
+         "declared";
+
   options
       ->addOption(
           opts.optionName,
