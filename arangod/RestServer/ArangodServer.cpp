@@ -155,7 +155,7 @@ void ArangodServer::addFeatures() {
 void ArangodServer::processOptions() {
 #ifdef ARANGODB_HAVE_FORK
   if (getOptions<SupervisorOptionsProvider>().supervisor) {
-    getProvider<DaemonOptionsProvider>().setDaemon();
+    mutableOptions<DaemonOptionsProvider>().daemon = true;
   }
 #endif
   Logger::setKeepLogrotate(
