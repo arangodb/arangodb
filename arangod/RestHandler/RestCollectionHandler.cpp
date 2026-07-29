@@ -722,6 +722,17 @@ async<void> RestCollectionHandler::handleCommandDelete() {
       _request->parsedValue(StaticStrings::DataSourceSystem, false);
   _builder.clear();
 
+  // Note that this check will be done in methods::Collections::drop below
+  // again. However, we need to check before the lookup, or else somebody
+  // without access permissions could read off from the result code, if
+  // a collection exists or not!
+  if (auto r = ExecContext::current().canDropCollection(_vocbase.name(), name);
+      r.fail()) {
+    events::DropCollection(_vocbase.name(), name, TRI_ERROR_FORBIDDEN);
+    generateError(r);
+    co_return;
+  }
+
   std::shared_ptr<LogicalCollection> coll;
   Result res = methods::Collections::lookup(_vocbase, name, coll);
   if (res.fail()) {
@@ -730,10 +741,6 @@ async<void> RestCollectionHandler::handleCommandDelete() {
     co_return;
   }
   TRI_ASSERT(coll);
-
-  // We do not check for permission here, since `methods::Collections::drop`
-  // does so anyway and that has to do it because it is called from other
-  // places, too.
 
   {
     VPackObjectBuilder obj(&_builder, true);

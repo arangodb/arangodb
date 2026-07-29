@@ -359,9 +359,7 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
             // The only exception is "Admin" (for backwards compatibility),
             // which means that RW access to _system grants all analyzer
             // permissions:
-            if (auto r = check(p::UseDatabase(StaticStrings::SystemDatabase,
-                                              DatabaseAccessLevel::Write));
-                r.ok()) {
+            if (isAdmin().ok()) {
               return {};
             }
             auto const dbLevel = analyzer.level == AnalyzerAccessLevel::Modify
@@ -388,11 +386,11 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
                                          .level = DatabaseAccessLevel::Write});
           },
           [&](p::SeeCollection const& collection) -> Result {
-            // In Classic, seeing a collection is possible if and only one
+            // In Classic, seeing a collection is possible if and only if one
             // can read it. However, there is no rule without exception: An
             // Admin user must be able to run arangodump and thus must be
             // able to see all collections:
-            if (auto r = isAdmin(); r.ok()) {
+            if (isAdmin().ok()) {
               return {};
             }
             return check(p::UseCollection{collection.db, collection.name,
@@ -500,13 +498,11 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
           [&](p::SeeAnalyzer const& analyzer) -> Result {
             // Database RO access is the only prerequisite and has already been
             // checked; an analyzer is always visible if the database is.
-            // For the sake of readabilty, we perform the check here.
+            // For the sake of readability, we perform the check here.
             // The only exception is "Admin" (for backwards compatibility),
             // which means that RW access to _system grants all analyzer
             // permissions:
-            if (auto r = check(p::UseDatabase(StaticStrings::SystemDatabase,
-                                              DatabaseAccessLevel::Write));
-                r.ok()) {
+            if (isAdmin().ok()) {
               return {};
             }
             return check(
@@ -517,9 +513,7 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
             // The only exception is "Admin" (for backwards compatibility),
             // which means that RW access to _system grants all analyzer
             // permissions:
-            if (auto r = check(p::UseDatabase(StaticStrings::SystemDatabase,
-                                              DatabaseAccessLevel::Write));
-                r.ok()) {
+            if (isAdmin().ok()) {
               return {};
             }
             return check(
@@ -530,9 +524,7 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
             // The only exception is "Admin" (for backwards compatibility),
             // which means that RW access to _system grants all analyzer
             // permissions:
-            if (auto r = check(p::UseDatabase(StaticStrings::SystemDatabase,
-                                              DatabaseAccessLevel::Write));
-                r.ok()) {
+            if (isAdmin().ok()) {
               return {};
             }
             return check(
@@ -566,7 +558,11 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
                 r.ok()) {
               return {};
             }
-            return {TRI_ERROR_ARANGO_READ_ONLY, "Cannot write to database."};
+            if (_request.requestedApiVersion() > 0) {
+              return {TRI_ERROR_FORBIDDEN, "Cannot write to database."};
+            } else {
+              return {TRI_ERROR_ARANGO_READ_ONLY, "Cannot write to database."};
+            }
           },
           [&](p::DropGraph const& graph) -> Result {
             // Dropping a graph requires RW access to the database (to write
