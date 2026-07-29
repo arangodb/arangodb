@@ -400,17 +400,15 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
                 if (requestedLevel == auth::Level::NONE) {
                   return {};
                 }
+                // a user will never request with requestLevel == NONE,
+                // therefore the error message can be simple
                 return {
                     TRI_ERROR_FORBIDDEN,
-                    failureMessage(
-                        collection,
-                        std::format(
-                            "Request requires collection authentication "
-                            "level '{}' but {} collection can only be "
-                            "accessed with level '{}'",
-                            auth::convertFromAuthLevel(requestedLevel),
-                            StaticStrings::UsersCollection,
-                            auth::convertFromAuthLevel(auth::Level::NONE)))};
+                    failureMessage(collection,
+                                   std::format("Access to {} collection in {} "
+                                               "database is forbidden",
+                                               StaticStrings::UsersCollection,
+                                               StaticStrings::SystemDatabase))};
               }
               // _queues: read-only for everyone.
               if (collection.name == StaticStrings::QueuesCollection) {

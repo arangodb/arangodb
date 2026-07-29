@@ -23,10 +23,6 @@
 
 #include <Assertions/ProdAssert.h>
 
-#include <format>
-#include <span>
-#include <string>
-
 namespace arangodb {
 
 auto to_string(CollectionAccessLevel level) -> std::string_view {
