@@ -39,7 +39,6 @@
 #include "ProgramOptions/Option.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "V8/V8PlatformOptionsProvider.h"
 #include "V8/v8-globals.h"
 
 #include <absl/strings/str_cat.h>
@@ -161,16 +160,6 @@ V8PlatformFeature::V8PlatformFeature(
       _binaryPath(server.getBinaryPath()),
       _options(std::move(options)) {
   setOptional(true);
-}
-
-void V8PlatformFeature::collectOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  V8PlatformOptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
-
-void V8PlatformFeature::validateOptions(
-    std::shared_ptr<ProgramOptions> /*options*/) {
   if (!_options.v8Options.empty()) {
     _v8CombinedOptions = StringUtils::join(_options.v8Options, " ");
 
