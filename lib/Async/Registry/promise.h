@@ -168,11 +168,8 @@ struct AddToAsyncRegistry {
   auto update_requester_to_current_thread() -> void;
 
  private:
-  struct noop {
-    void operator()(void*) {}
-  };
-  std::unique_ptr<containers::ThreadOwnedList<Promise>::Node, noop>
-      node_in_registry = nullptr;
+  std::shared_ptr<containers::ThreadOwnedList<Promise>::Node> node_in_registry =
+      nullptr;
 };
 
 }  // namespace arangodb::async_registry

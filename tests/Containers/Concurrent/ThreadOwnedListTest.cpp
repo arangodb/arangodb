@@ -88,7 +88,7 @@ TEST_F(ThreadOwnedListTest, adds_a_promise) {
             (std::vector<NodeData::Snapshot>{node->data.snapshot()}));
 
   // make sure registry is cleaned up
-  registry->mark_for_deletion(node);
+  registry->mark_for_deletion(*node);
 }
 
 TEST_F(ThreadOwnedListDeathTest, another_thread_cannot_add_a_promise) {
@@ -104,9 +104,9 @@ TEST_F(ThreadOwnedListDeathTest, another_thread_cannot_add_a_promise) {
 TEST_F(ThreadOwnedListTest, iterates_over_all_promises) {
   auto registry = MyList::make();
 
-  auto* first_node = registry->add([]() { return NodeData{5}; });
-  auto* second_node = registry->add([]() { return NodeData{9}; });
-  auto* third_node = registry->add([]() { return NodeData{10}; });
+  auto first_node = registry->add([]() { return NodeData{5}; });
+  auto second_node = registry->add([]() { return NodeData{9}; });
+  auto third_node = registry->add([]() { return NodeData{10}; });
 
   EXPECT_EQ(nodes_in_registry(registry),
             (std::vector<NodeData::Snapshot>{third_node->data.snapshot(),
@@ -114,17 +114,17 @@ TEST_F(ThreadOwnedListTest, iterates_over_all_promises) {
                                              first_node->data.snapshot()}));
 
   // make sure registry is cleaned up
-  registry->mark_for_deletion(first_node);
-  registry->mark_for_deletion(second_node);
-  registry->mark_for_deletion(third_node);
+  registry->mark_for_deletion(*first_node);
+  registry->mark_for_deletion(*second_node);
+  registry->mark_for_deletion(*third_node);
 }
 
 TEST_F(ThreadOwnedListTest, iterates_in_another_thread_over_all_promises) {
   auto registry = MyList::make();
 
-  auto* first_node = registry->add([]() { return NodeData{19}; });
-  auto* second_node = registry->add([]() { return NodeData{0}; });
-  auto* third_node = registry->add([]() { return NodeData{3}; });
+  auto first_node = registry->add([]() { return NodeData{19}; });
+  auto second_node = registry->add([]() { return NodeData{0}; });
+  auto third_node = registry->add([]() { return NodeData{3}; });
 
   std::thread([&]() {
     EXPECT_EQ(nodes_in_registry(registry),
@@ -134,59 +134,59 @@ TEST_F(ThreadOwnedListTest, iterates_in_another_thread_over_all_promises) {
   }).join();
 
   // make sure registry is cleaned up
-  registry->mark_for_deletion(first_node);
-  registry->mark_for_deletion(second_node);
-  registry->mark_for_deletion(third_node);
+  registry->mark_for_deletion(*first_node);
+  registry->mark_for_deletion(*second_node);
+  registry->mark_for_deletion(*third_node);
 }
 
 TEST_F(ThreadOwnedListTest,
        iterates_only_over_promises_not_marked_for_deletion) {
   auto registry = MyList::make();
 
-  auto* first_node = registry->add([]() { return NodeData{5}; });
-  auto* second_node = registry->add([]() { return NodeData{9}; });
-  auto* third_node = registry->add([]() { return NodeData{10}; });
+  auto first_node = registry->add([]() { return NodeData{5}; });
+  auto second_node = registry->add([]() { return NodeData{9}; });
+  auto third_node = registry->add([]() { return NodeData{10}; });
 
   EXPECT_EQ(nodes_in_registry(registry),
             (std::vector<NodeData::Snapshot>{third_node->data.snapshot(),
                                              second_node->data.snapshot(),
                                              first_node->data.snapshot()}));
 
-  registry->mark_for_deletion(second_node);
+  registry->mark_for_deletion(*second_node);
 
   EXPECT_EQ(nodes_in_registry(registry),
             (std::vector<NodeData::Snapshot>{third_node->data.snapshot(),
                                              first_node->data.snapshot()}));
 
   // make sure registry is cleaned up
-  registry->mark_for_deletion(first_node);
-  registry->mark_for_deletion(third_node);
+  registry->mark_for_deletion(*first_node);
+  registry->mark_for_deletion(*third_node);
 }
 
 TEST_F(ThreadOwnedListTest, marked_promises_are_deleted_in_garbage_collection) {
   auto registry = MyList::make();
-  auto* node_to_delete = registry->add([]() { return NodeData{1}; });
-  auto* another_node = registry->add([]() { return NodeData{77}; });
+  auto node_to_delete = registry->add([]() { return NodeData{1}; });
+  auto another_node = registry->add([]() { return NodeData{77}; });
   EXPECT_EQ(registry->size(), 2);
 
-  registry->mark_for_deletion(node_to_delete);
+  registry->mark_for_deletion(*node_to_delete);
   EXPECT_EQ(registry->size(), 2);
 
   registry->garbage_collect();
   EXPECT_EQ(registry->size(), 1);
 
   // make sure registry is cleaned up
-  registry->mark_for_deletion(another_node);
+  registry->mark_for_deletion(*another_node);
 }
 
 TEST_F(ThreadOwnedListTest, garbage_collection_deletes_marked_promises) {
   {
     auto registry = MyList::make();
-    auto* first_node = registry->add([]() { return NodeData{21}; });
-    auto* second_node = registry->add([]() { return NodeData{1}; });
-    auto* third_node = registry->add([]() { return NodeData{100}; });
+    auto first_node = registry->add([]() { return NodeData{21}; });
+    auto second_node = registry->add([]() { return NodeData{1}; });
+    auto third_node = registry->add([]() { return NodeData{100}; });
 
-    registry->mark_for_deletion(first_node);
+    registry->mark_for_deletion(*first_node);
     registry->garbage_collect();
 
     EXPECT_EQ(nodes_in_registry(registry),
@@ -194,16 +194,16 @@ TEST_F(ThreadOwnedListTest, garbage_collection_deletes_marked_promises) {
                                                second_node->data.snapshot()}));
 
     // clean up
-    registry->mark_for_deletion(second_node);
-    registry->mark_for_deletion(third_node);
+    registry->mark_for_deletion(*second_node);
+    registry->mark_for_deletion(*third_node);
   }
   {
     auto registry = MyList::make();
-    auto* first_node = registry->add([]() { return NodeData{21}; });
-    auto* second_node = registry->add([]() { return NodeData{1}; });
-    auto* third_node = registry->add([]() { return NodeData{100}; });
+    auto first_node = registry->add([]() { return NodeData{21}; });
+    auto second_node = registry->add([]() { return NodeData{1}; });
+    auto third_node = registry->add([]() { return NodeData{100}; });
 
-    registry->mark_for_deletion(second_node);
+    registry->mark_for_deletion(*second_node);
     registry->garbage_collect();
 
     EXPECT_EQ(nodes_in_registry(registry),
@@ -211,16 +211,16 @@ TEST_F(ThreadOwnedListTest, garbage_collection_deletes_marked_promises) {
                                                first_node->data.snapshot()}));
 
     // clean up
-    registry->mark_for_deletion(first_node);
-    registry->mark_for_deletion(third_node);
+    registry->mark_for_deletion(*first_node);
+    registry->mark_for_deletion(*third_node);
   }
   {
     auto registry = MyList::make();
-    auto* first_node = registry->add([]() { return NodeData{21}; });
-    auto* second_node = registry->add([]() { return NodeData{1}; });
-    auto* third_node = registry->add([]() { return NodeData{100}; });
+    auto first_node = registry->add([]() { return NodeData{21}; });
+    auto second_node = registry->add([]() { return NodeData{1}; });
+    auto third_node = registry->add([]() { return NodeData{100}; });
 
-    registry->mark_for_deletion(third_node);
+    registry->mark_for_deletion(*third_node);
     registry->garbage_collect();
 
     EXPECT_EQ(nodes_in_registry(registry),
@@ -228,8 +228,8 @@ TEST_F(ThreadOwnedListTest, garbage_collection_deletes_marked_promises) {
                                                first_node->data.snapshot()}));
 
     // clean up
-    registry->mark_for_deletion(first_node);
-    registry->mark_for_deletion(second_node);
+    registry->mark_for_deletion(*first_node);
+    registry->mark_for_deletion(*second_node);
   }
 }
 
@@ -237,30 +237,30 @@ TEST_F(ThreadOwnedListDeathTest,
        unrelated_promise_cannot_be_marked_for_deletion) {
   GTEST_FLAG_SET(death_test_style, "threadsafe");
   auto registry = MyList::make();
-  auto* promise = registry->add([]() { return NodeData{33}; });
+  auto promise = registry->add([]() { return NodeData{33}; });
 
   auto some_other_registry = MyList::make();
-  EXPECT_DEATH_CORE_FREE(some_other_registry->mark_for_deletion(promise),
+  EXPECT_DEATH_CORE_FREE(some_other_registry->mark_for_deletion(*promise),
                          "Assertion failed");
 
   // correct clean up
-  registry->mark_for_deletion(promise);
+  registry->mark_for_deletion(*promise);
 }
 
 TEST_F(ThreadOwnedListTest, another_thread_can_mark_a_promise_for_deletion) {
   auto registry = MyList::make();
 
-  auto* node_to_delete = registry->add([]() { return NodeData{7}; });
-  auto* another_node = registry->add([]() { return NodeData{4}; });
+  auto node_to_delete = registry->add([]() { return NodeData{7}; });
+  auto another_node = registry->add([]() { return NodeData{4}; });
 
-  std::thread([&]() { registry->mark_for_deletion(node_to_delete); }).join();
+  std::thread([&]() { registry->mark_for_deletion(*node_to_delete); }).join();
 
   registry->garbage_collect();
   EXPECT_EQ(nodes_in_registry(registry),
             (std::vector<NodeData::Snapshot>{another_node->data.snapshot()}));
 
   // clean up
-  registry->mark_for_deletion(another_node);
+  registry->mark_for_deletion(*another_node);
 }
 
 TEST_F(ThreadOwnedListDeathTest,

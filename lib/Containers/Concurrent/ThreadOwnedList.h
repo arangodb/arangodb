@@ -34,24 +34,20 @@
 namespace arangodb::containers {
 
 /**
-   This list is owned by one thread: nodes can only be added on its owning
-   thread. But other threads can read the list and mark nodes for deletion.
+   This list is supposed to be owned by one thread. Nodes can only be added on
+   its owning thread. But other threads can read the list and mark nodes for
+   deletion. The list exists as long a the owning thread lives or a node is
+   referenced somewhere.
 
-   Nodes have to manually be marked for deletion, otherwise nodes are not
-   deleted and therefore also not this list because each node includes a
-   shared_ptr to this list. Garbage collection can run either on the owning
-   thread (via garbage_collect()) or on another thread (via
-   garbage_collect_external()).
+   Nodes have to manually be marked for deletion. Garbage collection for these
+   marked nodes can run either on the owning thread (via garbage_collect()) or
+   on another thread (via garbage_collect_external()).
 
    A thread owned list contains an atomic list of nodes. If a node is marked
    for deletion, it stays in this list, but is additionally added to the atomic
    free list. The garbage collection goes through this free list, removes each
    node in this free list from the node list (and from the free list as
-   well) and then destroys the node. Each node has a shared ptr to the
-   thread owned list, which is removed when the node is marked for deletion.
-   Additionally, the owning thread is supposed to have a shared_ptr to the
-   thread owned list. Then a thread owned list is destroyed only if both the
-   thread is deleted and all nodes are marked for deletion.
+   well) and then destroys the node.
  */
 template<typename T>
 requires HasSnapshot<T>
@@ -73,8 +69,10 @@ struct ThreadOwnedList
     std::atomic<Node*> previous = nullptr;
     Node* next_to_free = nullptr;
     // identifies the promise list it belongs to, to be able to mark itself for
-    // deletion. Is emptied when the node is marked for deletion.
-    std::shared_ptr<ThreadOwnedList<T>> list;
+    // deletion
+    ThreadOwnedList<T>& list;
+
+    auto mark_for_deletion() -> void { list.mark_for_deletion(*this); }
   };
 
  private:
@@ -112,7 +110,7 @@ struct ThreadOwnedList
   requires requires(F f) {
     { f() } -> std::same_as<T>;
   }
-  auto add(F&& create_data) noexcept -> Node* {
+  auto add(F&& create_data) noexcept -> std::shared_ptr<Node> {
     auto current_thread = basics::ThreadId::current();
     ADB_PROD_ASSERT(current_thread == thread)
         << "ThreadOwnedList::add was called from thread "
@@ -120,9 +118,8 @@ struct ThreadOwnedList
         << " but needs to be called from ThreadOwnedList's owning thread "
         << inspection::json(thread) << ". " << (void*)this;
     auto current_head = _head.load(std::memory_order_relaxed);
-    auto node = new Node{.data = create_data(),
-                         .next = current_head,
-                         .list = this->shared_from_this()};
+    auto node =
+        new Node{.data = create_data(), .next = current_head, .list = *this};
     if (current_head != nullptr) {
       // (6) - this store synchronizes with the load in (7) and (9)
       current_head->previous.store(node, std::memory_order_release);
@@ -133,7 +130,7 @@ struct ThreadOwnedList
       _metrics->increment_registered_nodes();
       _metrics->increment_total_nodes();
     }
-    return node;
+    return std::shared_ptr<Node>{this->shared_from_this(), node};
   }
 
   /**
@@ -150,9 +147,9 @@ struct ThreadOwnedList
     // (2) - this load synchronizes with store in (1) and (3)
     for (auto current = _head.load(std::memory_order_acquire);
          current != nullptr; current = current->next) {
-      if (current->list != nullptr) {
-        function(current->data.snapshot());
-      }
+      // TODO if (current->list != nullptr) {
+      function(current->data.snapshot());
+      // }
     }
   }
 
@@ -175,19 +172,15 @@ struct ThreadOwnedList
      Caller needs to make sure that this is not called twice: otherwise there
      will be a double free.
    */
-  auto mark_for_deletion(Node* node) noexcept -> void {
+  auto mark_for_deletion(Node& node) noexcept -> void {
     // makes sure that node is really in this list
-    ADB_PROD_ASSERT(node->list.get() == this);
-
-    // keep a local copy of the shared pointer. This node might be the
-    // last of the list.
-    auto self = std::move(node->list);
+    ADB_PROD_ASSERT(&node.list == this);
 
     auto current_head = _free_head.load(std::memory_order_relaxed);
     do {
-      node->next_to_free = current_head;
+      node.next_to_free = current_head;
       // (4) - this compare_exchange_weak synchronizes with exchange in (5)
-    } while (not _free_head.compare_exchange_weak(current_head, node,
+    } while (not _free_head.compare_exchange_weak(current_head, &node,
                                                   std::memory_order_release,
                                                   std::memory_order_acquire));
     // DO NOT access node after this line. The owner thread might already
@@ -197,8 +190,6 @@ struct ThreadOwnedList
       _metrics->decrement_registered_nodes();
       _metrics->increment_ready_for_deletion_nodes();
     }
-
-    // self destroyed here. registry might be destroyed here as well.
   }
 
   /**
