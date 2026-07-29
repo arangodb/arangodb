@@ -2,6 +2,7 @@
 
 #include "Actions/ActionOptionsProvider.h"
 #include "ApplicationFeatures/CoreOptionProviders.h"
+#include "ApplicationFeatures/ConfigOptionsProvider.h"
 #include "ApplicationFeatures/LanguageOptionsProvider.h"
 #include "ApplicationFeatures/TempOptionsProvider.h"
 #include "GeneralServer/ServerSecurityOptionsProvider.h"
@@ -54,6 +55,7 @@
 #endif
 
 #ifdef TRI_HAVE_GETRLIMIT
+#include "ApplicationFeatures/BumpFileDescriptorsOptionsProvider.h"
 #include "RestServer/FileDescriptorsOptionsProvider.h"
 #endif
 
@@ -67,7 +69,8 @@ namespace arangodb {
 using ArangodOptionProviders = CoreOptionProviders<
     ActionOptionsProvider, activities::OptionsProvider,
     ApiRecordingOptionsProvider, async_registry::OptionsProvider,
-    AuthenticationOptionsProvider, check_version::CheckVersionOptionsProvider,
+    AuthenticationOptionsProvider, ConfigOptionsProvider,
+    check_version::CheckVersionOptionsProvider,
     crash_handler::CrashHandlerOptionsProvider, DatabasePathOptionsProvider,
     DumpLimitsOptionsProvider, EndpointOptionsProvider, FlushOptionsProvider,
     fortune::FortuneOptionsProvider, FoxxOptionsProvider,
@@ -94,7 +97,8 @@ using ArangodOptionProviders = CoreOptionProviders<
 #endif
 #ifdef TRI_HAVE_GETRLIMIT
     ,
-    file_descriptors::FileDescriptorsOptionsProvider
+    file_descriptors::FileDescriptorsOptionsProvider,
+    ServerBumpFileDescriptorsOptionsProvider
 #endif
 #ifdef ARANGODB_HAVE_FORK
     ,

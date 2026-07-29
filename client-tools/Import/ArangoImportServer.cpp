@@ -65,8 +65,6 @@ void ArangoImportServer::addFeatures() {
   addFeature<CommunicationFeaturePhase>();
   addFeature<GreetingsFeaturePhase>(std::true_type{});
   addFeature<HttpEndpointProvider, ClientFeature>(false);
-  // TODO: COR-788: Migrate ConfigFeature
-  addFeature<ConfigFeature>(_binaryName);
   addFeature<OptionsCheckFeature>();
   addFeature<ShellColorsFeature>();
   addFeature<ShutdownFeature>(
@@ -78,6 +76,7 @@ void ArangoImportServer::addFeatures() {
 void ArangoImportServer::addFeaturesWithOptionProvider() {
   addFeature<VersionFeature>(getOptions<VersionOptionsProvider>());
   addFeature<LoggerFeature>(false, getOptions<LoggerOptionsProvider>());
+  addFeature<ConfigFeature>(getOptions<ConfigOptionsProvider>());
   addFeature<TempFeature>(_binaryName, getOptions<TempOptionsProvider>());
   addFeature<FileSystemFeature>(getOptions<FileSystemOptionsProvider>());
   addFeature<RandomFeature>(getOptions<RandomOptionsProvider>());

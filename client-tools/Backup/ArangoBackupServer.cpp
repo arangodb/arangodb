@@ -60,8 +60,6 @@ void ArangoBackupServer::addFeatures() {
   addFeature<CommunicationFeaturePhase>();
   addFeature<GreetingsFeaturePhase>(std::true_type{});
   auto& client = addFeature<HttpEndpointProvider, ClientFeature>(false);
-  // TODO: COR-788: Migrate ConfigFeature
-  addFeature<ConfigFeature>(_binaryName);
   addFeature<OptionsCheckFeature>();
   addFeature<ShellColorsFeature>();
   addFeature<ShutdownFeature>(
@@ -73,6 +71,7 @@ void ArangoBackupServer::addFeatures() {
 void ArangoBackupServer::addFeaturesWithOptionProvider() {
   addFeature<VersionFeature>(getOptions<VersionOptionsProvider>());
   addFeature<LoggerFeature>(false, getOptions<LoggerOptionsProvider>());
+  addFeature<ConfigFeature>(getOptions<ConfigOptionsProvider>());
   addFeature<FileSystemFeature>(getOptions<FileSystemOptionsProvider>());
   addFeature<RandomFeature>(getOptions<RandomOptionsProvider>());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE

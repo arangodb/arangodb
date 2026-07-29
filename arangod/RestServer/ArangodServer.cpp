@@ -88,9 +88,6 @@ void ArangodServer::addFeatures() {
   addFeature<AgencyFeature>();
   addFeature<AqlFeature>();
 
-#ifdef TRI_HAVE_GETRLIMIT
-  addFeature<BumpFileDescriptorsFeature>("--server.descriptors-minimum");
-#endif
   addFeature<CacheOptionsFeature>();
   auto& cacheOptions = getFeature<CacheOptionsFeature>();
   auto& sharedPRNGFeature = addFeature<SharedPRNGFeature>();
@@ -98,8 +95,6 @@ void ArangodServer::addFeatures() {
   auto& clusterFeature = addFeature<ClusterFeature>(metrics);
   auto& database = addFeature<DatabaseFeature>();
   auto& clusterUpgradeFeature = addFeature<ClusterUpgradeFeature>(database);
-  // TODO: COR-788: Migrate ConfigFeature
-  addFeature<ConfigFeature>(_binaryName);
 #ifdef USE_V8
   addFeature<ConsoleFeature>();
   auto& v8DealerFeature = addFeature<V8DealerFeature>(metrics);
@@ -179,6 +174,7 @@ void ArangodServer::addFeaturesWithOptionProvider() {
   addFeature<VersionFeature>(getOptions<VersionOptionsProvider>());
   addFeature<LoggerFeature>(true, getOptions<LoggerOptionsProvider>(),
                             getOptions<LogApiOptionsProvider>());
+  addFeature<ConfigFeature>(getOptions<ConfigOptionsProvider>());
   addFeature<TempFeature>(std::string{_binaryName},
                           getOptions<TempOptionsProvider>());
   addFeature<ApiRecordingFeature>(_dataSourceRegistry, metrics,
@@ -209,7 +205,9 @@ void ArangodServer::addFeaturesWithOptionProvider() {
 #ifdef TRI_HAVE_GETRLIMIT
   addFeature<FileDescriptorsFeature>(
       metrics, getOptions<file_descriptors::FileDescriptorsOptionsProvider>());
-#endif
+  addFeature<BumpFileDescriptorsFeature>(
+      getOptions<ServerBumpFileDescriptorsOptionsProvider>());
+#endif  // TRI_HAVE_GETRLIMIT
 
   addFeature<AuthenticationFeature>(
       getOptions<AuthenticationOptionsProvider>());
