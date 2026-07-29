@@ -33,11 +33,228 @@
 #include "Rest/ApiVersion.h"
 #include "Rest/GeneralRequest.h"
 
-#include "absl/strings/str_cat.h"
+#include <format>
 
 #include <type_traits>
 
 namespace arangodb {
+
+namespace {
+auto joinQuoted(std::span<std::string const> names) -> std::string {
+  std::string result;
+  for (auto const& name : names) {
+    if (!result.empty()) {
+      result += ", ";
+    }
+    result += std::format("'{}'", name);
+  }
+  return result;
+}
+auto describe(auth::perms::UseDatabase const& perm) -> std::string {
+  return std::format("use database '{}' with access level '{}'", perm.name,
+                     to_string(perm.level));
+}
+auto describe(auth::perms::UseCollection const& perm) -> std::string {
+  return std::format(
+      "use collection '{}' in database '{}' with access level '{}'", perm.name,
+      perm.db, to_string(perm.level));
+}
+auto describe(auth::perms::UseView const& perm) -> std::string {
+  return std::format("use view '{}' in database '{}' with access level '{}'",
+                     perm.name, perm.db, to_string(perm.level));
+}
+auto describe(auth::perms::SeeView const& perm) -> std::string {
+  return std::format("see view '{}' in database '{}'", perm.name, perm.db);
+}
+auto describe(auth::perms::CreateView const& perm) -> std::string {
+  return std::format(
+      "create view '{}' in database '{}' with linked collections [{}]",
+      perm.name, perm.db, joinQuoted(perm.linkedCollections));
+}
+auto describe(auth::perms::RenameView const& perm) -> std::string {
+  return std::format("rename view '{}' to '{}' in database '{}'", perm.oldName,
+                     perm.newName, perm.db);
+}
+auto describe(auth::perms::UseAnalyzer const& perm) -> std::string {
+  return std::format(
+      "use analyzer '{}' in database '{}' with access level '{}'", perm.name,
+      perm.db, to_string(perm.level));
+}
+auto describe(auth::perms::CreateGraph const& perm) -> std::string {
+  return std::format(
+      "create graph '{}' in database '{}' with collections to create [{}] and "
+      "collections to read [{}]",
+      perm.name, perm.db, joinQuoted(perm.collectionNamesToCreate),
+      joinQuoted(perm.collectionNamesToRead));
+}
+// Admin permissions carry no resource, so each maps to a fixed phrase naming
+// the administrative action it guards.
+auto describe(auth::perms::AnyAdmin auto const& admin) -> std::string {
+  namespace p = auth::perms;
+  using T = std::remove_cvref_t<decltype(admin)>;
+  if constexpr (std::is_same_v<T, p::AdminReadUsers>) {
+    return "list all users (as admin)";
+  } else if constexpr (std::is_same_v<T, p::AdminMoveShards>) {
+    return "move shards (as admin)";
+  } else if constexpr (std::is_same_v<T, p::AdminMonitoring>) {
+    return "access monitoring data (as admin)";
+  } else if constexpr (std::is_same_v<T, p::AdminMonitoringInternal>) {
+    return "access internal monitoring data (as admin)";
+  } else if constexpr (std::is_same_v<T, p::AdminAuthReload>) {
+    return "reload authentication data (as admin)";
+  } else if constexpr (std::is_same_v<T, p::AdminCrashHandler>) {
+    return "access the crash handler (as admin)";
+  } else if constexpr (std::is_same_v<T, p::AdminApiCalls>) {
+    return "access API call statistics (as admin)";
+  } else if constexpr (std::is_same_v<T, p::AdminAqlQueries>) {
+    return "manage AQL queries (as admin)";
+  } else if constexpr (std::is_same_v<T, p::AdminShutdown>) {
+    return "shut down the server (as admin)";
+  } else if constexpr (std::is_same_v<T, p::AdminReadLogs>) {
+    return "read the server logs (as admin)";
+  } else if constexpr (std::is_same_v<T, p::AdminSetLogLevel>) {
+    return "set the log level (as admin)";
+  } else if constexpr (std::is_same_v<T, p::AdminOptions>) {
+    return "access server options (as admin)";
+  } else if constexpr (std::is_same_v<T, p::AdminSupervisionState>) {
+    return "access the supervision state (as admin)";
+  } else if constexpr (std::is_same_v<T, p::AdminRemoveServer>) {
+    return "remove a server (as admin)";
+  } else if constexpr (std::is_same_v<T, p::AdminClusterInfo>) {
+    return "access cluster information (as admin)";
+  } else if constexpr (std::is_same_v<T, p::AdminMaintenance>) {
+    return "manage maintenance mode (as admin)";
+  } else if constexpr (std::is_same_v<T, p::AdminRebalance>) {
+    return "rebalance the cluster (as admin)";
+  } else if constexpr (std::is_same_v<T, p::AdminLicense>) {
+    return "manage the license (as admin)";
+  } else if constexpr (std::is_same_v<T, p::AdminBackup>) {
+    return "manage backups (as admin)";
+  } else if constexpr (std::is_same_v<T, p::AdminReadReplicatedLog>) {
+    return "read a replicated log (as admin)";
+  } else if constexpr (std::is_same_v<T, p::AdminWriteReplicatedLog>) {
+    return "write a replicated log (as admin)";
+  } else if constexpr (std::is_same_v<T, p::AdminDump>) {
+    return "dump data (as admin)";
+  } else if constexpr (std::is_same_v<T, p::AdminRestore>) {
+    return "restore data (as admin)";
+  } else if constexpr (std::is_same_v<T, p::AdminWalAccess>) {
+    return "access the write-ahead log (as admin)";
+  } else if constexpr (std::is_same_v<T, p::AdminReadAgency>) {
+    return "read the agency (as admin)";
+  } else if constexpr (std::is_same_v<T, p::AdminQueryCache>) {
+    return "manage the query cache (as admin)";
+  } else {
+    static_assert(sizeof(T) == 0, "unmapped admin permission");
+  }
+}
+auto describe(auth::perms::SeeDatabase const& perm) -> std::string {
+  return std::format("see database '{}'", perm.name);
+}
+auto describe(auth::perms::CreateDatabase const& perm) -> std::string {
+  return std::format("create database '{}'", perm.name);
+}
+auto describe(auth::perms::DropDatabase const& perm) -> std::string {
+  return std::format("drop database '{}'", perm.name);
+}
+auto describe(auth::perms::SeeCollection const& perm) -> std::string {
+  return std::format("see collection '{}' in database '{}'", perm.name,
+                     perm.db);
+}
+auto describe(auth::perms::CreateCollection const& perm) -> std::string {
+  return std::format("create collection '{}' in database '{}'", perm.name,
+                     perm.db);
+}
+auto describe(auth::perms::DropCollection const& perm) -> std::string {
+  return std::format("drop collection '{}' in database '{}'", perm.name,
+                     perm.db);
+}
+auto describe(auth::perms::DumpCollection const& perm) -> std::string {
+  return std::format("dump collection '{}' in database '{}'", perm.name,
+                     perm.db);
+}
+auto describe(auth::perms::RestoreCollection const& perm) -> std::string {
+  return std::format("restore collection '{}' in database '{}' {} overwrite",
+                     perm.name, perm.db, perm.overwrite ? "with" : "without");
+}
+auto describe(auth::perms::RestoreCreateIndex const& perm) -> std::string {
+  return std::format(
+      "create index during restore on collection '{}' in database '{}'",
+      perm.collName, perm.db);
+}
+auto describe(auth::perms::RestoreCreateView const& perm) -> std::string {
+  return std::format(
+      "create view '{}' during restore in database '{}' with linked "
+      "collections [{}]",
+      perm.viewName, perm.db, joinQuoted(perm.linkedCollNames));
+}
+auto describe(auth::perms::RestoreDropView const& perm) -> std::string {
+  return std::format("drop view '{}' during restore in database '{}'",
+                     perm.viewName, perm.db);
+}
+auto describe(auth::perms::RestoreWriteData const& perm) -> std::string {
+  return std::format(
+      "write data during restore to collection '{}' in database '{}'",
+      perm.collName, perm.db);
+}
+auto describe(auth::perms::ModifyView const& perm) -> std::string {
+  return std::format(
+      "modify view '{}' in database '{}' with linked collections [{}]",
+      perm.name, perm.db, joinQuoted(perm.linkedCollections));
+}
+auto describe(auth::perms::DropView const& perm) -> std::string {
+  return std::format("drop view '{}' in database '{}'", perm.name, perm.db);
+}
+auto describe(auth::perms::SeeAnalyzer const& perm) -> std::string {
+  return std::format("see analyzer '{}' in database '{}'", perm.name, perm.db);
+}
+auto describe(auth::perms::CreateAnalyzer const& perm) -> std::string {
+  return std::format("create analyzer '{}' in database '{}'", perm.name,
+                     perm.db);
+}
+auto describe(auth::perms::DropAnalyzer const& perm) -> std::string {
+  return std::format("drop analyzer '{}' in database '{}'", perm.name, perm.db);
+}
+auto describe(auth::perms::SeeGraph const& perm) -> std::string {
+  return std::format("see graph '{}' in database '{}'", perm.name, perm.db);
+}
+auto describe(auth::perms::DropGraph const& perm) -> std::string {
+  return std::format("drop graph '{}' in database '{}' with collections [{}]",
+                     perm.name, perm.db, joinQuoted(perm.collectionNames));
+}
+auto describe(auth::perms::UseGraph const& perm) -> std::string {
+  return std::format("use graph '{}' in database '{}' with access level '{}'",
+                     perm.name, perm.db, to_string(perm.level));
+}
+auto describe(auth::perms::ReadUser const& perm) -> std::string {
+  return std::format("read user '{}'", perm.name);
+}
+auto describe(auth::perms::CreateUser const& perm) -> std::string {
+  return std::format("create user '{}'", perm.name);
+}
+auto describe(auth::perms::DropUser const& perm) -> std::string {
+  return std::format("drop user '{}'", perm.name);
+}
+auto describe(auth::perms::ModifyUserProfile const& perm) -> std::string {
+  return std::format("modify profile of user '{}'", perm.name);
+}
+auto describe(auth::perms::GrantUserPermissions const& perm) -> std::string {
+  return std::format("grant permissions to user '{}'", perm.name);
+}
+auto failureMessage(auto const& request, std::string_view reason)
+    -> std::string {
+  return std::format("Failed to {}. {}", describe(request), reason);
+}
+auto accessLevelMismatchReason(std::string_view subject,
+                               std::string_view resource, auth::Level required,
+                               auth::Level actual) -> std::string {
+  return std::format(
+      "{} requires {} authentication level '{}' but it has only level "
+      "'{}'.",
+      subject, resource, auth::convertFromAuthLevel(required),
+      auth::convertFromAuthLevel(actual));
+}
+}  // namespace
 
 auto AuthMode::getIAuth() -> AuthMode::IAuth& {
   return std::visit([](auto&& authMode) -> IAuth& { return authMode; },
@@ -176,8 +393,10 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
                       "database not accessible: '" + database.name + "'"};
             } else {
               return {TRI_ERROR_FORBIDDEN,
-                      "insufficient database access level for '" +
-                          database.name + "'"};
+                      failureMessage(database,
+                                     accessLevelMismatchReason(
+                                         "Request", "database", requestedLevel,
+                                         effectiveLevel))};
             }
           },
           [&](p::UseCollection const& collection) -> Result {
@@ -193,9 +412,15 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
                 if (requestedLevel == auth::Level::NONE) {
                   return {};
                 }
-                return {TRI_ERROR_FORBIDDEN,
-                        std::format("access to {} is restricted",
-                                    StaticStrings::UsersCollection)};
+                // a user will never request with requestLevel == NONE,
+                // therefore the error message can be simple
+                return {
+                    TRI_ERROR_FORBIDDEN,
+                    failureMessage(collection,
+                                   std::format("Access to {} collection in {} "
+                                               "database is forbidden",
+                                               StaticStrings::UsersCollection,
+                                               StaticStrings::SystemDatabase))};
               }
               // _queues: read-only for everyone.
               if (collection.name == StaticStrings::QueuesCollection) {
@@ -203,8 +428,15 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
                   return {};
                 }
                 return {TRI_ERROR_FORBIDDEN,
-                        std::format("write access to {} is restricted",
-                                    StaticStrings::QueuesCollection)};
+                        failureMessage(
+                            collection,
+                            std::format(
+                                "Request requires collection authentication "
+                                "level '{}' but {} collection can only be "
+                                "accessed with at least level '{}'",
+                                auth::convertFromAuthLevel(requestedLevel),
+                                StaticStrings::QueuesCollection,
+                                auth::convertFromAuthLevel(auth::Level::RO)))};
               }
               // _frontend: full access for everyone.
               if (collection.name == StaticStrings::FrontendCollection) {
@@ -230,14 +462,16 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
               if (requestedLevel == arangodb::auth::Level::RW &&
                   effectiveLevel == arangodb::auth::Level::RO) {
                 return {TRI_ERROR_ARANGO_READ_ONLY,
-                        "read-only collection access level for '" +
-                            collection.name + "' in database '" +
-                            collection.db + "'"};
+                        failureMessage(collection,
+                                       accessLevelMismatchReason(
+                                           "Request", "collection",
+                                           requestedLevel, effectiveLevel))};
               } else {
                 return {TRI_ERROR_FORBIDDEN,
-                        "insufficient collection access level for '" +
-                            collection.name + "' in database '" +
-                            collection.db + "'"};
+                        failureMessage(collection,
+                                       accessLevelMismatchReason(
+                                           "Request", "collection",
+                                           requestedLevel, effectiveLevel))};
               }
             }
 
@@ -248,10 +482,12 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
               auto const dbLevel = effectiveDatabaseAuthLevel(collection.db);
               if (dbLevel < auth::Level::RW) {
                 return {TRI_ERROR_FORBIDDEN,
-                        "insufficient database access level for write-meta "
-                        "operation on collection '" +
-                            collection.name + "' in database '" +
-                            collection.db + "'"};
+                        failureMessage(
+                            collection,
+                            accessLevelMismatchReason(
+                                std::format("Collection access level '{}'",
+                                            to_string(collection.level)),
+                                "database", auth::Level::RW, dbLevel))};
               }
             }
 
@@ -347,9 +583,11 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
                       "view not accessible: '" + view.name + "' in database '" +
                           view.db + "'"};
             } else {
-              return {TRI_ERROR_FORBIDDEN,
-                      "insufficient access level for view '" + view.name +
-                          "' in database '" + view.db + "'"};
+              return {
+                  TRI_ERROR_FORBIDDEN,
+                  failureMessage(view, accessLevelMismatchReason(
+                                           "Request", "view", requestedLevel,
+                                           effectiveLevel))};
             }
           },
           [&](p::UseAnalyzer const& analyzer) -> Result {
@@ -430,21 +668,20 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
             // Creating a view requires RW access to the database.
             if (auto r =
                     check(p::UseDatabase{view.db, DatabaseAccessLevel::Write});
-                !r.ok()) {
+                r.fail()) {
               return r;
             }
             // Also check read access to all linked collections.
             for (auto const& coll : view.linkedCollections) {
               if (auto r = check(p::UseCollection{view.db, coll,
                                                   CollectionAccessLevel::Read});
-                  !r.ok()) {
+                  r.fail()) {
                 return Result(
                     TRI_ERROR_FORBIDDEN,
-                    absl::StrCat(
-                        "insufficient collection access to collection '", coll,
-                        "' to drop view '", view.name, "' in database '",
-                        view.db, "'"));
-                ;
+                    failureMessage(view,
+                                   std::format("Insufficient access to linked "
+                                               "collection '{}': {}",
+                                               coll, r.errorMessage())));
               }
             }
             return {};
@@ -469,7 +706,9 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
           [&](p::RenameView const& view) -> Result {
             if (view.oldName == view.newName) {
               return {TRI_ERROR_BAD_PARAMETER,
-                      "new view name must be different from old view name"};
+                      failureMessage(view,
+                                     "New view name must be different from old "
+                                     "view name.")};
             }
             // Renaming a view requires RW access to the database.
             if (auto r =
@@ -528,7 +767,8 @@ auto AuthMode::Classic::check(auth::Permission permission) const -> Result {
                 return r;
               }
             }
-            return {TRI_ERROR_ARANGO_READ_ONLY, "Cannot write to database."};
+            return {TRI_ERROR_ARANGO_READ_ONLY,
+                    failureMessage(graph, "Cannot write to database.")};
           },
           [&](p::DropGraph const& graph) -> Result {
             // Dropping a graph requires RW access to the database (to write
@@ -608,8 +848,8 @@ Result AuthMode::Classic::isAdmin() const {
                                           .level = DatabaseAccessLevel::Write});
   return r.ok() ? Result{}
                 : Result{TRI_ERROR_FORBIDDEN,
-                         "Missing RW permissions on _system database for admin "
-                         "purposes!"};
+                         std::format("Failed admin-permission check: {}",
+                                     r.errorMessage())};
 }
 
 auto AuthMode::Rbac::username() const noexcept -> std::string_view {
@@ -997,15 +1237,14 @@ auto AuthMode::Unauthenticated::request() const noexcept
 
 auto AuthMode::Unauthenticated::check(auth::Permission permission) const
     -> Result {
-  namespace p = auth::perms;
-
   return std::visit(
       overload{
           // An unauthenticated identity has no permissions at all. Since the
           // perms API only ever asks about access that is actually required
           // (there is no "None" level anymore), every question is denied.
-          [](auto const&) -> Result {
-            return {TRI_ERROR_FORBIDDEN, "not authenticated"};
+          [](auto const& perm) -> Result {
+            return {TRI_ERROR_FORBIDDEN,
+                    failureMessage(perm, "Not authenticated.")};
           },
       },
       permission);
