@@ -54,6 +54,11 @@ class OptionProvidingServer : public application_features::ApplicationServer {
     return _optionProviders.template getOptions<ProviderType>();
   }
 
+  template<class ProviderType>
+  auto& mutableOptions() {
+    return _optionProviders.template mutableOptions<ProviderType>();
+  }
+
   std::string _binaryName;
   int* _ret;
 

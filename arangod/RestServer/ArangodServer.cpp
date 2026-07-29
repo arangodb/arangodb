@@ -59,10 +59,24 @@ auto const kNonServerFeatures =
                std::type_index(typeid(ServerFeature)),
                std::type_index(typeid(SslServerFeature)),
                std::type_index(typeid(StatisticsFeature))};
+
+void applyAgencyRocksDBMemoryLimits(
+    options::ProgramOptions::ProcessingResult const& result,
+    RocksDBOptionFeatureOptions& rocksdbOptions) {
+  if (!result.touched("--rocksdb.block-cache-size")) {
+    rocksdbOptions.blockCacheSize =
+        std::min(rocksdbOptions.blockCacheSize, uint64_t{1} << 30);  // 1 GiB
+  }
+  if (!result.touched("--rocksdb.total-write-buffer-size")) {
+    rocksdbOptions.totalWriteBufferSize = std::min(
+        rocksdbOptions.totalWriteBufferSize, uint64_t{512} << 20);  // 512 MiB
+  }
+}
 }  // namespace
 
 void ArangodServer::processOptions() {
   OptionProvidingServer<ArangodOptionProviders>::processOptions();
+
   auto const& clusterOptions = getOptions<ClusterOptionsProvider>();
   auto const& agencyOptions = getOptions<AgencyOptionsProvider>();
 
@@ -75,6 +89,13 @@ void ArangodServer::processOptions() {
   }
 
   ServerState::instance()->setRole(resolveRole(clusterOptions, agencyOptions));
+
+  // Cap RocksDB memory defaults on agency agents unless explicitly configured.
+  if (agencyOptions.activated) {
+    applyAgencyRocksDBMemoryLimits(
+        options()->processingResult(),
+        mutableOptions<RocksDBOptionFeatureOptionsProvider>());
+  }
 }
 
 ServerState::RoleEnum ArangodServer::resolveRole(
