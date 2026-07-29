@@ -24,7 +24,6 @@
 
 #include <memory>
 #include <string>
-#include <string_view>
 
 #include "ApplicationFeatures/OptionsProvider.h"
 #include "ApplicationFeatures/ConfigFeatureOptions.h"
@@ -43,6 +42,11 @@ struct ConfigOptionsProvider
                           ConfigFeatureOptions& configOpts);
   void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> /*opts*/,
                            ConfigFeatureOptions& /*options*/) {}
+
+ private:
+  void loadConfigFile(std::shared_ptr<options::ProgramOptions> progOpts,
+                      std::string const& progname, char const* binaryPath,
+                      ConfigFeatureOptions& configOpts);
 };
 
 }  // namespace arangodb
