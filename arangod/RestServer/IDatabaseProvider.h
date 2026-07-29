@@ -25,6 +25,8 @@
 #include "Replication2/Version.h"
 #include "Utils/DatabaseGuard.h"
 
+#include <velocypack/Slice.h>
+
 #include <functional>
 #include <string_view>
 
@@ -45,6 +47,9 @@ struct IDatabaseProvider {
 
   virtual VocbasePtr useDatabase(std::string_view name) const = 0;
   virtual VocbasePtr useDatabase(TRI_voc_tick_t id) const = 0;
+
+  /// @brief open all databases described by the given inventory
+  virtual void openDatabases(velocypack::Slice databases) = 0;
 
   virtual void enumerateDatabases(
       std::function<void(Database& vocbase)> const& func) = 0;

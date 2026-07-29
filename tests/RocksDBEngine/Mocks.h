@@ -74,6 +74,7 @@ struct MockDatabaseProvider : IDatabaseProvider {
   MOCK_METHOD(bool, extendedNames, (), (const, noexcept, override));
   MOCK_METHOD(void, extendedNames, (bool), (noexcept, override));
   MOCK_METHOD(void, recoveryDone, (), (override));
+  MOCK_METHOD(void, openDatabases, (velocypack::Slice), (override));
 };
 
 struct MockCacheManagerProvider : ICacheManagerProvider {

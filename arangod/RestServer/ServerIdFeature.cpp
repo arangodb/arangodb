@@ -33,8 +33,6 @@
 #include "Random/RandomGenerator.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
-#include "RestServer/InitDatabaseFeature.h"
-#include "RestServer/SystemDatabaseFeature.h"
 
 using namespace arangodb::options;
 
@@ -48,14 +46,14 @@ ServerIdFeature::ServerIdFeature(
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseServer>();
 
-  startsAfter<DatabaseFeature>();
-  startsAfter<InitDatabaseFeature>();
-  startsAfter<SystemDatabaseFeature>();
+  // must run before DatabaseFeature::prepare() opens databases, since
+  // that constructs collections whose GUIDs embed the server id
+  startsBefore<DatabaseFeature>();
 }
 
 ServerIdFeature::~ServerIdFeature() { SERVERID = ServerId::none(); }
 
-void ServerIdFeature::start() {
+void ServerIdFeature::prepare() {
   auto& databasePath = server().getFeature<DatabasePathFeature>();
   _idFilename = databasePath.subdirectoryName("SERVER");
 

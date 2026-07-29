@@ -281,10 +281,12 @@ DatabaseFeature::DatabaseFeature(
 
   startsAfter<AuthenticationFeature>();
   startsAfter<CacheManagerFeature>();
-  startsAfter<ClusterEngine>();
-  startsAfter<RocksDBEngine>();
   startsAfter<InitDatabaseFeature>();
   startsAfter<metrics::MetricsFeature>();
+
+  // engine selection must happen before RocksDBEngine::prepare()
+  startsBefore<ClusterEngine>();
+  startsBefore<RocksDBEngine>();
 }
 
 DatabaseFeature::~DatabaseFeature() = default;
@@ -499,6 +501,10 @@ void DatabaseFeature::unprepare() {
 }
 
 void DatabaseFeature::prepare() {
+  // true only for the real, production RocksDBEngine, which calls
+  // openDatabases() itself once its storage is ready
+  bool deferToStorageEngine = false;
+
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   if (_engine == nullptr) {
     // engine not injected by test code, inject it now
@@ -513,6 +519,7 @@ void DatabaseFeature::prepare() {
       auto& rocksdb = server().getFeature<RocksDBEngine>();
       rocksdb.enable();
       _engine = &rocksdb;
+      deferToStorageEngine = true;
     }
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   }
@@ -531,12 +538,18 @@ void DatabaseFeature::prepare() {
     _metadataMetrics.emplace(metrics);
   }
 
-  VPackBuilder builder;
-  _engine->getDatabases(builder);
+  if (!deferToStorageEngine) {
+    VPackBuilder builder;
+    _engine->getDatabases(builder);
+    TRI_ASSERT(builder.slice().isArray());
+    openDatabases(builder.slice());
+  }
+}
 
-  TRI_ASSERT(builder.slice().isArray());
+void DatabaseFeature::openDatabases(velocypack::Slice databases) {
+  TRI_ASSERT(databases.isArray());
 
-  auto res = iterateDatabases(builder.slice());
+  auto res = iterateDatabases(databases);
 
   if (res != TRI_ERROR_NO_ERROR) {
     LOG_TOPIC("0c49d", FATAL, Logger::FIXME)

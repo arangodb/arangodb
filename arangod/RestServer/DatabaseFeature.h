@@ -130,6 +130,9 @@ class DatabaseFeature final : public application_features::ApplicationFeature,
 
   void recoveryDone() override;
 
+  /// @brief open all databases described by the given inventory
+  void openDatabases(velocypack::Slice databases) override;
+
   /// @brief whether or not the DatabaseFeature has started (and thus has
   /// completely populated its lists of databases and collections from
   /// persistent storage)

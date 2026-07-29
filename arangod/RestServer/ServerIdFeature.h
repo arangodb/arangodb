@@ -34,7 +34,8 @@ class ServerIdFeature final : public application_features::ApplicationFeature {
   explicit ServerIdFeature(application_features::ApplicationServer& server);
   ~ServerIdFeature();
 
-  void start() override final;
+  void prepare() override final;
+  void start() override final {}
 
   static ServerId getId() {
     TRI_ASSERT(SERVERID.isSet());
