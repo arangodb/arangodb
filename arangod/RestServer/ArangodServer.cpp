@@ -135,7 +135,7 @@ void ArangodServer::addFeatures() {
   addFeature<ConfigFeature>(std::string{_binaryName});
 #ifdef USE_V8
   addFeature<ConsoleFeature>();
-  auto& v8DealerFeature = addFeature<V8DealerFeature>(metrics);
+  addFeature<V8DealerFeature>(metrics);
 #endif
   addFeature<CpuUsageFeature>();
   addFeature<SystemDatabaseFeature>();
