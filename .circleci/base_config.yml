@@ -34,9 +34,10 @@ parameters:
   dont-cancel-pipelines:
     type: boolean
     default: false
-  create-docker-images:
-    type: boolean
-    default: false
+  create-test-docker-images:
+    type: enum
+    enum: [none, alpine, deb]
+    default: none
   rebuild-test-docker-images:
     type: boolean
     default: false
@@ -538,32 +539,23 @@ jobs:
       - image: << pipeline.parameters.build-docker-image >>
     resource_class: arangodb/large-amd64
     steps:
+      - checkout-arangodb:
+          with-submodules: false
+          destination: "/root/project"
       - run:
+          name: Build frontend
           command: |
-            echo "building frontend"
-      - when:
-          # if we're building a docker image, the regular build does the frontend.
-          condition:
-            not:
-              << pipeline.parameters.create-docker-images >>
-          steps:
-            - checkout-arangodb:
-                with-submodules: false
-                destination: "/root/project"
-            - run:
-                name: Build frontend
-                command: |
-                  cd js/apps/system/_admin/aardvark/APP/react
-                  tar -xJf /node_modules.tar.xz
-                  yarn install
-                  yarn build
-            - persist_to_workspace:
-                root: .
-                paths: js/apps/system/_admin/aardvark/APP/react/build
-            - persist_workspace_to_s3:
-                root: .
-                paths: js/apps/system/_admin/aardvark/APP/react/build
-                archive: frontend.tar.gz
+            cd js/apps/system/_admin/aardvark/APP/react
+            tar -xJf /node_modules.tar.xz
+            yarn install
+            yarn build
+      - persist_to_workspace:
+          root: .
+          paths: js/apps/system/_admin/aardvark/APP/react/build
+      - persist_workspace_to_s3:
+          root: .
+          paths: js/apps/system/_admin/aardvark/APP/react/build
+          archive: frontend.tar.gz
 
   compile-linux:
     parameters:
@@ -580,6 +572,12 @@ jobs:
       publish-artifacts:
         type: boolean
         default: true
+      # Fetch aux binaries and produce install-<arch>.tar.gz plus the
+      # per-arch docker build context for Docker image creation. Set only
+      # by the docker-images workflow's compile jobs.
+      create-install-package:
+        type: boolean
+        default: false
       resource-class:
         type: string
       s3-prefix:
@@ -643,14 +641,11 @@ jobs:
             echo "Building targets: $TARGETS"
             cmake --build --preset << parameters.preset >> --parallel 16 --target $TARGETS
       - when:
-          condition: << pipeline.parameters.create-docker-images >>
+          condition: << parameters.create-install-package >>
           steps:
             - fetch-aux-binaries:
                 arch: << parameters.arch >>
                 repo-path: .
-      - when:
-          condition: << pipeline.parameters.create-docker-images >>
-          steps:
             - run:
                 name: Create install package
                 command: |
@@ -663,11 +658,21 @@ jobs:
                   fi
                   strip ./install/usr/bin/arango*
                   strip ./install/usr/sbin/arangod
-                  tar -czf install.tar.gz -C install ./
+                  tar -czf install-<< parameters.arch >>.tar.gz -C install ./
+                  cp -a scripts/docker/deploy docker-context-<< parameters.arch >>
+            # Everything persisted here must be arch-specific: the x64 and
+            # aarch64 compile jobs run concurrently, and concurrent jobs
+            # persisting the same workspace path cause a workspace layer
+            # conflict on attach. The docker build context (dockerfile,
+            # setup.sh, entrypoint.sh) is copied per arch for the same
+            # reason - each build-docker-image job requires only its own
+            # arch's compile job, so it cannot rely on the other arch's
+            # workspace layer being present.
             - persist_to_workspace:
                 root: .
                 paths:
-                  - install.tar.gz
+                  - install-<< parameters.arch >>.tar.gz
+                  - docker-context-<< parameters.arch >>
       - run:
           name: Size leaderboard
           command: |
@@ -738,11 +743,59 @@ jobs:
                   ubsan_arangodb_suppressions.txt
                   lsan_arangodb_suppressions.txt
 
-  create-docker-image:
+  # Builds one architecture's Alpine-based image locally and saves it to a
+  # workspace tarball. No registry auth here - pushing (and the ECR login)
+  # happens once both architectures are available together, in
+  # push-docker-manifest. CircleCI workflows can't depend on jobs in
+  # another workflow, so both architectures live in the same
+  # "docker-images" workflow and hand off through the workspace.
+  build-docker-image:
     parameters:
       resource-class:
         type: string
+      # Image base: selects deploy-<distro>.dockerfile (alpine | deb)
+      distro:
+        type: enum
+        enum: [alpine, deb]
+      # Docker platform architecture (amd64 | arm64), used for --platform
+      # and the image's arch build-arg
       arch:
+        type: string
+      # Compile-side architecture (x64 | aarch64): selects the arch-specific
+      # install tarball and docker build context persisted by the matching
+      # compile-linux job
+      build-arch:
+        type: string
+      output:
+        type: string
+    docker:
+      - image: cimg/base:current
+    resource_class: << parameters.resource-class >>
+    steps:
+      - setup_remote_docker:
+          docker_layer_caching: true
+      - attach_workspace:
+          at: .
+      - run:
+          name: Build Docker Image
+          command: |
+            cd docker-context-<< parameters.build-arch >>
+            mkdir install
+            tar -xzf ../install-<< parameters.build-arch >>.tar.gz -C install
+            docker build --platform linux/<< parameters.arch >> --build-arg arch=<< parameters.arch >> -t arangodb/enterprise-test:local-<< parameters.arch >> --file deploy-<< parameters.distro >>.dockerfile .
+            docker save -o /tmp/<< parameters.output >> arangodb/enterprise-test:local-<< parameters.arch >>
+      - persist_to_workspace:
+          root: /tmp
+          paths:
+            - << parameters.output >>
+
+  # Loads both architectures' locally-built images, pushes each as an
+  # arch-suffixed tag, then creates and pushes a multi-arch manifest under
+  # the bare tag (the community commit short SHA). ECR only, using the
+  # same OIDC role assumption as before - no stored credentials/context.
+  push-docker-manifest:
+    parameters:
+      resource-class:
         type: string
       tag:
         type: string
@@ -757,16 +810,30 @@ jobs:
       - setup_remote_docker:
           docker_layer_caching: true
       - attach_workspace:
-          at: .
+          at: /tmp/workspace
       - run:
-          name: Create Docker Image
+          name: Push multi-arch Docker manifest
           command: |
-            cd scripts/docker/deploy
-            mkdir install
-            tar -xzf ../../../install.tar.gz -C install
-            docker build --platform linux/<< parameters.arch >> --build-arg arch=<< parameters.arch >> -t << parameters.tag >> --file deploy-alpine.dockerfile .
-            echo "Pushing image << parameters.tag >>"
-            docker push << parameters.tag >>
+            docker load -i /tmp/workspace/docker-amd64.tar
+            docker load -i /tmp/workspace/docker-arm64.tar
+
+            IMAGE="public.ecr.aws/b0b8h2r4/arangodb/enterprise-test"
+
+            set -x
+            retry() { "$@" || { sleep 5; "$@"; } || { sleep 15; "$@"; } || { sleep 30; "$@"; }; }
+
+            declare -A LOCAL_TAG=( [amd64]="arangodb/enterprise-test:local-amd64" [arm64]="arangodb/enterprise-test:local-arm64" )
+            declare -A TAG_ARCH=( [amd64]="amd64" [arm64]="arm64v8" )
+
+            for ARCH in amd64 arm64; do
+              docker tag "${LOCAL_TAG[$ARCH]}" "${IMAGE}:<< parameters.tag >>-${TAG_ARCH[$ARCH]}"
+              retry docker push "${IMAGE}:<< parameters.tag >>-${TAG_ARCH[$ARCH]}"
+            done
+            docker manifest rm "${IMAGE}:<< parameters.tag >>" 2>/dev/null || true
+            retry docker manifest create "${IMAGE}:<< parameters.tag >>" \
+              --amend "${IMAGE}:<< parameters.tag >>-amd64" \
+              --amend "${IMAGE}:<< parameters.tag >>-arm64v8"
+            retry docker manifest push --purge "${IMAGE}:<< parameters.tag >>"
 
   run-linux-tests:
     parameters:

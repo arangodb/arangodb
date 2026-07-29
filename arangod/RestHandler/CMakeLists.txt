@@ -53,3 +53,82 @@ add_custom_target(
     ${CMAKE_CURRENT_BINARY_DIR}/openapi-v1.csx
     ${CMAKE_CURRENT_BINARY_DIR}/openapi-v2.csx
 )
+
+add_library(arango_rest_handler STATIC
+  RestAccessTokenHandler.cpp
+  RestAdminClusterHandler.cpp
+  RestAdminDatabaseHandler.cpp
+  RestAdminDeploymentHandler.cpp
+  RestAdminLogHandler.cpp
+  RestAdminServerHandler.cpp
+  RestAdminStatisticsHandler.cpp
+  RestAqlFunctionsHandler.cpp
+  RestAuthHandler.cpp
+  RestAuthReloadHandler.cpp
+  RestBaseHandler.cpp
+  RestCompactHandler.cpp
+  RestCrashHandler.cpp
+  RestCursorHandler.cpp
+  RestDatabaseHandler.cpp
+  RestDebugHandler.cpp
+  RestDocumentHandler.cpp
+  RestDumpHandler.cpp
+  RestEdgesHandler.cpp
+  RestEndpointHandler.cpp
+  RestEngineHandler.cpp
+  RestExplainHandler.cpp
+  RestImportHandler.cpp
+  RestIndexHandler.cpp
+  RestJobHandler.cpp
+  RestKeyGeneratorsHandler.cpp
+  RestLicenseHandler.cpp
+  RestOpenApiHandler.cpp
+  RestOptionsBaseHandler.cpp
+  RestOptionsDescriptionHandler.cpp
+  RestOptionsHandler.cpp
+  RestPublicOptionsHandler.cpp
+  RestQueryCacheHandler.cpp
+  RestQueryHandler.cpp
+  RestQueryPlanCacheHandler.cpp
+  RestShutdownHandler.cpp
+  RestSimpleHandler.cpp
+  RestSimpleQueryHandler.cpp
+  RestStatusHandler.cpp
+  RestSupervisionStateHandler.cpp
+  RestSupportInfoHandler.cpp
+  RestSystemReportHandler.cpp
+  RestTimeHandler.cpp
+  RestTransactionHandler.cpp
+  RestTtlHandler.cpp
+  RestUploadHandler.cpp
+  RestUsersHandler.cpp
+  RestVersionHandler.cpp
+  RestViewHandler.cpp
+  RestVocbaseBaseHandler.cpp
+  RestWalAccessHandler.cpp)
+
+if(USE_V8)
+  target_sources(arango_rest_handler PRIVATE
+    RestAdminExecuteHandler.cpp
+    RestAdminRoutingHandler.cpp
+    RestAqlUserFunctionsHandler.cpp
+    RestTasksHandler.cpp)
+endif()
+
+if(USE_MAINTAINER_MODE)
+  target_sources(arango_rest_handler PRIVATE
+    RestTestHandler.cpp)
+endif()
+
+target_link_libraries(arango_rest_handler
+  PUBLIC
+    arango_basic_utils velocypack
+    arango::validation rocksdb_interface immer arango_actor
+    arango_iresearch arango_v8)
+
+target_include_directories(arango_rest_handler PRIVATE
+  "${PROJECT_SOURCE_DIR}/arangod"
+  "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}"
+  "${CMAKE_CURRENT_BINARY_DIR}")
+
+add_dependencies(arango_rest_handler openapi-hex-files)
