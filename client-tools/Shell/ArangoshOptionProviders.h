@@ -22,6 +22,7 @@
 
 #include "ApplicationFeatures/CoreOptionProviders.h"
 #include "ApplicationFeatures/LanguageOptionsProvider.h"
+#include "ApplicationFeatures/TempOptionsProvider.h"
 #include "V8/V8PlatformOptionsProvider.h"
 #include "V8/V8SecurityOptionsProvider.h"
 
@@ -31,8 +32,8 @@
 
 namespace arangodb {
 using ArangoshOptionProviders =
-    CoreOptionProviders<LanguageOptionsProvider, V8PlatformOptionsProvider,
-                        V8SecurityOptionsProvider
+    CoreOptionProviders<LanguageOptionsProvider, TempOptionsProvider,
+                        V8PlatformOptionsProvider, V8SecurityOptionsProvider
 #ifdef USE_ENTERPRISE
                         ,
                         EncryptionOptionsProvider

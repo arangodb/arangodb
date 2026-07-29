@@ -27,6 +27,7 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "ApplicationFeatures/VersionFeature.h"
+#include "Logger/LogApiOptions.h"
 #include "Logger/LoggerOptions.h"
 #include <velocypack/Builder.h>
 
@@ -45,22 +46,21 @@ class LoggerFeature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() { return "Logger"; }
 
+  LoggerFeature(application_features::ApplicationServer& server, bool threaded,
+                LoggerOptions options, LogApiOptions apiOptions = {});
   LoggerFeature(application_features::ApplicationServer& server, bool threaded);
 
   ~LoggerFeature();
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void loadOptions(std::shared_ptr<options::ProgramOptions>,
-                   char const* binaryPath) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
   void unprepare() override final;
 
   void disableThreaded() noexcept { _threaded = false; }
   void setSupervisor(bool supervisor) noexcept { _supervisor = supervisor; }
 
-  bool isAPIEnabled() const noexcept { return _options.apiEnabled; }
-  bool onlySuperUser() const noexcept { return _options.apiSwitch == "jwt"; }
+  // TODO(COR-793): Move apiEnabled and apiSwitch to appropriate place
+  bool isAPIEnabled() const noexcept { return _apiOptions.apiEnabled; }
+  bool onlySuperUser() const noexcept { return _apiOptions.apiSwitch == "jwt"; }
 
  private:
   LoggerFeature(application_features::ApplicationServer& server,
@@ -68,6 +68,7 @@ class LoggerFeature final : public application_features::ApplicationFeature {
                 LoggerOptions options);
 
   LoggerOptions _options;
+  LogApiOptions _apiOptions;
   bool _supervisor = false;
   bool _threaded = false;
 };

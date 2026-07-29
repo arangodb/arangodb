@@ -29,7 +29,6 @@
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "Logger/LoggerFeature.h"
 #include "ApplicationFeatures/ConfigFeatureOptions.h"
-#include "Assertions/ProdAssert.h"
 
 namespace arangodb {
 namespace options {
@@ -38,7 +37,6 @@ class ProgramOptions;
 
 class LoggerFeature;
 class ShellColorsFeature;
-class VersionFeature;
 
 class ConfigFeature final : public application_features::ApplicationFeature {
  public:
@@ -61,7 +59,6 @@ class ConfigFeature final : public application_features::ApplicationFeature {
   void loadConfigFile(std::shared_ptr<options::ProgramOptions>,
                       std::string const& progname, char const* binaryPath);
 
-  VersionFeature* _version;
   ConfigFeatureOptions _options;
 };
 

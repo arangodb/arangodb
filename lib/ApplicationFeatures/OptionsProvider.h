@@ -40,6 +40,7 @@ struct OptionsProviderImpl {
     static_cast<Derived*>(this)->validateOptionsImpl(prgOptions, _options);
   }
   [[nodiscard]] OptionsT const& options() const noexcept { return _options; }
+  [[nodiscard]] OptionsT& mutableOptions() noexcept { return _options; }
 
  private:
   OptionsT _options;

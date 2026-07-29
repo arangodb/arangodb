@@ -55,8 +55,7 @@ ArangoVPackServer::ArangoVPackServer(
 void ArangoVPackServer::addFeatures() {
   addFeature<BasicFeaturePhaseClient>();
   addFeature<GreetingsFeaturePhase>(std::true_type{});
-  addFeature<VersionFeature>();
-  addFeature<LoggerFeature>(false);
+  // TODO: COR-788: Migrate ConfigFeature
   addFeature<ConfigFeature>(_binaryName, "none");
   addFeature<OptionsCheckFeature>();
   addFeature<ShellColorsFeature>();
@@ -66,6 +65,8 @@ void ArangoVPackServer::addFeatures() {
 }
 
 void ArangoVPackServer::addFeaturesWithOptionProvider() {
+  addFeature<VersionFeature>(getOptions<VersionOptionsProvider>());
+  addFeature<LoggerFeature>(false, getOptions<LoggerOptionsProvider>());
   addFeature<FileSystemFeature>(getOptions<FileSystemOptionsProvider>());
   addFeature<RandomFeature>(getOptions<RandomOptionsProvider>());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE

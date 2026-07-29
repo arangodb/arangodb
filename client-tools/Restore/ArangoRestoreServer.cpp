@@ -68,15 +68,13 @@ void ArangoRestoreServer::addFeatures() {
   addFeature<GreetingsFeaturePhase>(std::true_type{});
   auto& client = addFeature<HttpEndpointProvider, ClientFeature>(
       true, std::numeric_limits<size_t>::max());
-  addFeature<VersionFeature>();
-  addFeature<LoggerFeature>(false);
+  // TODO: COR-788: Migrate ConfigFeature
   addFeature<ConfigFeature>(_binaryName);
   addFeature<OptionsCheckFeature>();
   addFeature<ShellColorsFeature>();
   addFeature<ShutdownFeature>(
       std::array{std::type_index(typeid(RestoreFeature))});
   addFeature<SslFeature>();
-  addFeature<TempFeature>(_binaryName);
 #ifdef TRI_HAVE_GETRLIMIT
   addFeature<BumpFileDescriptorsFeature>("--descriptors-minimum");
 #endif
@@ -84,6 +82,9 @@ void ArangoRestoreServer::addFeatures() {
 }
 
 void ArangoRestoreServer::addFeaturesWithOptionProvider() {
+  addFeature<VersionFeature>(getOptions<VersionOptionsProvider>());
+  addFeature<LoggerFeature>(false, getOptions<LoggerOptionsProvider>());
+  addFeature<TempFeature>(_binaryName, getOptions<TempOptionsProvider>());
   addFeature<FileSystemFeature>(getOptions<FileSystemOptionsProvider>());
   addFeature<RandomFeature>(getOptions<RandomOptionsProvider>());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE

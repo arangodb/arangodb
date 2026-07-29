@@ -25,7 +25,6 @@
 #include <filesystem>
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/VersionFeature.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
@@ -65,13 +64,7 @@ ConfigFeature::ConfigFeature(application_features::ApplicationServer& server,
                              std::string const& configFilename,
                              ConfigFeatureOptions options)
     : application_features::ApplicationFeature{server, *this},
-      _version{[&server]() {
-        return server.hasFeature<VersionFeature>()
-                   ? &server.getFeature<VersionFeature>()
-                   : nullptr;
-      }()},
       _options(std::move(options)) {
-  ADB_PROD_ASSERT(_version != nullptr);
   _options.file = configFilename;
   _options.progname = progname;
 
@@ -108,8 +101,9 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
 
   bool fatal = true;
 
-  if (_version) {
-    fatal = !_version->printVersion();
+  auto const& result = options->processingResult();
+  if (result.touched("version") || result.touched("version-json")) {
+    fatal = false;
   }
 
   // always prefer an explicitly given config file

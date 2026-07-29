@@ -65,19 +65,20 @@ void ArangoExportServer::addFeatures() {
   addFeature<CommunicationFeaturePhase>();
   addFeature<GreetingsFeaturePhase>(std::true_type{});
   addFeature<HttpEndpointProvider, ClientFeature>(false);
-  addFeature<VersionFeature>();
-  addFeature<LoggerFeature>(false);
+  // TODO: COR-788: Migrate ConfigFeature
   addFeature<ConfigFeature>(_binaryName);
   addFeature<OptionsCheckFeature>();
   addFeature<ShellColorsFeature>();
   addFeature<ShutdownFeature>(
       std::array{std::type_index(typeid(ExportFeature))});
   addFeature<SslFeature>();
-  addFeature<TempFeature>(_binaryName);
   addFeature<ExportFeature>(_ret);
 }
 
 void ArangoExportServer::addFeaturesWithOptionProvider() {
+  addFeature<VersionFeature>(getOptions<VersionOptionsProvider>());
+  addFeature<LoggerFeature>(false, getOptions<LoggerOptionsProvider>());
+  addFeature<TempFeature>(_binaryName, getOptions<TempOptionsProvider>());
   addFeature<FileSystemFeature>(getOptions<FileSystemOptionsProvider>());
   addFeature<RandomFeature>(getOptions<RandomOptionsProvider>());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
