@@ -24,10 +24,9 @@
 #include "ApplicationFeatures/ConfigOptionsProvider.h"
 #include "ApplicationFeatures/TempOptionsProvider.h"
 #include "Benchmark/BenchOptionsProvider.h"
-#include "Shell/ClientOptionsProvider.h"
 
 namespace arangodb {
 using ArangoBenchOptionProviders =
-    CoreOptionProviders<BenchOptionsProvider, ClientOptionsProvider,
-                        ConfigOptionsProvider, TempOptionsProvider>;
+    CoreOptionProviders<BenchOptionsProvider, ConfigOptionsProvider,
+                        TempOptionsProvider>;
 }  // namespace arangodb

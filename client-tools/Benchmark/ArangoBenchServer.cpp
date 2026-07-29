@@ -61,6 +61,8 @@ void ArangoBenchServer::addFeatures() {
   addFeature<BasicFeaturePhaseClient>();
   addFeature<CommunicationFeaturePhase>();
   addFeature<GreetingsFeaturePhase>(std::true_type{});
+  addFeature<HttpEndpointProvider, ClientFeature>(
+      false, std::numeric_limits<size_t>::max());
   addFeature<OptionsCheckFeature>();
   addFeature<ShellColorsFeature>();
   addFeature<ShutdownFeature>(
@@ -79,9 +81,6 @@ void ArangoBenchServer::addFeaturesWithOptionProvider() {
   addFeature<ProcessEnvironmentFeature>(
       _binaryName, getOptions<ProcessEnvironmentOptionsProvider>());
 #endif
-  addFeature<HttpEndpointProvider, ClientFeature>(
-      false, getOptions<ClientOptionsProvider>(),
-      std::numeric_limits<size_t>::max());
   addFeature<BenchFeature>(_ret, getOptions<BenchOptionsProvider>());
 }
 

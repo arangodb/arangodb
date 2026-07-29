@@ -59,6 +59,7 @@ void ArangoBackupServer::addFeatures() {
   addFeature<BasicFeaturePhaseClient>();
   addFeature<CommunicationFeaturePhase>();
   addFeature<GreetingsFeaturePhase>(std::true_type{});
+  addFeature<HttpEndpointProvider, ClientFeature>(false);
   addFeature<OptionsCheckFeature>();
   addFeature<ShellColorsFeature>();
   addFeature<ShutdownFeature>(
@@ -76,8 +77,7 @@ void ArangoBackupServer::addFeaturesWithOptionProvider() {
   addFeature<ProcessEnvironmentFeature>(
       _binaryName, getOptions<ProcessEnvironmentOptionsProvider>());
 #endif
-  auto& client = addFeature<HttpEndpointProvider, ClientFeature>(
-      false, getOptions<ClientOptionsProvider>());
+  auto& client = getFeature<HttpEndpointProvider, ClientFeature>();
   addFeature<BackupFeature>(client, *_ret, getOptions<BackupOptionsProvider>());
 }
 

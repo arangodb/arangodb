@@ -66,6 +66,8 @@ void ArangoRestoreServer::addFeatures() {
   addFeature<BasicFeaturePhaseClient>();
   addFeature<CommunicationFeaturePhase>();
   addFeature<GreetingsFeaturePhase>(std::true_type{});
+  addFeature<HttpEndpointProvider, ClientFeature>(
+      true, std::numeric_limits<size_t>::max());
   addFeature<OptionsCheckFeature>();
   addFeature<ShellColorsFeature>();
   addFeature<ShutdownFeature>(
@@ -91,9 +93,7 @@ void ArangoRestoreServer::addFeaturesWithOptionProvider() {
   addFeature<BumpFileDescriptorsFeature>(
       getOptions<ClientBumpFileDescriptorsOptionsProvider>());
 #endif
-  auto& client = addFeature<HttpEndpointProvider, ClientFeature>(
-      true, getOptions<ClientOptionsProvider>(),
-      std::numeric_limits<size_t>::max());
+  auto& client = getFeature<HttpEndpointProvider, ClientFeature>();
   addFeature<RestoreFeature>(client, *_ret,
                              getOptions<RestoreOptionsProvider>());
 }

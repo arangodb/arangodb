@@ -73,6 +73,7 @@ void ArangoshServer::addFeatures() {
   addFeature<CommunicationFeaturePhase>();
   addFeature<GreetingsFeaturePhase>(std::true_type{});
 
+  addFeature<HttpEndpointProvider, ClientFeature>(true);
   addFeature<OptionsCheckFeature>();
   addFeature<ShellColorsFeature>();
   addFeature<ShutdownFeature>(
@@ -106,8 +107,7 @@ void ArangoshServer::addFeaturesWithOptionProvider() {
 #endif
   auto& console = addFeature<ShellConsoleFeature>(
       getOptions<ShellConsoleOptionsProvider>());
-  auto& client = addFeature<HttpEndpointProvider, ClientFeature>(
-      true, getOptions<ClientOptionsProvider>());
+  auto& client = getFeature<HttpEndpointProvider, ClientFeature>();
   addFeature<ShellFeature>(_ret, client, console,
                            getOptions<ShellOptionsProvider>());
 }

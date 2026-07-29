@@ -21,6 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ClientFeature.h"
+#include "Shell/ClientOptionsProvider.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
@@ -61,13 +62,6 @@ namespace arangodb {
 ClientFeature::ClientFeature(ApplicationServer& server, bool allowJwtSecret,
                              size_t maxNumEndpoints, double connectionTimeout,
                              double requestTimeout)
-    : ClientFeature{server,          allowJwtSecret,    ClientFeatureOptions{},
-                    maxNumEndpoints, connectionTimeout, requestTimeout} {}
-
-ClientFeature::ClientFeature(ApplicationServer& server, bool allowJwtSecret,
-                             ClientFeatureOptions options,
-                             size_t maxNumEndpoints, double connectionTimeout,
-                             double requestTimeout)
     : ClientFeature{server,
                     server.getFeature<CommunicationFeaturePhase>(),
                     typeid(HttpEndpointProvider),
@@ -75,7 +69,14 @@ ClientFeature::ClientFeature(ApplicationServer& server, bool allowJwtSecret,
                     maxNumEndpoints,
                     connectionTimeout,
                     requestTimeout,
-                    std::move(options)} {}
+                    ClientFeatureOptions{}} {
+  if (server.hasFeature<ShellConsoleFeature>()) {
+    _console = &server.getFeature<ShellConsoleFeature>();
+  }
+
+  startsAfter<CommunicationFeaturePhase>();
+  startsAfter<GreetingsFeaturePhase>();
+}
 
 ClientFeature::ClientFeature(
     ApplicationServer& server, CommunicationFeaturePhase& comm,
@@ -85,6 +86,7 @@ ClientFeature::ClientFeature(
     : HttpEndpointProvider(server, registration, name()),
       _options(std::move(options)),
       _comm{comm},
+      _console{},
       _retries(DEFAULT_RETRIES),
       _warn(false),
       _warnConnect(true) {
@@ -93,15 +95,19 @@ ClientFeature::ClientFeature(
   _options.databaseName = StaticStrings::SystemDatabase;
   _options.connectionTimeout = connectionTimeout;
   _options.requestTimeout = requestTimeout;
+  _options.sslProtocol = TLS_V12;
   _options.allowJwtSecret = allowJwtSecret;
   setOptional(true);
-  // TODO(listunov): is this optional ?
-  if (server.hasFeature<ShellConsoleFeature>()) {
-    _console = &server.getFeature<ShellConsoleFeature>();
-  }
+}
 
-  startsAfter<CommunicationFeaturePhase>();
-  startsAfter<GreetingsFeaturePhase>();
+void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
+  ClientOptionsProvider provider;
+  provider.declareOptions(options, _options);
+}
+
+void ClientFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
+  ClientOptionsProvider provider;
+  provider.validateOptions(options, _options);
 
   if (auto res = DatabaseNameValidator::validateName(true, true,
                                                      _options.databaseName);

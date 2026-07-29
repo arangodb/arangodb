@@ -24,15 +24,14 @@
 #include "ApplicationFeatures/ConfigOptionsProvider.h"
 #include "ApplicationFeatures/TempOptionsProvider.h"
 #include "Export/ExportOptionsProvider.h"
-#include "Shell/ClientOptionsProvider.h"
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Encryption/EncryptionOptionsProvider.h"
 #endif
 
 namespace arangodb {
 using ArangoExportOptionProviders =
-    CoreOptionProviders<ClientOptionsProvider, ConfigOptionsProvider,
-                        ExportOptionsProvider, TempOptionsProvider
+    CoreOptionProviders<ConfigOptionsProvider, ExportOptionsProvider,
+                        TempOptionsProvider
 #ifdef USE_ENTERPRISE
                         ,
                         EncryptionOptionsProvider

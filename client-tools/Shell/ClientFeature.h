@@ -61,14 +61,8 @@ class ClientFeature final : public HttpEndpointProvider {
                 double connectionTimeout = DEFAULT_CONNECTION_TIMEOUT,
                 double requestTimeout = DEFAULT_REQUEST_TIMEOUT);
 
-  ClientFeature(application_features::ApplicationServer& server,
-                bool allowJwtSecret, ClientFeatureOptions options,
-                size_t maxNumEndpoints = 1,
-                double connectionTimeout = DEFAULT_CONNECTION_TIMEOUT,
-                double requestTimeout = DEFAULT_REQUEST_TIMEOUT);
-
-  ~ClientFeature() override = default;
-
+  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
 
   std::string databaseName() const;
