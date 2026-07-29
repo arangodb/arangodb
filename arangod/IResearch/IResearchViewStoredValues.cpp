@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Yuriy Popov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/AttributeNameParser.h"

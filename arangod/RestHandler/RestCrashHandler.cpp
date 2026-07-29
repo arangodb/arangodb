@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jure Bajic
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestCrashHandler.h"
@@ -66,6 +65,12 @@ futures::Future<futures::Unit> RestCrashHandler::executeAsync() {
   } else if (suffixes.size() == 1) {
     // /_admin/crashes/{id}
     auto const& crashId = suffixes[0];
+
+    if (!DumpManager::isValidCrashId(crashId)) {
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+                    "invalid crash ID");
+      co_return;
+    }
 
     if (_request->requestType() == rest::RequestType::GET) {
       handleGetCrash(dumpManager, crashId);

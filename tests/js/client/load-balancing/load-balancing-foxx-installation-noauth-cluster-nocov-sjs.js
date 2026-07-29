@@ -21,8 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Heiko Kernbach
-/// @author Copyright 2023, ArangoDB GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
@@ -36,7 +34,8 @@ const request = require("@arangodb/request");
 const utils = require('@arangodb/foxx/manager-utils');
 const FoxxManager = require('@arangodb/foxx/manager');
 
-const getCoordinatorEndpoints = require('@arangodb/test-helper').getCoordinatorEndpoints;
+let { instanceRole } = require('@arangodb/testutils/instance');
+const IM = global.instanceManager;
 
 let coordinators = []; // will be initialized during setup
 const installMountPath = `/aRandomMountPathName`;
@@ -62,7 +61,7 @@ const getEncodedFoxxZipFile = () => {
 
 const isCov = require("@arangodb/test-helper").versionHas('coverage');
 
-function sendRequest(method, endpoint, body, usePrimary) {
+function sendRequest(method, path, body, usePrimary) {
   let res;
   const i = usePrimary ? 0 : 1;
   let timeout = (isCov)?420:66;
@@ -70,13 +69,13 @@ function sendRequest(method, endpoint, body, usePrimary) {
     const envelope = {
       body,
       method,
-      url: `${coordinators[i]}${endpoint}`,
+      url: `${coordinators[i].url}${path}`,
       timeout: timeout,
       json: true
     };
     res = request(envelope);
   } catch (err) {
-    console.error(`Exception processing ${method} ${endpoint}`, err.stack);
+    console.error(`Exception processing ${method} ${path}`, err.stack);
     return {};
   }
   assertTrue(res.hasOwnProperty('json'), JSON.stringify(res));
@@ -138,7 +137,7 @@ function FoxxInstallationSuite() {
   return {
 
     setUpAll: function () {
-      coordinators = getCoordinatorEndpoints();
+      coordinators = IM.getInstancesRole(instanceRole.coordinator);
       if (coordinators.length < 2) {
         throw new Error('Expecting at least two coordinators');
       }

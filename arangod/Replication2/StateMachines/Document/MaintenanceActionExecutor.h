@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Alexandru Petenchea
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
@@ -26,9 +25,10 @@
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/LoggerContext.h"
 #include "VocBase/Methods/Indexes.h"
+#include "VocBase/voc-types.h"
 
-struct TRI_vocbase_t;
 namespace arangodb {
+struct Database;
 class MaintenanceFeature;
 struct ShardID;
 }  // namespace arangodb
@@ -65,7 +65,7 @@ class MaintenanceActionExecutor : public IMaintenanceActionExecutor {
  public:
   MaintenanceActionExecutor(GlobalLogIdentifier _gid, ServerID server,
                             MaintenanceFeature& maintenanceFeature,
-                            TRI_vocbase_t& vocbase,
+                            Database& vocbase,
                             LoggerContext const& loggerContext);
 
   auto executeCreateCollection(ShardID const& shard,
@@ -100,7 +100,7 @@ class MaintenanceActionExecutor : public IMaintenanceActionExecutor {
 
   // The vocbase reference remains valid for the lifetime of the executor.
   // Replicated logs are stopped before the vocbase is marked as dropped.
-  TRI_vocbase_t& _vocbase;
+  Database& _vocbase;
 
   LoggerContext const _loggerContext;
 };

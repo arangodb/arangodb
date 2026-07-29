@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -62,18 +61,12 @@ class ManagerFeature final : public application_features::ApplicationFeature {
   void beginShutdown() override;
   void unprepare() override;
 
-  size_t streamingMaxTransactionSize() const noexcept;
-  double streamingLockTimeout() const noexcept;
-  double streamingIdleTimeout() const noexcept;
   static transaction::Manager* manager() noexcept;
-
-  /// @brief track number of aborted managed transactions
-  void trackExpired(uint64_t numExpired) noexcept;
 
  private:
   void queueGarbageCollection();
 
-  static std::unique_ptr<transaction::Manager> MANAGER;
+  static std::shared_ptr<transaction::Manager> MANAGER;
 
   ManagerFeatureOptions _options;
 

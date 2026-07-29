@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -34,9 +33,9 @@
 #include <string_view>
 #include <vector>
 
-struct TRI_vocbase_t;
-
 namespace arangodb {
+
+struct Database;
 namespace velocypack {
 class Builder;
 }
@@ -48,7 +47,7 @@ class Collections {
   Collections(Collections const& other) = delete;
   Collections& operator=(Collections const& other) = delete;
 
-  explicit Collections(TRI_vocbase_t*);
+  explicit Collections(Database*);
 
   ~Collections();
 
@@ -69,7 +68,7 @@ class Collections {
                  visitor) const;
 
  private:
-  TRI_vocbase_t* _vocbase;
+  Database* _vocbase;
 
   std::map<std::string, std::unique_ptr<aql::Collection>, std::less<>>
       _collections;

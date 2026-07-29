@@ -31,12 +31,13 @@ class ProgramOptions;
 
 namespace arangodb {
 
-struct FoxxOptionsProvider : OptionsProvider<FoxxFeatureOptions> {
-  void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
-                      FoxxFeatureOptions& options) override;
+struct FoxxOptionsProvider
+    : OptionsProviderImpl<FoxxOptionsProvider, FoxxFeatureOptions> {
+  void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                          FoxxFeatureOptions& options);
 
-  void validateOptions(std::shared_ptr<options::ProgramOptions> opts,
-                       FoxxFeatureOptions& options) override;
+  void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                           FoxxFeatureOptions& options);
 };
 
 }  // namespace arangodb

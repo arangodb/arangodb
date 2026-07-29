@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -32,8 +31,6 @@
 #include <mutex>
 #include <string>
 #include <unordered_map>
-
-struct TRI_vocbase_t;
 
 namespace arangodb {
 class RocksDBEngine;
@@ -75,7 +72,7 @@ class RocksDBDumpManager {
               std::string const& user);
 
   // delete all contexts for the given database.
-  void dropDatabase(TRI_vocbase_t& vocbase);
+  void dropDatabase(Database& vocbase);
 
   void garbageCollect(bool force);
 

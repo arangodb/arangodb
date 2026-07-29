@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -28,9 +26,9 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
-struct TRI_vocbase_t;  // forward declaration
-
 namespace arangodb {
+
+struct Database;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a flexible way to get at the system vocbase
@@ -40,16 +38,16 @@ class SystemDatabaseFeature final
     : public application_features::ApplicationFeature {
  public:
   struct VocbaseReleaser {
-    void operator()(TRI_vocbase_t* ptr);
+    void operator()(Database* ptr);
   };
 
-  using ptr = std::unique_ptr<TRI_vocbase_t, VocbaseReleaser>;
+  using ptr = std::unique_ptr<Database, VocbaseReleaser>;
 
   static constexpr std::string_view name() noexcept { return "SystemDatabase"; }
 
   explicit SystemDatabaseFeature(
       application_features::ApplicationServer& server,
-      TRI_vocbase_t* vocbase = nullptr);
+      Database* vocbase = nullptr);
 
   void start() override;
   void unprepare() override;
@@ -57,7 +55,7 @@ class SystemDatabaseFeature final
 
  private:
   // cached pointer to the system database
-  std::atomic<TRI_vocbase_t*> _vocbase;
+  std::atomic<Database*> _vocbase;
 };
 
 }  // namespace arangodb

@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -53,8 +52,6 @@ class LanguageFeature final : public application_features::ApplicationFeature {
   explicit LanguageFeature(application_features::ApplicationServer& server);
 
   ~LanguageFeature();
-
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
 
   void prepare() override final;
 

@@ -18,9 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
-/// @author Jan Steemann
-/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -31,14 +28,11 @@
 #include <v8.h>
 #include <velocypack/Builder.h>
 
-#include "Basics/Result.h"
-#include "Basics/VelocyPackHelper.h"
 #include "Scheduler/Scheduler.h"
-
-struct TRI_vocbase_t;
 
 namespace arangodb {
 
+struct Database;
 class DatabaseGuard;
 class ExecContext;
 
@@ -46,7 +40,7 @@ class Task : public std::enable_shared_from_this<Task> {
  public:
   static std::shared_ptr<Task> createTask(std::string const& id,
                                           std::string const& name,
-                                          TRI_vocbase_t* vocbase,
+                                          Database* vocbase,
                                           std::string const& command,
                                           bool allowUseDatabase, ErrorCode& ec);
 
@@ -68,7 +62,7 @@ class Task : public std::enable_shared_from_this<Task> {
       _tasks;
 
  public:
-  Task(std::string const& id, std::string const& name, TRI_vocbase_t& vocbase,
+  Task(std::string const& id, std::string const& name, Database& vocbase,
        std::string const& command, bool allowUseDatabase);
   ~Task();
 

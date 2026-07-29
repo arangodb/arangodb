@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
-/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -31,9 +29,8 @@
 
 #include <velocypack/Builder.h>
 
-struct TRI_vocbase_t;
-
 namespace arangodb {
+struct Database;
 class InitialSyncer;
 class ReplicationApplier;
 class ReplicationTransaction;
@@ -203,7 +200,7 @@ class TailingSyncer : public Syncer {
   bool _usersModified;
 
   /// @brief database list with modified _analyzers collection
-  std::set<TRI_vocbase_t*> _analyzersModified;
+  std::set<Database*> _analyzersModified;
 
   /// @brief use the initial tick
   bool _useTick;

@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -27,8 +26,8 @@
 #include "Basics/AttributeNameParser.h"
 #include "Basics/Result.h"
 #include "Containers/FlatHashSet.h"
+#include "Utils/OperationOptions.h"
 #include "VocBase/Identifiers/IndexId.h"
-#include "VocBase/vocbase.h"
 
 #include <s2/base/integral_types.h>
 
@@ -40,6 +39,7 @@
 #include <vector>
 
 namespace arangodb {
+class StorageEngine;
 class IndexIterator;
 class LogicalCollection;
 struct IndexIteratorOptions;

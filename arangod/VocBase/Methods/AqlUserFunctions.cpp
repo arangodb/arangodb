@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Wilfried Goesgens
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef USE_V8
@@ -29,15 +28,11 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
-#include "Aql/QueryRegistry.h"
 #include "Aql/QueryString.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
-#include "Basics/VelocyPackHelper.h"
-#include "RestServer/QueryRegistryFeature.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
-#include "Transaction/StandaloneContext.h"
 #include "Transaction/V8Context.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -45,6 +40,7 @@
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
 #include "V8Server/V8DealerFeature.h"
+#include "VocBase/vocbase.h"
 
 #include <v8.h>
 #include <absl/strings/str_cat.h>
@@ -91,7 +87,7 @@ void reloadAqlUserFunctions(application_features::ApplicationServer& server) {
 
 }  // namespace
 
-Result arangodb::unregisterUserFunction(TRI_vocbase_t& vocbase,
+Result arangodb::unregisterUserFunction(Database& vocbase,
                                         std::string const& functionName) {
   if (functionName.empty() || !isValidFunctionNameFilter(functionName)) {
     return Result(TRI_ERROR_QUERY_FUNCTION_INVALID_NAME,
@@ -136,7 +132,7 @@ Result arangodb::unregisterUserFunction(TRI_vocbase_t& vocbase,
 }
 
 Result arangodb::unregisterUserFunctionsGroup(
-    TRI_vocbase_t& vocbase, std::string const& functionFilterPrefix,
+    Database& vocbase, std::string const& functionFilterPrefix,
     int& deleteCount) {
   deleteCount = 0;
 
@@ -198,7 +194,7 @@ Result arangodb::unregisterUserFunctionsGroup(
   return Result();
 }
 
-Result arangodb::registerUserFunction(TRI_vocbase_t& vocbase,
+Result arangodb::registerUserFunction(Database& vocbase,
                                       velocypack::Slice userFunction,
                                       bool& replacedExisting) {
   replacedExisting = false;
@@ -354,7 +350,7 @@ Result arangodb::registerUserFunction(TRI_vocbase_t& vocbase,
   return res;
 }
 
-Result arangodb::toArrayUserFunctions(TRI_vocbase_t& vocbase,
+Result arangodb::toArrayUserFunctions(Database& vocbase,
                                       std::string const& functionFilterPrefix,
                                       velocypack::Builder& result) {
   std::string aql;

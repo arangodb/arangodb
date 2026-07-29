@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Julia Puget
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -26,7 +25,6 @@
 #include <gmock/gmock.h>
 
 #include "Cache/ICacheManagerProvider.h"
-#include "Mocks/MetricsCollector.h"
 #include "RestServer/IDatabasePathProvider.h"
 #include "RestServer/IDatabaseProvider.h"
 #include "RestServer/IDumpLimitsProvider.h"
@@ -62,10 +60,11 @@ struct MockDumpLimitsProvider : IDumpLimitsProvider {
 };
 
 struct MockDatabaseProvider : IDatabaseProvider {
+  MOCK_METHOD(void, notifyDdlChange, (char const*), (override));
   MOCK_METHOD(VocbasePtr, useDatabase, (std::string_view), (const, override));
   MOCK_METHOD(VocbasePtr, useDatabase, (TRI_voc_tick_t), (const, override));
-  MOCK_METHOD(void, enumerateDatabases,
-              (std::function<void(TRI_vocbase_t&)> const&), (override));
+  MOCK_METHOD(void, enumerateDatabases, (std::function<void(Database&)> const&),
+              (override));
   MOCK_METHOD(void, inventory,
               (velocypack::Builder&, TRI_voc_tick_t,
                std::function<bool(LogicalCollection const*)> const&),

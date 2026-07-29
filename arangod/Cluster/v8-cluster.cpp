@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "v8-cluster.h"
@@ -41,16 +40,13 @@
 #include "Network/Methods.h"
 #include "Network/Utils.h"
 #include "Replication/ReplicationFeature.h"
-#include "Rest/GeneralRequest.h"
 #include "Sharding/ShardDistributionReporter.h"
-#include "V8/v8-buffer.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
 #include "V8Server/v8-vocbaseprivate.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb;
@@ -140,7 +136,7 @@ static void JS_DoesDatabaseExistClusterInfo(
     TRI_V8_THROW_EXCEPTION_USAGE("doesDatabaseExist(<database-id>)");
   }
 
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  TRI_GET_GLOBALS();
   auto& ci = v8g->server().getFeature<ClusterFeature>().clusterInfo();
   bool const result =
       ci.doesDatabaseExist(TRI_ObjectToString(isolate, args[0]));
@@ -166,7 +162,7 @@ static void JS_Databases(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("databases()");
   }
 
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  TRI_GET_GLOBALS();
   auto& ci = v8g->server().getFeature<ClusterFeature>().clusterInfo();
   std::vector<DatabaseID> res = ci.databases();
   v8::Handle<v8::Array> a = v8::Array::New(isolate, (int)res.size());
@@ -191,7 +187,7 @@ static void JS_FlushClusterInfo(
 
   onlyInCluster();
 
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  TRI_GET_GLOBALS();
   V8SecurityFeature& v8security = v8g->server().getFeature<V8SecurityFeature>();
   if (!v8security.isInternalContext(isolate) &&
       !v8security.isAdminScriptContext(isolate)) {
@@ -229,7 +225,7 @@ static void JS_GetCollectionInfoClusterInfo(
 
   auto databaseID = TRI_ObjectToString(isolate, args[0]);
   auto collectionID = TRI_ObjectToString(isolate, args[1]);
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  TRI_GET_GLOBALS();
   auto& ci = v8g->server().getFeature<ClusterFeature>().clusterInfo();
   std::shared_ptr<LogicalCollection> col =
       ci.getCollectionNT(databaseID, collectionID);
@@ -319,7 +315,7 @@ static void JS_GetCollectionInfoCurrentClusterInfo(
 
   auto databaseID = TRI_ObjectToString(isolate, args[0]);
   auto collectionID = TRI_ObjectToString(isolate, args[1]);
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  TRI_GET_GLOBALS();
   auto& ci = v8g->server().getFeature<ClusterFeature>().clusterInfo();
   std::shared_ptr<LogicalCollection> col =
       ci.getCollectionNT(databaseID, collectionID);
@@ -430,7 +426,7 @@ static void JS_GetResponsibleServerClusterInfo(
     TRI_V8_THROW_EXCEPTION_USAGE("getResponsibleServer(<shard-id>)");
   }
 
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  TRI_GET_GLOBALS();
   auto& ci = v8g->server().getFeature<ClusterFeature>().clusterInfo();
   auto maybeShardID =
       ShardID::shardIdFromString(TRI_ObjectToString(isolate, args[0]));
@@ -491,7 +487,7 @@ static void JS_GetResponsibleServersClusterInfo(
     TRI_V8_THROW_EXCEPTION_USAGE("getResponsibleServers(<shard-ids>)");
   }
 
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  TRI_GET_GLOBALS();
   auto& ci = v8g->server().getFeature<ClusterFeature>().clusterInfo();
   auto result = ci.getResponsibleServers(shardIds);
 
@@ -543,7 +539,7 @@ static void JS_GetResponsibleShardClusterInfo(
 
   CollectionID collectionId = TRI_ObjectToString(isolate, args[0]);
   auto& vocbase = GetContextVocBase(isolate);
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  TRI_GET_GLOBALS();
   auto& ci = v8g->server().getFeature<ClusterFeature>().clusterInfo();
   auto collInfo = ci.getCollectionNT(vocbase.name(), collectionId);
   if (collInfo == nullptr) {
@@ -591,7 +587,7 @@ static void JS_GetServerEndpointClusterInfo(
     TRI_V8_THROW_EXCEPTION_USAGE("getServerEndpoint(<server-id>)");
   }
 
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  TRI_GET_GLOBALS();
   auto& ci = v8g->server().getFeature<ClusterFeature>().clusterInfo();
   std::string const result =
       ci.getServerEndpoint(TRI_ObjectToString(isolate, args[0]));
@@ -615,7 +611,7 @@ static void JS_GetServerNameClusterInfo(
     TRI_V8_THROW_EXCEPTION_USAGE("getServerName(<endpoint>)");
   }
 
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  TRI_GET_GLOBALS();
   auto& ci = v8g->server().getFeature<ClusterFeature>().clusterInfo();
   std::string const result =
       ci.getServerName(TRI_ObjectToString(isolate, args[0]));
@@ -639,7 +635,7 @@ static void JS_GetDBServers(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("getDBServers()");
   }
 
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  TRI_GET_GLOBALS();
   auto& ci = v8g->server().getFeature<ClusterFeature>().clusterInfo();
   auto DBServers = ci.getCurrentDBServers();
   auto serverAliases = ci.getServerAliases();
@@ -692,7 +688,7 @@ static void JS_GetCoordinators(
     TRI_V8_THROW_EXCEPTION_USAGE("getCoordinators()");
   }
 
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  TRI_GET_GLOBALS();
   auto& ci = v8g->server().getFeature<ClusterFeature>().clusterInfo();
   std::vector<std::string> coordinators = ci.getCurrentCoordinators();
 
@@ -718,7 +714,7 @@ static void JS_UniqidClusterInfo(
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  TRI_GET_GLOBALS();
   V8SecurityFeature& v8security = v8g->server().getFeature<V8SecurityFeature>();
   if (!v8security.isInternalContext(isolate) &&
       !v8security.isAdminScriptContext(isolate)) {
@@ -837,7 +833,7 @@ static void JS_setFoxxmasterQueueupdate(
   ServerState::instance()->setFoxxmasterQueueupdate(value);
 
   if (AsyncAgencyCommManager::isEnabled()) {
-    TRI_GET_SERVER_GLOBALS(ArangodServer);
+    TRI_GET_GLOBALS();
     AgencyComm comm(v8g->server());
     std::string key = "Current/FoxxmasterQueueupdate";
     VPackSlice val = value ? VPackSlice::trueSlice() : VPackSlice::falseSlice();
@@ -875,7 +871,7 @@ static void JS_systemCollectionsCreated(
   }
 
   if (AsyncAgencyCommManager::isEnabled()) {
-    TRI_GET_SERVER_GLOBALS(ArangodServer);
+    TRI_GET_GLOBALS();
     AgencyComm comm(v8g->server());
     std::string key = "SystemCollectionsCreated";
     VPackSlice val = setTo ? VPackSlice::trueSlice() : VPackSlice::falseSlice();
@@ -1078,7 +1074,7 @@ static void JS_GetAnalyzersRevision(
 
   auto const databaseID = TRI_ObjectToString(isolate, args[0]);
 
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  TRI_GET_GLOBALS();
   auto& ci = v8g->server().getFeature<ClusterFeature>().clusterInfo();
   auto const analyzerRevision = ci.getAnalyzersRevision(databaseID);
 
@@ -1112,7 +1108,7 @@ static void JS_WaitForPlanVersion(
         "<planVersion> is invalid, has to be a number larger 0");
   }
 
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  TRI_GET_GLOBALS();
   auto& ci = v8g->server().getFeature<ClusterFeature>().clusterInfo();
 
   VPackBuilder result;

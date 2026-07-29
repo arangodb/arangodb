@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -46,8 +45,6 @@
 #define ENTERPRISE_VIRT TEST_VIRTUAL
 #endif
 
-struct TRI_vocbase_t;
-
 namespace arangodb {
 
 namespace futures {
@@ -70,6 +67,7 @@ struct Variable;
 }  // namespace aql
 
 class CollectionNameResolver;
+struct Database;
 class DataSourceId;
 class Index;
 class IndexIterator;
@@ -162,7 +160,7 @@ class Methods {
   enum class CursorType { ALL = 0, ANY };
 
   /// @brief return database of transaction
-  TRI_vocbase_t& vocbase() const;
+  Database& vocbase() const;
 
   /// @brief return internals of transaction
   TransactionState* state() const noexcept { return _state.get(); }

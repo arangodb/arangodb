@@ -21,7 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Jan Steemann
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require('jsunity');
@@ -29,13 +28,15 @@ const internal = require('internal');
 const arangodb = require('@arangodb');
 const _ = require('lodash');
 const db = arangodb.db;
-const { getEndpointById, getEndpointsByType, getMetric } = require('@arangodb/test-helper');
+let { instanceRole } = require('@arangodb/testutils/instance');
+
+let IM = global.instanceManager;
 
 function getDroppedFollowers(servers) {
   let droppedFollowers = {};
   servers.forEach((serverId) => {
-    let endpoint = getEndpointById(serverId);
-    droppedFollowers[serverId] = getMetric(endpoint, "arangodb_dropped_followers_total");
+    let arangod = IM.getInstanceByID(serverId);
+    droppedFollowers[serverId] = arangod.getMetric("arangodb_dropped_followers_total");
   });
   return droppedFollowers;
 }
@@ -43,8 +44,8 @@ function getDroppedFollowers(servers) {
 function getIntermediateCommits(servers) {
   let intermediateCommits = {};
   servers.forEach((serverId) => {
-    let endpoint = getEndpointById(serverId);
-    intermediateCommits[serverId] = getMetric(endpoint, "arangodb_intermediate_commits_total");
+    let arangod = IM.getInstanceByID(serverId);
+    intermediateCommits[serverId] = arangod.getMetric("arangodb_intermediate_commits_total");
   });
   return intermediateCommits;
 }
@@ -305,7 +306,7 @@ function transactionDroppedFollowersSuite() {
   };
 }
 
-let ep = getEndpointsByType('dbserver');
+let ep = IM.getInstancesRole(instanceRole.dbserver);
 if (ep.length >= 3) {
   jsunity.run(transactionDroppedFollowersSuite);
 }

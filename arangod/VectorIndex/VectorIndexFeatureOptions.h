@@ -26,6 +26,11 @@ namespace arangodb {
 
 struct VectorIndexFeatureOptions {
   bool useVectorIndex = false;
+
+  // Backoff (in seconds) before the build manager retries a vector index whose
+  // build failed and whose document count has not changed. Defaults to 1
+  // minute.
+  double buildRetryBackoffSecs = 60.0;
 };
 
 }  // namespace arangodb

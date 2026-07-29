@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "StatisticsFeature.h"
@@ -570,10 +569,9 @@ RequestFigures UserRequestFigures;
 // --SECTION--                                                  StatisticsThread
 // -----------------------------------------------------------------------------
 
-class StatisticsThread final : public ServerThread {
+class StatisticsThread final : public Thread {
  public:
-  explicit StatisticsThread(Server& server)
-      : ServerThread(server, "Statistics") {}
+  explicit StatisticsThread() : Thread("Statistics") {}
   ~StatisticsThread() { shutdown(); }
 
  public:
@@ -733,7 +731,7 @@ void StatisticsFeature::start() {
   // don't start the thread when we are running an upgrade
   auto& databaseFeature = server().getFeature<arangodb::DatabaseFeature>();
   if (!databaseFeature.upgrade()) {
-    _statisticsThread = std::make_unique<StatisticsThread>(server());
+    _statisticsThread = std::make_unique<StatisticsThread>();
 
     if (!_statisticsThread->start()) {
       LOG_TOPIC("46b0c", FATAL, arangodb::Logger::STATISTICS)

@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -38,8 +37,6 @@
 #include <string>
 #include <string_view>
 #include <vector>
-
-struct TRI_vocbase_t;
 
 namespace arangodb {
 class LogicalCollection;
@@ -95,7 +92,7 @@ class ComputedValuesExpressionContext final : public aql::ExpressionContext {
 
   ValidatorBase* buildValidator(velocypack::Slice params) override;
 
-  TRI_vocbase_t& vocbase() const override;
+  Database& vocbase() const override;
 
   transaction::Methods& trx() const override;
 
@@ -130,7 +127,7 @@ class ComputedValuesExpressionContext final : public aql::ExpressionContext {
 class ComputedValues {
   class ComputedValue {
    public:
-    ComputedValue(TRI_vocbase_t& vocbase, std::string_view name,
+    ComputedValue(Database& vocbase, std::string_view name,
                   std::string_view expressionString,
                   transaction::OperationOrigin operationOrigin,
                   ComputeValuesOn mustComputeOn, bool overwrite,
@@ -151,7 +148,7 @@ class ComputedValues {
     aql::Variable const* tempVariable() const noexcept;
 
    private:
-    TRI_vocbase_t& _vocbase;
+    Database& _vocbase;
     std::string _name;
     std::string _expressionString;
     ComputeValuesOn _mustComputeOn;
@@ -171,7 +168,7 @@ class ComputedValues {
  public:
   static constexpr std::string_view moduleName = "computed values validation";
 
-  explicit ComputedValues(TRI_vocbase_t& vocbase,
+  explicit ComputedValues(Database& vocbase,
                           std::span<std::string const> shardKeys,
                           velocypack::Slice params,
                           transaction::OperationOrigin operationOrigin);
@@ -192,7 +189,7 @@ class ComputedValues {
       ComputeValuesOn mustComputeOn, velocypack::Builder& output) const;
 
   static ResultT<std::shared_ptr<ComputedValues>> buildInstance(
-      TRI_vocbase_t& vocbase, std::vector<std::string> const& shardKeys,
+      Database& vocbase, std::vector<std::string> const& shardKeys,
       velocypack::Slice computedValues,
       transaction::OperationOrigin operationOrigin);
 
@@ -204,7 +201,7 @@ class ComputedValues {
       containers::FlatHashSet<std::string_view> const& keysWritten,
       velocypack::Builder& output) const;
 
-  Result buildDefinitions(TRI_vocbase_t& vocbase,
+  Result buildDefinitions(Database& vocbase,
                           std::span<std::string const> shardKeys,
                           velocypack::Slice params,
                           transaction::OperationOrigin operationOrigin);

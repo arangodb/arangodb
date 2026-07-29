@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "NetworkFeature.h"
@@ -342,31 +341,23 @@ NetworkFeature::NetworkFeature(application_features::ApplicationServer& server,
   startsAfter<ClusterFeature>();
   startsAfter<SchedulerFeature>();
   startsAfter<ServerFeature>();
+
+  // cross-feature default: derive idle TTL from GeneralServerFeature's
+  // keep-alive timeout when not explicitly set by the user
+  auto opts = server.options();
+  if (opts &&
+      !opts->processingResult().touched("--network.idle-connection-ttl") &&
+      server.hasFeature<GeneralServerFeature>()) {
+    auto& gs = server.getFeature<GeneralServerFeature>();
+    _options.idleTtlMilli = uint64_t(gs.keepAliveTimeout() * 1000 / 2);
+  }
+  _options.idleTtlMilli = std::max<uint64_t>(_options.idleTtlMilli, 10000);
 }
 
 NetworkFeature::~NetworkFeature() {
   if (_pool) {
     _pool->stop();
   }
-}
-
-void NetworkFeature::collectOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  NetworkOptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
-
-void NetworkFeature::validateOptions(
-    std::shared_ptr<options::ProgramOptions> opts) {
-  // cross-feature default: derive idle TTL from GeneralServerFeature's
-  // keep-alive timeout when not explicitly set by the user
-  if (!opts->processingResult().touched("--network.idle-connection-ttl")) {
-    auto& gs = server().getFeature<GeneralServerFeature>();
-    _options.idleTtlMilli = uint64_t(gs.keepAliveTimeout() * 1000 / 2);
-  }
-
-  NetworkOptionsProvider provider;
-  provider.validateOptions(opts, _options);
 }
 
 void NetworkFeature::prepare() {

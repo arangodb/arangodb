@@ -18,9 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
-/// @author Matthew Von-Maszewski
-/// @author Copyright 2017-2018, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/SharedPRNG.h"
@@ -68,7 +65,6 @@
 #include <velocypack/Iterator.h>
 
 #include <iostream>
-#include <iterator>
 #include <memory>
 #include <random>
 
@@ -141,7 +137,7 @@ class SharedMaintenanceTest : public ::testing::Test {
   NodePtr originalPlan;
   NodePtr supervision;
   NodePtr current;
-  ArangodServer server;
+  application_features::ApplicationServer server;
   StorageEngineMock engine;
 
   // map <shortId, UUID>
@@ -519,7 +515,7 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
   int _dummy;
   std::shared_ptr<options::ProgramOptions> po;
   basics::SharedPRNG sharedPRNG;
-  ArangodServer as;
+  application_features::ApplicationServer as;
   containers::FlatHashSet<DatabaseID> makeDirty;
   MaintenanceFeature::errors_t errors;
 
@@ -553,7 +549,7 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
     auto& dbpath = as.addFeature<DatabasePathFeature>();
     auto& flush = as.addFeature<FlushFeature>(metrics);
     auto& dumpLimits = as.addFeature<DumpLimitsFeature>();
-    as.addFeature<SchedulerFeature>(metrics, sharedPRNG);
+    auto& scheduler = as.addFeature<SchedulerFeature>(metrics, sharedPRNG);
 
     auto& rocksDbRecoveryManager =
         as.addFeature<RocksDBRecoveryManager>(dbFeature, dbFeature);
@@ -572,7 +568,7 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
     // server
     engine = std::make_unique<RocksDBEngine>(
         as, roOptions, metrics, dbpath, vectorIndex, flush, dumpLimits,
-        replicatedLogFeature, rocksDbRecoveryManager, dbFeature,
+        replicatedLogFeature, scheduler, rocksDbRecoveryManager, dbFeature,
         rocksDbIndexCacheRefillFeature, cacheManagerFeature, agencyFeature);
     dbFeature.setEngineTesting(engine.get());
   }

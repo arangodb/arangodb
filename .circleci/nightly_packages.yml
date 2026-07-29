@@ -1,0 +1,235 @@
+version: 2.1
+# Nightly images and packages pipeline — setup config.
+#
+# Triggered via: pipeline-type=nightly-packages
+#
+# Like the testing pipeline (config.yml), this is a dynamic-config setup
+# stage: generate-nightly-packages-config prunes the jobs disabled by pipeline
+# parameters (package formats, Docker, scan, sign, security checks) from
+# base_nightly_packages.yml — including their entries in requires lists —
+# and continues the pipeline with the result. Disabled jobs are therefore
+# never scheduled instead of each spinning up a node just to halt.
+#
+# The base config declares the same parameters with the same defaults and
+# keeps using them for everything below job granularity (e.g. the publish
+# steps and the Trivy gate level): trigger-time parameter values carry over
+# into the continued pipeline automatically (passing them again would be a
+# "Conflicting pipeline parameters." error).
+#
+# The workflow itself (jobs, publishing semantics, required contexts) is
+# documented in base_nightly_packages.yml.
+#
+# pr-run=true turns the whole pipeline into a PR test: the workflows run as
+# setup-nightly-packages-pr / nightly-packages-pr, publish-nightly becomes a
+# dry run (see base_nightly_packages.yml), and cancel-redundant-pipelines
+# only cancels other pr-run pipelines on the branch.
+
+setup: true
+
+orbs:
+  continuation: circleci/continuation@0.4.0
+
+parameters:
+  enterprise-branch:
+    type: string
+    default: ""
+    description: "Enterprise repo branch to use. Defaults to the same branch as arangodb, falling back to devel."
+  build-docker-image:
+    type: string
+    default: "public.ecr.aws/b0b8h2r4/arangodb/ubuntubuildarangodb-312:24.04-d2eb28e68"
+    description: "Ubuntu build image (compiler toolchain + packaging/scan tools) the compile, packaging, scan, and sign jobs run in. The tag is bumped automatically by the infrastructure pipeline's build-image rebuild; override only to try a new build image."
+  build-debian-packages:
+    type: boolean
+    default: true
+    description: "Build the DEB packages (server, client, dbg) for amd64 and arm64."
+  build-rpm-packages:
+    type: boolean
+    default: true
+    description: "Build the RPM packages (server, client, debuginfo) for amd64 and arm64."
+  build-tarballs:
+    type: boolean
+    default: true
+    description: "Build the TAR.GZ server and client bundles for amd64 and arm64."
+  build-alpine-images:
+    type: boolean
+    default: true
+    description: "Build the Alpine-based Docker images (one per architecture: amd64 and arm64); the publish job pushes them and creates their multi-arch manifests at the end. The default image with suffix-less tags."
+  build-deb-images:
+    type: boolean
+    default: true
+    description: "Build the Ubuntu-based Docker images (one per architecture: amd64 and arm64); the publish job pushes them and creates their multi-arch manifests at the end. Tags carry -deb between version and arch."
+  push-images-to-gcr-also:
+    type: boolean
+    default: true
+    description: "Additionally push Docker images to gcr.io/gcr-for-testing (docker.io is always pushed)."
+  sign-packages:
+    type: boolean
+    default: true
+    description: "Create detached GPG signatures (.asc) for all packages."
+  scan-viruses:
+    type: boolean
+    default: true
+    description: "Scan all packages with ClamAV before publishing."
+  security-check:
+    type: boolean
+    default: true
+    description: "Trivy scan (CVEs + secrets) of every package and Docker image before publishing; findings at or above security-check-fail-level block the publish."
+  security-check-fail-level:
+    type: enum
+    enum: ["NONE", "LOW", "MEDIUM", "HIGH", "CRITICAL", "ALL"]
+    default: "HIGH"
+    description: "Minimum Trivy finding severity that fails the security-check jobs (findings at or above this level block the publish). The stored reports always contain ALL severities. NONE = report-only, never fail; ALL = fail on any finding incl. UNKNOWN severity. The EOL base-OS check on Docker images fails regardless of this level."
+  pr-run:
+    type: boolean
+    default: false
+    description: "TEST run for a GitHub PR — NOT a real nightly. The pipeline runs under the names setup-nightly-packages-pr/nightly-packages-pr and executes every job selected by the other parameters, including publish-nightly, but the publish degrades to a dry run: packages are staged to GCS and verified, then discarded; nothing is promoted to the live nightly tree, no Docker tags or manifests are pushed, no download index is uploaded. Redundant-pipeline cancellation only targets other pr-run pipelines on the branch, never a real nightly-packages run."
+
+jobs:
+  cancel-redundant-pipelines:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - run:
+          name: Cancel redundant pipelines
+          command: |
+            if [[ "$CIRCLE_BRANCH" =~ ^[0-9]+\.[0-9]+(\.[0-9]+)?$ ]] || [ "$CIRCLE_BRANCH" == "devel" ]; then
+              echo "Branch is a release branch or devel, not cancelling any pipelines"
+              exit 0
+            fi
+            PR_RUN="<< pipeline.parameters.pr-run >>"
+            CURRENT_PIPELINE_NUM=$(curl -s --header "Circle-Token: $CIRCLECI_TOKEN" \
+              "https://circleci.com/api/v2/workflow/${CIRCLE_WORKFLOW_ID}" | jq -r '.pipeline_number')
+            echo "Current pipeline: #${CURRENT_PIPELINE_NUM} (pr-run: ${PR_RUN})"
+            # Cancel older API-triggered pipelines on this branch (infrastructure + nightly),
+            # leaving commit-triggered testing pipelines untouched.
+            # A pr-run pipeline is a TEST riding alongside the real thing: it
+            # only ever cancels other pr-run pipelines (recognized by their
+            # *-pr workflow names), never a real nightly-packages or
+            # infrastructure run on the same branch.
+            PIPE_IDS=$(curl -s --header "Circle-Token: $CIRCLECI_TOKEN" \
+              "https://circleci.com/api/v2/project/gh/arangodb/arangodb/pipeline?branch=$CIRCLE_BRANCH" | \
+              jq -r --argjson N "$CURRENT_PIPELINE_NUM" \
+              '.items[]|select(.state == "created")|select(.number < $N)|select(.trigger.type == "api")|.id')
+            if [ -z "$PIPE_IDS" ]; then echo "Nothing to cancel"; exit 0; fi
+            for PIPE_ID in $PIPE_IDS; do
+              curl -s --header "Circle-Token: $CIRCLECI_TOKEN" \
+                "https://circleci.com/api/v2/pipeline/${PIPE_ID}/workflow" | \
+                jq -r '.items[]|select(.status == "on_hold" or .status == "running")|[.id,.name]|@tsv' >> WF_candidates.txt
+            done
+            touch WF_candidates.txt
+            if [ "$PR_RUN" = "true" ]; then
+              awk -F'\t' '$2 == "nightly-packages-pr" || $2 == "setup-nightly-packages-pr" {print $1}' \
+                WF_candidates.txt > WF_to_cancel.txt
+            else
+              cut -f1 WF_candidates.txt > WF_to_cancel.txt
+            fi
+            if [ -s WF_to_cancel.txt ]; then
+              echo "Cancelling the following workflow(s):"
+              cat WF_to_cancel.txt
+              while read WF_ID; do
+                curl -s --header "Circle-Token: $CIRCLECI_TOKEN" --request POST \
+                  "https://circleci.com/api/v2/workflow/$WF_ID/cancel"
+              done < WF_to_cancel.txt
+            else
+              echo "Nothing to cancel"
+            fi
+
+  generate-nightly-packages-config:
+    docker:
+      - image: cimg/python:3.11.1
+    executor: continuation/default
+    resource_class: small
+    steps:
+      - run:
+          name: Checkout .circleci
+          command: |
+            git clone -n --depth=1 --filter=tree:0 https://github.com/arangodb/arangodb
+            cd arangodb
+            git sparse-checkout set --no-cone .circleci
+            git checkout $CIRCLE_SHA1
+            mv .circleci ..
+      - add_ssh_keys:
+          fingerprints:
+            - "f9:49:75:1a:ad:44:89:10:4b:3c:70:70:ba:d3:c3:ce"
+      - run:
+          name: Resolve enterprise commit and pin the nightly date
+          command: |
+            ssh-keyscan github.com >> ~/.ssh/known_hosts
+            ENTERPRISE_BRANCH="<< pipeline.parameters.enterprise-branch >>"
+            if [ -z "$ENTERPRISE_BRANCH" ]; then
+              set +e
+              git ls-remote --exit-code --heads git@github.com:arangodb/enterprise.git "$CIRCLE_BRANCH"
+              if [ "$?" == "0" ]; then
+                ENTERPRISE_BRANCH="$CIRCLE_BRANCH"
+              else
+                ENTERPRISE_BRANCH="devel"
+              fi
+              set -e
+            fi
+            ENTERPRISE_COMMIT="$(git ls-remote --heads git@github.com:arangodb/enterprise.git "$ENTERPRISE_BRANCH" | cut -f1)"
+            if [ -z "${ENTERPRISE_COMMIT}" ]; then
+              echo "Could not resolve enterprise branch '${ENTERPRISE_BRANCH}' to a commit"
+              exit 1
+            fi
+            NIGHTLY_DATE="$(date +%Y%m%d)"
+            echo "Using enterprise branch ${ENTERPRISE_BRANCH} (${ENTERPRISE_COMMIT}), nightly date ${NIGHTLY_DATE}"
+            # Handed to the continuation as computed pipeline parameters:
+            # resolved exactly ONCE here, so every job of the continued
+            # pipeline sees the same enterprise commit and the same date by
+            # construction — no per-job re-resolution, no midnight skew, no
+            # workspace file that might be missing.
+            printf '{"enterprise-commit":"%s","nightly-date":"%s"}\n' \
+              "${ENTERPRISE_COMMIT}" "${NIGHTLY_DATE}" > parameters.json
+            cat parameters.json
+      - run:
+          name: Install dependencies
+          command: pip install pyyaml pytest
+      - run:
+          name: Run generator unit tests
+          command: |
+            cd .circleci
+            python -m pytest tests_unit/test_generate_nightly_packages_config.py -q
+      - run:
+          name: Generate continuation config
+          command: |
+            set -x
+            python3 .circleci/generate_nightly_packages_config.py \
+              --base .circleci/base_nightly_packages.yml \
+              --build-debian-packages "<< pipeline.parameters.build-debian-packages >>" \
+              --build-rpm-packages "<< pipeline.parameters.build-rpm-packages >>" \
+              --build-tarballs "<< pipeline.parameters.build-tarballs >>" \
+              --build-alpine-images "<< pipeline.parameters.build-alpine-images >>" \
+              --build-deb-images "<< pipeline.parameters.build-deb-images >>" \
+              --sign-packages "<< pipeline.parameters.sign-packages >>" \
+              --scan-viruses "<< pipeline.parameters.scan-viruses >>" \
+              --security-check "<< pipeline.parameters.security-check >>" \
+              --pr-run "<< pipeline.parameters.pr-run >>" \
+              -o nightly_packages_continuation_config.yml
+      # Only the SETUP-COMPUTED parameters (enterprise-commit and
+      # nightly-date, declared solely in the base config) are passed to the
+      # continuation. Parameters set at trigger time carry over into the
+      # continued pipeline automatically, and re-passing those is rejected
+      # by the continuation API with "Conflicting pipeline parameters."
+      # Values left at their defaults resolve identically in the base
+      # config, which declares the same parameters with the same defaults.
+      - continuation/continue:
+          configuration_path: nightly_packages_continuation_config.yml
+          parameters: parameters.json
+
+workflows:
+  # Same two jobs either way; the split exists only so a pr-run pipeline is
+  # recognizable by workflow name from the very first job — in the CircleCI
+  # UI, in GitHub PR checks, and by cancel-redundant-pipelines (which
+  # matches these names to decide what it may cancel).
+  setup-nightly-packages:
+    when:
+      not: << pipeline.parameters.pr-run >>
+    jobs: &setup-jobs
+      - cancel-redundant-pipelines:
+          context: [ circleci-token ]
+      - generate-nightly-packages-config:
+          requires: [cancel-redundant-pipelines]
+  setup-nightly-packages-pr:
+    when: << pipeline.parameters.pr-run >>
+    jobs: *setup-jobs

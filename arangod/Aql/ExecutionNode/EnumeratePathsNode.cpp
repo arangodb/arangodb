@@ -18,9 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
-/// @author Markus Pfeiffer
-/// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "EnumeratePathsNode.h"
@@ -111,7 +108,7 @@ static GraphNode::InputVertex prepareVertexInput(EnumeratePathsNode const* node,
 }  // namespace
 
 EnumeratePathsNode::EnumeratePathsNode(
-    ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
+    ExecutionPlan* plan, ExecutionNodeId id, Database* vocbase,
     arangodb::graph::PathType::Type pathType, AstNode const* direction,
     AstNode const* start, AstNode const* target, AstNode const* graph,
     std::unique_ptr<BaseOptions> options)
@@ -155,7 +152,7 @@ EnumeratePathsNode::EnumeratePathsNode(
 
 /// @brief Internal constructor to clone the node.
 EnumeratePathsNode::EnumeratePathsNode(
-    ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
+    ExecutionPlan* plan, ExecutionNodeId id, Database* vocbase,
     arangodb::graph::PathType::Type pathType,
     std::vector<Collection*> const& edgeColls,
     std::vector<Collection*> const& vertexColls,

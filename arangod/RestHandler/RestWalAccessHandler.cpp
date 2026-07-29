@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestWalAccessHandler.h"
@@ -462,4 +461,13 @@ void RestWalAccessHandler::handleCommandDetermineOpenTransactions(
     _response->setHeaderNC(StaticStrings::ReplicationHeaderFromPresent, "true");
     _response->setHeaderNC(StaticStrings::ReplicationHeaderLastIncluded, "0");
   }
+}
+
+auto RestVocbaseBaseHandler::makeSharedLogContextValue() const
+    -> std::shared_ptr<LogContext::Values> {
+  return LogContext::makeValue()
+      .with<structuredParams::UrlName>(_request->fullUrl())
+      .with<structuredParams::UserName>(_request->user())
+      .with<structuredParams::DatabaseName>(_vocbase.name())
+      .share();
 }

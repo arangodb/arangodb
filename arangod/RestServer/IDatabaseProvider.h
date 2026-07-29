@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Julia Puget
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -28,7 +27,6 @@
 
 #include <functional>
 #include <string_view>
-struct TRI_vocbase_t;
 
 namespace arangodb {
 class LogicalCollection;
@@ -40,11 +38,16 @@ class Builder;
 struct IDatabaseProvider {
   virtual ~IDatabaseProvider() = default;
 
+  /// @brief record a DDL change so the global schema version is bumped
+  /// (the version is used to notify listeners, e.g. the agency, about DDL
+  /// changes). The reason is used for tracing only.
+  virtual void notifyDdlChange(char const* reason) = 0;
+
   virtual VocbasePtr useDatabase(std::string_view name) const = 0;
   virtual VocbasePtr useDatabase(TRI_voc_tick_t id) const = 0;
 
   virtual void enumerateDatabases(
-      std::function<void(TRI_vocbase_t& vocbase)> const& func) = 0;
+      std::function<void(Database& vocbase)> const& func) = 0;
 
   virtual void inventory(
       velocypack::Builder& result, TRI_voc_tick_t,

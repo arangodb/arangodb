@@ -21,8 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Dr. Frank Celler
-/// @author Alan Plum
 // //////////////////////////////////////////////////////////////////////////////
 
 const internal = require('internal');

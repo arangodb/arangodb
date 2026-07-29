@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <filesystem>
@@ -69,7 +68,6 @@
 #include "V8/V8PlatformFeature.h"
 #include "V8/V8SecurityFeature.h"
 #include "V8/v8-buffer.h"
-#include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-shell.h"
 #include "V8/v8-utils.h"
@@ -84,9 +82,6 @@
 #include "V8Server/v8-user-structures.h"
 #include "V8Server/v8-vocbase.h"
 #include "VocBase/vocbase.h"
-#ifdef USE_ENTERPRISE
-#include "Enterprise/Encryption/EncryptionFeature.h"
-#endif
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -97,7 +92,7 @@ namespace {
 class V8GcThread : public Thread {
  public:
   explicit V8GcThread(V8DealerFeature& dealer)
-      : Thread(dealer.server(), "V8GarbageCollector"),
+      : Thread("V8GarbageCollector"),
         _dealer(dealer),
         _lastGcStamp(static_cast<uint64_t>(TRI_microtime())) {}
 
