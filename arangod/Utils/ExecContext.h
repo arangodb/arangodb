@@ -119,12 +119,6 @@ class ExecContext {
     return _authMode.getIAuth().username();
   }
 
-  /// @brief returns the API version requested by the associated
-  /// GeneralRequest, if any; otherwise returns the default API version.
-  [[nodiscard]] uint32_t requestedApiVersion() const noexcept {
-    return _authMode.requestedApiVersion();
-  }
-
   // Unified permission-check entry point. Prefer this over the canXxx()
   // methods below for new code; eventually they are going to be removed.
   //
