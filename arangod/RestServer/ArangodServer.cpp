@@ -322,7 +322,7 @@ void ArangodServer::addFeaturesWithOptionProvider() {
       getOptions<RocksDBIndexCacheRefillOptionsProvider>());
 
   auto& rocksdbOption = addFeature<RocksDBOptionFeature>(
-      &agency, getOptions<RocksDBOptionFeatureOptionsProvider>());
+      getOptions<RocksDBOptionFeatureOptionsProvider>());
 
   auto& databasePath = addFeature<DatabasePathFeature>(
       getOptions<DatabasePathOptionsProvider>());

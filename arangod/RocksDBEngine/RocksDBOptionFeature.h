@@ -51,10 +51,8 @@ class RocksDBOptionFeature final
   static constexpr std::string_view name() noexcept { return "RocksDBOption"; }
 
   RocksDBOptionFeature(application_features::ApplicationServer& server,
-                       AgencyFeature const* agencyFeature,
                        RocksDBOptionFeatureOptions options);
-  explicit RocksDBOptionFeature(application_features::ApplicationServer& server,
-                                AgencyFeature const* agencyFeature);
+  explicit RocksDBOptionFeature(application_features::ApplicationServer& server);
 
   void prepare() override;
   void start() override;
@@ -91,7 +89,6 @@ class RocksDBOptionFeature final
 
  private:
   RocksDBOptionFeatureOptions _options;
-  AgencyFeature const* _agencyFeature{nullptr};
 };
 
 }  // namespace arangodb

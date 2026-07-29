@@ -104,17 +104,14 @@ rocksdb::CompactionStyle compactionStyleFromString(std::string_view type) {
 }  // namespace
 
 RocksDBOptionFeature::RocksDBOptionFeature(
-    application_features::ApplicationServer& server,
-    AgencyFeature const* agencyFeature)
-    : RocksDBOptionFeature(server, agencyFeature,
+    application_features::ApplicationServer& server)
+    : RocksDBOptionFeature(server,
                            RocksDBOptionFeatureOptionsProvider{}.options()) {}
 
 RocksDBOptionFeature::RocksDBOptionFeature(
     application_features::ApplicationServer& server,
-    AgencyFeature const* agencyFeature, RocksDBOptionFeatureOptions options)
-    : ApplicationFeature{server, *this},
-      _options(std::move(options)),
-      _agencyFeature(agencyFeature) {
+    RocksDBOptionFeatureOptions options)
+    : ApplicationFeature{server, *this}, _options(std::move(options)) {
   setOptional(true);
   startsAfter<BasicFeaturePhaseServer>();
 }
