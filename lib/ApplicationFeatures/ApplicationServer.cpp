@@ -181,8 +181,9 @@ void ApplicationServer::run(int argc, char* argv[]) {
   // file(s)
   parseOptions(argc, argv);
 
-  if (!_helpSection.empty()) {
-    // help shown. we can exit early
+  // a command type option (e.g. --help) already produced its output,
+  // so startup must stop
+  if (_commandCompleted) {
     return;
   }
 
@@ -190,6 +191,12 @@ void ApplicationServer::run(int argc, char* argv[]) {
   _options->seal();
 
   processOptions();
+
+  // a command type option (e.g. --version) already produced its output,
+  // so startup must stop
+  if (_commandCompleted) {
+    return;
+  }
 
   // validate options of all features
   _state.store(State::IN_VALIDATE_OPTIONS, std::memory_order_release);
@@ -399,6 +406,7 @@ void ApplicationServer::parseOptions(int argc, char* argv[]) {
       _helpSection = ".";
     }
     _options->printHelp(_helpSection);
+    _commandCompleted = true;  // startup must stop
     return;
   }
 

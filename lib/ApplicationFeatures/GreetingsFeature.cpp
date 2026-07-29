@@ -30,6 +30,11 @@
 #include "Logger/LoggerStream.h"
 #include "Rest/Version.h"
 
+#include "velocypack/Builder.h"
+#include "velocypack/Slice.h"
+
+#include <ostream>
+
 namespace arangodb {
 
 char const* LGPLNotice =
@@ -42,6 +47,24 @@ void logLGPLNotice(void) {
 #ifdef __GLIBC__
   LOG_TOPIC("11111", INFO, arangodb::Logger::FIXME) << LGPLNotice;
 #endif
+}
+
+void printVersion(std::ostream& out) {
+  out << rest::Version::getServerVersion() << std::endl
+      << std::endl
+      << LGPLNotice << std::endl
+      << std::endl
+      << rest::Version::getDetailed() << std::endl;
+}
+
+void printVersionJson(std::ostream& out) {
+  VPackBuilder builder;
+  {
+    VPackObjectBuilder ob(&builder);
+    rest::Version::getVPack(builder);
+    builder.add("version", VPackValue(rest::Version::getServerVersion()));
+  }
+  out << builder.slice().toJson() << std::endl;
 }
 
 void GreetingsFeature::prepare() {

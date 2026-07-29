@@ -78,8 +78,8 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
 
     try {
       server.run(argc, argv);
-      if (server.helpShown()) {
-        // --help was displayed
+      if (server.commandCompleted()) {
+        // --help or --version was displayed
         ret = EXIT_SUCCESS;
       }
     } catch (std::exception const& ex) {

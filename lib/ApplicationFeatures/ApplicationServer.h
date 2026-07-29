@@ -140,6 +140,8 @@ class ApplicationServer {
 
   std::string helpSection() const { return _helpSection; }
   bool helpShown() const { return !_helpSection.empty(); }
+  void setCommandCompleted() { _commandCompleted = true; }
+  bool commandCompleted() const { return _commandCompleted; }
 
   /// @brief stringify the internal state
   std::string_view stringifyState() const;
@@ -417,6 +419,10 @@ class ApplicationServer {
 
   // help section displayed
   std::string _helpSection;
+
+  // a command type option (e.g. --help, --version, etc) produced its output
+  // so startup must stop
+  bool _commandCompleted = false;
 
   // fail callback
   std::function<void(std::string const&)> _fail;

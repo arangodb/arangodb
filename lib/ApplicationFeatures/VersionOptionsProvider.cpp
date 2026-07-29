@@ -22,12 +22,8 @@
 
 #include "VersionOptionsProvider.h"
 
-#include "ApplicationFeatures/GreetingsFeature.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "Rest/Version.h"
-
-#include <iostream>
 
 namespace arangodb {
 
@@ -49,32 +45,6 @@ void VersionOptionsProvider::declareOptionsImpl(
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Command))
       .setIntroducedIn(30900);
-}
-
-void VersionOptionsProvider::processOptionsImpl(
-    std::shared_ptr<ProgramOptions> /*options*/, VersionFeatureOptions& opts) {
-  // TODO (COR-790): Move this print-version logic out of VersionFeature
-  if (opts.printVersionJson) {
-    VPackBuilder builder;
-    {
-      VPackObjectBuilder ob(&builder);
-      rest::Version::getVPack(builder);
-
-      builder.add("version", VPackValue(rest::Version::getServerVersion()));
-    }
-
-    std::cout << builder.slice().toJson() << std::endl;
-    exit(EXIT_SUCCESS);
-  }
-
-  if (opts.printVersion) {
-    std::cout << rest::Version::getServerVersion() << std::endl
-              << std::endl
-              << LGPLNotice << std::endl
-              << std::endl
-              << rest::Version::getDetailed() << std::endl;
-    exit(EXIT_SUCCESS);
-  }
 }
 
 }  // namespace arangodb

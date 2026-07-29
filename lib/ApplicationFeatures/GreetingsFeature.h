@@ -25,10 +25,15 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Logger/LoggerFeature.h"
 
+#include <iosfwd>
+
 namespace arangodb {
 
 extern char const* LGPLNotice;
 void logLGPLNotice(void);
+
+void printVersion(std::ostream& out);
+void printVersionJson(std::ostream& out);
 
 class LoggerFeature;
 

@@ -31,8 +31,6 @@ struct VersionOptionsProvider
     : OptionsProviderImpl<VersionOptionsProvider, VersionFeatureOptions> {
   void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
                           VersionFeatureOptions& options);
-  void processOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
-                          VersionFeatureOptions& options);
   void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> /*opts*/,
                            VersionFeatureOptions& /*options*/) {}
 };
