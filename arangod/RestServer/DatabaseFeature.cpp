@@ -286,12 +286,12 @@ DatabaseFeature::~DatabaseFeature() = default;
 
 void DatabaseFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
-  _optionsProvider.declareOptions(options);
+  DatabaseOptionsProvider::declareOptionsImpl(options, _options);
 }
 
 void DatabaseFeature::validateOptions(
     std::shared_ptr<options::ProgramOptions> options) {
-  _optionsProvider.validateOptions(options);
+  DatabaseOptionsProvider::validateOptionsImpl(options, _options);
 
   // check the misuse of startup options
   if (_checkVersion && _upgrade) {
@@ -353,7 +353,7 @@ void DatabaseFeature::start() {
   if ((ServerState::instance()->isDBServer() ||
        ServerState::instance()->isSingleServer() ||
        ServerState::instance()->isAgent()) &&
-      _optionsProvider.options().performIOHeartbeat) {
+      _options.performIOHeartbeat) {
     _ioHeartbeatThread = std::make_unique<IOHeartbeatThread>(
         server().getFeature<metrics::MetricsFeature>(),
         server().getFeature<DatabasePathFeature>());

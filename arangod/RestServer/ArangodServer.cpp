@@ -222,24 +222,19 @@ void ArangodServer::addFeaturesWithOptionProvider() {
       _dumpManager, getOptions<crash_handler::CrashHandlerOptionsProvider>());
   addFeature<LogBufferFeature>(metrics, getOptions<LogBufferOptionsProvider>());
 
-  // Add VectorIndexFeature
   auto& vectorIndex = addFeature<VectorIndexFeature>(
       database, getOptions<vector_index::VectorIndexOptionsProvider>());
 
-  // Add SchedulerFeature
   auto& scheduler =
       addFeature<SchedulerFeature>(metrics, sharedPRNGFeature.getPRNG(),
                                    getOptions<SchedulerOptionsProvider>());
 
-  // Add ClusterMetricsFeature
   addFeature<metrics::ClusterMetricsFeature>(
       getOptions<metrics::ClusterMetricsOptionsProvider>());
 
-  // Add CacheOptionsFeature
   auto& cacheOptionsFeature = addFeature<CacheOptionsFeature>(
       getOptions<CacheFeatureOptionsProvider>());
 
-  // Add CacheManagerFeature
   auto& cacheManager = addFeature<CacheManagerFeature>(
       cacheOptionsFeature, sharedPRNGFeature.getPRNG());
 

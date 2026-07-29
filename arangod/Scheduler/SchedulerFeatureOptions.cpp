@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -20,28 +20,22 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#include "Scheduler/SchedulerFeatureOptions.h"
 
-#include <cstdint>
-#include <string>
+#include "Basics/NumberOfCores.h"
+
+#include <algorithm>
 
 namespace arangodb {
 
-struct SchedulerFeatureOptions {
-  /// @brief return the default number of threads to use (upper bound)
-  static uint64_t getDefaultMaxThreads() noexcept;
+/*static*/ uint64_t SchedulerFeatureOptions::getDefaultMaxThreads() noexcept {
+  // use two times the number of hardware threads as the default
+  // but only if higher than 64. otherwise use a default minimum value of 32
+  return (std::max)(static_cast<uint64_t>(32),
+                    static_cast<uint64_t>(NumberOfCores::getValue()) * 2);
+}
 
-  SchedulerFeatureOptions();
-
-  uint64_t nrMinimalThreads = 4;
-  uint64_t nrMaximalThreads;  // computed in constructor
-  uint64_t queueSize = 4096;
-  uint64_t fifo1Size = 4096;
-  uint64_t fifo2Size = 4096;
-  uint64_t fifo3Size = 4096;
-  double ongoingLowPriorityMultiplier = 4.0;
-  double unavailabilityQueueFillGrade = 0.75;
-  std::string schedulerType = "supervised";
-};
+SchedulerFeatureOptions::SchedulerFeatureOptions()
+    : nrMaximalThreads(getDefaultMaxThreads()) {}
 
 }  // namespace arangodb

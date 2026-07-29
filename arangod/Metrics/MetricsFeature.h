@@ -33,7 +33,7 @@
 #include "Metrics/IRegistry.h"
 #include "Metrics/Metric.h"
 #include "Metrics/MetricKey.h"
-#include "Metrics/MetricsOptionsProvider.h"
+#include "Metrics/MetricsOptions.h"
 #include "Metrics/MetricsParts.h"
 #include "ProgramOptions/ProgramOptions.h"
 
@@ -68,6 +68,18 @@ class MetricsFeature final : public application_features::ApplicationFeature,
       LazyApplicationFeatureReference<ClusterMetricsFeature>
           lazyClusterMetricsFeatureRef,
       LazyApplicationFeatureReference<ClusterFeature> lazyClusterFeatureRef);
+
+  MetricsFeature(
+      application_features::ApplicationServer& server,
+      LazyApplicationFeatureReference<QueryRegistryFeature>
+          lazyQueryRegistryFeatureRef,
+      LazyApplicationFeatureReference<StatisticsFeature>
+          lazyStatisticsFeatureRef,
+      LazyApplicationFeatureReference<DatabaseFeature> lazyDatabaseFeatureRef,
+      LazyApplicationFeatureReference<ClusterMetricsFeature>
+          lazyClusterMetricsFeatureRef,
+      LazyApplicationFeatureReference<ClusterFeature> lazyClusterFeatureRef,
+      MetricsOptions options);
 
   bool exportAPI() const noexcept;
   bool ensureWhitespace() const noexcept;
@@ -155,7 +167,7 @@ class MetricsFeature final : public application_features::ApplicationFeature,
   mutable bool hasShortname = false;
   mutable bool hasRole = false;
 
-  MetricsOptionsProvider _optionsProvider;
+  MetricsOptions _options;
 
   static double _serverStartTime;
 };

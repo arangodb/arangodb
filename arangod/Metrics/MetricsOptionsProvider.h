@@ -29,10 +29,10 @@ namespace arangodb::metrics {
 
 struct MetricsOptionsProvider
     : OptionsProviderImpl<MetricsOptionsProvider, MetricsOptions> {
-  void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
-                          MetricsOptions& options);
-  void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
-                           MetricsOptions& options);
+  static void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                                 MetricsOptions& options);
+  static void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                                  MetricsOptions& options);
 };
 
 }  // namespace arangodb::metrics

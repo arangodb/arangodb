@@ -25,7 +25,7 @@
 #include <cstdint>
 #include <memory>
 
-#include "Cache/CacheOptionsProvider.h"
+#include "Cache/CacheOptions.h"
 #include "Cache/Common.h"
 #include "Cache/Manager.h"
 #include "Cache/PlainBucket.h"

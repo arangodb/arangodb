@@ -29,10 +29,11 @@ namespace arangodb {
 
 struct DatabaseOptionsProvider
     : OptionsProviderImpl<DatabaseOptionsProvider, DatabaseFeatureOptions> {
-  void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
-                          DatabaseFeatureOptions& options);
-  void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> /*opts*/,
-                           DatabaseFeatureOptions& /*options*/) {}
+  static void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                                 DatabaseFeatureOptions& options);
+  static void validateOptionsImpl(
+      std::shared_ptr<options::ProgramOptions> /*opts*/,
+      DatabaseFeatureOptions& /*options*/) {}
 };
 
 }  // namespace arangodb

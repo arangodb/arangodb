@@ -23,7 +23,7 @@
 #pragma once
 
 #include "ApplicationFeatures/OptionsProvider.h"
-#include "Cache/CacheOptionsProvider.h"
+#include "Cache/CacheOptions.h"
 
 namespace arangodb {
 

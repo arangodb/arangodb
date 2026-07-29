@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2026 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -20,28 +20,25 @@
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#include "Cache/CacheOptions.h"
 
-#include <cstdint>
-#include <string>
+#include "Basics/PhysicalMemory.h"
 
 namespace arangodb {
 
-struct SchedulerFeatureOptions {
-  /// @brief return the default number of threads to use (upper bound)
-  static uint64_t getDefaultMaxThreads() noexcept;
+CacheOptions::CacheOptions() {
+  // if there is less than 4 GiB of RAM in the system, default to 256 MiB.
+  // otherwise, default to (system RAM size - 2 GiB) * 0.25.
+  cacheSize =
+      (PhysicalMemory::getValue() >= (static_cast<std::uint64_t>(4) << 30))
+          ? static_cast<std::uint64_t>((PhysicalMemory::getValue() -
+                                        (static_cast<std::uint64_t>(2) << 30)) *
+                                       0.25)
+          : (256 << 20);
+}
 
-  SchedulerFeatureOptions();
-
-  uint64_t nrMinimalThreads = 4;
-  uint64_t nrMaximalThreads;  // computed in constructor
-  uint64_t queueSize = 4096;
-  uint64_t fifo1Size = 4096;
-  uint64_t fifo2Size = 4096;
-  uint64_t fifo3Size = 4096;
-  double ongoingLowPriorityMultiplier = 4.0;
-  double unavailabilityQueueFillGrade = 0.75;
-  std::string schedulerType = "supervised";
-};
+CacheOptions::CacheOptions(std::uint64_t cacheSizeOverride) : CacheOptions() {
+  cacheSize = cacheSizeOverride;
+}
 
 }  // namespace arangodb

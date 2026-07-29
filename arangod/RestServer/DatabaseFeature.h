@@ -28,7 +28,7 @@
 #include "Containers/FlatHashSet.h"
 #include "Metrics/GaugeBuilder.h"
 #include "Replication2/Version.h"
-#include "RestServer/DatabaseOptionsProvider.h"
+#include "RestServer/DatabaseFeatureOptions.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "RestServer/IDatabaseProvider.h"
 #include "RestServer/IRecoveryCallback.h"
@@ -192,29 +192,25 @@ class DatabaseFeature final : public application_features::ApplicationFeature,
   }
 
   bool ignoreDatafileErrors() const noexcept {
-    return _optionsProvider.options().ignoreDatafileErrors;
+    return _options.ignoreDatafileErrors;
   }
   bool isInitiallyEmpty() const noexcept { return _isInitiallyEmpty; }
   bool checkVersion() const noexcept { return _checkVersion; }
   bool upgrade() const noexcept { return _upgrade; }
-  bool waitForSync() const noexcept {
-    return _optionsProvider.options().defaultWaitForSync;
-  }
+  bool waitForSync() const noexcept { return _options.defaultWaitForSync; }
   replication::Version defaultReplicationVersion() const noexcept override {
-    return replication::parseVersion(
-               _optionsProvider.options().defaultReplicationVersion)
-        .get();
+    return replication::parseVersion(_options.defaultReplicationVersion).get();
   }
 
   /// @brief whether or not extended names for databases, collections, views
   /// and indexes
   bool extendedNames() const noexcept override {
-    return _optionsProvider.options().extendedNames;
+    return _options.extendedNames;
   }
   /// @brief will be called only during startup when reading stored value from
   /// storage engine
   void extendedNames(bool value) noexcept override {
-    _optionsProvider.options().extendedNames = value;
+    _options.extendedNames = value;
   }
 
   void enableCheckVersion() noexcept { _checkVersion = true; }
@@ -222,9 +218,7 @@ class DatabaseFeature final : public application_features::ApplicationFeature,
   void disableUpgrade() noexcept { _upgrade = false; }
   void isInitiallyEmpty(bool value) noexcept { _isInitiallyEmpty = value; }
 
-  size_t maxDatabases() const noexcept {
-    return _optionsProvider.options().maxDatabases;
-  }
+  size_t maxDatabases() const noexcept { return _options.maxDatabases; }
 
   static Database& getCalculationVocbase();
 
@@ -252,7 +246,7 @@ class DatabaseFeature final : public application_features::ApplicationFeature,
   /// @brief close all dropped databases
   void closeDroppedDatabases();
 
-  DatabaseOptionsProvider _optionsProvider;
+  DatabaseFeatureOptions _options;
   bool _isInitiallyEmpty{false};
   bool _checkVersion{false};
   bool _upgrade{false};
