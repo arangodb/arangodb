@@ -175,7 +175,11 @@ Result ExecContext::canCreateDatabase(std::string_view db) const {
     return r;
   }
   if (!isSuperuser() && ServerState::readOnly()) {
-    return {TRI_ERROR_ARANGO_READ_ONLY, "Server is in read-only mode."};
+    if (_authMode.requestedApiVersion() > 0) {
+      return {TRI_ERROR_ARANGO_READ_ONLY, "Server is in read-only mode."};
+    } else {
+      return {TRI_ERROR_FORBIDDEN, "Server is in read-only mode."};
+    }
   }
   return {};
 }
