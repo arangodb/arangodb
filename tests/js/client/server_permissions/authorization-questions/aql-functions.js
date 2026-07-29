@@ -113,12 +113,9 @@ function aqlFunctionApiAuthzSuite () {
       assertPermissions([useD, readD], endObserve());
     },
 
-    // POST /_db/d/_api/aqlfunction - WRITE trx (insert) over _aqlfunctions
-    // AUDIT: the write goes through a SingleCollectionTransaction opened
-    // directly in WRITE mode, so checkCollectionPermission may be invoked only
-    // once (writedata) rather than read+writedata as the document handler does
-    // (which adds the collection as read and upgrades it to write). If only the
-    // writedata question is observed, drop `readD` from the expected set.
+    // POST /_db/d/_api/aqlfunction - WRITE trx (insert) over _aqlfunctions.
+    // _aqlfunctions is loaded via Database::loadCollection() -> read, and
+    // registered for write -> writedata (checkCollectionPermission).
     testCreateFunctionD: function () {
       dropFnD();
       beginObserve();
@@ -126,9 +123,8 @@ function aqlFunctionApiAuthzSuite () {
       assertPermissions([useD, readD, writeD], endObserve());
     },
 
-    // DELETE /_db/d/_api/aqlfunction/{name} - WRITE trx (remove) over _aqlfunctions
-    // AUDIT: see testCreateFunctionD - a directly-WRITE SingleCollectionTransaction
-    // may emit only the writedata question rather than read+writedata.
+    // DELETE /_db/d/_api/aqlfunction/{name} - WRITE trx (remove) over
+    // _aqlfunctions -> read (loadCollection) + writedata (checkCollectionPermission).
     testDeleteFunctionD: function () {
       makeFnD();
       beginObserve();
@@ -151,7 +147,7 @@ function aqlFunctionApiAuthzSuite () {
     },
 
     // POST /_db/_system/_api/aqlfunction - WRITE trx (insert) over _aqlfunctions
-    // AUDIT: see testCreateFunctionD re read+writedata vs writedata-only.
+    // -> read (loadCollection) + writedata (checkCollectionPermission).
     testCreateFunctionSystem: function () {
       dropFnSys();
       beginObserve();
@@ -160,7 +156,7 @@ function aqlFunctionApiAuthzSuite () {
     },
 
     // DELETE /_db/_system/_api/aqlfunction/{name} - WRITE trx (remove)
-    // AUDIT: see testCreateFunctionD re read+writedata vs writedata-only.
+    // -> read (loadCollection) + writedata (checkCollectionPermission).
     testDeleteFunctionSystem: function () {
       makeFnSys();
       beginObserve();

@@ -30,12 +30,14 @@
 // by-example) and arangod/RestHandler/RestSimpleHandler.cpp (lookup-by-keys,
 // remove-by-keys). Both derive from RestCursorHandler: they translate the
 // simple query into an AQL query and run it through registerQueryOrCursor().
-// The collection access check therefore happens in the transaction layer
-// (StorageEngine/TransactionState.cpp checkCollectionPermission): a READ query
-// asks `UseCollection ... level=read`; a write query (remove-by-keys, which
-// issues a REMOVE) asks read + writedata (as observed for document writes in
-// authorization-questions.js). Every request additionally asks
-// `UseDatabase name=d level=read` first.
+// The collection access check happens in two layers: the collection is loaded
+// via Database::loadCollection() (vocbase.cpp:387), which always asks
+// `UseCollection ... level=read`, and a write query additionally registers the
+// collection in the transaction as write ->
+// TransactionState::checkCollectionPermission asks `UseCollection ...
+// level=writedata`. So a READ query (all/all-keys/by-example/lookup-by-keys)
+// asks only read, while remove-by-keys (a REMOVE) asks read + writedata. Every
+// request additionally asks `UseDatabase name=d level=read` first.
 
 if (getOptions === true) {
   return {
@@ -106,11 +108,8 @@ function simpleApiAuthzSuite () {
     },
 
     // PUT /_api/simple/remove-by-keys - AQL
-    // "FOR key IN @keys REMOVE key IN c" -> write trx (read + writedata)
-    // AUDIT: a pure REMOVE AQL query registers collection c with WRITE access;
-    // following the document-write pattern from authorization-questions.js it
-    // is listed as read + writedata, but a write-only AQL query may ask only
-    // writedata.
+    // "FOR key IN @keys REMOVE key IN c": c is loaded (read, loadCollection) and
+    // registered for write (writedata, checkCollectionPermission).
     testRemoveByKeys: function () {
       beginObserve();
       arango.PUT_RAW(`/_db/${DB}/_api/simple/remove-by-keys`,

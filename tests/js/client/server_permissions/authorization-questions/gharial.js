@@ -49,6 +49,14 @@
 //   edge insert/replace-> validateEdge reads _from/_to (c) + writes edge (e)
 //   structure changes  -> canUseGraph(Modify) + WRITE txn on _graphs
 //
+// NOTE: every collection a transaction opens is loaded via
+// Database::loadCollection(), which unconditionally asks
+// `UseCollection ... level=read` (vocbase.cpp:387) in addition to the
+// writedata question from TransactionState::checkCollectionPermission. So a
+// write to a collection yields BOTH a read and a writedata question for it
+// (e.g. writing edge e -> read e + writedata e; the _graphs writes likewise
+// carry the _graphs read already present in the lookup preamble).
+//
 // AUDIT: the gharial handler chains several sub-operations (graph lookups, the
 // _graphs system-collection transactions, ensureAllCollections lookups,
 // applyOnAllGraphs / readGraphs enumerations, and a trailing getGraph() to
@@ -285,7 +293,7 @@ function gharialApiAuthzSuite () {
       beginObserve();
       arango.POST_RAW(`/_db/${DB}/_api/gharial/${g}/edge/${e}`,
                       { _key: EDGE_KEY, _from: `${c}/k1`, _to: `${c}/k2` });
-      assertPermissions([useD].concat(lookup(g), [readC, writeE]), endObserve());
+      assertPermissions([useD].concat(lookup(g), [readC, readE, writeE]), endObserve());
     },
 
     // PUT /_api/gharial/g_apitest/edge/e_apitest - editEdgeDefinition():
@@ -326,19 +334,19 @@ function gharialApiAuthzSuite () {
       beginObserve();
       arango.PUT_RAW(`/_db/${DB}/_api/gharial/${g}/edge/${e}/${EDGE_KEY}`,
                      { _from: `${c}/k2`, _to: `${c}/k3` });
-      assertPermissions([useD].concat(lookup(g), [readC, writeE]), endObserve());
+      assertPermissions([useD].concat(lookup(g), [readC, readE, writeE]), endObserve());
     },
 
     // PATCH /_api/gharial/g/edge/e/{key} - updateEdge() -> validateEdge(). Body
     // ({extra:1}) has no _from/_to, so no vertex collection is added to the txn;
-    // only the edge collection (e) is opened for write.
+    // only the edge collection (e) is opened -> read (loadCollection) + writedata.
     // AUDIT: absence of the c read hinges on the body carrying no _from/_to.
     testUpdateEdge: function () {
       insertTestEdge();
       beginObserve();
       arango.PATCH_RAW(`/_db/${DB}/_api/gharial/${g}/edge/${e}/${EDGE_KEY}`,
                        { extra: 1 });
-      assertPermissions([useD].concat(lookup(g), [writeE]), endObserve());
+      assertPermissions([useD].concat(lookup(g), [readE, writeE]), endObserve());
     },
 
     // DELETE /_api/gharial/g/edge/e/{key} - removeEdge() -> removeEdgeOrVertex:
@@ -351,7 +359,7 @@ function gharialApiAuthzSuite () {
       beginObserve();
       arango.DELETE_RAW(`/_db/${DB}/_api/gharial/${g}/edge/${e}/${EDGE_KEY}`);
       assertPermissions([useD].concat(lookup(g),
-                        [`SeeGraph db=${DB} name=${g}`, writeE]),
+                        [`SeeGraph db=${DB} name=${g}`, readE, writeE]),
                         endObserve());
     },
 
@@ -390,7 +398,7 @@ function gharialApiAuthzSuite () {
       beginObserve();
       arango.POST_RAW(`/_db/${DB}/_api/gharial/${g}/vertex/${c}`,
                       { _key: VERTEX_KEY, value: 9999 });
-      assertPermissions([useD].concat(lookup(g), [writeC]), endObserve());
+      assertPermissions([useD].concat(lookup(g), [readC, writeC]), endObserve());
     },
 
     // DELETE /_api/gharial/g_apitest/vertex/c_orphan?dropCollection=false -
@@ -411,7 +419,7 @@ function gharialApiAuthzSuite () {
       beginObserve();
       arango.PUT_RAW(`/_db/${DB}/_api/gharial/${g}/vertex/${c}/${VERTEX_KEY}`,
                      { value: 10000 });
-      assertPermissions([useD].concat(lookup(g), [writeC]), endObserve());
+      assertPermissions([useD].concat(lookup(g), [readC, writeC]), endObserve());
     },
 
     // PATCH /_api/gharial/g/vertex/c/{key} - updateVertex() -> WRITE txn on c.
@@ -420,7 +428,7 @@ function gharialApiAuthzSuite () {
       beginObserve();
       arango.PATCH_RAW(`/_db/${DB}/_api/gharial/${g}/vertex/${c}/${VERTEX_KEY}`,
                        { extra: 42 });
-      assertPermissions([useD].concat(lookup(g), [writeC]), endObserve());
+      assertPermissions([useD].concat(lookup(g), [readC, writeC]), endObserve());
     },
 
     // DELETE /_api/gharial/g/vertex/c/{key} - removeVertex() ->
@@ -433,7 +441,7 @@ function gharialApiAuthzSuite () {
       beginObserve();
       arango.DELETE_RAW(`/_db/${DB}/_api/gharial/${g}/vertex/${c}/${VERTEX_KEY}`);
       assertPermissions([useD].concat(lookup(g),
-                        [`SeeGraph db=${DB} name=${g}`, writeC, writeE]),
+                        [`SeeGraph db=${DB} name=${g}`, readC, readE, writeC, writeE]),
                         endObserve());
     },
   };

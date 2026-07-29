@@ -129,14 +129,15 @@ function indexApiAuthzSuite () {
     },
 
     // DELETE /_api/index/<handle> - drop() checks canUseDatabase(write) +
-    // canUseCollection(writemeta), the EXCLUSIVE drop transaction adds writedata
-    // AUDIT: the writedata question comes from the EXCLUSIVE SingleCollection
-    // transaction (Indexes::createTrxForDrop); confirm it is observed here.
+    // canUseCollection(writemeta); the EXCLUSIVE drop transaction
+    // (Indexes::createTrxForDrop) both loads the collection -> read
+    // (Database::loadCollection) and registers it for write -> writedata.
     testDropIndex: function () {
       const handle = createIndex();
       beginObserve();
       arango.DELETE_RAW(`/_db/${DB}/_api/index/${handle}`);
-      assertPermissions([useD, useDWrite, writeMetaC, writeDataC], endObserve());
+      assertPermissions([useD, useDWrite, readC, writeMetaC, writeDataC],
+                        endObserve());
     },
   };
 }

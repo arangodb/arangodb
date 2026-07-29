@@ -28,14 +28,19 @@
 //
 // Handler: arangod/RestHandler/RestDocumentHandler.cpp
 //
-// The document handler itself asks nothing directly; the collection access
-// checks happen in the transaction layer
-// (StorageEngine/TransactionState.cpp checkCollectionPermission): a READ
-// transaction asks `UseCollection ... level=read`, a WRITE transaction asks
-// `UseCollection ... level=writedata`. Every request additionally asks
-// `UseDatabase name=d level=read` first. As observed in
-// authorization-questions.js testInsertDocument, a write operation asks BOTH
-// the read and the writedata question for the collection.
+// The document handler itself asks nothing directly; the collection questions
+// come from two distinct places, so a write operation asks BOTH a read and a
+// writedata question for the same collection:
+//   - read:      Database::loadCollection() (vocbase.cpp:387) is called when the
+//                collection is loaded into use at transaction begin
+//                (useCollections() -> lockUsage() -> ensureCollection()); it
+//                unconditionally asks `UseCollection ... level=read`.
+//   - writedata: TransactionState::checkCollectionPermission() asks
+//                `UseCollection ... level=writedata` when the collection is
+//                registered in the transaction with write access.
+// A pure read operation only loads the collection, so it asks read alone.
+// Every request additionally asks `UseDatabase name=d level=read` first
+// (RestHandler::checkUserCanAccess).
 
 if (getOptions === true) {
   return {

@@ -38,6 +38,11 @@
 // higher level (writedata/writemeta), and drop revokes permissions + cleans up
 // graphs, hence the extra questions about _graphs/_users (cf.
 // authorization-questions.js testDropCollection).
+//
+// Note: the `level=read` question on a written collection is asked whether the
+// collection is reached via methods::Collections::lookup() or via a
+// transaction (Database::loadCollection() during transaction begin), so a
+// truncate shows both read and writedata.
 
 if (getOptions === true) {
   return {
