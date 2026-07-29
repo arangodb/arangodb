@@ -39,6 +39,11 @@ class OptionProvidingServer : public application_features::ApplicationServer {
     _optionProviders.declareOptions(options());
   }
 
+  void processOptions() override {
+    ApplicationServer::processOptions();
+    _optionProviders.processOptions(options());
+  }
+
   void validateOptions() override {
     ApplicationServer::validateOptions();
     _optionProviders.validateOptions(options());

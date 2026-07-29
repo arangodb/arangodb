@@ -26,6 +26,16 @@
 
 namespace arangodb::application_features {
 
+namespace {
+template<class Provider>
+concept HasProcessOptions =
+    requires(Provider& provider,
+             std::shared_ptr<options::ProgramOptions> programOptions) {
+  provider.processOptionsImpl(programOptions,
+                              std::declval<typename Provider::Options&>());
+};
+}  // namespace
+
 template<class... Providers>
 class FeatureOptionProviderContainer final {
  public:
@@ -33,6 +43,14 @@ class FeatureOptionProviderContainer final {
     std::apply(
         [&](auto&... providers) {
           (providers.declareOptions(programOptions), ...);
+        },
+        _providers);
+  }
+
+  void processOptions(std::shared_ptr<options::ProgramOptions> programOptions) {
+    std::apply(
+        [&](auto&... providers) {
+          (processProviderOptions(programOptions, providers), ...);
         },
         _providers);
   }
@@ -47,11 +65,19 @@ class FeatureOptionProviderContainer final {
   }
 
   template<typename ProviderType>
-  auto& getOptions() const {
+  auto const& getOptions() const {
     return std::get<ProviderType>(_providers).options();
   }
 
  private:
+  template<class Provider>
+  void processProviderOptions(
+      std::shared_ptr<options::ProgramOptions> programOptions,
+      Provider& provider) {
+    if constexpr (HasProcessOptions<Provider>) {
+      provider.processOptions(programOptions);
+    }
+  }
   std::tuple<Providers...> _providers{};
 };
 }  // namespace arangodb::application_features
