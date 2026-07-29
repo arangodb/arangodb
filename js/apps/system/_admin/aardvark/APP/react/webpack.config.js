@@ -132,7 +132,15 @@ module.exports = (_webpackEnv, argv) => {
           loader: require.resolve("resolve-url-loader"),
           options: { sourceMap: true },
         },
-        { loader: preProcessor, options: { sourceMap: true } }
+        // charset: false stops Dart Sass from emitting a U+FEFF BOM (it does so when the
+        // compiled CSS contains non-ASCII chars). The BOM would otherwise land embedded
+        // mid-bundle after concatenation, invalidating the following :root{} rule and
+        // dropping all theme CSS variables. (sass-loader 16's modern API surfaces this;
+        // the old legacy API did not.)
+        {
+          loader: preProcessor,
+          options: { sourceMap: true, sassOptions: { charset: false } },
+        }
       );
     }
     return loaders;
