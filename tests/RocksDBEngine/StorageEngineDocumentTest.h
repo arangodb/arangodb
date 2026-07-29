@@ -183,7 +183,9 @@ class StorageEngineDocumentTest : public StorageEngineDataTest {
     auto lookup = keyOnly(key);
     SingleCollectionTransaction trx{context(), *_collection,
                                     AccessMode::Type::READ};
-    EXPECT_TRUE(IsOk(trx.begin()));
+    if (auto res = trx.begin(); res.fail()) {
+      return OperationResult{res, OperationOptions{}};
+    }
     OperationOptions options;
     auto res = trx.document(_collection->name(), lookup.slice(), options);
     std::ignore = trx.finish(res.result);
@@ -200,7 +202,10 @@ class StorageEngineDocumentTest : public StorageEngineDataTest {
                          options);
     std::ignore = trx.finish(res.result);
     EXPECT_TRUE(IsOk(res));
-    return res.slice().getNumber<uint64_t>();
+    if (res.ok()) {
+      return res.slice().getNumber<uint64_t>();
+    }
+    return 0;
   }
 
   // Remove all documents in the collection, committing in its own transaction.

@@ -77,6 +77,11 @@ class StorageEngineDataTest : public StorageEngineFixture {
             arangodb_storage_engine_test_transactions_expired_total{}));
   }
 
+  static void TearDownTestSuite() {
+    _transactionManager.reset();
+    StorageEngineFixture::TearDownTestSuite();
+  }
+
   static std::shared_ptr<transaction::Manager> _transactionManager;
 
   // Build an in-memory Database object. We construct the database directly

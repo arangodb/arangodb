@@ -32,7 +32,6 @@
 #include <velocypack/Slice.h>
 
 #include <string>
-#include <rocksdb/db.h>
 
 using namespace arangodb;
 using namespace arangodb::tests;
