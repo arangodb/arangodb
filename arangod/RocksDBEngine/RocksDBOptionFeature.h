@@ -52,7 +52,8 @@ class RocksDBOptionFeature final
 
   RocksDBOptionFeature(application_features::ApplicationServer& server,
                        RocksDBOptionFeatureOptions options);
-  explicit RocksDBOptionFeature(application_features::ApplicationServer& server);
+  explicit RocksDBOptionFeature(
+      application_features::ApplicationServer& server);
 
   void prepare() override;
   void start() override;

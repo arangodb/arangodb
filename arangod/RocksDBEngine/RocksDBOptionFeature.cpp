@@ -29,7 +29,6 @@
 #include "RocksDBEngine/RocksDBOptionFeatureOptionsProvider.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Agency/AgencyFeature.h"
 #include "Basics/NumberOfCores.h"
 #include "Basics/application-exit.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
