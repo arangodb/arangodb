@@ -26,8 +26,8 @@
 
 namespace arangodb::replication2 {
 
-// These settings are initialised by the ReplicatedLogFeature based on command
-// line arguments
+// These settings are initialised by the ReplicatedLogOptionsProvider based on
+// command line arguments
 struct ReplicatedLogGlobalSettings {
  public:
   static inline constexpr std::size_t defaultThresholdNetworkBatchSize{1024 *
