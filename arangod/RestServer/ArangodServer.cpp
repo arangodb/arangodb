@@ -24,6 +24,10 @@
 
 #include <type_traits>
 
+#include "Basics/application-exit.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+
 // The list of includes for the features is defined in the following file -
 // please add new includes there!
 #include "RestServer/arangod_includes.h"
@@ -59,13 +63,32 @@ auto const kNonServerFeatures =
 
 void ArangodServer::processOptions() {
   OptionProvidingServer<ArangodOptionProviders>::processOptions();
-  auto role = getOptions<ClusterOptionsProvider>().resolveRole();
-  auto agencyRole = getOptions<AgencyOptionsProvider>().resolveRole();
-  if (agencyRole != ServerState::ROLE_UNDEFINED) {
-    // being an agent always wins over whatever the cluster options say
-    role = agencyRole;
+  auto const& clusterOptions = getOptions<ClusterOptionsProvider>();
+  auto const& agencyOptions = getOptions<AgencyOptionsProvider>();
+
+  if (agencyOptions.activated && !clusterOptions.myRole.empty()) {
+    LOG_TOPIC("a3f61", FATAL, Logger::CLUSTER)
+        << "cannot specify both '--agency.activate true' and "
+           "'--cluster.my-role': an agent cannot also be assigned a "
+           "separate cluster role";
+    FATAL_ERROR_EXIT();
   }
-  ServerState::instance()->setRole(role);
+
+  ServerState::instance()->setRole(resolveRole(clusterOptions, agencyOptions));
+}
+
+ServerState::RoleEnum ArangodServer::resolveRole(
+    ClusterOptions const& clusterOptions, AgencyOptions const& agencyOptions) {
+  if (agencyOptions.activated) {
+    return ServerState::ROLE_AGENT;
+  }
+  if (!clusterOptions.enableCluster) {
+    return ServerState::ROLE_SINGLE;
+  }
+  if (!clusterOptions.myRole.empty()) {
+    return ServerState::stringToRole(clusterOptions.myRole);
+  }
+  return ServerState::ROLE_UNDEFINED;
 }
 
 void ArangodServer::addFeatures() {
@@ -221,26 +244,20 @@ void ArangodServer::addFeaturesWithOptionProvider() {
       _dumpManager, getOptions<crash_handler::CrashHandlerOptionsProvider>());
   addFeature<LogBufferFeature>(metrics, getOptions<LogBufferOptionsProvider>());
 
-  // Add AgencyFeature
   auto& agency = addFeature<AgencyFeature>(getOptions<AgencyOptionsProvider>());
 
-  // Add ClusterFeature
   auto& clusterFeature =
       addFeature<ClusterFeature>(metrics, getOptions<ClusterOptionsProvider>());
 
-  // Add ClusterEngine
-  // (must come after ClusterFeature: its ctor eagerly reads ClusterFeature)
+  // must come after ClusterFeature: its ctor eagerly reads ClusterFeature
   addFeature<ClusterEngine>(metrics);
 
-  // Add MaintenanceFeature
   addFeature<MaintenanceFeature>(&clusterFeature,
                                  getOptions<MaintenanceOptionsProvider>());
 
-  // Add ClusterUpgradeFeature
   auto& clusterUpgradeFeature = addFeature<ClusterUpgradeFeature>(
       database, getOptions<upgrade::ClusterUpgradeOptionsProvider>());
 
-  // Add BootstrapFeature
   addFeature<BootstrapFeature>(
       clusterFeature, database, &systemDatabaseFeature, &clusterUpgradeFeature
 #ifdef USE_V8
@@ -250,31 +267,24 @@ void ArangodServer::addFeaturesWithOptionProvider() {
       ,
       getOptions<bootstrap::BootstrapOptionsProvider>());
 
-  // Add ReplicationTimeoutFeature
   addFeature<ReplicationTimeoutFeature>(
       getOptions<ReplicationTimeoutOptionsProvider>());
 
-  // Add ReplicationFeature
   auto& comm = getFeature<CommunicationFeaturePhase>();
   addFeature<ReplicationFeature>(comm, metrics,
                                  getOptions<ReplicationOptionsProvider>());
 
-  // Add ReplicatedLogFeature
   addFeature<ReplicatedLogFeature>(
       getOptions<replication2::ReplicatedLogOptionsProvider>());
 
-  // Add TtlFeature
   addFeature<TtlFeature>(getOptions<TtlOptionsProvider>());
 
-  // Add StatisticsFeature
   addFeature<StatisticsFeature>(
       metrics, getOptions<statistics::StatisticsOptionsProvider>());
 
-  // Add transaction::ManagerFeature
   addFeature<transaction::ManagerFeature>(
       metrics, getOptions<transaction::ManagerOptionsProvider>());
 
-  // Add PrivilegeFeature
   addFeature<PrivilegeFeature>(getOptions<PrivilegeOptionsProvider>());
 
   auto& rocksdbCacheRefill = addFeature<RocksDBIndexCacheRefillFeature>(
