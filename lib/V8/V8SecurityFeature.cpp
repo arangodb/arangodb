@@ -52,7 +52,6 @@
 #include "ProgramOptions/Option.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "V8/V8SecurityOptionsProvider.h"
 #include "V8/JavaScriptSecurityContext.h"
 #include "V8/v8-globals.h"
 
@@ -102,16 +101,6 @@ V8SecurityFeature::V8SecurityFeature(
   setOptional(false);
   startsAfter<TempFeature>();
   startsAfter<V8PlatformFeature>();
-}
-
-void V8SecurityFeature::collectOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  V8SecurityOptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
-
-void V8SecurityFeature::validateOptions(
-    std::shared_ptr<ProgramOptions> /*options*/) {
   {
     if (_strictness == AllowListStrictness::NONSTRICT &&
         _options.startupOptionsAllowList.empty()) {

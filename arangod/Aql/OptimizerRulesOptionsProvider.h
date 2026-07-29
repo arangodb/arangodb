@@ -32,11 +32,15 @@ class ProgramOptions;
 
 namespace arangodb::aql {
 
-struct OptimizerRulesOptionsProvider : OptionsProvider<OptimizerRulesOptions> {
+struct OptimizerRulesOptionsProvider
+    : OptionsProviderImpl<OptimizerRulesOptionsProvider,
+                          OptimizerRulesOptions> {
   OptimizerRulesOptionsProvider() = default;
 
-  void declareOptions(std::shared_ptr<options::ProgramOptions> opts,
-                      OptimizerRulesOptions& options) override;
+  void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                          OptimizerRulesOptions& options);
+  void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> /*opts*/,
+                           OptimizerRulesOptions& /*options*/) {}
 };
 
 }  // namespace arangodb::aql

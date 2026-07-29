@@ -429,6 +429,14 @@ inconsistent.)")
       .setIntroducedIn(31204);
 }
 
+void ClusterOptionsProvider::processOptionsImpl(
+    std::shared_ptr<ProgramOptions> opts, ClusterOptions& options) {
+  // computed here, rather than in validateOptionsImpl, because
+  // ArangodServer::processOptions() needs it to resolve the server role
+  // before validateOptions() runs
+  options.enableCluster = !options.agencyEndpoints.empty();
+}
+
 void ClusterOptionsProvider::validateOptionsImpl(
     std::shared_ptr<ProgramOptions> opts, ClusterOptions& options) {
   if (opts->processingResult().touched(
@@ -479,8 +487,6 @@ void ClusterOptionsProvider::validateOptionsImpl(
            "`--cluster.max-replication-factor`";
     FATAL_ERROR_EXIT();
   }
-
-  options.enableCluster = !options.agencyEndpoints.empty();
 
   options.agencyPrefix = "arango";
 

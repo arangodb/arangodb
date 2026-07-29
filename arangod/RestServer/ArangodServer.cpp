@@ -119,7 +119,6 @@ void ArangodServer::addFeatures() {
       LazyApplicationFeatureReference<ClusterFeature>(*this));
   addFeature<metrics::ClusterMetricsFeature>();
   addFeature<VersionFeature>();
-  addFeature<ActionFeature>();
   addFeature<ApiRecordingFeature>(_dataSourceRegistry, metrics);
   addFeature<AqlFeature>();
   addFeature<async_registry::Feature>(_dataSourceRegistry);
@@ -136,23 +135,17 @@ void ArangodServer::addFeatures() {
   addFeature<ConfigFeature>(std::string{_binaryName});
 #ifdef USE_V8
   addFeature<ConsoleFeature>();
-  addFeature<V8DealerFeature>(metrics);
-  addFeature<V8PlatformFeature>();
-  addFeature<V8SecurityFeature>(AllowListStrictness::STRICT);
+  auto& v8DealerFeature = addFeature<V8DealerFeature>(metrics);
 #endif
   addFeature<CpuUsageFeature>();
   addFeature<SystemDatabaseFeature>();
   addFeature<EnvironmentFeature>();
-#ifdef USE_V8
-  addFeature<FoxxFeature>();
-#endif
   addFeature<GreetingsFeature>();
   addFeature<LanguageCheckFeature>();
   addFeature<TimeZoneFeature>();
   addFeature<LockfileFeature>();
   addFeature<LoggerFeature>(true);
   addFeature<OptionsCheckFeature>();
-  addFeature<QueryRegistryFeature>(metrics);
   addFeature<ReplicationMetricsFeature>(metrics);
   addFeature<SchedulerFeature>(metrics, sharedPRNGFeature.getPRNG());
   addFeature<VectorIndexFeature>(database);
@@ -175,8 +168,6 @@ void ArangodServer::addFeatures() {
   addFeature<TempFeature>(std::string{_binaryName});
   addFeature<ViewTypesFeature>();
   addFeature<aql::AqlFunctionFeature>();
-  addFeature<aql::OptimizerRulesFeature>();
-  addFeature<aql::QueryInfoLoggerFeature>();
   addFeature<RocksDBRecoveryManager>(database, database);
 #ifdef ARANGODB_HAVE_FORK
   addFeature<DaemonFeature>();
@@ -197,6 +188,8 @@ void ArangodServer::addFeaturesWithOptionProvider() {
 #ifdef USE_V8
   auto& v8DealerFeature = getFeature<V8DealerFeature>();
 #endif
+
+  addFeature<ActionFeature>(getOptions<ActionOptionsProvider>());
 
 #ifdef USE_ENTERPRISE
   addFeature<AuditFeature>(getOptions<AuditOptionsProvider>());
@@ -243,6 +236,22 @@ void ArangodServer::addFeaturesWithOptionProvider() {
   addFeature<CrashHandlerFeature>(
       _dumpManager, getOptions<crash_handler::CrashHandlerOptionsProvider>());
   addFeature<LogBufferFeature>(metrics, getOptions<LogBufferOptionsProvider>());
+
+#ifdef USE_V8
+  addFeature<V8PlatformFeature>(getOptions<V8PlatformOptionsProvider>());
+  addFeature<V8SecurityFeature>(AllowListStrictness::STRICT,
+                                getOptions<V8SecurityOptionsProvider>());
+  addFeature<FoxxFeature>(getOptions<FoxxOptionsProvider>());
+#endif
+
+  addFeature<aql::OptimizerRulesFeature>(
+      getOptions<aql::OptimizerRulesOptionsProvider>());
+
+  addFeature<aql::QueryInfoLoggerFeature>(
+      getOptions<aql::QueryInfoLoggerOptionsProvider>());
+
+  addFeature<QueryRegistryFeature>(metrics,
+                                   getOptions<QueryRegistryOptionsProvider>());
 
   auto& agency = addFeature<AgencyFeature>(getOptions<AgencyOptionsProvider>());
 

@@ -32,6 +32,9 @@ struct ClusterOptionsProvider
   void declareOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
                           ClusterOptions& options);
 
+  void processOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
+                          ClusterOptions& options);
+
   void validateOptionsImpl(std::shared_ptr<options::ProgramOptions> opts,
                            ClusterOptions& options);
 };
