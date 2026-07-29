@@ -44,11 +44,9 @@ struct BumpFileDescriptorsOptionsProvider
                            BumpFileDescriptorsFeatureOptions& options);
 
  protected:
-  explicit BumpFileDescriptorsOptionsProvider(std::string optionName)
-      : _optionName(std::move(optionName)) {}
-
- private:
-  std::string _optionName;
+  explicit BumpFileDescriptorsOptionsProvider(std::string optionName) {
+    mutableOptions().optionName = std::move(optionName);
+  }
 };
 
 // arangod

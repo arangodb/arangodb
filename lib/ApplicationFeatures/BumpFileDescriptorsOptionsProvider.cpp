@@ -40,7 +40,7 @@ void BumpFileDescriptorsOptionsProvider::declareOptionsImpl(
     BumpFileDescriptorsFeatureOptions& opts) {
   options
       ->addOption(
-          _optionName,
+          opts.optionName,
           "The minimum number of file descriptors needed to start (0 = no "
           "minimum)",
           new UInt64Parameter(&opts.descriptorsMinimum),
@@ -55,7 +55,7 @@ void BumpFileDescriptorsOptionsProvider::validateOptionsImpl(
       (opts.descriptorsMinimum < FileDescriptors::requiredMinimum ||
        opts.descriptorsMinimum > FileDescriptors::maximumValue)) {
     LOG_TOPIC("7e15c", FATAL, Logger::STARTUP)
-        << "invalid value for " << _optionName << ". must be between "
+        << "invalid value for " << opts.optionName << ". must be between "
         << FileDescriptors::requiredMinimum << " and "
         << FileDescriptors::maximumValue;
     FATAL_ERROR_EXIT();
