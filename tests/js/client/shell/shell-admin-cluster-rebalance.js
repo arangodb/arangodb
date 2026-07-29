@@ -21,7 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Lars Maier
 // //////////////////////////////////////////////////////////////////////////////
 
 let jsunity = require('jsunity');
@@ -39,15 +38,7 @@ function resignServer(server) {
   assertEqual(202, res.code);
   const id = res.parsedBody.id;
 
-  let count = 10;
-  while (--count >= 0) {
-    require("internal").wait(5.0, false);
-    res = arango.GET_RAW("/_admin/cluster/queryAgencyJob?id=" + id);
-    if (res.code === 200 && res.parsedBody.status === "Finished") {
-      return;
-    }
-  }
-  assertTrue(false, `We failed to resign a leader in 50s. We cannot reliably test rebalancing of shards now.`);
+  IM.waitForAgencyJob(id, 50*10, `resign leadership of ${server} We cannot reliably test rebalancing of shards now.`);
 }
 
 function getRebalancePlan(moveLeaders, moveFollowers, leaderChanges, excludeSystemCollections) {
@@ -394,27 +385,7 @@ function clusterRebalanceWithMovesToMakeSuite() {
             if (leader === toServer) {
               return;
             }
-            let moveShardJob = {
-              database: database,
-              collection: cn,
-              shard: shardName,
-              fromServer: leader,
-              toServer: toServer,
-              isLeader: true,
-              remainsFollower: false
-            };
-            const result = arango.POST("/_admin/cluster/moveShard", moveShardJob);
-            assertEqual(result.code, 202);
-            while (true) {
-              if (internal.time() >= end) {
-                assertFalse(true, "test timed out");
-              }
-              let res2 = arango.GET(`/_admin/cluster/queryAgencyJob?id=${result.id}`);
-              if (res2.status === "Finished") {
-                break;
-              }
-              internal.wait(0.5);
-            }
+            IM.moveShard(database, cn, shardName, leader, toServer, 300, true, false);
           });
           const plan2 = arango.GET("/_admin/cluster/shardDistribution").results[cn].Plan;
           Object.entries(plan2).forEach((shardInfo) => {

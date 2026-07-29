@@ -21,8 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Jan Steemann
-/// @author Copyright 2022, ArangoDB GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
@@ -31,9 +29,9 @@ const jsunity = require("jsunity");
 const db = require("internal").db;
 const request = require("@arangodb/request");
 const _ = require("lodash");
-const getCoordinatorEndpoints = require('@arangodb/test-helper').getCoordinatorEndpoints;
+let { instanceRole } = require('@arangodb/testutils/instance');
+const IM = global.instanceManager;
 
-const servers = getCoordinatorEndpoints();
 
 function FoxxQueuesSuite () {
   'use strict';
@@ -43,7 +41,7 @@ function FoxxQueuesSuite () {
   const qn = "FoxxQueue";
   const adminPath = "_admin/execute?returnBodyAsJSON=true";
  
-  function sendRequest(method, endpoint, body, usePrimary) {
+  function sendRequest(method, path, body, usePrimary) {
     let res;
     const i = usePrimary ? 0 : 1;
 
@@ -51,11 +49,11 @@ function FoxxQueuesSuite () {
       const envelope = {
         body,
         method,
-        url: `${coordinators[i]}${endpoint}`
+        url: `${coordinators[i].url}${path}`
       };
       res = request(envelope);
     } catch(err) {
-      console.error(`Exception processing ${method} ${endpoint}`, err.stack);
+      console.error(`Exception processing ${method} ${path}`, err.stack);
       return {};
     }
     let resultBody = res.body;
@@ -68,7 +66,7 @@ function FoxxQueuesSuite () {
   return {
     
     setUpAll: function() {
-      coordinators = getCoordinatorEndpoints();
+      coordinators = IM.getInstancesRole(instanceRole.coordinator);
       if (coordinators.length < 2) {
         throw new Error('Expecting at least two coordinators');
       }

@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Wilfried Goesgens
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ApplicationFeatures/ProcessEnvironmentFeature.h"
@@ -47,12 +46,6 @@ ProcessEnvironmentFeature::ProcessEnvironmentFeature(
     : ApplicationFeature{server, *this}, _options(std::move(options)) {
   setOptional(false);
   startsAfter<application_features::GreetingsFeaturePhase>();
-}
-
-void ProcessEnvironmentFeature::collectOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  ProcessEnvironmentOptionsProvider provider;
-  provider.declareOptions(options, _options);
 }
 
 void ProcessEnvironmentFeature::prepare() {

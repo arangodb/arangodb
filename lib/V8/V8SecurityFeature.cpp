@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <stdlib.h>
@@ -53,7 +52,6 @@
 #include "ProgramOptions/Option.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "V8/V8SecurityOptionsProvider.h"
 #include "V8/JavaScriptSecurityContext.h"
 #include "V8/v8-globals.h"
 
@@ -103,16 +101,6 @@ V8SecurityFeature::V8SecurityFeature(
   setOptional(false);
   startsAfter<TempFeature>();
   startsAfter<V8PlatformFeature>();
-}
-
-void V8SecurityFeature::collectOptions(
-    std::shared_ptr<ProgramOptions> options) {
-  V8SecurityOptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
-
-void V8SecurityFeature::validateOptions(
-    std::shared_ptr<ProgramOptions> /*options*/) {
   {
     if (_strictness == AllowListStrictness::NONSTRICT &&
         _options.startupOptionsAllowList.empty()) {
@@ -253,9 +241,8 @@ bool V8SecurityFeature::shouldExposeEnvironmentVariable(
   return _environmentVariables.check(name) == DenyAllowResult::ALLOWED;
 }
 
-bool V8SecurityFeature::isAllowedToConnectToEndpoint(
-    v8::Isolate* isolate, std::string const& endpoint,
-    std::string const& originalEndpoint) const {
+bool V8SecurityFeature::isAllowedToConnectToUrl(v8::Isolate* isolate,
+                                                std::string const& url) const {
   TRI_GET_GLOBALS();
   TRI_ASSERT(v8g != nullptr);
   if (v8g->_securityContext.isInternal()) {
@@ -264,14 +251,8 @@ bool V8SecurityFeature::isAllowedToConnectToEndpoint(
     return true;
   }
 
-  // The distinction between endpoint and originalEndpoint is used
-  // in the context of redirects in JS_download: if accessing the original
-  // endpoint redirects, we check every redirect for permission too
-  auto endpointCheck = _endpoints.check(endpoint);
-  auto originalEndpointCheck = _endpoints.check(originalEndpoint);
-
-  return (endpointCheck == DenyAllowResult::ALLOWED) &&
-         (originalEndpointCheck == DenyAllowResult::ALLOWED);
+  auto urlCheck = _endpoints.check(url);
+  return (urlCheck == DenyAllowResult::ALLOWED);
 }
 
 bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate,

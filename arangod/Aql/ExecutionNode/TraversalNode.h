@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -159,6 +158,14 @@ class TraversalNode : public virtual GraphNode {
 
   /// @brief getVariablesUsedHere
   void getVariablesUsedHere(VarSet& result) const override final;
+
+  /// @brief all variables referenced by the conditions, prune and post-filter
+  /// expressions of this traversal. These are the variables whose values have
+  /// to be made available to the condition evaluation at run time (and, in the
+  /// cluster, have to be shipped to the DB servers). This is a subset of
+  /// getVariablesUsedHere(), which additionally contains the start vertex
+  /// input variable.
+  void getConditionVariables(VarSet& result) const;
 
   /// @brief getVariablesSetHere
   std::vector<Variable const*> getVariablesSetHere() const override final;

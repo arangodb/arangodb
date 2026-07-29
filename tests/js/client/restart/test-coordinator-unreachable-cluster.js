@@ -21,7 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Koushal Kawade
 // //////////////////////////////////////////////////////////////////////////////
 
 let jsunity = require('jsunity');
@@ -30,10 +29,6 @@ let arangodb = require('@arangodb');
 let { instanceRole } = require('@arangodb/testutils/instance');
 let db = arangodb.db;
 let IM = global.instanceManager;
-
-const {
-  getCtrlCoordinators
-} = require('@arangodb/test-helper');
 
 function createCoordinatorUnreachableSuite() {
   'use strict';
@@ -86,7 +81,7 @@ function createCoordinatorUnreachableSuite() {
       IM.debugSetFailAt("CreateDatabase::delay", instanceRole.dbServer);
       let createDb = arango.POST_RAW("/_api/database", {name:databaseName}, {"x-arango-async":"store"});
 
-      let coordinators = getCtrlCoordinators();
+      let coordinators = IM.getInstancesRole(instanceRole.coordinator);
 
       // Suspend coordinators for 15 sec which will make
       // the agency remove the database from the plan.
@@ -134,7 +129,7 @@ function createCoordinatorUnreachableSuite() {
       IM.debugSetFailAt("DelayCreateShard15", instanceRole.dbServer);
       let createColl = arango.POST_RAW("/_api/collection", {name:collectionName}, {"x-arango-async":"store"});
 
-      let coordinators = getCtrlCoordinators();
+      let coordinators = IM.getInstancesRole(instanceRole.coordinator);
 
       // Suspend coordinators for 15 sec which will make
       // the agency remove the collection from the plan.

@@ -22,9 +22,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Jan Steemann
-// / @author Michael Hackstein
-// / @author Dr. Frank Celler
 // //////////////////////////////////////////////////////////////////////////////
 
 var internal = require('internal');
@@ -227,7 +224,7 @@ var moveAppToServer = function (serviceInfo) {
   var filePath;
   var shouldDelete = false;
   if (fs.isDirectory(serviceInfo)) {
-    filePath = utils.zipDirectory(serviceInfo);
+    filePath = fs.zipDirectory(serviceInfo);
     shouldDelete = true;
   }
   if (fs.isFile(serviceInfo)) {

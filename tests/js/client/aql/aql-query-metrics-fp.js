@@ -21,16 +21,12 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Jure Bajic
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
-const db = require("@arangodb").db;
+const { db, aql, errors } = require("@arangodb");
 const internal = require("internal");
 const getMetricSingle = require("@arangodb/test-helper").getMetricSingle;
-const arangodb = require("@arangodb");
-const aql = arangodb.aql;
-const ERRORS = arangodb.errors;
 let IM = global.instanceManager;
 const {sleep, arango} = require('internal');
 
@@ -62,7 +58,7 @@ function QueryMetricsTestSuite() {
         st.parse();
         fail();
       } catch (e) {
-        assertEqual(ERRORS.ERROR_QUERY_PARSE.code, e.errorNum);
+        assertEqual(errors.ERROR_QUERY_PARSE.code, e.errorNum);
       }
 
       let aqlCurrentQueryMetric = IM.getMetric("arangodb_aql_current_query");

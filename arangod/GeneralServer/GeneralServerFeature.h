@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -57,8 +56,6 @@ class GeneralServerFeature final
   explicit GeneralServerFeature(application_features::ApplicationServer& server,
                                 metrics::MetricsFeature& metricsFeature);
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
   void start() override final;
   void initiateSoftShutdown() override final;

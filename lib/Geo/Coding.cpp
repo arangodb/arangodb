@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Valery Mironov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Geo/Coding.h"

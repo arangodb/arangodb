@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <atomic>
@@ -190,12 +189,18 @@ void ApplicationServer::run(int argc, char* argv[]) {
   // seal the options
   _options->seal();
 
+  processOptions();
+
   // validate options of all features
   _state.store(State::IN_VALIDATE_OPTIONS, std::memory_order_release);
   reportServerProgress(State::IN_VALIDATE_OPTIONS);
   validateOptions();
 
+  addFeaturesWithOptionProvider();
+
   // setup and validate all feature dependencies
+  // This is needed to also add the feature coming from
+  // addFeaturesWithOptionProvider to the _orderedFeatures vector
   setupDependencies(true);
 
   // turn off all features that depend on other features that have been
@@ -373,7 +378,7 @@ void ApplicationServer::collectOptions() {
   apply(
       [this](ApplicationFeature& feature) {
         LOG_TOPIC("b2731", TRACE, Logger::STARTUP)
-            << feature.name() << "::loadOptions";
+            << feature.name() << "::collectOptions";
         reportFeatureProgress(_state.load(std::memory_order_relaxed),
                               feature.name());
         feature.collectOptions(_options);

@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jure Bajic
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "VectorIndex/VectorIndexBuildManager.h"
@@ -82,10 +81,12 @@ namespace arangodb::vector {
 
 VectorIndexBuildManager::VectorIndexBuildManager(
     DatabaseFeature& dbFeature, MaintenanceFeature& maintenance,
-    metrics::IRegistry& metricsRegistry, Scheduler& scheduler)
+    metrics::IRegistry& metricsRegistry, Scheduler& scheduler,
+    std::chrono::duration<double> retryBackoff)
     : _dbFeature(dbFeature),
       _maintenance(maintenance),
       _scheduler(scheduler),
+      _retryBackoff(retryBackoff),
       _resourceMonitor(GlobalResourceMonitor::instance()),
       _untrainedCount(metricsRegistry.add(arangodb_vector_index_unusable{})),
       _trainingOngoingCount(
@@ -162,17 +163,17 @@ void VectorIndexBuildManager::fulfillAllWaiters(Result const& result) {
 
 bool VectorIndexBuildManager::shouldSkipRetry(
     FailedBuildsMap const& failedBuilds, std::uint64_t objectId,
-    std::uint64_t currentDocCount) {
+    std::uint64_t currentDocCount) const {
   auto const it = failedBuilds.find(objectId);
   if (it == failedBuilds.end()) {
     return false;
   }
   auto const& info = it->second;
   bool backoffElapsed =
-      std::chrono::steady_clock::now() - info.failedAt >= kRetryBackoff;
+      std::chrono::steady_clock::now() - info.failedAt >= _retryBackoff;
   bool docCountChanged = currentDocCount != info.documentCount;
   // Retry if either the backoff has elapsed or the document count has
-  // changed.  Using OR avoids permanently blocking retries when the doc
+  // changed. Using OR avoids permanently blocking retries when the doc
   // count stays the same (e.g. after a restore with all data present).
   return !(backoffElapsed || docCountChanged);
 }
@@ -182,9 +183,11 @@ void VectorIndexBuildManager::run(std::stop_token stopToken) {
   pthread_setname_np(pthread_self(), "VecIdxBuild");
 #endif
 
+  // failed builds has to persists across multiple scans so we know when to
+  // backoff
   FailedBuildsMap failedBuilds;
 
-  auto fulfillOnExit = scopeGuard([this]() noexcept {
+  auto const fulfillOnExit = scopeGuard([this]() noexcept {
     fulfillAllWaiters(Result{TRI_ERROR_SHUTTING_DOWN});
   });
 
@@ -212,13 +215,11 @@ void VectorIndexBuildManager::run(std::stop_token stopToken) {
 
 void VectorIndexBuildManager::scanAndBuild(std::stop_token const& stopToken,
                                            FailedBuildsMap& failedBuilds) {
-  // Collect objectIds seen this scan to prune stale entries from
-  // failedBuilds (e.g. indexes that were dropped since the last scan).
+  // we use these ones to prune failedBuilds(for dropped indexes)
   std::unordered_set<std::uint64_t> seenObjectIds;
-  // All vector IndexIds seen during the scan (regardless of state).
+  // we use this one to prune waiters(for dropped indexes)
   std::unordered_set<IndexId::BaseType> seenIndexIds;
-  // Track IndexIds of unusable indexes that have pending waiters but
-  // could not be built in this scan (below threshold or in backoff).
+  // Unusable indexes with pending waiters that could not be built this scan.
   std::unordered_set<IndexId::BaseType> skippedWaiters;
   uint64_t unusableIndexesCount = 0;
   bool scanCompletedFully = false;
@@ -231,107 +232,94 @@ void VectorIndexBuildManager::scanAndBuild(std::stop_token const& stopToken,
     auto const collections = vocbase.collections(false);
     for (auto const& coll : collections) {
       auto const indexes = coll->getPhysical()->getReadyIndexes();
+
       for (auto const& idx : indexes) {
         if (idx->type() != Index::TRI_IDX_TYPE_VECTOR_INDEX) {
           continue;
         }
         auto& vecIdx = static_cast<RocksDBVectorIndex&>(*idx);
+        LOG_TOPIC("e175b", DEBUG, Logger::ENGINES)
+            << "[shard=" << coll->name() << ", index=" << idx->id().id()
+            << "] Vector index build scan found index with trainingState="
+            << trainingStateToString(vecIdx.trainingState());
+
         seenIndexIds.insert(vecIdx.id().id());
-        if (vecIdx.trainingState() == VectorIndexTrainingState::kReady) {
-          fulfillWaiters(vecIdx.id(), Result{});
-          continue;
-        }
-        if (vecIdx.trainingState() != VectorIndexTrainingState::kUnusable) {
-          // kTraining or kIngesting — build in progress, keep waiters
-          // pending until it finishes.
-          continue;
+        switch (vecIdx.trainingState()) {
+          case VectorIndexTrainingState::kReady:
+            fulfillWaiters(vecIdx.id(), Result{});
+            continue;
+          case VectorIndexTrainingState::kTraining:
+          case VectorIndexTrainingState::kIngesting:
+            // kTraining or kIngesting: keep waiters pending until it finishes.
+            LOG_TOPIC("e177b", DEBUG, Logger::ENGINES) << std::format(
+                "[shard={}, index={}] Vector index build already in progress "
+                "(trainingState={}); not starting a new build this scan.",
+                vecIdx.collection().name(), vecIdx.id().id(),
+                trainingStateToString(vecIdx.trainingState()));
+            continue;
+          case VectorIndexTrainingState::kUnusable:
+            // continue below
+            break;
         }
 
         ++unusableIndexesCount;
         seenObjectIds.insert(vecIdx.objectId());
 
         auto const* rcoll =
-            static_cast<RocksDBCollection*>(coll->getPhysical());
+            dynamic_cast<RocksDBCollection*>(coll->getPhysical());
+        TRI_ASSERT(rcoll != nullptr) << "This should never happen";
+        if (rcoll == nullptr) {
+          skippedWaiters.insert(vecIdx.id().id());
+          LOG_TOPIC("e176b", ERR, Logger::ENGINES) << std::format(
+              "[shard={}, index={}] physical collection is not a "
+              "RocksDBCollection; skipping vector index build.",
+              vecIdx.collection().name(), vecIdx.id().id());
+          continue;
+        }
         auto const numDocs = rcoll->meta().numberDocuments();
         if (numDocs < vecIdx.trainingThreshold()) {
+          // we still cannot train
           skippedWaiters.insert(vecIdx.id().id());
-          auto belowThresholdMsg = std::format(
+          LOG_TOPIC("e174b", INFO, Logger::ENGINES) << std::format(
+              "[shard={}, index={}] Vector index below training threshold: "
+              "meta().numberDocuments()={}, threshold={}. Skipping this scan.",
+              vecIdx.collection().name(), vecIdx.id().id(), numDocs,
+              vecIdx.trainingThreshold());
+
+          auto errorMessageBelowThreshold = std::format(
               "not enough training data for vector "
               "index, need at least {} documents "
               "but only {} present",
               vecIdx.trainingThreshold(), numDocs);
-          vecIdx.setTrainingError(belowThresholdMsg);
-          reportIndexError(vocbase, *coll, vecIdx,
-                           Result{TRI_ERROR_QUERY_VECTOR_INDEX_NOT_READY,
-                                  std::move(belowThresholdMsg)});
+          // Republish only when the message (which embeds the doc count)
+          // changed; otherwise every scan would needlessly mark the db dirty.
+          if (vecIdx.trainingError() != errorMessageBelowThreshold) {
+            vecIdx.setTrainingError(errorMessageBelowThreshold);
+            reportIndexError(vocbase, *coll, vecIdx,
+                             Result{TRI_ERROR_QUERY_VECTOR_INDEX_NOT_READY,
+                                    errorMessageBelowThreshold});
+          }
           continue;
         }
 
+        // Check to build or not
         if (shouldSkipRetry(failedBuilds, vecIdx.objectId(), numDocs)) {
           skippedWaiters.insert(vecIdx.id().id());
+          auto const& info = failedBuilds.at(vecIdx.objectId());
+          auto const remaining =
+              std::chrono::duration_cast<std::chrono::duration<double>>(
+                  _retryBackoff -
+                  (std::chrono::steady_clock::now() - info.failedAt));
+          LOG_TOPIC("e172b", INFO, Logger::ENGINES)
+              << "[shard=" << vecIdx.collection().name()
+              << ", index=" << vecIdx.id().id()
+              << "] Vector index build in retry backoff, skipping retry for "
+              << remaining.count() << "s more.";
           continue;
         }
 
-        LOG_TOPIC("e171b", INFO, Logger::ENGINES)
-            << "[shard=" << vecIdx.collection().name()
-            << ", index=" << vecIdx.id().id()
-            << "] Training threshold reached (" << vecIdx.trainingThreshold()
-            << " documents). Starting deferred training.";
-
-        _trainingOngoingCount.fetch_add(1);
-        TRI_ASSERT(_resourceMonitor.current() == 0);
-        auto indexPtr = std::static_pointer_cast<RocksDBIndex>(idx);
-        VectorIndexBuilder builder(vecIdx, _resourceMonitor);
-
-        // ResourceUsageScope throws on overflow; catch so cleanup below
-        // runs uniformly for both Result-failed and thrown failures.
-        auto const res = std::invoke([&]() -> Result {
-          try {
-            return builder.build(std::move(indexPtr), _trainingDuration,
-                                 _ingestionDuration, stopToken);
-          } catch (basics::Exception const& e) {
-            return Result{e.code(), e.message()};
-          } catch (std::exception const& e) {
-            return Result{TRI_ERROR_INTERNAL, e.what()};
-          }
-        });
-        _trainingOngoingCount.fetch_sub(1);
-
-        if (res.fail()) {
-          // Set the error before flipping state to kUnusable so a concurrent
-          // REST reader never observes kUnusable with an empty error.
-          vecIdx.setTrainingError(std::string{res.errorMessage()});
-          vecIdx.resetTrainingState();
-          fulfillWaiters(vecIdx.id(), res);
-          if (res.is(TRI_ERROR_RESOURCE_LIMIT)) {
-            LOG_TOPIC("e165b", ERR, Logger::ENGINES)
-                << "[index=" << vecIdx.id().id()
-                << "] Vector build aborted: training reservoir exceeded the "
-                   "configured memory limit. Lower numberOfDocsPerCentroid in "
-                   "the index definition or raise the global memory limit. "
-                   "Details: "
-                << res.errorMessage();
-          } else {
-            LOG_TOPIC("e164b", ERR, Logger::ENGINES)
-                << "[index=" << vecIdx.id().id()
-                << "] Vector build failed: " << res.errorMessage();
-          }
-          failedBuilds[vecIdx.objectId()] = {std::chrono::steady_clock::now(),
-                                             numDocs};
-
-          reportIndexError(vocbase, *coll, vecIdx, res);
-          continue;
-        }
-
-        fulfillWaiters(vecIdx.id(), Result{});
-
-        clearIndexError(vocbase, *coll, vecIdx);
-        failedBuilds.erase(vecIdx.objectId());
-
-        // Update the untrained count after each successful build.
-        _untrainedCount.store(
-            unusableIndexesCount > 0 ? unusableIndexesCount - 1 : 0,
-            std::memory_order_relaxed);
+        buildIndex(vocbase, *coll, idx, numDocs, unusableIndexesCount,
+                   stopToken, failedBuilds);
       }
     }
   });
@@ -344,17 +332,14 @@ void VectorIndexBuildManager::scanAndBuild(std::stop_token const& stopToken,
     return !seenObjectIds.contains(entry.first);
   });
 
-  // Fulfill waiters for indexes that were scanned but could not be built
-  // (below threshold or in retry backoff) so the REST handler doesn't hang.
+  // Unblock waiters for indexes that were skipped this scan.
   for (auto indexId : skippedWaiters) {
     fulfillWaiters(IndexId{indexId},
                    Result{TRI_ERROR_QUERY_VECTOR_INDEX_NOT_READY,
                           "vector index not ready"});
   }
 
-  // Fulfill waiters for indexes that no longer exist (dropped while a
-  // request was waiting).  Only safe when the scan visited every
-  // database/collection without an early return.
+  // Unblock waiters for dropped indexes. Only safe after a full scan.
   if (scanCompletedFully) {
     std::vector<IndexId::BaseType> orphaned;
     {
@@ -369,6 +354,92 @@ void VectorIndexBuildManager::scanAndBuild(std::stop_token const& stopToken,
       fulfillWaiters(IndexId{id}, Result{TRI_ERROR_ARANGO_INDEX_NOT_FOUND,
                                          "index was dropped"});
     }
+  }
+}
+
+void VectorIndexBuildManager::buildIndex(TRI_vocbase_t const& vocbase,
+                                         LogicalCollection const& coll,
+                                         std::shared_ptr<Index> const& idx,
+                                         std::uint64_t numDocs,
+                                         std::uint64_t unusableIndexesCount,
+                                         std::stop_token const& stopToken,
+                                         FailedBuildsMap& failedBuilds) {
+  auto& vecIdx = static_cast<RocksDBVectorIndex&>(*idx);
+
+  LOG_TOPIC("e171b", INFO, Logger::ENGINES)
+      << "[shard=" << vecIdx.collection().name()
+      << ", index=" << vecIdx.id().id() << "] Training threshold reached ("
+      << vecIdx.trainingThreshold()
+      << " documents). Starting deferred training.";
+
+  _trainingOngoingCount.fetch_add(1);
+  TRI_ASSERT(_resourceMonitor.current() == 0);
+  auto indexPtr = std::static_pointer_cast<RocksDBIndex>(idx);
+  VectorIndexBuilder builder(vecIdx, _resourceMonitor);
+
+  // Catch throws (e.g. ResourceUsageScope overflow) so failure handling
+  // below runs uniformly for both Result-failed and thrown errors.
+  auto const res = std::invoke([&]() -> Result {
+    try {
+      return builder.build(std::move(indexPtr), _trainingDuration,
+                           _ingestionDuration, stopToken);
+    } catch (basics::Exception const& e) {
+      return Result{e.code(), e.message()};
+    } catch (std::exception const& e) {
+      return Result{TRI_ERROR_INTERNAL, e.what()};
+    }
+  });
+  _trainingOngoingCount.fetch_sub(1);
+
+  if (res.fail()) {
+    auto errorMessage = std::string{res.errorMessage()};
+    // Republish only when the reported error changed; otherwise a persistent
+    // identical failure would needlessly mark the db dirty on every retry.
+    bool const errorChanged = vecIdx.trainingError() != errorMessage;
+    // Set the error before flipping state so a concurrent REST reader never
+    // observes kUnusable with an empty error.
+    vecIdx.setTrainingError(std::move(errorMessage));
+    vecIdx.resetTrainingState();
+    fulfillWaiters(vecIdx.id(), res);
+    if (res.is(TRI_ERROR_RESOURCE_LIMIT)) {
+      LOG_TOPIC("e165b", ERR, Logger::ENGINES)
+          << "[index=" << vecIdx.id().id()
+          << "] Vector build aborted: training reservoir exceeded the "
+             "configured memory limit. Lower numberOfDocsPerCentroid in the "
+             "index definition or raise the global memory limit. Details: "
+          << res.errorMessage();
+    } else {
+      LOG_TOPIC("e164b", ERR, Logger::ENGINES)
+          << "[index=" << vecIdx.id().id()
+          << "] Vector build failed: " << res.errorMessage();
+    }
+    failedBuilds[vecIdx.objectId()] = {std::chrono::steady_clock::now(),
+                                       numDocs};
+    LOG_TOPIC("e173b", INFO, Logger::ENGINES)
+        << "[shard=" << vecIdx.collection().name()
+        << ", index=" << vecIdx.id().id() << "] Backing off retries for "
+        << std::chrono::duration_cast<std::chrono::duration<double>>(
+               _retryBackoff)
+               .count()
+        << "s (or until the document count changes).";
+
+    if (errorChanged) {
+      reportIndexError(vocbase, coll, vecIdx, res);
+    }
+    return;
+  }
+
+  fulfillWaiters(vecIdx.id(), Result{});
+  clearIndexError(vocbase, coll, vecIdx);
+  failedBuilds.erase(vecIdx.objectId());
+
+  _untrainedCount.store(unusableIndexesCount > 0 ? unusableIndexesCount - 1 : 0,
+                        std::memory_order_relaxed);
+}
+
+void VectorIndexBuildManager::markDatabaseDirty(std::string const& database) {
+  if (ServerState::instance()->isDBServer()) {
+    _maintenance.addDirty(database);
   }
 }
 
@@ -401,6 +472,8 @@ void VectorIndexBuildManager::reportIndexError(TRI_vocbase_t const& vocbase,
   }
   _maintenance.storeIndexError(database, collection, shard, indexId,
                                eb.steal());
+  // Wake the maintenance loop so the buffered error reaches Current promptly.
+  markDatabaseDirty(database);
 }
 
 void VectorIndexBuildManager::clearIndexError(
@@ -411,6 +484,8 @@ void VectorIndexBuildManager::clearIndexError(
   auto const& shard = coll.name();
   auto const indexId = std::to_string(vecIdx.id().id());
   _maintenance.clearIndexError(database, collection, shard, indexId);
+  // Wake the maintenance loop so the cleared state reaches Current promptly.
+  markDatabaseDirty(database);
 }
 
 }  // namespace arangodb::vector

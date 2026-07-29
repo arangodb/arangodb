@@ -22,9 +22,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Max Neunhoeffer
-// / @author Wilfried Goesgens
-// / @author Copyright 2021, ArangoDB GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 const tu = require('@arangodb/testutils/test-utils');
 const fs = require('fs');
@@ -103,6 +100,7 @@ function hotBackup (options) {
   try {
     if (!PTK.runSetupSuite(setupFile) ||
         !PTK.runRtaMakedata() ||
+        !PTK.runRtaWaitdata() ||
         !PTK.dumpFrom('UnitTestsDumpSrc') ||
         !PTK.restartInstance() ||
         !PTK.restoreTo('UnitTestsDumpDst') ||

@@ -21,15 +21,13 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Jan Steemann
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
 const jsunity = require('jsunity');
 const db = require("@arangodb").db;
 const _ = require("lodash");
-const { deriveTestSuite, getEndpointById, getMetric, waitForShardsInSync } = require('@arangodb/test-helper');
+const { deriveTestSuite, waitForShardsInSync } = require('@arangodb/test-helper');
 let { instanceRole } = require('@arangodb/testutils/instance');
 
 const cn = "UnitTestsCollection";

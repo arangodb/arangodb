@@ -44,6 +44,18 @@ void VectorIndexOptionsProvider::declareOptions(
   Agents in a cluster as it has no effect on them other than that you need to
   leave the option enabled.)");
 
+  programOptions
+      ->addOption(
+          "--vector-index-build-retry-backoff",
+          "The backoff (in seconds) before the vector index build manager "
+          "retries a build that failed while the collection's document count "
+          "stayed the same.",
+          new DoubleParameter(&opts.buildRetryBackoffSecs, /*base*/ 1.0,
+                              /*minValue*/ 0.0),
+          makeFlags(Flags::DefaultNoComponents, Flags::Uncommon,
+                    Flags::OnDBServer, Flags::OnSingle))
+      .setIntroducedIn(31210);
+
   programOptions->addOldOption("--experimental-vector-index", "--vector-index");
 }
 

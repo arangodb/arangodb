@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Wilfried Goesgens
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -57,11 +56,10 @@ class ProcessMonitoringFeature final
  public:
   explicit ProcessMonitoringFeature(
       application_features::ApplicationServer& server,
-      V8ShellFeature& v8ShellFeature);
+      V8ShellFeature& v8ShellFeature,
+      V8SecurityFeature const& v8SecurityFeature);
   ~ProcessMonitoringFeature() final;
   static constexpr std::string_view name() noexcept { return "ProcessMonitor"; }
-  void validateOptions(
-      std::shared_ptr<options::ProgramOptions> /*options*/) final;
   void start() final;
   void beginShutdown() final;
   void stop() final;

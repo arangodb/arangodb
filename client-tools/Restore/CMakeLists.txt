@@ -1,4 +1,5 @@
 add_library(arango_restore
+  ArangoRestoreServer.cpp
   RestoreFeature.cpp
   RestoreOptionsProvider.cpp
 )

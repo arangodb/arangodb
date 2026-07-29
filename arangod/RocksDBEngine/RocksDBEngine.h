@@ -18,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
-/// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -196,12 +194,6 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
 
   // inherited from ApplicationFeature
   // ---------------------------------
-
-  // add the storage engine's specific options to the global list of options
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
-  // validate the storage engine's specific options
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
-
   // preparation phase for storage engine. can be used for internal setup.
   // the storage engine must not start any threads here or write any files
   void prepare() override;
@@ -466,7 +458,7 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
 #ifdef USE_ENTERPRISE
   bool encryptionKeyRotationEnabled() const;
 
-  bool isEncryptionEnabled() const;
+  bool isEncryptionEnabled() const override;
 
   std::string const& getEncryptionKey();
 
@@ -592,8 +584,6 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   [[nodiscard]] bool isVectorIndexEnabled() const;
 
 #ifdef USE_ENTERPRISE
-  void collectEnterpriseOptions(std::shared_ptr<options::ProgramOptions>);
-  void validateEnterpriseOptions(std::shared_ptr<options::ProgramOptions>);
   void prepareEnterprise();
 
   void validateJournalFiles() const;

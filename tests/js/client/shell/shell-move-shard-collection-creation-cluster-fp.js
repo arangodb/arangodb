@@ -21,7 +21,6 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Max Neunhoeffer
 // //////////////////////////////////////////////////////////////////////////////
 
 const _ = require('lodash');
@@ -64,30 +63,11 @@ function moveShardCreateCollectionSuite() {
       const shardId = Object.keys(shardInfo.results[cn].Plan)[0];
       const fromServerID = shardInfo.results[cn].Plan[shardId].leader;
       const toServerID = shardInfo.results[cn].Plan[shardId].followers[0];
-      
-      // Schedule MoveShard operation
-      const moveShardResult = arango.POST("/_admin/cluster/moveShard", {
-        database: "_system",
-        collection: cn,
-        shard: shardId,
-        fromServer: fromServerID,
-        toServer: toServerID
-      });
-      const moveShardId = moveShardResult.id;
 
-      // Let the job begin: Check if MoveShard operation is pending:
-      let moveShardPending = false;
-      let maxWait = 30; // 30 seconds timeout
-      while (maxWait > 0) {
-        const jobStatus = arango.GET(`/_admin/cluster/queryAgencyJob?id=${moveShardId}`);
-        if (jobStatus.status === "Pending") {
-          moveShardPending = true;
-          break;
-        }
-        internal.wait(1);
-        maxWait--;
-      }
-      assertTrue(moveShardPending, "MoveShard operation should become pending");
+      let moveShardId = IM.moveShard("_system", cn, shardId, fromServerID, toServerID, -1);
+
+      let msg = `MoveShard operation ${cn}:${shardId} ${fromServerID} => ${toServerID} `;
+      IM.waitForAgencyJob(moveShardId, 300, `${msg} should become pending`, "Pending");
 
       // Try to create second collection in background
       const createJob = arango.POST_RAW("/_api/collection", {
@@ -111,7 +91,7 @@ function moveShardCreateCollectionSuite() {
       
       // Check if create operation completed
       let createJobCompleted = false;
-      maxWait = 30; // 30 seconds timeout
+      let maxWait = 30; // 30 seconds timeout
       while (maxWait > 0) {
         const jobStatus = arango.GET(`/_api/job/${jobId}`);
         if (jobStatus.code !== 204) {
@@ -141,18 +121,7 @@ function moveShardCreateCollectionSuite() {
       assertTrue(db._collection(cn2) !== null, "Collection should be visible after transaction commit");
       
       // Check if MoveShard operation finished
-      let moveShardCompleted = false;
-      maxWait = 30; // 30 seconds timeout
-      while (maxWait > 0) {
-        const jobStatus = arango.GET(`/_admin/cluster/queryAgencyJob?id=${moveShardId}`);
-        if (jobStatus.status === "Finished") {
-          moveShardCompleted = true;
-          break;
-        }
-        internal.wait(1);
-        maxWait--;
-      }
-      assertTrue(moveShardCompleted, "MoveShard operation should complete after transaction commit");
+      IM.waitForAgencyJob(moveShardId, 300, `${msg} MoveShard operation should complete after transaction commit`);
     },
     
     testMoveShardWithDelaysAndCreateCollection: function() {
@@ -171,14 +140,7 @@ function moveShardCreateCollectionSuite() {
         toServer.debugSetFailAt("DelayTakeoverShardLeadership15");
         
         // Schedule MoveShard operation
-        const moveShardResult = arango.POST("/_admin/cluster/moveShard", {
-          database: "_system",
-          collection: cn,
-          shard: shardId,
-          fromServer: fromServerID,
-          toServer: toServerID
-        });
-        const moveShardId = moveShardResult.id;
+        let moveShardId = IM.moveShard("_system", cn, shardId, fromServerID, toServerID, -1);
 
         // Let the job begin:
         internal.wait(1);
@@ -198,8 +160,7 @@ function moveShardCreateCollectionSuite() {
         const jobStatus = arango.GET(`/_api/job/${jobId}`);
         assertEqual(jobStatus.code, 204, "Collection creation should be blocked");
         // Furthermore, confirm that the MoveShard operation is still ongoing:
-        const moveShardStatus = arango.GET(`/_admin/cluster/queryAgencyJob?id=${moveShardId}`);
-        assertEqual(moveShardStatus.status, "Pending");
+        IM.waitForAgencyJob(moveShardId, 30, "Collection creation should be pending", "Pending");
 
         // Stop the delays:
         toServer.debugSetFailAt("DontDelayCreateShard15");

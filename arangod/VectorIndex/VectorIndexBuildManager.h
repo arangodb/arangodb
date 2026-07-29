@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jure Bajic
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -32,6 +31,7 @@
 
 #include <chrono>
 #include <cstdint>
+#include <memory>
 #include <mutex>
 #include <stop_token>
 #include <thread>
@@ -41,6 +41,7 @@
 namespace arangodb {
 struct Database;
 class DatabaseFeature;
+class Index;
 class LogicalCollection;
 class MaintenanceFeature;
 class RocksDBVectorIndex;
@@ -59,7 +60,8 @@ class VectorIndexBuildManager {
   explicit VectorIndexBuildManager(DatabaseFeature& dbFeature,
                                    MaintenanceFeature& maintenance,
                                    metrics::IRegistry& metricsRegistry,
-                                   Scheduler& scheduler);
+                                   Scheduler& scheduler,
+                                   std::chrono::duration<double> retryBackoff);
 
   void start();
   void beginShutdown();
@@ -71,8 +73,6 @@ class VectorIndexBuildManager {
   futures::Future<Result> waitForIndexReady(IndexId indexId);
 
  private:
-  static constexpr auto kRetryBackoff = std::chrono::minutes(10);
-
   struct FailedBuildInfo {
     std::chrono::steady_clock::time_point failedAt;
     std::uint64_t documentCount;
@@ -80,14 +80,25 @@ class VectorIndexBuildManager {
 
   using FailedBuildsMap = std::unordered_map<std::uint64_t, FailedBuildInfo>;
 
-  static bool shouldSkipRetry(FailedBuildsMap const& failedBuilds,
-                              std::uint64_t objectId,
-                              std::uint64_t currentDocCount);
+  bool shouldSkipRetry(FailedBuildsMap const& failedBuilds,
+                       std::uint64_t objectId,
+                       std::uint64_t currentDocCount) const;
 
   void run(std::stop_token stopToken);
 
   void scanAndBuild(std::stop_token const& stopToken,
                     FailedBuildsMap& failedBuilds);
+
+  // Builds one eligible index and reports the outcome (waiters, backoff,
+  // published state).
+  void buildIndex(Database const& vocbase, LogicalCollection const& coll,
+                  std::shared_ptr<Index> const& idx, std::uint64_t numDocs,
+                  std::uint64_t unusableIndexesCount,
+                  std::stop_token const& stopToken,
+                  FailedBuildsMap& failedBuilds);
+
+  // Nudges the DBServer to republish Current promptly. No-op off a DBServer.
+  void markDatabaseDirty(std::string const& database);
 
   void fulfillWaiters(IndexId indexId, Result const& result);
 
@@ -102,6 +113,7 @@ class VectorIndexBuildManager {
   DatabaseFeature& _dbFeature;
   MaintenanceFeature& _maintenance;
   Scheduler& _scheduler;
+  std::chrono::duration<double> _retryBackoff;
   std::jthread _thread;
 
   ResourceMonitor _resourceMonitor;

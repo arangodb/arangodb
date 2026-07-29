@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "QueryInfoLoggerFeature.h"
@@ -26,7 +25,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "Aql/Query.h"
-#include "Aql/QueryInfoLoggerOptionsProvider.h"
 #include "Aql/QueryOptions.h"
 #include "Aql/QueryString.h"
 #include "Basics/Exceptions.h"
@@ -502,12 +500,6 @@ QueryInfoLoggerFeature::QueryInfoLoggerFeature(
 }
 
 QueryInfoLoggerFeature::~QueryInfoLoggerFeature() { stopThread(); }
-
-void QueryInfoLoggerFeature::collectOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  QueryInfoLoggerOptionsProvider provider;
-  provider.declareOptions(options, _options);
-}
 
 void QueryInfoLoggerFeature::beginShutdown() {
   if (_loggerThread) {

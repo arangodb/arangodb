@@ -1,0 +1,2289 @@
+version: 2.1
+# Nightly images and packages pipeline — base (continuation) config.
+#
+# CircleCI never reads this file directly: nightly_packages.yml is the setup
+# config the pipeline definition points at, and its
+# generate-nightly-packages-config
+# job prunes the jobs disabled by pipeline parameters from this file (see
+# generate_nightly_packages_config.py) before continuing the pipeline with
+# the result.
+# Disabled jobs therefore never occupy an executor at all.
+#
+# Produces for the enterprise edition, on x86_64 and arm64:
+#   - DEB packages (server, -client, -dbg)        [build-debian-packages]
+#   - RPM packages (server, client, debuginfo)    [build-rpm-packages]
+#   - TAR.GZ bundles (server, client)             [build-tarballs]
+#   - Docker images + multi-arch manifests
+#     (Alpine [build-alpine-images] and Ubuntu [build-deb-images] based;
+#     Ubuntu tags carry -deb)
+#
+# Build flow (packaging scripts live in scripts/packaging/):
+#   prepare-nightly     derives the nightly version files and creates
+#                       sourceInfo.log/sourceInfo.json (the nightly date and
+#                       the enterprise commit are pipeline parameters,
+#                       resolved once by the setup job)
+#   compile-nightly     static release build via the "nightly-package-{x64,arm64}" CMake
+#                       preset + make install + starter/rclone download;
+#                       the install tree is shared with all packaging jobs
+#   build-*-package     one job per package format and architecture, all
+#                       running inside the regular Ubuntu build image (which
+#                       also carries debhelper/rpmbuild/clamav)
+#   build-nightly-docker-image
+#                       one job per distro (Alpine/Ubuntu) and arch;
+#                       builds the image and exports it via "docker save"
+#                       into the workspace (no push here)
+#   scan-packages       ClamAV scan of all packages [scan-viruses]; the AV
+#                       database is cached in ${CLAMAV_BUCKET} (S3, from the
+#                       clamav-aws-bucket context); one <file>.clamav report
+#                       per package, published next to the scanned files.
+#                       Docker images are NOT ClamAV-scanned
+#   security-check-*    Trivy scan of every published item [security-check]:
+#                       one job per package format+arch (contents extracted,
+#                       then rootfs-scanned) and per Docker image (image scan).
+#                       The reports always cover ALL severities (unfixed CVEs
+#                       included, secret scanning on); whether a job fails —
+#                       and with it the publish — is decided separately by
+#                       [security-check-fail-level] (default HIGH — the
+#                       industry standard for published artifacts: HIGH and
+#                       CRITICAL findings block; NONE = report-only; ALL =
+#                       any finding, incl. UNKNOWN). The EOL base-OS check on
+#                       images always fails regardless. Waivers (time-boxed,
+#                       signed off): .circleci/trivy-gate-waivers.json —
+#                       entries {id, package (optional), expires YYYY-MM-DD,
+#                       reason, approved-by}; a vulnerability finding
+#                       matching an unexpired entry does not count toward
+#                       the gate. Expiry is end-of-day and capped at 90 days
+#                       out (validated in prepare-nightly, which stages the
+#                       file into the workspace); expired entries block
+#                       again and warn. Secret findings are never waivable
+#                       here (dev-fixture allowlists belong in a trivy
+#                       secret config, by path). Published reports and SBOMs
+#                       always keep ALL findings — waivers change gating
+#                       only, never what is reported. One job per item so
+#                       every item still gets scanned when another fails;
+#                       publish-nightly requires them all. Reports: one
+#                       <package>.trivy.{json,log} pair plus one SBOM pair
+#                       (<package>.sbom.{cdx,spdx}.json) per package file,
+#                       published next to it like the ClamAV reports (the
+#                       format+arch is scanned in one pass, then the JSON is
+#                       split per package); the same four files per Docker
+#                       image, named after the pushed per-arch image ref and
+#                       published into the Docker/ directory. The .log tables
+#                       are ASCII-only (box-drawing chars mapped), so they
+#                       render correctly whatever charset a viewer assumes.
+#   sign-packages       detached GPG signatures (.asc) for every package and
+#                       objectfiles archive [sign-packages]; keys come from a
+#                       sparse checkout of the private arangodb-helper/
+#                       package-signing repo (.gnupg4, the current key home),
+#                       fetched with the same SSH key as enterprise. No
+#                       embedded deb/rpm signing: that belongs to apt/yum
+#                       repository builds, which nightlies are not
+#   publish-nightly     THE ONLY JOB THAT PUBLISHES ANYTHING; runs only when
+#                       every selected job succeeded. Split into a stage
+#                       phase (upload packages + ClamAV reports +
+#                       sourceInfo.(log|json) to a GCS staging prefix, push
+#                       only the dated per-arch Docker tags) and a commit
+#                       phase (server-side promote into the live nightly
+#                       tree, update the multi-arch manifest tags), so
+#                       the publish is as close to all-or-nothing as
+#                       possible. Pushes to docker.io (always) and
+#                       gcr.io/gcr-for-testing [push-images-to-gcr-also].
+#                       Afterwards <major.minor>/Docker/ gets one
+#                       arangodb_enterprise-preview_<VERSION>[-<distro>].txt
+#                       publish report per image (pushed refs + digests) with
+#                       the per-arch Trivy reports next to it.
+#                       [pr-run] degrades this job to a dry run: staging is
+#                       uploaded and verified, then discarded; no Docker
+#                       pushes, no promotion, no index upload — the workflow
+#                       itself runs as nightly-packages-pr.
+#
+# Skipping semantics: jobs disabled via pipeline parameters are removed from
+# the generated workflow by generate_nightly_packages_config.py (together with their
+# entries in requires lists), so publish-nightly only ever requires the jobs
+# that actually run.
+#
+# Docker tag scheme (scripts/ci/helpers.bash: set_nightly_version → find_arangodb_version):
+#   per-arch:  arangodb/enterprise-preview:<VERSION>-<ARCH>              e.g. 3.12.10-nightly.20260702-amd64
+#   manifests: arangodb/enterprise-preview:<VERSION>                     e.g. 3.12.10-nightly.20260702
+#              arangodb/enterprise-preview:<MAJOR_MINOR>-nightly         e.g. 3.12-nightly
+#              arangodb/enterprise-preview:devel-nightly                 (only when the tree was "devel")
+#   Every manifest references the dated per-arch images directly; no
+#   rolling per-arch tags are pushed.
+#   The Ubuntu images insert -deb after the version part and before the
+#   arch suffix, e.g. 3.12.10-nightly.20260702-deb-amd64, and form
+#   <TAG>-deb manifests, e.g. 3.12-nightly-deb. Alpine stays suffix-less.
+#
+# Required environment (contexts / project settings):
+#   clamav-aws-bucket context:      AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY
+#                                   (same values as the sccache bucket's) and
+#                                   CLAMAV_BUCKET (S3 bucket caching the
+#                                   ClamAV database); AWS_ACCOUNT_ID and
+#                                   AWS_DEFAULT_REGION come from the project
+#                                   env settings
+#   sccache-aws-bucket context:     sccache S3 cache configuration for the
+#                                   compile jobs (same context the testing
+#                                   pipeline attaches to its compile-linux
+#                                   jobs); without it sccache falls back to a
+#                                   cold local cache
+#   circleci-token context:         CIRCLECI_TOKEN; also used by the hosted
+#                                   docker jobs to download install.tar.gz
+#                                   from the compile job's CircleCI artifacts
+#   coredb-workspace-aws-bucket context (docker jobs, optional override):
+#                                   AWS_S3_WORKSPACE_BUCKET; add
+#                                   AWS_ACCESS_KEY_ID + AWS_SECRET_ACCESS_KEY
+#                                   (read-only) + AWS_DEFAULT_REGION to fetch
+#                                   install.tar.gz from the workspace bucket
+#                                   instead of the CircleCI artifacts
+#   coredb-nightly-packages context: GCLOUD_SERVICE_KEY_BASE64 (service-account
+#                                   JSON, base64-encoded to one line:
+#                                   "base64 -w0 key.json" — raw JSON pastes
+#                                   proved to mangle the \n escapes inside
+#                                   private_key; GCS upload; also needs GCR
+#                                   push rights when push-images-to-gcr-also
+#                                   is set), DOCKER_USER, DOCKER_PASS (Docker
+#                                   Hub credentials),
+#                                   GITHUB_PACKAGE_SIGNING_KEY (read-only
+#                                   deploy key of arangodb-helper/
+#                                   package-signing, base64-encoded to one
+#                                   line with "base64 -w0 <key>", for the
+#                                   sign-packages keyring checkout — same
+#                                   mechanism as the infrastructure
+#                                   pipeline's GIT_WRITE_DEPLOY_KEY),
+#                                   ARANGO_SIGN_PASSWD (signing key
+#                                   passphrase; optional KEYNAME, default
+#                                   86FEC04D)
+#                                   (optional NIGHTLY_GCS_DEST, default
+#                                   gs://download.arangodb.com/nightly;
+#                                   optional NIGHTLY_GCR_PREFIX, default
+#                                   gcr.io/gcr-for-testing/)
+
+orbs:
+  aws-cli: circleci/aws-cli@4.1.1
+  aws-ecr: circleci/aws-ecr@9.0.1
+  trivy-scan: arangodb/trivy-scan@1.0
+
+parameters:
+  enterprise-branch:
+    type: string
+    default: ""
+    description: "Enterprise repo branch to use. Defaults to the same branch as arangodb, falling back to devel. Only read by the setup config, which resolves it to enterprise-commit."
+  enterprise-commit:
+    type: string
+    default: ""
+    description: "Resolved enterprise commit, computed and passed in by the setup config (nightly_packages.yml) so every job of one workflow builds exactly the same enterprise revision. Cannot be set at trigger time (the setup config does not declare it)."
+  nightly-date:
+    type: string
+    default: ""
+    description: "Nightly date (YYYYMMDD), pinned once by the setup config so all jobs derive the same version even when the workflow runs across midnight. Cannot be set at trigger time (the setup config does not declare it)."
+  build-docker-image:
+    type: string
+    default: "public.ecr.aws/b0b8h2r4/arangodb/ubuntubuildarangodb-312:24.04-d2eb28e68"
+    description: "Ubuntu build image (compiler toolchain + packaging/scan tools) the compile, packaging, scan, and sign jobs run in. The tag is bumped automatically by the infrastructure pipeline's build-image rebuild; override only to try a new build image."
+  build-debian-packages:
+    type: boolean
+    default: true
+    description: "Build the DEB packages (server, client, dbg) for amd64 and arm64."
+  build-rpm-packages:
+    type: boolean
+    default: true
+    description: "Build the RPM packages (server, client, debuginfo) for amd64 and arm64."
+  build-tarballs:
+    type: boolean
+    default: true
+    description: "Build the TAR.GZ server and client bundles for amd64 and arm64."
+  build-alpine-images:
+    type: boolean
+    default: true
+    description: "Build the Alpine-based Docker images (one per architecture: amd64 and arm64); the publish job pushes them and creates their multi-arch manifests at the end. The default image with suffix-less tags."
+  build-deb-images:
+    type: boolean
+    default: true
+    description: "Build the Ubuntu-based Docker images (one per architecture: amd64 and arm64); the publish job pushes them and creates their multi-arch manifests at the end. Tags carry -deb between version and arch."
+  push-images-to-gcr-also:
+    type: boolean
+    default: true
+    description: "Additionally push Docker images to gcr.io/gcr-for-testing (docker.io is always pushed)."
+  sign-packages:
+    type: boolean
+    default: true
+    description: "Create detached GPG signatures (.asc) for all packages."
+  scan-viruses:
+    type: boolean
+    default: true
+    description: "Scan all packages with ClamAV before publishing."
+  security-check:
+    type: boolean
+    default: true
+    description: "Trivy scan (CVEs + secrets) of every package and Docker image before publishing; findings at or above security-check-fail-level block the publish."
+  security-check-fail-level:
+    type: enum
+    enum: ["NONE", "LOW", "MEDIUM", "HIGH", "CRITICAL", "ALL"]
+    default: "HIGH"
+    description: "Minimum Trivy finding severity that fails the security-check jobs (findings at or above this level block the publish). The HIGH default is the industry standard for published artifacts; time-boxed signed-off exceptions belong in .circleci/trivy-gate-waivers.json, not in a lowered gate. The stored reports always contain ALL severities. NONE = report-only, never fail; ALL = fail on any finding incl. UNKNOWN severity. The EOL base-OS check on Docker images fails regardless of this level."
+  pr-run:
+    type: boolean
+    default: false
+    description: "TEST run for a GitHub PR — NOT a real nightly. The generator renames the workflow to nightly-packages-pr; every selected job runs, but publish-nightly degrades to a dry run: packages are staged to GCS and the staging tree is verified, then discarded instead of promoted; Docker images are loaded and tagged but never pushed; no manifests, no live Docker/ reports, no index upload. The reports are still produced and stored as job artifacts."
+
+commands:
+  checkout-arangodb:
+    # Only compile-nightly needs the real source tree (sparse: false). All
+    # other jobs work on the install tree / workspace and need just the
+    # support files, so they default to a sparse blob-filtered checkout of
+    # .circleci/ + scripts/ + CMakeLists.txt + VERSIONS + LICENSE — a few
+    # MB instead of the full tree. .circleci/ is needed by prepare-nightly
+    # (validates and stages trivy-gate-waivers.json) and by publish-nightly
+    # (records the active waiver count in the publish reports).
+    parameters:
+      destination:
+        type: string
+      sparse:
+        type: boolean
+        default: true
+      with-submodules:
+        type: boolean
+        default: false
+    steps:
+      - run:
+          name: Checkout ArangoDB
+          command: |
+            mkdir -p << parameters.destination >>
+            cd << parameters.destination >>
+            git init
+            git remote add origin https://github.com/arangodb/arangodb.git
+            if [ "<< parameters.sparse >>" = "true" ]; then
+              git sparse-checkout set --no-cone /.circleci/ /scripts/ /CMakeLists.txt /VERSIONS /LICENSE
+              git fetch --depth 1 --filter=blob:none origin << pipeline.git.revision >>
+            else
+              git fetch --depth 1 origin << pipeline.git.revision >>
+            fi
+            git checkout << pipeline.git.revision >>
+      - when:
+          condition: << parameters.with-submodules >>
+          steps:
+            - run:
+                name: Checkout submodules
+                command: |
+                  cd << parameters.destination >>
+                  git submodule init
+                  git submodule update --recursive --depth 1 --jobs 8
+
+  checkout-enterprise:
+    # The exact commit was resolved ONCE by the setup job and is passed in
+    # as the enterprise-commit pipeline parameter, so every job of one
+    # workflow builds the same enterprise revision by construction — there
+    # is no per-job fallback that could re-resolve a moving branch.
+    parameters:
+      destination:
+        type: string
+    steps:
+      - add_ssh_keys:
+          fingerprints:
+            - "f9:49:75:1a:ad:44:89:10:4b:3c:70:70:ba:d3:c3:ce"
+      - run:
+          name: Checkout Enterprise
+          environment:
+            GIT_SSH_COMMAND: "ssh -o StrictHostKeyChecking=no"
+          command: |
+            ENTERPRISE_COMMIT="<< pipeline.parameters.enterprise-commit >>"
+            if [ -z "${ENTERPRISE_COMMIT}" ]; then
+              echo "enterprise-commit pipeline parameter is empty — this pipeline must be started through the setup config (nightly_packages.yml)"
+              exit 1
+            fi
+            echo "Using enterprise commit ${ENTERPRISE_COMMIT}"
+            mkdir -p << parameters.destination >>
+            cd << parameters.destination >>
+            git clone git@github.com:arangodb/enterprise.git .
+            git reset --hard "$ENTERPRISE_COMMIT"
+
+  set-nightly-version:
+    # Applies the nightly version to CMakeLists.txt using the date pinned
+    # by the setup job, and stores all ARANGODB_* variables in $BASH_ENV so
+    # subsequent steps of the same job see them.
+    parameters:
+      repo-path:
+        type: string
+    steps:
+      - run:
+          name: Set nightly version in CMakeLists.txt
+          command: |
+            cd << parameters.repo-path >>
+            # The nightly date is pinned ONCE by the setup job and passed in
+            # as a pipeline parameter, so all jobs derive the same version
+            # even when the workflow runs across midnight. An empty value
+            # must fail here — falling back to the job's own date would
+            # silently reintroduce exactly that skew.
+            NIGHTLY_DATE="<< pipeline.parameters.nightly-date >>"
+            if [ -z "${NIGHTLY_DATE}" ]; then
+              echo "nightly-date pipeline parameter is empty — this pipeline must be started through the setup config (nightly_packages.yml)"
+              exit 1
+            fi
+            export NIGHTLY_DATE
+            source scripts/ci/helpers.bash
+            set_nightly_version CMakeLists.txt
+            declare -px | grep -E ' (ARANGODB_|DOCKER_TAG)' >> "$BASH_ENV"
+
+  persist_workspace_to_s3:
+    # Uploads install.tar.gz to the S3 workspace bucket, anonymously through
+    # the VPC S3 endpoint (self-hosted runners only; the bucket policy
+    # allows unsigned access solely via sourceVpce). Keyed by workflow ID +
+    # edition + arch, mirrored by attach_workspace_from_s3. Named after
+    # base_config.yml's equivalent command.
+    parameters:
+      arch:
+        type: string
+      edition:
+        type: string
+    steps:
+      - run:
+          name: Save install.tar.gz to S3
+          command: |
+            if [ -z "${AWS_S3_WORKSPACE_BUCKET:-}" ]; then
+              echo "AWS_S3_WORKSPACE_BUCKET not set"
+              exit 1
+            fi
+            aws configure set profile.anon.s3.multipart_threshold 5GB
+            aws s3 cp --no-sign-request --profile anon \
+              install.tar.gz \
+              "s3://${AWS_S3_WORKSPACE_BUCKET}/nightly/${CIRCLE_WORKFLOW_ID}/<< parameters.edition >>-<< parameters.arch >>/install.tar.gz"
+
+  upload-build-artifact:
+    # Publishes the compile job's install.tar.gz (unstripped binaries +
+    # starter/rclone) for the downstream jobs: to S3 for the self-hosted
+    # packaging jobs (attach_workspace_from_s3) and as a CircleCI job
+    # artifact for the hosted docker jobs (download-artifact) — which also
+    # makes it downloadable straight from the job's Artifacts tab.
+    parameters:
+      arch:
+        type: string
+      edition:
+        type: string
+    steps:
+      - persist_workspace_to_s3:
+          arch: << parameters.arch >>
+          edition: << parameters.edition >>
+      - store_artifacts:
+          path: install.tar.gz
+          destination: install/<< parameters.edition >>-<< parameters.arch >>/install.tar.gz
+
+  attach_workspace_from_s3:
+    # Fetches install.tar.gz from the S3 workspace bucket, anonymously
+    # through the VPC S3 endpoint — self-hosted runners only (the bucket
+    # policy allows unsigned access solely via sourceVpce; hosted executors
+    # use download-artifact instead). Counterpart of persist_workspace_to_s3
+    # and named after base_config.yml's equivalent command.
+    parameters:
+      arch:
+        type: string
+      edition:
+        type: string
+    steps:
+      - run:
+          name: Download install.tar.gz from S3
+          command: |
+            if [ -z "${AWS_S3_WORKSPACE_BUCKET:-}" ]; then
+              echo "AWS_S3_WORKSPACE_BUCKET not set"
+              exit 1
+            fi
+            aws configure set profile.anon.s3.multipart_threshold 5GB
+            aws configure set default.s3.multipart_threshold 5GB
+            aws s3 cp --no-sign-request --profile anon \
+              "s3://${AWS_S3_WORKSPACE_BUCKET}/nightly/${CIRCLE_WORKFLOW_ID}/<< parameters.edition >>-<< parameters.arch >>/install.tar.gz" \
+              install.tar.gz
+
+  download-artifact:
+    # Fetches install.tar.gz from the compile job's CircleCI job artifact,
+    # located via the API with CIRCLECI_TOKEN (circleci-token context) — for
+    # CircleCI-hosted executors, which run outside the VPC and therefore
+    # cannot use the anonymous S3 path of attach_workspace_from_s3.
+    parameters:
+      arch:
+        type: string
+      edition:
+        type: string
+    steps:
+      - run:
+          name: Download install.tar.gz from the compile job's artifacts
+          command: |
+            if [ -z "${CIRCLECI_TOKEN:-}" ]; then
+              echo "CIRCLECI_TOKEN not set (circleci-token context missing?)"
+              exit 1
+            fi
+            JOB_NUMBER=$(curl -sf -H "Circle-Token: ${CIRCLECI_TOKEN}" \
+              "https://circleci.com/api/v2/workflow/${CIRCLE_WORKFLOW_ID}/job" | \
+              jq -r '.items[] | select(.name == "compile-<< parameters.edition >>-<< parameters.arch >>") | .job_number')
+            if [ -z "${JOB_NUMBER}" ] || [ "${JOB_NUMBER}" = "null" ]; then
+              echo "compile-<< parameters.edition >>-<< parameters.arch >> not found in workflow ${CIRCLE_WORKFLOW_ID}"
+              exit 1
+            fi
+            URL=$(curl -sf -H "Circle-Token: ${CIRCLECI_TOKEN}" \
+              "https://circleci.com/api/v2/project/gh/${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}/${JOB_NUMBER}/artifacts" | \
+              jq -r '.items[] | select(.path == "install/<< parameters.edition >>-<< parameters.arch >>/install.tar.gz") | .url')
+            if [ -z "${URL}" ] || [ "${URL}" = "null" ]; then
+              echo "install.tar.gz artifact not found on job ${JOB_NUMBER}"
+              exit 1
+            fi
+            curl -fL --retry 5 -H "Circle-Token: ${CIRCLECI_TOKEN}" \
+              -o install.tar.gz "${URL}"
+
+  gate-trivy-findings:
+    # The trivy-scan orb couples what is reported and what fails the job in
+    # one severity filter, so the scans run report-only over ALL severities
+    # (fail-on-findings: false) and this gate decides separately, from the
+    # JSON report, whether the job fails: only findings (vulnerabilities and
+    # secrets) at or above security-check-fail-level do — minus
+    # vulnerabilities covered by an unexpired entry in
+    # .circleci/trivy-gate-waivers.json (staged into the workspace by
+    # prepare-nightly, which validated it). Waivers change gating only:
+    # the published trivy report is always complete, however lax the gate
+    # is, and secrets are never waivable here.
+    steps:
+      - run:
+          name: Gate on findings at or above << pipeline.parameters.security-check-fail-level >>
+          command: |
+            case "<< pipeline.parameters.security-check-fail-level >>" in
+              NONE)     GATE="" ;;
+              LOW)      GATE="LOW,MEDIUM,HIGH,CRITICAL" ;;
+              MEDIUM)   GATE="MEDIUM,HIGH,CRITICAL" ;;
+              HIGH)     GATE="HIGH,CRITICAL" ;;
+              CRITICAL) GATE="CRITICAL" ;;
+              ALL)      GATE="UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL" ;;
+              # The pipeline-parameter enum rejects unknown values at
+              # trigger time already; this keeps a future enum addition
+              # without a branch here from silently degrading to
+              # report-only (an unset GATE reads as NONE below).
+              *)        echo "ERROR: unhandled security-check-fail-level" >&2
+                        exit 1 ;;
+            esac
+            case "<< pipeline.parameters.security-check-fail-level >>" in
+              NONE|CRITICAL)
+                echo "NOTICE: gate level << pipeline.parameters.security-check-fail-level >> is below the industry standard (HIGH). Exceptions belong in .circleci/trivy-gate-waivers.json; the published reports record this level." ;;
+            esac
+            if [ -z "${GATE}" ]; then
+              echo "security-check-fail-level=NONE: report-only, not gating"
+              exit 0
+            fi
+            # A missing or malformed report must never gate as zero
+            # findings — jq counts 0 matches over the wrong JSON just as
+            # happily — so the report shape is checked before counting
+            # and anything unexpected fails the job.
+            if ! jq -e '(.SchemaVersion == 2) and ((.Results // []) | type == "array")' /tmp/trivy-results.json >/dev/null; then
+              echo "ERROR: /tmp/trivy-results.json is not a Trivy schema-2 report — refusing to gate on it (fail-open guard)"
+              exit 1
+            fi
+            # Waivers: staged (pre-validated) by prepare-nightly. A missing
+            # file gates on raw findings — stricter, never laxer; an
+            # unparseable one fails the job.
+            TODAY=$(date -u +%F)
+            WFILE=/tmp/nightly/trivy-gate-waivers.json
+            if [ ! -f "${WFILE}" ]; then
+              echo "NOTE: no waiver file in the workspace — gating on raw findings"
+              printf '{"waivers":[]}' > /tmp/gate-waivers-empty.json
+              WFILE=/tmp/gate-waivers-empty.json
+            fi
+            if ! jq -e '.waivers | type == "array"' "${WFILE}" >/dev/null; then
+              echo "ERROR: ${WFILE} is not a valid waiver file — refusing to gate" >&2
+              exit 1
+            fi
+            # A vulnerability is waived iff an unexpired entry matches its
+            # VulnerabilityID (and its PkgName, when the entry is
+            # package-scoped). Secrets are never waived. Every applied
+            # waiver is logged so the job output shows exactly what was
+            # excused, by whom, and until when.
+            jq -r --arg gate "${GATE}" --arg today "${TODAY}" --slurpfile w "${WFILE}" '
+              ([$w[0].waivers[]? | select(.expires >= $today)]) as $active
+              | [.Results[]? | .Vulnerabilities[]?
+                  | select(.Severity as $s | ($gate | split(",")) | index($s))
+                  | . as $v
+                  | ($active[] | select(.id == $v.VulnerabilityID
+                      and ((.package // $v.PkgName) == $v.PkgName))) as $m
+                  | "WAIVED: \($v.VulnerabilityID) (\($v.PkgName), \($v.Severity)) until \($m.expires) — \($m.reason) [approved by \($m."approved-by")]"
+                ] | unique | .[]' /tmp/trivy-results.json
+            COUNT=$(jq --arg gate "${GATE}" --arg today "${TODAY}" --slurpfile w "${WFILE}" '
+              ([$w[0].waivers[]? | select(.expires >= $today)]) as $active
+              | [.Results[]?
+                  | (.Vulnerabilities[]?
+                      | select(. as $v
+                          | [$active[] | select(.id == $v.VulnerabilityID
+                              and ((.package // $v.PkgName) == $v.PkgName))]
+                          | length == 0)),
+                    .Secrets[]?
+                ]
+              | [.[] | select(.Severity as $s | ($gate | split(",")) | index($s))]
+              | length' /tmp/trivy-results.json)
+            # COUNT must be one plain integer. Anything else — e.g. jq
+            # emitting one count per document of a concatenated-JSON file,
+            # where the schema check above only keys on the last one —
+            # would make the -gt test below error out, which an if treats
+            # as false: the gate would pass. Fail instead.
+            case "${COUNT}" in
+              ''|*[!0-9]*)
+                echo "ERROR: unexpected findings count '${COUNT}' — refusing to gate on this report" >&2
+                exit 1 ;;
+            esac
+            echo "Findings at or above << pipeline.parameters.security-check-fail-level >> (unwaived): ${COUNT}"
+            if [ "${COUNT}" -gt 0 ]; then
+              echo "Blocking the publish (full report of all severities in the job artifacts). Fix the dependency or add a time-boxed, signed-off entry to .circleci/trivy-gate-waivers.json."
+              exit 1
+            fi
+
+  setup-gcloud:
+    # Installs the google-cloud-cli (gsutil) and activates the nightly
+    # publishing service account from GCLOUD_SERVICE_KEY_BASE64. Any subset
+    # of packages/Docker images may be selected and several publish steps
+    # talk to GCS, so each of them relies on this one job-level setup step
+    # instead of installing on its own.
+    steps:
+      - run:
+          name: Install google-cloud-cli and authenticate
+          command: |
+            # gsutil comes with the google-cloud-cli
+            sudo apt-get update && sudo apt-get install -y apt-transport-https ca-certificates gnupg curl
+            curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | \
+              sudo gpg --dearmor -o /usr/share/keyrings/cloud.google.gpg
+            echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" | \
+              sudo tee /etc/apt/sources.list.d/google-cloud-sdk.list
+            sudo apt-get update && sudo apt-get install -y google-cloud-cli
+
+            if [ -z "${GCLOUD_SERVICE_KEY_BASE64:-}" ]; then
+              echo "GCLOUD_SERVICE_KEY_BASE64 is empty; set it in the coredb-nightly-packages context (base64 -w0 of the service-account JSON)"
+              exit 1
+            fi
+            echo "${GCLOUD_SERVICE_KEY_BASE64}" | base64 -d > /tmp/gcs-key.json
+            if ! python3 -m json.tool /tmp/gcs-key.json > /dev/null; then
+              echo "GCLOUD_SERVICE_KEY_BASE64 does not decode to valid JSON; re-create it with: base64 -w0 <service-account>.json"
+              exit 1
+            fi
+            gcloud auth activate-service-account --key-file=/tmp/gcs-key.json
+
+  extract-install-tree:
+    # Recreates the layout the packaging scripts expect: install tree at
+    # <repo>/build/install.
+    steps:
+      - run:
+          name: Extract install tree to build/install
+          command: |
+            mkdir -p build/install
+            tar -xzf install.tar.gz -C build/install
+            rm -f install.tar.gz
+
+jobs:
+  # ── Nightly version + sourceInfo preparation ─────────────────────────────────
+  prepare-nightly:
+    # Derives the nightly version files from the setup-pinned nightly-date
+    # parameter and creates sourceInfo.log/sourceInfo.json.
+    # Self-hosted: needs only git/bash + the workspace, all of which the
+    # runner fleet supports; the build image is used because it is already
+    # cached on the runner nodes (cimg/base would pull from Docker Hub).
+    docker:
+      - image: << pipeline.parameters.build-docker-image >>
+    resource_class: arangodb/large-amd64
+    steps:
+      - checkout-arangodb:
+          destination: /home/circleci/project
+      - run:
+          name: Derive nightly version and create sourceInfo
+          command: |
+            cd /home/circleci/project
+            mkdir -p /tmp/nightly
+            # Date and enterprise commit are pipeline parameters, resolved
+            # exactly once by the setup job; set-nightly-version repeats the
+            # empty-check for jobs that run without prepare-nightly.
+            NIGHTLY_DATE="<< pipeline.parameters.nightly-date >>"
+            if [ -z "${NIGHTLY_DATE}" ]; then
+              echo "nightly-date pipeline parameter is empty — this pipeline must be started through the setup config (nightly_packages.yml)"
+              exit 1
+            fi
+            export NIGHTLY_DATE
+            source scripts/ci/helpers.bash
+
+            # Remember the release type BEFORE it is rewritten to "nightly":
+            # devel trees additionally get the rolling "devel-nightly" tag.
+            find_arangodb_version CMakeLists.txt > /dev/null
+            ORIG_RELEASE_TYPE="${ARANGODB_VERSION_RELEASE_TYPE}"
+
+            set_nightly_version CMakeLists.txt
+            echo "${ARANGODB_VERSION}"             > /tmp/nightly/nightly-version.txt
+            echo "${ARANGODB_VERSION_MAJOR_MINOR}" > /tmp/nightly/nightly-major-minor.txt
+
+            echo "${ARANGODB_VERSION_MAJOR_MINOR}-nightly" > /tmp/nightly/rolling-tags.txt
+            if [ "${ORIG_RELEASE_TYPE}" = "devel" ]; then
+              echo "devel-nightly" >> /tmp/nightly/rolling-tags.txt
+            fi
+            echo "Rolling docker tags:"; cat /tmp/nightly/rolling-tags.txt
+
+            export SOURCE_INFO_DIR=/tmp/nightly
+            init_source_info "${CIRCLE_WORKFLOW_ID}"
+            setup_source_info "VERSION" "${ARANGODB_VERSION}"
+            setup_source_info "Community" "<< pipeline.git.revision >>"
+            setup_source_info "Enterprise" "<< pipeline.parameters.enterprise-commit >>"
+
+            STARTER_REV="$(grep -Po 'STARTER_REV "\Kv[0-9.a-z-]+' VERSIONS || echo "N/A")"
+            setup_source_info "Starter" "${STARTER_REV}"
+
+            USE_RCLONE="$(grep -Po 'USE_RCLONE "\K[a-z]+' VERSIONS || echo "false")"
+            if [ "${USE_RCLONE}" = "true" ]; then
+              RCLONE_GO="$(grep -Po 'RCLONE_GO "\K[0-9.]+-[0-9a-h]+_[0-9]+' VERSIONS)"
+              RCLONE_VERSION="$(grep -Po 'RCLONE_VERSION "\K[0-9.]+' VERSIONS)"
+              setup_source_info "Rclone" "golang-${RCLONE_GO}_${ARANGODB_VERSION_MAJOR_MINOR}_v${RCLONE_VERSION}"
+            fi
+            cat /tmp/nightly/sourceInfo.log
+      - run:
+          name: Validate and stage security-gate waivers
+          command: |
+            set -eu
+            cd /home/circleci/project
+            W=.circleci/trivy-gate-waivers.json
+            # The waiver file is the ONLY sanctioned exception path for the
+            # security gates (time-boxed, signed off) — validated here,
+            # once, before anything expensive runs, then staged into the
+            # workspace for the (checkout-less) security-check jobs. A
+            # missing or malformed file fails the pipeline: silently
+            # gating without (or with broken) waivers is config drift.
+            if [ ! -f "${W}" ]; then
+              echo "ERROR: ${W} is missing from the checkout" >&2
+              exit 1
+            fi
+            TODAY=$(date -u +%F)
+            CAP=$(date -u -d "today + 90 days" +%F 2>/dev/null || date -u -v+90d +%F)
+            # Structural validation: every entry needs a non-empty id,
+            # reason and approved-by, an ISO expiry date no more than 90
+            # days out (time-boxed means time-boxed), and — if present —
+            # a non-empty package scope.
+            if ! jq -e --arg cap "${CAP}" '
+                 (.waivers | type == "array")
+                 and ([.waivers[] | select(
+                       ((.id? // "") | type == "string" and length > 0)
+                       and ((.expires? // "") | test("^[0-9]{4}-[0-9]{2}-[0-9]{2}$"))
+                       and (.expires <= $cap)
+                       and ((.reason? // "") | type == "string" and length > 0)
+                       and ((."approved-by"? // "") | type == "string" and length > 0)
+                       and (if has("package") then (.package | type == "string" and length > 0) else true end)
+                     )] | length) == (.waivers | length)' "${W}" >/dev/null; then
+              echo "ERROR: ${W} failed validation — every waiver needs id, reason, approved-by, and an expires date (YYYY-MM-DD) at most 90 days out (${CAP}); package, when given, must be non-empty" >&2
+              jq . "${W}" >&2 || cat "${W}" >&2
+              exit 1
+            fi
+            # Expired entries are dead weight (the finding blocks again
+            # regardless) — warn so they get cleaned up.
+            jq -r --arg today "${TODAY}" '.waivers[] | select(.expires < $today)
+              | "WARNING: expired waiver \(.id) (expired \(.expires)) — the finding blocks again; remove the entry"' "${W}" >&2
+            ACTIVE=$(jq -r --arg today "${TODAY}" '[.waivers[] | select(.expires >= $today)] | length' "${W}")
+            echo "Waiver file OK: ${ACTIVE} active waiver(s)"
+            cp "${W}" /tmp/nightly/trivy-gate-waivers.json
+      - persist_to_workspace:
+          root: /tmp/nightly
+          paths:
+            - "*"
+      - store_artifacts:
+          path: /tmp/nightly/sourceInfo.log
+          destination: sourceInfo.log
+      - store_artifacts:
+          path: /tmp/nightly/sourceInfo.json
+          destination: sourceInfo.json
+
+  # ── Static compilation ──────────────────────────────────────────────────────
+  compile-nightly:
+    # Static release build for packaging and Docker images, plus the
+    # Starter and rclone downloads. Binaries are built unstripped; stripping
+    # happens later, during packaging (client tools only).
+    # All build options live in the "nightly-package-{x64,arm64}" CMake presets;
+    # only toolchain/image specific paths are passed on the command line.
+    parameters:
+      arch:
+        type: string        # amd64 | arm64
+      preset:
+        type: string        # nightly-package-x64 | nightly-package-arm64
+      resource-class:
+        type: string
+    docker:
+      - image: << pipeline.parameters.build-docker-image >>
+    resource_class: << parameters.resource-class >>
+    working_directory: /root/project
+    environment:
+      GIT_SSH_COMMAND: ssh
+      SCCACHE_ERROR_LOG: /tmp/sccache.log
+      SCCACHE_LOG: info
+      SCCACHE_S3_KEY_PREFIX: nightly-<< parameters.arch >>
+      CC: /tools/clang
+      CXX: /tools/clang++
+    steps:
+      - attach_workspace:
+          at: /tmp/nightly
+      - checkout-arangodb:
+          destination: /root/project
+          sparse: false
+          with-submodules: true
+      - checkout-enterprise:
+          destination: /root/project/enterprise
+      - set-nightly-version:
+          repo-path: /root/project
+      - run:
+          name: Print SCCache Settings
+          command: sccache -s
+      - run:
+          name: Configure (static release)
+          command: |
+            if [ "<< parameters.arch >>" = "arm64" ]; then
+              TRIPLET="aarch64-linux-gnu"
+            else
+              TRIPLET="x86_64-linux-gnu"
+            fi
+            cmake --preset << parameters.preset >> \
+              -G Ninja \
+              -DCMAKE_C_COMPILER=clang \
+              -DCMAKE_CXX_COMPILER=clang++ \
+              -DCMAKE_C_COMPILER_LAUNCHER=sccache \
+              -DCMAKE_CXX_COMPILER_LAUNCHER=sccache \
+              -DOPENSSL_ROOT_DIR=/opt \
+              -DCMAKE_LIBRARY_PATH=/opt/lib \
+              -DLAPACK_LIBRARIES="/usr/lib/${TRIPLET}/lapack/liblapack.a" \
+              -DBLAS_LIBRARIES="/usr/lib/${TRIPLET}/libblas.a" \
+              -DNODE_MODULES_BUNDLE=/node_modules.tar.xz
+      - run:
+          name: Build and install
+          command: |
+            mkdir -p build
+            DESTDIR="$(pwd)/build/install" cmake --build --preset << parameters.preset >> --parallel "$(nproc)" --target install
+      # JS_SHA1SUM.txt is generated by "make install" itself (see
+      # cmake/GenerateJsSha1Sum.cmake), so no extra checksum step is needed.
+      - run:
+          name: Download starter and rclone
+          command: |
+            ARCH=<< parameters.arch >> EDITION=enterprise scripts/packaging/fetch-aux-binaries.sh
+      - run:
+          name: Pack object files (static-linking compliance)
+          command: |
+            # Enterprise only. The archive is persisted with the packages, so it is scanned,
+            # signed, and published like any other nightly artifact.
+            # The version comes from CMakeLists.txt, which the
+            # set-nightly-version step of this job already patched with the
+            # setup-pinned nightly date.
+            export BUILD_DIR=build-presets/<< parameters.preset >>
+            export PACKAGES_OUT=/tmp/nightly/objectfiles/<< parameters.arch >>
+            scripts/packaging/pack-object-files.sh
+      - persist_to_workspace:
+          root: /tmp/nightly
+          paths:
+            - objectfiles/<< parameters.arch >>
+      # Like install.tar.gz, the objectfiles archive is also kept as a
+      # CircleCI job artifact for easy download from a finished job.
+      - store_artifacts:
+          path: /tmp/nightly/objectfiles/<< parameters.arch >>
+          destination: objectfiles/<< parameters.arch >>
+      - run:
+          name: SCCache Statistics
+          command: sccache -s
+      - store_artifacts:
+          path: /tmp/sccache.log
+      - run:
+          name: Create install.tar.gz
+          command: |
+            tar -czf install.tar.gz -C build/install ./
+      - upload-build-artifact:
+          arch: << parameters.arch >>
+          edition: enterprise
+
+  # ── Packages (DEB / RPM / TAR.GZ) ────────────────────────────────────────────
+  build-package:
+    # Builds one package format from the install tree, executed directly
+    # inside the build image, which also carries the packaging toolchain:
+    #   deb  "debian/rules binary" with the templates from
+    #        scripts/packaging/debian/
+    #   rpm  rpmbuild with the spec from scripts/packaging/rpm/
+    #   tar  server + client tar.gz bundles with the launcher wrappers
+    #        from scripts/packaging/binForTarGz/
+    parameters:
+      format:
+        type: enum
+        enum: ["deb", "rpm", "tar"]
+      arch:
+        type: string
+      resource-class:
+        type: string
+    docker:
+      - image: << pipeline.parameters.build-docker-image >>
+    resource_class: << parameters.resource-class >>
+    working_directory: /root/project
+    steps:
+      - attach_workspace:
+          at: /tmp/nightly
+      - checkout-arangodb:
+          destination: /root/project
+      - set-nightly-version:
+          repo-path: /root/project
+      - attach_workspace_from_s3:
+          arch: << parameters.arch >>
+          edition: enterprise
+      - extract-install-tree
+      - run:
+          name: Build << parameters.format >> packages
+          command: |
+            export EDITION=enterprise
+            export PACKAGE_STRIP=ExceptArangod
+            export ARCH=<< parameters.arch >>
+            export PACKAGES_OUT=/tmp/nightly/packages/<< parameters.arch >>
+            case "<< parameters.format >>" in
+              deb) scripts/packaging/build-deb.sh ;;
+              rpm) scripts/packaging/build-rpm.sh ;;
+              tar) scripts/packaging/build-targz.sh ;;
+            esac
+      - persist_to_workspace:
+          root: /tmp/nightly
+          paths:
+            - packages/<< parameters.arch >>
+      - store_artifacts:
+          path: /tmp/nightly/packages/<< parameters.arch >>
+          destination: packages/<< parameters.format >>/<< parameters.arch >>
+
+  # ── Docker images ─────────────────────────────────────────────────────────────
+  build-nightly-docker-image:
+    # Builds one nightly image (Alpine or Ubuntu based) and exports it via
+    # "docker save" into the workspace. Nothing is pushed here;
+    # publish-nightly pushes. Tag scheme: the Ubuntu images insert -deb
+    # between version and arch suffix (e.g. 3.12.10-nightly.20260708-deb-amd64).
+    parameters:
+      arch:
+        type: string        # amd64 | arm64
+      distro:
+        type: enum
+        enum: ["alpine", "deb"]
+        default: "alpine"
+      resource-class:
+        type: string
+    docker:
+      - image: cimg/base:current
+    resource_class: << parameters.resource-class >>
+    steps:
+      - attach_workspace:
+          at: /tmp/nightly
+      - setup_remote_docker:
+          docker_layer_caching: true
+      - checkout-arangodb:
+          destination: /home/circleci/project
+      # This job runs on a CircleCI-hosted executor (setup_remote_docker),
+      # outside the VPC, so the anonymous VPC-endpoint S3 path of the
+      # self-hosted runners (attach_workspace_from_s3) is not available;
+      # install.tar.gz is taken from the compile job's CircleCI artifact
+      # instead (CIRCLECI_TOKEN from the circleci-token context).
+      - download-artifact:
+          arch: << parameters.arch >>
+          edition: enterprise
+      - run:
+          name: Prepare install directory for Docker build
+          command: |
+            mkdir -p /home/circleci/project/scripts/docker/deploy/install
+            tar -xzf install.tar.gz -C /home/circleci/project/scripts/docker/deploy/install
+      - run:
+          name: Strip binaries for the Docker image
+          command: |
+            # Same strip policy as the packages: client tools are stripped,
+            # arangod and the starter keep their symbols. cimg/base has no binutils.
+            if ! command -v strip > /dev/null; then
+              sudo apt-get update
+              sudo apt-get install -y binutils
+            fi
+            export EDITION=enterprise
+            export PACKAGE_STRIP=ExceptArangod
+            /home/circleci/project/scripts/packaging/strip-install-tree.sh \
+              /home/circleci/project/scripts/docker/deploy/install
+      - run:
+          name: Build and export Docker image
+          command: |
+            set -x
+            VERSION="$(cat /tmp/nightly/nightly-version.txt)"
+            IMAGE="arangodb/enterprise-preview"
+
+            DISTRO="<< parameters.distro >>"
+            SUFFIX=""
+            if [ "${DISTRO}" != "alpine" ]; then
+              SUFFIX="-${DISTRO}"
+            fi
+            if [ "<< parameters.arch >>" = "arm64" ]; then
+              TAG_ARCH="arm64v8"
+            else
+              TAG_ARCH="<< parameters.arch >>"
+            fi
+            VERSION_TAG="${IMAGE}:${VERSION}${SUFFIX}-${TAG_ARCH}"
+
+            cd /home/circleci/project/scripts/docker/deploy
+
+            docker build \
+              --platform "linux/<< parameters.arch >>" \
+              --build-arg arch=<< parameters.arch >> \
+              --no-cache \
+              --pull \
+              -t "${VERSION_TAG}" \
+              --file deploy-${DISTRO}.dockerfile .
+
+            mkdir -p /tmp/nightly/docker
+            docker save -o /tmp/nightly/docker/enterprise-preview-${DISTRO}-<< parameters.arch >>.tar "${VERSION_TAG}"
+      - run:
+          name: Write image build report
+          command: |
+            VERSION="$(cat /tmp/nightly/nightly-version.txt)"
+            IMAGE="arangodb/enterprise-preview"
+            DISTRO="<< parameters.distro >>"
+            SUFFIX=""
+            if [ "${DISTRO}" != "alpine" ]; then
+              SUFFIX="-${DISTRO}"
+            fi
+            if [ "<< parameters.arch >>" = "arm64" ]; then
+              TAG_ARCH="arm64v8"
+            else
+              TAG_ARCH="<< parameters.arch >>"
+            fi
+            VERSION_TAG="${IMAGE}:${VERSION}${SUFFIX}-${TAG_ARCH}"
+            mkdir -p /tmp/reports
+            {
+              echo "ArangoDB nightly Docker image build report"
+              echo "=========================================="
+              echo "Image:     ${VERSION_TAG}"
+              echo "Distro:    ${DISTRO}"
+              echo "Platform:  linux/<< parameters.arch >>"
+              echo "Image ID:  $(docker image inspect --format '{{.Id}}' "${VERSION_TAG}")"
+              echo "Created:   $(docker image inspect --format '{{.Created}}' "${VERSION_TAG}")"
+              echo "Size:      $(docker image inspect --format '{{.Size}}' "${VERSION_TAG}") bytes"
+              echo "Built by:  ${CIRCLE_BUILD_URL}"
+              echo
+              echo "Tags applied by publish-nightly (docker.io, plus GCR when selected):"
+              echo "  ${VERSION_TAG}"
+              echo
+              echo "Multi-arch manifest tags (both architectures, referencing the dated per-arch images):"
+              echo "  ${IMAGE}:${VERSION}${SUFFIX}"
+              while read -r ROLLING_TAG; do
+                echo "  ${IMAGE}:${ROLLING_TAG}${SUFFIX}"
+              done < /tmp/nightly/rolling-tags.txt
+              echo
+              echo "Source revisions:"
+              sed -n 's/^\(VERSION\|Community\|Enterprise\|Starter\|Rclone\): */  \1: /p' /tmp/nightly/sourceInfo.log
+            } > /tmp/reports/docker-image-${DISTRO}-<< parameters.arch >>.txt
+            cat /tmp/reports/docker-image-${DISTRO}-<< parameters.arch >>.txt
+      - store_artifacts:
+          path: /tmp/reports
+          destination: reports
+      - persist_to_workspace:
+          root: /tmp/nightly
+          paths:
+            - docker/enterprise-preview-<< parameters.distro >>-<< parameters.arch >>.tar
+
+  # ── ClamAV scan ──────────────────────────────────────────────────────────────
+  scan-packages:
+    # Scans all packages (and objectfiles archives) of both architectures
+    # with ClamAV — one <file>.clamav report per package, next to it, like
+    # the per-package Trivy reports. Docker images are deliberately NOT
+    # ClamAV-scanned: they contain the same binaries as the tar packages and
+    # are covered by the Trivy image scans.
+    # The virus database is cached in ${CLAMAV_BUCKET} and refreshed via
+    # freshclam; the bucket name and AWS credentials (same values as the
+    # sccache bucket's) come from the clamav-aws-bucket context,
+    # AWS_ACCOUNT_ID and AWS_DEFAULT_REGION from the project env settings.
+    docker:
+      - image: << pipeline.parameters.build-docker-image >>
+    resource_class: << parameters.resource-class >>
+    parameters:
+      resource-class:
+        type: string
+    working_directory: /root/project
+    steps:
+      - attach_workspace:
+          at: /tmp/nightly
+      - checkout-arangodb:
+          destination: /root/project
+      - run:
+          name: Refresh ClamAV database (cached in S3)
+          command: |
+            if [ -z "${CLAMAV_BUCKET:-}" ]; then
+              echo "CLAMAV_BUCKET is empty; set it in the clamav-aws-bucket context"
+              exit 1
+            fi
+            mkdir -p /var/lib/clamav
+            aws s3 sync "s3://${CLAMAV_BUCKET}/clamav-db" /var/lib/clamav || true
+
+            printf 'DatabaseDirectory /var/lib/clamav\nDatabaseMirror database.clamav.net\n' > /tmp/freshclam.conf
+            if ! freshclam --config-file=/tmp/freshclam.conf --stdout; then
+              # Tolerate mirror hiccups as long as a cached database exists.
+              ls /var/lib/clamav/main.c?d > /dev/null
+              echo "freshclam failed, using cached database"
+            fi
+
+            aws s3 sync /var/lib/clamav "s3://${CLAMAV_BUCKET}/clamav-db"
+      - run:
+          name: Scan packages with ClamAV
+          command: |
+            # packages/ and objectfiles/ only — the docker/ image exports in
+            # the workspace are intentionally not passed in.
+            scripts/packaging/clamav-scan.sh /tmp/nightly/packages /tmp/nightly/objectfiles
+      - run:
+          name: Stage per-package ClamAV reports for publishing
+          # when: always — the per-file reports are written before the scan
+          # step fails on an infected file, and they are exactly what is
+          # needed to diagnose such a failure (publish is blocked anyway).
+          when: always
+          command: |
+            # One <file>.clamav report per package, published next to the
+            # scanned files; collected into their own workspace directory
+            # because empty persist globs fail the job.
+            cd /tmp/nightly
+            mkdir -p clamav-reports
+            touch clamav-reports/.keep
+            find packages objectfiles -name '*.clamav' 2>/dev/null | while read -r f; do
+              mkdir -p "clamav-reports/$(dirname "$f")"
+              cp "$f" "clamav-reports/$f"
+            done
+      - persist_to_workspace:
+          root: /tmp/nightly
+          paths:
+            - clamav-reports
+      # Individual per-package reports as job artifacts (mirrors the layout
+      # published next to the packages), not a combined tarball.
+      - store_artifacts:
+          path: /tmp/nightly/clamav-reports
+          destination: reports/clamav
+
+  # ── Trivy security check ─────────────────────────────────────────────────────
+  # One job instance per published item, so a finding in one item never
+  # prevents the remaining items from being scanned; publish-nightly requires
+  # every instance, so any gated finding still blocks the whole publish.
+  # The orb couples reporting and failing in one severity filter, so the
+  # scans run report-only over ALL severities (unfixed CVEs included, secret
+  # scanning kept enabled — orb default) and the gate-trivy-findings command
+  # fails the job per security-check-fail-level. EOL base-OS check on image
+  # scans still fails unconditionally. detection-priority stays "precise" —
+  # the orb explicitly recommends against "comprehensive" on blocking gates,
+  # and these scans still feed one.
+  # Runs on CircleCI-hosted executors: the orb caches the Trivy DB with
+  # save_cache/restore_cache, which the self-hosted runner classes do not
+  # support (the same reason the ClamAV database lives in S3).
+  security-check-package:
+    # Trivy does not look inside .deb/.rpm/.tar.gz files, so the packages of
+    # one format+arch are extracted first and the extracted contents are
+    # rootfs-scanned (CVEs in bundled dependencies INCLUDING compiled Go
+    # binaries — fs mode reads lockfiles only and misses them — plus
+    # committed secrets).
+    parameters:
+      target:
+        type: enum
+        enum: ["deb", "rpm", "tar"]
+      arch:
+        type: string
+    docker:
+      - image: << pipeline.parameters.build-docker-image >>
+    # medium suffices: the rootfs scan reads package metadata and the
+    # build info embedded in Go binaries (no decompilation) and
+    # secret-scans only small text files; extraction is I/O-bound.
+    resource_class: medium
+    working_directory: /root/project
+    steps:
+      - attach_workspace:
+          at: /tmp/nightly
+      - run:
+          name: Extract << parameters.target >> packages for scanning
+          command: |
+            set -eu
+            SRC=/tmp/nightly/packages/<< parameters.arch >>
+            OUT=/tmp/scan-root
+            mkdir -p "${OUT}"
+            FOUND=0
+            case "<< parameters.target >>" in
+              deb)
+                for f in "${SRC}"/*.deb; do
+                  [ -e "$f" ] || continue
+                  FOUND=1
+                  dpkg-deb -x "$f" "${OUT}/$(basename "$f")"
+                done
+                ;;
+              rpm)
+                for f in "${SRC}"/*.rpm; do
+                  [ -e "$f" ] || continue
+                  FOUND=1
+                  d="${OUT}/$(basename "$f")"
+                  mkdir -p "$d"
+                  (cd "$d" && rpm2cpio "$f" | cpio -idm --quiet)
+                done
+                ;;
+              tar)
+                for f in "${SRC}"/*.tar.gz; do
+                  [ -e "$f" ] || continue
+                  FOUND=1
+                  # Full basename (incl. .tar.gz), so the per-package report
+                  # names derived from these directories match the published
+                  # package files exactly, like for deb/rpm.
+                  d="${OUT}/$(basename "$f")"
+                  mkdir -p "$d"
+                  tar -xzf "$f" -C "$d"
+                done
+                ;;
+            esac
+            # No files while this format is enabled means a broken workspace,
+            # not a clean scan — fail loudly instead of false-passing.
+            if [ "${FOUND}" = "0" ]; then
+              echo "No << parameters.target >> packages found in ${SRC}" >&2
+              exit 1
+            fi
+      # Report-only over ALL severities; gate-trivy-findings below decides
+      # whether the job (and with it the publish) fails.
+      - trivy-scan/scan:
+          scan-type: rootfs
+          scan-path: /tmp/scan-root
+          severity: "CRITICAL,HIGH,MEDIUM,LOW,UNKNOWN"
+          fail-on-findings: false
+          ignore-unfixed: false
+          store-junit-results: true
+          # sbom-output makes the scan run with --list-all-pkgs so the JSON
+          # report carries the FULL package inventory (not only vulnerable
+          # ones); the PER-PACKAGE SBOMs below are rendered from that
+          # report. The combined file itself is not stored — per-package is
+          # the deliverable shape.
+          sbom-output: /tmp/<< parameters.target >>-<< parameters.arch >>.sbom.cdx.json
+      # Staged and persisted before the gate so the full reports reach the
+      # workspace even when the gate fails (publish is blocked then anyway).
+      - run:
+          name: Stage per-package Trivy reports for publishing
+          command: |
+            set -eu
+            # The scan above covered all packages of this format+arch in one
+            # pass (one Trivy DB load); here its JSON is split into one report
+            # per package — the extraction directories are named exactly after
+            # the package files — so every published package gets its own
+            # <package>.trivy.{json,log} and <package>.sbom.{cdx,spdx}.json
+            # right next to it. The table (.log)
+            # is rendered with the trivy binary the scan step installed and
+            # left on PATH via BASH_ENV; box-drawing characters are mapped to
+            # ASCII so the report stays readable no matter what charset a
+            # browser or pager assumes (the raw UTF-8 tables rendered as
+            # Latin-1 mojibake when served without an explicit charset).
+            to_ascii() {
+              sed -e 's/─/-/g' -e 's/│/|/g' \
+                  -e 's/┌/+/g' -e 's/┬/+/g' -e 's/┐/+/g' \
+                  -e 's/├/+/g' -e 's/┼/+/g' -e 's/┤/+/g' \
+                  -e 's/└/+/g' -e 's/┴/+/g' -e 's/┘/+/g' \
+                  -e 's/═/=/g' -e 's/║/|/g' \
+                  -e 's/╔/+/g' -e 's/╦/+/g' -e 's/╗/+/g' \
+                  -e 's/╠/+/g' -e 's/╬/+/g' -e 's/╣/+/g' \
+                  -e 's/╚/+/g' -e 's/╩/+/g' -e 's/╝/+/g' "$1"
+            }
+            OUT=/tmp/nightly/trivy-reports/<< parameters.arch >>
+            mkdir -p "${OUT}"
+            cd /tmp/scan-root
+            STAGE_FAILED=0
+            for d in */; do
+              PKG="${d%/}"
+              # Two slices per package: Results whose Target is a path
+              # under the package's extraction dir (gobinary, secrets — one
+              # Result per file), plus the package's share of AGGREGATED
+              # language Results — rootfs mode reports installed language
+              # ecosystems under a single pathless Target (e.g. all
+              # node_modules as "Node.js"), with the per-file attribution
+              # only in each entry's PkgPath/FilePath. Without the second
+              # slice every JS finding and component would silently vanish
+              # from the per-package reports and SBOMs (fs mode's lockfile
+              # Results were path-targeted, so the first slice alone used
+              # to suffice). Aggregates left empty for this package are
+              # dropped; the completeness check after the loop asserts
+              # nothing was lost overall.
+              jq --arg p "${PKG}" \
+                '.ArtifactName = $p
+                 | .Results = ([.Results[]?
+                     | select(.Target == $p or (.Target | startswith($p + "/")))]
+                   + [.Results[]?
+                     | select((.Target | contains("/")) | not)
+                     | .Vulnerabilities =
+                         [.Vulnerabilities[]? | select((.PkgPath // "") | startswith($p + "/"))]
+                     | .Packages =
+                         [.Packages[]? | select((.FilePath // "") | startswith($p + "/"))]
+                     # Secrets never appear on aggregate Results (always
+                     # path-targeted Class secret) — dropped so that if
+                     # they ever did, the completeness check would fail
+                     # loudly instead of misattributing them.
+                     | .Secrets = []
+                     | select((.Vulnerabilities | length) + (.Packages | length) > 0)])' \
+                /tmp/trivy-results.json > "${OUT}/${PKG}.trivy.json"
+              # A failed table render must not masquerade as a clean one
+              # (the empty-file fallback below writes "No findings"), so it
+              # writes a loud marker instead and fails the step at the end,
+              # after every package was attempted.
+              if ERR=$(trivy convert --format table --output /tmp/pkg-table.txt \
+                         "${OUT}/${PKG}.trivy.json" 2>&1); then
+                to_ascii /tmp/pkg-table.txt > "${OUT}/${PKG}.trivy.log"
+                if ! [ -s "${OUT}/${PKG}.trivy.log" ]; then
+                  echo "No findings (all severities scanned, secret scanning included)." \
+                    > "${OUT}/${PKG}.trivy.log"
+                fi
+              else
+                echo "WARNING: table render failed for ${PKG}: ${ERR}" >&2
+                echo "ERROR: table render failed — see ${PKG}.trivy.json for the findings." \
+                  > "${OUT}/${PKG}.trivy.log"
+                STAGE_FAILED=1
+              fi
+              # Per-package SBOMs from the same filtered report — same
+              # mechanism as the .log table, no extra scan. Both major
+              # standard formats are published: CycloneDX
+              # (<package>.sbom.cdx.json — the canonical one, and the only
+              # one of the two that embeds the vulnerability findings) and
+              # SPDX 2.3 (<package>.sbom.spdx.json — component inventory
+              # only; the vulnerability data lives in the .trivy.{json,log}
+              # next to it), rendered from the SAME report so they cannot
+              # drift. Written into ${OUT}, so the existing workspace
+              # persist + publish-nightly wholesale copy publish them next
+              # to the package with zero publish-job changes. A package
+              # with no Go/JS payload legitimately renders a valid empty
+              # inventory (the C/C++ components join in a later increment).
+              # A render failure warns per file — so every package is still
+              # attempted — and the deliverable check below then fails the
+              # step: the SBOMs are published deliverables, and a nightly
+              # must not publish without them.
+              for SBOM in "cyclonedx:cdx" "spdx-json:spdx"; do
+                if ! ERR=$(trivy convert --format "${SBOM%%:*}" \
+                       --output "${OUT}/${PKG}.sbom.${SBOM##*:}.json" \
+                       "${OUT}/${PKG}.trivy.json" 2>&1); then
+                  echo "WARNING: ${SBOM%%:*} SBOM render failed for ${PKG}: ${ERR}" >&2
+                  STAGE_FAILED=1
+                fi
+              done
+            done
+            # Split-completeness check: the per-package reports must
+            # jointly account for every finding and every inventory entry
+            # of the combined scan — exactly the invariant the fs→rootfs
+            # switch would otherwise have broken silently for aggregated
+            # targets. A mismatch (content lost by the split, or
+            # double-counted) fails the job instead of publishing
+            # incomplete reports and SBOMs; the combined report stays
+            # available in the job artifacts (orb upload) for debugging.
+            SCAN_FINDINGS=$(jq '[.Results[]? | (.Vulnerabilities[]?, .Secrets[]?)] | length' /tmp/trivy-results.json)
+            SCAN_PACKAGES=$(jq '[.Results[]?.Packages[]?] | length' /tmp/trivy-results.json)
+            SPLIT_FINDINGS=$(jq -s '[.[].Results[]? | (.Vulnerabilities[]?, .Secrets[]?)] | length' "${OUT}"/*.trivy.json)
+            SPLIT_PACKAGES=$(jq -s '[.[].Results[]?.Packages[]?] | length' "${OUT}"/*.trivy.json)
+            if [ "${SCAN_FINDINGS}" != "${SPLIT_FINDINGS}" ] || [ "${SCAN_PACKAGES}" != "${SPLIT_PACKAGES}" ]; then
+              echo "ERROR: per-package split lost or duplicated content:" >&2
+              echo "  findings ${SPLIT_FINDINGS}/${SCAN_FINDINGS}, inventory entries ${SPLIT_PACKAGES}/${SCAN_PACKAGES} (split/combined)" >&2
+              echo "Combined-report targets:" >&2
+              jq -r '.Results[]?.Target' /tmp/trivy-results.json | sort -u >&2
+              exit 1
+            fi
+            # Deliverable check: each package must have staged all four
+            # files, and the SBOMs must be structurally valid.
+            for j in "${OUT}"/*.trivy.json; do
+              B="${j%.trivy.json}"
+              jq -e '.bomFormat == "CycloneDX"' "${B}.sbom.cdx.json" >/dev/null 2>&1 \
+                || { echo "ERROR: missing or invalid CycloneDX SBOM for $(basename "${B}")" >&2; STAGE_FAILED=1; }
+              jq -e '.spdxVersion' "${B}.sbom.spdx.json" >/dev/null 2>&1 \
+                || { echo "ERROR: missing or invalid SPDX SBOM for $(basename "${B}")" >&2; STAGE_FAILED=1; }
+            done
+            ls -la "${OUT}"
+            if [ "${STAGE_FAILED}" != "0" ]; then
+              echo "ERROR: one or more published deliverables could not be staged (see errors above)" >&2
+              exit 1
+            fi
+      - persist_to_workspace:
+          root: /tmp/nightly
+          paths:
+            - trivy-reports/<< parameters.arch >>
+      - gate-trivy-findings
+
+  security-check-docker-image:
+    # Loads one exported per-arch image (per distro) into the remote Docker
+    # daemon and scans it before publish-nightly is allowed to push it
+    # anywhere.
+    parameters:
+      arch:
+        type: string
+      distro:
+        type: enum
+        enum: ["alpine", "deb"]
+        default: "alpine"
+    docker:
+      - image: cimg/base:current
+    # medium suffices: the image is Alpine-sized and the daemon runs on the
+    # separate remote-docker VM anyway.
+    resource_class: medium
+    steps:
+      - attach_workspace:
+          at: /tmp/nightly
+      - setup_remote_docker
+      - run:
+          name: Load exported image into the Docker daemon
+          command: |
+            set -eu
+            # Orb parameters are static, so the dynamically versioned tag is
+            # re-tagged to a fixed reference the scan step can name.
+            LOADED="$(docker load -i /tmp/nightly/docker/enterprise-preview-<< parameters.distro >>-<< parameters.arch >>.tar | sed -n 's/^Loaded image: //p')"
+            docker tag "${LOADED}" nightly-security-scan:<< parameters.distro >>-<< parameters.arch >>
+      # Report-only over ALL severities; gate-trivy-findings below decides
+      # whether the job (and with it the publish) fails. Only the EOL
+      # base-OS check still fails the scan itself, independently of
+      # security-check-fail-level.
+      - trivy-scan/scan:
+          scan-type: image
+          image-ref: nightly-security-scan:<< parameters.distro >>-<< parameters.arch >>
+          severity: "CRITICAL,HIGH,MEDIUM,LOW,UNKNOWN"
+          fail-on-findings: false
+          ignore-unfixed: false
+          exit-on-eol: "1"
+          store-junit-results: true
+          # Setting sbom-output makes the scan run with --list-all-pkgs so
+          # the JSON report carries the FULL package inventory. The
+          # published SBOMs are NOT this file: they are rendered in the
+          # staging step below from the report with the ArtifactName
+          # rewritten to the pushed image ref (this orb-rendered file would
+          # name the internal scan re-tag as its subject).
+          sbom-output: /tmp/trivy-sbom.cdx.json
+      # Staged and persisted before the gate so the full report reaches the
+      # workspace even when the gate fails (publish is blocked then anyway).
+      - run:
+          name: Stage Trivy report for publishing
+          command: |
+            set -eu
+            # The report pair is named after the pushed per-arch image
+            # reference (arangodb/enterprise-preview:<VERSION>[-<distro>]-
+            # <amd64|arm64v8>, with / and : mapped to _), so on
+            # download.arangodb.com it reads as "the scan of exactly this
+            # image". publish-nightly puts these into the Docker/ directory
+            # of the nightly tree, next to the per-image publish reports —
+            # not next to the packages. Box-drawing characters are mapped to
+            # ASCII for the same reason as in the package scan jobs.
+            to_ascii() {
+              sed -e 's/─/-/g' -e 's/│/|/g' \
+                  -e 's/┌/+/g' -e 's/┬/+/g' -e 's/┐/+/g' \
+                  -e 's/├/+/g' -e 's/┼/+/g' -e 's/┤/+/g' \
+                  -e 's/└/+/g' -e 's/┴/+/g' -e 's/┘/+/g' \
+                  -e 's/═/=/g' -e 's/║/|/g' \
+                  -e 's/╔/+/g' -e 's/╦/+/g' -e 's/╗/+/g' \
+                  -e 's/╠/+/g' -e 's/╬/+/g' -e 's/╣/+/g' \
+                  -e 's/╚/+/g' -e 's/╩/+/g' -e 's/╝/+/g' "$1"
+            }
+            VERSION="$(cat /tmp/nightly/nightly-version.txt)"
+            if [ "<< parameters.distro >>" = "alpine" ]; then
+              SUFFIX=""
+            else
+              SUFFIX="-<< parameters.distro >>"
+            fi
+            case "<< parameters.arch >>" in
+              amd64) TAG_ARCH="amd64" ;;
+              arm64) TAG_ARCH="arm64v8" ;;
+            esac
+            IMAGE_REF="arangodb/enterprise-preview:${VERSION}${SUFFIX}-${TAG_ARCH}"
+            NAME="arangodb_enterprise-preview_${VERSION}${SUFFIX}-${TAG_ARCH}"
+            OUT=/tmp/nightly/trivy-reports/docker
+            mkdir -p "${OUT}"
+            STAGE_FAILED=0
+            # The scan ran against the static nightly-security-scan re-tag,
+            # so the raw report self-identifies as that internal tag — in
+            # ArtifactName, RepoTags and the OS Result's Target header.
+            # Everything published must name the pushed image ref instead —
+            # it becomes the SBOMs' subject component (an NTIA minimum
+            # element: primary component name + version) as well as the
+            # report's and the table's artifact headers — so the report is
+            # rewritten once here and every published file derives from the
+            # rewrite. The gate below keeps reading the orb's untouched
+            # /tmp/trivy-results.json.
+            jq --arg ref "${IMAGE_REF}" \
+              '.ArtifactName as $old
+               | .ArtifactName = $ref
+               | .Metadata.RepoTags = [$ref]
+               # Reference flows into the CycloneDX subject properties and
+               # the SPDX annotations; RepoDigests would name the loaded
+               # tar image (the pushed digest does not exist yet).
+               | .Metadata.Reference = $ref
+               | .Metadata.RepoDigests = []
+               | .Results = [(.Results // [])[]
+                   | .Target |= (if startswith($old) then $ref + .[($old | length):] else . end)]' \
+              /tmp/trivy-results.json > /tmp/trivy-results-named.json
+            cp /tmp/trivy-results-named.json "${OUT}/${NAME}.trivy.json"
+            # A failed table render must not masquerade as a clean one (the
+            # empty-file fallback below writes "No findings"), so it writes
+            # a loud marker instead and fails the step at the end.
+            if ERR=$(trivy convert --format table --output /tmp/img-table.txt \
+                       /tmp/trivy-results-named.json 2>&1); then
+              to_ascii /tmp/img-table.txt > "${OUT}/${NAME}.trivy.log"
+              if ! [ -s "${OUT}/${NAME}.trivy.log" ]; then
+                echo "No findings (all severities scanned, secret scanning included)." \
+                  > "${OUT}/${NAME}.trivy.log"
+              fi
+            else
+              echo "WARNING: table render failed: ${ERR}" >&2
+              echo "ERROR: table render failed — see ${NAME}.trivy.json for the findings." \
+                > "${OUT}/${NAME}.trivy.log"
+              STAGE_FAILED=1
+            fi
+            # The SBOMs join the report pair in ${OUT} under the published
+            # naming convention — CycloneDX (<image>.sbom.cdx.json, the
+            # canonical one, and the only one of the two that embeds the
+            # vulnerability findings) and SPDX 2.3 (<image>.sbom.spdx.json
+            # — component inventory only), both converted here from the
+            # rewritten report so subject and content cannot drift:
+            # trivy-reports/docker is copied wholesale into the published
+            # Docker/ directory by publish-nightly, so no publish-job
+            # changes are needed. A render failure warns, and the
+            # deliverable check below then fails the step: the SBOMs are
+            # published deliverables, and a nightly must not publish
+            # without them.
+            for SBOM in "cyclonedx:cdx" "spdx-json:spdx"; do
+              if ! ERR=$(trivy convert --format "${SBOM%%:*}" \
+                     --output "${OUT}/${NAME}.sbom.${SBOM##*:}.json" \
+                     /tmp/trivy-results-named.json 2>&1); then
+                echo "WARNING: ${SBOM%%:*} SBOM render failed: ${ERR}" >&2
+                STAGE_FAILED=1
+              fi
+            done
+            jq -e '.bomFormat == "CycloneDX"' "${OUT}/${NAME}.sbom.cdx.json" >/dev/null 2>&1 \
+              || { echo "ERROR: missing or invalid CycloneDX SBOM" >&2; STAGE_FAILED=1; }
+            jq -e '.spdxVersion' "${OUT}/${NAME}.sbom.spdx.json" >/dev/null 2>&1 \
+              || { echo "ERROR: missing or invalid SPDX SBOM" >&2; STAGE_FAILED=1; }
+            if [ "${STAGE_FAILED}" != "0" ]; then
+              echo "ERROR: one or more published deliverables could not be staged (see errors above)" >&2
+              exit 1
+            fi
+      - persist_to_workspace:
+          root: /tmp/nightly
+          paths:
+            - trivy-reports/docker
+      - gate-trivy-findings
+
+  # ── GPG signing ──────────────────────────────────────────────────────────────
+  sign-packages:
+    # Creates detached .asc signatures for every package of both
+    # architectures. The signing keys come from the private
+    # arangodb-helper/package-signing repo, a set of ready-made GnuPG home
+    # directories with passphrase-protected keys. Its CURRENT key
+    # home is .gnupg4 (key 86FEC04D, private key passphrase-protected);
+    # .gnupg/.gnupg2/.gnupg3 hold legacy keys and are not fetched at all
+    # here. The repo's .rpmmacros (embedded `rpm --addsign`) is only needed
+    # when building apt/yum repositories, which nightlies do not do —
+    # nightly packages get detached signatures only.
+    # Needs the coredb-nightly-packages context: ARANGO_SIGN_PASSWD
+    # (optional KEYNAME, default 86FEC04D) and GITHUB_PACKAGE_SIGNING_KEY
+    # (base64-encoded read-only deploy key of
+    # arangodb-helper/package-signing) for the keyring checkout.
+    docker:
+      - image: << pipeline.parameters.build-docker-image >>
+    resource_class: << parameters.resource-class >>
+    parameters:
+      resource-class:
+        type: string
+    working_directory: /root/project
+    steps:
+      - attach_workspace:
+          at: /tmp/nightly
+      - checkout-arangodb:
+          destination: /root/project
+      - run:
+          name: Fetch signing keys (package-signing repo, .gnupg4 only)
+          command: |
+            set -eu
+            # Fetched with a read-only deploy key dedicated to
+            # arangodb-helper/package-signing, provided as the
+            # base64-encoded private key in GITHUB_PACKAGE_SIGNING_KEY
+            # (coredb-nightly-packages context) — the same mechanism as the
+            # infrastructure pipeline's GIT_WRITE_DEPLOY_KEY. The ssh flags
+            # offer ONLY this key (no agent, no user config), so no other
+            # identity can leak in. Sparse and blob-filtered so that ONLY
+            # .gnupg4 is ever downloaded — the legacy keyrings and
+            # everything else in the repo stay on the server. The keys exist
+            # strictly inside this job: they are never persisted to the
+            # workspace nor stored as an artifact (the persist globs below
+            # take only *.asc files).
+            if [ -z "${GITHUB_PACKAGE_SIGNING_KEY:-}" ]; then
+              echo "GITHUB_PACKAGE_SIGNING_KEY is empty; set it in the coredb-nightly-packages context (base64 -w0 of the package-signing deploy key)"
+              exit 1
+            fi
+            install -m 700 -d ~/.ssh
+            printf '%s' "${GITHUB_PACKAGE_SIGNING_KEY}" | base64 -d > ~/.ssh/id_package_signing
+            chmod 600 ~/.ssh/id_package_signing
+            if ! grep -q "PRIVATE KEY" ~/.ssh/id_package_signing; then
+              echo "GITHUB_PACKAGE_SIGNING_KEY does not decode to a private key; re-create it with: base64 -w0 <deploy-key>"
+              exit 1
+            fi
+            ssh-keyscan github.com >> ~/.ssh/known_hosts 2>/dev/null
+            rm -rf /tmp/package-signing
+            mkdir -p /tmp/package-signing
+            cd /tmp/package-signing
+            git init
+            git config core.sshCommand "ssh -F /dev/null -o IdentitiesOnly=yes -o IdentityAgent=none -i ~/.ssh/id_package_signing"
+            git remote add origin git@github.com:arangodb-helper/package-signing.git
+            git sparse-checkout set --no-cone /.gnupg4/
+            git fetch --depth 1 --filter=blob:none origin HEAD
+            git checkout FETCH_HEAD
+            # gpg needs a private (0700) home it can write to (trustdb,
+            # agent sockets, imports); give it a copy and drop the checkout.
+            rm -rf /tmp/signing-gnupg
+            mkdir -p -m 700 /tmp/signing-gnupg
+            cp -r .gnupg4/. /tmp/signing-gnupg/
+            chmod -R go-rwx /tmp/signing-gnupg
+            cd / && rm -rf /tmp/package-signing
+      - run:
+          name: Sign packages
+          command: |
+            GNUPGHOME=/tmp/signing-gnupg \
+              scripts/packaging/sign-packages.sh /tmp/nightly/packages /tmp/nightly/objectfiles
+      - run:
+          name: Remove signing keys
+          when: always
+          command: |
+            gpgconf --homedir /tmp/signing-gnupg --kill gpg-agent 2>/dev/null || true
+            rm -rf /tmp/signing-gnupg /tmp/package-signing
+            rm -f ~/.ssh/id_package_signing
+      - persist_to_workspace:
+          root: /tmp/nightly
+          paths:
+            - packages/*/*.asc
+            - objectfiles/*/*.asc
+
+  # ── Publish (the only job that releases anything) ────────────────────────────
+  publish-nightly:
+    # Runs only when every selected packaging/scan/sign job succeeded.
+    #
+    # A real transaction across GCS and two Docker registries doesn't exist,
+    # so the publish is split into two phases to get as close to
+    # all-or-nothing as possible:
+    #   stage:  upload packages to a staging prefix in the same bucket
+    #           (<DST>-staging/<workflow-id>/, neither indexed nor linked)
+    #           and push only the dated per-arch Docker tags, which no user
+    #           consumes. All slow, failure-prone network work happens here
+    #           while nothing visible has changed yet.
+    #   commit: server-side rsync staging -> live nightly tree, then
+    #           update the multi-arch manifest tags. Blobs are already in
+    #           the registries, so these are fast, retried metadata-only
+    #           operations - the window for partial visibility is seconds.
+    # Every operation is idempotent; if the commit still fails halfway, fix
+    # the cause and "Rerun from Failed" to republish cleanly. Leftover
+    # staging data is cleaned up on success; abandoned staging dirs should be
+    # covered by a bucket lifecycle rule on the *-staging prefix.
+    #
+    # pr-run pipelines run this job as a DRY RUN that still exercises as
+    # much of the real path as possible without publishing anything: the
+    # stage phase runs for real (staging is invisible by design — this
+    # genuinely tests GCS auth, the rsync calls and the layout), the commit
+    # phase verifies the staging tree with the same guard a real run uses
+    # and then deletes it instead of promoting; Docker images are loaded
+    # and tagged but never logged in or pushed, so no manifests either; the
+    # Docker/ reports and the regenerated index stay job artifacts instead
+    # of being uploaded. All reports carry a PR TEST RUN marker.
+    #
+    # Needs the coredb-nightly-packages context (GCLOUD_SERVICE_KEY_BASE64, DOCKER_USER,
+    # DOCKER_PASS).
+    docker:
+      - image: cimg/base:current
+    resource_class: large
+    steps:
+      - attach_workspace:
+          at: /tmp/nightly
+      - checkout-arangodb:
+          destination: /home/circleci/project
+      - setup_remote_docker
+      - setup-gcloud
+      - run:
+          name: Stage packages and sourceInfo in GCS (not yet visible)
+          command: |
+            if [ "<< pipeline.parameters.build-debian-packages >>" = "false" ] && \
+               [ "<< pipeline.parameters.build-rpm-packages >>" = "false" ] && \
+               [ "<< pipeline.parameters.build-tarballs >>" = "false" ]; then
+              echo "No packages selected, skipping GCS staging"
+              exit 0
+            fi
+
+            PACKAGES="$(cat /tmp/nightly/nightly-major-minor.txt)"
+            DST="${NIGHTLY_GCS_DEST:-gs://download.arangodb.com/nightly}"
+            # Staging lives next to the live tree in the same bucket (so the
+            # commit phase promotes with fast server-side copies) but outside
+            # of it, so it is neither indexed nor linked from anywhere.
+            STAGE_GCS="${DST}-staging/${CIRCLE_WORKFLOW_ID}"
+
+            # Stage with the historical layout (uname -m arch dirs):
+            # nightly/<major.minor>/Linux/{x86_64,aarch64}/ — plus
+            # sourceInfo.(log|json) at the <major.minor>/ level next to
+            # Linux/ (identical for both arches, so published once instead
+            # of per arch dir) and the arangodb3e-<VERSION>.txt package
+            # publish report inside Linux/, next to the arch dirs.
+            TOP=/tmp/stage/${PACKAGES}
+            STAGE=${TOP}/Linux
+            declare -A GCS_ARCH=( [amd64]=x86_64 [arm64]=aarch64 )
+            for arch in amd64 arm64; do
+              if [ -d "/tmp/nightly/packages/${arch}" ]; then
+                mkdir -p "${STAGE}/${GCS_ARCH[$arch]}"
+                cp /tmp/nightly/packages/${arch}/* "${STAGE}/${GCS_ARCH[$arch]}/"
+                if [ -d "/tmp/nightly/objectfiles/${arch}" ]; then
+                  cp /tmp/nightly/objectfiles/${arch}/* "${STAGE}/${GCS_ARCH[$arch]}/"
+                fi
+                # ClamAV reports land next to the files they belong to
+                for src in packages objectfiles; do
+                  if [ -d "/tmp/nightly/clamav-reports/${src}/${arch}" ]; then
+                    cp /tmp/nightly/clamav-reports/${src}/${arch}/*.clamav "${STAGE}/${GCS_ARCH[$arch]}/"
+                  fi
+                done
+                # Per-package Trivy reports and SBOMs (<package>.trivy.
+                # {json,log}, <package>.sbom.{cdx,spdx}.json) land next to
+                # the packages they cover; the Docker image scan files live
+                # under trivy-reports/docker and are published into the
+                # Docker/ directory after the commit step instead
+                if [ -d "/tmp/nightly/trivy-reports/${arch}" ]; then
+                  cp /tmp/nightly/trivy-reports/${arch}/* "${STAGE}/${GCS_ARCH[$arch]}/"
+                fi
+              fi
+            done
+
+            cp /tmp/nightly/sourceInfo.log /tmp/nightly/sourceInfo.json "${TOP}/"
+
+            # The packages section (per-arch FILE/SIZE/SHA256 tables) is
+            # written once and shared: it goes into the published
+            # arangodb3e-<VERSION>.txt here and into the combined
+            # nightly-publish-report.txt in the final report step.
+            # Supplemental files (.asc, .clamav, .trivy.*, .sbom.*) are
+            # published too but not listed (excluded by the globs).
+            VERSION="$(cat /tmp/nightly/nightly-version.txt)"
+            SECTION=/tmp/package-publish-section.txt
+            {
+              printf 'Packages published to %s/%s/Linux/:\n' "${DST}" "${PACKAGES}"
+              for arch in amd64 arm64; do
+                printf '\n%s:\n' "${GCS_ARCH[$arch]}"
+                printf '  %-84s %9s  %s\n' "FILE" "SIZE (MB)" "SHA256"
+                for f in /tmp/nightly/packages/${arch}/*.deb \
+                         /tmp/nightly/packages/${arch}/*.rpm \
+                         /tmp/nightly/packages/${arch}/*.tar.gz \
+                         /tmp/nightly/objectfiles/${arch}/*.tar.gz; do
+                  [ -e "$f" ] || continue
+                  SIZE_MB="$(awk -v b="$(stat -c%s "$f")" 'BEGIN{printf "%.1f", b/1048576}')"
+                  SHA256="$(sha256sum "$f" | cut -d' ' -f1)"
+                  printf '  %-84s %9s  %s\n' "$(basename "$f")" "${SIZE_MB}" "${SHA256}"
+                done
+              done
+            } > "${SECTION}"
+            {
+              echo "ArangoDB nightly packages publish report"
+              echo "========================================"
+              echo "Version:   ${VERSION}"
+              echo "Published: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+              echo "Workflow:  ${CIRCLE_WORKFLOW_ID}"
+              # Audit trail: the gate level is picked per run and waivers
+              # change per commit, so each publish records both.
+              echo "Sec. gate: << pipeline.parameters.security-check-fail-level >> (findings at or above this level block a publish unless waived; NONE = report-only; active waivers: $(jq -r --arg today "$(date -u +%F)" '[.waivers[]? | select(.expires >= $today)] | length' /home/circleci/project/.circleci/trivy-gate-waivers.json 2>/dev/null || echo "?") — see .circleci/trivy-gate-waivers.json)"
+              echo
+              cat "${SECTION}"
+            } > "${STAGE}/arangodb3e-${VERSION}.txt"
+
+            upload() {
+              local arch_dir="$1"
+              gsutil -m rsync -d -r "${STAGE}/${arch_dir}" "${STAGE_GCS}/${PACKAGES}/Linux/${arch_dir}"
+            }
+            for arch_dir in "${STAGE}"/*/; do
+              arch_dir="$(basename "${arch_dir}")"
+              # there might be internet hiccups
+              upload "${arch_dir}" || upload "${arch_dir}" || upload "${arch_dir}" || upload "${arch_dir}"
+            done
+            # The report at Linux/ level (not covered by the per-arch-dir
+            # rsync loop above) and the <major.minor>-level sourceInfo files;
+            # all promoted to the live tree by the commit step's recursive
+            # rsync like everything else.
+            upload_top() {
+              gsutil -m cp "${STAGE}/arangodb3e-${VERSION}.txt" \
+                "${STAGE_GCS}/${PACKAGES}/Linux/" && \
+              gsutil -m cp "${TOP}/sourceInfo.log" "${TOP}/sourceInfo.json" \
+                "${STAGE_GCS}/${PACKAGES}/"
+            }
+            upload_top || upload_top || upload_top || upload_top
+      - run:
+          name: Push per-arch Docker images (dated tags only)
+          command: |
+            # The pushed refs (incl. digests) are collected across this and
+            # the commit step into a publish report stored as a job artifact.
+            # A pr-run still loads and tags the images (validating the
+            # workspace artifacts) but never logs in or pushes.
+            PR_RUN="<< pipeline.parameters.pr-run >>"
+            REPORT=/tmp/docker-publish-report.txt
+            # Alpine is the suffix-less default image; Ubuntu images
+            # carry -deb between version and arch.
+            DISTROS=()
+            if [ "<< pipeline.parameters.build-alpine-images >>" = "true" ]; then DISTROS+=("alpine"); fi
+            if [ "<< pipeline.parameters.build-deb-images >>" = "true" ]; then DISTROS+=("deb"); fi
+            if [ ${#DISTROS[@]} -eq 0 ]; then
+              echo "Docker images not selected, nothing was pushed." > "${REPORT}"
+              echo "Docker images not selected, skipping push"
+              exit 0
+            fi
+            # Uploads all image blobs under the dated per-arch tags (e.g.
+            # 3.12.10-nightly.20260702-amd64), which no user consumes.
+            # Nothing that users pull changes until the commit step updates
+            # the multi-arch manifests.
+            VERSION="$(cat /tmp/nightly/nightly-version.txt)"
+            # The image is always arangodb/enterprise-preview; the registry
+            # prefix selects where it is pushed (docker.io always, GCR when
+            # push-images-to-gcr-also is set).
+            IMAGE="arangodb/enterprise-preview"
+            REG_PREFIXES=("docker.io/")
+
+            if [ "${PR_RUN}" = "true" ]; then
+              echo "pr-run: skipping registry logins, nothing will be pushed"
+            else
+              echo "${DOCKER_PASS}" | docker login -u "${DOCKER_USER}" --password-stdin
+            fi
+            if [ "<< pipeline.parameters.push-images-to-gcr-also >>" = "true" ]; then
+              if [ "${PR_RUN}" != "true" ]; then
+                if [ -z "${GCLOUD_SERVICE_KEY_BASE64:-}" ]; then
+                  echo "GCLOUD_SERVICE_KEY_BASE64 is empty; set it in the coredb-nightly-packages context (base64 -w0 of the service-account JSON)"
+                  exit 1
+                fi
+                echo "${GCLOUD_SERVICE_KEY_BASE64}" | base64 -d | docker login -u _json_key --password-stdin https://gcr.io
+              fi
+              # kept in a pr-run too, so the dry-run report lists every ref
+              # a real run would push
+              REG_PREFIXES+=("${NIGHTLY_GCR_PREFIX:-gcr.io/gcr-for-testing/}")
+            fi
+
+            distro_suffix() { if [ "$1" = "alpine" ]; then echo ""; else echo "-$1"; fi; }
+
+            {
+              echo "ArangoDB nightly Docker publish report"
+              echo "======================================"
+              echo "Version:    ${VERSION}"
+              echo "Distros:    ${DISTROS[*]}"
+              echo "Registries: ${REG_PREFIXES[*]}"
+              echo "Workflow:   ${CIRCLE_WORKFLOW_ID}"
+              if [ "${PR_RUN}" = "true" ]; then
+                echo "Mode:       PR TEST RUN (dry run - nothing was pushed)"
+              fi
+              echo
+              echo "Dated per-arch tags (stage phase):"
+            } > "${REPORT}"
+
+            set -x
+            retry() { "$@" || { sleep 5; "$@"; } || { sleep 15; "$@"; } || { sleep 30; "$@"; }; }
+
+            for DISTRO in "${DISTROS[@]}"; do
+              docker load -i /tmp/nightly/docker/enterprise-preview-${DISTRO}-amd64.tar
+              docker load -i /tmp/nightly/docker/enterprise-preview-${DISTRO}-arm64.tar
+            done
+
+            # Next to the combined report, the pushed refs are also collected
+            # per distro (/tmp/docker-stage-<distro>.txt): the "Publish
+            # per-image Docker reports" step folds them into the per-image
+            # <image>.txt reports in the Docker/ directory.
+            for DISTRO in "${DISTROS[@]}"; do
+              SUFFIX="$(distro_suffix "${DISTRO}")"
+              FRAG="/tmp/docker-stage-${DISTRO}.txt"
+              : > "${FRAG}"
+              for REG_PREFIX in "${REG_PREFIXES[@]}"; do
+                REPO="${REG_PREFIX}${IMAGE}"
+                for TAG_ARCH in amd64 arm64v8; do
+                  docker tag "${IMAGE}:${VERSION}${SUFFIX}-${TAG_ARCH}" "${REPO}:${VERSION}${SUFFIX}-${TAG_ARCH}"
+                  if [ "${PR_RUN}" = "true" ]; then
+                    DIGEST="pr-run: not pushed"
+                  else
+                    DIGEST="$(retry docker push "${REPO}:${VERSION}${SUFFIX}-${TAG_ARCH}" | sed -n 's/.*digest: \(sha256:[0-9a-f]*\).*/\1/p' | tail -1)"
+                  fi
+                  LINE="  ${REPO}:${VERSION}${SUFFIX}-${TAG_ARCH} (${DIGEST})"
+                  echo "${LINE}" >> "${REPORT}"
+                  echo "${LINE}" >> "${FRAG}"
+                done
+              done
+            done
+      - run:
+          name: Commit nightly (promote packages, push Docker manifests)
+          command: |
+            # The "commit point": everything slow or failure-prone already
+            # happened, so only fast, retried metadata operations are left
+            # (server-side GCS copies, tag/manifest pushes of blobs that are
+            # already in the registries). This keeps the window in which the
+            # release can be partially visible down to seconds. If it still
+            # fails halfway, fix the cause and "Rerun from Failed" - every
+            # operation is idempotent, so the job republishes cleanly.
+            # A pr-run stops at the commit point: the staging tree is
+            # verified with the same guard a real run uses and then deleted,
+            # nothing is promoted and no manifests are pushed.
+            retry() { "$@" || { sleep 5; "$@"; } || { sleep 15; "$@"; } || { sleep 30; "$@"; }; }
+
+            PR_RUN="<< pipeline.parameters.pr-run >>"
+            PACKAGES_SELECTED=true
+            if [ "<< pipeline.parameters.build-debian-packages >>" = "false" ] && \
+               [ "<< pipeline.parameters.build-rpm-packages >>" = "false" ] && \
+               [ "<< pipeline.parameters.build-tarballs >>" = "false" ]; then
+              PACKAGES_SELECTED=false
+            fi
+
+            if [ "${PACKAGES_SELECTED}" = "true" ]; then
+              PACKAGES="$(cat /tmp/nightly/nightly-major-minor.txt)"
+              DST="${NIGHTLY_GCS_DEST:-gs://download.arangodb.com/nightly}"
+              STAGE_GCS="${DST}-staging/${CIRCLE_WORKFLOW_ID}"
+
+              # Guard: never promote an empty or partial staging tree — the
+              # rsync -d below would mirror that emptiness into the live
+              # tree and delete the published packages. Packages are always
+              # staged for both arches together, so each arch dir must hold
+              # at least one package file of some format.
+              STAGE_LISTING="$(gsutil ls -r "${STAGE_GCS}/${PACKAGES}/Linux" 2>/dev/null || true)"
+              for arch_dir in x86_64 aarch64; do
+                if ! echo "${STAGE_LISTING}" | grep -E "/Linux/${arch_dir}/[^/]+\.(deb|rpm|tar\.gz)$" > /dev/null; then
+                  echo "Staging tree ${STAGE_GCS}/${PACKAGES}/Linux/${arch_dir} contains no package files; refusing to promote over the live tree."
+                  echo "The stage step probably did not complete — investigate and rerun from failed."
+                  exit 1
+                fi
+              done
+
+              if [ "${PR_RUN}" = "true" ]; then
+                echo "pr-run: staging tree verified; skipping promotion to the live nightly tree and the devel mirror"
+              else
+                # Promote the whole <major.minor> tree with delete semantics:
+                # afterwards the live directory contains EXACTLY this one
+                # nightly — older dated packages, legacy platform dirs from the
+                # NAS era and stale index.html files are all removed (the
+                # index is regenerated in the next step). Both arches are
+                # always staged together, so nothing legitimate is deleted.
+                # The Docker/ directory is excluded: it is owned by the
+                # "Publish per-image Docker reports" step (which needs the
+                # manifest digests from this step, so it runs after it) and it
+                # must survive packages-only runs.
+                retry gsutil -m rsync -d -r -x "^Docker/" \
+                  "${STAGE_GCS}/${PACKAGES}" \
+                  "${DST}/${PACKAGES}"
+
+                # nightly/devel points at the current devel tree. The old NAS
+                # used a filesystem symlink; GCS has no symlinks, so the
+                # pipeline maintains a server-side mirror instead (updated only
+                # when the published tree IS the devel tree). index.html files
+                # are excluded both ways: the regeneration step creates and
+                # owns devel's own index. Docker/ is excluded for the same
+                # reason: the "Publish per-image Docker reports" step below
+                # writes it into both trees itself.
+                if grep -qx "devel-nightly" /tmp/nightly/rolling-tags.txt; then
+                  retry gsutil -m rsync -d -r -x "(^|/)index\.html$|^Docker/" \
+                    "${DST}/${PACKAGES}" "${DST}/devel"
+                fi
+              fi
+            fi
+
+            DISTROS=()
+            if [ "<< pipeline.parameters.build-alpine-images >>" = "true" ]; then DISTROS+=("alpine"); fi
+            if [ "<< pipeline.parameters.build-deb-images >>" = "true" ]; then DISTROS+=("deb"); fi
+            if [ "${PR_RUN}" = "true" ] && [ ${#DISTROS[@]} -gt 0 ]; then
+              # dry run: the dated per-arch tags were never pushed, so there
+              # is nothing to assemble manifests from. Write the report
+              # placeholders (the per-image reports step cats the per-distro
+              # fragments) and skip the manifest block below.
+              REPORT=/tmp/docker-publish-report.txt
+              printf '\nMulti-arch manifest tags (what users pull):\n' >> "${REPORT}"
+              echo "  (pr-run: not created - the dated per-arch tags were never pushed)" >> "${REPORT}"
+              for DISTRO in "${DISTROS[@]}"; do
+                echo "  (pr-run: manifests not created)" > "/tmp/docker-commit-${DISTRO}.txt"
+              done
+              DISTROS=()
+            fi
+            if [ ${#DISTROS[@]} -gt 0 ]; then
+              set -x
+              VERSION="$(cat /tmp/nightly/nightly-version.txt)"
+              # Rolling tags from prepare-nightly: <major.minor>-nightly, plus
+              # devel-nightly when the tree was a devel tree.
+              mapfile -t ROLLING_TAGS < /tmp/nightly/rolling-tags.txt
+              IMAGE="arangodb/enterprise-preview"
+              REG_PREFIXES=("docker.io/")
+              if [ "<< pipeline.parameters.push-images-to-gcr-also >>" = "true" ]; then
+                REG_PREFIXES+=("${NIGHTLY_GCR_PREFIX:-gcr.io/gcr-for-testing/}")
+              fi
+
+              distro_suffix() { if [ "$1" = "alpine" ]; then echo ""; else echo "-$1"; fi; }
+
+              # No rolling per-arch tags: every manifest (dated and rolling)
+              # references the dated per-arch images pushed in the stage
+              # phase directly.
+              REPORT=/tmp/docker-publish-report.txt
+              printf '\nMulti-arch manifest tags (what users pull):\n' >> "${REPORT}"
+              # As in the stage step, the refs are also collected per distro
+              # (/tmp/docker-commit-<distro>.txt) for the per-image reports.
+              for DISTRO in "${DISTROS[@]}"; do
+                SUFFIX="$(distro_suffix "${DISTRO}")"
+                FRAG="/tmp/docker-commit-${DISTRO}.txt"
+                : > "${FRAG}"
+                for REG_PREFIX in "${REG_PREFIXES[@]}"; do
+                  REPO="${REG_PREFIX}${IMAGE}"
+                  for MANIFEST_TAG in "${VERSION}" "${ROLLING_TAGS[@]}"; do
+                    docker manifest rm "${REPO}:${MANIFEST_TAG}${SUFFIX}" 2>/dev/null || true
+                    retry docker manifest create "${REPO}:${MANIFEST_TAG}${SUFFIX}" \
+                      --amend "${REPO}:${VERSION}${SUFFIX}-amd64" \
+                      --amend "${REPO}:${VERSION}${SUFFIX}-arm64v8"
+                    DIGEST="$(retry docker manifest push --purge "${REPO}:${MANIFEST_TAG}${SUFFIX}" | tail -1)"
+                    LINE="  ${REPO}:${MANIFEST_TAG}${SUFFIX} (${DIGEST})"
+                    echo "${LINE}" >> "${REPORT}"
+                    echo "${LINE}" >> "${FRAG}"
+                  done
+                done
+              done
+              set +x
+            fi
+
+            if [ "${PACKAGES_SELECTED}" = "true" ]; then
+              # Best-effort cleanup; abandoned staging dirs (from runs that
+              # never reached this point) should be reaped by a bucket
+              # lifecycle rule on the *-staging prefix. In a pr-run this
+              # doubles as the discard of the dry run.
+              gsutil -m rm -r "${STAGE_GCS}" || true
+            fi
+      - run:
+          name: Publish per-image Docker reports (Docker/ directory)
+          command: |
+            # One <image>.txt per published image name — arangodb/
+            # enterprise-preview:<VERSION>[-<distro>] with / and : mapped to
+            # _ — carrying that image's slice of nightly-publish-report.txt:
+            # the dated per-arch pushes and the multi-arch manifest tags,
+            # each with digests. The per-arch Trivy scan reports and SBOMs
+            # (<image>-<amd64|arm64v8>.trivy.{json,log} and
+            # .sbom.{cdx,spdx}.json) are published next to it. Everything
+            # lands in <major.minor>/Docker/ (and in the
+            # devel mirror when this nightly is the devel one) — after the
+            # commit step, because the manifest digests only exist then.
+            # Created even when skipping, so the store_artifacts step below
+            # always has a path to store. In a pr-run the reports are
+            # generated (and stored as artifacts) but not uploaded to GCS.
+            PR_RUN="<< pipeline.parameters.pr-run >>"
+            OUT=/tmp/docker-reports
+            mkdir -p "${OUT}"
+
+            DISTROS=()
+            if [ "<< pipeline.parameters.build-alpine-images >>" = "true" ]; then DISTROS+=("alpine"); fi
+            if [ "<< pipeline.parameters.build-deb-images >>" = "true" ]; then DISTROS+=("deb"); fi
+            if [ ${#DISTROS[@]} -eq 0 ]; then
+              echo "Docker images not selected, skipping Docker reports"
+              exit 0
+            fi
+
+            VERSION="$(cat /tmp/nightly/nightly-version.txt)"
+            PACKAGES="$(cat /tmp/nightly/nightly-major-minor.txt)"
+            DST="${NIGHTLY_GCS_DEST:-gs://download.arangodb.com/nightly}"
+
+            distro_suffix() { if [ "$1" = "alpine" ]; then echo ""; else echo "-$1"; fi; }
+
+            for DISTRO in "${DISTROS[@]}"; do
+              SUFFIX="$(distro_suffix "${DISTRO}")"
+              NAME="arangodb_enterprise-preview_${VERSION}${SUFFIX}"
+              {
+                echo "ArangoDB nightly Docker image publish report"
+                echo "============================================"
+                echo "Image:     arangodb/enterprise-preview:${VERSION}${SUFFIX}"
+                echo "Base:      ${DISTRO}"
+                echo "Published: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+                echo "Workflow:  ${CIRCLE_WORKFLOW_ID}"
+                if [ "${PR_RUN}" = "true" ]; then
+                  echo "Mode:      PR TEST RUN (dry run - image was NOT published)"
+                fi
+                echo "Sec. gate: << pipeline.parameters.security-check-fail-level >> (findings at or above this level block a publish unless waived; NONE = report-only; active waivers: $(jq -r --arg today "$(date -u +%F)" '[.waivers[]? | select(.expires >= $today)] | length' /home/circleci/project/.circleci/trivy-gate-waivers.json 2>/dev/null || echo "?") — see .circleci/trivy-gate-waivers.json)"
+                echo
+                echo "Dated per-arch tags (stage phase):"
+                cat "/tmp/docker-stage-${DISTRO}.txt"
+                echo
+                echo "Multi-arch manifest tags (what users pull):"
+                cat "/tmp/docker-commit-${DISTRO}.txt"
+              } > "${OUT}/${NAME}.txt"
+            done
+
+            # Per-arch Trivy scan reports, already named after the pushed
+            # image refs; absent when [security-check] is disabled.
+            if [ -d /tmp/nightly/trivy-reports/docker ]; then
+              cp /tmp/nightly/trivy-reports/docker/* "${OUT}/"
+            fi
+
+            ls -la "${OUT}"
+
+            retry() { "$@" || { sleep 5; "$@"; } || { sleep 15; "$@"; } || { sleep 30; "$@"; }; }
+            if [ "${PR_RUN}" = "true" ]; then
+              echo "pr-run: Docker reports kept as job artifacts only, not uploaded to ${DST}/${PACKAGES}/Docker"
+            else
+              # Delete semantics within Docker/ only: afterwards it contains
+              # exactly this run's reports (the promote/mirror rsyncs in the
+              # commit step exclude Docker/, so this step is its sole owner).
+              retry gsutil -m rsync -d "${OUT}" "${DST}/${PACKAGES}/Docker"
+              if grep -qx "devel-nightly" /tmp/nightly/rolling-tags.txt; then
+                retry gsutil -m rsync -d "${OUT}" "${DST}/devel/Docker"
+              fi
+            fi
+      - store_artifacts:
+          path: /tmp/docker-reports
+          destination: reports/docker
+      - run:
+          name: Write nightly publish report
+          command: |
+            # Everything this run published: the packages (incl. the
+            # objectfiles archives) with size and SHA256 — the section
+            # written by the stage step, which is also published standalone
+            # as <major.minor>/Linux/arangodb3e-<VERSION>.txt — and the Docker
+            # refs collected by the stage/commit steps. Supplemental files
+            # (.asc, .clamav, .trivy.*, .sbom.*) are published too but not
+            # listed.
+            PR_RUN="<< pipeline.parameters.pr-run >>"
+            REPORT=/tmp/nightly-publish-report.txt
+            VERSION="$(cat /tmp/nightly/nightly-version.txt)"
+            {
+              echo "ArangoDB nightly publish report"
+              echo "==============================="
+              echo "Version:   ${VERSION}"
+              echo "Published: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+              echo "Workflow:  ${CIRCLE_WORKFLOW_ID}"
+              if [ "${PR_RUN}" = "true" ]; then
+                echo "Mode:      PR TEST RUN - dry run, NOTHING was actually published"
+              fi
+              echo "Sec. gate: << pipeline.parameters.security-check-fail-level >> (findings at or above this level block a publish unless waived; NONE = report-only; active waivers: $(jq -r --arg today "$(date -u +%F)" '[.waivers[]? | select(.expires >= $today)] | length' /home/circleci/project/.circleci/trivy-gate-waivers.json 2>/dev/null || echo "?") — see .circleci/trivy-gate-waivers.json)"
+            } > "${REPORT}"
+
+            if [ -s /tmp/package-publish-section.txt ]; then
+              echo >> "${REPORT}"
+              cat /tmp/package-publish-section.txt >> "${REPORT}"
+            else
+              printf '\nPackages: not selected\n' >> "${REPORT}"
+            fi
+
+            echo >> "${REPORT}"
+            cat /tmp/docker-publish-report.txt >> "${REPORT}"
+            cat "${REPORT}"
+      - store_artifacts:
+          path: /tmp/nightly-publish-report.txt
+          destination: reports/nightly-publish-report.txt
+      - run:
+          name: Regenerate download index.html files
+          command: |
+            # The Docker/ report directory is part of the indexed tree, so
+            # the index is regenerated whenever anything was published to
+            # GCS — packages or Docker image reports.
+            # Created unconditionally so the store_artifacts step below
+            # always has a path to store.
+            mkdir -p /tmp/nightly-index
+            if [ "<< pipeline.parameters.build-debian-packages >>" = "false" ] && \
+               [ "<< pipeline.parameters.build-rpm-packages >>" = "false" ] && \
+               [ "<< pipeline.parameters.build-tarballs >>" = "false" ] && \
+               [ "<< pipeline.parameters.build-alpine-images >>" = "false" ] && \
+               [ "<< pipeline.parameters.build-deb-images >>" = "false" ]; then
+              echo "Nothing was published to GCS, skipping index regeneration"
+              exit 0
+            fi
+            # The whole nightly tree is listed from GCS, one index.html is
+            # generated per directory and uploaded back. Runs after the
+            # commit so the index only ever reflects fully published trees.
+            DST="${NIGHTLY_GCS_DEST:-gs://download.arangodb.com/nightly}"
+            gsutil ls -l -r "${DST}" > /tmp/nightly-listing.txt
+            python3 /home/circleci/project/scripts/packaging/generate-download-index.py \
+              --root "${DST}" \
+              --prefix "/${DST##*/}" \
+              --listing /tmp/nightly-listing.txt \
+              --out /tmp/nightly-index
+            if [ "<< pipeline.parameters.pr-run >>" = "true" ]; then
+              # a pr-run published nothing, so the live index is still
+              # correct; generating it above smoke-tests the listing and the
+              # generator, and the result stays a job artifact
+              echo "pr-run: index generated for inspection only, not uploaded"
+              exit 0
+            fi
+            cd /tmp/nightly-index
+            gsutil -m cp -r ./* "${DST}/"
+      - store_artifacts:
+          path: /tmp/nightly-index
+          destination: reports/nightly-index
+
+workflows:
+  nightly-packages:
+    jobs:
+      - prepare-nightly:
+          name: prepare-nightly
+
+      # ── x64 enterprise ───────────────────────────────────────────────────
+      - compile-nightly:
+          name: compile-enterprise-amd64
+          arch: amd64
+          preset: nightly-package-x64
+          resource-class: arangodb/xlarge-amd64
+          context: [ sccache-aws-bucket ]
+          requires: [prepare-nightly]
+
+      - build-package:
+          name: deb-enterprise-amd64
+          format: deb
+          arch: amd64
+          resource-class: arangodb/large-amd64
+          requires: [compile-enterprise-amd64]
+
+      - build-package:
+          name: rpm-enterprise-amd64
+          format: rpm
+          arch: amd64
+          resource-class: arangodb/large-amd64
+          requires: [compile-enterprise-amd64]
+
+      - build-package:
+          name: tar-enterprise-amd64
+          format: tar
+          arch: amd64
+          resource-class: arangodb/large-amd64
+          requires: [compile-enterprise-amd64]
+
+      - build-nightly-docker-image:
+          name: docker-enterprise-alpine-amd64
+          arch: amd64
+          distro: alpine
+          resource-class: large
+          context: [ circleci-token, coredb-workspace-aws-bucket ]
+          requires: [compile-enterprise-amd64]
+
+      - build-nightly-docker-image:
+          name: docker-enterprise-deb-amd64
+          arch: amd64
+          distro: deb
+          resource-class: large
+          context: [ circleci-token, coredb-workspace-aws-bucket ]
+          requires: [compile-enterprise-amd64]
+
+      # ── ARM64 enterprise ─────────────────────────────────────────────────────
+      - compile-nightly:
+          name: compile-enterprise-arm64
+          arch: arm64
+          preset: nightly-package-arm64
+          resource-class: arangodb/xlarge-arm64
+          context: [ sccache-aws-bucket ]
+          requires: [prepare-nightly]
+
+      - build-package:
+          name: deb-enterprise-arm64
+          format: deb
+          arch: arm64
+          resource-class: arangodb/large-arm64
+          requires: [compile-enterprise-arm64]
+
+      - build-package:
+          name: rpm-enterprise-arm64
+          format: rpm
+          arch: arm64
+          resource-class: arangodb/large-arm64
+          requires: [compile-enterprise-arm64]
+
+      - build-package:
+          name: tar-enterprise-arm64
+          format: tar
+          arch: arm64
+          resource-class: arangodb/large-arm64
+          requires: [compile-enterprise-arm64]
+
+      - build-nightly-docker-image:
+          name: docker-enterprise-alpine-arm64
+          arch: arm64
+          distro: alpine
+          resource-class: arm.large
+          context: [ circleci-token, coredb-workspace-aws-bucket ]
+          requires: [compile-enterprise-arm64]
+
+      - build-nightly-docker-image:
+          name: docker-enterprise-deb-arm64
+          arch: arm64
+          distro: deb
+          resource-class: arm.large
+          context: [ circleci-token, coredb-workspace-aws-bucket ]
+          requires: [compile-enterprise-arm64]
+
+      # ── Scan, sign, publish ──────────────────────────────────────────────────
+      - scan-packages:
+          context: [ clamav-aws-bucket ]
+          resource-class: arangodb/large-amd64
+          requires:
+            - deb-enterprise-amd64
+            - rpm-enterprise-amd64
+            - tar-enterprise-amd64
+            - deb-enterprise-arm64
+            - rpm-enterprise-arm64
+            - tar-enterprise-arm64
+
+      - sign-packages:
+          # coredb-nightly-packages carries all signing secrets:
+          # ARANGO_SIGN_PASSWD (+ optional KEYNAME) and
+          # GITHUB_PACKAGE_SIGNING_KEY for the package-signing checkout.
+          context: [ coredb-nightly-packages ]
+          resource-class: arangodb/large-amd64
+          requires:
+            - deb-enterprise-amd64
+            - rpm-enterprise-amd64
+            - tar-enterprise-amd64
+            - deb-enterprise-arm64
+            - rpm-enterprise-arm64
+            - tar-enterprise-arm64
+
+      # ── Trivy security gates: one per published item ─────────────────────────
+      - security-check-package:
+          name: security-check-deb-amd64
+          target: deb
+          arch: amd64
+          requires: [deb-enterprise-amd64]
+
+      - security-check-package:
+          name: security-check-rpm-amd64
+          target: rpm
+          arch: amd64
+          requires: [rpm-enterprise-amd64]
+
+      - security-check-package:
+          name: security-check-tar-amd64
+          target: tar
+          arch: amd64
+          requires: [tar-enterprise-amd64]
+
+      - security-check-package:
+          name: security-check-deb-arm64
+          target: deb
+          arch: arm64
+          requires: [deb-enterprise-arm64]
+
+      - security-check-package:
+          name: security-check-rpm-arm64
+          target: rpm
+          arch: arm64
+          requires: [rpm-enterprise-arm64]
+
+      - security-check-package:
+          name: security-check-tar-arm64
+          target: tar
+          arch: arm64
+          requires: [tar-enterprise-arm64]
+
+      - security-check-docker-image:
+          name: security-check-docker-alpine-amd64
+          arch: amd64
+          distro: alpine
+          requires: [docker-enterprise-alpine-amd64]
+
+      - security-check-docker-image:
+          name: security-check-docker-deb-amd64
+          arch: amd64
+          distro: deb
+          requires: [docker-enterprise-deb-amd64]
+
+      - security-check-docker-image:
+          name: security-check-docker-alpine-arm64
+          arch: arm64
+          distro: alpine
+          requires: [docker-enterprise-alpine-arm64]
+
+      - security-check-docker-image:
+          name: security-check-docker-deb-arm64
+          arch: arm64
+          distro: deb
+          requires: [docker-enterprise-deb-arm64]
+
+      - publish-nightly:
+          context: [ coredb-nightly-packages ]
+          requires:
+            # The packaging jobs are required DIRECTLY, not only transitively
+            # via the scan/sign/security gates: all three gates can be
+            # disabled by pipeline parameters, and publish must still wait
+            # for the packages themselves.
+            - deb-enterprise-amd64
+            - rpm-enterprise-amd64
+            - tar-enterprise-amd64
+            - deb-enterprise-arm64
+            - rpm-enterprise-arm64
+            - tar-enterprise-arm64
+            - scan-packages
+            - sign-packages
+            - security-check-deb-amd64
+            - security-check-rpm-amd64
+            - security-check-tar-amd64
+            - security-check-deb-arm64
+            - security-check-rpm-arm64
+            - security-check-tar-arm64
+            - security-check-docker-alpine-amd64
+            - security-check-docker-deb-amd64
+            - security-check-docker-alpine-arm64
+            - security-check-docker-deb-arm64
+            - docker-enterprise-alpine-amd64
+            - docker-enterprise-deb-amd64
+            - docker-enterprise-alpine-arm64
+            - docker-enterprise-deb-arm64

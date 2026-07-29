@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "MaxMapCountFeature.h"
@@ -45,12 +44,6 @@ MaxMapCountFeature::MaxMapCountFeature(
       _options(std::move(options)) {
   setOptional(false);
   startsAfter<application_features::GreetingsFeaturePhase>();
-}
-
-void MaxMapCountFeature::collectOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  MaxMapCountOptionsProvider provider;
-  provider.declareOptions(options, _options);
 }
 
 uint64_t MaxMapCountFeature::actualMaxMappings() {

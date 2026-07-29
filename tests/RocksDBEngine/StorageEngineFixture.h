@@ -30,7 +30,6 @@
 #include "Mocks/FakeScheduler.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/Version.h"
-#include "RestServer/IRecoveryCallback.h"
 #include "RocksDBEngine/Mocks.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBOptionsProvider.h"
